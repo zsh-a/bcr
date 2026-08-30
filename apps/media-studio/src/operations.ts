@@ -59,6 +59,12 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
         default: "auto",
       },
       {
+        key: "words",
+        label: "词级时间戳（卡拉 OK ASS）",
+        kind: "boolean",
+        default: true,
+      },
+      {
         key: "engine",
         label: "识别引擎",
         kind: "select",

@@ -94,14 +94,16 @@ decode ─┬─ wave（Rust peak kernel 波形）
 - **分窗 ASR**：长音频按 120s 窗 + 4s stride 切片推理——进度按窗推进、窗间可取消、Worker 内存只驻留一窗 PCM；每窗完成即发 chunk 事件，字幕**边算边出**（渐进回填编辑器）；stride 区间的归属由下一窗重新转写，边界不丢词不重复
 - **计算设备（§10.1）**：ASR 节点 device=auto（`navigator.gpu` 探测，WebGPU 装载失败静默回退 WASM）/ 显式 webgpu（fp32 encoder + q4 decoder）/ wasm；设备参与缓存键
 - **双语翻译**：opus-mt 文本翻译（英↔中方向可选）——逐条 cue 批量平移、1:1 对齐、批间可取消，替代 Whisper 二次音频推理（便宜一个数量级）
-- **编辑器**：文本/译文/时间轴行内编辑、拆分、删除、点击定位播放；编辑自动持久化到 SQLite
-- **导出**：SRT / WebVTT / ASS（双语第二行），纯函数实现带单测
+- **编辑器**：文本/译文/时间轴行内编辑、拆分、删除、点击定位播放；**undo/redo**（Ctrl+Z / Shift+Z / Ctrl+Y，流水线产出重置历史）；**跟随播放**（当前 cue 高亮 + 自动滚入视野）；**CPS 超速告警**（含译文，上限 20 单位/秒）；编辑自动持久化到 SQLite
+- **导出**：SRT / WebVTT / ASS（双语第二行），纯函数实现带单测；ASS 支持卡拉 OK 标签——ASR 节点开启词级时间戳后，每词 `\k` 厘秒高亮自动生成
 - 刷新恢复：源文件（OPFS Blob 重建播放）+ 字幕编辑 + 引擎设置全部从元数据库回放
 
 走查脚本（先 `bun run media`）：
 
 - `node scripts/verify-media-studio.mjs` — 导入合成 WAV → 演示引擎生成 → SRT 导出 → 刷新恢复
 - `node scripts/verify-windowed-asr.mjs` — 150s 长音频分窗回归（跨 120s 窗界归属/排序/导出）；`ENGINE=whisper` 走真实模型
+- `node scripts/verify-m3.mjs` — undo/redo（键盘+按钮）+ 跟随播放高亮
+- `node scripts/verify-karaoke.mjs` — 真实 Whisper 词级时间戳 → ASS `\k`（需外网）
 - `node scripts/verify-m2.mjs` — device 探测降级 + opus-mt 双语导出（两轮流水线）
 - `node scripts/verify-whisper-probe.mjs` — 真实 Whisper 短音频探针
 

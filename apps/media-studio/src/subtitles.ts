@@ -5,12 +5,20 @@
  * 编辑 → 导出。时间单位一律秒（f64），导出时才格式化。
  */
 
+export interface CueWord {
+  readonly start: number;
+  readonly end: number;
+  readonly text: string;
+}
+
 export interface SubtitleCue {
   readonly start: number;
   readonly end: number;
   readonly text: string;
   /** 译文（Whisper translate 或人工）；空串表示无。 */
   readonly translation?: string | undefined;
+  /** 词级时间戳（whisper return_timestamps:"word"）；卡拉 OK 导出用。 */
+  readonly words?: ReadonlyArray<CueWord> | undefined;
 }
 
 export interface MediaInfo {
@@ -31,12 +39,23 @@ export const DEFAULT_SEGMENT_OPTIONS: SegmentOptions = {
   maxChars: 30,
 };
 
-/** 显示用长度：CJK 字符计 1，连续拉丁词计 1。 */
+/** 显示用长度：CJK 字符计 1，连续拉丁词计 1，其余标点/空白每 4 字符折 1。 */
 export function cueLength(text: string): number {
+  const wordLike = /[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]|[A-Za-z0-9][A-Za-z0-9'’-]*/g;
   const cjk = (text.match(/[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]/g) ?? []).length;
   const latinWords = (text.match(/[A-Za-z0-9][A-Za-z0-9'’-]*/g) ?? []).length;
-  const other = text.replace(/[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]/g, "").length;
+  const other = text.replace(new RegExp(wordLike.source, "g"), "").length;
   return cjk + latinWords + Math.ceil(other / 4);
+}
+
+/** 观看舒适度上限：每秒显示单位数（Netflix 双语经验值 ~20，含译文）。 */
+export const CPS_LIMIT = 20;
+
+/** 每秒显示单位（含译文）；时长过短按 0.2s 下限计算，避免除零爆炸。 */
+export function cueCps(cue: Pick<SubtitleCue, "start" | "end" | "text" | "translation">): number {
+  const duration = Math.max(0.2, cue.end - cue.start);
+  const translation = cue.translation ?? "";
+  return cueLength(`${cue.text} ${translation}`) / duration;
 }
 
 /**
@@ -94,6 +113,60 @@ export function normalizeCues(
     }
   }
   return merged;
+}
+
+/** 拼接词文本：CJK 相邻不加空格，拉丁词间加空格。 */
+export function wordJoin(words: ReadonlyArray<CueWord>): string {
+  let out = "";
+  for (const word of words) {
+    const needsSpace =
+      out.length > 0 && /[A-Za-z0-9'’-]$/.test(out) && /^[A-Za-z0-9'’-]/.test(word.text);
+    out += `${needsSpace ? " " : ""}${word.text}`;
+  }
+  return out;
+}
+
+/**
+ * 词序列 → chunk 组：间隔超过 gapS 或组时长超过 maxDurationS 即断组。
+ * whisper 词级时间戳是平铺的，字幕需要先聚合成条。
+ */
+export function groupWordsToChunks(
+  words: ReadonlyArray<CueWord>,
+  maxDurationS = 8,
+  gapS = 0.8,
+): ReadonlyArray<{ start: number; end: number; text: string; words: ReadonlyArray<CueWord> }> {
+  const groups: Array<{
+    start: number;
+    end: number;
+    text: string;
+    words: CueWord[];
+  }> = [];
+  for (const word of words) {
+    const current = groups[groups.length - 1];
+    if (
+      current !== undefined &&
+      word.start - current.end < gapS &&
+      word.end - current.start <= maxDurationS
+    ) {
+      current.words.push(word);
+      current.end = word.end;
+      current.text = wordJoin(current.words);
+    } else {
+      groups.push({ start: word.start, end: word.end, text: word.text, words: [word] });
+    }
+  }
+  return groups;
+}
+
+/** 把词按时间归属到 cue（词起点落在 cue 区间内；区间外的词丢弃）。 */
+export function assignWords(
+  cues: ReadonlyArray<SubtitleCue>,
+  words: ReadonlyArray<CueWord>,
+): SubtitleCue[] {
+  return cues.map((cue) => {
+    const inCue = words.filter((word) => word.start >= cue.start - 0.01 && word.start < cue.end);
+    return inCue.length > 0 ? { ...cue, words: inCue } : cue;
+  });
 }
 
 function joinText(a: string, b: string): string {

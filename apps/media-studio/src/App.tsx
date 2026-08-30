@@ -6,7 +6,7 @@ import { createRuntimeServices } from "./runtime";
 import { cancelGeneration, generateSubtitles, persistProject, restoreProject } from "./pipeline";
 import { clearProject, importSource } from "./source";
 import { studio, useStudio } from "./store";
-import { CueEditor } from "./components/CueEditor";
+import { CueEditor, UndoRedo } from "./components/CueEditor";
 import { PipelineEditor } from "./components/PipelineEditor";
 import { PipelinePanel } from "./components/PipelinePanel";
 import { Waveform } from "./components/Waveform";
@@ -69,6 +69,23 @@ function Studio() {
     return () => window.clearTimeout(timer);
   }, [graph, services]);
 
+  // 编辑快捷键：Ctrl/Cmd+Z 撤销，Shift（或 Ctrl+Y）重做——输入框聚焦时同样生效
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === "z" && !event.shiftKey) {
+        event.preventDefault();
+        studio.undo();
+      } else if ((key === "z" && event.shiftKey) || key === "y") {
+        event.preventDefault();
+        studio.redo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const generate = () => {
     void generateSubtitles(services);
   };
@@ -80,7 +97,9 @@ function Studio() {
 
   const download = (format: SubtitleFormat) => {
     const baseName = source?.name.replace(/\.[^.]+$/, "") ?? "subtitles";
-    const content = exportSubtitles(cues, format, source?.name);
+    // ASS：任一 cue 带词级时间戳时自动启用卡拉 OK 标签
+    const karaoke = cues.some((cue) => cue.words !== undefined && cue.words.length > 0);
+    const content = exportSubtitles(cues, format, source?.name, { karaoke });
     const blob = new Blob([content], { type: FORMAT_MIME[format] });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -88,7 +107,10 @@ function Studio() {
     anchor.download = `${baseName}.${format}`;
     anchor.click();
     URL.revokeObjectURL(url);
-    studio.log("ok", `export · ${format.toUpperCase()} · ${cues.length} cues`);
+    studio.log(
+      "ok",
+      `export · ${format.toUpperCase()} · ${cues.length} cues${karaoke ? " · karaoke" : ""}`,
+    );
   };
 
   return (
@@ -142,6 +164,7 @@ function Studio() {
           )}
         </span>
         <span className="ml-auto flex items-center gap-2">
+          <UndoRedo />
           {engineUsed !== null && (
             <span className="rounded border border-[var(--color-border-strong)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-muted)]">
               {engineUsed}
@@ -304,7 +327,7 @@ function Studio() {
                 />
               )}
               <Waveform videoRef={videoRef} onSeek={seek} />
-              <CueEditor onSeek={seek} />
+              <CueEditor onSeek={seek} getTime={() => videoRef.current?.currentTime ?? 0} />
             </div>
           )}
         </main>

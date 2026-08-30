@@ -2,7 +2,13 @@ import { artifactPath, type ArtifactRef, type ComputeTask } from "@bcr/core";
 import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
 import init, { peak_f32 } from "../../../../crates/kernels/pkg/bcr_kernels.js";
-import { normalizeCues, type SegmentOptions } from "../subtitles";
+import {
+  assignWords,
+  groupWordsToChunks,
+  normalizeCues,
+  type CueWord,
+  type SegmentOptions,
+} from "../subtitles";
 import { ownedChunks, planSampleWindows } from "../windows";
 
 /**
@@ -136,6 +142,8 @@ interface AsrChunk {
   readonly start: number;
   readonly end: number;
   readonly text: string;
+  /** 词级时间戳（whisper return_timestamps:"word"）；卡拉 OK 导出用。 */
+  readonly words?: ReadonlyArray<CueWord>;
 }
 
 interface AsrResult {
@@ -301,21 +309,40 @@ async function whisperChunks(
   ctx: WorkerContext,
   device: Device,
   offsetS = 0,
+  wordTimestamps = false,
 ): Promise<AsrChunk[]> {
   const transcriber = await loadTranscriber(model, "transcribe", device, ctx);
   const result = await transcriber(samples, {
-    return_timestamps: true,
+    return_timestamps: wordTimestamps ? "word" : true,
     chunk_length_s: 30,
     stride_length_s: 5,
   });
   const raw = result.chunks ?? [{ timestamp: [0, null], text: result.text }];
-  return raw.flatMap((chunk) => {
+  const localWords: CueWord[] = [];
+  const sentenceChunks: AsrChunk[] = [];
+  for (const chunk of raw) {
     const text = chunk.text.trim();
-    if (text.length === 0) return [];
+    if (text.length === 0) continue;
     const start = (chunk.timestamp[0] ?? 0) + offsetS;
     const end = (chunk.timestamp[1] ?? samples.length / SAMPLE_RATE) + offsetS;
-    return [{ start, end: Math.max(end, start + 0.2), text }];
-  });
+    const safeEnd = Math.max(end, start + 0.2);
+    if (wordTimestamps) {
+      // 词级：平铺词序列，本地暂存后聚合成条
+      localWords.push({ start, end: safeEnd, text });
+    } else {
+      sentenceChunks.push({ start, end: safeEnd, text });
+    }
+  }
+  if (!wordTimestamps) return sentenceChunks;
+
+  return groupWordsToChunks(localWords).map((group) => ({
+    start: group.start,
+    end: group.end,
+    text: group.text,
+    words: group.words.map((word) => ({
+      ...word,
+    })),
+  }));
 }
 
 /**
@@ -329,6 +356,7 @@ async function windowedAsr(
     readonly model: string;
     readonly engine: "auto" | "whisper" | "demo";
     readonly device: Device;
+    readonly wordTimestamps: boolean;
   },
   ctx: WorkerContext,
   onPartial?: (result: AsrResult) => void,
@@ -375,7 +403,14 @@ async function windowedAsr(
         end: chunk.end + offsetS,
       }));
     } else {
-      chunks = await whisperChunks(samples, model, ctx, options.device, window.start / SAMPLE_RATE);
+      chunks = await whisperChunks(
+        samples,
+        model,
+        ctx,
+        options.device,
+        window.start / SAMPLE_RATE,
+        options.wordTimestamps,
+      );
     }
     owned.push(...ownedChunks(chunks, window.start / SAMPLE_RATE, window.ownEnd / SAMPLE_RATE));
     ctx.progress(Math.min(0.98, 0.35 + (0.63 * (i + 1)) / windows.length));
@@ -396,6 +431,8 @@ async function asrTranscribe(
     config["engine"] === "whisper" || config["engine"] === "demo" ? config["engine"] : "auto";
   const device =
     config["device"] === "webgpu" || config["device"] === "wasm" ? config["device"] : "auto";
+  // 词级时间戳：默认开启（卡拉 OK 导出；模型输出为平铺词序列，segment 前聚合）
+  const words = config["words"] !== false;
 
   // 渐进回填：每窗归属 chunks 发 chunk 事件，主线程按 ref 读取增量渲染
   const partialRef: ArtifactRef = {
@@ -404,9 +441,14 @@ async function asrTranscribe(
     storage: "memory",
     format: "json",
   };
-  const result = await windowedAsr(input, { model, engine, device }, ctx, (partial) => {
-    ctx.emitChunk(partialRef, encoder.encode(JSON.stringify(partial)));
-  });
+  const result = await windowedAsr(
+    input,
+    { model, engine, device, wordTimestamps: words },
+    ctx,
+    (partial) => {
+      ctx.emitChunk(partialRef, encoder.encode(JSON.stringify(partial)));
+    },
+  );
 
   const out: ArtifactRef = {
     id: `asr/${input.id}/${result.engine}/${result.model}`,
@@ -433,7 +475,8 @@ async function subtitleSegment(
     maxChars: typeof config["maxChars"] === "number" ? config["maxChars"] : 30,
   };
   const asr = await readJson<AsrResult>(input);
-  const cues = normalizeCues(asr.chunks, options);
+  const allWords = asr.chunks.flatMap((chunk) => chunk.words ?? []);
+  const cues = assignWords(normalizeCues(asr.chunks, options), allWords);
   const out: ArtifactRef = {
     id: `cues/${input.id}/${options.maxChars}c${options.maxDurationS}s`,
     type: "subtitle/cues",

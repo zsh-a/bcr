@@ -7,6 +7,7 @@ const SETTINGS: StudioSettings = {
   model: "Xenova/whisper-tiny",
   engine: "auto",
   translate: true,
+  direction: "en-zh",
 };
 
 describe("withTranslate", () => {
@@ -53,6 +54,6 @@ describe("withTranslate", () => {
       sourceInputs: [{ id: "s", type: "file/wav", storage: "opfs" }],
     });
     const translate = nodes.find((n) => n.id === "translate");
-    expect(translate?.after?.sort()).toEqual(["decode", "segment"]);
+    expect([...(translate?.after ?? [])].sort()).toEqual(["decode", "segment"]);
   });
 });

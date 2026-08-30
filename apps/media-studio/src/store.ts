@@ -48,6 +48,9 @@ export interface AppState {
   readonly settings: StudioSettings;
   readonly running: boolean;
   readonly dirty: boolean;
+  /** 编辑历史（undo/redo 只覆盖用户编辑，流水线产出重置）。 */
+  readonly canUndo: boolean;
+  readonly canRedo: boolean;
   readonly logs: ReadonlyArray<{
     ts: number;
     level: "info" | "ok" | "warn" | "error";
@@ -84,8 +87,14 @@ class StudioStore {
     settings: INITIAL_SETTINGS,
     running: false,
     dirty: false,
+    canUndo: false,
+    canRedo: false,
     logs: [],
   };
+
+  /** undo 栈：每次编辑前的 cues 快照（最新在末尾）。 */
+  private history: ReadonlyArray<ReadonlyArray<SubtitleCue>> = [];
+  private future: ReadonlyArray<ReadonlyArray<SubtitleCue>> = [];
 
   private readonly listeners = new Set<() => void>();
 
@@ -106,6 +115,8 @@ class StudioStore {
   }
 
   setSource(source: SourceState | null): void {
+    this.history = [];
+    this.future = [];
     this.set({
       source,
       mediaInfo: null,
@@ -113,6 +124,8 @@ class StudioStore {
       cues: [],
       engineUsed: null,
       dirty: false,
+      canUndo: false,
+      canRedo: false,
       nodeStatus: {},
       // 图是用户资产，换素材不重置
       graph:
@@ -182,18 +195,41 @@ class StudioStore {
   }
 
   setCues(cues: ReadonlyArray<SubtitleCue>, engineUsed: string | null): void {
-    this.set({ cues, engineUsed, dirty: false });
+    // 流水线产出（含渐进回填）是编辑的基准态：清空历史
+    this.history = [];
+    this.future = [];
+    this.set({ cues, engineUsed, dirty: false, canUndo: false, canRedo: false });
+  }
+
+  /** 编辑前快照当前 cues（与 set 的其余部分一起生效）。 */
+  private edit(cues: ReadonlyArray<SubtitleCue>): void {
+    this.history = [...this.history, this.state.cues].slice(-100);
+    this.future = [];
+    this.set({ cues, dirty: true, canUndo: true, canRedo: false });
+  }
+
+  undo(): void {
+    const previous = this.history[this.history.length - 1];
+    if (previous === undefined) return;
+    this.history = this.history.slice(0, -1);
+    this.future = [...this.future, this.state.cues];
+    this.set({ cues: previous, dirty: true, canUndo: this.history.length > 0, canRedo: true });
+  }
+
+  redo(): void {
+    const next = this.future[this.future.length - 1];
+    if (next === undefined) return;
+    this.future = this.future.slice(0, -1);
+    this.history = [...this.history, this.state.cues];
+    this.set({ cues: next, dirty: true, canUndo: true, canRedo: this.future.length > 0 });
   }
 
   patchCue(index: number, patch: Partial<SubtitleCue>): void {
-    this.set({
-      cues: this.state.cues.map((cue, i) => (i === index ? { ...cue, ...patch } : cue)),
-      dirty: true,
-    });
+    this.edit(this.state.cues.map((cue, i) => (i === index ? { ...cue, ...patch } : cue)));
   }
 
   deleteCue(index: number): void {
-    this.set({ cues: this.state.cues.filter((_, i) => i !== index), dirty: true });
+    this.edit(this.state.cues.filter((_, i) => i !== index));
   }
 
   splitCue(index: number, atRatio: number): void {
@@ -201,14 +237,18 @@ class StudioStore {
     if (cue === undefined) return;
     const mid = cue.start + (cue.end - cue.start) * atRatio;
     const chars = Math.max(1, Math.round(cue.text.length * atRatio));
-    this.set({
-      cues: [
-        ...this.state.cues.slice(0, index),
-        { ...cue, end: mid, text: cue.text.slice(0, chars) },
-        { start: mid, end: cue.end, text: cue.text.slice(chars), translation: cue.translation },
-      ],
-      dirty: true,
-    });
+    this.edit([
+      ...this.state.cues.slice(0, index),
+      { ...cue, end: mid, text: cue.text.slice(0, chars) },
+      {
+        start: mid,
+        end: cue.end,
+        text: cue.text.slice(chars),
+        translation: cue.translation,
+        words: cue.words,
+      },
+      ...this.state.cues.slice(index + 1),
+    ]);
   }
 }
 

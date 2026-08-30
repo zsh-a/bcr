@@ -1,4 +1,4 @@
-import type { SubtitleCue } from "./subtitles";
+import type { CueWord, SubtitleCue } from "./subtitles";
 
 /**
  * 字幕导出：SRT / WebVTT / ASS（v1：默认样式 + 可选双语第二行）。
@@ -82,11 +82,33 @@ const ASS_HEADER = (title: string): string =>
     "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
   ].join("\n");
 
-export function toAss(cues: ReadonlyArray<SubtitleCue>, title = "BCR Subtitles"): string {
-  const events = cues.map(
-    (cue) =>
-      `Dialogue: 0,${assTimestamp(cue.start)},${assTimestamp(cue.end)},Default,,0,0,0,,${cueText(cue, "\\N")}`,
-  );
+export function toAss(
+  cues: ReadonlyArray<SubtitleCue>,
+  title = "BCR Subtitles",
+  options: { readonly karaoke?: boolean } = {},
+): string {
+  const karaoke = options.karaoke === true;
+  const events = cues.map((cue) => {
+    if (karaoke && cue.words !== undefined && cue.words.length > 0) {
+      // ASS \k 卡拉 OK：每词高亮时长（厘秒）；首词时长含行首导入
+      let cursor = cue.start;
+      let text = "";
+      const words = cue.words;
+      for (let i = 0; i < words.length; i += 1) {
+        const word = words[i] as CueWord;
+        const cs = Math.max(1, Math.round((word.end - cursor) * 100));
+        cursor = word.end;
+        const previous = i > 0 ? (words[i - 1] as CueWord).text : "";
+        const needsSpace =
+          i > 0 && /[A-Za-z0-9'’-]$/.test(previous) && /^[A-Za-z0-9'’-]/.test(word.text);
+        text += `${needsSpace ? " " : ""}{\\k${cs}}${word.text}`;
+      }
+      const translation = cue.translation;
+      if (translation !== undefined && translation.length > 0) text += `\\N${translation}`;
+      return `Dialogue: 0,${assTimestamp(cue.start)},${assTimestamp(cue.end)},Default,,0,0,0,,${text}`;
+    }
+    return `Dialogue: 0,${assTimestamp(cue.start)},${assTimestamp(cue.end)},Default,,0,0,0,,${cueText(cue, "\\N")}`;
+  });
   return `${ASS_HEADER(title)}\n${events.join("\n")}\n`;
 }
 
@@ -96,6 +118,7 @@ export function exportSubtitles(
   cues: ReadonlyArray<SubtitleCue>,
   format: SubtitleFormat,
   title?: string,
+  options: { readonly karaoke?: boolean } = {},
 ): string {
   switch (format) {
     case "srt":
@@ -103,7 +126,7 @@ export function exportSubtitles(
     case "vtt":
       return toVtt(cues);
     case "ass":
-      return toAss(cues, title);
+      return toAss(cues, title, options);
   }
 }
 

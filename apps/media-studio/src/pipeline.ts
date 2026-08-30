@@ -4,7 +4,7 @@ import type { RuntimeServices } from "@bcr/react";
 import { Effect, Stream } from "effect";
 import { OPERATIONS, withTranslate } from "./operations";
 import { metaDatabase, sourceBlobStore } from "./runtime";
-import { studio, type EngineMode } from "./store";
+import { studio, type StudioSettings } from "./store";
 import { normalizeCues, type MediaInfo, type SubtitleCue } from "./subtitles";
 
 /**
@@ -191,7 +191,7 @@ interface PersistedProject {
   readonly source: { ref: ArtifactRef; name: string; size: number } | null;
   readonly cues: ReadonlyArray<SubtitleCue>;
   readonly engineUsed: string | null;
-  readonly settings: { model: string; engine: EngineMode; translate: boolean };
+  readonly settings: StudioSettings;
   /** 自定义流水线（encodeGraph 序列化）；旧项目无此字段 → 用默认图。 */
   readonly graph?: string;
 }
