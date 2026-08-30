@@ -1,0 +1,21 @@
+{
+  "name": "bcr",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "build:wasm": "wasm-pack build crates/kernels --target web --out-dir ../../examples/demo/src/wasm",
+    "check": "vp check",
+    "test": "vp test run",
+    "demo": "cd examples/demo && vp dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vite-plus": "^0.3.0",
+    "vitest": "^4.1.0"
+  }
+}

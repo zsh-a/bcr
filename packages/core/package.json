@@ -1,0 +1,14 @@
+{
+  "name": "@bcr/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@bcr/storage-opfs": "workspace:*",
+    "@noble/hashes": "^2.4.0",
+    "effect": "^3.22.1"
+  }
+}

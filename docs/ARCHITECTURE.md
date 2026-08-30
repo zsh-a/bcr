@@ -18,15 +18,15 @@ Browser Compute Runtime（下称 BCR）**不是一个 "WASM 框架"**，而是�
 - **不要试图用 WASM 替代整个浏览器**，而是让 WASM 成为浏览器里的本地高性能 CPU Compute Layer。
 - 各浏览器能力是**互补**的，按负载类型分发，而不是 "Everything → WASM"：
 
-| Plane | 职责 |
-| --- | --- |
-| JS/TS | Control Plane — 编排、调度、浏览器 API |
-| WASM | CPU Compute Plane — 确定性 CPU 密集计算 |
-| WebGPU | Accelerator Plane — AI / 大规模并行计算 |
-| WebCodecs | Media Plane — 硬件媒体编解码 |
-| OPFS | Storage Plane — 大容量持久本地存储 |
-| Workers | Execution Plane — 主线程之外的执行环境 |
-| Agent | Intelligence Plane — 通过 Tool Call 驱动 Runtime |
+| Plane     | 职责                                             |
+| --------- | ------------------------------------------------ |
+| JS/TS     | Control Plane — 编排、调度、浏览器 API           |
+| WASM      | CPU Compute Plane — 确定性 CPU 密集计算          |
+| WebGPU    | Accelerator Plane — AI / 大规模并行计算          |
+| WebCodecs | Media Plane — 硬件媒体编解码                     |
+| OPFS      | Storage Plane — 大容量持久本地存储               |
+| Workers   | Execution Plane — 主线程之外的执行环境           |
+| Agent     | Intelligence Plane — 通过 Tool Call 驱动 Runtime |
 
 孵化策略：**不从 Runtime 开始找场景，而是从 Media Studio 这样的真实产品中反向抽象 Runtime**。先用真实应用验证抽象，再正式拆包。
 
@@ -105,13 +105,9 @@ Browser Compute Runtime（下称 BCR）**不是一个 "WASM 框架"**，而是�
 interface ComputeTask {
   id: string;
 
-  runtime:
-    | "wasm"
-    | "webgpu"
-    | "webcodecs"
-    | "js";
+  runtime: "wasm" | "webgpu" | "webcodecs" | "js";
 
-  operation: string;          // 如 "asr.whisper" / "backtest.run" / "pdf.extract"
+  operation: string; // 如 "asr.whisper" / "backtest.run" / "pdf.extract"
 
   inputs: ArtifactRef[];
   outputs: ArtifactSpec[];
@@ -133,11 +129,11 @@ interface ComputeTask {
 
 示例：
 
-| 场景 | operation | runtime | 输入 → 输出 |
-| --- | --- | --- | --- |
-| 语音识别 | `asr.whisper` | webgpu | `audio/chunk-001` → `transcript/chunk-001` |
-| 量化回测 | `backtest.run` | wasm | `BTCUSDT/30m.arrow` → `backtest/result` |
-| PDF 解析 | `pdf.extract` | wasm | `document/file` → `document/layout` |
+| 场景     | operation      | runtime | 输入 → 输出                                |
+| -------- | -------------- | ------- | ------------------------------------------ |
+| 语音识别 | `asr.whisper`  | webgpu  | `audio/chunk-001` → `transcript/chunk-001` |
+| 量化回测 | `backtest.run` | wasm    | `BTCUSDT/30m.arrow` → `backtest/result`    |
+| PDF 解析 | `pdf.extract`  | wasm    | `document/file` → `document/layout`        |
 
 ---
 
@@ -148,12 +144,9 @@ interface ComputeTask {
 ```ts
 interface ArtifactRef {
   id: string;
-  type: string;               // "media/video.mp4" / "audio/pcm-f32" / "subtitle/segments" ...
+  type: string; // "media/video.mp4" / "audio/pcm-f32" / "subtitle/segments" ...
 
-  storage:
-    | "memory"
-    | "shared-memory"
-    | "opfs";
+  storage: "memory" | "shared-memory" | "opfs";
 
   format?: string;
   hash?: string;
@@ -164,10 +157,10 @@ Artifact 实体分四类：
 
 ```ts
 type Artifact =
-  | BlobArtifact      // 一次性结果（transcript、trades 表）
-  | FileArtifact      // OPFS 中的大文件（源视频、parquet）
-  | SharedArtifact    // SharedArrayBuffer 承载的共享数据
-  | StreamArtifact    // 流式数据（PCM 帧、解码帧）
+  | BlobArtifact // 一次性结果（transcript、trades 表）
+  | FileArtifact // OPFS 中的大文件（源视频、parquet）
+  | SharedArtifact // SharedArrayBuffer 承载的共享数据
+  | StreamArtifact; // 流式数据（PCM 帧、解码帧）
 ```
 
 `Task A → Artifact → Task B` 使整个 Runtime 天然成为 **DAG**：
@@ -181,11 +174,11 @@ type Artifact =
 
 性能瓶颈往往不在 WASM 运算本身，而在 **JS ↔ WASM ↔ Worker 之间的数据复制**。按数据规模分三级通道：
 
-| 规模 | 通道 | 机制 |
-| --- | --- | --- |
-| small | Transferable | `postMessage` + Transferable，零拷贝转移所有权 |
+| 规模   | 通道              | 机制                                                        |
+| ------ | ----------------- | ----------------------------------------------------------- |
+| small  | Transferable      | `postMessage` + Transferable，零拷贝转移所有权              |
 | medium | SharedArrayBuffer | 共享环形缓冲 + `Atomics.waitAsync`（Baseline 2025），无轮询 |
-| huge | OPFS | 持久化，按窗口流动 |
+| huge   | OPFS              | 持久化，按窗口流动                                          |
 
 对于 10 GB 视频这类数据，**禁止** `10GB → ArrayBuffer → WASM Memory` 的整段装载；始终以几十 MB 的窗口流动：
 
@@ -259,9 +252,7 @@ retry cancel timeout
 Object Proxy RPC（Comlink）无法自然表达 progress / stream / cancel / backpressure / priority / resource ownership。改用显式类型化协议：
 
 ```ts
-type TaskCommand =
-  | { type: "run"; task: Task }
-  | { type: "cancel"; taskId: string };
+type TaskCommand = { type: "run"; task: Task } | { type: "cancel"; taskId: string };
 
 type TaskEvent =
   | { type: "progress"; value: number }
@@ -415,39 +406,39 @@ run_tool("statistics", input)
 
 ## 11. 明确的边界与限制
 
-| 限制 | 应对 |
-| --- | --- |
-| **WASM wasm32 linear memory 上限** | 禁止 "load entire dataset into WASM"；Runtime 层强制 stream / chunk / batch / OPFS |
-| **SharedArrayBuffer 需要 cross-origin isolation** | 部署层直接内置 COOP/COEP 配置 |
+| 限制                                                      | 应对                                                                                 |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **WASM wasm32 linear memory 上限**                        | 禁止 "load entire dataset into WASM"；Runtime 层强制 stream / chunk / batch / OPFS   |
+| **SharedArrayBuffer 需要 cross-origin isolation**         | 部署层直接内置 COOP/COEP 配置                                                        |
 | **浏览器不是 daemon**（关 tab / 休眠 / 杀后台会中断计算） | 定位为 interactive local compute，不做 7×24 persistent job；TaskJournal 支持断点恢复 |
-| **GPU 能力不一致** | feature detection + WASM fallback，不强绑单一 GPU 实现 |
-| **无任意文件系统访问** | 围绕 File picker / Directory picker / OPFS 设计，不模拟 POSIX 桌面环境 |
+| **GPU 能力不一致**                                        | feature detection + WASM fallback，不强绑单一 GPU 实现                               |
+| **无任意文件系统访问**                                    | 围绕 File picker / Directory picker / OPFS 设计，不模拟 POSIX 桌面环境               |
 
 ---
 
 ## 12. 2026 技术栈
 
-| Layer | 选型 |
-| --- | --- |
-| Language | TypeScript 7 |
-| UI | React 19.2 + React Compiler |
-| Toolchain | Vite+ |
-| Package manager | Bun 1.4（仅开发环境；浏览器代码不依赖 Bun/Node API） |
-| Router | TanStack Router（type-safe URL = 可分享的 Workspace View） |
-| Styling | Tailwind 4.3 |
-| Components | shadcn/ui + Base UI，风格 Rhea（高信息密度 product interface） |
-| Runtime Control | Effect 3 stable（→ Effect 4 正式后升级） |
-| Worker IPC | typed MessagePort 协议 |
-| Stream 同步 | SharedArrayBuffer + Atomics.waitAsync |
-| CPU kernel | Rust 2024 → core WASM + wasm-bindgen |
-| Plugin ABI | WIT Component Model（jco 转译进浏览器） |
-| GPU ML | ONNX Runtime Web + WebGPU |
-| GPU compute | WebGPU + WGSL |
-| Rendering | OffscreenCanvas（Worker 内渲染） |
-| Media | Mediabunny + WebCodecs |
-| Storage | OPFS + SQLite WASM |
-| OLAP | DuckDB WASM + Arrow + Parquet |
-| Test | Vitest Browser Mode（stable）+ Playwright，直接测 OPFS/WASM/Worker/SAB/WebGPU |
+| Layer           | 选型                                                                          |
+| --------------- | ----------------------------------------------------------------------------- |
+| Language        | TypeScript 7                                                                  |
+| UI              | React 19.2 + React Compiler                                                   |
+| Toolchain       | Vite+                                                                         |
+| Package manager | Bun 1.4（仅开发环境；浏览器代码不依赖 Bun/Node API）                          |
+| Router          | TanStack Router（type-safe URL = 可分享的 Workspace View）                    |
+| Styling         | Tailwind 4.3                                                                  |
+| Components      | shadcn/ui + Base UI，风格 Rhea（高信息密度 product interface）                |
+| Runtime Control | Effect 3 stable（→ Effect 4 正式后升级）                                      |
+| Worker IPC      | typed MessagePort 协议                                                        |
+| Stream 同步     | SharedArrayBuffer + Atomics.waitAsync                                         |
+| CPU kernel      | Rust 2024 → core WASM + wasm-bindgen                                          |
+| Plugin ABI      | WIT Component Model（jco 转译进浏览器）                                       |
+| GPU ML          | ONNX Runtime Web + WebGPU                                                     |
+| GPU compute     | WebGPU + WGSL                                                                 |
+| Rendering       | OffscreenCanvas（Worker 内渲染）                                              |
+| Media           | Mediabunny + WebCodecs                                                        |
+| Storage         | OPFS + SQLite WASM                                                            |
+| OLAP            | DuckDB WASM + Arrow + Parquet                                                 |
+| Test            | Vitest Browser Mode（stable）+ Playwright，直接测 OPFS/WASM/Worker/SAB/WebGPU |
 
 状态管理分层，不建巨型 global store：URL State → TanStack Router；Runtime State → Runtime Core；Persistent State → SQLite；组件内 → React；少量跨组件 UI state → tiny store（第一版可以不装 Zustand）。
 

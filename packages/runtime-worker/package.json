@@ -1,0 +1,17 @@
+{
+  "name": "@bcr/runtime-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./worker": "./src/worker.ts"
+  },
+  "dependencies": {
+    "@bcr/core": "workspace:*",
+    "effect": "^3.22.1"
+  },
+  "devDependencies": {
+    "@bcr/storage-opfs": "workspace:*"
+  }
+}
