@@ -310,9 +310,12 @@ async function whisperChunks(
   device: Device,
   offsetS = 0,
   wordTimestamps = false,
+  language = "auto",
 ): Promise<AsrChunk[]> {
   const transcriber = await loadTranscriber(model, "transcribe", device, ctx);
   const result = await transcriber(samples, {
+    // 未指定语言时 whisper 默认 en（transformers.js 不做自动检测）
+    ...(language !== "auto" ? { language } : {}),
     return_timestamps: wordTimestamps ? "word" : true,
     chunk_length_s: 30,
     stride_length_s: 5,
@@ -357,6 +360,7 @@ async function windowedAsr(
     readonly engine: "auto" | "whisper" | "demo";
     readonly device: Device;
     readonly wordTimestamps: boolean;
+    readonly language: string;
   },
   ctx: WorkerContext,
   onPartial?: (result: AsrResult) => void,
@@ -410,6 +414,7 @@ async function windowedAsr(
         options.device,
         window.start / SAMPLE_RATE,
         options.wordTimestamps,
+        options.language,
       );
     }
     owned.push(...ownedChunks(chunks, window.start / SAMPLE_RATE, window.ownEnd / SAMPLE_RATE));
@@ -433,6 +438,8 @@ async function asrTranscribe(
     config["device"] === "webgpu" || config["device"] === "wasm" ? config["device"] : "auto";
   // 词级时间戳：默认开启（卡拉 OK 导出；模型输出为平铺词序列，segment 前聚合）
   const words = config["words"] !== false;
+  // 音频语言：transformers.js 未指定时默认 en（不自动检测），非英语素材必须显式选择
+  const language = typeof config["language"] === "string" ? config["language"] : "auto";
 
   // 渐进回填：每窗归属 chunks 发 chunk 事件，主线程按 ref 读取增量渲染
   const partialRef: ArtifactRef = {
@@ -443,7 +450,7 @@ async function asrTranscribe(
   };
   const result = await windowedAsr(
     input,
-    { model, engine, device, wordTimestamps: words },
+    { model, engine, device, wordTimestamps: words, language },
     ctx,
     (partial) => {
       ctx.emitChunk(partialRef, encoder.encode(JSON.stringify(partial)));

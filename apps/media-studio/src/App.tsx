@@ -140,6 +140,21 @@ function Studio() {
             <option value="whisper">引擎：仅 Whisper</option>
             <option value="demo">引擎：演示</option>
           </select>
+          <select
+            value={settings.language}
+            onChange={(event) => studio.setSettings({ language: event.target.value })}
+            title="音频语言（Whisper 不做自动检测，未指定按英语转写）"
+          >
+            <option value="auto">语言：未指定(en)</option>
+            <option value="zh">语言：中文</option>
+            <option value="en">语言：English</option>
+            <option value="ja">语言：日本語</option>
+            <option value="ko">语言：한국어</option>
+            <option value="de">语言：Deutsch</option>
+            <option value="fr">语言：Français</option>
+            <option value="es">语言：Español</option>
+            <option value="ru">语言：Русский</option>
+          </select>
           <label className="flex items-center gap-1">
             <input
               type="checkbox"

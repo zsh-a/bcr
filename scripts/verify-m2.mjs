@@ -94,7 +94,7 @@ console.log("round 1 (transcribe) done");
 
 // 第二轮：开启双语翻译（中→英，匹配 demo 占位文本语言）→ translate 节点 opus-mt
 await page.locator("input[type='checkbox']").first().check();
-await page.locator("header select").nth(2).selectOption("zh-en");
+await page.locator('header select[title*="opus-mt"]').selectOption("zh-en");
 await page.getByRole("button", { name: "生成字幕" }).click();
 baseline = await countDone();
 done = false;

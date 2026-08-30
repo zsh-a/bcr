@@ -225,7 +225,8 @@ export async function restoreProject(services: RuntimeServices): Promise<void> {
     if (raw === undefined) return;
     const project = JSON.parse(raw) as PersistedProject;
     if (project.settings !== undefined) {
-      studio.setSettings(project.settings);
+      // 旧项目的持久化 settings 可能缺新字段（language 等）：与当前默认合并
+      studio.setSettings({ ...studio.getSnapshot().settings, ...project.settings });
     }
     if (project.graph !== undefined) {
       const graph = decodeGraph(project.graph);

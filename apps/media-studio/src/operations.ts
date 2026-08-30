@@ -59,6 +59,23 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
         default: "auto",
       },
       {
+        key: "language",
+        label: "音频语言（auto = en 默认，非英语素材务必选择）",
+        kind: "select",
+        options: [
+          { value: "auto", label: "未指定（英语默认）" },
+          { value: "zh", label: "中文" },
+          { value: "en", label: "English" },
+          { value: "ja", label: "日本語" },
+          { value: "ko", label: "한국어" },
+          { value: "de", label: "Deutsch" },
+          { value: "fr", label: "Français" },
+          { value: "es", label: "Español" },
+          { value: "ru", label: "Русский" },
+        ],
+        default: "auto",
+      },
+      {
         key: "words",
         label: "词级时间戳（卡拉 OK ASS）",
         kind: "boolean",

@@ -8,6 +8,7 @@ const SETTINGS: StudioSettings = {
   engine: "auto",
   translate: true,
   direction: "en-zh",
+  language: "auto",
 };
 
 describe("withTranslate", () => {

@@ -26,6 +26,7 @@ export interface SourceState {
 export interface StudioSettings {
   readonly model: string;
   readonly engine: EngineMode;
+  readonly language: string;
   readonly translate: boolean;
   readonly direction: TranslateDirection;
 }
@@ -61,6 +62,7 @@ export interface AppState {
 const INITIAL_SETTINGS: StudioSettings = {
   model: "Xenova/whisper-tiny",
   engine: "auto",
+  language: "auto",
   translate: false,
   direction: "en-zh",
 };
@@ -147,6 +149,12 @@ class StudioStore {
       for (const node of graph.nodes) {
         if ("engine" in node.config)
           graph = updateNodeConfig(graph, node.id, { engine: settings.engine });
+      }
+    }
+    if (partial.language !== undefined) {
+      for (const node of graph.nodes) {
+        if ("language" in node.config)
+          graph = updateNodeConfig(graph, node.id, { language: settings.language });
       }
     }
     if (partial.direction !== undefined) {
