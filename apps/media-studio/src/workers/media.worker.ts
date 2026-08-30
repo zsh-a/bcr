@@ -3,18 +3,24 @@ import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
 import init, { peak_f32 } from "../../../../crates/kernels/pkg/bcr_kernels.js";
 import { alignTranslations, normalizeCues, type SegmentOptions } from "../subtitles";
+import { ownedChunks, planSampleWindows } from "../windows";
 
 /**
  * media.worker（Subtitle Studio）：音频理解链路的执行平面。
  *
  * 中间产物（asr-chunks / cues / bilingual）由 Worker 直写 OPFS（§4 huge 通道），
  * 事件里只带 ref——下游任务从 OPFS 读取，不经主线程。
+ * ASR / translate 按窗口切片推理：进度按窗推进、可中途取消、
+ * 每窗完成即发 chunk 事件渐进回填 UI，Worker 内存只驻留一个窗口的 PCM。
  */
 
 const opfs = new OpfsStore("media");
 const WINDOW = 4 * 1024 * 1024;
 const WAVEFORM_BUCKETS = 2048;
 const SAMPLE_RATE = 16_000;
+/** ASR 分窗参数：窗口长与边界重叠（秒）。 */
+const ASR_WINDOW_S = 120;
+const ASR_STRIDE_S = 4;
 
 const wasmReady = init();
 
@@ -59,9 +65,13 @@ async function writeArtifact(ref: ArtifactRef, bytes: Uint8Array): Promise<Artif
   return ref;
 }
 
-/** 读取 f32le PCM artifact → Float32Array。 */
-async function readPcm(input: ArtifactRef): Promise<Float32Array> {
-  const bytes = await readWholeArtifact(input);
+/** 按采样区间读取 PCM 窗口（§4：Worker 内存只驻留一个窗口）。 */
+async function readPcmWindow(
+  input: ArtifactRef,
+  startSample: number,
+  countSamples: number,
+): Promise<Float32Array> {
+  const bytes = await opfs.readRange(artifactPath(input), startSample * 4, countSamples * 4);
   const aligned = bytes.byteLength - (bytes.byteLength % 4);
   const copy = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + aligned);
   return new Float32Array(copy);
@@ -224,6 +234,7 @@ async function whisperChunks(
   model: string,
   task: "transcribe" | "translate",
   ctx: WorkerContext,
+  offsetS = 0,
 ): Promise<AsrChunk[]> {
   const transcriber = await loadTranscriber(model, task, ctx);
   const result = await transcriber(samples, {
@@ -233,15 +244,80 @@ async function whisperChunks(
     chunk_length_s: 30,
     stride_length_s: 5,
   });
-  ctx.progress(0.95);
   const raw = result.chunks ?? [{ timestamp: [0, null], text: result.text }];
   return raw.flatMap((chunk) => {
     const text = chunk.text.trim();
     if (text.length === 0) return [];
-    const start = chunk.timestamp[0] ?? 0;
-    const end = chunk.timestamp[1] ?? samples.length / SAMPLE_RATE;
+    const start = (chunk.timestamp[0] ?? 0) + offsetS;
+    const end = (chunk.timestamp[1] ?? samples.length / SAMPLE_RATE) + offsetS;
     return [{ start, end: Math.max(end, start + 0.2), text }];
   });
+}
+
+/**
+ * 分窗推理：每窗 PCM 按需从 OPFS 读取（内存只驻留一窗），
+ * 进度按窗推进，取消在窗间生效；onPartial 每窗回调（transcribe 渐进回填 UI）。
+ * 引擎解析：auto 先探装 whisper（失败一次性降级 demo）。
+ */
+async function windowedAsr(
+  input: ArtifactRef,
+  options: {
+    readonly model: string;
+    readonly engine: "auto" | "whisper" | "demo";
+    readonly task: "transcribe" | "translate";
+  },
+  ctx: WorkerContext,
+  onPartial?: (result: AsrResult) => void,
+): Promise<AsrResult> {
+  const totalBytes = await opfs.size(artifactPath(input));
+  if (totalBytes === undefined) throw new Error(`artifact not found: ${input.id}`);
+  const totalSamples = Math.floor(totalBytes / 4);
+  const windows = planSampleWindows(
+    totalSamples,
+    ASR_WINDOW_S * SAMPLE_RATE,
+    ASR_STRIDE_S * SAMPLE_RATE,
+  );
+  if (windows.length === 0) throw new Error("pcm artifact is empty");
+
+  // 引擎探测：whisper 模型装载失败时一次性降级（推理中失败不再降级）
+  let engine: "whisper" | "demo";
+  if (options.engine === "demo") {
+    engine = "demo";
+  } else {
+    try {
+      await loadTranscriber(options.model, options.task, ctx);
+      engine = "whisper";
+    } catch (error) {
+      if (options.engine === "whisper") throw error;
+      console.warn("[asr] whisper unavailable, falling back to demo engine:", error);
+      engine = "demo";
+    }
+  }
+  const model = engine === "demo" ? "demo" : options.model;
+
+  const owned: AsrChunk[] = [];
+  for (let i = 0; i < windows.length; i += 1) {
+    throwIfAborted(ctx);
+    const window = windows[i] ?? { start: 0, end: 0, ownEnd: 0 };
+    const samples = await readPcmWindow(input, window.start, window.end - window.start);
+
+    let chunks: AsrChunk[];
+    if (engine === "demo") {
+      // demo 引擎输出窗口相对时间，与 whisper 路径一样补全局偏移
+      const offsetS = window.start / SAMPLE_RATE;
+      chunks = demoChunks(samples, SAMPLE_RATE).map((chunk) => ({
+        ...chunk,
+        start: chunk.start + offsetS,
+        end: chunk.end + offsetS,
+      }));
+    } else {
+      chunks = await whisperChunks(samples, model, options.task, ctx, window.start / SAMPLE_RATE);
+    }
+    owned.push(...ownedChunks(chunks, window.start / SAMPLE_RATE, window.ownEnd / SAMPLE_RATE));
+    ctx.progress(Math.min(0.98, 0.35 + (0.63 * (i + 1)) / windows.length));
+    onPartial?.({ engine, model, chunks: [...owned] });
+  }
+  return { engine, model, chunks: owned };
 }
 
 async function asrTranscribe(
@@ -255,22 +331,16 @@ async function asrTranscribe(
   const engine =
     config["engine"] === "whisper" || config["engine"] === "demo" ? config["engine"] : "auto";
 
-  const samples = await readPcm(input);
-  ctx.progress(0.05);
-
-  let result: AsrResult;
-  if (engine === "demo") {
-    result = { engine: "demo", model: "demo", chunks: demoChunks(samples, SAMPLE_RATE) };
-  } else {
-    try {
-      const chunks = await whisperChunks(samples, model, "transcribe", ctx);
-      result = { engine: "whisper", model, chunks };
-    } catch (error) {
-      if (engine === "whisper") throw error;
-      console.warn("[asr] whisper unavailable, falling back to demo engine:", error);
-      result = { engine: "demo", model: "demo", chunks: demoChunks(samples, SAMPLE_RATE) };
-    }
-  }
+  // 渐进回填：每窗归属 chunks 发 chunk 事件，主线程按 ref 读取增量渲染
+  const partialRef: ArtifactRef = {
+    id: `asr-partial/${task.id}`,
+    type: "subtitle/asr-partial",
+    storage: "memory",
+    format: "json",
+  };
+  const result = await windowedAsr(input, { model, engine, task: "transcribe" }, ctx, (partial) => {
+    ctx.emitChunk(partialRef, encoder.encode(JSON.stringify(partial)));
+  });
 
   const out: ArtifactRef = {
     id: `asr/${input.id}/${result.engine}/${result.model}`,
@@ -304,7 +374,8 @@ async function subtitleSegment(
     storage: "opfs",
     format: "json",
   };
-  await persistJson(out, { cues });
+  // engine 透传：顶栏徽标如实显示识别引擎（demo / whisper）
+  await persistJson(out, { cues, engine: asr.engine });
   ctx.progress(1);
   return [out];
 }
@@ -323,11 +394,9 @@ async function subtitleTranslate(
   const config = configOf(task);
   const model = typeof config["model"] === "string" ? config["model"] : "Xenova/whisper-tiny";
 
-  const samples = await readPcm(pcmRef);
-  ctx.progress(0.05);
   const { cues } = await readJson<{ cues: ReturnType<typeof normalizeCues> }>(cuesRef);
-  const translated = await whisperChunks(samples, model, "translate", ctx);
-  const bilingual = alignTranslations(cues, translated);
+  const result = await windowedAsr(pcmRef, { model, engine: "whisper", task: "translate" }, ctx);
+  const bilingual = alignTranslations(cues, result.chunks);
 
   const out: ArtifactRef = {
     id: `bilingual/${cuesRef.id}/${model}`,

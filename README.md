@@ -88,11 +88,17 @@ decode ─┬─ wave（Rust peak kernel 波形）
 
 - **每个节点都是 ComputeTask**：换模型只重算 ASR 下游；同文件重跑全部缓存命中；Whisper 下载失败自动回退演示引擎（能量分段），离线也能走通全链路
 - **执行平面**：`runtime "js"` = 主线程 decode（AudioContext 仅主线程可用）；`runtime "wasm"` = media.worker（kernel + ASR），中间产物由 Worker 直写 OPFS
+- **流式 decode（§4）**：Mediabunny 解复用 → AudioBufferSink 逐块解码 → 单声道混合 → 跨块相位连续线性重采样 16kHz → 30s 窗增量写 OPFS，任意大文件不整段装载
+- **分窗 ASR**：长音频按 120s 窗 + 4s stride 切片推理——进度按窗推进、窗间可取消、Worker 内存只驻留一窗 PCM；每窗完成即发 chunk 事件，字幕**边算边出**（渐进回填编辑器）；stride 区间的归属由下一窗重新转写，边界不丢词不重复
 - **编辑器**：文本/译文/时间轴行内编辑、拆分、删除、点击定位播放；编辑自动持久化到 SQLite
 - **导出**：SRT / WebVTT / ASS（双语第二行），纯函数实现带单测
 - 刷新恢复：源文件（OPFS Blob 重建播放）+ 字幕编辑 + 引擎设置全部从元数据库回放
 
-走查脚本：`node scripts/verify-media-studio.mjs`（先 `bun run media`，导入合成 WAV → 演示引擎生成 → SRT 导出 → 刷新恢复）。
+走查脚本（先 `bun run media`）：
+
+- `node scripts/verify-media-studio.mjs` — 导入合成 WAV → 演示引擎生成 → SRT 导出 → 刷新恢复
+- `node scripts/verify-windowed-asr.mjs` — 150s 长音频分窗回归（跨 120s 窗界归属/排序/导出）；`ENGINE=whisper` 走真实模型
+- `node scripts/verify-whisper-probe.mjs` — 真实 Whisper 短音频探针
 
 工具链为 [Vite+](https://viteplus.dev)（`vp` CLI 以本地 devDependency `vite-plus` 提供，不经全局安装）。
 

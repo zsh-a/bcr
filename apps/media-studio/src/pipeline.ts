@@ -5,7 +5,7 @@ import { Effect, Stream } from "effect";
 import { OPERATIONS, withTranslate } from "./operations";
 import { metaDatabase, sourceBlobStore } from "./runtime";
 import { studio, type EngineMode } from "./store";
-import type { MediaInfo, SubtitleCue } from "./subtitles";
+import { normalizeCues, type MediaInfo, type SubtitleCue } from "./subtitles";
 
 /**
  * 字幕生成流水线（§3 DAG 正向编排）：
@@ -71,6 +71,10 @@ export async function generateSubtitles(services: RuntimeServices): Promise<void
           studio.log("error", `${nodeId} · ${event.error}`);
           break;
         case "chunk":
+          // 渐进回填：ASR 分窗推理每窗发一次 partial，边算边出字幕
+          void onNodeChunk(services, graph, nodeId, event.artifact).catch((error: unknown) => {
+            studio.log("warn", `${nodeId} · partial read failed · ${String(error)}`);
+          });
           break;
       }
     }),
@@ -113,6 +117,28 @@ function findCuesRef(
     if (cues !== undefined) return cues;
   }
   return undefined;
+}
+
+/** 渐进字幕：ASR 分窗 partial 产物 → 规范化后直接回填编辑器（运行中可见）。 */
+async function onNodeChunk(
+  services: RuntimeServices,
+  graph: Graph,
+  nodeId: string,
+  artifact: ArtifactRef,
+): Promise<void> {
+  const operation = graph.nodes.find((n) => n.id === nodeId)?.operation;
+  if (operation !== "asr.transcribe") return;
+  if (artifact.type !== "subtitle/asr-partial") return;
+  // 用户已在运行中手改字幕时不用 partial 覆盖编辑态
+  if (studio.getSnapshot().dirty) return;
+
+  const bytes = await Effect.runPromise(services.artifacts.get(artifact));
+  const partial = JSON.parse(new TextDecoder().decode(bytes)) as {
+    engine: string;
+    chunks: ReadonlyArray<{ start: number; end: number; text: string }>;
+  };
+  if (partial.chunks.length === 0) return;
+  studio.setCues(normalizeCues(partial.chunks), partial.engine);
 }
 
 async function onNodeCompleted(
