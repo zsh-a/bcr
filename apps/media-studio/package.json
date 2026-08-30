@@ -18,6 +18,7 @@
     "@fontsource/ibm-plex-sans": "^5.3.0",
     "@huggingface/transformers": "^3.7.5",
     "effect": "^3.22.1",
+    "mediabunny": "^1.55.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

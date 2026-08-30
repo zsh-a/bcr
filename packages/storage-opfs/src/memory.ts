@@ -62,6 +62,11 @@ export class MemoryStore implements BinaryStore {
     const data = this.files.get(normalize(path));
     return data?.byteLength;
   }
+
+  async getBlob(path: string): Promise<Blob | undefined> {
+    const data = this.files.get(normalize(path));
+    return data === undefined ? undefined : new Blob([data.slice() as BlobPart]);
+  }
 }
 
 function normalize(path: string): string {

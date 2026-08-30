@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* 作为 Shell 懒加载 chunk 时，vite root 是 apps/studio——
+   自动源检测扫不到本包，必须显式声明扫描目录（相对本 CSS 文件）。 */
+@source ".";
+
 /* BCR Media Studio · Subtitle —— 与 Studio 同源的 Rhea 暗色 token（精简版） */
 @theme {
   --color-bg: #0b0d10;

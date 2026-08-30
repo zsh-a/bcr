@@ -28,4 +28,10 @@ export interface BinaryStore {
 
   /** 对象字节长度；不存在时返回 undefined。 */
   size(path: string): Promise<number | undefined>;
+
+  /**
+   * 文件句柄快照 Blob（不整段进内存）——大文件交给 BlobSource / 视频播放用。
+   * 可选：实现方不支持时调用方回退 get()。
+   */
+  getBlob?(path: string): Promise<Blob | undefined>;
 }

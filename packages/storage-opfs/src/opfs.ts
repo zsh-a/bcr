@@ -10,6 +10,32 @@ export function isOpfsSupported(): boolean {
 }
 
 /**
+ * OPFS 瞬态锁冲突：同名文件 createWritable 打开期间 getFile() 抛 NotReadableError
+ *（流水线运行中重导同名素材 / 取消后立即重跑，worker 还在读旧产物）。
+ * 读取走重试退避；写入按路径串行化（本 context 内）+ 重试（跨 context）。
+ */
+const RETRY_DELAYS = [60, 180, 500];
+
+function isRetryable(error: unknown): boolean {
+  return (
+    (error instanceof DOMException && error.name === "NotReadableError") ||
+    (error instanceof Error && error.message.includes("could not be read"))
+  );
+}
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      const delay = RETRY_DELAYS[attempt];
+      if (!isRetryable(error) || delay === undefined) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+
+/**
  * OPFS 版 BinaryStore（§8：project/artifacts|cache|models|temp 目录树）。
  *
  * 路径中的 `/` 映射为嵌套目录；大对象读写一律走 stream / readRange，
@@ -17,6 +43,8 @@ export function isOpfsSupported(): boolean {
  */
 export class OpfsStore implements BinaryStore {
   private rootPromise: Promise<FileSystemDirectoryHandle> | undefined;
+  /** 同路径写操作串行化（本 context 内防止 createWritable 并发）。 */
+  private readonly writes = new Map<string, Promise<unknown>>();
 
   constructor(private readonly prefix = "") {}
 
@@ -27,65 +55,87 @@ export class OpfsStore implements BinaryStore {
     return this.rootPromise;
   }
 
+  private enqueueWrite<T>(path: string, fn: () => Promise<T>): Promise<T> {
+    const prev = this.writes.get(path) ?? Promise.resolve();
+    const next = prev.catch(() => {}).then(() => withRetry(fn));
+    this.writes.set(path, next);
+    void next.finally(() => {
+      if (this.writes.get(path) === next) this.writes.delete(path);
+    });
+    return next;
+  }
+
   async put(path: string, data: Uint8Array): Promise<void> {
-    const file = await this.resolveFile(path, true);
-    if (file === undefined) throw new Error(`cannot create: ${path}`);
-    const writable = await file.createWritable();
-    await writable.write(data as unknown as FileSystemWriteChunkType);
-    await writable.close();
+    await this.enqueueWrite(path, async () => {
+      const file = await this.resolveFile(path, true);
+      if (file === undefined) throw new Error(`cannot create: ${path}`);
+      const writable = await file.createWritable();
+      await writable.write(data as unknown as FileSystemWriteChunkType);
+      await writable.close();
+    });
   }
 
   async get(path: string): Promise<Uint8Array | undefined> {
-    const file = await this.resolveFile(path, false);
-    if (file === undefined) return undefined;
-    const blob = await file.getFile();
-    return new Uint8Array(await blob.arrayBuffer());
+    return withRetry(async () => {
+      const file = await this.resolveFile(path, false);
+      if (file === undefined) return undefined;
+      const blob = await file.getFile();
+      return new Uint8Array(await blob.arrayBuffer());
+    });
   }
 
   async putStream(path: string, stream: ReadableStream<Uint8Array>): Promise<void> {
-    const file = await this.resolveFile(path, true);
-    if (file === undefined) throw new Error(`cannot create: ${path}`);
-    const writable = await file.createWritable();
-    await stream.pipeTo(
-      new WritableStream({
-        async write(chunk) {
-          await writable.write(chunk as unknown as FileSystemWriteChunkType);
-        },
-        async close() {
-          await writable.close();
-        },
-        async abort(reason) {
-          await writable.abort(reason);
-        },
-      }),
-    );
+    await this.enqueueWrite(path, async () => {
+      const file = await this.resolveFile(path, true);
+      if (file === undefined) throw new Error(`cannot create: ${path}`);
+      const writable = await file.createWritable();
+      await stream.pipeTo(
+        new WritableStream({
+          async write(chunk) {
+            await writable.write(chunk as unknown as FileSystemWriteChunkType);
+          },
+          async close() {
+            await writable.close();
+          },
+          async abort(reason) {
+            await writable.abort(reason);
+          },
+        }),
+      );
+    });
   }
 
   async getStream(path: string): Promise<ReadableStream<Uint8Array> | undefined> {
-    const file = await this.resolveFile(path, false);
-    if (file === undefined) return undefined;
-    const blob = await file.getFile();
-    return blob.stream();
+    return withRetry(async () => {
+      const file = await this.resolveFile(path, false);
+      if (file === undefined) return undefined;
+      const blob = await file.getFile();
+      return blob.stream();
+    });
   }
 
   async readRange(path: string, offset: number, length: number): Promise<Uint8Array> {
-    const file = await this.resolveFile(path, false);
-    if (file === undefined) throw new Error(`not found: ${path}`);
-    const blob = await file.getFile();
-    return new Uint8Array(await blob.slice(offset, offset + length).arrayBuffer());
+    return withRetry(async () => {
+      const file = await this.resolveFile(path, false);
+      if (file === undefined) throw new Error(`not found: ${path}`);
+      const blob = await file.getFile();
+      return new Uint8Array(await blob.slice(offset, offset + length).arrayBuffer());
+    });
   }
 
   async delete(path: string): Promise<void> {
-    const segments = split(path);
-    const name = segments.pop();
-    if (name === undefined) return;
-    const dir = await this.resolveDir(segments, false);
-    if (dir === undefined) return;
-    try {
-      await dir.removeEntry(name);
-    } catch {
-      // 不存在则视为已删除
-    }
+    await this.enqueueWrite(path, async () => {
+      const segments = split(path);
+      const name = segments.pop();
+      if (name === undefined) return;
+      const dir = await this.resolveDir(segments, false);
+      if (dir === undefined) return;
+      try {
+        await dir.removeEntry(name);
+      } catch {
+        // 不存在则视为已删除
+      }
+    });
   }
 
   async has(path: string): Promise<boolean> {
@@ -93,9 +143,20 @@ export class OpfsStore implements BinaryStore {
   }
 
   async size(path: string): Promise<number | undefined> {
-    const file = await this.resolveFile(path, false);
-    if (file === undefined) return undefined;
-    return (await file.getFile()).size;
+    return withRetry(async () => {
+      const file = await this.resolveFile(path, false);
+      if (file === undefined) return undefined;
+      return (await file.getFile()).size;
+    });
+  }
+
+  /** 文件句柄快照（File extends Blob）：磁盘引用，不整段进内存（§4）。 */
+  async getBlob(path: string): Promise<Blob | undefined> {
+    return withRetry(async () => {
+      const file = await this.resolveFile(path, false);
+      if (file === undefined) return undefined;
+      return file.getFile();
+    });
   }
 
   async list(prefix = ""): Promise<string[]> {

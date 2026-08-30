@@ -1,5 +1,6 @@
 import {
   artifactStore,
+  artifactPath,
   ArtifactStoreTag,
   executorRegistry,
   Executors,
@@ -12,7 +13,7 @@ import {
 } from "@bcr/core";
 import type { RuntimeServices } from "@bcr/react";
 import { workerExecutor, WorkerPool } from "@bcr/runtime-worker";
-import { isOpfsSupported, MemoryStore, OpfsStore } from "@bcr/storage-opfs";
+import { isOpfsSupported, MemoryStore, OpfsStore, type BinaryStore } from "@bcr/storage-opfs";
 import {
   openSqliteDb,
   sqliteCacheStore,
@@ -22,12 +23,13 @@ import {
 import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import { Chunk, Context, Effect, Layer, Option, Stream } from "effect";
+import { ALL_FORMATS, AudioBufferSink, BlobSource, Input } from "mediabunny";
 import { TaskFailed } from "@bcr/core";
 import type { MediaInfo } from "./subtitles";
 
 /**
  * Subtitle Studio 的 Runtime 组装（§1 分层）：
- * - runtime "js"  → 主线程 decode executor（AudioContext 仅主线程可用）
+ * - runtime "js"  → 主线程 decode executor（Mediabunny + WebCodecs 流式解码，§4）
  * - runtime "wasm" → media.worker（波形 kernel + ASR/segment/translate）
  * 元数据（缓存/血缘/项目状态）落 SQLite → OPFS（§8）。
  */
@@ -35,9 +37,15 @@ import type { MediaInfo } from "./subtitles";
 export const SAMPLE_RATE = 16_000;
 
 let metaDb: SqliteDb | undefined;
+let binaryStore: BinaryStore | undefined;
 
 export function metaDatabase(): SqliteDb | undefined {
   return metaDb;
+}
+
+/** 源文件所在的二进制存储：大文件取文件句柄 Blob（不整段进内存）时用。 */
+export function sourceBlobStore(): BinaryStore | undefined {
+  return binaryStore;
 }
 
 type SqliteInit = (options?: {
@@ -52,21 +60,184 @@ async function openMetaDb(store: OpfsStore | MemoryStore): Promise<SqliteDb> {
 
 // ── decode executor（runtime "js"，主线程） ─────────────────────────
 
-/** AudioContext 只在主线程存在：decode 作为内联 executor 挂在 "js" 平面。 */
-function decodeExecutor(artifacts: RuntimeServices["artifacts"]): RuntimeExecutor {
+/** 整段 decodeAudioData 的安全上限（浏览器 ArrayBuffer 约 2GB）；超出只走流式解码。 */
+const LEGACY_DECODE_MAX_BYTES = 1024 * 1024 * 1024;
+
+/** 流式输出窗口：30s × 16kHz × f32 ≈ 1.9MB。 */
+const WINDOW_FRAMES = SAMPLE_RATE * 30;
+
+/**
+ * 逐块线性重采样 → 16kHz：跨块保持小数相位与末样本，输出定长窗。
+ * ASR 对重采样精度不敏感，线性插值足够；避免 OfflineAudioContext 的整段装载。
+ */
+class Resampler {
+  private pending = new Float32Array(WINDOW_FRAMES);
+  private pendingLen = 0;
+  private nextSrcPos = 0;
+  private consumed = 0;
+  private carry = 0;
+  private hasCarry = false;
+
+  push(mono: Float32Array, srcRate: number): Float32Array[] {
+    if (mono.length === 0) return [];
+    if (srcRate === SAMPLE_RATE) return this.emit(mono);
+
+    const ratio = srcRate / SAMPLE_RATE;
+    const out: number[] = [];
+    const base = this.consumed - 1;
+    const extAt = (i: number): number =>
+      i === 0
+        ? this.hasCarry
+          ? this.carry
+          : (mono[0] ?? 0)
+        : (mono[Math.min(i - 1, mono.length - 1)] ?? 0);
+
+    while (this.nextSrcPos < base + mono.length) {
+      const local = this.nextSrcPos - base;
+      const i = Math.max(0, Math.floor(local));
+      const frac = Math.max(0, local - i);
+      out.push(extAt(i) * (1 - frac) + extAt(i + 1) * frac);
+      this.nextSrcPos += ratio;
+    }
+    this.consumed += mono.length;
+    this.carry = mono[mono.length - 1] ?? 0;
+    this.hasCarry = true;
+    return this.emit(Float32Array.from(out));
+  }
+
+  flush(): Float32Array[] {
+    if (this.pendingLen === 0) return [];
+    const tail = this.pending.slice(0, this.pendingLen);
+    this.pendingLen = 0;
+    return [tail];
+  }
+
+  private emit(samples: Float32Array): Float32Array[] {
+    const out: Float32Array[] = [];
+    let offset = 0;
+    while (offset < samples.length) {
+      const n = Math.min(WINDOW_FRAMES - this.pendingLen, samples.length - offset);
+      this.pending.set(samples.subarray(offset, offset + n), this.pendingLen);
+      this.pendingLen += n;
+      offset += n;
+      if (this.pendingLen === WINDOW_FRAMES) {
+        out.push(this.pending);
+        this.pending = new Float32Array(WINDOW_FRAMES);
+        this.pendingLen = 0;
+      }
+    }
+    return out;
+  }
+}
+
+/** 源文件 Blob：OPFS 走文件句柄快照（磁盘引用，不整段进内存）。 */
+async function sourceBlob(
+  store: BinaryStore | undefined,
+  artifacts: RuntimeServices["artifacts"],
+  ref: ArtifactRef,
+): Promise<Blob> {
+  if (ref.storage === "opfs" && store !== undefined) {
+    const blob = await store.getBlob?.(artifactPath(ref));
+    if (blob !== undefined) return blob;
+  }
+  const bytes = await Effect.runPromise(artifacts.get(ref));
+  return new Blob([
+    bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as BlobPart,
+  ]);
+}
+
+function decodeExecutor(
+  artifacts: RuntimeServices["artifacts"],
+  store: () => BinaryStore | undefined,
+): RuntimeExecutor {
   const decode = async function* (
     task: ComputeTask,
   ): AsyncGenerator<TaskEventLike, void, undefined> {
     const input = task.inputs[0];
     if (input === undefined) throw new Error("media.decode-audio requires a source file input");
-    yield { type: "progress", taskId: task.id, value: 0.05 };
+    yield { type: "progress", taskId: task.id, value: 0.02 };
 
-    const bytes = await Effect.runPromise(artifacts.get(input));
+    const blob = await sourceBlob(store(), artifacts, input);
+    try {
+      yield* decodeStreaming(task, input, blob);
+    } catch (error) {
+      // 容器解析失败：小文件回退整段 decodeAudioData；大文件报诚实错误
+      if (blob.size > LEGACY_DECODE_MAX_BYTES) {
+        throw new Error(
+          `无法流式解码（${error instanceof Error ? error.message : String(error)}）；` +
+            "文件超过 1GB，仅支持流式路径（mp4/webm/mkv/mov/mp3/wav/m4a/ogg）",
+        );
+      }
+      yield* decodeLegacy(task, input, blob);
+    }
+  };
+
+  /** Mediabunny 解复用 + WebCodecs 解码 → 16k 单声道 PCM 分窗写 OPFS（§4 stream→stream）。 */
+  const decodeStreaming = async function* (
+    task: ComputeTask,
+    input: ArtifactRef,
+    blob: Blob,
+  ): AsyncGenerator<TaskEventLike, void, undefined> {
+    const media = new Input({ formats: ALL_FORMATS, source: new BlobSource(blob) });
+    const track = await media.getPrimaryAudioTrack();
+    if (track === null) throw new Error("文件不包含音轨");
+    if (!(await track.canDecode())) {
+      throw new Error(`当前浏览器无法解码该音轨（codec: ${track.codec}）`);
+    }
+    const durationS = await media.computeDuration();
+
+    const pcmRef: ArtifactRef = {
+      id: `pcm16k/${input.id}`,
+      type: "audio/pcm-f32",
+      storage: "opfs",
+      format: "f32le",
+    };
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) {
+        controller = c;
+      },
+    });
+    const writeDone = Effect.runPromise(artifacts.putStream(pcmRef, stream));
+
+    const resampler = new Resampler();
+    let totalSamples = 0;
+    let lastReport = 0.05;
+    try {
+      const sink = new AudioBufferSink(track);
+      for await (const wrapped of sink.buffers()) {
+        const mono = toMono(wrapped.buffer);
+        for (const chunk of resampler.push(mono, wrapped.buffer.sampleRate)) {
+          totalSamples += chunk.length;
+          controller.enqueue(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength));
+        }
+        const progress = 0.05 + 0.9 * Math.min(1, wrapped.timestamp / Math.max(1, durationS));
+        if (progress - lastReport >= 0.02) {
+          lastReport = progress;
+          yield { type: "progress", taskId: task.id, value: progress };
+        }
+      }
+      for (const chunk of resampler.flush()) {
+        totalSamples += chunk.length;
+        controller.enqueue(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength));
+      }
+      controller.close();
+    } catch (error) {
+      controller.error(error);
+      throw error;
+    }
+    await writeDone;
+    yield* finish(task, input, pcmRef, totalSamples, durationS);
+  };
+
+  /** 旧路径：整段 decodeAudioData（仅小文件回退）。 */
+  const decodeLegacy = async function* (
+    task: ComputeTask,
+    input: ArtifactRef,
+    blob: Blob,
+  ): AsyncGenerator<TaskEventLike, void, undefined> {
     const context = new OfflineAudioContext(1, 1, SAMPLE_RATE);
-    // decodeAudioData 会 detach 底层 buffer，bytes 是存储层副本，可安全移交
-    const audioBuffer = await context.decodeAudioData(
-      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
-    );
+    const audioBuffer = await context.decodeAudioData(await blob.arrayBuffer());
     yield { type: "progress", taskId: task.id, value: 0.6 };
 
     const samples = toMono(audioBuffer);
@@ -78,12 +249,18 @@ function decodeExecutor(artifacts: RuntimeServices["artifacts"]): RuntimeExecuto
       format: "f32le",
     };
     await Effect.runPromise(artifacts.put(pcmRef, pcmBytes));
+    yield* finish(task, input, pcmRef, samples.length, audioBuffer.duration);
+  };
 
-    const info: MediaInfo = {
-      durationS: audioBuffer.duration,
-      sampleRate: SAMPLE_RATE,
-      samples: samples.length,
-    };
+  /** 收尾：写 media/info 产物 + completed 事件。 */
+  const finish = async function* (
+    task: ComputeTask,
+    input: ArtifactRef,
+    pcmRef: ArtifactRef,
+    samples: number,
+    durationS: number,
+  ): AsyncGenerator<TaskEventLike, void, undefined> {
+    const info: MediaInfo = { durationS, sampleRate: SAMPLE_RATE, samples };
     const infoRef: ArtifactRef = {
       id: `info/${input.id}`,
       type: "media/info",
@@ -99,7 +276,7 @@ function decodeExecutor(artifacts: RuntimeServices["artifacts"]): RuntimeExecuto
 
   return {
     runtime: "js",
-    version: "media-decode-0.1.1",
+    version: "media-decode-0.2.0",
     run: (task) =>
       Stream.async<TaskEventLike, TaskFailed>((emit) => {
         void (async () => {
@@ -147,6 +324,7 @@ function toMono(buffer: AudioBuffer): Float32Array {
 
 export async function createRuntimeServices(): Promise<RuntimeServices> {
   const opfs = isOpfsSupported() ? new OpfsStore("media") : new MemoryStore();
+  binaryStore = opfs;
   const memory = new MemoryStore();
 
   try {
@@ -171,7 +349,7 @@ export async function createRuntimeServices(): Promise<RuntimeServices> {
       }),
   );
   const wasmExecutor = workerExecutor(pool, "wasm", "media-worker-0.1.1", artifacts);
-  const jsExecutor = decodeExecutor(artifacts);
+  const jsExecutor = decodeExecutor(artifacts, () => binaryStore);
 
   const deps = Layer.mergeAll(
     Layer.succeed(ArtifactStoreTag, artifacts),

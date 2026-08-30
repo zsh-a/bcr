@@ -1,9 +1,9 @@
-import type { ArtifactRef, PipelineHandle } from "@bcr/core";
+import { artifactPath, type ArtifactRef, type PipelineHandle } from "@bcr/core";
 import { compile, decodeGraph, encodeGraph, type Graph } from "@bcr/graph";
 import type { RuntimeServices } from "@bcr/react";
 import { Effect, Stream } from "effect";
 import { OPERATIONS } from "./operations";
-import { metaDatabase } from "./runtime";
+import { metaDatabase, sourceBlobStore } from "./runtime";
 import { studio, type EngineMode } from "./store";
 import type { MediaInfo, SubtitleCue } from "./subtitles";
 
@@ -26,8 +26,9 @@ export async function cancelGeneration(): Promise<void> {
 }
 
 export async function generateSubtitles(services: RuntimeServices): Promise<void> {
-  const { source, graph } = studio.getSnapshot();
-  if (source === null) return;
+  const { source, graph, running } = studio.getSnapshot();
+  // 重入保护：运行中重复触发直接忽略（UI 虽禁用按钮，取消瞬间存在竞态）
+  if (source === null || running) return;
 
   let nodes;
   try {
@@ -206,15 +207,24 @@ export async function restoreProject(services: RuntimeServices): Promise<void> {
     }
     if (project.source === null || project.source === undefined) return;
 
-    // 源文件本体在 OPFS：重建播放用 Blob URL（§8 本地工作站语义）
+    // 源文件本体在 OPFS：优先用文件句柄快照 Blob（磁盘引用，大文件不整段进内存，§4/§8）
     let objectUrl: string | null = null;
     try {
-      const bytes = await Effect.runPromise(services.artifacts.get(project.source.ref));
-      objectUrl = URL.createObjectURL(
-        new Blob([
-          bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as BlobPart,
-        ]),
-      );
+      const store = sourceBlobStore();
+      const blob =
+        project.source.ref.storage === "opfs" && store !== undefined
+          ? await store.getBlob?.(artifactPath(project.source.ref))
+          : undefined;
+      if (blob !== undefined && blob !== null) {
+        objectUrl = URL.createObjectURL(blob);
+      } else {
+        const bytes = await Effect.runPromise(services.artifacts.get(project.source.ref));
+        objectUrl = URL.createObjectURL(
+          new Blob([
+            bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as BlobPart,
+          ]),
+        );
+      }
     } catch {
       objectUrl = null;
     }
