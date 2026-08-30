@@ -2,7 +2,7 @@ import { artifactPath, type ArtifactRef, type PipelineHandle } from "@bcr/core";
 import { compile, decodeGraph, encodeGraph, type Graph } from "@bcr/graph";
 import type { RuntimeServices } from "@bcr/react";
 import { Effect, Stream } from "effect";
-import { OPERATIONS } from "./operations";
+import { OPERATIONS, withTranslate } from "./operations";
 import { metaDatabase, sourceBlobStore } from "./runtime";
 import { studio, type EngineMode } from "./store";
 import type { MediaInfo, SubtitleCue } from "./subtitles";
@@ -203,7 +203,13 @@ export async function restoreProject(services: RuntimeServices): Promise<void> {
     }
     if (project.graph !== undefined) {
       const graph = decodeGraph(project.graph);
-      if (graph !== null && graph.nodes.length > 0) studio.setGraph(graph);
+      // 旧版图可能缺 translate 的输入边（编译期会拒绝）：按 settings 补齐后再恢复
+      if (graph !== null && graph.nodes.length > 0) {
+        const settings = project.settings;
+        studio.setGraph(
+          settings !== undefined && settings.translate ? withTranslate(graph, settings) : graph,
+        );
+      }
     }
     if (project.source === null || project.source === undefined) return;
 

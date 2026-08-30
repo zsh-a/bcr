@@ -107,11 +107,23 @@ export function defaultGraph(settings: StudioSettings): Graph {
 
 /** 顶栏"英文翻译"开关：增删 translate 节点及其边（与图单一事实源保持一致）。 */
 export function withTranslate(graph: Graph, settings: StudioSettings): Graph {
-  if (graph.nodes.some((n) => n.operation === "subtitle.translate")) return graph;
-  let g = addNode(graph, op("subtitle.translate"), "translate", 544, 328);
-  g = updateNodeConfig(g, "translate", { model: settings.model });
-  g = addEdge(g, OPERATIONS, "decode", "translate", "audio/pcm-f32") ?? g;
-  g = addEdge(g, OPERATIONS, "segment", "translate", "subtitle/cues") ?? g;
+  // 节点已存在（如恢复的旧图缺边）时也要补齐输入边——缺边的 translate 必然无法运行。
+  // 节点 id 按 operation 查找，兼容自定义编排里的非默认 id。
+  let g = graph;
+  let translateId = g.nodes.find((n) => n.operation === "subtitle.translate")?.id;
+  if (translateId === undefined) {
+    translateId = "translate";
+    g = addNode(g, op("subtitle.translate"), translateId, 544, 328);
+  }
+  g = updateNodeConfig(g, translateId, { model: settings.model });
+  const decodeId = g.nodes.find((n) => n.operation === "media.decode-audio")?.id;
+  const segmentId = g.nodes.find((n) => n.operation === "subtitle.segment")?.id;
+  if (decodeId !== undefined) {
+    g = addEdge(g, OPERATIONS, decodeId, translateId, "audio/pcm-f32") ?? g;
+  }
+  if (segmentId !== undefined) {
+    g = addEdge(g, OPERATIONS, segmentId, translateId, "subtitle/cues") ?? g;
+  }
   return g;
 }
 

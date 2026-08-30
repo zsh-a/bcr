@@ -204,11 +204,19 @@ export interface CompileOptions {
   readonly sourceInputs?: ReadonlyArray<ArtifactRef>;
 }
 
+/** 端口类型匹配：支持 "file/*" 这类前缀通配（根节点消费任意 file/xx 源）。 */
+function typeMatches(port: string, actual: string): boolean {
+  if (port.endsWith("*")) return actual.startsWith(port.slice(0, -1));
+  return actual === port;
+}
+
 /**
  * 拓扑排序后逐节点生成 PipelineNode：
  * after = 入边的上游节点集合；根节点注入 sourceInputs；config 参与缓存键（§7）。
- * 环 / 未知 operation 抛 Error（调度器另有完整校验兜底）。
+ * 环 / 未知 operation / 输入未接全（如 editor 里删了边）抛 Error——
+ * 在编译期暴露，而不是让 worker 运行到一半才报 missing input。
  */
+
 export function compile(
   graph: Graph,
   registry: ReadonlyArray<OperationDef>,
@@ -246,6 +254,23 @@ export function compile(
     if (op === undefined) throw new Error(`unknown operation "${node.operation}"`);
 
     const after = [...new Set(graph.edges.filter((e) => e.to === id).map((e) => e.from))];
+
+    // 输入覆盖校验：非根节点由入边类型覆盖；根节点由 sourceInputs 覆盖（未提供则跳过）。
+    const available =
+      after.length > 0
+        ? graph.edges.filter((e) => e.to === id).map((e) => e.type)
+        : options.sourceInputs?.map((ref) => ref.type);
+    if (available !== undefined) {
+      const missing = op.inputs.filter((p) => !available.some((t) => typeMatches(p.type, t)));
+      if (missing.length > 0) {
+        throw new Error(
+          `node "${node.id}" (${node.operation}) missing inputs: ${missing
+            .map((p) => p.type)
+            .join(", ")}`,
+        );
+      }
+    }
+
     const hasConfig = Object.keys(node.config).length > 0;
     return {
       id: node.id,

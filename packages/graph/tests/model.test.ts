@@ -148,6 +148,50 @@ describe("compile", () => {
     expect(g.nodes.map((n) => n.id)).toEqual(["decode", "segment"]);
     expect(g.edges).toEqual([]);
   });
+
+  it("节点输入未接全时编译抛错（而非 worker 运行期才失败）", () => {
+    const TRANSLATE: OperationDef = {
+      operation: "subtitle.translate",
+      label: "Translate",
+      detail: "",
+      runtime: "wasm",
+      inputs: [{ type: "audio/pcm-f32" }, { type: "subtitle/cues" }],
+      outputs: [{ type: "subtitle/cues" }],
+    };
+    const ops = [...OPS, TRANSLATE];
+    let g = chain();
+    g = addEdge(g, ops, "decode", "asr") ?? g;
+    g = addEdge(g, ops, "asr", "segment") ?? g;
+    g = addNode(g, TRANSLATE, "translate", 600, 0);
+    // 只接 cues 边，缺 decode→translate 的 pcm 边（editor 删边/旧持久化图的情形）
+    g = addEdge(g, ops, "segment", "translate", "subtitle/cues") ?? g;
+
+    expect(() => compile(g, ops, { sourceInputs: [SOURCE] })).toThrow(
+      'node "translate" (subtitle.translate) missing inputs: audio/pcm-f32',
+    );
+
+    g = addEdge(g, ops, "decode", "translate", "audio/pcm-f32") ?? g;
+    expect(() => compile(g, ops, { sourceInputs: [SOURCE] })).not.toThrow();
+  });
+
+  it("根节点通配端口 file/* 匹配任意 file/xx 源", () => {
+    const WILDCARD: OperationDef = {
+      ...OPS[0]!,
+      inputs: [{ type: "file/*" }],
+    };
+    const g = addNode(emptyGraph, WILDCARD, "decode", 0, 0);
+    expect(() =>
+      compile(g, [WILDCARD], {
+        sourceInputs: [{ id: "source/a.mp4", type: "file/mp4", storage: "opfs" }],
+      }),
+    ).not.toThrow();
+    expect(() => compile(g, [WILDCARD], { sourceInputs: [SOURCE] })).not.toThrow();
+    expect(() =>
+      compile(g, [WILDCARD], {
+        sourceInputs: [{ id: "x", type: "audio/pcm-f32", storage: "opfs" }],
+      }),
+    ).toThrow('node "decode" (media.decode-audio) missing inputs: file/*');
+  });
 });
 
 describe("schema", () => {
