@@ -1,0 +1,111 @@
+import { artifactPath, type ArtifactRef } from "@bcr/core";
+import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
+import { OpfsStore } from "@bcr/storage-opfs";
+import init, { peak_f32, StreamingBlake3 } from "../../../../crates/kernels/pkg/bcr_kernels.js";
+
+/**
+ * compute.worker（架构文档 §5）：Worker 内加载 Rust WASM kernel。
+ * 大文件按 4MB 窗口从 OPFS 流动读取（§4），禁止整段装载。
+ */
+
+const WINDOW = 4 * 1024 * 1024;
+const WAVEFORM_BUCKETS = 2048;
+const opfs = new OpfsStore("studio");
+
+const wasmReady = init();
+
+function throwIfAborted(ctx: WorkerContext): void {
+  if (ctx.signal.aborted) throw new Error("cancelled");
+}
+
+function sizeOf(task: { config?: Record<string, unknown> | undefined }): number {
+  const size = task.config?.["sizeBytes"];
+  return typeof size === "number" && size > 0 ? size : 0;
+}
+
+async function hashBlake3(
+  task: { config?: Record<string, unknown> | undefined },
+  input: ArtifactRef,
+  ctx: WorkerContext,
+): Promise<ReadonlyArray<ArtifactRef>> {
+  await wasmReady;
+  const total = sizeOf(task);
+  const hasher = new StreamingBlake3();
+  let offset = 0;
+  for (;;) {
+    throwIfAborted(ctx);
+    const chunk = await opfs.readRange(artifactPath(input), offset, WINDOW);
+    if (chunk.byteLength === 0) break;
+    hasher.update(chunk);
+    offset += chunk.byteLength;
+    if (total > 0) ctx.progress(Math.min(0.99, offset / total));
+  }
+  const hex = hasher.finalize_hex();
+  const out: ArtifactRef = {
+    id: `hash/${input.id}`,
+    type: "hash/blake3-hex",
+    storage: "memory",
+    hash: hex,
+  };
+  ctx.emitChunk(out, new TextEncoder().encode(hex));
+  ctx.progress(1);
+  return [out];
+}
+
+/** 波形提取：按 f32le PCM 分窗，折叠为 2048 桶峰值包络。 */
+async function audioWaveform(
+  task: { config?: Record<string, unknown> | undefined },
+  input: ArtifactRef,
+  ctx: WorkerContext,
+): Promise<ReadonlyArray<ArtifactRef>> {
+  await wasmReady;
+  const total = sizeOf(task);
+  // 自适应窗口：每桶至少覆盖一个窗口；小文件用 64KB 细窗，大文件按桶均分
+  const window = total > 0 ? Math.max(64 * 1024, Math.ceil(total / WAVEFORM_BUCKETS)) : WINDOW;
+  const peaks = new Float32Array(WAVEFORM_BUCKETS);
+  let offset = 0;
+  for (;;) {
+    throwIfAborted(ctx);
+    const chunk = await opfs.readRange(artifactPath(input), offset, window);
+    if (chunk.byteLength < 4) break;
+    const samples = new Float32Array(
+      chunk.buffer.slice(0, chunk.byteLength - (chunk.byteLength % 4)),
+    );
+    const windowPeak = peak_f32(samples);
+    if (total > 0) {
+      const from = Math.floor((offset / total) * WAVEFORM_BUCKETS);
+      const to = Math.min(
+        WAVEFORM_BUCKETS - 1,
+        Math.floor(((offset + chunk.byteLength) / total) * WAVEFORM_BUCKETS),
+      );
+      for (let i = from; i <= to; i += 1) {
+        peaks[i] = Math.max(peaks[i] ?? 0, windowPeak);
+      }
+    }
+    offset += chunk.byteLength;
+    if (total > 0) ctx.progress(Math.min(0.99, offset / total));
+  }
+  const out: ArtifactRef = {
+    id: `waveform/${input.id}`,
+    type: "audio/waveform-peaks",
+    storage: "memory",
+    format: "f32le",
+  };
+  // transfer 零拷贝回主线程（§4 small 通道）
+  ctx.emitChunk(out, new Uint8Array(peaks.buffer));
+  ctx.progress(1);
+  return [out];
+}
+
+defineWorker({
+  "hash.blake3": (task, ctx) => {
+    const input = task.inputs[0];
+    if (input === undefined) throw new Error("hash.blake3 requires an input");
+    return hashBlake3(task, input, ctx);
+  },
+  "audio.waveform": (task, ctx) => {
+    const input = task.inputs[0];
+    if (input === undefined) throw new Error("audio.waveform requires an input");
+    return audioWaveform(task, input, ctx);
+  },
+});

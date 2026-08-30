@@ -1,7 +1,11 @@
 import { artifactPath, type ArtifactRef } from "@bcr/core";
 import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
-import init, { peak_f32, rms_f32, StreamingBlake3 } from "../wasm/bcr_kernels.js";
+import init, {
+  peak_f32,
+  rms_f32,
+  StreamingBlake3,
+} from "../../../../crates/kernels/pkg/bcr_kernels.js";
 
 /**
  * compute.worker（架构文档 §5）：Worker 内加载 Rust WASM kernel。

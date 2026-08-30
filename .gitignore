@@ -3,5 +3,5 @@ dist/
 target/
 pkg/
 *.wasm
-examples/demo/src/wasm/
 .vp/
+scripts/shots/

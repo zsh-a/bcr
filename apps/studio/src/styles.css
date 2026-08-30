@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+/*
+ * BCR Studio — Rhea 风格高信息密度工作台。
+ * Design tokens 全部走原生 CSS variables（主题 = CSS variables + Tailwind utilities）。
+ */
+@theme {
+  --color-bg: #0b0d10;
+  --color-surface: #10131a;
+  --color-raised: #171b24;
+  --color-overlay: #1d2230;
+  --color-border: #222836;
+  --color-border-strong: #2e3648;
+  --color-text: #e6e9f0;
+  --color-muted: #8a93a6;
+  --color-faint: #5a6376;
+  --color-accent: #3fe0a5;
+  --color-accent-dim: #1a3f33;
+  --color-amber: #f0b357;
+  --color-danger: #f26d6d;
+  --color-info: #6ea8fe;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 7px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+/* 细滚动条——工作站质感 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ============ Dockview 主题覆盖（themeAbyss 为底，压到 Rhea 密度） ============ */
+.studio-dock {
+  --dv-background-color: var(--color-bg);
+  --dv-group-view-background-color: var(--color-surface);
+  --dv-tabs-and-actions-container-background-color: var(--color-bg);
+  --dv-tabs-and-actions-container-height: 30px;
+  --dv-tabs-and-actions-container-font-size: 11px;
+  --dv-activegroup-visiblepanel-tab-background-color: var(--color-surface);
+  --dv-activegroup-hiddenpanel-tab-background-color: transparent;
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--color-surface);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: transparent;
+  --dv-activegroup-visiblepanel-tab-color: var(--color-text);
+  --dv-activegroup-hiddenpanel-tab-color: var(--color-muted);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--color-muted);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--color-faint);
+  --dv-separator-border: var(--color-border);
+  --dv-paneview-header-border-color: var(--color-border);
+  --dv-tab-divider-color: var(--color-border);
+  --dv-drag-over-background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --dv-drag-over-border-color: var(--color-accent);
+  --dv-paneview-active-outline-color: var(--color-accent);
+  --dv-tabs-and-actions-container-border-bottom: var(--color-border);
+  --dv-active-sash-color: var(--color-accent);
+  --dv-sash-color: transparent;
+  --dv-sash-hover-size: 4px;
+}
+
+.studio-dock .dv-dockview {
+  background: var(--color-bg);
+}
+
+.studio-dock .dv-groupview .dv-tabs-and-actions-container {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.studio-dock .dv-tab {
+  font-family: var(--font-sans);
+  letter-spacing: 0.01em;
+}
+
+/* 面板内容充满容器 */
+.studio-dock .dv-content-container {
+  background: var(--color-surface);
+}
+
+/* ============ 微动效 ============ */
+@keyframes studio-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.studio-enter {
+  animation: studio-in 160ms ease-out both;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.pulse-dot {
+  animation: pulse-dot 1.1s ease-in-out infinite;
+}

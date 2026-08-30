@@ -13,10 +13,12 @@
 │   ├── runtime-worker/   # @bcr/runtime-worker：typed MessagePort 协议 / WorkerPool / WorkerExecutor
 │   ├── storage-opfs/     # @bcr/storage-opfs：BinaryStore 抽象，OPFS + Memory 实现
 │   └── react/            # @bcr/react：RuntimeProvider / useSubmitTask / useTask / useArtifact
+├── apps/
+│   └── studio/           # BCR Studio 工作台 UI（Dockview + Tailwind 4 + Base UI）
 ├── crates/
 │   └── kernels/          # bcr-kernels：wasm-bindgen kernel（流式 BLAKE3 / RMS / Peak）
 └── examples/
-    └── demo/             # 垂直切片 demo（Vite+ + React 19）
+    └── demo/             # 最小垂直切片 demo（Vite+ + React 19）
 ```
 
 与架构文档的对应关系：
@@ -41,8 +43,23 @@ bun run build:wasm     # 构建 WASM kernel（首次或 kernel 变更后）
 bun run test           # vp test：全部单元测试
 bun run check          # vp check：format + lint
 bun run demo           # 启动 demo（examples/demo）
+bun run studio         # 启动 BCR Studio 工作台（apps/studio）
 cargo test --manifest-path crates/kernels/Cargo.toml
 ```
+
+## BCR Studio（apps/studio）
+
+工作站式 UI，遵循「DOM → interaction · React → composition · Canvas → visualization · Worker → rendering/compute · WASM → algorithms」的分层原则：
+
+- **Dockview 8**：dock / split / drag / floating / popout 布局，JSON 持久化到 localStorage（SQLite 版留待 storage-sqlite）
+- **Tailwind 4 + 原生 CSS variables tokens**：Rhea 风格高信息密度暗色主题（IBM Plex Sans/Mono）
+- **Base UI**：命令面板（⌘K）等 headless 交互原语；本地 shadcn 风格组件源码（Button/Badge/...）
+- **TanStack Router**：选中文件/任务在 URL search（`?file=&task=`），链接可恢复 workspace view
+- **TanStack Virtual**：项目文件 / 任务历史 / 控制台日志全部虚拟化
+- **OffscreenCanvas**：波形由 `render.worker` 在 Worker 内绘制，主线程零图形负载
+- Runtime 接线：compute.worker 提供 `hash.blake3`（流式 BLAKE3）与 `audio.waveform`（2048 桶峰值包络）两个 WASM operation，任务进度 / cache hit / 取消直接投影到 UI
+
+截图走查脚本：`node scripts/screenshot.mjs`（需先 `bun run studio` 起 dev server，Playwright 驱动真实浏览器验证导入 → 计算 → 缓存命中全链路）。
 
 工具链为 [Vite+](https://viteplus.dev)（`vp` CLI 以本地 devDependency `vite-plus` 提供，不经全局安装）。
 
