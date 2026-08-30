@@ -1,7 +1,7 @@
 /* Subtitle Studio 走查：导入 → 生成（DAG 流水线）→ 字幕/波形/导出 → 刷新恢复。 */
-import { chromium } from "playwright";
+import { launchVerifyBrowser } from "./verify-browser.mjs";
 
-const base = process.env.BASE_URL ?? "http://localhost:5174";
+const base = process.env.BASE_URL ?? "http://localhost:5180";
 const dir = new URL("./shots/", import.meta.url).pathname;
 const fail = (message) => {
   console.error(`FAIL: ${message}`);
@@ -46,9 +46,8 @@ function makeWav(seconds = 6, sampleRate = 16000) {
   return new Uint8Array([...new Uint8Array(header), ...new Uint8Array(pcm.buffer)]);
 }
 
-const browser = await chromium.launch();
-const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-const page = await context.newPage();
+const browser = await launchVerifyBrowser("media");
+const page = browser.pages()[0] ?? (await browser.newPage());
 page.on("pageerror", (err) => fail(`pageerror: ${err.message}`));
 page.on("console", (msg) => {
   if (msg.type() === "error") console.log("[console:error]", msg.text().slice(0, 200));

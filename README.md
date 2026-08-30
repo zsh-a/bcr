@@ -97,8 +97,11 @@ decode ─┬─ wave（Rust peak kernel 波形）
 - **编辑器**：文本/译文/时间轴行内编辑、拆分、删除、点击定位播放；**undo/redo**（Ctrl+Z / Shift+Z / Ctrl+Y，流水线产出重置历史）；**跟随播放**（当前 cue 高亮 + 自动滚入视野）；**CPS 超速告警**（含译文，上限 20 单位/秒）；编辑自动持久化到 SQLite
 - **导出**：SRT / WebVTT / ASS（双语第二行），纯函数实现带单测；ASS 支持卡拉 OK 标签——ASR 节点开启词级时间戳后，每词 `\k` 厘秒高亮自动生成
 - 刷新恢复：源文件（OPFS Blob 重建播放）+ 字幕编辑 + 引擎设置全部从元数据库回放
+- **模型缓存**：transformers.js 经浏览器 Cache API 缓存权重（按 origin 隔离）——
+  dev 端口固定后同一浏览器内模型只下载一次；走查脚本用持久化 profile
+  （`scripts/verify-browser.mjs`），跨脚本共享缓存，不再每次全量下载
 
-走查脚本（先 `bun run media`）：
+走查脚本（先 `bun run media`，dev 端口固定 **5180**）：
 
 - `node scripts/verify-media-studio.mjs` — 导入合成 WAV → 演示引擎生成 → SRT 导出 → 刷新恢复
 - `node scripts/verify-windowed-asr.mjs` — 150s 长音频分窗回归（跨 120s 窗界归属/排序/导出）；`ENGINE=whisper` 走真实模型

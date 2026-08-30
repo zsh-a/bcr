@@ -1,7 +1,7 @@
 /* 分窗 ASR 走查：150s 音频 → 2 个 ASR 窗口 → 跨窗字幕归属 + 排序 + 导出。 */
-import { chromium } from "playwright";
+import { launchVerifyBrowser } from "./verify-browser.mjs";
 
-const base = process.env.BASE_URL ?? "http://localhost:5173";
+const base = process.env.BASE_URL ?? "http://localhost:5180";
 const dir = new URL("./shots/", import.meta.url).pathname;
 const fail = (message) => {
   console.error(`FAIL: ${message}`);
@@ -43,9 +43,8 @@ function makeWav(seconds = 150, sampleRate = 16000) {
   return new Uint8Array([...new Uint8Array(header), ...new Uint8Array(pcm.buffer)]);
 }
 
-const browser = await chromium.launch();
-const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-const page = await context.newPage();
+const browser = await launchVerifyBrowser("media");
+const page = browser.pages()[0] ?? (await browser.newPage());
 page.on("pageerror", (err) => fail(`pageerror: ${err.message}`));
 
 await page.goto(base, { waitUntil: "networkidle" });

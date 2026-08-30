@@ -1,7 +1,7 @@
-import { chromium } from "playwright";
+import { launchVerifyBrowser } from "./verify-browser.mjs";
 const base = "http://localhost:5173";
-const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+const browser = await launchVerifyBrowser("media");
+const page = browser.pages()[0] ?? (await browser.newPage());
 page.on("pageerror", (e) => console.log("[pageerror]", e.message.slice(0, 150)));
 await page.goto(base, { waitUntil: "networkidle" });
 await page.waitForTimeout(2000);

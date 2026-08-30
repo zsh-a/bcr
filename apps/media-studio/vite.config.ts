@@ -13,6 +13,10 @@ export default defineConfig({
     format: "es",
   },
   server: {
+    // 端口固定：Cache API / OPFS 按 origin（含端口）隔离——
+    // 模型权重与项目数据只在同一 origin 下跨会话保留
+    port: 5180,
+    strictPort: true,
     headers: {
       // §11：SharedArrayBuffer / cross-origin isolation 内置
       "Cross-Origin-Opener-Policy": "same-origin",

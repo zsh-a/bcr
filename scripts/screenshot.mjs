@@ -1,11 +1,11 @@
 /* 截图走查：加载 Studio → 截图空状态 → 注入文件 → 跑任务 → 截图。 */
-import { chromium } from "playwright";
+import { launchVerifyBrowser } from "./verify-browser.mjs";
 
 const base = process.env.BASE_URL ?? "http://localhost:5199";
 const dir = new URL("./shots/", import.meta.url).pathname;
 
-const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+const browser = await launchVerifyBrowser("studio");
+const page = browser.pages()[0] ?? (await browser.newPage());
 
 page.on("console", (msg) => {
   if (msg.type() === "error") console.log("[console:error]", msg.text());

@@ -1,7 +1,7 @@
 /* M3 走查：undo/redo（按钮+键盘）、跟随播放高亮、CPS 告警、ASS 导出。 */
-import { chromium } from "playwright";
+import { launchVerifyBrowser } from "./verify-browser.mjs";
 
-const base = process.env.BASE_URL ?? "http://localhost:5175";
+const base = process.env.BASE_URL ?? "http://localhost:5180";
 const dir = new URL("./shots/", import.meta.url).pathname;
 const fail = (message) => {
   console.error(`FAIL: ${message}`);
@@ -40,8 +40,8 @@ function makeWav(seconds = 6, sampleRate = 16000) {
   return new Uint8Array([...new Uint8Array(header), ...new Uint8Array(pcm.buffer)]);
 }
 
-const browser = await chromium.launch();
-const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+const browser = await launchVerifyBrowser("media");
+const page = browser.pages()[0] ?? (await browser.newPage());
 page.on("pageerror", (err) => fail(`pageerror: ${err.message}`));
 
 await page.goto(base, { waitUntil: "networkidle" });

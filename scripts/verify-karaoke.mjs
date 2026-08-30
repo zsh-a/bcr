@@ -1,7 +1,7 @@
 /* 卡拉 OK 探针：真实 Whisper 词级时间戳 → ASS \k 标签。需外网下载模型，网络抖动可重跑。 */
-import { chromium } from "playwright";
+import { launchVerifyBrowser } from "./verify-browser.mjs";
 
-const base = process.env.BASE_URL ?? "http://localhost:5177";
+const base = process.env.BASE_URL ?? "http://localhost:5180";
 const dir = new URL("./shots/", import.meta.url).pathname;
 const fail = (message) => {
   console.error(`FAIL: ${message}`);
@@ -40,8 +40,8 @@ function makeWav(seconds = 6, sampleRate = 16000) {
   return new Uint8Array([...new Uint8Array(header), ...new Uint8Array(pcm.buffer)]);
 }
 
-const browser = await chromium.launch({ args: ["--disable-dev-shm-usage"] });
-const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+const browser = await launchVerifyBrowser("media");
+const page = browser.pages()[0] ?? (await browser.newPage());
 page.on("pageerror", (err) => fail(`pageerror: ${err.message}`));
 page.on("crash", () => console.log("[diag] page crashed"));
 browser.on("disconnected", () => console.log("[diag] browser disconnected"));
@@ -90,7 +90,12 @@ if (!done) fail("流水线未完成（含重试）");
 
 const cueInputs = await page.locator("[data-testid='cue-editor'] input").count();
 const consoleArea = await page.locator("aside").innerText();
-console.log("cue inputs:", cueInputs, "| console tail:", consoleArea.split("\n").slice(-4).join(" | "));
+console.log(
+  "cue inputs:",
+  cueInputs,
+  "| console tail:",
+  consoleArea.split("\n").slice(-4).join(" | "),
+);
 await page.screenshot({ path: `${dir}/k1-before-export.png` });
 const [download] = await Promise.all([
   page.waitForEvent("download", { timeout: 8000 }),

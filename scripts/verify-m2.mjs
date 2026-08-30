@@ -1,7 +1,7 @@
 /* M2 走查：device=auto 探测降级 + Whisper 识别 + opus-mt 文本翻译双语导出。 */
-import { chromium } from "playwright";
+import { launchVerifyBrowser } from "./verify-browser.mjs";
 
-const base = process.env.BASE_URL ?? "http://localhost:5175";
+const base = process.env.BASE_URL ?? "http://localhost:5180";
 const dir = new URL("./shots/", import.meta.url).pathname;
 const fail = (message) => {
   console.error(`FAIL: ${message}`);
@@ -43,9 +43,13 @@ function makeWav(seconds = 6, sampleRate = 16000) {
   return new Uint8Array([...new Uint8Array(header), ...new Uint8Array(pcm.buffer)]);
 }
 
-const browser = await chromium.launch();
-const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+const browser = await launchVerifyBrowser("media");
+const page = browser.pages()[0] ?? (await browser.newPage());
 page.on("pageerror", (err) => fail(`pageerror: ${err.message}`));
+let hfRequests = 0;
+page.on("request", (req) => {
+  if (/hf\.co|huggingface/.test(req.url())) hfRequests += 1;
+});
 
 await page.goto(base, { waitUntil: "networkidle" });
 await page.waitForTimeout(2500);
@@ -94,7 +98,8 @@ await page.locator("header select").nth(2).selectOption("zh-en");
 await page.getByRole("button", { name: "生成字幕" }).click();
 baseline = await countDone();
 done = false;
-for (let i = 0; i < 200; i += 1) {
+// 冷缓存时 opus-mt 下载可达数分钟，窗口放宽到 20 分钟
+for (let i = 0; i < 600; i += 1) {
   await page.waitForTimeout(2000);
   if ((await countDone()) > baseline) {
     done = true;
@@ -118,5 +123,6 @@ console.log("SRT preview:", JSON.stringify(srt.slice(0, 160)));
 const blocks = srt.trim().split("\n\n");
 if (!blocks.some((b) => b.split("\n").length >= 4)) fail("SRT 中没有双语 cue（应为文本+译文两行）");
 
+console.log(`hf cdn requests: ${hfRequests}`);
 await browser.close();
 console.log(process.exitCode ? "verification FAILED" : "verification PASSED");

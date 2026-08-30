@@ -1,5 +1,5 @@
 /* 刷新恢复走查：导入 → 计算 → reload → 文件列表恢复 + 缓存命中（§7/§8 持久化闭环）。 */
-import { chromium } from "playwright";
+import { launchVerifyBrowser } from "./verify-browser.mjs";
 
 const base = process.env.BASE_URL ?? "http://localhost:5199";
 const dir = new URL("./shots/", import.meta.url).pathname;
@@ -8,9 +8,8 @@ const fail = (message) => {
   process.exitCode = 1;
 };
 
-const browser = await chromium.launch();
-const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-const page = await context.newPage();
+const browser = await launchVerifyBrowser("studio");
+const page = browser.pages()[0] ?? (await browser.newPage());
 
 page.on("pageerror", (err) => fail(`pageerror: ${err.message}`));
 

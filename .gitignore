@@ -5,3 +5,4 @@ pkg/
 *.wasm
 .vp/
 scripts/shots/
+scripts/.pw-profile-*/

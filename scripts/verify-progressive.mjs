@@ -1,7 +1,7 @@
 /* 渐进渲染探针：whisper 分窗推理期间，字幕应分批出现而非结束后一次性填充。 */
-import { chromium } from "playwright";
+import { launchVerifyBrowser } from "./verify-browser.mjs";
 
-const base = process.env.BASE_URL ?? "http://localhost:5175";
+const base = process.env.BASE_URL ?? "http://localhost:5180";
 const fail = (message) => {
   console.error(`FAIL: ${message}`);
   process.exitCode = 1;
@@ -41,8 +41,8 @@ function makeWav(seconds = 150, sampleRate = 16000) {
   return new Uint8Array([...new Uint8Array(header), ...new Uint8Array(pcm.buffer)]);
 }
 
-const browser = await chromium.launch();
-const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+const browser = await launchVerifyBrowser("media");
+const page = browser.pages()[0] ?? (await browser.newPage());
 page.on("pageerror", (err) => fail(`pageerror: ${err.message}`));
 page.on("console", (msg) => {
   if (msg.type() === "warning" || msg.type() === "error")
