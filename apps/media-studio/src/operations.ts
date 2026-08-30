@@ -1,4 +1,4 @@
-import type { Graph, OperationDef } from "@bcr/graph";
+import type { ConfigField, Graph, OperationDef } from "@bcr/graph";
 import { addEdge, addNode, emptyGraph, removeNode, updateNodeConfig } from "@bcr/graph";
 import type { StudioSettings } from "./store";
 
@@ -18,6 +18,19 @@ const MODEL_FIELD = {
   default: "Xenova/whisper-tiny",
 } as const;
 
+/** 节点级"跳过缓存"：长期强制重跑（依赖时间/随机数/外部状态的节点用）。 */
+const SKIP_CACHE_FIELD = {
+  key: "skipCache",
+  label: "跳过缓存（每次强制重跑）",
+  kind: "boolean",
+  default: false,
+} as const;
+
+const withSkipCache = (fields: ReadonlyArray<ConfigField>): ReadonlyArray<ConfigField> => [
+  ...fields,
+  SKIP_CACHE_FIELD,
+];
+
 export const OPERATIONS: ReadonlyArray<OperationDef> = [
   {
     operation: "media.decode-audio",
@@ -29,6 +42,7 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
       { type: "audio/pcm-f32", label: "PCM" },
       { type: "media/info", label: "媒体信息" },
     ],
+    config: withSkipCache([]),
   },
   {
     operation: "audio.waveform",
@@ -37,6 +51,7 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
     runtime: "wasm",
     inputs: [{ type: "audio/pcm-f32", label: "PCM" }],
     outputs: [{ type: "audio/waveform-peaks", label: "peaks" }],
+    config: withSkipCache([]),
   },
   {
     operation: "asr.transcribe",
@@ -92,6 +107,7 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
         ],
         default: "auto",
       },
+      ...withSkipCache([]),
     ],
   },
   {
@@ -101,10 +117,10 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
     runtime: "wasm",
     inputs: [{ type: "subtitle/asr-chunks", label: "chunks" }],
     outputs: [{ type: "subtitle/cues", label: "cues" }],
-    config: [
+    config: withSkipCache([
       { key: "maxDurationS", label: "单条最长（秒）", kind: "number", default: 5 },
       { key: "maxChars", label: "单条最多字符", kind: "number", default: 30 },
-    ],
+    ]),
   },
   {
     operation: "subtitle.translate",
@@ -113,7 +129,7 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
     runtime: "wasm",
     inputs: [{ type: "subtitle/cues", label: "cues" }],
     outputs: [{ type: "subtitle/cues", label: "双语 cues" }],
-    config: [
+    config: withSkipCache([
       {
         key: "direction",
         label: "翻译方向",
@@ -124,7 +140,7 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
         ],
         default: "en-zh",
       },
-    ],
+    ]),
   },
 ];
 

@@ -92,6 +92,29 @@ describe("autoWire", () => {
 });
 
 describe("compile", () => {
+  it("skipCache：全局选项或节点 config 均可跳过缓存（cache.enabled=false）", () => {
+    let g = chain();
+    g = addEdge(g, OPS, "decode", "asr") ?? g;
+    g = addEdge(g, OPS, "asr", "segment") ?? g;
+
+    // 全局：所有节点跳过
+    const all = compile(g, OPS, { sourceInputs: [SOURCE], skipCache: true });
+    for (const node of all) expect(node.cache).toEqual({ enabled: false });
+
+    // 节点级：只有勾选的节点跳过
+    let g2 = g;
+    g2 = {
+      ...g2,
+      nodes: g2.nodes.map((n) =>
+        n.operation === "asr.transcribe" ? { ...n, config: { ...n.config, skipCache: true } } : n,
+      ),
+    };
+    const mixed = compile(g2, OPS, { sourceInputs: [SOURCE] });
+    expect(mixed.find((n) => n.id === "decode")?.cache).toBeUndefined();
+    expect(mixed.find((n) => n.id === "asr")?.cache).toEqual({ enabled: false });
+    expect(mixed.find((n) => n.id === "segment")?.cache).toBeUndefined();
+  });
+
   it("config 注入目录默认值：旧图节点缺新字段时编译产物仍带默认（参与缓存键）", () => {
     let g = chain();
     g = addEdge(g, OPS, "decode", "asr") ?? g;

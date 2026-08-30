@@ -25,14 +25,20 @@ export async function cancelGeneration(): Promise<void> {
   studio.log("warn", "pipeline · cancel requested");
 }
 
-export async function generateSubtitles(services: RuntimeServices): Promise<void> {
+export async function generateSubtitles(
+  services: RuntimeServices,
+  options: { readonly skipCache?: boolean } = {},
+): Promise<void> {
   const { source, graph, running } = studio.getSnapshot();
   // 重入保护：运行中重复触发直接忽略（UI 虽禁用按钮，取消瞬间存在竞态）
   if (source === null || running) return;
 
   let nodes;
   try {
-    nodes = compile(graph, OPERATIONS, { sourceInputs: [source.ref] });
+    nodes = compile(graph, OPERATIONS, {
+      sourceInputs: [source.ref],
+      skipCache: options.skipCache === true,
+    });
   } catch (error) {
     studio.log(
       "error",

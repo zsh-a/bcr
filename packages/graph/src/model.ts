@@ -202,6 +202,8 @@ export function autoWire(
 export interface CompileOptions {
   /** 无入边的根节点消费的外部输入（如素材源文件）。 */
   readonly sourceInputs?: ReadonlyArray<ArtifactRef>;
+  /** 全局强制重跑：所有节点跳过缓存读写（§7 旁路；一次性动作，非配置）。 */
+  readonly skipCache?: boolean;
 }
 
 /** 端口类型匹配：支持 "file/*" 这类前缀通配（根节点消费任意 file/xx 源）。 */
@@ -277,6 +279,8 @@ export function compile(
     for (const field of op.config ?? []) configWithDefaults[field.key] = field.default;
     for (const [key, value] of Object.entries(node.config)) configWithDefaults[key] = value;
     const hasConfig = Object.keys(configWithDefaults).length > 0;
+    // 强制重跑：全局 skipCache（一次性）或节点 config.skipCache（长期）→ 跳过缓存读写
+    const skipCache = options.skipCache === true || configWithDefaults["skipCache"] === true;
     return {
       id: node.id,
       runtime: op.runtime,
@@ -287,6 +291,7 @@ export function compile(
         : {}),
       outputs: op.outputs.map((p) => ({ type: p.type })),
       ...(hasConfig ? { config: configWithDefaults } : {}),
+      ...(skipCache ? { cache: { enabled: false } } : {}),
     };
   });
 }
