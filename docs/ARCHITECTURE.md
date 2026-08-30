@@ -451,6 +451,7 @@ browser-compute/
 │
 ├── packages/                    # TypeScript
 │   ├── core/                    # task / scheduler / artifact / cache
+│   ├── graph/                   # Pipeline DAG 图模型 + 编译器 + 可视化编辑器（跨 app 复用）
 │   ├── runtime-wasm/
 │   ├── runtime-webgpu/
 │   ├── runtime-webcodecs/
@@ -467,8 +468,9 @@ browser-compute/
 │   └── quant-core/
 │
 ├── apps/
-│   ├── media-studio/
-│   └── quant-lab/
+│   ├── studio/                  # Shell 宿主：OS 式单页（/ 启动台 · /studio · /media，keep-alive 切换）
+│   ├── media-studio/            # 可挂载 App Module（@bcr/media-studio/app；standalone 入口保留）
+│   └── quant-lab/               # （Phase 2 规划）
 │
 ├── plugins/                     # ffmpeg-demux / resampler / subtitle / backtest / pdf / statistics / image
 │

@@ -1,25 +1,21 @@
 import type { ArtifactRef, PipelineHandle } from "@bcr/core";
+import { compile, decodeGraph, encodeGraph, type Graph } from "@bcr/graph";
 import type { RuntimeServices } from "@bcr/react";
 import { Effect, Stream } from "effect";
+import { OPERATIONS } from "./operations";
 import { metaDatabase } from "./runtime";
 import { studio, type EngineMode } from "./store";
 import type { MediaInfo, SubtitleCue } from "./subtitles";
 
 /**
- * 字幕生成流水线（§3 DAG 正向编排的第一次实战）：
+ * 字幕生成流水线（§3 DAG 正向编排）：
  *
- *   decode ─┬─ wave
- *           └─ asr ─ segment ─┬─ (translate)
+ *   图（用户在编辑器中编排 / 顶栏快捷改写）─ compile() → PipelineNode[]
+ *     → scheduler.submitPipeline() → 事件流投影回图上节点
  *
  * 每个节点都是一个 ComputeTask：输入/操作/模型版本共同决定缓存键（§7）——
  * 同一文件重跑、只改下游参数、模型换档，都只重算失效的子链。
  */
-
-export interface GenerateOptions {
-  readonly model: string;
-  readonly engine: EngineMode;
-  readonly translate: boolean;
-}
 
 let handle: PipelineHandle | null = null;
 
@@ -29,68 +25,31 @@ export async function cancelGeneration(): Promise<void> {
   studio.log("warn", "pipeline · cancel requested");
 }
 
-export async function generateSubtitles(
-  services: RuntimeServices,
-  options: GenerateOptions,
-): Promise<void> {
-  const source = studio.getSnapshot().source;
+export async function generateSubtitles(services: RuntimeServices): Promise<void> {
+  const { source, graph } = studio.getSnapshot();
   if (source === null) return;
 
-  const pipelineId = `sub-${Date.now()}`;
-  const nodes = [
-    {
-      id: "decode",
-      runtime: "js" as const,
-      operation: "media.decode-audio",
-      inputs: [source.ref],
-      outputs: [{ type: "audio/pcm-f32" }, { type: "media/info" }],
-    },
-    {
-      id: "wave",
-      runtime: "wasm" as const,
-      operation: "audio.waveform",
-      after: ["decode"],
-      outputs: [{ type: "audio/waveform-peaks" }],
-    },
-    {
-      id: "asr",
-      runtime: "wasm" as const,
-      operation: "asr.transcribe",
-      after: ["decode"],
-      outputs: [{ type: "subtitle/asr-chunks" }],
-      config: { model: options.model, engine: options.engine },
-    },
-    {
-      id: "segment",
-      runtime: "wasm" as const,
-      operation: "subtitle.segment",
-      after: ["asr"],
-      outputs: [{ type: "subtitle/cues" }],
-      config: { maxDurationS: 5, maxChars: 30 },
-    },
-    ...(options.translate
-      ? [
-          {
-            id: "translate",
-            runtime: "wasm" as const,
-            operation: "subtitle.translate",
-            after: ["decode", "segment"],
-            outputs: [{ type: "subtitle/cues" }],
-            config: { model: options.model },
-          },
-        ]
-      : []),
-  ];
+  let nodes;
+  try {
+    nodes = compile(graph, OPERATIONS, { sourceInputs: [source.ref] });
+  } catch (error) {
+    studio.log(
+      "error",
+      `pipeline · 图编译失败 · ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return;
+  }
+  if (nodes.length === 0) {
+    studio.log("warn", "pipeline · 图为空，未执行");
+    return;
+  }
 
-  studio.resetNodes();
-  studio.log(
-    "info",
-    `pipeline · ${pipelineId} · ${nodes.length} nodes · engine=${options.engine} · translate=${options.translate}`,
-  );
+  const pipelineId = `sub-${Date.now()}`;
+  studio.resetRun();
+  studio.log("info", `pipeline · ${pipelineId} · ${nodes.length} nodes (compiled from graph)`);
 
   const submitted = await Effect.runPromise(services.scheduler.submitPipeline(pipelineId, nodes));
   handle = submitted;
-  const sawProgress = new Set<string>();
 
   const projection = Stream.runForEach(submitted.events, (event) =>
     Effect.sync(() => {
@@ -98,18 +57,16 @@ export async function generateSubtitles(
       const nodeId = event.taskId.slice(pipelineId.length + 1);
       switch (event.type) {
         case "progress":
-          sawProgress.add(nodeId);
-          studio.patchNode(nodeId, { status: "running", progress: event.value });
+          studio.patchNodeStatus(nodeId, { status: "running", progress: event.value });
           break;
         case "completed":
-          sawProgress.add(nodeId);
-          void onNodeCompleted(services, nodeId, event.outputs);
+          // 浮空 promise 必须兜底：产物缺失（如陈旧缓存引用）降级为 warn，不抛 uncaught
+          void onNodeCompleted(services, graph, nodeId, event.outputs).catch((error: unknown) => {
+            studio.log("warn", `${nodeId} · output read failed · ${String(error)}`);
+          });
           break;
         case "failed":
-          studio.patchNode(nodeId, {
-            status: "failed",
-            error: event.error,
-          });
+          studio.patchNodeStatus(nodeId, { status: "failed", error: event.error });
           studio.log("error", `${nodeId} · ${event.error}`);
           break;
         case "chunk":
@@ -121,12 +78,17 @@ export async function generateSubtitles(
 
   try {
     const outputs = await Effect.runPromise(submitted.await);
-    const cuesRef = options.translate ? outputs.get("translate")?.[0] : outputs.get("segment")?.[0];
+    const cuesRef = findCuesRef(
+      nodes.map((n) => n.id),
+      outputs,
+    );
     if (cuesRef === undefined) {
       studio.log("error", "pipeline · completed without cues artifact");
+      studio.setRunning(false);
       return;
     }
-    const { cues, engine } = await loadCues(services, cuesRef, options);
+    const hasTranslate = graph.nodes.some((n) => n.operation === "subtitle.translate");
+    const { cues, engine } = await loadCues(services, cuesRef, hasTranslate);
     studio.setCues(cues, engine);
     studio.setRunning(false);
     studio.log("ok", `pipeline · done · ${cues.length} cues · engine=${engine}`);
@@ -139,22 +101,38 @@ export async function generateSubtitles(
   }
 }
 
+/** 终态字幕产物：拓扑序逆序找第一个产出 subtitle/cues 的节点。 */
+function findCuesRef(
+  topoOrder: ReadonlyArray<string>,
+  outputs: ReadonlyMap<string, ReadonlyArray<ArtifactRef>>,
+): ArtifactRef | undefined {
+  for (const id of [...topoOrder].reverse()) {
+    const refs = outputs.get(id);
+    const cues = refs?.find((ref) => ref.type === "subtitle/cues");
+    if (cues !== undefined) return cues;
+  }
+  return undefined;
+}
+
 async function onNodeCompleted(
   services: RuntimeServices,
+  graph: Graph,
   nodeId: string,
   outputs: ReadonlyArray<ArtifactRef>,
 ): Promise<void> {
-  studio.patchNode(nodeId, { status: "done", progress: 1 });
+  studio.patchNodeStatus(nodeId, { status: "done", progress: 1 });
 
-  if (nodeId === "decode") {
+  const operation = graph.nodes.find((n) => n.id === nodeId)?.operation;
+
+  if (operation === "media.decode-audio") {
     const infoRef = outputs.find((ref) => ref.type === "media/info");
     if (infoRef !== undefined) {
       const bytes = await Effect.runPromise(services.artifacts.get(infoRef));
       studio.setMediaInfo(JSON.parse(new TextDecoder().decode(bytes)) as MediaInfo);
     }
   }
-  if (nodeId === "wave") {
-    const peaksRef = outputs[0];
+  if (operation === "audio.waveform") {
+    const peaksRef = outputs.find((ref) => ref.type === "audio/waveform-peaks");
     if (peaksRef !== undefined) {
       const bytes = await Effect.runPromise(services.artifacts.get(peaksRef));
       studio.setPeaks(
@@ -167,7 +145,7 @@ async function onNodeCompleted(
 async function loadCues(
   services: RuntimeServices,
   ref: ArtifactRef,
-  options: GenerateOptions,
+  hasTranslate: boolean,
 ): Promise<{ cues: SubtitleCue[]; engine: string }> {
   const bytes = await Effect.runPromise(services.artifacts.get(ref));
   const parsed = JSON.parse(new TextDecoder().decode(bytes)) as {
@@ -176,7 +154,7 @@ async function loadCues(
   };
   return {
     cues: parsed.cues,
-    engine: parsed.engine ?? (options.translate ? "whisper+translate" : "whisper"),
+    engine: parsed.engine ?? (hasTranslate ? "whisper+translate" : "whisper"),
   };
 }
 
@@ -187,6 +165,8 @@ interface PersistedProject {
   readonly cues: ReadonlyArray<SubtitleCue>;
   readonly engineUsed: string | null;
   readonly settings: { model: string; engine: EngineMode; translate: boolean };
+  /** 自定义流水线（encodeGraph 序列化）；旧项目无此字段 → 用默认图。 */
+  readonly graph?: string;
 }
 
 export async function persistProject(_services: RuntimeServices): Promise<void> {
@@ -201,6 +181,7 @@ export async function persistProject(_services: RuntimeServices): Promise<void> 
     cues: state.cues,
     engineUsed: state.engineUsed,
     settings: state.settings,
+    graph: encodeGraph(state.graph),
   };
   try {
     await db.kvSet("project", JSON.stringify(project));
@@ -218,6 +199,10 @@ export async function restoreProject(services: RuntimeServices): Promise<void> {
     const project = JSON.parse(raw) as PersistedProject;
     if (project.settings !== undefined) {
       studio.setSettings(project.settings);
+    }
+    if (project.graph !== undefined) {
+      const graph = decodeGraph(project.graph);
+      if (graph !== null && graph.nodes.length > 0) studio.setGraph(graph);
     }
     if (project.source === null || project.source === undefined) return;
 

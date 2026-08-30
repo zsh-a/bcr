@@ -1,5 +1,6 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { AudioWaveform, Eraser, FilePlus2, Hash, LayoutGrid, Search } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { AudioWaveform, Eraser, FilePlus2, Hash, House, LayoutGrid, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { resetLayout } from "./Dock";
 import { importFile, runTask } from "../runtime";
@@ -19,12 +20,34 @@ interface Command {
 export function CommandPalette(props: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const services = useServices();
   const selection = useSelection();
+  const navigate = useNavigate();
   const currentFile = useStudio((s) => s.files.find((f) => f.ref.id === selection.file));
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
 
   const commands = useMemo<ReadonlyArray<Command>>(
     () => [
+      {
+        id: "go-home",
+        title: "返回主页",
+        hint: "Alt+0",
+        icon: <House className="size-3.5" />,
+        run: () => void navigate({ to: "/" }),
+      },
+      {
+        id: "go-studio",
+        title: "打开 Studio 工作台",
+        hint: "Alt+1",
+        icon: <LayoutGrid className="size-3.5" />,
+        run: () => void navigate({ to: "/studio" }),
+      },
+      {
+        id: "go-media",
+        title: "打开 Media Studio",
+        hint: "Alt+2",
+        icon: <AudioWaveform className="size-3.5" />,
+        run: () => void navigate({ to: "/media" }),
+      },
       {
         id: "import",
         title: "导入文件…",
@@ -80,7 +103,7 @@ export function CommandPalette(props: { open: boolean; onOpenChange: (open: bool
         run: resetLayout,
       },
     ],
-    [services, selection, currentFile],
+    [services, selection, currentFile, navigate],
   );
 
   const filtered = commands.filter((c) => c.title.toLowerCase().includes(query.toLowerCase()));

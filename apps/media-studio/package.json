@@ -3,8 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./app": "./src/App.tsx",
+    "./store": "./src/store.ts"
+  },
   "dependencies": {
     "@bcr/core": "workspace:*",
+    "@bcr/graph": "workspace:*",
     "@bcr/react": "workspace:*",
     "@bcr/runtime-worker": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",

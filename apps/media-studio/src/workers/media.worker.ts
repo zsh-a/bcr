@@ -111,10 +111,11 @@ async function audioWaveform(
   const out: ArtifactRef = {
     id: `waveform/${input.id}`,
     type: "audio/waveform-peaks",
-    storage: "memory",
+    // 与 decode 的 info 同理：缓存引用跨刷新存活，peaks 直写 OPFS（§4）
+    storage: "opfs",
     format: "f32le",
   };
-  ctx.emitChunk(out, new Uint8Array(peaks.buffer));
+  await opfs.put(artifactPath(out), new Uint8Array(peaks.buffer));
   ctx.progress(1);
   return [out];
 }

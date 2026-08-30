@@ -19,6 +19,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@bcr/core": "workspace:*",
+        "@bcr/graph": "workspace:*",
         "@bcr/react": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
@@ -44,6 +45,7 @@
       "dependencies": {
         "@base-ui/react": "^1.7.0",
         "@bcr/core": "workspace:*",
+        "@bcr/media-studio": "workspace:*",
         "@bcr/react": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
@@ -92,6 +94,18 @@
         "@bcr/storage-opfs": "workspace:*",
         "@noble/hashes": "^2.4.0",
         "effect": "^3.22.1",
+      },
+    },
+    "packages/graph": {
+      "name": "@bcr/graph",
+      "version": "0.1.0",
+      "dependencies": {
+        "@bcr/core": "workspace:*",
+        "effect": "^3.22.1",
+        "react": "^19.2.0",
+      },
+      "devDependencies": {
+        "@types/react": "^19.2.0",
       },
     },
     "packages/react": {
@@ -182,6 +196,8 @@
     "@bcr/core": ["@bcr/core@workspace:packages/core"],
 
     "@bcr/example-demo": ["@bcr/example-demo@workspace:examples/demo"],
+
+    "@bcr/graph": ["@bcr/graph@workspace:packages/graph"],
 
     "@bcr/media-studio": ["@bcr/media-studio@workspace:apps/media-studio"],
 

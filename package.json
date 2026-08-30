@@ -13,6 +13,7 @@
     "check": "vp check",
     "test": "vp test run",
     "demo": "cd examples/demo && vp dev",
+    "dev": "cd apps/studio && vp dev",
     "studio": "cd apps/studio && vp dev",
     "media": "cd apps/media-studio && vp dev"
   },

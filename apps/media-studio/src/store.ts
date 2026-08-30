@@ -1,21 +1,16 @@
 import { useSyncExternalStore } from "react";
 import type { ArtifactRef } from "@bcr/core";
+import type { Graph, NodeRunState } from "@bcr/graph";
+import { updateNodeConfig } from "@bcr/graph";
+import { defaultGraph, withoutTranslate, withTranslate } from "./operations";
 import type { MediaInfo, SubtitleCue } from "./subtitles";
 
 /**
  * Subtitle Studio 应用状态（§12 状态分层：Runtime 事件投影 + 编辑态；不建巨型 store）。
+ *
+ * Pipeline DAG 是单一事实源：顶栏的模型/引擎/翻译开关只是对 graph 的快捷改写，
+ * 自定义编排（Pipeline 编辑器）与一键生成都从同一份 graph 编译执行。
  */
-
-export type NodeStatus = "pending" | "running" | "done" | "failed" | "cached";
-
-export interface PipelineNodeState {
-  readonly id: string;
-  readonly label: string;
-  readonly detail: string;
-  status: NodeStatus;
-  progress: number;
-  error?: string | undefined;
-}
 
 export type EngineMode = "auto" | "whisper" | "demo";
 
@@ -33,11 +28,18 @@ export interface StudioSettings {
   readonly translate: boolean;
 }
 
+export type StudioView = "subtitles" | "pipeline";
+
 export interface AppState {
   readonly source: SourceState | null;
   readonly mediaInfo: MediaInfo | null;
   readonly peaks: Float32Array | null;
-  readonly nodes: ReadonlyArray<PipelineNodeState>;
+  /** Pipeline DAG：节点实例 + 边（跨素材保留，随项目持久化）。 */
+  readonly graph: Graph;
+  /** 任务事件流 → 图上节点的状态投影。 */
+  readonly nodeStatus: Readonly<Record<string, NodeRunState>>;
+  readonly view: StudioView;
+  readonly selectedNode: string | null;
   readonly cues: ReadonlyArray<SubtitleCue>;
   /** 当前 cues 使用的识别引擎（whisper / demo）。 */
   readonly engineUsed: string | null;
@@ -51,25 +53,32 @@ export interface AppState {
   }>;
 }
 
-const NODE_DEFS: ReadonlyArray<{ id: string; label: string; detail: string }> = [
-  { id: "decode", label: "Decode", detail: "解码 → 16kHz 单声道 PCM" },
-  { id: "wave", label: "Waveform", detail: "RMS/峰值包络（WASM）" },
-  { id: "asr", label: "ASR", detail: "Whisper 语音识别" },
-  { id: "segment", label: "Segment", detail: "字幕分段规范化" },
-  { id: "translate", label: "Translate", detail: "Whisper translate → 双语" },
-];
+const INITIAL_SETTINGS: StudioSettings = {
+  model: "Xenova/whisper-tiny",
+  engine: "auto",
+  translate: false,
+};
 
 const MAX_LOGS = 500;
+
+function allPending(graph: Graph): Record<string, NodeRunState> {
+  const status: Record<string, NodeRunState> = {};
+  for (const node of graph.nodes) status[node.id] = { status: "pending", progress: 0 };
+  return status;
+}
 
 class StudioStore {
   private state: AppState = {
     source: null,
     mediaInfo: null,
     peaks: null,
-    nodes: NODE_DEFS.map((def) => ({ ...def, status: "pending", progress: 0 })),
+    graph: defaultGraph(INITIAL_SETTINGS),
+    nodeStatus: {},
+    view: "subtitles",
+    selectedNode: null,
     cues: [],
     engineUsed: null,
-    settings: { model: "Xenova/whisper-tiny", engine: "auto", translate: false },
+    settings: INITIAL_SETTINGS,
     running: false,
     dirty: false,
     logs: [],
@@ -101,12 +110,45 @@ class StudioStore {
       cues: [],
       engineUsed: null,
       dirty: false,
-      nodes: NODE_DEFS.map((def) => ({ ...def, status: "pending", progress: 0 })),
+      nodeStatus: {},
+      // 图是用户资产，换素材不重置
+      graph:
+        this.state.graph.nodes.length > 0 ? this.state.graph : defaultGraph(this.state.settings),
     });
   }
 
+  /** 顶栏快捷设置 → 同步改写 graph（模型/引擎落到节点 config，翻译开关增删节点）。 */
   setSettings(partial: Partial<StudioSettings>): void {
-    this.set({ settings: { ...this.state.settings, ...partial } });
+    const settings = { ...this.state.settings, ...partial };
+    let graph = this.state.graph;
+    if (partial.model !== undefined) {
+      for (const node of graph.nodes) {
+        if ("model" in node.config)
+          graph = updateNodeConfig(graph, node.id, { model: settings.model });
+      }
+    }
+    if (partial.engine !== undefined) {
+      for (const node of graph.nodes) {
+        if ("engine" in node.config)
+          graph = updateNodeConfig(graph, node.id, { engine: settings.engine });
+      }
+    }
+    if (partial.translate !== undefined) {
+      graph = settings.translate ? withTranslate(graph, settings) : withoutTranslate(graph);
+    }
+    this.set({ settings, graph });
+  }
+
+  setGraph(graph: Graph): void {
+    this.set({ graph });
+  }
+
+  setView(view: StudioView): void {
+    this.set({ view });
+  }
+
+  setSelectedNode(selectedNode: string | null): void {
+    this.set({ selectedNode });
   }
 
   setMediaInfo(mediaInfo: MediaInfo | null): void {
@@ -117,21 +159,13 @@ class StudioStore {
     this.set({ peaks });
   }
 
-  resetNodes(): void {
-    this.set({
-      nodes: NODE_DEFS.map((def) =>
-        def.id === "translate" && !this.state.settings.translate
-          ? { ...def, status: "pending" as const, progress: 0, detail: "未启用" }
-          : { ...def, status: "pending" as const, progress: 0 },
-      ),
-      running: true,
-    });
+  resetRun(): void {
+    this.set({ nodeStatus: allPending(this.state.graph), running: true });
   }
 
-  patchNode(id: string, patch: Partial<PipelineNodeState>): void {
-    this.set({
-      nodes: this.state.nodes.map((node) => (node.id === id ? { ...node, ...patch } : node)),
-    });
+  patchNodeStatus(id: string, patch: Partial<NodeRunState>): void {
+    const current = this.state.nodeStatus[id] ?? { status: "pending" as const, progress: 0 };
+    this.set({ nodeStatus: { ...this.state.nodeStatus, [id]: { ...current, ...patch } } });
   }
 
   setRunning(running: boolean): void {

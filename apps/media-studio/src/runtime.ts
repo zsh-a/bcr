@@ -87,7 +87,9 @@ function decodeExecutor(artifacts: RuntimeServices["artifacts"]): RuntimeExecuto
     const infoRef: ArtifactRef = {
       id: `info/${input.id}`,
       type: "media/info",
-      storage: "memory",
+      // 缓存元数据（SQLite/OPFS）跨刷新存活，产物引用必须指向持久存储，
+      // 否则刷新后 cache hit 时 memory 产物已蒸发 → ArtifactNotFound
+      storage: "opfs",
       format: "json",
     };
     await Effect.runPromise(artifacts.put(infoRef, new TextEncoder().encode(JSON.stringify(info))));
@@ -97,7 +99,7 @@ function decodeExecutor(artifacts: RuntimeServices["artifacts"]): RuntimeExecuto
 
   return {
     runtime: "js",
-    version: "media-decode-0.1.0",
+    version: "media-decode-0.1.1",
     run: (task) =>
       Stream.async<TaskEventLike, TaskFailed>((emit) => {
         void (async () => {
@@ -168,7 +170,7 @@ export async function createRuntimeServices(): Promise<RuntimeServices> {
         type: "module",
       }),
   );
-  const wasmExecutor = workerExecutor(pool, "wasm", "media-worker-0.1.0", artifacts);
+  const wasmExecutor = workerExecutor(pool, "wasm", "media-worker-0.1.1", artifacts);
   const jsExecutor = decodeExecutor(artifacts);
 
   const deps = Layer.mergeAll(

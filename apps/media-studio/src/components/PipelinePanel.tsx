@@ -1,9 +1,8 @@
-import { useStudio, type PipelineNodeState } from "../store";
+import { findOperation, type NodeRunState } from "@bcr/graph";
+import { OPERATIONS } from "../operations";
+import { useStudio } from "../store";
 
-const STATUS_STYLE: Record<
-  PipelineNodeState["status"],
-  { dot: string; text: string; label: string }
-> = {
+const STATUS_STYLE: Record<NodeRunState["status"], { dot: string; text: string; label: string }> = {
   pending: { dot: "bg-[var(--color-faint)]", text: "text-[var(--color-faint)]", label: "待执行" },
   running: {
     dot: "bg-[var(--color-info)] animate-pulse",
@@ -15,14 +14,17 @@ const STATUS_STYLE: Record<
   failed: { dot: "bg-[var(--color-danger)]", text: "text-[var(--color-danger)]", label: "失败" },
 };
 
-/** DAG 节点状态面板：任务进度 / 缓存命中 / 失败直接投影。 */
+/** DAG 节点状态紧凑面板：图 → 运行状态投影（完整编排见"流水线"页签）。 */
 export function PipelinePanel() {
-  const nodes = useStudio((state) => state.nodes);
+  const graph = useStudio((state) => state.graph);
+  const nodeStatus = useStudio((state) => state.nodeStatus);
 
   return (
     <div className="flex flex-col gap-1" data-testid="pipeline-panel">
-      {nodes.map((node, index) => {
-        const style = STATUS_STYLE[node.status];
+      {graph.nodes.map((node) => {
+        const op = findOperation(OPERATIONS, node.operation);
+        const status = nodeStatus[node.id] ?? { status: "pending" as const, progress: 0 };
+        const style = STATUS_STYLE[status.status];
         return (
           <div
             key={node.id}
@@ -30,25 +32,26 @@ export function PipelinePanel() {
           >
             <div className="flex items-center gap-2">
               <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-              <span className="font-mono text-[11px] font-medium">{node.label}</span>
+              <span className="font-mono text-[11px] font-medium">
+                {op?.label ?? node.operation}
+              </span>
               <span className={`ml-auto text-[10px] ${style.text}`}>
-                {node.status === "running"
-                  ? `${Math.round(node.progress * 100)}%`
-                  : node.status === "failed"
-                    ? (node.error ?? style.label)
+                {status.status === "running"
+                  ? `${Math.round(status.progress * 100)}%`
+                  : status.status === "failed"
+                    ? (status.error ?? style.label)
                     : style.label}
               </span>
             </div>
-            <div className="text-[10px] text-[var(--color-faint)]">{node.detail}</div>
-            {node.status === "running" && (
+            <div className="text-[10px] text-[var(--color-faint)]">{op?.detail ?? ""}</div>
+            {status.status === "running" && (
               <div className="absolute inset-x-0 bottom-0 h-0.5 bg-[var(--color-border)]">
                 <div
                   className="h-full bg-[var(--color-info)] transition-[width] duration-200"
-                  style={{ width: `${node.progress * 100}%` }}
+                  style={{ width: `${status.progress * 100}%` }}
                 />
               </div>
             )}
-            {index < nodes.length - 1 && <div />}
           </div>
         );
       })}

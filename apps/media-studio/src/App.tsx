@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { RuntimeProvider, useRuntime, type RuntimeServices } from "@bcr/react";
+// 样式随模块加载：Shell 懒加载本组件时 CSS 一并注入（standalone main.tsx 的重复 import 幂等）。
+import "./styles.css";
 import { createRuntimeServices } from "./runtime";
 import { cancelGeneration, generateSubtitles, persistProject, restoreProject } from "./pipeline";
 import { clearProject, importSource } from "./source";
 import { studio, useStudio } from "./store";
 import { CueEditor } from "./components/CueEditor";
+import { PipelineEditor } from "./components/PipelineEditor";
 import { PipelinePanel } from "./components/PipelinePanel";
 import { Waveform } from "./components/Waveform";
 import { exportSubtitles, FORMAT_MIME, type SubtitleFormat } from "./exporters";
@@ -46,6 +49,8 @@ function Studio() {
   const cues = useStudio((state) => state.cues);
   const engineUsed = useStudio((state) => state.engineUsed);
   const logs = useStudio((state) => state.logs);
+  const view = useStudio((state) => state.view);
+  const graph = useStudio((state) => state.graph);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -58,12 +63,14 @@ function Studio() {
     return () => window.clearTimeout(timer);
   }, [cues, services]);
 
+  // 流水线图改动自动持久化（800ms 防抖，拖动节点时合并写入）
+  useEffect(() => {
+    const timer = window.setTimeout(() => void persistProject(services), 800);
+    return () => window.clearTimeout(timer);
+  }, [graph, services]);
+
   const generate = () => {
-    void generateSubtitles(services, {
-      model: settings.model,
-      engine: settings.engine,
-      translate: settings.translate,
-    });
+    void generateSubtitles(services);
   };
 
   const seek = (seconds: number) => {
@@ -207,8 +214,15 @@ function Studio() {
           </section>
 
           <section>
-            <div className="mb-1.5 text-[10px] tracking-wider text-[var(--color-faint)]">
+            <div className="mb-1.5 flex items-center text-[10px] tracking-wider text-[var(--color-faint)]">
               PIPELINE · DAG
+              <button
+                type="button"
+                className="ml-auto normal-case tracking-normal hover:text-[var(--color-accent)]"
+                onClick={() => studio.setView("pipeline")}
+              >
+                自定义编排 →
+              </button>
             </div>
             <PipelinePanel />
           </section>
@@ -238,18 +252,47 @@ function Studio() {
           </section>
         </aside>
 
-        {/* 右侧 */}
-        <main className="flex min-w-0 flex-1 flex-col gap-3 p-3">
-          {source?.objectUrl != null && (
-            <video
-              ref={videoRef}
-              src={source.objectUrl}
-              controls
-              className="max-h-48 self-start rounded border border-[var(--color-border)] bg-black"
-            />
+        {/* 右侧：字幕 / 流水线 DAG 页签 */}
+        <main className="flex min-w-0 flex-1 flex-col">
+          <div className="flex items-center gap-1 border-b border-[var(--color-border)] px-3 pt-2">
+            {(
+              [
+                ["subtitles", "字幕"],
+                ["pipeline", "流水线 DAG"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                data-testid={`tab-${id}`}
+                onClick={() => studio.setView(id)}
+                className={`-mb-px border-b px-2.5 pb-1.5 text-[11px] transition-colors ${
+                  view === id
+                    ? "border-[var(--color-accent)] text-[var(--color-text)]"
+                    : "border-transparent text-[var(--color-faint)] hover:text-[var(--color-muted)]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {view === "pipeline" ? (
+            <PipelineEditor />
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+              {source?.objectUrl != null && (
+                <video
+                  ref={videoRef}
+                  src={source.objectUrl}
+                  controls
+                  className="max-h-48 self-start rounded border border-[var(--color-border)] bg-black"
+                />
+              )}
+              <Waveform videoRef={videoRef} onSeek={seek} />
+              <CueEditor onSeek={seek} />
+            </div>
           )}
-          <Waveform videoRef={videoRef} onSeek={seek} />
-          <CueEditor onSeek={seek} />
         </main>
       </div>
     </div>
