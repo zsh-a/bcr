@@ -271,7 +271,12 @@ export function compile(
       }
     }
 
-    const hasConfig = Object.keys(node.config).length > 0;
+    // config 补全目录默认值：旧持久化图缺新字段（如 language）时，
+    // 编译产物仍带语义正确的默认，且参与缓存键
+    const configWithDefaults: Record<string, unknown> = {};
+    for (const field of op.config ?? []) configWithDefaults[field.key] = field.default;
+    for (const [key, value] of Object.entries(node.config)) configWithDefaults[key] = value;
+    const hasConfig = Object.keys(configWithDefaults).length > 0;
     return {
       id: node.id,
       runtime: op.runtime,
@@ -281,7 +286,7 @@ export function compile(
         ? { inputs: [...options.sourceInputs] }
         : {}),
       outputs: op.outputs.map((p) => ({ type: p.type })),
-      ...(hasConfig ? { config: { ...node.config } } : {}),
+      ...(hasConfig ? { config: configWithDefaults } : {}),
     };
   });
 }

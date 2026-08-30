@@ -57,6 +57,28 @@ describe("store undo/redo（编辑历史）", () => {
   });
 });
 
+describe("settings → 旧图节点 config 传播（缓存失效关键路径）", () => {
+  it("节点 config 缺 language 键（旧持久化图）时切换语言仍写入", () => {
+    studio.setSource(null);
+    // 构造 stale 图：直接 setGraph,asr 节点 config 不含 language/device
+    const graph = studio.getSnapshot().graph;
+    const stale = {
+      ...graph,
+      nodes: graph.nodes.map((node) =>
+        node.operation === "asr.transcribe"
+          ? { ...node, config: { model: "Xenova/whisper-tiny", engine: "auto" } }
+          : node,
+      ),
+    };
+    studio.setGraph(stale);
+    studio.setSettings({ language: "zh" });
+
+    const asr = studio.getSnapshot().graph.nodes.find((n) => n.operation === "asr.transcribe");
+    expect(asr?.config?.["language"]).toBe("zh");
+    studio.setSource(null);
+  });
+});
+
 describe("CPS 超速检查", () => {
   it("含译文的显示速度", () => {
     expect(cueCps({ start: 0, end: 1, text: "hello world" })).toBeCloseTo(3, 5);

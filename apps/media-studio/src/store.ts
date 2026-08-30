@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import type { ArtifactRef } from "@bcr/core";
 import type { Graph, NodeRunState } from "@bcr/graph";
 import { updateNodeConfig } from "@bcr/graph";
-import { defaultGraph, withoutTranslate, withTranslate } from "./operations";
+import { defaultGraph, OPERATIONS, withoutTranslate, withTranslate } from "./operations";
 import type { MediaInfo, SubtitleCue } from "./subtitles";
 
 /**
@@ -135,32 +135,39 @@ class StudioStore {
     });
   }
 
-  /** 顶栏快捷设置 → 同步改写 graph（模型/引擎落到节点 config，翻译开关增删节点）。 */
+  /** 顶栏快捷设置 → 同步改写 graph（模型/引擎/语言落到节点 config，翻译开关增删节点）。
+   *  按 operation 目录声明的字段传播，而非节点现有键——旧持久化图的节点 config
+   *  可能缺新字段（如 language），按 `"key" in config` 判断会漏改导致缓存不失效。 */
   setSettings(partial: Partial<StudioSettings>): void {
     const settings = { ...this.state.settings, ...partial };
     let graph = this.state.graph;
+    const idsForField = (key: string): string[] =>
+      graph.nodes
+        .filter((node) =>
+          (OPERATIONS.find((op) => op.operation === node.operation)?.config ?? []).some(
+            (field) => field.key === key,
+          ),
+        )
+        .map((node) => node.id);
+
     if (partial.model !== undefined) {
-      for (const node of graph.nodes) {
-        if ("model" in node.config)
-          graph = updateNodeConfig(graph, node.id, { model: settings.model });
+      for (const id of idsForField("model")) {
+        graph = updateNodeConfig(graph, id, { model: settings.model });
       }
     }
     if (partial.engine !== undefined) {
-      for (const node of graph.nodes) {
-        if ("engine" in node.config)
-          graph = updateNodeConfig(graph, node.id, { engine: settings.engine });
+      for (const id of idsForField("engine")) {
+        graph = updateNodeConfig(graph, id, { engine: settings.engine });
       }
     }
     if (partial.language !== undefined) {
-      for (const node of graph.nodes) {
-        if ("language" in node.config)
-          graph = updateNodeConfig(graph, node.id, { language: settings.language });
+      for (const id of idsForField("language")) {
+        graph = updateNodeConfig(graph, id, { language: settings.language });
       }
     }
     if (partial.direction !== undefined) {
-      for (const node of graph.nodes) {
-        if ("direction" in node.config)
-          graph = updateNodeConfig(graph, node.id, { direction: settings.direction });
+      for (const id of idsForField("direction")) {
+        graph = updateNodeConfig(graph, id, { direction: settings.direction });
       }
     }
     if (partial.translate !== undefined) {

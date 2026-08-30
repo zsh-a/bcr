@@ -29,7 +29,11 @@ const OPS: ReadonlyArray<OperationDef> = [
     runtime: "wasm",
     inputs: [{ type: "audio/pcm-f32" }],
     outputs: [{ type: "subtitle/asr-chunks" }],
-    config: [{ key: "model", label: "模型", kind: "string", default: "whisper-tiny" }],
+    config: [
+      { key: "model", label: "模型", kind: "string", default: "whisper-tiny" },
+      // 后期新增的字段：旧持久化图的节点 config 里不会有它
+      { key: "device", label: "设备", kind: "string", default: "auto" },
+    ],
   },
   {
     operation: "subtitle.segment",
@@ -88,6 +92,27 @@ describe("autoWire", () => {
 });
 
 describe("compile", () => {
+  it("config 注入目录默认值：旧图节点缺新字段时编译产物仍带默认（参与缓存键）", () => {
+    let g = chain();
+    g = addEdge(g, OPS, "decode", "asr") ?? g;
+    g = addEdge(g, OPS, "asr", "segment") ?? g;
+    // 模拟旧持久化图：节点 config 只有旧字段 model，缺后来新增的 device 等
+    g = {
+      ...g,
+      nodes: g.nodes.map((n) =>
+        n.operation === "asr.transcribe" ? { ...n, config: { model: "whisper-tiny" } } : n,
+      ),
+    };
+
+    const nodes = compile(g, OPS, { sourceInputs: [SOURCE] });
+    const asr = nodes.find((n) => n.id === "asr");
+    // 目录里声明的字段全部补上默认，节点显式值优先
+    expect(asr?.config?.["model"]).toBe("whisper-tiny");
+    for (const field of OPS.find((op) => op.operation === "asr.transcribe")?.config ?? []) {
+      expect(asr?.config).toHaveProperty(field.key);
+    }
+  });
+
   it("拓扑排序 + after 推导 + 根节点注入 sourceInputs + config 透传", () => {
     let g = chain();
     g = addEdge(g, OPS, "decode", "asr") ?? g;
@@ -104,7 +129,7 @@ describe("compile", () => {
     const asr = nodes[1]!;
     expect(asr.after).toEqual(["decode"]);
     expect(asr.inputs).toBeUndefined();
-    expect(asr.config).toEqual({ model: "whisper-tiny" });
+    expect(asr.config).toEqual({ model: "whisper-tiny", device: "auto" });
 
     expect(nodes[2]!.after).toEqual(["asr"]);
   });
@@ -128,7 +153,7 @@ describe("compile", () => {
         operation: "asr.transcribe",
         after: ["decode"],
         outputs: [{ type: "subtitle/asr-chunks" }],
-        config: { model: "whisper-tiny" },
+        config: { model: "whisper-tiny", device: "auto" },
       },
       {
         id: "segment",
