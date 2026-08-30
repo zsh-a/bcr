@@ -13,7 +13,8 @@
     "check": "vp check",
     "test": "vp test run",
     "demo": "cd examples/demo && vp dev",
-    "studio": "cd apps/studio && vp dev"
+    "studio": "cd apps/studio && vp dev",
+    "media": "cd apps/media-studio && vp dev"
   },
   "dependencies": {
     "@sqlite.org/sqlite-wasm": "3.53.0-build1"

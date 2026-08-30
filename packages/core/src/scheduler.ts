@@ -357,7 +357,7 @@ export const schedulerLive: Layer.Layer<
               id: `${pipelineId}/${node.id}`,
               runtime: node.runtime,
               operation: node.operation,
-              inputs: depOutputs.flat(),
+              inputs: [...(node.inputs ?? []), ...depOutputs.flat()],
               outputs: [...node.outputs],
               ...(node.resources !== undefined ? { resources: node.resources } : {}),
               ...(node.cache !== undefined ? { cache: node.cache } : {}),

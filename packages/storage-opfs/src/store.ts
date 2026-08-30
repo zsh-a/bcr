@@ -25,4 +25,7 @@ export interface BinaryStore {
 
   /** 按路径前缀列举（前缀按路径段语义，如 "artifacts/"）。 */
   list(prefix?: string): Promise<string[]>;
+
+  /** 对象字节长度；不存在时返回 undefined。 */
+  size(path: string): Promise<number | undefined>;
 }

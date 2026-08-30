@@ -67,6 +67,11 @@ export const PipelineNode = Schema.Struct({
   operation: Schema.String,
   /** 依赖的节点 id；全部完成后其输出按依赖声明顺序拼接为 inputs。 */
   after: Schema.optional(Schema.Array(Schema.String)),
+  /**
+   * 外部输入 artifact（根节点消费已有数据用，如源文件）；
+   * 实例化时置于依赖输出之前。下游节点按 type 选取所需输入。
+   */
+  inputs: Schema.optional(Schema.Array(ArtifactRef)),
   outputs: Schema.Array(ArtifactSpec),
   resources: Schema.optional(ResourceRequirements),
   cache: Schema.optional(CachePolicy),

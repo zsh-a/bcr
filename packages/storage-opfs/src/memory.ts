@@ -57,6 +57,11 @@ export class MemoryStore implements BinaryStore {
     const normalized = normalize(prefix);
     return [...this.files.keys()].filter((key) => key.startsWith(normalized));
   }
+
+  async size(path: string): Promise<number | undefined> {
+    const data = this.files.get(normalize(path));
+    return data?.byteLength;
+  }
 }
 
 function normalize(path: string): string {

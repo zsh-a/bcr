@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+/* BCR Media Studio · Subtitle —— 与 Studio 同源的 Rhea 暗色 token（精简版） */
+@theme {
+  --color-bg: #0b0d10;
+  --color-surface: #10131a;
+  --color-raised: #171b24;
+  --color-border: #222836;
+  --color-border-strong: #2e3648;
+  --color-text: #e6e9f0;
+  --color-muted: #8a93a6;
+  --color-faint: #5a6376;
+  --color-accent: #3fe0a5;
+  --color-accent-dim: #1a3f33;
+  --color-amber: #f0b357;
+  --color-danger: #f26d6d;
+  --color-info: #6ea8fe;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+input,
+select,
+button,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+input,
+select {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: none;
+}
+input:focus,
+select:focus {
+  border-color: var(--color-accent);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-raised);
+  border-radius: 5px;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #06251a;
+  font-weight: 600;
+}
+.btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 85%, white);
+}

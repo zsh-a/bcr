@@ -215,6 +215,37 @@ describe("Scheduler.submitPipeline (架构 §3 DAG 正向编排)", () => {
     expect(runs().length).toBe(2);
   });
 
+  it("外部输入：根节点可消费已有 artifact，置于依赖输出之前", async () => {
+    const { executor, inputsOf } = makeExecutor();
+    const { withScheduler } = makeRuntime(executor);
+
+    await withScheduler((s) =>
+      Effect.gen(function* () {
+        const handle = yield* s.submitPipeline("pl", [
+          {
+            id: "a",
+            runtime: "js",
+            operation: "test.op",
+            inputs: [{ id: "source/file", type: "file/raw", storage: "memory" }],
+            outputs: [{ type: "x" }],
+          },
+          {
+            id: "b",
+            runtime: "js",
+            operation: "test.op",
+            after: ["a"],
+            inputs: [{ id: "extra", type: "file/extra", storage: "memory" }],
+            outputs: [{ type: "x" }],
+          },
+        ]);
+        return yield* handle.await;
+      }),
+    );
+
+    expect(inputsOf.get("pl/a")?.map((r) => r.id)).toEqual(["source/file"]);
+    expect(inputsOf.get("pl/b")?.map((r) => r.id)).toEqual(["extra", "out-pl/a"]);
+  });
+
   it("图校验：重复 id / 未知依赖 / 环 → InvalidPipeline", async () => {
     const { executor } = makeExecutor();
     const { withScheduler } = makeRuntime(executor);

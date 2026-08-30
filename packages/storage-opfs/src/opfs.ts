@@ -92,6 +92,12 @@ export class OpfsStore implements BinaryStore {
     return (await this.resolveFile(path, false)) !== undefined;
   }
 
+  async size(path: string): Promise<number | undefined> {
+    const file = await this.resolveFile(path, false);
+    if (file === undefined) return undefined;
+    return (await file.getFile()).size;
+  }
+
   async list(prefix = ""): Promise<string[]> {
     const root = await this.root();
     const base = await this.resolveDir(split(prefix), false);
