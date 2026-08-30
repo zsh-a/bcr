@@ -12,18 +12,53 @@ import {
 import type { RuntimeServices } from "@bcr/react";
 import { workerExecutor, WorkerPool } from "@bcr/runtime-worker";
 import { isOpfsSupported, MemoryStore, OpfsStore } from "@bcr/storage-opfs";
+import {
+  openSqliteDb,
+  sqliteCacheStore,
+  sqliteLineageStore,
+  type SqliteDb,
+} from "@bcr/storage-sqlite";
+import initSqlite from "@sqlite.org/sqlite-wasm";
+import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import { Context, Effect, Layer, Stream } from "effect";
-import { studio, type TaskRecord } from "./store";
+import { studio, type FileRecord, type TaskRecord } from "./store";
 
 let taskSeq = 0;
+
+/** 元数据库（§8）：SQLite WASM，字节落 OPFS；加载失败降级为纯内存。 */
+let metaDb: SqliteDb | undefined;
+
+/** initSqlite 的官方类型未暴露 emscripten locateFile，这里按实际行为约束。 */
+type SqliteInit = (options?: {
+  locateFile?: (file: string) => string;
+}) => Promise<Parameters<typeof openSqliteDb>[0]["sqlite3"]>;
+
+async function openMetaDb(store: OpfsStore | MemoryStore): Promise<SqliteDb> {
+  const init = initSqlite as unknown as SqliteInit;
+  const sqlite3 = await init({ locateFile: () => wasmUrl });
+  return openSqliteDb({ store, path: "project/meta.db", sqlite3 });
+}
 
 /** 组装 Compute Runtime 并接入 Studio 状态投影。 */
 export async function createRuntimeServices(): Promise<RuntimeServices> {
   const opfs = isOpfsSupported() ? new OpfsStore("studio") : new MemoryStore();
   const memory = new MemoryStore();
 
+  try {
+    metaDb = await openMetaDb(opfs);
+    studio.log("ok", "sqlite · metadata persistence on · project/meta.db");
+  } catch (error) {
+    metaDb = undefined;
+    studio.log(
+      "warn",
+      `sqlite unavailable · falling back to in-memory metadata · ${String(error)}`,
+    );
+  }
+
   const artifactsCtx = await Effect.runPromise(
-    Effect.scoped(Layer.build(artifactStore({ memory, opfs }))),
+    Effect.scoped(
+      Layer.build(artifactStore({ memory, opfs }, metaDb && sqliteLineageStore(metaDb))),
+    ),
   );
   const artifacts = Context.get(artifactsCtx, ArtifactStoreTag);
 
@@ -38,13 +73,29 @@ export async function createRuntimeServices(): Promise<RuntimeServices> {
 
   const deps = Layer.mergeAll(
     Layer.succeed(ArtifactStoreTag, artifacts),
-    memoryCacheStore(),
+    metaDb !== undefined ? sqliteCacheStore(metaDb) : memoryCacheStore(),
     Layer.succeed(Executors, executorRegistry([wasmExecutor])),
   );
   const live = Layer.provideMerge(schedulerLive, deps);
   const ctx = await Effect.runPromise(Effect.scoped(Layer.build(live)));
 
+  await restoreFiles();
   return { scheduler: Context.get(ctx, SchedulerTag), artifacts };
+}
+
+/** 刷新恢复：文件列表从元数据库回放（artifact 数据本体一直在 OPFS）。 */
+async function restoreFiles(): Promise<void> {
+  if (metaDb === undefined) return;
+  try {
+    const raw = await metaDb.kvGet("files");
+    if (raw === undefined) return;
+    for (const file of JSON.parse(raw) as FileRecord[]) {
+      studio.addFile(file);
+    }
+    studio.log("info", `restore · ${JSON.parse(raw).length} file(s) from metadata`);
+  } catch (error) {
+    studio.log("warn", `restore files failed · ${String(error)}`);
+  }
 }
 
 /** 提交任务并把事件流投影到 Studio store。 */
@@ -141,7 +192,16 @@ export async function importFile(services: RuntimeServices, file: File): Promise
     size: file.size,
     addedAt: Date.now(),
   });
+  persistFiles();
   studio.log("info", `import · ${file.name} · ${file.size} bytes → opfs`);
+}
+
+function persistFiles(): void {
+  if (metaDb === undefined) return;
+  const files = studio.getSnapshot().files;
+  void metaDb.kvSet("files", JSON.stringify(files)).catch((error) => {
+    studio.log("warn", `persist files failed · ${String(error)}`);
+  });
 }
 
 export async function cancelTask(services: RuntimeServices, taskId: string): Promise<void> {

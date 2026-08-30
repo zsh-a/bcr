@@ -15,6 +15,9 @@
     "demo": "cd examples/demo && vp dev",
     "studio": "cd apps/studio && vp dev"
   },
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "3.53.0-build1"
+  },
   "devDependencies": {
     "playwright": "1.61.0",
     "typescript": "^5.9.0",

@@ -1,6 +1,7 @@
 import type { BinaryStore } from "@bcr/storage-opfs";
 import { Context, Effect, Layer } from "effect";
 import { ArtifactNotFound } from "./errors";
+import { noopLineageStore, type LineageSnapshot, type LineageStore } from "./lineage";
 import type { ArtifactRef, ComputeTask } from "./schema";
 
 /**
@@ -48,70 +49,87 @@ export function artifactPath(ref: Pick<ArtifactRef, "id">): string {
 /**
  * @param stores 按 storage 类型分派的 BinaryStore（memory/opfs/...）。
  * 未配置的 storage 类型落到第一个 store（降级）。
+ * @param lineage 血缘持久化（§8）；缺省为 no-op（纯内存，刷新即失）。
  */
 export function artifactStore(
   stores: Readonly<Record<string, BinaryStore>>,
+  lineage: LineageStore = noopLineageStore(),
 ): Layer.Layer<ArtifactStoreTag> {
-  return Layer.sync(ArtifactStoreTag, () => {
-    const producedBy = new Map<string, string>();
-    const consumes = new Map<string, Set<string>>();
-    const outputs = new Map<string, string[]>();
+  return Layer.effect(
+    ArtifactStoreTag,
+    Effect.gen(function* () {
+      const snapshot: LineageSnapshot = yield* lineage.load;
+      const producedBy = new Map<string, string>();
+      const consumes = new Map<string, Set<string>>();
+      const outputs = new Map<string, string[]>();
 
-    const backend = (ref: ArtifactRef): BinaryStore => {
-      const store = stores[ref.storage] ?? Object.values(stores)[0];
-      if (store === undefined) {
-        throw new Error(`no BinaryStore configured for storage "${ref.storage}"`);
-      }
-      return store;
-    };
+      for (const [taskId, outs] of snapshot.outputs) outputs.set(taskId, [...outs]);
+      for (const [artifactId, taskIds] of snapshot.consumers)
+        consumes.set(artifactId, new Set(taskIds));
 
-    const pathOf = (ref: ArtifactRef): string => artifactPath(ref);
+      const backend = (ref: ArtifactRef): BinaryStore => {
+        const store = stores[ref.storage] ?? Object.values(stores)[0];
+        if (store === undefined) {
+          throw new Error(`no BinaryStore configured for storage "${ref.storage}"`);
+        }
+        return store;
+      };
 
-    return {
-      put: (ref, data) => Effect.promise(() => backend(ref).put(pathOf(ref), data)),
-      get: (ref) =>
-        Effect.promise(() => backend(ref).get(pathOf(ref))).pipe(
-          Effect.flatMap((data) =>
-            data === undefined
-              ? Effect.fail(new ArtifactNotFound({ artifactId: ref.id }))
-              : Effect.succeed(data),
+      const pathOf = (ref: ArtifactRef): string => artifactPath(ref);
+
+      return {
+        put: (ref, data) => Effect.promise(() => backend(ref).put(pathOf(ref), data)),
+        get: (ref) =>
+          Effect.promise(() => backend(ref).get(pathOf(ref))).pipe(
+            Effect.flatMap((data) =>
+              data === undefined
+                ? Effect.fail(new ArtifactNotFound({ artifactId: ref.id }))
+                : Effect.succeed(data),
+            ),
           ),
-        ),
-      putStream: (ref, stream) => Effect.promise(() => backend(ref).putStream(pathOf(ref), stream)),
-      getStream: (ref) =>
-        Effect.promise(() => backend(ref).getStream(pathOf(ref))).pipe(
-          Effect.flatMap((stream) =>
-            stream === undefined
-              ? Effect.fail(new ArtifactNotFound({ artifactId: ref.id }))
-              : Effect.succeed(stream),
+        putStream: (ref, stream) =>
+          Effect.promise(() => backend(ref).putStream(pathOf(ref), stream)),
+        getStream: (ref) =>
+          Effect.promise(() => backend(ref).getStream(pathOf(ref))).pipe(
+            Effect.flatMap((stream) =>
+              stream === undefined
+                ? Effect.fail(new ArtifactNotFound({ artifactId: ref.id }))
+                : Effect.succeed(stream),
+            ),
           ),
-        ),
-      delete: (ref) => Effect.promise(() => backend(ref).delete(pathOf(ref))),
-      has: (ref) => Effect.promise(() => backend(ref).has(pathOf(ref))),
+        delete: (ref) => Effect.promise(() => backend(ref).delete(pathOf(ref))),
+        has: (ref) => Effect.promise(() => backend(ref).has(pathOf(ref))),
 
-      registerConsumption: (task) =>
-        Effect.sync(() => {
-          for (const input of task.inputs) {
-            const set = consumes.get(input.id) ?? new Set<string>();
-            set.add(task.id);
-            consumes.set(input.id, set);
-          }
-        }),
+        registerConsumption: (task) =>
+          Effect.gen(function* () {
+            const inputIds = [...new Set(task.inputs.map((input) => input.id))];
+            for (const input of inputIds) {
+              const set = consumes.get(input) ?? new Set<string>();
+              set.add(task.id);
+              consumes.set(input, set);
+            }
+            yield* lineage.recordConsumption(task.id, inputIds);
+          }),
 
-      registerProduction: (taskId, outs) =>
-        Effect.sync(() => {
-          outputs.set(
-            taskId,
-            outs.map((ref) => ref.id),
-          );
-          for (const ref of outs) {
-            producedBy.set(ref.id, taskId);
-          }
-        }),
+        registerProduction: (taskId, outs) =>
+          Effect.gen(function* () {
+            outputs.set(
+              taskId,
+              outs.map((ref) => ref.id),
+            );
+            for (const ref of outs) {
+              producedBy.set(ref.id, taskId);
+            }
+            yield* lineage.recordProduction(
+              taskId,
+              outs.map((ref) => ref.id),
+            );
+          }),
 
-      consumersOf: (artifactId) => Effect.sync(() => [...(consumes.get(artifactId) ?? [])]),
+        consumersOf: (artifactId) => Effect.sync(() => [...(consumes.get(artifactId) ?? [])]),
 
-      outputsOf: (taskId) => Effect.sync(() => outputs.get(taskId) ?? []),
-    };
-  });
+        outputsOf: (taskId) => Effect.sync(() => outputs.get(taskId) ?? []),
+      };
+    }),
+  );
 }

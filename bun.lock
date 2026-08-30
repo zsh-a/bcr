@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "bcr",
+      "dependencies": {
+        "@sqlite.org/sqlite-wasm": "3.53.0-build1",
+      },
       "devDependencies": {
         "playwright": "1.61.0",
         "typescript": "^5.9.0",
@@ -20,8 +23,10 @@
         "@bcr/react": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
+        "@bcr/storage-sqlite": "workspace:*",
         "@fontsource/ibm-plex-mono": "^5.3.0",
         "@fontsource/ibm-plex-sans": "^5.3.0",
+        "@sqlite.org/sqlite-wasm": "3.53.0-build1",
         "@tanstack/react-router": "^1.170.32",
         "@tanstack/react-virtual": "^3.14.10",
         "dockview-react": "^8.2.0",
@@ -92,6 +97,18 @@
       "name": "@bcr/storage-opfs",
       "version": "0.1.0",
     },
+    "packages/storage-sqlite": {
+      "name": "@bcr/storage-sqlite",
+      "version": "0.1.0",
+      "dependencies": {
+        "@bcr/core": "workspace:*",
+        "@bcr/storage-opfs": "workspace:*",
+        "effect": "^3.22.1",
+      },
+      "devDependencies": {
+        "@sqlite.org/sqlite-wasm": "3.53.0-build1",
+      },
+    },
   },
   "packages": {
     "@babel/code-frame": ["@babel/code-frame@7.29.7", "https://registry.npmmirror.com/@babel/code-frame/-/code-frame-7.29.7.tgz", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw=="],
@@ -147,6 +164,8 @@
     "@bcr/runtime-worker": ["@bcr/runtime-worker@workspace:packages/runtime-worker"],
 
     "@bcr/storage-opfs": ["@bcr/storage-opfs@workspace:packages/storage-opfs"],
+
+    "@bcr/storage-sqlite": ["@bcr/storage-sqlite@workspace:packages/storage-sqlite"],
 
     "@bcr/studio": ["@bcr/studio@workspace:apps/studio"],
 
@@ -303,6 +322,8 @@
     "@rolldown/binding-win32-x64-msvc": ["@rolldown/binding-win32-x64-msvc@1.2.6", "https://registry.npmmirror.com/@rolldown/binding-win32-x64-msvc/-/binding-win32-x64-msvc-1.2.6.tgz", { "os": "win32", "cpu": "x64" }, "sha512-np8iZSLfXlAD4kWhiyq/u0Yt8oZDtRQ8lGhQaCXo2rl37KNjeU0GjJuwr4P3oeZ++ROfofsKNBqR5LTO8aXyWQ=="],
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.0-rc.3", "https://registry.npmmirror.com/@rolldown/pluginutils/-/pluginutils-1.0.0-rc.3.tgz", {}, "sha512-eybk3TjzzzV97Dlj5c+XrBFW57eTNhzod66y9HrBlzJ6NsCrWCp/2kaPS3K9wJmurBC0Tdw4yPjXKZqlznim3Q=="],
+
+    "@sqlite.org/sqlite-wasm": ["@sqlite.org/sqlite-wasm@3.53.0-build1", "https://registry.npmmirror.com/@sqlite.org/sqlite-wasm/-/sqlite-wasm-3.53.0-build1.tgz", {}, "sha512-PfWPWN2n+/37doa8oh2/oUXk4OOsRYZsxc1W1sDXIGb/Pu5Yrb+f2eyYpgQMGITVX7HVgxhs9P18Rc6I97ym/g=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "https://registry.npmmirror.com/@standard-schema/spec/-/spec-1.1.0.tgz", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 

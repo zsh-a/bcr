@@ -57,6 +57,24 @@ export const decodeComputeTask = Schema.decodeUnknown(ComputeTask);
 export const decodeArtifactRef = Schema.decodeUnknown(ArtifactRef);
 
 /**
+ * 流水线节点（§3 DAG 的正向编排）：声明依赖的节点 id，
+ * 调度器在上游全部完成后把其输出依序作为本节点的 inputs 实例化成 ComputeTask。
+ * 与 ComputeTask 的差异只在 inputs 由依赖推导而非显式给出。
+ */
+export const PipelineNode = Schema.Struct({
+  id: Schema.String,
+  runtime: RuntimeKind,
+  operation: Schema.String,
+  /** 依赖的节点 id；全部完成后其输出按依赖声明顺序拼接为 inputs。 */
+  after: Schema.optional(Schema.Array(Schema.String)),
+  outputs: Schema.Array(ArtifactSpec),
+  resources: Schema.optional(ResourceRequirements),
+  cache: Schema.optional(CachePolicy),
+  config: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+});
+export type PipelineNode = typeof PipelineNode.Type;
+
+/**
  * 架构文档 §6.2：TaskEvent。相对文档补了 taskId 字段——
  * Worker Pool 复用同一 Worker 跑多个任务，事件必须可归因。
  */

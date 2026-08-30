@@ -12,7 +12,14 @@ export {
   TaskEvent,
 } from "./schema";
 export { cacheKey } from "./cache-key";
-export { ArtifactNotFound, NoExecutor, TaskFailed, type SchedulerError } from "./errors";
+export {
+  ArtifactNotFound,
+  InvalidPipeline,
+  NoExecutor,
+  TaskFailed,
+  type SchedulerError,
+} from "./errors";
+export { type LineageStore, type LineageSnapshot, noopLineageStore } from "./lineage";
 export {
   executorRegistry,
   Executors,
@@ -24,7 +31,9 @@ export { artifactPath, artifactStore, ArtifactStoreTag, type ArtifactStore } fro
 export {
   schedulerLive,
   SchedulerTag,
+  type PipelineHandle,
   type Scheduler,
   type SubmitOptions,
   type TaskHandle,
 } from "./scheduler";
+export { PipelineNode } from "./schema";

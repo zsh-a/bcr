@@ -1,10 +1,21 @@
-import { Context, Duration, Effect, Fiber, Layer, PubSub, Schedule, Stream } from "effect";
+import {
+  Context,
+  Deferred,
+  Duration,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  PubSub,
+  Schedule,
+  Stream,
+} from "effect";
 import { ArtifactStoreTag } from "./artifact";
 import { cacheKey } from "./cache-key";
 import { CacheStoreTag } from "./cache-store";
-import { NoExecutor, TaskFailed, type SchedulerError } from "./errors";
+import { InvalidPipeline, NoExecutor, TaskFailed, type SchedulerError } from "./errors";
 import { Executors, type RuntimeExecutor } from "./executor";
-import type { ArtifactRef, ComputeTask, TaskEvent } from "./schema";
+import type { ArtifactRef, ComputeTask, PipelineNode, TaskEvent } from "./schema";
 
 export interface SubmitOptions {
   /** 超时后任务以 TaskFailed("timeout") 失败。 */
@@ -25,11 +36,31 @@ export interface TaskHandle {
   readonly cached: boolean;
 }
 
+/** 流水线句柄：节点按 after 依赖编排，上游完成自动触发下游（§3）。 */
+export interface PipelineHandle {
+  readonly pipelineId: string;
+  /** 全部节点 TaskEvent 的合并多播流；流水线终态（全部完成/失败）后结束。 */
+  readonly events: Stream.Stream<TaskEvent>;
+  /** 等待整条流水线：nodeId → 最终输出。任一节点失败则整体失败。 */
+  readonly await: Effect.Effect<ReadonlyMap<string, ReadonlyArray<ArtifactRef>>, SchedulerError>;
+  /** 取消整条流水线：所有节点级联取消。 */
+  readonly cancel: Effect.Effect<void>;
+}
+
 export interface Scheduler {
   readonly submit: (
     task: ComputeTask,
     options?: SubmitOptions,
   ) => Effect.Effect<TaskHandle, NoExecutor>;
+  /**
+   * 提交一条流水线：节点图经校验（重复 id / 未知依赖 / 环）后，
+   * 无依赖节点立即并行执行，其余节点在上游全部完成后以其输出实例化。
+   */
+  readonly submitPipeline: (
+    pipelineId: string,
+    nodes: ReadonlyArray<PipelineNode>,
+    options?: SubmitOptions,
+  ) => Effect.Effect<PipelineHandle, InvalidPipeline | NoExecutor>;
   readonly cancel: (taskId: string) => Effect.Effect<void>;
   /**
    * 架构文档 §3：源数据变更/删除 → 仅失效下游链路。
@@ -93,9 +124,11 @@ export const schedulerLive: Layer.Layer<
         }
       });
 
-    const submit = (
+    const submitInternal = (
       task: ComputeTask,
       options: SubmitOptions = {},
+      /** 存在时，任务事件在产生处同步转发（pipeline 编排用，避免 relay 订阅竞态）。 */
+      sink: PubSub.PubSub<TaskEvent> | undefined = undefined,
     ): Effect.Effect<TaskHandle, NoExecutor> =>
       Effect.gen(function* () {
         const executor = executors.get(task.runtime);
@@ -112,6 +145,13 @@ export const schedulerLive: Layer.Layer<
           const cached = yield* cache.get(key);
           if (cached !== undefined) {
             yield* artifacts.registerProduction(task.id, cached);
+            if (sink !== undefined) {
+              yield* PubSub.publish(sink, {
+                type: "completed",
+                taskId: task.id,
+                outputs: [...cached],
+              });
+            }
             return {
               taskId: task.id,
               events: Stream.succeed<TaskEvent>({
@@ -136,6 +176,9 @@ export const schedulerLive: Layer.Layer<
               Stream.runForEach((event) =>
                 Effect.gen(function* () {
                   yield* PubSub.publish(pubsub, event);
+                  if (sink !== undefined) {
+                    yield* PubSub.publish(sink, event);
+                  }
                   if (event.type === "completed") {
                     outputs = event.outputs;
                   }
@@ -201,6 +244,11 @@ export const schedulerLive: Layer.Layer<
         };
       });
 
+    const submit = (
+      task: ComputeTask,
+      options: SubmitOptions = {},
+    ): Effect.Effect<TaskHandle, NoExecutor> => submitInternal(task, options);
+
     const invalidateArtifact = (artifactId: string): Effect.Effect<void> =>
       Effect.gen(function* () {
         const visitedTasks = new Set<string>();
@@ -223,8 +271,151 @@ export const schedulerLive: Layer.Layer<
         yield* go(artifactId);
       });
 
+    type PipelineNodeState = {
+      readonly node: PipelineNode;
+      readonly deferred: Deferred.Deferred<ReadonlyArray<ArtifactRef>, SchedulerError>;
+    };
+
+    const submitPipeline = (
+      pipelineId: string,
+      nodes: ReadonlyArray<PipelineNode>,
+      options: SubmitOptions = {},
+    ): Effect.Effect<PipelineHandle, InvalidPipeline | NoExecutor> =>
+      Effect.gen(function* () {
+        // 图校验：重复 id / 未知依赖
+        const byId = new Map<string, PipelineNodeState>();
+        for (const node of nodes) {
+          if (byId.has(node.id)) {
+            return yield* new InvalidPipeline({
+              pipelineId,
+              message: `duplicate node id "${node.id}"`,
+            });
+          }
+          byId.set(node.id, {
+            node,
+            deferred: yield* Deferred.make<ReadonlyArray<ArtifactRef>, SchedulerError>(),
+          });
+        }
+        for (const node of nodes) {
+          for (const dep of node.after ?? []) {
+            if (!byId.has(dep)) {
+              return yield* new InvalidPipeline({
+                pipelineId,
+                message: `node "${node.id}" depends on unknown node "${dep}"`,
+              });
+            }
+          }
+        }
+
+        const stateOf = (id: string): PipelineNodeState => {
+          const state = byId.get(id);
+          if (state === undefined) {
+            throw new Error(`unreachable: node "${id}" passed graph validation`);
+          }
+          return state;
+        };
+
+        // 环检测（§3 DAG 必须无环）
+        const visiting = new Set<string>();
+        const settled = new Set<string>();
+        const detectCycle = (
+          id: string,
+          trail: ReadonlyArray<string>,
+        ): Effect.Effect<void, InvalidPipeline> =>
+          Effect.gen(function* () {
+            if (settled.has(id)) return;
+            if (visiting.has(id)) {
+              const start = trail.indexOf(id);
+              return yield* new InvalidPipeline({
+                pipelineId,
+                message: `dependency cycle: ${[...trail.slice(start), id].join(" → ")}`,
+              });
+            }
+            visiting.add(id);
+            for (const dep of stateOf(id).node.after ?? []) {
+              yield* detectCycle(dep, [...trail, id]);
+            }
+            visiting.delete(id);
+            settled.add(id);
+          });
+        for (const node of nodes) {
+          yield* detectCycle(node.id, []);
+        }
+
+        const pubsub = yield* PubSub.unbounded<TaskEvent>();
+
+        const runNode = (
+          state: PipelineNodeState,
+        ): Effect.Effect<ReadonlyArray<ArtifactRef>, SchedulerError> =>
+          Effect.gen(function* () {
+            const { node, deferred } = state;
+            const depOutputs =
+              node.after !== undefined && node.after.length > 0
+                ? yield* Effect.all(node.after.map((id) => Deferred.await(stateOf(id).deferred)))
+                : [];
+            const task: ComputeTask = {
+              id: `${pipelineId}/${node.id}`,
+              runtime: node.runtime,
+              operation: node.operation,
+              inputs: depOutputs.flat(),
+              outputs: [...node.outputs],
+              ...(node.resources !== undefined ? { resources: node.resources } : {}),
+              ...(node.cache !== undefined ? { cache: node.cache } : {}),
+              ...(node.config !== undefined ? { config: node.config } : {}),
+            };
+
+            // sink 转发：任务事件在产生处同步汇入流水线 PubSub，无订阅竞态
+            const handle = yield* submitInternal(task, options, pubsub);
+
+            const outputs = yield* handle.await.pipe(
+              // 节点失败/被中断 → 取消其任务 fiber（Task 生命周期 ≠ Pipeline 生命周期）
+              Effect.onExit((exit) => (Exit.isSuccess(exit) ? Effect.void : handle.cancel)),
+            );
+            yield* Deferred.succeed(deferred, outputs);
+            return outputs;
+          });
+
+        // fail-fast：任一节点失败 → 整条流水线失败，其余节点被中断
+        const program = Effect.all([...byId.values()].map(runNode), {
+          concurrency: "unbounded",
+          discard: true,
+        }).pipe(
+          Effect.zipRight(
+            Effect.gen(function* () {
+              const results = new Map<string, ReadonlyArray<ArtifactRef>>();
+              for (const [id, state] of byId) {
+                results.set(id, yield* Deferred.await(state.deferred));
+              }
+              return results;
+            }),
+          ),
+          Effect.tapError((error) =>
+            PubSub.publish(pubsub, {
+              type: "failed",
+              taskId: pipelineId,
+              error:
+                error._tag === "TaskFailed"
+                  ? error.message
+                  : error._tag === "ArtifactNotFound"
+                    ? `artifact not found: ${error.artifactId}`
+                    : `no executor for runtime "${error.runtime}"`,
+            }),
+          ),
+          Effect.ensuring(PubSub.shutdown(pubsub)),
+        );
+
+        const fiber = yield* Effect.forkDaemon(program);
+        return {
+          pipelineId,
+          events: Stream.fromPubSub(pubsub),
+          await: Fiber.join(fiber),
+          cancel: Fiber.interrupt(fiber),
+        };
+      });
+
     return {
       submit,
+      submitPipeline,
       cancel: (taskId) => cancelCascade(taskId, new Set()),
       invalidateArtifact,
     };
