@@ -8,7 +8,7 @@ import {
   toVtt,
   vttTimestamp,
 } from "../src/exporters";
-import { alignTranslations, cueLength, normalizeCues, type SubtitleCue } from "../src/subtitles";
+import { cueLength, normalizeCues, type SubtitleCue } from "../src/subtitles";
 
 describe("时间戳格式化", () => {
   it("SRT 用逗号毫秒", () => {
@@ -106,23 +106,4 @@ describe("normalizeCues（subtitle.segment 核心）", () => {
   });
 });
 
-describe("alignTranslations（双语对齐）", () => {
-  it("按时间重叠回填译文", () => {
-    const cues = normalizeCues([
-      { start: 0, end: 2, text: "one" },
-      { start: 2, end: 4, text: "two" },
-    ]);
-    const aligned = alignTranslations(cues, [
-      { start: 0.5, end: 1.8, text: " eins " },
-      { start: 2.5, end: 4, text: "zwei" },
-    ]);
-    expect(aligned[0]?.translation).toBe("eins");
-    expect(aligned[1]?.translation).toBe("zwei");
-  });
-
-  it("无重叠时保持原样（无 translation 字段）", () => {
-    const cues: SubtitleCue[] = [{ start: 0, end: 1, text: "solo" }];
-    const aligned = alignTranslations(cues, [{ start: 10, end: 11, text: "far away" }]);
-    expect(aligned[0]).not.toHaveProperty("translation");
-  });
-});
+// 翻译对齐已改为 opus-mt 逐条 1:1 平移（worker 内 map），时间重叠对齐逻辑随之移除。

@@ -13,6 +13,7 @@ import type { MediaInfo, SubtitleCue } from "./subtitles";
  */
 
 export type EngineMode = "auto" | "whisper" | "demo";
+export type TranslateDirection = "en-zh" | "zh-en";
 
 export interface SourceState {
   readonly ref: ArtifactRef;
@@ -26,6 +27,7 @@ export interface StudioSettings {
   readonly model: string;
   readonly engine: EngineMode;
   readonly translate: boolean;
+  readonly direction: TranslateDirection;
 }
 
 export type StudioView = "subtitles" | "pipeline";
@@ -57,6 +59,7 @@ const INITIAL_SETTINGS: StudioSettings = {
   model: "Xenova/whisper-tiny",
   engine: "auto",
   translate: false,
+  direction: "en-zh",
 };
 
 const MAX_LOGS = 500;
@@ -131,6 +134,12 @@ class StudioStore {
       for (const node of graph.nodes) {
         if ("engine" in node.config)
           graph = updateNodeConfig(graph, node.id, { engine: settings.engine });
+      }
+    }
+    if (partial.direction !== undefined) {
+      for (const node of graph.nodes) {
+        if ("direction" in node.config)
+          graph = updateNodeConfig(graph, node.id, { direction: settings.direction });
       }
     }
     if (partial.translate !== undefined) {

@@ -2,7 +2,7 @@ import { artifactPath, type ArtifactRef, type ComputeTask } from "@bcr/core";
 import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
 import init, { peak_f32 } from "../../../../crates/kernels/pkg/bcr_kernels.js";
-import { alignTranslations, normalizeCues, type SegmentOptions } from "../subtitles";
+import { normalizeCues, type SegmentOptions } from "../subtitles";
 import { ownedChunks, planSampleWindows } from "../windows";
 
 /**
@@ -203,21 +203,51 @@ type Transcriber = (
   chunks?: Array<{ timestamp: [number, number | null]; text: string }>;
 }>;
 
-let transcriberCache: { model: string; task: string; fn: Transcriber } | undefined;
+type Translator = (
+  texts: ReadonlyArray<string>,
+) => Promise<ReadonlyArray<{ translation_text: string }>>;
 
-async function loadTranscriber(
+type Device = "auto" | "webgpu" | "wasm";
+type ResolvedDevice = "webgpu" | "wasm";
+
+/** WebGPU 探测（§10.1）：adapter 不可用由上层装载失败兜底降级。 */
+function gpuAvailable(): boolean {
+  return typeof navigator !== "undefined" && "gpu" in navigator;
+}
+
+async function resolveDevice(device: Device): Promise<ResolvedDevice> {
+  if (device === "wasm") return "wasm";
+  if (!gpuAvailable()) {
+    if (device === "webgpu") throw new Error("WebGPU is not available in this browser");
+    return "wasm";
+  }
+  return "webgpu";
+}
+
+const WHISPER_OPTIONS: Record<string, unknown> = {
+  dtype: "q8",
+};
+
+/** WebGPU 走 fp32 encoder + q4 decoder（transformers.js 官方 whisper 配置）。 */
+const WHISPER_WEBGPU_OPTIONS: Record<string, unknown> = {
+  device: "webgpu",
+  dtype: { encoder_model: "fp32", decoder_model_merged: "q4" },
+};
+
+let transcriberCache:
+  | { model: string; task: string; device: ResolvedDevice; fn: Transcriber }
+  | undefined;
+
+async function buildTranscriber(
   model: string,
-  task: "transcribe" | "translate",
+  device: ResolvedDevice,
   ctx: WorkerContext,
 ): Promise<Transcriber> {
-  const cached = transcriberCache;
-  if (cached !== undefined && cached.model === model && cached.task === task) return cached.fn;
-
   const { pipeline, env } = await import("@huggingface/transformers");
   env.allowLocalModels = false;
   ctx.progress(0.02);
   const fn = (await pipeline("automatic-speech-recognition", model, {
-    dtype: "q8",
+    ...(device === "webgpu" ? WHISPER_WEBGPU_OPTIONS : WHISPER_OPTIONS),
     progress_callback: (info: { status?: string; progress?: number }) => {
       if (info.status === "progress" && typeof info.progress === "number") {
         ctx.progress(Math.min(0.35, 0.02 + (info.progress / 100) * 0.33));
@@ -225,21 +255,55 @@ async function loadTranscriber(
     },
   })) as unknown as Transcriber;
   ctx.progress(0.4);
-  transcriberCache = { model, task, fn };
   return fn;
+}
+
+/**
+ * 装载 Whisper：device 解析 + §10.1 降级（auto：WebGPU 装载失败静默回退 WASM；
+ * 显式选择失败则报错，让用户知情）。
+ */
+async function loadTranscriber(
+  model: string,
+  task: "transcribe",
+  device: Device,
+  ctx: WorkerContext,
+): Promise<Transcriber> {
+  const cached = transcriberCache;
+  if (
+    cached !== undefined &&
+    cached.model === model &&
+    cached.task === task &&
+    // auto：任意已装载设备可复用；显式指定则必须匹配
+    (device === "auto" || cached.device === device)
+  ) {
+    return cached.fn;
+  }
+
+  const resolved = await resolveDevice(device);
+  try {
+    const fn = await buildTranscriber(model, resolved, ctx);
+    transcriberCache = { model, task, device: resolved, fn };
+    return fn;
+  } catch (error) {
+    if (device === "auto" && resolved === "webgpu") {
+      console.warn("[asr] WebGPU unavailable, falling back to WASM:", error);
+      const fn = await buildTranscriber(model, "wasm", ctx);
+      transcriberCache = { model, task, device: "wasm", fn };
+      return fn;
+    }
+    throw error;
+  }
 }
 
 async function whisperChunks(
   samples: Float32Array,
   model: string,
-  task: "transcribe" | "translate",
   ctx: WorkerContext,
+  device: Device,
   offsetS = 0,
 ): Promise<AsrChunk[]> {
-  const transcriber = await loadTranscriber(model, task, ctx);
+  const transcriber = await loadTranscriber(model, "transcribe", device, ctx);
   const result = await transcriber(samples, {
-    // whisper 的 transcribe/translate 是 generation 参数（多语言模型）
-    task,
     return_timestamps: true,
     chunk_length_s: 30,
     stride_length_s: 5,
@@ -264,7 +328,7 @@ async function windowedAsr(
   options: {
     readonly model: string;
     readonly engine: "auto" | "whisper" | "demo";
-    readonly task: "transcribe" | "translate";
+    readonly device: Device;
   },
   ctx: WorkerContext,
   onPartial?: (result: AsrResult) => void,
@@ -285,7 +349,7 @@ async function windowedAsr(
     engine = "demo";
   } else {
     try {
-      await loadTranscriber(options.model, options.task, ctx);
+      await loadTranscriber(options.model, "transcribe", options.device, ctx);
       engine = "whisper";
     } catch (error) {
       if (options.engine === "whisper") throw error;
@@ -311,7 +375,7 @@ async function windowedAsr(
         end: chunk.end + offsetS,
       }));
     } else {
-      chunks = await whisperChunks(samples, model, options.task, ctx, window.start / SAMPLE_RATE);
+      chunks = await whisperChunks(samples, model, ctx, options.device, window.start / SAMPLE_RATE);
     }
     owned.push(...ownedChunks(chunks, window.start / SAMPLE_RATE, window.ownEnd / SAMPLE_RATE));
     ctx.progress(Math.min(0.98, 0.35 + (0.63 * (i + 1)) / windows.length));
@@ -330,6 +394,8 @@ async function asrTranscribe(
   const model = typeof config["model"] === "string" ? config["model"] : "Xenova/whisper-tiny";
   const engine =
     config["engine"] === "whisper" || config["engine"] === "demo" ? config["engine"] : "auto";
+  const device =
+    config["device"] === "webgpu" || config["device"] === "wasm" ? config["device"] : "auto";
 
   // 渐进回填：每窗归属 chunks 发 chunk 事件，主线程按 ref 读取增量渲染
   const partialRef: ArtifactRef = {
@@ -338,7 +404,7 @@ async function asrTranscribe(
     storage: "memory",
     format: "json",
   };
-  const result = await windowedAsr(input, { model, engine, task: "transcribe" }, ctx, (partial) => {
+  const result = await windowedAsr(input, { model, engine, device }, ctx, (partial) => {
     ctx.emitChunk(partialRef, encoder.encode(JSON.stringify(partial)));
   });
 
@@ -380,23 +446,63 @@ async function subtitleSegment(
   return [out];
 }
 
-// ── 翻译（Whisper translate 二次推理 → 双语对齐） ─────────────────────
+// ── 翻译（opus-mt 文本翻译：逐条 cue 批量平移，1:1 对齐，无二次音频推理） ──
+
+let translatorCache: { model: string; fn: Translator } | undefined;
+
+async function loadTranslator(model: string, ctx: WorkerContext): Promise<Translator> {
+  const cached = translatorCache;
+  if (cached !== undefined && cached.model === model) return cached.fn;
+  const { pipeline, env } = await import("@huggingface/transformers");
+  env.allowLocalModels = false;
+  ctx.progress(0.02);
+  const fn = (await pipeline("translation", model, {
+    dtype: "q8",
+    progress_callback: (info: { status?: string; progress?: number }) => {
+      if (info.status === "progress" && typeof info.progress === "number") {
+        ctx.progress(Math.min(0.35, 0.02 + (info.progress / 100) * 0.33));
+      }
+    },
+  })) as unknown as Translator;
+  ctx.progress(0.4);
+  translatorCache = { model, fn };
+  return fn;
+}
 
 async function subtitleTranslate(
   task: ComputeTask,
   ctx: WorkerContext,
 ): Promise<ReadonlyArray<ArtifactRef>> {
-  const pcmRef = pickInput(task, "audio/pcm-f32");
   const cuesRef = pickInput(task, "subtitle/cues");
-  if (pcmRef === undefined || cuesRef === undefined) {
-    throw new Error("subtitle.translate requires [pcm-f32, cues] inputs");
+  if (cuesRef === undefined) {
+    throw new Error("subtitle.translate requires a cues input");
   }
   const config = configOf(task);
-  const model = typeof config["model"] === "string" ? config["model"] : "Xenova/whisper-tiny";
+  // 翻译方向 → opus-mt 模型（参与缓存键）
+  const direction = config["direction"] === "zh-en" ? "zh-en" : "en-zh";
+  const model = `Xenova/opus-mt-${direction}`;
 
   const { cues } = await readJson<{ cues: ReturnType<typeof normalizeCues> }>(cuesRef);
-  const result = await windowedAsr(pcmRef, { model, engine: "whisper", task: "translate" }, ctx);
-  const bilingual = alignTranslations(cues, result.chunks);
+  const translator = await loadTranslator(model, ctx);
+
+  // 分批翻译：模型一次吃一批，进度按批推进，批间可取消
+  const texts = cues.map((cue) => cue.text);
+  const BATCH = 16;
+  const translations: string[] = [];
+  for (let offset = 0; offset < texts.length; offset += BATCH) {
+    throwIfAborted(ctx);
+    const batch = texts.slice(offset, offset + BATCH);
+    const results = await translator(batch);
+    for (const result of results) {
+      translations.push(result.translation_text.trim());
+    }
+    ctx.progress(Math.min(0.98, 0.4 + (0.58 * translations.length) / Math.max(1, texts.length)));
+  }
+
+  const bilingual = cues.map((cue, index) => {
+    const translation = translations[index];
+    return translation !== undefined && translation.length > 0 ? { ...cue, translation } : cue;
+  });
 
   const out: ArtifactRef = {
     id: `bilingual/${cuesRef.id}/${model}`,
@@ -404,7 +510,7 @@ async function subtitleTranslate(
     storage: "opfs",
     format: "json",
   };
-  await persistJson(out, { cues: bilingual });
+  await persistJson(out, { cues: bilingual, engine: `opus-mt-${direction}` });
   ctx.progress(1);
   return [out];
 }

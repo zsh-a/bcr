@@ -25,21 +25,23 @@
 
 与架构文档的对应关系：
 
-| 架构                                  | 实现                                                                              |
-| ------------------------------------- | --------------------------------------------------------------------------------- |
-| §2 ComputeTask / §3 ArtifactRef       | `packages/core/src/schema.ts`（Effect Schema）                                    |
-| §3 DAG：cancel descendants / 下游失效 | `packages/core/src/scheduler.ts`（cancel 级联、invalidateArtifact）               |
-| §3 DAG 正向编排                       | `scheduler.submitPipeline`（节点图校验 + 上游完成自动触发 + fail-fast）           |
-| §6.1 Effect 调度语义                  | Scheduler：cancel / timeout / retry(Schedule) / progress Stream                   |
-| §6.2 typed MessagePort 协议           | `packages/runtime-worker/src/protocol.ts`（Effect Schema 编解码）                 |
-| §5 Worker 生命周期 ≠ Task 生命周期    | `WorkerPool` 常驻复用，cancel 只发命令不销毁 Worker                               |
-| §7 Content-Addressed Cache            | `cacheKey = BLAKE3(artifactHash + operation + config + runtimeVersion)`           |
-| §7 缓存持久化（刷新不重算）           | `packages/storage-sqlite`：cache_entries 表 + 血缘（task_outputs / dependencies） |
-| §4/§8 OPFS + 窗口流动                 | `BinaryStore`（readRange/putStream/size），kernel 按 4MB 窗口读取                 |
-| §8 SQLite WASM 元数据                 | `openSqliteDb`（整库字节经 BinaryStore 落 OPFS，可换任意 BinaryStore）            |
-| §9.1 wasm-bindgen kernel              | `crates/kernels`（wasm32-unknown-unknown）                                        |
-| §10.2 WebGPU ASR（Whisper）           | `apps/media-studio`：transformers.js（ONNX q8），Whisper 不可用回退演示引擎       |
-| §11 COOP/COEP                         | `apps/studio/vite.config.ts` 与 `apps/media-studio/vite.config.ts` 内置           |
+| 架构                                  | 实现                                                                                 |
+| ------------------------------------- | ------------------------------------------------------------------------------------ |
+| §2 ComputeTask / §3 ArtifactRef       | `packages/core/src/schema.ts`（Effect Schema）                                       |
+| §3 DAG：cancel descendants / 下游失效 | `packages/core/src/scheduler.ts`（cancel 级联、invalidateArtifact）                  |
+| §3 DAG 正向编排                       | `scheduler.submitPipeline`（节点图校验 + 上游完成自动触发 + fail-fast）              |
+| §6.1 Effect 调度语义                  | Scheduler：cancel / timeout / retry(Schedule) / progress Stream                      |
+| §6.2 typed MessagePort 协议           | `packages/runtime-worker/src/protocol.ts`（Effect Schema 编解码）                    |
+| §5 Worker 生命周期 ≠ Task 生命周期    | `WorkerPool` 常驻复用，cancel 只发命令不销毁 Worker                                  |
+| §7 Content-Addressed Cache            | `cacheKey = BLAKE3(artifactHash + operation + config + runtimeVersion)`              |
+| §7 缓存持久化（刷新不重算）           | `packages/storage-sqlite`：cache_entries 表 + 血缘（task_outputs / dependencies）    |
+| §4/§8 OPFS + 窗口流动                 | `BinaryStore`（readRange/putStream/size），kernel 按 4MB 窗口读取                    |
+| §8 SQLite WASM 元数据                 | `openSqliteDb`（整库字节经 BinaryStore 落 OPFS，可换任意 BinaryStore）               |
+| §9.1 wasm-bindgen kernel              | `crates/kernels`（wasm32-unknown-unknown）                                           |
+| §10.1 WebGPU 探测降级                 | `apps/media-studio`：ASR device=auto（GPU→WASM 静默降级）/显式选择；headless 走 WASM |
+| §10.2 Whisper ASR                     | transformers.js ONNX（q8 / webgpu fp32+q4），失败回退演示引擎                        |
+| 文本翻译                              | opus-mt（英↔中方向可选）：逐条 cue 批量平移，1:1 对齐，无二次音频推理                |
+| §11 COOP/COEP                         | `apps/studio/vite.config.ts` 与 `apps/media-studio/vite.config.ts` 内置              |
 
 ## 命令
 
@@ -90,6 +92,8 @@ decode ─┬─ wave（Rust peak kernel 波形）
 - **执行平面**：`runtime "js"` = 主线程 decode（AudioContext 仅主线程可用）；`runtime "wasm"` = media.worker（kernel + ASR），中间产物由 Worker 直写 OPFS
 - **流式 decode（§4）**：Mediabunny 解复用 → AudioBufferSink 逐块解码 → 单声道混合 → 跨块相位连续线性重采样 16kHz → 30s 窗增量写 OPFS，任意大文件不整段装载
 - **分窗 ASR**：长音频按 120s 窗 + 4s stride 切片推理——进度按窗推进、窗间可取消、Worker 内存只驻留一窗 PCM；每窗完成即发 chunk 事件，字幕**边算边出**（渐进回填编辑器）；stride 区间的归属由下一窗重新转写，边界不丢词不重复
+- **计算设备（§10.1）**：ASR 节点 device=auto（`navigator.gpu` 探测，WebGPU 装载失败静默回退 WASM）/ 显式 webgpu（fp32 encoder + q4 decoder）/ wasm；设备参与缓存键
+- **双语翻译**：opus-mt 文本翻译（英↔中方向可选）——逐条 cue 批量平移、1:1 对齐、批间可取消，替代 Whisper 二次音频推理（便宜一个数量级）
 - **编辑器**：文本/译文/时间轴行内编辑、拆分、删除、点击定位播放；编辑自动持久化到 SQLite
 - **导出**：SRT / WebVTT / ASS（双语第二行），纯函数实现带单测
 - 刷新恢复：源文件（OPFS Blob 重建播放）+ 字幕编辑 + 引擎设置全部从元数据库回放
@@ -98,6 +102,7 @@ decode ─┬─ wave（Rust peak kernel 波形）
 
 - `node scripts/verify-media-studio.mjs` — 导入合成 WAV → 演示引擎生成 → SRT 导出 → 刷新恢复
 - `node scripts/verify-windowed-asr.mjs` — 150s 长音频分窗回归（跨 120s 窗界归属/排序/导出）；`ENGINE=whisper` 走真实模型
+- `node scripts/verify-m2.mjs` — device 探测降级 + opus-mt 双语导出（两轮流水线）
 - `node scripts/verify-whisper-probe.mjs` — 真实 Whisper 短音频探针
 
 工具链为 [Vite+](https://viteplus.dev)（`vp` CLI 以本地 devDependency `vite-plus` 提供，不经全局安装）。

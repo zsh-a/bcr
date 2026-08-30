@@ -124,8 +124,22 @@ function Studio() {
               checked={settings.translate}
               onChange={(event) => studio.setSettings({ translate: event.target.checked })}
             />
-            英文翻译（双语）
+            双语翻译
           </label>
+          {settings.translate && (
+            <select
+              value={settings.direction}
+              onChange={(event) =>
+                studio.setSettings({
+                  direction: event.target.value as typeof settings.direction,
+                })
+              }
+              title="opus-mt 翻译方向"
+            >
+              <option value="en-zh">英→中</option>
+              <option value="zh-en">中→英</option>
+            </select>
+          )}
         </span>
         <span className="ml-auto flex items-center gap-2">
           {engineUsed !== null && (

@@ -96,28 +96,6 @@ export function normalizeCues(
   return merged;
 }
 
-/** 双语对齐：译文字段按时间重叠最大者回填。纯函数。 */
-export function alignTranslations(
-  cues: ReadonlyArray<SubtitleCue>,
-  translated: ReadonlyArray<{
-    readonly start: number;
-    readonly end: number;
-    readonly text: string;
-  }>,
-): SubtitleCue[] {
-  return cues.map((cue) => {
-    let best: { overlap: number; text: string } | undefined;
-    for (const chunk of translated) {
-      const overlap = Math.min(cue.end, chunk.end) - Math.max(cue.start, chunk.start);
-      if (overlap > 0 && (best === undefined || overlap > best.overlap)) {
-        best = { overlap, text: chunk.text.trim() };
-      }
-    }
-    const translation = best !== undefined && best.text.length > 0 ? best.text : undefined;
-    return translation === undefined ? cue : { ...cue, translation };
-  });
-}
-
 function joinText(a: string, b: string): string {
   const needsSpace = /[A-Za-z0-9'’-]$/.test(a) && /^[A-Za-z0-9'’-]/.test(b);
   return needsSpace ? `${a} ${b}` : `${a}${b}`;

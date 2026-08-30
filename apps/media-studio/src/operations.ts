@@ -41,12 +41,23 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
   {
     operation: "asr.transcribe",
     label: "ASR",
-    detail: "Whisper 语音识别",
+    detail: "Whisper 语音识别（分窗推理）",
     runtime: "wasm",
     inputs: [{ type: "audio/pcm-f32", label: "PCM" }],
     outputs: [{ type: "subtitle/asr-chunks", label: "chunks" }],
     config: [
       MODEL_FIELD,
+      {
+        key: "device",
+        label: "计算设备（§10.1 探测降级）",
+        kind: "select",
+        options: [
+          { value: "auto", label: "自动（GPU 优先）" },
+          { value: "webgpu", label: "WebGPU" },
+          { value: "wasm", label: "CPU (WASM)" },
+        ],
+        default: "auto",
+      },
       {
         key: "engine",
         label: "识别引擎",
@@ -75,14 +86,22 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
   {
     operation: "subtitle.translate",
     label: "Translate",
-    detail: "Whisper translate → 双语",
+    detail: "opus-mt 文本翻译 → 双语（逐条 cue，1:1 对齐）",
     runtime: "wasm",
-    inputs: [
-      { type: "audio/pcm-f32", label: "PCM" },
-      { type: "subtitle/cues", label: "cues" },
-    ],
+    inputs: [{ type: "subtitle/cues", label: "cues" }],
     outputs: [{ type: "subtitle/cues", label: "双语 cues" }],
-    config: [MODEL_FIELD],
+    config: [
+      {
+        key: "direction",
+        label: "翻译方向",
+        kind: "select",
+        options: [
+          { value: "en-zh", label: "英 → 中" },
+          { value: "zh-en", label: "中 → 英" },
+        ],
+        default: "en-zh",
+      },
+    ],
   },
 ];
 
@@ -115,7 +134,7 @@ export function withTranslate(graph: Graph, settings: StudioSettings): Graph {
     translateId = "translate";
     g = addNode(g, op("subtitle.translate"), translateId, 544, 328);
   }
-  g = updateNodeConfig(g, translateId, { model: settings.model });
+  g = updateNodeConfig(g, translateId, { direction: settings.direction });
   const decodeId = g.nodes.find((n) => n.operation === "media.decode-audio")?.id;
   const segmentId = g.nodes.find((n) => n.operation === "subtitle.segment")?.id;
   if (decodeId !== undefined) {
