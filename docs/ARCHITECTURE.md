@@ -127,6 +127,9 @@ interface ComputeTask {
 
 应用层因此不需要关心底层到底是 Rust WASM、ONNX WebGPU、Web Worker 还是 WebCodecs。
 
+`resources` 由 Scheduler 的多维预算闸门执行：线程、内存和 GPU 槽任一不足时进入 FIFO
+队列，取消任务会同时移除排队请求；单任务超过宿主总容量则直接失败，避免永久等待。
+
 示例：
 
 | 场景     | operation      | runtime | 输入 → 输出                                |

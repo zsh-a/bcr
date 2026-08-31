@@ -15,6 +15,13 @@ import { cacheKey } from "./cache-key";
 import { CacheStoreTag } from "./cache-store";
 import { InvalidPipeline, NoExecutor, TaskFailed, type SchedulerError } from "./errors";
 import { Executors, type RuntimeExecutor } from "./executor";
+import {
+  defaultResourceCapacity,
+  resourceManagerLive,
+  ResourceManagerTag,
+  type ResourceCapacity,
+  type ResourceSnapshot,
+} from "./resource-manager";
 import type { ArtifactRef, ComputeTask, PipelineNode, TaskEvent } from "./schema";
 
 export interface SubmitOptions {
@@ -48,6 +55,8 @@ export interface PipelineHandle {
 }
 
 export interface Scheduler {
+  /** 当前资源预算、占用与 FIFO 等待队列快照（供宿主监控/诊断）。 */
+  readonly resourceSnapshot: Effect.Effect<ResourceSnapshot>;
   readonly submit: (
     task: ComputeTask,
     options?: SubmitOptions,
@@ -73,16 +82,17 @@ export class SchedulerTag extends Context.Tag("bcr/Scheduler")<SchedulerTag, Sch
 
 type TaskFiber = Fiber.RuntimeFiber<ReadonlyArray<ArtifactRef>, SchedulerError>;
 
-export const schedulerLive: Layer.Layer<
+const schedulerLayer: Layer.Layer<
   SchedulerTag,
   never,
-  ArtifactStoreTag | CacheStoreTag | Executors
+  ArtifactStoreTag | CacheStoreTag | Executors | ResourceManagerTag
 > = Layer.effect(
   SchedulerTag,
   Effect.gen(function* () {
     const artifacts = yield* ArtifactStoreTag;
     const cache = yield* CacheStoreTag;
     const executors = yield* Executors;
+    const resources = yield* ResourceManagerTag;
 
     const running = new Map<string, TaskFiber>();
     const cacheKeys = new Map<string, string | undefined>();
@@ -187,7 +197,7 @@ export const schedulerLive: Layer.Layer<
 
         const pubsub = yield* PubSub.unbounded<TaskEvent>();
 
-        let program: Effect.Effect<ReadonlyArray<ArtifactRef>, SchedulerError> = Effect.gen(
+        const execute: Effect.Effect<ReadonlyArray<ArtifactRef>, SchedulerError> = Effect.gen(
           function* () {
             const events = executor.run(task);
             let outputs: ReadonlyArray<ArtifactRef> | undefined;
@@ -222,6 +232,15 @@ export const schedulerLive: Layer.Layer<
             }
             return outputs;
           },
+        );
+        // 缓存未命中才占用物理预算；排队/执行被取消时 acquireUseRelease 保证归还。
+        let program: Effect.Effect<
+          ReadonlyArray<ArtifactRef>,
+          SchedulerError
+        > = Effect.acquireUseRelease(
+          resources.acquire(task.id, task.resources, task.runtime),
+          () => execute,
+          (lease) => lease.release,
         );
 
         if (options.retry !== undefined) {
@@ -485,6 +504,7 @@ export const schedulerLive: Layer.Layer<
       });
 
     return {
+      resourceSnapshot: resources.snapshot,
       submit,
       submitPipeline,
       cancel: (taskId) => cancelCascade(taskId, new Set()),
@@ -492,3 +512,17 @@ export const schedulerLive: Layer.Layer<
     };
   }),
 );
+
+/** 默认能力预算下的 Scheduler，保持原有零配置装配方式。 */
+export const schedulerLive: Layer.Layer<
+  SchedulerTag,
+  never,
+  ArtifactStoreTag | CacheStoreTag | Executors
+> = Layer.provide(schedulerLayer, resourceManagerLive(defaultResourceCapacity()));
+
+/** 宿主/测试可注入明确预算，复用同一调度实现。 */
+export function schedulerLiveWithCapacity(
+  capacity: ResourceCapacity,
+): Layer.Layer<SchedulerTag, never, ArtifactStoreTag | CacheStoreTag | Executors> {
+  return Layer.provide(schedulerLayer, resourceManagerLive(capacity));
+}

@@ -42,6 +42,7 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
       { name: "pcm", type: "audio/pcm-f32", label: "PCM" },
       { name: "info", type: "media/info", label: "媒体信息" },
     ],
+    resources: { memoryMB: 512, threads: 1 },
     config: withSkipCache([]),
   },
   {
@@ -51,6 +52,7 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
     runtime: "wasm",
     inputs: [{ name: "pcm", type: "audio/pcm-f32", label: "PCM" }],
     outputs: [{ name: "waveform", type: "audio/waveform-peaks", label: "peaks" }],
+    resources: { memoryMB: 256, threads: 1 },
     config: withSkipCache([]),
   },
   {
@@ -60,6 +62,7 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
     runtime: "wasm",
     inputs: [{ name: "pcm", type: "audio/pcm-f32", label: "PCM" }],
     outputs: [{ name: "chunks", type: "subtitle/asr-chunks", label: "chunks" }],
+    resources: { memoryMB: 1536, threads: 1 },
     config: [
       MODEL_FIELD,
       {
@@ -117,6 +120,7 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
     runtime: "wasm",
     inputs: [{ name: "chunks", type: "subtitle/asr-chunks", label: "chunks" }],
     outputs: [{ name: "cues", type: "subtitle/cues", label: "cues" }],
+    resources: { memoryMB: 128, threads: 1 },
     config: withSkipCache([
       { key: "maxDurationS", label: "单条最长（秒）", kind: "number", default: 5 },
       { key: "maxChars", label: "单条最多字符", kind: "number", default: 30 },
@@ -129,6 +133,7 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
     runtime: "wasm",
     inputs: [{ name: "cues", type: "subtitle/cues", label: "cues" }],
     outputs: [{ name: "translatedCues", type: "subtitle/cues", label: "双语 cues" }],
+    resources: { memoryMB: 1024, threads: 1 },
     config: withSkipCache([
       {
         key: "direction",

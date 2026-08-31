@@ -36,7 +36,19 @@ export {
 export { CacheStoreTag, memoryCacheStore, type CacheStore } from "./cache-store";
 export { artifactPath, artifactStore, ArtifactStoreTag, type ArtifactStore } from "./artifact";
 export {
+  defaultResourceCapacity,
+  resourceManagerLive,
+  ResourceManagerTag,
+  type ResourceCapacity,
+  type ResourceLease,
+  type ResourceManager,
+  type ResourceQueueEntry,
+  type ResourceRequest,
+  type ResourceSnapshot,
+} from "./resource-manager";
+export {
   schedulerLive,
+  schedulerLiveWithCapacity,
   SchedulerTag,
   type PipelineHandle,
   type Scheduler,

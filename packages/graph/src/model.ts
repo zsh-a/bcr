@@ -1,4 +1,4 @@
-import type { ArtifactRef, PipelineNode, RuntimeKind } from "@bcr/core";
+import type { ArtifactRef, PipelineNode, ResourceRequirements, RuntimeKind } from "@bcr/core";
 
 /**
  * Pipeline DAG 图模型（纯逻辑，无 React）。
@@ -34,6 +34,7 @@ export interface OperationDef {
   readonly runtime: RuntimeKind;
   readonly inputs: ReadonlyArray<PortSpec>;
   readonly outputs: ReadonlyArray<PortSpec>;
+  readonly resources?: ResourceRequirements;
   readonly config?: ReadonlyArray<ConfigField>;
 }
 
@@ -415,6 +416,7 @@ export function compile(
       ...(bindings.length > 0 ? { bindings } : {}),
       ...(sourceInputs !== undefined ? { inputs: sourceInputs } : {}),
       outputs: op.outputs.map((port) => ({ name: port.name, type: port.type })),
+      ...(op.resources !== undefined ? { resources: op.resources } : {}),
       ...(hasConfig ? { config: configWithDefaults } : {}),
       ...(skipCache ? { cache: { enabled: false } } : {}),
     };

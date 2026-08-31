@@ -5,8 +5,14 @@ import { artifactPath, artifactStore } from "../src/artifact";
 import { memoryCacheStore } from "../src/cache-store";
 import { TaskFailed } from "../src/errors";
 import { executorRegistry, Executors, type RuntimeExecutor } from "../src/executor";
+import type { ResourceCapacity } from "../src/resource-manager";
 import type { ArtifactRef, ComputeTask, TaskEvent } from "../src/schema";
-import { schedulerLive, SchedulerTag, type Scheduler } from "../src/scheduler";
+import {
+  schedulerLive,
+  schedulerLiveWithCapacity,
+  SchedulerTag,
+  type Scheduler,
+} from "../src/scheduler";
 
 const ref = (id: string, hash?: string): ArtifactRef => ({
   id,
@@ -52,7 +58,7 @@ function countingExecutor(behavior?: (task: ComputeTask) => Stream.Stream<TaskEv
   return { executor, runs: () => runs };
 }
 
-function makeRuntime(executor: RuntimeExecutor) {
+function makeRuntime(executor: RuntimeExecutor, capacity?: ResourceCapacity) {
   const binary = new MemoryStore();
   // RuntimeExecutor 的契约要求 completed 前已物化输出；测试执行器在此补齐该行为。
   const materializing: RuntimeExecutor = {
@@ -75,7 +81,10 @@ function makeRuntime(executor: RuntimeExecutor) {
     memoryCacheStore(),
     Layer.succeed(Executors, executorRegistry([materializing])),
   );
-  const live = Layer.provideMerge(schedulerLive, deps);
+  const live = Layer.provideMerge(
+    capacity === undefined ? schedulerLive : schedulerLiveWithCapacity(capacity),
+    deps,
+  );
   return {
     live,
     binary,
@@ -178,6 +187,163 @@ describe("Scheduler (架构 §2/§3/§6/§7)", () => {
     );
 
     expect(runs()).toBe(2);
+  });
+
+  it("资源预算：内存不足时 FIFO 排队，后来的小任务不能插队", async () => {
+    const starts: string[] = [];
+    let active = 0;
+    let maxActive = 0;
+    const { executor } = countingExecutor((current) => {
+      starts.push(current.id);
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+      return Stream.fromEffect(
+        Effect.sleep("30 millis").pipe(
+          Effect.tap(() => Effect.sync(() => (active -= 1))),
+          Effect.as(completed(current.id, [ref(`out-${current.id}`, `h-${current.id}`)])),
+        ),
+      );
+    });
+    const { withScheduler } = makeRuntime(executor, {
+      memoryMB: 100,
+      threads: 3,
+      gpuSlots: 1,
+    });
+
+    const snapshot = await withScheduler((scheduler) =>
+      Effect.gen(function* () {
+        const first = yield* scheduler.submit({
+          ...task("first"),
+          resources: { memoryMB: 60 },
+        });
+        yield* Effect.sleep("5 millis");
+        const large = yield* scheduler.submit({
+          ...task("large"),
+          resources: { memoryMB: 100 },
+        });
+        const small = yield* scheduler.submit({
+          ...task("small"),
+          resources: { memoryMB: 40 },
+        });
+        yield* Effect.sleep("5 millis");
+        const snapshot = yield* scheduler.resourceSnapshot;
+        yield* Effect.all([first.await, large.await, small.await], { concurrency: "unbounded" });
+        return snapshot;
+      }),
+    );
+
+    expect(snapshot.used.memoryMB).toBe(60);
+    expect(snapshot.queued.map((entry) => entry.taskId)).toEqual(["large", "small"]);
+    expect(starts).toEqual(["first", "large", "small"]);
+    expect(maxActive).toBe(1);
+  });
+
+  it("取消排队任务会移出资源队列并让后续任务继续", async () => {
+    const starts: string[] = [];
+    const { executor } = countingExecutor((current) => {
+      starts.push(current.id);
+      return Stream.fromEffect(
+        Effect.sleep("30 millis").pipe(
+          Effect.as(completed(current.id, [ref(`out-${current.id}`, `h-${current.id}`)])),
+        ),
+      );
+    });
+    const { withScheduler } = makeRuntime(executor, {
+      memoryMB: 100,
+      threads: 1,
+      gpuSlots: 1,
+    });
+
+    const queuedExit = await withScheduler((scheduler) =>
+      Effect.gen(function* () {
+        const running = yield* scheduler.submit(task("running"));
+        yield* Effect.sleep("5 millis");
+        const cancelled = yield* scheduler.submit(task("cancelled"));
+        const next = yield* scheduler.submit(task("next"));
+        yield* cancelled.cancel;
+        const exit = yield* Effect.exit(cancelled.await);
+        yield* Effect.all([running.await, next.await], { concurrency: "unbounded" });
+        return exit;
+      }),
+    );
+
+    expect(Exit.isInterrupted(queuedExit)).toBe(true);
+    expect(starts).toEqual(["running", "next"]);
+  });
+
+  it("取消运行中任务会归还 lease 并唤醒队首", async () => {
+    const starts: string[] = [];
+    const { executor } = countingExecutor((current) => {
+      starts.push(current.id);
+      return current.id === "running"
+        ? Stream.never
+        : Stream.make(completed(current.id, [ref(`out-${current.id}`, `h-${current.id}`)]));
+    });
+    const { withScheduler } = makeRuntime(executor, {
+      memoryMB: 100,
+      threads: 1,
+      gpuSlots: 1,
+    });
+
+    const runningExit = await withScheduler((scheduler) =>
+      Effect.gen(function* () {
+        const running = yield* scheduler.submit(task("running"));
+        yield* Effect.sleep("5 millis");
+        const next = yield* scheduler.submit(task("next"));
+        yield* Effect.sleep("5 millis");
+        yield* running.cancel;
+        const exit = yield* Effect.exit(running.await);
+        yield* next.await;
+        return exit;
+      }),
+    );
+
+    expect(Exit.isInterrupted(runningExit)).toBe(true);
+    expect(starts).toEqual(["running", "next"]);
+  });
+
+  it("单任务请求超过总容量时快速失败；缓存命中不占用资源", async () => {
+    const { executor, runs } = countingExecutor();
+    const { withScheduler } = makeRuntime(executor, {
+      memoryMB: 64,
+      threads: 1,
+      gpuSlots: 0,
+    });
+    const input = ref("source", "same-content");
+
+    const oversized = await withScheduler((scheduler) =>
+      Effect.gen(function* () {
+        const first = yield* scheduler.submit({
+          ...task("first", [input]),
+          config: { mode: "ok" },
+        });
+        yield* first.await;
+        const cached = yield* scheduler.submit({
+          ...task("cached", [input]),
+          config: { mode: "ok" },
+          resources: { memoryMB: 999, threads: 99, gpu: true },
+        });
+        expect(cached.cached).toBe(true);
+        yield* cached.await;
+
+        const rejected = yield* scheduler.submit({
+          ...task("rejected", [input]),
+          config: { mode: "different" },
+          resources: { memoryMB: 65 },
+        });
+        return yield* Effect.exit(rejected.await);
+      }),
+    );
+
+    expect(runs()).toBe(1);
+    expect(Exit.isFailure(oversized)).toBe(true);
+    if (Exit.isFailure(oversized)) {
+      const error = Cause.failureOption(oversized.cause);
+      expect(error._tag).toBe("Some");
+      if (error._tag === "Some" && error.value instanceof TaskFailed) {
+        expect(error.value.message).toContain("resource request exceeds capacity");
+      }
+    }
   });
 
   it("取消级联：取消上游 → 下游运行中任务被中断（§3）", async () => {
