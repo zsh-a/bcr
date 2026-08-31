@@ -6,9 +6,13 @@ import {
   hashReadableStream,
   memoryCacheStore,
   schedulerLive,
+  schedulerLiveWithJournal,
   SchedulerTag,
   type ArtifactRef,
   type ComputeTask,
+  type Scheduler,
+  type TaskHandle,
+  type TaskJournalEntry,
 } from "@bcr/core";
 import type { RuntimeServices } from "@bcr/react";
 import { workerExecutor, WorkerPool } from "@bcr/runtime-worker";
@@ -17,6 +21,7 @@ import {
   openSqliteDb,
   sqliteCacheStore,
   sqliteLineageStore,
+  sqliteTaskJournal,
   type SqliteDb,
 } from "@bcr/storage-sqlite";
 import initSqlite from "@sqlite.org/sqlite-wasm";
@@ -77,11 +82,15 @@ export async function createRuntimeServices(): Promise<RuntimeServices> {
     metaDb !== undefined ? sqliteCacheStore(metaDb) : memoryCacheStore(),
     Layer.succeed(Executors, executorRegistry([wasmExecutor])),
   );
-  const live = Layer.provideMerge(schedulerLive, deps);
+  const schedulerLayer =
+    metaDb !== undefined ? schedulerLiveWithJournal(sqliteTaskJournal(metaDb)) : schedulerLive;
+  const live = Layer.provideMerge(schedulerLayer, deps);
   const ctx = await Effect.runPromise(Effect.scoped(Layer.build(live)));
+  const scheduler = Context.get(ctx, SchedulerTag);
 
   await restoreFiles();
-  return { scheduler: Context.get(ctx, SchedulerTag), artifacts };
+  await restoreTasks(scheduler);
+  return { scheduler, artifacts };
 }
 
 /** 刷新恢复：文件列表从元数据库回放（artifact 数据本体一直在 OPFS）。 */
@@ -99,6 +108,130 @@ async function restoreFiles(): Promise<void> {
   }
 }
 
+const isActive = (record: TaskRecord): boolean =>
+  record.status === "queued" || record.status === "running";
+
+function recordFromJournal(entry: TaskJournalEntry): TaskRecord {
+  const terminal =
+    entry.status === "completed" ||
+    entry.status === "failed" ||
+    entry.status === "cancelled" ||
+    entry.status === "blocked";
+  return {
+    id: entry.task.id,
+    operation: entry.task.operation,
+    runtime: entry.task.runtime,
+    inputId: entry.task.inputs[0]?.id ?? "—",
+    status: entry.status,
+    progress: entry.status === "completed" ? 1 : 0,
+    cached: false,
+    startedAt: entry.createdAt,
+    ...(entry.outputs !== undefined ? { outputs: entry.outputs } : {}),
+    ...(entry.error !== undefined ? { error: entry.error } : {}),
+    ...(terminal ? { durationMs: Math.max(0, entry.updatedAt - entry.createdAt) } : {}),
+  };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/** 事件只负责增量进度；handle.await 同时作为不会丢失的终态兜底。 */
+function observeTaskHandle(
+  handle: TaskHandle,
+  record: TaskRecord,
+  recovered = false,
+): Promise<void> {
+  studio.upsertTask({
+    ...record,
+    status: handle.cached ? "queued" : "running",
+    cached: handle.cached,
+  });
+
+  const complete = (outputs: ReadonlyArray<ArtifactRef>): void => {
+    const current = studio.getSnapshot().tasks.find(({ id }) => id === record.id);
+    if (current === undefined || !isActive(current)) return;
+    studio.patchTask(record.id, {
+      status: "completed",
+      progress: 1,
+      outputs,
+      cached: handle.cached,
+      durationMs: Date.now() - record.startedAt,
+    });
+    studio.log(
+      "ok",
+      `${record.operation} · ${handle.cached ? "cache hit" : recovered ? "recovered · completed" : "completed"} · ${record.id}`,
+    );
+  };
+
+  const fail = (message: string): void => {
+    const current = studio.getSnapshot().tasks.find(({ id }) => id === record.id);
+    if (current === undefined || !isActive(current)) return;
+    studio.patchTask(record.id, {
+      status: message === "cancelled" ? "cancelled" : "failed",
+      error: message,
+      durationMs: Date.now() - record.startedAt,
+    });
+    studio.log("error", `${record.operation} · ${message} · ${record.id}`);
+  };
+
+  Effect.runFork(
+    Stream.runForEach(handle.events, (event) =>
+      Effect.sync(() => {
+        switch (event.type) {
+          case "progress":
+            studio.patchTask(record.id, { status: "running", progress: event.value });
+            break;
+          case "completed":
+            complete(event.outputs);
+            break;
+          case "failed":
+            fail(event.error);
+            break;
+          case "chunk":
+            break;
+        }
+      }),
+    ),
+  );
+
+  return Effect.runPromise(handle.await)
+    .then(complete)
+    .catch((error: unknown) => {
+      fail(errorMessage(error));
+    });
+}
+
+/** 启动恢复：先投影完整历史，再重放有完整输入的 queued/running 任务。 */
+async function restoreTasks(scheduler: Scheduler): Promise<void> {
+  try {
+    const entries = await Effect.runPromise(scheduler.journalSnapshot);
+    for (const entry of entries) studio.upsertTask(recordFromJournal(entry));
+    if (entries.length > 0) {
+      studio.log("info", `restore · ${entries.length} task(s) from journal`);
+    }
+
+    const report = await Effect.runPromise(scheduler.recoverPending());
+    for (const { entry, handle } of report.resumed) {
+      void observeTaskHandle(handle, recordFromJournal(entry), true);
+    }
+
+    if (report.skipped.length > 0) {
+      const refreshed = await Effect.runPromise(scheduler.journalSnapshot);
+      for (const skipped of report.skipped) {
+        const entry = refreshed.find(({ task }) => task.id === skipped.taskId);
+        if (entry !== undefined) studio.upsertTask(recordFromJournal(entry));
+        studio.log("warn", `recover · ${skipped.taskId} · ${skipped.reason}`);
+      }
+    }
+    if (report.resumed.length > 0) {
+      studio.log("info", `recover · resumed ${report.resumed.length} task(s)`);
+    }
+  } catch (error) {
+    studio.log("warn", `restore tasks failed · ${String(error)}`);
+  }
+}
+
 /** 提交任务并把事件流投影到 Studio store。 */
 export async function runTask(
   services: RuntimeServices,
@@ -108,7 +241,7 @@ export async function runTask(
 ): Promise<void> {
   taskSeq += 1;
   const task: ComputeTask = {
-    id: `task-${taskSeq}`,
+    id: `task-${Date.now().toString(36)}-${taskSeq.toString(36)}`,
     runtime: "wasm",
     operation,
     inputs: [input],
@@ -129,54 +262,9 @@ export async function runTask(
     cached: false,
     startedAt: Date.now(),
   };
-  studio.upsertTask(record);
-
-  if (handle.cached) {
-    const outputs = await Effect.runPromise(handle.await);
-    studio.upsertTask({
-      ...record,
-      status: "completed",
-      progress: 1,
-      cached: true,
-      outputs,
-      durationMs: Date.now() - record.startedAt,
-    });
-    studio.log("ok", `${operation} · cache hit · ${input.id}`);
-    return;
-  }
-
   studio.log("info", `${operation} · submitted · ${input.id}`);
-
-  Effect.runFork(
-    Stream.runForEach(handle.events, (event) =>
-      Effect.sync(() => {
-        switch (event.type) {
-          case "progress":
-            studio.patchTask(task.id, { progress: event.value });
-            break;
-          case "chunk":
-            break;
-          case "completed":
-            studio.patchTask(task.id, {
-              status: "completed",
-              progress: 1,
-              outputs: event.outputs,
-              durationMs: Date.now() - record.startedAt,
-            });
-            studio.log("ok", `${operation} · completed · ${task.id}`);
-            break;
-          case "failed":
-            studio.patchTask(task.id, {
-              status: event.error === "cancelled" ? "cancelled" : "failed",
-              error: event.error,
-              durationMs: Date.now() - record.startedAt,
-            });
-            studio.log("error", `${operation} · ${event.error} · ${task.id}`);
-            break;
-        }
-      }),
-    ),
-  );
+  const settled = observeTaskHandle(handle, record);
+  if (handle.cached) await settled;
 }
 
 /** 导入文件：流式写入 OPFS（FileArtifact），不整段进内存（§4/§8）。 */
@@ -210,5 +298,13 @@ function persistFiles(): void {
 
 export async function cancelTask(services: RuntimeServices, taskId: string): Promise<void> {
   await Effect.runPromise(services.scheduler.cancel(taskId));
+  const current = studio.getSnapshot().tasks.find(({ id }) => id === taskId);
+  if (current !== undefined && isActive(current)) {
+    studio.patchTask(taskId, {
+      status: "cancelled",
+      error: "cancelled",
+      durationMs: Date.now() - current.startedAt,
+    });
+  }
   studio.log("warn", `cancel · ${taskId}`);
 }

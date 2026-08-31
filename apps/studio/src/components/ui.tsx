@@ -65,13 +65,15 @@ export function StatusDot({ status }: { status: string }) {
   const color =
     status === "running"
       ? "bg-accent pulse-dot"
-      : status === "completed"
-        ? "bg-accent"
-        : status === "failed"
-          ? "bg-danger"
-          : status === "cancelled"
-            ? "bg-amber"
-            : "bg-faint";
+      : status === "queued"
+        ? "bg-info pulse-dot"
+        : status === "completed"
+          ? "bg-accent"
+          : status === "failed" || status === "blocked"
+            ? "bg-danger"
+            : status === "cancelled"
+              ? "bg-amber"
+              : "bg-faint";
   return <span className={`inline-block size-1.5 rounded-full ${color}`} />;
 }
 

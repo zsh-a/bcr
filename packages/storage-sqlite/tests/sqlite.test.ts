@@ -1,10 +1,16 @@
-import type { ArtifactRef, CacheStore } from "@bcr/core";
-import { CacheStoreTag } from "@bcr/core";
+import type { ArtifactRef, CacheStore, ComputeTask, TaskJournal } from "@bcr/core";
+import { CacheStoreTag, TaskJournalTag } from "@bcr/core";
 import { MemoryStore } from "@bcr/storage-opfs";
 import { Effect } from "effect";
 import initSqlite from "@sqlite.org/sqlite-wasm";
 import { beforeEach, describe, expect, it } from "vitest";
-import { openSqliteDb, sqliteCacheStore, sqliteLineageStore, type SqliteDb } from "../src";
+import {
+  openSqliteDb,
+  sqliteCacheStore,
+  sqliteLineageStore,
+  sqliteTaskJournal,
+  type SqliteDb,
+} from "../src";
 
 const ref = (id: string, hash?: string): ArtifactRef => ({
   id,
@@ -127,5 +133,44 @@ describe("sqliteLineageStore (§3/§8)", () => {
     await Effect.runPromise(lineage.recordProduction("tA", ["a9"]));
     const snapshot = await Effect.runPromise(lineage.load);
     expect(snapshot.outputs.get("tA")).toEqual(["a9"]);
+  });
+});
+
+describe("sqliteTaskJournal (崩溃恢复)", () => {
+  const journalTask: ComputeTask = {
+    id: "journal-cross-session",
+    runtime: "js",
+    operation: "test.recover",
+    inputs: [ref("journal-input", "journal-input-hash")],
+    outputs: [{ name: "result", type: "test/result" }],
+  };
+
+  const run = <A>(database: SqliteDb, f: (journal: TaskJournal) => Effect.Effect<A>) =>
+    Effect.runPromise(
+      Effect.flatMap(TaskJournalTag, f).pipe(Effect.provide(sqliteTaskJournal(database))),
+    );
+
+  it("running 快照跨会话保留，并可继续迁移到 completed", async () => {
+    await run(db, (journal) =>
+      journal
+        .recordSubmitted(journalTask)
+        .pipe(Effect.zipRight(journal.recordRunning(journalTask.id))),
+    );
+    await db.close();
+
+    const sqlite3 = await initSqlite();
+    const reopened = await openSqliteDb({ store, path: "project/meta.db", sqlite3 });
+    let entry = (await run(reopened, (journal) => journal.entries)).find(
+      ({ task }) => task.id === journalTask.id,
+    );
+    expect(entry).toMatchObject({ task: journalTask, status: "running", attempts: 1 });
+
+    const output = ref("journal-output", "journal-output-hash");
+    await run(reopened, (journal) => journal.recordCompleted(journalTask.id, [output]));
+    entry = (await run(reopened, (journal) => journal.entries)).find(
+      ({ task }) => task.id === journalTask.id,
+    );
+    expect(entry).toMatchObject({ status: "completed", attempts: 1, outputs: [output] });
+    await reopened.close();
   });
 });

@@ -7,3 +7,4 @@ export {
 } from "./db";
 export { sqliteCacheStore } from "./cache";
 export { sqliteLineageStore } from "./lineage";
+export { sqliteTaskJournal } from "./journal";

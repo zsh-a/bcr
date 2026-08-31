@@ -84,13 +84,15 @@ function TaskRow(props: {
           {task.inputId}
         </span>
         {task.cached && <Badge tone="amber">cache hit</Badge>}
-        <Badge tone={task.status === "failed" ? "danger" : "muted"}>{task.runtime}</Badge>
+        <Badge tone={task.status === "failed" || task.status === "blocked" ? "danger" : "muted"}>
+          {task.runtime}
+        </Badge>
         {task.durationMs !== undefined && (
           <span className="font-mono text-[10px] text-muted">
             {formatDuration(task.durationMs)}
           </span>
         )}
-        {task.status === "running" && (
+        {(task.status === "queued" || task.status === "running") && (
           <button
             type="button"
             title="取消任务（级联下游）"
@@ -104,7 +106,9 @@ function TaskRow(props: {
           </button>
         )}
       </div>
-      {task.status === "running" && <ProgressBar value={task.progress} />}
+      {(task.status === "queued" || task.status === "running") && (
+        <ProgressBar value={task.progress} />
+      )}
     </div>
   );
 }

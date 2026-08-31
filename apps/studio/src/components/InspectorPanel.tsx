@@ -43,7 +43,7 @@ export function InspectorPanel() {
             />
             <Row k="started" v={formatTime(task.startedAt)} />
             <Row k="input" v={task.inputId} mono />
-            {task.status === "running" && (
+            {(task.status === "queued" || task.status === "running") && (
               <div className="pt-1">
                 <ProgressBar value={task.progress} />
               </div>

@@ -4,12 +4,15 @@ export {
   ArtifactStorage,
   CachePolicy,
   ComputeTask,
+  decodeTaskJournalEntry,
   decodeArtifactRef,
   decodeComputeTask,
   decodeTaskEvent,
   ResourceRequirements,
   RuntimeKind,
   TaskEvent,
+  TaskJournalEntry,
+  TaskJournalStatus,
   PipelineBinding,
 } from "./schema";
 export { cacheKey } from "./cache-key";
@@ -47,12 +50,23 @@ export {
   type ResourceSnapshot,
 } from "./resource-manager";
 export {
+  makeMemoryTaskJournal,
+  memoryTaskJournal,
+  TaskJournalTag,
+  type TaskJournal,
+} from "./task-journal";
+export {
   schedulerLive,
   schedulerLiveWithCapacity,
+  schedulerLiveWithJournal,
   SchedulerTag,
   type PipelineHandle,
   type Scheduler,
   type SubmitOptions,
   type TaskHandle,
+  type RecoveredTask,
+  type RecoveryOptions,
+  type RecoveryReport,
+  type RecoverySkip,
 } from "./scheduler";
 export { PipelineNode } from "./schema";

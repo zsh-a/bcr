@@ -1,4 +1,4 @@
-/* 刷新恢复走查：导入 → 计算 → reload → 文件列表恢复 + 缓存命中（§7/§8 持久化闭环）。 */
+/* 刷新恢复走查：导入 → 计算 → reload → 文件/任务历史恢复 + 缓存命中（§7/§8）。 */
 import { launchVerifyBrowser } from "./verify-browser.mjs";
 
 const base = process.env.BASE_URL ?? "http://localhost:5199/studio";
@@ -44,6 +44,8 @@ await page.screenshot({ path: `${dir}/p1-computed.png` });
 
 const taskText1 = await page.locator("body").innerText();
 if (!taskText1.includes("persist.raw")) fail("会话 1：文件未出现在项目列表");
+const taskId = taskText1.match(/task-[a-z0-9]+-[a-z0-9]+/)?.[0];
+if (taskId === undefined) fail("会话 1：任务未出现在任务历史");
 console.log("session 1 done");
 
 // ── 会话 2：刷新 → 恢复 ───────────────────────────────────────────
@@ -53,7 +55,10 @@ await page.screenshot({ path: `${dir}/p2-reloaded.png` });
 
 const taskText2 = await page.locator("body").innerText();
 if (!taskText2.includes("persist.raw")) fail("刷新后文件列表未恢复（kv/files 缺失）");
-console.log("file list restored after reload");
+if (taskId !== undefined && !taskText2.includes(taskId)) {
+  fail("刷新后任务历史未恢复（task_journal 缺失）");
+}
+console.log("file list and task history restored after reload");
 
 // 同一文件重跑 → 缓存命中（cache_entries 持久化）
 await page.locator("button", { hasText: "BLAKE3" }).first().click();

@@ -7,9 +7,11 @@ import { TaskFailed } from "../src/errors";
 import { executorRegistry, Executors, type RuntimeExecutor } from "../src/executor";
 import type { ResourceCapacity } from "../src/resource-manager";
 import type { ArtifactRef, ComputeTask, TaskEvent } from "../src/schema";
+import { makeMemoryTaskJournal, TaskJournalTag, type TaskJournal } from "../src/task-journal";
 import {
   schedulerLive,
   schedulerLiveWithCapacity,
+  schedulerLiveWithJournal,
   SchedulerTag,
   type Scheduler,
 } from "../src/scheduler";
@@ -58,7 +60,11 @@ function countingExecutor(behavior?: (task: ComputeTask) => Stream.Stream<TaskEv
   return { executor, runs: () => runs };
 }
 
-function makeRuntime(executor: RuntimeExecutor, capacity?: ResourceCapacity) {
+function makeRuntime(
+  executor: RuntimeExecutor,
+  capacity?: ResourceCapacity,
+  journal?: TaskJournal,
+) {
   const binary = new MemoryStore();
   // RuntimeExecutor 的契约要求 completed 前已物化输出；测试执行器在此补齐该行为。
   const materializing: RuntimeExecutor = {
@@ -81,10 +87,13 @@ function makeRuntime(executor: RuntimeExecutor, capacity?: ResourceCapacity) {
     memoryCacheStore(),
     Layer.succeed(Executors, executorRegistry([materializing])),
   );
-  const live = Layer.provideMerge(
-    capacity === undefined ? schedulerLive : schedulerLiveWithCapacity(capacity),
-    deps,
-  );
+  const scheduler =
+    journal === undefined
+      ? capacity === undefined
+        ? schedulerLive
+        : schedulerLiveWithCapacity(capacity)
+      : schedulerLiveWithJournal(Layer.succeed(TaskJournalTag, journal), capacity);
+  const live = Layer.provideMerge(scheduler, deps);
   return {
     live,
     binary,
@@ -96,6 +105,85 @@ function makeRuntime(executor: RuntimeExecutor, capacity?: ResourceCapacity) {
 }
 
 describe("Scheduler (架构 §2/§3/§6/§7)", () => {
+  it("TaskJournal 记录 queued → running → completed 和输出", async () => {
+    const journal = makeMemoryTaskJournal();
+    const { executor } = countingExecutor();
+    const { withScheduler } = makeRuntime(executor, undefined, journal);
+
+    const snapshot = await withScheduler((scheduler) =>
+      Effect.gen(function* () {
+        const handle = yield* scheduler.submit(task("journal-completed"));
+        yield* handle.await;
+        return yield* scheduler.journalSnapshot;
+      }),
+    );
+
+    expect(snapshot).toHaveLength(1);
+    expect(snapshot[0]).toMatchObject({
+      status: "completed",
+      attempts: 1,
+      outputs: [{ id: "out-journal-completed" }],
+    });
+  });
+
+  it("recoverPending 重放崩溃前 running 的任务并保留尝试次数", async () => {
+    const journal = makeMemoryTaskJournal();
+    const input = ref("recover-input", "recover-input-hash");
+    const pending = task("recover-running", [input]);
+    await Effect.runPromise(
+      journal.recordSubmitted(pending).pipe(Effect.zipRight(journal.recordRunning(pending.id))),
+    );
+
+    const { executor, runs } = countingExecutor();
+    const { withScheduler, binary } = makeRuntime(executor, undefined, journal);
+    await binary.put(artifactPath(input), new Uint8Array([1]));
+
+    const result = await withScheduler((scheduler) =>
+      Effect.gen(function* () {
+        const report = yield* scheduler.recoverPending();
+        const recovered = report.resumed[0];
+        if (recovered === undefined) throw new Error("expected recovered task");
+        const outputs = yield* recovered.handle.await;
+        return { report, outputs, snapshot: yield* scheduler.journalSnapshot };
+      }),
+    );
+
+    expect(result.report.skipped).toEqual([]);
+    expect(result.report.resumed.map(({ entry }) => entry.task.id)).toEqual([pending.id]);
+    expect(result.outputs[0]?.id).toBe("out-recover-running");
+    expect(result.snapshot[0]).toMatchObject({ status: "completed", attempts: 2 });
+    expect(runs()).toBe(1);
+  });
+
+  it("recoverPending 对缺失输入标记 blocked，不启动 executor", async () => {
+    const journal = makeMemoryTaskJournal();
+    const pending = task("recover-blocked", [ref("missing-input")]);
+    await Effect.runPromise(journal.recordSubmitted(pending));
+
+    const { executor, runs } = countingExecutor();
+    const { withScheduler } = makeRuntime(executor, undefined, journal);
+    const result = await withScheduler((scheduler) =>
+      Effect.gen(function* () {
+        const report = yield* scheduler.recoverPending();
+        return { report, snapshot: yield* scheduler.journalSnapshot };
+      }),
+    );
+
+    expect(result.report.resumed).toEqual([]);
+    expect(result.report.skipped).toEqual([
+      {
+        taskId: pending.id,
+        reason: "missing input artifacts: missing-input",
+      },
+    ]);
+    expect(result.snapshot[0]).toMatchObject({
+      status: "blocked",
+      error: "missing input artifacts: missing-input",
+      attempts: 0,
+    });
+    expect(runs()).toBe(0);
+  });
+
   it("成功路径：progress + completed，await 返回输出", async () => {
     const { executor } = countingExecutor();
     const { withScheduler } = makeRuntime(executor);
@@ -272,6 +360,7 @@ describe("Scheduler (架构 §2/§3/§6/§7)", () => {
   });
 
   it("取消运行中任务会归还 lease 并唤醒队首", async () => {
+    const journal = makeMemoryTaskJournal();
     const starts: string[] = [];
     const { executor } = countingExecutor((current) => {
       starts.push(current.id);
@@ -279,13 +368,17 @@ describe("Scheduler (架构 §2/§3/§6/§7)", () => {
         ? Stream.never
         : Stream.make(completed(current.id, [ref(`out-${current.id}`, `h-${current.id}`)]));
     });
-    const { withScheduler } = makeRuntime(executor, {
-      memoryMB: 100,
-      threads: 1,
-      gpuSlots: 1,
-    });
+    const { withScheduler } = makeRuntime(
+      executor,
+      {
+        memoryMB: 100,
+        threads: 1,
+        gpuSlots: 1,
+      },
+      journal,
+    );
 
-    const runningExit = await withScheduler((scheduler) =>
+    const result = await withScheduler((scheduler) =>
       Effect.gen(function* () {
         const running = yield* scheduler.submit(task("running"));
         yield* Effect.sleep("5 millis");
@@ -294,11 +387,12 @@ describe("Scheduler (架构 §2/§3/§6/§7)", () => {
         yield* running.cancel;
         const exit = yield* Effect.exit(running.await);
         yield* next.await;
-        return exit;
+        return { exit, snapshot: yield* scheduler.journalSnapshot };
       }),
     );
 
-    expect(Exit.isInterrupted(runningExit)).toBe(true);
+    expect(Exit.isInterrupted(result.exit)).toBe(true);
+    expect(result.snapshot.find(({ task }) => task.id === "running")?.status).toBe("cancelled");
     expect(starts).toEqual(["running", "next"]);
   });
 
@@ -374,27 +468,31 @@ describe("Scheduler (架构 §2/§3/§6/§7)", () => {
   });
 
   it("timeout：超时后任务失败（§6.1）", async () => {
+    const journal = makeMemoryTaskJournal();
     const { executor } = countingExecutor(() => Stream.never);
-    const { withScheduler } = makeRuntime(executor);
+    const { withScheduler } = makeRuntime(executor, undefined, journal);
 
-    const exit = await withScheduler((s) =>
+    const result = await withScheduler((s) =>
       Effect.gen(function* () {
         const handle = yield* s.submit(task("t1"), { timeout: "50 millis" });
-        return yield* Effect.exit(handle.await);
+        const exit = yield* Effect.exit(handle.await);
+        return { exit, snapshot: yield* s.journalSnapshot };
       }),
     );
 
-    expect(Exit.isFailure(exit)).toBe(true);
-    if (Exit.isFailure(exit)) {
-      const error = Cause.failureOption(exit.cause);
+    expect(Exit.isFailure(result.exit)).toBe(true);
+    if (Exit.isFailure(result.exit)) {
+      const error = Cause.failureOption(result.exit.cause);
       expect(error._tag).toBe("Some");
       if (error._tag === "Some") {
         expect(error.value).toBeInstanceOf(TaskFailed);
       }
     }
+    expect(result.snapshot[0]).toMatchObject({ status: "failed", error: "timeout" });
   });
 
   it("retry：失败后按 Schedule 重试", async () => {
+    const journal = makeMemoryTaskJournal();
     let attempts = 0;
     const { executor } = countingExecutor((t) => {
       attempts += 1;
@@ -403,19 +501,21 @@ describe("Scheduler (架构 §2/§3/§6/§7)", () => {
       }
       return Stream.make(completed(t.id, [ref("out-t1", "h")]));
     });
-    const { withScheduler } = makeRuntime(executor);
+    const { withScheduler } = makeRuntime(executor, undefined, journal);
 
-    const outputs = await withScheduler((s) =>
+    const result = await withScheduler((s) =>
       Effect.gen(function* () {
         const handle = yield* s.submit(task("t1"), {
           retry: Schedule.recurs(1),
         });
-        return yield* handle.await;
+        const outputs = yield* handle.await;
+        return { outputs, snapshot: yield* s.journalSnapshot };
       }),
     );
 
     expect(attempts).toBe(2);
-    expect(outputs[0]?.id).toBe("out-t1");
+    expect(result.outputs[0]?.id).toBe("out-t1");
+    expect(result.snapshot[0]).toMatchObject({ status: "completed", attempts: 2 });
   });
 
   it("invalidateArtifact：仅失效下游链路，上游缓存保留（§3）", async () => {

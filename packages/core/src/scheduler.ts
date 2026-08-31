@@ -22,7 +22,8 @@ import {
   type ResourceCapacity,
   type ResourceSnapshot,
 } from "./resource-manager";
-import type { ArtifactRef, ComputeTask, PipelineNode, TaskEvent } from "./schema";
+import type { ArtifactRef, ComputeTask, PipelineNode, TaskEvent, TaskJournalEntry } from "./schema";
+import { memoryTaskJournal, TaskJournalTag } from "./task-journal";
 
 export interface SubmitOptions {
   /** 超时后任务以 TaskFailed("timeout") 失败。 */
@@ -43,6 +44,28 @@ export interface TaskHandle {
   readonly cached: boolean;
 }
 
+export interface RecoveryOptions {
+  /** 默认只恢复刷新时遗留的 queued/running；显式开启后也可人工重试失败/阻塞任务。 */
+  readonly includeFailed?: boolean | undefined;
+  /** 恢复任务沿用普通提交的超时/重试策略。 */
+  readonly submit?: SubmitOptions | undefined;
+}
+
+export interface RecoveredTask {
+  readonly entry: TaskJournalEntry;
+  readonly handle: TaskHandle;
+}
+
+export interface RecoverySkip {
+  readonly taskId: string;
+  readonly reason: string;
+}
+
+export interface RecoveryReport {
+  readonly resumed: ReadonlyArray<RecoveredTask>;
+  readonly skipped: ReadonlyArray<RecoverySkip>;
+}
+
 /** 流水线句柄：节点按 after 依赖编排，上游完成自动触发下游（§3）。 */
 export interface PipelineHandle {
   readonly pipelineId: string;
@@ -57,6 +80,8 @@ export interface PipelineHandle {
 export interface Scheduler {
   /** 当前资源预算、占用与 FIFO 等待队列快照（供宿主监控/诊断）。 */
   readonly resourceSnapshot: Effect.Effect<ResourceSnapshot>;
+  /** 持久化任务视图，供宿主恢复 UI 和任务历史。 */
+  readonly journalSnapshot: Effect.Effect<ReadonlyArray<TaskJournalEntry>>;
   readonly submit: (
     task: ComputeTask,
     options?: SubmitOptions,
@@ -72,6 +97,11 @@ export interface Scheduler {
   ) => Effect.Effect<PipelineHandle, InvalidPipeline | NoExecutor>;
   readonly cancel: (taskId: string) => Effect.Effect<void>;
   /**
+   * 重放异常退出时遗留的任务。只有输入 Artifact 仍存在才会重新提交；
+   * 输入缺失的任务转为 blocked 并进入 skipped，单个坏任务不会阻断其余恢复。
+   */
+  readonly recoverPending: (options?: RecoveryOptions) => Effect.Effect<RecoveryReport>;
+  /**
    * 架构文档 §3：源数据变更/删除 → 仅失效下游链路。
    * 取消正在运行的下游任务、清掉下游缓存条目。
    */
@@ -85,7 +115,7 @@ type TaskFiber = Fiber.RuntimeFiber<ReadonlyArray<ArtifactRef>, SchedulerError>;
 const schedulerLayer: Layer.Layer<
   SchedulerTag,
   never,
-  ArtifactStoreTag | CacheStoreTag | Executors | ResourceManagerTag
+  ArtifactStoreTag | CacheStoreTag | Executors | ResourceManagerTag | TaskJournalTag
 > = Layer.effect(
   SchedulerTag,
   Effect.gen(function* () {
@@ -93,6 +123,7 @@ const schedulerLayer: Layer.Layer<
     const cache = yield* CacheStoreTag;
     const executors = yield* Executors;
     const resources = yield* ResourceManagerTag;
+    const journal = yield* TaskJournalTag;
 
     const running = new Map<string, TaskFiber>();
     const cacheKeys = new Map<string, string | undefined>();
@@ -153,8 +184,10 @@ const schedulerLayer: Layer.Layer<
       sink: PubSub.PubSub<TaskEvent> | undefined = undefined,
     ): Effect.Effect<TaskHandle, NoExecutor> =>
       Effect.gen(function* () {
+        yield* journal.recordSubmitted(task);
         const executor = executors.get(task.runtime);
         if (executor === undefined) {
+          yield* journal.recordFailed(task.id, `no executor for runtime "${task.runtime}"`);
           return yield* new NoExecutor({ runtime: task.runtime });
         }
 
@@ -172,6 +205,7 @@ const schedulerLayer: Layer.Layer<
               const named = nameOutputs(task, cached);
               yield* cache.associate(key, task.id);
               yield* artifacts.registerProduction(task.id, named);
+              yield* journal.recordCompleted(task.id, named);
               if (sink !== undefined) {
                 yield* PubSub.publish(sink, {
                   type: "completed",
@@ -207,7 +241,10 @@ const schedulerLayer: Layer.Layer<
                 Effect.gen(function* () {
                   const published: TaskEvent =
                     event.type === "completed"
-                      ? { ...event, outputs: [...nameOutputs(task, event.outputs)] }
+                      ? {
+                          ...event,
+                          outputs: [...nameOutputs(task, event.outputs)],
+                        }
                       : event;
                   yield* PubSub.publish(pubsub, published);
                   if (sink !== undefined) {
@@ -230,6 +267,8 @@ const schedulerLayer: Layer.Layer<
             if (key !== undefined && cacheable) {
               yield* cache.put(key, outputs, task.id);
             }
+            // write-ahead 对应的提交点：产物血缘和缓存都稳定后才记 completed。
+            yield* journal.recordCompleted(task.id, outputs);
             return outputs;
           },
         );
@@ -239,7 +278,7 @@ const schedulerLayer: Layer.Layer<
           SchedulerError
         > = Effect.acquireUseRelease(
           resources.acquire(task.id, task.resources, task.runtime),
-          () => execute,
+          () => journal.recordRunning(task.id).pipe(Effect.zipRight(execute)),
           (lease) => lease.release,
         );
 
@@ -255,18 +294,26 @@ const schedulerLayer: Layer.Layer<
 
         program = program.pipe(
           Effect.tapError((error) =>
-            PubSub.publish(pubsub, {
-              type: "failed",
-              taskId: task.id,
-              error: error.message,
-            }),
+            journal.recordFailed(task.id, error.message).pipe(
+              Effect.zipRight(
+                PubSub.publish(pubsub, {
+                  type: "failed",
+                  taskId: task.id,
+                  error: error.message,
+                }),
+              ),
+            ),
           ),
           Effect.onInterrupt(() =>
-            PubSub.publish(pubsub, {
-              type: "failed",
-              taskId: task.id,
-              error: "cancelled",
-            }),
+            journal.recordCancelled(task.id).pipe(
+              Effect.zipRight(
+                PubSub.publish(pubsub, {
+                  type: "failed",
+                  taskId: task.id,
+                  error: "cancelled",
+                }),
+              ),
+            ),
           ),
           Effect.ensuring(
             Effect.gen(function* () {
@@ -292,6 +339,59 @@ const schedulerLayer: Layer.Layer<
       task: ComputeTask,
       options: SubmitOptions = {},
     ): Effect.Effect<TaskHandle, NoExecutor> => submitInternal(task, options);
+
+    const recoverPending = (options: RecoveryOptions = {}): Effect.Effect<RecoveryReport> =>
+      Effect.gen(function* () {
+        const entries = yield* journal.entries;
+        const resumed: RecoveredTask[] = [];
+        const skipped: RecoverySkip[] = [];
+
+        for (const entry of entries) {
+          const eligible =
+            entry.status === "queued" ||
+            entry.status === "running" ||
+            (options.includeFailed === true &&
+              (entry.status === "failed" || entry.status === "blocked"));
+          if (!eligible) continue;
+
+          if (running.has(entry.task.id)) {
+            skipped.push({
+              taskId: entry.task.id,
+              reason: "task is already active",
+            });
+            continue;
+          }
+
+          const inputExists = yield* Effect.all(
+            entry.task.inputs.map((input) => artifacts.has(input)),
+          );
+          const missing = entry.task.inputs.filter((_, index) => inputExists[index] !== true);
+          if (missing.length > 0) {
+            const reason = `missing input artifacts: ${missing.map((ref) => ref.id).join(", ")}`;
+            yield* journal.recordBlocked(entry.task.id, reason);
+            skipped.push({ taskId: entry.task.id, reason });
+            continue;
+          }
+
+          if (executors.get(entry.task.runtime) === undefined) {
+            const reason = `no executor for runtime "${entry.task.runtime}"`;
+            yield* journal.recordFailed(entry.task.id, reason);
+            skipped.push({ taskId: entry.task.id, reason });
+            continue;
+          }
+
+          const submitted = yield* Effect.either(submitInternal(entry.task, options.submit));
+          if (submitted._tag === "Right") {
+            resumed.push({ entry, handle: submitted.right });
+          } else {
+            const reason = `no executor for runtime "${submitted.left.runtime}"`;
+            yield* journal.recordFailed(entry.task.id, reason);
+            skipped.push({ taskId: entry.task.id, reason });
+          }
+        }
+
+        return { resumed, skipped };
+      });
 
     const invalidateArtifact = (artifactId: string): Effect.Effect<void> =>
       Effect.gen(function* () {
@@ -505,9 +605,11 @@ const schedulerLayer: Layer.Layer<
 
     return {
       resourceSnapshot: resources.snapshot,
+      journalSnapshot: journal.entries,
       submit,
       submitPipeline,
       cancel: (taskId) => cancelCascade(taskId, new Set()),
+      recoverPending,
       invalidateArtifact,
     };
   }),
@@ -518,11 +620,25 @@ export const schedulerLive: Layer.Layer<
   SchedulerTag,
   never,
   ArtifactStoreTag | CacheStoreTag | Executors
-> = Layer.provide(schedulerLayer, resourceManagerLive(defaultResourceCapacity()));
+> = Layer.provide(
+  schedulerLayer,
+  Layer.mergeAll(resourceManagerLive(defaultResourceCapacity()), memoryTaskJournal()),
+);
 
 /** 宿主/测试可注入明确预算，复用同一调度实现。 */
 export function schedulerLiveWithCapacity(
   capacity: ResourceCapacity,
 ): Layer.Layer<SchedulerTag, never, ArtifactStoreTag | CacheStoreTag | Executors> {
-  return Layer.provide(schedulerLayer, resourceManagerLive(capacity));
+  return Layer.provide(
+    schedulerLayer,
+    Layer.mergeAll(resourceManagerLive(capacity), memoryTaskJournal()),
+  );
+}
+
+/** 宿主注入持久化 TaskJournal；资源预算仍可按设备能力覆盖。 */
+export function schedulerLiveWithJournal(
+  journal: Layer.Layer<TaskJournalTag>,
+  capacity: ResourceCapacity = defaultResourceCapacity(),
+): Layer.Layer<SchedulerTag, never, ArtifactStoreTag | CacheStoreTag | Executors> {
+  return Layer.provide(schedulerLayer, Layer.mergeAll(resourceManagerLive(capacity), journal));
 }

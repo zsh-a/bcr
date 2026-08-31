@@ -92,6 +92,29 @@ export const PipelineNode = Schema.Struct({
 });
 export type PipelineNode = typeof PipelineNode.Type;
 
+export const TaskJournalStatus = Schema.Literal(
+  "queued",
+  "running",
+  "completed",
+  "failed",
+  "cancelled",
+  "blocked",
+);
+export type TaskJournalStatus = typeof TaskJournalStatus.Type;
+
+/** 可持久化任务快照：TaskJournal 的跨会话恢复格式。 */
+export const TaskJournalEntry = Schema.Struct({
+  task: ComputeTask,
+  status: TaskJournalStatus,
+  createdAt: Schema.Number,
+  updatedAt: Schema.Number,
+  attempts: Schema.Number,
+  outputs: Schema.optional(Schema.Array(ArtifactRef)),
+  error: Schema.optional(Schema.String),
+});
+export type TaskJournalEntry = typeof TaskJournalEntry.Type;
+export const decodeTaskJournalEntry = Schema.decodeUnknown(TaskJournalEntry);
+
 /**
  * 架构文档 §6.2：TaskEvent。相对文档补了 taskId 字段——
  * Worker Pool 复用同一 Worker 跑多个任务，事件必须可归因。

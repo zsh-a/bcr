@@ -88,6 +88,18 @@ CREATE TABLE IF NOT EXISTS dependencies (
   input_artifact TEXT NOT NULL,
   PRIMARY KEY (task_id, input_artifact)
 );
+CREATE TABLE IF NOT EXISTS task_journal (
+  task_id    TEXT PRIMARY KEY,
+  task_json  TEXT NOT NULL,
+  status     TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  attempts   INTEGER NOT NULL DEFAULT 0,
+  outputs    TEXT,
+  error      TEXT
+);
+CREATE INDEX IF NOT EXISTS task_journal_status_idx
+  ON task_journal(status, created_at);
 CREATE TABLE IF NOT EXISTS kv (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -125,9 +137,18 @@ export async function openSqliteDb(options: OpenSqliteDbOptions): Promise<Sqlite
 
   db.exec(SCHEMA);
 
-  const persist = async (): Promise<void> => {
-    const out = sqlite3.capi.sqlite3_js_db_export(dbPointer);
-    await store.put(path, out);
+  // 多个 task/cache/lineage 写入可并发触发 persist。串行导出与落盘，避免较旧快照
+  // 后完成写入并覆盖较新状态；上一次失败不阻塞后续持久化尝试。
+  let persistTail = Promise.resolve();
+  const persist = (): Promise<void> => {
+    const next = persistTail
+      .catch(() => undefined)
+      .then(async () => {
+        const out = sqlite3.capi.sqlite3_js_db_export(dbPointer);
+        await store.put(path, out);
+      });
+    persistTail = next;
+    return next;
   };
 
   return {

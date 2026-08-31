@@ -13,7 +13,7 @@ export interface FileRecord {
   readonly addedAt: number;
 }
 
-export type TaskStatus = "running" | "completed" | "failed" | "cancelled";
+export type TaskStatus = "queued" | "running" | "completed" | "failed" | "cancelled" | "blocked";
 
 export interface TaskRecord {
   readonly id: string;
@@ -79,7 +79,7 @@ class StudioStore {
         : [record, ...this.state.tasks];
     this.set({
       tasks,
-      runningCount: tasks.filter((t) => t.status === "running").length,
+      runningCount: tasks.filter((t) => t.status === "queued" || t.status === "running").length,
     });
   }
 

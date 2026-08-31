@@ -12,7 +12,7 @@
 │   ├── core/             # @bcr/core：ComputeTask / Artifact / Scheduler(Effect) / CacheKey / DAG 失效 / Pipeline
 │   ├── runtime-worker/   # @bcr/runtime-worker：typed MessagePort 协议 / WorkerPool / WorkerExecutor
 │   ├── storage-opfs/     # @bcr/storage-opfs：BinaryStore 抽象，OPFS + Memory 实现
-│   ├── storage-sqlite/   # @bcr/storage-sqlite：SQLite WASM 元数据引擎（CacheStore + 血缘持久化）
+│   ├── storage-sqlite/   # @bcr/storage-sqlite：SQLite WASM 元数据引擎（Cache / 血缘 / TaskJournal）
 │   └── react/            # @bcr/react：RuntimeProvider / useSubmitTask / useTask / useArtifact
 ├── apps/
 │   ├── studio/           # BCR Studio 工作台 UI（Dockview + Tailwind 4 + Base UI）
@@ -39,6 +39,7 @@
 | §7 缓存持久化（刷新不重算）           | `packages/storage-sqlite`：cache_entries 表 + 血缘（task_outputs / dependencies）    |
 | §4/§8 OPFS + 窗口流动                 | `BinaryStore`（readRange/putStream/size），kernel 按 4MB 窗口读取                    |
 | §8 SQLite WASM 元数据                 | `openSqliteDb`（整库字节经 BinaryStore 落 OPFS，可换任意 BinaryStore）               |
+| §8 TaskJournal / 崩溃恢复             | queued/running/终态写穿 SQLite；输入完整时重放，缺失时转 blocked                     |
 | §9.1 wasm-bindgen kernel              | `crates/kernels`（wasm32-unknown-unknown）                                           |
 | §10.1 WebGPU 探测降级                 | `apps/media-studio`：ASR device=auto（GPU→WASM 静默降级）/显式选择；headless 走 WASM |
 | §10.2 Whisper ASR                     | transformers.js ONNX（q8 / webgpu fp32+q4），失败回退演示引擎                        |
@@ -60,7 +61,7 @@ bun run test:browser   # 自动启停 dev server，运行离线 Playwright 主�
 ```
 
 GitHub Actions 会执行格式/类型/单测、Rust/WASM、三端生产构建，并在真实 Chromium 中验证
-Media Studio 短音频、150 秒分窗和 Studio 刷新缓存闭环；失败时保留截图与 server 日志。
+Media Studio 短音频、150 秒分窗和 Studio 刷新缓存/任务历史闭环；失败时保留截图与 server 日志。
 
 ## BCR Studio（apps/studio）
 
@@ -73,7 +74,8 @@ Media Studio 短音频、150 秒分窗和 Studio 刷新缓存闭环；失败时�
 - **TanStack Virtual**：项目文件 / 任务历史 / 控制台日志全部虚拟化
 - **OffscreenCanvas**：波形由 `render.worker` 在 Worker 内绘制，主线程零图形负载
 - **SQLite WASM 持久化（§8）**：元数据库落 `opfs://studio/project/meta.db`——缓存条目、任务血缘、
-  文件列表全部跨刷新保留；导入 → 计算 → **刷新浏览器 → 重跑直接缓存命中**（`node scripts/verify-persistence.mjs`）
+  文件列表与 TaskJournal 全部跨刷新保留；异常退出遗留任务在输入 Artifact 完整时自动重放，输入缺失则标记
+  `blocked`；导入 → 计算 → **刷新浏览器 → 历史恢复、重跑直接缓存命中**（`node scripts/verify-persistence.mjs`）
 - Runtime 接线：compute.worker 提供 `hash.blake3`（流式 BLAKE3）与 `audio.waveform`（2048 桶峰值包络）两个 WASM operation，任务进度 / cache hit / 取消直接投影到 UI
 
 截图走查脚本：`node scripts/screenshot.mjs`；持久化闭环走查：`node scripts/verify-persistence.mjs`
@@ -124,10 +126,10 @@ decode ─┬─ wave（Rust peak kernel 波形）
 2. 提交 `hash.blake3`（wasm runtime）→ compute.worker 分块读取、流式哈希、回报 progress。
 3. 同一文件再次提交 → 缓存命中（界面标注，未重算）；换文件/换操作 → 重算。
 4. 运行中可取消（级联语义见 core 测试）。
-5. 刷新浏览器 → 文件列表恢复、再次提交直接缓存命中（SQLite 元数据持久化）。
+5. 刷新浏览器 → 文件列表与任务历史恢复、异常中断任务安全重放、再次提交直接缓存命中。
 
 ## 本版明确不做
 
 WIT Component Model、插件 capability 模型、Worker Pool 自动扩缩、
-Vitest Browser Mode、TaskJournal 断点恢复。
+Vitest Browser Mode、跨设备任务迁移。
 对应架构文档 Phase 1 后续与 Phase 2/3。

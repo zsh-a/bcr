@@ -8,6 +8,7 @@ import {
   Executors,
   memoryCacheStore,
   schedulerLive,
+  schedulerLiveWithJournal,
   SchedulerTag,
   TaskFailed,
   type ArtifactRef,
@@ -21,6 +22,7 @@ import {
   openSqliteDb,
   sqliteCacheStore,
   sqliteLineageStore,
+  sqliteTaskJournal,
   type SqliteDb,
 } from "@bcr/storage-sqlite";
 import initSqlite from "@sqlite.org/sqlite-wasm";
@@ -372,7 +374,9 @@ export async function createRuntimeServices(): Promise<RuntimeServices> {
     metaDb !== undefined ? sqliteCacheStore(metaDb) : memoryCacheStore(),
     Layer.succeed(Executors, executorRegistry([wasmExecutor, jsExecutor])),
   );
-  const live = Layer.provideMerge(schedulerLive, deps);
+  const schedulerLayer =
+    metaDb !== undefined ? schedulerLiveWithJournal(sqliteTaskJournal(metaDb)) : schedulerLive;
+  const live = Layer.provideMerge(schedulerLayer, deps);
   const ctx = await Effect.runPromise(Effect.scoped(Layer.build(live)));
 
   return { scheduler: Context.get(ctx, SchedulerTag), artifacts };
