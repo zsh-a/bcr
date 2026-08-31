@@ -129,15 +129,16 @@ decode ─┬─ wave（Rust peak kernel 波形）
 第二个上层应用用量化 batch workload 反向检验同一 Runtime 抽象：
 
 ```text
-CSV / Parquet → DuckDB WASM → Arrow IPC Artifact → SMA Cross → Long-only Backtest
-                         └──→ ZSTD Parquet        └──→ Equity / Trades / Metrics
+CSV / Parquet → DuckDB WASM → Arrow IPC → SMA Cross → Rust/WASM Backtest
+                         └──→ ZSTD Parquet   └──→ Equity / Trades / Metrics
 ```
 
 - 首次启动提供固定种子的 720 根日线演示行情，可导入标准 OHLCV CSV 或 Parquet
 - DuckDB WASM 对行情执行 schema 规范化、SQL profiling 和 ZSTD Parquet 物化；Arrow IPC 作为 Worker 批量输入
 - Arrow 与 Parquet 都以内容寻址 Artifact 写入 OPFS，Parquet 可直接下载并重新导入
 - 两节点 `submitPipeline` 在弹性 WorkerPool 中执行；行情内容、快慢周期、资金和费率均进入缓存键
-- 回测产出总收益、CAGR、Sharpe、最大回撤、胜率、暴露度、权益曲线和逐笔成交
+- Rust/WASM kernel 通过 Float64Array / Uint8Array 批次执行 long-only 回测，产出权益、交易与完整指标
+- Worker 会与 TypeScript 参考实现逐点校验；WASM 不可用或数值失配时显式标记降级
 - 行情、列式缓存、结果 Artifact、Cache、血缘、TaskJournal 与项目参数经 OPFS + SQLite 跨刷新恢复
 - UI 采用高密度策略终端：价格/双均线/买卖点、权益曲线、Pipeline 状态和 Trade Blotter 同屏
 
@@ -153,6 +154,6 @@ CSV / Parquet → DuckDB WASM → Arrow IPC Artifact → SMA Cross → Long-only
 
 ## 本版明确不做
 
-WIT Component Model、插件 capability 模型、Worker 崩溃健康替换、Rust/WASM Backtester、
-多资产组合与分区 Parquet、Vitest Browser Mode、跨设备任务迁移。
+WIT Component Model、插件 capability 模型、Worker 崩溃健康替换、多资产组合与分区 Parquet、
+SIMD/多线程 Quant kernel、Vitest Browser Mode、跨设备任务迁移。
 对应架构文档 Phase 1 后续与 Phase 2/3。

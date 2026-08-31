@@ -58,6 +58,9 @@ await page.getByRole("button", { name: "RUN BACKTEST" }).click();
 await page.getByRole("button", { name: "RUN BACKTEST" }).waitFor({ timeout: 20_000 });
 body = await page.locator("body").innerText();
 if (!body.includes("SMA(16, 64)")) fail("参数重跑未进入 Pipeline");
+if (!body.includes("rust-wasm") || body.includes("TS FALLBACK BT")) {
+  fail("Rust/WASM backtester 未成为实际执行引擎");
+}
 
 await page.screenshot({ path: `${dir}/quant-lab.png`, fullPage: true });
 await browser.close();

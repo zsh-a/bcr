@@ -49,7 +49,7 @@ export async function runStrategy(services: RuntimeServices): Promise<void> {
     },
     {
       id: "backtest",
-      runtime: "js",
+      runtime: "wasm",
       operation: "quant.backtest.long-only",
       inputs: [source],
       bindings: [{ from: "signal", output: "signals", input: "signals" }],
@@ -110,7 +110,7 @@ export async function runStrategy(services: RuntimeServices): Promise<void> {
     quant.complete(signals, result, refs, Date.now() - startedAt);
     quant.log(
       "ok",
-      `pipeline · completed · ${(metrics.totalReturn * 100).toFixed(2)}% · ${metrics.tradeCount} trades`,
+      `pipeline · completed · ${metrics.engine ?? "legacy"} · ${(metrics.totalReturn * 100).toFixed(2)}% · ${metrics.tradeCount} trades`,
     );
     await persistProject(services);
   } catch (error) {

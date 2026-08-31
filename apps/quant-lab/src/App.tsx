@@ -296,7 +296,15 @@ function Workbench() {
           <div className="ql-pipeline-map">
             <PipelineNode id="01" name="SMA SIGNAL" run={state.nodes["signal"]} />
             <i />
-            <PipelineNode id="02" name="LONG-ONLY BT" run={state.nodes["backtest"]} />
+            <PipelineNode
+              id="02"
+              name={
+                state.result?.metrics.engine === "typescript-fallback"
+                  ? "TS FALLBACK BT"
+                  : "RUST/WASM BT"
+              }
+              run={state.nodes["backtest"]}
+            />
           </div>
         </aside>
 

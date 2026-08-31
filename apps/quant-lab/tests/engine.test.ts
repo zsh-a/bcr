@@ -38,7 +38,12 @@ describe("Quant engine", () => {
     expect(signals.some(({ action }) => action === "sell")).toBe(true);
     expect(result.equity).toHaveLength(bars.length);
     expect(result.trades.length).toBeGreaterThan(0);
-    expect(Object.values(result.metrics).every(Number.isFinite)).toBe(true);
+    expect(
+      Object.entries(result.metrics)
+        .filter(([key]) => key !== "engine")
+        .every(([, value]) => Number.isFinite(value)),
+    ).toBe(true);
+    expect(result.metrics.engine).toBe("typescript-reference");
     expect(result.metrics.maxDrawdown).toBeLessThanOrEqual(0);
   });
 

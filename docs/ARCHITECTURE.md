@@ -511,7 +511,9 @@ DuckDB WASM · Arrow · Rust Backtester · Parquet Cache
 当前 `OHLCV → SMA Signal → Long-only Backtest` 已跑通同一 Scheduler / WorkerPool /
 Artifact / Cache / SQLite 链路，并完成 DuckDB WASM schema 规范化与 SQL profiling、Arrow IPC
 批量计算输入、ZSTD Parquet 内容寻址缓存及 Parquet 导入/导出。旧 JSON 项目会在恢复时自动迁移。
-下一步将 TypeScript Backtester 下沉至 Rust/WASM，并扩展分区 Parquet、大数据集和多资产组合。
+Long-only Backtester 已下沉 Rust/WASM，以 f64 close + u8 position TypedArray 批次跨越 ABI，
+并在 Worker 内与 TypeScript reference 逐点校验后才接受结果。下一步扩展分区 Parquet、
+大数据集、多资产组合以及 SIMD/多线程 kernel。
 **Media + Quant 都能良好运行在同一 Runtime 上，即证明抽象成立。**
 
 ### Phase 3 — 正式抽包与生态

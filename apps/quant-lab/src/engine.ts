@@ -10,6 +10,14 @@ import type {
 
 const DAY_MS = 86_400_000;
 
+export function marketSpanYears(bars: ReadonlyArray<MarketBar>): number {
+  const first = bars[0];
+  const last = bars.at(-1);
+  return first === undefined || last === undefined
+    ? 0
+    : Math.max(1 / 252, (Date.parse(last.date) - Date.parse(first.date)) / (365.25 * DAY_MS));
+}
+
 function finite(value: string | undefined, label: string, row: number): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) throw new Error(`第 ${row} 行 ${label} 不是有效数字`);
@@ -251,14 +259,12 @@ export function runBacktest(
 
   const first = bars[0];
   const last = bars.at(-1);
-  const years =
-    first === undefined || last === undefined
-      ? 0
-      : Math.max(1 / 252, (Date.parse(last.date) - Date.parse(first.date)) / (365.25 * DAY_MS));
+  const years = marketSpanYears(bars);
   const totalReturn = value / initialCapital - 1;
   const volatility = standardDeviation(dailyReturns);
   const winning = trades.filter((trade) => trade.pnl > 0).length;
   const metrics: BacktestMetrics = {
+    engine: "typescript-reference",
     totalReturn,
     annualizedReturn: years > 0 ? (1 + totalReturn) ** (1 / years) - 1 : 0,
     buyHoldReturn:

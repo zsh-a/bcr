@@ -62,6 +62,7 @@ export interface Trade {
 }
 
 export interface BacktestMetrics {
+  readonly engine: "rust-wasm" | "typescript-reference" | "typescript-fallback";
   readonly totalReturn: number;
   readonly annualizedReturn: number;
   readonly buyHoldReturn: number;

@@ -1,13 +1,21 @@
 import { artifactPath, contentHash, type ArtifactRef, type ComputeTask } from "@bcr/core";
 import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
+import initWasm from "../../../../crates/kernels/pkg/bcr_kernels.js";
 import { decodeMarketArrow } from "../arrow";
 import { computeSmaSignals, runBacktest } from "../engine";
-import type { MarketBar, SignalPoint } from "../model";
+import type { BacktestResult, MarketBar, SignalPoint, StrategyConfig } from "../model";
+import { runWasmBacktest } from "../wasm-backtest";
 
 const opfs = new OpfsStore("quant");
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+let wasmReady: Promise<unknown> | undefined;
+
+function initializeWasm(): Promise<unknown> {
+  wasmReady ??= initWasm();
+  return wasmReady;
+}
 
 function pickInput(task: ComputeTask, port: string, type: string): ArtifactRef {
   const input =
@@ -53,6 +61,66 @@ function numberConfig(task: ComputeTask, key: string, fallback: number): number 
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
+function closeEnough(left: number, right: number): boolean {
+  return Math.abs(left - right) <= 1e-9 * Math.max(1, Math.abs(left), Math.abs(right));
+}
+
+function assertBacktestParity(wasm: BacktestResult, reference: BacktestResult): void {
+  if (
+    wasm.equity.length !== reference.equity.length ||
+    wasm.trades.length !== reference.trades.length ||
+    wasm.metrics.tradeCount !== reference.metrics.tradeCount
+  ) {
+    throw new Error("Rust/WASM parity length mismatch");
+  }
+  for (let index = 0; index < wasm.equity.length; index += 1) {
+    const actual = wasm.equity[index];
+    const expected = reference.equity[index];
+    if (
+      actual === undefined ||
+      expected === undefined ||
+      !closeEnough(actual.equity, expected.equity) ||
+      !closeEnough(actual.drawdown, expected.drawdown)
+    ) {
+      throw new Error(`Rust/WASM parity mismatch at equity row ${index}`);
+    }
+  }
+  const metrics = [
+    "totalReturn",
+    "annualizedReturn",
+    "buyHoldReturn",
+    "sharpe",
+    "maxDrawdown",
+    "winRate",
+    "exposure",
+    "finalEquity",
+  ] as const;
+  for (const metric of metrics) {
+    if (!closeEnough(wasm.metrics[metric], reference.metrics[metric])) {
+      throw new Error(`Rust/WASM parity mismatch at ${metric}`);
+    }
+  }
+}
+
+async function verifiedWasmBacktest(
+  bars: ReadonlyArray<MarketBar>,
+  signals: ReadonlyArray<SignalPoint>,
+  config: Pick<StrategyConfig, "initialCapital" | "feeBps">,
+): Promise<BacktestResult> {
+  let reference: BacktestResult | undefined;
+  try {
+    await initializeWasm();
+    const wasm = runWasmBacktest(bars, signals, config);
+    reference = runBacktest(bars, signals, config);
+    assertBacktestParity(wasm, reference);
+    return wasm;
+  } catch (error) {
+    console.warn("[quant] Rust/WASM backtester unavailable, using TypeScript reference", error);
+    reference ??= runBacktest(bars, signals, config);
+    return { ...reference, metrics: { ...reference.metrics, engine: "typescript-fallback" } };
+  }
+}
+
 async function signalTask(
   task: ComputeTask,
   ctx: WorkerContext,
@@ -83,7 +151,7 @@ async function backtestTask(
   ]);
   if (ctx.signal.aborted) throw new Error("cancelled");
   ctx.progress(0.36);
-  const result = runBacktest(bars, signals, {
+  const result = await verifiedWasmBacktest(bars, signals, {
     initialCapital: numberConfig(task, "initialCapital", 100_000),
     feeBps: numberConfig(task, "feeBps", 8),
   });

@@ -79,11 +79,12 @@ export async function createRuntimeServices(): Promise<RuntimeServices> {
         type: "module",
       }),
   );
-  const executor = workerExecutor(pool, "js", "quant-engine-0.2.0-arrow", artifacts);
+  const jsExecutor = workerExecutor(pool, "js", "quant-signals-0.2.0-arrow", artifacts);
+  const wasmExecutor = workerExecutor(pool, "wasm", "bcr-kernels-quant-0.3.0", artifacts);
   const deps = Layer.mergeAll(
     Layer.succeed(ArtifactStoreTag, artifacts),
     metaDb !== undefined ? sqliteCacheStore(metaDb) : memoryCacheStore(),
-    Layer.succeed(Executors, executorRegistry([executor])),
+    Layer.succeed(Executors, executorRegistry([jsExecutor, wasmExecutor])),
   );
   const schedulerLayer =
     metaDb !== undefined ? schedulerLiveWithJournal(sqliteTaskJournal(metaDb)) : schedulerLive;
