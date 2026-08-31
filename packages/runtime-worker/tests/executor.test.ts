@@ -61,15 +61,22 @@ describe("WorkerExecutor (架构 §6.2)", () => {
         artifact: outRef,
         data: new Uint8Array([1, 2, 3]),
       });
-      port.postMessage({ type: "completed", taskId: t.id, outputs: [outRef] });
+      port.postMessage({
+        type: "completed",
+        taskId: t.id,
+        outputs: [outRef],
+        cacheable: false,
+      });
     });
     const pool = new WorkerPool(1, () => worker);
     const artifacts = await makeArtifacts();
     const executor = workerExecutor(pool, "wasm", "v1", artifacts);
 
     const events = await Effect.runPromise(Stream.runCollect(executor.run(task)));
+    const collected = [...events];
 
-    expect([...events].map((e) => e.type)).toEqual(["progress", "chunk", "completed"]);
+    expect(collected.map((e) => e.type)).toEqual(["progress", "chunk", "completed"]);
+    expect(collected[2]).toMatchObject({ type: "completed", cacheable: false });
     const data = await Effect.runPromise(artifacts.get(outRef));
     expect([...data]).toEqual([1, 2, 3]);
     pool.shutdown();

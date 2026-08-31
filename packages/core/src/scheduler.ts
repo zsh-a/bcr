@@ -112,6 +112,9 @@ export const schedulerLive: Layer.Layer<
         const key = cacheKeys.get(taskId);
         if (key !== undefined) {
           yield* cache.remove(key);
+        } else {
+          // 刷新后内存映射为空，退回持久化 task → cache key 关联。
+          yield* cache.removeForTask(taskId);
         }
         cacheKeys.delete(taskId);
 
@@ -144,25 +147,31 @@ export const schedulerLive: Layer.Layer<
         if (key !== undefined) {
           const cached = yield* cache.get(key);
           if (cached !== undefined) {
-            yield* artifacts.registerProduction(task.id, cached);
-            if (sink !== undefined) {
-              yield* PubSub.publish(sink, {
-                type: "completed",
+            // SQLite 条目可能比 OPFS 产物活得久；缺任一产物即驱逐并正常重算。
+            const exists = yield* Effect.all(cached.map((ref) => artifacts.has(ref)));
+            if (exists.every(Boolean)) {
+              yield* cache.associate(key, task.id);
+              yield* artifacts.registerProduction(task.id, cached);
+              if (sink !== undefined) {
+                yield* PubSub.publish(sink, {
+                  type: "completed",
+                  taskId: task.id,
+                  outputs: [...cached],
+                });
+              }
+              return {
                 taskId: task.id,
-                outputs: [...cached],
-              });
+                events: Stream.succeed<TaskEvent>({
+                  type: "completed",
+                  taskId: task.id,
+                  outputs: [...cached],
+                }),
+                await: Effect.succeed(cached),
+                cancel: Effect.void,
+                cached: true,
+              };
             }
-            return {
-              taskId: task.id,
-              events: Stream.succeed<TaskEvent>({
-                type: "completed",
-                taskId: task.id,
-                outputs: [...cached],
-              }),
-              await: Effect.succeed(cached),
-              cancel: Effect.void,
-              cached: true,
-            };
+            yield* cache.remove(key);
           }
         }
 
@@ -172,6 +181,7 @@ export const schedulerLive: Layer.Layer<
           function* () {
             const events = executor.run(task);
             let outputs: ReadonlyArray<ArtifactRef> | undefined;
+            let cacheable = true;
             yield* events.pipe(
               Stream.runForEach((event) =>
                 Effect.gen(function* () {
@@ -181,6 +191,7 @@ export const schedulerLive: Layer.Layer<
                   }
                   if (event.type === "completed") {
                     outputs = event.outputs;
+                    cacheable = event.cacheable !== false;
                   }
                 }),
               ),
@@ -192,8 +203,8 @@ export const schedulerLive: Layer.Layer<
               });
             }
             yield* artifacts.registerProduction(task.id, outputs);
-            if (key !== undefined) {
-              yield* cache.put(key, outputs);
+            if (key !== undefined && cacheable) {
+              yield* cache.put(key, outputs, task.id);
             }
             return outputs;
           },

@@ -68,7 +68,7 @@ class StudioStore {
   }
 
   addFile(file: FileRecord): void {
-    this.set({ files: [...this.state.files, file] });
+    this.set({ files: [...this.state.files.filter((item) => item.ref.id !== file.ref.id), file] });
   }
 
   upsertTask(record: TaskRecord): void {

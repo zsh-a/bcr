@@ -98,6 +98,8 @@ export const TaskEvent = Schema.Union(
     type: Schema.Literal("completed"),
     taskId: Schema.String,
     outputs: Schema.Array(ArtifactRef),
+    /** false 表示本次结果是降级/瞬态结果，Scheduler 不写入任务缓存。 */
+    cacheable: Schema.optional(Schema.Boolean),
   }),
   Schema.Struct({
     type: Schema.Literal("failed"),

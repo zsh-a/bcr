@@ -22,18 +22,66 @@ export function sqliteCacheStore(db: SqliteDb): Layer.Layer<CacheStoreTag> {
           return undefined;
         }
       }),
-    put: (key, outputs) =>
+    put: (key, outputs, taskId) =>
       Effect.promise(async () => {
-        db.run("INSERT OR REPLACE INTO cache_entries (key, outputs, created_at) VALUES (?, ?, ?)", [
+        try {
+          db.run("BEGIN");
+          db.run(
+            "INSERT OR REPLACE INTO cache_entries (key, outputs, created_at) VALUES (?, ?, ?)",
+            [key, JSON.stringify(outputs), Date.now()],
+          );
+          if (taskId !== undefined) {
+            db.run("INSERT OR REPLACE INTO cache_tasks (task_id, cache_key) VALUES (?, ?)", [
+              taskId,
+              key,
+            ]);
+          }
+          db.run("COMMIT");
+        } catch (error) {
+          db.run("ROLLBACK");
+          throw error;
+        }
+        await db.persist();
+      }),
+    associate: (key, taskId) =>
+      Effect.promise(async () => {
+        db.run("INSERT OR REPLACE INTO cache_tasks (task_id, cache_key) VALUES (?, ?)", [
+          taskId,
           key,
-          JSON.stringify(outputs),
-          Date.now(),
         ]);
         await db.persist();
       }),
     remove: (key) =>
       Effect.promise(async () => {
-        db.run("DELETE FROM cache_entries WHERE key = ?", [key]);
+        try {
+          db.run("BEGIN");
+          db.run("DELETE FROM cache_entries WHERE key = ?", [key]);
+          db.run("DELETE FROM cache_tasks WHERE cache_key = ?", [key]);
+          db.run("COMMIT");
+        } catch (error) {
+          db.run("ROLLBACK");
+          throw error;
+        }
+        await db.persist();
+      }),
+    removeForTask: (taskId) =>
+      Effect.promise(async () => {
+        const key = db.value<string>("SELECT cache_key FROM cache_tasks WHERE task_id = ?", [
+          taskId,
+        ]);
+        try {
+          db.run("BEGIN");
+          if (key !== undefined) {
+            db.run("DELETE FROM cache_entries WHERE key = ?", [key]);
+            db.run("DELETE FROM cache_tasks WHERE cache_key = ?", [key]);
+          } else {
+            db.run("DELETE FROM cache_tasks WHERE task_id = ?", [taskId]);
+          }
+          db.run("COMMIT");
+        } catch (error) {
+          db.run("ROLLBACK");
+          throw error;
+        }
         await db.persist();
       }),
   } satisfies CacheStore);

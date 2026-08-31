@@ -1,7 +1,7 @@
 import { MemoryStore } from "@bcr/storage-opfs";
 import { Cause, Effect, Exit, Layer, Schedule, Stream } from "effect";
 import { describe, expect, it } from "vitest";
-import { artifactStore } from "../src/artifact";
+import { artifactPath, artifactStore } from "../src/artifact";
 import { memoryCacheStore } from "../src/cache-store";
 import { TaskFailed } from "../src/errors";
 import { executorRegistry, Executors, type RuntimeExecutor } from "../src/executor";
@@ -53,14 +53,32 @@ function countingExecutor(behavior?: (task: ComputeTask) => Stream.Stream<TaskEv
 }
 
 function makeRuntime(executor: RuntimeExecutor) {
+  const binary = new MemoryStore();
+  // RuntimeExecutor 的契约要求 completed 前已物化输出；测试执行器在此补齐该行为。
+  const materializing: RuntimeExecutor = {
+    ...executor,
+    run: (t) =>
+      executor.run(t).pipe(
+        Stream.tap((event) =>
+          event.type === "completed"
+            ? Effect.promise(async () => {
+                for (const output of event.outputs) {
+                  await binary.put(artifactPath(output), new Uint8Array());
+                }
+              })
+            : Effect.void,
+        ),
+      ),
+  };
   const deps = Layer.mergeAll(
-    artifactStore({ memory: new MemoryStore() }),
+    artifactStore({ memory: binary }),
     memoryCacheStore(),
-    Layer.succeed(Executors, executorRegistry([executor])),
+    Layer.succeed(Executors, executorRegistry([materializing])),
   );
   const live = Layer.provideMerge(schedulerLive, deps);
   return {
     live,
+    binary,
     run: <A, E>(effect: Effect.Effect<A, E, SchedulerTag>) =>
       Effect.runPromise(effect.pipe(Effect.provide(live))),
     withScheduler: <A, E>(f: (s: Scheduler) => Effect.Effect<A, E>) =>
@@ -115,6 +133,47 @@ describe("Scheduler (架构 §2/§3/§6/§7)", () => {
         yield* h1.await;
         const h2 = yield* s.submit(task("t2", [ref("in-1", "v2")]));
         yield* h2.await;
+      }),
+    );
+
+    expect(runs()).toBe(2);
+  });
+
+  it("缓存引用的产物缺失 → 驱逐陈旧条目并重算", async () => {
+    const { executor, runs } = countingExecutor();
+    const { withScheduler, binary } = makeRuntime(executor);
+    const input = ref("in-1", "hash-in-1");
+
+    await withScheduler((s) =>
+      Effect.gen(function* () {
+        const first = yield* s.submit(task("t1", [input]));
+        const outputs = yield* first.await;
+        const output = outputs[0];
+        if (output !== undefined) yield* Effect.promise(() => binary.delete(artifactPath(output)));
+
+        const second = yield* s.submit(task("t2", [input]));
+        expect(second.cached).toBe(false);
+        yield* second.await;
+      }),
+    );
+
+    expect(runs()).toBe(2);
+  });
+
+  it("executor 标记 cacheable=false → 后续提交不会命中", async () => {
+    const { executor, runs } = countingExecutor((t) =>
+      Stream.make({ ...completed(t.id, [ref(`out-${t.id}`, `h-${t.id}`)]), cacheable: false }),
+    );
+    const { withScheduler } = makeRuntime(executor);
+    const input = ref("in-1", "hash-in-1");
+
+    await withScheduler((s) =>
+      Effect.gen(function* () {
+        const first = yield* s.submit(task("t1", [input]));
+        yield* first.await;
+        const second = yield* s.submit(task("t2", [input]));
+        expect(second.cached).toBe(false);
+        yield* second.await;
       }),
     );
 

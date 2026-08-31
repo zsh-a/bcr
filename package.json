@@ -10,7 +10,8 @@
   "type": "module",
   "scripts": {
     "build:wasm": "wasm-pack build crates/kernels --target web",
-    "check": "vp check",
+    "check": "vp check && bun run typecheck",
+    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/runtime-worker/tsconfig.json && tsc --noEmit -p packages/storage-opfs/tsconfig.json && tsc --noEmit -p packages/storage-sqlite/tsconfig.json && tsc --noEmit -p packages/graph/tsconfig.json && tsc --noEmit -p packages/react/tsconfig.json && tsc --noEmit -p apps/media-studio/tsconfig.json && tsc --noEmit -p apps/studio/tsconfig.json && tsc --noEmit -p examples/demo/tsconfig.json",
     "test": "vp test run",
     "demo": "cd examples/demo && vp dev",
     "dev": "cd apps/studio && vp dev",

@@ -35,9 +35,7 @@ export function ProjectPanel() {
             input.onchange = () => {
               const file = input.files?.[0];
               if (file !== undefined) {
-                void importFile(services, file).then(() =>
-                  selection.select({ file: `source/${file.name}` }),
-                );
+                void importFile(services, file).then((ref) => selection.select({ file: ref.id }));
               }
             };
             input.click();

@@ -1,4 +1,4 @@
-import { artifactPath, type ArtifactRef } from "@bcr/core";
+import { artifactPath, contentHash, type ArtifactRef } from "@bcr/core";
 import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
 import init, {
@@ -40,7 +40,7 @@ async function hashBlake3(
   }
   const hex = hasher.finalize_hex();
   const out: ArtifactRef = {
-    id: `hash/${input.id}`,
+    id: `hash/${hex}`,
     type: "hash/blake3-hex",
     storage: "memory",
     hash: hex,
@@ -75,13 +75,16 @@ async function audioRms(
     ctx.progress(Math.min(0.99, offset / (offset + WINDOW)));
   }
   const stats = { rms: count > 0 ? Math.sqrt(sumSquares / count) : 0, peak };
+  const bytes = new TextEncoder().encode(JSON.stringify(stats));
+  const hash = contentHash(bytes);
   const out: ArtifactRef = {
-    id: `audio-stats/${input.id}`,
+    id: `audio-stats/${hash}`,
     type: "audio/stats",
     storage: "memory",
     format: "json",
+    hash,
   };
-  ctx.emitChunk(out, new TextEncoder().encode(JSON.stringify(stats)));
+  ctx.emitChunk(out, bytes);
   ctx.progress(1);
   return [out];
 }

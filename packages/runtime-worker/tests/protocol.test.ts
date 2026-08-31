@@ -32,6 +32,7 @@ describe("protocol (架构 §6.2)", () => {
         type: "completed",
         taskId: "t1",
         outputs: [{ id: "a1", type: "audio/pcm-f32", storage: "memory" }],
+        cacheable: false,
       },
       { type: "failed", taskId: "t1", error: "boom" },
     ]) {

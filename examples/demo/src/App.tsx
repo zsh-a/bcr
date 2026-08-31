@@ -1,4 +1,4 @@
-import type { ArtifactRef, TaskHandle } from "@bcr/core";
+import { hashReadableStream, type ArtifactRef, type TaskHandle } from "@bcr/core";
 import {
   RuntimeProvider,
   useArtifact,
@@ -27,10 +27,12 @@ function Demo() {
 
   const onPickFile = async (file: File) => {
     // §8：源文件落 OPFS（FileArtifact），stream 写入不整段进内存
+    const hash = await hashReadableStream(file.stream());
     const ref: ArtifactRef = {
-      id: `source/${file.name}`,
+      id: `source/${hash}`,
       type: `file/${file.name.split(".").pop() ?? "bin"}`,
       storage: "opfs",
+      hash,
     };
     await Effect.runPromise(artifacts.putStream(ref, file.stream()));
     setSource(ref);

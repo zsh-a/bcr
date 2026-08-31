@@ -24,7 +24,17 @@ export interface WorkerContext {
 export type OperationHandler = (
   task: ComputeTask,
   ctx: WorkerContext,
-) => Promise<ReadonlyArray<ArtifactRef>>;
+) => Promise<ReadonlyArray<ArtifactRef> | OperationResult>;
+
+/** Operation 可把降级/瞬态结果标为不可缓存，避免污染正常执行缓存。 */
+export interface OperationResult {
+  readonly outputs: ReadonlyArray<ArtifactRef>;
+  readonly cacheable?: boolean;
+}
+
+function operationResult(result: ReadonlyArray<ArtifactRef> | OperationResult): OperationResult {
+  return Array.isArray(result) ? { outputs: result } : (result as OperationResult);
+}
 
 const workerScope = globalThis as unknown as {
   addEventListener(type: "message", listener: (event: MessageEvent) => void): void;
@@ -75,11 +85,13 @@ export function defineWorker(handlers: Readonly<Record<string, OperationHandler>
     };
 
     handler(task, ctx)
-      .then((outputs) => {
+      .then((rawResult) => {
+        const result = operationResult(rawResult);
         port.postMessage({
           type: "completed",
           taskId: task.id,
-          outputs: [...outputs],
+          outputs: [...result.outputs],
+          ...(result.cacheable !== undefined ? { cacheable: result.cacheable } : {}),
         });
       })
       .catch((error: unknown) => {

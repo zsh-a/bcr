@@ -13,6 +13,12 @@ export {
 } from "./schema";
 export { cacheKey } from "./cache-key";
 export {
+  contentHash,
+  createContentHasher,
+  hashReadableStream,
+  type ContentHasher,
+} from "./content-hash";
+export {
   ArtifactNotFound,
   InvalidPipeline,
   NoExecutor,

@@ -72,6 +72,11 @@ CREATE TABLE IF NOT EXISTS cache_entries (
   outputs    TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS cache_tasks (
+  task_id   TEXT PRIMARY KEY,
+  cache_key TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS cache_tasks_key_idx ON cache_tasks(cache_key);
 CREATE TABLE IF NOT EXISTS task_outputs (
   task_id     TEXT NOT NULL,
   artifact_id TEXT NOT NULL,

@@ -1,7 +1,7 @@
 import { MemoryStore } from "@bcr/storage-opfs";
 import { Cause, Effect, Exit, Layer, Stream } from "effect";
 import { describe, expect, it } from "vitest";
-import { artifactStore } from "../src/artifact";
+import { artifactPath, artifactStore } from "../src/artifact";
 import { memoryCacheStore } from "../src/cache-store";
 import { InvalidPipeline, TaskFailed } from "../src/errors";
 import { executorRegistry, Executors, type RuntimeExecutor } from "../src/executor";
@@ -35,10 +35,26 @@ function makeExecutor(behavior?: (task: ComputeTask) => Stream.Stream<TaskEvent,
 }
 
 function makeRuntime(executor: RuntimeExecutor) {
+  const binary = new MemoryStore();
+  const materializing: RuntimeExecutor = {
+    ...executor,
+    run: (t) =>
+      executor.run(t).pipe(
+        Stream.tap((event) =>
+          event.type === "completed"
+            ? Effect.promise(async () => {
+                for (const output of event.outputs) {
+                  await binary.put(artifactPath(output), new Uint8Array());
+                }
+              })
+            : Effect.void,
+        ),
+      ),
+  };
   const deps = Layer.mergeAll(
-    artifactStore({ memory: new MemoryStore() }),
+    artifactStore({ memory: binary }),
     memoryCacheStore(),
-    Layer.succeed(Executors, executorRegistry([executor])),
+    Layer.succeed(Executors, executorRegistry([materializing])),
   );
   const live = Layer.provideMerge(schedulerLive, deps);
   return {

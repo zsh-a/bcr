@@ -3,6 +3,7 @@ import {
   artifactStore,
   executorRegistry,
   Executors,
+  hashReadableStream,
   memoryCacheStore,
   schedulerLive,
   SchedulerTag,
@@ -69,7 +70,7 @@ export async function createRuntimeServices(): Promise<RuntimeServices> {
         type: "module",
       }),
   );
-  const wasmExecutor = workerExecutor(pool, "wasm", "bcr-kernels-0.1.0", artifacts);
+  const wasmExecutor = workerExecutor(pool, "wasm", "bcr-kernels-0.2.1", artifacts);
 
   const deps = Layer.mergeAll(
     Layer.succeed(ArtifactStoreTag, artifacts),
@@ -179,11 +180,13 @@ export async function runTask(
 }
 
 /** 导入文件：流式写入 OPFS（FileArtifact），不整段进内存（§4/§8）。 */
-export async function importFile(services: RuntimeServices, file: File): Promise<void> {
+export async function importFile(services: RuntimeServices, file: File): Promise<ArtifactRef> {
+  const hash = await hashReadableStream(file.stream());
   const ref: ArtifactRef = {
-    id: `source/${file.name}`,
+    id: `source/${hash}`,
     type: `file/${file.name.split(".").pop() ?? "bin"}`,
     storage: "opfs",
+    hash,
   };
   await Effect.runPromise(services.artifacts.putStream(ref, file.stream()));
   studio.addFile({
@@ -194,6 +197,7 @@ export async function importFile(services: RuntimeServices, file: File): Promise
   });
   persistFiles();
   studio.log("info", `import · ${file.name} · ${file.size} bytes → opfs`);
+  return ref;
 }
 
 function persistFiles(): void {

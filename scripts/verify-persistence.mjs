@@ -1,7 +1,7 @@
 /* 刷新恢复走查：导入 → 计算 → reload → 文件列表恢复 + 缓存命中（§7/§8 持久化闭环）。 */
 import { launchVerifyBrowser } from "./verify-browser.mjs";
 
-const base = process.env.BASE_URL ?? "http://localhost:5199";
+const base = process.env.BASE_URL ?? "http://localhost:5199/studio";
 const dir = new URL("./shots/", import.meta.url).pathname;
 const fail = (message) => {
   console.error(`FAIL: ${message}`);

@@ -1,5 +1,5 @@
-import { artifactPath, type ArtifactRef, type ComputeTask } from "@bcr/core";
-import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
+import { artifactPath, contentHash, type ArtifactRef, type ComputeTask } from "@bcr/core";
+import { defineWorker, type OperationResult, type WorkerContext } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
 import init, { peak_f32 } from "../../../../crates/kernels/pkg/bcr_kernels.js";
 import {
@@ -66,11 +66,6 @@ async function readWholeArtifact(input: ArtifactRef): Promise<Uint8Array> {
   return out;
 }
 
-async function writeArtifact(ref: ArtifactRef, bytes: Uint8Array): Promise<ArtifactRef> {
-  await opfs.put(artifactPath(ref), bytes);
-  return ref;
-}
-
 /** 按采样区间读取 PCM 窗口（§4：Worker 内存只驻留一个窗口）。 */
 async function readPcmWindow(
   input: ArtifactRef,
@@ -83,8 +78,18 @@ async function readPcmWindow(
   return new Float32Array(copy);
 }
 
-async function persistJson(ref: ArtifactRef, value: unknown): Promise<ArtifactRef> {
-  return writeArtifact(ref, encoder.encode(JSON.stringify(value)));
+async function persistJson(prefix: string, type: string, value: unknown): Promise<ArtifactRef> {
+  const bytes = encoder.encode(JSON.stringify(value));
+  const hash = contentHash(bytes);
+  const ref: ArtifactRef = {
+    id: `${prefix}/${hash}`,
+    type,
+    storage: "opfs",
+    format: "json",
+    hash,
+  };
+  await opfs.put(artifactPath(ref), bytes);
+  return ref;
 }
 
 async function readJson<T>(ref: ArtifactRef): Promise<T> {
@@ -124,16 +129,19 @@ async function audioWaveform(
     offset += chunk.byteLength;
     if (total > 0) ctx.progress(Math.min(0.99, offset / total));
   }
-  const out: ArtifactRef = {
-    id: `waveform/${input.id}`,
+  const bytes = new Uint8Array(peaks.buffer);
+  const hash = contentHash(bytes);
+  const immutableOut: ArtifactRef = {
+    id: `waveform/${hash}`,
     type: "audio/waveform-peaks",
     // 与 decode 的 info 同理：缓存引用跨刷新存活，peaks 直写 OPFS（§4）
     storage: "opfs",
     format: "f32le",
+    hash,
   };
-  await opfs.put(artifactPath(out), new Uint8Array(peaks.buffer));
+  await opfs.put(artifactPath(immutableOut), bytes);
   ctx.progress(1);
-  return [out];
+  return [immutableOut];
 }
 
 // ── ASR（transformers.js Whisper；不可用时回退演示引擎） ─────────────
@@ -427,7 +435,7 @@ async function windowedAsr(
 async function asrTranscribe(
   task: ComputeTask,
   ctx: WorkerContext,
-): Promise<ReadonlyArray<ArtifactRef>> {
+): Promise<ReadonlyArray<ArtifactRef> | OperationResult> {
   const input = pickInput(task, "audio/pcm-f32");
   if (input === undefined) throw new Error("asr.transcribe requires a pcm-f32 input");
   const config = configOf(task);
@@ -457,15 +465,12 @@ async function asrTranscribe(
     },
   );
 
-  const out: ArtifactRef = {
-    id: `asr/${input.id}/${result.engine}/${result.model}`,
-    type: "subtitle/asr-chunks",
-    storage: "opfs",
-    format: "json",
-  };
-  await persistJson(out, result);
+  const out = await persistJson("asr", "subtitle/asr-chunks", result);
   ctx.progress(1);
-  return [out];
+  // auto 的 demo 是网络/模型不可用时的瞬态降级；不缓存，后续重跑会再次尝试 Whisper。
+  return engine === "auto" && result.engine === "demo"
+    ? { outputs: [out], cacheable: false }
+    : [out];
 }
 
 // ── 字幕规范化 ───────────────────────────────────────────────────────
@@ -484,14 +489,8 @@ async function subtitleSegment(
   const asr = await readJson<AsrResult>(input);
   const allWords = asr.chunks.flatMap((chunk) => chunk.words ?? []);
   const cues = assignWords(normalizeCues(asr.chunks, options), allWords);
-  const out: ArtifactRef = {
-    id: `cues/${input.id}/${options.maxChars}c${options.maxDurationS}s`,
-    type: "subtitle/cues",
-    storage: "opfs",
-    format: "json",
-  };
   // engine 透传：顶栏徽标如实显示识别引擎（demo / whisper）
-  await persistJson(out, { cues, engine: asr.engine });
+  const out = await persistJson("cues", "subtitle/cues", { cues, engine: asr.engine });
   ctx.progress(1);
   return [out];
 }
@@ -554,13 +553,10 @@ async function subtitleTranslate(
     return translation !== undefined && translation.length > 0 ? { ...cue, translation } : cue;
   });
 
-  const out: ArtifactRef = {
-    id: `bilingual/${cuesRef.id}/${model}`,
-    type: "subtitle/cues",
-    storage: "opfs",
-    format: "json",
-  };
-  await persistJson(out, { cues: bilingual, engine: `opus-mt-${direction}` });
+  const out = await persistJson("bilingual", "subtitle/cues", {
+    cues: bilingual,
+    engine: `opus-mt-${direction}`,
+  });
   ctx.progress(1);
   return [out];
 }

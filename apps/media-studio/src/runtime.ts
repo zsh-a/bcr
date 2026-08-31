@@ -2,11 +2,14 @@ import {
   artifactStore,
   artifactPath,
   ArtifactStoreTag,
+  contentHash,
+  createContentHasher,
   executorRegistry,
   Executors,
   memoryCacheStore,
   schedulerLive,
   SchedulerTag,
+  TaskFailed,
   type ArtifactRef,
   type ComputeTask,
   type RuntimeExecutor,
@@ -24,7 +27,6 @@ import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import { Chunk, Context, Effect, Layer, Option, Stream } from "effect";
 import { ALL_FORMATS, AudioBufferSink, BlobSource, Input } from "mediabunny";
-import { TaskFailed } from "@bcr/core";
 import type { MediaInfo } from "./subtitles";
 
 /**
@@ -35,6 +37,12 @@ import type { MediaInfo } from "./subtitles";
  */
 
 export const SAMPLE_RATE = 16_000;
+const DECODE_VERSION = "media-decode-0.3.0";
+const textEncoder = new TextEncoder();
+
+function artifactIdentity(ref: ArtifactRef): string {
+  return ref.hash ?? contentHash(textEncoder.encode(ref.id));
+}
 
 let metaDb: SqliteDb | undefined;
 let binaryStore: BinaryStore | undefined;
@@ -187,11 +195,12 @@ function decodeExecutor(
     const durationS = await media.computeDuration();
 
     const pcmRef: ArtifactRef = {
-      id: `pcm16k/${input.id}`,
+      id: `pcm16k/${DECODE_VERSION}/${artifactIdentity(input)}`,
       type: "audio/pcm-f32",
       storage: "opfs",
       format: "f32le",
     };
+    const pcmHasher = createContentHasher();
     let controller!: ReadableStreamDefaultController<Uint8Array>;
     const stream = new ReadableStream<Uint8Array>({
       start(c) {
@@ -209,7 +218,9 @@ function decodeExecutor(
         const mono = toMono(wrapped.buffer);
         for (const chunk of resampler.push(mono, wrapped.buffer.sampleRate)) {
           totalSamples += chunk.length;
-          controller.enqueue(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength));
+          const bytes = new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+          pcmHasher.update(bytes);
+          controller.enqueue(bytes);
         }
         const progress = 0.05 + 0.9 * Math.min(1, wrapped.timestamp / Math.max(1, durationS));
         if (progress - lastReport >= 0.02) {
@@ -219,7 +230,9 @@ function decodeExecutor(
       }
       for (const chunk of resampler.flush()) {
         totalSamples += chunk.length;
-        controller.enqueue(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength));
+        const bytes = new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+        pcmHasher.update(bytes);
+        controller.enqueue(bytes);
       }
       controller.close();
     } catch (error) {
@@ -227,7 +240,7 @@ function decodeExecutor(
       throw error;
     }
     await writeDone;
-    yield* finish(task, input, pcmRef, totalSamples, durationS);
+    yield* finish(task, { ...pcmRef, hash: pcmHasher.digest() }, totalSamples, durationS);
   };
 
   /** 旧路径：整段 decodeAudioData（仅小文件回退）。 */
@@ -243,40 +256,43 @@ function decodeExecutor(
     const samples = toMono(audioBuffer);
     const pcmBytes = new Uint8Array(samples.buffer.slice(0));
     const pcmRef: ArtifactRef = {
-      id: `pcm16k/${input.id}`,
+      id: `pcm16k/${DECODE_VERSION}/${artifactIdentity(input)}`,
       type: "audio/pcm-f32",
       storage: "opfs",
       format: "f32le",
+      hash: contentHash(pcmBytes),
     };
     await Effect.runPromise(artifacts.put(pcmRef, pcmBytes));
-    yield* finish(task, input, pcmRef, samples.length, audioBuffer.duration);
+    yield* finish(task, pcmRef, samples.length, audioBuffer.duration);
   };
 
   /** 收尾：写 media/info 产物 + completed 事件。 */
   const finish = async function* (
     task: ComputeTask,
-    input: ArtifactRef,
     pcmRef: ArtifactRef,
     samples: number,
     durationS: number,
   ): AsyncGenerator<TaskEventLike, void, undefined> {
     const info: MediaInfo = { durationS, sampleRate: SAMPLE_RATE, samples };
+    const infoBytes = textEncoder.encode(JSON.stringify(info));
+    const infoHash = contentHash(infoBytes);
     const infoRef: ArtifactRef = {
-      id: `info/${input.id}`,
+      id: `info/${infoHash}`,
       type: "media/info",
       // 缓存元数据（SQLite/OPFS）跨刷新存活，产物引用必须指向持久存储，
       // 否则刷新后 cache hit 时 memory 产物已蒸发 → ArtifactNotFound
       storage: "opfs",
       format: "json",
+      hash: infoHash,
     };
-    await Effect.runPromise(artifacts.put(infoRef, new TextEncoder().encode(JSON.stringify(info))));
+    await Effect.runPromise(artifacts.put(infoRef, infoBytes));
     yield { type: "progress", taskId: task.id, value: 1 };
     yield { type: "completed", taskId: task.id, outputs: [pcmRef, infoRef] };
   };
 
   return {
     runtime: "js",
-    version: "media-decode-0.2.0",
+    version: DECODE_VERSION,
     run: (task) =>
       Stream.async<TaskEventLike, TaskFailed>((emit) => {
         void (async () => {
@@ -348,7 +364,7 @@ export async function createRuntimeServices(): Promise<RuntimeServices> {
         type: "module",
       }),
   );
-  const wasmExecutor = workerExecutor(pool, "wasm", "media-worker-0.1.1", artifacts);
+  const wasmExecutor = workerExecutor(pool, "wasm", "media-worker-0.2.0", artifacts);
   const jsExecutor = decodeExecutor(artifacts, () => binaryStore);
 
   const deps = Layer.mergeAll(

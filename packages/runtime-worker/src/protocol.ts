@@ -49,6 +49,7 @@ export const CompletedEvent = Schema.Struct({
   type: Schema.Literal("completed"),
   taskId: Schema.String,
   outputs: Schema.Array(ArtifactRef),
+  cacheable: Schema.optional(Schema.Boolean),
 });
 export const FailedEvent = Schema.Struct({
   type: Schema.Literal("failed"),

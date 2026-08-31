@@ -34,7 +34,7 @@ export async function createRuntimeServices(): Promise<RuntimeServices> {
         type: "module",
       }),
   );
-  const wasmExecutor = workerExecutor(pool, "wasm", "bcr-kernels-0.1.0", artifacts);
+  const wasmExecutor = workerExecutor(pool, "wasm", "bcr-kernels-0.2.0", artifacts);
 
   const deps = Layer.mergeAll(
     Layer.succeed(ArtifactStoreTag, artifacts),

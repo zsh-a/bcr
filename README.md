@@ -34,6 +34,7 @@
 | §6.2 typed MessagePort 协议           | `packages/runtime-worker/src/protocol.ts`（Effect Schema 编解码）                    |
 | §5 Worker 生命周期 ≠ Task 生命周期    | `WorkerPool` 常驻复用，cancel 只发命令不销毁 Worker                                  |
 | §7 Content-Addressed Cache            | `cacheKey = BLAKE3(artifactHash + operation + config + runtimeVersion)`              |
+| §7 Artifact 内容身份                  | 源文件流式 BLAKE3；派生 JSON/波形携带内容 hash 并写入不可变路径                      |
 | §7 缓存持久化（刷新不重算）           | `packages/storage-sqlite`：cache_entries 表 + 血缘（task_outputs / dependencies）    |
 | §4/§8 OPFS + 窗口流动                 | `BinaryStore`（readRange/putStream/size），kernel 按 4MB 窗口读取                    |
 | §8 SQLite WASM 元数据                 | `openSqliteDb`（整库字节经 BinaryStore 落 OPFS，可换任意 BinaryStore）               |
@@ -49,7 +50,7 @@
 bun install            # 安装依赖
 bun run build:wasm     # 构建 WASM kernel（首次或 kernel 变更后）
 bun run test           # vp test：全部单元测试
-bun run check          # vp check：format + lint
+bun run check          # format + lint + 全 workspace TypeScript 类型检查
 bun run demo           # 启动 demo（examples/demo）
 bun run studio         # 启动 BCR Studio 工作台（apps/studio）
 bun run media          # 启动 Media Studio · Subtitle（apps/media-studio）
@@ -88,7 +89,7 @@ decode ─┬─ wave（Rust peak kernel 波形）
         └─ asr（transformers.js Whisper，ONNX q8）─ segment ─ translate（Whisper X→EN，双语可选）
 ```
 
-- **每个节点都是 ComputeTask**：换模型只重算 ASR 下游；同文件重跑全部缓存命中；Whisper 下载失败自动回退演示引擎（能量分段），离线也能走通全链路
+- **每个节点都是 ComputeTask**：换模型只重算 ASR 下游；同内容文件重跑全部缓存命中；Whisper 下载失败自动回退演示引擎（能量分段），离线也能走通全链路；瞬态 demo 回退不写缓存，网络恢复后会重新尝试 Whisper
 - **执行平面**：`runtime "js"` = 主线程 decode（AudioContext 仅主线程可用）；`runtime "wasm"` = media.worker（kernel + ASR），中间产物由 Worker 直写 OPFS
 - **流式 decode（§4）**：Mediabunny 解复用 → AudioBufferSink 逐块解码 → 单声道混合 → 跨块相位连续线性重采样 16kHz → 30s 窗增量写 OPFS，任意大文件不整段装载
 - **分窗 ASR**：长音频按 120s 窗 + 4s stride 切片推理——进度按窗推进、窗间可取消、Worker 内存只驻留一窗 PCM；每窗完成即发 chunk 事件，字幕**边算边出**（渐进回填编辑器）；stride 区间的归属由下一窗重新转写，边界不丢词不重复
@@ -122,6 +123,6 @@ decode ─┬─ wave（Rust peak kernel 波形）
 
 ## 本版明确不做
 
-WebGPU / WebCodecs / ONNX、WIT Component Model、插件 capability 模型、
-Worker Pool 自动扩缩、Vitest Browser Mode、TaskJournal 断点恢复。
+WIT Component Model、插件 capability 模型、Worker Pool 自动扩缩、
+Vitest Browser Mode、TaskJournal 断点恢复。
 对应架构文档 Phase 1 后续与 Phase 2/3。

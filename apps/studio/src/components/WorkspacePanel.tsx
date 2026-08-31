@@ -15,14 +15,15 @@ export function WorkspacePanel() {
   const services = useServices();
   const selection = useSelection();
   const file = useStudio((s) => s.files.find((f) => f.ref.id === selection.file));
-  const waveformDone = useStudio((s) =>
-    s.tasks.some(
+  const waveformTask = useStudio((s) =>
+    s.tasks.find(
       (t) =>
         t.operation === "audio.waveform" &&
         t.status === "completed" &&
         t.inputId === selection.file,
     ),
   );
+  const waveformDone = waveformTask !== undefined;
   const hashTask = useStudio((s) =>
     s.tasks.find(
       (t) =>
@@ -73,20 +74,12 @@ export function WorkspacePanel() {
   // 波形 artifact → render.worker（Transferable 零拷贝）
   useEffect(() => {
     if (file === undefined) return;
-    if (!waveformDone) {
+    const waveformRef = waveformTask?.outputs?.find((ref) => ref.type === "audio/waveform-peaks");
+    if (waveformRef === undefined) {
       workerRef.current?.postMessage({ type: "clear" });
       return;
     }
-    const artifactId = `waveform/${file.ref.id}`;
-    void Effect.runPromise(
-      Effect.either(
-        services.artifacts.get({
-          id: artifactId,
-          type: "audio/waveform-peaks",
-          storage: "memory",
-        }),
-      ),
-    ).then((either) => {
+    void Effect.runPromise(Effect.either(services.artifacts.get(waveformRef))).then((either) => {
       if (either._tag !== "Right") return;
       const bytes = either.right;
       const peaks = new Float32Array(
@@ -94,15 +87,13 @@ export function WorkspacePanel() {
       );
       workerRef.current?.postMessage({ type: "peaks", peaks }, [peaks.buffer]);
     });
-  }, [file, waveformDone, services]);
+  }, [file, waveformTask, services]);
 
   const onDrop = (event: React.DragEvent) => {
     event.preventDefault();
     const dropped = event.dataTransfer.files[0];
     if (dropped !== undefined) {
-      void importFile(services, dropped).then(() =>
-        selection.select({ file: `source/${dropped.name}` }),
-      );
+      void importFile(services, dropped).then((ref) => selection.select({ file: ref.id }));
     }
   };
 

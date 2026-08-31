@@ -1,4 +1,4 @@
-import type { ArtifactRef } from "@bcr/core";
+import { hashReadableStream, type ArtifactRef } from "@bcr/core";
 import type { RuntimeServices } from "@bcr/react";
 import { Effect } from "effect";
 import { persistProject } from "./pipeline";
@@ -6,10 +6,13 @@ import { studio } from "./store";
 
 /** 导入媒体文件：流式写入 OPFS（FileArtifact，§4），不整段进内存。 */
 export async function importSource(services: RuntimeServices, file: File): Promise<void> {
+  // File.stream() 可重复打开：先流式计算内容摘要，再以新流写入 OPFS，全程不聚合大文件。
+  const hash = await hashReadableStream(file.stream());
   const ref: ArtifactRef = {
-    id: `source/${file.name}`,
+    id: `source/${hash}`,
     type: `file/${file.name.split(".").pop() ?? "bin"}`,
     storage: "opfs",
+    hash,
   };
   await Effect.runPromise(services.artifacts.putStream(ref, file.stream()));
   studio.setSource({

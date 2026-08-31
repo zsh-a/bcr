@@ -1,4 +1,4 @@
-import { artifactPath, type ArtifactRef } from "@bcr/core";
+import { artifactPath, contentHash, type ArtifactRef } from "@bcr/core";
 import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
 import init, { peak_f32, StreamingBlake3 } from "../../../../crates/kernels/pkg/bcr_kernels.js";
@@ -41,13 +41,14 @@ async function hashBlake3(
     if (total > 0) ctx.progress(Math.min(0.99, offset / total));
   }
   const hex = hasher.finalize_hex();
+  const bytes = new TextEncoder().encode(hex);
   const out: ArtifactRef = {
-    id: `hash/${input.id}`,
+    id: `hash/${hex}`,
     type: "hash/blake3-hex",
-    storage: "memory",
+    storage: "opfs",
     hash: hex,
   };
-  ctx.emitChunk(out, new TextEncoder().encode(hex));
+  await opfs.put(artifactPath(out), bytes);
   ctx.progress(1);
   return [out];
 }
@@ -85,14 +86,17 @@ async function audioWaveform(
     offset += chunk.byteLength;
     if (total > 0) ctx.progress(Math.min(0.99, offset / total));
   }
+  const bytes = new Uint8Array(peaks.buffer);
+  const hash = contentHash(bytes);
   const out: ArtifactRef = {
-    id: `waveform/${input.id}`,
+    id: `waveform/${hash}`,
     type: "audio/waveform-peaks",
-    storage: "memory",
+    storage: "opfs",
     format: "f32le",
+    hash,
   };
-  // transfer 零拷贝回主线程（§4 small 通道）
-  ctx.emitChunk(out, new Uint8Array(peaks.buffer));
+  // Studio 声明支持跨刷新缓存命中，因此小产物也必须持久化，不能只留在 memory store。
+  await opfs.put(artifactPath(out), bytes);
   ctx.progress(1);
   return [out];
 }

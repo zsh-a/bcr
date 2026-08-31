@@ -8,8 +8,16 @@ import type { ArtifactRef } from "./schema";
  */
 export interface CacheStore {
   readonly get: (key: string) => Effect.Effect<ReadonlyArray<ArtifactRef> | undefined>;
-  readonly put: (key: string, outputs: ReadonlyArray<ArtifactRef>) => Effect.Effect<void>;
+  readonly put: (
+    key: string,
+    outputs: ReadonlyArray<ArtifactRef>,
+    taskId?: string,
+  ) => Effect.Effect<void>;
+  /** 缓存命中时把本次任务实例关联到已有 key，供跨会话 DAG 失效使用。 */
+  readonly associate: (key: string, taskId: string) => Effect.Effect<void>;
   readonly remove: (key: string) => Effect.Effect<void>;
+  /** 按历史任务实例删除对应缓存；任务到 key 的关联必须可持久化。 */
+  readonly removeForTask: (taskId: string) => Effect.Effect<void>;
 }
 
 export class CacheStoreTag extends Context.Tag("bcr/CacheStore")<CacheStoreTag, CacheStore>() {}
@@ -17,10 +25,30 @@ export class CacheStoreTag extends Context.Tag("bcr/CacheStore")<CacheStoreTag, 
 export function memoryCacheStore(): Layer.Layer<CacheStoreTag> {
   return Layer.sync(CacheStoreTag, () => {
     const entries = new Map<string, ReadonlyArray<ArtifactRef>>();
+    const keyByTask = new Map<string, string>();
+
+    const removeKey = (key: string): void => {
+      entries.delete(key);
+      for (const [taskId, taskKey] of keyByTask) {
+        if (taskKey === key) keyByTask.delete(taskId);
+      }
+    };
+
     return {
       get: (key) => Effect.sync(() => entries.get(key)),
-      put: (key, outputs) => Effect.sync(() => void entries.set(key, outputs)),
-      remove: (key) => Effect.sync(() => void entries.delete(key)),
+      put: (key, outputs, taskId) =>
+        Effect.sync(() => {
+          entries.set(key, outputs);
+          if (taskId !== undefined) keyByTask.set(taskId, key);
+        }),
+      associate: (key, taskId) => Effect.sync(() => void keyByTask.set(taskId, key)),
+      remove: (key) => Effect.sync(() => removeKey(key)),
+      removeForTask: (taskId) =>
+        Effect.sync(() => {
+          const key = keyByTask.get(taskId);
+          if (key !== undefined) removeKey(key);
+          else keyByTask.delete(taskId);
+        }),
     };
   });
 }

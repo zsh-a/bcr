@@ -8,4 +8,9 @@ export {
 } from "./protocol";
 export { defaultPoolSize, WorkerPool, type PoolWorker } from "./pool";
 export { workerExecutor } from "./executor";
-export { defineWorker, type OperationHandler, type WorkerContext } from "./worker";
+export {
+  defineWorker,
+  type OperationHandler,
+  type OperationResult,
+  type WorkerContext,
+} from "./worker";

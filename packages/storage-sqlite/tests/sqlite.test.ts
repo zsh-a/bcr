@@ -79,6 +79,26 @@ describe("sqliteCacheStore (§7)", () => {
     expect(hit).toEqual([ref("out-1", "h-1")]);
     await reopened.close();
   });
+
+  it("task → cache key 关联跨会话保留并支持失效", async () => {
+    await run((cache) => cache.put("k-task", [ref("out-task", "h-task")], "task-1"));
+    await db.close();
+
+    const sqlite3 = await initSqlite();
+    const reopened = await openSqliteDb({ store, path: "project/meta.db", sqlite3 });
+    await Effect.runPromise(
+      Effect.flatMap(CacheStoreTag, (cache) => cache.removeForTask("task-1")).pipe(
+        Effect.provide(sqliteCacheStore(reopened)),
+      ),
+    );
+    const missing = await Effect.runPromise(
+      Effect.flatMap(CacheStoreTag, (cache) => cache.get("k-task")).pipe(
+        Effect.provide(sqliteCacheStore(reopened)),
+      ),
+    );
+    expect(missing).toBeUndefined();
+    await reopened.close();
+  });
 });
 
 describe("sqliteLineageStore (§3/§8)", () => {
