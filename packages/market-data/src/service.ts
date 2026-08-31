@@ -8,9 +8,9 @@ function cachedQuote(quote: QuoteSnapshot): QuoteSnapshot {
 }
 
 function readCache(): MarketAtlasSnapshot | null {
-  if (typeof localStorage === "undefined") return null;
+  if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
+    const raw = window.localStorage.getItem(CACHE_KEY);
     return raw === null ? null : (JSON.parse(raw) as MarketAtlasSnapshot);
   } catch {
     return null;
@@ -18,9 +18,9 @@ function readCache(): MarketAtlasSnapshot | null {
 }
 
 function writeCache(snapshot: MarketAtlasSnapshot): void {
-  if (typeof localStorage === "undefined") return;
+  if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(snapshot));
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify(snapshot));
   } catch {
     // Storage is an optimization; live data remains usable when quota/privacy blocks it.
   }

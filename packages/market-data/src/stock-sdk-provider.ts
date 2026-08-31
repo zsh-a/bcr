@@ -1,5 +1,7 @@
 import {
   StockSDK,
+  type AnyHistoryKline,
+  type FuturesKline,
   type GlobalFuturesQuote,
   type HKQuote,
   type MarketStatus,
@@ -11,6 +13,10 @@ import { instrumentsFor } from "./instruments";
 import type {
   MarketAtlasSnapshot,
   MarketDataProvider,
+  MarketHistoryBar,
+  MarketHistoryProvider,
+  MarketHistoryRequest,
+  MarketHistorySeries,
   MarketInstrument,
   MarketRegion,
   MarketSession,
@@ -32,6 +38,43 @@ const FUTURE_PULSE = [
   ["ES00Y", "S&P 500 FUT"],
   ["NQ00Y", "NASDAQ FUT"],
 ] as const;
+const RANGE_DAYS = { "1M": 45, "3M": 110, "6M": 220, "1Y": 420, "3Y": 1_180 } as const;
+
+function compactDate(value: Date): string {
+  return value.toISOString().slice(0, 10).replaceAll("-", "");
+}
+
+function historyDates(range: MarketHistoryRequest["range"], now: number) {
+  const end = new Date(now);
+  const start = new Date(now);
+  start.setUTCDate(start.getUTCDate() - RANGE_DAYS[range]);
+  return { startDate: compactDate(start), endDate: compactDate(end) };
+}
+
+function historyBar(bar: AnyHistoryKline | FuturesKline): MarketHistoryBar | null {
+  if (
+    bar.open === null ||
+    bar.high === null ||
+    bar.low === null ||
+    bar.close === null ||
+    !Number.isFinite(bar.open) ||
+    !Number.isFinite(bar.high) ||
+    !Number.isFinite(bar.low) ||
+    !Number.isFinite(bar.close)
+  ) {
+    return null;
+  }
+  return {
+    date: bar.date,
+    timestamp: "timestamp" in bar ? bar.timestamp : null,
+    open: bar.open,
+    high: bar.high,
+    low: bar.low,
+    close: bar.close,
+    volume: bar.volume ?? 0,
+    amount: bar.amount,
+  };
+}
 
 function status(state: MarketStatus): SessionState {
   return state;
@@ -151,7 +194,7 @@ function errorMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
 }
 
-export class StockSdkProvider implements MarketDataProvider {
+export class StockSdkProvider implements MarketDataProvider, MarketHistoryProvider {
   readonly id = "stock-sdk@2.4.2";
   private readonly sdk = new StockSDK({
     timeout: 10_000,
@@ -161,6 +204,39 @@ export class StockSdkProvider implements MarketDataProvider {
       tencent: { timeout: 10_000, rateLimit: { requestsPerSecond: 4, maxBurst: 4 } },
     },
   });
+
+  async loadHistory(request: MarketHistoryRequest): Promise<MarketHistorySeries> {
+    const receivedAt = Date.now();
+    const options = {
+      period: "daily" as const,
+      adjust: "qfq" as const,
+      ...historyDates(request.range, receivedAt),
+    };
+    const market = request.instrument.market;
+    const raw =
+      market === "CN"
+        ? await this.sdk.kline.cn(request.instrument.sourceSymbol, options)
+        : market === "HK"
+          ? await this.sdk.kline.hk(request.instrument.sourceSymbol, options)
+          : market === "US"
+            ? await this.sdk.kline.us(request.instrument.sourceSymbol, options)
+            : await this.sdk.futures.globalKline(request.instrument.sourceSymbol, options);
+    const bars = raw.flatMap((bar) => {
+      const normalized = historyBar(bar);
+      return normalized === null ? [] : [normalized];
+    });
+    if (bars.length === 0)
+      throw new Error(`stock-sdk returned no history for ${request.instrument.symbol}`);
+    return {
+      instrument: request.instrument,
+      range: request.range,
+      bars,
+      receivedAt,
+      quality: "delayed",
+      source: `${this.id} · eastmoney daily qfq`,
+      errors: [],
+    };
+  }
 
   async loadSnapshot(): Promise<MarketAtlasSnapshot> {
     const receivedAt = Date.now();

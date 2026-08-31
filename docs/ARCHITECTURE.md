@@ -522,10 +522,12 @@ Long-only Backtester 已下沉 Rust/WASM，以 f64 close + u8 position TypedArra
 ### Phase 2.5 — Market Atlas（首个实时数据表面已落地）
 
 `@bcr/market-data` 将 `stock-sdk` 隔离在 provider adapter 内，规范为统一的 instrument、quote、
-session、feed-health 数据契约。CN / HK / US / 全球期货分别请求；上游整体失败时按
+daily OHLCV、session、feed-health 数据契约。CN / HK / US / 全球期货分别请求；上游整体失败时按
 `live delayed → partial → cached → demo` 语义降级。`apps/market-board` 以第四个 keep-alive 路由
-挂入 Studio，当前完成全球时区轨道、市场脉搏、焦点行情、宽度、期货、异动和 Watchlist。
-下一步把历史 K 线物化为 `market/symbol/year` Arrow / Parquet 分区，并支持从看板将标的送入 Quant Lab。
+挂入 Studio，当前完成全球时区轨道、市场脉搏、焦点行情、宽度、期货、异动、Watchlist 与
+1M—3Y 日线蜡烛图。看板通过版本化 handoff 传递完整历史柱；Quant Lab 接收后规范化为
+`market/symbol/year` Arrow / Parquet 内容寻址分区并自动运行回测。下一步扩展多标的选择、
+相关性矩阵与组合级回测。
 
 ### Phase 3 — 正式抽包与生态
 

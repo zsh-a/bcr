@@ -5,11 +5,13 @@ import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";
 import type {
   DataQuality,
+  HistoryRange,
   MarketRegion,
   MarketSession,
   QuoteSnapshot,
   SessionState,
 } from "@bcr/market-data";
+import { publishQuantHandoff } from "@bcr/market-data";
 import {
   ArrowUpRight,
   Clock3,
@@ -23,7 +25,9 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkline } from "./components/Sparkline";
+import { CandlestickChart } from "./components/CandlestickChart";
 import { useMarketAtlas } from "./useMarketAtlas";
+import { useMarketHistory } from "./useMarketHistory";
 import "./styles.css";
 
 const WATCHLIST_KEY = "bcr.market-atlas.watchlist.v1";
@@ -89,11 +93,20 @@ export function App() {
   const [selectedId, setSelectedId] = useState("US:INDEX:INX");
   const [region, setRegion] = useState<MarketRegion | "ALL">("ALL");
   const [query, setQuery] = useState("");
+  const [historyRange, setHistoryRange] = useState<HistoryRange>("1Y");
   const [watchlist, setWatchlist] = useState<ReadonlyArray<string>>(initialWatchlist);
   const searchRef = useRef<HTMLInputElement>(null);
   const allQuotes = useMemo(() => [...snapshot.quotes, ...snapshot.futures], [snapshot]);
   const selected =
     allQuotes.find((quote) => quote.instrument.id === selectedId) ?? snapshot.quotes[0];
+  const history = useMarketHistory(selected, historyRange);
+  const historySeries = history.series;
+  const currentHistory =
+    historySeries !== null &&
+    historySeries.instrument.id === selected?.instrument.id &&
+    historySeries.range === historyRange
+      ? historySeries
+      : null;
   const visibleQuotes = snapshot.quotes.filter((quote) => {
     const matchesRegion = region === "ALL" || quote.instrument.market === region;
     const needle = query.trim().toLowerCase();
@@ -113,6 +126,20 @@ export function App() {
   });
   const advancers = snapshot.quotes.filter((quote) => quote.changePercent >= 0).length;
   const decliners = snapshot.quotes.length - advancers;
+
+  const openQuant = (): void => {
+    if (selected === undefined || currentHistory === null || currentHistory.bars.length < 30)
+      return;
+    publishQuantHandoff({
+      version: 1,
+      createdAt: Date.now(),
+      instrument: selected.instrument,
+      range: historyRange,
+      bars: currentHistory.bars,
+      source: currentHistory.source,
+    });
+    window.location.assign("/quant");
+  };
 
   useEffect(() => {
     try {
@@ -250,25 +277,42 @@ export function App() {
                   </dl>
                 </div>
                 <div className="ma-focus-chart">
-                  <div className="ma-chart-meta">
-                    <span>PREVIOUS CLOSE → LAST</span>
-                    <small>
-                      {selected.quality.toUpperCase()} · {selected.source}
-                    </small>
+                  <div className="ma-history-toolbar">
+                    <div className="ma-chart-meta">
+                      <span>{historyRange} · DAILY OHLCV</span>
+                      <small>
+                        {history.loading
+                          ? "LOADING HISTORY"
+                          : `${currentHistory?.bars.length ?? 0} BARS · ${currentHistory?.quality.toUpperCase() ?? "—"}`}
+                      </small>
+                    </div>
+                    <nav aria-label="Historical range">
+                      {(["1M", "3M", "6M", "1Y", "3Y"] as const).map((item) => (
+                        <button
+                          type="button"
+                          key={item}
+                          className={historyRange === item ? "active" : ""}
+                          onClick={() => setHistoryRange(item)}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </nav>
                   </div>
-                  <Sparkline
-                    values={selected.sparkline}
-                    positive={selected.changePercent >= 0}
-                    large
-                  />
+                  <CandlestickChart bars={currentHistory?.bars ?? []} loading={history.loading} />
+                  <div className="ma-history-source">
+                    <span>{currentHistory?.source ?? "RESOLVING HISTORY PROVIDER"}</span>
+                    <small>QFQ · DAILY · INFORMATIONAL</small>
+                  </div>
                 </div>
               </div>
               <button
                 type="button"
                 className="ma-open-quant"
-                onClick={() => window.location.assign("/quant")}
+                onClick={openQuant}
+                disabled={history.loading || (currentHistory?.bars.length ?? 0) < 30}
               >
-                OPEN QUANT LAB <ArrowUpRight />
+                SEND {currentHistory?.bars.length ?? 0} BARS TO QUANT <ArrowUpRight />
               </button>
             </article>
 
@@ -460,7 +504,7 @@ export function App() {
           <Clock3 /> AS OF {receivedTime(snapshot.receivedAt)}
         </span>
         <p>Prices may be delayed by seconds or minutes. Not for order execution.</p>
-        <b>BCR / MARKET ATLAS 0.1</b>
+        <b>BCR / MARKET ATLAS 0.2</b>
       </footer>
     </div>
   );

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@bcr/core": "workspace:*",
+    "@bcr/market-data": "workspace:*",
     "@bcr/react": "workspace:*",
     "@bcr/runtime-worker": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",

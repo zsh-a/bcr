@@ -1,4 +1,5 @@
 import { RuntimeProvider, useRuntime, type RuntimeServices } from "@bcr/react";
+import { consumeQuantHandoff, QUANT_HANDOFF_EVENT } from "@bcr/market-data";
 import { Activity, Database, Download, Play, Square, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { EquityChart, MarketChart } from "./components/Charts";
@@ -6,6 +7,7 @@ import { TradeBlotter } from "./components/TradeBlotter";
 import { cancelStrategy, runStrategy } from "./pipeline";
 import {
   createRuntimeServices,
+  importMarketAtlasHandoff,
   importMarketDataset,
   loadDemoDataset,
   persistProject,
@@ -25,8 +27,18 @@ export function App() {
       .then(async (runtime) => {
         if (cancelled) return;
         setServices(runtime);
-        const restored = await restoreProject(runtime);
-        if (!restored) await loadDemoDataset(runtime);
+        const handoff = consumeQuantHandoff();
+        if (handoff !== null) {
+          await importMarketAtlasHandoff(runtime, handoff);
+          await persistProject(runtime);
+          quant.log(
+            "ok",
+            `handoff · ${handoff.instrument.symbol} · ${handoff.bars.length} daily bars from Market Atlas`,
+          );
+        } else {
+          const restored = await restoreProject(runtime);
+          if (!restored) await loadDemoDataset(runtime);
+        }
         if (quant.getSnapshot().result === null) void runStrategy(runtime);
       })
       .catch((reason: unknown) =>
@@ -84,6 +96,28 @@ function Workbench() {
     const timer = window.setTimeout(() => void persistProject(services), 600);
     return () => window.clearTimeout(timer);
   }, [services, state.config]);
+
+  useEffect(() => {
+    const receiveHandoff = async (): Promise<void> => {
+      const handoff = consumeQuantHandoff();
+      if (handoff === null) return;
+      try {
+        if (quant.getSnapshot().running) await cancelStrategy();
+        await importMarketAtlasHandoff(services, handoff);
+        await persistProject(services);
+        quant.log(
+          "ok",
+          `handoff · ${handoff.instrument.symbol} · ${handoff.bars.length} daily bars from Market Atlas`,
+        );
+        await runStrategy(services);
+      } catch (error) {
+        quant.log("error", `handoff · ${error instanceof Error ? error.message : String(error)}`);
+      }
+    };
+    const onHandoff = () => void receiveHandoff();
+    window.addEventListener(QUANT_HANDOFF_EVENT, onHandoff);
+    return () => window.removeEventListener(QUANT_HANDOFF_EVENT, onHandoff);
+  }, [services]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

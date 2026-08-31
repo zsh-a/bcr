@@ -156,18 +156,20 @@ CSV / Parquet → DuckDB WASM → Year Manifest → Arrow IPC shards → SMA Cro
 ```text
 stock-sdk (CN / HK / US / Global Futures)
              ↓
-@bcr/market-data canonical snapshot
+@bcr/market-data canonical snapshot + daily OHLCV history
              ↓
 live delayed / partial / cached / demo quality states
              ↓
-Market Atlas · sessions / pulse / breadth / futures / movers / watchlist
+Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 ```
 
 - `stock-sdk@2.4.2` 只存在于数据适配层；UI 不直接依赖第三方返回类型，后续可组合欧洲、日本、FX 数据源
 - CN / HK / US 与全球期货独立请求、独立健康状态；整体失败优先恢复 localStorage 最后快照，再显式降级 fixture
 - 行情始终展示来源、更新时间与 `DELAYED / PARTIAL / CACHED / DEMO` 质量，不把公开接口标记为撮合级实时数据
 - Midnight Atlas 编辑式界面提供全球交易时区轨道、市场焦点、方向宽度、跨资产行情、异动和持久化 Watchlist
-- 实时快照图只表达“昨收 → 最新”两点变化；确定性模拟曲线仅出现在明确标记的演示 fixture 中
+- 标的焦点支持 1M / 3M / 6M / 1Y / 3Y 日线 K 线、成交量与指针读数；长周期只在显示层聚合，交接仍保留完整日线
+- “Send to Quant” 将当前历史柱交给 Quant Lab，后者自动生成年度 Arrow / Parquet 分区并运行策略；快照微型图仍只表达“昨收 → 最新”
+- 确定性模拟曲线与 OHLCV 仅出现在明确标记的演示 fixture 中，不伪装成实时历史数据
 
 走查：`node scripts/verify-market-atlas.mjs`（由 `bun run test:browser` 自动执行）。
 

@@ -32,7 +32,7 @@ export interface MarketPartition {
 }
 
 export interface ColumnarMetadata {
-  readonly source: "demo" | "csv" | "parquet" | "legacy-json";
+  readonly source: "demo" | "csv" | "parquet" | "legacy-json" | "market-atlas";
   readonly engine: string;
   readonly arrowBytes: number;
   readonly parquetBytes: number;

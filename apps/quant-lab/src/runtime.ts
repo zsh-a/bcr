@@ -11,6 +11,7 @@ import {
   type ArtifactRef,
 } from "@bcr/core";
 import type { RuntimeServices } from "@bcr/react";
+import type { QuantMarketHandoff } from "@bcr/market-data";
 import { workerExecutor, WorkerPool } from "@bcr/runtime-worker";
 import { isOpfsSupported, MemoryStore, OpfsStore } from "@bcr/storage-opfs";
 import {
@@ -34,6 +35,7 @@ import {
 import type {
   BacktestMetrics,
   BacktestResult,
+  ColumnarMetadata,
   Dataset,
   EquityPoint,
   MarketBar,
@@ -205,7 +207,7 @@ async function datasetFromBars(
   services: RuntimeServices,
   name: string,
   bars: ReadonlyArray<MarketBar>,
-  source: "demo" | "csv" | "legacy-json",
+  source: ColumnarMetadata["source"],
 ): Promise<Dataset> {
   return persistColumnarDataset(services, name, await columnarizeMarketBars(bars, source));
 }
@@ -218,6 +220,26 @@ function formatBytes(bytes: number): string {
 
 export function loadDemoDataset(services: RuntimeServices): Promise<Dataset> {
   return datasetFromBars(services, "BCR-SYNTH / DAILY", generateDemoMarket(), "demo");
+}
+
+export function importMarketAtlasHandoff(
+  services: RuntimeServices,
+  handoff: QuantMarketHandoff,
+): Promise<Dataset> {
+  const bars = handoff.bars.map((bar) => ({
+    date: bar.date,
+    open: bar.open,
+    high: bar.high,
+    low: bar.low,
+    close: bar.close,
+    volume: bar.volume,
+  }));
+  return datasetFromBars(
+    services,
+    `${handoff.instrument.shortName} · ${handoff.range} / MARKET ATLAS`,
+    bars,
+    "market-atlas",
+  );
 }
 
 export async function importCsvDataset(services: RuntimeServices, file: File): Promise<Dataset> {
