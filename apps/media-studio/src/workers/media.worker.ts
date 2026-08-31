@@ -34,11 +34,12 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 /**
- * 按类型选输入：fan-out 的节点会收到兄弟输出（如 media/info），
- * operation 只声明自己关心的类型，不依赖输入顺序。
+ * 优先按命名端口选输入；无 port 的旧任务退回类型匹配。
  */
-function pickInput(task: ComputeTask, type: string): ArtifactRef | undefined {
-  return task.inputs.find((ref) => ref.type === type);
+function pickInput(task: ComputeTask, port: string, type: string): ArtifactRef | undefined {
+  return (
+    task.inputs.find((ref) => ref.port === port) ?? task.inputs.find((ref) => ref.type === type)
+  );
 }
 
 function throwIfAborted(ctx: WorkerContext): void {
@@ -436,7 +437,7 @@ async function asrTranscribe(
   task: ComputeTask,
   ctx: WorkerContext,
 ): Promise<ReadonlyArray<ArtifactRef> | OperationResult> {
-  const input = pickInput(task, "audio/pcm-f32");
+  const input = pickInput(task, "pcm", "audio/pcm-f32");
   if (input === undefined) throw new Error("asr.transcribe requires a pcm-f32 input");
   const config = configOf(task);
   const model = typeof config["model"] === "string" ? config["model"] : "Xenova/whisper-tiny";
@@ -479,7 +480,7 @@ async function subtitleSegment(
   task: ComputeTask,
   ctx: WorkerContext,
 ): Promise<ReadonlyArray<ArtifactRef>> {
-  const input = pickInput(task, "subtitle/asr-chunks");
+  const input = pickInput(task, "chunks", "subtitle/asr-chunks");
   if (input === undefined) throw new Error("subtitle.segment requires an asr-chunks input");
   const config = configOf(task);
   const options: SegmentOptions = {
@@ -522,7 +523,7 @@ async function subtitleTranslate(
   task: ComputeTask,
   ctx: WorkerContext,
 ): Promise<ReadonlyArray<ArtifactRef>> {
-  const cuesRef = pickInput(task, "subtitle/cues");
+  const cuesRef = pickInput(task, "cues", "subtitle/cues");
   if (cuesRef === undefined) {
     throw new Error("subtitle.translate requires a cues input");
   }
@@ -563,7 +564,7 @@ async function subtitleTranslate(
 
 defineWorker({
   "audio.waveform": (task, ctx) => {
-    const input = pickInput(task, "audio/pcm-f32");
+    const input = pickInput(task, "pcm", "audio/pcm-f32");
     if (input === undefined) throw new Error("audio.waveform requires a pcm-f32 input");
     return audioWaveform(input, ctx);
   },

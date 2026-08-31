@@ -98,6 +98,15 @@ export const schedulerLive: Layer.Layer<
       });
     };
 
+    const nameOutputs = (
+      task: ComputeTask,
+      outputs: ReadonlyArray<ArtifactRef>,
+    ): ReadonlyArray<ArtifactRef> =>
+      outputs.map((ref, index) => {
+        const port = task.outputs[index]?.name;
+        return port !== undefined && ref.port === undefined ? { ...ref, port } : ref;
+      });
+
     const cancelCascade = (taskId: string, visited: Set<string>): Effect.Effect<void> =>
       Effect.gen(function* () {
         if (visited.has(taskId)) return;
@@ -150,13 +159,14 @@ export const schedulerLive: Layer.Layer<
             // SQLite 条目可能比 OPFS 产物活得久；缺任一产物即驱逐并正常重算。
             const exists = yield* Effect.all(cached.map((ref) => artifacts.has(ref)));
             if (exists.every(Boolean)) {
+              const named = nameOutputs(task, cached);
               yield* cache.associate(key, task.id);
-              yield* artifacts.registerProduction(task.id, cached);
+              yield* artifacts.registerProduction(task.id, named);
               if (sink !== undefined) {
                 yield* PubSub.publish(sink, {
                   type: "completed",
                   taskId: task.id,
-                  outputs: [...cached],
+                  outputs: [...named],
                 });
               }
               return {
@@ -164,9 +174,9 @@ export const schedulerLive: Layer.Layer<
                 events: Stream.succeed<TaskEvent>({
                   type: "completed",
                   taskId: task.id,
-                  outputs: [...cached],
+                  outputs: [...named],
                 }),
-                await: Effect.succeed(cached),
+                await: Effect.succeed(named),
                 cancel: Effect.void,
                 cached: true,
               };
@@ -185,13 +195,17 @@ export const schedulerLive: Layer.Layer<
             yield* events.pipe(
               Stream.runForEach((event) =>
                 Effect.gen(function* () {
-                  yield* PubSub.publish(pubsub, event);
+                  const published: TaskEvent =
+                    event.type === "completed"
+                      ? { ...event, outputs: [...nameOutputs(task, event.outputs)] }
+                      : event;
+                  yield* PubSub.publish(pubsub, published);
                   if (sink !== undefined) {
-                    yield* PubSub.publish(sink, event);
+                    yield* PubSub.publish(sink, published);
                   }
-                  if (event.type === "completed") {
-                    outputs = event.outputs;
-                    cacheable = event.cacheable !== false;
+                  if (published.type === "completed") {
+                    outputs = published.outputs;
+                    cacheable = published.cacheable !== false;
                   }
                 }),
               ),
@@ -287,6 +301,10 @@ export const schedulerLive: Layer.Layer<
       readonly deferred: Deferred.Deferred<ReadonlyArray<ArtifactRef>, SchedulerError>;
     };
 
+    const dependenciesOf = (node: PipelineNode): ReadonlyArray<string> => [
+      ...new Set([...(node.after ?? []), ...(node.bindings?.map((binding) => binding.from) ?? [])]),
+    ];
+
     const submitPipeline = (
       pipelineId: string,
       nodes: ReadonlyArray<PipelineNode>,
@@ -308,13 +326,33 @@ export const schedulerLive: Layer.Layer<
           });
         }
         for (const node of nodes) {
-          for (const dep of node.after ?? []) {
+          for (const dep of dependenciesOf(node)) {
             if (!byId.has(dep)) {
               return yield* new InvalidPipeline({
                 pipelineId,
                 message: `node "${node.id}" depends on unknown node "${dep}"`,
               });
             }
+          }
+          const occupiedInputs = new Set(
+            (node.inputs ?? []).flatMap((ref) => (ref.port === undefined ? [] : [ref.port])),
+          );
+          for (const binding of node.bindings ?? []) {
+            const source = byId.get(binding.from)?.node;
+            if (source === undefined) continue;
+            if (!source.outputs.some((output) => output.name === binding.output)) {
+              return yield* new InvalidPipeline({
+                pipelineId,
+                message: `node "${node.id}" binds unknown output "${binding.from}.${binding.output}"`,
+              });
+            }
+            if (occupiedInputs.has(binding.input)) {
+              return yield* new InvalidPipeline({
+                pipelineId,
+                message: `node "${node.id}" has multiple values for input "${binding.input}"`,
+              });
+            }
+            occupiedInputs.add(binding.input);
           }
         }
 
@@ -343,7 +381,7 @@ export const schedulerLive: Layer.Layer<
               });
             }
             visiting.add(id);
-            for (const dep of stateOf(id).node.after ?? []) {
+            for (const dep of dependenciesOf(stateOf(id).node)) {
               yield* detectCycle(dep, [...trail, id]);
             }
             visiting.delete(id);
@@ -360,15 +398,37 @@ export const schedulerLive: Layer.Layer<
         ): Effect.Effect<ReadonlyArray<ArtifactRef>, SchedulerError> =>
           Effect.gen(function* () {
             const { node, deferred } = state;
-            const depOutputs =
-              node.after !== undefined && node.after.length > 0
-                ? yield* Effect.all(node.after.map((id) => Deferred.await(stateOf(id).deferred)))
-                : [];
+            const dependencyIds = dependenciesOf(node);
+            const dependencyResults = yield* Effect.all(
+              dependencyIds.map((id) => Deferred.await(stateOf(id).deferred)),
+            );
+            const outputsByNode = new Map(
+              dependencyIds.map((id, index) => [id, dependencyResults[index] ?? []]),
+            );
+            const dependencyInputs =
+              node.bindings !== undefined
+                ? yield* Effect.forEach(node.bindings, (binding) =>
+                    Effect.gen(function* () {
+                      const source = stateOf(binding.from).node;
+                      const outputIndex = source.outputs.findIndex(
+                        (output) => output.name === binding.output,
+                      );
+                      const ref = outputsByNode.get(binding.from)?.[outputIndex];
+                      if (ref === undefined) {
+                        return yield* new TaskFailed({
+                          taskId: `${pipelineId}/${node.id}`,
+                          message: `bound output "${binding.from}.${binding.output}" was not produced`,
+                        });
+                      }
+                      return { ...ref, port: binding.input };
+                    }),
+                  )
+                : dependencyResults.flat();
             const task: ComputeTask = {
               id: `${pipelineId}/${node.id}`,
               runtime: node.runtime,
               operation: node.operation,
-              inputs: [...(node.inputs ?? []), ...depOutputs.flat()],
+              inputs: [...(node.inputs ?? []), ...dependencyInputs],
               outputs: [...node.outputs],
               ...(node.resources !== undefined ? { resources: node.resources } : {}),
               ...(node.cache !== undefined ? { cache: node.cache } : {}),

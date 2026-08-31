@@ -148,10 +148,14 @@ interface ArtifactRef {
 
   storage: "memory" | "shared-memory" | "opfs";
 
+  port?: string; // 当前任务中的命名输入/输出端口
   format?: string;
   hash?: string;
 }
 ```
+
+图连线使用稳定端口名表达 `upstream.output → downstream.input`，`type` 只负责兼容性校验。
+这样同一 operation 可以拥有多个相同类型的输入，调度器也不会因 fan-in 或数组扁平化选错数据。
 
 Artifact 实体分四类：
 
@@ -274,12 +278,14 @@ Task / Worker protocol / Plugin manifest / Persistence / API / LLM structured ou
 
 ```text
 cacheKey = BLAKE3(
-  artifactHash
+  ordered(portName + artifactHash)
   + taskName
   + config
   + runtimeVersion
 )
 ```
+
+输入顺序与端口绑定属于任务语义；交换 `left/right` 等同于不同任务，不得命中同一缓存。
 
 例如 `audio chunk + whisper-small + language=ja` 已执行过 → cache hit → 直接读 `OPFS/transcript/xxx`。
 

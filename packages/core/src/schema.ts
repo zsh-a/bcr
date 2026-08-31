@@ -14,6 +14,8 @@ export const ArtifactRef = Schema.Struct({
   /** 如 "media/video.mp4" / "audio/pcm-f32" / "subtitle/segments"。 */
   type: Schema.String,
   storage: ArtifactStorage,
+  /** 当前任务中的逻辑端口名；同类型多输入时用于消除歧义。 */
+  port: Schema.optional(Schema.String),
   format: Schema.optional(Schema.String),
   hash: Schema.optional(Schema.String),
 });
@@ -21,6 +23,8 @@ export type ArtifactRef = typeof ArtifactRef.Type;
 
 /** 任务输出位声明：执行前不知道 id/hash，只声明类型与存储约束。 */
 export const ArtifactSpec = Schema.Struct({
+  /** 输出端口名；Pipeline binding 通过它选择上游的具体输出。 */
+  name: Schema.optional(Schema.String),
   type: Schema.String,
   storage: Schema.optional(ArtifactStorage),
   format: Schema.optional(Schema.String),
@@ -56,10 +60,17 @@ export type ComputeTask = typeof ComputeTask.Type;
 export const decodeComputeTask = Schema.decodeUnknown(ComputeTask);
 export const decodeArtifactRef = Schema.decodeUnknown(ArtifactRef);
 
+/** Pipeline 数据边：把上游的命名输出绑定到当前节点的命名输入。 */
+export const PipelineBinding = Schema.Struct({
+  from: Schema.String,
+  output: Schema.String,
+  input: Schema.String,
+});
+export type PipelineBinding = typeof PipelineBinding.Type;
+
 /**
- * 流水线节点（§3 DAG 的正向编排）：声明依赖的节点 id，
- * 调度器在上游全部完成后把其输出依序作为本节点的 inputs 实例化成 ComputeTask。
- * 与 ComputeTask 的差异只在 inputs 由依赖推导而非显式给出。
+ * 流水线节点（§3 DAG 的正向编排）：声明依赖和数据端口绑定。
+ * 旧数据可以仅提供 after，调度器仍按依赖声明顺序拼接上游输出。
  */
 export const PipelineNode = Schema.Struct({
   id: Schema.String,
@@ -67,9 +78,11 @@ export const PipelineNode = Schema.Struct({
   operation: Schema.String,
   /** 依赖的节点 id；全部完成后其输出按依赖声明顺序拼接为 inputs。 */
   after: Schema.optional(Schema.Array(Schema.String)),
+  /** 命名数据边；存在时只注入绑定选中的上游输出，并按本数组顺序排列。 */
+  bindings: Schema.optional(Schema.Array(PipelineBinding)),
   /**
    * 外部输入 artifact（根节点消费已有数据用，如源文件）；
-   * 实例化时置于依赖输出之前。下游节点按 type 选取所需输入。
+   * 实例化时置于依赖输出之前；port 可标记它绑定的根节点输入。
    */
   inputs: Schema.optional(Schema.Array(ArtifactRef)),
   outputs: Schema.Array(ArtifactSpec),

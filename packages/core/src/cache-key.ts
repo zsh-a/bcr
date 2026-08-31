@@ -11,16 +11,17 @@ import type { ArtifactRef } from "./schema";
  */
 export function cacheKey(input: {
   readonly operation: string;
-  readonly inputs: ReadonlyArray<Pick<ArtifactRef, "id" | "hash">>;
+  readonly inputs: ReadonlyArray<Pick<ArtifactRef, "id" | "hash" | "port">>;
   readonly config?: Readonly<Record<string, unknown>> | undefined;
   readonly runtimeVersion: string;
 }): string {
   const canonical = canonicalize({
     operation: input.operation,
-    inputs: input.inputs
-      .map((ref) => ref.hash ?? ref.id)
-      .slice()
-      .sort(),
+    // 输入顺序与端口都属于任务语义：left/right 即使类型、内容相同也不可互换。
+    inputs: input.inputs.map((ref, index) => ({
+      port: ref.port ?? `#${index}`,
+      artifact: ref.hash ?? ref.id,
+    })),
     config: input.config ?? {},
     runtimeVersion: input.runtimeVersion,
   });

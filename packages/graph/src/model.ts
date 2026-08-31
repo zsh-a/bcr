@@ -3,14 +3,16 @@ import type { ArtifactRef, PipelineNode, RuntimeKind } from "@bcr/core";
 /**
  * Pipeline DAG 图模型（纯逻辑，无 React）。
  *
- * 设计支点：worker 按类型挑输入（pickInput），不靠位置——所以端口即类型，
- * 连线合法性 = 上游 outputs 与下游 inputs 的 type 交集。
+ * 设计支点：端口名定义语义身份，type 只负责连线兼容性。
+ * 因而同一节点可以安全地拥有多个相同类型的输入/输出。
  * compile() 把图编译为 scheduler 已有的 PipelineNode[]（§3 正向编排）。
  */
 
 // ── Operation 目录（由 app 注入，核心不感知具体领域） ────────────────
 
 export interface PortSpec {
+  /** operation 内稳定且唯一的逻辑端口名。 */
+  readonly name: string;
   /** artifact type，如 "audio/pcm-f32" / "subtitle/cues"。 */
   readonly type: string;
   readonly label?: string;
@@ -51,7 +53,17 @@ export interface Edge {
   readonly from: string;
   /** 下游节点 id。 */
   readonly to: string;
+  /** 上游输出端口。旧持久化数据可能缺失，由 compile 按 type 唯一迁移。 */
+  readonly fromPort?: string | undefined;
+  /** 下游输入端口。旧持久化数据可能缺失，由 compile 按 type 唯一迁移。 */
+  readonly toPort?: string | undefined;
   /** 这条边承载的 artifact type。 */
+  readonly type: string;
+}
+
+export interface PortConnection {
+  readonly fromPort: string;
+  readonly toPort: string;
   readonly type: string;
 }
 
@@ -112,17 +124,36 @@ export function removeEdge(graph: Graph, id: string): Graph {
   return { ...graph, edges: graph.edges.filter((e) => e.id !== id) };
 }
 
-/** 上游 → 下游可连的 artifact type 交集（端口即类型）。 */
+function typeMatches(port: string, actual: string): boolean {
+  if (port.endsWith("*")) return actual.startsWith(port.slice(0, -1));
+  return actual === port;
+}
+
+/** 上游 → 下游所有兼容的命名端口对。 */
+export function connectablePorts(
+  registry: ReadonlyArray<OperationDef>,
+  fromOperation: string,
+  toOperation: string,
+): ReadonlyArray<PortConnection> {
+  const from = findOperation(registry, fromOperation);
+  const to = findOperation(registry, toOperation);
+  if (from === undefined || to === undefined) return [];
+  return from.outputs.flatMap((output) =>
+    to.inputs.flatMap((input) =>
+      typeMatches(input.type, output.type)
+        ? [{ fromPort: output.name, toPort: input.name, type: output.type }]
+        : [],
+    ),
+  );
+}
+
+/** 兼容旧调用方：返回可连端口对承载的唯一 artifact types。 */
 export function connectableTypes(
   registry: ReadonlyArray<OperationDef>,
   fromOperation: string,
   toOperation: string,
 ): ReadonlyArray<string> {
-  const from = findOperation(registry, fromOperation);
-  const to = findOperation(registry, toOperation);
-  if (from === undefined || to === undefined) return [];
-  const inputTypes = new Set(to.inputs.map((p) => p.type));
-  return from.outputs.map((p) => p.type).filter((t) => inputTypes.has(t));
+  return [...new Set(connectablePorts(registry, fromOperation, toOperation).map((p) => p.type))];
 }
 
 /** 新增 from→to 是否成环：沿现有边从 to 出发能回到 from 即成环。 */
@@ -146,29 +177,61 @@ export function createsCycle(graph: Graph, from: string, to: string): boolean {
 }
 
 /**
- * 连边：类型不可推导 / 已存在同类型边 / 成环时返回 null。
- * 同一对节点间允许不同类型的多条边（如 decode→translate 的 pcm 与 segment→translate 的 cues）。
+ * 连边：端口不可唯一推导 / 目标端口已占用 / 成环时返回 null。
+ * string 参数保留给旧调用方；同类型存在多个候选端口时必须显式传端口对。
  */
 export function addEdge(
   graph: Graph,
   registry: ReadonlyArray<OperationDef>,
   from: string,
   to: string,
-  type?: string,
+  selection?: string | Pick<PortConnection, "fromPort" | "toPort">,
 ): Graph | null {
   if (from === to) return null;
   const fromNode = graph.nodes.find((n) => n.id === from);
   const toNode = graph.nodes.find((n) => n.id === to);
   if (fromNode === undefined || toNode === undefined) return null;
 
-  const types = connectableTypes(registry, fromNode.operation, toNode.operation);
-  const edgeType = type ?? types[0];
-  if (edgeType === undefined || !types.includes(edgeType)) return null;
+  const ports = connectablePorts(registry, fromNode.operation, toNode.operation);
+  const candidates =
+    typeof selection === "string"
+      ? ports.filter((candidate) => candidate.type === selection)
+      : selection === undefined
+        ? ports
+        : ports.filter(
+            (candidate) =>
+              candidate.fromPort === selection.fromPort && candidate.toPort === selection.toPort,
+          );
+  if (candidates.length !== 1) return null;
+  const connection = candidates[0] as PortConnection;
   if (createsCycle(graph, from, to)) return null;
 
-  const id = `${from}->${to}:${edgeType}`;
-  if (graph.edges.some((e) => e.id === id)) return null;
-  return { ...graph, edges: [...graph.edges, { id, from, to, type: edgeType }] };
+  const id = `${from}.${connection.fromPort}->${to}.${connection.toPort}`;
+  if (
+    graph.edges.some(
+      (edge) =>
+        edge.id === id ||
+        (edge.to === to &&
+          (edge.toPort === connection.toPort ||
+            (edge.toPort === undefined && edge.type === connection.type))),
+    )
+  ) {
+    return null;
+  }
+  return {
+    ...graph,
+    edges: [
+      ...graph.edges,
+      {
+        id,
+        from,
+        to,
+        fromPort: connection.fromPort,
+        toPort: connection.toPort,
+        type: connection.type,
+      },
+    ],
+  };
 }
 
 /**
@@ -185,11 +248,11 @@ export function autoWire(
     if (other.id === nodeId) continue;
     const node = graph.nodes.find((n) => n.id === nodeId);
     if (node === undefined) break;
-    const incoming = connectableTypes(registry, other.operation, node.operation);
+    const incoming = connectablePorts(registry, other.operation, node.operation);
     if (incoming.length === 1) {
       next = addEdge(next, registry, other.id, nodeId, incoming[0]) ?? next;
     }
-    const outgoing = connectableTypes(registry, node.operation, other.operation);
+    const outgoing = connectablePorts(registry, node.operation, other.operation);
     if (outgoing.length === 1) {
       next = addEdge(next, registry, nodeId, other.id, outgoing[0]) ?? next;
     }
@@ -206,10 +269,58 @@ export interface CompileOptions {
   readonly skipCache?: boolean;
 }
 
-/** 端口类型匹配：支持 "file/*" 这类前缀通配（根节点消费任意 file/xx 源）。 */
-function typeMatches(port: string, actual: string): boolean {
-  if (port.endsWith("*")) return actual.startsWith(port.slice(0, -1));
-  return actual === port;
+interface ResolvedEdge extends Edge {
+  readonly fromPort: string;
+  readonly toPort: string;
+}
+
+/** 旧边仅有 type：候选唯一时自动补端口，多候选时拒绝猜测。 */
+function resolveEdge(
+  edge: Edge,
+  byId: ReadonlyMap<string, NodeInstance>,
+  registry: ReadonlyArray<OperationDef>,
+): ResolvedEdge | undefined {
+  const fromNode = byId.get(edge.from);
+  const toNode = byId.get(edge.to);
+  if (fromNode === undefined || toNode === undefined) return undefined;
+  const ports = connectablePorts(registry, fromNode.operation, toNode.operation);
+  if (edge.fromPort !== undefined || edge.toPort !== undefined) {
+    if (edge.fromPort === undefined || edge.toPort === undefined) {
+      throw new Error(`edge "${edge.id}" has incomplete port metadata`);
+    }
+    const exact = ports.find(
+      (port) => port.fromPort === edge.fromPort && port.toPort === edge.toPort,
+    );
+    if (exact === undefined) throw new Error(`edge "${edge.id}" references incompatible ports`);
+    return { ...edge, ...exact };
+  }
+  const candidates = ports.filter((port) => port.type === edge.type);
+  if (candidates.length > 1) {
+    throw new Error(`legacy edge "${edge.id}" is ambiguous; reconnect it to a named port`);
+  }
+  const inferred = candidates[0];
+  return inferred === undefined ? undefined : { ...edge, ...inferred };
+}
+
+function bindSourceInputs(
+  node: NodeInstance,
+  op: OperationDef,
+  inputs: ReadonlyArray<ArtifactRef>,
+): ReadonlyArray<ArtifactRef> {
+  const used = new Set<number>();
+  return op.inputs.map((port) => {
+    const index = inputs.findIndex(
+      (ref, candidate) =>
+        !used.has(candidate) &&
+        (ref.port === undefined ? typeMatches(port.type, ref.type) : ref.port === port.name),
+    );
+    const ref = inputs[index];
+    if (index < 0 || ref === undefined || !typeMatches(port.type, ref.type)) {
+      throw new Error(`node "${node.id}" (${node.operation}) missing inputs: ${port.name}`);
+    }
+    used.add(index);
+    return { ...ref, port: port.name };
+  });
 }
 
 /**
@@ -225,9 +336,13 @@ export function compile(
   options: CompileOptions = {},
 ): PipelineNode[] {
   const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+  const resolvedEdges = graph.edges.flatMap((edge) => {
+    const resolved = resolveEdge(edge, byId, registry);
+    return resolved === undefined ? [] : [resolved];
+  });
   const indegree = new Map<string, number>(graph.nodes.map((n) => [n.id, 0]));
   const downstream = new Map<string, string[]>();
-  for (const e of graph.edges) {
+  for (const e of resolvedEdges) {
     if (!byId.has(e.from) || !byId.has(e.to)) continue;
     indegree.set(e.to, (indegree.get(e.to) ?? 0) + 1);
     const list = downstream.get(e.from) ?? [];
@@ -255,23 +370,34 @@ export function compile(
     const op = findOperation(registry, node.operation);
     if (op === undefined) throw new Error(`unknown operation "${node.operation}"`);
 
-    const after = [...new Set(graph.edges.filter((e) => e.to === id).map((e) => e.from))];
-
-    // 输入覆盖校验：非根节点由入边类型覆盖；根节点由 sourceInputs 覆盖（未提供则跳过）。
-    const available =
-      after.length > 0
-        ? graph.edges.filter((e) => e.to === id).map((e) => e.type)
-        : options.sourceInputs?.map((ref) => ref.type);
-    if (available !== undefined) {
-      const missing = op.inputs.filter((p) => !available.some((t) => typeMatches(p.type, t)));
-      if (missing.length > 0) {
-        throw new Error(
-          `node "${node.id}" (${node.operation}) missing inputs: ${missing
-            .map((p) => p.type)
-            .join(", ")}`,
-        );
-      }
+    const incoming = resolvedEdges.filter((edge) => edge.to === id);
+    const duplicateInput = op.inputs.find(
+      (port) => incoming.filter((edge) => edge.toPort === port.name).length > 1,
+    );
+    if (duplicateInput !== undefined) {
+      throw new Error(
+        `node "${node.id}" (${node.operation}) has multiple edges for input: ${duplicateInput.name}`,
+      );
     }
+    const after = [...new Set(incoming.map((edge) => edge.from))];
+    const missing = op.inputs.filter((port) => !incoming.some((edge) => edge.toPort === port.name));
+    const sourceInputs =
+      after.length === 0 && options.sourceInputs !== undefined
+        ? bindSourceInputs(node, op, options.sourceInputs)
+        : undefined;
+    if (after.length > 0 && missing.length > 0) {
+      throw new Error(
+        `node "${node.id}" (${node.operation}) missing inputs: ${missing
+          .map((port) => port.name)
+          .join(", ")}`,
+      );
+    }
+    const bindings = op.inputs.flatMap((port) => {
+      const edge = incoming.find((candidate) => candidate.toPort === port.name);
+      return edge === undefined
+        ? []
+        : [{ from: edge.from, output: edge.fromPort, input: edge.toPort }];
+    });
 
     // config 补全目录默认值：旧持久化图缺新字段（如 language）时，
     // 编译产物仍带语义正确的默认，且参与缓存键
@@ -286,10 +412,9 @@ export function compile(
       runtime: op.runtime,
       operation: op.operation,
       ...(after.length > 0 ? { after } : {}),
-      ...(after.length === 0 && options.sourceInputs !== undefined
-        ? { inputs: [...options.sourceInputs] }
-        : {}),
-      outputs: op.outputs.map((p) => ({ type: p.type })),
+      ...(bindings.length > 0 ? { bindings } : {}),
+      ...(sourceInputs !== undefined ? { inputs: sourceInputs } : {}),
+      outputs: op.outputs.map((port) => ({ name: port.name, type: port.type })),
       ...(hasConfig ? { config: configWithDefaults } : {}),
       ...(skipCache ? { cache: { enabled: false } } : {}),
     };

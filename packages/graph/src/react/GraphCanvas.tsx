@@ -33,6 +33,7 @@ export interface GraphCanvasProps {
 
 interface PendingWire {
   readonly from: string;
+  readonly fromPort: string;
   readonly type: string;
   readonly x1: number;
   readonly y1: number;
@@ -134,15 +135,16 @@ export function GraphCanvas(props: GraphCanvasProps) {
     const node = graph.nodes.find((n) => n.id === nodeId);
     const op = node === undefined ? undefined : findOperation(registry, node.operation);
     if (node === undefined || op === undefined) return;
-    const portType = op.outputs[portIndex]?.type;
-    if (portType === undefined) return;
+    const port = op.outputs[portIndex];
+    if (port === undefined) return;
     const origin = {
       x: node.x + pan.x + NODE_W,
       y: node.y + pan.y + portY(portIndex),
     };
     setPending({
       from: nodeId,
-      type: portType,
+      fromPort: port.name,
+      type: port.type,
       x1: origin.x,
       y1: origin.y,
       x2: origin.x,
@@ -160,8 +162,12 @@ export function GraphCanvas(props: GraphCanvasProps) {
       const el = document.elementFromPoint(e.clientX, e.clientY);
       const portEl = el?.closest("[data-port-in]") as HTMLElement | null;
       const toId = portEl?.dataset["node"];
-      if (toId !== undefined) {
-        const next = addEdge(graphRef.current, registry, nodeId, toId);
+      const toPort = portEl?.dataset["port"];
+      if (toId !== undefined && toPort !== undefined) {
+        const next = addEdge(graphRef.current, registry, nodeId, toId, {
+          fromPort: port.name,
+          toPort,
+        });
         if (next !== null) onChange(next);
       }
     };
@@ -210,8 +216,18 @@ export function GraphCanvas(props: GraphCanvasProps) {
           if (from === undefined || to === undefined) return null;
           const fromOp = findOperation(registry, from.operation);
           const toOp = findOperation(registry, to.operation);
-          const outIdx = Math.max(0, fromOp?.outputs.findIndex((p) => p.type === edge.type) ?? 0);
-          const inIdx = Math.max(0, toOp?.inputs.findIndex((p) => p.type === edge.type) ?? 0);
+          const outIdx = Math.max(
+            0,
+            fromOp?.outputs.findIndex((port) =>
+              edge.fromPort === undefined ? port.type === edge.type : port.name === edge.fromPort,
+            ) ?? 0,
+          );
+          const inIdx = Math.max(
+            0,
+            toOp?.inputs.findIndex((port) =>
+              edge.toPort === undefined ? port.type === edge.type : port.name === edge.toPort,
+            ) ?? 0,
+          );
           const x1 = from.x + pan.x + NODE_W;
           const y1 = from.y + pan.y + portY(outIdx);
           const x2 = to.x + pan.x;
@@ -299,7 +315,7 @@ export function GraphCanvas(props: GraphCanvasProps) {
             {/* 输入端口 */}
             {op?.inputs.map((port, i) => (
               <div
-                key={`in-${port.type}`}
+                key={`in-${port.name}`}
                 style={{
                   position: "absolute",
                   left: 0,
@@ -315,6 +331,7 @@ export function GraphCanvas(props: GraphCanvasProps) {
                 <span
                   data-port-in=""
                   data-node={node.id}
+                  data-port={port.name}
                   style={{
                     position: "absolute",
                     left: -4,
@@ -332,7 +349,7 @@ export function GraphCanvas(props: GraphCanvasProps) {
             {/* 输出端口 */}
             {op?.outputs.map((port, i) => (
               <div
-                key={`out-${port.type}`}
+                key={`out-${port.name}`}
                 style={{
                   position: "absolute",
                   right: 0,
@@ -349,6 +366,7 @@ export function GraphCanvas(props: GraphCanvasProps) {
                 <span
                   data-port-out=""
                   data-node={node.id}
+                  data-port={port.name}
                   onPointerDown={(e) => onOutPortPointerDown(e, node.id, i)}
                   style={{
                     position: "absolute",

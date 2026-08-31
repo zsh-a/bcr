@@ -119,6 +119,54 @@ describe("Scheduler.submitPipeline (架构 §3 DAG 正向编排)", () => {
     expect(inputsOf.get("pl/c")?.map((r) => r.id)).toEqual(["out-pl/a", "out-pl/b"]);
   });
 
+  it("命名 binding：同类型多输出按端口精确路由，且可独立推导依赖", async () => {
+    const { executor, inputsOf } = makeExecutor((task) => {
+      if (task.id !== "pl/source") return Stream.make(completedOutputs(task.id));
+      const event: TaskEvent = {
+        type: "completed",
+        taskId: task.id,
+        outputs: [
+          { id: "artifact-left", type: "x", storage: "memory", hash: "left" },
+          { id: "artifact-right", type: "x", storage: "memory", hash: "right" },
+        ],
+      };
+      return Stream.make(event);
+    });
+    const { withScheduler } = makeRuntime(executor);
+
+    await withScheduler((scheduler) =>
+      Effect.gen(function* () {
+        const handle = yield* scheduler.submitPipeline("pl", [
+          {
+            id: "source",
+            runtime: "js",
+            operation: "test.source",
+            outputs: [
+              { name: "left", type: "x" },
+              { name: "right", type: "x" },
+            ],
+          },
+          {
+            id: "sink",
+            runtime: "js",
+            operation: "test.sink",
+            bindings: [
+              { from: "source", output: "right", input: "secondary" },
+              { from: "source", output: "left", input: "primary" },
+            ],
+            outputs: [{ name: "result", type: "test/result" }],
+          },
+        ]);
+        return yield* handle.await;
+      }),
+    );
+
+    expect(inputsOf.get("pl/sink")).toEqual([
+      { id: "artifact-right", type: "x", storage: "memory", hash: "right", port: "secondary" },
+      { id: "artifact-left", type: "x", storage: "memory", hash: "left", port: "primary" },
+    ]);
+  });
+
   it("菱形依赖只执行一次每个节点", async () => {
     const { executor, runs } = makeExecutor();
     const { withScheduler } = makeRuntime(executor);

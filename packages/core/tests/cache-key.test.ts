@@ -27,7 +27,7 @@ describe("cacheKey (架构 §7)", () => {
     expect(other).not.toBe(cacheKey(base));
   });
 
-  it("输入顺序不影响 key", () => {
+  it("输入顺序属于任务语义，交换输入会改变 key", () => {
     const a = cacheKey({
       ...base,
       inputs: [
@@ -42,7 +42,19 @@ describe("cacheKey (架构 §7)", () => {
         { id: "x", hash: "1" },
       ],
     });
-    expect(a).toBe(b);
+    expect(a).not.toBe(b);
+  });
+
+  it("端口名属于任务语义，同一内容绑定到不同端口会改变 key", () => {
+    const left = cacheKey({
+      ...base,
+      inputs: [{ id: "x", hash: "same", port: "left" }],
+    });
+    const right = cacheKey({
+      ...base,
+      inputs: [{ id: "x", hash: "same", port: "right" }],
+    });
+    expect(left).not.toBe(right);
   });
 
   it("runtimeVersion 升级 → 旧缓存失效", () => {

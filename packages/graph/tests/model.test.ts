@@ -19,16 +19,19 @@ const OPS: ReadonlyArray<OperationDef> = [
     label: "Decode",
     detail: "",
     runtime: "js",
-    inputs: [{ type: "file/wav" }],
-    outputs: [{ type: "audio/pcm-f32" }, { type: "media/info" }],
+    inputs: [{ name: "source", type: "file/wav" }],
+    outputs: [
+      { name: "pcm", type: "audio/pcm-f32" },
+      { name: "info", type: "media/info" },
+    ],
   },
   {
     operation: "asr.transcribe",
     label: "ASR",
     detail: "",
     runtime: "wasm",
-    inputs: [{ type: "audio/pcm-f32" }],
-    outputs: [{ type: "subtitle/asr-chunks" }],
+    inputs: [{ name: "pcm", type: "audio/pcm-f32" }],
+    outputs: [{ name: "chunks", type: "subtitle/asr-chunks" }],
     config: [
       { key: "model", label: "模型", kind: "string", default: "whisper-tiny" },
       // 后期新增的字段：旧持久化图的节点 config 里不会有它
@@ -40,8 +43,8 @@ const OPS: ReadonlyArray<OperationDef> = [
     label: "Segment",
     detail: "",
     runtime: "wasm",
-    inputs: [{ type: "subtitle/asr-chunks" }],
-    outputs: [{ type: "subtitle/cues" }],
+    inputs: [{ name: "chunks", type: "subtitle/asr-chunks" }],
+    outputs: [{ name: "cues", type: "subtitle/cues" }],
   },
 ];
 
@@ -78,6 +81,48 @@ describe("connectableTypes / addEdge", () => {
     expect(createsCycle(g, "segment", "decode")).toBe(true);
     expect(addEdge(g, OPS, "segment", "decode")).toBeNull();
   });
+
+  it("同类型多端口必须显式选择，并可分别连线", () => {
+    const source: OperationDef = {
+      operation: "test.source",
+      label: "Source",
+      detail: "",
+      runtime: "js",
+      inputs: [],
+      outputs: [
+        { name: "primary", type: "data/value" },
+        { name: "secondary", type: "data/value" },
+      ],
+    };
+    const sink: OperationDef = {
+      operation: "test.sink",
+      label: "Sink",
+      detail: "",
+      runtime: "js",
+      inputs: [
+        { name: "left", type: "data/value" },
+        { name: "right", type: "data/value" },
+      ],
+      outputs: [],
+    };
+    const ops = [source, sink];
+    let graph = addNode(emptyGraph, source, "source", 0, 0);
+    graph = addNode(graph, sink, "sink", 200, 0);
+
+    expect(addEdge(graph, ops, "source", "sink")).toBeNull();
+    graph =
+      addEdge(graph, ops, "source", "sink", {
+        fromPort: "secondary",
+        toPort: "right",
+      }) ?? graph;
+    graph = addEdge(graph, ops, "source", "sink", { fromPort: "primary", toPort: "left" }) ?? graph;
+
+    const compiled = compile(graph, ops);
+    expect(compiled.find((node) => node.id === "sink")?.bindings).toEqual([
+      { from: "source", output: "primary", input: "left" },
+      { from: "source", output: "secondary", input: "right" },
+    ]);
+  });
 });
 
 describe("autoWire", () => {
@@ -86,7 +131,14 @@ describe("autoWire", () => {
     g = addNode(g, OPS[1]!, "asr", 200, 0);
     g = autoWire(g, OPS, "asr");
     expect(g.edges).toEqual([
-      { id: "decode->asr:audio/pcm-f32", from: "decode", to: "asr", type: "audio/pcm-f32" },
+      {
+        id: "decode.pcm->asr.pcm",
+        from: "decode",
+        to: "asr",
+        fromPort: "pcm",
+        toPort: "pcm",
+        type: "audio/pcm-f32",
+      },
     ]);
   });
 });
@@ -145,12 +197,16 @@ describe("compile", () => {
     expect(nodes.map((n) => n.id)).toEqual(["decode", "asr", "segment"]);
 
     const decode = nodes[0]!;
-    expect(decode.inputs).toEqual([SOURCE]);
+    expect(decode.inputs).toEqual([{ ...SOURCE, port: "source" }]);
     expect(decode.after).toBeUndefined();
-    expect(decode.outputs).toEqual([{ type: "audio/pcm-f32" }, { type: "media/info" }]);
+    expect(decode.outputs).toEqual([
+      { name: "pcm", type: "audio/pcm-f32" },
+      { name: "info", type: "media/info" },
+    ]);
 
     const asr = nodes[1]!;
     expect(asr.after).toEqual(["decode"]);
+    expect(asr.bindings).toEqual([{ from: "decode", output: "pcm", input: "pcm" }]);
     expect(asr.inputs).toBeUndefined();
     expect(asr.config).toEqual({ model: "whisper-tiny", device: "auto" });
 
@@ -167,15 +223,19 @@ describe("compile", () => {
         id: "decode",
         runtime: "js",
         operation: "media.decode-audio",
-        inputs: [SOURCE],
-        outputs: [{ type: "audio/pcm-f32" }, { type: "media/info" }],
+        inputs: [{ ...SOURCE, port: "source" }],
+        outputs: [
+          { name: "pcm", type: "audio/pcm-f32" },
+          { name: "info", type: "media/info" },
+        ],
       },
       {
         id: "asr",
         runtime: "wasm",
         operation: "asr.transcribe",
         after: ["decode"],
-        outputs: [{ type: "subtitle/asr-chunks" }],
+        bindings: [{ from: "decode", output: "pcm", input: "pcm" }],
+        outputs: [{ name: "chunks", type: "subtitle/asr-chunks" }],
         config: { model: "whisper-tiny", device: "auto" },
       },
       {
@@ -183,7 +243,8 @@ describe("compile", () => {
         runtime: "wasm",
         operation: "subtitle.segment",
         after: ["asr"],
-        outputs: [{ type: "subtitle/cues" }],
+        bindings: [{ from: "asr", output: "chunks", input: "chunks" }],
+        outputs: [{ name: "cues", type: "subtitle/cues" }],
       },
     ]);
   });
@@ -203,8 +264,11 @@ describe("compile", () => {
       label: "Translate",
       detail: "",
       runtime: "wasm",
-      inputs: [{ type: "audio/pcm-f32" }, { type: "subtitle/cues" }],
-      outputs: [{ type: "subtitle/cues" }],
+      inputs: [
+        { name: "pcm", type: "audio/pcm-f32" },
+        { name: "cues", type: "subtitle/cues" },
+      ],
+      outputs: [{ name: "translated", type: "subtitle/cues" }],
     };
     const ops = [...OPS, TRANSLATE];
     let g = chain();
@@ -215,7 +279,7 @@ describe("compile", () => {
     g = addEdge(g, ops, "segment", "translate", "subtitle/cues") ?? g;
 
     expect(() => compile(g, ops, { sourceInputs: [SOURCE] })).toThrow(
-      'node "translate" (subtitle.translate) missing inputs: audio/pcm-f32',
+      'node "translate" (subtitle.translate) missing inputs: pcm',
     );
 
     g = addEdge(g, ops, "decode", "translate", "audio/pcm-f32") ?? g;
@@ -225,7 +289,7 @@ describe("compile", () => {
   it("根节点通配端口 file/* 匹配任意 file/xx 源", () => {
     const WILDCARD: OperationDef = {
       ...OPS[0]!,
-      inputs: [{ type: "file/*" }],
+      inputs: [{ name: "source", type: "file/*" }],
     };
     const g = addNode(emptyGraph, WILDCARD, "decode", 0, 0);
     expect(() =>
@@ -238,7 +302,7 @@ describe("compile", () => {
       compile(g, [WILDCARD], {
         sourceInputs: [{ id: "x", type: "audio/pcm-f32", storage: "opfs" }],
       }),
-    ).toThrow('node "decode" (media.decode-audio) missing inputs: file/*');
+    ).toThrow('node "decode" (media.decode-audio) missing inputs: source');
   });
 });
 
@@ -252,5 +316,31 @@ describe("schema", () => {
   it("损坏数据返回 null", () => {
     expect(decodeGraph("not json")).toBeNull();
     expect(decodeGraph('{"nodes": "bad"}')).toBeNull();
+  });
+
+  it("旧版 type-only 边在候选唯一时自动迁移为命名 binding", () => {
+    let graph = chain();
+    graph = {
+      ...graph,
+      edges: [
+        {
+          id: "decode->asr:audio/pcm-f32",
+          from: "decode",
+          to: "asr",
+          type: "audio/pcm-f32",
+        },
+        {
+          id: "asr->segment:subtitle/asr-chunks",
+          from: "asr",
+          to: "segment",
+          type: "subtitle/asr-chunks",
+        },
+      ],
+    };
+    const restored = decodeGraph(encodeGraph(graph));
+    expect(restored).not.toBeNull();
+    expect(compile(restored!, OPS, { sourceInputs: [SOURCE] })[1]?.bindings).toEqual([
+      { from: "decode", output: "pcm", input: "pcm" },
+    ]);
   });
 });

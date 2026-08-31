@@ -10,6 +10,7 @@ export {
   ResourceRequirements,
   RuntimeKind,
   TaskEvent,
+  PipelineBinding,
 } from "./schema";
 export { cacheKey } from "./cache-key";
 export {

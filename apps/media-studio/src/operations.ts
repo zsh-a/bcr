@@ -37,10 +37,10 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
     label: "Decode",
     detail: "解码 → 16kHz 单声道 PCM",
     runtime: "js",
-    inputs: [{ type: "file/*", label: "源文件" }],
+    inputs: [{ name: "source", type: "file/*", label: "源文件" }],
     outputs: [
-      { type: "audio/pcm-f32", label: "PCM" },
-      { type: "media/info", label: "媒体信息" },
+      { name: "pcm", type: "audio/pcm-f32", label: "PCM" },
+      { name: "info", type: "media/info", label: "媒体信息" },
     ],
     config: withSkipCache([]),
   },
@@ -49,8 +49,8 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
     label: "Waveform",
     detail: "RMS/峰值包络（WASM kernel）",
     runtime: "wasm",
-    inputs: [{ type: "audio/pcm-f32", label: "PCM" }],
-    outputs: [{ type: "audio/waveform-peaks", label: "peaks" }],
+    inputs: [{ name: "pcm", type: "audio/pcm-f32", label: "PCM" }],
+    outputs: [{ name: "waveform", type: "audio/waveform-peaks", label: "peaks" }],
     config: withSkipCache([]),
   },
   {
@@ -58,8 +58,8 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
     label: "ASR",
     detail: "Whisper 语音识别（分窗推理）",
     runtime: "wasm",
-    inputs: [{ type: "audio/pcm-f32", label: "PCM" }],
-    outputs: [{ type: "subtitle/asr-chunks", label: "chunks" }],
+    inputs: [{ name: "pcm", type: "audio/pcm-f32", label: "PCM" }],
+    outputs: [{ name: "chunks", type: "subtitle/asr-chunks", label: "chunks" }],
     config: [
       MODEL_FIELD,
       {
@@ -115,8 +115,8 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
     label: "Segment",
     detail: "字幕分段规范化",
     runtime: "wasm",
-    inputs: [{ type: "subtitle/asr-chunks", label: "chunks" }],
-    outputs: [{ type: "subtitle/cues", label: "cues" }],
+    inputs: [{ name: "chunks", type: "subtitle/asr-chunks", label: "chunks" }],
+    outputs: [{ name: "cues", type: "subtitle/cues", label: "cues" }],
     config: withSkipCache([
       { key: "maxDurationS", label: "单条最长（秒）", kind: "number", default: 5 },
       { key: "maxChars", label: "单条最多字符", kind: "number", default: 30 },
@@ -127,8 +127,8 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
     label: "Translate",
     detail: "opus-mt 文本翻译 → 双语（逐条 cue，1:1 对齐）",
     runtime: "wasm",
-    inputs: [{ type: "subtitle/cues", label: "cues" }],
-    outputs: [{ type: "subtitle/cues", label: "双语 cues" }],
+    inputs: [{ name: "cues", type: "subtitle/cues", label: "cues" }],
+    outputs: [{ name: "translatedCues", type: "subtitle/cues", label: "双语 cues" }],
     config: withSkipCache([
       {
         key: "direction",
@@ -174,11 +174,7 @@ export function withTranslate(graph: Graph, settings: StudioSettings): Graph {
     g = addNode(g, op("subtitle.translate"), translateId, 544, 328);
   }
   g = updateNodeConfig(g, translateId, { direction: settings.direction });
-  const decodeId = g.nodes.find((n) => n.operation === "media.decode-audio")?.id;
   const segmentId = g.nodes.find((n) => n.operation === "subtitle.segment")?.id;
-  if (decodeId !== undefined) {
-    g = addEdge(g, OPERATIONS, decodeId, translateId, "audio/pcm-f32") ?? g;
-  }
   if (segmentId !== undefined) {
     g = addEdge(g, OPERATIONS, segmentId, translateId, "subtitle/cues") ?? g;
   }

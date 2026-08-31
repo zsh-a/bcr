@@ -6,6 +6,7 @@ export type {
   NodeInstance,
   NodeRunState,
   OperationDef,
+  PortConnection,
   PortSpec,
 } from "./model";
 export {
@@ -13,6 +14,7 @@ export {
   addNode,
   autoWire,
   compile,
+  connectablePorts,
   connectableTypes,
   createsCycle,
   emptyGraph,

@@ -14,6 +14,8 @@ const EdgeSchema = Schema.Struct({
   id: Schema.String,
   from: Schema.String,
   to: Schema.String,
+  fromPort: Schema.optional(Schema.String),
+  toPort: Schema.optional(Schema.String),
   type: Schema.String,
 });
 

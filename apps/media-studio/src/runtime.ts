@@ -161,7 +161,7 @@ function decodeExecutor(
   const decode = async function* (
     task: ComputeTask,
   ): AsyncGenerator<TaskEventLike, void, undefined> {
-    const input = task.inputs[0];
+    const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
     if (input === undefined) throw new Error("media.decode-audio requires a source file input");
     yield { type: "progress", taskId: task.id, value: 0.02 };
 

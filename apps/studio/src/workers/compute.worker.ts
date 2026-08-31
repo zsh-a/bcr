@@ -103,12 +103,12 @@ async function audioWaveform(
 
 defineWorker({
   "hash.blake3": (task, ctx) => {
-    const input = task.inputs[0];
+    const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
     if (input === undefined) throw new Error("hash.blake3 requires an input");
     return hashBlake3(task, input, ctx);
   },
   "audio.waveform": (task, ctx) => {
-    const input = task.inputs[0];
+    const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
     if (input === undefined) throw new Error("audio.waveform requires an input");
     return audioWaveform(task, input, ctx);
   },

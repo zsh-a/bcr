@@ -29,11 +29,11 @@
 | ------------------------------------- | ------------------------------------------------------------------------------------ |
 | §2 ComputeTask / §3 ArtifactRef       | `packages/core/src/schema.ts`（Effect Schema）                                       |
 | §3 DAG：cancel descendants / 下游失效 | `packages/core/src/scheduler.ts`（cancel 级联、invalidateArtifact）                  |
-| §3 DAG 正向编排                       | `scheduler.submitPipeline`（节点图校验 + 上游完成自动触发 + fail-fast）              |
+| §3 DAG 正向编排                       | `scheduler.submitPipeline`（命名端口绑定 + 上游完成自动触发 + fail-fast）            |
 | §6.1 Effect 调度语义                  | Scheduler：cancel / timeout / retry(Schedule) / progress Stream                      |
 | §6.2 typed MessagePort 协议           | `packages/runtime-worker/src/protocol.ts`（Effect Schema 编解码）                    |
 | §5 Worker 生命周期 ≠ Task 生命周期    | `WorkerPool` 常驻复用，cancel 只发命令不销毁 Worker                                  |
-| §7 Content-Addressed Cache            | `cacheKey = BLAKE3(artifactHash + operation + config + runtimeVersion)`              |
+| §7 Content-Addressed Cache            | `cacheKey = BLAKE3(ordered(port + artifactHash) + operation + config + runtime)`     |
 | §7 Artifact 内容身份                  | 源文件流式 BLAKE3；派生 JSON/波形携带内容 hash 并写入不可变路径                      |
 | §7 缓存持久化（刷新不重算）           | `packages/storage-sqlite`：cache_entries 表 + 血缘（task_outputs / dependencies）    |
 | §4/§8 OPFS + 窗口流动                 | `BinaryStore`（readRange/putStream/size），kernel 按 4MB 窗口读取                    |
