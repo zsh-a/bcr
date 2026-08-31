@@ -48,7 +48,7 @@
 | §10.2 Whisper ASR                     | transformers.js ONNX（q8 / webgpu fp32+q4），失败回退演示引擎                        |
 | 文本翻译                              | opus-mt（英↔中方向可选）：逐条 cue 批量平移，1:1 对齐，无二次音频推理                |
 | §14 Quant workload                    | DuckDB WASM + Arrow IPC + Parquet → SMA Signal → Backtest Pipeline                   |
-| Market Atlas                          | stock-sdk → 统一 QuoteSnapshot → 缓存/演示降级 → 多市场看板                          |
+| Market Atlas                          | stock-sdk → Quote / Search / OHLCV / Dividend 契约 → 多市场看板与 Quant handoff      |
 | §11 COOP/COEP                         | `apps/studio/vite.config.ts` 与 `apps/media-studio/vite.config.ts` 内置              |
 
 ## 命令
@@ -167,7 +167,9 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - CN / HK / US 与全球期货独立请求、独立健康状态；整体失败优先恢复 localStorage 最后快照，再显式降级 fixture
 - 行情始终展示来源、更新时间与 `DELAYED / PARTIAL / CACHED / DEMO` 质量，不把公开接口标记为撮合级实时数据
 - Midnight Atlas 编辑式界面提供全球交易时区轨道、市场焦点、方向宽度、跨资产行情、异动和持久化 Watchlist
+- Pulse 基准集扩展为 CN / HK / US 各 5 个指数与龙头标的；顶栏搜索通过 `sdk.search()` 发现三地股票、指数与场内基金，内置 33 个常用标的目录作为即时/离线降级，并持久化最近打开标的
 - 标的焦点支持 1M / 3M / 6M / 1Y / 3Y 日线 K 线、成交量与指针读数；长周期只在显示层聚合，交接仍保留完整日线
+- Income Ledger 使用 `sdk.reference.dividendDetail()` 展示 A 股个股现金分红、股息率、除权日、登记日与实施进度；HK / US / 基金尚无同口径 provider 时明确显示覆盖边界
 - “Send to Quant” 将当前历史柱交给 Quant Lab，后者自动生成年度 Arrow / Parquet 分区并运行策略；快照微型图仍只表达“昨收 → 最新”
 - 确定性模拟曲线与 OHLCV 仅出现在明确标记的演示 fixture 中，不伪装成实时历史数据
 

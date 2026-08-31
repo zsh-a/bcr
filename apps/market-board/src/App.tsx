@@ -5,8 +5,11 @@ import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";
 import type {
   DataQuality,
+  DividendSeries,
   HistoryRange,
+  MarketInstrument,
   MarketRegion,
+  MarketSearchResult,
   MarketSession,
   QuoteSnapshot,
   SessionState,
@@ -14,6 +17,9 @@ import type {
 import { publishQuantHandoff } from "@bcr/market-data";
 import {
   ArrowUpRight,
+  CalendarDays,
+  ChevronRight,
+  CircleDollarSign,
   Clock3,
   Globe2,
   RefreshCw,
@@ -26,11 +32,15 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkline } from "./components/Sparkline";
 import { CandlestickChart } from "./components/CandlestickChart";
+import { marketProvider } from "./marketServices";
+import { useDividends } from "./useDividends";
+import { useInstrumentSearch } from "./useInstrumentSearch";
 import { useMarketAtlas } from "./useMarketAtlas";
 import { useMarketHistory } from "./useMarketHistory";
 import "./styles.css";
 
 const WATCHLIST_KEY = "bcr.market-atlas.watchlist.v1";
+const INSTRUMENTS_KEY = "bcr.market-atlas.instruments.v1";
 const DEFAULT_WATCHLIST = ["CN:SSE:000300", "HK:HKEX:HSI", "US:INDEX:INX"];
 
 function signed(value: number): string {
@@ -88,17 +98,42 @@ function initialWatchlist(): ReadonlyArray<string> {
   }
 }
 
+function initialInstruments(): ReadonlyArray<MarketInstrument> {
+  try {
+    const saved = localStorage.getItem(INSTRUMENTS_KEY);
+    return saved === null ? [] : (JSON.parse(saved) as ReadonlyArray<MarketInstrument>);
+  } catch {
+    return [];
+  }
+}
+
 export function App() {
   const { snapshot, refreshing, refresh } = useMarketAtlas();
   const [selectedId, setSelectedId] = useState("US:INDEX:INX");
   const [region, setRegion] = useState<MarketRegion | "ALL">("ALL");
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchCursor, setSearchCursor] = useState(0);
+  const [searchingQuote, setSearchingQuote] = useState<string | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
   const [historyRange, setHistoryRange] = useState<HistoryRange>("1Y");
   const [watchlist, setWatchlist] = useState<ReadonlyArray<string>>(initialWatchlist);
+  const [savedInstruments, setSavedInstruments] =
+    useState<ReadonlyArray<MarketInstrument>>(initialInstruments);
+  const [customQuotes, setCustomQuotes] = useState<ReadonlyArray<QuoteSnapshot>>([]);
   const searchRef = useRef<HTMLInputElement>(null);
-  const allQuotes = useMemo(() => [...snapshot.quotes, ...snapshot.futures], [snapshot]);
+  const search = useInstrumentSearch(query);
+  const allQuotes = useMemo(() => {
+    const seen = new Set<string>();
+    return [...customQuotes, ...snapshot.quotes, ...snapshot.futures].filter((quote) => {
+      if (seen.has(quote.instrument.id)) return false;
+      seen.add(quote.instrument.id);
+      return true;
+    });
+  }, [snapshot, customQuotes]);
   const selected =
     allQuotes.find((quote) => quote.instrument.id === selectedId) ?? snapshot.quotes[0];
+  const dividends = useDividends(selected?.instrument);
   const history = useMarketHistory(selected, historyRange);
   const historySeries = history.series;
   const currentHistory =
@@ -127,6 +162,33 @@ export function App() {
   const advancers = snapshot.quotes.filter((quote) => quote.changePercent >= 0).length;
   const decliners = snapshot.quotes.length - advancers;
 
+  const selectSearchResult = async (result: MarketSearchResult): Promise<void> => {
+    const existing = allQuotes.find((quote) => quote.instrument.id === result.instrument.id);
+    setSearchingQuote(result.instrument.id);
+    setQuoteError(null);
+    try {
+      const quote = await marketProvider.loadQuote(result.instrument).catch((error: unknown) => {
+        if (existing !== undefined) return existing;
+        throw error;
+      });
+      setCustomQuotes((items) => [
+        ...items.filter((item) => item.instrument.id !== result.instrument.id),
+        quote,
+      ]);
+      setSavedInstruments((items) =>
+        [...items.filter((item) => item.id !== result.instrument.id), result.instrument].slice(-24),
+      );
+      setSelectedId(result.instrument.id);
+      setRegion("ALL");
+      setQuery("");
+      setSearchOpen(false);
+    } catch (error) {
+      setQuoteError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSearchingQuote(null);
+    }
+  };
+
   const openQuant = (): void => {
     if (selected === undefined || currentHistory === null || currentHistory.bars.length < 30)
       return;
@@ -148,6 +210,31 @@ export function App() {
       // Watchlist remains available for this session when persistent storage is blocked.
     }
   }, [watchlist]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(INSTRUMENTS_KEY, JSON.stringify(savedInstruments));
+    } catch {
+      // Recently opened instruments remain available for this session.
+    }
+  }, [savedInstruments]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.allSettled(
+      savedInstruments.map((instrument) => marketProvider.loadQuote(instrument)),
+    ).then((results) => {
+      if (cancelled) return;
+      const restored = results.flatMap((result) =>
+        result.status === "fulfilled" ? [result.value] : [],
+      );
+      setCustomQuotes(restored);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Restore the persisted discovery shelf once; quote refresh is explicit after that.
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -178,16 +265,101 @@ export function App() {
             <b>Market Atlas</b>
           </div>
         </div>
-        <div className="ma-search">
-          <Search />
-          <input
-            ref={searchRef}
-            aria-label="Search markets"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search instrument or symbol"
-          />
-          <kbd>/</kbd>
+        <div className="ma-search-shell">
+          <div className="ma-search">
+            <Search className={search.loading ? "spinning" : ""} />
+            <input
+              ref={searchRef}
+              role="combobox"
+              aria-label="Search global instruments"
+              aria-expanded={searchOpen && query.trim().length >= 2}
+              aria-controls="ma-search-results"
+              aria-autocomplete="list"
+              value={query}
+              onFocus={() => setSearchOpen(true)}
+              onBlur={() => window.setTimeout(() => setSearchOpen(false), 160)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setSearchCursor(0);
+                setSearchOpen(true);
+                setQuoteError(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setSearchOpen(false);
+                  event.currentTarget.blur();
+                } else if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  setSearchCursor((cursor) =>
+                    Math.min(Math.max(0, search.results.length - 1), cursor + 1),
+                  );
+                } else if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setSearchCursor((cursor) => Math.max(0, cursor - 1));
+                } else if (event.key === "Enter") {
+                  const result = search.results[searchCursor];
+                  if (result !== undefined) {
+                    event.preventDefault();
+                    void selectSearchResult(result);
+                  }
+                }
+              }}
+              placeholder="Search stocks, indices or ETFs"
+            />
+            <kbd>/</kbd>
+          </div>
+          {searchOpen && query.trim().length >= 2 && (
+            <div id="ma-search-results" className="ma-search-results" role="listbox">
+              <div className="ma-search-summary">
+                <span>GLOBAL DISCOVERY</span>
+                <small>
+                  {search.loading
+                    ? search.results.length > 0
+                      ? "LOCAL READY · SEARCHING STOCK-SDK"
+                      : "SEARCHING STOCK-SDK"
+                    : search.remoteAvailable === false
+                      ? `${search.results.length} LOCAL MATCHES · REMOTE DEGRADED`
+                      : `${search.results.length} QUOTEABLE MATCHES`}
+                </small>
+              </div>
+              {search.results.map((result, index) => (
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={index === searchCursor}
+                  key={result.instrument.id}
+                  className={index === searchCursor ? "active" : ""}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onMouseEnter={() => setSearchCursor(index)}
+                  onClick={() => void selectSearchResult(result)}
+                  disabled={searchingQuote !== null}
+                >
+                  <i>{result.instrument.market}</i>
+                  <span>
+                    <b>{result.instrument.name}</b>
+                    <small>
+                      {result.instrument.symbol} · {result.instrument.venue}
+                    </small>
+                  </span>
+                  <em>{result.providerType}</em>
+                  {searchingQuote === result.instrument.id ? (
+                    <RefreshCw className="spinning" />
+                  ) : (
+                    <ChevronRight />
+                  )}
+                </button>
+              ))}
+              {!search.loading && search.results.length === 0 && (
+                <div className="ma-search-state">
+                  {search.error ?? quoteError ?? "NO QUOTEABLE INSTRUMENTS FOUND"}
+                </div>
+              )}
+              {quoteError !== null && search.results.length > 0 && (
+                <div className="ma-search-state error">QUOTE · {quoteError}</div>
+              )}
+              <footer>CN · HK · US · STOCKS / INDICES / EXCHANGE-TRADED FUNDS</footer>
+            </div>
+          )}
         </div>
         <div className="ma-header-actions">
           <div className={`ma-quality ${snapshot.quality}`}>
@@ -385,11 +557,20 @@ export function App() {
           </div>
         </section>
 
+        {selected !== undefined && (
+          <CorporateActions
+            instrument={selected.instrument}
+            series={dividends.series}
+            loading={dividends.loading}
+            error={dividends.error}
+          />
+        )}
+
         <section className="ma-lower-grid">
           <article className="ma-list-panel ma-futures-panel">
             <div className="ma-section-heading compact">
               <div>
-                <span>02</span>
+                <span>03</span>
                 <h2>Cross-asset tape</h2>
                 <small>GLOBAL FUTURES</small>
               </div>
@@ -415,7 +596,7 @@ export function App() {
           <article className="ma-list-panel">
             <div className="ma-section-heading compact">
               <div>
-                <span>03</span>
+                <span>04</span>
                 <h2>Largest moves</h2>
                 <small>ABSOLUTE CHANGE</small>
               </div>
@@ -446,7 +627,7 @@ export function App() {
           <article className="ma-list-panel">
             <div className="ma-section-heading compact">
               <div>
-                <span>04</span>
+                <span>05</span>
                 <h2>Watchlist</h2>
                 <small>{watched.length} INSTRUMENTS</small>
               </div>
@@ -504,9 +685,114 @@ export function App() {
           <Clock3 /> AS OF {receivedTime(snapshot.receivedAt)}
         </span>
         <p>Prices may be delayed by seconds or minutes. Not for order execution.</p>
-        <b>BCR / MARKET ATLAS 0.2</b>
+        <b>BCR / MARKET ATLAS 0.3</b>
       </footer>
     </div>
+  );
+}
+
+function dividendYield(value: number | null): string {
+  return value === null ? "—" : `${(value * 100).toFixed(2)}%`;
+}
+
+function CorporateActions(props: {
+  instrument: MarketInstrument;
+  series: DividendSeries | null;
+  loading: boolean;
+  error: string | null;
+}) {
+  const events = props.series?.events ?? [];
+  const latest = events.find((event) => event.cashPerTen !== null) ?? events[0];
+  const supported = props.instrument.market === "CN" && props.instrument.assetClass === "equity";
+
+  return (
+    <section className="ma-corporate-section">
+      <div className="ma-section-heading">
+        <div>
+          <span>02</span>
+          <h2>Income ledger</h2>
+          <small>DIVIDENDS / CORPORATE ACTIONS</small>
+        </div>
+        <div className={`ma-coverage ${props.series?.coverage ?? "loading"}`}>
+          <i />
+          {props.loading
+            ? "RESOLVING"
+            : props.error !== null
+              ? "DEGRADED"
+              : props.series?.coverage === "available"
+                ? "A-SHARE REFERENCE ONLINE"
+                : "COVERAGE BOUNDARY"}
+        </div>
+      </div>
+      {props.loading ? (
+        <div className="ma-corporate-state">
+          <RefreshCw className="spinning" /> RESOLVING CORPORATE ACTIONS
+        </div>
+      ) : props.error !== null ? (
+        <div className="ma-corporate-state error">DIVIDEND FEED · {props.error}</div>
+      ) : latest !== undefined ? (
+        <div className="ma-income-grid">
+          <div className="ma-income-lead">
+            <CircleDollarSign />
+            <span>LATEST CASH PLAN</span>
+            <strong>{latest.cashPerTen === null ? "DISCLOSED" : price(latest.cashPerTen)}</strong>
+            <small>
+              {latest.cashPerTen === null ? "SEE PLAN DESCRIPTION" : "CNY / 10 SHARES · PRE-TAX"}
+            </small>
+          </div>
+          <dl className="ma-income-stats">
+            <div>
+              <dt>DECLARED YIELD</dt>
+              <dd>{dividendYield(latest.dividendYield)}</dd>
+            </div>
+            <div>
+              <dt>EX-DIVIDEND</dt>
+              <dd>{latest.exDividendDate ?? "PENDING"}</dd>
+            </div>
+            <div>
+              <dt>RECORD DATE</dt>
+              <dd>{latest.recordDate ?? "PENDING"}</dd>
+            </div>
+            <div>
+              <dt>STATUS</dt>
+              <dd>{latest.status ?? "DISCLOSED"}</dd>
+            </div>
+          </dl>
+          <div className="ma-dividend-timeline">
+            {events.slice(0, 4).map((event, index) => (
+              <article key={`${event.reportDate ?? "undated"}:${index}`}>
+                <i>{String(index + 1).padStart(2, "0")}</i>
+                <span>
+                  <b>{event.description ?? "Dividend plan disclosed"}</b>
+                  <small>
+                    {event.reportDate ?? "REPORT DATE PENDING"} · {event.status ?? "DISCLOSED"}
+                  </small>
+                </span>
+                <em>{dividendYield(event.dividendYield)}</em>
+              </article>
+            ))}
+          </div>
+          <footer>{props.series?.source} · REFERENCE DATA / NOT A FORWARD YIELD FORECAST</footer>
+        </div>
+      ) : (
+        <div className="ma-corporate-state unsupported">
+          <CalendarDays />
+          <div>
+            <b>
+              {supported ? "NO DIVIDEND RECORDS RETURNED" : "COVERAGE STOPS AT A-SHARE EQUITIES"}
+            </b>
+            <span>
+              {supported
+                ? "The provider returned an empty corporate-action ledger for this instrument."
+                : "HK / US cash distributions and fund NAV distributions remain explicit next-provider work."}
+            </span>
+          </div>
+          <small>
+            {props.instrument.market} · {props.instrument.assetClass.toUpperCase()}
+          </small>
+        </div>
+      )}
+    </section>
   );
 }
 

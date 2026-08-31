@@ -1,4 +1,4 @@
-/* Market Atlas：数据质量 → 市场筛选 → 历史 K 线 → Watchlist → Quant 交接。 */
+/* Market Atlas：数据质量 → 市场筛选 → 全局搜索/股息 → 历史 K 线 → Quant 交接。 */
 import { launchVerifyBrowser } from "./verify-browser.mjs";
 
 const base = new URL(process.env.BASE_URL ?? "http://localhost:5199/studio");
@@ -43,6 +43,22 @@ await firstStar.click();
 if ((await firstStar.evaluate((element) => element.classList.contains("watched"))) === wasWatched) {
   fail("Watchlist 交互未生效");
 }
+
+const search = page.getByLabel("Search global instruments");
+await search.fill("茅台");
+await page.locator(".ma-search-results > button").first().waitFor({ timeout: 20_000 });
+await page.locator(".ma-search-results > button").first().click();
+await page.waitForFunction(
+  () => document.querySelector(".ma-focus-copy h2")?.textContent?.includes("贵州茅台"),
+  undefined,
+  { timeout: 20_000 },
+);
+await page.locator(".ma-dividend-timeline article").first().waitFor({ timeout: 30_000 });
+const incomeText = await page.locator(".ma-corporate-section").innerText();
+if (!incomeText.includes("A-SHARE REFERENCE ONLINE") || !incomeText.includes("CNY / 10 SHARES")) {
+  fail("A 股股息与公司行动未渲染");
+}
+await page.locator(".ma-open-quant:not(:disabled)").waitFor({ timeout: 45_000 });
 
 await page.screenshot({ path: `${dir}/market-atlas.png`, fullPage: true });
 await page.locator(".ma-open-quant").click();

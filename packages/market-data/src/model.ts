@@ -1,5 +1,5 @@
 export type MarketRegion = "CN" | "HK" | "US" | "GLOBAL";
-export type AssetClass = "index" | "equity" | "future";
+export type AssetClass = "index" | "equity" | "fund" | "future";
 export type DataQuality = "delayed" | "partial" | "cached" | "demo";
 export type FeedState = "online" | "degraded" | "offline";
 export type SessionState =
@@ -70,6 +70,35 @@ export interface MarketHistorySeries {
   readonly errors: ReadonlyArray<string>;
 }
 
+export interface MarketSearchResult {
+  readonly instrument: MarketInstrument;
+  /** stock-sdk 上游原始类型，例如 GP-A / ETF / ZS，便于向用户解释匹配来源。 */
+  readonly providerType: string;
+}
+
+export interface DividendEvent {
+  readonly reportDate: string | null;
+  readonly description: string | null;
+  /** 每 10 股税前现金分红。 */
+  readonly cashPerTen: number | null;
+  /** SDK 返回的小数收益率，例如 0.023 表示 2.3%。 */
+  readonly dividendYield: number | null;
+  readonly recordDate: string | null;
+  readonly exDividendDate: string | null;
+  readonly payDate: string | null;
+  readonly status: string | null;
+  readonly eps: number | null;
+  readonly netProfitYoy: number | null;
+}
+
+export interface DividendSeries {
+  readonly instrument: MarketInstrument;
+  readonly coverage: "available" | "empty" | "unsupported";
+  readonly events: ReadonlyArray<DividendEvent>;
+  readonly receivedAt: number;
+  readonly source: string;
+}
+
 export interface MarketSession {
   readonly market: MarketRegion | "EU";
   readonly city: string;
@@ -106,6 +135,13 @@ export interface MarketDataProvider {
 export interface MarketHistoryProvider {
   readonly id: string;
   loadHistory(request: MarketHistoryRequest): Promise<MarketHistorySeries>;
+}
+
+export interface MarketDiscoveryProvider {
+  readonly id: string;
+  searchInstruments(keyword: string): Promise<ReadonlyArray<MarketSearchResult>>;
+  loadQuote(instrument: MarketInstrument): Promise<QuoteSnapshot>;
+  loadDividends(instrument: MarketInstrument): Promise<DividendSeries>;
 }
 
 export interface QuantMarketHandoff {

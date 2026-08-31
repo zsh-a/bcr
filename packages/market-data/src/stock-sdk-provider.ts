@@ -1,18 +1,22 @@
 import {
   StockSDK,
   type AnyHistoryKline,
+  type FullQuote,
   type FuturesKline,
   type GlobalFuturesQuote,
   type HKQuote,
   type MarketStatus,
+  type SearchResult,
   type SimpleQuote,
   type USQuote,
 } from "stock-sdk";
 import { fallbackSessions } from "./demo";
 import { instrumentsFor } from "./instruments";
 import type {
+  DividendSeries,
   MarketAtlasSnapshot,
   MarketDataProvider,
+  MarketDiscoveryProvider,
   MarketHistoryBar,
   MarketHistoryProvider,
   MarketHistoryRequest,
@@ -20,12 +24,13 @@ import type {
   MarketInstrument,
   MarketRegion,
   MarketSession,
+  MarketSearchResult,
   ProviderFeed,
   QuoteSnapshot,
   SessionState,
 } from "./model";
 
-type EquityQuote = SimpleQuote | HKQuote | USQuote;
+type EquityQuote = SimpleQuote | FullQuote | HKQuote | USQuote;
 
 const MARKET_ORDER = ["CN", "HK", "US", "GLOBAL"] as const;
 const FUTURE_PULSE = [
@@ -120,6 +125,115 @@ function marketInstrument(
   );
 }
 
+function searchAssetClass(result: SearchResult): MarketInstrument["assetClass"] | null {
+  const category =
+    result.category ??
+    (result.type === "ZS"
+      ? "index"
+      : result.type.includes("ETF") || result.type.includes("LOF")
+        ? "fund"
+        : result.type.startsWith("GP")
+          ? "stock"
+          : "other");
+  return category === "stock"
+    ? "equity"
+    : category === "index" || category === "fund"
+      ? category
+      : null;
+}
+
+function searchInstrument(result: SearchResult): MarketInstrument | null {
+  const providerMarket = result.market.toLowerCase();
+  const market =
+    providerMarket === "sh" || providerMarket === "sz"
+      ? "CN"
+      : providerMarket === "hk"
+        ? "HK"
+        : providerMarket === "us"
+          ? "US"
+          : null;
+  const assetClass = searchAssetClass(result);
+  if (market === null || assetClass === null) return null;
+
+  const withoutMarket = result.code.replace(/^(sh|sz|hk|us)/i, "");
+  const [baseCode = withoutMarket, providerVenue = ""] = withoutMarket.split(".");
+  const sourceSymbol = market === "US" ? baseCode.toUpperCase() : baseCode;
+  const curated = instrumentsFor(market).find(
+    (instrument) =>
+      instrument.sourceSymbol.toUpperCase().replace(/^(SH|SZ|HK)/, "") ===
+      sourceSymbol.toUpperCase(),
+  );
+  if (curated !== undefined) return curated;
+
+  const venue =
+    market === "CN"
+      ? providerMarket === "sh"
+        ? "Shanghai"
+        : "Shenzhen"
+      : market === "HK"
+        ? "Hong Kong"
+        : providerVenue.toLowerCase() === "oq"
+          ? "Nasdaq"
+          : providerVenue.toLowerCase() === "n"
+            ? "NYSE"
+            : "United States";
+  const venueId =
+    market === "CN"
+      ? providerMarket === "sh"
+        ? "SSE"
+        : "SZSE"
+      : market === "HK"
+        ? "HKEX"
+        : venue === "Nasdaq"
+          ? "NASDAQ"
+          : venue === "NYSE"
+            ? "NYSE"
+            : "US";
+  const displaySymbol =
+    market === "CN"
+      ? `${sourceSymbol}.${providerMarket.toUpperCase()}`
+      : market === "HK"
+        ? `${sourceSymbol}.HK`
+        : sourceSymbol;
+  return {
+    id: `${market}:${venueId}:${sourceSymbol}`,
+    symbol: displaySymbol,
+    sourceSymbol,
+    name: result.name,
+    shortName: result.name.toUpperCase(),
+    market,
+    venue,
+    currency: market === "CN" ? "CNY" : market === "HK" ? "HKD" : "USD",
+    timezone:
+      market === "US" ? "America/New_York" : market === "HK" ? "Asia/Hong_Kong" : "Asia/Shanghai",
+    assetClass,
+  };
+}
+
+function quoteForInstrument(
+  instrument: MarketInstrument,
+  quote: EquityQuote,
+  receivedAt: number,
+): QuoteSnapshot {
+  const previousClose = "prevClose" in quote ? quote.prevClose : quote.price - quote.change;
+  return {
+    instrument: { ...instrument, name: quote.name || instrument.name },
+    price: quote.price,
+    change: quote.change,
+    changePercent: quote.changePercent,
+    previousClose: Number.isFinite(previousClose) ? previousClose : null,
+    high: "high" in quote ? quote.high : null,
+    low: "low" in quote ? quote.low : null,
+    volume: quote.volume,
+    amount: quote.amount,
+    sourceTimestamp: "timestamp" in quote ? quote.timestamp : null,
+    receivedAt,
+    quality: "delayed",
+    source: String(quote.source),
+    sparkline: [previousClose ?? quote.price, quote.price],
+  };
+}
+
 function equitySnapshot(
   market: "CN" | "HK" | "US",
   quote: EquityQuote,
@@ -127,24 +241,7 @@ function equitySnapshot(
   receivedAt: number,
 ): QuoteSnapshot {
   const instrument = marketInstrument(market, quote, index);
-  const rich = quote as HKQuote | USQuote;
-  const previousClose = "prevClose" in quote ? rich.prevClose : quote.price - quote.change;
-  return {
-    instrument: { ...instrument, name: quote.name || instrument.name },
-    price: quote.price,
-    change: quote.change,
-    changePercent: quote.changePercent,
-    previousClose: Number.isFinite(previousClose) ? previousClose : null,
-    high: "high" in quote ? rich.high : null,
-    low: "low" in quote ? rich.low : null,
-    volume: quote.volume,
-    amount: quote.amount,
-    sourceTimestamp: "timestamp" in quote ? rich.timestamp : null,
-    receivedAt,
-    quality: "delayed",
-    source: String(quote.source),
-    sparkline: [previousClose ?? quote.price, quote.price],
-  };
+  return quoteForInstrument(instrument, quote, receivedAt);
 }
 
 function futureSnapshot(
@@ -194,7 +291,9 @@ function errorMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
 }
 
-export class StockSdkProvider implements MarketDataProvider, MarketHistoryProvider {
+export class StockSdkProvider
+  implements MarketDataProvider, MarketHistoryProvider, MarketDiscoveryProvider
+{
   readonly id = "stock-sdk@2.4.2";
   private readonly sdk = new StockSDK({
     timeout: 10_000,
@@ -204,6 +303,67 @@ export class StockSdkProvider implements MarketDataProvider, MarketHistoryProvid
       tencent: { timeout: 10_000, rateLimit: { requestsPerSecond: 4, maxBurst: 4 } },
     },
   });
+
+  async searchInstruments(keyword: string): Promise<ReadonlyArray<MarketSearchResult>> {
+    if (keyword.trim().length < 2) return [];
+    const results = await this.sdk.search(keyword.trim());
+    const seen = new Set<string>();
+    return results.flatMap((result) => {
+      const instrument = searchInstrument(result);
+      if (instrument === null || seen.has(instrument.id)) return [];
+      seen.add(instrument.id);
+      return [{ instrument, providerType: result.type }];
+    });
+  }
+
+  async loadQuote(instrument: MarketInstrument): Promise<QuoteSnapshot> {
+    const receivedAt = Date.now();
+    const quotes =
+      instrument.market === "CN"
+        ? await this.sdk.quotes.cn([instrument.sourceSymbol])
+        : instrument.market === "HK"
+          ? await this.sdk.quotes.hk([instrument.sourceSymbol])
+          : instrument.market === "US"
+            ? await this.sdk.quotes.us([instrument.sourceSymbol])
+            : [];
+    const quote = quotes[0];
+    if (quote === undefined)
+      throw new Error(`stock-sdk returned no quote for ${instrument.symbol}`);
+    return quoteForInstrument(instrument, quote, receivedAt);
+  }
+
+  async loadDividends(instrument: MarketInstrument): Promise<DividendSeries> {
+    const receivedAt = Date.now();
+    if (instrument.market !== "CN" || instrument.assetClass !== "equity") {
+      return {
+        instrument,
+        coverage: "unsupported",
+        events: [],
+        receivedAt,
+        source: "stock-sdk · A-share reference coverage",
+      };
+    }
+    const code = instrument.sourceSymbol.replace(/^(sh|sz)/i, "");
+    const events = (await this.sdk.reference.dividendDetail(code)).map((event) => ({
+      reportDate: event.reportDate,
+      description: event.dividendDesc,
+      cashPerTen: event.dividendPretax,
+      dividendYield: event.dividendYield,
+      recordDate: event.equityRecordDate,
+      exDividendDate: event.exDividendDate,
+      payDate: event.payDate,
+      status: event.assignProgress,
+      eps: event.eps,
+      netProfitYoy: event.netProfitYoy,
+    }));
+    return {
+      instrument,
+      coverage: events.length > 0 ? "available" : "empty",
+      events,
+      receivedAt,
+      source: `${this.id} · eastmoney dividend reference`,
+    };
+  }
 
   async loadHistory(request: MarketHistoryRequest): Promise<MarketHistorySeries> {
     const receivedAt = Date.now();

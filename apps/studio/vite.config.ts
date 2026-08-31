@@ -17,9 +17,9 @@ export default defineConfig({
     port: 5199,
     strictPort: true,
     headers: {
-      // §11：SharedArrayBuffer / cross-origin isolation 内置
+      // §11：credentialless 保留 SharedArrayBuffer 隔离，同时允许行情 SDK 的 JSONP 搜索脚本。
       "Cross-Origin-Opener-Policy": "same-origin",
-      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Embedder-Policy": "credentialless",
     },
   },
 });

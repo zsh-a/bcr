@@ -1,13 +1,6 @@
-import {
-  ResilientHistoryService,
-  StockSdkProvider,
-  type HistoryRange,
-  type MarketHistorySeries,
-  type QuoteSnapshot,
-} from "@bcr/market-data";
+import type { HistoryRange, MarketHistorySeries, QuoteSnapshot } from "@bcr/market-data";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-const service = new ResilientHistoryService(new StockSdkProvider());
+import { historyService } from "./marketServices";
 
 export interface MarketHistoryResource {
   readonly series: MarketHistorySeries | null;
@@ -27,7 +20,7 @@ export function useMarketHistory(
     if (quote === undefined) return;
     const current = ++request.current;
     setLoading(true);
-    const next = await service.load({
+    const next = await historyService.load({
       instrument: quote.instrument,
       range,
       referencePrice: quote.price,

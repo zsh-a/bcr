@@ -5,6 +5,7 @@ import {
   instrumentsFor,
   quoteSparkline,
   ResilientMarketService,
+  searchKnownInstruments,
   type MarketDataProvider,
   type MarketHistoryProvider,
 } from "../src";
@@ -24,13 +25,13 @@ describe("Market data contracts", () => {
     const snapshot = createDemoSnapshot(["upstream unavailable"]);
 
     expect(snapshot.quality).toBe("demo");
-    expect(snapshot.quotes).toHaveLength(9);
+    expect(snapshot.quotes).toHaveLength(15);
     expect(snapshot.futures).toHaveLength(6);
     expect(snapshot.sessions).toHaveLength(4);
-    expect(new Set(snapshot.quotes.map((quote) => quote.instrument.id)).size).toBe(9);
-    expect(instrumentsFor("CN")).toHaveLength(3);
-    expect(instrumentsFor("HK")).toHaveLength(3);
-    expect(instrumentsFor("US")).toHaveLength(3);
+    expect(new Set(snapshot.quotes.map((quote) => quote.instrument.id)).size).toBe(15);
+    expect(instrumentsFor("CN")).toHaveLength(5);
+    expect(instrumentsFor("HK")).toHaveLength(5);
+    expect(instrumentsFor("US")).toHaveLength(5);
   });
 
   it("上游整体失败时显式回退演示数据并保留错误", async () => {
@@ -80,5 +81,12 @@ describe("Market data contracts", () => {
     expect(history.quality).toBe("demo");
     expect(history.bars).toHaveLength(252);
     expect(history.errors).toContain("history offline");
+  });
+
+  it("离线目录可按中英文名称、代码和资产类别发现全球标的", () => {
+    expect(searchKnownInstruments("茅台")[0]?.instrument.id).toBe("CN:SSE:600519");
+    expect(searchKnownInstruments("TSLA")[0]?.instrument.market).toBe("US");
+    expect(searchKnownInstruments("红利ETF")[0]?.instrument.assetClass).toBe("fund");
+    expect(searchKnownInstruments("美团")[0]?.instrument.symbol).toBe("03690.HK");
   });
 });

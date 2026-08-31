@@ -1,12 +1,7 @@
-import {
-  createDemoSnapshot,
-  ResilientMarketService,
-  StockSdkProvider,
-  type MarketAtlasSnapshot,
-} from "@bcr/market-data";
+import { createDemoSnapshot, type MarketAtlasSnapshot } from "@bcr/market-data";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { atlasService } from "./marketServices";
 
-const service = new ResilientMarketService(new StockSdkProvider());
 const REFRESH_MS = 60_000;
 
 export interface MarketAtlasResource {
@@ -24,7 +19,7 @@ export function useMarketAtlas(): MarketAtlasResource {
   const refresh = useCallback(async () => {
     const current = ++request.current;
     setRefreshing(true);
-    const next = await service.load();
+    const next = await atlasService.load();
     if (current === request.current) {
       receivedAt.current = next.receivedAt;
       setSnapshot(next);
