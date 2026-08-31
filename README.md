@@ -56,7 +56,11 @@ bun run demo           # 启动 demo（examples/demo）
 bun run studio         # 启动 BCR Studio 工作台（apps/studio）
 bun run media          # 启动 Media Studio · Subtitle（apps/media-studio）
 cargo test --manifest-path crates/kernels/Cargo.toml
+bun run test:browser   # 自动启停 dev server，运行离线 Playwright 主链路
 ```
+
+GitHub Actions 会执行格式/类型/单测、Rust/WASM、三端生产构建，并在真实 Chromium 中验证
+Media Studio 短音频、150 秒分窗和 Studio 刷新缓存闭环；失败时保留截图与 server 日志。
 
 ## BCR Studio（apps/studio）
 

@@ -13,6 +13,7 @@
     "check": "vp check && bun run typecheck",
     "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/runtime-worker/tsconfig.json && tsc --noEmit -p packages/storage-opfs/tsconfig.json && tsc --noEmit -p packages/storage-sqlite/tsconfig.json && tsc --noEmit -p packages/graph/tsconfig.json && tsc --noEmit -p packages/react/tsconfig.json && tsc --noEmit -p apps/media-studio/tsconfig.json && tsc --noEmit -p apps/studio/tsconfig.json && tsc --noEmit -p examples/demo/tsconfig.json",
     "test": "vp test run",
+    "test:browser": "node scripts/verify-ci.mjs",
     "demo": "cd examples/demo && vp dev",
     "dev": "cd apps/studio && vp dev",
     "studio": "cd apps/studio && vp dev",
@@ -26,5 +27,6 @@
     "typescript": "^5.9.0",
     "vite-plus": "^0.3.0",
     "vitest": "^4.1.0"
-  }
+  },
+  "packageManager": "bun@1.3.14"
 }

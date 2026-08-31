@@ -13,6 +13,9 @@ export default defineConfig({
     format: "es",
   },
   server: {
+    // 持久化走查与 OPFS origin 固定，避免端口漂移导致缓存/项目不可见。
+    port: 5199,
+    strictPort: true,
     headers: {
       // §11：SharedArrayBuffer / cross-origin isolation 内置
       "Cross-Origin-Opener-Policy": "same-origin",

@@ -11,8 +11,10 @@ import path from "node:path";
  * 注意：同一 app 的 profile 不要并行跑两个脚本（Chromium 单实例锁）。
  */
 export async function launchVerifyBrowser(app) {
-  const profileDir = path.join(fileURLToPath(new URL("./", import.meta.url)), `.pw-profile-${app}`);
+  const scriptDir = fileURLToPath(new URL("./", import.meta.url));
+  const profileDir = path.join(scriptDir, `.pw-profile-${app}`);
   mkdirSync(profileDir, { recursive: true });
+  mkdirSync(path.join(scriptDir, "shots"), { recursive: true });
   const browser = await chromium.launchPersistentContext(profileDir, {
     viewport: { width: 1440, height: 900 },
     args: ["--disable-dev-shm-usage"],
