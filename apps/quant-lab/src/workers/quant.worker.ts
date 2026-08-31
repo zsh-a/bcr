@@ -3,7 +3,7 @@ import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
 import initWasm from "../../../../crates/kernels/pkg/bcr_kernels.js";
 import { decodeMarketArrow } from "../arrow";
-import { computeSmaSignals, runBacktest } from "../engine";
+import { computeSmaSignals, runBacktest, validateMarketBars } from "../engine";
 import type { BacktestResult, MarketBar, SignalPoint, StrategyConfig } from "../model";
 import { runWasmBacktest } from "../wasm-backtest";
 
@@ -39,7 +39,16 @@ async function readMarket(ref: ArtifactRef): Promise<ReadonlyArray<MarketBar>> {
   const bytes = await readBytes(ref);
   return ref.format === "json"
     ? (JSON.parse(decoder.decode(bytes)) as ReadonlyArray<MarketBar>)
-    : decodeMarketArrow(bytes);
+    : decodeMarketArrow(bytes, 1);
+}
+
+async function readMarketInputs(task: ComputeTask): Promise<ReadonlyArray<MarketBar>> {
+  const refs = task.inputs
+    .filter((ref) => ref.type === "market/ohlcv+arrow" || ref.port?.startsWith("market-") === true)
+    .sort((left, right) => (left.port ?? left.id).localeCompare(right.port ?? right.id));
+  if (refs.length === 0) throw new Error(`${task.operation} requires market partitions`);
+  const partitions = await Promise.all(refs.map(readMarket));
+  return validateMarketBars(partitions.flat());
 }
 
 async function persistJson(prefix: string, type: string, value: unknown): Promise<ArtifactRef> {
@@ -126,7 +135,7 @@ async function signalTask(
   ctx: WorkerContext,
 ): Promise<ReadonlyArray<ArtifactRef>> {
   ctx.progress(0.08);
-  const bars = await readMarket(pickInput(task, "market", "market/ohlcv+arrow"));
+  const bars = await readMarketInputs(task);
   if (ctx.signal.aborted) throw new Error("cancelled");
   ctx.progress(0.42);
   const signals = computeSmaSignals(
@@ -146,7 +155,7 @@ async function backtestTask(
 ): Promise<ReadonlyArray<ArtifactRef>> {
   ctx.progress(0.06);
   const [bars, signals] = await Promise.all([
-    readMarket(pickInput(task, "market", "market/ohlcv+arrow")),
+    readMarketInputs(task),
     readJson<ReadonlyArray<SignalPoint>>(pickInput(task, "signals", "quant/signals")),
   ]);
   if (ctx.signal.aborted) throw new Error("cancelled");

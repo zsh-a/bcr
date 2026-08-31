@@ -25,13 +25,19 @@ import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import { Context, Effect, Layer } from "effect";
 import { decodeMarketArrow } from "./arrow";
 import { columnarizeMarketBars, readMarketParquet, type ColumnarDatasetPayload } from "./columnar";
-import { generateDemoMarket, parseMarketCsv } from "./engine";
+import {
+  generateDemoMarket,
+  parseMarketCsv,
+  partitionMarketBarsByYear,
+  validateMarketBars,
+} from "./engine";
 import type {
   BacktestMetrics,
   BacktestResult,
   Dataset,
   EquityPoint,
   MarketBar,
+  MarketPartition,
   QuantOutputRefs,
   SignalPoint,
   StrategyConfig,
@@ -95,43 +101,102 @@ export async function createRuntimeServices(): Promise<RuntimeServices> {
 }
 
 const decoder = new TextDecoder();
+const encoder = new TextEncoder();
+
+interface PartitionManifest {
+  readonly version: 1;
+  readonly schema: "ohlcv-v1";
+  readonly partitioning: "year";
+  readonly rowCount: number;
+  readonly partitions: ReadonlyArray<MarketPartition>;
+}
+
+function arrowRef(key: string, bytes: Uint8Array): ArtifactRef {
+  const hash = contentHash(bytes);
+  return {
+    id: `market/partitions/${key}/arrow/${hash}`,
+    type: "market/ohlcv+arrow",
+    storage: "opfs",
+    format: "arrow-ipc",
+    hash,
+  };
+}
+
+function parquetRef(id: string, bytes: Uint8Array): ArtifactRef {
+  const hash = contentHash(bytes);
+  return {
+    id: `market/${id}/parquet/${hash}`,
+    type: "market/ohlcv+parquet",
+    storage: "opfs",
+    format: "parquet",
+    hash,
+  };
+}
 
 async function persistColumnarDataset(
   services: RuntimeServices,
   name: string,
   payload: ColumnarDatasetPayload,
 ): Promise<Dataset> {
-  const arrowHash = contentHash(payload.arrow);
+  const partitions: MarketPartition[] = [];
+  for (const group of partitionMarketBarsByYear(payload.bars)) {
+    const partitionPayload = await columnarizeMarketBars(group.bars, payload.metadata.source, 1);
+    const ref = arrowRef(group.key, partitionPayload.arrow);
+    const compactRef = parquetRef(`partitions/${group.key}`, partitionPayload.parquet);
+    await Promise.all([
+      Effect.runPromise(services.artifacts.put(ref, partitionPayload.arrow)),
+      Effect.runPromise(services.artifacts.put(compactRef, partitionPayload.parquet)),
+    ]);
+    partitions.push({
+      key: group.key,
+      rowCount: group.bars.length,
+      minDate: group.bars[0]?.date ?? "",
+      maxDate: group.bars.at(-1)?.date ?? "",
+      arrowBytes: partitionPayload.arrow.byteLength,
+      parquetBytes: partitionPayload.parquet.byteLength,
+      ref,
+      parquetRef: compactRef,
+    });
+  }
+
+  const exportRef = parquetRef("exports", payload.parquet);
+  await Effect.runPromise(services.artifacts.put(exportRef, payload.parquet));
+  const manifest: PartitionManifest = {
+    version: 1,
+    schema: "ohlcv-v1",
+    partitioning: "year",
+    rowCount: payload.bars.length,
+    partitions,
+  };
+  const manifestBytes = encoder.encode(JSON.stringify(manifest));
+  const manifestHash = contentHash(manifestBytes);
   const ref: ArtifactRef = {
-    id: `market/arrow/${arrowHash}`,
-    type: "market/ohlcv+arrow",
+    id: `market/manifests/${manifestHash}`,
+    type: "market/partition-manifest",
     storage: "opfs",
-    format: "arrow-ipc",
-    hash: arrowHash,
+    format: "json",
+    hash: manifestHash,
   };
-  const parquetHash = contentHash(payload.parquet);
-  const parquetRef: ArtifactRef = {
-    id: `market/parquet/${parquetHash}`,
-    type: "market/ohlcv+parquet",
-    storage: "opfs",
-    format: "parquet",
-    hash: parquetHash,
-  };
-  await Promise.all([
-    Effect.runPromise(services.artifacts.put(ref, payload.arrow)),
-    Effect.runPromise(services.artifacts.put(parquetRef, payload.parquet)),
-  ]);
+  await Effect.runPromise(services.artifacts.put(ref, manifestBytes));
+  const arrowBytes = partitions.reduce((sum, partition) => sum + partition.arrowBytes, 0);
+  const parquetBytes = partitions.reduce((sum, partition) => sum + partition.parquetBytes, 0);
   const dataset = {
     name,
     ref,
-    parquetRef,
+    parquetRef: exportRef,
+    partitions,
     bars: payload.bars,
-    columnar: payload.metadata,
+    columnar: {
+      ...payload.metadata,
+      arrowBytes,
+      parquetBytes,
+      partitionCount: partitions.length,
+    },
   } satisfies Dataset;
   quant.setDataset(dataset);
   quant.log(
     "ok",
-    `columnar · ${name} · ${payload.bars.length} rows · Arrow ${formatBytes(payload.arrow.byteLength)} · Parquet ${formatBytes(payload.parquet.byteLength)}`,
+    `columnar · ${name} · ${payload.bars.length} rows / ${partitions.length} yearly partitions · Arrow ${formatBytes(arrowBytes)} · Parquet ${formatBytes(parquetBytes)}`,
   );
   return dataset;
 }
@@ -185,6 +250,7 @@ interface PersistedProject {
     readonly name: string;
     readonly ref: ArtifactRef;
     readonly parquetRef?: ArtifactRef | null;
+    readonly partitions?: ReadonlyArray<MarketPartition>;
     readonly columnar?: Dataset["columnar"];
   };
   readonly config: StrategyConfig;
@@ -219,29 +285,48 @@ export async function restoreProject(services: RuntimeServices): Promise<boolean
     const raw = await metaDb.kvGet("project");
     if (raw === undefined) return false;
     const project = JSON.parse(raw) as PersistedProject;
-    const sourceBytes = await Effect.runPromise(services.artifacts.get(project.dataset.ref));
     let dataset: Dataset;
-    if (project.dataset.ref.format === "json") {
-      const bars = JSON.parse(decoder.decode(sourceBytes)) as ReadonlyArray<MarketBar>;
-      dataset = await datasetFromBars(services, project.dataset.name, bars, "legacy-json");
-      quant.log("info", "migration · JSON market artifact → Arrow IPC + Parquet");
-    } else {
-      const bars = decodeMarketArrow(sourceBytes);
-      const parquetBytes =
-        project.dataset.parquetRef === undefined || project.dataset.parquetRef === null
-          ? 0
-          : (await Effect.runPromise(services.artifacts.get(project.dataset.parquetRef)))
-              .byteLength;
+    let migrated = false;
+    let restoredPartitions = project.dataset.partitions;
+    if (project.dataset.ref.type === "market/partition-manifest") {
+      const manifest = await readJson<PartitionManifest>(services, project.dataset.ref);
+      const manifestRows = manifest.partitions.reduce(
+        (sum, partition) => sum + partition.rowCount,
+        0,
+      );
+      if (
+        manifest.version !== 1 ||
+        manifest.schema !== "ohlcv-v1" ||
+        manifest.partitioning !== "year" ||
+        manifest.partitions.length === 0 ||
+        manifestRows !== manifest.rowCount
+      ) {
+        throw new Error("年度分区清单无效");
+      }
+      restoredPartitions = manifest.partitions;
+    }
+    if (restoredPartitions !== undefined && restoredPartitions.length > 0) {
+      const chunks = await Promise.all(
+        [...restoredPartitions]
+          .sort((left, right) => left.key.localeCompare(right.key))
+          .map(async (partition) =>
+            decodeMarketArrow(await Effect.runPromise(services.artifacts.get(partition.ref)), 1),
+          ),
+      );
+      const bars = validateMarketBars(chunks.flat());
+      const partitions = restoredPartitions;
       dataset = {
         name: project.dataset.name,
         ref: project.dataset.ref,
         parquetRef: project.dataset.parquetRef ?? null,
+        partitions,
         bars,
         columnar: project.dataset.columnar ?? {
           source: "legacy-json",
-          engine: "Arrow 17 · restored",
-          arrowBytes: sourceBytes.byteLength,
-          parquetBytes,
+          engine: "Arrow 17 · restored partition manifest",
+          arrowBytes: partitions.reduce((sum, item) => sum + item.arrowBytes, 0),
+          parquetBytes: partitions.reduce((sum, item) => sum + item.parquetBytes, 0),
+          partitionCount: partitions.length,
           rowCount: bars.length,
           minDate: bars[0]?.date ?? "",
           maxDate: bars.at(-1)?.date ?? "",
@@ -249,6 +334,39 @@ export async function restoreProject(services: RuntimeServices): Promise<boolean
         },
       };
       quant.setDataset(dataset);
+    } else {
+      const sourceBytes = await Effect.runPromise(services.artifacts.get(project.dataset.ref));
+      const bars =
+        project.dataset.ref.format === "json"
+          ? (JSON.parse(decoder.decode(sourceBytes)) as ReadonlyArray<MarketBar>)
+          : decodeMarketArrow(sourceBytes);
+      const existingParquet =
+        project.dataset.parquetRef === undefined || project.dataset.parquetRef === null
+          ? undefined
+          : await Effect.runPromise(services.artifacts.get(project.dataset.parquetRef));
+      if (existingParquet === undefined) {
+        dataset = await datasetFromBars(services, project.dataset.name, bars, "legacy-json");
+      } else {
+        dataset = await persistColumnarDataset(services, project.dataset.name, {
+          bars,
+          arrow: sourceBytes,
+          parquet: existingParquet,
+          metadata: {
+            source: project.dataset.columnar?.source ?? "legacy-json",
+            engine: project.dataset.columnar?.engine ?? "Arrow 17 · migrated",
+            arrowBytes: sourceBytes.byteLength,
+            parquetBytes: existingParquet.byteLength,
+            partitionCount: 1,
+            rowCount: bars.length,
+            minDate: bars[0]?.date ?? "",
+            maxDate: bars.at(-1)?.date ?? "",
+            averageVolume:
+              bars.reduce((sum, bar) => sum + bar.volume, 0) / Math.max(1, bars.length),
+          },
+        });
+      }
+      migrated = true;
+      quant.log("info", "migration · single market artifact → yearly partition manifest");
     }
     quant.setConfig(project.config);
     if (project.outputs !== null) {
@@ -262,7 +380,7 @@ export async function restoreProject(services: RuntimeServices): Promise<boolean
       quant.restoreResult(signals, result, project.outputs);
     }
     quant.log("info", `restore · ${project.dataset.name} · ${dataset.bars.length} bars`);
-    if (project.dataset.ref.format === "json") await persistProject(services);
+    if (migrated) await persistProject(services);
     return true;
   } catch (error) {
     quant.log("warn", `restore project failed · ${String(error)}`);

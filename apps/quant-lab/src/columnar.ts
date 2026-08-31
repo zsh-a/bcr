@@ -69,6 +69,7 @@ async function metadataFor(
     engine: `DuckDB ${engine} · Arrow 17`,
     arrowBytes,
     parquetBytes,
+    partitionCount: 1,
     rowCount: Number(scalar(profile, "row_count")),
     minDate: String(scalar(profile, "min_date") ?? ""),
     maxDate: String(scalar(profile, "max_date") ?? ""),
@@ -89,9 +90,10 @@ async function exportParquet(
 /** 将行式 OHLCV 转为 Arrow IPC，并通过 DuckDB 物化为压缩 Parquet。 */
 export async function columnarizeMarketBars(
   input: ReadonlyArray<MarketBar>,
-  source: Exclude<ColumnarMetadata["source"], "parquet">,
+  source: ColumnarMetadata["source"],
+  minimumRows = 30,
 ): Promise<ColumnarDatasetPayload> {
-  const table = marketTableFromBars(input);
+  const table = marketTableFromBars(input, minimumRows);
   const arrow = tableToIPC(table, "stream");
   const db = await database();
   const connection = await db.connect();
@@ -108,7 +110,7 @@ export async function columnarizeMarketBars(
       arrow.byteLength,
       parquet.byteLength,
     );
-    return { bars: decodeMarketArrow(arrow), arrow, parquet, metadata };
+    return { bars: decodeMarketArrow(arrow, minimumRows), arrow, parquet, metadata };
   } finally {
     await connection.query(`DROP TABLE IF EXISTS "${relation}"`).catch(() => undefined);
     await db.dropFile(fileName).catch(() => null);

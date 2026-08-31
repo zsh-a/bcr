@@ -25,8 +25,8 @@ function finite(value: string | undefined, label: string, row: number): number {
 }
 
 /** 统一校验并按日期排序，CSV、Arrow 与 Parquet 三条入口共享同一数据契约。 */
-export function validateMarketBars(input: ReadonlyArray<MarketBar>): MarketBar[] {
-  if (input.length < 30) throw new Error("至少需要 30 根 K 线");
+export function validateMarketBars(input: ReadonlyArray<MarketBar>, minimumRows = 30): MarketBar[] {
+  if (input.length < minimumRows) throw new Error(`至少需要 ${minimumRows} 根 K 线`);
   const dates = new Set<string>();
   const bars = input.map((bar, index): MarketBar => {
     const row = index + 1;
@@ -57,6 +57,27 @@ export function validateMarketBars(input: ReadonlyArray<MarketBar>): MarketBar[]
     return { ...bar, date };
   });
   return bars.sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+}
+
+export interface MarketBarPartition {
+  readonly key: string;
+  readonly bars: ReadonlyArray<MarketBar>;
+}
+
+/** 按 UTC 年份切片；清单顺序稳定，因此可直接参与 Pipeline cache key。 */
+export function partitionMarketBarsByYear(
+  input: ReadonlyArray<MarketBar>,
+): ReadonlyArray<MarketBarPartition> {
+  const grouped = new Map<string, MarketBar[]>();
+  for (const bar of validateMarketBars(input)) {
+    const key = bar.date.slice(0, 4);
+    const partition = grouped.get(key) ?? [];
+    partition.push(bar);
+    grouped.set(key, partition);
+  }
+  return [...grouped.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, bars]) => ({ key, bars }));
 }
 
 /** 支持 date/open/high/low/close/volume 标准 OHLCV CSV；列名大小写不敏感。 */
@@ -108,7 +129,7 @@ export function parseMarketCsv(text: string): MarketBar[] {
 }
 
 /** 固定种子的多周期行情，确保首次打开即可复现并命中缓存。 */
-export function generateDemoMarket(count = 720): MarketBar[] {
+export function generateDemoMarket(count = 5_040): MarketBar[] {
   let seed = 0x5f3759df;
   const random = (): number => {
     seed = (Math.imul(seed, 1_664_525) + 1_013_904_223) >>> 0;
@@ -116,7 +137,7 @@ export function generateDemoMarket(count = 720): MarketBar[] {
   };
   const bars: MarketBar[] = [];
   let close = 100;
-  let timestamp = Date.UTC(2023, 0, 2);
+  let timestamp = Date.UTC(2006, 0, 2);
 
   while (bars.length < count) {
     const day = new Date(timestamp).getUTCDay();

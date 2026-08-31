@@ -32,13 +32,16 @@ export async function runStrategy(services: RuntimeServices): Promise<void> {
   if (state.dataset === null || state.running) return;
   const runId = `quant-${Date.now().toString(36)}`;
   const startedAt = Date.now();
-  const source = { ...state.dataset.ref, port: "market" };
+  const sources = state.dataset.partitions.map((partition, index) => ({
+    ...partition.ref,
+    port: `market-${index.toString().padStart(4, "0")}-${partition.key}`,
+  }));
   const nodes: ReadonlyArray<PipelineNode> = [
     {
       id: "signal",
       runtime: "js",
       operation: "quant.signal.sma-cross",
-      inputs: [source],
+      inputs: sources,
       outputs: [{ name: "signals", type: "quant/signals", storage: "opfs" }],
       resources: { memoryMB: 96, threads: 1 },
       cache: { enabled: true },
@@ -51,7 +54,7 @@ export async function runStrategy(services: RuntimeServices): Promise<void> {
       id: "backtest",
       runtime: "wasm",
       operation: "quant.backtest.long-only",
-      inputs: [source],
+      inputs: sources,
       bindings: [{ from: "signal", output: "signals", input: "signals" }],
       outputs: [
         { name: "equity", type: "quant/equity", storage: "opfs" },
@@ -70,7 +73,7 @@ export async function runStrategy(services: RuntimeServices): Promise<void> {
   quant.startRun(runId);
   quant.log(
     "info",
-    `pipeline · ${runId} · SMA(${state.config.fastPeriod}, ${state.config.slowPeriod})`,
+    `pipeline · ${runId} · ${sources.length} partitions · SMA(${state.config.fastPeriod}, ${state.config.slowPeriod})`,
   );
   try {
     const handle = await Effect.runPromise(services.scheduler.submitPipeline(runId, nodes));

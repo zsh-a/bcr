@@ -156,7 +156,11 @@ function Workbench() {
         <div className="ql-market-status">
           <i />
           REPLAY ONLINE
-          <span>{state.dataset?.name ?? "NO DATASET"}</span>
+          <span>
+            {state.dataset === null
+              ? "NO DATASET"
+              : `${state.dataset.name} · ${state.dataset.partitions.length} SHARDS`}
+          </span>
         </div>
         <div className="ql-actions">
           <input
@@ -285,6 +289,18 @@ function Workbench() {
             <b>{state.dataset?.name ?? "—"}</b>
             <span>{state.dataset?.columnar.rowCount.toLocaleString() ?? 0} DAILY BARS</span>
             <small>{dateRange}</small>
+            <div
+              className="ql-partition-index"
+              data-partitions={state.dataset?.partitions.length ?? 0}
+            >
+              <strong>{String(state.dataset?.partitions.length ?? 0).padStart(2, "0")}</strong>
+              <span>YEAR PARTITIONS</span>
+              <i>
+                {state.dataset === null
+                  ? "—"
+                  : `${state.dataset.partitions[0]?.key ?? "—"} / ${state.dataset.partitions.at(-1)?.key ?? "—"}`}
+              </i>
+            </div>
             <div className="ql-columnar-formats" data-columnar="ready">
               <em>ARROW {formatBytes(state.dataset?.columnar.arrowBytes ?? 0)}</em>
               <em>PARQUET {formatBytes(state.dataset?.columnar.parquetBytes ?? 0)}</em>

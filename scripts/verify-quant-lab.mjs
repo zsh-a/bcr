@@ -28,9 +28,13 @@ await page.waitForFunction(
 
 let body = await page.locator("body").innerText();
 if (!body.includes("BCR QUANT LAB")) fail("Quant Lab 未渲染");
-if (!body.includes("720 DAILY BARS")) fail("行情未加载或恢复");
+if (!body.includes("DAILY BARS")) fail("行情未加载或恢复");
 if (!body.includes("DuckDB") || !body.includes("ARROW") || !body.includes("PARQUET")) {
   fail("列式数据层未上线");
+}
+if (!body.includes("YEAR PARTITIONS")) fail("年度分区清单未上线");
+if (Number(await page.locator(".ql-partition-index").getAttribute("data-partitions")) < 1) {
+  fail("年度分区未物化");
 }
 if ((await page.locator(".ql-trade").count()) === 0) fail("回测未产生成交");
 

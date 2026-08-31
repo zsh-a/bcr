@@ -4,8 +4,8 @@ import type { MarketBar } from "./model";
 
 const COLUMNS = ["date", "open", "high", "low", "close", "volume"] as const;
 
-export function marketTableFromBars(input: ReadonlyArray<MarketBar>): Table {
-  const bars = validateMarketBars(input);
+export function marketTableFromBars(input: ReadonlyArray<MarketBar>, minimumRows = 30): Table {
+  const bars = validateMarketBars(input, minimumRows);
   return tableFromArrays({
     date: bars.map((bar) => bar.date),
     open: Float64Array.from(bars, (bar) => bar.open),
@@ -20,7 +20,7 @@ export function encodeMarketArrow(bars: ReadonlyArray<MarketBar>): Uint8Array {
   return tableToIPC(marketTableFromBars(bars), "stream");
 }
 
-export function decodeMarketArrow(bytes: Uint8Array): MarketBar[] {
+export function decodeMarketArrow(bytes: Uint8Array, minimumRows = 30): MarketBar[] {
   let table: Table;
   try {
     table = tableFromIPC(bytes);
@@ -39,5 +39,5 @@ export function decodeMarketArrow(bytes: Uint8Array): MarketBar[] {
     close: Number(vectors.close?.get(index)),
     volume: Number(vectors.volume?.get(index)),
   }));
-  return validateMarketBars(bars);
+  return validateMarketBars(bars, minimumRows);
 }

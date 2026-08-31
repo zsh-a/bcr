@@ -11,12 +11,24 @@ export interface MarketBar {
 
 export interface Dataset {
   readonly name: string;
-  /** Arrow IPC Artifact，作为 Worker Pipeline 的批量计算输入。 */
+  /** 年度分区清单 Artifact；Worker Pipeline 实际读取 partitions 中的 Arrow 批次。 */
   readonly ref: ArtifactRef;
   /** DuckDB 生成的 Parquet Artifact，作为紧凑、可导出的列式缓存。 */
   readonly parquetRef: ArtifactRef | null;
+  readonly partitions: ReadonlyArray<MarketPartition>;
   readonly bars: ReadonlyArray<MarketBar>;
   readonly columnar: ColumnarMetadata;
+}
+
+export interface MarketPartition {
+  readonly key: string;
+  readonly rowCount: number;
+  readonly minDate: string;
+  readonly maxDate: string;
+  readonly arrowBytes: number;
+  readonly parquetBytes: number;
+  readonly ref: ArtifactRef;
+  readonly parquetRef: ArtifactRef;
 }
 
 export interface ColumnarMetadata {
@@ -24,6 +36,7 @@ export interface ColumnarMetadata {
   readonly engine: string;
   readonly arrowBytes: number;
   readonly parquetBytes: number;
+  readonly partitionCount: number;
   readonly rowCount: number;
   readonly minDate: string;
   readonly maxDate: string;

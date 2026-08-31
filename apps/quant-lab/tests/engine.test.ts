@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { computeSmaSignals, generateDemoMarket, parseMarketCsv, runBacktest } from "../src/engine";
+import {
+  computeSmaSignals,
+  generateDemoMarket,
+  parseMarketCsv,
+  partitionMarketBarsByYear,
+  runBacktest,
+} from "../src/engine";
 
 describe("Quant engine", () => {
   it("生成确定性 OHLCV 演示行情", () => {
@@ -9,6 +15,17 @@ describe("Quant engine", () => {
     expect(first).toHaveLength(80);
     expect(first.every((bar) => bar.low <= Math.min(bar.open, bar.close))).toBe(true);
     expect(first.every((bar) => bar.high >= Math.max(bar.open, bar.close))).toBe(true);
+  });
+
+  it("默认生成二十年基准并按年度稳定分区", () => {
+    const bars = generateDemoMarket();
+    const partitions = partitionMarketBarsByYear(bars);
+
+    expect(bars).toHaveLength(5_040);
+    expect(partitions.length).toBeGreaterThanOrEqual(19);
+    expect(partitions.flatMap((partition) => partition.bars)).toEqual(bars);
+    const keys = partitions.map((partition) => partition.key);
+    expect(keys).toEqual(keys.toSorted());
   });
 
   it("解析标准 CSV 并按日期排序", () => {

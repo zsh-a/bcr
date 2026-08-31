@@ -129,13 +129,13 @@ decode ─┬─ wave（Rust peak kernel 波形）
 第二个上层应用用量化 batch workload 反向检验同一 Runtime 抽象：
 
 ```text
-CSV / Parquet → DuckDB WASM → Arrow IPC → SMA Cross → Rust/WASM Backtest
-                         └──→ ZSTD Parquet   └──→ Equity / Trades / Metrics
+CSV / Parquet → DuckDB WASM → Year Manifest → Arrow IPC shards → SMA Cross → Rust/WASM Backtest
+                                      └──────→ ZSTD Parquet shards └───────→ Equity / Trades / Metrics
 ```
 
-- 首次启动提供固定种子的 720 根日线演示行情，可导入标准 OHLCV CSV 或 Parquet
-- DuckDB WASM 对行情执行 schema 规范化、SQL profiling 和 ZSTD Parquet 物化；Arrow IPC 作为 Worker 批量输入
-- Arrow 与 Parquet 都以内容寻址 Artifact 写入 OPFS，Parquet 可直接下载并重新导入
+- 首次启动提供固定种子的 5,040 根日线基准行情，可导入标准 OHLCV CSV 或 Parquet
+- DuckDB WASM 对行情执行 schema 规范化、SQL profiling，并按年度物化 Arrow IPC / ZSTD Parquet 分区与内容寻址清单
+- Worker 并行读取年度 Arrow 分区；合并 Parquet 仍可直接下载并重新导入，旧单文件项目会自动迁移
 - 两节点 `submitPipeline` 在弹性 WorkerPool 中执行；行情内容、快慢周期、资金和费率均进入缓存键
 - Rust/WASM kernel 通过 Float64Array / Uint8Array 批次执行 long-only 回测，产出权益、交易与完整指标
 - Worker 会与 TypeScript 参考实现逐点校验；WASM 不可用或数值失配时显式标记降级
