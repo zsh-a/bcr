@@ -14,6 +14,24 @@
         "vitest": "^4.1.0",
       },
     },
+    "apps/market-board": {
+      "name": "@bcr/market-board",
+      "version": "0.1.0",
+      "dependencies": {
+        "@bcr/market-data": "workspace:*",
+        "@fontsource-variable/newsreader": "^5.2.8",
+        "@fontsource/ibm-plex-mono": "^5.3.0",
+        "@fontsource/ibm-plex-sans": "^5.3.0",
+        "lucide-react": "^1.37.0",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
+      },
+      "devDependencies": {
+        "@types/react": "^19.2.0",
+        "@types/react-dom": "^19.2.0",
+        "@vitejs/plugin-react": "^5.0.0",
+      },
+    },
     "apps/media-studio": {
       "name": "@bcr/media-studio",
       "version": "0.1.0",
@@ -71,6 +89,7 @@
       "dependencies": {
         "@base-ui/react": "^1.7.0",
         "@bcr/core": "workspace:*",
+        "@bcr/market-board": "workspace:*",
         "@bcr/media-studio": "workspace:*",
         "@bcr/quant-lab": "workspace:*",
         "@bcr/react": "workspace:*",
@@ -133,6 +152,13 @@
       },
       "devDependencies": {
         "@types/react": "^19.2.0",
+      },
+    },
+    "packages/market-data": {
+      "name": "@bcr/market-data",
+      "version": "0.1.0",
+      "dependencies": {
+        "stock-sdk": "2.4.2",
       },
     },
     "packages/react": {
@@ -226,6 +252,10 @@
 
     "@bcr/graph": ["@bcr/graph@workspace:packages/graph"],
 
+    "@bcr/market-board": ["@bcr/market-board@workspace:apps/market-board"],
+
+    "@bcr/market-data": ["@bcr/market-data@workspace:packages/market-data"],
+
     "@bcr/media-studio": ["@bcr/media-studio@workspace:apps/media-studio"],
 
     "@bcr/quant-lab": ["@bcr/quant-lab@workspace:apps/quant-lab"],
@@ -253,6 +283,8 @@
     "@floating-ui/react-dom": ["@floating-ui/react-dom@2.1.9", "https://registry.npmmirror.com/@floating-ui/react-dom/-/react-dom-2.1.9.tgz", { "dependencies": { "@floating-ui/dom": "^1.8.0" }, "peerDependencies": { "react": ">=16.8.0", "react-dom": ">=16.8.0" } }, "sha512-JDjEFGCpImxDCA7JJKviA0M9+RtmJdj0m/NVU5IMgBK+AmZouAQQ7/+2GLH0GXXY0YMw9oXPB8hKdbPYg5QLYg=="],
 
     "@floating-ui/utils": ["@floating-ui/utils@0.2.12", "https://registry.npmmirror.com/@floating-ui/utils/-/utils-0.2.12.tgz", {}, "sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww=="],
+
+    "@fontsource-variable/newsreader": ["@fontsource-variable/newsreader@5.3.0", "https://registry.npmmirror.com/@fontsource-variable/newsreader/-/newsreader-5.3.0.tgz", {}, "sha512-rrzYi43qMpbzwuFtf9OkWH8sxAPVPcQQQEwXpPtwaKYeJ8yVg5aLs5kawmo1f2Q1t1M38TLmEKCkGVDsYwgdFw=="],
 
     "@fontsource/ibm-plex-mono": ["@fontsource/ibm-plex-mono@5.3.0", "https://registry.npmmirror.com/@fontsource/ibm-plex-mono/-/ibm-plex-mono-5.3.0.tgz", {}, "sha512-eTgnZjZEGk1QtD3ZstF+Vclo2HLAni8YMy34/DxllwZvyz1lR/1RF/xTiAquOBO7MvqBx8D2Ig2WCPMVfdZu7Q=="],
 
@@ -893,6 +925,8 @@
     "stackback": ["stackback@0.0.2", "https://registry.npmmirror.com/stackback/-/stackback-0.0.2.tgz", {}, "sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw=="],
 
     "std-env": ["std-env@4.2.0", "https://registry.npmmirror.com/std-env/-/std-env-4.2.0.tgz", {}, "sha512-oCUKSupKTHX53EyjDtuZQ64pjLJ6yYCtpmEw0goYxtjG9KpbRe8KAsl2tBUGU9DyMcJ0RwJ8GqJAFzMXcXW1Rw=="],
+
+    "stock-sdk": ["stock-sdk@2.4.2", "https://registry.npmmirror.com/stock-sdk/-/stock-sdk-2.4.2.tgz", { "bin": { "stock-sdk": "dist/cli.js" } }, "sha512-tLtQSQZ1SmvkDNIbFpWABgpAvK2Iu2yDf3AoGtlKWe8rYSXMziOoMXXbf9b1KU7iIXR1G5AU/a8xeB7/37eutw=="],
 
     "supports-color": ["supports-color@7.2.0", "https://registry.npmmirror.com/supports-color/-/supports-color-7.2.0.tgz", { "dependencies": { "has-flag": "^4.0.0" } }, "sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw=="],
 

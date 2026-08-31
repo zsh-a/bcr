@@ -61,6 +61,9 @@ jobs:
       - name: Build Quant Lab
         run: node_modules/.bin/vp -C apps/quant-lab build
 
+      - name: Build Market Atlas
+        run: node_modules/.bin/vp -C apps/market-board build
+
       - name: Build BCR Studio
         run: node_modules/.bin/vp -C apps/studio build
 

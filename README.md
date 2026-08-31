@@ -2,7 +2,7 @@
 
 面向本地计算型 Web 应用的浏览器 Runtime 初版实现，对应 `docs/ARCHITECTURE.md` 的 Phase 1 核心抽象。
 
-本版范围：**核心 Runtime 包 + Media / Quant 两类端到端垂直切片**——
+本版范围：**核心 Runtime 包 + Media / Quant / Markets 三类端到端垂直切片**——
 文件或行情 → OPFS → Worker Pipeline → Artifact → 内容寻址缓存 → 跨刷新项目恢复。
 
 ## 仓库结构
@@ -13,11 +13,13 @@
 │   ├── runtime-worker/   # @bcr/runtime-worker：typed MessagePort 协议 / WorkerPool / WorkerExecutor
 │   ├── storage-opfs/     # @bcr/storage-opfs：BinaryStore 抽象，OPFS + Memory 实现
 │   ├── storage-sqlite/   # @bcr/storage-sqlite：SQLite WASM 元数据引擎（Cache / 血缘 / TaskJournal）
+│   ├── market-data/      # @bcr/market-data：统一市场数据契约 / stock-sdk 适配 / 缓存降级
 │   └── react/            # @bcr/react：RuntimeProvider / useSubmitTask / useTask / useArtifact
 ├── apps/
 │   ├── studio/           # BCR Studio 工作台 UI（Dockview + Tailwind 4 + Base UI）
 │   ├── media-studio/     # Media Studio · Subtitle——第一个上层应用（§0 孵化策略）
-│   └── quant-lab/        # Quant Lab · Strategy Workbench——第二类 workload 验证
+│   ├── quant-lab/        # Quant Lab · Strategy Workbench——第二类 workload 验证
+│   └── market-board/     # Market Atlas——CN / HK / US / 全球期货市场看板
 ├── crates/
 │   └── kernels/          # bcr-kernels：wasm-bindgen kernel（流式 BLAKE3 / RMS / Peak）
 └── examples/
@@ -46,6 +48,7 @@
 | §10.2 Whisper ASR                     | transformers.js ONNX（q8 / webgpu fp32+q4），失败回退演示引擎                        |
 | 文本翻译                              | opus-mt（英↔中方向可选）：逐条 cue 批量平移，1:1 对齐，无二次音频推理                |
 | §14 Quant workload                    | DuckDB WASM + Arrow IPC + Parquet → SMA Signal → Backtest Pipeline                   |
+| Market Atlas                          | stock-sdk → 统一 QuoteSnapshot → 缓存/演示降级 → 多市场看板                          |
 | §11 COOP/COEP                         | `apps/studio/vite.config.ts` 与 `apps/media-studio/vite.config.ts` 内置              |
 
 ## 命令
@@ -59,12 +62,14 @@ bun run demo           # 启动 demo（examples/demo）
 bun run studio         # 启动 BCR Studio 工作台（apps/studio）
 bun run media          # 启动 Media Studio · Subtitle（apps/media-studio）
 bun run quant          # 启动 Quant Lab · Strategy Workbench（apps/quant-lab）
+bun run markets        # 启动 Market Atlas（apps/market-board）
 cargo test --manifest-path crates/kernels/Cargo.toml
 bun run test:browser   # 自动启停 dev server，运行离线 Playwright 主链路
 ```
 
-GitHub Actions 会执行格式/类型/单测、Rust/WASM、三端生产构建，并在真实 Chromium 中验证
-Media Studio 短音频、150 秒分窗、Studio 刷新缓存/任务历史以及 Quant Lab 回测参数重跑；
+GitHub Actions 会执行格式/类型/单测、Rust/WASM、四端生产构建，并在真实 Chromium 中验证
+Media Studio 短音频、150 秒分窗、Studio 刷新缓存/任务历史、Quant Lab 回测参数重跑以及
+Market Atlas 数据质量与交互；
 失败时保留截图与 server 日志。
 
 ## BCR Studio（apps/studio）
@@ -144,6 +149,28 @@ CSV / Parquet → DuckDB WASM → Year Manifest → Arrow IPC shards → SMA Cro
 
 走查：`node scripts/verify-quant-lab.mjs`（由 `bun run test:browser` 自动执行）。
 
+## Market Atlas（apps/market-board）
+
+第四个 keep-alive 应用以实时、持续更新的 market-data workload 补充 Quant Lab 的批量计算链路：
+
+```text
+stock-sdk (CN / HK / US / Global Futures)
+             ↓
+@bcr/market-data canonical snapshot
+             ↓
+live delayed / partial / cached / demo quality states
+             ↓
+Market Atlas · sessions / pulse / breadth / futures / movers / watchlist
+```
+
+- `stock-sdk@2.4.2` 只存在于数据适配层；UI 不直接依赖第三方返回类型，后续可组合欧洲、日本、FX 数据源
+- CN / HK / US 与全球期货独立请求、独立健康状态；整体失败优先恢复 localStorage 最后快照，再显式降级 fixture
+- 行情始终展示来源、更新时间与 `DELAYED / PARTIAL / CACHED / DEMO` 质量，不把公开接口标记为撮合级实时数据
+- Midnight Atlas 编辑式界面提供全球交易时区轨道、市场焦点、方向宽度、跨资产行情、异动和持久化 Watchlist
+- 实时快照图只表达“昨收 → 最新”两点变化；确定性模拟曲线仅出现在明确标记的演示 fixture 中
+
+走查：`node scripts/verify-market-atlas.mjs`（由 `bun run test:browser` 自动执行）。
+
 ## Demo 验证路径
 
 1. 选择文件 → 写入 OPFS（FileArtifact）。
@@ -154,6 +181,6 @@ CSV / Parquet → DuckDB WASM → Year Manifest → Arrow IPC shards → SMA Cro
 
 ## 本版明确不做
 
-WIT Component Model、插件 capability 模型、Worker 崩溃健康替换、多资产组合与分区 Parquet、
+WIT Component Model、插件 capability 模型、Worker 崩溃健康替换、多资产组合、
 SIMD/多线程 Quant kernel、Vitest Browser Mode、跨设备任务迁移。
 对应架构文档 Phase 1 后续与 Phase 2/3。

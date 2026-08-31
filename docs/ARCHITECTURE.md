@@ -470,6 +470,7 @@ browser-compute/
 │   ├── runtime-worker/
 │   ├── storage-opfs/
 │   ├── storage-sqlite/
+│   ├── market-data/              # 多市场规范模型 / provider adapter / snapshot fallback
 │   └── react/
 │
 ├── crates/                      # Rust → WASM
@@ -480,9 +481,10 @@ browser-compute/
 │   └── quant-core/
 │
 ├── apps/
-│   ├── studio/                  # Shell 宿主：OS 式单页（/ · /studio · /media · /quant，keep-alive）
+│   ├── studio/                  # Shell 宿主：OS 式单页（/ · /studio · /media · /quant · /markets）
 │   ├── media-studio/            # 可挂载 App Module（@bcr/media-studio/app；standalone 入口保留）
-│   └── quant-lab/               # Phase 2 垂直切片：行情 / 信号 / 回测
+│   ├── quant-lab/               # Phase 2 垂直切片：行情 / 信号 / 回测
+│   └── market-board/            # 多市场延迟行情 / 数据质量 / Watchlist
 │
 ├── plugins/                     # ffmpeg-demux / resampler / subtitle / backtest / pdf / statistics / image
 │
@@ -515,7 +517,15 @@ Artifact / Cache / SQLite 链路，并完成 DuckDB WASM schema 规范化与 SQL
 Long-only Backtester 已下沉 Rust/WASM，以 f64 close + u8 position TypedArray 批次跨越 ABI，
 并在 Worker 内与 TypeScript reference 逐点校验后才接受结果。下一步扩展
 大数据集、多资产组合以及 SIMD/多线程 kernel。
-**Media + Quant 都能良好运行在同一 Runtime 上，即证明抽象成立。**
+**Media + Quant + Markets 都能良好运行在同一 Runtime 上，即证明抽象成立。**
+
+### Phase 2.5 — Market Atlas（首个实时数据表面已落地）
+
+`@bcr/market-data` 将 `stock-sdk` 隔离在 provider adapter 内，规范为统一的 instrument、quote、
+session、feed-health 数据契约。CN / HK / US / 全球期货分别请求；上游整体失败时按
+`live delayed → partial → cached → demo` 语义降级。`apps/market-board` 以第四个 keep-alive 路由
+挂入 Studio，当前完成全球时区轨道、市场脉搏、焦点行情、宽度、期货、异动和 Watchlist。
+下一步把历史 K 线物化为 `market/symbol/year` Arrow / Parquet 分区，并支持从看板将标的送入 Quant Lab。
 
 ### Phase 3 — 正式抽包与生态
 

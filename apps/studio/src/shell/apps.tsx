@@ -1,4 +1,4 @@
-import { AudioWaveform, ChartCandlestick, LayoutGrid, type LucideIcon } from "lucide-react";
+import { AudioWaveform, ChartCandlestick, Globe2, LayoutGrid, type LucideIcon } from "lucide-react";
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 import { Dock } from "../components/Dock";
 
@@ -7,9 +7,9 @@ import { Dock } from "../components/Dock";
  * 领域 App 经 workspace 包源码挂载，首次进入才加载对应 chunk。
  */
 export interface AppDef {
-  readonly id: "studio" | "media" | "quant";
+  readonly id: "studio" | "media" | "quant" | "markets";
   readonly title: string;
-  readonly path: "/studio" | "/media" | "/quant";
+  readonly path: "/studio" | "/media" | "/quant" | "/markets";
   readonly icon: LucideIcon;
   readonly description: string;
   readonly component: ComponentType | LazyExoticComponent<ComponentType>;
@@ -39,6 +39,14 @@ export const APPS: ReadonlyArray<AppDef> = [
     icon: ChartCandlestick,
     description: "本地策略研究 · OHLCV / SMA 信号 / 回测权益 / 成交分析",
     component: lazy(() => import("@bcr/quant-lab/app").then((m) => ({ default: m.App }))),
+  },
+  {
+    id: "markets",
+    title: "Market Atlas",
+    path: "/markets",
+    icon: Globe2,
+    description: "全球市场脉搏 · CN / HK / US / 全球期货 · 延迟行情与数据健康",
+    component: lazy(() => import("@bcr/market-board/app").then((m) => ({ default: m.App }))),
   },
 ];
 

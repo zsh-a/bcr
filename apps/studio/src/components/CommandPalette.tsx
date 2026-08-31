@@ -5,6 +5,7 @@ import {
   ChartCandlestick,
   Eraser,
   FilePlus2,
+  Globe2,
   Hash,
   House,
   LayoutGrid,
@@ -63,6 +64,13 @@ export function CommandPalette(props: { open: boolean; onOpenChange: (open: bool
         hint: "Alt+3",
         icon: <ChartCandlestick className="size-3.5" />,
         run: () => void navigate({ to: "/quant" }),
+      },
+      {
+        id: "go-markets",
+        title: "打开 Market Atlas",
+        hint: "Alt+4",
+        icon: <Globe2 className="size-3.5" />,
+        run: () => void navigate({ to: "/markets" }),
       },
       {
         id: "import",

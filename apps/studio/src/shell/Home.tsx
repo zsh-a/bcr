@@ -14,16 +14,12 @@ export function Home() {
   const mediaRunning = useMediaStudio((s) => s.running);
   const quantRunning = useQuantLab((s) => s.running);
 
-  const runningBadge = (id: string): number =>
-    id === "studio"
-      ? studioRunning
-      : id === "media"
-        ? mediaRunning
-          ? 1
-          : 0
-        : quantRunning
-          ? 1
-          : 0;
+  const runningBadge = (id: string): number => {
+    if (id === "studio") return studioRunning;
+    if (id === "media") return mediaRunning ? 1 : 0;
+    if (id === "quant") return quantRunning ? 1 : 0;
+    return 0;
+  };
 
   return (
     <div className="h-full overflow-y-auto p-6">
