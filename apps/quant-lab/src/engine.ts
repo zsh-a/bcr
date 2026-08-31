@@ -16,6 +16,41 @@ function finite(value: string | undefined, label: string, row: number): number {
   return parsed;
 }
 
+/** 统一校验并按日期排序，CSV、Arrow 与 Parquet 三条入口共享同一数据契约。 */
+export function validateMarketBars(input: ReadonlyArray<MarketBar>): MarketBar[] {
+  if (input.length < 30) throw new Error("至少需要 30 根 K 线");
+  const dates = new Set<string>();
+  const bars = input.map((bar, index): MarketBar => {
+    const row = index + 1;
+    const timestamp = Date.parse(bar.date);
+    if (bar.date.length === 0 || Number.isNaN(timestamp)) {
+      throw new Error(`第 ${row} 行 date 无效`);
+    }
+    const date = new Date(timestamp).toISOString().slice(0, 10);
+    if (dates.has(date)) throw new Error(`第 ${row} 行 date 重复`);
+    dates.add(date);
+    for (const [label, value] of Object.entries(bar)) {
+      if (label !== "date" && !Number.isFinite(value)) {
+        throw new Error(`第 ${row} 行 ${label} 不是有效数字`);
+      }
+    }
+    if (
+      bar.open <= 0 ||
+      bar.high <= 0 ||
+      bar.low <= 0 ||
+      bar.close <= 0 ||
+      bar.volume < 0 ||
+      bar.low > Math.min(bar.open, bar.close) ||
+      bar.high < Math.max(bar.open, bar.close) ||
+      bar.low > bar.high
+    ) {
+      throw new Error(`第 ${row} 行 OHLCV 关系无效`);
+    }
+    return { ...bar, date };
+  });
+  return bars.sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+}
+
 /** 支持 date/open/high/low/close/volume 标准 OHLCV CSV；列名大小写不敏感。 */
 export function parseMarketCsv(text: string): MarketBar[] {
   const lines = text
@@ -61,8 +96,7 @@ export function parseMarketCsv(text: string): MarketBar[] {
     return bar;
   });
 
-  if (bars.length < 30) throw new Error("至少需要 30 根 K 线");
-  return bars.sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+  return validateMarketBars(bars);
 }
 
 /** 固定种子的多周期行情，确保首次打开即可复现并命中缓存。 */
@@ -96,7 +130,7 @@ export function generateDemoMarket(count = 720): MarketBar[] {
       volume: Math.round(600_000 + random() * 1_900_000 + Math.abs(shock) * 35_000_000),
     });
   }
-  return bars;
+  return validateMarketBars(bars);
 }
 
 export function computeSmaSignals(
@@ -148,7 +182,7 @@ export function runBacktest(
     throw new Error("行情与信号长度必须一致且非空");
   }
   const initialCapital = Math.max(1, config.initialCapital);
-  const fee = Math.max(0, config.feeBps) / 10_000;
+  const fee = Math.min(0.99, Math.max(0, config.feeBps) / 10_000);
   const equity: EquityPoint[] = [];
   const trades: Trade[] = [];
   const dailyReturns: number[] = [];

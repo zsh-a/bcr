@@ -11,8 +11,23 @@ export interface MarketBar {
 
 export interface Dataset {
   readonly name: string;
+  /** Arrow IPC Artifact，作为 Worker Pipeline 的批量计算输入。 */
   readonly ref: ArtifactRef;
+  /** DuckDB 生成的 Parquet Artifact，作为紧凑、可导出的列式缓存。 */
+  readonly parquetRef: ArtifactRef | null;
   readonly bars: ReadonlyArray<MarketBar>;
+  readonly columnar: ColumnarMetadata;
+}
+
+export interface ColumnarMetadata {
+  readonly source: "demo" | "csv" | "parquet" | "legacy-json";
+  readonly engine: string;
+  readonly arrowBytes: number;
+  readonly parquetBytes: number;
+  readonly rowCount: number;
+  readonly minDate: string;
+  readonly maxDate: string;
+  readonly averageVolume: number;
 }
 
 export interface StrategyConfig {

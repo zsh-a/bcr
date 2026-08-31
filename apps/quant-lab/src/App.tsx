@@ -6,9 +6,10 @@ import { TradeBlotter } from "./components/TradeBlotter";
 import { cancelStrategy, runStrategy } from "./pipeline";
 import {
   createRuntimeServices,
-  importCsvDataset,
+  importMarketDataset,
   loadDemoDataset,
   persistProject,
+  readDatasetParquet,
   restoreProject,
 } from "./runtime";
 import { quant, useQuantLab } from "./store";
@@ -59,6 +60,21 @@ function percent(value: number): string {
   return `${value >= 0 ? "+" : ""}${(value * 100).toFixed(2)}%`;
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function downloadFile(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = name;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 function Workbench() {
   const services = useRuntime();
   const state = useQuantLab((snapshot) => snapshot);
@@ -86,7 +102,7 @@ function Workbench() {
 
   const importFile = async (file: File): Promise<void> => {
     try {
-      await importCsvDataset(services, file);
+      await importMarketDataset(services, file);
       await persistProject(services);
       void runStrategy(services);
     } catch (error) {
@@ -109,13 +125,22 @@ function Workbench() {
         ].join(","),
       ),
     ].join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "quant-lab-trades.csv";
-    anchor.click();
-    URL.revokeObjectURL(url);
+    downloadFile(new Blob([csv], { type: "text/csv" }), "quant-lab-trades.csv");
     quant.log("ok", `export · ${trades.length} trades`);
+  };
+
+  const exportParquet = async (): Promise<void> => {
+    try {
+      const bytes = await readDatasetParquet(services);
+      const baseName = (state.dataset?.name ?? "quant-market").replace(/\.(csv|parquet)$/i, "");
+      downloadFile(
+        new Blob([bytes.slice().buffer], { type: "application/vnd.apache.parquet" }),
+        `${baseName}.parquet`,
+      );
+      quant.log("ok", `export · Parquet · ${formatBytes(bytes.byteLength)}`);
+    } catch (error) {
+      quant.log("error", `export · ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   return (
@@ -137,7 +162,7 @@ function Workbench() {
           <input
             ref={inputRef}
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,.parquet,text/csv,application/vnd.apache.parquet"
             hidden
             onChange={(event) => {
               const file = event.target.files?.[0];
@@ -146,10 +171,17 @@ function Workbench() {
             }}
           />
           <button type="button" onClick={() => inputRef.current?.click()} disabled={state.running}>
-            <Upload /> IMPORT CSV
+            <Upload /> IMPORT DATA
+          </button>
+          <button
+            type="button"
+            onClick={() => void exportParquet()}
+            disabled={state.dataset?.parquetRef == null}
+          >
+            <Database /> PARQUET
           </button>
           <button type="button" onClick={exportTrades} disabled={state.result === null}>
-            <Download /> EXPORT
+            <Download /> TRADES CSV
           </button>
           {state.running ? (
             <button type="button" className="danger" onClick={() => void cancelStrategy()}>
@@ -251,8 +283,13 @@ function Workbench() {
               <Database /> DATASET
             </div>
             <b>{state.dataset?.name ?? "—"}</b>
-            <span>{bars.length.toLocaleString()} DAILY BARS</span>
+            <span>{state.dataset?.columnar.rowCount.toLocaleString() ?? 0} DAILY BARS</span>
             <small>{dateRange}</small>
+            <div className="ql-columnar-formats" data-columnar="ready">
+              <em>ARROW {formatBytes(state.dataset?.columnar.arrowBytes ?? 0)}</em>
+              <em>PARQUET {formatBytes(state.dataset?.columnar.parquetBytes ?? 0)}</em>
+            </div>
+            <small>{state.dataset?.columnar.engine ?? "COLUMNAR ENGINE OFFLINE"}</small>
             <small>{state.dataset?.ref.hash?.slice(0, 16) ?? "NO CONTENT HASH"}</small>
           </div>
 

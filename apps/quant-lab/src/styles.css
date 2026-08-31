@@ -370,6 +370,22 @@ body {
   font-size: 8px;
 }
 
+.ql-dataset-block .ql-columnar-formats {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 9px 0 5px;
+}
+
+.ql-columnar-formats em {
+  padding: 3px 5px;
+  border: 1px solid color-mix(in srgb, var(--ql-cyan) 38%, var(--ql-line));
+  color: var(--ql-cyan);
+  font-size: 7px;
+  font-style: normal;
+  letter-spacing: 0.03em;
+}
+
 .ql-pipeline-map {
   padding: 18px 10px;
 }

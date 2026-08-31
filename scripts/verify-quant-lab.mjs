@@ -1,4 +1,4 @@
-/* Quant Lab 主链路：演示行情 → Worker Pipeline → 指标/成交 → 参数重跑。 */
+/* Quant Lab 主链路：列式行情 → Worker Pipeline → Parquet 往返 → 参数重跑。 */
 import { launchVerifyBrowser } from "./verify-browser.mjs";
 
 const base = new URL(process.env.BASE_URL ?? "http://localhost:5199/studio");
@@ -28,8 +28,29 @@ await page.waitForFunction(
 
 let body = await page.locator("body").innerText();
 if (!body.includes("BCR QUANT LAB")) fail("Quant Lab 未渲染");
-if (!body.includes("BCR-SYNTH / DAILY")) fail("演示行情未加载");
+if (!body.includes("720 DAILY BARS")) fail("行情未加载或恢复");
+if (!body.includes("DuckDB") || !body.includes("ARROW") || !body.includes("PARQUET")) {
+  fail("列式数据层未上线");
+}
 if ((await page.locator(".ql-trade").count()) === 0) fail("回测未产生成交");
+
+const parquetPath = `${dir}/quant-market.parquet`;
+const download = page.waitForEvent("download");
+await page.getByRole("button", { name: "PARQUET" }).click();
+await (await download).saveAs(parquetPath);
+await page.locator('input[type="file"]').setInputFiles(parquetPath);
+try {
+  await page.waitForFunction(
+    () =>
+      document.querySelector(".ql-market-status")?.textContent?.includes("quant-market.parquet"),
+    undefined,
+    { timeout: 45_000 },
+  );
+} catch (error) {
+  console.error(`Parquet import diagnostics:\n${await page.locator("body").innerText()}`);
+  throw error;
+}
+await page.getByRole("button", { name: "RUN BACKTEST" }).waitFor({ timeout: 20_000 });
 
 await page.getByLabel("Fast window").fill("16");
 await page.getByLabel("Slow window").fill("64");

@@ -480,7 +480,7 @@ browser-compute/
 │   └── quant-core/
 │
 ├── apps/
-│   ├── studio/                  # Shell 宿主：OS 式单页（/ 启动台 · /studio · /media，keep-alive 切换）
+│   ├── studio/                  # Shell 宿主：OS 式单页（/ · /studio · /media · /quant，keep-alive）
 │   ├── media-studio/            # 可挂载 App Module（@bcr/media-studio/app；standalone 入口保留）
 │   └── quant-lab/               # Phase 2 垂直切片：行情 / 信号 / 回测
 │
@@ -508,9 +508,10 @@ Task Scheduler · Artifact · Worker Pool · OPFS · Cache · Cancellation
 DuckDB WASM · Arrow · Rust Backtester · Parquet Cache
 ```
 
-当前已先用 `OHLCV → SMA Signal → Long-only Backtest` 跑通同一 Scheduler / WorkerPool /
-Artifact / Cache / SQLite 链路；下一步替换为 DuckDB WASM + Arrow/Parquet + Rust Backtester，
-测试 columnar data / batch compute / large datasets。
+当前 `OHLCV → SMA Signal → Long-only Backtest` 已跑通同一 Scheduler / WorkerPool /
+Artifact / Cache / SQLite 链路，并完成 DuckDB WASM schema 规范化与 SQL profiling、Arrow IPC
+批量计算输入、ZSTD Parquet 内容寻址缓存及 Parquet 导入/导出。旧 JSON 项目会在恢复时自动迁移。
+下一步将 TypeScript Backtester 下沉至 Rust/WASM，并扩展分区 Parquet、大数据集和多资产组合。
 **Media + Quant 都能良好运行在同一 Runtime 上，即证明抽象成立。**
 
 ### Phase 3 — 正式抽包与生态

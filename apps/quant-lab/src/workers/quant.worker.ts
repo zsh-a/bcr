@@ -1,6 +1,7 @@
 import { artifactPath, contentHash, type ArtifactRef, type ComputeTask } from "@bcr/core";
 import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
+import { decodeMarketArrow } from "../arrow";
 import { computeSmaSignals, runBacktest } from "../engine";
 import type { MarketBar, SignalPoint } from "../model";
 
@@ -16,9 +17,21 @@ function pickInput(task: ComputeTask, port: string, type: string): ArtifactRef {
 }
 
 async function readJson<T>(ref: ArtifactRef): Promise<T> {
+  const bytes = await readBytes(ref);
+  return JSON.parse(decoder.decode(bytes)) as T;
+}
+
+async function readBytes(ref: ArtifactRef): Promise<Uint8Array> {
   const bytes = await opfs.get(artifactPath(ref));
   if (bytes === undefined) throw new Error(`artifact not found: ${ref.id}`);
-  return JSON.parse(decoder.decode(bytes)) as T;
+  return bytes;
+}
+
+async function readMarket(ref: ArtifactRef): Promise<ReadonlyArray<MarketBar>> {
+  const bytes = await readBytes(ref);
+  return ref.format === "json"
+    ? (JSON.parse(decoder.decode(bytes)) as ReadonlyArray<MarketBar>)
+    : decodeMarketArrow(bytes);
 }
 
 async function persistJson(prefix: string, type: string, value: unknown): Promise<ArtifactRef> {
@@ -45,7 +58,7 @@ async function signalTask(
   ctx: WorkerContext,
 ): Promise<ReadonlyArray<ArtifactRef>> {
   ctx.progress(0.08);
-  const bars = await readJson<ReadonlyArray<MarketBar>>(pickInput(task, "market", "market/ohlcv"));
+  const bars = await readMarket(pickInput(task, "market", "market/ohlcv+arrow"));
   if (ctx.signal.aborted) throw new Error("cancelled");
   ctx.progress(0.42);
   const signals = computeSmaSignals(
@@ -65,7 +78,7 @@ async function backtestTask(
 ): Promise<ReadonlyArray<ArtifactRef>> {
   ctx.progress(0.06);
   const [bars, signals] = await Promise.all([
-    readJson<ReadonlyArray<MarketBar>>(pickInput(task, "market", "market/ohlcv")),
+    readMarket(pickInput(task, "market", "market/ohlcv+arrow")),
     readJson<ReadonlyArray<SignalPoint>>(pickInput(task, "signals", "quant/signals")),
   ]);
   if (ctx.signal.aborted) throw new Error("cancelled");

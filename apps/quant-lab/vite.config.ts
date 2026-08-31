@@ -4,7 +4,7 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
-    exclude: ["@sqlite.org/sqlite-wasm"],
+    exclude: ["@duckdb/duckdb-wasm", "@sqlite.org/sqlite-wasm"],
   },
   worker: { format: "es" },
   server: {

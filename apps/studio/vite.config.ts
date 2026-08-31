@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [tailwindcss(), react()],
   optimizeDeps: {
     // emscripten / onnxruntime 类模块不做 esbuild 预打包；wasm 路径由 locateFile 注入
-    exclude: ["@sqlite.org/sqlite-wasm", "@huggingface/transformers"],
+    exclude: ["@duckdb/duckdb-wasm", "@sqlite.org/sqlite-wasm", "@huggingface/transformers"],
   },
   worker: {
     // transformers.js 在 worker 内动态 import 分包，需要 es 格式
