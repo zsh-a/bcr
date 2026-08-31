@@ -1,15 +1,15 @@
-import { AudioWaveform, LayoutGrid, type LucideIcon } from "lucide-react";
+import { AudioWaveform, ChartCandlestick, LayoutGrid, type LucideIcon } from "lucide-react";
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 import { Dock } from "../components/Dock";
 
 /**
  * App 注册表（OS 式 Shell）：每个 App 一条路由、一个懒加载组件。
- * media 经 workspace 包源码挂载（@bcr/media-studio/app），首次进入才加载 chunk。
+ * 领域 App 经 workspace 包源码挂载，首次进入才加载对应 chunk。
  */
 export interface AppDef {
-  readonly id: "studio" | "media";
+  readonly id: "studio" | "media" | "quant";
   readonly title: string;
-  readonly path: "/studio" | "/media";
+  readonly path: "/studio" | "/media" | "/quant";
   readonly icon: LucideIcon;
   readonly description: string;
   readonly component: ComponentType | LazyExoticComponent<ComponentType>;
@@ -31,6 +31,14 @@ export const APPS: ReadonlyArray<AppDef> = [
     icon: AudioWaveform,
     description: "本地语音转字幕 · Whisper ASR / 双语翻译 / SRT·VTT·ASS 导出",
     component: lazy(() => import("@bcr/media-studio/app").then((m) => ({ default: m.App }))),
+  },
+  {
+    id: "quant",
+    title: "Quant Lab",
+    path: "/quant",
+    icon: ChartCandlestick,
+    description: "本地策略研究 · OHLCV / SMA 信号 / 回测权益 / 成交分析",
+    component: lazy(() => import("@bcr/quant-lab/app").then((m) => ({ default: m.App }))),
   },
 ];
 

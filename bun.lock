@@ -40,6 +40,29 @@
         "tailwindcss": "^4.3.3",
       },
     },
+    "apps/quant-lab": {
+      "name": "@bcr/quant-lab",
+      "version": "0.1.0",
+      "dependencies": {
+        "@bcr/core": "workspace:*",
+        "@bcr/react": "workspace:*",
+        "@bcr/runtime-worker": "workspace:*",
+        "@bcr/storage-opfs": "workspace:*",
+        "@bcr/storage-sqlite": "workspace:*",
+        "@fontsource/ibm-plex-mono": "^5.3.0",
+        "@fontsource/ibm-plex-sans": "^5.3.0",
+        "@sqlite.org/sqlite-wasm": "3.53.0-build1",
+        "effect": "^3.22.1",
+        "lucide-react": "^1.37.0",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
+      },
+      "devDependencies": {
+        "@types/react": "^19.2.0",
+        "@types/react-dom": "^19.2.0",
+        "@vitejs/plugin-react": "^5.0.0",
+      },
+    },
     "apps/studio": {
       "name": "@bcr/studio",
       "version": "0.1.0",
@@ -47,6 +70,7 @@
         "@base-ui/react": "^1.7.0",
         "@bcr/core": "workspace:*",
         "@bcr/media-studio": "workspace:*",
+        "@bcr/quant-lab": "workspace:*",
         "@bcr/react": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
@@ -201,6 +225,8 @@
     "@bcr/graph": ["@bcr/graph@workspace:packages/graph"],
 
     "@bcr/media-studio": ["@bcr/media-studio@workspace:apps/media-studio"],
+
+    "@bcr/quant-lab": ["@bcr/quant-lab@workspace:apps/quant-lab"],
 
     "@bcr/react": ["@bcr/react@workspace:packages/react"],
 

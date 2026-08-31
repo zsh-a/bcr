@@ -482,7 +482,7 @@ browser-compute/
 ├── apps/
 │   ├── studio/                  # Shell 宿主：OS 式单页（/ 启动台 · /studio · /media，keep-alive 切换）
 │   ├── media-studio/            # 可挂载 App Module（@bcr/media-studio/app；standalone 入口保留）
-│   └── quant-lab/               # （Phase 2 规划）
+│   └── quant-lab/               # Phase 2 垂直切片：行情 / 信号 / 回测
 │
 ├── plugins/                     # ffmpeg-demux / resampler / subtitle / backtest / pdf / statistics / image
 │
@@ -502,13 +502,15 @@ Task Scheduler · Artifact · Worker Pool · OPFS · Cache · Cancellation
 
 验证关键问题：大数据、streaming、CPU、GPU、storage —— 几乎全部核心假设在这一步得到检验。
 
-### Phase 2 — 加入 Quant workload
+### Phase 2 — 加入 Quant workload（垂直切片已落地）
 
 ```text
 DuckDB WASM · Arrow · Rust Backtester · Parquet Cache
 ```
 
-测试另一类 workload：columnar data / batch compute / large datasets。
+当前已先用 `OHLCV → SMA Signal → Long-only Backtest` 跑通同一 Scheduler / WorkerPool /
+Artifact / Cache / SQLite 链路；下一步替换为 DuckDB WASM + Arrow/Parquet + Rust Backtester，
+测试 columnar data / batch compute / large datasets。
 **Media + Quant 都能良好运行在同一 Runtime 上，即证明抽象成立。**
 
 ### Phase 3 — 正式抽包与生态

@@ -2,8 +2,8 @@
 
 面向本地计算型 Web 应用的浏览器 Runtime 初版实现，对应 `docs/ARCHITECTURE.md` 的 Phase 1 核心抽象。
 
-本版范围：**核心 Runtime 包 + 一条端到端垂直切片**——
-文件 → OPFS → Worker 内 WASM kernel（分块流式）→ Artifact → 内容寻址缓存命中。
+本版范围：**核心 Runtime 包 + Media / Quant 两类端到端垂直切片**——
+文件或行情 → OPFS → Worker Pipeline → Artifact → 内容寻址缓存 → 跨刷新项目恢复。
 
 ## 仓库结构
 
@@ -16,7 +16,8 @@
 │   └── react/            # @bcr/react：RuntimeProvider / useSubmitTask / useTask / useArtifact
 ├── apps/
 │   ├── studio/           # BCR Studio 工作台 UI（Dockview + Tailwind 4 + Base UI）
-│   └── media-studio/     # Media Studio · Subtitle——第一个上层应用（§0 孵化策略）
+│   ├── media-studio/     # Media Studio · Subtitle——第一个上层应用（§0 孵化策略）
+│   └── quant-lab/        # Quant Lab · Strategy Workbench——第二类 workload 验证
 ├── crates/
 │   └── kernels/          # bcr-kernels：wasm-bindgen kernel（流式 BLAKE3 / RMS / Peak）
 └── examples/
@@ -44,6 +45,7 @@
 | §10.1 WebGPU 探测降级                 | `apps/media-studio`：ASR device=auto（GPU→WASM 静默降级）/显式选择；headless 走 WASM |
 | §10.2 Whisper ASR                     | transformers.js ONNX（q8 / webgpu fp32+q4），失败回退演示引擎                        |
 | 文本翻译                              | opus-mt（英↔中方向可选）：逐条 cue 批量平移，1:1 对齐，无二次音频推理                |
+| §14 Quant workload                    | OHLCV → SMA Signal → Backtest Pipeline；权益、回撤、Sharpe、成交 Artifact            |
 | §11 COOP/COEP                         | `apps/studio/vite.config.ts` 与 `apps/media-studio/vite.config.ts` 内置              |
 
 ## 命令
@@ -56,12 +58,14 @@ bun run check          # format + lint + 全 workspace TypeScript 类型检查
 bun run demo           # 启动 demo（examples/demo）
 bun run studio         # 启动 BCR Studio 工作台（apps/studio）
 bun run media          # 启动 Media Studio · Subtitle（apps/media-studio）
+bun run quant          # 启动 Quant Lab · Strategy Workbench（apps/quant-lab）
 cargo test --manifest-path crates/kernels/Cargo.toml
 bun run test:browser   # 自动启停 dev server，运行离线 Playwright 主链路
 ```
 
 GitHub Actions 会执行格式/类型/单测、Rust/WASM、三端生产构建，并在真实 Chromium 中验证
-Media Studio 短音频、150 秒分窗和 Studio 刷新缓存/任务历史闭环；失败时保留截图与 server 日志。
+Media Studio 短音频、150 秒分窗、Studio 刷新缓存/任务历史以及 Quant Lab 回测参数重跑；
+失败时保留截图与 server 日志。
 
 ## BCR Studio（apps/studio）
 
@@ -120,6 +124,23 @@ decode ─┬─ wave（Rust peak kernel 波形）
 
 工具链为 [Vite+](https://viteplus.dev)（`vp` CLI 以本地 devDependency `vite-plus` 提供，不经全局安装）。
 
+## Quant Lab（apps/quant-lab）
+
+第二个上层应用用量化 batch workload 反向检验同一 Runtime 抽象：
+
+```text
+OHLCV Artifact → SMA Cross Signal → Long-only Backtest
+                              └──→ Equity / Trades / Metrics Artifacts
+```
+
+- 首次启动提供固定种子的 720 根日线演示行情，也可导入标准 `date,open,high,low,close,volume` CSV
+- 两节点 `submitPipeline` 在弹性 WorkerPool 中执行；行情内容、快慢周期、资金和费率均进入缓存键
+- 回测产出总收益、CAGR、Sharpe、最大回撤、胜率、暴露度、权益曲线和逐笔成交
+- 行情、结果 Artifact、Cache、血缘、TaskJournal 与项目参数经 OPFS + SQLite 跨刷新恢复
+- UI 采用高密度策略终端：价格/双均线/买卖点、权益曲线、Pipeline 状态和 Trade Blotter 同屏
+
+走查：`node scripts/verify-quant-lab.mjs`（由 `bun run test:browser` 自动执行）。
+
 ## Demo 验证路径
 
 1. 选择文件 → 写入 OPFS（FileArtifact）。
@@ -130,6 +151,6 @@ decode ─┬─ wave（Rust peak kernel 波形）
 
 ## 本版明确不做
 
-WIT Component Model、插件 capability 模型、Worker 崩溃健康替换、
-Vitest Browser Mode、跨设备任务迁移。
+WIT Component Model、插件 capability 模型、Worker 崩溃健康替换、DuckDB/Arrow/Parquet
+列式数据层、Vitest Browser Mode、跨设备任务迁移。
 对应架构文档 Phase 1 后续与 Phase 2/3。

@@ -1,3 +1,5 @@
+import { useStudio as useMediaStudio } from "@bcr/media-studio/store";
+import { useQuantLab } from "@bcr/quant-lab/store";
 import { useNavigate } from "@tanstack/react-router";
 import { Command, Cpu, House, SquareTerminal } from "lucide-react";
 import { APPS, type ActiveView } from "../shell/apps";
@@ -6,7 +8,10 @@ import { useStudio } from "../store";
 /** 顶部工具栏：⌂ 返回主页 / 当前 App / 运行中任务指示 / 命令面板入口。 */
 export function TopBar(props: { active: ActiveView; onOpenPalette: () => void }) {
   const navigate = useNavigate();
-  const running = useStudio((s) => s.runningCount);
+  const studioRunning = useStudio((s) => s.runningCount);
+  const mediaRunning = useMediaStudio((s) => s.running);
+  const quantRunning = useQuantLab((s) => s.running);
+  const running = studioRunning + (mediaRunning ? 1 : 0) + (quantRunning ? 1 : 0);
   const taskTotal = useStudio((s) => s.tasks.length);
   const activeApp = APPS.find((app) => app.id === props.active);
 

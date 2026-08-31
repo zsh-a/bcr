@@ -1,6 +1,15 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { useNavigate } from "@tanstack/react-router";
-import { AudioWaveform, Eraser, FilePlus2, Hash, House, LayoutGrid, Search } from "lucide-react";
+import {
+  AudioWaveform,
+  ChartCandlestick,
+  Eraser,
+  FilePlus2,
+  Hash,
+  House,
+  LayoutGrid,
+  Search,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { resetLayout } from "./Dock";
 import { importFile, runTask } from "../runtime";
@@ -47,6 +56,13 @@ export function CommandPalette(props: { open: boolean; onOpenChange: (open: bool
         hint: "Alt+2",
         icon: <AudioWaveform className="size-3.5" />,
         run: () => void navigate({ to: "/media" }),
+      },
+      {
+        id: "go-quant",
+        title: "打开 Quant Lab",
+        hint: "Alt+3",
+        icon: <ChartCandlestick className="size-3.5" />,
+        run: () => void navigate({ to: "/quant" }),
       },
       {
         id: "import",

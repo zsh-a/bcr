@@ -93,7 +93,7 @@ await withServer({
   name: "studio",
   app: "apps/studio",
   url: "http://127.0.0.1:5199/studio",
-  checks: ["scripts/verify-persistence.mjs"],
+  checks: ["scripts/verify-persistence.mjs", "scripts/verify-quant-lab.mjs"],
 });
 
 console.log("browser CI verification PASSED");

@@ -58,6 +58,9 @@ jobs:
       - name: Build Media Studio
         run: node_modules/.bin/vp -C apps/media-studio build
 
+      - name: Build Quant Lab
+        run: node_modules/.bin/vp -C apps/quant-lab build
+
       - name: Build BCR Studio
         run: node_modules/.bin/vp -C apps/studio build
 

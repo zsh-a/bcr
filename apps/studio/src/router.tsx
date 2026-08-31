@@ -12,7 +12,7 @@ import { Shell } from "./shell/Shell";
  * §12：navigational state 归 TanStack Router——选择中的文件/任务放 URL，
  * 复制链接即可恢复同一个 workspace view。
  *
- * 路由只做 URL/search 状态机：`/` 启动台 · `/studio` · `/media`。
+ * 路由只做 URL/search 状态机：`/` 启动台 · `/studio` · `/media` · `/quant`。
  * App 组件不由 Outlet 渲染，而由 Shell 的 keep-alive 容器常驻挂载（切走仅隐藏）。
  */
 export interface StudioSearch {
@@ -44,8 +44,14 @@ const mediaRoute = createRoute({
   component: () => null,
 });
 
+const quantRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/quant",
+  component: () => null,
+});
+
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([homeRoute, studioRoute, mediaRoute]),
+  routeTree: rootRoute.addChildren([homeRoute, studioRoute, mediaRoute, quantRoute]),
 });
 
 declare module "@tanstack/react-router" {

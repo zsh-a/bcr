@@ -1,4 +1,5 @@
 import { useStudio as useMediaStudio } from "@bcr/media-studio/store";
+import { useQuantLab } from "@bcr/quant-lab/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useStudio } from "../store";
 import { APPS } from "./apps";
@@ -11,9 +12,18 @@ export function Home() {
   const navigate = useNavigate();
   const studioRunning = useStudio((s) => s.runningCount);
   const mediaRunning = useMediaStudio((s) => s.running);
+  const quantRunning = useQuantLab((s) => s.running);
 
   const runningBadge = (id: string): number =>
-    id === "studio" ? studioRunning : mediaRunning ? 1 : 0;
+    id === "studio"
+      ? studioRunning
+      : id === "media"
+        ? mediaRunning
+          ? 1
+          : 0
+        : quantRunning
+          ? 1
+          : 0;
 
   return (
     <div className="h-full overflow-y-auto p-6">
