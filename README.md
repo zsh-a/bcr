@@ -33,7 +33,7 @@
 | §6.1 Effect 调度语义                  | Scheduler：cancel / timeout / retry(Schedule) / progress Stream                      |
 | §5 Resource Manager                   | 线程/内存/GPU 多维预算；FIFO 排队、取消释放、超额快速失败、占用快照                  |
 | §6.2 typed MessagePort 协议           | `packages/runtime-worker/src/protocol.ts`（Effect Schema 编解码）                    |
-| §5 Worker 生命周期 ≠ Task 生命周期    | `WorkerPool` 常驻复用，cancel 只发命令不销毁 Worker                                  |
+| §5 Worker 生命周期 ≠ Task 生命周期    | `WorkerPool` 可取消等待、关闭传播、min/max 按需扩容与 idle timeout 自动收缩          |
 | §7 Content-Addressed Cache            | `cacheKey = BLAKE3(ordered(port + artifactHash) + operation + config + runtime)`     |
 | §7 Artifact 内容身份                  | 源文件流式 BLAKE3；派生 JSON/波形携带内容 hash 并写入不可变路径                      |
 | §7 缓存持久化（刷新不重算）           | `packages/storage-sqlite`：cache_entries 表 + 血缘（task_outputs / dependencies）    |
@@ -130,6 +130,6 @@ decode ─┬─ wave（Rust peak kernel 波形）
 
 ## 本版明确不做
 
-WIT Component Model、插件 capability 模型、Worker Pool 自动扩缩、
+WIT Component Model、插件 capability 模型、Worker 崩溃健康替换、
 Vitest Browser Mode、跨设备任务迁移。
 对应架构文档 Phase 1 后续与 Phase 2/3。

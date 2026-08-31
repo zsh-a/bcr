@@ -360,7 +360,11 @@ export async function createRuntimeServices(): Promise<RuntimeServices> {
   const artifacts = Context.get(artifactsCtx, ArtifactStoreTag);
 
   const pool = new WorkerPool(
-    Math.max(1, (navigator.hardwareConcurrency ?? 2) - 1),
+    {
+      minSize: 1,
+      maxSize: Math.max(1, (navigator.hardwareConcurrency ?? 2) - 1),
+      idleTimeoutMs: 30_000,
+    },
     () =>
       new Worker(new URL("./workers/media.worker.ts", import.meta.url), {
         type: "module",

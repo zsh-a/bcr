@@ -3,8 +3,8 @@ import type { ArtifactRef } from "./schema";
 
 /**
  * 架构文档 §7：缓存条目。命中后直接得到任务输出 ArtifactRef 列表。
- * SQLite 持久化版本（cache_entries 表）留待 Phase 1 后续，
- * 接口保持一致，UI 不感知 SQL（§8）。
+ * SQLite 持久化版本由 storage-sqlite 的 cache_entries 表实现，
+ * 与内存版接口一致，UI 不感知 SQL（§8）。
  */
 export interface CacheStore {
   readonly get: (key: string) => Effect.Effect<ReadonlyArray<ArtifactRef> | undefined>;

@@ -116,4 +116,49 @@ describe("WorkerExecutor (架构 §6.2)", () => {
     expect(worker.cancelled).toContain("t1");
     pool.shutdown();
   });
+
+  it("等待 Worker 时中断会撤销 acquire，不泄漏池容量", async () => {
+    const worker = new FakeWorker(() => {
+      // 两个任务都保持运行，测试显式中断。
+    });
+    const pool = new WorkerPool(1, () => worker);
+    const executor = workerExecutor(pool, "wasm", "v1", await makeArtifacts());
+    const waitingTask = { ...task, id: "t2" };
+
+    const running = Effect.runFork(Stream.runCollect(executor.run(task)));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const waiting = Effect.runFork(Stream.runCollect(executor.run(waitingTask)));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(pool.snapshot).toMatchObject({ busy: 1, queued: 1 });
+
+    await Effect.runPromise(Fiber.interrupt(waiting));
+    expect(pool.snapshot.queued).toBe(0);
+    expect(worker.cancelled).not.toContain("t2");
+
+    await Effect.runPromise(Fiber.interrupt(running));
+    expect(pool.snapshot).toMatchObject({ idle: 1, busy: 0, queued: 0 });
+    expect(worker.cancelled).toContain("t1");
+    pool.shutdown();
+  });
+
+  it("Pool 已关闭时 executor 以 TaskFailed 明确失败", async () => {
+    const pool = new WorkerPool(1, () => new FakeWorker(() => undefined));
+    pool.shutdown();
+    const executor = workerExecutor(pool, "wasm", "v1", await makeArtifacts());
+
+    const exit = await Effect.runPromise(Effect.exit(Stream.runCollect(executor.run(task))));
+
+    expect(Exit.isFailure(exit)).toBe(true);
+    if (Exit.isFailure(exit)) {
+      const failure = Cause.failureOption(exit.cause);
+      expect(failure._tag).toBe("Some");
+      if (failure._tag === "Some") {
+        expect(failure.value).toMatchObject({
+          _tag: "TaskFailed",
+          taskId: "t1",
+          message: "worker pool is closed",
+        });
+      }
+    }
+  });
 });

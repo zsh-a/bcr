@@ -30,9 +30,20 @@ export function workerExecutor(
       Stream.unwrapScoped(
         Effect.gen(function* () {
           // Worker 生命周期 ≠ Task 生命周期：随作用域借还，不随任务销毁。
-          const worker = yield* Effect.acquireRelease(
-            Effect.promise(() => pool.acquire()),
-            (w) => Effect.sync(() => pool.release(w)),
+          let acquired: Awaited<ReturnType<WorkerPool["acquire"]>> | undefined;
+          const worker = yield* Effect.acquireReleaseInterruptible(
+            Effect.tryPromise({
+              try: (signal) => pool.acquire(signal),
+              catch: (error) =>
+                new TaskFailed({
+                  taskId: task.id,
+                  message: error instanceof Error ? error.message : String(error),
+                }),
+            }).pipe(Effect.tap((worker) => Effect.sync(() => (acquired = worker)))),
+            () =>
+              Effect.sync(() => {
+                if (acquired !== undefined) pool.release(acquired);
+              }),
           );
 
           return Stream.async<TaskEvent, TaskFailed>((emit) => {

@@ -225,12 +225,15 @@ main thread
      └── render.worker      → OffscreenCanvas（timeline / waveform / 大图渲染）
 ```
 
-后续演进为 **Worker Pool**：`CPU Worker × N + GPU Worker × 1 + IO Worker × 1`，Scheduler 自动分发。
+当前 `runtime-worker` 已落地弹性 **Worker Pool**：按 `minSize` 预热、按需扩到
+`maxSize`、空闲超时收缩；达到上限后 FIFO 等待。等待 acquire 可随 Effect 中断同步撤销，
+Pool 关闭会终止 Worker 并明确拒绝当前/未来等待者，不遗留悬挂任务。后续再拆分
+`CPU Worker × N + GPU Worker × 1 + IO Worker × 1` 的异构池与健康替换。
 
 关键区分：**Worker 生命周期 ≠ Task 生命周期**。
 
 - Effect Scope 管 Task 语义：cancel / timeout / resource 释放。
-- Worker Pool 管物理执行资源：Worker 复用、池化、扩缩。
+- Worker Pool 管物理执行资源：Worker 复用、池化、扩缩、等待取消与关闭。
 
 ---
 
