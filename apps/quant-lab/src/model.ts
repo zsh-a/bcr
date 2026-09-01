@@ -1,5 +1,24 @@
 import type { ArtifactRef } from "@bcr/core";
 
+export interface MarketHandoffSeriesSummary {
+  readonly instrumentId: string;
+  readonly symbol: string;
+  readonly name: string;
+  readonly market: string;
+  readonly range: string;
+  readonly bars: number;
+  readonly source: string;
+}
+
+export interface MarketHandoffSummary {
+  readonly version: 1;
+  readonly createdAt: number;
+  readonly groupId: string | null;
+  readonly groupName: string;
+  readonly range: string;
+  readonly series: ReadonlyArray<MarketHandoffSeriesSummary>;
+}
+
 export interface MarketBar {
   readonly date: string;
   readonly open: number;

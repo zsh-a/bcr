@@ -453,6 +453,103 @@ body {
   letter-spacing: 0.03em;
 }
 
+.ql-handoff-block {
+  padding: 16px 14px 18px;
+  border-bottom: 1px solid var(--ql-line);
+  background:
+    linear-gradient(135deg, rgba(87, 217, 209, 0.08), transparent 62%), rgba(8, 12, 11, 0.55);
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.ql-handoff-block > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: var(--ql-cyan);
+  font-size: var(--ql-caption);
+  letter-spacing: 0.08em;
+}
+
+.ql-handoff-block > div svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ql-handoff-block > b,
+.ql-handoff-block > span,
+.ql-handoff-block > small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ql-handoff-block > b {
+  color: var(--ql-text);
+  font-size: var(--ql-label);
+  font-weight: 500;
+}
+
+.ql-handoff-block > span,
+.ql-handoff-block > small {
+  margin-top: 4px;
+  color: var(--ql-muted);
+  font-size: var(--ql-micro);
+  letter-spacing: 0.03em;
+}
+
+.ql-handoff-block ul {
+  display: grid;
+  gap: 5px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ql-handoff-block li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 8px;
+  border-left: 2px solid color-mix(in srgb, var(--ql-cyan) 52%, var(--ql-line));
+  background: rgba(87, 217, 209, 0.035);
+}
+
+.ql-handoff-block li span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.ql-handoff-block li b,
+.ql-handoff-block li small,
+.ql-handoff-block li em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ql-handoff-block li b {
+  color: var(--ql-text);
+  font-size: var(--ql-micro);
+  font-weight: 500;
+}
+
+.ql-handoff-block li small {
+  color: var(--ql-faint);
+  font-size: 9px;
+}
+
+.ql-handoff-block li em {
+  flex: none;
+  color: var(--ql-lime);
+  font-size: 9px;
+  font-style: normal;
+}
+
 .ql-pipeline-map {
   padding: 22px 14px;
 }

@@ -166,12 +166,12 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - `stock-sdk@2.4.2` 只存在于数据适配层；UI 不直接依赖第三方返回类型，后续可组合欧洲、日本、FX 数据源
 - CN / HK / US 与全球期货独立请求、独立健康状态；整体失败优先恢复 localStorage 最后快照，再显式降级 fixture
 - 行情始终展示来源、更新时间与 `DELAYED / PARTIAL / CACHED / DEMO` 质量，不把公开接口标记为撮合级实时数据
-- Midnight Atlas 编辑式界面提供全球交易时区轨道、市场焦点、全 A 股方向宽度、行业热图、跨资产行情、异动和持久化 Watchlist
+- Midnight Atlas 编辑式界面提供全球交易时区轨道、市场焦点、全 A 股方向宽度、行业热图、跨资产行情、异动和持久化 Watchlist；Watchlist 支持 Core / Macro 等自定义分组，并可整组交接到 Quant Lab
 - Market Cartography 通过 `sdk.batch.cn()` 扫描 5,000+ A 股，生成上涨/下跌/平盘与涨跌停广度、全市场成交额，以及领涨、领跌、成交额三类可下钻排行；行业板块与资金流独立请求并可按层缓存/降级
-- Pulse 基准集扩展为 CN / HK / US 各 5 个指数与龙头标的；顶栏搜索通过 `sdk.search()` 发现三地股票、指数与场内基金，内置 33 个常用标的目录作为即时/离线降级，并持久化最近打开标的
+- Pulse 基准集扩展为 CN / HK / US 各 5 个指数与龙头标的；顶栏搜索通过 `sdk.search()` 发现三地股票、指数与场内基金，并从本地 master 发现全球期货，内置 41 个常用标的目录（含 8 个全球期货）作为即时/离线降级，并持久化最近打开标的
 - 标的焦点支持 1M / 3M / 6M / 1Y / 3Y 日线 K 线、成交量与指针读数；长周期只在显示层聚合，交接仍保留完整日线
 - Income Ledger 使用 `sdk.reference.dividendDetail()` 展示 A 股个股现金分红、股息率、除权日、登记日与实施进度；HK / US / 基金尚无同口径 provider 时明确显示覆盖边界
-- “Send to Quant” 将当前历史柱交给 Quant Lab，后者自动生成年度 Arrow / Parquet 分区并运行策略；快照微型图仍只表达“昨收 → 最新”
+- “Send to Quant” 将当前历史柱交给 Quant Lab，后者自动生成年度 Arrow / Parquet 分区并运行策略；Watchlist 的 “Send group” 会并行装载分组内历史序列，在 Quant Lab 显示完整 intake 摘要并以首个序列运行当前策略；快照微型图仍只表达“昨收 → 最新”
 - 确定性模拟曲线与 OHLCV 仅出现在明确标记的演示 fixture 中，不伪装成实时历史数据
 
 走查：`node scripts/verify-market-atlas.mjs`（由 `bun run test:browser` 自动执行）。

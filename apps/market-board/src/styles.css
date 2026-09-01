@@ -1936,6 +1936,146 @@ body {
   font-size: 23px;
 }
 
+.ma-watchlist-heading {
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.ma-watchlist-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.ma-watchlist-send,
+.ma-watchlist-add {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--ma-line);
+  border-radius: var(--ma-radius-sm);
+  background: rgba(101, 216, 208, 0.06);
+  color: var(--ma-cyan);
+  font:
+    var(--ma-type-micro) "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.06em;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.ma-watchlist-send {
+  padding: 0 11px;
+}
+
+.ma-watchlist-add {
+  width: 40px;
+  padding: 0;
+}
+
+.ma-watchlist-send svg,
+.ma-watchlist-add svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ma-watchlist-send:hover,
+.ma-watchlist-add:hover {
+  border-color: var(--ma-cyan);
+  background: rgba(101, 216, 208, 0.14);
+}
+
+.ma-watchlist-send:disabled {
+  cursor: wait;
+  opacity: 0.42;
+}
+
+.ma-watchlist-groups {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0 0 10px;
+  scrollbar-width: thin;
+}
+
+.ma-watchlist-groups button {
+  display: inline-flex;
+  min-height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 1px solid var(--ma-line-soft);
+  border-radius: 999px;
+  background: rgba(16, 19, 21, 0.5);
+  color: var(--ma-muted);
+  font:
+    500 var(--ma-type-caption) "IBM Plex Sans",
+    sans-serif;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.ma-watchlist-groups button:hover,
+.ma-watchlist-groups button.active {
+  border-color: color-mix(in srgb, var(--ma-cyan) 64%, var(--ma-line));
+  background: rgba(101, 216, 208, 0.1);
+  color: var(--ma-text);
+}
+
+.ma-watchlist-groups button.active {
+  box-shadow: inset 0 -2px 0 var(--ma-cyan);
+}
+
+.ma-watchlist-groups small {
+  color: var(--ma-faint);
+  font:
+    var(--ma-type-micro) "IBM Plex Mono",
+    monospace;
+}
+
+.ma-watchlist-create {
+  display: flex;
+  gap: 7px;
+  margin: 0 0 10px;
+}
+
+.ma-watchlist-create input {
+  min-width: 0;
+  height: 38px;
+  flex: 1;
+  border: 1px solid var(--ma-line);
+  border-radius: var(--ma-radius-sm);
+  outline: 0;
+  background: rgba(16, 19, 21, 0.7);
+  color: var(--ma-text);
+  padding: 0 10px;
+  font-size: var(--ma-type-caption);
+}
+
+.ma-watchlist-create button {
+  min-width: 74px;
+  border: 1px solid var(--ma-line);
+  border-radius: var(--ma-radius-sm);
+  background: var(--ma-paper);
+  color: #111414;
+  font:
+    500 var(--ma-type-micro) "IBM Plex Mono",
+    monospace;
+}
+
+.ma-watchlist-create button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .ma-futures-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2108,6 +2248,15 @@ body {
   border-bottom: 1px solid var(--ma-line);
   color: var(--ma-faint);
   font-size: var(--ma-type-caption);
+}
+
+.ma-watchlist-error {
+  margin: 10px 0 0;
+  color: var(--ma-negative);
+  font:
+    var(--ma-type-micro) "IBM Plex Mono",
+    monospace;
+  line-height: 1.45;
 }
 
 .ma-provider-panel {
@@ -2461,6 +2610,24 @@ body {
 
   .ma-section-heading {
     min-height: 58px;
+  }
+
+  .ma-watchlist-heading {
+    align-items: flex-start;
+  }
+
+  .ma-watchlist-actions {
+    padding-bottom: 0;
+  }
+
+  .ma-watchlist-send {
+    min-height: 44px;
+    padding: 0 9px;
+  }
+
+  .ma-watchlist-add {
+    width: 44px;
+    min-height: 44px;
   }
 
   .ma-section-heading h2 {

@@ -11,7 +11,7 @@ import {
   type ArtifactRef,
 } from "@bcr/core";
 import type { RuntimeServices } from "@bcr/react";
-import type { QuantMarketHandoff } from "@bcr/market-data";
+import type { QuantHandoff } from "@bcr/market-data";
 import { workerExecutor, WorkerPool } from "@bcr/runtime-worker";
 import { isOpfsSupported, MemoryStore, OpfsStore } from "@bcr/storage-opfs";
 import {
@@ -40,6 +40,7 @@ import type {
   EquityPoint,
   MarketBar,
   MarketPartition,
+  MarketHandoffSummary,
   QuantOutputRefs,
   SignalPoint,
   StrategyConfig,
@@ -222,11 +223,26 @@ export function loadDemoDataset(services: RuntimeServices): Promise<Dataset> {
   return datasetFromBars(services, "BCR-SYNTH / DAILY", generateDemoMarket(), "demo");
 }
 
-export function importMarketAtlasHandoff(
+export async function importMarketAtlasHandoff(
   services: RuntimeServices,
-  handoff: QuantMarketHandoff,
+  handoff: QuantHandoff,
 ): Promise<Dataset> {
-  const bars = handoff.bars.map((bar) => ({
+  const series =
+    handoff.version === 2
+      ? handoff.series
+      : [
+          {
+            instrument: handoff.instrument,
+            range: handoff.range,
+            bars: handoff.bars,
+            source: handoff.source,
+          },
+        ];
+  const primary = series[0];
+  if (primary === undefined || primary.bars.length === 0) {
+    throw new Error("Market Atlas handoff has no usable series");
+  }
+  const bars = primary.bars.map((bar) => ({
     date: bar.date,
     open: bar.open,
     high: bar.high,
@@ -234,12 +250,32 @@ export function importMarketAtlasHandoff(
     close: bar.close,
     volume: bar.volume,
   }));
-  return datasetFromBars(
+  const dataset = await datasetFromBars(
     services,
-    `${handoff.instrument.shortName} · ${handoff.range} / MARKET ATLAS`,
+    handoff.version === 2
+      ? `${handoff.groupName} · ${primary.instrument.shortName} +${Math.max(0, series.length - 1)} · ${primary.range} / MARKET ATLAS`
+      : `${primary.instrument.shortName} · ${primary.range} / MARKET ATLAS`,
     bars,
     "market-atlas",
   );
+  const summary: MarketHandoffSummary = {
+    version: 1,
+    createdAt: handoff.createdAt,
+    groupId: handoff.version === 2 ? handoff.groupId : null,
+    groupName: handoff.version === 2 ? handoff.groupName : primary.instrument.shortName,
+    range: primary.range,
+    series: series.map((item) => ({
+      instrumentId: item.instrument.id,
+      symbol: item.instrument.symbol,
+      name: item.instrument.name,
+      market: item.instrument.market,
+      range: item.range,
+      bars: item.bars.length,
+      source: item.source,
+    })),
+  };
+  quant.setMarketHandoff(summary);
+  return dataset;
 }
 
 export async function importCsvDataset(services: RuntimeServices, file: File): Promise<Dataset> {
@@ -277,6 +313,7 @@ interface PersistedProject {
   };
   readonly config: StrategyConfig;
   readonly outputs: QuantOutputRefs | null;
+  readonly marketHandoff?: MarketHandoffSummary | null;
 }
 
 export async function persistProject(services: RuntimeServices): Promise<void> {
@@ -292,6 +329,7 @@ export async function persistProject(services: RuntimeServices): Promise<void> {
     },
     config: state.config,
     outputs: state.outputRefs,
+    marketHandoff: state.marketHandoff,
   };
   try {
     await metaDb.kvSet("project", JSON.stringify(project));
@@ -391,6 +429,13 @@ export async function restoreProject(services: RuntimeServices): Promise<boolean
       quant.log("info", "migration · single market artifact → yearly partition manifest");
     }
     quant.setConfig(project.config);
+    if (
+      project.marketHandoff?.version === 1 &&
+      Array.isArray(project.marketHandoff.series) &&
+      project.marketHandoff.series.length > 0
+    ) {
+      quant.setMarketHandoff(project.marketHandoff);
+    }
     if (project.outputs !== null) {
       const [signals, equity, trades, metrics] = await Promise.all([
         readJson<ReadonlyArray<SignalPoint>>(services, project.outputs.signals),

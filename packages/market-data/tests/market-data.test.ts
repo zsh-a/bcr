@@ -6,6 +6,7 @@ import {
   createDemoSnapshot,
   createDemoHistory,
   instrumentsFor,
+  isQuantHandoff,
   quoteSparkline,
   ResilientMarketService,
   searchKnownInstruments,
@@ -92,6 +93,8 @@ describe("Market data contracts", () => {
     expect(searchKnownInstruments("TSLA")[0]?.instrument.market).toBe("US");
     expect(searchKnownInstruments("红利ETF")[0]?.instrument.assetClass).toBe("fund");
     expect(searchKnownInstruments("美团")[0]?.instrument.symbol).toBe("03690.HK");
+    expect(searchKnownInstruments("黄金")[0]?.instrument.id).toBe("GLOBAL:FUTURE:GC00Y");
+    expect(instrumentsFor("GLOBAL")).toHaveLength(8);
   });
 
   it("将全量 A 股行情归一化为广度与三类可下钻排行", () => {
@@ -163,5 +166,54 @@ describe("Market data contracts", () => {
     expect(landscape.sectors).toHaveLength(14);
     expect(landscape.rankings.gainers).toHaveLength(8);
     expect(landscape.breadth.total).toBe(direct.breadth.total);
+  });
+
+  it("校验多标的 Quant handoff，并拒绝空序列", () => {
+    const instrument = instrumentsFor("US")[0];
+    if (instrument === undefined) throw new Error("missing US fixture");
+    const bars = [
+      {
+        date: "2026-08-31",
+        timestamp: null,
+        open: 100,
+        high: 101,
+        low: 99,
+        close: 100.5,
+        volume: 1_000,
+        amount: null,
+      },
+    ];
+    expect(
+      isQuantHandoff({
+        version: 2,
+        createdAt: 1,
+        groupId: "core",
+        groupName: "Core",
+        range: "1Y",
+        source: "fixture",
+        series: [{ instrument, range: "1Y", bars, source: "fixture" }],
+      }),
+    ).toBe(true);
+    expect(
+      isQuantHandoff({
+        version: 2,
+        createdAt: 1,
+        groupId: "core",
+        groupName: "Core",
+        range: "1Y",
+        source: "fixture",
+        series: [],
+      }),
+    ).toBe(false);
+    expect(
+      isQuantHandoff({
+        version: 1,
+        createdAt: 1,
+        instrument,
+        range: "1Y",
+        bars,
+        source: "legacy fixture",
+      }),
+    ).toBe(true);
   });
 });

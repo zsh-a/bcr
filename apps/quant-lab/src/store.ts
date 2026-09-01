@@ -6,6 +6,7 @@ import type {
   QuantOutputRefs,
   SignalPoint,
   StrategyConfig,
+  MarketHandoffSummary,
 } from "./model";
 
 export interface QuantLog {
@@ -16,6 +17,7 @@ export interface QuantLog {
 
 export interface QuantState {
   readonly dataset: Dataset | null;
+  readonly marketHandoff: MarketHandoffSummary | null;
   readonly config: StrategyConfig;
   readonly signals: ReadonlyArray<SignalPoint>;
   readonly result: BacktestResult | null;
@@ -37,6 +39,7 @@ const DEFAULT_CONFIG: StrategyConfig = {
 class QuantStore {
   private state: QuantState = {
     dataset: null,
+    marketHandoff: null,
     config: DEFAULT_CONFIG,
     signals: [],
     result: null,
@@ -62,7 +65,18 @@ class QuantStore {
   }
 
   setDataset(dataset: Dataset): void {
-    this.set({ dataset, signals: [], result: null, outputRefs: null, runDurationMs: null });
+    this.set({
+      dataset,
+      marketHandoff: null,
+      signals: [],
+      result: null,
+      outputRefs: null,
+      runDurationMs: null,
+    });
+  }
+
+  setMarketHandoff(marketHandoff: MarketHandoffSummary): void {
+    this.set({ marketHandoff });
   }
 
   setConfig(patch: Partial<StrategyConfig>): void {

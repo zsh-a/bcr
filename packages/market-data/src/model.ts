@@ -169,6 +169,25 @@ export interface ProviderFeed {
   readonly message: string;
 }
 
+/**
+ * Browser-owned watchlist state.  Keeping the shape in the market contract
+ * package means other surfaces (Studio, mobile shell, or a future sync layer)
+ * can consume the same persisted model without importing Market Atlas UI code.
+ */
+export interface MarketWatchlistGroup {
+  readonly id: string;
+  readonly name: string;
+  readonly instrumentIds: ReadonlyArray<string>;
+  readonly createdAt: number;
+  readonly updatedAt: number;
+}
+
+export interface MarketWatchlistState {
+  readonly version: 1;
+  readonly activeGroupId: string;
+  readonly groups: ReadonlyArray<MarketWatchlistGroup>;
+}
+
 export interface MarketAtlasSnapshot {
   readonly quotes: ReadonlyArray<QuoteSnapshot>;
   readonly futures: ReadonlyArray<QuoteSnapshot>;
@@ -182,16 +201,29 @@ export interface MarketAtlasSnapshot {
 
 export interface MarketDataProvider {
   readonly id: string;
+  readonly capabilities?: MarketProviderCapabilities;
   loadSnapshot(): Promise<MarketAtlasSnapshot>;
+}
+
+export interface MarketProviderCapabilities {
+  readonly markets: ReadonlyArray<MarketRegion>;
+  readonly quote: boolean;
+  readonly history: boolean;
+  readonly search: boolean;
+  readonly dividends: ReadonlyArray<MarketRegion>;
+  readonly landscape: ReadonlyArray<MarketRegion>;
+  readonly realtime: "live" | "delayed";
 }
 
 export interface MarketHistoryProvider {
   readonly id: string;
+  readonly capabilities?: MarketProviderCapabilities;
   loadHistory(request: MarketHistoryRequest): Promise<MarketHistorySeries>;
 }
 
 export interface MarketDiscoveryProvider {
   readonly id: string;
+  readonly capabilities?: MarketProviderCapabilities;
   searchInstruments(keyword: string): Promise<ReadonlyArray<MarketSearchResult>>;
   loadQuote(instrument: MarketInstrument): Promise<QuoteSnapshot>;
   loadDividends(instrument: MarketInstrument): Promise<DividendSeries>;
@@ -199,6 +231,7 @@ export interface MarketDiscoveryProvider {
 
 export interface MarketLandscapeProvider {
   readonly id: string;
+  readonly capabilities?: MarketProviderCapabilities;
   loadMarketLandscape(): Promise<MarketLandscapeSnapshot>;
 }
 
@@ -210,3 +243,25 @@ export interface QuantMarketHandoff {
   readonly bars: ReadonlyArray<MarketHistoryBar>;
   readonly source: string;
 }
+
+export interface QuantMarketSeriesHandoff {
+  readonly instrument: MarketInstrument;
+  readonly range: HistoryRange;
+  readonly bars: ReadonlyArray<MarketHistoryBar>;
+  readonly source: string;
+}
+
+/** A portfolio/watchlist handoff. Quant Lab backtests the first series while
+ * retaining every series as an explicit intake summary for the next portfolio
+ * engine milestone. */
+export interface QuantPortfolioHandoff {
+  readonly version: 2;
+  readonly createdAt: number;
+  readonly groupId: string;
+  readonly groupName: string;
+  readonly range: HistoryRange;
+  readonly series: ReadonlyArray<QuantMarketSeriesHandoff>;
+  readonly source: string;
+}
+
+export type QuantHandoff = QuantMarketHandoff | QuantPortfolioHandoff;

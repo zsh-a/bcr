@@ -13,6 +13,8 @@ import type {
   MarketRegion,
   MarketSearchResult,
   MarketSession,
+  MarketWatchlistGroup,
+  MarketWatchlistState,
   QuoteSnapshot,
   SessionState,
 } from "@bcr/market-data";
@@ -25,6 +27,7 @@ import {
   CircleDollarSign,
   Clock3,
   Globe2,
+  Plus,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -35,7 +38,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkline } from "./components/Sparkline";
 import { CandlestickChart } from "./components/CandlestickChart";
-import { marketProvider } from "./marketServices";
+import { historyService, marketProvider } from "./marketServices";
 import { useDividends } from "./useDividends";
 import { useInstrumentSearch } from "./useInstrumentSearch";
 import { useMarketAtlas } from "./useMarketAtlas";
@@ -43,9 +46,28 @@ import { useMarketHistory } from "./useMarketHistory";
 import { useMarketLandscape } from "./useMarketLandscape";
 import "./styles.css";
 
-const WATCHLIST_KEY = "bcr.market-atlas.watchlist.v1";
+const WATCHLIST_KEY = "bcr.market-atlas.watchlist.v2";
+const LEGACY_WATCHLIST_KEY = "bcr.market-atlas.watchlist.v1";
 const INSTRUMENTS_KEY = "bcr.market-atlas.instruments.v1";
 const DEFAULT_WATCHLIST = ["CN:SSE:000300", "HK:HKEX:HSI", "US:INDEX:INX"];
+
+const DEFAULT_WATCHLIST_GROUPS: ReadonlyArray<MarketWatchlistGroup> = [
+  {
+    id: "core",
+    name: "Core",
+    instrumentIds: DEFAULT_WATCHLIST,
+    createdAt: 0,
+    updatedAt: 0,
+  },
+  {
+    id: "macro",
+    name: "Macro",
+    instrumentIds: ["CN:SSE:000001", "US:INDEX:DJI", "GLOBAL:FUTURE:GC00Y"],
+    createdAt: 0,
+    updatedAt: 0,
+  },
+];
+const FALLBACK_WATCHLIST_GROUP = DEFAULT_WATCHLIST_GROUPS[0] as MarketWatchlistGroup;
 
 function signed(value: number): string {
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
@@ -93,12 +115,64 @@ function qualityLabel(quality: DataQuality): string {
   }[quality];
 }
 
-function initialWatchlist(): ReadonlyArray<string> {
+function validWatchlistState(value: unknown): value is MarketWatchlistState {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Partial<MarketWatchlistState>;
+  return (
+    candidate.version === 1 &&
+    typeof candidate.activeGroupId === "string" &&
+    Array.isArray(candidate.groups) &&
+    candidate.groups.length > 0 &&
+    candidate.groups.every(
+      (group) =>
+        typeof group === "object" &&
+        group !== null &&
+        typeof group.id === "string" &&
+        typeof group.name === "string" &&
+        Array.isArray(group.instrumentIds),
+    )
+  );
+}
+
+function initialWatchlists(): MarketWatchlistState {
+  const now = Date.now();
   try {
     const saved = localStorage.getItem(WATCHLIST_KEY);
-    return saved === null ? DEFAULT_WATCHLIST : (JSON.parse(saved) as ReadonlyArray<string>);
+    if (saved !== null) {
+      const parsed: unknown = JSON.parse(saved);
+      if (validWatchlistState(parsed)) {
+        const activeGroupId = parsed.groups.some((group) => group.id === parsed.activeGroupId)
+          ? parsed.activeGroupId
+          : (parsed.groups[0]?.id ?? "core");
+        return { ...parsed, activeGroupId };
+      }
+    }
+    const legacy = localStorage.getItem(LEGACY_WATCHLIST_KEY);
+    const legacyIds = legacy === null ? null : (JSON.parse(legacy) as unknown);
+    const migratedIds =
+      Array.isArray(legacyIds) && legacyIds.every((id) => typeof id === "string")
+        ? legacyIds
+        : DEFAULT_WATCHLIST;
+    return {
+      version: 1,
+      activeGroupId: "core",
+      groups: DEFAULT_WATCHLIST_GROUPS.map((group, index) => ({
+        ...group,
+        instrumentIds: index === 0 ? migratedIds : group.instrumentIds,
+        createdAt: now,
+        updatedAt: now,
+      })),
+    };
   } catch {
-    return DEFAULT_WATCHLIST;
+    return {
+      version: 1,
+      activeGroupId: "core",
+      groups: DEFAULT_WATCHLIST_GROUPS.map((group) => ({
+        ...group,
+        createdAt: now,
+        updatedAt: now,
+      })),
+    };
   }
 }
 
@@ -130,7 +204,11 @@ export function App() {
   const [searchingQuote, setSearchingQuote] = useState<string | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [historyRange, setHistoryRange] = useState<HistoryRange>("1Y");
-  const [watchlist, setWatchlist] = useState<ReadonlyArray<string>>(initialWatchlist);
+  const [watchlists, setWatchlists] = useState<MarketWatchlistState>(initialWatchlists);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [handoffLoading, setHandoffLoading] = useState(false);
+  const [handoffError, setHandoffError] = useState<string | null>(null);
   const [savedInstruments, setSavedInstruments] =
     useState<ReadonlyArray<MarketInstrument>>(initialInstruments);
   const [customQuotes, setCustomQuotes] = useState<ReadonlyArray<QuoteSnapshot>>([]);
@@ -146,6 +224,11 @@ export function App() {
   }, [snapshot, customQuotes]);
   const selected =
     allQuotes.find((quote) => quote.instrument.id === selectedId) ?? snapshot.quotes[0];
+  const activeGroup: MarketWatchlistGroup =
+    watchlists.groups.find((group) => group.id === watchlists.activeGroupId) ??
+    watchlists.groups[0] ??
+    FALLBACK_WATCHLIST_GROUP;
+  const activeInstrumentIds = activeGroup.instrumentIds;
   const dividends = useDividends(selected?.instrument);
   const history = useMarketHistory(selected, historyRange);
   const historySeries = history.series;
@@ -168,7 +251,7 @@ export function App() {
   const movers = [...allQuotes]
     .sort((left, right) => Math.abs(right.changePercent) - Math.abs(left.changePercent))
     .slice(0, 5);
-  const watched = watchlist.flatMap((id) => {
+  const watched = activeInstrumentIds.flatMap((id) => {
     const found = allQuotes.find((quote) => quote.instrument.id === id);
     return found === undefined ? [] : [found];
   });
@@ -220,13 +303,70 @@ export function App() {
     window.location.assign("/quant");
   };
 
+  const openWatchlistQuant = async (): Promise<void> => {
+    if (handoffLoading || activeGroup === undefined || activeInstrumentIds.length === 0) return;
+    const groupQuotes = activeInstrumentIds.flatMap((id) => {
+      const quote = allQuotes.find((item) => item.instrument.id === id);
+      return quote === undefined ? [] : [quote];
+    });
+    if (groupQuotes.length === 0) {
+      setHandoffError("ACTIVE GROUP HAS NO QUOTEABLE INSTRUMENTS");
+      return;
+    }
+    setHandoffLoading(true);
+    setHandoffError(null);
+    try {
+      const loaded = await Promise.allSettled(
+        groupQuotes.map((quote) => {
+          if (quote.instrument.id === selected?.instrument.id && currentHistory !== null) {
+            return Promise.resolve(currentHistory);
+          }
+          return historyService.load({
+            instrument: quote.instrument,
+            range: historyRange,
+            referencePrice: quote.price,
+          });
+        }),
+      );
+      const series = loaded.flatMap((result) =>
+        result.status === "fulfilled" && result.value.bars.length >= 30
+          ? [
+              {
+                instrument: result.value.instrument,
+                range: result.value.range,
+                bars: result.value.bars,
+                source: result.value.source,
+              },
+            ]
+          : [],
+      );
+      if (series.length === 0) {
+        throw new Error("NO GROUP HISTORY SERIES PASSED THE 30-BAR MINIMUM");
+      }
+      publishQuantHandoff({
+        version: 2,
+        createdAt: Date.now(),
+        groupId: activeGroup.id,
+        groupName: activeGroup.name,
+        range: historyRange,
+        series,
+        source: `Market Atlas · ${activeGroup.name}`,
+      });
+      window.location.assign("/quant");
+    } catch (error) {
+      setHandoffError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setHandoffLoading(false);
+    }
+  };
+
   useEffect(() => {
     try {
-      localStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlist));
+      localStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlists));
     } catch {
       // Watchlist remains available for this session when persistent storage is blocked.
     }
-  }, [watchlist]);
+  }, [watchlists]);
 
   useEffect(() => {
     try {
@@ -266,9 +406,52 @@ export function App() {
   }, []);
 
   const toggleWatch = (id: string): void => {
-    setWatchlist((items) =>
-      items.includes(id) ? items.filter((item) => item !== id) : [...items, id],
+    setWatchlists((state) => {
+      const now = Date.now();
+      return {
+        ...state,
+        groups: state.groups.map((group) =>
+          group.id !== state.activeGroupId
+            ? group
+            : {
+                ...group,
+                instrumentIds: group.instrumentIds.includes(id)
+                  ? group.instrumentIds.filter((item) => item !== id)
+                  : [...group.instrumentIds, id],
+                updatedAt: now,
+              },
+        ),
+      };
+    });
+  };
+
+  const selectWatchlistGroup = (id: string): void => {
+    setWatchlists((state) =>
+      state.groups.some((group) => group.id === id) ? { ...state, activeGroupId: id } : state,
     );
+  };
+
+  const createWatchlistGroup = (): void => {
+    const name = newGroupName.trim();
+    if (name.length === 0) return;
+    const baseId = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    setWatchlists((state) => {
+      const id = `${baseId || "group"}-${Date.now().toString(36)}`;
+      const now = Date.now();
+      const group: MarketWatchlistGroup = {
+        id,
+        name,
+        instrumentIds: [],
+        createdAt: now,
+        updatedAt: now,
+      };
+      return { ...state, activeGroupId: id, groups: [...state.groups, group] };
+    });
+    setNewGroupName("");
+    setCreatingGroup(false);
   };
 
   return (
@@ -374,7 +557,7 @@ export function App() {
               {quoteError !== null && search.results.length > 0 && (
                 <div className="ma-search-state error">QUOTE · {quoteError}</div>
               )}
-              <footer>CN · HK · US · STOCKS / INDICES / EXCHANGE-TRADED FUNDS</footer>
+              <footer>CN · HK · US · GLOBAL · STOCKS / INDICES / FUNDS / FUTURES</footer>
             </div>
           )}
         </div>
@@ -430,9 +613,9 @@ export function App() {
                 </span>
                 <button
                   type="button"
-                  className={watchlist.includes(selected.instrument.id) ? "watched" : ""}
+                  className={activeInstrumentIds.includes(selected.instrument.id) ? "watched" : ""}
                   onClick={() => toggleWatch(selected.instrument.id)}
-                  aria-label="Toggle watchlist"
+                  aria-label={`Toggle ${activeGroup.name} watchlist`}
                 >
                   <Star />
                 </button>
@@ -568,7 +751,7 @@ export function App() {
                 quote={quote}
                 index={index}
                 selected={quote.instrument.id === selected?.instrument.id}
-                watched={watchlist.includes(quote.instrument.id)}
+                watched={activeInstrumentIds.includes(quote.instrument.id)}
                 onSelect={() => setSelectedId(quote.instrument.id)}
                 onWatch={() => toggleWatch(quote.instrument.id)}
               />
@@ -676,13 +859,71 @@ export function App() {
           </article>
 
           <article className="ma-list-panel">
-            <div className="ma-section-heading compact">
+            <div className="ma-section-heading compact ma-watchlist-heading">
               <div>
                 <span>06</span>
                 <h2>Watchlist</h2>
-                <small>{watched.length} INSTRUMENTS</small>
+                <small>
+                  {watched.length} INSTRUMENTS · {activeGroup.name.toUpperCase()}
+                </small>
+              </div>
+              <div className="ma-watchlist-actions">
+                <button
+                  type="button"
+                  className="ma-watchlist-send"
+                  onClick={() => void openWatchlistQuant()}
+                  disabled={handoffLoading || watched.length === 0}
+                >
+                  {handoffLoading ? <RefreshCw className="spinning" /> : <ArrowUpRight />}
+                  SEND GROUP
+                </button>
+                <button
+                  type="button"
+                  className="ma-watchlist-add"
+                  onClick={() => setCreatingGroup((open) => !open)}
+                  aria-label="Create watchlist group"
+                  aria-expanded={creatingGroup}
+                >
+                  <Plus />
+                </button>
               </div>
             </div>
+            <div className="ma-watchlist-groups" role="tablist" aria-label="Watchlist groups">
+              {watchlists.groups.map((group) => (
+                <button
+                  type="button"
+                  role="tab"
+                  key={group.id}
+                  aria-selected={group.id === activeGroup.id}
+                  className={group.id === activeGroup.id ? "active" : ""}
+                  onClick={() => selectWatchlistGroup(group.id)}
+                >
+                  {group.name}
+                  <small>{group.instrumentIds.length}</small>
+                </button>
+              ))}
+            </div>
+            {creatingGroup && (
+              <form
+                className="ma-watchlist-create"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  createWatchlistGroup();
+                }}
+              >
+                <input
+                  autoFocus
+                  aria-label="New watchlist group name"
+                  value={newGroupName}
+                  onChange={(event) => setNewGroupName(event.target.value)}
+                  placeholder="New group name"
+                  maxLength={24}
+                />
+                <button type="submit" disabled={newGroupName.trim().length === 0}>
+                  CREATE
+                </button>
+              </form>
+            )}
             <div className="ma-watchlist">
               {watched.map((quote) => (
                 <button
@@ -703,6 +944,7 @@ export function App() {
               ))}
               {watched.length === 0 && <p>Star an instrument to keep it close.</p>}
             </div>
+            {handoffError !== null && <p className="ma-watchlist-error">QUANT · {handoffError}</p>}
           </article>
         </section>
 
@@ -736,7 +978,7 @@ export function App() {
           <Clock3 /> AS OF {receivedTime(snapshot.receivedAt)}
         </span>
         <p>Prices may be delayed by seconds or minutes. Not for order execution.</p>
-        <b>BCR / MARKET ATLAS 0.4</b>
+        <b>BCR / MARKET ATLAS 0.5</b>
       </footer>
     </div>
   );

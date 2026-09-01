@@ -25,6 +25,7 @@ import type {
   MarketInstrument,
   MarketLandscapeProvider,
   MarketLandscapeSnapshot,
+  MarketProviderCapabilities,
   MarketRegion,
   MarketSession,
   MarketSearchResult,
@@ -47,6 +48,16 @@ const FUTURE_PULSE = [
   ["NQ00Y", "NASDAQ FUT"],
 ] as const;
 const RANGE_DAYS = { "1M": 45, "3M": 110, "6M": 220, "1Y": 420, "3Y": 1_180 } as const;
+
+export const STOCK_SDK_CAPABILITIES: MarketProviderCapabilities = {
+  markets: ["CN", "HK", "US", "GLOBAL"],
+  quote: true,
+  history: true,
+  search: true,
+  dividends: ["CN"],
+  landscape: ["CN"],
+  realtime: "delayed",
+};
 
 function compactDate(value: Date): string {
   return value.toISOString().slice(0, 10).replaceAll("-", "");
@@ -302,6 +313,7 @@ export class StockSdkProvider
     MarketLandscapeProvider
 {
   readonly id = "stock-sdk@2.4.2";
+  readonly capabilities = STOCK_SDK_CAPABILITIES;
   private readonly sdk = new StockSDK({
     timeout: 10_000,
     retry: { maxRetries: 1, baseDelay: 350 },
@@ -325,14 +337,22 @@ export class StockSdkProvider
 
   async loadQuote(instrument: MarketInstrument): Promise<QuoteSnapshot> {
     const receivedAt = Date.now();
+    if (instrument.market === "GLOBAL") {
+      const futures = await this.sdk.futures.globalSpot({ pageSize: 100 });
+      const future = futures.find(
+        (item) => item.code.toUpperCase() === instrument.sourceSymbol.toUpperCase(),
+      );
+      const quote =
+        future === undefined ? null : futureSnapshot(future, instrument.shortName, receivedAt);
+      if (quote === null) throw new Error(`stock-sdk returned no quote for ${instrument.symbol}`);
+      return { ...quote, instrument };
+    }
     const quotes =
       instrument.market === "CN"
         ? await this.sdk.quotes.cn([instrument.sourceSymbol])
         : instrument.market === "HK"
           ? await this.sdk.quotes.hk([instrument.sourceSymbol])
-          : instrument.market === "US"
-            ? await this.sdk.quotes.us([instrument.sourceSymbol])
-            : [];
+          : await this.sdk.quotes.us([instrument.sourceSymbol]);
     const quote = quotes[0];
     if (quote === undefined)
       throw new Error(`stock-sdk returned no quote for ${instrument.symbol}`);

@@ -1,5 +1,5 @@
 import { RuntimeProvider, useRuntime, type RuntimeServices } from "@bcr/react";
-import { consumeQuantHandoff, QUANT_HANDOFF_EVENT } from "@bcr/market-data";
+import { consumeQuantHandoff, QUANT_HANDOFF_EVENT, type QuantHandoff } from "@bcr/market-data";
 import { Activity, Database, Download, Play, Square, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { EquityChart, MarketChart } from "./components/Charts";
@@ -31,10 +31,7 @@ export function App() {
         if (handoff !== null) {
           await importMarketAtlasHandoff(runtime, handoff);
           await persistProject(runtime);
-          quant.log(
-            "ok",
-            `handoff · ${handoff.instrument.symbol} · ${handoff.bars.length} daily bars from Market Atlas`,
-          );
+          quant.log("ok", handoffLog(handoff));
         } else {
           const restored = await restoreProject(runtime);
           if (!restored) await loadDemoDataset(runtime);
@@ -78,6 +75,26 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function handoffSeries(handoff: QuantHandoff) {
+  return handoff.version === 2
+    ? handoff.series
+    : [
+        {
+          instrument: handoff.instrument,
+          range: handoff.range,
+          bars: handoff.bars,
+          source: handoff.source,
+        },
+      ];
+}
+
+function handoffLog(handoff: QuantHandoff): string {
+  const series = handoffSeries(handoff);
+  const first = series[0];
+  const totalBars = series.reduce((total, item) => total + item.bars.length, 0);
+  return `handoff · ${handoff.version === 2 ? `${handoff.groupName} · ` : ""}${first?.instrument.symbol ?? "UNKNOWN"} · ${series.length} ${series.length === 1 ? "instrument" : "instruments"} · ${totalBars} daily bars from Market Atlas`;
+}
+
 function downloadFile(blob: Blob, name: string): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -105,10 +122,7 @@ function Workbench() {
         if (quant.getSnapshot().running) await cancelStrategy();
         await importMarketAtlasHandoff(services, handoff);
         await persistProject(services);
-        quant.log(
-          "ok",
-          `handoff · ${handoff.instrument.symbol} · ${handoff.bars.length} daily bars from Market Atlas`,
-        );
+        quant.log("ok", handoffLog(handoff));
         await runStrategy(services);
       } catch (error) {
         quant.log("error", `handoff · ${error instanceof Error ? error.message : String(error)}`);
@@ -191,9 +205,11 @@ function Workbench() {
           <i />
           REPLAY ONLINE
           <span>
-            {state.dataset === null
-              ? "NO DATASET"
-              : `${state.dataset.name} · ${state.dataset.partitions.length} SHARDS`}
+            {state.marketHandoff !== null
+              ? `MARKET ATLAS · ${state.marketHandoff.series.length} SERIES`
+              : state.dataset === null
+                ? "NO DATASET"
+                : `${state.dataset.name} · ${state.dataset.partitions.length} SHARDS`}
           </span>
         </div>
         <div className="ql-actions">
@@ -342,6 +358,35 @@ function Workbench() {
             <small>{state.dataset?.columnar.engine ?? "COLUMNAR ENGINE OFFLINE"}</small>
             <small>{state.dataset?.ref.hash?.slice(0, 16) ?? "NO CONTENT HASH"}</small>
           </div>
+
+          {state.marketHandoff !== null && (
+            <div className="ql-handoff-block" data-series-count={state.marketHandoff.series.length}>
+              <div>
+                <Activity /> MARKET ATLAS INTAKE
+              </div>
+              <b>{state.marketHandoff.groupName}</b>
+              <span>
+                {state.marketHandoff.series.length} SERIES · {state.marketHandoff.range} · FIRST
+                SERIES ACTIVE
+              </span>
+              <ul>
+                {state.marketHandoff.series.slice(0, 4).map((series) => (
+                  <li key={series.instrumentId}>
+                    <span>
+                      <b>{series.symbol}</b>
+                      <small>
+                        {series.market} · {series.name}
+                      </small>
+                    </span>
+                    <em>{series.bars} BARS</em>
+                  </li>
+                ))}
+              </ul>
+              {state.marketHandoff.series.length > 4 && (
+                <small>+{state.marketHandoff.series.length - 4} MORE SERIES QUEUED</small>
+              )}
+            </div>
+          )}
 
           <div className="ql-pipeline-map">
             <PipelineNode id="01" name="SMA SIGNAL" run={state.nodes["signal"]} />

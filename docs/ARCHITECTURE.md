@@ -525,13 +525,14 @@ Long-only Backtester 已下沉 Rust/WASM，以 f64 close + u8 position TypedArra
 search-result、dividend-event、market-landscape、daily OHLCV、session、feed-health 数据契约。CN / HK / US / 全球期货分别请求；上游整体失败时按
 `live delayed → partial → cached → demo` 语义降级。`apps/market-board` 以第四个 keep-alive 路由
 挂入 Studio，当前完成全球时区轨道、市场脉搏、焦点行情、全 A 股宽度、行业热图、三类排行、期货、异动、Watchlist 与
-1M—3Y 日线蜡烛图。跨市场搜索以 33 个常用标的目录即时响应，再与 `sdk.search()` 远程结果合并；
+1M—3Y 日线蜡烛图。跨市场搜索以 41 个常用标的目录即时响应（含 8 个全球期货），再与 `sdk.search()` 远程结果合并；Provider adapter 同时暴露 markets / quote / history / search / dividends / landscape capabilities，后续可据此挂载更多数据源；
 Studio / Market Board 使用 `COEP: credentialless`，在维持 `crossOriginIsolated` 的同时允许 SDK 的
 跨域 JSONP 搜索脚本。Market Cartography 以 `batch.cn()` 生成 5,000+ 标的广度与领涨/领跌/成交额排行，
 行业板块和资金流分别请求；任一层为空时从最后快照或确定性 fixture 补齐，并保持 `partial` 标签。A 股分红进入 Income Ledger，其他市场保持显式 unsupported 语义。
 看板通过版本化 handoff 传递完整历史柱；Quant Lab 接收后规范化为
-`market/symbol/year` Arrow / Parquet 内容寻址分区并自动运行回测。下一步扩展多标的选择、
-相关性矩阵与组合级回测。
+`market/symbol/year` Arrow / Parquet 内容寻址分区并自动运行回测。当前 v2 handoff 已支持
+Watchlist 分组内的多序列交接：Quant Lab 会保留完整 intake 摘要，以首个序列作为当前策略
+数据集，避免在组合引擎尚未落地前静默丢弃其他标的。下一步扩展相关性矩阵与组合级回测。
 
 ### Phase 3 — 正式抽包与生态
 

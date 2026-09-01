@@ -1,4 +1,4 @@
-import { PULSE_INSTRUMENTS } from "./instruments";
+import { GLOBAL_INSTRUMENTS, PULSE_INSTRUMENTS } from "./instruments";
 import type { AssetClass, MarketInstrument, MarketRegion, MarketSearchResult } from "./model";
 
 interface DirectoryEntry {
@@ -23,6 +23,17 @@ const PULSE_ALIASES: Readonly<Record<string, string>> = {
   "US:INDEX:IXIC": "纳斯达克 纳指 nasdaq",
   "US:NASDAQ:AAPL": "苹果 apple",
   "US:NASDAQ:NVDA": "英伟达 nvidia",
+};
+
+const GLOBAL_ALIASES: Readonly<Record<string, string>> = {
+  "GLOBAL:FUTURE:GC00Y": "黄金 gold xau commodity",
+  "GLOBAL:FUTURE:CL00Y": "原油 wti crude oil commodity",
+  "GLOBAL:FUTURE:B00Y": "布伦特 brent crude oil commodity",
+  "GLOBAL:FUTURE:HG00Y": "铜 copper commodity",
+  "GLOBAL:FUTURE:NG00Y": "天然气 natural gas commodity",
+  "GLOBAL:FUTURE:TY00Y": "美国十年期国债 us 10y treasury bond",
+  "GLOBAL:FUTURE:ES00Y": "标普期货 s&p 500 future",
+  "GLOBAL:FUTURE:NQ00Y": "纳指期货 nasdaq 100 future",
 };
 
 function instrument(
@@ -163,6 +174,11 @@ const DIRECTORY: ReadonlyArray<DirectoryEntry> = [
     instrument: item,
     aliases: PULSE_ALIASES[item.id] ?? "",
     providerType: item.assetClass === "index" ? "ZS" : item.assetClass === "fund" ? "ETF" : "GP",
+  })),
+  ...GLOBAL_INSTRUMENTS.map((item) => ({
+    instrument: item,
+    aliases: GLOBAL_ALIASES[item.id] ?? "",
+    providerType: "FUTURE",
   })),
   ...EXTENDED_DIRECTORY,
 ];

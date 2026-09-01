@@ -1,4 +1,4 @@
-import type { MarketInstrument } from "./model";
+import type { MarketInstrument, MarketRegion } from "./model";
 
 export const PULSE_INSTRUMENTS: ReadonlyArray<MarketInstrument> = [
   {
@@ -183,6 +183,36 @@ export const PULSE_INSTRUMENTS: ReadonlyArray<MarketInstrument> = [
   },
 ];
 
-export function instrumentsFor(market: "CN" | "HK" | "US"): ReadonlyArray<MarketInstrument> {
+/** Curated global futures master.  Quotes and history are resolved by the
+ * stock-sdk global futures endpoints, while the catalog keeps search and
+ * watchlist state useful even when the remote search endpoint is degraded. */
+const GLOBAL_FUTURES: ReadonlyArray<readonly [string, string, string, string]> = [
+  ["GC00Y", "COMEX Gold", "GOLD", "USD"],
+  ["CL00Y", "WTI Crude", "WTI", "USD"],
+  ["B00Y", "Brent Crude", "BRENT", "USD"],
+  ["HG00Y", "COMEX Copper", "COPPER", "USD"],
+  ["NG00Y", "Natural Gas", "NAT GAS", "USD"],
+  ["TY00Y", "US 10Y Note", "US 10Y", "USD"],
+  ["ES00Y", "S&P 500 Future", "S&P FUT", "USD"],
+  ["NQ00Y", "Nasdaq 100 Future", "NASDAQ FUT", "USD"],
+];
+
+export const GLOBAL_INSTRUMENTS: ReadonlyArray<MarketInstrument> = GLOBAL_FUTURES.map(
+  ([sourceSymbol, name, shortName, currency]) => ({
+    id: `GLOBAL:FUTURE:${sourceSymbol}`,
+    symbol: sourceSymbol,
+    sourceSymbol,
+    name,
+    shortName,
+    market: "GLOBAL",
+    venue: "GLOBAL FUTURES",
+    currency,
+    timezone: "UTC",
+    assetClass: "future",
+  }),
+);
+
+export function instrumentsFor(market: MarketRegion): ReadonlyArray<MarketInstrument> {
+  if (market === "GLOBAL") return GLOBAL_INSTRUMENTS;
   return PULSE_INSTRUMENTS.filter((instrument) => instrument.market === market);
 }

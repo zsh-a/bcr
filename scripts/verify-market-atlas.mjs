@@ -62,6 +62,26 @@ await firstStar.click();
 if ((await firstStar.evaluate((element) => element.classList.contains("watched"))) === wasWatched) {
   fail("Watchlist 交互未生效");
 }
+const watchlistGroups = page.locator(".ma-watchlist-groups [role=tab]");
+if ((await watchlistGroups.count()) < 2) fail("Watchlist 分组未渲染");
+await watchlistGroups.nth(1).click();
+const groupSend = page.getByRole("button", { name: "SEND GROUP", exact: true });
+await groupSend.waitFor({ timeout: 10_000 });
+await groupSend.click();
+await page.waitForURL((url) => url.pathname === "/quant", { timeout: 30_000 });
+await page.locator(".ql-handoff-block").waitFor({ timeout: 60_000 });
+const handoffSeriesCount = await page
+  .locator(".ql-handoff-block")
+  .getAttribute("data-series-count");
+if (Number(handoffSeriesCount) < 3) {
+  fail(`多标的 handoff 序列数量错误: ${handoffSeriesCount ?? "missing"}`);
+}
+if (!(await page.locator(".ql-market-status").innerText()).includes("MARKET ATLAS")) {
+  fail("Quant Lab 未显示 Market Atlas 多序列状态");
+}
+await page.goto(base.toString(), { waitUntil: "domcontentloaded" });
+await page.locator(".market-atlas").waitFor({ timeout: 20_000 });
+await page.locator(".ma-refresh:not(:disabled)").waitFor({ timeout: 45_000 });
 
 const search = page.getByLabel("Search global instruments");
 await search.fill("茅台");
