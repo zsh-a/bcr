@@ -18,7 +18,7 @@ export const Button = forwardRef<
   return (
     <button
       ref={ref}
-      className={`inline-flex h-6.5 items-center gap-1.5 rounded-[var(--radius-sm)] px-2.5 text-[11px] transition-colors duration-100 disabled:pointer-events-none disabled:opacity-40 ${buttonVariants[variant]} ${className}`}
+      className={`inline-flex h-10 items-center gap-2 rounded-[var(--radius-sm)] px-3 text-[12px] transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40 ${buttonVariants[variant]} ${className}`}
       {...props}
     />
   );
@@ -37,7 +37,7 @@ const badgeTones: Record<BadgeTone, string> = {
 export function Badge({ tone = "muted", children }: { tone?: BadgeTone; children: ReactNode }) {
   return (
     <span
-      className={`inline-flex h-4.5 items-center rounded-[var(--radius-xs)] border px-1.5 font-mono text-[10px] leading-none ${badgeTones[tone]}`}
+      className={`inline-flex h-6 items-center rounded-[var(--radius-xs)] border px-2 font-mono text-[10px] leading-none ${badgeTones[tone]}`}
     >
       {children}
     </span>
@@ -47,15 +47,15 @@ export function Badge({ tone = "muted", children }: { tone?: BadgeTone; children
 export function PanelEmpty({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-1.5 text-center">
-      <p className="text-[12px] text-muted">{title}</p>
-      {hint !== undefined && <p className="max-w-56 text-[11px] text-faint">{hint}</p>}
+      <p className="text-[14px] text-muted">{title}</p>
+      {hint !== undefined && <p className="max-w-64 text-[12px] leading-5 text-faint">{hint}</p>}
     </div>
   );
 }
 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <div className="px-2 pt-2 pb-1 font-mono text-[10px] tracking-[0.08em] text-faint uppercase">
+    <div className="px-3 pt-3 pb-2 font-mono text-[10px] tracking-[0.1em] text-faint uppercase">
       {children}
     </div>
   );

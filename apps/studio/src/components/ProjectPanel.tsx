@@ -40,7 +40,7 @@ export function ProjectPanel() {
             };
             input.click();
           }}
-          className="inline-flex h-5.5 items-center gap-1 rounded-[var(--radius-xs)] px-1.5 text-[11px] text-muted transition-colors hover:bg-raised hover:text-text"
+          className="inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-xs)] px-2.5 text-[11px] text-muted transition-colors hover:bg-raised hover:text-text"
         >
           <FilePlus2 className="size-3" />
           导入

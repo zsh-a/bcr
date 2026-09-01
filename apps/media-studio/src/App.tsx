@@ -114,13 +114,13 @@ function Studio() {
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="media-studio flex h-full flex-col">
       {/* 顶栏 */}
-      <header className="flex items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
-        <span className="font-mono text-[13px] font-semibold">
+      <header className="media-header flex items-center gap-4 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3">
+        <span className="media-brand font-mono text-[16px] font-semibold">
           BCR / Media Studio <span className="text-[var(--color-faint)]">· subtitle</span>
         </span>
-        <span className="ml-2 flex items-center gap-2 text-[10px] text-[var(--color-faint)]">
+        <span className="media-settings ml-2 flex items-center gap-2 text-[11px] text-[var(--color-faint)]">
           <select
             value={settings.model}
             onChange={(event) => studio.setSettings({ model: event.target.value })}
@@ -178,7 +178,7 @@ function Studio() {
             </select>
           )}
         </span>
-        <span className="ml-auto flex items-center gap-2">
+        <span className="media-actions ml-auto flex items-center gap-2">
           <UndoRedo />
           {engineUsed !== null && (
             <span className="rounded border border-[var(--color-border-strong)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-muted)]">
@@ -210,16 +210,14 @@ function Studio() {
         </span>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="media-layout flex min-h-0 flex-1">
         {/* 左栏 */}
-        <aside className="flex w-[300px] shrink-0 flex-col gap-3 overflow-y-auto border-r border-[var(--color-border)] p-3">
+        <aside className="media-sidebar flex w-[340px] shrink-0 flex-col gap-6 overflow-y-auto border-r border-[var(--color-border)] p-5">
           <section>
-            <div className="mb-1.5 text-[10px] tracking-wider text-[var(--color-faint)]">
-              SOURCE
-            </div>
+            <div className="mb-3 text-[11px] tracking-wider text-[var(--color-faint)]">SOURCE</div>
             <div
               data-testid="dropzone"
-              className="flex cursor-pointer flex-col items-center gap-1 rounded border border-dashed border-[var(--color-border-strong)] px-3 py-5 text-center hover:border-[var(--color-accent)]"
+              className="media-dropzone flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-strong)] px-5 py-6 text-center hover:border-[var(--color-accent)]"
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
@@ -230,16 +228,16 @@ function Studio() {
             >
               {source !== null ? (
                 <>
-                  <div className="font-mono text-[11px]">{source.name}</div>
-                  <div className="text-[10px] text-[var(--color-faint)]">
+                  <div className="font-mono text-[13px]">{source.name}</div>
+                  <div className="text-[11px] text-[var(--color-faint)]">
                     {(source.size / 1024 / 1024).toFixed(1)} MB · opfs
                     {mediaInfo !== null && ` · ${mediaInfo.durationS.toFixed(1)}s · 16kHz mono`}
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="text-[11px]">拖入 音频 / 视频文件</div>
-                  <div className="text-[10px] text-[var(--color-faint)]">
+                  <div className="text-[13px]">拖入 音频 / 视频文件</div>
+                  <div className="text-[11px] text-[var(--color-faint)]">
                     wav / mp3 / m4a / mp4 / webm
                   </div>
                 </>
@@ -266,7 +264,7 @@ function Studio() {
           </section>
 
           <section>
-            <div className="mb-1.5 flex items-center text-[10px] tracking-wider text-[var(--color-faint)]">
+            <div className="mb-3 flex items-center text-[11px] tracking-wider text-[var(--color-faint)]">
               PIPELINE · DAG
               <button
                 type="button"
@@ -280,10 +278,8 @@ function Studio() {
           </section>
 
           <section>
-            <div className="mb-1.5 text-[10px] tracking-wider text-[var(--color-faint)]">
-              CONSOLE
-            </div>
-            <div className="h-40 overflow-y-auto rounded border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 font-mono text-[10px] leading-relaxed">
+            <div className="mb-3 text-[11px] tracking-wider text-[var(--color-faint)]">CONSOLE</div>
+            <div className="h-48 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 font-mono text-[11px] leading-relaxed">
               {logs.map((entry, index) => (
                 <div
                   key={index}
@@ -305,8 +301,8 @@ function Studio() {
         </aside>
 
         {/* 右侧：字幕 / 流水线 DAG 页签 */}
-        <main className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center gap-1 border-b border-[var(--color-border)] px-3 pt-2">
+        <main className="media-main flex min-w-0 flex-1 flex-col">
+          <div className="media-tabs flex items-center gap-2 border-b border-[var(--color-border)] px-5 pt-3">
             {(
               [
                 ["subtitles", "字幕"],
@@ -318,7 +314,7 @@ function Studio() {
                 type="button"
                 data-testid={`tab-${id}`}
                 onClick={() => studio.setView(id)}
-                className={`-mb-px border-b px-2.5 pb-1.5 text-[11px] transition-colors ${
+                className={`-mb-px min-h-11 border-b px-4 pb-2 text-[12px] transition-colors ${
                   view === id
                     ? "border-[var(--color-accent)] text-[var(--color-text)]"
                     : "border-transparent text-[var(--color-faint)] hover:text-[var(--color-muted)]"
@@ -332,7 +328,7 @@ function Studio() {
           {view === "pipeline" ? (
             <PipelineEditor />
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+            <div className="media-content flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-5">
               {source?.objectUrl != null && (
                 <video
                   ref={videoRef}

@@ -4,24 +4,28 @@
    自动源检测扫不到本包，必须显式声明扫描目录（相对本 CSS 文件）。 */
 @source ".";
 
-/* BCR Media Studio · Subtitle —— 与 Studio 同源的 Rhea 暗色 token（精简版） */
+/* BCR Media Studio · Subtitle — 与 Workspace / Market Atlas 同源的编辑式工作站。 */
 @theme {
-  --color-bg: #0b0d10;
-  --color-surface: #10131a;
-  --color-raised: #171b24;
-  --color-border: #222836;
-  --color-border-strong: #2e3648;
-  --color-text: #e6e9f0;
-  --color-muted: #8a93a6;
-  --color-faint: #5a6376;
-  --color-accent: #3fe0a5;
-  --color-accent-dim: #1a3f33;
-  --color-amber: #f0b357;
-  --color-danger: #f26d6d;
-  --color-info: #6ea8fe;
+  --color-bg: #090b0c;
+  --color-surface: #111516;
+  --color-raised: #181d1e;
+  --color-border: #343d3a;
+  --color-border-strong: #46524e;
+  --color-text: #f5f5ed;
+  --color-muted: #aab2ad;
+  --color-faint: #75807b;
+  --color-accent: #65d8d0;
+  --color-accent-dim: #173b39;
+  --color-amber: #efbc69;
+  --color-danger: #ff766d;
+  --color-info: #82aef7;
 
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
 }
 
 html,
@@ -35,8 +39,8 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
@@ -62,17 +66,33 @@ textarea {
   color: inherit;
 }
 
-input,
+input:not([type="checkbox"]):not([type="file"]),
 select {
+  min-height: 38px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
   outline: none;
 }
-input:focus,
-select:focus {
-  border-color: var(--color-accent);
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-accent);
+}
+
+button {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
 }
 
 .btn {
@@ -81,8 +101,9 @@ select:focus {
   gap: 6px;
   border: 1px solid var(--color-border-strong);
   background: var(--color-raised);
-  border-radius: 5px;
-  padding: 4px 10px;
+  min-height: 40px;
+  border-radius: var(--radius-sm);
+  padding: 0 13px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -101,4 +122,151 @@ select:focus {
 }
 .btn-primary:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-accent) 85%, white);
+}
+
+.media-studio {
+  min-height: 0;
+  background:
+    radial-gradient(circle at 85% 0%, rgba(101, 216, 208, 0.055), transparent 26rem),
+    var(--color-bg);
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.media-studio button:not(.btn) {
+  min-height: 36px;
+}
+
+.media-studio textarea {
+  min-height: 38px;
+}
+
+.media-header {
+  z-index: 10;
+  min-height: 72px;
+  background: rgba(17, 21, 22, 0.94);
+  backdrop-filter: blur(18px);
+}
+
+.media-brand {
+  flex: none;
+  letter-spacing: -0.02em;
+}
+
+.media-settings {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.media-actions {
+  flex: none;
+}
+
+.media-sidebar {
+  background: rgba(12, 15, 15, 0.7);
+}
+
+.media-dropzone {
+  background: rgba(17, 21, 22, 0.66);
+  transition:
+    border-color 180ms ease,
+    background 180ms ease;
+}
+
+.media-dropzone:hover {
+  background: var(--color-raised);
+}
+
+.media-main {
+  background: rgba(9, 11, 12, 0.42);
+}
+
+.media-tabs {
+  min-height: 56px;
+}
+
+@media (max-width: 1180px) {
+  .media-header {
+    flex-wrap: wrap;
+  }
+
+  .media-settings {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    padding-top: 4px;
+  }
+}
+
+@media (max-width: 760px) {
+  body {
+    overflow: auto;
+    font-size: 16px;
+  }
+
+  .media-studio {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .media-header {
+    position: sticky;
+    top: 0;
+    padding: 12px 16px;
+  }
+
+  .media-actions {
+    width: 100%;
+    overflow-x: auto;
+    margin-left: 0;
+    padding-bottom: 2px;
+  }
+
+  .media-settings {
+    padding-bottom: 2px;
+  }
+
+  .media-layout {
+    display: block;
+  }
+
+  .media-sidebar {
+    width: 100%;
+    max-height: none;
+    padding: 24px 18px;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .media-main {
+    min-height: 760px;
+  }
+
+  .media-content {
+    padding: 18px;
+  }
+
+  .media-studio button,
+  .media-studio input:not([type="checkbox"]):not([type="file"]),
+  .media-studio select {
+    min-height: 44px;
+  }
+
+  .media-studio button:not(.btn) {
+    min-height: 44px;
+  }
+
+  .media-studio button[aria-label="撤销"],
+  .media-studio button[aria-label="重做"] {
+    min-width: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media-studio * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

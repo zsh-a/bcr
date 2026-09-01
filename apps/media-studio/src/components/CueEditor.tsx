@@ -16,7 +16,8 @@ export function UndoRedo() {
   return (
     <span className="flex items-center gap-1" data-testid="undo-redo">
       <button
-        className="text-[10px] text-[var(--color-faint)] hover:text-[var(--color-text)] disabled:opacity-30"
+        aria-label="撤销"
+        className="w-9 text-[12px] text-[var(--color-faint)] hover:text-[var(--color-text)] disabled:opacity-30"
         data-testid="undo"
         disabled={!canUndo}
         title="撤销 (Ctrl+Z)"
@@ -25,7 +26,8 @@ export function UndoRedo() {
         ↺
       </button>
       <button
-        className="text-[10px] text-[var(--color-faint)] hover:text-[var(--color-text)] disabled:opacity-30"
+        aria-label="重做"
+        className="w-9 text-[12px] text-[var(--color-faint)] hover:text-[var(--color-text)] disabled:opacity-30"
         data-testid="redo"
         disabled={!canRedo}
         title="重做 (Ctrl+Shift+Z)"
@@ -150,7 +152,7 @@ function CueRow(props: {
         </button>
         {props.overspeed && (
           <span
-            className="mt-0.5 shrink-0 rounded bg-[color-mix(in_srgb,var(--color-amber)_18%,transparent)] px-1 font-mono text-[9px] text-[var(--color-amber)]"
+            className="mt-0.5 shrink-0 rounded bg-[color-mix(in_srgb,var(--color-amber)_18%,transparent)] px-1 font-mono text-[10px] text-[var(--color-amber)]"
             title={`显示速度超过 ${CPS_LIMIT} 单位/秒，观众可能读不完`}
           >
             CPS!

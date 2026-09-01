@@ -53,64 +53,133 @@ function Demo() {
   };
 
   return (
-    <main style={{ fontFamily: "monospace", padding: 24, maxWidth: 720 }}>
-      <h1>BCR 垂直切片</h1>
-      <p>文件 → OPFS → Worker 内 WASM kernel（流式分块）→ Artifact → 内容寻址缓存</p>
+    <div className="slice-app">
+      <header className="slice-header">
+        <span className="slice-mark">BCR/01</span>
+        <div>
+          <small>BROWSER COMPUTE RUNTIME</small>
+          <b>Vertical Slice</b>
+        </div>
+        <span className="slice-runtime">
+          <i /> LOCAL RUNTIME
+        </span>
+      </header>
 
-      <section>
-        <h2>1. 选择源文件</h2>
-        <input
-          type="file"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file !== undefined) void onPickFile(file);
-          }}
-        />
-        {source !== null && <p>已写入 OPFS：{source.id}</p>}
-      </section>
+      <main className="slice-main">
+        <section className="slice-hero">
+          <div>
+            <span className="slice-kicker">FILES BECOME COMPUTE</span>
+            <h1>
+              Local work.
+              <br />
+              Visible lineage.
+            </h1>
+          </div>
+          <p>
+            从浏览器文件到 Worker 内的 WASM
+            kernel，再到内容寻址缓存。整个计算链路留在本地，也保持清晰可见。
+          </p>
+        </section>
 
-      <section>
-        <h2>2. 提交任务（wasm runtime）</h2>
-        <select
-          value={operation}
-          onChange={(e) => setOperation(e.target.value as "hash.blake3" | "audio.rms")}
-        >
-          <option value="hash.blake3">hash.blake3（流式 BLAKE3）</option>
-          <option value="audio.rms">audio.rms（按 f32le PCM 统计）</option>
-        </select>{" "}
-        <button
-          type="button"
-          disabled={source === null || state.status === "running"}
-          onClick={runTask}
-        >
-          运行
-        </button>{" "}
-        <button
-          type="button"
-          disabled={state.status !== "running"}
-          onClick={() => {
-            if (handle !== null) void Effect.runPromise(handle.cancel);
-          }}
-        >
-          取消
-        </button>
-      </section>
+        <div className="slice-flow" aria-label="计算流程">
+          <span>FILE</span>
+          <i>01</i>
+          <span>OPFS</span>
+          <i>02</i>
+          <span>WASM WORKER</span>
+          <i>03</i>
+          <span>ARTIFACT</span>
+        </div>
 
-      <section>
-        <h2>3. 状态</h2>
-        <p>
-          status: {state.status}
-          {handle?.cached === true && state.status === "completed" ? "（缓存命中，未重算）" : ""}
-        </p>
-        <progress value={state.progress} max={1} style={{ width: "100%" }} />
-        {state.error !== undefined && <p>error: {state.error}</p>}
-        {outputText !== undefined && <pre style={{ wordBreak: "break-all" }}>{outputText}</pre>}
-      </section>
+        <div className="slice-grid">
+          <section className="slice-card">
+            <header>
+              <span>01</span>
+              <h2>选择源文件</h2>
+            </header>
+            <p>文件将通过流式写入进入 OPFS，不需要整段载入内存。</p>
+            <label className="slice-file">
+              <span>{source === null ? "选择本地文件" : "替换当前文件"}</span>
+              <input
+                type="file"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file !== undefined) void onPickFile(file);
+                }}
+              />
+            </label>
+            <div className="slice-detail">
+              {source === null ? "WAITING FOR SOURCE" : `OPFS · ${source.id}`}
+            </div>
+          </section>
 
-      <p style={{ color: "#666" }}>
-        提示：同一文件再次运行同一操作 → 缓存命中；换文件或换操作 → 重算。
-      </p>
-    </main>
+          <section className="slice-card">
+            <header>
+              <span>02</span>
+              <h2>提交计算任务</h2>
+            </header>
+            <p>选择 WASM 操作；相同输入与参数会直接命中内容缓存。</p>
+            <label className="slice-field">
+              <span>OPERATION</span>
+              <select
+                value={operation}
+                onChange={(event) =>
+                  setOperation(event.target.value as "hash.blake3" | "audio.rms")
+                }
+              >
+                <option value="hash.blake3">hash.blake3 · 流式 BLAKE3</option>
+                <option value="audio.rms">audio.rms · f32le PCM</option>
+              </select>
+            </label>
+            <div className="slice-actions">
+              <button
+                className="primary"
+                type="button"
+                disabled={source === null || state.status === "running"}
+                onClick={runTask}
+              >
+                运行任务
+              </button>
+              <button
+                type="button"
+                disabled={state.status !== "running"}
+                onClick={() => {
+                  if (handle !== null) void Effect.runPromise(handle.cancel);
+                }}
+              >
+                取消
+              </button>
+            </div>
+          </section>
+
+          <section className="slice-card slice-result" aria-live="polite">
+            <header>
+              <span>03</span>
+              <h2>查看运行结果</h2>
+            </header>
+            <div className="slice-status">
+              <span>STATUS</span>
+              <b data-status={state.status}>{state.status}</b>
+            </div>
+            <progress value={state.progress} max={1} />
+            {handle?.cached === true && state.status === "completed" && (
+              <p className="slice-cache">CACHE HIT · 结果来自内容寻址缓存</p>
+            )}
+            {state.error !== undefined && <p className="slice-error">ERROR · {state.error}</p>}
+            {outputText !== undefined ? (
+              <pre>{outputText}</pre>
+            ) : (
+              <div className="slice-empty">计算产物将在这里显示</div>
+            )}
+          </section>
+        </div>
+
+        <footer className="slice-note">
+          <span>REPRODUCIBLE BY DESIGN</span>
+          <p>同一文件再次运行同一操作会命中缓存；替换文件或操作则触发新的计算链路。</p>
+        </footer>
+      </main>
+    </div>
   );
 }
 
@@ -121,7 +190,14 @@ export default function App() {
     void createRuntimeServices().then(setServices);
   }, []);
 
-  if (services === null) return <p>Runtime 初始化中…</p>;
+  if (services === null) {
+    return (
+      <div className="slice-boot">
+        <i />
+        <span>正在组装 Browser Compute Runtime…</span>
+      </div>
+    );
+  }
   return (
     <RuntimeProvider services={services}>
       <Demo />
