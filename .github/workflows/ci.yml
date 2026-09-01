@@ -64,6 +64,9 @@ jobs:
       - name: Build Market Atlas
         run: node_modules/.bin/vp -C apps/market-board build
 
+      - name: Build Manga Studio
+        run: node_modules/.bin/vp -C apps/manga-studio build
+
       - name: Build BCR Studio
         run: node_modules/.bin/vp -C apps/studio build
 

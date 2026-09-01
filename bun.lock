@@ -14,6 +14,26 @@
         "vitest": "^4.1.0",
       },
     },
+    "apps/manga-studio": {
+      "name": "@bcr/manga-studio",
+      "version": "0.1.0",
+      "dependencies": {
+        "@bcr/core": "workspace:*",
+        "@bcr/graph": "workspace:*",
+        "@fontsource/ibm-plex-mono": "^5.3.0",
+        "@fontsource/ibm-plex-sans": "^5.3.0",
+        "lucide-react": "^1.37.0",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
+      },
+      "devDependencies": {
+        "@tailwindcss/vite": "^4.3.3",
+        "@types/react": "^19.2.0",
+        "@types/react-dom": "^19.2.0",
+        "@vitejs/plugin-react": "^5.0.0",
+        "tailwindcss": "^4.3.3",
+      },
+    },
     "apps/market-board": {
       "name": "@bcr/market-board",
       "version": "0.1.0",
@@ -90,6 +110,7 @@
       "dependencies": {
         "@base-ui/react": "^1.7.0",
         "@bcr/core": "workspace:*",
+        "@bcr/manga-studio": "workspace:*",
         "@bcr/market-board": "workspace:*",
         "@bcr/media-studio": "workspace:*",
         "@bcr/quant-lab": "workspace:*",
@@ -255,6 +276,8 @@
     "@bcr/example-demo": ["@bcr/example-demo@workspace:examples/demo"],
 
     "@bcr/graph": ["@bcr/graph@workspace:packages/graph"],
+
+    "@bcr/manga-studio": ["@bcr/manga-studio@workspace:apps/manga-studio"],
 
     "@bcr/market-board": ["@bcr/market-board@workspace:apps/market-board"],
 

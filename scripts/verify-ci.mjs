@@ -97,6 +97,7 @@ await withServer({
     "scripts/verify-persistence.mjs",
     "scripts/verify-quant-lab.mjs",
     "scripts/verify-market-atlas.mjs",
+    "scripts/verify-manga-studio.mjs",
   ],
 });
 

@@ -1,5 +1,6 @@
 import { useStudio as useMediaStudio } from "@bcr/media-studio/store";
 import { useQuantLab } from "@bcr/quant-lab/store";
+import { useMangaStudio } from "@bcr/manga-studio/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useStudio } from "../store";
 import { APPS } from "./apps";
@@ -13,11 +14,13 @@ export function Home() {
   const studioRunning = useStudio((s) => s.runningCount);
   const mediaRunning = useMediaStudio((s) => s.running);
   const quantRunning = useQuantLab((s) => s.running);
+  const mangaRunning = useMangaStudio((s) => s.running);
 
   const runningBadge = (id: string): number => {
     if (id === "studio") return studioRunning;
     if (id === "media") return mediaRunning ? 1 : 0;
     if (id === "quant") return quantRunning ? 1 : 0;
+    if (id === "manga") return mangaRunning ? 1 : 0;
     return 0;
   };
 

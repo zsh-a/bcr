@@ -1,4 +1,11 @@
-import { AudioWaveform, ChartCandlestick, Globe2, LayoutGrid, type LucideIcon } from "lucide-react";
+import {
+  AudioWaveform,
+  BookOpenText,
+  ChartCandlestick,
+  Globe2,
+  LayoutGrid,
+  type LucideIcon,
+} from "lucide-react";
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 import { Dock } from "../components/Dock";
 
@@ -7,9 +14,9 @@ import { Dock } from "../components/Dock";
  * 领域 App 经 workspace 包源码挂载，首次进入才加载对应 chunk。
  */
 export interface AppDef {
-  readonly id: "studio" | "media" | "quant" | "markets";
+  readonly id: "studio" | "media" | "quant" | "markets" | "manga";
   readonly title: string;
-  readonly path: "/studio" | "/media" | "/quant" | "/markets";
+  readonly path: "/studio" | "/media" | "/quant" | "/markets" | "/manga";
   readonly icon: LucideIcon;
   readonly description: string;
   readonly component: ComponentType | LazyExoticComponent<ComponentType>;
@@ -47,6 +54,14 @@ export const APPS: ReadonlyArray<AppDef> = [
     icon: Globe2,
     description: "全球市场脉搏 · 5K+ A 股广度 / 板块热图 / 排行 · 搜索与股息",
     component: lazy(() => import("@bcr/market-board/app").then((m) => ({ default: m.App }))),
+  },
+  {
+    id: "manga",
+    title: "Manga Studio",
+    path: "/manga",
+    icon: BookOpenText,
+    description: "漫画翻译工作台 · OCR / 翻译 / 清理 / CJK 排版审校",
+    component: lazy(() => import("@bcr/manga-studio/app").then((m) => ({ default: m.App }))),
   },
 ];
 

@@ -11,7 +11,7 @@ import { Home } from "./Home";
 
 /**
  * OS 式 Shell 根布局（§12：URL 即状态）：
- * - `/` 启动台、`/studio`、`/media`、`/quant`、`/markets`；浏览器前进/后退天然可用。
+ * - `/` 启动台、`/studio`、`/media`、`/quant`、`/markets`、`/manga`；浏览器前进/后退天然可用。
  * - Keep-alive：进入过的 App 常驻挂载，切走仅 display:none——
  *   worker 内任务、视频播放、字幕编辑状态全部保留。
  * - Shell 启动时初始化共享 Runtime（scheduler / worker pool / OPFS），

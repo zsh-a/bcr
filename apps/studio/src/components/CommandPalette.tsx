@@ -2,6 +2,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { useNavigate } from "@tanstack/react-router";
 import {
   AudioWaveform,
+  BookOpenText,
   ChartCandlestick,
   Eraser,
   FilePlus2,
@@ -71,6 +72,13 @@ export function CommandPalette(props: { open: boolean; onOpenChange: (open: bool
         hint: "Alt+4",
         icon: <Globe2 className="size-3.5" />,
         run: () => void navigate({ to: "/markets" }),
+      },
+      {
+        id: "go-manga",
+        title: "打开 Manga Studio",
+        hint: "Alt+5",
+        icon: <BookOpenText className="size-3.5" />,
+        run: () => void navigate({ to: "/manga" }),
       },
       {
         id: "import",

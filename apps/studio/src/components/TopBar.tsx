@@ -1,5 +1,6 @@
 import { useStudio as useMediaStudio } from "@bcr/media-studio/store";
 import { useQuantLab } from "@bcr/quant-lab/store";
+import { useMangaStudio } from "@bcr/manga-studio/store";
 import { useNavigate } from "@tanstack/react-router";
 import { Command, Cpu, House, SquareTerminal } from "lucide-react";
 import { APPS, type ActiveView } from "../shell/apps";
@@ -11,7 +12,9 @@ export function TopBar(props: { active: ActiveView; onOpenPalette: () => void })
   const studioRunning = useStudio((s) => s.runningCount);
   const mediaRunning = useMediaStudio((s) => s.running);
   const quantRunning = useQuantLab((s) => s.running);
-  const running = studioRunning + (mediaRunning ? 1 : 0) + (quantRunning ? 1 : 0);
+  const mangaRunning = useMangaStudio((s) => s.running);
+  const running =
+    studioRunning + (mediaRunning ? 1 : 0) + (quantRunning ? 1 : 0) + (mangaRunning ? 1 : 0);
   const taskTotal = useStudio((s) => s.tasks.length);
   const activeApp = APPS.find((app) => app.id === props.active);
 

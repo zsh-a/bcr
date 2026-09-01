@@ -1,0 +1,223 @@
+import type { ConfigField, Graph, OperationDef } from "@bcr/graph";
+import { addEdge, addNode, emptyGraph, updateNodeConfig } from "@bcr/graph";
+import type { MangaSettings } from "./model";
+
+const skipCache: ConfigField = {
+  key: "skipCache",
+  label: "跳过缓存",
+  kind: "boolean",
+  default: false,
+};
+
+const withSkipCache = (fields: ReadonlyArray<ConfigField>): ReadonlyArray<ConfigField> => [
+  ...fields,
+  skipCache,
+];
+
+export const OPERATIONS: ReadonlyArray<OperationDef> = [
+  {
+    operation: "archive.import",
+    label: "Import",
+    detail: "图片 / CBZ / ZIP / PDF → 页面清单",
+    runtime: "js",
+    inputs: [{ name: "source", type: "file/*", label: "源文件" }],
+    outputs: [{ name: "manifest", type: "manga/page-manifest", label: "pages" }],
+    resources: { memoryMB: 256, threads: 1 },
+    config: withSkipCache([]),
+  },
+  {
+    operation: "image.decode-normalize",
+    label: "Normalize",
+    detail: "解码、方向校正、分块与尺寸标准化",
+    runtime: "wasm",
+    inputs: [{ name: "manifest", type: "manga/page-manifest", label: "manifest" }],
+    outputs: [{ name: "page", type: "image/normalized", label: "page" }],
+    resources: { memoryMB: 512, threads: 1 },
+    config: withSkipCache([
+      { key: "maxDimension", label: "最长边（px）", kind: "number", default: 2400 },
+    ]),
+  },
+  {
+    operation: "manga.detect-text",
+    label: "Detect",
+    detail: "文字区域、气泡与多边形 mask",
+    runtime: "webgpu",
+    inputs: [{ name: "page", type: "image/normalized", label: "page" }],
+    outputs: [{ name: "regions", type: "manga/text-regions", label: "regions" }],
+    resources: { memoryMB: 1024, threads: 1, gpu: true },
+    config: withSkipCache([
+      {
+        key: "detector",
+        label: "检测器",
+        kind: "select",
+        options: [
+          { value: "fixture", label: "Fixture（离线演示）" },
+          { value: "local", label: "Local ONNX（待接入）" },
+        ],
+        default: "fixture",
+      },
+    ]),
+  },
+  {
+    operation: "manga.ocr",
+    label: "OCR",
+    detail: "识别文字、方向、旋转和置信度",
+    runtime: "webgpu",
+    inputs: [
+      { name: "page", type: "image/normalized", label: "page" },
+      { name: "regions", type: "manga/text-regions", label: "regions" },
+    ],
+    outputs: [{ name: "lines", type: "manga/ocr-lines", label: "lines" }],
+    resources: { memoryMB: 1536, threads: 1, gpu: true },
+    config: withSkipCache([
+      {
+        key: "language",
+        label: "源语言",
+        kind: "select",
+        options: [
+          { value: "ja", label: "日本語" },
+          { value: "en", label: "English" },
+          { value: "ko", label: "한국어" },
+        ],
+        default: "ja",
+      },
+    ]),
+  },
+  {
+    operation: "manga.reading-order",
+    label: "Order",
+    detail: "按 panel 和阅读方向重排文本块",
+    runtime: "wasm",
+    inputs: [{ name: "lines", type: "manga/ocr-lines", label: "lines" }],
+    outputs: [{ name: "blocks", type: "manga/text-blocks", label: "blocks" }],
+    resources: { memoryMB: 256, threads: 1 },
+    config: withSkipCache([]),
+  },
+  {
+    operation: "manga.translate",
+    label: "Translate",
+    detail: "保留区域 ID、换行与术语表上下文翻译",
+    runtime: "wasm",
+    inputs: [{ name: "blocks", type: "manga/text-blocks", label: "blocks" }],
+    outputs: [{ name: "segments", type: "manga/translation-segments", label: "segments" }],
+    resources: { memoryMB: 1024, threads: 1 },
+    config: withSkipCache([
+      {
+        key: "engine",
+        label: "翻译引擎",
+        kind: "select",
+        options: [
+          { value: "fixture", label: "Fixture（离线演示）" },
+          { value: "local", label: "Local model（待接入）" },
+        ],
+        default: "fixture",
+      },
+      { key: "targetLanguage", label: "目标语言", kind: "string", default: "zh" },
+    ]),
+  },
+  {
+    operation: "manga.remove-text",
+    label: "Clean",
+    detail: "保留原图，生成可追溯的清理页",
+    runtime: "webgpu",
+    inputs: [
+      { name: "page", type: "image/normalized", label: "page" },
+      { name: "regions", type: "manga/text-regions", label: "regions" },
+    ],
+    outputs: [{ name: "cleanPage", type: "manga/clean-page", label: "clean" }],
+    resources: { memoryMB: 1536, threads: 1, gpu: true },
+    config: withSkipCache([
+      {
+        key: "mode",
+        label: "清理方式",
+        kind: "select",
+        options: [
+          { value: "fill", label: "填充（MVP）" },
+          { value: "inpaint", label: "Inpainting（待接入）" },
+        ],
+        default: "fill",
+      },
+    ]),
+  },
+  {
+    operation: "manga.typeset",
+    label: "Typeset",
+    detail: "CJK 字体回退、换行、竖排与溢出检查",
+    runtime: "js",
+    inputs: [
+      { name: "cleanPage", type: "manga/clean-page", label: "clean" },
+      { name: "segments", type: "manga/translation-segments", label: "segments" },
+    ],
+    outputs: [{ name: "page", type: "manga/typeset-page", label: "translated" }],
+    resources: { memoryMB: 512, threads: 1 },
+    config: withSkipCache([
+      { key: "fontSize", label: "字号缩放", kind: "number", default: 1 },
+      { key: "writingMode", label: "默认排版", kind: "string", default: "horizontal-tb" },
+    ]),
+  },
+  {
+    operation: "archive.export",
+    label: "Export",
+    detail: "PNG / WebP / PDF / CBZ / ZIP",
+    runtime: "js",
+    inputs: [{ name: "page", type: "manga/typeset-page", label: "page" }],
+    outputs: [{ name: "export", type: "manga/export", label: "output" }],
+    resources: { memoryMB: 256, threads: 1 },
+    config: withSkipCache([
+      {
+        key: "format",
+        label: "导出格式",
+        kind: "select",
+        options: [
+          { value: "png", label: "PNG" },
+          { value: "webp", label: "WebP" },
+          { value: "cbz", label: "CBZ" },
+        ],
+        default: "png",
+      },
+    ]),
+  },
+];
+
+function operation(operation: string): OperationDef {
+  const found = OPERATIONS.find((item) => item.operation === operation);
+  if (found === undefined) throw new Error(`unknown operation ${operation}`);
+  return found;
+}
+
+/** Default graph is intentionally explicit: reviewers can later open it in GraphCanvas. */
+export function defaultGraph(settings: MangaSettings): Graph {
+  let graph = addNode(emptyGraph, operation("archive.import"), "import", 24, 160);
+  graph = addNode(graph, operation("image.decode-normalize"), "normalize", 244, 160);
+  graph = addNode(graph, operation("manga.detect-text"), "detect", 468, 72);
+  graph = addNode(graph, operation("manga.ocr"), "ocr", 692, 160);
+  graph = addNode(graph, operation("manga.reading-order"), "order", 916, 160);
+  graph = addNode(graph, operation("manga.translate"), "translate", 1140, 160);
+  graph = addNode(graph, operation("manga.remove-text"), "clean", 916, 360);
+  graph = addNode(graph, operation("manga.typeset"), "typeset", 1364, 260);
+  graph = addNode(graph, operation("archive.export"), "export", 1588, 260);
+
+  for (const [from, to] of [
+    ["import", "normalize"],
+    ["normalize", "detect"],
+    ["normalize", "ocr"],
+    ["detect", "ocr"],
+    ["ocr", "order"],
+    ["order", "translate"],
+    ["normalize", "clean"],
+    ["detect", "clean"],
+    ["clean", "typeset"],
+    ["translate", "typeset"],
+    ["typeset", "export"],
+  ] as const) {
+    graph = addEdge(graph, OPERATIONS, from, to) ?? graph;
+  }
+
+  graph = updateNodeConfig(graph, "ocr", { language: settings.sourceLanguage });
+  graph = updateNodeConfig(graph, "translate", {
+    engine: settings.engine,
+    targetLanguage: settings.targetLanguage,
+  });
+  graph = updateNodeConfig(graph, "clean", { mode: settings.cleanMode });
+  return updateNodeConfig(graph, "typeset", { fontSize: settings.fontSize });
+}

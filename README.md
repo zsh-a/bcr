@@ -2,7 +2,7 @@
 
 面向本地计算型 Web 应用的浏览器 Runtime 初版实现，对应 `docs/ARCHITECTURE.md` 的 Phase 1 核心抽象。
 
-本版范围：**核心 Runtime 包 + Media / Quant / Markets 三类端到端垂直切片**——
+本版范围：**核心 Runtime 包 + Media / Quant / Markets / Manga 四类端到端垂直切片**——
 文件或行情 → OPFS → Worker Pipeline → Artifact → 内容寻址缓存 → 跨刷新项目恢复。
 
 ## 仓库结构
@@ -19,7 +19,8 @@
 │   ├── studio/           # BCR Studio 工作台 UI（Dockview + Tailwind 4 + Base UI）
 │   ├── media-studio/     # Media Studio · Subtitle——第一个上层应用（§0 孵化策略）
 │   ├── quant-lab/        # Quant Lab · Strategy Workbench——第二类 workload 验证
-│   └── market-board/     # Market Atlas——CN / HK / US / 全球期货市场看板
+│   ├── market-board/     # Market Atlas——CN / HK / US / 全球期货市场看板
+│   └── manga-studio/     # Manga Studio——漫画 OCR / 翻译 / 清理 / CJK 排版审校
 ├── crates/
 │   └── kernels/          # bcr-kernels：wasm-bindgen kernel（流式 BLAKE3 / RMS / Peak）
 └── examples/
@@ -63,13 +64,14 @@ bun run studio         # 启动 BCR Studio 工作台（apps/studio）
 bun run media          # 启动 Media Studio · Subtitle（apps/media-studio）
 bun run quant          # 启动 Quant Lab · Strategy Workbench（apps/quant-lab）
 bun run markets        # 启动 Market Atlas（apps/market-board）
+bun run manga          # 启动 Manga Studio（apps/manga-studio）
 cargo test --manifest-path crates/kernels/Cargo.toml
 bun run test:browser   # 自动启停 dev server，运行离线 Playwright 主链路
 ```
 
-GitHub Actions 会执行格式/类型/单测、Rust/WASM、四端生产构建，并在真实 Chromium 中验证
+GitHub Actions 会执行格式/类型/单测、Rust/WASM、五端生产构建，并在真实 Chromium 中验证
 Media Studio 短音频、150 秒分窗、Studio 刷新缓存/任务历史、Quant Lab 回测参数重跑以及
-Market Atlas 数据质量与交互；
+Market Atlas 数据质量与交互，以及 Manga Studio 单页翻译与 PNG 导出；
 失败时保留截图与 server 日志。
 
 ## BCR Studio（apps/studio）
@@ -176,6 +178,20 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - 确定性模拟曲线与 OHLCV 仅出现在明确标记的演示 fixture 中，不伪装成实时历史数据
 
 走查：`node scripts/verify-market-atlas.mjs`（由 `bun run test:browser` 自动执行）。
+
+## Manga Studio（apps/manga-studio）
+
+以一张自有演示页验证漫画翻译的完整 Artifact/DAG 边界：
+
+```text
+图片 → Normalize → Detect → OCR → Reading Order → Translate → Clean → Typeset → PNG
+```
+
+- `/manga` 已接入 Studio Shell，支持图片导入、页面预览、文本区域选择与手动编辑
+- `@bcr/manga-studio` 声明页面清单、OCR、翻译、清理、排版和导出的 operation 目录，默认 Graph 可直接交给 `@bcr/graph` 编译
+- 当前模型适配器明确标记为 **Fixture / 离线演示**；导入真实图片后会创建待审校区域，不伪装成 OCR 结果
+- 单页 MVP 支持原图 / 清理页 / 译文页切换、置信度审阅、CJK 排版参数和 PNG 导出；Local ONNX、Inpainting、CBZ/PDF 批处理作为后续适配器接入
+- 操作契约与 DAG 回归位于 `apps/manga-studio/tests/operations.test.ts`
 
 ## Demo 验证路径
 
