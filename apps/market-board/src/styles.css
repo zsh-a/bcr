@@ -583,6 +583,20 @@ body {
   box-shadow: var(--ma-shadow-panel);
 }
 
+.ma-hero-grid > .ma-corporate-section {
+  grid-column: 1 / -1;
+  margin-top: 0;
+  border-top: 1px solid var(--ma-line);
+}
+
+.ma-hero-grid > .ma-corporate-section .ma-section-heading {
+  padding: 0 24px;
+}
+
+.ma-hero-grid > .ma-corporate-section .ma-income-grid {
+  border-radius: 0;
+}
+
 .ma-focus-card {
   position: relative;
   overflow: hidden;

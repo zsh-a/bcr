@@ -722,13 +722,19 @@ export function App() {
                 listings. {landscape.breadth.unchanged.toLocaleString("en-US")} unchanged.
               </p>
             </aside>
+            <CorporateActions
+              instrument={selected.instrument}
+              series={dividends.series}
+              loading={dividends.loading}
+              error={dividends.error}
+            />
           </section>
         )}
 
         <section className="ma-pulse-section">
           <div className="ma-section-heading">
             <div>
-              <span>01</span>
+              <span>02</span>
               <h2>Global pulse</h2>
               <small>ASIA → AMERICAS</small>
             </div>
@@ -791,15 +797,6 @@ export function App() {
             void selectSearchResult({ instrument, providerType: "MARKET SCAN" }, fallbackQuote);
           }}
         />
-
-        {selected !== undefined && (
-          <CorporateActions
-            instrument={selected.instrument}
-            series={dividends.series}
-            loading={dividends.loading}
-            error={dividends.error}
-          />
-        )}
 
         <section className="ma-lower-grid">
           <article className="ma-list-panel ma-futures-panel">
@@ -1019,7 +1016,7 @@ function MarketCartography(props: {
     <section className="ma-discovery-section">
       <div className="ma-section-heading">
         <div>
-          <span>02</span>
+          <span>03</span>
           <h2>Market cartography</h2>
           <small>A-SHARE BREADTH / SECTORS / RANKINGS</small>
         </div>
@@ -1227,7 +1224,7 @@ function CorporateActions(props: {
     >
       <div className="ma-section-heading">
         <div>
-          <span>03</span>
+          <span>01</span>
           <h2>Income ledger</h2>
           <small>DIVIDENDS / CORPORATE ACTIONS</small>
         </div>

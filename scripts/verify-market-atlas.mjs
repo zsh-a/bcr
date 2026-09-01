@@ -37,6 +37,7 @@ if (!Number.isFinite(universe) || universe < 5_000) fail("A 股全市场广度�
 await page.locator("[data-dividend-ledger]").waitFor({ timeout: 30_000 });
 const initialIncome = await page.locator("[data-dividend-ledger]").innerText();
 if (
+  (await page.locator(".ma-hero-grid [data-dividend-ledger]").count()) !== 1 ||
   !/(A-SHARE REFERENCE ONLINE|CACHED REFERENCE|DEMO REFERENCE)/.test(initialIncome) ||
   (await page.locator(".ma-dividend-timeline article").count()) < 1
 ) {
