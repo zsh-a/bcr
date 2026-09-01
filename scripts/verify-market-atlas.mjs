@@ -34,6 +34,14 @@ const universe = Number(
   ).replaceAll(",", ""),
 );
 if (!Number.isFinite(universe) || universe < 5_000) fail("A 股全市场广度未加载");
+await page.locator("[data-dividend-ledger]").waitFor({ timeout: 30_000 });
+const initialIncome = await page.locator("[data-dividend-ledger]").innerText();
+if (
+  !/(A-SHARE REFERENCE ONLINE|CACHED REFERENCE|DEMO REFERENCE)/.test(initialIncome) ||
+  (await page.locator(".ma-dividend-timeline article").count()) < 1
+) {
+  fail("默认焦点未展示股息账本");
+}
 await page.getByRole("button", { name: "TURNOVER", exact: true }).click();
 const firstRank = page.locator(".ma-market-ranking > button").first();
 const rankedSymbol = (await firstRank.locator("span small").innerText()).split(" · ")[0];

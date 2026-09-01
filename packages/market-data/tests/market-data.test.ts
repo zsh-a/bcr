@@ -2,15 +2,18 @@ import { describe, expect, it } from "vitest";
 import type { FullQuote, IndustryBoard } from "stock-sdk";
 import {
   buildMarketLandscape,
+  createDemoDividendSeries,
   createDemoMarketLandscape,
   createDemoSnapshot,
   createDemoHistory,
   instrumentsFor,
   isQuantHandoff,
   quoteSparkline,
+  ResilientDividendService,
   ResilientMarketService,
   searchKnownInstruments,
   type MarketDataProvider,
+  type MarketDiscoveryProvider,
   type MarketHistoryProvider,
   type MarketLandscapeProvider,
 } from "../src";
@@ -86,6 +89,43 @@ describe("Market data contracts", () => {
     expect(history.quality).toBe("demo");
     expect(history.bars).toHaveLength(252);
     expect(history.errors).toContain("history offline");
+  });
+
+  it("为默认 A 股焦点提供明确标注的股息参考数据", () => {
+    const moutai = instrumentsFor("CN").find((instrument) => instrument.id === "CN:SSE:600519");
+    if (moutai === undefined) throw new Error("missing Moutai fixture");
+    const series = createDemoDividendSeries(moutai);
+
+    expect(series.coverage).toBe("available");
+    expect(series.events.length).toBeGreaterThanOrEqual(3);
+    expect(series.events[0]?.cashPerTen).toBe(280.24);
+    expect(series.source).toContain("DEMO");
+  });
+
+  it("股息上游不可用时回退到可辨识的默认参考记录", async () => {
+    const moutai = instrumentsFor("CN").find((instrument) => instrument.id === "CN:SSE:600519");
+    if (moutai === undefined) throw new Error("missing Moutai fixture");
+    const provider: Pick<MarketDiscoveryProvider, "loadDividends"> = {
+      loadDividends: () => Promise.reject(new Error("dividend offline")),
+    };
+    const series = await new ResilientDividendService(provider).load(moutai);
+
+    expect(series.coverage).toBe("available");
+    expect(series.events.length).toBeGreaterThan(0);
+    expect(series.source).toContain("DEMO");
+    expect(series.source).toContain("UPSTREAM dividend offline");
+  });
+
+  it("不会为未覆盖的全球标的编造股息事件", async () => {
+    const instrument = instrumentsFor("US").find((item) => item.assetClass === "equity");
+    if (instrument === undefined) throw new Error("missing US equity fixture");
+    const provider: Pick<MarketDiscoveryProvider, "loadDividends"> = {
+      loadDividends: () => Promise.reject(new Error("dividend offline")),
+    };
+
+    await expect(new ResilientDividendService(provider).load(instrument)).rejects.toThrow(
+      "dividend offline",
+    );
   });
 
   it("离线目录可按中英文名称、代码和资产类别发现全球标的", () => {

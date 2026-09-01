@@ -1,6 +1,6 @@
 import type { DividendSeries, MarketInstrument } from "@bcr/market-data";
 import { useEffect, useRef, useState } from "react";
-import { marketProvider } from "./marketServices";
+import { dividendService } from "./marketServices";
 
 export interface DividendResource {
   readonly series: DividendSeries | null;
@@ -25,8 +25,8 @@ export function useDividends(instrument: MarketInstrument | undefined): Dividend
     setSeries(null);
     setLoading(true);
     setError(null);
-    void marketProvider
-      .loadDividends(instrument)
+    void dividendService
+      .load(instrument)
       .then((next) => {
         if (request.current === current) setSeries(next);
       })

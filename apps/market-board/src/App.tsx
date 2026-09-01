@@ -49,6 +49,7 @@ import "./styles.css";
 const WATCHLIST_KEY = "bcr.market-atlas.watchlist.v2";
 const LEGACY_WATCHLIST_KEY = "bcr.market-atlas.watchlist.v1";
 const INSTRUMENTS_KEY = "bcr.market-atlas.instruments.v1";
+const DEFAULT_SELECTED_ID = "CN:SSE:600519";
 const DEFAULT_WATCHLIST = ["CN:SSE:000300", "HK:HKEX:HSI", "US:INDEX:INX"];
 
 const DEFAULT_WATCHLIST_GROUPS: ReadonlyArray<MarketWatchlistGroup> = [
@@ -196,7 +197,7 @@ export function App() {
   const refresh = async (): Promise<void> => {
     await Promise.all([refreshAtlas(), refreshLandscape()]);
   };
-  const [selectedId, setSelectedId] = useState("US:INDEX:INX");
+  const [selectedId, setSelectedId] = useState(DEFAULT_SELECTED_ID);
   const [region, setRegion] = useState<MarketRegion | "ALL">("ALL");
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -1194,24 +1195,45 @@ function CorporateActions(props: {
   const events = props.series?.events ?? [];
   const latest = events.find((event) => event.cashPerTen !== null) ?? events[0];
   const supported = props.instrument.market === "CN" && props.instrument.assetClass === "equity";
+  const source = props.series?.source ?? "";
+  const isDemo = source.includes("· DEMO");
+  const isCached = source.includes("CACHED");
+  const coverageTone = props.loading
+    ? "loading"
+    : props.error !== null
+      ? "degraded"
+      : isDemo
+        ? "demo"
+        : isCached
+          ? "cached"
+          : (props.series?.coverage ?? "loading");
+  const coverageLabel = props.loading
+    ? "RESOLVING"
+    : props.error !== null
+      ? "DEGRADED"
+      : isDemo
+        ? "DEMO REFERENCE"
+        : isCached
+          ? "CACHED REFERENCE"
+          : props.series?.coverage === "available"
+            ? "A-SHARE REFERENCE ONLINE"
+            : "COVERAGE BOUNDARY";
 
   return (
-    <section className="ma-corporate-section">
+    <section
+      className="ma-corporate-section"
+      data-dividend-ledger
+      data-dividend-coverage={coverageTone}
+    >
       <div className="ma-section-heading">
         <div>
           <span>03</span>
           <h2>Income ledger</h2>
           <small>DIVIDENDS / CORPORATE ACTIONS</small>
         </div>
-        <div className={`ma-coverage ${props.series?.coverage ?? "loading"}`}>
+        <div className={`ma-coverage ${coverageTone}`}>
           <i />
-          {props.loading
-            ? "RESOLVING"
-            : props.error !== null
-              ? "DEGRADED"
-              : props.series?.coverage === "available"
-                ? "A-SHARE REFERENCE ONLINE"
-                : "COVERAGE BOUNDARY"}
+          {coverageLabel}
         </div>
       </div>
       {props.loading ? (

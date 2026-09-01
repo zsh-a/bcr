@@ -171,7 +171,7 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - Market Cartography 通过 `sdk.batch.cn()` 扫描 5,000+ A 股，生成上涨/下跌/平盘与涨跌停广度、全市场成交额，以及领涨、领跌、成交额三类可下钻排行；行业板块与资金流独立请求并可按层缓存/降级
 - Pulse 基准集扩展为 CN / HK / US 各 5 个指数与龙头标的；顶栏搜索通过 `sdk.search()` 发现三地股票、指数与场内基金，并从本地 master 发现全球期货，内置 41 个常用标的目录（含 8 个全球期货）作为即时/离线降级，并持久化最近打开标的
 - 标的焦点支持 1M / 3M / 6M / 1Y / 3Y 日线 K 线、成交量与指针读数；长周期只在显示层聚合，交接仍保留完整日线
-- Income Ledger 使用 `sdk.reference.dividendDetail()` 展示 A 股个股现金分红、股息率、除权日、登记日与实施进度；HK / US / 基金尚无同口径 provider 时明确显示覆盖边界
+- Income Ledger 默认聚焦贵州茅台这一有完整记录的 A 股个股，使用 `sdk.reference.dividendDetail()` 展示现金分红、股息率、除权日、登记日与实施进度；实时请求失败时按最后缓存 → 明确标注的演示参考降级，HK / US / 基金尚无同口径 provider 时仍显示覆盖边界
 - “Send to Quant” 将当前历史柱交给 Quant Lab，后者自动生成年度 Arrow / Parquet 分区并运行策略；Watchlist 的 “Send group” 会并行装载分组内历史序列，在 Quant Lab 显示完整 intake 摘要、相关性矩阵与等权组合基准，同时以首个序列运行当前策略；快照微型图仍只表达“昨收 → 最新”
 - 确定性模拟曲线与 OHLCV 仅出现在明确标记的演示 fixture 中，不伪装成实时历史数据
 
