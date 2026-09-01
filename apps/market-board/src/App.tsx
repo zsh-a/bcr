@@ -8,6 +8,8 @@ import type {
   DividendSeries,
   HistoryRange,
   MarketInstrument,
+  MarketLandscapeSnapshot,
+  MarketRankingItem,
   MarketRegion,
   MarketSearchResult,
   MarketSession,
@@ -17,6 +19,7 @@ import type {
 import { publishQuantHandoff } from "@bcr/market-data";
 import {
   ArrowUpRight,
+  BarChart3,
   CalendarDays,
   ChevronRight,
   CircleDollarSign,
@@ -37,6 +40,7 @@ import { useDividends } from "./useDividends";
 import { useInstrumentSearch } from "./useInstrumentSearch";
 import { useMarketAtlas } from "./useMarketAtlas";
 import { useMarketHistory } from "./useMarketHistory";
+import { useMarketLandscape } from "./useMarketLandscape";
 import "./styles.css";
 
 const WATCHLIST_KEY = "bcr.market-atlas.watchlist.v1";
@@ -108,7 +112,16 @@ function initialInstruments(): ReadonlyArray<MarketInstrument> {
 }
 
 export function App() {
-  const { snapshot, refreshing, refresh } = useMarketAtlas();
+  const { snapshot, refreshing: atlasRefreshing, refresh: refreshAtlas } = useMarketAtlas();
+  const {
+    snapshot: landscape,
+    refreshing: landscapeRefreshing,
+    refresh: refreshLandscape,
+  } = useMarketLandscape();
+  const refreshing = atlasRefreshing || landscapeRefreshing;
+  const refresh = async (): Promise<void> => {
+    await Promise.all([refreshAtlas(), refreshLandscape()]);
+  };
   const [selectedId, setSelectedId] = useState("US:INDEX:INX");
   const [region, setRegion] = useState<MarketRegion | "ALL">("ALL");
   const [query, setQuery] = useState("");
@@ -159,16 +172,20 @@ export function App() {
     const found = allQuotes.find((quote) => quote.instrument.id === id);
     return found === undefined ? [] : [found];
   });
-  const advancers = snapshot.quotes.filter((quote) => quote.changePercent >= 0).length;
-  const decliners = snapshot.quotes.length - advancers;
+  const advancers = landscape.breadth.advancing;
+  const decliners = landscape.breadth.declining;
 
-  const selectSearchResult = async (result: MarketSearchResult): Promise<void> => {
+  const selectSearchResult = async (
+    result: MarketSearchResult,
+    fallbackQuote?: QuoteSnapshot,
+  ): Promise<void> => {
     const existing = allQuotes.find((quote) => quote.instrument.id === result.instrument.id);
     setSearchingQuote(result.instrument.id);
     setQuoteError(null);
     try {
       const quote = await marketProvider.loadQuote(result.instrument).catch((error: unknown) => {
         if (existing !== undefined) return existing;
+        if (fallbackQuote !== undefined) return fallbackQuote;
         throw error;
       });
       setCustomQuotes((items) => [
@@ -491,30 +508,35 @@ export function App() {
             <aside className="ma-breadth-card">
               <div className="ma-section-label">
                 <span>MARKET BREADTH</span>
-                <small>PULSE SET</small>
+                <small>A-SHARE UNIVERSE</small>
               </div>
               <div
                 className="ma-breadth-orbit"
                 style={
                   {
-                    "--advance": `${(advancers / Math.max(1, snapshot.quotes.length)) * 360}deg`,
+                    "--advance": `${(advancers / Math.max(1, landscape.breadth.total)) * 360}deg`,
                   } as React.CSSProperties
                 }
               >
                 <div>
-                  <strong>{advancers}</strong>
+                  <strong>
+                    {Math.round((advancers / Math.max(1, landscape.breadth.total)) * 100)}%
+                  </strong>
                   <span>ADVANCING</span>
                 </div>
               </div>
               <div className="ma-breadth-counts">
                 <span>
-                  <i className="up" /> {advancers} ABOVE
+                  <i className="up" /> {advancers.toLocaleString("en-US")} ABOVE
                 </span>
                 <span>
-                  <i className="down" /> {decliners} BELOW
+                  <i className="down" /> {decliners.toLocaleString("en-US")} BELOW
                 </span>
               </div>
-              <p>Directional breadth across the current multi-market pulse set.</p>
+              <p>
+                Full A-share scan across {landscape.breadth.total.toLocaleString("en-US")} active
+                listings. {landscape.breadth.unchanged.toLocaleString("en-US")} unchanged.
+              </p>
             </aside>
           </section>
         )}
@@ -557,6 +579,35 @@ export function App() {
           </div>
         </section>
 
+        <MarketCartography
+          snapshot={landscape}
+          loading={landscapeRefreshing}
+          onOpen={(instrument, ranking) => {
+            const previousClose =
+              ranking === undefined ? null : ranking.price / (1 + ranking.changePercent / 100);
+            const fallbackQuote: QuoteSnapshot | undefined =
+              ranking === undefined
+                ? undefined
+                : {
+                    instrument,
+                    price: ranking.price,
+                    change: previousClose === null ? 0 : ranking.price - previousClose,
+                    changePercent: ranking.changePercent,
+                    previousClose,
+                    high: null,
+                    low: null,
+                    volume: null,
+                    amount: ranking.amount,
+                    sourceTimestamp: null,
+                    receivedAt: landscape.receivedAt,
+                    quality: landscape.quality === "demo" ? "demo" : "delayed",
+                    source: `${landscape.provider} · ranking fallback`,
+                    sparkline: [previousClose ?? ranking.price, ranking.price],
+                  };
+            void selectSearchResult({ instrument, providerType: "MARKET SCAN" }, fallbackQuote);
+          }}
+        />
+
         {selected !== undefined && (
           <CorporateActions
             instrument={selected.instrument}
@@ -570,7 +621,7 @@ export function App() {
           <article className="ma-list-panel ma-futures-panel">
             <div className="ma-section-heading compact">
               <div>
-                <span>03</span>
+                <span>04</span>
                 <h2>Cross-asset tape</h2>
                 <small>GLOBAL FUTURES</small>
               </div>
@@ -596,7 +647,7 @@ export function App() {
           <article className="ma-list-panel">
             <div className="ma-section-heading compact">
               <div>
-                <span>04</span>
+                <span>05</span>
                 <h2>Largest moves</h2>
                 <small>ABSOLUTE CHANGE</small>
               </div>
@@ -627,7 +678,7 @@ export function App() {
           <article className="ma-list-panel">
             <div className="ma-section-heading compact">
               <div>
-                <span>05</span>
+                <span>06</span>
                 <h2>Watchlist</h2>
                 <small>{watched.length} INSTRUMENTS</small>
               </div>
@@ -685,7 +736,7 @@ export function App() {
           <Clock3 /> AS OF {receivedTime(snapshot.receivedAt)}
         </span>
         <p>Prices may be delayed by seconds or minutes. Not for order execution.</p>
-        <b>BCR / MARKET ATLAS 0.3</b>
+        <b>BCR / MARKET ATLAS 0.4</b>
       </footer>
     </div>
   );
@@ -693,6 +744,203 @@ export function App() {
 
 function dividendYield(value: number | null): string {
   return value === null ? "—" : `${(value * 100).toFixed(2)}%`;
+}
+
+type RankingMode = keyof MarketLandscapeSnapshot["rankings"];
+
+const RANKING_LABELS: ReadonlyArray<{ key: RankingMode; label: string }> = [
+  { key: "gainers", label: "LEADERS" },
+  { key: "decliners", label: "LAGGARDS" },
+  { key: "turnover", label: "TURNOVER" },
+];
+
+function rankingValue(item: MarketRankingItem, mode: RankingMode): string {
+  return mode === "turnover" ? `¥${compact(item.amount)}` : signed(item.changePercent);
+}
+
+function MarketCartography(props: {
+  snapshot: MarketLandscapeSnapshot;
+  loading: boolean;
+  onOpen: (instrument: MarketInstrument, ranking?: MarketRankingItem) => void;
+}) {
+  const [mode, setMode] = useState<RankingMode>("gainers");
+  const items = props.snapshot.rankings[mode];
+  const breadth = props.snapshot.breadth;
+  const allRankings = [
+    ...props.snapshot.rankings.gainers,
+    ...props.snapshot.rankings.decliners,
+    ...props.snapshot.rankings.turnover,
+  ];
+
+  return (
+    <section className="ma-discovery-section">
+      <div className="ma-section-heading">
+        <div>
+          <span>02</span>
+          <h2>Market cartography</h2>
+          <small>A-SHARE BREADTH / SECTORS / RANKINGS</small>
+        </div>
+        <div className={`ma-landscape-status ${props.snapshot.quality}`}>
+          <i />
+          {props.loading ? "SCANNING 5K+ LISTINGS" : qualityLabel(props.snapshot.quality)}
+        </div>
+      </div>
+
+      <div className="ma-market-breadth-strip">
+        <div>
+          <span>UNIVERSE</span>
+          <b>{breadth.total.toLocaleString("en-US")}</b>
+          <small>ACTIVE LISTINGS</small>
+        </div>
+        <div className="positive">
+          <span>ADVANCING</span>
+          <b>{breadth.advancing.toLocaleString("en-US")}</b>
+          <small>
+            {((breadth.advancing / Math.max(1, breadth.total)) * 100).toFixed(1)}% OF TAPE
+          </small>
+        </div>
+        <div className="negative">
+          <span>DECLINING</span>
+          <b>{breadth.declining.toLocaleString("en-US")}</b>
+          <small>
+            {((breadth.declining / Math.max(1, breadth.total)) * 100).toFixed(1)}% OF TAPE
+          </small>
+        </div>
+        <div>
+          <span>LIMIT PRESSURE</span>
+          <b>
+            {breadth.limitUp} <i>/</i> {breadth.limitDown}
+          </b>
+          <small>UP / DOWN</small>
+        </div>
+        <div>
+          <span>TURNOVER</span>
+          <b>¥{compact(breadth.amount)}</b>
+          <small>AGGREGATED VALUE</small>
+        </div>
+      </div>
+
+      <div className="ma-cartography-grid">
+        <article className="ma-sector-panel">
+          <header>
+            <div>
+              <BarChart3 />
+              <span>INDUSTRY HEATMAP</span>
+            </div>
+            <small>EXTREMES BY ABSOLUTE CHANGE</small>
+          </header>
+          <div className="ma-sector-map">
+            {props.snapshot.sectors.map((sector) => {
+              const heat = Math.min(0.34, 0.075 + Math.abs(sector.changePercent) * 0.046);
+              return (
+                <button
+                  type="button"
+                  key={sector.code}
+                  disabled={sector.leader === null}
+                  onClick={() => {
+                    if (sector.leader === null) return;
+                    props.onOpen(
+                      sector.leader,
+                      allRankings.find((ranking) => ranking.instrument.id === sector.leader?.id),
+                    );
+                  }}
+                  style={
+                    {
+                      "--sector-rgb": sector.changePercent >= 0 ? "199, 243, 106" : "255, 118, 109",
+                      "--sector-heat": heat,
+                    } as React.CSSProperties
+                  }
+                  aria-label={
+                    sector.leader === null
+                      ? `${sector.name} sector`
+                      : `Open ${sector.leader.name}, leader of ${sector.name}`
+                  }
+                >
+                  <span>
+                    <i>{sector.code}</i>
+                    <em className={sector.changePercent >= 0 ? "positive" : "negative"}>
+                      {signed(sector.changePercent)}
+                    </em>
+                  </span>
+                  <strong>{sector.name}</strong>
+                  <small>
+                    {sector.riseCount} ↑ · {sector.fallCount} ↓
+                  </small>
+                  <footer>
+                    <span>
+                      MAIN FLOW{" "}
+                      {sector.mainNetInflow === null ? "—" : compact(sector.mainNetInflow)}
+                    </span>
+                    <b>{sector.leader?.shortName ?? "LEADER PENDING"}</b>
+                  </footer>
+                </button>
+              );
+            })}
+          </div>
+        </article>
+
+        <aside className="ma-ranking-panel">
+          <header>
+            <span>MARKET RANK</span>
+            <nav aria-label="A-share ranking mode">
+              {RANKING_LABELS.map((item) => (
+                <button
+                  type="button"
+                  key={item.key}
+                  className={mode === item.key ? "active" : ""}
+                  onClick={() => setMode(item.key)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          </header>
+          <div className="ma-market-ranking">
+            {items.map((item) => (
+              <button
+                type="button"
+                key={`${mode}:${item.instrument.id}`}
+                onClick={() => props.onOpen(item.instrument, item)}
+              >
+                <i>{String(item.rank).padStart(2, "0")}</i>
+                <span>
+                  <b>{item.instrument.shortName}</b>
+                  <small>
+                    {item.instrument.symbol} · {item.turnoverRate?.toFixed(2) ?? "—"}% TURN
+                  </small>
+                </span>
+                <strong>{price(item.price)}</strong>
+                <em
+                  className={
+                    mode === "turnover"
+                      ? "turnover"
+                      : item.changePercent >= 0
+                        ? "positive"
+                        : "negative"
+                  }
+                >
+                  {rankingValue(item, mode)}
+                  {mode === "turnover" && (
+                    <small className={item.changePercent >= 0 ? "positive" : "negative"}>
+                      {signed(item.changePercent)}
+                    </small>
+                  )}
+                </em>
+                <ChevronRight />
+              </button>
+            ))}
+          </div>
+        </aside>
+      </div>
+      <footer className="ma-landscape-source">
+        <span>{props.snapshot.provider}</span>
+        <small>
+          {props.snapshot.errors[0] ??
+            `SNAPSHOT ${receivedTime(props.snapshot.receivedAt)} · CLICK ANY RANK OR SECTOR LEADER TO DRILL IN`}
+        </small>
+      </footer>
+    </section>
+  );
 }
 
 function CorporateActions(props: {
@@ -709,7 +957,7 @@ function CorporateActions(props: {
     <section className="ma-corporate-section">
       <div className="ma-section-heading">
         <div>
-          <span>02</span>
+          <span>03</span>
           <h2>Income ledger</h2>
           <small>DIVIDENDS / CORPORATE ACTIONS</small>
         </div>

@@ -99,6 +99,59 @@ export interface DividendSeries {
   readonly source: string;
 }
 
+export interface MarketBreadth {
+  readonly total: number;
+  readonly advancing: number;
+  readonly declining: number;
+  readonly unchanged: number;
+  readonly limitUp: number;
+  readonly limitDown: number;
+  /** 全市场成交额，统一为元。 */
+  readonly amount: number;
+}
+
+export interface MarketRankingItem {
+  readonly rank: number;
+  readonly instrument: MarketInstrument;
+  readonly price: number;
+  /** 百分数，例如 2.5 表示 +2.5%。 */
+  readonly changePercent: number;
+  /** 成交额，统一为元。 */
+  readonly amount: number;
+  readonly turnoverRate: number | null;
+}
+
+export interface MarketRankings {
+  readonly gainers: ReadonlyArray<MarketRankingItem>;
+  readonly decliners: ReadonlyArray<MarketRankingItem>;
+  /** 按成交额降序。 */
+  readonly turnover: ReadonlyArray<MarketRankingItem>;
+}
+
+export interface MarketSectorPulse {
+  readonly code: string;
+  readonly name: string;
+  readonly changePercent: number;
+  readonly riseCount: number;
+  readonly fallCount: number;
+  readonly turnoverRate: number | null;
+  readonly totalMarketCap: number | null;
+  readonly mainNetInflow: number | null;
+  readonly mainNetInflowPercent: number | null;
+  readonly leader: MarketInstrument | null;
+  readonly leaderChangePercent: number | null;
+}
+
+export interface MarketLandscapeSnapshot {
+  readonly breadth: MarketBreadth;
+  readonly rankings: MarketRankings;
+  readonly sectors: ReadonlyArray<MarketSectorPulse>;
+  readonly receivedAt: number;
+  readonly quality: DataQuality;
+  readonly provider: string;
+  readonly errors: ReadonlyArray<string>;
+}
+
 export interface MarketSession {
   readonly market: MarketRegion | "EU";
   readonly city: string;
@@ -142,6 +195,11 @@ export interface MarketDiscoveryProvider {
   searchInstruments(keyword: string): Promise<ReadonlyArray<MarketSearchResult>>;
   loadQuote(instrument: MarketInstrument): Promise<QuoteSnapshot>;
   loadDividends(instrument: MarketInstrument): Promise<DividendSeries>;
+}
+
+export interface MarketLandscapeProvider {
+  readonly id: string;
+  loadMarketLandscape(): Promise<MarketLandscapeSnapshot>;
 }
 
 export interface QuantMarketHandoff {

@@ -45,7 +45,7 @@ export const APPS: ReadonlyArray<AppDef> = [
     title: "Market Atlas",
     path: "/markets",
     icon: Globe2,
-    description: "全球市场脉搏 · CN / HK / US / 全球期货 · 延迟行情与数据健康",
+    description: "全球市场脉搏 · 5K+ A 股广度 / 板块热图 / 排行 · 搜索与股息",
     component: lazy(() => import("@bcr/market-board/app").then((m) => ({ default: m.App }))),
   },
 ];

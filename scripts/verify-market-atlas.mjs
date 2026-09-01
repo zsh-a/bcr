@@ -1,4 +1,4 @@
-/* Market Atlas：数据质量 → 市场筛选 → 全局搜索/股息 → 历史 K 线 → Quant 交接。 */
+/* Market Atlas：全市场扫描 → 板块/排行 → 搜索/股息 → 历史 K 线 → Quant 交接。 */
 import { launchVerifyBrowser } from "./verify-browser.mjs";
 
 const base = new URL(process.env.BASE_URL ?? "http://localhost:5199/studio");
@@ -24,6 +24,25 @@ if (!body.includes("Market Atlas") || !body.includes("Markets never move")) {
 }
 if ((await page.locator(".ma-session").count()) !== 4) fail("全球市场时区轨道不完整");
 if ((await page.locator(".ma-quote-card").count()) < 3) fail("市场脉搏数据不足");
+if ((await page.locator(".ma-sector-map > button").count()) < 8) fail("行业热图数据不足");
+if ((await page.locator(".ma-market-ranking > button").count()) !== 8) {
+  fail("全市场排行未完整渲染");
+}
+const universe = Number(
+  (
+    await page.locator(".ma-market-breadth-strip > div").first().locator("b").innerText()
+  ).replaceAll(",", ""),
+);
+if (!Number.isFinite(universe) || universe < 5_000) fail("A 股全市场广度未加载");
+await page.getByRole("button", { name: "TURNOVER", exact: true }).click();
+const firstRank = page.locator(".ma-market-ranking > button").first();
+const rankedSymbol = (await firstRank.locator("span small").innerText()).split(" · ")[0];
+await firstRank.click();
+await page.waitForFunction(
+  (symbol) => document.querySelector(".ma-focus-copy .ma-symbol")?.textContent?.includes(symbol),
+  rankedSymbol,
+  { timeout: 20_000 },
+);
 if (!body.includes("Source integrity") || !body.includes("informational use only")) {
   fail("数据质量与延迟声明缺失");
 }

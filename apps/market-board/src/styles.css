@@ -1028,10 +1028,409 @@
 }
 
 .ma-pulse-section,
+.ma-discovery-section,
 .ma-corporate-section,
 .ma-lower-grid,
 .ma-provider-panel {
   margin-top: 34px;
+}
+
+.ma-landscape-status {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  color: var(--ma-positive);
+  font:
+    7px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.07em;
+}
+
+.ma-landscape-status.partial,
+.ma-landscape-status.cached {
+  color: #efbc69;
+}
+
+.ma-landscape-status.demo {
+  color: var(--ma-cyan);
+}
+
+.ma-landscape-status i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.ma-market-breadth-strip {
+  display: grid;
+  grid-template-columns: 1.05fr repeat(4, 1fr);
+  border-left: 1px solid var(--ma-line);
+  background: rgba(16, 19, 21, 0.56);
+}
+
+.ma-market-breadth-strip > div {
+  display: flex;
+  min-width: 0;
+  min-height: 92px;
+  padding: 14px 16px;
+  border-right: 1px solid var(--ma-line);
+  border-bottom: 1px solid var(--ma-line);
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.ma-market-breadth-strip span,
+.ma-market-breadth-strip small {
+  color: var(--ma-faint);
+  font:
+    7px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.07em;
+}
+
+.ma-market-breadth-strip b {
+  overflow: hidden;
+  color: var(--ma-paper);
+  font:
+    430 28px/1 "Newsreader Variable",
+    serif;
+  letter-spacing: -0.045em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ma-market-breadth-strip b i {
+  color: var(--ma-faint);
+  font-style: normal;
+}
+
+.ma-market-breadth-strip .positive b {
+  color: var(--ma-positive);
+}
+
+.ma-market-breadth-strip .negative b {
+  color: var(--ma-negative);
+}
+
+.ma-cartography-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.8fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.ma-sector-panel,
+.ma-ranking-panel {
+  min-width: 0;
+  border: 1px solid var(--ma-line);
+  background: rgba(16, 19, 21, 0.52);
+}
+
+.ma-sector-panel > header,
+.ma-ranking-panel > header {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 13px;
+  border-bottom: 1px solid var(--ma-line);
+  color: var(--ma-muted);
+  font:
+    7px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.08em;
+}
+
+.ma-sector-panel > header > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ma-sector-panel > header svg {
+  width: 12px;
+  height: 12px;
+  color: var(--ma-cyan);
+}
+
+.ma-sector-panel > header small {
+  color: var(--ma-faint);
+  font: inherit;
+}
+
+.ma-sector-map {
+  display: grid;
+  grid-auto-rows: 78px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--ma-line);
+}
+
+.ma-sector-map > button {
+  --sector-rgb: 199, 243, 106;
+  --sector-heat: 0.1;
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  min-width: 0;
+  padding: 10px 11px;
+  flex-direction: column;
+  background:
+    linear-gradient(rgba(var(--sector-rgb), var(--sector-heat)), rgba(var(--sector-rgb), 0.035)),
+    #101414;
+  color: var(--ma-text);
+  text-align: left;
+  transition:
+    filter 160ms ease,
+    transform 160ms ease;
+}
+
+.ma-sector-map > button:not(:disabled):hover {
+  z-index: 2;
+  filter: brightness(1.18);
+  transform: translateY(-1px);
+}
+
+.ma-sector-map > button:disabled {
+  cursor: default;
+}
+
+.ma-sector-map > button:nth-child(1) {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.ma-sector-map > button:nth-child(2),
+.ma-sector-map > button:nth-child(5),
+.ma-sector-map > button:nth-child(6),
+.ma-sector-map > button:nth-child(11),
+.ma-sector-map > button:nth-child(12),
+.ma-sector-map > button:nth-child(13),
+.ma-sector-map > button:nth-child(14) {
+  grid-column: span 2;
+}
+
+.ma-sector-map > button > span,
+.ma-sector-map > button > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ma-sector-map > button > span i,
+.ma-sector-map > button > span em,
+.ma-sector-map > button > small,
+.ma-sector-map > button > footer {
+  font:
+    normal 6px "IBM Plex Mono",
+    monospace;
+}
+
+.ma-sector-map > button > span i,
+.ma-sector-map > button > small {
+  color: color-mix(in srgb, var(--ma-text) 52%, transparent);
+  font-style: normal;
+}
+
+.ma-sector-map > button > span em {
+  font-size: 7px;
+}
+
+.ma-sector-map > button > strong {
+  overflow: hidden;
+  margin-top: auto;
+  color: var(--ma-paper);
+  font:
+    460 15px/1.05 "Newsreader Variable",
+    serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ma-sector-map > button:nth-child(1) > strong {
+  font-size: 27px;
+}
+
+.ma-sector-map > button > small {
+  margin-top: 3px;
+}
+
+.ma-sector-map > button > footer {
+  overflow: hidden;
+  max-height: 0;
+  color: color-mix(in srgb, var(--ma-text) 58%, transparent);
+  opacity: 0;
+  transition:
+    max-height 160ms ease,
+    opacity 160ms ease;
+}
+
+.ma-sector-map > button:nth-child(1) > footer,
+.ma-sector-map > button:hover > footer {
+  max-height: 22px;
+  margin-top: 9px;
+  opacity: 1;
+}
+
+.ma-sector-map > button > footer span,
+.ma-sector-map > button > footer b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ma-sector-map > button > footer b {
+  color: var(--ma-paper);
+  font-weight: 400;
+}
+
+.ma-ranking-panel > header {
+  padding-right: 5px;
+}
+
+.ma-ranking-panel nav {
+  display: flex;
+  gap: 2px;
+}
+
+.ma-ranking-panel nav button {
+  height: 27px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ma-faint);
+  font:
+    6px "IBM Plex Mono",
+    monospace;
+}
+
+.ma-ranking-panel nav button:hover {
+  color: var(--ma-text);
+}
+
+.ma-ranking-panel nav button.active {
+  border-color: var(--ma-line);
+  background: var(--ma-surface);
+  color: var(--ma-cyan);
+}
+
+.ma-market-ranking > button {
+  display: grid;
+  grid-template-columns: 24px minmax(90px, 1fr) auto minmax(66px, auto) 11px;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 59px;
+  padding: 7px 9px;
+  border-bottom: 1px solid var(--ma-line-soft);
+  background: transparent;
+  color: var(--ma-text);
+  text-align: left;
+}
+
+.ma-market-ranking > button:last-child {
+  border-bottom: 0;
+}
+
+.ma-market-ranking > button:hover {
+  background: rgba(101, 216, 208, 0.055);
+}
+
+.ma-market-ranking > button > i {
+  color: var(--ma-faint);
+  font:
+    normal 7px "IBM Plex Mono",
+    monospace;
+}
+
+.ma-market-ranking > button span,
+.ma-market-ranking > button span b,
+.ma-market-ranking > button span small {
+  display: block;
+  min-width: 0;
+}
+
+.ma-market-ranking > button span b {
+  overflow: hidden;
+  color: var(--ma-muted);
+  font:
+    500 8px "IBM Plex Mono",
+    monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ma-market-ranking > button span small {
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--ma-faint);
+  font:
+    6px "IBM Plex Mono",
+    monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ma-market-ranking > button > strong {
+  color: var(--ma-paper);
+  font:
+    450 13px "Newsreader Variable",
+    serif;
+}
+
+.ma-market-ranking > button > em {
+  justify-self: end;
+  font:
+    normal 7px "IBM Plex Mono",
+    monospace;
+  text-align: right;
+}
+
+.ma-market-ranking > button > em.turnover {
+  color: var(--ma-cyan);
+}
+
+.ma-market-ranking > button > em > small {
+  display: block;
+  margin-top: 2px;
+  font: inherit;
+}
+
+.ma-market-ranking > button > svg {
+  width: 10px;
+  height: 10px;
+  color: var(--ma-faint);
+}
+
+.ma-landscape-source {
+  display: flex;
+  min-height: 31px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 10px;
+  border: 1px solid var(--ma-line);
+  border-top: 0;
+  color: var(--ma-faint);
+  font:
+    6px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.05em;
+}
+
+.ma-landscape-source span,
+.ma-landscape-source small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ma-landscape-source small {
+  color: #a98355;
+  font: inherit;
 }
 
 .ma-corporate-section {
@@ -1969,8 +2368,59 @@
   .ma-futures-grid,
   .ma-lower-grid,
   .ma-income-grid,
+  .ma-cartography-grid,
   .ma-provider-panel {
     grid-template-columns: 1fr;
+  }
+
+  .ma-market-breadth-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ma-market-breadth-strip > div:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .ma-sector-panel > header small,
+  .ma-section-heading > div > small {
+    display: none;
+  }
+
+  .ma-sector-map {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ma-sector-map > button:nth-child(n) {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .ma-sector-map > button:nth-child(1) {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+
+  .ma-sector-map > button:last-child {
+    grid-column: span 2;
+  }
+
+  .ma-ranking-panel > header {
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px;
+    flex-direction: column;
+  }
+
+  .ma-ranking-panel nav {
+    width: 100%;
+  }
+
+  .ma-ranking-panel nav button {
+    flex: 1;
+  }
+
+  .ma-landscape-source small {
+    display: none;
   }
 
   .ma-income-lead {

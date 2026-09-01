@@ -12,6 +12,7 @@ import {
 } from "stock-sdk";
 import { fallbackSessions } from "./demo";
 import { instrumentsFor } from "./instruments";
+import { buildMarketLandscape } from "./landscape";
 import type {
   DividendSeries,
   MarketAtlasSnapshot,
@@ -22,6 +23,8 @@ import type {
   MarketHistoryRequest,
   MarketHistorySeries,
   MarketInstrument,
+  MarketLandscapeProvider,
+  MarketLandscapeSnapshot,
   MarketRegion,
   MarketSession,
   MarketSearchResult,
@@ -292,7 +295,11 @@ function errorMessage(reason: unknown): string {
 }
 
 export class StockSdkProvider
-  implements MarketDataProvider, MarketHistoryProvider, MarketDiscoveryProvider
+  implements
+    MarketDataProvider,
+    MarketHistoryProvider,
+    MarketDiscoveryProvider,
+    MarketLandscapeProvider
 {
   readonly id = "stock-sdk@2.4.2";
   private readonly sdk = new StockSDK({
@@ -395,6 +402,51 @@ export class StockSdkProvider
       quality: "delayed",
       source: `${this.id} · eastmoney daily qfq`,
       errors: [],
+    };
+  }
+
+  async loadMarketLandscape(): Promise<MarketLandscapeSnapshot> {
+    const receivedAt = Date.now();
+    const [quotes, boards, sectorFlows] = await Promise.allSettled([
+      this.sdk.batch.cn({ batchSize: 500, concurrency: 5 }),
+      this.sdk.board.industry.list(),
+      this.sdk.fundFlow.sectorRank({ indicator: "today", sectorType: "industry" }),
+    ]);
+    const settled = [
+      ["A-SHARE UNIVERSE", quotes],
+      ["INDUSTRY BOARDS", boards],
+      ["SECTOR FLOW", sectorFlows],
+    ] as const;
+    const errors = settled.flatMap(([label, result]) =>
+      result.status === "rejected" ? [`${label} · ${errorMessage(result.reason)}`] : [],
+    );
+    if (settled.every(([, result]) => result.status === "rejected")) {
+      throw new Error(errors.join(" / ") || "stock-sdk returned no market landscape");
+    }
+    const landscape = buildMarketLandscape({
+      quotes: quotes.status === "fulfilled" ? quotes.value : [],
+      boards: boards.status === "fulfilled" ? boards.value : [],
+      sectorFlows: sectorFlows.status === "fulfilled" ? sectorFlows.value : [],
+      receivedAt,
+      provider: `${this.id} · Tencent + Eastmoney market scan`,
+      errors,
+    });
+    const nextErrors = [...errors];
+    if (
+      landscape.breadth.total > 0 &&
+      landscape.breadth.amount === 0 &&
+      landscape.breadth.advancing === 0 &&
+      landscape.breadth.declining === 0
+    ) {
+      nextErrors.push("A-SHARE UNIVERSE · no active-session breadth returned");
+    }
+    if (landscape.sectors.length === 0) {
+      nextErrors.push("INDUSTRY BOARDS · no active-session breadth returned");
+    }
+    return {
+      ...landscape,
+      quality: nextErrors.length > 0 ? "partial" : landscape.quality,
+      errors: nextErrors,
     };
   }
 

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { FullQuote, IndustryBoard } from "stock-sdk";
 import {
+  buildMarketLandscape,
+  createDemoMarketLandscape,
   createDemoSnapshot,
   createDemoHistory,
   instrumentsFor,
@@ -8,6 +11,7 @@ import {
   searchKnownInstruments,
   type MarketDataProvider,
   type MarketHistoryProvider,
+  type MarketLandscapeProvider,
 } from "../src";
 
 describe("Market data contracts", () => {
@@ -88,5 +92,76 @@ describe("Market data contracts", () => {
     expect(searchKnownInstruments("TSLA")[0]?.instrument.market).toBe("US");
     expect(searchKnownInstruments("红利ETF")[0]?.instrument.assetClass).toBe("fund");
     expect(searchKnownInstruments("美团")[0]?.instrument.symbol).toBe("03690.HK");
+  });
+
+  it("将全量 A 股行情归一化为广度与三类可下钻排行", () => {
+    const quote = (
+      code: string,
+      name: string,
+      changePercent: number,
+      amount: number,
+      limit: "up" | "down" | null = null,
+    ) =>
+      ({
+        code,
+        name,
+        price: limit === "down" ? 9 : limit === "up" ? 11 : 10,
+        changePercent,
+        amount,
+        turnoverRate: 2.4,
+        limitUp: limit === "up" ? 11 : null,
+        limitDown: limit === "down" ? 9 : null,
+      }) as unknown as FullQuote;
+    const board = {
+      code: "BK0001",
+      name: "测试行业",
+      changePercent: 2.1,
+      riseCount: 12,
+      fallCount: 3,
+      turnoverRate: 1.4,
+      totalMarketCap: 10_000,
+      leadingStock: "领涨股份",
+      leadingStockChangePercent: 5.2,
+    } as unknown as IndustryBoard;
+    const landscape = buildMarketLandscape({
+      quotes: [
+        quote("600001", "沪市上涨", 10, 400, "up"),
+        quote("000001", "深市下跌", -10, 900, "down"),
+        quote("920001", "北交上涨", 3, 200),
+        quote("900901", "B股排除", 9, 8_000),
+      ],
+      boards: [board],
+      receivedAt: 123,
+      provider: "fixture",
+    });
+
+    expect(landscape.breadth).toMatchObject({
+      total: 3,
+      advancing: 2,
+      declining: 1,
+      limitUp: 1,
+      limitDown: 1,
+      amount: 15_000_000,
+    });
+    expect(landscape.rankings.gainers[0]?.instrument.symbol).toBe("600001.SH");
+    expect(landscape.rankings.decliners[0]?.instrument.symbol).toBe("000001.SZ");
+    expect(landscape.rankings.turnover[0]?.amount).toBe(9_000_000);
+    expect(landscape.sectors[0]?.name).toBe("测试行业");
+  });
+
+  it("市场扫描整体失败时回退完整可交互的行业与排行基线", async () => {
+    const provider: MarketLandscapeProvider = {
+      id: "failing-landscape",
+      loadMarketLandscape: () => Promise.reject(new Error("scan offline")),
+    };
+    const { ResilientMarketLandscapeService } = await import("../src");
+    const landscape = await new ResilientMarketLandscapeService(provider).load();
+    const direct = createDemoMarketLandscape();
+
+    expect(landscape.quality).toBe("demo");
+    expect(landscape.errors).toContain("scan offline");
+    expect(landscape.sectors).toHaveLength(14);
+    expect(landscape.rankings.gainers).toHaveLength(8);
+    expect(landscape.breadth.total).toBe(direct.breadth.total);
   });
 });
