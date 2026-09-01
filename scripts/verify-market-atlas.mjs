@@ -79,6 +79,16 @@ if (Number(handoffSeriesCount) < 3) {
 if (!(await page.locator(".ql-market-status").innerText()).includes("MARKET ATLAS")) {
   fail("Quant Lab 未显示 Market Atlas 多序列状态");
 }
+await page.locator("[data-portfolio-analysis]").waitFor({ timeout: 60_000 });
+if ((await page.locator("[data-correlation-matrix] tbody tr").count()) < 3) {
+  fail("Quant Lab 组合相关性矩阵未覆盖多标的");
+}
+if (!(await page.locator("[data-portfolio-metrics]").innerText()).includes("EQUAL-WEIGHT")) {
+  fail("Quant Lab 等权组合基准未渲染");
+}
+await page.reload({ waitUntil: "domcontentloaded" });
+await page.locator(".ql-handoff-block").waitFor({ timeout: 60_000 });
+await page.locator("[data-portfolio-analysis]").waitFor({ timeout: 60_000 });
 await page.goto(base.toString(), { waitUntil: "domcontentloaded" });
 await page.locator(".market-atlas").waitFor({ timeout: 20_000 });
 await page.locator(".ma-refresh:not(:disabled)").waitFor({ timeout: 45_000 });

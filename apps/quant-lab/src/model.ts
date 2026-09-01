@@ -28,6 +28,66 @@ export interface MarketBar {
   readonly volume: number;
 }
 
+/**
+ * A normalized series retained by the portfolio intake layer.  Keeping only
+ * the fields needed by the analysis makes the handoff independent from any
+ * provider-specific quote metadata (amount, timestamps, or quality flags).
+ */
+export interface PortfolioSeries {
+  readonly instrumentId: string;
+  readonly symbol: string;
+  readonly name: string;
+  readonly market: string;
+  readonly bars: ReadonlyArray<MarketBar>;
+}
+
+export interface CorrelationMatrix {
+  readonly symbols: ReadonlyArray<string>;
+  readonly values: ReadonlyArray<ReadonlyArray<number>>;
+  readonly observations: number;
+  readonly startDate: string;
+  readonly endDate: string;
+}
+
+export interface PortfolioWeight {
+  readonly instrumentId: string;
+  readonly symbol: string;
+  readonly weight: number;
+}
+
+export interface PortfolioEquityPoint {
+  readonly date: string;
+  readonly equity: number;
+  /** 相对历史高点的回撤，范围 [-1, 0]。 */
+  readonly drawdown: number;
+}
+
+export interface PortfolioMetrics {
+  readonly totalReturn: number;
+  readonly annualizedReturn: number;
+  /** 年化波动率。 */
+  readonly volatility: number;
+  readonly sharpe: number;
+  readonly buyHoldReturn: number;
+  readonly maxDrawdown: number;
+  readonly finalEquity: number;
+  readonly observations: number;
+  readonly seriesCount: number;
+}
+
+export interface PortfolioBacktestResult {
+  readonly equity: ReadonlyArray<PortfolioEquityPoint>;
+  readonly metrics: PortfolioMetrics;
+  readonly weights: ReadonlyArray<PortfolioWeight>;
+}
+
+export interface PortfolioAnalysis {
+  readonly version: 1;
+  readonly series: ReadonlyArray<PortfolioSeries>;
+  readonly correlation: CorrelationMatrix;
+  readonly backtest: PortfolioBacktestResult;
+}
+
 export interface Dataset {
   readonly name: string;
   /** 年度分区清单 Artifact；Worker Pipeline 实际读取 partitions 中的 Arrow 批次。 */

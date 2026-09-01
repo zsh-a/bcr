@@ -516,7 +516,7 @@ Artifact / Cache / SQLite 链路，并完成 DuckDB WASM schema 规范化与 SQL
 旧 JSON 与单 Arrow 项目会在恢复时自动迁移为年度分区清单。
 Long-only Backtester 已下沉 Rust/WASM，以 f64 close + u8 position TypedArray 批次跨越 ABI，
 并在 Worker 内与 TypeScript reference 逐点校验后才接受结果。下一步扩展
-大数据集、多资产组合以及 SIMD/多线程 kernel。
+大数据集、组合优化以及 SIMD/多线程 kernel。
 **Media + Quant + Markets 都能良好运行在同一 Runtime 上，即证明抽象成立。**
 
 ### Phase 2.5 — Market Atlas（首个实时数据表面已落地）
@@ -532,7 +532,9 @@ Studio / Market Board 使用 `COEP: credentialless`，在维持 `crossOriginIsol
 看板通过版本化 handoff 传递完整历史柱；Quant Lab 接收后规范化为
 `market/symbol/year` Arrow / Parquet 内容寻址分区并自动运行回测。当前 v2 handoff 已支持
 Watchlist 分组内的多序列交接：Quant Lab 会保留完整 intake 摘要，以首个序列作为当前策略
-数据集，避免在组合引擎尚未落地前静默丢弃其他标的。下一步扩展相关性矩阵与组合级回测。
+数据集，同时按共同交易日生成 Pearson 相关性矩阵、等权组合基准、权益曲线、年化波动率与最大回撤，
+并将分析快照随项目元数据跨刷新恢复。下一步是把组合计算下沉至 Worker/Scheduler，接入用户权重、
+再平衡成本、风险预算与滚动窗口优化。
 
 ### Phase 3 — 正式抽包与生态
 

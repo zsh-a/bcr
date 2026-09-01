@@ -41,11 +41,13 @@ import type {
   MarketBar,
   MarketPartition,
   MarketHandoffSummary,
+  PortfolioAnalysis,
   QuantOutputRefs,
   SignalPoint,
   StrategyConfig,
   Trade,
 } from "./model";
+import { buildPortfolioAnalysis, isPortfolioAnalysis } from "./portfolio";
 import { quant } from "./store";
 
 let metaDb: SqliteDb | undefined;
@@ -275,6 +277,40 @@ export async function importMarketAtlasHandoff(
     })),
   };
   quant.setMarketHandoff(summary);
+  if (handoff.version === 2) {
+    try {
+      const portfolioSeries = series.map((item) => ({
+        instrumentId: item.instrument.id,
+        symbol: item.instrument.symbol,
+        name: item.instrument.name,
+        market: item.instrument.market,
+        bars: item.bars.map((bar) => ({
+          date: bar.date,
+          open: bar.open,
+          high: bar.high,
+          low: bar.low,
+          close: bar.close,
+          volume: bar.volume,
+        })),
+      }));
+      quant.setPortfolioAnalysis(
+        buildPortfolioAnalysis(portfolioSeries, {
+          initialCapital: quant.getSnapshot().config.initialCapital,
+          feeBps: quant.getSnapshot().config.feeBps,
+        }),
+      );
+      quant.log(
+        "ok",
+        `portfolio · ${portfolioSeries.length} series · equal-weight correlation and benchmark ready`,
+      );
+    } catch (error) {
+      quant.setPortfolioAnalysis(null);
+      quant.log(
+        "warn",
+        `portfolio · analysis unavailable · ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
   return dataset;
 }
 
@@ -314,6 +350,7 @@ interface PersistedProject {
   readonly config: StrategyConfig;
   readonly outputs: QuantOutputRefs | null;
   readonly marketHandoff?: MarketHandoffSummary | null;
+  readonly portfolioAnalysis?: PortfolioAnalysis | null;
 }
 
 export async function persistProject(services: RuntimeServices): Promise<void> {
@@ -330,6 +367,7 @@ export async function persistProject(services: RuntimeServices): Promise<void> {
     config: state.config,
     outputs: state.outputRefs,
     marketHandoff: state.marketHandoff,
+    portfolioAnalysis: state.portfolioAnalysis,
   };
   try {
     await metaDb.kvSet("project", JSON.stringify(project));
@@ -435,6 +473,9 @@ export async function restoreProject(services: RuntimeServices): Promise<boolean
       project.marketHandoff.series.length > 0
     ) {
       quant.setMarketHandoff(project.marketHandoff);
+    }
+    if (project.portfolioAnalysis !== undefined && isPortfolioAnalysis(project.portfolioAnalysis)) {
+      quant.setPortfolioAnalysis(project.portfolioAnalysis);
     }
     if (project.outputs !== null) {
       const [signals, equity, trades, metrics] = await Promise.all([

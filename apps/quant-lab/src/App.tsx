@@ -3,6 +3,7 @@ import { consumeQuantHandoff, QUANT_HANDOFF_EVENT, type QuantHandoff } from "@bc
 import { Activity, Database, Download, Play, Square, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { EquityChart, MarketChart } from "./components/Charts";
+import { PortfolioAnalysisView } from "./components/PortfolioAnalysis";
 import { TradeBlotter } from "./components/TradeBlotter";
 import { cancelStrategy, runStrategy } from "./pipeline";
 import {
@@ -206,7 +207,7 @@ function Workbench() {
           REPLAY ONLINE
           <span>
             {state.marketHandoff !== null
-              ? `MARKET ATLAS · ${state.marketHandoff.series.length} SERIES`
+              ? `MARKET ATLAS · ${state.marketHandoff.series.length} SERIES${state.portfolioAnalysis === null ? "" : " · PORTFOLIO READY"}`
               : state.dataset === null
                 ? "NO DATASET"
                 : `${state.dataset.name} · ${state.dataset.partitions.length} SHARDS`}
@@ -406,6 +407,9 @@ function Workbench() {
         <div className="ql-workspace">
           <MarketChart bars={bars} signals={state.signals} />
           <EquityChart result={state.result} />
+          {state.portfolioAnalysis !== null && (
+            <PortfolioAnalysisView analysis={state.portfolioAnalysis} />
+          )}
         </div>
 
         <TradeBlotter trades={state.result?.trades ?? []} />

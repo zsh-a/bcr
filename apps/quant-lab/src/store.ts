@@ -3,11 +3,13 @@ import type {
   BacktestResult,
   Dataset,
   NodeRun,
+  PortfolioAnalysis,
   QuantOutputRefs,
   SignalPoint,
   StrategyConfig,
   MarketHandoffSummary,
 } from "./model";
+import { buildPortfolioAnalysis } from "./portfolio";
 
 export interface QuantLog {
   readonly ts: number;
@@ -18,6 +20,7 @@ export interface QuantLog {
 export interface QuantState {
   readonly dataset: Dataset | null;
   readonly marketHandoff: MarketHandoffSummary | null;
+  readonly portfolioAnalysis: PortfolioAnalysis | null;
   readonly config: StrategyConfig;
   readonly signals: ReadonlyArray<SignalPoint>;
   readonly result: BacktestResult | null;
@@ -40,6 +43,7 @@ class QuantStore {
   private state: QuantState = {
     dataset: null,
     marketHandoff: null,
+    portfolioAnalysis: null,
     config: DEFAULT_CONFIG,
     signals: [],
     result: null,
@@ -68,6 +72,7 @@ class QuantStore {
     this.set({
       dataset,
       marketHandoff: null,
+      portfolioAnalysis: null,
       signals: [],
       result: null,
       outputRefs: null,
@@ -77,6 +82,10 @@ class QuantStore {
 
   setMarketHandoff(marketHandoff: MarketHandoffSummary): void {
     this.set({ marketHandoff });
+  }
+
+  setPortfolioAnalysis(portfolioAnalysis: PortfolioAnalysis | null): void {
+    this.set({ portfolioAnalysis });
   }
 
   setConfig(patch: Partial<StrategyConfig>): void {
@@ -90,7 +99,25 @@ class QuantStore {
       return;
     }
     // 参数已经进入 cache key；改参后旧结果不再代表当前策略，避免跨刷新恢复错配。
-    this.set({ config, signals: [], result: null, outputRefs: null, runDurationMs: null });
+    let portfolioAnalysis = this.state.portfolioAnalysis;
+    if (portfolioAnalysis !== null) {
+      try {
+        portfolioAnalysis = buildPortfolioAnalysis(portfolioAnalysis.series, {
+          initialCapital: config.initialCapital,
+          feeBps: config.feeBps,
+        });
+      } catch {
+        portfolioAnalysis = null;
+      }
+    }
+    this.set({
+      config,
+      portfolioAnalysis,
+      signals: [],
+      result: null,
+      outputRefs: null,
+      runDurationMs: null,
+    });
   }
 
   startRun(runId: string): void {

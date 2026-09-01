@@ -28,28 +28,28 @@
 
 与架构文档的对应关系：
 
-| 架构                                  | 实现                                                                                 |
-| ------------------------------------- | ------------------------------------------------------------------------------------ |
-| §2 ComputeTask / §3 ArtifactRef       | `packages/core/src/schema.ts`（Effect Schema）                                       |
-| §3 DAG：cancel descendants / 下游失效 | `packages/core/src/scheduler.ts`（cancel 级联、invalidateArtifact）                  |
-| §3 DAG 正向编排                       | `scheduler.submitPipeline`（命名端口绑定 + 上游完成自动触发 + fail-fast）            |
-| §6.1 Effect 调度语义                  | Scheduler：cancel / timeout / retry(Schedule) / progress Stream                      |
-| §5 Resource Manager                   | 线程/内存/GPU 多维预算；FIFO 排队、取消释放、超额快速失败、占用快照                  |
-| §6.2 typed MessagePort 协议           | `packages/runtime-worker/src/protocol.ts`（Effect Schema 编解码）                    |
-| §5 Worker 生命周期 ≠ Task 生命周期    | `WorkerPool` 可取消等待、关闭传播、min/max 按需扩容与 idle timeout 自动收缩          |
-| §7 Content-Addressed Cache            | `cacheKey = BLAKE3(ordered(port + artifactHash) + operation + config + runtime)`     |
-| §7 Artifact 内容身份                  | 源文件流式 BLAKE3；派生 JSON/波形携带内容 hash 并写入不可变路径                      |
-| §7 缓存持久化（刷新不重算）           | `packages/storage-sqlite`：cache_entries 表 + 血缘（task_outputs / dependencies）    |
-| §4/§8 OPFS + 窗口流动                 | `BinaryStore`（readRange/putStream/size），kernel 按 4MB 窗口读取                    |
-| §8 SQLite WASM 元数据                 | `openSqliteDb`（整库字节经 BinaryStore 落 OPFS，可换任意 BinaryStore）               |
-| §8 TaskJournal / 崩溃恢复             | queued/running/终态写穿 SQLite；输入完整时重放，缺失时转 blocked                     |
-| §9.1 wasm-bindgen kernel              | `crates/kernels`（wasm32-unknown-unknown）                                           |
-| §10.1 WebGPU 探测降级                 | `apps/media-studio`：ASR device=auto（GPU→WASM 静默降级）/显式选择；headless 走 WASM |
-| §10.2 Whisper ASR                     | transformers.js ONNX（q8 / webgpu fp32+q4），失败回退演示引擎                        |
-| 文本翻译                              | opus-mt（英↔中方向可选）：逐条 cue 批量平移，1:1 对齐，无二次音频推理                |
-| §14 Quant workload                    | DuckDB WASM + Arrow IPC + Parquet → SMA Signal → Backtest Pipeline                   |
-| Market Atlas                          | stock-sdk → Quote / Search / OHLCV / Dividend 契约 → 多市场看板与 Quant handoff      |
-| §11 COOP/COEP                         | `apps/studio/vite.config.ts` 与 `apps/media-studio/vite.config.ts` 内置              |
+| 架构                                  | 实现                                                                                  |
+| ------------------------------------- | ------------------------------------------------------------------------------------- |
+| §2 ComputeTask / §3 ArtifactRef       | `packages/core/src/schema.ts`（Effect Schema）                                        |
+| §3 DAG：cancel descendants / 下游失效 | `packages/core/src/scheduler.ts`（cancel 级联、invalidateArtifact）                   |
+| §3 DAG 正向编排                       | `scheduler.submitPipeline`（命名端口绑定 + 上游完成自动触发 + fail-fast）             |
+| §6.1 Effect 调度语义                  | Scheduler：cancel / timeout / retry(Schedule) / progress Stream                       |
+| §5 Resource Manager                   | 线程/内存/GPU 多维预算；FIFO 排队、取消释放、超额快速失败、占用快照                   |
+| §6.2 typed MessagePort 协议           | `packages/runtime-worker/src/protocol.ts`（Effect Schema 编解码）                     |
+| §5 Worker 生命周期 ≠ Task 生命周期    | `WorkerPool` 可取消等待、关闭传播、min/max 按需扩容与 idle timeout 自动收缩           |
+| §7 Content-Addressed Cache            | `cacheKey = BLAKE3(ordered(port + artifactHash) + operation + config + runtime)`      |
+| §7 Artifact 内容身份                  | 源文件流式 BLAKE3；派生 JSON/波形携带内容 hash 并写入不可变路径                       |
+| §7 缓存持久化（刷新不重算）           | `packages/storage-sqlite`：cache_entries 表 + 血缘（task_outputs / dependencies）     |
+| §4/§8 OPFS + 窗口流动                 | `BinaryStore`（readRange/putStream/size），kernel 按 4MB 窗口读取                     |
+| §8 SQLite WASM 元数据                 | `openSqliteDb`（整库字节经 BinaryStore 落 OPFS，可换任意 BinaryStore）                |
+| §8 TaskJournal / 崩溃恢复             | queued/running/终态写穿 SQLite；输入完整时重放，缺失时转 blocked                      |
+| §9.1 wasm-bindgen kernel              | `crates/kernels`（wasm32-unknown-unknown）                                            |
+| §10.1 WebGPU 探测降级                 | `apps/media-studio`：ASR device=auto（GPU→WASM 静默降级）/显式选择；headless 走 WASM  |
+| §10.2 Whisper ASR                     | transformers.js ONNX（q8 / webgpu fp32+q4），失败回退演示引擎                         |
+| 文本翻译                              | opus-mt（英↔中方向可选）：逐条 cue 批量平移，1:1 对齐，无二次音频推理                 |
+| §14 Quant workload                    | DuckDB WASM + Arrow IPC + Parquet → SMA Signal → Backtest Pipeline                    |
+| Market Atlas                          | stock-sdk → Quote / Search / OHLCV / Dividend 契约 → 多市场看板与组合级 Quant handoff |
+| §11 COOP/COEP                         | `apps/studio/vite.config.ts` 与 `apps/media-studio/vite.config.ts` 内置               |
 
 ## 命令
 
@@ -144,8 +144,9 @@ CSV / Parquet → DuckDB WASM → Year Manifest → Arrow IPC shards → SMA Cro
 - 两节点 `submitPipeline` 在弹性 WorkerPool 中执行；行情内容、快慢周期、资金和费率均进入缓存键
 - Rust/WASM kernel 通过 Float64Array / Uint8Array 批次执行 long-only 回测，产出权益、交易与完整指标
 - Worker 会与 TypeScript 参考实现逐点校验；WASM 不可用或数值失配时显式标记降级
+- Market Atlas 的 Watchlist 分组可整组交接；Quant Lab 按共同交易日计算 Pearson 相关性，并生成等权组合基准、权益曲线、波动率和回撤指标
 - 行情、列式缓存、结果 Artifact、Cache、血缘、TaskJournal 与项目参数经 OPFS + SQLite 跨刷新恢复
-- UI 采用高密度策略终端：价格/双均线/买卖点、权益曲线、Pipeline 状态和 Trade Blotter 同屏
+- UI 采用高密度策略终端：价格/双均线/买卖点、单标的权益曲线、组合相关性矩阵、等权权益曲线、Pipeline 状态和 Trade Blotter 同屏
 
 走查：`node scripts/verify-quant-lab.mjs`（由 `bun run test:browser` 自动执行）。
 
@@ -171,7 +172,7 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - Pulse 基准集扩展为 CN / HK / US 各 5 个指数与龙头标的；顶栏搜索通过 `sdk.search()` 发现三地股票、指数与场内基金，并从本地 master 发现全球期货，内置 41 个常用标的目录（含 8 个全球期货）作为即时/离线降级，并持久化最近打开标的
 - 标的焦点支持 1M / 3M / 6M / 1Y / 3Y 日线 K 线、成交量与指针读数；长周期只在显示层聚合，交接仍保留完整日线
 - Income Ledger 使用 `sdk.reference.dividendDetail()` 展示 A 股个股现金分红、股息率、除权日、登记日与实施进度；HK / US / 基金尚无同口径 provider 时明确显示覆盖边界
-- “Send to Quant” 将当前历史柱交给 Quant Lab，后者自动生成年度 Arrow / Parquet 分区并运行策略；Watchlist 的 “Send group” 会并行装载分组内历史序列，在 Quant Lab 显示完整 intake 摘要并以首个序列运行当前策略；快照微型图仍只表达“昨收 → 最新”
+- “Send to Quant” 将当前历史柱交给 Quant Lab，后者自动生成年度 Arrow / Parquet 分区并运行策略；Watchlist 的 “Send group” 会并行装载分组内历史序列，在 Quant Lab 显示完整 intake 摘要、相关性矩阵与等权组合基准，同时以首个序列运行当前策略；快照微型图仍只表达“昨收 → 最新”
 - 确定性模拟曲线与 OHLCV 仅出现在明确标记的演示 fixture 中，不伪装成实时历史数据
 
 走查：`node scripts/verify-market-atlas.mjs`（由 `bun run test:browser` 自动执行）。
@@ -186,6 +187,6 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 
 ## 本版明确不做
 
-WIT Component Model、插件 capability 模型、Worker 崩溃健康替换、多资产组合、
-SIMD/多线程 Quant kernel、Vitest Browser Mode、跨设备任务迁移。
+WIT Component Model、插件 capability 模型、Worker 崩溃健康替换、多资产优化与跨序列 Worker
+pipeline、SIMD/多线程 Quant kernel、Vitest Browser Mode、跨设备任务迁移。
 对应架构文档 Phase 1 后续与 Phase 2/3。
