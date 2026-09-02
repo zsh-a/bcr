@@ -4,7 +4,12 @@ import { createDocumentContentPackage, createDocumentTranslationPackage } from "
 import { MemoryStore } from "@bcr/storage-opfs";
 import { Context, Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
-import { importReaderDocumentHandoff, type ReaderRuntime } from "../src/runtime";
+import {
+  importReaderDocumentHandoff,
+  prepareReaderDocumentHandoff,
+  type ReaderRuntime,
+} from "../src/runtime";
+import { createDemoBook } from "../src/model";
 
 async function makeArtifacts(store: MemoryStore): Promise<ArtifactStore> {
   const context = await Effect.runPromise(
@@ -21,6 +26,56 @@ const jsonRef = (id: string): ArtifactRef => ({
 });
 
 describe("reader durable Document handoff", () => {
+  it("mirrors the source and canonical projection into the host namespace", async () => {
+    const localStore = new MemoryStore();
+    const hostStore = new MemoryStore();
+    const local = await makeArtifacts(localStore);
+    const host = await makeArtifacts(hostStore);
+    const sourceRef: ArtifactRef = {
+      id: "reader/demo-source",
+      type: "file/publication",
+      storage: "opfs",
+      format: "text/markdown",
+      hash: "demo-source-hash",
+    };
+    await Effect.runPromise(local.put(sourceRef, new TextEncoder().encode("# demo")));
+    const demo = createDemoBook();
+    const book = {
+      ...demo,
+      source: {
+        ...demo.source,
+        ref: {
+          id: sourceRef.id,
+          hash: sourceRef.hash!,
+          storage: "opfs" as const,
+          mime: "text/markdown",
+          size: 6,
+        },
+      },
+    };
+    const runtime: ReaderRuntime = {
+      binary: localStore,
+      artifacts: local,
+      meta: undefined,
+      ftsReady: false,
+      indexSession: undefined,
+      parseSession: undefined,
+      parserMode: "main",
+    };
+
+    const payload = await prepareReaderDocumentHandoff(runtime, host, book);
+
+    expect(payload.file.name).toBe(book.source.name);
+    expect(payload.sourceRef).toMatchObject({
+      id: "document/source/demo-source-hash",
+      hash: "demo-source-hash",
+    });
+    expect(payload.content.provenance.adapter).toBe("reader.projection");
+    expect(payload.contentRef.id).toMatch(/^document\/content\/reader\//u);
+    await expect(Effect.runPromise(host.has(payload.sourceRef))).resolves.toBe(true);
+    await expect(Effect.runPromise(host.has(payload.contentRef))).resolves.toBe(true);
+  });
+
   it("rebuilds the source File and reviewed sections from upstream Artifact refs", async () => {
     const upstreamStore = new MemoryStore();
     const targetStore = new MemoryStore();
