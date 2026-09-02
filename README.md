@@ -235,6 +235,7 @@ File → Ingest → Normalize → Extract → OCR → Translate → Typeset → 
 - `packages/document-core` 定义 `DocumentJob`、七阶段状态机、格式识别、能力边界，以及版本化的
   `DocumentContentPackage`（Block / Metadata / Provenance）契约；未接入的模型阶段显示为
   `PLANNED / BLOCKED`，不会把演示结果伪装成生产结果。
+- Content Package 在创建与恢复边界会重新编号重复 block ID，保持确定性主键，避免翻译、审校和全局搜索因异常适配器输出互相覆盖。
 - Document Inbox 支持 TXT / Markdown / HTML / DOCX / FB2 / EPUB / PDF / CBZ / 图片导入，元数据保存在本地浏览器；
   文本提供安全的轻量预览，图片只在当前标签页创建临时预览 URL。
 - Text / Markdown / HTML / FB2 已可通过共享 Scheduler + WorkerPool 运行 Extract、fixture Translate 与 Typeset

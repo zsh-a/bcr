@@ -174,6 +174,23 @@ function normalizeBlock(
   };
 }
 
+function normalizeBlocks(
+  blocks: ReadonlyArray<Partial<DocumentBlock> & { readonly text: string }>,
+): ReadonlyArray<DocumentBlock> {
+  const used = new Set<string>();
+  return blocks.map((block, index) => {
+    const normalized = normalizeBlock(block, index);
+    let id = normalized.id;
+    let suffix = 2;
+    while (used.has(id)) {
+      id = `${normalized.id}-${suffix}`;
+      suffix += 1;
+    }
+    used.add(id);
+    return id === normalized.id ? normalized : { ...normalized, id };
+  });
+}
+
 function metadataOf(value: unknown): DocumentContentMetadata {
   if (typeof value !== "object" || value === null) return {};
   const candidate = value as Partial<DocumentContentMetadata>;
@@ -196,7 +213,7 @@ function metadataOf(value: unknown): DocumentContentMetadata {
 export function createDocumentContentPackage(
   input: DocumentContentPackageInput,
 ): DocumentContentPackage {
-  const blocks = input.blocks.map((block, index) => normalizeBlock(block, index));
+  const blocks = normalizeBlocks(input.blocks);
   const metadata = metadataOf(input.metadata);
   const sourceName = cleanOptional(input.sourceName) ?? "未命名文档";
   const sourceHash = cleanOptional(input.sourceHash);
@@ -286,7 +303,9 @@ export function decodeDocumentContentPackage(value: unknown): DocumentContentPac
       : [];
   const decodedBlocks = rawBlocks.map((item, index) => decodeBlock(item, index));
   if (decodedBlocks.some((block) => block === undefined)) return undefined;
-  const blocks = decodedBlocks.filter((block): block is DocumentBlock => block !== undefined);
+  const blocks = normalizeBlocks(
+    decodedBlocks.filter((block): block is DocumentBlock => block !== undefined),
+  );
   const sourceRef = isArtifactRef(candidate.sourceRef) ? candidate.sourceRef : undefined;
   const rawProvenance = candidate.provenance;
   const provenance =

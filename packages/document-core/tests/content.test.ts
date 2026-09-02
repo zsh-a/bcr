@@ -88,4 +88,30 @@ describe("document content package", () => {
       }),
     ).toBeUndefined();
   });
+
+  it("makes duplicate block IDs deterministic for translation and search", () => {
+    const content = createDocumentContentPackage({
+      id: "duplicate-blocks",
+      format: "txt",
+      sourceName: "duplicate.txt",
+      adapter: "test",
+      blocks: [
+        { id: "same", text: "first" },
+        { id: "same", text: "second" },
+        { id: "same-2", text: "already occupied" },
+        { id: "same", text: "third" },
+      ],
+    });
+
+    expect(content.blocks.map((block) => block.id)).toEqual([
+      "same",
+      "same-2",
+      "same-2-2",
+      "same-3",
+    ]);
+    const decoded = decodeDocumentContentPackage(content);
+    expect(decoded?.blocks.map((block) => block.id)).toEqual(
+      content.blocks.map((block) => block.id),
+    );
+  });
 });
