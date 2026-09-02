@@ -324,6 +324,15 @@ function configText(value: unknown, fallback: string): string {
   return typeof value === "string" ? value : fallback;
 }
 
+function configBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function offlineOnly(task: { config?: Record<string, unknown> | undefined }): boolean {
+  const online = typeof navigator === "undefined" ? true : navigator.onLine;
+  return configBoolean(task.config?.["offlineOnly"], false) || online === false;
+}
+
 function reviewOcrLines(task: { config?: Record<string, unknown> | undefined }): MangaOcrLine[] {
   const raw = task.config?.["regions"];
   if (!Array.isArray(raw)) return [];
@@ -435,11 +444,12 @@ const ocrTranscriberLoading = new Map<string, Promise<LoadedModel<OcrTranscriber
 async function buildOcrTranscriber(
   model: string,
   device: ResolvedOcrDevice,
+  localOnly: boolean,
   ctx: WorkerContext,
 ): Promise<OcrTranscriber> {
   const { pipeline, env } = await import("@huggingface/transformers");
-  env.allowLocalModels = false;
-  env.allowRemoteModels = true;
+  env.allowLocalModels = localOnly;
+  env.allowRemoteModels = !localOnly;
   await configureMangaTransformersCache(env);
   ctx.progress(0.02);
   const fn = (await pipeline("image-to-text", model, {
@@ -457,17 +467,18 @@ async function buildOcrTranscriber(
 async function loadOcrTranscriber(
   model: string,
   device: OcrDevice,
+  localOnly: boolean,
   ctx: WorkerContext,
 ): Promise<LoadedModel<OcrTranscriber>> {
   const requested = resolveOcrDevice(device);
-  const key = `${model}::${device}::${requested.device}`;
+  const key = `${model}::${device}::${requested.device}::${localOnly ? "offline" : "online"}`;
   const cached = ocrTranscriberCache.get(key);
   if (cached !== undefined) return cached;
   const inFlight = ocrTranscriberLoading.get(key);
   if (inFlight !== undefined) return inFlight;
   const loading = (async (): Promise<LoadedModel<OcrTranscriber>> => {
     try {
-      const fn = await buildOcrTranscriber(model, requested.device, ctx);
+      const fn = await buildOcrTranscriber(model, requested.device, localOnly, ctx);
       return {
         fn,
         device: requested.device,
@@ -478,7 +489,7 @@ async function loadOcrTranscriber(
     } catch (error) {
       if (requested.device !== "webgpu") throw error;
       console.warn("[manga-ocr] WebGPU initialization failed, falling back to WASM:", error);
-      const fn = await buildOcrTranscriber(model, "wasm", ctx);
+      const fn = await buildOcrTranscriber(model, "wasm", localOnly, ctx);
       return { fn, device: "wasm", fallbackReason: "webgpu-init-failed" };
     }
   })();
@@ -503,6 +514,7 @@ async function mangaModelPreload(
   const deviceValue = configText(task.config?.["device"], "auto");
   const device: OcrDevice =
     deviceValue === "webgpu" || deviceValue === "wasm" ? deviceValue : "auto";
+  const localOnly = offlineOnly(task);
   const languageValue = configText(task.config?.["sourceLanguage"], "ja");
   const sourceLanguage: MangaSourceLanguage =
     languageValue === "en" || languageValue === "ko" ? languageValue : "ja";
@@ -521,7 +533,7 @@ async function mangaModelPreload(
     ) {
       throw new Error(`manga.model.preload cannot load OCR model for ${sourceLanguage}`);
     }
-    await loadOcrTranscriber(model, device, ctx);
+    await loadOcrTranscriber(model, device, localOnly, ctx);
     throwIfAborted(ctx);
     ctx.progress(1);
     return [];
@@ -535,7 +547,7 @@ async function mangaModelPreload(
     if (resolution.execution.effectiveAdapter !== "local") {
       throw new Error(`manga.model.preload cannot load translation model for ${sourceLanguage}`);
     }
-    await loadMangaTranslator(model, device, ctx);
+    await loadMangaTranslator(model, device, localOnly, ctx);
     throwIfAborted(ctx);
     ctx.progress(1);
     return [];
@@ -585,6 +597,7 @@ async function mangaOcrOnnx(
   const deviceValue = configText(task.config?.["device"], "auto");
   const device: OcrDevice =
     deviceValue === "webgpu" || deviceValue === "wasm" ? deviceValue : "auto";
+  const localOnly = offlineOnly(task);
   const adapterValue = configText(task.config?.["adapter"], "vision.onnx");
   const requestedAdapterValue = configText(task.config?.["requestedAdapter"], adapterValue);
   const requestedAdapter: MangaOcrAdapterId =
@@ -608,7 +621,7 @@ async function mangaOcrOnnx(
   const transformers = await import("@huggingface/transformers");
   const image = await transformers.RawImage.read(blob);
   const modelLoadStartedAt = performance.now();
-  const loaded = await loadOcrTranscriber(model, device, ctx);
+  const loaded = await loadOcrTranscriber(model, device, localOnly, ctx);
   const modelLoadDurationMs = performance.now() - modelLoadStartedAt;
   const transcriber = loaded.fn;
   const recognized: MangaOcrLine[] = [];
@@ -674,11 +687,12 @@ function translationOptions(sourceLanguage: MangaSourceLanguage): Record<string,
 async function buildMangaTranslator(
   model: string,
   device: ResolvedOcrDevice,
+  localOnly: boolean,
   ctx: WorkerContext,
 ): Promise<MangaTranslator> {
   const { pipeline, env } = await import("@huggingface/transformers");
-  env.allowLocalModels = false;
-  env.allowRemoteModels = true;
+  env.allowLocalModels = localOnly;
+  env.allowRemoteModels = !localOnly;
   await configureMangaTransformersCache(env);
   ctx.progress(0.02);
   const fn = (await pipeline("translation", model, {
@@ -696,17 +710,18 @@ async function buildMangaTranslator(
 async function loadMangaTranslator(
   model: string,
   device: OcrDevice,
+  localOnly: boolean,
   ctx: WorkerContext,
 ): Promise<LoadedModel<MangaTranslator>> {
   const requested = resolveOcrDevice(device);
-  const key = `${model}::${device}::${requested.device}`;
+  const key = `${model}::${device}::${requested.device}::${localOnly ? "offline" : "online"}`;
   const cached = mangaTranslatorCache.get(key);
   if (cached !== undefined) return cached;
   const inFlight = mangaTranslatorLoading.get(key);
   if (inFlight !== undefined) return inFlight;
   const loading = (async (): Promise<LoadedModel<MangaTranslator>> => {
     try {
-      const fn = await buildMangaTranslator(model, requested.device, ctx);
+      const fn = await buildMangaTranslator(model, requested.device, localOnly, ctx);
       return {
         fn,
         device: requested.device,
@@ -717,7 +732,7 @@ async function loadMangaTranslator(
     } catch (error) {
       if (requested.device !== "webgpu") throw error;
       console.warn("[manga-translate] WebGPU initialization failed, falling back to WASM:", error);
-      const fn = await buildMangaTranslator(model, "wasm", ctx);
+      const fn = await buildMangaTranslator(model, "wasm", localOnly, ctx);
       return { fn, device: "wasm", fallbackReason: "webgpu-init-failed" };
     }
   })();
@@ -782,6 +797,7 @@ async function mangaTranslateOnnx(
   const deviceValue = configText(task.config?.["device"], "auto");
   const device: OcrDevice =
     deviceValue === "webgpu" || deviceValue === "wasm" ? deviceValue : "auto";
+  const localOnly = offlineOnly(task);
   const requestedDeviceResolution = resolveOcrDevice(device);
   const requestedAdapter: "fixture" | "local" =
     configText(task.config?.["requestedAdapter"], "local") === "fixture" ? "fixture" : "local";
@@ -808,7 +824,7 @@ async function mangaTranslateOnnx(
   let modelLoadDurationMs: number | undefined;
   if (pending.length > 0) {
     const modelLoadStartedAt = performance.now();
-    loaded = await loadMangaTranslator(model, device, ctx);
+    loaded = await loadMangaTranslator(model, device, localOnly, ctx);
     modelLoadDurationMs = performance.now() - modelLoadStartedAt;
     const translator = loaded.fn;
     const BATCH = 8;

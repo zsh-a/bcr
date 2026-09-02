@@ -578,7 +578,8 @@ Manga Runtime 另以版本化 Model Registry 持久化模型生命周期（loadi
 最近加载成功），并把 Transformers.js 路由到版本化的 `bcr-manga-models-v1` Cache API 命名空间。
 `manga.model.preload` 是显式的 Worker 预加载任务，配置面板可查看缓存文件数、在线/离线提示并清理
 该命名空间；清理操作会同步把 readiness 标记重置为 unknown。Registry 仍不把模型字节搬进 React
-状态，损坏的元数据只会被丢弃并重新建立。
+状态，损坏的元数据只会被丢弃并重新建立。任务将 `offlineOnly` 传入 Worker；离线时 Transformer
+只允许从该命名空间命中，缺失模型会快速失败而不是尝试远程下载。
 Manga OCR/审校区域现在可投影为 `DocumentContentPackage`，翻译区域可投影为同 block ID 的
 `DocumentTranslationPackage`；这些规范化 blocks 同时驱动 Reader/Document handoff 和 Workspace 全局搜索，保留 geometry、
 writing mode、confidence 与 provenance，避免漫画与文档各自维护一套内容模型。每页投影会以内容寻址的

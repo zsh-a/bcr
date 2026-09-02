@@ -218,7 +218,7 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - 翻译引擎可显式切换 Fixture 或实验性 Local ONNX；Local 模式使用多语 NLLB 并按日文 / 英文 / 韩文传入对应语言码，在 Worker 内支持 Auto / WebGPU / WASM，并生成 `manga/translation-lines` 审校 Artifact
 - OCR / 翻译共用能力解析器：语言不匹配时明确回退 Review，WebGPU 不可用或初始化失败时回退 WASM；阶段面板持久化请求/实际适配器、设备、模型加载阶段与 CACHE 命中事实，GPU 任务同时向 Scheduler 声明资源占用
 - Manga Runtime 维护 SQLite-backed Model Registry，记录模型目录版本、loading/ready/error、最近使用和最近成功加载时间；配置面板展示懒加载状态，未知或损坏的 registry 元数据不会阻塞启动
-- 模型治理：Worker 通过 `manga.model.preload` 显式预加载到 `bcr-manga-models-v1` 专属 Cache API；配置面板展示文件数与在线/离线状态，可清理并同步使 readiness 失效，避免把“元数据 ready”误当成“字节仍在缓存”；同 Worker 内按模型/设备去重 in-flight 加载，并记录真实模型构建耗时
+- 模型治理：Worker 通过 `manga.model.preload` 显式预加载到 `bcr-manga-models-v1` 专属 Cache API；配置面板展示文件数与在线/离线状态，可清理并同步使 readiness 失效，避免把“元数据 ready”误当成“字节仍在缓存”；同 Worker 内按模型/设备去重 in-flight 加载，并记录真实模型构建耗时；离线任务只读专属缓存，不再发起远程模型请求
 - 每页 OCR / 审校区域会同步投影为标准 `DocumentContentPackage` 与 `DocumentTranslationPackage`，以内容寻址的 `document/manga/*` Artifact 持久化到 Manga 存储并镜像到 Studio 宿主；页面元数据保存最新引用，刷新后可继续搜索、治理或跨工作台交接
 - OCR manifest 同时提供 Latin TrOCR 与日文 Manga OCR（`onnx-community/manga-ocr-base-ONNX`）；模型按区域懒加载，
   在 Worker 内支持 Auto / WebGPU / WASM，结果统一标为 `needs-review`；识别出的文本、方向、几何和置信度会按原 block ID 回写审校区域；不匹配的语言会显式告警而不会伪装成已验证能力

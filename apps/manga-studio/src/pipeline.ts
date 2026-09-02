@@ -115,6 +115,10 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
+function browserOffline(): boolean {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
 function fixtureTranslate(text: string): string {
   const dictionary: Record<string, string> = {
     "ここから、始めよう。": "就从这里开始吧。",
@@ -246,6 +250,7 @@ function ocrTask(runId: number): ComputeTask | undefined {
       model: state.settings.ocrModel,
       device: state.settings.ocrDevice,
       sourceLanguage: state.settings.sourceLanguage,
+      offlineOnly: browserOffline(),
       sourceName: state.source.name,
       width: state.source.width,
       height: state.source.height,
@@ -304,6 +309,7 @@ function translationTask(runId: number, input: ArtifactRef): ComputeTask | undef
       device: state.settings.translationDevice,
       sourceLanguage: state.settings.sourceLanguage,
       targetLanguage: state.settings.targetLanguage,
+      offlineOnly: browserOffline(),
       sourceName: state.source.name,
       glossary: state.glossary,
     },
@@ -395,6 +401,7 @@ export async function preloadMangaModel(
       adapter: execution.effectiveAdapter,
       sourceLanguage: execution.sourceLanguage ?? "ja",
       device: execution.requestedDevice,
+      offlineOnly: browserOffline(),
     },
   };
   let handle: TaskHandle;
