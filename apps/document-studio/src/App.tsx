@@ -4,6 +4,7 @@ import {
   Check,
   ChevronRight,
   CircleAlert,
+  Download,
   FileArchive,
   FileCode2,
   FileImage,
@@ -32,6 +33,7 @@ import {
   decodeDocumentContentPackage,
   decodeDocumentTranslationPackage,
   documentContentStats,
+  type DocumentExportFormat,
   documentTranslationStats,
   formatForName,
   formatLabel,
@@ -58,6 +60,7 @@ import {
   importDocumentHandoff,
   importDocumentFile,
   runDocumentStage,
+  exportDocumentPackage,
   saveDocumentTranslationReview,
 } from "./runtime";
 import "./styles.css";
@@ -192,6 +195,7 @@ export function App() {
   );
   const [reviewDrafts, setReviewDrafts] = useState<Readonly<Record<string, string>>>({});
   const [savingReview, setSavingReview] = useState(false);
+  const [exportBusy, setExportBusy] = useState<DocumentExportFormat | null>(null);
 
   useEffect(() => {
     documents.connectMetadata(services.metadata);
@@ -366,6 +370,28 @@ export function App() {
         );
       })
       .finally(() => setSavingReview(false));
+  };
+
+  const downloadExport = (format: DocumentExportFormat): void => {
+    if (contentPackage === undefined || exportBusy !== null) return;
+    const view = translationPackage === undefined ? "source" : "bilingual";
+    setExportBusy(format);
+    void exportDocumentPackage(services, active, contentPackage, translationPackage, format, view)
+      .then(({ bytes, fileName, mime }) => {
+        const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }));
+        const anchor = window.document.createElement("a");
+        anchor.href = url;
+        anchor.download = fileName;
+        anchor.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 0);
+        documents.setNotice(`${fileName} 已导出；Artifact 已写入本地存储`);
+      })
+      .catch((reason: unknown) => {
+        documents.setNotice(
+          `${active.name} 导出失败：${reason instanceof Error ? reason.message : String(reason)}`,
+        );
+      })
+      .finally(() => setExportBusy(null));
   };
 
   const handoffReader = () => {
@@ -549,6 +575,28 @@ export function App() {
               >
                 <Sparkles className="document-icon" /> 刷新就绪阶段
               </button>
+              {contentPackage !== undefined && (
+                <>
+                  <button
+                    type="button"
+                    className="document-button document-button-secondary"
+                    onClick={() => downloadExport("json")}
+                    disabled={exportBusy !== null}
+                  >
+                    <Download className="document-icon" />
+                    {exportBusy === "json" ? "导出中…" : "JSON"}
+                  </button>
+                  <button
+                    type="button"
+                    className="document-button document-button-secondary"
+                    onClick={() => downloadExport("markdown")}
+                    disabled={exportBusy !== null}
+                  >
+                    <Download className="document-icon" />
+                    {exportBusy === "markdown" ? "导出中…" : "Markdown"}
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 className="document-button document-button-primary"

@@ -558,6 +558,9 @@ Watchlist 分组内的多序列交接：Quant Lab 会保留完整 intake 摘要�
 通道把同一标签页的 `File` 与可恢复的 Artifact 引用交给 Reader 或 Manga，目标应用继续负责自己的 OPFS、SQLite、Worker 与 Artifact；Reader 也能将解析后的章节投影回 Document，形成同一套 Content Package 驱动的双向闭环。
 Content Package 在创建与恢复边界对重复 block ID 做确定性后缀化，保证翻译、审校和搜索共享稳定主键。
 阶段状态同时记录 operation、runtime 与 cache hit/miss，模型接入后的降级、缓存和重试可在同一 Inspector 中诊断。
+Document 的 canonical export 由 `packages/document-core/src/export.ts` 统一生成：JSON 保留 Content / Translation Package
+的完整契约，Markdown / text 通过稳定 block ID 生成 source、translated 或 bilingual 视图；Document Studio 先将导出写入
+`document/export/*` Artifact，再创建下载，避免把导出变成不可追踪的临时字符串。
 
 Manga 已先把人工/Fixture 区域通过可取消的 `manga.ocr.review` Worker Task 固化成版本化
 `manga/ocr-lines` Artifact；它只验证数据契约，不伪装像素识别。按风险顺序接入真实视觉 Worker

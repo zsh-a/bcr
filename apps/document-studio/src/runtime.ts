@@ -13,7 +13,9 @@ import {
   decodeDocumentContentPackage,
   decodeDocumentTranslationPackage,
   documentContentText,
+  documentExportFileName,
   markReadyStages,
+  serializeDocumentExport,
   stageById,
   supportsDocumentTextExtract,
   updateStage,
@@ -21,6 +23,8 @@ import {
   type DocumentHandoff,
   type DocumentContentPackage,
   type DocumentJob,
+  type DocumentExportFormat,
+  type DocumentExportView,
   type DocumentStageId,
   type DocumentTranslationPackage,
 } from "@bcr/document-core";
@@ -377,6 +381,61 @@ function patchStage(
 
 function errorMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
+}
+
+export interface DocumentExportArtifact {
+  readonly ref: ArtifactRef;
+  readonly bytes: Uint8Array;
+  readonly fileName: string;
+  readonly mime: string;
+}
+
+/** Persist a canonical export before exposing a browser download. */
+export async function exportDocumentPackage(
+  services: RuntimeServices,
+  job: DocumentJob,
+  content: DocumentContentPackage,
+  translation: DocumentTranslationPackage | undefined,
+  format: DocumentExportFormat,
+  view: DocumentExportView = translation === undefined ? "source" : "bilingual",
+): Promise<DocumentExportArtifact> {
+  const payload = serializeDocumentExport(content, translation, format, view);
+  const bytes = new TextEncoder().encode(payload.text);
+  const hash = contentHash(bytes);
+  const ref: ArtifactRef = {
+    id: `document/export/${hash}`,
+    type: "document/export",
+    storage: "opfs",
+    format: payload.mime,
+    hash,
+  };
+  await Effect.runPromise(services.artifacts.put(ref, bytes));
+  const completedAt = Date.now();
+  const current = currentJob(job.id);
+  if (current !== undefined) {
+    documents.replaceJob(
+      updateStage(current, "export", {
+        status: "done",
+        progress: 1,
+        completedAt,
+        durationMs: 0,
+        artifact: ref,
+        adapter: `document.export.${format}`,
+        capability: "adapter",
+        execution: {
+          runtime: "js",
+          operation: `document.export.${format}`,
+          cache: "disabled",
+        },
+      }),
+    );
+  }
+  return {
+    ref,
+    bytes,
+    fileName: documentExportFileName(job.name, payload),
+    mime: payload.mime,
+  };
 }
 
 /** Execute the first real Document stage through the shared Scheduler/WorkerPool. */

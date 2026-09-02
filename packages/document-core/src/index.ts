@@ -48,6 +48,15 @@ export {
   type DocumentTranslationStats,
 } from "./translation";
 export {
+  createDocumentExportBundle,
+  documentExportFileName,
+  serializeDocumentExport,
+  type DocumentExportBundle,
+  type DocumentExportFormat,
+  type DocumentExportPayload,
+  type DocumentExportView,
+} from "./export";
+export {
   DOCUMENT_HANDOFF_EVENT,
   consumeDocumentHandoff,
   getDocumentHandoffMarker,
