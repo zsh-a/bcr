@@ -125,8 +125,14 @@ export function readerRuntime(): ReaderRuntime | undefined {
   return currentRuntime;
 }
 
-export async function importReaderFile(runtime: ReaderRuntime, file: File): Promise<ReaderBook> {
+export async function importReaderFile(
+  runtime: ReaderRuntime,
+  file: File,
+  signal?: AbortSignal,
+): Promise<ReaderBook> {
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
   const hash = await hashReadableStream(file.stream());
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
   const format = formatForFile(file);
   const storage: ArtifactRef["storage"] = runtime.binary instanceof MemoryStore ? "memory" : "opfs";
   const ref: ArtifactRef = {
@@ -137,7 +143,8 @@ export async function importReaderFile(runtime: ReaderRuntime, file: File): Prom
     hash,
   };
   await Effect.runPromise(runtime.artifacts.putStream(ref, file.stream()));
-  const book = await openReaderFile(file, `book-${hash.slice(0, 16)}`);
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  const book = await openReaderFile(file, `book-${hash.slice(0, 16)}`, signal);
   return {
     ...book,
     source: {

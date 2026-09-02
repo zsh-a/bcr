@@ -29,6 +29,7 @@ export interface ReaderState {
   readonly query: string;
   readonly searchHits: ReadonlyArray<SearchHit>;
   readonly searchBookId: string | null;
+  readonly searchActiveIndex: number;
   readonly searchBusy: boolean;
   readonly settings: ReaderSettings;
   readonly sidebarOpen: boolean;
@@ -90,7 +91,12 @@ export function createDemoBook(): ReaderBook {
     title: "把时间还给阅读",
     author: "BCR Reader Lab",
     language: "zh-CN",
-    source: { name: "reading-space.md", format: "markdown", mime: "text/markdown", size: 4096 },
+    source: {
+      name: "reading-space.md",
+      format: "markdown",
+      mime: "text/markdown",
+      size: 4096,
+    },
     sections,
     importedAt: Date.now(),
     updatedAt: Date.now(),

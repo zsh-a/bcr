@@ -17,6 +17,7 @@ import {
   Search,
   Settings2,
   Sun,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
@@ -95,6 +96,25 @@ function scrollToReaderSection(sectionId: string, behavior: ScrollBehavior = "sm
   container.scrollTo({ top: Math.max(0, target.offsetTop - 28), behavior });
 }
 
+let readerPersistenceQueue: Promise<void> = Promise.resolve();
+
+function persistReaderSnapshot(runtime: ReaderRuntime): void {
+  const state = getReaderState();
+  if (state.status !== "ready") return;
+  readerPersistenceQueue = readerPersistenceQueue
+    .catch(() => undefined)
+    .then(() => persistReader(runtime, state))
+    .then(() => reader.markSaved())
+    .catch(() => undefined);
+}
+
+function isAbortError(reason: unknown): boolean {
+  return (
+    (reason instanceof DOMException && reason.name === "AbortError") ||
+    (reason instanceof Error && reason.name === "AbortError")
+  );
+}
+
 function useDebouncedPersist(runtime: ReaderRuntime | null): void {
   const library = useReader((state) => state.library);
   const progressByBook = useReader((state) => state.progressByBook);
@@ -102,12 +122,24 @@ function useDebouncedPersist(runtime: ReaderRuntime | null): void {
   useEffect(() => {
     if (runtime === null || getReaderState().status !== "ready") return;
     const handle = window.setTimeout(() => {
-      void persistReader(runtime, getReaderState())
-        .then(() => reader.markSaved())
-        .catch(() => undefined);
-    }, 420);
+      persistReaderSnapshot(runtime);
+    }, 900);
     return () => window.clearTimeout(handle);
   }, [runtime, library, progressByBook, settings]);
+
+  useEffect(() => {
+    if (runtime === null) return;
+    const flush = () => persistReaderSnapshot(runtime);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [runtime]);
 }
 
 function useReaderSearch(runtime: ReaderRuntime | null): void {
@@ -131,7 +163,10 @@ function useReaderSearch(runtime: ReaderRuntime | null): void {
   }, [runtime, query, library]);
 }
 
-function useReaderBoot(): { runtime: ReaderRuntime | null; error: string | null } {
+function useReaderBoot(): {
+  runtime: ReaderRuntime | null;
+  error: string | null;
+} {
   const [runtime, setRuntime] = useState<ReaderRuntime | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -172,8 +207,12 @@ export function App() {
   const active = useReader((state) => activeBook(state));
   const settings = useReader((state) => state.settings);
   const searchOpen = useReader((state) => state.searchOpen);
+  const sidebarOpen = useReader((state) => state.sidebarOpen);
   const searchRef = useRef<HTMLInputElement>(null);
+  const importAbortRef = useRef<AbortController | null>(null);
+  const importDismissRef = useRef<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [importJob, setImportJob] = useState<ImportJob | null>(null);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -182,27 +221,87 @@ export function App() {
         reader.setSearchOpen(true);
         window.setTimeout(() => searchRef.current?.focus(), 0);
       }
-      if (event.key === "Escape" && searchOpen) reader.setSearchOpen(false);
+      if (event.key === "Escape") {
+        if (searchOpen) reader.setSearchOpen(false);
+        else if (sidebarOpen) reader.toggleSidebar();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [searchOpen]);
+  }, [searchOpen, sidebarOpen]);
+
+  const cancelImport = useCallback(() => {
+    importAbortRef.current?.abort();
+  }, []);
+
+  useEffect(
+    () => () => {
+      importAbortRef.current?.abort();
+      if (importDismissRef.current !== null) window.clearTimeout(importDismissRef.current);
+    },
+    [],
+  );
 
   const importFiles = useCallback(
     async (files: ReadonlyArray<File>) => {
-      if (runtime === null || files.length === 0) return;
-      setNotice(`正在准备 ${files.length} 本读物…`);
-      for (const file of files) {
+      if (runtime === null || files.length === 0 || importAbortRef.current !== null) return;
+      if (importDismissRef.current !== null) {
+        window.clearTimeout(importDismissRef.current);
+        importDismissRef.current = null;
+      }
+      const controller = new AbortController();
+      importAbortRef.current = controller;
+      setImportJob({
+        total: files.length,
+        completed: 0,
+        current: "",
+        cancelled: false,
+        errors: 0,
+      });
+      let errors = 0;
+      for (const [index, file] of files.entries()) {
+        if (controller.signal.aborted) break;
+        setImportJob((previous) =>
+          previous === null ? previous : { ...previous, current: file.name },
+        );
         try {
-          const book = await importReaderFile(runtime, file);
-          reader.addBook(book);
-          await indexBook(runtime, book);
-          setNotice(`${book.title} 已加入书库`);
+          const book = await importReaderFile(runtime, file, controller.signal);
+          if (controller.signal.aborted) break;
+          const added = reader.addBook(book);
+          if (added) {
+            await indexBook(runtime, book);
+            setNotice(`${book.title} 已加入书库`);
+          } else {
+            setNotice(`${file.name} 已在书库`);
+          }
         } catch (reason) {
+          if (isAbortError(reason)) break;
+          errors += 1;
           setNotice(reason instanceof Error ? reason.message : String(reason));
+        } finally {
+          setImportJob((previous) =>
+            previous === null
+              ? previous
+              : { ...previous, completed: index + 1, current: "", errors },
+          );
         }
       }
-      window.setTimeout(() => setNotice(null), 3600);
+      const cancelled = controller.signal.aborted;
+      setImportJob((previous) =>
+        previous === null ? previous : { ...previous, current: "", cancelled, errors },
+      );
+      importAbortRef.current = null;
+      setNotice(
+        cancelled ? "导入已取消" : errors > 0 ? `导入完成，${errors} 个文件失败` : "导入完成",
+      );
+      importDismissRef.current = window.setTimeout(
+        () => {
+          setNotice(null);
+          setImportJob(null);
+          importDismissRef.current = null;
+        },
+        cancelled ? 1800 : 2400,
+      );
     },
     [runtime],
   );
@@ -215,15 +314,28 @@ export function App() {
   }
   return (
     <div className={`reader-studio reader-theme-${settings.theme}`}>
+      <a className="reader-skip-link" href="#reader-content">
+        跳到正文
+      </a>
       <ReaderHeader
         book={active}
         searchRef={searchRef}
         onImport={(files) => void importFiles(files)}
         notice={notice}
+        importJob={importJob}
+        onCancelImport={cancelImport}
       />
       <ReaderWorkspace runtime={runtime} onImport={(files) => void importFiles(files)} />
     </div>
   );
+}
+
+interface ImportJob {
+  readonly total: number;
+  readonly completed: number;
+  readonly current: string;
+  readonly cancelled: boolean;
+  readonly errors: number;
 }
 
 function BootScreen(props: { error: string | null }) {
@@ -245,14 +357,23 @@ function BootScreen(props: { error: string | null }) {
   );
 }
 
+function openSearchHit(hit: SearchHit): void {
+  reader.openBook(hit.bookId, hit.sectionId);
+  reader.setSearchOpen(false);
+}
+
 function ReaderHeader(props: {
   book: ReaderBook;
   searchRef: RefObject<HTMLInputElement | null>;
   onImport: (files: ReadonlyArray<File>) => void;
   notice: string | null;
+  importJob: ImportJob | null;
+  onCancelImport: () => void;
 }) {
   const query = useReader((state) => state.query);
   const searchOpen = useReader((state) => state.searchOpen);
+  const searchHits = useReader((state) => state.searchHits);
+  const searchActiveIndex = useReader((state) => state.searchActiveIndex);
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
   const fileInput = useRef<HTMLInputElement>(null);
   const onSearch = (value: string) => {
@@ -287,8 +408,29 @@ function ReaderHeader(props: {
           value={query}
           onChange={(event) => onSearch(event.target.value)}
           onFocus={() => reader.setSearchOpen(true)}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              reader.moveSearch(1);
+            } else if (event.key === "ArrowUp") {
+              event.preventDefault();
+              reader.moveSearch(-1);
+            } else if (event.key === "Enter") {
+              const hit = searchHits[searchActiveIndex];
+              if (hit !== undefined) {
+                event.preventDefault();
+                openSearchHit(hit);
+              }
+            }
+          }}
           placeholder="在书库中搜索…"
           aria-label="在书库中搜索"
+          role="combobox"
+          aria-expanded={searchOpen && query.length > 0}
+          aria-controls="reader-search-results"
+          aria-activedescendant={
+            searchActiveIndex >= 0 ? `reader-search-hit-${searchActiveIndex}` : undefined
+          }
         />
         {query && (
           <button
@@ -326,9 +468,29 @@ function ReaderHeader(props: {
       >
         <Upload className="reader-icon" /> <span>导入</span>
       </button>
-      {props.notice !== null && (
-        <div className="reader-toast" role="status">
+      {props.notice !== null && props.importJob === null && (
+        <div className="reader-toast" role="status" aria-live="polite">
           {props.notice}
+        </div>
+      )}
+      {props.importJob !== null && (
+        <div className="reader-import-progress" role="status" aria-live="polite">
+          <div className="reader-import-progress-copy">
+            <strong>{props.importJob.cancelled ? "导入已取消" : "正在导入"}</strong>
+            <span>
+              {props.importJob.current || `${props.importJob.completed}/${props.importJob.total}`}
+            </span>
+          </div>
+          <progress
+            max={props.importJob.total}
+            value={props.importJob.completed}
+            aria-label="导入进度"
+          />
+          {!props.importJob.cancelled && (
+            <button type="button" className="reader-import-cancel" onClick={props.onCancelImport}>
+              取消
+            </button>
+          )}
         </div>
       )}
     </header>
@@ -348,10 +510,18 @@ function ReaderWorkspace(props: {
   if (active === undefined) return null;
   return (
     <div className={`reader-workspace ${sidebarOpen ? "sidebar-visible" : "sidebar-hidden"}`}>
-      <aside className="reader-sidebar">
+      <aside className="reader-sidebar" aria-label="本地书库">
         <LibraryPanel onImport={props.onImport} />
       </aside>
-      <main className="reader-main">
+      {sidebarOpen && (
+        <button
+          type="button"
+          className="reader-sidebar-scrim"
+          aria-label="关闭书库"
+          onClick={() => reader.toggleSidebar()}
+        />
+      )}
+      <main id="reader-content" className="reader-main" aria-label="阅读内容">
         {searchOpen && query.length > 0 && <SearchPanel hits={searchHits} />}
         <ReaderToolbar book={active} settings={settings} />
         <ReadingView runtime={props.runtime} book={active} />
@@ -366,6 +536,20 @@ function LibraryPanel(props: { onImport: (files: ReadonlyArray<File>) => void })
   const progressByBook = useReader((state) => state.progressByBook);
   const fileInput = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [sortMode, setSortMode] = useState<LibrarySortMode>("recent");
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const sortedLibrary = [...library].sort((left, right) => {
+    if (sortMode === "title") return left.title.localeCompare(right.title, "zh-CN");
+    if (sortMode === "progress") {
+      return (
+        (progressByBook[right.id]?.percentage ?? 0) - (progressByBook[left.id]?.percentage ?? 0)
+      );
+    }
+    return (
+      (progressByBook[right.id]?.updatedAt ?? right.updatedAt) -
+      (progressByBook[left.id]?.updatedAt ?? left.updatedAt)
+    );
+  });
   return (
     <div className="reader-library-panel">
       <div className="reader-sidebar-heading">
@@ -381,6 +565,18 @@ function LibraryPanel(props: { onImport: (files: ReadonlyArray<File>) => void })
         >
           <PanelLeftClose className="reader-icon" />
         </button>
+      </div>
+      <div className="reader-library-toolbar">
+        <span className="reader-eyebrow">SORT BY</span>
+        <select
+          aria-label="书库排序"
+          value={sortMode}
+          onChange={(event) => setSortMode(event.target.value as LibrarySortMode)}
+        >
+          <option value="recent">最近阅读</option>
+          <option value="title">标题</option>
+          <option value="progress">阅读进度</option>
+        </select>
       </div>
       <div
         className={`reader-dropzone ${dragging ? "is-dragging" : ""}`}
@@ -419,12 +615,19 @@ function LibraryPanel(props: { onImport: (files: ReadonlyArray<File>) => void })
         <Plus className="reader-icon" /> 添加本地读物
       </button>
       <div className="reader-library-list">
-        {library.map((book) => (
+        {sortedLibrary.map((book) => (
           <LibraryBookCard
             key={book.id}
             book={book}
             active={book.id === activeBookId}
             progress={progressByBook[book.id]?.percentage ?? 0}
+            confirming={confirmingId === book.id}
+            onRemove={() => setConfirmingId(book.id)}
+            onConfirmRemove={() => {
+              reader.removeBook(book.id);
+              setConfirmingId(null);
+            }}
+            onCancelRemove={() => setConfirmingId(null)}
           />
         ))}
       </div>
@@ -438,39 +641,73 @@ function LibraryPanel(props: { onImport: (files: ReadonlyArray<File>) => void })
   );
 }
 
-function LibraryBookCard(props: { book: ReaderBook; active: boolean; progress: number }) {
+type LibrarySortMode = "recent" | "title" | "progress";
+
+function LibraryBookCard(props: {
+  book: ReaderBook;
+  active: boolean;
+  progress: number;
+  confirming: boolean;
+  onRemove: () => void;
+  onConfirmRemove: () => void;
+  onCancelRemove: () => void;
+}) {
   return (
-    <button
-      type="button"
-      className={`reader-book-card ${props.active ? "is-active" : ""}`}
-      onClick={() => reader.openBook(props.book.id)}
-    >
-      <div className={`reader-book-cover reader-cover-${props.book.source.format}`}>
-        {props.book.coverUrl ? (
-          <img src={props.book.coverUrl} alt="" />
-        ) : (
-          <>
-            {sourceIcon(props.book.source.format)}
+    <div className="reader-book-entry">
+      <button
+        type="button"
+        className={`reader-book-card ${props.active ? "is-active" : ""}`}
+        onClick={() => reader.openBook(props.book.id)}
+        aria-current={props.active ? "page" : undefined}
+      >
+        <div className={`reader-book-cover reader-cover-${props.book.source.format}`}>
+          {props.book.coverUrl ? (
+            <img src={props.book.coverUrl} alt="" />
+          ) : (
+            <>
+              {sourceIcon(props.book.source.format)}
+              <span>{formatBadge(props.book.source.format)}</span>
+            </>
+          )}
+        </div>
+        <div className="reader-book-card-copy">
+          <strong>{props.book.title}</strong>
+          <span>{props.book.author ?? "本地文档"}</span>
+          <div className="reader-book-meta">
             <span>{formatBadge(props.book.source.format)}</span>
-          </>
-        )}
-      </div>
-      <div className="reader-book-card-copy">
-        <strong>{props.book.title}</strong>
-        <span>{props.book.author ?? "本地文档"}</span>
-        <div className="reader-book-meta">
-          <span>{formatBadge(props.book.source.format)}</span>
-          <span>
-            {formatBytes(props.book.source.size)} ·{" "}
-            {props.progress > 0 ? `${percent(props.progress)} · 继续阅读` : "未开始"}
-          </span>
+            <span>
+              {formatBytes(props.book.source.size)} ·{" "}
+              {props.progress > 0 ? `${percent(props.progress)} · 继续阅读` : "未开始"}
+            </span>
+          </div>
+          <div className="reader-book-progress">
+            <span style={{ width: `${Math.round(props.progress * 100)}%` }} />
+          </div>
         </div>
-        <div className="reader-book-progress">
-          <span style={{ width: `${Math.round(props.progress * 100)}%` }} />
+        {props.active && <ChevronRight className="reader-book-active-icon" />}
+      </button>
+      <button
+        type="button"
+        className="reader-book-remove"
+        aria-label={`移除 ${props.book.title}`}
+        onClick={props.onRemove}
+      >
+        <Trash2 className="reader-icon" />
+      </button>
+      {props.confirming && (
+        <div className="reader-book-confirm" role="alert">
+          <span>从本地书库移除？</span>
+          <div>
+            <button type="button" onClick={props.onConfirmRemove}>
+              确认
+            </button>
+            <button type="button" onClick={props.onCancelRemove}>
+              取消
+            </button>
+          </div>
         </div>
-      </div>
-      {props.active && <ChevronRight className="reader-book-active-icon" />}
-    </button>
+      )}
+    </div>
   );
 }
 
@@ -478,10 +715,11 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
   const library = useReader((state) => state.library);
   const query = useReader((state) => state.query);
   const searchBusy = useReader((state) => state.searchBusy);
-  const scrollToHit = (hit: SearchHit) => {
-    reader.openBook(hit.bookId, hit.sectionId);
-    reader.setSearchOpen(false);
-  };
+  const searchActiveIndex = useReader((state) => state.searchActiveIndex);
+  const activeResultRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    activeResultRef.current?.scrollIntoView({ block: "nearest" });
+  }, [searchActiveIndex]);
   return (
     <section className="reader-search-panel" aria-label="搜索结果">
       <div className="reader-search-panel-top">
@@ -492,6 +730,14 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
         <span className="reader-search-query">
           “{query}” · {library.length} 本读物
         </span>
+        <button
+          type="button"
+          className="reader-icon-button"
+          onClick={() => reader.setSearchOpen(false)}
+          aria-label="关闭搜索结果"
+        >
+          <X className="reader-icon" />
+        </button>
       </div>
       {props.hits.length === 0 && !searchBusy && (
         <div className="reader-search-empty">
@@ -499,13 +745,18 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
           没有找到匹配内容，试试更短的关键词。
         </div>
       )}
-      <div className="reader-search-results">
+      <div id="reader-search-results" className="reader-search-results" role="listbox">
         {props.hits.map((hit, index) => (
           <button
             type="button"
-            className="reader-search-result"
+            ref={index === searchActiveIndex ? activeResultRef : undefined}
+            id={`reader-search-hit-${index}`}
+            role="option"
+            aria-selected={index === searchActiveIndex}
+            className={`reader-search-result ${index === searchActiveIndex ? "is-active" : ""}`}
             key={`${hit.bookId}-${hit.sectionId}-${index}`}
-            onClick={() => scrollToHit(hit)}
+            onMouseEnter={() => reader.setSearchActiveIndex(index)}
+            onClick={() => openSearchHit(hit)}
           >
             <span className="reader-search-result-index">{String(index + 1).padStart(2, "0")}</span>
             <span className="reader-search-result-copy">
@@ -557,7 +808,7 @@ function ReaderToolbar(props: { book: ReaderBook; settings: ReaderSettings }) {
 function ThemeMenu(props: { settings: ReaderSettings }) {
   const themes: ReadonlyArray<ReaderTheme> = ["paper", "sage", "night"];
   return (
-    <div className="reader-segmented" aria-label="阅读主题">
+    <div className="reader-segmented" role="group" aria-label="阅读主题">
       {themes.map((theme) => (
         <button
           type="button"
@@ -576,7 +827,7 @@ function ThemeMenu(props: { settings: ReaderSettings }) {
 
 function LayoutMenu(props: { settings: ReaderSettings }) {
   return (
-    <div className="reader-segmented" aria-label="阅读布局">
+    <div className="reader-segmented" role="group" aria-label="阅读布局">
       <button
         type="button"
         className={props.settings.layout === "scroll" ? "is-active" : ""}
@@ -601,10 +852,14 @@ function LayoutMenu(props: { settings: ReaderSettings }) {
 
 function FontSizeMenu(props: { settings: ReaderSettings }) {
   return (
-    <div className="reader-segmented reader-font-size-menu" aria-label="字号大小">
+    <div className="reader-segmented reader-font-size-menu" role="group" aria-label="字号大小">
       <button
         type="button"
-        onClick={() => reader.setSettings({ fontSize: clamp(props.settings.fontSize - 1, 15, 26) })}
+        onClick={() =>
+          reader.setSettings({
+            fontSize: clamp(props.settings.fontSize - 1, 15, 26),
+          })
+        }
         disabled={props.settings.fontSize <= 15}
         aria-label="减小字号"
         title="减小字号"
@@ -614,7 +869,11 @@ function FontSizeMenu(props: { settings: ReaderSettings }) {
       <span className="reader-font-size-value">{props.settings.fontSize}</span>
       <button
         type="button"
-        onClick={() => reader.setSettings({ fontSize: clamp(props.settings.fontSize + 1, 15, 26) })}
+        onClick={() =>
+          reader.setSettings({
+            fontSize: clamp(props.settings.fontSize + 1, 15, 26),
+          })
+        }
         disabled={props.settings.fontSize >= 26}
         aria-label="增大字号"
         title="增大字号"
@@ -631,6 +890,7 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
   const containerRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<number | null>(null);
+  const lastScrollUpdateRef = useRef(0);
   const userScrollRef = useRef(false);
   const updateLocator = useCallback(() => {
     const container = containerRef.current;
@@ -651,12 +911,15 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
         containerRef.current.scrollHeight - containerRef.current.clientHeight,
       );
       if (activeSectionId === props.book.sections[0]?.id) {
-        containerRef.current.scrollTo({ top: max * progress, behavior: "auto" });
+        containerRef.current.scrollTo({
+          top: max * progress,
+          behavior: "auto",
+        });
       } else {
         scrollToReaderSection(activeSectionId);
       }
     }
-  }, [activeSectionId, props.book, progress]);
+  }, [activeSectionId, props.book]);
   useEffect(
     () => () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
@@ -677,12 +940,19 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
         className="reader-reading-scroll"
         ref={containerRef}
         onScroll={() => {
-          userScrollRef.current = true;
           if (frameRef.current !== null) return;
-          frameRef.current = requestAnimationFrame(() => {
+          const flush = () => {
+            const elapsed = performance.now() - lastScrollUpdateRef.current;
+            if (elapsed < 120) {
+              frameRef.current = requestAnimationFrame(flush);
+              return;
+            }
             frameRef.current = null;
+            lastScrollUpdateRef.current = performance.now();
+            userScrollRef.current = true;
             updateLocator();
-          });
+          };
+          frameRef.current = requestAnimationFrame(flush);
         }}
       >
         <div className="reader-reading-column">
@@ -724,7 +994,14 @@ function SectionView(props: { section: ReaderSection }) {
       <div className="reader-section-index">{String(props.section.order + 1).padStart(2, "0")}</div>
       <div className="reader-section-body">
         <div className="reader-section-label">{props.section.label}</div>
-        {props.section.html ? (
+        {props.section.kind === "image" && props.section.imageUrl ? (
+          <img
+            className="reader-section-image"
+            src={props.section.imageUrl}
+            alt={props.section.imageAlt ?? props.section.label}
+            loading="lazy"
+          />
+        ) : props.section.html ? (
           <div className="reader-prose" dangerouslySetInnerHTML={{ __html: props.section.html }} />
         ) : (
           <p className="reader-prose">{props.section.text}</p>
@@ -812,7 +1089,7 @@ function ReadingEnd(props: { book: ReaderBook }) {
 function ChapterRail(props: { book: ReaderBook }) {
   const activeSectionId = useReader((state) => state.activeSectionId);
   return (
-    <aside className="reader-chapter-rail">
+    <aside className="reader-chapter-rail" aria-label="章节目录">
       <div className="reader-rail-heading">
         <List className="reader-icon" />
         <span>目录</span>
@@ -822,6 +1099,7 @@ function ChapterRail(props: { book: ReaderBook }) {
           type="button"
           key={section.id}
           className={section.id === activeSectionId ? "is-active" : ""}
+          aria-current={section.id === activeSectionId ? "page" : undefined}
           onClick={() => reader.openBook(props.book.id, section.id)}
         >
           <span>{String(section.order + 1).padStart(2, "0")}</span>
