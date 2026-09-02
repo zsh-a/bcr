@@ -1,5 +1,14 @@
 import { artifactPath, contentHash, type ArtifactRef } from "@bcr/core";
-import type { MangaOcrArtifact, MangaOcrLine } from "@bcr/manga-studio/model";
+import { applyGlossaryTerms } from "@bcr/manga-studio/glossary";
+import {
+  TRANSLATION_MODEL_MANIFESTS,
+  type MangaGlossaryEntry,
+  type MangaOcrArtifact,
+  type MangaOcrLine,
+  type MangaSourceLanguage,
+  type MangaTranslationArtifact,
+  type MangaTranslationLine,
+} from "@bcr/manga-studio/model";
 import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
 import init, { peak_f32, StreamingBlake3 } from "../../../../crates/kernels/pkg/bcr_kernels.js";
@@ -472,6 +481,196 @@ async function mangaOcrOnnx(
   return [out];
 }
 
+type MangaTranslator = (
+  text: string | ReadonlyArray<string>,
+  options?: Record<string, unknown>,
+) => Promise<unknown>;
+
+let mangaTranslatorCache:
+  | {
+      readonly model: string;
+      readonly device: ResolvedOcrDevice;
+      readonly fn: MangaTranslator;
+    }
+  | undefined;
+
+function defaultTranslationModel(sourceLanguage: MangaSourceLanguage): string {
+  const manifest = TRANSLATION_MODEL_MANIFESTS.find((candidate) => candidate.id === "local");
+  return manifest?.models[sourceLanguage] ?? "Xenova/nllb-200-distilled-600M";
+}
+
+function translationOptions(sourceLanguage: MangaSourceLanguage): Record<string, string> {
+  return {
+    src_lang:
+      sourceLanguage === "ja" ? "jpn_Jpan" : sourceLanguage === "ko" ? "kor_Hang" : "eng_Latn",
+    tgt_lang: "zho_Hans",
+  };
+}
+
+async function buildMangaTranslator(
+  model: string,
+  device: ResolvedOcrDevice,
+  ctx: WorkerContext,
+): Promise<MangaTranslator> {
+  const { pipeline, env } = await import("@huggingface/transformers");
+  env.allowLocalModels = false;
+  env.allowRemoteModels = true;
+  ctx.progress(0.02);
+  const fn = (await pipeline("translation", model, {
+    ...(device === "webgpu" ? { device: "webgpu", dtype: "q8" } : { dtype: "q8" }),
+    progress_callback: (info: { status?: string; progress?: number }) => {
+      if (info.status === "progress" && typeof info.progress === "number") {
+        ctx.progress(Math.min(0.35, 0.02 + (info.progress / 100) * 0.33));
+      }
+    },
+  })) as unknown as MangaTranslator;
+  ctx.progress(0.4);
+  return fn;
+}
+
+async function loadMangaTranslator(
+  model: string,
+  device: OcrDevice,
+  ctx: WorkerContext,
+): Promise<MangaTranslator> {
+  const cached = mangaTranslatorCache;
+  if (
+    cached !== undefined &&
+    cached.model === model &&
+    (device === "auto" || cached.device === device)
+  ) {
+    return cached.fn;
+  }
+  const resolved = await resolveOcrDevice(device);
+  try {
+    const fn = await buildMangaTranslator(model, resolved, ctx);
+    mangaTranslatorCache = { model, device: resolved, fn };
+    return fn;
+  } catch (error) {
+    if (device === "auto" && resolved === "webgpu") {
+      console.warn("[manga-translate] WebGPU unavailable, falling back to WASM:", error);
+      const fn = await buildMangaTranslator(model, "wasm", ctx);
+      mangaTranslatorCache = { model, device: "wasm", fn };
+      return fn;
+    }
+    throw error;
+  }
+}
+
+function taskGlossary(task: {
+  config?: Record<string, unknown> | undefined;
+}): MangaGlossaryEntry[] {
+  const raw = task.config?.["glossary"];
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((candidate, index) => {
+    if (typeof candidate !== "object" || candidate === null) return [];
+    const value = candidate as Record<string, unknown>;
+    if (typeof value["source"] !== "string" || typeof value["target"] !== "string") return [];
+    const source = value["source"].trim();
+    const target = value["target"].trim();
+    if (source.length === 0 || target.length === 0) return [];
+    return [
+      {
+        id: typeof value["id"] === "string" ? value["id"] : `task-glossary-${index}`,
+        source,
+        target,
+        note: typeof value["note"] === "string" ? value["note"] : "",
+        enabled: value["enabled"] !== false,
+      } satisfies MangaGlossaryEntry,
+    ];
+  });
+}
+
+function translationTexts(result: unknown): string[] {
+  const values = Array.isArray(result) ? result : [result];
+  return values.map((value) => {
+    if (typeof value !== "object" || value === null) return "";
+    const text = (value as Record<string, unknown>)["translation_text"];
+    return typeof text === "string" ? text.trim() : "";
+  });
+}
+
+/** Opt-in local translation: read OCR lines, preserve IDs, and persist a reviewable artifact. */
+async function mangaTranslateOnnx(
+  task: { inputs: ReadonlyArray<ArtifactRef>; config?: Record<string, unknown> | undefined },
+  ctx: WorkerContext,
+): Promise<ReadonlyArray<ArtifactRef>> {
+  const input = task.inputs.find((ref) => ref.port === "lines") ?? task.inputs[0];
+  if (input === undefined) throw new Error("manga.translate.onnx requires OCR lines");
+  const ocr = await readJsonArtifact<MangaOcrArtifact>(input, ctx);
+  const sourceLanguageValue = configText(task.config?.["sourceLanguage"], "ja");
+  const sourceLanguage: MangaSourceLanguage =
+    sourceLanguageValue === "en" || sourceLanguageValue === "ko" ? sourceLanguageValue : "ja";
+  const targetLanguage = configText(task.config?.["targetLanguage"], "zh");
+  if (targetLanguage !== "zh")
+    throw new Error(`unsupported manga translation target: ${targetLanguage}`);
+  const model = configText(task.config?.["model"], defaultTranslationModel(sourceLanguage));
+  const deviceValue = configText(task.config?.["device"], "auto");
+  const device: OcrDevice =
+    deviceValue === "webgpu" || deviceValue === "wasm" ? deviceValue : "auto";
+  const glossary = taskGlossary(task);
+  const translatable = ocr.lines.filter((line) => line.text.trim().length > 0);
+  const translated = new Map<string, string>();
+  const exact = new Map(
+    glossary
+      .filter(
+        (entry) =>
+          entry.enabled && entry.source.trim().length > 0 && entry.target.trim().length > 0,
+      )
+      .map((entry) => [entry.source.trim(), entry.target.trim()]),
+  );
+  const pending = translatable.filter((line) => !exact.has(line.text.trim()));
+  if (pending.length > 0) {
+    const translator = await loadMangaTranslator(model, device, ctx);
+    const BATCH = 8;
+    for (let offset = 0; offset < pending.length; offset += BATCH) {
+      throwIfAborted(ctx);
+      const batch = pending.slice(offset, offset + BATCH);
+      const outputs = translationTexts(
+        await translator(
+          batch.map((line) => line.text),
+          translationOptions(sourceLanguage),
+        ),
+      );
+      for (const [index, line] of batch.entries()) {
+        const output = outputs[index] ?? "";
+        translated.set(line.id, applyGlossaryTerms(output, glossary));
+      }
+      ctx.progress(
+        Math.min(
+          0.98,
+          0.4 +
+            (0.58 * Math.min(pending.length, offset + batch.length)) / Math.max(1, pending.length),
+        ),
+      );
+    }
+  } else {
+    ctx.progress(0.4);
+  }
+  const lines: MangaTranslationLine[] = ocr.lines.map((line) => ({
+    id: line.id,
+    sourceText: line.text,
+    translatedText: exact.get(line.text.trim()) ?? translated.get(line.id) ?? "",
+    status: "needs-review",
+  }));
+  const payload: MangaTranslationArtifact = {
+    version: 1,
+    adapter: "local.onnx",
+    sourceName: configText(task.config?.["sourceName"], ocr.sourceName),
+    sourceLanguage,
+    targetLanguage: "zh",
+    lines,
+  };
+  const out = await writeTypedJsonArtifact(
+    "manga",
+    "translate-onnx",
+    "manga/translation-lines",
+    payload,
+  );
+  ctx.progress(1);
+  return [out];
+}
+
 const fixtureDictionary: Readonly<Record<string, string>> = {
   "ここから、始めよう。": "就从这里开始吧。",
   もうすぐ春だね: "春天快到了呢",
@@ -557,4 +756,5 @@ defineWorker({
   "document.typeset.preview": (task, ctx) => documentTypesetPreview(task, ctx),
   "manga.ocr.review": (task, ctx) => mangaOcrReview(task, ctx),
   "manga.ocr.onnx": (task, ctx) => mangaOcrOnnx(task, ctx),
+  "manga.translate.onnx": (task, ctx) => mangaTranslateOnnx(task, ctx),
 });

@@ -54,6 +54,14 @@ function replaceTerms(text: string, entries: ReadonlyArray<MangaGlossaryEntry>):
   return text.replace(new RegExp(pattern, "gu"), (match) => bySource.get(match)?.target ?? match);
 }
 
+/** Apply glossary replacements to an already translated string without recursive rewrites. */
+export function applyGlossaryTerms(
+  text: string,
+  entries: ReadonlyArray<MangaGlossaryEntry>,
+): string {
+  return replaceTerms(text, entries);
+}
+
 /**
  * Deterministic fixture translation with glossary semantics:
  * exact phrase entries win; fallback text receives longest-first replacements.

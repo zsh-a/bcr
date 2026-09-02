@@ -1055,6 +1055,30 @@
   line-height: 1.35;
 }
 
+.manga-model-note {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 10px;
+  border-left: 2px solid var(--manga-violet);
+  padding: 3px 0 3px 9px;
+}
+
+.manga-model-note strong {
+  overflow: hidden;
+  color: var(--manga-violet);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manga-model-note small {
+  color: var(--manga-muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
 .manga-glossary-section {
   padding-bottom: 16px;
 }

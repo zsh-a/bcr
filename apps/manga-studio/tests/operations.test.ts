@@ -4,10 +4,11 @@ import { describe, expect, it } from "vitest";
 import {
   defaultGraph,
   LOCAL_OCR_OPERATION,
+  LOCAL_TRANSLATION_OPERATION,
   OPERATIONS,
   REVIEW_OCR_OPERATION,
 } from "../src/operations";
-import { OCR_MODEL_MANIFESTS } from "../src/model";
+import { OCR_MODEL_MANIFESTS, TRANSLATION_MODEL_MANIFESTS } from "../src/model";
 import { DEFAULT_SETTINGS } from "../src/store";
 
 describe("Manga Studio operation graph", () => {
@@ -78,6 +79,28 @@ describe("Manga Studio operation graph", () => {
       runtime: "wasm",
       status: "experimental",
       languages: ["en"],
+    });
+  });
+
+  it("catalogs language-specific local translation models", () => {
+    expect(LOCAL_TRANSLATION_OPERATION).toMatchObject({
+      operation: "manga.translate.onnx",
+      runtime: "wasm",
+    });
+    expect(LOCAL_TRANSLATION_OPERATION.inputs).toEqual([
+      { name: "lines", type: "manga/ocr-lines", label: "lines" },
+    ]);
+    expect(LOCAL_TRANSLATION_OPERATION.outputs).toEqual([
+      { name: "segments", type: "manga/translation-lines", label: "segments" },
+    ]);
+    expect(TRANSLATION_MODEL_MANIFESTS.find((manifest) => manifest.id === "local")).toMatchObject({
+      status: "experimental",
+      runtime: "wasm",
+      models: {
+        ja: "Xenova/nllb-200-distilled-600M",
+        en: "Xenova/nllb-200-distilled-600M",
+        ko: "Xenova/nllb-200-distilled-600M",
+      },
     });
   });
 });

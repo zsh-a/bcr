@@ -234,6 +234,48 @@ export const LOCAL_OCR_OPERATION: OperationDef = {
   ]),
 };
 
+/** Opt-in text translation operation. The Worker resolves the multilingual NLLB model. */
+export const LOCAL_TRANSLATION_OPERATION: OperationDef = {
+  operation: "manga.translate.onnx",
+  label: "Translate / Local",
+  detail: "懒加载多语 NLLB，并保留术语表与人工审校边界",
+  runtime: "wasm",
+  inputs: [{ name: "lines", type: "manga/ocr-lines", label: "lines" }],
+  outputs: [{ name: "segments", type: "manga/translation-lines", label: "segments" }],
+  resources: { memoryMB: 2048, threads: 1 },
+  config: withSkipCache([
+    {
+      key: "model",
+      label: "模型",
+      kind: "string",
+      default: "Xenova/nllb-200-distilled-600M",
+    },
+    {
+      key: "sourceLanguage",
+      label: "源语言",
+      kind: "select",
+      options: [
+        { value: "ja", label: "日本語" },
+        { value: "en", label: "English" },
+        { value: "ko", label: "한국어" },
+      ],
+      default: "ja",
+    },
+    { key: "targetLanguage", label: "目标语言", kind: "string", default: "zh" },
+    {
+      key: "device",
+      label: "设备",
+      kind: "select",
+      options: [
+        { value: "auto", label: "Auto" },
+        { value: "webgpu", label: "WebGPU" },
+        { value: "wasm", label: "WASM" },
+      ],
+      default: "auto",
+    },
+  ]),
+};
+
 function operation(operation: string): OperationDef {
   const found = OPERATIONS.find((item) => item.operation === operation);
   if (found === undefined) throw new Error(`unknown operation ${operation}`);

@@ -20,6 +20,8 @@ export type WritingMode = "horizontal-tb" | "vertical-rl";
 export type RegionStatus = "detected" | "needs-review" | "reviewed";
 export type MangaOcrAdapterId = "review.manual" | "vision.onnx";
 export type MangaOcrDevice = "auto" | "webgpu" | "wasm";
+export type MangaSourceLanguage = "ja" | "en" | "ko";
+export type MangaTranslationEngineId = "fixture" | "local";
 
 /**
  * 文本区域使用相对坐标，避免页面缩放后丢失编辑位置。
@@ -107,6 +109,55 @@ export const OCR_MODEL_MANIFESTS: ReadonlyArray<MangaOcrModelManifest> = [
   },
 ];
 
+export interface MangaTranslationModelManifest {
+  readonly id: MangaTranslationEngineId;
+  readonly label: string;
+  readonly models: Readonly<Partial<Record<MangaSourceLanguage, string>>>;
+  readonly runtime: "fixture" | "wasm";
+  readonly status: "ready" | "experimental";
+  readonly detail: string;
+}
+
+/** Translation catalog is deliberately explicit so a language never silently picks a wrong model. */
+export const TRANSLATION_MODEL_MANIFESTS: ReadonlyArray<MangaTranslationModelManifest> = [
+  {
+    id: "fixture",
+    label: "Fixture / 离线演示",
+    models: {},
+    runtime: "fixture",
+    status: "ready",
+    detail: "确定性离线映射，适合审校 UI 与队列回归",
+  },
+  {
+    id: "local",
+    label: "Local ONNX / 实验",
+    models: {
+      ja: "Xenova/nllb-200-distilled-600M",
+      en: "Xenova/nllb-200-distilled-600M",
+      ko: "Xenova/nllb-200-distilled-600M",
+    },
+    runtime: "wasm",
+    status: "experimental",
+    detail: "浏览器内懒加载多语 NLLB；模型较大，译文仍需人工审校",
+  },
+];
+
+export interface MangaTranslationLine {
+  readonly id: string;
+  readonly sourceText: string;
+  readonly translatedText: string;
+  readonly status: "needs-review";
+}
+
+export interface MangaTranslationArtifact {
+  readonly version: 1;
+  readonly adapter: "fixture.translate" | "local.onnx";
+  readonly sourceName: string;
+  readonly sourceLanguage: MangaSourceLanguage;
+  readonly targetLanguage: "zh";
+  readonly lines: ReadonlyArray<MangaTranslationLine>;
+}
+
 export type MangaStageId =
   | "import"
   | "normalize"
@@ -133,12 +184,13 @@ export interface StageState {
 export type OutputMode = "original" | "clean" | "translated";
 
 export interface MangaSettings {
-  readonly sourceLanguage: "ja" | "en" | "ko";
+  readonly sourceLanguage: MangaSourceLanguage;
   readonly targetLanguage: "zh";
-  readonly engine: "fixture" | "local";
+  readonly engine: MangaTranslationEngineId;
   readonly ocrAdapter: MangaOcrAdapterId;
   readonly ocrModel: string;
   readonly ocrDevice: MangaOcrDevice;
+  readonly translationDevice: MangaOcrDevice;
   readonly cleanMode: "fill" | "inpaint";
   readonly fontSize: number;
 }

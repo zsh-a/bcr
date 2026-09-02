@@ -36,6 +36,7 @@ export const DEFAULT_SETTINGS: MangaSettings = {
   ocrAdapter: "review.manual",
   ocrModel: "Xenova/trocr-small-printed",
   ocrDevice: "auto",
+  translationDevice: "auto",
   cleanMode: "fill",
   fontSize: 1,
 };
@@ -380,6 +381,9 @@ class MangaStore {
   setSettings(patch: Partial<MangaSettings>): void {
     const settings = { ...this.state.settings, ...patch };
     this.set({ settings, graph: defaultGraph(settings), dirty: true });
+    // Model, language and typeset changes alter downstream artifacts. Keep
+    // every page explicitly pending so a queue cannot silently reuse stale output.
+    if (Object.keys(patch).length > 0) this.invalidateOutputs();
   }
 
   setOutputMode(outputMode: OutputMode): void {

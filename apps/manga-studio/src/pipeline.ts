@@ -3,14 +3,29 @@ import type { RuntimeServices } from "@bcr/react";
 import { Effect, Fiber, Stream } from "effect";
 import { createImportedRegion } from "./fixture";
 import { translateWithGlossary } from "./glossary";
-import type { MangaGlossaryEntry } from "./model";
-import { LOCAL_OCR_OPERATION, REVIEW_OCR_OPERATION } from "./operations";
+import {
+  TRANSLATION_MODEL_MANIFESTS,
+  type MangaGlossaryEntry,
+  type MangaSourceLanguage,
+  type MangaTranslationArtifact,
+} from "./model";
+import {
+  LOCAL_OCR_OPERATION,
+  LOCAL_TRANSLATION_OPERATION,
+  REVIEW_OCR_OPERATION,
+} from "./operations";
 import { mangaRuntime } from "./runtime";
 import { manga } from "./store";
 
 let activeRun = 0;
 let activeQueueRun = 0;
 let activeOcr:
+  | {
+      readonly runId: number;
+      readonly handle: TaskHandle;
+    }
+  | undefined;
+let activeTranslation:
   | {
       readonly runId: number;
       readonly handle: TaskHandle;
@@ -93,6 +108,41 @@ function ocrTask(runId: number): ComputeTask | undefined {
   };
 }
 
+function translationModel(sourceLanguage: MangaSourceLanguage): string | undefined {
+  const manifest = TRANSLATION_MODEL_MANIFESTS.find((candidate) => candidate.id === "local");
+  return manifest?.models[sourceLanguage];
+}
+
+function translationTask(runId: number, input: ArtifactRef): ComputeTask | undefined {
+  const state = manga.getSnapshot();
+  const model = translationModel(state.settings.sourceLanguage);
+  if (model === undefined) return undefined;
+  return {
+    id: `manga-translate-${Date.now().toString(36)}-${runId.toString(36)}`,
+    runtime: LOCAL_TRANSLATION_OPERATION.runtime,
+    operation: LOCAL_TRANSLATION_OPERATION.operation,
+    inputs: [{ ...input, port: "lines" }],
+    outputs: [
+      {
+        name: "segments",
+        type: "manga/translation-lines",
+        storage: "opfs",
+        format: "json",
+      },
+    ],
+    resources: LOCAL_TRANSLATION_OPERATION.resources,
+    cache: { enabled: true },
+    config: {
+      model,
+      device: state.settings.translationDevice,
+      sourceLanguage: state.settings.sourceLanguage,
+      targetLanguage: state.settings.targetLanguage,
+      sourceName: state.source.name,
+      glossary: state.glossary,
+    },
+  };
+}
+
 function errorMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
 }
@@ -147,7 +197,7 @@ async function runOcrAdapter(
         const data = await Effect.runPromise(services.artifacts.get(artifact));
         await Effect.runPromise(localRuntime.artifacts.put(artifact, data));
       } catch (error) {
-        manga.log("warn", `ocr review adapter · local mirror unavailable · ${String(error)}`);
+        manga.log("warn", `ocr adapter · local mirror unavailable · ${String(error)}`);
       }
     }
     const adapter = task.config?.["adapter"] === "vision.onnx" ? "local ONNX" : "review";
@@ -159,12 +209,67 @@ async function runOcrAdapter(
   }
 }
 
+/** Run local NLLB translation through the shared WorkerPool and decode its artifact. */
+async function runLocalTranslation(
+  services: RuntimeServices,
+  runId: number,
+  input: ArtifactRef,
+): Promise<{ artifact: ArtifactRef; payload: MangaTranslationArtifact } | undefined> {
+  const task = translationTask(runId, input);
+  if (task === undefined) return undefined;
+  const available = await Effect.runPromise(services.artifacts.has(input));
+  if (!available) {
+    manga.log("warn", "translate local ONNX · OCR artifact is not bridged into shared artifacts");
+    return undefined;
+  }
+  const handle = await Effect.runPromise(services.scheduler.submit(task));
+  if (runId !== activeRun) {
+    await Effect.runPromise(handle.cancel);
+    return undefined;
+  }
+  activeTranslation = { runId, handle };
+  const progressFiber = Effect.runFork(
+    Stream.runForEach(handle.events, (event) =>
+      Effect.sync(() => {
+        if (runId === activeRun && event.type === "progress") {
+          manga.updateStage("translate", { progress: event.value });
+        }
+      }),
+    ),
+  );
+  try {
+    const outputs = await Effect.runPromise(handle.await);
+    if (runId !== activeRun) return undefined;
+    const artifact = outputs[0];
+    if (artifact === undefined) throw new Error("local translation adapter returned no artifact");
+    const data = await Effect.runPromise(services.artifacts.get(artifact));
+    const payload = JSON.parse(new TextDecoder().decode(data)) as MangaTranslationArtifact;
+    if (payload.version !== 1 || payload.adapter !== "local.onnx") {
+      throw new Error("local translation adapter returned an invalid artifact");
+    }
+    const localRuntime = mangaRuntime();
+    if (localRuntime !== undefined && localRuntime.artifacts !== services.artifacts) {
+      try {
+        await Effect.runPromise(localRuntime.artifacts.put(artifact, data));
+      } catch (error) {
+        manga.log("warn", `translate local ONNX · local mirror unavailable · ${String(error)}`);
+      }
+    }
+    manga.log("ok", `translate local ONNX · ${artifact.id} · needs-review segments preserved`);
+    return { artifact, payload };
+  } finally {
+    Effect.runFork(Fiber.interrupt(progressFiber));
+    if (activeTranslation?.handle === handle) activeTranslation = undefined;
+  }
+}
+
 export async function runMangaPipeline(
   services?: RuntimeServices,
 ): Promise<"completed" | "cancelled" | "failed"> {
   const runId = ++activeRun;
   manga.beginRun();
   let currentStage: (typeof stageTimings)[number]["id"] = "normalize";
+  let ocrArtifact: ArtifactRef | undefined;
 
   try {
     for (const [index, stage] of stageTimings.entries()) {
@@ -172,12 +277,29 @@ export async function runMangaPipeline(
       currentStage = stage.id;
       manga.updateStage(stage.id, { status: "running", progress: 0.08, error: undefined });
 
-      let reviewArtifact: ArtifactRef | undefined;
+      let stageArtifact: ArtifactRef | undefined;
+      let localTranslation: MangaTranslationArtifact | undefined;
       if (stage.id === "ocr" && services !== undefined) {
-        reviewArtifact = await runOcrAdapter(services, runId);
+        ocrArtifact = await runOcrAdapter(services, runId);
+        stageArtifact = ocrArtifact;
       }
-      if (reviewArtifact !== undefined) {
-        manga.updateStage(stage.id, { status: "done", progress: 1, artifact: reviewArtifact });
+      if (
+        stage.id === "translate" &&
+        manga.getSnapshot().settings.engine === "local" &&
+        services !== undefined &&
+        ocrArtifact !== undefined
+      ) {
+        const result = await runLocalTranslation(services, runId, ocrArtifact);
+        stageArtifact = result?.artifact;
+        localTranslation = result?.payload;
+      } else if (stage.id === "translate" && manga.getSnapshot().settings.engine === "local") {
+        manga.log(
+          "warn",
+          "translate local ONNX · fixture or review-only page has no OCR artifact, using fallback",
+        );
+      }
+      if (stageArtifact !== undefined) {
+        manga.updateStage(stage.id, { status: "done", progress: 1, artifact: stageArtifact });
       } else {
         await wait(stage.ms);
       }
@@ -193,14 +315,18 @@ export async function runMangaPipeline(
       }
       if (stage.id === "translate") {
         const { glossary } = manga.getSnapshot();
+        const translatedById = new Map(
+          localTranslation?.lines.map((line) => [line.id, line.translatedText]) ?? [],
+        );
         const regions = manga.getSnapshot().regions.map((region) => ({
           ...region,
-          translatedText: translateText(region.sourceText, glossary),
+          translatedText:
+            translatedById.get(region.id) ?? translateText(region.sourceText, glossary),
         }));
         manga.setRegionsForPipeline(regions);
       }
 
-      if (reviewArtifact === undefined) {
+      if (stageArtifact === undefined) {
         manga.updateStage(stage.id, { status: "done", progress: 1 });
       }
       manga.log("ok", `${stage.id} · ${index + 2}/9 · artifact ready`);
@@ -269,8 +395,11 @@ export async function runMangaQueue(services?: RuntimeServices): Promise<void> {
 export function cancelMangaPipeline(): void {
   activeRun += 1;
   const active = activeOcr;
+  const activeTranslate = activeTranslation;
   activeOcr = undefined;
+  activeTranslation = undefined;
   if (active !== undefined) void Effect.runPromise(active.handle.cancel);
+  if (activeTranslate !== undefined) void Effect.runPromise(activeTranslate.handle.cancel);
   manga.cancelRun();
 }
 

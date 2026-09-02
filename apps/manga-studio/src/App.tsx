@@ -36,9 +36,11 @@ import {
 import { manga, useMangaStudio } from "./store";
 import {
   OCR_MODEL_MANIFESTS,
+  TRANSLATION_MODEL_MANIFESTS,
   type MangaGlossaryEntry,
   type MangaOcrDevice,
   type MangaSource,
+  type MangaTranslationEngineId,
   type OutputMode,
   type TextRegion,
 } from "./model";
@@ -195,6 +197,10 @@ export function App() {
     state.batch === undefined || state.batch.pageIds.length === 0
       ? 0
       : state.batch.completedPageIds.length / state.batch.pageIds.length;
+  const translationManifest = TRANSLATION_MODEL_MANIFESTS.find(
+    (manifest) => manifest.id === state.settings.engine,
+  );
+  const translationModel = translationManifest?.models[state.settings.sourceLanguage];
 
   const importImage = async (file: File): Promise<void> => {
     if (runtime === null) {
@@ -741,13 +747,39 @@ export function App() {
               <select
                 value={state.settings.engine}
                 onChange={(event) =>
-                  manga.setSettings({ engine: event.target.value as "fixture" | "local" })
+                  manga.setSettings({ engine: event.target.value as MangaTranslationEngineId })
                 }
               >
-                <option value="fixture">Fixture / 离线演示</option>
-                <option value="local">Local model / 待接入</option>
+                {TRANSLATION_MODEL_MANIFESTS.map((manifest) => (
+                  <option key={manifest.id} value={manifest.id}>
+                    {manifest.label}
+                  </option>
+                ))}
               </select>
             </label>
+            {state.settings.engine === "local" && (
+              <>
+                <div className="manga-model-note">
+                  <strong>{translationModel ?? "No model manifest"}</strong>
+                  <small>{translationManifest?.detail}</small>
+                </div>
+                <label className="manga-config-wide">
+                  <span>翻译设备</span>
+                  <select
+                    value={state.settings.translationDevice}
+                    onChange={(event) =>
+                      manga.setSettings({
+                        translationDevice: event.target.value as MangaOcrDevice,
+                      })
+                    }
+                  >
+                    <option value="auto">Auto / 自动降级</option>
+                    <option value="webgpu">WebGPU / 优先 GPU</option>
+                    <option value="wasm">WASM / 兼容模式</option>
+                  </select>
+                </label>
+              </>
+            )}
             <label className="manga-config-wide">
               <span>OCR 引擎</span>
               <select
