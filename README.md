@@ -268,6 +268,7 @@ Publication → Section → Locator / SearchHit
 - HTML / EPUB / FB2 正文保留字体、颜色、间距和对齐等常用内联排版；脚本、外链、资源 URL 与定位类 CSS 在 Adapter 边界统一剥离。
 - 书库、主题、字号、布局和每本书的阅读位置写入 SQLite；源文件按 BLAKE3 内容地址写入 OPFS，刷新后重建 PDF/图片 URL。
 - 搜索优先使用 Worker 规范化索引，索引尚未完成时使用 SQLite FTS5 trigram，短查询或旧环境再回退到内存索引；搜索结果携带章节、原文 UTF-16 偏移和上下文，点击后精确滚动到首个高亮命中，兼容全角字符与空白差异。
+- 连续阅读布局利用浏览器原生 `content-visibility` 与 intrinsic size 跳过远端章节的布局和绘制，同时保留章节锚点与滚动几何；PDF 页面继续按视口懒渲染，长文档不会一次性触发全部可视化开销。
 - 阅读态采用宽内容列、纸张/松石/夜间主题、连续/分页布局和响应式书库侧栏，支持拖拽批量导入与 `⌘/Ctrl+F`。
 - 工具栏支持将当前出版物交回 Document Studio；交接只携带短期 ID，源文件按 BLAKE3 地址镜像到宿主 ArtifactStore，章节 ID、HTML、页码和元数据保持不变。
 

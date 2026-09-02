@@ -1084,6 +1084,17 @@
   scroll-margin-top: 40px;
 }
 
+/* Let modern browsers skip layout/paint work for chapters far outside the
+ * viewport while retaining their semantic anchors and scroll geometry. The
+ * explicit intrinsic size prevents a long publication from collapsing while
+ * its next window is being materialized. */
+@supports (content-visibility: auto) {
+  .reader-layout-scroll .reader-section {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 360px;
+  }
+}
+
 .reader-section-index {
   padding-top: 4px;
   color: var(--reader-accent);
