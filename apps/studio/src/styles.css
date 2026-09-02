@@ -214,7 +214,8 @@ textarea:focus-visible {
   }
 
   .studio-runtime-label,
-  .studio-system-status {
+  .studio-system-status,
+  .studio-storage-status {
     display: none;
   }
 

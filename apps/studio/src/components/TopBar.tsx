@@ -1,10 +1,12 @@
+import { useArtifactUsage } from "@bcr/react";
 import { useStudio as useMediaStudio } from "@bcr/media-studio/store";
 import { useQuantLab } from "@bcr/quant-lab/store";
 import { useMangaStudio } from "@bcr/manga-studio/store";
 import { useNavigate } from "@tanstack/react-router";
-import { Command, Cpu, House, SquareTerminal } from "lucide-react";
+import { Command, Cpu, HardDrive, House, RefreshCw, SquareTerminal } from "lucide-react";
 import { APPS, type ActiveView } from "../shell/apps";
 import { useStudio } from "../store";
+import { formatBytes } from "./ui";
 
 /** 顶部工具栏：⌂ 返回主页 / 当前 App / 运行中任务指示 / 命令面板入口。 */
 export function TopBar(props: { active: ActiveView; onOpenPalette: () => void }) {
@@ -16,6 +18,7 @@ export function TopBar(props: { active: ActiveView; onOpenPalette: () => void })
   const running =
     studioRunning + (mediaRunning ? 1 : 0) + (quantRunning ? 1 : 0) + (mangaRunning ? 1 : 0);
   const taskTotal = useStudio((s) => s.tasks.length);
+  const artifactUsage = useArtifactUsage();
   const activeApp = APPS.find((app) => app.id === props.active);
 
   return (
@@ -60,6 +63,29 @@ export function TopBar(props: { active: ActiveView; onOpenPalette: () => void })
         <Cpu className="size-4" />
         wasm · pool {Math.max(1, (navigator.hardwareConcurrency ?? 2) - 1)} · {taskTotal} tasks
       </span>
+
+      <button
+        type="button"
+        onClick={artifactUsage.refresh}
+        title="刷新本地 Artifact 容量"
+        aria-label="刷新本地 Artifact 容量"
+        className="studio-storage-status inline-flex h-10 items-center gap-2 rounded-[var(--radius-sm)] border border-border px-2.5 font-mono text-[11px] text-faint transition-colors hover:border-border-strong hover:text-text"
+      >
+        <HardDrive className="size-4" />
+        {artifactUsage.status === "ready" && artifactUsage.usage !== undefined ? (
+          <span>
+            {formatBytes(artifactUsage.usage.totalBytes)} · {artifactUsage.usage.totalObjects}{" "}
+            objects
+          </span>
+        ) : artifactUsage.status === "error" ? (
+          <span className="text-danger">storage unavailable</span>
+        ) : (
+          <span>scanning storage</span>
+        )}
+        <RefreshCw
+          className={`size-3 ${artifactUsage.status === "loading" ? "animate-spin" : ""}`}
+        />
+      </button>
 
       <button
         type="button"

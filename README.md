@@ -46,6 +46,7 @@
 | §7 Artifact 内容身份                  | 源文件流式 BLAKE3；派生 JSON/波形携带内容 hash 并写入不可变路径                       |
 | §7 缓存持久化（刷新不重算）           | `packages/storage-sqlite`：cache_entries 表 + 血缘（task_outputs / dependencies）     |
 | §4/§8 OPFS + 窗口流动                 | `BinaryStore`（readRange/putStream/size），kernel 按 4MB 窗口读取                     |
+| Artifact 生命周期可观测性             | `ArtifactStore.inventory/usage`：跨后端容量清单、前缀过滤与稳定聚合，不读取内容       |
 | §8 SQLite WASM 元数据                 | `openSqliteDb`（整库字节经 BinaryStore 落 OPFS，可换任意 BinaryStore）                |
 | §8 TaskJournal / 崩溃恢复             | queued/running/终态写穿 SQLite；输入完整时重放，缺失时转 blocked                      |
 | §9.1 wasm-bindgen kernel              | `crates/kernels`（wasm32-unknown-unknown）                                            |
@@ -93,6 +94,8 @@ Market Atlas 数据质量与交互，以及 Manga Studio 单页翻译、Reader S
 - **SQLite WASM 持久化（§8）**：元数据库落 `opfs://studio/project/meta.db`——缓存条目、任务血缘、
   文件列表与 TaskJournal 全部跨刷新保留；异常退出遗留任务在输入 Artifact 完整时自动重放，输入缺失则标记
   `blocked`；导入 → 计算 → **刷新浏览器 → 历史恢复、重跑直接缓存命中**（`node scripts/verify-persistence.mjs`）
+- **Artifact 存储可观测性**：共享 Runtime 顶栏展示本地 Artifact 对象数与容量；统计按 30 秒低频刷新，
+  也可手动刷新，清单查询只访问 OPFS/Memory 的路径和 size，不读取大对象内容。
 - Runtime 接线：compute.worker 提供 `hash.blake3`（流式 BLAKE3）与 `audio.waveform`（2048 桶峰值包络）两个 WASM operation，任务进度 / cache hit / 取消直接投影到 UI
 
 截图走查脚本：`node scripts/screenshot.mjs`；持久化闭环走查：`node scripts/verify-persistence.mjs`

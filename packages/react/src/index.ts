@@ -1,6 +1,7 @@
 import {
   type ArtifactRef,
   type ArtifactStore,
+  type ArtifactUsage,
   type ComputeTask,
   type Scheduler,
   type SubmitOptions,
@@ -148,4 +149,57 @@ export function useArtifact(ref: ArtifactRef | null): Uint8Array | undefined {
   }, [artifacts, ref]);
 
   return data;
+}
+
+export interface ArtifactUsageState {
+  readonly status: "idle" | "loading" | "ready" | "error";
+  readonly usage?: ArtifactUsage | undefined;
+  readonly error?: string | undefined;
+  /** 立即触发一次轻量清单刷新。 */
+  readonly refresh: () => void;
+}
+
+/**
+ * 订阅 Runtime 的本地 Artifact 容量。
+ *
+ * 清单只读取 BinaryStore 的路径和 size，不会把对象内容搬进内存；默认
+ * 30 秒轮询一次，足以反映其它 keep-alive App 写入的派生产物，同时不让
+ * 顶栏刷新成为高频 IO。调用方可用 refresh 在导入或任务完成后立即更新。
+ */
+export function useArtifactUsage(intervalMs = 30_000): ArtifactUsageState {
+  const { artifacts } = useRuntime();
+  const [state, setState] = useState<
+    Omit<ArtifactUsageState, "refresh"> & { readonly refresh: () => void }
+  >({ status: "idle", refresh: () => undefined });
+  const [refreshToken, setRefreshToken] = useState(0);
+  const refresh = useCallback(() => setRefreshToken((token) => token + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setState((current) => ({ ...current, status: "loading", error: undefined }));
+    const load = () => {
+      void Effect.runPromise(artifacts.usage()).then(
+        (usage) => {
+          if (cancelled) return;
+          setState({ status: "ready", usage, refresh });
+        },
+        (reason: unknown) => {
+          if (cancelled) return;
+          setState({
+            status: "error",
+            error: reason instanceof Error ? reason.message : String(reason),
+            refresh,
+          });
+        },
+      );
+    };
+    load();
+    const timer = intervalMs > 0 ? window.setInterval(load, intervalMs) : undefined;
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) window.clearInterval(timer);
+    };
+  }, [artifacts, intervalMs, refresh, refreshToken]);
+
+  return { ...state, refresh };
 }

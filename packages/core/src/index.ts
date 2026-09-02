@@ -37,7 +37,16 @@ export {
   type RuntimeExecutor,
 } from "./executor";
 export { CacheStoreTag, memoryCacheStore, type CacheStore } from "./cache-store";
-export { artifactPath, artifactStore, ArtifactStoreTag, type ArtifactStore } from "./artifact";
+export {
+  artifactPath,
+  artifactStore,
+  ArtifactStoreTag,
+  type ArtifactInventoryEntry,
+  type ArtifactInventoryOptions,
+  type ArtifactStorageUsage,
+  type ArtifactStore,
+  type ArtifactUsage,
+} from "./artifact";
 export {
   defaultResourceCapacity,
   resourceManagerLive,
