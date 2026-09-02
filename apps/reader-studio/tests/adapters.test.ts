@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatForFile, sanitizeInlineStyle } from "../src/adapters";
+import { formatForFile, openReaderContentPackage, sanitizeInlineStyle } from "../src/adapters";
+import { createDocumentContentPackage } from "@bcr/document-core";
 import {
   READER_FORMAT_CATALOG,
   readerAcceptAttribute,
@@ -41,5 +42,23 @@ describe("reader format catalog", () => {
     expect(sanitizeInlineStyle("behavior: url(#default#time); width: expression(alert(1))")).toBe(
       undefined,
     );
+  });
+
+  it("hydrates a Reader book from the shared document content contract", () => {
+    const content = createDocumentContentPackage({
+      id: "content-1",
+      format: "markdown",
+      sourceName: "notes.md",
+      metadata: { author: "Ada" },
+      adapter: "markdown.extract",
+      blocks: [
+        { id: "title", kind: "heading", label: "Field notes", text: "# Field notes" },
+        { id: "body", label: "正文", text: "A local-first note." },
+      ],
+    });
+    const book = openReaderContentPackage(new File(["source"], "notes.md"), "book-1", content);
+    expect(book).toMatchObject({ id: "book-1", title: "Field notes", author: "Ada" });
+    expect(book.sections.map((section) => section.id)).toEqual(["title", "body"]);
+    expect(book.sections[0]).toMatchObject({ kind: "text", label: "Field notes" });
   });
 });

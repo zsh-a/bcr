@@ -14,6 +14,7 @@ import type {
   ReaderSection,
   ReaderTocItem,
 } from "@bcr/reader-core";
+import type { DocumentContentPackage } from "@bcr/document-core";
 import { READER_FORMAT_CATALOG, readerAcceptAttribute } from "@bcr/reader-core";
 
 const TEXT_FORMATS = new Set<ReaderFormat>(["txt", "markdown", "html", "fb2"]);
@@ -96,6 +97,49 @@ function makeBook(
     updatedAt: now,
     tags: [displayFormat(input.format)],
   };
+}
+
+function readerFormatForDocument(format: DocumentContentPackage["format"]): ReaderFormat {
+  return format === "image" ? "unknown" : format;
+}
+
+/**
+ * Rehydrate a ReaderBook from the normalized Document contract. This path is
+ * intentionally synchronous: the source file is still handed over for
+ * durable storage, while parsing work has already happened in Document.
+ */
+export function openReaderContentPackage(
+  file: File,
+  id: string,
+  content: DocumentContentPackage,
+): ReaderBook {
+  const format = readerFormatForDocument(content.format);
+  const input: ReaderOpenInput = { file, id, format };
+  const inferredTitle =
+    content.metadata.title ?? content.blocks.find((block) => block.kind === "heading")?.label;
+  const sections = content.blocks.map((block) => {
+    const kind: ReaderSection["kind"] =
+      block.kind === "image" ? "image" : block.kind === "page" ? "pdf-page" : "text";
+    const sanitizedHtml = block.html === undefined ? undefined : sanitizeHtml(block.html).html;
+    return {
+      id: block.id,
+      order: block.order,
+      label: block.label,
+      kind,
+      text: block.text,
+      ...(sanitizedHtml === undefined ? {} : { html: sanitizedHtml }),
+      ...(block.kind === "image" && block.href !== undefined
+        ? { imageUrl: safeUrl(block.href) }
+        : {}),
+      ...(block.pageNumber === undefined ? {} : { pageNumber: block.pageNumber }),
+      ...(block.href === undefined ? {} : { href: block.href }),
+    } satisfies ReaderSection;
+  });
+  return makeBook(input, sections, {
+    ...(inferredTitle === undefined ? {} : { title: inferredTitle }),
+    ...(content.metadata.author === undefined ? {} : { author: content.metadata.author }),
+    ...(content.metadata.language === undefined ? {} : { language: content.metadata.language }),
+  });
 }
 
 function escapeHtml(value: string): string {

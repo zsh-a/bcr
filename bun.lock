@@ -171,6 +171,7 @@
       "dependencies": {
         "@base-ui/react": "^1.7.0",
         "@bcr/core": "workspace:*",
+        "@bcr/document-core": "workspace:*",
         "@bcr/document-studio": "workspace:*",
         "@bcr/manga-studio": "workspace:*",
         "@bcr/market-board": "workspace:*",

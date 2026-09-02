@@ -21,13 +21,15 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useLocationSearch, useOptionalRuntime, useRuntime } from "@bcr/react";
+import { useArtifact, useLocationSearch, useOptionalRuntime, useRuntime } from "@bcr/react";
 import type { SearchDocument } from "@bcr/core";
 import {
   DOCUMENT_HANDOFF_EVENT,
   createDocumentJob,
+  decodeDocumentContentPackage,
+  documentContentStats,
   formatForName,
   formatLabel,
   listDocumentHandoffs,
@@ -39,6 +41,8 @@ import {
   type DocumentJob,
   type DocumentStageState,
   type DocumentHandoffRecord,
+  type DocumentContentPackage,
+  type DocumentContentStats,
 } from "@bcr/document-core";
 import { activeDocument, documents, useDocumentStudio } from "./store";
 import {
@@ -124,6 +128,22 @@ export function App() {
   const services = useRuntime();
   const hostServices = useOptionalRuntime();
   const routeJobId = new URLSearchParams(useLocationSearch()).get("job");
+  const extractRef = stageById(active.stages, "extract")?.artifact ?? null;
+  const extractBytes = useArtifact(extractRef);
+  const contentPackage = useMemo(() => {
+    if (extractBytes === undefined) return undefined;
+    try {
+      return decodeDocumentContentPackage(
+        JSON.parse(new TextDecoder().decode(extractBytes)) as unknown,
+      );
+    } catch {
+      return undefined;
+    }
+  }, [extractBytes]);
+  const contentStats = useMemo<DocumentContentStats | undefined>(
+    () => (contentPackage === undefined ? undefined : documentContentStats(contentPackage)),
+    [contentPackage],
+  );
   const appliedRouteRef = useRef("");
   const [handoffHistory, setHandoffHistory] = useState<ReadonlyArray<DocumentHandoffRecord>>(() =>
     listDocumentHandoffs(),
@@ -246,6 +266,7 @@ export function App() {
       name: active.name,
       format: active.format,
       file,
+      ...(contentPackage === undefined ? {} : { content: contentPackage }),
     });
     documents.setNotice(`${active.name} 正在交给 Reader Studio；Reader 会接管源文件托管`);
     void navigate({ to: "/reader", search: { document: handoffId } });
@@ -264,6 +285,7 @@ export function App() {
       name: active.name,
       format: active.format,
       file,
+      ...(contentPackage === undefined ? {} : { content: contentPackage }),
     });
     documents.setNotice(`${active.name} 正在交给 Manga Studio；图片区域将在翻译工作台审校`);
     void navigate({ to: "/manga", search: { document: handoffId } });
@@ -525,6 +547,9 @@ export function App() {
               canRunStage={canRunDocumentStage(active, selected.id)}
             />
           )}
+          {contentPackage !== undefined && contentStats !== undefined && (
+            <ContentPackageCard content={contentPackage} stats={contentStats} />
+          )}
           <div className="document-preview-card">
             <div className="document-preview-heading">
               <span className="document-eyebrow">SOURCE PREVIEW</span>
@@ -548,6 +573,46 @@ export function App() {
         </aside>
       </div>
     </div>
+  );
+}
+
+function ContentPackageCard(props: {
+  content: DocumentContentPackage;
+  stats: DocumentContentStats;
+}) {
+  return (
+    <section className="document-content-card" aria-label="标准化内容包摘要">
+      <div className="document-content-card-heading">
+        <div>
+          <span className="document-eyebrow">CONTENT PACKAGE / V1</span>
+          <strong>结构化内容已就绪</strong>
+        </div>
+        <span className="document-content-version">V{props.content.version}</span>
+      </div>
+      <div className="document-content-meta">
+        <span>{props.content.provenance.adapter}</span>
+        <span title={props.content.id}>{props.content.blocks.length} blocks</span>
+      </div>
+      <div className="document-content-stats" aria-label="内容统计">
+        <div>
+          <strong>{props.stats.textBlockCount}</strong>
+          <span>文本块</span>
+        </div>
+        <div>
+          <strong>{props.stats.characterCount.toLocaleString("zh-CN")}</strong>
+          <span>字符</span>
+        </div>
+        <div>
+          <strong>{props.stats.wordCount.toLocaleString("zh-CN")}</strong>
+          <span>词项</span>
+        </div>
+        <div>
+          <strong>{props.stats.pageCount || "—"}</strong>
+          <span>页</span>
+        </div>
+      </div>
+      <p className="document-content-hint">Reader、翻译和搜索将共用这份标准输入。</p>
+    </section>
   );
 }
 

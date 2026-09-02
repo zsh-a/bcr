@@ -54,6 +54,7 @@ import {
 import { useLocationSearch, useOptionalRuntime } from "@bcr/react";
 import {
   createReaderRuntime,
+  importReaderContentPackage,
   importReaderFile,
   indexBook,
   persistReader,
@@ -607,7 +608,26 @@ export function App() {
       return;
     }
     setHandoffRecovery(false);
-    void importFiles([handoff.file]);
+    if (handoff.content === undefined) {
+      void importFiles([handoff.file]);
+      return;
+    }
+    const content = handoff.content;
+    void (async () => {
+      try {
+        const book = await importReaderContentPackage(runtime, handoff.file, content);
+        const added = reader.addBook(book);
+        if (added) {
+          await indexBook(runtime, book);
+          setNotice(`${book.title} 已从 Content Package 加入书库`);
+        } else {
+          setNotice(`${handoff.file.name} 已在书库`);
+        }
+      } catch (reason) {
+        const message = reason instanceof Error ? reason.message : String(reason);
+        setNotice(message);
+      }
+    })();
   }, [importFiles, runtime, status]);
 
   if (status === "booting" || runtime === null) {

@@ -998,6 +998,108 @@
   padding: 13px;
 }
 
+.document-content-card {
+  margin-top: 17px;
+  border: 1px solid color-mix(in srgb, var(--document-cyan) 30%, var(--document-border));
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--document-cyan) 8%, transparent),
+      transparent 62%
+    ),
+    var(--document-raised);
+  padding: 13px;
+}
+
+.document-content-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.document-content-card-heading > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.document-content-card-heading strong {
+  overflow: hidden;
+  color: var(--document-text);
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-content-version {
+  border: 1px solid color-mix(in srgb, var(--document-cyan) 50%, var(--document-border));
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: var(--document-cyan);
+  font-family: var(--document-font-mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.document-content-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  color: var(--document-muted);
+  font-family: var(--document-font-mono);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+
+.document-content-meta span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-content-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.document-content-stats > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  border-top: 1px solid var(--document-border);
+  padding-top: 8px;
+}
+
+.document-content-stats strong {
+  overflow: hidden;
+  color: var(--document-cyan);
+  font-family: var(--document-font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-content-stats span {
+  color: var(--document-faint);
+  font-size: 9px;
+}
+
+.document-content-hint {
+  margin: 12px 0 0;
+  color: var(--document-faint);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
 .document-preview-heading {
   color: var(--document-faint);
   font-family: var(--document-font-mono);

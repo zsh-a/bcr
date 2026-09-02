@@ -1,5 +1,6 @@
 export type {
   DocumentCapability,
+  DocumentContentArtifact,
   DocumentExtractArtifact,
   DocumentExtractedSection,
   DocumentFormat,
@@ -18,6 +19,20 @@ export {
   supportsDocumentTextExtract,
 } from "./model";
 export { markReadyStages, nextAction, stageById, updateStage } from "./pipeline";
+export {
+  createDocumentContentPackage,
+  decodeDocumentContentPackage,
+  documentContentStats,
+  documentContentText,
+  type DocumentBlock,
+  type DocumentBlockGeometry,
+  type DocumentBlockKind,
+  type DocumentContentMetadata,
+  type DocumentContentPackage,
+  type DocumentContentPackageInput,
+  type DocumentContentProvenance,
+  type DocumentContentStats,
+} from "./content";
 export {
   DOCUMENT_HANDOFF_EVENT,
   consumeDocumentHandoff,

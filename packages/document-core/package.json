@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./content": "./src/content.ts",
     "./model": "./src/model.ts",
     "./pipeline": "./src/pipeline.ts"
   },

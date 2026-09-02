@@ -63,7 +63,7 @@ function operationForStage(stageId: DocumentStageId): string | undefined {
 
 function outputForStage(stageId: DocumentStageId): ComputeTask["outputs"] {
   if (stageId === "extract") {
-    return [{ name: "sections", type: "document/sections", storage: "opfs", format: "json" }];
+    return [{ name: "content", type: "document/content-package", storage: "opfs", format: "json" }];
   }
   if (stageId === "translate") {
     return [

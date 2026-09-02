@@ -67,6 +67,11 @@ await page.waitForFunction(
 if (!(await page.locator(".document-stage-inspector").innerText()).includes("READY")) {
   fail("Extract 没有生成结构化 Artifact");
 }
+await page.locator(".document-content-card").waitFor({ timeout: 10_000 });
+const contentSummary = await page.locator(".document-content-card").innerText();
+if (!contentSummary.includes("结构化内容已就绪") || !contentSummary.includes("文本块")) {
+  fail("标准化 Content Package 摘要未展示");
+}
 
 await page.locator(".document-stage-card", { hasText: "Translate" }).click();
 await page.getByRole("button", { name: "运行 Translate" }).click();

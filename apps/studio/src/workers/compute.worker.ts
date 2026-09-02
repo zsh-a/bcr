@@ -1,4 +1,11 @@
 import { artifactPath, contentHash, type ArtifactRef } from "@bcr/core";
+import {
+  createDocumentContentPackage,
+  decodeDocumentContentPackage,
+  type DocumentBlock,
+  type DocumentContentPackage,
+  type DocumentFormat,
+} from "@bcr/document-core";
 import { applyGlossaryTerms } from "@bcr/manga-studio/glossary";
 import {
   resolveMangaCleanMode,
@@ -122,16 +129,23 @@ interface ExtractedSection {
   readonly text: string;
 }
 
-interface ExtractedDocument {
-  readonly version: 1;
-  readonly format: string;
-  readonly sourceName: string;
-  readonly sections: ReadonlyArray<ExtractedSection>;
-}
-
 function configString(task: { config?: Record<string, unknown> | undefined }, key: string): string {
   const value = task.config?.[key];
   return typeof value === "string" ? value : "";
+}
+
+function documentFormat(value: string): DocumentFormat {
+  return value === "txt" ||
+    value === "markdown" ||
+    value === "html" ||
+    value === "docx" ||
+    value === "fb2" ||
+    value === "epub" ||
+    value === "pdf" ||
+    value === "cbz" ||
+    value === "image"
+    ? value
+    : "unknown";
 }
 
 function stripMarkup(raw: string): string {
@@ -185,17 +199,25 @@ async function documentExtract(
     if (total > 0) ctx.progress(Math.min(0.92, offset / total));
   }
   raw += decoder.decode();
-  const payload: ExtractedDocument = {
-    version: 1,
-    format: configString(task, "format"),
-    sourceName: configString(task, "sourceName"),
-    sections: extractSections(raw, configString(task, "format")),
-  };
+  const format = documentFormat(configString(task, "format"));
+  const sourceName = configString(task, "sourceName") || input.id;
+  const payload = createDocumentContentPackage({
+    id: `document-content/${input.hash ?? input.id}`,
+    format,
+    sourceName,
+    sourceRef: input,
+    sourceHash: input.hash,
+    adapter: "text.extract",
+    blocks: extractSections(raw, format).map((section) => ({
+      ...section,
+      kind: /^(?:#{1,6})\s+/u.test(section.text) ? ("heading" as const) : ("paragraph" as const),
+    })),
+  });
   const bytes = new TextEncoder().encode(JSON.stringify(payload));
   const hash = contentHash(bytes);
   const out: ArtifactRef = {
     id: `document/extract/${hash}`,
-    type: "document/sections",
+    type: "document/content-package",
     storage: "opfs",
     format: "json",
     hash,
@@ -205,7 +227,7 @@ async function documentExtract(
   return [out];
 }
 
-interface TranslatedSection extends ExtractedSection {
+interface TranslatedSection extends DocumentBlock {
   readonly translatedText: string;
   readonly status: "needs-review";
 }
@@ -247,6 +269,17 @@ async function readJsonArtifact<T>(ref: ArtifactRef, ctx: WorkerContext): Promis
     cursor += chunk.byteLength;
   }
   return JSON.parse(new TextDecoder().decode(bytes)) as T;
+}
+
+async function readDocumentContentArtifact(
+  ref: ArtifactRef,
+  ctx: WorkerContext,
+): Promise<DocumentContentPackage> {
+  const decoded = decodeDocumentContentPackage(await readJsonArtifact<unknown>(ref, ctx));
+  if (decoded === undefined) {
+    throw new Error("document.extract Artifact 不是有效的 Content Package");
+  }
+  return decoded;
 }
 
 async function writeJsonArtifact(kind: string, payload: unknown): Promise<ArtifactRef> {
@@ -753,18 +786,18 @@ async function documentTranslateFixture(
   ctx: WorkerContext,
 ): Promise<ReadonlyArray<ArtifactRef>> {
   const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
-  if (input === undefined) throw new Error("document.translate requires extracted sections");
-  const extracted = await readJsonArtifact<ExtractedDocument>(input, ctx);
+  if (input === undefined) throw new Error("document.translate requires a content package");
+  const extracted = await readDocumentContentArtifact(input, ctx);
   ctx.progress(0.2);
   const sections: TranslatedSection[] = [];
-  for (const [index, section] of extracted.sections.entries()) {
+  for (const [index, section] of extracted.blocks.entries()) {
     throwIfAborted(ctx);
     sections.push({
       ...section,
       translatedText: fixtureTranslate(section.text),
       status: "needs-review",
     });
-    ctx.progress(0.2 + ((index + 1) / Math.max(1, extracted.sections.length)) * 0.7);
+    ctx.progress(0.2 + ((index + 1) / Math.max(1, extracted.blocks.length)) * 0.7);
   }
   const out = await writeJsonArtifact("translations", {
     version: 1,

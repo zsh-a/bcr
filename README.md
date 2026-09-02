@@ -230,15 +230,17 @@ File → Ingest → Normalize → Extract → OCR → Translate → Typeset → 
                                       ↘ Reader / Manga handoff
 ```
 
-- `packages/document-core` 定义 `DocumentJob`、七阶段状态机、格式识别和能力边界；未接入的模型阶段显示为
+- `packages/document-core` 定义 `DocumentJob`、七阶段状态机、格式识别、能力边界，以及版本化的
+  `DocumentContentPackage`（Block / Metadata / Provenance）契约；未接入的模型阶段显示为
   `PLANNED / BLOCKED`，不会把演示结果伪装成生产结果。
 - Document Inbox 支持 TXT / Markdown / HTML / DOCX / FB2 / EPUB / PDF / CBZ / 图片导入，元数据保存在本地浏览器；
   文本提供安全的轻量预览，图片只在当前标签页创建临时预览 URL。
 - Text / Markdown / HTML / FB2 已可通过共享 Scheduler + WorkerPool 运行 Extract、fixture Translate 与 Typeset
-  preview，每一步都生成独立的 JSON Artifact，支持缓存、进度、取消和重试；OCR 仍明确标记为 `PLANNED`。
+  preview；Extract 产出可校验、可迁移的 `document/content-package` JSON Artifact，每一步都支持缓存、进度、取消和重试；OCR 仍明确标记为 `PLANNED`。
 - EPUB / PDF / CBZ / DOCX 等二进制出版物在 Document Extract 阶段明确保持 `BLOCKED`，直接交给目标适配器解析，避免把压缩或版式数据误当作纯文本。
-- Reader handoff 会把同一标签页内的 `File` 通过一次性内存通道交给 Reader，由 Reader 自己写入 OPFS、解析并建立
-  Worker 索引；图片 handoff 交给 Manga，由 Manga 的 Artifact / SQLite 项目接管。
+- Reader handoff 会把同一标签页内的 `File` 与已完成的 Content Package 通过一次性内存通道交给 Reader；Reader
+  写入自己的 OPFS 并直接复用标准化 blocks 建立 Worker 索引，未完成 Extract 时自动回退到原文件解析；图片 handoff
+  交给 Manga，由 Manga 的 Artifact / SQLite 项目接管。
 - URL 只携带短期 handoff ID，不携带文件内容；刷新或离开标签页后句柄失效，界面会明确提示重新导入。
 
 走查：`node scripts/verify-document-studio.mjs`（由 `bun run test:browser` 自动执行）。
@@ -249,7 +251,7 @@ Reader Studio 是一个离线优先的多格式阅读垂直切片：
 
 ```text
 TXT / Markdown / HTML / DOCX / EPUB / PDF / CBZ
-              ↓ Adapter
+              ↓ Adapter / Content Package
 Publication → Section → Locator / SearchHit
               ↓
        OPFS 源文件 + SQLite 元数据 / FTS5

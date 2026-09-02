@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   consumeDocumentHandoff,
+  createDocumentContentPackage,
   createDocumentJob,
   formatForName,
   listDocumentHandoffs,
@@ -61,19 +62,27 @@ describe("document-core", () => {
 
   it("consumes a handoff once and only in its target app", () => {
     const file = new File(["hello"], "hello.txt", { type: "text/plain" });
+    const content = createDocumentContentPackage({
+      id: "content-handoff",
+      format: "txt",
+      sourceName: file.name,
+      adapter: "text.extract",
+      blocks: [{ text: "hello" }],
+    });
     const id = publishDocumentHandoff({
       jobId: "job-handoff",
       target: "reader",
       name: file.name,
       format: "txt",
       file,
+      content,
     });
     expect(listDocumentHandoffs().find((record) => record.id === id)).toMatchObject({
       target: "reader",
       status: "pending",
     });
     expect(consumeDocumentHandoff(id, "manga")).toBeUndefined();
-    expect(consumeDocumentHandoff(id, "reader")?.file).toBe(file);
+    expect(consumeDocumentHandoff(id, "reader")).toMatchObject({ file, content });
     expect(consumeDocumentHandoff(id, "reader")).toBeUndefined();
     expect(listDocumentHandoffs().find((record) => record.id === id)).toMatchObject({
       target: "reader",

@@ -68,6 +68,9 @@ export interface DocumentExtractArtifact {
   readonly sections: ReadonlyArray<DocumentExtractedSection>;
 }
 
+/** Canonical extract artifact; kept as a separate alias for API discoverability. */
+export type DocumentContentArtifact = import("./content").DocumentContentPackage;
+
 export interface DocumentStageDefinition {
   readonly id: DocumentStageId;
   readonly label: string;

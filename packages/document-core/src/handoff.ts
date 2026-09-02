@@ -1,3 +1,4 @@
+import type { DocumentContentPackage } from "./content";
 import type { DocumentFormat } from "./model";
 
 export type DocumentHandoffTarget = "reader" | "manga";
@@ -11,6 +12,8 @@ export interface DocumentHandoff {
   readonly format: DocumentFormat;
   readonly size: number;
   readonly file: File;
+  /** Optional normalized payload; kept in memory for a zero-copy handoff. */
+  readonly content?: DocumentContentPackage | undefined;
   readonly createdAt: number;
 }
 
@@ -30,6 +33,7 @@ interface PublishHandoffInput {
   readonly name: string;
   readonly format: DocumentFormat;
   readonly file: File;
+  readonly content?: DocumentContentPackage | undefined;
 }
 
 export interface DocumentHandoffMarker {
@@ -188,6 +192,7 @@ export function publishDocumentHandoff(input: PublishHandoffInput): string {
     format: input.format,
     size: input.file.size,
     file: input.file,
+    ...(input.content === undefined ? {} : { content: input.content }),
     createdAt: Date.now(),
   };
   pending.set(id, handoff);
