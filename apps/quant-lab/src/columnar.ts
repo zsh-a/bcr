@@ -7,10 +7,24 @@ import { tableToIPC, type Table } from "apache-arrow";
 import { decodeMarketArrow, marketTableFromBars } from "./arrow";
 import type { ColumnarMetadata, MarketBar } from "./model";
 
-const BUNDLES: duckdb.DuckDBBundles = {
+const DUCKDB_CDN = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/dist";
+
+const LOCAL_BUNDLES: duckdb.DuckDBBundles = {
   mvp: { mainModule: mvpWasmUrl, mainWorker: mvpWorkerUrl },
   eh: { mainModule: ehWasmUrl, mainWorker: ehWorkerUrl },
 };
+
+// Workers Static Assets caps individual files at 25 MiB while DuckDB's
+// browser WASM modules are larger. The Cloudflare build keeps the worker
+// bootstrap local and fetches the immutable WASM module from jsDelivr; local
+// development and the standalone Quant Lab build remain fully self-contained.
+const CLOUDFLARE_BUNDLES: duckdb.DuckDBBundles = {
+  mvp: { mainModule: `${DUCKDB_CDN}/duckdb-mvp.wasm`, mainWorker: mvpWorkerUrl },
+  eh: { mainModule: `${DUCKDB_CDN}/duckdb-eh.wasm`, mainWorker: ehWorkerUrl },
+};
+
+const viteEnv = (import.meta as ImportMeta & { readonly env?: Record<string, string> }).env;
+const BUNDLES = viteEnv?.["VITE_BCR_CLOUDFLARE"] === "1" ? CLOUDFLARE_BUNDLES : LOCAL_BUNDLES;
 
 export interface ColumnarDatasetPayload {
   readonly bars: ReadonlyArray<MarketBar>;

@@ -21,7 +21,9 @@
     "quant": "cd apps/quant-lab && vp dev",
     "markets": "cd apps/market-board && vp dev",
     "manga": "cd apps/manga-studio && vp dev",
-    "reader": "cd apps/reader-studio && vp dev"
+    "reader": "cd apps/reader-studio && vp dev",
+    "build:cloudflare": "bun run build:wasm && VITE_BCR_CLOUDFLARE=1 vp -C apps/studio build",
+    "deploy:cloudflare": "wrangler deploy --config wrangler.jsonc"
   },
   "dependencies": {
     "@sqlite.org/sqlite-wasm": "3.53.0-build1"
@@ -30,7 +32,8 @@
     "playwright": "1.61.0",
     "typescript": "^5.9.0",
     "vite-plus": "^0.3.0",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.0",
+    "wrangler": "4.128.0"
   },
   "packageManager": "bun@1.3.14"
 }

@@ -79,6 +79,8 @@ bun run quant          # 启动 Quant Lab · Strategy Workbench（apps/quant-lab
 bun run markets        # 启动 Market Atlas（apps/market-board）
 bun run manga          # 启动 Manga Studio（apps/manga-studio）
 bun run reader         # 启动 Reader Studio（apps/reader-studio）
+bun run build:cloudflare  # 构建 WASM + BCR Studio 静态产物
+bun run deploy:cloudflare # 部署 apps/studio/dist 到 Cloudflare Workers
 cargo test --manifest-path crates/kernels/Cargo.toml
 bun run test:browser   # 自动启停 dev server，运行离线 Playwright 主链路
 ```
@@ -314,6 +316,19 @@ Canonical Table Package → Schema / search / sort / export
 - 全局 Workspace Search 将当前数据集注册为 `dataset` 结果，深链 `/data?query=…` 可直接恢复筛选上下文；清除快照只移除当前视图引用，原始 Artifact 仍可由存储治理统一回收。
 
 走查：`node scripts/verify-data-studio.mjs`（由 `bun run test:browser` 自动执行，覆盖 JSON / CSV / NDJSON、搜索、排序、导出、深链与刷新恢复）。
+
+## Cloudflare Workers 自动部署
+
+仓库使用 Wrangler 的 Static Assets 模式把 `apps/studio/dist` 作为一个 SPA Worker 发布；`/studio`、`/reader`、`/data`
+等客户端路由在边缘侧回退到 `index.html`，因此刷新深链不会返回 404。配置位于根目录的 `wrangler.jsonc`。
+
+- 本地发布：先运行 `bun run build:cloudflare`，再运行 `bun run deploy:cloudflare`；Wrangler 版本固定在根 `package.json`，避免 CI 与本地配置漂移。
+- GitHub Actions：`main` 的 push 会先通过现有 validate + Chromium 回归，随后复用已验证的 `studio-dist` Artifact 部署；PR 不会触发生产部署。
+- 在仓库 Settings → Secrets and variables → Actions 中配置 `CLOUDFLARE_API_TOKEN`（仅 Workers 部署权限）和 `CLOUDFLARE_ACCOUNT_ID`。未配置时部署 job 会明确 warning 并跳过，不影响验证 job。
+- API Token 不写入仓库；Cloudflare 官方建议在非交互 CI 中使用 API Token + Account ID，并通过 `wrangler deploy` 发布 Worker。
+- Cloudflare 构建会将 Quant Lab 的 DuckDB WASM 指向固定版本的 jsDelivr CDN，并通过 `.assetsignore` 排除超过 Workers 单文件限制的本地副本；本地开发与其它 standalone 构建仍使用本地 WASM。
+
+相关文档：[Cloudflare GitHub Actions](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)、[Workers Static Assets SPA](https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/)。
 
 ## Demo 验证路径
 
