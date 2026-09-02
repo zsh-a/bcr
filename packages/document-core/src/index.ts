@@ -26,7 +26,13 @@ export {
   formatLabel,
   supportsDocumentTextExtract,
 } from "./model";
-export { markReadyStages, nextAction, stageById, updateStage } from "./pipeline";
+export {
+  invalidateDownstream,
+  markReadyStages,
+  nextAction,
+  stageById,
+  updateStage,
+} from "./pipeline";
 export {
   createDocumentOcrContent,
   type DocumentOcrContentInput,

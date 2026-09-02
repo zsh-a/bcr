@@ -24,6 +24,33 @@ export function updateStage(
   };
 }
 
+/**
+ * Invalidate every derived stage after a changed source stage. Artifacts are
+ * immutable and remain in storage; only the job projection is reset so a
+ * rerun cannot accidentally present stale translation/typeset/export output.
+ */
+export function invalidateDownstream(job: DocumentJob, stageId: DocumentStageId): DocumentJob {
+  const sourceIndex = job.stages.findIndex((stage) => stage.id === stageId);
+  if (sourceIndex < 0) return job;
+  return {
+    ...job,
+    updatedAt: Date.now(),
+    stages: job.stages.map((stage, index) => {
+      if (index <= sourceIndex) return stage;
+      return {
+        id: stage.id,
+        label: stage.label,
+        detail: stage.detail,
+        capability: stage.capability,
+        status: stage.capability === "planned" ? ("blocked" as const) : ("idle" as const),
+        progress: 0,
+        ...(stage.adapter === undefined ? {} : { adapter: stage.adapter }),
+        ...(stage.attempts === undefined ? {} : { attempts: stage.attempts }),
+      };
+    }),
+  };
+}
+
 export function markReadyStages(job: DocumentJob): DocumentJob {
   return {
     ...job,

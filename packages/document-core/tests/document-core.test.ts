@@ -5,6 +5,7 @@ import {
   createDocumentOcrContent,
   createDocumentJob,
   formatForName,
+  invalidateDownstream,
   hasDocumentHandoff,
   listDocumentHandoffs,
   markDocumentHandoffExpired,
@@ -12,6 +13,7 @@ import {
   nextAction,
   documentOcrSettings,
   publishDocumentHandoff,
+  updateStage,
 } from "../src";
 
 afterEach(() => {
@@ -140,6 +142,51 @@ describe("document-core", () => {
       adapter: "manga.onnx",
       model: "onnx-community/manga-ocr-base-ONNX",
     });
+  });
+
+  it("invalidates derived stages without deleting immutable artifacts", () => {
+    const source = markReadyStages(
+      createDocumentJob({
+        id: "job-lineage",
+        name: "notes.txt",
+        format: "txt",
+        size: 12,
+        now: 1,
+      }),
+    );
+    const completed = ["extract", "translate", "typeset", "export"] as const;
+    const withArtifacts = completed.reduce(
+      (job, id) =>
+        updateStage(job, id, {
+          status: "done",
+          progress: 1,
+          artifact: {
+            id: `artifact/${id}`,
+            type: `document/${id}`,
+            storage: "opfs",
+            format: "json",
+          },
+        }),
+      source,
+    );
+    const invalidated = invalidateDownstream(withArtifacts, "extract");
+    expect(invalidated.stages.find((stage) => stage.id === "extract")).toMatchObject({
+      status: "done",
+      artifact: { id: "artifact/extract" },
+    });
+    expect(invalidated.stages.find((stage) => stage.id === "translate")).toMatchObject({
+      status: "idle",
+      progress: 0,
+    });
+    expect(invalidated.stages.find((stage) => stage.id === "typeset")).toMatchObject({
+      status: "idle",
+      progress: 0,
+    });
+    expect(invalidated.stages.find((stage) => stage.id === "export")).toMatchObject({
+      status: "idle",
+      progress: 0,
+    });
+    expect(invalidated.stages.find((stage) => stage.id === "translate")?.artifact).toBeUndefined();
   });
 
   it("consumes a handoff once and only in its target app", () => {

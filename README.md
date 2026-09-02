@@ -246,6 +246,7 @@ File → Ingest → Normalize → Extract → OCR → Translate → Typeset → 
   preview；Extract 产出可校验、可迁移的 `document/content-package` JSON Artifact，每一步都支持缓存、进度、取消和重试。
 - 图片任务现在可在 Document Inspector 中选择 Latin TrOCR 或日文 Manga OCR，直接运行 `document.ocr.onnx`：模型在共享 Worker 内懒加载，整页结果投影为带 geometry / writingMode / confidence 的 canonical Content Package，并可继续进入 Translate；复杂多区域版面仍建议交给 Manga。文本格式会明确跳过 OCR，避免把视觉能力误套到纯文本上。
 - 每个阶段会持久化 operation、runtime（JS/WASM/WebGPU）和 cache hit/miss，Inspector 与刷新后的任务详情都能解释一次执行是计算、缓存还是失败重试。
+- 阶段依赖按 DAG 失效：重新 Extract / OCR 会清理下游 Translation、Typeset、Export 的投影引用，人工修订译文也会让 Typeset / Export 回到待运行；旧 Artifact 仍保留在本地，可审计或重新命中缓存。
 - Translate 会把每个 source block 映射为同 ID 的 `document/translation-package`，同时保存目标语言、审校状态和
   Provenance；Typeset 只消费该契约，因此后续接入真实模型时无需改动 UI / 排版输入。
 - Inspector 提供前 5 个 block 的快速审校；人工修改会生成新的不可变 Translation Package Artifact，保留原始产物并让

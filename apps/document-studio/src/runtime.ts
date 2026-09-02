@@ -15,6 +15,7 @@ import {
   documentOcrSettings,
   documentContentText,
   documentExportFileName,
+  invalidateDownstream,
   markReadyStages,
   serializeDocumentExport,
   stageById,
@@ -409,15 +410,14 @@ export async function saveDocumentTranslationReview(
   const current = currentJob(job.id);
   if (current !== undefined) {
     const stage = stageById(current.stages, "translate");
-    documents.replaceJob(
-      updateStage(current, "translate", {
-        status: "done",
-        progress: 1,
-        artifact,
-        adapter: "review.manual",
-        ...(stage?.completedAt === undefined ? {} : { completedAt: stage.completedAt }),
-      }),
-    );
+    const reviewed = updateStage(current, "translate", {
+      status: "done",
+      progress: 1,
+      artifact,
+      adapter: "review.manual",
+      ...(stage?.completedAt === undefined ? {} : { completedAt: stage.completedAt }),
+    });
+    documents.replaceJob(invalidateDownstream(reviewed, "translate"));
   }
   documents.setNotice("人工修订已保存为新的 Translation Package");
 }
@@ -500,21 +500,32 @@ export async function runDocumentStage(
   job: DocumentJob,
   stageId: DocumentStageId,
 ): Promise<void> {
-  const stage = stageById(job.stages, stageId);
-  if (stage === undefined || stage.status === "running") return;
-  if (stage.capability === "planned") {
-    documents.setNotice(`${stage.label} 仍等待对应的本地适配器`);
+  const current = currentJob(job.id) ?? job;
+  const originalStage = stageById(current.stages, stageId);
+  if (originalStage === undefined || originalStage.status === "running") return;
+  if (originalStage.capability === "planned") {
+    documents.setNotice(`${originalStage.label} 仍等待对应的本地适配器`);
     return;
   }
-  const task = taskFor(job, stageId);
+  if (!canRunDocumentStage(current, stageId)) {
+    documents.setNotice(
+      `${current.name} 的 ${originalStage.label} 缺少上游 Artifact，请先完成前置阶段`,
+    );
+    return;
+  }
+  const prepared = invalidateDownstream(current, stageId);
+  documents.replaceJob(prepared);
+  const stage = stageById(prepared.stages, stageId);
+  if (stage === undefined || stage.status === "running") return;
+  const task = taskFor(prepared, stageId);
   if (task === undefined) {
-    documents.setNotice(`${job.name} 的 ${stage.label} 缺少上游 Artifact，请先完成前置阶段`);
+    documents.setNotice(`${prepared.name} 的 ${stage.label} 缺少上游 Artifact，请先完成前置阶段`);
     return;
   }
 
-  cancellationRequests.delete(job.id);
+  cancellationRequests.delete(prepared.id);
   const startedAt = Date.now();
-  patchStage(job.id, stageId, {
+  patchStage(prepared.id, stageId, {
     status: "running",
     progress: 0,
     error: undefined,
@@ -530,21 +541,21 @@ export async function runDocumentStage(
   });
   try {
     const handle = await Effect.runPromise(services.scheduler.submit(task));
-    activeTasks.set(job.id, { stageId, handle });
+    activeTasks.set(prepared.id, { stageId, handle });
     Effect.runFork(
       Stream.runForEach(handle.events, (event) =>
         Effect.sync(() => {
           if (event.type === "progress") {
-            patchStage(job.id, stageId, { status: "running", progress: event.value });
+            patchStage(prepared.id, stageId, { status: "running", progress: event.value });
           }
         }),
       ).pipe(Effect.catchAll(() => Effect.void)),
     );
     const outputs = await Effect.runPromise(handle.await);
-    cancellationRequests.delete(job.id);
+    cancellationRequests.delete(prepared.id);
     const artifact = outputs[0];
     const completedAt = Date.now();
-    patchStage(job.id, stageId, {
+    patchStage(prepared.id, stageId, {
       status: "done",
       progress: 1,
       completedAt,
@@ -557,34 +568,34 @@ export async function runDocumentStage(
       ...(artifact === undefined ? {} : { artifact }),
     });
     documents.setNotice(
-      `${job.name} ${stage.label} ${handle.cached ? "命中缓存" : "完成"}；Artifact 已就绪`,
+      `${prepared.name} ${stage.label} ${handle.cached ? "命中缓存" : "完成"}；Artifact 已就绪`,
     );
   } catch (reason) {
-    if (cancellationRequests.delete(job.id)) {
+    if (cancellationRequests.delete(prepared.id)) {
       const completedAt = Date.now();
-      patchStage(job.id, stageId, {
+      patchStage(prepared.id, stageId, {
         status: "idle",
         progress: 0,
         error: undefined,
         completedAt,
         durationMs: completedAt - startedAt,
       });
-      documents.setNotice(`${job.name} ${stage.label} 已取消`);
+      documents.setNotice(`${prepared.name} ${stage.label} 已取消`);
       return;
     }
     const message = errorMessage(reason);
     const completedAt = Date.now();
-    patchStage(job.id, stageId, {
+    patchStage(prepared.id, stageId, {
       status: "error",
       progress: 0,
       error: message,
       completedAt,
       durationMs: completedAt - startedAt,
     });
-    documents.setNotice(`${job.name} ${stage.label} 失败：${message}`);
+    documents.setNotice(`${prepared.name} ${stage.label} 失败：${message}`);
   } finally {
-    const active = activeTasks.get(job.id);
-    if (active?.stageId === stageId) activeTasks.delete(job.id);
+    const active = activeTasks.get(prepared.id);
+    if (active?.stageId === stageId) activeTasks.delete(prepared.id);
   }
 }
 

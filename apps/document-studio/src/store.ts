@@ -3,7 +3,9 @@ import type { RuntimeMetadata } from "@bcr/react";
 import {
   createDocumentJob,
   documentOcrSettings,
+  invalidateDownstream,
   markReadyStages,
+  updateStage,
   type DocumentFormat,
   type DocumentJob,
   type DocumentOcrSettings,
@@ -225,10 +227,27 @@ class DocumentStore {
   updateOcrSettings(jobId: string, patch: Partial<DocumentOcrSettings>): void {
     const job = this.state.jobs.find((candidate) => candidate.id === jobId);
     if (job === undefined) return;
-    this.replaceJob({
+    const updated = {
       ...job,
       ocr: documentOcrSettings({ ...job.ocr, ...patch }),
-    });
+    };
+    if (job.format !== "image") {
+      this.replaceJob(updated);
+      return;
+    }
+    const invalidated = invalidateDownstream(updated, "ocr");
+    this.replaceJob(
+      updateStage(invalidated, "ocr", {
+        status: "idle",
+        progress: 0,
+        error: undefined,
+        startedAt: undefined,
+        completedAt: undefined,
+        durationMs: undefined,
+        execution: undefined,
+        artifact: undefined,
+      }),
+    );
   }
 
   replaceJob(job: DocumentJob): void {

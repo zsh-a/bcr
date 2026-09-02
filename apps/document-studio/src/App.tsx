@@ -1039,6 +1039,7 @@ const DOCUMENT_OCR_MODELS: Readonly<Record<DocumentOcrAdapter, string>> = {
 function DocumentOcrSettingsCard(props: {
   settings: DocumentOcrSettings;
   onChange: (patch: Partial<DocumentOcrSettings>) => void;
+  disabled?: boolean;
 }) {
   const modelLabel =
     props.settings.adapter === "manga.onnx" ? "Manga OCR / 日文" : "TrOCR / Latin 印刷体";
@@ -1059,6 +1060,7 @@ function DocumentOcrSettingsCard(props: {
         <select
           aria-label="文档 OCR 模型"
           value={props.settings.adapter}
+          disabled={props.disabled}
           onChange={(event) => {
             const adapter = event.target.value as DocumentOcrAdapter;
             props.onChange({
@@ -1077,6 +1079,7 @@ function DocumentOcrSettingsCard(props: {
         <select
           aria-label="文档 OCR 源语言"
           value={props.settings.sourceLanguage}
+          disabled={props.disabled}
           onChange={(event) =>
             props.onChange({ sourceLanguage: event.target.value as DocumentOcrLanguage })
           }
@@ -1090,6 +1093,7 @@ function DocumentOcrSettingsCard(props: {
         <select
           aria-label="文档 OCR 运行设备"
           value={props.settings.device}
+          disabled={props.disabled}
           onChange={(event) => props.onChange({ device: event.target.value as DocumentOcrDevice })}
         >
           <option value="auto">Auto / 自动降级</option>
@@ -1102,6 +1106,7 @@ function DocumentOcrSettingsCard(props: {
         <input
           aria-label="文档 OCR 模型地址"
           value={props.settings.model}
+          disabled={props.disabled}
           onChange={(event) => props.onChange({ model: event.target.value })}
           spellCheck={false}
         />
@@ -1219,7 +1224,11 @@ function StageInspector(props: {
         </button>
       )}
       {ocr !== undefined && (
-        <DocumentOcrSettingsCard settings={ocr} onChange={props.onOcrSettingsChange} />
+        <DocumentOcrSettingsCard
+          settings={ocr}
+          onChange={props.onOcrSettingsChange}
+          disabled={isRunning}
+        />
       )}
       {isPlanned ? (
         <div className="document-inspector-callout">
