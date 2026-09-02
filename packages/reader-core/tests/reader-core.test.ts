@@ -1,0 +1,45 @@
+import { describe, expect, it } from "vitest";
+import { createLocator, locatorAtPercentage, percentageForLocator } from "../src/locator";
+import { normalizeSearchQuery, searchBook } from "../src/search";
+import type { ReaderBook } from "../src/model";
+
+const book: ReaderBook = {
+  id: "book-1",
+  title: "阅读器测试",
+  source: { name: "test.txt", format: "txt", mime: "text/plain", size: 10 },
+  sections: [
+    {
+      id: "a",
+      order: 0,
+      label: "第一章",
+      kind: "text",
+      text: "你好，世界。阅读器让内容回到中心。",
+    },
+    { id: "b", order: 1, label: "第二章", kind: "text", text: "搜索和进度应该是可恢复的。" },
+    { id: "c", order: 2, label: "第三章", kind: "text", text: "现代架构也需要安静的界面。" },
+  ],
+  importedAt: 1,
+  updatedAt: 1,
+  tags: [],
+};
+
+describe("reader-core", () => {
+  it("normalizes CJK and whitespace search input", () => {
+    expect(normalizeSearchQuery("  阅读器　 让 内容 ")).toBe("阅读器让内容");
+  });
+
+  it("searches section text and returns stable snippets", () => {
+    const hits = searchBook(book, "进度");
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.sectionId).toBe("b");
+    expect(hits[0]?.snippet).toContain("进度");
+  });
+
+  it("round-trips locators across section progress", () => {
+    const locator = createLocator(book.sections[1]!, 0.4);
+    expect(percentageForLocator(book, locator)).toBeCloseTo(0.7);
+    const restored = locatorAtPercentage(book, 0.7);
+    expect(restored.sectionId).toBe("b");
+    expect(restored.progression).toBeCloseTo(0.4);
+  });
+});

@@ -38,7 +38,7 @@ Browser Compute Runtime（下称 BCR）**不是一个 "WASM 框架"**，而是�
 ┌─────────────────────────────────────────────────────┐
 │                    Application                      │
 │                                                     │
-│   Media / Quant / Document / Data / Code / CAD     │
+│   Media / Quant / Document / Reader / Data / Code  │
 ├─────────────────────────────────────────────────────┤
 │                 Compute Runtime                     │
 │                                                     │
@@ -61,6 +61,11 @@ Browser Compute Runtime（下称 BCR）**不是一个 "WASM 框架"**，而是�
 │   OPFS · SQLite WASM · IndexedDB · Cache           │
 └─────────────────────────────────────────────────────┘
 ```
+
+Reader Studio 的现代化落点：`packages/reader-core` 只承载格式无关的出版物、章节、Locator、
+进度和搜索契约；`apps/reader-studio` 通过 Adapter 接入 TXT / Markdown / HTML / EPUB / PDF / CBZ。
+源文件使用 BLAKE3 内容地址写入 OPFS，SQLite WASM 保存书库、设置和进度，FTS5 trigram 为全文搜索提供
+持久索引，主线程只负责 React 交互，后续可将解析与索引无缝迁移到 Worker。
 
 总体架构图（含 Control Plane / Data Plane 边界）：
 

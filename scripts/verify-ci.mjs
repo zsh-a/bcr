@@ -98,6 +98,7 @@ await withServer({
     "scripts/verify-quant-lab.mjs",
     "scripts/verify-market-atlas.mjs",
     "scripts/verify-manga-studio.mjs",
+    "scripts/verify-reader-studio.mjs",
   ],
 });
 

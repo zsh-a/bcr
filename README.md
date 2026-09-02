@@ -2,7 +2,7 @@
 
 面向本地计算型 Web 应用的浏览器 Runtime 初版实现，对应 `docs/ARCHITECTURE.md` 的 Phase 1 核心抽象。
 
-本版范围：**核心 Runtime 包 + Media / Quant / Markets / Manga 四类端到端垂直切片**——
+本版范围：**核心 Runtime 包 + Media / Quant / Markets / Manga / Reader 五类端到端垂直切片**——
 文件或行情 → OPFS → Worker Pipeline → Artifact → 内容寻址缓存 → 跨刷新项目恢复。
 
 ## 仓库结构
@@ -14,13 +14,15 @@
 │   ├── storage-opfs/     # @bcr/storage-opfs：BinaryStore 抽象，OPFS + Memory 实现
 │   ├── storage-sqlite/   # @bcr/storage-sqlite：SQLite WASM 元数据引擎（Cache / 血缘 / TaskJournal）
 │   ├── market-data/      # @bcr/market-data：统一市场数据契约 / stock-sdk 适配 / 缓存降级
-│   └── react/            # @bcr/react：RuntimeProvider / useSubmitTask / useTask / useArtifact
+│   ├── react/            # @bcr/react：RuntimeProvider / useSubmitTask / useTask / useArtifact
+│   └── reader-core/      # @bcr/reader-core：出版物 / 章节 / Locator / 搜索契约
 ├── apps/
 │   ├── studio/           # BCR Studio 工作台 UI（Dockview + Tailwind 4 + Base UI）
 │   ├── media-studio/     # Media Studio · Subtitle——第一个上层应用（§0 孵化策略）
 │   ├── quant-lab/        # Quant Lab · Strategy Workbench——第二类 workload 验证
 │   ├── market-board/     # Market Atlas——CN / HK / US / 全球期货市场看板
-│   └── manga-studio/     # Manga Studio——漫画 OCR / 翻译 / 清理 / CJK 排版审校
+│   ├── manga-studio/     # Manga Studio——漫画 OCR / 翻译 / 清理 / CJK 排版审校
+│   └── reader-studio/    # Reader Studio——多格式本地阅读、全文搜索与进度恢复
 ├── crates/
 │   └── kernels/          # bcr-kernels：wasm-bindgen kernel（流式 BLAKE3 / RMS / Peak）
 └── examples/
@@ -65,13 +67,14 @@ bun run media          # 启动 Media Studio · Subtitle（apps/media-studio）
 bun run quant          # 启动 Quant Lab · Strategy Workbench（apps/quant-lab）
 bun run markets        # 启动 Market Atlas（apps/market-board）
 bun run manga          # 启动 Manga Studio（apps/manga-studio）
+bun run reader         # 启动 Reader Studio（apps/reader-studio）
 cargo test --manifest-path crates/kernels/Cargo.toml
 bun run test:browser   # 自动启停 dev server，运行离线 Playwright 主链路
 ```
 
-GitHub Actions 会执行格式/类型/单测、Rust/WASM、五端生产构建，并在真实 Chromium 中验证
+GitHub Actions 会执行格式/类型/单测、Rust/WASM、六端生产构建，并在真实 Chromium 中验证
 Media Studio 短音频、150 秒分窗、Studio 刷新缓存/任务历史、Quant Lab 回测参数重跑以及
-Market Atlas 数据质量与交互，以及 Manga Studio 单页翻译与 PNG 导出；
+Market Atlas 数据质量与交互，以及 Manga Studio 单页翻译、Reader Studio 多格式阅读与刷新恢复；
 失败时保留截图与 server 日志。
 
 ## BCR Studio（apps/studio）
@@ -193,6 +196,26 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - 多页工作队列支持批量拖入、逐页切换与页级流水线状态；项目配置、审校译文和页面队列写入 SQLite，原图 artifact 写入 OPFS，刷新后自动恢复
 - 当前 MVP 支持原图 / 清理页 / 译文页切换、置信度审阅、CJK 排版参数和 PNG 导出；Local ONNX、Inpainting、CBZ/PDF 批处理作为后续适配器接入
 - 操作契约与 DAG 回归位于 `apps/manga-studio/tests/operations.test.ts`
+
+## Reader Studio（apps/reader-studio）
+
+Reader Studio 是一个离线优先的多格式阅读垂直切片：
+
+```text
+TXT / Markdown / HTML / EPUB / PDF / CBZ
+              ↓ Adapter
+Publication → Section → Locator / SearchHit
+              ↓
+       OPFS 源文件 + SQLite 元数据 / FTS5
+```
+
+- `packages/reader-core` 定义格式无关的 `ReaderBook`、章节、Locator、进度和搜索契约；解析差异留在 Adapter 边界。
+- 文本类、EPUB、PDF（PDF.js）和 CBZ（zip.js）均可直接导入；未知格式会明确提示，不把损坏内容伪装成可读文本。
+- 书库、主题、字号、布局和每本书的阅读位置写入 SQLite；源文件按 BLAKE3 内容地址写入 OPFS，刷新后重建 PDF/图片 URL。
+- 搜索优先使用 SQLite FTS5 trigram，短查询或旧环境自动回退到内存索引；搜索结果携带章节和上下文，点击后回到原文。
+- 阅读态采用宽内容列、纸张/松石/夜间主题、连续/分页布局和响应式书库侧栏，支持拖拽批量导入与 `⌘/Ctrl+F`。
+
+走查：`node scripts/verify-reader-studio.mjs`（由 `bun run test:browser` 自动执行）。
 
 ## Demo 验证路径
 

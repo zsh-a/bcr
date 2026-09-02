@@ -4,6 +4,7 @@ import {
   ChartCandlestick,
   Globe2,
   LayoutGrid,
+  LibraryBig,
   type LucideIcon,
 } from "lucide-react";
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
@@ -14,9 +15,9 @@ import { Dock } from "../components/Dock";
  * 领域 App 经 workspace 包源码挂载，首次进入才加载对应 chunk。
  */
 export interface AppDef {
-  readonly id: "studio" | "media" | "quant" | "markets" | "manga";
+  readonly id: "studio" | "media" | "quant" | "markets" | "manga" | "reader";
   readonly title: string;
-  readonly path: "/studio" | "/media" | "/quant" | "/markets" | "/manga";
+  readonly path: "/studio" | "/media" | "/quant" | "/markets" | "/manga" | "/reader";
   readonly icon: LucideIcon;
   readonly description: string;
   readonly component: ComponentType | LazyExoticComponent<ComponentType>;
@@ -62,6 +63,14 @@ export const APPS: ReadonlyArray<AppDef> = [
     icon: BookOpenText,
     description: "漫画翻译工作台 · OCR / 翻译 / 清理 / CJK 排版审校",
     component: lazy(() => import("@bcr/manga-studio/app").then((m) => ({ default: m.App }))),
+  },
+  {
+    id: "reader",
+    title: "Reader Studio",
+    path: "/reader",
+    icon: LibraryBig,
+    description: "本地阅读空间 · TXT / Markdown / HTML / EPUB / PDF / CBZ · 进度与全文搜索",
+    component: lazy(() => import("@bcr/reader-studio/app").then((m) => ({ default: m.App }))),
   },
 ];
 

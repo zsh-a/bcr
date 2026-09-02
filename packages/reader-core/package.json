@@ -1,0 +1,14 @@
+{
+  "name": "@bcr/reader-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./model": "./src/model.ts",
+    "./locator": "./src/locator.ts",
+    "./search": "./src/search.ts",
+    "./adapter": "./src/adapter.ts"
+  },
+  "dependencies": {}
+}
