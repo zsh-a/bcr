@@ -311,10 +311,15 @@ export interface MangaState {
 export interface MangaPage {
   readonly id: string;
   readonly source: MangaSource;
+  /** Stable page creation time used for deterministic canonical projections. */
+  readonly createdAt?: number | undefined;
   readonly stages: ReadonlyArray<StageState>;
   readonly regions: ReadonlyArray<TextRegion>;
   readonly activeRegionId: string | null;
   readonly outputMode: OutputMode;
   readonly outputReady: boolean;
   readonly dirty: boolean;
+  /** Latest canonical Document package artifacts for cross-app handoff/search. */
+  readonly documentContentRef?: ArtifactRef | undefined;
+  readonly documentTranslationRef?: ArtifactRef | undefined;
 }

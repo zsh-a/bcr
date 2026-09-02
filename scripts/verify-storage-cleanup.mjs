@@ -38,7 +38,9 @@ await page.getByRole("button", { name: /清理未追踪 Artifact/u }).click();
 await page.getByText("Artifact 存储清理").waitFor();
 await page.getByText(/仅清理没有血缘记录/u).waitFor();
 if (orphanCreated) {
-  await page.getByText("verify/cleanup-orphan.bin").waitFor();
+  // The dialog intentionally caps the visible list at eight items; canonical
+  // Manga/Document packages can put the verification orphan after that cap.
+  await page.getByText("untracked objects").waitFor();
   await page.getByRole("button", { name: "清理这些对象" }).click();
   await page.getByText("清理完成").waitFor();
   const stillExists = await page.evaluate(async () => {

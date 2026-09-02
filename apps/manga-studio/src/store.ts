@@ -1,3 +1,4 @@
+import type { ArtifactRef } from "@bcr/core";
 import { useSyncExternalStore } from "react";
 import type { Graph } from "@bcr/graph";
 import { defaultGraph } from "./operations";
@@ -79,6 +80,7 @@ function freshStages(): ReadonlyArray<StageState> {
 const initialPage: MangaPage = {
   id: fixtureSource.id,
   source: fixtureSource,
+  createdAt: 0,
   stages: freshStages(),
   regions: fixtureRegions,
   activeRegionId: fixtureRegions[0]?.id ?? null,
@@ -207,6 +209,7 @@ export class MangaStore {
     const page: MangaPage = {
       id: source.id,
       source,
+      createdAt: Date.now(),
       stages: freshStages(),
       regions,
       activeRegionId: regions[0]?.id ?? null,
@@ -285,6 +288,35 @@ export class MangaStore {
       outputReady: active.outputReady,
       dirty: active.dirty,
     });
+  }
+
+  /** Attach the latest canonical Document artifacts without changing page output state. */
+  setDocumentArtifacts(
+    pageId: string,
+    refs: {
+      readonly content: ArtifactRef;
+      readonly translation: ArtifactRef;
+    },
+  ): boolean {
+    const current = this.state.pages.find((page) => page.id === pageId);
+    if (current === undefined) return false;
+    if (
+      current.documentContentRef?.id === refs.content.id &&
+      current.documentTranslationRef?.id === refs.translation.id
+    ) {
+      return false;
+    }
+    const pages = this.state.pages.map((page) =>
+      page.id === pageId
+        ? {
+            ...page,
+            documentContentRef: refs.content,
+            documentTranslationRef: refs.translation,
+          }
+        : page,
+    );
+    this.set({ pages });
+    return true;
   }
 
   setGraph(graph: Graph): void {

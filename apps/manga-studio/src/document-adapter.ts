@@ -20,6 +20,8 @@ export interface MangaDocumentProjectionOptions {
   readonly sourceLanguage?: MangaSourceLanguage | undefined;
   readonly contentId?: string | undefined;
   readonly translationId?: string | undefined;
+  /** Stable provenance timestamp when a projection is persisted as an artifact. */
+  readonly createdAt?: number | undefined;
 }
 
 export interface MangaDocumentPackages {
@@ -63,6 +65,7 @@ export function mangaOcrToDocumentContentPackage(
     },
     sourceHash: options.sourceRef?.hash,
     adapter: ocrAdapter(ocr.adapter),
+    ...(options.createdAt === undefined ? {} : { createdAt: options.createdAt }),
     blocks: ocr.lines.map((line) => ({
       id: line.id,
       kind: "paragraph" as const,
@@ -102,6 +105,7 @@ export function mangaTranslationToDocumentTranslationPackage(
     metadata: content.metadata,
     ...(content.sourceRef === undefined ? {} : { sourceRef: content.sourceRef }),
     adapter: `manga.translate.${translation.adapter}`,
+    ...(options.createdAt === undefined ? {} : { createdAt: options.createdAt }),
     blocks: content.blocks.map((block) => {
       const line = translatedById.get(block.id);
       return {
@@ -137,6 +141,7 @@ export function mangaRegionsToDocumentContentPackage(
     },
     sourceHash: options.sourceRef?.hash,
     adapter: "manga.review.regions",
+    ...(options.createdAt === undefined ? {} : { createdAt: options.createdAt }),
     blocks: regions.map((region) => ({
       id: region.id,
       kind: "paragraph" as const,
@@ -172,6 +177,7 @@ export function mangaRegionsToDocumentTranslationPackage(
     metadata: content.metadata,
     ...(content.sourceRef === undefined ? {} : { sourceRef: content.sourceRef }),
     adapter: "manga.review.translation",
+    ...(options.createdAt === undefined ? {} : { createdAt: options.createdAt }),
     blocks: content.blocks.map((block) => {
       const region = regionsById.get(block.id);
       return {
@@ -187,12 +193,14 @@ export function mangaRegionsToDocumentTranslationPackage(
 export function mangaPageToDocumentPackages(
   page: Pick<MangaPage, "id" | "source" | "regions">,
   sourceLanguage?: MangaSourceLanguage,
+  projection: Pick<MangaDocumentProjectionOptions, "createdAt"> = {},
 ): MangaDocumentPackages {
   const options: MangaDocumentProjectionOptions = {
     sourceRef: page.source.ref,
     sourceLanguage,
     contentId: `${page.id}:content`,
     translationId: `${page.id}:translation`,
+    ...(projection.createdAt === undefined ? {} : { createdAt: projection.createdAt }),
   };
   const content = mangaRegionsToDocumentContentPackage(page.source.name, page.regions, options);
   return {

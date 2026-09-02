@@ -36,6 +36,7 @@ import {
   createMangaRuntime,
   fileFromDocumentHandoff,
   importImageArtifact,
+  persistMangaDocumentPackages,
   persistProject,
   restoreProject,
   type MangaRuntime,
@@ -179,6 +180,45 @@ export function App() {
     const timer = window.setTimeout(() => void persistProject(runtime), 650);
     return () => window.clearTimeout(timer);
   }, [runtime, state.pages, state.graph, state.settings, state.glossary, state.batch]);
+
+  useEffect(() => {
+    if (runtime === null) return;
+    let cancelled = false;
+    const pages = state.pages;
+    void (async () => {
+      for (const page of pages) {
+        try {
+          const refs = await persistMangaDocumentPackages(
+            runtime,
+            page,
+            state.settings.sourceLanguage,
+            hostServices?.artifacts,
+          );
+          if (cancelled) return;
+          const current = manga.getSnapshot().pages.find((candidate) => candidate.id === page.id);
+          if (
+            current === undefined ||
+            JSON.stringify(current.regions) !== JSON.stringify(page.regions)
+          ) {
+            continue;
+          }
+          if (manga.setDocumentArtifacts(page.id, refs)) {
+            manga.log("ok", `document bridge · ${page.source.name} · canonical packages ready`);
+          }
+        } catch (error) {
+          if (!cancelled) {
+            manga.log(
+              "warn",
+              `document bridge · ${page.source.name} · ${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hostServices?.artifacts, runtime, state.pages, state.settings.sourceLanguage]);
 
   useEffect(() => {
     const search = hostServices?.search;

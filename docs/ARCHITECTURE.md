@@ -565,7 +565,9 @@ Manga 已先把人工/Fixture 区域通过可取消的 `manga.ocr.review` Worker
 `manga/translation-lines` Artifact，取消、设备降级和失败沿用 Worker 边界。
 Manga OCR/审校区域现在可投影为 `DocumentContentPackage`，翻译区域可投影为同 block ID 的
 `DocumentTranslationPackage`；这些规范化 blocks 同时驱动 Reader/Document handoff 和 Workspace 全局搜索，保留 geometry、
-writing mode、confidence 与 provenance，避免漫画与文档各自维护一套内容模型。
+writing mode、confidence 与 provenance，避免漫画与文档各自维护一套内容模型。每页投影会以内容寻址的
+`document/manga/content/*` 与 `document/manga/translation/*` Artifact 写入 Manga 存储并镜像到 Studio 宿主，页面元数据保存最新引用，
+因此刷新后仍可继续治理、搜索或交接。
 清理阶段同步输出 `manga/clean-page` 掩码 Artifact；Inpaint 仍是实验能力，未接入时记录
 `requestedMode=inpaint` 与 `effectiveMode=fill`，禁止把稳定填充伪装成生成式修复。
 

@@ -2,6 +2,7 @@ import {
   artifactPath,
   artifactStore,
   ArtifactStoreTag,
+  contentHash,
   hashReadableStream,
   type ArtifactRef,
   type ArtifactStore,
@@ -13,6 +14,7 @@ import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import { Context, Effect, Layer } from "effect";
 import { decodeGraph, encodeGraph } from "@bcr/graph";
 import type { DocumentHandoff } from "@bcr/document-core";
+import { mangaPageToDocumentPackages } from "./document-adapter";
 import { FIXTURE_PAGE_URL } from "./fixture";
 import { manga } from "./store";
 import type {
@@ -22,6 +24,11 @@ import type {
   MangaSettings,
   MangaSource,
 } from "./model";
+
+export interface MangaDocumentArtifactRefs {
+  readonly content: ArtifactRef;
+  readonly translation: ArtifactRef;
+}
 
 export interface MangaRuntime {
   readonly artifacts: ArtifactStore;
@@ -49,12 +56,15 @@ interface PersistedSource {
 interface PersistedPage {
   readonly id: string;
   readonly source: PersistedSource;
+  readonly createdAt?: number | undefined;
   readonly stages: MangaPage["stages"];
   readonly regions: MangaPage["regions"];
   readonly activeRegionId: MangaPage["activeRegionId"];
   readonly outputMode: MangaPage["outputMode"];
   readonly outputReady: boolean;
   readonly dirty: boolean;
+  readonly documentContentRef?: ArtifactRef | undefined;
+  readonly documentTranslationRef?: ArtifactRef | undefined;
 }
 
 interface PersistedProject {
@@ -181,13 +191,71 @@ function persistPage(page: MangaPage): PersistedPage {
   return {
     id: page.id,
     source: persistSource(page.source),
+    ...(page.createdAt === undefined ? {} : { createdAt: page.createdAt }),
     stages: page.stages,
     regions: page.regions,
     activeRegionId: page.activeRegionId,
     outputMode: page.outputMode,
     outputReady: page.outputReady,
     dirty: page.dirty,
+    ...(page.documentContentRef === undefined
+      ? {}
+      : { documentContentRef: page.documentContentRef }),
+    ...(page.documentTranslationRef === undefined
+      ? {}
+      : { documentTranslationRef: page.documentTranslationRef }),
   };
+}
+
+function documentArtifactRef(
+  runtime: MangaRuntime,
+  kind: "content" | "translation",
+  bytes: Uint8Array,
+): ArtifactRef {
+  const hash = contentHash(bytes);
+  const storage: ArtifactRef["storage"] = runtime.binary instanceof MemoryStore ? "memory" : "opfs";
+  return {
+    id: `document/manga/${kind}/${hash}`,
+    type: kind === "content" ? "document/content-package" : "document/translation-package",
+    storage,
+    format: "json",
+    hash,
+  };
+}
+
+async function putDocumentArtifact(
+  runtime: MangaRuntime,
+  sharedArtifacts: ArtifactStore | undefined,
+  ref: ArtifactRef,
+  bytes: Uint8Array,
+): Promise<void> {
+  await Effect.runPromise(runtime.artifacts.put(ref, bytes));
+  if (sharedArtifacts === undefined || sharedArtifacts === runtime.artifacts) return;
+  try {
+    await Effect.runPromise(sharedArtifacts.put(ref, bytes));
+  } catch (error) {
+    manga.log("warn", `document bridge · host mirror unavailable · ${String(error)}`);
+  }
+}
+
+/** Persist the current page as canonical Document packages in both storage planes. */
+export async function persistMangaDocumentPackages(
+  runtime: MangaRuntime,
+  page: MangaPage,
+  sourceLanguage: MangaSettings["sourceLanguage"],
+  sharedArtifacts?: ArtifactStore,
+): Promise<MangaDocumentArtifactRefs> {
+  const packages = mangaPageToDocumentPackages(page, sourceLanguage, {
+    createdAt: page.createdAt ?? 0,
+  });
+  const encoder = new TextEncoder();
+  const contentBytes = encoder.encode(JSON.stringify(packages.content));
+  const translationBytes = encoder.encode(JSON.stringify(packages.translation));
+  const content = documentArtifactRef(runtime, "content", contentBytes);
+  const translation = documentArtifactRef(runtime, "translation", translationBytes);
+  await putDocumentArtifact(runtime, sharedArtifacts, content, contentBytes);
+  await putDocumentArtifact(runtime, sharedArtifacts, translation, translationBytes);
+  return { content, translation };
 }
 
 export async function persistProject(runtime: MangaRuntime): Promise<void> {
@@ -259,6 +327,7 @@ export async function restoreProject(runtime: MangaRuntime): Promise<boolean> {
       pages.push({
         id: persisted.id,
         source,
+        ...(persisted.createdAt === undefined ? {} : { createdAt: persisted.createdAt }),
         // A tab can be closed while a stage is running. Restore that stage as
         // idle so the UI reflects the paused checkpoint and the next queue run
         // retries it instead of presenting a stale RUNNING state.
@@ -272,6 +341,12 @@ export async function restoreProject(runtime: MangaRuntime): Promise<boolean> {
         outputMode: persisted.outputMode,
         outputReady: persisted.outputReady,
         dirty: persisted.dirty,
+        ...(persisted.documentContentRef === undefined
+          ? {}
+          : { documentContentRef: persisted.documentContentRef }),
+        ...(persisted.documentTranslationRef === undefined
+          ? {}
+          : { documentTranslationRef: persisted.documentTranslationRef }),
       });
     }
     if (pages.length === 0) return false;
