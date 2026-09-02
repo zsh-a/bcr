@@ -86,6 +86,10 @@ await page.waitForFunction(
 if (!(await page.locator(".document-stage-inspector").innerText()).includes("READY")) {
   fail("Translate 没有生成结构化 Artifact");
 }
+await page.locator(".document-translation-card").waitFor({ timeout: 10_000 });
+if (!(await page.locator(".document-translation-card").innerText()).includes("待审校")) {
+  fail("Translation Package 摘要未展示");
+}
 
 await page.locator(".document-stage-card", { hasText: "Typeset" }).click();
 await page.getByRole("button", { name: "运行 Typeset" }).click();

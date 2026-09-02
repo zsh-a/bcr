@@ -2,9 +2,12 @@ import { artifactPath, contentHash, type ArtifactRef } from "@bcr/core";
 import {
   createDocumentContentPackage,
   decodeDocumentContentPackage,
-  type DocumentBlock,
+  createDocumentTranslationPackage,
+  decodeDocumentTranslationPackage,
   type DocumentContentPackage,
   type DocumentFormat,
+  type DocumentTranslationBlock,
+  type DocumentTranslationPackage,
 } from "@bcr/document-core";
 import { applyGlossaryTerms } from "@bcr/manga-studio/glossary";
 import {
@@ -227,19 +230,7 @@ async function documentExtract(
   return [out];
 }
 
-interface TranslatedSection extends DocumentBlock {
-  readonly translatedText: string;
-  readonly status: "needs-review";
-}
-
-interface TranslatedDocument {
-  readonly version: 1;
-  readonly adapter: "fixture.translate";
-  readonly sourceName: string;
-  readonly sections: ReadonlyArray<TranslatedSection>;
-}
-
-interface TypesetSection extends TranslatedSection {
+interface TypesetSection extends DocumentTranslationBlock {
   readonly lineCount: number;
   readonly overflow: boolean;
 }
@@ -247,8 +238,10 @@ interface TypesetSection extends TranslatedSection {
 interface TypesetDocument {
   readonly version: 1;
   readonly adapter: "preview.typeset";
+  readonly sourceContentId: string;
   readonly sourceName: string;
-  readonly sections: ReadonlyArray<TypesetSection>;
+  readonly targetLanguage: string;
+  readonly blocks: ReadonlyArray<TypesetSection>;
   readonly overflowCount: number;
 }
 
@@ -278,6 +271,17 @@ async function readDocumentContentArtifact(
   const decoded = decodeDocumentContentPackage(await readJsonArtifact<unknown>(ref, ctx));
   if (decoded === undefined) {
     throw new Error("document.extract Artifact 不是有效的 Content Package");
+  }
+  return decoded;
+}
+
+async function readDocumentTranslationArtifact(
+  ref: ArtifactRef,
+  ctx: WorkerContext,
+): Promise<DocumentTranslationPackage> {
+  const decoded = decodeDocumentTranslationPackage(await readJsonArtifact<unknown>(ref, ctx));
+  if (decoded === undefined) {
+    throw new Error("document.translate Artifact 不是有效的 Translation Package");
   }
   return decoded;
 }
@@ -782,29 +786,42 @@ function fixtureTranslate(text: string): string {
 }
 
 async function documentTranslateFixture(
-  task: { inputs: ReadonlyArray<ArtifactRef> },
+  task: { inputs: ReadonlyArray<ArtifactRef>; config?: Record<string, unknown> | undefined },
   ctx: WorkerContext,
 ): Promise<ReadonlyArray<ArtifactRef>> {
   const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
   if (input === undefined) throw new Error("document.translate requires a content package");
   const extracted = await readDocumentContentArtifact(input, ctx);
   ctx.progress(0.2);
-  const sections: TranslatedSection[] = [];
+  const blocks: DocumentTranslationBlock[] = [];
   for (const [index, section] of extracted.blocks.entries()) {
     throwIfAborted(ctx);
-    sections.push({
+    blocks.push({
       ...section,
       translatedText: fixtureTranslate(section.text),
       status: "needs-review",
     });
     ctx.progress(0.2 + ((index + 1) / Math.max(1, extracted.blocks.length)) * 0.7);
   }
-  const out = await writeJsonArtifact("translations", {
-    version: 1,
-    adapter: "fixture.translate",
+  const sourceLanguage = configString(task, "sourceLanguage") || extracted.metadata.language;
+  const payload = createDocumentTranslationPackage({
+    id: `translation/${extracted.id}/zh-Hans`,
+    sourceContentId: extracted.id,
     sourceName: extracted.sourceName,
-    sections,
-  } satisfies TranslatedDocument);
+    format: extracted.format,
+    ...(sourceLanguage === undefined ? {} : { sourceLanguage }),
+    targetLanguage: configString(task, "targetLanguage") || "zh-Hans",
+    metadata: extracted.metadata,
+    sourceRef: input,
+    blocks,
+    adapter: "fixture.translate",
+  });
+  const out = await writeTypedJsonArtifact(
+    "document",
+    "translations",
+    "document/translation-package",
+    payload,
+  );
   ctx.progress(1);
   return [out];
 }
@@ -814,20 +831,22 @@ async function documentTypesetPreview(
   ctx: WorkerContext,
 ): Promise<ReadonlyArray<ArtifactRef>> {
   const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
-  if (input === undefined) throw new Error("document.typeset requires translated sections");
-  const translated = await readJsonArtifact<TranslatedDocument>(input, ctx);
+  if (input === undefined) throw new Error("document.typeset requires a translation package");
+  const translated = await readDocumentTranslationArtifact(input, ctx);
   ctx.progress(0.2);
-  const sections: TypesetSection[] = translated.sections.map((section) => {
+  const blocks: TypesetSection[] = translated.blocks.map((section) => {
     const lineCount = Math.max(1, Math.ceil(section.translatedText.length / 28));
     return { ...section, lineCount, overflow: lineCount > 4 };
   });
-  const overflowCount = sections.filter((section) => section.overflow).length;
+  const overflowCount = blocks.filter((section) => section.overflow).length;
   throwIfAborted(ctx);
   const out = await writeJsonArtifact("typeset-preview", {
     version: 1,
     adapter: "preview.typeset",
+    sourceContentId: translated.sourceContentId,
     sourceName: translated.sourceName,
-    sections,
+    targetLanguage: translated.targetLanguage,
+    blocks,
     overflowCount,
   } satisfies TypesetDocument);
   ctx.progress(1);

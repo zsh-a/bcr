@@ -29,7 +29,9 @@ import {
   DOCUMENT_HANDOFF_EVENT,
   createDocumentJob,
   decodeDocumentContentPackage,
+  decodeDocumentTranslationPackage,
   documentContentStats,
+  documentTranslationStats,
   formatForName,
   formatLabel,
   listDocumentHandoffs,
@@ -43,6 +45,8 @@ import {
   type DocumentHandoffRecord,
   type DocumentContentPackage,
   type DocumentContentStats,
+  type DocumentTranslationPackage,
+  type DocumentTranslationStats,
 } from "@bcr/document-core";
 import { activeDocument, documents, useDocumentStudio } from "./store";
 import {
@@ -143,6 +147,23 @@ export function App() {
   const contentStats = useMemo<DocumentContentStats | undefined>(
     () => (contentPackage === undefined ? undefined : documentContentStats(contentPackage)),
     [contentPackage],
+  );
+  const translationRef = stageById(active.stages, "translate")?.artifact ?? null;
+  const translationBytes = useArtifact(translationRef);
+  const translationPackage = useMemo(() => {
+    if (translationBytes === undefined) return undefined;
+    try {
+      return decodeDocumentTranslationPackage(
+        JSON.parse(new TextDecoder().decode(translationBytes)) as unknown,
+      );
+    } catch {
+      return undefined;
+    }
+  }, [translationBytes]);
+  const translationStats = useMemo<DocumentTranslationStats | undefined>(
+    () =>
+      translationPackage === undefined ? undefined : documentTranslationStats(translationPackage),
+    [translationPackage],
   );
   const appliedRouteRef = useRef("");
   const [handoffHistory, setHandoffHistory] = useState<ReadonlyArray<DocumentHandoffRecord>>(() =>
@@ -550,6 +571,9 @@ export function App() {
           {contentPackage !== undefined && contentStats !== undefined && (
             <ContentPackageCard content={contentPackage} stats={contentStats} />
           )}
+          {translationPackage !== undefined && translationStats !== undefined && (
+            <TranslationPackageCard package={translationPackage} stats={translationStats} />
+          )}
           <div className="document-preview-card">
             <div className="document-preview-heading">
               <span className="document-eyebrow">SOURCE PREVIEW</span>
@@ -612,6 +636,46 @@ function ContentPackageCard(props: {
         </div>
       </div>
       <p className="document-content-hint">Reader、翻译和搜索将共用这份标准输入。</p>
+    </section>
+  );
+}
+
+function TranslationPackageCard(props: {
+  package: DocumentTranslationPackage;
+  stats: DocumentTranslationStats;
+}) {
+  return (
+    <section className="document-translation-card" aria-label="翻译包摘要">
+      <div className="document-content-card-heading">
+        <div>
+          <span className="document-eyebrow">TRANSLATION PACKAGE / V1</span>
+          <strong>译文已生成，等待审校</strong>
+        </div>
+        <span className="document-translation-target">{props.package.targetLanguage}</span>
+      </div>
+      <div className="document-content-meta">
+        <span>{props.package.provenance.adapter}</span>
+        <span title={props.package.sourceContentId}>{props.stats.blockCount} blocks</span>
+      </div>
+      <div className="document-content-stats document-translation-stats">
+        <div>
+          <strong>{props.stats.translatedCount}</strong>
+          <span>已确认</span>
+        </div>
+        <div>
+          <strong>{props.stats.reviewCount}</strong>
+          <span>待审校</span>
+        </div>
+        <div>
+          <strong>{props.stats.sourceCharacterCount.toLocaleString("zh-CN")}</strong>
+          <span>原文字符</span>
+        </div>
+        <div>
+          <strong>{props.stats.translatedCharacterCount.toLocaleString("zh-CN")}</strong>
+          <span>译文字符</span>
+        </div>
+      </div>
+      <p className="document-content-hint">Block ID 与原文保持一致，Typeset 可直接接续。</p>
     </section>
   );
 }

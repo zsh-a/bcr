@@ -67,7 +67,12 @@ function outputForStage(stageId: DocumentStageId): ComputeTask["outputs"] {
   }
   if (stageId === "translate") {
     return [
-      { name: "translations", type: "document/translations", storage: "opfs", format: "json" },
+      {
+        name: "translation",
+        type: "document/translation-package",
+        storage: "opfs",
+        format: "json",
+      },
     ];
   }
   return [{ name: "typeset", type: "document/typeset-preview", storage: "opfs", format: "json" }];

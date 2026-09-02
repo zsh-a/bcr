@@ -1012,6 +1012,20 @@
   padding: 13px;
 }
 
+.document-translation-card {
+  margin-top: 12px;
+  border: 1px solid color-mix(in srgb, var(--document-accent) 34%, var(--document-border));
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--document-accent) 8%, transparent),
+      transparent 62%
+    ),
+    var(--document-raised);
+  padding: 13px;
+}
+
 .document-content-card-heading {
   display: flex;
   align-items: flex-start;
@@ -1043,6 +1057,16 @@
   font-family: var(--document-font-mono);
   font-size: 8px;
   letter-spacing: 0.08em;
+}
+
+.document-translation-target {
+  border: 1px solid color-mix(in srgb, var(--document-accent) 50%, var(--document-border));
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: var(--document-accent);
+  font-family: var(--document-font-mono);
+  font-size: 8px;
+  letter-spacing: 0.04em;
 }
 
 .document-content-meta {
@@ -1098,6 +1122,10 @@
   color: var(--document-faint);
   font-size: 10px;
   line-height: 1.5;
+}
+
+.document-translation-stats strong {
+  color: var(--document-accent);
 }
 
 .document-preview-heading {

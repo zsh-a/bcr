@@ -34,6 +34,17 @@ export {
   type DocumentContentStats,
 } from "./content";
 export {
+  createDocumentTranslationPackage,
+  decodeDocumentTranslationPackage,
+  documentTranslationStats,
+  type DocumentTranslationBlock,
+  type DocumentTranslationPackage,
+  type DocumentTranslationPackageInput,
+  type DocumentTranslationProvenance,
+  type DocumentTranslationStatus,
+  type DocumentTranslationStats,
+} from "./translation";
+export {
   DOCUMENT_HANDOFF_EVENT,
   consumeDocumentHandoff,
   getDocumentHandoffMarker,
