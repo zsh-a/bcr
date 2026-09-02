@@ -92,6 +92,35 @@ function pdfFixture() {
   return Buffer.from(raw, "binary");
 }
 
+function documentExportFixture() {
+  return Buffer.from(
+    JSON.stringify({
+      version: 1,
+      content: {
+        version: 1,
+        id: "reader-export-browser-content",
+        format: "markdown",
+        sourceName: "reader-export-browser.md",
+        metadata: { title: "Reader Export Bundle 验证" },
+        blocks: [
+          {
+            id: "reader-export-browser-block",
+            order: 0,
+            kind: "heading",
+            label: "Bundle 章节",
+            text: "JSON Bundle 可以直接恢复为可搜索章节。",
+          },
+        ],
+        provenance: {
+          adapter: "browser.fixture",
+          createdAt: 1,
+          sourceHash: "reader-export-browser-hash",
+        },
+      },
+    }),
+  );
+}
+
 const base = new URL(process.env.BASE_URL ?? "http://localhost:5199/studio");
 base.pathname = "/reader";
 base.search = "";
@@ -132,6 +161,26 @@ if (
 }
 if (!(await page.locator(".reader-sidebar-footer").innerText()).includes("OPFS"))
   fail("本地持久化状态未展示");
+
+// Reader can consume the canonical Document JSON bundle directly, without
+// invoking a format parser. Keep this on the real file input so the same path
+// is covered as a user dropping an exported package into the library.
+await page.locator("input[type=file]").first().setInputFiles({
+  name: "reader-export-browser.json",
+  mimeType: "application/json",
+  buffer: documentExportFixture(),
+});
+await page
+  .locator(".reader-reading-intro h1", { hasText: "Reader Export Bundle 验证" })
+  .waitFor({ timeout: 20_000 });
+await page.locator(".reader-import-progress").waitFor({ state: "hidden", timeout: 20_000 });
+if (!(await page.locator(".reader-reading-column").innerText()).includes("直接恢复为可搜索章节")) {
+  fail("Reader 没有从 JSON Export Bundle 恢复章节内容");
+}
+await page.locator(".reader-book-card", { hasText: "把时间还给阅读" }).first().click();
+await page.locator(".reader-reading-intro h1", { hasText: "把时间还给阅读" }).waitFor({
+  timeout: 10_000,
+});
 const searchClose = page.getByRole("button", { name: "关闭搜索结果" });
 if ((await searchClose.count()) > 0) await searchClose.click();
 const bookmarkButton = page.getByRole("button", { name: /标记当前位置|移除当前位置书签/ });
