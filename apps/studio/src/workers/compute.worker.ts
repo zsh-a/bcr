@@ -12,6 +12,7 @@ import {
 import { applyGlossaryTerms } from "@bcr/manga-studio/glossary";
 import {
   mangaWebGpuAvailable,
+  decodeMangaOcrArtifact,
   resolveMangaCleanMode,
   resolveMangaDevice,
   resolveMangaOcrAdapter,
@@ -739,7 +740,7 @@ async function mangaTranslateOnnx(
 ): Promise<ReadonlyArray<ArtifactRef>> {
   const input = task.inputs.find((ref) => ref.port === "lines") ?? task.inputs[0];
   if (input === undefined) throw new Error("manga.translate.onnx requires OCR lines");
-  const ocr = await readJsonArtifact<MangaOcrArtifact>(input, ctx);
+  const ocr = decodeMangaOcrArtifact(await readJsonArtifact<unknown>(input, ctx));
   const sourceLanguageValue = configText(task.config?.["sourceLanguage"], "ja");
   const sourceLanguage: MangaSourceLanguage =
     sourceLanguageValue === "en" || sourceLanguageValue === "ko" ? sourceLanguageValue : "ja";

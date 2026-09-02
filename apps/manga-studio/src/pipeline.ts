@@ -9,6 +9,8 @@ import {
   resolveMangaCleanMode,
   resolveMangaOcrAdapter,
   resolveMangaTranslationAdapter,
+  decodeMangaOcrArtifact,
+  decodeMangaTranslationArtifact,
   type MangaAdapterExecution,
   type MangaGlossaryEntry,
   type MangaCleanArtifact,
@@ -73,15 +75,7 @@ function decodeOcrArtifact(bytes: Uint8Array): MangaOcrArtifact {
   } catch {
     throw new Error("manga OCR Artifact 不是有效 JSON");
   }
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    (value as { version?: unknown }).version !== 1 ||
-    !Array.isArray((value as { lines?: unknown }).lines)
-  ) {
-    throw new Error("manga OCR Artifact 契约校验失败");
-  }
-  return value as MangaOcrArtifact;
+  return decodeMangaOcrArtifact(value);
 }
 
 /** Merge model output into the review model while preserving stable region IDs. */
@@ -479,8 +473,10 @@ async function runLocalTranslation(
     const artifact = outputs[0];
     if (artifact === undefined) throw new Error("local translation adapter returned no artifact");
     const data = await Effect.runPromise(services.artifacts.get(artifact));
-    const payload = JSON.parse(new TextDecoder().decode(data)) as MangaTranslationArtifact;
-    if (payload.version !== 1 || payload.adapter !== "local.onnx") {
+    const payload = decodeMangaTranslationArtifact(
+      JSON.parse(new TextDecoder().decode(data)) as unknown,
+    );
+    if (payload.adapter !== "local.onnx") {
       throw new Error("local translation adapter returned an invalid artifact");
     }
     const observedExecution = completedAdapterExecution(

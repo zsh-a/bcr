@@ -12,6 +12,8 @@ import {
 import {
   OCR_MODEL_MANIFESTS,
   TRANSLATION_MODEL_MANIFESTS,
+  decodeMangaOcrArtifact,
+  decodeMangaTranslationArtifact,
   resolveMangaDevice,
   resolveMangaOcrAdapter,
   resolveMangaTranslationAdapter,
@@ -157,6 +159,51 @@ describe("Manga Studio operation graph", () => {
       requestedDevice: "wasm",
       effectiveDevice: "wasm",
     });
+  });
+
+  it("validates versioned OCR and translation artifacts at the adapter boundary", () => {
+    const ocr = decodeMangaOcrArtifact({
+      version: 1,
+      adapter: "review.manual",
+      sourceName: "page.png",
+      coordinateSpace: "normalized-percent",
+      lines: [
+        {
+          id: "line-1",
+          label: "REVIEW 01",
+          x: 10,
+          y: 20,
+          width: 30,
+          height: 12,
+          rotation: 0,
+          writingMode: "horizontal-tb",
+          text: "原文",
+          confidence: 0.5,
+          status: "needs-review",
+        },
+      ],
+    });
+    expect(ocr.execution).toBeUndefined();
+    expect(() => decodeMangaOcrArtifact({ ...ocr, version: 2 })).toThrow("contract validation");
+    expect(() =>
+      decodeMangaOcrArtifact({
+        ...ocr,
+        lines: [{ ...ocr.lines[0], confidence: 2 }],
+      }),
+    ).toThrow("confidence");
+
+    const translation = decodeMangaTranslationArtifact({
+      version: 1,
+      adapter: "fixture.translate",
+      sourceName: "page.png",
+      sourceLanguage: "ja",
+      targetLanguage: "zh",
+      lines: [{ id: "line-1", sourceText: "原文", translatedText: "译文", status: "needs-review" }],
+    });
+    expect(translation.lines[0]?.translatedText).toBe("译文");
+    expect(() => decodeMangaTranslationArtifact({ ...translation, targetLanguage: "en" })).toThrow(
+      "contract validation",
+    );
   });
 
   it("exposes a safe cleaning preview boundary", () => {
