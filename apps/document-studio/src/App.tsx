@@ -21,7 +21,7 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useRuntime } from "@bcr/react";
 import {
@@ -99,6 +99,10 @@ export function App() {
   const [dragging, setDragging] = useState(false);
   const navigate = useNavigate();
   const services = useRuntime();
+
+  useEffect(() => {
+    documents.connectMetadata(services.metadata);
+  }, [services.metadata]);
 
   const importFiles = async (files: ReadonlyArray<File>): Promise<void> => {
     for (const [index, file] of files.entries()) {

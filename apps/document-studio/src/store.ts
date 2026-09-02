@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import type { RuntimeMetadata } from "@bcr/react";
 import {
   createDocumentJob,
   markReadyStages,
@@ -15,6 +16,7 @@ export interface DocumentState {
 }
 
 const STORAGE_KEY = "bcr.document-studio.v1";
+const METADATA_KEY = "document-studio.jobs.v1";
 
 function demoJob(): DocumentJob {
   return markReadyStages(
@@ -43,9 +45,7 @@ function isFormat(value: unknown): value is DocumentFormat {
   );
 }
 
-function restoreJobs(): ReadonlyArray<DocumentJob> {
-  if (typeof localStorage === "undefined") return [demoJob()];
-  const raw = localStorage.getItem(STORAGE_KEY);
+function parseJobs(raw: string | null): ReadonlyArray<DocumentJob> {
   if (raw === null) return [demoJob()];
   try {
     const parsed = JSON.parse(raw) as { jobs?: unknown };
@@ -71,6 +71,20 @@ function restoreJobs(): ReadonlyArray<DocumentJob> {
   }
 }
 
+function serializedJobs(jobs: ReadonlyArray<DocumentJob>): ReadonlyArray<DocumentJob> {
+  return jobs.map((job) => {
+    // Object URLs and File handles are tab-local; never serialize stale URLs.
+    const persisted = { ...job };
+    delete (persisted as { sourceUrl?: string }).sourceUrl;
+    return persisted;
+  });
+}
+
+function restoreJobs(): ReadonlyArray<DocumentJob> {
+  if (typeof localStorage === "undefined") return [demoJob()];
+  return parseJobs(localStorage.getItem(STORAGE_KEY));
+}
+
 function initialState(): DocumentState {
   const jobs = restoreJobs();
   const active = jobs[0] ?? demoJob();
@@ -86,6 +100,9 @@ class DocumentStore {
   private state = initialState();
   private readonly listeners = new Set<() => void>();
   private readonly sourceFiles = new Map<string, File>();
+  private metadata: RuntimeMetadata | undefined;
+  private metadataTail: Promise<void> = Promise.resolve();
+  private mutationRevision = 0;
 
   getSnapshot = (): DocumentState => this.state;
 
@@ -95,20 +112,50 @@ class DocumentStore {
   };
 
   private persist(): void {
-    if (typeof localStorage === "undefined") return;
-    // Object URLs and File handles are tab-local; never serialize stale URLs.
-    const jobs = this.state.jobs.map((job) => {
-      const persisted = { ...job };
-      delete (persisted as { sourceUrl?: string }).sourceUrl;
-      return persisted;
-    });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, jobs }));
+    const jobs = serializedJobs(this.state.jobs);
+    const payload = JSON.stringify({ version: 1, jobs });
+    if (this.metadata !== undefined) {
+      const metadata = this.metadata;
+      this.metadataTail = this.metadataTail
+        .catch(() => undefined)
+        .then(() => metadata.set(METADATA_KEY, payload));
+      return;
+    }
+    if (typeof localStorage !== "undefined") localStorage.setItem(STORAGE_KEY, payload);
   }
 
   private set(partial: Partial<DocumentState>): void {
     this.state = { ...this.state, ...partial };
+    this.mutationRevision += 1;
     this.persist();
     for (const listener of this.listeners) listener();
+  }
+
+  /** Attach the host SQLite metadata plane and hydrate jobs without moving files. */
+  connectMetadata(metadata: RuntimeMetadata | undefined): void {
+    if (this.metadata === metadata) return;
+    this.metadata = metadata;
+    if (metadata === undefined) return;
+    const revision = this.mutationRevision;
+    void metadata
+      .get(METADATA_KEY)
+      .then((raw) => {
+        if (revision !== this.mutationRevision) return;
+        if (raw === undefined) {
+          this.persist();
+          return;
+        }
+        const jobs = parseJobs(raw);
+        const active = jobs.find((job) => job.id === this.state.activeJobId) ?? jobs[0]!;
+        this.state = {
+          ...this.state,
+          jobs,
+          activeJobId: active.id,
+          selectedStageId: active.stages[0]?.id ?? "ingest",
+        };
+        for (const listener of this.listeners) listener();
+      })
+      .catch(() => undefined);
   }
 
   addJob(job: DocumentJob, sourceFile?: File): void {

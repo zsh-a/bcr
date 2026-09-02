@@ -27,6 +27,13 @@ import {
 export interface RuntimeServices {
   readonly scheduler: Scheduler;
   readonly artifacts: ArtifactStore;
+  /** Optional small-state persistence supplied by the host app's SQLite plane. */
+  readonly metadata?: RuntimeMetadata | undefined;
+}
+
+export interface RuntimeMetadata {
+  readonly get: (key: string) => Promise<string | undefined>;
+  readonly set: (key: string, value: string) => Promise<void>;
 }
 
 const RuntimeContext = createContext<RuntimeServices | null>(null);

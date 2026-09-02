@@ -14,7 +14,7 @@ import {
   type TaskHandle,
   type TaskJournalEntry,
 } from "@bcr/core";
-import type { RuntimeServices } from "@bcr/react";
+import type { RuntimeMetadata, RuntimeServices } from "@bcr/react";
 import { workerExecutor, WorkerPool } from "@bcr/runtime-worker";
 import { isOpfsSupported, MemoryStore, OpfsStore } from "@bcr/storage-opfs";
 import {
@@ -94,7 +94,14 @@ export async function createRuntimeServices(): Promise<RuntimeServices> {
 
   await restoreFiles();
   await restoreTasks(scheduler);
-  return { scheduler, artifacts };
+  const metadata: RuntimeMetadata | undefined =
+    metaDb === undefined
+      ? undefined
+      : {
+          get: (key) => metaDb!.kvGet(key),
+          set: (key, value) => metaDb!.kvSet(key, value),
+        };
+  return { scheduler, artifacts, ...(metadata === undefined ? {} : { metadata }) };
 }
 
 /** 刷新恢复：文件列表从元数据库回放（artifact 数据本体一直在 OPFS）。 */
