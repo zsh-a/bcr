@@ -22,6 +22,7 @@ import {
   LibraryBig,
   LayoutGrid,
   Search,
+  Table2,
   Trash2,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
@@ -231,6 +232,13 @@ export function CommandPalette(props: { open: boolean; onOpenChange: (open: bool
         hint: "Alt+7",
         icon: <LibraryBig className="size-3.5" />,
         run: () => void navigate({ to: "/reader" }),
+      },
+      {
+        id: "go-data",
+        title: "打开 Data Studio",
+        hint: "Alt+8",
+        icon: <Table2 className="size-3.5" />,
+        run: () => void navigate({ to: "/data" }),
       },
       {
         id: "import",

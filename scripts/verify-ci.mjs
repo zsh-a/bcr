@@ -99,6 +99,7 @@ await withServer({
     "scripts/verify-market-atlas.mjs",
     "scripts/verify-manga-studio.mjs",
     "scripts/verify-document-studio.mjs",
+    "scripts/verify-data-studio.mjs",
     "scripts/verify-reader-studio.mjs",
     "scripts/verify-storage-cleanup.mjs",
     "scripts/verify-global-search.mjs",

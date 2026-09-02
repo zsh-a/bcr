@@ -12,7 +12,7 @@ import { Shell } from "./shell/Shell";
  * §12：navigational state 归 TanStack Router——选择中的文件/任务放 URL，
  * 复制链接即可恢复同一个 workspace view。
  *
- * 路由只做 URL/search 状态机：`/` 启动台 · `/studio` · `/media` · `/quant` · `/markets` · `/manga` · `/documents` · `/reader`。
+ * 路由只做 URL/search 状态机：`/` 启动台 · `/studio` · `/media` · `/quant` · `/markets` · `/manga` · `/documents` · `/reader` · `/data`。
  * App 组件不由 Outlet 渲染，而由 Shell 的 keep-alive 容器常驻挂载（切走仅隐藏）。
  */
 export interface StudioSearch {
@@ -46,6 +46,10 @@ export interface MarketSearch {
 
 export interface QuantSearch {
   dataset?: string | undefined;
+}
+
+export interface DataSearch {
+  query?: string | undefined;
 }
 
 const rootRoute = createRootRoute({ component: Shell });
@@ -123,6 +127,15 @@ const readerRoute = createRoute({
   component: () => null,
 });
 
+const dataRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/data",
+  validateSearch: (search: Record<string, unknown>): DataSearch => ({
+    query: typeof search["query"] === "string" ? search["query"] : undefined,
+  }),
+  component: () => null,
+});
+
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
     homeRoute,
@@ -133,6 +146,7 @@ export const router = createRouter({
     mangaRoute,
     documentsRoute,
     readerRoute,
+    dataRoute,
   ]),
 });
 

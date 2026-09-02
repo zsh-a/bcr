@@ -2,7 +2,7 @@
 
 面向本地计算型 Web 应用的浏览器 Runtime 初版实现，对应 `docs/ARCHITECTURE.md` 的 Phase 1 核心抽象。
 
-本版范围：**核心 Runtime 包 + Media / Quant / Markets / Manga / Reader / Document 六类端到端垂直切片**——
+本版范围：**核心 Runtime 包 + Media / Quant / Markets / Manga / Reader / Document / Data 七类端到端垂直切片**——
 文件或行情 → OPFS → Worker Pipeline → Artifact → 内容寻址缓存 → 跨刷新项目恢复。
 
 ## 仓库结构
@@ -16,7 +16,8 @@
 │   ├── market-data/      # @bcr/market-data：统一市场数据契约 / stock-sdk 适配 / 缓存降级
 │   ├── react/            # @bcr/react：RuntimeProvider / useSubmitTask / useTask / useArtifact
 │   ├── reader-core/      # @bcr/reader-core：出版物 / 章节 / Locator / 搜索契约
-│   └── document-core/    # @bcr/document-core：文档格式 / 阶段状态 / 跨工作台 handoff 契约
+│   ├── document-core/    # @bcr/document-core：文档格式 / 阶段状态 / 跨工作台 handoff 契约
+│   └── data-core/        # @bcr/data-core：表格 / Schema / 类型推断 / Canonical 数据契约
 ├── apps/
 │   ├── studio/           # BCR Studio 工作台 UI（Dockview + Tailwind 4 + Base UI）
 │   ├── media-studio/     # Media Studio · Subtitle——第一个上层应用（§0 孵化策略）
@@ -24,7 +25,8 @@
 │   ├── market-board/     # Market Atlas——CN / HK / US / 全球期货市场看板
 │   ├── manga-studio/     # Manga Studio——漫画 OCR / 翻译 / 清理 / CJK 排版审校
 │   ├── reader-studio/    # Reader Studio——多格式本地阅读、全文搜索与进度恢复
-│   └── document-studio/  # Document Studio——Ingest / Extract / OCR / Translate 流水线入口
+│   ├── document-studio/  # Document Studio——Ingest / Extract / OCR / Translate 流水线入口
+│   └── data-studio/      # Data Studio——CSV / JSON / NDJSON 表格探索与导出
 ├── crates/
 │   └── kernels/          # bcr-kernels：wasm-bindgen kernel（流式 BLAKE3 / RMS / Peak）
 └── examples/
@@ -60,6 +62,7 @@
 | §14 Quant workload                    | DuckDB WASM + Arrow IPC + Parquet → SMA Signal → Backtest Pipeline                          |
 | Market Atlas                          | stock-sdk → Quote / Search / OHLCV / Dividend 契约 → 多市场看板与组合级 Quant handoff       |
 | Document Studio                       | DocumentJob / Stage 状态机 → 本地导入 / 格式边界 / Reader·Manga handoff                     |
+| Data Studio                           | CSV / JSON / NDJSON → Worker 解析 → Canonical Table Artifact → Schema / 搜索 / 导出         |
 | §11 COOP/COEP                         | `apps/studio/vite.config.ts` 与 `apps/media-studio/vite.config.ts` 内置                     |
 
 ## 命令
@@ -82,7 +85,8 @@ bun run test:browser   # 自动启停 dev server，运行离线 Playwright 主�
 
 GitHub Actions 会执行格式/类型/单测、Rust/WASM、核心应用生产构建，并在真实 Chromium 中验证
 Media Studio 短音频、150 秒分窗、Studio 刷新缓存/任务历史、Quant Lab 回测参数重跑以及
-Market Atlas 数据质量与交互，以及 Manga Studio 单页翻译、Reader Studio 多格式阅读与刷新恢复；
+Market Atlas 数据质量与交互，以及 Manga Studio 单页翻译、Reader Studio 多格式阅读、Data Studio
+多格式表格解析与刷新恢复；
 失败时保留截图与 server 日志。
 
 ## BCR Studio（apps/studio）
@@ -288,6 +292,28 @@ Publication → Section → Locator / SearchHit
 - Reader 文件入口同时接受经过校验的 Document Export Bundle（`.json`）；文本包会直接重建 Section 与译文，不重复运行格式解析器，视觉包则明确引导回 Manga Studio。
 
 走查：`node scripts/verify-reader-studio.mjs`（由 `bun run test:browser` 自动执行）。
+
+## Data Studio（apps/data-studio）
+
+Data Studio 是面向本地数据文件的轻量表格工作台：解析和预览都在共享 Runtime 的 Worker 中完成，UI
+只消费版本化的 Canonical Table Artifact，不把大文件解析或状态堆在主线程。
+
+```text
+CSV / JSON array / NDJSON
+            ↓
+   OPFS source Artifact
+            ↓
+  data.parse.table · Worker
+            ↓
+Canonical Table Package → Schema / search / sort / export
+```
+
+- `packages/data-core` 定义格式无关的 `DataTablePackage`、列类型（TEXT / NUMBER / BOOL / DATE / EMPTY）、空值统计和严格恢复解码；重复列名、缺失字段与混合值在契约边界确定性归一化。
+- Data Studio 通过 BLAKE3 内容寻址保存源文件，解析任务共享宿主 Scheduler / WorkerPool，并以 `data/table` Artifact 保存结果；16 MiB 以上文件先展示有明确 `sampled` 标记的预览，不破坏原始源文件。
+- 表格支持跨列搜索、点击列头排序、Schema 类型与空值提示，以及 Canonical JSON / RFC 4180 CSV 导出；刷新后只从 SQLite 元数据中的 Artifact 引用恢复，不重复读取或解析源文件。
+- 全局 Workspace Search 将当前数据集注册为 `dataset` 结果，深链 `/data?query=…` 可直接恢复筛选上下文；清除快照只移除当前视图引用，原始 Artifact 仍可由存储治理统一回收。
+
+走查：`node scripts/verify-data-studio.mjs`（由 `bun run test:browser` 自动执行，覆盖 JSON / CSV / NDJSON、搜索、排序、导出、深链与刷新恢复）。
 
 ## Demo 验证路径
 

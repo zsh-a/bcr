@@ -6,6 +6,7 @@ import {
   Globe2,
   LayoutGrid,
   LibraryBig,
+  Table2,
   type LucideIcon,
 } from "lucide-react";
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
@@ -16,9 +17,17 @@ import { Dock } from "../components/Dock";
  * 领域 App 经 workspace 包源码挂载，首次进入才加载对应 chunk。
  */
 export interface AppDef {
-  readonly id: "studio" | "media" | "quant" | "markets" | "manga" | "documents" | "reader";
+  readonly id: "studio" | "media" | "quant" | "markets" | "manga" | "documents" | "reader" | "data";
   readonly title: string;
-  readonly path: "/studio" | "/media" | "/quant" | "/markets" | "/manga" | "/documents" | "/reader";
+  readonly path:
+    | "/studio"
+    | "/media"
+    | "/quant"
+    | "/markets"
+    | "/manga"
+    | "/documents"
+    | "/reader"
+    | "/data";
   readonly icon: LucideIcon;
   readonly description: string;
   readonly component: ComponentType | LazyExoticComponent<ComponentType>;
@@ -80,6 +89,14 @@ export const APPS: ReadonlyArray<AppDef> = [
     icon: LibraryBig,
     description: "本地阅读空间 · TXT / Markdown / HTML / DOCX / EPUB / PDF / CBZ · 进度与全文搜索",
     component: lazy(() => import("@bcr/reader-studio/app").then((m) => ({ default: m.App }))),
+  },
+  {
+    id: "data",
+    title: "Data Studio",
+    path: "/data",
+    icon: Table2,
+    description: "本地表格探索 · CSV / JSON / NDJSON · Schema / 搜索 / 导出",
+    component: lazy(() => import("@bcr/data-studio/app").then((m) => ({ default: m.App }))),
   },
 ];
 
