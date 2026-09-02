@@ -134,6 +134,22 @@ interface RestoredReaderSnapshot {
   readonly bookmarksByBook: ReaderState["bookmarksByBook"];
   readonly annotationsByBook: ReaderState["annotationsByBook"];
   readonly searchSession: ReaderSearchSession;
+  readonly recovery: ReaderRestoreDiagnostics;
+}
+
+export interface ReaderRestoreIssue {
+  readonly bookId: string;
+  readonly name: string;
+  readonly reason: string;
+  readonly sourceRef?: ReaderBook["source"]["ref"] | undefined;
+}
+
+/** Non-fatal restore facts surfaced to the Reader UI after a durable boot. */
+export interface ReaderRestoreDiagnostics {
+  readonly attemptedBooks: number;
+  readonly restoredBooks: number;
+  readonly skippedBooks: ReadonlyArray<ReaderRestoreIssue>;
+  readonly usedLegacyLibrary: boolean;
 }
 
 const FTS_SCHEMA = `
@@ -776,10 +792,26 @@ async function fileFromSource(
   return new File([buffer], book.source.name, { type: book.source.mime });
 }
 
+interface RestoredBookResult {
+  readonly book?: ReaderBook | undefined;
+  readonly issue?: ReaderRestoreIssue | undefined;
+}
+
+function restoreIssue(persisted: PersistedBook, reason: unknown): ReaderRestoreIssue {
+  const message =
+    reason instanceof Error && reason.message.length > 0 ? reason.message : String(reason);
+  return {
+    bookId: persisted.id,
+    name: persisted.source?.name || persisted.title || persisted.id,
+    reason: message.length > 0 ? message : "无法读取出版物内容",
+    ...(persisted.source?.ref === undefined ? {} : { sourceRef: persisted.source.ref }),
+  };
+}
+
 async function restoreBook(
   runtime: ReaderRuntime,
   persisted: PersistedBook,
-): Promise<ReaderBook | undefined> {
+): Promise<RestoredBookResult> {
   const hasBinaryView =
     persisted.source.format === "docx" ||
     persisted.source.format === "epub" ||
@@ -791,45 +823,54 @@ async function restoreBook(
       if (file !== undefined) {
         const reopened = await parseReaderFile(runtime, file, persisted.id);
         return {
-          ...reopened,
-          title: persisted.title,
-          ...(persisted.author === undefined ? {} : { author: persisted.author }),
-          ...(persisted.language === undefined ? {} : { language: persisted.language }),
-          importedAt: persisted.importedAt,
-          updatedAt: persisted.updatedAt,
-          tags: persisted.tags,
-          source: {
-            ...reopened.source,
-            name: persisted.source.name,
-            mime: persisted.source.mime,
-            size: persisted.source.size,
-            ref: persisted.source.ref,
+          book: {
+            ...reopened,
+            title: persisted.title,
+            ...(persisted.author === undefined ? {} : { author: persisted.author }),
+            ...(persisted.language === undefined ? {} : { language: persisted.language }),
+            importedAt: persisted.importedAt,
+            updatedAt: persisted.updatedAt,
+            tags: persisted.tags,
+            source: {
+              ...reopened.source,
+              name: persisted.source.name,
+              mime: persisted.source.mime,
+              size: persisted.source.size,
+              ref: persisted.source.ref,
+            },
+            ...(persisted.toc === undefined ? {} : { toc: persisted.toc }),
           },
-          ...(persisted.toc === undefined ? {} : { toc: persisted.toc }),
         };
       }
-    } catch {
-      return undefined;
+      return { issue: restoreIssue(persisted, "源 Artifact 不可用，无法重新打开二进制出版物") };
+    } catch (reason) {
+      return { issue: restoreIssue(persisted, reason) };
     }
   }
-  return {
-    id: persisted.id,
-    title: persisted.title,
-    ...(persisted.author === undefined ? {} : { author: persisted.author }),
-    ...(persisted.language === undefined ? {} : { language: persisted.language }),
-    source: {
-      name: persisted.source.name,
-      format: persisted.source.format,
-      mime: persisted.source.mime,
-      size: persisted.source.size,
-      ...(persisted.source.ref === undefined ? {} : { ref: persisted.source.ref }),
-    },
-    sections: persisted.sections,
-    ...(persisted.toc === undefined ? {} : { toc: persisted.toc }),
-    importedAt: persisted.importedAt,
-    updatedAt: persisted.updatedAt,
-    tags: persisted.tags,
-  };
+  try {
+    return {
+      book: {
+        id: persisted.id,
+        title: persisted.title,
+        ...(persisted.author === undefined ? {} : { author: persisted.author }),
+        ...(persisted.language === undefined ? {} : { language: persisted.language }),
+        source: {
+          name: persisted.source.name,
+          format: persisted.source.format,
+          mime: persisted.source.mime,
+          size: persisted.source.size,
+          ...(persisted.source.ref === undefined ? {} : { ref: persisted.source.ref }),
+        },
+        sections: persisted.sections,
+        ...(persisted.toc === undefined ? {} : { toc: persisted.toc }),
+        importedAt: persisted.importedAt,
+        updatedAt: persisted.updatedAt,
+        tags: persisted.tags,
+      },
+    };
+  } catch (reason) {
+    return { issue: restoreIssue(persisted, reason) };
+  }
 }
 
 export async function restoreReader(
@@ -849,12 +890,12 @@ export async function restoreReader(
   const legacy = parsePersisted<Partial<PersistedReaderSnapshot>>(legacyRaw);
   const library = parsePersisted<Partial<PersistedReaderLibrary>>(libraryRaw);
   const session = parsePersisted<Partial<PersistedReaderSession>>(sessionRaw);
-  const booksPayload =
-    library?.version === 1 && Array.isArray(library.books)
-      ? library.books
-      : legacy?.version === 1 && Array.isArray(legacy.books)
-        ? legacy.books
-        : undefined;
+  const hasCanonicalLibrary = library?.version === 1 && Array.isArray(library.books);
+  const booksPayload = hasCanonicalLibrary
+    ? library.books
+    : legacy?.version === 1 && Array.isArray(legacy.books)
+      ? legacy.books
+      : undefined;
   if (booksPayload === undefined) return undefined;
   try {
     const source = session?.version === 1 ? session : legacy?.version === 1 ? legacy : undefined;
@@ -870,7 +911,10 @@ export async function restoreReader(
     );
     const books = restored
       .sort((left, right) => left.index - right.index)
-      .flatMap((entry) => (entry.book === undefined ? [] : [entry.book]));
+      .flatMap((entry) => (entry.book.book === undefined ? [] : [entry.book.book]));
+    const skippedBooks = restored.flatMap((entry) =>
+      entry.book.issue === undefined ? [] : [entry.book.issue],
+    );
     return {
       books,
       activeBookId:
@@ -880,6 +924,12 @@ export async function restoreReader(
       bookmarksByBook: restoredBookmarks(books, source?.bookmarksByBook),
       annotationsByBook: restoredAnnotations(books, source?.annotationsByBook),
       searchSession: restoredSearchSession(books, source?.searchSession),
+      recovery: {
+        attemptedBooks: persistedBooks.length,
+        restoredBooks: books.length,
+        skippedBooks,
+        usedLegacyLibrary: !hasCanonicalLibrary,
+      },
     };
   } catch {
     return undefined;

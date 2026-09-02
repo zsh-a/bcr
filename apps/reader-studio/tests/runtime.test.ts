@@ -12,6 +12,7 @@ import {
   importReaderDocumentHandoff,
   importReaderExportBundle,
   prepareReaderDocumentHandoff,
+  restoreReader,
   type ReaderRuntime,
 } from "../src/runtime";
 import { createDemoBook } from "../src/model";
@@ -31,6 +32,88 @@ const jsonRef = (id: string): ArtifactRef => ({
 });
 
 describe("reader durable Document handoff", () => {
+  it("reports skipped binary books when a source Artifact is missing", async () => {
+    const store = new MemoryStore();
+    const artifacts = await makeArtifacts(store);
+    const missingSource: ArtifactRef = {
+      id: "reader/missing-source",
+      type: "file/publication",
+      storage: "opfs",
+      format: "application/epub+zip",
+      hash: "missing-source-hash",
+    };
+    const library = {
+      version: 1,
+      books: [
+        {
+          id: "book-missing",
+          title: "Missing EPUB",
+          source: {
+            name: "missing.epub",
+            format: "epub",
+            mime: "application/epub+zip",
+            size: 42,
+            ref: missingSource,
+          },
+          sections: [],
+          importedAt: 1,
+          updatedAt: 1,
+          tags: [],
+        },
+        {
+          id: "book-text",
+          title: "Recovered notes",
+          source: {
+            name: "notes.md",
+            format: "markdown",
+            mime: "text/markdown",
+            size: 12,
+          },
+          sections: [
+            {
+              id: "body",
+              order: 0,
+              label: "正文",
+              kind: "text",
+              text: "Recovered body",
+            },
+          ],
+          importedAt: 1,
+          updatedAt: 1,
+          tags: [],
+        },
+      ],
+    };
+    const metadata = new Map<string, string>([
+      ["reader/library", JSON.stringify(library)],
+      ["reader/session", JSON.stringify({ version: 1, activeBookId: "book-text" })],
+    ]);
+    const runtime: ReaderRuntime = {
+      binary: store,
+      artifacts,
+      meta: {
+        kvGet: (key: string) => metadata.get(key),
+      } as never,
+      ftsReady: false,
+      indexSession: undefined,
+      parseSession: undefined,
+      parserMode: "main",
+    };
+
+    const restored = await restoreReader(runtime);
+
+    expect(restored?.books.map((book) => book.id)).toEqual(["book-text"]);
+    expect(restored?.recovery).toMatchObject({
+      attemptedBooks: 2,
+      restoredBooks: 1,
+      usedLegacyLibrary: false,
+    });
+    expect(restored?.recovery.skippedBooks[0]).toMatchObject({
+      bookId: "book-missing",
+      name: "missing.epub",
+    });
+  });
+
   it("mirrors the source and canonical projection into the host namespace", async () => {
     const localStore = new MemoryStore();
     const hostStore = new MemoryStore();

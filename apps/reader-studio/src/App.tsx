@@ -68,6 +68,7 @@ import {
   persistReader,
   restoreReader,
   searchIndexedDetailed,
+  type ReaderRestoreDiagnostics,
   type ReaderRuntime,
 } from "./runtime";
 import { activeBook, type ReaderSettings, type ReaderTheme } from "./model";
@@ -446,9 +447,11 @@ function useReaderSearch(runtime: ReaderRuntime | null): void {
 function useReaderBoot(): {
   runtime: ReaderRuntime | null;
   error: string | null;
+  recovery: ReaderRestoreDiagnostics | null;
 } {
   const [runtime, setRuntime] = useState<ReaderRuntime | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [recovery, setRecovery] = useState<ReaderRestoreDiagnostics | null>(null);
   useEffect(() => {
     let cancelled = false;
     let createdRuntime: ReaderRuntime | null = null;
@@ -464,6 +467,7 @@ function useReaderBoot(): {
         const restored = await restoreReader(nextRuntime);
         if (cancelled) return;
         if (restored !== undefined) {
+          setRecovery(restored.recovery);
           reader.hydrate(
             restored.books,
             restored.progressByBook,
@@ -475,6 +479,7 @@ function useReaderBoot(): {
           );
           await Promise.all(restored.books.map((book) => indexBook(nextRuntime, book)));
         } else {
+          setRecovery(null);
           reader.setReady();
           await indexBook(nextRuntime, getReaderState().library[0]!);
         }
@@ -491,11 +496,11 @@ function useReaderBoot(): {
       createdRuntime?.parseSession?.close();
     };
   }, []);
-  return { runtime, error };
+  return { runtime, error, recovery };
 }
 
 export function App() {
-  const { runtime, error: runtimeError } = useReaderBoot();
+  const { runtime, error: runtimeError, recovery } = useReaderBoot();
   const hostServices = useOptionalRuntime();
   const routeSearch = parseReaderRouteSearch(useLocationSearch());
   useDebouncedPersist(runtime);
@@ -806,6 +811,9 @@ export function App() {
         onRetryFailed={retryFailedImports}
         onRecoverHandoff={handoffRecovery ? () => window.location.assign("/documents") : undefined}
       />
+      {recovery !== null && recovery.skippedBooks.length > 0 && (
+        <ReaderRecoveryBanner recovery={recovery} />
+      )}
       <ReaderWorkspace
         runtime={runtime}
         onImport={(files) => void importFiles(files)}
@@ -813,6 +821,34 @@ export function App() {
         documentHandoffBusy={documentHandoffBusy}
       />
     </div>
+  );
+}
+
+function ReaderRecoveryBanner(props: { recovery: ReaderRestoreDiagnostics }) {
+  const { recovery } = props;
+  return (
+    <section className="reader-recovery-banner" aria-label="书库恢复检查" role="status">
+      <div className="reader-recovery-heading">
+        <span className="reader-eyebrow">RECOVERY CHECK</span>
+        <strong>
+          已恢复 {recovery.restoredBooks}/{recovery.attemptedBooks} 本读物
+        </strong>
+      </div>
+      <span className="reader-recovery-copy">
+        {recovery.skippedBooks.length} 个出版物无法从本地 Artifact 重建，原有进度不会被覆盖。
+      </span>
+      <details className="reader-recovery-details">
+        <summary>查看恢复问题</summary>
+        <ul>
+          {recovery.skippedBooks.map((issue) => (
+            <li key={issue.bookId}>
+              <strong>{issue.name}</strong>
+              <span>{issue.reason}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
+    </section>
   );
 }
 
