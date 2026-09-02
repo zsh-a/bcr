@@ -119,6 +119,7 @@ export async function createMangaRuntime(): Promise<MangaRuntime> {
   const models = new MangaModelRegistry(meta);
   try {
     await models.restore();
+    await models.reconcileCache();
   } catch (error) {
     manga.log("warn", `model registry restore failed · ${String(error)}`);
   }

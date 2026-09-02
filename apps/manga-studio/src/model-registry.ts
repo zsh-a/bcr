@@ -144,6 +144,36 @@ export class MangaModelRegistry {
     ]);
   }
 
+  /**
+   * Reconcile persisted lifecycle facts with the actual product cache. A
+   * previous in-flight task cannot be trusted after a reload, and a deleted
+   * cache must never continue to appear READY. Unsupported Cache APIs are
+   * intentionally left untouched because a filesystem-backed Transformer
+   * environment may still be valid.
+   */
+  async reconcileCache(): Promise<void> {
+    const info = await this.inspectCache();
+    if (!info.supported) return;
+    const available = new Set(info.modelFiles.map((entry) => entry.model));
+    let changed = false;
+    for (const [key, record] of this.records) {
+      const missing = record.status === "ready" && !available.has(record.model);
+      const interrupted = record.status === "loading";
+      if (!missing && !interrupted) continue;
+      this.records.set(key, {
+        ...record,
+        status: "unknown",
+        ...(missing ? { lastLoadedAt: undefined } : {}),
+        lastError: undefined,
+      });
+      changed = true;
+    }
+    if (changed) {
+      this.emit();
+      this.enqueuePersist();
+    }
+  }
+
   /** Clear the product-owned cache and invalidate readiness metadata together. */
   async clearCache(): Promise<boolean> {
     const deleted = await clearMangaModelCache();
@@ -186,7 +216,18 @@ export class MangaModelRegistry {
           ) {
             return [];
           }
-          return [[candidate.key, { ...current, ...candidate } satisfies MangaModelRecord]];
+          return [
+            [
+              candidate.key,
+              {
+                ...current,
+                ...candidate,
+                // A loading task cannot survive a page reload; require an
+                // explicit run/preload before exposing READY again.
+                status: candidate.status === "loading" ? "unknown" : candidate.status,
+              } satisfies MangaModelRecord,
+            ],
+          ];
         }),
       );
       this.emit();
