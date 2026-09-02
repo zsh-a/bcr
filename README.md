@@ -193,7 +193,7 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 图片 → Normalize → Detect → OCR → Reading Order → Translate → Clean → Typeset → PNG
 ```
 
-- `/manga` 已接入 Studio Shell，支持图片导入、页面预览、文本区域选择与手动编辑
+- `/manga` 已接入 Studio Shell，支持图片 / CBZ / ZIP / PDF 导入、页面预览、文本区域选择与手动编辑；归档格式会先展开为可独立重试的页面
 - `@bcr/manga-studio` 声明页面清单、OCR、翻译、清理、排版和导出的 operation 目录，默认 Graph 可直接交给 `@bcr/graph` 编译
 - 默认视觉路径明确标记为 **Review / 手工审校**；导入真实图片后会创建待审校区域，并通过共享 Worker 的
   `manga.ocr.review` 将区域固化为版本化 `manga/ocr-lines` Artifact，不伪装成像素识别结果；需要时可显式切换到实验性 Local ONNX
@@ -201,7 +201,7 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - 项目级 Glossary 支持原文 / 固定译法的增删改与持久化；翻译阶段整句命中优先，重叠术语按最长匹配，术语变更会让所有页面回到待处理状态
 - 设置为 Local ONNX 后会按区域懒加载 `Xenova/trocr-small-printed`，在 Worker 内支持 Auto / WebGPU / WASM（可在界面选择运行设备）
   并将结果标为 `needs-review`；当前模型主要面向 Latin 印刷体，日文/韩文仍应使用 Review adapter 并人工审校
-- 当前 MVP 支持原图 / 清理页 / 译文页切换、置信度审阅、CJK 排版参数和 PNG 导出；更完整的 CJK OCR、Inpainting、CBZ/PDF 批处理作为后续适配器接入
+- 当前 MVP 支持原图 / 清理页 / 译文页切换、置信度审阅、CJK 排版参数和 PNG 导出；CBZ/PDF 会先展开为页面队列，完整的 CJK OCR 与 Inpainting 仍作为后续适配器接入
 - 操作契约与 DAG 回归位于 `apps/manga-studio/tests/operations.test.ts`
 
 ## Document Studio（apps/document-studio）

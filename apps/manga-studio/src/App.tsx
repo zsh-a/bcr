@@ -23,6 +23,7 @@ import {
 import { consumeDocumentHandoff } from "@bcr/document-core";
 import { useOptionalRuntime } from "@bcr/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { expandMangaArchive, formatForMangaFile } from "./archive";
 import { cancelMangaPipeline, cancelMangaQueue, runMangaPipeline, runMangaQueue } from "./pipeline";
 import { findGlossaryMatches } from "./glossary";
 import {
@@ -236,15 +237,53 @@ export function App() {
         },
         [],
       );
-      manga.log("warn", "视觉 OCR 模型未加载 · 将创建待审校区域并由 review adapter 固化");
+      manga.log(
+        "warn",
+        manga.getSnapshot().settings.ocrAdapter === "vision.onnx"
+          ? "视觉 OCR · Local ONNX 将在处理阶段按需加载模型"
+          : "视觉 OCR · 将创建待审校区域并由 review adapter 固化",
+      );
     } catch (reason) {
       URL.revokeObjectURL(objectUrl);
       manga.log("error", `import · ${reason instanceof Error ? reason.message : String(reason)}`);
     }
   };
 
-  const importImages = async (files: ReadonlyArray<File>): Promise<void> => {
+  const importImageFiles = async (files: ReadonlyArray<File>): Promise<void> => {
     for (const file of files) await importImage(file);
+  };
+
+  const importFiles = async (files: ReadonlyArray<File>): Promise<void> => {
+    if (runtime === null) {
+      manga.log("warn", "import · runtime is still starting");
+      return;
+    }
+    if (manga.getSnapshot().running || manga.getSnapshot().batch?.status === "running") {
+      manga.log("warn", "import · pause the current pipeline before adding pages");
+      return;
+    }
+    for (const file of files) {
+      const format = formatForMangaFile(file);
+      if (format === "image") {
+        await importImage(file);
+        continue;
+      }
+      if (format !== "cbz" && format !== "pdf") {
+        manga.log("error", `import · unsupported file type · ${file.type || file.name}`);
+        continue;
+      }
+      manga.log("info", `archive · ${file.name} · expanding ${format.toUpperCase()}`);
+      try {
+        const pages = await expandMangaArchive(file);
+        await importImageFiles(pages);
+        manga.log("ok", `archive · ${file.name} · ${pages.length} page(s) added`);
+      } catch (reason) {
+        manga.log(
+          "error",
+          `archive · ${file.name} · ${reason instanceof Error ? reason.message : String(reason)}`,
+        );
+      }
+    }
   };
 
   useEffect(() => {
@@ -258,12 +297,12 @@ export function App() {
       manga.log("warn", "handoff · link expired · import the source again in Document Studio");
       return;
     }
-    if (!handoff.file.type.startsWith("image/")) {
+    if (formatForMangaFile(handoff.file) === "unknown") {
       manga.log("warn", `handoff · ${handoff.name} needs a page-image adapter before Manga Studio`);
       return;
     }
-    void importImages([handoff.file]);
-  }, [importImages, runtime]);
+    void importFiles([handoff.file]);
+  }, [importFiles, runtime]);
 
   const addRegion = (): void => {
     const index = state.regions.length + 1;
@@ -355,7 +394,7 @@ export function App() {
             onClick={() => fileInputRef.current?.click()}
           >
             <FileUp className="size-4" />
-            导入图片
+            导入文件
           </button>
           {batchRunning ? (
             <button
@@ -397,12 +436,12 @@ export function App() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml,application/pdf,application/vnd.comicbook+zip,application/zip,.pdf,.cbz,.zip"
             multiple
             className="hidden"
             onChange={(event) => {
               const files = Array.from(event.currentTarget.files ?? []);
-              if (files.length > 0) void importImages(files);
+              if (files.length > 0) void importFiles(files);
               event.currentTarget.value = "";
             }}
           />
@@ -480,13 +519,13 @@ export function App() {
               onDrop={(event) => {
                 event.preventDefault();
                 const files = Array.from(event.dataTransfer.files);
-                if (files.length > 0) void importImages(files);
+                if (files.length > 0) void importFiles(files);
               }}
             >
               <Upload className="size-4" />
               <span>
                 <strong>拖入更多页面</strong>
-                <small>PNG / JPG / WEBP</small>
+                <small>PNG / JPG / WEBP / CBZ / PDF</small>
               </span>
             </button>
             {state.batch !== undefined && (

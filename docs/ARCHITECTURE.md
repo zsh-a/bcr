@@ -555,11 +555,11 @@ Watchlist 分组内的多序列交接：Quant Lab 会保留完整 intake 摘要�
 通道把同一标签页的 `File` 交给 Reader 或 Manga，目标应用继续负责自己的 OPFS、SQLite、Worker 与 Artifact。
 
 Manga 已先把人工/Fixture 区域通过可取消的 `manga.ocr.review` Worker Task 固化成版本化
-`manga/ocr-lines` Artifact；它只验证数据契约，不伪装像素识别。下一步按风险顺序接入真实视觉 Worker
-（ONNX/WebGPU）已提供可选的 Transformers.js ONNX 按区域执行路径，模型缓存、设备降级和失败都在 Worker
+`manga/ocr-lines` Artifact；它只验证数据契约，不伪装像素识别。按风险顺序接入真实视觉 Worker
+（ONNX/WebGPU）后，已提供可选的 Transformers.js ONNX 按区域执行路径，模型缓存、设备降级和失败都在 Worker
 边界内显式处理；CJK 专用模型仍需独立 manifest，不能把 Latin 模型当作日文能力。多页队列已具备持久化
 游标，只重跑未完成页面，并可从暂停/刷新状态恢复。项目级 Glossary 与页面队列一起写入 SQLite，整句命中
-优先、重叠术语最长匹配，术语编辑会使翻译产物失效；下一步是翻译模型和 PDF/CBZ 批处理。
+优先、重叠术语最长匹配，术语编辑会使翻译产物失效；PDF/CBZ 先展开为页面并复用同一页级队列，下一步是翻译模型。
 
 ### Phase 3 — 正式抽包与生态
 
