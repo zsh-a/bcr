@@ -48,7 +48,7 @@ await page.locator('input[type="file"]').setInputFiles({
     "base64",
   ),
 });
-await page.locator(".manga-page-card", { hasText: "review-page.png" }).waitFor({ timeout: 20_000 });
+await page.locator(".manga-page-card", { hasText: "review-page.png" }).last().waitFor({ timeout: 20_000 });
 await page.getByRole("button", { name: "翻译当前页" }).click();
 await page.waitForFunction(
   () =>
@@ -64,11 +64,39 @@ const ocrArtifact = await page
   .count();
 if (ocrArtifact !== 1) fail("review OCR adapter 没有生成 manga/ocr-lines Artifact");
 
+// A second pending page exercises the durable queue cursor and its pause/resume
+// surface. Existing completed pages are skipped instead of being recomputed.
+await page.locator('input[type="file"]').setInputFiles({
+  name: "review-page-2.png",
+  mimeType: "image/png",
+  buffer: Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "base64",
+  ),
+});
+await page
+  .locator(".manga-page-card", { hasText: "review-page-2.png" })
+  .last()
+  .waitFor({ timeout: 20_000 });
+await page.getByRole("button", { name: "处理队列" }).click();
+await page.waitForFunction(
+  () => document.querySelector('[data-batch-status="completed"]') !== null,
+  undefined,
+  { timeout: 30_000 },
+);
+if (!(await page.locator('[data-batch-status="completed"]').innerText()).includes("1/1")) {
+  fail("批处理队列没有跳过已完成页面并完成待处理页面");
+}
+
 await page.locator(".manga-region-row").first().click();
 const textareas = page.locator("textarea");
 if ((await textareas.count()) < 2) fail("文本区域 Inspector 未渲染");
 await textareas.nth(1).fill("审校后的译文");
-if ((await page.locator(".manga-page-card-detail").innerText()).includes("translated")) {
+if (
+  (await page.locator(".manga-page-card-active .manga-page-card-detail").innerText()).includes(
+    "translated",
+  )
+) {
   fail("编辑译文后未标记为 needs review");
 }
 
@@ -86,6 +114,9 @@ if ((await page.locator("textarea").nth(1).inputValue()) !== "审校后的译文
   fail("刷新后项目未恢复审校译文");
 }
 if ((await page.locator(".manga-page-card").count()) < 1) fail("刷新后页面队列未恢复");
+if ((await page.locator('[data-batch-status="completed"]').count()) !== 1) {
+  fail("刷新后批处理状态未恢复");
+}
 
 await page.screenshot({ path: `${dir}/manga-studio.png`, fullPage: true });
 await browser.close();

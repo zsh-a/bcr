@@ -556,8 +556,8 @@ Watchlist 分组内的多序列交接：Quant Lab 会保留完整 intake 摘要�
 
 Manga 已先把人工/Fixture 区域通过可取消的 `manga.ocr.review` Worker Task 固化成版本化
 `manga/ocr-lines` Artifact；它只验证数据契约，不伪装像素识别。下一步按风险顺序接入真实视觉 Worker
-（ONNX/WebGPU），再将 Translate 的 fixture 适配器替换为本地模型与术语表，最后复用同一 Stage contract
-支持 PDF/CBZ 批处理和可恢复的多页作业。
+（ONNX/WebGPU），再将 Translate 的 fixture 适配器替换为本地模型与术语表。多页队列已具备持久化游标，
+只重跑未完成页面，并可从暂停/刷新状态恢复；最后复用同一 Stage contract 支持 PDF/CBZ 批处理。
 
 ### Phase 3 — 正式抽包与生态
 

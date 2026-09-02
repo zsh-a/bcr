@@ -104,6 +104,20 @@ export interface MangaLogEntry {
   readonly message: string;
 }
 
+export type MangaBatchStatus = "running" | "paused" | "completed" | "error";
+
+/** Durable queue job. Pages remain the unit of retry and Artifact lineage. */
+export interface MangaBatchJob {
+  readonly id: string;
+  readonly pageIds: ReadonlyArray<string>;
+  readonly completedPageIds: ReadonlyArray<string>;
+  readonly activePageId: string | null;
+  readonly status: MangaBatchStatus;
+  readonly startedAt: number;
+  readonly updatedAt: number;
+  readonly error?: string | undefined;
+}
+
 export interface MangaState {
   readonly source: MangaSource;
   readonly pages: ReadonlyArray<MangaPage>;
@@ -118,6 +132,7 @@ export interface MangaState {
   readonly outputReady: boolean;
   readonly dirty: boolean;
   readonly logs: ReadonlyArray<MangaLogEntry>;
+  readonly batch: MangaBatchJob | undefined;
 }
 
 /** A page is the unit of caching, review, retry and persistence. */

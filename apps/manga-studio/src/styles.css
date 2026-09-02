@@ -500,6 +500,72 @@
   font-size: 9px;
 }
 
+.manga-batch-card {
+  margin-top: 12px;
+  border: 1px solid var(--manga-border);
+  border-radius: 7px;
+  background: rgba(25, 31, 32, 0.72);
+  padding: 10px;
+}
+
+.manga-batch-running {
+  border-color: color-mix(in srgb, var(--manga-violet) 46%, var(--manga-border));
+  background: color-mix(in srgb, var(--manga-violet) 8%, var(--manga-raised));
+}
+
+.manga-batch-paused {
+  border-color: color-mix(in srgb, var(--manga-amber) 42%, var(--manga-border));
+}
+
+.manga-batch-error {
+  border-color: color-mix(in srgb, var(--manga-danger) 46%, var(--manga-border));
+}
+
+.manga-batch-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--manga-muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+
+.manga-batch-heading span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.manga-batch-heading strong {
+  color: var(--manga-cyan);
+  font-weight: 500;
+}
+
+.manga-batch-progress {
+  height: 3px;
+  margin-top: 9px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--manga-border);
+}
+
+.manga-batch-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--manga-cyan);
+  transition: width 260ms ease;
+}
+
+.manga-batch-card small {
+  display: block;
+  margin-top: 7px;
+  color: var(--manga-faint);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
 .manga-pipeline-section {
   padding-bottom: 17px;
 }

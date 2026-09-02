@@ -7,6 +7,7 @@ import { mangaRuntime } from "./runtime";
 import { manga } from "./store";
 
 let activeRun = 0;
+let activeQueueRun = 0;
 let activeOcr:
   | {
       readonly runId: number;
@@ -138,14 +139,16 @@ async function runReviewOcr(
   }
 }
 
-export async function runMangaPipeline(services?: RuntimeServices): Promise<void> {
+export async function runMangaPipeline(
+  services?: RuntimeServices,
+): Promise<"completed" | "cancelled" | "failed"> {
   const runId = ++activeRun;
   manga.beginRun();
   let currentStage: (typeof stageTimings)[number]["id"] = "normalize";
 
   try {
     for (const [index, stage] of stageTimings.entries()) {
-      if (runId !== activeRun) return;
+      if (runId !== activeRun) return "cancelled";
       currentStage = stage.id;
       manga.updateStage(stage.id, { status: "running", progress: 0.08, error: undefined });
 
@@ -158,7 +161,7 @@ export async function runMangaPipeline(services?: RuntimeServices): Promise<void
       } else {
         await wait(stage.ms);
       }
-      if (runId !== activeRun) return;
+      if (runId !== activeRun) return "cancelled";
 
       if (
         stage.id === "detect" &&
@@ -182,14 +185,64 @@ export async function runMangaPipeline(services?: RuntimeServices): Promise<void
       manga.log("ok", `${stage.id} · ${index + 2}/9 · artifact ready`);
     }
 
-    if (runId === activeRun) manga.finishRun();
+    if (runId === activeRun) {
+      manga.finishRun();
+      return "completed";
+    }
+    return "cancelled";
   } catch (reason) {
     if (runId === activeRun) {
       const message = errorMessage(reason);
       manga.updateStage(currentStage, { status: "error", progress: 0, error: message });
       manga.failRun(message);
+      return "failed";
     }
+    return "cancelled";
   }
+}
+
+/**
+ * Process only pages that still need output. The durable batch cursor makes a
+ * refresh or an explicit pause resumable without rerunning completed pages.
+ */
+export async function runMangaQueue(services?: RuntimeServices): Promise<void> {
+  if (manga.getSnapshot().running || manga.getSnapshot().batch?.status === "running") return;
+  const snapshot = manga.getSnapshot();
+  const existing = snapshot.batch;
+  const resume = existing?.status === "paused";
+  const pageIds = resume
+    ? existing.pageIds
+    : snapshot.pages.filter((page) => !page.outputReady).map((page) => page.id);
+  const validPageIds = pageIds.filter((id) => snapshot.pages.some((page) => page.id === id));
+  if (validPageIds.length === 0) {
+    manga.log("info", "batch · no pages need processing");
+    return;
+  }
+
+  const queueRun = ++activeQueueRun;
+  manga.startBatch(validPageIds, resume);
+  const completed = new Set(
+    resume ? (existing?.completedPageIds.filter((id) => validPageIds.includes(id)) ?? []) : [],
+  );
+
+  for (const pageId of validPageIds) {
+    if (queueRun !== activeQueueRun) return;
+    if (completed.has(pageId)) continue;
+    const page = manga.getSnapshot().pages.find((candidate) => candidate.id === pageId);
+    if (page === undefined) continue;
+    manga.setBatchActivePage(pageId);
+    manga.selectPage(pageId);
+    const result = await runMangaPipeline(services);
+    if (queueRun !== activeQueueRun || result === "cancelled") return;
+    if (result === "failed") {
+      manga.failBatch(`${page.source.name} 处理失败`);
+      return;
+    }
+    manga.completeBatchPage(pageId);
+    completed.add(pageId);
+  }
+
+  if (queueRun === activeQueueRun) manga.finishBatch();
 }
 
 export function cancelMangaPipeline(): void {
@@ -198,4 +251,10 @@ export function cancelMangaPipeline(): void {
   activeOcr = undefined;
   if (active !== undefined) void Effect.runPromise(active.handle.cancel);
   manga.cancelRun();
+}
+
+export function cancelMangaQueue(): void {
+  activeQueueRun += 1;
+  cancelMangaPipeline();
+  manga.pauseBatch();
 }

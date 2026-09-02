@@ -197,7 +197,7 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - `@bcr/manga-studio` 声明页面清单、OCR、翻译、清理、排版和导出的 operation 目录，默认 Graph 可直接交给 `@bcr/graph` 编译
 - 当前视觉模型适配器明确标记为 **Fixture / 离线演示**；导入真实图片后会创建待审校区域，并通过共享 Worker 的
   `manga.ocr.review` 将区域固化为版本化 `manga/ocr-lines` Artifact，不伪装成像素识别结果
-- 多页工作队列支持批量拖入、逐页切换与页级流水线状态；项目配置、审校译文和页面队列写入 SQLite，原图 artifact 写入 OPFS，刷新后自动恢复
+- 多页工作队列支持批量拖入、逐页切换与页级流水线状态；“处理队列”只运行尚未完成的页面，支持暂停、恢复、失败状态与队列进度；项目配置、审校译文、队列游标和页面队列写入 SQLite，原图 artifact 写入 OPFS，刷新后自动恢复
 - 当前 MVP 支持原图 / 清理页 / 译文页切换、置信度审阅、CJK 排版参数和 PNG 导出；Local ONNX 视觉 OCR、Inpainting、CBZ/PDF 批处理作为后续适配器接入
 - 操作契约与 DAG 回归位于 `apps/manga-studio/tests/operations.test.ts`
 

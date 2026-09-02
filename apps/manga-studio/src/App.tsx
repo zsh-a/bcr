@@ -6,6 +6,7 @@ import {
   FileImage,
   FileUp,
   Languages,
+  ListChecks,
   Minus,
   PanelRight,
   Play,
@@ -22,7 +23,7 @@ import {
 import { consumeDocumentHandoff } from "@bcr/document-core";
 import { useOptionalRuntime } from "@bcr/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { cancelMangaPipeline, runMangaPipeline } from "./pipeline";
+import { cancelMangaPipeline, cancelMangaQueue, runMangaPipeline, runMangaQueue } from "./pipeline";
 import {
   createMangaRuntime,
   importImageArtifact,
@@ -151,7 +152,7 @@ export function App() {
     if (runtime === null) return;
     const timer = window.setTimeout(() => void persistProject(runtime), 650);
     return () => window.clearTimeout(timer);
-  }, [runtime, state.pages, state.graph, state.settings]);
+  }, [runtime, state.pages, state.graph, state.settings, state.batch]);
 
   useEffect(() => {
     if (runtime === null) return;
@@ -176,6 +177,13 @@ export function App() {
     state.pages.findIndex((page) => page.id === state.activePageId),
   );
   const totalSize = state.pages.reduce((sum, page) => sum + page.source.size, 0);
+  const batchRunning = state.batch?.status === "running";
+  const batchPaused = state.batch?.status === "paused";
+  const pendingPages = state.pages.filter((page) => !page.outputReady).length;
+  const batchProgress =
+    state.batch === undefined || state.batch.pageIds.length === 0
+      ? 0
+      : state.batch.completedPageIds.length / state.batch.pageIds.length;
 
   const importImage = async (file: File): Promise<void> => {
     if (runtime === null) {
@@ -218,10 +226,7 @@ export function App() {
         },
         [],
       );
-      manga.log(
-        "warn",
-        "视觉 OCR 模型未加载 · 将创建待审校区域并由 review adapter 固化",
-      );
+      manga.log("warn", "视觉 OCR 模型未加载 · 将创建待审校区域并由 review adapter 固化");
     } catch (reason) {
       URL.revokeObjectURL(objectUrl);
       manga.log("error", `import · ${reason instanceof Error ? reason.message : String(reason)}`);
@@ -329,13 +334,22 @@ export function App() {
           <button
             type="button"
             className="manga-button manga-button-secondary"
-            disabled={state.running}
+            disabled={state.running || batchRunning}
             onClick={() => fileInputRef.current?.click()}
           >
             <FileUp className="size-4" />
             导入图片
           </button>
-          {state.running ? (
+          {batchRunning ? (
+            <button
+              type="button"
+              className="manga-button manga-button-danger"
+              onClick={cancelMangaQueue}
+            >
+              <Square className="size-3.5" />
+              暂停队列
+            </button>
+          ) : state.running ? (
             <button
               type="button"
               className="manga-button manga-button-danger"
@@ -350,6 +364,19 @@ export function App() {
               翻译当前页
             </button>
           )}
+          {state.pages.length > 1 &&
+            !state.running &&
+            !batchRunning &&
+            (pendingPages > 0 || batchPaused) && (
+              <button
+                type="button"
+                className="manga-button manga-button-secondary"
+                onClick={() => void runMangaQueue(hostServices ?? undefined)}
+              >
+                <ListChecks className="size-4" />
+                {batchPaused ? "继续队列" : "处理队列"}
+              </button>
+            )}
           <input
             ref={fileInputRef}
             type="file"
@@ -404,7 +431,7 @@ export function App() {
                     type="button"
                     key={page.id}
                     className={`manga-page-card ${page.id === state.activePageId ? "manga-page-card-active" : ""}`}
-                    disabled={state.running && page.id !== state.activePageId}
+                    disabled={(state.running || batchRunning) && page.id !== state.activePageId}
                     aria-label={`选择第 ${index + 1} 页：${page.source.name}`}
                     aria-current={page.id === state.activePageId ? "page" : undefined}
                     onClick={() => manga.selectPage(page.id)}
@@ -430,7 +457,7 @@ export function App() {
             <button
               type="button"
               className="manga-import-card"
-              disabled={state.running}
+              disabled={state.running || batchRunning}
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
@@ -445,6 +472,33 @@ export function App() {
                 <small>PNG / JPG / WEBP</small>
               </span>
             </button>
+            {state.batch !== undefined && (
+              <div
+                className={`manga-batch-card manga-batch-${state.batch.status}`}
+                data-batch-status={state.batch.status}
+              >
+                <div className="manga-batch-heading">
+                  <span>
+                    <ListChecks className="size-3.5" /> QUEUE JOB
+                  </span>
+                  <strong>
+                    {state.batch.completedPageIds.length}/{state.batch.pageIds.length}
+                  </strong>
+                </div>
+                <div className="manga-batch-progress" aria-label="批处理进度">
+                  <span style={{ width: `${batchProgress * 100}%` }} />
+                </div>
+                <small>
+                  {state.batch.status === "running"
+                    ? `处理中 · ${state.batch.activePageId ? "当前页运行中" : "准备下一页"}`
+                    : state.batch.status === "paused"
+                      ? "已暂停 · 可继续"
+                      : state.batch.status === "completed"
+                        ? "已完成 · 新页面可继续加入"
+                        : `失败 · ${state.batch.error ?? "请重试"}`}
+                </small>
+              </div>
+            )}
           </section>
 
           <section className="manga-sidebar-section manga-pipeline-section">

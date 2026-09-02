@@ -4,6 +4,8 @@ import { defaultGraph } from "./operations";
 import { fixtureRegions, fixtureSource } from "./fixture";
 import type {
   MangaLogEntry,
+  MangaBatchJob,
+  MangaBatchStatus,
   MangaPage,
   MangaSettings,
   MangaSource,
@@ -65,6 +67,7 @@ class MangaStore {
     running: false,
     outputReady: initialPage.outputReady,
     dirty: initialPage.dirty,
+    batch: undefined,
     logs: [
       {
         ts: Date.now(),
@@ -333,6 +336,100 @@ class MangaStore {
   failRun(message: string): void {
     this.set({ running: false });
     this.log("error", `pipeline failed · ${message}`);
+  }
+
+  startBatch(pageIds: ReadonlyArray<string>, resume = false): void {
+    const current = this.state.batch;
+    const validIds = [...new Set(pageIds)];
+    const completedPageIds =
+      resume && current?.status === "paused"
+        ? current.completedPageIds.filter((id) => validIds.includes(id))
+        : [];
+    const now = Date.now();
+    const batch: MangaBatchJob = {
+      id: resume && current?.status === "paused" ? current.id : `manga-batch-${now.toString(36)}`,
+      pageIds: validIds,
+      completedPageIds,
+      activePageId: null,
+      status: "running",
+      startedAt: resume && current?.status === "paused" ? current.startedAt : now,
+      updatedAt: now,
+    };
+    this.set({ batch });
+    this.log(
+      "info",
+      `batch · ${completedPageIds.length}/${validIds.length} page(s) · ${resume ? "resumed" : "queued"}`,
+    );
+  }
+
+  setBatchActivePage(activePageId: string): void {
+    const batch = this.state.batch;
+    if (batch === undefined || batch.status !== "running") return;
+    this.set({ batch: { ...batch, activePageId, updatedAt: Date.now() } });
+  }
+
+  completeBatchPage(pageId: string): void {
+    const batch = this.state.batch;
+    if (batch === undefined) return;
+    const completedPageIds = batch.completedPageIds.includes(pageId)
+      ? batch.completedPageIds
+      : [...batch.completedPageIds, pageId];
+    this.set({
+      batch: {
+        ...batch,
+        completedPageIds,
+        activePageId: null,
+        updatedAt: Date.now(),
+      },
+    });
+  }
+
+  finishBatch(): void {
+    const batch = this.state.batch;
+    if (batch === undefined) return;
+    this.set({
+      batch: { ...batch, activePageId: null, status: "completed", updatedAt: Date.now() },
+    });
+    this.log("ok", `batch · ${batch.pageIds.length} page(s) · complete`);
+  }
+
+  pauseBatch(): void {
+    const batch = this.state.batch;
+    if (batch === undefined || batch.status !== "running") return;
+    this.set({
+      batch: { ...batch, status: "paused", updatedAt: Date.now() },
+    });
+    this.log(
+      "warn",
+      `batch · paused · ${batch.completedPageIds.length}/${batch.pageIds.length} page(s) complete`,
+    );
+  }
+
+  failBatch(message: string): void {
+    const batch = this.state.batch;
+    if (batch === undefined) return;
+    this.set({
+      batch: { ...batch, status: "error", updatedAt: Date.now(), error: message },
+    });
+    this.log("error", `batch · failed · ${message}`);
+  }
+
+  restoreBatch(batch: MangaBatchJob | undefined): void {
+    if (batch === undefined) {
+      this.set({ batch: undefined });
+      return;
+    }
+    const status: MangaBatchStatus = batch.status === "running" ? "paused" : batch.status;
+    this.set({
+      batch: {
+        ...batch,
+        status,
+        updatedAt: Date.now(),
+        ...(batch.status === "running" && batch.error === undefined
+          ? { error: "刷新后队列已暂停，可继续处理" }
+          : {}),
+      },
+    });
   }
 }
 
