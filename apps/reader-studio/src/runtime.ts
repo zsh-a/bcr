@@ -16,7 +16,9 @@ import {
   normalizeBookmark,
   normalizeLocator,
   normalizeSearchQuery,
+  makeSnippet,
   searchLibrary,
+  searchTextRange,
   type ReaderBook,
   type ReaderAnnotation,
   type ReaderBookmark,
@@ -851,15 +853,28 @@ export function searchIndexedDetailed(
     );
     if (rows.length === 0) return { hits: searchLibrary(books, query), indexing: false };
     return {
-      hits: rows.map((row) => ({
-        bookId: String(row["book_id"] ?? ""),
-        sectionId: String(row["section_id"] ?? ""),
-        label: String(row["label"] ?? "正文"),
-        snippet: String(row["snippet"] ?? "").replace(/<\/?mark>/gu, ""),
-        score: Number(row["rank"] ?? 0),
-        matchStart: 0,
-        matchLength: normalized.length,
-      })),
+      hits: rows.flatMap((row) => {
+        const bookId = String(row["book_id"] ?? "");
+        const sectionId = String(row["section_id"] ?? "");
+        const book = books.find((candidate) => candidate.id === bookId);
+        const section = book?.sections.find((candidate) => candidate.id === sectionId);
+        if (section === undefined) return [];
+        const range = searchTextRange(section.text, query);
+        return [
+          {
+            bookId,
+            sectionId,
+            label: String(row["label"] ?? section.label ?? "正文"),
+            snippet:
+              range === undefined
+                ? String(row["snippet"] ?? "").replace(/<\/?mark>/gu, "")
+                : makeSnippet(section.text, range.start, range.length),
+            score: Number(row["rank"] ?? 0),
+            matchStart: range?.start ?? 0,
+            matchLength: range?.length ?? normalized.length,
+          },
+        ];
+      }),
       indexing: false,
     };
   } catch {

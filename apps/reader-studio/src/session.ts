@@ -34,6 +34,7 @@ export interface ReaderIndexSession {
 }
 
 let taskSequence = 0;
+const INDEX_ALGORITHM_VERSION = "reader-search-v2";
 
 function isReaderIndexResult(value: unknown): value is ReaderIndexResult {
   if (typeof value !== "object" || value === null) return false;
@@ -52,15 +53,17 @@ function isReaderIndexResult(value: unknown): value is ReaderIndexResult {
 }
 
 function indexSignature(book: ReaderBook): string {
-  if (book.source.ref?.hash !== undefined) return book.source.ref.hash;
-  return [
-    book.id,
-    book.updatedAt,
-    book.sections.length,
-    ...book.sections.map((section) => `${section.id}:${section.text.length}`),
-  ]
-    .join("|")
-    .replace(/[^a-zA-Z0-9._|-]/gu, "_");
+  const sourceSignature =
+    book.source.ref?.hash ??
+    [
+      book.id,
+      book.updatedAt,
+      book.sections.length,
+      ...book.sections.map((section) => `${section.id}:${section.text.length}`),
+    ]
+      .join("|")
+      .replace(/[^a-zA-Z0-9._|-]/gu, "_");
+  return `${INDEX_ALGORITHM_VERSION}:${sourceSignature}`;
 }
 
 function indexCacheRef(book: ReaderBook, signature: string): ArtifactRef {

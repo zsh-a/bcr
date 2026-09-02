@@ -239,6 +239,23 @@ function scrollToReaderSection(sectionId: string, behavior: ScrollBehavior = "sm
   container.scrollTo({ top: Math.max(0, target.offsetTop - 28), behavior });
 }
 
+function scrollToReaderMatch(sectionId: string, behavior: ScrollBehavior = "smooth"): boolean {
+  const container = document.querySelector<HTMLElement>(".reader-reading-scroll");
+  const section = container?.querySelector<HTMLElement>(
+    `[data-reader-section="${CSS.escape(sectionId)}"]`,
+  );
+  const target = section?.querySelector<HTMLElement>('[data-reader-search-match="true"]');
+  if (container === null || container === undefined || target === null || target === undefined) {
+    return false;
+  }
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const top =
+    container.scrollTop + targetRect.top - containerRect.top - container.clientHeight * 0.34;
+  container.scrollTo({ top: Math.max(0, top), behavior });
+  return true;
+}
+
 let readerPersistenceQueue: Promise<void> = Promise.resolve();
 
 function persistReaderSnapshot(runtime: ReaderRuntime): void {
@@ -692,13 +709,15 @@ function BootScreen(props: { error: string | null }) {
   );
 }
 
-function openSearchHit(hit: SearchHit): void {
+function openSearchHit(hit: SearchHit, index?: number): void {
   const state = getReaderState();
   reader.openBook(hit.bookId, hit.sectionId);
   // Keep the query as a lightweight reading context so the destination can
   // show the exact hit in the body. Opening a chapter normally still clears
   // search state through ReaderStore.openBook.
   if (state.query.trim() !== "") reader.setSearch(state.query, state.searchHits, hit.bookId);
+  if (index !== undefined) reader.setSearchActiveIndex(index);
+  reader.revealSearchHit(hit);
   reader.setSearchOpen(false);
 }
 
@@ -1146,7 +1165,7 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
             className={`reader-search-result ${index === searchActiveIndex ? "is-active" : ""}`}
             key={`${hit.bookId}-${hit.sectionId}-${index}`}
             onMouseEnter={() => reader.setSearchActiveIndex(index)}
-            onClick={() => openSearchHit(hit)}
+            onClick={() => openSearchHit(hit, index)}
           >
             <span className="reader-search-result-index">{String(index + 1).padStart(2, "0")}</span>
             <span className="reader-search-result-copy">
@@ -1355,6 +1374,7 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
   const activeSectionId = useReader((state) => state.activeSectionId);
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
   const searchQuery = useReader((state) => state.query);
+  const searchReveal = useReader((state) => state.searchReveal);
   const containerRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<number | null>(null);
   const lastScrollUpdateRef = useRef(0);
@@ -1395,6 +1415,28 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
       scrollToReaderSection(activeSectionId, "auto");
     }
   }, [activeSectionId, contentReadyVersion, progress, props.book]);
+  useEffect(() => {
+    const reveal = searchReveal;
+    if (
+      reveal === null ||
+      reveal.bookId !== props.book.id ||
+      reveal.sectionId !== activeSectionId ||
+      searchQuery.trim() === ""
+    ) {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      // The first mark is the same first occurrence used by the core search
+      // index. If a format cannot expose text marks (for example PDF), keep
+      // the chapter/page context rather than leaving the user at the old
+      // scroll position.
+      if (!scrollToReaderMatch(reveal.sectionId, "smooth")) {
+        scrollToReaderSection(reveal.sectionId, "smooth");
+      }
+      reader.clearSearchReveal(reveal.id);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeSectionId, contentReadyVersion, props.book.id, searchQuery, searchReveal]);
   useEffect(
     () => () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);

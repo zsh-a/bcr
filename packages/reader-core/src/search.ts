@@ -17,8 +17,60 @@ export type ReaderIndexBook = Pick<ReaderBook, "id"> & {
   readonly sections: ReadonlyArray<Pick<ReaderSection, "id" | "label" | "text">>;
 };
 
+export interface SearchTextRange {
+  /** UTF-16 offset in the original section text. */
+  readonly start: number;
+  /** Number of UTF-16 code units in the original section text. */
+  readonly length: number;
+}
+
 export function normalizeSearchQuery(query: string): string {
   return query.normalize("NFKC").trim().replace(/\s+/gu, "").toLocaleLowerCase();
+}
+
+interface NormalizedText {
+  readonly value: string;
+  readonly starts: ReadonlyArray<number>;
+  readonly ends: ReadonlyArray<number>;
+}
+
+/**
+ * Normalize a section while retaining a mapping back to its source offsets.
+ * Search treats compatibility forms and whitespace consistently, but the UI
+ * still needs to highlight the unmodified publication text.
+ */
+function normalizeTextWithOffsets(value: string): NormalizedText {
+  let normalized = "";
+  const starts: number[] = [];
+  const ends: number[] = [];
+  for (let index = 0; index < value.length;) {
+    const start = index;
+    const codePoint = value.codePointAt(index) ?? 0;
+    index += codePoint > 0xffff ? 2 : 1;
+    const character = value.slice(start, index);
+    if (/\s/u.test(character)) continue;
+    const mapped = character.normalize("NFKC").toLocaleLowerCase();
+    normalized += mapped;
+    for (let unitIndex = 0; unitIndex < mapped.length; unitIndex += 1) {
+      starts.push(start);
+      ends.push(index);
+    }
+  }
+  return { value: normalized, starts, ends };
+}
+
+/** Return an original-text range for a normalized query, if present. */
+export function searchTextRange(text: string, query: string): SearchTextRange | undefined {
+  const normalizedQuery = normalizeSearchQuery(query);
+  if (!normalizedQuery || !text) return undefined;
+  const normalized = normalizeTextWithOffsets(text);
+  const index = normalized.value.indexOf(normalizedQuery);
+  if (index < 0) return undefined;
+  const endIndex = index + normalizedQuery.length - 1;
+  const start = normalized.starts[index];
+  const end = normalized.ends[endIndex];
+  if (start === undefined || end === undefined || end < start) return undefined;
+  return { start, length: end - start };
 }
 
 export function makeSnippet(text: string, start: number, length: number, radius = 58): string {
@@ -30,23 +82,13 @@ export function makeSnippet(text: string, start: number, length: number, radius 
   return `${prefix}${text.slice(from, to).replace(/\s+/gu, " ").trim()}${suffix}`;
 }
 
-function findMatch(
-  section: ReaderSection,
-  normalizedQuery: string,
-): { start: number; length: number } | undefined {
-  if (!normalizedQuery || !section.text) return undefined;
-  const normalizedText = section.text.normalize("NFKC").toLocaleLowerCase();
-  const start = normalizedText.indexOf(normalizedQuery);
-  return start < 0 ? undefined : { start, length: normalizedQuery.length };
-}
-
 export function buildSearchIndex(
   book: ReaderIndexBook,
   onProgress: (value: number) => void = () => undefined,
 ): ReadonlyArray<ReaderIndexDocument> {
   const total = Math.max(1, book.sections.length);
   return book.sections.map((section, index) => {
-    const normalizedText = section.text.normalize("NFKC").toLocaleLowerCase();
+    const normalizedText = normalizeTextWithOffsets(section.text).value;
     onProgress((index + 1) / total);
     return {
       bookId: book.id,
@@ -74,15 +116,16 @@ export function searchIndexedDocuments(
     const book = booksById.get(document.bookId);
     const section = book?.sections.find((candidate) => candidate.id === document.sectionId);
     if (section === undefined) continue;
+    const range = searchTextRange(section.text, query);
     const occurrences = document.normalizedText.split(normalized).length - 1;
     hits.push({
       bookId: document.bookId,
       sectionId: document.sectionId,
       label: document.label,
-      snippet: makeSnippet(section.text, start, normalized.length),
+      snippet: makeSnippet(section.text, range?.start ?? 0, range?.length ?? normalized.length),
       score: occurrences > 1 ? occurrences + 1 : 1,
-      matchStart: start,
-      matchLength: normalized.length,
+      matchStart: range?.start ?? 0,
+      matchLength: range?.length ?? normalized.length,
     });
     if (hits.length >= limit) break;
   }
@@ -94,10 +137,10 @@ export function searchBook(book: ReaderBook, query: string, limit = 80): Readonl
   if (!normalized) return [];
   const hits: SearchHit[] = [];
   for (const section of book.sections) {
-    const match = findMatch(section, normalized);
+    const match = searchTextRange(section.text, normalized);
     if (match === undefined) continue;
-    const occurrences =
-      section.text.normalize("NFKC").toLocaleLowerCase().split(normalized).length - 1;
+    const normalizedText = normalizeTextWithOffsets(section.text).value;
+    const occurrences = normalizedText.split(normalized).length - 1;
     hits.push({
       bookId: book.id,
       sectionId: section.id,

@@ -39,7 +39,9 @@ export {
   searchBook,
   searchIndexedDocuments,
   searchLibrary,
+  searchTextRange,
   type ReaderIndexBook,
   type ReaderIndexDocument,
+  type SearchTextRange,
 } from "./search";
 export { adapterFor, type ReaderAdapter, type ReaderOpenInput } from "./adapter";

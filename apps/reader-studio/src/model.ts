@@ -34,6 +34,15 @@ export interface ReaderSearchSession {
   readonly searchOpen: boolean;
 }
 
+/** One-shot request used to move from a search result into its exact context. */
+export interface ReaderSearchReveal {
+  readonly id: number;
+  readonly bookId: string;
+  readonly sectionId: string;
+  readonly matchStart: number;
+  readonly matchLength: number;
+}
+
 export interface ReaderState {
   readonly status: "booting" | "ready" | "error";
   readonly error: string | null;
@@ -48,6 +57,7 @@ export interface ReaderState {
   readonly searchBookId: string | null;
   readonly searchActiveIndex: number;
   readonly searchBusy: boolean;
+  readonly searchReveal: ReaderSearchReveal | null;
   readonly settings: ReaderSettings;
   readonly sidebarOpen: boolean;
   readonly searchOpen: boolean;

@@ -66,7 +66,7 @@ Reader Studio 的现代化落点：`packages/reader-core` 只承载格式无关�
 进度和搜索契约；`apps/reader-studio` 通过 Adapter 接入 TXT / Markdown / HTML / DOCX / EPUB / PDF / CBZ。
 源文件使用 BLAKE3 内容地址写入 OPFS，SQLite WASM 保存书库、设置和进度；章节正文的规范化索引由
 `reader-index.worker` 通过统一 `WorkerPool` 执行，SQLite FTS5 trigram 与内存搜索作为渐进回退，主线程只负责
-React 交互，后续可将 DOCX/EPUB/PDF 深解析沿同一 Session 边界迁移到 Worker。
+React 交互；搜索契约在归一化文本与原文之间保留 UTF-16 偏移，结果点击后精确滚动到首个高亮命中，兼容全角字符、Unicode 兼容形与空白差异；后续可将 DOCX/EPUB/PDF 深解析沿同一 Session 边界迁移到 Worker。
 
 Document Studio 的落点是把跨工作台的内容生命周期显式化：`packages/document-core` 只承载格式识别、
 `DocumentJob`、阶段状态和一次性 handoff 契约；`apps/document-studio` 负责 Inbox、阶段可见性和目标工作台入口。

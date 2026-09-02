@@ -12,6 +12,7 @@ import {
   normalizeSearchQuery,
   searchBook,
   searchIndexedDocuments,
+  searchTextRange,
 } from "../src/search";
 import type { ReaderBook } from "../src/model";
 
@@ -45,6 +46,38 @@ describe("reader-core", () => {
     expect(hits).toHaveLength(1);
     expect(hits[0]?.sectionId).toBe("b");
     expect(hits[0]?.snippet).toContain("进度");
+  });
+
+  it("matches compatibility forms and whitespace while returning source offsets", () => {
+    const offsetBook: ReaderBook = {
+      ...book,
+      id: "offset-book",
+      sections: [
+        {
+          id: "offset",
+          order: 0,
+          label: "偏移",
+          kind: "text",
+          text: "前文 阅读　器 与 ＡＢ。",
+        },
+      ],
+    };
+    const hits = searchBook(offsetBook, "阅读 器");
+    expect(hits[0]).toMatchObject({
+      sectionId: "offset",
+      matchStart: 3,
+      matchLength: 4,
+    });
+    expect(searchTextRange(offsetBook.sections[0]!.text, "ＡＢ")).toEqual({
+      start: 10,
+      length: 2,
+    });
+    const indexed = buildSearchIndex(offsetBook);
+    expect(indexed[0]?.normalizedText).toContain("阅读器");
+    expect(searchIndexedDocuments(indexed, [offsetBook], "阅读 器")[0]).toMatchObject({
+      matchStart: 3,
+      matchLength: 4,
+    });
   });
 
   it("builds a worker-safe index that preserves search semantics", () => {

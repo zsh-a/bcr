@@ -18,6 +18,7 @@ import {
   type ReaderSettings,
   type ReaderState,
   type ReaderSearchSession,
+  type ReaderSearchReveal,
 } from "./model";
 
 const demo = createDemoBook();
@@ -48,6 +49,7 @@ function initialState(): ReaderState {
     searchBookId: null,
     searchActiveIndex: -1,
     searchBusy: false,
+    searchReveal: null,
     settings: DEFAULT_READER_SETTINGS,
     sidebarOpen: true,
     searchOpen: false,
@@ -58,6 +60,7 @@ function initialState(): ReaderState {
 class ReaderStore {
   private state: ReaderState = initialState();
   private readonly listeners = new Set<() => void>();
+  private searchRevealSequence = 0;
 
   getSnapshot = (): ReaderState => this.state;
 
@@ -112,6 +115,7 @@ class ReaderStore {
       searchOpen: searchSession?.searchOpen ?? false,
       searchHits: [],
       searchActiveIndex: -1,
+      searchReveal: null,
       settings,
       status: "ready",
       error: null,
@@ -157,6 +161,7 @@ class ReaderStore {
         searchHits: [],
         searchBookId: null,
         searchActiveIndex: -1,
+        searchReveal: null,
         searchOpen: false,
       });
       return false;
@@ -181,6 +186,7 @@ class ReaderStore {
       searchHits: [],
       searchBookId: null,
       searchActiveIndex: -1,
+      searchReveal: null,
       searchOpen: false,
     });
     return true;
@@ -212,6 +218,7 @@ class ReaderStore {
       searchHits: [],
       searchBookId: null,
       searchActiveIndex: -1,
+      searchReveal: null,
     });
   }
 
@@ -236,6 +243,7 @@ class ReaderStore {
       searchHits: [],
       searchBookId: null,
       searchActiveIndex: -1,
+      searchReveal: null,
       searchOpen: false,
     });
   }
@@ -255,6 +263,7 @@ class ReaderStore {
       searchHits: [],
       searchBookId: null,
       searchActiveIndex: -1,
+      searchReveal: null,
       searchOpen: false,
     });
   }
@@ -274,6 +283,7 @@ class ReaderStore {
       searchHits: [],
       searchBookId: null,
       searchActiveIndex: -1,
+      searchReveal: null,
       searchOpen: false,
     });
   }
@@ -307,6 +317,7 @@ class ReaderStore {
       searchBookId: bookId,
       searchActiveIndex: hits.length > 0 ? 0 : -1,
       searchBusy: false,
+      searchReveal: null,
     });
   }
 
@@ -327,6 +338,22 @@ class ReaderStore {
     this.set({
       searchActiveIndex: Math.min(this.state.searchHits.length - 1, Math.max(0, searchActiveIndex)),
     });
+  }
+
+  revealSearchHit(hit: SearchHit): void {
+    const reveal: ReaderSearchReveal = {
+      id: ++this.searchRevealSequence,
+      bookId: hit.bookId,
+      sectionId: hit.sectionId,
+      matchStart: Math.max(0, hit.matchStart),
+      matchLength: Math.max(0, hit.matchLength),
+    };
+    this.set({ searchReveal: reveal });
+  }
+
+  clearSearchReveal(id: number): void {
+    if (this.state.searchReveal?.id !== id) return;
+    this.set({ searchReveal: null });
   }
 
   setSettings(patch: Partial<ReaderSettings>): void {
