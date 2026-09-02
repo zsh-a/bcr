@@ -140,7 +140,49 @@ function translationFallback(
     effectiveAdapter: "fixture",
     runtime: "fixture",
     effectiveDevice: "fixture",
+    phase: "running",
+    cache: "disabled",
     ...(fallbackReason === undefined ? {} : { fallbackReason }),
+  };
+}
+
+function initialAdapterExecution(execution: MangaAdapterExecution): MangaAdapterExecution {
+  const isPhysicalAdapter =
+    execution.effectiveAdapter === "local" ||
+    execution.effectiveAdapter === "vision.onnx" ||
+    execution.effectiveAdapter === "manga.onnx";
+  return {
+    ...execution,
+    phase: isPhysicalAdapter ? "queued" : "running",
+    ...(isPhysicalAdapter ? {} : { cache: "disabled" as const }),
+  };
+}
+
+function submittedAdapterExecution(
+  execution: MangaAdapterExecution | undefined,
+  handle: TaskHandle,
+): MangaAdapterExecution | undefined {
+  if (execution === undefined) return undefined;
+  const isPhysicalAdapter =
+    execution.effectiveAdapter === "local" ||
+    execution.effectiveAdapter === "vision.onnx" ||
+    execution.effectiveAdapter === "manga.onnx";
+  return {
+    ...execution,
+    phase: handle.cached ? "completed" : isPhysicalAdapter ? "loading-model" : "running",
+    cache: handle.cached ? "hit" : "miss",
+  };
+}
+
+function completedAdapterExecution(
+  execution: MangaAdapterExecution | undefined,
+  handle: TaskHandle,
+): MangaAdapterExecution | undefined {
+  if (execution === undefined) return undefined;
+  return {
+    ...execution,
+    phase: "completed",
+    cache: handle.cached ? "hit" : "miss",
   };
 }
 
@@ -307,11 +349,33 @@ async function runOcrAdapter(
     return undefined;
   }
   activeOcr = { runId, handle };
+  let submittedExecution = submittedAdapterExecution(
+    manga.getSnapshot().stages.find((stage) => stage.id === "ocr")?.execution,
+    handle,
+  );
+  if (submittedExecution !== undefined) {
+    manga.updateStage("ocr", { execution: submittedExecution });
+  }
   const progressFiber = Effect.runFork(
     Stream.runForEach(handle.events, (event) =>
       Effect.sync(() => {
         if (runId === activeRun && event.type === "progress") {
           manga.updateStage("ocr", { progress: event.value });
+          const execution = manga
+            .getSnapshot()
+            .stages.find((stage) => stage.id === "ocr")?.execution;
+          if (execution !== undefined && !handle.cached) {
+            submittedExecution = {
+              ...execution,
+              phase:
+                execution.effectiveAdapter === "review.manual"
+                  ? "running"
+                  : event.value < 0.4
+                    ? "loading-model"
+                    : "running",
+            };
+            manga.updateStage("ocr", { execution: submittedExecution });
+          }
         }
       }),
     ),
@@ -323,12 +387,18 @@ async function runOcrAdapter(
     if (artifact === undefined) throw new Error("ocr adapter returned no artifact");
     const data = await Effect.runPromise(services.artifacts.get(artifact));
     const payload = decodeOcrArtifact(data);
-    if (payload.execution !== undefined) {
-      manga.updateStage("ocr", { execution: payload.execution });
-      if (payload.execution.fallbackReason !== undefined) {
+    const observedExecution = completedAdapterExecution(
+      payload.execution ?? submittedExecution,
+      handle,
+    );
+    const observedPayload =
+      observedExecution === undefined ? payload : { ...payload, execution: observedExecution };
+    if (observedExecution !== undefined) {
+      manga.updateStage("ocr", { execution: observedExecution });
+      if (observedExecution.fallbackReason !== undefined) {
         manga.log(
           "warn",
-          `ocr ${payload.execution.requestedAdapter} → ${payload.execution.effectiveAdapter} · ${payload.execution.fallbackReason}`,
+          `ocr ${observedExecution.requestedAdapter} → ${observedExecution.effectiveAdapter} · ${observedExecution.fallbackReason}`,
         );
       }
     }
@@ -345,7 +415,7 @@ async function runOcrAdapter(
       "ok",
       `ocr ${adapterLabel} adapter · ${artifact.id} · needs-review regions preserved`,
     );
-    return { artifact, payload };
+    return { artifact, payload: observedPayload };
   } finally {
     Effect.runFork(Fiber.interrupt(progressFiber));
     if (activeOcr?.handle === handle) activeOcr = undefined;
@@ -371,11 +441,28 @@ async function runLocalTranslation(
     return undefined;
   }
   activeTranslation = { runId, handle };
+  let submittedExecution = submittedAdapterExecution(
+    manga.getSnapshot().stages.find((stage) => stage.id === "translate")?.execution,
+    handle,
+  );
+  if (submittedExecution !== undefined) {
+    manga.updateStage("translate", { execution: submittedExecution });
+  }
   const progressFiber = Effect.runFork(
     Stream.runForEach(handle.events, (event) =>
       Effect.sync(() => {
         if (runId === activeRun && event.type === "progress") {
           manga.updateStage("translate", { progress: event.value });
+          const execution = manga
+            .getSnapshot()
+            .stages.find((stage) => stage.id === "translate")?.execution;
+          if (execution !== undefined && !handle.cached) {
+            submittedExecution = {
+              ...execution,
+              phase: event.value < 0.4 ? "loading-model" : "running",
+            };
+            manga.updateStage("translate", { execution: submittedExecution });
+          }
         }
       }),
     ),
@@ -390,12 +477,18 @@ async function runLocalTranslation(
     if (payload.version !== 1 || payload.adapter !== "local.onnx") {
       throw new Error("local translation adapter returned an invalid artifact");
     }
-    if (payload.execution !== undefined) {
-      manga.updateStage("translate", { execution: payload.execution });
-      if (payload.execution.fallbackReason !== undefined) {
+    const observedExecution = completedAdapterExecution(
+      payload.execution ?? submittedExecution,
+      handle,
+    );
+    const observedPayload =
+      observedExecution === undefined ? payload : { ...payload, execution: observedExecution };
+    if (observedExecution !== undefined) {
+      manga.updateStage("translate", { execution: observedExecution });
+      if (observedExecution.fallbackReason !== undefined) {
         manga.log(
           "warn",
-          `translate ${payload.execution.requestedAdapter} → ${payload.execution.effectiveAdapter} · ${payload.execution.fallbackReason}`,
+          `translate ${observedExecution.requestedAdapter} → ${observedExecution.effectiveAdapter} · ${observedExecution.fallbackReason}`,
         );
       }
     }
@@ -408,7 +501,7 @@ async function runLocalTranslation(
       }
     }
     manga.log("ok", `translate local ONNX · ${artifact.id} · needs-review segments preserved`);
-    return { artifact, payload };
+    return { artifact, payload: observedPayload };
   } finally {
     Effect.runFork(Fiber.interrupt(progressFiber));
     if (activeTranslation?.handle === handle) activeTranslation = undefined;
@@ -523,14 +616,16 @@ export async function runMangaPipeline(
       let localTranslation: MangaTranslationArtifact | undefined;
       let stageExecution: MangaAdapterExecution | undefined;
       if (stage.id === "ocr") {
-        stageExecution = resolveMangaOcrAdapter(
-          manga.getSnapshot().settings.ocrAdapter,
-          manga.getSnapshot().settings.sourceLanguage,
-          {
-            model: manga.getSnapshot().settings.ocrModel,
-            device: manga.getSnapshot().settings.ocrDevice,
-          },
-        ).execution;
+        stageExecution = initialAdapterExecution(
+          resolveMangaOcrAdapter(
+            manga.getSnapshot().settings.ocrAdapter,
+            manga.getSnapshot().settings.sourceLanguage,
+            {
+              model: manga.getSnapshot().settings.ocrModel,
+              device: manga.getSnapshot().settings.ocrDevice,
+            },
+          ).execution,
+        );
         manga.updateStage(stage.id, { execution: stageExecution });
       }
       if (stage.id === "ocr" && services !== undefined) {
@@ -551,7 +646,7 @@ export async function runMangaPipeline(
           manga.getSnapshot().settings.sourceLanguage,
           { device: manga.getSnapshot().settings.translationDevice },
         );
-        stageExecution = translationResolution.execution;
+        stageExecution = initialAdapterExecution(translationResolution.execution);
         manga.updateStage(stage.id, { execution: stageExecution });
         if (
           manga.getSnapshot().settings.engine === "local" &&
@@ -608,6 +703,11 @@ export async function runMangaPipeline(
         await wait(stage.ms);
       }
       if (runId !== activeRun) return "cancelled";
+
+      if (stageExecution !== undefined && stageExecution.phase !== "completed") {
+        stageExecution = { ...stageExecution, phase: "completed" };
+        manga.updateStage(stage.id, { execution: stageExecution });
+      }
 
       if (
         stage.id === "detect" &&

@@ -114,8 +114,19 @@ function executionLabel(execution: MangaAdapterExecution | undefined): string {
   if (execution === undefined) return "";
   const adapter = execution.effectiveAdapter;
   const device = execution.effectiveDevice.toUpperCase();
+  const phase =
+    execution.phase === "loading-model"
+      ? "加载模型"
+      : execution.phase === "running"
+        ? "执行中"
+        : execution.phase === "completed"
+          ? "已完成"
+          : execution.phase === "queued"
+            ? "排队"
+            : "";
+  const cache = execution.cache === undefined ? "" : `CACHE ${execution.cache.toUpperCase()}`;
   const fallback = fallbackLabel(execution.fallbackReason);
-  return `${adapter} · ${device}${fallback.length > 0 ? ` · ${fallback}` : ""}`;
+  return [adapter, device, phase, cache, fallback].filter((value) => value.length > 0).join(" · ");
 }
 
 function downloadBlob(blob: Blob, name: string): void {

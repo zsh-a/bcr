@@ -37,6 +37,9 @@ export type MangaAdapterFallbackReason =
   | "model-missing"
   | "missing-input";
 
+export type MangaAdapterPhase = "queued" | "loading-model" | "running" | "completed";
+export type MangaAdapterCacheStatus = "hit" | "miss" | "disabled";
+
 /** Persisted execution facts shared by OCR/translation artifacts and stage UI. */
 export interface MangaAdapterExecution {
   readonly kind: "ocr" | "translation";
@@ -45,6 +48,8 @@ export interface MangaAdapterExecution {
   readonly runtime: "review" | "fixture" | RuntimeKind;
   readonly requestedDevice: MangaOcrDevice;
   readonly effectiveDevice: MangaResolvedDevice;
+  readonly phase?: MangaAdapterPhase | undefined;
+  readonly cache?: MangaAdapterCacheStatus | undefined;
   readonly model?: string | undefined;
   readonly sourceLanguage?: MangaSourceLanguage | undefined;
   readonly targetLanguage?: "zh" | undefined;
