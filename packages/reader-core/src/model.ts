@@ -51,6 +51,17 @@ export interface ReaderSection {
   readonly href?: string | undefined;
 }
 
+/** A publication-provided navigation entry (EPUB nav/NCX or a future format). */
+export interface ReaderTocItem {
+  readonly id: string;
+  readonly label: string;
+  /** Resolved section identity; absent for an external/unavailable target. */
+  readonly sectionId?: string | undefined;
+  /** Normalized archive href kept for Locator migration and diagnostics. */
+  readonly href?: string | undefined;
+  readonly children?: ReadonlyArray<ReaderTocItem> | undefined;
+}
+
 export interface ReaderBook {
   readonly id: string;
   readonly title: string;
@@ -59,6 +70,7 @@ export interface ReaderBook {
   readonly coverUrl?: string | undefined;
   readonly source: ReaderSource;
   readonly sections: ReadonlyArray<ReaderSection>;
+  readonly toc?: ReadonlyArray<ReaderTocItem> | undefined;
   readonly importedAt: number;
   readonly updatedAt: number;
   readonly tags: ReadonlyArray<string>;

@@ -8,6 +8,7 @@ export type {
   ReaderProgress,
   ReaderSection,
   ReaderSectionKind,
+  ReaderTocItem,
   ReaderSource,
   ReaderSourceRef,
   SearchHit,

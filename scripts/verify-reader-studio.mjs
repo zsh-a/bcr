@@ -25,6 +25,43 @@ async function docxFixture() {
   return Buffer.from(await blob.arrayBuffer());
 }
 
+async function epubFixture() {
+  const writer = new ZipWriter(new BlobWriter("application/epub+zip"));
+  await writer.add("mimetype", new TextReader("application/epub+zip"));
+  await writer.add(
+    "META-INF/container.xml",
+    new TextReader(
+      `<?xml version="1.0" encoding="UTF-8"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="EPUB/package.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`,
+    ),
+  );
+  await writer.add(
+    "EPUB/package.opf",
+    new TextReader(
+      `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="book-id">reader-epub-qa</dc:identifier><dc:title>EPUB 导航验证</dc:title><dc:creator>Reader QA</dc:creator><dc:language>zh-CN</dc:language></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="chapter-1" href="chapter-1.xhtml" media-type="application/xhtml+xml"/><item id="chapter-2" href="chapter-2.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="chapter-1"/><itemref idref="chapter-2"/></spine></package>`,
+    ),
+  );
+  await writer.add(
+    "EPUB/nav.xhtml",
+    new TextReader(
+      `<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc"><ol><li><a href="chapter-1.xhtml">第一章 · 入口</a><ol><li><a href="chapter-1.xhtml#idea">章内重点</a></li></ol></li><li><a href="chapter-2.xhtml">第二章 · 继续</a></li></ol></nav></body></html>`,
+    ),
+  );
+  await writer.add(
+    "EPUB/chapter-1.xhtml",
+    new TextReader(
+      `<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>第一章 · 入口</title></head><body><h1>第一章 · 入口</h1><p id="idea">EPUB 的章节内容可以通过出版物导航定位。</p></body></html>`,
+    ),
+  );
+  await writer.add(
+    "EPUB/chapter-2.xhtml",
+    new TextReader(
+      `<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>第二章 · 继续</title></head><body><h1>第二章 · 继续</h1><p>目录和 Locator 保持同一条语义链路。</p></body></html>`,
+    ),
+  );
+  const blob = await writer.close();
+  return Buffer.from(await blob.arrayBuffer());
+}
+
 function pdfFixture() {
   const contents = [
     "BT /F1 20 Tf 50 350 Td (Continuous page one) Tj ET",
@@ -170,6 +207,28 @@ await page.locator(".reader-import-progress").waitFor({ state: "hidden", timeout
 const docxText = await page.locator(".reader-reading-column").innerText();
 if (!docxText.includes("来自 Word 的段落") || !docxText.includes("表格 3")) {
   fail("DOCX 标题、正文或表格没有解析到统一阅读模型");
+}
+
+const epub = await epubFixture();
+await page.locator("input[type=file]").first().setInputFiles({
+  name: "reader-navigation-fixture.epub",
+  mimeType: "application/epub+zip",
+  buffer: epub,
+});
+await page.locator(".reader-reading-intro h1", { hasText: "EPUB 导航验证" }).waitFor({
+  timeout: 20_000,
+});
+await page.locator(".reader-import-progress").waitFor({ state: "hidden", timeout: 20_000 });
+if ((await page.locator(".reader-toc-item").count()) < 3) {
+  fail("EPUB 出版物导航没有恢复层级目录");
+}
+const tocText = await page.locator(".reader-chapter-rail").innerText();
+if (!tocText.includes("章内重点") || !tocText.includes("第二章 · 继续")) {
+  fail("EPUB 导航标签没有渲染到目录栏");
+}
+await page.getByRole("button", { name: "第二章 · 继续" }).click();
+if (!(await page.locator(".reader-toolbar-title").innerText()).includes("第二章")) {
+  fail("EPUB 目录点击没有跳转到对应章节");
 }
 
 const pdf = pdfFixture();

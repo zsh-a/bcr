@@ -76,6 +76,7 @@ interface PersistedBook {
     readonly href?: string | undefined;
     readonly imageAlt?: string | undefined;
   }>;
+  readonly toc?: ReaderBook["toc"];
   readonly importedAt: number;
   readonly updatedAt: number;
   readonly tags: ReadonlyArray<string>;
@@ -261,6 +262,7 @@ function persistBook(book: ReaderBook): PersistedBook {
       ...(section.href === undefined ? {} : { href: section.href }),
       ...(section.imageAlt === undefined ? {} : { imageAlt: section.imageAlt }),
     })),
+    ...(book.toc === undefined ? {} : { toc: book.toc }),
     importedAt: book.importedAt,
     updatedAt: book.updatedAt,
     tags: book.tags,
@@ -565,6 +567,7 @@ async function restoreBook(
             size: persisted.source.size,
             ref: persisted.source.ref,
           },
+          ...(persisted.toc === undefined ? {} : { toc: persisted.toc }),
         };
       }
     } catch {
@@ -584,6 +587,7 @@ async function restoreBook(
       ...(persisted.source.ref === undefined ? {} : { ref: persisted.source.ref }),
     },
     sections: persisted.sections,
+    ...(persisted.toc === undefined ? {} : { toc: persisted.toc }),
     importedAt: persisted.importedAt,
     updatedAt: persisted.updatedAt,
     tags: persisted.tags,

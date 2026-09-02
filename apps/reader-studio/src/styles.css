@@ -1293,6 +1293,42 @@
   font-weight: 650;
 }
 
+.reader-toc-level {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.reader-toc-level-1,
+.reader-toc-level-2,
+.reader-toc-level-3,
+.reader-toc-level-4 {
+  margin: 2px 0 2px 11px;
+  border-left: 1px solid var(--reader-border);
+  padding-left: 5px;
+}
+
+.reader-toc-level-2,
+.reader-toc-level-3,
+.reader-toc-level-4 {
+  margin-left: 8px;
+}
+
+.reader-toc-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reader-toc-item > button {
+  width: 100%;
+}
+
+.reader-toc-item > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .reader-rail-footer {
   display: flex;
   align-items: flex-start;

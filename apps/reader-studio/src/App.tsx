@@ -40,6 +40,7 @@ import {
   type ReaderAnnotation,
   type ReaderBookmark,
   type ReaderSection,
+  type ReaderTocItem,
   type SearchHit,
 } from "@bcr/reader-core";
 import {
@@ -1509,6 +1510,61 @@ function ReadingEnd(props: { book: ReaderBook }) {
   );
 }
 
+function tocSectionId(book: ReaderBook, item: ReaderTocItem): string | undefined {
+  if (
+    item.sectionId !== undefined &&
+    book.sections.some((section) => section.id === item.sectionId)
+  ) {
+    return item.sectionId;
+  }
+  if (item.href !== undefined) {
+    return book.sections.find((section) => section.href === item.href)?.id;
+  }
+  return undefined;
+}
+
+function ReaderTocTree(props: {
+  book: ReaderBook;
+  items: ReadonlyArray<ReaderTocItem>;
+  activeSectionId: string | null;
+  level?: number;
+}) {
+  const level = props.level ?? 0;
+  return (
+    <div className={`reader-toc-level reader-toc-level-${Math.min(level, 4)}`}>
+      {props.items.map((item, index) => {
+        const sectionId = tocSectionId(props.book, item);
+        const children = item.children ?? [];
+        return (
+          <div className="reader-toc-item" key={item.id}>
+            <button
+              type="button"
+              className={sectionId === props.activeSectionId ? "is-active" : ""}
+              aria-current={sectionId === props.activeSectionId ? "page" : undefined}
+              disabled={sectionId === undefined}
+              title={sectionId === undefined ? "此条目未包含可读正文" : undefined}
+              onClick={() => {
+                if (sectionId !== undefined) reader.openBook(props.book.id, sectionId);
+              }}
+            >
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <strong>{item.label}</strong>
+            </button>
+            {children.length > 0 && (
+              <ReaderTocTree
+                book={props.book}
+                items={children}
+                activeSectionId={props.activeSectionId}
+                level={level + 1}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ChapterRail(props: { book: ReaderBook }) {
   const activeSectionId = useReader((state) => state.activeSectionId);
   const bookmarks = useReader((state) => state.bookmarksByBook[props.book.id] ?? EMPTY_BOOKMARKS);
@@ -1521,18 +1577,22 @@ function ChapterRail(props: { book: ReaderBook }) {
         <List className="reader-icon" />
         <span>目录</span>
       </div>
-      {props.book.sections.map((section) => (
-        <button
-          type="button"
-          key={section.id}
-          className={section.id === activeSectionId ? "is-active" : ""}
-          aria-current={section.id === activeSectionId ? "page" : undefined}
-          onClick={() => reader.openBook(props.book.id, section.id)}
-        >
-          <span>{String(section.order + 1).padStart(2, "0")}</span>
-          <strong>{section.label}</strong>
-        </button>
-      ))}
+      {props.book.toc !== undefined && props.book.toc.length > 0 ? (
+        <ReaderTocTree book={props.book} items={props.book.toc} activeSectionId={activeSectionId} />
+      ) : (
+        props.book.sections.map((section) => (
+          <button
+            type="button"
+            key={section.id}
+            className={section.id === activeSectionId ? "is-active" : ""}
+            aria-current={section.id === activeSectionId ? "page" : undefined}
+            onClick={() => reader.openBook(props.book.id, section.id)}
+          >
+            <span>{String(section.order + 1).padStart(2, "0")}</span>
+            <strong>{section.label}</strong>
+          </button>
+        ))
+      )}
       {bookmarks.length > 0 && (
         <>
           <div className="reader-rail-divider" />

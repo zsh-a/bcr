@@ -12,6 +12,7 @@ import type {
   ReaderFormat,
   ReaderOpenInput,
   ReaderSection,
+  ReaderTocItem,
 } from "@bcr/reader-core";
 import { READER_FORMAT_CATALOG, readerAcceptAttribute } from "@bcr/reader-core";
 
@@ -73,7 +74,13 @@ function mimeForFormat(format: ReaderFormat): string {
 function makeBook(
   input: ReaderOpenInput,
   sections: ReadonlyArray<ReaderSection>,
-  metadata: { title?: string; author?: string; language?: string; coverUrl?: string } = {},
+  metadata: {
+    title?: string;
+    author?: string;
+    language?: string;
+    coverUrl?: string;
+    toc?: ReadonlyArray<ReaderTocItem>;
+  } = {},
 ): ReaderBook {
   const now = Date.now();
   return {
@@ -84,6 +91,7 @@ function makeBook(
     ...(metadata.coverUrl === undefined ? {} : { coverUrl: metadata.coverUrl }),
     source: baseSource(input),
     sections,
+    ...(metadata.toc === undefined ? {} : { toc: metadata.toc }),
     importedAt: now,
     updatedAt: now,
     tags: [displayFormat(input.format)],
@@ -407,6 +415,157 @@ async function readArchiveText(entry: FileEntry): Promise<string> {
   return entry.getData(new TextWriter());
 }
 
+function archiveDirectory(path: string): string {
+  return normalizeArchivePath(path).split("/").slice(0, -1).join("/");
+}
+
+function directChildren(element: Element, name: string): ReadonlyArray<Element> {
+  return [...element.children].filter((child) => localName(child) === name);
+}
+
+function manifestHasProperty(properties: string, property: string): boolean {
+  return properties
+    .split(/\s+/u)
+    .some((candidate) => candidate.toLocaleLowerCase() === property.toLocaleLowerCase());
+}
+
+function tocTarget(
+  base: string,
+  target: string | null,
+  sectionsByHref: ReadonlyMap<string, ReaderSection>,
+): { href?: string; sectionId?: string } {
+  if (target === null || target.trim() === "") return {};
+  const href = resolveArchivePath(base, target);
+  const section = sectionsByHref.get(href);
+  return {
+    href,
+    ...(section === undefined ? {} : { sectionId: section.id }),
+  };
+}
+
+function tocItem(
+  id: string,
+  label: string,
+  target: { href?: string; sectionId?: string },
+  children: ReadonlyArray<ReaderTocItem>,
+): ReaderTocItem {
+  return {
+    id,
+    label: label.trim() || "未命名条目",
+    ...(target.sectionId === undefined ? {} : { sectionId: target.sectionId }),
+    ...(target.href === undefined ? {} : { href: target.href }),
+    ...(children.length === 0 ? {} : { children }),
+  };
+}
+
+function parseEpubNavItems(
+  list: Element,
+  base: string,
+  sectionsByHref: ReadonlyMap<string, ReaderSection>,
+  prefix: string,
+): ReadonlyArray<ReaderTocItem> {
+  return directChildren(list, "li").flatMap((item, index) => {
+    const anchor =
+      directChildren(item, "a")[0] ??
+      [...item.getElementsByTagName("*")].find((element) => localName(element) === "a");
+    const nested = directChildren(item, "ol")[0];
+    const children =
+      nested === undefined
+        ? []
+        : parseEpubNavItems(nested, base, sectionsByHref, `${prefix}.${index + 1}`);
+    const label = anchor?.textContent?.replace(/\s+/gu, " ").trim() ?? "";
+    const target = tocTarget(base, anchor?.getAttribute("href") ?? null, sectionsByHref);
+    if (label === "" && children.length === 0) return [];
+    return [tocItem(`${prefix}.${index + 1}`, label, target, children)];
+  });
+}
+
+function parseEpubNav(
+  raw: string,
+  navPath: string,
+  sectionsByHref: ReadonlyMap<string, ReaderSection>,
+): ReadonlyArray<ReaderTocItem> {
+  const document = new DOMParser().parseFromString(raw, "text/html");
+  const nav =
+    [...document.getElementsByTagName("*")].find((element) => {
+      if (localName(element) !== "nav") return false;
+      const type = `${element.getAttribute("epub:type") ?? ""} ${element.getAttribute("type") ?? ""}`;
+      return /(?:^|\s)toc(?:\s|$)/iu.test(type);
+    }) ?? [...document.getElementsByTagName("*")].find((element) => localName(element) === "nav");
+  const list =
+    nav === undefined
+      ? undefined
+      : (directChildren(nav, "ol")[0] ??
+        [...nav.getElementsByTagName("*")].find((element) => localName(element) === "ol"));
+  return list === undefined
+    ? []
+    : parseEpubNavItems(list, archiveDirectory(navPath), sectionsByHref, "toc");
+}
+
+function parseNcxItems(
+  container: Element,
+  base: string,
+  sectionsByHref: ReadonlyMap<string, ReaderSection>,
+  prefix: string,
+): ReadonlyArray<ReaderTocItem> {
+  return directChildren(container, "navPoint").flatMap((point, index) => {
+    const label =
+      firstLocalElement(point, "navLabel")?.textContent?.replace(/\s+/gu, " ").trim() ?? "";
+    const content = firstLocalElement(point, "content");
+    const target = tocTarget(base, content?.getAttribute("src") ?? null, sectionsByHref);
+    const children = parseNcxItems(point, base, sectionsByHref, `${prefix}.${index + 1}`);
+    if (label === "" && children.length === 0) return [];
+    return [tocItem(`${prefix}.${index + 1}`, label, target, children)];
+  });
+}
+
+async function epubToc(
+  files: ReadonlyMap<string, FileEntry>,
+  manifest: ReadonlyMap<
+    string,
+    { id: string; href: string; mediaType: string; properties: string }
+  >,
+  sections: ReadonlyArray<ReaderSection>,
+): Promise<ReadonlyArray<ReaderTocItem>> {
+  const sectionsByHref = new Map(
+    sections.flatMap((section) =>
+      section.href === undefined ? [] : [[section.href, section] as const],
+    ),
+  );
+  const navItem = [...manifest.values()].find((item) =>
+    manifestHasProperty(item.properties, "nav"),
+  );
+  if (navItem !== undefined) {
+    const entry = files.get(navItem.href);
+    if (entry !== undefined) {
+      try {
+        const items = parseEpubNav(await readArchiveText(entry), navItem.href, sectionsByHref);
+        if (items.length > 0) return items;
+      } catch {
+        // A malformed navigation document should not make the publication unreadable.
+      }
+    }
+  }
+  const ncxItem = [...manifest.values()].find(
+    (item) => item.mediaType.toLocaleLowerCase() === "application/x-dtbncx+xml",
+  );
+  if (ncxItem === undefined) return [];
+  const entry = files.get(ncxItem.href);
+  if (entry === undefined) return [];
+  try {
+    const document = new DOMParser().parseFromString(
+      await readArchiveText(entry),
+      "application/xml",
+    );
+    const navMap = firstLocalElement(document, "navMap");
+    return navMap === undefined
+      ? []
+      : parseNcxItems(navMap, archiveDirectory(ncxItem.href), sectionsByHref, "toc");
+  } catch {
+    return [];
+  }
+}
+
 async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
   const reader = new ZipReader(new BlobReader(input.file));
   const allocatedUrls: string[] = [];
@@ -432,7 +591,10 @@ async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
       "application/xml",
     );
     const packageBase = normalizeArchivePath(packagePath).split("/").slice(0, -1).join("/");
-    const manifest = new Map<string, { href: string; mediaType: string; properties: string }>();
+    const manifest = new Map<
+      string,
+      { id: string; href: string; mediaType: string; properties: string }
+    >();
     for (const element of [...packageDocument.getElementsByTagName("*")].filter(
       (candidate) => localName(candidate) === "item",
     )) {
@@ -440,6 +602,7 @@ async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
       const href = element.getAttribute("href");
       if (id && href)
         manifest.set(id, {
+          id,
           href: resolveArchivePath(packageBase, href),
           mediaType: element.getAttribute("media-type") ?? "",
           properties: element.getAttribute("properties") ?? "",
@@ -487,6 +650,8 @@ async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
     }
     if (sections.length === 0) throw new Error("EPUB spine 没有可读章节");
 
+    const toc = await epubToc(files, manifest, sections);
+
     let coverUrl: string | undefined;
     const coverItem =
       [...manifest.values()].find((item) => item.properties.includes("cover-image")) ??
@@ -510,6 +675,7 @@ async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
       ...(author === undefined ? {} : { author }),
       ...(language === undefined ? {} : { language }),
       ...(coverUrl === undefined ? {} : { coverUrl }),
+      ...(toc.length === 0 ? {} : { toc }),
     });
     succeeded = true;
     return book;
