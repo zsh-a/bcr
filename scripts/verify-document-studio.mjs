@@ -73,6 +73,13 @@ if (!contentSummary.includes("结构化内容已就绪") || !contentSummary.incl
   fail("标准化 Content Package 摘要未展示");
 }
 
+await page.getByRole("button", { name: "打开全局搜索" }).click();
+const workspaceSearch = page.getByRole("textbox", { name: "全局搜索" });
+await workspaceSearch.fill("local-first document pipeline");
+await page.getByRole("option", { name: /Field notes/u }).waitFor({ timeout: 10_000 });
+await page.getByRole("option", { name: /Field notes/u }).click();
+await page.waitForURL(/\/documents\?job=/u);
+
 await page.locator(".document-stage-card", { hasText: "Translate" }).click();
 await page.getByRole("button", { name: "运行 Translate" }).click();
 await page.waitForFunction(

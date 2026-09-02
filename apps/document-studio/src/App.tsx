@@ -177,7 +177,7 @@ export function App() {
   useEffect(() => {
     const search = hostServices?.search;
     if (search === undefined) return;
-    const records: ReadonlyArray<SearchDocument> = state.jobs.map((job) => {
+    const records: SearchDocument[] = state.jobs.map((job) => {
       const done = job.stages.filter((stage) => stage.status === "done").length;
       const body = [
         job.sourceTextPreview ?? "",
@@ -198,8 +198,39 @@ export function App() {
         updatedAt: job.updatedAt,
       };
     });
+    if (contentPackage !== undefined) {
+      for (const block of contentPackage.blocks) {
+        records.push({
+          id: `document:block:${active.id}:${block.id}`,
+          source: "documents",
+          kind: "document",
+          title: block.label,
+          subtitle: `${active.name} · ${formatLabel(active.format)} · 原文`,
+          body: block.text,
+          tags: ["document", active.format, "content", block.kind],
+          route: `/documents?job=${encodeURIComponent(active.id)}`,
+          updatedAt: active.updatedAt,
+        });
+      }
+    }
+    if (translationPackage !== undefined) {
+      for (const block of translationPackage.blocks) {
+        const body = [block.text, block.translatedText].filter(Boolean).join(" ");
+        records.push({
+          id: `document:translation:${active.id}:${block.id}`,
+          source: "documents",
+          kind: "document",
+          title: `${block.label} · 译文`,
+          subtitle: `${active.name} · ${translationPackage.targetLanguage}`,
+          ...(body.length === 0 ? {} : { body }),
+          tags: ["document", active.format, "translation", block.status],
+          route: `/documents?job=${encodeURIComponent(active.id)}`,
+          updatedAt: active.updatedAt,
+        });
+      }
+    }
     search.replaceSource("documents", records);
-  }, [hostServices?.search, state.jobs]);
+  }, [active, contentPackage, hostServices?.search, state.jobs, translationPackage]);
 
   useEffect(() => {
     if (routeJobId === null || appliedRouteRef.current === routeJobId) return;
@@ -571,6 +602,9 @@ export function App() {
           {contentPackage !== undefined && contentStats !== undefined && (
             <ContentPackageCard content={contentPackage} stats={contentStats} />
           )}
+          {contentPackage !== undefined && (
+            <DocumentBlockContextCard content={contentPackage} translation={translationPackage} />
+          )}
           {translationPackage !== undefined && translationStats !== undefined && (
             <TranslationPackageCard package={translationPackage} stats={translationStats} />
           )}
@@ -676,6 +710,46 @@ function TranslationPackageCard(props: {
         </div>
       </div>
       <p className="document-content-hint">Block ID 与原文保持一致，Typeset 可直接接续。</p>
+    </section>
+  );
+}
+
+function DocumentBlockContextCard(props: {
+  content: DocumentContentPackage;
+  translation: DocumentTranslationPackage | undefined;
+}) {
+  const translatedById = new Map(
+    props.translation?.blocks.map((block) => [block.id, block.translatedText]) ?? [],
+  );
+  const blocks = props.content.blocks.slice(0, 3);
+  return (
+    <section className="document-block-context" aria-label="内容块上下文">
+      <div className="document-block-context-heading">
+        <div>
+          <span className="document-eyebrow">BLOCK CONTEXT</span>
+          <strong>{props.translation === undefined ? "抽取内容" : "原文 · 译文"}</strong>
+        </div>
+        <span>{props.content.blocks.length} total</span>
+      </div>
+      <div className="document-block-context-list">
+        {blocks.map((block, index) => {
+          const translated = translatedById.get(block.id);
+          return (
+            <div className="document-block-context-item" key={block.id}>
+              <span className="document-block-context-label">
+                {String(index + 1).padStart(2, "0")} · {block.label}
+              </span>
+              <p>{block.text}</p>
+              {translated !== undefined && translated.length > 0 && <p>{translated}</p>}
+            </div>
+          );
+        })}
+      </div>
+      {props.content.blocks.length > blocks.length && (
+        <span className="document-block-context-more">
+          + {props.content.blocks.length - blocks.length} blocks 已加入全局搜索
+        </span>
+      )}
     </section>
   );
 }
