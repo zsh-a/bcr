@@ -14,6 +14,8 @@ page.on("pageerror", (error) => fail(`pageerror: ${error.message}`));
 await page.goto(base, { waitUntil: "networkidle" });
 await page.waitForTimeout(1_500);
 await page.getByRole("button", { name: "刷新本地 Artifact 容量" }).waitFor();
+await page.getByRole("tab", { name: "存储" }).click();
+await page.getByText("Storage Plane").waitFor();
 const body = await page.locator("body").innerText();
 if (!/(objects|scanning storage)/u.test(body)) fail("顶栏未显示本地存储状态");
 

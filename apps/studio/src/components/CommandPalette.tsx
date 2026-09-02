@@ -29,6 +29,7 @@ import { importFile, runTask } from "../runtime";
 import { useSelection } from "../router";
 import { useServices } from "../services";
 import { studio, useStudio } from "../store";
+import { CACHE_RETENTION, JOURNAL_RETENTION } from "../storage-policy";
 import { formatBytes } from "./ui";
 
 interface Command {
@@ -64,10 +65,6 @@ type MaintenanceState =
   | { readonly status: "running"; readonly plan: MaintenancePlan }
   | { readonly status: "done"; readonly result: MaintenanceResult }
   | { readonly status: "error"; readonly message: string };
-
-const DAY_MS = 24 * 60 * 60 * 1_000;
-const CACHE_RETENTION = { maxAgeMs: 30 * DAY_MS, maxEntries: 200 } as const;
-const JOURNAL_RETENTION = { maxAgeMs: 90 * DAY_MS, maxEntries: 500 } as const;
 
 /** 命令面板（Base UI Dialog + ⌘K）。 */
 export function CommandPalette(props: { open: boolean; onOpenChange: (open: boolean) => void }) {

@@ -98,6 +98,8 @@ Market Atlas 数据质量与交互，以及 Manga Studio 单页翻译、Reader S
   `blocked`；导入 → 计算 → **刷新浏览器 → 历史恢复、重跑直接缓存命中**（`node scripts/verify-persistence.mjs`）
 - **Artifact 存储可观测性**：共享 Runtime 顶栏展示本地 Artifact 对象数与容量；统计按 30 秒低频刷新，
   也可手动刷新，清单查询只访问 OPFS/Memory 的路径和 size，不读取大对象内容。
+- **Storage Plane 面板**：Studio 的「存储」Dock tab 集中展示 Artifact 后端分布、项目源文件、最近产物及
+  Cache / TaskJournal 保留候选；面板只读，治理动作统一从 ⌘K 命令进入。
 - **Artifact 安全清理**：⌘K →「清理未追踪 Artifact」先展示 dry-run 候选，只有用户显式确认才执行；
   当前项目源文件和已有血缘对象默认保留，执行前重新核对路径与字节数，竞态对象自动跳过并写入日志。
 - **缓存与历史保留**：⌘K →「整理过期缓存与历史」按 30 天 / 90 天 TTL 及 200 / 500 条上限生成计划；

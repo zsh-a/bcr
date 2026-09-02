@@ -9,6 +9,7 @@ import { useCallback } from "react";
 import { ConsolePanel } from "./ConsolePanel";
 import { InspectorPanel } from "./InspectorPanel";
 import { ProjectPanel } from "./ProjectPanel";
+import { StoragePanel } from "./StoragePanel";
 import { TasksPanel } from "./TasksPanel";
 import { WorkspacePanel } from "./WorkspacePanel";
 
@@ -24,6 +25,7 @@ const components: Record<string, React.FunctionComponent<IDockviewPanelProps>> =
   project: () => <ProjectPanel />,
   workspace: () => <WorkspacePanel />,
   inspector: () => <InspectorPanel />,
+  storage: () => <StoragePanel />,
   tasks: () => <TasksPanel />,
   console: () => <ConsolePanel />,
 };
@@ -47,6 +49,13 @@ function defaultLayout(api: DockviewApi): void {
     title: "Inspector",
     position: { referencePanel: "workspace", direction: "right" },
     initialWidth: 304,
+  });
+  api.addPanel({
+    id: "storage",
+    component: "storage",
+    title: "存储",
+    position: { referencePanel: "inspector", direction: "within" },
+    inactive: true,
   });
   const tasks = api.addPanel({
     id: "tasks",
@@ -84,6 +93,19 @@ export function Dock() {
       }
     }
     if (!restored) defaultLayout(api);
+    // 旧版用户布局可能没有 Storage tab；补 panel 时保持当前活动面板不变。
+    if (api.getPanel("storage") === undefined) {
+      const reference = api.getPanel("inspector") ?? api.getPanel("workspace");
+      if (reference !== undefined) {
+        api.addPanel({
+          id: "storage",
+          component: "storage",
+          title: "存储",
+          position: { referencePanel: reference, direction: "within" },
+          inactive: true,
+        });
+      }
+    }
 
     // 布局变化 → 持久化（debounce）
     let timer: ReturnType<typeof setTimeout> | undefined;
