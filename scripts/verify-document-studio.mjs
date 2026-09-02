@@ -76,8 +76,12 @@ if (!contentSummary.includes("结构化内容已就绪") || !contentSummary.incl
 await page.getByRole("button", { name: "打开全局搜索" }).click();
 const workspaceSearch = page.getByRole("textbox", { name: "全局搜索" });
 await workspaceSearch.fill("local-first document pipeline");
-await page.getByRole("option", { name: /Field notes/u }).waitFor({ timeout: 10_000 });
-await page.getByRole("option", { name: /Field notes/u }).click();
+// The persistent verification profile can contain the same fixture from an
+// earlier run; select the newest matching result without relying on strict
+// uniqueness of display titles.
+const fieldNotesResult = page.getByRole("option", { name: /Field notes/u }).first();
+await fieldNotesResult.waitFor({ timeout: 10_000 });
+await fieldNotesResult.click();
 await page.waitForURL(/\/documents\?job=/u);
 
 await page.locator(".document-stage-card", { hasText: "Translate" }).click();
@@ -131,7 +135,7 @@ await page.getByRole("button", { name: /打开 Reader/ }).click();
 await page.locator(".reader-studio").waitFor({ timeout: 20_000 });
 if (!new URL(page.url()).pathname.endsWith("/reader")) fail("Reader handoff 没有更新路由");
 await page
-  .locator(".reader-book-card", { hasText: "Field notes" })
+  .locator(".reader-book-card", { hasText: /field[- ]notes/iu })
   .first()
   .waitFor({ timeout: 20_000 });
 await page.getByLabel("阅读内容").getByText("Field notes（人工修订）").waitFor({ timeout: 10_000 });

@@ -11,6 +11,8 @@ export interface DocumentBlockGeometry {
 }
 
 export type DocumentBlockKind = "heading" | "paragraph" | "quote" | "code" | "image" | "page";
+/** Inline writing mode used by visual sources such as manga speech bubbles. */
+export type DocumentBlockWritingMode = "horizontal-tb" | "vertical-rl";
 
 /** A format-neutral unit that can be rendered, indexed or sent to translation. */
 export interface DocumentBlock {
@@ -23,6 +25,8 @@ export interface DocumentBlock {
   readonly pageNumber?: number | undefined;
   readonly href?: string | undefined;
   readonly geometry?: DocumentBlockGeometry | undefined;
+  readonly writingMode?: DocumentBlockWritingMode | undefined;
+  readonly confidence?: number | undefined;
 }
 
 export interface DocumentContentMetadata {
@@ -90,6 +94,10 @@ function blockKind(value: unknown): DocumentBlockKind {
     : "paragraph";
 }
 
+function writingMode(value: unknown): DocumentBlockWritingMode | undefined {
+  return value === "horizontal-tb" || value === "vertical-rl" ? value : undefined;
+}
+
 function cleanText(value: unknown): string {
   return typeof value === "string" ? value.replace(/\r\n?/gu, "\n").trim() : "";
 }
@@ -146,6 +154,11 @@ function normalizeBlock(
       ? Math.max(1, Math.floor(value.pageNumber))
       : undefined;
   const geometry = normalizeGeometry(value.geometry);
+  const mode = writingMode(value.writingMode);
+  const confidence =
+    typeof value.confidence === "number" && Number.isFinite(value.confidence)
+      ? clamp(value.confidence, 0, 1)
+      : undefined;
   return {
     id,
     order: index,
@@ -156,6 +169,8 @@ function normalizeBlock(
     ...(pageNumber === undefined ? {} : { pageNumber }),
     ...(href === undefined ? {} : { href }),
     ...(geometry === undefined ? {} : { geometry }),
+    ...(mode === undefined ? {} : { writingMode: mode }),
+    ...(confidence === undefined ? {} : { confidence }),
   };
 }
 

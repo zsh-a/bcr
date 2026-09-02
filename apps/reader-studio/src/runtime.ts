@@ -22,7 +22,13 @@ import {
   type ReaderBookmark,
   type SearchHit,
 } from "@bcr/reader-core";
-import type { DocumentContentPackage, DocumentTranslationPackage } from "@bcr/document-core";
+import {
+  decodeDocumentContentPackage,
+  decodeDocumentTranslationPackage,
+  type DocumentContentPackage,
+  type DocumentHandoff,
+  type DocumentTranslationPackage,
+} from "@bcr/document-core";
 import { formatForFile, openReaderContentPackage, openReaderFile } from "./adapters";
 import {
   createReaderParseSession,
@@ -279,6 +285,89 @@ export async function importReaderContentPackage(
       },
     },
   };
+}
+
+function mimeForDocumentFormat(format: DocumentHandoff["format"]): string {
+  switch (format) {
+    case "pdf":
+      return "application/pdf";
+    case "epub":
+    case "cbz":
+      return "application/zip";
+    case "docx":
+      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    case "html":
+      return "text/html";
+    case "markdown":
+      return "text/markdown";
+    case "image":
+      return "image/*";
+    default:
+      return "text/plain";
+  }
+}
+
+async function fileFromHandoffArtifact(
+  artifacts: ArtifactStore,
+  handoff: DocumentHandoff,
+): Promise<File> {
+  if (handoff.sourceRef === undefined) {
+    throw new Error("Document handoff 缺少可恢复的 source Artifact");
+  }
+  const blob = await Effect.runPromise(artifacts.getBlob(handoff.sourceRef));
+  return new File([blob], handoff.name, {
+    type: handoff.sourceRef.format ?? mimeForDocumentFormat(handoff.format),
+  });
+}
+
+async function packageFromArtifact<T>(
+  artifacts: ArtifactStore,
+  ref: ArtifactRef,
+  decode: (value: unknown) => T | undefined,
+): Promise<T> {
+  const bytes = await Effect.runPromise(artifacts.get(ref));
+  let value: unknown;
+  try {
+    value = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+  } catch {
+    throw new Error(`Document handoff Artifact ${ref.id} 不是有效 JSON`);
+  }
+  const decoded = decode(value);
+  if (decoded === undefined) throw new Error(`Document handoff Artifact ${ref.id} 契约校验失败`);
+  return decoded;
+}
+
+/**
+ * Import a Document handoff from either its tab-local fast path or durable
+ * Artifact refs. Upstream artifacts can be supplied by the Studio host when
+ * the target app owns a separate OPFS namespace.
+ */
+export async function importReaderDocumentHandoff(
+  runtime: ReaderRuntime,
+  handoff: DocumentHandoff,
+  upstreamArtifacts?: ArtifactStore,
+  signal?: AbortSignal,
+): Promise<ReaderBook> {
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  const artifacts = upstreamArtifacts ?? runtime.artifacts;
+  const file = handoff.file ?? (await fileFromHandoffArtifact(artifacts, handoff));
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  const content =
+    handoff.content ??
+    (handoff.contentRef === undefined
+      ? undefined
+      : await packageFromArtifact(artifacts, handoff.contentRef, decodeDocumentContentPackage));
+  const translation =
+    handoff.translation ??
+    (handoff.translationRef === undefined
+      ? undefined
+      : await packageFromArtifact(
+          artifacts,
+          handoff.translationRef,
+          decodeDocumentTranslationPackage,
+        ));
+  if (content === undefined) return importReaderFile(runtime, file, signal);
+  return importReaderContentPackage(runtime, file, content, translation, signal);
 }
 
 function persistBook(book: ReaderBook): PersistedBook {

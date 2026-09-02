@@ -1,3 +1,4 @@
+import type { ArtifactRef } from "@bcr/core";
 import type { DocumentContentPackage } from "./content";
 import type { DocumentFormat } from "./model";
 import type { DocumentTranslationPackage } from "./translation";
@@ -12,7 +13,14 @@ export interface DocumentHandoff {
   readonly name: string;
   readonly format: DocumentFormat;
   readonly size: number;
-  readonly file: File;
+  /** Optional tab-local fast path. Durable handoffs use sourceRef instead. */
+  readonly file?: File | undefined;
+  /** Immutable source object; the target can rebuild a File after a refresh. */
+  readonly sourceRef?: ArtifactRef | undefined;
+  /** Optional canonical content artifact; inline content remains a fast path. */
+  readonly contentRef?: ArtifactRef | undefined;
+  /** Optional translated content artifact; inline translation remains a fast path. */
+  readonly translationRef?: ArtifactRef | undefined;
   /** Optional normalized payload; kept in memory for a zero-copy handoff. */
   readonly content?: DocumentContentPackage | undefined;
   /** Optional reviewed translation that shares the same block IDs as content. */
@@ -30,12 +38,19 @@ export interface DocumentHandoffRecord {
   readonly completedAt?: number | undefined;
 }
 
-interface PublishHandoffInput {
+export interface PublishDocumentHandoffInput {
   readonly jobId: string;
   readonly target: DocumentHandoffTarget;
   readonly name: string;
   readonly format: DocumentFormat;
-  readonly file: File;
+  /** Kept for an immediate same-tab fast path; not serialized. */
+  readonly file?: File | undefined;
+  /** Durable source artifact. Required when the File is not available later. */
+  readonly sourceRef?: ArtifactRef | undefined;
+  readonly contentRef?: ArtifactRef | undefined;
+  readonly translationRef?: ArtifactRef | undefined;
+  /** Optional size when publishing without a File. */
+  readonly size?: number | undefined;
   readonly content?: DocumentContentPackage | undefined;
   readonly translation?: DocumentTranslationPackage | undefined;
 }
@@ -45,6 +60,11 @@ export interface DocumentHandoffMarker {
   readonly target: DocumentHandoffTarget;
   readonly jobId: string;
   readonly name: string;
+  readonly format: DocumentFormat;
+  readonly size: number;
+  readonly sourceRef?: ArtifactRef | undefined;
+  readonly contentRef?: ArtifactRef | undefined;
+  readonly translationRef?: ArtifactRef | undefined;
   readonly createdAt: number;
 }
 
@@ -61,6 +81,33 @@ function createId(): string {
     return crypto.randomUUID();
   }
   return `handoff-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function isArtifactRef(value: unknown): value is ArtifactRef {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Partial<ArtifactRef>;
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.type === "string" &&
+    (candidate.storage === "memory" ||
+      candidate.storage === "shared-memory" ||
+      candidate.storage === "opfs")
+  );
+}
+
+function isDocumentFormat(value: unknown): value is DocumentFormat {
+  return (
+    value === "txt" ||
+    value === "markdown" ||
+    value === "html" ||
+    value === "docx" ||
+    value === "fb2" ||
+    value === "epub" ||
+    value === "pdf" ||
+    value === "cbz" ||
+    value === "image" ||
+    value === "unknown"
+  );
 }
 
 function writeMarker(marker: DocumentHandoffMarker): void {
@@ -164,7 +211,26 @@ export function getDocumentHandoffMarker(): DocumentHandoffMarker | undefined {
     ) {
       return undefined;
     }
-    return marker as DocumentHandoffMarker;
+    // v1 markers only carried identity fields. Keep them consumable after an
+    // upgrade; durable refs are optional and targets will report a useful
+    // recovery error when neither a ref nor a tab-local File is available.
+    const format = isDocumentFormat(marker.format) ? marker.format : "unknown";
+    const size =
+      typeof marker.size === "number" && Number.isFinite(marker.size)
+        ? Math.max(0, marker.size)
+        : 0;
+    return {
+      id: marker.id,
+      target: marker.target,
+      jobId: marker.jobId,
+      name: marker.name,
+      format,
+      size,
+      ...(isArtifactRef(marker.sourceRef) ? { sourceRef: marker.sourceRef } : {}),
+      ...(isArtifactRef(marker.contentRef) ? { contentRef: marker.contentRef } : {}),
+      ...(isArtifactRef(marker.translationRef) ? { translationRef: marker.translationRef } : {}),
+      createdAt: marker.createdAt,
+    };
   } catch {
     return undefined;
   }
@@ -178,24 +244,31 @@ function clearMarker(id: string): void {
       sessionStorage.removeItem(SESSION_KEY);
     }
   } catch {
-    // Best effort only; the File stays in the module-local handoff map.
+    // Best effort only; the in-memory fast path may still be available.
   }
 }
 
 /**
- * Publish a one-tab handoff. The File never goes through the URL or storage;
- * only a small marker is persisted so a target can explain an expired link.
+ * Publish a handoff. A File is kept only as an immediate same-tab fast path;
+ * source/content/translation refs make the handoff recoverable after refresh.
  */
-export function publishDocumentHandoff(input: PublishHandoffInput): string {
+export function publishDocumentHandoff(input: PublishDocumentHandoffInput): string {
+  if (input.file === undefined && input.sourceRef === undefined) {
+    throw new Error("document handoff requires a File or durable sourceRef");
+  }
   const id = createId();
+  const size = Math.max(0, input.size ?? input.file?.size ?? 0);
   const handoff: DocumentHandoff = {
     id,
     jobId: input.jobId,
     target: input.target,
     name: input.name,
     format: input.format,
-    size: input.file.size,
-    file: input.file,
+    size,
+    ...(input.file === undefined ? {} : { file: input.file }),
+    ...(input.sourceRef === undefined ? {} : { sourceRef: input.sourceRef }),
+    ...(input.contentRef === undefined ? {} : { contentRef: input.contentRef }),
+    ...(input.translationRef === undefined ? {} : { translationRef: input.translationRef }),
     ...(input.content === undefined ? {} : { content: input.content }),
     ...(input.translation === undefined ? {} : { translation: input.translation }),
     createdAt: Date.now(),
@@ -214,6 +287,11 @@ export function publishDocumentHandoff(input: PublishHandoffInput): string {
     target: input.target,
     jobId: input.jobId,
     name: input.name,
+    format: input.format,
+    size: handoff.size,
+    ...(handoff.sourceRef === undefined ? {} : { sourceRef: handoff.sourceRef }),
+    ...(handoff.contentRef === undefined ? {} : { contentRef: handoff.contentRef }),
+    ...(handoff.translationRef === undefined ? {} : { translationRef: handoff.translationRef }),
     createdAt: handoff.createdAt,
   });
   return id;
@@ -225,7 +303,34 @@ export function consumeDocumentHandoff(
   target: DocumentHandoffTarget,
 ): DocumentHandoff | undefined {
   const handoff = pending.get(id);
-  if (handoff === undefined || handoff.target !== target) return undefined;
+  if (handoff === undefined) {
+    const marker = getDocumentHandoffMarker();
+    if (marker?.id !== id || marker.target !== target) return undefined;
+    const recovered: DocumentHandoff = {
+      id: marker.id,
+      jobId: marker.jobId,
+      target: marker.target,
+      name: marker.name,
+      format: marker.format,
+      size: marker.size,
+      ...(marker.sourceRef === undefined ? {} : { sourceRef: marker.sourceRef }),
+      ...(marker.contentRef === undefined ? {} : { contentRef: marker.contentRef }),
+      ...(marker.translationRef === undefined ? {} : { translationRef: marker.translationRef }),
+      createdAt: marker.createdAt,
+    };
+    clearMarker(id);
+    upsertHistory({
+      id: recovered.id,
+      jobId: recovered.jobId,
+      target: recovered.target,
+      name: recovered.name,
+      createdAt: recovered.createdAt,
+      status: "consumed",
+      completedAt: Date.now(),
+    });
+    return recovered;
+  }
+  if (handoff.target !== target) return undefined;
   pending.delete(id);
   clearMarker(id);
   upsertHistory({
@@ -241,5 +346,5 @@ export function consumeDocumentHandoff(
 }
 
 export function hasDocumentHandoff(id: string): boolean {
-  return pending.has(id);
+  return pending.has(id) || getDocumentHandoffMarker()?.id === id;
 }

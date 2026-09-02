@@ -12,6 +12,7 @@ import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import { Context, Effect, Layer } from "effect";
 import { decodeGraph, encodeGraph } from "@bcr/graph";
+import type { DocumentHandoff } from "@bcr/document-core";
 import { FIXTURE_PAGE_URL } from "./fixture";
 import { manga } from "./store";
 import type {
@@ -101,6 +102,36 @@ export async function createMangaRuntime(): Promise<MangaRuntime> {
 
 export function mangaRuntime(): MangaRuntime | undefined {
   return currentRuntime;
+}
+
+function mimeForDocumentFormat(format: DocumentHandoff["format"]): string {
+  switch (format) {
+    case "pdf":
+      return "application/pdf";
+    case "cbz":
+      return "application/zip";
+    case "image":
+      return "image/*";
+    default:
+      return "application/octet-stream";
+  }
+}
+
+/** Resolve a Document handoff from the host ArtifactStore after a refresh. */
+export async function fileFromDocumentHandoff(
+  runtime: MangaRuntime,
+  handoff: DocumentHandoff,
+  upstreamArtifacts?: ArtifactStore,
+): Promise<File> {
+  if (handoff.file !== undefined) return handoff.file;
+  if (handoff.sourceRef === undefined) {
+    throw new Error("Document handoff 缺少可恢复的 source Artifact");
+  }
+  const artifacts = upstreamArtifacts ?? runtime.artifacts;
+  const blob = await Effect.runPromise(artifacts.getBlob(handoff.sourceRef));
+  return new File([blob], handoff.name, {
+    type: handoff.sourceRef.format ?? mimeForDocumentFormat(handoff.format),
+  });
 }
 
 /** Stream a user file into the same Artifact namespace used by future OCR tasks. */

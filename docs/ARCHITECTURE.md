@@ -70,8 +70,9 @@ React 交互，后续可将 DOCX/EPUB/PDF 深解析沿同一 Session 边界迁�
 
 Document Studio 的落点是把跨工作台的内容生命周期显式化：`packages/document-core` 只承载格式识别、
 `DocumentJob`、阶段状态和一次性 handoff 契约；`apps/document-studio` 负责 Inbox、阶段可见性和目标工作台入口。
-文件内容不进入 URL 或 localStorage，Reader / Manga handoff 只在当前标签页传递 `File`，由目标应用重新写入自己的
-Artifact / OPFS 命名空间。这样 OCR、翻译、排版模型可以逐阶段替换，失败或未接入时仍然能保留可解释的状态边界。
+文件内容不进入 URL 或 localStorage；Reader / Manga handoff 以当前标签页的 `File` 作为快速路径，同时把源文件、规范化内容和译文的
+`ArtifactRef` 写入 marker，由宿主 ArtifactStore 在刷新后重建 Blob，再由目标应用写入自己的 Artifact / OPFS 命名空间。这样 OCR、翻译、
+排版模型可以逐阶段替换，失败或未接入时仍然能保留可解释的状态边界。
 
 总体架构图（含 Control Plane / Data Plane 边界）：
 
@@ -551,8 +552,8 @@ Watchlist 分组内的多序列交接：Quant Lab 会保留完整 intake 摘要�
 
 `@bcr/document-core` 以 `DocumentJob` + 七阶段状态机统一 TXT / Markdown / HTML / DOCX / FB2 / EPUB / PDF / CBZ / 图片
 的生命周期：Ingest / Normalize 已可用，Extract、fixture Translate 和 Typeset preview 已通过共享 Scheduler / WorkerPool
-生成独立 JSON Artifact；OCR 仍明确标记为 planned，不用 fixture 冒充视觉模型结果。Document Inbox 提供本地导入、元数据预览和阶段 Inspector；一次性 handoff
-通道把同一标签页的 `File` 交给 Reader 或 Manga，目标应用继续负责自己的 OPFS、SQLite、Worker 与 Artifact。
+生成独立 JSON Artifact；OCR 仍明确标记为 planned，不用 fixture 冒充视觉模型结果。Document Inbox 提供本地导入、元数据预览和阶段 Inspector；handoff
+通道把同一标签页的 `File` 与可恢复的 Artifact 引用交给 Reader 或 Manga，目标应用继续负责自己的 OPFS、SQLite、Worker 与 Artifact。
 
 Manga 已先把人工/Fixture 区域通过可取消的 `manga.ocr.review` Worker Task 固化成版本化
 `manga/ocr-lines` Artifact；它只验证数据契约，不伪装像素识别。按风险顺序接入真实视觉 Worker
@@ -562,6 +563,9 @@ Manga 已先把人工/Fixture 区域通过可取消的 `manga.ocr.review` Worker
 优先、重叠术语最长匹配，术语编辑会使翻译产物失效；PDF/CBZ 先展开为页面并复用同一页级队列。
 翻译模型目录现提供 Fixture 与多语 NLLB Local ONNX 适配器；Local 结果写成独立的
 `manga/translation-lines` Artifact，取消、设备降级和失败沿用 Worker 边界。
+Manga OCR/审校区域现在可投影为 `DocumentContentPackage`，翻译区域可投影为同 block ID 的
+`DocumentTranslationPackage`；这些规范化 blocks 同时驱动 Reader/Document handoff 和 Workspace 全局搜索，保留 geometry、
+writing mode、confidence 与 provenance，避免漫画与文档各自维护一套内容模型。
 清理阶段同步输出 `manga/clean-page` 掩码 Artifact；Inpaint 仍是实验能力，未接入时记录
 `requestedMode=inpaint` 与 `effectiveMode=fill`，禁止把稳定填充伪装成生成式修复。
 

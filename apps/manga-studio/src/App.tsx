@@ -29,10 +29,12 @@ import {
 import { useLocationSearch, useOptionalRuntime } from "@bcr/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { expandMangaArchive, formatForMangaFile } from "./archive";
+import { mangaPageToDocumentPackages } from "./document-adapter";
 import { cancelMangaPipeline, cancelMangaQueue, runMangaPipeline, runMangaQueue } from "./pipeline";
 import { findGlossaryMatches } from "./glossary";
 import {
   createMangaRuntime,
+  fileFromDocumentHandoff,
   importImageArtifact,
   persistProject,
   restoreProject,
@@ -181,22 +183,47 @@ export function App() {
   useEffect(() => {
     const search = hostServices?.search;
     if (search === undefined || runtime === null) return;
-    const records: ReadonlyArray<SearchDocument> = state.pages.map((page, index) => ({
-      id: `manga:page:${page.id}`,
-      source: "manga",
-      kind: "manga-page",
-      title: page.source.name,
-      subtitle: `page ${index + 1} · ${page.regions.length} regions · ${page.outputReady ? "ready" : "in progress"}`,
-      body: page.regions
-        .flatMap((region) => [region.label, region.sourceText, region.translatedText])
-        .join(" ")
-        .slice(0, 24_000),
-      tags: ["manga", "ocr", "translation"],
-      route: `/manga?page=${encodeURIComponent(page.id)}`,
-      updatedAt: 0,
-    }));
+    const records: SearchDocument[] = [];
+    for (const [index, page] of state.pages.entries()) {
+      const packages = mangaPageToDocumentPackages(page, state.settings.sourceLanguage);
+      records.push({
+        id: `manga:page:${page.id}`,
+        source: "manga",
+        kind: "manga-page",
+        title: page.source.name,
+        subtitle: `page ${index + 1} · ${page.regions.length} regions · ${page.outputReady ? "ready" : "in progress"}`,
+        body: packages.content.blocks
+          .flatMap((block, blockIndex) => [
+            block.label,
+            block.text,
+            packages.translation.blocks[blockIndex]?.translatedText ?? "",
+          ])
+          .join(" ")
+          .slice(0, 24_000),
+        tags: ["manga", "ocr", "translation"],
+        route: `/manga?page=${encodeURIComponent(page.id)}`,
+        updatedAt: 0,
+      });
+      for (const block of packages.content.blocks) {
+        const translation = packages.translation.blocks.find(
+          (candidate) => candidate.id === block.id,
+        );
+        const body = [block.text, translation?.translatedText ?? ""].filter(Boolean).join(" ");
+        records.push({
+          id: `manga:region:${page.id}:${block.id}`,
+          source: "manga",
+          kind: "manga-region",
+          title: block.label,
+          subtitle: `${page.source.name} · ${translation?.status ?? "needs-review"}`,
+          ...(body.length === 0 ? {} : { body }),
+          tags: ["manga", "region", block.writingMode ?? "horizontal-tb"],
+          route: `/manga?page=${encodeURIComponent(page.id)}`,
+          updatedAt: 0,
+        });
+      }
+    }
     search.replaceSource("manga", records);
-  }, [hostServices?.search, runtime, state.pages]);
+  }, [hostServices?.search, runtime, state.pages, state.settings.sourceLanguage]);
 
   useEffect(() => {
     if (routePageId === null || appliedRouteRef.current === routePageId) return;
@@ -363,12 +390,29 @@ export function App() {
       );
       return;
     }
-    if (formatForMangaFile(handoff.file) === "unknown") {
-      manga.log("warn", `handoff · ${handoff.name} needs a page-image adapter before Manga Studio`);
-      return;
-    }
-    void importFiles([handoff.file]);
-  }, [importFiles, runtime]);
+    void (async () => {
+      try {
+        const file = await fileFromDocumentHandoff(runtime, handoff, hostServices?.artifacts);
+        if (formatForMangaFile(file) === "unknown") {
+          manga.log(
+            "warn",
+            `handoff · ${handoff.name} needs a page-image adapter before Manga Studio`,
+          );
+          return;
+        }
+        await importFiles([file]);
+        manga.log(
+          "ok",
+          `handoff · ${handoff.name} restored from ${handoff.sourceRef === undefined ? "tab-local File" : "source Artifact"}`,
+        );
+      } catch (reason) {
+        manga.log(
+          "error",
+          `handoff · ${handoff.name} restore failed · ${reason instanceof Error ? reason.message : String(reason)}`,
+        );
+      }
+    })();
+  }, [fileFromDocumentHandoff, hostServices?.artifacts, importFiles, runtime]);
 
   const addRegion = (): void => {
     const index = state.regions.length + 1;

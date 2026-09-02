@@ -9,7 +9,8 @@
     "./glossary": "./src/glossary.ts",
     "./store": "./src/store.ts",
     "./model": "./src/model.ts",
-    "./operations": "./src/operations.ts"
+    "./operations": "./src/operations.ts",
+    "./document-adapter": "./src/document-adapter.ts"
   },
   "dependencies": {
     "@bcr/core": "workspace:*",

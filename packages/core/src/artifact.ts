@@ -88,6 +88,12 @@ export interface ArtifactStore {
   readonly getStream: (
     ref: ArtifactRef,
   ) => Effect.Effect<ReadableStream<Uint8Array>, ArtifactNotFound>;
+  /**
+   * Read an object as a Blob without forcing callers to materialize a large
+   * byte array. OPFS-backed stores can return their native file snapshot;
+   * memory stores transparently fall back to a Blob copy.
+   */
+  readonly getBlob: (ref: ArtifactRef) => Effect.Effect<Blob, ArtifactNotFound>;
   readonly delete: (ref: ArtifactRef) => Effect.Effect<void>;
   readonly has: (ref: ArtifactRef) => Effect.Effect<boolean>;
 
@@ -379,6 +385,28 @@ export function artifactStore(
               stream === undefined
                 ? Effect.fail(new ArtifactNotFound({ artifactId: ref.id }))
                 : Effect.succeed(stream),
+            ),
+          ),
+        getBlob: (ref) =>
+          Effect.promise(async () => {
+            const store = backend(ref);
+            if (store.getBlob !== undefined) {
+              return store.getBlob(pathOf(ref));
+            }
+            const bytes = await store.get(pathOf(ref));
+            return bytes === undefined
+              ? undefined
+              : new Blob([
+                  bytes.buffer.slice(
+                    bytes.byteOffset,
+                    bytes.byteOffset + bytes.byteLength,
+                  ) as ArrayBuffer,
+                ]);
+          }).pipe(
+            Effect.flatMap((blob) =>
+              blob === undefined
+                ? Effect.fail(new ArtifactNotFound({ artifactId: ref.id }))
+                : Effect.succeed(blob),
             ),
           ),
         delete: (ref) =>

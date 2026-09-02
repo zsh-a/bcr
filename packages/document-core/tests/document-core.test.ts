@@ -1,15 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   consumeDocumentHandoff,
   createDocumentContentPackage,
   createDocumentJob,
   formatForName,
+  hasDocumentHandoff,
   listDocumentHandoffs,
   markDocumentHandoffExpired,
   markReadyStages,
   nextAction,
   publishDocumentHandoff,
 } from "../src";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("document-core", () => {
   it("normalizes common document extensions", () => {
@@ -109,5 +114,44 @@ describe("document-core", () => {
       id,
       status: "expired",
     });
+  });
+
+  it("从持久化 marker 恢复 artifact-backed handoff，而不需要 File 句柄", () => {
+    const values = new Map<string, string>();
+    vi.stubGlobal("sessionStorage", {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    });
+    const sourceRef = {
+      id: "document/source/hash",
+      type: "file/epub",
+      storage: "opfs" as const,
+      format: "application/epub+zip",
+      hash: "hash",
+    };
+    values.set(
+      "bcr.document-handoff.v1",
+      JSON.stringify({
+        id: "recovered-handoff",
+        target: "reader",
+        jobId: "job-recovered",
+        name: "recovered.epub",
+        format: "epub",
+        size: 42,
+        sourceRef,
+        createdAt: 12,
+      }),
+    );
+
+    expect(hasDocumentHandoff("recovered-handoff")).toBe(true);
+    const recovered = consumeDocumentHandoff("recovered-handoff", "reader");
+    expect(recovered?.file).toBeUndefined();
+    expect(recovered).toMatchObject({
+      id: "recovered-handoff",
+      sourceRef,
+      size: 42,
+    });
+    expect(hasDocumentHandoff("recovered-handoff")).toBe(false);
   });
 });

@@ -89,6 +89,17 @@ describe("ArtifactStore inventory / usage", () => {
     expect(changes).toBe(2);
   });
 
+  it("以 Blob 读取对象，避免调用方为大文件强制 materialize byte array", async () => {
+    const memory = new MemoryStore();
+    const artifacts = await makeArtifacts({ memory });
+    const source = ref("source/blob");
+    await Effect.runPromise(artifacts.put(source, new Uint8Array([65, 66, 67])));
+
+    const blob = await Effect.runPromise(artifacts.getBlob(source));
+    expect(blob.size).toBe(3);
+    expect(await blob.text()).toBe("ABC");
+  });
+
   it("cleanup plan 保护根与血缘对象，只标记未追踪产物；reclaim 二次校验后删除", async () => {
     const memory = new MemoryStore();
     const artifacts = await makeArtifacts({ memory });

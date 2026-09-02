@@ -27,6 +27,7 @@ export {
   type DocumentBlock,
   type DocumentBlockGeometry,
   type DocumentBlockKind,
+  type DocumentBlockWritingMode,
   type DocumentContentMetadata,
   type DocumentContentPackage,
   type DocumentContentPackageInput,
@@ -57,4 +58,5 @@ export {
   type DocumentHandoffRecord,
   type DocumentHandoffStatus,
   type DocumentHandoffTarget,
+  type PublishDocumentHandoffInput,
 } from "./handoff";

@@ -33,33 +33,34 @@
 
 与架构文档的对应关系：
 
-| 架构                                  | 实现                                                                                  |
-| ------------------------------------- | ------------------------------------------------------------------------------------- |
-| §2 ComputeTask / §3 ArtifactRef       | `packages/core/src/schema.ts`（Effect Schema）                                        |
-| §3 DAG：cancel descendants / 下游失效 | `packages/core/src/scheduler.ts`（cancel 级联、invalidateArtifact）                   |
-| §3 DAG 正向编排                       | `scheduler.submitPipeline`（命名端口绑定 + 上游完成自动触发 + fail-fast）             |
-| §6.1 Effect 调度语义                  | Scheduler：cancel / timeout / retry(Schedule) / progress Stream                       |
-| §5 Resource Manager                   | 线程/内存/GPU 多维预算；FIFO 排队、取消释放、超额快速失败、占用快照                   |
-| §6.2 typed MessagePort 协议           | `packages/runtime-worker/src/protocol.ts`（Effect Schema 编解码）                     |
-| §5 Worker 生命周期 ≠ Task 生命周期    | `WorkerPool` 可取消等待、关闭传播、min/max 按需扩容与 idle timeout 自动收缩           |
-| §7 Content-Addressed Cache            | `cacheKey = BLAKE3(ordered(port + artifactHash) + operation + config + runtime)`      |
-| §7 Artifact 内容身份                  | 源文件流式 BLAKE3；派生 JSON/波形携带内容 hash 并写入不可变路径                       |
-| §7 缓存持久化（刷新不重算）           | `packages/storage-sqlite`：cache_entries 表 + 血缘（task_outputs / dependencies）     |
-| §4/§8 OPFS + 窗口流动                 | `BinaryStore`（readRange/putStream/size），kernel 按 4MB 窗口读取                     |
-| Artifact 生命周期可观测性             | `ArtifactStore.inventory/usage`：跨后端容量清单、前缀过滤与稳定聚合，不读取内容       |
-| Artifact 安全 GC                      | `planCleanup/reclaim`：血缘 + 显式根保护、dry-run、path/size 二次校验后再回收         |
-| Cache / TaskJournal 保留策略          | Scheduler 维护入口：缓存 30 天 / 200 条、历史 90 天 / 500 条，终态与竞态二次校验      |
-| Workspace 全局搜索                    | `@bcr/core` 轻量索引契约：按 source 增量替换、中文/英文词项匹配、SQLite 元数据持久化  |
-| §8 SQLite WASM 元数据                 | `openSqliteDb`（整库字节经 BinaryStore 落 OPFS，可换任意 BinaryStore）                |
-| §8 TaskJournal / 崩溃恢复             | queued/running/终态写穿 SQLite；输入完整时重放，缺失时转 blocked                      |
-| §9.1 wasm-bindgen kernel              | `crates/kernels`（wasm32-unknown-unknown）                                            |
-| §10.1 WebGPU 探测降级                 | `apps/media-studio`：ASR device=auto（GPU→WASM 静默降级）/显式选择；headless 走 WASM  |
-| §10.2 Whisper ASR                     | transformers.js ONNX（q8 / webgpu fp32+q4），失败回退演示引擎                         |
-| 文本翻译                              | opus-mt（英↔中方向可选）：逐条 cue 批量平移，1:1 对齐，无二次音频推理                 |
-| §14 Quant workload                    | DuckDB WASM + Arrow IPC + Parquet → SMA Signal → Backtest Pipeline                    |
-| Market Atlas                          | stock-sdk → Quote / Search / OHLCV / Dividend 契约 → 多市场看板与组合级 Quant handoff |
-| Document Studio                       | DocumentJob / Stage 状态机 → 本地导入 / 格式边界 / Reader·Manga handoff               |
-| §11 COOP/COEP                         | `apps/studio/vite.config.ts` 与 `apps/media-studio/vite.config.ts` 内置               |
+| 架构                                  | 实现                                                                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| §2 ComputeTask / §3 ArtifactRef       | `packages/core/src/schema.ts`（Effect Schema）                                              |
+| §3 DAG：cancel descendants / 下游失效 | `packages/core/src/scheduler.ts`（cancel 级联、invalidateArtifact）                         |
+| §3 DAG 正向编排                       | `scheduler.submitPipeline`（命名端口绑定 + 上游完成自动触发 + fail-fast）                   |
+| §6.1 Effect 调度语义                  | Scheduler：cancel / timeout / retry(Schedule) / progress Stream                             |
+| §5 Resource Manager                   | 线程/内存/GPU 多维预算；FIFO 排队、取消释放、超额快速失败、占用快照                         |
+| §6.2 typed MessagePort 协议           | `packages/runtime-worker/src/protocol.ts`（Effect Schema 编解码）                           |
+| §5 Worker 生命周期 ≠ Task 生命周期    | `WorkerPool` 可取消等待、关闭传播、min/max 按需扩容与 idle timeout 自动收缩                 |
+| §7 Content-Addressed Cache            | `cacheKey = BLAKE3(ordered(port + artifactHash) + operation + config + runtime)`            |
+| §7 Artifact 内容身份                  | 源文件流式 BLAKE3；派生 JSON/波形携带内容 hash 并写入不可变路径                             |
+| §7 缓存持久化（刷新不重算）           | `packages/storage-sqlite`：cache_entries 表 + 血缘（task_outputs / dependencies）           |
+| §4/§8 OPFS + 窗口流动                 | `BinaryStore`（readRange/putStream/size），kernel 按 4MB 窗口读取                           |
+| Artifact 生命周期可观测性             | `ArtifactStore.inventory/usage`：跨后端容量清单、前缀过滤与稳定聚合，不读取内容             |
+| Artifact 可恢复读取                   | `ArtifactStore.getBlob`：OPFS 原生 Blob 快照，内存后端自动回退，避免 handoff 依赖 File 句柄 |
+| Artifact 安全 GC                      | `planCleanup/reclaim`：血缘 + 显式根保护、dry-run、path/size 二次校验后再回收               |
+| Cache / TaskJournal 保留策略          | Scheduler 维护入口：缓存 30 天 / 200 条、历史 90 天 / 500 条，终态与竞态二次校验            |
+| Workspace 全局搜索                    | `@bcr/core` 轻量索引契约：按 source 增量替换、中文/英文词项匹配、SQLite 元数据持久化        |
+| §8 SQLite WASM 元数据                 | `openSqliteDb`（整库字节经 BinaryStore 落 OPFS，可换任意 BinaryStore）                      |
+| §8 TaskJournal / 崩溃恢复             | queued/running/终态写穿 SQLite；输入完整时重放，缺失时转 blocked                            |
+| §9.1 wasm-bindgen kernel              | `crates/kernels`（wasm32-unknown-unknown）                                                  |
+| §10.1 WebGPU 探测降级                 | `apps/media-studio`：ASR device=auto（GPU→WASM 静默降级）/显式选择；headless 走 WASM        |
+| §10.2 Whisper ASR                     | transformers.js ONNX（q8 / webgpu fp32+q4），失败回退演示引擎                               |
+| 文本翻译                              | opus-mt（英↔中方向可选）：逐条 cue 批量平移，1:1 对齐，无二次音频推理                       |
+| §14 Quant workload                    | DuckDB WASM + Arrow IPC + Parquet → SMA Signal → Backtest Pipeline                          |
+| Market Atlas                          | stock-sdk → Quote / Search / OHLCV / Dividend 契约 → 多市场看板与组合级 Quant handoff       |
+| Document Studio                       | DocumentJob / Stage 状态机 → 本地导入 / 格式边界 / Reader·Manga handoff                     |
+| §11 COOP/COEP                         | `apps/studio/vite.config.ts` 与 `apps/media-studio/vite.config.ts` 内置                     |
 
 ## 命令
 
@@ -242,11 +243,8 @@ File → Ingest → Normalize → Extract → OCR → Translate → Typeset → 
 - Inspector 提供前 5 个 block 的快速审校；人工修改会生成新的不可变 Translation Package Artifact，保留原始产物并让
   Typeset 自动接续最新版本。
 - EPUB / PDF / CBZ / DOCX 等二进制出版物在 Document Extract 阶段明确保持 `BLOCKED`，直接交给目标适配器解析，避免把压缩或版式数据误当作纯文本。
-- Reader handoff 会把同一标签页内的 `File` 与已完成的 Content Package 通过一次性内存通道交给 Reader；Reader
-  写入自己的 OPFS 并直接复用标准化 blocks 建立 Worker 索引；若已有 Translation Package，则以同一 block ID
-  渲染审校后的译文，未完成 Extract 时自动回退到原文件解析；图片 handoff 交给 Manga，由 Manga 的 Artifact /
-  SQLite 项目接管。
-- URL 只携带短期 handoff ID，不携带文件内容；刷新或离开标签页后句柄失效，界面会明确提示重新导入。
+- Reader handoff 会优先把同一标签页内的 `File` 与已完成的 Content Package 作为零拷贝 fast path 交给 Reader；同时把源文件、规范化内容和审校译文的 `ArtifactRef` 写入轻量 marker，刷新后由宿主 ArtifactStore 重建 Blob，再由 Reader 写入自己的 OPFS 并建立 Worker 索引。若已有 Translation Package，则以同一 block ID 渲染审校后的译文，未完成 Extract 时自动回退到原文件解析；图片 handoff 交给 Manga，由 Manga 的 Artifact / SQLite 项目接管。
+- URL 只携带短期 handoff ID，不携带文件内容；marker 只保存可验证的元数据和 Artifact 引用。旧版仅含 File 的 marker 仍可识别，但会明确提示重新导入；新的 durable handoff 可跨刷新恢复。
 
 走查：`node scripts/verify-document-studio.mjs`（由 `bun run test:browser` 自动执行）。
 

@@ -54,7 +54,7 @@ import {
 import { useLocationSearch, useOptionalRuntime } from "@bcr/react";
 import {
   createReaderRuntime,
-  importReaderContentPackage,
+  importReaderDocumentHandoff,
   importReaderFile,
   indexBook,
   persistReader,
@@ -608,36 +608,29 @@ export function App() {
       return;
     }
     setHandoffRecovery(false);
-    if (handoff.content === undefined) {
-      void importFiles([handoff.file]);
-      return;
-    }
-    const content = handoff.content;
     void (async () => {
       try {
-        const book = await importReaderContentPackage(
-          runtime,
-          handoff.file,
-          content,
-          handoff.translation,
-        );
+        const book = await importReaderDocumentHandoff(runtime, handoff, hostServices?.artifacts);
         const added = reader.addBook(book);
         if (added) {
           await indexBook(runtime, book);
           setNotice(
-            handoff.translation === undefined
-              ? `${book.title} 已从 Content Package 加入书库`
-              : `${book.title} 已从 Translation Package 加入书库`,
+            handoff.translation !== undefined || handoff.translationRef !== undefined
+              ? `${book.title} 已从 Translation Package 加入书库`
+              : handoff.content !== undefined || handoff.contentRef !== undefined
+                ? `${book.title} 已从 Content Package 加入书库`
+                : `${book.title} 已从源 Artifact 加入书库`,
           );
         } else {
-          setNotice(`${handoff.file.name} 已在书库`);
+          setNotice(`${handoff.name} 已在书库`);
         }
       } catch (reason) {
         const message = reason instanceof Error ? reason.message : String(reason);
+        setHandoffRecovery(true);
         setNotice(message);
       }
     })();
-  }, [importFiles, runtime, status]);
+  }, [hostServices?.artifacts, runtime, status]);
 
   if (status === "booting" || runtime === null) {
     return <BootScreen error={runtimeError} />;

@@ -335,7 +335,7 @@ export function App() {
 
   const handoffReader = () => {
     const file = documents.sourceFile(active.id);
-    if (file === undefined) {
+    if (file === undefined && active.sourceRef === undefined) {
       documents.setNotice(`${active.name} 的源文件句柄已离开当前标签页，请重新导入后再交给 Reader`);
       void navigate({ to: "/reader" });
       return;
@@ -345,7 +345,11 @@ export function App() {
       target: "reader",
       name: active.name,
       format: active.format,
-      file,
+      ...(file === undefined ? {} : { file }),
+      size: active.size,
+      ...(active.sourceRef === undefined ? {} : { sourceRef: active.sourceRef }),
+      ...(extractRef === null ? {} : { contentRef: extractRef }),
+      ...(translationRef === null ? {} : { translationRef }),
       ...(contentPackage === undefined ? {} : { content: contentPackage }),
       ...(translationPackage === undefined ? {} : { translation: translationPackage }),
     });
@@ -355,7 +359,7 @@ export function App() {
 
   const handoffManga = () => {
     const file = documents.sourceFile(active.id);
-    if (file === undefined) {
+    if (file === undefined && active.sourceRef === undefined) {
       documents.setNotice(`${active.name} 的源文件句柄已离开当前标签页，请重新导入后再交给 Manga`);
       void navigate({ to: "/manga" });
       return;
@@ -365,7 +369,11 @@ export function App() {
       target: "manga",
       name: active.name,
       format: active.format,
-      file,
+      ...(file === undefined ? {} : { file }),
+      size: active.size,
+      ...(active.sourceRef === undefined ? {} : { sourceRef: active.sourceRef }),
+      ...(extractRef === null ? {} : { contentRef: extractRef }),
+      ...(translationRef === null ? {} : { translationRef }),
       ...(contentPackage === undefined ? {} : { content: contentPackage }),
       ...(translationPackage === undefined ? {} : { translation: translationPackage }),
     });
