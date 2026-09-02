@@ -965,8 +965,8 @@ function StageInspector(props: {
   onCancel: () => void;
   canRunStage: boolean;
 }) {
-  const isPlanned = props.stage.capability === "planned";
   const isDone = props.stage.status === "done";
+  const isPlanned = props.stage.capability === "planned" && !isDone;
   const isRunning = props.stage.status === "running";
   const formatBlocked = props.stage.status === "blocked" && props.stage.id === "extract";
   const canRun = props.canRunStage && !isRunning;

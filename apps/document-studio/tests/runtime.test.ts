@@ -123,4 +123,100 @@ describe("Document durable handoff import", () => {
     });
     expect(job.sourceTextPreview).toBe("Hello world");
   });
+
+  it("closes the OCR stage when Manga hands back a visual content package", async () => {
+    const services = await makeServices(new TestBinaryStore());
+    const sourceRef: ArtifactRef = {
+      id: "manga/source/page",
+      type: "file/png",
+      storage: "opfs",
+      format: "image/png",
+      hash: "manga-source-hash",
+    };
+    const content = createDocumentContentPackage({
+      id: "manga-page-content",
+      format: "image",
+      sourceName: "page-01.png",
+      sourceRef,
+      adapter: "manga.review.regions",
+      blocks: [
+        {
+          id: "region-1",
+          label: "气泡 1",
+          text: "こんにちは",
+          geometry: { x: 10, y: 20, width: 30, height: 15 },
+          writingMode: "vertical-rl",
+          confidence: 0.98,
+        },
+      ],
+    });
+
+    await Effect.runPromise(services.artifacts.put(sourceRef, new Uint8Array([137, 80, 78, 71])));
+    const { job } = await importDocumentHandoff(services, {
+      id: "handoff-manga-ocr-test",
+      jobId: "manga-page",
+      target: "document",
+      name: "page-01.png",
+      format: "image",
+      size: 4,
+      sourceRef,
+      content,
+      createdAt: 1,
+    });
+
+    expect(stageById(job.stages, "extract")).toMatchObject({
+      status: "done",
+      artifact: { type: "document/content-package" },
+      adapter: "manga.review.regions",
+    });
+    expect(stageById(job.stages, "ocr")).toMatchObject({
+      status: "done",
+      progress: 1,
+      capability: "adapter",
+      artifact: { type: "document/content-package" },
+      adapter: "manga.review.regions",
+      execution: {
+        runtime: "wasm",
+        operation: "manga.review.regions",
+        cache: "disabled",
+      },
+    });
+  });
+
+  it("keeps OCR blocked for an image package without Manga provenance", async () => {
+    const services = await makeServices(new TestBinaryStore());
+    const sourceRef: ArtifactRef = {
+      id: "image/source/photo",
+      type: "file/png",
+      storage: "opfs",
+      format: "image/png",
+      hash: "photo-source-hash",
+    };
+    const content = createDocumentContentPackage({
+      id: "photo-content",
+      format: "image",
+      sourceName: "photo.png",
+      sourceRef,
+      adapter: "external.import",
+      blocks: [{ id: "caption", label: "Caption", text: "A photo" }],
+    });
+
+    await Effect.runPromise(services.artifacts.put(sourceRef, new Uint8Array([1, 2, 3])));
+    const { job } = await importDocumentHandoff(services, {
+      id: "handoff-image-content-test",
+      jobId: "photo",
+      target: "document",
+      name: "photo.png",
+      format: "image",
+      size: 3,
+      sourceRef,
+      content,
+      createdAt: 1,
+    });
+
+    expect(stageById(job.stages, "ocr")).toMatchObject({
+      status: "blocked",
+      capability: "planned",
+    });
+  });
 });

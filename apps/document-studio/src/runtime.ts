@@ -128,6 +128,17 @@ async function writeTranslationPackage(
   return ref;
 }
 
+/**
+ * Manga hands Document a visual Content Package after OCR/review. Keep the
+ * provenance boundary explicit so an arbitrary image package cannot make the
+ * planned OCR capability look complete.
+ */
+function isMangaOcrContent(content: DocumentContentPackage): boolean {
+  if (content.format !== "image") return false;
+  const adapter = content.provenance.adapter;
+  return adapter.startsWith("manga.ocr.") || adapter === "manga.review.regions";
+}
+
 /** Rebuild a durable Document job from a Reader/Manga handoff. */
 export async function importDocumentHandoff(
   services: RuntimeServices,
@@ -191,6 +202,21 @@ export async function importDocumentHandoff(
       artifact: contentRef,
       adapter: content?.provenance.adapter ?? "handoff.content",
     });
+    if (content !== undefined && isMangaOcrContent(content)) {
+      job = updateStage(job, "ocr", {
+        status: "done",
+        progress: 1,
+        completedAt,
+        artifact: contentRef,
+        adapter: content.provenance.adapter,
+        capability: "adapter",
+        execution: {
+          runtime: "wasm",
+          operation: content.provenance.adapter,
+          cache: "disabled",
+        },
+      });
+    }
   }
   if (translationRef !== undefined) {
     job = updateStage(job, "translate", {
