@@ -24,12 +24,18 @@ import {
 } from "@bcr/reader-core";
 import { formatForFile, openReaderFile } from "./adapters";
 import {
+  createReaderParseSession,
+  ReaderParseWorkerError,
+  type ReaderParseSession,
+} from "./parse-session";
+import {
   DEFAULT_READER_SETTINGS,
   type ReaderSearchSession,
   type ReaderSettings,
   type ReaderState,
 } from "./model";
 import { createReaderIndexSession, type ReaderIndexSession } from "./session";
+import { normalizeReaderProgress } from "./session-contract";
 
 export interface ReaderRuntime {
   readonly binary: BinaryStore;
@@ -37,6 +43,8 @@ export interface ReaderRuntime {
   readonly meta: SqliteDb | undefined;
   readonly ftsReady: boolean;
   readonly indexSession: ReaderIndexSession | undefined;
+  readonly parseSession: ReaderParseSession | undefined;
+  readonly parserMode: "worker" | "main";
 }
 
 interface SqliteInit {
@@ -155,15 +163,39 @@ export async function createReaderRuntime(): Promise<ReaderRuntime> {
     Effect.scoped(Layer.build(artifactStore({ memory, opfs: binary }))),
   );
   const artifacts = Context.get(context, ArtifactStoreTag);
+  const parseSession = createReaderParseSession();
   const runtime: ReaderRuntime = {
     binary,
     artifacts,
     meta,
     ftsReady,
     indexSession: createReaderIndexSession(artifacts),
+    parseSession,
+    parserMode: parseSession === undefined ? "main" : "worker",
   };
   currentRuntime = runtime;
   return runtime;
+}
+
+async function parseReaderFile(
+  runtime: ReaderRuntime,
+  file: File,
+  id: string,
+  signal?: AbortSignal,
+): Promise<ReaderBook> {
+  const format = formatForFile(file);
+  // PDF.js owns a rendering worker and keeps a Blob URL for canvas pages; keep
+  // its lifecycle on the main thread until the dedicated page renderer lands.
+  if (runtime.parseSession === undefined || format === "pdf") {
+    return openReaderFile(file, id, signal);
+  }
+  try {
+    return await runtime.parseSession.open(file, id, signal);
+  } catch (reason) {
+    if (signal?.aborted) throw reason;
+    if (reason instanceof ReaderParseWorkerError) return openReaderFile(file, id, signal);
+    throw reason;
+  }
 }
 
 export function readerRuntime(): ReaderRuntime | undefined {
@@ -189,7 +221,7 @@ export async function importReaderFile(
   };
   await Effect.runPromise(runtime.artifacts.putStream(ref, file.stream()));
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-  const book = await openReaderFile(file, `book-${hash.slice(0, 16)}`, signal);
+  const book = await parseReaderFile(runtime, file, `book-${hash.slice(0, 16)}`, signal);
   return {
     ...book,
     source: {
@@ -517,7 +549,7 @@ async function restoreBook(
     try {
       const file = await fileFromSource(runtime, persisted);
       if (file !== undefined) {
-        const reopened = await openReaderFile(file, persisted.id);
+        const reopened = await parseReaderFile(runtime, file, persisted.id);
         return {
           ...reopened,
           title: persisted.title,
@@ -593,7 +625,7 @@ export async function restoreReader(
       books,
       activeBookId:
         typeof source?.activeBookId === "string" ? source.activeBookId : (books[0]?.id ?? null),
-      progressByBook: source?.progressByBook ?? {},
+      progressByBook: normalizeReaderProgress(books, source?.progressByBook),
       settings: { ...DEFAULT_READER_SETTINGS, ...source?.settings },
       bookmarksByBook: restoredBookmarks(books, source?.bookmarksByBook),
       annotationsByBook: restoredAnnotations(books, source?.annotationsByBook),

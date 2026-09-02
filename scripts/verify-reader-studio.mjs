@@ -25,6 +25,36 @@ async function docxFixture() {
   return Buffer.from(await blob.arrayBuffer());
 }
 
+function pdfFixture() {
+  const contents = [
+    "BT /F1 20 Tf 50 350 Td (Continuous page one) Tj ET",
+    "BT /F1 20 Tf 50 350 Td (Continuous page two) Tj ET",
+    "BT /F1 20 Tf 50 350 Td (Continuous page three) Tj ET",
+  ];
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Resources << /Font << /F1 6 0 R >> >> /Contents 7 0 R >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Resources << /Font << /F1 6 0 R >> >> /Contents 8 0 R >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Resources << /Font << /F1 6 0 R >> >> /Contents 9 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    `<< /Length ${contents[0].length} >>\nstream\n${contents[0]}\nendstream`,
+    `<< /Length ${contents[1].length} >>\nstream\n${contents[1]}\nendstream`,
+    `<< /Length ${contents[2].length} >>\nstream\n${contents[2]}\nendstream`,
+  ];
+  let raw = "%PDF-1.4\n";
+  const offsets = [0];
+  for (const [index, object] of objects.entries()) {
+    offsets.push(Buffer.byteLength(raw, "binary"));
+    raw += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  }
+  const xrefOffset = Buffer.byteLength(raw, "binary");
+  raw += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets.slice(1)) raw += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  raw += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  return Buffer.from(raw, "binary");
+}
+
 const base = new URL(process.env.BASE_URL ?? "http://localhost:5199/studio");
 base.pathname = "/reader";
 base.search = "";
@@ -41,6 +71,13 @@ page.on("pageerror", (error) => fail(`pageerror: ${error.message}`));
 await page.goto(base.toString(), { waitUntil: "domcontentloaded" });
 await page.locator(".reader-studio").waitFor({ timeout: 20_000 });
 await page.locator(".reader-book-card").first().waitFor({ timeout: 20_000 });
+const demoCard = page.locator(".reader-book-card", { hasText: "把时间还给阅读" });
+if ((await demoCard.count()) > 0) {
+  await demoCard.first().click();
+  await page.locator(".reader-reading-intro h1", { hasText: "把时间还给阅读" }).waitFor({
+    timeout: 10_000,
+  });
+}
 const body = await page.locator("body").innerText();
 if (!body.includes("Reader Studio") || !body.includes("把时间还给阅读")) fail("阅读器主界面未渲染");
 if ((await page.locator(".reader-book-card").count()) < 1) fail("书库未加载");
@@ -110,6 +147,9 @@ if ((await page.locator(".reader-bookmark-item").count()) < 1) {
 if ((await page.getByLabel("在书库中搜索").inputValue()) !== "Locator") {
   fail("刷新后搜索上下文未恢复");
 }
+if ((await page.getByLabel("在书库中搜索").inputValue()) === "Locator") {
+  await page.locator(".reader-search-result").first().waitFor({ timeout: 10_000 });
+}
 if ((await page.locator(".reader-search-result").count()) < 1) {
   fail("刷新后搜索结果未恢复");
 }
@@ -126,9 +166,45 @@ await page.locator("input[type=file]").first().setInputFiles({
 await page.locator(".reader-reading-intro h1", { hasText: "DOCX 自动化验证" }).waitFor({
   timeout: 20_000,
 });
+await page.locator(".reader-import-progress").waitFor({ state: "hidden", timeout: 20_000 });
 const docxText = await page.locator(".reader-reading-column").innerText();
 if (!docxText.includes("来自 Word 的段落") || !docxText.includes("表格 3")) {
   fail("DOCX 标题、正文或表格没有解析到统一阅读模型");
+}
+
+const pdf = pdfFixture();
+await page.locator("input[type=file]").first().setInputFiles({
+  name: "reader-continuous-fixture.pdf",
+  mimeType: "application/pdf",
+  buffer: pdf,
+});
+await page.locator(".reader-reading-intro h1", { hasText: "reader-continuous-fixture" }).waitFor({
+  timeout: 20_000,
+});
+await page.locator(".reader-pdf-page").first().waitFor({ timeout: 20_000 });
+if ((await page.locator(".reader-pdf-page").count()) !== 3) {
+  fail("PDF 没有建立连续页面列表");
+}
+await page.locator(".reader-pdf-canvas-shell.is-ready").first().waitFor({ timeout: 20_000 });
+const lastPdfPage = page.locator(".reader-pdf-page").last();
+await lastPdfPage.scrollIntoViewIfNeeded();
+await lastPdfPage.locator(".reader-pdf-canvas-shell.is-ready").waitFor({ timeout: 20_000 });
+await page.locator(".reader-reading-scroll").evaluate((element) => {
+  element.scrollTop = element.scrollHeight;
+  element.dispatchEvent(new Event("scroll"));
+});
+await page.waitForTimeout(900);
+if (!(await lastPdfPage.locator(".reader-pdf-page-meta").innerText()).includes("PAGE 003")) {
+  fail("PDF 页面语义标识没有保留");
+}
+await page.waitForTimeout(1_200);
+await page.locator(".reader-import-progress").waitFor({ state: "hidden", timeout: 20_000 });
+await page.reload({ waitUntil: "domcontentloaded" });
+await page.locator(".reader-studio").waitFor({ timeout: 20_000 });
+await page.locator(".reader-pdf-page").last().waitFor({ timeout: 20_000 });
+await page.waitForTimeout(1_200);
+if ((await page.locator(".reader-pdf-page.is-active").innerText()).includes("PAGE 003") === false) {
+  fail("PDF 刷新后没有恢复最后阅读页面");
 }
 
 await browser.close();

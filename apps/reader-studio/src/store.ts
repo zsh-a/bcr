@@ -126,8 +126,39 @@ class ReaderStore {
           candidate.source.ref.hash === book.source.ref?.hash),
     );
     if (existing !== undefined) {
-      releaseBookResources(book);
-      this.openBook(existing.id);
+      // Binary adapters expose ephemeral Blob URLs. Replacing the artifact
+      // under the same hash can invalidate a restored URL, so refresh the
+      // in-memory publication with the newly parsed resources while keeping
+      // the existing reading session and user metadata keyed by book id.
+      if (existing.source.objectUrl !== book.source.objectUrl) {
+        releaseBookResources(existing);
+      }
+      const refreshed = {
+        ...book,
+        title: existing.title,
+        ...(existing.author === undefined ? {} : { author: existing.author }),
+        ...(existing.language === undefined ? {} : { language: existing.language }),
+        importedAt: existing.importedAt,
+        updatedAt: Math.max(existing.updatedAt, book.updatedAt),
+        tags: existing.tags,
+      };
+      const library = this.state.library.map((candidate) =>
+        candidate.id === existing.id ? refreshed : candidate,
+      );
+      const progress =
+        this.state.progressByBook[existing.id] ??
+        progressForLocator(refreshed, firstLocator(refreshed));
+      this.set({
+        library,
+        activeBookId: refreshed.id,
+        activeSectionId: progress.locator.sectionId,
+        progressByBook: { ...this.state.progressByBook, [refreshed.id]: progress },
+        query: "",
+        searchHits: [],
+        searchBookId: null,
+        searchActiveIndex: -1,
+        searchOpen: false,
+      });
       return false;
     }
     const library = [...this.state.library.filter((candidate) => candidate.id !== book.id), book];
