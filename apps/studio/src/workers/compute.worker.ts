@@ -429,14 +429,8 @@ function resolveOcrDevice(device: OcrDevice): {
   };
 }
 
-let ocrTranscriberCache:
-  | {
-      readonly model: string;
-      readonly device: ResolvedOcrDevice;
-      readonly fn: OcrTranscriber;
-      readonly fallbackReason?: "webgpu-unavailable" | "webgpu-init-failed";
-    }
-  | undefined;
+const ocrTranscriberCache = new Map<string, LoadedModel<OcrTranscriber>>();
+const ocrTranscriberLoading = new Map<string, Promise<LoadedModel<OcrTranscriber>>>();
 
 async function buildOcrTranscriber(
   model: string,
@@ -466,43 +460,35 @@ async function loadOcrTranscriber(
   ctx: WorkerContext,
 ): Promise<LoadedModel<OcrTranscriber>> {
   const requested = resolveOcrDevice(device);
-  const cached = ocrTranscriberCache;
-  if (
-    cached !== undefined &&
-    cached.model === model &&
-    (cached.device === device || (device === "auto" && cached.device === requested.device))
-  ) {
-    return {
-      fn: cached.fn,
-      device: cached.device,
-      ...(device === "wasm" || cached.fallbackReason === undefined
-        ? {}
-        : { fallbackReason: cached.fallbackReason }),
-    };
-  }
-  const resolved = requested;
-  try {
-    const fn = await buildOcrTranscriber(model, resolved.device, ctx);
-    ocrTranscriberCache = {
-      model,
-      device: resolved.device,
-      fn,
-      ...(resolved.fallbackReason === undefined ? {} : { fallbackReason: resolved.fallbackReason }),
-    };
-    return {
-      fn,
-      device: resolved.device,
-      ...(resolved.fallbackReason === undefined ? {} : { fallbackReason: resolved.fallbackReason }),
-    };
-  } catch (error) {
-    if (resolved.device === "webgpu") {
+  const key = `${model}::${device}::${requested.device}`;
+  const cached = ocrTranscriberCache.get(key);
+  if (cached !== undefined) return cached;
+  const inFlight = ocrTranscriberLoading.get(key);
+  if (inFlight !== undefined) return inFlight;
+  const loading = (async (): Promise<LoadedModel<OcrTranscriber>> => {
+    try {
+      const fn = await buildOcrTranscriber(model, requested.device, ctx);
+      return {
+        fn,
+        device: requested.device,
+        ...(requested.fallbackReason === undefined
+          ? {}
+          : { fallbackReason: requested.fallbackReason }),
+      };
+    } catch (error) {
+      if (requested.device !== "webgpu") throw error;
       console.warn("[manga-ocr] WebGPU initialization failed, falling back to WASM:", error);
       const fn = await buildOcrTranscriber(model, "wasm", ctx);
-      const loaded = { fn, device: "wasm" as const, fallbackReason: "webgpu-init-failed" as const };
-      ocrTranscriberCache = { model, ...loaded };
-      return loaded;
+      return { fn, device: "wasm", fallbackReason: "webgpu-init-failed" };
     }
-    throw error;
+  })();
+  ocrTranscriberLoading.set(key, loading);
+  try {
+    const loaded = await loading;
+    ocrTranscriberCache.set(key, loaded);
+    return loaded;
+  } finally {
+    if (ocrTranscriberLoading.get(key) === loading) ocrTranscriberLoading.delete(key);
   }
 }
 
@@ -536,6 +522,7 @@ async function mangaModelPreload(
       throw new Error(`manga.model.preload cannot load OCR model for ${sourceLanguage}`);
     }
     await loadOcrTranscriber(model, device, ctx);
+    throwIfAborted(ctx);
     ctx.progress(1);
     return [];
   }
@@ -549,6 +536,7 @@ async function mangaModelPreload(
       throw new Error(`manga.model.preload cannot load translation model for ${sourceLanguage}`);
     }
     await loadMangaTranslator(model, device, ctx);
+    throwIfAborted(ctx);
     ctx.progress(1);
     return [];
   }
@@ -663,14 +651,8 @@ type MangaTranslator = (
   options?: Record<string, unknown>,
 ) => Promise<unknown>;
 
-let mangaTranslatorCache:
-  | {
-      readonly model: string;
-      readonly device: ResolvedOcrDevice;
-      readonly fn: MangaTranslator;
-      readonly fallbackReason?: "webgpu-unavailable" | "webgpu-init-failed";
-    }
-  | undefined;
+const mangaTranslatorCache = new Map<string, LoadedModel<MangaTranslator>>();
+const mangaTranslatorLoading = new Map<string, Promise<LoadedModel<MangaTranslator>>>();
 
 function defaultTranslationModel(sourceLanguage: MangaSourceLanguage): string {
   const manifest = TRANSLATION_MODEL_MANIFESTS.find((candidate) => candidate.id === "local");
@@ -713,43 +695,35 @@ async function loadMangaTranslator(
   ctx: WorkerContext,
 ): Promise<LoadedModel<MangaTranslator>> {
   const requested = resolveOcrDevice(device);
-  const cached = mangaTranslatorCache;
-  if (
-    cached !== undefined &&
-    cached.model === model &&
-    (cached.device === device || (device === "auto" && cached.device === requested.device))
-  ) {
-    return {
-      fn: cached.fn,
-      device: cached.device,
-      ...(device === "wasm" || cached.fallbackReason === undefined
-        ? {}
-        : { fallbackReason: cached.fallbackReason }),
-    };
-  }
-  const resolved = requested;
-  try {
-    const fn = await buildMangaTranslator(model, resolved.device, ctx);
-    mangaTranslatorCache = {
-      model,
-      device: resolved.device,
-      fn,
-      ...(resolved.fallbackReason === undefined ? {} : { fallbackReason: resolved.fallbackReason }),
-    };
-    return {
-      fn,
-      device: resolved.device,
-      ...(resolved.fallbackReason === undefined ? {} : { fallbackReason: resolved.fallbackReason }),
-    };
-  } catch (error) {
-    if (resolved.device === "webgpu") {
+  const key = `${model}::${device}::${requested.device}`;
+  const cached = mangaTranslatorCache.get(key);
+  if (cached !== undefined) return cached;
+  const inFlight = mangaTranslatorLoading.get(key);
+  if (inFlight !== undefined) return inFlight;
+  const loading = (async (): Promise<LoadedModel<MangaTranslator>> => {
+    try {
+      const fn = await buildMangaTranslator(model, requested.device, ctx);
+      return {
+        fn,
+        device: requested.device,
+        ...(requested.fallbackReason === undefined
+          ? {}
+          : { fallbackReason: requested.fallbackReason }),
+      };
+    } catch (error) {
+      if (requested.device !== "webgpu") throw error;
       console.warn("[manga-translate] WebGPU initialization failed, falling back to WASM:", error);
       const fn = await buildMangaTranslator(model, "wasm", ctx);
-      const loaded = { fn, device: "wasm" as const, fallbackReason: "webgpu-init-failed" as const };
-      mangaTranslatorCache = { model, ...loaded };
-      return loaded;
+      return { fn, device: "wasm", fallbackReason: "webgpu-init-failed" };
     }
-    throw error;
+  })();
+  mangaTranslatorLoading.set(key, loading);
+  try {
+    const loaded = await loading;
+    mangaTranslatorCache.set(key, loaded);
+    return loaded;
+  } finally {
+    if (mangaTranslatorLoading.get(key) === loading) mangaTranslatorLoading.delete(key);
   }
 }
 
