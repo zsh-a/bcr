@@ -4,6 +4,7 @@ import { defaultGraph } from "./operations";
 import { fixtureRegions, fixtureSource } from "./fixture";
 import type {
   MangaLogEntry,
+  MangaPage,
   MangaSettings,
   MangaSource,
   MangaStageId,
@@ -39,18 +40,31 @@ function freshStages(): ReadonlyArray<StageState> {
   );
 }
 
+const initialPage: MangaPage = {
+  id: fixtureSource.id,
+  source: fixtureSource,
+  stages: freshStages(),
+  regions: fixtureRegions,
+  activeRegionId: fixtureRegions[0]?.id ?? null,
+  outputMode: "translated",
+  outputReady: true,
+  dirty: false,
+};
+
 class MangaStore {
   private state: MangaState = {
-    source: fixtureSource,
+    source: initialPage.source,
+    pages: [initialPage],
+    activePageId: initialPage.id,
     graph: defaultGraph(DEFAULT_SETTINGS),
-    stages: freshStages(),
-    regions: fixtureRegions,
-    activeRegionId: fixtureRegions[0]?.id ?? null,
-    outputMode: "translated",
+    stages: initialPage.stages,
+    regions: initialPage.regions,
+    activeRegionId: initialPage.activeRegionId,
+    outputMode: initialPage.outputMode,
     settings: DEFAULT_SETTINGS,
     running: false,
-    outputReady: true,
-    dirty: false,
+    outputReady: initialPage.outputReady,
+    dirty: initialPage.dirty,
     logs: [
       {
         ts: Date.now(),
@@ -70,7 +84,39 @@ class MangaStore {
   };
 
   private set(partial: Partial<MangaState>): void {
-    this.state = { ...this.state, ...partial };
+    let next: MangaState = { ...this.state, ...partial };
+    // Keep the active page as the durable source of page-level state.  Calls
+    // that replace `pages` already provide a complete page snapshot and skip
+    // this projection to avoid writing the previous page into the new slot.
+    const projectsPage =
+      "source" in partial ||
+      "stages" in partial ||
+      "regions" in partial ||
+      "activeRegionId" in partial ||
+      "outputMode" in partial ||
+      "outputReady" in partial ||
+      "dirty" in partial ||
+      "activePageId" in partial;
+    if (!("pages" in partial) && projectsPage) {
+      const index = next.pages.findIndex((page) => page.id === next.activePageId);
+      const current = next.pages[index];
+      if (current !== undefined) {
+        const page: MangaPage = {
+          ...current,
+          source: next.source,
+          stages: next.stages,
+          regions: next.regions,
+          activeRegionId: next.activeRegionId,
+          outputMode: next.outputMode,
+          outputReady: next.outputReady,
+          dirty: next.dirty,
+        };
+        const pages = [...next.pages];
+        pages[index] = page;
+        next = { ...next, pages };
+      }
+    }
+    this.state = next;
     for (const listener of this.listeners) listener();
   }
 
@@ -95,8 +141,121 @@ class MangaStore {
     this.log("info", `source · ${source.name} · ${source.width}×${source.height}`);
   }
 
+  addPage(page: MangaPage, activate = true): void {
+    if (this.state.pages.some((candidate) => candidate.id === page.id)) {
+      this.log("warn", `page · ${page.source.name} already in queue`);
+      return;
+    }
+    const pages = [...this.state.pages, page];
+    if (!activate) {
+      this.set({ pages });
+      return;
+    }
+    this.set({
+      pages,
+      activePageId: page.id,
+      source: page.source,
+      stages: page.stages,
+      regions: page.regions,
+      activeRegionId: page.activeRegionId,
+      outputMode: page.outputMode,
+      outputReady: page.outputReady,
+      dirty: page.dirty,
+    });
+    this.log("info", `page queue · ${pages.length} page(s)`);
+  }
+
+  addSource(source: MangaSource, regions: ReadonlyArray<TextRegion>): void {
+    const page: MangaPage = {
+      id: source.id,
+      source,
+      stages: freshStages(),
+      regions,
+      activeRegionId: regions[0]?.id ?? null,
+      outputMode: "original",
+      outputReady: false,
+      dirty: false,
+    };
+    // The built-in fixture is a launch affordance, not a user page.  Replace
+    // it on the first import so a real project starts with a clean queue.
+    if (this.state.pages.length === 1 && this.state.pages[0]?.source.kind === "fixture") {
+      this.setPages([page], page.id);
+      this.log("info", `source · ${source.name} · replaced demo page`);
+      return;
+    }
+    this.addPage(page, true);
+  }
+
+  selectPage(pageId: string): void {
+    const page = this.state.pages.find((candidate) => candidate.id === pageId);
+    if (page === undefined || page.id === this.state.activePageId) return;
+    this.set({
+      activePageId: page.id,
+      source: page.source,
+      stages: page.stages,
+      regions: page.regions,
+      activeRegionId: page.activeRegionId,
+      outputMode: page.outputMode,
+      outputReady: page.outputReady,
+      dirty: page.dirty,
+    });
+    this.log("info", `page · ${page.source.name} · selected`);
+  }
+
+  removePage(pageId: string): void {
+    if (this.state.pages.length <= 1) {
+      this.log("warn", "page queue · at least one page is required");
+      return;
+    }
+    const removed = this.state.pages.find((page) => page.id === pageId);
+    const removedIndex = this.state.pages.findIndex((page) => page.id === pageId);
+    const pages = this.state.pages.filter((page) => page.id !== pageId);
+    if (pages.length === this.state.pages.length) return;
+    if (removed?.source.kind === "image") URL.revokeObjectURL(removed.source.objectUrl);
+    if (pageId !== this.state.activePageId) {
+      this.set({ pages });
+      return;
+    }
+    const page = pages[Math.min(Math.max(removedIndex, 0), pages.length - 1)] ?? pages[0];
+    if (page === undefined) return;
+    this.set({
+      pages,
+      activePageId: page.id,
+      source: page.source,
+      stages: page.stages,
+      regions: page.regions,
+      activeRegionId: page.activeRegionId,
+      outputMode: page.outputMode,
+      outputReady: page.outputReady,
+      dirty: page.dirty,
+    });
+    this.log("info", `page queue · removed · ${page.source.name}`);
+  }
+
+  setPages(pages: ReadonlyArray<MangaPage>, activePageId?: string): void {
+    const nextPages = pages.length > 0 ? pages : [initialPage];
+    const active =
+      nextPages.find((page) => page.id === activePageId) ?? nextPages[0] ?? initialPage;
+    this.set({
+      pages: nextPages,
+      activePageId: active.id,
+      source: active.source,
+      stages: active.stages,
+      regions: active.regions,
+      activeRegionId: active.activeRegionId,
+      outputMode: active.outputMode,
+      outputReady: active.outputReady,
+      dirty: active.dirty,
+    });
+  }
+
   setGraph(graph: Graph): void {
     this.set({ graph, dirty: true });
+  }
+
+  /** Restore project configuration without turning hydration into an edit. */
+  restoreConfig(settings: MangaSettings, graph: Graph): void {
+    this.set({ settings, graph });
   }
 
   setSettings(patch: Partial<MangaSettings>): void {

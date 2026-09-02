@@ -19,6 +19,7 @@ await page.locator(".manga-studio").waitFor({ timeout: 20_000 });
 if (!(await page.locator("body").innerText()).includes("Manga Studio")) {
   fail("Manga Studio 主界面未渲染");
 }
+if ((await page.locator(".manga-page-card").count()) < 1) fail("页面队列未渲染");
 if ((await page.locator(".manga-region-row").count()) < 1) fail("演示页文本区域未加载");
 if ((await page.locator(".manga-stage-row").count()) !== 9) fail("翻译流水线阶段不完整");
 
@@ -48,6 +49,16 @@ const downloadPromise = page.waitForEvent("download");
 await page.getByRole("button", { name: "导出当前页面" }).click();
 const download = await downloadPromise;
 if (!download.suggestedFilename().endsWith("-zh.png")) fail("PNG 导出文件名不正确");
+
+// SQLite metadata + OPFS artifact restore should survive a real page reload.
+await page.waitForTimeout(900);
+await page.reload({ waitUntil: "domcontentloaded" });
+await page.locator(".manga-studio").waitFor({ timeout: 20_000 });
+await page.locator("textarea").nth(1).waitFor({ timeout: 20_000 });
+if ((await page.locator("textarea").nth(1).inputValue()) !== "审校后的译文") {
+  fail("刷新后项目未恢复审校译文");
+}
+if ((await page.locator(".manga-page-card").count()) < 1) fail("刷新后页面队列未恢复");
 
 await page.screenshot({ path: `${dir}/manga-studio.png`, fullPage: true });
 await browser.close();

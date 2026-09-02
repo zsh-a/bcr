@@ -12,8 +12,12 @@
   "dependencies": {
     "@bcr/core": "workspace:*",
     "@bcr/graph": "workspace:*",
+    "@bcr/storage-opfs": "workspace:*",
+    "@bcr/storage-sqlite": "workspace:*",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@sqlite.org/sqlite-wasm": "3.53.0-build1",
+    "effect": "^3.22.1",
     "lucide-react": "^1.37.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

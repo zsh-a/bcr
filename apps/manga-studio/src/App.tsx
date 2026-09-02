@@ -19,8 +19,15 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cancelMangaPipeline, runMangaPipeline } from "./pipeline";
+import {
+  createMangaRuntime,
+  importImageArtifact,
+  persistProject,
+  restoreProject,
+  type MangaRuntime,
+} from "./runtime";
 import { manga, useMangaStudio } from "./store";
 import type { MangaSource, OutputMode, TextRegion } from "./model";
 import "./styles.css";
@@ -118,41 +125,107 @@ export function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [zoom, setZoom] = useState(0.82);
   const [exporting, setExporting] = useState(false);
+  const [runtime, setRuntime] = useState<MangaRuntime | null>(null);
+  const [bootError, setBootError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void createMangaRuntime()
+      .then(async (nextRuntime) => {
+        await restoreProject(nextRuntime);
+        if (!cancelled) setRuntime(nextRuntime);
+      })
+      .catch((reason: unknown) => {
+        if (!cancelled) setBootError(reason instanceof Error ? reason.message : String(reason));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (runtime === null) return;
+    const timer = window.setTimeout(() => void persistProject(runtime), 650);
+    return () => window.clearTimeout(timer);
+  }, [runtime, state.pages, state.graph, state.settings]);
+
+  useEffect(() => {
+    if (runtime === null) return;
+    const persistOnPageHide = () => void persistProject(runtime);
+    const persistOnVisibilityChange = () => {
+      if (document.visibilityState === "hidden") persistOnPageHide();
+    };
+    window.addEventListener("pagehide", persistOnPageHide);
+    document.addEventListener("visibilitychange", persistOnVisibilityChange);
+    return () => {
+      window.removeEventListener("pagehide", persistOnPageHide);
+      document.removeEventListener("visibilitychange", persistOnVisibilityChange);
+    };
+  }, [runtime]);
 
   const selectedRegion = useMemo(
     () => state.regions.find((region) => region.id === state.activeRegionId) ?? null,
     [state.activeRegionId, state.regions],
   );
+  const activePageIndex = Math.max(
+    0,
+    state.pages.findIndex((page) => page.id === state.activePageId),
+  );
+  const totalSize = state.pages.reduce((sum, page) => sum + page.source.size, 0);
 
-  const importImage = (file: File): void => {
+  const importImage = async (file: File): Promise<void> => {
+    if (runtime === null) {
+      manga.log("warn", "import · runtime is still starting");
+      return;
+    }
+    if (manga.getSnapshot().running) {
+      manga.log("warn", "import · stop the current page pipeline before adding pages");
+      return;
+    }
     if (!file.type.startsWith("image/")) {
       manga.log("error", `import · unsupported file type · ${file.type || "unknown"}`);
       return;
     }
     const objectUrl = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      const source: MangaSource = {
-        id: `image-${Date.now()}`,
-        kind: "image",
-        name: file.name,
-        size: file.size,
-        objectUrl,
-        width: image.naturalWidth,
-        height: image.naturalHeight,
-        pageCount: 1,
-      };
-      manga.setSource(source, []);
+    try {
+      const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+        image.onerror = () => reject(new Error("image decode failed"));
+        image.src = objectUrl;
+      });
+      const ref = await importImageArtifact(runtime, file);
+      if (manga.getSnapshot().running) {
+        URL.revokeObjectURL(objectUrl);
+        manga.log("warn", "import · page pipeline started before import finished");
+        return;
+      }
+      manga.addSource(
+        {
+          id: `image-${Date.now().toString(36)}-${ref.hash?.slice(0, 8) ?? "page"}`,
+          kind: "image",
+          name: file.name,
+          size: file.size,
+          objectUrl,
+          width: dimensions.width,
+          height: dimensions.height,
+          pageCount: 1,
+          ref,
+        },
+        [],
+      );
       manga.log(
         "warn",
         "OCR adapter not loaded · run creates a review region for manual correction",
       );
-    };
-    image.onerror = () => {
+    } catch (reason) {
       URL.revokeObjectURL(objectUrl);
-      manga.log("error", `import · image decode failed · ${file.name}`);
-    };
-    image.src = objectUrl;
+      manga.log("error", `import · ${reason instanceof Error ? reason.message : String(reason)}`);
+    }
+  };
+
+  const importImages = async (files: ReadonlyArray<File>): Promise<void> => {
+    for (const file of files) await importImage(file);
   };
 
   const addRegion = (): void => {
@@ -187,6 +260,26 @@ export function App() {
       .finally(() => setExporting(false));
   };
 
+  if (bootError !== null) {
+    return (
+      <div className="manga-boot manga-boot-error">
+        <CircleAlert className="size-5" />
+        <span>Runtime 初始化失败：{bootError}</span>
+      </div>
+    );
+  }
+  if (runtime === null) {
+    return (
+      <div className="manga-boot">
+        <span className="manga-brand-mark">M/01</span>
+        <span>
+          <strong>ASSEMBLING MANGA RUNTIME</strong>
+          <small>OPFS · SQLite · Artifact store</small>
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="manga-studio">
       <header className="manga-header">
@@ -214,6 +307,7 @@ export function App() {
           <button
             type="button"
             className="manga-button manga-button-secondary"
+            disabled={state.running}
             onClick={() => fileInputRef.current?.click()}
           >
             <FileUp className="size-4" />
@@ -238,10 +332,11 @@ export function App() {
             ref={fileInputRef}
             type="file"
             accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            multiple
             className="hidden"
             onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file !== undefined) importImage(file);
+              const files = Array.from(event.currentTarget.files ?? []);
+              if (files.length > 0) void importImages(files);
               event.currentTarget.value = "";
             }}
           />
@@ -254,9 +349,11 @@ export function App() {
             <div className="manga-section-kicker">PROJECT / 01</div>
             <div className="manga-project-name">Spring Notes</div>
             <div className="manga-project-meta">
-              <span>{state.source.pageCount} page</span>
+              <span>
+                {state.pages.length} page{state.pages.length === 1 ? "" : "s"}
+              </span>
               <span>·</span>
-              <span>{formatBytes(state.source.size)}</span>
+              <span>{formatBytes(totalSize)}</span>
               <span>·</span>
               <span className="manga-dot-status">autosaved</span>
             </div>
@@ -265,35 +362,59 @@ export function App() {
           <section className="manga-sidebar-section">
             <div className="manga-section-heading">
               <span>PAGE QUEUE</span>
-              <span className="manga-count">01 / 01</span>
+              <span className="manga-count">
+                {String(activePageIndex + 1).padStart(2, "0")} /{" "}
+                {String(state.pages.length).padStart(2, "0")}
+              </span>
+            </div>
+            <div className="manga-page-queue" aria-label="漫画页面队列">
+              {state.pages.map((page, index) => {
+                const completedStages = page.stages.filter(
+                  (stage) => stage.status === "done",
+                ).length;
+                const pageStatus = page.outputReady
+                  ? "translated"
+                  : page.stages.some((stage) => stage.status === "running")
+                    ? "processing"
+                    : "needs review";
+                return (
+                  <button
+                    type="button"
+                    key={page.id}
+                    className={`manga-page-card ${page.id === state.activePageId ? "manga-page-card-active" : ""}`}
+                    disabled={state.running && page.id !== state.activePageId}
+                    aria-label={`选择第 ${index + 1} 页：${page.source.name}`}
+                    aria-current={page.id === state.activePageId ? "page" : undefined}
+                    onClick={() => manga.selectPage(page.id)}
+                  >
+                    <span className="manga-page-thumb">
+                      <img src={page.source.objectUrl} alt={`第 ${index + 1} 页缩略图`} />
+                      <span className="manga-page-thumb-overlay">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                    </span>
+                    <span className="manga-page-card-copy">
+                      <span className="manga-page-card-name">{page.source.name}</span>
+                      <span className="manga-page-card-detail">
+                        {page.regions.length} regions <span>·</span> {pageStatus}
+                        {completedStages > 0 && <span> · {completedStages}/9</span>}
+                      </span>
+                    </span>
+                    <ChevronDown className="manga-page-card-chevron size-4" />
+                  </button>
+                );
+              })}
             </div>
             <button
               type="button"
-              className="manga-page-card manga-page-card-active"
-              aria-label="选择第 1 页"
-            >
-              <span className="manga-page-thumb">
-                <img src={state.source.objectUrl} alt="当前漫画页面缩略图" />
-                <span className="manga-page-thumb-overlay">01</span>
-              </span>
-              <span className="manga-page-card-copy">
-                <span className="manga-page-card-name">{state.source.name}</span>
-                <span className="manga-page-card-detail">
-                  {state.regions.length} regions <span>·</span>{" "}
-                  {state.outputReady ? "translated" : "needs review"}
-                </span>
-              </span>
-              <ChevronDown className="manga-page-card-chevron size-4" />
-            </button>
-            <button
-              type="button"
               className="manga-import-card"
+              disabled={state.running}
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault();
-                const file = event.dataTransfer.files[0];
-                if (file !== undefined) importImage(file);
+                const files = Array.from(event.dataTransfer.files);
+                if (files.length > 0) void importImages(files);
               }}
             >
               <Upload className="size-4" />

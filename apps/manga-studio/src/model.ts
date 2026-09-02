@@ -1,3 +1,4 @@
+import type { ArtifactRef } from "@bcr/core";
 import type { Graph } from "@bcr/graph";
 
 export type MangaSourceKind = "fixture" | "image";
@@ -8,6 +9,8 @@ export interface MangaSource {
   readonly name: string;
   readonly size: number;
   readonly objectUrl: string;
+  /** Imported images are backed by an immutable OPFS artifact; fixture pages omit it. */
+  readonly ref?: ArtifactRef | undefined;
   readonly width: number;
   readonly height: number;
   readonly pageCount: number;
@@ -75,6 +78,8 @@ export interface MangaLogEntry {
 
 export interface MangaState {
   readonly source: MangaSource;
+  readonly pages: ReadonlyArray<MangaPage>;
+  readonly activePageId: string;
   readonly graph: Graph;
   readonly stages: ReadonlyArray<StageState>;
   readonly regions: ReadonlyArray<TextRegion>;
@@ -85,4 +90,16 @@ export interface MangaState {
   readonly outputReady: boolean;
   readonly dirty: boolean;
   readonly logs: ReadonlyArray<MangaLogEntry>;
+}
+
+/** A page is the unit of caching, review, retry and persistence. */
+export interface MangaPage {
+  readonly id: string;
+  readonly source: MangaSource;
+  readonly stages: ReadonlyArray<StageState>;
+  readonly regions: ReadonlyArray<TextRegion>;
+  readonly activeRegionId: string | null;
+  readonly outputMode: OutputMode;
+  readonly outputReady: boolean;
+  readonly dirty: boolean;
 }
