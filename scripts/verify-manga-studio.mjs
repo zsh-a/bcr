@@ -54,6 +54,9 @@ await page.waitForFunction(
 if (!(await page.locator(".manga-footer").innerText()).includes("pipeline complete")) {
   fail("流水线未完成");
 }
+if ((await page.locator('[data-execution="review.manual · REVIEW"]').count()) < 1) {
+  fail("OCR 阶段未展示实际 Review adapter 执行事实");
+}
 
 // Imported pages use the real shared WorkerPool for the review OCR adapter.
 // The adapter only serializes known/manual regions; it never claims to have
@@ -84,6 +87,9 @@ const ocrArtifact = await page
   .locator('.manga-stage-row[data-artifact^="manga/ocr-review/"]')
   .count();
 if (ocrArtifact !== 1) fail("review OCR adapter 没有生成 manga/ocr-lines Artifact");
+if ((await page.locator('[data-execution="review.manual · REVIEW"]').count()) < 1) {
+  fail("导入页面未展示 Review adapter 执行事实");
+}
 
 // A second pending page exercises the durable queue cursor and its pause/resume
 // surface. Existing completed pages are skipped instead of being recomputed.

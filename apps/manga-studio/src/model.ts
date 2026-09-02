@@ -1,4 +1,4 @@
-import type { ArtifactRef } from "@bcr/core";
+import type { ArtifactRef, RuntimeKind } from "@bcr/core";
 import type { Graph } from "@bcr/graph";
 
 export type MangaSourceKind = "fixture" | "image";
@@ -24,6 +24,32 @@ export type MangaSourceLanguage = "ja" | "en" | "ko";
 export type MangaTranslationEngineId = "fixture" | "local";
 export type MangaCleanMode = "fill" | "inpaint";
 export type MangaCleanAdapterId = "fill" | "inpaint.onnx";
+
+/** Runtime device chosen for an adapter execution (review/fixture are logical devices). */
+export type MangaResolvedDevice = "review" | "fixture" | "webgpu" | "wasm";
+
+/** Reasons that are safe to surface when a requested adapter is resolved differently. */
+export type MangaAdapterFallbackReason =
+  | "language-unsupported"
+  | "webgpu-unavailable"
+  | "webgpu-init-failed"
+  | "adapter-not-ready"
+  | "model-missing"
+  | "missing-input";
+
+/** Persisted execution facts shared by OCR/translation artifacts and stage UI. */
+export interface MangaAdapterExecution {
+  readonly kind: "ocr" | "translation";
+  readonly requestedAdapter: MangaOcrAdapterId | MangaTranslationEngineId;
+  readonly effectiveAdapter: MangaOcrAdapterId | MangaTranslationEngineId;
+  readonly runtime: "review" | "fixture" | RuntimeKind;
+  readonly requestedDevice: MangaOcrDevice;
+  readonly effectiveDevice: MangaResolvedDevice;
+  readonly model?: string | undefined;
+  readonly sourceLanguage?: MangaSourceLanguage | undefined;
+  readonly targetLanguage?: "zh" | undefined;
+  readonly fallbackReason?: MangaAdapterFallbackReason | undefined;
+}
 
 /**
  * 文本区域使用相对坐标，避免页面缩放后丢失编辑位置。
@@ -69,6 +95,8 @@ export interface MangaOcrArtifact {
   readonly sourceName: string;
   readonly coordinateSpace: "normalized-percent";
   readonly lines: ReadonlyArray<MangaOcrLine>;
+  /** Actual adapter/device chosen by the Worker, including any fallback. */
+  readonly execution?: MangaAdapterExecution | undefined;
 }
 
 /** Project-level terminology that survives page changes and refreshes. */
@@ -153,6 +181,194 @@ export const TRANSLATION_MODEL_MANIFESTS: ReadonlyArray<MangaTranslationModelMan
   },
 ];
 
+export interface MangaAdapterResolutionOptions {
+  readonly model?: string | undefined;
+  readonly device?: MangaOcrDevice | undefined;
+  /** Tests and non-browser hosts can inject the capability result. */
+  readonly webgpuAvailable?: boolean | undefined;
+}
+
+export interface MangaOcrAdapterResolution {
+  readonly manifest: MangaOcrModelManifest;
+  readonly effectiveManifest: MangaOcrModelManifest;
+  readonly execution: MangaAdapterExecution;
+}
+
+export interface MangaTranslationAdapterResolution {
+  readonly manifest: MangaTranslationModelManifest;
+  readonly effectiveManifest: MangaTranslationModelManifest;
+  readonly execution: MangaAdapterExecution;
+}
+
+/** Browser capability probe kept in one place so UI and Worker use the same rule. */
+export function mangaWebGpuAvailable(): boolean {
+  return typeof navigator !== "undefined" && "gpu" in navigator;
+}
+
+/** Resolve a local model device. A missing WebGPU capability is always explicit. */
+export function resolveMangaDevice(
+  requestedDevice: MangaOcrDevice,
+  webgpuAvailable = mangaWebGpuAvailable(),
+): {
+  readonly requestedDevice: MangaOcrDevice;
+  readonly effectiveDevice: Extract<MangaResolvedDevice, "webgpu" | "wasm">;
+  readonly fallbackReason?: "webgpu-unavailable";
+} {
+  if (requestedDevice === "wasm") {
+    return { requestedDevice, effectiveDevice: "wasm" };
+  }
+  if (webgpuAvailable) {
+    return { requestedDevice, effectiveDevice: "webgpu" };
+  }
+  return {
+    requestedDevice,
+    effectiveDevice: "wasm",
+    fallbackReason: "webgpu-unavailable",
+  };
+}
+
+function requestedDevice(options: MangaAdapterResolutionOptions | undefined): MangaOcrDevice {
+  const value = options?.device;
+  return value === "webgpu" || value === "wasm" ? value : "auto";
+}
+
+function withOptionalModel(
+  execution: MangaAdapterExecution,
+  model: string | undefined,
+): MangaAdapterExecution {
+  return model === undefined || model.trim().length === 0 ? execution : { ...execution, model };
+}
+
+/** Resolve OCR language, adapter readiness and device before a task is submitted. */
+export function resolveMangaOcrAdapter(
+  adapter: MangaOcrAdapterId,
+  sourceLanguage: MangaSourceLanguage,
+  options?: MangaAdapterResolutionOptions,
+): MangaOcrAdapterResolution {
+  const manifest = OCR_MODEL_MANIFESTS.find((candidate) => candidate.id === adapter);
+  if (manifest === undefined) {
+    throw new Error(`unknown manga OCR adapter: ${adapter}`);
+  }
+  const device = requestedDevice(options);
+  const model = options?.model ?? manifest.model;
+  if (adapter !== "review.manual" && !manifest.languages.includes(sourceLanguage)) {
+    const execution = withOptionalModel(
+      {
+        kind: "ocr",
+        requestedAdapter: adapter,
+        effectiveAdapter: "review.manual",
+        runtime: "review",
+        requestedDevice: device,
+        effectiveDevice: "review",
+        sourceLanguage,
+        fallbackReason: "language-unsupported",
+      },
+      model,
+    );
+    const effectiveManifest = OCR_MODEL_MANIFESTS.find(
+      (candidate) => candidate.id === "review.manual",
+    );
+    if (effectiveManifest === undefined) throw new Error("review OCR adapter manifest is missing");
+    return { manifest, effectiveManifest, execution };
+  }
+  if (adapter === "review.manual") {
+    return {
+      manifest,
+      effectiveManifest: manifest,
+      execution: {
+        kind: "ocr",
+        requestedAdapter: adapter,
+        effectiveAdapter: adapter,
+        runtime: "review",
+        requestedDevice: device,
+        effectiveDevice: "review",
+        sourceLanguage,
+      },
+    };
+  }
+  const resolvedDevice = resolveMangaDevice(device, options?.webgpuAvailable);
+  return {
+    manifest,
+    effectiveManifest: manifest,
+    execution: withOptionalModel(
+      {
+        kind: "ocr",
+        requestedAdapter: adapter,
+        effectiveAdapter: adapter,
+        runtime: manifest.runtime,
+        requestedDevice: resolvedDevice.requestedDevice,
+        effectiveDevice: resolvedDevice.effectiveDevice,
+        sourceLanguage,
+        ...(resolvedDevice.fallbackReason === undefined
+          ? {}
+          : { fallbackReason: resolvedDevice.fallbackReason }),
+      },
+      model,
+    ),
+  };
+}
+
+/** Resolve translation engine/model and make missing-model fallback observable. */
+export function resolveMangaTranslationAdapter(
+  adapter: MangaTranslationEngineId,
+  sourceLanguage: MangaSourceLanguage,
+  options?: MangaAdapterResolutionOptions,
+): MangaTranslationAdapterResolution {
+  const manifest = TRANSLATION_MODEL_MANIFESTS.find((candidate) => candidate.id === adapter);
+  if (manifest === undefined) {
+    throw new Error(`unknown manga translation adapter: ${adapter}`);
+  }
+  const device = requestedDevice(options);
+  const model = options?.model ?? manifest.models[sourceLanguage];
+  if (adapter === "fixture" || model === undefined || model.trim().length === 0) {
+    const fallbackReason =
+      adapter === "fixture" ? undefined : ("model-missing" satisfies MangaAdapterFallbackReason);
+    const effectiveManifest = TRANSLATION_MODEL_MANIFESTS.find(
+      (candidate) => candidate.id === "fixture",
+    );
+    if (effectiveManifest === undefined) throw new Error("fixture translation manifest is missing");
+    return {
+      manifest,
+      effectiveManifest,
+      execution: withOptionalModel(
+        {
+          kind: "translation",
+          requestedAdapter: adapter,
+          effectiveAdapter: "fixture",
+          runtime: "fixture",
+          requestedDevice: device,
+          effectiveDevice: "fixture",
+          sourceLanguage,
+          targetLanguage: "zh",
+          ...(fallbackReason === undefined ? {} : { fallbackReason }),
+        },
+        model,
+      ),
+    };
+  }
+  const resolvedDevice = resolveMangaDevice(device, options?.webgpuAvailable);
+  return {
+    manifest,
+    effectiveManifest: manifest,
+    execution: withOptionalModel(
+      {
+        kind: "translation",
+        requestedAdapter: adapter,
+        effectiveAdapter: adapter,
+        runtime: manifest.runtime,
+        requestedDevice: resolvedDevice.requestedDevice,
+        effectiveDevice: resolvedDevice.effectiveDevice,
+        sourceLanguage,
+        targetLanguage: "zh",
+        ...(resolvedDevice.fallbackReason === undefined
+          ? {}
+          : { fallbackReason: resolvedDevice.fallbackReason }),
+      },
+      model,
+    ),
+  };
+}
+
 export interface MangaCleanModelManifest {
   readonly id: MangaCleanAdapterId;
   readonly label: string;
@@ -230,6 +446,8 @@ export interface MangaTranslationArtifact {
   readonly sourceLanguage: MangaSourceLanguage;
   readonly targetLanguage: "zh";
   readonly lines: ReadonlyArray<MangaTranslationLine>;
+  /** Actual adapter/device chosen by the Worker, including any fallback. */
+  readonly execution?: MangaAdapterExecution | undefined;
 }
 
 export type MangaStageId =
@@ -251,6 +469,8 @@ export interface StageState {
   readonly detail: string;
   readonly status: StageStatus;
   readonly progress: number;
+  /** Durable execution facts used to explain model/device fallback. */
+  readonly execution?: MangaAdapterExecution | undefined;
   readonly artifact?: ArtifactRef | undefined;
   readonly error?: string | undefined;
 }

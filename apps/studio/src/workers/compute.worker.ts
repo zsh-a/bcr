@@ -11,8 +11,13 @@ import {
 } from "@bcr/document-core";
 import { applyGlossaryTerms } from "@bcr/manga-studio/glossary";
 import {
+  mangaWebGpuAvailable,
   resolveMangaCleanMode,
+  resolveMangaDevice,
+  resolveMangaOcrAdapter,
+  resolveMangaTranslationAdapter,
   TRANSLATION_MODEL_MANIFESTS,
+  type MangaAdapterExecution,
   type MangaCleanArtifact,
   type MangaCleanRegionMask,
   type MangaGlossaryEntry,
@@ -368,6 +373,33 @@ async function mangaOcrReview(
     sourceName: configText(task.config?.["sourceName"], input.id),
     coordinateSpace: "normalized-percent",
     lines,
+    execution: {
+      kind: "ocr",
+      requestedAdapter:
+        configText(task.config?.["requestedAdapter"], "review.manual") === "vision.onnx"
+          ? "vision.onnx"
+          : configText(task.config?.["requestedAdapter"], "review.manual") === "manga.onnx"
+            ? "manga.onnx"
+            : "review.manual",
+      effectiveAdapter: "review.manual",
+      runtime: "review",
+      requestedDevice:
+        configText(task.config?.["device"], "auto") === "webgpu"
+          ? "webgpu"
+          : configText(task.config?.["device"], "auto") === "wasm"
+            ? "wasm"
+            : "auto",
+      effectiveDevice: "review",
+      sourceLanguage:
+        configText(task.config?.["sourceLanguage"], "ja") === "en"
+          ? "en"
+          : configText(task.config?.["sourceLanguage"], "ja") === "ko"
+            ? "ko"
+            : "ja",
+      ...(configText(task.config?.["requestedAdapter"], "review.manual") === "review.manual"
+        ? {}
+        : { fallbackReason: "language-unsupported" as const }),
+    },
   };
   const out = await writeTypedJsonArtifact("manga", "ocr-review", "manga/ocr-lines", payload);
   ctx.progress(1);
@@ -378,17 +410,21 @@ type OcrDevice = "auto" | "webgpu" | "wasm";
 type ResolvedOcrDevice = "webgpu" | "wasm";
 type OcrTranscriber = (image: unknown, options?: Record<string, unknown>) => Promise<unknown>;
 
-function ocrGpuAvailable(): boolean {
-  return typeof navigator !== "undefined" && "gpu" in navigator;
+interface LoadedModel<T> {
+  readonly fn: T;
+  readonly device: ResolvedOcrDevice;
+  readonly fallbackReason?: "webgpu-unavailable" | "webgpu-init-failed";
 }
 
-async function resolveOcrDevice(device: OcrDevice): Promise<ResolvedOcrDevice> {
-  if (device === "wasm") return "wasm";
-  if (!ocrGpuAvailable()) {
-    if (device === "webgpu") throw new Error("WebGPU is not available in this browser");
-    return "wasm";
-  }
-  return "webgpu";
+function resolveOcrDevice(device: OcrDevice): {
+  readonly device: ResolvedOcrDevice;
+  readonly fallbackReason?: "webgpu-unavailable";
+} {
+  const resolved = resolveMangaDevice(device, mangaWebGpuAvailable());
+  return {
+    device: resolved.effectiveDevice,
+    ...(resolved.fallbackReason === undefined ? {} : { fallbackReason: resolved.fallbackReason }),
+  };
 }
 
 let ocrTranscriberCache:
@@ -396,6 +432,7 @@ let ocrTranscriberCache:
       readonly model: string;
       readonly device: ResolvedOcrDevice;
       readonly fn: OcrTranscriber;
+      readonly fallbackReason?: "webgpu-unavailable" | "webgpu-init-failed";
     }
   | undefined;
 
@@ -424,26 +461,43 @@ async function loadOcrTranscriber(
   model: string,
   device: OcrDevice,
   ctx: WorkerContext,
-): Promise<OcrTranscriber> {
+): Promise<LoadedModel<OcrTranscriber>> {
+  const requested = resolveOcrDevice(device);
   const cached = ocrTranscriberCache;
   if (
     cached !== undefined &&
     cached.model === model &&
-    (device === "auto" || cached.device === device)
+    (cached.device === device || (device === "auto" && cached.device === requested.device))
   ) {
-    return cached.fn;
+    return {
+      fn: cached.fn,
+      device: cached.device,
+      ...(device === "wasm" || cached.fallbackReason === undefined
+        ? {}
+        : { fallbackReason: cached.fallbackReason }),
+    };
   }
-  const resolved = await resolveOcrDevice(device);
+  const resolved = requested;
   try {
-    const fn = await buildOcrTranscriber(model, resolved, ctx);
-    ocrTranscriberCache = { model, device: resolved, fn };
-    return fn;
+    const fn = await buildOcrTranscriber(model, resolved.device, ctx);
+    ocrTranscriberCache = {
+      model,
+      device: resolved.device,
+      fn,
+      ...(resolved.fallbackReason === undefined ? {} : { fallbackReason: resolved.fallbackReason }),
+    };
+    return {
+      fn,
+      device: resolved.device,
+      ...(resolved.fallbackReason === undefined ? {} : { fallbackReason: resolved.fallbackReason }),
+    };
   } catch (error) {
-    if (device === "auto" && resolved === "webgpu") {
-      console.warn("[manga-ocr] WebGPU unavailable, falling back to WASM:", error);
+    if (resolved.device === "webgpu") {
+      console.warn("[manga-ocr] WebGPU initialization failed, falling back to WASM:", error);
       const fn = await buildOcrTranscriber(model, "wasm", ctx);
-      ocrTranscriberCache = { model, device: "wasm", fn };
-      return fn;
+      const loaded = { fn, device: "wasm" as const, fallbackReason: "webgpu-init-failed" as const };
+      ocrTranscriberCache = { model, ...loaded };
+      return loaded;
     }
     throw error;
   }
@@ -490,11 +544,30 @@ async function mangaOcrOnnx(
   const deviceValue = configText(task.config?.["device"], "auto");
   const device: OcrDevice =
     deviceValue === "webgpu" || deviceValue === "wasm" ? deviceValue : "auto";
+  const adapterValue = configText(task.config?.["adapter"], "vision.onnx");
+  const requestedAdapterValue = configText(task.config?.["requestedAdapter"], adapterValue);
+  const requestedAdapter: MangaOcrAdapterId =
+    requestedAdapterValue === "manga.onnx" || requestedAdapterValue === "vision.onnx"
+      ? requestedAdapterValue
+      : "review.manual";
+  const sourceLanguageValue = configText(task.config?.["sourceLanguage"], "ja");
+  const sourceLanguage: MangaSourceLanguage =
+    sourceLanguageValue === "en" || sourceLanguageValue === "ko" ? sourceLanguageValue : "ja";
+  const resolution = resolveMangaOcrAdapter(requestedAdapter, sourceLanguage, {
+    model,
+    device,
+  });
+  if (resolution.execution.effectiveAdapter === "review.manual") {
+    throw new Error(
+      `manga.ocr.onnx cannot run ${requestedAdapter} for ${sourceLanguage}; use Review adapter`,
+    );
+  }
   const blob = await opfs.getBlob(artifactPath(input));
   if (blob === undefined) throw new Error(`artifact not found: ${input.id}`);
   const transformers = await import("@huggingface/transformers");
   const image = await transformers.RawImage.read(blob);
-  const transcriber = await loadOcrTranscriber(model, device, ctx);
+  const loaded = await loadOcrTranscriber(model, device, ctx);
+  const transcriber = loaded.fn;
   const recognized: MangaOcrLine[] = [];
   for (const [index, line] of lines.entries()) {
     throwIfAborted(ctx);
@@ -510,15 +583,22 @@ async function mangaOcrOnnx(
     });
     ctx.progress(Math.min(0.98, 0.4 + (0.58 * (index + 1)) / lines.length));
   }
-  const adapterValue = configText(task.config?.["adapter"], "vision.onnx");
-  const adapter: Exclude<MangaOcrAdapterId, "review.manual"> =
-    adapterValue === "manga.onnx" ? "manga.onnx" : "vision.onnx";
+  const adapter = resolution.execution.effectiveAdapter as Exclude<
+    MangaOcrAdapterId,
+    "review.manual"
+  >;
+  const execution: MangaAdapterExecution = {
+    ...resolution.execution,
+    effectiveDevice: loaded.device,
+    ...(loaded.fallbackReason === undefined ? {} : { fallbackReason: loaded.fallbackReason }),
+  };
   const payload: MangaOcrArtifact = {
     version: 1,
     adapter,
     sourceName: configText(task.config?.["sourceName"], input.id),
     coordinateSpace: "normalized-percent",
     lines: recognized,
+    execution,
   };
   const out = await writeTypedJsonArtifact("manga", "ocr-onnx", "manga/ocr-lines", payload);
   ctx.progress(1);
@@ -535,6 +615,7 @@ let mangaTranslatorCache:
       readonly model: string;
       readonly device: ResolvedOcrDevice;
       readonly fn: MangaTranslator;
+      readonly fallbackReason?: "webgpu-unavailable" | "webgpu-init-failed";
     }
   | undefined;
 
@@ -576,26 +657,43 @@ async function loadMangaTranslator(
   model: string,
   device: OcrDevice,
   ctx: WorkerContext,
-): Promise<MangaTranslator> {
+): Promise<LoadedModel<MangaTranslator>> {
+  const requested = resolveOcrDevice(device);
   const cached = mangaTranslatorCache;
   if (
     cached !== undefined &&
     cached.model === model &&
-    (device === "auto" || cached.device === device)
+    (cached.device === device || (device === "auto" && cached.device === requested.device))
   ) {
-    return cached.fn;
+    return {
+      fn: cached.fn,
+      device: cached.device,
+      ...(device === "wasm" || cached.fallbackReason === undefined
+        ? {}
+        : { fallbackReason: cached.fallbackReason }),
+    };
   }
-  const resolved = await resolveOcrDevice(device);
+  const resolved = requested;
   try {
-    const fn = await buildMangaTranslator(model, resolved, ctx);
-    mangaTranslatorCache = { model, device: resolved, fn };
-    return fn;
+    const fn = await buildMangaTranslator(model, resolved.device, ctx);
+    mangaTranslatorCache = {
+      model,
+      device: resolved.device,
+      fn,
+      ...(resolved.fallbackReason === undefined ? {} : { fallbackReason: resolved.fallbackReason }),
+    };
+    return {
+      fn,
+      device: resolved.device,
+      ...(resolved.fallbackReason === undefined ? {} : { fallbackReason: resolved.fallbackReason }),
+    };
   } catch (error) {
-    if (device === "auto" && resolved === "webgpu") {
-      console.warn("[manga-translate] WebGPU unavailable, falling back to WASM:", error);
+    if (resolved.device === "webgpu") {
+      console.warn("[manga-translate] WebGPU initialization failed, falling back to WASM:", error);
       const fn = await buildMangaTranslator(model, "wasm", ctx);
-      mangaTranslatorCache = { model, device: "wasm", fn };
-      return fn;
+      const loaded = { fn, device: "wasm" as const, fallbackReason: "webgpu-init-failed" as const };
+      mangaTranslatorCache = { model, ...loaded };
+      return loaded;
     }
     throw error;
   }
@@ -652,6 +750,16 @@ async function mangaTranslateOnnx(
   const deviceValue = configText(task.config?.["device"], "auto");
   const device: OcrDevice =
     deviceValue === "webgpu" || deviceValue === "wasm" ? deviceValue : "auto";
+  const requestedDeviceResolution = resolveOcrDevice(device);
+  const requestedAdapter: "fixture" | "local" =
+    configText(task.config?.["requestedAdapter"], "local") === "fixture" ? "fixture" : "local";
+  const resolution = resolveMangaTranslationAdapter(requestedAdapter, sourceLanguage, {
+    model,
+    device,
+  });
+  if (resolution.execution.effectiveAdapter !== "local") {
+    throw new Error(`manga.translate.onnx cannot run ${requestedAdapter} without a local model`);
+  }
   const glossary = taskGlossary(task);
   const translatable = ocr.lines.filter((line) => line.text.trim().length > 0);
   const translated = new Map<string, string>();
@@ -664,8 +772,10 @@ async function mangaTranslateOnnx(
       .map((entry) => [entry.source.trim(), entry.target.trim()]),
   );
   const pending = translatable.filter((line) => !exact.has(line.text.trim()));
+  let loaded: LoadedModel<MangaTranslator> | undefined;
   if (pending.length > 0) {
-    const translator = await loadMangaTranslator(model, device, ctx);
+    loaded = await loadMangaTranslator(model, device, ctx);
+    const translator = loaded.fn;
     const BATCH = 8;
     for (let offset = 0; offset < pending.length; offset += BATCH) {
       throwIfAborted(ctx);
@@ -704,6 +814,15 @@ async function mangaTranslateOnnx(
     sourceLanguage,
     targetLanguage: "zh",
     lines,
+    execution: {
+      ...resolution.execution,
+      effectiveDevice: loaded?.device ?? requestedDeviceResolution.device,
+      ...(loaded?.fallbackReason !== undefined
+        ? { fallbackReason: loaded.fallbackReason }
+        : requestedDeviceResolution.fallbackReason === undefined
+          ? {}
+          : { fallbackReason: requestedDeviceResolution.fallbackReason }),
+    },
   };
   const out = await writeTypedJsonArtifact(
     "manga",

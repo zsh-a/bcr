@@ -622,6 +622,16 @@
   white-space: nowrap;
 }
 
+.manga-stage-execution {
+  overflow: hidden;
+  color: var(--manga-muted);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .manga-stage-status {
   align-self: start;
   padding-top: 2px;

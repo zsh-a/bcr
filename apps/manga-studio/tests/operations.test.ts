@@ -9,7 +9,13 @@ import {
   OPERATIONS,
   REVIEW_OCR_OPERATION,
 } from "../src/operations";
-import { OCR_MODEL_MANIFESTS, TRANSLATION_MODEL_MANIFESTS } from "../src/model";
+import {
+  OCR_MODEL_MANIFESTS,
+  TRANSLATION_MODEL_MANIFESTS,
+  resolveMangaDevice,
+  resolveMangaOcrAdapter,
+  resolveMangaTranslationAdapter,
+} from "../src/model";
 import { DEFAULT_SETTINGS } from "../src/store";
 import { mergeOcrLinesIntoRegions } from "../src/pipeline";
 
@@ -109,6 +115,47 @@ describe("Manga Studio operation graph", () => {
         en: "Xenova/nllb-200-distilled-600M",
         ko: "Xenova/nllb-200-distilled-600M",
       },
+    });
+  });
+
+  it("resolves adapter capabilities without silently using an incompatible model", () => {
+    const unsupported = resolveMangaOcrAdapter("vision.onnx", "ja", {
+      device: "auto",
+      webgpuAvailable: false,
+    });
+    expect(unsupported.execution).toMatchObject({
+      requestedAdapter: "vision.onnx",
+      effectiveAdapter: "review.manual",
+      effectiveDevice: "review",
+      fallbackReason: "language-unsupported",
+    });
+
+    const localOcr = resolveMangaOcrAdapter("manga.onnx", "ja", {
+      device: "webgpu",
+      webgpuAvailable: false,
+    });
+    expect(localOcr.execution).toMatchObject({
+      requestedAdapter: "manga.onnx",
+      effectiveAdapter: "manga.onnx",
+      effectiveDevice: "wasm",
+      fallbackReason: "webgpu-unavailable",
+    });
+
+    const localTranslation = resolveMangaTranslationAdapter("local", "ko", {
+      device: "webgpu",
+      webgpuAvailable: false,
+    });
+    expect(localTranslation.execution).toMatchObject({
+      requestedAdapter: "local",
+      effectiveAdapter: "local",
+      effectiveDevice: "wasm",
+      fallbackReason: "webgpu-unavailable",
+      model: "Xenova/nllb-200-distilled-600M",
+    });
+
+    expect(resolveMangaDevice("wasm", true)).toEqual({
+      requestedDevice: "wasm",
+      effectiveDevice: "wasm",
     });
   });
 

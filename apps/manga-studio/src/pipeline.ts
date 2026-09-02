@@ -6,8 +6,10 @@ import { translateWithGlossary } from "./glossary";
 import {
   CLEAN_MODEL_MANIFESTS,
   OCR_MODEL_MANIFESTS,
-  TRANSLATION_MODEL_MANIFESTS,
   resolveMangaCleanMode,
+  resolveMangaOcrAdapter,
+  resolveMangaTranslationAdapter,
+  type MangaAdapterExecution,
   type MangaGlossaryEntry,
   type MangaCleanArtifact,
   type MangaCleanMode,
@@ -15,7 +17,6 @@ import {
   type MangaOcrAdapterId,
   type MangaOcrArtifact,
   type MangaOcrLine,
-  type MangaSourceLanguage,
   type TextRegion,
   type MangaTranslationArtifact,
 } from "./model";
@@ -130,12 +131,32 @@ function translateText(text: string, glossary: ReadonlyArray<MangaGlossaryEntry>
   return translateWithGlossary(text, glossary, fixtureTranslate);
 }
 
+function translationFallback(
+  execution: MangaAdapterExecution,
+  fallbackReason: MangaAdapterExecution["fallbackReason"],
+): MangaAdapterExecution {
+  return {
+    ...execution,
+    effectiveAdapter: "fixture",
+    runtime: "fixture",
+    effectiveDevice: "fixture",
+    ...(fallbackReason === undefined ? {} : { fallbackReason }),
+  };
+}
+
 function ocrTask(runId: number): ComputeTask | undefined {
   const state = manga.getSnapshot();
   const source = state.source.ref;
   if (source === undefined || source.storage !== "opfs") return undefined;
+  const resolution = resolveMangaOcrAdapter(
+    state.settings.ocrAdapter,
+    state.settings.sourceLanguage,
+    { model: state.settings.ocrModel, device: state.settings.ocrDevice },
+  );
   const operation =
-    state.settings.ocrAdapter === "review.manual" ? REVIEW_OCR_OPERATION : LOCAL_OCR_OPERATION;
+    resolution.execution.effectiveAdapter === "review.manual"
+      ? REVIEW_OCR_OPERATION
+      : LOCAL_OCR_OPERATION;
   return {
     id: `manga-ocr-${Date.now().toString(36)}-${runId.toString(36)}`,
     runtime: operation.runtime,
@@ -152,9 +173,12 @@ function ocrTask(runId: number): ComputeTask | undefined {
     resources: operation.resources,
     cache: { enabled: true },
     config: {
-      adapter: state.settings.ocrAdapter,
+      /** Keep requested/effective IDs separate so a language fallback is auditable. */
+      requestedAdapter: state.settings.ocrAdapter,
+      adapter: resolution.execution.effectiveAdapter,
       model: state.settings.ocrModel,
       device: state.settings.ocrDevice,
+      sourceLanguage: state.settings.sourceLanguage,
       sourceName: state.source.name,
       width: state.source.width,
       height: state.source.height,
@@ -174,15 +198,20 @@ function ocrTask(runId: number): ComputeTask | undefined {
   };
 }
 
-function translationModel(sourceLanguage: MangaSourceLanguage): string | undefined {
-  const manifest = TRANSLATION_MODEL_MANIFESTS.find((candidate) => candidate.id === "local");
-  return manifest?.models[sourceLanguage];
-}
-
 function translationTask(runId: number, input: ArtifactRef): ComputeTask | undefined {
   const state = manga.getSnapshot();
-  const model = translationModel(state.settings.sourceLanguage);
-  if (model === undefined) return undefined;
+  const resolution = resolveMangaTranslationAdapter(
+    state.settings.engine,
+    state.settings.sourceLanguage,
+    { device: state.settings.translationDevice },
+  );
+  if (
+    resolution.execution.effectiveAdapter !== "local" ||
+    resolution.execution.model === undefined
+  ) {
+    return undefined;
+  }
+  const model = resolution.execution.model;
   return {
     id: `manga-translate-${Date.now().toString(36)}-${runId.toString(36)}`,
     runtime: LOCAL_TRANSLATION_OPERATION.runtime,
@@ -199,6 +228,8 @@ function translationTask(runId: number, input: ArtifactRef): ComputeTask | undef
     resources: LOCAL_TRANSLATION_OPERATION.resources,
     cache: { enabled: true },
     config: {
+      requestedAdapter: state.settings.engine,
+      adapter: resolution.execution.effectiveAdapter,
       model,
       device: state.settings.translationDevice,
       sourceLanguage: state.settings.sourceLanguage,
@@ -262,15 +293,6 @@ async function runOcrAdapter(
       ? adapterValue
       : "review.manual";
   const manifest = OCR_MODEL_MANIFESTS.find((candidate) => candidate.id === adapter);
-  if (
-    manifest !== undefined &&
-    !manifest.languages.includes(manga.getSnapshot().settings.sourceLanguage)
-  ) {
-    manga.log(
-      "warn",
-      `ocr ${manifest.label} · source language is outside the manifest (${manifest.languages.join(", ")}); review every region`,
-    );
-  }
   const source = task.inputs[0];
   if (source === undefined) return undefined;
   const available = await Effect.runPromise(services.artifacts.has(source));
@@ -301,6 +323,15 @@ async function runOcrAdapter(
     if (artifact === undefined) throw new Error("ocr adapter returned no artifact");
     const data = await Effect.runPromise(services.artifacts.get(artifact));
     const payload = decodeOcrArtifact(data);
+    if (payload.execution !== undefined) {
+      manga.updateStage("ocr", { execution: payload.execution });
+      if (payload.execution.fallbackReason !== undefined) {
+        manga.log(
+          "warn",
+          `ocr ${payload.execution.requestedAdapter} → ${payload.execution.effectiveAdapter} · ${payload.execution.fallbackReason}`,
+        );
+      }
+    }
     const localRuntime = mangaRuntime();
     if (localRuntime !== undefined && localRuntime.artifacts !== services.artifacts) {
       try {
@@ -358,6 +389,15 @@ async function runLocalTranslation(
     const payload = JSON.parse(new TextDecoder().decode(data)) as MangaTranslationArtifact;
     if (payload.version !== 1 || payload.adapter !== "local.onnx") {
       throw new Error("local translation adapter returned an invalid artifact");
+    }
+    if (payload.execution !== undefined) {
+      manga.updateStage("translate", { execution: payload.execution });
+      if (payload.execution.fallbackReason !== undefined) {
+        manga.log(
+          "warn",
+          `translate ${payload.execution.requestedAdapter} → ${payload.execution.effectiveAdapter} · ${payload.execution.fallbackReason}`,
+        );
+      }
     }
     const localRuntime = mangaRuntime();
     if (localRuntime !== undefined && localRuntime.artifacts !== services.artifacts) {
@@ -481,15 +521,47 @@ export async function runMangaPipeline(
 
       let stageArtifact: ArtifactRef | undefined;
       let localTranslation: MangaTranslationArtifact | undefined;
+      let stageExecution: MangaAdapterExecution | undefined;
+      if (stage.id === "ocr") {
+        stageExecution = resolveMangaOcrAdapter(
+          manga.getSnapshot().settings.ocrAdapter,
+          manga.getSnapshot().settings.sourceLanguage,
+          {
+            model: manga.getSnapshot().settings.ocrModel,
+            device: manga.getSnapshot().settings.ocrDevice,
+          },
+        ).execution;
+        manga.updateStage(stage.id, { execution: stageExecution });
+      }
       if (stage.id === "ocr" && services !== undefined) {
         const result = await runOcrAdapter(services, runId);
         ocrArtifact = result?.artifact;
         ocrPayload = result?.payload;
         stageArtifact = ocrArtifact;
+        stageExecution = result?.payload.execution ?? stageExecution;
         if (ocrPayload !== undefined) {
           manga.setRegionsForPipeline(
             mergeOcrLinesIntoRegions(manga.getSnapshot().regions, ocrPayload.lines),
           );
+        }
+      }
+      if (stage.id === "translate") {
+        const translationResolution = resolveMangaTranslationAdapter(
+          manga.getSnapshot().settings.engine,
+          manga.getSnapshot().settings.sourceLanguage,
+          { device: manga.getSnapshot().settings.translationDevice },
+        );
+        stageExecution = translationResolution.execution;
+        manga.updateStage(stage.id, { execution: stageExecution });
+        if (
+          manga.getSnapshot().settings.engine === "local" &&
+          (ocrArtifact === undefined ||
+            services === undefined ||
+            stageExecution.effectiveAdapter !== "local")
+        ) {
+          const fallbackReason = stageExecution.fallbackReason ?? "missing-input";
+          stageExecution = translationFallback(stageExecution, fallbackReason);
+          manga.updateStage(stage.id, { execution: stageExecution });
         }
       }
       if (
@@ -501,10 +573,15 @@ export async function runMangaPipeline(
         const result = await runLocalTranslation(services, runId, ocrArtifact);
         stageArtifact = result?.artifact;
         localTranslation = result?.payload;
+        stageExecution = result?.payload.execution ?? stageExecution;
+        if (result === undefined && stageExecution?.effectiveAdapter === "local") {
+          stageExecution = translationFallback(stageExecution, "adapter-not-ready");
+          manga.updateStage(stage.id, { execution: stageExecution });
+        }
       } else if (stage.id === "translate" && manga.getSnapshot().settings.engine === "local") {
         manga.log(
           "warn",
-          "translate local ONNX · fixture or review-only page has no OCR artifact, using fallback",
+          "translate local ONNX · fixture or review-only page has no OCR artifact, using Fixture fallback",
         );
       }
       if (stage.id === "remove-text" && services !== undefined) {
@@ -521,7 +598,12 @@ export async function runMangaPipeline(
         );
       }
       if (stageArtifact !== undefined) {
-        manga.updateStage(stage.id, { status: "done", progress: 1, artifact: stageArtifact });
+        manga.updateStage(stage.id, {
+          status: "done",
+          progress: 1,
+          artifact: stageArtifact,
+          ...(stageExecution === undefined ? {} : { execution: stageExecution }),
+        });
       } else {
         await wait(stage.ms);
       }

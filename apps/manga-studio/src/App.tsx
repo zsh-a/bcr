@@ -51,6 +51,9 @@ import {
   OCR_MODEL_MANIFESTS,
   TRANSLATION_MODEL_MANIFESTS,
   resolveMangaCleanMode,
+  resolveMangaOcrAdapter,
+  resolveMangaTranslationAdapter,
+  type MangaAdapterExecution,
   type MangaGlossaryEntry,
   type MangaCleanMode,
   type MangaOcrAdapterId,
@@ -95,6 +98,24 @@ function stageTone(status: string): string {
   if (status === "running") return "manga-stage-running";
   if (status === "error") return "manga-stage-error";
   return "manga-stage-idle-text";
+}
+
+function fallbackLabel(reason: MangaAdapterExecution["fallbackReason"]): string {
+  if (reason === "language-unsupported") return "语言不匹配 · Review";
+  if (reason === "webgpu-unavailable") return "WebGPU 不可用 · WASM";
+  if (reason === "webgpu-init-failed") return "GPU 初始化失败 · WASM";
+  if (reason === "model-missing") return "模型缺失 · Fixture";
+  if (reason === "missing-input") return "缺少输入 · Fixture";
+  if (reason === "adapter-not-ready") return "适配器不可用 · Fixture";
+  return "";
+}
+
+function executionLabel(execution: MangaAdapterExecution | undefined): string {
+  if (execution === undefined) return "";
+  const adapter = execution.effectiveAdapter;
+  const device = execution.effectiveDevice.toUpperCase();
+  const fallback = fallbackLabel(execution.fallbackReason);
+  return `${adapter} · ${device}${fallback.length > 0 ? ` · ${fallback}` : ""}`;
 }
 
 function downloadBlob(blob: Blob, name: string): void {
@@ -313,16 +334,22 @@ export function App() {
     state.batch === undefined || state.batch.pageIds.length === 0
       ? 0
       : state.batch.completedPageIds.length / state.batch.pageIds.length;
-  const translationManifest = TRANSLATION_MODEL_MANIFESTS.find(
-    (manifest) => manifest.id === state.settings.engine,
+  const translationResolution = resolveMangaTranslationAdapter(
+    state.settings.engine,
+    state.settings.sourceLanguage,
+    { device: state.settings.translationDevice },
   );
-  const translationModel = translationManifest?.models[state.settings.sourceLanguage];
-  const ocrManifest = OCR_MODEL_MANIFESTS.find(
-    (manifest) => manifest.id === state.settings.ocrAdapter,
+  const effectiveTranslationManifest = translationResolution.effectiveManifest;
+  const translationModel = translationResolution.execution.model;
+  const ocrResolution = resolveMangaOcrAdapter(
+    state.settings.ocrAdapter,
+    state.settings.sourceLanguage,
+    { model: state.settings.ocrModel, device: state.settings.ocrDevice },
   );
+  const ocrManifest = ocrResolution.manifest;
+  const effectiveOcrManifest = ocrResolution.effectiveManifest;
   const ocrIsLocal = state.settings.ocrAdapter !== "review.manual";
-  const ocrSupportsLanguage =
-    ocrManifest?.languages.includes(state.settings.sourceLanguage) ?? true;
+  const ocrSupportsLanguage = ocrResolution.execution.fallbackReason !== "language-unsupported";
   const cleanResolution = resolveMangaCleanMode(state.settings.cleanMode);
   const cleanManifest = CLEAN_MODEL_MANIFESTS.find(
     (manifest) =>
@@ -777,11 +804,17 @@ export function App() {
                   key={stage.id}
                   className={`manga-stage-row ${stageTone(stage.status)}`}
                   data-artifact={stage.artifact?.id}
+                  data-execution={executionLabel(stage.execution)}
                 >
                   <span className="manga-stage-icon">{statusIcon(stage.status)}</span>
                   <span className="manga-stage-copy">
                     <span className="manga-stage-label">{stage.label}</span>
                     <span className="manga-stage-detail">{stage.detail}</span>
+                    {stage.execution !== undefined && (
+                      <span className="manga-stage-execution">
+                        {executionLabel(stage.execution)}
+                      </span>
+                    )}
                   </span>
                   <span className="manga-stage-status">{statusLabel(stage.status)}</span>
                   {stage.status === "running" && (
@@ -796,8 +829,18 @@ export function App() {
             <div className="manga-adapter-note">
               <WandSparkles className="size-4" />
               <span>
-                <strong>{ocrManifest?.label ?? "Review adapter"}</strong>
-                <small>{ocrManifest?.detail ?? "区域契约已固化 · 结果可审校"}</small>
+                <strong>
+                  {ocrResolution.execution.requestedAdapter ===
+                  ocrResolution.execution.effectiveAdapter
+                    ? ocrManifest.label
+                    : `${ocrResolution.execution.requestedAdapter} → ${ocrResolution.execution.effectiveAdapter}`}
+                </strong>
+                <small>{effectiveOcrManifest.detail}</small>
+                {ocrResolution.execution.fallbackReason !== undefined && (
+                  <small className="manga-config-warning">
+                    {fallbackLabel(ocrResolution.execution.fallbackReason)}
+                  </small>
+                )}
               </span>
             </div>
           </section>
@@ -956,8 +999,13 @@ export function App() {
               <>
                 <div className="manga-model-note">
                   <strong>{translationModel ?? "No model manifest"}</strong>
-                  <small>{translationManifest?.detail}</small>
+                  <small>{effectiveTranslationManifest.detail}</small>
                 </div>
+                {translationResolution.execution.fallbackReason !== undefined && (
+                  <small className="manga-config-help manga-config-warning">
+                    {fallbackLabel(translationResolution.execution.fallbackReason)}
+                  </small>
+                )}
                 <label className="manga-config-wide">
                   <span>翻译设备</span>
                   <select
