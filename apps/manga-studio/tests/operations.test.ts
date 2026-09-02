@@ -11,6 +11,7 @@ import {
 } from "../src/operations";
 import { OCR_MODEL_MANIFESTS, TRANSLATION_MODEL_MANIFESTS } from "../src/model";
 import { DEFAULT_SETTINGS } from "../src/store";
+import { mergeOcrLinesIntoRegions } from "../src/pipeline";
 
 describe("Manga Studio operation graph", () => {
   it("compiles the full page pipeline with named fan-in bindings", () => {
@@ -118,6 +119,52 @@ describe("Manga Studio operation graph", () => {
     });
     expect(CLEAN_PREVIEW_OPERATION.outputs).toEqual([
       { name: "cleanPage", type: "manga/clean-page", label: "clean" },
+    ]);
+  });
+
+  it("merges OCR output back into review regions without losing stable IDs", () => {
+    const merged = mergeOcrLinesIntoRegions(
+      [
+        {
+          id: "bubble-1",
+          label: "OLD",
+          x: 1,
+          y: 2,
+          width: 3,
+          height: 4,
+          rotation: 0,
+          writingMode: "horizontal-tb",
+          sourceText: "旧文本",
+          translatedText: "保留译文",
+          confidence: 0.1,
+          status: "reviewed",
+        },
+      ],
+      [
+        {
+          id: "bubble-1",
+          label: "BUBBLE 01",
+          x: 12,
+          y: 18,
+          width: 22,
+          height: 14,
+          rotation: 3,
+          writingMode: "vertical-rl",
+          text: "新识别文本",
+          confidence: 0.5,
+          status: "needs-review",
+        },
+      ],
+    );
+    expect(merged).toEqual([
+      expect.objectContaining({
+        id: "bubble-1",
+        sourceText: "新识别文本",
+        translatedText: "保留译文",
+        writingMode: "vertical-rl",
+        confidence: 0.5,
+        status: "needs-review",
+      }),
     ]);
   });
 });

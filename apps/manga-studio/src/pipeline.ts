@@ -13,7 +13,10 @@ import {
   type MangaCleanMode,
   type MangaCleanRegionMask,
   type MangaOcrAdapterId,
+  type MangaOcrArtifact,
+  type MangaOcrLine,
   type MangaSourceLanguage,
+  type TextRegion,
   type MangaTranslationArtifact,
 } from "./model";
 import {
@@ -60,6 +63,50 @@ const stageTimings: ReadonlyArray<{ id: Parameters<typeof manga.updateStage>[0];
 export interface MangaPipelineOptions {
   /** Reuse completed stage checkpoints for a paused/crash-recovered page. */
   readonly resume?: boolean;
+}
+
+function decodeOcrArtifact(bytes: Uint8Array): MangaOcrArtifact {
+  let value: unknown;
+  try {
+    value = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+  } catch {
+    throw new Error("manga OCR Artifact 不是有效 JSON");
+  }
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    (value as { version?: unknown }).version !== 1 ||
+    !Array.isArray((value as { lines?: unknown }).lines)
+  ) {
+    throw new Error("manga OCR Artifact 契约校验失败");
+  }
+  return value as MangaOcrArtifact;
+}
+
+/** Merge model output into the review model while preserving stable region IDs. */
+export function mergeOcrLinesIntoRegions(
+  regions: ReadonlyArray<TextRegion>,
+  lines: ReadonlyArray<MangaOcrLine>,
+): ReadonlyArray<TextRegion> {
+  if (lines.length === 0) return regions;
+  const previous = new Map(regions.map((region) => [region.id, region]));
+  return lines.map((line) => {
+    const existing = previous.get(line.id);
+    return {
+      id: line.id,
+      label: line.label,
+      x: line.x,
+      y: line.y,
+      width: line.width,
+      height: line.height,
+      rotation: line.rotation,
+      writingMode: line.writingMode,
+      sourceText: line.text,
+      translatedText: existing?.translatedText ?? "",
+      confidence: line.confidence,
+      status: "needs-review",
+    } satisfies TextRegion;
+  });
 }
 
 function wait(ms: number): Promise<void> {
@@ -206,7 +253,7 @@ function errorMessage(reason: unknown): string {
 async function runOcrAdapter(
   services: RuntimeServices,
   runId: number,
-): Promise<ArtifactRef | undefined> {
+): Promise<{ readonly artifact: ArtifactRef; readonly payload: MangaOcrArtifact } | undefined> {
   const task = ocrTask(runId);
   if (task === undefined) return undefined;
   const adapterValue = task.config?.["adapter"];
@@ -252,10 +299,11 @@ async function runOcrAdapter(
     if (runId !== activeRun) return undefined;
     const artifact = outputs[0];
     if (artifact === undefined) throw new Error("ocr adapter returned no artifact");
+    const data = await Effect.runPromise(services.artifacts.get(artifact));
+    const payload = decodeOcrArtifact(data);
     const localRuntime = mangaRuntime();
     if (localRuntime !== undefined && localRuntime.artifacts !== services.artifacts) {
       try {
-        const data = await Effect.runPromise(services.artifacts.get(artifact));
         await Effect.runPromise(localRuntime.artifacts.put(artifact, data));
       } catch (error) {
         manga.log("warn", `ocr adapter · local mirror unavailable · ${String(error)}`);
@@ -266,7 +314,7 @@ async function runOcrAdapter(
       "ok",
       `ocr ${adapterLabel} adapter · ${artifact.id} · needs-review regions preserved`,
     );
-    return artifact;
+    return { artifact, payload };
   } finally {
     Effect.runFork(Fiber.interrupt(progressFiber));
     if (activeOcr?.handle === handle) activeOcr = undefined;
@@ -405,8 +453,21 @@ export async function runMangaPipeline(
   let ocrArtifact: ArtifactRef | undefined = previousStages?.find(
     (stage) => stage.id === "ocr" && stage.status === "done",
   )?.artifact;
+  let ocrPayload: MangaOcrArtifact | undefined;
 
   try {
+    if (ocrArtifact !== undefined && services !== undefined) {
+      try {
+        ocrPayload = decodeOcrArtifact(
+          await Effect.runPromise(services.artifacts.get(ocrArtifact)),
+        );
+        manga.setRegionsForPipeline(
+          mergeOcrLinesIntoRegions(manga.getSnapshot().regions, ocrPayload.lines),
+        );
+      } catch (error) {
+        manga.log("warn", `ocr checkpoint · unable to restore lines · ${String(error)}`);
+      }
+    }
     for (const [index, stage] of stageTimings.entries()) {
       if (runId !== activeRun) return "cancelled";
       const checkpoint = previousStages?.find((candidate) => candidate.id === stage.id);
@@ -421,8 +482,15 @@ export async function runMangaPipeline(
       let stageArtifact: ArtifactRef | undefined;
       let localTranslation: MangaTranslationArtifact | undefined;
       if (stage.id === "ocr" && services !== undefined) {
-        ocrArtifact = await runOcrAdapter(services, runId);
+        const result = await runOcrAdapter(services, runId);
+        ocrArtifact = result?.artifact;
+        ocrPayload = result?.payload;
         stageArtifact = ocrArtifact;
+        if (ocrPayload !== undefined) {
+          manga.setRegionsForPipeline(
+            mergeOcrLinesIntoRegions(manga.getSnapshot().regions, ocrPayload.lines),
+          );
+        }
       }
       if (
         stage.id === "translate" &&

@@ -218,7 +218,7 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - 翻译引擎可显式切换 Fixture 或实验性 Local ONNX；Local 模式使用多语 NLLB 并按日文 / 英文 / 韩文传入对应语言码，在 Worker 内支持 Auto / WebGPU / WASM，并生成 `manga/translation-lines` 审校 Artifact
 - 每页 OCR / 审校区域会同步投影为标准 `DocumentContentPackage` 与 `DocumentTranslationPackage`，以内容寻址的 `document/manga/*` Artifact 持久化到 Manga 存储并镜像到 Studio 宿主；页面元数据保存最新引用，刷新后可继续搜索、治理或跨工作台交接
 - OCR manifest 同时提供 Latin TrOCR 与日文 Manga OCR（`onnx-community/manga-ocr-base-ONNX`）；模型按区域懒加载，
-  在 Worker 内支持 Auto / WebGPU / WASM，结果统一标为 `needs-review`；不匹配的语言会显式告警而不会伪装成已验证能力
+  在 Worker 内支持 Auto / WebGPU / WASM，结果统一标为 `needs-review`；识别出的文本、方向、几何和置信度会按原 block ID 回写审校区域；不匹配的语言会显式告警而不会伪装成已验证能力
 - 当前 MVP 支持原图 / 清理页 / 译文页切换、置信度审阅、CJK 排版参数和 PNG 导出；清理阶段会输出可追溯区域掩码，Inpainting 请求在适配器就绪前明确回退 Fill；CBZ/PDF 会先展开为页面队列
 - 操作契约与 DAG 回归位于 `apps/manga-studio/tests/operations.test.ts`
 

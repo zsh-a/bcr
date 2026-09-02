@@ -561,6 +561,7 @@ Manga 已先把人工/Fixture 区域通过可取消的 `manga.ocr.review` Worker
 边界内显式处理；OCR manifest 现在分别声明 Latin TrOCR 与日文 Manga OCR，不能把 Latin 模型当作日文能力。多页队列已具备持久化
 游标，只重跑未完成页面，并可从暂停/刷新状态恢复。项目级 Glossary 与页面队列一起写入 SQLite，整句命中
 优先、重叠术语最长匹配，术语编辑会使翻译产物失效；PDF/CBZ 先展开为页面并复用同一页级队列。
+OCR Worker 的 `manga/ocr-lines` 会按稳定 block ID 回写页面区域，更新 sourceText、geometry、writingMode 与 confidence；恢复队列时会从已完成的 OCR checkpoint 重新投影，避免翻译阶段继续使用旧的手工文本。
 翻译模型目录现提供 Fixture 与多语 NLLB Local ONNX 适配器；Local 结果写成独立的
 `manga/translation-lines` Artifact，取消、设备降级和失败沿用 Worker 边界。
 Manga OCR/审校区域现在可投影为 `DocumentContentPackage`，翻译区域可投影为同 block ID 的
