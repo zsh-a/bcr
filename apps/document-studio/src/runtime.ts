@@ -1,4 +1,4 @@
-import { hashReadableStream, type ArtifactRef, type ComputeTask } from "@bcr/core";
+import { hashReadableStream, type ArtifactRef, type ComputeTask, type TaskHandle } from "@bcr/core";
 import { Effect, Stream } from "effect";
 import type { RuntimeServices } from "@bcr/react";
 import {
@@ -11,6 +11,11 @@ import {
 import { documents } from "./store";
 
 let taskSequence = 0;
+const activeTasks = new Map<
+  string,
+  { readonly stageId: DocumentStageId; readonly handle: TaskHandle }
+>();
+const cancellationRequests = new Set<string>();
 
 function extensionOf(file: File): string {
   return file.name.split(".").pop()?.toLocaleLowerCase() || "bin";
@@ -98,9 +103,11 @@ export async function runDocumentStage(
     return;
   }
 
+  cancellationRequests.delete(job.id);
   patchStage(job.id, stageId, { status: "running", progress: 0, error: undefined });
   try {
     const handle = await Effect.runPromise(services.scheduler.submit(task));
+    activeTasks.set(job.id, { stageId, handle });
     Effect.runFork(
       Stream.runForEach(handle.events, (event) =>
         Effect.sync(() => {
@@ -111,6 +118,7 @@ export async function runDocumentStage(
       ).pipe(Effect.catchAll(() => Effect.void)),
     );
     const outputs = await Effect.runPromise(handle.await);
+    cancellationRequests.delete(job.id);
     const artifact = outputs[0];
     patchStage(job.id, stageId, {
       status: "done",
@@ -121,10 +129,25 @@ export async function runDocumentStage(
       `${job.name} Extract ${handle.cached ? "命中缓存" : "完成"}；结构化章节 Artifact 已就绪`,
     );
   } catch (reason) {
+    if (cancellationRequests.delete(job.id)) {
+      patchStage(job.id, stageId, { status: "idle", progress: 0, error: undefined });
+      documents.setNotice(`${job.name} ${stage.label} 已取消`);
+      return;
+    }
     const message = errorMessage(reason);
     patchStage(job.id, stageId, { status: "error", progress: 0, error: message });
     documents.setNotice(`${job.name} Extract 失败：${message}`);
+  } finally {
+    const active = activeTasks.get(job.id);
+    if (active?.stageId === stageId) activeTasks.delete(job.id);
   }
+}
+
+export async function cancelDocumentStage(jobId: string, stageId: DocumentStageId): Promise<void> {
+  const active = activeTasks.get(jobId);
+  if (active === undefined || active.stageId !== stageId) return;
+  cancellationRequests.add(jobId);
+  await Effect.runPromise(active.handle.cancel);
 }
 
 export function isExtractableFormat(format: DocumentFormat): boolean {

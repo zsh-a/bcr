@@ -37,7 +37,12 @@ import {
   type DocumentStageState,
 } from "@bcr/document-core";
 import { activeDocument, documents, useDocumentStudio } from "./store";
-import { importDocumentFile, isExtractableFormat, runDocumentStage } from "./runtime";
+import {
+  cancelDocumentStage,
+  importDocumentFile,
+  isExtractableFormat,
+  runDocumentStage,
+} from "./runtime";
 import "./styles.css";
 
 function formatBytes(bytes: number): string {
@@ -147,6 +152,11 @@ export function App() {
   const runSelectedStage = () => {
     if (selected === undefined) return;
     void runDocumentStage(services, active, selected.id);
+  };
+
+  const cancelSelectedStage = () => {
+    if (selected === undefined) return;
+    void cancelDocumentStage(active.id, selected.id);
   };
 
   const handoffReader = () => {
@@ -406,6 +416,7 @@ export function App() {
               stage={selected}
               job={active}
               onRun={runSelectedStage}
+              onCancel={cancelSelectedStage}
               canRunExtract={isExtractableFormat(active.format) && active.sourceRef !== undefined}
             />
           )}
@@ -503,15 +514,17 @@ function StageInspector(props: {
   stage: DocumentStageState;
   job: DocumentJob;
   onRun: () => void;
+  onCancel: () => void;
   canRunExtract: boolean;
 }) {
   const isPlanned = props.stage.capability === "planned";
   const isDone = props.stage.status === "done";
+  const isRunning = props.stage.status === "running";
   const canRun =
     props.stage.id === "extract" &&
     props.stage.capability !== "planned" &&
     props.canRunExtract &&
-    props.stage.status !== "running";
+    !isRunning;
   return (
     <div className="document-stage-inspector">
       <div className={`document-inspector-status ${stageTone(props.stage)}`}>
@@ -549,6 +562,12 @@ function StageInspector(props: {
         <button type="button" className="document-inspector-run" onClick={props.onRun}>
           <Play className="document-icon" />
           {isDone ? "重新运行 Extract" : "运行 Extract"}
+        </button>
+      )}
+      {isRunning && (
+        <button type="button" className="document-inspector-cancel" onClick={props.onCancel}>
+          <X className="document-icon" />
+          停止 Extract
         </button>
       )}
       {isPlanned ? (

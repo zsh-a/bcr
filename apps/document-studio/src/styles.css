@@ -861,6 +861,30 @@
   transform: translateY(-1px);
 }
 
+.document-inspector-cancel {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 17px;
+  border: 1px solid color-mix(in srgb, var(--document-danger) 46%, var(--document-border)) !important;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--document-danger) 10%, var(--document-raised));
+  color: var(--document-danger);
+  font-size: 11px;
+  font-weight: 650;
+  transition:
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+.document-inspector-cancel:hover {
+  background: color-mix(in srgb, var(--document-danger) 17%, var(--document-raised));
+  transform: translateY(-1px);
+}
+
 .document-inspector-error {
   display: flex;
   align-items: flex-start;
