@@ -191,6 +191,28 @@ describe("Manga Studio operation graph", () => {
         lines: [{ ...ocr.lines[0], confidence: 2 }],
       }),
     ).toThrow("confidence");
+    const measured = decodeMangaOcrArtifact({
+      ...ocr,
+      execution: {
+        kind: "ocr",
+        requestedAdapter: "manga.onnx",
+        effectiveAdapter: "manga.onnx",
+        runtime: "wasm",
+        requestedDevice: "auto",
+        effectiveDevice: "wasm",
+        model: "onnx-community/manga-ocr-base-ONNX",
+        modelUsed: true,
+        modelLoadDurationMs: 42,
+        sourceLanguage: "ja",
+      },
+    });
+    expect(measured.execution).toMatchObject({ modelUsed: true, modelLoadDurationMs: 42 });
+    expect(() =>
+      decodeMangaOcrArtifact({
+        ...ocr,
+        execution: { ...measured.execution, modelLoadDurationMs: -1 },
+      }),
+    ).toThrow("modelLoadDurationMs");
 
     const translation = decodeMangaTranslationArtifact({
       version: 1,
