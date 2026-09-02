@@ -19,12 +19,14 @@ import {
 } from "@bcr/reader-core";
 import { formatForFile, openReaderFile } from "./adapters";
 import { DEFAULT_READER_SETTINGS, type ReaderSettings, type ReaderState } from "./model";
+import { createReaderIndexSession, type ReaderIndexSession } from "./session";
 
 export interface ReaderRuntime {
   readonly binary: BinaryStore;
   readonly artifacts: ArtifactStore;
   readonly meta: SqliteDb | undefined;
   readonly ftsReady: boolean;
+  readonly indexSession: ReaderIndexSession | undefined;
 }
 
 interface SqliteInit {
@@ -111,11 +113,13 @@ export async function createReaderRuntime(): Promise<ReaderRuntime> {
   const context = await Effect.runPromise(
     Effect.scoped(Layer.build(artifactStore({ memory, opfs: binary }))),
   );
+  const artifacts = Context.get(context, ArtifactStoreTag);
   const runtime: ReaderRuntime = {
     binary,
-    artifacts: Context.get(context, ArtifactStoreTag),
+    artifacts,
     meta,
     ftsReady,
+    indexSession: createReaderIndexSession(artifacts),
   };
   currentRuntime = runtime;
   return runtime;
@@ -304,18 +308,33 @@ export async function restoreReader(
   }
 }
 
-export async function indexBook(runtime: ReaderRuntime, book: ReaderBook): Promise<void> {
+export async function indexBook(
+  runtime: ReaderRuntime,
+  book: ReaderBook,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  if (runtime.indexSession !== undefined) {
+    try {
+      await runtime.indexSession.indexBook(book, signal);
+    } catch (reason) {
+      if (signal?.aborted) throw reason;
+      // Search has SQLite/JS fallbacks; a failed worker must not make a book unreadable.
+    }
+  }
   if (!runtime.ftsReady || runtime.meta === undefined) return;
   try {
     runtime.meta.run("DELETE FROM reader_fts WHERE book_id = ?", [book.id]);
     for (const section of book.sections) {
+      if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
       runtime.meta.run(
         "INSERT INTO reader_fts (book_id, section_id, label, body) VALUES (?, ?, ?, ?)",
         [book.id, section.id, section.label, section.text],
       );
     }
     await runtime.meta.persist();
-  } catch {
+  } catch (reason) {
+    if (signal?.aborted) throw reason;
     // Search always has a JS fallback. A failed index should not make a book unreadable.
   }
 }
@@ -327,6 +346,8 @@ export function searchIndexed(
 ): ReadonlyArray<SearchHit> {
   const normalized = normalizeSearchQuery(query);
   if (!normalized) return [];
+  const workerResults = runtime.indexSession?.search(books, query);
+  if (workerResults !== undefined) return workerResults;
   if (!runtime.ftsReady || runtime.meta === undefined || normalized.length < 3)
     return searchLibrary(books, query);
   try {

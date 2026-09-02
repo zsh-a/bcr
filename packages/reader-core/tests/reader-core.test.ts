@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { createLocator, locatorAtPercentage, percentageForLocator } from "../src/locator";
-import { normalizeSearchQuery, searchBook } from "../src/search";
+import {
+  buildSearchIndex,
+  normalizeSearchQuery,
+  searchBook,
+  searchIndexedDocuments,
+} from "../src/search";
 import type { ReaderBook } from "../src/model";
 
 const book: ReaderBook = {
@@ -33,6 +38,15 @@ describe("reader-core", () => {
     expect(hits).toHaveLength(1);
     expect(hits[0]?.sectionId).toBe("b");
     expect(hits[0]?.snippet).toContain("进度");
+  });
+
+  it("builds a worker-safe index that preserves search semantics", () => {
+    const documents = buildSearchIndex(book);
+    expect(documents).toHaveLength(3);
+    expect(searchIndexedDocuments(documents, [book], "进度")[0]).toMatchObject({
+      bookId: "book-1",
+      sectionId: "b",
+    });
   });
 
   it("round-trips locators across section progress", () => {

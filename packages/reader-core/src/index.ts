@@ -19,5 +19,14 @@ export {
   percentageForLocator,
   progressForLocator,
 } from "./locator";
-export { makeSnippet, normalizeSearchQuery, searchBook, searchLibrary } from "./search";
+export {
+  buildSearchIndex,
+  makeSnippet,
+  normalizeSearchQuery,
+  searchBook,
+  searchIndexedDocuments,
+  searchLibrary,
+  type ReaderIndexBook,
+  type ReaderIndexDocument,
+} from "./search";
 export { adapterFor, type ReaderAdapter, type ReaderOpenInput } from "./adapter";

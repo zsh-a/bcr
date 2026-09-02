@@ -64,8 +64,9 @@ Browser Compute Runtime（下称 BCR）**不是一个 "WASM 框架"**，而是�
 
 Reader Studio 的现代化落点：`packages/reader-core` 只承载格式无关的出版物、章节、Locator、
 进度和搜索契约；`apps/reader-studio` 通过 Adapter 接入 TXT / Markdown / HTML / EPUB / PDF / CBZ。
-源文件使用 BLAKE3 内容地址写入 OPFS，SQLite WASM 保存书库、设置和进度，FTS5 trigram 为全文搜索提供
-持久索引，主线程只负责 React 交互，后续可将解析与索引无缝迁移到 Worker。
+源文件使用 BLAKE3 内容地址写入 OPFS，SQLite WASM 保存书库、设置和进度；章节正文的规范化索引由
+`reader-index.worker` 通过统一 `WorkerPool` 执行，SQLite FTS5 trigram 与内存搜索作为渐进回退，主线程只负责
+React 交互，后续可将 EPUB/PDF 深解析沿同一 Session 边界迁移到 Worker。
 
 总体架构图（含 Control Plane / Data Plane 边界）：
 

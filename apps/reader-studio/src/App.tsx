@@ -171,9 +171,14 @@ function useReaderBoot(): {
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
+    let createdRuntime: ReaderRuntime | null = null;
     void createReaderRuntime()
       .then(async (nextRuntime) => {
-        if (cancelled) return;
+        createdRuntime = nextRuntime;
+        if (cancelled) {
+          nextRuntime.indexSession?.close();
+          return;
+        }
         setRuntime(nextRuntime);
         const restored = await restoreReader(nextRuntime);
         if (cancelled) return;
@@ -193,6 +198,7 @@ function useReaderBoot(): {
       });
     return () => {
       cancelled = true;
+      createdRuntime?.indexSession?.close();
     };
   }, []);
   return { runtime, error };
@@ -269,7 +275,7 @@ export function App() {
           if (controller.signal.aborted) break;
           const added = reader.addBook(book);
           if (added) {
-            await indexBook(runtime, book);
+            await indexBook(runtime, book, controller.signal);
             setNotice(`${book.title} 已加入书库`);
           } else {
             setNotice(`${file.name} 已在书库`);
@@ -511,7 +517,7 @@ function ReaderWorkspace(props: {
   return (
     <div className={`reader-workspace ${sidebarOpen ? "sidebar-visible" : "sidebar-hidden"}`}>
       <aside className="reader-sidebar" aria-label="本地书库">
-        <LibraryPanel onImport={props.onImport} />
+        <LibraryPanel runtime={props.runtime} onImport={props.onImport} />
       </aside>
       {sidebarOpen && (
         <button
@@ -530,7 +536,10 @@ function ReaderWorkspace(props: {
   );
 }
 
-function LibraryPanel(props: { onImport: (files: ReadonlyArray<File>) => void }) {
+function LibraryPanel(props: {
+  runtime: ReaderRuntime;
+  onImport: (files: ReadonlyArray<File>) => void;
+}) {
   const library = useReader((state) => state.library);
   const activeBookId = useReader((state) => state.activeBookId);
   const progressByBook = useReader((state) => state.progressByBook);
@@ -624,6 +633,7 @@ function LibraryPanel(props: { onImport: (files: ReadonlyArray<File>) => void })
             confirming={confirmingId === book.id}
             onRemove={() => setConfirmingId(book.id)}
             onConfirmRemove={() => {
+              props.runtime.indexSession?.removeBook(book.id);
               reader.removeBook(book.id);
               setConfirmingId(null);
             }}
@@ -892,6 +902,8 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
   const frameRef = useRef<number | null>(null);
   const lastScrollUpdateRef = useRef(0);
   const userScrollRef = useRef(false);
+  const programmaticScrollRef = useRef(false);
+  const programmaticScrollTimerRef = useRef<number | null>(null);
   const updateLocator = useCallback(() => {
     const container = containerRef.current;
     if (container === null || props.book.sections.length === 0) return;
@@ -905,24 +917,32 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
       userScrollRef.current = false;
       return;
     }
-    if (progress > 0) {
-      const max = Math.max(
-        1,
-        containerRef.current.scrollHeight - containerRef.current.clientHeight,
-      );
-      if (activeSectionId === props.book.sections[0]?.id) {
-        containerRef.current.scrollTo({
-          top: max * progress,
-          behavior: "auto",
-        });
-      } else {
-        scrollToReaderSection(activeSectionId);
-      }
+    const max = Math.max(1, containerRef.current.scrollHeight - containerRef.current.clientHeight);
+    programmaticScrollRef.current = true;
+    if (programmaticScrollTimerRef.current !== null) {
+      window.clearTimeout(programmaticScrollTimerRef.current);
+    }
+    programmaticScrollTimerRef.current = window.setTimeout(() => {
+      programmaticScrollRef.current = false;
+      programmaticScrollTimerRef.current = null;
+    }, 320);
+    if (activeSectionId === props.book.sections[0]?.id) {
+      containerRef.current.scrollTo({
+        top: max * progress,
+        behavior: "auto",
+      });
+    } else {
+      // Navigation is a state change, not a user scroll. Jumping directly
+      // avoids intermediate scroll events changing the requested Locator.
+      scrollToReaderSection(activeSectionId, "auto");
     }
   }, [activeSectionId, props.book]);
   useEffect(
     () => () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      if (programmaticScrollTimerRef.current !== null) {
+        window.clearTimeout(programmaticScrollTimerRef.current);
+      }
     },
     [],
   );
@@ -940,6 +960,7 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
         className="reader-reading-scroll"
         ref={containerRef}
         onScroll={() => {
+          if (programmaticScrollRef.current) return;
           if (frameRef.current !== null) return;
           const flush = () => {
             const elapsed = performance.now() - lastScrollUpdateRef.current;
