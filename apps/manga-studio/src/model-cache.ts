@@ -48,7 +48,15 @@ export async function openMangaModelCache(): Promise<Cache | undefined> {
 export async function configureMangaTransformersCache(
   environment: TransformersEnvironment,
 ): Promise<boolean> {
-  const cache = await openMangaModelCache();
+  // Re-open for every model construction. The UI may clear the namespace
+  // while a pooled Worker remains alive; a fresh Cache handle observes that
+  // deletion instead of retaining a stale object from before the clear.
+  const storage = cacheStorage();
+  const cache =
+    storage === undefined
+      ? undefined
+      : await storage.open(MANGA_MODEL_CACHE_NAME).catch(() => undefined);
+  if (cache !== undefined) cachePromise = Promise.resolve(cache);
   if (cache === undefined) return false;
   environment.useCustomCache = true;
   environment.customCache = cache;
