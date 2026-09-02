@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { consumeDocumentHandoff } from "@bcr/document-core";
+import { useOptionalRuntime } from "@bcr/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cancelMangaPipeline, runMangaPipeline } from "./pipeline";
 import {
@@ -123,6 +124,7 @@ async function exportCurrentPage(): Promise<void> {
 
 export function App() {
   const state = useMangaStudio((snapshot) => snapshot);
+  const hostServices = useOptionalRuntime();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const handoffRef = useRef<string | null>(null);
   const [zoom, setZoom] = useState(0.82);
@@ -196,7 +198,7 @@ export function App() {
         image.onerror = () => reject(new Error("image decode failed"));
         image.src = objectUrl;
       });
-      const ref = await importImageArtifact(runtime, file);
+      const ref = await importImageArtifact(runtime, file, hostServices?.artifacts);
       if (manga.getSnapshot().running) {
         URL.revokeObjectURL(objectUrl);
         manga.log("warn", "import · page pipeline started before import finished");
@@ -218,7 +220,7 @@ export function App() {
       );
       manga.log(
         "warn",
-        "OCR adapter not loaded · run creates a review region for manual correction",
+        "视觉 OCR 模型未加载 · 将创建待审校区域并由 review adapter 固化",
       );
     } catch (reason) {
       URL.revokeObjectURL(objectUrl);
@@ -268,7 +270,7 @@ export function App() {
   };
 
   const run = () => {
-    void runMangaPipeline();
+    void runMangaPipeline(hostServices ?? undefined);
   };
 
   const exportPage = () => {
@@ -454,7 +456,11 @@ export function App() {
             </div>
             <div className="manga-stage-list" aria-label="翻译流水线进度">
               {state.stages.map((stage) => (
-                <div key={stage.id} className={`manga-stage-row ${stageTone(stage.status)}`}>
+                <div
+                  key={stage.id}
+                  className={`manga-stage-row ${stageTone(stage.status)}`}
+                  data-artifact={stage.artifact?.id}
+                >
                   <span className="manga-stage-icon">{statusIcon(stage.status)}</span>
                   <span className="manga-stage-copy">
                     <span className="manga-stage-label">{stage.label}</span>

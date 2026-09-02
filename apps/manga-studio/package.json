@@ -13,6 +13,7 @@
     "@bcr/core": "workspace:*",
     "@bcr/document-core": "workspace:*",
     "@bcr/graph": "workspace:*",
+    "@bcr/react": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",
     "@bcr/storage-sqlite": "workspace:*",
     "@fontsource/ibm-plex-mono": "^5.3.0",

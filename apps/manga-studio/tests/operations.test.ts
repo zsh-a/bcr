@@ -1,7 +1,7 @@
 import type { ArtifactRef } from "@bcr/core";
 import { compile } from "@bcr/graph";
 import { describe, expect, it } from "vitest";
-import { defaultGraph, OPERATIONS } from "../src/operations";
+import { defaultGraph, OPERATIONS, REVIEW_OCR_OPERATION } from "../src/operations";
 import { DEFAULT_SETTINGS } from "../src/store";
 
 describe("Manga Studio operation graph", () => {
@@ -41,6 +41,17 @@ describe("Manga Studio operation graph", () => {
       "manga/clean-page",
       "manga/typeset-page",
       "manga/export",
+    ]);
+  });
+
+  it("exposes a review OCR adapter without weakening the visual graph contract", () => {
+    expect(REVIEW_OCR_OPERATION).toMatchObject({
+      operation: "manga.ocr.review",
+      runtime: "wasm",
+      detail: expect.stringContaining("审校"),
+    });
+    expect(REVIEW_OCR_OPERATION.outputs).toEqual([
+      { name: "lines", type: "manga/ocr-lines", label: "lines" },
     ]);
   });
 });

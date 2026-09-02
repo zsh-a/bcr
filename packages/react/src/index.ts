@@ -50,6 +50,15 @@ export function useRuntime(): RuntimeServices {
   return services;
 }
 
+/**
+ * Optional runtime access for domain apps that can also run in an isolated
+ * preview.  The Studio Shell always supplies the shared runtime; standalone
+ * previews can keep their local fallback without throwing during render.
+ */
+export function useOptionalRuntime(): RuntimeServices | null {
+  return useContext(RuntimeContext);
+}
+
 export function useSubmitTask(): (
   task: ComputeTask,
   options?: SubmitOptions,

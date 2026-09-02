@@ -1,4 +1,5 @@
 import { artifactPath, contentHash, type ArtifactRef } from "@bcr/core";
+import type { MangaOcrArtifact, MangaOcrLine } from "@bcr/manga-studio/model";
 import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
 import init, { peak_f32, StreamingBlake3 } from "../../../../crates/kernels/pkg/bcr_kernels.js";
@@ -236,17 +237,91 @@ async function readJsonArtifact<T>(ref: ArtifactRef, ctx: WorkerContext): Promis
 }
 
 async function writeJsonArtifact(kind: string, payload: unknown): Promise<ArtifactRef> {
+  return writeTypedJsonArtifact("document", kind, `document/${kind}`, payload);
+}
+
+async function writeTypedJsonArtifact(
+  namespace: string,
+  kind: string,
+  type: string,
+  payload: unknown,
+): Promise<ArtifactRef> {
   const bytes = new TextEncoder().encode(JSON.stringify(payload));
   const hash = contentHash(bytes);
   const out: ArtifactRef = {
-    id: `document/${kind}/${hash}`,
-    type: `document/${kind}`,
+    id: `${namespace}/${kind}/${hash}`,
+    type,
     storage: "opfs",
     format: "json",
     hash,
   };
   await opfs.put(artifactPath(out), bytes);
   return out;
+}
+
+function configNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function configText(value: unknown, fallback: string): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function reviewOcrLines(task: { config?: Record<string, unknown> | undefined }): MangaOcrLine[] {
+  const raw = task.config?.["regions"];
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((candidate, index) => {
+    if (typeof candidate !== "object" || candidate === null) return [];
+    const value = candidate as Record<string, unknown>;
+    const id = configText(value["id"], `region-${index + 1}`);
+    const label = configText(value["label"], `REVIEW ${String(index + 1).padStart(2, "0")}`);
+    const confidence = Math.max(0, Math.min(1, configNumber(value["confidence"], 0)));
+    return [
+      {
+        id,
+        label,
+        x: configNumber(value["x"], 0),
+        y: configNumber(value["y"], 0),
+        width: configNumber(value["width"], 0),
+        height: configNumber(value["height"], 0),
+        rotation: configNumber(value["rotation"], 0),
+        writingMode: value["writingMode"] === "vertical-rl" ? "vertical-rl" : "horizontal-tb",
+        text: configText(value["sourceText"], ""),
+        confidence,
+        status: "needs-review",
+      } satisfies MangaOcrLine,
+    ];
+  });
+}
+
+/**
+ * Review adapter: it does not inspect pixels. It persists the regions already
+ * created by the human/fixture detector so review, order and translation can
+ * consume a stable OCR contract while a real vision model is still optional.
+ */
+async function mangaOcrReview(
+  task: { inputs: ReadonlyArray<ArtifactRef>; config?: Record<string, unknown> | undefined },
+  ctx: WorkerContext,
+): Promise<ReadonlyArray<ArtifactRef>> {
+  const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
+  if (input === undefined) throw new Error("manga.ocr.review requires a source artifact");
+  const lines = reviewOcrLines(task);
+  ctx.progress(0.2);
+  const total = Math.max(1, lines.length);
+  for (let index = 0; index < lines.length; index += 1) {
+    throwIfAborted(ctx);
+    ctx.progress(0.2 + ((index + 1) / total) * 0.65);
+  }
+  const payload: MangaOcrArtifact = {
+    version: 1,
+    adapter: "review.manual",
+    sourceName: configText(task.config?.["sourceName"], input.id),
+    coordinateSpace: "normalized-percent",
+    lines,
+  };
+  const out = await writeTypedJsonArtifact("manga", "ocr-review", "manga/ocr-lines", payload);
+  ctx.progress(1);
+  return [out];
 }
 
 const fixtureDictionary: Readonly<Record<string, string>> = {
@@ -332,4 +407,5 @@ defineWorker({
   "document.extract": (task, ctx) => documentExtract(task, ctx),
   "document.translate.fixture": (task, ctx) => documentTranslateFixture(task, ctx),
   "document.typeset.preview": (task, ctx) => documentTypesetPreview(task, ctx),
+  "manga.ocr.review": (task, ctx) => mangaOcrReview(task, ctx),
 });

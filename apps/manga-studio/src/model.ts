@@ -38,6 +38,33 @@ export interface TextRegion {
   readonly status: RegionStatus;
 }
 
+/**
+ * Stable OCR boundary. Coordinates stay normalized so a later detector or
+ * renderer can change pixel density without invalidating review edits.
+ */
+export interface MangaOcrLine {
+  readonly id: string;
+  readonly label: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly rotation: number;
+  readonly writingMode: WritingMode;
+  readonly text: string;
+  readonly confidence: number;
+  readonly status: RegionStatus;
+}
+
+/** Versioned output written by an OCR adapter and consumed by review/order. */
+export interface MangaOcrArtifact {
+  readonly version: 1;
+  readonly adapter: "review.manual" | "vision.onnx";
+  readonly sourceName: string;
+  readonly coordinateSpace: "normalized-percent";
+  readonly lines: ReadonlyArray<MangaOcrLine>;
+}
+
 export type MangaStageId =
   | "import"
   | "normalize"
@@ -57,7 +84,8 @@ export interface StageState {
   readonly detail: string;
   readonly status: StageStatus;
   readonly progress: number;
-  readonly error?: string;
+  readonly artifact?: ArtifactRef | undefined;
+  readonly error?: string | undefined;
 }
 
 export type OutputMode = "original" | "clean" | "translated";

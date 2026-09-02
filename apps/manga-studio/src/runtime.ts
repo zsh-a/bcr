@@ -96,7 +96,11 @@ export function mangaRuntime(): MangaRuntime | undefined {
 }
 
 /** Stream a user file into the same Artifact namespace used by future OCR tasks. */
-export async function importImageArtifact(runtime: MangaRuntime, file: File): Promise<ArtifactRef> {
+export async function importImageArtifact(
+  runtime: MangaRuntime,
+  file: File,
+  sharedArtifacts?: ArtifactStore,
+): Promise<ArtifactRef> {
   const hash = await hashReadableStream(file.stream());
   const storage: ArtifactRef["storage"] = runtime.binary instanceof MemoryStore ? "memory" : "opfs";
   const ref: ArtifactRef = {
@@ -107,6 +111,17 @@ export async function importImageArtifact(runtime: MangaRuntime, file: File): Pr
     hash,
   };
   await Effect.runPromise(runtime.artifacts.putStream(ref, file.stream()));
+  // Manga owns its project metadata namespace, while the Studio Shell owns
+  // the shared Scheduler/WorkerPool namespace. Keep one immutable source ref
+  // in both planes so the review OCR task can consume it without coupling the
+  // local persistence model to the host shell.
+  if (sharedArtifacts !== undefined && sharedArtifacts !== runtime.artifacts) {
+    try {
+      await Effect.runPromise(sharedArtifacts.putStream(ref, file.stream()));
+    } catch (error) {
+      manga.log("warn", `artifact bridge · worker source unavailable · ${String(error)}`);
+    }
+  }
   return ref;
 }
 

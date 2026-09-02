@@ -37,6 +37,33 @@ if (!(await page.locator(".manga-footer").innerText()).includes("pipeline comple
   fail("流水线未完成");
 }
 
+// Imported pages use the real shared WorkerPool for the review OCR adapter.
+// The adapter only serializes known/manual regions; it never claims to have
+// recognized pixels without a vision model.
+await page.locator('input[type="file"]').setInputFiles({
+  name: "review-page.png",
+  mimeType: "image/png",
+  buffer: Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "base64",
+  ),
+});
+await page.locator(".manga-page-card", { hasText: "review-page.png" }).waitFor({ timeout: 20_000 });
+await page.getByRole("button", { name: "翻译当前页" }).click();
+await page.waitForFunction(
+  () =>
+    document.querySelectorAll(".manga-stage-status").length === 9 &&
+    [...document.querySelectorAll(".manga-stage-status")].every(
+      (element) => element.textContent === "DONE",
+    ),
+  undefined,
+  { timeout: 20_000 },
+);
+const ocrArtifact = await page
+  .locator('.manga-stage-row[data-artifact^="manga/ocr-review/"]')
+  .count();
+if (ocrArtifact !== 1) fail("review OCR adapter 没有生成 manga/ocr-lines Artifact");
+
 await page.locator(".manga-region-row").first().click();
 const textareas = page.locator("textarea");
 if ((await textareas.count()) < 2) fail("文本区域 Inspector 未渲染");

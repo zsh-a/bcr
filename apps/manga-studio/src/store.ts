@@ -329,6 +329,11 @@ class MangaStore {
     this.set({ running: false });
     this.log("warn", "pipeline cancelled · completed artifacts remain available");
   }
+
+  failRun(message: string): void {
+    this.set({ running: false });
+    this.log("error", `pipeline failed · ${message}`);
+  }
 }
 
 export const manga = new MangaStore();

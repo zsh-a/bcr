@@ -179,6 +179,31 @@ export const OPERATIONS: ReadonlyArray<OperationDef> = [
   },
 ];
 
+/**
+ * A safe first OCR adapter: it turns manually detected regions into the same
+ * versioned lines artifact that a future ONNX/WebGPU detector will emit.  It
+ * deliberately lives outside the default graph so the graph still advertises
+ * the real visual `manga.ocr` capability and does not hide model readiness.
+ */
+export const REVIEW_OCR_OPERATION: OperationDef = {
+  operation: "manga.ocr.review",
+  label: "OCR Review",
+  detail: "将人工区域固化为可审校 OCR lines Artifact",
+  runtime: "wasm",
+  inputs: [{ name: "page", type: "file/image", label: "源页面" }],
+  outputs: [{ name: "lines", type: "manga/ocr-lines", label: "lines" }],
+  resources: { memoryMB: 256, threads: 1 },
+  config: withSkipCache([
+    {
+      key: "adapter",
+      label: "OCR 适配器",
+      kind: "select",
+      options: [{ value: "review.manual", label: "Review / 手工区域" }],
+      default: "review.manual",
+    },
+  ]),
+};
+
 function operation(operation: string): OperationDef {
   const found = OPERATIONS.find((item) => item.operation === operation);
   if (found === undefined) throw new Error(`unknown operation ${operation}`);

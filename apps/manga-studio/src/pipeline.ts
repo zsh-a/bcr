@@ -1,7 +1,18 @@
+import { type ArtifactRef, type ComputeTask, type TaskHandle } from "@bcr/core";
+import type { RuntimeServices } from "@bcr/react";
+import { Effect, Fiber, Stream } from "effect";
 import { createImportedRegion } from "./fixture";
+import { REVIEW_OCR_OPERATION } from "./operations";
+import { mangaRuntime } from "./runtime";
 import { manga } from "./store";
 
 let activeRun = 0;
+let activeOcr:
+  | {
+      readonly runId: number;
+      readonly handle: TaskHandle;
+    }
+  | undefined;
 
 const stageTimings: ReadonlyArray<{ id: Parameters<typeof manga.updateStage>[0]; ms: number }> = [
   { id: "normalize", ms: 360 },
@@ -31,40 +42,160 @@ function translateText(text: string): string {
   return dictionary[text] ?? (text.trim().length > 0 ? `译：${text}` : "请编辑译文");
 }
 
-export async function runMangaPipeline(): Promise<void> {
-  const runId = ++activeRun;
-  manga.beginRun();
+function reviewOcrTask(runId: number): ComputeTask | undefined {
+  const state = manga.getSnapshot();
+  const source = state.source.ref;
+  if (source === undefined || source.storage !== "opfs") return undefined;
+  return {
+    id: `manga-ocr-${Date.now().toString(36)}-${runId.toString(36)}`,
+    runtime: REVIEW_OCR_OPERATION.runtime,
+    operation: REVIEW_OCR_OPERATION.operation,
+    inputs: [{ ...source, port: "source" }],
+    outputs: [
+      {
+        name: "lines",
+        type: "manga/ocr-lines",
+        storage: "opfs",
+        format: "json",
+      },
+    ],
+    resources: REVIEW_OCR_OPERATION.resources,
+    cache: { enabled: true },
+    config: {
+      adapter: "review.manual",
+      sourceName: state.source.name,
+      width: state.source.width,
+      height: state.source.height,
+      regions: state.regions.map((region) => ({
+        id: region.id,
+        label: region.label,
+        x: region.x,
+        y: region.y,
+        width: region.width,
+        height: region.height,
+        rotation: region.rotation,
+        writingMode: region.writingMode,
+        sourceText: region.sourceText,
+        confidence: region.confidence,
+      })),
+    },
+  };
+}
 
-  for (const [index, stage] of stageTimings.entries()) {
-    if (runId !== activeRun) return;
-    manga.updateStage(stage.id, { status: "running", progress: 0.08 });
-    await wait(stage.ms);
-    if (runId !== activeRun) return;
+function errorMessage(reason: unknown): string {
+  return reason instanceof Error ? reason.message : String(reason);
+}
 
-    if (
-      stage.id === "detect" &&
-      manga.getSnapshot().source.kind === "image" &&
-      manga.getSnapshot().regions.length === 0
-    ) {
-      const source = manga.getSnapshot().source;
-      manga.addRegion(createImportedRegion(source.width, source.height));
-    }
-    if (stage.id === "translate") {
-      const regions = manga.getSnapshot().regions.map((region) => ({
-        ...region,
-        translatedText: translateText(region.sourceText),
-      }));
-      manga.setRegionsForPipeline(regions);
-    }
-
-    manga.updateStage(stage.id, { status: "done", progress: 1 });
-    manga.log("ok", `${stage.id} · ${index + 2}/9 · artifact ready`);
+/** Persist manual/fixture regions as the OCR contract through the shared WorkerPool. */
+async function runReviewOcr(
+  services: RuntimeServices,
+  runId: number,
+): Promise<ArtifactRef | undefined> {
+  const task = reviewOcrTask(runId);
+  if (task === undefined) return undefined;
+  const source = task.inputs[0];
+  if (source === undefined) return undefined;
+  const available = await Effect.runPromise(services.artifacts.has(source));
+  if (!available) {
+    manga.log("warn", "ocr review adapter · source is not bridged into shared artifacts");
+    return undefined;
   }
 
-  if (runId === activeRun) manga.finishRun();
+  const handle = await Effect.runPromise(services.scheduler.submit(task));
+  if (runId !== activeRun) {
+    await Effect.runPromise(handle.cancel);
+    return undefined;
+  }
+  activeOcr = { runId, handle };
+  const progressFiber = Effect.runFork(
+    Stream.runForEach(handle.events, (event) =>
+      Effect.sync(() => {
+        if (runId === activeRun && event.type === "progress") {
+          manga.updateStage("ocr", { progress: event.value });
+        }
+      }),
+    ),
+  );
+  try {
+    const outputs = await Effect.runPromise(handle.await);
+    if (runId !== activeRun) return undefined;
+    const artifact = outputs[0];
+    if (artifact === undefined) throw new Error("ocr review adapter returned no artifact");
+    const localRuntime = mangaRuntime();
+    if (localRuntime !== undefined && localRuntime.artifacts !== services.artifacts) {
+      try {
+        const data = await Effect.runPromise(services.artifacts.get(artifact));
+        await Effect.runPromise(localRuntime.artifacts.put(artifact, data));
+      } catch (error) {
+        manga.log("warn", `ocr review adapter · local mirror unavailable · ${String(error)}`);
+      }
+    }
+    manga.log("ok", `ocr review adapter · ${artifact.id} · needs-review regions preserved`);
+    return artifact;
+  } finally {
+    Effect.runFork(Fiber.interrupt(progressFiber));
+    if (activeOcr?.handle === handle) activeOcr = undefined;
+  }
+}
+
+export async function runMangaPipeline(services?: RuntimeServices): Promise<void> {
+  const runId = ++activeRun;
+  manga.beginRun();
+  let currentStage: (typeof stageTimings)[number]["id"] = "normalize";
+
+  try {
+    for (const [index, stage] of stageTimings.entries()) {
+      if (runId !== activeRun) return;
+      currentStage = stage.id;
+      manga.updateStage(stage.id, { status: "running", progress: 0.08, error: undefined });
+
+      let reviewArtifact: ArtifactRef | undefined;
+      if (stage.id === "ocr" && services !== undefined) {
+        reviewArtifact = await runReviewOcr(services, runId);
+      }
+      if (reviewArtifact !== undefined) {
+        manga.updateStage(stage.id, { status: "done", progress: 1, artifact: reviewArtifact });
+      } else {
+        await wait(stage.ms);
+      }
+      if (runId !== activeRun) return;
+
+      if (
+        stage.id === "detect" &&
+        manga.getSnapshot().source.kind === "image" &&
+        manga.getSnapshot().regions.length === 0
+      ) {
+        const source = manga.getSnapshot().source;
+        manga.addRegion(createImportedRegion(source.width, source.height));
+      }
+      if (stage.id === "translate") {
+        const regions = manga.getSnapshot().regions.map((region) => ({
+          ...region,
+          translatedText: translateText(region.sourceText),
+        }));
+        manga.setRegionsForPipeline(regions);
+      }
+
+      if (reviewArtifact === undefined) {
+        manga.updateStage(stage.id, { status: "done", progress: 1 });
+      }
+      manga.log("ok", `${stage.id} · ${index + 2}/9 · artifact ready`);
+    }
+
+    if (runId === activeRun) manga.finishRun();
+  } catch (reason) {
+    if (runId === activeRun) {
+      const message = errorMessage(reason);
+      manga.updateStage(currentStage, { status: "error", progress: 0, error: message });
+      manga.failRun(message);
+    }
+  }
 }
 
 export function cancelMangaPipeline(): void {
   activeRun += 1;
+  const active = activeOcr;
+  activeOcr = undefined;
+  if (active !== undefined) void Effect.runPromise(active.handle.cancel);
   manga.cancelRun();
 }
