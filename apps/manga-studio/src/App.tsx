@@ -38,6 +38,7 @@ import {
   OCR_MODEL_MANIFESTS,
   TRANSLATION_MODEL_MANIFESTS,
   type MangaGlossaryEntry,
+  type MangaOcrAdapterId,
   type MangaOcrDevice,
   type MangaSource,
   type MangaTranslationEngineId,
@@ -201,6 +202,12 @@ export function App() {
     (manifest) => manifest.id === state.settings.engine,
   );
   const translationModel = translationManifest?.models[state.settings.sourceLanguage];
+  const ocrManifest = OCR_MODEL_MANIFESTS.find(
+    (manifest) => manifest.id === state.settings.ocrAdapter,
+  );
+  const ocrIsLocal = state.settings.ocrAdapter !== "review.manual";
+  const ocrSupportsLanguage =
+    ocrManifest?.languages.includes(state.settings.sourceLanguage) ?? true;
 
   const importImage = async (file: File): Promise<void> => {
     if (runtime === null) {
@@ -245,7 +252,7 @@ export function App() {
       );
       manga.log(
         "warn",
-        manga.getSnapshot().settings.ocrAdapter === "vision.onnx"
+        manga.getSnapshot().settings.ocrAdapter !== "review.manual"
           ? "视觉 OCR · Local ONNX 将在处理阶段按需加载模型"
           : "视觉 OCR · 将创建待审校区域并由 review adapter 固化",
       );
@@ -595,16 +602,8 @@ export function App() {
             <div className="manga-adapter-note">
               <WandSparkles className="size-4" />
               <span>
-                <strong>
-                  {state.settings.ocrAdapter === "vision.onnx"
-                    ? "Local ONNX adapter"
-                    : "Review adapter"}
-                </strong>
-                <small>
-                  {state.settings.ocrAdapter === "vision.onnx"
-                    ? "模型按需加载 · 结果保留人工审校"
-                    : "区域契约已固化 · 结果可审校"}
-                </small>
+                <strong>{ocrManifest?.label ?? "Review adapter"}</strong>
+                <small>{ocrManifest?.detail ?? "区域契约已固化 · 结果可审校"}</small>
               </span>
             </div>
           </section>
@@ -784,11 +783,16 @@ export function App() {
               <span>OCR 引擎</span>
               <select
                 value={state.settings.ocrAdapter}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const ocrAdapter = event.target.value as MangaOcrAdapterId;
+                  const manifest = OCR_MODEL_MANIFESTS.find(
+                    (candidate) => candidate.id === ocrAdapter,
+                  );
                   manga.setSettings({
-                    ocrAdapter: event.target.value as "review.manual" | "vision.onnx",
-                  })
-                }
+                    ocrAdapter,
+                    ...(manifest?.model === undefined ? {} : { ocrModel: manifest.model }),
+                  });
+                }}
               >
                 {OCR_MODEL_MANIFESTS.map((manifest) => (
                   <option key={manifest.id} value={manifest.id}>
@@ -797,7 +801,7 @@ export function App() {
                 ))}
               </select>
             </label>
-            {state.settings.ocrAdapter === "vision.onnx" && (
+            {ocrIsLocal && (
               <>
                 <label className="manga-config-wide">
                   <span>OCR 模型</span>
@@ -808,9 +812,14 @@ export function App() {
                     aria-describedby="manga-ocr-model-help"
                   />
                   <small id="manga-ocr-model-help" className="manga-config-help">
-                    {OCR_MODEL_MANIFESTS.find((manifest) => manifest.id === "vision.onnx")?.detail}
+                    {ocrManifest?.detail}
                   </small>
                 </label>
+                {!ocrSupportsLanguage && (
+                  <small className="manga-config-help manga-config-warning">
+                    当前源语言不在该模型能力范围内；建议切换 Review adapter 并人工审校。
+                  </small>
+                )}
                 <label className="manga-config-wide">
                   <span>运行设备</span>
                   <select
@@ -858,12 +867,12 @@ export function App() {
             <div className="manga-capability-row">
               <span
                 className={
-                  state.settings.ocrAdapter === "vision.onnx"
+                  ocrIsLocal
                     ? "manga-capability-pill manga-capability-experimental"
                     : "manga-capability-pill"
                 }
               >
-                {state.settings.ocrAdapter === "vision.onnx" ? "ONNX OCR · EXP" : "REVIEW OCR"}
+                {ocrIsLocal ? `${ocrManifest?.label ?? "ONNX OCR"} · EXP` : "REVIEW OCR"}
               </span>
               <span className="manga-capability-pill">GLOSSARY</span>
               <span className="manga-capability-pill manga-capability-muted">INPAINT · SOON</span>

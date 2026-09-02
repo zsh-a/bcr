@@ -3,6 +3,7 @@ import { applyGlossaryTerms } from "@bcr/manga-studio/glossary";
 import {
   TRANSLATION_MODEL_MANIFESTS,
   type MangaGlossaryEntry,
+  type MangaOcrAdapterId,
   type MangaOcrArtifact,
   type MangaOcrLine,
   type MangaSourceLanguage,
@@ -469,9 +470,12 @@ async function mangaOcrOnnx(
     });
     ctx.progress(Math.min(0.98, 0.4 + (0.58 * (index + 1)) / lines.length));
   }
+  const adapterValue = configText(task.config?.["adapter"], "vision.onnx");
+  const adapter: Exclude<MangaOcrAdapterId, "review.manual"> =
+    adapterValue === "manga.onnx" ? "manga.onnx" : "vision.onnx";
   const payload: MangaOcrArtifact = {
     version: 1,
-    adapter: "vision.onnx",
+    adapter,
     sourceName: configText(task.config?.["sourceName"], input.id),
     coordinateSpace: "normalized-percent",
     lines: recognized,

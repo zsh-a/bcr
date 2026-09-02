@@ -80,6 +80,12 @@ describe("Manga Studio operation graph", () => {
       status: "experimental",
       languages: ["en"],
     });
+    expect(OCR_MODEL_MANIFESTS.find((manifest) => manifest.id === "manga.onnx")).toMatchObject({
+      model: "onnx-community/manga-ocr-base-ONNX",
+      runtime: "wasm",
+      status: "experimental",
+      languages: ["ja"],
+    });
   });
 
   it("catalogs language-specific local translation models", () => {

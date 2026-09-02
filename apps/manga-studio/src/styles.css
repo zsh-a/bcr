@@ -1055,6 +1055,10 @@
   line-height: 1.35;
 }
 
+.manga-config-warning {
+  color: var(--manga-amber);
+}
+
 .manga-model-note {
   display: flex;
   flex-direction: column;

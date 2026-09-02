@@ -4,8 +4,10 @@ import { Effect, Fiber, Stream } from "effect";
 import { createImportedRegion } from "./fixture";
 import { translateWithGlossary } from "./glossary";
 import {
+  OCR_MODEL_MANIFESTS,
   TRANSLATION_MODEL_MANIFESTS,
   type MangaGlossaryEntry,
+  type MangaOcrAdapterId,
   type MangaSourceLanguage,
   type MangaTranslationArtifact,
 } from "./model";
@@ -69,7 +71,7 @@ function ocrTask(runId: number): ComputeTask | undefined {
   const source = state.source.ref;
   if (source === undefined || source.storage !== "opfs") return undefined;
   const operation =
-    state.settings.ocrAdapter === "vision.onnx" ? LOCAL_OCR_OPERATION : REVIEW_OCR_OPERATION;
+    state.settings.ocrAdapter === "review.manual" ? REVIEW_OCR_OPERATION : LOCAL_OCR_OPERATION;
   return {
     id: `manga-ocr-${Date.now().toString(36)}-${runId.toString(36)}`,
     runtime: operation.runtime,
@@ -154,13 +156,19 @@ async function runOcrAdapter(
 ): Promise<ArtifactRef | undefined> {
   const task = ocrTask(runId);
   if (task === undefined) return undefined;
+  const adapterValue = task.config?.["adapter"];
+  const adapter: MangaOcrAdapterId =
+    adapterValue === "manga.onnx" || adapterValue === "vision.onnx"
+      ? adapterValue
+      : "review.manual";
+  const manifest = OCR_MODEL_MANIFESTS.find((candidate) => candidate.id === adapter);
   if (
-    task.config?.["adapter"] === "vision.onnx" &&
-    manga.getSnapshot().settings.sourceLanguage !== "en"
+    manifest !== undefined &&
+    !manifest.languages.includes(manga.getSnapshot().settings.sourceLanguage)
   ) {
     manga.log(
       "warn",
-      "ocr local ONNX · current manifest is Latin/English focused; review every region",
+      `ocr ${manifest.label} · source language is outside the manifest (${manifest.languages.join(", ")}); review every region`,
     );
   }
   const source = task.inputs[0];
@@ -200,8 +208,11 @@ async function runOcrAdapter(
         manga.log("warn", `ocr adapter · local mirror unavailable · ${String(error)}`);
       }
     }
-    const adapter = task.config?.["adapter"] === "vision.onnx" ? "local ONNX" : "review";
-    manga.log("ok", `ocr ${adapter} adapter · ${artifact.id} · needs-review regions preserved`);
+    const adapterLabel = manifest?.label ?? (adapter === "review.manual" ? "Review" : "Local ONNX");
+    manga.log(
+      "ok",
+      `ocr ${adapterLabel} adapter · ${artifact.id} · needs-review regions preserved`,
+    );
     return artifact;
   } finally {
     Effect.runFork(Fiber.interrupt(progressFiber));

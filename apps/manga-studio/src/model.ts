@@ -18,7 +18,7 @@ export interface MangaSource {
 
 export type WritingMode = "horizontal-tb" | "vertical-rl";
 export type RegionStatus = "detected" | "needs-review" | "reviewed";
-export type MangaOcrAdapterId = "review.manual" | "vision.onnx";
+export type MangaOcrAdapterId = "review.manual" | "vision.onnx" | "manga.onnx";
 export type MangaOcrDevice = "auto" | "webgpu" | "wasm";
 export type MangaSourceLanguage = "ja" | "en" | "ko";
 export type MangaTranslationEngineId = "fixture" | "local";
@@ -106,6 +106,15 @@ export const OCR_MODEL_MANIFESTS: ReadonlyArray<MangaOcrModelManifest> = [
     languages: ["en"],
     status: "experimental",
     detail: "浏览器内按区域识别；模型主要面向 Latin 印刷体",
+  },
+  {
+    id: "manga.onnx",
+    label: "Manga OCR / 日本語",
+    model: "onnx-community/manga-ocr-base-ONNX",
+    runtime: "wasm",
+    languages: ["ja"],
+    status: "experimental",
+    detail: "面向日文漫画的横/竖排识别；支持振假名与复杂字体，结果仍需人工审校",
   },
 ];
 
