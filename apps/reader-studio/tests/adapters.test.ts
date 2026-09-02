@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatForFile } from "../src/adapters";
+import { formatForFile, sanitizeInlineStyle } from "../src/adapters";
 import {
   READER_FORMAT_CATALOG,
   readerAcceptAttribute,
@@ -30,5 +30,16 @@ describe("reader format catalog", () => {
       label: "DOCX",
       support: "native",
     });
+  });
+
+  it("keeps publication typography but strips executable and layout CSS", () => {
+    expect(
+      sanitizeInlineStyle(
+        "font-weight: 700; color: #234; margin: 1em; position: fixed; background-image: url(https://evil.test/x)",
+      ),
+    ).toBe("font-weight: 700; color: #234; margin: 1em");
+    expect(sanitizeInlineStyle("behavior: url(#default#time); width: expression(alert(1))")).toBe(
+      undefined,
+    );
   });
 });

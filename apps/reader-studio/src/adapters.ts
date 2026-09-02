@@ -113,6 +113,70 @@ function safeUrl(value: string): string {
   return "#";
 }
 
+const SAFE_INLINE_STYLE_PROPERTIES = new Set([
+  "background-color",
+  "border",
+  "border-bottom",
+  "border-left",
+  "border-radius",
+  "border-right",
+  "border-top",
+  "color",
+  "direction",
+  "display",
+  "font-family",
+  "font-size",
+  "font-style",
+  "font-variant",
+  "font-weight",
+  "height",
+  "letter-spacing",
+  "line-height",
+  "list-style",
+  "list-style-type",
+  "margin",
+  "margin-bottom",
+  "margin-left",
+  "margin-right",
+  "margin-top",
+  "max-height",
+  "max-width",
+  "padding",
+  "padding-bottom",
+  "padding-left",
+  "padding-right",
+  "padding-top",
+  "text-align",
+  "text-decoration",
+  "text-indent",
+  "text-transform",
+  "vertical-align",
+  "white-space",
+  "width",
+  "word-spacing",
+  "writing-mode",
+]);
+
+/** Keep common publication typography while rejecting executable/escaping CSS. */
+export function sanitizeInlineStyle(value: string): string | undefined {
+  const declarations = value.split(";").flatMap((declaration) => {
+    const separator = declaration.indexOf(":");
+    if (separator <= 0) return [];
+    const property = declaration.slice(0, separator).trim().toLocaleLowerCase();
+    const propertyValue = declaration.slice(separator + 1).trim();
+    if (
+      !SAFE_INLINE_STYLE_PROPERTIES.has(property) ||
+      propertyValue.length === 0 ||
+      /[{}<>]|(?:url|expression|javascript|vbscript|@import)/iu.test(propertyValue)
+    ) {
+      return [];
+    }
+    const cleanedValue = propertyValue.replace(/\s*!important\s*$/iu, "").trim();
+    return cleanedValue.length > 0 ? [`${property}: ${cleanedValue}`] : [];
+  });
+  return declarations.length > 0 ? declarations.join("; ") : undefined;
+}
+
 function inlineMarkdown(value: string): string {
   let html = escapeHtml(value);
   html = html.replace(/`([^`]+)`/gu, "<code>$1</code>");
@@ -228,8 +292,13 @@ function sanitizeHtml(rawHtml: string): { html: string; text: string; title?: st
     for (const attribute of element.attributes) {
       const name = attribute.name.toLocaleLowerCase();
       const value = attribute.value;
-      if (name.startsWith("on") || name === "style") element.removeAttribute(attribute.name);
-      if (name === "href" || name === "src" || name === "poster") {
+      if (name.startsWith("on")) {
+        element.removeAttribute(attribute.name);
+      } else if (name === "style") {
+        const safe = sanitizeInlineStyle(value);
+        if (safe === undefined) element.removeAttribute(attribute.name);
+        else element.setAttribute(attribute.name, safe);
+      } else if (name === "href" || name === "src" || name === "poster") {
         element.setAttribute(attribute.name, safeUrl(value));
       }
     }

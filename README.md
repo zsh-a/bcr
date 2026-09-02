@@ -244,6 +244,7 @@ Publication → Section → Locator / SearchHit
 - 章节正文的规范化索引通过 `reader-index.worker` 运行在可复用 `WorkerPool` 中，主线程只保留轻量 Locator/UI 状态；Worker 不可用时自动回退 SQLite/内存搜索。
 - 文本类（含 FB2）、DOCX（WordprocessingML）、EPUB、PDF（PDF.js）和 CBZ（zip.js）均可直接导入；未知格式会明确提示，不把损坏内容伪装成可读文本。
 - Reader Format Catalog 统一维护扩展名、MIME、能力标签和文件选择器 accept；DOCX 首版按正文、标题与表格进入统一 Section 模型，绘图仍保持明确的文本优先边界。
+- HTML / EPUB / FB2 正文保留字体、颜色、间距和对齐等常用内联排版；脚本、外链、资源 URL 与定位类 CSS 在 Adapter 边界统一剥离。
 - 书库、主题、字号、布局和每本书的阅读位置写入 SQLite；源文件按 BLAKE3 内容地址写入 OPFS，刷新后重建 PDF/图片 URL。
 - 搜索优先使用 Worker 规范化索引，索引尚未完成时使用 SQLite FTS5 trigram，短查询或旧环境再回退到内存索引；搜索结果携带章节和上下文，点击后回到原文。
 - 阅读态采用宽内容列、纸张/松石/夜间主题、连续/分页布局和响应式书库侧栏，支持拖拽批量导入与 `⌘/Ctrl+F`。

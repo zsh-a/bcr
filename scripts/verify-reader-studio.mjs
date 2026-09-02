@@ -49,7 +49,7 @@ async function epubFixture() {
   await writer.add(
     "EPUB/chapter-1.xhtml",
     new TextReader(
-      `<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>第一章 · 入口</title></head><body><h1>第一章 · 入口</h1><p id="idea">EPUB 的章节内容可以通过出版物导航定位。</p></body></html>`,
+      `<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>第一章 · 入口</title></head><body><h1>第一章 · 入口</h1><p id="idea" style="font-weight:700;color:#234;position:fixed">EPUB 的章节内容可以通过出版物导航定位。</p></body></html>`,
     ),
   );
   await writer.add(
@@ -227,6 +227,10 @@ if ((await page.locator(".reader-toc-item").count()) < 3) {
 const tocText = await page.locator(".reader-chapter-rail").innerText();
 if (!tocText.includes("章内重点") || !tocText.includes("第二章 · 继续")) {
   fail("EPUB 导航标签没有渲染到目录栏");
+}
+const epubInlineStyle = await page.locator("#idea").getAttribute("style");
+if (!epubInlineStyle?.includes("font-weight") || epubInlineStyle.includes("position")) {
+  fail("EPUB 内联排版样式没有按安全白名单处理");
 }
 await page.getByRole("button", { name: "第二章 · 继续" }).click();
 if (!(await page.locator(".reader-toolbar-title").innerText()).includes("第二章")) {
