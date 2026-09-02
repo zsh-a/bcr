@@ -31,12 +31,31 @@ export {
 } from "./errors";
 export { type LineageStore, type LineageSnapshot, noopLineageStore } from "./lineage";
 export {
+  selectRetentionCandidates,
+  type RetentionOptions,
+  type RetentionReason,
+  type RetentionSelection,
+} from "./retention";
+export {
   executorRegistry,
   Executors,
   type ExecutorRegistry,
   type RuntimeExecutor,
 } from "./executor";
-export { CacheStoreTag, memoryCacheStore, type CacheStore } from "./cache-store";
+export {
+  CacheStoreTag,
+  memoryCacheStore,
+  planCachePrune,
+  reclaimCachePrune,
+  type CacheEntry,
+  type CachePruneCandidate,
+  type CachePruneOptions,
+  type CachePrunePlan,
+  type CachePruneResult,
+  type CachePruneSkipped,
+  type CachePruneSkipReason,
+  type CacheStore,
+} from "./cache-store";
 export {
   artifactPath,
   artifactStore,
@@ -68,6 +87,14 @@ export {
   makeMemoryTaskJournal,
   memoryTaskJournal,
   TaskJournalTag,
+  planTaskJournalPrune,
+  reclaimTaskJournalPrune,
+  type TaskJournalPruneCandidate,
+  type TaskJournalPruneOptions,
+  type TaskJournalPrunePlan,
+  type TaskJournalPruneResult,
+  type TaskJournalPruneSkipped,
+  type TaskJournalPruneSkipReason,
   type TaskJournal,
 } from "./task-journal";
 export {

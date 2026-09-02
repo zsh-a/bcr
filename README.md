@@ -48,6 +48,7 @@
 | §4/§8 OPFS + 窗口流动                 | `BinaryStore`（readRange/putStream/size），kernel 按 4MB 窗口读取                     |
 | Artifact 生命周期可观测性             | `ArtifactStore.inventory/usage`：跨后端容量清单、前缀过滤与稳定聚合，不读取内容       |
 | Artifact 安全 GC                      | `planCleanup/reclaim`：血缘 + 显式根保护、dry-run、path/size 二次校验后再回收         |
+| Cache / TaskJournal 保留策略          | Scheduler 维护入口：缓存 30 天 / 200 条、历史 90 天 / 500 条，终态与竞态二次校验      |
 | §8 SQLite WASM 元数据                 | `openSqliteDb`（整库字节经 BinaryStore 落 OPFS，可换任意 BinaryStore）                |
 | §8 TaskJournal / 崩溃恢复             | queued/running/终态写穿 SQLite；输入完整时重放，缺失时转 blocked                      |
 | §9.1 wasm-bindgen kernel              | `crates/kernels`（wasm32-unknown-unknown）                                            |
@@ -99,6 +100,8 @@ Market Atlas 数据质量与交互，以及 Manga Studio 单页翻译、Reader S
   也可手动刷新，清单查询只访问 OPFS/Memory 的路径和 size，不读取大对象内容。
 - **Artifact 安全清理**：⌘K →「清理未追踪 Artifact」先展示 dry-run 候选，只有用户显式确认才执行；
   当前项目源文件和已有血缘对象默认保留，执行前重新核对路径与字节数，竞态对象自动跳过并写入日志。
+- **缓存与历史保留**：⌘K →「整理过期缓存与历史」按 30 天 / 90 天 TTL 及 200 / 500 条上限生成计划；
+  只删除缓存索引和已结束任务日志，不触碰 Artifact 内容，运行中的任务与执行中的缓存 key 自动保护。
 - Runtime 接线：compute.worker 提供 `hash.blake3`（流式 BLAKE3）与 `audio.waveform`（2048 桶峰值包络）两个 WASM operation，任务进度 / cache hit / 取消直接投影到 UI
 
 截图走查脚本：`node scripts/screenshot.mjs`；持久化闭环走查：`node scripts/verify-persistence.mjs`；

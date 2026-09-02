@@ -105,6 +105,22 @@ describe("sqliteCacheStore (§7)", () => {
     expect(missing).toBeUndefined();
     await reopened.close();
   });
+
+  it("cache entries 可按数量生成计划并在重开后保持删除结果", async () => {
+    const key = `retention-${Date.now()}`;
+    await run((cache) => cache.put(key, [ref(`${key}-output`)]));
+    const plan = await run((cache) =>
+      Effect.gen(function* () {
+        const entries = yield* cache.entries;
+        expect(entries.some((entry) => entry.key === key)).toBe(true);
+        return yield* cache.planPrune({ maxEntries: 0 });
+      }),
+    );
+    expect(plan.candidates.map(({ key: candidateKey }) => candidateKey)).toContain(key);
+    const result = await run((cache) => cache.reclaim(plan));
+    expect(result.removed.map(({ key: removedKey }) => removedKey)).toContain(key);
+    expect(await run((cache) => cache.get(key))).toBeUndefined();
+  });
 });
 
 describe("sqliteLineageStore (§3/§8)", () => {
@@ -149,6 +165,28 @@ describe("sqliteTaskJournal (崩溃恢复)", () => {
     Effect.runPromise(
       Effect.flatMap(TaskJournalTag, f).pipe(Effect.provide(sqliteTaskJournal(database))),
     );
+
+  it("任务历史只清理终态，并支持按数量限制保留最新记录", async () => {
+    const id = `retention-${Date.now()}`;
+    const old: ComputeTask = { ...journalTask, id: `${id}-old` };
+    const newest: ComputeTask = { ...journalTask, id: `${id}-new` };
+    await run(db, (journal) => journal.recordSubmitted(old));
+    await run(db, (journal) => journal.recordFailed(old.id, "old failure"));
+    await run(db, (journal) => journal.recordSubmitted(newest));
+    await run(db, (journal) => journal.recordFailed(newest.id, "new failure"));
+
+    const plan = await run(db, (journal) => journal.planPrune({ maxEntries: 1 }));
+    expect(plan.activeEntries).toBe(0);
+    expect(plan.candidates.map(({ entry }) => entry.task.id)).toContain(old.id);
+    const result = await run(db, (journal) => journal.reclaim(plan));
+    expect(result.removed.map(({ entry }) => entry.task.id)).toContain(old.id);
+    expect(
+      (await run(db, (journal) => journal.entries)).some((entry) => entry.task.id === old.id),
+    ).toBe(false);
+    expect(
+      (await run(db, (journal) => journal.entries)).some((entry) => entry.task.id === newest.id),
+    ).toBe(true);
+  });
 
   it("running 快照跨会话保留，并可继续迁移到 completed", async () => {
     await run(db, (journal) =>

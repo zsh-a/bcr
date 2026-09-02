@@ -54,6 +54,13 @@ if (orphanCreated) {
   if (stillExists) fail("清理确认后 orphan Artifact 仍然存在");
 }
 
+await page.getByRole("button", { name: orphanCreated ? "完成" : "关闭" }).click();
+await page.getByRole("button", { name: "打开命令面板" }).click();
+await page.getByPlaceholder("输入命令…").fill("整理过期缓存与历史");
+await page.getByRole("button", { name: /整理过期缓存与历史/u }).click();
+await page.getByText("缓存与任务历史整理").waitFor();
+await page.getByText(/默认保留 30 天缓存/u).waitFor();
+
 await browser.close();
 console.log(
   process.exitCode ? "storage cleanup verification FAILED" : "storage cleanup verification PASSED",

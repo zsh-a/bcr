@@ -1,8 +1,12 @@
 import {
   TaskJournalEntry as TaskJournalEntrySchema,
   TaskJournalTag,
+  planTaskJournalPrune,
+  reclaimTaskJournalPrune,
   type ArtifactRef,
   type TaskJournal,
+  type TaskJournalEntry,
+  type TaskJournalPruneOptions,
 } from "@bcr/core";
 import { Effect, Layer, Schema } from "effect";
 import type { SqliteDb } from "./db";
@@ -15,6 +19,41 @@ export function sqliteTaskJournal(db: SqliteDb): Layer.Layer<TaskJournalTag> {
     Effect.promise(async () => {
       mutation();
       await db.persist();
+    });
+
+  const snapshot = (): ReadonlyArray<TaskJournalEntry> => {
+    const entries = [];
+    for (const row of db.all(
+      `SELECT task_json, status, created_at, updated_at, attempts, outputs, error
+       FROM task_journal
+       ORDER BY created_at, task_id`,
+    )) {
+      try {
+        const outputs = row["outputs"];
+        const error = row["error"];
+        entries.push(
+          decodeEntry({
+            task: JSON.parse(row["task_json"] as string) as unknown,
+            status: row["status"],
+            createdAt: row["created_at"],
+            updatedAt: row["updated_at"],
+            attempts: row["attempts"],
+            ...(typeof outputs === "string"
+              ? { outputs: JSON.parse(outputs) as ReadonlyArray<ArtifactRef> }
+              : {}),
+            ...(typeof error === "string" ? { error } : {}),
+          }),
+        );
+      } catch {
+        // 单条日志损坏不阻断项目打开或其余任务恢复。
+      }
+    }
+    return entries;
+  };
+
+  const remove = (taskId: string): Effect.Effect<void> =>
+    persist(() => {
+      db.run("DELETE FROM task_journal WHERE task_id = ?", [taskId]);
     });
 
   return Layer.succeed(TaskJournalTag, {
@@ -80,34 +119,12 @@ export function sqliteTaskJournal(db: SqliteDb): Layer.Layer<TaskJournalTag> {
           [Date.now(), reason, taskId],
         );
       }),
-    entries: Effect.sync(() => {
-      const entries = [];
-      for (const row of db.all(
-        `SELECT task_json, status, created_at, updated_at, attempts, outputs, error
-         FROM task_journal
-         ORDER BY created_at, task_id`,
-      )) {
-        try {
-          const outputs = row["outputs"];
-          const error = row["error"];
-          entries.push(
-            decodeEntry({
-              task: JSON.parse(row["task_json"] as string) as unknown,
-              status: row["status"],
-              createdAt: row["created_at"],
-              updatedAt: row["updated_at"],
-              attempts: row["attempts"],
-              ...(typeof outputs === "string"
-                ? { outputs: JSON.parse(outputs) as ReadonlyArray<ArtifactRef> }
-                : {}),
-              ...(typeof error === "string" ? { error } : {}),
-            }),
-          );
-        } catch {
-          // 单条日志损坏不阻断项目打开或其余任务恢复。
-        }
-      }
-      return entries;
-    }),
+    entries: Effect.sync(snapshot),
+    planPrune: (options?: TaskJournalPruneOptions) =>
+      Effect.map(Effect.sync(snapshot), (items) => planTaskJournalPrune(items, options)),
+    reclaim: (plan, options) =>
+      Effect.flatMap(Effect.sync(snapshot), (items) =>
+        reclaimTaskJournalPrune(plan, items, remove, options),
+      ),
   } satisfies TaskJournal);
 }

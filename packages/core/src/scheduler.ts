@@ -12,7 +12,12 @@ import {
 } from "effect";
 import { ArtifactStoreTag } from "./artifact";
 import { cacheKey } from "./cache-key";
-import { CacheStoreTag } from "./cache-store";
+import {
+  CacheStoreTag,
+  type CachePruneOptions,
+  type CachePrunePlan,
+  type CachePruneResult,
+} from "./cache-store";
 import { InvalidPipeline, NoExecutor, TaskFailed, type SchedulerError } from "./errors";
 import { Executors, type RuntimeExecutor } from "./executor";
 import {
@@ -23,7 +28,13 @@ import {
   type ResourceSnapshot,
 } from "./resource-manager";
 import type { ArtifactRef, ComputeTask, PipelineNode, TaskEvent, TaskJournalEntry } from "./schema";
-import { memoryTaskJournal, TaskJournalTag } from "./task-journal";
+import {
+  memoryTaskJournal,
+  TaskJournalTag,
+  type TaskJournalPruneOptions,
+  type TaskJournalPrunePlan,
+  type TaskJournalPruneResult,
+} from "./task-journal";
 
 export interface SubmitOptions {
   /** 超时后任务以 TaskFailed("timeout") 失败。 */
@@ -106,6 +117,20 @@ export interface Scheduler {
    * 取消正在运行的下游任务、清掉下游缓存条目。
    */
   readonly invalidateArtifact: (artifactId: string) => Effect.Effect<void>;
+  /** 维护入口：缓存计划会自动保护当前仍在运行的任务 key。 */
+  readonly planCachePrune: (options?: CachePruneOptions) => Effect.Effect<CachePrunePlan>;
+  readonly reclaimCache: (
+    plan: CachePrunePlan,
+    options?: Pick<CachePruneOptions, "protectedKeys">,
+  ) => Effect.Effect<CachePruneResult>;
+  /** 维护入口：TaskJournal 的 queued/running 永远不会被选择。 */
+  readonly planJournalPrune: (
+    options?: TaskJournalPruneOptions,
+  ) => Effect.Effect<TaskJournalPrunePlan>;
+  readonly reclaimJournal: (
+    plan: TaskJournalPrunePlan,
+    options?: Pick<TaskJournalPruneOptions, "protectedTaskIds">,
+  ) => Effect.Effect<TaskJournalPruneResult>;
 }
 
 export class SchedulerTag extends Context.Tag("bcr/Scheduler")<SchedulerTag, Scheduler>() {}
@@ -127,6 +152,15 @@ const schedulerLayer: Layer.Layer<
 
     const running = new Map<string, TaskFiber>();
     const cacheKeys = new Map<string, string | undefined>();
+
+    const activeCacheKeys = (): ReadonlyArray<string> =>
+      [...running.keys()]
+        .map((taskId) => cacheKeys.get(taskId))
+        .filter((key): key is string => key !== undefined);
+
+    const withActiveCacheProtection = (keys: ReadonlyArray<string>): ReadonlyArray<string> => [
+      ...new Set([...keys, ...activeCacheKeys()]),
+    ];
 
     const keyFor = (task: ComputeTask, executor: RuntimeExecutor): string | undefined => {
       if (task.cache !== undefined && !task.cache.enabled) return undefined;
@@ -415,6 +449,29 @@ const schedulerLayer: Layer.Layer<
         yield* go(artifactId);
       });
 
+    const planCachePrune = (options: CachePruneOptions = {}): Effect.Effect<CachePrunePlan> =>
+      cache.planPrune({
+        ...options,
+        protectedKeys: withActiveCacheProtection(options.protectedKeys ?? []),
+      });
+
+    const reclaimCache = (
+      plan: CachePrunePlan,
+      options?: Pick<CachePruneOptions, "protectedKeys">,
+    ): Effect.Effect<CachePruneResult> =>
+      cache.reclaim(plan, {
+        protectedKeys: withActiveCacheProtection(options?.protectedKeys ?? plan.protectedKeys),
+      });
+
+    const planJournalPrune = (
+      options?: TaskJournalPruneOptions,
+    ): Effect.Effect<TaskJournalPrunePlan> => journal.planPrune(options);
+
+    const reclaimJournal = (
+      plan: TaskJournalPrunePlan,
+      options?: Pick<TaskJournalPruneOptions, "protectedTaskIds">,
+    ): Effect.Effect<TaskJournalPruneResult> => journal.reclaim(plan, options);
+
     type PipelineNodeState = {
       readonly node: PipelineNode;
       readonly deferred: Deferred.Deferred<ReadonlyArray<ArtifactRef>, SchedulerError>;
@@ -611,6 +668,10 @@ const schedulerLayer: Layer.Layer<
       cancel: (taskId) => cancelCascade(taskId, new Set()),
       recoverPending,
       invalidateArtifact,
+      planCachePrune,
+      reclaimCache,
+      planJournalPrune,
+      reclaimJournal,
     };
   }),
 );
