@@ -6,9 +6,14 @@ import {
   stageById,
   updateStage,
 } from "@bcr/document-core";
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Stream } from "effect";
 import { describe, expect, it } from "vitest";
-import { canRunDocumentStage, importDocumentHandoff, saveDocumentOcrReview } from "../src/runtime";
+import {
+  canRunDocumentStage,
+  importDocumentHandoff,
+  preloadDocumentOcrModel,
+  saveDocumentOcrReview,
+} from "../src/runtime";
 import { documents } from "../src/store";
 import type { RuntimeServices } from "@bcr/react";
 
@@ -109,6 +114,44 @@ describe("Document durable handoff import", () => {
       },
     });
     expect(canRunDocumentStage(withOcr, "translate")).toBe(true);
+  });
+
+  it("preloads an OCR model through the shared scheduler", async () => {
+    const store = new TestBinaryStore();
+    const services = await makeServices(store);
+    const submitted: Array<{ operation: string; config?: Record<string, unknown> }> = [];
+    const handle = {
+      taskId: "document-ocr-preload-test",
+      events: Stream.empty,
+      await: Effect.succeed([]),
+      cancel: Effect.void,
+      cached: false,
+    };
+    const scheduler = {
+      submit: (task: { operation: string; config?: Record<string, unknown> }) => {
+        submitted.push(task);
+        return Effect.succeed(handle);
+      },
+    };
+    await preloadDocumentOcrModel(
+      { artifacts: services.artifacts, scheduler: scheduler as never },
+      {
+        adapter: "manga.onnx",
+        model: "onnx-community/manga-ocr-base-ONNX",
+        device: "wasm",
+        sourceLanguage: "ja",
+      },
+    );
+    expect(submitted).toHaveLength(1);
+    expect(submitted[0]).toMatchObject({
+      operation: "manga.model.preload",
+      config: {
+        kind: "ocr",
+        adapter: "manga.onnx",
+        sourceLanguage: "ja",
+        device: "wasm",
+      },
+    });
   });
 
   it("persists OCR text review and invalidates downstream stages", async () => {

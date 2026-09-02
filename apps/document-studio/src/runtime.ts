@@ -23,6 +23,7 @@ import {
   supportsDocumentTextExtract,
   updateStage,
   type DocumentFormat,
+  type DocumentOcrSettings,
   type DocumentHandoff,
   type DocumentContentPackage,
   type DocumentJob,
@@ -34,6 +35,7 @@ import {
 import { documents } from "./store";
 
 let taskSequence = 0;
+const activeOcrPreloads = new Map<string, Promise<void>>();
 const activeTasks = new Map<
   string,
   { readonly stageId: DocumentStageId; readonly handle: TaskHandle }
@@ -501,6 +503,51 @@ function patchStage(
 
 function errorMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
+}
+
+/** Warm the shared OCR model/cache without touching a document page. */
+export async function preloadDocumentOcrModel(
+  services: RuntimeServices,
+  settings: DocumentOcrSettings,
+): Promise<void> {
+  const key = `${settings.adapter}:${settings.model}:${settings.sourceLanguage}:${settings.device}`;
+  const active = activeOcrPreloads.get(key);
+  if (active !== undefined) {
+    await active;
+    return;
+  }
+  const needsGpu =
+    settings.device === "webgpu" ||
+    (settings.device === "auto" && typeof navigator !== "undefined" && "gpu" in navigator);
+  const task: ComputeTask = {
+    id: `document-ocr-preload-${Date.now().toString(36)}-${(++taskSequence).toString(36)}`,
+    runtime: "wasm",
+    operation: "manga.model.preload",
+    inputs: [],
+    outputs: [],
+    resources: { memoryMB: 1536, threads: 1, ...(needsGpu ? { gpu: true } : {}) },
+    // Transformers.js owns model byte caching; the Scheduler should not
+    // mistake an empty output list for a reusable document result.
+    cache: { enabled: false },
+    config: {
+      kind: "ocr",
+      adapter: settings.adapter,
+      model: settings.model,
+      sourceLanguage: settings.sourceLanguage,
+      device: settings.device,
+      offlineOnly: typeof navigator !== "undefined" && navigator.onLine === false,
+    },
+  };
+  const promise = (async () => {
+    const handle = await Effect.runPromise(services.scheduler.submit(task));
+    await Effect.runPromise(handle.await);
+  })();
+  activeOcrPreloads.set(key, promise);
+  try {
+    await promise;
+  } finally {
+    if (activeOcrPreloads.get(key) === promise) activeOcrPreloads.delete(key);
+  }
 }
 
 export interface DocumentExportArtifact {

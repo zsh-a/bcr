@@ -563,6 +563,7 @@ Content Package 在创建与恢复边界对重复 block ID 做确定性后缀化
 阶段状态同时记录 operation、runtime 与 cache hit/miss，模型接入后的降级、缓存和重试可在同一 Inspector 中诊断。
 阶段依赖按 DAG 失效：重新 Extract / OCR 会将下游 Translation、Typeset、Export 投影重置为待运行，人工修订译文也会使 Typeset / Export 失效；旧 Artifact 保留在本地，便于审计和缓存命中。
 视觉 OCR 还提供 source-text review：人工只修改 block 文本，几何、置信度和来源引用保持不变，修订写入新的 `document.ocr.review` Artifact，再由同一 DAG 继续翻译和排版。
+Inspector 的“预热模型”通过共享 `manga.model.preload` Task 复用 Transformers.js Cache API；同模型/语言/设备的并发请求去重，离线缺失字节和语言能力错误在真正 OCR 前即可观察。
 Document 的 canonical export 由 `packages/document-core/src/export.ts` 统一生成：JSON 保留 Content / Translation Package
 的完整契约，Markdown / text 通过稳定 block ID 生成 source、translated 或 bilingual 视图；Document Studio 先将导出写入
 `document/export/*` Artifact，再创建下载，避免把导出变成不可追踪的临时字符串。`decodeDocumentExportBundle` 在重新导入前校验版本、包结构和 block ID 归属。

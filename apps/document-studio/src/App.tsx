@@ -64,6 +64,7 @@ import {
   canRunDocumentStage,
   importDocumentHandoff,
   importDocumentFile,
+  preloadDocumentOcrModel,
   runDocumentStage,
   exportDocumentPackage,
   saveDocumentOcrReview,
@@ -217,6 +218,7 @@ export function App() {
   const [ocrReviewDrafts, setOcrReviewDrafts] = useState<Readonly<Record<string, string>>>({});
   const [savingReview, setSavingReview] = useState(false);
   const [savingOcrReview, setSavingOcrReview] = useState(false);
+  const [ocrPreloading, setOcrPreloading] = useState(false);
   const [exportBusy, setExportBusy] = useState<DocumentExportFormat | null>(null);
 
   useEffect(() => {
@@ -404,6 +406,20 @@ export function App() {
         );
       })
       .finally(() => setSavingOcrReview(false));
+  };
+
+  const preloadOcr = () => {
+    if (ocrPreloading || active.format !== "image") return;
+    setOcrPreloading(true);
+    const settings = documentOcrSettings(active.ocr);
+    void preloadDocumentOcrModel(services, settings)
+      .then(() => documents.setNotice(`${settings.model} 已预热到本地模型缓存`))
+      .catch((reason: unknown) => {
+        documents.setNotice(
+          `OCR 模型预热失败：${reason instanceof Error ? reason.message : String(reason)}`,
+        );
+      })
+      .finally(() => setOcrPreloading(false));
   };
 
   const downloadExport = (format: DocumentExportFormat): void => {
@@ -757,6 +773,8 @@ export function App() {
               onCancel={cancelSelectedStage}
               canRunStage={canRunDocumentStage(active, selected.id)}
               onOcrSettingsChange={(patch) => documents.updateOcrSettings(active.id, patch)}
+              onPreloadOcr={preloadOcr}
+              ocrPreloading={ocrPreloading}
             />
           )}
           {contentPackage !== undefined && contentStats !== undefined && (
@@ -1139,6 +1157,8 @@ function DocumentOcrSettingsCard(props: {
   settings: DocumentOcrSettings;
   onChange: (patch: Partial<DocumentOcrSettings>) => void;
   disabled?: boolean;
+  onPreload?: (() => void) | undefined;
+  preloading?: boolean;
 }) {
   const modelLabel =
     props.settings.adapter === "manga.onnx" ? "Manga OCR / 日文" : "TrOCR / Latin 印刷体";
@@ -1214,6 +1234,17 @@ function DocumentOcrSettingsCard(props: {
         {modelLabel} 按整页建立一个稳定区域；首次运行会在 Worker 中懒加载模型并写入浏览器缓存。
         密集气泡、竖排混排或多页文件请交给 Manga Studio。
       </p>
+      {props.onPreload !== undefined && (
+        <button
+          type="button"
+          className="document-ocr-preload"
+          onClick={props.onPreload}
+          disabled={props.disabled || props.preloading}
+        >
+          <Sparkles className="document-icon" />
+          {props.preloading ? "模型预热中…" : "预热模型到本地缓存"}
+        </button>
+      )}
       {languageMismatch && (
         <p className="document-ocr-settings-warning">
           当前模型主要支持 {props.settings.adapter === "manga.onnx" ? "日文" : "Latin 英文"}；
@@ -1231,6 +1262,8 @@ function StageInspector(props: {
   onCancel: () => void;
   canRunStage: boolean;
   onOcrSettingsChange: (patch: Partial<DocumentOcrSettings>) => void;
+  onPreloadOcr: () => void;
+  ocrPreloading: boolean;
 }) {
   const isDone = props.stage.status === "done";
   const isPlanned = props.stage.capability === "planned" && !isDone;
@@ -1327,6 +1360,8 @@ function StageInspector(props: {
           settings={ocr}
           onChange={props.onOcrSettingsChange}
           disabled={isRunning}
+          onPreload={props.onPreloadOcr}
+          preloading={props.ocrPreloading}
         />
       )}
       {isPlanned ? (
