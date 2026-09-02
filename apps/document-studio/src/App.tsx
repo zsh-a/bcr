@@ -1009,6 +1009,20 @@ function StageInspector(props: {
           <dt>DURATION</dt>
           <dd>{formatDuration(props.stage.durationMs)}</dd>
         </div>
+        <div>
+          <dt>RUNTIME</dt>
+          <dd>{props.stage.execution?.runtime?.toUpperCase() ?? "—"}</dd>
+        </div>
+        <div>
+          <dt>CACHE</dt>
+          <dd>{props.stage.execution?.cache?.toUpperCase() ?? "—"}</dd>
+        </div>
+        {props.stage.execution !== undefined && (
+          <div>
+            <dt>OPERATION</dt>
+            <dd title={props.stage.execution.operation}>{props.stage.execution.operation}</dd>
+          </div>
+        )}
         {props.stage.artifact !== undefined && (
           <div>
             <dt>ARTIFACT</dt>

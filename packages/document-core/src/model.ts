@@ -1,4 +1,4 @@
-import type { ArtifactRef } from "@bcr/core";
+import type { ArtifactRef, RuntimeKind } from "@bcr/core";
 
 export type DocumentFormat =
   | "txt"
@@ -23,6 +23,15 @@ export type DocumentStageId =
 
 export type DocumentStageStatus = "idle" | "running" | "done" | "blocked" | "error";
 
+export type DocumentStageCacheStatus = "hit" | "miss" | "disabled";
+
+/** Execution facts persisted with a stage for model/cache diagnostics. */
+export interface DocumentStageExecution {
+  readonly runtime: RuntimeKind;
+  readonly operation: string;
+  readonly cache?: DocumentStageCacheStatus | undefined;
+}
+
 export type DocumentCapability = "ready" | "adapter" | "planned";
 
 export interface DocumentStageState {
@@ -37,6 +46,7 @@ export interface DocumentStageState {
   readonly completedAt?: number | undefined;
   readonly durationMs?: number | undefined;
   readonly adapter?: string | undefined;
+  readonly execution?: DocumentStageExecution | undefined;
   readonly artifact?: ArtifactRef | undefined;
   readonly error?: string | undefined;
 }

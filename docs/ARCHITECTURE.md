@@ -557,6 +557,7 @@ Watchlist 分组内的多序列交接：Quant Lab 会保留完整 intake 摘要�
 生成独立 JSON Artifact；OCR 仍明确标记为 planned，不用 fixture 冒充视觉模型结果。Document Inbox 提供本地导入、元数据预览和阶段 Inspector；handoff
 通道把同一标签页的 `File` 与可恢复的 Artifact 引用交给 Reader 或 Manga，目标应用继续负责自己的 OPFS、SQLite、Worker 与 Artifact；Reader 也能将解析后的章节投影回 Document，形成同一套 Content Package 驱动的双向闭环。
 Content Package 在创建与恢复边界对重复 block ID 做确定性后缀化，保证翻译、审校和搜索共享稳定主键。
+阶段状态同时记录 operation、runtime 与 cache hit/miss，模型接入后的降级、缓存和重试可在同一 Inspector 中诊断。
 
 Manga 已先把人工/Fixture 区域通过可取消的 `manga.ocr.review` Worker Task 固化成版本化
 `manga/ocr-lines` Artifact；它只验证数据契约，不伪装像素识别。按风险顺序接入真实视觉 Worker

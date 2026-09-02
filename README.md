@@ -240,6 +240,7 @@ File → Ingest → Normalize → Extract → OCR → Translate → Typeset → 
   文本提供安全的轻量预览，图片只在当前标签页创建临时预览 URL。
 - Text / Markdown / HTML / FB2 已可通过共享 Scheduler + WorkerPool 运行 Extract、fixture Translate 与 Typeset
   preview；Extract 产出可校验、可迁移的 `document/content-package` JSON Artifact，每一步都支持缓存、进度、取消和重试；OCR 仍明确标记为 `PLANNED`。
+- 每个阶段会持久化 operation、runtime（JS/WASM/WebGPU）和 cache hit/miss，Inspector 与刷新后的任务详情都能解释一次执行是计算、缓存还是失败重试。
 - Translate 会把每个 source block 映射为同 ID 的 `document/translation-package`，同时保存目标语言、审校状态和
   Provenance；Typeset 只消费该契约，因此后续接入真实模型时无需改动 UI / 排版输入。
 - Inspector 提供前 5 个 block 的快速审校；人工修改会生成新的不可变 Translation Package Artifact，保留原始产物并让

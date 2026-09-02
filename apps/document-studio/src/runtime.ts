@@ -381,6 +381,11 @@ export async function runDocumentStage(
     startedAt,
     completedAt: undefined,
     durationMs: undefined,
+    execution: {
+      runtime: task.runtime,
+      operation: task.operation,
+      cache: task.cache?.enabled === false ? "disabled" : undefined,
+    },
   });
   try {
     const handle = await Effect.runPromise(services.scheduler.submit(task));
@@ -403,6 +408,11 @@ export async function runDocumentStage(
       progress: 1,
       completedAt,
       durationMs: completedAt - startedAt,
+      execution: {
+        runtime: task.runtime,
+        operation: task.operation,
+        cache: task.cache?.enabled === false ? "disabled" : handle.cached ? "hit" : "miss",
+      },
       ...(artifact === undefined ? {} : { artifact }),
     });
     documents.setNotice(

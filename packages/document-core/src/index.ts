@@ -6,6 +6,8 @@ export type {
   DocumentFormat,
   DocumentJob,
   DocumentStageDefinition,
+  DocumentStageCacheStatus,
+  DocumentStageExecution,
   DocumentStageId,
   DocumentStageState,
   DocumentStageStatus,
