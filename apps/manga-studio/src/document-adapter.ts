@@ -123,6 +123,46 @@ function reviewStatus(region: TextRegion): "translated" | "needs-review" {
     : "needs-review";
 }
 
+/** Rebuild editable Manga regions from a visual canonical package. */
+export function documentContentToMangaRegions(
+  content: DocumentContentPackage,
+  translation?: DocumentTranslationPackage,
+): ReadonlyArray<TextRegion> {
+  if (content.format !== "image") {
+    throw new Error("只有 image Content Package 可以重放为 Manga 页面");
+  }
+  const translatedById = new Map(translation?.blocks.map((block) => [block.id, block]) ?? []);
+  return content.blocks.flatMap((block) => {
+    const sourceText = block.text.trim();
+    const translatedBlock = translatedById.get(block.id);
+    const translatedText = translatedBlock?.translatedText.trim() ?? "";
+    if (sourceText.length === 0 && translatedText.length === 0) return [];
+    const geometry = block.geometry;
+    if (geometry === undefined) {
+      throw new Error(`视觉 Content Package 的 block「${block.id}」缺少 geometry`);
+    }
+    return [
+      {
+        id: block.id,
+        label: block.label,
+        x: geometry.x,
+        y: geometry.y,
+        width: geometry.width,
+        height: geometry.height,
+        rotation: geometry.rotation ?? 0,
+        writingMode: block.writingMode ?? "horizontal-tb",
+        sourceText,
+        translatedText,
+        confidence: block.confidence ?? 0,
+        status:
+          translatedBlock?.status === "translated" && translatedText.length > 0
+            ? ("reviewed" as const)
+            : ("needs-review" as const),
+      },
+    ];
+  });
+}
+
 /** Build a canonical content package from the current manual/visual regions. */
 export function mangaRegionsToDocumentContentPackage(
   sourceName: string,

@@ -220,6 +220,7 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - Manga Runtime 维护 SQLite-backed Model Registry，记录模型目录版本、loading/ready/error、最近使用和最近成功加载时间；配置面板展示懒加载状态，未知或损坏的 registry 元数据不会阻塞启动
 - 模型治理：Worker 通过 `manga.model.preload` 显式预加载到 `bcr-manga-models-v1` 专属 Cache API；配置面板展示文件数与在线/离线状态，可清理并同步使 readiness 失效，避免把“元数据 ready”误当成“字节仍在缓存”；同 Worker 内按模型/设备去重 in-flight 加载，并记录真实模型构建耗时；离线任务只读专属缓存，不再发起远程模型请求
 - 每页 OCR / 审校区域会同步投影为标准 `DocumentContentPackage` 与 `DocumentTranslationPackage`，以内容寻址的 `document/manga/*` Artifact 持久化到 Manga 存储并镜像到 Studio 宿主；页面元数据保存最新引用，刷新后可继续搜索、治理或跨工作台交接
+- Manga 导入入口接受带 `sourceRef` 的视觉 Export Bundle（`.json`）：先校验 canonical 契约，再从共享 Artifact 恢复原图与区域/译文，避免重复 OCR；缺失源 Artifact 时明确失败，不生成伪页面。
 - OCR manifest 同时提供 Latin TrOCR 与日文 Manga OCR（`onnx-community/manga-ocr-base-ONNX`）；模型按区域懒加载，
   在 Worker 内支持 Auto / WebGPU / WASM，结果统一标为 `needs-review`；识别出的文本、方向、几何和置信度会按原 block ID 回写审校区域；不匹配的语言会显式告警而不会伪装成已验证能力
 - 当前 MVP 支持原图 / 清理页 / 译文页切换、置信度审阅、CJK 排版参数和 PNG 导出；清理阶段会输出可追溯区域掩码，Inpainting 请求在适配器就绪前明确回退 Fill；CBZ/PDF 会先展开为页面队列
@@ -279,6 +280,7 @@ Publication → Section → Locator / SearchHit
 - 连续阅读布局利用浏览器原生 `content-visibility` 与 intrinsic size 跳过远端章节的布局和绘制，同时保留章节锚点与滚动几何；PDF 页面继续按视口懒渲染，长文档不会一次性触发全部可视化开销。
 - 阅读态采用宽内容列、纸张/松石/夜间主题、连续/分页布局和响应式书库侧栏，支持拖拽批量导入与 `⌘/Ctrl+F`。
 - 工具栏支持将当前出版物交回 Document Studio；交接只携带短期 ID，源文件按 BLAKE3 地址镜像到宿主 ArtifactStore，章节 ID、HTML、页码和元数据保持不变。
+- Reader 文件入口同时接受经过校验的 Document Export Bundle（`.json`）；文本包会直接重建 Section 与译文，不重复运行格式解析器，视觉包则明确引导回 Manga Studio。
 
 走查：`node scripts/verify-reader-studio.mjs`（由 `bun run test:browser` 自动执行）。
 

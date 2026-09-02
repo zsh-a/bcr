@@ -61,6 +61,7 @@ import { useLocationSearch, useOptionalRuntime } from "@bcr/react";
 import {
   createReaderRuntime,
   importReaderDocumentHandoff,
+  importReaderExportBundle,
   importReaderFile,
   indexBook,
   prepareReaderDocumentHandoff,
@@ -619,12 +620,21 @@ export function App() {
           previous === null ? previous : { ...previous, current: file.name },
         );
         try {
-          const book = await importReaderFile(runtime, file, controller.signal);
+          const isExportBundle =
+            /\.json$/iu.test(file.name) ||
+            file.type.toLocaleLowerCase().startsWith("application/json");
+          const book = isExportBundle
+            ? await importReaderExportBundle(runtime, file, controller.signal)
+            : await importReaderFile(runtime, file, controller.signal);
           if (controller.signal.aborted) break;
           const added = reader.addBook(book);
           if (added) {
             await indexBook(runtime, book, controller.signal);
-            setNotice(`${book.title} 已加入书库`);
+            setNotice(
+              isExportBundle
+                ? `${book.title} 已从 Export Bundle 加入书库`
+                : `${book.title} 已加入书库`,
+            );
           } else {
             setNotice(`${file.name} 已在书库`);
           }
@@ -1009,10 +1019,19 @@ function ReaderHeader(props: {
             </button>
           )}
           {props.importJob.settled && props.importJob.failedFiles.length > 0 && (
-            <button type="button" className="reader-import-retry" onClick={props.onRetryFailed}>
-              {props.importJob.cancelled ? "继续导入" : "重试失败"} (
-              {props.importJob.failedFiles.length})
-            </button>
+            <>
+              <div className="reader-import-errors" role="alert">
+                {props.importJob.failedFiles.slice(0, 3).map((failure) => (
+                  <span key={`${failure.file.name}:${failure.error}`}>
+                    {failure.file.name}：{failure.error}
+                  </span>
+                ))}
+              </div>
+              <button type="button" className="reader-import-retry" onClick={props.onRetryFailed}>
+                {props.importJob.cancelled ? "继续导入" : "重试失败"} (
+                {props.importJob.failedFiles.length})
+              </button>
+            </>
           )}
         </div>
       )}

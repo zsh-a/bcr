@@ -27,6 +27,7 @@ import {
   type SearchHit,
 } from "@bcr/reader-core";
 import {
+  decodeDocumentExportBundle,
   decodeDocumentContentPackage,
   decodeDocumentTranslationPackage,
   type DocumentContentPackage,
@@ -290,6 +291,27 @@ export async function importReaderContentPackage(
       },
     },
   };
+}
+
+/** Import a canonical JSON export without invoking a format-specific parser. */
+export async function importReaderExportBundle(
+  runtime: ReaderRuntime,
+  file: File,
+  signal?: AbortSignal,
+): Promise<ReaderBook> {
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  let value: unknown;
+  try {
+    value = JSON.parse(await file.text()) as unknown;
+  } catch {
+    throw new Error(`${file.name} 不是有效的 Document Export Bundle`);
+  }
+  const bundle = decodeDocumentExportBundle(value);
+  if (bundle === undefined) throw new Error(`${file.name} 的 Export Bundle 契约校验失败`);
+  if (bundle.content.format === "image") {
+    throw new Error("视觉 Export Bundle 请交给 Manga Studio；Reader 只接收文本出版物");
+  }
+  return importReaderContentPackage(runtime, file, bundle.content, bundle.translation, signal);
 }
 
 function mimeForDocumentFormat(format: DocumentHandoff["format"]): string {

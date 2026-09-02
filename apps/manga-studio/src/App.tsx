@@ -46,6 +46,7 @@ import { findGlossaryMatches } from "./glossary";
 import {
   createMangaRuntime,
   fileFromDocumentHandoff,
+  importMangaExportBundle,
   importImageArtifact,
   prepareMangaDocumentHandoff,
   persistMangaDocumentPackages,
@@ -594,7 +595,10 @@ export function App() {
       manifest.id === (state.settings.cleanMode === "inpaint" ? "inpaint.onnx" : "fill"),
   );
 
-  const importImage = async (file: File): Promise<void> => {
+  const importImage = async (
+    file: File,
+    initialRegions: ReadonlyArray<TextRegion> = [],
+  ): Promise<void> => {
     if (runtime === null) {
       manga.log("warn", "import · runtime is still starting");
       return;
@@ -633,7 +637,7 @@ export function App() {
           pageCount: 1,
           ref,
         },
-        [],
+        initialRegions,
       );
       manga.log(
         "warn",
@@ -661,6 +665,21 @@ export function App() {
       return;
     }
     for (const file of files) {
+      const isExportBundle =
+        /\.json$/iu.test(file.name) || file.type.toLocaleLowerCase().startsWith("application/json");
+      if (isExportBundle) {
+        try {
+          const replay = await importMangaExportBundle(runtime, file, hostServices?.artifacts);
+          await importImage(replay.file, replay.regions);
+          manga.log("ok", `export bundle · ${replay.content.sourceName} · visual regions restored`);
+        } catch (reason) {
+          manga.log(
+            "error",
+            `export bundle · ${file.name} · ${reason instanceof Error ? reason.message : String(reason)}`,
+          );
+        }
+        continue;
+      }
       const format = formatForMangaFile(file);
       if (format === "image") {
         await importImage(file);
@@ -908,7 +927,7 @@ export function App() {
             ref={fileInputRef}
             type="file"
             aria-label="导入漫画图片或压缩包"
-            accept="image/png,image/jpeg,image/webp,image/svg+xml,application/pdf,application/vnd.comicbook+zip,application/zip,.pdf,.cbz,.zip"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml,application/pdf,application/vnd.comicbook+zip,application/zip,application/json,.pdf,.cbz,.zip,.json"
             multiple
             className="hidden"
             onChange={(event) => {
@@ -997,7 +1016,7 @@ export function App() {
               <Upload className="size-4" />
               <span>
                 <strong>拖入更多页面</strong>
-                <small>PNG / JPG / WEBP / CBZ / PDF</small>
+                <small>PNG / JPG / WEBP / CBZ / PDF / EXPORT JSON</small>
               </span>
             </button>
             {state.batch !== undefined && (

@@ -67,6 +67,7 @@ Reader Studio 的现代化落点：`packages/reader-core` 只承载格式无关�
 源文件使用 BLAKE3 内容地址写入 OPFS，SQLite WASM 保存书库、设置和进度；章节正文的规范化索引由
 `reader-index.worker` 通过统一 `WorkerPool` 执行，SQLite FTS5 trigram 与内存搜索作为渐进回退，主线程只负责
 React 交互；Locator v2 在旧版 section/progression 之外保存受限的 TextQuote/TextPosition 锚点，恢复时优先按引用重新定位并重新推导章节进度；搜索契约在归一化文本与原文之间保留 UTF-16 偏移，结果点击后精确滚动到首个高亮命中，兼容全角字符、Unicode 兼容形与空白差异；后续可将 DOCX/EPUB/PDF 深解析沿同一 Session 边界迁移到 Worker。
+Reader 文件入口还可直接校验并重放 Document Export Bundle：文本包复用 canonical blocks 与译文，不重复执行格式解析；视觉包在 Reader 边界拒绝并引导回 Manga，避免把图片内容误当作可排版文本。
 
 Document Studio 的落点是把跨工作台的内容生命周期显式化：`packages/document-core` 只承载格式识别、
 `DocumentJob`、阶段状态和一次性 handoff 契约；`apps/document-studio` 负责 Inbox、阶段可见性和目标工作台入口。
@@ -590,6 +591,7 @@ Manga OCR/审校区域现在可投影为 `DocumentContentPackage`，翻译区域
 writing mode、confidence 与 provenance，避免漫画与文档各自维护一套内容模型。每页投影会以内容寻址的
 `document/manga/content/*` 与 `document/manga/translation/*` Artifact 写入 Manga 存储并镜像到 Studio 宿主，页面元数据保存最新引用，
 因此刷新后仍可继续治理、搜索或交接。
+视觉 Export Bundle 可在 Manga 入口重放：先用 `decodeDocumentExportBundle` 校验 block 归属，再通过 `sourceRef` 从宿主 ArtifactStore 恢复原图，区域与译文沿稳定 ID 回填；源 Artifact 不可用时拒绝导入，保持数据边界可解释。
 清理阶段同步输出 `manga/clean-page` 掩码 Artifact；Inpaint 仍是实验能力，未接入时记录
 `requestedMode=inpaint` 与 `effectiveMode=fill`，禁止把稳定填充伪装成生成式修复。
 

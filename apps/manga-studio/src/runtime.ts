@@ -18,7 +18,8 @@ import type {
   DocumentHandoff,
   DocumentTranslationPackage,
 } from "@bcr/document-core";
-import { mangaPageToDocumentPackages } from "./document-adapter";
+import { decodeDocumentExportBundle } from "@bcr/document-core";
+import { documentContentToMangaRegions, mangaPageToDocumentPackages } from "./document-adapter";
 import { FIXTURE_PAGE_URL } from "./fixture";
 import { MangaModelRegistry } from "./model-registry";
 import { manga } from "./store";
@@ -28,6 +29,7 @@ import type {
   MangaPage,
   MangaSettings,
   MangaSource,
+  TextRegion,
 } from "./model";
 
 export interface MangaDocumentArtifactRefs {
@@ -42,6 +44,13 @@ export interface MangaDocumentHandoffPayload {
   readonly translation: DocumentTranslationPackage;
   readonly contentRef: ArtifactRef;
   readonly translationRef: ArtifactRef;
+}
+
+export interface MangaExportReplayPayload {
+  readonly file: File;
+  readonly content: DocumentContentPackage;
+  readonly translation?: DocumentTranslationPackage | undefined;
+  readonly regions: ReadonlyArray<TextRegion>;
 }
 
 export interface MangaRuntime {
@@ -165,6 +174,45 @@ export async function fileFromDocumentHandoff(
   return new File([blob], handoff.name, {
     type: handoff.sourceRef.format ?? mimeForDocumentFormat(handoff.format),
   });
+}
+
+/** Rehydrate a visual Export Bundle by resolving its immutable source image. */
+export async function importMangaExportBundle(
+  runtime: MangaRuntime,
+  file: File,
+  upstreamArtifacts?: ArtifactStore,
+): Promise<MangaExportReplayPayload> {
+  let value: unknown;
+  try {
+    value = JSON.parse(await file.text()) as unknown;
+  } catch {
+    throw new Error(`${file.name} 不是有效的 Document Export Bundle`);
+  }
+  const bundle = decodeDocumentExportBundle(value);
+  if (bundle === undefined) throw new Error(`${file.name} 的 Export Bundle 契约校验失败`);
+  if (bundle.content.format !== "image") {
+    throw new Error("文本 Export Bundle 请交给 Reader Studio；Manga 只接收视觉内容");
+  }
+  const sourceRef = bundle.content.sourceRef;
+  if (sourceRef === undefined) {
+    throw new Error("视觉 Export Bundle 缺少 source Artifact，无法恢复原始页面");
+  }
+  const artifacts = upstreamArtifacts ?? runtime.artifacts;
+  let blob: Blob;
+  try {
+    blob = await Effect.runPromise(artifacts.getBlob(sourceRef));
+  } catch {
+    throw new Error(`视觉 Export Bundle 的 source Artifact 不可用：${sourceRef.id}`);
+  }
+  const imageFile = new File([blob], bundle.content.sourceName, {
+    type: sourceRef.format ?? "image/png",
+  });
+  return {
+    file: imageFile,
+    content: bundle.content,
+    ...(bundle.translation === undefined ? {} : { translation: bundle.translation }),
+    regions: documentContentToMangaRegions(bundle.content, bundle.translation),
+  };
 }
 
 /** Stream a user file into the same Artifact namespace used by future OCR tasks. */

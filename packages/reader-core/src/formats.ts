@@ -111,7 +111,11 @@ export function readerFormatDescriptor(format: ReaderFormat): ReaderFormatDescri
 }
 
 export function readerAcceptAttribute(): string {
-  return READER_FORMAT_CATALOG.filter((candidate) => candidate.support === "native")
-    .flatMap((candidate) => [...candidate.extensions, ...candidate.mimeTypes])
-    .join(",");
+  return [
+    ...READER_FORMAT_CATALOG.filter((candidate) => candidate.support === "native").flatMap(
+      (candidate) => [...candidate.extensions, ...candidate.mimeTypes],
+    ),
+    ".json",
+    "application/json",
+  ].join(",");
 }

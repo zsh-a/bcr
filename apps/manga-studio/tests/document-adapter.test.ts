@@ -1,6 +1,8 @@
 import type { ArtifactRef } from "@bcr/core";
+import { createDocumentContentPackage, createDocumentTranslationPackage } from "@bcr/document-core";
 import { describe, expect, it } from "vitest";
 import {
+  documentContentToMangaRegions,
   mangaOcrToDocumentContentPackage,
   mangaPageToDocumentPackages,
   mangaTranslationToDocumentTranslationPackage,
@@ -149,5 +151,50 @@ describe("Manga → Document package adapter", () => {
       "needs-review",
     ]);
     expect(projected.translation.sourceContentId).toBe(projected.content.id);
+  });
+
+  it("replays a visual Content Package into editable regions", () => {
+    const content = mangaOcrToDocumentContentPackage(ocr, { sourceRef, sourceLanguage: "ja" });
+    const translation = createDocumentTranslationPackage({
+      id: "translation-replay",
+      sourceContentId: content.id,
+      sourceName: content.sourceName,
+      format: content.format,
+      sourceLanguage: "ja",
+      targetLanguage: "zh-Hans",
+      adapter: "manga.review.translation",
+      blocks: content.blocks.map((block, index) => ({
+        ...block,
+        translatedText: index === 0 ? "就从这里开始吧" : "",
+        status: index === 0 ? ("translated" as const) : ("skipped" as const),
+      })),
+    });
+
+    expect(documentContentToMangaRegions(content, translation)).toEqual([
+      expect.objectContaining({
+        id: "bubble-1",
+        sourceText: "ここから始めよう",
+        translatedText: "就从这里开始吧",
+        writingMode: "vertical-rl",
+        status: "reviewed",
+      }),
+      expect.objectContaining({
+        id: "bubble-2",
+        translatedText: "",
+        status: "needs-review",
+      }),
+    ]);
+  });
+
+  it("rejects visual blocks that cannot be placed on a page", () => {
+    const malformed = createDocumentContentPackage({
+      id: "missing-geometry",
+      format: "image",
+      sourceName: "missing-geometry.png",
+      adapter: "manga.review.regions",
+      blocks: [{ id: "missing", text: "文字" }],
+      sourceRef,
+    });
+    expect(() => documentContentToMangaRegions(malformed)).toThrow("缺少 geometry");
   });
 });

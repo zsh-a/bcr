@@ -1,11 +1,18 @@
 import type { ArtifactRef, ArtifactStore } from "@bcr/core";
 import { artifactStore, ArtifactStoreTag } from "@bcr/core";
-import { decodeDocumentContentPackage, decodeDocumentTranslationPackage } from "@bcr/document-core";
+import {
+  createDocumentContentPackage,
+  createDocumentTranslationPackage,
+  decodeDocumentContentPackage,
+  decodeDocumentTranslationPackage,
+  serializeDocumentExport,
+} from "@bcr/document-core";
 import { MemoryStore } from "@bcr/storage-opfs";
 import { Context, Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 import {
   fileFromDocumentHandoff,
+  importMangaExportBundle,
   prepareMangaDocumentHandoff,
   persistMangaDocumentPackages,
   type MangaRuntime,
@@ -151,5 +158,70 @@ describe("manga durable Document handoff", () => {
       geometry: { x: 10, y: 20, width: 30, height: 15 },
     });
     expect(await Effect.runPromise(host.has(sourceRef))).toBe(true);
+  });
+
+  it("replays a visual Export Bundle from the shared source Artifact", async () => {
+    const store = new MemoryStore();
+    const artifacts = await makeArtifacts(store);
+    const sourceRef: ArtifactRef = {
+      id: "document/source/visual-export",
+      type: "file/image",
+      storage: "opfs",
+      format: "image/png",
+      hash: "visual-export-hash",
+    };
+    const content = createDocumentContentPackage({
+      id: "visual-export-content",
+      format: "image",
+      sourceName: "visual-export.png",
+      sourceRef,
+      adapter: "manga.review.regions",
+      blocks: [
+        {
+          id: "bubble-1",
+          label: "BUBBLE 01",
+          text: "こんにちは",
+          geometry: { x: 10, y: 20, width: 30, height: 15 },
+          writingMode: "vertical-rl",
+          confidence: 0.9,
+        },
+      ],
+    });
+    const translation = createDocumentTranslationPackage({
+      id: "visual-export-translation",
+      sourceContentId: content.id,
+      sourceName: content.sourceName,
+      format: content.format,
+      sourceLanguage: "ja",
+      targetLanguage: "zh-Hans",
+      adapter: "manga.review.translation",
+      blocks: [
+        {
+          id: "bubble-1",
+          label: "BUBBLE 01",
+          text: "こんにちは",
+          translatedText: "你好",
+          status: "translated",
+        },
+      ],
+    });
+    await Effect.runPromise(artifacts.put(sourceRef, new Uint8Array([137, 80, 78, 71])));
+    const payload = serializeDocumentExport(content, translation, "json");
+
+    const replay = await importMangaExportBundle(
+      { artifacts, binary: store, meta: undefined, models: new MangaModelRegistry(undefined) },
+      new File([payload.text], "visual-export.json", { type: payload.mime }),
+    );
+
+    expect(replay.file.name).toBe("visual-export.png");
+    expect(replay.file.type).toBe("image/png");
+    expect(replay.regions).toEqual([
+      expect.objectContaining({
+        id: "bubble-1",
+        sourceText: "こんにちは",
+        translatedText: "你好",
+        status: "reviewed",
+      }),
+    ]);
   });
 });

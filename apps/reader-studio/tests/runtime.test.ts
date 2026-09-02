@@ -1,11 +1,16 @@
 import type { ArtifactRef, ArtifactStore } from "@bcr/core";
 import { artifactStore, ArtifactStoreTag } from "@bcr/core";
-import { createDocumentContentPackage, createDocumentTranslationPackage } from "@bcr/document-core";
+import {
+  createDocumentContentPackage,
+  createDocumentTranslationPackage,
+  serializeDocumentExport,
+} from "@bcr/document-core";
 import { MemoryStore } from "@bcr/storage-opfs";
 import { Context, Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 import {
   importReaderDocumentHandoff,
+  importReaderExportBundle,
   prepareReaderDocumentHandoff,
   type ReaderRuntime,
 } from "../src/runtime";
@@ -152,5 +157,72 @@ describe("reader durable Document handoff", () => {
     expect(book.source.ref?.id).toMatch(/^reader\//u);
     const stored = await Effect.runPromise(target.inventory({ idPrefix: "reader/" }));
     expect(stored.map((entry) => entry.id)).toContain(book.source.ref?.id);
+  });
+
+  it("replays a validated text Export Bundle without invoking a parser", async () => {
+    const store = new MemoryStore();
+    const artifacts = await makeArtifacts(store);
+    const runtime: ReaderRuntime = {
+      binary: store,
+      artifacts,
+      meta: undefined,
+      ftsReady: false,
+      indexSession: undefined,
+      parseSession: undefined,
+      parserMode: "main",
+    };
+    const content = createDocumentContentPackage({
+      id: "reader-export-content",
+      format: "markdown",
+      sourceName: "exported-notes.md",
+      metadata: { title: "Exported notes" },
+      adapter: "markdown.extract",
+      blocks: [{ id: "body", label: "正文", text: "Source body" }],
+    });
+    const translation = createDocumentTranslationPackage({
+      id: "reader-export-translation",
+      sourceContentId: content.id,
+      sourceName: content.sourceName,
+      format: content.format,
+      targetLanguage: "zh-Hans",
+      adapter: "review.manual",
+      blocks: [{ id: "body", label: "正文", text: "Source body", translatedText: "译文" }],
+    });
+    const payload = serializeDocumentExport(content, translation, "json");
+    const file = new File([payload.text], "exported-notes.json", { type: payload.mime });
+
+    const book = await importReaderExportBundle(runtime, file);
+
+    expect(book.title).toBe("Exported notes");
+    expect(book.source.format).toBe("markdown");
+    expect(book.sections).toEqual([
+      expect.objectContaining({ id: "body", text: "译文", label: "正文" }),
+    ]);
+    expect(book.source.ref?.id).toMatch(/^reader\//u);
+  });
+
+  it("rejects visual Export Bundles at the Reader boundary", async () => {
+    const store = new MemoryStore();
+    const artifacts = await makeArtifacts(store);
+    const runtime: ReaderRuntime = {
+      binary: store,
+      artifacts,
+      meta: undefined,
+      ftsReady: false,
+      indexSession: undefined,
+      parseSession: undefined,
+      parserMode: "main",
+    };
+    const content = createDocumentContentPackage({
+      id: "reader-image-export",
+      format: "image",
+      sourceName: "page.png",
+      adapter: "manga.review.regions",
+      blocks: [{ id: "region-1", label: "Region", text: "文字" }],
+    });
+    const payload = serializeDocumentExport(content, undefined, "json");
+    const file = new File([payload.text], "page.json", { type: payload.mime });
+
+    await expect(importReaderExportBundle(runtime, file)).rejects.toThrow("Manga Studio");
   });
 });
