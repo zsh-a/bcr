@@ -142,7 +142,14 @@ function executionLabel(execution: MangaAdapterExecution | undefined): string {
             : "";
   const cache = execution.cache === undefined ? "" : `CACHE ${execution.cache.toUpperCase()}`;
   const fallback = fallbackLabel(execution.fallbackReason);
-  return [adapter, device, phase, cache, fallback].filter((value) => value.length > 0).join(" · ");
+  const telemetry = execution.telemetry;
+  const lines = telemetry === undefined ? "" : `LINES ${telemetry.completed}/${telemetry.total}`;
+  const glossary =
+    telemetry?.glossaryExactHits === undefined ? "" : `GLOSSARY ${telemetry.glossaryExactHits}`;
+  const batch = telemetry?.batchSize === undefined ? "" : `BATCH ${telemetry.batchSize}`;
+  return [adapter, device, phase, cache, lines, glossary, batch, fallback]
+    .filter((value) => value.length > 0)
+    .join(" · ");
 }
 
 function modelStatusLabel(status: MangaModelStatus): string {

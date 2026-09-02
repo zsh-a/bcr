@@ -221,11 +221,40 @@ describe("Manga Studio operation graph", () => {
       sourceLanguage: "ja",
       targetLanguage: "zh",
       lines: [{ id: "line-1", sourceText: "原文", translatedText: "译文", status: "needs-review" }],
+      execution: {
+        kind: "translation",
+        requestedAdapter: "fixture",
+        effectiveAdapter: "fixture",
+        runtime: "fixture",
+        requestedDevice: "auto",
+        effectiveDevice: "fixture",
+        telemetry: {
+          unit: "line",
+          total: 1,
+          completed: 1,
+          glossaryExactHits: 1,
+          batchSize: 8,
+        },
+      },
     });
     expect(translation.lines[0]?.translatedText).toBe("译文");
+    expect(translation.execution?.telemetry).toMatchObject({
+      total: 1,
+      completed: 1,
+      glossaryExactHits: 1,
+    });
     expect(() => decodeMangaTranslationArtifact({ ...translation, targetLanguage: "en" })).toThrow(
       "contract validation",
     );
+    expect(() =>
+      decodeMangaTranslationArtifact({
+        ...translation,
+        execution: {
+          ...translation.execution,
+          telemetry: { unit: "line", total: 1, completed: 2 },
+        },
+      }),
+    ).toThrow("telemetry");
   });
 
   it("exposes a safe cleaning preview boundary", () => {

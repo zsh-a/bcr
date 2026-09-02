@@ -1103,6 +1103,9 @@ async function mangaTranslateOnnx(
       .map((entry) => [entry.source.trim(), entry.target.trim()]),
   );
   const pending = translatable.filter((line) => !exact.has(line.text.trim()));
+  const BATCH_SIZE = 8;
+  const glossaryExactHits = translatable.length - pending.length;
+  let completedCount = glossaryExactHits;
   let loaded: LoadedModel<MangaTranslator> | undefined;
   let modelLoadDurationMs: number | undefined;
   if (pending.length > 0) {
@@ -1110,10 +1113,9 @@ async function mangaTranslateOnnx(
     loaded = await loadMangaTranslator(model, device, localOnly, ctx);
     modelLoadDurationMs = performance.now() - modelLoadStartedAt;
     const translator = loaded.fn;
-    const BATCH = 8;
-    for (let offset = 0; offset < pending.length; offset += BATCH) {
+    for (let offset = 0; offset < pending.length; offset += BATCH_SIZE) {
       throwIfAborted(ctx);
-      const batch = pending.slice(offset, offset + BATCH);
+      const batch = pending.slice(offset, offset + BATCH_SIZE);
       const outputs = translationTexts(
         await translator(
           batch.map((line) => line.text),
@@ -1124,6 +1126,7 @@ async function mangaTranslateOnnx(
         const output = outputs[index] ?? "";
         translated.set(line.id, applyGlossaryTerms(output, glossary));
       }
+      completedCount += batch.length;
       ctx.progress(
         Math.min(
           0.98,
@@ -1158,6 +1161,13 @@ async function mangaTranslateOnnx(
         : requestedDeviceResolution.fallbackReason === undefined
           ? {}
           : { fallbackReason: requestedDeviceResolution.fallbackReason }),
+      telemetry: {
+        unit: "line",
+        total: translatable.length,
+        completed: completedCount,
+        glossaryExactHits,
+        batchSize: BATCH_SIZE,
+      },
     },
   };
   const out = await writeTypedJsonArtifact(

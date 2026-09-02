@@ -40,6 +40,21 @@ export type MangaAdapterFallbackReason =
 export type MangaAdapterPhase = "queued" | "loading-model" | "running" | "completed";
 export type MangaAdapterCacheStatus = "hit" | "miss" | "disabled";
 
+/**
+ * Durable counters emitted by model-backed adapters.
+ *
+ * The stage progress bar is ephemeral. These counters travel with the
+ * artifact so a restored or cached translation still explains how many lines
+ * were processed and how glossary rules affected the run.
+ */
+export interface MangaAdapterTelemetry {
+  readonly unit: "line";
+  readonly total: number;
+  readonly completed: number;
+  readonly glossaryExactHits?: number | undefined;
+  readonly batchSize?: number | undefined;
+}
+
 /** Persisted execution facts shared by OCR/translation artifacts and stage UI. */
 export interface MangaAdapterExecution {
   readonly kind: "ocr" | "translation";
@@ -58,6 +73,7 @@ export interface MangaAdapterExecution {
   readonly sourceLanguage?: MangaSourceLanguage | undefined;
   readonly targetLanguage?: "zh" | undefined;
   readonly fallbackReason?: MangaAdapterFallbackReason | undefined;
+  readonly telemetry?: MangaAdapterTelemetry | undefined;
 }
 
 /**
@@ -543,6 +559,27 @@ function decodeMangaAdapterExecution(
   }
   if (candidate["targetLanguage"] !== undefined && candidate["targetLanguage"] !== "zh") {
     throw new Error("manga adapter execution targetLanguage is invalid");
+  }
+  if (candidate["telemetry"] !== undefined) {
+    const telemetry = recordValue(candidate["telemetry"]);
+    const integer = (key: string): boolean => {
+      const number = telemetry?.[key];
+      return typeof number === "number" && Number.isInteger(number) && number >= 0;
+    };
+    if (
+      telemetry === undefined ||
+      telemetry["unit"] !== "line" ||
+      !integer("total") ||
+      !integer("completed") ||
+      (telemetry["completed"] as number) > (telemetry["total"] as number) ||
+      (telemetry["glossaryExactHits"] !== undefined &&
+        (!integer("glossaryExactHits") ||
+          (telemetry["glossaryExactHits"] as number) > (telemetry["total"] as number))) ||
+      (telemetry["batchSize"] !== undefined &&
+        (!integer("batchSize") || (telemetry["batchSize"] as number) === 0))
+    ) {
+      throw new Error("manga adapter execution telemetry is invalid");
+    }
   }
   return candidate as unknown as MangaAdapterExecution;
 }
