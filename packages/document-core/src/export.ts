@@ -1,5 +1,9 @@
-import type { DocumentContentPackage, DocumentBlock } from "./content";
-import type { DocumentTranslationPackage } from "./translation";
+import {
+  decodeDocumentContentPackage,
+  type DocumentContentPackage,
+  type DocumentBlock,
+} from "./content";
+import { decodeDocumentTranslationPackage, type DocumentTranslationPackage } from "./translation";
 
 /** Stable, human-readable export projections for every workbench. */
 export type DocumentExportFormat = "json" | "markdown" | "text";
@@ -106,6 +110,26 @@ export function createDocumentExportBundle(
     content,
     ...(translation === undefined ? {} : { translation }),
   };
+}
+
+/** Decode an exported bundle without allowing malformed payloads across apps. */
+export function decodeDocumentExportBundle(value: unknown): DocumentExportBundle | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const candidate = value as {
+    readonly version?: unknown;
+    readonly content?: unknown;
+    readonly translation?: unknown;
+  };
+  if (candidate.version !== 1) return undefined;
+  const content = decodeDocumentContentPackage(candidate.content);
+  if (content === undefined) return undefined;
+  if (candidate.translation === undefined) return { version: 1, content };
+  const translation = decodeDocumentTranslationPackage(candidate.translation);
+  if (translation === undefined) return undefined;
+  const blockIds = new Set(content.blocks.map((block) => block.id));
+  if (translation.sourceContentId !== content.id) return undefined;
+  if (translation.blocks.some((block) => !blockIds.has(block.id))) return undefined;
+  return { version: 1, content, translation };
 }
 
 /** Serialize a canonical package without coupling core code to browser APIs. */

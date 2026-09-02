@@ -562,7 +562,7 @@ Content Package 在创建与恢复边界对重复 block ID 做确定性后缀化
 阶段状态同时记录 operation、runtime 与 cache hit/miss，模型接入后的降级、缓存和重试可在同一 Inspector 中诊断。
 Document 的 canonical export 由 `packages/document-core/src/export.ts` 统一生成：JSON 保留 Content / Translation Package
 的完整契约，Markdown / text 通过稳定 block ID 生成 source、translated 或 bilingual 视图；Document Studio 先将导出写入
-`document/export/*` Artifact，再创建下载，避免把导出变成不可追踪的临时字符串。
+`document/export/*` Artifact，再创建下载，避免把导出变成不可追踪的临时字符串。`decodeDocumentExportBundle` 在重新导入前校验版本、包结构和 block ID 归属。
 
 Manga 已先把人工/Fixture 区域通过可取消的 `manga.ocr.review` Worker Task 固化成版本化
 `manga/ocr-lines` Artifact；它只验证数据契约，不伪装像素识别。按风险顺序接入真实视觉 Worker

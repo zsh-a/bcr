@@ -3,6 +3,7 @@ import {
   createDocumentContentPackage,
   createDocumentExportBundle,
   createDocumentTranslationPackage,
+  decodeDocumentExportBundle,
   documentExportFileName,
   serializeDocumentExport,
 } from "../src";
@@ -43,7 +44,7 @@ describe("document exports", () => {
 
     expect(bundle).toEqual({ version: 1, content, translation });
     expect(payload.mime).toBe("application/json;charset=utf-8");
-    expect(JSON.parse(payload.text)).toEqual(bundle);
+    expect(decodeDocumentExportBundle(JSON.parse(payload.text))).toEqual(bundle);
   });
 
   it("renders bilingual Markdown and translated plain text by stable block IDs", () => {
@@ -64,5 +65,17 @@ describe("document exports", () => {
     const payload = serializeDocumentExport(content, undefined, "text");
     expect(payload.text).toContain("Hello world");
     expect(documentExportFileName("  Notes:/spring.md  ", payload)).toBe("Notes-spring-source.txt");
+  });
+
+  it("rejects a translation that does not belong to the exported content", () => {
+    const { content, translation } = packages();
+    expect(
+      decodeDocumentExportBundle({
+        version: 1,
+        content,
+        translation: { ...translation, sourceContentId: "another-content" },
+      }),
+    ).toBeUndefined();
+    expect(decodeDocumentExportBundle({ version: 2, content })).toBeUndefined();
   });
 });

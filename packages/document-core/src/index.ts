@@ -49,6 +49,7 @@ export {
 } from "./translation";
 export {
   createDocumentExportBundle,
+  decodeDocumentExportBundle,
   documentExportFileName,
   serializeDocumentExport,
   type DocumentExportBundle,
