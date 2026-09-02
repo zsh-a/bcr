@@ -1,7 +1,14 @@
-import type { ReaderBook, ReaderProgress, ReaderSection, SearchHit } from "@bcr/reader-core";
+import type {
+  ReaderBook,
+  ReaderBookmark,
+  ReaderProgress,
+  ReaderSection,
+  SearchHit,
+} from "@bcr/reader-core";
 
 export type {
   ReaderBook,
+  ReaderBookmark,
   ReaderLocator,
   ReaderProgress,
   ReaderSection,
@@ -26,6 +33,7 @@ export interface ReaderState {
   readonly activeBookId: string | null;
   readonly activeSectionId: string | null;
   readonly progressByBook: Readonly<Record<string, ReaderProgress>>;
+  readonly bookmarksByBook: Readonly<Record<string, ReadonlyArray<ReaderBookmark>>>;
   readonly query: string;
   readonly searchHits: ReadonlyArray<SearchHit>;
   readonly searchBookId: string | null;

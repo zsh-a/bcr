@@ -79,6 +79,14 @@ export interface ReaderProgress {
   readonly updatedAt: number;
 }
 
+/** A user-owned semantic position that survives reflow and format restoration. */
+export interface ReaderBookmark {
+  readonly id: string;
+  readonly label: string;
+  readonly locator: ReaderLocator;
+  readonly createdAt: number;
+}
+
 export interface SearchHit {
   readonly bookId: string;
   readonly sectionId: string;

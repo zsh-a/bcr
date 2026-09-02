@@ -3,7 +3,9 @@ import {
   firstLocator,
   normalizeLocator,
   progressForLocator,
+  sameLocator,
   type ReaderBook,
+  type ReaderBookmark,
   type ReaderLocator,
   type ReaderProgress,
   type SearchHit,
@@ -37,6 +39,7 @@ function initialState(): ReaderState {
     activeBookId: demo.id,
     activeSectionId: demo.sections[0]?.id ?? null,
     progressByBook: { [demo.id]: progress },
+    bookmarksByBook: { [demo.id]: [] },
     query: "",
     searchHits: [],
     searchBookId: null,
@@ -80,12 +83,15 @@ class ReaderStore {
     library: ReadonlyArray<ReaderBook>,
     progressByBook: Readonly<Record<string, ReaderProgress>>,
     settings: ReaderSettings,
+    bookmarksByBook: Readonly<Record<string, ReadonlyArray<ReaderBookmark>>> = {},
+    activeBookId?: string | null,
   ): void {
     const nextLibrary = library.length > 0 ? library : [demo];
     const first = nextLibrary[0] ?? demo;
+    const requestedBookId = activeBookId ?? this.state.activeBookId;
     const current =
-      this.state.activeBookId !== null
-        ? nextLibrary.find((book) => book.id === this.state.activeBookId)
+      requestedBookId !== null
+        ? nextLibrary.find((book) => book.id === requestedBookId)
         : undefined;
     const active = current ?? first;
     const progress = progressByBook[active.id] ?? progressForLocator(active, firstLocator(active));
@@ -94,6 +100,7 @@ class ReaderStore {
       activeBookId: active.id,
       activeSectionId: progress.locator.sectionId,
       progressByBook,
+      bookmarksByBook,
       settings,
       status: "ready",
       error: null,
@@ -120,6 +127,10 @@ class ReaderStore {
       activeBookId: book.id,
       activeSectionId: progress.locator.sectionId,
       progressByBook: { ...this.state.progressByBook, [book.id]: progress },
+      bookmarksByBook: {
+        ...this.state.bookmarksByBook,
+        [book.id]: this.state.bookmarksByBook[book.id] ?? [],
+      },
       query: "",
       searchHits: [],
       searchBookId: null,
@@ -140,11 +151,14 @@ class ReaderStore {
       progressForLocator(fallback, firstLocator(fallback));
     const progressByBook = { ...this.state.progressByBook };
     delete progressByBook[bookId];
+    const bookmarksByBook = { ...this.state.bookmarksByBook };
+    delete bookmarksByBook[bookId];
     this.set({
       library: nextLibrary,
       activeBookId: fallback.id,
       activeSectionId: progress.locator.sectionId,
       progressByBook,
+      bookmarksByBook,
       query: "",
       searchHits: [],
       searchBookId: null,
@@ -165,6 +179,25 @@ class ReaderStore {
             progression: 0,
           });
     const progress = progressForLocator(book, locator);
+    this.set({
+      activeBookId: book.id,
+      activeSectionId: progress.locator.sectionId,
+      progressByBook: { ...this.state.progressByBook, [book.id]: progress },
+      query: "",
+      searchHits: [],
+      searchBookId: null,
+      searchActiveIndex: -1,
+      searchOpen: false,
+    });
+  }
+
+  openBookmark(bookId: string, bookmarkId: string): void {
+    const book = this.state.library.find((candidate) => candidate.id === bookId);
+    const bookmark = this.state.bookmarksByBook[bookId]?.find(
+      (candidate) => candidate.id === bookmarkId,
+    );
+    if (book === undefined || bookmark === undefined) return;
+    const progress = progressForLocator(book, bookmark.locator);
     this.set({
       activeBookId: book.id,
       activeSectionId: progress.locator.sectionId,
@@ -238,6 +271,47 @@ class ReaderStore {
 
   setSearchOpen(searchOpen: boolean): void {
     this.set({ searchOpen });
+  }
+
+  toggleBookmark(): void {
+    const book = activeBook(this.state);
+    if (book === undefined) return;
+    const progress =
+      this.state.progressByBook[book.id] ?? progressForLocator(book, firstLocator(book));
+    const current = this.state.bookmarksByBook[book.id] ?? [];
+    const existing = current.findIndex((bookmark) =>
+      sameLocator(bookmark.locator, progress.locator),
+    );
+    if (existing >= 0) {
+      this.set({
+        bookmarksByBook: {
+          ...this.state.bookmarksByBook,
+          [book.id]: current.filter((_bookmark, index) => index !== existing),
+        },
+      });
+      return;
+    }
+    const now = Date.now();
+    const section = book.sections.find((candidate) => candidate.id === progress.locator.sectionId);
+    const bookmark: ReaderBookmark = {
+      id: `bookmark-${now.toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      label: section?.label ?? "阅读位置",
+      locator: progress.locator,
+      createdAt: now,
+    };
+    this.set({
+      bookmarksByBook: {
+        ...this.state.bookmarksByBook,
+        [book.id]: [...current, bookmark],
+      },
+    });
+  }
+
+  removeBookmark(bookId: string, bookmarkId: string): void {
+    const current = this.state.bookmarksByBook[bookId] ?? [];
+    const next = current.filter((bookmark) => bookmark.id !== bookmarkId);
+    if (next.length === current.length) return;
+    this.set({ bookmarksByBook: { ...this.state.bookmarksByBook, [bookId]: next } });
   }
 
   markSaved(): void {

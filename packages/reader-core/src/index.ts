@@ -1,6 +1,7 @@
 export type {
   LocatorKind,
   ReaderBook,
+  ReaderBookmark,
   ReaderFormat,
   ReaderLocator,
   ReaderProgress,
@@ -15,9 +16,11 @@ export {
   createLocator,
   firstLocator,
   locatorAtPercentage,
+  normalizeBookmark,
   normalizeLocator,
   percentageForLocator,
   progressForLocator,
+  sameLocator,
 } from "./locator";
 export {
   buildSearchIndex,

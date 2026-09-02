@@ -1,4 +1,10 @@
-import type { ReaderBook, ReaderLocator, ReaderProgress, ReaderSection } from "./model";
+import type {
+  ReaderBook,
+  ReaderBookmark,
+  ReaderLocator,
+  ReaderProgress,
+  ReaderSection,
+} from "./model";
 
 export function clampProgression(value: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -63,6 +69,17 @@ export function progressForLocator(
 ): ReaderProgress {
   const normalized = normalizeLocator(book, locator);
   return { locator: normalized, percentage: percentageForLocator(book, normalized), updatedAt };
+}
+
+export function sameLocator(left: ReaderLocator, right: ReaderLocator, tolerance = 0.02): boolean {
+  return (
+    left.sectionId === right.sectionId &&
+    Math.abs(clampProgression(left.progression) - clampProgression(right.progression)) <= tolerance
+  );
+}
+
+export function normalizeBookmark(book: ReaderBook, bookmark: ReaderBookmark): ReaderBookmark {
+  return { ...bookmark, locator: normalizeLocator(book, bookmark.locator) };
 }
 
 export function locatorAtPercentage(book: ReaderBook, percentage: number): ReaderLocator {

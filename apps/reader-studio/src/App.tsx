@@ -31,7 +31,9 @@ import {
 } from "react";
 import {
   locatorAtPercentage,
+  sameLocator,
   type ReaderBook,
+  type ReaderBookmark,
   type ReaderSection,
   type SearchHit,
 } from "@bcr/reader-core";
@@ -48,6 +50,8 @@ import {
 import { activeBook, type ReaderSettings, type ReaderTheme } from "./model";
 import { getReaderState, reader, useReader } from "./store";
 import "./styles.css";
+
+const EMPTY_BOOKMARKS: ReadonlyArray<ReaderBookmark> = [];
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -119,6 +123,7 @@ function isAbortError(reason: unknown): boolean {
 function useDebouncedPersist(runtime: ReaderRuntime | null): void {
   const library = useReader((state) => state.library);
   const progressByBook = useReader((state) => state.progressByBook);
+  const bookmarksByBook = useReader((state) => state.bookmarksByBook);
   const settings = useReader((state) => state.settings);
   useEffect(() => {
     if (runtime === null || getReaderState().status !== "ready") return;
@@ -126,7 +131,7 @@ function useDebouncedPersist(runtime: ReaderRuntime | null): void {
       persistReaderSnapshot(runtime);
     }, 900);
     return () => window.clearTimeout(handle);
-  }, [runtime, library, progressByBook, settings]);
+  }, [runtime, library, progressByBook, bookmarksByBook, settings]);
 
   useEffect(() => {
     if (runtime === null) return;
@@ -184,7 +189,13 @@ function useReaderBoot(): {
         const restored = await restoreReader(nextRuntime);
         if (cancelled) return;
         if (restored !== undefined) {
-          reader.hydrate(restored.books, restored.progressByBook, restored.settings);
+          reader.hydrate(
+            restored.books,
+            restored.progressByBook,
+            restored.settings,
+            restored.bookmarksByBook,
+            restored.activeBookId,
+          );
           await Promise.all(restored.books.map((book) => indexBook(nextRuntime, book)));
         } else {
           reader.setReady();
@@ -801,6 +812,13 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
 function ReaderToolbar(props: { book: ReaderBook; settings: ReaderSettings }) {
   const activeSectionId = useReader((state) => state.activeSectionId);
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
+  const locator = useReader((state) => state.progressByBook[props.book.id]?.locator);
+  const bookmarked = useReader((state) => {
+    if (locator === undefined) return false;
+    return (state.bookmarksByBook[props.book.id] ?? []).some((bookmark) =>
+      sameLocator(bookmark.locator, locator),
+    );
+  });
   const current =
     props.book.sections.find((section) => section.id === activeSectionId) ?? props.book.sections[0];
   return (
@@ -820,6 +838,17 @@ function ReaderToolbar(props: { book: ReaderBook; settings: ReaderSettings }) {
         </div>
       </div>
       <div className="reader-toolbar-actions">
+        <button
+          type="button"
+          className={`reader-bookmark-toggle ${bookmarked ? "is-active" : ""}`}
+          onClick={() => reader.toggleBookmark()}
+          aria-pressed={bookmarked}
+          aria-label={bookmarked ? "移除当前位置书签" : "标记当前位置"}
+          title={bookmarked ? "移除当前位置书签" : "标记当前位置"}
+        >
+          <Bookmark className="reader-icon" />
+          <span>{bookmarked ? "已标记" : "书签"}</span>
+        </button>
         <span className="reader-locator">
           <Bookmark className="reader-icon" /> {percent(progress)}
         </span>
@@ -1125,6 +1154,7 @@ function ReadingEnd(props: { book: ReaderBook }) {
 
 function ChapterRail(props: { book: ReaderBook }) {
   const activeSectionId = useReader((state) => state.activeSectionId);
+  const bookmarks = useReader((state) => state.bookmarksByBook[props.book.id] ?? EMPTY_BOOKMARKS);
   return (
     <aside className="reader-chapter-rail" aria-label="章节目录">
       <div className="reader-rail-heading">
@@ -1143,6 +1173,40 @@ function ChapterRail(props: { book: ReaderBook }) {
           <strong>{section.label}</strong>
         </button>
       ))}
+      {bookmarks.length > 0 && (
+        <>
+          <div className="reader-rail-divider" />
+          <div className="reader-rail-heading reader-rail-subheading">
+            <Bookmark className="reader-icon" />
+            <span>书签 · {bookmarks.length}</span>
+          </div>
+          <div className="reader-bookmark-list">
+            {bookmarks.map((bookmark) => (
+              <div className="reader-bookmark-row" key={bookmark.id}>
+                <button
+                  type="button"
+                  className="reader-bookmark-item"
+                  onClick={() => reader.openBookmark(props.book.id, bookmark.id)}
+                >
+                  <Bookmark className="reader-icon" />
+                  <span>
+                    <strong>{bookmark.label}</strong>
+                    <small>{percent(bookmark.locator.progression)} · 本章位置</small>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="reader-bookmark-remove"
+                  aria-label={`移除书签 ${bookmark.label}`}
+                  onClick={() => reader.removeBookmark(props.book.id, bookmark.id)}
+                >
+                  <X className="reader-icon" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       <div className="reader-rail-footer">
         <Settings2 className="reader-icon" />
         <span>阅读设置由本地配置驱动</span>

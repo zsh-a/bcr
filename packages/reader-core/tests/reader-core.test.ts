@@ -4,6 +4,7 @@ import {
   locatorAtPercentage,
   normalizeLocator,
   percentageForLocator,
+  sameLocator,
 } from "../src/locator";
 import {
   buildSearchIndex,
@@ -82,5 +83,14 @@ describe("reader-core", () => {
       href: "chapter-2.xhtml",
       progression: 0.2,
     });
+  });
+
+  it("compares bookmark positions with a small reflow tolerance", () => {
+    expect(
+      sameLocator(createLocator(book.sections[1]!, 0.4), createLocator(book.sections[1]!, 0.415)),
+    ).toBe(true);
+    expect(
+      sameLocator(createLocator(book.sections[1]!, 0.4), createLocator(book.sections[2]!, 0.4)),
+    ).toBe(false);
   });
 });

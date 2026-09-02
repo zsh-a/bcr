@@ -12,9 +12,12 @@ import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import { Context, Effect, Layer } from "effect";
 import {
+  normalizeBookmark,
+  normalizeLocator,
   normalizeSearchQuery,
   searchLibrary,
   type ReaderBook,
+  type ReaderBookmark,
   type SearchHit,
 } from "@bcr/reader-core";
 import { formatForFile, openReaderFile } from "./adapters";
@@ -66,14 +69,18 @@ interface PersistedBook {
 interface PersistedReaderSnapshot {
   readonly version: 1;
   readonly books: ReadonlyArray<PersistedBook>;
+  readonly activeBookId?: string | null;
   readonly progressByBook: ReaderState["progressByBook"];
   readonly settings: ReaderSettings;
+  readonly bookmarksByBook?: ReaderState["bookmarksByBook"];
 }
 
 interface RestoredReaderSnapshot {
   readonly books: ReadonlyArray<ReaderBook>;
+  readonly activeBookId: string | null;
   readonly progressByBook: ReaderState["progressByBook"];
   readonly settings: ReaderSettings;
+  readonly bookmarksByBook: ReaderState["bookmarksByBook"];
 }
 
 const FTS_SCHEMA = `
@@ -84,6 +91,8 @@ CREATE VIRTUAL TABLE IF NOT EXISTS reader_fts USING fts5(
   body,
   tokenize='trigram'
 );`;
+
+const READER_STORAGE_KEY = "bcr.reader.state.v1";
 
 let currentRuntime: ReaderRuntime | undefined;
 
@@ -195,14 +204,92 @@ function persistBook(book: ReaderBook): PersistedBook {
 }
 
 export async function persistReader(runtime: ReaderRuntime, state: ReaderState): Promise<void> {
-  if (runtime.meta === undefined) return;
   const snapshot: PersistedReaderSnapshot = {
     version: 1,
     books: state.library.map(persistBook),
+    activeBookId: state.activeBookId,
     progressByBook: state.progressByBook,
     settings: state.settings,
+    bookmarksByBook: state.bookmarksByBook,
   };
-  await runtime.meta.kvSet("reader/state", JSON.stringify(snapshot));
+  const raw = JSON.stringify(snapshot);
+  if (runtime.meta !== undefined) {
+    try {
+      await runtime.meta.kvSet("reader/state", raw);
+      return;
+    } catch {
+      // Fall through to localStorage when SQLite is temporarily unavailable.
+    }
+  }
+  try {
+    if (typeof localStorage !== "undefined") localStorage.setItem(READER_STORAGE_KEY, raw);
+  } catch {
+    // Private browsing can deny localStorage; in-memory reading still works.
+  }
+}
+
+function localStorageSnapshot(): string | undefined {
+  try {
+    if (typeof localStorage === "undefined") return undefined;
+    return localStorage.getItem(READER_STORAGE_KEY) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function restoredBookmarks(
+  books: ReadonlyArray<ReaderBook>,
+  raw: unknown,
+): ReaderState["bookmarksByBook"] {
+  if (typeof raw !== "object" || raw === null) return {};
+  const source = raw as Record<string, unknown>;
+  const restored: Record<string, ReadonlyArray<ReaderBookmark>> = {};
+  for (const book of books) {
+    const candidates = source[book.id];
+    if (!Array.isArray(candidates)) continue;
+    const seen = new Set<string>();
+    const bookmarks = candidates.flatMap((candidate) => {
+      if (typeof candidate !== "object" || candidate === null) return [];
+      const value = candidate as Record<string, unknown>;
+      if (
+        typeof value["id"] !== "string" ||
+        typeof value["label"] !== "string" ||
+        typeof value["createdAt"] !== "number" ||
+        typeof value["locator"] !== "object" ||
+        value["locator"] === null ||
+        seen.has(value["id"])
+      ) {
+        return [];
+      }
+      const locatorValue = value["locator"] as Record<string, unknown>;
+      if (typeof locatorValue["sectionId"] !== "string") return [];
+      seen.add(value["id"]);
+      const kind =
+        locatorValue["kind"] === "page" || locatorValue["kind"] === "image"
+          ? locatorValue["kind"]
+          : "section";
+      const locator = normalizeLocator(book, {
+        kind,
+        sectionId: locatorValue["sectionId"],
+        progression:
+          typeof locatorValue["progression"] === "number" ? locatorValue["progression"] : 0,
+        ...(typeof locatorValue["pageNumber"] === "number"
+          ? { pageNumber: locatorValue["pageNumber"] }
+          : {}),
+        ...(typeof locatorValue["href"] === "string" ? { href: locatorValue["href"] } : {}),
+      });
+      return [
+        normalizeBookmark(book, {
+          id: value["id"],
+          label: value["label"],
+          createdAt: value["createdAt"],
+          locator,
+        }),
+      ];
+    });
+    if (bookmarks.length > 0) restored[book.id] = bookmarks;
+  }
+  return restored;
 }
 
 async function fileFromSource(
@@ -287,8 +374,14 @@ async function restoreBook(
 export async function restoreReader(
   runtime: ReaderRuntime,
 ): Promise<RestoredReaderSnapshot | undefined> {
-  if (runtime.meta === undefined) return undefined;
-  const raw = await runtime.meta.kvGet("reader/state");
+  let raw = localStorageSnapshot();
+  if (runtime.meta !== undefined) {
+    try {
+      raw = (await runtime.meta.kvGet("reader/state")) ?? raw;
+    } catch {
+      // Keep the localStorage snapshot as the recovery path.
+    }
+  }
   if (raw === undefined) return undefined;
   try {
     const snapshot = JSON.parse(raw) as PersistedReaderSnapshot;
@@ -300,8 +393,11 @@ export async function restoreReader(
     }
     return {
       books,
+      activeBookId:
+        typeof snapshot.activeBookId === "string" ? snapshot.activeBookId : (books[0]?.id ?? null),
       progressByBook: snapshot.progressByBook ?? {},
       settings: { ...DEFAULT_READER_SETTINGS, ...snapshot.settings },
+      bookmarksByBook: restoredBookmarks(books, snapshot.bookmarksByBook),
     };
   } catch {
     return undefined;

@@ -23,6 +23,12 @@ if ((await page.locator(".reader-book-card").count()) < 1) fail("书库未加载
 if ((await page.locator(".reader-section").count()) < 3) fail("演示出版物章节未加载");
 if (!(await page.locator(".reader-sidebar-footer").innerText()).includes("OPFS"))
   fail("本地持久化状态未展示");
+const bookmarkButton = page.getByRole("button", { name: /标记当前位置|移除当前位置书签/ });
+if ((await bookmarkButton.getAttribute("aria-label")) === "标记当前位置") {
+  await bookmarkButton.click();
+}
+await page.locator(".reader-bookmark-list").waitFor({ timeout: 5_000 });
+if ((await page.locator(".reader-bookmark-item").count()) < 1) fail("书签没有写入当前阅读会话");
 
 const search = page.getByLabel("在书库中搜索");
 await search.fill("Locator");
@@ -61,6 +67,9 @@ if (
     .evaluate((element) => element.classList.contains("reader-theme-night")))
 ) {
   fail("刷新后阅读主题未恢复");
+}
+if ((await page.locator(".reader-bookmark-item").count()) < 1) {
+  fail("刷新后阅读书签未恢复");
 }
 
 await browser.close();
