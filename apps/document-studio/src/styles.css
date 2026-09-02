@@ -738,6 +738,97 @@
   font-size: 11px;
 }
 
+.document-handoff-history {
+  display: flex;
+  gap: 13px;
+  margin-top: 14px;
+  flex-direction: column;
+  border: 1px solid var(--document-border);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--document-surface) 82%, transparent);
+  padding: 14px 16px;
+}
+
+.document-handoff-history-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.document-handoff-history-heading > div {
+  display: flex;
+  gap: 4px;
+  flex-direction: column;
+}
+
+.document-handoff-history-heading strong {
+  color: var(--document-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.document-handoff-history-heading > span {
+  color: var(--document-faint);
+  font-family: var(--document-font-mono);
+  font-size: 9px;
+}
+
+.document-handoff-history-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.document-handoff-record {
+  display: flex;
+  min-width: 0;
+  gap: 4px;
+  flex-direction: column;
+  border: 1px solid var(--document-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--document-raised) 72%, transparent);
+  padding: 9px 10px;
+}
+
+.document-handoff-record-target,
+.document-handoff-record-status {
+  color: var(--document-faint);
+  font-family: var(--document-font-mono);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+
+.document-handoff-record strong {
+  overflow: hidden;
+  color: var(--document-muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-handoff-record.is-pending {
+  border-color: color-mix(in srgb, var(--document-accent) 36%, var(--document-border));
+}
+
+.document-handoff-record.is-pending .document-handoff-record-target,
+.document-handoff-record.is-pending .document-handoff-record-status {
+  color: var(--document-accent);
+}
+
+.document-handoff-record.is-consumed .document-handoff-record-status {
+  color: #73a878;
+}
+
+.document-handoff-record.is-expired {
+  border-color: color-mix(in srgb, #bd7462 38%, var(--document-border));
+}
+
+.document-handoff-record.is-expired .document-handoff-record-status {
+  color: #bd7462;
+}
+
 .document-principle-row {
   justify-content: flex-start;
   flex-wrap: wrap;
@@ -1092,6 +1183,10 @@
 
   .document-handoff-actions .document-button {
     flex: 1;
+  }
+
+  .document-handoff-history-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .document-inspector {

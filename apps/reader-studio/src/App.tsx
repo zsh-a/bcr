@@ -40,7 +40,11 @@ import {
   type ReaderSection,
   type SearchHit,
 } from "@bcr/reader-core";
-import { consumeDocumentHandoff, getDocumentHandoffMarker } from "@bcr/document-core";
+import {
+  consumeDocumentHandoff,
+  getDocumentHandoffMarker,
+  markDocumentHandoffExpired,
+} from "@bcr/document-core";
 import {
   createReaderRuntime,
   importReaderFile,
@@ -251,6 +255,7 @@ export function App() {
   const importDismissRef = useRef<number | null>(null);
   const handoffRef = useRef<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [handoffRecovery, setHandoffRecovery] = useState(false);
   const [importJob, setImportJob] = useState<ImportJob | null>(null);
 
   useEffect(() => {
@@ -354,6 +359,8 @@ export function App() {
     window.history.replaceState({}, "", "/reader");
     if (handoff === undefined) {
       const marker = getDocumentHandoffMarker();
+      markDocumentHandoffExpired(handoffId, "reader");
+      setHandoffRecovery(true);
       setNotice(
         marker?.id !== handoffId || marker.target !== "reader"
           ? "Document handoff 已过期；请从 Document Studio 重新导入源文件"
@@ -361,6 +368,7 @@ export function App() {
       );
       return;
     }
+    setHandoffRecovery(false);
     void importFiles([handoff.file]);
   }, [importFiles, runtime, status]);
 
@@ -382,6 +390,7 @@ export function App() {
         notice={notice}
         importJob={importJob}
         onCancelImport={cancelImport}
+        onRecoverHandoff={handoffRecovery ? () => window.location.assign("/documents") : undefined}
       />
       <ReaderWorkspace runtime={runtime} onImport={(files) => void importFiles(files)} />
     </div>
@@ -427,6 +436,7 @@ function ReaderHeader(props: {
   notice: string | null;
   importJob: ImportJob | null;
   onCancelImport: () => void;
+  onRecoverHandoff?: (() => void) | undefined;
 }) {
   const query = useReader((state) => state.query);
   const searchOpen = useReader((state) => state.searchOpen);
@@ -513,6 +523,7 @@ function ReaderHeader(props: {
         type="file"
         multiple
         accept=".txt,.md,.markdown,.html,.htm,.epub,.pdf,.cbz,.fb2"
+        aria-label="导入阅读文件"
         onChange={(event) => {
           const files = [...(event.target.files ?? [])];
           event.target.value = "";
@@ -528,7 +539,12 @@ function ReaderHeader(props: {
       </button>
       {props.notice !== null && props.importJob === null && (
         <div className="reader-toast" role="status" aria-live="polite">
-          {props.notice}
+          <span>{props.notice}</span>
+          {props.onRecoverHandoff !== undefined && (
+            <button type="button" onClick={props.onRecoverHandoff}>
+              打开 Document
+            </button>
+          )}
         </div>
       )}
       {props.importJob !== null && (
@@ -683,6 +699,7 @@ function LibraryPanel(props: {
         type="file"
         multiple
         accept=".txt,.md,.markdown,.html,.htm,.epub,.pdf,.cbz,.fb2"
+        aria-label="导入阅读文件"
         onChange={(event) => {
           const files = [...(event.target.files ?? [])];
           event.target.value = "";

@@ -25,9 +25,11 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useRuntime } from "@bcr/react";
 import {
+  DOCUMENT_HANDOFF_EVENT,
   createDocumentJob,
   formatForName,
   formatLabel,
+  listDocumentHandoffs,
   markReadyStages,
   publishDocumentHandoff,
   stageById,
@@ -35,6 +37,7 @@ import {
   type DocumentFormat,
   type DocumentJob,
   type DocumentStageState,
+  type DocumentHandoffRecord,
 } from "@bcr/document-core";
 import { activeDocument, documents, useDocumentStudio } from "./store";
 import {
@@ -91,6 +94,19 @@ function canOpenInManga(format: DocumentFormat): boolean {
   return format === "image";
 }
 
+function handoffStatusLabel(status: DocumentHandoffRecord["status"]): string {
+  if (status === "consumed") return "已接收";
+  if (status === "expired") return "需重试";
+  return "待接收";
+}
+
+function formatHandoffTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function App() {
   const state = useDocumentStudio((snapshot) => snapshot);
   const active = activeDocument(state);
@@ -99,10 +115,19 @@ export function App() {
   const [dragging, setDragging] = useState(false);
   const navigate = useNavigate();
   const services = useRuntime();
+  const [handoffHistory, setHandoffHistory] = useState<ReadonlyArray<DocumentHandoffRecord>>(() =>
+    listDocumentHandoffs(),
+  );
 
   useEffect(() => {
     documents.connectMetadata(services.metadata);
   }, [services.metadata]);
+
+  useEffect(() => {
+    const refresh = () => setHandoffHistory(listDocumentHandoffs());
+    window.addEventListener(DOCUMENT_HANDOFF_EVENT, refresh);
+    return () => window.removeEventListener(DOCUMENT_HANDOFF_EVENT, refresh);
+  }, []);
 
   const importFiles = async (files: ReadonlyArray<File>): Promise<void> => {
     for (const [index, file] of files.entries()) {
@@ -239,6 +264,7 @@ export function App() {
         type="file"
         multiple
         accept=".txt,.md,.markdown,.html,.htm,.fb2,.epub,.pdf,.cbz,.png,.jpg,.jpeg,.webp,.avif"
+        aria-label="导入文档或图片文件"
         onChange={(event) => {
           const files = [...(event.target.files ?? [])];
           event.target.value = "";
@@ -396,6 +422,36 @@ export function App() {
               )}
             </div>
           </section>
+
+          {handoffHistory.length > 0 && (
+            <section className="document-handoff-history" aria-label="最近工作台交接">
+              <div className="document-handoff-history-heading">
+                <div>
+                  <span className="document-eyebrow">HANDOFF HISTORY</span>
+                  <strong>最近的工作台交接</strong>
+                </div>
+                <span>仅保存状态，不保存文件内容</span>
+              </div>
+              <div className="document-handoff-history-list" aria-live="polite">
+                {handoffHistory.slice(0, 4).map((record) => (
+                  <div
+                    className={`document-handoff-record is-${record.status}`}
+                    key={record.id}
+                    data-handoff-status={record.status}
+                  >
+                    <span className="document-handoff-record-target">
+                      {record.target === "reader" ? "READER" : "MANGA"}
+                    </span>
+                    <strong>{record.name}</strong>
+                    <span className="document-handoff-record-status">
+                      {handoffStatusLabel(record.status)} ·{" "}
+                      {formatHandoffTime(record.completedAt ?? record.createdAt)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <div className="document-principle-row">
             <span>

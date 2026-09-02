@@ -322,6 +322,21 @@
   font-size: 12px;
 }
 
+.reader-toast span {
+  display: block;
+  line-height: 1.5;
+}
+
+.reader-toast button {
+  margin-top: 8px;
+  border: 1px solid var(--reader-border);
+  border-radius: 6px;
+  background: var(--reader-accent-soft);
+  padding: 5px 8px;
+  color: var(--reader-accent);
+  font-size: 10px;
+}
+
 .reader-import-progress {
   position: absolute;
   top: 61px;

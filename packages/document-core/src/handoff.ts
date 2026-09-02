@@ -1,6 +1,7 @@
 import type { DocumentFormat } from "./model";
 
 export type DocumentHandoffTarget = "reader" | "manga";
+export type DocumentHandoffStatus = "pending" | "consumed" | "expired";
 
 export interface DocumentHandoff {
   readonly id: string;
@@ -11,6 +12,16 @@ export interface DocumentHandoff {
   readonly size: number;
   readonly file: File;
   readonly createdAt: number;
+}
+
+export interface DocumentHandoffRecord {
+  readonly id: string;
+  readonly jobId: string;
+  readonly target: DocumentHandoffTarget;
+  readonly name: string;
+  readonly createdAt: number;
+  readonly status: DocumentHandoffStatus;
+  readonly completedAt?: number | undefined;
 }
 
 interface PublishHandoffInput {
@@ -29,8 +40,13 @@ export interface DocumentHandoffMarker {
   readonly createdAt: number;
 }
 
+export const DOCUMENT_HANDOFF_EVENT = "bcr:document-handoff";
+
 const pending = new Map<string, DocumentHandoff>();
 const SESSION_KEY = "bcr.document-handoff.v1";
+const HISTORY_KEY = "bcr.document-handoff.history.v1";
+const MAX_HISTORY = 24;
+let memoryHistory: ReadonlyArray<DocumentHandoffRecord> = [];
 
 function createId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -46,6 +62,82 @@ function writeMarker(marker: DocumentHandoffMarker): void {
   } catch {
     // Private browsing / disabled storage should not prevent an in-tab handoff.
   }
+}
+
+function dispatchHandoffEvent(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(DOCUMENT_HANDOFF_EVENT));
+}
+
+function readHistory(): ReadonlyArray<DocumentHandoffRecord> {
+  if (typeof sessionStorage === "undefined") return memoryHistory;
+  try {
+    const raw = sessionStorage.getItem(HISTORY_KEY);
+    if (raw === null) return memoryHistory;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return memoryHistory;
+    const valid = parsed.filter((value): value is DocumentHandoffRecord => {
+      if (typeof value !== "object" || value === null) return false;
+      const record = value as Partial<DocumentHandoffRecord>;
+      return (
+        typeof record.id === "string" &&
+        typeof record.jobId === "string" &&
+        (record.target === "reader" || record.target === "manga") &&
+        typeof record.name === "string" &&
+        typeof record.createdAt === "number" &&
+        (record.status === "pending" || record.status === "consumed" || record.status === "expired")
+      );
+    });
+    memoryHistory = valid.slice(0, MAX_HISTORY);
+    return memoryHistory;
+  } catch {
+    return memoryHistory;
+  }
+}
+
+function writeHistory(records: ReadonlyArray<DocumentHandoffRecord>): void {
+  memoryHistory = records.slice(0, MAX_HISTORY);
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.setItem(HISTORY_KEY, JSON.stringify(memoryHistory));
+  } catch {
+    // History is observability only; a disabled session store must not block handoff.
+  }
+}
+
+function upsertHistory(record: DocumentHandoffRecord): void {
+  const next = [record, ...readHistory().filter((candidate) => candidate.id !== record.id)];
+  writeHistory(next);
+  dispatchHandoffEvent();
+}
+
+export function listDocumentHandoffs(limit = 8): ReadonlyArray<DocumentHandoffRecord> {
+  return readHistory().slice(0, Math.max(0, limit));
+}
+
+/** Mark a target-side failure without ever persisting the file itself. */
+export function markDocumentHandoffExpired(
+  id: string,
+  target: DocumentHandoffTarget,
+): DocumentHandoffRecord {
+  pending.delete(id);
+  const current = readHistory().find((record) => record.id === id);
+  if (current !== undefined && (current.status === "expired" || current.status === "consumed")) {
+    return current;
+  }
+  const marker = getDocumentHandoffMarker();
+  const record: DocumentHandoffRecord = {
+    id,
+    jobId: current?.jobId ?? (marker?.id === id ? marker.jobId : "unknown"),
+    target,
+    name: current?.name ?? (marker?.id === id ? marker.name : "未知源文件"),
+    createdAt: current?.createdAt ?? (marker?.id === id ? marker.createdAt : Date.now()),
+    status: "expired",
+    completedAt: Date.now(),
+  };
+  upsertHistory(record);
+  clearMarker(id);
+  return record;
 }
 
 /** Read the lightweight marker left behind when a target cannot consume a handoff. */
@@ -99,6 +191,14 @@ export function publishDocumentHandoff(input: PublishHandoffInput): string {
     createdAt: Date.now(),
   };
   pending.set(id, handoff);
+  upsertHistory({
+    id,
+    jobId: handoff.jobId,
+    target: handoff.target,
+    name: handoff.name,
+    createdAt: handoff.createdAt,
+    status: "pending",
+  });
   writeMarker({
     id,
     target: input.target,
@@ -118,6 +218,15 @@ export function consumeDocumentHandoff(
   if (handoff === undefined || handoff.target !== target) return undefined;
   pending.delete(id);
   clearMarker(id);
+  upsertHistory({
+    id: handoff.id,
+    jobId: handoff.jobId,
+    target: handoff.target,
+    name: handoff.name,
+    createdAt: handoff.createdAt,
+    status: "consumed",
+    completedAt: Date.now(),
+  });
   return handoff;
 }
 

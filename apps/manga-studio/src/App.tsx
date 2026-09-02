@@ -20,7 +20,11 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import { consumeDocumentHandoff, getDocumentHandoffMarker } from "@bcr/document-core";
+import {
+  consumeDocumentHandoff,
+  getDocumentHandoffMarker,
+  markDocumentHandoffExpired,
+} from "@bcr/document-core";
 import { useOptionalRuntime } from "@bcr/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { expandMangaArchive, formatForMangaFile } from "./archive";
@@ -316,6 +320,7 @@ export function App() {
     window.history.replaceState({}, "", "/manga");
     if (handoff === undefined) {
       const marker = getDocumentHandoffMarker();
+      markDocumentHandoffExpired(handoffId, "manga");
       manga.log(
         "warn",
         `handoff · ${marker?.id === handoffId && marker.target === "manga" ? marker.name : "source"} link expired · import the source again in Document Studio`,
@@ -461,6 +466,7 @@ export function App() {
           <input
             ref={fileInputRef}
             type="file"
+            aria-label="导入漫画图片或压缩包"
             accept="image/png,image/jpeg,image/webp,image/svg+xml,application/pdf,application/vnd.comicbook+zip,application/zip,.pdf,.cbz,.zip"
             multiple
             className="hidden"
@@ -736,6 +742,7 @@ export function App() {
               <label>
                 <span>源语言</span>
                 <select
+                  aria-label="源语言"
                   value={state.settings.sourceLanguage}
                   onChange={(event) =>
                     manga.setSettings({ sourceLanguage: event.target.value as "ja" | "en" | "ko" })
@@ -748,7 +755,7 @@ export function App() {
               </label>
               <label>
                 <span>目标语言</span>
-                <select value="zh" disabled>
+                <select value="zh" disabled aria-label="目标语言">
                   <option value="zh">简体中文</option>
                 </select>
               </label>
@@ -756,6 +763,7 @@ export function App() {
             <label className="manga-config-wide">
               <span>翻译引擎</span>
               <select
+                aria-label="翻译引擎"
                 value={state.settings.engine}
                 onChange={(event) =>
                   manga.setSettings({ engine: event.target.value as MangaTranslationEngineId })
@@ -777,6 +785,7 @@ export function App() {
                 <label className="manga-config-wide">
                   <span>翻译设备</span>
                   <select
+                    aria-label="翻译设备"
                     value={state.settings.translationDevice}
                     onChange={(event) =>
                       manga.setSettings({
@@ -794,6 +803,7 @@ export function App() {
             <label className="manga-config-wide">
               <span>OCR 引擎</span>
               <select
+                aria-label="OCR 引擎"
                 value={state.settings.ocrAdapter}
                 onChange={(event) => {
                   const ocrAdapter = event.target.value as MangaOcrAdapterId;
@@ -818,6 +828,7 @@ export function App() {
                 <label className="manga-config-wide">
                   <span>OCR 模型</span>
                   <input
+                    aria-label="OCR 模型"
                     value={state.settings.ocrModel}
                     onChange={(event) => manga.setSettings({ ocrModel: event.target.value })}
                     spellCheck={false}
@@ -835,6 +846,7 @@ export function App() {
                 <label className="manga-config-wide">
                   <span>运行设备</span>
                   <select
+                    aria-label="OCR 运行设备"
                     value={state.settings.ocrDevice}
                     onChange={(event) =>
                       manga.setSettings({ ocrDevice: event.target.value as MangaOcrDevice })
@@ -851,6 +863,7 @@ export function App() {
               <label>
                 <span>原文清理</span>
                 <select
+                  aria-label="原文清理模式"
                   value={state.settings.cleanMode}
                   onChange={(event) =>
                     manga.setSettings({ cleanMode: event.target.value as MangaCleanMode })
@@ -1100,6 +1113,7 @@ function RegionInspector({
       <label>
         <span>原文 / OCR 输出</span>
         <textarea
+          aria-label="原文 OCR 输出"
           value={region.sourceText}
           onChange={(event) => manga.patchRegion(region.id, { sourceText: event.target.value })}
           rows={2}
@@ -1108,6 +1122,7 @@ function RegionInspector({
       <label>
         <span>译文 / 可直接编辑</span>
         <textarea
+          aria-label="译文"
           value={region.translatedText}
           onChange={(event) => manga.patchRegion(region.id, { translatedText: event.target.value })}
           rows={2}
@@ -1117,6 +1132,7 @@ function RegionInspector({
         <label>
           <span>阅读方向</span>
           <select
+            aria-label="阅读方向"
             value={region.writingMode}
             onChange={(event) =>
               manga.patchRegion(region.id, {

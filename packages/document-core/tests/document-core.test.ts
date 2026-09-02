@@ -3,6 +3,8 @@ import {
   consumeDocumentHandoff,
   createDocumentJob,
   formatForName,
+  listDocumentHandoffs,
+  markDocumentHandoffExpired,
   markReadyStages,
   nextAction,
   publishDocumentHandoff,
@@ -48,8 +50,37 @@ describe("document-core", () => {
       format: "txt",
       file,
     });
+    expect(listDocumentHandoffs().find((record) => record.id === id)).toMatchObject({
+      target: "reader",
+      status: "pending",
+    });
     expect(consumeDocumentHandoff(id, "manga")).toBeUndefined();
     expect(consumeDocumentHandoff(id, "reader")?.file).toBe(file);
     expect(consumeDocumentHandoff(id, "reader")).toBeUndefined();
+    expect(listDocumentHandoffs().find((record) => record.id === id)).toMatchObject({
+      target: "reader",
+      status: "consumed",
+    });
+  });
+
+  it("records an expired handoff without allowing a later consume", () => {
+    const file = new File(["page"], "page.png", { type: "image/png" });
+    const id = publishDocumentHandoff({
+      jobId: "job-expired",
+      target: "manga",
+      name: file.name,
+      format: "image",
+      file,
+    });
+    expect(markDocumentHandoffExpired(id, "manga")).toMatchObject({
+      id,
+      target: "manga",
+      status: "expired",
+    });
+    expect(consumeDocumentHandoff(id, "manga")).toBeUndefined();
+    expect(markDocumentHandoffExpired(id, "manga")).toMatchObject({
+      id,
+      status: "expired",
+    });
   });
 });
