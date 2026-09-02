@@ -68,6 +68,11 @@ Reader Studio 的现代化落点：`packages/reader-core` 只承载格式无关�
 `reader-index.worker` 通过统一 `WorkerPool` 执行，SQLite FTS5 trigram 与内存搜索作为渐进回退，主线程只负责
 React 交互，后续可将 EPUB/PDF 深解析沿同一 Session 边界迁移到 Worker。
 
+Document Studio 的落点是把跨工作台的内容生命周期显式化：`packages/document-core` 只承载格式识别、
+`DocumentJob`、阶段状态和一次性 handoff 契约；`apps/document-studio` 负责 Inbox、阶段可见性和目标工作台入口。
+文件内容不进入 URL 或 localStorage，Reader / Manga handoff 只在当前标签页传递 `File`，由目标应用重新写入自己的
+Artifact / OPFS 命名空间。这样 OCR、翻译、排版模型可以逐阶段替换，失败或未接入时仍然能保留可解释的状态边界。
+
 总体架构图（含 Control Plane / Data Plane 边界）：
 
 ```text
@@ -541,6 +546,16 @@ Watchlist 分组内的多序列交接：Quant Lab 会保留完整 intake 摘要�
 数据集，同时按共同交易日生成 Pearson 相关性矩阵、等权组合基准、权益曲线、年化波动率与最大回撤，
 并将分析快照随项目元数据跨刷新恢复。下一步是把组合计算下沉至 Worker/Scheduler，接入用户权重、
 再平衡成本、风险预算与滚动窗口优化。
+
+### Phase 2.75 — Document Studio（内容流水线入口已落地）
+
+`@bcr/document-core` 以 `DocumentJob` + 七阶段状态机统一 TXT / Markdown / HTML / FB2 / EPUB / PDF / CBZ / 图片
+的生命周期：Ingest / Normalize 已可用，Extract 复用现有 Reader 适配器边界，OCR / Translate / Typeset 明确标记为
+planned，不用 fixture 冒充模型结果。Document Inbox 提供本地导入、元数据预览和阶段 Inspector；一次性 handoff
+通道把同一标签页的 `File` 交给 Reader 或 Manga，目标应用继续负责自己的 OPFS、SQLite、Worker 与 Artifact。
+
+下一步按风险顺序接入真实执行层：先将 Extract 的结构化结果写成可寻址 Artifact，再把 Manga 的 OCR / Translate
+阶段拆成可取消的 Worker Tasks，最后复用同一 Stage contract 支持 PDF/CBZ 批处理和可恢复的多页作业。
 
 ### Phase 3 — 正式抽包与生态
 

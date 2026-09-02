@@ -14,11 +14,32 @@
         "vitest": "^4.1.0",
       },
     },
+    "apps/document-studio": {
+      "name": "@bcr/document-studio",
+      "version": "0.1.0",
+      "dependencies": {
+        "@bcr/document-core": "workspace:*",
+        "@fontsource/ibm-plex-mono": "^5.3.0",
+        "@fontsource/ibm-plex-sans": "^5.3.0",
+        "@tanstack/react-router": "^1.170.32",
+        "lucide-react": "^1.37.0",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
+      },
+      "devDependencies": {
+        "@tailwindcss/vite": "^4.3.3",
+        "@types/react": "^19.2.0",
+        "@types/react-dom": "^19.2.0",
+        "@vitejs/plugin-react": "^5.0.0",
+        "tailwindcss": "^4.3.3",
+      },
+    },
     "apps/manga-studio": {
       "name": "@bcr/manga-studio",
       "version": "0.1.0",
       "dependencies": {
         "@bcr/core": "workspace:*",
+        "@bcr/document-core": "workspace:*",
         "@bcr/graph": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
         "@bcr/storage-sqlite": "workspace:*",
@@ -113,6 +134,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@bcr/core": "workspace:*",
+        "@bcr/document-core": "workspace:*",
         "@bcr/reader-core": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
@@ -141,6 +163,7 @@
       "dependencies": {
         "@base-ui/react": "^1.7.0",
         "@bcr/core": "workspace:*",
+        "@bcr/document-studio": "workspace:*",
         "@bcr/manga-studio": "workspace:*",
         "@bcr/market-board": "workspace:*",
         "@bcr/media-studio": "workspace:*",
@@ -198,6 +221,10 @@
         "@noble/hashes": "^2.4.0",
         "effect": "^3.22.1",
       },
+    },
+    "packages/document-core": {
+      "name": "@bcr/document-core",
+      "version": "0.1.0",
     },
     "packages/graph": {
       "name": "@bcr/graph",
@@ -308,6 +335,10 @@
     "@base-ui/utils": ["@base-ui/utils@0.3.2", "https://registry.npmmirror.com/@base-ui/utils/-/utils-0.3.2.tgz", { "dependencies": { "@babel/runtime": "^7.29.2", "@floating-ui/utils": "^0.2.12", "reselect": "^5.2.0", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "@types/react": "^17 || ^18 || ^19", "react": "^17 || ^18 || ^19", "react-dom": "^17 || ^18 || ^19" }, "optionalPeers": ["@types/react"] }, "sha512-oWy1aq/I2GmYjpl4PhEAhzflF8VPGKgZeq0xAWTbfD5KBWyxcN0ZP2+WHSUm/5Z6lVMBDLReLcoXwSYoRc/zNQ=="],
 
     "@bcr/core": ["@bcr/core@workspace:packages/core"],
+
+    "@bcr/document-core": ["@bcr/document-core@workspace:packages/document-core"],
+
+    "@bcr/document-studio": ["@bcr/document-studio@workspace:apps/document-studio"],
 
     "@bcr/example-demo": ["@bcr/example-demo@workspace:examples/demo"],
 

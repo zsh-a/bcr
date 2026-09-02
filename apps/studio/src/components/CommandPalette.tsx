@@ -6,6 +6,7 @@ import {
   ChartCandlestick,
   Eraser,
   FilePlus2,
+  FileStack,
   Globe2,
   Hash,
   House,
@@ -79,6 +80,13 @@ export function CommandPalette(props: { open: boolean; onOpenChange: (open: bool
         hint: "Alt+5",
         icon: <BookOpenText className="size-3.5" />,
         run: () => void navigate({ to: "/manga" }),
+      },
+      {
+        id: "go-documents",
+        title: "打开 Document Studio",
+        hint: "Alt+6",
+        icon: <FileStack className="size-3.5" />,
+        run: () => void navigate({ to: "/documents" }),
       },
       {
         id: "import",

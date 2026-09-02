@@ -1,29 +1,18 @@
 {
-  "name": "@bcr/reader-studio",
+  "name": "@bcr/document-studio",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": {
     "./app": "./src/App.tsx",
-    "./store": "./src/store.ts",
-    "./model": "./src/model.ts",
-    "./runtime": "./src/runtime.ts",
-    "./adapters": "./src/adapters.ts"
+    "./store": "./src/store.ts"
   },
   "dependencies": {
-    "@bcr/core": "workspace:*",
     "@bcr/document-core": "workspace:*",
-    "@bcr/reader-core": "workspace:*",
-    "@bcr/runtime-worker": "workspace:*",
-    "@bcr/storage-opfs": "workspace:*",
-    "@bcr/storage-sqlite": "workspace:*",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.3.0",
-    "@sqlite.org/sqlite-wasm": "3.53.0-build1",
-    "@zip.js/zip.js": "2.9.0",
-    "effect": "^3.22.1",
+    "@tanstack/react-router": "^1.170.32",
     "lucide-react": "^1.37.0",
-    "pdfjs-dist": "5.4.296",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

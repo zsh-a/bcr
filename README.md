@@ -2,7 +2,7 @@
 
 面向本地计算型 Web 应用的浏览器 Runtime 初版实现，对应 `docs/ARCHITECTURE.md` 的 Phase 1 核心抽象。
 
-本版范围：**核心 Runtime 包 + Media / Quant / Markets / Manga / Reader 五类端到端垂直切片**——
+本版范围：**核心 Runtime 包 + Media / Quant / Markets / Manga / Reader / Document 六类端到端垂直切片**——
 文件或行情 → OPFS → Worker Pipeline → Artifact → 内容寻址缓存 → 跨刷新项目恢复。
 
 ## 仓库结构
@@ -15,14 +15,16 @@
 │   ├── storage-sqlite/   # @bcr/storage-sqlite：SQLite WASM 元数据引擎（Cache / 血缘 / TaskJournal）
 │   ├── market-data/      # @bcr/market-data：统一市场数据契约 / stock-sdk 适配 / 缓存降级
 │   ├── react/            # @bcr/react：RuntimeProvider / useSubmitTask / useTask / useArtifact
-│   └── reader-core/      # @bcr/reader-core：出版物 / 章节 / Locator / 搜索契约
+│   ├── reader-core/      # @bcr/reader-core：出版物 / 章节 / Locator / 搜索契约
+│   └── document-core/    # @bcr/document-core：文档格式 / 阶段状态 / 跨工作台 handoff 契约
 ├── apps/
 │   ├── studio/           # BCR Studio 工作台 UI（Dockview + Tailwind 4 + Base UI）
 │   ├── media-studio/     # Media Studio · Subtitle——第一个上层应用（§0 孵化策略）
 │   ├── quant-lab/        # Quant Lab · Strategy Workbench——第二类 workload 验证
 │   ├── market-board/     # Market Atlas——CN / HK / US / 全球期货市场看板
 │   ├── manga-studio/     # Manga Studio——漫画 OCR / 翻译 / 清理 / CJK 排版审校
-│   └── reader-studio/    # Reader Studio——多格式本地阅读、全文搜索与进度恢复
+│   ├── reader-studio/    # Reader Studio——多格式本地阅读、全文搜索与进度恢复
+│   └── document-studio/  # Document Studio——Ingest / Extract / OCR / Translate 流水线入口
 ├── crates/
 │   └── kernels/          # bcr-kernels：wasm-bindgen kernel（流式 BLAKE3 / RMS / Peak）
 └── examples/
@@ -52,6 +54,7 @@
 | 文本翻译                              | opus-mt（英↔中方向可选）：逐条 cue 批量平移，1:1 对齐，无二次音频推理                 |
 | §14 Quant workload                    | DuckDB WASM + Arrow IPC + Parquet → SMA Signal → Backtest Pipeline                    |
 | Market Atlas                          | stock-sdk → Quote / Search / OHLCV / Dividend 契约 → 多市场看板与组合级 Quant handoff |
+| Document Studio                       | DocumentJob / Stage 状态机 → 本地导入 / 格式边界 / Reader·Manga handoff               |
 | §11 COOP/COEP                         | `apps/studio/vite.config.ts` 与 `apps/media-studio/vite.config.ts` 内置               |
 
 ## 命令
@@ -72,7 +75,7 @@ cargo test --manifest-path crates/kernels/Cargo.toml
 bun run test:browser   # 自动启停 dev server，运行离线 Playwright 主链路
 ```
 
-GitHub Actions 会执行格式/类型/单测、Rust/WASM、六端生产构建，并在真实 Chromium 中验证
+GitHub Actions 会执行格式/类型/单测、Rust/WASM、核心应用生产构建，并在真实 Chromium 中验证
 Media Studio 短音频、150 秒分窗、Studio 刷新缓存/任务历史、Quant Lab 回测参数重跑以及
 Market Atlas 数据质量与交互，以及 Manga Studio 单页翻译、Reader Studio 多格式阅读与刷新恢复；
 失败时保留截图与 server 日志。
@@ -196,6 +199,26 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - 多页工作队列支持批量拖入、逐页切换与页级流水线状态；项目配置、审校译文和页面队列写入 SQLite，原图 artifact 写入 OPFS，刷新后自动恢复
 - 当前 MVP 支持原图 / 清理页 / 译文页切换、置信度审阅、CJK 排版参数和 PNG 导出；Local ONNX、Inpainting、CBZ/PDF 批处理作为后续适配器接入
 - 操作契约与 DAG 回归位于 `apps/manga-studio/tests/operations.test.ts`
+
+## Document Studio（apps/document-studio）
+
+Document Studio 是跨内容工作台的入口层，先把“文件已经进入哪一个阶段、下一步应该交给谁”做成可观测状态，
+再接入真正的 OCR / 翻译模型：
+
+```text
+File → Ingest → Normalize → Extract → OCR → Translate → Typeset → Export
+                                      ↘ Reader / Manga handoff
+```
+
+- `packages/document-core` 定义 `DocumentJob`、七阶段状态机、格式识别和能力边界；未接入的模型阶段显示为
+  `PLANNED / BLOCKED`，不会把演示结果伪装成生产结果。
+- Document Inbox 支持 TXT / Markdown / HTML / FB2 / EPUB / PDF / CBZ / 图片导入，元数据保存在本地浏览器；
+  文本提供安全的轻量预览，图片只在当前标签页创建临时预览 URL。
+- Reader handoff 会把同一标签页内的 `File` 通过一次性内存通道交给 Reader，由 Reader 自己写入 OPFS、解析并建立
+  Worker 索引；图片 handoff 交给 Manga，由 Manga 的 Artifact / SQLite 项目接管。
+- URL 只携带短期 handoff ID，不携带文件内容；刷新或离开标签页后句柄失效，界面会明确提示重新导入。
+
+走查：`node scripts/verify-document-studio.mjs`（由 `bun run test:browser` 自动执行）。
 
 ## Reader Studio（apps/reader-studio）
 

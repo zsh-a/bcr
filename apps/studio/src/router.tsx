@@ -12,12 +12,16 @@ import { Shell } from "./shell/Shell";
  * §12：navigational state 归 TanStack Router——选择中的文件/任务放 URL，
  * 复制链接即可恢复同一个 workspace view。
  *
- * 路由只做 URL/search 状态机：`/` 启动台 · `/studio` · `/media` · `/quant` · `/markets` · `/manga` · `/reader`。
+ * 路由只做 URL/search 状态机：`/` 启动台 · `/studio` · `/media` · `/quant` · `/markets` · `/manga` · `/documents` · `/reader`。
  * App 组件不由 Outlet 渲染，而由 Shell 的 keep-alive 容器常驻挂载（切走仅隐藏）。
  */
 export interface StudioSearch {
   file?: string | undefined;
   task?: string | undefined;
+}
+
+export interface HandoffSearch {
+  document?: string | undefined;
 }
 
 const rootRoute = createRootRoute({ component: Shell });
@@ -59,12 +63,24 @@ const marketsRoute = createRoute({
 const mangaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/manga",
+  validateSearch: (search: Record<string, unknown>): HandoffSearch => ({
+    document: typeof search["document"] === "string" ? search["document"] : undefined,
+  }),
+  component: () => null,
+});
+
+const documentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/documents",
   component: () => null,
 });
 
 const readerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/reader",
+  validateSearch: (search: Record<string, unknown>): HandoffSearch => ({
+    document: typeof search["document"] === "string" ? search["document"] : undefined,
+  }),
   component: () => null,
 });
 
@@ -76,6 +92,7 @@ export const router = createRouter({
     quantRoute,
     marketsRoute,
     mangaRoute,
+    documentsRoute,
     readerRoute,
   ]),
 });

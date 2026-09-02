@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@bcr/core": "workspace:*",
+    "@bcr/document-core": "workspace:*",
     "@bcr/graph": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",
     "@bcr/storage-sqlite": "workspace:*",

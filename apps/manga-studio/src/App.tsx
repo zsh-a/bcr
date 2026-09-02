@@ -19,6 +19,7 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
+import { consumeDocumentHandoff } from "@bcr/document-core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cancelMangaPipeline, runMangaPipeline } from "./pipeline";
 import {
@@ -123,6 +124,7 @@ async function exportCurrentPage(): Promise<void> {
 export function App() {
   const state = useMangaStudio((snapshot) => snapshot);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const handoffRef = useRef<string | null>(null);
   const [zoom, setZoom] = useState(0.82);
   const [exporting, setExporting] = useState(false);
   const [runtime, setRuntime] = useState<MangaRuntime | null>(null);
@@ -227,6 +229,24 @@ export function App() {
   const importImages = async (files: ReadonlyArray<File>): Promise<void> => {
     for (const file of files) await importImage(file);
   };
+
+  useEffect(() => {
+    if (runtime === null) return;
+    const handoffId = new URLSearchParams(window.location.search).get("document");
+    if (handoffId === null || handoffId === handoffRef.current) return;
+    handoffRef.current = handoffId;
+    const handoff = consumeDocumentHandoff(handoffId, "manga");
+    window.history.replaceState({}, "", "/manga");
+    if (handoff === undefined) {
+      manga.log("warn", "handoff · link expired · import the source again in Document Studio");
+      return;
+    }
+    if (!handoff.file.type.startsWith("image/")) {
+      manga.log("warn", `handoff · ${handoff.name} needs a page-image adapter before Manga Studio`);
+      return;
+    }
+    void importImages([handoff.file]);
+  }, [importImages, runtime]);
 
   const addRegion = (): void => {
     const index = state.regions.length + 1;

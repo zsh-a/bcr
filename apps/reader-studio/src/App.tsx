@@ -35,6 +35,7 @@ import {
   type ReaderSection,
   type SearchHit,
 } from "@bcr/reader-core";
+import { consumeDocumentHandoff } from "@bcr/document-core";
 import {
   createReaderRuntime,
   importReaderFile,
@@ -217,6 +218,7 @@ export function App() {
   const searchRef = useRef<HTMLInputElement>(null);
   const importAbortRef = useRef<AbortController | null>(null);
   const importDismissRef = useRef<number | null>(null);
+  const handoffRef = useRef<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [importJob, setImportJob] = useState<ImportJob | null>(null);
 
@@ -311,6 +313,20 @@ export function App() {
     },
     [runtime],
   );
+
+  useEffect(() => {
+    if (runtime === null || status !== "ready") return;
+    const handoffId = new URLSearchParams(window.location.search).get("document");
+    if (handoffId === null || handoffId === handoffRef.current) return;
+    handoffRef.current = handoffId;
+    const handoff = consumeDocumentHandoff(handoffId, "reader");
+    window.history.replaceState({}, "", "/reader");
+    if (handoff === undefined) {
+      setNotice("Document handoff 已过期；请从 Document Studio 重新导入源文件");
+      return;
+    }
+    void importFiles([handoff.file]);
+  }, [importFiles, runtime, status]);
 
   if (status === "booting" || runtime === null) {
     return <BootScreen error={runtimeError} />;
