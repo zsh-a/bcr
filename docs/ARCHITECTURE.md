@@ -567,6 +567,7 @@ Inspector 的“预热模型”通过共享 `manga.model.preload` Task 复用 Tr
 Document 的 canonical export 由 `packages/document-core/src/export.ts` 统一生成：JSON 保留 Content / Translation Package
 的完整契约，Markdown / text 通过稳定 block ID 生成 source、translated 或 bilingual 视图；Document Studio 先将导出写入
 `document/export/*` Artifact，再创建下载，避免把导出变成不可追踪的临时字符串。`decodeDocumentExportBundle` 在重新导入前校验版本、包结构和 block ID 归属。
+Document Inbox 也可重新导入 JSON Bundle：沿 `sourceRef` 恢复源 Blob，再复用同一 handoff 重建 Extract/OCR/Translate 阶段；跨浏览器找不到源 Artifact 时拒绝恢复，不把只有文本包的文件伪装成可读出版物。
 
 Manga 已先把人工/Fixture 区域通过可取消的 `manga.ocr.review` Worker Task 固化成版本化
 `manga/ocr-lines` Artifact；它只验证数据契约，不伪装像素识别。按风险顺序接入真实视觉 Worker

@@ -3,6 +3,7 @@ import {
   createDocumentContentPackage,
   createDocumentJob,
   markReadyStages,
+  serializeDocumentExport,
   stageById,
   updateStage,
 } from "@bcr/document-core";
@@ -10,6 +11,7 @@ import { Context, Effect, Layer, Stream } from "effect";
 import { describe, expect, it } from "vitest";
 import {
   canRunDocumentStage,
+  importDocumentExportBundle,
   importDocumentHandoff,
   preloadDocumentOcrModel,
   saveDocumentOcrReview,
@@ -151,6 +153,39 @@ describe("Document durable handoff import", () => {
         sourceLanguage: "ja",
         device: "wasm",
       },
+    });
+  });
+
+  it("restores a Document job from a JSON Export Bundle and source Artifact", async () => {
+    const store = new TestBinaryStore();
+    const services = await makeServices(store);
+    const sourceRef: ArtifactRef = {
+      id: "document/source/export-replay",
+      type: "file/txt",
+      storage: "opfs",
+      format: "text/plain",
+      hash: "export-replay-hash",
+    };
+    await Effect.runPromise(services.artifacts.put(sourceRef, new TextEncoder().encode("source")));
+    const content = createDocumentContentPackage({
+      id: "export-replay-content",
+      format: "txt",
+      sourceName: "export-replay.txt",
+      sourceRef,
+      adapter: "text.extract",
+      blocks: [{ id: "block-1", label: "Block 1", text: "source" }],
+    });
+    const exported = serializeDocumentExport(content, undefined, "json");
+    const imported = await importDocumentExportBundle(
+      services,
+      new File([exported.text], "export-replay-source.json", { type: exported.mime }),
+    );
+    expect(imported.file.name).toBe("export-replay.txt");
+    expect(await imported.file.text()).toBe("source");
+    expect(stageById(imported.job.stages, "extract")).toMatchObject({
+      status: "done",
+      adapter: "text.extract",
+      artifact: { type: "document/content-package" },
     });
   });
 

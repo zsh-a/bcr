@@ -62,6 +62,7 @@ import { activeDocument, documents, useDocumentStudio } from "./store";
 import {
   cancelDocumentStage,
   canRunDocumentStage,
+  importDocumentExportBundle,
   importDocumentHandoff,
   importDocumentFile,
   preloadDocumentOcrModel,
@@ -327,6 +328,20 @@ export function App() {
 
   const importFiles = async (files: ReadonlyArray<File>): Promise<void> => {
     for (const [index, file] of files.entries()) {
+      const isExportBundle =
+        /\.json$/iu.test(file.name) || file.type.toLocaleLowerCase().startsWith("application/json");
+      if (isExportBundle) {
+        try {
+          const imported = await importDocumentExportBundle(services, file);
+          documents.addJob(imported.job, imported.file);
+          documents.setNotice(`${imported.job.name} 已从 Export Bundle 恢复`);
+        } catch (reason) {
+          documents.setNotice(
+            `${file.name} 导入失败：${reason instanceof Error ? reason.message : String(reason)}`,
+          );
+        }
+        continue;
+      }
       const format = formatForName(file.name, file.type);
       if (format === "unknown") {
         documents.setNotice(`${file.name}：暂不支持的格式`);
@@ -531,7 +546,7 @@ export function App() {
         className="document-visually-hidden"
         type="file"
         multiple
-        accept=".txt,.md,.markdown,.mdown,.html,.htm,.docx,.fb2,.epub,.pdf,.cbz,.png,.jpg,.jpeg,.webp,.avif"
+        accept=".txt,.md,.markdown,.mdown,.html,.htm,.docx,.fb2,.epub,.pdf,.cbz,.png,.jpg,.jpeg,.webp,.avif,.json,application/json"
         aria-label="导入文档或图片文件"
         onChange={(event) => {
           const files = [...(event.target.files ?? [])];
@@ -575,7 +590,7 @@ export function App() {
               <Upload className="document-icon" />
             </span>
             <strong>拖入文档或图片</strong>
-            <span>TXT · EPUB · PDF · CBZ · IMAGE</span>
+            <span>TXT · EPUB · PDF · CBZ · IMAGE · EXPORT JSON</span>
           </button>
           <div className="document-queue-label">
             <span>QUEUE</span>

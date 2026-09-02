@@ -11,6 +11,7 @@ import {
   createDocumentContentPackage,
   createDocumentJob,
   createDocumentTranslationPackage,
+  decodeDocumentExportBundle,
   decodeDocumentContentPackage,
   decodeDocumentTranslationPackage,
   documentOcrSettings,
@@ -251,6 +252,48 @@ export async function importDocumentHandoff(
     });
   }
   return { job, file };
+}
+
+/** Rehydrate a Document job from its lossless JSON Export Bundle. */
+export async function importDocumentExportBundle(
+  services: RuntimeServices,
+  file: File,
+): Promise<{ readonly job: DocumentJob; readonly file: File }> {
+  let value: unknown;
+  try {
+    value = JSON.parse(await file.text()) as unknown;
+  } catch {
+    throw new Error(`${file.name} 不是有效的 Document Export Bundle`);
+  }
+  const bundle = decodeDocumentExportBundle(value);
+  if (bundle === undefined) throw new Error(`${file.name} 的 Export Bundle 契约校验失败`);
+  const sourceRef = bundle.content.sourceRef;
+  if (sourceRef === undefined) {
+    throw new Error("Document Export Bundle 缺少 source Artifact，无法恢复源文件");
+  }
+  let sourceBlob: Blob;
+  try {
+    sourceBlob = await Effect.runPromise(services.artifacts.getBlob(sourceRef));
+  } catch {
+    throw new Error(`Document Export Bundle 的 source Artifact 不可用：${sourceRef.id}`);
+  }
+  const sourceFile = new File([sourceBlob], bundle.content.sourceName, {
+    type: sourceRef.format ?? mimeForDocumentFormat(bundle.content.format),
+  });
+  const imported = await importDocumentHandoff(services, {
+    id: `document-export-${contentHash(new TextEncoder().encode(file.name)).slice(0, 16)}`,
+    jobId: bundle.content.id,
+    target: "document",
+    name: bundle.content.sourceName,
+    format: bundle.content.format,
+    size: sourceFile.size,
+    file: sourceFile,
+    sourceRef,
+    content: bundle.content,
+    ...(bundle.translation === undefined ? {} : { translation: bundle.translation }),
+    createdAt: Date.now(),
+  });
+  return { job: imported.job, file: imported.file };
 }
 
 function taskConfig(job: DocumentJob): Record<string, unknown> {
