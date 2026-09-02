@@ -54,6 +54,7 @@ import {
   canRunDocumentStage,
   importDocumentFile,
   runDocumentStage,
+  saveDocumentTranslationReview,
 } from "./runtime";
 import "./styles.css";
 
@@ -165,10 +166,25 @@ export function App() {
       translationPackage === undefined ? undefined : documentTranslationStats(translationPackage),
     [translationPackage],
   );
+
+  useEffect(() => {
+    if (translationPackage === undefined) {
+      setReviewDrafts({});
+      return;
+    }
+    setReviewDrafts(
+      Object.fromEntries(
+        translationPackage.blocks.map((block) => [block.id, block.translatedText]),
+      ),
+    );
+  }, [translationPackage]);
+
   const appliedRouteRef = useRef("");
   const [handoffHistory, setHandoffHistory] = useState<ReadonlyArray<DocumentHandoffRecord>>(() =>
     listDocumentHandoffs(),
   );
+  const [reviewDrafts, setReviewDrafts] = useState<Readonly<Record<string, string>>>({});
+  const [savingReview, setSavingReview] = useState(false);
 
   useEffect(() => {
     documents.connectMetadata(services.metadata);
@@ -303,6 +319,18 @@ export function App() {
   const cancelSelectedStage = () => {
     if (selected === undefined) return;
     void cancelDocumentStage(active.id, selected.id);
+  };
+
+  const saveReview = () => {
+    if (translationPackage === undefined || savingReview) return;
+    setSavingReview(true);
+    void saveDocumentTranslationReview(services, active, translationPackage, reviewDrafts)
+      .catch((reason: unknown) => {
+        documents.setNotice(
+          `人工修订保存失败：${reason instanceof Error ? reason.message : String(reason)}`,
+        );
+      })
+      .finally(() => setSavingReview(false));
   };
 
   const handoffReader = () => {
@@ -608,6 +636,15 @@ export function App() {
           {translationPackage !== undefined && translationStats !== undefined && (
             <TranslationPackageCard package={translationPackage} stats={translationStats} />
           )}
+          {translationPackage !== undefined && (
+            <TranslationReviewCard
+              package={translationPackage}
+              drafts={reviewDrafts}
+              saving={savingReview}
+              onChange={(id, value) => setReviewDrafts((current) => ({ ...current, [id]: value }))}
+              onSave={saveReview}
+            />
+          )}
           <div className="document-preview-card">
             <div className="document-preview-heading">
               <span className="document-eyebrow">SOURCE PREVIEW</span>
@@ -748,6 +785,60 @@ function DocumentBlockContextCard(props: {
       {props.content.blocks.length > blocks.length && (
         <span className="document-block-context-more">
           + {props.content.blocks.length - blocks.length} blocks 已加入全局搜索
+        </span>
+      )}
+    </section>
+  );
+}
+
+function TranslationReviewCard(props: {
+  package: DocumentTranslationPackage;
+  drafts: Readonly<Record<string, string>>;
+  saving: boolean;
+  onChange: (id: string, value: string) => void;
+  onSave: () => void;
+}) {
+  const blocks = props.package.blocks.slice(0, 5);
+  const changed = blocks.some(
+    (block) =>
+      props.drafts[block.id] !== undefined && props.drafts[block.id] !== block.translatedText,
+  );
+  return (
+    <section className="document-translation-review" aria-label="译文审校">
+      <div className="document-block-context-heading">
+        <div>
+          <span className="document-eyebrow">REVIEW QUEUE</span>
+          <strong>快速审校</strong>
+        </div>
+        <span>{props.package.targetLanguage}</span>
+      </div>
+      <div className="document-translation-review-list">
+        {blocks.map((block, index) => (
+          <label className="document-translation-review-item" key={block.id}>
+            <span>
+              {String(index + 1).padStart(2, "0")} · {block.label}
+            </span>
+            <small>{block.text}</small>
+            <textarea
+              rows={2}
+              value={props.drafts[block.id] ?? block.translatedText}
+              aria-label={`编辑 ${block.label} 的译文`}
+              onChange={(event) => props.onChange(block.id, event.target.value)}
+            />
+          </label>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="document-review-save"
+        onClick={props.onSave}
+        disabled={!changed || props.saving}
+      >
+        {props.saving ? "保存中…" : changed ? "保存人工修订" : "暂无未保存修改"}
+      </button>
+      {props.package.blocks.length > blocks.length && (
+        <span className="document-block-context-more">
+          仅展示前 {blocks.length} 个 block；完整包仍可由后续审校器处理
         </span>
       )}
     </section>

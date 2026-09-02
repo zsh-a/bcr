@@ -1,13 +1,21 @@
-import { hashReadableStream, type ArtifactRef, type ComputeTask, type TaskHandle } from "@bcr/core";
+import {
+  contentHash,
+  hashReadableStream,
+  type ArtifactRef,
+  type ComputeTask,
+  type TaskHandle,
+} from "@bcr/core";
 import { Effect, Stream } from "effect";
 import type { RuntimeServices } from "@bcr/react";
 import {
+  createDocumentTranslationPackage,
   stageById,
   supportsDocumentTextExtract,
   updateStage,
   type DocumentFormat,
   type DocumentJob,
   type DocumentStageId,
+  type DocumentTranslationPackage,
 } from "@bcr/document-core";
 import { documents } from "./store";
 
@@ -106,6 +114,69 @@ export function canRunDocumentStage(job: DocumentJob, stageId: DocumentStageId):
     inputForStage(job, stageId) !== undefined &&
     operationForStage(stageId) !== undefined
   );
+}
+
+/** Persist a human review as a new immutable Translation Package Artifact. */
+export async function saveDocumentTranslationReview(
+  services: RuntimeServices,
+  job: DocumentJob,
+  translation: DocumentTranslationPackage,
+  updates: Readonly<Record<string, string>>,
+): Promise<void> {
+  const changed = translation.blocks.some(
+    (block) => Object.hasOwn(updates, block.id) && updates[block.id] !== block.translatedText,
+  );
+  if (!changed) {
+    documents.setNotice("没有检测到译文修改");
+    return;
+  }
+  const blocks = translation.blocks.map((block) => {
+    if (!Object.hasOwn(updates, block.id)) return block;
+    const translatedText = updates[block.id]?.replace(/\r\n?/gu, "\n").trim() ?? "";
+    return {
+      ...block,
+      translatedText,
+      status: translatedText.length > 0 ? ("translated" as const) : ("needs-review" as const),
+    };
+  });
+  const payload = createDocumentTranslationPackage({
+    id: translation.id,
+    sourceContentId: translation.sourceContentId,
+    sourceName: translation.sourceName,
+    format: translation.format,
+    ...(translation.sourceLanguage === undefined
+      ? {}
+      : { sourceLanguage: translation.sourceLanguage }),
+    targetLanguage: translation.targetLanguage,
+    metadata: translation.metadata,
+    ...(translation.sourceRef === undefined ? {} : { sourceRef: translation.sourceRef }),
+    blocks,
+    adapter: "review.manual",
+  });
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  const hash = contentHash(bytes);
+  const artifact: ArtifactRef = {
+    id: `document/translations/review/${hash}`,
+    type: "document/translation-package",
+    storage: "opfs",
+    format: "json",
+    hash,
+  };
+  await Effect.runPromise(services.artifacts.put(artifact, bytes));
+  const current = currentJob(job.id);
+  if (current !== undefined) {
+    const stage = stageById(current.stages, "translate");
+    documents.replaceJob(
+      updateStage(current, "translate", {
+        status: "done",
+        progress: 1,
+        artifact,
+        adapter: "review.manual",
+        ...(stage?.completedAt === undefined ? {} : { completedAt: stage.completedAt }),
+      }),
+    );
+  }
+  documents.setNotice("人工修订已保存为新的 Translation Package");
 }
 
 function currentJob(jobId: string): DocumentJob | undefined {

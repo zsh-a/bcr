@@ -97,6 +97,15 @@ await page.locator(".document-translation-card").waitFor({ timeout: 10_000 });
 if (!(await page.locator(".document-translation-card").innerText()).includes("待审校")) {
   fail("Translation Package 摘要未展示");
 }
+const reviewInput = page.locator(".document-translation-review-item textarea").first();
+await reviewInput.fill("Field notes（人工修订）");
+await page.getByRole("button", { name: "保存人工修订" }).click();
+await page.waitForFunction(
+  () =>
+    document.querySelector(".document-notice")?.textContent?.includes("人工修订已保存") ?? false,
+  undefined,
+  { timeout: 10_000 },
+);
 
 await page.locator(".document-stage-card", { hasText: "Typeset" }).click();
 await page.getByRole("button", { name: "运行 Typeset" }).click();

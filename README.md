@@ -239,6 +239,8 @@ File → Ingest → Normalize → Extract → OCR → Translate → Typeset → 
   preview；Extract 产出可校验、可迁移的 `document/content-package` JSON Artifact，每一步都支持缓存、进度、取消和重试；OCR 仍明确标记为 `PLANNED`。
 - Translate 会把每个 source block 映射为同 ID 的 `document/translation-package`，同时保存目标语言、审校状态和
   Provenance；Typeset 只消费该契约，因此后续接入真实模型时无需改动 UI / 排版输入。
+- Inspector 提供前 5 个 block 的快速审校；人工修改会生成新的不可变 Translation Package Artifact，保留原始产物并让
+  Typeset 自动接续最新版本。
 - EPUB / PDF / CBZ / DOCX 等二进制出版物在 Document Extract 阶段明确保持 `BLOCKED`，直接交给目标适配器解析，避免把压缩或版式数据误当作纯文本。
 - Reader handoff 会把同一标签页内的 `File` 与已完成的 Content Package 通过一次性内存通道交给 Reader；Reader
   写入自己的 OPFS 并直接复用标准化 blocks 建立 Worker 索引，未完成 Extract 时自动回退到原文件解析；图片 handoff
