@@ -39,8 +39,8 @@ import {
 import { activeDocument, documents, useDocumentStudio } from "./store";
 import {
   cancelDocumentStage,
+  canRunDocumentStage,
   importDocumentFile,
-  isExtractableFormat,
   runDocumentStage,
 } from "./runtime";
 import "./styles.css";
@@ -150,7 +150,7 @@ export function App() {
 
   const refreshAvailableStages = () => {
     documents.replaceJob(markReadyStages(active));
-    documents.setNotice("已刷新可用阶段；OCR / 翻译 / 排版等待对应引擎接入");
+    documents.setNotice("已刷新阶段能力；OCR 等待视觉模型，Translate / Typeset 可运行本地适配器");
   };
 
   const runSelectedStage = () => {
@@ -421,7 +421,7 @@ export function App() {
               job={active}
               onRun={runSelectedStage}
               onCancel={cancelSelectedStage}
-              canRunExtract={isExtractableFormat(active.format) && active.sourceRef !== undefined}
+              canRunStage={canRunDocumentStage(active, selected.id)}
             />
           )}
           <div className="document-preview-card">
@@ -519,21 +519,26 @@ function StageInspector(props: {
   job: DocumentJob;
   onRun: () => void;
   onCancel: () => void;
-  canRunExtract: boolean;
+  canRunStage: boolean;
 }) {
   const isPlanned = props.stage.capability === "planned";
   const isDone = props.stage.status === "done";
   const isRunning = props.stage.status === "running";
-  const canRun =
-    props.stage.id === "extract" &&
-    props.stage.capability !== "planned" &&
-    props.canRunExtract &&
-    !isRunning;
+  const canRun = props.canRunStage && !isRunning;
+  const stageActionLabel = isDone ? `重新运行 ${props.stage.label}` : `运行 ${props.stage.label}`;
   return (
     <div className="document-stage-inspector">
       <div className={`document-inspector-status ${stageTone(props.stage)}`}>
         {stageIcon(props.stage)}
-        <span>{isDone ? "已完成" : isPlanned ? "等待能力接入" : "可在目标工作台运行"}</span>
+        <span>
+          {isDone
+            ? "已完成"
+            : isPlanned
+              ? "等待能力接入"
+              : props.canRunStage
+                ? "可在本地运行"
+                : "等待上游 Artifact"}
+        </span>
       </div>
       <p>{props.stage.detail}。阶段状态随任务保存，失败时可从当前阶段重试。</p>
       <dl>
@@ -565,13 +570,13 @@ function StageInspector(props: {
       {canRun && (
         <button type="button" className="document-inspector-run" onClick={props.onRun}>
           <Play className="document-icon" />
-          {isDone ? "重新运行 Extract" : "运行 Extract"}
+          {stageActionLabel}
         </button>
       )}
       {isRunning && (
         <button type="button" className="document-inspector-cancel" onClick={props.onCancel}>
           <X className="document-icon" />
-          停止 Extract
+          停止 {props.stage.label}
         </button>
       )}
       {isPlanned ? (
@@ -579,10 +584,15 @@ function StageInspector(props: {
           <WandSparkles className="document-icon" />
           <span>该阶段会在本地模型 / Manga Studio 适配器就绪后解锁。</span>
         </div>
-      ) : (
+      ) : props.canRunStage ? (
         <div className="document-inspector-callout is-neutral">
           <Play className="document-icon" />
-          <span>可重入执行，不会覆盖源文件。</span>
+          <span>{props.stage.adapter ?? "Local adapter"} · 可重入执行，不会覆盖源文件。</span>
+        </div>
+      ) : (
+        <div className="document-inspector-callout is-neutral">
+          <Link2 className="document-icon" />
+          <span>完成前置阶段后解锁；不会覆盖源文件。</span>
         </div>
       )}
     </div>

@@ -203,7 +203,7 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 ## Document Studio（apps/document-studio）
 
 Document Studio 是跨内容工作台的入口层，先把“文件已经进入哪一个阶段、下一步应该交给谁”做成可观测状态，
-再接入真正的 OCR / 翻译模型：
+再逐步替换本地适配器与真实模型：
 
 ```text
 File → Ingest → Normalize → Extract → OCR → Translate → Typeset → Export
@@ -214,6 +214,8 @@ File → Ingest → Normalize → Extract → OCR → Translate → Typeset → 
   `PLANNED / BLOCKED`，不会把演示结果伪装成生产结果。
 - Document Inbox 支持 TXT / Markdown / HTML / FB2 / EPUB / PDF / CBZ / 图片导入，元数据保存在本地浏览器；
   文本提供安全的轻量预览，图片只在当前标签页创建临时预览 URL。
+- Text / Markdown / HTML / FB2 已可通过共享 Scheduler + WorkerPool 运行 Extract、fixture Translate 与 Typeset
+  preview，每一步都生成独立的 JSON Artifact，支持缓存、进度、取消和重试；OCR 仍明确标记为 `PLANNED`。
 - Reader handoff 会把同一标签页内的 `File` 通过一次性内存通道交给 Reader，由 Reader 自己写入 OPFS、解析并建立
   Worker 索引；图片 handoff 交给 Manga，由 Manga 的 Artifact / SQLite 项目接管。
 - URL 只携带短期 handoff ID，不携带文件内容；刷新或离开标签页后句柄失效，界面会明确提示重新导入。

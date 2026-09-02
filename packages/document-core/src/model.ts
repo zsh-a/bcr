@@ -31,6 +31,7 @@ export interface DocumentStageState {
   readonly capability: DocumentCapability;
   readonly status: DocumentStageStatus;
   readonly progress: number;
+  readonly adapter?: string | undefined;
   readonly artifact?: ArtifactRef | undefined;
   readonly error?: string | undefined;
 }
@@ -67,6 +68,7 @@ export interface DocumentStageDefinition {
   readonly label: string;
   readonly detail: string;
   readonly capability: DocumentCapability;
+  readonly adapter?: string | undefined;
 }
 
 export const DOCUMENT_STAGES: ReadonlyArray<DocumentStageDefinition> = [
@@ -87,6 +89,7 @@ export const DOCUMENT_STAGES: ReadonlyArray<DocumentStageDefinition> = [
     label: "Extract",
     detail: "提取章节、文本层或页面清单",
     capability: "adapter",
+    adapter: "text.extract",
   },
   {
     id: "ocr",
@@ -98,13 +101,15 @@ export const DOCUMENT_STAGES: ReadonlyArray<DocumentStageDefinition> = [
     id: "translate",
     label: "Translate",
     detail: "保留段落与区域 ID 的术语感知翻译",
-    capability: "planned",
+    capability: "adapter",
+    adapter: "fixture.translate",
   },
   {
     id: "typeset",
     label: "Typeset",
     detail: "应用目标语言排版与溢出检查",
-    capability: "planned",
+    capability: "adapter",
+    adapter: "preview.typeset",
   },
   {
     id: "export",

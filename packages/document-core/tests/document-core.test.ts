@@ -28,8 +28,13 @@ describe("document-core", () => {
       status: "idle",
       progress: 0,
     });
-    expect(ready.stages.find((stage) => stage.id === "translate")).toMatchObject({
+    expect(ready.stages.find((stage) => stage.id === "ocr")).toMatchObject({
       status: "blocked",
+    });
+    expect(ready.stages.find((stage) => stage.id === "translate")).toMatchObject({
+      status: "idle",
+      capability: "adapter",
+      adapter: "fixture.translate",
     });
     expect(nextAction(ready)).toBe("extract");
   });

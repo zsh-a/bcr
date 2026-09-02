@@ -191,6 +191,133 @@ async function documentExtract(
   return [out];
 }
 
+interface TranslatedSection extends ExtractedSection {
+  readonly translatedText: string;
+  readonly status: "needs-review";
+}
+
+interface TranslatedDocument {
+  readonly version: 1;
+  readonly adapter: "fixture.translate";
+  readonly sourceName: string;
+  readonly sections: ReadonlyArray<TranslatedSection>;
+}
+
+interface TypesetSection extends TranslatedSection {
+  readonly lineCount: number;
+  readonly overflow: boolean;
+}
+
+interface TypesetDocument {
+  readonly version: 1;
+  readonly adapter: "preview.typeset";
+  readonly sourceName: string;
+  readonly sections: ReadonlyArray<TypesetSection>;
+  readonly overflowCount: number;
+}
+
+async function readJsonArtifact<T>(ref: ArtifactRef, ctx: WorkerContext): Promise<T> {
+  const chunks: Uint8Array[] = [];
+  let offset = 0;
+  for (;;) {
+    throwIfAborted(ctx);
+    const chunk = await opfs.readRange(artifactPath(ref), offset, WINDOW);
+    if (chunk.byteLength === 0) break;
+    chunks.push(chunk);
+    offset += chunk.byteLength;
+  }
+  const bytes = new Uint8Array(offset);
+  let cursor = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, cursor);
+    cursor += chunk.byteLength;
+  }
+  return JSON.parse(new TextDecoder().decode(bytes)) as T;
+}
+
+async function writeJsonArtifact(kind: string, payload: unknown): Promise<ArtifactRef> {
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  const hash = contentHash(bytes);
+  const out: ArtifactRef = {
+    id: `document/${kind}/${hash}`,
+    type: `document/${kind}`,
+    storage: "opfs",
+    format: "json",
+    hash,
+  };
+  await opfs.put(artifactPath(out), bytes);
+  return out;
+}
+
+const fixtureDictionary: Readonly<Record<string, string>> = {
+  "ここから、始めよう。": "就从这里开始吧。",
+  もうすぐ春だね: "春天快到了呢",
+  "見つけた！": "找到了！",
+  静かな午後: "安静的午后",
+  ページをめくる: "翻开下一页",
+  "また明日。": "明天见。",
+};
+
+function fixtureTranslate(text: string): string {
+  const normalized = text.replace(/\s+/gu, " ").trim();
+  return (
+    fixtureDictionary[normalized] ?? (normalized.length > 0 ? `待审校：${normalized}` : "待审校")
+  );
+}
+
+async function documentTranslateFixture(
+  task: { inputs: ReadonlyArray<ArtifactRef> },
+  ctx: WorkerContext,
+): Promise<ReadonlyArray<ArtifactRef>> {
+  const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
+  if (input === undefined) throw new Error("document.translate requires extracted sections");
+  const extracted = await readJsonArtifact<ExtractedDocument>(input, ctx);
+  ctx.progress(0.2);
+  const sections: TranslatedSection[] = [];
+  for (const [index, section] of extracted.sections.entries()) {
+    throwIfAborted(ctx);
+    sections.push({
+      ...section,
+      translatedText: fixtureTranslate(section.text),
+      status: "needs-review",
+    });
+    ctx.progress(0.2 + ((index + 1) / Math.max(1, extracted.sections.length)) * 0.7);
+  }
+  const out = await writeJsonArtifact("translations", {
+    version: 1,
+    adapter: "fixture.translate",
+    sourceName: extracted.sourceName,
+    sections,
+  } satisfies TranslatedDocument);
+  ctx.progress(1);
+  return [out];
+}
+
+async function documentTypesetPreview(
+  task: { inputs: ReadonlyArray<ArtifactRef> },
+  ctx: WorkerContext,
+): Promise<ReadonlyArray<ArtifactRef>> {
+  const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
+  if (input === undefined) throw new Error("document.typeset requires translated sections");
+  const translated = await readJsonArtifact<TranslatedDocument>(input, ctx);
+  ctx.progress(0.2);
+  const sections: TypesetSection[] = translated.sections.map((section) => {
+    const lineCount = Math.max(1, Math.ceil(section.translatedText.length / 28));
+    return { ...section, lineCount, overflow: lineCount > 4 };
+  });
+  const overflowCount = sections.filter((section) => section.overflow).length;
+  throwIfAborted(ctx);
+  const out = await writeJsonArtifact("typeset-preview", {
+    version: 1,
+    adapter: "preview.typeset",
+    sourceName: translated.sourceName,
+    sections,
+    overflowCount,
+  } satisfies TypesetDocument);
+  ctx.progress(1);
+  return [out];
+}
+
 defineWorker({
   "hash.blake3": (task, ctx) => {
     const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
@@ -203,4 +330,6 @@ defineWorker({
     return audioWaveform(task, input, ctx);
   },
   "document.extract": (task, ctx) => documentExtract(task, ctx),
+  "document.translate.fixture": (task, ctx) => documentTranslateFixture(task, ctx),
+  "document.typeset.preview": (task, ctx) => documentTypesetPreview(task, ctx),
 });

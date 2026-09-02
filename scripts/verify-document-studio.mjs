@@ -27,8 +27,8 @@ if ((await page.locator(".document-job-card").count()) < 1) fail("文档队列�
 if ((await page.locator(".document-stage-card.is-done").count()) < 2) {
   fail("Ingest / Normalize 就绪状态未建立");
 }
-if ((await page.locator(".document-stage-card.is-blocked").count()) < 3) {
-  fail("尚未接入的 OCR / 翻译阶段没有显式阻塞");
+if ((await page.locator(".document-stage-card.is-blocked").count()) < 1) {
+  fail("尚未接入的 OCR 阶段没有显式阻塞");
 }
 
 const input = page.locator(".document-visually-hidden");
@@ -66,6 +66,34 @@ await page.waitForFunction(
 );
 if (!(await page.locator(".document-stage-inspector").innerText()).includes("READY")) {
   fail("Extract 没有生成结构化 Artifact");
+}
+
+await page.locator(".document-stage-card", { hasText: "Translate" }).click();
+await page.getByRole("button", { name: "运行 Translate" }).click();
+await page.waitForFunction(
+  () =>
+    [...document.querySelectorAll(".document-stage-card")]
+      .find((element) => element.textContent?.includes("Translate"))
+      ?.textContent?.includes("DONE") ?? false,
+  undefined,
+  { timeout: 20_000 },
+);
+if (!(await page.locator(".document-stage-inspector").innerText()).includes("READY")) {
+  fail("Translate 没有生成结构化 Artifact");
+}
+
+await page.locator(".document-stage-card", { hasText: "Typeset" }).click();
+await page.getByRole("button", { name: "运行 Typeset" }).click();
+await page.waitForFunction(
+  () =>
+    [...document.querySelectorAll(".document-stage-card")]
+      .find((element) => element.textContent?.includes("Typeset"))
+      ?.textContent?.includes("DONE") ?? false,
+  undefined,
+  { timeout: 20_000 },
+);
+if (!(await page.locator(".document-stage-inspector").innerText()).includes("READY")) {
+  fail("Typeset 没有生成预览 Artifact");
 }
 
 await page.getByRole("button", { name: /OCR/ }).click();

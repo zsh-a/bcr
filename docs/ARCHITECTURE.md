@@ -550,12 +550,12 @@ Watchlist 分组内的多序列交接：Quant Lab 会保留完整 intake 摘要�
 ### Phase 2.75 — Document Studio（内容流水线入口已落地）
 
 `@bcr/document-core` 以 `DocumentJob` + 七阶段状态机统一 TXT / Markdown / HTML / FB2 / EPUB / PDF / CBZ / 图片
-的生命周期：Ingest / Normalize 已可用，Extract 复用现有 Reader 适配器边界，OCR / Translate / Typeset 明确标记为
-planned，不用 fixture 冒充模型结果。Document Inbox 提供本地导入、元数据预览和阶段 Inspector；一次性 handoff
+的生命周期：Ingest / Normalize 已可用，Extract、fixture Translate 和 Typeset preview 已通过共享 Scheduler / WorkerPool
+生成独立 JSON Artifact；OCR 仍明确标记为 planned，不用 fixture 冒充视觉模型结果。Document Inbox 提供本地导入、元数据预览和阶段 Inspector；一次性 handoff
 通道把同一标签页的 `File` 交给 Reader 或 Manga，目标应用继续负责自己的 OPFS、SQLite、Worker 与 Artifact。
 
-下一步按风险顺序接入真实执行层：先将 Extract 的结构化结果写成可寻址 Artifact，再把 Manga 的 OCR / Translate
-阶段拆成可取消的 Worker Tasks，最后复用同一 Stage contract 支持 PDF/CBZ 批处理和可恢复的多页作业。
+下一步按风险顺序接入真实执行层：把 Manga 的 OCR 阶段拆成可取消的视觉 Worker Task，再将 Translate 的 fixture
+适配器替换为本地模型与术语表，最后复用同一 Stage contract 支持 PDF/CBZ 批处理和可恢复的多页作业。
 
 ### Phase 3 — 正式抽包与生态
 
