@@ -568,6 +568,9 @@ Manga 已先把人工/Fixture 区域通过可取消的 `manga.ocr.review` Worker
 OCR Worker 的 `manga/ocr-lines` 会按稳定 block ID 回写页面区域，更新 sourceText、geometry、writingMode 与 confidence；恢复队列时会从已完成的 OCR checkpoint 重新投影，避免翻译阶段继续使用旧的手工文本。
 翻译模型目录现提供 Fixture 与多语 NLLB Local ONNX 适配器；Local 结果写成独立的
 `manga/translation-lines` Artifact，取消、设备降级和失败沿用 Worker 边界。
+OCR / 翻译的 manifest、语言能力和设备回退由同一解析器提供给 UI、Pipeline 与 Worker；
+执行事实额外记录请求/实际适配器、设备、模型加载阶段和缓存命中。实际使用 WebGPU 的任务
+会把 `gpu` 资源需求交给 Scheduler，避免多个本地模型任务绕过统一预算并发运行。
 Manga OCR/审校区域现在可投影为 `DocumentContentPackage`，翻译区域可投影为同 block ID 的
 `DocumentTranslationPackage`；这些规范化 blocks 同时驱动 Reader/Document handoff 和 Workspace 全局搜索，保留 geometry、
 writing mode、confidence 与 provenance，避免漫画与文档各自维护一套内容模型。每页投影会以内容寻址的

@@ -216,6 +216,7 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - 多页工作队列支持批量拖入、逐页切换与页级流水线状态；“处理队列”只运行尚未完成的页面，支持暂停、恢复、失败重试与队列进度，失败页会复用已完成的阶段检查点；项目配置、审校译文、队列游标和页面队列写入 SQLite，原图 artifact 写入 OPFS，刷新后自动恢复
 - 项目级 Glossary 支持原文 / 固定译法的增删改与持久化；翻译阶段整句命中优先，重叠术语按最长匹配，术语变更会让所有页面回到待处理状态
 - 翻译引擎可显式切换 Fixture 或实验性 Local ONNX；Local 模式使用多语 NLLB 并按日文 / 英文 / 韩文传入对应语言码，在 Worker 内支持 Auto / WebGPU / WASM，并生成 `manga/translation-lines` 审校 Artifact
+- OCR / 翻译共用能力解析器：语言不匹配时明确回退 Review，WebGPU 不可用或初始化失败时回退 WASM；阶段面板持久化请求/实际适配器、设备、模型加载阶段与 CACHE 命中事实，GPU 任务同时向 Scheduler 声明资源占用
 - 每页 OCR / 审校区域会同步投影为标准 `DocumentContentPackage` 与 `DocumentTranslationPackage`，以内容寻址的 `document/manga/*` Artifact 持久化到 Manga 存储并镜像到 Studio 宿主；页面元数据保存最新引用，刷新后可继续搜索、治理或跨工作台交接
 - OCR manifest 同时提供 Latin TrOCR 与日文 Manga OCR（`onnx-community/manga-ocr-base-ONNX`）；模型按区域懒加载，
   在 Worker 内支持 Auto / WebGPU / WASM，结果统一标为 `needs-review`；识别出的文本、方向、几何和置信度会按原 block ID 回写审校区域；不匹配的语言会显式告警而不会伪装成已验证能力

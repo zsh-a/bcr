@@ -212,7 +212,10 @@ function ocrTask(runId: number): ComputeTask | undefined {
         format: "json",
       },
     ],
-    resources: operation.resources,
+    resources: {
+      ...operation.resources,
+      ...(resolution.execution.effectiveDevice === "webgpu" ? { gpu: true } : {}),
+    },
     cache: { enabled: true },
     config: {
       /** Keep requested/effective IDs separate so a language fallback is auditable. */
@@ -267,7 +270,10 @@ function translationTask(runId: number, input: ArtifactRef): ComputeTask | undef
         format: "json",
       },
     ],
-    resources: LOCAL_TRANSLATION_OPERATION.resources,
+    resources: {
+      ...LOCAL_TRANSLATION_OPERATION.resources,
+      ...(resolution.execution.effectiveDevice === "webgpu" ? { gpu: true } : {}),
+    },
     cache: { enabled: true },
     config: {
       requestedAdapter: state.settings.engine,
