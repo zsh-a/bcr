@@ -280,8 +280,8 @@ export function App() {
     }
     void importDocumentHandoff(services, handoff)
       .then(({ job, file }) => {
-        documents.addJob(job, file);
-        void navigate({ to: "/documents", search: { job: job.id } });
+        const resolvedJobId = documents.addJob(job, file);
+        void navigate({ to: "/documents", search: { job: resolvedJobId } });
       })
       .catch((reason: unknown) => {
         documents.setNotice(

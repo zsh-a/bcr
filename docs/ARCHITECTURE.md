@@ -74,6 +74,7 @@ Document Studio 的落点是把跨工作台的内容生命周期显式化：`pac
 `ArtifactRef` 写入 marker，由宿主 ArtifactStore 在刷新后重建 Blob，再由目标应用写入自己的 Artifact / OPFS 命名空间。Reader 也可将已解析内容通过
 同一契约返回 Document，Extract / Translate 直接恢复为已完成状态。这样 OCR、翻译、
 排版模型可以逐阶段替换，失败或未接入时仍然能保留可解释的状态边界。
+Document Inbox 同时以源 Artifact hash 做任务幂等合并，重复交接不会复制队列或降级已有完成状态。
 
 总体架构图（含 Control Plane / Data Plane 边界）：
 

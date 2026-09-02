@@ -81,6 +81,30 @@ function serializedJobs(jobs: ReadonlyArray<DocumentJob>): ReadonlyArray<Documen
   });
 }
 
+function mergeDocumentJobs(existing: DocumentJob, incoming: DocumentJob): DocumentJob {
+  const stages = existing.stages.map((stage, index) => {
+    const next = incoming.stages[index];
+    if (next === undefined) return stage;
+    // A durable handoff may only carry a source package and leave later
+    // stages idle/blocked. Never downgrade a completed local result while
+    // accepting newly materialized upstream artifacts.
+    if ((stage.status === "done" || stage.status === "running") && next.status !== "done") {
+      return stage;
+    }
+    return next;
+  });
+  return {
+    ...incoming,
+    id: existing.id,
+    createdAt: existing.createdAt,
+    updatedAt: Math.max(existing.updatedAt, incoming.updatedAt),
+    ...(incoming.sourceTextPreview === undefined && existing.sourceTextPreview !== undefined
+      ? { sourceTextPreview: existing.sourceTextPreview }
+      : {}),
+    stages,
+  };
+}
+
 function restoreJobs(): ReadonlyArray<DocumentJob> {
   if (typeof localStorage === "undefined") return [demoJob()];
   return parseJobs(localStorage.getItem(STORAGE_KEY));
@@ -159,15 +183,27 @@ class DocumentStore {
       .catch(() => undefined);
   }
 
-  addJob(job: DocumentJob, sourceFile?: File): void {
-    if (sourceFile !== undefined) this.sourceFiles.set(job.id, sourceFile);
-    const jobs = [...this.state.jobs.filter((candidate) => candidate.id !== job.id), job];
+  addJob(job: DocumentJob, sourceFile?: File): string {
+    const existing =
+      job.sourceRef?.hash === undefined
+        ? this.state.jobs.find((candidate) => candidate.id === job.id)
+        : this.state.jobs.find(
+            (candidate) =>
+              candidate.id === job.id || candidate.sourceRef?.hash === job.sourceRef?.hash,
+          );
+    const resolved = existing === undefined ? job : mergeDocumentJobs(existing, job);
+    if (sourceFile !== undefined) this.sourceFiles.set(resolved.id, sourceFile);
+    const jobs = [...this.state.jobs.filter((candidate) => candidate.id !== resolved.id), resolved];
     this.set({
       jobs,
-      activeJobId: job.id,
-      selectedStageId: job.stages[0]?.id ?? "ingest",
-      notice: `${job.name} 已加入 Document Inbox`,
+      activeJobId: resolved.id,
+      selectedStageId: resolved.stages[0]?.id ?? "ingest",
+      notice:
+        existing === undefined
+          ? `${job.name} 已加入 Document Inbox`
+          : `${job.name} 已与现有任务合并（源 Artifact 相同）`,
     });
+    return resolved.id;
   }
 
   selectJob(jobId: string): void {

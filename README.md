@@ -246,6 +246,7 @@ File → Ingest → Normalize → Extract → OCR → Translate → Typeset → 
 - EPUB / PDF / CBZ / DOCX 等二进制出版物在 Document Extract 阶段明确保持 `BLOCKED`，直接交给目标适配器解析，避免把压缩或版式数据误当作纯文本。
 - Reader handoff 会优先把同一标签页内的 `File` 与已完成的 Content Package 作为零拷贝 fast path 交给 Reader；同时把源文件、规范化内容和审校译文的 `ArtifactRef` 写入轻量 marker，刷新后由宿主 ArtifactStore 重建 Blob，再由 Reader 写入自己的 OPFS 并建立 Worker 索引。若已有 Translation Package，则以同一 block ID 渲染审校后的译文，未完成 Extract 时自动回退到原文件解析；图片 handoff 交给 Manga，由 Manga 的 Artifact / SQLite 项目接管。Reader 也可以把已解析的章节、导航和安全 HTML 投影回 `DocumentContentPackage`，Manga 则把 OCR 区域、译文和几何信息投影回同一契约；两者镜像源文件与内容 Artifact 后返回 Document，Extract / Translate 直接标记完成，形成可刷新恢复的双向闭环。
 - URL 只携带短期 handoff ID，不携带文件内容；marker 只保存可验证的元数据和 Artifact 引用。旧版仅含 File 的 marker 仍可识别，但会明确提示重新导入；新的 durable handoff 可跨刷新恢复。
+- Document Inbox 以源 Artifact 的 BLAKE3 hash 做幂等键；Reader / Manga 重复交接会复用已有任务并只合并新的 DONE 阶段，避免重复任务和状态回退。
 
 走查：`node scripts/verify-document-studio.mjs`（由 `bun run test:browser` 自动执行）。
 
