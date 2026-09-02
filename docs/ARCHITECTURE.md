@@ -72,7 +72,7 @@ Document Studio 的落点是把跨工作台的内容生命周期显式化：`pac
 `DocumentJob`、阶段状态和一次性 handoff 契约；`apps/document-studio` 负责 Inbox、阶段可见性和目标工作台入口。
 文件内容不进入 URL 或 localStorage；Reader / Manga handoff 以当前标签页的 `File` 作为快速路径，同时把源文件、规范化内容和译文的
 `ArtifactRef` 写入 marker，由宿主 ArtifactStore 在刷新后重建 Blob，再由目标应用写入自己的 Artifact / OPFS 命名空间。Reader 也可将已解析内容通过
-同一契约返回 Document，Extract 直接恢复为已完成状态。这样 OCR、翻译、
+同一契约返回 Document，Extract / Translate 直接恢复为已完成状态。这样 OCR、翻译、
 排版模型可以逐阶段替换，失败或未接入时仍然能保留可解释的状态边界。
 
 总体架构图（含 Control Plane / Data Plane 边界）：

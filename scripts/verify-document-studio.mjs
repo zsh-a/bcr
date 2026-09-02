@@ -178,6 +178,16 @@ await page
   .locator(".manga-page-card", { hasText: "page.png" })
   .first()
   .waitFor({ timeout: 20_000 });
+await page.getByRole("button", { name: /交给 Document Studio/ }).click();
+await page.locator(".document-studio").waitFor({ timeout: 20_000 });
+await page
+  .locator(".document-job-card", { hasText: "page.png" })
+  .last()
+  .waitFor({ timeout: 20_000 });
+await page.locator(".document-content-card").waitFor({ timeout: 10_000 });
+if ((await page.locator(".document-stage-card.is-done").count()) < 3) {
+  fail("Manga → Document handoff 没有恢复视觉 Content Package");
+}
 
 await browser.close();
 console.log(

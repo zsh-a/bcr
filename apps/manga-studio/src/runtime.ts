@@ -13,7 +13,11 @@ import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import { Context, Effect, Layer } from "effect";
 import { decodeGraph, encodeGraph } from "@bcr/graph";
-import type { DocumentHandoff } from "@bcr/document-core";
+import type {
+  DocumentContentPackage,
+  DocumentHandoff,
+  DocumentTranslationPackage,
+} from "@bcr/document-core";
 import { mangaPageToDocumentPackages } from "./document-adapter";
 import { FIXTURE_PAGE_URL } from "./fixture";
 import { manga } from "./store";
@@ -28,6 +32,15 @@ import type {
 export interface MangaDocumentArtifactRefs {
   readonly content: ArtifactRef;
   readonly translation: ArtifactRef;
+}
+
+export interface MangaDocumentHandoffPayload {
+  readonly file: File;
+  readonly sourceRef: ArtifactRef;
+  readonly content: DocumentContentPackage;
+  readonly translation: DocumentTranslationPackage;
+  readonly contentRef: ArtifactRef;
+  readonly translationRef: ArtifactRef;
 }
 
 export interface MangaRuntime {
@@ -256,6 +269,36 @@ export async function persistMangaDocumentPackages(
   await putDocumentArtifact(runtime, sharedArtifacts, content, contentBytes);
   await putDocumentArtifact(runtime, sharedArtifacts, translation, translationBytes);
   return { content, translation };
+}
+
+/** Materialize the active page and canonical OCR/translation packages for Document Studio. */
+export async function prepareMangaDocumentHandoff(
+  runtime: MangaRuntime,
+  hostArtifacts: ArtifactStore,
+  page: MangaPage,
+  sourceLanguage: MangaSettings["sourceLanguage"],
+): Promise<MangaDocumentHandoffPayload> {
+  const sourceRef = page.source.ref;
+  if (sourceRef === undefined) {
+    throw new Error("示例页面没有可交接的源 Artifact，请先导入原始图片");
+  }
+  const blob = await Effect.runPromise(runtime.artifacts.getBlob(sourceRef));
+  const file = new File([blob], page.source.name, {
+    type: sourceRef.format ?? "image/*",
+  });
+  await Effect.runPromise(hostArtifacts.putStream(sourceRef, blob.stream()));
+  const packages = mangaPageToDocumentPackages(page, sourceLanguage, {
+    createdAt: page.createdAt ?? 0,
+  });
+  const refs = await persistMangaDocumentPackages(runtime, page, sourceLanguage, hostArtifacts);
+  return {
+    file,
+    sourceRef,
+    content: packages.content,
+    translation: packages.translation,
+    contentRef: refs.content,
+    translationRef: refs.translation,
+  };
 }
 
 export async function persistProject(runtime: MangaRuntime): Promise<void> {

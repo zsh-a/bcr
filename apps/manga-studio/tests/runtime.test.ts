@@ -6,6 +6,7 @@ import { Context, Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 import {
   fileFromDocumentHandoff,
+  prepareMangaDocumentHandoff,
   persistMangaDocumentPackages,
   type MangaRuntime,
 } from "../src/runtime";
@@ -104,6 +105,7 @@ describe("manga durable Document handoff", () => {
       dirty: false,
     };
     const runtime: MangaRuntime = { artifacts: local, binary: localStore, meta: undefined };
+    await Effect.runPromise(local.put(sourceRef, new Uint8Array([1, 2, 3])));
 
     const first = await persistMangaDocumentPackages(runtime, page, "ja", host);
     const second = await persistMangaDocumentPackages(runtime, page, "ja", host);
@@ -131,5 +133,16 @@ describe("manga durable Document handoff", () => {
       translatedText: "你好",
       writingMode: "vertical-rl",
     });
+
+    const handoff = await prepareMangaDocumentHandoff(runtime, host, page, "ja");
+    expect(handoff.file.name).toBe("page-bridge.png");
+    expect(handoff.sourceRef).toBe(sourceRef);
+    expect(handoff.contentRef).toEqual(first.content);
+    expect(handoff.translationRef).toEqual(first.translation);
+    expect(handoff.content.blocks[0]).toMatchObject({
+      id: "bubble-1",
+      geometry: { x: 10, y: 20, width: 30, height: 15 },
+    });
+    expect(await Effect.runPromise(host.has(sourceRef))).toBe(true);
   });
 });

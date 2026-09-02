@@ -1,10 +1,12 @@
 import {
+  ArrowUpRight,
   Check,
   ChevronDown,
   CircleAlert,
   Download,
   FileImage,
   FileUp,
+  FileText,
   Languages,
   ListChecks,
   Minus,
@@ -25,6 +27,7 @@ import {
   consumeDocumentHandoff,
   getDocumentHandoffMarker,
   markDocumentHandoffExpired,
+  publishDocumentHandoff,
 } from "@bcr/document-core";
 import { useLocationSearch, useOptionalRuntime } from "@bcr/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -36,6 +39,7 @@ import {
   createMangaRuntime,
   fileFromDocumentHandoff,
   importImageArtifact,
+  prepareMangaDocumentHandoff,
   persistMangaDocumentPackages,
   persistProject,
   restoreProject,
@@ -154,6 +158,7 @@ export function App() {
   const handoffRef = useRef<string | null>(null);
   const [zoom, setZoom] = useState(0.82);
   const [exporting, setExporting] = useState(false);
+  const [documentHandoffBusy, setDocumentHandoffBusy] = useState(false);
   const [runtime, setRuntime] = useState<MangaRuntime | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
   const [glossarySource, setGlossarySource] = useState("");
@@ -493,6 +498,43 @@ export function App() {
       .finally(() => setExporting(false));
   };
 
+  const handoffDocument = () => {
+    if (runtime === null || documentHandoffBusy || state.running || batchRunning) return;
+    const hostArtifacts = hostServices?.artifacts;
+    if (hostArtifacts === undefined) {
+      manga.log("warn", "handoff · open Manga from Studio Shell to reach Document Studio");
+      return;
+    }
+    const page = state.pages.find((candidate) => candidate.id === state.activePageId);
+    if (page === undefined) return;
+    setDocumentHandoffBusy(true);
+    void prepareMangaDocumentHandoff(runtime, hostArtifacts, page, state.settings.sourceLanguage)
+      .then(({ file, sourceRef, content, translation, contentRef, translationRef }) => {
+        const handoffId = publishDocumentHandoff({
+          jobId: page.id,
+          target: "document",
+          name: page.source.name,
+          format: content.format,
+          file,
+          size: page.source.size,
+          sourceRef,
+          contentRef,
+          translationRef,
+          content,
+          translation,
+        });
+        manga.log("ok", `handoff · ${page.source.name} · Document Studio`);
+        window.location.assign(`/documents?handoff=${encodeURIComponent(handoffId)}`);
+      })
+      .catch((reason: unknown) => {
+        manga.log(
+          "error",
+          `handoff · ${page.source.name} · ${reason instanceof Error ? reason.message : String(reason)}`,
+        );
+      })
+      .finally(() => setDocumentHandoffBusy(false));
+  };
+
   if (bootError !== null) {
     return (
       <div className="manga-boot manga-boot-error">
@@ -540,11 +582,25 @@ export function App() {
           <button
             type="button"
             className="manga-button manga-button-secondary"
-            disabled={state.running || batchRunning}
+            disabled={state.running || batchRunning || documentHandoffBusy}
             onClick={() => fileInputRef.current?.click()}
           >
             <FileUp className="size-4" />
             导入文件
+          </button>
+          <button
+            type="button"
+            className="manga-button manga-button-secondary"
+            disabled={
+              state.running || batchRunning || documentHandoffBusy || state.source.ref === undefined
+            }
+            onClick={handoffDocument}
+            aria-label="交给 Document Studio"
+            title={state.source.ref === undefined ? "请先导入原始图片" : "交给 Document Studio"}
+          >
+            <FileText className="size-4" />
+            {documentHandoffBusy ? "交接中…" : "交给 Document"}
+            <ArrowUpRight className="size-3.5" />
           </button>
           {batchRunning ? (
             <button
