@@ -529,30 +529,38 @@ async function openPdf(input: ReaderOpenInput): Promise<ReaderBook> {
     "pdfjs-dist/build/pdf.worker.mjs",
     import.meta.url,
   ).toString();
-  const document = await pdfjs.getDocument({ data: await input.file.arrayBuffer() }).promise;
-  const sections: ReaderSection[] = [];
-  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-    if (input.signal?.aborted) throw new DOMException("Aborted", "AbortError");
-    const page = await document.getPage(pageNumber);
-    const content = await page.getTextContent();
-    const text = content.items
-      .map((item) => ("str" in item ? item.str : ""))
-      .join(" ")
-      .trim();
-    sections.push({
-      id: `page-${pageNumber}`,
-      order: pageNumber - 1,
-      label: `Page ${String(pageNumber).padStart(3, "0")}`,
-      kind: "pdf-page",
-      text: text || `PDF page ${pageNumber}`,
-      pageNumber,
-    });
+  const objectUrl = URL.createObjectURL(input.file);
+  try {
+    // Let PDF.js stream the Blob URL in its own worker; avoid eagerly copying
+    // the entire document into a main-thread ArrayBuffer.
+    const document = await pdfjs.getDocument(objectUrl).promise;
+    const sections: ReaderSection[] = [];
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+      if (input.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+      const page = await document.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const text = content.items
+        .map((item) => ("str" in item ? item.str : ""))
+        .join(" ")
+        .trim();
+      sections.push({
+        id: `page-${pageNumber}`,
+        order: pageNumber - 1,
+        label: `Page ${String(pageNumber).padStart(3, "0")}`,
+        kind: "pdf-page",
+        text: text || `PDF page ${pageNumber}`,
+        pageNumber,
+      });
+    }
+    await document.cleanup();
+    return {
+      ...makeBook(input, sections),
+      source: { ...baseSource(input, objectUrl) },
+    };
+  } catch (reason) {
+    URL.revokeObjectURL(objectUrl);
+    throw reason;
   }
-  await document.cleanup();
-  return {
-    ...makeBook(input, sections),
-    source: { ...baseSource(input, URL.createObjectURL(input.file)) },
-  };
 }
 
 const textAdapter: ReaderAdapter = {
