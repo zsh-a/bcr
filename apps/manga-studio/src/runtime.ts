@@ -20,6 +20,7 @@ import type {
 } from "@bcr/document-core";
 import { mangaPageToDocumentPackages } from "./document-adapter";
 import { FIXTURE_PAGE_URL } from "./fixture";
+import { MangaModelRegistry } from "./model-registry";
 import { manga } from "./store";
 import type {
   MangaBatchJob,
@@ -47,6 +48,7 @@ export interface MangaRuntime {
   readonly artifacts: ArtifactStore;
   readonly binary: BinaryStore;
   readonly meta: SqliteDb | undefined;
+  readonly models: MangaModelRegistry;
 }
 
 interface SqliteInit {
@@ -114,10 +116,17 @@ export async function createMangaRuntime(): Promise<MangaRuntime> {
     Effect.scoped(Layer.build(artifactStore({ memory, opfs }, meta && sqliteLineageStore(meta)))),
   );
   const artifacts = Context.get(context, ArtifactStoreTag);
+  const models = new MangaModelRegistry(meta);
+  try {
+    await models.restore();
+  } catch (error) {
+    manga.log("warn", `model registry restore failed · ${String(error)}`);
+  }
   const runtime: MangaRuntime = {
     artifacts,
     binary: opfs,
     meta,
+    models,
   };
   currentRuntime = runtime;
   return runtime;

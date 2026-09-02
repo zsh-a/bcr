@@ -1093,6 +1093,47 @@
   line-height: 1.35;
 }
 
+.manga-model-status {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  margin-top: 8px;
+  border: 1px solid var(--manga-border);
+  border-radius: 6px;
+  background: rgba(8, 11, 11, 0.28);
+  padding: 7px 9px;
+}
+
+.manga-model-status > span {
+  grid-column: 1 / -1;
+  color: var(--manga-faint);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+}
+
+.manga-model-status strong {
+  color: var(--manga-cyan);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.manga-model-status small {
+  grid-column: 1 / -1;
+  color: var(--manga-muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.manga-model-status[data-model-status="loading"] strong {
+  color: var(--manga-violet);
+}
+
+.manga-model-status[data-model-status="error"] strong {
+  color: var(--manga-danger);
+}
+
 .manga-glossary-section {
   padding-bottom: 16px;
 }

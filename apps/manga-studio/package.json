@@ -9,6 +9,7 @@
     "./glossary": "./src/glossary.ts",
     "./store": "./src/store.ts",
     "./model": "./src/model.ts",
+    "./model-registry": "./src/model-registry.ts",
     "./operations": "./src/operations.ts",
     "./document-adapter": "./src/document-adapter.ts"
   },

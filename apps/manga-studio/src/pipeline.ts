@@ -180,6 +180,27 @@ function completedAdapterExecution(
   };
 }
 
+function trackModelLoading(execution: MangaAdapterExecution | undefined): void {
+  if (execution === undefined || execution.model === undefined) return;
+  const runtime = mangaRuntime();
+  if (runtime === undefined) return;
+  void runtime.models.markLoading(execution);
+}
+
+function trackModelReady(execution: MangaAdapterExecution | undefined): void {
+  if (execution === undefined || execution.model === undefined) return;
+  const runtime = mangaRuntime();
+  if (runtime === undefined) return;
+  void runtime.models.markReady(execution);
+}
+
+function trackModelError(execution: MangaAdapterExecution | undefined, error: unknown): void {
+  if (execution === undefined || execution.model === undefined) return;
+  const runtime = mangaRuntime();
+  if (runtime === undefined) return;
+  void runtime.models.markError(execution, error);
+}
+
 function ocrTask(runId: number): ComputeTask | undefined {
   const state = manga.getSnapshot();
   const source = state.source.ref;
@@ -355,6 +376,7 @@ async function runOcrAdapter(
   );
   if (submittedExecution !== undefined) {
     manga.updateStage("ocr", { execution: submittedExecution });
+    trackModelLoading(submittedExecution);
   }
   const progressFiber = Effect.runFork(
     Stream.runForEach(handle.events, (event) =>
@@ -395,6 +417,7 @@ async function runOcrAdapter(
       observedExecution === undefined ? payload : { ...payload, execution: observedExecution };
     if (observedExecution !== undefined) {
       manga.updateStage("ocr", { execution: observedExecution });
+      trackModelReady(observedExecution);
       if (observedExecution.fallbackReason !== undefined) {
         manga.log(
           "warn",
@@ -416,6 +439,9 @@ async function runOcrAdapter(
       `ocr ${adapterLabel} adapter · ${artifact.id} · needs-review regions preserved`,
     );
     return { artifact, payload: observedPayload };
+  } catch (error) {
+    trackModelError(submittedExecution, error);
+    throw error;
   } finally {
     Effect.runFork(Fiber.interrupt(progressFiber));
     if (activeOcr?.handle === handle) activeOcr = undefined;
@@ -447,6 +473,7 @@ async function runLocalTranslation(
   );
   if (submittedExecution !== undefined) {
     manga.updateStage("translate", { execution: submittedExecution });
+    trackModelLoading(submittedExecution);
   }
   const progressFiber = Effect.runFork(
     Stream.runForEach(handle.events, (event) =>
@@ -487,6 +514,7 @@ async function runLocalTranslation(
       observedExecution === undefined ? payload : { ...payload, execution: observedExecution };
     if (observedExecution !== undefined) {
       manga.updateStage("translate", { execution: observedExecution });
+      trackModelReady(observedExecution);
       if (observedExecution.fallbackReason !== undefined) {
         manga.log(
           "warn",
@@ -504,6 +532,9 @@ async function runLocalTranslation(
     }
     manga.log("ok", `translate local ONNX · ${artifact.id} · needs-review segments preserved`);
     return { artifact, payload: observedPayload };
+  } catch (error) {
+    trackModelError(submittedExecution, error);
+    throw error;
   } finally {
     Effect.runFork(Fiber.interrupt(progressFiber));
     if (activeTranslation?.handle === handle) activeTranslation = undefined;

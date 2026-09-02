@@ -11,6 +11,7 @@ import {
   type MangaRuntime,
 } from "../src/runtime";
 import type { MangaPage } from "../src/model";
+import { MangaModelRegistry } from "../src/model-registry";
 
 async function makeArtifacts(store: MemoryStore): Promise<ArtifactStore> {
   const context = await Effect.runPromise(
@@ -36,6 +37,7 @@ describe("manga durable Document handoff", () => {
       artifacts: upstream,
       binary: upstreamStore,
       meta: undefined,
+      models: new MangaModelRegistry(undefined),
     };
     const file = await fileFromDocumentHandoff(runtime, {
       id: "handoff-manga-test",
@@ -104,7 +106,12 @@ describe("manga durable Document handoff", () => {
       outputReady: true,
       dirty: false,
     };
-    const runtime: MangaRuntime = { artifacts: local, binary: localStore, meta: undefined };
+    const runtime: MangaRuntime = {
+      artifacts: local,
+      binary: localStore,
+      meta: undefined,
+      models: new MangaModelRegistry(undefined),
+    };
     await Effect.runPromise(local.put(sourceRef, new Uint8Array([1, 2, 3])));
 
     const first = await persistMangaDocumentPackages(runtime, page, "ja", host);

@@ -47,6 +47,11 @@ import {
 } from "./runtime";
 import { manga, useMangaStudio } from "./store";
 import {
+  modelKeyForExecution,
+  type MangaModelRecord,
+  type MangaModelStatus,
+} from "./model-registry";
+import {
   CLEAN_MODEL_MANIFESTS,
   OCR_MODEL_MANIFESTS,
   TRANSLATION_MODEL_MANIFESTS,
@@ -129,6 +134,29 @@ function executionLabel(execution: MangaAdapterExecution | undefined): string {
   return [adapter, device, phase, cache, fallback].filter((value) => value.length > 0).join(" · ");
 }
 
+function modelStatusLabel(status: MangaModelStatus): string {
+  if (status === "ready") return "READY · 可复用";
+  if (status === "loading") return "LOADING · Worker";
+  if (status === "error") return "ERROR · 可重试";
+  return "NOT LOADED · 懒加载";
+}
+
+function ModelStatusNote({ record }: { readonly record: MangaModelRecord | undefined }) {
+  const status = record?.status ?? "unknown";
+  const detail =
+    record?.lastError ??
+    (status === "ready"
+      ? "模型已成功加载，后续任务可复用浏览器缓存"
+      : "首次执行将在 Worker 中按需加载");
+  return (
+    <div className="manga-model-status" data-model-status={status}>
+      <span>MODEL CACHE</span>
+      <strong>{modelStatusLabel(status)}</strong>
+      <small>{detail}</small>
+    </div>
+  );
+}
+
 function downloadBlob(blob: Blob, name: string): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -195,6 +223,7 @@ export function App() {
   const [bootError, setBootError] = useState<string | null>(null);
   const [glossarySource, setGlossarySource] = useState("");
   const [glossaryTarget, setGlossaryTarget] = useState("");
+  const [modelRecords, setModelRecords] = useState<ReadonlyArray<MangaModelRecord>>([]);
   const appliedRouteRef = useRef("");
 
   useEffect(() => {
@@ -324,6 +353,16 @@ export function App() {
     };
   }, [runtime]);
 
+  useEffect(() => {
+    if (runtime === null) {
+      setModelRecords([]);
+      return;
+    }
+    const sync = () => setModelRecords(runtime.models.getSnapshot().records);
+    sync();
+    return runtime.models.subscribe(sync);
+  }, [runtime]);
+
   const selectedRegion = useMemo(
     () => state.regions.find((region) => region.id === state.activeRegionId) ?? null,
     [state.activeRegionId, state.regions],
@@ -359,6 +398,12 @@ export function App() {
   );
   const ocrManifest = ocrResolution.manifest;
   const effectiveOcrManifest = ocrResolution.effectiveManifest;
+  const modelRecordFor = (execution: MangaAdapterExecution): MangaModelRecord | undefined => {
+    const key = modelKeyForExecution(execution);
+    return key === undefined ? undefined : modelRecords.find((record) => record.key === key);
+  };
+  const ocrModelRecord = modelRecordFor(ocrResolution.execution);
+  const translationModelRecord = modelRecordFor(translationResolution.execution);
   const ocrIsLocal = state.settings.ocrAdapter !== "review.manual";
   const ocrSupportsLanguage = ocrResolution.execution.fallbackReason !== "language-unsupported";
   const cleanResolution = resolveMangaCleanMode(state.settings.cleanMode);
@@ -1012,6 +1057,7 @@ export function App() {
                   <strong>{translationModel ?? "No model manifest"}</strong>
                   <small>{effectiveTranslationManifest.detail}</small>
                 </div>
+                <ModelStatusNote record={translationModelRecord} />
                 {translationResolution.execution.fallbackReason !== undefined && (
                   <small className="manga-config-help manga-config-warning">
                     {fallbackLabel(translationResolution.execution.fallbackReason)}
@@ -1073,6 +1119,7 @@ export function App() {
                     {ocrManifest?.detail}
                   </small>
                 </label>
+                <ModelStatusNote record={ocrModelRecord} />
                 {!ocrSupportsLanguage && (
                   <small className="manga-config-help manga-config-warning">
                     当前源语言不在该模型能力范围内；建议切换 Review adapter 并人工审校。
