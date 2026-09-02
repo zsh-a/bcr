@@ -1,5 +1,6 @@
 import type { DocumentContentPackage } from "./content";
 import type { DocumentFormat } from "./model";
+import type { DocumentTranslationPackage } from "./translation";
 
 export type DocumentHandoffTarget = "reader" | "manga";
 export type DocumentHandoffStatus = "pending" | "consumed" | "expired";
@@ -14,6 +15,8 @@ export interface DocumentHandoff {
   readonly file: File;
   /** Optional normalized payload; kept in memory for a zero-copy handoff. */
   readonly content?: DocumentContentPackage | undefined;
+  /** Optional reviewed translation that shares the same block IDs as content. */
+  readonly translation?: DocumentTranslationPackage | undefined;
   readonly createdAt: number;
 }
 
@@ -34,6 +37,7 @@ interface PublishHandoffInput {
   readonly format: DocumentFormat;
   readonly file: File;
   readonly content?: DocumentContentPackage | undefined;
+  readonly translation?: DocumentTranslationPackage | undefined;
 }
 
 export interface DocumentHandoffMarker {
@@ -193,6 +197,7 @@ export function publishDocumentHandoff(input: PublishHandoffInput): string {
     size: input.file.size,
     file: input.file,
     ...(input.content === undefined ? {} : { content: input.content }),
+    ...(input.translation === undefined ? {} : { translation: input.translation }),
     createdAt: Date.now(),
   };
   pending.set(id, handoff);

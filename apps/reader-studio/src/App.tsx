@@ -615,11 +615,20 @@ export function App() {
     const content = handoff.content;
     void (async () => {
       try {
-        const book = await importReaderContentPackage(runtime, handoff.file, content);
+        const book = await importReaderContentPackage(
+          runtime,
+          handoff.file,
+          content,
+          handoff.translation,
+        );
         const added = reader.addBook(book);
         if (added) {
           await indexBook(runtime, book);
-          setNotice(`${book.title} 已从 Content Package 加入书库`);
+          setNotice(
+            handoff.translation === undefined
+              ? `${book.title} 已从 Content Package 加入书库`
+              : `${book.title} 已从 Translation Package 加入书库`,
+          );
         } else {
           setNotice(`${handoff.file.name} 已在书库`);
         }

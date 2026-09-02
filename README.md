@@ -243,8 +243,9 @@ File → Ingest → Normalize → Extract → OCR → Translate → Typeset → 
   Typeset 自动接续最新版本。
 - EPUB / PDF / CBZ / DOCX 等二进制出版物在 Document Extract 阶段明确保持 `BLOCKED`，直接交给目标适配器解析，避免把压缩或版式数据误当作纯文本。
 - Reader handoff 会把同一标签页内的 `File` 与已完成的 Content Package 通过一次性内存通道交给 Reader；Reader
-  写入自己的 OPFS 并直接复用标准化 blocks 建立 Worker 索引，未完成 Extract 时自动回退到原文件解析；图片 handoff
-  交给 Manga，由 Manga 的 Artifact / SQLite 项目接管。
+  写入自己的 OPFS 并直接复用标准化 blocks 建立 Worker 索引；若已有 Translation Package，则以同一 block ID
+  渲染审校后的译文，未完成 Extract 时自动回退到原文件解析；图片 handoff 交给 Manga，由 Manga 的 Artifact /
+  SQLite 项目接管。
 - URL 只携带短期 handoff ID，不携带文件内容；刷新或离开标签页后句柄失效，界面会明确提示重新导入。
 
 走查：`node scripts/verify-document-studio.mjs`（由 `bun run test:browser` 自动执行）。

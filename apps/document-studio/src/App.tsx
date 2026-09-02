@@ -347,6 +347,7 @@ export function App() {
       format: active.format,
       file,
       ...(contentPackage === undefined ? {} : { content: contentPackage }),
+      ...(translationPackage === undefined ? {} : { translation: translationPackage }),
     });
     documents.setNotice(`${active.name} 正在交给 Reader Studio；Reader 会接管源文件托管`);
     void navigate({ to: "/reader", search: { document: handoffId } });
@@ -366,6 +367,7 @@ export function App() {
       format: active.format,
       file,
       ...(contentPackage === undefined ? {} : { content: contentPackage }),
+      ...(translationPackage === undefined ? {} : { translation: translationPackage }),
     });
     documents.setNotice(`${active.name} 正在交给 Manga Studio；图片区域将在翻译工作台审校`);
     void navigate({ to: "/manga", search: { document: handoffId } });

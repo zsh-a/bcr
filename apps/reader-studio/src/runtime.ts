@@ -22,7 +22,7 @@ import {
   type ReaderBookmark,
   type SearchHit,
 } from "@bcr/reader-core";
-import type { DocumentContentPackage } from "@bcr/document-core";
+import type { DocumentContentPackage, DocumentTranslationPackage } from "@bcr/document-core";
 import { formatForFile, openReaderContentPackage, openReaderFile } from "./adapters";
 import {
   createReaderParseSession,
@@ -249,6 +249,7 @@ export async function importReaderContentPackage(
   runtime: ReaderRuntime,
   file: File,
   content: DocumentContentPackage,
+  translation?: DocumentTranslationPackage,
   signal?: AbortSignal,
 ): Promise<ReaderBook> {
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
@@ -264,7 +265,7 @@ export async function importReaderContentPackage(
   };
   await Effect.runPromise(runtime.artifacts.putStream(ref, file.stream()));
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-  const book = openReaderContentPackage(file, `book-${hash.slice(0, 16)}`, content);
+  const book = openReaderContentPackage(file, `book-${hash.slice(0, 16)}`, content, translation);
   return {
     ...book,
     source: {

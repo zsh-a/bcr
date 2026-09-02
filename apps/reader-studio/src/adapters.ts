@@ -15,6 +15,7 @@ import type {
   ReaderTocItem,
 } from "@bcr/reader-core";
 import type { DocumentContentPackage } from "@bcr/document-core";
+import type { DocumentTranslationPackage } from "@bcr/document-core";
 import { READER_FORMAT_CATALOG, readerAcceptAttribute } from "@bcr/reader-core";
 
 const TEXT_FORMATS = new Set<ReaderFormat>(["txt", "markdown", "html", "fb2"]);
@@ -112,21 +113,29 @@ export function openReaderContentPackage(
   file: File,
   id: string,
   content: DocumentContentPackage,
+  translation?: DocumentTranslationPackage,
 ): ReaderBook {
   const format = readerFormatForDocument(content.format);
   const input: ReaderOpenInput = { file, id, format };
   const inferredTitle =
     content.metadata.title ?? content.blocks.find((block) => block.kind === "heading")?.label;
+  const translatedById = new Map(
+    translation?.blocks.map((block) => [block.id, block.translatedText]) ?? [],
+  );
   const sections = content.blocks.map((block) => {
     const kind: ReaderSection["kind"] =
       block.kind === "image" ? "image" : block.kind === "page" ? "pdf-page" : "text";
-    const sanitizedHtml = block.html === undefined ? undefined : sanitizeHtml(block.html).html;
+    const translatedText = translatedById.get(block.id);
+    const hasTranslation = translatedText !== undefined && translatedText.length > 0;
+    const resolvedText = hasTranslation ? translatedText : block.text;
+    const sanitizedHtml =
+      hasTranslation || block.html === undefined ? undefined : sanitizeHtml(block.html).html;
     return {
       id: block.id,
       order: block.order,
       label: block.label,
       kind,
-      text: block.text,
+      text: resolvedText,
       ...(sanitizedHtml === undefined ? {} : { html: sanitizedHtml }),
       ...(block.kind === "image" && block.href !== undefined
         ? { imageUrl: safeUrl(block.href) }

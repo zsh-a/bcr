@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatForFile, openReaderContentPackage, sanitizeInlineStyle } from "../src/adapters";
-import { createDocumentContentPackage } from "@bcr/document-core";
+import { createDocumentContentPackage, createDocumentTranslationPackage } from "@bcr/document-core";
 import {
   READER_FORMAT_CATALOG,
   readerAcceptAttribute,
@@ -56,9 +56,31 @@ describe("reader format catalog", () => {
         { id: "body", label: "正文", text: "A local-first note." },
       ],
     });
-    const book = openReaderContentPackage(new File(["source"], "notes.md"), "book-1", content);
+    const translation = createDocumentTranslationPackage({
+      id: "translation-1",
+      sourceContentId: content.id,
+      sourceName: content.sourceName,
+      format: content.format,
+      targetLanguage: "zh-Hans",
+      adapter: "review.manual",
+      blocks: content.blocks.map((block) => ({
+        ...block,
+        translatedText: block.id === "title" ? "现场笔记" : "本地优先的笔记。",
+        status: "translated" as const,
+      })),
+    });
+    const book = openReaderContentPackage(
+      new File(["source"], "notes.md"),
+      "book-1",
+      content,
+      translation,
+    );
     expect(book).toMatchObject({ id: "book-1", title: "Field notes", author: "Ada" });
     expect(book.sections.map((section) => section.id)).toEqual(["title", "body"]);
-    expect(book.sections[0]).toMatchObject({ kind: "text", label: "Field notes" });
+    expect(book.sections[0]).toMatchObject({
+      kind: "text",
+      label: "Field notes",
+      text: "现场笔记",
+    });
   });
 });

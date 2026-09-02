@@ -134,6 +134,7 @@ await page
   .locator(".reader-book-card", { hasText: "Field notes" })
   .first()
   .waitFor({ timeout: 20_000 });
+await page.getByLabel("阅读内容").getByText("Field notes（人工修订）").waitFor({ timeout: 10_000 });
 
 // The same artifact boundary also feeds a page-image handoff into Manga.
 await page.goto(base.toString(), { waitUntil: "domcontentloaded" });
