@@ -572,8 +572,10 @@ OCR / 翻译的 manifest、语言能力和设备回退由同一解析器提供�
 执行事实额外记录请求/实际适配器、设备、模型加载阶段和缓存命中。实际使用 WebGPU 的任务
 会把 `gpu` 资源需求交给 Scheduler，避免多个本地模型任务绕过统一预算并发运行。
 Manga Runtime 另以版本化 Model Registry 持久化模型生命周期（loading / ready / error、最近使用、
-最近加载成功），但不直接猜测 Transformers.js 私有 Cache Storage 的文件结构；模型字节清理必须
-通过后续稳定的显式 Cache API 接口执行，损坏的 registry 只会被丢弃并重新建立。
+最近加载成功），并把 Transformers.js 路由到版本化的 `bcr-manga-models-v1` Cache API 命名空间。
+`manga.model.preload` 是显式的 Worker 预加载任务，配置面板可查看缓存文件数、在线/离线提示并清理
+该命名空间；清理操作会同步把 readiness 标记重置为 unknown。Registry 仍不把模型字节搬进 React
+状态，损坏的元数据只会被丢弃并重新建立。
 Manga OCR/审校区域现在可投影为 `DocumentContentPackage`，翻译区域可投影为同 block ID 的
 `DocumentTranslationPackage`；这些规范化 blocks 同时驱动 Reader/Document handoff 和 Workspace 全局搜索，保留 geometry、
 writing mode、confidence 与 provenance，避免漫画与文档各自维护一套内容模型。每页投影会以内容寻址的

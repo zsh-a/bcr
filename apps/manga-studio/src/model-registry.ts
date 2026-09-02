@@ -1,5 +1,10 @@
 import type { SqliteDb } from "@bcr/storage-sqlite";
 import {
+  clearMangaModelCache,
+  inspectMangaModelCache,
+  type MangaModelCacheInfo,
+} from "./model-cache";
+import {
   OCR_MODEL_MANIFESTS,
   TRANSLATION_MODEL_MANIFESTS,
   type MangaAdapterExecution,
@@ -96,9 +101,8 @@ function now(): number {
 }
 
 /**
- * Small metadata registry for model lifecycle facts. It deliberately does not
- * delete Cache Storage entries: Transformers.js owns those keys, so byte
- * eviction will be a separate explicit integration once its cache API is stable.
+ * Small metadata registry for model lifecycle facts. Byte ownership stays in a
+ * versioned Cache API namespace; clearing it also invalidates readiness facts.
  */
 export class MangaModelRegistry {
   private records = new Map<string, MangaModelRecord>();
@@ -128,6 +132,36 @@ export class MangaModelRegistry {
 
   statusForExecution(execution: MangaAdapterExecution): MangaModelStatus {
     return this.getForExecution(execution)?.status ?? "unknown";
+  }
+
+  /** Inspect file counts only; model bytes never enter the React state tree. */
+  async inspectCache(): Promise<MangaModelCacheInfo> {
+    return inspectMangaModelCache([
+      ...new Set([
+        ...mangaModelCatalog().map((entry) => entry.model),
+        ...this.records.values().map((entry) => entry.model),
+      ]),
+    ]);
+  }
+
+  /** Clear the product-owned cache and invalidate readiness metadata together. */
+  async clearCache(): Promise<boolean> {
+    const deleted = await clearMangaModelCache();
+    if (!deleted) return false;
+    this.records = new Map(
+      [...this.records.entries()].map(([key, record]) => [
+        key,
+        {
+          ...record,
+          status: "unknown" as const,
+          lastLoadedAt: undefined,
+          lastError: undefined,
+        },
+      ]),
+    );
+    this.emit();
+    this.enqueuePersist();
+    return true;
   }
 
   async restore(): Promise<void> {

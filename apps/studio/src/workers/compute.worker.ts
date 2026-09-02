@@ -29,6 +29,7 @@ import {
   type MangaTranslationArtifact,
   type MangaTranslationLine,
 } from "@bcr/manga-studio/model";
+import { configureMangaTransformersCache } from "@bcr/manga-studio/model-cache";
 import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
 import init, { peak_f32, StreamingBlake3 } from "../../../../crates/kernels/pkg/bcr_kernels.js";
@@ -445,6 +446,7 @@ async function buildOcrTranscriber(
   const { pipeline, env } = await import("@huggingface/transformers");
   env.allowLocalModels = false;
   env.allowRemoteModels = true;
+  await configureMangaTransformersCache(env);
   ctx.progress(0.02);
   const fn = (await pipeline("image-to-text", model, {
     ...(device === "webgpu" ? { device: "webgpu", dtype: "q8" } : { dtype: "q8" }),
@@ -502,6 +504,56 @@ async function loadOcrTranscriber(
     }
     throw error;
   }
+}
+
+/** Explicit model preflight: warm Transformers.js cache without touching a page. */
+async function mangaModelPreload(
+  task: { inputs: ReadonlyArray<ArtifactRef>; config?: Record<string, unknown> | undefined },
+  ctx: WorkerContext,
+): Promise<ReadonlyArray<ArtifactRef>> {
+  const kind = configText(task.config?.["kind"], "");
+  const model = configText(task.config?.["model"], "").trim();
+  if (model.length === 0) throw new Error("manga.model.preload requires a model");
+  const deviceValue = configText(task.config?.["device"], "auto");
+  const device: OcrDevice =
+    deviceValue === "webgpu" || deviceValue === "wasm" ? deviceValue : "auto";
+  const languageValue = configText(task.config?.["sourceLanguage"], "ja");
+  const sourceLanguage: MangaSourceLanguage =
+    languageValue === "en" || languageValue === "ko" ? languageValue : "ja";
+  ctx.progress(0.01);
+
+  if (kind === "ocr") {
+    const adapterValue = configText(task.config?.["adapter"], "manga.onnx");
+    const adapter: MangaOcrAdapterId =
+      adapterValue === "vision.onnx" || adapterValue === "manga.onnx"
+        ? adapterValue
+        : "review.manual";
+    const resolution = resolveMangaOcrAdapter(adapter, sourceLanguage, { model, device });
+    if (
+      resolution.execution.effectiveAdapter === "review.manual" ||
+      resolution.execution.model === undefined
+    ) {
+      throw new Error(`manga.model.preload cannot load OCR model for ${sourceLanguage}`);
+    }
+    await loadOcrTranscriber(model, device, ctx);
+    ctx.progress(1);
+    return [];
+  }
+
+  if (kind === "translation") {
+    const resolution = resolveMangaTranslationAdapter("local", sourceLanguage, {
+      model,
+      device,
+    });
+    if (resolution.execution.effectiveAdapter !== "local") {
+      throw new Error(`manga.model.preload cannot load translation model for ${sourceLanguage}`);
+    }
+    await loadMangaTranslator(model, device, ctx);
+    ctx.progress(1);
+    return [];
+  }
+
+  throw new Error(`manga.model.preload received unknown kind: ${kind || "empty"}`);
 }
 
 function generatedText(result: unknown): string {
@@ -641,6 +693,7 @@ async function buildMangaTranslator(
   const { pipeline, env } = await import("@huggingface/transformers");
   env.allowLocalModels = false;
   env.allowRemoteModels = true;
+  await configureMangaTransformersCache(env);
   ctx.progress(0.02);
   const fn = (await pipeline("translation", model, {
     ...(device === "webgpu" ? { device: "webgpu", dtype: "q8" } : { dtype: "q8" }),
@@ -989,6 +1042,7 @@ defineWorker({
   "document.typeset.preview": (task, ctx) => documentTypesetPreview(task, ctx),
   "manga.ocr.review": (task, ctx) => mangaOcrReview(task, ctx),
   "manga.ocr.onnx": (task, ctx) => mangaOcrOnnx(task, ctx),
+  "manga.model.preload": (task, ctx) => mangaModelPreload(task, ctx),
   "manga.translate.onnx": (task, ctx) => mangaTranslateOnnx(task, ctx),
   "manga.clean.preview": (task, ctx) => mangaCleanPreview(task, ctx),
 });

@@ -26,6 +26,7 @@ import {
   LOCAL_OCR_OPERATION,
   LOCAL_TRANSLATION_OPERATION,
   CLEAN_PREVIEW_OPERATION,
+  MODEL_PRELOAD_OPERATION,
   REVIEW_OCR_OPERATION,
 } from "./operations";
 import { mangaRuntime } from "./runtime";
@@ -48,6 +49,12 @@ let activeTranslation:
 let activeClean:
   | {
       readonly runId: number;
+      readonly handle: TaskHandle;
+    }
+  | undefined;
+let activeModelPreload:
+  | {
+      readonly key: string;
       readonly handle: TaskHandle;
     }
   | undefined;
@@ -341,6 +348,75 @@ function cleanTask(runId: number): ComputeTask | undefined {
 
 function errorMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
+}
+
+/** Warm a selected local model through the same WorkerPool used by the pipeline. */
+export async function preloadMangaModel(
+  services: RuntimeServices | undefined,
+  execution: MangaAdapterExecution,
+): Promise<boolean> {
+  if (
+    services === undefined ||
+    execution.model === undefined ||
+    execution.model.trim().length === 0
+  ) {
+    return false;
+  }
+  const isLocalOcr =
+    execution.kind === "ocr" &&
+    (execution.effectiveAdapter === "vision.onnx" || execution.effectiveAdapter === "manga.onnx");
+  const isLocalTranslation =
+    execution.kind === "translation" && execution.effectiveAdapter === "local";
+  if (!isLocalOcr && !isLocalTranslation) return false;
+  const key = `${execution.kind}:${execution.model}:${execution.requestedDevice}`;
+  if (activeModelPreload !== undefined) {
+    if (activeModelPreload.key !== key) return false;
+    await Effect.runPromise(activeModelPreload.handle.await);
+    return true;
+  }
+  const runtime = mangaRuntime();
+  if (runtime !== undefined) void runtime.models.markLoading(execution);
+  const task: ComputeTask = {
+    id: `manga-model-preload-${Date.now().toString(36)}`,
+    runtime: MODEL_PRELOAD_OPERATION.runtime,
+    operation: MODEL_PRELOAD_OPERATION.operation,
+    inputs: [],
+    outputs: [],
+    resources: {
+      ...MODEL_PRELOAD_OPERATION.resources,
+      ...(execution.effectiveDevice === "webgpu" ? { gpu: true } : {}),
+    },
+    // The scheduler cache is intentionally disabled. Transformers.js is the
+    // source of truth for model bytes; every explicit preload revalidates it.
+    cache: { enabled: false },
+    config: {
+      kind: execution.kind,
+      model: execution.model,
+      adapter: execution.effectiveAdapter,
+      sourceLanguage: execution.sourceLanguage ?? "ja",
+      device: execution.requestedDevice,
+    },
+  };
+  let handle: TaskHandle;
+  try {
+    handle = await Effect.runPromise(services.scheduler.submit(task));
+  } catch (error) {
+    if (runtime !== undefined) void runtime.models.markError(execution, error);
+    throw error;
+  }
+  activeModelPreload = { key, handle };
+  try {
+    await Effect.runPromise(handle.await);
+    if (runtime !== undefined) void runtime.models.markReady(execution);
+    manga.log("ok", `model preload · ${execution.model} · browser cache ready`);
+    return true;
+  } catch (error) {
+    if (runtime !== undefined) void runtime.models.markError(execution, error);
+    manga.log("warn", `model preload · ${execution.model} · ${errorMessage(error)}`);
+    throw error;
+  } finally {
+    if (activeModelPreload?.handle === handle) activeModelPreload = undefined;
+  }
 }
 
 /** Run the selected OCR adapter through the shared WorkerPool. */

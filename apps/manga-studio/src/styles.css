@@ -1134,6 +1134,92 @@
   color: var(--manga-danger);
 }
 
+.manga-model-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.manga-model-status .manga-model-actions {
+  grid-column: 1 / -1;
+}
+
+.manga-model-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--manga-border);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--manga-cyan) 8%, transparent);
+  padding: 4px 7px;
+  color: var(--manga-cyan);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.03em;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    opacity 140ms ease;
+}
+
+.manga-model-action:hover:not(:disabled) {
+  border-color: var(--manga-cyan);
+  background: color-mix(in srgb, var(--manga-cyan) 15%, transparent);
+}
+
+.manga-model-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.manga-model-action-danger {
+  border-color: color-mix(in srgb, var(--manga-danger) 35%, var(--manga-border));
+  background: color-mix(in srgb, var(--manga-danger) 7%, transparent);
+  color: var(--manga-danger);
+}
+
+.manga-model-cache-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 11px;
+  border: 1px solid color-mix(in srgb, var(--manga-cyan) 22%, var(--manga-border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--manga-cyan) 4%, transparent);
+  padding: 8px 9px;
+}
+
+.manga-model-cache-summary > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.manga-model-cache-summary > div:first-child span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--manga-faint);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+}
+
+.manga-model-cache-summary strong {
+  color: var(--manga-cyan);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.manga-model-cache-summary small {
+  color: var(--manga-muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
 .manga-glossary-section {
   padding-bottom: 16px;
 }

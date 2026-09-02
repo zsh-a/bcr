@@ -3,6 +3,7 @@ import {
   Check,
   ChevronDown,
   CircleAlert,
+  Database,
   Download,
   FileImage,
   FileUp,
@@ -17,6 +18,7 @@ import {
   ScanText,
   Sparkles,
   Square,
+  Trash2,
   Type,
   Upload,
   WandSparkles,
@@ -33,7 +35,13 @@ import { useLocationSearch, useOptionalRuntime } from "@bcr/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { expandMangaArchive, formatForMangaFile } from "./archive";
 import { mangaPageToDocumentPackages } from "./document-adapter";
-import { cancelMangaPipeline, cancelMangaQueue, runMangaPipeline, runMangaQueue } from "./pipeline";
+import {
+  cancelMangaPipeline,
+  cancelMangaQueue,
+  preloadMangaModel,
+  runMangaPipeline,
+  runMangaQueue,
+} from "./pipeline";
 import { findGlossaryMatches } from "./glossary";
 import {
   createMangaRuntime,
@@ -51,6 +59,7 @@ import {
   type MangaModelRecord,
   type MangaModelStatus,
 } from "./model-registry";
+import type { MangaModelCacheInfo } from "./model-cache";
 import {
   CLEAN_MODEL_MANIFESTS,
   OCR_MODEL_MANIFESTS,
@@ -141,18 +150,112 @@ function modelStatusLabel(status: MangaModelStatus): string {
   return "NOT LOADED · 懒加载";
 }
 
-function ModelStatusNote({ record }: { readonly record: MangaModelRecord | undefined }) {
+function ModelStatusNote({
+  record,
+  execution,
+  disabled,
+  onPreload,
+  onClear,
+}: {
+  readonly record: MangaModelRecord | undefined;
+  readonly execution: MangaAdapterExecution;
+  readonly disabled: boolean;
+  readonly onPreload: () => void;
+  readonly onClear: () => void;
+}) {
   const status = record?.status ?? "unknown";
   const detail =
     record?.lastError ??
     (status === "ready"
-      ? "模型已成功加载，后续任务可复用浏览器缓存"
-      : "首次执行将在 Worker 中按需加载");
+      ? "模型已成功加载，后续任务可复用 Manga 专属缓存"
+      : "首次执行将在 Worker 中按需加载；可先预加载");
+  const canPreload = execution.model !== undefined && execution.model.trim().length > 0;
   return (
     <div className="manga-model-status" data-model-status={status}>
       <span>MODEL CACHE</span>
       <strong>{modelStatusLabel(status)}</strong>
       <small>{detail}</small>
+      <div className="manga-model-actions">
+        <button
+          type="button"
+          className="manga-model-action"
+          data-model-preload={execution.model ?? ""}
+          disabled={disabled || !canPreload || status === "loading"}
+          onClick={onPreload}
+        >
+          <Download className="size-3" /> {status === "loading" ? "加载中…" : "预加载模型"}
+        </button>
+        {status === "ready" && (
+          <button
+            type="button"
+            className="manga-model-action manga-model-action-danger"
+            disabled={disabled}
+            onClick={onClear}
+          >
+            <Trash2 className="size-3" /> 清理
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ModelCacheSummary({
+  info,
+  online,
+  busy,
+  onRefresh,
+  onClear,
+}: {
+  readonly info: MangaModelCacheInfo | null;
+  readonly online: boolean;
+  readonly busy: boolean;
+  readonly onRefresh: () => void;
+  readonly onClear: () => void;
+}) {
+  const status =
+    info === null
+      ? "检查缓存…"
+      : !info.supported
+        ? "浏览器缓存不可用"
+        : `${info.entryCount} 个文件 · ${online ? "ONLINE" : "OFFLINE"}`;
+  return (
+    <div
+      className="manga-model-cache-summary"
+      data-model-cache={info?.supported ? "ready" : "unknown"}
+    >
+      <div>
+        <span>
+          <Database className="size-3" /> MODEL STORAGE
+        </span>
+        <strong>{status}</strong>
+      </div>
+      <div className="manga-model-actions">
+        <button
+          type="button"
+          className="manga-model-action"
+          disabled={busy}
+          onClick={onRefresh}
+          aria-label="刷新模型缓存状态"
+        >
+          <RotateCcw className="size-3" /> 刷新
+        </button>
+        {info !== null && info.supported && info.entryCount > 0 && (
+          <button
+            type="button"
+            className="manga-model-action manga-model-action-danger"
+            disabled={busy}
+            onClick={onClear}
+          >
+            <Trash2 className="size-3" /> 清理全部
+          </button>
+        )}
+      </div>
+      <small>
+        {online
+          ? "首次预加载需要网络；完成后可在离线环境复用已缓存文件。"
+          : "当前离线：仅能复用已缓存文件，首次下载会失败。"}
+      </small>
     </div>
   );
 }
@@ -224,6 +327,11 @@ export function App() {
   const [glossarySource, setGlossarySource] = useState("");
   const [glossaryTarget, setGlossaryTarget] = useState("");
   const [modelRecords, setModelRecords] = useState<ReadonlyArray<MangaModelRecord>>([]);
+  const [modelCacheInfo, setModelCacheInfo] = useState<MangaModelCacheInfo | null>(null);
+  const [modelActionKey, setModelActionKey] = useState<string | null>(null);
+  const [online, setOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
   const appliedRouteRef = useRef("");
 
   useEffect(() => {
@@ -356,12 +464,36 @@ export function App() {
   useEffect(() => {
     if (runtime === null) {
       setModelRecords([]);
+      setModelCacheInfo(null);
       return;
     }
     const sync = () => setModelRecords(runtime.models.getSnapshot().records);
     sync();
     return runtime.models.subscribe(sync);
   }, [runtime]);
+
+  useEffect(() => {
+    const handleOnline = () => setOnline(true);
+    const handleOffline = () => setOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  const refreshModelCache = (): void => {
+    if (runtime === null) return;
+    void runtime.models.inspectCache().then(setModelCacheInfo);
+  };
+
+  useEffect(() => {
+    if (runtime === null) return;
+    refreshModelCache();
+    const timer = window.setInterval(refreshModelCache, 15_000);
+    return () => window.clearInterval(timer);
+  }, [runtime, modelRecords]);
 
   const selectedRegion = useMemo(
     () => state.regions.find((region) => region.id === state.activeRegionId) ?? null,
@@ -404,6 +536,45 @@ export function App() {
   };
   const ocrModelRecord = modelRecordFor(ocrResolution.execution);
   const translationModelRecord = modelRecordFor(translationResolution.execution);
+  const modelActionId = (execution: MangaAdapterExecution): string =>
+    execution.model === undefined
+      ? `${execution.kind}:none`
+      : `${execution.kind}:${execution.model}`;
+  const startModelPreload = (execution: MangaAdapterExecution): void => {
+    if (runtime === null) return;
+    const actionId = modelActionId(execution);
+    if (modelActionKey !== null) return;
+    setModelActionKey(actionId);
+    void preloadMangaModel(hostServices ?? undefined, execution)
+      .catch(() => undefined)
+      .finally(() => {
+        setModelActionKey((current) => (current === actionId ? null : current));
+        refreshModelCache();
+      });
+  };
+  const clearModelCache = (): void => {
+    if (runtime === null || modelActionKey !== null) return;
+    if (!window.confirm("清理 Manga 模型缓存？下次使用需要重新下载。")) return;
+    setModelActionKey("clear");
+    void runtime.models
+      .clearCache()
+      .then((deleted) => {
+        manga.log(
+          deleted ? "ok" : "warn",
+          deleted ? "model cache · Manga 专属缓存已清理" : "model cache · 当前浏览器不支持清理",
+        );
+      })
+      .catch((error: unknown) => {
+        manga.log(
+          "warn",
+          `model cache · clear failed · ${error instanceof Error ? error.message : String(error)}`,
+        );
+      })
+      .finally(() => {
+        setModelActionKey(null);
+        refreshModelCache();
+      });
+  };
   const ocrIsLocal = state.settings.ocrAdapter !== "review.manual";
   const ocrSupportsLanguage = ocrResolution.execution.fallbackReason !== "language-unsupported";
   const cleanResolution = resolveMangaCleanMode(state.settings.cleanMode);
@@ -1013,6 +1184,13 @@ export function App() {
               <span>TRANSLATION</span>
               <Languages className="size-4 text-[var(--manga-cyan)]" />
             </div>
+            <ModelCacheSummary
+              info={modelCacheInfo}
+              online={online}
+              busy={modelActionKey !== null}
+              onRefresh={refreshModelCache}
+              onClear={clearModelCache}
+            />
             <div className="manga-config-grid">
               <label>
                 <span>源语言</span>
@@ -1057,7 +1235,13 @@ export function App() {
                   <strong>{translationModel ?? "No model manifest"}</strong>
                   <small>{effectiveTranslationManifest.detail}</small>
                 </div>
-                <ModelStatusNote record={translationModelRecord} />
+                <ModelStatusNote
+                  record={translationModelRecord}
+                  execution={translationResolution.execution}
+                  disabled={runtime === null || modelActionKey !== null}
+                  onPreload={() => startModelPreload(translationResolution.execution)}
+                  onClear={clearModelCache}
+                />
                 {translationResolution.execution.fallbackReason !== undefined && (
                   <small className="manga-config-help manga-config-warning">
                     {fallbackLabel(translationResolution.execution.fallbackReason)}
@@ -1119,7 +1303,13 @@ export function App() {
                     {ocrManifest?.detail}
                   </small>
                 </label>
-                <ModelStatusNote record={ocrModelRecord} />
+                <ModelStatusNote
+                  record={ocrModelRecord}
+                  execution={ocrResolution.execution}
+                  disabled={runtime === null || modelActionKey !== null}
+                  onPreload={() => startModelPreload(ocrResolution.execution)}
+                  onClear={clearModelCache}
+                />
                 {!ocrSupportsLanguage && (
                   <small className="manga-config-help manga-config-warning">
                     当前源语言不在该模型能力范围内；建议切换 Review adapter 并人工审校。

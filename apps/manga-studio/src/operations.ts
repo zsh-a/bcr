@@ -234,6 +234,24 @@ export const LOCAL_OCR_OPERATION: OperationDef = {
   ]),
 };
 
+/** Warm one local model explicitly; no page input is required. */
+export const MODEL_PRELOAD_OPERATION: OperationDef = {
+  operation: "manga.model.preload",
+  label: "Model / Preload",
+  detail: "下载并校验模型文件，写入 Manga 专属浏览器缓存",
+  runtime: "wasm",
+  inputs: [],
+  outputs: [],
+  resources: { memoryMB: 2048, threads: 1 },
+  config: withSkipCache([
+    { key: "kind", label: "模型类型", kind: "string", default: "ocr" },
+    { key: "model", label: "模型", kind: "string", default: "" },
+    { key: "adapter", label: "适配器", kind: "string", default: "manga.onnx" },
+    { key: "sourceLanguage", label: "源语言", kind: "string", default: "ja" },
+    { key: "device", label: "设备", kind: "string", default: "auto" },
+  ]),
+};
+
 /** Opt-in text translation operation. The Worker resolves the multilingual NLLB model. */
 export const LOCAL_TRANSLATION_OPERATION: OperationDef = {
   operation: "manga.translate.onnx",
