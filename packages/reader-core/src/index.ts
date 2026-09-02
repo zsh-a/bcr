@@ -1,6 +1,7 @@
 export type {
   LocatorKind,
   ReaderBook,
+  ReaderAnnotation,
   ReaderBookmark,
   ReaderFormat,
   ReaderLocator,
@@ -16,6 +17,7 @@ export {
   createLocator,
   firstLocator,
   locatorAtPercentage,
+  normalizeAnnotation,
   normalizeBookmark,
   normalizeLocator,
   percentageForLocator,

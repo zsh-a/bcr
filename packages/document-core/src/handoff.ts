@@ -21,7 +21,7 @@ interface PublishHandoffInput {
   readonly file: File;
 }
 
-interface HandoffMarker {
+export interface DocumentHandoffMarker {
   readonly id: string;
   readonly target: DocumentHandoffTarget;
   readonly jobId: string;
@@ -39,12 +39,34 @@ function createId(): string {
   return `handoff-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function writeMarker(marker: HandoffMarker): void {
+function writeMarker(marker: DocumentHandoffMarker): void {
   if (typeof sessionStorage === "undefined") return;
   try {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(marker));
   } catch {
     // Private browsing / disabled storage should not prevent an in-tab handoff.
+  }
+}
+
+/** Read the lightweight marker left behind when a target cannot consume a handoff. */
+export function getDocumentHandoffMarker(): DocumentHandoffMarker | undefined {
+  if (typeof sessionStorage === "undefined") return undefined;
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (raw === null) return undefined;
+    const marker = JSON.parse(raw) as Partial<DocumentHandoffMarker>;
+    if (
+      typeof marker.id !== "string" ||
+      (marker.target !== "reader" && marker.target !== "manga") ||
+      typeof marker.jobId !== "string" ||
+      typeof marker.name !== "string" ||
+      typeof marker.createdAt !== "number"
+    ) {
+      return undefined;
+    }
+    return marker as DocumentHandoffMarker;
+  } catch {
+    return undefined;
   }
 }
 

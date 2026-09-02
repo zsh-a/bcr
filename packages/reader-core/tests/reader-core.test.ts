@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createLocator,
   locatorAtPercentage,
+  normalizeAnnotation,
   normalizeLocator,
   percentageForLocator,
   sameLocator,
@@ -92,5 +93,33 @@ describe("reader-core", () => {
     expect(
       sameLocator(createLocator(book.sections[1]!, 0.4), createLocator(book.sections[2]!, 0.4)),
     ).toBe(false);
+  });
+
+  it("normalizes annotations when a publication gets new section ids", () => {
+    const annotation = normalizeAnnotation(
+      {
+        ...book,
+        sections: book.sections.map((section, index) => ({
+          ...section,
+          id: `section-${index + 1}`,
+          href: `chapter-${index + 1}.xhtml`,
+        })),
+      },
+      {
+        id: "note-1",
+        label: "第二章",
+        note: "继续验证 Locator。",
+        locator: {
+          kind: "section",
+          sectionId: "missing",
+          href: "chapter-2.xhtml",
+          progression: 0.25,
+        },
+        createdAt: 1,
+        updatedAt: 2,
+      },
+    );
+    expect(annotation.locator.sectionId).toBe("section-2");
+    expect(annotation.note).toContain("Locator");
   });
 });

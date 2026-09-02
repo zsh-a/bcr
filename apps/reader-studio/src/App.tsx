@@ -9,6 +9,7 @@ import {
   FileText,
   Leaf,
   List,
+  MessageSquarePlus,
   Minus,
   Moon,
   PanelLeftClose,
@@ -26,6 +27,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type FormEvent,
   type CSSProperties,
   type RefObject,
 } from "react";
@@ -33,11 +35,12 @@ import {
   locatorAtPercentage,
   sameLocator,
   type ReaderBook,
+  type ReaderAnnotation,
   type ReaderBookmark,
   type ReaderSection,
   type SearchHit,
 } from "@bcr/reader-core";
-import { consumeDocumentHandoff } from "@bcr/document-core";
+import { consumeDocumentHandoff, getDocumentHandoffMarker } from "@bcr/document-core";
 import {
   createReaderRuntime,
   importReaderFile,
@@ -52,6 +55,7 @@ import { getReaderState, reader, useReader } from "./store";
 import "./styles.css";
 
 const EMPTY_BOOKMARKS: ReadonlyArray<ReaderBookmark> = [];
+const EMPTY_ANNOTATIONS: ReadonlyArray<ReaderAnnotation> = [];
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -124,6 +128,10 @@ function useDebouncedPersist(runtime: ReaderRuntime | null): void {
   const library = useReader((state) => state.library);
   const progressByBook = useReader((state) => state.progressByBook);
   const bookmarksByBook = useReader((state) => state.bookmarksByBook);
+  const annotationsByBook = useReader((state) => state.annotationsByBook);
+  const query = useReader((state) => state.query);
+  const searchBookId = useReader((state) => state.searchBookId);
+  const searchOpen = useReader((state) => state.searchOpen);
   const settings = useReader((state) => state.settings);
   useEffect(() => {
     if (runtime === null || getReaderState().status !== "ready") return;
@@ -131,7 +139,17 @@ function useDebouncedPersist(runtime: ReaderRuntime | null): void {
       persistReaderSnapshot(runtime);
     }, 900);
     return () => window.clearTimeout(handle);
-  }, [runtime, library, progressByBook, bookmarksByBook, settings]);
+  }, [
+    runtime,
+    library,
+    progressByBook,
+    bookmarksByBook,
+    annotationsByBook,
+    query,
+    searchBookId,
+    searchOpen,
+    settings,
+  ]);
 
   useEffect(() => {
     if (runtime === null) return;
@@ -195,6 +213,8 @@ function useReaderBoot(): {
             restored.settings,
             restored.bookmarksByBook,
             restored.activeBookId,
+            restored.annotationsByBook,
+            restored.searchSession,
           );
           await Promise.all(restored.books.map((book) => indexBook(nextRuntime, book)));
         } else {
@@ -333,7 +353,12 @@ export function App() {
     const handoff = consumeDocumentHandoff(handoffId, "reader");
     window.history.replaceState({}, "", "/reader");
     if (handoff === undefined) {
-      setNotice("Document handoff 已过期；请从 Document Studio 重新导入源文件");
+      const marker = getDocumentHandoffMarker();
+      setNotice(
+        marker?.id !== handoffId || marker.target !== "reader"
+          ? "Document handoff 已过期；请从 Document Studio 重新导入源文件"
+          : `Document handoff「${marker.name}」已过期；请从 Document Studio 重新导入源文件`,
+      );
       return;
     }
     void importFiles([handoff.file]);
@@ -540,7 +565,20 @@ function ReaderWorkspace(props: {
   const active = useReader((state) => activeBook(state));
   const query = useReader((state) => state.query);
   const searchHits = useReader((state) => state.searchHits);
+  const [annotationOpen, setAnnotationOpen] = useState(false);
+  const [annotationDraft, setAnnotationDraft] = useState("");
   if (active === undefined) return null;
+  const openAnnotationComposer = () => {
+    setAnnotationDraft("");
+    setAnnotationOpen(true);
+  };
+  const submitAnnotation = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (annotationDraft.trim().length === 0) return;
+    reader.addAnnotation(annotationDraft);
+    setAnnotationDraft("");
+    setAnnotationOpen(false);
+  };
   return (
     <div className={`reader-workspace ${sidebarOpen ? "sidebar-visible" : "sidebar-hidden"}`}>
       <aside className="reader-sidebar" aria-label="本地书库">
@@ -556,7 +594,15 @@ function ReaderWorkspace(props: {
       )}
       <main id="reader-content" className="reader-main" aria-label="阅读内容">
         {searchOpen && query.length > 0 && <SearchPanel hits={searchHits} />}
-        <ReaderToolbar book={active} settings={settings} />
+        <ReaderToolbar book={active} settings={settings} onAddAnnotation={openAnnotationComposer} />
+        {annotationOpen && (
+          <AnnotationComposer
+            value={annotationDraft}
+            onChange={setAnnotationDraft}
+            onCancel={() => setAnnotationOpen(false)}
+            onSubmit={submitAnnotation}
+          />
+        )}
         <ReadingView runtime={props.runtime} book={active} />
       </main>
     </div>
@@ -809,7 +855,11 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
   );
 }
 
-function ReaderToolbar(props: { book: ReaderBook; settings: ReaderSettings }) {
+function ReaderToolbar(props: {
+  book: ReaderBook;
+  settings: ReaderSettings;
+  onAddAnnotation: () => void;
+}) {
   const activeSectionId = useReader((state) => state.activeSectionId);
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
   const locator = useReader((state) => state.progressByBook[props.book.id]?.locator);
@@ -840,6 +890,16 @@ function ReaderToolbar(props: { book: ReaderBook; settings: ReaderSettings }) {
       <div className="reader-toolbar-actions">
         <button
           type="button"
+          className="reader-annotation-toggle"
+          onClick={props.onAddAnnotation}
+          aria-label="添加阅读笔记"
+          title="添加阅读笔记"
+        >
+          <MessageSquarePlus className="reader-icon" />
+          <span>笔记</span>
+        </button>
+        <button
+          type="button"
           className={`reader-bookmark-toggle ${bookmarked ? "is-active" : ""}`}
           onClick={() => reader.toggleBookmark()}
           aria-pressed={bookmarked}
@@ -857,6 +917,50 @@ function ReaderToolbar(props: { book: ReaderBook; settings: ReaderSettings }) {
         <FontSizeMenu settings={props.settings} />
       </div>
     </div>
+  );
+}
+
+function AnnotationComposer(props: {
+  value: string;
+  onChange: (value: string) => void;
+  onCancel: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form className="reader-annotation-composer" onSubmit={props.onSubmit}>
+      <div className="reader-annotation-composer-heading">
+        <div>
+          <span className="reader-eyebrow">NEW NOTE</span>
+          <strong>把这一刻留下来</strong>
+        </div>
+        <button
+          type="button"
+          className="reader-icon-button"
+          aria-label="取消添加笔记"
+          onClick={props.onCancel}
+        >
+          <X className="reader-icon" />
+        </button>
+      </div>
+      <textarea
+        value={props.value}
+        onChange={(event) => props.onChange(event.target.value)}
+        placeholder="写下你的想法、疑问或下一步…"
+        maxLength={2_000}
+        autoFocus
+        aria-label="笔记内容"
+      />
+      <div className="reader-annotation-composer-footer">
+        <span>自动锚定当前位置 · {props.value.length}/2000</span>
+        <button
+          type="submit"
+          className="reader-button reader-button-primary"
+          disabled={!props.value.trim()}
+        >
+          保存笔记
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -1155,6 +1259,9 @@ function ReadingEnd(props: { book: ReaderBook }) {
 function ChapterRail(props: { book: ReaderBook }) {
   const activeSectionId = useReader((state) => state.activeSectionId);
   const bookmarks = useReader((state) => state.bookmarksByBook[props.book.id] ?? EMPTY_BOOKMARKS);
+  const annotations = useReader(
+    (state) => state.annotationsByBook[props.book.id] ?? EMPTY_ANNOTATIONS,
+  );
   return (
     <aside className="reader-chapter-rail" aria-label="章节目录">
       <div className="reader-rail-heading">
@@ -1199,6 +1306,40 @@ function ChapterRail(props: { book: ReaderBook }) {
                   className="reader-bookmark-remove"
                   aria-label={`移除书签 ${bookmark.label}`}
                   onClick={() => reader.removeBookmark(props.book.id, bookmark.id)}
+                >
+                  <X className="reader-icon" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {annotations.length > 0 && (
+        <>
+          <div className="reader-rail-divider" />
+          <div className="reader-rail-heading reader-rail-subheading reader-annotation-heading">
+            <MessageSquarePlus className="reader-icon" />
+            <span>笔记 · {annotations.length}</span>
+          </div>
+          <div className="reader-annotation-list">
+            {annotations.map((annotation) => (
+              <div className="reader-annotation-row" key={annotation.id}>
+                <button
+                  type="button"
+                  className="reader-annotation-item"
+                  onClick={() => reader.openAnnotation(props.book.id, annotation.id)}
+                >
+                  <MessageSquarePlus className="reader-icon" />
+                  <span>
+                    <strong>{annotation.label}</strong>
+                    <small>{annotation.note}</small>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="reader-annotation-remove"
+                  aria-label={`移除笔记 ${annotation.label}`}
+                  onClick={() => reader.removeAnnotation(props.book.id, annotation.id)}
                 >
                   <X className="reader-icon" />
                 </button>

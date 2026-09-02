@@ -1,4 +1,5 @@
 import type {
+  ReaderAnnotation,
   ReaderBook,
   ReaderBookmark,
   ReaderProgress,
@@ -7,6 +8,7 @@ import type {
 } from "@bcr/reader-core";
 
 export type {
+  ReaderAnnotation,
   ReaderBook,
   ReaderBookmark,
   ReaderLocator,
@@ -26,6 +28,12 @@ export interface ReaderSettings {
   readonly contentWidth: "narrow" | "wide";
 }
 
+export interface ReaderSearchSession {
+  readonly query: string;
+  readonly searchBookId: string | null;
+  readonly searchOpen: boolean;
+}
+
 export interface ReaderState {
   readonly status: "booting" | "ready" | "error";
   readonly error: string | null;
@@ -34,6 +42,7 @@ export interface ReaderState {
   readonly activeSectionId: string | null;
   readonly progressByBook: Readonly<Record<string, ReaderProgress>>;
   readonly bookmarksByBook: Readonly<Record<string, ReadonlyArray<ReaderBookmark>>>;
+  readonly annotationsByBook: Readonly<Record<string, ReadonlyArray<ReaderAnnotation>>>;
   readonly query: string;
   readonly searchHits: ReadonlyArray<SearchHit>;
   readonly searchBookId: string | null;

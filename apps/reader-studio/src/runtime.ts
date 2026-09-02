@@ -12,16 +12,23 @@ import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import { Context, Effect, Layer } from "effect";
 import {
+  normalizeAnnotation,
   normalizeBookmark,
   normalizeLocator,
   normalizeSearchQuery,
   searchLibrary,
   type ReaderBook,
+  type ReaderAnnotation,
   type ReaderBookmark,
   type SearchHit,
 } from "@bcr/reader-core";
 import { formatForFile, openReaderFile } from "./adapters";
-import { DEFAULT_READER_SETTINGS, type ReaderSettings, type ReaderState } from "./model";
+import {
+  DEFAULT_READER_SETTINGS,
+  type ReaderSearchSession,
+  type ReaderSettings,
+  type ReaderState,
+} from "./model";
 import { createReaderIndexSession, type ReaderIndexSession } from "./session";
 
 export interface ReaderRuntime {
@@ -73,6 +80,8 @@ interface PersistedReaderSnapshot {
   readonly progressByBook: ReaderState["progressByBook"];
   readonly settings: ReaderSettings;
   readonly bookmarksByBook?: ReaderState["bookmarksByBook"];
+  readonly annotationsByBook?: ReaderState["annotationsByBook"];
+  readonly searchSession?: ReaderSearchSession;
 }
 
 interface RestoredReaderSnapshot {
@@ -81,6 +90,8 @@ interface RestoredReaderSnapshot {
   readonly progressByBook: ReaderState["progressByBook"];
   readonly settings: ReaderSettings;
   readonly bookmarksByBook: ReaderState["bookmarksByBook"];
+  readonly annotationsByBook: ReaderState["annotationsByBook"];
+  readonly searchSession: ReaderSearchSession;
 }
 
 const FTS_SCHEMA = `
@@ -211,6 +222,12 @@ export async function persistReader(runtime: ReaderRuntime, state: ReaderState):
     progressByBook: state.progressByBook,
     settings: state.settings,
     bookmarksByBook: state.bookmarksByBook,
+    annotationsByBook: state.annotationsByBook,
+    searchSession: {
+      query: state.query,
+      searchBookId: state.searchBookId,
+      searchOpen: state.searchOpen,
+    },
   };
   const raw = JSON.stringify(snapshot);
   if (runtime.meta !== undefined) {
@@ -290,6 +307,86 @@ function restoredBookmarks(
     if (bookmarks.length > 0) restored[book.id] = bookmarks;
   }
   return restored;
+}
+
+function restoredAnnotations(
+  books: ReadonlyArray<ReaderBook>,
+  raw: unknown,
+): ReaderState["annotationsByBook"] {
+  if (typeof raw !== "object" || raw === null) return {};
+  const source = raw as Record<string, unknown>;
+  const restored: Record<string, ReadonlyArray<ReaderAnnotation>> = {};
+  for (const book of books) {
+    const candidates = source[book.id];
+    if (!Array.isArray(candidates)) continue;
+    const seen = new Set<string>();
+    const annotations = candidates.flatMap((candidate) => {
+      if (typeof candidate !== "object" || candidate === null) return [];
+      const value = candidate as Record<string, unknown>;
+      if (
+        typeof value["id"] !== "string" ||
+        typeof value["label"] !== "string" ||
+        typeof value["note"] !== "string" ||
+        typeof value["createdAt"] !== "number" ||
+        typeof value["updatedAt"] !== "number" ||
+        typeof value["locator"] !== "object" ||
+        value["locator"] === null ||
+        seen.has(value["id"])
+      ) {
+        return [];
+      }
+      const locatorValue = value["locator"] as Record<string, unknown>;
+      if (typeof locatorValue["sectionId"] !== "string") return [];
+      seen.add(value["id"]);
+      const kind =
+        locatorValue["kind"] === "page" || locatorValue["kind"] === "image"
+          ? locatorValue["kind"]
+          : "section";
+      const locator = normalizeLocator(book, {
+        kind,
+        sectionId: locatorValue["sectionId"],
+        progression:
+          typeof locatorValue["progression"] === "number" ? locatorValue["progression"] : 0,
+        ...(typeof locatorValue["pageNumber"] === "number"
+          ? { pageNumber: locatorValue["pageNumber"] }
+          : {}),
+        ...(typeof locatorValue["href"] === "string" ? { href: locatorValue["href"] } : {}),
+      });
+      return [
+        normalizeAnnotation(book, {
+          id: value["id"],
+          label: value["label"],
+          note: value["note"].slice(0, 2_000),
+          createdAt: value["createdAt"],
+          updatedAt: Math.max(value["createdAt"], value["updatedAt"]),
+          locator,
+        }),
+      ];
+    });
+    if (annotations.length > 0) restored[book.id] = annotations;
+  }
+  return restored;
+}
+
+function restoredSearchSession(
+  books: ReadonlyArray<ReaderBook>,
+  raw: unknown,
+): ReaderSearchSession {
+  if (typeof raw !== "object" || raw === null) {
+    return { query: "", searchBookId: null, searchOpen: false };
+  }
+  const source = raw as Record<string, unknown>;
+  const query = typeof source["query"] === "string" ? source["query"].slice(0, 240) : "";
+  const searchBookId =
+    typeof source["searchBookId"] === "string" &&
+    books.some((book) => book.id === source["searchBookId"])
+      ? source["searchBookId"]
+      : null;
+  return {
+    query,
+    searchBookId,
+    searchOpen: query.trim().length > 0 && source["searchOpen"] === true,
+  };
 }
 
 async function fileFromSource(
@@ -398,6 +495,8 @@ export async function restoreReader(
       progressByBook: snapshot.progressByBook ?? {},
       settings: { ...DEFAULT_READER_SETTINGS, ...snapshot.settings },
       bookmarksByBook: restoredBookmarks(books, snapshot.bookmarksByBook),
+      annotationsByBook: restoredAnnotations(books, snapshot.annotationsByBook),
+      searchSession: restoredSearchSession(books, snapshot.searchSession),
     };
   } catch {
     return undefined;

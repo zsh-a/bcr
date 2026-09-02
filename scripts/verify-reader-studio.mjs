@@ -29,6 +29,13 @@ if ((await bookmarkButton.getAttribute("aria-label")) === "标记当前位置") 
 }
 await page.locator(".reader-bookmark-list").waitFor({ timeout: 5_000 });
 if ((await page.locator(".reader-bookmark-item").count()) < 1) fail("书签没有写入当前阅读会话");
+if ((await page.locator(".reader-annotation-item").count()) === 0) {
+  await page.getByRole("button", { name: "添加阅读笔记" }).click();
+  await page.getByLabel("笔记内容").fill("验证阅读会话恢复");
+  await page.getByRole("button", { name: "保存笔记" }).click();
+}
+await page.locator(".reader-annotation-list").waitFor({ timeout: 5_000 });
+if ((await page.locator(".reader-annotation-item").count()) < 1) fail("阅读笔记没有写入当前会话");
 
 const search = page.getByLabel("在书库中搜索");
 await search.fill("Locator");
@@ -57,6 +64,9 @@ await page.waitForTimeout(500);
 const progress = await page.locator(".reader-progress-ring").innerText();
 if (progress === "0%") fail("阅读进度没有随滚动更新");
 
+await search.fill("Locator");
+await page.locator(".reader-search-result").first().waitFor({ timeout: 10_000 });
+
 await page.screenshot({ path: `${dir}/reader-studio.png`, fullPage: true });
 await page.waitForTimeout(900);
 await page.reload({ waitUntil: "domcontentloaded" });
@@ -70,6 +80,15 @@ if (
 }
 if ((await page.locator(".reader-bookmark-item").count()) < 1) {
   fail("刷新后阅读书签未恢复");
+}
+if ((await page.getByLabel("在书库中搜索").inputValue()) !== "Locator") {
+  fail("刷新后搜索上下文未恢复");
+}
+if ((await page.locator(".reader-search-result").count()) < 1) {
+  fail("刷新后搜索结果未恢复");
+}
+if ((await page.locator(".reader-annotation-item").count()) < 1) {
+  fail("刷新后阅读笔记未恢复");
 }
 
 await browser.close();

@@ -19,8 +19,10 @@ export {
 export { markReadyStages, nextAction, stageById, updateStage } from "./pipeline";
 export {
   consumeDocumentHandoff,
+  getDocumentHandoffMarker,
   hasDocumentHandoff,
   publishDocumentHandoff,
   type DocumentHandoff,
+  type DocumentHandoffMarker,
   type DocumentHandoffTarget,
 } from "./handoff";

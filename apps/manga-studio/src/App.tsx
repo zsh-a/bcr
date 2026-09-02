@@ -20,7 +20,7 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import { consumeDocumentHandoff } from "@bcr/document-core";
+import { consumeDocumentHandoff, getDocumentHandoffMarker } from "@bcr/document-core";
 import { useOptionalRuntime } from "@bcr/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { expandMangaArchive, formatForMangaFile } from "./archive";
@@ -315,7 +315,11 @@ export function App() {
     const handoff = consumeDocumentHandoff(handoffId, "manga");
     window.history.replaceState({}, "", "/manga");
     if (handoff === undefined) {
-      manga.log("warn", "handoff · link expired · import the source again in Document Studio");
+      const marker = getDocumentHandoffMarker();
+      manga.log(
+        "warn",
+        `handoff · ${marker?.id === handoffId && marker.target === "manga" ? marker.name : "source"} link expired · import the source again in Document Studio`,
+      );
       return;
     }
     if (formatForMangaFile(handoff.file) === "unknown") {

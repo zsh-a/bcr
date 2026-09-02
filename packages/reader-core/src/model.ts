@@ -87,6 +87,16 @@ export interface ReaderBookmark {
   readonly createdAt: number;
 }
 
+/** A short user note anchored to the same semantic position as a bookmark. */
+export interface ReaderAnnotation {
+  readonly id: string;
+  readonly label: string;
+  readonly note: string;
+  readonly locator: ReaderLocator;
+  readonly createdAt: number;
+  readonly updatedAt: number;
+}
+
 export interface SearchHit {
   readonly bookId: string;
   readonly sectionId: string;

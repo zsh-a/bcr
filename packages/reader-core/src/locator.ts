@@ -1,5 +1,6 @@
 import type {
   ReaderBook,
+  ReaderAnnotation,
   ReaderBookmark,
   ReaderLocator,
   ReaderProgress,
@@ -80,6 +81,13 @@ export function sameLocator(left: ReaderLocator, right: ReaderLocator, tolerance
 
 export function normalizeBookmark(book: ReaderBook, bookmark: ReaderBookmark): ReaderBookmark {
   return { ...bookmark, locator: normalizeLocator(book, bookmark.locator) };
+}
+
+export function normalizeAnnotation(
+  book: ReaderBook,
+  annotation: ReaderAnnotation,
+): ReaderAnnotation {
+  return { ...annotation, locator: normalizeLocator(book, annotation.locator) };
 }
 
 export function locatorAtPercentage(book: ReaderBook, percentage: number): ReaderLocator {
