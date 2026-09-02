@@ -51,6 +51,10 @@ export interface MangaAdapterExecution {
   readonly phase?: MangaAdapterPhase | undefined;
   readonly cache?: MangaAdapterCacheStatus | undefined;
   readonly model?: string | undefined;
+  /** True only when the Worker actually instantiated the model for this task. */
+  readonly modelUsed?: boolean | undefined;
+  /** Worker-side model construction latency, excluding queue and page work. */
+  readonly modelLoadDurationMs?: number | undefined;
   readonly sourceLanguage?: MangaSourceLanguage | undefined;
   readonly targetLanguage?: "zh" | undefined;
   readonly fallbackReason?: MangaAdapterFallbackReason | undefined;
@@ -519,6 +523,17 @@ function decodeMangaAdapterExecution(
   }
   if (candidate["model"] !== undefined && typeof candidate["model"] !== "string") {
     throw new Error("manga adapter execution model is invalid");
+  }
+  if (candidate["modelUsed"] !== undefined && typeof candidate["modelUsed"] !== "boolean") {
+    throw new Error("manga adapter execution modelUsed is invalid");
+  }
+  if (
+    candidate["modelLoadDurationMs"] !== undefined &&
+    (typeof candidate["modelLoadDurationMs"] !== "number" ||
+      !Number.isFinite(candidate["modelLoadDurationMs"]) ||
+      candidate["modelLoadDurationMs"] < 0)
+  ) {
+    throw new Error("manga adapter execution modelLoadDurationMs is invalid");
   }
   if (
     candidate["sourceLanguage"] !== undefined &&

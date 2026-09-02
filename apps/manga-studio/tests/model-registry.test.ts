@@ -41,8 +41,11 @@ describe("Manga model registry", () => {
     const registry = new MangaModelRegistry(storage.db);
     await registry.markLoading(ocrExecution);
     expect(registry.getSnapshot().records[0]).toMatchObject({ status: "loading", key });
-    await registry.markReady(ocrExecution);
-    expect(registry.getSnapshot().records[0]).toMatchObject({ status: "ready" });
+    await registry.markReady(ocrExecution, 1234);
+    expect(registry.getSnapshot().records[0]).toMatchObject({
+      status: "ready",
+      lastLoadDurationMs: 1234,
+    });
     expect(storage.read()).toContain("manga-ocr-base-ONNX");
 
     const restored = new MangaModelRegistry(storage.db);

@@ -571,6 +571,9 @@ OCR Worker 的 `manga/ocr-lines` 会按稳定 block ID 回写页面区域，更�
 OCR / 翻译的 manifest、语言能力和设备回退由同一解析器提供给 UI、Pipeline 与 Worker；
 执行事实额外记录请求/实际适配器、设备、模型加载阶段和缓存命中。实际使用 WebGPU 的任务
 会把 `gpu` 资源需求交给 Scheduler，避免多个本地模型任务绕过统一预算并发运行。
+Worker 内模型 pipeline 按模型/设备键复用，并对相同键的 in-flight 构建去重；Artifact execution
+记录 `modelUsed` 与 Worker 侧 `modelLoadDurationMs`，Model Registry 仅在模型实际被使用后写入
+最近加载耗时，避免把命中下游 Artifact 缓存误报成模型已加载。
 Manga Runtime 另以版本化 Model Registry 持久化模型生命周期（loading / ready / error、最近使用、
 最近加载成功），并把 Transformers.js 路由到版本化的 `bcr-manga-models-v1` Cache API 命名空间。
 `manga.model.preload` 是显式的 Worker 预加载任务，配置面板可查看缓存文件数、在线/离线提示并清理

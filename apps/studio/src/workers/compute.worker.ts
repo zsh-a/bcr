@@ -607,7 +607,9 @@ async function mangaOcrOnnx(
   if (blob === undefined) throw new Error(`artifact not found: ${input.id}`);
   const transformers = await import("@huggingface/transformers");
   const image = await transformers.RawImage.read(blob);
+  const modelLoadStartedAt = performance.now();
   const loaded = await loadOcrTranscriber(model, device, ctx);
+  const modelLoadDurationMs = performance.now() - modelLoadStartedAt;
   const transcriber = loaded.fn;
   const recognized: MangaOcrLine[] = [];
   for (const [index, line] of lines.entries()) {
@@ -631,6 +633,8 @@ async function mangaOcrOnnx(
   const execution: MangaAdapterExecution = {
     ...resolution.execution,
     effectiveDevice: loaded.device,
+    modelUsed: true,
+    modelLoadDurationMs,
     ...(loaded.fallbackReason === undefined ? {} : { fallbackReason: loaded.fallbackReason }),
   };
   const payload: MangaOcrArtifact = {
@@ -801,8 +805,11 @@ async function mangaTranslateOnnx(
   );
   const pending = translatable.filter((line) => !exact.has(line.text.trim()));
   let loaded: LoadedModel<MangaTranslator> | undefined;
+  let modelLoadDurationMs: number | undefined;
   if (pending.length > 0) {
+    const modelLoadStartedAt = performance.now();
     loaded = await loadMangaTranslator(model, device, ctx);
+    modelLoadDurationMs = performance.now() - modelLoadStartedAt;
     const translator = loaded.fn;
     const BATCH = 8;
     for (let offset = 0; offset < pending.length; offset += BATCH) {
@@ -845,6 +852,8 @@ async function mangaTranslateOnnx(
     execution: {
       ...resolution.execution,
       effectiveDevice: loaded?.device ?? requestedDeviceResolution.device,
+      modelUsed: loaded !== undefined,
+      ...(modelLoadDurationMs === undefined ? {} : { modelLoadDurationMs }),
       ...(loaded?.fallbackReason !== undefined
         ? { fallbackReason: loaded.fallbackReason }
         : requestedDeviceResolution.fallbackReason === undefined

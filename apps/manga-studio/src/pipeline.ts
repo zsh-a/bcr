@@ -194,11 +194,11 @@ function trackModelLoading(execution: MangaAdapterExecution | undefined): void {
   void runtime.models.markLoading(execution);
 }
 
-function trackModelReady(execution: MangaAdapterExecution | undefined): void {
+function trackModelReady(execution: MangaAdapterExecution | undefined, durationMs?: number): void {
   if (execution === undefined || execution.model === undefined) return;
   const runtime = mangaRuntime();
   if (runtime === undefined) return;
-  void runtime.models.markReady(execution);
+  void runtime.models.markReady(execution, durationMs);
 }
 
 function trackModelError(execution: MangaAdapterExecution | undefined, error: unknown): void {
@@ -405,9 +405,12 @@ export async function preloadMangaModel(
     throw error;
   }
   activeModelPreload = { key, handle };
+  const modelLoadStartedAt = performance.now();
   try {
     await Effect.runPromise(handle.await);
-    if (runtime !== undefined) void runtime.models.markReady(execution);
+    if (runtime !== undefined) {
+      void runtime.models.markReady(execution, performance.now() - modelLoadStartedAt);
+    }
     manga.log("ok", `model preload · ${execution.model} · browser cache ready`);
     return true;
   } catch (error) {
@@ -446,13 +449,14 @@ async function runOcrAdapter(
     return undefined;
   }
   activeOcr = { runId, handle };
+  const modelLoadStartedAt = handle.cached ? undefined : performance.now();
   let submittedExecution = submittedAdapterExecution(
     manga.getSnapshot().stages.find((stage) => stage.id === "ocr")?.execution,
     handle,
   );
   if (submittedExecution !== undefined) {
     manga.updateStage("ocr", { execution: submittedExecution });
-    trackModelLoading(submittedExecution);
+    if (!handle.cached) trackModelLoading(submittedExecution);
   }
   const progressFiber = Effect.runFork(
     Stream.runForEach(handle.events, (event) =>
@@ -493,7 +497,13 @@ async function runOcrAdapter(
       observedExecution === undefined ? payload : { ...payload, execution: observedExecution };
     if (observedExecution !== undefined) {
       manga.updateStage("ocr", { execution: observedExecution });
-      trackModelReady(observedExecution);
+      if (!handle.cached && observedExecution.modelUsed === true) {
+        trackModelReady(
+          observedExecution,
+          observedExecution.modelLoadDurationMs ??
+            (modelLoadStartedAt === undefined ? undefined : performance.now() - modelLoadStartedAt),
+        );
+      }
       if (observedExecution.fallbackReason !== undefined) {
         manga.log(
           "warn",
@@ -543,13 +553,14 @@ async function runLocalTranslation(
     return undefined;
   }
   activeTranslation = { runId, handle };
+  const modelLoadStartedAt = handle.cached ? undefined : performance.now();
   let submittedExecution = submittedAdapterExecution(
     manga.getSnapshot().stages.find((stage) => stage.id === "translate")?.execution,
     handle,
   );
   if (submittedExecution !== undefined) {
     manga.updateStage("translate", { execution: submittedExecution });
-    trackModelLoading(submittedExecution);
+    if (!handle.cached) trackModelLoading(submittedExecution);
   }
   const progressFiber = Effect.runFork(
     Stream.runForEach(handle.events, (event) =>
@@ -590,7 +601,13 @@ async function runLocalTranslation(
       observedExecution === undefined ? payload : { ...payload, execution: observedExecution };
     if (observedExecution !== undefined) {
       manga.updateStage("translate", { execution: observedExecution });
-      trackModelReady(observedExecution);
+      if (!handle.cached && observedExecution.modelUsed === true) {
+        trackModelReady(
+          observedExecution,
+          observedExecution.modelLoadDurationMs ??
+            (modelLoadStartedAt === undefined ? undefined : performance.now() - modelLoadStartedAt),
+        );
+      }
       if (observedExecution.fallbackReason !== undefined) {
         manga.log(
           "warn",

@@ -27,6 +27,7 @@ export interface MangaModelRecord extends MangaModelCatalogEntry {
   readonly status: MangaModelStatus;
   readonly lastUsedAt?: number | undefined;
   readonly lastLoadedAt?: number | undefined;
+  readonly lastLoadDurationMs?: number | undefined;
   readonly lastError?: string | undefined;
 }
 
@@ -92,6 +93,10 @@ function validRecord(value: unknown): value is MangaModelRecord {
       candidate["status"] === "error") &&
     (candidate["lastUsedAt"] === undefined || typeof candidate["lastUsedAt"] === "number") &&
     (candidate["lastLoadedAt"] === undefined || typeof candidate["lastLoadedAt"] === "number") &&
+    (candidate["lastLoadDurationMs"] === undefined ||
+      (typeof candidate["lastLoadDurationMs"] === "number" &&
+        Number.isFinite(candidate["lastLoadDurationMs"]) &&
+        candidate["lastLoadDurationMs"] >= 0)) &&
     (candidate["lastError"] === undefined || typeof candidate["lastError"] === "string")
   );
 }
@@ -163,7 +168,7 @@ export class MangaModelRegistry {
       this.records.set(key, {
         ...record,
         status: "unknown",
-        ...(missing ? { lastLoadedAt: undefined } : {}),
+        ...(missing ? { lastLoadedAt: undefined, lastLoadDurationMs: undefined } : {}),
         lastError: undefined,
       });
       changed = true;
@@ -185,6 +190,7 @@ export class MangaModelRegistry {
           ...record,
           status: "unknown" as const,
           lastLoadedAt: undefined,
+          lastLoadDurationMs: undefined,
           lastError: undefined,
         },
       ]),
@@ -241,15 +247,20 @@ export class MangaModelRegistry {
     this.update(execution, "loading");
   }
 
-  async markReady(execution: MangaAdapterExecution): Promise<void> {
-    this.update(execution, "ready");
+  async markReady(execution: MangaAdapterExecution, durationMs?: number): Promise<void> {
+    this.update(execution, "ready", undefined, durationMs);
   }
 
   async markError(execution: MangaAdapterExecution, error: unknown): Promise<void> {
     this.update(execution, "error", error instanceof Error ? error.message : String(error));
   }
 
-  private update(execution: MangaAdapterExecution, status: MangaModelStatus, error?: string): void {
+  private update(
+    execution: MangaAdapterExecution,
+    status: MangaModelStatus,
+    error?: string,
+    durationMs?: number,
+  ): void {
     if (execution.model === undefined || execution.model.trim().length === 0) return;
     const key = modelKey(execution.kind, execution.model);
     const catalog = mangaModelCatalog().find((entry) => entry.key === key);
@@ -267,7 +278,15 @@ export class MangaModelRegistry {
       status,
       lastUsedAt: timestamp,
       ...(status === "loading" ? { lastError: undefined } : {}),
-      ...(status === "ready" ? { lastLoadedAt: timestamp, lastError: undefined } : {}),
+      ...(status === "ready"
+        ? {
+            lastLoadedAt: timestamp,
+            ...(durationMs !== undefined && Number.isFinite(durationMs) && durationMs >= 0
+              ? { lastLoadDurationMs: durationMs }
+              : {}),
+            lastError: undefined,
+          }
+        : {}),
       ...(status === "error" ? { lastError: error ?? "unknown model error" } : {}),
     };
     this.records.set(key, record);

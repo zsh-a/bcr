@@ -164,10 +164,14 @@ function ModelStatusNote({
   readonly onClear: () => void;
 }) {
   const status = record?.status ?? "unknown";
+  const loadDuration =
+    record?.lastLoadDurationMs === undefined
+      ? ""
+      : ` · 最近加载 ${(record.lastLoadDurationMs / 1000).toFixed(1)}s`;
   const detail =
     record?.lastError ??
     (status === "ready"
-      ? "模型已成功加载，后续任务可复用 Manga 专属缓存"
+      ? `模型已成功加载${loadDuration}，后续任务可复用 Manga 专属缓存`
       : "首次执行将在 Worker 中按需加载；可先预加载");
   const canPreload = execution.model !== undefined && execution.model.trim().length > 0;
   return (
