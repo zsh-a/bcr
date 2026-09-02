@@ -22,6 +22,24 @@ if (!(await page.locator("body").innerText()).includes("Manga Studio")) {
 if ((await page.locator(".manga-page-card").count()) < 1) fail("页面队列未渲染");
 if ((await page.locator(".manga-region-row").count()) < 1) fail("演示页文本区域未加载");
 if ((await page.locator(".manga-stage-row").count()) !== 9) fail("翻译流水线阶段不完整");
+if (
+  (await page
+    .locator("label")
+    .filter({ hasText: "OCR 引擎" })
+    .locator('option[value="manga.onnx"]')
+    .count()) !== 1
+) {
+  fail("CJK Manga OCR manifest 未出现在 OCR 引擎目录");
+}
+if (
+  (await page
+    .locator("label")
+    .filter({ hasText: "原文清理" })
+    .locator('option[value="inpaint"]')
+    .innerText()) !== "Inpaint / 实验（回退 Fill）"
+) {
+  fail("清理阶段未声明 Inpaint fallback 能力边界");
+}
 
 await page.getByRole("button", { name: "翻译当前页" }).click();
 await page.waitForFunction(

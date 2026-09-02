@@ -35,9 +35,12 @@ import {
 } from "./runtime";
 import { manga, useMangaStudio } from "./store";
 import {
+  CLEAN_MODEL_MANIFESTS,
   OCR_MODEL_MANIFESTS,
   TRANSLATION_MODEL_MANIFESTS,
+  resolveMangaCleanMode,
   type MangaGlossaryEntry,
+  type MangaCleanMode,
   type MangaOcrAdapterId,
   type MangaOcrDevice,
   type MangaSource,
@@ -208,6 +211,11 @@ export function App() {
   const ocrIsLocal = state.settings.ocrAdapter !== "review.manual";
   const ocrSupportsLanguage =
     ocrManifest?.languages.includes(state.settings.sourceLanguage) ?? true;
+  const cleanResolution = resolveMangaCleanMode(state.settings.cleanMode);
+  const cleanManifest = CLEAN_MODEL_MANIFESTS.find(
+    (manifest) =>
+      manifest.id === (state.settings.cleanMode === "inpaint" ? "inpaint.onnx" : "fill"),
+  );
 
   const importImage = async (file: File): Promise<void> => {
     if (runtime === null) {
@@ -841,11 +849,11 @@ export function App() {
                 <select
                   value={state.settings.cleanMode}
                   onChange={(event) =>
-                    manga.setSettings({ cleanMode: event.target.value as "fill" | "inpaint" })
+                    manga.setSettings({ cleanMode: event.target.value as MangaCleanMode })
                   }
                 >
-                  <option value="fill">填充 / MVP</option>
-                  <option value="inpaint">Inpaint / 待接入</option>
+                  <option value="fill">Fill / 稳定</option>
+                  <option value="inpaint">Inpaint / 实验（回退 Fill）</option>
                 </select>
               </label>
               <label>
@@ -864,6 +872,17 @@ export function App() {
                 />
               </label>
             </div>
+            <small
+              className={
+                cleanResolution.fallbackReason
+                  ? "manga-config-help manga-config-warning"
+                  : "manga-config-help"
+              }
+            >
+              {cleanResolution.fallbackReason
+                ? `${cleanManifest?.detail ?? "Inpaint 尚未接入"} · 本次有效模式：Fill`
+                : cleanManifest?.detail}
+            </small>
             <div className="manga-capability-row">
               <span
                 className={
@@ -875,7 +894,15 @@ export function App() {
                 {ocrIsLocal ? `${ocrManifest?.label ?? "ONNX OCR"} · EXP` : "REVIEW OCR"}
               </span>
               <span className="manga-capability-pill">GLOSSARY</span>
-              <span className="manga-capability-pill manga-capability-muted">INPAINT · SOON</span>
+              <span
+                className={
+                  state.settings.cleanMode === "inpaint"
+                    ? "manga-capability-pill manga-capability-experimental"
+                    : "manga-capability-pill manga-capability-muted"
+                }
+              >
+                {state.settings.cleanMode === "inpaint" ? "INPAINT · FALLBACK" : "INPAINT · SOON"}
+              </span>
             </div>
           </section>
 

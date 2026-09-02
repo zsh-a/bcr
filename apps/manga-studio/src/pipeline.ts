@@ -4,9 +4,14 @@ import { Effect, Fiber, Stream } from "effect";
 import { createImportedRegion } from "./fixture";
 import { translateWithGlossary } from "./glossary";
 import {
+  CLEAN_MODEL_MANIFESTS,
   OCR_MODEL_MANIFESTS,
   TRANSLATION_MODEL_MANIFESTS,
+  resolveMangaCleanMode,
   type MangaGlossaryEntry,
+  type MangaCleanArtifact,
+  type MangaCleanMode,
+  type MangaCleanRegionMask,
   type MangaOcrAdapterId,
   type MangaSourceLanguage,
   type MangaTranslationArtifact,
@@ -14,6 +19,7 @@ import {
 import {
   LOCAL_OCR_OPERATION,
   LOCAL_TRANSLATION_OPERATION,
+  CLEAN_PREVIEW_OPERATION,
   REVIEW_OCR_OPERATION,
 } from "./operations";
 import { mangaRuntime } from "./runtime";
@@ -28,6 +34,12 @@ let activeOcr:
     }
   | undefined;
 let activeTranslation:
+  | {
+      readonly runId: number;
+      readonly handle: TaskHandle;
+    }
+  | undefined;
+let activeClean:
   | {
       readonly runId: number;
       readonly handle: TaskHandle;
@@ -141,6 +153,42 @@ function translationTask(runId: number, input: ArtifactRef): ComputeTask | undef
       targetLanguage: state.settings.targetLanguage,
       sourceName: state.source.name,
       glossary: state.glossary,
+    },
+  };
+}
+
+function cleanTask(runId: number): ComputeTask | undefined {
+  const state = manga.getSnapshot();
+  const source = state.source.ref;
+  if (source === undefined || source.storage !== "opfs") return undefined;
+  const mode: MangaCleanMode = state.settings.cleanMode === "inpaint" ? "inpaint" : "fill";
+  const regions: MangaCleanRegionMask[] = state.regions.map((region) => ({
+    id: region.id,
+    x: region.x,
+    y: region.y,
+    width: region.width,
+    height: region.height,
+    rotation: region.rotation,
+  }));
+  return {
+    id: `manga-clean-${Date.now().toString(36)}-${runId.toString(36)}`,
+    runtime: CLEAN_PREVIEW_OPERATION.runtime,
+    operation: CLEAN_PREVIEW_OPERATION.operation,
+    inputs: [{ ...source, port: "source" }],
+    outputs: [
+      {
+        name: "cleanPage",
+        type: "manga/clean-page",
+        storage: "opfs",
+        format: "json",
+      },
+    ],
+    resources: CLEAN_PREVIEW_OPERATION.resources,
+    cache: { enabled: true },
+    config: {
+      mode,
+      sourceName: state.source.name,
+      regions,
     },
   };
 }
@@ -274,6 +322,72 @@ async function runLocalTranslation(
   }
 }
 
+/** Serialize a safe cleaning boundary; pixel generation stays in a future adapter. */
+async function runCleanAdapter(
+  services: RuntimeServices,
+  runId: number,
+): Promise<{ artifact: ArtifactRef; payload: MangaCleanArtifact } | undefined> {
+  const task = cleanTask(runId);
+  if (task === undefined) return undefined;
+  const source = task.inputs[0];
+  if (source === undefined) return undefined;
+  const available = await Effect.runPromise(services.artifacts.has(source));
+  if (!available) {
+    manga.log("warn", "clean preview · source is not bridged into shared artifacts");
+    return undefined;
+  }
+  const handle = await Effect.runPromise(services.scheduler.submit(task));
+  if (runId !== activeRun) {
+    await Effect.runPromise(handle.cancel);
+    return undefined;
+  }
+  activeClean = { runId, handle };
+  const progressFiber = Effect.runFork(
+    Stream.runForEach(handle.events, (event) =>
+      Effect.sync(() => {
+        if (runId === activeRun && event.type === "progress") {
+          manga.updateStage("remove-text", { progress: event.value });
+        }
+      }),
+    ),
+  );
+  try {
+    const outputs = await Effect.runPromise(handle.await);
+    if (runId !== activeRun) return undefined;
+    const artifact = outputs[0];
+    if (artifact === undefined) throw new Error("clean adapter returned no artifact");
+    const data = await Effect.runPromise(services.artifacts.get(artifact));
+    const payload = JSON.parse(new TextDecoder().decode(data)) as MangaCleanArtifact;
+    if (payload.version !== 1 || payload.adapter !== "fill" || payload.effectiveMode !== "fill") {
+      throw new Error("clean adapter returned an invalid artifact");
+    }
+    const localRuntime = mangaRuntime();
+    if (localRuntime !== undefined && localRuntime.artifacts !== services.artifacts) {
+      try {
+        await Effect.runPromise(localRuntime.artifacts.put(artifact, data));
+      } catch (error) {
+        manga.log("warn", `clean preview · local mirror unavailable · ${String(error)}`);
+      }
+    }
+    const manifest = CLEAN_MODEL_MANIFESTS.find(
+      (candidate) =>
+        candidate.id === (payload.requestedMode === "inpaint" ? "inpaint.onnx" : "fill"),
+    );
+    if (payload.fallbackReason !== undefined) {
+      manga.log(
+        "warn",
+        `clean ${manifest?.label ?? "Inpaint"} · requested ${payload.requestedMode}, effective Fill · ${payload.fallbackReason}`,
+      );
+    } else {
+      manga.log("ok", `clean ${manifest?.label ?? "Fill"} · ${artifact.id} · mask preserved`);
+    }
+    return { artifact, payload };
+  } finally {
+    Effect.runFork(Fiber.interrupt(progressFiber));
+    if (activeClean?.handle === handle) activeClean = undefined;
+  }
+}
+
 export async function runMangaPipeline(
   services?: RuntimeServices,
 ): Promise<"completed" | "cancelled" | "failed"> {
@@ -307,6 +421,19 @@ export async function runMangaPipeline(
         manga.log(
           "warn",
           "translate local ONNX · fixture or review-only page has no OCR artifact, using fallback",
+        );
+      }
+      if (stage.id === "remove-text" && services !== undefined) {
+        const result = await runCleanAdapter(services, runId);
+        stageArtifact = result?.artifact;
+      } else if (
+        stage.id === "remove-text" &&
+        manga.getSnapshot().settings.cleanMode === "inpaint"
+      ) {
+        const resolved = resolveMangaCleanMode("inpaint");
+        manga.log(
+          "warn",
+          `clean · requested ${resolved.requestedMode}, effective ${resolved.effectiveMode} · ${resolved.fallbackReason}`,
         );
       }
       if (stageArtifact !== undefined) {
@@ -407,10 +534,13 @@ export function cancelMangaPipeline(): void {
   activeRun += 1;
   const active = activeOcr;
   const activeTranslate = activeTranslation;
+  const activeCleanRun = activeClean;
   activeOcr = undefined;
   activeTranslation = undefined;
+  activeClean = undefined;
   if (active !== undefined) void Effect.runPromise(active.handle.cancel);
   if (activeTranslate !== undefined) void Effect.runPromise(activeTranslate.handle.cancel);
+  if (activeCleanRun !== undefined) void Effect.runPromise(activeCleanRun.handle.cancel);
   manga.cancelRun();
 }
 

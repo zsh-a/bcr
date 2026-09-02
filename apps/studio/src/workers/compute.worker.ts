@@ -1,7 +1,10 @@
 import { artifactPath, contentHash, type ArtifactRef } from "@bcr/core";
 import { applyGlossaryTerms } from "@bcr/manga-studio/glossary";
 import {
+  resolveMangaCleanMode,
   TRANSLATION_MODEL_MANIFESTS,
+  type MangaCleanArtifact,
+  type MangaCleanRegionMask,
   type MangaGlossaryEntry,
   type MangaOcrAdapterId,
   type MangaOcrArtifact,
@@ -675,6 +678,60 @@ async function mangaTranslateOnnx(
   return [out];
 }
 
+function cleanRegionMasks(task: {
+  config?: Record<string, unknown> | undefined;
+}): MangaCleanRegionMask[] {
+  const raw = task.config?.["regions"];
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((candidate) => {
+    if (typeof candidate !== "object" || candidate === null) return [];
+    const value = candidate as Record<string, unknown>;
+    if (typeof value["id"] !== "string") return [];
+    const number = (key: string): number => {
+      const valueAtKey = value[key];
+      return typeof valueAtKey === "number" && Number.isFinite(valueAtKey) ? valueAtKey : 0;
+    };
+    return [
+      {
+        id: value["id"],
+        x: number("x"),
+        y: number("y"),
+        width: number("width"),
+        height: number("height"),
+        rotation: number("rotation"),
+      },
+    ];
+  });
+}
+
+/** Safe cleaning preview: emit a mask contract and record explicit Inpaint fallback. */
+async function mangaCleanPreview(
+  task: { inputs: ReadonlyArray<ArtifactRef>; config?: Record<string, unknown> | undefined },
+  ctx: WorkerContext,
+): Promise<ReadonlyArray<ArtifactRef>> {
+  const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
+  if (input === undefined) throw new Error("manga.clean.preview requires a source artifact");
+  throwIfAborted(ctx);
+  ctx.progress(0.2);
+  const requestedMode =
+    configText(task.config?.["mode"], "fill") === "inpaint" ? "inpaint" : "fill";
+  const resolved = resolveMangaCleanMode(requestedMode);
+  const payload: MangaCleanArtifact = {
+    version: 1,
+    adapter: resolved.adapter,
+    sourceName: configText(task.config?.["sourceName"], input.id),
+    coordinateSpace: "normalized-percent",
+    requestedMode: resolved.requestedMode,
+    effectiveMode: resolved.effectiveMode,
+    ...(resolved.fallbackReason === undefined ? {} : { fallbackReason: resolved.fallbackReason }),
+    regions: cleanRegionMasks(task),
+  };
+  ctx.progress(0.8);
+  const out = await writeTypedJsonArtifact("manga", "clean-preview", "manga/clean-page", payload);
+  ctx.progress(1);
+  return [out];
+}
+
 const fixtureDictionary: Readonly<Record<string, string>> = {
   "ここから、始めよう。": "就从这里开始吧。",
   もうすぐ春だね: "春天快到了呢",
@@ -761,4 +818,5 @@ defineWorker({
   "manga.ocr.review": (task, ctx) => mangaOcrReview(task, ctx),
   "manga.ocr.onnx": (task, ctx) => mangaOcrOnnx(task, ctx),
   "manga.translate.onnx": (task, ctx) => mangaTranslateOnnx(task, ctx),
+  "manga.clean.preview": (task, ctx) => mangaCleanPreview(task, ctx),
 });

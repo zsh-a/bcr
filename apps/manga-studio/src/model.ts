@@ -22,6 +22,8 @@ export type MangaOcrAdapterId = "review.manual" | "vision.onnx" | "manga.onnx";
 export type MangaOcrDevice = "auto" | "webgpu" | "wasm";
 export type MangaSourceLanguage = "ja" | "en" | "ko";
 export type MangaTranslationEngineId = "fixture" | "local";
+export type MangaCleanMode = "fill" | "inpaint";
+export type MangaCleanAdapterId = "fill" | "inpaint.onnx";
 
 /**
  * 文本区域使用相对坐标，避免页面缩放后丢失编辑位置。
@@ -151,6 +153,69 @@ export const TRANSLATION_MODEL_MANIFESTS: ReadonlyArray<MangaTranslationModelMan
   },
 ];
 
+export interface MangaCleanModelManifest {
+  readonly id: MangaCleanAdapterId;
+  readonly label: string;
+  readonly runtime: "fixture" | "wasm";
+  readonly status: "ready" | "experimental";
+  readonly detail: string;
+}
+
+/** Cleaning stays explicit: generated inpainting is not silently replaced by a fill. */
+export const CLEAN_MODEL_MANIFESTS: ReadonlyArray<MangaCleanModelManifest> = [
+  {
+    id: "fill",
+    label: "Fill / 稳定",
+    runtime: "fixture",
+    status: "ready",
+    detail: "基于区域掩码的可追溯填充，适合预览与导出",
+  },
+  {
+    id: "inpaint.onnx",
+    label: "Inpaint / 实验",
+    runtime: "wasm",
+    status: "experimental",
+    detail: "生成式修复尚未接入；当前请求会显式回退 Fill",
+  },
+];
+
+export interface MangaCleanRegionMask {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly rotation: number;
+}
+
+export interface MangaCleanArtifact {
+  readonly version: 1;
+  readonly adapter: "fill";
+  readonly sourceName: string;
+  readonly coordinateSpace: "normalized-percent";
+  readonly requestedMode: MangaCleanMode;
+  readonly effectiveMode: "fill";
+  readonly fallbackReason?: "inpaint-adapter-not-ready";
+  readonly regions: ReadonlyArray<MangaCleanRegionMask>;
+}
+
+export function resolveMangaCleanMode(mode: MangaCleanMode): {
+  readonly requestedMode: MangaCleanMode;
+  readonly effectiveMode: "fill";
+  readonly adapter: "fill";
+  readonly fallbackReason?: "inpaint-adapter-not-ready";
+} {
+  if (mode === "inpaint") {
+    return {
+      requestedMode: mode,
+      effectiveMode: "fill",
+      adapter: "fill",
+      fallbackReason: "inpaint-adapter-not-ready",
+    };
+  }
+  return { requestedMode: mode, effectiveMode: "fill", adapter: "fill" };
+}
+
 export interface MangaTranslationLine {
   readonly id: string;
   readonly sourceText: string;
@@ -200,7 +265,7 @@ export interface MangaSettings {
   readonly ocrModel: string;
   readonly ocrDevice: MangaOcrDevice;
   readonly translationDevice: MangaOcrDevice;
-  readonly cleanMode: "fill" | "inpaint";
+  readonly cleanMode: MangaCleanMode;
   readonly fontSize: number;
 }
 

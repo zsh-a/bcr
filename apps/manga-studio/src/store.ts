@@ -6,6 +6,7 @@ import type {
   MangaLogEntry,
   MangaBatchJob,
   MangaBatchStatus,
+  MangaCleanMode,
   MangaGlossaryEntry,
   MangaPage,
   MangaSettings,
@@ -37,7 +38,7 @@ export const DEFAULT_SETTINGS: MangaSettings = {
   ocrModel: "Xenova/trocr-small-printed",
   ocrDevice: "auto",
   translationDevice: "auto",
-  cleanMode: "fill",
+  cleanMode: "fill" satisfies MangaCleanMode,
   fontSize: 1,
 };
 

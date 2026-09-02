@@ -3,6 +3,7 @@ import { compile } from "@bcr/graph";
 import { describe, expect, it } from "vitest";
 import {
   defaultGraph,
+  CLEAN_PREVIEW_OPERATION,
   LOCAL_OCR_OPERATION,
   LOCAL_TRANSLATION_OPERATION,
   OPERATIONS,
@@ -108,5 +109,15 @@ describe("Manga Studio operation graph", () => {
         ko: "Xenova/nllb-200-distilled-600M",
       },
     });
+  });
+
+  it("exposes a safe cleaning preview boundary", () => {
+    expect(CLEAN_PREVIEW_OPERATION).toMatchObject({
+      operation: "manga.clean.preview",
+      runtime: "wasm",
+    });
+    expect(CLEAN_PREVIEW_OPERATION.outputs).toEqual([
+      { name: "cleanPage", type: "manga/clean-page", label: "clean" },
+    ]);
   });
 });

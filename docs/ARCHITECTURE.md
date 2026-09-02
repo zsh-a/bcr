@@ -562,6 +562,8 @@ Manga 已先把人工/Fixture 区域通过可取消的 `manga.ocr.review` Worker
 优先、重叠术语最长匹配，术语编辑会使翻译产物失效；PDF/CBZ 先展开为页面并复用同一页级队列。
 翻译模型目录现提供 Fixture 与多语 NLLB Local ONNX 适配器；Local 结果写成独立的
 `manga/translation-lines` Artifact，取消、设备降级和失败沿用 Worker 边界。
+清理阶段同步输出 `manga/clean-page` 掩码 Artifact；Inpaint 仍是实验能力，未接入时记录
+`requestedMode=inpaint` 与 `effectiveMode=fill`，禁止把稳定填充伪装成生成式修复。
 
 ### Phase 3 — 正式抽包与生态
 

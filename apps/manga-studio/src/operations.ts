@@ -276,6 +276,29 @@ export const LOCAL_TRANSLATION_OPERATION: OperationDef = {
   ]),
 };
 
+/** Safe cleaning boundary. Inpaint remains an explicit request until a model is verified. */
+export const CLEAN_PREVIEW_OPERATION: OperationDef = {
+  operation: "manga.clean.preview",
+  label: "Clean / Safe Preview",
+  detail: "生成区域掩码 Artifact；Inpaint 未就绪时记录并回退 Fill",
+  runtime: "wasm",
+  inputs: [{ name: "source", type: "file/image", label: "源页面" }],
+  outputs: [{ name: "cleanPage", type: "manga/clean-page", label: "clean" }],
+  resources: { memoryMB: 512, threads: 1 },
+  config: withSkipCache([
+    {
+      key: "mode",
+      label: "清理方式",
+      kind: "select",
+      options: [
+        { value: "fill", label: "Fill / 稳定" },
+        { value: "inpaint", label: "Inpaint / 实验（回退 Fill）" },
+      ],
+      default: "fill",
+    },
+  ]),
+};
+
 function operation(operation: string): OperationDef {
   const found = OPERATIONS.find((item) => item.operation === operation);
   if (found === undefined) throw new Error(`unknown operation ${operation}`);
