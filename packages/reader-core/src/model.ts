@@ -51,13 +51,13 @@ export interface ReaderSection {
   readonly href?: string | undefined;
 }
 
-/** A publication-provided navigation entry (EPUB nav/NCX or a future format). */
+/** A publication-provided navigation entry (EPUB nav/NCX or PDF outline). */
 export interface ReaderTocItem {
   readonly id: string;
   readonly label: string;
   /** Resolved section identity; absent for an external/unavailable target. */
   readonly sectionId?: string | undefined;
-  /** Normalized archive href kept for Locator migration and diagnostics. */
+  /** Normalized format-local target hint kept for Locator migration and diagnostics. */
   readonly href?: string | undefined;
   readonly children?: ReadonlyArray<ReaderTocItem> | undefined;
 }

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatForFile, openReaderContentPackage, sanitizeInlineStyle } from "../src/adapters";
+import {
+  formatForFile,
+  mapPdfOutlineToToc,
+  openReaderContentPackage,
+  sanitizeInlineStyle,
+} from "../src/adapters";
 import { createDocumentContentPackage, createDocumentTranslationPackage } from "@bcr/document-core";
 import {
   READER_FORMAT_CATALOG,
@@ -82,5 +87,42 @@ describe("reader format catalog", () => {
       label: "Field notes",
       text: "现场笔记",
     });
+  });
+
+  it("maps nested PDF outlines to page sections and keeps broken targets visible", async () => {
+    const toc = await mapPdfOutlineToToc(
+      [
+        {
+          title: "  第一章\n起点  ",
+          dest: "chapter-1",
+          items: [
+            { title: "没有目标", dest: null },
+            { title: "第二节", dest: [{ num: 12, gen: 0 }] },
+          ],
+        },
+        { title: "断开的书签", dest: "missing" },
+        { title: "", items: [{ title: "保留子节点", dest: [{ num: 20, gen: 0 }] }] },
+      ],
+      async (destination) => {
+        if (destination === "chapter-1") return 2;
+        if (destination === "missing") throw new Error("missing destination");
+        if (Array.isArray(destination)) return 7;
+        return undefined;
+      },
+    );
+
+    expect(toc).toMatchObject([
+      {
+        id: "pdf-toc-root.1",
+        label: "第一章 起点",
+        sectionId: "page-3",
+        children: [
+          { id: "pdf-toc-root.1.1", label: "没有目标" },
+          { id: "pdf-toc-root.1.2", label: "第二节", sectionId: "page-8" },
+        ],
+      },
+      { id: "pdf-toc-root.2", label: "断开的书签" },
+      { id: "pdf-toc-root.3.1", label: "保留子节点", sectionId: "page-8" },
+    ]);
   });
 });
