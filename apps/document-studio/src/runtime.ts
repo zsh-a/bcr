@@ -8,6 +8,7 @@ import {
 import { Effect, Stream } from "effect";
 import type { RuntimeServices } from "@bcr/react";
 import {
+  createDocumentContentPackage,
   createDocumentJob,
   createDocumentTranslationPackage,
   decodeDocumentContentPackage,
@@ -145,7 +146,7 @@ function isVisualOcrContent(content: DocumentContentPackage): boolean {
   return (
     adapter.startsWith("manga.ocr.") ||
     adapter === "manga.review.regions" ||
-    adapter === "document.ocr.onnx"
+    adapter.startsWith("document.ocr.")
   );
 }
 
@@ -420,6 +421,69 @@ export async function saveDocumentTranslationReview(
     documents.replaceJob(invalidateDownstream(reviewed, "translate"));
   }
   documents.setNotice("人工修订已保存为新的 Translation Package");
+}
+
+/** Persist OCR text corrections while retaining the original geometry. */
+export async function saveDocumentOcrReview(
+  services: RuntimeServices,
+  job: DocumentJob,
+  content: DocumentContentPackage,
+  updates: Readonly<Record<string, string>>,
+): Promise<void> {
+  const changed = content.blocks.some(
+    (block) => Object.hasOwn(updates, block.id) && updates[block.id] !== block.text,
+  );
+  if (!changed) {
+    documents.setNotice("没有检测到 OCR 文本修改");
+    return;
+  }
+  const blocks = content.blocks.map((block) => {
+    if (!Object.hasOwn(updates, block.id)) return block;
+    return {
+      ...block,
+      text: updates[block.id]?.replace(/\r\n?/gu, "\n").trim() ?? "",
+    };
+  });
+  const payload = createDocumentContentPackage({
+    id: content.id,
+    format: content.format,
+    sourceName: content.sourceName,
+    metadata: content.metadata,
+    ...(content.sourceRef === undefined ? {} : { sourceRef: content.sourceRef }),
+    ...(content.provenance.sourceHash === undefined
+      ? {}
+      : { sourceHash: content.provenance.sourceHash }),
+    blocks,
+    adapter: "document.ocr.review",
+  });
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  const hash = contentHash(bytes);
+  const artifact: ArtifactRef = {
+    id: `document/content/review/${hash}`,
+    type: "document/content-package",
+    storage: "opfs",
+    format: "json",
+    hash,
+  };
+  await Effect.runPromise(services.artifacts.put(artifact, bytes));
+  const current = currentJob(job.id);
+  if (current !== undefined) {
+    const stage = stageById(current.stages, "ocr");
+    const reviewed = updateStage(current, "ocr", {
+      status: "done",
+      progress: 1,
+      artifact,
+      adapter: "document.ocr.review",
+      execution: {
+        runtime: "js",
+        operation: "document.ocr.review",
+        cache: "disabled",
+      },
+      ...(stage?.completedAt === undefined ? {} : { completedAt: stage.completedAt }),
+    });
+    documents.replaceJob(invalidateDownstream(reviewed, "ocr"));
+  }
+  documents.setNotice("OCR 文本修订已保存；下游翻译与排版需要重新运行");
 }
 
 function currentJob(jobId: string): DocumentJob | undefined {

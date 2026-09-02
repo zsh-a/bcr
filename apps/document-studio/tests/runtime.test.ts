@@ -8,7 +8,8 @@ import {
 } from "@bcr/document-core";
 import { Context, Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
-import { canRunDocumentStage, importDocumentHandoff } from "../src/runtime";
+import { canRunDocumentStage, importDocumentHandoff, saveDocumentOcrReview } from "../src/runtime";
+import { documents } from "../src/store";
 import type { RuntimeServices } from "@bcr/react";
 
 class TestBinaryStore {
@@ -108,6 +109,69 @@ describe("Document durable handoff import", () => {
       },
     });
     expect(canRunDocumentStage(withOcr, "translate")).toBe(true);
+  });
+
+  it("persists OCR text review and invalidates downstream stages", async () => {
+    const store = new TestBinaryStore();
+    const services = await makeServices(store);
+    const sourceRef: ArtifactRef = {
+      id: "document/source/review-scan",
+      type: "file/png",
+      storage: "opfs",
+      format: "image/png",
+      hash: "review-scan-hash",
+    };
+    const job = markReadyStages(
+      createDocumentJob({
+        id: "document-ocr-review",
+        name: "review-scan.png",
+        format: "image",
+        size: 12,
+        sourceRef,
+        now: 1,
+      }),
+    );
+    const content = createDocumentContentPackage({
+      id: "document-content/review-scan",
+      format: "image",
+      sourceName: "review-scan.png",
+      sourceRef,
+      adapter: "document.ocr.onnx",
+      blocks: [
+        {
+          id: "page-1",
+          label: "Page 1",
+          text: "raw OCR",
+          geometry: { x: 0, y: 0, width: 100, height: 100 },
+        },
+      ],
+    });
+    const ready = updateStage(job, "ocr", {
+      status: "done",
+      progress: 1,
+      artifact: {
+        id: "document/content/original",
+        type: "document/content-package",
+        storage: "opfs",
+        format: "json",
+      },
+    });
+    documents.addJob(ready);
+    try {
+      await saveDocumentOcrReview(services, ready, content, { "page-1": "reviewed OCR" });
+      const current = documents.getJob(ready.id);
+      expect(stageById(current!.stages, "ocr")).toMatchObject({
+        status: "done",
+        adapter: "document.ocr.review",
+        artifact: { type: "document/content-package" },
+      });
+      expect(stageById(current!.stages, "translate")).toMatchObject({
+        status: "idle",
+        progress: 0,
+      });
+    } finally {
+      documents.removeJob(ready.id);
+    }
   });
 
   it("rebuilds a Reader projection as a completed Extract stage", async () => {

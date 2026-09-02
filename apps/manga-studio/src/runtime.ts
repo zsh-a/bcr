@@ -18,7 +18,11 @@ import type {
   DocumentHandoff,
   DocumentTranslationPackage,
 } from "@bcr/document-core";
-import { decodeDocumentExportBundle } from "@bcr/document-core";
+import {
+  decodeDocumentContentPackage,
+  decodeDocumentExportBundle,
+  decodeDocumentTranslationPackage,
+} from "@bcr/document-core";
 import { documentContentToMangaRegions, mangaPageToDocumentPackages } from "./document-adapter";
 import { FIXTURE_PAGE_URL } from "./fixture";
 import { MangaModelRegistry } from "./model-registry";
@@ -174,6 +178,37 @@ export async function fileFromDocumentHandoff(
   return new File([blob], handoff.name, {
     type: handoff.sourceRef.format ?? mimeForDocumentFormat(handoff.format),
   });
+}
+
+/** Resolve optional visual content from a Document handoff for region replay. */
+export async function regionsFromDocumentHandoff(
+  runtime: MangaRuntime,
+  handoff: DocumentHandoff,
+  upstreamArtifacts?: ArtifactStore,
+): Promise<ReadonlyArray<TextRegion>> {
+  const artifacts = upstreamArtifacts ?? runtime.artifacts;
+  const content =
+    handoff.content ??
+    (handoff.contentRef === undefined
+      ? undefined
+      : decodeDocumentContentPackage(
+          JSON.parse(
+            new TextDecoder().decode(await Effect.runPromise(artifacts.get(handoff.contentRef))),
+          ),
+        ));
+  if (content === undefined || content.format !== "image") return [];
+  const translation =
+    handoff.translation ??
+    (handoff.translationRef === undefined
+      ? undefined
+      : decodeDocumentTranslationPackage(
+          JSON.parse(
+            new TextDecoder().decode(
+              await Effect.runPromise(artifacts.get(handoff.translationRef)),
+            ),
+          ),
+        ));
+  return documentContentToMangaRegions(content, translation);
 }
 
 /** Rehydrate a visual Export Bundle by resolving its immutable source image. */

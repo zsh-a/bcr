@@ -562,6 +562,7 @@ Watchlist 分组内的多序列交接：Quant Lab 会保留完整 intake 摘要�
 Content Package 在创建与恢复边界对重复 block ID 做确定性后缀化，保证翻译、审校和搜索共享稳定主键。
 阶段状态同时记录 operation、runtime 与 cache hit/miss，模型接入后的降级、缓存和重试可在同一 Inspector 中诊断。
 阶段依赖按 DAG 失效：重新 Extract / OCR 会将下游 Translation、Typeset、Export 投影重置为待运行，人工修订译文也会使 Typeset / Export 失效；旧 Artifact 保留在本地，便于审计和缓存命中。
+视觉 OCR 还提供 source-text review：人工只修改 block 文本，几何、置信度和来源引用保持不变，修订写入新的 `document.ocr.review` Artifact，再由同一 DAG 继续翻译和排版。
 Document 的 canonical export 由 `packages/document-core/src/export.ts` 统一生成：JSON 保留 Content / Translation Package
 的完整契约，Markdown / text 通过稳定 block ID 生成 source、translated 或 bilingual 视图；Document Studio 先将导出写入
 `document/export/*` Artifact，再创建下载，避免把导出变成不可追踪的临时字符串。`decodeDocumentExportBundle` 在重新导入前校验版本、包结构和 block ID 归属。
@@ -593,6 +594,7 @@ writing mode、confidence 与 provenance，避免漫画与文档各自维护一�
 `document/manga/content/*` 与 `document/manga/translation/*` Artifact 写入 Manga 存储并镜像到 Studio 宿主，页面元数据保存最新引用，
 因此刷新后仍可继续治理、搜索或交接。
 视觉 Export Bundle 可在 Manga 入口重放：先用 `decodeDocumentExportBundle` 校验 block 归属，再通过 `sourceRef` 从宿主 ArtifactStore 恢复原图，区域与译文沿稳定 ID 回填；源 Artifact 不可用时拒绝导入，保持数据边界可解释。
+Document → Manga handoff 同样会读取 durable `contentRef` / `translationRef` 并回填区域；只有缺少或无法校验视觉包时才退回空区域导入并记录告警，避免悄悄丢失审校结果。
 清理阶段同步输出 `manga/clean-page` 掩码 Artifact；Inpaint 仍是实验能力，未接入时记录
 `requestedMode=inpaint` 与 `effectiveMode=fill`，禁止把稳定填充伪装成生成式修复。
 

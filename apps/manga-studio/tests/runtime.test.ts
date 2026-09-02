@@ -15,6 +15,7 @@ import {
   importMangaExportBundle,
   prepareMangaDocumentHandoff,
   persistMangaDocumentPackages,
+  regionsFromDocumentHandoff,
   type MangaRuntime,
 } from "../src/runtime";
 import type { MangaPage } from "../src/model";
@@ -222,6 +223,68 @@ describe("manga durable Document handoff", () => {
         translatedText: "你好",
         status: "reviewed",
       }),
+    ]);
+  });
+
+  it("restores visual regions from a durable Document handoff", async () => {
+    const store = new MemoryStore();
+    const artifacts = await makeArtifacts(store);
+    const sourceRef: ArtifactRef = {
+      id: "document/source/regions-handoff",
+      type: "file/image",
+      storage: "opfs",
+      format: "image/png",
+      hash: "regions-handoff-hash",
+    };
+    const content = createDocumentContentPackage({
+      id: "regions-handoff-content",
+      format: "image",
+      sourceName: "regions-handoff.png",
+      sourceRef,
+      adapter: "document.ocr.review",
+      blocks: [
+        {
+          id: "region-1",
+          label: "Region 1",
+          text: "reviewed source",
+          geometry: { x: 5, y: 10, width: 40, height: 20, rotation: 3 },
+          writingMode: "horizontal-tb",
+          confidence: 0.7,
+        },
+      ],
+    });
+    const contentRef: ArtifactRef = {
+      id: "document/content/regions-handoff",
+      type: "document/content-package",
+      storage: "opfs",
+      format: "json",
+    };
+    await Effect.runPromise(
+      artifacts.put(contentRef, new TextEncoder().encode(JSON.stringify(content))),
+    );
+    const runtime: MangaRuntime = {
+      artifacts,
+      binary: store,
+      meta: undefined,
+      models: new MangaModelRegistry(undefined),
+    };
+    const regions = await regionsFromDocumentHandoff(runtime, {
+      id: "handoff-regions-test",
+      jobId: "document-regions",
+      target: "manga",
+      name: "regions-handoff.png",
+      format: "image",
+      size: 1,
+      contentRef,
+      createdAt: 1,
+    });
+    expect(regions).toMatchObject([
+      {
+        id: "region-1",
+        sourceText: "reviewed source",
+        rotation: 3,
+        confidence: 0.7,
+      },
     ]);
   });
 });

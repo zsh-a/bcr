@@ -50,6 +50,7 @@ import {
   importImageArtifact,
   prepareMangaDocumentHandoff,
   persistMangaDocumentPackages,
+  regionsFromDocumentHandoff,
   persistProject,
   restoreProject,
   type MangaRuntime,
@@ -655,7 +656,10 @@ export function App() {
     for (const file of files) await importImage(file);
   };
 
-  const importFiles = async (files: ReadonlyArray<File>): Promise<void> => {
+  const importFiles = async (
+    files: ReadonlyArray<File>,
+    initialRegions: ReadonlyArray<TextRegion> = [],
+  ): Promise<void> => {
     if (runtime === null) {
       manga.log("warn", "import · runtime is still starting");
       return;
@@ -682,7 +686,7 @@ export function App() {
       }
       const format = formatForMangaFile(file);
       if (format === "image") {
-        await importImage(file);
+        await importImage(file, initialRegions);
         continue;
       }
       if (format !== "cbz" && format !== "pdf") {
@@ -729,7 +733,20 @@ export function App() {
           );
           return;
         }
-        await importFiles([file]);
+        let initialRegions: ReadonlyArray<TextRegion> = [];
+        try {
+          initialRegions = await regionsFromDocumentHandoff(
+            runtime,
+            handoff,
+            hostServices?.artifacts,
+          );
+        } catch (reason) {
+          manga.log(
+            "warn",
+            `handoff · visual content ignored · ${reason instanceof Error ? reason.message : String(reason)}`,
+          );
+        }
+        await importFiles([file], initialRegions);
         manga.log(
           "ok",
           `handoff · ${handoff.name} restored from ${handoff.sourceRef === undefined ? "tab-local File" : "source Artifact"}`,

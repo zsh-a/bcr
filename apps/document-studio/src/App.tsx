@@ -66,6 +66,7 @@ import {
   importDocumentFile,
   runDocumentStage,
   exportDocumentPackage,
+  saveDocumentOcrReview,
   saveDocumentTranslationReview,
 } from "./runtime";
 import "./styles.css";
@@ -197,13 +198,25 @@ export function App() {
     );
   }, [translationPackage]);
 
+  useEffect(() => {
+    if (contentPackage === undefined || active.format !== "image") {
+      setOcrReviewDrafts({});
+      return;
+    }
+    setOcrReviewDrafts(
+      Object.fromEntries(contentPackage.blocks.map((block) => [block.id, block.text])),
+    );
+  }, [active.format, contentPackage]);
+
   const appliedRouteRef = useRef("");
   const appliedHandoffRef = useRef("");
   const [handoffHistory, setHandoffHistory] = useState<ReadonlyArray<DocumentHandoffRecord>>(() =>
     listDocumentHandoffs(),
   );
   const [reviewDrafts, setReviewDrafts] = useState<Readonly<Record<string, string>>>({});
+  const [ocrReviewDrafts, setOcrReviewDrafts] = useState<Readonly<Record<string, string>>>({});
   const [savingReview, setSavingReview] = useState(false);
+  const [savingOcrReview, setSavingOcrReview] = useState(false);
   const [exportBusy, setExportBusy] = useState<DocumentExportFormat | null>(null);
 
   useEffect(() => {
@@ -379,6 +392,18 @@ export function App() {
         );
       })
       .finally(() => setSavingReview(false));
+  };
+
+  const saveOcrReview = () => {
+    if (contentPackage === undefined || savingOcrReview || active.format !== "image") return;
+    setSavingOcrReview(true);
+    void saveDocumentOcrReview(services, active, contentPackage, ocrReviewDrafts)
+      .catch((reason: unknown) => {
+        documents.setNotice(
+          `OCR 修订保存失败：${reason instanceof Error ? reason.message : String(reason)}`,
+        );
+      })
+      .finally(() => setSavingOcrReview(false));
   };
 
   const downloadExport = (format: DocumentExportFormat): void => {
@@ -744,6 +769,17 @@ export function App() {
               focusBlockId={routeBlockId ?? undefined}
             />
           )}
+          {contentPackage !== undefined && active.format === "image" && (
+            <DocumentOcrReviewCard
+              content={contentPackage}
+              drafts={ocrReviewDrafts}
+              saving={savingOcrReview}
+              onChange={(id, value) =>
+                setOcrReviewDrafts((current) => ({ ...current, [id]: value }))
+              }
+              onSave={saveOcrReview}
+            />
+          )}
           {translationPackage !== undefined && translationStats !== undefined && (
             <TranslationPackageCard package={translationPackage} stats={translationStats} />
           )}
@@ -907,6 +943,69 @@ function DocumentBlockContextCard(props: {
       {props.content.blocks.length > blocks.length && (
         <span className="document-block-context-more">
           + {props.content.blocks.length - blocks.length} blocks 已加入全局搜索
+        </span>
+      )}
+    </section>
+  );
+}
+
+function DocumentOcrReviewCard(props: {
+  content: DocumentContentPackage;
+  drafts: Readonly<Record<string, string>>;
+  saving: boolean;
+  onChange: (id: string, value: string) => void;
+  onSave: () => void;
+}) {
+  const blocks = props.content.blocks.slice(0, 5);
+  const changed = blocks.some(
+    (block) => props.drafts[block.id] !== undefined && props.drafts[block.id] !== block.text,
+  );
+  return (
+    <section className="document-ocr-review" aria-label="OCR 文本审校">
+      <div className="document-block-context-heading">
+        <div>
+          <span className="document-eyebrow">OCR REVIEW</span>
+          <strong>识别文本审校</strong>
+        </div>
+        <span>{props.content.blocks.length} regions</span>
+      </div>
+      <p className="document-ocr-review-hint">
+        保留区域几何，只修正文案；保存后翻译、排版和导出会回到待运行。
+      </p>
+      <div className="document-ocr-review-list">
+        {blocks.map((block, index) => (
+          <label className="document-ocr-review-item" key={block.id}>
+            <span>
+              {String(index + 1).padStart(2, "0")} · {block.label}
+            </span>
+            <small>
+              {block.geometry === undefined
+                ? "geometry —"
+                : `${Math.round(block.geometry.x)}%, ${Math.round(block.geometry.y)}% · ${Math.round(block.geometry.width)}×${Math.round(block.geometry.height)}%`}
+              {block.confidence === undefined
+                ? ""
+                : ` · ${Math.round(block.confidence * 100)}% confidence`}
+            </small>
+            <textarea
+              rows={2}
+              value={props.drafts[block.id] ?? block.text}
+              aria-label={`编辑 ${block.label} 的 OCR 文本`}
+              onChange={(event) => props.onChange(block.id, event.target.value)}
+            />
+          </label>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="document-ocr-review-save"
+        onClick={props.onSave}
+        disabled={!changed || props.saving}
+      >
+        {props.saving ? "保存中…" : changed ? "保存 OCR 修订" : "暂无未保存修改"}
+      </button>
+      {props.content.blocks.length > blocks.length && (
+        <span className="document-block-context-more">
+          仅展示前 {blocks.length} 个区域；完整包仍会保留全部 OCR blocks
         </span>
       )}
     </section>

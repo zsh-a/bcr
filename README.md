@@ -220,7 +220,7 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - Manga Runtime 维护 SQLite-backed Model Registry，记录模型目录版本、loading/ready/error、最近使用和最近成功加载时间；配置面板展示懒加载状态，未知或损坏的 registry 元数据不会阻塞启动
 - 模型治理：Worker 通过 `manga.model.preload` 显式预加载到 `bcr-manga-models-v1` 专属 Cache API；配置面板展示文件数与在线/离线状态，可清理并同步使 readiness 失效，避免把“元数据 ready”误当成“字节仍在缓存”；同 Worker 内按模型/设备去重 in-flight 加载，并记录真实模型构建耗时；离线任务只读专属缓存，不再发起远程模型请求
 - 每页 OCR / 审校区域会同步投影为标准 `DocumentContentPackage` 与 `DocumentTranslationPackage`，以内容寻址的 `document/manga/*` Artifact 持久化到 Manga 存储并镜像到 Studio 宿主；页面元数据保存最新引用，刷新后可继续搜索、治理或跨工作台交接
-- Manga 导入入口接受带 `sourceRef` 的视觉 Export Bundle（`.json`）：先校验 canonical 契约，再从共享 Artifact 恢复原图与区域/译文，避免重复 OCR；缺失源 Artifact 时明确失败，不生成伪页面。
+- Manga 导入入口接受带 `sourceRef` 的视觉 Export Bundle（`.json`）：先校验 canonical 契约，再从共享 Artifact 恢复原图与区域/译文，避免重复 OCR；Document → Manga handoff 也会从 contentRef/translationRef 回填区域；缺失源 Artifact 时明确失败，不生成伪页面。
 - OCR manifest 同时提供 Latin TrOCR 与日文 Manga OCR（`onnx-community/manga-ocr-base-ONNX`）；模型按区域懒加载，
   在 Worker 内支持 Auto / WebGPU / WASM，结果统一标为 `needs-review`；识别出的文本、方向、几何和置信度会按原 block ID 回写审校区域；不匹配的语言会显式告警而不会伪装成已验证能力
 - 当前 MVP 支持原图 / 清理页 / 译文页切换、置信度审阅、CJK 排版参数和 PNG 导出；清理阶段会输出可追溯区域掩码，Inpainting 请求在适配器就绪前明确回退 Fill；CBZ/PDF 会先展开为页面队列
@@ -245,6 +245,7 @@ File → Ingest → Normalize → Extract → OCR → Translate → Typeset → 
 - Text / Markdown / HTML / FB2 已可通过共享 Scheduler + WorkerPool 运行 Extract、fixture Translate 与 Typeset
   preview；Extract 产出可校验、可迁移的 `document/content-package` JSON Artifact，每一步都支持缓存、进度、取消和重试。
 - 图片任务现在可在 Document Inspector 中选择 Latin TrOCR 或日文 Manga OCR，直接运行 `document.ocr.onnx`：模型在共享 Worker 内懒加载，整页结果投影为带 geometry / writingMode / confidence 的 canonical Content Package，并可继续进入 Translate；复杂多区域版面仍建议交给 Manga。文本格式会明确跳过 OCR，避免把视觉能力误套到纯文本上。
+- 图片 OCR 结果提供轻量 source-text review：修订只替换 block 文本、不破坏区域几何，保存为新的 `document.ocr.review` Content Package，并自动使下游翻译、排版和导出失效。
 - 每个阶段会持久化 operation、runtime（JS/WASM/WebGPU）和 cache hit/miss，Inspector 与刷新后的任务详情都能解释一次执行是计算、缓存还是失败重试。
 - 阶段依赖按 DAG 失效：重新 Extract / OCR 会清理下游 Translation、Typeset、Export 的投影引用，人工修订译文也会让 Typeset / Export 回到待运行；旧 Artifact 仍保留在本地，可审计或重新命中缓存。
 - Translate 会把每个 source block 映射为同 ID 的 `document/translation-package`，同时保存目标语言、审校状态和
