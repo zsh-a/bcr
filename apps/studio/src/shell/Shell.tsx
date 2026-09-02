@@ -1,4 +1,4 @@
-import type { RuntimeServices } from "@bcr/react";
+import { RuntimeProvider, type RuntimeServices } from "@bcr/react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Suspense, useEffect, useState } from "react";
 import { CommandPalette } from "../components/CommandPalette";
@@ -73,27 +73,29 @@ export function Shell() {
   }
 
   return (
-    <ServicesContext.Provider value={services}>
-      <div className="flex h-full flex-col">
-        <TopBar active={active} onOpenPalette={() => setPaletteOpen(true)} />
-        <div className="min-h-0 flex-1">
-          {active === "home" && <Home />}
-          {APPS.filter((app) => visited.includes(app.id)).map((app) => (
-            <div key={app.id} className={app.id === active ? "h-full min-h-0" : "hidden"}>
-              <Suspense
-                fallback={
-                  <div className="flex h-full items-center justify-center">
-                    <p className="font-mono text-[11px] text-faint">{app.title} 加载中…</p>
-                  </div>
-                }
-              >
-                <app.component />
-              </Suspense>
-            </div>
-          ))}
+    <RuntimeProvider services={services}>
+      <ServicesContext.Provider value={services}>
+        <div className="flex h-full flex-col">
+          <TopBar active={active} onOpenPalette={() => setPaletteOpen(true)} />
+          <div className="min-h-0 flex-1">
+            {active === "home" && <Home />}
+            {APPS.filter((app) => visited.includes(app.id)).map((app) => (
+              <div key={app.id} className={app.id === active ? "h-full min-h-0" : "hidden"}>
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center">
+                      <p className="font-mono text-[11px] text-faint">{app.title} 加载中…</p>
+                    </div>
+                  }
+                >
+                  <app.component />
+                </Suspense>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-    </ServicesContext.Provider>
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      </ServicesContext.Provider>
+    </RuntimeProvider>
   );
 }

@@ -8,5 +8,7 @@
     "./model": "./src/model.ts",
     "./pipeline": "./src/pipeline.ts"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@bcr/core": "workspace:*"
+  }
 }

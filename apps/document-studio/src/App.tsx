@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useRuntime } from "@bcr/react";
 import {
   createDocumentJob,
   formatForName,
@@ -36,6 +37,7 @@ import {
   type DocumentStageState,
 } from "@bcr/document-core";
 import { activeDocument, documents, useDocumentStudio } from "./store";
+import { importDocumentFile, isExtractableFormat, runDocumentStage } from "./runtime";
 import "./styles.css";
 
 function formatBytes(bytes: number): string {
@@ -91,6 +93,7 @@ export function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const navigate = useNavigate();
+  const services = useRuntime();
 
   const importFiles = async (files: ReadonlyArray<File>): Promise<void> => {
     for (const [index, file] of files.entries()) {
@@ -107,18 +110,26 @@ export function App() {
           sourceTextPreview = undefined;
         }
       }
-      const sourceUrl = format === "image" ? URL.createObjectURL(file) : undefined;
-      const job = markReadyStages(
-        createDocumentJob({
-          id: `document-${Date.now().toString(36)}-${index}-${Math.random().toString(36).slice(2, 7)}`,
-          name: file.name,
-          format,
-          size: file.size,
-          sourceUrl,
-          sourceTextPreview,
-        }),
-      );
-      documents.addJob(job, file);
+      try {
+        const sourceRef = await importDocumentFile(services, file);
+        const sourceUrl = format === "image" ? URL.createObjectURL(file) : undefined;
+        const job = markReadyStages(
+          createDocumentJob({
+            id: `document-${Date.now().toString(36)}-${index}-${Math.random().toString(36).slice(2, 7)}`,
+            name: file.name,
+            format,
+            size: file.size,
+            sourceRef,
+            sourceUrl,
+            sourceTextPreview,
+          }),
+        );
+        documents.addJob(job, file);
+      } catch (reason) {
+        documents.setNotice(
+          `${file.name} 导入失败：${reason instanceof Error ? reason.message : String(reason)}`,
+        );
+      }
     }
   };
 
@@ -127,6 +138,11 @@ export function App() {
   const refreshAvailableStages = () => {
     documents.replaceJob(markReadyStages(active));
     documents.setNotice("已刷新可用阶段；OCR / 翻译 / 排版等待对应引擎接入");
+  };
+
+  const runSelectedStage = () => {
+    if (selected === undefined) return;
+    void runDocumentStage(services, active, selected.id);
   };
 
   const handoffReader = () => {
@@ -381,7 +397,14 @@ export function App() {
             <span className="document-eyebrow">INSPECTOR</span>
             <strong>{selected?.label ?? "Stage"}</strong>
           </div>
-          {selected !== undefined && <StageInspector stage={selected} job={active} />}
+          {selected !== undefined && (
+            <StageInspector
+              stage={selected}
+              job={active}
+              onRun={runSelectedStage}
+              canRunExtract={isExtractableFormat(active.format) && active.sourceRef !== undefined}
+            />
+          )}
           <div className="document-preview-card">
             <div className="document-preview-heading">
               <span className="document-eyebrow">SOURCE PREVIEW</span>
@@ -472,9 +495,19 @@ function StageCard(props: {
   );
 }
 
-function StageInspector(props: { stage: DocumentStageState; job: DocumentJob }) {
+function StageInspector(props: {
+  stage: DocumentStageState;
+  job: DocumentJob;
+  onRun: () => void;
+  canRunExtract: boolean;
+}) {
   const isPlanned = props.stage.capability === "planned";
   const isDone = props.stage.status === "done";
+  const canRun =
+    props.stage.id === "extract" &&
+    props.stage.capability !== "planned" &&
+    props.canRunExtract &&
+    props.stage.status !== "running";
   return (
     <div className="document-stage-inspector">
       <div className={`document-inspector-status ${stageTone(props.stage)}`}>
@@ -495,7 +528,25 @@ function StageInspector(props: { stage: DocumentStageState; job: DocumentJob }) 
           <dt>PROGRESS</dt>
           <dd>{Math.round(props.stage.progress * 100)}%</dd>
         </div>
+        {props.stage.artifact !== undefined && (
+          <div>
+            <dt>ARTIFACT</dt>
+            <dd title={props.stage.artifact.id}>READY</dd>
+          </div>
+        )}
       </dl>
+      {props.stage.error !== undefined && (
+        <div className="document-inspector-error" role="alert">
+          <CircleAlert className="document-icon" />
+          <span>{props.stage.error}</span>
+        </div>
+      )}
+      {canRun && (
+        <button type="button" className="document-inspector-run" onClick={props.onRun}>
+          <Play className="document-icon" />
+          {isDone ? "重新运行 Extract" : "运行 Extract"}
+        </button>
+      )}
       {isPlanned ? (
         <div className="document-inspector-callout">
           <WandSparkles className="document-icon" />

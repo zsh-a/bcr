@@ -101,6 +101,96 @@ async function audioWaveform(
   return [out];
 }
 
+interface ExtractedSection {
+  readonly id: string;
+  readonly order: number;
+  readonly label: string;
+  readonly text: string;
+}
+
+interface ExtractedDocument {
+  readonly version: 1;
+  readonly format: string;
+  readonly sourceName: string;
+  readonly sections: ReadonlyArray<ExtractedSection>;
+}
+
+function configString(task: { config?: Record<string, unknown> | undefined }, key: string): string {
+  const value = task.config?.[key];
+  return typeof value === "string" ? value : "";
+}
+
+function stripMarkup(raw: string): string {
+  return raw
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/giu, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/giu, " ")
+    .replace(/<br\s*\/?\s*>/giu, "\n")
+    .replace(/<\/(?:p|div|section|article|title|h[1-6])\s*>/giu, "\n\n")
+    .replace(/<[^>]+>/gu, " ")
+    .replace(/&amp;/gu, "&")
+    .replace(/&lt;/gu, "<")
+    .replace(/&gt;/gu, ">")
+    .replace(/&quot;/gu, '"')
+    .replace(/&#39;/gu, "'");
+}
+
+function extractSections(raw: string, format: string): ReadonlyArray<ExtractedSection> {
+  const normalized = (format === "html" || format === "fb2" ? stripMarkup(raw) : raw)
+    .replace(/\r\n?/gu, "\n")
+    .trim();
+  const blocks = normalized
+    .split(/\n{2,}/u)
+    .map((block) => block.trim())
+    .filter(Boolean);
+  const sourceBlocks = blocks.length > 0 ? blocks : [normalized || "暂无内容"];
+  return sourceBlocks.map((text, order) => {
+    const markdownHeading = /^(?:#{1,6})\s+(.+)$/u.exec(text);
+    const label =
+      markdownHeading?.[1]?.trim() || `${format === "txt" ? "段落" : "Section"} ${order + 1}`;
+    return { id: `section-${order + 1}`, order, label, text };
+  });
+}
+
+/** Text/HTML/FB2 extraction: streamed source read → immutable JSON artifact. */
+async function documentExtract(
+  task: { inputs: ReadonlyArray<ArtifactRef>; config?: Record<string, unknown> | undefined },
+  ctx: WorkerContext,
+): Promise<ReadonlyArray<ArtifactRef>> {
+  const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
+  if (input === undefined) throw new Error("document.extract requires a source artifact");
+  const total = sizeOf(task);
+  const decoder = new TextDecoder();
+  let raw = "";
+  let offset = 0;
+  for (;;) {
+    throwIfAborted(ctx);
+    const chunk = await opfs.readRange(artifactPath(input), offset, WINDOW);
+    if (chunk.byteLength === 0) break;
+    raw += decoder.decode(chunk, { stream: true });
+    offset += chunk.byteLength;
+    if (total > 0) ctx.progress(Math.min(0.92, offset / total));
+  }
+  raw += decoder.decode();
+  const payload: ExtractedDocument = {
+    version: 1,
+    format: configString(task, "format"),
+    sourceName: configString(task, "sourceName"),
+    sections: extractSections(raw, configString(task, "format")),
+  };
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  const hash = contentHash(bytes);
+  const out: ArtifactRef = {
+    id: `document/extract/${hash}`,
+    type: "document/sections",
+    storage: "opfs",
+    format: "json",
+    hash,
+  };
+  await opfs.put(artifactPath(out), bytes);
+  ctx.progress(1);
+  return [out];
+}
+
 defineWorker({
   "hash.blake3": (task, ctx) => {
     const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
@@ -112,4 +202,5 @@ defineWorker({
     if (input === undefined) throw new Error("audio.waveform requires an input");
     return audioWaveform(task, input, ctx);
   },
+  "document.extract": (task, ctx) => documentExtract(task, ctx),
 });

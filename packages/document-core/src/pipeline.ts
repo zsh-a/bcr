@@ -27,9 +27,6 @@ export function markReadyStages(job: DocumentJob): DocumentJob {
       if (stage.id === "ingest" || stage.id === "normalize") {
         return { ...stage, status: "done" as const, progress: 1 };
       }
-      if (stage.id === "extract" && ["txt", "markdown", "html", "fb2"].includes(job.format)) {
-        return { ...stage, status: "done" as const, progress: 1 };
-      }
       if (stage.capability === "planned") return { ...stage, status: "blocked" as const };
       return stage;
     }),

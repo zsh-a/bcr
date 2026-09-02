@@ -1,5 +1,7 @@
 export type {
   DocumentCapability,
+  DocumentExtractArtifact,
+  DocumentExtractedSection,
   DocumentFormat,
   DocumentJob,
   DocumentStageDefinition,

@@ -161,6 +161,10 @@ class DocumentStore {
   sourceFile(jobId: string): File | undefined {
     return this.sourceFiles.get(jobId);
   }
+
+  getJob(jobId: string): DocumentJob | undefined {
+    return this.state.jobs.find((job) => job.id === jobId);
+  }
 }
 
 export const documents = new DocumentStore();

@@ -43,8 +43,29 @@ await page
   .locator(".document-job-copy strong", { hasText: "field-notes.md" })
   .last()
   .waitFor({ timeout: 10_000 });
+await page.waitForFunction(
+  () =>
+    document.querySelector(".document-notice")?.textContent?.includes("已加入 Document Inbox") ??
+    false,
+  undefined,
+  { timeout: 10_000 },
+);
 if (!(await page.locator(".document-preview-card").innerText()).includes("Field notes")) {
   fail("导入后的源文本预览未更新");
+}
+
+await page.locator(".document-stage-card", { hasText: "Extract" }).click();
+await page.getByRole("button", { name: "运行 Extract" }).click();
+await page.waitForFunction(
+  () =>
+    [...document.querySelectorAll(".document-stage-card")]
+      .find((element) => element.textContent?.includes("Extract"))
+      ?.textContent?.includes("DONE") ?? false,
+  undefined,
+  { timeout: 20_000 },
+);
+if (!(await page.locator(".document-stage-inspector").innerText()).includes("READY")) {
+  fail("Extract 没有生成结构化 Artifact");
 }
 
 await page.getByRole("button", { name: /OCR/ }).click();

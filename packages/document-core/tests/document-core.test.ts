@@ -25,13 +25,13 @@ describe("document-core", () => {
     });
     const ready = markReadyStages(job);
     expect(ready.stages.find((stage) => stage.id === "extract")).toMatchObject({
-      status: "done",
-      progress: 1,
+      status: "idle",
+      progress: 0,
     });
     expect(ready.stages.find((stage) => stage.id === "translate")).toMatchObject({
       status: "blocked",
     });
-    expect(nextAction(ready)).toBe("export");
+    expect(nextAction(ready)).toBe("extract");
   });
 
   it("consumes a handoff once and only in its target app", () => {

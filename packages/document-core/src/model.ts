@@ -1,3 +1,5 @@
+import type { ArtifactRef } from "@bcr/core";
+
 export type DocumentFormat =
   | "txt"
   | "markdown"
@@ -29,6 +31,8 @@ export interface DocumentStageState {
   readonly capability: DocumentCapability;
   readonly status: DocumentStageStatus;
   readonly progress: number;
+  readonly artifact?: ArtifactRef | undefined;
+  readonly error?: string | undefined;
 }
 
 export interface DocumentJob {
@@ -40,7 +44,22 @@ export interface DocumentJob {
   readonly updatedAt: number;
   readonly sourceUrl?: string | undefined;
   readonly sourceTextPreview?: string | undefined;
+  readonly sourceRef?: ArtifactRef | undefined;
   readonly stages: ReadonlyArray<DocumentStageState>;
+}
+
+export interface DocumentExtractedSection {
+  readonly id: string;
+  readonly order: number;
+  readonly label: string;
+  readonly text: string;
+}
+
+export interface DocumentExtractArtifact {
+  readonly version: 1;
+  readonly format: DocumentFormat;
+  readonly sourceName: string;
+  readonly sections: ReadonlyArray<DocumentExtractedSection>;
 }
 
 export interface DocumentStageDefinition {
@@ -129,6 +148,7 @@ export function createDocumentJob(input: {
   readonly size: number;
   readonly sourceUrl?: string | undefined;
   readonly sourceTextPreview?: string | undefined;
+  readonly sourceRef?: ArtifactRef | undefined;
   readonly now?: number | undefined;
 }): DocumentJob {
   const now = input.now ?? Date.now();
@@ -143,6 +163,7 @@ export function createDocumentJob(input: {
     ...(input.sourceTextPreview === undefined
       ? {}
       : { sourceTextPreview: input.sourceTextPreview }),
+    ...(input.sourceRef === undefined ? {} : { sourceRef: input.sourceRef }),
     stages: createStageStates(),
   };
 }
