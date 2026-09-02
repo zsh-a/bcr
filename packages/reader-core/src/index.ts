@@ -11,6 +11,7 @@ export type {
   ReaderTocItem,
   ReaderSource,
   ReaderSourceRef,
+  ReaderTextAnchor,
   SearchHit,
 } from "./model";
 export {
@@ -28,8 +29,12 @@ export {
   normalizeAnnotation,
   normalizeBookmark,
   normalizeLocator,
+  normalizeTextAnchor,
   percentageForLocator,
   progressForLocator,
+  createTextAnchor,
+  createTextLocator,
+  resolveTextAnchor,
   sameLocator,
 } from "./locator";
 export {

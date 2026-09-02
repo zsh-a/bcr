@@ -52,4 +52,30 @@ describe("reader session contract", () => {
     });
     expect(result[book.id]?.percentage).toBeCloseTo(2 / 3);
   });
+
+  it("restores a persisted text anchor and re-derives its progression", () => {
+    const book = createDemoBook();
+    const section = book.sections[0]!;
+    const text = section.text;
+    const start = text.indexOf("内容藏在按钮");
+    const result = normalizeReaderProgress([book], {
+      [book.id]: {
+        updatedAt: 100,
+        locator: {
+          kind: "section",
+          sectionId: section.id,
+          progression: 0,
+          textAnchor: {
+            exact: "内容藏在按钮",
+            prefix: "阅读器不应该把",
+            suffix: "后面。",
+            start,
+            end: start + "内容藏在按钮".length,
+          },
+        },
+      },
+    });
+    expect(result[book.id]?.locator.textAnchor?.exact).toBe("内容藏在按钮");
+    expect(result[book.id]?.locator.progression).toBeCloseTo(start / text.length);
+  });
 });

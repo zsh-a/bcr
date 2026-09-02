@@ -35,6 +35,8 @@ import {
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { SearchDocument } from "@bcr/core";
 import {
+  createLocator,
+  createTextLocator,
   locatorAtPercentage,
   normalizeSearchQuery,
   readerAcceptAttribute,
@@ -230,13 +232,23 @@ function highlightHtml(value: string, query: string): string {
   return body.innerHTML;
 }
 
-function scrollToReaderSection(sectionId: string, behavior: ScrollBehavior = "smooth"): void {
-  const container = document.querySelector<HTMLElement>(".reader-reading-scroll");
-  const target = container?.querySelector<HTMLElement>(
+function readerSectionScrollTop(container: HTMLElement, sectionId: string): number | undefined {
+  const target = container.querySelector<HTMLElement>(
     `[data-reader-section="${CSS.escape(sectionId)}"]`,
   );
-  if (container === null || target === null || target === undefined) return;
-  container.scrollTo({ top: Math.max(0, target.offsetTop - 28), behavior });
+  if (target === null) return undefined;
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const max = Math.max(0, container.scrollHeight - container.clientHeight);
+  return Math.min(max, Math.max(0, container.scrollTop + targetRect.top - containerRect.top - 28));
+}
+
+function scrollToReaderSection(sectionId: string, behavior: ScrollBehavior = "smooth"): void {
+  const container = document.querySelector<HTMLElement>(".reader-reading-scroll");
+  if (container === null) return;
+  const top = readerSectionScrollTop(container, sectionId);
+  if (top === undefined) return;
+  container.scrollTo({ top, behavior });
 }
 
 function scrollToReaderMatch(sectionId: string, behavior: ScrollBehavior = "smooth"): boolean {
@@ -254,6 +266,46 @@ function scrollToReaderMatch(sectionId: string, behavior: ScrollBehavior = "smoo
     container.scrollTop + targetRect.top - containerRect.top - container.clientHeight * 0.34;
   container.scrollTo({ top: Math.max(0, top), behavior });
   return true;
+}
+
+const readerSectionIndexes = new WeakMap<ReaderBook, ReadonlyMap<string, number>>();
+
+function sectionIndexMap(book: ReaderBook): ReadonlyMap<string, number> {
+  const cached = readerSectionIndexes.get(book);
+  if (cached !== undefined) return cached;
+  const created = new Map(book.sections.map((section, index) => [section.id, index] as const));
+  readerSectionIndexes.set(book, created);
+  return created;
+}
+
+function readerLocatorAtScroll(
+  book: ReaderBook,
+  container: HTMLElement,
+  fallbackSectionId?: string | null,
+): { locator: ReturnType<typeof createLocator>; percentage: number } | undefined {
+  if (book.sections.length === 0) return undefined;
+  const containerRect = container.getBoundingClientRect();
+  const probeTop = containerRect.top + Math.min(140, container.clientHeight * 0.32);
+  const probeX = containerRect.left + containerRect.width * 0.5;
+  const hit = document
+    .elementFromPoint(probeX, probeTop)
+    ?.closest<HTMLElement>("[data-reader-section]");
+  const selectedId = hit?.dataset.readerSection ?? fallbackSectionId ?? undefined;
+  const selectedIndex = selectedId === undefined ? 0 : (sectionIndexMap(book).get(selectedId) ?? 0);
+  const selectedElement =
+    hit ??
+    container.querySelector<HTMLElement>(
+      `[data-reader-section="${CSS.escape(book.sections[selectedIndex]?.id ?? "")}"]`,
+    );
+  const selectedRect = selectedElement?.getBoundingClientRect();
+  const section = book.sections[selectedIndex];
+  if (section === undefined || selectedRect === undefined) return undefined;
+  const progression = clamp((probeTop - selectedRect.top) / Math.max(1, selectedRect.height), 0, 1);
+  const denominator = Math.max(1, book.sections.length - 1);
+  return {
+    locator: createLocator(section, progression),
+    percentage: clamp((selectedIndex + progression) / denominator, 0, 1),
+  };
 }
 
 let readerPersistenceQueue: Promise<void> = Promise.resolve();
@@ -712,6 +764,17 @@ function BootScreen(props: { error: string | null }) {
 function openSearchHit(hit: SearchHit, index?: number): void {
   const state = getReaderState();
   reader.openBook(hit.bookId, hit.sectionId);
+  const openedBook = getReaderState().library.find((book) => book.id === hit.bookId);
+  const openedSection = openedBook?.sections.find((section) => section.id === hit.sectionId);
+  if (openedSection !== undefined) {
+    reader.setLocator(
+      createTextLocator(
+        openedSection,
+        hit.matchStart,
+        hit.matchStart + Math.max(1, hit.matchLength),
+      ),
+    );
+  }
   // Keep the query as a lightweight reading context so the destination can
   // show the exact hit in the body. Opening a chapter normally still clears
   // search state through ReaderStore.openBook.
@@ -1380,6 +1443,7 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
   const lastScrollUpdateRef = useRef(0);
   const userScrollRef = useRef(false);
   const programmaticScrollRef = useRef(false);
+  const programmaticScrollTargetRef = useRef<number | null>(null);
   const programmaticScrollTimerRef = useRef<number | null>(null);
   const [contentReadyVersion, setContentReadyVersion] = useState(0);
   const updateLocator = useCallback(() => {
@@ -1387,8 +1451,12 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
     if (container === null || props.book.sections.length === 0) return;
     const max = Math.max(1, container.scrollHeight - container.clientHeight);
     const percentage = clamp(container.scrollTop / max, 0, 1);
-    reader.setLocator(locatorAtPercentage(props.book, percentage), percentage);
-  }, [props.book]);
+    const mapped = readerLocatorAtScroll(props.book, container, activeSectionId);
+    reader.setLocator(
+      mapped?.locator ?? locatorAtPercentage(props.book, percentage),
+      mapped?.percentage ?? percentage,
+    );
+  }, [activeSectionId, props.book]);
   useEffect(() => {
     if (activeSectionId === null || containerRef.current === null) return;
     if (userScrollRef.current) {
@@ -1397,22 +1465,27 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
     }
     const max = Math.max(1, containerRef.current.scrollHeight - containerRef.current.clientHeight);
     programmaticScrollRef.current = true;
+    programmaticScrollTargetRef.current =
+      activeSectionId === props.book.sections[0]?.id
+        ? max * progress
+        : (readerSectionScrollTop(containerRef.current, activeSectionId) ?? null);
     if (programmaticScrollTimerRef.current !== null) {
       window.clearTimeout(programmaticScrollTimerRef.current);
     }
     programmaticScrollTimerRef.current = window.setTimeout(() => {
       programmaticScrollRef.current = false;
+      programmaticScrollTargetRef.current = null;
       programmaticScrollTimerRef.current = null;
     }, 720);
     if (activeSectionId === props.book.sections[0]?.id) {
       containerRef.current.scrollTo({
         top: max * progress,
-        behavior: "auto",
+        behavior: "instant",
       });
     } else {
       // Navigation is a state change, not a user scroll. Jumping directly
       // avoids intermediate scroll events changing the requested Locator.
-      scrollToReaderSection(activeSectionId, "auto");
+      scrollToReaderSection(activeSectionId, "instant");
     }
   }, [activeSectionId, contentReadyVersion, progress, props.book]);
   useEffect(() => {
@@ -1426,12 +1499,21 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
       return;
     }
     const frame = window.requestAnimationFrame(() => {
+      // A reveal supersedes the section navigation scroll that may still be
+      // settling. Its own instant scroll should be allowed to establish the
+      // finer-grained progress without being mistaken for a user gesture.
+      programmaticScrollRef.current = false;
+      programmaticScrollTargetRef.current = null;
+      if (programmaticScrollTimerRef.current !== null) {
+        window.clearTimeout(programmaticScrollTimerRef.current);
+        programmaticScrollTimerRef.current = null;
+      }
       // The first mark is the same first occurrence used by the core search
       // index. If a format cannot expose text marks (for example PDF), keep
       // the chapter/page context rather than leaving the user at the old
       // scroll position.
-      if (!scrollToReaderMatch(reveal.sectionId, "smooth")) {
-        scrollToReaderSection(reveal.sectionId, "smooth");
+      if (!scrollToReaderMatch(reveal.sectionId, "instant")) {
+        scrollToReaderSection(reveal.sectionId, "instant");
       }
       reader.clearSearchReveal(reveal.id);
     });
@@ -1460,7 +1542,20 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
         className="reader-reading-scroll"
         ref={containerRef}
         onScroll={() => {
-          if (programmaticScrollRef.current) return;
+          if (programmaticScrollRef.current) {
+            const expected = programmaticScrollTargetRef.current;
+            const current = containerRef.current?.scrollTop ?? 0;
+            // Ignore the event generated by our own auto-scroll. A scroll that
+            // lands elsewhere is a user gesture (for example immediately
+            // dragging a freshly loaded PDF to its last page).
+            if (expected !== null && Math.abs(current - expected) <= 8) return;
+            programmaticScrollRef.current = false;
+            programmaticScrollTargetRef.current = null;
+            if (programmaticScrollTimerRef.current !== null) {
+              window.clearTimeout(programmaticScrollTimerRef.current);
+              programmaticScrollTimerRef.current = null;
+            }
+          }
           if (frameRef.current !== null) return;
           const flush = () => {
             const elapsed = performance.now() - lastScrollUpdateRef.current;
@@ -1525,7 +1620,11 @@ function SectionView(props: { section: ReaderSection; searchQuery: string }) {
       ? undefined
       : highlightHtml(props.section.html, props.searchQuery);
   return (
-    <section className="reader-section" data-reader-section={props.section.id}>
+    <section
+      className="reader-section"
+      data-reader-section={props.section.id}
+      data-reader-section-index={props.section.order}
+    >
       <div className="reader-section-index">{String(props.section.order + 1).padStart(2, "0")}</div>
       <div className="reader-section-body">
         <div className="reader-section-label">{props.section.label}</div>
@@ -1741,6 +1840,7 @@ function PdfPageView(props: {
       ref={pageShellRef}
       className={`reader-pdf-page ${props.active ? "is-active" : ""}`}
       data-reader-section={props.section.id}
+      data-reader-section-index={props.section.order}
       aria-label={`PDF 第 ${pageNumber} 页`}
     >
       <div className="reader-pdf-page-meta">

@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  createTextAnchor,
+  createTextLocator,
   createLocator,
   locatorAtPercentage,
   normalizeAnnotation,
   normalizeLocator,
   percentageForLocator,
+  resolveTextAnchor,
   sameLocator,
 } from "../src/locator";
 import {
@@ -117,6 +120,37 @@ describe("reader-core", () => {
       href: "chapter-2.xhtml",
       progression: 0.2,
     });
+  });
+
+  it("restores text anchors after reflow and section id changes", () => {
+    const source = book.sections[1]!;
+    const locator = createTextLocator(source, 3, 7);
+    const migratedSection = {
+      ...source,
+      id: "section-b-new",
+      text: `前置内容 ${source.text} 后置内容`,
+    };
+    const migratedBook = { ...book, sections: [book.sections[0]!, migratedSection] };
+    const restored = normalizeLocator(migratedBook, {
+      ...locator,
+      sectionId: "section-b-old",
+    });
+    expect(restored.sectionId).toBe("section-b-new");
+    expect(restored.textAnchor?.exact).toBe("进度应该");
+    expect(restored.textAnchor?.start).toBe(8);
+    expect(restored.progression).toBeCloseTo(8 / migratedSection.text.length);
+    expect(resolveTextAnchor(migratedSection.text, restored.textAnchor)).toEqual({
+      start: 8,
+      length: 4,
+    });
+  });
+
+  it("bounds text anchors so persisted locators cannot grow without limit", () => {
+    const text = "x".repeat(800);
+    const anchor = createTextAnchor(text, 20, 800, 500);
+    expect(anchor?.exact).toHaveLength(512);
+    expect(anchor?.prefix).toHaveLength(20);
+    expect(anchor?.suffix).toHaveLength(96);
   });
 
   it("compares bookmark positions with a small reflow tolerance", () => {

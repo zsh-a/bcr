@@ -78,12 +78,22 @@ export interface ReaderBook {
 
 export type LocatorKind = "section" | "page" | "image";
 
+/** TextQuote/TextPosition style anchor for reflow-safe reading positions. */
+export interface ReaderTextAnchor {
+  readonly exact: string;
+  readonly prefix?: string | undefined;
+  readonly suffix?: string | undefined;
+  readonly start?: number | undefined;
+  readonly end?: number | undefined;
+}
+
 export interface ReaderLocator {
   readonly kind: LocatorKind;
   readonly sectionId: string;
   readonly progression: number;
   readonly pageNumber?: number | undefined;
   readonly href?: string | undefined;
+  readonly textAnchor?: ReaderTextAnchor | undefined;
 }
 
 export interface ReaderProgress {

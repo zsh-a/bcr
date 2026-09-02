@@ -261,7 +261,7 @@ Publication → Section → Locator / SearchHit
        OPFS 源文件 + SQLite 元数据 / FTS5
 ```
 
-- `packages/reader-core` 定义格式无关的 `ReaderBook`、章节、Locator、进度和搜索契约；解析差异留在 Adapter 边界。
+- `packages/reader-core` 定义格式无关的 `ReaderBook`、章节、Locator、进度和搜索契约；Locator v2 在兼容旧版章节百分比的同时支持受限的 TextQuote/TextPosition 锚点，解析差异留在 Adapter 边界。
 - 章节正文的规范化索引通过 `reader-index.worker` 运行在可复用 `WorkerPool` 中，主线程只保留轻量 Locator/UI 状态；Worker 不可用时自动回退 SQLite/内存搜索。
 - 文本类（含 FB2）、DOCX（WordprocessingML）、EPUB、PDF（PDF.js）和 CBZ（zip.js）均可直接导入；未知格式会明确提示，不把损坏内容伪装成可读文本。
 - Reader Format Catalog 统一维护扩展名、MIME、能力标签和文件选择器 accept；DOCX 首版按正文、标题与表格进入统一 Section 模型，绘图仍保持明确的文本优先边界。

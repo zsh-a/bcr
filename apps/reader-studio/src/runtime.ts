@@ -22,6 +22,7 @@ import {
   type ReaderBook,
   type ReaderAnnotation,
   type ReaderBookmark,
+  type ReaderTextAnchor,
   type SearchHit,
 } from "@bcr/reader-core";
 import {
@@ -497,6 +498,24 @@ function localStorageSnapshot(key: string): string | undefined {
   }
 }
 
+function textAnchorValue(value: unknown): ReaderTextAnchor | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const source = value as Record<string, unknown>;
+  const exact = source["exact"];
+  if (typeof exact !== "string" || exact.length === 0) return undefined;
+  const prefix = source["prefix"];
+  const suffix = source["suffix"];
+  const start = source["start"];
+  const end = source["end"];
+  return {
+    exact: exact.slice(0, 512),
+    ...(typeof prefix === "string" ? { prefix: prefix.slice(-96) } : {}),
+    ...(typeof suffix === "string" ? { suffix: suffix.slice(0, 96) } : {}),
+    ...(typeof start === "number" && Number.isInteger(start) && start >= 0 ? { start } : {}),
+    ...(typeof end === "number" && Number.isInteger(end) && end >= 0 ? { end } : {}),
+  };
+}
+
 async function readerValue(
   runtime: ReaderRuntime,
   metaKey: string,
@@ -542,6 +561,7 @@ function restoredBookmarks(
         locatorValue["kind"] === "page" || locatorValue["kind"] === "image"
           ? locatorValue["kind"]
           : "section";
+      const textAnchor = textAnchorValue(locatorValue["textAnchor"]);
       const locator = normalizeLocator(book, {
         kind,
         sectionId: locatorValue["sectionId"],
@@ -551,6 +571,7 @@ function restoredBookmarks(
           ? { pageNumber: locatorValue["pageNumber"] }
           : {}),
         ...(typeof locatorValue["href"] === "string" ? { href: locatorValue["href"] } : {}),
+        ...(textAnchor === undefined ? {} : { textAnchor }),
       });
       return [
         normalizeBookmark(book, {
@@ -599,6 +620,7 @@ function restoredAnnotations(
         locatorValue["kind"] === "page" || locatorValue["kind"] === "image"
           ? locatorValue["kind"]
           : "section";
+      const textAnchor = textAnchorValue(locatorValue["textAnchor"]);
       const locator = normalizeLocator(book, {
         kind,
         sectionId: locatorValue["sectionId"],
@@ -608,6 +630,7 @@ function restoredAnnotations(
           ? { pageNumber: locatorValue["pageNumber"] }
           : {}),
         ...(typeof locatorValue["href"] === "string" ? { href: locatorValue["href"] } : {}),
+        ...(textAnchor === undefined ? {} : { textAnchor }),
       });
       return [
         normalizeAnnotation(book, {
