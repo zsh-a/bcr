@@ -409,12 +409,14 @@ class ReaderStore {
     this.set({ bookmarksByBook: { ...this.state.bookmarksByBook, [bookId]: next } });
   }
 
-  addAnnotation(note: string): void {
+  addAnnotation(note: string, locator?: ReaderLocator): void {
     const book = activeBook(this.state);
     const trimmed = note.trim();
     if (book === undefined || trimmed.length === 0) return;
     const progress =
-      this.state.progressByBook[book.id] ?? progressForLocator(book, firstLocator(book));
+      locator === undefined
+        ? (this.state.progressByBook[book.id] ?? progressForLocator(book, firstLocator(book)))
+        : progressForLocator(book, locator);
     const current = this.state.annotationsByBook[book.id] ?? [];
     const now = Date.now();
     const section = book.sections.find((candidate) => candidate.id === progress.locator.sectionId);

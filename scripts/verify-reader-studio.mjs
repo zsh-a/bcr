@@ -147,6 +147,27 @@ if ((await page.locator(".reader-annotation-item").count()) === 0) {
 }
 await page.locator(".reader-annotation-list").waitFor({ timeout: 5_000 });
 if ((await page.locator(".reader-annotation-item").count()) < 1) fail("阅读笔记没有写入当前会话");
+await page
+  .locator(".reader-prose")
+  .first()
+  .evaluate((element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const text = walker.nextNode();
+    if (text === null) throw new Error("正文没有可选择文本");
+    const range = document.createRange();
+    range.setStart(text, 0);
+    range.setEnd(text, Math.min(12, text.textContent?.length ?? 1));
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  });
+await page.getByRole("button", { name: "添加阅读笔记" }).click();
+if (!(await page.locator(".reader-annotation-composer").innerText()).includes("已锚定选段")) {
+  fail("选中文本后新增笔记没有保存语义锚点");
+}
+await page.getByLabel("笔记内容").fill("验证选区锚点");
+await page.getByRole("button", { name: "保存笔记" }).click();
+await page.locator(".reader-annotation-list").getByText("验证选区锚点").waitFor({ timeout: 5_000 });
 
 const search = page.getByLabel("在书库中搜索");
 await search.fill("Locator");

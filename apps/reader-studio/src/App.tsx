@@ -41,10 +41,12 @@ import {
   locatorAtPercentage,
   normalizeSearchQuery,
   readerAcceptAttribute,
+  searchTextRange,
   sameLocator,
   type ReaderBook,
   type ReaderAnnotation,
   type ReaderBookmark,
+  type ReaderLocator,
   type ReaderSection,
   type ReaderTocItem,
   type SearchHit,
@@ -168,6 +170,42 @@ function textMatchRange(value: string, query: string): TextMatchRange | undefine
     start: starts[compactIndex] ?? 0,
     end: ends[compactIndex + normalizedQuery.length - 1] ?? value.length,
   };
+}
+
+function elementForNode(node: Node): Element | null {
+  return node instanceof Element ? node : node.parentElement;
+}
+
+/** Capture a same-section text selection as a reflow-safe Reader locator. */
+function readerSelectionLocator(book: ReaderBook): ReaderLocator | undefined {
+  if (typeof window === "undefined") return undefined;
+  const selection = window.getSelection();
+  if (selection === null || selection.isCollapsed || selection.rangeCount === 0) return undefined;
+  const range = selection.getRangeAt(0);
+  const startSection = elementForNode(range.startContainer)?.closest<HTMLElement>(
+    "[data-reader-section]",
+  );
+  const endSection = elementForNode(range.endContainer)?.closest<HTMLElement>(
+    "[data-reader-section]",
+  );
+  if (
+    startSection === null ||
+    startSection === undefined ||
+    endSection === null ||
+    endSection === undefined ||
+    startSection.dataset.readerSection !== endSection.dataset.readerSection
+  ) {
+    return undefined;
+  }
+  const sectionId = startSection.dataset.readerSection;
+  if (sectionId === undefined) return undefined;
+  const section = book.sections.find((candidate) => candidate.id === sectionId);
+  if (section === undefined) return undefined;
+  const selected = selection.toString().replace(/\r\n?/gu, "\n").trim();
+  if (selected.length === 0) return undefined;
+  const match = searchTextRange(section.text, selected);
+  if (match === undefined || match.length === 0) return undefined;
+  return createTextLocator(section, match.start, match.start + match.length);
 }
 
 function highlightText(value: string, query: string): ReactNode {
@@ -996,16 +1034,19 @@ function ReaderWorkspace(props: {
   const searchHits = useReader((state) => state.searchHits);
   const [annotationOpen, setAnnotationOpen] = useState(false);
   const [annotationDraft, setAnnotationDraft] = useState("");
+  const [annotationLocator, setAnnotationLocator] = useState<ReaderLocator | null>(null);
   if (active === undefined) return null;
   const openAnnotationComposer = () => {
     setAnnotationDraft("");
+    setAnnotationLocator(readerSelectionLocator(active) ?? null);
     setAnnotationOpen(true);
   };
   const submitAnnotation = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (annotationDraft.trim().length === 0) return;
-    reader.addAnnotation(annotationDraft);
+    reader.addAnnotation(annotationDraft, annotationLocator ?? undefined);
     setAnnotationDraft("");
+    setAnnotationLocator(null);
     setAnnotationOpen(false);
   };
   return (
@@ -1034,7 +1075,11 @@ function ReaderWorkspace(props: {
           <AnnotationComposer
             value={annotationDraft}
             onChange={setAnnotationDraft}
-            onCancel={() => setAnnotationOpen(false)}
+            anchor={annotationLocator}
+            onCancel={() => {
+              setAnnotationLocator(null);
+              setAnnotationOpen(false);
+            }}
             onSubmit={submitAnnotation}
           />
         )}
@@ -1375,6 +1420,7 @@ function ReaderToolbar(props: {
 function AnnotationComposer(props: {
   value: string;
   onChange: (value: string) => void;
+  anchor: ReaderLocator | null;
   onCancel: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
@@ -1403,7 +1449,12 @@ function AnnotationComposer(props: {
         aria-label="笔记内容"
       />
       <div className="reader-annotation-composer-footer">
-        <span>自动锚定当前位置 · {props.value.length}/2000</span>
+        <span>
+          {props.anchor?.textAnchor?.exact === undefined
+            ? "自动锚定当前位置"
+            : `已锚定选段「${props.anchor.textAnchor.exact.slice(0, 28)}${props.anchor.textAnchor.exact.length > 28 ? "…" : ""}」`}{" "}
+          · {props.value.length}/2000
+        </span>
         <button
           type="submit"
           className="reader-button reader-button-primary"
