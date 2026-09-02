@@ -32,6 +32,9 @@ export const DEFAULT_SETTINGS: MangaSettings = {
   sourceLanguage: "ja",
   targetLanguage: "zh",
   engine: "fixture",
+  ocrAdapter: "review.manual",
+  ocrModel: "Xenova/trocr-small-printed",
+  ocrDevice: "auto",
   cleanMode: "fill",
   fontSize: 1,
 };
@@ -258,7 +261,7 @@ class MangaStore {
 
   /** Restore project configuration without turning hydration into an edit. */
   restoreConfig(settings: MangaSettings, graph: Graph): void {
-    this.set({ settings, graph });
+    this.set({ settings: { ...DEFAULT_SETTINGS, ...settings }, graph });
   }
 
   setSettings(patch: Partial<MangaSettings>): void {
@@ -313,7 +316,7 @@ class MangaStore {
     this.set({ running: true, stages: freshStages(), outputReady: false });
     this.log(
       "info",
-      `pipeline · ${this.state.source.name} · ${this.state.settings.engine} adapter`,
+      `pipeline · ${this.state.source.name} · OCR ${this.state.settings.ocrAdapter} · translate ${this.state.settings.engine}`,
     );
   }
 

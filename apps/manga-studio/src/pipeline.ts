@@ -2,7 +2,7 @@ import { type ArtifactRef, type ComputeTask, type TaskHandle } from "@bcr/core";
 import type { RuntimeServices } from "@bcr/react";
 import { Effect, Fiber, Stream } from "effect";
 import { createImportedRegion } from "./fixture";
-import { REVIEW_OCR_OPERATION } from "./operations";
+import { LOCAL_OCR_OPERATION, REVIEW_OCR_OPERATION } from "./operations";
 import { mangaRuntime } from "./runtime";
 import { manga } from "./store";
 
@@ -43,14 +43,16 @@ function translateText(text: string): string {
   return dictionary[text] ?? (text.trim().length > 0 ? `译：${text}` : "请编辑译文");
 }
 
-function reviewOcrTask(runId: number): ComputeTask | undefined {
+function ocrTask(runId: number): ComputeTask | undefined {
   const state = manga.getSnapshot();
   const source = state.source.ref;
   if (source === undefined || source.storage !== "opfs") return undefined;
+  const operation =
+    state.settings.ocrAdapter === "vision.onnx" ? LOCAL_OCR_OPERATION : REVIEW_OCR_OPERATION;
   return {
     id: `manga-ocr-${Date.now().toString(36)}-${runId.toString(36)}`,
-    runtime: REVIEW_OCR_OPERATION.runtime,
-    operation: REVIEW_OCR_OPERATION.operation,
+    runtime: operation.runtime,
+    operation: operation.operation,
     inputs: [{ ...source, port: "source" }],
     outputs: [
       {
@@ -60,10 +62,12 @@ function reviewOcrTask(runId: number): ComputeTask | undefined {
         format: "json",
       },
     ],
-    resources: REVIEW_OCR_OPERATION.resources,
+    resources: operation.resources,
     cache: { enabled: true },
     config: {
-      adapter: "review.manual",
+      adapter: state.settings.ocrAdapter,
+      model: state.settings.ocrModel,
+      device: state.settings.ocrDevice,
       sourceName: state.source.name,
       width: state.source.width,
       height: state.source.height,
@@ -87,18 +91,27 @@ function errorMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
 }
 
-/** Persist manual/fixture regions as the OCR contract through the shared WorkerPool. */
-async function runReviewOcr(
+/** Run the selected OCR adapter through the shared WorkerPool. */
+async function runOcrAdapter(
   services: RuntimeServices,
   runId: number,
 ): Promise<ArtifactRef | undefined> {
-  const task = reviewOcrTask(runId);
+  const task = ocrTask(runId);
   if (task === undefined) return undefined;
+  if (
+    task.config?.["adapter"] === "vision.onnx" &&
+    manga.getSnapshot().settings.sourceLanguage !== "en"
+  ) {
+    manga.log(
+      "warn",
+      "ocr local ONNX · current manifest is Latin/English focused; review every region",
+    );
+  }
   const source = task.inputs[0];
   if (source === undefined) return undefined;
   const available = await Effect.runPromise(services.artifacts.has(source));
   if (!available) {
-    manga.log("warn", "ocr review adapter · source is not bridged into shared artifacts");
+    manga.log("warn", "ocr adapter · source is not bridged into shared artifacts");
     return undefined;
   }
 
@@ -121,7 +134,7 @@ async function runReviewOcr(
     const outputs = await Effect.runPromise(handle.await);
     if (runId !== activeRun) return undefined;
     const artifact = outputs[0];
-    if (artifact === undefined) throw new Error("ocr review adapter returned no artifact");
+    if (artifact === undefined) throw new Error("ocr adapter returned no artifact");
     const localRuntime = mangaRuntime();
     if (localRuntime !== undefined && localRuntime.artifacts !== services.artifacts) {
       try {
@@ -131,7 +144,8 @@ async function runReviewOcr(
         manga.log("warn", `ocr review adapter · local mirror unavailable · ${String(error)}`);
       }
     }
-    manga.log("ok", `ocr review adapter · ${artifact.id} · needs-review regions preserved`);
+    const adapter = task.config?.["adapter"] === "vision.onnx" ? "local ONNX" : "review";
+    manga.log("ok", `ocr ${adapter} adapter · ${artifact.id} · needs-review regions preserved`);
     return artifact;
   } finally {
     Effect.runFork(Fiber.interrupt(progressFiber));
@@ -154,7 +168,7 @@ export async function runMangaPipeline(
 
       let reviewArtifact: ArtifactRef | undefined;
       if (stage.id === "ocr" && services !== undefined) {
-        reviewArtifact = await runReviewOcr(services, runId);
+        reviewArtifact = await runOcrAdapter(services, runId);
       }
       if (reviewArtifact !== undefined) {
         manga.updateStage(stage.id, { status: "done", progress: 1, artifact: reviewArtifact });

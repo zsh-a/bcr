@@ -18,6 +18,8 @@ export interface MangaSource {
 
 export type WritingMode = "horizontal-tb" | "vertical-rl";
 export type RegionStatus = "detected" | "needs-review" | "reviewed";
+export type MangaOcrAdapterId = "review.manual" | "vision.onnx";
+export type MangaOcrDevice = "auto" | "webgpu" | "wasm";
 
 /**
  * 文本区域使用相对坐标，避免页面缩放后丢失编辑位置。
@@ -59,11 +61,42 @@ export interface MangaOcrLine {
 /** Versioned output written by an OCR adapter and consumed by review/order. */
 export interface MangaOcrArtifact {
   readonly version: 1;
-  readonly adapter: "review.manual" | "vision.onnx";
+  readonly adapter: MangaOcrAdapterId;
   readonly sourceName: string;
   readonly coordinateSpace: "normalized-percent";
   readonly lines: ReadonlyArray<MangaOcrLine>;
 }
+
+/** Lazy model manifest. The first model is deterministic; the second is opt-in. */
+export interface MangaOcrModelManifest {
+  readonly id: MangaOcrAdapterId;
+  readonly label: string;
+  readonly model?: string | undefined;
+  readonly runtime: "review" | "wasm";
+  readonly languages: ReadonlyArray<"ja" | "en" | "ko">;
+  readonly status: "ready" | "experimental";
+  readonly detail: string;
+}
+
+export const OCR_MODEL_MANIFESTS: ReadonlyArray<MangaOcrModelManifest> = [
+  {
+    id: "review.manual",
+    label: "Review / 手工区域",
+    runtime: "review",
+    languages: ["ja", "en", "ko"],
+    status: "ready",
+    detail: "固化人工区域，不读取像素",
+  },
+  {
+    id: "vision.onnx",
+    label: "Local ONNX / 实验",
+    model: "Xenova/trocr-small-printed",
+    runtime: "wasm",
+    languages: ["en"],
+    status: "experimental",
+    detail: "浏览器内按区域识别；模型主要面向 Latin 印刷体",
+  },
+];
 
 export type MangaStageId =
   | "import"
@@ -94,6 +127,9 @@ export interface MangaSettings {
   readonly sourceLanguage: "ja" | "en" | "ko";
   readonly targetLanguage: "zh";
   readonly engine: "fixture" | "local";
+  readonly ocrAdapter: MangaOcrAdapterId;
+  readonly ocrModel: string;
+  readonly ocrDevice: MangaOcrDevice;
   readonly cleanMode: "fill" | "inpaint";
   readonly fontSize: number;
 }

@@ -1043,6 +1043,18 @@
   color: var(--manga-faint);
 }
 
+.manga-capability-experimental {
+  border-color: color-mix(in srgb, var(--manga-violet) 45%, var(--manga-border));
+  background: color-mix(in srgb, var(--manga-violet) 10%, transparent);
+  color: var(--manga-violet);
+}
+
+.manga-config-help {
+  color: var(--manga-faint);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
 .manga-add-region {
   display: inline-flex;
   align-items: center;

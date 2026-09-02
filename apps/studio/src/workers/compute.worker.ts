@@ -324,6 +324,154 @@ async function mangaOcrReview(
   return [out];
 }
 
+type OcrDevice = "auto" | "webgpu" | "wasm";
+type ResolvedOcrDevice = "webgpu" | "wasm";
+type OcrTranscriber = (image: unknown, options?: Record<string, unknown>) => Promise<unknown>;
+
+function ocrGpuAvailable(): boolean {
+  return typeof navigator !== "undefined" && "gpu" in navigator;
+}
+
+async function resolveOcrDevice(device: OcrDevice): Promise<ResolvedOcrDevice> {
+  if (device === "wasm") return "wasm";
+  if (!ocrGpuAvailable()) {
+    if (device === "webgpu") throw new Error("WebGPU is not available in this browser");
+    return "wasm";
+  }
+  return "webgpu";
+}
+
+let ocrTranscriberCache:
+  | {
+      readonly model: string;
+      readonly device: ResolvedOcrDevice;
+      readonly fn: OcrTranscriber;
+    }
+  | undefined;
+
+async function buildOcrTranscriber(
+  model: string,
+  device: ResolvedOcrDevice,
+  ctx: WorkerContext,
+): Promise<OcrTranscriber> {
+  const { pipeline, env } = await import("@huggingface/transformers");
+  env.allowLocalModels = false;
+  env.allowRemoteModels = true;
+  ctx.progress(0.02);
+  const fn = (await pipeline("image-to-text", model, {
+    ...(device === "webgpu" ? { device: "webgpu", dtype: "q8" } : { dtype: "q8" }),
+    progress_callback: (info: { status?: string; progress?: number }) => {
+      if (info.status === "progress" && typeof info.progress === "number") {
+        ctx.progress(Math.min(0.35, 0.02 + (info.progress / 100) * 0.33));
+      }
+    },
+  })) as unknown as OcrTranscriber;
+  ctx.progress(0.4);
+  return fn;
+}
+
+async function loadOcrTranscriber(
+  model: string,
+  device: OcrDevice,
+  ctx: WorkerContext,
+): Promise<OcrTranscriber> {
+  const cached = ocrTranscriberCache;
+  if (
+    cached !== undefined &&
+    cached.model === model &&
+    (device === "auto" || cached.device === device)
+  ) {
+    return cached.fn;
+  }
+  const resolved = await resolveOcrDevice(device);
+  try {
+    const fn = await buildOcrTranscriber(model, resolved, ctx);
+    ocrTranscriberCache = { model, device: resolved, fn };
+    return fn;
+  } catch (error) {
+    if (device === "auto" && resolved === "webgpu") {
+      console.warn("[manga-ocr] WebGPU unavailable, falling back to WASM:", error);
+      const fn = await buildOcrTranscriber(model, "wasm", ctx);
+      ocrTranscriberCache = { model, device: "wasm", fn };
+      return fn;
+    }
+    throw error;
+  }
+}
+
+function generatedText(result: unknown): string {
+  const first = Array.isArray(result) ? result[0] : result;
+  if (typeof first !== "object" || first === null) return "";
+  const text = (first as Record<string, unknown>)["generated_text"];
+  return typeof text === "string" ? text.trim() : "";
+}
+
+function cropBounds(
+  line: MangaOcrLine,
+  width: number,
+  height: number,
+): [number, number, number, number] {
+  const xMin = Math.max(0, Math.min(width - 1, Math.round((line.x / 100) * width)));
+  const yMin = Math.max(0, Math.min(height - 1, Math.round((line.y / 100) * height)));
+  const xMax = Math.max(
+    xMin,
+    Math.min(width - 1, xMin + Math.max(1, Math.round((line.width / 100) * width)) - 1),
+  );
+  const yMax = Math.max(
+    yMin,
+    Math.min(height - 1, yMin + Math.max(1, Math.round((line.height / 100) * height)) - 1),
+  );
+  return [xMin, yMin, xMax, yMax];
+}
+
+/**
+ * Opt-in local OCR: the detector/region geometry remains explicit, while a
+ * lazily loaded Transformers.js ONNX model recognizes each crop in the Worker.
+ */
+async function mangaOcrOnnx(
+  task: { inputs: ReadonlyArray<ArtifactRef>; config?: Record<string, unknown> | undefined },
+  ctx: WorkerContext,
+): Promise<ReadonlyArray<ArtifactRef>> {
+  const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
+  if (input === undefined) throw new Error("manga.ocr.onnx requires a source artifact");
+  const lines = reviewOcrLines(task);
+  if (lines.length === 0) throw new Error("manga.ocr.onnx requires detected text regions");
+  const model = configText(task.config?.["model"], "Xenova/trocr-small-printed");
+  const deviceValue = configText(task.config?.["device"], "auto");
+  const device: OcrDevice =
+    deviceValue === "webgpu" || deviceValue === "wasm" ? deviceValue : "auto";
+  const blob = await opfs.getBlob(artifactPath(input));
+  if (blob === undefined) throw new Error(`artifact not found: ${input.id}`);
+  const transformers = await import("@huggingface/transformers");
+  const image = await transformers.RawImage.read(blob);
+  const transcriber = await loadOcrTranscriber(model, device, ctx);
+  const recognized: MangaOcrLine[] = [];
+  for (const [index, line] of lines.entries()) {
+    throwIfAborted(ctx);
+    const crop = await image.crop(cropBounds(line, image.width, image.height));
+    const text = generatedText(await transcriber(crop, { max_new_tokens: 128 }));
+    recognized.push({
+      ...line,
+      text,
+      // Image-to-text pipelines do not expose calibrated confidence. Keep the
+      // line reviewable instead of inventing a score from model logits.
+      confidence: text.length > 0 ? 0.5 : 0,
+      status: "needs-review",
+    });
+    ctx.progress(Math.min(0.98, 0.4 + (0.58 * (index + 1)) / lines.length));
+  }
+  const payload: MangaOcrArtifact = {
+    version: 1,
+    adapter: "vision.onnx",
+    sourceName: configText(task.config?.["sourceName"], input.id),
+    coordinateSpace: "normalized-percent",
+    lines: recognized,
+  };
+  const out = await writeTypedJsonArtifact("manga", "ocr-onnx", "manga/ocr-lines", payload);
+  ctx.progress(1);
+  return [out];
+}
+
 const fixtureDictionary: Readonly<Record<string, string>> = {
   "ここから、始めよう。": "就从这里开始吧。",
   もうすぐ春だね: "春天快到了呢",
@@ -408,4 +556,5 @@ defineWorker({
   "document.translate.fixture": (task, ctx) => documentTranslateFixture(task, ctx),
   "document.typeset.preview": (task, ctx) => documentTypesetPreview(task, ctx),
   "manga.ocr.review": (task, ctx) => mangaOcrReview(task, ctx),
+  "manga.ocr.onnx": (task, ctx) => mangaOcrOnnx(task, ctx),
 });

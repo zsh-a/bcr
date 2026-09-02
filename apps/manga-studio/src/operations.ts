@@ -204,6 +204,36 @@ export const REVIEW_OCR_OPERATION: OperationDef = {
   ]),
 };
 
+/** Opt-in ONNX OCR operation. The model is loaded lazily inside the Worker. */
+export const LOCAL_OCR_OPERATION: OperationDef = {
+  operation: "manga.ocr.onnx",
+  label: "OCR / Local",
+  detail: "按区域运行本地 ONNX 识别并保留置信度审校",
+  runtime: "wasm",
+  inputs: [{ name: "page", type: "file/image", label: "源页面" }],
+  outputs: [{ name: "lines", type: "manga/ocr-lines", label: "lines" }],
+  resources: { memoryMB: 1536, threads: 1 },
+  config: withSkipCache([
+    {
+      key: "model",
+      label: "模型",
+      kind: "string",
+      default: "Xenova/trocr-small-printed",
+    },
+    {
+      key: "device",
+      label: "设备",
+      kind: "select",
+      options: [
+        { value: "auto", label: "Auto" },
+        { value: "webgpu", label: "WebGPU" },
+        { value: "wasm", label: "WASM" },
+      ],
+      default: "auto",
+    },
+  ]),
+};
+
 function operation(operation: string): OperationDef {
   const found = OPERATIONS.find((item) => item.operation === operation);
   if (found === undefined) throw new Error(`unknown operation ${operation}`);

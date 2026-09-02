@@ -32,7 +32,13 @@ import {
   type MangaRuntime,
 } from "./runtime";
 import { manga, useMangaStudio } from "./store";
-import type { MangaSource, OutputMode, TextRegion } from "./model";
+import {
+  OCR_MODEL_MANIFESTS,
+  type MangaOcrDevice,
+  type MangaSource,
+  type OutputMode,
+  type TextRegion,
+} from "./model";
 import "./styles.css";
 
 function formatBytes(bytes: number): string {
@@ -533,8 +539,16 @@ export function App() {
             <div className="manga-adapter-note">
               <WandSparkles className="size-4" />
               <span>
-                <strong>Fixture adapter</strong>
-                <small>模型接口已预留 · 结果可审校</small>
+                <strong>
+                  {state.settings.ocrAdapter === "vision.onnx"
+                    ? "Local ONNX adapter"
+                    : "Review adapter"}
+                </strong>
+                <small>
+                  {state.settings.ocrAdapter === "vision.onnx"
+                    ? "模型按需加载 · 结果保留人工审校"
+                    : "区域契约已固化 · 结果可审校"}
+                </small>
               </span>
             </div>
           </section>
@@ -684,6 +698,52 @@ export function App() {
                 <option value="local">Local model / 待接入</option>
               </select>
             </label>
+            <label className="manga-config-wide">
+              <span>OCR 引擎</span>
+              <select
+                value={state.settings.ocrAdapter}
+                onChange={(event) =>
+                  manga.setSettings({
+                    ocrAdapter: event.target.value as "review.manual" | "vision.onnx",
+                  })
+                }
+              >
+                {OCR_MODEL_MANIFESTS.map((manifest) => (
+                  <option key={manifest.id} value={manifest.id}>
+                    {manifest.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {state.settings.ocrAdapter === "vision.onnx" && (
+              <>
+                <label className="manga-config-wide">
+                  <span>OCR 模型</span>
+                  <input
+                    value={state.settings.ocrModel}
+                    onChange={(event) => manga.setSettings({ ocrModel: event.target.value })}
+                    spellCheck={false}
+                    aria-describedby="manga-ocr-model-help"
+                  />
+                  <small id="manga-ocr-model-help" className="manga-config-help">
+                    {OCR_MODEL_MANIFESTS.find((manifest) => manifest.id === "vision.onnx")?.detail}
+                  </small>
+                </label>
+                <label className="manga-config-wide">
+                  <span>运行设备</span>
+                  <select
+                    value={state.settings.ocrDevice}
+                    onChange={(event) =>
+                      manga.setSettings({ ocrDevice: event.target.value as MangaOcrDevice })
+                    }
+                  >
+                    <option value="auto">Auto / 自动降级</option>
+                    <option value="webgpu">WebGPU / 优先 GPU</option>
+                    <option value="wasm">WASM / 兼容模式</option>
+                  </select>
+                </label>
+              </>
+            )}
             <div className="manga-config-grid manga-typeset-controls">
               <label>
                 <span>原文清理</span>
@@ -714,7 +774,15 @@ export function App() {
               </label>
             </div>
             <div className="manga-capability-row">
-              <span className="manga-capability-pill">OCR</span>
+              <span
+                className={
+                  state.settings.ocrAdapter === "vision.onnx"
+                    ? "manga-capability-pill manga-capability-experimental"
+                    : "manga-capability-pill"
+                }
+              >
+                {state.settings.ocrAdapter === "vision.onnx" ? "ONNX OCR · EXP" : "REVIEW OCR"}
+              </span>
               <span className="manga-capability-pill">GLOSSARY</span>
               <span className="manga-capability-pill manga-capability-muted">INPAINT · SOON</span>
             </div>

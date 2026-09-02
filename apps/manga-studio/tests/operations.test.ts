@@ -1,7 +1,13 @@
 import type { ArtifactRef } from "@bcr/core";
 import { compile } from "@bcr/graph";
 import { describe, expect, it } from "vitest";
-import { defaultGraph, OPERATIONS, REVIEW_OCR_OPERATION } from "../src/operations";
+import {
+  defaultGraph,
+  LOCAL_OCR_OPERATION,
+  OPERATIONS,
+  REVIEW_OCR_OPERATION,
+} from "../src/operations";
+import { OCR_MODEL_MANIFESTS } from "../src/model";
 import { DEFAULT_SETTINGS } from "../src/store";
 
 describe("Manga Studio operation graph", () => {
@@ -53,5 +59,25 @@ describe("Manga Studio operation graph", () => {
     expect(REVIEW_OCR_OPERATION.outputs).toEqual([
       { name: "lines", type: "manga/ocr-lines", label: "lines" },
     ]);
+  });
+
+  it("keeps the local model opt-in and device-selectable", () => {
+    expect(LOCAL_OCR_OPERATION).toMatchObject({
+      operation: "manga.ocr.onnx",
+      runtime: "wasm",
+    });
+    expect(LOCAL_OCR_OPERATION.resources).toEqual({ memoryMB: 1536, threads: 1 });
+    expect(DEFAULT_SETTINGS.ocrDevice).toBe("auto");
+    expect(LOCAL_OCR_OPERATION.config?.find((field) => field.key === "device")?.default).toBe(
+      "auto",
+    );
+    expect(LOCAL_OCR_OPERATION.config?.find((field) => field.key === "model")?.default).toBe(
+      "Xenova/trocr-small-printed",
+    );
+    expect(OCR_MODEL_MANIFESTS.find((manifest) => manifest.id === "vision.onnx")).toMatchObject({
+      runtime: "wasm",
+      status: "experimental",
+      languages: ["en"],
+    });
   });
 });

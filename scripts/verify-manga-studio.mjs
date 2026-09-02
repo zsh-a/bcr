@@ -48,7 +48,10 @@ await page.locator('input[type="file"]').setInputFiles({
     "base64",
   ),
 });
-await page.locator(".manga-page-card", { hasText: "review-page.png" }).last().waitFor({ timeout: 20_000 });
+await page
+  .locator(".manga-page-card", { hasText: "review-page.png" })
+  .last()
+  .waitFor({ timeout: 20_000 });
 await page.getByRole("button", { name: "翻译当前页" }).click();
 await page.waitForFunction(
   () =>
