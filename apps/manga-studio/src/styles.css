@@ -1055,6 +1055,73 @@
   line-height: 1.35;
 }
 
+.manga-glossary-section {
+  padding-bottom: 16px;
+}
+
+.manga-glossary-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.manga-glossary-form label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--manga-muted);
+  font-size: 10px;
+}
+
+.manga-glossary-add {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 36px;
+}
+
+.manga-glossary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.manga-glossary-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 5px;
+}
+
+.manga-glossary-entry input {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  font-size: 10px;
+}
+
+.manga-glossary-arrow {
+  color: var(--manga-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.manga-glossary-remove {
+  width: 32px;
+  height: 32px;
+}
+
+.manga-glossary-empty {
+  border: 1px dashed var(--manga-border);
+  border-radius: 5px;
+  padding: 9px;
+  color: var(--manga-faint);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
 .manga-add-region {
   display: inline-flex;
   align-items: center;
@@ -1217,6 +1284,14 @@
   margin-top: 11px;
   color: var(--manga-faint);
   font-size: 10px;
+}
+
+.manga-glossary-hit-active {
+  color: var(--manga-cyan);
+}
+
+.manga-glossary-hit-active .manga-glossary-dot {
+  background: var(--manga-cyan);
 }
 
 .manga-glossary-dot {

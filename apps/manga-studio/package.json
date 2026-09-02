@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./app": "./src/App.tsx",
+    "./glossary": "./src/glossary.ts",
     "./store": "./src/store.ts",
     "./model": "./src/model.ts",
     "./operations": "./src/operations.ts"

@@ -2,6 +2,8 @@ import { type ArtifactRef, type ComputeTask, type TaskHandle } from "@bcr/core";
 import type { RuntimeServices } from "@bcr/react";
 import { Effect, Fiber, Stream } from "effect";
 import { createImportedRegion } from "./fixture";
+import { translateWithGlossary } from "./glossary";
+import type { MangaGlossaryEntry } from "./model";
 import { LOCAL_OCR_OPERATION, REVIEW_OCR_OPERATION } from "./operations";
 import { mangaRuntime } from "./runtime";
 import { manga } from "./store";
@@ -30,7 +32,7 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-function translateText(text: string): string {
+function fixtureTranslate(text: string): string {
   const dictionary: Record<string, string> = {
     "ここから、始めよう。": "就从这里开始吧。",
     もうすぐ春だね: "春天快到了呢",
@@ -41,6 +43,10 @@ function translateText(text: string): string {
     待识别文本: "请编辑译文",
   };
   return dictionary[text] ?? (text.trim().length > 0 ? `译：${text}` : "请编辑译文");
+}
+
+function translateText(text: string, glossary: ReadonlyArray<MangaGlossaryEntry>): string {
+  return translateWithGlossary(text, glossary, fixtureTranslate);
 }
 
 function ocrTask(runId: number): ComputeTask | undefined {
@@ -186,9 +192,10 @@ export async function runMangaPipeline(
         manga.addRegion(createImportedRegion(source.width, source.height));
       }
       if (stage.id === "translate") {
+        const { glossary } = manga.getSnapshot();
         const regions = manga.getSnapshot().regions.map((region) => ({
           ...region,
-          translatedText: translateText(region.sourceText),
+          translatedText: translateText(region.sourceText, glossary),
         }));
         manga.setRegionsForPipeline(regions);
       }

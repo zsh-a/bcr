@@ -558,7 +558,8 @@ Manga 已先把人工/Fixture 区域通过可取消的 `manga.ocr.review` Worker
 `manga/ocr-lines` Artifact；它只验证数据契约，不伪装像素识别。下一步按风险顺序接入真实视觉 Worker
 （ONNX/WebGPU）已提供可选的 Transformers.js ONNX 按区域执行路径，模型缓存、设备降级和失败都在 Worker
 边界内显式处理；CJK 专用模型仍需独立 manifest，不能把 Latin 模型当作日文能力。多页队列已具备持久化
-游标，只重跑未完成页面，并可从暂停/刷新状态恢复；下一步是术语表/翻译模型和 PDF/CBZ 批处理。
+游标，只重跑未完成页面，并可从暂停/刷新状态恢复。项目级 Glossary 与页面队列一起写入 SQLite，整句命中
+优先、重叠术语最长匹配，术语编辑会使翻译产物失效；下一步是翻译模型和 PDF/CBZ 批处理。
 
 ### Phase 3 — 正式抽包与生态
 

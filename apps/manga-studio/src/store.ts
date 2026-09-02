@@ -6,6 +6,7 @@ import type {
   MangaLogEntry,
   MangaBatchJob,
   MangaBatchStatus,
+  MangaGlossaryEntry,
   MangaPage,
   MangaSettings,
   MangaSource,
@@ -39,6 +40,34 @@ export const DEFAULT_SETTINGS: MangaSettings = {
   fontSize: 1,
 };
 
+export const DEFAULT_GLOSSARY: ReadonlyArray<MangaGlossaryEntry> = [];
+
+function normalizeGlossary(entries: unknown): ReadonlyArray<MangaGlossaryEntry> {
+  if (!Array.isArray(entries)) return DEFAULT_GLOSSARY;
+  const seenSources = new Set<string>();
+  return entries.flatMap((candidate, index) => {
+    if (typeof candidate !== "object" || candidate === null) return [];
+    const value = candidate as Record<string, unknown>;
+    const source = typeof value["source"] === "string" ? value["source"].trim() : "";
+    const target = typeof value["target"] === "string" ? value["target"].trim() : "";
+    if (source.length === 0 || target.length === 0 || seenSources.has(source)) return [];
+    seenSources.add(source);
+    const id =
+      typeof value["id"] === "string" && value["id"].length > 0
+        ? value["id"]
+        : `glossary-restored-${index.toString(36)}`;
+    return [
+      {
+        id,
+        source,
+        target,
+        note: typeof value["note"] === "string" ? value["note"].trim() : "",
+        enabled: value["enabled"] !== false,
+      } satisfies MangaGlossaryEntry,
+    ];
+  });
+}
+
 function freshStages(): ReadonlyArray<StageState> {
   return STAGES.map((stage, index) =>
     index === 0 ? stage : { ...stage, status: "idle", progress: 0 },
@@ -67,6 +96,7 @@ class MangaStore {
     activeRegionId: initialPage.activeRegionId,
     outputMode: initialPage.outputMode,
     settings: DEFAULT_SETTINGS,
+    glossary: DEFAULT_GLOSSARY,
     running: false,
     outputReady: initialPage.outputReady,
     dirty: initialPage.dirty,
@@ -75,7 +105,7 @@ class MangaStore {
       {
         ts: Date.now(),
         level: "info",
-        message: "fixture page ready · OCR/translation adapter is explicit offline demo",
+        message: "fixture page ready · OCR/translation adapters are explicit and reviewable",
       },
     ],
   };
@@ -262,6 +292,89 @@ class MangaStore {
   /** Restore project configuration without turning hydration into an edit. */
   restoreConfig(settings: MangaSettings, graph: Graph): void {
     this.set({ settings: { ...DEFAULT_SETTINGS, ...settings }, graph });
+  }
+
+  /** Restore project terminology without marking the hydrated project dirty. */
+  restoreGlossary(entries: ReadonlyArray<MangaGlossaryEntry> | undefined): void {
+    this.set({ glossary: normalizeGlossary(entries) });
+  }
+
+  private invalidateOutputs(): void {
+    const pages = this.state.pages.map((page) => ({
+      ...page,
+      stages: freshStages(),
+      outputReady: false,
+      dirty: true,
+    }));
+    const active = pages.find((page) => page.id === this.state.activePageId) ?? pages[0];
+    this.set({
+      pages,
+      stages: active?.stages ?? freshStages(),
+      outputReady: false,
+      dirty: true,
+    });
+  }
+
+  addGlossaryEntry(source: string, target: string, note = ""): boolean {
+    const normalizedSource = source.trim();
+    const normalizedTarget = target.trim();
+    if (normalizedSource.length === 0 || normalizedTarget.length === 0) {
+      this.log("warn", "glossary · source and target are required");
+      return false;
+    }
+    const duplicate = this.state.glossary.find((entry) => entry.source.trim() === normalizedSource);
+    if (duplicate !== undefined) {
+      this.log("warn", `glossary · ${normalizedSource} already exists`);
+      return false;
+    }
+    const entry: MangaGlossaryEntry = {
+      id: `glossary-${Date.now().toString(36)}-${this.state.glossary.length.toString(36)}`,
+      source: normalizedSource,
+      target: normalizedTarget,
+      note: note.trim(),
+      enabled: true,
+    };
+    this.set({ glossary: [...this.state.glossary, entry] });
+    this.invalidateOutputs();
+    this.log("ok", `glossary · added · ${normalizedSource} → ${normalizedTarget}`);
+    return true;
+  }
+
+  updateGlossaryEntry(
+    id: string,
+    patch: Partial<Pick<MangaGlossaryEntry, "source" | "target" | "note" | "enabled">>,
+  ): void {
+    const index = this.state.glossary.findIndex((entry) => entry.id === id);
+    if (index < 0) return;
+    const glossary = [...this.state.glossary];
+    const current = glossary[index];
+    if (current === undefined) return;
+    const next = { ...current, ...patch };
+    if (next.source.trim().length > 0) {
+      const duplicate = this.state.glossary.find(
+        (entry) => entry.id !== id && entry.source.trim() === next.source.trim(),
+      );
+      if (duplicate !== undefined) {
+        this.log("warn", `glossary · ${next.source.trim()} already exists`);
+        return;
+      }
+    }
+    glossary[index] = {
+      ...next,
+      source: next.source.trim(),
+      target: next.target.trim(),
+      note: next.note.trim(),
+    };
+    this.set({ glossary });
+    this.invalidateOutputs();
+  }
+
+  removeGlossaryEntry(id: string): void {
+    const glossary = this.state.glossary.filter((entry) => entry.id !== id);
+    if (glossary.length === this.state.glossary.length) return;
+    this.set({ glossary });
+    this.invalidateOutputs();
+    this.log("info", "glossary · entry removed");
   }
 
   setSettings(patch: Partial<MangaSettings>): void {

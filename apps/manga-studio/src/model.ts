@@ -67,6 +67,15 @@ export interface MangaOcrArtifact {
   readonly lines: ReadonlyArray<MangaOcrLine>;
 }
 
+/** Project-level terminology that survives page changes and refreshes. */
+export interface MangaGlossaryEntry {
+  readonly id: string;
+  readonly source: string;
+  readonly target: string;
+  readonly note: string;
+  readonly enabled: boolean;
+}
+
 /** Lazy model manifest. The first model is deterministic; the second is opt-in. */
 export interface MangaOcrModelManifest {
   readonly id: MangaOcrAdapterId;
@@ -164,6 +173,7 @@ export interface MangaState {
   readonly activeRegionId: string | null;
   readonly outputMode: OutputMode;
   readonly settings: MangaSettings;
+  readonly glossary: ReadonlyArray<MangaGlossaryEntry>;
   readonly running: boolean;
   readonly outputReady: boolean;
   readonly dirty: boolean;

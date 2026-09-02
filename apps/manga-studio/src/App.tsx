@@ -24,6 +24,7 @@ import { consumeDocumentHandoff } from "@bcr/document-core";
 import { useOptionalRuntime } from "@bcr/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cancelMangaPipeline, cancelMangaQueue, runMangaPipeline, runMangaQueue } from "./pipeline";
+import { findGlossaryMatches } from "./glossary";
 import {
   createMangaRuntime,
   importImageArtifact,
@@ -34,6 +35,7 @@ import {
 import { manga, useMangaStudio } from "./store";
 import {
   OCR_MODEL_MANIFESTS,
+  type MangaGlossaryEntry,
   type MangaOcrDevice,
   type MangaSource,
   type OutputMode,
@@ -138,6 +140,8 @@ export function App() {
   const [exporting, setExporting] = useState(false);
   const [runtime, setRuntime] = useState<MangaRuntime | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
+  const [glossarySource, setGlossarySource] = useState("");
+  const [glossaryTarget, setGlossaryTarget] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -158,7 +162,7 @@ export function App() {
     if (runtime === null) return;
     const timer = window.setTimeout(() => void persistProject(runtime), 650);
     return () => window.clearTimeout(timer);
-  }, [runtime, state.pages, state.graph, state.settings, state.batch]);
+  }, [runtime, state.pages, state.graph, state.settings, state.glossary, state.batch]);
 
   useEffect(() => {
     if (runtime === null) return;
@@ -278,6 +282,13 @@ export function App() {
       status: "needs-review",
     };
     manga.addRegion(region);
+  };
+
+  const addGlossary = (): void => {
+    if (manga.addGlossaryEntry(glossarySource, glossaryTarget)) {
+      setGlossarySource("");
+      setGlossaryTarget("");
+    }
   };
 
   const run = () => {
@@ -788,6 +799,86 @@ export function App() {
             </div>
           </section>
 
+          <section className="manga-sidebar-section manga-glossary-section">
+            <div className="manga-section-heading">
+              <span>GLOSSARY</span>
+              <span className="manga-count">{state.glossary.length}</span>
+            </div>
+            <div className="manga-glossary-form">
+              <label>
+                <span>原文术语</span>
+                <input
+                  value={glossarySource}
+                  placeholder="例如：勇者"
+                  onChange={(event) => setGlossarySource(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addGlossary();
+                    }
+                  }}
+                />
+              </label>
+              <label>
+                <span>固定译法</span>
+                <input
+                  value={glossaryTarget}
+                  placeholder="例如：勇者大人"
+                  onChange={(event) => setGlossaryTarget(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addGlossary();
+                    }
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                className="manga-button manga-button-secondary manga-glossary-add"
+                disabled={glossarySource.trim().length === 0 || glossaryTarget.trim().length === 0}
+                onClick={addGlossary}
+              >
+                <Plus className="size-3.5" /> 添加术语
+              </button>
+            </div>
+            <div className="manga-glossary-list">
+              {state.glossary.length === 0 ? (
+                <div className="manga-glossary-empty">暂无术语 · 添加后会在翻译阶段优先采用</div>
+              ) : (
+                state.glossary.map((entry) => (
+                  <div className="manga-glossary-entry" key={entry.id}>
+                    <input
+                      value={entry.source}
+                      aria-label={`术语原文：${entry.source}`}
+                      onChange={(event) =>
+                        manga.updateGlossaryEntry(entry.id, { source: event.target.value })
+                      }
+                    />
+                    <span className="manga-glossary-arrow" aria-hidden="true">
+                      →
+                    </span>
+                    <input
+                      value={entry.target}
+                      aria-label={`术语译文：${entry.target}`}
+                      onChange={(event) =>
+                        manga.updateGlossaryEntry(entry.id, { target: event.target.value })
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="manga-icon-button manga-glossary-remove"
+                      aria-label={`删除术语：${entry.source}`}
+                      onClick={() => manga.removeGlossaryEntry(entry.id)}
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
           <section className="manga-sidebar-section manga-region-section">
             <div className="manga-section-heading">
               <span>TEXT REGIONS</span>
@@ -835,7 +926,7 @@ export function App() {
             {selectedRegion === null ? (
               <div className="manga-inspector-empty">选择一个文本区域开始审校</div>
             ) : (
-              <RegionInspector region={selectedRegion} />
+              <RegionInspector region={selectedRegion} glossary={state.glossary} />
             )}
           </section>
 
@@ -873,7 +964,14 @@ export function App() {
   );
 }
 
-function RegionInspector({ region }: { region: TextRegion }) {
+function RegionInspector({
+  region,
+  glossary,
+}: {
+  region: TextRegion;
+  glossary: ReadonlyArray<MangaGlossaryEntry>;
+}) {
+  const matches = findGlossaryMatches(region.sourceText, glossary);
   return (
     <div className="manga-inspector-fields">
       <div className="manga-inspector-title-row">
@@ -924,9 +1022,15 @@ function RegionInspector({ region }: { region: TextRegion }) {
           <input value={percent(region.confidence)} readOnly aria-label="OCR 置信度" />
         </label>
       </div>
-      <div className="manga-glossary-hit">
+      <div
+        className={`manga-glossary-hit ${matches.length > 0 ? "manga-glossary-hit-active" : ""}`}
+      >
         <span className="manga-glossary-dot" />
-        <span>Glossary 未命中 · 可在下一版加入术语表</span>
+        <span>
+          {matches.length > 0
+            ? `Glossary 命中 · ${matches.map((entry) => `${entry.source} → ${entry.target}`).join(" · ")}`
+            : "Glossary 未命中 · 可在上方加入术语"}
+        </span>
       </div>
       <button
         type="button"

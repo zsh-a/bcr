@@ -14,7 +14,13 @@ import { Context, Effect, Layer } from "effect";
 import { decodeGraph, encodeGraph } from "@bcr/graph";
 import { FIXTURE_PAGE_URL } from "./fixture";
 import { manga } from "./store";
-import type { MangaBatchJob, MangaPage, MangaSettings, MangaSource } from "./model";
+import type {
+  MangaBatchJob,
+  MangaGlossaryEntry,
+  MangaPage,
+  MangaSettings,
+  MangaSource,
+} from "./model";
 
 export interface MangaRuntime {
   readonly artifacts: ArtifactStore;
@@ -55,6 +61,7 @@ interface PersistedProject {
   readonly activePageId: string;
   readonly pages: ReadonlyArray<PersistedPage>;
   readonly settings: MangaSettings;
+  readonly glossary?: ReadonlyArray<MangaGlossaryEntry> | undefined;
   readonly graph: string;
   readonly batch?: MangaBatchJob | undefined;
 }
@@ -160,6 +167,7 @@ export async function persistProject(runtime: MangaRuntime): Promise<void> {
     activePageId: state.activePageId,
     pages: state.pages.map(persistPage),
     settings: state.settings,
+    glossary: state.glossary,
     graph: encodeGraph(state.graph),
     ...(state.batch === undefined ? {} : { batch: state.batch }),
   };
@@ -231,6 +239,7 @@ export async function restoreProject(runtime: MangaRuntime): Promise<boolean> {
 
     const graph = decodeGraph(project.graph);
     manga.restoreConfig(project.settings, graph ?? manga.getSnapshot().graph);
+    manga.restoreGlossary(project.glossary);
     manga.setPages(pages, project.activePageId);
     manga.restoreBatch(project.batch);
     manga.log("ok", `restore · ${pages.length} page(s) · ${manga.getSnapshot().source.name}`);

@@ -91,7 +91,36 @@ if (!(await page.locator('[data-batch-status="completed"]').innerText()).include
   fail("批处理队列没有跳过已完成页面并完成待处理页面");
 }
 
+// Glossary edits are project-wide and invalidate translated outputs, so verify
+// the feature after the queue assertion rather than changing its cursor.
+if ((await page.locator(".manga-glossary-entry").count()) === 0) {
+  await page.getByLabel("原文术语").fill("待识别文本");
+  await page.getByLabel("固定译法").fill("已审校文本");
+  await page.getByRole("button", { name: "添加术语" }).click();
+} else {
+  const entry = page.locator(".manga-glossary-entry").first();
+  await entry.locator("input").nth(0).fill("待识别文本");
+  await entry.locator("input").nth(1).fill("已审校文本");
+}
+if ((await page.locator(".manga-glossary-entry").count()) < 1) fail("术语表未添加条目");
 await page.locator(".manga-region-row").first().click();
+if ((await page.locator(".manga-glossary-hit-active").count()) !== 1) {
+  fail("区域审校未显示术语命中");
+}
+await page.getByRole("button", { name: "翻译当前页" }).click();
+await page.waitForFunction(
+  () =>
+    [...document.querySelectorAll(".manga-stage-status")].every(
+      (element) => element.textContent === "DONE",
+    ),
+  undefined,
+  { timeout: 20_000 },
+);
+await page.locator(".manga-region-row").first().click();
+if ((await page.locator("textarea").nth(1).inputValue()) !== "已审校文本") {
+  fail("翻译阶段未采用术语表固定译法");
+}
+
 const textareas = page.locator("textarea");
 if ((await textareas.count()) < 2) fail("文本区域 Inspector 未渲染");
 await textareas.nth(1).fill("审校后的译文");
@@ -119,6 +148,9 @@ if ((await page.locator("textarea").nth(1).inputValue()) !== "审校后的译文
 if ((await page.locator(".manga-page-card").count()) < 1) fail("刷新后页面队列未恢复");
 if ((await page.locator('[data-batch-status="completed"]').count()) !== 1) {
   fail("刷新后批处理状态未恢复");
+}
+if ((await page.locator(".manga-glossary-entry").count()) < 1) {
+  fail("刷新后术语表未恢复");
 }
 
 await page.screenshot({ path: `${dir}/manga-studio.png`, fullPage: true });
