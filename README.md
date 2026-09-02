@@ -313,8 +313,9 @@ Canonical Table Package → Schema / search / sort / export
 
 - `packages/data-core` 定义格式无关的 `DataTablePackage`、列类型（TEXT / NUMBER / BOOL / DATE / EMPTY）、空值统计和严格恢复解码；重复列名、缺失字段与混合值在契约边界确定性归一化。
 - Data Studio 通过 BLAKE3 内容寻址保存源文件，解析任务共享宿主 Scheduler / WorkerPool，并以 `data/table` Artifact 保存结果；16 MiB 以上文件先展示有明确 `sampled` 标记的预览，不破坏原始源文件。
+- Data Asset Catalog 将多次导入统一为内容寻址资产记录（格式、大小、行列数、采样状态、最近打开时间与源 / 表 Artifact 引用）；可在资产卡片间切换，刷新后优先恢复最近打开且仍可读的表。
 - 表格支持跨列搜索、点击列头排序、Schema 类型与空值提示，以及 Canonical JSON / RFC 4180 CSV 导出；刷新后只从 SQLite 元数据中的 Artifact 引用恢复，不重复读取或解析源文件。
-- 全局 Workspace Search 将当前数据集注册为 `dataset` 结果，深链 `/data?query=…` 可直接恢复筛选上下文；清除快照只移除当前视图引用，原始 Artifact 仍可由存储治理统一回收。
+- 全局 Workspace Search 将目录中的每个资产注册为 `dataset` 结果，深链 `/data?query=…` 可直接恢复筛选上下文；从目录清除只移除资产引用，原始 Artifact 仍可由存储治理统一回收。
 
 走查：`node scripts/verify-data-studio.mjs`（由 `bun run test:browser` 自动执行，覆盖 JSON / CSV / NDJSON、搜索、排序、导出、深链与刷新恢复）。
 

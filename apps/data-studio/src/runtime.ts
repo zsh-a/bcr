@@ -6,17 +6,53 @@ import {
   type TaskHandle,
 } from "@bcr/core";
 import type { RuntimeServices } from "@bcr/react";
-import { decodeDataTablePackage, type DataFormat, type DataTablePackage } from "@bcr/data-core";
+import {
+  dataTableStats,
+  decodeDataTablePackage,
+  type DataFormat,
+  type DataTablePackage,
+} from "@bcr/data-core";
 import { Effect, Fiber, Stream } from "effect";
 
 const SNAPSHOT_KEY = "data-studio.snapshot.v1";
+const CATALOG_KEY = "data-studio.catalog.v1";
 let taskSequence = 0;
 let activeTask: TaskHandle | null = null;
+
+export interface DataAssetRecord {
+  readonly id: string;
+  readonly sourceName: string;
+  readonly format: DataFormat;
+  readonly sizeBytes: number;
+  readonly sourceRef: ArtifactRef;
+  readonly tableRef: ArtifactRef;
+  readonly rowCount: number;
+  readonly columnCount: number;
+  readonly sampled: boolean;
+  readonly createdAt: number;
+  readonly lastOpenedAt: number;
+  readonly sourceHash?: string | undefined;
+}
+
+export interface DataAssetCatalog {
+  readonly version: 1;
+  readonly activeAssetId: string | null;
+  readonly assets: ReadonlyArray<DataAssetRecord>;
+}
 
 export interface DataTableSnapshot {
   readonly table: DataTablePackage;
   readonly sourceRef: ArtifactRef;
   readonly tableRef: ArtifactRef;
+  readonly sizeBytes?: number | undefined;
+  readonly asset?: DataAssetRecord | undefined;
+}
+
+export interface RestoredDataCatalog {
+  readonly catalog: DataAssetCatalog;
+  readonly active: DataTableSnapshot | undefined;
+  /** True when the previous single-snapshot metadata was upgraded in memory. */
+  readonly migratedLegacy: boolean;
 }
 
 function formatForFile(file: Pick<File, "name" | "type">): DataFormat {
@@ -80,6 +116,176 @@ function outputRef(outputs: ReadonlyArray<ArtifactRef>): ArtifactRef {
   return ref;
 }
 
+function emptyCatalog(): DataAssetCatalog {
+  return { version: 1, activeAssetId: null, assets: [] };
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isDataFormat(value: unknown): value is DataFormat {
+  return value === "csv" || value === "json" || value === "ndjson";
+}
+
+function decodeDataAsset(value: unknown): DataAssetRecord | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const candidate = value as Record<string, unknown>;
+  if (
+    typeof candidate["id"] !== "string" ||
+    typeof candidate["sourceName"] !== "string" ||
+    !isDataFormat(candidate["format"]) ||
+    !isNonNegativeInteger(candidate["sizeBytes"]) ||
+    !isArtifactRef(candidate["sourceRef"]) ||
+    !isArtifactRef(candidate["tableRef"]) ||
+    !isNonNegativeInteger(candidate["rowCount"]) ||
+    !isNonNegativeInteger(candidate["columnCount"]) ||
+    typeof candidate["sampled"] !== "boolean" ||
+    !isFiniteNumber(candidate["createdAt"]) ||
+    !isFiniteNumber(candidate["lastOpenedAt"])
+  ) {
+    return undefined;
+  }
+  const sourceHash = candidate["sourceHash"];
+  return {
+    id: candidate["id"],
+    sourceName: candidate["sourceName"],
+    format: candidate["format"],
+    sizeBytes: candidate["sizeBytes"],
+    sourceRef: candidate["sourceRef"],
+    tableRef: candidate["tableRef"],
+    rowCount: candidate["rowCount"],
+    columnCount: candidate["columnCount"],
+    sampled: candidate["sampled"],
+    createdAt: candidate["createdAt"],
+    lastOpenedAt: candidate["lastOpenedAt"],
+    ...(typeof sourceHash === "string" && sourceHash.length > 0 ? { sourceHash } : {}),
+  };
+}
+
+function decodeDataCatalog(value: unknown): DataAssetCatalog | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const candidate = value as Record<string, unknown>;
+  if (candidate["version"] !== 1 || !Array.isArray(candidate["assets"])) return undefined;
+  const assets = candidate["assets"].flatMap((asset) => {
+    const decoded = decodeDataAsset(asset);
+    return decoded === undefined ? [] : [decoded];
+  });
+  const activeAssetId = candidate["activeAssetId"];
+  if (activeAssetId !== null && typeof activeAssetId !== "string") return undefined;
+  return { version: 1, activeAssetId, assets };
+}
+
+function assetIdFor(sourceRef: ArtifactRef): string {
+  return `data-asset/${sourceRef.hash ?? sourceRef.id}`;
+}
+
+function assetFromSnapshot(
+  snapshot: DataTableSnapshot,
+  previous?: DataAssetRecord,
+): DataAssetRecord {
+  const stats = dataTableStats(snapshot.table);
+  const sourceHash = snapshot.sourceRef.hash ?? snapshot.table.provenance.sourceHash;
+  return {
+    id: previous?.id ?? assetIdFor(snapshot.sourceRef),
+    sourceName: snapshot.table.sourceName,
+    format: snapshot.table.format,
+    sizeBytes: snapshot.sizeBytes ?? previous?.sizeBytes ?? 0,
+    sourceRef: snapshot.sourceRef,
+    tableRef: snapshot.tableRef,
+    rowCount: stats.rowCount,
+    columnCount: stats.columnCount,
+    sampled: snapshot.table.provenance.sampled,
+    createdAt: previous?.createdAt ?? snapshot.table.provenance.createdAt,
+    lastOpenedAt: Date.now(),
+    ...(sourceHash === undefined ? {} : { sourceHash }),
+  };
+}
+
+async function readSnapshotRefs(
+  services: RuntimeServices,
+  sourceRef: ArtifactRef,
+  tableRef: ArtifactRef,
+  sizeBytes?: number,
+  asset?: DataAssetRecord,
+): Promise<DataTableSnapshot | undefined> {
+  try {
+    const bytes = await Effect.runPromise(services.artifacts.get(tableRef));
+    const table = decodeDataTablePackage(JSON.parse(new TextDecoder().decode(bytes)) as unknown);
+    return table === undefined
+      ? undefined
+      : {
+          table,
+          sourceRef,
+          tableRef,
+          ...(sizeBytes === undefined ? {} : { sizeBytes }),
+          ...(asset === undefined ? {} : { asset }),
+        };
+  } catch {
+    return undefined;
+  }
+}
+
+function legacyRefs(
+  raw: string | undefined,
+): { readonly sourceRef: ArtifactRef; readonly tableRef: ArtifactRef } | undefined {
+  if (raw === undefined || raw.length === 0) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return parsed["version"] === 1 &&
+      isArtifactRef(parsed["sourceRef"]) &&
+      isArtifactRef(parsed["tableRef"])
+      ? { sourceRef: parsed["sourceRef"], tableRef: parsed["tableRef"] }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function readDataCatalog(
+  services: RuntimeServices,
+): Promise<{ readonly catalog: DataAssetCatalog; readonly migratedLegacy: boolean }> {
+  if (services.metadata === undefined) return { catalog: emptyCatalog(), migratedLegacy: false };
+  const catalogRaw = await services.metadata.get(CATALOG_KEY);
+  let decoded: DataAssetCatalog | undefined;
+  if (catalogRaw !== undefined && catalogRaw.length > 0) {
+    try {
+      decoded = decodeDataCatalog(JSON.parse(catalogRaw) as unknown);
+    } catch {
+      decoded = undefined;
+    }
+  }
+  if (decoded !== undefined) return { catalog: decoded, migratedLegacy: false };
+  const legacy = legacyRefs(await services.metadata.get(SNAPSHOT_KEY));
+  if (legacy === undefined) return { catalog: emptyCatalog(), migratedLegacy: false };
+  const snapshot = await readSnapshotRefs(services, legacy.sourceRef, legacy.tableRef);
+  if (snapshot === undefined) return { catalog: emptyCatalog(), migratedLegacy: false };
+  const asset = assetFromSnapshot(snapshot);
+  return {
+    catalog: { version: 1, activeAssetId: asset.id, assets: [asset] },
+    migratedLegacy: true,
+  };
+}
+
+async function writeDataCatalog(
+  services: RuntimeServices,
+  catalog: DataAssetCatalog,
+): Promise<void> {
+  if (services.metadata === undefined) return;
+  await services.metadata.set(CATALOG_KEY, JSON.stringify(catalog));
+  const active = catalog.assets.find((asset) => asset.id === catalog.activeAssetId);
+  await services.metadata.set(
+    SNAPSHOT_KEY,
+    active === undefined
+      ? ""
+      : JSON.stringify({ version: 1, sourceRef: active.sourceRef, tableRef: active.tableRef }),
+  );
+}
+
 /** Import and parse a table through the host Scheduler/compute.worker. */
 export async function importDataTable(
   services: RuntimeServices,
@@ -106,9 +312,15 @@ export async function importDataTable(
     const bytes = await Effect.runPromise(services.artifacts.get(tableRef));
     const table = decodeDataTablePackage(JSON.parse(new TextDecoder().decode(bytes)) as unknown);
     if (table === undefined) throw new Error("Data parser 返回了无效的 table Artifact");
-    await persistDataTable(services, { table, sourceRef, tableRef });
+    const snapshot = {
+      table,
+      sourceRef,
+      tableRef,
+      sizeBytes: file.size,
+    } satisfies DataTableSnapshot;
+    await persistDataTable(services, snapshot);
     onProgress?.(1);
-    return { table, sourceRef, tableRef };
+    return { ...snapshot, asset: assetFromSnapshot(snapshot) };
   } finally {
     activeTask = null;
     Effect.runFork(Fiber.interrupt(progressFiber));
@@ -127,44 +339,108 @@ export async function persistDataTable(
   snapshot: DataTableSnapshot,
 ): Promise<void> {
   if (services.metadata === undefined) return;
-  await services.metadata.set(
-    SNAPSHOT_KEY,
-    JSON.stringify({ version: 1, sourceRef: snapshot.sourceRef, tableRef: snapshot.tableRef }),
+  const current = await readDataCatalog(services);
+  const existing = current.catalog.assets.find(
+    (asset) => asset.id === assetIdFor(snapshot.sourceRef),
   );
+  const asset = assetFromSnapshot(snapshot, existing);
+  const assets = [
+    asset,
+    ...current.catalog.assets.filter((candidate) => candidate.id !== asset.id),
+  ];
+  await writeDataCatalog(services, { version: 1, activeAssetId: asset.id, assets });
 }
 
-/** Restore table metadata first, then read the immutable table Artifact. */
+/** Restore one immutable table Artifact referenced by an asset catalog entry. */
+export async function restoreDataAsset(
+  services: RuntimeServices,
+  asset: DataAssetRecord,
+): Promise<DataTableSnapshot | undefined> {
+  return readSnapshotRefs(services, asset.sourceRef, asset.tableRef, asset.sizeBytes, asset);
+}
+
+/**
+ * Restore the asset catalog and its most recently selected table. Invalid
+ * table artifacts are left in the catalog for diagnostics, while a healthy
+ * sibling can still become the active view.
+ */
+export async function restoreDataCatalog(services: RuntimeServices): Promise<RestoredDataCatalog> {
+  const loaded = await readDataCatalog(services);
+  const preferred = loaded.catalog.assets.find(
+    (asset) => asset.id === loaded.catalog.activeAssetId,
+  );
+  const candidates = [
+    ...(preferred === undefined ? [] : [preferred]),
+    ...loaded.catalog.assets
+      .filter((asset) => asset.id !== preferred?.id)
+      .toSorted((left, right) => right.lastOpenedAt - left.lastOpenedAt),
+  ];
+  let active: DataTableSnapshot | undefined;
+  for (const asset of candidates) {
+    active = await restoreDataAsset(services, asset);
+    if (active !== undefined) break;
+  }
+  const activeAssetId = active?.asset?.id ?? loaded.catalog.activeAssetId;
+  const catalog =
+    activeAssetId === loaded.catalog.activeAssetId
+      ? loaded.catalog
+      : { ...loaded.catalog, activeAssetId };
+  if (loaded.migratedLegacy || catalog.activeAssetId !== loaded.catalog.activeAssetId) {
+    await writeDataCatalog(services, catalog);
+  }
+  return { catalog, active, migratedLegacy: loaded.migratedLegacy };
+}
+
+/** Select an asset, update its last-opened timestamp, and persist the active ID. */
+export async function activateDataAsset(
+  services: RuntimeServices,
+  assetId: string,
+): Promise<DataTableSnapshot | undefined> {
+  const loaded = await readDataCatalog(services);
+  const asset = loaded.catalog.assets.find((candidate) => candidate.id === assetId);
+  if (asset === undefined) return undefined;
+  const snapshot = await restoreDataAsset(services, asset);
+  if (snapshot === undefined) return undefined;
+  const opened = { ...asset, lastOpenedAt: Date.now() };
+  const assets = [opened, ...loaded.catalog.assets.filter((candidate) => candidate.id !== assetId)];
+  await writeDataCatalog(services, { version: 1, activeAssetId: assetId, assets });
+  return { ...snapshot, asset: opened };
+}
+
+/** Remove an asset from the active catalog without deleting immutable Artifacts. */
+export async function removeDataAsset(
+  services: RuntimeServices,
+  assetId: string,
+): Promise<DataAssetCatalog> {
+  const loaded = await readDataCatalog(services);
+  const assets = loaded.catalog.assets.filter((asset) => asset.id !== assetId);
+  const nextActive =
+    loaded.catalog.activeAssetId === assetId
+      ? (assets[0]?.id ?? null)
+      : loaded.catalog.activeAssetId !== null &&
+          assets.some((asset) => asset.id === loaded.catalog.activeAssetId)
+        ? loaded.catalog.activeAssetId
+        : (assets[0]?.id ?? null);
+  const catalog = { version: 1 as const, activeAssetId: nextActive, assets };
+  await writeDataCatalog(services, catalog);
+  return catalog;
+}
+
+/** Restore the legacy single-table view by selecting the catalog's active asset. */
 export async function restoreDataTable(
   services: RuntimeServices,
 ): Promise<DataTableSnapshot | undefined> {
-  if (services.metadata === undefined) return undefined;
-  const raw = await services.metadata.get(SNAPSHOT_KEY);
-  if (raw === undefined) return undefined;
-  try {
-    const parsed = JSON.parse(raw) as {
-      version?: unknown;
-      sourceRef?: unknown;
-      tableRef?: unknown;
-    };
-    if (
-      parsed.version !== 1 ||
-      !isArtifactRef(parsed.sourceRef) ||
-      !isArtifactRef(parsed.tableRef)
-    ) {
-      return undefined;
-    }
-    const bytes = await Effect.runPromise(services.artifacts.get(parsed.tableRef));
-    const table = decodeDataTablePackage(JSON.parse(new TextDecoder().decode(bytes)) as unknown);
-    return table === undefined
-      ? undefined
-      : { table, sourceRef: parsed.sourceRef, tableRef: parsed.tableRef };
-  } catch {
-    return undefined;
-  }
+  return (await restoreDataCatalog(services)).active;
 }
 
 export async function clearDataTable(services: RuntimeServices): Promise<void> {
-  if (services.metadata !== undefined) await services.metadata.set(SNAPSHOT_KEY, "");
+  const restored = await restoreDataCatalog(services);
+  const activeAssetId = restored.catalog.activeAssetId;
+  if (activeAssetId === null) {
+    if (services.metadata !== undefined) await services.metadata.set(SNAPSHOT_KEY, "");
+    return;
+  }
+  await removeDataAsset(services, activeAssetId);
 }
 
 export function dataContentHash(table: DataTablePackage): string {

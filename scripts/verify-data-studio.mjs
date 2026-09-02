@@ -69,6 +69,30 @@ await page.locator(".data-main-heading h1", { hasText: "signals.json" }).waitFor
 });
 if (!(await page.locator(".data-table tbody tr").count())) fail("刷新后表格 Artifact 没有恢复");
 
+await input.setInputFiles({
+  name: "second.json",
+  mimeType: "application/json",
+  buffer: Buffer.from(JSON.stringify([{ symbol: "SECOND", score: 1 }])),
+});
+await page.locator(".data-main-heading h1", { hasText: "second.json" }).waitFor({
+  timeout: 20_000,
+});
+if ((await page.locator(".data-asset-card").count()) !== 2) {
+  fail("多资产导入没有保留资产目录历史");
+}
+await page.locator(".data-asset-card", { hasText: "signals.json" }).click();
+await page.locator(".data-main-heading h1", { hasText: "signals.json" }).waitFor({
+  timeout: 20_000,
+});
+await page.locator(".data-asset-card", { hasText: "second.json" }).click();
+await page.locator(".data-main-heading h1", { hasText: "second.json" }).waitFor({
+  timeout: 20_000,
+});
+await page.getByRole("button", { name: "清除", exact: true }).click();
+await page.locator(".data-main-heading h1", { hasText: "signals.json" }).waitFor({
+  timeout: 20_000,
+});
+
 const deepLink = new URL(base);
 deepLink.searchParams.set("query", "DATA");
 await page.goto(deepLink.toString(), { waitUntil: "domcontentloaded" });
@@ -108,6 +132,14 @@ if (!(await page.locator(".data-schema-strip").innerText()).includes("BOOL")) {
   fail("NDJSON 布尔字段类型推断没有展示");
 }
 await page.getByRole("button", { name: "清除" }).click();
+await page.locator(".data-main-heading h1", { hasText: "quoted.csv" }).waitFor({
+  timeout: 20_000,
+});
+await page.getByRole("button", { name: "清除", exact: true }).click();
+await page.locator(".data-main-heading h1", { hasText: "signals.json" }).waitFor({
+  timeout: 20_000,
+});
+await page.getByRole("button", { name: "清除", exact: true }).click();
 await page.locator(".data-empty-state").waitFor({ timeout: 10_000 });
 
 await browser.close();

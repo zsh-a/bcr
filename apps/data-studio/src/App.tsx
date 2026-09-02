@@ -23,8 +23,11 @@ import {
 import {
   cancelDataTableImport,
   clearDataTable,
+  activateDataAsset,
   importDataTable,
-  restoreDataTable,
+  removeDataAsset,
+  restoreDataCatalog,
+  type DataAssetRecord,
   type DataTableSnapshot,
 } from "./runtime";
 import "./styles.css";
@@ -59,7 +62,36 @@ function download(text: string, name: string, mime: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 500);
 }
 
-function tableSearchDocument(table: DataTablePackage): SearchDocument {
+function formatBytes(value: number): string {
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  if (value < 1024 * 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(value / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+function assetSearchDocument(asset: DataAssetRecord, table?: DataTablePackage): SearchDocument {
+  const preview =
+    table === undefined
+      ? ""
+      : table.rows
+          .slice(0, 24)
+          .flatMap((row) => row.map((value) => (value === null ? "" : String(value))))
+          .join(" ")
+          .slice(0, 24_000);
+  return {
+    id: `data:table:${asset.id}`,
+    source: "data",
+    kind: "dataset",
+    title: asset.sourceName,
+    subtitle: `${asset.format.toUpperCase()} · ${asset.rowCount.toLocaleString("zh-CN")} rows · ${asset.columnCount} columns`,
+    ...(preview.length === 0 ? {} : { body: preview }),
+    tags: ["data", asset.format, ...(table?.columns.map((column) => column.name) ?? [])],
+    route: "/data",
+    updatedAt: asset.lastOpenedAt,
+  };
+}
+
+function tableSearchDocument(table: DataTablePackage, assetId = table.id): SearchDocument {
   const stats = dataTableStats(table);
   const preview = table.rows
     .slice(0, 24)
@@ -67,7 +99,7 @@ function tableSearchDocument(table: DataTablePackage): SearchDocument {
     .join(" ")
     .slice(0, 24_000);
   return {
-    id: `data:table:${table.id}`,
+    id: `data:table:${assetId}`,
     source: "data",
     kind: "dataset",
     title: table.sourceName,
@@ -175,6 +207,8 @@ export function App() {
   const services = useOptionalRuntime();
   const routeSearch = useLocationSearch();
   const [snapshot, setSnapshot] = useState<DataTableSnapshot | null>(null);
+  const [assets, setAssets] = useState<ReadonlyArray<DataAssetRecord>>([]);
+  const [activeAssetId, setActiveAssetId] = useState<string | null>(null);
   const [status, setStatus] = useState<LoadState>("restoring");
   const [progress, setProgress] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
@@ -194,11 +228,16 @@ export function App() {
   useEffect(() => {
     if (services === null) return;
     let cancelled = false;
-    void restoreDataTable(services).then((restored) => {
+    void restoreDataCatalog(services).then((restored) => {
       if (cancelled) return;
-      setSnapshot(restored ?? null);
-      setStatus(restored === undefined ? "idle" : "ready");
-      setProgress(restored === undefined ? 0 : 1);
+      setAssets(restored.catalog.assets);
+      setActiveAssetId(restored.catalog.activeAssetId);
+      setSnapshot(restored.active ?? null);
+      setStatus(restored.active === undefined ? "idle" : "ready");
+      setProgress(restored.active === undefined ? 0 : 1);
+      if (restored.active === undefined && restored.catalog.assets.length > 0) {
+        setNotice("资产目录已恢复，但当前表格 Artifact 不可用；可重新导入或运行存储治理");
+      }
     });
     return () => {
       cancelled = true;
@@ -209,9 +248,13 @@ export function App() {
     if (services?.search === undefined) return;
     services.search.replaceSource(
       "data",
-      snapshot === null ? [] : [tableSearchDocument(snapshot.table)],
+      assets.map((asset) =>
+        snapshot?.asset?.id === asset.id
+          ? tableSearchDocument(snapshot.table, asset.id)
+          : assetSearchDocument(asset),
+      ),
     );
-  }, [services?.search, snapshot]);
+  }, [assets, services?.search, snapshot]);
 
   const table = snapshot?.table ?? null;
   const stats = table === null ? null : dataTableStats(table);
@@ -225,6 +268,33 @@ export function App() {
     }
   };
 
+  const selectAsset = async (asset: DataAssetRecord): Promise<void> => {
+    if (services === null || asset.id === activeAssetId) return;
+    setStatus("restoring");
+    setNotice(null);
+    try {
+      const next = await activateDataAsset(services, asset.id);
+      if (next === undefined) {
+        throw new Error(`${asset.sourceName} 的 table Artifact 不可用`);
+      }
+      const opened = next.asset ?? asset;
+      setSnapshot(next);
+      setAssets((current) => [
+        opened,
+        ...current.filter((candidate) => candidate.id !== opened.id),
+      ]);
+      setActiveAssetId(opened.id);
+      setStatus("ready");
+      setProgress(1);
+      setQuery("");
+      setSortColumn(null);
+      setNotice(`已切换到 ${opened.sourceName}`);
+    } catch (reason) {
+      setStatus("error");
+      setNotice(reason instanceof Error ? reason.message : String(reason));
+    }
+  };
+
   const importFile = async (file: File): Promise<void> => {
     if (services === null) return;
     setStatus("running");
@@ -235,6 +305,13 @@ export function App() {
     try {
       const next = await importDataTable(services, file, setProgress);
       setSnapshot(next);
+      if (next.asset !== undefined) {
+        setAssets((current) => [
+          next.asset!,
+          ...current.filter((asset) => asset.id !== next.asset!.id),
+        ]);
+        setActiveAssetId(next.asset.id);
+      }
       setStatus("ready");
       setProgress(1);
       setNotice(`${file.name} 已解析并写入本地 Artifact`);
@@ -265,12 +342,42 @@ export function App() {
 
   const clear = async (): Promise<void> => {
     if (services === null) return;
-    await clearDataTable(services);
+    const currentId = activeAssetId ?? snapshot?.asset?.id;
+    if (currentId === null || currentId === undefined) {
+      await clearDataTable(services);
+      setSnapshot(null);
+      setStatus("idle");
+      setProgress(0);
+      setQuery("");
+      setNotice("已清除当前 Data Studio 快照；原始 Artifact 仍保留在本地存储");
+      return;
+    }
+    const catalog = await removeDataAsset(services, currentId);
+    setAssets(catalog.assets);
+    setActiveAssetId(catalog.activeAssetId);
+    setQuery("");
+    setSortColumn(null);
+    if (catalog.activeAssetId !== null) {
+      const nextAsset = catalog.assets.find((asset) => asset.id === catalog.activeAssetId);
+      if (nextAsset !== undefined) {
+        const next = await activateDataAsset(services, nextAsset.id);
+        if (next !== undefined) {
+          setSnapshot(next);
+          setAssets((current) => [
+            next.asset ?? nextAsset,
+            ...current.filter((asset) => asset.id !== nextAsset.id),
+          ]);
+          setStatus("ready");
+          setProgress(1);
+          setNotice(`已移除当前资产，切换到 ${nextAsset.sourceName}；Artifact 仍保留在本地存储`);
+          return;
+        }
+      }
+    }
     setSnapshot(null);
     setStatus("idle");
     setProgress(0);
-    setQuery("");
-    setNotice("已清除当前 Data Studio 快照；原始 Artifact 仍保留在本地存储");
+    setNotice("已从资产目录移除当前数据；原始 Artifact 仍保留在本地存储");
   };
 
   if (services === null) {
@@ -347,6 +454,47 @@ export function App() {
             <X className="data-icon" />
           </button>
         </div>
+      )}
+
+      {assets.length > 0 && (
+        <section className="data-asset-catalog" aria-label="数据资产目录">
+          <div className="data-catalog-heading">
+            <div>
+              <span className="data-eyebrow">WORKSPACE / ASSETS</span>
+              <strong>数据资产目录</strong>
+            </div>
+            <small>
+              {assets.length} assets · content addressed · 仅移除目录引用，不删除 Artifact
+            </small>
+          </div>
+          <div className="data-asset-list">
+            {assets.map((asset) => {
+              const active = asset.id === activeAssetId;
+              return (
+                <button
+                  key={asset.id}
+                  type="button"
+                  className={`data-asset-card${active ? " is-active" : ""}`}
+                  aria-pressed={active}
+                  data-asset-id={asset.id}
+                  onClick={() => void selectAsset(asset)}
+                  disabled={status === "running" || status === "restoring"}
+                >
+                  <span className="data-asset-format">{asset.format.toUpperCase()}</span>
+                  <span className="data-asset-copy">
+                    <strong title={asset.sourceName}>{asset.sourceName}</strong>
+                    <small>
+                      {asset.rowCount.toLocaleString("zh-CN")} rows · {asset.columnCount} cols ·{" "}
+                      {formatBytes(asset.sizeBytes)}
+                      {asset.sampled ? " · sampled" : ""}
+                    </small>
+                  </span>
+                  {active && <span className="data-asset-current">CURRENT</span>}
+                </button>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {table === null ? (
