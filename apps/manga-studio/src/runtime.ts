@@ -221,7 +221,8 @@ export async function restoreProject(runtime: MangaRuntime): Promise<boolean> {
     }
 
     const pages: MangaPage[] = [];
-    for (const persisted of project.pages) {
+    const persistedPages = project.pages as ReadonlyArray<PersistedPage>;
+    for (const persisted of persistedPages) {
       const source = await restoreSource(runtime, persisted.source);
       if (source === null) continue;
       pages.push({

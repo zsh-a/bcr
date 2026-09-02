@@ -146,6 +146,8 @@ await page.locator(".reader-search-result").first().click();
 await page.waitForTimeout(250);
 if (!(await page.locator(".reader-toolbar-title").innerText()).includes("第二章"))
   fail("搜索命中没有回到对应章节");
+if ((await page.locator('[data-reader-search-match="true"]').count()) < 1)
+  fail("搜索命中没有在正文高亮");
 
 await page.getByRole("button", { name: "夜间" }).click();
 if (

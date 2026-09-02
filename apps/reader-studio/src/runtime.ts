@@ -624,12 +624,20 @@ export async function restoreReader(
         : undefined;
   if (booksPayload === undefined) return undefined;
   try {
-    const books: ReaderBook[] = [];
-    for (const persisted of booksPayload) {
-      const book = await restoreBook(runtime, persisted);
-      if (book !== undefined) books.push(book);
-    }
     const source = session?.version === 1 ? session : legacy?.version === 1 ? legacy : undefined;
+    const persistedBooks = booksPayload as ReadonlyArray<PersistedBook>;
+    // Binary readers already isolate parsing in their own workers where
+    // possible. Restore publications concurrently so a large local library
+    // does not serialize DOCX/EPUB/PDF work behind the first entry.
+    const restored = await Promise.all(
+      persistedBooks.map(async (persisted, index) => ({
+        index,
+        book: await restoreBook(runtime, persisted),
+      })),
+    );
+    const books = restored
+      .sort((left, right) => left.index - right.index)
+      .flatMap((entry) => (entry.book === undefined ? [] : [entry.book]));
     return {
       books,
       activeBookId:

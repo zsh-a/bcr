@@ -1110,6 +1110,18 @@
   line-height: var(--reader-reader-line-height, 1.85);
 }
 
+.reader-prose mark[data-reader-search-match] {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--reader-accent) 28%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--reader-accent) 10%, transparent);
+  color: inherit;
+  padding: 0 0.08em;
+}
+
+.reader-theme-night .reader-prose mark[data-reader-search-match] {
+  background: color-mix(in srgb, var(--reader-accent) 38%, transparent);
+}
+
 .reader-prose p {
   margin: 0 0 1.2em;
 }
