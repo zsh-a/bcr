@@ -12,6 +12,7 @@ import {
   createDocumentTranslationPackage,
   decodeDocumentContentPackage,
   decodeDocumentTranslationPackage,
+  documentOcrSettings,
   documentContentText,
   documentExportFileName,
   markReadyStages,
@@ -137,10 +138,14 @@ async function writeTranslationPackage(
  * provenance boundary explicit so an arbitrary image package cannot make the
  * planned OCR capability look complete.
  */
-function isMangaOcrContent(content: DocumentContentPackage): boolean {
+function isVisualOcrContent(content: DocumentContentPackage): boolean {
   if (content.format !== "image") return false;
   const adapter = content.provenance.adapter;
-  return adapter.startsWith("manga.ocr.") || adapter === "manga.review.regions";
+  return (
+    adapter.startsWith("manga.ocr.") ||
+    adapter === "manga.review.regions" ||
+    adapter === "document.ocr.onnx"
+  );
 }
 
 /** Rebuild a durable Document job from a Reader/Manga handoff. */
@@ -206,7 +211,7 @@ export async function importDocumentHandoff(
       artifact: contentRef,
       adapter: content?.provenance.adapter ?? "handoff.content",
     });
-    if (content !== undefined && isMangaOcrContent(content)) {
+    if (content !== undefined && isVisualOcrContent(content)) {
       job = updateStage(job, "ocr", {
         status: "done",
         progress: 1,
@@ -219,6 +224,16 @@ export async function importDocumentHandoff(
           operation: content.provenance.adapter,
           cache: "disabled",
         },
+      });
+    } else if (content !== undefined && job.format === "image") {
+      // A pre-existing image Content Package is not proof that pixels were
+      // recognized. Keep OCR explicitly blocked until Manga or this Worker
+      // supplies visual provenance.
+      job = updateStage(job, "ocr", {
+        status: "blocked",
+        progress: 0,
+        capability: "planned",
+        detail: "该图片内容包没有视觉 OCR provenance，请交给 Manga 或重新运行 OCR",
       });
     }
   }
@@ -244,13 +259,17 @@ function taskConfig(job: DocumentJob): Record<string, unknown> {
 
 function inputForStage(job: DocumentJob, stageId: DocumentStageId): ArtifactRef | undefined {
   if (stageId === "extract") return job.sourceRef;
-  if (stageId === "translate") return stageById(job.stages, "extract")?.artifact;
+  if (stageId === "ocr") return job.format === "image" ? job.sourceRef : undefined;
+  if (stageId === "translate") {
+    return stageById(job.stages, "extract")?.artifact ?? stageById(job.stages, "ocr")?.artifact;
+  }
   if (stageId === "typeset") return stageById(job.stages, "translate")?.artifact;
   return undefined;
 }
 
-function operationForStage(stageId: DocumentStageId): string | undefined {
+function operationForStage(job: DocumentJob, stageId: DocumentStageId): string | undefined {
   if (stageId === "extract") return "document.extract";
+  if (stageId === "ocr" && job.format === "image") return "document.ocr.onnx";
   if (stageId === "translate") return "document.translate.fixture";
   if (stageId === "typeset") return "document.typeset.preview";
   return undefined;
@@ -270,13 +289,21 @@ function outputForStage(stageId: DocumentStageId): ComputeTask["outputs"] {
       },
     ];
   }
+  if (stageId === "ocr") {
+    return [{ name: "content", type: "document/content-package", storage: "opfs", format: "json" }];
+  }
   return [{ name: "typeset", type: "document/typeset-preview", storage: "opfs", format: "json" }];
 }
 
 function taskFor(job: DocumentJob, stageId: DocumentStageId): ComputeTask | undefined {
   const input = inputForStage(job, stageId);
-  const operation = operationForStage(stageId);
+  const operation = operationForStage(job, stageId);
   if (input === undefined || operation === undefined) return undefined;
+  const ocr = documentOcrSettings(job.ocr);
+  const needsGpu =
+    stageId === "ocr" &&
+    (ocr.device === "webgpu" ||
+      (ocr.device === "auto" && typeof navigator !== "undefined" && "gpu" in navigator));
   taskSequence += 1;
   return {
     id: `document-task-${Date.now().toString(36)}-${taskSequence.toString(36)}`,
@@ -284,9 +311,38 @@ function taskFor(job: DocumentJob, stageId: DocumentStageId): ComputeTask | unde
     operation,
     inputs: [{ ...input, port: "source" }],
     outputs: outputForStage(stageId),
-    resources: { memoryMB: 256, threads: 1 },
+    resources:
+      stageId === "ocr"
+        ? { memoryMB: 1536, threads: 1, ...(needsGpu ? { gpu: true } : {}) }
+        : { memoryMB: 256, threads: 1 },
     cache: { enabled: true },
-    config: taskConfig(job),
+    config: {
+      ...taskConfig(job),
+      ...(stageId === "ocr"
+        ? {
+            adapter: ocr.adapter,
+            model: ocr.model,
+            device: ocr.device,
+            sourceLanguage: ocr.sourceLanguage,
+            // The first Document adapter is deliberately a single full-page
+            // region. Manga remains the route for dense multi-region pages.
+            regions: [
+              {
+                id: "page-1",
+                label: "Page 1",
+                x: 0,
+                y: 0,
+                width: 100,
+                height: 100,
+                rotation: 0,
+                writingMode: "horizontal-tb",
+                sourceText: "",
+                confidence: 0,
+              },
+            ],
+          }
+        : {}),
+    },
   };
 }
 
@@ -299,7 +355,7 @@ export function canRunDocumentStage(job: DocumentJob, stageId: DocumentStageId):
     stage.capability !== "planned" &&
     (stageId !== "extract" || supportsDocumentTextExtract(job.format)) &&
     inputForStage(job, stageId) !== undefined &&
-    operationForStage(stageId) !== undefined
+    operationForStage(job, stageId) !== undefined
   );
 }
 

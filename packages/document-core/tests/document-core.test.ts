@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   consumeDocumentHandoff,
   createDocumentContentPackage,
+  createDocumentOcrContent,
   createDocumentJob,
   formatForName,
   hasDocumentHandoff,
@@ -9,6 +10,7 @@ import {
   markDocumentHandoffExpired,
   markReadyStages,
   nextAction,
+  documentOcrSettings,
   publishDocumentHandoff,
 } from "../src";
 
@@ -63,6 +65,81 @@ describe("document-core", () => {
       detail: "该格式由 Reader / Manga 专用适配器直接读取",
     });
     expect(nextAction(job)).toBeUndefined();
+  });
+
+  it("enables the local OCR adapter only for image jobs", () => {
+    const job = markReadyStages(
+      createDocumentJob({
+        id: "job-scan",
+        name: "scan.png",
+        format: "image",
+        size: 120,
+        sourceRef: {
+          id: "source/scan",
+          type: "file/png",
+          storage: "opfs",
+          format: "image/png",
+        },
+        now: 1,
+      }),
+    );
+    expect(job.stages.find((stage) => stage.id === "extract")).toMatchObject({
+      status: "blocked",
+    });
+    expect(job.stages.find((stage) => stage.id === "ocr")).toMatchObject({
+      status: "idle",
+      capability: "adapter",
+      adapter: "document.ocr.onnx",
+    });
+  });
+
+  it("projects visual OCR lines into the canonical image content package", () => {
+    const content = createDocumentOcrContent({
+      id: "document-content/scan/ocr",
+      sourceName: "scan.png",
+      sourceHash: "scan-hash",
+      sourceLanguage: "ja",
+      adapter: "document.ocr.onnx",
+      lines: [
+        {
+          id: "page-1",
+          label: "Page 1",
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 100,
+          text: "こんにちは",
+          writingMode: "vertical-rl",
+          confidence: 0.72,
+        },
+      ],
+    });
+    expect(content).toMatchObject({
+      format: "image",
+      sourceName: "scan.png",
+      metadata: { language: "ja" },
+      provenance: { adapter: "document.ocr.onnx", sourceHash: "scan-hash" },
+    });
+    expect(content.blocks[0]).toMatchObject({
+      id: "page-1",
+      text: "こんにちは",
+      pageNumber: 1,
+      writingMode: "vertical-rl",
+      confidence: 0.72,
+      geometry: { x: 0, y: 0, width: 100, height: 100 },
+    });
+  });
+
+  it("normalizes OCR settings and swaps the model with the adapter", () => {
+    expect(documentOcrSettings(undefined)).toMatchObject({
+      adapter: "vision.onnx",
+      model: "Xenova/trocr-small-printed",
+      sourceLanguage: "en",
+    });
+    expect(documentOcrSettings({ adapter: "manga.onnx" })).toMatchObject({
+      adapter: "manga.onnx",
+      model: "onnx-community/manga-ocr-base-ONNX",
+    });
   });
 
   it("consumes a handoff once and only in its target app", () => {

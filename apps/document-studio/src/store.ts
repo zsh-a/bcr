@@ -2,9 +2,11 @@ import { useSyncExternalStore } from "react";
 import type { RuntimeMetadata } from "@bcr/react";
 import {
   createDocumentJob,
+  documentOcrSettings,
   markReadyStages,
   type DocumentFormat,
   type DocumentJob,
+  type DocumentOcrSettings,
   type DocumentStageId,
 } from "@bcr/document-core";
 
@@ -218,6 +220,15 @@ class DocumentStore {
 
   selectStage(selectedStageId: DocumentStageId): void {
     this.set({ selectedStageId });
+  }
+
+  updateOcrSettings(jobId: string, patch: Partial<DocumentOcrSettings>): void {
+    const job = this.state.jobs.find((candidate) => candidate.id === jobId);
+    if (job === undefined) return;
+    this.replaceJob({
+      ...job,
+      ocr: documentOcrSettings({ ...job.ocr, ...patch }),
+    });
   }
 
   replaceJob(job: DocumentJob): void {

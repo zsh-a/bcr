@@ -5,6 +5,10 @@ export type {
   DocumentExtractedSection,
   DocumentFormat,
   DocumentJob,
+  DocumentOcrAdapter,
+  DocumentOcrDevice,
+  DocumentOcrLanguage,
+  DocumentOcrSettings,
   DocumentStageDefinition,
   DocumentStageCacheStatus,
   DocumentStageExecution,
@@ -13,14 +17,21 @@ export type {
   DocumentStageStatus,
 } from "./model";
 export {
+  DEFAULT_DOCUMENT_OCR_SETTINGS,
   DOCUMENT_STAGES,
   createDocumentJob,
   createStageStates,
+  documentOcrSettings,
   formatForName,
   formatLabel,
   supportsDocumentTextExtract,
 } from "./model";
 export { markReadyStages, nextAction, stageById, updateStage } from "./pipeline";
+export {
+  createDocumentOcrContent,
+  type DocumentOcrContentInput,
+  type DocumentOcrLine,
+} from "./ocr";
 export {
   createDocumentContentPackage,
   decodeDocumentContentPackage,

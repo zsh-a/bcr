@@ -8,6 +8,7 @@
     "./content": "./src/content.ts",
     "./export": "./src/export.ts",
     "./model": "./src/model.ts",
+    "./ocr": "./src/ocr.ts",
     "./pipeline": "./src/pipeline.ts",
     "./translation": "./src/translation.ts"
   },

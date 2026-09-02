@@ -908,6 +908,74 @@
   font-size: 9px;
 }
 
+.document-ocr-settings {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  border: 1px solid color-mix(in srgb, var(--document-cyan) 32%, var(--document-border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--document-cyan) 6%, var(--document-raised));
+  padding: 12px;
+}
+
+.document-ocr-settings-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--document-cyan);
+}
+
+.document-ocr-settings-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.document-ocr-settings-heading strong {
+  color: var(--document-text);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.document-ocr-settings label {
+  display: grid;
+  gap: 5px;
+  color: var(--document-faint);
+  font-size: 9px;
+}
+
+.document-ocr-settings select,
+.document-ocr-settings input {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid var(--document-border-strong);
+  border-radius: 6px;
+  background: var(--document-overlay);
+  padding: 7px 8px;
+  color: var(--document-text);
+  font-family: var(--document-font-mono);
+  font-size: 9px;
+}
+
+.document-ocr-settings select:focus,
+.document-ocr-settings input:focus {
+  border-color: var(--document-cyan);
+  outline: 2px solid color-mix(in srgb, var(--document-cyan) 25%, transparent);
+  outline-offset: 1px;
+}
+
+.document-ocr-settings p {
+  margin: 1px 0 0;
+  color: var(--document-muted);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.document-ocr-settings .document-ocr-settings-warning {
+  color: var(--document-danger);
+}
+
 .document-inspector-callout {
   display: flex;
   align-items: flex-start;

@@ -33,6 +33,7 @@ import {
   decodeDocumentContentPackage,
   decodeDocumentTranslationPackage,
   documentContentStats,
+  documentOcrSettings,
   type DocumentExportFormat,
   documentTranslationStats,
   formatForName,
@@ -50,6 +51,10 @@ import {
   type DocumentHandoffRecord,
   type DocumentContentPackage,
   type DocumentContentStats,
+  type DocumentOcrAdapter,
+  type DocumentOcrDevice,
+  type DocumentOcrLanguage,
+  type DocumentOcrSettings,
   type DocumentTranslationPackage,
   type DocumentTranslationStats,
 } from "@bcr/document-core";
@@ -143,7 +148,10 @@ export function App() {
   const routeJobId = new URLSearchParams(routeSearch).get("job");
   const routeHandoffId = new URLSearchParams(routeSearch).get("handoff");
   const routeBlockId = new URLSearchParams(routeSearch).get("block");
-  const extractRef = stageById(active.stages, "extract")?.artifact ?? null;
+  const extractRef =
+    stageById(active.stages, "extract")?.artifact ??
+    stageById(active.stages, "ocr")?.artifact ??
+    null;
   const extractBytes = useArtifact(extractRef);
   const contentPackage = useMemo(() => {
     if (extractBytes === undefined) return undefined;
@@ -348,7 +356,7 @@ export function App() {
 
   const refreshAvailableStages = () => {
     documents.replaceJob(markReadyStages(active));
-    documents.setNotice("已刷新阶段能力；OCR 等待视觉模型，Translate / Typeset 可运行本地适配器");
+    documents.setNotice("已刷新阶段能力；图片可运行本地 OCR，复杂版面建议交给 Manga");
   };
 
   const runSelectedStage = () => {
@@ -723,6 +731,7 @@ export function App() {
               onRun={runSelectedStage}
               onCancel={cancelSelectedStage}
               canRunStage={canRunDocumentStage(active, selected.id)}
+              onOcrSettingsChange={(patch) => documents.updateOcrSettings(active.id, patch)}
             />
           )}
           {contentPackage !== undefined && contentStats !== undefined && (
@@ -1022,17 +1031,112 @@ function StageCard(props: {
   );
 }
 
+const DOCUMENT_OCR_MODELS: Readonly<Record<DocumentOcrAdapter, string>> = {
+  "vision.onnx": "Xenova/trocr-small-printed",
+  "manga.onnx": "onnx-community/manga-ocr-base-ONNX",
+};
+
+function DocumentOcrSettingsCard(props: {
+  settings: DocumentOcrSettings;
+  onChange: (patch: Partial<DocumentOcrSettings>) => void;
+}) {
+  const modelLabel =
+    props.settings.adapter === "manga.onnx" ? "Manga OCR / 日文" : "TrOCR / Latin 印刷体";
+  const languageMismatch =
+    (props.settings.adapter === "manga.onnx" && props.settings.sourceLanguage !== "ja") ||
+    (props.settings.adapter === "vision.onnx" && props.settings.sourceLanguage !== "en");
+  return (
+    <section className="document-ocr-settings" aria-label="视觉 OCR 设置">
+      <div className="document-ocr-settings-heading">
+        <div>
+          <span className="document-eyebrow">LOCAL VISION OCR</span>
+          <strong>整页识别配置</strong>
+        </div>
+        <ScanText className="document-icon" />
+      </div>
+      <label>
+        <span>识别模型</span>
+        <select
+          aria-label="文档 OCR 模型"
+          value={props.settings.adapter}
+          onChange={(event) => {
+            const adapter = event.target.value as DocumentOcrAdapter;
+            props.onChange({
+              adapter,
+              model: DOCUMENT_OCR_MODELS[adapter],
+              sourceLanguage: adapter === "manga.onnx" ? "ja" : "en",
+            });
+          }}
+        >
+          <option value="vision.onnx">TrOCR / Latin 印刷体</option>
+          <option value="manga.onnx">Manga OCR / 日本語</option>
+        </select>
+      </label>
+      <label>
+        <span>源语言</span>
+        <select
+          aria-label="文档 OCR 源语言"
+          value={props.settings.sourceLanguage}
+          onChange={(event) =>
+            props.onChange({ sourceLanguage: event.target.value as DocumentOcrLanguage })
+          }
+        >
+          <option value="en">English / Latin</option>
+          <option value="ja">日本語 / Japanese</option>
+        </select>
+      </label>
+      <label>
+        <span>运行设备</span>
+        <select
+          aria-label="文档 OCR 运行设备"
+          value={props.settings.device}
+          onChange={(event) => props.onChange({ device: event.target.value as DocumentOcrDevice })}
+        >
+          <option value="auto">Auto / 自动降级</option>
+          <option value="webgpu">WebGPU / 优先 GPU</option>
+          <option value="wasm">WASM / 兼容模式</option>
+        </select>
+      </label>
+      <label>
+        <span>模型地址</span>
+        <input
+          aria-label="文档 OCR 模型地址"
+          value={props.settings.model}
+          onChange={(event) => props.onChange({ model: event.target.value })}
+          spellCheck={false}
+        />
+      </label>
+      <p>
+        {modelLabel} 按整页建立一个稳定区域；首次运行会在 Worker 中懒加载模型并写入浏览器缓存。
+        密集气泡、竖排混排或多页文件请交给 Manga Studio。
+      </p>
+      {languageMismatch && (
+        <p className="document-ocr-settings-warning">
+          当前模型主要支持 {props.settings.adapter === "manga.onnx" ? "日文" : "Latin 英文"}；
+          不匹配的语言会在 Worker 中拒绝运行，请切换模型或源语言。
+        </p>
+      )}
+    </section>
+  );
+}
+
 function StageInspector(props: {
   stage: DocumentStageState;
   job: DocumentJob;
   onRun: () => void;
   onCancel: () => void;
   canRunStage: boolean;
+  onOcrSettingsChange: (patch: Partial<DocumentOcrSettings>) => void;
 }) {
   const isDone = props.stage.status === "done";
   const isPlanned = props.stage.capability === "planned" && !isDone;
   const isRunning = props.stage.status === "running";
-  const formatBlocked = props.stage.status === "blocked" && props.stage.id === "extract";
+  const formatBlocked =
+    props.stage.status === "blocked" && (props.stage.id === "extract" || props.stage.id === "ocr");
+  const ocr =
+    props.stage.id === "ocr" && props.job.format === "image"
+      ? documentOcrSettings(props.job.ocr)
+      : undefined;
   const canRun = props.canRunStage && !isRunning;
   const stageActionLabel = isDone ? `重新运行 ${props.stage.label}` : `运行 ${props.stage.label}`;
   return (
@@ -1045,7 +1149,9 @@ function StageInspector(props: {
             : isPlanned
               ? "等待能力接入"
               : formatBlocked
-                ? "由目标适配器处理"
+                ? props.stage.id === "ocr"
+                  ? "该格式跳过 OCR"
+                  : "由目标适配器处理"
                 : props.canRunStage
                   ? "可在本地运行"
                   : "等待上游 Artifact"}
@@ -1112,6 +1218,9 @@ function StageInspector(props: {
           停止 {props.stage.label}
         </button>
       )}
+      {ocr !== undefined && (
+        <DocumentOcrSettingsCard settings={ocr} onChange={props.onOcrSettingsChange} />
+      )}
       {isPlanned ? (
         <div className="document-inspector-callout">
           <WandSparkles className="document-icon" />
@@ -1120,7 +1229,11 @@ function StageInspector(props: {
       ) : formatBlocked ? (
         <div className="document-inspector-callout is-neutral">
           <Link2 className="document-icon" />
-          <span>这是二进制出版物；由 Reader / Manga 直接解析，避免把压缩包当作纯文本。</span>
+          <span>
+            {props.stage.id === "ocr"
+              ? "文本格式不需要视觉识别；Extract 已生成的内容会直接进入翻译。"
+              : "这是二进制出版物；由 Reader / Manga 直接解析，避免把压缩包当作纯文本。"}
+          </span>
         </div>
       ) : props.canRunStage ? (
         <div className="document-inspector-callout is-neutral">

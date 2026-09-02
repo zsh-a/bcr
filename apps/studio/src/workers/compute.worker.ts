@@ -1,6 +1,7 @@
 import { artifactPath, contentHash, type ArtifactRef } from "@bcr/core";
 import {
   createDocumentContentPackage,
+  createDocumentOcrContent,
   decodeDocumentContentPackage,
   createDocumentTranslationPackage,
   decodeDocumentTranslationPackage,
@@ -663,6 +664,78 @@ async function mangaOcrOnnx(
   return [out];
 }
 
+function documentOcrRegions(task: {
+  config?: Record<string, unknown> | undefined;
+}): ReadonlyArray<Record<string, unknown>> {
+  const raw = task.config?.["regions"];
+  if (Array.isArray(raw) && raw.length > 0) {
+    return raw.filter(
+      (candidate): candidate is Record<string, unknown> =>
+        typeof candidate === "object" && candidate !== null,
+    );
+  }
+  // Document has no layout detector yet. A full-page region is an honest,
+  // useful baseline for scanned single-page documents; Manga handles dense
+  // multi-region layouts and can hand the richer result back later.
+  return [
+    {
+      id: "page-1",
+      label: "Page 1",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      rotation: 0,
+      writingMode: "horizontal-tb",
+      sourceText: "",
+      confidence: 0,
+    },
+  ];
+}
+
+/**
+ * Document's visual adapter reuses the shared OCR model/cache path, then
+ * projects the stable lines into the canonical Content Package contract.
+ */
+async function documentOcrOnnx(
+  task: { inputs: ReadonlyArray<ArtifactRef>; config?: Record<string, unknown> | undefined },
+  ctx: WorkerContext,
+): Promise<ReadonlyArray<ArtifactRef>> {
+  const input = task.inputs.find((ref) => ref.port === "source") ?? task.inputs[0];
+  if (input === undefined) throw new Error("document.ocr.onnx requires an image source artifact");
+  const ocrOutputs = await mangaOcrOnnx(
+    {
+      ...task,
+      config: {
+        ...task.config,
+        regions: documentOcrRegions(task),
+      },
+    },
+    ctx,
+  );
+  const ocrRef = ocrOutputs[0];
+  if (ocrRef === undefined) throw new Error("document.ocr.onnx returned no OCR artifact");
+  const ocr = decodeMangaOcrArtifact(await readJsonArtifact<unknown>(ocrRef, ctx));
+  const sourceLanguage = configText(task.config?.["sourceLanguage"], "en");
+  const content = createDocumentOcrContent({
+    id: `document-content/${input.hash ?? input.id}/ocr`,
+    sourceName: configText(task.config?.["sourceName"], input.id),
+    sourceRef: input,
+    sourceHash: input.hash,
+    sourceLanguage,
+    adapter: "document.ocr.onnx",
+    lines: ocr.lines,
+  });
+  const out = await writeTypedJsonArtifact(
+    "document",
+    "ocr-onnx",
+    "document/content-package",
+    content,
+  );
+  ctx.progress(1);
+  return [out];
+}
+
 type MangaTranslator = (
   text: string | ReadonlyArray<string>,
   options?: Record<string, unknown>,
@@ -1037,6 +1110,7 @@ defineWorker({
     return audioWaveform(task, input, ctx);
   },
   "document.extract": (task, ctx) => documentExtract(task, ctx),
+  "document.ocr.onnx": (task, ctx) => documentOcrOnnx(task, ctx),
   "document.translate.fixture": (task, ctx) => documentTranslateFixture(task, ctx),
   "document.typeset.preview": (task, ctx) => documentTypesetPreview(task, ctx),
   "manga.ocr.review": (task, ctx) => mangaOcrReview(task, ctx),

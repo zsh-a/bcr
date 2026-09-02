@@ -1,8 +1,14 @@
 import { artifactStore, ArtifactStoreTag, type ArtifactRef } from "@bcr/core";
-import { createDocumentContentPackage, stageById } from "@bcr/document-core";
+import {
+  createDocumentContentPackage,
+  createDocumentJob,
+  markReadyStages,
+  stageById,
+  updateStage,
+} from "@bcr/document-core";
 import { Context, Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
-import { importDocumentHandoff } from "../src/runtime";
+import { canRunDocumentStage, importDocumentHandoff } from "../src/runtime";
 import type { RuntimeServices } from "@bcr/react";
 
 class TestBinaryStore {
@@ -72,6 +78,38 @@ async function makeServices(store: TestBinaryStore): Promise<RuntimeServices> {
 }
 
 describe("Document durable handoff import", () => {
+  it("runs image OCR from the source and unlocks translation from its content Artifact", () => {
+    const sourceRef: ArtifactRef = {
+      id: "document/source/scan",
+      type: "file/png",
+      storage: "opfs",
+      format: "image/png",
+      hash: "scan-hash",
+    };
+    const job = markReadyStages(
+      createDocumentJob({
+        id: "document-scan",
+        name: "scan.png",
+        format: "image",
+        size: 12,
+        sourceRef,
+        now: 1,
+      }),
+    );
+    expect(canRunDocumentStage(job, "ocr")).toBe(true);
+    const withOcr = updateStage(job, "ocr", {
+      status: "done",
+      progress: 1,
+      artifact: {
+        id: "document/ocr/content",
+        type: "document/content-package",
+        storage: "opfs",
+        format: "json",
+      },
+    });
+    expect(canRunDocumentStage(withOcr, "translate")).toBe(true);
+  });
+
   it("rebuilds a Reader projection as a completed Extract stage", async () => {
     const services = await makeServices(new TestBinaryStore());
     const sourceRef: ArtifactRef = {

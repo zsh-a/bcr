@@ -25,6 +25,56 @@ export type DocumentStageStatus = "idle" | "running" | "done" | "blocked" | "err
 
 export type DocumentStageCacheStatus = "hit" | "miss" | "disabled";
 
+/** Local OCR adapters currently shared with Manga's Worker implementation. */
+export type DocumentOcrAdapter = "vision.onnx" | "manga.onnx";
+export type DocumentOcrDevice = "auto" | "webgpu" | "wasm";
+export type DocumentOcrLanguage = "en" | "ja";
+
+export interface DocumentOcrSettings {
+  readonly adapter: DocumentOcrAdapter;
+  readonly model: string;
+  readonly device: DocumentOcrDevice;
+  readonly sourceLanguage: DocumentOcrLanguage;
+}
+
+export const DEFAULT_DOCUMENT_OCR_SETTINGS: DocumentOcrSettings = {
+  adapter: "vision.onnx",
+  model: "Xenova/trocr-small-printed",
+  device: "auto",
+  sourceLanguage: "en",
+};
+
+const DOCUMENT_OCR_MODELS: Readonly<Record<DocumentOcrAdapter, string>> = {
+  "vision.onnx": "Xenova/trocr-small-printed",
+  "manga.onnx": "onnx-community/manga-ocr-base-ONNX",
+};
+
+function ocrAdapter(value: unknown): DocumentOcrAdapter {
+  return value === "manga.onnx" ? "manga.onnx" : "vision.onnx";
+}
+
+function ocrDevice(value: unknown): DocumentOcrDevice {
+  return value === "webgpu" || value === "wasm" ? value : "auto";
+}
+
+function ocrLanguage(value: unknown): DocumentOcrLanguage {
+  return value === "ja" ? "ja" : "en";
+}
+
+/** Normalize persisted or UI-provided OCR settings without trusting JSON. */
+export function documentOcrSettings(
+  value: Partial<DocumentOcrSettings> | null | undefined,
+): DocumentOcrSettings {
+  const adapter = ocrAdapter(value?.adapter);
+  const configuredModel = typeof value?.model === "string" ? value.model.trim() : "";
+  return {
+    adapter,
+    model: configuredModel || DOCUMENT_OCR_MODELS[adapter],
+    device: ocrDevice(value?.device),
+    sourceLanguage: ocrLanguage(value?.sourceLanguage),
+  };
+}
+
 /** Execution facts persisted with a stage for model/cache diagnostics. */
 export interface DocumentStageExecution {
   readonly runtime: RuntimeKind;
@@ -61,6 +111,8 @@ export interface DocumentJob {
   readonly sourceUrl?: string | undefined;
   readonly sourceTextPreview?: string | undefined;
   readonly sourceRef?: ArtifactRef | undefined;
+  /** Optional per-job model choice; old persisted jobs may omit it. */
+  readonly ocr?: DocumentOcrSettings | undefined;
   readonly stages: ReadonlyArray<DocumentStageState>;
 }
 
@@ -112,8 +164,9 @@ export const DOCUMENT_STAGES: ReadonlyArray<DocumentStageDefinition> = [
   {
     id: "ocr",
     label: "OCR",
-    detail: "识别图片中的文字区域与阅读顺序",
-    capability: "planned",
+    detail: "在本地 Worker 中识别扫描页文字（实验适配器）",
+    capability: "adapter",
+    adapter: "document.ocr.onnx",
   },
   {
     id: "translate",
@@ -184,6 +237,7 @@ export function createDocumentJob(input: {
   readonly sourceUrl?: string | undefined;
   readonly sourceTextPreview?: string | undefined;
   readonly sourceRef?: ArtifactRef | undefined;
+  readonly ocr?: Partial<DocumentOcrSettings> | undefined;
   readonly now?: number | undefined;
 }): DocumentJob {
   const now = input.now ?? Date.now();
@@ -199,6 +253,7 @@ export function createDocumentJob(input: {
       ? {}
       : { sourceTextPreview: input.sourceTextPreview }),
     ...(input.sourceRef === undefined ? {} : { sourceRef: input.sourceRef }),
+    ocr: documentOcrSettings(input.ocr),
     stages: createStageStates(),
   };
 }

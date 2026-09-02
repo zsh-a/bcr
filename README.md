@@ -243,7 +243,8 @@ File → Ingest → Normalize → Extract → OCR → Translate → Typeset → 
 - Document Inbox 支持 TXT / Markdown / HTML / DOCX / FB2 / EPUB / PDF / CBZ / 图片导入，元数据保存在本地浏览器；
   文本提供安全的轻量预览，图片只在当前标签页创建临时预览 URL。
 - Text / Markdown / HTML / FB2 已可通过共享 Scheduler + WorkerPool 运行 Extract、fixture Translate 与 Typeset
-  preview；Extract 产出可校验、可迁移的 `document/content-package` JSON Artifact，每一步都支持缓存、进度、取消和重试；直接导入的 OCR 仍明确标记为 `PLANNED`，而 Manga 返回的视觉 Content Package 会带 provenance 关闭 OCR 阶段。
+  preview；Extract 产出可校验、可迁移的 `document/content-package` JSON Artifact，每一步都支持缓存、进度、取消和重试。
+- 图片任务现在可在 Document Inspector 中选择 Latin TrOCR 或日文 Manga OCR，直接运行 `document.ocr.onnx`：模型在共享 Worker 内懒加载，整页结果投影为带 geometry / writingMode / confidence 的 canonical Content Package，并可继续进入 Translate；复杂多区域版面仍建议交给 Manga。文本格式会明确跳过 OCR，避免把视觉能力误套到纯文本上。
 - 每个阶段会持久化 operation、runtime（JS/WASM/WebGPU）和 cache hit/miss，Inspector 与刷新后的任务详情都能解释一次执行是计算、缓存还是失败重试。
 - Translate 会把每个 source block 映射为同 ID 的 `document/translation-package`，同时保存目标语言、审校状态和
   Provenance；Typeset 只消费该契约，因此后续接入真实模型时无需改动 UI / 排版输入。
