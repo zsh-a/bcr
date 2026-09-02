@@ -100,6 +100,7 @@ await withServer({
     "scripts/verify-manga-studio.mjs",
     "scripts/verify-document-studio.mjs",
     "scripts/verify-reader-studio.mjs",
+    "scripts/verify-storage-cleanup.mjs",
     "scripts/verify-accessibility.mjs",
   ],
 });

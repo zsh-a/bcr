@@ -3,6 +3,7 @@ import { Context, Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 import { artifactPath, artifactStore, ArtifactStoreTag, type ArtifactStore } from "../src/artifact";
 import type { ArtifactRef } from "../src/schema";
+import type { ComputeTask } from "../src/schema";
 
 const ref = (id: string, storage: ArtifactRef["storage"] = "memory"): ArtifactRef => ({
   id,
@@ -70,5 +71,82 @@ describe("ArtifactStore inventory / usage", () => {
         { storage: "opfs", objects: 1, bytes: 1 },
       ],
     });
+  });
+
+  it("订阅物理对象变化，并在取消订阅后停止通知", async () => {
+    const memory = new MemoryStore();
+    const artifacts = await makeArtifacts({ memory });
+    let changes = 0;
+    const unsubscribe = artifacts.subscribe(() => {
+      changes += 1;
+    });
+    const item = ref("events/item");
+    await Effect.runPromise(artifacts.put(item, new Uint8Array([1])));
+    await Effect.runPromise(artifacts.delete(item));
+    expect(changes).toBe(2);
+    unsubscribe();
+    await Effect.runPromise(artifacts.put(item, new Uint8Array([2])));
+    expect(changes).toBe(2);
+  });
+
+  it("cleanup plan 保护根与血缘对象，只标记未追踪产物；reclaim 二次校验后删除", async () => {
+    const memory = new MemoryStore();
+    const artifacts = await makeArtifacts({ memory });
+    const source = ref("source/book");
+    const derived = ref("derived/result");
+    const orphan = ref("tmp/failed-output");
+    await memory.put(artifactPath(source), new Uint8Array([1]));
+    await memory.put(artifactPath(derived), new Uint8Array([2, 3]));
+    await memory.put(artifactPath(orphan), new Uint8Array([4, 5, 6]));
+    await Effect.runPromise(artifacts.registerProduction("task-derived", [derived]));
+    const consumer: ComputeTask = {
+      id: "task-consumer",
+      runtime: "js",
+      operation: "test.consume",
+      inputs: [derived],
+      outputs: [],
+    };
+    await Effect.runPromise(artifacts.registerConsumption(consumer));
+
+    const plan = await Effect.runPromise(artifacts.planCleanup({ protectedIds: [source.id] }));
+    expect(plan.scannedObjects).toBe(3);
+    expect(plan.candidates).toEqual([
+      {
+        id: orphan.id,
+        storage: "memory",
+        path: artifactPath(orphan),
+        size: 3,
+        reason: "untracked",
+      },
+    ]);
+
+    const result = await Effect.runPromise(artifacts.reclaim(plan));
+    expect(result).toMatchObject({ requested: 1, reclaimedBytes: 3, skipped: [] });
+    expect(result.deleted.map(({ id }) => id)).toEqual([orphan.id]);
+    expect(await Effect.runPromise(artifacts.has(source))).toBe(true);
+    expect(await Effect.runPromise(artifacts.has(derived))).toBe(true);
+    expect(await Effect.runPromise(artifacts.has(orphan))).toBe(false);
+  });
+
+  it("reclaim 发现计划过期或新保护根时跳过，不删除变化对象", async () => {
+    const memory = new MemoryStore();
+    const artifacts = await makeArtifacts({ memory });
+    const orphan = ref("tmp/race");
+    await memory.put(artifactPath(orphan), new Uint8Array([1]));
+    const plan = await Effect.runPromise(artifacts.planCleanup());
+
+    await memory.put(artifactPath(orphan), new Uint8Array([1, 2]));
+    const changed = await Effect.runPromise(artifacts.reclaim(plan));
+    expect(changed.deleted).toEqual([]);
+    expect(changed.skipped[0]).toMatchObject({ reason: "changed" });
+    expect(await Effect.runPromise(artifacts.has(orphan))).toBe(true);
+
+    const protectedPlan = await Effect.runPromise(artifacts.planCleanup());
+    const protectedResult = await Effect.runPromise(
+      artifacts.reclaim(protectedPlan, { protectedIds: [orphan.id] }),
+    );
+    expect(protectedResult.deleted).toEqual([]);
+    expect(protectedResult.skipped[0]).toMatchObject({ reason: "protected" });
+    expect(await Effect.runPromise(artifacts.has(orphan))).toBe(true);
   });
 });

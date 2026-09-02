@@ -47,6 +47,7 @@
 | §7 缓存持久化（刷新不重算）           | `packages/storage-sqlite`：cache_entries 表 + 血缘（task_outputs / dependencies）     |
 | §4/§8 OPFS + 窗口流动                 | `BinaryStore`（readRange/putStream/size），kernel 按 4MB 窗口读取                     |
 | Artifact 生命周期可观测性             | `ArtifactStore.inventory/usage`：跨后端容量清单、前缀过滤与稳定聚合，不读取内容       |
+| Artifact 安全 GC                      | `planCleanup/reclaim`：血缘 + 显式根保护、dry-run、path/size 二次校验后再回收         |
 | §8 SQLite WASM 元数据                 | `openSqliteDb`（整库字节经 BinaryStore 落 OPFS，可换任意 BinaryStore）                |
 | §8 TaskJournal / 崩溃恢复             | queued/running/终态写穿 SQLite；输入完整时重放，缺失时转 blocked                      |
 | §9.1 wasm-bindgen kernel              | `crates/kernels`（wasm32-unknown-unknown）                                            |
@@ -96,9 +97,12 @@ Market Atlas 数据质量与交互，以及 Manga Studio 单页翻译、Reader S
   `blocked`；导入 → 计算 → **刷新浏览器 → 历史恢复、重跑直接缓存命中**（`node scripts/verify-persistence.mjs`）
 - **Artifact 存储可观测性**：共享 Runtime 顶栏展示本地 Artifact 对象数与容量；统计按 30 秒低频刷新，
   也可手动刷新，清单查询只访问 OPFS/Memory 的路径和 size，不读取大对象内容。
+- **Artifact 安全清理**：⌘K →「清理未追踪 Artifact」先展示 dry-run 候选，只有用户显式确认才执行；
+  当前项目源文件和已有血缘对象默认保留，执行前重新核对路径与字节数，竞态对象自动跳过并写入日志。
 - Runtime 接线：compute.worker 提供 `hash.blake3`（流式 BLAKE3）与 `audio.waveform`（2048 桶峰值包络）两个 WASM operation，任务进度 / cache hit / 取消直接投影到 UI
 
-截图走查脚本：`node scripts/screenshot.mjs`；持久化闭环走查：`node scripts/verify-persistence.mjs`
+截图走查脚本：`node scripts/screenshot.mjs`；持久化闭环走查：`node scripts/verify-persistence.mjs`；
+存储治理走查：`node scripts/verify-storage-cleanup.mjs`
 （均需先 `bun run studio` 起 dev server，Playwright 驱动真实浏览器验证）。
 
 ## Media Studio · Subtitle（apps/media-studio）

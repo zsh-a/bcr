@@ -35,6 +35,46 @@ export interface ArtifactInventoryOptions {
   readonly idPrefix?: string;
 }
 
+export interface ArtifactCleanupOptions {
+  /** 调用方明确声明仍在使用的根 Artifact（例如项目源文件）。 */
+  readonly protectedIds?: ReadonlyArray<string>;
+  /** 调用方明确声明仍在使用的命名空间（例如 `reader/search-index/`）。 */
+  readonly protectedPrefixes?: ReadonlyArray<string>;
+}
+
+export interface ArtifactCleanupCandidate extends ArtifactInventoryEntry {
+  readonly reason: "untracked";
+}
+
+export interface ArtifactCleanupPlan {
+  readonly createdAt: number;
+  readonly scannedObjects: number;
+  readonly candidates: ReadonlyArray<ArtifactCleanupCandidate>;
+  readonly protectedIds: ReadonlyArray<string>;
+  readonly protectedPrefixes: ReadonlyArray<string>;
+}
+
+export type ArtifactCleanupSkipReason =
+  | "missing"
+  | "changed"
+  | "protected"
+  | "tracked"
+  | "storage-unavailable"
+  | "delete-failed";
+
+export interface ArtifactCleanupSkipped {
+  readonly candidate: ArtifactCleanupCandidate;
+  readonly reason: ArtifactCleanupSkipReason;
+  readonly error?: string | undefined;
+}
+
+export interface ArtifactCleanupResult {
+  readonly requested: number;
+  readonly deleted: ReadonlyArray<ArtifactCleanupCandidate>;
+  readonly skipped: ReadonlyArray<ArtifactCleanupSkipped>;
+  readonly reclaimedBytes: number;
+}
+
 /**
  * Artifact 存取 + DAG 血缘（架构文档 §3）。
  *
@@ -61,6 +101,24 @@ export interface ArtifactStore {
 
   /** 聚合所有 Artifact 的对象数与字节数；同样不读取对象内容。 */
   readonly usage: () => Effect.Effect<ArtifactUsage>;
+
+  /** 订阅物理对象变化，UI 可在导入/清理后立即刷新容量，而无需高频轮询。 */
+  readonly subscribe: (listener: () => void) => () => void;
+
+  /**
+   * 生成只读清理计划：仅把没有血缘记录、也不在调用方保护根/前缀中的
+   * Artifact 标成候选，不会修改任何存储。
+   */
+  readonly planCleanup: (options?: ArtifactCleanupOptions) => Effect.Effect<ArtifactCleanupPlan>;
+
+  /**
+   * 执行清理计划。执行前会重新列举并检查 path/size、血缘和保护根；
+   * 计划过期或对象发生变化时跳过，不会误删新写入的对象。
+   */
+  readonly reclaim: (
+    plan: ArtifactCleanupPlan,
+    options?: ArtifactCleanupOptions,
+  ) => Effect.Effect<ArtifactCleanupResult>;
 
   /** 提交任务时登记消费关系（task → inputs），支撑运行中任务的下游级联取消。 */
   readonly registerConsumption: (task: ComputeTask) => Effect.Effect<void>;
@@ -104,8 +162,22 @@ export function artifactStore(
       const producedBy = new Map<string, string>();
       const consumes = new Map<string, Set<string>>();
       const outputs = new Map<string, string[]>();
+      const listeners = new Set<() => void>();
+      const notify = (): void => {
+        for (const listener of listeners) {
+          try {
+            listener();
+          } catch {
+            // Observers are diagnostic/UI side effects; never turn a successful
+            // storage mutation into a failed write because a listener crashed.
+          }
+        }
+      };
 
       for (const [taskId, outs] of snapshot.outputs) outputs.set(taskId, [...outs]);
+      for (const [taskId, outs] of snapshot.outputs) {
+        for (const artifactId of outs) producedBy.set(artifactId, taskId);
+      }
       for (const [artifactId, taskIds] of snapshot.consumers)
         consumes.set(artifactId, new Set(taskIds));
 
@@ -184,8 +256,110 @@ export function artifactStore(
           }),
         );
 
+      const normalizePrefix = (prefix: string): string => prefix.replace(/^\/+|\/+$/g, "");
+
+      const matchesPrefix = (id: string, prefix: string): boolean => {
+        const normalized = normalizePrefix(prefix);
+        return normalized.length > 0 && (id === normalized || id.startsWith(`${normalized}/`));
+      };
+
+      const protection = (options: ArtifactCleanupOptions = {}) => ({
+        ids: new Set(options.protectedIds ?? []),
+        prefixes: (options.protectedPrefixes ?? []).map(normalizePrefix).filter(Boolean),
+      });
+
+      const isProtected = (id: string, guard: ReturnType<typeof protection>): boolean =>
+        guard.ids.has(id) || guard.prefixes.some((prefix) => matchesPrefix(id, prefix));
+
+      const planCleanup = (
+        options: ArtifactCleanupOptions = {},
+      ): Effect.Effect<ArtifactCleanupPlan> =>
+        inventory().pipe(
+          Effect.map((entries) => {
+            const guard = protection(options);
+            const tracked = new Set([...producedBy.keys(), ...consumes.keys()]);
+            const candidates = entries
+              .filter((entry) => !tracked.has(entry.id) && !isProtected(entry.id, guard))
+              .map((entry) => ({ ...entry, reason: "untracked" as const }));
+            return {
+              createdAt: Date.now(),
+              scannedObjects: entries.length,
+              candidates,
+              protectedIds: [...guard.ids],
+              protectedPrefixes: [...guard.prefixes],
+            };
+          }),
+        );
+
+      const reclaim = (
+        plan: ArtifactCleanupPlan,
+        options?: ArtifactCleanupOptions,
+      ): Effect.Effect<ArtifactCleanupResult> =>
+        Effect.promise(async () => {
+          const guard = protection(
+            options ?? {
+              protectedIds: plan.protectedIds,
+              protectedPrefixes: plan.protectedPrefixes,
+            },
+          );
+          const tracked = new Set([...producedBy.keys(), ...consumes.keys()]);
+          const current = await Effect.runPromise(inventory());
+          const byPath = new Map(
+            current.map((entry) => [`${entry.storage}\0${entry.path}`, entry]),
+          );
+          const deleted: ArtifactCleanupCandidate[] = [];
+          const skipped: ArtifactCleanupSkipped[] = [];
+
+          for (const candidate of plan.candidates) {
+            if (isProtected(candidate.id, guard)) {
+              skipped.push({ candidate, reason: "protected" });
+              continue;
+            }
+            if (tracked.has(candidate.id)) {
+              skipped.push({ candidate, reason: "tracked" });
+              continue;
+            }
+            const key = `${candidate.storage}\0${candidate.path}`;
+            const fresh = byPath.get(key);
+            if (fresh === undefined) {
+              skipped.push({ candidate, reason: "missing" });
+              continue;
+            }
+            if (fresh.size !== candidate.size) {
+              skipped.push({ candidate, reason: "changed" });
+              continue;
+            }
+            const store = stores[candidate.storage];
+            if (store === undefined) {
+              skipped.push({ candidate, reason: "storage-unavailable" });
+              continue;
+            }
+            try {
+              await store.delete(candidate.path);
+              deleted.push(candidate);
+            } catch (error) {
+              skipped.push({
+                candidate,
+                reason: "delete-failed",
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          }
+          if (deleted.length > 0) notify();
+          return {
+            requested: plan.candidates.length,
+            deleted,
+            skipped,
+            reclaimedBytes: deleted.reduce((total, entry) => total + entry.size, 0),
+          };
+        });
+
       return {
-        put: (ref, data) => Effect.promise(() => backend(ref).put(pathOf(ref), data)),
+        put: (ref, data) =>
+          Effect.promise(async () => {
+            await backend(ref).put(pathOf(ref), data);
+            notify();
+          }),
         get: (ref) =>
           Effect.promise(() => backend(ref).get(pathOf(ref))).pipe(
             Effect.flatMap((data) =>
@@ -195,7 +369,10 @@ export function artifactStore(
             ),
           ),
         putStream: (ref, stream) =>
-          Effect.promise(() => backend(ref).putStream(pathOf(ref), stream)),
+          Effect.promise(async () => {
+            await backend(ref).putStream(pathOf(ref), stream);
+            notify();
+          }),
         getStream: (ref) =>
           Effect.promise(() => backend(ref).getStream(pathOf(ref))).pipe(
             Effect.flatMap((stream) =>
@@ -204,10 +381,20 @@ export function artifactStore(
                 : Effect.succeed(stream),
             ),
           ),
-        delete: (ref) => Effect.promise(() => backend(ref).delete(pathOf(ref))),
+        delete: (ref) =>
+          Effect.promise(async () => {
+            await backend(ref).delete(pathOf(ref));
+            notify();
+          }),
         has: (ref) => Effect.promise(() => backend(ref).has(pathOf(ref))),
         inventory,
         usage,
+        subscribe: (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        planCleanup,
+        reclaim,
 
         registerConsumption: (task) =>
           Effect.gen(function* () {
@@ -222,6 +409,10 @@ export function artifactStore(
 
         registerProduction: (taskId, outs) =>
           Effect.gen(function* () {
+            const previous = outputs.get(taskId) ?? [];
+            for (const artifactId of previous) {
+              if (producedBy.get(artifactId) === taskId) producedBy.delete(artifactId);
+            }
             outputs.set(
               taskId,
               outs.map((ref) => ref.id),

@@ -163,8 +163,9 @@ export interface ArtifactUsageState {
  * 订阅 Runtime 的本地 Artifact 容量。
  *
  * 清单只读取 BinaryStore 的路径和 size，不会把对象内容搬进内存；默认
- * 30 秒轮询一次，足以反映其它 keep-alive App 写入的派生产物，同时不让
- * 顶栏刷新成为高频 IO。调用方可用 refresh 在导入或任务完成后立即更新。
+ * 30 秒轮询一次，足以反映其它 keep-alive App 写入的派生产物；ArtifactStore
+ * 自身的 put/delete 事件会立即触发刷新，同时不让顶栏成为高频 IO。调用方
+ * 也可用 refresh 在导入或任务完成后主动更新。
  */
 export function useArtifactUsage(intervalMs = 30_000): ArtifactUsageState {
   const { artifacts } = useRuntime();
@@ -173,6 +174,11 @@ export function useArtifactUsage(intervalMs = 30_000): ArtifactUsageState {
   >({ status: "idle", refresh: () => undefined });
   const [refreshToken, setRefreshToken] = useState(0);
   const refresh = useCallback(() => setRefreshToken((token) => token + 1), []);
+
+  useEffect(() => {
+    const unsubscribe = artifacts.subscribe(refresh);
+    return unsubscribe;
+  }, [artifacts, refresh]);
 
   useEffect(() => {
     let cancelled = false;
