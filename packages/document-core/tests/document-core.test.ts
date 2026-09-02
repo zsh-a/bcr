@@ -95,6 +95,22 @@ describe("document-core", () => {
     });
   });
 
+  it("supports a reverse Reader/Manga to Document target", () => {
+    const file = new File(["projected"], "projected.md", { type: "text/markdown" });
+    const id = publishDocumentHandoff({
+      jobId: "reader-projected",
+      target: "document",
+      name: file.name,
+      format: "markdown",
+      file,
+    });
+    expect(consumeDocumentHandoff(id, "document")).toMatchObject({
+      id,
+      target: "document",
+      file,
+    });
+  });
+
   it("records an expired handoff without allowing a later consume", () => {
     const file = new File(["page"], "page.png", { type: "image/png" });
     const id = publishDocumentHandoff({

@@ -1,4 +1,5 @@
 import {
+  ArrowUpRight,
   Archive,
   Bookmark,
   BookOpen,
@@ -52,6 +53,7 @@ import {
   consumeDocumentHandoff,
   getDocumentHandoffMarker,
   markDocumentHandoffExpired,
+  publishDocumentHandoff,
 } from "@bcr/document-core";
 import { useLocationSearch, useOptionalRuntime } from "@bcr/react";
 import {
@@ -59,6 +61,7 @@ import {
   importReaderDocumentHandoff,
   importReaderFile,
   indexBook,
+  prepareReaderDocumentHandoff,
   persistReader,
   restoreReader,
   searchIndexedDetailed,
@@ -472,6 +475,7 @@ export function App() {
   const handoffRef = useRef<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [handoffRecovery, setHandoffRecovery] = useState(false);
+  const [documentHandoffBusy, setDocumentHandoffBusy] = useState(false);
   const [importJob, setImportJob] = useState<ImportJob | null>(null);
   const appliedRouteRef = useRef("");
 
@@ -658,6 +662,38 @@ export function App() {
     void importFiles(files);
   }, [importFiles, importJob]);
 
+  const handoffDocument = useCallback(() => {
+    if (active === undefined || runtime === null || documentHandoffBusy) return;
+    const hostArtifacts = hostServices?.artifacts;
+    if (hostArtifacts === undefined) {
+      setNotice("请从 Studio Shell 打开 Reader，才能把内容交给 Document Studio");
+      return;
+    }
+    setDocumentHandoffBusy(true);
+    void prepareReaderDocumentHandoff(runtime, hostArtifacts, active)
+      .then(({ file, sourceRef, content, contentRef }) => {
+        const handoffId = publishDocumentHandoff({
+          jobId: active.id,
+          target: "document",
+          name: active.source.name,
+          format: content.format,
+          file,
+          size: active.source.size,
+          sourceRef,
+          contentRef,
+          content,
+        });
+        setNotice(`${active.title} 正在交给 Document Studio；结构化内容与源文件已托管`);
+        window.location.assign(`/documents?handoff=${encodeURIComponent(handoffId)}`);
+      })
+      .catch((reason: unknown) => {
+        setNotice(
+          `交给 Document Studio 失败：${reason instanceof Error ? reason.message : String(reason)}`,
+        );
+      })
+      .finally(() => setDocumentHandoffBusy(false));
+  }, [active, documentHandoffBusy, hostServices?.artifacts, runtime]);
+
   useEffect(() => {
     if (runtime === null || status !== "ready") return;
     const handoffId = new URLSearchParams(window.location.search).get("document");
@@ -722,7 +758,12 @@ export function App() {
         onRetryFailed={retryFailedImports}
         onRecoverHandoff={handoffRecovery ? () => window.location.assign("/documents") : undefined}
       />
-      <ReaderWorkspace runtime={runtime} onImport={(files) => void importFiles(files)} />
+      <ReaderWorkspace
+        runtime={runtime}
+        onImport={(files) => void importFiles(files)}
+        onOpenDocument={handoffDocument}
+        documentHandoffBusy={documentHandoffBusy}
+      />
     </div>
   );
 }
@@ -944,6 +985,8 @@ function ReaderHeader(props: {
 function ReaderWorkspace(props: {
   runtime: ReaderRuntime;
   onImport: (files: ReadonlyArray<File>) => void;
+  onOpenDocument: () => void;
+  documentHandoffBusy: boolean;
 }) {
   const sidebarOpen = useReader((state) => state.sidebarOpen);
   const searchOpen = useReader((state) => state.searchOpen);
@@ -980,7 +1023,13 @@ function ReaderWorkspace(props: {
       )}
       <main id="reader-content" className="reader-main" aria-label="阅读内容">
         {searchOpen && query.length > 0 && <SearchPanel hits={searchHits} />}
-        <ReaderToolbar book={active} settings={settings} onAddAnnotation={openAnnotationComposer} />
+        <ReaderToolbar
+          book={active}
+          settings={settings}
+          onAddAnnotation={openAnnotationComposer}
+          onOpenDocument={props.onOpenDocument}
+          documentHandoffBusy={props.documentHandoffBusy}
+        />
         {annotationOpen && (
           <AnnotationComposer
             value={annotationDraft}
@@ -1248,6 +1297,8 @@ function ReaderToolbar(props: {
   book: ReaderBook;
   settings: ReaderSettings;
   onAddAnnotation: () => void;
+  onOpenDocument: () => void;
+  documentHandoffBusy: boolean;
 }) {
   const activeSectionId = useReader((state) => state.activeSectionId);
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
@@ -1297,6 +1348,18 @@ function ReaderToolbar(props: {
         >
           <Bookmark className="reader-icon" />
           <span>{bookmarked ? "已标记" : "书签"}</span>
+        </button>
+        <button
+          type="button"
+          className="reader-document-handoff"
+          onClick={props.onOpenDocument}
+          disabled={props.documentHandoffBusy}
+          aria-label="交给 Document Studio"
+          title="交给 Document Studio"
+        >
+          <FileText className="reader-icon" />
+          <span>{props.documentHandoffBusy ? "交接中…" : "交给 Document"}</span>
+          <ArrowUpRight className="reader-icon" />
         </button>
         <span className="reader-locator">
           <Bookmark className="reader-icon" /> {percent(progress)}

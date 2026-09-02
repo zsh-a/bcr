@@ -140,6 +140,23 @@ await page
   .waitFor({ timeout: 20_000 });
 await page.getByLabel("阅读内容").getByText("Field notes（人工修订）").waitFor({ timeout: 10_000 });
 
+// Reader can publish its parsed projection back into Document as a durable,
+// refresh-safe handoff. The target should reopen the same source and expose
+// the projection as a completed Extract stage.
+await page.getByRole("button", { name: /交给 Document Studio/ }).click();
+await page.locator(".document-studio").waitFor({ timeout: 20_000 });
+await page
+  .locator(".document-job-card", { hasText: /field[- ]notes/iu })
+  .last()
+  .waitFor({ timeout: 20_000 });
+await page.locator(".document-content-card").waitFor({ timeout: 10_000 });
+if ((await page.locator(".document-stage-card.is-done").count()) < 3) {
+  fail("Reader → Document handoff 没有恢复 Ingest / Normalize / Extract 状态");
+}
+if (!(await page.locator(".document-content-card").innerText()).includes("结构化内容已就绪")) {
+  fail("Reader → Document handoff 没有恢复 Content Package");
+}
+
 // The same artifact boundary also feeds a page-image handoff into Manga.
 await page.goto(base.toString(), { waitUntil: "domcontentloaded" });
 await page.locator(".document-studio").waitFor({ timeout: 20_000 });

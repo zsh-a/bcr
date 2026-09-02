@@ -2,6 +2,7 @@ import {
   artifactPath,
   artifactStore,
   ArtifactStoreTag,
+  contentHash,
   hashReadableStream,
   type ArtifactRef,
   type ArtifactStore,
@@ -33,6 +34,7 @@ import {
   type DocumentTranslationPackage,
 } from "@bcr/document-core";
 import { formatForFile, openReaderContentPackage, openReaderFile } from "./adapters";
+import { readerBookToDocumentContent } from "./document-adapter";
 import {
   createReaderParseSession,
   ReaderParseWorkerError,
@@ -371,6 +373,63 @@ export async function importReaderDocumentHandoff(
         ));
   if (content === undefined) return importReaderFile(runtime, file, signal);
   return importReaderContentPackage(runtime, file, content, translation, signal);
+}
+
+export interface ReaderDocumentHandoffPayload {
+  readonly file: File;
+  readonly sourceRef: ArtifactRef;
+  readonly content: DocumentContentPackage;
+  readonly contentRef: ArtifactRef;
+}
+
+function sourceExtension(name: string): string {
+  return name.split(".").pop()?.toLocaleLowerCase() || "bin";
+}
+
+/**
+ * Materialize a Reader publication in the host Document namespace and write
+ * its canonical projection. Both refs are content-addressed, so a refresh or
+ * a separate target tab can rebuild the handoff without a File handle.
+ */
+export async function prepareReaderDocumentHandoff(
+  runtime: ReaderRuntime,
+  hostArtifacts: ArtifactStore,
+  book: ReaderBook,
+): Promise<ReaderDocumentHandoffPayload> {
+  const source = book.source.ref;
+  if (source === undefined) {
+    throw new Error("示例读物没有可交接的源 Artifact，请先导入原始文件");
+  }
+  const sourceArtifact: ArtifactRef = {
+    id: source.id,
+    type: "file/publication",
+    storage: source.storage,
+    format: source.mime,
+    hash: source.hash,
+  };
+  const blob = await Effect.runPromise(runtime.artifacts.getBlob(sourceArtifact));
+  const file = new File([blob], book.source.name, { type: book.source.mime });
+  const sourceRef: ArtifactRef = {
+    id: `document/source/${source.hash}`,
+    type: `file/${sourceExtension(book.source.name)}`,
+    storage: "opfs",
+    format: book.source.mime || undefined,
+    hash: source.hash,
+  };
+  await Effect.runPromise(hostArtifacts.putStream(sourceRef, blob.stream()));
+
+  const content = readerBookToDocumentContent(book, sourceRef);
+  const bytes = new TextEncoder().encode(JSON.stringify(content));
+  const hash = contentHash(bytes);
+  const contentRef: ArtifactRef = {
+    id: `document/content/reader/${hash}`,
+    type: "document/content-package",
+    storage: "opfs",
+    format: "json",
+    hash,
+  };
+  await Effect.runPromise(hostArtifacts.put(contentRef, bytes));
+  return { file, sourceRef, content, contentRef };
 }
 
 function persistBook(book: ReaderBook): PersistedBook {

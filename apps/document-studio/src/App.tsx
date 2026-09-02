@@ -27,6 +27,7 @@ import { useArtifact, useLocationSearch, useOptionalRuntime, useRuntime } from "
 import type { SearchDocument } from "@bcr/core";
 import {
   DOCUMENT_HANDOFF_EVENT,
+  consumeDocumentHandoff,
   createDocumentJob,
   decodeDocumentContentPackage,
   decodeDocumentTranslationPackage,
@@ -34,7 +35,9 @@ import {
   documentTranslationStats,
   formatForName,
   formatLabel,
+  getDocumentHandoffMarker,
   listDocumentHandoffs,
+  markDocumentHandoffExpired,
   markReadyStages,
   publishDocumentHandoff,
   stageById,
@@ -52,6 +55,7 @@ import { activeDocument, documents, useDocumentStudio } from "./store";
 import {
   cancelDocumentStage,
   canRunDocumentStage,
+  importDocumentHandoff,
   importDocumentFile,
   runDocumentStage,
   saveDocumentTranslationReview,
@@ -132,7 +136,9 @@ export function App() {
   const navigate = useNavigate();
   const services = useRuntime();
   const hostServices = useOptionalRuntime();
-  const routeJobId = new URLSearchParams(useLocationSearch()).get("job");
+  const routeSearch = useLocationSearch();
+  const routeJobId = new URLSearchParams(routeSearch).get("job");
+  const routeHandoffId = new URLSearchParams(routeSearch).get("handoff");
   const extractRef = stageById(active.stages, "extract")?.artifact ?? null;
   const extractBytes = useArtifact(extractRef);
   const contentPackage = useMemo(() => {
@@ -180,6 +186,7 @@ export function App() {
   }, [translationPackage]);
 
   const appliedRouteRef = useRef("");
+  const appliedHandoffRef = useRef("");
   const [handoffHistory, setHandoffHistory] = useState<ReadonlyArray<DocumentHandoffRecord>>(() =>
     listDocumentHandoffs(),
   );
@@ -255,6 +262,34 @@ export function App() {
       documents.selectJob(routeJobId);
     }
   }, [routeJobId, state.jobs]);
+
+  useEffect(() => {
+    if (routeHandoffId === null || appliedHandoffRef.current === routeHandoffId) return;
+    appliedHandoffRef.current = routeHandoffId;
+    const handoff = consumeDocumentHandoff(routeHandoffId, "document");
+    if (handoff === undefined) {
+      const marker = getDocumentHandoffMarker();
+      markDocumentHandoffExpired(routeHandoffId, "document");
+      documents.setNotice(
+        marker?.id !== routeHandoffId || marker.target !== "document"
+          ? "Document handoff 已过期；请从来源工作台重新交接"
+          : `Document handoff「${marker.name}」已过期；请从来源工作台重新交接`,
+      );
+      void navigate({ to: "/documents" });
+      return;
+    }
+    void importDocumentHandoff(services, handoff)
+      .then(({ job, file }) => {
+        documents.addJob(job, file);
+        void navigate({ to: "/documents", search: { job: job.id } });
+      })
+      .catch((reason: unknown) => {
+        documents.setNotice(
+          `接收 ${handoff.name} 失败：${reason instanceof Error ? reason.message : String(reason)}`,
+        );
+        void navigate({ to: "/documents" });
+      });
+  }, [navigate, routeHandoffId, services]);
 
   useEffect(() => {
     const refresh = () => setHandoffHistory(listDocumentHandoffs());
@@ -597,7 +632,11 @@ export function App() {
                     data-handoff-status={record.status}
                   >
                     <span className="document-handoff-record-target">
-                      {record.target === "reader" ? "READER" : "MANGA"}
+                      {record.target === "reader"
+                        ? "READER"
+                        : record.target === "manga"
+                          ? "MANGA"
+                          : "DOCUMENT"}
                     </span>
                     <strong>{record.name}</strong>
                     <span className="document-handoff-record-status">

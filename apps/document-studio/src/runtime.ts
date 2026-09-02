@@ -8,11 +8,18 @@ import {
 import { Effect, Stream } from "effect";
 import type { RuntimeServices } from "@bcr/react";
 import {
+  createDocumentJob,
   createDocumentTranslationPackage,
+  decodeDocumentContentPackage,
+  decodeDocumentTranslationPackage,
+  documentContentText,
+  markReadyStages,
   stageById,
   supportsDocumentTextExtract,
   updateStage,
   type DocumentFormat,
+  type DocumentHandoff,
+  type DocumentContentPackage,
   type DocumentJob,
   type DocumentStageId,
   type DocumentTranslationPackage,
@@ -45,6 +52,156 @@ export async function importDocumentFile(
   };
   await Effect.runPromise(services.artifacts.putStream(ref, file.stream()));
   return ref;
+}
+
+function mimeForDocumentFormat(format: DocumentFormat): string {
+  switch (format) {
+    case "pdf":
+      return "application/pdf";
+    case "epub":
+      return "application/epub+zip";
+    case "cbz":
+      return "application/vnd.comicbook+zip";
+    case "docx":
+      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    case "html":
+      return "text/html";
+    case "markdown":
+      return "text/markdown";
+    case "image":
+      return "image/*";
+    default:
+      return "text/plain";
+  }
+}
+
+async function packageFromArtifact<T>(
+  services: RuntimeServices,
+  ref: ArtifactRef,
+  decode: (value: unknown) => T | undefined,
+): Promise<T> {
+  const bytes = await Effect.runPromise(services.artifacts.get(ref));
+  let value: unknown;
+  try {
+    value = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+  } catch {
+    throw new Error(`Document handoff Artifact ${ref.id} 不是有效 JSON`);
+  }
+  const decoded = decode(value);
+  if (decoded === undefined) throw new Error(`Document handoff Artifact ${ref.id} 契约校验失败`);
+  return decoded;
+}
+
+async function writeContentPackage(
+  services: RuntimeServices,
+  content: DocumentContentPackage,
+  prefix: string,
+): Promise<ArtifactRef> {
+  const bytes = new TextEncoder().encode(JSON.stringify(content));
+  const hash = contentHash(bytes);
+  const ref: ArtifactRef = {
+    id: `document/content/${prefix}/${hash}`,
+    type: "document/content-package",
+    storage: "opfs",
+    format: "json",
+    hash,
+  };
+  await Effect.runPromise(services.artifacts.put(ref, bytes));
+  return ref;
+}
+
+async function writeTranslationPackage(
+  services: RuntimeServices,
+  translation: DocumentTranslationPackage,
+  prefix: string,
+): Promise<ArtifactRef> {
+  const bytes = new TextEncoder().encode(JSON.stringify(translation));
+  const hash = contentHash(bytes);
+  const ref: ArtifactRef = {
+    id: `document/translation/${prefix}/${hash}`,
+    type: "document/translation-package",
+    storage: "opfs",
+    format: "json",
+    hash,
+  };
+  await Effect.runPromise(services.artifacts.put(ref, bytes));
+  return ref;
+}
+
+/** Rebuild a durable Document job from a Reader/Manga handoff. */
+export async function importDocumentHandoff(
+  services: RuntimeServices,
+  handoff: DocumentHandoff,
+): Promise<{ readonly job: DocumentJob; readonly file: File }> {
+  const file =
+    handoff.file ??
+    (handoff.sourceRef === undefined
+      ? undefined
+      : new File(
+          [await Effect.runPromise(services.artifacts.getBlob(handoff.sourceRef))],
+          handoff.name,
+          { type: handoff.sourceRef.format ?? mimeForDocumentFormat(handoff.format) },
+        ));
+  if (file === undefined) {
+    throw new Error("Document handoff 缺少可恢复的 source Artifact，请回到来源工作台重新交接");
+  }
+  const sourceRef = await importDocumentFile(services, file);
+  const content =
+    handoff.content ??
+    (handoff.contentRef === undefined
+      ? undefined
+      : await packageFromArtifact(services, handoff.contentRef, decodeDocumentContentPackage));
+  const translation =
+    handoff.translation ??
+    (handoff.translationRef === undefined
+      ? undefined
+      : await packageFromArtifact(
+          services,
+          handoff.translationRef,
+          decodeDocumentTranslationPackage,
+        ));
+  const contentRef =
+    content === undefined
+      ? undefined
+      : (handoff.contentRef ?? (await writeContentPackage(services, content, "handoff")));
+  const translationRef =
+    translation === undefined
+      ? undefined
+      : (handoff.translationRef ??
+        (await writeTranslationPackage(services, translation, "handoff")));
+  let job = markReadyStages(
+    createDocumentJob({
+      id: `document-handoff-${handoff.id}`,
+      name: handoff.name,
+      format: handoff.format,
+      size: handoff.size || file.size,
+      sourceRef,
+      sourceTextPreview:
+        content === undefined
+          ? undefined
+          : documentContentText(content).replace(/\s+/gu, " ").trim().slice(0, 240),
+    }),
+  );
+  const completedAt = Date.now();
+  if (contentRef !== undefined) {
+    job = updateStage(job, "extract", {
+      status: "done",
+      progress: 1,
+      completedAt,
+      artifact: contentRef,
+      adapter: content?.provenance.adapter ?? "handoff.content",
+    });
+  }
+  if (translationRef !== undefined) {
+    job = updateStage(job, "translate", {
+      status: "done",
+      progress: 1,
+      completedAt,
+      artifact: translationRef,
+      adapter: translation?.provenance.adapter ?? "handoff.translation",
+    });
+  }
+  return { job, file };
 }
 
 function taskConfig(job: DocumentJob): Record<string, unknown> {

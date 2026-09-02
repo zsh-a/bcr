@@ -3,7 +3,8 @@ import type { DocumentContentPackage } from "./content";
 import type { DocumentFormat } from "./model";
 import type { DocumentTranslationPackage } from "./translation";
 
-export type DocumentHandoffTarget = "reader" | "manga";
+/** Workbench that should receive a durable document handoff. */
+export type DocumentHandoffTarget = "reader" | "manga" | "document";
 export type DocumentHandoffStatus = "pending" | "consumed" | "expired";
 
 export interface DocumentHandoff {
@@ -137,7 +138,7 @@ function readHistory(): ReadonlyArray<DocumentHandoffRecord> {
       return (
         typeof record.id === "string" &&
         typeof record.jobId === "string" &&
-        (record.target === "reader" || record.target === "manga") &&
+        (record.target === "reader" || record.target === "manga" || record.target === "document") &&
         typeof record.name === "string" &&
         typeof record.createdAt === "number" &&
         (record.status === "pending" || record.status === "consumed" || record.status === "expired")
@@ -204,7 +205,7 @@ export function getDocumentHandoffMarker(): DocumentHandoffMarker | undefined {
     const marker = JSON.parse(raw) as Partial<DocumentHandoffMarker>;
     if (
       typeof marker.id !== "string" ||
-      (marker.target !== "reader" && marker.target !== "manga") ||
+      (marker.target !== "reader" && marker.target !== "manga" && marker.target !== "document") ||
       typeof marker.jobId !== "string" ||
       typeof marker.name !== "string" ||
       typeof marker.createdAt !== "number"

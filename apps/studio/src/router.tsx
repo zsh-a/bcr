@@ -31,6 +31,7 @@ export interface ReaderSearch extends HandoffSearch {
 
 export interface DocumentSearch {
   job?: string | undefined;
+  handoff?: string | undefined;
 }
 
 export interface MangaSearch extends HandoffSearch {
@@ -102,6 +103,7 @@ const documentsRoute = createRoute({
   path: "/documents",
   validateSearch: (search: Record<string, unknown>): DocumentSearch => ({
     job: typeof search["job"] === "string" ? search["job"] : undefined,
+    handoff: typeof search["handoff"] === "string" ? search["handoff"] : undefined,
   }),
   component: () => null,
 });
