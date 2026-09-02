@@ -1,4 +1,4 @@
-import type { ArtifactStore, ComputeTask, TaskEvent } from "@bcr/core";
+import type { ArtifactRef, ArtifactStore, ComputeTask, TaskEvent } from "@bcr/core";
 import {
   searchIndexedDocuments,
   type ReaderBook,
@@ -11,6 +11,7 @@ import { workerExecutor, WorkerPool } from "@bcr/runtime-worker";
 interface ReaderIndexResult {
   readonly version: 1;
   readonly bookId: string;
+  readonly signature: string;
   readonly documents: ReadonlyArray<ReaderIndexDocument>;
 }
 
@@ -29,12 +30,40 @@ let taskSequence = 0;
 
 function isReaderIndexResult(value: unknown): value is ReaderIndexResult {
   if (typeof value !== "object" || value === null) return false;
-  const candidate = value as { version?: unknown; bookId?: unknown; documents?: unknown };
+  const candidate = value as {
+    version?: unknown;
+    bookId?: unknown;
+    signature?: unknown;
+    documents?: unknown;
+  };
   return (
     candidate.version === 1 &&
     typeof candidate.bookId === "string" &&
+    typeof candidate.signature === "string" &&
     Array.isArray(candidate.documents)
   );
+}
+
+function indexSignature(book: ReaderBook): string {
+  if (book.source.ref?.hash !== undefined) return book.source.ref.hash;
+  return [
+    book.id,
+    book.updatedAt,
+    book.sections.length,
+    ...book.sections.map((section) => `${section.id}:${section.text.length}`),
+  ]
+    .join("|")
+    .replace(/[^a-zA-Z0-9._|-]/gu, "_");
+}
+
+function indexCacheRef(book: ReaderBook, signature: string): ArtifactRef {
+  return {
+    id: `reader/search-index/${encodeURIComponent(book.id)}/${signature}`,
+    type: "reader/search-index",
+    storage: "opfs",
+    format: "json",
+    hash: signature,
+  };
 }
 
 function abortError(): DOMException {
@@ -56,11 +85,35 @@ export function createReaderIndexSession(artifacts: ArtifactStore): ReaderIndexS
       }),
   );
   const executor = workerExecutor(pool, "js", "reader-index-0.1.0", artifacts);
-  const indexed = new Map<string, ReadonlyArray<ReaderIndexDocument>>();
+  const indexed = new Map<
+    string,
+    { readonly signature: string; readonly documents: ReadonlyArray<ReaderIndexDocument> }
+  >();
 
   return {
     async indexBook(book, signal) {
       if (signal?.aborted) throw abortError();
+      const signature = indexSignature(book);
+      const cached = indexed.get(book.id);
+      if (cached?.signature === signature) return;
+      if (cached !== undefined) indexed.delete(book.id);
+      const cacheRef = indexCacheRef(book, signature);
+      try {
+        if (await Effect.runPromise(artifacts.has(cacheRef))) {
+          const bytes = await Effect.runPromise(artifacts.get(cacheRef));
+          const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
+          if (
+            isReaderIndexResult(parsed) &&
+            parsed.bookId === book.id &&
+            parsed.signature === signature
+          ) {
+            indexed.set(book.id, { signature, documents: parsed.documents });
+            return;
+          }
+        }
+      } catch {
+        // A stale or unavailable cache is equivalent to a cache miss.
+      }
       const task: ComputeTask = {
         id: `reader-index-${++taskSequence}`,
         runtime: "js",
@@ -83,6 +136,7 @@ export function createReaderIndexSession(artifacts: ArtifactStore): ReaderIndexS
               text: section.text,
             })),
           },
+          signature,
         },
       };
       try {
@@ -98,10 +152,17 @@ export function createReaderIndexSession(artifacts: ArtifactStore): ReaderIndexS
         if (ref === undefined) throw new Error("reader index worker returned no output");
         const bytes = await Effect.runPromise(artifacts.get(ref));
         const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
-        if (!isReaderIndexResult(parsed) || parsed.bookId !== book.id) {
+        if (
+          !isReaderIndexResult(parsed) ||
+          parsed.bookId !== book.id ||
+          parsed.signature !== signature
+        ) {
           throw new Error("reader index output is invalid");
         }
-        indexed.set(book.id, parsed.documents);
+        await Effect.runPromise(
+          artifacts.put(cacheRef, new TextEncoder().encode(JSON.stringify(parsed))),
+        );
+        indexed.set(book.id, { signature, documents: parsed.documents });
       } catch (reason) {
         if (signal?.aborted) throw abortError();
         throw reason;
@@ -112,7 +173,7 @@ export function createReaderIndexSession(artifacts: ArtifactStore): ReaderIndexS
     },
     search(books, query) {
       if (books.some((book) => !indexed.has(book.id))) return undefined;
-      const documents = books.flatMap((book) => indexed.get(book.id) ?? []);
+      const documents = books.flatMap((book) => indexed.get(book.id)?.documents ?? []);
       return searchIndexedDocuments(documents, books, query);
     },
     close() {

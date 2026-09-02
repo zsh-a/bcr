@@ -1074,7 +1074,7 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
     programmaticScrollTimerRef.current = window.setTimeout(() => {
       programmaticScrollRef.current = false;
       programmaticScrollTimerRef.current = null;
-    }, 320);
+    }, 720);
     if (activeSectionId === props.book.sections[0]?.id) {
       containerRef.current.scrollTo({
         top: max * progress,

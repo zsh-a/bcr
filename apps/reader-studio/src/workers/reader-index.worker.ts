@@ -14,6 +14,7 @@ interface IndexBookPayload {
 interface IndexResult {
   readonly version: 1;
   readonly bookId: string;
+  readonly signature: string;
   readonly documents: ReadonlyArray<ReaderIndexDocument>;
 }
 
@@ -45,11 +46,15 @@ async function indexReaderBook(
   const payload = configOf(task, "book");
   if (!isIndexBookPayload(payload)) throw new Error("reader.index requires a valid book payload");
   throwIfAborted(ctx);
+  const signature = configOf(task, "signature");
+  if (typeof signature !== "string" || signature.length === 0) {
+    throw new Error("reader.index requires a content signature");
+  }
   const documents = buildSearchIndex(payload, (value) => {
     throwIfAborted(ctx);
     ctx.progress(value);
   });
-  const result: IndexResult = { version: 1, bookId: payload.id, documents };
+  const result: IndexResult = { version: 1, bookId: payload.id, signature, documents };
   const bytes = new TextEncoder().encode(JSON.stringify(result));
   const output = task.outputs[0];
   const ref: ArtifactRef = {

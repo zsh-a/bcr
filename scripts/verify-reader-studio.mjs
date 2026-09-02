@@ -23,6 +23,8 @@ if ((await page.locator(".reader-book-card").count()) < 1) fail("书库未加载
 if ((await page.locator(".reader-section").count()) < 3) fail("演示出版物章节未加载");
 if (!(await page.locator(".reader-sidebar-footer").innerText()).includes("OPFS"))
   fail("本地持久化状态未展示");
+const searchClose = page.getByRole("button", { name: "关闭搜索结果" });
+if ((await searchClose.count()) > 0) await searchClose.click();
 const bookmarkButton = page.getByRole("button", { name: /标记当前位置|移除当前位置书签/ });
 if ((await bookmarkButton.getAttribute("aria-label")) === "标记当前位置") {
   await bookmarkButton.click();

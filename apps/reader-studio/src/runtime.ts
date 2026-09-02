@@ -84,6 +84,21 @@ interface PersistedReaderSnapshot {
   readonly searchSession?: ReaderSearchSession;
 }
 
+interface PersistedReaderLibrary {
+  readonly version: 1;
+  readonly books: ReadonlyArray<PersistedBook>;
+}
+
+interface PersistedReaderSession {
+  readonly version: 1;
+  readonly activeBookId?: string | null;
+  readonly progressByBook?: ReaderState["progressByBook"];
+  readonly settings?: ReaderSettings;
+  readonly bookmarksByBook?: ReaderState["bookmarksByBook"];
+  readonly annotationsByBook?: ReaderState["annotationsByBook"];
+  readonly searchSession?: ReaderSearchSession;
+}
+
 interface RestoredReaderSnapshot {
   readonly books: ReadonlyArray<ReaderBook>;
   readonly activeBookId: string | null;
@@ -104,8 +119,14 @@ CREATE VIRTUAL TABLE IF NOT EXISTS reader_fts USING fts5(
 );`;
 
 const READER_STORAGE_KEY = "bcr.reader.state.v1";
+const READER_LIBRARY_STORAGE_KEY = "bcr.reader.library.v1";
+const READER_SESSION_STORAGE_KEY = "bcr.reader.session.v1";
+const READER_META_KEY = "reader/state";
+const READER_LIBRARY_META_KEY = "reader/library";
+const READER_SESSION_META_KEY = "reader/session";
 
 let currentRuntime: ReaderRuntime | undefined;
+const persistedLibrarySignatures = new WeakMap<ReaderRuntime, string>();
 
 async function openMetaDb(store: BinaryStore): Promise<SqliteDb> {
   const init = initSqlite as unknown as SqliteInit;
@@ -215,9 +236,15 @@ function persistBook(book: ReaderBook): PersistedBook {
 }
 
 export async function persistReader(runtime: ReaderRuntime, state: ReaderState): Promise<void> {
-  const snapshot: PersistedReaderSnapshot = {
+  const books = state.library.map(persistBook);
+  const librarySignature = state.library
+    .map(
+      (book) =>
+        `${book.id}:${book.updatedAt}:${book.source.ref?.hash ?? ""}:${book.sections.length}`,
+    )
+    .join("\u0000");
+  const session: PersistedReaderSession = {
     version: 1,
-    books: state.library.map(persistBook),
     activeBookId: state.activeBookId,
     progressByBook: state.progressByBook,
     settings: state.settings,
@@ -229,28 +256,90 @@ export async function persistReader(runtime: ReaderRuntime, state: ReaderState):
       searchOpen: state.searchOpen,
     },
   };
-  const raw = JSON.stringify(snapshot);
+  const sessionRaw = JSON.stringify(session);
+  if (persistedLibrarySignatures.get(runtime) !== librarySignature) {
+    const library: PersistedReaderLibrary = { version: 1, books };
+    const legacy: PersistedReaderSnapshot = {
+      ...library,
+      activeBookId: state.activeBookId,
+      progressByBook: state.progressByBook,
+      settings: state.settings,
+      bookmarksByBook: state.bookmarksByBook,
+      annotationsByBook: state.annotationsByBook,
+      searchSession: {
+        query: state.query,
+        searchBookId: state.searchBookId,
+        searchOpen: state.searchOpen,
+      },
+    };
+    const libraryRaw = JSON.stringify(library);
+    const legacyRaw = JSON.stringify(legacy);
+    const librarySaved = await writeReaderValue(
+      runtime,
+      READER_LIBRARY_META_KEY,
+      READER_LIBRARY_STORAGE_KEY,
+      libraryRaw,
+      true,
+    );
+    await writeReaderValue(runtime, READER_META_KEY, READER_STORAGE_KEY, legacyRaw, true);
+    if (librarySaved) persistedLibrarySignatures.set(runtime, librarySignature);
+  }
+  await writeReaderValue(
+    runtime,
+    READER_SESSION_META_KEY,
+    READER_SESSION_STORAGE_KEY,
+    sessionRaw,
+    false,
+  );
+}
+
+async function writeReaderValue(
+  runtime: ReaderRuntime,
+  metaKey: string,
+  storageKey: string,
+  raw: string,
+  mirrorLocal: boolean,
+): Promise<boolean> {
+  let saved = false;
   if (runtime.meta !== undefined) {
     try {
-      await runtime.meta.kvSet("reader/state", raw);
-      return;
+      await runtime.meta.kvSet(metaKey, raw);
+      saved = true;
     } catch {
       // Fall through to localStorage when SQLite is temporarily unavailable.
     }
   }
   try {
-    if (typeof localStorage !== "undefined") localStorage.setItem(READER_STORAGE_KEY, raw);
+    if ((!saved || mirrorLocal) && typeof localStorage !== "undefined") {
+      localStorage.setItem(storageKey, raw);
+      saved = true;
+    }
   } catch {
     // Private browsing can deny localStorage; in-memory reading still works.
   }
+  return saved;
 }
 
-function localStorageSnapshot(): string | undefined {
+function localStorageSnapshot(key: string): string | undefined {
   try {
     if (typeof localStorage === "undefined") return undefined;
-    return localStorage.getItem(READER_STORAGE_KEY) ?? undefined;
+    return localStorage.getItem(key) ?? undefined;
   } catch {
     return undefined;
+  }
+}
+
+async function readerValue(
+  runtime: ReaderRuntime,
+  metaKey: string,
+  storageKey: string,
+): Promise<string | undefined> {
+  const local = localStorageSnapshot(storageKey);
+  if (runtime.meta === undefined) return local;
+  try {
+    return (await runtime.meta.kvGet(metaKey)) ?? local;
+  } catch {
+    return local;
   }
 }
 
@@ -471,33 +560,53 @@ async function restoreBook(
 export async function restoreReader(
   runtime: ReaderRuntime,
 ): Promise<RestoredReaderSnapshot | undefined> {
-  let raw = localStorageSnapshot();
-  if (runtime.meta !== undefined) {
-    try {
-      raw = (await runtime.meta.kvGet("reader/state")) ?? raw;
-    } catch {
-      // Keep the localStorage snapshot as the recovery path.
-    }
-  }
-  if (raw === undefined) return undefined;
+  const legacyRaw = await readerValue(runtime, READER_META_KEY, READER_STORAGE_KEY);
+  const libraryRaw = await readerValue(
+    runtime,
+    READER_LIBRARY_META_KEY,
+    READER_LIBRARY_STORAGE_KEY,
+  );
+  const sessionRaw = await readerValue(
+    runtime,
+    READER_SESSION_META_KEY,
+    READER_SESSION_STORAGE_KEY,
+  );
+  const legacy = parsePersisted<Partial<PersistedReaderSnapshot>>(legacyRaw);
+  const library = parsePersisted<Partial<PersistedReaderLibrary>>(libraryRaw);
+  const session = parsePersisted<Partial<PersistedReaderSession>>(sessionRaw);
+  const booksPayload =
+    library?.version === 1 && Array.isArray(library.books)
+      ? library.books
+      : legacy?.version === 1 && Array.isArray(legacy.books)
+        ? legacy.books
+        : undefined;
+  if (booksPayload === undefined) return undefined;
   try {
-    const snapshot = JSON.parse(raw) as PersistedReaderSnapshot;
-    if (snapshot.version !== 1 || !Array.isArray(snapshot.books)) return undefined;
     const books: ReaderBook[] = [];
-    for (const persisted of snapshot.books) {
+    for (const persisted of booksPayload) {
       const book = await restoreBook(runtime, persisted);
       if (book !== undefined) books.push(book);
     }
+    const source = session?.version === 1 ? session : legacy?.version === 1 ? legacy : undefined;
     return {
       books,
       activeBookId:
-        typeof snapshot.activeBookId === "string" ? snapshot.activeBookId : (books[0]?.id ?? null),
-      progressByBook: snapshot.progressByBook ?? {},
-      settings: { ...DEFAULT_READER_SETTINGS, ...snapshot.settings },
-      bookmarksByBook: restoredBookmarks(books, snapshot.bookmarksByBook),
-      annotationsByBook: restoredAnnotations(books, snapshot.annotationsByBook),
-      searchSession: restoredSearchSession(books, snapshot.searchSession),
+        typeof source?.activeBookId === "string" ? source.activeBookId : (books[0]?.id ?? null),
+      progressByBook: source?.progressByBook ?? {},
+      settings: { ...DEFAULT_READER_SETTINGS, ...source?.settings },
+      bookmarksByBook: restoredBookmarks(books, source?.bookmarksByBook),
+      annotationsByBook: restoredAnnotations(books, source?.annotationsByBook),
+      searchSession: restoredSearchSession(books, source?.searchSession),
     };
+  } catch {
+    return undefined;
+  }
+}
+
+function parsePersisted<T>(raw: string | undefined): T | undefined {
+  if (raw === undefined) return undefined;
+  try {
+    return JSON.parse(raw) as T;
   } catch {
     return undefined;
   }
