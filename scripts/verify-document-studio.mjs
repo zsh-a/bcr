@@ -77,6 +77,35 @@ if (!contentSummary.includes("结构化内容已就绪") || !contentSummary.incl
   fail("标准化 Content Package 摘要未展示");
 }
 
+// A JSON Export Bundle is lossless enough to round-trip through the same
+// browser input. This protects the durable source-ref boundary instead of
+// only checking that a download button rendered.
+const exportDownloadPromise = page.waitForEvent("download");
+await page.getByRole("button", { name: "JSON", exact: true }).click();
+const exportDownload = await exportDownloadPromise;
+const exportStream = await exportDownload.createReadStream();
+const exportChunks = [];
+for await (const chunk of exportStream) exportChunks.push(chunk);
+const exportBuffer = Buffer.concat(exportChunks);
+if (!exportDownload.suggestedFilename().endsWith(".json") || exportBuffer.length === 0) {
+  fail("JSON Export Bundle 下载内容为空或文件名不正确");
+}
+await input.setInputFiles({
+  name: exportDownload.suggestedFilename(),
+  mimeType: "application/json",
+  buffer: exportBuffer,
+});
+await page.waitForFunction(
+  () =>
+    document.querySelector(".document-notice")?.textContent?.includes("从 Export Bundle 恢复") ??
+    false,
+  undefined,
+  { timeout: 10_000 },
+);
+if (!(await page.locator(".document-content-card").innerText()).includes("结构化内容已就绪")) {
+  fail("JSON Export Bundle 回放后没有恢复 Content Package");
+}
+
 await page.getByRole("button", { name: "打开全局搜索" }).click();
 const workspaceSearch = page.getByRole("textbox", { name: "全局搜索" });
 await workspaceSearch.fill("local-first document pipeline");

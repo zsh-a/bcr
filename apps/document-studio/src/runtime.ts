@@ -277,7 +277,12 @@ export async function importDocumentExportBundle(
   } catch {
     throw new Error(`Document Export Bundle 的 source Artifact 不可用：${sourceRef.id}`);
   }
-  const sourceFile = new File([sourceBlob], bundle.content.sourceName, {
+  // OPFS-backed Blob objects can become unreadable when importDocumentHandoff
+  // refreshes the same content-addressed source path below. Materialize a
+  // stable snapshot before that write so the returned File remains usable by
+  // Reader/Manga handoffs in Chromium as well as in-memory test stores.
+  const sourceBytes = await sourceBlob.arrayBuffer();
+  const sourceFile = new File([sourceBytes], bundle.content.sourceName, {
     type: sourceRef.format ?? mimeForDocumentFormat(bundle.content.format),
   });
   const imported = await importDocumentHandoff(services, {
