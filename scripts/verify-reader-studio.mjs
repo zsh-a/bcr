@@ -119,6 +119,17 @@ const body = await page.locator("body").innerText();
 if (!body.includes("Reader Studio") || !body.includes("把时间还给阅读")) fail("阅读器主界面未渲染");
 if ((await page.locator(".reader-book-card").count()) < 1) fail("书库未加载");
 if ((await page.locator(".reader-section").count()) < 3) fail("演示出版物章节未加载");
+if (
+  await page
+    .locator(".reader-section")
+    .first()
+    .evaluate((element) => {
+      const style = getComputedStyle(element);
+      return style.contentVisibility !== "auto";
+    })
+) {
+  fail("连续阅读没有启用原生 content-visibility 优化");
+}
 if (!(await page.locator(".reader-sidebar-footer").innerText()).includes("OPFS"))
   fail("本地持久化状态未展示");
 const searchClose = page.getByRole("button", { name: "关闭搜索结果" });
