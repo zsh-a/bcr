@@ -1,8 +1,14 @@
 import {
   contentHash,
   hashReadableStream,
+  type ArtifactCleanupCandidate,
+  type ArtifactCleanupPlan,
+  type ArtifactCleanupResult,
+  type ArtifactInventoryEntry,
   type ArtifactRef,
   type ComputeTask,
+  type ArtifactStorageUsage,
+  type ArtifactUsage,
   type TaskHandle,
 } from "@bcr/core";
 import type { RuntimeServices } from "@bcr/react";
@@ -53,6 +59,14 @@ export interface RestoredDataCatalog {
   readonly active: DataTableSnapshot | undefined;
   /** True when the previous single-snapshot metadata was upgraded in memory. */
   readonly migratedLegacy: boolean;
+}
+
+export interface DataStorageReport {
+  readonly usage: ArtifactUsage;
+  readonly dataUsage: ArtifactStorageUsage;
+  readonly catalogObjectCount: number;
+  readonly orphaned: ReadonlyArray<ArtifactCleanupCandidate>;
+  readonly plan: ArtifactCleanupPlan;
 }
 
 function formatForFile(file: Pick<File, "name" | "type">): DataFormat {
@@ -284,6 +298,76 @@ async function writeDataCatalog(
       ? ""
       : JSON.stringify({ version: 1, sourceRef: active.sourceRef, tableRef: active.tableRef }),
   );
+}
+
+function isDataArtifactId(id: string): boolean {
+  return id === "data" || id.startsWith("data/");
+}
+
+function dataUsage(entries: ReadonlyArray<ArtifactInventoryEntry>): ArtifactStorageUsage {
+  return entries.reduce(
+    (total, entry) => ({
+      storage: "data",
+      objects: total.objects + 1,
+      bytes: total.bytes + entry.size,
+    }),
+    { storage: "data", objects: 0, bytes: 0 },
+  );
+}
+
+/**
+ * Build a cleanup plan scoped to Data Studio's `data/` namespace.
+ *
+ * ArtifactStore's generic cleanup scans every workspace. We protect every
+ * non-data object plus all catalog roots, then expose only untracked data
+ * candidates so a Data Studio action cannot reclaim Reader/Manga artifacts.
+ */
+export async function inspectDataStorage(services: RuntimeServices): Promise<DataStorageReport> {
+  const loaded = await readDataCatalog(services);
+  const inventory = await Effect.runPromise(services.artifacts.inventory());
+  const catalogIds = new Set(
+    loaded.catalog.assets.flatMap((asset) => [asset.sourceRef.id, asset.tableRef.id]),
+  );
+  const protectedIds = inventory
+    .filter((entry) => !isDataArtifactId(entry.id) || catalogIds.has(entry.id))
+    .map((entry) => entry.id);
+  const genericPlan = await Effect.runPromise(services.artifacts.planCleanup({ protectedIds }));
+  const orphaned = genericPlan.candidates.filter((entry) => isDataArtifactId(entry.id));
+  const plan: ArtifactCleanupPlan = { ...genericPlan, candidates: orphaned };
+  const usage = {
+    totalObjects: inventory.length,
+    totalBytes: inventory.reduce((total, entry) => total + entry.size, 0),
+    byStorage: inventory.reduce<ReadonlyArray<ArtifactStorageUsage>>((totals, entry) => {
+      const current = totals.find((item) => item.storage === entry.storage);
+      if (current === undefined) {
+        return [...totals, { storage: entry.storage, objects: 1, bytes: entry.size }];
+      }
+      return totals.map((item) =>
+        item.storage === entry.storage
+          ? { ...item, objects: item.objects + 1, bytes: item.bytes + entry.size }
+          : item,
+      );
+    }, []),
+  } satisfies ArtifactUsage;
+  return {
+    usage,
+    dataUsage: dataUsage(inventory.filter((entry) => isDataArtifactId(entry.id))),
+    catalogObjectCount: catalogIds.size,
+    orphaned,
+    plan,
+  };
+}
+
+/** Reclaim only the data-scoped candidates from a previously inspected plan. */
+export async function reclaimDataStorage(
+  services: RuntimeServices,
+  plan: ArtifactCleanupPlan,
+): Promise<ArtifactCleanupResult> {
+  const scopedPlan = {
+    ...plan,
+    candidates: plan.candidates.filter((entry) => isDataArtifactId(entry.id)),
+  };
+  return Effect.runPromise(services.artifacts.reclaim(scopedPlan));
 }
 
 /** Import and parse a table through the host Scheduler/compute.worker. */

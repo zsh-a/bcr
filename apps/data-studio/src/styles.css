@@ -287,6 +287,88 @@
   letter-spacing: 0.06em;
 }
 
+.data-storage-governance {
+  margin: 13px 34px 0;
+  padding: 16px 18px 15px;
+  border: 1px solid var(--data-border);
+  border-radius: 12px;
+  background: var(--data-surface);
+}
+.data-storage-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.data-storage-heading > div {
+  display: flex;
+  align-items: baseline;
+  gap: 11px;
+}
+.data-storage-heading .data-eyebrow {
+  margin: 0;
+}
+.data-storage-heading strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.data-storage-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 15px;
+}
+.data-storage-metrics > div {
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--data-border);
+  border-radius: 8px;
+  background: rgba(14, 17, 16, 0.45);
+}
+.data-storage-metrics span {
+  display: block;
+  overflow: hidden;
+  color: var(--data-faint);
+  font:
+    9px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.data-storage-metrics strong {
+  display: block;
+  margin-top: 8px;
+  overflow: hidden;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.data-storage-metrics small {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--data-muted);
+  font:
+    9px "IBM Plex Mono",
+    monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.data-storage-note {
+  display: block;
+  margin-top: 12px;
+  color: var(--data-faint);
+  font-size: 10px;
+  line-height: 1.6;
+}
+.data-storage-note code {
+  color: var(--data-muted);
+  font-family: "IBM Plex Mono", monospace;
+}
+
 .data-empty-state {
   display: flex;
   flex-direction: column;
@@ -620,6 +702,17 @@
   }
   .data-catalog-heading small {
     text-align: left;
+  }
+  .data-storage-governance {
+    margin-right: 18px;
+    margin-left: 18px;
+  }
+  .data-storage-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .data-storage-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .data-main-heading {
     align-items: flex-start;

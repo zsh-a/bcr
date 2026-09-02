@@ -40,6 +40,10 @@ if (!(await page.locator(".data-stat").allInnerTexts()).some((text) => text.incl
 if (!(await page.locator(".data-schema-strip").innerText()).includes("NUMBER")) {
   fail("JSON 字段类型推断没有展示");
 }
+await page.locator("[aria-label='数据存储治理']").waitFor({ timeout: 10_000 });
+if (!(await page.locator("[aria-label='数据存储治理']").innerText()).includes("DATA STORE")) {
+  fail("Data Artifact 存储治理面板没有渲染");
+}
 
 const search = page.getByRole("textbox", { name: "搜索数据行" });
 await search.fill("DATA");

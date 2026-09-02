@@ -25,9 +25,12 @@ import {
   clearDataTable,
   activateDataAsset,
   importDataTable,
+  inspectDataStorage,
+  reclaimDataStorage,
   removeDataAsset,
   restoreDataCatalog,
   type DataAssetRecord,
+  type DataStorageReport,
   type DataTableSnapshot,
 } from "./runtime";
 import "./styles.css";
@@ -215,6 +218,8 @@ export function App() {
   const [query, setQuery] = useState("");
   const [sortColumn, setSortColumn] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [storageReport, setStorageReport] = useState<DataStorageReport | null>(null);
+  const [storageBusy, setStorageBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Search results deep-link to `/data?query=...`. Keep the query in local
@@ -243,6 +248,17 @@ export function App() {
       cancelled = true;
     };
   }, [services]);
+
+  useEffect(() => {
+    if (services === null) return;
+    let cancelled = false;
+    void inspectDataStorage(services).then((report) => {
+      if (!cancelled) setStorageReport(report);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [assets, services]);
 
   useEffect(() => {
     if (services?.search === undefined) return;
@@ -380,6 +396,35 @@ export function App() {
     setNotice("已从资产目录移除当前数据；原始 Artifact 仍保留在本地存储");
   };
 
+  const cleanupStorage = async (): Promise<void> => {
+    if (services === null || storageReport === null || storageReport.orphaned.length === 0) return;
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(
+        `确认回收 ${storageReport.orphaned.length} 个未引用 Data Artifact（${formatBytes(
+          storageReport.orphaned.reduce((total, entry) => total + entry.size, 0),
+        )}）？目录中的资产和其它工作台对象不会被删除。`,
+      )
+    ) {
+      return;
+    }
+    setStorageBusy(true);
+    try {
+      const result = await reclaimDataStorage(services, storageReport.plan);
+      const refreshed = await inspectDataStorage(services);
+      setStorageReport(refreshed);
+      setNotice(
+        result.deleted.length === 0
+          ? `没有回收对象（${result.skipped.length} 个对象在计划执行前已变化或受保护）`
+          : `已回收 ${result.deleted.length} 个未引用 Data Artifact，释放 ${formatBytes(result.reclaimedBytes)}`,
+      );
+    } catch (reason) {
+      setNotice(`存储治理失败：${reason instanceof Error ? reason.message : String(reason)}`);
+    } finally {
+      setStorageBusy(false);
+    }
+  };
+
   if (services === null) {
     return <div className="data-boot">DATA STUDIO · CONNECTING TO RUNTIME</div>;
   }
@@ -494,6 +539,56 @@ export function App() {
               );
             })}
           </div>
+        </section>
+      )}
+
+      {storageReport !== null && (
+        <section className="data-storage-governance" aria-label="数据存储治理">
+          <div className="data-storage-heading">
+            <div>
+              <span className="data-eyebrow">STORAGE / GOVERN</span>
+              <strong>Artifact 存储治理</strong>
+            </div>
+            <button
+              type="button"
+              className="data-button data-button-secondary"
+              onClick={() => void cleanupStorage()}
+              disabled={
+                storageBusy ||
+                storageReport.orphaned.length === 0 ||
+                services.metadata === undefined
+              }
+              data-storage-action="reclaim"
+            >
+              {storageBusy ? "回收中…" : "回收未引用 Artifact"}
+            </button>
+          </div>
+          <div className="data-storage-metrics">
+            <div>
+              <span>DATA STORE</span>
+              <strong>{formatBytes(storageReport.dataUsage.bytes)}</strong>
+              <small>{storageReport.dataUsage.objects} objects</small>
+            </div>
+            <div>
+              <span>CATALOG ROOTS</span>
+              <strong>{storageReport.catalogObjectCount}</strong>
+              <small>protected refs</small>
+            </div>
+            <div>
+              <span>ORPHAN CANDIDATES</span>
+              <strong>{storageReport.orphaned.length}</strong>
+              <small>data namespace only</small>
+            </div>
+            <div>
+              <span>WORKSPACE</span>
+              <strong>{formatBytes(storageReport.usage.totalBytes)}</strong>
+              <small>{storageReport.usage.totalObjects} total objects</small>
+            </div>
+          </div>
+          <small className="data-storage-note">
+            仅扫描 <code>data/</code>；当前目录引用与其它工作台 Artifact
+            自动受保护。移除资产不会立即删源文件，确认回收后才清理未引用对象。
+          </small>
         </section>
       )}
 

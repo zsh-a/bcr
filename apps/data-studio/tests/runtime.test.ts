@@ -6,7 +6,9 @@ import { artifactStore, ArtifactStoreTag, type ArtifactRef } from "@bcr/core";
 import { MemoryStore } from "../../../packages/storage-opfs/src/memory";
 import {
   activateDataAsset,
+  inspectDataStorage,
   persistDataTable,
+  reclaimDataStorage,
   removeDataAsset,
   restoreDataCatalog,
   restoreDataTable,
@@ -121,5 +123,36 @@ describe("Data Studio asset catalog", () => {
     expect(restored.catalog.assets).toHaveLength(1);
     expect(restored.active?.table.sourceName).toBe("legacy.json");
     expect(metadata.get("data-studio.catalog.v1")).toContain("hash-legacy");
+  });
+
+  it("plans and reclaims only unreferenced data artifacts", async () => {
+    const artifacts = await makeArtifacts();
+    const metadata = new Map<string, string>();
+    const services = makeServices(artifacts, metadata);
+    const active = await snapshot(artifacts, "active.json", "hash-active", 40);
+    await persistDataTable(services, active);
+    const orphan: ArtifactRef = {
+      id: "data/source/orphan",
+      type: "file/json",
+      storage: "memory",
+    };
+    const unrelated: ArtifactRef = {
+      id: "reader/source/book",
+      type: "file/epub",
+      storage: "memory",
+    };
+    await Effect.runPromise(artifacts.put(active.sourceRef, new Uint8Array([0])));
+    await Effect.runPromise(artifacts.put(orphan, new Uint8Array([1, 2, 3])));
+    await Effect.runPromise(artifacts.put(unrelated, new Uint8Array([4])));
+
+    const report = await inspectDataStorage(services);
+    expect(report.dataUsage).toMatchObject({ objects: 3 });
+    expect(report.orphaned.map((entry) => entry.id)).toEqual([orphan.id]);
+    expect(report.plan.candidates.map((entry) => entry.id)).toEqual([orphan.id]);
+
+    const result = await reclaimDataStorage(services, report.plan);
+    expect(result.deleted.map((entry) => entry.id)).toEqual([orphan.id]);
+    expect(await Effect.runPromise(artifacts.has(active.tableRef))).toBe(true);
+    expect(await Effect.runPromise(artifacts.has(unrelated))).toBe(true);
   });
 });
