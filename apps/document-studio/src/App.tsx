@@ -105,7 +105,11 @@ export function App() {
       let sourceTextPreview: string | undefined;
       if (["txt", "markdown", "html", "fb2"].includes(format)) {
         try {
-          sourceTextPreview = (await file.text()).replace(/\s+/gu, " ").trim().slice(0, 240);
+          // Preview only the first window; the full source stays in the Worker data plane.
+          sourceTextPreview = (await file.slice(0, 64 * 1024).text())
+            .replace(/\s+/gu, " ")
+            .trim()
+            .slice(0, 240);
         } catch {
           sourceTextPreview = undefined;
         }
