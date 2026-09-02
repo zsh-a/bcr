@@ -33,6 +33,7 @@ import {
 } from "react";
 import {
   locatorAtPercentage,
+  readerAcceptAttribute,
   sameLocator,
   type ReaderBook,
   type ReaderAnnotation,
@@ -300,10 +301,14 @@ export function App() {
         completed: 0,
         current: "",
         cancelled: false,
+        settled: false,
         errors: 0,
+        failedFiles: [],
       });
       let errors = 0;
-      for (const [index, file] of files.entries()) {
+      let completed = 0;
+      const failedFiles: ImportFailure[] = [];
+      for (const file of files) {
         if (controller.signal.aborted) break;
         setImportJob((previous) =>
           previous === null ? previous : { ...previous, current: file.name },
@@ -321,18 +326,44 @@ export function App() {
         } catch (reason) {
           if (isAbortError(reason)) break;
           errors += 1;
-          setNotice(reason instanceof Error ? reason.message : String(reason));
+          const message = reason instanceof Error ? reason.message : String(reason);
+          failedFiles.push({ file, error: message });
+          setNotice(message);
         } finally {
+          if (!controller.signal.aborted) completed += 1;
           setImportJob((previous) =>
             previous === null
               ? previous
-              : { ...previous, completed: index + 1, current: "", errors },
+              : {
+                  ...previous,
+                  completed: controller.signal.aborted ? previous.completed : completed,
+                  current: "",
+                  errors,
+                  failedFiles: [...failedFiles],
+                },
           );
         }
       }
       const cancelled = controller.signal.aborted;
+      if (cancelled) {
+        for (const file of files.slice(completed)) {
+          if (!failedFiles.some((failure) => failure.file === file)) {
+            failedFiles.push({ file, error: "导入已取消" });
+          }
+        }
+      }
       setImportJob((previous) =>
-        previous === null ? previous : { ...previous, current: "", cancelled, errors },
+        previous === null
+          ? previous
+          : {
+              ...previous,
+              completed,
+              current: "",
+              cancelled,
+              settled: true,
+              errors,
+              failedFiles: [...failedFiles],
+            },
       );
       importAbortRef.current = null;
       setNotice(
@@ -344,11 +375,25 @@ export function App() {
           setImportJob(null);
           importDismissRef.current = null;
         },
-        cancelled ? 1800 : 2400,
+        cancelled && failedFiles.length > 0
+          ? 12_000
+          : cancelled
+            ? 1800
+            : errors > 0
+              ? 12_000
+              : 2400,
       );
     },
     [runtime],
   );
+
+  const retryFailedImports = useCallback(() => {
+    const files = importJob?.failedFiles.map((failure) => failure.file) ?? [];
+    if (files.length === 0 || importAbortRef.current !== null) return;
+    setImportJob(null);
+    setNotice(`正在重试 ${files.length} 个失败文件`);
+    void importFiles(files);
+  }, [importFiles, importJob]);
 
   useEffect(() => {
     if (runtime === null || status !== "ready") return;
@@ -390,6 +435,7 @@ export function App() {
         notice={notice}
         importJob={importJob}
         onCancelImport={cancelImport}
+        onRetryFailed={retryFailedImports}
         onRecoverHandoff={handoffRecovery ? () => window.location.assign("/documents") : undefined}
       />
       <ReaderWorkspace runtime={runtime} onImport={(files) => void importFiles(files)} />
@@ -402,7 +448,14 @@ interface ImportJob {
   readonly completed: number;
   readonly current: string;
   readonly cancelled: boolean;
+  readonly settled: boolean;
   readonly errors: number;
+  readonly failedFiles: ReadonlyArray<ImportFailure>;
+}
+
+interface ImportFailure {
+  readonly file: File;
+  readonly error: string;
 }
 
 function BootScreen(props: { error: string | null }) {
@@ -436,6 +489,7 @@ function ReaderHeader(props: {
   notice: string | null;
   importJob: ImportJob | null;
   onCancelImport: () => void;
+  onRetryFailed: () => void;
   onRecoverHandoff?: (() => void) | undefined;
 }) {
   const query = useReader((state) => state.query);
@@ -522,7 +576,7 @@ function ReaderHeader(props: {
         className="reader-visually-hidden"
         type="file"
         multiple
-        accept=".txt,.md,.markdown,.html,.htm,.epub,.pdf,.cbz,.fb2"
+        accept={readerAcceptAttribute()}
         aria-label="导入阅读文件"
         onChange={(event) => {
           const files = [...(event.target.files ?? [])];
@@ -550,7 +604,15 @@ function ReaderHeader(props: {
       {props.importJob !== null && (
         <div className="reader-import-progress" role="status" aria-live="polite">
           <div className="reader-import-progress-copy">
-            <strong>{props.importJob.cancelled ? "导入已取消" : "正在导入"}</strong>
+            <strong>
+              {props.importJob.cancelled
+                ? "导入已取消"
+                : props.importJob.settled
+                  ? props.importJob.errors > 0
+                    ? `导入完成 · ${props.importJob.errors} 个失败`
+                    : "导入完成"
+                  : "正在导入"}
+            </strong>
             <span>
               {props.importJob.current || `${props.importJob.completed}/${props.importJob.total}`}
             </span>
@@ -560,9 +622,15 @@ function ReaderHeader(props: {
             value={props.importJob.completed}
             aria-label="导入进度"
           />
-          {!props.importJob.cancelled && (
+          {!props.importJob.cancelled && !props.importJob.settled && (
             <button type="button" className="reader-import-cancel" onClick={props.onCancelImport}>
               取消
+            </button>
+          )}
+          {props.importJob.settled && props.importJob.failedFiles.length > 0 && (
+            <button type="button" className="reader-import-retry" onClick={props.onRetryFailed}>
+              {props.importJob.cancelled ? "继续导入" : "重试失败"} (
+              {props.importJob.failedFiles.length})
             </button>
           )}
         </div>
@@ -691,14 +759,14 @@ function LibraryPanel(props: {
       >
         <Upload className="reader-dropzone-icon" />
         <span>拖入文件到这里</span>
-        <small>TXT · MD · HTML · EPUB · PDF · CBZ</small>
+        <small>TXT · MD · HTML · DOCX · EPUB · PDF · CBZ</small>
       </div>
       <input
         ref={fileInput}
         className="reader-visually-hidden"
         type="file"
         multiple
-        accept=".txt,.md,.markdown,.html,.htm,.epub,.pdf,.cbz,.fb2"
+        accept={readerAcceptAttribute()}
         aria-label="导入阅读文件"
         onChange={(event) => {
           const files = [...(event.target.files ?? [])];

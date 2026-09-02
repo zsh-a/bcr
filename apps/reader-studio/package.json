@@ -8,7 +8,8 @@
     "./store": "./src/store.ts",
     "./model": "./src/model.ts",
     "./runtime": "./src/runtime.ts",
-    "./adapters": "./src/adapters.ts"
+    "./adapters": "./src/adapters.ts",
+    "./formats": "./src/formats.ts"
   },
   "dependencies": {
     "@bcr/core": "workspace:*",

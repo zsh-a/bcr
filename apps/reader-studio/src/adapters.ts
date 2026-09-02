@@ -13,24 +13,25 @@ import type {
   ReaderOpenInput,
   ReaderSection,
 } from "@bcr/reader-core";
+import { READER_FORMAT_CATALOG, readerAcceptAttribute } from "@bcr/reader-core";
 
 const TEXT_FORMATS = new Set<ReaderFormat>(["txt", "markdown", "html", "fb2"]);
-const IMAGE_EXTENSIONS = /\.(avif|bmp|gif|jpe?g|png|webp)$/iu;
+const IMAGE_EXTENSIONS = /\.(avif|bmp|gif|jpe?g|png|svg|webp)$/iu;
 
 export function formatForFile(file: Pick<File, "name" | "type">): ReaderFormat {
   const extension = file.name.split(".").pop()?.toLocaleLowerCase() ?? "";
-  if (extension === "md" || extension === "markdown" || extension === "mdown") return "markdown";
-  if (extension === "html" || extension === "htm" || file.type === "text/html") return "html";
-  if (extension === "txt" || file.type === "text/plain") return "txt";
-  if (extension === "epub" || file.type === "application/epub+zip") return "epub";
-  if (extension === "pdf" || file.type === "application/pdf") return "pdf";
-  if (extension === "cbz" || file.type === "application/vnd.comicbook+zip") return "cbz";
-  if (extension === "cbr" || file.type === "application/vnd.comicbook-rar") return "cbr";
-  if (extension === "fb2" || file.type === "application/x-fictionbook+xml") return "fb2";
-  if (extension === "mobi") return "mobi";
-  if (extension === "azw3" || extension === "azw") return "azw3";
+  const byExtension = READER_FORMAT_CATALOG.find((descriptor) =>
+    descriptor.extensions.includes(`.${extension}`),
+  );
+  if (byExtension !== undefined) return byExtension.format;
+  const byMime = READER_FORMAT_CATALOG.find((descriptor) =>
+    descriptor.mimeTypes.includes(file.type.toLocaleLowerCase()),
+  );
+  if (byMime !== undefined) return byMime.format;
   return "unknown";
 }
+
+export { readerAcceptAttribute };
 
 export function displayFormat(format: ReaderFormat): string {
   return format === "markdown" ? "MARKDOWN" : format.toUpperCase();
@@ -58,6 +59,8 @@ function mimeForFormat(format: ReaderFormat): string {
     case "epub":
     case "cbz":
       return "application/zip";
+    case "docx":
+      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     case "html":
       return "text/html";
     case "markdown":
@@ -292,7 +295,14 @@ function normalizeArchivePath(path: string): string {
 }
 
 function resolveArchivePath(base: string, target: string): string {
-  return normalizeArchivePath(`${base}/${decodeURIComponent(target.split("#")[0] ?? "")}`);
+  const raw = target.split("#")[0] ?? "";
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    // A malformed href should simply remain unresolved, never abort the whole book.
+  }
+  return normalizeArchivePath(`${base}/${decoded}`);
 }
 
 function archiveMime(path: string): string {
@@ -302,12 +312,23 @@ function archiveMime(path: string): string {
   if (extension === "gif") return "image/gif";
   if (extension === "png") return "image/png";
   if (extension === "avif") return "image/avif";
+  if (extension === "bmp") return "image/bmp";
   return "image/jpeg";
 }
 
-async function archiveObjectUrl(entry: FileEntry, mime: string): Promise<string> {
+async function archiveObjectUrl(
+  entry: FileEntry,
+  mime: string,
+  allocated?: string[],
+): Promise<string> {
   const blob = await entry.getData(new BlobWriter(mime));
-  return URL.createObjectURL(blob);
+  const url = URL.createObjectURL(blob);
+  allocated?.push(url);
+  return url;
+}
+
+function revokeObjectUrls(urls: ReadonlyArray<string>): void {
+  for (const url of urls) URL.revokeObjectURL(url);
 }
 
 function localName(element: Element): string {
@@ -388,6 +409,8 @@ async function readArchiveText(entry: FileEntry): Promise<string> {
 
 async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
   const reader = new ZipReader(new BlobReader(input.file));
+  const allocatedUrls: string[] = [];
+  let succeeded = false;
   try {
     const entries = await reader.getEntries();
     const files = entryMap(entries);
@@ -447,7 +470,7 @@ async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
         }
         image.setAttribute(
           "src",
-          await archiveObjectUrl(imageEntry, archiveMime(imageEntry.filename)),
+          await archiveObjectUrl(imageEntry, archiveMime(imageEntry.filename), allocatedUrls),
         );
       }
       sections.push({
@@ -476,17 +499,126 @@ async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
         coverUrl = await archiveObjectUrl(
           coverEntry,
           coverItem.mediaType || archiveMime(coverEntry.filename),
+          allocatedUrls,
         );
     }
     const title = metadataValue(packageDocument, "title");
     const author = metadataValue(packageDocument, "creator");
     const language = metadataValue(packageDocument, "language");
-    return makeBook(input, sections, {
+    const book = makeBook(input, sections, {
       ...(title === undefined ? {} : { title }),
       ...(author === undefined ? {} : { author }),
       ...(language === undefined ? {} : { language }),
       ...(coverUrl === undefined ? {} : { coverUrl }),
     });
+    succeeded = true;
+    return book;
+  } finally {
+    if (!succeeded) revokeObjectUrls(allocatedUrls);
+    await reader.close();
+  }
+}
+
+function docxBlockText(element: Element): string {
+  let text = "";
+  for (const descendant of element.getElementsByTagName("*")) {
+    const name = localName(descendant);
+    if (name === "t") text += descendant.textContent ?? "";
+    else if (name === "tab") text += "\t";
+    else if (name === "br" || name === "cr") text += "\n";
+  }
+  return text.replace(/\u00a0/gu, " ").trim();
+}
+
+function docxHeadingLevel(paragraph: Element): number | undefined {
+  const style = [...paragraph.getElementsByTagName("*")]
+    .find((element) => localName(element) === "pStyle")
+    ?.getAttribute("w:val")
+    ?.trim();
+  const match = /^heading([1-6])$/iu.exec(style ?? "");
+  return match === null ? undefined : Number(match[1]);
+}
+
+function docxTableText(table: Element): string {
+  const rows = [...table.getElementsByTagName("*")].filter(
+    (element) => localName(element) === "tr",
+  );
+  return rows
+    .map((row) =>
+      [...row.getElementsByTagName("*")]
+        .filter((element) => localName(element) === "tc")
+        .map((cell) => docxBlockText(cell))
+        .join("\t"),
+    )
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** WordprocessingML is a ZIP package; keep the first adapter text-first and
+ * deliberately omit drawings instead of creating broken external URLs. */
+async function openDocx(input: ReaderOpenInput): Promise<ReaderBook> {
+  const reader = new ZipReader(new BlobReader(input.file));
+  try {
+    const entries = await reader.getEntries();
+    const files = entryMap(entries);
+    const documentEntry = files.get("word/document.xml");
+    if (documentEntry === undefined) throw new Error("DOCX 缺少 word/document.xml");
+    const document = new DOMParser().parseFromString(
+      await readArchiveText(documentEntry),
+      "application/xml",
+    );
+    if (document.querySelector("parsererror")) throw new Error("DOCX XML 无法解析");
+    const body = firstLocalElement(document, "body");
+    if (body === undefined) throw new Error("DOCX 没有可读正文");
+    const sections: ReaderSection[] = [];
+    let firstHeading: string | undefined;
+    for (const block of body.children) {
+      if (input.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+      const kind = localName(block);
+      const text = kind === "tbl" ? docxTableText(block) : docxBlockText(block);
+      if (!text) continue;
+      const headingLevel = kind === "p" ? docxHeadingLevel(block) : undefined;
+      if (headingLevel !== undefined && firstHeading === undefined) firstHeading = text;
+      const label =
+        headingLevel !== undefined
+          ? text
+          : kind === "tbl"
+            ? `表格 ${sections.length + 1}`
+            : `段落 ${sections.length + 1}`;
+      const escaped = escapeHtml(text).replace(/\n/gu, "<br />");
+      sections.push({
+        id: `docx:${sections.length + 1}`,
+        order: sections.length,
+        label,
+        kind: "text",
+        text,
+        html:
+          headingLevel === undefined
+            ? `<p>${escaped}</p>`
+            : `<h${headingLevel}>${escaped}</h${headingLevel}>`,
+      });
+    }
+    if (sections.length === 0) throw new Error("DOCX 没有可读正文");
+
+    const coreEntry = files.get("docProps/core.xml");
+    let title: string | undefined;
+    let author: string | undefined;
+    let language: string | undefined;
+    if (coreEntry !== undefined) {
+      const core = new DOMParser().parseFromString(
+        await readArchiveText(coreEntry),
+        "application/xml",
+      );
+      title = firstLocalElement(core, "title")?.textContent?.trim() || undefined;
+      author = firstLocalElement(core, "creator")?.textContent?.trim() || undefined;
+      language = firstLocalElement(core, "language")?.textContent?.trim() || undefined;
+    }
+    const metadata: { title?: string; author?: string; language?: string } = {};
+    const resolvedTitle = title ?? firstHeading;
+    if (resolvedTitle !== undefined) metadata.title = resolvedTitle;
+    if (author !== undefined) metadata.author = author;
+    if (language !== undefined) metadata.language = language;
+    return makeBook(input, sections, metadata);
   } finally {
     await reader.close();
   }
@@ -494,6 +626,8 @@ async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
 
 async function openCbz(input: ReaderOpenInput): Promise<ReaderBook> {
   const reader = new ZipReader(new BlobReader(input.file));
+  const allocatedUrls: string[] = [];
+  let succeeded = false;
   try {
     const entries = await reader.getEntries();
     const images = entries
@@ -505,7 +639,7 @@ async function openCbz(input: ReaderOpenInput): Promise<ReaderBook> {
     const sections: ReaderSection[] = [];
     for (const [order, entry] of images.entries()) {
       if (input.signal?.aborted) throw new DOMException("Aborted", "AbortError");
-      const imageUrl = await archiveObjectUrl(entry, archiveMime(entry.filename));
+      const imageUrl = await archiveObjectUrl(entry, archiveMime(entry.filename), allocatedUrls);
       sections.push({
         id: `page-${order + 1}`,
         order,
@@ -517,8 +651,11 @@ async function openCbz(input: ReaderOpenInput): Promise<ReaderBook> {
       });
     }
     const coverUrl = sections[0]?.imageUrl;
-    return makeBook(input, sections, coverUrl === undefined ? {} : { coverUrl });
+    const book = makeBook(input, sections, coverUrl === undefined ? {} : { coverUrl });
+    succeeded = true;
+    return book;
   } finally {
+    if (!succeeded) revokeObjectUrls(allocatedUrls);
     await reader.close();
   }
 }
@@ -570,6 +707,13 @@ const textAdapter: ReaderAdapter = {
   open: openText,
 };
 
+const docxAdapter: ReaderAdapter = {
+  id: "docx",
+  formats: ["docx"],
+  canHandle: ({ format }) => format === "docx",
+  open: openDocx,
+};
+
 const epubAdapter: ReaderAdapter = {
   id: "epub",
   formats: ["epub"],
@@ -604,6 +748,7 @@ const unsupportedAdapter: ReaderAdapter = {
 
 export const readerAdapters: ReadonlyArray<ReaderAdapter> = [
   textAdapter,
+  docxAdapter,
   epubAdapter,
   cbzAdapter,
   pdfAdapter,

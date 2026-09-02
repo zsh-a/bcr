@@ -663,6 +663,18 @@
   color: var(--reader-muted);
 }
 
+.reader-import-retry {
+  min-height: 32px;
+  align-self: center;
+  border: 1px solid color-mix(in srgb, var(--reader-accent) 52%, var(--reader-border)) !important;
+  border-radius: 7px;
+  background: var(--reader-accent-soft);
+  padding: 0 9px;
+  color: var(--reader-accent);
+  font-size: 10px;
+  font-weight: 600;
+}
+
 .reader-book-card:hover {
   transform: translateX(2px);
   border-color: var(--reader-border);

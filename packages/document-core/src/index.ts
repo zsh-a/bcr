@@ -15,6 +15,7 @@ export {
   createStageStates,
   formatForName,
   formatLabel,
+  supportsDocumentTextExtract,
 } from "./model";
 export { markReadyStages, nextAction, stageById, updateStage } from "./pipeline";
 export {

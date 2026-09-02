@@ -1,5 +1,29 @@
 /* Reader Studio：书库 → 全文搜索 → Locator 进度 → 主题切换 → 刷新恢复。 */
+import { createRequire } from "node:module";
 import { launchVerifyBrowser } from "./verify-browser.mjs";
+
+const require = createRequire(new URL("../apps/reader-studio/package.json", import.meta.url));
+const { BlobWriter, TextReader, ZipWriter } = require("@zip.js/zip.js");
+
+async function docxFixture() {
+  const writer = new ZipWriter(
+    new BlobWriter("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+  );
+  await writer.add(
+    "word/document.xml",
+    new TextReader(
+      `<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>DOCX 自动化验证</w:t></w:r></w:p><w:p><w:r><w:t>来自 Word 的段落可以进入统一阅读模型。</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>A1</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>B1</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:sectPr/></w:body></w:document>`,
+    ),
+  );
+  await writer.add(
+    "docProps/core.xml",
+    new TextReader(
+      `<?xml version="1.0" encoding="UTF-8"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>DOCX 自动化验证</dc:title><dc:creator>Reader QA</dc:creator></cp:coreProperties>`,
+    ),
+  );
+  const blob = await writer.close();
+  return Buffer.from(await blob.arrayBuffer());
+}
 
 const base = new URL(process.env.BASE_URL ?? "http://localhost:5199/studio");
 base.pathname = "/reader";
@@ -91,6 +115,20 @@ if ((await page.locator(".reader-search-result").count()) < 1) {
 }
 if ((await page.locator(".reader-annotation-item").count()) < 1) {
   fail("刷新后阅读笔记未恢复");
+}
+
+const docx = await docxFixture();
+await page.locator("input[type=file]").first().setInputFiles({
+  name: "reader-format-fixture.docx",
+  mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  buffer: docx,
+});
+await page.locator(".reader-reading-intro h1", { hasText: "DOCX 自动化验证" }).waitFor({
+  timeout: 20_000,
+});
+const docxText = await page.locator(".reader-reading-column").innerText();
+if (!docxText.includes("来自 Word 的段落") || !docxText.includes("表格 3")) {
+  fail("DOCX 标题、正文或表格没有解析到统一阅读模型");
 }
 
 await browser.close();

@@ -8,6 +8,7 @@ export type ReaderFormat =
   | "txt"
   | "markdown"
   | "html"
+  | "docx"
   | "epub"
   | "pdf"
   | "cbz"

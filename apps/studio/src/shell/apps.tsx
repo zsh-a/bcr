@@ -70,7 +70,7 @@ export const APPS: ReadonlyArray<AppDef> = [
     title: "Document Studio",
     path: "/documents",
     icon: FileStack,
-    description: "文档流水线入口 · Ingest / Extract / OCR / Translate / Handoff",
+    description: "文档流水线入口 · Ingest / Extract / OCR / Translate / Handoff · DOCX",
     component: lazy(() => import("@bcr/document-studio/app").then((m) => ({ default: m.App }))),
   },
   {
@@ -78,7 +78,7 @@ export const APPS: ReadonlyArray<AppDef> = [
     title: "Reader Studio",
     path: "/reader",
     icon: LibraryBig,
-    description: "本地阅读空间 · TXT / Markdown / HTML / EPUB / PDF / CBZ · 进度与全文搜索",
+    description: "本地阅读空间 · TXT / Markdown / HTML / DOCX / EPUB / PDF / CBZ · 进度与全文搜索",
     component: lazy(() => import("@bcr/reader-studio/app").then((m) => ({ default: m.App }))),
   },
 ];

@@ -36,6 +36,7 @@ function isFormat(value: unknown): value is DocumentFormat {
     value === "txt" ||
     value === "markdown" ||
     value === "html" ||
+    value === "docx" ||
     value === "fb2" ||
     value === "epub" ||
     value === "pdf" ||

@@ -15,6 +15,7 @@ describe("document-core", () => {
     expect(formatForName("chapter.MD")).toBe("markdown");
     expect(formatForName("scan.png", "image/png")).toBe("image");
     expect(formatForName("novel.fb2")).toBe("fb2");
+    expect(formatForName("draft.docx")).toBe("docx");
   });
 
   it("keeps ready adapter boundaries explicit", () => {
@@ -39,6 +40,23 @@ describe("document-core", () => {
       adapter: "fixture.translate",
     });
     expect(nextAction(ready)).toBe("extract");
+  });
+
+  it("does not route binary packages through the text extractor", () => {
+    const job = markReadyStages(
+      createDocumentJob({
+        id: "job-epub",
+        name: "book.epub",
+        format: "epub",
+        size: 120,
+        now: 1,
+      }),
+    );
+    expect(job.stages.find((stage) => stage.id === "extract")).toMatchObject({
+      status: "blocked",
+      detail: "该格式由 Reader / Manga 专用适配器直接读取",
+    });
+    expect(nextAction(job)).toBeUndefined();
   });
 
   it("consumes a handoff once and only in its target app", () => {

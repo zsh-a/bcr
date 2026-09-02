@@ -55,10 +55,16 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 }
 
+function formatDuration(durationMs: number | undefined): string {
+  if (durationMs === undefined) return "—";
+  if (durationMs < 1_000) return `${durationMs} ms`;
+  return `${(durationMs / 1_000).toFixed(1)} s`;
+}
+
 function sourceIcon(format: DocumentFormat) {
   if (format === "image") return <FileImage className="document-icon" />;
   if (format === "epub" || format === "cbz") return <FileArchive className="document-icon" />;
-  if (format === "markdown" || format === "html" || format === "fb2") {
+  if (format === "markdown" || format === "html" || format === "docx" || format === "fb2") {
     return <FileCode2 className="document-icon" />;
   }
   return <FileText className="document-icon" />;
@@ -87,7 +93,7 @@ function stageIcon(stage: DocumentStageState) {
 }
 
 function canOpenInReader(format: DocumentFormat): boolean {
-  return ["txt", "markdown", "html", "fb2", "epub", "pdf", "cbz"].includes(format);
+  return ["txt", "markdown", "html", "docx", "fb2", "epub", "pdf", "cbz"].includes(format);
 }
 
 function canOpenInManga(format: DocumentFormat): boolean {
@@ -137,7 +143,7 @@ export function App() {
         continue;
       }
       let sourceTextPreview: string | undefined;
-      if (["txt", "markdown", "html", "fb2"].includes(format)) {
+      if (["txt", "markdown", "html", "docx", "fb2"].includes(format)) {
         try {
           // Preview only the first window; the full source stays in the Worker data plane.
           sourceTextPreview = (await file.slice(0, 64 * 1024).text())
@@ -263,7 +269,7 @@ export function App() {
         className="document-visually-hidden"
         type="file"
         multiple
-        accept=".txt,.md,.markdown,.html,.htm,.fb2,.epub,.pdf,.cbz,.png,.jpg,.jpeg,.webp,.avif"
+        accept=".txt,.md,.markdown,.mdown,.html,.htm,.docx,.fb2,.epub,.pdf,.cbz,.png,.jpg,.jpeg,.webp,.avif"
         aria-label="导入文档或图片文件"
         onChange={(event) => {
           const files = [...(event.target.files ?? [])];
@@ -580,6 +586,7 @@ function StageInspector(props: {
   const isPlanned = props.stage.capability === "planned";
   const isDone = props.stage.status === "done";
   const isRunning = props.stage.status === "running";
+  const formatBlocked = props.stage.status === "blocked" && props.stage.id === "extract";
   const canRun = props.canRunStage && !isRunning;
   const stageActionLabel = isDone ? `重新运行 ${props.stage.label}` : `运行 ${props.stage.label}`;
   return (
@@ -591,9 +598,11 @@ function StageInspector(props: {
             ? "已完成"
             : isPlanned
               ? "等待能力接入"
-              : props.canRunStage
-                ? "可在本地运行"
-                : "等待上游 Artifact"}
+              : formatBlocked
+                ? "由目标适配器处理"
+                : props.canRunStage
+                  ? "可在本地运行"
+                  : "等待上游 Artifact"}
         </span>
       </div>
       <p>{props.stage.detail}。阶段状态随任务保存，失败时可从当前阶段重试。</p>
@@ -609,6 +618,14 @@ function StageInspector(props: {
         <div>
           <dt>PROGRESS</dt>
           <dd>{Math.round(props.stage.progress * 100)}%</dd>
+        </div>
+        <div>
+          <dt>ATTEMPTS</dt>
+          <dd>{props.stage.attempts ?? 0}</dd>
+        </div>
+        <div>
+          <dt>DURATION</dt>
+          <dd>{formatDuration(props.stage.durationMs)}</dd>
         </div>
         {props.stage.artifact !== undefined && (
           <div>
@@ -639,6 +656,11 @@ function StageInspector(props: {
         <div className="document-inspector-callout">
           <WandSparkles className="document-icon" />
           <span>该阶段会在本地模型 / Manga Studio 适配器就绪后解锁。</span>
+        </div>
+      ) : formatBlocked ? (
+        <div className="document-inspector-callout is-neutral">
+          <Link2 className="document-icon" />
+          <span>这是二进制出版物；由 Reader / Manga 直接解析，避免把压缩包当作纯文本。</span>
         </div>
       ) : props.canRunStage ? (
         <div className="document-inspector-callout is-neutral">

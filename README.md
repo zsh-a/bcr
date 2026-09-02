@@ -217,10 +217,11 @@ File → Ingest → Normalize → Extract → OCR → Translate → Typeset → 
 
 - `packages/document-core` 定义 `DocumentJob`、七阶段状态机、格式识别和能力边界；未接入的模型阶段显示为
   `PLANNED / BLOCKED`，不会把演示结果伪装成生产结果。
-- Document Inbox 支持 TXT / Markdown / HTML / FB2 / EPUB / PDF / CBZ / 图片导入，元数据保存在本地浏览器；
+- Document Inbox 支持 TXT / Markdown / HTML / DOCX / FB2 / EPUB / PDF / CBZ / 图片导入，元数据保存在本地浏览器；
   文本提供安全的轻量预览，图片只在当前标签页创建临时预览 URL。
 - Text / Markdown / HTML / FB2 已可通过共享 Scheduler + WorkerPool 运行 Extract、fixture Translate 与 Typeset
   preview，每一步都生成独立的 JSON Artifact，支持缓存、进度、取消和重试；OCR 仍明确标记为 `PLANNED`。
+- EPUB / PDF / CBZ / DOCX 等二进制出版物在 Document Extract 阶段明确保持 `BLOCKED`，直接交给目标适配器解析，避免把压缩或版式数据误当作纯文本。
 - Reader handoff 会把同一标签页内的 `File` 通过一次性内存通道交给 Reader，由 Reader 自己写入 OPFS、解析并建立
   Worker 索引；图片 handoff 交给 Manga，由 Manga 的 Artifact / SQLite 项目接管。
 - URL 只携带短期 handoff ID，不携带文件内容；刷新或离开标签页后句柄失效，界面会明确提示重新导入。
@@ -232,7 +233,7 @@ File → Ingest → Normalize → Extract → OCR → Translate → Typeset → 
 Reader Studio 是一个离线优先的多格式阅读垂直切片：
 
 ```text
-TXT / Markdown / HTML / EPUB / PDF / CBZ
+TXT / Markdown / HTML / DOCX / EPUB / PDF / CBZ
               ↓ Adapter
 Publication → Section → Locator / SearchHit
               ↓
@@ -241,7 +242,8 @@ Publication → Section → Locator / SearchHit
 
 - `packages/reader-core` 定义格式无关的 `ReaderBook`、章节、Locator、进度和搜索契约；解析差异留在 Adapter 边界。
 - 章节正文的规范化索引通过 `reader-index.worker` 运行在可复用 `WorkerPool` 中，主线程只保留轻量 Locator/UI 状态；Worker 不可用时自动回退 SQLite/内存搜索。
-- 文本类（含 FB2）、EPUB、PDF（PDF.js）和 CBZ（zip.js）均可直接导入；未知格式会明确提示，不把损坏内容伪装成可读文本。
+- 文本类（含 FB2）、DOCX（WordprocessingML）、EPUB、PDF（PDF.js）和 CBZ（zip.js）均可直接导入；未知格式会明确提示，不把损坏内容伪装成可读文本。
+- Reader Format Catalog 统一维护扩展名、MIME、能力标签和文件选择器 accept；DOCX 首版按正文、标题与表格进入统一 Section 模型，绘图仍保持明确的文本优先边界。
 - 书库、主题、字号、布局和每本书的阅读位置写入 SQLite；源文件按 BLAKE3 内容地址写入 OPFS，刷新后重建 PDF/图片 URL。
 - 搜索优先使用 Worker 规范化索引，索引尚未完成时使用 SQLite FTS5 trigram，短查询或旧环境再回退到内存索引；搜索结果携带章节和上下文，点击后回到原文。
 - 阅读态采用宽内容列、纸张/松石/夜间主题、连续/分页布局和响应式书库侧栏，支持拖拽批量导入与 `⌘/Ctrl+F`。

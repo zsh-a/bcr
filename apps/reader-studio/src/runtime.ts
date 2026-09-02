@@ -509,6 +509,7 @@ async function restoreBook(
   persisted: PersistedBook,
 ): Promise<ReaderBook | undefined> {
   const hasBinaryView =
+    persisted.source.format === "docx" ||
     persisted.source.format === "epub" ||
     persisted.source.format === "cbz" ||
     persisted.source.format === "pdf";

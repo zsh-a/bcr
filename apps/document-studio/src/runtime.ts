@@ -3,6 +3,7 @@ import { Effect, Stream } from "effect";
 import type { RuntimeServices } from "@bcr/react";
 import {
   stageById,
+  supportsDocumentTextExtract,
   updateStage,
   type DocumentFormat,
   type DocumentJob,
@@ -94,7 +95,9 @@ export function canRunDocumentStage(job: DocumentJob, stageId: DocumentStageId):
   return (
     stage !== undefined &&
     stage.status !== "running" &&
+    stage.status !== "blocked" &&
     stage.capability !== "planned" &&
+    (stageId !== "extract" || supportsDocumentTextExtract(job.format)) &&
     inputForStage(job, stageId) !== undefined &&
     operationForStage(stageId) !== undefined
   );
@@ -136,7 +139,16 @@ export async function runDocumentStage(
   }
 
   cancellationRequests.delete(job.id);
-  patchStage(job.id, stageId, { status: "running", progress: 0, error: undefined });
+  const startedAt = Date.now();
+  patchStage(job.id, stageId, {
+    status: "running",
+    progress: 0,
+    error: undefined,
+    attempts: (stage.attempts ?? 0) + 1,
+    startedAt,
+    completedAt: undefined,
+    durationMs: undefined,
+  });
   try {
     const handle = await Effect.runPromise(services.scheduler.submit(task));
     activeTasks.set(job.id, { stageId, handle });
@@ -152,9 +164,12 @@ export async function runDocumentStage(
     const outputs = await Effect.runPromise(handle.await);
     cancellationRequests.delete(job.id);
     const artifact = outputs[0];
+    const completedAt = Date.now();
     patchStage(job.id, stageId, {
       status: "done",
       progress: 1,
+      completedAt,
+      durationMs: completedAt - startedAt,
       ...(artifact === undefined ? {} : { artifact }),
     });
     documents.setNotice(
@@ -162,12 +177,26 @@ export async function runDocumentStage(
     );
   } catch (reason) {
     if (cancellationRequests.delete(job.id)) {
-      patchStage(job.id, stageId, { status: "idle", progress: 0, error: undefined });
+      const completedAt = Date.now();
+      patchStage(job.id, stageId, {
+        status: "idle",
+        progress: 0,
+        error: undefined,
+        completedAt,
+        durationMs: completedAt - startedAt,
+      });
       documents.setNotice(`${job.name} ${stage.label} 已取消`);
       return;
     }
     const message = errorMessage(reason);
-    patchStage(job.id, stageId, { status: "error", progress: 0, error: message });
+    const completedAt = Date.now();
+    patchStage(job.id, stageId, {
+      status: "error",
+      progress: 0,
+      error: message,
+      completedAt,
+      durationMs: completedAt - startedAt,
+    });
     documents.setNotice(`${job.name} ${stage.label} 失败：${message}`);
   } finally {
     const active = activeTasks.get(job.id);
@@ -183,5 +212,5 @@ export async function cancelDocumentStage(jobId: string, stageId: DocumentStageI
 }
 
 export function isExtractableFormat(format: DocumentFormat): boolean {
-  return ["txt", "markdown", "html", "fb2"].includes(format);
+  return supportsDocumentTextExtract(format);
 }

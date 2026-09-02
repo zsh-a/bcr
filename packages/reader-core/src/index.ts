@@ -13,6 +13,13 @@ export type {
   SearchHit,
 } from "./model";
 export {
+  READER_FORMAT_CATALOG,
+  readerAcceptAttribute,
+  readerFormatDescriptor,
+  type ReaderFormatDescriptor,
+  type ReaderFormatSupport,
+} from "./formats";
+export {
   clampProgression,
   createLocator,
   firstLocator,

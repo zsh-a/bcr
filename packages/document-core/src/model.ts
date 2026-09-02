@@ -4,6 +4,7 @@ export type DocumentFormat =
   | "txt"
   | "markdown"
   | "html"
+  | "docx"
   | "fb2"
   | "epub"
   | "pdf"
@@ -31,6 +32,10 @@ export interface DocumentStageState {
   readonly capability: DocumentCapability;
   readonly status: DocumentStageStatus;
   readonly progress: number;
+  readonly attempts?: number | undefined;
+  readonly startedAt?: number | undefined;
+  readonly completedAt?: number | undefined;
+  readonly durationMs?: number | undefined;
   readonly adapter?: string | undefined;
   readonly artifact?: ArtifactRef | undefined;
   readonly error?: string | undefined;
@@ -124,6 +129,11 @@ export function formatForName(name: string, mime = ""): DocumentFormat {
   if (extension === "md" || extension === "markdown") return "markdown";
   if (extension === "txt" || mime === "text/plain") return "txt";
   if (extension === "html" || extension === "htm" || mime === "text/html") return "html";
+  if (
+    extension === "docx" ||
+    mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  )
+    return "docx";
   if (extension === "fb2" || mime === "application/x-fictionbook+xml") return "fb2";
   if (extension === "epub" || mime === "application/epub+zip") return "epub";
   if (extension === "pdf" || mime === "application/pdf") return "pdf";
@@ -138,11 +148,18 @@ export function formatLabel(format: DocumentFormat): string {
   return format === "markdown" ? "MARKDOWN" : format.toUpperCase();
 }
 
+/** The current Worker extractor consumes text streams; binary packages stay
+ * available to Reader/Manga through their dedicated adapters. */
+export function supportsDocumentTextExtract(format: DocumentFormat): boolean {
+  return format === "txt" || format === "markdown" || format === "html" || format === "fb2";
+}
+
 export function createStageStates(): ReadonlyArray<DocumentStageState> {
   return DOCUMENT_STAGES.map((stage) => ({
     ...stage,
     status: "idle" as const,
     progress: 0,
+    attempts: 0,
   }));
 }
 
