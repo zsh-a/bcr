@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createLocator, locatorAtPercentage, percentageForLocator } from "../src/locator";
+import {
+  createLocator,
+  locatorAtPercentage,
+  normalizeLocator,
+  percentageForLocator,
+} from "../src/locator";
 import {
   buildSearchIndex,
   normalizeSearchQuery,
@@ -55,5 +60,27 @@ describe("reader-core", () => {
     const restored = locatorAtPercentage(book, 0.7);
     expect(restored.sectionId).toBe("b");
     expect(restored.progression).toBeCloseTo(0.4);
+  });
+
+  it("recovers semantic href/page locators when section ids change", () => {
+    const epubBook: ReaderBook = {
+      ...book,
+      sections: book.sections.map((section, index) => ({
+        ...section,
+        id: `epub-${index + 1}-new`,
+        href: `chapter-${index + 1}.xhtml`,
+      })),
+    };
+    const oldLocator = {
+      kind: "section" as const,
+      sectionId: "section-2-old",
+      href: "chapter-2.xhtml",
+      progression: 0.2,
+    };
+    expect(normalizeLocator(epubBook, oldLocator)).toMatchObject({
+      sectionId: "epub-2-new",
+      href: "chapter-2.xhtml",
+      progression: 0.2,
+    });
   });
 });

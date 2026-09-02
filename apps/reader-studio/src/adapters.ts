@@ -26,7 +26,7 @@ export function formatForFile(file: Pick<File, "name" | "type">): ReaderFormat {
   if (extension === "pdf" || file.type === "application/pdf") return "pdf";
   if (extension === "cbz" || file.type === "application/vnd.comicbook+zip") return "cbz";
   if (extension === "cbr" || file.type === "application/vnd.comicbook-rar") return "cbr";
-  if (extension === "fb2") return "fb2";
+  if (extension === "fb2" || file.type === "application/x-fictionbook+xml") return "fb2";
   if (extension === "mobi") return "mobi";
   if (extension === "azw3" || extension === "azw") return "azw3";
   return "unknown";
@@ -232,6 +232,7 @@ function sanitizeHtml(rawHtml: string): { html: string; text: string; title?: st
 }
 
 async function openText(input: ReaderOpenInput): Promise<ReaderBook> {
+  if (input.format === "fb2") return openFb2(input);
   const raw = await input.file.text();
   if (input.signal?.aborted) throw new DOMException("Aborted", "AbortError");
   if (input.format === "html") {
@@ -320,6 +321,67 @@ function metadataValue(document: Document, name: string): string | undefined {
   return element?.textContent?.trim() || undefined;
 }
 
+function firstLocalElement(root: Document | Element, name: string): Element | undefined {
+  return [...root.getElementsByTagName("*")].find((candidate) => localName(candidate) === name);
+}
+
+function fb2Author(document: Document): string | undefined {
+  const author = firstLocalElement(document, "author");
+  if (author === undefined) return undefined;
+  const parts = ["first-name", "middle-name", "last-name", "nickname"]
+    .map((name) => firstLocalElement(author, name)?.textContent?.trim())
+    .filter((value): value is string => Boolean(value));
+  return parts.join(" ") || undefined;
+}
+
+async function openFb2(input: ReaderOpenInput): Promise<ReaderBook> {
+  const raw = await input.file.text();
+  if (input.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  const document = new DOMParser().parseFromString(raw, "application/xml");
+  if (document.querySelector("parsererror")) throw new Error("FB2 XML 无法解析");
+  const body = firstLocalElement(document, "body");
+  const allSections =
+    body === undefined
+      ? []
+      : [...body.getElementsByTagName("*")].filter((element) => localName(element) === "section");
+  const sections = allSections
+    .filter((section) => {
+      let parent = section.parentElement;
+      while (parent !== null && parent !== body) {
+        if (localName(parent) === "section") return false;
+        parent = parent.parentElement;
+      }
+      return true;
+    })
+    .map((section, order) => {
+      const label = firstLocalElement(section, "title")?.textContent?.replace(/\s+/gu, " ").trim();
+      const sanitized = sanitizeHtml(new XMLSerializer().serializeToString(section));
+      return {
+        id: `fb2:${order + 1}`,
+        order,
+        label: label || `Section ${order + 1}`,
+        kind: "text" as const,
+        text: sanitized.text || section.textContent?.replace(/\s+/gu, " ").trim() || "暂无内容",
+        html: sanitized.html,
+      };
+    });
+  const title = firstLocalElement(document, "book-title")?.textContent?.trim();
+  const author = fb2Author(document);
+  const language = firstLocalElement(document, "lang")?.textContent?.trim();
+  if (sections.length === 0) {
+    return makeBook(input, textSections(raw, input.format), {
+      ...(title === undefined ? {} : { title }),
+      ...(author === undefined ? {} : { author }),
+      ...(language === undefined ? {} : { language }),
+    });
+  }
+  return makeBook(input, sections, {
+    ...(title === undefined ? {} : { title }),
+    ...(author === undefined ? {} : { author }),
+    ...(language === undefined ? {} : { language }),
+  });
+}
+
 async function readArchiveText(entry: FileEntry): Promise<string> {
   return entry.getData(new TextWriter());
 }
@@ -389,7 +451,9 @@ async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
         );
       }
       sections.push({
-        id: `section-${order + 1}`,
+        // href is the semantic identity; keep it in the id so a refreshed
+        // spine/order does not strand a saved Locator.
+        id: `epub:${item.href}`,
         order,
         label: title,
         kind: "text",
@@ -525,7 +589,7 @@ const unsupportedAdapter: ReaderAdapter = {
   canHandle: () => true,
   open: async ({ format }) => {
     throw new Error(
-      `${format.toUpperCase()} 适配器尚未启用；当前可直接阅读 TXT / Markdown / HTML / EPUB / PDF / CBZ`,
+      `${format.toUpperCase()} 适配器尚未启用；当前可直接阅读 TXT / Markdown / HTML / FB2 / EPUB / PDF / CBZ`,
     );
   },
 };

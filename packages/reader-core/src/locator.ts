@@ -35,7 +35,14 @@ export function normalizeLocator(
 ): ReaderLocator {
   if (locator === undefined) return firstLocator(book);
   const section =
-    book.sections.find((candidate) => candidate.id === locator.sectionId) ?? book.sections[0];
+    book.sections.find((candidate) => candidate.id === locator.sectionId) ??
+    (locator.href === undefined
+      ? undefined
+      : book.sections.find((candidate) => candidate.href === locator.href)) ??
+    (locator.pageNumber === undefined
+      ? undefined
+      : book.sections.find((candidate) => candidate.pageNumber === locator.pageNumber)) ??
+    book.sections[0];
   if (section === undefined) return firstLocator(book);
   return createLocator(section, locator.progression, locator.kind);
 }
