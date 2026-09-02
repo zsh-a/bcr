@@ -112,3 +112,12 @@ export {
   type RecoverySkip,
 } from "./scheduler";
 export { PipelineNode } from "./schema";
+export {
+  createSearchIndex,
+  type SearchDocument,
+  type SearchDocumentKind,
+  type SearchIndex,
+  type SearchPersistence,
+  type SearchQueryOptions,
+  type SearchResult,
+} from "./search";

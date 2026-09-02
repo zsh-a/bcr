@@ -183,6 +183,15 @@ const DIRECTORY: ReadonlyArray<DirectoryEntry> = [
   ...EXTENDED_DIRECTORY,
 ];
 
+/** Curated offline catalog used by shell-level search before remote discovery. */
+export function listKnownInstruments(): ReadonlyArray<MarketSearchResult> {
+  return DIRECTORY.map(({ instrument, aliases, providerType }) => ({
+    instrument,
+    providerType,
+    ...(aliases.length === 0 ? {} : { aliases }),
+  }));
+}
+
 export function searchKnownInstruments(keyword: string): ReadonlyArray<MarketSearchResult> {
   const needle = keyword.trim().toLowerCase();
   if (needle.length < 2) return [];
@@ -198,5 +207,6 @@ export function searchKnownInstruments(keyword: string): ReadonlyArray<MarketSea
     .map(({ entry }) => ({
       instrument: entry.instrument,
       providerType: entry.providerType,
+      ...(entry.aliases.length === 0 ? {} : { aliases: entry.aliases }),
     }));
 }

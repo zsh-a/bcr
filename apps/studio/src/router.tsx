@@ -24,6 +24,27 @@ export interface HandoffSearch {
   document?: string | undefined;
 }
 
+export interface ReaderSearch extends HandoffSearch {
+  book?: string | undefined;
+  section?: string | undefined;
+}
+
+export interface DocumentSearch {
+  job?: string | undefined;
+}
+
+export interface MangaSearch extends HandoffSearch {
+  page?: string | undefined;
+}
+
+export interface MarketSearch {
+  instrument?: string | undefined;
+}
+
+export interface QuantSearch {
+  dataset?: string | undefined;
+}
+
 const rootRoute = createRootRoute({ component: Shell });
 
 const homeRoute = createRoute({
@@ -51,20 +72,27 @@ const mediaRoute = createRoute({
 const quantRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/quant",
+  validateSearch: (search: Record<string, unknown>): QuantSearch => ({
+    dataset: typeof search["dataset"] === "string" ? search["dataset"] : undefined,
+  }),
   component: () => null,
 });
 
 const marketsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/markets",
+  validateSearch: (search: Record<string, unknown>): MarketSearch => ({
+    instrument: typeof search["instrument"] === "string" ? search["instrument"] : undefined,
+  }),
   component: () => null,
 });
 
 const mangaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/manga",
-  validateSearch: (search: Record<string, unknown>): HandoffSearch => ({
+  validateSearch: (search: Record<string, unknown>): MangaSearch => ({
     document: typeof search["document"] === "string" ? search["document"] : undefined,
+    page: typeof search["page"] === "string" ? search["page"] : undefined,
   }),
   component: () => null,
 });
@@ -72,14 +100,19 @@ const mangaRoute = createRoute({
 const documentsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/documents",
+  validateSearch: (search: Record<string, unknown>): DocumentSearch => ({
+    job: typeof search["job"] === "string" ? search["job"] : undefined,
+  }),
   component: () => null,
 });
 
 const readerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/reader",
-  validateSearch: (search: Record<string, unknown>): HandoffSearch => ({
+  validateSearch: (search: Record<string, unknown>): ReaderSearch => ({
     document: typeof search["document"] === "string" ? search["document"] : undefined,
+    book: typeof search["book"] === "string" ? search["book"] : undefined,
+    section: typeof search["section"] === "string" ? search["section"] : undefined,
   }),
   component: () => null,
 });

@@ -1,7 +1,7 @@
 export { createDemoDividendSeries } from "./dividend";
 export { ResilientDividendService } from "./dividend-service";
 export { createDemoMarketLandscape, createDemoSnapshot, fallbackSessions } from "./demo";
-export { searchKnownInstruments } from "./directory";
+export { listKnownInstruments, searchKnownInstruments } from "./directory";
 export {
   consumeQuantHandoff,
   isQuantHandoff,

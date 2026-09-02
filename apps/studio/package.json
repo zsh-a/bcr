@@ -9,6 +9,7 @@
     "@bcr/document-studio": "workspace:*",
     "@bcr/manga-studio": "workspace:*",
     "@bcr/market-board": "workspace:*",
+    "@bcr/market-data": "workspace:*",
     "@bcr/media-studio": "workspace:*",
     "@bcr/quant-lab": "workspace:*",
     "@bcr/react": "workspace:*",

@@ -3,13 +3,17 @@ import { useStudio as useMediaStudio } from "@bcr/media-studio/store";
 import { useQuantLab } from "@bcr/quant-lab/store";
 import { useMangaStudio } from "@bcr/manga-studio/store";
 import { useNavigate } from "@tanstack/react-router";
-import { Command, Cpu, HardDrive, House, RefreshCw, SquareTerminal } from "lucide-react";
+import { Command, Cpu, HardDrive, House, RefreshCw, Search, SquareTerminal } from "lucide-react";
 import { APPS, type ActiveView } from "../shell/apps";
 import { useStudio } from "../store";
 import { formatBytes } from "./ui";
 
 /** 顶部工具栏：⌂ 返回主页 / 当前 App / 运行中任务指示 / 命令面板入口。 */
-export function TopBar(props: { active: ActiveView; onOpenPalette: () => void }) {
+export function TopBar(props: {
+  active: ActiveView;
+  onOpenPalette: () => void;
+  onOpenSearch: () => void;
+}) {
   const navigate = useNavigate();
   const studioRunning = useStudio((s) => s.runningCount);
   const mediaRunning = useMediaStudio((s) => s.running);
@@ -85,6 +89,18 @@ export function TopBar(props: { active: ActiveView; onOpenPalette: () => void })
         <RefreshCw
           className={`size-3 ${artifactUsage.status === "loading" ? "animate-spin" : ""}`}
         />
+      </button>
+
+      <button
+        type="button"
+        onClick={props.onOpenSearch}
+        title="打开全局搜索（⌘⇧F）"
+        aria-label="打开全局搜索"
+        aria-keyshortcuts="Control+Shift+F"
+        className="inline-flex h-11 items-center gap-2 rounded-[var(--radius-sm)] border border-border bg-raised px-3 text-[12px] text-muted transition-colors hover:border-border-strong hover:text-text"
+      >
+        <Search className="size-4" />
+        <span className="font-mono text-[11px]">搜索</span>
       </button>
 
       <button

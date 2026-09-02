@@ -49,6 +49,7 @@
 | Artifact 生命周期可观测性             | `ArtifactStore.inventory/usage`：跨后端容量清单、前缀过滤与稳定聚合，不读取内容       |
 | Artifact 安全 GC                      | `planCleanup/reclaim`：血缘 + 显式根保护、dry-run、path/size 二次校验后再回收         |
 | Cache / TaskJournal 保留策略          | Scheduler 维护入口：缓存 30 天 / 200 条、历史 90 天 / 500 条，终态与竞态二次校验      |
+| Workspace 全局搜索                    | `@bcr/core` 轻量索引契约：按 source 增量替换、中文/英文词项匹配、SQLite 元数据持久化  |
 | §8 SQLite WASM 元数据                 | `openSqliteDb`（整库字节经 BinaryStore 落 OPFS，可换任意 BinaryStore）                |
 | §8 TaskJournal / 崩溃恢复             | queued/running/终态写穿 SQLite；输入完整时重放，缺失时转 blocked                      |
 | §9.1 wasm-bindgen kernel              | `crates/kernels`（wasm32-unknown-unknown）                                            |
@@ -100,6 +101,8 @@ Market Atlas 数据质量与交互，以及 Manga Studio 单页翻译、Reader S
   也可手动刷新，清单查询只访问 OPFS/Memory 的路径和 size，不读取大对象内容。
 - **Storage Plane 面板**：Studio 的「存储」Dock tab 集中展示 Artifact 后端分布、项目源文件、最近产物及
   Cache / TaskJournal 保留候选；面板只读，治理动作统一从 ⌘K 命令进入。
+- **Workspace 全局搜索**：顶栏「搜索」或 ⌘⇧F 呼出；文件、任务、阅读章节、文档流水线、漫画页面、字幕、数据集和
+  全球市场标的共用同一索引，结果携带摘要并通过深链回到对应工作台。
 - **Artifact 安全清理**：⌘K →「清理未追踪 Artifact」先展示 dry-run 候选，只有用户显式确认才执行；
   当前项目源文件和已有血缘对象默认保留，执行前重新核对路径与字节数，竞态对象自动跳过并写入日志。
 - **缓存与历史保留**：⌘K →「整理过期缓存与历史」按 30 天 / 90 天 TTL 及 200 / 500 条上限生成计划；

@@ -33,6 +33,7 @@ import {
   type RefObject,
 } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
+import type { SearchDocument } from "@bcr/core";
 import {
   locatorAtPercentage,
   normalizeSearchQuery,
@@ -50,6 +51,7 @@ import {
   getDocumentHandoffMarker,
   markDocumentHandoffExpired,
 } from "@bcr/document-core";
+import { useLocationSearch, useOptionalRuntime } from "@bcr/react";
 import {
   createReaderRuntime,
   importReaderFile,
@@ -65,6 +67,21 @@ import "./styles.css";
 
 const EMPTY_BOOKMARKS: ReadonlyArray<ReaderBookmark> = [];
 const EMPTY_ANNOTATIONS: ReadonlyArray<ReaderAnnotation> = [];
+
+interface ReaderRouteSearch {
+  readonly book?: string;
+  readonly section?: string;
+}
+
+function parseReaderRouteSearch(value: string): ReaderRouteSearch {
+  const params = new URLSearchParams(value);
+  const book = params.get("book");
+  const section = params.get("section");
+  return {
+    ...(book === null ? {} : { book }),
+    ...(section === null ? {} : { section }),
+  };
+}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -367,12 +384,16 @@ function useReaderBoot(): {
 
 export function App() {
   const { runtime, error: runtimeError } = useReaderBoot();
+  const hostServices = useOptionalRuntime();
+  const routeSearch = parseReaderRouteSearch(useLocationSearch());
   useDebouncedPersist(runtime);
   useReaderSearch(runtime);
   const status = useReader((state) => state.status);
   const stateError = useReader((state) => state.error);
   const active = useReader((state) => activeBook(state));
   const settings = useReader((state) => state.settings);
+  const library = useReader((state) => state.library);
+  const progressByBook = useReader((state) => state.progressByBook);
   const searchOpen = useReader((state) => state.searchOpen);
   const sidebarOpen = useReader((state) => state.sidebarOpen);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -382,6 +403,54 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [handoffRecovery, setHandoffRecovery] = useState(false);
   const [importJob, setImportJob] = useState<ImportJob | null>(null);
+  const appliedRouteRef = useRef("");
+
+  useEffect(() => {
+    if (status !== "ready" || routeSearch.book === undefined) return;
+    const routeKey = `${routeSearch.book}|${routeSearch.section ?? ""}`;
+    if (appliedRouteRef.current === routeKey) return;
+    const book = library.find((candidate) => candidate.id === routeSearch.book);
+    if (book === undefined) return;
+    appliedRouteRef.current = routeKey;
+    reader.openBook(book.id, routeSearch.section);
+  }, [status, routeSearch.book, routeSearch.section, library]);
+
+  useEffect(() => {
+    const search = hostServices?.search;
+    if (search === undefined || runtime === null || status !== "ready") return;
+    const records: SearchDocument[] = [];
+    for (const book of library) {
+      const progress = progressByBook[book.id]?.percentage ?? 0;
+      const bookBody = [book.author ?? "", book.language ?? "", ...book.tags]
+        .filter(Boolean)
+        .join(" ");
+      records.push({
+        id: `reader:book:${book.id}`,
+        source: "reader",
+        kind: "reader-book",
+        title: book.title,
+        subtitle: `${formatBadge(book.source.format)} · ${Math.round(progress * 100)}% read${book.author === undefined ? "" : ` · ${book.author}`}`,
+        ...(bookBody.length === 0 ? {} : { body: bookBody }),
+        tags: ["reader", book.source.format, ...book.tags],
+        route: `/reader?book=${encodeURIComponent(book.id)}`,
+        updatedAt: book.updatedAt,
+      });
+      for (const section of book.sections) {
+        records.push({
+          id: `reader:section:${book.id}:${section.id}`,
+          source: "reader",
+          kind: "reader-section",
+          title: section.label,
+          subtitle: book.title,
+          body: section.text.slice(0, 12_000),
+          tags: ["reader", book.source.format, "section"],
+          route: `/reader?book=${encodeURIComponent(book.id)}&section=${encodeURIComponent(section.id)}`,
+          updatedAt: book.updatedAt,
+        });
+      }
+    }
+    search.replaceSource("reader", records);
+  }, [hostServices?.search, runtime, status, library, progressByBook]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

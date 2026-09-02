@@ -1,13 +1,16 @@
-import { RuntimeProvider, type RuntimeServices } from "@bcr/react";
+import { notifyNavigation, RuntimeProvider, type RuntimeServices } from "@bcr/react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Suspense, useEffect, useState } from "react";
 import { CommandPalette } from "../components/CommandPalette";
+import { SearchPanel } from "../components/SearchPanel";
 import { TopBar } from "../components/TopBar";
 import { createRuntimeServices } from "../runtime";
 import { ServicesContext } from "../services";
 import { studio } from "../store";
 import { APPS, appIdFromPath } from "./apps";
 import { Home } from "./Home";
+import { SearchBridge } from "../search-bridge";
+import type { SearchDocument } from "@bcr/core";
 
 /**
  * OS 式 Shell 根布局（§12：URL 即状态）：
@@ -20,6 +23,7 @@ import { Home } from "./Home";
 export function Shell() {
   const [services, setServices] = useState<RuntimeServices | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const navigate = useNavigate();
   const active = appIdFromPath(useRouterState({ select: (s) => s.location.pathname }));
   const [visited, setVisited] = useState<ReadonlyArray<string>>(active === "home" ? [] : [active]);
@@ -45,6 +49,11 @@ export function Shell() {
         setPaletteOpen((open) => !open);
         return;
       }
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        setSearchOpen((open) => !open);
+        return;
+      }
       if (event.altKey && event.code === "Digit0") {
         event.preventDefault();
         void navigate({ to: "/" });
@@ -62,6 +71,16 @@ export function Shell() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [navigate]);
 
+  const openSearchDocument = (document: SearchDocument): void => {
+    const route = document.route;
+    if (route === undefined || route.length === 0) return;
+    const target = new URL(route, window.location.origin);
+    const searchParams = Object.fromEntries(target.searchParams.entries());
+    void navigate({ to: target.pathname as never, search: searchParams as never }).then(() => {
+      notifyNavigation();
+    });
+  };
+
   if (services === null) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -75,8 +94,13 @@ export function Shell() {
   return (
     <RuntimeProvider services={services}>
       <ServicesContext.Provider value={services}>
+        <SearchBridge services={services} />
         <div className="flex h-full flex-col">
-          <TopBar active={active} onOpenPalette={() => setPaletteOpen(true)} />
+          <TopBar
+            active={active}
+            onOpenPalette={() => setPaletteOpen(true)}
+            onOpenSearch={() => setSearchOpen(true)}
+          />
           <div className="min-h-0 flex-1">
             {active === "home" && <Home />}
             {APPS.filter((app) => visited.includes(app.id)).map((app) => (
@@ -95,6 +119,11 @@ export function Shell() {
           </div>
         </div>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+        <SearchPanel
+          open={searchOpen}
+          onOpenChange={setSearchOpen}
+          onNavigate={openSearchDocument}
+        />
       </ServicesContext.Provider>
     </RuntimeProvider>
   );

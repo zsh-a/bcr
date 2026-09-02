@@ -19,6 +19,7 @@ import {
   Globe2,
   Hash,
   House,
+  LibraryBig,
   LayoutGrid,
   Search,
   Trash2,
@@ -223,6 +224,13 @@ export function CommandPalette(props: { open: boolean; onOpenChange: (open: bool
         hint: "Alt+6",
         icon: <FileStack className="size-3.5" />,
         run: () => void navigate({ to: "/documents" }),
+      },
+      {
+        id: "go-reader",
+        title: "打开 Reader Studio",
+        hint: "Alt+7",
+        icon: <LibraryBig className="size-3.5" />,
+        run: () => void navigate({ to: "/reader" }),
       },
       {
         id: "import",

@@ -18,6 +18,8 @@ import type {
   QuoteSnapshot,
   SessionState,
 } from "@bcr/market-data";
+import { listKnownInstruments } from "@bcr/market-data";
+import { useLocationSearch } from "@bcr/react";
 import { publishQuantHandoff } from "@bcr/market-data";
 import {
   ArrowUpRight,
@@ -213,6 +215,8 @@ export function App() {
   const [savedInstruments, setSavedInstruments] =
     useState<ReadonlyArray<MarketInstrument>>(initialInstruments);
   const [customQuotes, setCustomQuotes] = useState<ReadonlyArray<QuoteSnapshot>>([]);
+  const routeInstrumentId = new URLSearchParams(useLocationSearch()).get("instrument");
+  const appliedRouteRef = useRef("");
   const searchRef = useRef<HTMLInputElement>(null);
   const search = useInstrumentSearch(query);
   const allQuotes = useMemo(() => {
@@ -258,6 +262,31 @@ export function App() {
   });
   const advancers = landscape.breadth.advancing;
   const decliners = landscape.breadth.declining;
+
+  useEffect(() => {
+    if (routeInstrumentId === null || appliedRouteRef.current === routeInstrumentId) return;
+    const existing = allQuotes.find((quote) => quote.instrument.id === routeInstrumentId);
+    if (existing !== undefined) {
+      appliedRouteRef.current = routeInstrumentId;
+      setSelectedId(existing.instrument.id);
+      setRegion("ALL");
+      return;
+    }
+    const known = listKnownInstruments().find((item) => item.instrument.id === routeInstrumentId);
+    if (known === undefined) return;
+    appliedRouteRef.current = routeInstrumentId;
+    void marketProvider
+      .loadQuote(known.instrument)
+      .then((quote) => {
+        setCustomQuotes((items) => [
+          ...items.filter((item) => item.instrument.id !== known.instrument.id),
+          quote,
+        ]);
+        setSelectedId(known.instrument.id);
+        setRegion("ALL");
+      })
+      .catch(() => undefined);
+  }, [routeInstrumentId, allQuotes]);
 
   const selectSearchResult = async (
     result: MarketSearchResult,

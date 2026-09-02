@@ -20,12 +20,13 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
+import type { SearchDocument } from "@bcr/core";
 import {
   consumeDocumentHandoff,
   getDocumentHandoffMarker,
   markDocumentHandoffExpired,
 } from "@bcr/document-core";
-import { useOptionalRuntime } from "@bcr/react";
+import { useLocationSearch, useOptionalRuntime } from "@bcr/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { expandMangaArchive, formatForMangaFile } from "./archive";
 import { cancelMangaPipeline, cancelMangaQueue, runMangaPipeline, runMangaQueue } from "./pipeline";
@@ -145,6 +146,7 @@ async function exportCurrentPage(): Promise<void> {
 export function App() {
   const state = useMangaStudio((snapshot) => snapshot);
   const hostServices = useOptionalRuntime();
+  const routePageId = new URLSearchParams(useLocationSearch()).get("page");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const handoffRef = useRef<string | null>(null);
   const [zoom, setZoom] = useState(0.82);
@@ -153,6 +155,7 @@ export function App() {
   const [bootError, setBootError] = useState<string | null>(null);
   const [glossarySource, setGlossarySource] = useState("");
   const [glossaryTarget, setGlossaryTarget] = useState("");
+  const appliedRouteRef = useRef("");
 
   useEffect(() => {
     let cancelled = false;
@@ -174,6 +177,34 @@ export function App() {
     const timer = window.setTimeout(() => void persistProject(runtime), 650);
     return () => window.clearTimeout(timer);
   }, [runtime, state.pages, state.graph, state.settings, state.glossary, state.batch]);
+
+  useEffect(() => {
+    const search = hostServices?.search;
+    if (search === undefined || runtime === null) return;
+    const records: ReadonlyArray<SearchDocument> = state.pages.map((page, index) => ({
+      id: `manga:page:${page.id}`,
+      source: "manga",
+      kind: "manga-page",
+      title: page.source.name,
+      subtitle: `page ${index + 1} · ${page.regions.length} regions · ${page.outputReady ? "ready" : "in progress"}`,
+      body: page.regions
+        .flatMap((region) => [region.label, region.sourceText, region.translatedText])
+        .join(" ")
+        .slice(0, 24_000),
+      tags: ["manga", "ocr", "translation"],
+      route: `/manga?page=${encodeURIComponent(page.id)}`,
+      updatedAt: 0,
+    }));
+    search.replaceSource("manga", records);
+  }, [hostServices?.search, runtime, state.pages]);
+
+  useEffect(() => {
+    if (routePageId === null || appliedRouteRef.current === routePageId) return;
+    if (state.pages.some((page) => page.id === routePageId)) {
+      appliedRouteRef.current = routePageId;
+      manga.selectPage(routePageId);
+    }
+  }, [routePageId, state.pages]);
 
   useEffect(() => {
     if (runtime === null) return;

@@ -74,6 +74,8 @@ export interface MarketSearchResult {
   readonly instrument: MarketInstrument;
   /** stock-sdk 上游原始类型，例如 GP-A / ETF / ZS，便于向用户解释匹配来源。 */
   readonly providerType: string;
+  /** Offline directory aliases (中文名、常用简称等) used by shell search. */
+  readonly aliases?: string | undefined;
 }
 
 export interface DividendEvent {

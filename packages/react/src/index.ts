@@ -4,6 +4,7 @@ import {
   type ArtifactUsage,
   type ComputeTask,
   type Scheduler,
+  type SearchIndex,
   type SubmitOptions,
   type TaskHandle,
 } from "@bcr/core";
@@ -18,6 +19,30 @@ import {
   type ReactNode,
 } from "react";
 
+/** Host-shell navigation event used by keep-alive apps without a router provider. */
+export const RUNTIME_NAVIGATION_EVENT = "bcr:navigation";
+
+export function notifyNavigation(): void {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(RUNTIME_NAVIGATION_EVENT));
+}
+
+export function useLocationSearch(): string {
+  const [value, setValue] = useState(() =>
+    typeof window === "undefined" ? "" : window.location.search,
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sync = () => setValue(window.location.search);
+    window.addEventListener("popstate", sync);
+    window.addEventListener(RUNTIME_NAVIGATION_EVENT, sync);
+    return () => {
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener(RUNTIME_NAVIGATION_EVENT, sync);
+    };
+  }, []);
+  return value;
+}
+
 /**
  * React 绑定（架构文档 §12：状态分层——Runtime State 归 Runtime Core，
  * 组件内状态归 React，不建巨型 global store）。
@@ -28,6 +53,8 @@ import {
 export interface RuntimeServices {
   readonly scheduler: Scheduler;
   readonly artifacts: ArtifactStore;
+  /** Optional workspace-wide metadata search supplied by the host shell. */
+  readonly search?: SearchIndex | undefined;
   /** Optional small-state persistence supplied by the host app's SQLite plane. */
   readonly metadata?: RuntimeMetadata | undefined;
 }

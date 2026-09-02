@@ -23,7 +23,8 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useRuntime } from "@bcr/react";
+import { useLocationSearch, useOptionalRuntime, useRuntime } from "@bcr/react";
+import type { SearchDocument } from "@bcr/core";
 import {
   DOCUMENT_HANDOFF_EVENT,
   createDocumentJob,
@@ -121,6 +122,9 @@ export function App() {
   const [dragging, setDragging] = useState(false);
   const navigate = useNavigate();
   const services = useRuntime();
+  const hostServices = useOptionalRuntime();
+  const routeJobId = new URLSearchParams(useLocationSearch()).get("job");
+  const appliedRouteRef = useRef("");
   const [handoffHistory, setHandoffHistory] = useState<ReadonlyArray<DocumentHandoffRecord>>(() =>
     listDocumentHandoffs(),
   );
@@ -128,6 +132,41 @@ export function App() {
   useEffect(() => {
     documents.connectMetadata(services.metadata);
   }, [services.metadata]);
+
+  useEffect(() => {
+    const search = hostServices?.search;
+    if (search === undefined) return;
+    const records: ReadonlyArray<SearchDocument> = state.jobs.map((job) => {
+      const done = job.stages.filter((stage) => stage.status === "done").length;
+      const body = [
+        job.sourceTextPreview ?? "",
+        ...job.stages.map((stage) => `${stage.label} ${stage.status} ${stage.detail}`),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .slice(0, 24_000);
+      return {
+        id: `document:${job.id}`,
+        source: "documents",
+        kind: "document",
+        title: job.name,
+        subtitle: `${formatLabel(job.format)} · ${done}/${job.stages.length} stages ready`,
+        ...(body.length === 0 ? {} : { body }),
+        tags: ["document", job.format],
+        route: `/documents?job=${encodeURIComponent(job.id)}`,
+        updatedAt: job.updatedAt,
+      };
+    });
+    search.replaceSource("documents", records);
+  }, [hostServices?.search, state.jobs]);
+
+  useEffect(() => {
+    if (routeJobId === null || appliedRouteRef.current === routeJobId) return;
+    if (state.jobs.some((job) => job.id === routeJobId)) {
+      appliedRouteRef.current = routeJobId;
+      documents.selectJob(routeJobId);
+    }
+  }, [routeJobId, state.jobs]);
 
   useEffect(() => {
     const refresh = () => setHandoffHistory(listDocumentHandoffs());

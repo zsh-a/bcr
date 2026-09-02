@@ -1,6 +1,7 @@
 import {
   ArtifactStoreTag,
   artifactStore,
+  createSearchIndex,
   executorRegistry,
   Executors,
   hashReadableStream,
@@ -101,7 +102,21 @@ export async function createRuntimeServices(): Promise<RuntimeServices> {
           get: (key) => metaDb!.kvGet(key),
           set: (key, value) => metaDb!.kvSet(key, value),
         };
-  return { scheduler, artifacts, ...(metadata === undefined ? {} : { metadata }) };
+  const search = createSearchIndex(
+    metadata === undefined
+      ? undefined
+      : {
+          load: () => metadata.get("workspace/search.v1"),
+          save: (value) => metadata.set("workspace/search.v1", value),
+        },
+  );
+  await search.ready;
+  return {
+    scheduler,
+    artifacts,
+    search,
+    ...(metadata === undefined ? {} : { metadata }),
+  };
 }
 
 /** 刷新恢复：文件列表从元数据库回放（artifact 数据本体一直在 OPFS）。 */
