@@ -320,7 +320,9 @@ async function exportCurrentPage(): Promise<void> {
 export function App() {
   const state = useMangaStudio((snapshot) => snapshot);
   const hostServices = useOptionalRuntime();
-  const routePageId = new URLSearchParams(useLocationSearch()).get("page");
+  const routeParams = new URLSearchParams(useLocationSearch());
+  const routePageId = routeParams.get("page");
+  const routeRegionId = routeParams.get("region");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const handoffRef = useRef<string | null>(null);
   const [zoom, setZoom] = useState(0.82);
@@ -435,7 +437,7 @@ export function App() {
           subtitle: `${page.source.name} · ${translation?.status ?? "needs-review"}`,
           ...(body.length === 0 ? {} : { body }),
           tags: ["manga", "region", block.writingMode ?? "horizontal-tb"],
-          route: `/manga?page=${encodeURIComponent(page.id)}`,
+          route: `/manga?page=${encodeURIComponent(page.id)}&region=${encodeURIComponent(block.id)}`,
           updatedAt: 0,
         });
       }
@@ -444,12 +446,17 @@ export function App() {
   }, [hostServices?.search, runtime, state.pages, state.settings.sourceLanguage]);
 
   useEffect(() => {
-    if (routePageId === null || appliedRouteRef.current === routePageId) return;
-    if (state.pages.some((page) => page.id === routePageId)) {
-      appliedRouteRef.current = routePageId;
-      manga.selectPage(routePageId);
+    if (routePageId === null) return;
+    const page = state.pages.find((candidate) => candidate.id === routePageId);
+    if (page === undefined) return;
+    const routeKey = `${routePageId}|${routeRegionId ?? ""}`;
+    if (appliedRouteRef.current === routeKey) return;
+    appliedRouteRef.current = routeKey;
+    if (state.activePageId !== routePageId) manga.selectPage(routePageId);
+    if (routeRegionId !== null && page.regions.some((region) => region.id === routeRegionId)) {
+      manga.setActiveRegion(routeRegionId);
     }
-  }, [routePageId, state.pages]);
+  }, [routePageId, routeRegionId, state.activePageId, state.pages]);
 
   useEffect(() => {
     if (runtime === null) return;

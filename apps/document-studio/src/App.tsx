@@ -142,6 +142,7 @@ export function App() {
   const routeSearch = useLocationSearch();
   const routeJobId = new URLSearchParams(routeSearch).get("job");
   const routeHandoffId = new URLSearchParams(routeSearch).get("handoff");
+  const routeBlockId = new URLSearchParams(routeSearch).get("block");
   const extractRef = stageById(active.stages, "extract")?.artifact ?? null;
   const extractBytes = useArtifact(extractRef);
   const contentPackage = useMemo(() => {
@@ -235,7 +236,7 @@ export function App() {
           subtitle: `${active.name} · ${formatLabel(active.format)} · 原文`,
           body: block.text,
           tags: ["document", active.format, "content", block.kind],
-          route: `/documents?job=${encodeURIComponent(active.id)}`,
+          route: `/documents?job=${encodeURIComponent(active.id)}&block=${encodeURIComponent(block.id)}`,
           updatedAt: active.updatedAt,
         });
       }
@@ -251,7 +252,7 @@ export function App() {
           subtitle: `${active.name} · ${translationPackage.targetLanguage}`,
           ...(body.length === 0 ? {} : { body }),
           tags: ["document", active.format, "translation", block.status],
-          route: `/documents?job=${encodeURIComponent(active.id)}`,
+          route: `/documents?job=${encodeURIComponent(active.id)}&block=${encodeURIComponent(block.id)}`,
           updatedAt: active.updatedAt,
         });
       }
@@ -728,7 +729,11 @@ export function App() {
             <ContentPackageCard content={contentPackage} stats={contentStats} />
           )}
           {contentPackage !== undefined && (
-            <DocumentBlockContextCard content={contentPackage} translation={translationPackage} />
+            <DocumentBlockContextCard
+              content={contentPackage}
+              translation={translationPackage}
+              focusBlockId={routeBlockId ?? undefined}
+            />
           )}
           {translationPackage !== undefined && translationStats !== undefined && (
             <TranslationPackageCard package={translationPackage} stats={translationStats} />
@@ -851,11 +856,19 @@ function TranslationPackageCard(props: {
 function DocumentBlockContextCard(props: {
   content: DocumentContentPackage;
   translation: DocumentTranslationPackage | undefined;
+  focusBlockId?: string | undefined;
 }) {
   const translatedById = new Map(
     props.translation?.blocks.map((block) => [block.id, block.translatedText]) ?? [],
   );
-  const blocks = props.content.blocks.slice(0, 3);
+  const focused =
+    props.focusBlockId === undefined
+      ? undefined
+      : props.content.blocks.find((block) => block.id === props.focusBlockId);
+  const blocks =
+    focused === undefined
+      ? props.content.blocks.slice(0, 3)
+      : [focused, ...props.content.blocks.filter((block) => block.id !== focused.id).slice(0, 2)];
   return (
     <section className="document-block-context" aria-label="内容块上下文">
       <div className="document-block-context-heading">
@@ -869,7 +882,10 @@ function DocumentBlockContextCard(props: {
         {blocks.map((block, index) => {
           const translated = translatedById.get(block.id);
           return (
-            <div className="document-block-context-item" key={block.id}>
+            <div
+              className={`document-block-context-item ${block.id === focused?.id ? "is-focused" : ""}`}
+              key={block.id}
+            >
               <span className="document-block-context-label">
                 {String(index + 1).padStart(2, "0")} · {block.label}
               </span>

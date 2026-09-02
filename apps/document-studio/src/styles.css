@@ -1176,6 +1176,13 @@
   padding-top: 8px;
 }
 
+.document-block-context-item.is-focused {
+  border-top-color: var(--document-accent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--document-accent-soft) 62%, transparent);
+  padding: 8px 9px 7px;
+}
+
 .document-block-context-label {
   display: block;
   overflow: hidden;

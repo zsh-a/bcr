@@ -32,10 +32,12 @@ export interface ReaderSearch extends HandoffSearch {
 export interface DocumentSearch {
   job?: string | undefined;
   handoff?: string | undefined;
+  block?: string | undefined;
 }
 
 export interface MangaSearch extends HandoffSearch {
   page?: string | undefined;
+  region?: string | undefined;
 }
 
 export interface MarketSearch {
@@ -94,6 +96,7 @@ const mangaRoute = createRoute({
   validateSearch: (search: Record<string, unknown>): MangaSearch => ({
     document: typeof search["document"] === "string" ? search["document"] : undefined,
     page: typeof search["page"] === "string" ? search["page"] : undefined,
+    region: typeof search["region"] === "string" ? search["region"] : undefined,
   }),
   component: () => null,
 });
@@ -104,6 +107,7 @@ const documentsRoute = createRoute({
   validateSearch: (search: Record<string, unknown>): DocumentSearch => ({
     job: typeof search["job"] === "string" ? search["job"] : undefined,
     handoff: typeof search["handoff"] === "string" ? search["handoff"] : undefined,
+    block: typeof search["block"] === "string" ? search["block"] : undefined,
   }),
   component: () => null,
 });
