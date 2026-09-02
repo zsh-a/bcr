@@ -15,14 +15,21 @@ interface ReaderIndexResult {
   readonly documents: ReadonlyArray<ReaderIndexDocument>;
 }
 
+export interface ReaderIndexSearch {
+  readonly hits: ReadonlyArray<SearchHit>;
+  readonly indexedBookIds: ReadonlyArray<string>;
+  readonly pendingBookIds: ReadonlyArray<string>;
+}
+
 export interface ReaderIndexSession {
   readonly indexBook: (book: ReaderBook, signal?: AbortSignal) => Promise<void>;
   readonly removeBook: (bookId: string) => void;
-  /** undefined means at least one book is still being indexed. */
+  readonly subscribe: (listener: () => void) => () => void;
+  /** Returns available worker hits plus the books still using the fallback path. */
   readonly search: (
     books: ReadonlyArray<ReaderBook>,
     query: string,
-  ) => ReadonlyArray<SearchHit> | undefined;
+  ) => ReaderIndexSearch | undefined;
   readonly close: () => void;
 }
 
@@ -70,6 +77,29 @@ function abortError(): DOMException {
   return new DOMException("Aborted", "AbortError");
 }
 
+function awaitWithAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (signal === undefined) return promise;
+  if (signal.aborted) return Promise.reject(abortError());
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      cleanup();
+      reject(abortError());
+    };
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (reason: unknown) => {
+        cleanup();
+        reject(reason);
+      },
+    );
+  });
+}
+
 export function createReaderIndexSession(artifacts: ArtifactStore): ReaderIndexSession | undefined {
   if (typeof Worker === "undefined" || typeof MessageChannel === "undefined") return undefined;
 
@@ -89,6 +119,11 @@ export function createReaderIndexSession(artifacts: ArtifactStore): ReaderIndexS
     string,
     { readonly signature: string; readonly documents: ReadonlyArray<ReaderIndexDocument> }
   >();
+  const pending = new Map<string, Promise<void>>();
+  const listeners = new Set<() => void>();
+  const notify = (): void => {
+    for (const listener of listeners) listener();
+  };
 
   return {
     async indexBook(book, signal) {
@@ -96,50 +131,52 @@ export function createReaderIndexSession(artifacts: ArtifactStore): ReaderIndexS
       const signature = indexSignature(book);
       const cached = indexed.get(book.id);
       if (cached?.signature === signature) return;
+      const inFlight = pending.get(book.id);
+      if (inFlight !== undefined) return awaitWithAbort(inFlight, signal);
       if (cached !== undefined) indexed.delete(book.id);
-      const cacheRef = indexCacheRef(book, signature);
-      try {
-        if (await Effect.runPromise(artifacts.has(cacheRef))) {
-          const bytes = await Effect.runPromise(artifacts.get(cacheRef));
-          const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
-          if (
-            isReaderIndexResult(parsed) &&
-            parsed.bookId === book.id &&
-            parsed.signature === signature
-          ) {
-            indexed.set(book.id, { signature, documents: parsed.documents });
-            return;
+      const job = (async () => {
+        const cacheRef = indexCacheRef(book, signature);
+        try {
+          if (await Effect.runPromise(artifacts.has(cacheRef))) {
+            const bytes = await Effect.runPromise(artifacts.get(cacheRef));
+            const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
+            if (
+              isReaderIndexResult(parsed) &&
+              parsed.bookId === book.id &&
+              parsed.signature === signature
+            ) {
+              indexed.set(book.id, { signature, documents: parsed.documents });
+              return;
+            }
           }
+        } catch {
+          // A stale or unavailable cache is equivalent to a cache miss.
         }
-      } catch {
-        // A stale or unavailable cache is equivalent to a cache miss.
-      }
-      const task: ComputeTask = {
-        id: `reader-index-${++taskSequence}`,
-        runtime: "js",
-        operation: "reader.index",
-        inputs: [],
-        outputs: [
-          {
-            name: "index",
-            type: "reader/search-index",
-            storage: "memory",
-            format: "json",
+        const task: ComputeTask = {
+          id: `reader-index-${++taskSequence}`,
+          runtime: "js",
+          operation: "reader.index",
+          inputs: [],
+          outputs: [
+            {
+              name: "index",
+              type: "reader/search-index",
+              storage: "memory",
+              format: "json",
+            },
+          ],
+          config: {
+            book: {
+              id: book.id,
+              sections: book.sections.map((section) => ({
+                id: section.id,
+                label: section.label,
+                text: section.text,
+              })),
+            },
+            signature,
           },
-        ],
-        config: {
-          book: {
-            id: book.id,
-            sections: book.sections.map((section) => ({
-              id: section.id,
-              label: section.label,
-              text: section.text,
-            })),
-          },
-          signature,
-        },
-      };
-      try {
+        };
         const events = await Effect.runPromise(
           Stream.runCollect(executor.run(task)),
           signal === undefined ? undefined : { signal },
@@ -163,22 +200,40 @@ export function createReaderIndexSession(artifacts: ArtifactStore): ReaderIndexS
           artifacts.put(cacheRef, new TextEncoder().encode(JSON.stringify(parsed))),
         );
         indexed.set(book.id, { signature, documents: parsed.documents });
+      })();
+      pending.set(book.id, job);
+      try {
+        await job;
       } catch (reason) {
         if (signal?.aborted) throw abortError();
         throw reason;
+      } finally {
+        if (pending.get(book.id) === job) pending.delete(book.id);
+        notify();
       }
     },
     removeBook(bookId) {
       indexed.delete(bookId);
+      notify();
+    },
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
     search(books, query) {
-      if (books.some((book) => !indexed.has(book.id))) return undefined;
-      const documents = books.flatMap((book) => indexed.get(book.id)?.documents ?? []);
-      return searchIndexedDocuments(documents, books, query);
+      const indexedBooks = books.filter((book) => indexed.has(book.id));
+      const documents = indexedBooks.flatMap((book) => indexed.get(book.id)?.documents ?? []);
+      return {
+        hits: searchIndexedDocuments(documents, indexedBooks, query),
+        indexedBookIds: indexedBooks.map((book) => book.id),
+        pendingBookIds: books.filter((book) => pending.has(book.id)).map((book) => book.id),
+      };
     },
     close() {
       pool.shutdown();
       indexed.clear();
+      pending.clear();
+      listeners.clear();
     },
   };
 }

@@ -430,8 +430,15 @@ class MangaStore {
     });
   }
 
-  beginRun(): void {
-    this.set({ running: true, stages: freshStages(), outputReady: false });
+  beginRun(resume = false): void {
+    this.set({
+      running: true,
+      // Queue retries and refresh recovery keep completed stage checkpoints.
+      // A manual run is an explicit fresh execution and clears all downstream
+      // state so it cannot accidentally reuse artifacts from another config.
+      stages: resume ? this.state.stages : freshStages(),
+      outputReady: false,
+    });
     this.log(
       "info",
       `pipeline · ${this.state.source.name} · OCR ${this.state.settings.ocrAdapter} · translate ${this.state.settings.engine}`,
@@ -450,7 +457,16 @@ class MangaStore {
   }
 
   cancelRun(): void {
-    this.set({ running: false });
+    this.set({
+      running: false,
+      // A cancelled stage has no valid output yet. Leave completed stages as
+      // checkpoints, but make the interrupted stage visibly resumable.
+      stages: this.state.stages.map((stage) =>
+        stage.status === "running"
+          ? { ...stage, status: "idle", progress: 0, error: undefined }
+          : stage,
+      ),
+    });
     this.log("warn", "pipeline cancelled · completed artifacts remain available");
   }
 

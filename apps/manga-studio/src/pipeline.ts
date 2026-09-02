@@ -57,6 +57,11 @@ const stageTimings: ReadonlyArray<{ id: Parameters<typeof manga.updateStage>[0];
   { id: "export", ms: 240 },
 ];
 
+export interface MangaPipelineOptions {
+  /** Reuse completed stage checkpoints for a paused/crash-recovered page. */
+  readonly resume?: boolean;
+}
+
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -390,15 +395,26 @@ async function runCleanAdapter(
 
 export async function runMangaPipeline(
   services?: RuntimeServices,
+  options: MangaPipelineOptions = {},
 ): Promise<"completed" | "cancelled" | "failed"> {
   const runId = ++activeRun;
-  manga.beginRun();
+  const resume = options.resume === true;
+  const previousStages = resume ? manga.getSnapshot().stages : undefined;
+  manga.beginRun(resume);
   let currentStage: (typeof stageTimings)[number]["id"] = "normalize";
-  let ocrArtifact: ArtifactRef | undefined;
+  let ocrArtifact: ArtifactRef | undefined = previousStages?.find(
+    (stage) => stage.id === "ocr" && stage.status === "done",
+  )?.artifact;
 
   try {
     for (const [index, stage] of stageTimings.entries()) {
       if (runId !== activeRun) return "cancelled";
+      const checkpoint = previousStages?.find((candidate) => candidate.id === stage.id);
+      if (checkpoint?.status === "done") {
+        // Completed stages are immutable checkpoints for queue retries. Their
+        // artifacts and progress remain visible while downstream stages run.
+        continue;
+      }
       currentStage = stage.id;
       manga.updateStage(stage.id, { status: "running", progress: 0.08, error: undefined });
 
@@ -517,7 +533,7 @@ export async function runMangaQueue(services?: RuntimeServices): Promise<void> {
     if (page === undefined) continue;
     manga.setBatchActivePage(pageId);
     manga.selectPage(pageId);
-    const result = await runMangaPipeline(services);
+    const result = await runMangaPipeline(services, { resume: true });
     if (queueRun !== activeQueueRun || result === "cancelled") return;
     if (result === "failed") {
       manga.failBatch(`${page.source.name} 处理失败`);

@@ -47,6 +47,11 @@ export interface ReaderRuntime {
   readonly parserMode: "worker" | "main";
 }
 
+export interface ReaderSearchResult {
+  readonly hits: ReadonlyArray<SearchHit>;
+  readonly indexing: boolean;
+}
+
 interface SqliteInit {
   (options?: {
     locateFile?: (file: string) => string;
@@ -680,34 +685,57 @@ export async function indexBook(
   }
 }
 
-export function searchIndexed(
+export function searchIndexedDetailed(
   runtime: ReaderRuntime,
   books: ReadonlyArray<ReaderBook>,
   query: string,
-): ReadonlyArray<SearchHit> {
+): ReaderSearchResult {
   const normalized = normalizeSearchQuery(query);
-  if (!normalized) return [];
+  if (!normalized) return { hits: [], indexing: false };
   const workerResults = runtime.indexSession?.search(books, query);
-  if (workerResults !== undefined) return workerResults;
+  if (workerResults !== undefined) {
+    const indexedBookIds = new Set(workerResults.indexedBookIds);
+    const pendingBooks = books.filter((book) => !indexedBookIds.has(book.id));
+    return {
+      hits: [...workerResults.hits, ...searchLibrary(pendingBooks, query)]
+        .sort(
+          (left, right) =>
+            right.score - left.score || left.sectionId.localeCompare(right.sectionId),
+        )
+        .slice(0, 80),
+      indexing: workerResults.pendingBookIds.length > 0,
+    };
+  }
   if (!runtime.ftsReady || runtime.meta === undefined || normalized.length < 3)
-    return searchLibrary(books, query);
+    return { hits: searchLibrary(books, query), indexing: false };
   try {
     const escaped = normalized.replaceAll('"', '""');
     const rows = runtime.meta.all(
       "SELECT book_id, section_id, label, snippet(reader_fts, 3, '<mark>', '</mark>', '…', 18) AS snippet, bm25(reader_fts) AS rank FROM reader_fts WHERE reader_fts MATCH ? ORDER BY rank LIMIT 80",
       [`"${escaped}"`],
     );
-    if (rows.length === 0) return searchLibrary(books, query);
-    return rows.map((row) => ({
-      bookId: String(row["book_id"] ?? ""),
-      sectionId: String(row["section_id"] ?? ""),
-      label: String(row["label"] ?? "正文"),
-      snippet: String(row["snippet"] ?? "").replace(/<\/?mark>/gu, ""),
-      score: Number(row["rank"] ?? 0),
-      matchStart: 0,
-      matchLength: normalized.length,
-    }));
+    if (rows.length === 0) return { hits: searchLibrary(books, query), indexing: false };
+    return {
+      hits: rows.map((row) => ({
+        bookId: String(row["book_id"] ?? ""),
+        sectionId: String(row["section_id"] ?? ""),
+        label: String(row["label"] ?? "正文"),
+        snippet: String(row["snippet"] ?? "").replace(/<\/?mark>/gu, ""),
+        score: Number(row["rank"] ?? 0),
+        matchStart: 0,
+        matchLength: normalized.length,
+      })),
+      indexing: false,
+    };
   } catch {
-    return searchLibrary(books, query);
+    return { hits: searchLibrary(books, query), indexing: false };
   }
+}
+
+export function searchIndexed(
+  runtime: ReaderRuntime,
+  books: ReadonlyArray<ReaderBook>,
+  query: string,
+): ReadonlyArray<SearchHit> {
+  return searchIndexedDetailed(runtime, books, query).hits;
 }

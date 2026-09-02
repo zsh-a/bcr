@@ -200,6 +200,10 @@ export function App() {
   const totalSize = state.pages.reduce((sum, page) => sum + page.source.size, 0);
   const batchRunning = state.batch?.status === "running";
   const batchPaused = state.batch?.status === "paused";
+  const resumableCurrentPage =
+    !state.outputReady &&
+    state.stages.some((stage) => stage.id !== "import" && stage.status === "done") &&
+    state.stages.some((stage) => stage.id !== "import" && stage.status !== "done");
   const pendingPages = state.pages.filter((page) => !page.outputReady).length;
   const batchProgress =
     state.batch === undefined || state.batch.pageIds.length === 0
@@ -361,7 +365,7 @@ export function App() {
   };
 
   const run = () => {
-    void runMangaPipeline(hostServices ?? undefined);
+    void runMangaPipeline(hostServices ?? undefined, { resume: resumableCurrentPage });
   };
 
   const exportPage = () => {
@@ -447,7 +451,7 @@ export function App() {
           ) : (
             <button type="button" className="manga-button manga-button-primary" onClick={run}>
               <Play className="size-4" />
-              翻译当前页
+              {resumableCurrentPage ? "继续当前页" : "翻译当前页"}
             </button>
           )}
           {state.pages.length > 1 &&

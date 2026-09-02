@@ -227,7 +227,14 @@ export async function restoreProject(runtime: MangaRuntime): Promise<boolean> {
       pages.push({
         id: persisted.id,
         source,
-        stages: persisted.stages,
+        // A tab can be closed while a stage is running. Restore that stage as
+        // idle so the UI reflects the paused checkpoint and the next queue run
+        // retries it instead of presenting a stale RUNNING state.
+        stages: persisted.stages.map((stage) =>
+          stage.status === "running"
+            ? { ...stage, status: "idle", progress: 0, error: undefined }
+            : stage,
+        ),
         regions: persisted.regions,
         activeRegionId: persisted.activeRegionId,
         outputMode: persisted.outputMode,

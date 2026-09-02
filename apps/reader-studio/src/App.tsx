@@ -54,7 +54,7 @@ import {
   indexBook,
   persistReader,
   restoreReader,
-  searchIndexed,
+  searchIndexedDetailed,
   type ReaderRuntime,
 } from "./runtime";
 import { activeBook, type ReaderSettings, type ReaderTheme } from "./model";
@@ -176,22 +176,33 @@ function useDebouncedPersist(runtime: ReaderRuntime | null): void {
 function useReaderSearch(runtime: ReaderRuntime | null): void {
   const query = useReader((state) => state.query);
   const library = useReader((state) => state.library);
+  const [indexRevision, setIndexRevision] = useState(0);
+  useEffect(() => {
+    const unsubscribe = runtime?.indexSession?.subscribe(() => {
+      setIndexRevision((revision) => revision + 1);
+    });
+    return unsubscribe;
+  }, [runtime]);
   useEffect(() => {
     if (runtime === null) return;
     const handle = window.setTimeout(() => {
       if (query.trim() === "") {
         reader.setSearch(query, [], null);
+        reader.setSearchBusy(false);
         return;
       }
       reader.setSearchBusy(true);
       try {
-        reader.setSearch(query, searchIndexed(runtime, library, query), null);
+        const result = searchIndexedDetailed(runtime, library, query);
+        reader.setSearch(query, result.hits, null);
+        reader.setSearchBusy(result.indexing);
       } catch {
         reader.setSearch(query, [], null);
+        reader.setSearchBusy(false);
       }
     }, 160);
     return () => window.clearTimeout(handle);
-  }, [runtime, query, library]);
+  }, [indexRevision, runtime, query, library]);
 }
 
 function useReaderBoot(): {
