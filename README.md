@@ -197,7 +197,7 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - `@bcr/manga-studio` 声明页面清单、OCR、翻译、清理、排版和导出的 operation 目录，默认 Graph 可直接交给 `@bcr/graph` 编译
 - 默认视觉路径明确标记为 **Review / 手工审校**；导入真实图片后会创建待审校区域，并通过共享 Worker 的
   `manga.ocr.review` 将区域固化为版本化 `manga/ocr-lines` Artifact，不伪装成像素识别结果；需要时可显式切换到实验性 Local ONNX
-- 多页工作队列支持批量拖入、逐页切换与页级流水线状态；“处理队列”只运行尚未完成的页面，支持暂停、恢复、失败状态与队列进度；项目配置、审校译文、队列游标和页面队列写入 SQLite，原图 artifact 写入 OPFS，刷新后自动恢复
+- 多页工作队列支持批量拖入、逐页切换与页级流水线状态；“处理队列”只运行尚未完成的页面，支持暂停、恢复、失败重试与队列进度，失败页会复用已完成的阶段检查点；项目配置、审校译文、队列游标和页面队列写入 SQLite，原图 artifact 写入 OPFS，刷新后自动恢复
 - 项目级 Glossary 支持原文 / 固定译法的增删改与持久化；翻译阶段整句命中优先，重叠术语按最长匹配，术语变更会让所有页面回到待处理状态
 - 翻译引擎可显式切换 Fixture 或实验性 Local ONNX；Local 模式使用多语 NLLB 并按日文 / 英文 / 韩文传入对应语言码，在 Worker 内支持 Auto / WebGPU / WASM，并生成 `manga/translation-lines` 审校 Artifact
 - OCR manifest 同时提供 Latin TrOCR 与日文 Manga OCR（`onnx-community/manga-ocr-base-ONNX`）；模型按区域懒加载，

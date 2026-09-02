@@ -87,7 +87,7 @@ const initialPage: MangaPage = {
   dirty: false,
 };
 
-class MangaStore {
+export class MangaStore {
   private state: MangaState = {
     source: initialPage.source,
     pages: [initialPage],
@@ -478,18 +478,18 @@ class MangaStore {
   startBatch(pageIds: ReadonlyArray<string>, resume = false): void {
     const current = this.state.batch;
     const validIds = [...new Set(pageIds)];
-    const completedPageIds =
-      resume && current?.status === "paused"
-        ? current.completedPageIds.filter((id) => validIds.includes(id))
-        : [];
+    const resumable = resume && (current?.status === "paused" || current?.status === "error");
+    const completedPageIds = resumable
+      ? (current?.completedPageIds.filter((id) => validIds.includes(id)) ?? [])
+      : [];
     const now = Date.now();
     const batch: MangaBatchJob = {
-      id: resume && current?.status === "paused" ? current.id : `manga-batch-${now.toString(36)}`,
+      id: resumable ? current.id : `manga-batch-${now.toString(36)}`,
       pageIds: validIds,
       completedPageIds,
       activePageId: null,
       status: "running",
-      startedAt: resume && current?.status === "paused" ? current.startedAt : now,
+      startedAt: resumable ? current.startedAt : now,
       updatedAt: now,
     };
     this.set({ batch });

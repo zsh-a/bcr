@@ -510,7 +510,7 @@ export async function runMangaQueue(services?: RuntimeServices): Promise<void> {
   if (manga.getSnapshot().running || manga.getSnapshot().batch?.status === "running") return;
   const snapshot = manga.getSnapshot();
   const existing = snapshot.batch;
-  const resume = existing?.status === "paused";
+  const resume = existing?.status === "paused" || existing?.status === "error";
   const pageIds = resume
     ? existing.pageIds
     : snapshot.pages.filter((page) => !page.outputReady).map((page) => page.id);

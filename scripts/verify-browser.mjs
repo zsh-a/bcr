@@ -12,7 +12,8 @@ import path from "node:path";
  */
 export async function launchVerifyBrowser(app) {
   const scriptDir = fileURLToPath(new URL("./", import.meta.url));
-  const profileDir = path.join(scriptDir, `.pw-profile-${app}`);
+  const profileName = process.env.BCR_VERIFY_PROFILE ?? app;
+  const profileDir = path.join(scriptDir, `.pw-profile-${profileName}`);
   mkdirSync(profileDir, { recursive: true });
   mkdirSync(path.join(scriptDir, "shots"), { recursive: true });
   const browser = await chromium.launchPersistentContext(profileDir, {

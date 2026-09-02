@@ -200,6 +200,7 @@ export function App() {
   const totalSize = state.pages.reduce((sum, page) => sum + page.source.size, 0);
   const batchRunning = state.batch?.status === "running";
   const batchPaused = state.batch?.status === "paused";
+  const batchError = state.batch?.status === "error";
   const resumableCurrentPage =
     !state.outputReady &&
     state.stages.some((stage) => stage.id !== "import" && stage.status === "done") &&
@@ -457,14 +458,14 @@ export function App() {
           {state.pages.length > 1 &&
             !state.running &&
             !batchRunning &&
-            (pendingPages > 0 || batchPaused) && (
+            (pendingPages > 0 || batchPaused || batchError) && (
               <button
                 type="button"
                 className="manga-button manga-button-secondary"
                 onClick={() => void runMangaQueue(hostServices ?? undefined)}
               >
                 <ListChecks className="size-4" />
-                {batchPaused ? "继续队列" : "处理队列"}
+                {batchPaused ? "继续队列" : batchError ? "重试队列" : "处理队列"}
               </button>
             )}
           <input
