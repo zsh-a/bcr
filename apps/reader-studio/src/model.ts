@@ -49,6 +49,8 @@ export interface ReaderState {
   readonly library: ReadonlyArray<ReaderBook>;
   readonly activeBookId: string | null;
   readonly activeSectionId: string | null;
+  /** Monotonic, transient signal for explicit navigation requests. */
+  readonly navigationSequence: number;
   readonly progressByBook: Readonly<Record<string, ReaderProgress>>;
   readonly bookmarksByBook: Readonly<Record<string, ReadonlyArray<ReaderBookmark>>>;
   readonly annotationsByBook: Readonly<Record<string, ReadonlyArray<ReaderAnnotation>>>;

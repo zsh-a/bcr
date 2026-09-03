@@ -1604,6 +1604,7 @@ function FontSizeMenu(props: { settings: ReaderSettings }) {
 function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
   const settings = useReader((state) => state.settings);
   const activeSectionId = useReader((state) => state.activeSectionId);
+  const navigationSequence = useReader((state) => state.navigationSequence);
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
   const searchQuery = useReader((state) => state.query);
   const searchReveal = useReader((state) => state.searchReveal);
@@ -1614,6 +1615,9 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
   const programmaticScrollRef = useRef(false);
   const programmaticScrollTargetRef = useRef<number | null>(null);
   const programmaticScrollTimerRef = useRef<number | null>(null);
+  const navigationRetryFrameRef = useRef<number | null>(null);
+  const navigationRetryTimerRef = useRef<number | null>(null);
+  const handledNavigationSequenceRef = useRef(navigationSequence);
   const [contentReadyVersion, setContentReadyVersion] = useState(0);
   const updateLocator = useCallback(() => {
     const container = containerRef.current;
@@ -1628,35 +1632,67 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
   }, [activeSectionId, props.book]);
   useEffect(() => {
     if (activeSectionId === null || containerRef.current === null) return;
-    if (userScrollRef.current) {
+    const explicitNavigation = navigationSequence !== handledNavigationSequenceRef.current;
+    if (explicitNavigation) {
+      handledNavigationSequenceRef.current = navigationSequence;
+      userScrollRef.current = false;
+    } else if (userScrollRef.current) {
       userScrollRef.current = false;
       return;
     }
-    const max = Math.max(1, containerRef.current.scrollHeight - containerRef.current.clientHeight);
-    programmaticScrollRef.current = true;
-    programmaticScrollTargetRef.current =
-      activeSectionId === props.book.sections[0]?.id
-        ? max * progress
-        : (readerSectionScrollTop(containerRef.current, activeSectionId) ?? null);
     if (programmaticScrollTimerRef.current !== null) {
       window.clearTimeout(programmaticScrollTimerRef.current);
     }
+    if (navigationRetryFrameRef.current !== null) {
+      window.cancelAnimationFrame(navigationRetryFrameRef.current);
+    }
+    if (navigationRetryTimerRef.current !== null) {
+      window.clearTimeout(navigationRetryTimerRef.current);
+    }
+    let cancelled = false;
+    let attempt = 0;
+    const retryDelays = [0, 50, 140, 280, 520] as const;
+    const attemptScroll = () => {
+      if (cancelled) return;
+      const container = containerRef.current;
+      if (container === null) return;
+      const max = Math.max(1, container.scrollHeight - container.clientHeight);
+      const firstSection = activeSectionId === props.book.sections[0]?.id;
+      const top = firstSection
+        ? max * progress
+        : readerSectionScrollTop(container, activeSectionId);
+      programmaticScrollRef.current = true;
+      programmaticScrollTargetRef.current = top ?? null;
+      if (top !== undefined) {
+        // PDF canvases can change the height of pages above the destination
+        // after the first paint. Recalculate and reapply a few times so a TOC
+        // click remains reliable while lazy pages settle.
+        container.scrollTo({ top, behavior: "instant" });
+      }
+      if (attempt >= retryDelays.length - 1) return;
+      attempt += 1;
+      navigationRetryTimerRef.current = window.setTimeout(() => {
+        navigationRetryFrameRef.current = window.requestAnimationFrame(attemptScroll);
+      }, retryDelays[attempt]);
+    };
+    navigationRetryFrameRef.current = window.requestAnimationFrame(attemptScroll);
     programmaticScrollTimerRef.current = window.setTimeout(() => {
       programmaticScrollRef.current = false;
       programmaticScrollTargetRef.current = null;
       programmaticScrollTimerRef.current = null;
     }, 720);
-    if (activeSectionId === props.book.sections[0]?.id) {
-      containerRef.current.scrollTo({
-        top: max * progress,
-        behavior: "instant",
-      });
-    } else {
-      // Navigation is a state change, not a user scroll. Jumping directly
-      // avoids intermediate scroll events changing the requested Locator.
-      scrollToReaderSection(activeSectionId, "instant");
-    }
-  }, [activeSectionId, contentReadyVersion, progress, props.book]);
+    return () => {
+      cancelled = true;
+      if (navigationRetryFrameRef.current !== null) {
+        window.cancelAnimationFrame(navigationRetryFrameRef.current);
+        navigationRetryFrameRef.current = null;
+      }
+      if (navigationRetryTimerRef.current !== null) {
+        window.clearTimeout(navigationRetryTimerRef.current);
+        navigationRetryTimerRef.current = null;
+      }
+    };
+  }, [activeSectionId, contentReadyVersion, navigationSequence, progress, props.book]);
   useEffect(() => {
     const reveal = searchReveal;
     if (
@@ -1693,6 +1729,12 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
       if (programmaticScrollTimerRef.current !== null) {
         window.clearTimeout(programmaticScrollTimerRef.current);
+      }
+      if (navigationRetryFrameRef.current !== null) {
+        window.cancelAnimationFrame(navigationRetryFrameRef.current);
+      }
+      if (navigationRetryTimerRef.current !== null) {
+        window.clearTimeout(navigationRetryTimerRef.current);
       }
     },
     [],

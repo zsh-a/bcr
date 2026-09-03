@@ -69,7 +69,7 @@ function pdfFixture() {
     "BT /F1 20 Tf 50 350 Td (Continuous page three) Tj ET",
   ];
   const objects = [
-    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Catalog /Pages 2 0 R /Outlines 10 0 R >>",
     "<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>",
     "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Resources << /Font << /F1 6 0 R >> >> /Contents 7 0 R >>",
     "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Resources << /Font << /F1 6 0 R >> >> /Contents 8 0 R >>",
@@ -78,6 +78,9 @@ function pdfFixture() {
     `<< /Length ${contents[0].length} >>\nstream\n${contents[0]}\nendstream`,
     `<< /Length ${contents[1].length} >>\nstream\n${contents[1]}\nendstream`,
     `<< /Length ${contents[2].length} >>\nstream\n${contents[2]}\nendstream`,
+    "<< /Type /Outlines /First 11 0 R /Last 12 0 R /Count 2 >>",
+    "<< /Title (Page two) /Parent 10 0 R /Dest [4 0 R /Fit] /Next 12 0 R >>",
+    "<< /Title (Page three) /Parent 10 0 R /Prev 11 0 R /Dest [5 0 R /Fit] >>",
   ];
   let raw = "%PDF-1.4\n";
   const offsets = [0];
@@ -330,6 +333,48 @@ await page.locator(".reader-reading-intro h1", { hasText: "reader-continuous-fix
 await page.locator(".reader-pdf-page").first().waitFor({ timeout: 20_000 });
 if ((await page.locator(".reader-pdf-page").count()) !== 3) {
   fail("PDF 没有建立连续页面列表");
+}
+if ((await page.locator(".reader-toc-item").count()) !== 2) {
+  fail("PDF 原生书签没有恢复为目录");
+}
+await page.getByRole("button", { name: /Page three/ }).click();
+await page.waitForTimeout(700);
+const pdfNavigation = await page.locator(".reader-reading-scroll").evaluate((element) => {
+  const target = element.querySelectorAll(".reader-pdf-page")[2];
+  if (target === undefined) return null;
+  const containerRect = element.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  return {
+    active: target.classList.contains("is-active"),
+    relativeTop: targetRect.top - containerRect.top,
+  };
+});
+if (pdfNavigation === null || !pdfNavigation.active || Math.abs(pdfNavigation.relativeTop) > 120) {
+  fail("PDF 目录点击没有稳定跳转到目标页面");
+}
+await page.locator(".reader-reading-scroll").evaluate((element) => {
+  element.scrollTop = 0;
+  element.dispatchEvent(new Event("scroll"));
+});
+await page.waitForTimeout(260);
+await page.getByRole("button", { name: /Page three/ }).click();
+await page.waitForTimeout(700);
+const repeatedPdfNavigation = await page.locator(".reader-reading-scroll").evaluate((element) => {
+  const target = element.querySelectorAll(".reader-pdf-page")[2];
+  if (target === undefined) return null;
+  const containerRect = element.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  return {
+    active: target.classList.contains("is-active"),
+    relativeTop: targetRect.top - containerRect.top,
+  };
+});
+if (
+  repeatedPdfNavigation === null ||
+  !repeatedPdfNavigation.active ||
+  Math.abs(repeatedPdfNavigation.relativeTop) > 120
+) {
+  fail("重复点击 PDF 目录项没有重新定位到目标页面");
 }
 await page.locator(".reader-pdf-canvas-shell.is-ready").first().waitFor({ timeout: 20_000 });
 const lastPdfPage = page.locator(".reader-pdf-page").last();

@@ -41,6 +41,7 @@ function initialState(): ReaderState {
     library: [demo],
     activeBookId: demo.id,
     activeSectionId: demo.sections[0]?.id ?? null,
+    navigationSequence: 0,
     progressByBook: { [demo.id]: progress },
     bookmarksByBook: { [demo.id]: [] },
     annotationsByBook: { [demo.id]: [] },
@@ -238,6 +239,7 @@ class ReaderStore {
     this.set({
       activeBookId: book.id,
       activeSectionId: progress.locator.sectionId,
+      navigationSequence: this.state.navigationSequence + 1,
       progressByBook: { ...this.state.progressByBook, [book.id]: progress },
       query: "",
       searchHits: [],
@@ -258,6 +260,7 @@ class ReaderStore {
     this.set({
       activeBookId: book.id,
       activeSectionId: progress.locator.sectionId,
+      navigationSequence: this.state.navigationSequence + 1,
       progressByBook: { ...this.state.progressByBook, [book.id]: progress },
       query: "",
       searchHits: [],
@@ -278,6 +281,7 @@ class ReaderStore {
     this.set({
       activeBookId: book.id,
       activeSectionId: progress.locator.sectionId,
+      navigationSequence: this.state.navigationSequence + 1,
       progressByBook: { ...this.state.progressByBook, [book.id]: progress },
       query: "",
       searchHits: [],

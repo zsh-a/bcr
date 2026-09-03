@@ -26,4 +26,10 @@ describe("Reader annotation anchors", () => {
       },
     });
   });
+
+  it("emits an explicit navigation signal even when reopening the same section", () => {
+    const before = getReaderState().navigationSequence;
+    reader.openBook(book.id, book.sections[0]!.id);
+    expect(getReaderState().navigationSequence).toBe(before + 1);
+  });
 });
