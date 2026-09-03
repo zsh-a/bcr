@@ -165,6 +165,35 @@ if (
 if (!(await page.locator(".reader-sidebar-footer").innerText()).includes("OPFS"))
   fail("本地持久化状态未展示");
 
+const workspace = page.locator(".reader-workspace");
+if (await workspace.evaluate((element) => element.classList.contains("sidebar-visible"))) {
+  await page.getByRole("button", { name: "收起书库" }).first().click();
+}
+const openSidebar = page.getByRole("button", { name: "打开书库" });
+await openSidebar.waitFor({ state: "visible", timeout: 5_000 });
+await openSidebar.click();
+await workspace.waitFor({ state: "attached" });
+if (!(await workspace.evaluate((element) => element.classList.contains("sidebar-visible")))) {
+  fail("书库收起后没有可用的打开按钮");
+}
+
+const fullscreenButton = page.getByRole("button", { name: "进入全屏" });
+await fullscreenButton.waitFor({ state: "visible", timeout: 5_000 });
+if (!(await fullscreenButton.isEnabled())) fail("阅读器全屏按钮在支持的浏览器中不可用");
+await fullscreenButton.click();
+await page.waitForFunction(
+  () => document.fullscreenElement?.classList.contains("reader-main"),
+  null,
+  {
+    timeout: 5_000,
+  },
+);
+if ((await page.getByRole("button", { name: "退出全屏" }).count()) !== 1) {
+  fail("进入全屏后没有切换为退出全屏操作");
+}
+await page.keyboard.press("Escape");
+await page.waitForFunction(() => document.fullscreenElement === null, null, { timeout: 5_000 });
+
 // Reader can consume the canonical Document JSON bundle directly, without
 // invoking a format parser. Keep this on the real file input so the same path
 // is covered as a user dropping an exported package into the library.

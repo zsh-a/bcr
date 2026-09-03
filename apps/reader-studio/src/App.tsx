@@ -10,8 +10,10 @@ import {
   FileText,
   Leaf,
   List,
+  Maximize2,
   MessageSquarePlus,
   Minus,
+  Minimize2,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -130,6 +132,75 @@ function sourceIcon(format: ReaderBook["source"]["format"]) {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+interface ReaderFullscreenState {
+  readonly isFullscreen: boolean;
+  readonly supported: boolean;
+  readonly toggle: () => Promise<void>;
+}
+
+/** Keep native fullscreen state in sync, including Esc and browser chrome exits. */
+function useReaderFullscreen(
+  targetRef: RefObject<HTMLElement | null>,
+  onError?: (message: string) => void,
+): ReaderFullscreenState {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [supported, setSupported] = useState(false);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const target = targetRef.current;
+    const canRequest =
+      target !== null &&
+      typeof target.requestFullscreen === "function" &&
+      document.fullscreenEnabled !== false;
+    setSupported(canRequest);
+
+    const syncState = () => {
+      setIsFullscreen(document.fullscreenElement === targetRef.current);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || document.fullscreenElement !== targetRef.current) return;
+      // Some embedded browsers expose Fullscreen API state but do not exit on
+      // Escape until the page forwards the intent to the document explicitly.
+      event.preventDefault();
+      if (typeof document.exitFullscreen === "function") {
+        void document.exitFullscreen().catch(() => undefined);
+      }
+    };
+    document.addEventListener("fullscreenchange", syncState);
+    document.addEventListener("keydown", onKeyDown);
+    syncState();
+    return () => {
+      document.removeEventListener("fullscreenchange", syncState);
+      document.removeEventListener("keydown", onKeyDown);
+      if (document.fullscreenElement === target && typeof document.exitFullscreen === "function") {
+        void document.exitFullscreen().catch(() => undefined);
+      }
+    };
+  }, [targetRef]);
+
+  const toggle = useCallback(async () => {
+    if (typeof document === "undefined") return;
+    const target = targetRef.current;
+    if (target === null || !supported) {
+      onError?.("当前浏览器不支持全屏阅读");
+      return;
+    }
+    try {
+      if (document.fullscreenElement === target) {
+        await document.exitFullscreen();
+        return;
+      }
+      if (document.fullscreenElement !== null) await document.exitFullscreen();
+      await target.requestFullscreen();
+    } catch {
+      onError?.("无法进入全屏阅读，请检查浏览器的全屏权限");
+    }
+  }, [onError, supported, targetRef]);
+
+  return { isFullscreen, supported, toggle };
 }
 
 interface TextMatchRange {
@@ -578,6 +649,7 @@ export function App() {
         window.setTimeout(() => searchRef.current?.focus(), 0);
       }
       if (event.key === "Escape") {
+        if (document.fullscreenElement !== null) return;
         if (searchOpen) reader.setSearchOpen(false);
         else if (sidebarOpen) reader.toggleSidebar();
       }
@@ -819,6 +891,7 @@ export function App() {
         onImport={(files) => void importFiles(files)}
         onOpenDocument={handoffDocument}
         documentHandoffBusy={documentHandoffBusy}
+        onNotice={setNotice}
       />
     </div>
   );
@@ -1080,6 +1153,7 @@ function ReaderWorkspace(props: {
   onImport: (files: ReadonlyArray<File>) => void;
   onOpenDocument: () => void;
   documentHandoffBusy: boolean;
+  onNotice: (message: string) => void;
 }) {
   const sidebarOpen = useReader((state) => state.sidebarOpen);
   const searchOpen = useReader((state) => state.searchOpen);
@@ -1090,6 +1164,8 @@ function ReaderWorkspace(props: {
   const [annotationOpen, setAnnotationOpen] = useState(false);
   const [annotationDraft, setAnnotationDraft] = useState("");
   const [annotationLocator, setAnnotationLocator] = useState<ReaderLocator | null>(null);
+  const readerMainRef = useRef<HTMLElement>(null);
+  const fullscreen = useReaderFullscreen(readerMainRef, props.onNotice);
   if (active === undefined) return null;
   const openAnnotationComposer = () => {
     setAnnotationDraft("");
@@ -1117,7 +1193,7 @@ function ReaderWorkspace(props: {
           onClick={() => reader.toggleSidebar()}
         />
       )}
-      <main id="reader-content" className="reader-main" aria-label="阅读内容">
+      <main id="reader-content" ref={readerMainRef} className="reader-main" aria-label="阅读内容">
         {searchOpen && query.length > 0 && <SearchPanel hits={searchHits} />}
         <ReaderToolbar
           book={active}
@@ -1125,6 +1201,7 @@ function ReaderWorkspace(props: {
           onAddAnnotation={openAnnotationComposer}
           onOpenDocument={props.onOpenDocument}
           documentHandoffBusy={props.documentHandoffBusy}
+          fullscreen={fullscreen}
         />
         {annotationOpen && (
           <AnnotationComposer
@@ -1399,7 +1476,9 @@ function ReaderToolbar(props: {
   onAddAnnotation: () => void;
   onOpenDocument: () => void;
   documentHandoffBusy: boolean;
+  fullscreen: ReaderFullscreenState;
 }) {
+  const sidebarOpen = useReader((state) => state.sidebarOpen);
   const activeSectionId = useReader((state) => state.activeSectionId);
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
   const locator = useReader((state) => state.progressByBook[props.book.id]?.locator);
@@ -1418,9 +1497,14 @@ function ReaderToolbar(props: {
           type="button"
           className="reader-icon-button reader-sidebar-toggle"
           onClick={() => reader.toggleSidebar()}
-          aria-label="切换书库"
+          aria-label={sidebarOpen ? "收起书库" : "打开书库"}
+          title={sidebarOpen ? "收起书库" : "打开书库"}
         >
-          <PanelLeftOpen className="reader-icon" />
+          {sidebarOpen ? (
+            <PanelLeftClose className="reader-icon" />
+          ) : (
+            <PanelLeftOpen className="reader-icon" />
+          )}
         </button>
         <div>
           <span className="reader-eyebrow">READING SESSION</span>
@@ -1467,6 +1551,30 @@ function ReaderToolbar(props: {
         <ThemeMenu settings={props.settings} />
         <LayoutMenu settings={props.settings} />
         <FontSizeMenu settings={props.settings} />
+        <button
+          type="button"
+          className={`reader-icon-button reader-fullscreen-toggle ${props.fullscreen.isFullscreen ? "is-active" : ""}`}
+          onClick={() => void props.fullscreen.toggle()}
+          disabled={!props.fullscreen.supported}
+          aria-label={props.fullscreen.isFullscreen ? "退出全屏" : "进入全屏"}
+          aria-pressed={props.fullscreen.isFullscreen}
+          title={
+            props.fullscreen.supported
+              ? props.fullscreen.isFullscreen
+                ? "退出全屏（Esc）"
+                : "进入全屏"
+              : "当前浏览器不支持全屏"
+          }
+        >
+          {props.fullscreen.isFullscreen ? (
+            <Minimize2 className="reader-icon" />
+          ) : (
+            <Maximize2 className="reader-icon" />
+          )}
+          <span className="reader-control-label">
+            {props.fullscreen.isFullscreen ? "退出全屏" : "全屏"}
+          </span>
+        </button>
       </div>
     </div>
   );
