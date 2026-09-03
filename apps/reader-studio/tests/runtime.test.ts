@@ -1,5 +1,5 @@
-import type { ArtifactRef, ArtifactStore } from "@bcr/core";
-import { artifactStore, ArtifactStoreTag } from "@bcr/core";
+import { artifactStore, ArtifactStoreTag, type ArtifactRef, type ArtifactStore } from "@bcr/core";
+import { progressForLocator } from "@bcr/reader-core";
 import {
   createDocumentContentPackage,
   createDocumentTranslationPackage,
@@ -12,10 +12,11 @@ import {
   importReaderDocumentHandoff,
   importReaderExportBundle,
   prepareReaderDocumentHandoff,
+  persistReader,
   restoreReader,
   type ReaderRuntime,
 } from "../src/runtime";
-import { createDemoBook } from "../src/model";
+import { createDemoBook, DEFAULT_READER_SETTINGS, type ReaderState } from "../src/model";
 
 async function makeArtifacts(store: MemoryStore): Promise<ArtifactStore> {
   const context = await Effect.runPromise(
@@ -30,6 +31,31 @@ const jsonRef = (id: string): ArtifactRef => ({
   storage: "opfs",
   format: "json",
 });
+
+async function withLocalStorage<T>(run: (values: Map<string, string>) => Promise<T>): Promise<T> {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, String(value)),
+    removeItem: (key: string) => values.delete(key),
+    clear: () => values.clear(),
+    key: (index: number) => [...values.keys()][index] ?? null,
+    get length() {
+      return values.size;
+    },
+  } as Storage;
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: storage });
+  try {
+    return await run(values);
+  } finally {
+    if (previous === undefined) {
+      Reflect.deleteProperty(globalThis, "localStorage");
+    } else {
+      Object.defineProperty(globalThis, "localStorage", previous);
+    }
+  }
+}
 
 describe("reader durable Document handoff", () => {
   it("reports skipped binary books when a source Artifact is missing", async () => {
@@ -307,5 +333,70 @@ describe("reader durable Document handoff", () => {
     const file = new File([payload.text], "page.json", { type: payload.mime });
 
     await expect(importReaderExportBundle(runtime, file)).rejects.toThrow("Manga Studio");
+  });
+
+  it("mirrors the reading session so a memory-backed metadata store survives reload", async () => {
+    await withLocalStorage(async (values) => {
+      const store = new MemoryStore();
+      const artifacts = await makeArtifacts(store);
+      const metadata = new Map<string, string>();
+      const runtime: ReaderRuntime = {
+        binary: store,
+        artifacts,
+        meta: {
+          kvGet: async (key: string) => metadata.get(key),
+          kvSet: async (key: string, value: string) => {
+            metadata.set(key, value);
+          },
+        } as never,
+        ftsReady: false,
+        indexSession: undefined,
+        parseSession: undefined,
+        parserMode: "main",
+      };
+      const book = createDemoBook();
+      const progress = progressForLocator(
+        book,
+        {
+          kind: "section",
+          sectionId: book.sections[2]!.id,
+          progression: 0.45,
+        },
+        123,
+      );
+      const state: ReaderState = {
+        status: "ready",
+        error: null,
+        library: [book],
+        activeBookId: book.id,
+        activeSectionId: progress.locator.sectionId,
+        navigationSequence: 0,
+        progressByBook: { [book.id]: progress },
+        bookmarksByBook: { [book.id]: [] },
+        annotationsByBook: { [book.id]: [] },
+        query: "",
+        searchHits: [],
+        searchBookId: null,
+        searchActiveIndex: -1,
+        searchBusy: false,
+        searchReveal: null,
+        settings: DEFAULT_READER_SETTINGS,
+        sidebarOpen: false,
+        searchOpen: false,
+        lastSavedAt: null,
+      };
+
+      await persistReader(runtime, state);
+
+      expect(values.has("bcr.reader.session.v1")).toBe(true);
+      const restored = await restoreReader({
+        ...runtime,
+        meta: { kvGet: async () => undefined } as never,
+      });
+      expect(restored?.progressByBook[book.id]).toMatchObject({
+        locator: { sectionId: book.sections[2]!.id, progression: 0.45 },
+        percentage: progress.percentage,
+      });
+    });
   });
 });

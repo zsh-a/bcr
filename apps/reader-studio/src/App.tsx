@@ -71,6 +71,7 @@ import {
   importReaderExportBundle,
   importReaderFile,
   indexBook,
+  mirrorReaderSession,
   prepareReaderDocumentHandoff,
   persistReader,
   restoreReader,
@@ -447,23 +448,63 @@ function highlightHtml(value: string, query: string): string {
   return body.innerHTML;
 }
 
-function readerSectionScrollTop(container: HTMLElement, sectionId: string): number | undefined {
+interface ReaderScrollPosition {
+  readonly top: number;
+  readonly left: number;
+}
+
+function readerSectionScrollPosition(
+  container: HTMLElement,
+  sectionId: string,
+): ReaderScrollPosition | undefined {
   const target = container.querySelector<HTMLElement>(
     `[data-reader-section="${CSS.escape(sectionId)}"]`,
   );
   if (target === null) return undefined;
   const containerRect = container.getBoundingClientRect();
   const targetRect = target.getBoundingClientRect();
-  const max = Math.max(0, container.scrollHeight - container.clientHeight);
-  return Math.min(max, Math.max(0, container.scrollTop + targetRect.top - containerRect.top - 28));
+  const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+  const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+  return {
+    top: Math.min(
+      maxTop,
+      Math.max(0, container.scrollTop + targetRect.top - containerRect.top - 28),
+    ),
+    left: Math.min(
+      maxLeft,
+      Math.max(0, container.scrollLeft + targetRect.left - containerRect.left - 28),
+    ),
+  };
+}
+
+function readerUsesHorizontalPaging(
+  container: HTMLElement,
+  layout: ReaderSettings["layout"],
+): boolean {
+  if (layout !== "paged") return false;
+  const horizontalMax = Math.max(0, container.scrollWidth - container.clientWidth);
+  const verticalMax = Math.max(0, container.scrollHeight - container.clientHeight);
+  // A malformed/legacy paged layout can still overflow vertically. In that
+  // case vertical scrolling is the only meaningful reading axis; use the
+  // horizontal axis only once the paged columns actually dominate.
+  return horizontalMax > verticalMax;
+}
+
+function readerScrollPercentage(container: HTMLElement, layout: ReaderSettings["layout"]): number {
+  const horizontal = readerUsesHorizontalPaging(container, layout);
+  const offset = horizontal ? container.scrollLeft : container.scrollTop;
+  const max = horizontal
+    ? Math.max(1, container.scrollWidth - container.clientWidth)
+    : Math.max(1, container.scrollHeight - container.clientHeight);
+  return clamp(offset / max, 0, 1);
 }
 
 function scrollToReaderSection(sectionId: string, behavior: ScrollBehavior = "smooth"): void {
   const container = document.querySelector<HTMLElement>(".reader-reading-scroll");
   if (container === null) return;
-  const top = readerSectionScrollTop(container, sectionId);
-  if (top === undefined) return;
-  container.scrollTo({ top, behavior });
+  const position = readerSectionScrollPosition(container, sectionId);
+  if (position === undefined) return;
+  container.scrollTo({ ...position, behavior });
 }
 
 function scrollToReaderMatch(sectionId: string, behavior: ScrollBehavior = "smooth"): boolean {
@@ -477,9 +518,17 @@ function scrollToReaderMatch(sectionId: string, behavior: ScrollBehavior = "smoo
   }
   const containerRect = container.getBoundingClientRect();
   const targetRect = target.getBoundingClientRect();
+  const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+  const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
   const top =
     container.scrollTop + targetRect.top - containerRect.top - container.clientHeight * 0.34;
-  container.scrollTo({ top: Math.max(0, top), behavior });
+  const left =
+    container.scrollLeft + targetRect.left - containerRect.left - container.clientWidth * 0.34;
+  container.scrollTo({
+    top: Math.min(maxTop, Math.max(0, top)),
+    left: Math.min(maxLeft, Math.max(0, left)),
+    behavior,
+  });
   return true;
 }
 
@@ -528,10 +577,15 @@ let readerPersistenceQueue: Promise<void> = Promise.resolve();
 function persistReaderSnapshot(runtime: ReaderRuntime): void {
   const state = getReaderState();
   if (state.status !== "ready") return;
+  // Keep the small session snapshot synchronously available before the async
+  // SQLite/OPFS queue gets a chance to run. Mobile browsers may terminate a
+  // page immediately after pagehide/visibilitychange.
+  mirrorReaderSession(state);
+  const save = () =>
+    persistReader(runtime, state, { mirrorSession: false }).then(() => reader.markSaved());
   readerPersistenceQueue = readerPersistenceQueue
     .catch(() => undefined)
-    .then(() => persistReader(runtime, state))
-    .then(() => reader.markSaved())
+    .then(save)
     .catch(() => undefined);
 }
 
@@ -2201,7 +2255,7 @@ function ReadingView(props: {
   const lastScrollUpdateRef = useRef(0);
   const userScrollRef = useRef(false);
   const programmaticScrollRef = useRef(false);
-  const programmaticScrollTargetRef = useRef<number | null>(null);
+  const programmaticScrollTargetRef = useRef<ReaderScrollPosition | null>(null);
   const programmaticScrollTimerRef = useRef<number | null>(null);
   const navigationRetryFrameRef = useRef<number | null>(null);
   const navigationRetryTimerRef = useRef<number | null>(null);
@@ -2210,14 +2264,15 @@ function ReadingView(props: {
   const updateLocator = useCallback(() => {
     const container = containerRef.current;
     if (container === null || props.book.sections.length === 0) return;
-    const max = Math.max(1, container.scrollHeight - container.clientHeight);
-    const percentage = clamp(container.scrollTop / max, 0, 1);
-    const mapped = readerLocatorAtScroll(props.book, container, activeSectionId);
+    const percentage = readerScrollPercentage(container, settings.layout);
+    const mapped = readerUsesHorizontalPaging(container, settings.layout)
+      ? undefined
+      : readerLocatorAtScroll(props.book, container, activeSectionId);
     reader.setLocator(
       mapped?.locator ?? locatorAtPercentage(props.book, percentage),
       mapped?.percentage ?? percentage,
     );
-  }, [activeSectionId, props.book]);
+  }, [activeSectionId, props.book, settings.layout]);
   useEffect(() => {
     if (activeSectionId === null || containerRef.current === null) return;
     const explicitNavigation = navigationSequence !== handledNavigationSequenceRef.current;
@@ -2244,19 +2299,27 @@ function ReadingView(props: {
       if (cancelled) return;
       const container = containerRef.current;
       if (container === null) return;
-      const max = Math.max(1, container.scrollHeight - container.clientHeight);
-      const firstSection = activeSectionId === props.book.sections[0]?.id;
-      const top = firstSection
-        ? max * progress
-        : readerSectionScrollTop(container, activeSectionId);
+      const horizontalPaging = readerUsesHorizontalPaging(container, settings.layout);
+      const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+      const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+      const sectionPosition = readerSectionScrollPosition(container, activeSectionId);
+      const position = horizontalPaging
+        ? explicitNavigation
+          ? (sectionPosition ?? { top: 0, left: maxLeft * progress })
+          : { top: 0, left: maxLeft * progress }
+        : {
+            top:
+              activeSectionId === props.book.sections[0]?.id
+                ? maxTop * progress
+                : (sectionPosition?.top ?? 0),
+            left: 0,
+          };
       programmaticScrollRef.current = true;
-      programmaticScrollTargetRef.current = top ?? null;
-      if (top !== undefined) {
-        // PDF canvases can change the height of pages above the destination
-        // after the first paint. Recalculate and reapply a few times so a TOC
-        // click remains reliable while lazy pages settle.
-        container.scrollTo({ top, behavior: "instant" });
-      }
+      programmaticScrollTargetRef.current = position;
+      // PDF canvases can change the height of pages above the destination
+      // after the first paint. Recalculate and reapply a few times so a TOC
+      // click remains reliable while lazy pages settle.
+      container.scrollTo({ ...position, behavior: "instant" });
       if (attempt >= retryDelays.length - 1) return;
       attempt += 1;
       navigationRetryTimerRef.current = window.setTimeout(() => {
@@ -2280,7 +2343,14 @@ function ReadingView(props: {
         navigationRetryTimerRef.current = null;
       }
     };
-  }, [activeSectionId, contentReadyVersion, navigationSequence, progress, props.book]);
+  }, [
+    activeSectionId,
+    contentReadyVersion,
+    navigationSequence,
+    progress,
+    props.book,
+    settings.layout,
+  ]);
   useEffect(() => {
     const reveal = searchReveal;
     if (
@@ -2361,11 +2431,19 @@ function ReadingView(props: {
         onScroll={() => {
           if (programmaticScrollRef.current) {
             const expected = programmaticScrollTargetRef.current;
-            const current = containerRef.current?.scrollTop ?? 0;
+            const current = {
+              top: containerRef.current?.scrollTop ?? 0,
+              left: containerRef.current?.scrollLeft ?? 0,
+            };
             // Ignore the event generated by our own auto-scroll. A scroll that
             // lands elsewhere is a user gesture (for example immediately
             // dragging a freshly loaded PDF to its last page).
-            if (expected !== null && Math.abs(current - expected) <= 8) return;
+            if (
+              expected !== null &&
+              Math.abs(current.top - expected.top) <= 8 &&
+              Math.abs(current.left - expected.left) <= 8
+            )
+              return;
             programmaticScrollRef.current = false;
             programmaticScrollTargetRef.current = null;
             if (programmaticScrollTimerRef.current !== null) {

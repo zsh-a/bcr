@@ -60,6 +60,11 @@ export interface ReaderRuntime {
   readonly parserMode: "worker" | "main";
 }
 
+export interface PersistReaderOptions {
+  /** Set false when the caller has already mirrored the latest session synchronously. */
+  readonly mirrorSession?: boolean;
+}
+
 export interface ReaderSearchResult {
   readonly hits: ReadonlyArray<SearchHit>;
   readonly indexing: boolean;
@@ -501,7 +506,12 @@ function persistBook(book: ReaderBook): PersistedBook {
   };
 }
 
-export async function persistReader(runtime: ReaderRuntime, state: ReaderState): Promise<void> {
+export async function persistReader(
+  runtime: ReaderRuntime,
+  state: ReaderState,
+  options: PersistReaderOptions = {},
+): Promise<void> {
+  const mirrorSession = options.mirrorSession ?? true;
   const books = state.library.map(persistBook);
   const librarySignature = state.library
     .map(
@@ -509,20 +519,11 @@ export async function persistReader(runtime: ReaderRuntime, state: ReaderState):
         `${book.id}:${book.updatedAt}:${book.source.ref?.hash ?? ""}:${book.sections.length}`,
     )
     .join("\u0000");
-  const session: PersistedReaderSession = {
-    version: 1,
-    activeBookId: state.activeBookId,
-    progressByBook: state.progressByBook,
-    settings: state.settings,
-    bookmarksByBook: state.bookmarksByBook,
-    annotationsByBook: state.annotationsByBook,
-    searchSession: {
-      query: state.query,
-      searchBookId: state.searchBookId,
-      searchOpen: state.searchOpen,
-    },
-  };
+  const session = persistedReaderSession(state);
   const sessionRaw = JSON.stringify(session);
+  // Make the small session durable even when the async metadata backend is
+  // unavailable or the mobile page is terminated during a pending write.
+  if (mirrorSession) mirrorReaderSession(state);
   if (persistedLibrarySignatures.get(runtime) !== librarySignature) {
     const library: PersistedReaderLibrary = { version: 1, books };
     const legacy: PersistedReaderSnapshot = {
@@ -555,8 +556,35 @@ export async function persistReader(runtime: ReaderRuntime, state: ReaderState):
     READER_SESSION_META_KEY,
     READER_SESSION_STORAGE_KEY,
     sessionRaw,
-    false,
+    mirrorSession,
+    mirrorSession,
   );
+}
+
+function persistedReaderSession(state: ReaderState): PersistedReaderSession {
+  return {
+    version: 1,
+    activeBookId: state.activeBookId,
+    progressByBook: state.progressByBook,
+    settings: state.settings,
+    bookmarksByBook: state.bookmarksByBook,
+    annotationsByBook: state.annotationsByBook,
+    searchSession: {
+      query: state.query,
+      searchBookId: state.searchBookId,
+      searchOpen: state.searchOpen,
+    },
+  };
+}
+
+/** Synchronous best-effort mirror used by pagehide/visibilitychange flushes. */
+export function mirrorReaderSession(state: ReaderState): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(READER_SESSION_STORAGE_KEY, JSON.stringify(persistedReaderSession(state)));
+  } catch {
+    // Private browsing or a full quota is handled by the async metadata path.
+  }
 }
 
 async function writeReaderValue(
@@ -565,6 +593,7 @@ async function writeReaderValue(
   storageKey: string,
   raw: string,
   mirrorLocal: boolean,
+  fallbackLocal = true,
 ): Promise<boolean> {
   let saved = false;
   if (runtime.meta !== undefined) {
@@ -576,7 +605,7 @@ async function writeReaderValue(
     }
   }
   try {
-    if ((!saved || mirrorLocal) && typeof localStorage !== "undefined") {
+    if ((mirrorLocal || (!saved && fallbackLocal)) && typeof localStorage !== "undefined") {
       localStorage.setItem(storageKey, raw);
       saved = true;
     }
@@ -617,8 +646,10 @@ async function readerValue(
   runtime: ReaderRuntime,
   metaKey: string,
   storageKey: string,
+  preferLocal = false,
 ): Promise<string | undefined> {
   const local = localStorageSnapshot(storageKey);
+  if (preferLocal && local !== undefined) return local;
   if (runtime.meta === undefined) return local;
   try {
     return (await runtime.meta.kvGet(metaKey)) ?? local;
@@ -886,6 +917,7 @@ export async function restoreReader(
     runtime,
     READER_SESSION_META_KEY,
     READER_SESSION_STORAGE_KEY,
+    true,
   );
   const legacy = parsePersisted<Partial<PersistedReaderSnapshot>>(legacyRaw);
   const library = parsePersisted<Partial<PersistedReaderLibrary>>(libraryRaw);

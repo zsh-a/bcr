@@ -1866,9 +1866,12 @@
 }
 
 .reader-layout-paged .reader-reading-column {
+  height: 100%;
+  min-height: 0;
   width: max(100% - 68px, 720px);
   column-width: min(70vw, 710px);
   column-gap: 84px;
+  column-fill: auto;
 }
 
 .reader-layout-paged .reader-reading-intro,

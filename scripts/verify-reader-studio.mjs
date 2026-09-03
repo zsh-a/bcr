@@ -278,6 +278,7 @@ await scroll.evaluate((element) => {
 await page.waitForTimeout(500);
 const progress = await page.locator(".reader-progress-ring").innerText();
 if (progress === "0%") fail("阅读进度没有随滚动更新");
+const progressBeforeReload = progress;
 
 await search.fill("Locator");
 await page.locator(".reader-search-result").first().waitFor({ timeout: 10_000 });
@@ -292,6 +293,9 @@ if (
     .evaluate((element) => element.classList.contains("reader-theme-night")))
 ) {
   fail("刷新后阅读主题未恢复");
+}
+if ((await page.locator(".reader-progress-ring").innerText()) !== progressBeforeReload) {
+  fail("刷新后阅读进度未恢复");
 }
 if ((await page.locator(".reader-bookmark-item").count()) < 1) {
   fail("刷新后阅读书签未恢复");
