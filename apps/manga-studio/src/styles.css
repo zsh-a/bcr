@@ -37,6 +37,18 @@
   --manga-paper: #f7f3eb;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  background: var(--manga-bg);
+}
+
 .manga-boot {
   display: flex;
   height: 100%;
@@ -85,6 +97,7 @@
 }
 
 .manga-studio {
+  position: relative;
   display: flex;
   height: 100%;
   min-height: 0;
@@ -229,9 +242,16 @@
 
 .manga-header-actions {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 8px;
   margin-left: auto;
+}
+
+.manga-mobile-tools-button,
+.manga-mobile-tools-close,
+.manga-mobile-tools-scrim {
+  display: none;
 }
 
 .manga-button {
@@ -1602,6 +1622,49 @@
     display: none;
   }
 
+  .manga-mobile-tools-button {
+    display: inline-flex;
+    min-height: 44px;
+    flex: 0 0 auto;
+  }
+
+  .manga-mobile-tools-scrim {
+    position: absolute;
+    z-index: 39;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: min(100%, 100dvh);
+    border: 0;
+    background: rgba(0, 0, 0, 0.48);
+    backdrop-filter: blur(2px);
+  }
+
+  .manga-studio.manga-mobile-tools-open .manga-sidebar-right {
+    position: absolute;
+    z-index: 40;
+    top: 0;
+    right: 0;
+    bottom: auto;
+    display: flex;
+    width: min(360px, calc(100% - 16px));
+    height: min(100%, 100dvh);
+    max-height: none;
+    border-left: 1px solid var(--manga-border-strong);
+    background: var(--manga-surface);
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: -18px 0 48px rgba(0, 0, 0, 0.42);
+  }
+
+  .manga-studio.manga-mobile-tools-open .manga-sidebar-right > section {
+    width: 100%;
+    overflow-y: auto;
+  }
+
+  .manga-mobile-tools-close {
+    display: grid;
+  }
+
   .manga-page-stage {
     width: min(58vh, 460px);
   }
@@ -1617,7 +1680,7 @@
     min-height: 112px;
     flex-wrap: wrap;
     gap: 8px 12px;
-    padding: 12px 14px;
+    padding: 12px max(14px, env(safe-area-inset-right)) 12px max(14px, env(safe-area-inset-left));
   }
 
   .manga-brand-lockup {
@@ -1638,12 +1701,29 @@
   }
 
   .manga-header-actions {
+    width: 100%;
+    margin-left: 0;
     gap: 5px;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .manga-header-actions::-webkit-scrollbar {
+    display: none;
   }
 
   .manga-header-actions .manga-button {
+    flex: 0 0 auto;
     min-height: 44px;
     padding: 0 10px;
+  }
+
+  .manga-icon-button,
+  .manga-glossary-remove {
+    width: 44px;
+    height: 44px;
   }
 
   .manga-workspace {

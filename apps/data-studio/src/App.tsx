@@ -144,6 +144,9 @@ function DataTableView(props: {
   const visible = filteredRows.slice(0, 250);
   return (
     <div className="data-table-frame">
+      <div className="data-table-scroll-hint" aria-hidden="true">
+        左右滑动查看完整表格
+      </div>
       <div className="data-table-scroll">
         <table className="data-table">
           <thead>

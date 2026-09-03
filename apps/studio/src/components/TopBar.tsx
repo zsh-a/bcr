@@ -32,7 +32,7 @@ export function TopBar(props: {
         onClick={() => void navigate({ to: "/" })}
         title="返回主页（Alt+0）"
         aria-label="返回工作区主页"
-        className={`inline-flex size-11 items-center justify-center rounded-[var(--radius-sm)] border transition-colors ${
+        className={`inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border transition-colors ${
           props.active === "home"
             ? "border-border text-faint"
             : "border-border bg-raised text-muted hover:border-border-strong hover:text-text"
@@ -41,15 +41,15 @@ export function TopBar(props: {
         <House className="size-4" />
       </button>
 
-      <div className="flex items-center gap-2.5">
-        <SquareTerminal className="size-5 text-accent" />
-        <span className="text-[14px] font-semibold tracking-[0.02em]">
+      <div className="studio-topbar-brand flex min-w-0 shrink items-center gap-2.5">
+        <SquareTerminal className="size-5 shrink-0 text-accent" />
+        <span className="studio-topbar-brand-copy min-w-0 truncate text-[14px] font-semibold tracking-[0.02em]">
           BCR<span className="text-faint"> / </span>
           <span className="text-muted">{activeApp?.title ?? "Home"}</span>
         </span>
       </div>
 
-      <div className="h-6 w-px bg-border" />
+      <div className="h-6 w-px shrink-0 bg-border" />
 
       <span className="studio-runtime-label font-mono text-[11px] tracking-[0.08em] text-faint">
         BROWSER COMPUTE RUNTIME
@@ -73,7 +73,7 @@ export function TopBar(props: {
         onClick={artifactUsage.refresh}
         title="刷新本地 Artifact 容量"
         aria-label="刷新本地 Artifact 容量"
-        className="studio-storage-status inline-flex h-10 items-center gap-2 rounded-[var(--radius-sm)] border border-border px-2.5 font-mono text-[11px] text-faint transition-colors hover:border-border-strong hover:text-text"
+        className="studio-storage-status inline-flex h-10 shrink-0 items-center gap-2 rounded-[var(--radius-sm)] border border-border px-2.5 font-mono text-[11px] text-faint transition-colors hover:border-border-strong hover:text-text"
       >
         <HardDrive className="size-4" />
         {artifactUsage.status === "ready" && artifactUsage.usage !== undefined ? (
@@ -97,20 +97,20 @@ export function TopBar(props: {
         title="打开全局搜索（⌘⇧F）"
         aria-label="打开全局搜索"
         aria-keyshortcuts="Control+Shift+F"
-        className="inline-flex h-11 items-center gap-2 rounded-[var(--radius-sm)] border border-border bg-raised px-3 text-[12px] text-muted transition-colors hover:border-border-strong hover:text-text"
+        className="studio-topbar-action inline-flex h-11 shrink-0 items-center gap-2 rounded-[var(--radius-sm)] border border-border bg-raised px-3 text-[12px] text-muted transition-colors hover:border-border-strong hover:text-text"
       >
         <Search className="size-4" />
-        <span className="font-mono text-[11px]">搜索</span>
+        <span className="studio-topbar-button-label font-mono text-[11px]">搜索</span>
       </button>
 
       <button
         type="button"
         onClick={props.onOpenPalette}
         aria-label="打开命令面板"
-        className="inline-flex h-11 items-center gap-2 rounded-[var(--radius-sm)] border border-border bg-raised px-3 text-[12px] text-muted transition-colors hover:border-border-strong hover:text-text"
+        className="studio-topbar-action inline-flex h-11 shrink-0 items-center gap-2 rounded-[var(--radius-sm)] border border-border bg-raised px-3 text-[12px] text-muted transition-colors hover:border-border-strong hover:text-text"
       >
         <Command className="size-4" />
-        <span className="font-mono text-[11px]">⌘K</span>
+        <span className="studio-topbar-button-label font-mono text-[11px]">⌘K</span>
       </button>
     </header>
   );

@@ -344,6 +344,7 @@ export function App() {
   const [modelRecords, setModelRecords] = useState<ReadonlyArray<MangaModelRecord>>([]);
   const [modelCacheInfo, setModelCacheInfo] = useState<MangaModelCacheInfo | null>(null);
   const [modelActionKey, setModelActionKey] = useState<string | null>(null);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [online, setOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine,
   );
@@ -363,6 +364,15 @@ export function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!mobileToolsOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileToolsOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileToolsOpen]);
 
   useEffect(() => {
     if (runtime === null) return;
@@ -864,7 +874,7 @@ export function App() {
   }
 
   return (
-    <div className="manga-studio">
+    <div className={`manga-studio ${mobileToolsOpen ? "manga-mobile-tools-open" : ""}`}>
       <header className="manga-header">
         <div className="manga-brand-lockup">
           <div className="manga-brand-mark">M/01</div>
@@ -887,6 +897,16 @@ export function App() {
         </div>
 
         <div className="manga-header-actions">
+          <button
+            type="button"
+            className="manga-button manga-button-secondary manga-mobile-tools-button"
+            onClick={() => setMobileToolsOpen(true)}
+            aria-expanded={mobileToolsOpen}
+            aria-controls="manga-mobile-tools-panel"
+          >
+            <PanelRight className="size-4" />
+            工具
+          </button>
           <button
             type="button"
             className="manga-button manga-button-secondary"
@@ -962,6 +982,15 @@ export function App() {
           />
         </div>
       </header>
+
+      {mobileToolsOpen && (
+        <button
+          type="button"
+          className="manga-mobile-tools-scrim"
+          onClick={() => setMobileToolsOpen(false)}
+          aria-label="关闭工具面板"
+        />
+      )}
 
       <div className="manga-workspace">
         <aside className="manga-sidebar manga-sidebar-left">
@@ -1232,11 +1261,23 @@ export function App() {
           </div>
         </main>
 
-        <aside className="manga-sidebar manga-sidebar-right">
+        <aside
+          id="manga-mobile-tools-panel"
+          className="manga-sidebar manga-sidebar-right"
+          aria-label="翻译工具"
+        >
           <section className="manga-sidebar-section manga-config-section">
             <div className="manga-section-heading">
               <span>TRANSLATION</span>
               <Languages className="size-4 text-[var(--manga-cyan)]" />
+              <button
+                type="button"
+                className="manga-icon-button manga-mobile-tools-close"
+                onClick={() => setMobileToolsOpen(false)}
+                aria-label="关闭工具面板"
+              >
+                <X className="size-4" />
+              </button>
             </div>
             <ModelCacheSummary
               info={modelCacheInfo}

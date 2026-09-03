@@ -5,7 +5,8 @@ import {
   type DockviewReadyEvent,
   type IDockviewPanelProps,
 } from "dockview-react";
-import { useCallback } from "react";
+import { PanelLeft, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { ConsolePanel } from "./ConsolePanel";
 import { InspectorPanel } from "./InspectorPanel";
 import { ProjectPanel } from "./ProjectPanel";
@@ -29,6 +30,8 @@ const components: Record<string, React.FunctionComponent<IDockviewPanelProps>> =
   tasks: () => <TasksPanel />,
   console: () => <ConsolePanel />,
 };
+
+type MobilePanel = "project" | "inspector";
 
 function defaultLayout(api: DockviewApi): void {
   api.addPanel({
@@ -79,6 +82,17 @@ export function resetLayout(): void {
 }
 
 export function Dock() {
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel | null>(null);
+
+  useEffect(() => {
+    if (mobilePanel === null) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobilePanel(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobilePanel]);
+
   const onReady = useCallback((event: DockviewReadyEvent) => {
     const { api } = event;
 
@@ -126,11 +140,78 @@ export function Dock() {
   }, []);
 
   return (
-    <DockviewReact
-      className="studio-dock"
-      theme={themeAbyss}
-      components={components}
-      onReady={onReady}
-    />
+    <div className="studio-dock-shell">
+      <DockviewReact
+        className="studio-dock"
+        theme={themeAbyss}
+        components={components}
+        onReady={onReady}
+      />
+
+      <button
+        type="button"
+        className="studio-mobile-panel-trigger"
+        onClick={() => setMobilePanel("project")}
+        aria-label="打开工作区面板"
+        aria-expanded={mobilePanel !== null}
+        aria-controls="studio-mobile-panels"
+      >
+        <PanelLeft className="size-4" />
+        <span>面板</span>
+      </button>
+
+      {mobilePanel !== null && (
+        <>
+          <button
+            type="button"
+            className="studio-mobile-panel-backdrop"
+            onClick={() => setMobilePanel(null)}
+            aria-label="关闭工作区面板"
+          />
+          <aside
+            id="studio-mobile-panels"
+            className="studio-mobile-panel-surface"
+            role="dialog"
+            aria-modal="true"
+            aria-label="工作区面板"
+          >
+            <div className="studio-mobile-panel-header">
+              <span>WORKSPACE PANELS</span>
+              <button
+                type="button"
+                className="studio-mobile-panel-close"
+                onClick={() => setMobilePanel(null)}
+                aria-label="关闭工作区面板"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="studio-mobile-panel-tabs" role="tablist" aria-label="工作区面板类型">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mobilePanel === "project"}
+                className={mobilePanel === "project" ? "is-active" : ""}
+                onClick={() => setMobilePanel("project")}
+              >
+                项目文件
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mobilePanel === "inspector"}
+                className={mobilePanel === "inspector" ? "is-active" : ""}
+                onClick={() => setMobilePanel("inspector")}
+              >
+                Inspector
+              </button>
+            </div>
+            <div className="studio-mobile-panel-content">
+              {mobilePanel === "project" ? <ProjectPanel /> : <InspectorPanel />}
+            </div>
+          </aside>
+        </>
+      )}
+    </div>
   );
 }

@@ -342,7 +342,7 @@ export function CommandPalette(props: { open: boolean; onOpenChange: (open: bool
       >
         <Dialog.Portal>
           <Dialog.Backdrop className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px]" />
-          <Dialog.Popup className="fixed top-[18%] left-1/2 z-50 w-105 -translate-x-1/2 overflow-hidden rounded-[var(--radius-md)] border border-border-strong bg-raised shadow-2xl shadow-black/60 outline-none studio-enter">
+          <Dialog.Popup className="fixed top-[18%] left-1/2 z-50 w-[min(26rem,calc(100vw-1rem))] -translate-x-1/2 overflow-hidden rounded-[var(--radius-md)] border border-border-strong bg-raised shadow-2xl shadow-black/60 outline-none studio-enter">
             <Dialog.Title className="sr-only">命令面板</Dialog.Title>
             <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
               <Search className="size-3.5 text-faint" />
