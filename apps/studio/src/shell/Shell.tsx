@@ -95,7 +95,9 @@ export function Shell() {
     <RuntimeProvider services={services}>
       <ServicesContext.Provider value={services}>
         <SearchBridge services={services} />
-        <div className="flex h-full flex-col">
+        <div
+          className={`studio-shell-frame flex h-full flex-col ${active === "reader" ? "reader-active" : ""}`}
+        >
           <TopBar
             active={active}
             onOpenPalette={() => setPaletteOpen(true)}

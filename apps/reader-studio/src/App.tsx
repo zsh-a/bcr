@@ -7,6 +7,7 @@ import {
   ChevronRight,
   CircleAlert,
   Columns2,
+  Download,
   FileText,
   Leaf,
   List,
@@ -138,6 +139,102 @@ interface ReaderFullscreenState {
   readonly isFullscreen: boolean;
   readonly supported: boolean;
   readonly toggle: () => Promise<void>;
+}
+
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: ReadonlyArray<string>;
+  readonly userChoice: Promise<{
+    readonly outcome: "accepted" | "dismissed";
+    readonly platform: string;
+  }>;
+  prompt: () => Promise<void>;
+}
+
+interface ReaderPwaInstallState {
+  readonly canInstall: boolean;
+  readonly isInstalled: boolean;
+  readonly isIos: boolean;
+  readonly install: () => Promise<boolean>;
+}
+
+function pendingReaderInstallPrompt(): BeforeInstallPromptEvent | null {
+  if (typeof window === "undefined") return null;
+  return (
+    (window as Window & { __bcrReaderInstallPrompt?: BeforeInstallPromptEvent })
+      .__bcrReaderInstallPrompt ?? null
+  );
+}
+
+function useReaderPwaInstall(): ReaderPwaInstallState {
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() =>
+    pendingReaderInstallPrompt(),
+  );
+  const [isInstalled, setIsInstalled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const safariStandalone =
+      (window.navigator as Navigator & { readonly standalone?: boolean }).standalone === true;
+    return window.matchMedia("(display-mode: standalone)").matches || safariStandalone;
+  });
+  const isIos =
+    typeof navigator !== "undefined" &&
+    (/iphone|ipad|ipod/iu.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
+  useEffect(() => {
+    const syncInstalled = () => {
+      const safariStandalone =
+        (window.navigator as Navigator & { readonly standalone?: boolean }).standalone === true;
+      setIsInstalled(window.matchMedia("(display-mode: standalone)").matches || safariStandalone);
+    };
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setDeferredPrompt(event as BeforeInstallPromptEvent);
+    };
+    const onReaderInstallPrompt = () => {
+      const prompt = pendingReaderInstallPrompt();
+      if (prompt !== null) setDeferredPrompt(prompt);
+    };
+    const onAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+      delete (window as Window & { __bcrReaderInstallPrompt?: BeforeInstallPromptEvent })
+        .__bcrReaderInstallPrompt;
+    };
+
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("bcr-reader-install-prompt", onReaderInstallPrompt);
+    window.addEventListener("appinstalled", onAppInstalled);
+    syncInstalled();
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("bcr-reader-install-prompt", onReaderInstallPrompt);
+      window.removeEventListener("appinstalled", onAppInstalled);
+    };
+  }, []);
+
+  const install = useCallback(async () => {
+    const prompt = deferredPrompt;
+    if (prompt === null) return false;
+    try {
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+      if (choice.outcome === "accepted") setIsInstalled(true);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setDeferredPrompt(null);
+      delete (window as Window & { __bcrReaderInstallPrompt?: BeforeInstallPromptEvent })
+        .__bcrReaderInstallPrompt;
+    }
+  }, [deferredPrompt]);
+
+  return {
+    canInstall: !isInstalled && deferredPrompt !== null,
+    isInstalled,
+    isIos,
+    install,
+  };
 }
 
 /** Keep native fullscreen state in sync, including Esc and browser chrome exits. */
@@ -573,6 +670,7 @@ function useReaderBoot(): {
 export function App() {
   const { runtime, error: runtimeError, recovery } = useReaderBoot();
   const hostServices = useOptionalRuntime();
+  const pwaInstall = useReaderPwaInstall();
   const routeSearch = parseReaderRouteSearch(useLocationSearch());
   useDebouncedPersist(runtime);
   useReaderSearch(runtime);
@@ -592,7 +690,21 @@ export function App() {
   const [handoffRecovery, setHandoffRecovery] = useState(false);
   const [documentHandoffBusy, setDocumentHandoffBusy] = useState(false);
   const [importJob, setImportJob] = useState<ImportJob | null>(null);
+  const [installHelpOpen, setInstallHelpOpen] = useState(false);
   const appliedRouteRef = useRef("");
+  const mobileSidebarInitializedRef = useRef(false);
+
+  useEffect(() => {
+    document.title = active === undefined ? "BCR Reader" : `${active.title} · BCR Reader`;
+  }, [active?.id, active?.title]);
+
+  useEffect(() => {
+    if (status !== "ready" || mobileSidebarInitializedRef.current) return;
+    mobileSidebarInitializedRef.current = true;
+    if (window.matchMedia("(max-width: 860px)").matches && getReaderState().sidebarOpen) {
+      reader.toggleSidebar();
+    }
+  }, [status]);
 
   useEffect(() => {
     if (status !== "ready" || routeSearch.book === undefined) return;
@@ -661,6 +773,11 @@ export function App() {
   const cancelImport = useCallback(() => {
     importAbortRef.current?.abort();
   }, []);
+
+  const installReader = useCallback(async () => {
+    const prompted = await pwaInstall.install();
+    if (!prompted) setInstallHelpOpen(true);
+  }, [pwaInstall.install]);
 
   useEffect(
     () => () => {
@@ -882,6 +999,14 @@ export function App() {
         onCancelImport={cancelImport}
         onRetryFailed={retryFailedImports}
         onRecoverHandoff={handoffRecovery ? () => window.location.assign("/documents") : undefined}
+        showInstall={!pwaInstall.isInstalled}
+        installAvailable={pwaInstall.canInstall}
+        onInstall={() => void installReader()}
+      />
+      <ReaderInstallHelp
+        open={installHelpOpen}
+        isIos={pwaInstall.isIos}
+        onClose={() => setInstallHelpOpen(false)}
       />
       {recovery !== null && recovery.skippedBooks.length > 0 && (
         <ReaderRecoveryBanner recovery={recovery} />
@@ -991,6 +1116,9 @@ function ReaderHeader(props: {
   onCancelImport: () => void;
   onRetryFailed: () => void;
   onRecoverHandoff?: (() => void) | undefined;
+  showInstall: boolean;
+  installAvailable: boolean;
+  onInstall: () => void;
 }) {
   const query = useReader((state) => state.query);
   const searchOpen = useReader((state) => state.searchOpen);
@@ -1071,6 +1199,18 @@ function ReaderHeader(props: {
           <span>{percent(progress)}</span>
         </div>
       </div>
+      {props.showInstall && (
+        <button
+          type="button"
+          className="reader-button reader-install-button"
+          onClick={props.onInstall}
+          aria-label={props.installAvailable ? "安装 Reader 应用" : "查看 Reader 安装方式"}
+          title={props.installAvailable ? "安装 Reader 应用" : "查看 Reader 安装方式"}
+        >
+          <Download className="reader-icon" />
+          <span>安装</span>
+        </button>
+      )}
       <input
         ref={fileInput}
         className="reader-visually-hidden"
@@ -1145,6 +1285,63 @@ function ReaderHeader(props: {
         </div>
       )}
     </header>
+  );
+}
+
+function ReaderInstallHelp(props: { open: boolean; isIos: boolean; onClose: () => void }) {
+  useEffect(() => {
+    if (!props.open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      props.onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [props.onClose, props.open]);
+
+  if (!props.open) return null;
+  const steps = props.isIos
+    ? ["点击浏览器的分享按钮", "选择“添加到主屏幕”", "确认添加，从主屏幕打开 Reader"]
+    : ["打开浏览器菜单", "选择“安装应用”或“添加到主屏幕”", "确认后从主屏幕启动 Reader"];
+  return (
+    <div className="reader-install-layer" onClick={props.onClose} role="presentation">
+      <section
+        className="reader-install-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reader-install-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="reader-install-card-heading">
+          <div>
+            <span className="reader-eyebrow">READ ON THE GO</span>
+            <strong id="reader-install-title">把 Reader 放到手机桌面</strong>
+          </div>
+          <button
+            type="button"
+            className="reader-icon-button"
+            onClick={props.onClose}
+            aria-label="关闭安装说明"
+          >
+            <X className="reader-icon" />
+          </button>
+        </div>
+        <p>安装后可以从桌面直接打开本地书库，阅读界面会进入更专注的独立窗口。</p>
+        <ol>
+          {steps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+        <button
+          type="button"
+          className="reader-button reader-button-primary"
+          onClick={props.onClose}
+        >
+          知道了
+        </button>
+      </section>
+    </div>
   );
 }
 
@@ -1510,6 +1707,17 @@ function ReaderToolbar(props: {
           <span className="reader-eyebrow">READING SESSION</span>
           <strong>{current?.label ?? "正文"}</strong>
         </div>
+      </div>
+      <div
+        className="reader-mobile-progress"
+        role="progressbar"
+        aria-label="阅读进度"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progress * 100)}
+        aria-valuetext={percent(progress)}
+      >
+        <span style={{ width: `${progress * 100}%` }} />
       </div>
       <div className="reader-toolbar-actions">
         <button

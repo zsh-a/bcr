@@ -30,6 +30,7 @@
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
+  overscroll-behavior: none;
   background:
     radial-gradient(circle at 72% -14%, rgba(20, 122, 115, 0.13), transparent 32rem),
     radial-gradient(circle at 4% 92%, rgba(195, 153, 100, 0.11), transparent 34rem),
@@ -38,6 +39,8 @@
   font-family: var(--reader-font-sans);
   font-size: 15px;
   line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
 }
 
 .reader-skip-link {
@@ -122,13 +125,14 @@
 .reader-header {
   z-index: 30;
   display: flex;
-  min-height: var(--reader-header-height);
+  min-height: calc(var(--reader-header-height) + env(safe-area-inset-top));
   flex: 0 0 auto;
   align-items: center;
   gap: 16px;
   border-bottom: 1px solid var(--reader-border);
   background: color-mix(in srgb, var(--reader-surface) 92%, transparent);
-  padding: 0 26px;
+  padding: env(safe-area-inset-top) max(26px, env(safe-area-inset-right)) 0
+    max(26px, env(safe-area-inset-left));
   backdrop-filter: blur(24px);
 }
 
@@ -306,6 +310,89 @@
   border-color: var(--reader-accent) !important;
   background: var(--reader-accent);
   color: #fff;
+}
+
+.reader-install-button {
+  border-color: color-mix(
+    in srgb,
+    var(--reader-accent) 40%,
+    var(--reader-border-strong)
+  ) !important;
+  background: var(--reader-accent-soft);
+  color: var(--reader-accent);
+}
+
+.reader-install-button:hover {
+  background: color-mix(in srgb, var(--reader-accent-soft) 70%, var(--reader-raised));
+}
+
+.reader-install-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  background: rgba(21, 31, 27, 0.38);
+  padding: 24px max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+  backdrop-filter: blur(5px);
+}
+
+.reader-install-card {
+  width: min(440px, 100%);
+  border: 1px solid var(--reader-border-strong);
+  border-radius: 18px;
+  background: var(--reader-raised);
+  box-shadow: 0 26px 80px rgba(16, 34, 28, 0.25);
+  padding: 20px;
+  color: var(--reader-text);
+}
+
+.reader-install-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reader-install-card-heading > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reader-install-card-heading strong {
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.reader-install-card p {
+  margin: 18px 0 13px;
+  color: var(--reader-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.reader-install-card ol {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 20px;
+  padding-left: 24px;
+  color: var(--reader-text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.reader-install-card li::marker {
+  color: var(--reader-accent);
+  font-family: var(--reader-font-mono);
+  font-weight: 600;
+}
+
+.reader-install-card > .reader-button {
+  width: 100%;
 }
 
 .reader-toast {
@@ -901,6 +988,7 @@
   min-width: 0;
   min-height: 0;
   flex-direction: column;
+  overscroll-behavior: none;
 }
 
 .reader-main:fullscreen {
@@ -949,6 +1037,26 @@
   white-space: nowrap;
   font-size: 13px;
   font-weight: 650;
+}
+
+.reader-mobile-progress {
+  display: none;
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 3px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--reader-border-strong) 42%, transparent);
+  pointer-events: none;
+}
+
+.reader-mobile-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 0 99px 99px 0;
+  background: var(--reader-accent);
+  transition: width 220ms ease;
 }
 
 .reader-sidebar-toggle {
@@ -1113,14 +1221,16 @@
 .reader-reading-scroll {
   min-height: 0;
   overflow: auto;
+  overscroll-behavior-y: contain;
   scroll-behavior: smooth;
   scrollbar-color: color-mix(in srgb, var(--reader-accent) 42%, transparent) transparent;
+  -webkit-overflow-scrolling: touch;
 }
 
 .reader-reading-column {
   width: min(100% - 68px, 790px);
   margin: 0 auto;
-  padding: 64px 0 90px;
+  padding: 64px 0 max(90px, calc(90px + env(safe-area-inset-bottom)));
 }
 
 .reader-width-wide .reader-reading-column {
@@ -2085,18 +2195,18 @@
 
   .reader-sidebar {
     position: absolute;
-    top: var(--reader-header-height);
+    top: 0;
     bottom: 0;
     left: 0;
-    z-index: 22;
+    z-index: 26;
     width: min(340px, 88vw);
     box-shadow: var(--reader-shadow);
   }
 
   .reader-sidebar-scrim {
-    position: fixed;
-    inset: var(--reader-header-height) 0 0;
-    z-index: 21;
+    position: absolute;
+    inset: 0;
+    z-index: 25;
     display: block;
     border: 0;
     background: rgba(16, 25, 22, 0.28);
@@ -2117,6 +2227,10 @@
     z-index: 23;
   }
 
+  .reader-mobile-progress {
+    display: block;
+  }
+
   .reader-reading-frame {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) auto;
@@ -2131,7 +2245,8 @@
     overflow-y: hidden;
     border-top: 1px solid var(--reader-border);
     border-left: 0;
-    padding: 12px 14px max(12px, env(safe-area-inset-bottom));
+    padding: 12px max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom))
+      max(14px, env(safe-area-inset-left));
   }
 
   .reader-chapter-rail .reader-rail-heading {
@@ -2161,7 +2276,7 @@
   }
 
   .reader-header {
-    min-height: var(--reader-header-height);
+    min-height: calc(var(--reader-header-height) + env(safe-area-inset-top));
   }
 
   .reader-brand-title {
@@ -2177,9 +2292,30 @@
     height: 36px;
   }
 
+  .reader-brand {
+    width: 36px;
+    flex: 0 0 36px;
+    gap: 0;
+  }
+
+  .reader-brand > div:last-child {
+    display: none;
+  }
+
+  .reader-header-spacer {
+    display: none;
+  }
+
   .reader-search {
     width: auto;
-    flex: 1;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .reader-search input,
+  .reader-library-toolbar select,
+  .reader-annotation-composer textarea {
+    font-size: 16px;
   }
 
   .reader-button-primary {
@@ -2187,7 +2323,26 @@
     padding: 0;
   }
 
+  .reader-header > .reader-button-primary {
+    flex: 0 0 44px;
+  }
+
   .reader-button-primary span {
+    display: none;
+  }
+
+  .reader-install-button {
+    width: 44px;
+    flex: 0 0 44px;
+    padding: 0;
+  }
+
+  .reader-install-button span,
+  .reader-annotation-toggle span,
+  .reader-bookmark-toggle span,
+  .reader-document-handoff span,
+  .reader-document-handoff > .reader-icon:last-child,
+  .reader-fullscreen-toggle .reader-control-label {
     display: none;
   }
 
@@ -2203,14 +2358,28 @@
 
   .reader-toolbar-actions {
     min-width: 0;
-    max-width: 58%;
+    max-width: 60%;
     overflow-x: auto;
     gap: 4px;
     scrollbar-width: none;
+    scroll-snap-type: x proximity;
   }
 
   .reader-toolbar-actions::-webkit-scrollbar {
     display: none;
+  }
+
+  .reader-annotation-toggle,
+  .reader-bookmark-toggle,
+  .reader-document-handoff,
+  .reader-fullscreen-toggle {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    flex: 0 0 44px;
+    justify-content: center;
+    padding: 0;
+    scroll-snap-align: start;
   }
 
   .reader-locator {
@@ -2219,7 +2388,7 @@
 
   .reader-segmented button {
     width: 44px;
-    min-height: 40px;
+    min-height: 44px;
     flex: 0 0 44px;
     justify-content: center;
     padding: 0;
@@ -2248,9 +2417,57 @@
     font-size: 17px;
   }
 
+  .reader-chapter-rail {
+    max-height: 120px;
+    padding-top: 9px;
+  }
+
+  .reader-chapter-rail button {
+    min-height: 64px;
+  }
+
   .reader-search-panel {
     right: 12px;
     left: 12px;
+  }
+}
+
+@media (max-width: 860px) and (orientation: landscape) {
+  .reader-studio {
+    --reader-header-height: 58px;
+  }
+
+  .reader-header {
+    min-height: calc(var(--reader-header-height) + env(safe-area-inset-top));
+  }
+
+  .reader-brand-subtitle {
+    display: none;
+  }
+
+  .reader-toolbar {
+    min-height: 58px;
+  }
+
+  .reader-reading-frame {
+    grid-template-rows: minmax(0, 1fr) 94px;
+  }
+
+  .reader-chapter-rail {
+    max-height: 94px;
+    padding-top: 7px;
+  }
+
+  .reader-chapter-rail .reader-rail-heading {
+    margin-top: 4px;
+  }
+
+  .reader-reading-column {
+    padding-top: 24px;
+  }
+
+  .reader-reading-intro {
+    margin-bottom: 36px;
   }
 }
 

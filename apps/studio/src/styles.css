@@ -50,6 +50,12 @@ body {
   backdrop-filter: blur(20px);
 }
 
+@media (display-mode: standalone) {
+  .studio-shell-frame.reader-active > .studio-topbar {
+    display: none;
+  }
+}
+
 .studio-dock-shell {
   position: relative;
   height: 100%;
