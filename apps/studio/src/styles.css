@@ -56,6 +56,12 @@ body {
   }
 }
 
+@media (max-width: 860px) {
+  .studio-shell-frame.reader-active > .studio-topbar {
+    display: none;
+  }
+}
+
 .studio-dock-shell {
   position: relative;
   height: 100%;

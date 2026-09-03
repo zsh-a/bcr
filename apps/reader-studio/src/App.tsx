@@ -1,10 +1,13 @@
 import {
+  ArrowLeft,
   ArrowUpRight,
   Archive,
   Bookmark,
   BookOpen,
   Check,
+  ChevronLeft,
   ChevronRight,
+  ChevronUp,
   CircleAlert,
   Columns2,
   Download,
@@ -12,6 +15,7 @@ import {
   Leaf,
   List,
   Maximize2,
+  Menu,
   MessageSquarePlus,
   Minus,
   Minimize2,
@@ -691,6 +695,7 @@ export function App() {
   const [documentHandoffBusy, setDocumentHandoffBusy] = useState(false);
   const [importJob, setImportJob] = useState<ImportJob | null>(null);
   const [installHelpOpen, setInstallHelpOpen] = useState(false);
+  const [mobileChromeVisible, setMobileChromeVisible] = useState(true);
   const appliedRouteRef = useRef("");
   const mobileSidebarInitializedRef = useRef(false);
 
@@ -986,13 +991,16 @@ export function App() {
     return <BootScreen error={stateError ?? runtimeError ?? "没有可阅读的内容"} />;
   }
   return (
-    <div className={`reader-studio reader-theme-${settings.theme}`}>
+    <div
+      className={`reader-studio reader-theme-${settings.theme} ${mobileChromeVisible ? "mobile-chrome-visible" : "mobile-chrome-hidden"}`}
+    >
       <a className="reader-skip-link" href="#reader-content">
         跳到正文
       </a>
       <ReaderHeader
         book={active}
         searchRef={searchRef}
+        onExit={() => window.location.assign("/")}
         onImport={(files) => void importFiles(files)}
         notice={notice}
         importJob={importJob}
@@ -1017,6 +1025,7 @@ export function App() {
         onOpenDocument={handoffDocument}
         documentHandoffBusy={documentHandoffBusy}
         onNotice={setNotice}
+        onToggleMobileChrome={() => setMobileChromeVisible((visible) => !visible)}
       />
     </div>
   );
@@ -1110,6 +1119,7 @@ function openSearchHit(hit: SearchHit, index?: number): void {
 function ReaderHeader(props: {
   book: ReaderBook;
   searchRef: RefObject<HTMLInputElement | null>;
+  onExit: () => void;
   onImport: (files: ReadonlyArray<File>) => void;
   notice: string | null;
   importJob: ImportJob | null;
@@ -1134,6 +1144,15 @@ function ReaderHeader(props: {
   };
   return (
     <header className="reader-header">
+      <button
+        type="button"
+        className="reader-icon-button reader-mobile-exit"
+        onClick={props.onExit}
+        aria-label="返回工作区主页"
+        title="返回工作区主页"
+      >
+        <ArrowLeft className="reader-icon" />
+      </button>
       <div className="reader-brand">
         <div className="reader-brand-mark">
           <BookOpen className="reader-icon" />
@@ -1351,6 +1370,7 @@ function ReaderWorkspace(props: {
   onOpenDocument: () => void;
   documentHandoffBusy: boolean;
   onNotice: (message: string) => void;
+  onToggleMobileChrome: () => void;
 }) {
   const sidebarOpen = useReader((state) => state.sidebarOpen);
   const searchOpen = useReader((state) => state.searchOpen);
@@ -1391,6 +1411,15 @@ function ReaderWorkspace(props: {
         />
       )}
       <main id="reader-content" ref={readerMainRef} className="reader-main" aria-label="阅读内容">
+        <button
+          type="button"
+          className="reader-mobile-chrome-reveal"
+          onClick={props.onToggleMobileChrome}
+          aria-label="显示阅读工具栏"
+          title="显示阅读工具栏"
+        >
+          <Menu className="reader-icon" />
+        </button>
         {searchOpen && query.length > 0 && <SearchPanel hits={searchHits} />}
         <ReaderToolbar
           book={active}
@@ -1412,7 +1441,11 @@ function ReaderWorkspace(props: {
             onSubmit={submitAnnotation}
           />
         )}
-        <ReadingView runtime={props.runtime} book={active} />
+        <ReadingView
+          runtime={props.runtime}
+          book={active}
+          onToggleMobileChrome={props.onToggleMobileChrome}
+        />
       </main>
     </div>
   );
@@ -1678,6 +1711,7 @@ function ReaderToolbar(props: {
   const sidebarOpen = useReader((state) => state.sidebarOpen);
   const activeSectionId = useReader((state) => state.activeSectionId);
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const locator = useReader((state) => state.progressByBook[props.book.id]?.locator);
   const bookmarked = useReader((state) => {
     if (locator === undefined) return false;
@@ -1719,7 +1753,7 @@ function ReaderToolbar(props: {
       >
         <span style={{ width: `${progress * 100}%` }} />
       </div>
-      <div className="reader-toolbar-actions">
+      <div className="reader-toolbar-actions reader-toolbar-actions-desktop">
         <button
           type="button"
           className="reader-annotation-toggle"
@@ -1784,6 +1818,240 @@ function ReaderToolbar(props: {
           </span>
         </button>
       </div>
+      <div className="reader-mobile-toolbar-actions" aria-label="常用阅读操作">
+        <button
+          type="button"
+          className="reader-mobile-toolbar-button"
+          onClick={props.onAddAnnotation}
+          aria-label="添加阅读笔记"
+          title="添加阅读笔记"
+        >
+          <MessageSquarePlus className="reader-icon" />
+        </button>
+        <button
+          type="button"
+          className={`reader-mobile-toolbar-button ${bookmarked ? "is-active" : ""}`}
+          onClick={() => reader.toggleBookmark()}
+          aria-pressed={bookmarked}
+          aria-label={bookmarked ? "移除当前位置书签" : "标记当前位置"}
+          title={bookmarked ? "移除当前位置书签" : "标记当前位置"}
+        >
+          <Bookmark className="reader-icon" />
+        </button>
+        <button
+          type="button"
+          className={`reader-mobile-toolbar-button ${settingsOpen ? "is-active" : ""}`}
+          onClick={() => setSettingsOpen(true)}
+          aria-expanded={settingsOpen}
+          aria-controls="reader-mobile-settings"
+          aria-label="打开阅读设置"
+          title="打开阅读设置"
+        >
+          <Settings2 className="reader-icon" />
+        </button>
+      </div>
+      <ReaderSettingsSheet
+        id="reader-mobile-settings"
+        open={settingsOpen}
+        settings={props.settings}
+        onClose={() => setSettingsOpen(false)}
+        onOpenDocument={props.onOpenDocument}
+        documentHandoffBusy={props.documentHandoffBusy}
+        fullscreen={props.fullscreen}
+      />
+    </div>
+  );
+}
+
+function ReaderSettingsSheet(props: {
+  id: string;
+  open: boolean;
+  settings: ReaderSettings;
+  onClose: () => void;
+  onOpenDocument: () => void;
+  documentHandoffBusy: boolean;
+  fullscreen: ReaderFullscreenState;
+}) {
+  useEffect(() => {
+    if (!props.open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      props.onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [props.onClose, props.open]);
+
+  if (!props.open) return null;
+  const themes: ReadonlyArray<ReaderTheme> = ["paper", "sage", "night"];
+  const layouts: ReadonlyArray<ReaderSettings["layout"]> = ["scroll", "paged"];
+  return (
+    <div className="reader-mobile-sheet-layer" onClick={props.onClose} role="presentation">
+      <section
+        id={props.id}
+        className="reader-mobile-sheet reader-settings-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reader-mobile-settings-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="reader-mobile-sheet-handle" aria-hidden="true" />
+        <div className="reader-mobile-sheet-heading">
+          <div>
+            <span className="reader-eyebrow">VIEW MENU</span>
+            <strong id="reader-mobile-settings-title">阅读设置</strong>
+          </div>
+          <button
+            type="button"
+            className="reader-icon-button"
+            onClick={props.onClose}
+            aria-label="关闭阅读设置"
+          >
+            <X className="reader-icon" />
+          </button>
+        </div>
+        <div className="reader-mobile-settings-scroll">
+          <section className="reader-mobile-setting-group" aria-labelledby="reader-theme-label">
+            <span id="reader-theme-label" className="reader-mobile-setting-label">
+              阅读主题
+            </span>
+            <div className="reader-mobile-setting-options" role="group" aria-label="阅读主题">
+              {themes.map((theme) => (
+                <button
+                  type="button"
+                  key={theme}
+                  className={`reader-mobile-setting-option ${props.settings.theme === theme ? "is-active" : ""}`}
+                  onClick={() => reader.setSettings({ theme })}
+                  aria-pressed={props.settings.theme === theme}
+                >
+                  {themeIcon(theme)}
+                  <span>{themeLabel(theme)}</span>
+                  {props.settings.theme === theme && <Check className="reader-icon" />}
+                </button>
+              ))}
+            </div>
+          </section>
+          <section className="reader-mobile-setting-group" aria-labelledby="reader-layout-label">
+            <span id="reader-layout-label" className="reader-mobile-setting-label">
+              阅读方式
+            </span>
+            <div className="reader-mobile-setting-options" role="group" aria-label="阅读方式">
+              {layouts.map((layout) => (
+                <button
+                  type="button"
+                  key={layout}
+                  className={`reader-mobile-setting-option ${props.settings.layout === layout ? "is-active" : ""}`}
+                  onClick={() => reader.setSettings({ layout })}
+                  aria-pressed={props.settings.layout === layout}
+                >
+                  {layout === "scroll" ? (
+                    <List className="reader-icon" />
+                  ) : (
+                    <Columns2 className="reader-icon" />
+                  )}
+                  <span>{layout === "scroll" ? "连续滚动" : "分页阅读"}</span>
+                  {props.settings.layout === layout && <Check className="reader-icon" />}
+                </button>
+              ))}
+            </div>
+          </section>
+          <section className="reader-mobile-setting-group" aria-labelledby="reader-font-label">
+            <div className="reader-mobile-setting-label-row">
+              <span id="reader-font-label" className="reader-mobile-setting-label">
+                正文字号
+              </span>
+              <span className="reader-mobile-setting-value">{props.settings.fontSize}px</span>
+            </div>
+            <div className="reader-mobile-font-stepper">
+              <button
+                type="button"
+                onClick={() =>
+                  reader.setSettings({
+                    fontSize: clamp(props.settings.fontSize - 1, 15, 26),
+                  })
+                }
+                disabled={props.settings.fontSize <= 15}
+                aria-label="减小字号"
+              >
+                <Minus className="reader-icon" />
+              </button>
+              <span aria-live="polite">Aa</span>
+              <button
+                type="button"
+                onClick={() =>
+                  reader.setSettings({
+                    fontSize: clamp(props.settings.fontSize + 1, 15, 26),
+                  })
+                }
+                disabled={props.settings.fontSize >= 26}
+                aria-label="增大字号"
+              >
+                <Plus className="reader-icon" />
+              </button>
+            </div>
+          </section>
+          <section className="reader-mobile-setting-group" aria-labelledby="reader-width-label">
+            <span id="reader-width-label" className="reader-mobile-setting-label">
+              正文宽度
+            </span>
+            <div className="reader-mobile-setting-options" role="group" aria-label="正文宽度">
+              {(["narrow", "wide"] as const).map((contentWidth) => (
+                <button
+                  type="button"
+                  key={contentWidth}
+                  className={`reader-mobile-setting-option ${props.settings.contentWidth === contentWidth ? "is-active" : ""}`}
+                  onClick={() => reader.setSettings({ contentWidth })}
+                  aria-pressed={props.settings.contentWidth === contentWidth}
+                >
+                  <span>{contentWidth === "narrow" ? "舒适" : "宽屏"}</span>
+                  {props.settings.contentWidth === contentWidth && (
+                    <Check className="reader-icon" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </section>
+          <section
+            className="reader-mobile-setting-group reader-mobile-setting-group-actions"
+            aria-labelledby="reader-actions-label"
+          >
+            <span id="reader-actions-label" className="reader-mobile-setting-label">
+              更多操作
+            </span>
+            <div className="reader-mobile-action-list">
+              <button
+                type="button"
+                onClick={() => {
+                  props.onClose();
+                  props.onOpenDocument();
+                }}
+                disabled={props.documentHandoffBusy}
+              >
+                <FileText className="reader-icon" />
+                <span>{props.documentHandoffBusy ? "正在交接…" : "交给 Document Studio"}</span>
+                <ArrowUpRight className="reader-icon" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  props.onClose();
+                  void props.fullscreen.toggle();
+                }}
+                disabled={!props.fullscreen.supported}
+              >
+                {props.fullscreen.isFullscreen ? (
+                  <Minimize2 className="reader-icon" />
+                ) : (
+                  <Maximize2 className="reader-icon" />
+                )}
+                <span>{props.fullscreen.isFullscreen ? "退出全屏" : "进入全屏"}</span>
+                <ChevronRight className="reader-icon" />
+              </button>
+            </div>
+          </section>
+        </div>
+      </section>
     </div>
   );
 }
@@ -1917,7 +2185,11 @@ function FontSizeMenu(props: { settings: ReaderSettings }) {
   );
 }
 
-function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
+function ReadingView(props: {
+  runtime: ReaderRuntime;
+  book: ReaderBook;
+  onToggleMobileChrome: () => void;
+}) {
   const settings = useReader((state) => state.settings);
   const activeSectionId = useReader((state) => state.activeSectionId);
   const navigationSequence = useReader((state) => state.navigationSequence);
@@ -2068,6 +2340,24 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
       <div
         className="reader-reading-scroll"
         ref={containerRef}
+        onClick={(event) => {
+          if (!window.matchMedia("(max-width: 860px)").matches) return;
+          if (
+            event.target instanceof Element &&
+            event.target.closest("a, button, input, textarea, select")
+          ) {
+            return;
+          }
+          if (window.getSelection()?.isCollapsed === false) return;
+          const bounds = event.currentTarget.getBoundingClientRect();
+          if (
+            event.clientX < bounds.left + bounds.width * 0.22 ||
+            event.clientX > bounds.right - bounds.width * 0.22
+          ) {
+            return;
+          }
+          props.onToggleMobileChrome();
+        }}
         onScroll={() => {
           if (programmaticScrollRef.current) {
             const expected = programmaticScrollTargetRef.current;
@@ -2118,6 +2408,7 @@ function ReadingView(props: { runtime: ReaderRuntime; book: ReaderBook }) {
         </div>
       </div>
       <ChapterRail book={props.book} />
+      <MobileReadingBar book={props.book} />
     </div>
   );
 }
@@ -2424,11 +2715,15 @@ function ReaderTocTree(props: {
   items: ReadonlyArray<ReaderTocItem>;
   activeSectionId: string | null;
   level?: number;
+  query?: string | undefined;
+  onNavigate?: (() => void) | undefined;
 }) {
   const level = props.level ?? 0;
+  const query = props.query?.trim().toLocaleLowerCase() ?? "";
+  const visibleItems = props.items.filter((item) => tocItemMatchesQuery(item, query));
   return (
     <div className={`reader-toc-level reader-toc-level-${Math.min(level, 4)}`}>
-      {props.items.map((item, index) => {
+      {visibleItems.map((item, index) => {
         const sectionId = tocSectionId(props.book, item);
         const children = item.children ?? [];
         return (
@@ -2437,10 +2732,14 @@ function ReaderTocTree(props: {
               type="button"
               className={sectionId === props.activeSectionId ? "is-active" : ""}
               aria-current={sectionId === props.activeSectionId ? "page" : undefined}
+              data-reader-toc-section={sectionId}
               disabled={sectionId === undefined}
               title={sectionId === undefined ? "此条目未包含可读正文" : undefined}
               onClick={() => {
-                if (sectionId !== undefined) reader.openBook(props.book.id, sectionId);
+                if (sectionId !== undefined) {
+                  reader.openBook(props.book.id, sectionId);
+                  props.onNavigate?.();
+                }
               }}
             >
               <span>{String(index + 1).padStart(2, "0")}</span>
@@ -2452,11 +2751,371 @@ function ReaderTocTree(props: {
                 items={children}
                 activeSectionId={props.activeSectionId}
                 level={level + 1}
+                query={props.query}
+                onNavigate={props.onNavigate}
               />
             )}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+type MobileNavigationPanel = "toc" | "bookmarks" | "notes";
+
+function tocItemMatchesQuery(item: ReaderTocItem, query: string): boolean {
+  if (query.length === 0) return true;
+  return (
+    item.label.toLocaleLowerCase().includes(query) ||
+    (item.children ?? []).some((child) => tocItemMatchesQuery(child, query))
+  );
+}
+
+function MobileReadingBar(props: { book: ReaderBook }) {
+  const activeSectionId = useReader((state) => state.activeSectionId);
+  const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
+  const [panel, setPanel] = useState<MobileNavigationPanel | null>(null);
+  const activeIndex = Math.max(
+    0,
+    props.book.sections.findIndex((section) => section.id === activeSectionId),
+  );
+  const current = props.book.sections[activeIndex] ?? props.book.sections[0];
+  const unit = props.book.source.format === "pdf" ? "页" : "章";
+  const openAdjacent = (delta: number) => {
+    const target = props.book.sections[activeIndex + delta];
+    if (target !== undefined) reader.openBook(props.book.id, target.id);
+  };
+  return (
+    <>
+      <nav className="reader-mobile-nav" aria-label="阅读导航">
+        <button
+          type="button"
+          className="reader-mobile-nav-toc"
+          onClick={() => setPanel("toc")}
+          aria-expanded={panel === "toc"}
+          aria-controls="reader-mobile-navigation-sheet"
+        >
+          <List className="reader-icon" />
+          <span>目录</span>
+        </button>
+        <button
+          type="button"
+          className="reader-mobile-nav-current"
+          onClick={() => setPanel("toc")}
+          aria-expanded={panel === "toc"}
+          aria-controls="reader-mobile-navigation-sheet"
+        >
+          <span className="reader-mobile-nav-current-label">当前阅读</span>
+          <strong>{current?.label ?? "正文"}</strong>
+          <span className="reader-mobile-nav-current-meta">
+            {activeIndex + 1} / {props.book.sections.length} {unit} · {percent(progress)}
+          </span>
+          <ChevronUp className="reader-mobile-nav-current-chevron" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="reader-mobile-nav-step"
+          onClick={() => openAdjacent(-1)}
+          disabled={activeIndex <= 0}
+          aria-label="上一章"
+          title="上一章"
+        >
+          <ChevronLeft className="reader-icon" />
+        </button>
+        <button
+          type="button"
+          className="reader-mobile-nav-step"
+          onClick={() => openAdjacent(1)}
+          disabled={activeIndex >= props.book.sections.length - 1}
+          aria-label="下一章"
+          title="下一章"
+        >
+          <ChevronRight className="reader-icon" />
+        </button>
+        <div className="reader-mobile-nav-progress" aria-hidden="true">
+          <span style={{ width: `${progress * 100}%` }} />
+        </div>
+      </nav>
+      {panel !== null && (
+        <MobileNavigationSheet
+          book={props.book}
+          panel={panel}
+          onPanelChange={setPanel}
+          onClose={() => setPanel(null)}
+        />
+      )}
+    </>
+  );
+}
+
+function MobileNavigationSheet(props: {
+  book: ReaderBook;
+  panel: MobileNavigationPanel;
+  onPanelChange: (panel: MobileNavigationPanel) => void;
+  onClose: () => void;
+}) {
+  const activeSectionId = useReader((state) => state.activeSectionId);
+  const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
+  const bookmarks = useReader((state) => state.bookmarksByBook[props.book.id] ?? EMPTY_BOOKMARKS);
+  const annotations = useReader(
+    (state) => state.annotationsByBook[props.book.id] ?? EMPTY_ANNOTATIONS,
+  );
+  const [query, setQuery] = useState("");
+  const current =
+    props.book.sections.find((section) => section.id === activeSectionId) ?? props.book.sections[0];
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const hasToc = props.book.toc !== undefined && props.book.toc.length > 0;
+  const hasTocMatches = hasToc
+    ? props.book.toc!.some((item) => tocItemMatchesQuery(item, normalizedQuery))
+    : props.book.sections.some((section) =>
+        section.label.toLocaleLowerCase().includes(normalizedQuery),
+      );
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      props.onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [props.onClose]);
+
+  useEffect(() => {
+    setQuery("");
+  }, [props.panel]);
+
+  useEffect(() => {
+    if (props.panel !== "toc" || activeSectionId === null) return;
+    const frame = window.requestAnimationFrame(() => {
+      const sheet = document.getElementById("reader-mobile-navigation-sheet");
+      const active = sheet?.querySelector<HTMLElement>(
+        `[data-reader-toc-section="${CSS.escape(activeSectionId)}"]`,
+      );
+      active?.scrollIntoView({ block: "center", behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeSectionId, props.panel]);
+
+  const navigateToSection = (sectionId: string) => {
+    reader.openBook(props.book.id, sectionId);
+    props.onClose();
+  };
+  const tabs: ReadonlyArray<{
+    id: MobileNavigationPanel;
+    label: string;
+    count: number;
+  }> = [
+    { id: "toc", label: "目录", count: props.book.sections.length },
+    { id: "bookmarks", label: "书签", count: bookmarks.length },
+    { id: "notes", label: "笔记", count: annotations.length },
+  ];
+  return (
+    <div className="reader-mobile-sheet-layer" onClick={props.onClose} role="presentation">
+      <section
+        id="reader-mobile-navigation-sheet"
+        className="reader-mobile-sheet reader-navigation-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reader-mobile-navigation-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="reader-mobile-sheet-handle" aria-hidden="true" />
+        <div className="reader-mobile-sheet-heading">
+          <div>
+            <span className="reader-eyebrow">READING MAP</span>
+            <strong id="reader-mobile-navigation-title">{props.book.title}</strong>
+          </div>
+          <button
+            type="button"
+            className="reader-icon-button"
+            onClick={props.onClose}
+            aria-label="关闭阅读导航"
+          >
+            <X className="reader-icon" />
+          </button>
+        </div>
+        <div className="reader-mobile-sheet-tabs" role="tablist" aria-label="阅读导航分类">
+          {tabs.map((tab) => (
+            <button
+              type="button"
+              key={tab.id}
+              role="tab"
+              className={props.panel === tab.id ? "is-active" : ""}
+              aria-selected={props.panel === tab.id}
+              onClick={() => props.onPanelChange(tab.id)}
+            >
+              <span>{tab.label}</span>
+              <small>{tab.count}</small>
+            </button>
+          ))}
+        </div>
+        {props.panel === "toc" && (
+          <div className="reader-mobile-sheet-content" role="tabpanel">
+            <div className="reader-mobile-toc-search">
+              <label>
+                <Search className="reader-icon" />
+                <span className="reader-visually-hidden">筛选目录</span>
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="筛选章节…"
+                  aria-label="筛选章节"
+                />
+              </label>
+              {query.length > 0 && (
+                <button type="button" onClick={() => setQuery("")} aria-label="清空目录筛选">
+                  <X className="reader-icon" />
+                </button>
+              )}
+            </div>
+            <div className="reader-mobile-toc-context">
+              <span>正在阅读</span>
+              <strong>{current?.label ?? "正文"}</strong>
+              <span>
+                {current === undefined
+                  ? ""
+                  : `${current.order + 1} / ${props.book.sections.length} · ${percent(progress)}`}
+              </span>
+            </div>
+            <div className="reader-mobile-sheet-scroll">
+              {hasToc ? (
+                <ReaderTocTree
+                  book={props.book}
+                  items={props.book.toc!}
+                  activeSectionId={activeSectionId}
+                  query={normalizedQuery}
+                  onNavigate={() => props.onClose()}
+                />
+              ) : (
+                <div className="reader-mobile-section-list">
+                  {props.book.sections
+                    .filter((section) =>
+                      section.label.toLocaleLowerCase().includes(normalizedQuery),
+                    )
+                    .map((section) => (
+                      <button
+                        type="button"
+                        key={section.id}
+                        className={section.id === activeSectionId ? "is-active" : ""}
+                        aria-current={section.id === activeSectionId ? "page" : undefined}
+                        data-reader-toc-section={section.id}
+                        onClick={() => navigateToSection(section.id)}
+                      >
+                        <span>{String(section.order + 1).padStart(2, "0")}</span>
+                        <strong>{section.label}</strong>
+                        {section.id === activeSectionId && <Check className="reader-icon" />}
+                      </button>
+                    ))}
+                </div>
+              )}
+              {!hasTocMatches && (
+                <div className="reader-mobile-sheet-empty">
+                  <Search className="reader-icon" />
+                  <span>没有匹配的章节</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {props.panel === "bookmarks" && (
+          <div className="reader-mobile-sheet-content" role="tabpanel">
+            <div className="reader-mobile-sheet-scroll">
+              {bookmarks.length > 0 ? (
+                <div className="reader-mobile-saved-list">
+                  {bookmarks.map((bookmark) => (
+                    <div className="reader-mobile-saved-row" key={bookmark.id}>
+                      <button
+                        type="button"
+                        className="reader-mobile-saved-item"
+                        onClick={() => {
+                          reader.openBookmark(props.book.id, bookmark.id);
+                          props.onClose();
+                        }}
+                      >
+                        <Bookmark className="reader-icon" />
+                        <span>
+                          <strong>{bookmark.label}</strong>
+                          <small>{percent(bookmark.locator.progression)} · 本章位置</small>
+                        </span>
+                        <ChevronRight className="reader-icon" />
+                      </button>
+                      <button
+                        type="button"
+                        className="reader-mobile-saved-remove"
+                        aria-label={`移除书签 ${bookmark.label}`}
+                        onClick={() => reader.removeBookmark(props.book.id, bookmark.id)}
+                      >
+                        <X className="reader-icon" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <MobileNavigationEmpty
+                  icon={<Bookmark className="reader-icon" />}
+                  message="还没有书签"
+                  hint="在阅读页顶部点书签，随时回来。"
+                />
+              )}
+            </div>
+          </div>
+        )}
+        {props.panel === "notes" && (
+          <div className="reader-mobile-sheet-content" role="tabpanel">
+            <div className="reader-mobile-sheet-scroll">
+              {annotations.length > 0 ? (
+                <div className="reader-mobile-saved-list">
+                  {annotations.map((annotation) => (
+                    <div className="reader-mobile-saved-row" key={annotation.id}>
+                      <button
+                        type="button"
+                        className="reader-mobile-saved-item"
+                        onClick={() => {
+                          reader.openAnnotation(props.book.id, annotation.id);
+                          props.onClose();
+                        }}
+                      >
+                        <MessageSquarePlus className="reader-icon" />
+                        <span>
+                          <strong>{annotation.label}</strong>
+                          <small>{annotation.note}</small>
+                        </span>
+                        <ChevronRight className="reader-icon" />
+                      </button>
+                      <button
+                        type="button"
+                        className="reader-mobile-saved-remove"
+                        aria-label={`移除笔记 ${annotation.label}`}
+                        onClick={() => reader.removeAnnotation(props.book.id, annotation.id)}
+                      >
+                        <X className="reader-icon" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <MobileNavigationEmpty
+                  icon={<MessageSquarePlus className="reader-icon" />}
+                  message="还没有笔记"
+                  hint="选中正文后，在顶部操作栏添加你的想法。"
+                />
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function MobileNavigationEmpty(props: { icon: ReactNode; message: string; hint: string }) {
+  return (
+    <div className="reader-mobile-sheet-empty reader-mobile-saved-empty">
+      <span className="reader-mobile-empty-icon">{props.icon}</span>
+      <strong>{props.message}</strong>
+      <span>{props.hint}</span>
     </div>
   );
 }
@@ -2482,6 +3141,7 @@ function ChapterRail(props: { book: ReaderBook }) {
             key={section.id}
             className={section.id === activeSectionId ? "is-active" : ""}
             aria-current={section.id === activeSectionId ? "page" : undefined}
+            data-reader-toc-section={section.id}
             onClick={() => reader.openBook(props.book.id, section.id)}
           >
             <span>{String(section.order + 1).padStart(2, "0")}</span>
