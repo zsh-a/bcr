@@ -379,7 +379,11 @@ if (!(await page.locator(".reader-annotation-composer").innerText()).includes("�
 }
 await page.getByLabel("笔记内容").fill("验证选区锚点");
 await page.getByRole("button", { name: "保存笔记" }).click();
-await page.locator(".reader-annotation-list").getByText("验证选区锚点").waitFor({ timeout: 5_000 });
+await page
+  .locator(".reader-annotation-list")
+  .getByText("验证选区锚点")
+  .first()
+  .waitFor({ timeout: 5_000 });
 
 const search = page.getByLabel("在书库中搜索");
 await search.fill("Locator");

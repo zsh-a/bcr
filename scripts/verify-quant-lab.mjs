@@ -45,8 +45,15 @@ await (await download).saveAs(parquetPath);
 await page.locator('input[type="file"]').setInputFiles(parquetPath);
 try {
   await page.waitForFunction(
-    () =>
-      document.querySelector(".ql-market-status")?.textContent?.includes("quant-market.parquet"),
+    () => {
+      const imported = document
+        .querySelector(".ql-market-status")
+        ?.textContent?.includes("quant-market.parquet");
+      const metric = [...document.querySelectorAll(".ql-metric")].find((element) =>
+        element.textContent?.includes("TOTAL RETURN"),
+      );
+      return imported === true && metric !== undefined && !metric.textContent?.includes("—");
+    },
     undefined,
     { timeout: 45_000 },
   );
@@ -54,12 +61,24 @@ try {
   console.error(`Parquet import diagnostics:\n${await page.locator("body").innerText()}`);
   throw error;
 }
-await page.getByRole("button", { name: "RUN BACKTEST" }).waitFor({ timeout: 20_000 });
-
-await page.getByLabel("Fast window").fill("16");
-await page.getByLabel("Slow window").fill("64");
+const fastWindow = page.getByLabel("Fast window");
+const slowWindow = page.getByLabel("Slow window");
+await fastWindow.fill("16");
+await slowWindow.fill("64");
+await page.waitForFunction(
+  () =>
+    document.querySelector('input[aria-label="Fast window"]')?.value === "16" &&
+    document.querySelector('input[aria-label="Slow window"]')?.value === "64",
+);
 await page.getByRole("button", { name: "RUN BACKTEST" }).click();
-await page.getByRole("button", { name: "RUN BACKTEST" }).waitFor({ timeout: 20_000 });
+await page.waitForFunction(
+  () =>
+    document.body.innerText.includes("SMA(16, 64)") &&
+    document.body.innerText.includes("rust-wasm") &&
+    !document.body.innerText.includes("TS FALLBACK BT"),
+  undefined,
+  { timeout: 45_000 },
+);
 body = await page.locator("body").innerText();
 if (!body.includes("SMA(16, 64)")) fail("参数重跑未进入 Pipeline");
 if (!body.includes("rust-wasm") || body.includes("TS FALLBACK BT")) {
