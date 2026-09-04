@@ -3,7 +3,6 @@ import {
   Check,
   ChevronDown,
   CircleAlert,
-  Database,
   Download,
   FileImage,
   FileUp,
@@ -18,7 +17,6 @@ import {
   ScanText,
   Sparkles,
   Square,
-  Trash2,
   Type,
   Upload,
   WandSparkles,
@@ -42,7 +40,8 @@ import {
   runMangaPipeline,
   runMangaQueue,
 } from "./pipeline";
-import { findGlossaryMatches } from "./glossary";
+import { ModelCacheSummary, ModelStatusNote } from "./ModelStatus";
+import { RegionInspector } from "./RegionInspector";
 import {
   createMangaRuntime,
   fileFromDocumentHandoff,
@@ -56,11 +55,7 @@ import {
   type MangaRuntime,
 } from "./runtime";
 import { manga, useMangaStudio } from "./store";
-import {
-  modelKeyForExecution,
-  type MangaModelRecord,
-  type MangaModelStatus,
-} from "./model-registry";
+import { modelKeyForExecution, type MangaModelRecord } from "./model-registry";
 import type { MangaModelCacheInfo } from "./model-cache";
 import {
   CLEAN_MODEL_MANIFESTS,
@@ -70,7 +65,6 @@ import {
   resolveMangaOcrAdapter,
   resolveMangaTranslationAdapter,
   type MangaAdapterExecution,
-  type MangaGlossaryEntry,
   type MangaCleanMode,
   type MangaOcrAdapterId,
   type MangaOcrDevice,
@@ -150,127 +144,6 @@ function executionLabel(execution: MangaAdapterExecution | undefined): string {
   return [adapter, device, phase, cache, lines, glossary, batch, fallback]
     .filter((value) => value.length > 0)
     .join(" · ");
-}
-
-function modelStatusLabel(status: MangaModelStatus): string {
-  if (status === "ready") return "READY · 可复用";
-  if (status === "loading") return "LOADING · Worker";
-  if (status === "error") return "ERROR · 可重试";
-  return "NOT LOADED · 懒加载";
-}
-
-function ModelStatusNote({
-  record,
-  execution,
-  disabled,
-  onPreload,
-  onClear,
-}: {
-  readonly record: MangaModelRecord | undefined;
-  readonly execution: MangaAdapterExecution;
-  readonly disabled: boolean;
-  readonly onPreload: () => void;
-  readonly onClear: () => void;
-}) {
-  const status = record?.status ?? "unknown";
-  const loadDuration =
-    record?.lastLoadDurationMs === undefined
-      ? ""
-      : ` · 最近加载 ${(record.lastLoadDurationMs / 1000).toFixed(1)}s`;
-  const detail =
-    record?.lastError ??
-    (status === "ready"
-      ? `模型已成功加载${loadDuration}，后续任务可复用 Manga 专属缓存`
-      : "首次执行将在 Worker 中按需加载；可先预加载");
-  const canPreload = execution.model !== undefined && execution.model.trim().length > 0;
-  return (
-    <div className="manga-model-status" data-model-status={status}>
-      <span>MODEL CACHE</span>
-      <strong>{modelStatusLabel(status)}</strong>
-      <small>{detail}</small>
-      <div className="manga-model-actions">
-        <button
-          type="button"
-          className="manga-model-action"
-          data-model-preload={execution.model ?? ""}
-          disabled={disabled || !canPreload || status === "loading"}
-          onClick={onPreload}
-        >
-          <Download className="size-3" /> {status === "loading" ? "加载中…" : "预加载模型"}
-        </button>
-        {status === "ready" && (
-          <button
-            type="button"
-            className="manga-model-action manga-model-action-danger"
-            disabled={disabled}
-            onClick={onClear}
-          >
-            <Trash2 className="size-3" /> 清理
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ModelCacheSummary({
-  info,
-  online,
-  busy,
-  onRefresh,
-  onClear,
-}: {
-  readonly info: MangaModelCacheInfo | null;
-  readonly online: boolean;
-  readonly busy: boolean;
-  readonly onRefresh: () => void;
-  readonly onClear: () => void;
-}) {
-  const status =
-    info === null
-      ? "检查缓存…"
-      : !info.supported
-        ? "浏览器缓存不可用"
-        : `${info.entryCount} 个文件 · ${online ? "ONLINE" : "OFFLINE"}`;
-  return (
-    <div
-      className="manga-model-cache-summary"
-      data-model-cache={info?.supported ? "ready" : "unknown"}
-    >
-      <div>
-        <span>
-          <Database className="size-3" /> MODEL STORAGE
-        </span>
-        <strong>{status}</strong>
-      </div>
-      <div className="manga-model-actions">
-        <button
-          type="button"
-          className="manga-model-action"
-          disabled={busy}
-          onClick={onRefresh}
-          aria-label="刷新模型缓存状态"
-        >
-          <RotateCcw className="size-3" /> 刷新
-        </button>
-        {info !== null && info.supported && info.entryCount > 0 && (
-          <button
-            type="button"
-            className="manga-model-action manga-model-action-danger"
-            disabled={busy}
-            onClick={onClear}
-          >
-            <Trash2 className="size-3" /> 清理全部
-          </button>
-        )}
-      </div>
-      <small>
-        {online
-          ? "首次预加载需要网络；完成后可在离线环境复用已缓存文件。"
-          : "当前离线：仅能复用已缓存文件，首次下载会失败。"}
-      </small>
-    </div>
-  );
 }
 
 function downloadBlob(blob: Blob, name: string): void {
@@ -1651,88 +1524,6 @@ export function App() {
           <span>WORKER · WASM FALLBACK</span>
         </div>
       </footer>
-    </div>
-  );
-}
-
-function RegionInspector({
-  region,
-  glossary,
-}: {
-  region: TextRegion;
-  glossary: ReadonlyArray<MangaGlossaryEntry>;
-}) {
-  const matches = findGlossaryMatches(region.sourceText, glossary);
-  return (
-    <div className="manga-inspector-fields">
-      <div className="manga-inspector-title-row">
-        <span className="manga-inspector-id">{region.label}</span>
-        <span
-          className={
-            region.confidence < 0.7
-              ? "manga-review-badge manga-review-badge-warn"
-              : "manga-review-badge"
-          }
-        >
-          {region.confidence < 0.7 ? "REVIEW" : "CONFIDENT"}
-        </span>
-      </div>
-      <label>
-        <span>原文 / OCR 输出</span>
-        <textarea
-          aria-label="原文 OCR 输出"
-          value={region.sourceText}
-          onChange={(event) => manga.patchRegion(region.id, { sourceText: event.target.value })}
-          rows={2}
-        />
-      </label>
-      <label>
-        <span>译文 / 可直接编辑</span>
-        <textarea
-          aria-label="译文"
-          value={region.translatedText}
-          onChange={(event) => manga.patchRegion(region.id, { translatedText: event.target.value })}
-          rows={2}
-        />
-      </label>
-      <div className="manga-inspector-grid">
-        <label>
-          <span>阅读方向</span>
-          <select
-            aria-label="阅读方向"
-            value={region.writingMode}
-            onChange={(event) =>
-              manga.patchRegion(region.id, {
-                writingMode: event.target.value as TextRegion["writingMode"],
-              })
-            }
-          >
-            <option value="horizontal-tb">横排</option>
-            <option value="vertical-rl">竖排</option>
-          </select>
-        </label>
-        <label>
-          <span>置信度</span>
-          <input value={percent(region.confidence)} readOnly aria-label="OCR 置信度" />
-        </label>
-      </div>
-      <div
-        className={`manga-glossary-hit ${matches.length > 0 ? "manga-glossary-hit-active" : ""}`}
-      >
-        <span className="manga-glossary-dot" />
-        <span>
-          {matches.length > 0
-            ? `Glossary 命中 · ${matches.map((entry) => `${entry.source} → ${entry.target}`).join(" · ")}`
-            : "Glossary 未命中 · 可在上方加入术语"}
-        </span>
-      </div>
-      <button
-        type="button"
-        className="manga-remove-region"
-        onClick={() => manga.removeRegion(region.id)}
-      >
-        <X className="size-3.5" /> 删除此区域
-      </button>
     </div>
   );
 }
