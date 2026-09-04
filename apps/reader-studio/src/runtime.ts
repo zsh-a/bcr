@@ -104,6 +104,7 @@ interface PersistedBook {
 interface PersistedReaderSnapshot {
   readonly version: 1;
   readonly books: ReadonlyArray<PersistedBook>;
+  readonly librarySignature?: string | undefined;
   readonly activeBookId?: string | null;
   readonly progressByBook: ReaderState["progressByBook"];
   readonly settings: ReaderSettings;
@@ -119,6 +120,7 @@ interface PersistedReaderLibrary {
 
 interface PersistedReaderSession {
   readonly version: 1;
+  readonly librarySignature?: string | undefined;
   readonly activeBookId?: string | null;
   readonly progressByBook?: ReaderState["progressByBook"];
   readonly settings?: ReaderSettings;
@@ -129,6 +131,7 @@ interface PersistedReaderSession {
 
 interface RestoredReaderSnapshot {
   readonly books: ReadonlyArray<ReaderBook>;
+  readonly libraryOutdated: boolean;
   readonly activeBookId: string | null;
   readonly progressByBook: ReaderState["progressByBook"];
   readonly settings: ReaderSettings;
@@ -176,7 +179,8 @@ const READER_LIBRARY_META_KEY = "reader/library";
 const READER_SESSION_META_KEY = "reader/session";
 
 let currentRuntime: ReaderRuntime | undefined;
-const persistedLibrarySignatures = new WeakMap<ReaderRuntime, string>();
+const persistedLocalLibrarySignatures = new WeakMap<ReaderRuntime, string>();
+const persistedMetadataLibrarySignatures = new WeakMap<ReaderRuntime, string>();
 const readerMetadataPromises = new WeakMap<ReaderRuntime, Promise<void>>();
 
 async function openMetaDb(store: BinaryStore): Promise<SqliteDb> {
@@ -527,6 +531,22 @@ function persistBook(book: ReaderBook): PersistedBook {
   };
 }
 
+function readerLibrarySignature(
+  books: ReadonlyArray<{
+    readonly id: string;
+    readonly updatedAt: number;
+    readonly source: { readonly ref?: { readonly hash: string } | undefined };
+    readonly sections: ReadonlyArray<unknown>;
+  }>,
+): string {
+  return books
+    .map(
+      (book) =>
+        `${book.id}:${book.updatedAt}:${book.source.ref?.hash ?? ""}:${book.sections.length}`,
+    )
+    .join("\u0000");
+}
+
 export async function persistReader(
   runtime: ReaderRuntime,
   state: ReaderState,
@@ -534,21 +554,21 @@ export async function persistReader(
 ): Promise<void> {
   const mirrorSession = options.mirrorSession ?? true;
   const books = state.library.map(persistBook);
-  const librarySignature = state.library
-    .map(
-      (book) =>
-        `${book.id}:${book.updatedAt}:${book.source.ref?.hash ?? ""}:${book.sections.length}`,
-    )
-    .join("\u0000");
+  const librarySignature = readerLibrarySignature(state.library);
   const session = persistedReaderSession(state);
   const sessionRaw = JSON.stringify(session);
   // Make the small session durable even when the async metadata backend is
   // unavailable or the mobile page is terminated during a pending write.
   if (mirrorSession) mirrorReaderSession(state);
-  if (persistedLibrarySignatures.get(runtime) !== librarySignature) {
+  const localLibraryOutdated = persistedLocalLibrarySignatures.get(runtime) !== librarySignature;
+  const metadataLibraryOutdated =
+    runtime.meta !== undefined &&
+    persistedMetadataLibrarySignatures.get(runtime) !== librarySignature;
+  if (localLibraryOutdated || metadataLibraryOutdated) {
     const library: PersistedReaderLibrary = { version: 1, books };
     const legacy: PersistedReaderSnapshot = {
       ...library,
+      librarySignature,
       activeBookId: state.activeBookId,
       progressByBook: state.progressByBook,
       settings: state.settings,
@@ -567,10 +587,21 @@ export async function persistReader(
       READER_LIBRARY_META_KEY,
       READER_LIBRARY_STORAGE_KEY,
       libraryRaw,
-      true,
+      localLibraryOutdated,
     );
-    await writeReaderValue(runtime, READER_META_KEY, READER_STORAGE_KEY, legacyRaw, true);
-    if (librarySaved) persistedLibrarySignatures.set(runtime, librarySignature);
+    await writeReaderValue(
+      runtime,
+      READER_META_KEY,
+      READER_STORAGE_KEY,
+      legacyRaw,
+      localLibraryOutdated,
+    );
+    if (librarySaved.local) {
+      persistedLocalLibrarySignatures.set(runtime, librarySignature);
+    }
+    if (librarySaved.metadata) {
+      persistedMetadataLibrarySignatures.set(runtime, librarySignature);
+    }
   }
   await writeReaderValue(
     runtime,
@@ -585,6 +616,7 @@ export async function persistReader(
 function persistedReaderSession(state: ReaderState): PersistedReaderSession {
   return {
     version: 1,
+    librarySignature: readerLibrarySignature(state.library),
     activeBookId: state.activeBookId,
     progressByBook: state.progressByBook,
     settings: state.settings,
@@ -608,6 +640,25 @@ export function mirrorReaderSession(state: ReaderState): void {
   }
 }
 
+/** Synchronously mirror a changed library before a mobile page can be terminated. */
+export function mirrorReaderLibrary(runtime: ReaderRuntime, state: ReaderState): boolean {
+  const signature = readerLibrarySignature(state.library);
+  if (persistedLocalLibrarySignatures.get(runtime) === signature) return true;
+  try {
+    if (typeof localStorage === "undefined") return false;
+    const library: PersistedReaderLibrary = {
+      version: 1,
+      books: state.library.map(persistBook),
+    };
+    localStorage.setItem(READER_LIBRARY_STORAGE_KEY, JSON.stringify(library));
+    persistedLocalLibrarySignatures.set(runtime, signature);
+    return true;
+  } catch {
+    // The SQLite metadata copy remains the canonical fallback for large books.
+    return false;
+  }
+}
+
 async function writeReaderValue(
   runtime: ReaderRuntime,
   metaKey: string,
@@ -615,25 +666,31 @@ async function writeReaderValue(
   raw: string,
   mirrorLocal: boolean,
   fallbackLocal = true,
-): Promise<boolean> {
-  let saved = false;
+): Promise<{ readonly local: boolean; readonly metadata: boolean }> {
+  let localSaved = false;
+  let metadataSaved = false;
+  const writeLocal = (): void => {
+    try {
+      if (typeof localStorage === "undefined") return;
+      localStorage.setItem(storageKey, raw);
+      localSaved = true;
+    } catch {
+      // Private browsing and large publications can exceed localStorage.
+    }
+  };
+  // The synchronous mirror must happen before the first await: mobile
+  // browsers may terminate the page while the SQLite write is pending.
+  if (mirrorLocal) writeLocal();
   if (runtime.meta !== undefined) {
     try {
       await runtime.meta.kvSet(metaKey, raw);
-      saved = true;
+      metadataSaved = true;
     } catch {
       // Fall through to localStorage when SQLite is temporarily unavailable.
     }
   }
-  try {
-    if ((mirrorLocal || (!saved && fallbackLocal)) && typeof localStorage !== "undefined") {
-      localStorage.setItem(storageKey, raw);
-      saved = true;
-    }
-  } catch {
-    // Private browsing can deny localStorage; in-memory reading still works.
-  }
-  return saved;
+  if (!mirrorLocal && !metadataSaved && fallbackLocal) writeLocal();
+  return { local: localSaved, metadata: metadataSaved };
 }
 
 function localStorageSnapshot(key: string): string | undefined {
@@ -963,6 +1020,15 @@ export async function restoreReader(
   try {
     const source = session?.version === 1 ? session : legacy?.version === 1 ? legacy : undefined;
     const persistedBooks = booksPayload as ReadonlyArray<PersistedBook>;
+    const requestedActiveBookId =
+      typeof source?.activeBookId === "string" ? source.activeBookId : null;
+    const expectedLibrarySignature =
+      typeof source?.librarySignature === "string" ? source.librarySignature : undefined;
+    const libraryOutdated =
+      (expectedLibrarySignature !== undefined &&
+        expectedLibrarySignature !== readerLibrarySignature(persistedBooks)) ||
+      (requestedActiveBookId !== null &&
+        !persistedBooks.some((book) => book.id === requestedActiveBookId));
     const deferBinary = options.deferBinary === true;
     // The persisted projection already contains the normalized text model.
     // Use it for the first paint and rehydrate binary resources separately.
@@ -985,8 +1051,8 @@ export async function restoreReader(
     );
     return {
       books,
-      activeBookId:
-        typeof source?.activeBookId === "string" ? source.activeBookId : (books[0]?.id ?? null),
+      libraryOutdated,
+      activeBookId: requestedActiveBookId ?? books[0]?.id ?? null,
       progressByBook: normalizeReaderProgress(books, source?.progressByBook),
       settings: { ...DEFAULT_READER_SETTINGS, ...source?.settings },
       bookmarksByBook: restoredBookmarks(books, source?.bookmarksByBook),

@@ -32,6 +32,44 @@ const jsonRef = (id: string): ArtifactRef => ({
   format: "json",
 });
 
+function readyReaderState(
+  library: ReaderState["library"],
+  activeBookId = library[0]?.id ?? null,
+): ReaderState {
+  const active = library.find((book) => book.id === activeBookId) ?? library[0];
+  const progress =
+    active === undefined
+      ? {}
+      : {
+          [active.id]: progressForLocator(active, {
+            kind: "section",
+            sectionId: active.sections[0]?.id ?? "body",
+            progression: 0,
+          }),
+        };
+  return {
+    status: "ready",
+    error: null,
+    library,
+    activeBookId,
+    activeSectionId: active?.sections[0]?.id ?? null,
+    navigationSequence: 0,
+    progressByBook: progress,
+    bookmarksByBook: {},
+    annotationsByBook: {},
+    query: "",
+    searchHits: [],
+    searchBookId: null,
+    searchActiveIndex: -1,
+    searchBusy: false,
+    searchReveal: null,
+    settings: DEFAULT_READER_SETTINGS,
+    sidebarOpen: false,
+    searchOpen: false,
+    lastSavedAt: null,
+  };
+}
+
 async function withLocalStorage<T>(run: (values: Map<string, string>) => Promise<T>): Promise<T> {
   const previous = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   const values = new Map<string, string>();
@@ -333,6 +371,94 @@ describe("reader durable Document handoff", () => {
     const file = new File([payload.text], "page.json", { type: payload.mime });
 
     await expect(importReaderExportBundle(runtime, file)).rejects.toThrow("Manga Studio");
+  });
+
+  it("mirrors a changed library before waiting for SQLite", async () => {
+    await withLocalStorage(async (values) => {
+      const store = new MemoryStore();
+      const artifacts = await makeArtifacts(store);
+      let releaseMetadataWrite: (() => void) | undefined;
+      const metadataWrite = new Promise<void>((resolve) => {
+        releaseMetadataWrite = resolve;
+      });
+      const runtime: ReaderRuntime = {
+        binary: store,
+        artifacts,
+        meta: {
+          kvSet: async () => metadataWrite,
+        } as never,
+        ftsReady: false,
+        indexSession: undefined,
+        parseSession: undefined,
+        parserMode: "main",
+      };
+      const book = createDemoBook();
+      const pending = persistReader(runtime, readyReaderState([book]));
+
+      try {
+        expect(values.get("bcr.reader.library.v1")).toContain(book.id);
+        expect(values.get("bcr.reader.session.v1")).toContain("librarySignature");
+      } finally {
+        releaseMetadataWrite?.();
+      }
+      await pending;
+    });
+  });
+
+  it("detects a stale local library and recovers the canonical SQLite copy", async () => {
+    await withLocalStorage(async (values) => {
+      const store = new MemoryStore();
+      const artifacts = await makeArtifacts(store);
+      const metadata = new Map<string, string>();
+      const runtime: ReaderRuntime = {
+        binary: store,
+        artifacts,
+        meta: {
+          kvGet: async (key: string) => metadata.get(key),
+          kvSet: async (key: string, value: string) => {
+            metadata.set(key, value);
+          },
+        } as never,
+        ftsReady: false,
+        indexSession: undefined,
+        parseSession: undefined,
+        parserMode: "main",
+      };
+      const demo = createDemoBook();
+      const imported = {
+        ...createDemoBook(),
+        id: "book-newly-imported",
+        title: "重启后仍在的图书",
+        source: {
+          ...createDemoBook().source,
+          name: "durable-book.md",
+        },
+        importedAt: demo.importedAt + 1,
+        updatedAt: demo.updatedAt + 1,
+      };
+      await persistReader(runtime, readyReaderState([demo, imported], imported.id));
+
+      const canonical = JSON.parse(values.get("bcr.reader.library.v1") ?? "{}") as {
+        version: 1;
+        books: ReadonlyArray<unknown>;
+      };
+      values.set(
+        "bcr.reader.library.v1",
+        JSON.stringify({ version: 1, books: canonical.books.slice(0, 1) }),
+      );
+      const restarted: ReaderRuntime = { ...runtime, meta: undefined };
+
+      const fast = await restoreReader(restarted, { deferBinary: true });
+      expect(fast?.books.map((book) => book.id)).toEqual([demo.id]);
+      expect(fast?.activeBookId).toBe(imported.id);
+      expect(fast?.libraryOutdated).toBe(true);
+
+      restarted.meta = runtime.meta;
+      const durable = await restoreReader(restarted, { deferBinary: true });
+      expect(durable?.books.map((book) => book.id)).toEqual([demo.id, imported.id]);
+      expect(durable?.activeBookId).toBe(imported.id);
+      expect(durable?.libraryOutdated).toBe(false);
+    });
   });
 
   it("mirrors the reading session so a memory-backed metadata store survives reload", async () => {

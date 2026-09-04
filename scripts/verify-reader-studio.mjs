@@ -205,9 +205,18 @@ await page.locator("input[type=file]").first().setInputFiles({
 await page
   .locator(".reader-reading-intro h1", { hasText: "Reader Export Bundle 验证" })
   .waitFor({ timeout: 20_000 });
-await page.locator(".reader-import-progress").waitFor({ state: "hidden", timeout: 20_000 });
+// Reload as soon as the book becomes visible. This covers mobile termination
+// before the normal debounced snapshot has had 900 ms to run.
+await page.reload({ waitUntil: "domcontentloaded" });
+await page.locator(".reader-studio").waitFor({ timeout: 20_000 });
+await page
+  .locator(".reader-book-card", { hasText: "Reader Export Bundle 验证" })
+  .waitFor({ timeout: 20_000 });
+await page
+  .locator(".reader-reading-intro h1", { hasText: "Reader Export Bundle 验证" })
+  .waitFor({ timeout: 20_000 });
 if (!(await page.locator(".reader-reading-column").innerText()).includes("直接恢复为可搜索章节")) {
-  fail("Reader 没有从 JSON Export Bundle 恢复章节内容");
+  fail("Reader 新增图书后立即重启没有恢复章节内容");
 }
 await page.locator(".reader-book-card", { hasText: "把时间还给阅读" }).first().click();
 await page.locator(".reader-reading-intro h1", { hasText: "把时间还给阅读" }).waitFor({

@@ -32,4 +32,19 @@ describe("Reader annotation anchors", () => {
     reader.openBook(book.id, book.sections[0]!.id);
     expect(getReaderState().navigationSequence).toBe(before + 1);
   });
+
+  it("merges a missing durable book without replacing the live projection", () => {
+    const recovered = {
+      ...createDemoBook(),
+      id: "reader-recovered-book",
+      title: "从 SQLite 找回的图书",
+    };
+
+    const added = reader.reconcileLibrary([book, recovered], {}, {}, recovered.id, {}, true);
+
+    expect(added.map((item) => item.id)).toEqual([recovered.id]);
+    expect(getReaderState().library).toHaveLength(2);
+    expect(getReaderState().library[0]).toBe(book);
+    expect(getReaderState().activeBookId).toBe(recovered.id);
+  });
 });

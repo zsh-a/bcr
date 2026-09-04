@@ -72,6 +72,7 @@ import {
   importReaderExportBundle,
   importReaderFile,
   indexBook,
+  mirrorReaderLibrary,
   mirrorReaderSession,
   prepareReaderDocumentHandoff,
   persistReader,
@@ -576,19 +577,33 @@ function readerLocatorAtScroll(
 
 let readerPersistenceQueue: Promise<void> = Promise.resolve();
 
-function persistReaderSnapshot(runtime: ReaderRuntime): void {
+function persistReaderSnapshot(
+  runtime: ReaderRuntime,
+  options: { readonly durableLibrary?: boolean } = {},
+): Promise<void> {
   const state = getReaderState();
-  if (state.status !== "ready") return;
+  if (state.status !== "ready") return Promise.resolve();
   // Keep the small session snapshot synchronously available before the async
   // SQLite/OPFS queue gets a chance to run. Mobile browsers may terminate a
   // page immediately after pagehide/visibilitychange.
   mirrorReaderSession(state);
+  mirrorReaderLibrary(runtime, state);
+  const metadataReady =
+    options.durableLibrary === true ? ensureReaderMetadata(runtime) : Promise.resolve();
   const save = () =>
-    persistReader(runtime, state, { mirrorSession: false }).then(() => reader.markSaved());
+    metadataReady.then(async () => {
+      // A queued debounce may run after a newer import. Persist the newest
+      // snapshot so an older task can never roll the library back.
+      const latest = getReaderState();
+      if (latest.status !== "ready") return;
+      await persistReader(runtime, latest, { mirrorSession: false });
+      reader.markSaved();
+    });
   readerPersistenceQueue = readerPersistenceQueue
     .catch(() => undefined)
     .then(save)
     .catch(() => undefined);
+  return readerPersistenceQueue;
 }
 
 function isAbortError(reason: unknown): boolean {
@@ -610,7 +625,7 @@ function useDebouncedPersist(runtime: ReaderRuntime | null): void {
   useEffect(() => {
     if (runtime === null || getReaderState().status !== "ready") return;
     const handle = window.setTimeout(() => {
-      persistReaderSnapshot(runtime);
+      void persistReaderSnapshot(runtime);
     }, 900);
     return () => window.clearTimeout(handle);
   }, [
@@ -627,7 +642,7 @@ function useDebouncedPersist(runtime: ReaderRuntime | null): void {
 
   useEffect(() => {
     if (runtime === null) return;
-    const flush = () => persistReaderSnapshot(runtime);
+    const flush = () => void persistReaderSnapshot(runtime);
     const onVisibilityChange = () => {
       if (document.visibilityState === "hidden") flush();
     };
@@ -687,11 +702,6 @@ function useReaderBoot(): {
     let indexingTimer: number | undefined;
     let binaryRestoreTimer: number | undefined;
     const binaryRestoreController = new AbortController();
-    const scheduleMetadataWarmup = (nextRuntime: ReaderRuntime): void => {
-      metadataWarmupTimer = window.setTimeout(() => {
-        if (!cancelled) void ensureReaderMetadata(nextRuntime);
-      }, 1200);
-    };
     const scheduleIndexing = (
       nextRuntime: ReaderRuntime,
       books: ReadonlyArray<ReaderBook>,
@@ -734,6 +744,43 @@ function useReaderBoot(): {
           });
       }, 240);
     };
+    const scheduleMetadataWarmup = (nextRuntime: ReaderRuntime): void => {
+      const baselineLibrary = getReaderState().library;
+      const baselineLibraryIds = baselineLibrary.map((book) => book.id).join("\u0000");
+      const baselineActiveBookId = getReaderState().activeBookId;
+      metadataWarmupTimer = window.setTimeout(() => {
+        void ensureReaderMetadata(nextRuntime)
+          .then(() => restoreReader(nextRuntime, { deferBinary: true }))
+          .then((durable) => {
+            if (cancelled || durable === undefined) return;
+            const current = getReaderState();
+            if (current.library.map((book) => book.id).join("\u0000") !== baselineLibraryIds) {
+              return;
+            }
+            const recovered = reader.reconcileLibrary(
+              durable.books,
+              durable.progressByBook,
+              durable.bookmarksByBook,
+              durable.activeBookId,
+              durable.annotationsByBook,
+              current.activeBookId === baselineActiveBookId,
+            );
+            if (recovered.length === 0) return;
+            const recoveredIds = new Set(recovered.map((book) => book.id));
+            setRecovery(durable.recovery);
+            void Promise.all(recovered.map((book) => indexBook(nextRuntime, book)));
+            scheduleBinaryRestore(
+              nextRuntime,
+              durable.pendingBookIds.filter((bookId) => recoveredIds.has(bookId)),
+              durable.activeBookId,
+            );
+            void persistReaderSnapshot(nextRuntime, { durableLibrary: true });
+          })
+          .catch(() => {
+            // The fast local projection stays usable when metadata recovery fails.
+          });
+      }, 1200);
+    };
     void createReaderRuntime()
       .then(async (nextRuntime) => {
         createdRuntime = nextRuntime;
@@ -743,7 +790,15 @@ function useReaderBoot(): {
           return;
         }
         setRuntime(nextRuntime);
-        const restored = await restoreReader(nextRuntime, { deferBinary: true });
+        let restored = await restoreReader(nextRuntime, { deferBinary: true });
+        if (restored?.libraryOutdated === true) {
+          // A compact session is much more likely to fit in localStorage than
+          // a full novel. Open SQLite only when its library signature proves
+          // that the fast local projection is stale or incomplete.
+          await ensureReaderMetadata(nextRuntime);
+          const durable = await restoreReader(nextRuntime, { deferBinary: true });
+          if (durable !== undefined && !durable.libraryOutdated) restored = durable;
+        }
         if (cancelled) return;
         if (restored !== undefined) {
           setRecovery(restored.recovery);
@@ -941,6 +996,7 @@ export function App() {
             : await importReaderFile(runtime, file, controller.signal);
           if (controller.signal.aborted) break;
           const added = reader.addBook(book);
+          await persistReaderSnapshot(runtime, { durableLibrary: true });
           if (added) {
             await indexBook(runtime, book, controller.signal);
             setNotice(
@@ -1078,6 +1134,7 @@ export function App() {
       try {
         const book = await importReaderDocumentHandoff(runtime, handoff, hostServices?.artifacts);
         const added = reader.addBook(book);
+        await persistReaderSnapshot(runtime, { durableLibrary: true });
         if (added) {
           await indexBook(runtime, book);
           setNotice(
@@ -1665,6 +1722,7 @@ function LibraryPanel(props: {
             onConfirmRemove={() => {
               props.runtime.indexSession?.removeBook(book.id);
               reader.removeBook(book.id);
+              void persistReaderSnapshot(props.runtime, { durableLibrary: true });
               setConfirmingId(null);
             }}
             onCancelRemove={() => setConfirmingId(null)}

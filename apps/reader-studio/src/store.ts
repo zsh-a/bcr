@@ -123,6 +123,63 @@ class ReaderStore {
     });
   }
 
+  /** Merge books recovered from the durable catalog without resetting live reading state. */
+  reconcileLibrary(
+    library: ReadonlyArray<ReaderBook>,
+    progressByBook: Readonly<Record<string, ReaderProgress>>,
+    bookmarksByBook: Readonly<Record<string, ReadonlyArray<ReaderBookmark>>>,
+    activeBookId: string | null,
+    annotationsByBook: Readonly<Record<string, ReadonlyArray<ReaderAnnotation>>>,
+    preferRestoredActive = false,
+  ): ReadonlyArray<ReaderBook> {
+    const currentById = new Map(this.state.library.map((book) => [book.id, book] as const));
+    const currentByHash = new Map(
+      this.state.library.flatMap((book) =>
+        book.source.ref?.hash === undefined ? [] : [[book.source.ref.hash, book] as const],
+      ),
+    );
+    const retained = new Set<string>();
+    const recovered: ReaderBook[] = [];
+    const merged = library.map((book) => {
+      const current =
+        currentById.get(book.id) ??
+        (book.source.ref?.hash === undefined ? undefined : currentByHash.get(book.source.ref.hash));
+      if (current !== undefined) {
+        retained.add(current.id);
+        return current;
+      }
+      retained.add(book.id);
+      recovered.push(book);
+      return book;
+    });
+    for (const book of this.state.library) {
+      if (!retained.has(book.id)) merged.push(book);
+    }
+    if (recovered.length === 0) return recovered;
+
+    const restoredActive =
+      activeBookId === null ? undefined : merged.find((book) => book.id === activeBookId);
+    const currentActive =
+      this.state.activeBookId === null
+        ? undefined
+        : merged.find((book) => book.id === this.state.activeBookId);
+    const active =
+      preferRestoredActive && restoredActive !== undefined
+        ? restoredActive
+        : (currentActive ?? restoredActive ?? merged[0] ?? demo);
+    const mergedProgress = { ...progressByBook, ...this.state.progressByBook };
+    const progress = mergedProgress[active.id] ?? progressForLocator(active, firstLocator(active));
+    this.set({
+      library: merged,
+      activeBookId: active.id,
+      activeSectionId: progress.locator.sectionId,
+      progressByBook: mergedProgress,
+      bookmarksByBook: { ...bookmarksByBook, ...this.state.bookmarksByBook },
+      annotationsByBook: { ...annotationsByBook, ...this.state.annotationsByBook },
+    });
+    return recovered;
+  }
+
   addBook(book: ReaderBook): boolean {
     const existing = this.state.library.find(
       (candidate) =>
