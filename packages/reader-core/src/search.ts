@@ -61,11 +61,31 @@ function normalizeTextWithOffsets(value: string): NormalizedText {
 
 /** Return an original-text range for a normalized query, if present. */
 export function searchTextRange(text: string, query: string): SearchTextRange | undefined {
+  return searchTextRangeNear(text, query, 0);
+}
+
+/**
+ * Return the occurrence nearest a progression hint while preserving offsets
+ * into the unmodified source text. This is useful for repeated prose when a
+ * reflowed DOM position still provides an approximate place in the section.
+ */
+export function searchTextRangeNear(
+  text: string,
+  query: string,
+  progression: number,
+): SearchTextRange | undefined {
   const normalizedQuery = normalizeSearchQuery(query);
   if (!normalizedQuery || !text) return undefined;
   const normalized = normalizeTextWithOffsets(text);
-  const index = normalized.value.indexOf(normalizedQuery);
+  const target = Math.min(1, Math.max(0, progression)) * normalized.value.length;
+  let index = normalized.value.indexOf(normalizedQuery);
   if (index < 0) return undefined;
+  let selected = index;
+  while (index >= 0) {
+    if (Math.abs(index - target) < Math.abs(selected - target)) selected = index;
+    index = normalized.value.indexOf(normalizedQuery, index + Math.max(1, normalizedQuery.length));
+  }
+  index = selected;
   const endIndex = index + normalizedQuery.length - 1;
   const start = normalized.starts[index];
   const end = normalized.ends[endIndex];

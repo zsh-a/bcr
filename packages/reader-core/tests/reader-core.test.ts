@@ -16,6 +16,7 @@ import {
   searchBook,
   searchIndexedDocuments,
   searchTextRange,
+  searchTextRangeNear,
 } from "../src/search";
 import type { ReaderBook } from "../src/model";
 
@@ -80,6 +81,18 @@ describe("reader-core", () => {
     expect(searchIndexedDocuments(indexed, [offsetBook], "阅读 器")[0]).toMatchObject({
       matchStart: 3,
       matchLength: 4,
+    });
+  });
+
+  it("resolves repeated text near a section progression hint", () => {
+    const text = "重复内容。前段文字。重复内容。后段文字。重复内容。";
+    expect(searchTextRangeNear(text, "重复 内容", 0.55)).toEqual({
+      start: 10,
+      length: 4,
+    });
+    expect(searchTextRangeNear(text, "重复内容", 0.95)).toEqual({
+      start: 20,
+      length: 4,
     });
   });
 

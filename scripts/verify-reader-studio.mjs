@@ -124,6 +124,17 @@ function documentExportFixture() {
   );
 }
 
+function preciseProgressFixture() {
+  const paragraphs = Array.from(
+    { length: 80 },
+    (_, index) =>
+      `<p id="progress-anchor-${index + 1}">精确进度验证第 ${String(index + 1).padStart(2, "0")} 段：文字锚点应在字体和视口发生变化后仍回到这里。</p>`,
+  ).join("");
+  return Buffer.from(
+    `<!doctype html><html><head><title>精确进度恢复验证</title></head><body><h1>精确进度恢复验证</h1>${paragraphs}</body></html>`,
+  );
+}
+
 const base = new URL(process.env.BASE_URL ?? "http://localhost:5199/studio");
 base.pathname = "/reader";
 base.search = "";
@@ -241,6 +252,69 @@ await page.getByRole("button", { name: "增大字号" }).click();
 await page.getByRole("button", { name: "增大字号" }).click();
 await page.getByRole("button", { name: "关闭阅读设置" }).click();
 await page.setViewportSize({ width: 1440, height: 900 });
+
+// A long, single-section publication catches the old behavior that only
+// restored a section start or a layout-dependent percentage. Capture a text
+// quote, reflow it with a font change, then verify it again after reload.
+await page.locator("input[type=file]").first().setInputFiles({
+  name: "precise-progress.html",
+  mimeType: "text/html",
+  buffer: preciseProgressFixture(),
+});
+await page.locator(".reader-reading-intro h1", { hasText: "精确进度恢复验证" }).waitFor({
+  timeout: 20_000,
+});
+const preciseAnchor = page.locator("#progress-anchor-55");
+await page.waitForTimeout(800);
+await preciseAnchor.evaluate((target) => {
+  const container = target.closest(".reader-reading-scroll");
+  if (!(container instanceof HTMLElement)) throw new Error("阅读滚动容器不存在");
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  container.scrollTo({
+    top:
+      container.scrollTop +
+      targetRect.top -
+      containerRect.top -
+      Math.min(140, container.clientHeight * 0.32),
+    behavior: "instant",
+  });
+  container.dispatchEvent(new Event("scroll"));
+});
+await page.waitForTimeout(1_100);
+const persistedTextAnchor = await page.evaluate(() => {
+  const raw = localStorage.getItem("bcr.reader.session.v1");
+  if (raw === null) return null;
+  const session = JSON.parse(raw);
+  return session.progressByBook?.[session.activeBookId]?.locator?.textAnchor?.exact ?? null;
+});
+if (typeof persistedTextAnchor !== "string" || persistedTextAnchor.length === 0) {
+  fail("自动阅读进度没有生成文字锚点");
+}
+await page.locator('.reader-font-size-menu button[aria-label="增大字号"]').click();
+await page.locator('.reader-font-size-menu button[aria-label="增大字号"]').click();
+await page.waitForTimeout(800);
+const preciseAnchorAfterReflow = await preciseAnchor.evaluate((target) => {
+  const container = target.closest(".reader-reading-scroll");
+  if (!(container instanceof HTMLElement)) return false;
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  return targetRect.bottom > containerRect.top && targetRect.top < containerRect.top + 320;
+});
+if (!preciseAnchorAfterReflow) fail("字号变化后没有通过文字锚点校准阅读位置");
+await page.reload({ waitUntil: "domcontentloaded" });
+await page.locator(".reader-reading-intro h1", { hasText: "精确进度恢复验证" }).waitFor({
+  timeout: 20_000,
+});
+await page.waitForTimeout(800);
+const preciseAnchorAfterReload = await page.locator("#progress-anchor-55").evaluate((target) => {
+  const container = target.closest(".reader-reading-scroll");
+  if (!(container instanceof HTMLElement)) return false;
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  return targetRect.bottom > containerRect.top && targetRect.top < containerRect.top + 320;
+});
+if (!preciseAnchorAfterReload) fail("刷新后没有恢复到保存的精确文字位置");
 
 // Reader can consume the canonical Document JSON bundle directly, without
 // invoking a format parser. Keep this on the real file input so the same path

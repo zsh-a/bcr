@@ -45,6 +45,7 @@ export {
   searchIndexedDocuments,
   searchLibrary,
   searchTextRange,
+  searchTextRangeNear,
   type ReaderIndexBook,
   type ReaderIndexDocument,
   type SearchTextRange,

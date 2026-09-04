@@ -384,10 +384,19 @@ class ReaderStore {
     const progress = progressForLocator(book, locator);
     const nextProgress = percentage === undefined ? progress : { ...progress, percentage };
     const currentProgress = this.state.progressByBook[book.id];
+    const currentAnchorStart = currentProgress?.locator.textAnchor?.start;
+    const nextAnchorStart = nextProgress.locator.textAnchor?.start;
+    const bothTextAnchored = currentAnchorStart !== undefined && nextAnchorStart !== undefined;
+    const sameLocalPosition = bothTextAnchored
+      ? Math.abs(currentAnchorStart - nextAnchorStart) < 16
+      : currentProgress !== undefined &&
+        currentProgress.locator.textAnchor === undefined &&
+        nextProgress.locator.textAnchor === undefined &&
+        Math.abs(currentProgress.locator.progression - nextProgress.locator.progression) < 0.001;
     if (
       currentProgress !== undefined &&
       currentProgress.locator.sectionId === nextProgress.locator.sectionId &&
-      Math.abs(currentProgress.percentage - nextProgress.percentage) < 0.002
+      sameLocalPosition
     ) {
       return;
     }

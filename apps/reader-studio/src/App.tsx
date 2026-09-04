@@ -46,11 +46,13 @@ import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { SearchDocument } from "@bcr/core";
 import {
   createLocator,
+  createTextAnchor,
   createTextLocator,
   locatorAtPercentage,
   normalizeSearchQuery,
   readerAcceptAttribute,
   searchTextRange,
+  searchTextRangeNear,
   sameLocator,
   type ReaderBook,
   type ReaderAnnotation,
@@ -534,6 +536,204 @@ interface ReaderScrollPosition {
   readonly left: number;
 }
 
+interface ReaderRenderedTextNode {
+  readonly node: Text;
+  readonly start: number;
+  readonly end: number;
+}
+
+interface ReaderRenderedText {
+  readonly value: string;
+  readonly nodes: ReadonlyArray<ReaderRenderedTextNode>;
+}
+
+interface ReaderCaretPoint {
+  readonly node: Node;
+  readonly offset: number;
+}
+
+function readerProbeTopOffset(container: HTMLElement): number {
+  return Math.min(140, container.clientHeight * 0.32);
+}
+
+function readerRenderedText(root: Element): ReaderRenderedText {
+  const walker = document.createTreeWalker(root, 4);
+  const nodes: ReaderRenderedTextNode[] = [];
+  let value = "";
+  let current = walker.nextNode();
+  while (current !== null) {
+    const textNode = current as Text;
+    const start = value.length;
+    value += textNode.data;
+    if (textNode.data.length > 0) {
+      nodes.push({ node: textNode, start, end: value.length });
+    }
+    current = walker.nextNode();
+  }
+  return { value, nodes };
+}
+
+function readerCaretFromPoint(x: number, y: number): ReaderCaretPoint | undefined {
+  const caretDocument = document as Document & {
+    caretPositionFromPoint?: (
+      x: number,
+      y: number,
+    ) => { readonly offsetNode: Node; readonly offset: number } | null;
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+  };
+  const position = caretDocument.caretPositionFromPoint?.(x, y);
+  if (position !== null && position !== undefined) {
+    return { node: position.offsetNode, offset: position.offset };
+  }
+  const range = caretDocument.caretRangeFromPoint?.(x, y);
+  return range === null || range === undefined
+    ? undefined
+    : { node: range.startContainer, offset: range.startOffset };
+}
+
+function readerTextNodeOffset(
+  rendered: ReaderRenderedText,
+  node: Node,
+  offset: number,
+): number | undefined {
+  if (!(node instanceof Text)) return undefined;
+  const entry = rendered.nodes.find((candidate) => candidate.node === node);
+  return entry === undefined
+    ? undefined
+    : entry.start + Math.min(node.data.length, Math.max(0, offset));
+}
+
+function readerDomPointAtOffset(
+  rendered: ReaderRenderedText,
+  offset: number,
+): { readonly node: Text; readonly offset: number } | undefined {
+  if (rendered.nodes.length === 0) return undefined;
+  const safeOffset = Math.min(rendered.value.length, Math.max(0, offset));
+  const entry =
+    rendered.nodes.find((candidate) => safeOffset <= candidate.end) ??
+    rendered.nodes[rendered.nodes.length - 1];
+  return entry === undefined
+    ? undefined
+    : { node: entry.node, offset: Math.min(entry.node.data.length, safeOffset - entry.start) };
+}
+
+function readerTextLocatorAtPoint(
+  book: ReaderBook,
+  container: HTMLElement,
+  x: number,
+  y: number,
+): { readonly locator: ReaderLocator; readonly sectionIndex: number } | undefined {
+  const caret = readerCaretFromPoint(x, y);
+  if (caret === undefined || !container.contains(caret.node)) return undefined;
+  const sectionElement = elementForNode(caret.node)?.closest<HTMLElement>("[data-reader-section]");
+  const prose = elementForNode(caret.node)?.closest<HTMLElement>(".reader-prose");
+  if (
+    sectionElement === null ||
+    sectionElement === undefined ||
+    prose === null ||
+    prose === undefined ||
+    !container.contains(sectionElement)
+  ) {
+    return undefined;
+  }
+  const sectionId = sectionElement.dataset.readerSection;
+  const sectionIndex = sectionId === undefined ? -1 : (sectionIndexMap(book).get(sectionId) ?? -1);
+  const section = book.sections[sectionIndex];
+  if (section === undefined || section.kind !== "text" || section.text.length === 0) {
+    return undefined;
+  }
+  const rendered = readerRenderedText(prose);
+  const offset = readerTextNodeOffset(rendered, caret.node, caret.offset);
+  if (offset === undefined || rendered.value.length === 0) return undefined;
+  const progressionHint = offset / rendered.value.length;
+  const afterStart = (() => {
+    let start = offset;
+    while (start < rendered.value.length && /\s/u.test(rendered.value[start] ?? "")) start += 1;
+    return start;
+  })();
+  const beforeEnd = (() => {
+    let end = offset;
+    while (end > 0 && /\s/u.test(rendered.value[end - 1] ?? "")) end -= 1;
+    return end;
+  })();
+  const lengths = [96, 64, 40, 24, 16, 8, 4] as const;
+  const candidates = [
+    ...lengths.map((length) => rendered.value.slice(afterStart, afterStart + length)),
+    ...lengths.map((length) => rendered.value.slice(Math.max(0, beforeEnd - length), beforeEnd)),
+  ];
+  for (const candidate of candidates) {
+    if (normalizeSearchQuery(candidate).length === 0) continue;
+    const match = searchTextRangeNear(section.text, candidate, progressionHint);
+    if (match === undefined || match.length === 0) continue;
+    return {
+      locator: createTextLocator(section, match.start, match.start + match.length),
+      sectionIndex,
+    };
+  }
+  // Some projections intentionally retain source markup in section.text
+  // while rendering only its prose. Keep a DOM quote in that case: the exact
+  // text remains durable across reflow even when no source offset can be
+  // derived from the adapter projection.
+  const anchorStart = afterStart < rendered.value.length ? afterStart : Math.max(0, beforeEnd - 40);
+  const textAnchor = createTextAnchor(
+    rendered.value,
+    anchorStart,
+    Math.min(rendered.value.length, anchorStart + 96),
+  );
+  return textAnchor === undefined
+    ? undefined
+    : {
+        locator: createLocator(section, progressionHint, undefined, textAnchor),
+        sectionIndex,
+      };
+}
+
+function readerTextAnchorRange(
+  sectionElement: HTMLElement,
+  locator: ReaderLocator,
+): Range | undefined {
+  const exact = locator.textAnchor?.exact;
+  const prose = sectionElement.querySelector<HTMLElement>(".reader-prose");
+  if (exact === undefined || exact.length === 0 || prose === null) return undefined;
+  const rendered = readerRenderedText(prose);
+  const match = searchTextRangeNear(rendered.value, exact, locator.progression);
+  if (match === undefined) return undefined;
+  const start = readerDomPointAtOffset(rendered, match.start);
+  const end = readerDomPointAtOffset(rendered, match.start + match.length);
+  if (start === undefined || end === undefined) return undefined;
+  const range = document.createRange();
+  range.setStart(start.node, start.offset);
+  range.setEnd(end.node, end.offset);
+  return range;
+}
+
+function readerRangeScrollPosition(
+  container: HTMLElement,
+  range: Range,
+): ReaderScrollPosition | undefined {
+  const rangeRect = [...range.getClientRects()].find((rect) => rect.width > 0 || rect.height > 0);
+  if (rangeRect === undefined) return undefined;
+  const containerRect = container.getBoundingClientRect();
+  const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+  const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+  return {
+    top: Math.min(
+      maxTop,
+      Math.max(
+        0,
+        container.scrollTop + rangeRect.top - containerRect.top - readerProbeTopOffset(container),
+      ),
+    ),
+    left: Math.min(
+      maxLeft,
+      Math.max(
+        0,
+        container.scrollLeft + rangeRect.left - containerRect.left - container.clientWidth * 0.32,
+      ),
+    ),
+  };
+}
+
 function readerElementScrollPosition(
   container: HTMLElement,
   target: Element,
@@ -562,6 +762,56 @@ function readerSectionScrollPosition(
     `[data-reader-section="${CSS.escape(sectionId)}"]`,
   );
   return target === null ? undefined : readerElementScrollPosition(container, target);
+}
+
+function readerLocatorScrollPosition(
+  container: HTMLElement,
+  section: ReaderSection,
+  locator: ReaderLocator,
+  horizontal: boolean,
+): ReaderScrollPosition | undefined {
+  const target = container.querySelector<HTMLElement>(
+    `[data-reader-section="${CSS.escape(section.id)}"]`,
+  );
+  if (target === null) return undefined;
+  const anchorRange = readerTextAnchorRange(target, locator);
+  if (anchorRange !== undefined) {
+    const position = readerRangeScrollPosition(container, anchorRange);
+    if (position !== undefined) return position;
+  }
+  if (locator.progression <= 0) return readerElementScrollPosition(container, target);
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+  const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+  return {
+    top: horizontal
+      ? 0
+      : Math.min(
+          maxTop,
+          Math.max(
+            0,
+            container.scrollTop +
+              targetRect.top -
+              containerRect.top +
+              targetRect.height * locator.progression -
+              readerProbeTopOffset(container),
+          ),
+        ),
+    left: horizontal
+      ? Math.min(
+          maxLeft,
+          Math.max(
+            0,
+            container.scrollLeft +
+              targetRect.left -
+              containerRect.left +
+              targetRect.width * locator.progression -
+              container.clientWidth * 0.32,
+          ),
+        )
+      : 0,
+  };
 }
 
 function readerInternalLinkScrollPosition(
@@ -648,11 +898,30 @@ function readerLocatorAtScroll(
   book: ReaderBook,
   container: HTMLElement,
   fallbackSectionId?: string | null,
-): { locator: ReturnType<typeof createLocator>; percentage: number } | undefined {
+): { locator: ReaderLocator; percentage: number } | undefined {
   if (book.sections.length === 0) return undefined;
   const containerRect = container.getBoundingClientRect();
-  const probeTop = containerRect.top + Math.min(140, container.clientHeight * 0.32);
+  const probeTop = containerRect.top + readerProbeTopOffset(container);
   const probeX = containerRect.left + containerRect.width * 0.5;
+  const probePoints = [
+    [probeX, probeTop],
+    [containerRect.left + containerRect.width * 0.35, probeTop],
+    [containerRect.left + containerRect.width * 0.65, probeTop],
+    [probeX, containerRect.top + container.clientHeight * 0.45],
+  ] as const;
+  for (const [x, y] of probePoints) {
+    const textPosition = readerTextLocatorAtPoint(book, container, x, y);
+    if (textPosition === undefined) continue;
+    const denominator = Math.max(1, book.sections.length - 1);
+    return {
+      locator: textPosition.locator,
+      percentage: clamp(
+        (textPosition.sectionIndex + textPosition.locator.progression) / denominator,
+        0,
+        1,
+      ),
+    };
+  }
   const hit = document
     .elementFromPoint(probeX, probeTop)
     ?.closest<HTMLElement>("[data-reader-section]");
@@ -675,6 +944,11 @@ function readerLocatorAtScroll(
 }
 
 let readerPersistenceQueue: Promise<void> = Promise.resolve();
+const READER_CAPTURE_PROGRESS_EVENT = "bcr-reader-capture-progress";
+
+function captureReaderProgress(): void {
+  window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
+}
 
 function persistReaderSnapshot(
   runtime: ReaderRuntime,
@@ -739,6 +1013,7 @@ function useReaderPwaUpdate(runtime: ReaderRuntime | null): ReaderPwaUpdateState
     setApplying(true);
     // Mirror state synchronously, then wait for the durable SQLite/OPFS queue
     // before allowing the new worker to take control and reload the Reader.
+    captureReaderProgress();
     await persistReaderSnapshot(runtime, { durableLibrary: true });
     window.dispatchEvent(new Event("bcr-reader-apply-update"));
   }, [applying, runtime]);
@@ -787,7 +1062,10 @@ function useDebouncedPersist(runtime: ReaderRuntime | null): void {
 
   useEffect(() => {
     if (runtime === null) return;
-    const flush = () => void persistReaderSnapshot(runtime);
+    const flush = () => {
+      captureReaderProgress();
+      void persistReaderSnapshot(runtime);
+    };
     const onVisibilityChange = () => {
       if (document.visibilityState === "hidden") flush();
     };
@@ -2659,13 +2937,15 @@ function ReadingView(props: {
   const settings = useReader((state) => state.settings);
   const activeSectionId = useReader((state) => state.activeSectionId);
   const navigationSequence = useReader((state) => state.navigationSequence);
-  const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
+  const savedProgress = useReader((state) => state.progressByBook[props.book.id]);
+  const progress = savedProgress?.percentage ?? 0;
   const searchQuery = useReader((state) => state.query);
   const searchReveal = useReader((state) => state.searchReveal);
   const containerRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<number | null>(null);
   const lastScrollUpdateRef = useRef(0);
   const userScrollRef = useRef(false);
+  const userScrollTimerRef = useRef<number | null>(null);
   const programmaticScrollRef = useRef(false);
   const programmaticScrollTargetRef = useRef<ReaderScrollPosition | null>(null);
   const programmaticScrollTimerRef = useRef<number | null>(null);
@@ -2674,18 +2954,54 @@ function ReadingView(props: {
   const pendingInternalLinkRef = useRef<ReaderInternalLinkTarget | null>(null);
   const handledNavigationSequenceRef = useRef(navigationSequence);
   const [contentReadyVersion, setContentReadyVersion] = useState(0);
+  const markUserScroll = useCallback(() => {
+    userScrollRef.current = true;
+    if (userScrollTimerRef.current !== null) window.clearTimeout(userScrollTimerRef.current);
+    userScrollTimerRef.current = window.setTimeout(() => {
+      userScrollRef.current = false;
+      userScrollTimerRef.current = null;
+    }, 240);
+  }, []);
   const updateLocator = useCallback(() => {
     const container = containerRef.current;
     if (container === null || props.book.sections.length === 0) return;
     const percentage = readerScrollPercentage(container, settings.layout);
-    const mapped = readerUsesHorizontalPaging(container, settings.layout)
-      ? undefined
-      : readerLocatorAtScroll(props.book, container, activeSectionId);
+    const mapped = readerLocatorAtScroll(props.book, container, activeSectionId);
     reader.setLocator(
       mapped?.locator ?? locatorAtPercentage(props.book, percentage),
       mapped?.percentage ?? percentage,
     );
   }, [activeSectionId, props.book, settings.layout]);
+  useEffect(() => {
+    const capture = () => {
+      markUserScroll();
+      updateLocator();
+    };
+    window.addEventListener(READER_CAPTURE_PROGRESS_EVENT, capture);
+    return () => window.removeEventListener(READER_CAPTURE_PROGRESS_EVENT, capture);
+  }, [markUserScroll, updateLocator]);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (container === null) return;
+    let frame: number | null = null;
+    let cancelled = false;
+    const scheduleCalibration = () => {
+      if (cancelled || frame !== null) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        setContentReadyVersion((version) => version + 1);
+      });
+    };
+    window.addEventListener("resize", scheduleCalibration);
+    window.visualViewport?.addEventListener("resize", scheduleCalibration);
+    void document.fonts?.ready.then(scheduleCalibration);
+    return () => {
+      cancelled = true;
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", scheduleCalibration);
+      window.visualViewport?.removeEventListener("resize", scheduleCalibration);
+    };
+  }, [props.book.id]);
   useEffect(() => {
     if (activeSectionId === null || containerRef.current === null) return;
     const explicitNavigation = navigationSequence !== handledNavigationSequenceRef.current;
@@ -2720,7 +3036,18 @@ function ReadingView(props: {
       const horizontalPaging = readerUsesHorizontalPaging(container, settings.layout);
       const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
       const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+      const activeSection = props.book.sections.find((section) => section.id === activeSectionId);
+      const activeLocator =
+        savedProgress?.locator.sectionId === activeSectionId
+          ? savedProgress.locator
+          : activeSection === undefined
+            ? undefined
+            : createLocator(activeSection);
       const sectionPosition = readerSectionScrollPosition(container, activeSectionId);
+      const locatorPosition =
+        activeSection === undefined || activeLocator === undefined
+          ? undefined
+          : readerLocatorScrollPosition(container, activeSection, activeLocator, horizontalPaging);
       const internalLinkPosition =
         pendingInternalLink === null
           ? undefined
@@ -2729,13 +3056,10 @@ function ReadingView(props: {
         internalLinkPosition === undefined
           ? horizontalPaging
             ? explicitNavigation
-              ? (sectionPosition ?? { top: 0, left: maxLeft * progress })
-              : { top: 0, left: maxLeft * progress }
+              ? (locatorPosition ?? sectionPosition ?? { top: 0, left: maxLeft * progress })
+              : (locatorPosition ?? { top: 0, left: maxLeft * progress })
             : {
-                top:
-                  activeSectionId === props.book.sections[0]?.id
-                    ? maxTop * progress
-                    : (sectionPosition?.top ?? 0),
+                top: locatorPosition?.top ?? maxTop * progress,
                 left: 0,
               }
           : horizontalPaging
@@ -2776,7 +3100,8 @@ function ReadingView(props: {
     navigationSequence,
     progress,
     props.book,
-    settings.layout,
+    savedProgress,
+    settings,
   ]);
   useEffect(() => {
     const reveal = searchReveal;
@@ -2812,6 +3137,9 @@ function ReadingView(props: {
   useEffect(
     () => () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      if (userScrollTimerRef.current !== null) {
+        window.clearTimeout(userScrollTimerRef.current);
+      }
       if (programmaticScrollTimerRef.current !== null) {
         window.clearTimeout(programmaticScrollTimerRef.current);
       }
@@ -2900,6 +3228,14 @@ function ReadingView(props: {
               window.clearTimeout(programmaticScrollTimerRef.current);
               programmaticScrollTimerRef.current = null;
             }
+            if (navigationRetryFrameRef.current !== null) {
+              window.cancelAnimationFrame(navigationRetryFrameRef.current);
+              navigationRetryFrameRef.current = null;
+            }
+            if (navigationRetryTimerRef.current !== null) {
+              window.clearTimeout(navigationRetryTimerRef.current);
+              navigationRetryTimerRef.current = null;
+            }
           }
           if (frameRef.current !== null) return;
           const flush = () => {
@@ -2910,7 +3246,7 @@ function ReadingView(props: {
             }
             frameRef.current = null;
             lastScrollUpdateRef.current = performance.now();
-            userScrollRef.current = true;
+            markUserScroll();
             updateLocator();
           };
           frameRef.current = requestAnimationFrame(flush);

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createTextLocator } from "@bcr/reader-core";
+import { createLocator, createTextLocator, type ReaderBook } from "@bcr/reader-core";
 import { createDemoBook, DEFAULT_READER_SETTINGS } from "../src/model";
 import { getReaderState, reader } from "../src/store";
 
@@ -56,5 +56,30 @@ describe("Reader annotation anchors", () => {
     expect(getReaderState().library).toHaveLength(2);
     expect(getReaderState().library[0]).toBe(book);
     expect(getReaderState().activeBookId).toBe(recovered.id);
+  });
+
+  it("does not suppress chapter-local movement in books with many sections", () => {
+    const sections = Array.from({ length: 100 }, (_, index) => ({
+      id: `section-${index}`,
+      order: index,
+      label: `第 ${index + 1} 章`,
+      kind: "text" as const,
+      text: "章节正文".repeat(100),
+    }));
+    const longBook: ReaderBook = { ...book, id: "long-book", sections };
+    reader.hydrate([longBook], {}, DEFAULT_READER_SETTINGS, {}, longBook.id);
+
+    reader.setLocator(createLocator(sections[50]!, 0.1));
+    reader.setLocator(createLocator(sections[50]!, 0.11));
+
+    expect(getReaderState().progressByBook[longBook.id]?.locator.progression).toBeCloseTo(0.11);
+  });
+
+  it("upgrades a ratio-only position to a text anchor", () => {
+    const section = book.sections[1]!;
+    reader.setLocator(createLocator(section, 0.4));
+    reader.setLocator(createTextLocator(section, 4, 16));
+
+    expect(getReaderState().progressByBook[book.id]?.locator.textAnchor).toBeDefined();
   });
 });
