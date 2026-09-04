@@ -8,9 +8,7 @@ import {
   type ArtifactStore,
 } from "@bcr/core";
 import { isOpfsSupported, MemoryStore, OpfsStore, type BinaryStore } from "@bcr/storage-opfs";
-import { openSqliteDb, type SqliteDb } from "@bcr/storage-sqlite";
-import initSqlite from "@sqlite.org/sqlite-wasm";
-import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
+import type { SqliteDb, SqliteModule } from "@bcr/storage-sqlite";
 import { Context, Effect, Layer } from "effect";
 import {
   normalizeAnnotation,
@@ -47,17 +45,17 @@ import {
   type ReaderSettings,
   type ReaderState,
 } from "./model";
-import { createReaderIndexSession, type ReaderIndexSession } from "./session";
+import { createLazyReaderIndexSession, type ReaderIndexSession } from "./session";
 import { normalizeReaderProgress } from "./session-contract";
 
 export interface ReaderRuntime {
   readonly binary: BinaryStore;
   readonly artifacts: ArtifactStore;
-  readonly meta: SqliteDb | undefined;
-  readonly ftsReady: boolean;
-  readonly indexSession: ReaderIndexSession | undefined;
-  readonly parseSession: ReaderParseSession | undefined;
-  readonly parserMode: "worker" | "main";
+  meta: SqliteDb | undefined;
+  ftsReady: boolean;
+  indexSession: ReaderIndexSession | undefined;
+  parseSession: ReaderParseSession | undefined;
+  parserMode: "worker" | "main";
 }
 
 export interface PersistReaderOptions {
@@ -71,9 +69,7 @@ export interface ReaderSearchResult {
 }
 
 interface SqliteInit {
-  (options?: {
-    locateFile?: (file: string) => string;
-  }): Promise<Parameters<typeof openSqliteDb>[0]["sqlite3"]>;
+  (options?: { locateFile?: (file: string) => string }): Promise<SqliteModule>;
 }
 
 interface PersistedBook {
@@ -175,8 +171,14 @@ const READER_SESSION_META_KEY = "reader/session";
 
 let currentRuntime: ReaderRuntime | undefined;
 const persistedLibrarySignatures = new WeakMap<ReaderRuntime, string>();
+const readerMetadataPromises = new WeakMap<ReaderRuntime, Promise<void>>();
 
 async function openMetaDb(store: BinaryStore): Promise<SqliteDb> {
+  const [{ default: initSqlite }, { default: wasmUrl }, { openSqliteDb }] = await Promise.all([
+    import("@sqlite.org/sqlite-wasm"),
+    import("@sqlite.org/sqlite-wasm/sqlite3.wasm?url"),
+    import("@bcr/storage-sqlite"),
+  ]);
   const init = initSqlite as unknown as SqliteInit;
   const sqlite3 = await init({ locateFile: () => wasmUrl });
   return openSqliteDb({ store, path: "reader/meta.db", sqlite3 });
@@ -185,36 +187,46 @@ async function openMetaDb(store: BinaryStore): Promise<SqliteDb> {
 export async function createReaderRuntime(): Promise<ReaderRuntime> {
   const binary = isOpfsSupported() ? new OpfsStore("reader") : new MemoryStore();
   const memory = new MemoryStore();
-  let meta: SqliteDb | undefined;
-  let ftsReady = false;
-  try {
-    meta = await openMetaDb(binary);
-    try {
-      meta.run(FTS_SCHEMA);
-      ftsReady = true;
-    } catch {
-      // Older sqlite builds can lack FTS5. The reader keeps a deterministic
-      // in-memory fallback so search remains available instead of blocking boot.
-    }
-  } catch {
-    meta = undefined;
-  }
   const context = await Effect.runPromise(
     Effect.scoped(Layer.build(artifactStore({ memory, opfs: binary }))),
   );
   const artifacts = Context.get(context, ArtifactStoreTag);
-  const parseSession = createReaderParseSession();
   const runtime: ReaderRuntime = {
     binary,
     artifacts,
-    meta,
-    ftsReady,
-    indexSession: createReaderIndexSession(artifacts),
-    parseSession,
-    parserMode: parseSession === undefined ? "main" : "worker",
+    // SQLite and both Reader workers are enhanced capabilities. Deferring
+    // them lets the installed PWA paint the first page before storage/index
+    // infrastructure starts competing for mobile CPU and I/O.
+    meta: undefined,
+    ftsReady: false,
+    indexSession: createLazyReaderIndexSession(artifacts),
+    parseSession: undefined,
+    parserMode: "main",
   };
   currentRuntime = runtime;
   return runtime;
+}
+
+/** Warm the optional Reader metadata database after the first usable frame. */
+export function ensureReaderMetadata(runtime: ReaderRuntime): Promise<void> {
+  if (runtime.meta !== undefined) return Promise.resolve();
+  const pending = readerMetadataPromises.get(runtime);
+  if (pending !== undefined) return pending;
+  const next = openMetaDb(runtime.binary)
+    .then((meta) => {
+      runtime.meta = meta;
+      try {
+        meta.run(FTS_SCHEMA);
+        runtime.ftsReady = true;
+      } catch {
+        // Older sqlite builds can lack FTS5. JS/worker search remains available.
+      }
+    })
+    .catch(() => {
+      // Metadata is an enhancement; localStorage and worker search remain durable.
+    });
+  readerMetadataPromises.set(runtime, next);
+  return next;
 }
 
 async function parseReaderFile(
@@ -226,9 +238,12 @@ async function parseReaderFile(
   const format = formatForFile(file);
   // PDF.js owns a rendering worker and keeps a Blob URL for canvas pages; keep
   // its lifecycle on the main thread until the dedicated page renderer lands.
-  if (runtime.parseSession === undefined || format === "pdf") {
+  if (format === "pdf") {
     return openReaderFile(file, id, signal);
   }
+  runtime.parseSession ??= createReaderParseSession();
+  runtime.parserMode = runtime.parseSession === undefined ? "main" : "worker";
+  if (runtime.parseSession === undefined) return openReaderFile(file, id, signal);
   try {
     return await runtime.parseSession.open(file, id, signal);
   } catch (reason) {

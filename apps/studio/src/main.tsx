@@ -1,15 +1,3 @@
-import "@fontsource/ibm-plex-sans/400.css";
-import "@fontsource/ibm-plex-sans/500.css";
-import "@fontsource/ibm-plex-sans/600.css";
-import "@fontsource/ibm-plex-mono/400.css";
-import "@fontsource/ibm-plex-mono/500.css";
-import "dockview-react/dist/styles/dockview.css";
-import "./styles.css";
-
-import { RouterProvider } from "@tanstack/react-router";
-import { createRoot } from "react-dom/client";
-import { router } from "./router";
-
 type ReaderInstallWindow = Window & {
   __bcrReaderInstallPrompt?: Event;
 };
@@ -30,19 +18,45 @@ function captureReaderInstallPrompt(): void {
 function registerReaderServiceWorker(): void {
   const viteEnv = (import.meta as ImportMeta & { readonly env?: { readonly PROD?: boolean } }).env;
   if (viteEnv?.PROD !== true || !("serviceWorker" in navigator)) return;
-  const register = () => {
-    void navigator.serviceWorker.register("/sw.js", { scope: "/" });
-  };
-  if (document.readyState === "complete") register();
-  else window.addEventListener("load", register, { once: true });
+  // Registration is non-blocking and starts the install while the selected
+  // application entry is loading, instead of waiting for the page load event.
+  void navigator.serviceWorker.register("/sw.js", { scope: "/" });
 }
 
 captureReaderInstallPrompt();
 registerReaderServiceWorker();
 
-// 不用 StrictMode：OffscreenCanvas 的 transferControlToOffscreen
-// 每块 canvas 只能执行一次，double-effect 会破坏 render.worker 挂载。
-const container = document.getElementById("root");
-if (container === null) throw new Error("missing #root");
+const rootElement = document.getElementById("root");
+if (rootElement === null) throw new Error("missing #root");
+const container: HTMLElement = rootElement;
 
-createRoot(container).render(<RouterProvider router={router} />);
+function isStandaloneReader(): boolean {
+  if (window.location.pathname !== "/reader" && !window.location.pathname.startsWith("/reader/")) {
+    return false;
+  }
+  const standaloneMedia =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(display-mode: standalone)").matches;
+  const iosStandalone = Boolean(
+    (navigator as Navigator & { readonly standalone?: boolean }).standalone,
+  );
+  return standaloneMedia || iosStandalone;
+}
+
+function showBootstrapError(reason: unknown): void {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  container.replaceChildren();
+  const error = document.createElement("p");
+  error.className = "bcr-bootstrap-error";
+  error.textContent = `BCR 启动失败：${message}`;
+  container.append(error);
+}
+
+// The installed Reader is a focused PWA surface. Keep the Studio shell out of
+// its initial module graph; desktop/browser Reader routes still use the full
+// Shell so shared search and cross-workspace handoffs remain available there.
+const entry = isStandaloneReader()
+  ? import("./reader-main").then(({ mountReader }) => mountReader(container))
+  : import("./studio-main").then(({ mountStudio }) => mountStudio(container));
+
+void entry.catch(showBootstrapError);

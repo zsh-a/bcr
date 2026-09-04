@@ -67,6 +67,7 @@ import {
 import { useLocationSearch, useOptionalRuntime } from "@bcr/react";
 import {
   createReaderRuntime,
+  ensureReaderMetadata,
   importReaderDocumentHandoff,
   importReaderExportBundle,
   importReaderFile,
@@ -681,6 +682,12 @@ function useReaderBoot(): {
   useEffect(() => {
     let cancelled = false;
     let createdRuntime: ReaderRuntime | null = null;
+    let metadataWarmupTimer: number | undefined;
+    const scheduleMetadataWarmup = (nextRuntime: ReaderRuntime): void => {
+      metadataWarmupTimer = window.setTimeout(() => {
+        if (!cancelled) void ensureReaderMetadata(nextRuntime);
+      }, 1200);
+    };
     void createReaderRuntime()
       .then(async (nextRuntime) => {
         createdRuntime = nextRuntime;
@@ -703,10 +710,12 @@ function useReaderBoot(): {
             restored.annotationsByBook,
             restored.searchSession,
           );
+          scheduleMetadataWarmup(nextRuntime);
           await Promise.all(restored.books.map((book) => indexBook(nextRuntime, book)));
         } else {
           setRecovery(null);
           reader.setReady();
+          scheduleMetadataWarmup(nextRuntime);
           await indexBook(nextRuntime, getReaderState().library[0]!);
         }
       })
@@ -718,6 +727,7 @@ function useReaderBoot(): {
       });
     return () => {
       cancelled = true;
+      if (metadataWarmupTimer !== undefined) window.clearTimeout(metadataWarmupTimer);
       createdRuntime?.indexSession?.close();
       createdRuntime?.parseSession?.close();
     };

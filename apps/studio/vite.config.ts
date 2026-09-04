@@ -4,6 +4,11 @@ import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   plugins: [tailwindcss(), react()],
+  build: {
+    // The service worker reads this stable manifest at install time to
+    // precache the hashed Reader entry graph without hard-coding filenames.
+    manifest: "build-manifest.json",
+  },
   optimizeDeps: {
     // emscripten / onnxruntime 类模块不做 esbuild 预打包；wasm 路径由 locateFile 注入
     exclude: ["@duckdb/duckdb-wasm", "@sqlite.org/sqlite-wasm", "@huggingface/transformers"],

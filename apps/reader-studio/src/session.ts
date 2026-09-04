@@ -240,3 +240,53 @@ export function createReaderIndexSession(artifacts: ArtifactStore): ReaderIndexS
     },
   };
 }
+
+/**
+ * Keeps the Reader search contract available without spawning its WorkerPool
+ * during the first paint. The actual index session is created by the first
+ * indexing operation and all early subscribers are forwarded to it.
+ */
+export function createLazyReaderIndexSession(artifacts: ArtifactStore): ReaderIndexSession {
+  let session: ReaderIndexSession | undefined;
+  const listeners = new Set<() => void>();
+  const subscriptions = new Map<() => void, () => void>();
+
+  const ensure = (): ReaderIndexSession | undefined => {
+    if (session !== undefined) return session;
+    session = createReaderIndexSession(artifacts);
+    if (session !== undefined) {
+      for (const listener of listeners) {
+        subscriptions.set(listener, session.subscribe(listener));
+      }
+    }
+    return session;
+  };
+
+  return {
+    indexBook: async (book, signal) => {
+      const next = ensure();
+      if (next === undefined) return;
+      await next.indexBook(book, signal);
+    },
+    removeBook: (bookId) => {
+      session?.removeBook(bookId);
+    },
+    subscribe: (listener) => {
+      listeners.add(listener);
+      if (session !== undefined) subscriptions.set(listener, session.subscribe(listener));
+      return () => {
+        listeners.delete(listener);
+        subscriptions.get(listener)?.();
+        subscriptions.delete(listener);
+      };
+    },
+    search: (books, query) => session?.search(books, query),
+    close: () => {
+      for (const unsubscribe of subscriptions.values()) unsubscribe();
+      subscriptions.clear();
+      session?.close();
+      session = undefined;
+      listeners.clear();
+    },
+  };
+}
