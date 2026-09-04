@@ -7,6 +7,8 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const shots = path.join(root, "scripts", "shots");
 const vp = path.join(root, "node_modules", ".bin", "vp");
 const liveServers = new Set();
+const liveMarketChecks =
+  process.env.BCR_VERIFY_LIVE_MARKETS === "1" ? ["scripts/verify-market-atlas.mjs"] : [];
 mkdirSync(shots, { recursive: true });
 
 function run(command, args, options = {}) {
@@ -96,7 +98,7 @@ await withServer({
   checks: [
     "scripts/verify-persistence.mjs",
     "scripts/verify-quant-lab.mjs",
-    "scripts/verify-market-atlas.mjs",
+    ...liveMarketChecks,
     "scripts/verify-manga-studio.mjs",
     "scripts/verify-document-studio.mjs",
     "scripts/verify-data-studio.mjs",
