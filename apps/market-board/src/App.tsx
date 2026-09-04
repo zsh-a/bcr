@@ -3,17 +3,7 @@ import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";
-import type {
-  HistoryRange,
-  MarketInstrument,
-  MarketRegion,
-  MarketSearchResult,
-  MarketWatchlistGroup,
-  MarketWatchlistState,
-  QuoteSnapshot,
-} from "@bcr/market-data";
-import { listKnownInstruments } from "@bcr/market-data";
-import { useLocationSearch } from "@bcr/react";
+import type { HistoryRange, QuoteSnapshot } from "@bcr/market-data";
 import { publishQuantHandoff } from "@bcr/market-data";
 import {
   ArrowUpRight,
@@ -28,112 +18,19 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import { Sparkline } from "./components/Sparkline";
 import { CandlestickChart } from "./components/CandlestickChart";
 import { CorporateActions, MarketCartography, QuoteCard, Session } from "./MarketPanels";
 import { compact, price, qualityLabel, receivedTime, signed } from "./marketFormat";
-import { historyService, marketProvider } from "./marketServices";
+import { historyService } from "./marketServices";
 import { useDividends } from "./useDividends";
-import { useInstrumentSearch } from "./useInstrumentSearch";
 import { useMarketAtlas } from "./useMarketAtlas";
+import { useMarketDiscovery } from "./useMarketDiscovery";
 import { useMarketHistory } from "./useMarketHistory";
 import { useMarketLandscape } from "./useMarketLandscape";
+import { useMarketWatchlists } from "./useMarketWatchlists";
 import "./styles.css";
-
-const WATCHLIST_KEY = "bcr.market-atlas.watchlist.v2";
-const LEGACY_WATCHLIST_KEY = "bcr.market-atlas.watchlist.v1";
-const INSTRUMENTS_KEY = "bcr.market-atlas.instruments.v1";
-const DEFAULT_SELECTED_ID = "CN:SSE:600519";
-const DEFAULT_WATCHLIST = ["CN:SSE:000300", "HK:HKEX:HSI", "US:INDEX:INX"];
-
-const DEFAULT_WATCHLIST_GROUPS: ReadonlyArray<MarketWatchlistGroup> = [
-  {
-    id: "core",
-    name: "Core",
-    instrumentIds: DEFAULT_WATCHLIST,
-    createdAt: 0,
-    updatedAt: 0,
-  },
-  {
-    id: "macro",
-    name: "Macro",
-    instrumentIds: ["CN:SSE:000001", "US:INDEX:DJI", "GLOBAL:FUTURE:GC00Y"],
-    createdAt: 0,
-    updatedAt: 0,
-  },
-];
-const FALLBACK_WATCHLIST_GROUP = DEFAULT_WATCHLIST_GROUPS[0] as MarketWatchlistGroup;
-
-function validWatchlistState(value: unknown): value is MarketWatchlistState {
-  if (typeof value !== "object" || value === null) return false;
-  const candidate = value as Partial<MarketWatchlistState>;
-  return (
-    candidate.version === 1 &&
-    typeof candidate.activeGroupId === "string" &&
-    Array.isArray(candidate.groups) &&
-    candidate.groups.length > 0 &&
-    candidate.groups.every(
-      (group) =>
-        typeof group === "object" &&
-        group !== null &&
-        typeof group.id === "string" &&
-        typeof group.name === "string" &&
-        Array.isArray(group.instrumentIds),
-    )
-  );
-}
-
-function initialWatchlists(): MarketWatchlistState {
-  const now = Date.now();
-  try {
-    const saved = localStorage.getItem(WATCHLIST_KEY);
-    if (saved !== null) {
-      const parsed: unknown = JSON.parse(saved);
-      if (validWatchlistState(parsed)) {
-        const activeGroupId = parsed.groups.some((group) => group.id === parsed.activeGroupId)
-          ? parsed.activeGroupId
-          : (parsed.groups[0]?.id ?? "core");
-        return { ...parsed, activeGroupId };
-      }
-    }
-    const legacy = localStorage.getItem(LEGACY_WATCHLIST_KEY);
-    const legacyIds = legacy === null ? null : (JSON.parse(legacy) as unknown);
-    const migratedIds =
-      Array.isArray(legacyIds) && legacyIds.every((id) => typeof id === "string")
-        ? legacyIds
-        : DEFAULT_WATCHLIST;
-    return {
-      version: 1,
-      activeGroupId: "core",
-      groups: DEFAULT_WATCHLIST_GROUPS.map((group, index) => ({
-        ...group,
-        instrumentIds: index === 0 ? migratedIds : group.instrumentIds,
-        createdAt: now,
-        updatedAt: now,
-      })),
-    };
-  } catch {
-    return {
-      version: 1,
-      activeGroupId: "core",
-      groups: DEFAULT_WATCHLIST_GROUPS.map((group) => ({
-        ...group,
-        createdAt: now,
-        updatedAt: now,
-      })),
-    };
-  }
-}
-
-function initialInstruments(): ReadonlyArray<MarketInstrument> {
-  try {
-    const saved = localStorage.getItem(INSTRUMENTS_KEY);
-    return saved === null ? [] : (JSON.parse(saved) as ReadonlyArray<MarketInstrument>);
-  } catch {
-    return [];
-  }
-}
 
 export function App() {
   const { snapshot, refreshing: atlasRefreshing, refresh: refreshAtlas } = useMarketAtlas();
@@ -146,40 +43,39 @@ export function App() {
   const refresh = async (): Promise<void> => {
     await Promise.all([refreshAtlas(), refreshLandscape()]);
   };
-  const [selectedId, setSelectedId] = useState(DEFAULT_SELECTED_ID);
-  const [region, setRegion] = useState<MarketRegion | "ALL">("ALL");
-  const [query, setQuery] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchCursor, setSearchCursor] = useState(0);
-  const [searchingQuote, setSearchingQuote] = useState<string | null>(null);
-  const [quoteError, setQuoteError] = useState<string | null>(null);
   const [historyRange, setHistoryRange] = useState<HistoryRange>("1Y");
-  const [watchlists, setWatchlists] = useState<MarketWatchlistState>(initialWatchlists);
-  const [newGroupName, setNewGroupName] = useState("");
-  const [creatingGroup, setCreatingGroup] = useState(false);
   const [handoffLoading, setHandoffLoading] = useState(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
-  const [savedInstruments, setSavedInstruments] =
-    useState<ReadonlyArray<MarketInstrument>>(initialInstruments);
-  const [customQuotes, setCustomQuotes] = useState<ReadonlyArray<QuoteSnapshot>>([]);
-  const routeInstrumentId = new URLSearchParams(useLocationSearch()).get("instrument");
-  const appliedRouteRef = useRef("");
-  const searchRef = useRef<HTMLInputElement>(null);
-  const search = useInstrumentSearch(query);
-  const allQuotes = useMemo(() => {
-    const seen = new Set<string>();
-    return [...customQuotes, ...snapshot.quotes, ...snapshot.futures].filter((quote) => {
-      if (seen.has(quote.instrument.id)) return false;
-      seen.add(quote.instrument.id);
-      return true;
-    });
-  }, [snapshot, customQuotes]);
-  const selected =
-    allQuotes.find((quote) => quote.instrument.id === selectedId) ?? snapshot.quotes[0];
-  const activeGroup: MarketWatchlistGroup =
-    watchlists.groups.find((group) => group.id === watchlists.activeGroupId) ??
-    watchlists.groups[0] ??
-    FALLBACK_WATCHLIST_GROUP;
+  const {
+    allQuotes,
+    selected,
+    region,
+    query,
+    searchOpen,
+    searchCursor,
+    searchingQuote,
+    quoteError,
+    searchRef,
+    search,
+    setSelectedId,
+    setRegion,
+    setQuery,
+    setSearchOpen,
+    setSearchCursor,
+    setQuoteError,
+    selectSearchResult,
+  } = useMarketDiscovery(snapshot.quotes, snapshot.futures);
+  const {
+    watchlists,
+    activeGroup,
+    newGroupName,
+    creatingGroup,
+    setNewGroupName,
+    setCreatingGroup,
+    toggleWatch,
+    selectGroup: selectWatchlistGroup,
+    createGroup: createWatchlistGroup,
+  } = useMarketWatchlists();
   const activeInstrumentIds = activeGroup.instrumentIds;
   const dividends = useDividends(selected?.instrument);
   const history = useMarketHistory(selected, historyRange);
@@ -209,62 +105,6 @@ export function App() {
   });
   const advancers = landscape.breadth.advancing;
   const decliners = landscape.breadth.declining;
-
-  useEffect(() => {
-    if (routeInstrumentId === null || appliedRouteRef.current === routeInstrumentId) return;
-    const existing = allQuotes.find((quote) => quote.instrument.id === routeInstrumentId);
-    if (existing !== undefined) {
-      appliedRouteRef.current = routeInstrumentId;
-      setSelectedId(existing.instrument.id);
-      setRegion("ALL");
-      return;
-    }
-    const known = listKnownInstruments().find((item) => item.instrument.id === routeInstrumentId);
-    if (known === undefined) return;
-    appliedRouteRef.current = routeInstrumentId;
-    void marketProvider
-      .loadQuote(known.instrument)
-      .then((quote) => {
-        setCustomQuotes((items) => [
-          ...items.filter((item) => item.instrument.id !== known.instrument.id),
-          quote,
-        ]);
-        setSelectedId(known.instrument.id);
-        setRegion("ALL");
-      })
-      .catch(() => undefined);
-  }, [routeInstrumentId, allQuotes]);
-
-  const selectSearchResult = async (
-    result: MarketSearchResult,
-    fallbackQuote?: QuoteSnapshot,
-  ): Promise<void> => {
-    const existing = allQuotes.find((quote) => quote.instrument.id === result.instrument.id);
-    setSearchingQuote(result.instrument.id);
-    setQuoteError(null);
-    try {
-      const quote = await marketProvider.loadQuote(result.instrument).catch((error: unknown) => {
-        if (existing !== undefined) return existing;
-        if (fallbackQuote !== undefined) return fallbackQuote;
-        throw error;
-      });
-      setCustomQuotes((items) => [
-        ...items.filter((item) => item.instrument.id !== result.instrument.id),
-        quote,
-      ]);
-      setSavedInstruments((items) =>
-        [...items.filter((item) => item.id !== result.instrument.id), result.instrument].slice(-24),
-      );
-      setSelectedId(result.instrument.id);
-      setRegion("ALL");
-      setQuery("");
-      setSearchOpen(false);
-    } catch (error) {
-      setQuoteError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSearchingQuote(null);
-    }
-  };
 
   const openQuant = (): void => {
     if (selected === undefined || currentHistory === null || currentHistory.bars.length < 30)
@@ -335,100 +175,6 @@ export function App() {
     } finally {
       setHandoffLoading(false);
     }
-  };
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlists));
-    } catch {
-      // Watchlist remains available for this session when persistent storage is blocked.
-    }
-  }, [watchlists]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(INSTRUMENTS_KEY, JSON.stringify(savedInstruments));
-    } catch {
-      // Recently opened instruments remain available for this session.
-    }
-  }, [savedInstruments]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void Promise.allSettled(
-      savedInstruments.map((instrument) => marketProvider.loadQuote(instrument)),
-    ).then((results) => {
-      if (cancelled) return;
-      const restored = results.flatMap((result) =>
-        result.status === "fulfilled" ? [result.value] : [],
-      );
-      setCustomQuotes(restored);
-    });
-    return () => {
-      cancelled = true;
-    };
-    // Restore the persisted discovery shelf once; quote refresh is explicit after that.
-  }, []);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (event.key === "/" && target?.tagName !== "INPUT" && target?.tagName !== "TEXTAREA") {
-        event.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  const toggleWatch = (id: string): void => {
-    setWatchlists((state) => {
-      const now = Date.now();
-      return {
-        ...state,
-        groups: state.groups.map((group) =>
-          group.id !== state.activeGroupId
-            ? group
-            : {
-                ...group,
-                instrumentIds: group.instrumentIds.includes(id)
-                  ? group.instrumentIds.filter((item) => item !== id)
-                  : [...group.instrumentIds, id],
-                updatedAt: now,
-              },
-        ),
-      };
-    });
-  };
-
-  const selectWatchlistGroup = (id: string): void => {
-    setWatchlists((state) =>
-      state.groups.some((group) => group.id === id) ? { ...state, activeGroupId: id } : state,
-    );
-  };
-
-  const createWatchlistGroup = (): void => {
-    const name = newGroupName.trim();
-    if (name.length === 0) return;
-    const baseId = name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-    setWatchlists((state) => {
-      const id = `${baseId || "group"}-${Date.now().toString(36)}`;
-      const now = Date.now();
-      const group: MarketWatchlistGroup = {
-        id,
-        name,
-        instrumentIds: [],
-        createdAt: now,
-        updatedAt: now,
-      };
-      return { ...state, activeGroupId: id, groups: [...state.groups, group] };
-    });
-    setNewGroupName("");
-    setCreatingGroup(false);
   };
 
   return (

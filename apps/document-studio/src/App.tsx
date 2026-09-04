@@ -12,32 +12,20 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useArtifact, useLocationSearch, useOptionalRuntime, useRuntime } from "@bcr/react";
-import type { SearchDocument } from "@bcr/core";
+import { useRuntime } from "@bcr/react";
 import {
-  DOCUMENT_HANDOFF_EVENT,
-  consumeDocumentHandoff,
   createDocumentJob,
-  decodeDocumentContentPackage,
-  decodeDocumentTranslationPackage,
-  documentContentStats,
   documentOcrSettings,
   type DocumentExportFormat,
-  documentTranslationStats,
   formatForName,
   formatLabel,
-  getDocumentHandoffMarker,
-  listDocumentHandoffs,
-  markDocumentHandoffExpired,
   markReadyStages,
   publishDocumentHandoff,
   stageById,
   type DocumentFormat,
   type DocumentHandoffRecord,
-  type DocumentContentStats,
-  type DocumentTranslationStats,
 } from "@bcr/document-core";
 import {
   ContentPackageCard,
@@ -51,11 +39,12 @@ import {
   sourceIcon,
 } from "./DocumentCards";
 import { activeDocument, documents, useDocumentStudio } from "./store";
+import { useDocumentArtifacts } from "./useDocumentArtifacts";
+import { useDocumentIntegration } from "./useDocumentIntegration";
 import {
   cancelDocumentStage,
   canRunDocumentStage,
   importDocumentExportBundle,
-  importDocumentHandoff,
   importDocumentFile,
   preloadDocumentOcrModel,
   runDocumentStage,
@@ -101,185 +90,30 @@ export function App() {
   const [dragging, setDragging] = useState(false);
   const navigate = useNavigate();
   const services = useRuntime();
-  const hostServices = useOptionalRuntime();
-  const routeSearch = useLocationSearch();
-  const routeJobId = new URLSearchParams(routeSearch).get("job");
-  const routeHandoffId = new URLSearchParams(routeSearch).get("handoff");
-  const routeBlockId = new URLSearchParams(routeSearch).get("block");
-  const extractRef =
-    stageById(active.stages, "extract")?.artifact ??
-    stageById(active.stages, "ocr")?.artifact ??
-    null;
-  const extractBytes = useArtifact(extractRef);
-  const contentPackage = useMemo(() => {
-    if (extractBytes === undefined) return undefined;
-    try {
-      return decodeDocumentContentPackage(
-        JSON.parse(new TextDecoder().decode(extractBytes)) as unknown,
-      );
-    } catch {
-      return undefined;
-    }
-  }, [extractBytes]);
-  const contentStats = useMemo<DocumentContentStats | undefined>(
-    () => (contentPackage === undefined ? undefined : documentContentStats(contentPackage)),
-    [contentPackage],
+  const artifacts = useDocumentArtifacts(active);
+  const {
+    contentRef: extractRef,
+    contentPackage,
+    contentStats,
+    translationRef,
+    translationPackage,
+    translationStats,
+    translationDrafts: reviewDrafts,
+    setTranslationDrafts: setReviewDrafts,
+    ocrDrafts: ocrReviewDrafts,
+    setOcrDrafts: setOcrReviewDrafts,
+  } = artifacts;
+  const { routeBlockId, handoffHistory } = useDocumentIntegration(
+    services,
+    state.jobs,
+    active,
+    contentPackage,
+    translationPackage,
   );
-  const translationRef = stageById(active.stages, "translate")?.artifact ?? null;
-  const translationBytes = useArtifact(translationRef);
-  const translationPackage = useMemo(() => {
-    if (translationBytes === undefined) return undefined;
-    try {
-      return decodeDocumentTranslationPackage(
-        JSON.parse(new TextDecoder().decode(translationBytes)) as unknown,
-      );
-    } catch {
-      return undefined;
-    }
-  }, [translationBytes]);
-  const translationStats = useMemo<DocumentTranslationStats | undefined>(
-    () =>
-      translationPackage === undefined ? undefined : documentTranslationStats(translationPackage),
-    [translationPackage],
-  );
-
-  useEffect(() => {
-    if (translationPackage === undefined) {
-      setReviewDrafts({});
-      return;
-    }
-    setReviewDrafts(
-      Object.fromEntries(
-        translationPackage.blocks.map((block) => [block.id, block.translatedText]),
-      ),
-    );
-  }, [translationPackage]);
-
-  useEffect(() => {
-    if (contentPackage === undefined || active.format !== "image") {
-      setOcrReviewDrafts({});
-      return;
-    }
-    setOcrReviewDrafts(
-      Object.fromEntries(contentPackage.blocks.map((block) => [block.id, block.text])),
-    );
-  }, [active.format, contentPackage]);
-
-  const appliedRouteRef = useRef("");
-  const appliedHandoffRef = useRef("");
-  const [handoffHistory, setHandoffHistory] = useState<ReadonlyArray<DocumentHandoffRecord>>(() =>
-    listDocumentHandoffs(),
-  );
-  const [reviewDrafts, setReviewDrafts] = useState<Readonly<Record<string, string>>>({});
-  const [ocrReviewDrafts, setOcrReviewDrafts] = useState<Readonly<Record<string, string>>>({});
   const [savingReview, setSavingReview] = useState(false);
   const [savingOcrReview, setSavingOcrReview] = useState(false);
   const [ocrPreloading, setOcrPreloading] = useState(false);
   const [exportBusy, setExportBusy] = useState<DocumentExportFormat | null>(null);
-
-  useEffect(() => {
-    documents.connectMetadata(services.metadata);
-  }, [services.metadata]);
-
-  useEffect(() => {
-    const search = hostServices?.search;
-    if (search === undefined) return;
-    const records: SearchDocument[] = state.jobs.map((job) => {
-      const done = job.stages.filter((stage) => stage.status === "done").length;
-      const body = [
-        job.sourceTextPreview ?? "",
-        ...job.stages.map((stage) => `${stage.label} ${stage.status} ${stage.detail}`),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .slice(0, 24_000);
-      return {
-        id: `document:${job.id}`,
-        source: "documents",
-        kind: "document",
-        title: job.name,
-        subtitle: `${formatLabel(job.format)} · ${done}/${job.stages.length} stages ready`,
-        ...(body.length === 0 ? {} : { body }),
-        tags: ["document", job.format],
-        route: `/documents?job=${encodeURIComponent(job.id)}`,
-        updatedAt: job.updatedAt,
-      };
-    });
-    if (contentPackage !== undefined) {
-      for (const block of contentPackage.blocks) {
-        records.push({
-          id: `document:block:${active.id}:${block.id}`,
-          source: "documents",
-          kind: "document",
-          title: block.label,
-          subtitle: `${active.name} · ${formatLabel(active.format)} · 原文`,
-          body: block.text,
-          tags: ["document", active.format, "content", block.kind],
-          route: `/documents?job=${encodeURIComponent(active.id)}&block=${encodeURIComponent(block.id)}`,
-          updatedAt: active.updatedAt,
-        });
-      }
-    }
-    if (translationPackage !== undefined) {
-      for (const block of translationPackage.blocks) {
-        const body = [block.text, block.translatedText].filter(Boolean).join(" ");
-        records.push({
-          id: `document:translation:${active.id}:${block.id}`,
-          source: "documents",
-          kind: "document",
-          title: `${block.label} · 译文`,
-          subtitle: `${active.name} · ${translationPackage.targetLanguage}`,
-          ...(body.length === 0 ? {} : { body }),
-          tags: ["document", active.format, "translation", block.status],
-          route: `/documents?job=${encodeURIComponent(active.id)}&block=${encodeURIComponent(block.id)}`,
-          updatedAt: active.updatedAt,
-        });
-      }
-    }
-    search.replaceSource("documents", records);
-  }, [active, contentPackage, hostServices?.search, state.jobs, translationPackage]);
-
-  useEffect(() => {
-    if (routeJobId === null || appliedRouteRef.current === routeJobId) return;
-    if (state.jobs.some((job) => job.id === routeJobId)) {
-      appliedRouteRef.current = routeJobId;
-      documents.selectJob(routeJobId);
-    }
-  }, [routeJobId, state.jobs]);
-
-  useEffect(() => {
-    if (routeHandoffId === null || appliedHandoffRef.current === routeHandoffId) return;
-    appliedHandoffRef.current = routeHandoffId;
-    const handoff = consumeDocumentHandoff(routeHandoffId, "document");
-    if (handoff === undefined) {
-      const marker = getDocumentHandoffMarker();
-      markDocumentHandoffExpired(routeHandoffId, "document");
-      documents.setNotice(
-        marker?.id !== routeHandoffId || marker.target !== "document"
-          ? "Document handoff 已过期；请从来源工作台重新交接"
-          : `Document handoff「${marker.name}」已过期；请从来源工作台重新交接`,
-      );
-      void navigate({ to: "/documents" });
-      return;
-    }
-    void importDocumentHandoff(services, handoff)
-      .then(({ job, file }) => {
-        const resolvedJobId = documents.addJob(job, file);
-        void navigate({ to: "/documents", search: { job: resolvedJobId } });
-      })
-      .catch((reason: unknown) => {
-        documents.setNotice(
-          `接收 ${handoff.name} 失败：${reason instanceof Error ? reason.message : String(reason)}`,
-        );
-        void navigate({ to: "/documents" });
-      });
-  }, [navigate, routeHandoffId, services]);
-
-  useEffect(() => {
-    const refresh = () => setHandoffHistory(listDocumentHandoffs());
-    window.addEventListener(DOCUMENT_HANDOFF_EVENT, refresh);
-    return () => window.removeEventListener(DOCUMENT_HANDOFF_EVENT, refresh);
-  }, []);
 
   const importFiles = async (files: ReadonlyArray<File>): Promise<void> => {
     for (const [index, file] of files.entries()) {
