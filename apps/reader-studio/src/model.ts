@@ -19,11 +19,15 @@ export type {
 
 export type ReaderTheme = "paper" | "night" | "sage";
 export type ReaderLayout = "scroll" | "paged";
+export type ReaderFontFamily = "sans" | "serif" | "kai";
+export type ReaderLatinFontFamily = "sans" | "serif" | "mono";
 
 export interface ReaderSettings {
   readonly theme: ReaderTheme;
   readonly layout: ReaderLayout;
   readonly fontSize: number;
+  readonly fontFamily: ReaderFontFamily;
+  readonly latinFontFamily: ReaderLatinFontFamily;
   readonly lineHeight: number;
   readonly contentWidth: "narrow" | "wide";
 }
@@ -70,6 +74,8 @@ export const DEFAULT_READER_SETTINGS: ReaderSettings = {
   theme: "paper",
   layout: "scroll",
   fontSize: 18,
+  fontFamily: "sans",
+  latinFontFamily: "sans",
   lineHeight: 1.85,
   contentWidth: "narrow",
 };

@@ -3,6 +3,7 @@ import {
   formatForFile,
   mapPdfOutlineToToc,
   openReaderContentPackage,
+  safeUrl,
   sanitizeInlineStyle,
 } from "../src/adapters";
 import { createDocumentContentPackage, createDocumentTranslationPackage } from "@bcr/document-core";
@@ -47,6 +48,12 @@ describe("reader format catalog", () => {
     expect(sanitizeInlineStyle("behavior: url(#default#time); width: expression(alert(1))")).toBe(
       undefined,
     );
+  });
+
+  it("keeps EPUB-relative URLs while rejecting executable protocols", () => {
+    expect(safeUrl("chapter-2.xhtml#note")).toBe("chapter-2.xhtml#note");
+    expect(safeUrl("../notes/endnotes.xhtml")).toBe("../notes/endnotes.xhtml");
+    expect(safeUrl("javascript:alert(1)")).toBe("#");
   });
 
   it("hydrates a Reader book from the shared document content contract", () => {

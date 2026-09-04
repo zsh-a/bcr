@@ -27,6 +27,7 @@ import {
   Settings2,
   Sun,
   Trash2,
+  Type,
   Upload,
   X,
 } from "lucide-react";
@@ -82,12 +83,88 @@ import {
   type ReaderRestoreDiagnostics,
   type ReaderRuntime,
 } from "./runtime";
-import { activeBook, type ReaderSettings, type ReaderTheme } from "./model";
+import {
+  activeBook,
+  type ReaderFontFamily,
+  type ReaderLatinFontFamily,
+  type ReaderSettings,
+  type ReaderTheme,
+} from "./model";
+import { resolveReaderInternalLink, type ReaderInternalLinkTarget } from "./navigation";
 import { getReaderState, reader, useReader } from "./store";
 import "./styles.css";
 
 const EMPTY_BOOKMARKS: ReadonlyArray<ReaderBookmark> = [];
 const EMPTY_ANNOTATIONS: ReadonlyArray<ReaderAnnotation> = [];
+const READER_CJK_FONT_OPTIONS: ReadonlyArray<{
+  readonly id: ReaderFontFamily;
+  readonly label: string;
+  readonly shortLabel: string;
+  readonly stack: string;
+}> = [
+  {
+    id: "sans",
+    label: "现代黑体",
+    shortLabel: "黑体",
+    stack: '"Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif',
+  },
+  {
+    id: "serif",
+    label: "书卷宋体",
+    shortLabel: "宋体",
+    stack: '"Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", STSong, SimSun, serif',
+  },
+  {
+    id: "kai",
+    label: "楷体",
+    shortLabel: "楷体",
+    stack: '"Kaiti SC", STKaiti, KaiTi, "DFKai-SB", serif',
+  },
+];
+
+const READER_LATIN_FONT_OPTIONS: ReadonlyArray<{
+  readonly id: ReaderLatinFontFamily;
+  readonly label: string;
+  readonly shortLabel: string;
+  readonly stack: string;
+}> = [
+  {
+    id: "sans",
+    label: "Plex Sans",
+    shortLabel: "Sans",
+    stack: '"IBM Plex Sans"',
+  },
+  {
+    id: "serif",
+    label: "Georgia",
+    shortLabel: "Serif",
+    stack: "Georgia",
+  },
+  {
+    id: "mono",
+    label: "Plex Mono",
+    shortLabel: "Mono",
+    stack: '"IBM Plex Mono"',
+  },
+];
+
+function readerCjkFontOption(fontFamily: ReaderFontFamily) {
+  return (
+    READER_CJK_FONT_OPTIONS.find((option) => option.id === fontFamily) ??
+    READER_CJK_FONT_OPTIONS[0]!
+  );
+}
+
+function readerLatinFontOption(fontFamily: ReaderLatinFontFamily) {
+  return (
+    READER_LATIN_FONT_OPTIONS.find((option) => option.id === fontFamily) ??
+    READER_LATIN_FONT_OPTIONS[0]!
+  );
+}
+
+function readerFontStack(settings: Pick<ReaderSettings, "fontFamily" | "latinFontFamily">) {
+  return `${readerLatinFontOption(settings.latinFontFamily).stack}, ${readerCjkFontOption(settings.fontFamily).stack}`;
+}
 
 interface ReaderRouteSearch {
   readonly book?: string;
@@ -456,14 +533,10 @@ interface ReaderScrollPosition {
   readonly left: number;
 }
 
-function readerSectionScrollPosition(
+function readerElementScrollPosition(
   container: HTMLElement,
-  sectionId: string,
+  target: Element,
 ): ReaderScrollPosition | undefined {
-  const target = container.querySelector<HTMLElement>(
-    `[data-reader-section="${CSS.escape(sectionId)}"]`,
-  );
-  if (target === null) return undefined;
   const containerRect = container.getBoundingClientRect();
   const targetRect = target.getBoundingClientRect();
   const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
@@ -478,6 +551,31 @@ function readerSectionScrollPosition(
       Math.max(0, container.scrollLeft + targetRect.left - containerRect.left - 28),
     ),
   };
+}
+
+function readerSectionScrollPosition(
+  container: HTMLElement,
+  sectionId: string,
+): ReaderScrollPosition | undefined {
+  const target = container.querySelector<HTMLElement>(
+    `[data-reader-section="${CSS.escape(sectionId)}"]`,
+  );
+  return target === null ? undefined : readerElementScrollPosition(container, target);
+}
+
+function readerInternalLinkScrollPosition(
+  container: HTMLElement,
+  target: ReaderInternalLinkTarget,
+): ReaderScrollPosition | undefined {
+  const section = container.querySelector<HTMLElement>(
+    `[data-reader-section="${CSS.escape(target.sectionId)}"]`,
+  );
+  if (section === null) return undefined;
+  if (target.fragment === undefined) return readerElementScrollPosition(container, section);
+  const fragmentTarget = [...section.querySelectorAll<HTMLElement>("[id], a[name]")].find(
+    (element) => element.id === target.fragment || element.getAttribute("name") === target.fragment,
+  );
+  return readerElementScrollPosition(container, fragmentTarget ?? section);
 }
 
 function readerUsesHorizontalPaging(
@@ -1964,6 +2062,7 @@ function ReaderToolbar(props: {
         </span>
         <ThemeMenu settings={props.settings} />
         <LayoutMenu settings={props.settings} />
+        <FontFamilyMenu settings={props.settings} />
         <FontSizeMenu settings={props.settings} />
         <button
           type="button"
@@ -2108,7 +2207,11 @@ function ReaderSettingsSheet(props: {
             <span id="reader-layout-label" className="reader-mobile-setting-label">
               阅读方式
             </span>
-            <div className="reader-mobile-setting-options" role="group" aria-label="阅读方式">
+            <div
+              className="reader-mobile-setting-options reader-mobile-setting-options-two"
+              role="group"
+              aria-label="阅读方式"
+            >
               {layouts.map((layout) => (
                 <button
                   type="button"
@@ -2148,7 +2251,9 @@ function ReaderSettingsSheet(props: {
               >
                 <Minus className="reader-icon" />
               </button>
-              <span aria-live="polite">Aa</span>
+              <span aria-live="polite" style={{ fontFamily: readerFontStack(props.settings) }}>
+                Aa
+              </span>
               <button
                 type="button"
                 onClick={() =>
@@ -2163,11 +2268,69 @@ function ReaderSettingsSheet(props: {
               </button>
             </div>
           </section>
+          <section
+            className="reader-mobile-setting-group"
+            aria-labelledby="reader-cjk-font-family-label"
+          >
+            <span id="reader-cjk-font-family-label" className="reader-mobile-setting-label">
+              中文字体
+            </span>
+            <div
+              className="reader-mobile-setting-options reader-mobile-font-options"
+              role="group"
+              aria-label="中文字体"
+            >
+              {READER_CJK_FONT_OPTIONS.map((font) => (
+                <button
+                  type="button"
+                  key={font.id}
+                  className={`reader-mobile-setting-option reader-mobile-font-option ${props.settings.fontFamily === font.id ? "is-active" : ""}`}
+                  onClick={() => reader.setSettings({ fontFamily: font.id })}
+                  aria-pressed={props.settings.fontFamily === font.id}
+                >
+                  <strong style={{ fontFamily: font.stack }}>阅</strong>
+                  <span>{font.label}</span>
+                  {props.settings.fontFamily === font.id && <Check className="reader-icon" />}
+                </button>
+              ))}
+            </div>
+          </section>
+          <section
+            className="reader-mobile-setting-group"
+            aria-labelledby="reader-latin-font-family-label"
+          >
+            <span id="reader-latin-font-family-label" className="reader-mobile-setting-label">
+              English typeface
+            </span>
+            <div
+              className="reader-mobile-setting-options reader-mobile-font-options"
+              role="group"
+              aria-label="英文字体"
+            >
+              {READER_LATIN_FONT_OPTIONS.map((font) => (
+                <button
+                  type="button"
+                  key={font.id}
+                  className={`reader-mobile-setting-option reader-mobile-font-option ${props.settings.latinFontFamily === font.id ? "is-active" : ""}`}
+                  onClick={() => reader.setSettings({ latinFontFamily: font.id })}
+                  aria-pressed={props.settings.latinFontFamily === font.id}
+                >
+                  <strong style={{ fontFamily: `${font.stack}, sans-serif` }}>Ag</strong>
+                  <span>{font.label}</span>
+                  {props.settings.latinFontFamily === font.id && <Check className="reader-icon" />}
+                </button>
+              ))}
+            </div>
+          </section>
           <section className="reader-mobile-setting-group" aria-labelledby="reader-width-label">
             <span id="reader-width-label" className="reader-mobile-setting-label">
               正文宽度
             </span>
-            <div className="reader-mobile-setting-options" role="group" aria-label="正文宽度">
+            <div
+              className="reader-mobile-setting-options reader-mobile-setting-options-two"
+              role="group"
+              aria-label="正文宽度"
+            >
               {(["narrow", "wide"] as const).map((contentWidth) => (
                 <button
                   type="button"
@@ -2357,6 +2520,43 @@ function FontSizeMenu(props: { settings: ReaderSettings }) {
   );
 }
 
+function FontFamilyMenu(props: { settings: ReaderSettings }) {
+  return (
+    <div className="reader-font-family-menu" title="中英文字体">
+      <Type className="reader-icon" aria-hidden="true" />
+      <select
+        aria-label="中文字体"
+        value={props.settings.fontFamily}
+        onChange={(event) =>
+          reader.setSettings({ fontFamily: event.currentTarget.value as ReaderFontFamily })
+        }
+      >
+        {READER_CJK_FONT_OPTIONS.map((font) => (
+          <option value={font.id} key={font.id}>
+            {font.shortLabel}
+          </option>
+        ))}
+      </select>
+      <span className="reader-font-family-divider" aria-hidden="true" />
+      <select
+        aria-label="英文字体"
+        value={props.settings.latinFontFamily}
+        onChange={(event) =>
+          reader.setSettings({
+            latinFontFamily: event.currentTarget.value as ReaderLatinFontFamily,
+          })
+        }
+      >
+        {READER_LATIN_FONT_OPTIONS.map((font) => (
+          <option value={font.id} key={font.id}>
+            {font.shortLabel}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 function ReadingView(props: {
   runtime: ReaderRuntime;
   book: ReaderBook;
@@ -2377,6 +2577,7 @@ function ReadingView(props: {
   const programmaticScrollTimerRef = useRef<number | null>(null);
   const navigationRetryFrameRef = useRef<number | null>(null);
   const navigationRetryTimerRef = useRef<number | null>(null);
+  const pendingInternalLinkRef = useRef<ReaderInternalLinkTarget | null>(null);
   const handledNavigationSequenceRef = useRef(navigationSequence);
   const [contentReadyVersion, setContentReadyVersion] = useState(0);
   const updateLocator = useCallback(() => {
@@ -2394,8 +2595,13 @@ function ReadingView(props: {
   useEffect(() => {
     if (activeSectionId === null || containerRef.current === null) return;
     const explicitNavigation = navigationSequence !== handledNavigationSequenceRef.current;
+    const pendingInternalLink =
+      explicitNavigation && pendingInternalLinkRef.current?.sectionId === activeSectionId
+        ? pendingInternalLinkRef.current
+        : null;
     if (explicitNavigation) {
       handledNavigationSequenceRef.current = navigationSequence;
+      pendingInternalLinkRef.current = null;
       userScrollRef.current = false;
     } else if (userScrollRef.current) {
       userScrollRef.current = false;
@@ -2421,17 +2627,26 @@ function ReadingView(props: {
       const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
       const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
       const sectionPosition = readerSectionScrollPosition(container, activeSectionId);
-      const position = horizontalPaging
-        ? explicitNavigation
-          ? (sectionPosition ?? { top: 0, left: maxLeft * progress })
-          : { top: 0, left: maxLeft * progress }
-        : {
-            top:
-              activeSectionId === props.book.sections[0]?.id
-                ? maxTop * progress
-                : (sectionPosition?.top ?? 0),
-            left: 0,
-          };
+      const internalLinkPosition =
+        pendingInternalLink === null
+          ? undefined
+          : readerInternalLinkScrollPosition(container, pendingInternalLink);
+      const position =
+        internalLinkPosition === undefined
+          ? horizontalPaging
+            ? explicitNavigation
+              ? (sectionPosition ?? { top: 0, left: maxLeft * progress })
+              : { top: 0, left: maxLeft * progress }
+            : {
+                top:
+                  activeSectionId === props.book.sections[0]?.id
+                    ? maxTop * progress
+                    : (sectionPosition?.top ?? 0),
+                left: 0,
+              }
+          : horizontalPaging
+            ? { top: 0, left: internalLinkPosition.left }
+            : { top: internalLinkPosition.top, left: 0 };
       programmaticScrollRef.current = true;
       programmaticScrollTargetRef.current = position;
       // PDF canvases can change the height of pages above the destination
@@ -2522,6 +2737,7 @@ function ReadingView(props: {
         {
           "--reader-reader-font-size": `${settings.fontSize}px`,
           "--reader-reader-line-height": settings.lineHeight,
+          "--reader-reader-font-family": readerFontStack(settings),
         } as CSSProperties
       }
     >
@@ -2529,6 +2745,28 @@ function ReadingView(props: {
         className="reader-reading-scroll"
         ref={containerRef}
         onClick={(event) => {
+          const anchor =
+            event.target instanceof Element
+              ? event.target.closest<HTMLAnchorElement>(".reader-prose a[href]")
+              : null;
+          if (anchor !== null && props.book.source.format === "epub") {
+            const sourceSectionId =
+              anchor.closest<HTMLElement>("[data-reader-section]")?.dataset.readerSection;
+            const sourceSection = props.book.sections.find(
+              (section) => section.id === sourceSectionId,
+            );
+            const href = anchor.getAttribute("href");
+            const target =
+              sourceSection === undefined || href === null
+                ? undefined
+                : resolveReaderInternalLink(props.book, sourceSection, href);
+            if (target !== undefined) {
+              event.preventDefault();
+              pendingInternalLinkRef.current = target;
+              reader.openBook(props.book.id, target.sectionId);
+              return;
+            }
+          }
           if (!window.matchMedia("(max-width: 860px)").matches) return;
           if (
             event.target instanceof Element &&

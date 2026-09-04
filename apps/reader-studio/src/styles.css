@@ -98,7 +98,8 @@
 }
 
 .reader-studio button,
-.reader-studio input {
+.reader-studio input,
+.reader-studio select {
   color: inherit;
   font: inherit;
 }
@@ -110,7 +111,8 @@
 }
 
 .reader-studio button:focus-visible,
-.reader-studio input:focus-visible {
+.reader-studio input:focus-visible,
+.reader-studio select:focus-visible {
   outline: 2px solid var(--reader-accent);
   outline-offset: 3px;
 }
@@ -1008,6 +1010,11 @@
   background: var(--reader-bg);
 }
 
+.reader-main {
+  container-name: reader-main;
+  container-type: inline-size;
+}
+
 .reader-main::backdrop {
   background: var(--reader-bg, #ede9e0);
 }
@@ -1080,6 +1087,15 @@
   align-items: center;
   gap: 8px;
   margin-left: auto;
+}
+
+.reader-toolbar-actions > * {
+  flex: 0 0 auto;
+}
+
+.reader-toolbar-actions button,
+.reader-font-family-menu {
+  white-space: nowrap;
 }
 
 .reader-mobile-toolbar-actions {
@@ -1591,8 +1607,7 @@
   gap: 7px;
 }
 
-.reader-mobile-setting-group:nth-of-type(2) .reader-mobile-setting-options,
-.reader-mobile-setting-group:nth-of-type(4) .reader-mobile-setting-options {
+.reader-mobile-setting-options-two {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -1624,6 +1639,32 @@
 .reader-mobile-setting-option .reader-icon:last-child {
   width: 14px;
   color: var(--reader-accent);
+}
+
+.reader-mobile-font-option {
+  position: relative;
+  min-height: 76px;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reader-mobile-font-option strong {
+  color: var(--reader-text);
+  font-size: 25px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.reader-mobile-font-option > span {
+  color: var(--reader-muted);
+  font-family: var(--reader-font-mono);
+  font-size: 9px;
+}
+
+.reader-mobile-font-option > .reader-icon:last-child {
+  position: absolute;
+  top: 7px;
+  right: 7px;
 }
 
 .reader-mobile-font-stepper {
@@ -1835,6 +1876,45 @@
   text-align: center;
 }
 
+.reader-font-family-menu {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--reader-border);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--reader-raised) 58%, transparent);
+  padding: 0 7px;
+  color: var(--reader-muted);
+}
+
+.reader-font-family-menu > .reader-icon {
+  width: 15px;
+  color: var(--reader-accent);
+}
+
+.reader-font-family-menu select {
+  width: 48px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--reader-muted);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.reader-font-family-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--reader-border);
+}
+
+.reader-font-family-menu:hover,
+.reader-font-family-menu:focus-within {
+  border-color: color-mix(in srgb, var(--reader-accent) 48%, var(--reader-border));
+  color: var(--reader-text);
+}
+
 .reader-reading-frame {
   display: grid;
   min-height: 0;
@@ -1992,8 +2072,53 @@
 
 .reader-prose {
   color: var(--reader-text);
-  font-size: var(--reader-reader-font-size, 18px);
+  font-family: var(--reader-reader-font-family, var(--reader-font-sans)) !important;
+  font-size: var(--reader-reader-font-size, 18px) !important;
   line-height: var(--reader-reader-line-height, 1.85);
+}
+
+/* Reader preferences take precedence over fixed typography embedded by EPUB
+ * generators. Relative heading/small/sup sizing remains semantic, while body
+ * text follows one predictable user-selected base size and family. */
+.reader-prose
+  :where(
+    article,
+    section,
+    div,
+    p,
+    span,
+    font,
+    strong,
+    em,
+    b,
+    i,
+    u,
+    s,
+    mark,
+    ul,
+    ol,
+    li,
+    a,
+    blockquote,
+    figure,
+    figcaption,
+    table,
+    thead,
+    tbody,
+    tfoot,
+    tr,
+    td,
+    th,
+    dl,
+    dt,
+    dd
+  ) {
+  font-family: inherit !important;
+  font-size: inherit !important;
+}
+
+.reader-prose :where(h1, h2, h3, h4, h5, h6) {
+  font-family: inherit !important;
 }
 
 .reader-prose mark[data-reader-search-match] {
@@ -2018,7 +2143,7 @@
 .reader-prose h4 {
   margin: 0 0 0.8em;
   color: var(--reader-ink);
-  font-size: 1.55em;
+  font-size: 1.55em !important;
   font-weight: 650;
   letter-spacing: -0.03em;
   line-height: 1.25;
@@ -2033,7 +2158,12 @@
 
 .reader-prose h3,
 .reader-prose h4 {
-  font-size: 1.25em;
+  font-size: 1.25em !important;
+}
+
+.reader-prose h5,
+.reader-prose h6 {
+  font-size: 1.08em !important;
 }
 
 .reader-prose ul,
@@ -2776,6 +2906,16 @@
   white-space: nowrap !important;
 }
 
+@container reader-main (max-width: 1180px) {
+  .reader-toolbar-actions-desktop .reader-annotation-toggle span,
+  .reader-toolbar-actions-desktop .reader-bookmark-toggle span,
+  .reader-toolbar-actions-desktop .reader-document-handoff span,
+  .reader-toolbar-actions-desktop .reader-document-handoff > .reader-icon:last-child,
+  .reader-toolbar-actions-desktop .reader-control-label {
+    display: none;
+  }
+}
+
 @media (max-width: 1100px) {
   .reader-brand {
     min-width: 190px;
@@ -3226,10 +3366,6 @@
     grid-template-columns: 26px minmax(0, 1fr);
     gap: 11px;
     margin-bottom: 55px;
-  }
-
-  .reader-prose {
-    font-size: 17px;
   }
 
   .reader-chapter-rail {

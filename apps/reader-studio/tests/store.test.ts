@@ -33,6 +33,16 @@ describe("Reader annotation anchors", () => {
     expect(getReaderState().navigationSequence).toBe(before + 1);
   });
 
+  it("updates the reading font preferences in the shared settings state", () => {
+    reader.setSettings({ fontSize: 22, fontFamily: "kai", latinFontFamily: "mono" });
+
+    expect(getReaderState().settings).toMatchObject({
+      fontSize: 22,
+      fontFamily: "kai",
+      latinFontFamily: "mono",
+    });
+  });
+
   it("merges a missing durable book without replacing the live projection", () => {
     const recovered = {
       ...createDemoBook(),

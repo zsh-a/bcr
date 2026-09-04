@@ -506,7 +506,12 @@ describe("reader durable Document handoff", () => {
         searchActiveIndex: -1,
         searchBusy: false,
         searchReveal: null,
-        settings: DEFAULT_READER_SETTINGS,
+        settings: {
+          ...DEFAULT_READER_SETTINGS,
+          fontSize: 22,
+          fontFamily: "kai",
+          latinFontFamily: "serif",
+        },
         sidebarOpen: false,
         searchOpen: false,
         lastSavedAt: null,
@@ -522,6 +527,11 @@ describe("reader durable Document handoff", () => {
       expect(restored?.progressByBook[book.id]).toMatchObject({
         locator: { sectionId: book.sections[2]!.id, progression: 0.45 },
         percentage: progress.percentage,
+      });
+      expect(restored?.settings).toMatchObject({
+        fontSize: 22,
+        fontFamily: "kai",
+        latinFontFamily: "serif",
       });
     });
   });

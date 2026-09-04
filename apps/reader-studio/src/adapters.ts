@@ -276,9 +276,19 @@ function escapeHtml(value: string): string {
     .replace(/'/gu, "&#39;");
 }
 
-function safeUrl(value: string): string {
+export function safeUrl(value: string): string {
   const trimmed = value.trim();
   if (/^(?:https?:|mailto:|#|\/|\.\/|\.\.\/|data:image\/)/iu.test(trimmed)) return trimmed;
+  // EPUB commonly uses bare publication-relative references such as
+  // `chapter-2.xhtml#note`. Keep scheme-less paths while continuing to reject
+  // executable or unknown protocols before the markup reaches the document.
+  const hasControlCharacter = [...trimmed].some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return codePoint <= 0x1f || codePoint === 0x7f;
+  });
+  if (!/^[a-z][a-z\d+.-]*:/iu.test(trimmed) && !hasControlCharacter) {
+    return trimmed;
+  }
   return "#";
 }
 

@@ -49,13 +49,13 @@ async function epubFixture() {
   await writer.add(
     "EPUB/chapter-1.xhtml",
     new TextReader(
-      `<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>第一章 · 入口</title></head><body><h1>第一章 · 入口</h1><p id="idea" style="font-weight:700;color:#234;position:fixed">EPUB 的章节内容可以通过出版物导航定位。</p></body></html>`,
+      `<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>第一章 · 入口</title></head><body><h1>第一章 · 入口</h1><p id="idea" style="font-weight:700;color:#234;position:fixed;font-size:11px;font-family:serif">EPUB 的章节内容可以通过出版物导航定位。</p><p><a href="chapter-2.xhtml#linked-note">跳转到第二章重点</a></p></body></html>`,
     ),
   );
   await writer.add(
     "EPUB/chapter-2.xhtml",
     new TextReader(
-      `<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>第二章 · 继续</title></head><body><h1>第二章 · 继续</h1><p>目录和 Locator 保持同一条语义链路。</p></body></html>`,
+      `<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>第二章 · 继续</title></head><body><h1>第二章 · 继续</h1><p>目录和 Locator 保持同一条语义链路。</p><p id="linked-note">正文内部链接也应定位到对应章节和锚点。</p></body></html>`,
     ),
   );
   const blob = await writer.close();
@@ -193,6 +193,54 @@ if ((await page.getByRole("button", { name: "退出全屏" }).count()) !== 1) {
 }
 await page.keyboard.press("Escape");
 await page.waitForFunction(() => document.fullscreenElement === null, null, { timeout: 5_000 });
+
+// Mobile used to override the chosen size with a fixed 17px rule. Exercise the
+// real settings sheet and computed EPUB/text styles so both CSS and state are covered.
+await page.setViewportSize({ width: 390, height: 844 });
+const closeMobileLibrary = page.getByRole("button", { name: "关闭书库" });
+if (await closeMobileLibrary.isVisible()) {
+  await closeMobileLibrary.click({ position: { x: 385, y: 420 } });
+}
+await page.getByRole("button", { name: "打开阅读设置" }).click();
+const decreaseFontSize = page.getByRole("button", { name: "减小字号" });
+for (let index = 0; index < 12 && (await decreaseFontSize.isEnabled()); index += 1) {
+  await decreaseFontSize.click();
+}
+const minimumFontSize = Number.parseFloat(
+  await page
+    .locator(".reader-prose")
+    .first()
+    .evaluate((element) => getComputedStyle(element).fontSize),
+);
+await page.getByRole("button", { name: "增大字号" }).click();
+await page.waitForFunction(
+  (previous) =>
+    Number.parseFloat(getComputedStyle(document.querySelector(".reader-prose")).fontSize) >
+    previous,
+  minimumFontSize,
+);
+await page.getByRole("button", { name: "书卷宋体" }).click();
+const selectedFontFamily = await page
+  .locator(".reader-prose")
+  .first()
+  .evaluate((element) => getComputedStyle(element).fontFamily);
+if (!/(?:Georgia|Serif|Songti|STSong|SimSun)/iu.test(selectedFontFamily)) {
+  fail("移动端正文字体选择没有应用到阅读内容");
+}
+await page.getByRole("button", { name: "Georgia" }).click();
+const selectedLatinFontFamily = await page
+  .locator(".reader-prose")
+  .first()
+  .evaluate((element) => getComputedStyle(element).fontFamily);
+if (!selectedLatinFontFamily.startsWith("Georgia")) {
+  fail("移动端英文字体选择没有应用到阅读内容");
+}
+await page.getByRole("button", { name: "现代黑体" }).click();
+await page.getByRole("button", { name: "Plex Sans" }).click();
+await page.getByRole("button", { name: "增大字号" }).click();
+await page.getByRole("button", { name: "增大字号" }).click();
+await page.getByRole("button", { name: "关闭阅读设置" }).click();
+await page.setViewportSize({ width: 1440, height: 900 });
 
 // Reader can consume the canonical Document JSON bundle directly, without
 // invoking a format parser. Keep this on the real file input so the same path
@@ -357,6 +405,43 @@ if (!tocText.includes("章内重点") || !tocText.includes("第二章 · 继续"
 const epubInlineStyle = await page.locator("#idea").getAttribute("style");
 if (!epubInlineStyle?.includes("font-weight") || epubInlineStyle.includes("position")) {
   fail("EPUB 内联排版样式没有按安全白名单处理");
+}
+const epubTypography = await page.locator("#idea").evaluate((element) => {
+  const prose = element.closest(".reader-prose");
+  if (!(prose instanceof HTMLElement)) return null;
+  const elementStyle = getComputedStyle(element);
+  const proseStyle = getComputedStyle(prose);
+  return {
+    elementSize: elementStyle.fontSize,
+    proseSize: proseStyle.fontSize,
+    elementFamily: elementStyle.fontFamily,
+    proseFamily: proseStyle.fontFamily,
+  };
+});
+if (
+  epubTypography === null ||
+  epubTypography.elementSize !== epubTypography.proseSize ||
+  epubTypography.elementFamily !== epubTypography.proseFamily
+) {
+  fail("EPUB 内嵌字号或字体覆盖了用户阅读设置");
+}
+await page.getByRole("link", { name: "跳转到第二章重点" }).click();
+await page.waitForTimeout(700);
+if (!(await page.locator(".reader-toolbar-title").innerText()).includes("第二章")) {
+  fail("EPUB 正文跨章节链接没有更新当前章节");
+}
+if (!new URL(page.url()).pathname.endsWith("/reader")) {
+  fail("EPUB 正文链接错误地离开了阅读器路由");
+}
+const epubLinkVisible = await page.locator("#linked-note").evaluate((target) => {
+  const container = target.closest(".reader-reading-scroll");
+  if (!(container instanceof HTMLElement)) return false;
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  return targetRect.bottom > containerRect.top && targetRect.top < containerRect.bottom;
+});
+if (!epubLinkVisible) {
+  fail("EPUB 正文链接没有滚动到目标锚点");
 }
 await page.getByRole("button", { name: "第二章 · 继续" }).click();
 if (!(await page.locator(".reader-toolbar-title").innerText()).includes("第二章")) {
