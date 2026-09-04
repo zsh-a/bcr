@@ -23,6 +23,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
+  RefreshCw,
   Search,
   Settings2,
   Sun,
@@ -704,6 +705,52 @@ function persistReaderSnapshot(
   return readerPersistenceQueue;
 }
 
+interface ReaderPwaUpdateState {
+  readonly visible: boolean;
+  readonly applying: boolean;
+  readonly apply: () => Promise<void>;
+  readonly dismiss: () => void;
+}
+
+function pendingReaderPwaUpdate(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    (window as Window & { readonly __bcrReaderUpdateReady?: boolean }).__bcrReaderUpdateReady ===
+    true
+  );
+}
+
+function useReaderPwaUpdate(runtime: ReaderRuntime | null): ReaderPwaUpdateState {
+  const [ready, setReady] = useState(pendingReaderPwaUpdate);
+  const [dismissed, setDismissed] = useState(false);
+  const [applying, setApplying] = useState(false);
+
+  useEffect(() => {
+    const onUpdateReady = () => {
+      setReady(true);
+      setDismissed(false);
+    };
+    window.addEventListener("bcr-reader-update-ready", onUpdateReady);
+    return () => window.removeEventListener("bcr-reader-update-ready", onUpdateReady);
+  }, []);
+
+  const apply = useCallback(async () => {
+    if (runtime === null || applying) return;
+    setApplying(true);
+    // Mirror state synchronously, then wait for the durable SQLite/OPFS queue
+    // before allowing the new worker to take control and reload the Reader.
+    await persistReaderSnapshot(runtime, { durableLibrary: true });
+    window.dispatchEvent(new Event("bcr-reader-apply-update"));
+  }, [applying, runtime]);
+
+  return {
+    visible: ready && !dismissed,
+    applying,
+    apply,
+    dismiss: () => setDismissed(true),
+  };
+}
+
 function isAbortError(reason: unknown): boolean {
   return (
     (reason instanceof DOMException && reason.name === "AbortError") ||
@@ -942,6 +989,7 @@ export function App() {
   const { runtime, error: runtimeError, recovery } = useReaderBoot();
   const hostServices = useOptionalRuntime();
   const pwaInstall = useReaderPwaInstall();
+  const pwaUpdate = useReaderPwaUpdate(runtime);
   const routeSearch = parseReaderRouteSearch(useLocationSearch());
   useDebouncedPersist(runtime);
   useReaderSearch(runtime);
@@ -1288,6 +1336,14 @@ export function App() {
       {recovery !== null && recovery.skippedBooks.length > 0 && (
         <ReaderRecoveryBanner recovery={recovery} />
       )}
+      {pwaUpdate.visible && (
+        <ReaderUpdateNotice
+          applying={pwaUpdate.applying}
+          blocked={documentHandoffBusy || (importJob !== null && !importJob.settled)}
+          onApply={() => void pwaUpdate.apply()}
+          onDismiss={pwaUpdate.dismiss}
+        />
+      )}
       <ReaderWorkspace
         runtime={runtime}
         onImport={(files) => void importFiles(files)}
@@ -1297,6 +1353,44 @@ export function App() {
         onToggleMobileChrome={() => setMobileChromeVisible((visible) => !visible)}
       />
     </div>
+  );
+}
+
+function ReaderUpdateNotice(props: {
+  readonly applying: boolean;
+  readonly blocked: boolean;
+  readonly onApply: () => void;
+  readonly onDismiss: () => void;
+}) {
+  const { applying, blocked, onApply, onDismiss } = props;
+  return (
+    <section className="reader-update-notice" aria-label="应用更新" role="status">
+      <span className="reader-update-mark" aria-hidden="true">
+        <RefreshCw className={`reader-icon${applying ? " is-spinning" : ""}`} />
+      </span>
+      <div className="reader-update-copy">
+        <span className="reader-eyebrow">APP UPDATE</span>
+        <strong>新版本已准备好</strong>
+        <span>
+          {blocked
+            ? "当前任务完成后即可安全更新。"
+            : "更新前会保存阅读进度，刷新后从当前位置继续。"}
+        </span>
+      </div>
+      <div className="reader-update-actions">
+        <button type="button" disabled={applying} onClick={onDismiss}>
+          稍后
+        </button>
+        <button
+          className="is-primary"
+          type="button"
+          disabled={applying || blocked}
+          onClick={onApply}
+        >
+          {applying ? "正在保存…" : blocked ? "任务完成后更新" : "立即更新"}
+        </button>
+      </div>
+    </section>
   );
 }
 
