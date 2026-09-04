@@ -76,8 +76,13 @@ if ((await watchlistGroups.count()) < 2) fail("Watchlist 分组未渲染");
 await watchlistGroups.nth(1).click();
 const groupSend = page.getByRole("button", { name: "SEND GROUP", exact: true });
 await groupSend.waitFor({ timeout: 10_000 });
-await groupSend.click();
-await page.waitForURL((url) => url.pathname === "/quant", { timeout: 30_000 });
+await Promise.all([
+  page.waitForURL((url) => url.pathname === "/quant", {
+    timeout: 30_000,
+    waitUntil: "commit",
+  }),
+  groupSend.click(),
+]);
 await page.locator(".ql-handoff-block").waitFor({ timeout: 60_000 });
 const handoffSeriesCount = await page
   .locator(".ql-handoff-block")
@@ -119,8 +124,13 @@ if (!incomeText.includes("A-SHARE REFERENCE ONLINE") || !incomeText.includes("CN
 await page.locator(".ma-open-quant:not(:disabled)").waitFor({ timeout: 45_000 });
 
 await page.screenshot({ path: `${dir}/market-atlas.png`, fullPage: true });
-await page.locator(".ma-open-quant").click();
-await page.waitForURL((url) => url.pathname === "/quant", { timeout: 15_000 });
+await Promise.all([
+  page.waitForURL((url) => url.pathname === "/quant", {
+    timeout: 30_000,
+    waitUntil: "commit",
+  }),
+  page.locator(".ma-open-quant").click(),
+]);
 try {
   await page.waitForFunction(
     () => document.querySelector(".ql-market-status")?.textContent?.includes("MARKET ATLAS"),
