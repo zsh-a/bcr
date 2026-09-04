@@ -193,6 +193,35 @@ class ReaderStore {
     return true;
   }
 
+  /** Replace a fast-restored projection with its fully rehydrated source view. */
+  replaceBook(book: ReaderBook): boolean {
+    const existing = this.state.library.find((candidate) => candidate.id === book.id);
+    if (existing === undefined) {
+      releaseBookResources(book);
+      return false;
+    }
+    if (existing.source.objectUrl !== book.source.objectUrl) {
+      releaseBookResources(existing);
+    }
+    const storedProgress = this.state.progressByBook[book.id];
+    const progress =
+      storedProgress === undefined
+        ? progressForLocator(book, firstLocator(book))
+        : progressForLocator(book, storedProgress.locator);
+    const library = this.state.library.map((candidate) =>
+      candidate.id === book.id ? book : candidate,
+    );
+    this.set({
+      library,
+      activeSectionId:
+        this.state.activeBookId === book.id
+          ? progress.locator.sectionId
+          : this.state.activeSectionId,
+      progressByBook: { ...this.state.progressByBook, [book.id]: progress },
+    });
+    return true;
+  }
+
   removeBook(bookId: string): void {
     const removed = this.state.library.find((book) => book.id === bookId);
     if (removed !== undefined) releaseBookResources(removed);

@@ -75,6 +75,7 @@ import {
   mirrorReaderSession,
   prepareReaderDocumentHandoff,
   persistReader,
+  restoreReaderBooks,
   restoreReader,
   searchIndexedDetailed,
   type ReaderRestoreDiagnostics,
@@ -683,10 +684,55 @@ function useReaderBoot(): {
     let cancelled = false;
     let createdRuntime: ReaderRuntime | null = null;
     let metadataWarmupTimer: number | undefined;
+    let indexingTimer: number | undefined;
+    let binaryRestoreTimer: number | undefined;
+    const binaryRestoreController = new AbortController();
     const scheduleMetadataWarmup = (nextRuntime: ReaderRuntime): void => {
       metadataWarmupTimer = window.setTimeout(() => {
         if (!cancelled) void ensureReaderMetadata(nextRuntime);
       }, 1200);
+    };
+    const scheduleIndexing = (
+      nextRuntime: ReaderRuntime,
+      books: ReadonlyArray<ReaderBook>,
+    ): void => {
+      if (books.length === 0) return;
+      indexingTimer = window.setTimeout(() => {
+        if (!cancelled) void Promise.all(books.map((book) => indexBook(nextRuntime, book)));
+      }, 1200);
+    };
+    const scheduleBinaryRestore = (
+      nextRuntime: ReaderRuntime,
+      bookIds: ReadonlyArray<string>,
+      activeBookId: string | null,
+    ): void => {
+      if (bookIds.length === 0) return;
+      const orderedBookIds = [
+        ...(activeBookId !== null && bookIds.includes(activeBookId) ? [activeBookId] : []),
+        ...bookIds.filter((bookId) => bookId !== activeBookId),
+      ];
+      binaryRestoreTimer = window.setTimeout(() => {
+        void restoreReaderBooks(nextRuntime, orderedBookIds, binaryRestoreController.signal)
+          .then(({ books, issues }) => {
+            if (cancelled) return;
+            for (const book of books) reader.replaceBook(book);
+            if (issues.length > 0) {
+              setRecovery((previous) =>
+                previous === null
+                  ? previous
+                  : {
+                      ...previous,
+                      restoredBooks: Math.max(0, previous.restoredBooks - issues.length),
+                      skippedBooks: [...previous.skippedBooks, ...issues],
+                    },
+              );
+            }
+          })
+          .catch(() => {
+            // The cached projection remains readable when a source cannot be
+            // rehydrated in the background.
+          });
+      }, 240);
     };
     void createReaderRuntime()
       .then(async (nextRuntime) => {
@@ -697,7 +743,7 @@ function useReaderBoot(): {
           return;
         }
         setRuntime(nextRuntime);
-        const restored = await restoreReader(nextRuntime);
+        const restored = await restoreReader(nextRuntime, { deferBinary: true });
         if (cancelled) return;
         if (restored !== undefined) {
           setRecovery(restored.recovery);
@@ -711,12 +757,13 @@ function useReaderBoot(): {
             restored.searchSession,
           );
           scheduleMetadataWarmup(nextRuntime);
-          await Promise.all(restored.books.map((book) => indexBook(nextRuntime, book)));
+          scheduleIndexing(nextRuntime, restored.books);
+          scheduleBinaryRestore(nextRuntime, restored.pendingBookIds, restored.activeBookId);
         } else {
           setRecovery(null);
           reader.setReady();
           scheduleMetadataWarmup(nextRuntime);
-          await indexBook(nextRuntime, getReaderState().library[0]!);
+          scheduleIndexing(nextRuntime, [getReaderState().library[0]!]);
         }
       })
       .catch((reason: unknown) => {
@@ -728,6 +775,9 @@ function useReaderBoot(): {
     return () => {
       cancelled = true;
       if (metadataWarmupTimer !== undefined) window.clearTimeout(metadataWarmupTimer);
+      if (indexingTimer !== undefined) window.clearTimeout(indexingTimer);
+      if (binaryRestoreTimer !== undefined) window.clearTimeout(binaryRestoreTimer);
+      binaryRestoreController.abort();
       createdRuntime?.indexSession?.close();
       createdRuntime?.parseSession?.close();
     };
@@ -2558,6 +2608,7 @@ function PdfReaderView(props: { book: ReaderBook; onReady?: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const sourceUrl = props.book.source.objectUrl;
+  const sourcePending = sourceUrl === undefined && props.book.source.ref !== undefined;
   useEffect(() => {
     let cancelled = false;
     let opened: PDFDocumentProxy | undefined;
@@ -2565,8 +2616,10 @@ function PdfReaderView(props: { book: ReaderBook; onReady?: () => void }) {
     setLoading(true);
     setError(null);
     if (sourceUrl === undefined) {
-      setError("PDF 源文件未恢复");
-      setLoading(false);
+      if (!sourcePending) {
+        setError("PDF 源文件未恢复");
+        setLoading(false);
+      }
       return () => {
         cancelled = true;
       };
@@ -2598,7 +2651,7 @@ function PdfReaderView(props: { book: ReaderBook; onReady?: () => void }) {
       cancelled = true;
       if (opened !== undefined) void opened.destroy();
     };
-  }, [sourceUrl, loadAttempt]);
+  }, [sourcePending, sourceUrl, loadAttempt]);
 
   return (
     <div className="reader-pdf-view">
@@ -2606,7 +2659,11 @@ function PdfReaderView(props: { book: ReaderBook; onReady?: () => void }) {
         <span>PDF · {props.book.sections.length} 页</span>
         <span>连续阅读 · 进入视口后按需渲染</span>
       </div>
-      {loading && <div className="reader-media-loading">正在打开 PDF…</div>}
+      {loading && (
+        <div className="reader-media-loading">
+          {sourcePending ? "正在从本地恢复 PDF…" : "正在打开 PDF…"}
+        </div>
+      )}
       {error !== null && (
         <div className="reader-media-error" role="alert">
           <CircleAlert className="reader-icon" />

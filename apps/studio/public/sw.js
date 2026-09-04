@@ -1,5 +1,6 @@
-const CACHE_NAME = "bcr-reader-shell-v2";
+const CACHE_NAME = "bcr-reader-shell-v3";
 const BUILD_MANIFEST = "/build-manifest.json";
+const NETWORK_TIMEOUT_MS = 2_000;
 const APP_SHELL = [
   "/",
   "/reader",
@@ -43,8 +44,9 @@ function addManifestEntry(manifest, key, urls, visited) {
 async function shellUrls() {
   const urls = new Set(APP_SHELL);
   urls.add(BUILD_MANIFEST);
+  if (self.navigator?.onLine === false) return [...urls];
   try {
-    const response = await fetch(BUILD_MANIFEST, { cache: "no-store" });
+    const response = await fetchWithTimeout(BUILD_MANIFEST, { cache: "no-store" });
     if (!response.ok) return [...urls];
     const manifest = await response.json();
     const visited = new Set();
@@ -56,6 +58,20 @@ async function shellUrls() {
     // The static shell still gives offline navigation a usable fallback.
   }
   return [...urls];
+}
+
+async function fetchWithTimeout(request, init = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), NETWORK_TIMEOUT_MS);
+  try {
+    return await fetch(request, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function refreshAllowed() {
+  return self.navigator?.onLine !== false;
 }
 
 async function cacheUrls(cache, urls) {
@@ -122,9 +138,11 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       (async () => {
         const cached = await matchCached(request, url.pathname);
-        const refresh = fetch(request)
-          .then((response) => cacheNavigationResponse(request, response))
-          .catch(() => undefined);
+        const refresh = refreshAllowed()
+          ? fetchWithTimeout(request)
+              .then((response) => cacheNavigationResponse(request, response))
+              .catch(() => undefined)
+          : Promise.resolve(undefined);
         if (cached !== undefined) {
           // Return the cached document immediately and refresh it in the
           // background. This is the critical path for an installed PWA.
@@ -139,7 +157,8 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     matchCached(request, url.pathname).then((cached) => {
-      const network = fetch(request)
+      if (cached !== undefined && !refreshAllowed()) return cached;
+      const network = fetchWithTimeout(request)
         .then((response) => {
           if (response.ok) {
             const copy = response.clone();

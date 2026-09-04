@@ -136,6 +136,12 @@ interface RestoredReaderSnapshot {
   readonly annotationsByBook: ReaderState["annotationsByBook"];
   readonly searchSession: ReaderSearchSession;
   readonly recovery: ReaderRestoreDiagnostics;
+  readonly pendingBookIds: ReadonlyArray<string>;
+}
+
+export interface ReaderBookRestoreBatch {
+  readonly books: ReadonlyArray<ReaderBook>;
+  readonly issues: ReadonlyArray<ReaderRestoreIssue>;
 }
 
 export interface ReaderRestoreIssue {
@@ -857,17 +863,13 @@ function restoreIssue(persisted: PersistedBook, reason: unknown): ReaderRestoreI
 async function restoreBook(
   runtime: ReaderRuntime,
   persisted: PersistedBook,
+  signal?: AbortSignal,
 ): Promise<RestoredBookResult> {
-  const hasBinaryView =
-    persisted.source.format === "docx" ||
-    persisted.source.format === "epub" ||
-    persisted.source.format === "cbz" ||
-    persisted.source.format === "pdf";
-  if (hasBinaryView && persisted.source.ref !== undefined) {
+  if (isBinaryBook(persisted) && persisted.source.ref !== undefined) {
     try {
       const file = await fileFromSource(runtime, persisted);
       if (file !== undefined) {
-        const reopened = await parseReaderFile(runtime, file, persisted.id);
+        const reopened = await parseReaderFile(runtime, file, persisted.id, signal);
         return {
           book: {
             ...reopened,
@@ -893,6 +895,19 @@ async function restoreBook(
       return { issue: restoreIssue(persisted, reason) };
     }
   }
+  return projectPersistedBook(persisted);
+}
+
+function isBinaryBook(persisted: PersistedBook): boolean {
+  return (
+    persisted.source.format === "docx" ||
+    persisted.source.format === "epub" ||
+    persisted.source.format === "cbz" ||
+    persisted.source.format === "pdf"
+  );
+}
+
+function projectPersistedBook(persisted: PersistedBook): RestoredBookResult {
   try {
     return {
       book: {
@@ -921,6 +936,7 @@ async function restoreBook(
 
 export async function restoreReader(
   runtime: ReaderRuntime,
+  options: { readonly deferBinary?: boolean } = {},
 ): Promise<RestoredReaderSnapshot | undefined> {
   const legacyRaw = await readerValue(runtime, READER_META_KEY, READER_STORAGE_KEY);
   const libraryRaw = await readerValue(
@@ -947,15 +963,20 @@ export async function restoreReader(
   try {
     const source = session?.version === 1 ? session : legacy?.version === 1 ? legacy : undefined;
     const persistedBooks = booksPayload as ReadonlyArray<PersistedBook>;
-    // Binary readers already isolate parsing in their own workers where
-    // possible. Restore publications concurrently so a large local library
-    // does not serialize DOCX/EPUB/PDF work behind the first entry.
-    const restored = await Promise.all(
-      persistedBooks.map(async (persisted, index) => ({
-        index,
-        book: await restoreBook(runtime, persisted),
-      })),
-    );
+    const deferBinary = options.deferBinary === true;
+    // The persisted projection already contains the normalized text model.
+    // Use it for the first paint and rehydrate binary resources separately.
+    const restored = deferBinary
+      ? persistedBooks.map((persisted, index) => ({
+          index,
+          book: projectPersistedBook(persisted),
+        }))
+      : await Promise.all(
+          persistedBooks.map(async (persisted, index) => ({
+            index,
+            book: await restoreBook(runtime, persisted),
+          })),
+        );
     const books = restored
       .sort((left, right) => left.index - right.index)
       .flatMap((entry) => (entry.book.book === undefined ? [] : [entry.book.book]));
@@ -974,13 +995,54 @@ export async function restoreReader(
       recovery: {
         attemptedBooks: persistedBooks.length,
         restoredBooks: books.length,
-        skippedBooks,
+        skippedBooks: deferBinary ? [] : skippedBooks,
         usedLegacyLibrary: !hasCanonicalLibrary,
       },
+      pendingBookIds: deferBinary
+        ? persistedBooks
+            .filter((persisted) => isBinaryBook(persisted) && persisted.source.ref !== undefined)
+            .map((persisted) => persisted.id)
+        : [],
     };
   } catch {
     return undefined;
   }
+}
+
+/** Rehydrate only the binary sources after the cached Reader projection is visible. */
+export async function restoreReaderBooks(
+  runtime: ReaderRuntime,
+  bookIds: ReadonlyArray<string>,
+  signal?: AbortSignal,
+): Promise<ReaderBookRestoreBatch> {
+  if (bookIds.length === 0) return { books: [], issues: [] };
+  const wanted = new Set(bookIds);
+  const legacyRaw = await readerValue(runtime, READER_META_KEY, READER_STORAGE_KEY);
+  const libraryRaw = await readerValue(
+    runtime,
+    READER_LIBRARY_META_KEY,
+    READER_LIBRARY_STORAGE_KEY,
+  );
+  const legacy = parsePersisted<Partial<PersistedReaderSnapshot>>(legacyRaw);
+  const library = parsePersisted<Partial<PersistedReaderLibrary>>(libraryRaw);
+  const hasCanonicalLibrary = library?.version === 1 && Array.isArray(library.books);
+  const booksPayload = hasCanonicalLibrary
+    ? library.books
+    : legacy?.version === 1 && Array.isArray(legacy.books)
+      ? legacy.books
+      : undefined;
+  if (booksPayload === undefined) return { books: [], issues: [] };
+
+  const books: ReaderBook[] = [];
+  const issues: ReaderRestoreIssue[] = [];
+  for (const persisted of booksPayload as ReadonlyArray<PersistedBook>) {
+    if (!wanted.has(persisted.id)) continue;
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    const restored = await restoreBook(runtime, persisted, signal);
+    if (restored.book !== undefined) books.push(restored.book);
+    if (restored.issue !== undefined) issues.push(restored.issue);
+  }
+  return { books, issues };
 }
 
 function parsePersisted<T>(raw: string | undefined): T | undefined {
