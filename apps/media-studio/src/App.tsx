@@ -1,27 +1,20 @@
-import { useEffect, useRef, useState } from "react";
-import { RuntimeProvider, useRuntime, type RuntimeServices } from "@bcr/react";
+import { RuntimeProvider, usePublishRunningCount, useRuntime, useRuntimeSession } from "@bcr/react";
+import { useEffect, useRef } from "react";
+import { useMediaSearch } from "./search";
 // 样式随模块加载：Shell 懒加载本组件时 CSS 一并注入（standalone main.tsx 的重复 import 幂等）。
-import "./styles.css";
-import { createRuntimeServices } from "./runtime";
-import { cancelGeneration, generateSubtitles, persistProject, restoreProject } from "./pipeline";
-import { clearProject, importSource } from "./source";
-import { studio, useStudio } from "./store";
 import { CueEditor, UndoRedo } from "./components/CueEditor";
 import { PipelineEditor } from "./components/PipelineEditor";
 import { PipelinePanel } from "./components/PipelinePanel";
 import { Waveform } from "./components/Waveform";
 import { exportSubtitles, FORMAT_MIME, type SubtitleFormat } from "./exporters";
+import { cancelGeneration, generateSubtitles, persistProject, restoreProject } from "./pipeline";
+import { createRuntimeServices } from "./runtime";
+import { clearProject, importSource } from "./source";
+import { studio, useStudio } from "./store";
+import "./styles.css";
 
 export function App() {
-  const [services, setServices] = useState<RuntimeServices | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    void createRuntimeServices().then((runtime) => {
-      setServices(runtime);
-      void restoreProject(runtime);
-    }, setError);
-  }, []);
+  const { services, error } = useRuntimeSession(createRuntimeServices, restoreProject);
 
   if (error !== null) {
     return <div className="p-8 text-[var(--color-danger)]">Runtime 启动失败：{error}</div>;
@@ -41,11 +34,13 @@ export function App() {
 }
 
 function Studio() {
+  useMediaSearch();
   const services = useRuntime();
   const source = useStudio((state) => state.source);
   const mediaInfo = useStudio((state) => state.mediaInfo);
   const settings = useStudio((state) => state.settings);
   const running = useStudio((state) => state.running);
+  usePublishRunningCount("media", running ? 1 : 0);
   const cues = useStudio((state) => state.cues);
   const engineUsed = useStudio((state) => state.engineUsed);
   const logs = useStudio((state) => state.logs);
@@ -256,7 +251,7 @@ function Studio() {
             {source !== null && (
               <button
                 className="btn mt-2 w-full justify-center text-[10px]"
-                onClick={() => void clearProject()}
+                onClick={() => void clearProject(services)}
               >
                 清空项目
               </button>

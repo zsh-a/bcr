@@ -6,18 +6,18 @@ import {
   type ArtifactCleanupResult,
   type ArtifactInventoryEntry,
   type ArtifactRef,
-  type ComputeTask,
   type ArtifactStorageUsage,
   type ArtifactUsage,
+  type ComputeTask,
   type TaskHandle,
 } from "@bcr/core";
-import type { RuntimeServices } from "@bcr/react";
 import {
   dataTableStats,
   decodeDataTablePackage,
   type DataFormat,
   type DataTablePackage,
 } from "@bcr/data-core";
+import type { RuntimeServices } from "@bcr/react";
 import { Effect, Fiber, Stream } from "effect";
 
 const SNAPSHOT_KEY = "data-studio.snapshot.v1";
@@ -103,7 +103,7 @@ function tableTask(sourceRef: ArtifactRef, file: File, format: DataFormat): Comp
   taskSequence += 1;
   return {
     id: `data-table-${Date.now().toString(36)}-${taskSequence.toString(36)}`,
-    runtime: "wasm",
+    runtime: "js",
     operation: "data.parse.table",
     inputs: [{ ...sourceRef, port: "source" }],
     outputs: [

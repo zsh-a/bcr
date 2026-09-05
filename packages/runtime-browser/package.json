@@ -1,0 +1,15 @@
+{
+  "name": "@bcr/runtime-browser",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@bcr/core": "workspace:*",
+    "@bcr/storage-opfs": "workspace:*",
+    "@bcr/storage-sqlite": "workspace:*",
+    "effect": "^3.22.1"
+  }
+}

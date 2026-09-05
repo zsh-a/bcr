@@ -11,6 +11,7 @@
     "@bcr/core": "workspace:*",
     "@bcr/market-data": "workspace:*",
     "@bcr/react": "workspace:*",
+    "@bcr/runtime-browser": "workspace:*",
     "@bcr/runtime-worker": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",
     "@bcr/storage-sqlite": "workspace:*",

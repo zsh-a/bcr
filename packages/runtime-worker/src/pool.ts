@@ -193,6 +193,21 @@ export class WorkerPool {
     this.park(worker);
   }
 
+  /** An interrupted task may still be computing; never reuse its Worker. */
+  discard(worker: PoolWorker): void {
+    if (!this.all.delete(worker)) return;
+    this.leased.delete(worker);
+    this.clearIdleTimer(worker);
+    const index = this.idle.indexOf(worker);
+    if (index >= 0) this.idle.splice(index, 1);
+    worker.terminate();
+    if (!this.closed && (this.all.size < this.minSize || this.waiting.length > 0)) {
+      const replacement = this.createWorker();
+      this.leased.add(replacement);
+      this.release(replacement);
+    }
+  }
+
   /** 幂等关闭：终止全部 Worker，并让当前/未来等待者明确失败。 */
   shutdown(): void {
     if (this.closed) return;

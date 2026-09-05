@@ -2,14 +2,6 @@ import type { ArtifactRef } from "@bcr/core";
 import { compile } from "@bcr/graph";
 import { describe, expect, it } from "vitest";
 import {
-  defaultGraph,
-  CLEAN_PREVIEW_OPERATION,
-  LOCAL_OCR_OPERATION,
-  LOCAL_TRANSLATION_OPERATION,
-  OPERATIONS,
-  REVIEW_OCR_OPERATION,
-} from "../src/operations";
-import {
   OCR_MODEL_MANIFESTS,
   TRANSLATION_MODEL_MANIFESTS,
   decodeMangaOcrArtifact,
@@ -18,8 +10,16 @@ import {
   resolveMangaOcrAdapter,
   resolveMangaTranslationAdapter,
 } from "../src/model";
-import { DEFAULT_SETTINGS } from "../src/store";
+import {
+  CLEAN_PREVIEW_OPERATION,
+  LOCAL_OCR_OPERATION,
+  LOCAL_TRANSLATION_OPERATION,
+  OPERATIONS,
+  REVIEW_OCR_OPERATION,
+  defaultGraph,
+} from "../src/operations";
 import { mergeOcrLinesIntoRegions } from "../src/pipeline";
+import { DEFAULT_SETTINGS } from "../src/store";
 
 describe("Manga Studio operation graph", () => {
   it("compiles the full page pipeline with named fan-in bindings", () => {
@@ -64,7 +64,7 @@ describe("Manga Studio operation graph", () => {
   it("exposes a review OCR adapter without weakening the visual graph contract", () => {
     expect(REVIEW_OCR_OPERATION).toMatchObject({
       operation: "manga.ocr.review",
-      runtime: "wasm",
+      runtime: "js",
       detail: expect.stringContaining("审校"),
     });
     expect(REVIEW_OCR_OPERATION.outputs).toEqual([
@@ -260,7 +260,7 @@ describe("Manga Studio operation graph", () => {
   it("exposes a safe cleaning preview boundary", () => {
     expect(CLEAN_PREVIEW_OPERATION).toMatchObject({
       operation: "manga.clean.preview",
-      runtime: "wasm",
+      runtime: "js",
     });
     expect(CLEAN_PREVIEW_OPERATION.outputs).toEqual([
       { name: "cleanPage", type: "manga/clean-page", label: "clean" },

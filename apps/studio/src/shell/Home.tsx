@@ -1,27 +1,20 @@
-import { useStudio as useMediaStudio } from "@bcr/media-studio/store";
-import { useQuantLab } from "@bcr/quant-lab/store";
-import { useMangaStudio } from "@bcr/manga-studio/store";
+import { useRunningApps } from "@bcr/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useStudio } from "../store";
 import { APPS } from "./apps";
 
 /**
  * 启动台（OS 主页面）：App 图标网格 + 运行中任务角标。
- * App 本体常驻挂载，这里只读两边的 module 级 store 做概览。
+ * 领域应用主动发布运行状态，启动台只读取通用状态投影。
  */
 export function Home() {
   const navigate = useNavigate();
   const studioRunning = useStudio((s) => s.runningCount);
-  const mediaRunning = useMediaStudio((s) => s.running);
-  const quantRunning = useQuantLab((s) => s.running);
-  const mangaRunning = useMangaStudio((s) => s.running);
+  const activity = useRunningApps();
 
   const runningBadge = (id: string): number => {
     if (id === "studio") return studioRunning;
-    if (id === "media") return mediaRunning ? 1 : 0;
-    if (id === "quant") return quantRunning ? 1 : 0;
-    if (id === "manga") return mangaRunning ? 1 : 0;
-    return 0;
+    return activity[id] ?? 0;
   };
 
   return (

@@ -2,6 +2,9 @@
 
 面向本地计算型 Web 应用的浏览器 Runtime 初版实现，对应 `docs/ARCHITECTURE.md` 的 Phase 1 核心抽象。
 
+当前实现的所有权、会话生命周期与接入契约见 [Runtime 架构](docs/RUNTIME-ARCHITECTURE.md)。
+计算应用通过 `@bcr/runtime-browser` 统一组装，嵌入 Studio 时共享资源预算，领域计算与搜索投影由应用自身提供。
+
 本版范围：**核心 Runtime 包 + Media / Quant / Markets / Manga / Reader / Document / Data 七类端到端垂直切片**——
 文件或行情 → OPFS → Worker Pipeline → Artifact → 内容寻址缓存 → 跨刷新项目恢复。
 
@@ -11,6 +14,7 @@
 ├── packages/
 │   ├── core/             # @bcr/core：ComputeTask / Artifact / Scheduler(Effect) / CacheKey / DAG 失效 / Pipeline
 │   ├── runtime-worker/   # @bcr/runtime-worker：typed MessagePort 协议 / WorkerPool / WorkerExecutor
+│   ├── runtime-browser/  # @bcr/runtime-browser：会话组装 / 共享预算 / 项目写锁 / 生命周期
 │   ├── storage-opfs/     # @bcr/storage-opfs：BinaryStore 抽象，OPFS + Memory 实现
 │   ├── storage-sqlite/   # @bcr/storage-sqlite：SQLite WASM 元数据引擎（Cache / 血缘 / TaskJournal）
 │   ├── market-data/      # @bcr/market-data：统一市场数据契约 / stock-sdk 适配 / 缓存降级

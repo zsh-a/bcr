@@ -5,8 +5,8 @@ import { artifactPath, artifactStore } from "../src/artifact";
 import { memoryCacheStore } from "../src/cache-store";
 import { InvalidPipeline, TaskFailed } from "../src/errors";
 import { executorRegistry, Executors, type RuntimeExecutor } from "../src/executor";
-import type { ComputeTask, TaskEvent } from "../src/schema";
 import { schedulerLive, SchedulerTag, type Scheduler } from "../src/scheduler";
+import type { ComputeTask, TaskEvent } from "../src/schema";
 
 const completedOutputs = (taskId: string): TaskEvent => ({
   type: "completed",
@@ -22,6 +22,7 @@ function makeExecutor(behavior?: (task: ComputeTask) => Stream.Stream<TaskEvent,
   const runs: string[] = [];
   const inputsOf = new Map<string, ComputeTask["inputs"]>();
   const executor: RuntimeExecutor = {
+    operations: ["test.op", "test.source", "test.sink"],
     runtime: "js",
     version: "test-1",
     run: (t) => {

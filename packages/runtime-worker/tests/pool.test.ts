@@ -15,6 +15,20 @@ class FakeWorker implements PoolWorker {
 }
 
 describe("WorkerPool (架构 §5)", () => {
+  it("replaces interrupted Workers before giving the slot to queued work", async () => {
+    const pool = new WorkerPool(1, () => new FakeWorker());
+    const active = await pool.acquire();
+    const pending = pool.acquire();
+    pool.discard(active);
+    const replacement = await pending;
+    expect((active as FakeWorker).terminated).toBe(true);
+    expect(replacement).not.toBe(active);
+    expect(pool.snapshot).toMatchObject({ size: 1, busy: 1, queued: 0 });
+    pool.release(active);
+    expect(pool.snapshot.busy).toBe(1);
+    pool.release(replacement);
+    pool.shutdown();
+  });
   it("idle-first 分发并复用", async () => {
     const created: FakeWorker[] = [];
     const pool = new WorkerPool(2, () => {

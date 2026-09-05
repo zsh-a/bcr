@@ -25,12 +25,12 @@ export async function importSource(services: RuntimeServices, file: File): Promi
   void persistProject(services);
 }
 
-export async function clearProject(): Promise<void> {
+export async function clearProject(services: RuntimeServices): Promise<void> {
   studio.setSource(null);
-  const db = (await import("./runtime")).metaDatabase();
+  const db = services.metadata;
   if (db !== undefined) {
     try {
-      await db.kvSet("project", JSON.stringify({ source: null, cues: [] }));
+      await db.set("project", JSON.stringify({ source: null, cues: [] }));
     } catch {
       // 持久化失败不阻塞 UI
     }

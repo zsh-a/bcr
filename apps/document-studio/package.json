@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./compute": "./src/compute.ts",
     "./app": "./src/App.tsx",
     "./store": "./src/store.ts"
   },
@@ -11,6 +12,7 @@
     "@bcr/core": "workspace:*",
     "@bcr/document-core": "workspace:*",
     "@bcr/react": "workspace:*",
+    "@bcr/runtime-worker": "workspace:*",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.3.0",
     "@tanstack/react-router": "^1.170.32",

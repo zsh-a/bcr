@@ -1,23 +1,23 @@
 import { contentHash, type ArtifactRef, type ComputeTask, type TaskHandle } from "@bcr/core";
-import { Effect, Stream } from "effect";
-import type { RuntimeServices } from "@bcr/react";
 import {
-  documentOcrSettings,
   documentExportFileName,
+  documentOcrSettings,
   invalidateDownstream,
   serializeDocumentExport,
   stageById,
   supportsDocumentTextExtract,
   updateStage,
-  type DocumentFormat,
-  type DocumentOcrSettings,
   type DocumentContentPackage,
-  type DocumentJob,
   type DocumentExportFormat,
   type DocumentExportView,
+  type DocumentFormat,
+  type DocumentJob,
+  type DocumentOcrSettings,
   type DocumentStageId,
   type DocumentTranslationPackage,
 } from "@bcr/document-core";
+import type { RuntimeServices } from "@bcr/react";
+import { Effect, Stream } from "effect";
 import { documents } from "./store";
 
 export {
@@ -93,7 +93,7 @@ function taskFor(job: DocumentJob, stageId: DocumentStageId): ComputeTask | unde
   taskSequence += 1;
   return {
     id: `document-task-${Date.now().toString(36)}-${taskSequence.toString(36)}`,
-    runtime: "wasm",
+    runtime: stageId === "ocr" ? "wasm" : "js",
     operation,
     inputs: [{ ...input, port: "source" }],
     outputs: outputForStage(stageId),

@@ -1,7 +1,4 @@
-import { useArtifactUsage } from "@bcr/react";
-import { useStudio as useMediaStudio } from "@bcr/media-studio/store";
-import { useQuantLab } from "@bcr/quant-lab/store";
-import { useMangaStudio } from "@bcr/manga-studio/store";
+import { useArtifactUsage, useRunningApps } from "@bcr/react";
 import { useNavigate } from "@tanstack/react-router";
 import { Command, Cpu, HardDrive, House, RefreshCw, Search, SquareTerminal } from "lucide-react";
 import { APPS, type ActiveView } from "../shell/apps";
@@ -16,11 +13,8 @@ export function TopBar(props: {
 }) {
   const navigate = useNavigate();
   const studioRunning = useStudio((s) => s.runningCount);
-  const mediaRunning = useMediaStudio((s) => s.running);
-  const quantRunning = useQuantLab((s) => s.running);
-  const mangaRunning = useMangaStudio((s) => s.running);
-  const running =
-    studioRunning + (mediaRunning ? 1 : 0) + (quantRunning ? 1 : 0) + (mangaRunning ? 1 : 0);
+  const activity = useRunningApps();
+  const running = studioRunning + Object.values(activity).reduce((sum, count) => sum + count, 0);
   const taskTotal = useStudio((s) => s.tasks.length);
   const artifactUsage = useArtifactUsage();
   const activeApp = APPS.find((app) => app.id === props.active);

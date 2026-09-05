@@ -1,8 +1,8 @@
 import type { ArtifactRef, CacheStore, ComputeTask, TaskJournal } from "@bcr/core";
 import { CacheStoreTag, TaskJournalTag } from "@bcr/core";
 import { MemoryStore } from "@bcr/storage-opfs";
-import { Effect } from "effect";
 import initSqlite from "@sqlite.org/sqlite-wasm";
+import { Effect } from "effect";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   openSqliteDb,
@@ -28,6 +28,38 @@ beforeEach(async () => {
 });
 
 describe("openSqliteDb (§8 元数据引擎)", () => {
+  it("coalesces concurrent persistence requests without losing writes during IO", async () => {
+    const writes: Uint8Array[] = [];
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    class BlockingStore extends MemoryStore {
+      override async put(path: string, bytes: Uint8Array): Promise<void> {
+        writes.push(bytes);
+        if (writes.length === 1) await blocked;
+        await super.put(path, bytes);
+      }
+    }
+    const binary = new BlockingStore();
+    const sqlite3 = await initSqlite();
+    const database = await openSqliteDb({ store: binary, path: "batch.db", sqlite3 });
+    const first = database.kvSet("a", "1");
+    const second = database.kvSet("b", "2");
+    // Let the first export begin, then change the database while its IO is pending.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const third = database.kvSet("c", "3");
+    release();
+    await Promise.all([first, second, third]);
+    expect(writes).toHaveLength(2);
+    await database.close();
+    const reopened = await openSqliteDb({ store: binary, path: "batch.db", sqlite3 });
+    expect(await reopened.kvGet("a")).toBe("1");
+    expect(await reopened.kvGet("b")).toBe("2");
+    expect(await reopened.kvGet("c")).toBe("3");
+    await reopened.close();
+  });
+
   it("空库自动建表，persist 后按字节恢复（刷新模拟）", async () => {
     db.run("INSERT INTO kv (key, value) VALUES ('hello', 'world')");
     await db.close();

@@ -1,4 +1,6 @@
 import type { ArtifactRef, ComputeTask } from "@bcr/core";
+import { Either } from "effect";
+import { decodeWorkerCommand } from "./protocol";
 
 /**
  * Worker 侧入口（架构文档 §5/§6.2）。
@@ -44,9 +46,9 @@ export function defineWorker(handlers: Readonly<Record<string, OperationHandler>
   const controllers = new Map<string, AbortController>();
 
   workerScope.addEventListener("message", (event: MessageEvent) => {
-    const message = event.data as
-      | { type: "run"; task: ComputeTask; port: MessagePort }
-      | { type: "cancel"; taskId: string };
+    const decoded = decodeWorkerCommand(event.data);
+    if (Either.isLeft(decoded)) return;
+    const message = decoded.right;
 
     if (message.type === "cancel") {
       // 任务可能已结束（主线程流关闭时总会补发 cancel），幂等处理
@@ -55,7 +57,9 @@ export function defineWorker(handlers: Readonly<Record<string, OperationHandler>
       return;
     }
 
-    const { task, port } = message;
+    const { task } = message;
+    const port = (event.data as { port?: MessagePort }).port;
+    if (port === undefined || typeof port.postMessage !== "function") return;
     const handler = handlers[task.operation];
     if (handler === undefined) {
       port.postMessage({
@@ -84,7 +88,8 @@ export function defineWorker(handlers: Readonly<Record<string, OperationHandler>
       },
     };
 
-    handler(task, ctx)
+    Promise.resolve()
+      .then(() => handler(task, ctx))
       .then((rawResult) => {
         const result = operationResult(rawResult);
         port.postMessage({

@@ -1,13 +1,11 @@
 import { MemoryStore } from "@bcr/storage-opfs";
-import { Cause, Effect, Exit, Layer, Schedule, Stream } from "effect";
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, Schedule, Stream } from "effect";
 import { describe, expect, it } from "vitest";
 import { artifactPath, artifactStore } from "../src/artifact";
 import { memoryCacheStore } from "../src/cache-store";
 import { TaskFailed } from "../src/errors";
 import { executorRegistry, Executors, type RuntimeExecutor } from "../src/executor";
 import type { ResourceCapacity } from "../src/resource-manager";
-import type { ArtifactRef, ComputeTask, TaskEvent } from "../src/schema";
-import { makeMemoryTaskJournal, TaskJournalTag, type TaskJournal } from "../src/task-journal";
 import {
   schedulerLive,
   schedulerLiveWithCapacity,
@@ -15,6 +13,8 @@ import {
   SchedulerTag,
   type Scheduler,
 } from "../src/scheduler";
+import type { ArtifactRef, ComputeTask, TaskEvent } from "../src/schema";
+import { makeMemoryTaskJournal, TaskJournalTag, type TaskJournal } from "../src/task-journal";
 
 const ref = (id: string, hash?: string): ArtifactRef => ({
   id,
@@ -46,6 +46,7 @@ const progress = (taskId: string, value: number): TaskEvent => ({
 function countingExecutor(behavior?: (task: ComputeTask) => Stream.Stream<TaskEvent, TaskFailed>) {
   let runs = 0;
   const executor: RuntimeExecutor = {
+    operations: ["test.op"],
     runtime: "js",
     version: "test-1",
     run: (t) => {
@@ -576,6 +577,83 @@ describe("Scheduler (架构 §2/§3/§6/§7)", () => {
 
     // A 只算 1 次，B 算 2 次
     expect(runs()).toBe(3);
+  });
+
+  it("completion is visible only after the journal commit and survives late subscription", async () => {
+    const entered = await Effect.runPromise(Deferred.make<void>());
+    const release = await Effect.runPromise(Deferred.make<void>());
+    const base = makeMemoryTaskJournal();
+    const journal: TaskJournal = {
+      ...base,
+      recordCompleted: (id, outputs) =>
+        Deferred.succeed(entered, undefined).pipe(
+          Effect.zipRight(Deferred.await(release)),
+          Effect.zipRight(base.recordCompleted(id, outputs)),
+        ),
+    };
+    const { executor } = countingExecutor();
+    const { withScheduler } = makeRuntime(executor, undefined, journal);
+    await withScheduler((scheduler) =>
+      Effect.gen(function* () {
+        const handle = yield* scheduler.submit(task("commit"));
+        const events: TaskEvent[] = [];
+        const observer = yield* Effect.fork(
+          Stream.runForEach(handle.events, (event) =>
+            Effect.sync(() => {
+              events.push(event);
+            }),
+          ),
+        );
+        yield* Deferred.await(entered);
+        expect(handle.state.getSnapshot().status).toBe("running");
+        expect(events.some((event) => event.type === "completed")).toBe(false);
+        yield* Deferred.succeed(release, undefined);
+        const outputs = yield* handle.await;
+        yield* Fiber.join(observer);
+        expect(events.filter((event) => event.type === "completed")).toHaveLength(1);
+        expect(handle.state.getSnapshot()).toEqual({ status: "completed", progress: 1, outputs });
+        const unsubscribe = handle.state.subscribe(() => undefined);
+        expect(handle.state.getSnapshot().status).toBe("completed");
+        unsubscribe();
+      }),
+    );
+  });
+
+  it("a failed metadata commit never exposes completed state", async () => {
+    const { executor } = countingExecutor();
+    const journal: TaskJournal = {
+      ...makeMemoryTaskJournal(),
+      recordCompleted: () => Effect.die(new Error("disk full")),
+    };
+    const { withScheduler } = makeRuntime(executor, undefined, journal);
+    await withScheduler((scheduler) =>
+      Effect.gen(function* () {
+        const handle = yield* scheduler.submit(task("bad-commit"));
+        const exit = yield* Effect.exit(handle.await);
+        expect(Exit.isFailure(exit)).toBe(true);
+        expect(handle.state.getSnapshot()).toMatchObject({
+          status: "failed",
+          error: expect.stringContaining("disk full"),
+        });
+      }),
+    );
+  });
+
+  it("shutdown interrupts running and queued tasks and rejects new submissions", async () => {
+    const { executor } = countingExecutor(() => Stream.fromEffect(Effect.never));
+    const { withScheduler } = makeRuntime(executor, { memoryMB: 1024, threads: 1, gpuSlots: 1 });
+    await withScheduler((scheduler) =>
+      Effect.gen(function* () {
+        const first = yield* scheduler.submit(task("first"));
+        const second = yield* scheduler.submit(task("second"));
+        yield* scheduler.shutdown;
+        yield* scheduler.shutdown;
+        expect(first.state.getSnapshot().status).toBe("cancelled");
+        expect(second.state.getSnapshot().status).toBe("cancelled");
+        expect((yield* scheduler.resourceSnapshot).used.threads).toBe(0);
+        expect(Exit.isFailure(yield* Effect.exit(scheduler.submit(task("closed"))))).toBe(true);
+      }),
+    );
   });
 
   it("未知 runtime → NoExecutor", async () => {

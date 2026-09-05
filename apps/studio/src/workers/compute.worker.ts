@@ -1,19 +1,25 @@
-import { defineWorker } from "@bcr/runtime-worker";
-import {
-  dataParseTable,
-  documentExtract,
-  documentTranslateFixture,
-  documentTypesetPreview,
-} from "./documentDataComputeTasks";
-import {
+import { createDataCompute } from "@bcr/data-studio/compute";
+import { createDocumentCompute } from "@bcr/document-studio/compute";
+import { createMangaCompute } from "@bcr/manga-studio/compute";
+import { createKernelCompute } from "@bcr/media-studio/compute";
+import type { OperationHandler } from "@bcr/runtime-worker";
+import { createArtifactIO, defineWorker } from "@bcr/runtime-worker";
+import { OpfsStore } from "@bcr/storage-opfs";
+import type { StudioOperation } from "../compute-contract";
+
+const io = createArtifactIO(new OpfsStore("studio"), "opfs");
+const { documentExtract, documentTranslateFixture, documentTypesetPreview } =
+  createDocumentCompute(io);
+const { dataParseTable } = createDataCompute(io);
+const {
   documentOcrOnnx,
   mangaCleanPreview,
   mangaModelPreload,
   mangaOcrOnnx,
   mangaOcrReview,
   mangaTranslateOnnx,
-} from "./mangaComputeTasks";
-import { audioWaveform, hashBlake3 } from "./mediaComputeTasks";
+} = createMangaCompute(io);
+const { audioWaveform, hashBlake3 } = createKernelCompute(io);
 
 /**
  * Compute Worker composition root.
@@ -42,4 +48,4 @@ defineWorker({
   "manga.model.preload": (task, ctx) => mangaModelPreload(task, ctx),
   "manga.translate.onnx": (task, ctx) => mangaTranslateOnnx(task, ctx),
   "manga.clean.preview": (task, ctx) => mangaCleanPreview(task, ctx),
-});
+} satisfies Record<StudioOperation, OperationHandler>);

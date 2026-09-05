@@ -10,8 +10,8 @@
   "type": "module",
   "scripts": {
     "build:wasm": "wasm-pack build crates/kernels --target web",
-    "check": "vp check && bun run typecheck",
-    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/runtime-worker/tsconfig.json && tsc --noEmit -p packages/storage-opfs/tsconfig.json && tsc --noEmit -p packages/storage-sqlite/tsconfig.json && tsc --noEmit -p packages/graph/tsconfig.json && tsc --noEmit -p packages/react/tsconfig.json && tsc --noEmit -p packages/market-data/tsconfig.json && tsc --noEmit -p packages/reader-core/tsconfig.json && tsc --noEmit -p packages/document-core/tsconfig.json && tsc --noEmit -p packages/data-core/tsconfig.json && tsc --noEmit -p apps/media-studio/tsconfig.json && tsc --noEmit -p apps/quant-lab/tsconfig.json && tsc --noEmit -p apps/market-board/tsconfig.json && tsc --noEmit -p apps/manga-studio/tsconfig.json && tsc --noEmit -p apps/reader-studio/tsconfig.json && tsc --noEmit -p apps/document-studio/tsconfig.json && tsc --noEmit -p apps/data-studio/tsconfig.json && tsc --noEmit -p apps/studio/tsconfig.json && tsc --noEmit -p examples/demo/tsconfig.json",
+    "check": "vp check && bun run typecheck && node scripts/verify-architecture.mjs",
+    "typecheck": "node scripts/typecheck.mjs",
     "test": "vp test run",
     "test:browser": "node scripts/verify-ci.mjs",
     "demo": "cd examples/demo && vp dev",

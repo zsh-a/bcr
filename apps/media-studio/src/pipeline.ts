@@ -1,9 +1,8 @@
-import { artifactPath, type ArtifactRef, type PipelineHandle } from "@bcr/core";
+import { type ArtifactRef, type PipelineHandle } from "@bcr/core";
 import { compile, decodeGraph, encodeGraph, type Graph } from "@bcr/graph";
 import type { RuntimeServices } from "@bcr/react";
 import { Effect, Stream } from "effect";
 import { OPERATIONS, withTranslate } from "./operations";
-import { metaDatabase, sourceBlobStore } from "./runtime";
 import { studio, type StudioSettings } from "./store";
 import { normalizeCues, type MediaInfo, type SubtitleCue } from "./subtitles";
 
@@ -202,8 +201,8 @@ interface PersistedProject {
   readonly graph?: string;
 }
 
-export async function persistProject(_services: RuntimeServices): Promise<void> {
-  const db = metaDatabase();
+export async function persistProject(services: RuntimeServices): Promise<void> {
+  const db = services.metadata;
   if (db === undefined) return;
   const state = studio.getSnapshot();
   const project: PersistedProject = {
@@ -217,17 +216,17 @@ export async function persistProject(_services: RuntimeServices): Promise<void> 
     graph: encodeGraph(state.graph),
   };
   try {
-    await db.kvSet("project", JSON.stringify(project));
+    await db.set("project", JSON.stringify(project));
   } catch (error) {
     studio.log("warn", `persist project failed · ${String(error)}`);
   }
 }
 
 export async function restoreProject(services: RuntimeServices): Promise<void> {
-  const db = metaDatabase();
+  const db = services.metadata;
   if (db === undefined) return;
   try {
-    const raw = await db.kvGet("project");
+    const raw = await db.get("project");
     if (raw === undefined) return;
     const project = JSON.parse(raw) as PersistedProject;
     if (project.settings !== undefined) {
@@ -249,21 +248,8 @@ export async function restoreProject(services: RuntimeServices): Promise<void> {
     // 源文件本体在 OPFS：优先用文件句柄快照 Blob（磁盘引用，大文件不整段进内存，§4/§8）
     let objectUrl: string | null = null;
     try {
-      const store = sourceBlobStore();
-      const blob =
-        project.source.ref.storage === "opfs" && store !== undefined
-          ? await store.getBlob?.(artifactPath(project.source.ref))
-          : undefined;
-      if (blob !== undefined && blob !== null) {
-        objectUrl = URL.createObjectURL(blob);
-      } else {
-        const bytes = await Effect.runPromise(services.artifacts.get(project.source.ref));
-        objectUrl = URL.createObjectURL(
-          new Blob([
-            bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as BlobPart,
-          ]),
-        );
-      }
+      const blob = await Effect.runPromise(services.artifacts.getBlob(project.source.ref));
+      objectUrl = URL.createObjectURL(blob);
     } catch {
       objectUrl = null;
     }

@@ -17,6 +17,7 @@
     "@bcr/quant-lab": "workspace:*",
     "@bcr/react": "workspace:*",
     "@bcr/reader-studio": "workspace:*",
+    "@bcr/runtime-browser": "workspace:*",
     "@bcr/runtime-worker": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",
     "@bcr/storage-sqlite": "workspace:*",

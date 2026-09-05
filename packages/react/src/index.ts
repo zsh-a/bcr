@@ -1,23 +1,25 @@
 import {
   type ArtifactRef,
-  type ArtifactStore,
   type ArtifactUsage,
   type ComputeTask,
-  type Scheduler,
-  type SearchIndex,
   type SubmitOptions,
   type TaskHandle,
 } from "@bcr/core";
-import { Effect, Fiber, Stream } from "effect";
+import { Effect } from "effect";
 import {
   createContext,
   createElement,
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { ApplicationStatusProvider } from "./application-status";
+export type { RuntimeHost, RuntimeMetadata, RuntimeServices, RuntimeSession } from "@bcr/core";
+export { usePublishRunningCount, useRunningApps } from "./application-status";
 
 /** Host-shell navigation event used by keep-alive apps without a router provider. */
 export const RUNTIME_NAVIGATION_EVENT = "bcr:navigation";
@@ -50,24 +52,23 @@ export function useLocationSearch(): string {
  * 用法：应用启动时用 Layer 构建一次 services（见 examples/demo），
  * 交给 RuntimeProvider；组件内只面对 hooks。
  */
-export interface RuntimeServices {
-  readonly scheduler: Scheduler;
-  readonly artifacts: ArtifactStore;
-  /** Optional workspace-wide metadata search supplied by the host shell. */
-  readonly search?: SearchIndex | undefined;
-  /** Optional small-state persistence supplied by the host app's SQLite plane. */
-  readonly metadata?: RuntimeMetadata | undefined;
-}
-
-export interface RuntimeMetadata {
-  readonly get: (key: string) => Promise<string | undefined>;
-  readonly set: (key: string, value: string) => Promise<void>;
-}
+import type { RuntimeHost, RuntimeServices, RuntimeSession, TaskSnapshot } from "@bcr/core";
 
 const RuntimeContext = createContext<RuntimeServices | null>(null);
+const ActivityContext = createContext(true);
+export function RuntimeActivity(props: { active: boolean; children: ReactNode }) {
+  return createElement(ActivityContext.Provider, { value: props.active }, props.children);
+}
+export function useRuntimeActivity(): boolean {
+  return useContext(ActivityContext);
+}
 
 export function RuntimeProvider(props: { services: RuntimeServices; children: ReactNode }) {
-  return createElement(RuntimeContext.Provider, { value: props.services }, props.children);
+  return createElement(
+    RuntimeContext.Provider,
+    { value: props.services },
+    createElement(ApplicationStatusProvider, { children: props.children }),
+  );
 }
 
 export function useRuntime(): RuntimeServices {
@@ -87,6 +88,60 @@ export function useOptionalRuntime(): RuntimeServices | null {
   return useContext(RuntimeContext);
 }
 
+/** Own a session; inherit the host budget and search from an enclosing workspace. */
+export function useRuntimeSession(
+  create: (host?: RuntimeHost) => Promise<RuntimeSession>,
+  initialize?: (services: RuntimeServices) => Promise<void>,
+): { services: RuntimeServices | null; error: string | null } {
+  const parent = useOptionalRuntime();
+  const host = parent?.host;
+  const search = parent?.search;
+  const [result, setResult] = useState<{ services: RuntimeServices | null; error: string | null }>({
+    services: null,
+    error: null,
+  });
+  const lifetime = useRef<Promise<void>>(Promise.resolve());
+  useEffect(() => {
+    let cancelled = false;
+    let stop!: () => void;
+    const stopped = new Promise<void>((resolve) => {
+      stop = resolve;
+    });
+    const previous = lifetime.current;
+    setResult({ services: null, error: null });
+    lifetime.current = (async () => {
+      await previous;
+      if (cancelled) return;
+      let session: RuntimeSession | undefined;
+      try {
+        session = await create(host);
+        if (cancelled) return;
+        const services = { ...session, search: search ?? session.search };
+        await initialize?.(services);
+        if (!cancelled) {
+          setResult({ services, error: null });
+          await stopped;
+        }
+      } catch (error) {
+        if (!cancelled)
+          setResult({
+            services: null,
+            error: error instanceof Error ? error.message : String(error),
+          });
+      } finally {
+        await session
+          ?.dispose()
+          .catch((error: unknown) => console.error("Runtime cleanup failed", error));
+      }
+    })();
+    return () => {
+      cancelled = true;
+      stop();
+    };
+  }, [create, initialize, host, search]);
+  return result;
+}
+
 export function useSubmitTask(): (
   task: ComputeTask,
   options?: SubmitOptions,
@@ -98,60 +153,17 @@ export function useSubmitTask(): (
   );
 }
 
-export interface TaskState {
-  readonly status: "idle" | "running" | "completed" | "failed";
-  readonly progress: number;
-  readonly outputs?: ReadonlyArray<ArtifactRef> | undefined;
-  readonly error?: string | undefined;
-}
-
+export type TaskState = TaskSnapshot | { readonly status: "idle"; readonly progress: 0 };
 const idle: TaskState = { status: "idle", progress: 0 };
+const idleSnapshot = () => idle;
+const idleSubscribe = () => () => undefined;
 
-/** 订阅任务事件流（Stream → React state）。 */
 export function useTask(handle: TaskHandle | null): TaskState {
-  const [state, setState] = useState<TaskState>(
-    handle === null ? idle : { status: "running", progress: 0 },
+  return useSyncExternalStore<TaskState>(
+    handle?.state.subscribe ?? idleSubscribe,
+    handle?.state.getSnapshot ?? idleSnapshot,
+    handle?.state.getSnapshot ?? idleSnapshot,
   );
-
-  useEffect(() => {
-    if (handle === null) {
-      setState(idle);
-      return;
-    }
-    setState({ status: "running", progress: 0 });
-    const fiber = Effect.runFork(
-      Stream.runForEach(handle.events, (event) =>
-        Effect.sync(() => {
-          switch (event.type) {
-            case "progress":
-              setState((s) => ({ ...s, status: "running", progress: event.value }));
-              break;
-            case "chunk":
-              break;
-            case "completed":
-              setState({
-                status: "completed",
-                progress: 1,
-                outputs: event.outputs,
-              });
-              break;
-            case "failed":
-              setState((s) => ({
-                ...s,
-                status: "failed",
-                error: event.error,
-              }));
-              break;
-          }
-        }),
-      ),
-    );
-    return () => {
-      Effect.runFork(Fiber.interrupt(fiber));
-    };
-  }, [handle]);
-
-  return state;
 }
 
 /** 读取 artifact 字节（小对象；大对象请走 getStream）。 */
@@ -195,7 +207,7 @@ export interface ArtifactUsageState {
  * 也可用 refresh 在导入或任务完成后主动更新。
  */
 export function useArtifactUsage(intervalMs = 30_000): ArtifactUsageState {
-  const { artifacts } = useRuntime();
+  const { artifacts, host } = useRuntime();
   const [state, setState] = useState<
     Omit<ArtifactUsageState, "refresh"> & { readonly refresh: () => void }
   >({ status: "idle", refresh: () => undefined });
@@ -203,15 +215,29 @@ export function useArtifactUsage(intervalMs = 30_000): ArtifactUsageState {
   const refresh = useCallback(() => setRefreshToken((token) => token + 1), []);
 
   useEffect(() => {
-    const unsubscribe = artifacts.subscribe(refresh);
-    return unsubscribe;
-  }, [artifacts, refresh]);
+    let cleanups: ReadonlyArray<() => void> = [];
+    const sync = () => {
+      for (const cleanup of cleanups) cleanup();
+      const stores = new Set([
+        artifacts,
+        ...(host?.sessions().map((session) => session.artifacts) ?? []),
+      ]);
+      cleanups = [...stores].map((store) => store.subscribe(refresh));
+      refresh();
+    };
+    const unsubscribe = host?.subscribe(sync);
+    sync();
+    return () => {
+      unsubscribe?.();
+      for (const cleanup of cleanups) cleanup();
+    };
+  }, [artifacts, host, refresh]);
 
   useEffect(() => {
     let cancelled = false;
     setState((current) => ({ ...current, status: "loading", error: undefined }));
     const load = () => {
-      void Effect.runPromise(artifacts.usage()).then(
+      void Effect.runPromise(host?.usage() ?? artifacts.usage()).then(
         (usage) => {
           if (cancelled) return;
           setState({ status: "ready", usage, refresh });
@@ -232,7 +258,7 @@ export function useArtifactUsage(intervalMs = 30_000): ArtifactUsageState {
       cancelled = true;
       if (timer !== undefined) window.clearInterval(timer);
     };
-  }, [artifacts, intervalMs, refresh, refreshToken]);
+  }, [artifacts, host, intervalMs, refresh, refreshToken]);
 
   return { ...state, refresh };
 }

@@ -135,19 +135,34 @@ export async function openSqliteDb(options: OpenSqliteDbOptions): Promise<Sqlite
     }
   }
 
+  const versions = db.exec({
+    sql: "PRAGMA user_version",
+    rowMode: "array",
+    returnValue: "resultRows",
+  }) as number[][];
+  const version = versions[0]?.[0] ?? 0;
+  if (version !== 0 && version !== 1) {
+    db.close();
+    throw new Error(`Unsupported metadata schema version: ${version}`);
+  }
   db.exec(SCHEMA);
+  db.exec("PRAGMA user_version = 1");
 
   // 多个 task/cache/lineage 写入可并发触发 persist。串行导出与落盘，避免较旧快照
   // 后完成写入并覆盖较新状态；上一次失败不阻塞后续持久化尝试。
   let persistTail = Promise.resolve();
+  let scheduled: Promise<void> | undefined;
   const persist = (): Promise<void> => {
+    if (scheduled !== undefined) return scheduled;
     const next = persistTail
       .catch(() => undefined)
       .then(async () => {
+        scheduled = undefined;
         const out = sqlite3.capi.sqlite3_js_db_export(dbPointer);
         await store.put(path, out);
       });
     persistTail = next;
+    scheduled = next;
     return next;
   };
 

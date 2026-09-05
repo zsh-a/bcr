@@ -1,4 +1,3 @@
-import { MemoryStore } from "@bcr/storage-opfs";
 import {
   artifactStore,
   ArtifactStoreTag,
@@ -7,6 +6,7 @@ import {
   type ArtifactStore,
   type ComputeTask,
 } from "@bcr/core";
+import { MemoryStore } from "@bcr/storage-opfs";
 import { Cause, Context, Effect, Exit, Fiber, Layer, Stream } from "effect";
 import { describe, expect, it } from "vitest";
 import { workerExecutor } from "../src/executor";
@@ -70,7 +70,7 @@ describe("WorkerExecutor (架构 §6.2)", () => {
     });
     const pool = new WorkerPool(1, () => worker);
     const artifacts = await makeArtifacts();
-    const executor = workerExecutor(pool, "wasm", "v1", artifacts);
+    const executor = workerExecutor(pool, "wasm", "v1", artifacts, ["test.op"]);
 
     const events = await Effect.runPromise(Stream.runCollect(executor.run(task)));
     const collected = [...events];
@@ -87,7 +87,7 @@ describe("WorkerExecutor (架构 §6.2)", () => {
       port.postMessage({ type: "failed", taskId: t.id, error: "boom" });
     });
     const pool = new WorkerPool(1, () => worker);
-    const executor = workerExecutor(pool, "wasm", "v1", await makeArtifacts());
+    const executor = workerExecutor(pool, "wasm", "v1", await makeArtifacts(), ["test.op"]);
 
     const exit = await Effect.runPromise(Effect.exit(Stream.runCollect(executor.run(task))));
 
@@ -107,7 +107,7 @@ describe("WorkerExecutor (架构 §6.2)", () => {
       // 永不回事件，等待取消
     });
     const pool = new WorkerPool(1, () => worker);
-    const executor = workerExecutor(pool, "wasm", "v1", await makeArtifacts());
+    const executor = workerExecutor(pool, "wasm", "v1", await makeArtifacts(), ["test.op"]);
 
     const fiber = Effect.runFork(Stream.runCollect(executor.run(task)));
     await new Promise((r) => setTimeout(r, 20));
@@ -122,7 +122,7 @@ describe("WorkerExecutor (架构 §6.2)", () => {
       // 两个任务都保持运行，测试显式中断。
     });
     const pool = new WorkerPool(1, () => worker);
-    const executor = workerExecutor(pool, "wasm", "v1", await makeArtifacts());
+    const executor = workerExecutor(pool, "wasm", "v1", await makeArtifacts(), ["test.op"]);
     const waitingTask = { ...task, id: "t2" };
 
     const running = Effect.runFork(Stream.runCollect(executor.run(task)));
@@ -144,7 +144,7 @@ describe("WorkerExecutor (架构 §6.2)", () => {
   it("Pool 已关闭时 executor 以 TaskFailed 明确失败", async () => {
     const pool = new WorkerPool(1, () => new FakeWorker(() => undefined));
     pool.shutdown();
-    const executor = workerExecutor(pool, "wasm", "v1", await makeArtifacts());
+    const executor = workerExecutor(pool, "wasm", "v1", await makeArtifacts(), ["test.op"]);
 
     const exit = await Effect.runPromise(Effect.exit(Stream.runCollect(executor.run(task))));
 

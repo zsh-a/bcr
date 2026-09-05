@@ -3,12 +3,12 @@ import {
   RuntimeProvider,
   useArtifact,
   useRuntime,
+  useRuntimeSession,
   useSubmitTask,
   useTask,
-  type RuntimeServices,
 } from "@bcr/react";
 import { Effect } from "effect";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createRuntimeServices } from "./runtime";
 
 let taskSeq = 0;
@@ -21,7 +21,7 @@ function Demo() {
   const [operation, setOperation] = useState<"hash.blake3" | "audio.rms">("hash.blake3");
   const [handle, setHandle] = useState<TaskHandle | null>(null);
   const state = useTask(handle);
-  const outputRef = state.outputs?.[0] ?? null;
+  const outputRef = state.status === "completed" ? (state.outputs[0] ?? null) : null;
   const outputBytes = useArtifact(outputRef);
   const outputText = outputBytes !== undefined ? new TextDecoder().decode(outputBytes) : undefined;
 
@@ -165,7 +165,7 @@ function Demo() {
             {handle?.cached === true && state.status === "completed" && (
               <p className="slice-cache">CACHE HIT · 结果来自内容寻址缓存</p>
             )}
-            {state.error !== undefined && <p className="slice-error">ERROR · {state.error}</p>}
+            {"error" in state && <p className="slice-error">ERROR · {state.error}</p>}
             {outputText !== undefined ? (
               <pre>{outputText}</pre>
             ) : (
@@ -184,11 +184,8 @@ function Demo() {
 }
 
 export default function App() {
-  const [services, setServices] = useState<RuntimeServices | null>(null);
-
-  useEffect(() => {
-    void createRuntimeServices().then(setServices);
-  }, []);
+  const { services, error } = useRuntimeSession(createRuntimeServices);
+  if (error !== null) return <div role="alert">{error}</div>;
 
   if (services === null) {
     return (

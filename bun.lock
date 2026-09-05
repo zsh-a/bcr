@@ -22,11 +22,13 @@
         "@bcr/core": "workspace:*",
         "@bcr/data-core": "workspace:*",
         "@bcr/react": "workspace:*",
+        "@bcr/runtime-worker": "workspace:*",
         "effect": "^3.22.1",
         "lucide-react": "^1.37.0",
         "react": "^19.2.0",
       },
       "devDependencies": {
+        "@bcr/storage-opfs": "workspace:*",
         "@tailwindcss/vite": "^4.3.3",
         "@types/react": "^19.2.0",
         "@vitejs/plugin-react": "^5.0.0",
@@ -40,6 +42,7 @@
         "@bcr/core": "workspace:*",
         "@bcr/document-core": "workspace:*",
         "@bcr/react": "workspace:*",
+        "@bcr/runtime-worker": "workspace:*",
         "@fontsource/ibm-plex-mono": "^5.3.0",
         "@fontsource/ibm-plex-sans": "^5.3.0",
         "@tanstack/react-router": "^1.170.32",
@@ -64,10 +67,12 @@
         "@bcr/document-core": "workspace:*",
         "@bcr/graph": "workspace:*",
         "@bcr/react": "workspace:*",
+        "@bcr/runtime-worker": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
         "@bcr/storage-sqlite": "workspace:*",
         "@fontsource/ibm-plex-mono": "^5.3.0",
         "@fontsource/ibm-plex-sans": "^5.3.0",
+        "@huggingface/transformers": "^3.7.5",
         "@sqlite.org/sqlite-wasm": "3.53.0-build1",
         "@zip.js/zip.js": "2.9.0",
         "effect": "^3.22.1",
@@ -110,6 +115,7 @@
         "@bcr/core": "workspace:*",
         "@bcr/graph": "workspace:*",
         "@bcr/react": "workspace:*",
+        "@bcr/runtime-browser": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
         "@bcr/storage-sqlite": "workspace:*",
@@ -136,6 +142,7 @@
         "@bcr/core": "workspace:*",
         "@bcr/market-data": "workspace:*",
         "@bcr/react": "workspace:*",
+        "@bcr/runtime-browser": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
         "@bcr/storage-sqlite": "workspace:*",
@@ -201,6 +208,7 @@
         "@bcr/quant-lab": "workspace:*",
         "@bcr/react": "workspace:*",
         "@bcr/reader-studio": "workspace:*",
+        "@bcr/runtime-browser": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
         "@bcr/storage-sqlite": "workspace:*",
@@ -230,6 +238,7 @@
       "dependencies": {
         "@bcr/core": "workspace:*",
         "@bcr/react": "workspace:*",
+        "@bcr/runtime-browser": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
         "@fontsource-variable/newsreader": "^5.2.8",
@@ -299,12 +308,25 @@
         "react": "^19.2.0",
       },
       "devDependencies": {
+        "@bcr/runtime-browser": "workspace:*",
         "@types/react": "^19.2.0",
+        "@types/react-dom": "^19.2.0",
+        "react-dom": "^19.2.0",
       },
     },
     "packages/reader-core": {
       "name": "@bcr/reader-core",
       "version": "0.1.0",
+    },
+    "packages/runtime-browser": {
+      "name": "@bcr/runtime-browser",
+      "version": "0.1.0",
+      "dependencies": {
+        "@bcr/core": "workspace:*",
+        "@bcr/storage-opfs": "workspace:*",
+        "@bcr/storage-sqlite": "workspace:*",
+        "effect": "^3.22.1",
+      },
     },
     "packages/runtime-worker": {
       "name": "@bcr/runtime-worker",
@@ -408,6 +430,8 @@
     "@bcr/reader-core": ["@bcr/reader-core@workspace:packages/reader-core"],
 
     "@bcr/reader-studio": ["@bcr/reader-studio@workspace:apps/reader-studio"],
+
+    "@bcr/runtime-browser": ["@bcr/runtime-browser@workspace:packages/runtime-browser"],
 
     "@bcr/runtime-worker": ["@bcr/runtime-worker@workspace:packages/runtime-worker"],
 

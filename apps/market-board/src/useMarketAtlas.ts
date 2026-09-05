@@ -1,4 +1,5 @@
 import { createDemoSnapshot, type MarketAtlasSnapshot } from "@bcr/market-data";
+import { useRuntimeActivity } from "@bcr/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { atlasService } from "./marketServices";
 
@@ -11,6 +12,7 @@ export interface MarketAtlasResource {
 }
 
 export function useMarketAtlas(): MarketAtlasResource {
+  const active = useRuntimeActivity();
   const [snapshot, setSnapshot] = useState<MarketAtlasSnapshot>(() => createDemoSnapshot());
   const [refreshing, setRefreshing] = useState(true);
   const request = useRef(0);
@@ -28,6 +30,7 @@ export function useMarketAtlas(): MarketAtlasResource {
   }, []);
 
   useEffect(() => {
+    if (!active) return;
     void refresh();
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
@@ -43,7 +46,7 @@ export function useMarketAtlas(): MarketAtlasResource {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [refresh]);
+  }, [refresh, active]);
 
   return { snapshot, refreshing, refresh };
 }

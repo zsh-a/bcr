@@ -1,13 +1,9 @@
 import type { SearchDocument } from "@bcr/core";
 import { listKnownInstruments } from "@bcr/market-data";
-import { useStudio as useMediaStudio } from "@bcr/media-studio/store";
-import { useQuantLab } from "@bcr/quant-lab/store";
-import { useEffect } from "react";
 import type { RuntimeServices } from "@bcr/react";
+import { useEffect } from "react";
 import { APPS } from "./shell/apps";
 import { useStudio, type FileRecord, type TaskRecord } from "./store";
-
-const sourceFor = (value: string): string => encodeURIComponent(value).slice(0, 80);
 
 function appDocuments(): ReadonlyArray<SearchDocument> {
   return APPS.map((app) => ({
@@ -53,79 +49,6 @@ function studioDocuments(
   ];
 }
 
-function mediaDocuments(
-  source: {
-    readonly ref: { readonly id: string };
-    readonly name: string;
-    readonly size: number;
-  } | null,
-  cues: ReadonlyArray<{ readonly text: string; readonly translation?: string | undefined }>,
-): ReadonlyArray<SearchDocument> {
-  if (source === null) return [];
-  const body = cues
-    .flatMap((cue) => [cue.text, cue.translation ?? ""])
-    .filter(Boolean)
-    .join(" ")
-    .slice(0, 24_000);
-  return [
-    {
-      id: `media:source:${source.ref.id}`,
-      source: "media",
-      kind: "media",
-      title: source.name,
-      subtitle: `${cues.length} cues · ${source.ref.id}`,
-      ...(body.length === 0 ? {} : { body }),
-      tags: ["media", "subtitle"],
-      route: "/media",
-      updatedAt: 0,
-    },
-  ];
-}
-
-function quantDocuments(
-  dataset: {
-    readonly name: string;
-    readonly ref: { readonly id: string };
-    readonly bars: ReadonlyArray<{ readonly date: string }>;
-    readonly columnar: { readonly source: string; readonly rowCount: number };
-  } | null,
-  handoff: {
-    readonly groupName: string;
-    readonly series: ReadonlyArray<{ readonly name: string }>;
-  } | null,
-): ReadonlyArray<SearchDocument> {
-  const documents: SearchDocument[] = [];
-  if (dataset !== null) {
-    const first = dataset.bars[0]?.date ?? "—";
-    const last = dataset.bars.at(-1)?.date ?? "—";
-    documents.push({
-      id: `quant:dataset:${dataset.ref.id}`,
-      source: "quant",
-      kind: "dataset",
-      title: dataset.name,
-      subtitle: `${dataset.columnar.source} · ${dataset.columnar.rowCount.toLocaleString()} rows · ${first} — ${last}`,
-      body: dataset.ref.id,
-      tags: ["dataset", "quant", dataset.columnar.source],
-      route: `/quant?dataset=${encodeURIComponent(dataset.name)}`,
-      updatedAt: 0,
-    });
-  }
-  if (handoff !== null) {
-    documents.push({
-      id: `quant:handoff:${sourceFor(handoff.groupName)}`,
-      source: "quant",
-      kind: "dataset",
-      title: handoff.groupName,
-      subtitle: `${handoff.series.length} instruments · Market Atlas handoff`,
-      body: handoff.series.map((series) => series.name).join(" "),
-      tags: ["market", "watchlist", "handoff"],
-      route: "/quant",
-      updatedAt: 0,
-    });
-  }
-  return documents;
-}
-
 function marketDocuments(): ReadonlyArray<SearchDocument> {
   return listKnownInstruments().map(({ instrument, aliases, providerType }) => ({
     id: `market:${instrument.id}`,
@@ -148,20 +71,14 @@ function marketDocuments(): ReadonlyArray<SearchDocument> {
 export function SearchBridge(props: { readonly services: RuntimeServices }) {
   const files = useStudio((state) => state.files);
   const tasks = useStudio((state) => state.tasks);
-  const mediaSource = useMediaStudio((state) => state.source);
-  const mediaCues = useMediaStudio((state) => state.cues);
-  const dataset = useQuantLab((state) => state.dataset);
-  const marketHandoff = useQuantLab((state) => state.marketHandoff);
 
   useEffect(() => {
     const search = props.services.search;
     if (search === undefined) return;
     search.replaceSource("workspace", appDocuments());
     search.replaceSource("studio", studioDocuments(files, tasks));
-    search.replaceSource("media", mediaDocuments(mediaSource, mediaCues));
-    search.replaceSource("quant", quantDocuments(dataset, marketHandoff));
     search.replaceSource("market", marketDocuments());
-  }, [props.services.search, files, tasks, mediaSource, mediaCues, dataset, marketHandoff]);
+  }, [props.services.search, files, tasks]);
 
   return null;
 }

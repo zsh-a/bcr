@@ -1,16 +1,14 @@
-import { notifyNavigation, RuntimeProvider, type RuntimeServices } from "@bcr/react";
+import type { SearchDocument } from "@bcr/core";
+import { notifyNavigation, RuntimeActivity, RuntimeProvider, useRuntimeSession } from "@bcr/react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Suspense, useEffect, useState } from "react";
 import { CommandPalette } from "../components/CommandPalette";
 import { SearchPanel } from "../components/SearchPanel";
 import { TopBar } from "../components/TopBar";
 import { createRuntimeServices } from "../runtime";
-import { ServicesContext } from "../services";
-import { studio } from "../store";
-import { APPS, appIdFromPath } from "./apps";
-import { Home } from "./Home";
 import { SearchBridge } from "../search-bridge";
-import type { SearchDocument } from "@bcr/core";
+import { appIdFromPath, APPS } from "./apps";
+import { Home } from "./Home";
 
 /**
  * OS 式 Shell 根布局（§12：URL 即状态）：
@@ -18,22 +16,15 @@ import type { SearchDocument } from "@bcr/core";
  * - Keep-alive：进入过的 App 常驻挂载，切走仅 display:none——
  *   worker 内任务、视频播放、字幕编辑状态全部保留。
  * - Shell 启动时初始化共享 Runtime（scheduler / worker pool / OPFS），
- *   ServicesContext 全局可用；media 的 runtime 在其 App 内首次挂载时自建。
+ *   领域计算会话继承 Host 预算；应用激活状态与计算生命周期独立。
  */
 export function Shell() {
-  const [services, setServices] = useState<RuntimeServices | null>(null);
+  const { services, error } = useRuntimeSession(createRuntimeServices);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const navigate = useNavigate();
   const active = appIdFromPath(useRouterState({ select: (s) => s.location.pathname }));
   const [visited, setVisited] = useState<ReadonlyArray<string>>(active === "home" ? [] : [active]);
-
-  useEffect(() => {
-    void createRuntimeServices().then((s) => {
-      setServices(s);
-      studio.log("info", "runtime ready · scheduler/worker-pool/opfs online");
-    });
-  }, []);
 
   useEffect(() => {
     if (active !== "home") {
@@ -81,6 +72,8 @@ export function Shell() {
     });
   };
 
+  if (error !== null) return <div role="alert">Runtime 启动失败：{error}</div>;
+
   if (services === null) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -93,40 +86,36 @@ export function Shell() {
 
   return (
     <RuntimeProvider services={services}>
-      <ServicesContext.Provider value={services}>
-        <SearchBridge services={services} />
-        <div
-          className={`studio-shell-frame flex h-full flex-col ${active === "reader" ? "reader-active" : ""}`}
-        >
-          <TopBar
-            active={active}
-            onOpenPalette={() => setPaletteOpen(true)}
-            onOpenSearch={() => setSearchOpen(true)}
-          />
-          <div className="min-h-0 flex-1">
-            {active === "home" && <Home />}
-            {APPS.filter((app) => visited.includes(app.id)).map((app) => (
-              <div key={app.id} className={app.id === active ? "h-full min-h-0" : "hidden"}>
-                <Suspense
-                  fallback={
-                    <div className="flex h-full items-center justify-center">
-                      <p className="font-mono text-[11px] text-faint">{app.title} 加载中…</p>
-                    </div>
-                  }
-                >
-                  <app.component />
-                </Suspense>
-              </div>
-            ))}
-          </div>
-        </div>
-        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-        <SearchPanel
-          open={searchOpen}
-          onOpenChange={setSearchOpen}
-          onNavigate={openSearchDocument}
+      <SearchBridge services={services} />
+      <div
+        className={`studio-shell-frame flex h-full flex-col ${active === "reader" ? "reader-active" : ""}`}
+      >
+        <TopBar
+          active={active}
+          onOpenPalette={() => setPaletteOpen(true)}
+          onOpenSearch={() => setSearchOpen(true)}
         />
-      </ServicesContext.Provider>
+        <div className="min-h-0 flex-1">
+          {active === "home" && <Home />}
+          {APPS.filter((app) => visited.includes(app.id)).map((app) => (
+            <div key={app.id} className={app.id === active ? "h-full min-h-0" : "hidden"}>
+              <Suspense
+                fallback={
+                  <div className="flex h-full items-center justify-center">
+                    <p className="font-mono text-[11px] text-faint">{app.title} 加载中…</p>
+                  </div>
+                }
+              >
+                <RuntimeActivity active={app.id === active}>
+                  <app.component />
+                </RuntimeActivity>
+              </Suspense>
+            </div>
+          ))}
+        </div>
+      </div>
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <SearchPanel open={searchOpen} onOpenChange={setSearchOpen} onNavigate={openSearchDocument} />
     </RuntimeProvider>
   );
 }

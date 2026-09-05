@@ -1,21 +1,32 @@
 export {
-  decodeWorkerCommand,
-  decodeWorkerEvent,
-  WorkerCommand,
-  WorkerEvent,
-  type ChunkEventMessage,
-  type RunCommandMessage,
-} from "./protocol";
+  WINDOW,
+  configBoolean,
+  configNumber,
+  configString,
+  configText,
+  createArtifactIO,
+  sizeOf,
+  throwIfAborted,
+  type ArtifactIO,
+} from "./artifact-io";
+export { workerExecutor } from "./executor";
 export {
-  defaultPoolSize,
   WorkerAcquireAborted,
   WorkerPool,
   WorkerPoolClosed,
+  defaultPoolSize,
   type PoolWorker,
   type WorkerPoolOptions,
   type WorkerPoolSnapshot,
 } from "./pool";
-export { workerExecutor } from "./executor";
+export {
+  WorkerCommand,
+  WorkerEvent,
+  decodeWorkerCommand,
+  decodeWorkerEvent,
+  type ChunkEventMessage,
+  type RunCommandMessage,
+} from "./protocol";
 export {
   defineWorker,
   type OperationHandler,

@@ -12,6 +12,9 @@
     "react": "^19.2.0"
   },
   "devDependencies": {
-    "@types/react": "^19.2.0"
+    "@bcr/runtime-browser": "workspace:*",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "react-dom": "^19.2.0"
   }
 }

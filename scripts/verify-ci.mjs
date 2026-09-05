@@ -106,6 +106,7 @@ await withServer({
     "scripts/verify-storage-cleanup.mjs",
     "scripts/verify-global-search.mjs",
     "scripts/verify-accessibility.mjs",
+    "scripts/verify-runtime-lifecycle.mjs",
   ],
 });
 

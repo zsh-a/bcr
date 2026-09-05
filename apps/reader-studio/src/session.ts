@@ -5,8 +5,8 @@ import {
   type ReaderIndexDocument,
   type SearchHit,
 } from "@bcr/reader-core";
-import { Effect, Stream } from "effect";
 import { workerExecutor, WorkerPool } from "@bcr/runtime-worker";
+import { Effect, Stream } from "effect";
 
 interface ReaderIndexResult {
   readonly version: 1;
@@ -117,7 +117,7 @@ export function createReaderIndexSession(artifacts: ArtifactStore): ReaderIndexS
         type: "module",
       }),
   );
-  const executor = workerExecutor(pool, "js", "reader-index-0.1.0", artifacts);
+  const executor = workerExecutor(pool, "js", "reader-index-0.1.0", artifacts, ["reader.index"]);
   const indexed = new Map<
     string,
     { readonly signature: string; readonly documents: ReadonlyArray<ReaderIndexDocument> }

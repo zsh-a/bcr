@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./compute": "./src/compute.ts",
     "./app": "./src/App.tsx",
     "./runtime": "./src/runtime.ts"
   },
@@ -11,11 +12,13 @@
     "@bcr/core": "workspace:*",
     "@bcr/data-core": "workspace:*",
     "@bcr/react": "workspace:*",
+    "@bcr/runtime-worker": "workspace:*",
     "effect": "^3.22.1",
     "lucide-react": "^1.37.0",
     "react": "^19.2.0"
   },
   "devDependencies": {
+    "@bcr/storage-opfs": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.0",

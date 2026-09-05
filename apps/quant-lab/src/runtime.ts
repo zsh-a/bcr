@@ -1,29 +1,14 @@
-import {
-  ArtifactStoreTag,
-  artifactStore,
-  contentHash,
-  executorRegistry,
-  Executors,
-  memoryCacheStore,
-  schedulerLive,
-  schedulerLiveWithJournal,
-  SchedulerTag,
-  type ArtifactRef,
-} from "@bcr/core";
-import type { RuntimeServices } from "@bcr/react";
+import type { RuntimeHost, RuntimeSession } from "@bcr/core";
+import { contentHash, type ArtifactRef } from "@bcr/core";
 import type { QuantHandoff } from "@bcr/market-data";
+import type { RuntimeServices } from "@bcr/react";
+import { createBrowserRuntime } from "@bcr/runtime-browser";
 import { workerExecutor, WorkerPool } from "@bcr/runtime-worker";
-import { isOpfsSupported, MemoryStore, OpfsStore } from "@bcr/storage-opfs";
-import {
-  openSqliteDb,
-  sqliteCacheStore,
-  sqliteLineageStore,
-  sqliteTaskJournal,
-  type SqliteDb,
-} from "@bcr/storage-sqlite";
+import type { BinaryStore } from "@bcr/storage-opfs";
+import { openSqliteDb, type SqliteDb } from "@bcr/storage-sqlite";
 import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
-import { Context, Effect, Layer } from "effect";
+import { Effect } from "effect";
 import { decodeMarketArrow } from "./arrow";
 import { columnarizeMarketBars, readMarketParquet, type ColumnarDatasetPayload } from "./columnar";
 import {
@@ -39,8 +24,8 @@ import type {
   Dataset,
   EquityPoint,
   MarketBar,
-  MarketPartition,
   MarketHandoffSummary,
+  MarketPartition,
   PortfolioAnalysis,
   QuantOutputRefs,
   SignalPoint,
@@ -50,59 +35,40 @@ import type {
 import { buildPortfolioAnalysis, isPortfolioAnalysis } from "./portfolio";
 import { quant } from "./store";
 
-let metaDb: SqliteDb | undefined;
-
 type SqliteInit = (options?: {
   locateFile?: (file: string) => string;
 }) => Promise<Parameters<typeof openSqliteDb>[0]["sqlite3"]>;
 
-async function openMetaDb(store: OpfsStore | MemoryStore): Promise<SqliteDb> {
+async function openMetaDb(store: BinaryStore): Promise<SqliteDb> {
   const init = initSqlite as unknown as SqliteInit;
   const sqlite3 = await init({ locateFile: () => wasmUrl });
   return openSqliteDb({ store, path: "project/meta.db", sqlite3 });
 }
 
-export async function createRuntimeServices(): Promise<RuntimeServices> {
-  const opfs = isOpfsSupported() ? new OpfsStore("quant") : new MemoryStore();
-  const memory = new MemoryStore();
-  try {
-    metaDb = await openMetaDb(opfs);
-    quant.log("ok", "sqlite · project metadata online");
-  } catch (error) {
-    metaDb = undefined;
-    quant.log("warn", `sqlite unavailable · ${String(error)}`);
-  }
-
-  const artifactContext = await Effect.runPromise(
-    Effect.scoped(
-      Layer.build(artifactStore({ memory, opfs }, metaDb && sqliteLineageStore(metaDb))),
-    ),
-  );
-  const artifacts = Context.get(artifactContext, ArtifactStoreTag);
-  const pool = new WorkerPool(
-    {
-      minSize: 1,
-      maxSize: Math.max(1, (navigator.hardwareConcurrency ?? 2) - 1),
-      idleTimeoutMs: 30_000,
+export async function createRuntimeServices(host?: RuntimeHost): Promise<RuntimeSession> {
+  return createBrowserRuntime({
+    namespace: "quant",
+    host,
+    openMetadata: openMetaDb,
+    onMetadataUnavailable: (error) => console.warn("[quant] metadata unavailable", error),
+    execution: (artifacts) => {
+      const pool = new WorkerPool(
+        {
+          minSize: 1,
+          maxSize: Math.max(1, (navigator.hardwareConcurrency ?? 2) - 1),
+          idleTimeoutMs: 30_000,
+        },
+        () => new Worker(new URL("./workers/quant.worker.ts", import.meta.url), { type: "module" }),
+      );
+      return {
+        executors: [
+          workerExecutor(pool, "js", "quant-signals-1", artifacts, ["quant.signal.sma-cross"]),
+          workerExecutor(pool, "wasm", "quant-backtest-1", artifacts, ["quant.backtest.long-only"]),
+        ],
+        dispose: () => pool.shutdown(),
+      };
     },
-    () =>
-      new Worker(new URL("./workers/quant.worker.ts", import.meta.url), {
-        type: "module",
-      }),
-  );
-  const jsExecutor = workerExecutor(pool, "js", "quant-signals-0.2.0-arrow", artifacts);
-  const wasmExecutor = workerExecutor(pool, "wasm", "bcr-kernels-quant-0.3.0", artifacts);
-  const deps = Layer.mergeAll(
-    Layer.succeed(ArtifactStoreTag, artifacts),
-    metaDb !== undefined ? sqliteCacheStore(metaDb) : memoryCacheStore(),
-    Layer.succeed(Executors, executorRegistry([jsExecutor, wasmExecutor])),
-  );
-  const schedulerLayer =
-    metaDb !== undefined ? schedulerLiveWithJournal(sqliteTaskJournal(metaDb)) : schedulerLive;
-  const context = await Effect.runPromise(
-    Effect.scoped(Layer.build(Layer.provideMerge(schedulerLayer, deps))),
-  );
-  return { scheduler: Context.get(context, SchedulerTag), artifacts };
+  });
 }
 
 const decoder = new TextDecoder();
@@ -355,7 +321,7 @@ interface PersistedProject {
 
 export async function persistProject(services: RuntimeServices): Promise<void> {
   const dataset = quant.getSnapshot().dataset;
-  if (metaDb === undefined || dataset === null) return;
+  if (services.metadata === undefined || dataset === null) return;
   const state = quant.getSnapshot();
   const project: PersistedProject = {
     dataset: {
@@ -370,17 +336,16 @@ export async function persistProject(services: RuntimeServices): Promise<void> {
     portfolioAnalysis: state.portfolioAnalysis,
   };
   try {
-    await metaDb.kvSet("project", JSON.stringify(project));
+    await services.metadata.set("project", JSON.stringify(project));
   } catch (error) {
     quant.log("warn", `persist project failed · ${String(error)}`);
   }
-  void services;
 }
 
 export async function restoreProject(services: RuntimeServices): Promise<boolean> {
-  if (metaDb === undefined) return false;
+  if (services.metadata === undefined) return false;
   try {
-    const raw = await metaDb.kvGet("project");
+    const raw = await services.metadata.get("project");
     if (raw === undefined) return false;
     const project = JSON.parse(raw) as PersistedProject;
     let dataset: Dataset;

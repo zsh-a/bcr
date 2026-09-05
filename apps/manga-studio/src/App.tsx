@@ -1,4 +1,3 @@
-import { CircleAlert } from "lucide-react";
 import type { SearchDocument } from "@bcr/core";
 import {
   consumeDocumentHandoff,
@@ -6,30 +5,15 @@ import {
   markDocumentHandoffExpired,
   publishDocumentHandoff,
 } from "@bcr/document-core";
-import { useLocationSearch, useOptionalRuntime } from "@bcr/react";
+import { useLocationSearch, useOptionalRuntime, usePublishRunningCount } from "@bcr/react";
+import { CircleAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { expandMangaArchive, formatForMangaFile } from "./archive";
 import { mangaPageToDocumentPackages } from "./document-adapter";
-import { preloadMangaModel, runMangaPipeline, runMangaQueue } from "./pipeline";
 import { MangaCanvas } from "./MangaCanvas";
 import { MangaHeader } from "./MangaHeader";
 import { MangaProjectPanel } from "./MangaProjectPanel";
 import { MangaToolsPanel } from "./MangaToolsPanel";
-import {
-  createMangaRuntime,
-  fileFromDocumentHandoff,
-  importMangaExportBundle,
-  importImageArtifact,
-  prepareMangaDocumentHandoff,
-  persistMangaDocumentPackages,
-  regionsFromDocumentHandoff,
-  persistProject,
-  restoreProject,
-  type MangaRuntime,
-} from "./runtime";
-import { manga, useMangaStudio } from "./store";
-import type { MangaModelRecord } from "./model-registry";
-import type { MangaModelCacheInfo } from "./model-cache";
 import {
   CLEAN_MODEL_MANIFESTS,
   resolveMangaCleanMode,
@@ -38,6 +22,22 @@ import {
   type MangaAdapterExecution,
   type TextRegion,
 } from "./model";
+import type { MangaModelCacheInfo } from "./model-cache";
+import type { MangaModelRecord } from "./model-registry";
+import { preloadMangaModel, runMangaPipeline, runMangaQueue } from "./pipeline";
+import {
+  createMangaRuntime,
+  fileFromDocumentHandoff,
+  importImageArtifact,
+  importMangaExportBundle,
+  persistMangaDocumentPackages,
+  persistProject,
+  prepareMangaDocumentHandoff,
+  regionsFromDocumentHandoff,
+  restoreProject,
+  type MangaRuntime,
+} from "./runtime";
+import { manga, useMangaStudio } from "./store";
 import "./styles.css";
 
 function downloadBlob(blob: Blob, name: string): void {
@@ -95,6 +95,7 @@ async function exportCurrentPage(): Promise<void> {
 
 export function App() {
   const state = useMangaStudio((snapshot) => snapshot);
+  usePublishRunningCount("manga", state.running ? 1 : 0);
   const hostServices = useOptionalRuntime();
   const routeParams = new URLSearchParams(useLocationSearch());
   const routePageId = routeParams.get("page");

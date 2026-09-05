@@ -7,8 +7,8 @@ import {
   type TaskEvent,
 } from "@bcr/core";
 import { Chunk, Effect, Either, Option, Stream } from "effect";
-import { decodeWorkerEvent, type ChunkEventMessage } from "./protocol";
 import type { WorkerPool } from "./pool";
+import { decodeWorkerEvent, type ChunkEventMessage } from "./protocol";
 
 /**
  * 把 Worker 适配成核心 RuntimeExecutor（架构文档 §5/§6.2）。
@@ -22,8 +22,10 @@ export function workerExecutor(
   runtime: RuntimeKind,
   version: string,
   artifacts: ArtifactStore,
+  operations: ReadonlyArray<string>,
 ): RuntimeExecutor {
   return {
+    operations,
     runtime,
     version,
     run: (task: ComputeTask): Stream.Stream<TaskEvent, TaskFailed> =>
@@ -31,6 +33,7 @@ export function workerExecutor(
         Effect.gen(function* () {
           // Worker 生命周期 ≠ Task 生命周期：随作用域借还，不随任务销毁。
           let acquired: Awaited<ReturnType<WorkerPool["acquire"]>> | undefined;
+          let settled = false;
           const worker = yield* Effect.acquireReleaseInterruptible(
             Effect.tryPromise({
               try: (signal) => pool.acquire(signal),
@@ -42,7 +45,10 @@ export function workerExecutor(
             }).pipe(Effect.tap((worker) => Effect.sync(() => (acquired = worker)))),
             () =>
               Effect.sync(() => {
-                if (acquired !== undefined) pool.release(acquired);
+                if (acquired !== undefined) {
+                  if (settled) pool.release(acquired);
+                  else pool.discard(acquired);
+                }
               }),
           );
 
@@ -59,6 +65,7 @@ export function workerExecutor(
                 return;
               }
               const message = decoded.right;
+              if (message.taskId !== task.id) return;
               switch (message.type) {
                 case "progress":
                   single(message);
@@ -82,10 +89,12 @@ export function workerExecutor(
                   break;
                 }
                 case "completed":
+                  settled = true;
                   single(message);
                   void emit(Effect.fail(Option.none()));
                   break;
                 case "failed":
+                  settled = true;
                   single(message);
                   void emit(
                     Effect.fail(

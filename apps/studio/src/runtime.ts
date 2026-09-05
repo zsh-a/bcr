@@ -1,14 +1,7 @@
+import type { RuntimeSession } from "@bcr/core";
 import {
-  ArtifactStoreTag,
-  artifactStore,
   createSearchIndex,
-  executorRegistry,
-  Executors,
   hashReadableStream,
-  memoryCacheStore,
-  schedulerLive,
-  schedulerLiveWithJournal,
-  SchedulerTag,
   type ArtifactRef,
   type ComputeTask,
   type Scheduler,
@@ -16,92 +9,62 @@ import {
   type TaskJournalEntry,
 } from "@bcr/core";
 import type { RuntimeMetadata, RuntimeServices } from "@bcr/react";
+import { createBrowserRuntime } from "@bcr/runtime-browser";
 import { workerExecutor, WorkerPool } from "@bcr/runtime-worker";
-import { isOpfsSupported, MemoryStore, OpfsStore } from "@bcr/storage-opfs";
-import {
-  openSqliteDb,
-  sqliteCacheStore,
-  sqliteLineageStore,
-  sqliteTaskJournal,
-  type SqliteDb,
-} from "@bcr/storage-sqlite";
+import type { BinaryStore } from "@bcr/storage-opfs";
+import { openSqliteDb, type SqliteDb } from "@bcr/storage-sqlite";
 import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
-import { Context, Effect, Layer, Stream } from "effect";
+import { Effect } from "effect";
+import { COMPUTE_OPERATIONS } from "./compute-contract";
 import { studio, type FileRecord, type TaskRecord } from "./store";
 
 let taskSeq = 0;
 
 /** 元数据库（§8）：SQLite WASM，字节落 OPFS；加载失败降级为纯内存。 */
-let metaDb: SqliteDb | undefined;
 
 /** initSqlite 的官方类型未暴露 emscripten locateFile，这里按实际行为约束。 */
 type SqliteInit = (options?: {
   locateFile?: (file: string) => string;
 }) => Promise<Parameters<typeof openSqliteDb>[0]["sqlite3"]>;
 
-async function openMetaDb(store: OpfsStore | MemoryStore): Promise<SqliteDb> {
+async function openMetaDb(store: BinaryStore): Promise<SqliteDb> {
   const init = initSqlite as unknown as SqliteInit;
   const sqlite3 = await init({ locateFile: () => wasmUrl });
   return openSqliteDb({ store, path: "project/meta.db", sqlite3 });
 }
 
 /** 组装 Compute Runtime 并接入 Studio 状态投影。 */
-export async function createRuntimeServices(): Promise<RuntimeServices> {
-  const opfs = isOpfsSupported() ? new OpfsStore("studio") : new MemoryStore();
-  const memory = new MemoryStore();
-
-  try {
-    metaDb = await openMetaDb(opfs);
-    studio.log("ok", "sqlite · metadata persistence on · project/meta.db");
-  } catch (error) {
-    metaDb = undefined;
-    studio.log(
-      "warn",
-      `sqlite unavailable · falling back to in-memory metadata · ${String(error)}`,
-    );
-  }
-
-  const artifactsCtx = await Effect.runPromise(
-    Effect.scoped(
-      Layer.build(artifactStore({ memory, opfs }, metaDb && sqliteLineageStore(metaDb))),
-    ),
-  );
-  const artifacts = Context.get(artifactsCtx, ArtifactStoreTag);
-
-  const pool = new WorkerPool(
-    {
-      minSize: 1,
-      maxSize: Math.max(1, (navigator.hardwareConcurrency ?? 2) - 1),
-      idleTimeoutMs: 30_000,
+export async function createRuntimeServices(): Promise<RuntimeSession> {
+  const session = await createBrowserRuntime({
+    namespace: "studio",
+    openMetadata: openMetaDb,
+    onMetadataUnavailable: (error) => studio.log("warn", "metadata unavailable · " + String(error)),
+    execution: (artifacts) => {
+      const pool = new WorkerPool(
+        {
+          minSize: 1,
+          maxSize: Math.max(1, (navigator.hardwareConcurrency ?? 2) - 1),
+          idleTimeoutMs: 30_000,
+        },
+        () =>
+          new Worker(new URL("./workers/compute.worker.ts", import.meta.url), { type: "module" }),
+      );
+      return {
+        executors: (["wasm", "js"] as const).map((backend) =>
+          workerExecutor(
+            pool,
+            backend,
+            "studio-operations-2",
+            artifacts,
+            COMPUTE_OPERATIONS[backend],
+          ),
+        ),
+        dispose: () => pool.shutdown(),
+      };
     },
-    () =>
-      new Worker(new URL("./workers/compute.worker.ts", import.meta.url), {
-        type: "module",
-      }),
-  );
-  const wasmExecutor = workerExecutor(pool, "wasm", "bcr-kernels-0.2.1", artifacts);
-
-  const deps = Layer.mergeAll(
-    Layer.succeed(ArtifactStoreTag, artifacts),
-    metaDb !== undefined ? sqliteCacheStore(metaDb) : memoryCacheStore(),
-    Layer.succeed(Executors, executorRegistry([wasmExecutor])),
-  );
-  const schedulerLayer =
-    metaDb !== undefined ? schedulerLiveWithJournal(sqliteTaskJournal(metaDb)) : schedulerLive;
-  const live = Layer.provideMerge(schedulerLayer, deps);
-  const ctx = await Effect.runPromise(Effect.scoped(Layer.build(live)));
-  const scheduler = Context.get(ctx, SchedulerTag);
-
-  await restoreFiles();
-  await restoreTasks(scheduler);
-  const metadata: RuntimeMetadata | undefined =
-    metaDb === undefined
-      ? undefined
-      : {
-          get: (key) => metaDb!.kvGet(key),
-          set: (key, value) => metaDb!.kvSet(key, value),
-        };
+  });
+  const metadata = session.metadata;
   const search = createSearchIndex(
     metadata === undefined
       ? undefined
@@ -110,20 +73,32 @@ export async function createRuntimeServices(): Promise<RuntimeServices> {
           save: (value) => metadata.set("workspace/search.v1", value),
         },
   );
-  await search.ready;
-  return {
-    scheduler,
-    artifacts,
-    search,
-    ...(metadata === undefined ? {} : { metadata }),
-  };
+  try {
+    await restoreFiles(metadata);
+    await restoreTasks(session.scheduler);
+    await search.ready;
+    return {
+      ...session,
+      search,
+      dispose: async () => {
+        try {
+          await search.close();
+        } finally {
+          await session.host.dispose();
+        }
+      },
+    };
+  } catch (error) {
+    await session.host.dispose();
+    throw error;
+  }
 }
 
 /** 刷新恢复：文件列表从元数据库回放（artifact 数据本体一直在 OPFS）。 */
-async function restoreFiles(): Promise<void> {
-  if (metaDb === undefined) return;
+async function restoreFiles(metadata: RuntimeMetadata | undefined): Promise<void> {
+  if (metadata === undefined) return;
   try {
-    const raw = await metaDb.kvGet("files");
+    const raw = await metadata.get("files");
     if (raw === undefined) return;
     for (const file of JSON.parse(raw) as FileRecord[]) {
       studio.addFile(file);
@@ -158,74 +133,52 @@ function recordFromJournal(entry: TaskJournalEntry): TaskRecord {
   };
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-/** 事件只负责增量进度；handle.await 同时作为不会丢失的终态兜底。 */
+/** Project the scheduler's authoritative snapshot; events are only for chunks. */
 function observeTaskHandle(
   handle: TaskHandle,
   record: TaskRecord,
   recovered = false,
 ): Promise<void> {
-  studio.upsertTask({
-    ...record,
-    status: handle.cached ? "queued" : "running",
-    cached: handle.cached,
-  });
-
-  const complete = (outputs: ReadonlyArray<ArtifactRef>): void => {
-    const current = studio.getSnapshot().tasks.find(({ id }) => id === record.id);
-    if (current === undefined || !isActive(current)) return;
+  studio.upsertTask({ ...record, cached: handle.cached });
+  let logged = false;
+  const sync = () => {
+    const snapshot = handle.state.getSnapshot();
+    const terminal =
+      snapshot.status === "completed" ||
+      snapshot.status === "failed" ||
+      snapshot.status === "cancelled";
     studio.patchTask(record.id, {
-      status: "completed",
-      progress: 1,
-      outputs,
+      status: snapshot.status,
+      progress: snapshot.progress,
       cached: handle.cached,
-      durationMs: Date.now() - record.startedAt,
+      ...(snapshot.status === "completed" ? { outputs: snapshot.outputs } : {}),
+      ...("error" in snapshot ? { error: snapshot.error } : {}),
+      ...(terminal ? { durationMs: Date.now() - record.startedAt } : {}),
     });
-    studio.log(
-      "ok",
-      `${record.operation} · ${handle.cached ? "cache hit" : recovered ? "recovered · completed" : "completed"} · ${record.id}`,
-    );
+    if (terminal && !logged) {
+      logged = true;
+      studio.log(
+        snapshot.status === "completed" ? "ok" : "error",
+        record.operation +
+          " · " +
+          (handle.cached
+            ? "cache hit"
+            : recovered
+              ? "recovered · " + snapshot.status
+              : snapshot.status) +
+          " · " +
+          record.id,
+      );
+    }
   };
-
-  const fail = (message: string): void => {
-    const current = studio.getSnapshot().tasks.find(({ id }) => id === record.id);
-    if (current === undefined || !isActive(current)) return;
-    studio.patchTask(record.id, {
-      status: message === "cancelled" ? "cancelled" : "failed",
-      error: message,
-      durationMs: Date.now() - record.startedAt,
-    });
-    studio.log("error", `${record.operation} · ${message} · ${record.id}`);
-  };
-
-  Effect.runFork(
-    Stream.runForEach(handle.events, (event) =>
-      Effect.sync(() => {
-        switch (event.type) {
-          case "progress":
-            studio.patchTask(record.id, { status: "running", progress: event.value });
-            break;
-          case "completed":
-            complete(event.outputs);
-            break;
-          case "failed":
-            fail(event.error);
-            break;
-          case "chunk":
-            break;
-        }
-      }),
-    ),
-  );
-
+  const unsubscribe = handle.state.subscribe(sync);
+  sync();
   return Effect.runPromise(handle.await)
-    .then(complete)
-    .catch((error: unknown) => {
-      fail(errorMessage(error));
-    });
+    .then(
+      () => undefined,
+      () => undefined,
+    )
+    .finally(unsubscribe);
 }
 
 /** 启动恢复：先投影完整历史，再重放有完整输入的 queued/running 任务。 */
@@ -309,15 +262,15 @@ export async function importFile(services: RuntimeServices, file: File): Promise
     size: file.size,
     addedAt: Date.now(),
   });
-  persistFiles();
+  persistFiles(services.metadata);
   studio.log("info", `import · ${file.name} · ${file.size} bytes → opfs`);
   return ref;
 }
 
-function persistFiles(): void {
-  if (metaDb === undefined) return;
+function persistFiles(metadata: RuntimeMetadata | undefined): void {
+  if (metadata === undefined) return;
   const files = studio.getSnapshot().files;
-  void metaDb.kvSet("files", JSON.stringify(files)).catch((error) => {
+  void metadata.set("files", JSON.stringify(files)).catch((error) => {
     studio.log("warn", `persist files failed · ${String(error)}`);
   });
 }

@@ -1,4 +1,5 @@
 import {
+  Cause,
   Context,
   Deferred,
   Duration,
@@ -6,6 +7,7 @@ import {
   Exit,
   Fiber,
   Layer,
+  Option,
   PubSub,
   Schedule,
   Stream,
@@ -35,6 +37,7 @@ import {
   type TaskJournalPrunePlan,
   type TaskJournalPruneResult,
 } from "./task-journal";
+import { createTaskState, type TaskStateStore } from "./task-state";
 
 export interface SubmitOptions {
   /** 超时后任务以 TaskFailed("timeout") 失败。 */
@@ -44,6 +47,7 @@ export interface SubmitOptions {
 }
 
 export interface TaskHandle {
+  readonly state: TaskStateStore;
   readonly taskId: string;
   /** 多播事件流；completed / failed / cancel 后结束。 */
   readonly events: Stream.Stream<TaskEvent>;
@@ -89,6 +93,8 @@ export interface PipelineHandle {
 }
 
 export interface Scheduler {
+  /** Stop accepting work and interrupt all owned tasks and pipelines. */
+  readonly shutdown: Effect.Effect<void>;
   /** 当前资源预算、占用与 FIFO 等待队列快照（供宿主监控/诊断）。 */
   readonly resourceSnapshot: Effect.Effect<ResourceSnapshot>;
   /** 持久化任务视图，供宿主恢复 UI 和任务历史。 */
@@ -96,7 +102,7 @@ export interface Scheduler {
   readonly submit: (
     task: ComputeTask,
     options?: SubmitOptions,
-  ) => Effect.Effect<TaskHandle, NoExecutor>;
+  ) => Effect.Effect<TaskHandle, NoExecutor | TaskFailed>;
   /**
    * 提交一条流水线：节点图经校验（重复 id / 未知依赖 / 环）后，
    * 无依赖节点立即并行执行，其余节点在上游全部完成后以其输出实例化。
@@ -150,7 +156,10 @@ const schedulerLayer: Layer.Layer<
     const resources = yield* ResourceManagerTag;
     const journal = yield* TaskJournalTag;
 
+    const admission = yield* Effect.makeSemaphore(1);
     const running = new Map<string, TaskFiber>();
+    const pipelines = new Set<Fiber.RuntimeFiber<unknown, unknown>>();
+    let closed = false;
     const cacheKeys = new Map<string, string | undefined>();
 
     const activeCacheKeys = (): ReadonlyArray<string> =>
@@ -216,163 +225,209 @@ const schedulerLayer: Layer.Layer<
       options: SubmitOptions = {},
       /** 存在时，任务事件在产生处同步转发（pipeline 编排用，避免 relay 订阅竞态）。 */
       sink: PubSub.PubSub<TaskEvent> | undefined = undefined,
-    ): Effect.Effect<TaskHandle, NoExecutor> =>
-      Effect.gen(function* () {
-        yield* journal.recordSubmitted(task);
-        const executor = executors.get(task.runtime);
-        if (executor === undefined) {
-          yield* journal.recordFailed(task.id, `no executor for runtime "${task.runtime}"`);
-          return yield* new NoExecutor({ runtime: task.runtime });
-        }
+    ): Effect.Effect<TaskHandle, NoExecutor | TaskFailed> =>
+      admission.withPermits(1)(
+        Effect.gen(function* () {
+          if (closed)
+            return yield* new TaskFailed({ taskId: task.id, message: "Runtime is closed" });
+          if (running.has(task.id))
+            return yield* new TaskFailed({ taskId: task.id, message: "Task is already running" });
+          yield* journal.recordSubmitted(task);
+          const executor = executors.get(task);
+          if (executor === undefined) {
+            yield* journal.recordFailed(task.id, `no executor for runtime "${task.runtime}"`);
+            return yield* new NoExecutor({ runtime: task.runtime });
+          }
 
-        const key = keyFor(task, executor);
-        cacheKeys.set(task.id, key);
-        yield* artifacts.registerConsumption(task);
+          const key = keyFor(task, executor);
+          cacheKeys.set(task.id, key);
+          yield* artifacts.registerConsumption(task);
 
-        // §7：缓存命中 → 不重算，直接产出缓存的 ArtifactRef。
-        if (key !== undefined) {
-          const cached = yield* cache.get(key);
-          if (cached !== undefined) {
-            // SQLite 条目可能比 OPFS 产物活得久；缺任一产物即驱逐并正常重算。
-            const exists = yield* Effect.all(cached.map((ref) => artifacts.has(ref)));
-            if (exists.every(Boolean)) {
-              const named = nameOutputs(task, cached);
-              yield* cache.associate(key, task.id);
-              yield* artifacts.registerProduction(task.id, named);
-              yield* journal.recordCompleted(task.id, named);
-              if (sink !== undefined) {
-                yield* PubSub.publish(sink, {
-                  type: "completed",
+          // §7：缓存命中 → 不重算，直接产出缓存的 ArtifactRef。
+          if (key !== undefined) {
+            const cached = yield* cache.get(key);
+            if (cached !== undefined) {
+              // SQLite 条目可能比 OPFS 产物活得久；缺任一产物即驱逐并正常重算。
+              const exists = yield* Effect.all(cached.map((ref) => artifacts.has(ref)));
+              if (exists.every(Boolean)) {
+                const named = nameOutputs(task, cached);
+                yield* cache.associate(key, task.id);
+                yield* artifacts.registerProduction(task.id, named);
+                yield* journal.recordCompleted(task.id, named);
+                if (sink !== undefined) {
+                  yield* PubSub.publish(sink, {
+                    type: "completed",
+                    taskId: task.id,
+                    outputs: [...named],
+                  });
+                }
+                return {
+                  state: createTaskState({ status: "completed", progress: 1, outputs: named }),
                   taskId: task.id,
-                  outputs: [...named],
+                  events: Stream.succeed<TaskEvent>({
+                    type: "completed",
+                    taskId: task.id,
+                    outputs: [...named],
+                  }),
+                  await: Effect.succeed(named),
+                  cancel: Effect.void,
+                  cached: true,
+                };
+              }
+              yield* cache.remove(key);
+            }
+          }
+
+          const pubsub = yield* PubSub.unbounded<TaskEvent>();
+          const state = createTaskState({ status: "queued", progress: 0 });
+
+          const execute: Effect.Effect<ReadonlyArray<ArtifactRef>, SchedulerError> = Effect.gen(
+            function* () {
+              const events = executor.run(task);
+              let outputs: ReadonlyArray<ArtifactRef> | undefined;
+              let cacheable = true;
+              yield* events.pipe(
+                Stream.runForEach((event) =>
+                  Effect.gen(function* () {
+                    const published: TaskEvent =
+                      event.type === "completed"
+                        ? {
+                            ...event,
+                            outputs: [...nameOutputs(task, event.outputs)],
+                          }
+                        : event;
+                    if (published.type === "completed") {
+                      outputs = published.outputs;
+                      cacheable = published.cacheable !== false;
+                    } else if (published.type !== "failed") {
+                      if (published.type === "progress") {
+                        state.set({ status: "running", progress: published.value });
+                      }
+                      yield* PubSub.publish(pubsub, published);
+                      if (sink !== undefined) yield* PubSub.publish(sink, published);
+                    }
+                  }),
+                ),
+              );
+              if (outputs === undefined) {
+                return yield* new TaskFailed({
+                  taskId: task.id,
+                  message: "executor stream ended without a completed event",
                 });
               }
-              return {
+              yield* artifacts.registerProduction(task.id, outputs);
+              if (key !== undefined && cacheable) {
+                yield* cache.put(key, outputs, task.id);
+              }
+              // write-ahead 对应的提交点：产物血缘和缓存都稳定后才记 completed。
+              yield* journal.recordCompleted(task.id, outputs);
+              state.set({ status: "completed", progress: 1, outputs });
+              const completed: TaskEvent = {
+                type: "completed",
                 taskId: task.id,
-                events: Stream.succeed<TaskEvent>({
-                  type: "completed",
-                  taskId: task.id,
-                  outputs: [...named],
-                }),
-                await: Effect.succeed(named),
-                cancel: Effect.void,
-                cached: true,
+                outputs: [...outputs],
               };
-            }
-            yield* cache.remove(key);
-          }
-        }
-
-        const pubsub = yield* PubSub.unbounded<TaskEvent>();
-
-        const execute: Effect.Effect<ReadonlyArray<ArtifactRef>, SchedulerError> = Effect.gen(
-          function* () {
-            const events = executor.run(task);
-            let outputs: ReadonlyArray<ArtifactRef> | undefined;
-            let cacheable = true;
-            yield* events.pipe(
-              Stream.runForEach((event) =>
-                Effect.gen(function* () {
-                  const published: TaskEvent =
-                    event.type === "completed"
-                      ? {
-                          ...event,
-                          outputs: [...nameOutputs(task, event.outputs)],
-                        }
-                      : event;
-                  yield* PubSub.publish(pubsub, published);
-                  if (sink !== undefined) {
-                    yield* PubSub.publish(sink, published);
-                  }
-                  if (published.type === "completed") {
-                    outputs = published.outputs;
-                    cacheable = published.cacheable !== false;
-                  }
-                }),
+              yield* PubSub.publish(pubsub, completed);
+              if (sink !== undefined) yield* PubSub.publish(sink, completed);
+              return outputs;
+            },
+          );
+          // 缓存未命中才占用物理预算；排队/执行被取消时 acquireUseRelease 保证归还。
+          let program: Effect.Effect<
+            ReadonlyArray<ArtifactRef>,
+            SchedulerError
+          > = Effect.acquireUseRelease(
+            resources.acquire(task.id, task.resources, task.runtime),
+            () =>
+              journal.recordRunning(task.id).pipe(
+                Effect.tap(() => Effect.sync(() => state.set({ status: "running", progress: 0 }))),
+                Effect.zipRight(execute),
               ),
-            );
-            if (outputs === undefined) {
-              return yield* new TaskFailed({
-                taskId: task.id,
-                message: "executor stream ended without a completed event",
-              });
-            }
-            yield* artifacts.registerProduction(task.id, outputs);
-            if (key !== undefined && cacheable) {
-              yield* cache.put(key, outputs, task.id);
-            }
-            // write-ahead 对应的提交点：产物血缘和缓存都稳定后才记 completed。
-            yield* journal.recordCompleted(task.id, outputs);
-            return outputs;
-          },
-        );
-        // 缓存未命中才占用物理预算；排队/执行被取消时 acquireUseRelease 保证归还。
-        let program: Effect.Effect<
-          ReadonlyArray<ArtifactRef>,
-          SchedulerError
-        > = Effect.acquireUseRelease(
-          resources.acquire(task.id, task.resources, task.runtime),
-          () => journal.recordRunning(task.id).pipe(Effect.zipRight(execute)),
-          (lease) => lease.release,
-        );
+            (lease) => lease.release,
+          );
 
-        if (options.retry !== undefined) {
-          program = Effect.retry(program, options.retry);
-        }
-        if (options.timeout !== undefined) {
-          program = Effect.timeoutFail(program, {
-            duration: options.timeout,
-            onTimeout: () => new TaskFailed({ taskId: task.id, message: "timeout" }),
-          });
-        }
+          if (options.retry !== undefined) {
+            program = Effect.retry(program, options.retry);
+          }
+          if (options.timeout !== undefined) {
+            program = Effect.timeoutFail(program, {
+              duration: options.timeout,
+              onTimeout: () => new TaskFailed({ taskId: task.id, message: "timeout" }),
+            });
+          }
 
-        program = program.pipe(
-          Effect.tapError((error) =>
-            journal.recordFailed(task.id, error.message).pipe(
-              Effect.zipRight(
-                PubSub.publish(pubsub, {
-                  type: "failed",
-                  taskId: task.id,
+          program = program.pipe(
+            Effect.catchAllCause((cause) => {
+              if (Cause.isInterruptedOnly(cause)) return Effect.failCause(cause);
+              const failure = Cause.failureOption(cause);
+              return Effect.fail(
+                Option.isSome(failure)
+                  ? failure.value
+                  : new TaskFailed({ taskId: task.id, message: Cause.pretty(cause) }),
+              );
+            }),
+            Effect.tapError((error) =>
+              Effect.sync(() =>
+                state.set({
+                  status: "failed",
+                  progress: state.getSnapshot().progress,
                   error: error.message,
                 }),
+              ).pipe(
+                Effect.zipRight(journal.recordFailed(task.id, error.message)),
+                Effect.zipRight(
+                  PubSub.publish(pubsub, {
+                    type: "failed",
+                    taskId: task.id,
+                    error: error.message,
+                  }),
+                ),
               ),
             ),
-          ),
-          Effect.onInterrupt(() =>
-            journal.recordCancelled(task.id).pipe(
-              Effect.zipRight(
-                PubSub.publish(pubsub, {
-                  type: "failed",
-                  taskId: task.id,
+            Effect.onInterrupt(() =>
+              Effect.sync(() =>
+                state.set({
+                  status: "cancelled",
+                  progress: state.getSnapshot().progress,
                   error: "cancelled",
                 }),
+              ).pipe(
+                Effect.zipRight(journal.recordCancelled(task.id)),
+                Effect.zipRight(
+                  PubSub.publish(pubsub, {
+                    type: "failed",
+                    taskId: task.id,
+                    error: "cancelled",
+                  }),
+                ),
               ),
             ),
-          ),
-          Effect.ensuring(
-            Effect.gen(function* () {
-              running.delete(task.id);
-              yield* PubSub.shutdown(pubsub);
-            }),
-          ),
-        );
+            Effect.ensuring(
+              Effect.gen(function* () {
+                running.delete(task.id);
+                yield* PubSub.shutdown(pubsub);
+              }),
+            ),
+          );
 
-        const fiber: TaskFiber = yield* Effect.forkDaemon(program);
-        running.set(task.id, fiber);
+          const fiber: TaskFiber = yield* Effect.forkDaemon(program);
+          running.set(task.id, fiber);
 
-        return {
-          taskId: task.id,
-          events: Stream.fromPubSub(pubsub),
-          await: Fiber.join(fiber),
-          cancel: cancelCascade(task.id, new Set()),
-          cached: false,
-        };
-      });
+          return {
+            state,
+            taskId: task.id,
+            events: Stream.fromPubSub(pubsub),
+            await: Fiber.join(fiber),
+            cancel: cancelCascade(task.id, new Set()),
+            cached: false,
+          };
+        }),
+      );
 
     const submit = (
       task: ComputeTask,
       options: SubmitOptions = {},
-    ): Effect.Effect<TaskHandle, NoExecutor> => submitInternal(task, options);
+    ): Effect.Effect<TaskHandle, NoExecutor | TaskFailed> => submitInternal(task, options);
 
     const recoverPending = (options: RecoveryOptions = {}): Effect.Effect<RecoveryReport> =>
       Effect.gen(function* () {
@@ -407,7 +462,7 @@ const schedulerLayer: Layer.Layer<
             continue;
           }
 
-          if (executors.get(entry.task.runtime) === undefined) {
+          if (executors.get(entry.task) === undefined) {
             const reason = `no executor for runtime "${entry.task.runtime}"`;
             yield* journal.recordFailed(entry.task.id, reason);
             skipped.push({ taskId: entry.task.id, reason });
@@ -418,7 +473,10 @@ const schedulerLayer: Layer.Layer<
           if (submitted._tag === "Right") {
             resumed.push({ entry, handle: submitted.right });
           } else {
-            const reason = `no executor for runtime "${submitted.left.runtime}"`;
+            const reason =
+              submitted.left._tag === "TaskFailed"
+                ? submitted.left.message
+                : `no executor for runtime "${submitted.left.runtime}"`;
             yield* journal.recordFailed(entry.task.id, reason);
             skipped.push({ taskId: entry.task.id, reason });
           }
@@ -487,6 +545,7 @@ const schedulerLayer: Layer.Layer<
       options: SubmitOptions = {},
     ): Effect.Effect<PipelineHandle, InvalidPipeline | NoExecutor> =>
       Effect.gen(function* () {
+        if (closed) return yield* new InvalidPipeline({ pipelineId, message: "Runtime is closed" });
         // 图校验：重复 id / 未知依赖
         const byId = new Map<string, PipelineNodeState>();
         for (const node of nodes) {
@@ -652,6 +711,10 @@ const schedulerLayer: Layer.Layer<
         );
 
         const fiber = yield* Effect.forkDaemon(program);
+        pipelines.add(fiber);
+        yield* Effect.forkDaemon(
+          Fiber.await(fiber).pipe(Effect.tap(() => Effect.sync(() => pipelines.delete(fiber)))),
+        );
         return {
           pipelineId,
           events: Stream.fromPubSub(pubsub),
@@ -661,6 +724,12 @@ const schedulerLayer: Layer.Layer<
       });
 
     return {
+      shutdown: Effect.gen(function* () {
+        closed = true;
+        yield* admission.withPermits(1)(Effect.void);
+        yield* Effect.forEach([...pipelines], Fiber.interrupt, { concurrency: "unbounded" });
+        yield* Effect.forEach([...running.values()], Fiber.interrupt, { concurrency: "unbounded" });
+      }),
       resourceSnapshot: resources.snapshot,
       journalSnapshot: journal.entries,
       submit,
@@ -703,3 +772,6 @@ export function schedulerLiveWithJournal(
 ): Layer.Layer<SchedulerTag, never, ArtifactStoreTag | CacheStoreTag | Executors> {
   return Layer.provide(schedulerLayer, Layer.mergeAll(resourceManagerLive(capacity), journal));
 }
+
+/** Sessions in one host inject the same resource manager. */
+export const schedulerWithServices = schedulerLayer;

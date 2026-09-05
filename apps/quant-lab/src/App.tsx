@@ -1,7 +1,13 @@
-import { RuntimeProvider, useRuntime, type RuntimeServices } from "@bcr/react";
 import { consumeQuantHandoff, QUANT_HANDOFF_EVENT, type QuantHandoff } from "@bcr/market-data";
+import {
+  RuntimeProvider,
+  usePublishRunningCount,
+  useRuntime,
+  useRuntimeSession,
+  type RuntimeServices,
+} from "@bcr/react";
 import { Activity, Database, Download, Play, Square, Upload } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { EquityChart, MarketChart } from "./components/Charts";
 import { PortfolioAnalysisView } from "./components/PortfolioAnalysis";
 import { TradeBlotter } from "./components/TradeBlotter";
@@ -15,37 +21,25 @@ import {
   readDatasetParquet,
   restoreProject,
 } from "./runtime";
+import { useQuantSearch } from "./search";
 import { quant, useQuantLab } from "./store";
 import "./styles.css";
 
-export function App() {
-  const [services, setServices] = useState<RuntimeServices | null>(null);
-  const [error, setError] = useState<string | null>(null);
+async function initializeWorkspace(runtime: RuntimeServices): Promise<void> {
+  const handoff = consumeQuantHandoff();
+  if (handoff !== null) {
+    await importMarketAtlasHandoff(runtime, handoff);
+    await persistProject(runtime);
+    quant.log("ok", handoffLog(handoff));
+  } else {
+    const restored = await restoreProject(runtime);
+    if (!restored) await loadDemoDataset(runtime);
+  }
+  if (quant.getSnapshot().result === null) void runStrategy(runtime);
+}
 
-  useEffect(() => {
-    let cancelled = false;
-    void createRuntimeServices()
-      .then(async (runtime) => {
-        if (cancelled) return;
-        setServices(runtime);
-        const handoff = consumeQuantHandoff();
-        if (handoff !== null) {
-          await importMarketAtlasHandoff(runtime, handoff);
-          await persistProject(runtime);
-          quant.log("ok", handoffLog(handoff));
-        } else {
-          const restored = await restoreProject(runtime);
-          if (!restored) await loadDemoDataset(runtime);
-        }
-        if (quant.getSnapshot().result === null) void runStrategy(runtime);
-      })
-      .catch((reason: unknown) =>
-        setError(reason instanceof Error ? reason.message : String(reason)),
-      );
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+export function App() {
+  const { services, error } = useRuntimeSession(createRuntimeServices, initializeWorkspace);
 
   if (error !== null) {
     return <div className="ql-boot-error">QUANT RUNTIME OFFLINE · {error}</div>;
@@ -106,8 +100,10 @@ function downloadFile(blob: Blob, name: string): void {
 }
 
 function Workbench() {
+  useQuantSearch();
   const services = useRuntime();
   const state = useQuantLab((snapshot) => snapshot);
+  usePublishRunningCount("quant", state.running ? 1 : 0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
