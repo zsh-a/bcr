@@ -1,5 +1,13 @@
 import { Check } from "lucide-react";
-import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { createLocator, locatorAtPercentage, type ReaderBook } from "@bcr/reader-core";
 import type { ReaderRuntime } from "./runtime";
 import { PdfReaderView } from "./PdfReaderView";
@@ -71,6 +79,9 @@ function ContinuousReadingView(props: {
     }, 240);
   }, []);
   const updateLocator = useCallback(() => {
+    // Search and modal surfaces occlude the caret probes. Measuring through
+    // them can replace a valid text anchor with a different paragraph/page.
+    if (getReaderState().searchOpen || document.querySelector("dialog[open]") !== null) return;
     const container = containerRef.current;
     if (container === null || props.book.sections.length === 0) return;
     const percentage = readerScrollPercentage(container, settings.layout);
@@ -117,7 +128,7 @@ function ContinuousReadingView(props: {
       window.visualViewport?.removeEventListener("resize", scheduleCalibration);
     };
   }, [props.book.id]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (activeSectionId === null || containerRef.current === null) return;
     const explicitNavigation = navigationSequence !== handledNavigationSequenceRef.current;
     const pendingInternalLink =
@@ -140,6 +151,11 @@ function ContinuousReadingView(props: {
     }
     if (navigationRetryTimerRef.current !== null) {
       window.clearTimeout(navigationRetryTimerRef.current);
+    }
+    // A scroll captured before a new restore/jump must not commit after it.
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
     }
     let cancelled = false;
     let attempt = 0;
@@ -186,6 +202,19 @@ function ContinuousReadingView(props: {
       // after the first paint. Recalculate and reapply a few times so a TOC
       // click remains reliable while lazy pages settle.
       container.scrollTo({ ...position, behavior: "instant" });
+      // Browsers clamp offsets (and can round fractional values). Compare
+      // subsequent events to the applied position, not an unreachable target.
+      programmaticScrollTargetRef.current = {
+        top: container.scrollTop,
+        left: container.scrollLeft,
+      };
+      if (programmaticScrollTimerRef.current !== null)
+        window.clearTimeout(programmaticScrollTimerRef.current);
+      programmaticScrollTimerRef.current = window.setTimeout(() => {
+        programmaticScrollRef.current = false;
+        programmaticScrollTargetRef.current = null;
+        programmaticScrollTimerRef.current = null;
+      }, 720);
       if (attempt >= retryDelays.length - 1) return;
       attempt += 1;
       navigationRetryTimerRef.current = window.setTimeout(() => {
@@ -193,11 +222,6 @@ function ContinuousReadingView(props: {
       }, retryDelays[attempt]);
     };
     navigationRetryFrameRef.current = window.requestAnimationFrame(attemptScroll);
-    programmaticScrollTimerRef.current = window.setTimeout(() => {
-      programmaticScrollRef.current = false;
-      programmaticScrollTargetRef.current = null;
-      programmaticScrollTimerRef.current = null;
-    }, 720);
     return () => {
       cancelled = true;
       if (navigationRetryFrameRef.current !== null) {
@@ -360,6 +384,12 @@ function ContinuousReadingView(props: {
           }
           if (frameRef.current !== null) return;
           const flush = () => {
+            // Navigation can take ownership after this scroll was queued but
+            // before its animation frame runs. Never recapture that old event.
+            if (programmaticScrollRef.current) {
+              frameRef.current = null;
+              return;
+            }
             const elapsed = performance.now() - lastScrollUpdateRef.current;
             if (elapsed < 120) {
               frameRef.current = requestAnimationFrame(flush);

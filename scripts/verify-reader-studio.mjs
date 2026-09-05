@@ -146,6 +146,11 @@ const fail = (message) => {
 
 const browser = await launchVerifyBrowser("studio");
 const page = browser.pages()[0] ?? (await browser.newPage());
+const cpuSlowdown = Number(process.env.BCR_VERIFY_CPU_SLOWDOWN ?? 1);
+const cdp = await browser.newCDPSession(page);
+if (cpuSlowdown > 1) {
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpuSlowdown });
+}
 page.on("pageerror", (error) => fail(`pageerror: ${error.message}`));
 
 await page.goto(base.toString(), { waitUntil: "domcontentloaded" });
@@ -420,6 +425,13 @@ await page.locator(".reader-search-result").first().waitFor({ timeout: 10_000 })
 
 await page.screenshot({ path: `${dir}/reader-studio.png`, fullPage: true });
 await page.waitForTimeout(900);
+if ((await page.locator(".reader-progress-ring").innerText()) !== progressBeforeReload) {
+  fail("打开搜索结果不应改写正文阅读进度");
+}
+// Keep this restore under CPU pressure even on fast developer machines: an
+// early scroll flush used to overwrite the saved locator while the restored
+// search panel was covering the text probes (82% became 100%).
+await cdp.send("Emulation.setCPUThrottlingRate", { rate: Math.max(4, cpuSlowdown) });
 await page.reload({ waitUntil: "domcontentloaded" });
 await page.locator(".reader-studio").waitFor({ timeout: 20_000 });
 if (
@@ -430,7 +442,22 @@ if (
   fail("刷新后阅读主题未恢复");
 }
 if ((await page.locator(".reader-progress-ring").innerText()) !== progressBeforeReload) {
-  fail("刷新后阅读进度未恢复");
+  fail(
+    `刷新后阅读进度未恢复：刷新前 ${progressBeforeReload}，刷新后 ${await page.locator(".reader-progress-ring").innerText()}`,
+  );
+  console.error(
+    "Reader restore diagnostics:",
+    await page.evaluate(() => {
+      const session = JSON.parse(localStorage.getItem("bcr.reader.session.v1") ?? "{}");
+      const scroll = document.querySelector(".reader-reading-scroll");
+      return {
+        activeBookId: session.activeBookId,
+        progress: session.progressByBook?.[session.activeBookId],
+        searchSession: session.searchSession,
+        scrollTop: scroll?.scrollTop,
+      };
+    }),
+  );
 }
 if ((await page.locator(".reader-bookmark-item").count()) < 1) {
   fail("刷新后阅读书签未恢复");
@@ -441,6 +468,10 @@ if ((await page.getByLabel("在书库中搜索").inputValue()) !== "Locator") {
 if ((await page.getByLabel("在书库中搜索").inputValue()) === "Locator") {
   await page.locator(".reader-search-result").first().waitFor({ timeout: 10_000 });
 }
+if ((await page.locator(".reader-progress-ring").innerText()) !== progressBeforeReload) {
+  fail("搜索结果恢复后改写了阅读进度");
+}
+await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpuSlowdown });
 if ((await page.locator(".reader-search-result").count()) < 1) {
   fail("刷新后搜索结果未恢复");
 }
