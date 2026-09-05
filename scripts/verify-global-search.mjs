@@ -38,7 +38,12 @@ await page.getByRole("button", { name: "打开命令面板" }).click();
 await page.getByPlaceholder("输入命令…").fill("打开 Reader Studio");
 await page.getByRole("button", { name: /打开 Reader Studio/u }).click();
 await page.waitForURL(/\/reader(?:\?|$)/u);
-await page.getByText("把时间还给阅读").first().waitFor();
+await page.getByLabel("阅读内容").waitFor();
+// The last active book can come from a previous check, and the library is
+// collapsed in focused mode. Verify the indexed fixture in the library.
+const openLibrary = page.getByRole("button", { name: "打开书库", exact: true });
+if (await openLibrary.isVisible()) await openLibrary.click();
+await page.locator(".reader-book-card", { hasText: "把时间还给阅读" }).waitFor();
 await page.waitForTimeout(1_200);
 await page.getByRole("button", { name: "打开命令面板" }).click();
 await page.getByPlaceholder("输入命令…").fill("打开 Studio 工作台");

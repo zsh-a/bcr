@@ -167,15 +167,20 @@ await page.screenshot({ path: `${dir}/document-studio.png`, fullPage: true });
 await page.getByRole("button", { name: /打开 Reader/ }).click();
 await page.locator(".reader-studio").waitFor({ timeout: 20_000 });
 if (!new URL(page.url()).pathname.endsWith("/reader")) fail("Reader handoff 没有更新路由");
+await page.getByLabel("阅读内容").getByText("Field notes（人工修订）").waitFor({ timeout: 10_000 });
+// Focused reading keeps the library collapsed by default. Open it through
+// the public control before checking the imported book, including on reruns.
+const openLibrary = page.getByRole("button", { name: "打开书库", exact: true });
+if (await openLibrary.isVisible()) await openLibrary.click();
 await page
   .locator(".reader-book-card", { hasText: /field[- ]notes/iu })
   .first()
   .waitFor({ timeout: 20_000 });
-await page.getByLabel("阅读内容").getByText("Field notes（人工修订）").waitFor({ timeout: 10_000 });
 
 // Reader can publish its parsed projection back into Document as a durable,
 // refresh-safe handoff. The target should reopen the same source and expose
 // the projection as a completed Extract stage.
+await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
 await page.getByRole("button", { name: /交给 Document Studio/ }).click();
 await page.locator(".document-studio").waitFor({ timeout: 20_000 });
 await page
