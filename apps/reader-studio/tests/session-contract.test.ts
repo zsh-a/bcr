@@ -80,7 +80,7 @@ describe("reader session contract", () => {
       progression: 1,
       pageNumber: 2,
     });
-    expect(result[book.id]?.percentage).toBeCloseTo(2 / 3);
+    expect(result[book.id]?.percentage).toBeCloseTo(2 / 4);
   });
 
   it("restores a persisted text anchor and re-derives its progression", () => {

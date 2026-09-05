@@ -10,6 +10,7 @@ import type { ReaderBook, ReaderOpenInput, ReaderSection, ReaderTocItem } from "
 import { makeBook } from "./readerAdapterShared";
 import { escapeHtml, sanitizeHtml } from "./readerMarkup";
 import { firstLocalElement, localName, metadataValue } from "./readerXml";
+import { applyPublicationStyles, publicationImageSize } from "./publicationStyles";
 
 const IMAGE_EXTENSIONS = /\\.(avif|bmp|gif|jpe?g|png|svg|webp)$/iu;
 
@@ -270,28 +271,70 @@ export async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
       .map((candidate) => candidate.getAttribute("idref"))
       .filter((id): id is string => id !== null);
     const sections: ReaderSection[] = [];
+    const imageResources = new Map<string, { url: string; width?: number; height?: number }>();
     for (const [order, id] of spineItems.entries()) {
       if (input.signal?.aborted) throw new DOMException("Aborted", "AbortError");
       const item = manifest.get(id);
       if (item === undefined) continue;
       const entry = files.get(item.href);
       if (entry === undefined) continue;
-      const parsed = sanitizeHtml(await readArchiveText(entry));
+      const rawDocument = new DOMParser().parseFromString(
+        await readArchiveText(entry),
+        "text/html",
+      );
+      const chapterBase = item.href.split("/").slice(0, -1).join("/");
+      for (const style of rawDocument.querySelectorAll("style, link[rel=stylesheet]")) {
+        const path = style.getAttribute("href");
+        const resource =
+          path === null ? undefined : files.get(resolveArchivePath(chapterBase, path));
+        applyPublicationStyles(
+          rawDocument,
+          resource ? await readArchiveText(resource) : (style.textContent ?? ""),
+        );
+      }
+      // Fixed-layout comics often wrap a single raster page in an SVG image.
+      // Resolve it through the same local resource pipeline as ordinary img.
+      for (const svg of rawDocument.querySelectorAll("svg")) {
+        const embedded = svg.querySelectorAll("image");
+        if (embedded.length !== 1 || svg.querySelector("path, text, rect, circle, polygon"))
+          continue;
+        const source = embedded[0]?.getAttribute("href") ?? embedded[0]?.getAttribute("xlink:href");
+        if (!source) continue;
+        const image = rawDocument.createElement("img");
+        image.setAttribute("src", source);
+        image.setAttribute("alt", svg.querySelector("title")?.textContent ?? "");
+        svg.replaceWith(image);
+      }
+      const parsed = sanitizeHtml(rawDocument.documentElement.outerHTML);
       const title = parsed.title ?? `Chapter ${order + 1}`;
       const htmlDocument = new DOMParser().parseFromString(parsed.html, "text/html");
-      const chapterBase = item.href.split("/").slice(0, -1).join("/");
-      for (const image of htmlDocument.querySelectorAll("img[src]")) {
-        const source = image.getAttribute("src");
+      for (const image of htmlDocument.querySelectorAll("img[src], svg image")) {
+        const attribute = localName(image) === "image" ? "href" : "src";
+        const source = image.getAttribute(attribute) ?? image.getAttribute("xlink:href");
         if (!source) continue;
         const imageEntry = files.get(resolveArchivePath(chapterBase, source));
         if (imageEntry === undefined) {
-          image.removeAttribute("src");
+          image.removeAttribute(attribute);
+          image.removeAttribute("xlink:href");
           continue;
         }
-        image.setAttribute(
-          "src",
-          await archiveObjectUrl(imageEntry, archiveMime(imageEntry.filename), allocatedUrls),
-        );
+        let resource = imageResources.get(imageEntry.filename);
+        if (!resource) {
+          const blob = await imageEntry.getData(new BlobWriter(archiveMime(imageEntry.filename)));
+          const url = URL.createObjectURL(blob);
+          allocatedUrls.push(url);
+          resource = { url, ...(await publicationImageSize(blob)) };
+          imageResources.set(imageEntry.filename, resource);
+        }
+        image.setAttribute(attribute, resource.url);
+        image.removeAttribute("xlink:href");
+        image.setAttribute("data-reader-resource", imageEntry.filename);
+        image.setAttribute("loading", "lazy");
+        image.setAttribute("decoding", "async");
+        if (resource.width && resource.height) {
+          if (!image.hasAttribute("width")) image.setAttribute("width", String(resource.width));
+          if (!image.hasAttribute("height")) image.setAttribute("height", String(resource.height));
+        }
       }
       sections.push({
         // href is the semantic identity; keep it in the id so a refreshed
@@ -335,7 +378,24 @@ export async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
       ...(toc.length === 0 ? {} : { toc }),
     });
     succeeded = true;
-    return book;
+    const meta = (property: string) =>
+      [...packageDocument.getElementsByTagName("*")]
+        .find((node) => node.getAttribute("property") === property)
+        ?.textContent?.trim();
+    const spine = firstLocalElement(packageDocument, "spine");
+    return {
+      ...book,
+      rendition: {
+        layout: meta("rendition:layout") === "pre-paginated" ? "pre-paginated" : "reflowable",
+        direction: spine?.getAttribute("page-progression-direction") === "rtl" ? "rtl" : "ltr",
+        spread:
+          meta("rendition:spread") === "none"
+            ? "none"
+            : meta("rendition:spread") === "both"
+              ? "both"
+              : "auto",
+      },
+    };
   } finally {
     if (!succeeded) revokeObjectUrls(allocatedUrls);
     await reader.close();

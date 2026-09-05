@@ -202,6 +202,15 @@ try {
   await restored.setViewportSize({ width: 812, height: 375 });
   await restored.emulateMedia({ reducedMotion: "reduce" });
   await restored.getByRole("combobox", { name: "PDF 缩放" }).selectOption("page");
+  await restored.getByRole("combobox", { name: "PDF 缩放" }).selectOption("1.5");
+  await restored.waitForTimeout(1100);
+  await restored.reload();
+  await restored.getByRole("combobox", { name: "PDF 缩放" }).waitFor();
+  assert.equal(
+    await restored.getByRole("combobox", { name: "PDF 缩放" }).inputValue(),
+    "1.5",
+    "per-book PDF zoom did not survive reload",
+  );
   assert.deepEqual(errors, []);
   console.log(
     "reader tools verification PASSED: occurrence search, return/forward, PDF text selection and zoom, verified ZIP backup, deduplication, independent restore and reload",

@@ -7,6 +7,7 @@ import {
   createReaderBackup,
   inspectReaderBackup,
   prepareReaderRestore,
+  planReaderBackup,
   type PreparedReaderBackup,
 } from "./readerBackup";
 import { getReaderState, reader, useReader } from "./store";
@@ -21,6 +22,18 @@ export function ReaderBackupPanel(props: { runtime: ReaderRuntime; onClose: () =
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [restoreSettings, setRestoreSettings] = useState(false);
+  const [restoreHistory, setRestoreHistory] = useState(false);
+  const [selected, setSelected] = useState(() => new Set(library.map((book) => book.id)));
+  const [volume, setVolume] = useState(0);
+  const chosen = library.filter((book) => selected.has(book.id));
+  let planningError = "";
+  let volumes: (typeof library)[] = [];
+  try {
+    volumes = planReaderBackup(chosen);
+  } catch (reason) {
+    planningError = String(reason);
+  }
+  const activeVolume = Math.min(volume, Math.max(0, volumes.length - 1));
   const controller = useRef<AbortController | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const [download, setDownload] = useState<{ url: string; name: string } | null>(null);
@@ -83,21 +96,65 @@ export function ReaderBackupPanel(props: { runtime: ReaderRuntime; onClose: () =
           </div>
         </div>
         <div className="reader-data-actions">
+          <details>
+            <summary>
+              选择备份内容 · {chosen.length} 本 · 约{" "}
+              {formatBytes(
+                chosen.reduce((sum, book) => sum + (book.source.ref?.size ?? book.source.size), 0),
+              )}
+            </summary>
+            {library.map((book) => (
+              <label className="reader-data-option" key={book.id}>
+                <input
+                  type="checkbox"
+                  checked={selected.has(book.id)}
+                  disabled={busy}
+                  onChange={(event) => {
+                    const next = new Set(selected);
+                    if (event.target.checked) next.add(book.id);
+                    else next.delete(book.id);
+                    setSelected(next);
+                    setVolume(0);
+                  }}
+                />
+                {book.title}
+              </label>
+            ))}
+          </details>
+          {volumes.length > 1 && (
+            <label>
+              独立备份卷
+              <select
+                aria-label="选择备份卷"
+                value={activeVolume}
+                disabled={busy}
+                onChange={(event) => setVolume(Number(event.target.value))}
+              >
+                {volumes.map((books, index) => (
+                  <option key={index} value={index}>
+                    第 {index + 1}/{volumes.length} 卷 · {books.length} 本
+                  </option>
+                ))}
+              </select>
+              <small>逐卷生成并下载，每一卷均可独立恢复。</small>
+            </label>
+          )}
+          {planningError && <p role="alert">{planningError}，请调整选择。</p>}
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || chosen.length === 0 || planningError !== ""}
             onClick={() =>
               void run(async (signal) => {
                 captureReaderProgress();
                 const blob = await createReaderBackup(
                   props.runtime,
-                  getReaderState(),
+                  { ...getReaderState(), library: volumes[activeVolume] ?? chosen },
                   setMessage,
                   signal,
                 );
                 setDownload({
                   url: URL.createObjectURL(blob),
-                  name: `reader-backup-${new Date().toISOString().slice(0, 10)}.zip`,
+                  name: `reader-backup-${new Date().toISOString().slice(0, 10)}-part-${activeVolume + 1}.zip`,
                 });
                 setMessage(`备份已生成 · ${formatBytes(blob.size)}。请点击下载并保管文件。`);
               })
@@ -165,7 +222,7 @@ export function ReaderBackupPanel(props: { runtime: ReaderRuntime; onClose: () =
             </label>
             <button
               type="button"
-              disabled={busy || (fresh.length === 0 && !restoreSettings)}
+              disabled={busy || (fresh.length === 0 && !restoreSettings && !restoreHistory)}
               onClick={() =>
                 void run(async (signal) => {
                   const books = await prepareReaderRestore(
@@ -191,6 +248,11 @@ export function ReaderBackupPanel(props: { runtime: ReaderRuntime; onClose: () =
                     ),
                   );
                   if (restoreSettings) reader.setSettings(snapshot.settings);
+                  if (restoreHistory)
+                    reader.restoreReadingHistory(
+                      snapshot.navigationHistory ?? { back: [], forward: [] },
+                      snapshot.searchSession,
+                    );
                   await persistReaderSnapshot(props.runtime, {
                     durableLibrary: true,
                     strict: true,
@@ -203,6 +265,15 @@ export function ReaderBackupPanel(props: { runtime: ReaderRuntime; onClose: () =
             >
               确认合并恢复
             </button>
+            <label className="reader-data-option">
+              <input
+                type="checkbox"
+                checked={restoreHistory}
+                disabled={busy}
+                onChange={(event) => setRestoreHistory(event.target.checked)}
+              />
+              使用备份中的搜索与跳转历史（替换本机历史）
+            </label>
           </section>
         )}
         <p role="status" aria-live="polite">

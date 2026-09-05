@@ -10,11 +10,18 @@ import { hashReadableStream, type ArtifactRef } from "@bcr/core";
 import { Effect } from "effect";
 import { MemoryStore } from "@bcr/storage-opfs";
 import type { ReaderBook, ReaderTocItem } from "@bcr/reader-core";
-import { DEFAULT_READER_SETTINGS, type ReaderSettings, type ReaderState } from "./model";
+import {
+  DEFAULT_READER_SETTINGS,
+  normalizeBookSettings,
+  type ReaderSettings,
+  type ReaderState,
+} from "./model";
 import {
   persistBook,
   restoredAnnotations,
   restoredBookmarks,
+  restoreNavigationHistory,
+  restoredSearchSession,
   type PersistedBook,
 } from "./readerPersistence";
 import { normalizeReaderProgress } from "./session-contract";
@@ -23,12 +30,35 @@ import { sanitizeHtml } from "./readerMarkup";
 import type { ReaderRuntime } from "./readerRuntimeCore";
 
 const MAX_BYTES = 512 * 1024 * 1024;
+
+/** Independent volumes: each ZIP can be checked/restored without the others. */
+export function planReaderBackup(
+  books: ReadonlyArray<ReaderBook>,
+  limit = MAX_BYTES,
+): ReaderBook[][] {
+  const parts: ReaderBook[][] = [];
+  let size = 0;
+  for (const book of books) {
+    const bytes = book.source.ref?.size ?? book.source.size;
+    if (bytes > limit)
+      throw new Error(`${book.title} 超过单卷 ${Math.round(limit / 1024 / 1024)} MiB 上限`);
+    if (!parts.length || size + bytes > limit) {
+      parts.push([]);
+      size = 0;
+    }
+    parts[parts.length - 1]!.push(book);
+    size += bytes;
+  }
+  return parts;
+}
 const MANIFEST = "reader.json";
 interface BackupBook {
   readonly book: PersistedBook;
   readonly source?: { readonly path: string; readonly hash: string; readonly size: number };
 }
 export interface ReaderBackup {
+  readonly navigationHistory?: ReaderState["navigationHistory"];
+  readonly searchSession?: import("./model").ReaderSearchSession;
   readonly format: "bcr-reader-backup";
   readonly version: 1;
   readonly createdAt: number;
@@ -216,10 +246,16 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
     version: 1,
     createdAt: value["createdAt"],
     books,
-    settings: { ...DEFAULT_READER_SETTINGS, ...settings } as ReaderSettings,
+    settings: {
+      ...DEFAULT_READER_SETTINGS,
+      ...settings,
+      books: normalizeBookSettings(settings.books),
+    } as ReaderSettings,
     progressByBook: normalizeReaderProgress(projected, value["progressByBook"]),
     bookmarksByBook: restoredBookmarks(projected, value["bookmarksByBook"]),
     annotationsByBook: restoredAnnotations(projected, value["annotationsByBook"]),
+    navigationHistory: restoreNavigationHistory(projected, value["navigationHistory"]),
+    searchSession: restoredSearchSession(projected, value["searchSession"]),
   };
 }
 
@@ -249,8 +285,6 @@ export async function createReaderBackup(
             format: ref.mime,
           }),
         );
-        if (bytes + blob.size > MAX_BYTES)
-          throw new Error("当前备份上限为 512 MiB，请缩小书库后重试");
         const hash = await hashReadableStream(blob.stream());
         if (hash !== ref.hash) throw new Error(`${book.title} 的源文件校验失败，备份未生成`);
         source = { path: `sources/${hash}`, hash, size: blob.size };
@@ -267,15 +301,25 @@ export async function createReaderBackup(
         throw new Error(`${book.title} 缺少源文件，无法创建完整备份`);
       books.push({ book: persistBook(book), ...(source === undefined ? {} : { source }) });
     }
+    const selectedIds = new Set(state.library.map((book) => book.id));
+    const selectedEntries = <T>(value: Readonly<Record<string, T>>) =>
+      Object.fromEntries(Object.entries(value).filter(([id]) => selectedIds.has(id)));
     const manifest: ReaderBackup = {
       format: "bcr-reader-backup",
       version: 1,
       createdAt: Date.now(),
       books,
-      progressByBook: state.progressByBook,
-      bookmarksByBook: state.bookmarksByBook,
-      annotationsByBook: state.annotationsByBook,
-      settings: state.settings,
+      progressByBook: selectedEntries(state.progressByBook),
+      bookmarksByBook: selectedEntries(state.bookmarksByBook),
+      annotationsByBook: selectedEntries(state.annotationsByBook),
+      settings: { ...state.settings, books: selectedEntries(state.settings.books ?? {}) },
+      navigationHistory: restoreNavigationHistory(state.library, state.navigationHistory),
+      searchSession: {
+        query: state.query,
+        searchBookId: state.searchBookId,
+        searchOpen: state.searchOpen,
+        scope: state.searchScope,
+      },
     };
     const raw = JSON.stringify(manifest);
     if (new Blob([raw]).size > 64 * 1024 * 1024)

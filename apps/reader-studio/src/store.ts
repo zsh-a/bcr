@@ -25,6 +25,10 @@ import {
 const demo = createDemoBook();
 
 function releaseBookResources(book: ReaderBook): void {
+  const embedded = new Set(
+    book.sections.flatMap((section) => section.html?.match(/blob:[^\s"'<>]+/gu) ?? []),
+  );
+  for (const url of embedded) URL.revokeObjectURL(url);
   if (book.source.objectUrl !== undefined) URL.revokeObjectURL(book.source.objectUrl);
   if (book.coverUrl !== undefined) URL.revokeObjectURL(book.coverUrl);
   for (const section of book.sections) {
@@ -552,6 +556,23 @@ class ReaderStore {
 
   setSettings(patch: Partial<ReaderSettings>): void {
     this.set({ settings: { ...this.state.settings, ...patch } });
+  }
+
+  restoreReadingHistory(
+    history: ReaderState["navigationHistory"],
+    search?: ReaderSearchSession,
+  ): void {
+    this.set({
+      navigationHistory: history,
+      ...(search
+        ? {
+            query: search.query,
+            searchBookId: search.searchBookId,
+            searchScope: search.scope ?? "library",
+            searchOpen: false,
+          }
+        : {}),
+    });
   }
 
   toggleSidebar(): void {

@@ -63,6 +63,31 @@ export function ReaderToolbar(props: {
   return (
     <div className="reader-toolbar">
       <div className="reader-toolbar-title">
+        {props.book.source.format !== "pdf" && (
+          <button
+            type="button"
+            className="reader-icon-button"
+            aria-label="切换漫画模式"
+            aria-pressed={
+              props.settings.books?.[props.book.id]?.comic ??
+              (props.book.source.format === "cbz" ||
+                props.book.rendition?.layout === "pre-paginated")
+            }
+            onClick={() => {
+              window.dispatchEvent(new Event("bcr-reader-capture-progress"));
+              const books = props.settings.books ?? {};
+              const current =
+                books[props.book.id]?.comic ??
+                (props.book.source.format === "cbz" ||
+                  props.book.rendition?.layout === "pre-paginated");
+              reader.setSettings({
+                books: { ...books, [props.book.id]: { ...books[props.book.id], comic: !current } },
+              });
+            }}
+          >
+            <Columns2 className="reader-icon" />
+          </button>
+        )}
         <button
           type="button"
           className="reader-icon-button reader-sidebar-toggle"

@@ -24,6 +24,18 @@ export type ReaderFontFamily = "sans" | "serif" | "kai";
 export type ReaderLatinFontFamily = "sans" | "serif" | "mono";
 
 export interface ReaderSettings {
+  readonly books?: Readonly<
+    Record<
+      string,
+      {
+        readonly pdfZoom?: number;
+        readonly comic?: boolean;
+        readonly direction?: "ltr" | "rtl";
+        readonly fit?: "page" | "width";
+        readonly spread?: boolean;
+      }
+    >
+  >;
   readonly theme: ReaderTheme;
   readonly layout: ReaderLayout;
   readonly fontSize: number;
@@ -38,6 +50,40 @@ export interface ReaderSearchSession {
   readonly searchBookId: string | null;
   readonly searchOpen: boolean;
   readonly scope?: "book" | "library";
+}
+
+export function normalizeBookSettings(raw: unknown): NonNullable<ReaderSettings["books"]> {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw)
+      .slice(0, 5000)
+      .flatMap(([id, value]) => {
+        if (
+          !id ||
+          ["__proto__", "constructor", "prototype"].includes(id) ||
+          typeof value !== "object" ||
+          value === null
+        )
+          return [];
+        const source = value as Record<string, unknown>;
+        return [
+          [
+            id,
+            {
+              ...(typeof source.pdfZoom === "number" && Number.isFinite(source.pdfZoom)
+                ? { pdfZoom: Math.max(0.4, Math.min(3, source.pdfZoom)) }
+                : {}),
+              ...(typeof source.comic === "boolean" ? { comic: source.comic } : {}),
+              ...(source.direction === "ltr" || source.direction === "rtl"
+                ? { direction: source.direction }
+                : {}),
+              ...(source.fit === "page" || source.fit === "width" ? { fit: source.fit } : {}),
+              ...(typeof source.spread === "boolean" ? { spread: source.spread } : {}),
+            },
+          ],
+        ];
+      }),
+  );
 }
 
 /** One-shot request used to move from a search result into its exact context. */

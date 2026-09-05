@@ -30,6 +30,8 @@ import { PagedReadingView } from "./PagedReadingView";
 import { getReaderState, reader, useReader } from "./store";
 import { READER_CAPTURE_PROGRESS_EVENT } from "./useReaderRuntime";
 import { useReaderMobile } from "./useReaderMobile";
+import { ComicReadingView } from "./ComicReadingView";
+import { settleReaderLayout } from "./readingRestore";
 
 export function ReadingView(props: {
   runtime: ReaderRuntime;
@@ -37,6 +39,12 @@ export function ReadingView(props: {
   onToggleMobileChrome: () => void;
 }) {
   const layout = useReader((state) => state.settings.layout);
+  const comic = useReader((state) => state.settings.books?.[props.book.id]?.comic);
+  if (
+    comic ??
+    (props.book.source.format === "cbz" || props.book.rendition?.layout === "pre-paginated")
+  )
+    return <ComicReadingView book={props.book} />;
   return layout === "paged" && props.book.source.format !== "pdf" ? (
     <PagedReadingView book={props.book} onToggleMobileChrome={props.onToggleMobileChrome} />
   ) : (
@@ -65,9 +73,7 @@ function ContinuousReadingView(props: {
   const programmaticScrollRef = useRef(false);
   const layoutCalibrationRef = useRef(false);
   const programmaticScrollTargetRef = useRef<ReaderScrollPosition | null>(null);
-  const programmaticScrollTimerRef = useRef<number | null>(null);
-  const navigationRetryFrameRef = useRef<number | null>(null);
-  const navigationRetryTimerRef = useRef<number | null>(null);
+  const restoreCancelRef = useRef<(() => void) | null>(null);
   const pendingInternalLinkRef = useRef<ReaderInternalLinkTarget | null>(null);
   const handledNavigationSequenceRef = useRef(navigationSequence);
   const [contentReadyVersion, setContentReadyVersion] = useState(0);
@@ -152,23 +158,13 @@ function ContinuousReadingView(props: {
       userScrollRef.current = false;
       return;
     }
-    if (programmaticScrollTimerRef.current !== null) {
-      window.clearTimeout(programmaticScrollTimerRef.current);
-    }
-    if (navigationRetryFrameRef.current !== null) {
-      window.cancelAnimationFrame(navigationRetryFrameRef.current);
-    }
-    if (navigationRetryTimerRef.current !== null) {
-      window.clearTimeout(navigationRetryTimerRef.current);
-    }
+    restoreCancelRef.current?.();
     // A scroll captured before a new restore/jump must not commit after it.
     if (frameRef.current !== null) {
       window.cancelAnimationFrame(frameRef.current);
       frameRef.current = null;
     }
     let cancelled = false;
-    let attempt = 0;
-    const retryDelays = [0, 50, 140, 280, 520] as const;
     const attemptScroll = () => {
       if (cancelled) return;
       const container = containerRef.current;
@@ -218,30 +214,15 @@ function ContinuousReadingView(props: {
         top: container.scrollTop,
         left: container.scrollLeft,
       };
-      if (programmaticScrollTimerRef.current !== null)
-        window.clearTimeout(programmaticScrollTimerRef.current);
-      programmaticScrollTimerRef.current = window.setTimeout(() => {
-        programmaticScrollRef.current = false;
-        programmaticScrollTargetRef.current = null;
-        programmaticScrollTimerRef.current = null;
-      }, 720);
-      if (attempt >= retryDelays.length - 1) return;
-      attempt += 1;
-      navigationRetryTimerRef.current = window.setTimeout(() => {
-        navigationRetryFrameRef.current = window.requestAnimationFrame(attemptScroll);
-      }, retryDelays[attempt]);
     };
-    navigationRetryFrameRef.current = window.requestAnimationFrame(attemptScroll);
+    restoreCancelRef.current = settleReaderLayout(containerRef.current, attemptScroll, () => {
+      programmaticScrollRef.current = false;
+      programmaticScrollTargetRef.current = null;
+    });
     return () => {
       cancelled = true;
-      if (navigationRetryFrameRef.current !== null) {
-        window.cancelAnimationFrame(navigationRetryFrameRef.current);
-        navigationRetryFrameRef.current = null;
-      }
-      if (navigationRetryTimerRef.current !== null) {
-        window.clearTimeout(navigationRetryTimerRef.current);
-        navigationRetryTimerRef.current = null;
-      }
+      restoreCancelRef.current?.();
+      programmaticScrollRef.current = false;
     };
   }, [
     activeSectionId,
@@ -268,10 +249,7 @@ function ContinuousReadingView(props: {
       // finer-grained progress without being mistaken for a user gesture.
       programmaticScrollRef.current = false;
       programmaticScrollTargetRef.current = null;
-      if (programmaticScrollTimerRef.current !== null) {
-        window.clearTimeout(programmaticScrollTimerRef.current);
-        programmaticScrollTimerRef.current = null;
-      }
+      restoreCancelRef.current?.();
       // The first mark is the same first occurrence used by the core search
       // index. If a format cannot expose text marks (for example PDF), keep
       // the chapter/page context rather than leaving the user at the old
@@ -295,15 +273,7 @@ function ContinuousReadingView(props: {
       if (userScrollTimerRef.current !== null) {
         window.clearTimeout(userScrollTimerRef.current);
       }
-      if (programmaticScrollTimerRef.current !== null) {
-        window.clearTimeout(programmaticScrollTimerRef.current);
-      }
-      if (navigationRetryFrameRef.current !== null) {
-        window.cancelAnimationFrame(navigationRetryFrameRef.current);
-      }
-      if (navigationRetryTimerRef.current !== null) {
-        window.clearTimeout(navigationRetryTimerRef.current);
-      }
+      restoreCancelRef.current?.();
     },
     [],
   );
@@ -379,19 +349,8 @@ function ContinuousReadingView(props: {
             )
               return;
             programmaticScrollRef.current = false;
+            restoreCancelRef.current?.();
             programmaticScrollTargetRef.current = null;
-            if (programmaticScrollTimerRef.current !== null) {
-              window.clearTimeout(programmaticScrollTimerRef.current);
-              programmaticScrollTimerRef.current = null;
-            }
-            if (navigationRetryFrameRef.current !== null) {
-              window.cancelAnimationFrame(navigationRetryFrameRef.current);
-              navigationRetryFrameRef.current = null;
-            }
-            if (navigationRetryTimerRef.current !== null) {
-              window.clearTimeout(navigationRetryTimerRef.current);
-              navigationRetryTimerRef.current = null;
-            }
           }
           if (frameRef.current !== null) return;
           const flush = () => {
@@ -424,7 +383,7 @@ function ContinuousReadingView(props: {
           ) : (
             <PublicationSections
               book={props.book}
-              activeSectionId={searchQuery ? activeSectionId : null}
+              activeSectionId={activeSectionId}
               searchQuery={searchQuery}
             />
           )}
@@ -465,6 +424,7 @@ const PublicationSections = memo(function PublicationSections(props: {
     <SectionView
       key={section.id}
       section={section}
+      active={section.id === props.activeSectionId}
       searchQuery={section.id === props.activeSectionId ? props.searchQuery : ""}
     />
   ));

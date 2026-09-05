@@ -12,7 +12,14 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
   const hit = useReader((state) => state.searchHits[state.searchActiveIndex]);
   const searchBookId = useReader((state) => state.searchBookId);
   const navigationSequence = useReader((state) => state.navigationSequence);
-  const [zoom, setZoom] = useState(1);
+  const storedZoom = useReader((state) => state.settings.books?.[props.book.id]?.pdfZoom);
+  const zoom = Number.isFinite(storedZoom) ? clamp(storedZoom ?? 1, 0.4, 3) : 1;
+  const setZoom = (value: number) => {
+    const books = getReaderState().settings.books ?? {};
+    reader.setSettings({
+      books: { ...books, [props.book.id]: { ...books[props.book.id], pdfZoom: value } },
+    });
+  };
   const rootRef = useRef<HTMLDivElement>(null);
   const toolsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -35,7 +42,6 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
   useEffect(() => {
     if (!editingPage.current) setPageInput(String(currentPage));
   }, [currentPage]);
-  useEffect(() => setZoom(1), [props.book.id]);
   const goPage = (page: number) => {
     const section = props.book.sections[page - 1];
     if (section !== undefined) reader.openBook(props.book.id, section.id);

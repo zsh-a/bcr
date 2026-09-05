@@ -3,7 +3,6 @@ import { Effect } from "effect";
 import {
   normalizeAnnotation,
   normalizeBookmark,
-  normalizeLocator,
   type ReaderAnnotation,
   type ReaderBook,
   type ReaderBookmark,
@@ -11,6 +10,7 @@ import {
 } from "@bcr/reader-core";
 import {
   DEFAULT_READER_SETTINGS,
+  normalizeBookSettings,
   type ReaderSearchSession,
   type ReaderSettings,
   type ReaderState,
@@ -127,6 +127,7 @@ const persistedLocalLibrarySignatures = new WeakMap<ReaderRuntime, string>();
 const persistedMetadataLibrarySignatures = new WeakMap<ReaderRuntime, string>();
 export function persistBook(book: ReaderBook): PersistedBook {
   return {
+    ...(book.rendition === undefined ? {} : { rendition: book.rendition }),
     id: book.id,
     title: book.title,
     ...(book.author === undefined ? {} : { author: book.author }),
@@ -397,22 +398,9 @@ export function restoredBookmarks(
       const locatorValue = value["locator"] as Record<string, unknown>;
       if (typeof locatorValue["sectionId"] !== "string") return [];
       seen.add(value["id"]);
-      const kind =
-        locatorValue["kind"] === "page" || locatorValue["kind"] === "image"
-          ? locatorValue["kind"]
-          : "section";
-      const textAnchor = textAnchorValue(locatorValue["textAnchor"]);
-      const locator = normalizeLocator(book, {
-        kind,
-        sectionId: locatorValue["sectionId"],
-        progression:
-          typeof locatorValue["progression"] === "number" ? locatorValue["progression"] : 0,
-        ...(typeof locatorValue["pageNumber"] === "number"
-          ? { pageNumber: locatorValue["pageNumber"] }
-          : {}),
-        ...(typeof locatorValue["href"] === "string" ? { href: locatorValue["href"] } : {}),
-        ...(textAnchor === undefined ? {} : { textAnchor }),
-      });
+      const locator = normalizeReaderProgress([book], { [book.id]: { locator: locatorValue } })[
+        book.id
+      ]!.locator;
       return [
         normalizeBookmark(book, {
           id: value["id"],
@@ -456,22 +444,9 @@ export function restoredAnnotations(
       const locatorValue = value["locator"] as Record<string, unknown>;
       if (typeof locatorValue["sectionId"] !== "string") return [];
       seen.add(value["id"]);
-      const kind =
-        locatorValue["kind"] === "page" || locatorValue["kind"] === "image"
-          ? locatorValue["kind"]
-          : "section";
-      const textAnchor = textAnchorValue(locatorValue["textAnchor"]);
-      const locator = normalizeLocator(book, {
-        kind,
-        sectionId: locatorValue["sectionId"],
-        progression:
-          typeof locatorValue["progression"] === "number" ? locatorValue["progression"] : 0,
-        ...(typeof locatorValue["pageNumber"] === "number"
-          ? { pageNumber: locatorValue["pageNumber"] }
-          : {}),
-        ...(typeof locatorValue["href"] === "string" ? { href: locatorValue["href"] } : {}),
-        ...(textAnchor === undefined ? {} : { textAnchor }),
-      });
+      const locator = normalizeReaderProgress([book], { [book.id]: { locator: locatorValue } })[
+        book.id
+      ]!.locator;
       return [
         normalizeAnnotation(book, {
           id: value["id"],
@@ -488,7 +463,7 @@ export function restoredAnnotations(
   return restored;
 }
 
-function restoredSearchSession(
+export function restoredSearchSession(
   books: ReadonlyArray<ReaderBook>,
   raw: unknown,
 ): ReaderSearchSession {
@@ -535,13 +510,9 @@ export function restoreNavigationHistory(
       return [
         {
           bookId: book.id,
-          locator: normalizeLocator(book, {
-            kind:
-              fields["kind"] === "page" || fields["kind"] === "image" ? fields["kind"] : "section",
-            sectionId: fields["sectionId"],
-            progression: fields["progression"],
-            ...(anchor === undefined ? {} : { textAnchor: anchor }),
-          }),
+          locator: normalizeReaderProgress([book], {
+            [book.id]: { locator: { ...fields, textAnchor: anchor } },
+          })[book.id]!.locator,
         },
       ];
     });
@@ -729,7 +700,11 @@ export async function restoreReader(
       navigationHistory: restoreNavigationHistory(books, session?.navigationHistory),
       activeBookId: requestedActiveBookId ?? books[0]?.id ?? null,
       progressByBook: normalizeReaderProgress(books, source?.progressByBook),
-      settings: { ...DEFAULT_READER_SETTINGS, ...source?.settings },
+      settings: {
+        ...DEFAULT_READER_SETTINGS,
+        ...source?.settings,
+        books: normalizeBookSettings(source?.settings?.books),
+      },
       bookmarksByBook: restoredBookmarks(books, source?.bookmarksByBook),
       annotationsByBook: restoredAnnotations(books, source?.annotationsByBook),
       searchSession: restoredSearchSession(books, source?.searchSession),

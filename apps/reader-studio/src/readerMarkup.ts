@@ -196,12 +196,14 @@ export function sanitizeHtml(rawHtml: string): { html: string; text: string; tit
   const parser = new DOMParser();
   const document = parser.parseFromString(rawHtml, "text/html");
   for (const element of document.querySelectorAll(
-    "script, style, iframe, object, embed, form, link",
+    "script, style, iframe, object, embed, form, link, foreignObject, animate, set",
   )) {
     element.remove();
   }
   for (const element of document.querySelectorAll("*")) {
-    for (const attribute of element.attributes) {
+    // Snapshot the live NamedNodeMap before removing unsafe attributes.
+    const attributes = Array.from(element.attributes);
+    for (const attribute of attributes) {
       const name = attribute.name.toLocaleLowerCase();
       const value = attribute.value;
       if (name.startsWith("on")) {
@@ -210,7 +212,9 @@ export function sanitizeHtml(rawHtml: string): { html: string; text: string; tit
         const safe = sanitizeInlineStyle(value);
         if (safe === undefined) element.removeAttribute(attribute.name);
         else element.setAttribute(attribute.name, safe);
-      } else if (name === "href" || name === "src" || name === "poster") {
+      } else if (name === "srcset") {
+        element.removeAttribute(attribute.name);
+      } else if (name === "href" || name === "xlink:href" || name === "src" || name === "poster") {
         element.setAttribute(attribute.name, safeUrl(value));
       }
     }

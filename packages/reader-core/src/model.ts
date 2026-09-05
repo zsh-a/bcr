@@ -64,6 +64,13 @@ export interface ReaderTocItem {
 }
 
 export interface ReaderBook {
+  readonly rendition?:
+    | {
+        readonly layout: "reflowable" | "pre-paginated";
+        readonly direction: "ltr" | "rtl";
+        readonly spread: "auto" | "none" | "both";
+      }
+    | undefined;
   readonly id: string;
   readonly title: string;
   readonly author?: string | undefined;

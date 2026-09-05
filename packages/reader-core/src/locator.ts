@@ -207,12 +207,44 @@ export function normalizeLocator(
 }
 
 export function percentageForLocator(book: ReaderBook, locator: ReaderLocator): number {
-  const sectionIndex = Math.max(
-    0,
-    book.sections.findIndex((section) => section.id === locator.sectionId),
+  const index = readingWeights(book);
+  const sectionIndex = index.sections.get(locator.sectionId) ?? 0;
+  return clampProgression(
+    ((index.offsets[sectionIndex] ?? 0) +
+      (index.weights[sectionIndex] ?? 0) * clampProgression(locator.progression)) /
+      Math.max(1, index.total),
   );
-  const denominator = Math.max(1, book.sections.length - 1);
-  return clampProgression((sectionIndex + clampProgression(locator.progression)) / denominator);
+}
+
+const weightCache = new WeakMap<
+  ReaderBook,
+  { weights: number[]; offsets: number[]; sections: Map<string, number>; total: number }
+>();
+function readingWeights(book: ReaderBook) {
+  const cached = weightCache.get(book);
+  if (cached) return cached;
+  const weights = book.sections.map(sectionReadingWeight);
+  let total = 0;
+  const offsets = weights.map((weight) => {
+    const offset = total;
+    total += weight;
+    return offset;
+  });
+  const index = {
+    weights,
+    offsets,
+    sections: new Map(book.sections.map((section, index) => [section.id, index])),
+    total,
+  };
+  weightCache.set(book, index);
+  return index;
+}
+
+/** Image pages and text use content weights, never the number of chapter boundaries. */
+export function sectionReadingWeight(section: ReaderSection): number {
+  if (section.kind === "pdf-page" || section.kind === "image") return 1000;
+  const images = section.html?.match(/<(?:img|svg)\b/giu)?.length ?? 0;
+  return Math.max(1, images * 1000 + section.text.trim().length);
 }
 
 export function progressForLocator(
@@ -249,9 +281,13 @@ export function normalizeAnnotation(
 
 export function locatorAtPercentage(book: ReaderBook, percentage: number): ReaderLocator {
   if (book.sections.length === 0) return firstLocator(book);
-  const position = clampProgression(percentage) * Math.max(1, book.sections.length - 1);
-  const index = Math.min(book.sections.length - 1, Math.floor(position));
-  const section = book.sections[index] ?? book.sections[0];
-  if (section === undefined) return firstLocator(book);
-  return createLocator(section, position - index);
+  const weights = book.sections.map(sectionReadingWeight);
+  let remaining = clampProgression(percentage) * weights.reduce((sum, weight) => sum + weight, 0);
+  for (const [index, section] of book.sections.entries()) {
+    const weight = weights[index] ?? 1;
+    if (remaining < weight || index === book.sections.length - 1)
+      return createLocator(section, remaining / weight);
+    remaining -= weight;
+  }
+  return firstLocator(book);
 }

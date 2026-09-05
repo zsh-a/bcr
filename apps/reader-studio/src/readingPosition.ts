@@ -1,5 +1,6 @@
 import {
   createLocator,
+  percentageForLocator,
   createTextAnchor,
   createTextLocator,
   normalizeSearchQuery,
@@ -501,12 +502,7 @@ export function readerLocatorAtScroll(
   if (imageLocator !== undefined)
     return {
       locator: imageLocator,
-      percentage: clamp(
-        ((sectionIndexMap(book).get(imageLocator.sectionId) ?? 0) + imageLocator.progression) /
-          Math.max(1, book.sections.length - 1),
-        0,
-        1,
-      ),
+      percentage: percentageForLocator(book, imageLocator),
     };
   const probePoints = [
     [probeX, probeTop],
@@ -517,14 +513,9 @@ export function readerLocatorAtScroll(
   for (const [x, y] of probePoints) {
     const textPosition = readerTextLocatorAtPoint(book, container, x, y);
     if (textPosition === undefined) continue;
-    const denominator = Math.max(1, book.sections.length - 1);
     return {
       locator: textPosition.locator,
-      percentage: clamp(
-        (textPosition.sectionIndex + textPosition.locator.progression) / denominator,
-        0,
-        1,
-      ),
+      percentage: percentageForLocator(book, textPosition.locator),
     };
   }
   const hit = document
@@ -541,9 +532,8 @@ export function readerLocatorAtScroll(
   const section = book.sections[selectedIndex];
   if (section === undefined || selectedRect === undefined) return undefined;
   const progression = clamp((probeTop - selectedRect.top) / Math.max(1, selectedRect.height), 0, 1);
-  const denominator = Math.max(1, book.sections.length - 1);
   return {
     locator: createLocator(section, progression),
-    percentage: clamp((selectedIndex + progression) / denominator, 0, 1),
+    percentage: percentageForLocator(book, createLocator(section, progression)),
   };
 }

@@ -20,6 +20,7 @@ import { resolveReaderInternalLink, type ReaderInternalLinkTarget } from "./navi
 import { READER_CAPTURE_PROGRESS_EVENT } from "./useReaderRuntime";
 import { pageAtOffset, pageCount } from "./pagination";
 import { useReaderMobile } from "./useReaderMobile";
+import { settleReaderLayout } from "./readingRestore";
 
 /** One chapter in the DOM; one viewport per column; navigation and progress are separate. */
 export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome: () => void }) {
@@ -59,7 +60,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
     const viewport = viewportRef.current;
     const content = contentRef.current;
     if (viewport === null || content === null || section === undefined) return;
-    let frame = 0;
+    let cancelRestore = () => {};
     let disposed = false;
     const calibrate = () => {
       if (disposed) return;
@@ -83,8 +84,8 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
       }
       const next = Math.max(0, Math.min(count - 1, target));
       // Snap markers are committed on the next frame before applying the destination.
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
+      cancelRestore();
+      cancelRestore = settleReaderLayout(viewport, () => {
         viewport.scrollTo({ left: next * width, top: 0, behavior: "instant" });
         setPage(next);
         if (pendingLink.current !== null || reveal !== null) capture();
@@ -100,7 +101,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
     return () => {
       disposed = true;
       observer.disconnect();
-      cancelAnimationFrame(frame);
+      cancelRestore();
       content.removeEventListener("load", calibrate, true);
     };
   }, [navigation, props.book, section, settings, query, reveal, capture]);
@@ -185,7 +186,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
         }}
       >
         <div ref={contentRef} className="reader-page-content">
-          {section && <SectionView section={section} searchQuery={query} />}
+          {section && <SectionView section={section} searchQuery={query} active />}
         </div>
         <div className="reader-page-stops" aria-hidden="true">
           {Array.from({ length: pages }, (_, index) => (

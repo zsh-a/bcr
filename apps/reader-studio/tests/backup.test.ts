@@ -9,6 +9,7 @@ import {
   decodeReaderBackup,
   inspectReaderBackup,
   prepareReaderRestore,
+  planReaderBackup,
 } from "../src/readerBackup";
 import { createDemoBook, DEFAULT_READER_SETTINGS } from "../src/model";
 import { getReaderState } from "../src/store";
@@ -46,6 +47,39 @@ async function runtime(): Promise<ReaderRuntime> {
 }
 
 describe("Reader portable backup", () => {
+  it("plans bounded independent volumes without omitting selected books", () => {
+    const books = [4, 6, 7].map((size, index) => ({
+      ...book,
+      id: String(index),
+      source: { ...book.source, size },
+    }));
+    expect(planReaderBackup(books, 10).map((part) => part.map((item) => item.id))).toEqual([
+      ["0", "1"],
+      ["2"],
+    ]);
+    expect(() => planReaderBackup(books, 5)).toThrow("超过单卷");
+    expect(planReaderBackup([])).toEqual([]);
+  });
+  it("retains image anchors in portable navigation history", () => {
+    const entry = {
+      bookId: book.id,
+      locator: {
+        kind: "section",
+        sectionId: book.sections[0]!.id,
+        progression: 0.4,
+        imageAnchor: { index: 2, x: 0.5, y: 0.3 },
+      },
+    };
+    const result = decodeReaderBackup({
+      ...manifest(),
+      navigationHistory: { back: [entry], forward: [] },
+      searchSession: { query: "query", searchBookId: book.id, searchOpen: true, scope: "book" },
+    });
+    expect(result.navigationHistory?.back[0]?.locator.imageAnchor).toEqual(
+      entry.locator.imageAnchor,
+    );
+    expect(result.searchSession?.query).toBe("query");
+  });
   it("keeps nested publication navigation in the validated projection", () => {
     const toc = [
       {

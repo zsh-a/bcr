@@ -41,6 +41,24 @@ const book: ReaderBook = {
 };
 
 describe("reader-core", () => {
+  it("reserves completion for the end and weights unequal chapters", () => {
+    const weighted = {
+      ...book,
+      sections: [
+        { ...book.sections[0]!, text: "x".repeat(100) },
+        { ...book.sections[1]!, text: "x".repeat(900) },
+      ],
+    };
+    expect(percentageForLocator(weighted, createLocator(weighted.sections[1]!, 0))).toBeCloseTo(
+      0.1,
+    );
+    expect(percentageForLocator(weighted, createLocator(weighted.sections[1]!, 1))).toBe(1);
+    expect(locatorAtPercentage(weighted, 1).progression).toBe(1);
+    for (const fraction of [0, 0.05, 0.1, 0.2, 0.99, 1])
+      expect(percentageForLocator(weighted, locatorAtPercentage(weighted, fraction))).toBeCloseTo(
+        fraction,
+      );
+  });
   it("normalizes CJK and whitespace search input", () => {
     expect(normalizeSearchQuery("  阅读器　 让 内容 ")).toBe("阅读器让内容");
   });
@@ -107,8 +125,12 @@ describe("reader-core", () => {
 
   it("round-trips locators across section progress", () => {
     const locator = createLocator(book.sections[1]!, 0.4);
-    expect(percentageForLocator(book, locator)).toBeCloseTo(0.7);
-    const restored = locatorAtPercentage(book, 0.7);
+    const percentage = percentageForLocator(book, locator);
+    expect(percentage).toBeCloseTo(
+      (book.sections[0]!.text.length + book.sections[1]!.text.length * 0.4) /
+        book.sections.reduce((sum, section) => sum + section.text.length, 0),
+    );
+    const restored = locatorAtPercentage(book, percentage);
     expect(restored.sectionId).toBe("b");
     expect(restored.progression).toBeCloseTo(0.4);
   });
