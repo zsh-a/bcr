@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { SearchDocument } from "@bcr/core";
 import {
   consumeDocumentHandoff,
@@ -37,6 +37,7 @@ import {
   useReaderSearch,
 } from "./useReaderRuntime";
 import "./styles.css";
+import "./reading-layout.css";
 
 interface ReaderRouteSearch {
   readonly book?: string;
@@ -59,14 +60,11 @@ export function App() {
   const pwaInstall = useReaderPwaInstall();
   const pwaUpdate = useReaderPwaUpdate(runtime);
   const routeSearch = parseReaderRouteSearch(useLocationSearch());
-  useDebouncedPersist(runtime);
-  useReaderSearch(runtime);
   const status = useReader((state) => state.status);
   const stateError = useReader((state) => state.error);
   const active = useReader((state) => activeBook(state));
   const settings = useReader((state) => state.settings);
   const library = useReader((state) => state.library);
-  const progressByBook = useReader((state) => state.progressByBook);
   const searchOpen = useReader((state) => state.searchOpen);
   const sidebarOpen = useReader((state) => state.sidebarOpen);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -109,7 +107,6 @@ export function App() {
     if (search === undefined || runtime === null || status !== "ready") return;
     const records: SearchDocument[] = [];
     for (const book of library) {
-      const progress = progressByBook[book.id]?.percentage ?? 0;
       const bookBody = [book.author ?? "", book.language ?? "", ...book.tags]
         .filter(Boolean)
         .join(" ");
@@ -118,7 +115,7 @@ export function App() {
         source: "reader",
         kind: "reader-book",
         title: book.title,
-        subtitle: `${formatBadge(book.source.format)} · ${Math.round(progress * 100)}% read${book.author === undefined ? "" : ` · ${book.author}`}`,
+        subtitle: `${formatBadge(book.source.format)}${book.author === undefined ? "" : ` · ${book.author}`}`,
         ...(bookBody.length === 0 ? {} : { body: bookBody }),
         tags: ["reader", book.source.format, ...book.tags],
         route: `/reader?book=${encodeURIComponent(book.id)}`,
@@ -139,7 +136,7 @@ export function App() {
       }
     }
     search.replaceSource("reader", records);
-  }, [hostServices?.search, runtime, status, library, progressByBook]);
+  }, [hostServices?.search, runtime, status, library]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -379,6 +376,7 @@ export function App() {
     <div
       className={`reader-studio reader-theme-${settings.theme} ${mobileChromeVisible ? "mobile-chrome-visible" : "mobile-chrome-hidden"}`}
     >
+      <ReaderEffects runtime={runtime} />
       <a className="reader-skip-link" href="#reader-content">
         跳到正文
       </a>
@@ -413,6 +411,8 @@ export function App() {
         />
       )}
       <ReaderWorkspace
+        onInstall={() => void installReader()}
+        showInstall={!pwaInstall.isInstalled}
         runtime={runtime}
         onImport={(files) => void importFiles(files)}
         onOpenDocument={handoffDocument}
@@ -423,3 +423,11 @@ export function App() {
     </div>
   );
 }
+
+const ReaderEffects = memo(function ReaderEffects(props: {
+  runtime: Parameters<typeof useDebouncedPersist>[0];
+}) {
+  useDebouncedPersist(props.runtime);
+  useReaderSearch(props.runtime);
+  return null;
+});

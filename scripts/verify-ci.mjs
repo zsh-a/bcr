@@ -103,6 +103,7 @@ await withServer({
     "scripts/verify-document-studio.mjs",
     "scripts/verify-data-studio.mjs",
     "scripts/verify-reader-studio.mjs",
+    "scripts/verify-reader-mobile.mjs",
     "scripts/verify-storage-cleanup.mjs",
     "scripts/verify-global-search.mjs",
     "scripts/verify-accessibility.mjs",

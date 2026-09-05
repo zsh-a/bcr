@@ -14,6 +14,7 @@ import {
   prepareReaderDocumentHandoff,
   persistReader,
   restoreReader,
+  restoreReaderBooks,
   type ReaderRuntime,
 } from "../src/runtime";
 import { createDemoBook, DEFAULT_READER_SETTINGS, type ReaderState } from "../src/model";
@@ -96,6 +97,46 @@ async function withLocalStorage<T>(run: (values: Map<string, string>) => Promise
 }
 
 describe("reader durable Document handoff", () => {
+  it("restores in requested priority order and publishes each book before the batch completes", async () => {
+    await withLocalStorage(async () => {
+      const store = new MemoryStore();
+      const artifacts = await makeArtifacts(store);
+      const runtime: ReaderRuntime = {
+        binary: store,
+        artifacts,
+        meta: undefined,
+        ftsReady: false,
+        indexSession: undefined,
+        parseSession: undefined,
+        parserMode: "main",
+      };
+      const first = {
+        ...createDemoBook(),
+        id: "first",
+        sections: createDemoBook().sections.map((section) => ({
+          ...section,
+          pageAspectRatio: 0.75,
+        })),
+      };
+      const active = { ...createDemoBook(), id: "active" };
+      await persistReader(runtime, readyReaderState([first, active], active.id));
+      const published: string[] = [];
+      let complete = false;
+      const result = await restoreReaderBooks(
+        runtime,
+        [active.id, first.id, active.id],
+        undefined,
+        (book) => {
+          expect(complete).toBe(false);
+          published.push(book.id);
+        },
+      );
+      complete = true;
+      expect(published).toEqual(["active", "first"]);
+      expect(result.books.map((book) => book.id)).toEqual(published);
+      expect(result.books[1]?.sections[0]?.pageAspectRatio).toBe(0.75);
+    });
+  });
   it("reports skipped binary books when a source Artifact is missing", async () => {
     const store = new MemoryStore();
     const artifacts = await makeArtifacts(store);

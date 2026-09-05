@@ -1,9 +1,10 @@
 import { CircleAlert } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { ReaderBook, ReaderSection } from "@bcr/reader-core";
 import { clamp } from "./readerPresentation";
 import { useReader } from "./store";
+import { createRenderQueue } from "./renderQueue";
 
 export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void }) {
   const activeSectionId = useReader((state) => state.activeSectionId);
@@ -11,11 +12,13 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const renderQueue = useMemo(() => createRenderQueue(), [props.book.id]);
   const sourceUrl = props.book.source.objectUrl;
   const sourcePending = sourceUrl === undefined && props.book.source.ref !== undefined;
   useEffect(() => {
     let cancelled = false;
     let opened: PDFDocumentProxy | undefined;
+    let loadingTask: { destroy: () => Promise<void> } | undefined;
     setPdfDocument(null);
     setLoading(true);
     setError(null);
@@ -35,7 +38,10 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
           "pdfjs-dist/build/pdf.worker.mjs",
           import.meta.url,
         ).toString();
-        const document = await pdfjs.getDocument(sourceUrl).promise;
+        if (cancelled) return;
+        const task = pdfjs.getDocument(sourceUrl);
+        loadingTask = task;
+        const document = await task.promise;
         opened = document;
         if (cancelled) {
           await document.destroy();
@@ -54,6 +60,7 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
     return () => {
       cancelled = true;
       if (opened !== undefined) void opened.destroy();
+      else if (loadingTask !== undefined) void loadingTask.destroy();
     };
   }, [sourcePending, sourceUrl, loadAttempt]);
 
@@ -89,6 +96,7 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
               document={pdfDocument}
               section={section}
               active={section.id === activeSectionId}
+              renderQueue={renderQueue}
             />
           ))}
         </div>
@@ -99,10 +107,11 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
 
 type PdfPageStatus = "idle" | "loading" | "ready" | "error";
 
-function PdfPageView(props: {
+const PdfPageView = memo(function PdfPageView(props: {
   document: PDFDocumentProxy;
   section: ReaderSection;
   active: boolean;
+  renderQueue: ReturnType<typeof createRenderQueue>;
 }) {
   const pageNumber = props.section.pageNumber ?? props.section.order + 1;
   const pageShellRef = useRef<HTMLDivElement>(null);
@@ -112,10 +121,6 @@ function PdfPageView(props: {
   const [status, setStatus] = useState<PdfPageStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [renderAttempt, setRenderAttempt] = useState(0);
-
-  useEffect(() => {
-    if (props.active) setNearViewport(true);
-  }, [props.active]);
 
   useEffect(() => {
     const element = pageShellRef.current;
@@ -136,7 +141,7 @@ function PdfPageView(props: {
 
   useEffect(() => {
     const element = pageShellRef.current;
-    if (element === null || nearViewport) return;
+    if (element === null) return;
     if (typeof IntersectionObserver === "undefined") {
       setNearViewport(true);
       return;
@@ -144,22 +149,25 @@ function PdfPageView(props: {
     const root = element.closest<HTMLElement>(".reader-reading-scroll");
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setNearViewport(true);
-          observer.disconnect();
-        }
+        setNearViewport(entries.some((entry) => entry.isIntersecting));
       },
-      { root, rootMargin: "900px 0px" },
+      { root, rootMargin: "600px 0px" },
     );
     observer.observe(element);
     return () => observer.disconnect();
-  }, [nearViewport]);
+  }, []);
 
   useEffect(() => {
-    if (!nearViewport || contentWidth <= 0) return;
     const canvas = canvasRef.current;
     if (canvas === null) return;
+    if (!nearViewport || contentWidth <= 0) {
+      canvas.width = 0;
+      canvas.height = 0;
+      setStatus("idle");
+      return;
+    }
     let cancelled = false;
+    const controller = new AbortController();
     let renderTask: { cancel: () => void; promise: Promise<unknown> } | undefined;
     let page: { cleanup: () => void } | undefined;
     setStatus("loading");
@@ -173,7 +181,7 @@ function PdfPageView(props: {
           return;
         }
         const baseViewport = loadedPage.getViewport({ scale: 1 });
-        const targetWidth = clamp(contentWidth - 24, 320, 840);
+        const targetWidth = Math.max(1, Math.min(contentWidth - 2, 840));
         const deviceScale = clamp(window.devicePixelRatio || 1, 1, 2);
         const cssScale = targetWidth / baseViewport.width;
         const viewport = loadedPage.getViewport({ scale: cssScale * deviceScale });
@@ -194,13 +202,16 @@ function PdfPageView(props: {
         page?.cleanup();
       }
     };
-    void render();
+    void props.renderQueue(controller.signal, render).catch(() => undefined);
     return () => {
       cancelled = true;
+      controller.abort();
       renderTask?.cancel();
       page?.cleanup();
+      canvas.width = 0;
+      canvas.height = 0;
     };
-  }, [contentWidth, nearViewport, pageNumber, props.document, renderAttempt]);
+  }, [contentWidth, nearViewport, pageNumber, props.document, props.renderQueue, renderAttempt]);
 
   return (
     <section
@@ -214,7 +225,10 @@ function PdfPageView(props: {
         <span>PAGE {String(pageNumber).padStart(3, "0")}</span>
         {props.active && <strong>当前页</strong>}
       </div>
-      <div className={`reader-pdf-canvas-shell is-${status}`}>
+      <div
+        className={`reader-pdf-canvas-shell is-${status}`}
+        style={{ aspectRatio: props.section.pageAspectRatio ?? 1 / Math.SQRT2 }}
+      >
         {status === "idle" && <span className="reader-pdf-placeholder">滚动到此处加载页面</span>}
         {status === "loading" && <span className="reader-media-loading">正在渲染页面…</span>}
         {status === "error" && (
@@ -234,4 +248,4 @@ function PdfPageView(props: {
       </div>
     </section>
   );
-}
+});

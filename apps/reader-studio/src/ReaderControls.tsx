@@ -16,8 +16,10 @@ import {
   Settings2,
   Type,
   X,
+  Search,
+  Download,
 } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { sameLocator, type ReaderBook, type ReaderLocator } from "@bcr/reader-core";
 import {
   type ReaderFontFamily,
@@ -33,6 +35,7 @@ import {
 import { clamp, percent, themeIcon, themeLabel } from "./readerPresentation";
 import { reader, useReader } from "./store";
 import type { ReaderFullscreenState } from "./useReaderPlatform";
+import { ReaderSheet } from "./ReaderSheet";
 
 export function ReaderToolbar(props: {
   book: ReaderBook;
@@ -41,6 +44,8 @@ export function ReaderToolbar(props: {
   onOpenDocument: () => void;
   documentHandoffBusy: boolean;
   fullscreen: ReaderFullscreenState;
+  onInstall: () => void;
+  showInstall: boolean;
 }) {
   const sidebarOpen = useReader((state) => state.sidebarOpen);
   const activeSectionId = useReader((state) => state.activeSectionId);
@@ -125,7 +130,7 @@ export function ReaderToolbar(props: {
           <Bookmark className="reader-icon" /> {percent(progress)}
         </span>
         <ThemeMenu settings={props.settings} />
-        <LayoutMenu settings={props.settings} />
+        <LayoutMenu settings={props.settings} fixedLayout={props.book.source.format === "pdf"} />
         <FontFamilyMenu settings={props.settings} />
         <FontSizeMenu settings={props.settings} />
         <button
@@ -157,6 +162,19 @@ export function ReaderToolbar(props: {
         <button
           type="button"
           className="reader-mobile-toolbar-button"
+          aria-label="搜索书库"
+          onClick={() => {
+            reader.setSearchOpen(true);
+            requestAnimationFrame(() =>
+              document.querySelector<HTMLInputElement>(".reader-search input")?.focus(),
+            );
+          }}
+        >
+          <Search className="reader-icon" />
+        </button>
+        <button
+          type="button"
+          className="reader-mobile-toolbar-button reader-mobile-note-action"
           onClick={props.onAddAnnotation}
           aria-label="添加阅读笔记"
           title="添加阅读笔记"
@@ -186,6 +204,13 @@ export function ReaderToolbar(props: {
         </button>
       </div>
       <ReaderSettingsSheet
+        fixedLayout={props.book.source.format === "pdf"}
+        onAddAnnotation={() => {
+          setSettingsOpen(false);
+          props.onAddAnnotation();
+        }}
+        onInstall={props.onInstall}
+        showInstall={props.showInstall}
         id="reader-mobile-settings"
         open={settingsOpen}
         settings={props.settings}
@@ -199,6 +224,10 @@ export function ReaderToolbar(props: {
 }
 
 function ReaderSettingsSheet(props: {
+  fixedLayout: boolean;
+  onAddAnnotation: () => void;
+  onInstall: () => void;
+  showInstall: boolean;
   id: string;
   open: boolean;
   settings: ReaderSettings;
@@ -207,31 +236,17 @@ function ReaderSettingsSheet(props: {
   documentHandoffBusy: boolean;
   fullscreen: ReaderFullscreenState;
 }) {
-  useEffect(() => {
-    if (!props.open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      props.onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [props.onClose, props.open]);
-
   if (!props.open) return null;
   const themes: ReadonlyArray<ReaderTheme> = ["paper", "sage", "night"];
   const layouts: ReadonlyArray<ReaderSettings["layout"]> = ["scroll", "paged"];
   return (
-    <div className="reader-mobile-sheet-layer" onClick={props.onClose} role="presentation">
+    <ReaderSheet onClose={props.onClose} labelId="reader-mobile-settings-title">
       <section
         id={props.id}
         className="reader-mobile-sheet reader-settings-sheet"
-        role="dialog"
-        aria-modal="true"
         aria-labelledby="reader-mobile-settings-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="reader-mobile-sheet-handle" aria-hidden="true" />
         <div className="reader-mobile-sheet-heading">
           <div>
             <span className="reader-eyebrow">VIEW MENU</span>
@@ -247,6 +262,25 @@ function ReaderSettingsSheet(props: {
           </button>
         </div>
         <div className="reader-mobile-settings-scroll">
+          <section className="reader-mobile-setting-group" aria-label="阅读操作">
+            <button type="button" className="reader-button" onClick={props.onAddAnnotation}>
+              <MessageSquarePlus className="reader-icon" />
+              添加阅读笔记
+            </button>
+            {props.showInstall && (
+              <button
+                type="button"
+                className="reader-button"
+                onClick={() => {
+                  props.onClose();
+                  props.onInstall();
+                }}
+              >
+                <Download className="reader-icon" />
+                安装到主屏幕
+              </button>
+            )}
+          </section>
           <section className="reader-mobile-setting-group" aria-labelledby="reader-theme-label">
             <span id="reader-theme-label" className="reader-mobile-setting-label">
               阅读主题
@@ -280,6 +314,10 @@ function ReaderSettingsSheet(props: {
                 <button
                   type="button"
                   key={layout}
+                  disabled={props.fixedLayout && layout === "paged"}
+                  title={
+                    props.fixedLayout && layout === "paged" ? "PDF 使用连续页面阅读" : undefined
+                  }
                   className={`reader-mobile-setting-option ${props.settings.layout === layout ? "is-active" : ""}`}
                   onClick={() => reader.setSettings({ layout })}
                   aria-pressed={props.settings.layout === layout}
@@ -451,7 +489,7 @@ function ReaderSettingsSheet(props: {
           </section>
         </div>
       </section>
-    </div>
+    </ReaderSheet>
   );
 }
 
@@ -463,45 +501,47 @@ export function AnnotationComposer(props: {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <form className="reader-annotation-composer" onSubmit={props.onSubmit}>
-      <div className="reader-annotation-composer-heading">
-        <div>
-          <span className="reader-eyebrow">NEW NOTE</span>
-          <strong>把这一刻留下来</strong>
+    <ReaderSheet onClose={props.onCancel} labelId="reader-note-title">
+      <form className="reader-annotation-composer reader-note-sheet" onSubmit={props.onSubmit}>
+        <div className="reader-annotation-composer-heading">
+          <div>
+            <span className="reader-eyebrow">NEW NOTE</span>
+            <strong id="reader-note-title">把这一刻留下来</strong>
+          </div>
+          <button
+            type="button"
+            className="reader-icon-button"
+            aria-label="取消添加笔记"
+            onClick={props.onCancel}
+          >
+            <X className="reader-icon" />
+          </button>
         </div>
-        <button
-          type="button"
-          className="reader-icon-button"
-          aria-label="取消添加笔记"
-          onClick={props.onCancel}
-        >
-          <X className="reader-icon" />
-        </button>
-      </div>
-      <textarea
-        value={props.value}
-        onChange={(event) => props.onChange(event.target.value)}
-        placeholder="写下你的想法、疑问或下一步…"
-        maxLength={2_000}
-        autoFocus
-        aria-label="笔记内容"
-      />
-      <div className="reader-annotation-composer-footer">
-        <span>
-          {props.anchor?.textAnchor?.exact === undefined
-            ? "自动锚定当前位置"
-            : `已锚定选段「${props.anchor.textAnchor.exact.slice(0, 28)}${props.anchor.textAnchor.exact.length > 28 ? "…" : ""}」`}{" "}
-          · {props.value.length}/2000
-        </span>
-        <button
-          type="submit"
-          className="reader-button reader-button-primary"
-          disabled={!props.value.trim()}
-        >
-          保存笔记
-        </button>
-      </div>
-    </form>
+        <textarea
+          value={props.value}
+          onChange={(event) => props.onChange(event.target.value)}
+          placeholder="写下你的想法、疑问或下一步…"
+          maxLength={2_000}
+          autoFocus
+          aria-label="笔记内容"
+        />
+        <div className="reader-annotation-composer-footer">
+          <span>
+            {props.anchor?.textAnchor?.exact === undefined
+              ? "自动锚定当前位置"
+              : `已锚定选段「${props.anchor.textAnchor.exact.slice(0, 28)}${props.anchor.textAnchor.exact.length > 28 ? "…" : ""}」`}{" "}
+            · {props.value.length}/2000
+          </span>
+          <button
+            type="submit"
+            className="reader-button reader-button-primary"
+            disabled={!props.value.trim()}
+          >
+            保存笔记
+          </button>
+        </div>
+      </form>
+    </ReaderSheet>
   );
 }
 
@@ -525,7 +565,7 @@ function ThemeMenu(props: { settings: ReaderSettings }) {
   );
 }
 
-function LayoutMenu(props: { settings: ReaderSettings }) {
+function LayoutMenu(props: { settings: ReaderSettings; fixedLayout: boolean }) {
   return (
     <div className="reader-segmented" role="group" aria-label="阅读布局">
       <button
@@ -540,6 +580,7 @@ function LayoutMenu(props: { settings: ReaderSettings }) {
       <button
         type="button"
         className={props.settings.layout === "paged" ? "is-active" : ""}
+        disabled={props.fixedLayout}
         onClick={() => reader.setSettings({ layout: "paged" })}
         title="分页阅读"
       >

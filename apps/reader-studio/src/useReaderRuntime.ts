@@ -200,6 +200,8 @@ export function useReaderBoot(): ReaderBootState {
     let indexingTimer: number | undefined;
     let binaryRestoreTimer: number | undefined;
     const binaryRestoreController = new AbortController();
+    const pendingBinaryBooks = new Set<string>();
+    let restoringBinary = false;
     const scheduleIndexing = (
       nextRuntime: ReaderRuntime,
       books: ReadonlyArray<ReaderBook>,
@@ -209,38 +211,49 @@ export function useReaderBoot(): ReaderBootState {
         if (!cancelled) void Promise.all(books.map((book) => indexBook(nextRuntime, book)));
       }, 1200);
     };
-    const scheduleBinaryRestore = (
-      nextRuntime: ReaderRuntime,
-      bookIds: ReadonlyArray<string>,
-      activeBookId: string | null,
-    ): void => {
-      if (bookIds.length === 0) return;
-      const orderedBookIds = [
-        ...(activeBookId !== null && bookIds.includes(activeBookId) ? [activeBookId] : []),
-        ...bookIds.filter((bookId) => bookId !== activeBookId),
-      ];
-      binaryRestoreTimer = window.setTimeout(() => {
-        void restoreReaderBooks(nextRuntime, orderedBookIds, binaryRestoreController.signal)
-          .then(({ books, issues }) => {
-            if (cancelled) return;
-            for (const book of books) reader.replaceBook(book);
-            if (issues.length > 0) {
-              setRecovery((previous) =>
-                previous === null
-                  ? previous
-                  : {
-                      ...previous,
-                      restoredBooks: Math.max(0, previous.restoredBooks - issues.length),
-                      skippedBooks: [...previous.skippedBooks, ...issues],
-                    },
-              );
-            }
-          })
-          .catch(() => {
-            // The cached projection remains readable when a source cannot be
-            // rehydrated in the background.
-          });
-      }, 240);
+    const restoreActiveBook = () => {
+      const nextRuntime = createdRuntime;
+      const id = getReaderState().activeBookId;
+      if (
+        cancelled ||
+        restoringBinary ||
+        nextRuntime === null ||
+        id === null ||
+        !pendingBinaryBooks.delete(id)
+      )
+        return;
+      restoringBinary = true;
+      void restoreReaderBooks(nextRuntime, [id], binaryRestoreController.signal, (book) => {
+        if (!cancelled) reader.replaceBook(book);
+      })
+        .then(({ issues }) => {
+          if (cancelled) return;
+          if (issues.length > 0) {
+            setRecovery((previous) =>
+              previous === null
+                ? previous
+                : {
+                    ...previous,
+                    restoredBooks: Math.max(0, previous.restoredBooks - issues.length),
+                    skippedBooks: [...previous.skippedBooks, ...issues],
+                  },
+            );
+          }
+        })
+        .catch(() => {
+          // The cached projection remains readable when a source cannot be
+          // rehydrated in the background.
+        })
+        .finally(() => {
+          restoringBinary = false;
+          restoreActiveBook();
+        });
+    };
+    const unsubscribeRestore = reader.subscribe(restoreActiveBook);
+    const scheduleBinaryRestore = (bookIds: ReadonlyArray<string>): void => {
+      for (const id of bookIds) pendingBinaryBooks.add(id);
+      if (binaryRestoreTimer !== undefined) window.clearTimeout(binaryRestoreTimer);
+      binaryRestoreTimer = window.setTimeout(restoreActiveBook, 0);
     };
     const scheduleMetadataWarmup = (nextRuntime: ReaderRuntime): void => {
       const baselineLibrary = getReaderState().library;
@@ -268,9 +281,7 @@ export function useReaderBoot(): ReaderBootState {
             setRecovery(durable.recovery);
             void Promise.all(recovered.map((book) => indexBook(nextRuntime, book)));
             scheduleBinaryRestore(
-              nextRuntime,
               durable.pendingBookIds.filter((bookId) => recoveredIds.has(bookId)),
-              durable.activeBookId,
             );
             void persistReaderSnapshot(nextRuntime, { durableLibrary: true });
           })
@@ -311,7 +322,7 @@ export function useReaderBoot(): ReaderBootState {
           );
           scheduleMetadataWarmup(nextRuntime);
           scheduleIndexing(nextRuntime, restored.books);
-          scheduleBinaryRestore(nextRuntime, restored.pendingBookIds, restored.activeBookId);
+          scheduleBinaryRestore(restored.pendingBookIds);
         } else {
           setRecovery(null);
           reader.setReady();
@@ -331,6 +342,7 @@ export function useReaderBoot(): ReaderBootState {
       if (indexingTimer !== undefined) window.clearTimeout(indexingTimer);
       if (binaryRestoreTimer !== undefined) window.clearTimeout(binaryRestoreTimer);
       binaryRestoreController.abort();
+      unsubscribeRestore();
       createdRuntime?.indexSession?.close();
       createdRuntime?.parseSession?.close();
     };

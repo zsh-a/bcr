@@ -16,6 +16,8 @@ import type { ReaderRuntime } from "./runtime";
 import { reader, useReader } from "./store";
 import { useReaderFullscreen } from "./useReaderPlatform";
 import { persistReaderSnapshot } from "./useReaderRuntime";
+import { ReaderSheet } from "./ReaderSheet";
+import { useReaderMobile } from "./useReaderMobile";
 
 export function ReaderWorkspace(props: {
   runtime: ReaderRuntime;
@@ -24,7 +26,10 @@ export function ReaderWorkspace(props: {
   documentHandoffBusy: boolean;
   onNotice: (message: string) => void;
   onToggleMobileChrome: () => void;
+  onInstall: () => void;
+  showInstall: boolean;
 }) {
+  const mobile = useReaderMobile();
   const sidebarOpen = useReader((state) => state.sidebarOpen);
   const searchOpen = useReader((state) => state.searchOpen);
   const settings = useReader((state) => state.settings);
@@ -52,16 +57,17 @@ export function ReaderWorkspace(props: {
   };
   return (
     <div className={`reader-workspace ${sidebarOpen ? "sidebar-visible" : "sidebar-hidden"}`}>
-      <aside className="reader-sidebar" aria-label="本地书库">
-        <LibraryPanel runtime={props.runtime} onImport={props.onImport} />
-      </aside>
-      {sidebarOpen && (
-        <button
-          type="button"
-          className="reader-sidebar-scrim"
-          aria-label="关闭书库"
-          onClick={() => reader.toggleSidebar()}
-        />
+      {!mobile && (
+        <aside className="reader-sidebar" aria-label="本地书库">
+          {sidebarOpen && <LibraryPanel runtime={props.runtime} onImport={props.onImport} />}
+        </aside>
+      )}
+      {mobile && sidebarOpen && (
+        <ReaderSheet labelId="reader-library-title" onClose={() => reader.toggleSidebar()}>
+          <section className="reader-mobile-sheet reader-library-sheet">
+            <LibraryPanel runtime={props.runtime} onImport={props.onImport} />
+          </section>
+        </ReaderSheet>
       )}
       <main id="reader-content" ref={readerMainRef} className="reader-main" aria-label="阅读内容">
         <button
@@ -76,11 +82,13 @@ export function ReaderWorkspace(props: {
         {searchOpen && query.length > 0 && <SearchPanel hits={searchHits} />}
         <ReaderToolbar
           book={active}
-          settings={settings}
+          settings={active.source.format === "pdf" ? { ...settings, layout: "scroll" } : settings}
           onAddAnnotation={openAnnotationComposer}
           onOpenDocument={props.onOpenDocument}
           documentHandoffBusy={props.documentHandoffBusy}
           fullscreen={fullscreen}
+          onInstall={props.onInstall}
+          showInstall={props.showInstall}
         />
         {annotationOpen && (
           <AnnotationComposer
@@ -132,7 +140,7 @@ function LibraryPanel(props: {
       <div className="reader-sidebar-heading">
         <div>
           <span className="reader-eyebrow">YOUR LIBRARY</span>
-          <strong>{library.length} 本读物</strong>
+          <strong id="reader-library-title">{library.length} 本读物</strong>
         </div>
         <button
           type="button"
@@ -219,6 +227,9 @@ function LibraryPanel(props: {
           OPFS · FTS5 · {props.runtime.parserMode === "worker" ? "PARSER WORKER" : "PARSER MAIN"}
         </span>
       </div>
+      <a className="reader-library-home reader-button" href="/">
+        返回工作区主页
+      </a>
     </div>
   );
 }
@@ -239,7 +250,10 @@ function LibraryBookCard(props: {
       <button
         type="button"
         className={`reader-book-card ${props.active ? "is-active" : ""}`}
-        onClick={() => reader.openBook(props.book.id)}
+        onClick={() => {
+          reader.openBook(props.book.id);
+          if (window.matchMedia("(max-width: 860px)").matches) reader.toggleSidebar();
+        }}
         aria-current={props.active ? "page" : undefined}
       >
         <div className={`reader-book-cover reader-cover-${props.book.source.format}`}>

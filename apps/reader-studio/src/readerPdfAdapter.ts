@@ -124,10 +124,11 @@ export async function openPdf(input: ReaderOpenInput): Promise<ReaderBook> {
     import.meta.url,
   ).toString();
   const objectUrl = URL.createObjectURL(input.file);
+  const loadingTask = pdfjs.getDocument(objectUrl);
   try {
     // Let PDF.js stream the Blob URL in its own worker; avoid eagerly copying
     // the entire document into a main-thread ArrayBuffer.
-    const document = await pdfjs.getDocument(objectUrl).promise;
+    const document = await loadingTask.promise;
     let toc: ReadonlyArray<ReaderTocItem> | undefined;
     try {
       const outline = await document.getOutline();
@@ -144,6 +145,7 @@ export async function openPdf(input: ReaderOpenInput): Promise<ReaderBook> {
       if (input.signal?.aborted) throw new DOMException("Aborted", "AbortError");
       const page = await document.getPage(pageNumber);
       const content = await page.getTextContent();
+      const viewport = page.getViewport({ scale: 1 });
       const text = content.items
         .map((item) => ("str" in item ? item.str : ""))
         .join(" ")
@@ -155,9 +157,10 @@ export async function openPdf(input: ReaderOpenInput): Promise<ReaderBook> {
         kind: "pdf-page",
         text: text || `PDF page ${pageNumber}`,
         pageNumber,
+        pageAspectRatio: viewport.width / viewport.height,
       });
+      page.cleanup();
     }
-    await document.cleanup();
     return {
       ...makeBook(input, sections, toc === undefined ? {} : { toc }),
       source: { ...baseSource(input, objectUrl) },
@@ -165,5 +168,7 @@ export async function openPdf(input: ReaderOpenInput): Promise<ReaderBook> {
   } catch (reason) {
     URL.revokeObjectURL(objectUrl);
     throw reason;
+  } finally {
+    await loadingTask.destroy();
   }
 }

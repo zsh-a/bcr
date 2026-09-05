@@ -8,12 +8,13 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useEffect, useRef, type RefObject } from "react";
+import { useRef, type RefObject } from "react";
 import { readerAcceptAttribute, type ReaderBook } from "@bcr/reader-core";
 import type { ReaderRestoreDiagnostics } from "./runtime";
 import { percent } from "./readerPresentation";
 import { openSearchHit } from "./readerSearchNavigation";
 import { getReaderState, reader, useReader } from "./store";
+import { ReaderSheet } from "./ReaderSheet";
 
 export function ReaderUpdateNotice(props: {
   readonly applying: boolean;
@@ -142,7 +143,7 @@ export function ReaderHeader(props: {
     reader.setSearch(value, getReaderState().searchHits, getReaderState().searchBookId);
   };
   return (
-    <header className="reader-header">
+    <header className={`reader-header ${searchOpen ? "is-searching" : ""}`}>
       <button
         type="button"
         className="reader-icon-button reader-mobile-exit"
@@ -211,6 +212,14 @@ export function ReaderHeader(props: {
           </button>
         )}
         <kbd>⌘F</kbd>
+        <button
+          type="button"
+          className="reader-icon-button reader-mobile-search-close"
+          aria-label="退出搜索"
+          onClick={() => reader.setSearchOpen(false)}
+        >
+          <X className="reader-icon" />
+        </button>
       </div>
       <div className="reader-header-progress" title={`当前进度 ${percent(progress)}`}>
         <div className="reader-progress-ring">
@@ -307,27 +316,18 @@ export function ReaderHeader(props: {
 }
 
 export function ReaderInstallHelp(props: { open: boolean; isIos: boolean; onClose: () => void }) {
-  useEffect(() => {
-    if (!props.open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      props.onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [props.onClose, props.open]);
-
   if (!props.open) return null;
   const steps = props.isIos
     ? ["点击浏览器的分享按钮", "选择“添加到主屏幕”", "确认添加，从主屏幕打开 Reader"]
     : ["打开浏览器菜单", "选择“安装应用”或“添加到主屏幕”", "确认后从主屏幕启动 Reader"];
   return (
-    <div className="reader-install-layer" onClick={props.onClose} role="presentation">
+    <ReaderSheet
+      onClose={props.onClose}
+      labelId="reader-install-title"
+      className="reader-install-layer"
+    >
       <section
         className="reader-install-card"
-        role="dialog"
-        aria-modal="true"
         aria-labelledby="reader-install-title"
         onClick={(event) => event.stopPropagation()}
       >
@@ -359,6 +359,6 @@ export function ReaderInstallHelp(props: { open: boolean; isIos: boolean; onClos
           知道了
         </button>
       </section>
-    </div>
+    </ReaderSheet>
   );
 }

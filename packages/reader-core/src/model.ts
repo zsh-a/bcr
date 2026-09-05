@@ -48,6 +48,7 @@ export interface ReaderSection {
   readonly imageUrl?: string | undefined;
   readonly imageAlt?: string | undefined;
   readonly pageNumber?: number | undefined;
+  readonly pageAspectRatio?: number | undefined;
   readonly href?: string | undefined;
 }
 

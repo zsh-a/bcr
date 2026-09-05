@@ -208,9 +208,9 @@ await page.waitForFunction(() => document.fullscreenElement === null, null, { ti
 // Mobile used to override the chosen size with a fixed 17px rule. Exercise the
 // real settings sheet and computed EPUB/text styles so both CSS and state are covered.
 await page.setViewportSize({ width: 390, height: 844 });
-const closeMobileLibrary = page.getByRole("button", { name: "关闭书库" });
+const closeMobileLibrary = page.getByRole("button", { name: "收起书库", exact: true }).first();
 if (await closeMobileLibrary.isVisible()) {
-  await closeMobileLibrary.click({ position: { x: 385, y: 420 } });
+  await closeMobileLibrary.click();
 }
 await page.getByRole("button", { name: "打开阅读设置" }).click();
 const decreaseFontSize = page.getByRole("button", { name: "减小字号" });

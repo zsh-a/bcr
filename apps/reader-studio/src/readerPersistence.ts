@@ -43,6 +43,7 @@ interface PersistedBook {
     readonly text: string;
     readonly html?: string | undefined;
     readonly pageNumber?: number | undefined;
+    readonly pageAspectRatio?: number | undefined;
     readonly href?: string | undefined;
     readonly imageAlt?: string | undefined;
   }>;
@@ -143,6 +144,9 @@ function persistBook(book: ReaderBook): PersistedBook {
       text: section.text,
       ...(section.html === undefined ? {} : { html: section.html }),
       ...(section.pageNumber === undefined ? {} : { pageNumber: section.pageNumber }),
+      ...(section.pageAspectRatio === undefined
+        ? {}
+        : { pageAspectRatio: section.pageAspectRatio }),
       ...(section.href === undefined ? {} : { href: section.href }),
       ...(section.imageAlt === undefined ? {} : { imageAlt: section.imageAlt }),
     })),
@@ -702,9 +706,9 @@ export async function restoreReaderBooks(
   runtime: ReaderRuntime,
   bookIds: ReadonlyArray<string>,
   signal?: AbortSignal,
+  onBook?: (book: ReaderBook) => void,
 ): Promise<ReaderBookRestoreBatch> {
   if (bookIds.length === 0) return { books: [], issues: [] };
-  const wanted = new Set(bookIds);
   const legacyRaw = await readerValue(runtime, READER_META_KEY, READER_STORAGE_KEY);
   const libraryRaw = await readerValue(
     runtime,
@@ -723,11 +727,18 @@ export async function restoreReaderBooks(
 
   const books: ReaderBook[] = [];
   const issues: ReaderRestoreIssue[] = [];
-  for (const persisted of booksPayload as ReadonlyArray<PersistedBook>) {
-    if (!wanted.has(persisted.id)) continue;
+  const byId = new Map(
+    (booksPayload as ReadonlyArray<PersistedBook>).map((book) => [book.id, book]),
+  );
+  for (const id of new Set(bookIds)) {
+    const persisted = byId.get(id);
+    if (persisted === undefined) continue;
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     const restored = await restoreBook(runtime, persisted, signal);
-    if (restored.book !== undefined) books.push(restored.book);
+    if (restored.book !== undefined) {
+      books.push(restored.book);
+      onBook?.(restored.book);
+    }
     if (restored.issue !== undefined) issues.push(restored.issue);
   }
   return { books, issues };

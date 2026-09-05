@@ -24,6 +24,8 @@ Studio Shell
 
 Reader 保留面向阅读首屏的延迟解析、索引和 SQLite 初始化流程，其专用解析／索引 Worker 尚不经过计算 Scheduler。它的独立阅读存储不属于上述 Host 的容量汇总或项目写锁覆盖范围。
 
+阅读界面的分页、按需恢复和 PDF 资源生命周期见 [Reader 架构](./READER-ARCHITECTURE.md)。
+
 ## 执行模块与数据接口
 
 执行器显式声明支持的 operation。Registry 按 `(runtime, operation)` 解析，重复路由在组装时失败。同一 WASM 后端可以有多个领域执行器。

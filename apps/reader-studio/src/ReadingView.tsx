@@ -1,11 +1,6 @@
 import { Check } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import {
-  createLocator,
-  locatorAtPercentage,
-  type ReaderBook,
-  type ReaderSection,
-} from "@bcr/reader-core";
+import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { createLocator, locatorAtPercentage, type ReaderBook } from "@bcr/reader-core";
 import type { ReaderRuntime } from "./runtime";
 import { PdfReaderView } from "./PdfReaderView";
 import { ChapterRail, MobileReadingBar } from "./ReaderNavigation";
@@ -23,15 +18,31 @@ import {
 } from "./readingPosition";
 import { formatBadge, percent } from "./readerPresentation";
 import { readerFontStack } from "./readerTypography";
-import { highlightHtml, highlightText } from "./searchHighlight";
+import { SectionView } from "./SectionView";
+import { PagedReadingView } from "./PagedReadingView";
 import { reader, useReader } from "./store";
 import { READER_CAPTURE_PROGRESS_EVENT } from "./useReaderRuntime";
+import { useReaderMobile } from "./useReaderMobile";
 
 export function ReadingView(props: {
   runtime: ReaderRuntime;
   book: ReaderBook;
   onToggleMobileChrome: () => void;
 }) {
+  const layout = useReader((state) => state.settings.layout);
+  return layout === "paged" && props.book.source.format !== "pdf" ? (
+    <PagedReadingView book={props.book} onToggleMobileChrome={props.onToggleMobileChrome} />
+  ) : (
+    <ContinuousReadingView {...props} />
+  );
+}
+
+function ContinuousReadingView(props: {
+  runtime: ReaderRuntime;
+  book: ReaderBook;
+  onToggleMobileChrome: () => void;
+}) {
+  const mobile = useReaderMobile();
   const settings = useReader((state) => state.settings);
   const activeSectionId = useReader((state) => state.activeSectionId);
   const navigationSequence = useReader((state) => state.navigationSequence);
@@ -252,7 +263,7 @@ export function ReadingView(props: {
   );
   return (
     <div
-      className={`reader-reading-frame reader-layout-${settings.layout} reader-width-${settings.contentWidth}`}
+      className={`reader-reading-frame reader-layout-scroll reader-width-${settings.contentWidth}`}
       style={
         {
           "--reader-reader-font-size": `${settings.fontSize}px`,
@@ -358,18 +369,16 @@ export function ReadingView(props: {
               onReady={() => setContentReadyVersion((version) => version + 1)}
             />
           ) : (
-            props.book.sections.map((section) => (
-              <SectionView
-                key={section.id}
-                section={section}
-                searchQuery={section.id === activeSectionId ? searchQuery : ""}
-              />
-            ))
+            <PublicationSections
+              book={props.book}
+              activeSectionId={searchQuery ? activeSectionId : null}
+              searchQuery={searchQuery}
+            />
           )}
           <ReadingEnd book={props.book} />
         </div>
       </div>
-      <ChapterRail book={props.book} />
+      {!mobile && <ChapterRail book={props.book} />}
       <MobileReadingBar book={props.book} />
     </div>
   );
@@ -394,36 +403,19 @@ function ReadingIntro(props: { book: ReaderBook; progress: number }) {
   );
 }
 
-function SectionView(props: { section: ReaderSection; searchQuery: string }) {
-  const html =
-    props.section.html === undefined
-      ? undefined
-      : highlightHtml(props.section.html, props.searchQuery);
-  return (
-    <section
-      className="reader-section"
-      data-reader-section={props.section.id}
-      data-reader-section-index={props.section.order}
-    >
-      <div className="reader-section-index">{String(props.section.order + 1).padStart(2, "0")}</div>
-      <div className="reader-section-body">
-        <div className="reader-section-label">{props.section.label}</div>
-        {props.section.kind === "image" && props.section.imageUrl ? (
-          <img
-            className="reader-section-image"
-            src={props.section.imageUrl}
-            alt={props.section.imageAlt ?? props.section.label}
-            loading="lazy"
-          />
-        ) : html ? (
-          <div className="reader-prose" dangerouslySetInnerHTML={{ __html: html }} />
-        ) : (
-          <p className="reader-prose">{highlightText(props.section.text, props.searchQuery)}</p>
-        )}
-      </div>
-    </section>
-  );
-}
+const PublicationSections = memo(function PublicationSections(props: {
+  book: ReaderBook;
+  activeSectionId: string | null;
+  searchQuery: string;
+}) {
+  return props.book.sections.map((section) => (
+    <SectionView
+      key={section.id}
+      section={section}
+      searchQuery={section.id === props.activeSectionId ? props.searchQuery : ""}
+    />
+  ));
+});
 
 function ReadingEnd(props: { book: ReaderBook }) {
   return (

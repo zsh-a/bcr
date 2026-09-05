@@ -14,6 +14,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { ReaderAnnotation, ReaderBook, ReaderBookmark, ReaderTocItem } from "@bcr/reader-core";
 import { percent } from "./readerPresentation";
 import { reader, useReader } from "./store";
+import { ReaderSheet } from "./ReaderSheet";
 
 const EMPTY_BOOKMARKS: ReadonlyArray<ReaderBookmark> = [];
 const EMPTY_ANNOTATIONS: ReadonlyArray<ReaderAnnotation> = [];
@@ -93,7 +94,16 @@ function tocItemMatchesQuery(item: ReaderTocItem, query: string): boolean {
   );
 }
 
-export function MobileReadingBar(props: { book: ReaderBook }) {
+export function MobileReadingBar(props: {
+  book: ReaderBook;
+  pagination?: {
+    page: number;
+    pages: number;
+    canPrevious: boolean;
+    canNext: boolean;
+    turn: (delta: number) => void;
+  };
+}) {
   const activeSectionId = useReader((state) => state.activeSectionId);
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
   const [panel, setPanel] = useState<MobileNavigationPanel | null>(null);
@@ -130,27 +140,33 @@ export function MobileReadingBar(props: { book: ReaderBook }) {
           <span className="reader-mobile-nav-current-label">当前阅读</span>
           <strong>{current?.label ?? "正文"}</strong>
           <span className="reader-mobile-nav-current-meta">
-            {activeIndex + 1} / {props.book.sections.length} {unit} · {percent(progress)}
+            {props.pagination
+              ? `${props.pagination.page + 1} / ${props.pagination.pages} 页 · 本章`
+              : `${activeIndex + 1} / ${props.book.sections.length} ${unit} · ${percent(progress)}`}
           </span>
           <ChevronUp className="reader-mobile-nav-current-chevron" aria-hidden="true" />
         </button>
         <button
           type="button"
           className="reader-mobile-nav-step"
-          onClick={() => openAdjacent(-1)}
-          disabled={activeIndex <= 0}
-          aria-label="上一章"
-          title="上一章"
+          onClick={() => (props.pagination ? props.pagination.turn(-1) : openAdjacent(-1))}
+          disabled={props.pagination ? !props.pagination.canPrevious : activeIndex <= 0}
+          aria-label={props.pagination ? "上一页" : "上一章"}
+          title={props.pagination ? "上一页" : "上一章"}
         >
           <ChevronLeft className="reader-icon" />
         </button>
         <button
           type="button"
           className="reader-mobile-nav-step"
-          onClick={() => openAdjacent(1)}
-          disabled={activeIndex >= props.book.sections.length - 1}
-          aria-label="下一章"
-          title="下一章"
+          onClick={() => (props.pagination ? props.pagination.turn(1) : openAdjacent(1))}
+          disabled={
+            props.pagination
+              ? !props.pagination.canNext
+              : activeIndex >= props.book.sections.length - 1
+          }
+          aria-label={props.pagination ? "下一页" : "下一章"}
+          title={props.pagination ? "下一页" : "下一章"}
         >
           <ChevronRight className="reader-icon" />
         </button>
@@ -194,16 +210,6 @@ function MobileNavigationSheet(props: {
       );
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      props.onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [props.onClose]);
-
-  useEffect(() => {
     setQuery("");
   }, [props.panel]);
 
@@ -233,16 +239,13 @@ function MobileNavigationSheet(props: {
     { id: "notes", label: "笔记", count: annotations.length },
   ];
   return (
-    <div className="reader-mobile-sheet-layer" onClick={props.onClose} role="presentation">
+    <ReaderSheet onClose={props.onClose} labelId="reader-mobile-navigation-title">
       <section
         id="reader-mobile-navigation-sheet"
         className="reader-mobile-sheet reader-navigation-sheet"
-        role="dialog"
-        aria-modal="true"
         aria-labelledby="reader-mobile-navigation-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="reader-mobile-sheet-handle" aria-hidden="true" />
         <div className="reader-mobile-sheet-heading">
           <div>
             <span className="reader-eyebrow">READING MAP</span>
@@ -427,7 +430,7 @@ function MobileNavigationSheet(props: {
           </div>
         )}
       </section>
-    </div>
+    </ReaderSheet>
   );
 }
 
