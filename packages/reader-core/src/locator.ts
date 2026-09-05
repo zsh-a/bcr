@@ -186,7 +186,24 @@ export function normalizeLocator(
     resolvedAnchor === undefined || section.text.length === 0
       ? locator.progression
       : resolvedAnchor.start / section.text.length;
-  return createLocator(section, progression, locator.kind, normalizedAnchor);
+  const normalized = createLocator(section, progression, locator.kind, normalizedAnchor);
+  const image = locator.imageAnchor;
+  return directSection !== undefined &&
+    image !== undefined &&
+    image !== null &&
+    Number.isInteger(image.index) &&
+    image.index >= 0 &&
+    Number.isFinite(image.x) &&
+    Number.isFinite(image.y)
+    ? {
+        ...normalized,
+        imageAnchor: {
+          index: image.index,
+          x: clampProgression(image.x),
+          y: clampProgression(image.y),
+        },
+      }
+    : normalized;
 }
 
 export function percentageForLocator(book: ReaderBook, locator: ReaderLocator): number {
@@ -210,6 +227,11 @@ export function progressForLocator(
 export function sameLocator(left: ReaderLocator, right: ReaderLocator, tolerance = 0.02): boolean {
   return (
     left.sectionId === right.sectionId &&
+    left.imageAnchor?.index === right.imageAnchor?.index &&
+    (left.imageAnchor === undefined ||
+      right.imageAnchor === undefined ||
+      (Math.abs(left.imageAnchor.x - right.imageAnchor.x) <= tolerance &&
+        Math.abs(left.imageAnchor.y - right.imageAnchor.y) <= tolerance)) &&
     Math.abs(clampProgression(left.progression) - clampProgression(right.progression)) <= tolerance
   );
 }

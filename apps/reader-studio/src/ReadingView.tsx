@@ -63,6 +63,7 @@ function ContinuousReadingView(props: {
   const userScrollRef = useRef(false);
   const userScrollTimerRef = useRef<number | null>(null);
   const programmaticScrollRef = useRef(false);
+  const layoutCalibrationRef = useRef(false);
   const programmaticScrollTargetRef = useRef<ReaderScrollPosition | null>(null);
   const programmaticScrollTimerRef = useRef<number | null>(null);
   const navigationRetryFrameRef = useRef<number | null>(null);
@@ -79,6 +80,7 @@ function ContinuousReadingView(props: {
     }, 240);
   }, []);
   const updateLocator = useCallback(() => {
+    if (layoutCalibrationRef.current) return;
     // Search and modal surfaces occlude the caret probes. Measuring through
     // them can replace a valid text anchor with a different paragraph/page.
     if (getReaderState().searchOpen || document.querySelector("dialog[open]") !== null) return;
@@ -97,6 +99,7 @@ function ContinuousReadingView(props: {
       // capture the previous DOM before its navigation frame has committed.
       if (
         programmaticScrollRef.current ||
+        layoutCalibrationRef.current ||
         getReaderState().navigationSequence !== handledNavigationSequenceRef.current
       )
         return;
@@ -113,18 +116,24 @@ function ContinuousReadingView(props: {
     let cancelled = false;
     const scheduleCalibration = () => {
       if (cancelled || frame !== null) return;
+      // Resizing/loading can produce native scroll anchoring events before
+      // React reapplies the saved locator. These are not reading gestures.
+      layoutCalibrationRef.current = true;
+      userScrollRef.current = false;
       frame = window.requestAnimationFrame(() => {
         frame = null;
         setContentReadyVersion((version) => version + 1);
       });
     };
     window.addEventListener("resize", scheduleCalibration);
+    container.addEventListener("load", scheduleCalibration, true);
     window.visualViewport?.addEventListener("resize", scheduleCalibration);
     void document.fonts?.ready.then(scheduleCalibration);
     return () => {
       cancelled = true;
       if (frame !== null) window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", scheduleCalibration);
+      container.removeEventListener("load", scheduleCalibration, true);
       window.visualViewport?.removeEventListener("resize", scheduleCalibration);
     };
   }, [props.book.id]);
@@ -202,6 +211,7 @@ function ContinuousReadingView(props: {
       // after the first paint. Recalculate and reapply a few times so a TOC
       // click remains reliable while lazy pages settle.
       container.scrollTo({ ...position, behavior: "instant" });
+      layoutCalibrationRef.current = false;
       // Browsers clamp offsets (and can round fractional values). Compare
       // subsequent events to the applied position, not an unreachable target.
       programmaticScrollTargetRef.current = {
@@ -352,6 +362,7 @@ function ContinuousReadingView(props: {
           props.onToggleMobileChrome();
         }}
         onScroll={() => {
+          if (layoutCalibrationRef.current) return;
           if (programmaticScrollRef.current) {
             const expected = programmaticScrollTargetRef.current;
             const current = {
@@ -386,7 +397,7 @@ function ContinuousReadingView(props: {
           const flush = () => {
             // Navigation can take ownership after this scroll was queued but
             // before its animation frame runs. Never recapture that old event.
-            if (programmaticScrollRef.current) {
+            if (programmaticScrollRef.current || layoutCalibrationRef.current) {
               frameRef.current = null;
               return;
             }

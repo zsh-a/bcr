@@ -95,6 +95,14 @@ export interface ReaderLocator {
   readonly pageNumber?: number | undefined;
   readonly href?: string | undefined;
   readonly textAnchor?: ReaderTextAnchor | undefined;
+  /** Stable document-order image index and normalized coordinates, independent of blob URLs. */
+  readonly imageAnchor?:
+    | {
+        readonly index: number;
+        readonly x: number;
+        readonly y: number;
+      }
+    | undefined;
 }
 
 export interface ReaderProgress {

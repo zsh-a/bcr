@@ -401,12 +401,22 @@ class ReaderStore {
     const currentAnchorStart = currentProgress?.locator.textAnchor?.start;
     const nextAnchorStart = nextProgress.locator.textAnchor?.start;
     const bothTextAnchored = currentAnchorStart !== undefined && nextAnchorStart !== undefined;
-    const sameLocalPosition = bothTextAnchored
-      ? Math.abs(currentAnchorStart - nextAnchorStart) < 16
-      : currentProgress !== undefined &&
-        currentProgress.locator.textAnchor === undefined &&
-        nextProgress.locator.textAnchor === undefined &&
-        Math.abs(currentProgress.locator.progression - nextProgress.locator.progression) < 0.001;
+    const currentImage = currentProgress?.locator.imageAnchor;
+    const nextImage = nextProgress.locator.imageAnchor;
+    const sameLocalPosition =
+      currentImage !== undefined || nextImage !== undefined
+        ? currentImage !== undefined &&
+          nextImage !== undefined &&
+          currentImage.index === nextImage.index &&
+          Math.abs(currentImage.x - nextImage.x) < 0.00001 &&
+          Math.abs(currentImage.y - nextImage.y) < 0.00001
+        : bothTextAnchored
+          ? Math.abs(currentAnchorStart - nextAnchorStart) < 16
+          : currentProgress !== undefined &&
+            currentProgress.locator.textAnchor === undefined &&
+            nextProgress.locator.textAnchor === undefined &&
+            Math.abs(currentProgress.locator.progression - nextProgress.locator.progression) <
+              0.001;
     if (
       currentProgress !== undefined &&
       currentProgress.locator.sectionId === nextProgress.locator.sectionId &&

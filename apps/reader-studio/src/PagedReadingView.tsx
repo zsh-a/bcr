@@ -49,7 +49,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
     setPage(index);
     const mapped = readerLocatorAtScroll(props.book, viewport, section.id);
     const locator =
-      mapped?.locator.textAnchor === undefined
+      mapped?.locator.textAnchor === undefined && mapped?.locator.imageAnchor === undefined
         ? createLocator(section, index / Math.max(1, countRef.current))
         : mapped.locator;
     reader.setLocator(locator);
@@ -70,7 +70,10 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
       setPages(count);
       const locator = getReaderState().progressByBook[props.book.id]?.locator;
       let target = locator?.sectionId === section.id ? Math.floor(locator.progression * count) : 0;
-      if (locator?.sectionId === section.id && locator.textAnchor !== undefined) {
+      if (
+        locator?.sectionId === section.id &&
+        (locator.textAnchor !== undefined || locator.imageAnchor !== undefined)
+      ) {
         const position = readerLocatorScrollPosition(viewport, section, locator, true);
         if (position !== undefined) target = Math.floor(position.left / width);
       }

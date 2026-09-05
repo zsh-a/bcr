@@ -77,6 +77,44 @@ function readerProbeTopOffset(container: HTMLElement): number {
   return Math.min(140, container.clientHeight * 0.32);
 }
 
+function readerImages(section: Element): Element[] {
+  // SVG wrappers are common in fixed-layout EPUBs. Treat the whole wrapper
+  // as one image, not its individual SVG image/path children.
+  return [
+    ...section.querySelectorAll(".reader-prose img, .reader-prose svg, .reader-section-image"),
+  ];
+}
+
+function readerImageLocatorAtPoint(
+  book: ReaderBook,
+  container: HTMLElement,
+  x: number,
+  y: number,
+): ReaderLocator | undefined {
+  const hit = document.elementFromPoint(x, y);
+  const sectionElement = hit?.closest<HTMLElement>("[data-reader-section]");
+  if (!sectionElement || !container.contains(sectionElement)) return undefined;
+  const section = book.sections.find((item) => item.id === sectionElement.dataset.readerSection);
+  if (!section) return undefined;
+  const images = readerImages(sectionElement);
+  const index = images.findIndex(
+    (element) => element === hit || (hit !== null && element.contains(hit)),
+  );
+  const image = images[index];
+  if (!image) return undefined;
+  const rect = image.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return undefined;
+  const sectionRect = sectionElement.getBoundingClientRect();
+  return {
+    ...createLocator(section, clamp((y - sectionRect.top) / Math.max(1, sectionRect.height), 0, 1)),
+    imageAnchor: {
+      index,
+      x: clamp((x - rect.left) / rect.width, 0, 1),
+      y: clamp((y - rect.top) / rect.height, 0, 1),
+    },
+  };
+}
+
 function readerRenderedText(root: Element): ReaderRenderedText {
   const walker = document.createTreeWalker(root, 4);
   const nodes: ReaderRenderedTextNode[] = [];
@@ -291,6 +329,37 @@ export function readerLocatorScrollPosition(
     `[data-reader-section="${CSS.escape(section.id)}"]`,
   );
   if (target === null) return undefined;
+  const imageAnchor = locator.imageAnchor;
+  const image = imageAnchor === undefined ? undefined : readerImages(target)[imageAnchor.index];
+  if (image !== undefined && imageAnchor !== undefined) {
+    const rect = image.getBoundingClientRect();
+    const bounds = container.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0)
+      return {
+        top: horizontal
+          ? 0
+          : clamp(
+              container.scrollTop +
+                rect.top -
+                bounds.top +
+                rect.height * imageAnchor.y -
+                readerProbeTopOffset(container),
+              0,
+              Math.max(0, container.scrollHeight - container.clientHeight),
+            ),
+        left: horizontal
+          ? clamp(
+              container.scrollLeft +
+                rect.left -
+                bounds.left +
+                rect.width * imageAnchor.x -
+                bounds.width * 0.5,
+              0,
+              Math.max(0, container.scrollWidth - container.clientWidth),
+            )
+          : 0,
+      };
+  }
   const anchorRange = readerTextAnchorRange(target, locator);
   if (anchorRange !== undefined) {
     const position = readerRangeScrollPosition(container, anchorRange);
@@ -426,6 +495,19 @@ export function readerLocatorAtScroll(
   const containerRect = container.getBoundingClientRect();
   const probeTop = containerRect.top + readerProbeTopOffset(container);
   const probeX = containerRect.left + containerRect.width * 0.5;
+  // A caret query over an image can resolve to an unrelated caption. Image
+  // geometry must win before any text probe, including in mixed chapters.
+  const imageLocator = readerImageLocatorAtPoint(book, container, probeX, probeTop);
+  if (imageLocator !== undefined)
+    return {
+      locator: imageLocator,
+      percentage: clamp(
+        ((sectionIndexMap(book).get(imageLocator.sectionId) ?? 0) + imageLocator.progression) /
+          Math.max(1, book.sections.length - 1),
+        0,
+        1,
+      ),
+    };
   const probePoints = [
     [probeX, probeTop],
     [containerRect.left + containerRect.width * 0.35, probeTop],

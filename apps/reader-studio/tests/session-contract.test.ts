@@ -3,6 +3,36 @@ import { createDemoBook } from "../src/model";
 import { normalizeReaderProgress } from "../src/session-contract";
 
 describe("reader session contract", () => {
+  it("preserves image-relative positions and rejects malformed image anchors", () => {
+    const book = createDemoBook();
+    const restore = (imageAnchor: unknown) =>
+      normalizeReaderProgress([book], {
+        [book.id]: {
+          locator: {
+            kind: "section",
+            sectionId: book.sections[0]!.id,
+            progression: 0.4,
+            imageAnchor,
+          },
+        },
+      })[book.id]!.locator;
+    expect(restore({ index: 7, x: 0.5, y: 0.371 }).imageAnchor).toEqual({
+      index: 7,
+      x: 0.5,
+      y: 0.371,
+    });
+    expect(restore({ index: 1, x: -1, y: 2 }).imageAnchor).toEqual({ index: 1, x: 0, y: 1 });
+    for (const invalid of [
+      null,
+      { index: -1, x: 0, y: 0 },
+      { index: 0.5, x: 0, y: 0 },
+      { index: 0, x: NaN, y: 0 },
+      { index: 0, x: 0, y: "0.5" },
+    ]) {
+      expect(restore(invalid).imageAnchor).toBeUndefined();
+    }
+  });
+
   it("re-derives percentage from a durable locator and drops unknown books", () => {
     const book = createDemoBook();
     const result = normalizeReaderProgress([book], {

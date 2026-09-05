@@ -57,6 +57,14 @@ export function normalizeReaderProgress(
     const kind =
       locatorValue.kind === "page" || locatorValue.kind === "image" ? locatorValue.kind : "section";
     const textAnchor = textAnchorValue(locatorValue.textAnchor);
+    const image = locatorValue.imageAnchor;
+    const imageAnchor =
+      isRecord(image) &&
+      typeof image.index === "number" &&
+      typeof image.x === "number" &&
+      typeof image.y === "number"
+        ? { index: image.index, x: image.x, y: image.y }
+        : undefined;
     const sectionStillExists =
       book.sections.some((section) => section.id === locatorValue.sectionId) ||
       (typeof locatorValue.href === "string" &&
@@ -77,6 +85,7 @@ export function normalizeReaderProgress(
         : {}),
       ...(typeof locatorValue.href === "string" ? { href: locatorValue.href } : {}),
       ...(textAnchor === undefined ? {} : { textAnchor }),
+      ...(sectionStillExists && imageAnchor !== undefined ? { imageAnchor } : {}),
     });
     restored[book.id] = progressForLocator(book, locator, finiteTimestamp(candidate.updatedAt));
   }
