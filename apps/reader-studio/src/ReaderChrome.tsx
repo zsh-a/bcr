@@ -195,10 +195,12 @@ export function ReaderHeader(props: {
           placeholder="在书库中搜索…"
           aria-label="在书库中搜索"
           role="combobox"
-          aria-expanded={searchOpen && query.length > 0}
-          aria-controls="reader-search-results"
+          aria-expanded={searchOpen}
+          aria-controls={searchOpen ? "reader-search-results" : undefined}
           aria-activedescendant={
-            searchActiveIndex >= 0 ? `reader-search-hit-${searchActiveIndex}` : undefined
+            searchOpen && searchActiveIndex >= 0
+              ? `reader-search-hit-${searchActiveIndex}`
+              : undefined
           }
         />
         {query && (

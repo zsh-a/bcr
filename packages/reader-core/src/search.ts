@@ -136,20 +136,35 @@ export function searchIndexedDocuments(
     const book = booksById.get(document.bookId);
     const section = book?.sections.find((candidate) => candidate.id === document.sectionId);
     if (section === undefined) continue;
-    const range = searchTextRange(section.text, query);
-    const occurrences = document.normalizedText.split(normalized).length - 1;
-    hits.push({
-      bookId: document.bookId,
-      sectionId: document.sectionId,
-      label: document.label,
-      snippet: makeSnippet(section.text, range?.start ?? 0, range?.length ?? normalized.length),
-      score: occurrences > 1 ? occurrences + 1 : 1,
-      matchStart: range?.start ?? 0,
-      matchLength: range?.length ?? normalized.length,
-    });
+    for (const range of searchTextRanges(section.text, query, limit - hits.length))
+      hits.push({
+        bookId: document.bookId,
+        sectionId: document.sectionId,
+        label: document.label,
+        snippet: makeSnippet(section.text, range.start, range.length),
+        score: 1,
+        matchStart: range.start,
+        matchLength: range.length,
+      });
     if (hits.length >= limit) break;
   }
-  return hits.sort((a, b) => b.score - a.score || a.sectionId.localeCompare(b.sectionId));
+  return hits;
+}
+
+/** Every non-overlapping occurrence, in publication order, with original offsets. */
+export function searchTextRanges(text: string, query: string, limit = 80): SearchTextRange[] {
+  const needle = normalizeSearchQuery(query);
+  if (!needle || limit <= 0) return [];
+  const mapped = normalizeTextWithOffsets(text);
+  const ranges: SearchTextRange[] = [];
+  let position = mapped.value.indexOf(needle);
+  while (position >= 0 && ranges.length < limit) {
+    const start = mapped.starts[position]!;
+    const end = mapped.ends[position + needle.length - 1]!;
+    ranges.push({ start, length: end - start });
+    position = mapped.value.indexOf(needle, position + needle.length);
+  }
+  return ranges;
 }
 
 export function searchBook(book: ReaderBook, query: string, limit = 80): ReadonlyArray<SearchHit> {
@@ -157,22 +172,19 @@ export function searchBook(book: ReaderBook, query: string, limit = 80): Readonl
   if (!normalized) return [];
   const hits: SearchHit[] = [];
   for (const section of book.sections) {
-    const match = searchTextRange(section.text, normalized);
-    if (match === undefined) continue;
-    const normalizedText = normalizeTextWithOffsets(section.text).value;
-    const occurrences = normalizedText.split(normalized).length - 1;
-    hits.push({
-      bookId: book.id,
-      sectionId: section.id,
-      label: section.label,
-      snippet: makeSnippet(section.text, match.start, match.length),
-      score: occurrences > 1 ? occurrences + 1 : 1,
-      matchStart: match.start,
-      matchLength: match.length,
-    });
+    for (const match of searchTextRanges(section.text, normalized, limit - hits.length))
+      hits.push({
+        bookId: book.id,
+        sectionId: section.id,
+        label: section.label,
+        snippet: makeSnippet(section.text, match.start, match.length),
+        score: 1,
+        matchStart: match.start,
+        matchLength: match.length,
+      });
     if (hits.length >= limit) break;
   }
-  return hits.sort((a, b) => b.score - a.score || a.sectionId.localeCompare(b.sectionId));
+  return hits;
 }
 
 export function searchLibrary(

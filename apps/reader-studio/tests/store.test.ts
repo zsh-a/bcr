@@ -12,6 +12,39 @@ describe("Reader annotation anchors", () => {
     });
   });
 
+  it("returns through jumps without recording passive scrolling, and branches after back", () => {
+    const start = createLocator(book.sections[0]!, 0.3);
+    reader.setLocator(start);
+    reader.openBook(book.id, book.sections[1]!.id);
+    reader.setLocator(createLocator(book.sections[1]!, 0.7));
+    expect(getReaderState().navigationHistory.back).toHaveLength(1);
+    reader.navigateHistory("back");
+    expect(getReaderState().progressByBook[book.id]?.locator).toEqual(start);
+    reader.navigateHistory("forward");
+    expect(getReaderState().progressByBook[book.id]?.locator.progression).toBe(0.7);
+    reader.navigateHistory("back");
+    reader.openBook(book.id, book.sections[2]!.id);
+    expect(getReaderState().navigationHistory.forward).toHaveLength(0);
+  });
+
+  it("does not record normal page turns across chapter boundaries", () => {
+    reader.openBook(book.id, book.sections[1]!.id, false);
+    expect(getReaderState().navigationHistory.back).toHaveLength(0);
+  });
+
+  it("can jump over history entries and still step forward through them", () => {
+    reader.setLocator(createLocator(book.sections[0]!, 0));
+    reader.openBook(book.id, book.sections[1]!.id);
+    reader.openBook(book.id, book.sections[2]!.id);
+    reader.openBook(book.id, book.sections[3]!.id);
+    reader.navigateHistory("back", 3);
+    expect(getReaderState().activeSectionId).toBe(book.sections[0]!.id);
+    reader.navigateHistory("forward");
+    expect(getReaderState().activeSectionId).toBe(book.sections[1]!.id);
+    reader.navigateHistory("forward");
+    expect(getReaderState().activeSectionId).toBe(book.sections[2]!.id);
+  });
+
   it("keeps a TextQuote locator when a note is attached to a selection", () => {
     const section = book.sections[1]!;
     const locator = createTextLocator(section, 0, 8);

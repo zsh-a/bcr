@@ -19,6 +19,7 @@ import {
   type ReaderState,
   type ReaderSearchSession,
   type ReaderSearchReveal,
+  type ReaderHistoryEntry,
 } from "./model";
 
 const demo = createDemoBook();
@@ -36,6 +37,8 @@ function releaseBookResources(book: ReaderBook): void {
 function initialState(): ReaderState {
   const progress = progressForLocator(demo, firstLocator(demo), Date.now());
   return {
+    navigationHistory: { back: [], forward: [] },
+    searchScope: "library",
     status: "booting",
     error: null,
     library: [demo],
@@ -55,6 +58,7 @@ function initialState(): ReaderState {
     sidebarOpen: true,
     searchOpen: false,
     lastSavedAt: null,
+    saveError: null,
   };
 }
 
@@ -94,6 +98,7 @@ class ReaderStore {
     activeBookId?: string | null,
     annotationsByBook: Readonly<Record<string, ReadonlyArray<ReaderAnnotation>>> = {},
     searchSession?: ReaderSearchSession,
+    navigationHistory: ReaderState["navigationHistory"] = { back: [], forward: [] },
   ): void {
     const nextLibrary = library.length > 0 ? library : [demo];
     const first = nextLibrary[0] ?? demo;
@@ -105,6 +110,8 @@ class ReaderStore {
     const active = current ?? first;
     const progress = progressByBook[active.id] ?? progressForLocator(active, firstLocator(active));
     this.set({
+      navigationHistory,
+      searchScope: searchSession?.scope ?? "library",
       library: nextLibrary,
       activeBookId: active.id,
       activeSectionId: progress.locator.sectionId,
@@ -295,6 +302,10 @@ class ReaderStore {
     const annotationsByBook = { ...this.state.annotationsByBook };
     delete annotationsByBook[bookId];
     this.set({
+      navigationHistory: {
+        back: this.state.navigationHistory.back.filter((entry) => entry.bookId !== bookId),
+        forward: this.state.navigationHistory.forward.filter((entry) => entry.bookId !== bookId),
+      },
       library: nextLibrary,
       activeBookId: fallback.id,
       activeSectionId: progress.locator.sectionId,
@@ -309,9 +320,10 @@ class ReaderStore {
     });
   }
 
-  openBook(bookId: string, sectionId?: string): void {
+  openBook(bookId: string, sectionId?: string, remember = true): void {
     const book = this.state.library.find((candidate) => candidate.id === bookId);
     if (book === undefined) return;
+    if (remember) this.rememberPosition();
     const stored = this.state.progressByBook[book.id];
     const locator =
       sectionId === undefined
@@ -342,6 +354,7 @@ class ReaderStore {
       (candidate) => candidate.id === bookmarkId,
     );
     if (book === undefined || bookmark === undefined) return;
+    this.rememberPosition();
     const progress = progressForLocator(book, bookmark.locator);
     this.set({
       activeBookId: book.id,
@@ -363,6 +376,7 @@ class ReaderStore {
       (candidate) => candidate.id === annotationId,
     );
     if (book === undefined || annotation === undefined) return;
+    this.rememberPosition();
     const progress = progressForLocator(book, annotation.locator);
     this.set({
       activeBookId: book.id,
@@ -409,12 +423,83 @@ class ReaderStore {
     });
   }
 
+  private currentPosition(): ReaderHistoryEntry | undefined {
+    if (typeof window !== "undefined")
+      window.dispatchEvent(new Event("bcr-reader-capture-progress"));
+    const bookId = this.state.activeBookId;
+    const locator = bookId === null ? undefined : this.state.progressByBook[bookId]?.locator;
+    return bookId === null || locator === undefined ? undefined : { bookId, locator };
+  }
+
+  private rememberPosition(): void {
+    const entry = this.currentPosition();
+    if (entry === undefined) return;
+    const back = this.state.navigationHistory.back;
+    const last = back.at(-1);
+    this.set({
+      navigationHistory: {
+        back:
+          last?.bookId === entry.bookId && sameLocator(last.locator, entry.locator)
+            ? back
+            : [...back, entry].slice(-50),
+        forward: [],
+      },
+    });
+  }
+
+  navigateHistory(direction: "back" | "forward", distance = 1): void {
+    const current = this.currentPosition();
+    const history = this.state.navigationHistory;
+    const entries = history[direction].filter((entry) =>
+      this.state.library.some((book) => book.id === entry.bookId),
+    );
+    const count = Math.max(1, Math.min(entries.length, Math.floor(distance)));
+    const target = entries.at(-count);
+    const book = this.state.library.find((item) => item.id === target?.bookId);
+    if (target === undefined || book === undefined) return;
+    const other = direction === "back" ? "forward" : "back";
+    const progress = progressForLocator(book, target.locator);
+    this.set({
+      navigationHistory: {
+        ...history,
+        [direction]: entries.slice(0, -count),
+        [other]: [
+          ...history[other],
+          ...(current === undefined ? [] : [current]),
+          ...entries.slice(entries.length - count + 1).reverse(),
+        ].slice(-50),
+      },
+      activeBookId: book.id,
+      activeSectionId: progress.locator.sectionId,
+      progressByBook: { ...this.state.progressByBook, [book.id]: progress },
+      navigationSequence: this.state.navigationSequence + 1,
+      searchReveal: null,
+      searchBookId: null,
+      searchOpen: false,
+    });
+  }
+
+  setSearchScope(searchScope: ReaderState["searchScope"]): void {
+    this.set({ searchScope, searchHits: [], searchActiveIndex: -1, searchBusy: true });
+  }
+
   setSearch(query: string, hits: ReadonlyArray<SearchHit>, bookId: string | null): void {
+    const previous =
+      this.state.query === query ? this.state.searchHits[this.state.searchActiveIndex] : undefined;
+    const selected =
+      previous === undefined
+        ? -1
+        : hits.findIndex(
+            (hit) =>
+              hit.bookId === previous.bookId &&
+              hit.sectionId === previous.sectionId &&
+              hit.matchStart === previous.matchStart,
+          );
     this.set({
       query,
       searchHits: hits,
       searchBookId: bookId,
-      searchActiveIndex: hits.length > 0 ? 0 : -1,
+      searchActiveIndex: selected >= 0 ? selected : hits.length > 0 ? 0 : -1,
       searchBusy: false,
       searchReveal: null,
     });
@@ -543,7 +628,11 @@ class ReaderStore {
   }
 
   markSaved(): void {
-    this.set({ lastSavedAt: Date.now() });
+    this.set({ lastSavedAt: Date.now(), saveError: null });
+  }
+
+  markSaveFailed(reason: unknown): void {
+    this.set({ saveError: reason instanceof Error ? reason.message : String(reason) });
   }
 }
 

@@ -12,7 +12,6 @@ import {
   readerScrollPercentage,
   readerSectionScrollPosition,
   readerUsesHorizontalPaging,
-  scrollToReaderMatch,
   scrollToReaderSection,
   type ReaderScrollPosition,
 } from "./readingPosition";
@@ -20,7 +19,7 @@ import { formatBadge, percent } from "./readerPresentation";
 import { readerFontStack } from "./readerTypography";
 import { SectionView } from "./SectionView";
 import { PagedReadingView } from "./PagedReadingView";
-import { reader, useReader } from "./store";
+import { getReaderState, reader, useReader } from "./store";
 import { READER_CAPTURE_PROGRESS_EVENT } from "./useReaderRuntime";
 import { useReaderMobile } from "./useReaderMobile";
 
@@ -83,6 +82,13 @@ function ContinuousReadingView(props: {
   }, [activeSectionId, props.book, settings.layout]);
   useEffect(() => {
     const capture = () => {
+      // Rapid consecutive jumps must retain the requested destination, not
+      // capture the previous DOM before its navigation frame has committed.
+      if (
+        programmaticScrollRef.current ||
+        getReaderState().navigationSequence !== handledNavigationSequenceRef.current
+      )
+        return;
       markUserScroll();
       updateLocator();
     };
@@ -236,9 +242,15 @@ function ContinuousReadingView(props: {
       // index. If a format cannot expose text marks (for example PDF), keep
       // the chapter/page context rather than leaving the user at the old
       // scroll position.
-      if (!scrollToReaderMatch(reveal.sectionId, "instant")) {
-        scrollToReaderSection(reveal.sectionId, "instant");
-      }
+      const container = containerRef.current;
+      const section = props.book.sections.find((item) => item.id === reveal.sectionId);
+      const locator = savedProgress?.locator;
+      const position =
+        container && section && locator
+          ? readerLocatorScrollPosition(container, section, locator, false)
+          : undefined;
+      if (container && position) container.scrollTo({ ...position, behavior: "instant" });
+      else scrollToReaderSection(reveal.sectionId, "instant");
       reader.clearSearchReveal(reveal.id);
     });
     return () => window.cancelAnimationFrame(frame);

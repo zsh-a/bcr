@@ -38,6 +38,7 @@ import {
 } from "./useReaderRuntime";
 import "./styles.css";
 import "./reading-layout.css";
+import "./reader-tools.css";
 
 interface ReaderRouteSearch {
   readonly book?: string;

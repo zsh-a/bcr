@@ -55,6 +55,8 @@ function readyReaderState(
     activeBookId,
     activeSectionId: active?.sections[0]?.id ?? null,
     navigationSequence: 0,
+    navigationHistory: { back: [], forward: [] },
+    searchScope: "library",
     progressByBook: progress,
     bookmarksByBook: {},
     annotationsByBook: {},
@@ -68,6 +70,7 @@ function readyReaderState(
     sidebarOpen: false,
     searchOpen: false,
     lastSavedAt: null,
+    saveError: null,
   };
 }
 
@@ -538,6 +541,8 @@ describe("reader durable Document handoff", () => {
         activeBookId: book.id,
         activeSectionId: progress.locator.sectionId,
         navigationSequence: 0,
+        navigationHistory: { back: [], forward: [] },
+        searchScope: "library",
         progressByBook: { [book.id]: progress },
         bookmarksByBook: { [book.id]: [] },
         annotationsByBook: { [book.id]: [] },
@@ -556,6 +561,7 @@ describe("reader durable Document handoff", () => {
         sidebarOpen: false,
         searchOpen: false,
         lastSavedAt: null,
+        saveError: null,
       };
 
       await persistReader(runtime, state);

@@ -210,7 +210,7 @@ function readerTextAnchorRange(
   locator: ReaderLocator,
 ): Range | undefined {
   const exact = locator.textAnchor?.exact;
-  const prose = sectionElement.querySelector<HTMLElement>(".reader-prose");
+  const prose = sectionElement.querySelector<HTMLElement>(".reader-prose, .reader-pdf-text-layer");
   if (exact === undefined || exact.length === 0 || prose === null) return undefined;
   const rendered = readerRenderedText(prose);
   const match = searchTextRangeNear(rendered.value, exact, locator.progression);

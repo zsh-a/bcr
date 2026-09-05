@@ -3,6 +3,7 @@ import type {
   ReaderBook,
   ReaderBookmark,
   ReaderProgress,
+  ReaderLocator,
   ReaderSection,
   SearchHit,
 } from "@bcr/reader-core";
@@ -36,6 +37,7 @@ export interface ReaderSearchSession {
   readonly query: string;
   readonly searchBookId: string | null;
   readonly searchOpen: boolean;
+  readonly scope?: "book" | "library";
 }
 
 /** One-shot request used to move from a search result into its exact context. */
@@ -48,6 +50,11 @@ export interface ReaderSearchReveal {
 }
 
 export interface ReaderState {
+  readonly navigationHistory: {
+    readonly back: ReadonlyArray<ReaderHistoryEntry>;
+    readonly forward: ReadonlyArray<ReaderHistoryEntry>;
+  };
+  readonly searchScope: "library" | "book";
   readonly status: "booting" | "ready" | "error";
   readonly error: string | null;
   readonly library: ReadonlyArray<ReaderBook>;
@@ -68,6 +75,12 @@ export interface ReaderState {
   readonly sidebarOpen: boolean;
   readonly searchOpen: boolean;
   readonly lastSavedAt: number | null;
+  readonly saveError: string | null;
+}
+
+export interface ReaderHistoryEntry {
+  readonly bookId: string;
+  readonly locator: ReaderLocator;
 }
 
 export const DEFAULT_READER_SETTINGS: ReaderSettings = {

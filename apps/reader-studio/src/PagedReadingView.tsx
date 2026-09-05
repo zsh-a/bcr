@@ -78,17 +78,6 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
         const position = readerInternalLinkScrollPosition(viewport, pendingLink.current);
         if (position !== undefined) target = Math.floor(position.left / width);
       }
-      const mark =
-        reveal?.sectionId === section.id
-          ? content.querySelector<HTMLElement>("[data-reader-search-match]")
-          : null;
-      if (mark !== null)
-        target = Math.floor(
-          (mark.getBoundingClientRect().left -
-            viewport.getBoundingClientRect().left +
-            viewport.scrollLeft) /
-            width,
-        );
       const next = Math.max(0, Math.min(count - 1, target));
       // Snap markers are committed on the next frame before applying the destination.
       cancelAnimationFrame(frame);
@@ -129,7 +118,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
     if (next < 0 || next >= pages) {
       const adjacent = props.book.sections[sectionIndex + delta];
       if (adjacent !== undefined) {
-        reader.openBook(props.book.id, adjacent.id);
+        reader.openBook(props.book.id, adjacent.id, false);
         if (delta < 0) reader.setLocator(createLocator(adjacent, 1));
       }
     } else {

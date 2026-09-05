@@ -50,7 +50,7 @@
   position: absolute;
   visibility: hidden;
 }
-.reader-pdf-canvas-shell > :not(canvas) {
+.reader-pdf-canvas-shell > :not(canvas, .reader-pdf-text-layer) {
   position: absolute;
   padding: 16px;
 }
@@ -141,9 +141,11 @@
   .reader-header > * {
     display: none;
   }
-  .reader-header > .reader-toast,
-  .reader-header > .reader-import-progress {
+  .reader-header > .reader-toast {
     display: flex;
+  }
+  .reader-header > .reader-import-progress {
+    display: grid;
   }
   .reader-header.is-searching > .reader-search {
     position: fixed;

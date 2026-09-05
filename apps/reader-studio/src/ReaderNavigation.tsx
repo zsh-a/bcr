@@ -115,7 +115,7 @@ export function MobileReadingBar(props: {
   const unit = props.book.source.format === "pdf" ? "页" : "章";
   const openAdjacent = (delta: number) => {
     const target = props.book.sections[activeIndex + delta];
-    if (target !== undefined) reader.openBook(props.book.id, target.id);
+    if (target !== undefined) reader.openBook(props.book.id, target.id, false);
   };
   return (
     <>

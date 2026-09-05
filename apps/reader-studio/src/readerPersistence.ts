@@ -23,7 +23,7 @@ export interface PersistReaderOptions {
   /** Set false when the caller has already mirrored the latest session synchronously. */
   readonly mirrorSession?: boolean;
 }
-interface PersistedBook {
+export interface PersistedBook {
   readonly id: string;
   readonly title: string;
   readonly author?: string | undefined;
@@ -71,6 +71,7 @@ interface PersistedReaderLibrary {
 }
 
 interface PersistedReaderSession {
+  readonly navigationHistory?: ReaderState["navigationHistory"];
   readonly version: 1;
   readonly librarySignature?: string | undefined;
   readonly activeBookId?: string | null;
@@ -82,6 +83,7 @@ interface PersistedReaderSession {
 }
 
 interface RestoredReaderSnapshot {
+  readonly navigationHistory: ReaderState["navigationHistory"];
   readonly books: ReadonlyArray<ReaderBook>;
   readonly libraryOutdated: boolean;
   readonly activeBookId: string | null;
@@ -123,7 +125,7 @@ const READER_SESSION_META_KEY = "reader/session";
 
 const persistedLocalLibrarySignatures = new WeakMap<ReaderRuntime, string>();
 const persistedMetadataLibrarySignatures = new WeakMap<ReaderRuntime, string>();
-function persistBook(book: ReaderBook): PersistedBook {
+export function persistBook(book: ReaderBook): PersistedBook {
   return {
     id: book.id,
     title: book.title,
@@ -215,6 +217,8 @@ export async function persistReader(
       libraryRaw,
       localLibraryOutdated,
     );
+    if (!librarySaved.local && !librarySaved.metadata && localLibraryOutdated)
+      throw new Error("书库未能保存：本地存储不可用或空间不足");
     await writeReaderValue(
       runtime,
       READER_META_KEY,
@@ -229,18 +233,21 @@ export async function persistReader(
       persistedMetadataLibrarySignatures.set(runtime, librarySignature);
     }
   }
-  await writeReaderValue(
+  const sessionSaved = await writeReaderValue(
     runtime,
     READER_SESSION_META_KEY,
     READER_SESSION_STORAGE_KEY,
     sessionRaw,
     mirrorSession,
-    mirrorSession,
+    true,
   );
+  if (!sessionSaved.local && !sessionSaved.metadata)
+    throw new Error("阅读记录未能保存，请检查本地存储空间后重试");
 }
 
 function persistedReaderSession(state: ReaderState): PersistedReaderSession {
   return {
+    navigationHistory: state.navigationHistory,
     version: 1,
     librarySignature: readerLibrarySignature(state.library),
     activeBookId: state.activeBookId,
@@ -252,6 +259,7 @@ function persistedReaderSession(state: ReaderState): PersistedReaderSession {
       query: state.query,
       searchBookId: state.searchBookId,
       searchOpen: state.searchOpen,
+      scope: state.searchScope,
     },
   };
 }
@@ -362,7 +370,7 @@ async function readerValue(
   }
 }
 
-function restoredBookmarks(
+export function restoredBookmarks(
   books: ReadonlyArray<ReaderBook>,
   raw: unknown,
 ): ReaderState["bookmarksByBook"] {
@@ -419,7 +427,7 @@ function restoredBookmarks(
   return restored;
 }
 
-function restoredAnnotations(
+export function restoredAnnotations(
   books: ReadonlyArray<ReaderBook>,
   raw: unknown,
 ): ReaderState["annotationsByBook"] {
@@ -497,8 +505,48 @@ function restoredSearchSession(
   return {
     query,
     searchBookId,
+    scope: source["scope"] === "book" ? "book" : "library",
     searchOpen: query.trim().length > 0 && source["searchOpen"] === true,
   };
+}
+
+export function restoreNavigationHistory(
+  books: ReadonlyArray<ReaderBook>,
+  raw: unknown,
+): ReaderState["navigationHistory"] {
+  const source = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
+  const restore = (value: unknown): ReaderState["navigationHistory"]["back"] => {
+    if (!Array.isArray(value)) return [];
+    return value.slice(-50).flatMap((entry: unknown) => {
+      if (typeof entry !== "object" || entry === null) return [];
+      const candidate = entry as Record<string, unknown>;
+      const book = books.find((item) => item.id === candidate["bookId"]);
+      const locator = candidate["locator"];
+      if (book === undefined || typeof locator !== "object" || locator === null) return [];
+      const fields = locator as Record<string, unknown>;
+      if (
+        typeof fields["sectionId"] !== "string" ||
+        !book.sections.some((section) => section.id === fields["sectionId"]) ||
+        typeof fields["progression"] !== "number" ||
+        !Number.isFinite(fields["progression"])
+      )
+        return [];
+      const anchor = textAnchorValue(fields["textAnchor"]);
+      return [
+        {
+          bookId: book.id,
+          locator: normalizeLocator(book, {
+            kind:
+              fields["kind"] === "page" || fields["kind"] === "image" ? fields["kind"] : "section",
+            sectionId: fields["sectionId"],
+            progression: fields["progression"],
+            ...(anchor === undefined ? {} : { textAnchor: anchor }),
+          }),
+        },
+      ];
+    });
+  };
+  return { back: restore(source["back"]), forward: restore(source["forward"]) };
 }
 
 async function fileFromSource(
@@ -678,6 +726,7 @@ export async function restoreReader(
     return {
       books,
       libraryOutdated,
+      navigationHistory: restoreNavigationHistory(books, session?.navigationHistory),
       activeBookId: requestedActiveBookId ?? books[0]?.id ?? null,
       progressByBook: normalizeReaderProgress(books, source?.progressByBook),
       settings: { ...DEFAULT_READER_SETTINGS, ...source?.settings },

@@ -25,7 +25,7 @@ export function captureReaderProgress(): void {
 
 export function persistReaderSnapshot(
   runtime: ReaderRuntime,
-  options: { readonly durableLibrary?: boolean } = {},
+  options: { readonly durableLibrary?: boolean; readonly strict?: boolean } = {},
 ): Promise<void> {
   const state = getReaderState();
   if (state.status !== "ready") return Promise.resolve();
@@ -45,11 +45,9 @@ export function persistReaderSnapshot(
       await persistReader(runtime, latest, { mirrorSession: false });
       reader.markSaved();
     });
-  readerPersistenceQueue = readerPersistenceQueue
-    .catch(() => undefined)
-    .then(save)
-    .catch(() => undefined);
-  return readerPersistenceQueue;
+  const pending = readerPersistenceQueue.catch(() => undefined).then(save);
+  readerPersistenceQueue = pending.catch((reason: unknown) => reader.markSaveFailed(reason));
+  return options.strict ? pending : readerPersistenceQueue;
 }
 
 export interface ReaderPwaUpdateState {
@@ -115,6 +113,8 @@ export function useDebouncedPersist(runtime: ReaderRuntime | null): void {
   const searchBookId = useReader((state) => state.searchBookId);
   const searchOpen = useReader((state) => state.searchOpen);
   const settings = useReader((state) => state.settings);
+  const navigationHistory = useReader((state) => state.navigationHistory);
+  const searchScope = useReader((state) => state.searchScope);
   useEffect(() => {
     if (runtime === null || getReaderState().status !== "ready") return;
     const handle = window.setTimeout(() => {
@@ -131,6 +131,8 @@ export function useDebouncedPersist(runtime: ReaderRuntime | null): void {
     searchBookId,
     searchOpen,
     settings,
+    navigationHistory,
+    searchScope,
   ]);
 
   useEffect(() => {
@@ -153,6 +155,8 @@ export function useDebouncedPersist(runtime: ReaderRuntime | null): void {
 
 export function useReaderSearch(runtime: ReaderRuntime | null): void {
   const query = useReader((state) => state.query);
+  const scope = useReader((state) => state.searchScope);
+  const activeId = useReader((state) => (state.searchScope === "book" ? state.activeBookId : null));
   const library = useReader((state) => state.library);
   const [indexRevision, setIndexRevision] = useState(0);
   useEffect(() => {
@@ -171,8 +175,12 @@ export function useReaderSearch(runtime: ReaderRuntime | null): void {
       }
       reader.setSearchBusy(true);
       try {
-        const result = searchIndexedDetailed(runtime, library, query);
-        reader.setSearch(query, result.hits, null);
+        const result = searchIndexedDetailed(
+          runtime,
+          scope === "book" ? library.filter((book) => book.id === activeId) : library,
+          query,
+        );
+        reader.setSearch(query, result.hits, getReaderState().searchBookId);
         reader.setSearchBusy(result.indexing);
       } catch {
         reader.setSearch(query, [], null);
@@ -180,7 +188,7 @@ export function useReaderSearch(runtime: ReaderRuntime | null): void {
       }
     }, 160);
     return () => window.clearTimeout(handle);
-  }, [indexRevision, runtime, query, library]);
+  }, [indexRevision, runtime, query, library, scope, activeId]);
 }
 
 export interface ReaderBootState {
@@ -319,6 +327,7 @@ export function useReaderBoot(): ReaderBootState {
             restored.activeBookId,
             restored.annotationsByBook,
             restored.searchSession,
+            restored.navigationHistory,
           );
           scheduleMetadataWarmup(nextRuntime);
           scheduleIndexing(nextRuntime, restored.books);

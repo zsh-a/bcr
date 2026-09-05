@@ -1,8 +1,6 @@
 import {
-  makeSnippet,
   normalizeSearchQuery,
   searchLibrary,
-  searchTextRange,
   type ReaderBook,
   type SearchHit,
 } from "@bcr/reader-core";
@@ -58,49 +56,24 @@ export function searchIndexedDetailed(
       hits: [...workerResults.hits, ...searchLibrary(pendingBooks, query)]
         .sort(
           (left, right) =>
-            right.score - left.score || left.sectionId.localeCompare(right.sectionId),
+            books.findIndex((book) => book.id === left.bookId) -
+              books.findIndex((book) => book.id === right.bookId) ||
+            (books
+              .find((book) => book.id === left.bookId)
+              ?.sections.findIndex((section) => section.id === left.sectionId) ?? 0) -
+              (books
+                .find((book) => book.id === right.bookId)
+                ?.sections.findIndex((section) => section.id === right.sectionId) ?? 0) ||
+            left.matchStart - right.matchStart,
         )
         .slice(0, 80),
       indexing: workerResults.pendingBookIds.length > 0,
     };
   }
-  if (!runtime.ftsReady || runtime.meta === undefined || normalized.length < 3)
-    return { hits: searchLibrary(books, query), indexing: false };
-  try {
-    const escaped = normalized.replaceAll('"', '""');
-    const rows = runtime.meta.all(
-      "SELECT book_id, section_id, label, snippet(reader_fts, 3, '<mark>', '</mark>', '…', 18) AS snippet, bm25(reader_fts) AS rank FROM reader_fts WHERE reader_fts MATCH ? ORDER BY rank LIMIT 80",
-      [`"${escaped}"`],
-    );
-    if (rows.length === 0) return { hits: searchLibrary(books, query), indexing: false };
-    return {
-      hits: rows.flatMap((row) => {
-        const bookId = String(row["book_id"] ?? "");
-        const sectionId = String(row["section_id"] ?? "");
-        const book = books.find((candidate) => candidate.id === bookId);
-        const section = book?.sections.find((candidate) => candidate.id === sectionId);
-        if (section === undefined) return [];
-        const range = searchTextRange(section.text, query);
-        return [
-          {
-            bookId,
-            sectionId,
-            label: String(row["label"] ?? section.label ?? "正文"),
-            snippet:
-              range === undefined
-                ? String(row["snippet"] ?? "").replace(/<\/?mark>/gu, "")
-                : makeSnippet(section.text, range.start, range.length),
-            score: Number(row["rank"] ?? 0),
-            matchStart: range?.start ?? 0,
-            matchLength: range?.length ?? normalized.length,
-          },
-        ];
-      }),
-      indexing: false,
-    };
-  } catch {
-    return { hits: searchLibrary(books, query), indexing: false };
-  }
+  // FTS tokenization differs from our whitespace/NFKC substring contract.
+  // Without a worker index, enumerate the original text rather than silently
+  // returning only the first occurrence or an incomplete set of FTS candidates.
+  return { hits: searchLibrary(books, query), indexing: false };
 }
 
 export function searchIndexed(
