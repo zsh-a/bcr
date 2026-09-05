@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { pageAtOffset, pageCount } from "../src/pagination";
+import { pageAtOffset, pageCount, paginationGeometry } from "../src/pagination";
 
 describe("viewport pagination", () => {
+  it("counts occupied columns without a phantom final page", () => {
+    expect(paginationGeometry(680, 1456, 48, 2)).toEqual({ totalPages: 1, spreads: 1 });
+    expect(paginationGeometry(2136, 1456, 48, 2)).toEqual({ totalPages: 3, spreads: 2 });
+    expect(paginationGeometry(1408, 1456, 48, 2)).toEqual({ totalPages: 2, spreads: 1 });
+  });
   it("does not create phantom pages from subpixel rounding", () => {
     expect(pageCount(375, 375)).toBe(1);
     expect(pageCount(750.5, 375)).toBe(2);

@@ -21,9 +21,14 @@ export type {
 export type ReaderTheme = "paper" | "night" | "sage";
 export type ReaderLayout = "scroll" | "paged";
 export type ReaderFontFamily = "sans" | "serif" | "kai";
-export type ReaderLatinFontFamily = "sans" | "serif" | "mono";
+export type ReaderLatinFontFamily = "sans" | "serif" | "mono" | "literata" | "atkinson";
 
 export interface ReaderSettings {
+  readonly pageSpread?: boolean;
+  readonly tocPinned?: boolean;
+  readonly fontWeight?: number;
+  readonly paragraphSpacing?: number;
+  readonly lineLength?: number;
   readonly books?: Readonly<
     Record<
       string,
@@ -132,10 +137,13 @@ export interface ReaderHistoryEntry {
 export const DEFAULT_READER_SETTINGS: ReaderSettings = {
   theme: "paper",
   layout: "scroll",
-  fontSize: 18,
+  fontSize: 20,
   fontFamily: "sans",
   latinFontFamily: "sans",
-  lineHeight: 1.85,
+  lineHeight: 1.7,
+  fontWeight: 400,
+  paragraphSpacing: 0.65,
+  lineLength: 34,
   contentWidth: "narrow",
 };
 

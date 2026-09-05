@@ -228,7 +228,9 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
     !["paper", "night", "sage"].includes(String(settings["theme"])) ||
     !["scroll", "paged"].includes(String(settings["layout"])) ||
     !["sans", "serif", "kai"].includes(String(settings["fontFamily"])) ||
-    !["sans", "serif", "mono"].includes(String(settings["latinFontFamily"])) ||
+    !["sans", "serif", "mono", "literata", "atkinson"].includes(
+      String(settings["latinFontFamily"]),
+    ) ||
     !["narrow", "wide"].includes(String(settings["contentWidth"])) ||
     !finite(settings["fontSize"]) ||
     settings["fontSize"] < 12 ||
@@ -238,6 +240,17 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
     settings["lineHeight"] > 3
   )
     return fail();
+  for (const [key, min, max] of [
+    ["fontWeight", 350, 500],
+    ["paragraphSpacing", 0.3, 1.2],
+    ["lineLength", 28, 44],
+  ] as const) {
+    const value = settings[key];
+    if (value !== undefined && (!finite(value) || value < min || value > max)) return fail();
+  }
+  for (const key of ["pageSpread", "tocPinned"]) {
+    if (settings[key] !== undefined && typeof settings[key] !== "boolean") return fail();
+  }
   for (const key of ["progressByBook", "bookmarksByBook", "annotationsByBook"])
     if (!object(value[key])) return fail();
   const projected = books.map((entry) => entry.book);

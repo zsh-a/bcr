@@ -16,6 +16,7 @@ import {
   type ReaderState,
 } from "./model";
 import { normalizeReaderProgress } from "./session-contract";
+import { normalizeReaderTypography } from "./readerTypography";
 import { parseReaderFile } from "./readerImports";
 import type { ReaderRuntime } from "./readerRuntimeCore";
 
@@ -702,7 +703,7 @@ export async function restoreReader(
       progressByBook: normalizeReaderProgress(books, source?.progressByBook),
       settings: {
         ...DEFAULT_READER_SETTINGS,
-        ...source?.settings,
+        ...normalizeReaderTypography({ ...DEFAULT_READER_SETTINGS, ...source?.settings }),
         books: normalizeBookSettings(source?.settings?.books),
       },
       bookmarksByBook: restoredBookmarks(books, source?.bookmarksByBook),

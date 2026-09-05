@@ -1765,8 +1765,7 @@
 
 .reader-mobile-font-option > span {
   color: var(--reader-muted);
-  font-family: var(--reader-font-mono);
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .reader-mobile-font-option > .reader-icon:last-child {
@@ -2002,7 +2001,8 @@
 }
 
 .reader-font-family-menu select {
-  width: 48px;
+  width: auto;
+  max-width: 90px;
   border: 0;
   outline: 0;
   background: transparent;
@@ -2040,7 +2040,7 @@
 }
 
 .reader-reading-column {
-  width: min(100% - 68px, 790px);
+  width: min(100% - 68px, var(--reader-line-length, 720px));
   margin: 0 auto;
   padding: 64px 0 max(90px, calc(90px + env(safe-area-inset-bottom)));
 }
@@ -2049,30 +2049,8 @@
   width: min(100% - 68px, 970px);
 }
 
-.reader-layout-paged .reader-reading-scroll {
-  overflow-x: auto;
-}
-
-.reader-layout-paged .reader-reading-column {
-  height: 100%;
-  min-height: 0;
-  width: max(100% - 68px, 720px);
-  column-width: min(70vw, 710px);
-  column-gap: 84px;
-  column-fill: auto;
-}
-
-.reader-layout-paged .reader-reading-intro,
-.reader-layout-paged .reader-reading-end {
-  column-span: all;
-}
-
-.reader-layout-paged .reader-section {
-  break-inside: avoid;
-}
-
 .reader-reading-intro {
-  margin-bottom: 76px;
+  margin-bottom: 48px;
   text-align: center;
 }
 
@@ -2089,12 +2067,12 @@
 
 .reader-reading-intro h1 {
   margin: 18px auto 9px;
-  color: var(--reader-ink);
+  color: var(--reader-text);
   font-family: var(--reader-font-sans);
-  font-size: clamp(30px, 4vw, 54px);
-  font-weight: 650;
-  letter-spacing: -0.045em;
-  line-height: 1.08;
+  font-size: clamp(28px, 3vw, 38px);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.35;
 }
 
 .reader-theme-night .reader-reading-intro h1 {
@@ -2131,7 +2109,7 @@
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);
   gap: 20px;
-  margin-bottom: 74px;
+  margin-bottom: 44px;
   scroll-margin-top: 40px;
 }
 
@@ -2159,7 +2137,7 @@
 }
 
 .reader-section-label {
-  margin-bottom: 17px;
+  margin-bottom: 10px;
   color: var(--reader-muted);
   font-family: var(--reader-font-mono);
   font-size: 10px;
@@ -2181,8 +2159,10 @@
 .reader-prose {
   color: var(--reader-text);
   font-family: var(--reader-reader-font-family, var(--reader-font-sans)) !important;
-  font-size: var(--reader-reader-font-size, 18px) !important;
-  line-height: var(--reader-reader-line-height, 1.85);
+  font-size: var(--reader-reader-font-size, 20px) !important;
+  line-height: var(--reader-reader-line-height, 1.7);
+  font-weight: var(--reader-reader-font-weight, 400);
+  font-optical-sizing: auto;
 }
 
 /* Reader preferences take precedence over fixed typography embedded by EPUB
@@ -2242,19 +2222,27 @@
 }
 
 .reader-prose p {
-  margin: 0 0 1.2em;
+  margin: 0 0 var(--reader-paragraph-spacing, 0.65em) !important;
+  line-height: inherit !important;
 }
 
 .reader-prose h1,
 .reader-prose h2,
 .reader-prose h3,
 .reader-prose h4 {
-  margin: 0 0 0.8em;
-  color: var(--reader-ink);
-  font-size: 1.55em !important;
-  font-weight: 650;
-  letter-spacing: -0.03em;
-  line-height: 1.25;
+  margin: 1.4em 0 0.7em;
+  color: var(--reader-text);
+  font-size: 1.3em !important;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.45;
+}
+
+.reader-prose > :first-child {
+  margin-top: 0;
+}
+.reader-prose > :last-child {
+  margin-bottom: 0 !important;
 }
 
 .reader-theme-night .reader-prose h1,
@@ -2266,7 +2254,7 @@
 
 .reader-prose h3,
 .reader-prose h4 {
-  font-size: 1.25em !important;
+  font-size: 1.15em !important;
 }
 
 .reader-prose h5,
@@ -2317,12 +2305,12 @@
 }
 
 .reader-prose blockquote {
-  margin: 1.5em 0;
+  margin: 1em 0;
   border-left: 3px solid var(--reader-accent);
   background: color-mix(in srgb, var(--reader-accent-soft) 50%, transparent);
   padding: 14px 17px;
-  color: var(--reader-ink);
-  font-style: italic;
+  color: var(--reader-text);
+  font-style: normal;
 }
 
 .reader-prose img {
@@ -3494,17 +3482,17 @@
   }
 
   .reader-reading-intro {
-    margin-bottom: 52px;
+    margin-bottom: 36px;
   }
 
   .reader-reading-intro h1 {
-    font-size: 34px;
+    font-size: 28px;
   }
 
   .reader-section {
     grid-template-columns: 26px minmax(0, 1fr);
     gap: 11px;
-    margin-bottom: 55px;
+    margin-bottom: 36px;
   }
 
   .reader-chapter-rail {

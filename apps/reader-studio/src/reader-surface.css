@@ -1,0 +1,86 @@
+/* A centered reading surface, with one optional reference rail. */
+.reader-studio .reader-reading-frame {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.reader-studio .reader-reading-frame.reader-toc-pinned {
+  grid-template-columns: minmax(0, 1fr) 228px;
+}
+.reader-studio .reader-reading-frame > .reader-mobile-nav {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: 64px minmax(0, 1fr) 48px 48px auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 60px;
+  padding: 4px 20px;
+  border-top: 1px solid var(--reader-border);
+  background: var(--reader-raised);
+}
+.reader-mobile-nav .reader-history-bar,
+.reader-main > .reader-history-bar {
+  position: static;
+  transform: none;
+  width: auto;
+  max-width: 100%;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+}
+.reader-mobile-nav .reader-history-bar {
+  grid-column: 5;
+  grid-row: 1;
+}
+.reader-main > .reader-history-bar {
+  background: var(--reader-raised);
+  justify-content: center;
+}
+.reader-toolbar-actions-desktop .reader-annotation-toggle,
+.reader-toolbar-actions-desktop .reader-document-handoff {
+  display: none;
+}
+.reader-typography-fields input[type="checkbox"] {
+  width: 20px;
+  min-height: 20px;
+}
+.reader-typography-fields label:has(input[type="checkbox"]) {
+  grid-column: 1 / -1;
+  min-height: 44px;
+}
+.reader-pin-toc {
+  margin: 0 18px 12px;
+}
+.reader-mobile-nav-current-label,
+.reader-mobile-nav-current strong,
+.reader-mobile-nav-current-chevron {
+  display: none;
+}
+.reader-mobile-nav-current {
+  justify-content: center;
+}
+.reader-mobile-nav-current-meta {
+  font-size: 12px;
+}
+@media (max-width: 860px) {
+  .reader-pin-toc {
+    display: none;
+  }
+  .reader-studio .reader-reading-frame > .reader-mobile-nav {
+    grid-template-columns: 48px minmax(0, 1fr) 44px 44px;
+    padding: 4px max(12px, env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+    gap: 0 8px;
+    min-height: var(--reader-chrome-bottom);
+  }
+  .reader-mobile-nav .reader-history-bar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: center;
+    overflow-x: auto;
+  }
+  .reader-studio:has(.reader-mobile-nav .reader-history-bar) {
+    --reader-chrome-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+}

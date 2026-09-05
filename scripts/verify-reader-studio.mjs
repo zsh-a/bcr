@@ -155,6 +155,7 @@ page.on("pageerror", (error) => fail(`pageerror: ${error.message}`));
 
 await page.goto(base.toString(), { waitUntil: "domcontentloaded" });
 await page.locator(".reader-studio").waitFor({ timeout: 20_000 });
+await page.getByRole("button", { name: "打开书库", exact: true }).click();
 await page.locator(".reader-book-card").first().waitFor({ timeout: 20_000 });
 const demoCard = page.locator(".reader-book-card", { hasText: "把时间还给阅读" });
 if ((await demoCard.count()) > 0) {
@@ -235,7 +236,7 @@ await page.waitForFunction(
     previous,
   minimumFontSize,
 );
-await page.getByRole("button", { name: "书卷宋体" }).click();
+await page.getByRole("button", { name: /Noto 宋体/ }).click();
 const selectedFontFamily = await page
   .locator(".reader-prose")
   .first()
@@ -251,7 +252,7 @@ const selectedLatinFontFamily = await page
 if (!selectedLatinFontFamily.startsWith("Georgia")) {
   fail("移动端英文字体选择没有应用到阅读内容");
 }
-await page.getByRole("button", { name: "现代黑体" }).click();
+await page.getByRole("button", { name: /Noto 黑体/ }).click();
 await page.getByRole("button", { name: "Plex Sans" }).click();
 await page.getByRole("button", { name: "增大字号" }).click();
 await page.getByRole("button", { name: "增大字号" }).click();
@@ -296,8 +297,10 @@ const persistedTextAnchor = await page.evaluate(() => {
 if (typeof persistedTextAnchor !== "string" || persistedTextAnchor.length === 0) {
   fail("自动阅读进度没有生成文字锚点");
 }
-await page.locator('.reader-font-size-menu button[aria-label="增大字号"]').click();
-await page.locator('.reader-font-size-menu button[aria-label="增大字号"]').click();
+await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
+await page.getByRole("button", { name: "增大字号", exact: true }).click();
+await page.getByRole("button", { name: "增大字号", exact: true }).click();
+await page.getByRole("button", { name: "关闭阅读设置", exact: true }).click();
 await page.waitForTimeout(800);
 const preciseAnchorAfterReflow = await preciseAnchor.evaluate((target) => {
   const container = target.closest(".reader-reading-scroll");
@@ -336,6 +339,7 @@ await page
 // before the normal debounced snapshot has had 900 ms to run.
 await page.reload({ waitUntil: "domcontentloaded" });
 await page.locator(".reader-studio").waitFor({ timeout: 20_000 });
+await page.getByRole("button", { name: "打开书库", exact: true }).click();
 await page
   .locator(".reader-book-card", { hasText: "Reader Export Bundle 验证" })
   .waitFor({ timeout: 20_000 });
@@ -351,6 +355,8 @@ await page.locator(".reader-reading-intro h1", { hasText: "把时间还给阅读
 });
 const searchClose = page.getByRole("button", { name: "关闭搜索结果" });
 if ((await searchClose.count()) > 0) await searchClose.click();
+await page.getByRole("button", { name: "打开阅读目录", exact: true }).click();
+await page.getByRole("button", { name: "固定目录侧栏", exact: true }).click();
 const bookmarkButton = page.getByRole("button", { name: /标记当前位置|移除当前位置书签/ });
 if ((await bookmarkButton.getAttribute("aria-label")) === "标记当前位置") {
   await bookmarkButton.click();
@@ -358,6 +364,7 @@ if ((await bookmarkButton.getAttribute("aria-label")) === "标记当前位置") 
 await page.locator(".reader-bookmark-list").waitFor({ timeout: 5_000 });
 if ((await page.locator(".reader-bookmark-item").count()) < 1) fail("书签没有写入当前阅读会话");
 if ((await page.locator(".reader-annotation-item").count()) === 0) {
+  await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
   await page.getByRole("button", { name: "添加阅读笔记" }).click();
   await page.getByLabel("笔记内容").fill("验证阅读会话恢复");
   await page.getByRole("button", { name: "保存笔记" }).click();
@@ -378,6 +385,7 @@ await page
     selection?.removeAllRanges();
     selection?.addRange(range);
   });
+await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
 await page.getByRole("button", { name: "添加阅读笔记" }).click();
 if (!(await page.locator(".reader-annotation-composer").innerText()).includes("已锚定选段")) {
   fail("选中文本后新增笔记没有保存语义锚点");
@@ -402,7 +410,9 @@ if (!(await page.locator(".reader-toolbar-title").innerText()).includes("第二�
 if ((await page.locator('[data-reader-search-match="true"]').count()) < 1)
   fail("搜索命中没有在正文高亮");
 
+await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
 await page.getByRole("button", { name: "夜间" }).click();
+await page.getByRole("button", { name: "关闭阅读设置", exact: true }).click();
 if (
   !(await page
     .locator(".reader-studio")

@@ -1,0 +1,102 @@
+.reader-typography-presets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.reader-studio .reader-typography-presets button {
+  min-height: 64px;
+  padding: 12px 8px;
+  border: 1px solid var(--reader-border);
+  border-radius: 10px;
+  background: var(--reader-raised);
+  text-align: left;
+}
+.reader-typography-presets small {
+  display: block;
+  color: var(--reader-muted);
+  margin-top: 6px;
+  font-size: 12px;
+}
+.reader-studio .reader-typography-presets button:hover,
+.reader-studio .reader-typography-presets button[aria-pressed="true"] {
+  border-color: var(--reader-accent);
+  background: color-mix(in srgb, var(--reader-accent) 7%, var(--reader-raised));
+}
+.reader-typography-preview {
+  margin-top: 16px;
+  padding: 20px;
+  border: 1px solid var(--reader-border);
+  border-radius: 12px;
+  background: var(--reader-bg);
+  overflow-wrap: anywhere;
+}
+.reader-typography-preview .reader-eyebrow {
+  display: block;
+  margin-bottom: 14px;
+}
+.reader-typography-preview .reader-prose p:last-child {
+  margin-bottom: 0;
+}
+.reader-typography-note {
+  color: var(--reader-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.reader-typography-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-block: 16px;
+}
+.reader-typography-fields label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.reader-typography-fields output {
+  margin-left: auto;
+  color: var(--reader-muted);
+  font-variant-numeric: tabular-nums;
+}
+.reader-typography-fields input,
+.reader-typography-fields select {
+  width: 100%;
+  min-height: 44px;
+  accent-color: var(--reader-accent);
+}
+.reader-mobile-font-option small {
+  color: var(--reader-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.reader-mobile-setting-options.reader-mobile-font-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.reader-font-licenses {
+  color: var(--reader-muted);
+  font-size: 12px;
+}
+.reader-font-licenses summary {
+  min-height: 44px;
+  padding-block: 12px;
+  cursor: pointer;
+}
+.reader-font-licenses pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+.reader-font-family-menu select {
+  width: auto;
+  max-width: 90px;
+}
+@media (max-width: 420px) {
+  .reader-typography-fields {
+    grid-template-columns: 1fr;
+  }
+  .reader-typography-presets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

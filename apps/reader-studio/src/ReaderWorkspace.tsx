@@ -46,9 +46,9 @@ export function ReaderWorkspace(props: {
   const readerMainRef = useRef<HTMLElement>(null);
   const fullscreen = useReaderFullscreen(readerMainRef, props.onNotice);
   if (active === undefined) return null;
-  const openAnnotationComposer = () => {
+  const openAnnotationComposer = (selected?: ReaderLocator) => {
     setAnnotationDraft("");
-    setAnnotationLocator(readerSelectionLocator(active) ?? null);
+    setAnnotationLocator(selected ?? readerSelectionLocator(active) ?? null);
     setAnnotationOpen(true);
   };
   const submitAnnotation = (event: FormEvent<HTMLFormElement>) => {
@@ -94,7 +94,6 @@ export function ReaderWorkspace(props: {
           onInstall={props.onInstall}
           showInstall={props.showInstall}
         />
-        <ReaderHistoryBar />
         <ReaderSaveNotice runtime={props.runtime} />
         {annotationOpen && (
           <AnnotationComposer
@@ -113,6 +112,10 @@ export function ReaderWorkspace(props: {
           book={active}
           onToggleMobileChrome={props.onToggleMobileChrome}
         />
+        {(settings.books?.[active.id]?.comic ??
+          (active.source.format === "cbz" || active.rendition?.layout === "pre-paginated")) && (
+          <ReaderHistoryBar />
+        )}
       </main>
     </div>
   );

@@ -47,6 +47,21 @@ async function runtime(): Promise<ReaderRuntime> {
 }
 
 describe("Reader portable backup", () => {
+  it("round trips expanded typography and rejects malformed spacing", () => {
+    const settings = {
+      ...DEFAULT_READER_SETTINGS,
+      latinFontFamily: "atkinson",
+      fontWeight: 350,
+      paragraphSpacing: 0.8,
+      lineLength: 40,
+    };
+    expect(decodeReaderBackup({ ...manifest(), settings }).settings).toMatchObject(settings);
+    for (const patch of [{ paragraphSpacing: -1 }, { lineLength: 1000 }, { fontWeight: "400" }]) {
+      expect(() =>
+        decodeReaderBackup({ ...manifest(), settings: { ...settings, ...patch } }),
+      ).toThrow();
+    }
+  });
   it("plans bounded independent volumes without omitting selected books", () => {
     const books = [4, 6, 7].map((size, index) => ({
       ...book,

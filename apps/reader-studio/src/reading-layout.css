@@ -78,14 +78,22 @@
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
+  width: min(
+    100%,
+    calc(
+      (var(--reader-line-length, 680px) + 2 * var(--reader-page-gutter)) *
+        var(--reader-page-columns, 1)
+    )
+  );
+  justify-self: center;
 }
 .reader-page-content {
-  width: calc(100% - 48px);
+  width: calc(100% - 2 * var(--reader-page-gutter));
   height: calc(100% - 32px);
-  margin: 16px 24px;
+  margin: 16px var(--reader-page-gutter);
   column-width: auto;
-  column-count: 1;
-  column-gap: 48px;
+  column-count: var(--reader-page-columns, 1);
+  column-gap: calc(2 * var(--reader-page-gutter));
   column-fill: auto;
 }
 .reader-page-content .reader-section {
@@ -106,8 +114,26 @@
   widows: 2;
   overflow-wrap: anywhere;
 }
+.reader-page-content :is(h1, h2, h3, h4, h5, h6) {
+  break-after: avoid;
+}
+.reader-page-content :is(table, svg, figure) {
+  max-width: 100%;
+}
+.reader-page-content table {
+  table-layout: fixed;
+  width: 100%;
+}
+.reader-page-content :is(td, th) {
+  overflow-wrap: anywhere;
+}
+.reader-page-content :is(img, svg) {
+  max-height: calc(100dvh - 220px);
+  width: auto;
+  object-fit: contain;
+}
 .reader-page-content img {
-  max-height: 100%;
+  max-height: var(--reader-page-content-height, 100%);
   object-fit: contain;
   break-inside: avoid;
 }
@@ -222,20 +248,20 @@
   }
   .reader-reading-column,
   .reader-width-wide .reader-reading-column {
-    width: min(calc(100% - 40px), 730px);
+    width: min(calc(100% - 40px), var(--reader-line-length, 720px));
     padding-top: calc(var(--reader-chrome-top) + 24px);
     padding-bottom: calc(var(--reader-chrome-bottom) + 36px);
   }
   .reader-section {
     display: block;
-    margin-bottom: 40px;
+    margin-bottom: 32px;
   }
   .reader-section-index {
     display: none;
   }
   .reader-section-label {
     font-size: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
   }
   .reader-reading-intro {
     margin-bottom: 36px;

@@ -59,7 +59,7 @@ function initialState(): ReaderState {
     searchBusy: false,
     searchReveal: null,
     settings: DEFAULT_READER_SETTINGS,
-    sidebarOpen: true,
+    sidebarOpen: false,
     searchOpen: false,
     lastSavedAt: null,
     saveError: null,
@@ -555,7 +555,10 @@ class ReaderStore {
   }
 
   setSettings(patch: Partial<ReaderSettings>): void {
-    this.set({ settings: { ...this.state.settings, ...patch } });
+    this.set({
+      settings: { ...this.state.settings, ...patch },
+      ...(patch.tocPinned ? { sidebarOpen: false } : {}),
+    });
   }
 
   restoreReadingHistory(
@@ -576,7 +579,12 @@ class ReaderStore {
   }
 
   toggleSidebar(): void {
-    this.set({ sidebarOpen: !this.state.sidebarOpen });
+    this.set({
+      sidebarOpen: !this.state.sidebarOpen,
+      ...(!this.state.sidebarOpen
+        ? { settings: { ...this.state.settings, tocPinned: false } }
+        : {}),
+    });
   }
 
   setSearchOpen(searchOpen: boolean): void {

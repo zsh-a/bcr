@@ -14,19 +14,13 @@ import {
   PanelLeftOpen,
   Plus,
   Settings2,
-  Type,
   X,
   Search,
   Download,
 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { sameLocator, type ReaderBook, type ReaderLocator } from "@bcr/reader-core";
-import {
-  type ReaderFontFamily,
-  type ReaderLatinFontFamily,
-  type ReaderSettings,
-  type ReaderTheme,
-} from "./model";
+import { type ReaderSettings, type ReaderTheme } from "./model";
 import {
   READER_CJK_FONT_OPTIONS,
   READER_LATIN_FONT_OPTIONS,
@@ -36,11 +30,14 @@ import { clamp, percent, themeIcon, themeLabel } from "./readerPresentation";
 import { reader, useReader } from "./store";
 import type { ReaderFullscreenState } from "./useReaderPlatform";
 import { ReaderSheet } from "./ReaderSheet";
+import { ReaderTypographySettings } from "./ReaderTypographySettings";
+import { ReaderNavigationButton } from "./ReaderNavigation";
+import { readerSelectionLocator } from "./readingPosition";
 
 export function ReaderToolbar(props: {
   book: ReaderBook;
   settings: ReaderSettings;
-  onAddAnnotation: () => void;
+  onAddAnnotation: (locator?: ReaderLocator) => void;
   onOpenDocument: () => void;
   documentHandoffBusy: boolean;
   fullscreen: ReaderFullscreenState;
@@ -51,6 +48,13 @@ export function ReaderToolbar(props: {
   const activeSectionId = useReader((state) => state.activeSectionId);
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const selectionBeforeSettings = useRef<ReaderLocator | undefined>(undefined);
+  const openSettings = () => {
+    selectionBeforeSettings.current = readerSelectionLocator(props.book);
+    if (props.settings.layout === "paged")
+      window.dispatchEvent(new Event("bcr-reader-capture-progress"));
+    setSettingsOpen(true);
+  };
   const locator = useReader((state) => state.progressByBook[props.book.id]?.locator);
   const bookmarked = useReader((state) => {
     if (locator === undefined) return false;
@@ -118,15 +122,19 @@ export function ReaderToolbar(props: {
         <span style={{ width: `${progress * 100}%` }} />
       </div>
       <div className="reader-toolbar-actions reader-toolbar-actions-desktop">
+        <ReaderNavigationButton book={props.book} />
         <button
           type="button"
-          className="reader-annotation-toggle"
-          onClick={props.onAddAnnotation}
-          aria-label="添加阅读笔记"
-          title="添加阅读笔记"
+          className="reader-icon-button"
+          aria-label="在书中搜索"
+          onClick={() => {
+            reader.setSearchOpen(true);
+            requestAnimationFrame(() =>
+              document.querySelector<HTMLInputElement>(".reader-search input")?.focus(),
+            );
+          }}
         >
-          <MessageSquarePlus className="reader-icon" />
-          <span>笔记</span>
+          <Search className="reader-icon" />
         </button>
         <button
           type="button"
@@ -139,25 +147,20 @@ export function ReaderToolbar(props: {
           <Bookmark className="reader-icon" />
           <span>{bookmarked ? "已标记" : "书签"}</span>
         </button>
-        <button
-          type="button"
-          className="reader-document-handoff"
-          onClick={props.onOpenDocument}
-          disabled={props.documentHandoffBusy}
-          aria-label="交给 Document Studio"
-          title="交给 Document Studio"
-        >
-          <FileText className="reader-icon" />
-          <span>{props.documentHandoffBusy ? "交接中…" : "交给 Document"}</span>
-          <ArrowUpRight className="reader-icon" />
-        </button>
         <span className="reader-locator">
           <Bookmark className="reader-icon" /> {percent(progress)}
         </span>
-        <ThemeMenu settings={props.settings} />
-        <LayoutMenu settings={props.settings} fixedLayout={props.book.source.format === "pdf"} />
-        <FontFamilyMenu settings={props.settings} />
-        <FontSizeMenu settings={props.settings} />
+        <button
+          type="button"
+          className="reader-icon-button"
+          aria-label="打开阅读设置"
+          title="阅读设置"
+          aria-expanded={settingsOpen}
+          aria-controls="reader-mobile-settings"
+          onClick={openSettings}
+        >
+          <Settings2 className="reader-icon" />
+        </button>
         <button
           type="button"
           className={`reader-icon-button reader-fullscreen-toggle ${props.fullscreen.isFullscreen ? "is-active" : ""}`}
@@ -200,7 +203,7 @@ export function ReaderToolbar(props: {
         <button
           type="button"
           className="reader-mobile-toolbar-button reader-mobile-note-action"
-          onClick={props.onAddAnnotation}
+          onClick={() => props.onAddAnnotation()}
           aria-label="添加阅读笔记"
           title="添加阅读笔记"
         >
@@ -219,7 +222,7 @@ export function ReaderToolbar(props: {
         <button
           type="button"
           className={`reader-mobile-toolbar-button ${settingsOpen ? "is-active" : ""}`}
-          onClick={() => setSettingsOpen(true)}
+          onClick={openSettings}
           aria-expanded={settingsOpen}
           aria-controls="reader-mobile-settings"
           aria-label="打开阅读设置"
@@ -230,9 +233,13 @@ export function ReaderToolbar(props: {
       </div>
       <ReaderSettingsSheet
         fixedLayout={props.book.source.format === "pdf"}
+        comicMode={
+          props.settings.books?.[props.book.id]?.comic ??
+          (props.book.source.format === "cbz" || props.book.rendition?.layout === "pre-paginated")
+        }
         onAddAnnotation={() => {
           setSettingsOpen(false);
-          props.onAddAnnotation();
+          props.onAddAnnotation(selectionBeforeSettings.current);
         }}
         onInstall={props.onInstall}
         showInstall={props.showInstall}
@@ -249,6 +256,7 @@ export function ReaderToolbar(props: {
 }
 
 function ReaderSettingsSheet(props: {
+  comicMode: boolean;
   fixedLayout: boolean;
   onAddAnnotation: () => void;
   onInstall: () => void;
@@ -358,6 +366,10 @@ function ReaderSettingsSheet(props: {
               ))}
             </div>
           </section>
+          <ReaderTypographySettings
+            settings={props.settings}
+            fixedLayout={props.fixedLayout || props.comicMode}
+          />
           <section className="reader-mobile-setting-group" aria-labelledby="reader-font-label">
             <div className="reader-mobile-setting-label-row">
               <span id="reader-font-label" className="reader-mobile-setting-label">
@@ -417,6 +429,7 @@ function ReaderSettingsSheet(props: {
                 >
                   <strong style={{ fontFamily: font.stack }}>阅</strong>
                   <span>{font.label}</span>
+                  <small>{font.description}</small>
                   {props.settings.fontFamily === font.id && <Check className="reader-icon" />}
                 </button>
               ))}
@@ -444,6 +457,7 @@ function ReaderSettingsSheet(props: {
                 >
                   <strong style={{ fontFamily: `${font.stack}, sans-serif` }}>Ag</strong>
                   <span>{font.label}</span>
+                  <small>{font.description}</small>
                   {props.settings.latinFontFamily === font.id && <Check className="reader-icon" />}
                 </button>
               ))}
@@ -567,122 +581,5 @@ export function AnnotationComposer(props: {
         </div>
       </form>
     </ReaderSheet>
-  );
-}
-
-function ThemeMenu(props: { settings: ReaderSettings }) {
-  const themes: ReadonlyArray<ReaderTheme> = ["paper", "sage", "night"];
-  return (
-    <div className="reader-segmented" role="group" aria-label="阅读主题">
-      {themes.map((theme) => (
-        <button
-          type="button"
-          key={theme}
-          className={props.settings.theme === theme ? "is-active" : ""}
-          onClick={() => reader.setSettings({ theme })}
-          title={themeLabel(theme)}
-        >
-          {themeIcon(theme)}
-          <span className="reader-control-label">{themeLabel(theme)}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function LayoutMenu(props: { settings: ReaderSettings; fixedLayout: boolean }) {
-  return (
-    <div className="reader-segmented" role="group" aria-label="阅读布局">
-      <button
-        type="button"
-        className={props.settings.layout === "scroll" ? "is-active" : ""}
-        onClick={() => reader.setSettings({ layout: "scroll" })}
-        title="连续滚动"
-      >
-        <List className="reader-icon" />
-        <span className="reader-control-label">连续</span>
-      </button>
-      <button
-        type="button"
-        className={props.settings.layout === "paged" ? "is-active" : ""}
-        disabled={props.fixedLayout}
-        onClick={() => reader.setSettings({ layout: "paged" })}
-        title="分页阅读"
-      >
-        <Columns2 className="reader-icon" />
-        <span className="reader-control-label">分页</span>
-      </button>
-    </div>
-  );
-}
-
-function FontSizeMenu(props: { settings: ReaderSettings }) {
-  return (
-    <div className="reader-segmented reader-font-size-menu" role="group" aria-label="字号大小">
-      <button
-        type="button"
-        onClick={() =>
-          reader.setSettings({
-            fontSize: clamp(props.settings.fontSize - 1, 15, 26),
-          })
-        }
-        disabled={props.settings.fontSize <= 15}
-        aria-label="减小字号"
-        title="减小字号"
-      >
-        <Minus className="reader-icon" />
-      </button>
-      <span className="reader-font-size-value">{props.settings.fontSize}</span>
-      <button
-        type="button"
-        onClick={() =>
-          reader.setSettings({
-            fontSize: clamp(props.settings.fontSize + 1, 15, 26),
-          })
-        }
-        disabled={props.settings.fontSize >= 26}
-        aria-label="增大字号"
-        title="增大字号"
-      >
-        <Plus className="reader-icon" />
-      </button>
-    </div>
-  );
-}
-
-function FontFamilyMenu(props: { settings: ReaderSettings }) {
-  return (
-    <div className="reader-font-family-menu" title="中英文字体">
-      <Type className="reader-icon" aria-hidden="true" />
-      <select
-        aria-label="中文字体"
-        value={props.settings.fontFamily}
-        onChange={(event) =>
-          reader.setSettings({ fontFamily: event.currentTarget.value as ReaderFontFamily })
-        }
-      >
-        {READER_CJK_FONT_OPTIONS.map((font) => (
-          <option value={font.id} key={font.id}>
-            {font.shortLabel}
-          </option>
-        ))}
-      </select>
-      <span className="reader-font-family-divider" aria-hidden="true" />
-      <select
-        aria-label="英文字体"
-        value={props.settings.latinFontFamily}
-        onChange={(event) =>
-          reader.setSettings({
-            latinFontFamily: event.currentTarget.value as ReaderLatinFontFamily,
-          })
-        }
-      >
-        {READER_LATIN_FONT_OPTIONS.map((font) => (
-          <option value={font.id} key={font.id}>
-            {font.shortLabel}
-          </option>
-        ))}
-      </select>
-    </div>
   );
 }

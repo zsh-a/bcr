@@ -24,7 +24,8 @@ import {
   type ReaderScrollPosition,
 } from "./readingPosition";
 import { formatBadge, percent } from "./readerPresentation";
-import { readerFontStack } from "./readerTypography";
+import { readerTypographyStyle } from "./readerTypography";
+import { useReaderFonts } from "./useReaderFonts";
 import { SectionView } from "./SectionView";
 import { PagedReadingView } from "./PagedReadingView";
 import { getReaderState, reader, useReader } from "./store";
@@ -40,13 +41,18 @@ export function ReadingView(props: {
 }) {
   const layout = useReader((state) => state.settings.layout);
   const comic = useReader((state) => state.settings.books?.[props.book.id]?.comic);
-  if (
+  const settings = useReader((state) => state.settings);
+  const comicMode =
     comic ??
-    (props.book.source.format === "cbz" || props.book.rendition?.layout === "pre-paginated")
-  )
-    return <ComicReadingView book={props.book} />;
+    (props.book.source.format === "cbz" || props.book.rendition?.layout === "pre-paginated");
+  useReaderFonts(settings, props.book.source.format !== "pdf" && !comicMode);
+  if (comicMode) return <ComicReadingView book={props.book} />;
   return layout === "paged" && props.book.source.format !== "pdf" ? (
-    <PagedReadingView book={props.book} onToggleMobileChrome={props.onToggleMobileChrome} />
+    <PagedReadingView
+      key={props.book.id}
+      book={props.book}
+      onToggleMobileChrome={props.onToggleMobileChrome}
+    />
   ) : (
     <ContinuousReadingView {...props} />
   );
@@ -101,6 +107,7 @@ function ContinuousReadingView(props: {
   }, [activeSectionId, props.book, settings.layout]);
   useEffect(() => {
     const capture = () => {
+      if (getReaderState().searchOpen || document.querySelector("dialog[open]") !== null) return;
       // Rapid consecutive jumps must retain the requested destination, not
       // capture the previous DOM before its navigation frame has committed.
       if (
@@ -132,6 +139,7 @@ function ContinuousReadingView(props: {
       });
     };
     window.addEventListener("resize", scheduleCalibration);
+    window.addEventListener("bcr-reader-fonts-ready", scheduleCalibration);
     container.addEventListener("load", scheduleCalibration, true);
     window.visualViewport?.addEventListener("resize", scheduleCalibration);
     void document.fonts?.ready.then(scheduleCalibration);
@@ -139,6 +147,7 @@ function ContinuousReadingView(props: {
       cancelled = true;
       if (frame !== null) window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", scheduleCalibration);
+      window.removeEventListener("bcr-reader-fonts-ready", scheduleCalibration);
       container.removeEventListener("load", scheduleCalibration, true);
       window.visualViewport?.removeEventListener("resize", scheduleCalibration);
     };
@@ -279,12 +288,10 @@ function ContinuousReadingView(props: {
   );
   return (
     <div
-      className={`reader-reading-frame reader-layout-scroll reader-width-${settings.contentWidth}`}
+      className={`reader-reading-frame reader-layout-scroll reader-width-${settings.contentWidth} ${settings.tocPinned ? "reader-toc-pinned" : ""}`}
       style={
         {
-          "--reader-reader-font-size": `${settings.fontSize}px`,
-          "--reader-reader-line-height": settings.lineHeight,
-          "--reader-reader-font-family": readerFontStack(settings),
+          ...readerTypographyStyle(settings),
         } as CSSProperties
       }
     >
@@ -390,7 +397,7 @@ function ContinuousReadingView(props: {
           <ReadingEnd book={props.book} />
         </div>
       </div>
-      {!mobile && <ChapterRail book={props.book} />}
+      {!mobile && settings.tocPinned && <ChapterRail book={props.book} />}
       <MobileReadingBar book={props.book} />
     </div>
   );

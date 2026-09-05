@@ -15,6 +15,32 @@ import type { ReaderAnnotation, ReaderBook, ReaderBookmark, ReaderTocItem } from
 import { percent } from "./readerPresentation";
 import { reader, useReader } from "./store";
 import { ReaderSheet } from "./ReaderSheet";
+import { ReaderHistoryBar } from "./ReaderHistoryBar";
+
+export function ReaderNavigationButton({ book }: { book: ReaderBook }) {
+  const [panel, setPanel] = useState<MobileNavigationPanel | null>(null);
+  return (
+    <>
+      <button
+        type="button"
+        className="reader-icon-button"
+        aria-label="打开阅读目录"
+        aria-expanded={panel !== null}
+        onClick={() => setPanel("toc")}
+      >
+        <List className="reader-icon" />
+      </button>
+      {panel && (
+        <MobileNavigationSheet
+          book={book}
+          panel={panel}
+          onPanelChange={setPanel}
+          onClose={() => setPanel(null)}
+        />
+      )}
+    </>
+  );
+}
 
 const EMPTY_BOOKMARKS: ReadonlyArray<ReaderBookmark> = [];
 const EMPTY_ANNOTATIONS: ReadonlyArray<ReaderAnnotation> = [];
@@ -97,6 +123,8 @@ function tocItemMatchesQuery(item: ReaderTocItem, query: string): boolean {
 export function MobileReadingBar(props: {
   book: ReaderBook;
   pagination?: {
+    columns?: number;
+    physicalPages?: number;
     page: number;
     pages: number;
     canPrevious: boolean;
@@ -141,7 +169,9 @@ export function MobileReadingBar(props: {
           <strong>{current?.label ?? "正文"}</strong>
           <span className="reader-mobile-nav-current-meta">
             {props.pagination
-              ? `${props.pagination.page + 1} / ${props.pagination.pages} 页 · 本章`
+              ? props.pagination.columns === 2
+                ? `${props.pagination.page * 2 + 1}–${Math.min(props.pagination.physicalPages ?? 1, props.pagination.page * 2 + 2)} / ${props.pagination.physicalPages} 页 · 本章`
+                : `${props.pagination.page + 1} / ${props.pagination.pages} 页 · 本章`
               : `${activeIndex + 1} / ${props.book.sections.length} ${unit} · ${percent(progress)}`}
           </span>
           <ChevronUp className="reader-mobile-nav-current-chevron" aria-hidden="true" />
@@ -173,6 +203,7 @@ export function MobileReadingBar(props: {
         <div className="reader-mobile-nav-progress" aria-hidden="true">
           <span style={{ width: `${progress * 100}%` }} />
         </div>
+        <ReaderHistoryBar />
       </nav>
       {panel !== null && (
         <MobileNavigationSheet
@@ -192,6 +223,7 @@ function MobileNavigationSheet(props: {
   onPanelChange: (panel: MobileNavigationPanel) => void;
   onClose: () => void;
 }) {
+  const tocPinned = useReader((state) => state.settings.tocPinned ?? false);
   const activeSectionId = useReader((state) => state.activeSectionId);
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
   const bookmarks = useReader((state) => state.bookmarksByBook[props.book.id] ?? EMPTY_BOOKMARKS);
@@ -260,6 +292,17 @@ function MobileNavigationSheet(props: {
             <X className="reader-icon" />
           </button>
         </div>
+        <button
+          type="button"
+          className="reader-button reader-pin-toc"
+          aria-pressed={tocPinned}
+          onClick={() => {
+            reader.setSettings({ tocPinned: !tocPinned });
+            props.onClose();
+          }}
+        >
+          {tocPinned ? "取消固定目录" : "固定目录侧栏"}
+        </button>
         <div className="reader-mobile-sheet-tabs" role="tablist" aria-label="阅读导航分类">
           {tabs.map((tab) => (
             <button
