@@ -1,3 +1,4 @@
+import { createPackageStaging, type PackageStaging } from "./researchPackageStaging";
 import {
   collectPackageReferences,
   bindPackageLibrary,
@@ -208,6 +209,8 @@ export async function createResearchPackage(
   }
 }
 export interface PreparedResearchPackage {
+  readonly dispose?: () => Promise<void>;
+  readonly acquire?: () => () => Promise<void>;
   readonly backup: ResearchBackup;
   readonly reader: PreparedReaderBackup;
   readonly volume?: {
@@ -224,6 +227,21 @@ export async function inspectResearchPackage(
   signal?.throwIfAborted();
   report("正在读取资料包清单…");
   if (file.size > PACKAGE_LIMIT + 65536) throw new Error("资料包超过 600 MiB 上限");
+  const staging = await createPackageStaging(signal);
+  try {
+    const value = await inspectStagedPackage(file, staging, report, signal);
+    return { ...value, dispose: staging.dispose, acquire: staging.acquire };
+  } catch (error) {
+    await staging.dispose().catch(() => undefined);
+    throw error;
+  }
+}
+async function inspectStagedPackage(
+  file: Blob,
+  staging: PackageStaging,
+  report: (message: string) => void,
+  signal?: AbortSignal,
+): Promise<PreparedResearchPackage> {
   const zip = new ZipReader(new BlobReader(file));
   try {
     const allEntries = await zip.getEntries();
@@ -288,26 +306,19 @@ export async function inspectResearchPackage(
       if (entry.uncompressedSize !== item.size) throw new Error("资料包文件大小不符");
       const label = item.path === "reader.zip" ? "Reader 源资料" : "集合与笔记";
       report(`正在解包 · ${label}`);
-      const blob = await entry.getData!(new BlobWriter(), {
-        checkSignature: true,
-        ...(signal ? { signal } : {}),
-        onprogress: (bytes, total) =>
-          report(`正在解包 · ${label} · ${Math.floor((bytes / Math.max(1, total)) * 100)}%`),
-      });
-      if (
-        blob.size !== item.size ||
-        (await hashReadableStream(blob.stream(), {
-          signal,
-          onProgress: (bytes) =>
-            report(`正在校验 · ${label} · ${Math.floor((bytes / Math.max(1, blob.size)) * 100)}%`),
-        })) !== item.hash
-      )
-        throw new Error("资料包文件哈希校验失败");
+      const blob = await staging.write(item.size, item.hash, (stream) =>
+        entry.getData!(stream, {
+          checkSignature: true,
+          ...(signal ? { signal } : {}),
+          onprogress: (bytes, total) =>
+            report(`正在解包 · ${label} · ${Math.floor((bytes / Math.max(1, total)) * 100)}%`),
+        }),
+      );
       blobs.set(item.path, blob);
     }
     const { inspectReaderBackup } = await import("@bcr/reader-studio/research-transfer");
     const backup = decodeResearchBackup(await blobs.get("research.json")!.text());
-    const reader = await inspectReaderBackup(blobs.get("reader.zip")!, report, signal);
+    const reader = await inspectReaderBackup(blobs.get("reader.zip")!, report, signal, staging);
     signal?.throwIfAborted();
     if (reader.manifest.books.some((entry) => !entry.source))
       throw new Error("完整资料包中的 Reader 书籍缺少源文件");
@@ -355,16 +366,23 @@ export async function restoreResearchPackage(
   write: (change: (library: ResearchLibrary) => ResearchLibrary) => Promise<void>,
   report: (message: string) => void,
 ) {
-  const { restoreReaderTransfer } = await import("@bcr/reader-studio/research-transfer");
-  const bindings = await restoreReaderTransfer(prepared.reader, report);
-  const backup = bindResearchPackage(
-    prepared.backup,
-    prepared.volume ? catalogBindings(prepared.volume.catalog, prepared.volume.set) : bindings,
-  );
+  const release = prepared.acquire?.();
   try {
-    await write((current) => planResearchImport(current, backup).library);
-  } catch (error) {
-    throw new Error(`源资料已恢复，集合尚未保存；请重试，已恢复书籍不会重复添加：${String(error)}`);
+    const { restoreReaderTransfer } = await import("@bcr/reader-studio/research-transfer");
+    const bindings = await restoreReaderTransfer(prepared.reader, report);
+    const backup = bindResearchPackage(
+      prepared.backup,
+      prepared.volume ? catalogBindings(prepared.volume.catalog, prepared.volume.set) : bindings,
+    );
+    try {
+      await write((current) => planResearchImport(current, backup).library);
+    } catch (error) {
+      throw new Error(
+        `源资料已恢复，集合尚未保存；请重试，已恢复书籍不会重复添加：${String(error)}`,
+      );
+    }
+  } finally {
+    await release?.().catch(() => undefined);
   }
 }
 

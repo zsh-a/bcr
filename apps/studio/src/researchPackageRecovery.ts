@@ -64,6 +64,7 @@ export function resumeResearchRecovery(
   report: (message: string) => void,
   prepared?: PreparedResearchPackage,
 ): Promise<RecoveryResult> {
+  const release = prepared?.acquire?.();
   return serial(store, async () => {
     let record = await readResearchRecovery(store);
     if (record?.phase === "complete" && !prepared) {
@@ -129,5 +130,7 @@ export function resumeResearchRecovery(
     await cleanupRecoverySnapshot(store).catch(() => undefined);
     report("Reader 资料包恢复完成，可从集合回到原文。");
     return "restored";
+  }).finally(async () => {
+    await release?.().catch(() => undefined);
   });
 }

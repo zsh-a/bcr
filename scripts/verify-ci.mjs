@@ -116,6 +116,7 @@ await withServer({
     "scripts/verify-research-search.mjs",
     "scripts/verify-research-package.mjs",
     "scripts/verify-research-recovery.mjs",
+    "scripts/verify-research-import-staging.mjs",
     "scripts/verify-research-volumes.mjs",
     "scripts/verify-research-stream.mjs",
     "scripts/verify-research-task.mjs",

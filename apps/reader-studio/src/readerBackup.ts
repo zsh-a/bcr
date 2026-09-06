@@ -95,6 +95,13 @@ export interface PreparedReaderBackup {
   readonly manifest: ReaderBackup;
   readonly sources: ReadonlyMap<string, Blob>;
 }
+export interface ReaderBackupSourceSink {
+  write(
+    size: number,
+    hash: string,
+    extract: (stream: WritableStream<Uint8Array>) => Promise<unknown>,
+  ): Promise<Blob>;
+}
 type Report = (message: string) => void;
 function check(signal?: AbortSignal): void {
   if (signal?.aborted) throw new DOMException("已取消", "AbortError");
@@ -441,6 +448,7 @@ export async function inspectReaderBackup(
   file: Blob,
   report: Report = () => {},
   signal?: AbortSignal,
+  sink?: ReaderBackupSourceSink,
 ): Promise<PreparedReaderBackup> {
   check(signal);
   if (file.size > MAX_BYTES + 64 * 1024 * 1024)
@@ -473,21 +481,35 @@ export async function inspectReaderBackup(
       size += source.size;
       if (data === undefined || data.uncompressedSize !== source.size || size > MAX_BYTES)
         throw new Error(`${book.title} 的源文件缺失或大小异常`);
-      const blob = await data.getData(new BlobWriter(book.source.mime), {
-        ...(signal ? { signal } : {}),
-        checkSignature: true,
-      });
-      if (
-        blob.size !== source.size ||
-        (await hashReadableStream(blob.stream(), {
-          signal,
-          onProgress: (bytes) =>
-            report(
-              `正在校验 · ${book.title} · ${Math.floor((bytes / Math.max(1, blob.size)) * 100)}%`,
-            ),
-        })) !== source.hash
-      )
-        throw new Error(`${book.title} 的源文件校验失败`);
+      let blob: Blob;
+      if (sink) {
+        blob = await sink.write(source.size, source.hash, (stream) =>
+          data.getData(stream, {
+            ...(signal ? { signal } : {}),
+            checkSignature: true,
+            onprogress: (bytes) =>
+              report(
+                `正在校验 · ${book.title} · ${Math.floor((bytes / Math.max(1, source.size)) * 100)}%`,
+              ),
+          }),
+        );
+      } else {
+        blob = await data.getData(new BlobWriter(book.source.mime), {
+          ...(signal ? { signal } : {}),
+          checkSignature: true,
+        });
+        if (
+          blob.size !== source.size ||
+          (await hashReadableStream(blob.stream(), {
+            signal,
+            onProgress: (bytes) =>
+              report(
+                `正在校验 · ${book.title} · ${Math.floor((bytes / Math.max(1, blob.size)) * 100)}%`,
+              ),
+          })) !== source.hash
+        )
+          throw new Error(`${book.title} 的源文件校验失败`);
+      }
       sources.set(source.path, blob);
     }
     check(signal);
@@ -513,6 +535,29 @@ export function backupNewBooks(
   });
 }
 
+async function durableRestoreSource(
+  runtime: ReaderRuntime,
+  ref: ArtifactRef,
+  blob: Blob,
+  hash: string,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  // Avoid replacing an intact file already backing another open publication.
+  try {
+    const existing = await Effect.runPromise(runtime.artifacts.getBlob(ref));
+    if (
+      existing.size === blob.size &&
+      (await hashReadableStream(existing.stream(), signal ? { signal } : {})) === hash
+    )
+      return existing;
+  } catch {
+    check(signal);
+  }
+  check(signal);
+  await Effect.runPromise(runtime.artifacts.putStream(ref, blob.stream()));
+  check(signal);
+  return Effect.runPromise(runtime.artifacts.getBlob(ref));
+}
 /** Stage every new publication before publishing a single library change. */
 export async function prepareReaderRestore(
   runtime: ReaderRuntime,
@@ -540,11 +585,12 @@ export async function prepareReaderRestore(
         storage: runtime.binary instanceof MemoryStore ? "memory" : "opfs",
         format: book.source.mime,
       };
+      const durable = await durableRestoreSource(runtime, ref, blob, source.hash, signal);
       const binary = ["pdf", "epub", "docx", "cbz"].includes(book.source.format);
       const parsed = binary
         ? await parseReaderFile(
             runtime,
-            new File([blob], book.source.name, { type: book.source.mime }),
+            new File([durable], book.source.name, { type: book.source.mime }),
             book.id,
             signal,
           )
@@ -577,7 +623,6 @@ export async function prepareReaderRestore(
         },
       };
       books.push(restored);
-      await Effect.runPromise(runtime.artifacts.putStream(ref, blob.stream()));
     }
     check(signal);
     return books;

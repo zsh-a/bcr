@@ -7,7 +7,7 @@ import { verifyPackageTask } from "../researchPackageTask";
 import { writeResearchPackage } from "../researchPackageStream";
 import { verifyRecoveryPackage } from "../researchPackageRecovery";
 import { useResearchPackageRecovery } from "./useResearchPackageRecovery";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ResearchLibrary, ResearchStore } from "../research";
 import {
   PACKAGE_LIMIT,
@@ -37,7 +37,21 @@ export function useResearchPackageController(props: ResearchPackagePanelProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [drafts, setDrafts] = useState(false);
   const [plan, setPlan] = useState<ResearchPackagePlan>();
-  const [prepared, setPrepared] = useState<PreparedResearchPackage>();
+  const [prepared, publishPrepared] = useState<PreparedResearchPackage>();
+  const ownedPrepared = useRef<PreparedResearchPackage | undefined>(undefined);
+  const setPrepared = (next: PreparedResearchPackage | undefined) => {
+    if (ownedPrepared.current !== next)
+      void ownedPrepared.current?.dispose?.().catch(() => undefined);
+    ownedPrepared.current = next;
+    publishPrepared(next);
+  };
+  useEffect(
+    () => () => {
+      void ownedPrepared.current?.dispose?.().catch(() => undefined);
+      ownedPrepared.current = undefined;
+    },
+    [],
+  );
   const [volumeBytes, setVolumeBytes] = useState(128 * 1024 * 1024);
   const [volumeIndex, setVolumeIndex] = useState(0);
   const [volumeStates, setVolumeStates] = useState<VolumeTaskStates>({});
@@ -215,25 +229,37 @@ export function useResearchPackageController(props: ResearchPackagePanelProps) {
     action(async (signal, report) => {
       if (file.size > PACKAGE_LIMIT + 65536) throw new Error("资料包超过 600 MiB 上限");
       const checked = await inspectResearchPackage(file, report, signal);
-      await verifyRecoveryPackage(props.store, checked);
-      signal.throwIfAborted();
-      const preview = await previewResearchPackageImport(checked, props.library);
-      const statuses = await researchVolumeStatus(checked, report, signal);
-      signal.throwIfAborted();
-      await props.store.writePackageRecord(
-        "restore",
-        checked.volume ? JSON.stringify({ volume: checked.volume }) : "",
-      );
-      return () => {
-        setImportSummary(
-          `书籍：新增 ${preview.books.added}，复用 ${preview.books.reused}；集合：新增 ${preview.collections.added}，跳过 ${preview.collections.skipped}，冲突副本 ${preview.collections.copies}`,
-        );
-        setPrepared(checked);
-        setSourceCatalog(checked.volume ? { volume: checked.volume } : undefined);
-        setSourceVolume(0);
-        setVolumeReport(statuses);
-        setMessage("文件哈希与 Reader 源文件校验通过，请确认恢复。");
+      const discard = () => {
+        void checked.dispose?.().catch(() => undefined);
       };
+      signal.addEventListener("abort", discard, { once: true });
+      try {
+        signal.throwIfAborted();
+        await verifyRecoveryPackage(props.store, checked);
+        signal.throwIfAborted();
+        const preview = await previewResearchPackageImport(checked, props.library);
+        const statuses = await researchVolumeStatus(checked, report, signal);
+        signal.throwIfAborted();
+        await props.store.writePackageRecord(
+          "restore",
+          checked.volume ? JSON.stringify({ volume: checked.volume }) : "",
+        );
+        return () => {
+          signal.removeEventListener("abort", discard);
+          setImportSummary(
+            `书籍：新增 ${preview.books.added}，复用 ${preview.books.reused}；集合：新增 ${preview.collections.added}，跳过 ${preview.collections.skipped}，冲突副本 ${preview.collections.copies}`,
+          );
+          setPrepared(checked);
+          setSourceCatalog(checked.volume ? { volume: checked.volume } : undefined);
+          setSourceVolume(0);
+          setVolumeReport(statuses);
+          setMessage("文件哈希与 Reader 源文件校验通过，请确认恢复。");
+        };
+      } catch (error) {
+        signal.removeEventListener("abort", discard);
+        await checked.dispose?.().catch(() => undefined);
+        throw error;
+      }
     });
   };
   return {

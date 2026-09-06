@@ -141,6 +141,15 @@ try {
       .getByLabel("选择 Reader 资料包", { exact: true })
       .setInputFiles({ name: "recovery.zip", mimeType: "application/zip", buffer });
     await page.getByLabel("资料包恢复预览").waitFor();
+    const stagedCount = await page.evaluate(async () => {
+      const root = await (
+        await navigator.storage.getDirectory()
+      ).getDirectoryHandle("bcr-research-imports-v1");
+      let count = 0;
+      for await (const _entry of root) count++;
+      return count;
+    });
+    assert.equal(stagedCount, 1);
     await page.evaluate(
       async (phase) => {
         const url = performance
@@ -296,6 +305,13 @@ try {
     assert.equal(journal.progress.phase, "complete");
     assert.equal(journal.snapshot, "");
     assert.equal(journal.progress.manifest, undefined);
+    await page.waitForFunction(async () => {
+      const root = await (
+        await navigator.storage.getDirectory()
+      ).getDirectoryHandle("bcr-research-imports-v1");
+      for await (const _entry of root) return false;
+      return true;
+    });
     if (cut === "reader-restored" || cut === "collections-merged") {
       await page
         .getByLabel("资料来源汇总")
