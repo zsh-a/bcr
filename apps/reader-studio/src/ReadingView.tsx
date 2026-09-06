@@ -26,6 +26,7 @@ import {
 import { formatBadge, percent } from "./readerPresentation";
 import { readerTypographyStyle } from "./readerTypography";
 import { useReaderFonts } from "./useReaderFonts";
+import { VirtualTextSections, SECTION_WINDOW_THRESHOLD } from "./VirtualTextSections";
 import { SectionView } from "./SectionView";
 import { PagedReadingView } from "./PagedReadingView";
 import { getReaderState, reader, useReader } from "./store";
@@ -386,6 +387,16 @@ function ContinuousReadingView(props: {
             <PdfReaderView
               book={props.book}
               onReady={() => setContentReadyVersion((version) => version + 1)}
+            />
+          ) : props.book.source.format === "txt" &&
+            props.book.sections.length > SECTION_WINDOW_THRESHOLD ? (
+            <VirtualTextSections
+              key={props.book.id}
+              book={props.book}
+              activeSectionId={activeSectionId}
+              searchQuery={searchQuery}
+              scrollRef={containerRef}
+              typographyKey={JSON.stringify(readerTypographyStyle(settings))}
             />
           ) : (
             <PublicationSections

@@ -7,13 +7,14 @@ export const SectionView = memo(function SectionView(props: {
   section: ReaderSection;
   searchQuery: string;
   active?: boolean;
+  virtualized?: boolean;
 }) {
   const root = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(props.section.order < 2 || props.active === true);
   const [height, setHeight] = useState(360);
   useEffect(() => {
     const element = root.current;
-    if (!element || !window.IntersectionObserver) return;
+    if (props.virtualized || !element || !window.IntersectionObserver) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry) return;
@@ -24,8 +25,8 @@ export const SectionView = memo(function SectionView(props: {
     );
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
-  const mounted = visible || props.active || props.searchQuery !== "";
+  }, [props.virtualized]);
+  const mounted = props.virtualized || visible || props.active || props.searchQuery !== "";
   const html = useMemo(
     () =>
       props.section.html === undefined

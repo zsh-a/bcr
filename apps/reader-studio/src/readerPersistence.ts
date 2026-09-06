@@ -191,7 +191,6 @@ export async function persistReader(
   const check = options.assertCurrent ?? (() => {});
   check();
   const mirrorSession = options.mirrorSession ?? true;
-  const books = state.library.map(persistBook);
   const librarySignature = readerLibrarySignature(state.library);
   const session = persistedReaderSession(state);
   const sessionRaw = JSON.stringify(session);
@@ -206,6 +205,7 @@ export async function persistReader(
     (options.forceLibrary === true ||
       persistedMetadataLibrarySignatures.get(runtime) !== librarySignature);
   if (localLibraryOutdated || metadataLibraryOutdated) {
+    const books = state.library.map(persistBook);
     const library: PersistedReaderLibrary = { version: 1, books };
     const legacy: PersistedReaderSnapshot = {
       ...library,

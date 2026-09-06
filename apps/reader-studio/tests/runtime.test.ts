@@ -100,6 +100,40 @@ async function withLocalStorage<T>(run: (values: Map<string, string>) => Promise
 }
 
 describe("reader durable Document handoff", () => {
+  it("does not read paragraph content again for a session-only save", async () => {
+    await withLocalStorage(async () => {
+      const store = new MemoryStore();
+      const runtime: ReaderRuntime = {
+        binary: store,
+        artifacts: await makeArtifacts(store),
+        meta: undefined,
+        ftsReady: false,
+        indexSession: undefined,
+        parseSession: undefined,
+        parserMode: "main",
+      };
+      let reads = 0;
+      const demo = createDemoBook();
+      const book = {
+        ...demo,
+        sections: demo.sections.map((section) => ({
+          ...section,
+          get text() {
+            reads++;
+            return section.text;
+          },
+        })),
+      };
+      const state = readyReaderState([book]);
+      await persistReader(runtime, state);
+      reads = 0;
+      await persistReader(runtime, { ...state, settings: { ...state.settings, fontSize: 24 } });
+      expect(reads).toBe(0);
+      await persistReader(runtime, state, { forceLibrary: true });
+      expect(reads).toBeGreaterThan(0);
+    });
+  });
+
   it("restores in requested priority order and publishes each book before the batch completes", async () => {
     await withLocalStorage(async () => {
       const store = new MemoryStore();

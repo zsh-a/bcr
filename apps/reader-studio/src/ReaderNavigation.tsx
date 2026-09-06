@@ -1,3 +1,5 @@
+import { VirtualSectionList } from "./VirtualSectionList";
+import { SECTION_WINDOW_THRESHOLD } from "./VirtualTextSections";
 import {
   Bookmark,
   Check,
@@ -355,6 +357,13 @@ function MobileNavigationSheet(props: {
                   query={normalizedQuery}
                   onNavigate={() => props.onClose()}
                 />
+              ) : props.book.sections.length > SECTION_WINDOW_THRESHOLD ? (
+                <VirtualSectionList
+                  sections={props.book.sections}
+                  activeSectionId={activeSectionId}
+                  query={normalizedQuery}
+                  onNavigate={navigateToSection}
+                />
               ) : (
                 <div className="reader-mobile-section-list">
                   {props.book.sections
@@ -501,6 +510,12 @@ export function ChapterRail(props: { book: ReaderBook }) {
       </div>
       {props.book.toc !== undefined && props.book.toc.length > 0 ? (
         <ReaderTocTree book={props.book} items={props.book.toc} activeSectionId={activeSectionId} />
+      ) : props.book.sections.length > SECTION_WINDOW_THRESHOLD ? (
+        <VirtualSectionList
+          sections={props.book.sections}
+          activeSectionId={activeSectionId}
+          onNavigate={(id) => reader.openBook(props.book.id, id)}
+        />
       ) : (
         props.book.sections.map((section) => (
           <button

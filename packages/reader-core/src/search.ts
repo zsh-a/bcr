@@ -39,7 +39,7 @@ interface NormalizedText {
  * Search treats compatibility forms and whitespace consistently, but the UI
  * still needs to highlight the unmodified publication text.
  */
-function normalizeTextWithOffsets(value: string): NormalizedText {
+function normalizeTextWithOffsets(value: string, includeOffsets = true): NormalizedText {
   let normalized = "";
   const starts: number[] = [];
   const ends: number[] = [];
@@ -51,6 +51,7 @@ function normalizeTextWithOffsets(value: string): NormalizedText {
     if (/\s/u.test(character)) continue;
     const mapped = character.normalize("NFKC").toLocaleLowerCase();
     normalized += mapped;
+    if (!includeOffsets) continue;
     for (let unitIndex = 0; unitIndex < mapped.length; unitIndex += 1) {
       starts.push(start);
       ends.push(index);
@@ -108,7 +109,7 @@ export function buildSearchIndex(
 ): ReadonlyArray<ReaderIndexDocument> {
   const total = Math.max(1, book.sections.length);
   return book.sections.map((section, index) => {
-    const normalizedText = normalizeTextWithOffsets(section.text).value;
+    const normalizedText = normalizeTextWithOffsets(section.text, false).value;
     onProgress((index + 1) / total);
     return {
       bookId: book.id,
