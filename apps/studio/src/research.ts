@@ -20,6 +20,24 @@ export interface ResearchLink {
   readonly citation: TextCitation;
   readonly linkedAt: number;
 }
+export interface ReaderBinding {
+  readonly book: string;
+  readonly target: string;
+  readonly volume?: { readonly set: string; readonly index: number; readonly total: number };
+}
+function validVolume(value: ReaderBinding["volume"]): boolean {
+  return (
+    value === undefined ||
+    (!!value &&
+      typeof value.set === "string" &&
+      /^[a-f0-9]{64}$/u.test(value.set) &&
+      Number.isSafeInteger(value.index) &&
+      Number.isSafeInteger(value.total) &&
+      value.index >= 1 &&
+      value.index <= value.total &&
+      value.total <= 10000)
+  );
+}
 export interface ResearchExcerpt {
   readonly id: string;
   readonly documentId: string;
@@ -27,7 +45,7 @@ export interface ResearchExcerpt {
   readonly source: string;
   readonly route: string;
   readonly text: string;
-  readonly readerBindings?: ReadonlyArray<{ readonly book: string; readonly target: string }>;
+  readonly readerBindings?: ReadonlyArray<ReaderBinding>;
   readonly links?: ReadonlyArray<ResearchLink>;
   readonly note: string;
   /** Imported draft is durable until explicitly saved as a note. */
@@ -191,10 +209,16 @@ export function assessExcerpt(
     anchor,
     documents.map((document) => ({ text: document.body!, source: document.citation! })),
   );
+  const binding = excerpt.readerBindings?.find(
+    (entry) =>
+      entry.target === new URL(excerpt.route, "https://bcr.invalid").searchParams.get("book"),
+  );
   const label = {
     exact: "可定位 · 来源版本一致",
     relocated: "内容已变化 · 已重新定位",
-    missing: "来源缺失 · 请恢复原资料",
+    missing: binding?.volume
+      ? `来源缺失 · 待恢复第 ${binding.volume.index}/${binding.volume.total} 卷（${binding.volume.set.slice(0, 12)}）`
+      : "来源缺失 · 请恢复原资料",
     changed: "内容已变化 · 未找到原文",
     ambiguous: "内容已变化 · 多处匹配，请核对",
   }[resolved.status];
@@ -265,12 +289,13 @@ export function decodeResearch(raw: string | undefined): ResearchLibrary {
         (item.readerBindings !== undefined &&
           (!Array.isArray(item.readerBindings) ||
             item.readerBindings.some(
-              (binding: { book: string; target: string }) =>
+              (binding: ReaderBinding) =>
                 !binding ||
                 typeof binding.book !== "string" ||
                 !binding.book ||
                 typeof binding.target !== "string" ||
-                !binding.target,
+                !binding.target ||
+                !validVolume(binding.volume),
             ) ||
             new Set(
               item.readerBindings.map((binding: { book: string; target: string }) => binding.book),

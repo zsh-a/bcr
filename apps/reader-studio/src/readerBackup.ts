@@ -37,22 +37,43 @@ const MAX_BYTES = 512 * 1024 * 1024;
 export function planReaderBackup(
   books: ReadonlyArray<ReaderBook>,
   limit = MAX_BYTES,
+  capacity?: {
+    readonly snapshotSize: (book: ReaderBook) => number;
+    readonly snapshotLimit: number;
+  },
 ): ReaderBook[][] {
-  const parts: ReaderBook[][] = [];
-  let size = 0;
+  const groups = new Map<string, ReaderBook[]>();
   for (const book of books) {
+    const key = book.source.ref?.hash ?? book.id;
+    groups.set(key, [...(groups.get(key) ?? []), book]);
+  }
+  const parts: ReaderBook[][] = [];
+  let size = 0,
+    snapshots = 0;
+  for (const group of groups.values()) {
+    const book = group[0]!;
     const bytes = book.source.ref?.size ?? book.source.size;
+    const snapshot = group.reduce((sum, item) => sum + (capacity?.snapshotSize(item) ?? 0), 0);
     if (bytes > limit)
-      throw new Error(`${book.title} 超过单卷 ${Math.round(limit / 1024 / 1024)} MiB 上限`);
-    if (!parts.length || size + bytes > limit) {
+      throw new Error(`${book.title} 超过单卷 ${Math.round(limit / 1024 / 1024)} MiB 源文件上限`);
+    if (capacity && snapshot > capacity.snapshotLimit)
+      throw new Error(`${book.title} 的同源章节快照超过单卷上限，请减少所选集合`);
+    if (
+      !parts.length ||
+      size + bytes > limit ||
+      (capacity && snapshots + snapshot > capacity.snapshotLimit)
+    ) {
       parts.push([]);
       size = 0;
+      snapshots = 0;
     }
-    parts[parts.length - 1]!.push(book);
+    parts[parts.length - 1]!.push(...group);
     size += bytes;
+    snapshots += snapshot;
   }
   return parts;
 }
+
 const MANIFEST = "reader.json";
 interface BackupBook {
   readonly book: PersistedBook;
@@ -275,6 +296,32 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
   };
 }
 
+export function readerBackupManifest(
+  state: ReaderState,
+  books: ReaderBackup["books"],
+): ReaderBackup {
+  const selectedIds = new Set(state.library.map((book) => book.id));
+  const selectedEntries = <T>(value: Readonly<Record<string, T>>) =>
+    Object.fromEntries(Object.entries(value).filter(([id]) => selectedIds.has(id)));
+  return {
+    format: "bcr-reader-backup",
+    version: 1,
+    createdAt: Date.now(),
+    books,
+    progressByBook: selectedEntries(state.progressByBook),
+    bookmarksByBook: selectedEntries(state.bookmarksByBook),
+    annotationsByBook: selectedEntries(state.annotationsByBook),
+    settings: { ...state.settings, books: selectedEntries(state.settings.books ?? {}) },
+    navigationHistory: restoreNavigationHistory(state.library, state.navigationHistory),
+    searchSession: {
+      query: state.query,
+      searchBookId: state.searchBookId,
+      searchOpen: state.searchOpen,
+      scope: state.searchScope,
+    },
+  };
+}
+
 export async function createReaderBackup(
   runtime: ReaderRuntime,
   state: ReaderState,
@@ -323,26 +370,7 @@ export async function createReaderBackup(
         throw new Error(`${book.title} 缺少源文件，无法创建完整备份`);
       books.push({ book: persistBook(book), ...(source === undefined ? {} : { source }) });
     }
-    const selectedIds = new Set(state.library.map((book) => book.id));
-    const selectedEntries = <T>(value: Readonly<Record<string, T>>) =>
-      Object.fromEntries(Object.entries(value).filter(([id]) => selectedIds.has(id)));
-    const manifest: ReaderBackup = {
-      format: "bcr-reader-backup",
-      version: 1,
-      createdAt: Date.now(),
-      books,
-      progressByBook: selectedEntries(state.progressByBook),
-      bookmarksByBook: selectedEntries(state.bookmarksByBook),
-      annotationsByBook: selectedEntries(state.annotationsByBook),
-      settings: { ...state.settings, books: selectedEntries(state.settings.books ?? {}) },
-      navigationHistory: restoreNavigationHistory(state.library, state.navigationHistory),
-      searchSession: {
-        query: state.query,
-        searchBookId: state.searchBookId,
-        searchOpen: state.searchOpen,
-        scope: state.searchScope,
-      },
-    };
+    const manifest = readerBackupManifest(state, books);
     const raw = JSON.stringify(manifest);
     if (new Blob([raw]).size > 64 * 1024 * 1024)
       throw new Error("书库文字快照超过 64 MiB 上限，备份未生成");

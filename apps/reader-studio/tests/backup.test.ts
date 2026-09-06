@@ -75,6 +75,28 @@ describe("Reader portable backup", () => {
     expect(() => planReaderBackup(books, 5)).toThrow("超过单卷");
     expect(planReaderBackup([])).toEqual([]);
   });
+  it("deduplicates shared sources and budgets all chapter snapshots together", () => {
+    const books = ["a", "b", "a"].map((hash, index) => ({
+      ...book,
+      id: String(index),
+      source: {
+        ...book.source,
+        size: 6,
+        ref: { id: hash, storage: "memory" as const, hash, size: 6, mime: "text/plain" },
+      },
+    }));
+    const ids = (parts: ReturnType<typeof planReaderBackup>) =>
+      parts.map((part) => part.map((item) => item.id));
+    expect(ids(planReaderBackup(books, 12))).toEqual([["0", "2", "1"]]);
+    expect(ids(planReaderBackup(books, 6))).toEqual([["0", "2"], ["1"]]);
+    expect(ids(planReaderBackup(books, 12, { snapshotSize: () => 4, snapshotLimit: 8 }))).toEqual([
+      ["0", "2"],
+      ["1"],
+    ]);
+    expect(() => planReaderBackup(books, 12, { snapshotSize: () => 4, snapshotLimit: 7 })).toThrow(
+      "同源章节快照",
+    );
+  });
   it("retains image anchors in portable navigation history", () => {
     const entry = {
       bookId: book.id,

@@ -1,7 +1,11 @@
+import { DEFAULT_READER_SETTINGS } from "./model";
 import { Effect } from "effect";
 import { textVersion, hashReadableStream } from "@bcr/core";
 import {
   createReaderBackup,
+  decodeReaderBackup,
+  readerBackupManifest,
+  planReaderBackup,
   prepareReaderRestore,
   type PreparedReaderBackup,
 } from "./readerBackup";
@@ -68,6 +72,61 @@ export async function checkReaderTransfer(
   signal?.throwIfAborted();
   return missing;
 }
+function transferBackupState(ids: ReadonlyArray<string>) {
+  const { state } = readerTransferState();
+  return {
+    ...state,
+    library: state.library.filter((book) => ids.includes(book.id)),
+    settings: DEFAULT_READER_SETTINGS,
+    progressByBook: {},
+    bookmarksByBook: {},
+    annotationsByBook: {},
+    navigationHistory: { back: [], forward: [] },
+    searchScope: "library" as const,
+    query: "",
+    searchBookId: null,
+    searchOpen: false,
+  };
+}
+export function planReaderTransfer(ids: ReadonlyArray<string>, limit: number) {
+  const state = transferBackupState(ids);
+  const entries = state.library.map((book) => {
+    const ref = book.source.ref;
+    if (!ref) throw new Error(`${book.title} 的源文件不可用`);
+    return {
+      book: persistBook(book),
+      source: { path: `sources/${ref.hash}`, hash: ref.hash, size: ref.size },
+    };
+  });
+  const manifest = readerBackupManifest(state, entries);
+  const canonical = decodeReaderBackup(manifest).books;
+  const headerBytes = new Blob([JSON.stringify(readerBackupManifest(state, []))]).size;
+  const sizes = new Map(
+    entries.map((entry) => [entry.book.id, new Blob([JSON.stringify(entry)]).size + 1]),
+  );
+  const volumes = planReaderBackup(state.library, limit, {
+    snapshotSize: (book) => sizes.get(book.id)!,
+    snapshotLimit: 64 * 1024 * 1024 - headerBytes,
+  });
+  if (!volumes.length) volumes.push([]);
+  return volumes.map((books) => ({
+    books: books.map((book) => {
+      const entry = canonical.find((entry) => entry.book.id === book.id)!;
+      return {
+        book: book.id,
+        target: readerTransferIdentity(entry),
+        title: book.title,
+        hash: entry.source!.hash,
+      };
+    }),
+    sourceBytes: [
+      ...new Map(books.map((book) => [book.source.ref!.hash, book.source.ref!.size])).values(),
+    ].reduce((sum, size) => sum + size, 0),
+    snapshotBytes: headerBytes + books.reduce((sum, book) => sum + sizes.get(book.id)!, 0),
+    readerStamp: readerTransferStamp(books.map((book) => book.id)),
+  }));
+}
+
 export async function createReaderTransfer(
   ids: ReadonlyArray<string>,
   report: (message: string) => void,
@@ -81,7 +140,7 @@ export async function createReaderTransfer(
   const library = state.library.filter((book) => ids.includes(book.id));
   if (library.length !== ids.length || library.some((book) => !book.source.ref))
     throw new Error("部分 Reader 源文件不可用，请重新检查资料包");
-  const result = await createReaderBackup(runtime, { ...state, library }, report, signal);
+  const result = await createReaderBackup(runtime, transferBackupState(ids), report, signal);
   if (expectedStamp && readerTransferStamp(ids) !== expectedStamp)
     throw new Error("Reader 资料在打包期间发生变化，请重试");
   return result;

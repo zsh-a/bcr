@@ -28,7 +28,15 @@ function canonicalLibrary(library: ResearchLibrary): ResearchLibrary {
         note: item.note,
         savedAt: item.savedAt,
         ...(item.readerBindings
-          ? { readerBindings: item.readerBindings.map(({ book, target }) => ({ book, target })) }
+          ? {
+              readerBindings: item.readerBindings.map(({ book, target, volume }) => ({
+                book,
+                target,
+                ...(volume
+                  ? { volume: { set: volume.set, index: volume.index, total: volume.total } }
+                  : {}),
+              })),
+            }
           : {}),
         ...(item.links === undefined
           ? {}

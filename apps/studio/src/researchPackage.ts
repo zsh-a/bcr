@@ -8,13 +8,19 @@ import {
 } from "@zip.js/zip.js";
 import { hashReadableStream, textVersion } from "@bcr/core";
 import type { PreparedReaderBackup } from "@bcr/reader-studio/research-transfer";
-import { boundReaderExcerpt, type ResearchLibrary } from "./research";
+import { boundReaderExcerpt, type ResearchLibrary, type ReaderBinding } from "./research";
 import {
   createResearchBackup,
   decodeResearchBackup,
   planResearchImport,
   type ResearchBackup,
 } from "./researchBackup";
+import {
+  DEFAULT_VOLUME_BYTES,
+  RESEARCH_LIMIT,
+  decodeVolumeCatalog,
+  type ResearchVolumeCatalog,
+} from "./researchVolumes";
 export const PACKAGE_LIMIT = 600 * 1024 * 1024;
 export interface PackageReference {
   readonly label: string;
@@ -29,16 +35,27 @@ export interface ResearchPackagePlan {
   readonly books: ReadonlyArray<string>;
   readonly sourceBytes: number;
   readonly readerStamp: string;
+  readonly researchBytes: number;
+  readonly catalog: ResearchVolumeCatalog;
+  readonly set: string;
+  readonly volumes: ReadonlyArray<{
+    readonly books: ReadonlyArray<string>;
+    readonly sourceBytes: number;
+    readonly snapshotBytes: number;
+    readonly readerStamp: string;
+    readonly estimatedBytes: number;
+  }>;
 }
 export async function planResearchPackage(
   library: ResearchLibrary,
   includeDrafts: boolean,
   report: (message: string) => void = () => {},
   signal?: AbortSignal,
+  volumeBytes = DEFAULT_VOLUME_BYTES,
 ): Promise<ResearchPackagePlan> {
   signal?.throwIfAborted();
   report("正在收集原始与历史引用…");
-  const { readerTransferState, checkReaderTransfer, readerTransferStamp } =
+  const { readerTransferState, checkReaderTransfer, readerTransferStamp, planReaderTransfer } =
     await import("@bcr/reader-studio/research-transfer");
   signal?.throwIfAborted();
   const { state } = readerTransferState();
@@ -91,9 +108,52 @@ export async function planResearchPackage(
       .filter((book) => books.includes(book.id))
       .map((book) => [book.source.ref!.hash, book.source.ref!.size]),
   );
+  if (!Number.isSafeInteger(volumeBytes) || volumeBytes <= 0 || volumeBytes > 512 * 1024 * 1024)
+    throw new Error("单卷源文件上限必须大于 0 且不超过 512 MiB");
+  const research = new Blob([JSON.stringify(backup)]);
+  if (research.size > RESEARCH_LIMIT) throw new Error("集合快照超过 16 MiB 上限，请减少所选集合");
+  const parts = planReaderTransfer(books, volumeBytes);
+  const catalog: ResearchVolumeCatalog = {
+    format: "bcr-research-volumes",
+    version: 1,
+    researchHash: await hashReadableStream(research.stream(), { signal }),
+    total: parts.length,
+    books: parts.flatMap((part, index) =>
+      part.books.map((book) => ({ ...book, volume: index + 1 })),
+    ),
+  };
+  decodeVolumeCatalog(catalog);
+  const catalogBlob = new Blob([JSON.stringify(catalog)]);
+  if (catalogBlob.size > RESEARCH_LIMIT)
+    throw new Error("分卷目录超过 16 MiB 上限，请减少所选集合");
+  const set = await hashReadableStream(catalogBlob.stream(), { signal });
+  if (
+    new Blob([JSON.stringify(bindResearchPackage(backup, catalogBindings(catalog, set)))]).size >
+    RESEARCH_LIMIT
+  )
+    throw new Error("包含来源映射的集合快照超过 16 MiB 上限，请减少所选集合");
+  const volumes = parts.map((part) => ({
+    ...part,
+    books: part.books.map((book) => book.book),
+    estimatedBytes:
+      research.size +
+      catalogBlob.size +
+      part.sourceBytes +
+      part.snapshotBytes +
+      65536 +
+      part.books.length * 512,
+  }));
+  if (volumes.some((part) => part.estimatedBytes > PACKAGE_LIMIT))
+    throw new Error("单卷内容超过 600 MiB 上限，请降低单卷容量");
+  if (readerTransferState().state.library !== state.library)
+    throw new Error("Reader 资料在检查期间发生变化，请重新检查资料包");
   return {
     backup,
     references,
+    researchBytes: research.size,
+    catalog,
+    set,
+    volumes,
     books,
     readerStamp: readerTransferStamp(books),
     sourceBytes: [...unique.values()].reduce((sum, size) => sum + size, 0),
@@ -103,16 +163,26 @@ export async function createResearchPackage(
   plan: ResearchPackagePlan,
   report: (message: string) => void,
   signal?: AbortSignal,
+  volumeIndex = 0,
 ): Promise<Blob> {
   signal?.throwIfAborted();
   const { createReaderTransfer } = await import("@bcr/reader-studio/research-transfer");
-  const reader = await createReaderTransfer(plan.books, report, plan.readerStamp, signal);
+  const volume = plan.volumes[volumeIndex];
+  if (!volume) throw new Error("分卷编号无效");
+  const reader = await createReaderTransfer(volume.books, report, volume.readerStamp, signal);
+  const catalog = new Blob([JSON.stringify(plan.catalog)]);
   const research = new Blob([JSON.stringify(plan.backup)], { type: "application/json" });
   if (research.size > 16 * 1024 * 1024) throw new Error("集合快照超过 16 MiB 上限，请减少所选集合");
   const manifest = {
     format: "bcr-research-package",
-    version: 1,
+    version: 2,
+    volume: { set: plan.set, index: volumeIndex + 1 },
     entries: [
+      {
+        path: "catalog.json",
+        size: catalog.size,
+        hash: await hashReadableStream(catalog.stream(), { signal }),
+      },
       {
         path: "research.json",
         size: research.size,
@@ -131,7 +201,7 @@ export async function createResearchPackage(
       },
     ],
   };
-  if (reader.size + research.size > PACKAGE_LIMIT)
+  if (reader.size + research.size + catalog.size > PACKAGE_LIMIT)
     throw new Error("资料包超过 600 MiB 上限，请减少所选集合");
   const zip = new ZipWriter(new BlobWriter("application/zip"));
   try {
@@ -142,6 +212,10 @@ export async function createResearchPackage(
       new TextReader(JSON.stringify(manifest)),
       signal ? { signal } : {},
     );
+    await zip.add("catalog.json", new BlobReader(catalog), {
+      level: 0,
+      ...(signal ? { signal } : {}),
+    });
     await zip.add("research.json", new BlobReader(research), {
       level: 0,
       ...(signal ? { signal } : {}),
@@ -163,6 +237,11 @@ export async function createResearchPackage(
 export interface PreparedResearchPackage {
   readonly backup: ResearchBackup;
   readonly reader: PreparedReaderBackup;
+  readonly volume?: {
+    readonly catalog: ResearchVolumeCatalog;
+    readonly set: string;
+    readonly index: number;
+  };
 }
 export async function inspectResearchPackage(
   file: Blob,
@@ -179,12 +258,14 @@ export async function inspectResearchPackage(
     const entries = allEntries.filter((entry) => !entry.directory);
     if (allEntries.length !== entries.length) throw new Error("资料包不允许目录条目");
     if (
-      entries.length !== 3 ||
-      new Set(entries.map((entry) => entry.filename)).size !== 3 ||
+      (entries.length !== 3 && entries.length !== 4) ||
+      new Set(entries.map((entry) => entry.filename)).size !== entries.length ||
       entries.some(
         (entry) =>
           entry.directory ||
-          !["manifest.json", "research.json", "reader.zip"].includes(entry.filename),
+          !["manifest.json", "research.json", "reader.zip", "catalog.json"].includes(
+            entry.filename,
+          ),
       )
     )
       throw new Error("资料包包含缺失、重复或未知路径");
@@ -198,27 +279,35 @@ export async function inspectResearchPackage(
     ) as {
       format?: unknown;
       version?: unknown;
+      volume?: { set: string; index: number };
       entries?: Array<{ path: string; size: number; hash: string }>;
     };
     if (
       !manifest ||
       manifest.format !== "bcr-research-package" ||
-      manifest.version !== 1 ||
+      (manifest.version !== 1 && manifest.version !== 2) ||
       !Array.isArray(manifest.entries) ||
-      manifest.entries.length !== 2
+      manifest.entries.length !== (manifest.version === 2 ? 3 : 2) ||
+      entries.length !== manifest.entries.length + 1
     )
       throw new Error("资料包版本或清单无效");
+    if (manifest.entries.reduce((sum, item) => sum + (item?.size ?? 0), 0) > PACKAGE_LIMIT)
+      throw new Error("资料包内容超过 600 MiB 上限");
     const blobs = new Map<string, Blob>();
     for (const item of manifest.entries) {
       signal?.throwIfAborted();
       if (
         !item ||
-        !["research.json", "reader.zip"].includes(item.path) ||
+        !(
+          manifest.version === 2
+            ? ["research.json", "reader.zip", "catalog.json"]
+            : ["research.json", "reader.zip"]
+        ).includes(item.path) ||
         blobs.has(item.path) ||
         !Number.isSafeInteger(item.size) ||
         item.size < 0 ||
         item.size >
-          (item.path === "research.json" ? 16 * 1024 * 1024 : PACKAGE_LIMIT - 16 * 1024 * 1024) ||
+          (item.path !== "reader.zip" ? RESEARCH_LIMIT : PACKAGE_LIMIT - RESEARCH_LIMIT) ||
         !/^[a-f0-9]{64}$/u.test(item.hash)
       )
         throw new Error("资料包文件清单无效");
@@ -249,14 +338,43 @@ export async function inspectResearchPackage(
     signal?.throwIfAborted();
     if (reader.manifest.books.some((entry) => !entry.source))
       throw new Error("完整资料包中的 Reader 书籍缺少源文件");
-    return { backup, reader };
+    if (manifest.version === 1) return { backup, reader };
+    const { readerTransferIdentity } = await import("@bcr/reader-studio/research-transfer");
+    const catalog = decodeVolumeCatalog(JSON.parse(await blobs.get("catalog.json")!.text()));
+    const set = manifest.entries.find((entry) => entry.path === "catalog.json")!.hash;
+    const volume = manifest.volume;
+    if (
+      !volume ||
+      volume.set !== set ||
+      !Number.isSafeInteger(volume.index) ||
+      volume.index < 1 ||
+      volume.index > catalog.total ||
+      catalog.researchHash !==
+        manifest.entries.find((entry) => entry.path === "research.json")!.hash
+    )
+      throw new Error("分卷身份或集合快照不匹配");
+    const expected = catalog.books.filter((entry) => entry.volume === volume.index);
+    if (
+      expected.length !== reader.manifest.books.length ||
+      reader.manifest.books.some(
+        (entry) =>
+          !expected.some(
+            (book) =>
+              book.book === entry.book.id &&
+              book.target === readerTransferIdentity(entry) &&
+              book.hash === entry.source?.hash,
+          ),
+      )
+    )
+      throw new Error("本卷源文件与分卷目录不匹配");
+    return { backup, reader, volume: { catalog, set, index: volume.index } };
   } finally {
     await zip.close();
   }
 }
 export function bindResearchPackage(
   backup: ResearchBackup,
-  bindings: ReadonlyArray<{ book: string; target: string }>,
+  bindings: ReadonlyArray<ReaderBinding>,
 ): ResearchBackup {
   return {
     ...backup,
@@ -272,18 +390,15 @@ export function bindResearchPackage(
             }),
           );
           const mapped = new Map(
-            (item.readerBindings ?? []).map((binding) => [
-              binding.book,
-              bindings.find((next) => next.book === binding.target)?.target ?? binding.target,
-            ]),
+            (item.readerBindings ?? []).map((binding) => {
+              const next = bindings.find((entry) => entry.book === binding.target);
+              return [binding.book, next ? { ...next, book: binding.book } : binding];
+            }),
           );
           for (const binding of bindings)
             if (needed.has(binding.book) && !mapped.has(binding.book))
-              mapped.set(binding.book, binding.target);
-          return {
-            ...item,
-            readerBindings: [...mapped].map(([book, target]) => ({ book, target })),
-          };
+              mapped.set(binding.book, binding);
+          return { ...item, readerBindings: [...mapped.values()] };
         }),
       })),
     },
@@ -296,7 +411,10 @@ export async function restoreResearchPackage(
 ) {
   const { restoreReaderTransfer } = await import("@bcr/reader-studio/research-transfer");
   const bindings = await restoreReaderTransfer(prepared.reader, report);
-  const backup = bindResearchPackage(prepared.backup, bindings);
+  const backup = bindResearchPackage(
+    prepared.backup,
+    prepared.volume ? catalogBindings(prepared.volume.catalog, prepared.volume.set) : bindings,
+  );
   try {
     await write((current) => planResearchImport(current, backup).library);
   } catch (error) {
@@ -316,6 +434,31 @@ export async function previewResearchPackageImport(
   }));
   return {
     books: readerTransferPreview(prepared.reader),
-    collections: planResearchImport(current, bindResearchPackage(prepared.backup, bindings)),
+    collections: planResearchImport(
+      current,
+      bindResearchPackage(
+        prepared.backup,
+        prepared.volume ? catalogBindings(prepared.volume.catalog, prepared.volume.set) : bindings,
+      ),
+    ),
   };
+}
+
+function catalogBindings(catalog: ResearchVolumeCatalog, set: string): ReaderBinding[] {
+  return catalog.books.map((entry) => ({
+    book: entry.book,
+    target: entry.target,
+    volume: { set, index: entry.volume, total: catalog.total },
+  }));
+}
+export async function researchVolumeStatus(prepared: PreparedResearchPackage) {
+  if (!prepared.volume) return [];
+  const { readerTransferState } = await import("@bcr/reader-studio/research-transfer");
+  const { state } = readerTransferState();
+  return prepared.volume.catalog.books.map((entry) => ({
+    ...entry,
+    restored: state.library.some(
+      (book) => book.id === entry.target && book.source.ref?.hash === entry.hash,
+    ),
+  }));
 }

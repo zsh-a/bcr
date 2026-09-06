@@ -1,9 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BlobWriter, BlobReader, TextReader, ZipWriter } from "@zip.js/zip.js";
+import {
+  BlobWriter,
+  BlobReader,
+  TextReader,
+  TextWriter,
+  ZipReader,
+  ZipWriter,
+} from "@zip.js/zip.js";
 import { createTextCitation, hashReadableStream, textVersion } from "@bcr/core";
 import { DEFAULT_READER_SETTINGS } from "@bcr/reader-studio/model";
 import {
   inspectResearchPackage,
+  researchVolumeStatus,
+  previewResearchPackageImport,
   bindResearchPackage,
   restoreResearchPackage,
   planResearchPackage,
@@ -237,6 +246,122 @@ describe("Reader research packages", () => {
     ).rejects.toMatchObject({ name: "AbortError" });
     const completed = await createResearchPackage(plan, () => {});
     expect((await inspectResearchPackage(completed)).reader.manifest.books).toHaveLength(1);
+  });
+  it("restores independent volumes out of order and repeats without copying collections", async () => {
+    await createReaderRuntime();
+    reader.hydrate([], {}, DEFAULT_READER_SETTINGS);
+    vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {} });
+    const prepared = await inspectResearchPackage(await fixture());
+    const source = new Blob(["第二份独立证据"]);
+    const hash = await hashReadableStream(source.stream());
+    const first = prepared.reader.manifest.books[0]!;
+    const second = {
+      book: {
+        ...first.book,
+        id: "other",
+        title: "Other",
+        source: { ...first.book.source, size: source.size },
+      },
+      source: { path: `sources/${hash}`, hash, size: source.size },
+    };
+    const expanded = {
+      manifest: { ...prepared.reader.manifest, books: [first, second] },
+      sources: new Map([...prepared.reader.sources, [`sources/${hash}`, source]]),
+    };
+    const bindings = await restoreReaderTransfer(expanded, () => {});
+    const item = library.collections[0]!.excerpts[0]!;
+    const history = {
+      documentId: item.documentId,
+      title: item.title,
+      source: item.source,
+      owner: "reader",
+      text: item.text,
+      route: "/reader?book=other&section=section",
+      linkedAt: 2,
+      citation: {
+        ...citation,
+        source: {
+          ...citation.source,
+          scope: JSON.stringify(["reader", "other", "section"]),
+          unit: JSON.stringify(["reader", "other", "section"]),
+        },
+      },
+    };
+    const backup = {
+      ...prepared.backup,
+      library: {
+        ...library,
+        collections: [
+          {
+            ...library.collections[0]!,
+            excerpts: [
+              { ...item, links: [history] },
+              { ...item, id: "other-excerpt", route: "/reader?book=other&section=section" },
+            ],
+          },
+        ],
+      },
+    };
+    const bound = bindResearchPackage(backup, bindings).library;
+    const limit = Math.max(first.source!.size, source.size);
+    await expect(planResearchPackage(bound, false, () => {}, undefined, limit - 1)).rejects.toThrow(
+      "超过单卷",
+    );
+    const plan = await planResearchPackage(bound, false, () => {}, undefined, limit);
+    expect(plan.volumes).toHaveLength(2);
+    expect(plan.sourceBytes).toBe(first.source!.size + source.size);
+    const files = [];
+    for (let i = 0; i < plan.volumes.length; i++)
+      files.push(await createResearchPackage(plan, () => {}, undefined, i));
+    // A valid ZIP with a false volume number must fail before restoring anything.
+    const input = new ZipReader(new BlobReader(files[0]!));
+    const output = new ZipWriter(new BlobWriter());
+    for (const entry of await input.getEntries()) {
+      if (entry.filename === "manifest.json") {
+        const manifest = JSON.parse(await entry.getData!(new TextWriter()));
+        manifest.volume.index = 2;
+        await output.add(entry.filename, new TextReader(JSON.stringify(manifest)));
+      } else
+        await output.add(entry.filename, new BlobReader(await entry.getData!(new BlobWriter())));
+    }
+    await input.close();
+    await expect(inspectResearchPackage(await output.close())).rejects.toThrow("分卷目录不匹配");
+    const volumes = [];
+    for (const file of files) volumes.push(await inspectResearchPackage(file));
+    await createReaderRuntime();
+    reader.hydrate([], {}, DEFAULT_READER_SETTINGS);
+    let current: ResearchLibrary = { version: 1, collections: [] };
+    const write = async (change: (value: ResearchLibrary) => ResearchLibrary) => {
+      current = change(current);
+    };
+    await restoreResearchPackage(volumes[1]!, write, () => {});
+    expect(current.collections).toHaveLength(1);
+    expect((await researchVolumeStatus(volumes[1]!)).map((book) => book.restored)).toEqual([
+      false,
+      true,
+    ]);
+    const firstImport = current;
+    for (const index of [1, 0, 1, 0]) {
+      expect(
+        (await previewResearchPackageImport(volumes[index]!, current)).collections.skipped,
+      ).toBe(1);
+      await restoreResearchPackage(volumes[index]!, write, () => {});
+      expect(current).toEqual(firstImport);
+    }
+    expect(getReaderState().library.filter((book) => book.id.startsWith("research-"))).toHaveLength(
+      2,
+    );
+    expect((await researchVolumeStatus(volumes[0]!)).every((book) => book.restored)).toBe(true);
+    expect(current.collections[0]!.excerpts[0]!.text).toBe(item.text);
+    expect(current.collections[0]!.excerpts[0]!.citation).toEqual(item.citation);
+    expect(current.collections[0]!.excerpts[0]!.links).toEqual([history]);
+    expect(current.collections[0]!.excerpts[0]!.readerBindings).toHaveLength(2);
+    expect(current.collections[0]!.excerpts[0]!.readerBindings![0]!.volume).toEqual({
+      set: plan.set,
+      index: 1,
+      total: 2,
+    });
+    expect(decodeResearch(JSON.stringify(current))).toEqual(current);
   });
   it("maps routes and citation identities without rewriting the original evidence", () => {
     const backup = createResearchBackup(library, false, { getItem: () => null });
