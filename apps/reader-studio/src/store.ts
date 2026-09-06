@@ -195,6 +195,14 @@ class ReaderStore {
     return recovered;
   }
 
+  /** Publish already persisted additions without resetting the active reading session. */
+  appendRestoredBooks(books: ReadonlyArray<ReaderBook>): void {
+    const added = books.filter(
+      (book) => !this.state.library.some((current) => current.id === book.id),
+    );
+    if (added.length) this.set({ library: [...this.state.library, ...added] });
+  }
+
   addBook(book: ReaderBook): boolean {
     const existing = this.state.library.find(
       (candidate) =>

@@ -4,10 +4,6 @@ import {
   createReaderRuntime,
   ensureReaderMetadata,
   indexBook,
-  mirrorReaderLibrary,
-  mirrorReaderSession,
-  persistReader,
-  restoreReader,
   restoreReaderBooks,
   searchIndexedDetailed,
   type ReaderRestoreDiagnostics,
@@ -17,37 +13,11 @@ import { getReaderState, reader, useReader } from "./store";
 
 export const READER_CAPTURE_PROGRESS_EVENT = "bcr-reader-capture-progress";
 
-let readerPersistenceQueue: Promise<void> = Promise.resolve();
+export { persistReaderSnapshot } from "./readerPersistenceQueue";
+import { persistReaderSnapshot, restoreReaderSnapshot } from "./readerPersistenceQueue";
 
 export function captureReaderProgress(): void {
   window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
-}
-
-export function persistReaderSnapshot(
-  runtime: ReaderRuntime,
-  options: { readonly durableLibrary?: boolean; readonly strict?: boolean } = {},
-): Promise<void> {
-  const state = getReaderState();
-  if (state.status !== "ready") return Promise.resolve();
-  // Keep the small session snapshot synchronously available before the async
-  // SQLite/OPFS queue gets a chance to run. Mobile browsers may terminate a
-  // page immediately after pagehide/visibilitychange.
-  mirrorReaderSession(state);
-  mirrorReaderLibrary(runtime, state);
-  const metadataReady =
-    options.durableLibrary === true ? ensureReaderMetadata(runtime) : Promise.resolve();
-  const save = () =>
-    metadataReady.then(async () => {
-      // A queued debounce may run after a newer import. Persist the newest
-      // snapshot so an older task can never roll the library back.
-      const latest = getReaderState();
-      if (latest.status !== "ready") return;
-      await persistReader(runtime, latest, { mirrorSession: false });
-      reader.markSaved();
-    });
-  const pending = readerPersistenceQueue.catch(() => undefined).then(save);
-  readerPersistenceQueue = pending.catch((reason: unknown) => reader.markSaveFailed(reason));
-  return options.strict ? pending : readerPersistenceQueue;
 }
 
 export interface ReaderPwaUpdateState {
@@ -269,7 +239,7 @@ export function useReaderBoot(): ReaderBootState {
       const baselineActiveBookId = getReaderState().activeBookId;
       metadataWarmupTimer = window.setTimeout(() => {
         void ensureReaderMetadata(nextRuntime)
-          .then(() => restoreReader(nextRuntime, { deferBinary: true }))
+          .then(() => restoreReaderSnapshot(nextRuntime))
           .then((durable) => {
             if (cancelled || durable === undefined) return;
             const current = getReaderState();
@@ -307,13 +277,13 @@ export function useReaderBoot(): ReaderBootState {
           return;
         }
         setRuntime(nextRuntime);
-        let restored = await restoreReader(nextRuntime, { deferBinary: true });
+        let restored = await restoreReaderSnapshot(nextRuntime);
         if (restored?.libraryOutdated === true) {
           // A compact session is much more likely to fit in localStorage than
           // a full novel. Open SQLite only when its library signature proves
           // that the fast local projection is stale or incomplete.
           await ensureReaderMetadata(nextRuntime);
-          const durable = await restoreReader(nextRuntime, { deferBinary: true });
+          const durable = await restoreReaderSnapshot(nextRuntime);
           if (durable !== undefined && !durable.libraryOutdated) restored = durable;
         }
         if (cancelled) return;

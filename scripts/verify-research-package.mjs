@@ -1,9 +1,16 @@
 import assert from "node:assert/strict";
 import { readFile, mkdir } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { chromium } from "playwright";
 const require = createRequire(new URL("../apps/reader-studio/package.json", import.meta.url));
 const { ZipWriter, BlobWriter, TextReader } = require("@zip.js/zip.js");
+const readerModules = Object.fromEntries(
+  ["readerRuntimeCore", "readerPersistenceQueue", "store"].map((name) => [
+    name,
+    "/@fs" + fileURLToPath(new URL(`../apps/reader-studio/src/${name}.ts`, import.meta.url)),
+  ]),
+);
 const origin = new URL(process.env.BASE_URL ?? "http://localhost:5199").origin;
 const browser = await chromium.launch({ args: ["--disable-dev-shm-usage"] });
 const errors = [];
@@ -120,8 +127,84 @@ try {
   await restored.getByRole("button", { name: "取消资料包恢复", exact: true }).click();
   assert.equal(await restored.locator('[aria-label="集合摘录"] article').count(), 0);
   await choosePackage(restored, buffer);
+  // Reuse the modules loaded by Vite, including their HMR version query.
+  const liveModules = await restored.evaluate(
+    (paths) =>
+      Object.fromEntries(
+        Object.entries(paths).map(([name, path]) => {
+          const loaded = performance
+            .getEntriesByType("resource")
+            .map((entry) => entry.name)
+            .filter((url) => new URL(url).pathname === path)
+            .at(-1);
+          if (!loaded) throw new Error(`Reader module not loaded: ${name}`);
+          return [name, loaded];
+        }),
+      ),
+    readerModules,
+  );
+  // Pause an actual SQLite library write, then change the live library and
+  // enqueue an autosave. The restore must merge against these newer changes.
+  await restored.evaluate(async (modules) => {
+    const { readerRuntime, ensureReaderMetadata } = await import(modules.readerRuntimeCore);
+    const runtime = readerRuntime();
+    await ensureReaderMetadata(runtime);
+    const write = runtime.meta.kvSet.bind(runtime.meta);
+    const gate = { entered: false, release: undefined };
+    window.__readerCommitGate = gate;
+    runtime.meta.kvSet = async (key, raw) => {
+      if (!gate.entered && key === "reader/library" && raw.includes("research-")) {
+        gate.entered = true;
+        await new Promise((resolve) => {
+          gate.release = resolve;
+        });
+      }
+      return write(key, raw);
+    };
+  }, liveModules);
   await restored.getByRole("button", { name: "确认恢复 Reader 资料包", exact: true }).click();
+  await restored.waitForFunction(() => window.__readerCommitGate?.entered);
+  await restored.evaluate(async (modules) => {
+    const { reader, getReaderState } = await import(modules.store);
+    const { readerRuntime } = await import(modules.readerRuntimeCore);
+    const { persistReaderSnapshot } = await import(modules.readerPersistenceQueue);
+    const original = getReaderState().library[0];
+    reader.addBook({
+      ...original,
+      id: "local-during-restore",
+      title: "恢复期间新增的本地资料",
+      source: { name: "local.txt", format: "txt", mime: "text/plain", size: 18 },
+      sections: [
+        {
+          id: "local-section",
+          order: 0,
+          label: "本地正文",
+          kind: "text",
+          text: "恢复期间新增的本地资料必须保留。",
+        },
+      ],
+    });
+    reader.removeBook(original.id);
+    reader.setSettings({ fontSize: 24 });
+    window.__readerConcurrentSave = persistReaderSnapshot(readerRuntime(), { strict: true });
+    window.__readerConcurrentSave.catch(() => {});
+    window.__readerCommitGate.release();
+  }, liveModules);
   await saved(restored);
+  const concurrent = await restored.evaluate(async (modules) => {
+    await window.__readerConcurrentSave;
+    const { getReaderState } = await import(modules.store);
+    const state = getReaderState();
+    return {
+      ids: state.library.map((book) => book.id),
+      active: state.activeBookId,
+      fontSize: state.settings.fontSize,
+    };
+  }, liveModules);
+  assert.equal(concurrent.ids.length, 3);
+  assert.ok(concurrent.ids.includes("local-during-restore"));
+  assert.equal(concurrent.active, "local-during-restore");
+  assert.equal(concurrent.fontSize, 24);
   assert.equal(await restored.locator('[aria-label="集合摘录"] article').count(), 2);
   const original = restored
     .locator('[aria-label="集合摘录"] article')
@@ -152,6 +235,16 @@ try {
     if (!img.complete || img.naturalWidth !== 80) throw new Error("EPUB illustration not restored");
   });
   await restored.reload({ waitUntil: "networkidle" });
+  const reopened = await restored.evaluate(async (modules) => {
+    const { getReaderState } = await import(modules.store);
+    return {
+      ids: getReaderState().library.map((book) => book.id),
+      fontSize: getReaderState().settings.fontSize,
+    };
+  }, liveModules);
+  assert.deepEqual(reopened.ids, concurrent.ids);
+  assert.equal(reopened.fontSize, 24);
+
   await restored.locator('[data-reader-search-match="true"]').first().waitFor();
   await restored.getByRole("img", { name: "随源文件恢复的插图" }).evaluate(async (img) => {
     await img.decode();

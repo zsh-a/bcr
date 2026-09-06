@@ -23,6 +23,9 @@ import type { ReaderRuntime } from "./readerRuntimeCore";
 export interface PersistReaderOptions {
   /** Set false when the caller has already mirrored the latest session synchronously. */
   readonly mirrorSession?: boolean;
+  readonly forceLibrary?: boolean;
+  /** Recheck the live snapshot after asynchronous writes and before local mirrors. */
+  readonly assertCurrent?: () => void;
 }
 export interface PersistedBook {
   readonly preserveSectionSnapshot?: boolean;
@@ -184,6 +187,8 @@ export async function persistReader(
   state: ReaderState,
   options: PersistReaderOptions = {},
 ): Promise<void> {
+  const check = options.assertCurrent ?? (() => {});
+  check();
   const mirrorSession = options.mirrorSession ?? true;
   const books = state.library.map(persistBook);
   const librarySignature = readerLibrarySignature(state.library);
@@ -192,10 +197,13 @@ export async function persistReader(
   // Make the small session durable even when the async metadata backend is
   // unavailable or the mobile page is terminated during a pending write.
   if (mirrorSession) mirrorReaderSession(state);
-  const localLibraryOutdated = persistedLocalLibrarySignatures.get(runtime) !== librarySignature;
+  const localLibraryOutdated =
+    options.forceLibrary === true ||
+    persistedLocalLibrarySignatures.get(runtime) !== librarySignature;
   const metadataLibraryOutdated =
     runtime.meta !== undefined &&
-    persistedMetadataLibrarySignatures.get(runtime) !== librarySignature;
+    (options.forceLibrary === true ||
+      persistedMetadataLibrarySignatures.get(runtime) !== librarySignature);
   if (localLibraryOutdated || metadataLibraryOutdated) {
     const library: PersistedReaderLibrary = { version: 1, books };
     const legacy: PersistedReaderSnapshot = {
@@ -220,6 +228,8 @@ export async function persistReader(
       READER_LIBRARY_STORAGE_KEY,
       libraryRaw,
       localLibraryOutdated,
+      true,
+      check,
     );
     if (!librarySaved.local && !librarySaved.metadata && localLibraryOutdated)
       throw new Error("书库未能保存：本地存储不可用或空间不足");
@@ -229,6 +239,8 @@ export async function persistReader(
       READER_STORAGE_KEY,
       legacyRaw,
       localLibraryOutdated,
+      true,
+      check,
     );
     if (librarySaved.local) {
       persistedLocalLibrarySignatures.set(runtime, librarySignature);
@@ -244,7 +256,9 @@ export async function persistReader(
     sessionRaw,
     mirrorSession,
     true,
+    check,
   );
+  check();
   if (!sessionSaved.local && !sessionSaved.metadata)
     throw new Error("阅读记录未能保存，请检查本地存储空间后重试");
 }
@@ -304,10 +318,12 @@ async function writeReaderValue(
   raw: string,
   mirrorLocal: boolean,
   fallbackLocal = true,
+  check: () => void = () => {},
 ): Promise<{ readonly local: boolean; readonly metadata: boolean }> {
   let localSaved = false;
   let metadataSaved = false;
   const writeLocal = (): void => {
+    check();
     try {
       if (typeof localStorage === "undefined") return;
       localStorage.setItem(storageKey, raw);
@@ -327,6 +343,7 @@ async function writeReaderValue(
       // Fall through to localStorage when SQLite is temporarily unavailable.
     }
   }
+  check();
   if (!mirrorLocal && !metadataSaved && fallbackLocal) writeLocal();
   return { local: localSaved, metadata: metadataSaved };
 }

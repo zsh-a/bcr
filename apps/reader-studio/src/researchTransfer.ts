@@ -6,8 +6,9 @@ import {
   type PreparedReaderBackup,
 } from "./readerBackup";
 import { readerRuntime } from "./readerRuntimeCore";
-import { getReaderState, reader, releaseBookResources } from "./store";
-import { persistBook, persistReader, restoreSectionSnapshots } from "./readerPersistence";
+import { getReaderState, releaseBookResources } from "./store";
+import { persistBook, restoreSectionSnapshots } from "./readerPersistence";
+import { commitReaderBooks } from "./readerPersistenceQueue";
 import { indexBook } from "./readerSearch";
 export { inspectReaderBackup } from "./readerBackup";
 export type { PreparedReaderBackup } from "./readerBackup";
@@ -111,18 +112,23 @@ export async function restoreReaderTransfer(
     ...entry,
     book: { ...entry.book, id: bindings[i]!.target },
   }));
-  for (const entry of entries) {
-    const existing = state.library.find((book) => book.id === entry.book.id);
-    if (
-      existing &&
-      (existing.source.ref?.hash !== entry.source?.hash ||
-        JSON.stringify(
-          persistBook(existing).sections.map(({ html: _html, ...section }) => section),
-        ) !== JSON.stringify(entry.book.sections.map(({ html: _html, ...section }) => section)))
-    ) {
-      throw new Error("此前导入的 Reader 资料已修改，请保留或移走该副本后重试");
+  const validate = (current: typeof state) => {
+    for (const entry of entries) {
+      const existing = current.library.find((book) => book.id === entry.book.id);
+      if (!existing && state.library.some((book) => book.id === entry.book.id))
+        throw new Error("待复用的 Reader 资料已在恢复期间删除，请重新检查后重试");
+      if (
+        existing &&
+        (existing.source.ref?.hash !== entry.source?.hash ||
+          JSON.stringify(
+            persistBook(existing).sections.map(({ html: _html, ...section }) => section),
+          ) !== JSON.stringify(entry.book.sections.map(({ html: _html, ...section }) => section)))
+      ) {
+        throw new Error("此前导入的 Reader 资料已修改，请保留或移走该副本后重试");
+      }
     }
-  }
+  };
+  validate(state);
   const reused = entries.filter((entry) => state.library.some((book) => book.id === entry.book.id));
   const unavailable = new Set(await checkReaderTransfer(reused.map((entry) => entry.book.id)));
   for (const entry of reused) {
@@ -160,27 +166,12 @@ export async function restoreReaderTransfer(
         toc: snapshot.toc,
       };
     });
-    if (getReaderState().library !== state.library)
-      throw new Error("书库在恢复期间发生变化，请重试");
-    if (restored.length) {
-      const next = { ...getReaderState(), library: [...state.library, ...restored] };
-      await persistReader(runtime, next);
-      reader.hydrate(
-        next.library,
-        next.progressByBook,
-        next.settings,
-        next.bookmarksByBook,
-        next.activeBookId,
-        next.annotationsByBook,
-        {
-          query: next.query,
-          searchBookId: next.searchBookId,
-          searchOpen: next.searchOpen,
-          scope: next.searchScope,
-        },
-        next.navigationHistory,
-      );
-    }
+    const added = await commitReaderBooks(runtime, (current) => {
+      validate(current);
+      return restored.filter((book) => !current.library.some((item) => item.id === book.id));
+    });
+    const addedIds = new Set(added.map((book) => book.id));
+    for (const staged of books) if (!addedIds.has(staged.id)) releaseBookResources(staged);
   } catch (error) {
     for (const book of books) releaseBookResources(book);
     throw error;
