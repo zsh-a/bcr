@@ -46,6 +46,21 @@ describe("MemoryStore (BinaryStore 契约)", () => {
     expect(chunks).toEqual([1, 2, 3]);
   });
 
+  it("reads bounded independent chunks from the snapshot captured before replacement", async () => {
+    const store = new MemoryStore();
+    await store.put("big", new Uint8Array(192 * 1024).fill(7));
+    const stream = (await store.getStream("big"))!;
+    await store.put("big", new Uint8Array([9]));
+    const reader = stream.getReader();
+    const first = (await reader.read()).value!;
+    expect(first.byteLength).toBe(64 * 1024);
+    first.fill(0);
+    expect((await reader.read()).value!.every((value) => value === 7)).toBe(true);
+    expect(await store.get("big")).toEqual(new Uint8Array([9]));
+    await reader.cancel();
+    expect((await reader.read()).done).toBe(true);
+    reader.releaseLock();
+  });
   it("readRange 按窗口读取", async () => {
     const store = new MemoryStore();
     await store.put("f", new Uint8Array([0, 1, 2, 3, 4]));

@@ -1,3 +1,4 @@
+import { writeResearchPackage } from "../src/researchPackageStream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   BlobWriter,
@@ -362,6 +363,145 @@ describe("Reader research packages", () => {
       total: 2,
     });
     expect(decodeResearch(JSON.stringify(current))).toEqual(current);
+  });
+  it("streams a compatible package, aborts failed or cancelled writes and retries", async () => {
+    await createReaderRuntime();
+    reader.hydrate([], {}, DEFAULT_READER_SETTINGS);
+    vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {} });
+    const prepared = await inspectResearchPackage(await fixture());
+    const bindings = await restoreReaderTransfer(prepared.reader, () => {});
+    const plan = await planResearchPackage(
+      bindResearchPackage(prepared.backup, bindings).library,
+      false,
+    );
+    // The streaming exporter must never request a whole source Blob.
+    const blobRead = vi
+      .spyOn(readerTransferState().runtime.artifacts, "getBlob")
+      .mockImplementation(() => {
+        throw new Error("whole source materialized");
+      });
+    try {
+      const chunks: Uint8Array[] = [];
+      let closed = false;
+      await writeResearchPackage(
+        plan,
+        new WritableStream<Uint8Array>({
+          async write(chunk) {
+            await new Promise((resolve) => setTimeout(resolve, 1));
+            chunks.push(chunk);
+          },
+          close() {
+            closed = true;
+          },
+        }),
+        () => {},
+      );
+      expect(closed).toBe(true);
+      const result = await inspectResearchPackage(new Blob(chunks as BlobPart[]));
+      expect(result.volume!.set).toBe(plan.set);
+      expect(result.reader.manifest.books).toHaveLength(1);
+      expect(blobRead).not.toHaveBeenCalled();
+      for (const failure of ["write", "close", "cancel"]) {
+        const controller = new AbortController();
+        let aborts = 0,
+          closes = 0;
+        const target = new WritableStream<Uint8Array>({
+          write() {
+            if (failure === "write") throw new Error("disk full");
+          },
+          close() {
+            closes++;
+            if (failure === "close") throw new Error("commit failed");
+          },
+          abort() {
+            aborts++;
+          },
+        });
+        await expect(
+          writeResearchPackage(
+            plan,
+            target,
+            (message) => {
+              if (failure === "cancel" && message.startsWith("正在写入 Reader")) controller.abort();
+            },
+            controller.signal,
+          ),
+        ).rejects.toThrow();
+        if (failure === "cancel") {
+          expect(aborts).toBe(1);
+          expect(closes).toBe(0);
+        }
+      }
+      const cancelling = new AbortController();
+      let entered!: () => void;
+      const reading = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const cancelledSource = vi.fn();
+      const sourceRead = vi
+        .spyOn(readerTransferState().runtime.artifacts, "getStream")
+        .mockImplementation(() =>
+          Effect.succeed(
+            new ReadableStream<Uint8Array>({
+              pull() {
+                entered();
+                return new Promise<void>(() => {});
+              },
+              cancel: cancelledSource,
+            }),
+          ),
+        );
+      const abortedSink = vi.fn();
+      const stalled = writeResearchPackage(
+        plan,
+        new WritableStream({ abort: abortedSink }),
+        () => {},
+        cancelling.signal,
+      );
+      await reading;
+      cancelling.abort();
+      await expect(stalled).rejects.toMatchObject({ name: "AbortError" });
+      expect(cancelledSource).toHaveBeenCalledOnce();
+      expect(abortedSink).toHaveBeenCalledOnce();
+      sourceRead.mockRestore();
+      const corrupted = vi
+        .spyOn(readerTransferState().runtime.artifacts, "getStream")
+        .mockImplementation(() =>
+          Effect.succeed(
+            new Blob([new Uint8Array(prepared.reader.manifest.books[0]!.source!.size)]).stream(),
+          ),
+        );
+      const corruptAbort = vi.fn(),
+        corruptClose = vi.fn();
+      try {
+        await expect(
+          writeResearchPackage(
+            plan,
+            new WritableStream({ abort: corruptAbort, close: corruptClose }),
+            () => {},
+          ),
+        ).rejects.toThrow("校验失败");
+        expect(corruptAbort).toHaveBeenCalledOnce();
+        expect(corruptClose).not.toHaveBeenCalled();
+      } finally {
+        corrupted.mockRestore();
+      }
+      const retry: Uint8Array[] = [];
+      await writeResearchPackage(
+        plan,
+        new WritableStream({
+          write(chunk) {
+            retry.push(chunk);
+          },
+        }),
+        () => {},
+      );
+      expect((await inspectResearchPackage(new Blob(retry as BlobPart[]))).volume!.set).toBe(
+        plan.set,
+      );
+    } finally {
+      blobRead.mockRestore();
+    }
   });
   it("maps routes and citation identities without rewriting the original evidence", () => {
     const backup = createResearchBackup(library, false, { getItem: () => null });

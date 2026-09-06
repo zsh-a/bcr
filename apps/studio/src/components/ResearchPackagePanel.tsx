@@ -1,3 +1,4 @@
+import { writeResearchPackage } from "../researchPackageStream";
 import { useEffect, useRef, useState } from "react";
 import type { ResearchLibrary, ResearchStore } from "../research";
 import {
@@ -11,6 +12,12 @@ import {
   type ResearchPackagePlan,
   type PreparedResearchPackage,
 } from "../researchPackage";
+type SaveWindow = Window & {
+  showSaveFilePicker?: (options: {
+    suggestedName: string;
+    types: Array<{ description: string; accept: Record<string, string[]> }>;
+  }) => Promise<{ createWritable(): Promise<WritableStream<Uint8Array>> }>;
+};
 const button =
   "rounded border border-border px-3 py-1.5 text-[11px] text-muted hover:text-accent disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-accent";
 export function ResearchPackagePanel(props: {
@@ -59,7 +66,11 @@ export function ResearchPackagePanel(props: {
       })
       .catch((error: unknown) => {
         if (current()) {
-          setMessage(String(error));
+          setMessage(
+            error instanceof DOMException && error.name === "AbortError"
+              ? "已取消文件选择或保存，可以重试。"
+              : String(error),
+          );
           if (generating.current !== null) {
             const index = generating.current;
             setVolumeStates((states) => ({ ...states, [index]: "生成失败，可重试" }));
@@ -282,6 +293,41 @@ export function ResearchPackagePanel(props: {
               </li>
             ))}
           </ul>
+          {typeof (window as SaveWindow).showSaveFilePicker === "function" && (
+            <button
+              type="button"
+              className={button}
+              disabled={disabled}
+              onClick={() => {
+                action(async (signal, report) => {
+                  // The picker must open synchronously within the click's user activation.
+                  const handle = await (window as SaveWindow).showSaveFilePicker!({
+                    suggestedName: `bcr-reader-research-${plan.set.slice(0, 12)}-${volumeIndex + 1}-of-${plan.volumes.length}.zip`,
+                    types: [
+                      { description: "Reader 资料包", accept: { "application/zip": [".zip"] } },
+                    ],
+                  });
+                  signal.throwIfAborted();
+                  const destination = await handle.createWritable();
+                  if (signal.aborted) {
+                    await destination.abort(signal.reason);
+                    signal.throwIfAborted();
+                  }
+                  generating.current = volumeIndex;
+                  setVolumeStates((states) => ({ ...states, [volumeIndex]: "正在保存" }));
+                  await writeResearchPackage(plan, destination, report, signal, volumeIndex);
+                  return () => {
+                    setVolumeStates((states) => ({ ...states, [volumeIndex]: "已保存到文件" }));
+                    setMessage(
+                      `Reader 资料包第 ${volumeIndex + 1}/${plan.volumes.length} 卷已保存。`,
+                    );
+                  };
+                });
+              }}
+            >
+              直接保存当前卷
+            </button>
+          )}
           <button
             type="button"
             className={button}

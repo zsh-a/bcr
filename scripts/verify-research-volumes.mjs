@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { chromium } from "playwright";
 const require = createRequire(new URL("../apps/reader-studio/package.json", import.meta.url));
 const { ZipWriter, BlobWriter, TextReader } = require("@zip.js/zip.js");
+const streaming = process.env.STREAM_SAVE === "1";
 const origin = new URL(process.env.BASE_URL ?? "http://localhost:5199").origin;
 const browser = await chromium.launch({ args: ["--disable-dev-shm-usage"] });
 const errors = [];
@@ -62,6 +63,15 @@ async function epub(label) {
 }
 try {
   const a = await browser.newContext({ viewport: { width: 1440, height: 1100 } });
+  if (streaming)
+    await a.addInitScript(() => {
+      window.showSaveFilePicker = async ({ suggestedName }) => {
+        window.__savedPackage = suggestedName;
+        return (await navigator.storage.getDirectory()).getFileHandle(suggestedName, {
+          create: true,
+        });
+      };
+    });
   const page = await pageIn(a);
   for (const label of ["A", "B"]) {
     await page.getByLabel("导入阅读文件").setInputFiles({
@@ -93,14 +103,34 @@ try {
   const buffers = [];
   for (const index of [0, 1]) {
     await page.getByLabel("选择资料包分卷").selectOption(String(index));
-    const downloading = page.waitForEvent("download");
-    await page.getByRole("button", { name: "生成并下载资料包", exact: true }).click();
-    const download = await downloading;
-    assert.match(download.suggestedFilename(), new RegExp(`-${index + 1}-of-2\\.zip$`));
-    buffers.push(await readFile(await download.path()));
+    if (streaming) {
+      await page.getByRole("button", { name: "直接保存当前卷", exact: true }).click();
+      await page
+        .getByRole("status")
+        .filter({ hasText: `第 ${index + 1}/2 卷已保存。` })
+        .waitFor();
+      buffers.push(
+        Buffer.from(
+          await page.evaluate(async () => {
+            const handle = await (
+              await navigator.storage.getDirectory()
+            ).getFileHandle(window.__savedPackage);
+            return [...new Uint8Array(await (await handle.getFile()).arrayBuffer())];
+          }),
+        ),
+      );
+    } else {
+      const downloading = page.waitForEvent("download");
+      await page.getByRole("button", { name: "生成并下载资料包", exact: true }).click();
+      const download = await downloading;
+      assert.match(download.suggestedFilename(), new RegExp(`-${index + 1}-of-2\\.zip$`));
+      buffers.push(await readFile(await download.path()));
+    }
   }
   assert.equal(
-    (await page.getByLabel("资料包分卷清单").innerText()).match(/已触发下载/gu).length,
+    (await page.getByLabel("资料包分卷清单").innerText()).match(
+      streaming ? /已保存到文件/gu : /已触发下载/gu,
+    ).length,
     2,
   );
   await a.close();

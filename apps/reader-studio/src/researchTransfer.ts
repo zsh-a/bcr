@@ -3,6 +3,7 @@ import { Effect } from "effect";
 import { textVersion, hashReadableStream } from "@bcr/core";
 import {
   createReaderBackup,
+  writeReaderBackup,
   decodeReaderBackup,
   readerBackupManifest,
   planReaderBackup,
@@ -144,6 +145,24 @@ export async function createReaderTransfer(
   if (expectedStamp && readerTransferStamp(ids) !== expectedStamp)
     throw new Error("Reader 资料在打包期间发生变化，请重试");
   return result;
+}
+export async function writeReaderTransfer(
+  ids: ReadonlyArray<string>,
+  destination: WritableStream<Uint8Array>,
+  report: (message: string) => void,
+  expectedStamp: string,
+  signal?: AbortSignal,
+) {
+  signal?.throwIfAborted();
+  if (readerTransferStamp(ids) !== expectedStamp)
+    throw new Error("Reader 资料在预览后发生变化，请重新检查资料包");
+  const { runtime } = readerTransferState();
+  const state = transferBackupState(ids);
+  if (state.library.length !== ids.length || state.library.some((book) => !book.source.ref))
+    throw new Error("部分 Reader 源文件不可用，请重新检查资料包");
+  await writeReaderBackup(runtime, state, destination, report, signal);
+  if (readerTransferStamp(ids) !== expectedStamp)
+    throw new Error("Reader 资料在打包期间发生变化，请重试");
 }
 export function readerTransferIdentity(
   entry: PreparedReaderBackup["manifest"]["books"][number],

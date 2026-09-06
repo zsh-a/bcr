@@ -6,7 +6,7 @@ import {
   ZipReader,
   ZipWriter,
 } from "@zip.js/zip.js";
-import { hashReadableStream, type ArtifactRef } from "@bcr/core";
+import { hashReadableStream, createContentHasher, type ArtifactRef } from "@bcr/core";
 import { Effect } from "effect";
 import { MemoryStore } from "@bcr/storage-opfs";
 import type { ReaderBook, ReaderTocItem } from "@bcr/reader-core";
@@ -328,7 +328,25 @@ export async function createReaderBackup(
   report: Report = () => {},
   signal?: AbortSignal,
 ): Promise<Blob> {
-  const zip = new ZipWriter(new BlobWriter("application/zip"));
+  return (await encodeReaderBackup(runtime, state, report, signal)) as Blob;
+}
+export async function writeReaderBackup(
+  runtime: ReaderRuntime,
+  state: ReaderState,
+  destination: WritableStream<Uint8Array>,
+  report: Report = () => {},
+  signal?: AbortSignal,
+): Promise<void> {
+  await encodeReaderBackup(runtime, state, report, signal, destination);
+}
+async function encodeReaderBackup(
+  runtime: ReaderRuntime,
+  state: ReaderState,
+  report: Report,
+  signal?: AbortSignal,
+  destination?: WritableStream<Uint8Array>,
+): Promise<unknown> {
+  const zip = new ZipWriter(destination ?? new BlobWriter("application/zip"));
   const books: BackupBook[] = [];
   const written = new Set<string>();
   let bytes = 0;
@@ -339,32 +357,66 @@ export async function createReaderBackup(
       let source: BackupBook["source"];
       if (book.source.ref !== undefined) {
         const ref = book.source.ref;
-        const blob = await Effect.runPromise(
-          runtime.artifacts.getBlob({
-            id: ref.id,
-            hash: ref.hash,
-            storage: ref.storage,
-            type: "file/publication",
-            format: ref.mime,
-          }),
-        );
-        const hash = await hashReadableStream(blob.stream(), {
-          signal,
-          onProgress: (bytes) =>
-            report(
-              `正在校验源文件 · ${book.title} · ${Math.floor((bytes / Math.max(1, blob.size)) * 100)}%`,
-            ),
-        });
-        if (hash !== ref.hash) throw new Error(`${book.title} 的源文件校验失败，备份未生成`);
-        source = { path: `sources/${hash}`, hash, size: blob.size };
-        if (!written.has(source.path)) {
-          bytes += blob.size;
-          if (bytes > MAX_BYTES) throw new Error("当前备份上限为 512 MiB，请缩小书库后重试");
-          await zip.add(source.path, new BlobReader(blob), {
-            level: 0,
-            ...(signal ? { signal } : {}),
+        if (destination) {
+          source = { path: `sources/${ref.hash}`, hash: ref.hash, size: ref.size };
+          if (!written.has(source.path)) {
+            bytes += ref.size;
+            if (bytes > MAX_BYTES) throw new Error("当前备份上限为 512 MiB，请缩小书库后重试");
+            const input = await Effect.runPromise(
+              runtime.artifacts.getStream({ ...ref, type: "file/publication", format: ref.mime }),
+            );
+            const hasher = createContentHasher();
+            let size = 0;
+            const checked = input.pipeThrough(
+              new TransformStream<Uint8Array, Uint8Array>({
+                transform(chunk, controller) {
+                  check(signal);
+                  size += chunk.byteLength;
+                  if (size > ref.size) throw new Error(`${book.title} 的源文件大小不符`);
+                  hasher.update(chunk);
+                  report(
+                    `正在校验源文件 · ${book.title} · ${Math.floor((size / Math.max(1, ref.size)) * 100)}%`,
+                  );
+                  controller.enqueue(chunk);
+                },
+                flush() {
+                  if (size !== ref.size || hasher.digest() !== ref.hash)
+                    throw new Error(`${book.title} 的源文件校验失败，备份未生成`);
+                },
+              }),
+              signal ? { signal } : {},
+            );
+            await zip.add(source.path, checked, { level: 0, ...(signal ? { signal } : {}) });
+            written.add(source.path);
+          }
+        } else {
+          const blob = await Effect.runPromise(
+            runtime.artifacts.getBlob({
+              id: ref.id,
+              hash: ref.hash,
+              storage: ref.storage,
+              type: "file/publication",
+              format: ref.mime,
+            }),
+          );
+          const hash = await hashReadableStream(blob.stream(), {
+            signal,
+            onProgress: (bytes) =>
+              report(
+                `正在校验源文件 · ${book.title} · ${Math.floor((bytes / Math.max(1, blob.size)) * 100)}%`,
+              ),
           });
-          written.add(source.path);
+          if (hash !== ref.hash) throw new Error(`${book.title} 的源文件校验失败，备份未生成`);
+          source = { path: `sources/${hash}`, hash, size: blob.size };
+          if (!written.has(source.path)) {
+            bytes += blob.size;
+            if (bytes > MAX_BYTES) throw new Error("当前备份上限为 512 MiB，请缩小书库后重试");
+            await zip.add(source.path, new BlobReader(blob), {
+              level: 0,
+              ...(signal ? { signal } : {}),
+            });
+            written.add(source.path);
+          }
         }
       } else if (["pdf", "epub", "docx", "cbz"].includes(book.source.format))
         throw new Error(`${book.title} 缺少源文件，无法创建完整备份`);
@@ -380,7 +432,7 @@ export async function createReaderBackup(
     check(signal);
     return result;
   } catch (reason) {
-    await zip.close().catch(() => undefined);
+    if (!destination) await zip.close().catch(() => undefined);
     throw reason;
   }
 }

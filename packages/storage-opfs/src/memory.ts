@@ -30,11 +30,18 @@ export class MemoryStore implements BinaryStore {
   async getStream(path: string): Promise<ReadableStream<Uint8Array> | undefined> {
     const data = this.files.get(normalize(path));
     if (data === undefined) return undefined;
-    const copy = data.slice();
+    // Stored arrays are replaced, never mutated. Keep this snapshot and copy
+    // only requested chunks so a streaming read does not duplicate the file.
+    let offset = 0;
     return new ReadableStream({
-      start(controller) {
-        controller.enqueue(copy);
-        controller.close();
+      pull(controller) {
+        if (offset >= data.byteLength) {
+          controller.close();
+          return;
+        }
+        const end = Math.min(offset + 64 * 1024, data.byteLength);
+        controller.enqueue(data.slice(offset, end));
+        offset = end;
       },
     });
   }

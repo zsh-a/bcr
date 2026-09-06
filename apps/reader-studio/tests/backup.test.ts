@@ -6,6 +6,7 @@ import { BlobReader, BlobWriter, TextReader, ZipWriter } from "@zip.js/zip.js";
 import {
   backupNewBooks,
   createReaderBackup,
+  writeReaderBackup,
   decodeReaderBackup,
   inspectReaderBackup,
   prepareReaderRestore,
@@ -96,6 +97,76 @@ describe("Reader portable backup", () => {
     expect(() => planReaderBackup(books, 12, { snapshotSize: () => 4, snapshotLimit: 7 })).toThrow(
       "同源章节快照",
     );
+  });
+  it("keeps source reads bounded while the export destination is stalled", async () => {
+    const base = await runtime();
+    const chunk = new Uint8Array(64 * 1024);
+    const size = chunk.length * 128;
+    const hash = contentHash(new Uint8Array(size));
+    let reads = 0;
+    const streamed: ReaderRuntime = {
+      ...base,
+      artifacts: {
+        ...base.artifacts,
+        getStream: () =>
+          Effect.succeed(
+            new ReadableStream<Uint8Array>({
+              pull(controller) {
+                if (reads === 128) controller.close();
+                else {
+                  reads++;
+                  controller.enqueue(chunk);
+                }
+              },
+            }),
+          ),
+        getBlob: () => {
+          throw new Error("unexpected whole-file read");
+        },
+      },
+    };
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let writes = 0,
+      closed = false;
+    const writing = writeReaderBackup(
+      streamed,
+      {
+        ...getReaderState(),
+        library: [
+          {
+            ...book,
+            source: {
+              ...book.source,
+              size,
+              ref: { id: hash, hash, size, storage: "memory", mime: "text/plain" },
+            },
+          },
+        ],
+      },
+      new WritableStream<Uint8Array>({
+        async write() {
+          writes++;
+          await gate;
+        },
+        close() {
+          closed = true;
+        },
+      }),
+    );
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(writes).toBeGreaterThan(0);
+      expect(reads).toBeLessThan(16);
+      expect(closed).toBe(false);
+    } finally {
+      release();
+      await writing;
+    }
+    expect(reads).toBe(128);
+    expect(closed).toBe(true);
   });
   it("retains image anchors in portable navigation history", () => {
     const entry = {
