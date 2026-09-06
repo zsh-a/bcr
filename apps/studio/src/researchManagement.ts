@@ -54,7 +54,7 @@ export function draftKey(item: ResearchExcerpt): string {
 }
 export function readDraft(item: ResearchExcerpt, storage: Pick<Storage, "getItem">): string {
   const key = draftKey(item);
-  return drafts.get(key) ?? storage.getItem(key) ?? item.note;
+  return drafts.get(key) ?? storage.getItem(key) ?? item.draft ?? item.note;
 }
 export function writeDraft(
   item: ResearchExcerpt,
@@ -77,7 +77,15 @@ export function clearDraft(
   storage: Pick<Storage, "getItem" | "removeItem">,
 ): void {
   const key = draftKey(item);
-  if ((drafts.get(key) ?? storage.getItem(key)) !== saved) return;
+  let value = drafts.get(key);
+  if (value === undefined) {
+    try {
+      value = storage.getItem(key) ?? undefined;
+    } catch {
+      return;
+    }
+  }
+  if (value !== saved) return;
   // The durable note already contains this value; a leftover equal draft is harmless.
   try {
     storage.removeItem(key);
@@ -87,3 +95,43 @@ export function clearDraft(
   drafts.delete(key);
   failed.delete(key);
 }
+
+/** Run only after a successful library write (or successful initial load). */
+export function pruneDrafts(
+  library: ResearchLibrary,
+  storage: Pick<Storage, "length" | "key" | "removeItem">,
+): void {
+  const live = new Set(
+    library.collections.flatMap((collection) => collection.excerpts.map(draftKey)),
+  );
+  for (const key of drafts.keys())
+    if (!live.has(key)) {
+      drafts.delete(key);
+      failed.delete(key);
+    }
+  const obsolete: string[] = [];
+  for (let i = 0; i < storage.length; i++) {
+    const key = storage.key(i);
+    if (key?.startsWith("bcr/research-draft/v1/") && !live.has(key)) obsolete.push(key);
+  }
+  const errors: unknown[] = [];
+  for (const key of obsolete) {
+    try {
+      storage.removeItem(key);
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  if (errors.length) throw new Error("部分已删除摘录的草稿尚未清理，请重试");
+}
+
+// Access the browser getter lazily so blocked storage still leaves in-memory edits intact.
+export const browserDraftStorage = {
+  get length() {
+    return window.localStorage.length;
+  },
+  key: (index: number) => window.localStorage.key(index),
+  getItem: (key: string) => window.localStorage.getItem(key),
+  setItem: (key: string, value: string) => window.localStorage.setItem(key, value),
+  removeItem: (key: string) => window.localStorage.removeItem(key),
+};

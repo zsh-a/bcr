@@ -18,6 +18,8 @@ export interface ResearchExcerpt {
   readonly route: string;
   readonly text: string;
   readonly note: string;
+  /** Imported draft is durable until explicitly saved as a note. */
+  readonly draft?: string;
   readonly savedAt: number;
   readonly citation?: TextCitation;
   readonly owner?: string;
@@ -194,6 +196,8 @@ export function decodeResearch(raw: string | undefined): ResearchLibrary {
         !citationRoute(item.route) ||
         typeof item.savedAt !== "number" ||
         !Number.isFinite(new Date(item.savedAt).getTime()) ||
+        (item.draft !== undefined &&
+          (typeof item.draft !== "string" || item.draft.length > 12000)) ||
         (item.owner !== undefined && (typeof item.owner !== "string" || !item.owner)) ||
         (item.citation !== undefined &&
           (!decodeTextCitation(item.citation) || item.citation.exact !== item.text))

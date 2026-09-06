@@ -6,9 +6,12 @@ import {
   draftFailed,
   writeDraft,
   clearDraft,
+  pruneDrafts,
+  browserDraftStorage,
 } from "../researchManagement";
 import type { SearchIndex } from "@bcr/core";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ResearchBackupPanel } from "./ResearchBackupPanel";
 import type {
   ResearchCollection,
   ResearchExcerpt,
@@ -29,6 +32,24 @@ export function ResearchPanel(props: {
   readonly run: (action: () => Promise<void>) => void;
   readonly onOpen: (excerpt: ResearchExcerpt) => void;
 }) {
+  const [cleanupError, setCleanupError] = useState("");
+  const cleanup = () => {
+    try {
+      pruneDrafts(props.store.getSnapshot(), browserDraftStorage);
+      setCleanupError("");
+    } catch (error) {
+      setCleanupError(`草稿清理未完成：${String(error)}`);
+    }
+  };
+  useEffect(() => {
+    if (props.busy) return;
+    try {
+      pruneDrafts(props.library, browserDraftStorage);
+      setCleanupError("");
+    } catch (error) {
+      setCleanupError(`草稿清理未完成：${String(error)}`);
+    }
+  }, [props.library, props.busy]);
   const [name, setName] = useState("");
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState(false);
@@ -206,6 +227,20 @@ export function ResearchPanel(props: {
           )}
         </div>
       )}
+      <ResearchBackupPanel
+        library={props.library}
+        store={props.store}
+        busy={props.busy}
+        run={props.run}
+      />
+      {cleanupError && (
+        <p role="alert" className="py-2 text-[11px] text-danger">
+          {cleanupError}
+          <button type="button" className={button} disabled={props.busy} onClick={cleanup}>
+            重试清理草稿
+          </button>
+        </p>
+      )}
       {exportError && (
         <p role="alert" className="py-2 text-danger">
           {exportError}
@@ -240,15 +275,22 @@ export function ResearchPanel(props: {
             status={assessExcerpt(item, props.search)}
             busy={props.busy}
             onOpen={() => props.onOpen({ ...item, route: assessExcerpt(item, props.search).route })}
-            onSave={(note) =>
+            onSave={(note, done) =>
               props.run(async () => {
                 await updateCollection((current) => ({
                   ...current,
                   excerpts: current.excerpts.map((excerpt) =>
-                    excerpt.id === item.id ? { ...excerpt, note } : excerpt,
+                    excerpt.id === item.id
+                      ? (({ draft: _draft, ...saved }) => ({ ...saved, note }))(excerpt)
+                      : excerpt,
                   ),
                 }));
-                clearDraft(item, note, window.localStorage);
+                try {
+                  clearDraft(item, note, browserDraftStorage);
+                } catch {
+                  /* The note is already durable. */
+                }
+                done();
               })
             }
             onRemove={() =>
@@ -278,12 +320,12 @@ function ExcerptCard(props: {
   readonly busy: boolean;
   readonly onOpen: () => void;
   readonly onRemove: () => void;
-  readonly onSave: (note: string) => void;
+  readonly onSave: (note: string, done: () => void) => void;
 }) {
   const [initial] = useState(() => {
     try {
       return {
-        note: readDraft(props.item, window.localStorage),
+        note: readDraft(props.item, browserDraftStorage),
         error: draftFailed(props.item)
           ? "草稿暂未写入浏览器，刷新可能丢失。请重试或保存笔记。"
           : "",
@@ -294,11 +336,15 @@ function ExcerptCard(props: {
   });
   const [note, setNote] = useState(initial.note);
   const [draftError, setDraftError] = useState(initial.error);
+  const currentNote = useRef(note);
+  const [readError, setReadError] = useState(initial.error.startsWith("无法读取"));
   const [target, setTarget] = useState("");
   const retainDraft = (value: string) => {
+    currentNote.current = value;
     setNote(value);
+    setReadError(false);
     try {
-      writeDraft(props.item, value, window.localStorage);
+      writeDraft(props.item, value, browserDraftStorage);
       setDraftError("");
     } catch {
       setDraftError("草稿暂未写入浏览器，刷新可能丢失。请重试或保存笔记。");
@@ -339,12 +385,18 @@ function ExcerptCard(props: {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          props.onSave(note);
+          props.onSave(note, () => {
+            if (currentNote.current === note) {
+              setDraftError("");
+              setReadError(false);
+            }
+          });
         }}
       >
         <textarea
           aria-label={`笔记：${props.item.title}`}
           value={note}
+          disabled={readError}
           onChange={(event) => retainDraft(event.target.value)}
           rows={2}
           maxLength={12000}
@@ -352,7 +404,14 @@ function ExcerptCard(props: {
           className="w-full resize-y rounded border border-border bg-raised p-2 text-[12px] text-text"
         />
         <div className="mt-2 flex items-center gap-2">
-          <button className={button} disabled={props.busy || note === props.item.note}>
+          <button
+            className={button}
+            disabled={
+              props.busy ||
+              readError ||
+              (note === props.item.note && props.item.draft === undefined)
+            }
+          >
             保存笔记
           </button>
           <span className="flex-1 text-[10px] text-faint">
@@ -363,11 +422,31 @@ function ExcerptCard(props: {
           </button>
         </div>
       </form>
-      {draftError && note !== props.item.note && (
+      {draftError && (
         <p role="alert" className="mt-2 text-[11px] text-danger">
           {draftError}
-          <button type="button" className={button} onClick={() => retainDraft(note)}>
-            重试保留草稿
+          <button
+            type="button"
+            className={button}
+            onClick={() => {
+              if (!readError) {
+                retainDraft(note);
+                return;
+              }
+              try {
+                const recovered = readDraft(props.item, browserDraftStorage);
+                currentNote.current = recovered;
+                setNote(recovered);
+                setReadError(false);
+                setDraftError(
+                  draftFailed(props.item) ? "草稿暂未写入浏览器，请重试保留草稿。" : "",
+                );
+              } catch {
+                setDraftError("无法读取浏览器草稿，请检查浏览器存储后重试。");
+              }
+            }}
+          >
+            {readError ? "重试读取草稿" : "重试保留草稿"}
           </button>
         </p>
       )}

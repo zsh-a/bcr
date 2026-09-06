@@ -23,7 +23,8 @@
     "manga": "cd apps/manga-studio && vp dev",
     "reader": "cd apps/reader-studio && vp dev",
     "build:cloudflare": "bun run build:wasm && VITE_BCR_CLOUDFLARE=1 vp -C apps/studio build",
-    "deploy:cloudflare": "wrangler deploy --config wrangler.jsonc"
+    "deploy:cloudflare": "wrangler deploy --config wrangler.jsonc",
+    "bench:search": "node scripts/benchmark-search.mjs"
   },
   "dependencies": {
     "@sqlite.org/sqlite-wasm": "3.53.0-build1"

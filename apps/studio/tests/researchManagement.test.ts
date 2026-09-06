@@ -9,6 +9,7 @@ import {
   clearDraft,
   draftKey,
   draftFailed,
+  pruneDrafts,
 } from "../src/researchManagement";
 const excerpt: ResearchExcerpt = {
   id: "entry",
@@ -119,5 +120,40 @@ describe("research management", () => {
     clearDraft(item, "first", disk);
     expect(readDraft(item, disk)).toBe("newer");
     clearDraft(item, "newer", disk);
+  });
+  it("cleans only orphan drafts and keeps moved or live drafts", () => {
+    const disk = storage();
+    const removed = { ...excerpt, id: "removed" };
+    writeDraft(removed, "obsolete", disk);
+    writeDraft(excerpt, "keep", disk);
+    const keys = [draftKey(removed), draftKey(excerpt), "unrelated"];
+    disk.setItem("unrelated", "value");
+    pruneDrafts(moveExcerpt(library, "a", "b", excerpt.id), {
+      ...disk,
+      length: keys.length,
+      key: (i) => keys[i] ?? null,
+    });
+    expect(disk.getItem(draftKey(removed))).toBeNull();
+    expect(readDraft(removed, disk)).toBe(removed.note);
+    expect(readDraft(excerpt, disk)).toBe("keep");
+    expect(disk.getItem("unrelated")).toBe("value");
+    clearDraft(excerpt, "keep", disk);
+  });
+  it("reports cleanup failure and allows a later retry", () => {
+    const item = { ...excerpt, id: "cleanup-failure" },
+      disk = storage();
+    writeDraft(item, "draft", disk);
+    const keys = { length: 1, key: () => draftKey(item) };
+    expect(() =>
+      pruneDrafts(library, {
+        ...keys,
+        removeItem: () => {
+          throw new Error("blocked");
+        },
+      }),
+    ).toThrow("清理");
+    expect(disk.getItem(draftKey(item))).toBe("draft");
+    pruneDrafts(library, { ...keys, removeItem: disk.removeItem });
+    expect(disk.getItem(draftKey(item))).toBeNull();
   });
 });

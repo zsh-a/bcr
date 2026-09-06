@@ -112,6 +112,7 @@ await withServer({
     "scripts/verify-storage-cleanup.mjs",
     "scripts/verify-global-search.mjs",
     "scripts/verify-research.mjs",
+    "scripts/verify-research-backup.mjs",
     "scripts/verify-accessibility.mjs",
     "scripts/verify-runtime-lifecycle.mjs",
   ],
