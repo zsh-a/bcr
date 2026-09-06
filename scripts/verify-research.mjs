@@ -271,6 +271,52 @@ try {
     await mediaArticle.getByRole("button", { name: "回到原文", exact: true }).isDisabled(),
     true,
   );
+  // Citation maintenance uses an explicit current-text selection and preserves the initial snapshot.
+  await page.getByLabel("引用状态筛选").selectOption("changed");
+  assert.equal(await page.locator('[aria-label="集合摘录"] article').count(), 1);
+  await page.getByRole("button", { name: "核验当前集合", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "已核验 3 条" }).waitFor();
+  await mediaArticle.getByRole("button", { name: "核对与重新关联", exact: true }).click();
+  await mediaArticle.getByLabel("筛选当前来源").fill("这段字幕已经改写");
+  const sourceSelect = mediaArticle.getByLabel("选择当前来源片段");
+  const choice = await sourceSelect.locator("option").nth(1).getAttribute("value");
+  assert.ok(choice);
+  await sourceSelect.selectOption(choice);
+  const currentText = await mediaArticle.getByLabel("当前来源正文", { exact: true }).inputValue();
+  assert.ok(currentText.includes("这段字幕已经改写"));
+  assert.equal(
+    await mediaArticle.getByRole("button", { name: "确认重新关联", exact: true }).isDisabled(),
+    true,
+  );
+  await mediaArticle.getByLabel("新引用起点").fill("0");
+  await mediaArticle.getByLabel("新引用终点").fill(String(Math.min(currentText.length, 80)));
+  await mediaArticle.getByRole("button", { name: "确认重新关联", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "已保存到本地" }).waitFor();
+  await page.getByLabel("引用状态筛选").selectOption("all");
+  await mediaArticle.locator('[data-citation-status="exact"]').waitFor();
+  assert.ok(
+    (await mediaArticle.locator("blockquote").first().innerText()).includes("音频证据时间点"),
+  );
+  await mediaArticle.getByText("关联修订记录 · 1", { exact: true }).click();
+  await mediaArticle.getByText("这段字幕已经改写", { exact: true }).waitFor();
+  await mediaArticle.getByRole("button", { name: "回到原文", exact: true }).click();
+  await page
+    .locator('[data-citation-selected="true"] mark')
+    .filter({ hasText: "这段字幕已经改写" })
+    .waitFor();
+  await page.reload({ waitUntil: "networkidle" });
+  await openSearch("");
+  await collections();
+  await mediaArticle.getByText("关联修订记录 · 1", { exact: true }).waitFor();
+  await page.getByText("集合备份与恢复", { exact: true }).click();
+  const historyDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "下载集合备份", exact: true }).click();
+  const historyBackup = JSON.parse(await readFile(await (await historyDownload).path(), "utf8"));
+  const restoredExcerpt = historyBackup.library.collections
+    .flatMap((item) => item.excerpts)
+    .find((item) => item.links?.length);
+  assert.ok(restoredExcerpt.text.includes("音频证据时间点"));
+  assert.ok(restoredExcerpt.links[0].text.includes("这段字幕已经改写"));
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "清空项目", exact: true }).click();
   await openSearch("");

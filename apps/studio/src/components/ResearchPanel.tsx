@@ -10,7 +10,8 @@ import {
   browserDraftStorage,
 } from "../researchManagement";
 import type { SearchIndex } from "@bcr/core";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ResearchReview } from "./ResearchReview";
 import { ResearchBackupPanel } from "./ResearchBackupPanel";
 import type {
   ResearchCollection,
@@ -35,6 +36,37 @@ export function ResearchPanel(props: {
   readonly run: (action: () => Promise<void>) => void;
   readonly onOpen: (excerpt: ResearchExcerpt) => void;
 }) {
+  const [stateFilter, setStateFilter] = useState<ExcerptStatus["state"] | "all">("all");
+  const [checking, setChecking] = useState(false);
+  const [checked, setChecked] = useState("");
+  const checkToken = useRef(0);
+  useEffect(() => {
+    checkToken.current++;
+    setChecked("");
+    setChecking(false);
+    return () => {
+      checkToken.current++;
+    };
+  }, [props.library, props.selected]);
+  const checkCollection = async () => {
+    const token = ++checkToken.current;
+    setChecking(true);
+    setChecked("正在核验当前集合…");
+    const entries =
+      props.library.collections.find((item) => item.id === props.selected)?.excerpts ?? [];
+    const counts = { exact: 0, relocated: 0, missing: 0, changed: 0, ambiguous: 0, unverified: 0 };
+    for (let i = 0; i < entries.length; i++) {
+      if (token !== checkToken.current) return;
+      counts[assessExcerpt(entries[i]!, props.search).state]++;
+      if (i % 20 === 19) await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    if (token === checkToken.current) {
+      setChecking(false);
+      setChecked(
+        `已核验 ${entries.length} 条：可定位 ${counts.exact + counts.relocated}，需核对 ${counts.changed + counts.ambiguous}，来源缺失 ${counts.missing}，待核验 ${counts.unverified}。未加载的来源请先打开对应工作台。`,
+      );
+    }
+  };
   const [cleanupError, setCleanupError] = useState("");
   const cleanup = () => {
     try {
@@ -83,12 +115,16 @@ export function ResearchPanel(props: {
     }
   };
   const matches =
-    collection?.excerpts.filter((item) =>
-      `${item.title} ${item.source} ${item.text} ${item.note}`
-        .normalize("NFKC")
-        .toLocaleLowerCase()
-        .includes(query.normalize("NFKC").toLocaleLowerCase().trim()),
-    ) ?? [];
+    collection?.excerpts
+      .filter(
+        (item) => stateFilter === "all" || assessExcerpt(item, props.search).state === stateFilter,
+      )
+      .filter((item) =>
+        `${item.title} ${item.source} ${item.text} ${item.note}`
+          .normalize("NFKC")
+          .toLocaleLowerCase()
+          .includes(query.normalize("NFKC").toLocaleLowerCase().trim()),
+      ) ?? [];
   return (
     <div className="px-4 pb-4">
       <form
@@ -262,12 +298,56 @@ export function ResearchPanel(props: {
           className="mb-3 w-full rounded border border-border bg-surface px-3 py-2 text-[12px] text-text"
         />
       )}
+      {collection && (
+        <div className="mb-3 space-y-2 text-[11px] text-muted">
+          <div className="flex flex-wrap gap-2">
+            <label className="flex min-w-0 flex-1 items-center gap-2">
+              引用状态
+              <select
+                aria-label="引用状态筛选"
+                value={stateFilter}
+                onChange={(event) => setStateFilter(event.target.value as typeof stateFilter)}
+                className="min-w-0 flex-1 rounded bg-surface p-2 text-text"
+              >
+                <option value="all">全部状态</option>
+                <option value="unverified">待核验</option>
+                <option value="missing">来源缺失</option>
+                <option value="changed">正文变化</option>
+                <option value="ambiguous">多处匹配</option>
+                <option value="relocated">已重新定位</option>
+                <option value="exact">来源一致</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              className={button}
+              disabled={props.busy || checking}
+              onClick={() => {
+                void checkCollection();
+              }}
+            >
+              核验当前集合
+            </button>
+          </div>
+          {checked && <p role="status">{checked}</p>}
+        </div>
+      )}
       <div className="max-h-[40vh] space-y-3 overflow-auto" aria-label="集合摘录">
         {matches.map((item) => (
           <ExcerptCard
             key={`${props.selected}:${item.id}`}
             focus={props.focus?.excerpt === item.id ? props.focus : undefined}
             item={item}
+            review={
+              <ResearchReview
+                item={item}
+                collection={props.selected}
+                search={props.search}
+                store={props.store}
+                busy={props.busy}
+                run={props.run}
+              />
+            }
             collections={props.library.collections.filter((entry) => entry.id !== props.selected)}
             onMove={(target) =>
               props.run(() =>
@@ -321,6 +401,7 @@ function ExcerptCard(props: {
     | { field: "note" | "text"; start?: number; end?: number; exact?: string }
     | undefined;
   readonly item: ResearchExcerpt;
+  readonly review: ReactNode;
   readonly collections: ReadonlyArray<ResearchCollection>;
   readonly onMove: (target: string) => void;
   readonly status: ExcerptStatus;
@@ -419,7 +500,13 @@ function ExcerptCard(props: {
       </p>
       {props.item.citation && (
         <p className="mt-1 font-mono text-[10px] text-faint">
-          来源版本 {props.item.citation.source.version.slice(0, 12)}
+          保存快照版本 {props.item.citation.source.version.slice(0, 12)}
+        </p>
+      )}
+      {props.item.links?.at(-1) && (
+        <p className="mt-1 text-[11px] text-muted">
+          当前关联：{props.item.links.at(-1)!.source} · 版本{" "}
+          {props.item.links.at(-1)!.citation.source.version.slice(0, 12)}
         </p>
       )}
       <p className="mt-3 text-[10px] text-faint">来源正文快照</p>
@@ -530,6 +617,7 @@ function ExcerptCard(props: {
           </button>
         </div>
       )}
+      {props.review}
     </article>
   );
 }

@@ -10,6 +10,16 @@ import {
   type SearchDocument,
 } from "@bcr/core";
 
+export interface ResearchLink {
+  readonly documentId: string;
+  readonly title: string;
+  readonly source: string;
+  readonly owner: string;
+  readonly route: string;
+  readonly text: string;
+  readonly citation: TextCitation;
+  readonly linkedAt: number;
+}
 export interface ResearchExcerpt {
   readonly id: string;
   readonly documentId: string;
@@ -17,6 +27,7 @@ export interface ResearchExcerpt {
   readonly source: string;
   readonly route: string;
   readonly text: string;
+  readonly links?: ReadonlyArray<ResearchLink>;
   readonly note: string;
   /** Imported draft is durable until explicitly saved as a note. */
   readonly draft?: string;
@@ -120,6 +131,8 @@ export function assessExcerpt(
   excerpt: ResearchExcerpt,
   search: SearchIndex | undefined,
 ): ExcerptStatus {
+  const latest = excerpt.links?.at(-1);
+  if (latest) excerpt = { ...excerpt, ...latest };
   const anchor = excerpt.citation;
   const pending = !anchor || !excerpt.owner || !search?.isSourceLive(excerpt.owner);
   if (pending)
@@ -163,6 +176,21 @@ export function assessExcerpt(
   return { state: resolved.status, label, route };
 }
 
+export function validResearchLink(value: unknown): value is ResearchLink {
+  if (!value || typeof value !== "object") return false;
+  const item = value as ResearchLink;
+  return (
+    [item.documentId, item.title, item.source, item.owner, item.route, item.text].every(
+      (field) => typeof field === "string" && field.length > 0,
+    ) &&
+    !!citationRoute(item.route) &&
+    !!decodeTextCitation(item.citation) &&
+    item.citation.exact === item.text &&
+    typeof item.linkedAt === "number" &&
+    Number.isFinite(new Date(item.linkedAt).getTime())
+  );
+}
+
 export function decodeResearch(raw: string | undefined): ResearchLibrary {
   if (raw === undefined) return EMPTY_RESEARCH;
   const value = JSON.parse(raw) as ResearchLibrary;
@@ -196,6 +224,8 @@ export function decodeResearch(raw: string | undefined): ResearchLibrary {
         !citationRoute(item.route) ||
         typeof item.savedAt !== "number" ||
         !Number.isFinite(new Date(item.savedAt).getTime()) ||
+        (item.links !== undefined &&
+          (!Array.isArray(item.links) || !item.links.every(validResearchLink))) ||
         (item.draft !== undefined &&
           (typeof item.draft !== "string" || item.draft.length > 12000)) ||
         (item.owner !== undefined && (typeof item.owner !== "string" || !item.owner)) ||
@@ -281,7 +311,10 @@ export function exportResearch(collection: ResearchCollection, origin: string): 
       (item.citation
         ? `来源版本：${item.citation.source.version}\n`
         : "来源版本：旧引用，未记录\n") +
-      (item.note ? `\n笔记：\n\n${markdownText(item.note)}\n` : "")
+      (item.note ? `\n笔记：\n\n${markdownText(item.note)}\n` : "") +
+      (item.links?.length
+        ? `\n重新关联记录（最后一条为当前关联，原始快照保留）：\n\n${item.links.map((link) => `- ${new Date(link.linkedAt).toISOString()} · ${markdownText(link.source)} · [来源](<${new URL(link.route, base.origin).href.replace(/[()<>]/gu, (c) => encodeURIComponent(c).replace(/\(/gu, "%28").replace(/\)/gu, "%29"))}>) · 版本 ${markdownText(link.citation.source.version)}\n\n  ${markdownText(link.text)}\n`).join("\n")}`
+        : "")
     );
   });
   return `# ${markdownText(collection.name)}\n\n摘录为保存时的正文快照。来源链接需要在保留对应本地资料的 BCR 浏览器中打开。\n\n${entries.join("\n")}`;

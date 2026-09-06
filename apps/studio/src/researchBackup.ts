@@ -27,6 +27,20 @@ function canonicalLibrary(library: ResearchLibrary): ResearchLibrary {
         text: item.text,
         note: item.note,
         savedAt: item.savedAt,
+        ...(item.links === undefined
+          ? {}
+          : {
+              links: item.links.map((link) => ({
+                documentId: link.documentId,
+                title: link.title,
+                source: link.source,
+                owner: link.owner,
+                route: link.route,
+                text: link.text,
+                citation: decodeTextCitation(link.citation)!,
+                linkedAt: link.linkedAt,
+              })),
+            }),
         ...(item.owner === undefined ? {} : { owner: item.owner }),
         ...(item.citation === undefined ? {} : { citation: decodeTextCitation(item.citation)! }),
         ...(item.draft === undefined || item.draft === item.note ? {} : { draft: item.draft }),
