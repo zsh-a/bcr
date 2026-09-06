@@ -472,6 +472,7 @@ describe("reader durable Document handoff", () => {
       const imported = {
         ...createDemoBook(),
         id: "book-newly-imported",
+        rendition: { layout: "reflowable", direction: "ltr", spread: "auto" } as const,
         title: "重启后仍在的图书",
         source: {
           ...createDemoBook().source,
@@ -502,6 +503,9 @@ describe("reader durable Document handoff", () => {
       expect(durable?.books.map((book) => book.id)).toEqual([demo.id, imported.id]);
       expect(durable?.activeBookId).toBe(imported.id);
       expect(durable?.libraryOutdated).toBe(false);
+      expect(durable?.books.find((book) => book.id === imported.id)?.rendition).toEqual(
+        imported.rendition,
+      );
     });
   });
 

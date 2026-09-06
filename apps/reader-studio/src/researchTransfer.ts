@@ -1,3 +1,4 @@
+import { sanitizeHtml } from "./readerMarkup";
 import { DEFAULT_READER_SETTINGS } from "./model";
 import { Effect } from "effect";
 import { textVersion, hashReadableStream } from "@bcr/core";
@@ -30,7 +31,16 @@ export function readerTransferStamp(ids: ReadonlyArray<string>): string {
     JSON.stringify(
       readerTransferState()
         .state.library.filter((book) => ids.includes(book.id))
-        .map(persistBook),
+        .map((book) => {
+          const snapshot = persistBook(book);
+          return {
+            ...snapshot,
+            sections: snapshot.sections.map((section) => ({
+              ...section,
+              ...(section.html === undefined ? {} : { html: sanitizeHtml(section.html).html }),
+            })),
+          };
+        }),
     ),
   );
 }

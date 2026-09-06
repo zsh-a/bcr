@@ -28,6 +28,7 @@ export interface PersistReaderOptions {
   readonly assertCurrent?: () => void;
 }
 export interface PersistedBook {
+  readonly rendition?: ReaderBook["rendition"];
   readonly preserveSectionSnapshot?: boolean;
   readonly id: string;
   readonly title: string;
@@ -662,6 +663,7 @@ function projectPersistedBook(persisted: PersistedBook): RestoredBookResult {
     return {
       book: {
         ...(persisted.preserveSectionSnapshot ? { preserveSectionSnapshot: true } : {}),
+        ...(persisted.rendition === undefined ? {} : { rendition: persisted.rendition }),
         id: persisted.id,
         title: persisted.title,
         ...(persisted.author === undefined ? {} : { author: persisted.author }),

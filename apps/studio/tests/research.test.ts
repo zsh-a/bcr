@@ -102,6 +102,35 @@ describe("research collections", () => {
     await store.update(change);
     expect(decodeResearch(raw).collections).toHaveLength(2);
   });
+  it("serializes task records independently of collections and recovers after write failure", async () => {
+    const values = new Map<string, string>();
+    let fail = true;
+    const metadata = {
+      get: async (key: string) => values.get(key),
+      set: async (key: string, value: string) => {
+        if (value === "failed" && fail) throw new Error("disk full");
+        await Promise.resolve();
+        values.set(key, value);
+      },
+    };
+    const store = new ResearchStore(metadata);
+    await store.ready;
+    await store.update(() => library);
+    await expect(store.writePackageRecord("export", "failed")).rejects.toThrow("disk full");
+    fail = false;
+    await Promise.all([
+      store.writePackageRecord("export", "first"),
+      store.writePackageRecord("export", "latest"),
+      store.writePackageRecord("restore", "catalog"),
+    ]);
+    const reopened = new ResearchStore(metadata);
+    expect(await reopened.readPackageRecord("export")).toBe("latest");
+    expect(await reopened.readPackageRecord("restore")).toBe("catalog");
+    expect(reopened.getSnapshot()).toEqual(library);
+    await reopened.writePackageRecord("export", "");
+    expect(await reopened.readPackageRecord("export")).toBe("");
+    expect(await reopened.readPackageRecord("restore")).toBe("catalog");
+  });
   it("cannot overwrite unreadable persisted data", async () => {
     let writes = 0;
     const store = new ResearchStore({

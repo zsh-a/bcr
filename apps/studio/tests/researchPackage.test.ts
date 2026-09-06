@@ -1,3 +1,4 @@
+import { decodePackageTask, verifyPackageTask } from "../src/researchPackageTask";
 import { writeResearchPackage } from "../src/researchPackageStream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -502,6 +503,64 @@ describe("Reader research packages", () => {
     } finally {
       blobRead.mockRestore();
     }
+  });
+  it("retains immutable export tasks, recovers interrupted states and rejects changed sources", async () => {
+    await createReaderRuntime();
+    reader.hydrate([], {}, DEFAULT_READER_SETTINGS);
+    vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {} });
+    const prepared = await inspectResearchPackage(await fixture());
+    const bindings = await restoreReaderTransfer(prepared.reader, () => {});
+    const bound = bindResearchPackage(prepared.backup, bindings).library;
+    const plan = await planResearchPackage(bound, false);
+    const task = decodePackageTask(
+      JSON.stringify({
+        version: 1,
+        plan,
+        states: { 0: "正在保存" },
+        volumeBytes: 128 * 1024 * 1024,
+        drafts: false,
+      }),
+    )!;
+    expect(task.states[0]).toBe("上次操作未完成，可重试");
+    await expect(verifyPackageTask(task, () => {})).resolves.toBeUndefined();
+    expect(task.plan.set).toBe(plan.set);
+    expect(() =>
+      decodePackageTask(JSON.stringify({ ...task, plan: { ...plan, set: "0".repeat(64) } })),
+    ).toThrow("快照校验");
+    expect(() =>
+      decodePackageTask(JSON.stringify({ ...task, states: { 99: "已保存到文件" } })),
+    ).toThrow("状态无效");
+    const books = getReaderState().library;
+    reader.hydrate(
+      books.map((book) => (book.id === plan.books[0] ? { ...book, title: "changed" } : book)),
+      {},
+      DEFAULT_READER_SETTINGS,
+    );
+    await expect(verifyPackageTask(task, () => {})).rejects.toThrow("来源已变化");
+    reader.hydrate(books, {}, DEFAULT_READER_SETTINGS);
+    const ref = books.find((book) => book.id === plan.books[0])!.source.ref!;
+    await Effect.runPromise(
+      readerTransferState().runtime.artifacts.putStream(
+        { ...ref, type: "file/publication", format: ref.mime },
+        new Blob(["broken"]).stream(),
+      ),
+    );
+    await expect(verifyPackageTask(task, () => {})).rejects.toThrow("缺失或损坏");
+    const exported = await inspectResearchPackage(await fixture());
+    // Imported source status is checked against file content, not just catalog metadata.
+    const status = await researchVolumeStatus({
+      volume: {
+        catalog: {
+          ...plan.catalog,
+          books: plan.catalog.books.map((book) => ({ ...book, target: plan.books[0]! })),
+        },
+        set: plan.set,
+        index: 1,
+      },
+    });
+    expect(status[0]!.state).toBe("repair");
+    await restoreReaderTransfer(exported.reader, () => {});
+    await expect(verifyPackageTask(task, () => {})).resolves.toBeUndefined();
   });
   it("maps routes and citation identities without rewriting the original evidence", () => {
     const backup = createResearchBackup(library, false, { getItem: () => null });

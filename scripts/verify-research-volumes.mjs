@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { chromium } from "playwright";
 const require = createRequire(new URL("../apps/reader-studio/package.json", import.meta.url));
 const { ZipWriter, BlobWriter, TextReader } = require("@zip.js/zip.js");
+const resumeTask = process.env.RESUME_TASK === "1";
 const streaming = process.env.STREAM_SAVE === "1";
 const origin = new URL(process.env.BASE_URL ?? "http://localhost:5199").origin;
 const browser = await chromium.launch({ args: ["--disable-dev-shm-usage"] });
@@ -126,6 +127,21 @@ try {
       assert.match(download.suggestedFilename(), new RegExp(`-${index + 1}-of-2\\.zip$`));
       buffers.push(await readFile(await download.path()));
     }
+    if (resumeTask && index === 0) {
+      await page.waitForFunction(
+        () =>
+          document.querySelector('[aria-label="分卷任务保存状态"]')?.textContent ===
+          "分卷任务已保存到本地",
+      );
+      await page.reload({ waitUntil: "networkidle" });
+      await open(page);
+      await page.getByText("Reader 完整资料包", { exact: true }).click();
+      await page.getByLabel("上次分卷任务").waitFor();
+      assert.ok((await page.getByLabel("上次分卷任务").innerText()).includes("1 卷已有输出记录"));
+      await page.getByRole("button", { name: "核验并继续上次任务", exact: true }).click();
+      await page.getByLabel("资料包导出预览").waitFor();
+      assert.equal(await page.getByLabel("选择资料包分卷").inputValue(), "1");
+    }
   }
   assert.equal(
     (await page.getByLabel("资料包分卷清单").innerText()).match(
@@ -155,6 +171,17 @@ try {
         .filter({ hasText: "待恢复第 1/2 卷" })
         .waitFor();
     } else assert.equal(statuses.includes("待恢复"), false);
+    if (resumeTask && step === 0) {
+      await restored.getByLabel("按卷查看来源").selectOption("1");
+      assert.equal(await restored.getByLabel("分卷来源恢复状态").locator("li").count(), 1);
+      assert.ok(
+        (await restored.getByLabel("分卷来源恢复状态").innerText()).includes("待恢复第 1 卷"),
+      );
+      await restored.getByLabel("按卷查看来源").selectOption("2");
+      assert.equal(await restored.getByLabel("分卷来源恢复状态").locator("li").count(), 1);
+      assert.ok((await restored.getByLabel("分卷来源恢复状态").innerText()).includes("已恢复"));
+      await restored.getByLabel("按卷查看来源").selectOption("0");
+    }
   }
   for (const label of ["A", "B"]) {
     const article = restored
@@ -189,6 +216,13 @@ try {
     (await restored.locator('[aria-label="集合摘录"]').innerText()).includes("待恢复第"),
     false,
   );
+  if (resumeTask) {
+    await restored.getByText("Reader 完整资料包", { exact: true }).click();
+    await restored.getByLabel("资料来源汇总").waitFor();
+    await restored.getByRole("button", { name: "重新核验来源状态", exact: true }).click();
+    await restored.getByRole("status").filter({ hasText: "来源状态已重新核验" }).waitFor();
+    assert.ok((await restored.getByLabel("资料来源汇总").innerText()).includes("已恢复 2"));
+  }
   assert.deepEqual(errors, []);
   console.log(
     "Research volumes: sequential downloads, fresh storage, missing-volume hints, reverse/repeated restore, EPUB images and citation jumps/reload passed.",

@@ -320,6 +320,7 @@ export function decodeResearch(raw: string | undefined): ResearchLibrary {
 export class ResearchStore {
   private value: ResearchLibrary = EMPTY_RESEARCH;
   private tail: Promise<unknown> = Promise.resolve();
+  private packageTail: Promise<unknown> = Promise.resolve();
   private readonly listeners = new Set<() => void>();
   readonly ready: Promise<void>;
   constructor(private readonly metadata: RuntimeMetadata | undefined) {
@@ -332,6 +333,21 @@ export class ResearchStore {
     if (!this.metadata) throw new Error("本地元数据不可用，无法保存资料集合");
     this.value = decodeResearch(await this.metadata.get(RESEARCH_KEY));
     this.emit();
+  }
+  async readPackageRecord(kind: "export" | "restore"): Promise<string | undefined> {
+    await this.ready;
+    await this.packageTail.catch(() => undefined);
+    return this.metadata!.get(`workspace/research-package-${kind}.v1`);
+  }
+  writePackageRecord(kind: "export" | "restore", raw: string): Promise<void> {
+    const operation = this.packageTail
+      .catch(() => undefined)
+      .then(async () => {
+        await this.ready;
+        await this.metadata!.set(`workspace/research-package-${kind}.v1`, raw);
+      });
+    this.packageTail = operation;
+    return operation;
   }
   getSnapshot = () => this.value;
   subscribe = (listener: () => void) => {

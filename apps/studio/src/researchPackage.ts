@@ -451,14 +451,34 @@ function catalogBindings(catalog: ResearchVolumeCatalog, set: string): ReaderBin
     volume: { set, index: entry.volume, total: catalog.total },
   }));
 }
-export async function researchVolumeStatus(prepared: PreparedResearchPackage) {
+export async function researchVolumeStatus(
+  prepared: Pick<PreparedResearchPackage, "volume">,
+  report: (message: string) => void = () => {},
+  signal?: AbortSignal,
+) {
   if (!prepared.volume) return [];
-  const { readerTransferState } = await import("@bcr/reader-studio/research-transfer");
+  const { readerTransferState, checkReaderTransfer } =
+    await import("@bcr/reader-studio/research-transfer");
   const { state } = readerTransferState();
-  return prepared.volume.catalog.books.map((entry) => ({
-    ...entry,
-    restored: state.library.some(
-      (book) => book.id === entry.target && book.source.ref?.hash === entry.hash,
+  const existing = prepared.volume.catalog.books.filter((entry) =>
+    state.library.some((book) => book.id === entry.target),
+  );
+  const unavailable = new Set(
+    await checkReaderTransfer(
+      existing.map((entry) => entry.target),
+      report,
+      signal,
     ),
-  }));
+  );
+  if (readerTransferState().state.library !== state.library)
+    throw new Error("书库在核验期间发生变化，请重新核验来源状态");
+  return prepared.volume.catalog.books.map((entry) => {
+    const book = state.library.find((book) => book.id === entry.target);
+    const status = !book
+      ? "missing"
+      : unavailable.has(entry.target) || book.source.ref?.hash !== entry.hash
+        ? "repair"
+        : "restored";
+    return { ...entry, state: status, restored: status === "restored" };
+  });
 }

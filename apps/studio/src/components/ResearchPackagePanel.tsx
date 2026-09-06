@@ -1,3 +1,10 @@
+import {
+  decodePackageTask,
+  verifyPackageTask,
+  type ResearchPackageTask,
+} from "../researchPackageTask";
+import { decodeVolumeCatalog } from "../researchVolumes";
+import { textVersion } from "@bcr/core";
 import { writeResearchPackage } from "../researchPackageStream";
 import { useEffect, useRef, useState } from "react";
 import type { ResearchLibrary, ResearchStore } from "../research";
@@ -33,6 +40,11 @@ export function ResearchPackagePanel(props: {
   const [volumeBytes, setVolumeBytes] = useState(128 * 1024 * 1024);
   const [volumeIndex, setVolumeIndex] = useState(0);
   const [volumeStates, setVolumeStates] = useState<Record<number, string>>({});
+  const [savedTask, setSavedTask] = useState<ResearchPackageTask>();
+  const [taskReady, setTaskReady] = useState(false);
+  const [taskNotice, setTaskNotice] = useState("");
+  const [sourceCatalog, setSourceCatalog] = useState<Pick<PreparedResearchPackage, "volume">>();
+  const [sourceVolume, setSourceVolume] = useState(0);
   const generating = useRef<number | null>(null);
   const [volumeReport, setVolumeReport] = useState<
     Awaited<ReturnType<typeof researchVolumeStatus>>
@@ -48,10 +60,78 @@ export function ResearchPackagePanel(props: {
     },
     [],
   );
+  useEffect(() => {
+    let mounted = true;
+    void Promise.all([
+      props.store.readPackageRecord("export"),
+      props.store.readPackageRecord("restore"),
+    ])
+      .then(async ([raw, sources]) => {
+        if (!mounted) return;
+        try {
+          setSavedTask(decodePackageTask(raw));
+        } catch (error) {
+          setTaskNotice(`任务记录无法读取：${String(error)}`);
+        }
+        if (sources) {
+          const record = JSON.parse(sources) as Pick<PreparedResearchPackage, "volume">;
+          if (
+            !record.volume ||
+            textVersion(JSON.stringify(decodeVolumeCatalog(record.volume.catalog))) !==
+              record.volume.set
+          )
+            throw new Error("恢复目录校验失败");
+          setSourceCatalog(record);
+          setVolumeReport([]);
+        }
+      })
+      .catch((error: unknown) => {
+        if (mounted) setTaskNotice(String(error));
+      })
+      .finally(() => {
+        if (mounted) setTaskReady(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [props.store]);
+  useEffect(() => {
+    if (!plan || !taskReady) return;
+    let current = true;
+    const task: ResearchPackageTask = {
+      version: 1,
+      plan,
+      states: volumeStates,
+      volumeBytes,
+      drafts,
+    };
+    const raw = JSON.stringify(task);
+    try {
+      decodePackageTask(raw);
+    } catch (error) {
+      setTaskNotice(`分卷任务未保存：${String(error)}；请勿刷新页面。`);
+      return;
+    }
+    setTaskNotice("正在保存分卷任务…");
+    void props.store
+      .writePackageRecord("export", raw)
+      .then(() => {
+        if (current) {
+          setSavedTask(task);
+          setTaskNotice("分卷任务已保存到本地");
+        }
+      })
+      .catch((error: unknown) => {
+        if (current) setTaskNotice(`分卷任务未保存：${String(error)}；请勿刷新页面。`);
+      });
+    return () => {
+      current = false;
+    };
+  }, [plan, volumeStates, volumeBytes, drafts, taskReady, props.store]);
   const action = (
     work: (signal: AbortSignal, report: (message: string) => void) => Promise<() => void>,
   ) => {
-    if (props.busy || active.current) return;
+    if (props.busy || active.current || !taskReady) return;
     const task = new AbortController();
     active.current = task;
     setWorking(true);
@@ -96,7 +176,7 @@ export function ResearchPackagePanel(props: {
     setWorking(false);
     setMessage("已取消资料包操作，可以重新检查或选择文件。");
   };
-  const disabled = props.busy || working;
+  const disabled = props.busy || working || !taskReady;
   return (
     <details className="my-2 rounded border border-border p-3 text-[11px] text-muted">
       <summary className="cursor-pointer text-text">Reader 完整资料包</summary>
@@ -107,6 +187,72 @@ export function ResearchPackagePanel(props: {
         </a>
         并等待书库加载。其它类型和无法提供的历史版本会在预览中标明。
       </p>
+      {savedTask && !plan && (
+        <div aria-label="上次分卷任务" className="my-3 space-y-2 rounded border border-border p-2">
+          <p>
+            任务 {savedTask.plan.set.slice(0, 12)} · {savedTask.plan.volumes.length} 卷 ·{" "}
+            {
+              Object.values(savedTask.states).filter(
+                (state) => state === "已保存到文件" || state === "已触发下载，可重新生成",
+              ).length
+            }{" "}
+            卷已有输出记录
+          </p>
+          <p>
+            继续使用上次检查的集合快照。下载记录不代表文件仍在磁盘上；刷新后需要重新选择保存位置。
+          </p>
+          <button
+            type="button"
+            className={button}
+            disabled={disabled}
+            onClick={() =>
+              action(async (signal, report) => {
+                await verifyPackageTask(savedTask, report, signal);
+                return () => {
+                  setPlan(savedTask.plan);
+                  setVolumeStates({ ...savedTask.states });
+                  setVolumeBytes(savedTask.volumeBytes);
+                  setDrafts(savedTask.drafts);
+                  setSelected(
+                    savedTask.plan.backup.library.collections.map((collection) => collection.id),
+                  );
+                  const next = savedTask.plan.volumes.findIndex(
+                    (_, index) =>
+                      !["已保存到文件", "已触发下载，可重新生成"].includes(
+                        savedTask.states[index] ?? "",
+                      ),
+                  );
+                  setVolumeIndex(Math.max(0, next));
+                  setMessage("来源核验通过，可以继续上次分卷任务。");
+                };
+              })
+            }
+          >
+            核验并继续上次任务
+          </button>
+          <button
+            type="button"
+            className={button}
+            disabled={disabled}
+            onClick={() =>
+              action(async () => {
+                await props.store.writePackageRecord("export", "");
+                return () => {
+                  setSavedTask(undefined);
+                  setTaskNotice("分卷任务记录已清除，已保存文件不受影响。");
+                };
+              })
+            }
+          >
+            清除任务记录
+          </button>
+        </div>
+      )}
+      {taskNotice && (
+        <p aria-label="分卷任务保存状态" className="my-2 leading-5">
+          {taskNotice}
+        </p>
+      )}
       <div className="max-h-32 space-y-1 overflow-auto">
         {props.library.collections.map((item) => (
           <label key={item.id} className="flex items-center gap-2">
@@ -212,11 +358,19 @@ export function ResearchPackagePanel(props: {
                 const checked = await inspectResearchPackage(file, report, signal);
                 const preview = await previewResearchPackageImport(checked, props.library);
                 const statuses = await researchVolumeStatus(checked);
+                signal.throwIfAborted();
+                if (checked.volume)
+                  await props.store.writePackageRecord(
+                    "restore",
+                    JSON.stringify({ volume: checked.volume }),
+                  );
                 return () => {
                   setImportSummary(
                     `书籍：新增 ${preview.books.added}，复用 ${preview.books.reused}；集合：新增 ${preview.collections.added}，跳过 ${preview.collections.skipped}，冲突副本 ${preview.collections.copies}`,
                   );
                   setPrepared(checked);
+                  setSourceCatalog(checked.volume ? { volume: checked.volume } : undefined);
+                  setSourceVolume(0);
                   setVolumeReport(statuses);
                   setMessage("文件哈希与 Reader 源文件校验通过，请确认恢复。");
                 };
@@ -403,13 +557,68 @@ export function ResearchPackagePanel(props: {
           </button>
         </div>
       )}
+      {sourceCatalog?.volume && (
+        <div className="mt-3 space-y-2" aria-label="资料来源汇总">
+          <p>
+            资料包 {sourceCatalog.volume.set.slice(0, 12)} · {sourceCatalog.volume.catalog.total} 卷
+          </p>
+          {volumeReport.length !== sourceCatalog.volume.catalog.books.length ? (
+            <p>尚未核验。点击「重新核验来源状态」检查文件是否仍然可用。</p>
+          ) : (
+            <p>
+              已恢复 {volumeReport.filter((book) => book.state === "restored").length} · 缺失{" "}
+              {volumeReport.filter((book) => book.state === "missing").length} · 需修复{" "}
+              {volumeReport.filter((book) => book.state === "repair").length}
+            </p>
+          )}
+          <label>
+            按卷查看来源{" "}
+            <select
+              aria-label="按卷查看来源"
+              className="rounded border border-border bg-surface p-1"
+              value={sourceVolume}
+              onChange={(event) => setSourceVolume(Number(event.target.value))}
+            >
+              <option value={0}>全部分卷</option>
+              {Array.from({ length: sourceCatalog.volume.catalog.total }, (_, index) => (
+                <option key={index} value={index + 1}>
+                  第 {index + 1} 卷
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className={button}
+            disabled={disabled}
+            onClick={() =>
+              action(async (signal, report) => {
+                const statuses = await researchVolumeStatus(sourceCatalog, report, signal);
+                return () => {
+                  setVolumeReport(statuses);
+                  setMessage("来源状态已重新核验，需修复的来源可重新选择所属分卷恢复。");
+                };
+              })
+            }
+          >
+            重新核验来源状态
+          </button>
+        </div>
+      )}
       {volumeReport.length > 0 && (
         <ul aria-label="分卷来源恢复状态" className="mt-3 max-h-40 space-y-1 overflow-auto">
-          {volumeReport.map((book) => (
-            <li key={book.book}>
-              {book.title} · {book.restored ? "已恢复" : `待恢复第 ${book.volume} 卷`}
-            </li>
-          ))}
+          {volumeReport
+            .filter((book) => !sourceVolume || book.volume === sourceVolume)
+            .map((book) => (
+              <li key={book.book}>
+                {book.title} ·{" "}
+                {book.state === "repair"
+                  ? `需核对或修复 · 第 ${book.volume} 卷`
+                  : book.restored
+                    ? "已恢复"
+                    : `待恢复第 ${book.volume} 卷`}
+              </li>
+            ))}
         </ul>
       )}
       {message && (
