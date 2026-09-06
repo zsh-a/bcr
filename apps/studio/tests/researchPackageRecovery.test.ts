@@ -11,6 +11,7 @@ import {
   decodeResearchRecovery,
   readResearchRecovery,
   resumeResearchRecovery,
+  verifyRecoveryPackage,
 } from "../src/researchPackageRecovery";
 import type { PreparedResearchPackage } from "../src/researchPackage";
 
@@ -207,6 +208,92 @@ describe("research import recovery", () => {
       1,
     );
     expect(store.getSnapshot().collections).toHaveLength(1);
+  });
+  it.each(["delete", "edit", "missing-source"])(
+    "only finalizes a committed import after a later Reader %s",
+    async (change) => {
+      const { store, metadata } = storage();
+      const prepared = await fixture();
+      const original = metadata.set;
+      vi.spyOn(metadata, "set").mockImplementation(async (key, raw) => {
+        if (key === "workspace/research.v1") {
+          await original(key, raw);
+          throw new Error("committed before crash");
+        }
+        await original(key, raw);
+      });
+      await expect(resumeResearchRecovery(store, () => {}, prepared)).rejects.toThrow(
+        "committed before crash",
+      );
+      vi.restoreAllMocks();
+      const book = getReaderState().library.find((book) => book.id.startsWith("research-"))!;
+      if (change === "delete") reader.removeBook(book.id);
+      if (change === "edit")
+        reader.hydrate(
+          getReaderState().library.map((item) =>
+            item.id === book.id
+              ? {
+                  ...item,
+                  sections: item.sections.map((section) => ({
+                    ...section,
+                    text: "User changed body",
+                  })),
+                }
+              : item,
+          ),
+          {},
+          DEFAULT_READER_SETTINGS,
+        );
+      if (change === "missing-source") {
+        const ref = book.source.ref!;
+        await Effect.runPromise(
+          readerTransferState().runtime.artifacts.delete({
+            ...ref,
+            type: "file/publication",
+            format: ref.mime,
+          }),
+        );
+      }
+      const before = getReaderState();
+      const files = vi.spyOn(readerTransferState().runtime.artifacts, "getBlob");
+      expect(await resumeResearchRecovery(store, () => {})).toBe("finalized");
+      expect(getReaderState()).toBe(before);
+      expect(files).not.toHaveBeenCalled();
+      expect((await readResearchRecovery(store))?.phase).toBe("complete");
+      expect(store.getSnapshot().collections).toHaveLength(1);
+    },
+  );
+  it("does not treat a journal phase as proof that collections committed", async () => {
+    const { store, metadata, data } = storage();
+    const original = metadata.set;
+    vi.spyOn(metadata, "set").mockImplementation(async (key, raw) => {
+      if (key.includes("recovery") && JSON.parse(raw).phase === "complete")
+        throw new Error("crash");
+      await original(key, raw);
+    });
+    await expect(resumeResearchRecovery(store, () => {}, await fixture())).rejects.toThrow("crash");
+    vi.restoreAllMocks();
+    data.set("workspace/research.v1", JSON.stringify({ version: 1, collections: [] }));
+    expect(await resumeResearchRecovery(store, () => {})).toBe("restored");
+    expect(store.getSnapshot().collections).toHaveLength(1);
+  });
+  it("rejects a different package during inspection without changing the source catalog", async () => {
+    const { store, metadata, data } = storage();
+    const prepared = await fixture();
+    const original = metadata.set;
+    vi.spyOn(metadata, "set").mockImplementation(async (key, raw) => {
+      await original(key, raw);
+      if (key.includes("recovery")) throw new Error("crash");
+    });
+    await expect(resumeResearchRecovery(store, () => {}, prepared)).rejects.toThrow("crash");
+    vi.restoreAllMocks();
+    await store.writePackageRecord("restore", "existing catalog");
+    const before = new Map(data);
+    await expect(
+      verifyRecoveryPackage(store, { ...prepared, backup: { ...prepared.backup, createdAt: 999 } }),
+    ).rejects.toThrow("同一资料包");
+    await expect(verifyRecoveryPackage(store, prepared)).resolves.toBeUndefined();
+    expect(data).toEqual(before);
   });
   it("rejects damaged journals without replacing them", async () => {
     const { store } = storage();

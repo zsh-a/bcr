@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ResearchStore } from "../research";
 import type { PreparedResearchPackage } from "../researchPackage";
 import {
@@ -8,37 +8,50 @@ import {
   type ResearchRecovery,
 } from "../researchPackageRecovery";
 export function useResearchPackageRecovery(store: ResearchStore) {
-  const [record, setRecord] = useState<ResearchRecovery>();
-  const [notice, setNotice] = useState("");
-  const [ready, setReady] = useState(false);
-  const mounted = useRef(false);
+  const scope = useMemo(() => ({ active: false, revision: 0 }), [store]);
+  const [snapshot, setSnapshot] = useState<{
+    scope: typeof scope;
+    record: ResearchRecovery | undefined;
+    notice: string;
+    ready: boolean;
+  }>();
+  const current = () => scope.active;
   async function refresh() {
+    if (!current()) return;
+    const revision = ++scope.revision;
+    const publish = (record: ResearchRecovery | undefined, notice: string) => {
+      if (current() && revision === scope.revision)
+        setSnapshot({ scope, record, notice, ready: true });
+    };
     try {
-      const next = await readResearchRecovery(store);
-      if (mounted.current) {
-        setRecord(next);
-        setNotice("");
-      }
+      publish(await readResearchRecovery(store), "");
     } catch (error) {
-      if (mounted.current) setNotice(String(error));
-    } finally {
-      if (mounted.current) setReady(true);
+      publish(undefined, String(error));
     }
   }
   useEffect(() => {
-    mounted.current = true;
+    scope.active = true;
     void refresh();
     return () => {
-      mounted.current = false;
+      scope.active = false;
+      scope.revision++;
     };
-  }, [store]);
+  }, [scope]);
+  const visible = snapshot?.scope === scope ? snapshot : undefined;
   return {
-    record,
-    notice,
-    ready,
+    record: visible?.record,
+    notice: visible?.notice ?? "",
+    ready: visible?.ready ?? false,
+    isCurrent: current,
     async resume(report: (message: string) => void, prepared?: PreparedResearchPackage) {
       try {
-        await resumeResearchRecovery(store, report, prepared);
+        return await resumeResearchRecovery(
+          store,
+          (message) => {
+            if (current()) report(message);
+          },
+          prepared,
+        );
       } finally {
         await refresh();
       }

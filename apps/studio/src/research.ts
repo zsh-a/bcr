@@ -367,6 +367,18 @@ export class ResearchStore {
   update(change: (current: ResearchLibrary) => ResearchLibrary): Promise<void> {
     return this.writeLibrary(change);
   }
+  hasRestoredPackage(id: string): Promise<boolean> {
+    const operation = this.tail
+      .catch(() => undefined)
+      .then(async () => {
+        await this.ready;
+        await this.load();
+        this.reloadRequired = false;
+        return this.restoreReceipt === id;
+      });
+    this.tail = operation;
+    return operation;
+  }
   updateRestoredPackage(id: string, change: (current: ResearchLibrary) => ResearchLibrary) {
     return this.writeLibrary(change, id);
   }

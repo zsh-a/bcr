@@ -65,24 +65,43 @@ function identity(prepared: PreparedResearchPackage) {
     JSON.stringify([prepared.backup, prepared.reader.manifest.books, prepared.volume]),
   );
 }
+export function assertRecoveryPackage(
+  record: ResearchRecovery | undefined,
+  prepared: PreparedResearchPackage,
+) {
+  if (record && record.phase !== "complete" && identity(prepared) !== record.identity)
+    throw new Error("请选择中断任务的同一资料包分卷，或先结束该任务的跟踪。");
+}
+export async function verifyRecoveryPackage(
+  store: ResearchStore,
+  prepared: PreparedResearchPackage,
+) {
+  assertRecoveryPackage(await readResearchRecovery(store), prepared);
+}
+export type RecoveryResult = "restored" | "finalized" | "complete";
 export function resumeResearchRecovery(
   store: ResearchStore,
   report: (message: string) => void,
   prepared?: PreparedResearchPackage,
-) {
+): Promise<RecoveryResult> {
   return serial(store, async () => {
     let record = await readResearchRecovery(store);
+    if (record?.phase === "complete" && !prepared) return "complete";
+    if (prepared) assertRecoveryPackage(record, prepared);
+    if (record && record.phase !== "complete" && (await store.hasRestoredPackage(record.id))) {
+      // The collection receipt proves both stores committed. Later user changes
+      // must not be interpreted as missing work belonging to this import.
+      await save(store, { ...record, phase: "complete" });
+      report("恢复任务记录已完成，保留了后续修改。");
+      return "finalized";
+    }
     const {
       readerTransferIdentity,
       recoverReaderTransfer,
       restoreReaderTransfer,
       flushReaderTransfer,
     } = await import("@bcr/reader-studio/research-transfer");
-    if (record?.phase === "complete" && !prepared) return;
-    if (record && record.phase !== "complete") {
-      if (prepared && identity(prepared) !== record.identity)
-        throw new Error("请选择中断任务的同一资料包分卷，或先结束该任务的跟踪。");
-    } else {
+    if (!record || record.phase === "complete") {
       if (!prepared) throw new Error("没有待续接的恢复任务");
       const bindings = prepared.volume
         ? catalogBindings(prepared.volume.catalog, prepared.volume.set)
@@ -117,5 +136,6 @@ export function resumeResearchRecovery(
     await save(store, record);
     await save(store, { ...record, phase: "complete" });
     report("Reader 资料包恢复完成，可从集合回到原文。");
+    return "restored";
   });
 }

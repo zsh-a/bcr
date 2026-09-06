@@ -5,6 +5,7 @@ import {
 } from "../researchPackageFiles";
 import { verifyPackageTask } from "../researchPackageTask";
 import { writeResearchPackage } from "../researchPackageStream";
+import { verifyRecoveryPackage } from "../researchPackageRecovery";
 import { useResearchPackageRecovery } from "./useResearchPackageRecovery";
 import { useRef, useState } from "react";
 import type { ResearchLibrary, ResearchStore } from "../research";
@@ -169,14 +170,31 @@ export function useResearchPackageController(props: ResearchPackagePanelProps) {
       };
     });
   };
-  const restorePackage = () => {
-    if (!prepared) return;
+  const finishRecovery = (file?: PreparedResearchPackage) => {
     props.run(async () => {
-      await recovery.resume(setMessage, prepared);
-      setVolumeReport(await researchVolumeStatus(prepared));
+      const result = await recovery.resume(setMessage, file);
+      if (!recovery.isCurrent()) return;
       setPrepared(undefined);
-      setMessage("Reader 资料包恢复完成，可从集合回到原文。未包含的来源仍待恢复。");
+      setImportSummary("");
+      setVolumeReport([]);
+      const catalog = file ?? sourceCatalog;
+      try {
+        const statuses = catalog ? await researchVolumeStatus(catalog) : [];
+        if (!recovery.isCurrent()) return;
+        setVolumeReport(statuses);
+        setMessage(
+          result === "restored"
+            ? "Reader 资料包恢复完成，可从集合回到原文。未包含的来源仍待恢复。"
+            : "恢复任务记录已完成，后续修改保持不变。",
+        );
+      } catch (error) {
+        if (recovery.isCurrent())
+          setMessage(`恢复任务已完成，来源状态刷新失败，可手动重新核验：${String(error)}`);
+      }
     });
+  };
+  const restorePackage = () => {
+    if (prepared) finishRecovery(prepared);
   };
   const dismissRestore = () => {
     setPrepared(undefined);
@@ -192,17 +210,20 @@ export function useResearchPackageController(props: ResearchPackagePanelProps) {
     });
   };
   const inspectFile = (file: File) => {
-    setVolumeReport([]);
     setPlan(undefined);
     setPrepared(undefined);
     action(async (signal, report) => {
       if (file.size > PACKAGE_LIMIT + 65536) throw new Error("资料包超过 600 MiB 上限");
       const checked = await inspectResearchPackage(file, report, signal);
+      await verifyRecoveryPackage(props.store, checked);
+      signal.throwIfAborted();
       const preview = await previewResearchPackageImport(checked, props.library);
       const statuses = await researchVolumeStatus(checked, report, signal);
       signal.throwIfAborted();
-      if (checked.volume)
-        await props.store.writePackageRecord("restore", JSON.stringify({ volume: checked.volume }));
+      await props.store.writePackageRecord(
+        "restore",
+        checked.volume ? JSON.stringify({ volume: checked.volume }) : "",
+      );
       return () => {
         setImportSummary(
           `书籍：新增 ${preview.books.added}，复用 ${preview.books.reused}；集合：新增 ${preview.collections.added}，跳过 ${preview.collections.skipped}，冲突副本 ${preview.collections.copies}`,
@@ -217,7 +238,7 @@ export function useResearchPackageController(props: ResearchPackagePanelProps) {
   };
   return {
     recovery,
-    resumeRecovery: () => props.run(() => recovery.resume(setMessage)),
+    resumeRecovery: () => finishRecovery(),
     clearRecovery: () => props.run(() => recovery.clear()),
     selected,
     changeSelection,

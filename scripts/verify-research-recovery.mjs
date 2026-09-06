@@ -8,7 +8,7 @@ const coreRequire = createRequire(new URL("../packages/core/package.json", impor
 const { blake3 } = coreRequire("@noble/hashes/blake3.js");
 const hash = async (blob) =>
   Buffer.from(blake3(new Uint8Array(await blob.arrayBuffer()))).toString("hex");
-async function fixture() {
+async function fixture(createdAt = 1) {
   const source = new Blob(["恢复中断测试正文"]),
     sourceHash = await hash(source);
   const zip = new ZipWriter(new BlobWriter());
@@ -56,7 +56,7 @@ async function fixture() {
     JSON.stringify({
       format: "bcr-research-backup",
       version: 1,
-      createdAt: 1,
+      createdAt,
       includesDrafts: false,
       library: {
         version: 1,
@@ -112,6 +112,7 @@ async function open(context) {
 }
 try {
   const buffer = await fixture();
+  const wrongBuffer = await fixture(999);
   // Each cut closes the page while the operation is suspended. The same browser
   // context retains real OPFS/SQLite/localStorage for the next page.
   for (const cut of ["sources-staged", "reader-library", "reader-restored", "collections-merged"]) {
@@ -154,6 +155,7 @@ try {
       const original = ResearchStore.prototype.writePackageRecord;
       ResearchStore.prototype.writePackageRecord = async function (kind, raw) {
         if (kind === "recovery" && JSON.parse(raw).phase === phase) {
+          window.__recoveryStore = this;
           window.__recoveryCut = true;
           await new Promise(() => {});
         }
@@ -162,13 +164,63 @@ try {
     }, cut);
     await page.getByRole("button", { name: "确认恢复 Reader 资料包", exact: true }).click();
     await page.waitForFunction(() => window.__recoveryCut);
+    if (cut === "reader-restored" || cut === "collections-merged") {
+      const catalog = await page.evaluate(async () => {
+        const record = JSON.parse(await window.__recoveryStore.readPackageRecord("recovery"));
+        const url = performance
+          .getEntriesByType("resource")
+          .map((e) => e.name)
+          .filter((url) => new URL(url).pathname.endsWith("/apps/reader-studio/src/store.ts"))
+          .at(-1);
+        const { getReaderState } = await import(url);
+        const book = getReaderState().library.find((b) => b.id.startsWith("research-"));
+        return {
+          format: "bcr-research-volumes",
+          version: 1,
+          researchHash: "0".repeat(64),
+          total: 1,
+          books: [
+            {
+              book: record.manifest.books[0].book.id,
+              target: book.id,
+              title: book.title,
+              hash: book.source.ref.hash,
+              volume: 1,
+            },
+          ],
+        };
+      });
+      const set = await hash(new Blob([JSON.stringify(catalog)]));
+      await page.evaluate(
+        async (record) =>
+          window.__recoveryStore.writePackageRecord("restore", JSON.stringify(record)),
+        { volume: { catalog, set, index: 1 } },
+      );
+    }
     await page.close();
     page = await open(context);
     await page.getByRole("button", { name: "继续恢复", exact: true }).waitFor();
+    const summaryBefore = await page.getByLabel("资料来源汇总").allTextContents();
+    await page
+      .getByLabel("选择 Reader 资料包", { exact: true })
+      .setInputFiles({ name: "wrong.zip", mimeType: "application/zip", buffer: wrongBuffer });
+    await page.getByRole("status").filter({ hasText: "请选择中断任务的同一资料包分卷" }).waitFor();
+    assert.equal(await page.getByLabel("资料包恢复预览").count(), 0);
+    assert.deepEqual(await page.getByLabel("资料来源汇总").allTextContents(), summaryBefore);
     if (cut === "collections-merged") {
       await page.getByRole("textbox", { name: /^笔记：/u }).fill("中断后修改，必须保留");
       await page.getByRole("button", { name: "保存笔记", exact: true }).click();
       await page.getByRole("status").filter({ hasText: "已保存到本地" }).waitFor();
+      await page.evaluate(async () => {
+        const url = performance
+          .getEntriesByType("resource")
+          .map((e) => e.name)
+          .filter((url) => new URL(url).pathname.endsWith("/apps/reader-studio/src/store.ts"))
+          .at(-1);
+        const { reader, getReaderState } = await import(url);
+        for (const book of getReaderState().library.filter((b) => b.id.startsWith("research-")))
+          reader.removeBook(book.id);
+      });
     }
     await page.getByRole("button", { name: "继续恢复", exact: true }).click();
     await page
@@ -188,9 +240,98 @@ try {
       const { getReaderState } = await import(url);
       return getReaderState().library.filter((b) => b.id.startsWith("research-")).length;
     });
-    assert.equal(count, 1);
+    assert.equal(count, cut === "collections-merged" ? 0 : 1);
+    if (cut === "reader-restored" || cut === "collections-merged") {
+      await page
+        .getByLabel("资料来源汇总")
+        .getByText(
+          cut === "collections-merged"
+            ? "已恢复 0 · 缺失 1 · 需修复 0"
+            : "已恢复 1 · 缺失 0 · 需修复 0",
+          { exact: true },
+        )
+        .waitFor();
+    }
     await context.close();
   }
+  const lifecycleContext = await browser.newContext();
+  const lifecyclePage = await open(lifecycleContext);
+  await lifecyclePage.evaluate(async () => {
+    const loaded = (suffix) =>
+      performance
+        .getEntriesByType("resource")
+        .map((e) => e.name)
+        .filter((url) => new URL(url).pathname.endsWith(suffix))
+        .at(-1);
+    const reactModule = await import(loaded("/react.js"));
+    const React = reactModule.default ?? reactModule;
+    const domModule = await import(loaded("/react-dom_client.js"));
+    const { createRoot } = domModule.default ?? domModule;
+    const { useResearchPackageRecovery } = await import(
+      loaded("/src/components/useResearchPackageRecovery.ts")
+    );
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 20));
+    const wait = async (predicate) => {
+      for (let i = 0; i < 100; i++) {
+        if (predicate()) return;
+        await tick();
+      }
+      throw new Error("Hook state did not settle");
+    };
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    let state;
+    function Probe({ store }) {
+      state = useResearchPackageRecovery(store);
+      return React.createElement("span", null, state.notice);
+    }
+    const reads = [];
+    const store = {
+      readPackageRecord: () => new Promise((resolve, reject) => reads.push({ resolve, reject })),
+      writePackageRecord: async () => {},
+    };
+    root.render(React.createElement(Probe, { store }));
+    await wait(() => reads.length === 1);
+    const clearing = state.clear();
+    await wait(() => reads.length === 2);
+    reads[1].resolve(undefined);
+    await clearing;
+    await wait(() => state.ready);
+    reads[0].reject(new Error("late old read"));
+    await tick();
+    if (state.notice) throw new Error("Old read replaced a newer refresh");
+    const oldReads = [];
+    const oldStore = {
+      ...store,
+      readPackageRecord: () => new Promise((resolve, reject) => oldReads.push({ resolve, reject })),
+    };
+    root.render(React.createElement(Probe, { store: oldStore }));
+    await wait(() => oldReads.length === 1);
+    const oldState = state;
+    const nextReads = [];
+    const nextStore = {
+      ...store,
+      readPackageRecord: () => new Promise((resolve) => nextReads.push(resolve)),
+    };
+    root.render(React.createElement(Probe, { store: nextStore }));
+    await wait(() => nextReads.length === 1);
+    if (state.ready || oldState.isCurrent())
+      throw new Error("Previous Store state remained active");
+    oldReads[0].reject(new Error("old store failed"));
+    await tick();
+    if (state.ready || state.notice) throw new Error("Old Store result leaked into the new Store");
+    nextReads[0](undefined);
+    await wait(() => state.ready);
+    const pendingClear = state.clear();
+    await wait(() => nextReads.length === 2);
+    root.unmount();
+    nextReads[1](undefined);
+    await pendingClear;
+    if (state.isCurrent()) throw new Error("Unmounted scope remained active");
+    host.remove();
+  });
+  await lifecycleContext.close();
   assert.deepEqual(errors, []);
   console.log("Reader research interruption recovery verification PASSED");
 } finally {
