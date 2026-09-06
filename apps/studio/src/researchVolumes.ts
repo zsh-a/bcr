@@ -58,3 +58,49 @@ export function decodeVolumeCatalog(value: unknown): ResearchVolumeCatalog {
     throw new Error("分卷目录包含空卷");
   return catalog;
 }
+
+export function groupBooksByVolume<T extends { readonly volume: number }>(
+  books: ReadonlyArray<T>,
+): Map<number, T[]> {
+  const grouped = new Map<number, T[]>();
+  for (const book of books) {
+    const group = grouped.get(book.volume);
+    if (group) group.push(book);
+    else grouped.set(book.volume, [book]);
+  }
+  return grouped;
+}
+type VolumeIdentity = Pick<ResearchVolumeBook, "book" | "target" | "hash">;
+export function matchesVolumeBook(
+  expected: VolumeIdentity,
+  actual: VolumeIdentity | undefined,
+): boolean {
+  return (
+    actual !== undefined &&
+    expected.book === actual.book &&
+    expected.target === actual.target &&
+    expected.hash === actual.hash
+  );
+}
+export type ResearchSourceState = "missing" | "repair" | "restored";
+export interface ResearchSourceStatus extends ResearchVolumeBook {
+  readonly state: ResearchSourceState;
+  readonly restored: boolean;
+}
+export function sourceStatusLabel(book: ResearchSourceStatus): string {
+  switch (book.state) {
+    case "repair":
+      return `需核对或修复 · 第 ${book.volume} 卷`;
+    case "restored":
+      return "已恢复";
+    case "missing":
+      return `待恢复第 ${book.volume} 卷`;
+  }
+}
+export function sourceStatusCounts(
+  books: ReadonlyArray<ResearchSourceStatus>,
+): Record<ResearchSourceState, number> {
+  const counts = { missing: 0, repair: 0, restored: 0 };
+  for (const book of books) counts[book.state]++;
+  return counts;
+}

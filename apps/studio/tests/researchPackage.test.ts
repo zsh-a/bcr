@@ -521,7 +521,9 @@ describe("Reader research packages", () => {
         drafts: false,
       }),
     )!;
-    expect(task.states[0]).toBe("上次操作未完成，可重试");
+    expect(task.states[0]).toBe("interrupted");
+    expect(task.version).toBe(2);
+    expect(decodePackageTask(JSON.stringify(task))).toEqual(task);
     await expect(verifyPackageTask(task, () => {})).resolves.toBeUndefined();
     expect(task.plan.set).toBe(plan.set);
     expect(() =>

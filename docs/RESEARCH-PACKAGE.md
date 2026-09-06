@@ -22,6 +22,14 @@
 
 恢复面板保留最近一套分卷目录，按源文件哈希重新核验已恢复、缺失、需核对或修复的来源，支持按卷筛选与手动刷新。损坏的源文件可用所属分卷重新恢复；如果本机副本已修改，仍遵循原有保护规则，不直接覆盖。
 
+任务记录使用 v2 状态码（如 `saving`、`saved`、`downloaded`），展示文案独立维护。读取时兼容 v1 中文状态，后续保存升级为 v2；上次仍在运行的状态统一恢复为 `interrupted`。资料包 ZIP 格式仍为 v2，不受任务记录版本变化影响。
+
+## 实现边界
+
+`ResearchPackagePanel` 只组装表单与展示组件；`ResearchPackageViews` 展示续传、导出、恢复及来源汇总。`useResearchPackageController` 编排业务命令，`useResearchPackageAction` 集中管理取消和过期结果隔离，`useResearchPackageRecords` 管理本地记录加载与串行保存。文件选择、下载 URL 生命周期位于 `researchPackageFiles`，其中选择器仍在点击调用栈中打开。
+
+引用展开、状态分类与绑定组合位于 `researchPackageReferences`，保持原始引用、历史顺序和绑定顺序；目录校验使用按书籍 ID 建立的索引，每本书只计算一次身份。任务状态、旧记录迁移与来源展示规则由独立的类型和纯函数维护。
+
 ## 文件契约
 
 v2 外层 ZIP 只允许四个文件，不接受目录、重复路径或未知路径：

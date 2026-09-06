@@ -134,10 +134,58 @@ try {
   await page.getByLabel("打包集合：取消与重试").check();
   await page.getByRole("button", { name: "检查资料包", exact: true }).click();
   await page.getByLabel("资料包导出预览").waitFor();
+  // A cancelled save may finish opening its target after a replacement task.
+  await page.evaluate(() => {
+    const gate = {
+      entered: false,
+      writes: 0,
+      closes: 0,
+      aborts: 0,
+      release: undefined,
+      activated: false,
+    };
+    window.__packageFileGate = gate;
+    window.showSaveFilePicker = async () => {
+      gate.activated = navigator.userActivation.isActive;
+      return {
+        createWritable: async () => {
+          gate.entered = true;
+          await new Promise((resolve) => {
+            gate.release = resolve;
+          });
+          return new WritableStream({
+            write() {
+              gate.writes++;
+            },
+            close() {
+              gate.closes++;
+            },
+            abort() {
+              gate.aborts++;
+            },
+          });
+        },
+      };
+    };
+  });
+  await page.getByRole("button", { name: "直接保存当前卷", exact: true }).click();
+  await page.waitForFunction(() => window.__packageFileGate.entered);
+  await cancel(page);
   const downloading = page.waitForEvent("download");
   await page.getByRole("button", { name: "生成并下载资料包", exact: true }).click();
   const buffer = await readFile(await (await downloading).path());
   assert.equal(downloads.length, 1);
+  await page.evaluate(() => window.__packageFileGate.release());
+  await page.waitForFunction(() => window.__packageFileGate.aborts === 1);
+  assert.deepEqual(
+    await page.evaluate(() => ({
+      activated: window.__packageFileGate.activated,
+      writes: window.__packageFileGate.writes,
+      closes: window.__packageFileGate.closes,
+    })),
+    { activated: true, writes: 0, closes: 0 },
+  );
+  assert.ok((await page.getByLabel("资料包分卷清单").innerText()).includes("已触发下载"));
   assert.ok(await page.evaluate(() => window.__packageGate.cancelled >= 3));
   await a.close();
 

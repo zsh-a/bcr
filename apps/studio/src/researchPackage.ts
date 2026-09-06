@@ -1,4 +1,10 @@
 import {
+  collectPackageReferences,
+  bindPackageLibrary,
+  type PackageReference,
+} from "./researchPackageReferences";
+export type { PackageReference } from "./researchPackageReferences";
+import {
   BlobReader,
   BlobWriter,
   TextReader,
@@ -6,9 +12,9 @@ import {
   ZipReader,
   ZipWriter,
 } from "@zip.js/zip.js";
-import { hashReadableStream, textVersion } from "@bcr/core";
+import { hashReadableStream } from "@bcr/core";
 import type { PreparedReaderBackup } from "@bcr/reader-studio/research-transfer";
-import { boundReaderExcerpt, type ResearchLibrary, type ReaderBinding } from "./research";
+import { type ResearchLibrary, type ReaderBinding } from "./research";
 import {
   createResearchBackup,
   decodeResearchBackup,
@@ -19,16 +25,11 @@ import {
   DEFAULT_VOLUME_BYTES,
   RESEARCH_LIMIT,
   decodeVolumeCatalog,
+  matchesVolumeBook,
+  type ResearchSourceStatus,
   type ResearchVolumeCatalog,
 } from "./researchVolumes";
 export const PACKAGE_LIMIT = 600 * 1024 * 1024;
-export interface PackageReference {
-  readonly label: string;
-  readonly book?: string;
-  readonly section?: string;
-  readonly version?: string;
-  readonly state: "ready" | "missing" | "unsupported" | "historical";
-}
 export interface ResearchPackagePlan {
   readonly backup: ResearchBackup;
   readonly references: ReadonlyArray<PackageReference>;
@@ -62,35 +63,7 @@ export async function planResearchPackage(
   const backup = createResearchBackup(library, includeDrafts, {
     getItem: (key) => localStorage.getItem(key),
   });
-  const references = backup.library.collections.flatMap((collection) =>
-    collection.excerpts.flatMap((item) =>
-      [item, ...(item.links ?? []).map((link) => ({ ...item, ...link }))].map(
-        (entry, i): PackageReference => {
-          const active = boundReaderExcerpt(entry);
-          const url = new URL(active.route, "https://bcr.invalid");
-          const label = `${collection.name} · ${item.title} · ${i ? `修订 ${i}` : "最初引用"}`;
-          if (url.pathname !== "/reader") return { label, state: "unsupported" };
-          const id = url.searchParams.get("book") ?? "",
-            section = url.searchParams.get("section") ?? "";
-          const book = state.library.find((book) => book.id === id);
-          const chapter = book?.sections.find((part) => part.id === section);
-          const version = active.citation?.source.version;
-          return {
-            label,
-            book: id,
-            section,
-            ...(version ? { version } : {}),
-            state:
-              !book?.source.ref || !chapter
-                ? "missing"
-                : !version || textVersion(chapter.text) !== version
-                  ? "historical"
-                  : "ready",
-          };
-        },
-      ),
-    ),
-  );
+  const references = collectPackageReferences(backup.library, state.library);
   const candidateIds = [
     ...new Set(references.flatMap((entry) => (entry.book ? [entry.book] : []))),
   ];
@@ -354,17 +327,15 @@ export async function inspectResearchPackage(
     )
       throw new Error("分卷身份或集合快照不匹配");
     const expected = catalog.books.filter((entry) => entry.volume === volume.index);
+    const byId = new Map(expected.map((book) => [book.book, book]));
+    const actual = reader.manifest.books.map((entry) => ({
+      book: entry.book.id,
+      target: readerTransferIdentity(entry),
+      hash: entry.source!.hash,
+    }));
     if (
-      expected.length !== reader.manifest.books.length ||
-      reader.manifest.books.some(
-        (entry) =>
-          !expected.some(
-            (book) =>
-              book.book === entry.book.id &&
-              book.target === readerTransferIdentity(entry) &&
-              book.hash === entry.source?.hash,
-          ),
-      )
+      expected.length !== actual.length ||
+      actual.some((book) => !matchesVolumeBook(book, byId.get(book.book)))
     )
       throw new Error("本卷源文件与分卷目录不匹配");
     return { backup, reader, volume: { catalog, set, index: volume.index } };
@@ -376,34 +347,9 @@ export function bindResearchPackage(
   backup: ResearchBackup,
   bindings: ReadonlyArray<ReaderBinding>,
 ): ResearchBackup {
-  return {
-    ...backup,
-    library: {
-      ...backup.library,
-      collections: backup.library.collections.map((collection) => ({
-        ...collection,
-        excerpts: collection.excerpts.map((item) => {
-          const needed = new Set(
-            [item, ...(item.links ?? [])].map((entry) => {
-              const url = new URL(entry.route, "https://bcr.invalid");
-              return url.pathname === "/reader" ? url.searchParams.get("book") : null;
-            }),
-          );
-          const mapped = new Map(
-            (item.readerBindings ?? []).map((binding) => {
-              const next = bindings.find((entry) => entry.book === binding.target);
-              return [binding.book, next ? { ...next, book: binding.book } : binding];
-            }),
-          );
-          for (const binding of bindings)
-            if (needed.has(binding.book) && !mapped.has(binding.book))
-              mapped.set(binding.book, binding);
-          return { ...item, readerBindings: [...mapped.values()] };
-        }),
-      })),
-    },
-  };
+  return { ...backup, library: bindPackageLibrary(backup.library, bindings) };
 }
+
 export async function restoreResearchPackage(
   prepared: PreparedResearchPackage,
   write: (change: (library: ResearchLibrary) => ResearchLibrary) => Promise<void>,
@@ -460,9 +406,8 @@ export async function researchVolumeStatus(
   const { readerTransferState, checkReaderTransfer } =
     await import("@bcr/reader-studio/research-transfer");
   const { state } = readerTransferState();
-  const existing = prepared.volume.catalog.books.filter((entry) =>
-    state.library.some((book) => book.id === entry.target),
-  );
+  const byId = new Map(state.library.map((book) => [book.id, book]));
+  const existing = prepared.volume.catalog.books.filter((entry) => byId.has(entry.target));
   const unavailable = new Set(
     await checkReaderTransfer(
       existing.map((entry) => entry.target),
@@ -472,13 +417,11 @@ export async function researchVolumeStatus(
   );
   if (readerTransferState().state.library !== state.library)
     throw new Error("书库在核验期间发生变化，请重新核验来源状态");
-  return prepared.volume.catalog.books.map((entry) => {
-    const book = state.library.find((book) => book.id === entry.target);
-    const status = !book
-      ? "missing"
-      : unavailable.has(entry.target) || book.source.ref?.hash !== entry.hash
-        ? "repair"
-        : "restored";
-    return { ...entry, state: status, restored: status === "restored" };
+  return prepared.volume.catalog.books.map((entry): ResearchSourceStatus => {
+    const book = byId.get(entry.target);
+    if (!book) return { ...entry, state: "missing", restored: false };
+    if (unavailable.has(entry.target) || book.source.ref?.hash !== entry.hash)
+      return { ...entry, state: "repair", restored: false };
+    return { ...entry, state: "restored", restored: true };
   });
 }

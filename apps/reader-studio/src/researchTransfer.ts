@@ -26,23 +26,20 @@ export function readerTransferState() {
     throw new Error("请先打开 Reader，待书库加载完成后再使用完整资料包");
   return { runtime, state };
 }
+function transferSnapshot(
+  book: ReturnType<typeof readerTransferState>["state"]["library"][number],
+) {
+  const snapshot = persistBook(book);
+  const sections = snapshot.sections.map((section) => {
+    if (section.html === undefined) return section;
+    return { ...section, html: sanitizeHtml(section.html).html };
+  });
+  return { ...snapshot, sections };
+}
 export function readerTransferStamp(ids: ReadonlyArray<string>): string {
-  return textVersion(
-    JSON.stringify(
-      readerTransferState()
-        .state.library.filter((book) => ids.includes(book.id))
-        .map((book) => {
-          const snapshot = persistBook(book);
-          return {
-            ...snapshot,
-            sections: snapshot.sections.map((section) => ({
-              ...section,
-              ...(section.html === undefined ? {} : { html: sanitizeHtml(section.html).html }),
-            })),
-          };
-        }),
-    ),
-  );
+  const selected = new Set(ids);
+  const books = readerTransferState().state.library.filter((book) => selected.has(book.id));
+  return textVersion(JSON.stringify(books.map(transferSnapshot)));
 }
 export async function checkReaderTransfer(
   ids: ReadonlyArray<string>,
@@ -85,9 +82,10 @@ export async function checkReaderTransfer(
 }
 function transferBackupState(ids: ReadonlyArray<string>) {
   const { state } = readerTransferState();
+  const selected = new Set(ids);
   return {
     ...state,
-    library: state.library.filter((book) => ids.includes(book.id)),
+    library: state.library.filter((book) => selected.has(book.id)),
     settings: DEFAULT_READER_SETTINGS,
     progressByBook: {},
     bookmarksByBook: {},
@@ -110,7 +108,9 @@ export function planReaderTransfer(ids: ReadonlyArray<string>, limit: number) {
     };
   });
   const manifest = readerBackupManifest(state, entries);
-  const canonical = decodeReaderBackup(manifest).books;
+  const canonical = new Map(
+    decodeReaderBackup(manifest).books.map((entry) => [entry.book.id, entry]),
+  );
   const headerBytes = new Blob([JSON.stringify(readerBackupManifest(state, []))]).size;
   const sizes = new Map(
     entries.map((entry) => [entry.book.id, new Blob([JSON.stringify(entry)]).size + 1]),
@@ -122,7 +122,7 @@ export function planReaderTransfer(ids: ReadonlyArray<string>, limit: number) {
   if (!volumes.length) volumes.push([]);
   return volumes.map((books) => ({
     books: books.map((book) => {
-      const entry = canonical.find((entry) => entry.book.id === book.id)!;
+      const entry = canonical.get(book.id)!;
       return {
         book: book.id,
         target: readerTransferIdentity(entry),

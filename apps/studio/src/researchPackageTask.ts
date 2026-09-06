@@ -1,31 +1,26 @@
+import {
+  decodeVolumeTaskState,
+  type VolumeTaskStates,
+  type VolumeTaskState,
+} from "./researchPackageState";
 import { textVersion } from "@bcr/core";
 import { decodeResearchBackup } from "./researchBackup";
-import { decodeVolumeCatalog } from "./researchVolumes";
+import { decodeVolumeCatalog, matchesVolumeBook, groupBooksByVolume } from "./researchVolumes";
 import type { ResearchPackagePlan } from "./researchPackage";
 export interface ResearchPackageTask {
-  readonly version: 1;
+  readonly version: 2;
   readonly plan: ResearchPackagePlan;
-  readonly states: Readonly<Record<number, string>>;
+  readonly states: VolumeTaskStates;
   readonly volumeBytes: number;
   readonly drafts: boolean;
 }
-const statuses = new Set([
-  "待生成",
-  "正在生成",
-  "正在保存",
-  "生成失败，可重试",
-  "已取消，可重试",
-  "已触发下载，可重新生成",
-  "已保存到文件",
-  "上次操作未完成，可重试",
-]);
 export function decodePackageTask(raw: string | undefined): ResearchPackageTask | undefined {
   if (!raw) return undefined;
   if (new Blob([raw]).size > 40 * 1024 * 1024) throw new Error("分卷任务记录过大");
-  const task = JSON.parse(raw) as ResearchPackageTask;
+  const task = JSON.parse(raw) as Omit<ResearchPackageTask, "version"> & { version: 1 | 2 };
   if (
     !task ||
-    task.version !== 1 ||
+    (task.version !== 1 && task.version !== 2) ||
     typeof task.drafts !== "boolean" ||
     !Number.isSafeInteger(task.volumeBytes) ||
     task.volumeBytes <= 0 ||
@@ -53,10 +48,9 @@ export function decodePackageTask(raw: string | undefined): ResearchPackageTask 
   )
     throw new Error("分卷任务快照校验失败");
   const allBooks: string[] = [];
+  const grouped = groupBooksByVolume(catalog.books);
   for (const [index, volume] of plan.volumes.entries()) {
-    const books = catalog.books
-      .filter((book) => book.volume === index + 1)
-      .map((book) => book.book);
+    const books = (grouped.get(index + 1) ?? []).map((book) => book.book);
     if (
       !volume ||
       JSON.stringify(volume.books) !== JSON.stringify(books) ||
@@ -78,14 +72,14 @@ export function decodePackageTask(raw: string | undefined): ResearchPackageTask 
     )
   )
     throw new Error("分卷任务引用无效");
-  const states: Record<number, string> = {};
+  const states: Record<number, VolumeTaskState> = {};
   for (const [key, value] of Object.entries(task.states)) {
     const index = Number(key);
-    if (!Number.isSafeInteger(index) || index < 0 || index >= catalog.total || !statuses.has(value))
+    if (!Number.isSafeInteger(index) || index < 0 || index >= catalog.total)
       throw new Error("分卷任务状态无效");
-    states[index] = value === "正在生成" || value === "正在保存" ? "上次操作未完成，可重试" : value;
+    states[index] = decodeVolumeTaskState(value, task.version);
   }
-  return { ...task, states };
+  return { ...task, version: 2, states };
 }
 export async function verifyPackageTask(
   task: ResearchPackageTask,
@@ -103,15 +97,8 @@ export async function verifyPackageTask(
     const current = planReaderTransfer(task.plan.books, 512 * 1024 * 1024).flatMap(
       (volume) => volume.books,
     );
-    if (
-      task.plan.catalog.books.some(
-        (book) =>
-          !current.some(
-            (entry) =>
-              entry.book === book.book && entry.target === book.target && entry.hash === book.hash,
-          ),
-      )
-    )
+    const byId = new Map(current.map((book) => [book.book, book]));
+    if (task.plan.catalog.books.some((book) => !matchesVolumeBook(book, byId.get(book.book))))
       throw new Error("任务来源身份已变化，请重新检查资料包");
   };
   verify();
