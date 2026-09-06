@@ -1,4 +1,6 @@
-import { openLazyTxt, LAZY_TXT_MIN_BYTES, materializeTxt } from "./lazyTxt";
+import { storeStructuredContent } from "./structuredContent";
+import { openLazyTxt, LAZY_TXT_MIN_BYTES } from "./lazyTxt";
+import { materializeReaderContent } from "./readerContent";
 import { contentHash, hashReadableStream, type ArtifactRef, type ArtifactStore } from "@bcr/core";
 import { MemoryStore } from "@bcr/storage-opfs";
 import { Effect } from "effect";
@@ -22,13 +24,25 @@ export async function parseReaderFile(
   id: string,
   signal?: AbortSignal,
 ): Promise<ReaderBook> {
+  return storeStructuredContent(
+    runtime,
+    await parseReaderSource(runtime, file, id, signal),
+    signal,
+  );
+}
+
+async function parseReaderSource(
+  runtime: ReaderRuntime,
+  file: File,
+  id: string,
+  signal?: AbortSignal,
+): Promise<ReaderBook> {
   const format = formatForFile(file);
   if (format === "txt" && file.size >= LAZY_TXT_MIN_BYTES) {
     return openLazyTxt({ file, id, format, ...(signal ? { signal } : {}) });
   }
-  // PDF.js owns a rendering worker and keeps a Blob URL for canvas pages; keep
-  // its lifecycle on the main thread until the dedicated page renderer lands.
-  if (format === "pdf") {
+  // Resource providers own live archive/PDF handles and cannot cross structured clone.
+  if (format === "pdf" || format === "epub" || format === "cbz") {
     return openReaderFile(file, id, signal);
   }
   runtime.parseSession ??= createReaderParseSession();
@@ -262,7 +276,7 @@ export async function prepareReaderDocumentHandoff(
   };
   await Effect.runPromise(hostArtifacts.putStream(sourceRef, blob.stream()));
 
-  const content = readerBookToDocumentContent(await materializeTxt(book), sourceRef);
+  const content = readerBookToDocumentContent(await materializeReaderContent(book), sourceRef);
   const bytes = new TextEncoder().encode(JSON.stringify(content));
   const hash = contentHash(bytes);
   const contentRef: ArtifactRef = {

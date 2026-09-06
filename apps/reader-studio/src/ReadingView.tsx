@@ -1,5 +1,5 @@
-import { isLazyTxt } from "./lazyTxt";
-import { useTxtSection } from "./useTxtSection";
+import { hasDeferredContent } from "./readerContent";
+import { useSectionContent } from "./useSectionContent";
 import { Check } from "lucide-react";
 import {
   memo,
@@ -28,7 +28,7 @@ import {
 import { formatBadge, percent } from "./readerPresentation";
 import { readerTypographyStyle } from "./readerTypography";
 import { useReaderFonts } from "./useReaderFonts";
-import { VirtualTextSections, SECTION_WINDOW_THRESHOLD } from "./VirtualTextSections";
+import { VirtualPublicationSections, SECTION_WINDOW_THRESHOLD } from "./VirtualPublicationSections";
 import { SectionView } from "./SectionView";
 import { PagedReadingView } from "./PagedReadingView";
 import { getReaderState, reader, useReader } from "./store";
@@ -74,7 +74,7 @@ function ContinuousReadingView(props: {
   const progress = savedProgress?.percentage ?? 0;
   const searchQuery = useReader((state) => state.query);
   const searchReveal = useReader((state) => state.searchReveal);
-  const activeContent = useTxtSection(
+  const activeContent = useSectionContent(
     props.book.sections.find((section) => section.id === activeSectionId),
   );
   const containerRef = useRef<HTMLDivElement>(null);
@@ -245,7 +245,7 @@ function ContinuousReadingView(props: {
     restoreCancelRef.current = settleReaderLayout(containerRef.current, attemptScroll, () => {
       programmaticScrollRef.current = false;
       programmaticScrollTargetRef.current = null;
-      if (isLazyTxt(props.book) && searchReveal) reader.clearSearchReveal(searchReveal.id);
+      if (hasDeferredContent(props.book) && searchReveal) reader.clearSearchReveal(searchReveal.id);
     });
     return () => {
       cancelled = true;
@@ -265,7 +265,7 @@ function ContinuousReadingView(props: {
   useEffect(() => {
     const reveal = searchReveal;
     if (
-      isLazyTxt(props.book) ||
+      hasDeferredContent(props.book) ||
       !activeContent.ready ||
       reveal === null ||
       reveal.bookId !== props.book.id ||
@@ -372,7 +372,7 @@ function ContinuousReadingView(props: {
         onScroll={() => {
           if (layoutCalibrationRef.current || !activeContent.ready) return;
           if (programmaticScrollRef.current) {
-            if (isLazyTxt(props.book)) return;
+            if (hasDeferredContent(props.book)) return;
             const expected = programmaticScrollTargetRef.current;
             const current = {
               top: containerRef.current?.scrollTop ?? 0,
@@ -419,9 +419,8 @@ function ContinuousReadingView(props: {
               book={props.book}
               onReady={() => setContentReadyVersion((version) => version + 1)}
             />
-          ) : props.book.source.format === "txt" &&
-            props.book.sections.length > SECTION_WINDOW_THRESHOLD ? (
-            <VirtualTextSections
+          ) : props.book.sections.length > SECTION_WINDOW_THRESHOLD ? (
+            <VirtualPublicationSections
               key={props.book.id}
               book={props.book}
               activeSectionId={activeSectionId}

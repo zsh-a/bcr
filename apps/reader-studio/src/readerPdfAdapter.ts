@@ -1,3 +1,4 @@
+import { attachReaderContent } from "./readerContent";
 import type { ReaderBook, ReaderOpenInput, ReaderSection, ReaderTocItem } from "@bcr/reader-core";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { baseSource, makeBook } from "./readerAdapterShared";
@@ -117,6 +118,12 @@ export async function mapPdfOutlineToToc(
   return walk(outline, "root");
 }
 
+const sharedDocuments = new WeakMap<ReaderSection, PDFDocumentProxy>();
+export function readerPdfDocument(book: ReaderBook): PDFDocumentProxy | undefined {
+  const section = book.sections[0];
+  return section && sharedDocuments.get(section);
+}
+
 export async function openPdf(input: ReaderOpenInput): Promise<ReaderBook> {
   const pdfjs = await import("pdfjs-dist");
   pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -125,6 +132,7 @@ export async function openPdf(input: ReaderOpenInput): Promise<ReaderBook> {
   ).toString();
   const objectUrl = URL.createObjectURL(input.file);
   const loadingTask = pdfjs.getDocument(objectUrl);
+  let retained = false;
   try {
     // Let PDF.js stream the Blob URL in its own worker; avoid eagerly copying
     // the entire document into a main-thread ArrayBuffer.
@@ -140,13 +148,14 @@ export async function openPdf(input: ReaderOpenInput): Promise<ReaderBook> {
       // Some malformed PDFs expose a broken outline while their pages remain
       // readable. Keep the page reader available and fall back to page list.
     }
+    const deferred = document.numPages > 32 || input.file.size >= 256 * 1024;
     const sections: ReaderSection[] = [];
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       if (input.signal?.aborted) throw new DOMException("Aborted", "AbortError");
       const page = await document.getPage(pageNumber);
-      const content = await page.getTextContent();
+      const content = deferred ? undefined : await page.getTextContent();
       const viewport = page.getViewport({ scale: 1 });
-      const text = content.items
+      const text = content?.items
         .map((item) => ("str" in item ? item.str : ""))
         .join(" ")
         .trim();
@@ -155,20 +164,47 @@ export async function openPdf(input: ReaderOpenInput): Promise<ReaderBook> {
         order: pageNumber - 1,
         label: `Page ${String(pageNumber).padStart(3, "0")}`,
         kind: "pdf-page",
-        text: text || `PDF page ${pageNumber}`,
+        text: deferred ? "" : text || `PDF page ${pageNumber}`,
+        ...(deferred ? { contentInfo: { textLength: 0 } } : {}),
         pageNumber,
         pageAspectRatio: viewport.width / viewport.height,
       });
       page.cleanup();
     }
+    const contentSections = deferred
+      ? attachReaderContent(sections, {
+          async read(index, signal) {
+            signal.throwIfAborted();
+            const page = await document.getPage(index + 1);
+            try {
+              const content = await page.getTextContent();
+              signal.throwIfAborted();
+              const text = content.items
+                .map((item) => ("str" in item ? item.str : ""))
+                .join(" ")
+                .trim();
+              return { text: text || `PDF page ${index + 1}` };
+            } finally {
+              page.cleanup();
+            }
+          },
+          dispose: () => {
+            void loadingTask.destroy().catch(() => {});
+          },
+        })
+      : sections;
+    if (deferred) {
+      sharedDocuments.set(contentSections[0]!, document);
+      retained = true;
+    }
     return {
-      ...makeBook(input, sections, toc === undefined ? {} : { toc }),
+      ...makeBook(input, contentSections, toc === undefined ? {} : { toc }),
       source: { ...baseSource(input, objectUrl) },
     };
   } catch (reason) {
     URL.revokeObjectURL(objectUrl);
     throw reason;
   } finally {
-    await loadingTask.destroy();
+    if (!retained) await loadingTask.destroy();
   }
 }

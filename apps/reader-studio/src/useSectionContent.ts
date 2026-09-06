@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import type { ReaderSection } from "@bcr/reader-core";
-import { loadTxtSection, subscribeTxtSection, txtSectionReady } from "./lazyTxt";
+import { loadSectionContent, subscribeSectionContent, sectionContentReady } from "./readerContent";
 
-export function useTxtSection(section: ReaderSection | undefined, enabled = true) {
+export function useSectionContent(section: ReaderSection | undefined, enabled = true) {
   const target = enabled ? section : undefined;
   const subscribe = useCallback(
-    (listener: () => void) => subscribeTxtSection(target, listener),
+    (listener: () => void) => subscribeSectionContent(target, listener),
     [target],
   );
-  const snapshot = useCallback(() => txtSectionReady(target), [target]);
+  const snapshot = useCallback(() => sectionContentReady(target), [target]);
   const ready = useSyncExternalStore(subscribe, snapshot, snapshot);
   const [failure, setFailure] = useState<{ section: ReaderSection; message: string } | null>(null);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     if (!target || ready) return;
     let cancelled = false;
-    void loadTxtSection(target).catch((reason: unknown) => {
+    void loadSectionContent(target).catch((reason: unknown) => {
       if (!cancelled)
         setFailure({
           section: target,

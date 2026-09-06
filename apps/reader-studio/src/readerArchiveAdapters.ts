@@ -1,3 +1,5 @@
+import { attachReaderContent, type SectionContent } from "./readerContent";
+import { sectionReadingWeight } from "@bcr/reader-core";
 import {
   BlobReader,
   BlobWriter,
@@ -12,7 +14,7 @@ import { escapeHtml, sanitizeHtml } from "./readerMarkup";
 import { firstLocalElement, localName, metadataValue } from "./readerXml";
 import { applyPublicationStyles, publicationImageSize } from "./publicationStyles";
 
-const IMAGE_EXTENSIONS = /\\.(avif|bmp|gif|jpe?g|png|svg|webp)$/iu;
+const IMAGE_EXTENSIONS = /\.(avif|bmp|gif|jpe?g|png|svg|webp)$/iu;
 
 function entryMap(entries: ReadonlyArray<Entry>): Map<string, FileEntry> {
   return new Map(
@@ -224,10 +226,110 @@ async function epubToc(
   }
 }
 
+async function readEpubSection(
+  files: Map<string, FileEntry>,
+  item: { href: string },
+  order: number,
+  resources: boolean,
+  signal?: AbortSignal,
+): Promise<{ section: ReaderSection; urls: string[]; images: string[]; bytes: number }> {
+  const entry = files.get(item.href)!;
+  const allocatedUrls: string[] = [];
+  const imageResources = new Map<string, { url: string; width?: number; height?: number }>();
+  try {
+    signal?.throwIfAborted();
+    const rawDocument = new DOMParser().parseFromString(await readArchiveText(entry), "text/html");
+    const chapterBase = item.href.split("/").slice(0, -1).join("/");
+    for (const style of rawDocument.querySelectorAll("style, link[rel=stylesheet]")) {
+      const path = style.getAttribute("href");
+      const resource = path === null ? undefined : files.get(resolveArchivePath(chapterBase, path));
+      applyPublicationStyles(
+        rawDocument,
+        resource ? await readArchiveText(resource) : (style.textContent ?? ""),
+      );
+    }
+    // Fixed-layout comics often wrap a single raster page in an SVG image.
+    // Resolve it through the same local resource pipeline as ordinary img.
+    for (const svg of rawDocument.querySelectorAll("svg")) {
+      const embedded = svg.querySelectorAll("image");
+      if (embedded.length !== 1 || svg.querySelector("path, text, rect, circle, polygon")) continue;
+      const source = embedded[0]?.getAttribute("href") ?? embedded[0]?.getAttribute("xlink:href");
+      if (!source) continue;
+      const image = rawDocument.createElement("img");
+      image.setAttribute("src", source);
+      image.setAttribute("alt", svg.querySelector("title")?.textContent ?? "");
+      svg.replaceWith(image);
+    }
+    const parsed = sanitizeHtml(rawDocument.documentElement.outerHTML);
+    const title = parsed.title ?? `Chapter ${order + 1}`;
+    const htmlDocument = new DOMParser().parseFromString(parsed.html, "text/html");
+    for (const image of resources ? htmlDocument.querySelectorAll("img[src], svg image") : []) {
+      const attribute = localName(image) === "image" ? "href" : "src";
+      const source = image.getAttribute(attribute) ?? image.getAttribute("xlink:href");
+      if (!source) continue;
+      const imageEntry = files.get(resolveArchivePath(chapterBase, source));
+      if (imageEntry === undefined) {
+        image.removeAttribute(attribute);
+        image.removeAttribute("xlink:href");
+        continue;
+      }
+      let resource = imageResources.get(imageEntry.filename);
+      if (!resource) {
+        const blob = await imageEntry.getData(
+          new BlobWriter(archiveMime(imageEntry.filename)),
+          signal ? { signal } : {},
+        );
+        const url = URL.createObjectURL(blob);
+        allocatedUrls.push(url);
+        resource = { url, ...(await publicationImageSize(blob)) };
+        imageResources.set(imageEntry.filename, resource);
+      }
+      image.setAttribute(attribute, resource.url);
+      image.removeAttribute("xlink:href");
+      image.setAttribute("data-reader-resource", imageEntry.filename);
+      image.setAttribute("loading", "lazy");
+      image.setAttribute("decoding", "async");
+      if (resource.width && resource.height) {
+        if (!image.hasAttribute("width")) image.setAttribute("width", String(resource.width));
+        if (!image.hasAttribute("height")) image.setAttribute("height", String(resource.height));
+      }
+    }
+    const section: ReaderSection = {
+      // href is the semantic identity; keep it in the id so a refreshed
+      // spine/order does not strand a saved Locator.
+      id: `epub:${item.href}`,
+      order,
+      label: title,
+      kind: "text",
+      text: parsed.text,
+      html: htmlDocument.body?.innerHTML ?? parsed.html,
+      href: item.href,
+    };
+    signal?.throwIfAborted();
+    const images = [...htmlDocument.querySelectorAll<HTMLImageElement>("img[src]")].map((image) =>
+      image.getAttribute("src")!,
+    );
+    const imageBytes = [...imageResources.values()].reduce(
+      (sum, image) => sum + (image.width ?? 1000) * (image.height ?? 1400) * 4,
+      0,
+    );
+    return {
+      section,
+      urls: allocatedUrls,
+      images,
+      bytes: imageBytes + (section.text.length + (section.html?.length ?? 0)) * 2,
+    };
+  } catch (error) {
+    revokeObjectUrls(allocatedUrls);
+    throw error;
+  }
+}
+
 export async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
   const reader = new ZipReader(new BlobReader(input.file));
   const allocatedUrls: string[] = [];
   let succeeded = false;
+  let deferred = false;
   try {
     const entries = await reader.getEntries();
     const files = entryMap(entries);
@@ -270,83 +372,35 @@ export async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
       .filter((candidate) => localName(candidate) === "itemref")
       .map((candidate) => candidate.getAttribute("idref"))
       .filter((id): id is string => id !== null);
+    const expandedSize = [...files.values()].reduce(
+      (sum, entry) => sum + entry.uncompressedSize,
+      0,
+    );
+    deferred = expandedSize >= 256 * 1024 || spineItems.length > 32;
     const sections: ReaderSection[] = [];
-    const imageResources = new Map<string, { url: string; width?: number; height?: number }>();
     for (const [order, id] of spineItems.entries()) {
       if (input.signal?.aborted) throw new DOMException("Aborted", "AbortError");
       const item = manifest.get(id);
       if (item === undefined) continue;
       const entry = files.get(item.href);
       if (entry === undefined) continue;
-      const rawDocument = new DOMParser().parseFromString(
-        await readArchiveText(entry),
-        "text/html",
+      const chapter = await readEpubSection(files, item, order, !deferred, input.signal);
+      allocatedUrls.push(...chapter.urls);
+      const section = chapter.section;
+      sections.push(
+        deferred
+          ? {
+              ...section,
+              text: "",
+              html: undefined,
+              contentInfo: {
+                textLength: section.text.length,
+                imageCount: chapter.images.length,
+                readingWeight: sectionReadingWeight(section),
+              },
+            }
+          : section,
       );
-      const chapterBase = item.href.split("/").slice(0, -1).join("/");
-      for (const style of rawDocument.querySelectorAll("style, link[rel=stylesheet]")) {
-        const path = style.getAttribute("href");
-        const resource =
-          path === null ? undefined : files.get(resolveArchivePath(chapterBase, path));
-        applyPublicationStyles(
-          rawDocument,
-          resource ? await readArchiveText(resource) : (style.textContent ?? ""),
-        );
-      }
-      // Fixed-layout comics often wrap a single raster page in an SVG image.
-      // Resolve it through the same local resource pipeline as ordinary img.
-      for (const svg of rawDocument.querySelectorAll("svg")) {
-        const embedded = svg.querySelectorAll("image");
-        if (embedded.length !== 1 || svg.querySelector("path, text, rect, circle, polygon"))
-          continue;
-        const source = embedded[0]?.getAttribute("href") ?? embedded[0]?.getAttribute("xlink:href");
-        if (!source) continue;
-        const image = rawDocument.createElement("img");
-        image.setAttribute("src", source);
-        image.setAttribute("alt", svg.querySelector("title")?.textContent ?? "");
-        svg.replaceWith(image);
-      }
-      const parsed = sanitizeHtml(rawDocument.documentElement.outerHTML);
-      const title = parsed.title ?? `Chapter ${order + 1}`;
-      const htmlDocument = new DOMParser().parseFromString(parsed.html, "text/html");
-      for (const image of htmlDocument.querySelectorAll("img[src], svg image")) {
-        const attribute = localName(image) === "image" ? "href" : "src";
-        const source = image.getAttribute(attribute) ?? image.getAttribute("xlink:href");
-        if (!source) continue;
-        const imageEntry = files.get(resolveArchivePath(chapterBase, source));
-        if (imageEntry === undefined) {
-          image.removeAttribute(attribute);
-          image.removeAttribute("xlink:href");
-          continue;
-        }
-        let resource = imageResources.get(imageEntry.filename);
-        if (!resource) {
-          const blob = await imageEntry.getData(new BlobWriter(archiveMime(imageEntry.filename)));
-          const url = URL.createObjectURL(blob);
-          allocatedUrls.push(url);
-          resource = { url, ...(await publicationImageSize(blob)) };
-          imageResources.set(imageEntry.filename, resource);
-        }
-        image.setAttribute(attribute, resource.url);
-        image.removeAttribute("xlink:href");
-        image.setAttribute("data-reader-resource", imageEntry.filename);
-        image.setAttribute("loading", "lazy");
-        image.setAttribute("decoding", "async");
-        if (resource.width && resource.height) {
-          if (!image.hasAttribute("width")) image.setAttribute("width", String(resource.width));
-          if (!image.hasAttribute("height")) image.setAttribute("height", String(resource.height));
-        }
-      }
-      sections.push({
-        // href is the semantic identity; keep it in the id so a refreshed
-        // spine/order does not strand a saved Locator.
-        id: `epub:${item.href}`,
-        order,
-        label: title,
-        kind: "text",
-        text: parsed.text,
-        html: htmlDocument.body?.innerHTML ?? parsed.html,
-        href: item.href,
-      });
     }
     if (sections.length === 0) throw new Error("EPUB spine 没有可读章节");
 
@@ -370,7 +424,32 @@ export async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
     const title = metadataValue(packageDocument, "title");
     const author = metadataValue(packageDocument, "creator");
     const language = metadataValue(packageDocument, "language");
-    const book = makeBook(input, sections, {
+    const publicationSections = deferred
+      ? attachReaderContent(sections, {
+          budget: { bytes: 48 * 1024 * 1024, entries: 16 },
+          async read(index, signal, purpose): Promise<SectionContent> {
+            const metadata = sections[index]!;
+            const chapter = await readEpubSection(
+              files,
+              { href: metadata.href! },
+              metadata.order,
+              purpose === "display",
+              signal,
+            );
+            return {
+              text: chapter.section.text,
+              html: chapter.section.html,
+              images: chapter.images,
+              bytes: chapter.bytes,
+              dispose: () => revokeObjectUrls(chapter.urls),
+            };
+          },
+          dispose: () => {
+            void reader.close().catch(() => {});
+          },
+        })
+      : sections;
+    const book = makeBook(input, publicationSections, {
       ...(title === undefined ? {} : { title }),
       ...(author === undefined ? {} : { author }),
       ...(language === undefined ? {} : { language }),
@@ -398,7 +477,7 @@ export async function openEpub(input: ReaderOpenInput): Promise<ReaderBook> {
     };
   } finally {
     if (!succeeded) revokeObjectUrls(allocatedUrls);
-    await reader.close();
+    if (!succeeded || !deferred) await reader.close();
   }
 }
 
@@ -510,7 +589,8 @@ export async function openDocx(input: ReaderOpenInput): Promise<ReaderBook> {
 export async function openCbz(input: ReaderOpenInput): Promise<ReaderBook> {
   const reader = new ZipReader(new BlobReader(input.file));
   const allocatedUrls: string[] = [];
-  let succeeded = false;
+  let succeeded = false,
+    deferred = false;
   try {
     const entries = await reader.getEntries();
     const images = entries
@@ -518,27 +598,61 @@ export async function openCbz(input: ReaderOpenInput): Promise<ReaderBook> {
         (entry): entry is FileEntry => !entry.directory && IMAGE_EXTENSIONS.test(entry.filename),
       )
       .sort((a, b) => a.filename.localeCompare(b.filename, undefined, { numeric: true }));
-    if (images.length === 0) throw new Error("CBZ 中没有可读图片");
+    if (!images.length) throw new Error("CBZ 中没有可读图片");
+    deferred = images.length > 8 || input.file.size >= 256 * 1024;
     const sections: ReaderSection[] = [];
     for (const [order, entry] of images.entries()) {
-      if (input.signal?.aborted) throw new DOMException("Aborted", "AbortError");
-      const imageUrl = await archiveObjectUrl(entry, archiveMime(entry.filename), allocatedUrls);
+      input.signal?.throwIfAborted();
+      const text = `Page ${order + 1}`;
       sections.push({
         id: `page-${order + 1}`,
         order,
         label: `Page ${String(order + 1).padStart(3, "0")}`,
         kind: "image",
-        text: `Page ${order + 1}`,
-        imageUrl,
+        text: deferred ? "" : text,
         imageAlt: entry.filename,
+        ...(deferred
+          ? { contentInfo: { textLength: text.length, imageCount: 1 } }
+          : {
+              imageUrl: await archiveObjectUrl(entry, archiveMime(entry.filename), allocatedUrls),
+            }),
       });
     }
-    const coverUrl = sections[0]?.imageUrl;
-    const book = makeBook(input, sections, coverUrl === undefined ? {} : { coverUrl });
+    const coverUrl = deferred
+      ? await archiveObjectUrl(images[0]!, archiveMime(images[0]!.filename), allocatedUrls)
+      : sections[0]?.imageUrl;
+    const content = deferred
+      ? attachReaderContent(sections, {
+          budget: { bytes: 48 * 1024 * 1024, entries: 12 },
+          async read(index, signal, purpose) {
+            signal.throwIfAborted();
+            const text = `Page ${index + 1}`;
+            if (purpose === "text") return { text };
+            const entry = images[index]!;
+            const blob = await entry.getData(
+              new BlobWriter(archiveMime(entry.filename)),
+              signal ? { signal } : {},
+            );
+            signal.throwIfAborted();
+            const size = await publicationImageSize(blob);
+            const imageUrl = URL.createObjectURL(blob);
+            return {
+              text,
+              imageUrl,
+              bytes: (size?.width ?? 1000) * (size?.height ?? 1400) * 4 + blob.size,
+              dispose: () => URL.revokeObjectURL(imageUrl),
+            };
+          },
+          dispose: () => {
+            void reader.close().catch(() => {});
+          },
+        })
+      : sections;
+    const book = makeBook(input, content, coverUrl === undefined ? {} : { coverUrl });
     succeeded = true;
     return book;
   } finally {
     if (!succeeded) revokeObjectUrls(allocatedUrls);
-    await reader.close();
+    if (!succeeded || !deferred) await reader.close();
   }
 }

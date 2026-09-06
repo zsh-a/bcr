@@ -1,3 +1,6 @@
+import { useSectionContent } from "./useSectionContent";
+import { sectionImages } from "./readerContent";
+import type { ReaderSection } from "@bcr/reader-core";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Minus, Plus, Images } from "lucide-react";
 import { createLocator, type ReaderBook } from "@bcr/reader-core";
@@ -25,6 +28,13 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
   const pages = useMemo(
     () =>
       book.sections.flatMap((section) => {
+        if (section.contentInfo?.imageCount)
+          return Array.from({ length: section.contentInfo.imageCount }, (_, index) => ({
+            section,
+            index,
+            count: section.contentInfo!.imageCount!,
+            src: "",
+          }));
         if (section.imageUrl) return [{ section, index: 0, count: 1, src: section.imageUrl }];
         const document = new DOMParser().parseFromString(section.html ?? "", "text/html");
         const images = [...document.querySelectorAll<HTMLImageElement>("img[src]")];
@@ -230,9 +240,11 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
             style={{ width: `${zoom * 100}%`, direction }}
           >
             {pages.slice(current, current + (spread ? 2 : 1)).map((item, offset) => (
-              <img
+              <ContentImage
                 key={`${item.section.id}:${item.index}`}
-                src={item.src}
+                section={item.section}
+                index={item.index}
+                fallback={item.src}
                 alt={`第 ${current + offset + 1} 页 · ${item.section.label}`}
                 draggable={false}
                 style={
@@ -317,7 +329,12 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
                       setThumbnails(false);
                     }}
                   >
-                    <img src={item.src} alt="" loading="lazy" />
+                    <ContentImage
+                      section={item.section}
+                      index={item.index}
+                      fallback={item.src}
+                      alt=""
+                    />
                     <span>{index + 1}</span>
                   </button>
                 );
@@ -330,5 +347,34 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
         </ReaderSheet>
       )}
     </section>
+  );
+}
+
+function ContentImage(props: {
+  section: ReaderSection;
+  index: number;
+  fallback: string;
+  alt: string;
+  draggable?: boolean;
+  style?: React.CSSProperties | undefined;
+  onLoad?: () => void;
+}) {
+  const content = useSectionContent(props.section);
+  const src = sectionImages(props.section)[props.index] ?? props.fallback;
+  if (content.error)
+    return (
+      <button type="button" onClick={content.retry}>
+        图片加载失败，重试
+      </button>
+    );
+  if (!content.ready || !src) return <span role="status">正在加载图片…</span>;
+  return (
+    <img
+      src={src}
+      alt={props.alt}
+      draggable={props.draggable}
+      style={props.style}
+      onLoad={props.onLoad}
+    />
   );
 }

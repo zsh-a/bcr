@@ -1,5 +1,5 @@
 import { importReaderFile } from "../src/readerImports";
-import { loadTxtSection } from "../src/lazyTxt";
+import { loadSectionContent } from "../src/readerContent";
 import { describe, expect, it } from "vitest";
 import { Context, Effect, Layer } from "effect";
 import { artifactStore, ArtifactStoreTag, contentHash } from "@bcr/core";
@@ -61,7 +61,7 @@ describe("Reader portable backup", () => {
       new File([text], "lazy.txt", { type: "text/plain" }),
     );
     expect(book.sections[0]!.textRange).toBeDefined();
-    await loadTxtSection(book.sections[0]!);
+    await loadSectionContent(book.sections[0]!);
     const state = { ...getReaderState(), library: [book], activeBookId: book.id };
     const backup = await inspectReaderBackup(await createReaderBackup(original, state));
     expect(
@@ -72,7 +72,7 @@ describe("Reader portable backup", () => {
     const independent = await runtime();
     const restored = (await prepareReaderRestore(independent, backup, []))[0]!;
     expect(restored.sections.every((section) => !section.text)).toBe(true);
-    await loadTxtSection(restored.sections[999]!);
+    await loadSectionContent(restored.sections[999]!);
     expect(restored.sections[999]!.text).toBe(text.split("\n\n")[999]);
     const malformed = JSON.parse(JSON.stringify(backup.manifest));
     malformed.books[0]!.book.sections[0] = {

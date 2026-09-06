@@ -1,5 +1,5 @@
 import { VirtualSectionList } from "./VirtualSectionList";
-import { SECTION_WINDOW_THRESHOLD } from "./VirtualTextSections";
+import { SECTION_WINDOW_THRESHOLD } from "./VirtualPublicationSections";
 import {
   Bookmark,
   Check,

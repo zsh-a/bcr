@@ -1,4 +1,4 @@
-import { loadTxtSection } from "../src/lazyTxt";
+import { loadSectionContent } from "../src/readerContent";
 import { artifactStore, ArtifactStoreTag, type ArtifactRef, type ArtifactStore } from "@bcr/core";
 import { progressForLocator } from "@bcr/reader-core";
 import {
@@ -128,7 +128,7 @@ describe("reader durable Document handoff", () => {
       expect(restored.sections.map((section) => section.textRange)).toEqual(
         book.sections.map((section) => section.textRange),
       );
-      await loadTxtSection(restored.sections[999]!);
+      await loadSectionContent(restored.sections[999]!);
       expect(restored.sections[999]!.text).toBe(text.split("\n\n")[999]);
       const raw = JSON.parse(values.get("bcr.reader.library.v1")!);
       raw.books[0].sections[0].textRange.end = text.length * 100;

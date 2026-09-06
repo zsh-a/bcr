@@ -1,4 +1,4 @@
-import { useTxtSection } from "./useTxtSection";
+import { useSectionContent } from "./useSectionContent";
 import { memo, useMemo, useLayoutEffect, useEffect, useRef, useState } from "react";
 import type { ReaderSection } from "@bcr/reader-core";
 import { highlightHtml, highlightText } from "./searchHighlight";
@@ -28,9 +28,9 @@ export const SectionView = memo(function SectionView(props: {
     return () => observer.disconnect();
   }, [props.virtualized]);
   const mounted = props.virtualized || visible || props.active || props.searchQuery !== "";
-  const content = useTxtSection(props.section, mounted === true);
+  const content = useSectionContent(props.section, mounted === true);
   useLayoutEffect(() => {
-    if (props.section.textRange && content.ready)
+    if ((props.section.textRange || props.section.contentInfo) && content.ready)
       root.current?.dispatchEvent(new Event("bcr-reader-content-ready", { bubbles: true }));
   }, [props.section, content.ready]);
   const html = useMemo(

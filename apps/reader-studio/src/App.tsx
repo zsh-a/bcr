@@ -1,4 +1,9 @@
-import { isLazyTxt, searchLazyTxt, loadTxtSection, subscribeTxtSection } from "./lazyTxt";
+import {
+  hasDeferredContent,
+  searchReaderContent,
+  loadSectionContent,
+  subscribeSectionContent,
+} from "./readerContent";
 import { createTextLocator } from "@bcr/reader-core";
 import {
   readerResearchDocuments,
@@ -129,9 +134,9 @@ export function App() {
     }
     let cancelled = false;
     const sequence = getReaderState().navigationSequence;
-    const release = subscribeTxtSection(section, () => {});
+    const release = subscribeSectionContent(section, () => {});
     const apply = async () => {
-      if (section) await loadTxtSection(section);
+      if (section) await loadSectionContent(section);
       if (cancelled || getReaderState().navigationSequence !== sequence) return;
       appliedRouteRef.current = routeKey;
       reader.openBook(book.id, routeSearch.section);
@@ -200,7 +205,7 @@ export function App() {
         route: `/reader?book=${encodeURIComponent(book.id)}`,
         updatedAt: book.updatedAt,
       });
-      if (!isLazyTxt(book)) records.push(...readerResearchDocuments(book));
+      if (!hasDeferredContent(book)) records.push(...readerResearchDocuments(book));
     }
     search.replaceSource("reader", records);
     return search.registerQuerySource?.(
@@ -208,8 +213,8 @@ export function App() {
       async (query, signal) => {
         const documents: SearchDocument[] = [];
         for (const book of library) {
-          if (!isLazyTxt(book)) continue;
-          const hits = await searchLazyTxt(book, query, signal);
+          if (!hasDeferredContent(book)) continue;
+          const hits = await searchReaderContent(book, query, signal);
           for (const hit of hits) {
             const scope = JSON.stringify(["reader", book.id, hit.sectionId]);
             const params = new URLSearchParams({ book: book.id, section: hit.sectionId });
@@ -235,7 +240,7 @@ export function App() {
           return (
             Array.isArray(value) &&
             value[0] === "reader" &&
-            library.some((book) => book.id === value[1] && isLazyTxt(book))
+            library.some((book) => book.id === value[1] && hasDeferredContent(book))
           );
         } catch {
           return false;

@@ -1,4 +1,4 @@
-import { loadTxtSection, subscribeTxtSection } from "./lazyTxt";
+import { loadSectionContent, subscribeSectionContent } from "./readerContent";
 import { createTextLocator, type SearchHit } from "@bcr/reader-core";
 import { getReaderState, reader } from "./store";
 
@@ -9,9 +9,9 @@ export async function openSearchHit(hit: SearchHit, index?: number): Promise<voi
   const target = state.library
     .find((book) => book.id === hit.bookId)
     ?.sections.find((section) => section.id === hit.sectionId);
-  const release = subscribeTxtSection(target, () => {});
+  const release = subscribeSectionContent(target, () => {});
   try {
-    if (target) await loadTxtSection(target);
+    if (target) await loadSectionContent(target);
     if (
       sequence !== searchNavigation ||
       getReaderState().navigationSequence !== state.navigationSequence ||

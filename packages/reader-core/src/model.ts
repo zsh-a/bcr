@@ -39,6 +39,15 @@ export interface ReaderSource {
 }
 
 export interface ReaderSection {
+  /** Stable index data; display resources belong to the content provider. */
+  readonly contentInfo?:
+    | {
+        readonly textLength: number;
+        readonly imageCount?: number;
+        readonly readingWeight?: number;
+        readonly storageRange?: { readonly start: number; readonly end: number };
+      }
+    | undefined;
   readonly id: string;
   readonly order: number;
   readonly label: string;
@@ -47,7 +56,7 @@ export interface ReaderSection {
   readonly textRange?:
     | { readonly start: number; readonly end: number; readonly length: number }
     | undefined;
-  /** For textRange sections this is cached content; load the section before resolving text anchors. */
+  /** For deferred sections this is cached content; load the section before resolving text anchors. */
   readonly text: string;
   readonly html?: string | undefined;
   readonly imageUrl?: string | undefined;

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { percentageForLocator, createLocator } from "@bcr/reader-core";
 import { scanTxt, readTxtRange, searchTxt, TXT_CHUNK_BYTES, validTxtRanges } from "../src/txtIndex";
-import { attachTxtSections, loadTxtSection, subscribeTxtSection } from "../src/lazyTxt";
+import { attachTxtSections } from "../src/lazyTxt";
+import { loadSectionContent, subscribeSectionContent } from "../src/readerContent";
 import { textSections } from "../src/readerMarkup";
 import { createDemoBook } from "../src/model";
 import { persistBook } from "../src/readerPersistence";
@@ -12,7 +13,7 @@ describe("demand-loaded TXT", () => {
       Array.from({ length: 15 }, (_, index) => `${index}${"正文".repeat(50000)}`).join("\n\n"),
     ]);
     const sections = attachTxtSections(blob, await scanTxt(blob));
-    for (const section of sections) await loadTxtSection(section);
+    for (const section of sections) await loadSectionContent(section);
     const retainedBytes = sections.reduce(
       (total, section) => total + (section.text.length + (section.html?.length ?? 0)) * 2,
       0,
@@ -53,8 +54,8 @@ describe("demand-loaded TXT", () => {
     const before = percentageForLocator(book, locator);
     const snapshot = persistBook(book);
     expect(sections.every((section) => section.text === "")).toBe(true);
-    const unpin = subscribeTxtSection(sections[0], () => {});
-    for (const section of sections) await loadTxtSection(section);
+    const unpin = subscribeSectionContent(sections[0], () => {});
+    for (const section of sections) await loadSectionContent(section);
     expect(sections.filter((section) => section.text).length).toBeLessThanOrEqual(128);
     expect(sections[0]!.text).not.toBe("");
     expect(sections[1]!.text).toBe("");

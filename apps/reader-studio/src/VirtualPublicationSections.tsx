@@ -6,7 +6,7 @@ import { SectionView } from "./SectionView";
 export const SECTION_WINDOW_THRESHOLD = 200;
 
 /** Keep the navigation target mounted so locator restoration can measure it. */
-export function VirtualTextSections(props: {
+export function VirtualPublicationSections(props: {
   book: ReaderBook;
   activeSectionId: string | null;
   searchQuery: string;

@@ -1,4 +1,6 @@
-import { attachTxtSections, isLazyTxt, openLazyTxt, LAZY_TXT_MIN_BYTES } from "./lazyTxt";
+import { restoreStructuredContent } from "./structuredContent";
+import { attachTxtSections, openLazyTxt, LAZY_TXT_MIN_BYTES } from "./lazyTxt";
+import { hasDeferredContent, releaseReaderContent, attachDeferredSource } from "./readerContent";
 import { validTxtRanges } from "./txtIndex";
 import { artifactPath, type ArtifactRef } from "@bcr/core";
 import { Effect } from "effect";
@@ -48,6 +50,7 @@ export interface PersistedBook {
     readonly order: number;
     readonly label: string;
     readonly kind: ReaderBook["sections"][number]["kind"];
+    readonly contentInfo?: ReaderBook["sections"][number]["contentInfo"];
     readonly textRange?: ReaderBook["sections"][number]["textRange"];
     readonly text: string;
     readonly html?: string | undefined;
@@ -154,9 +157,12 @@ export function persistBook(book: ReaderBook): PersistedBook {
       order: section.order,
       label: section.label,
       kind: section.kind,
+      ...(section.contentInfo ? { contentInfo: section.contentInfo } : {}),
       ...(section.textRange ? { textRange: section.textRange } : {}),
-      text: section.textRange ? "" : section.text,
-      ...(section.textRange === undefined && section.html !== undefined
+      text: section.textRange || section.contentInfo ? "" : section.text,
+      ...(section.textRange === undefined &&
+      section.contentInfo === undefined &&
+      section.html !== undefined
         ? { html: section.html }
         : {}),
       ...(section.pageNumber === undefined ? {} : { pageNumber: section.pageNumber }),
@@ -590,17 +596,27 @@ export function restoreSectionSnapshots(
   parsed: ReaderBook,
   snapshot: Pick<PersistedBook, "sections">,
 ): ReaderBook["sections"] {
-  if (isLazyTxt(parsed) && snapshot.sections.every((section) => section.textRange))
-    return parsed.sections;
   if (
     parsed.sections.length !== snapshot.sections.length ||
     parsed.sections.some((section, i) => section.kind !== snapshot.sections[i]?.kind)
   )
     throw new Error("源文件解析结构与资料包快照不一致");
+  if (
+    hasDeferredContent(parsed) &&
+    snapshot.sections.every((section) => section.textRange || section.contentInfo)
+  ) {
+    if (parsed.sections.some((section, i) => section.id !== snapshot.sections[i]?.id))
+      throw new Error("源文件章节标识与资料包快照不一致");
+    return parsed.sections;
+  }
+  // Legacy packages retain their exact text; they do not inherit deferred bindings.
+  releaseReaderContent(parsed);
   return snapshot.sections.map((section, i) => {
     const fresh = parsed.sections[i]!;
     return {
       ...fresh,
+      contentInfo: undefined,
+      textRange: undefined,
       ...section,
       // Saved Blob URLs belong to the exporting browser. Use freshly parsed
       // markup only when its text agrees; otherwise render the saved text.
@@ -614,6 +630,20 @@ async function restoreBook(
   persisted: PersistedBook,
   signal?: AbortSignal,
 ): Promise<RestoredBookResult> {
+  if (persisted.sections.some((section) => section.contentInfo?.storageRange)) {
+    try {
+      const projected = projectPersistedBook(persisted);
+      if (!projected.book) return projected;
+      const cached = await restoreStructuredContent(runtime, projected.book);
+      if (cached) return { book: cached };
+      const file = await fileFromSource(runtime, persisted);
+      if (!file) throw new Error("正文源文件不可用");
+      const rebuilt = await parseReaderFile(runtime, file, persisted.id, signal);
+      return { book: { ...projected.book, sections: rebuilt.sections } };
+    } catch (reason) {
+      return { issue: restoreIssue(persisted, reason) };
+    }
+  }
   if (
     persisted.source.format === "txt" &&
     (persisted.sections.some((section) => section.textRange) ||
@@ -771,9 +801,10 @@ export async function restoreReader(
           persistedBooks.map(async (persisted, index) => ({
             index,
             book:
-              persisted.source.format === "txt"
+              persisted.source.format === "txt" ||
+              persisted.sections.some((section) => section.contentInfo?.storageRange)
                 ? await restoreBook(runtime, persisted)
-                : projectPersistedBook(persisted),
+                : projectDeferredBook(runtime, persisted),
           })),
         )
       : await Promise.all(
@@ -810,13 +841,33 @@ export async function restoreReader(
       },
       pendingBookIds: deferBinary
         ? persistedBooks
-            .filter((persisted) => isBinaryBook(persisted) && persisted.source.ref !== undefined)
+            .filter(
+              (persisted) =>
+                isBinaryBook(persisted) &&
+                persisted.source.ref !== undefined &&
+                !persisted.sections.some((section) => section.contentInfo?.storageRange),
+            )
             .map((persisted) => persisted.id)
         : [],
     };
   } catch {
     return undefined;
   }
+}
+
+function projectDeferredBook(runtime: ReaderRuntime, persisted: PersistedBook): RestoredBookResult {
+  const projected = projectPersistedBook(persisted);
+  if (!projected.book || !hasDeferredContent(projected.book)) return projected;
+  return {
+    book: {
+      ...projected.book,
+      sections: attachDeferredSource(projected.book.sections, async (signal) => {
+        const result = await restoreBook(runtime, persisted, signal);
+        if (!result.book) throw new Error(result.issue?.reason ?? "正文源不可用");
+        return result.book;
+      }),
+    },
+  };
 }
 
 /** Rehydrate only the binary sources after the cached Reader projection is visible. */

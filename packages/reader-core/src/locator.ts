@@ -243,8 +243,14 @@ function readingWeights(book: ReaderBook) {
 /** Image pages and text use content weights, never the number of chapter boundaries. */
 export function sectionReadingWeight(section: ReaderSection): number {
   if (section.kind === "pdf-page" || section.kind === "image") return 1000;
+  if (section.contentInfo?.readingWeight !== undefined)
+    return Math.max(1, section.contentInfo.readingWeight);
   const images = section.html?.match(/<(?:img|svg)\b/giu)?.length ?? 0;
-  return Math.max(1, images * 1000 + (section.textRange?.length ?? section.text.trim().length));
+  return Math.max(
+    1,
+    images * 1000 +
+      (section.contentInfo?.textLength ?? section.textRange?.length ?? section.text.trim().length),
+  );
 }
 
 export function progressForLocator(

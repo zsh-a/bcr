@@ -1,4 +1,4 @@
-import { useTxtSection } from "./useTxtSection";
+import { useSectionContent } from "./useSectionContent";
 import {
   useCallback,
   useEffect,
@@ -36,7 +36,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
     props.book.sections.findIndex((section) => section.id === activeId),
   );
   const section = props.book.sections[sectionIndex];
-  const activeContent = useTxtSection(section);
+  const activeContent = useSectionContent(section);
   const viewportRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);

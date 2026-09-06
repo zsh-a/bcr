@@ -36,6 +36,7 @@ export {
   createTextLocator,
   resolveTextAnchor,
   sameLocator,
+  sectionReadingWeight,
 } from "./locator";
 export {
   buildSearchIndex,

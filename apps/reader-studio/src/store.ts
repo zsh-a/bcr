@@ -1,3 +1,4 @@
+import { releaseReaderContent, releaseBookResources } from "./readerContent";
 import { useSyncExternalStore } from "react";
 import {
   firstLocator,
@@ -24,19 +25,7 @@ import {
 
 const demo = createDemoBook();
 
-export function releaseBookResources(book: ReaderBook): void {
-  const embedded = new Set(
-    book.sections.flatMap((section) => section.html?.match(/blob:[^\s"'<>]+/gu) ?? []),
-  );
-  for (const url of embedded) URL.revokeObjectURL(url);
-  if (book.source.objectUrl !== undefined) URL.revokeObjectURL(book.source.objectUrl);
-  if (book.coverUrl !== undefined) URL.revokeObjectURL(book.coverUrl);
-  for (const section of book.sections) {
-    if (section.imageUrl !== undefined && section.imageUrl !== book.coverUrl) {
-      URL.revokeObjectURL(section.imageUrl);
-    }
-  }
-}
+export { releaseBookResources } from "./readerContent";
 
 function initialState(): ReaderState {
   const progress = progressForLocator(demo, firstLocator(demo), Date.now());
@@ -216,8 +205,13 @@ class ReaderStore {
       // under the same hash can invalidate a restored URL, so refresh the
       // in-memory publication with the newly parsed resources while keeping
       // the existing reading session and user metadata keyed by book id.
-      if (existing.source.objectUrl !== book.source.objectUrl) {
+      if (
+        existing.source.objectUrl !== book.source.objectUrl ||
+        existing.coverUrl !== book.coverUrl
+      ) {
         releaseBookResources(existing);
+      } else if (existing.sections !== book.sections) {
+        releaseReaderContent(existing);
       }
       const refreshed = {
         ...book,
@@ -281,8 +275,13 @@ class ReaderStore {
       releaseBookResources(book);
       return false;
     }
-    if (existing.source.objectUrl !== book.source.objectUrl) {
+    if (
+      existing.source.objectUrl !== book.source.objectUrl ||
+      existing.coverUrl !== book.coverUrl
+    ) {
       releaseBookResources(existing);
+    } else if (existing.sections !== book.sections) {
+      releaseReaderContent(existing);
     }
     const storedProgress = this.state.progressByBook[book.id];
     const progress =

@@ -1,4 +1,4 @@
-import { isLazyTxt, searchLazyTxt } from "./lazyTxt";
+import { hasDeferredContent, searchReaderContent } from "./readerContent";
 import {
   normalizeSearchQuery,
   searchLibrary,
@@ -16,7 +16,7 @@ export async function indexBook(
   book: ReaderBook,
   signal?: AbortSignal,
 ): Promise<void> {
-  if (isLazyTxt(book)) return;
+  if (hasDeferredContent(book)) return;
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
   if (runtime.indexSession !== undefined) {
     try {
@@ -86,7 +86,7 @@ export function searchIndexed(
   return searchIndexedDetailed(runtime, books, query).hits;
 }
 
-/** Lazy books are scanned in a worker; results are bounded and never populate the reading cache. */
+/** Deferred books search through their provider without populating the reading cache. */
 export async function searchReaderDetailed(
   runtime: ReaderRuntime,
   books: readonly ReaderBook[],
@@ -97,7 +97,7 @@ export async function searchReaderDetailed(
   let indexing = false;
   for (const book of books) {
     signal?.throwIfAborted();
-    if (isLazyTxt(book)) hits.push(...(await searchLazyTxt(book, query, signal)));
+    if (hasDeferredContent(book)) hits.push(...(await searchReaderContent(book, query, signal)));
     else {
       const result = searchIndexedDetailed(runtime, [book], query);
       hits.push(...result.hits);

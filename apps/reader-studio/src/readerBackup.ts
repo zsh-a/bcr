@@ -186,7 +186,9 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
       typeof source["mime"] !== "string" ||
       !finite(source["size"]) ||
       source["size"] < 0 ||
-      !["txt", "markdown", "html", "docx", "epub", "pdf", "cbz"].includes(String(source["format"]))
+      !["txt", "markdown", "html", "docx", "epub", "pdf", "cbz", "fb2"].includes(
+        String(source["format"]),
+      )
     )
       return fail();
     const sectionIds = new Set<string>();
@@ -211,6 +213,37 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
         source["format"] !== "txt" ||
         !entry["source"] ||
         !validTxtRanges(book["sections"] as PersistedBook["sections"], source["size"])
+      )
+        return fail();
+    }
+    const contentSections = book["sections"] as PersistedBook["sections"];
+    if (contentSections.some((section) => section.contentInfo !== undefined)) {
+      if (
+        !entry["source"] ||
+        !contentSections.every((section) => {
+          const info = section.contentInfo;
+          if (!object(info) || !Number.isSafeInteger(info.textLength) || info.textLength < 0)
+            return false;
+          if (
+            info.imageCount !== undefined &&
+            (!Number.isSafeInteger(info.imageCount) || info.imageCount < 0)
+          )
+            return false;
+          if (
+            info.readingWeight !== undefined &&
+            (!finite(info.readingWeight) || info.readingWeight < 0)
+          )
+            return false;
+          const range = info.storageRange;
+          return (
+            range === undefined ||
+            (object(range) &&
+              Number.isSafeInteger(range.start) &&
+              Number.isSafeInteger(range.end) &&
+              range.start >= 0 &&
+              range.end > range.start)
+          );
+        })
       )
         return fail();
     }
@@ -249,6 +282,7 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
           label: section.label,
           kind: section.kind,
           text: section.text,
+          ...(section.contentInfo ? { contentInfo: section.contentInfo } : {}),
           ...(section.textRange ? { textRange: section.textRange } : {}),
           ...(typeof section.html === "string" ? { html: sanitizeHtml(section.html).html } : {}),
           ...(finite(section.pageNumber) ? { pageNumber: section.pageNumber } : {}),
@@ -599,7 +633,9 @@ export async function prepareReaderRestore(
         format: book.source.mime,
       };
       const durable = await durableRestoreSource(runtime, ref, blob, source.hash, signal);
-      const binary = ["pdf", "epub", "docx", "cbz"].includes(book.source.format);
+      const binary =
+        ["pdf", "epub", "docx", "cbz"].includes(book.source.format) ||
+        book.sections.some((section) => section.contentInfo);
       const lazyTxt = book.source.format === "txt" && book.sections[0]?.textRange !== undefined;
       const parsed = lazyTxt
         ? {

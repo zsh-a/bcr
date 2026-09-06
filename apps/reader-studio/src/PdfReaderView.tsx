@@ -1,3 +1,5 @@
+import { readerPdfDocument } from "./readerPdfAdapter";
+import { useSectionContent } from "./useSectionContent";
 import { CircleAlert, ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
@@ -101,6 +103,13 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
     }
     const load = async () => {
       try {
+        const shared = readerPdfDocument(props.book);
+        if (shared) {
+          setPdfDocument(shared);
+          setLoading(false);
+          props.onReady?.();
+          return;
+        }
         const pdfjs = await import("pdfjs-dist");
         pdfjs.GlobalWorkerOptions.workerSrc = new URL(
           "pdfjs-dist/build/pdf.worker.mjs",
@@ -300,6 +309,7 @@ const PdfPageView = memo(function PdfPageView(props: {
   const focusedMatch = useRef("");
   const [hasText, setHasText] = useState(true);
   const [nearViewport, setNearViewport] = useState(props.active || pageNumber <= 2);
+  useSectionContent(props.section, nearViewport || props.active);
   const [contentWidth, setContentWidth] = useState(0);
   const [status, setStatus] = useState<PdfPageStatus>("idle");
   const [error, setError] = useState<string | null>(null);
