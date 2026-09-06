@@ -1,3 +1,4 @@
+import { isLazyTxt, searchLazyTxt } from "./lazyTxt";
 import {
   normalizeSearchQuery,
   searchLibrary,
@@ -15,6 +16,7 @@ export async function indexBook(
   book: ReaderBook,
   signal?: AbortSignal,
 ): Promise<void> {
+  if (isLazyTxt(book)) return;
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
   if (runtime.indexSession !== undefined) {
     try {
@@ -82,4 +84,27 @@ export function searchIndexed(
   query: string,
 ): ReadonlyArray<SearchHit> {
   return searchIndexedDetailed(runtime, books, query).hits;
+}
+
+/** Lazy books are scanned in a worker; results are bounded and never populate the reading cache. */
+export async function searchReaderDetailed(
+  runtime: ReaderRuntime,
+  books: readonly ReaderBook[],
+  query: string,
+  signal?: AbortSignal,
+): Promise<ReaderSearchResult> {
+  const hits: SearchHit[] = [];
+  let indexing = false;
+  for (const book of books) {
+    signal?.throwIfAborted();
+    if (isLazyTxt(book)) hits.push(...(await searchLazyTxt(book, query, signal)));
+    else {
+      const result = searchIndexedDetailed(runtime, [book], query);
+      hits.push(...result.hits);
+      indexing ||= result.indexing;
+    }
+    if (hits.length >= 80) break;
+  }
+  signal?.throwIfAborted();
+  return { hits: hits.slice(0, 80), indexing };
 }

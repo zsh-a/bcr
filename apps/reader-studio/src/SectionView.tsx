@@ -1,4 +1,5 @@
-import { memo, useMemo, useEffect, useRef, useState } from "react";
+import { useTxtSection } from "./useTxtSection";
+import { memo, useMemo, useLayoutEffect, useEffect, useRef, useState } from "react";
 import type { ReaderSection } from "@bcr/reader-core";
 import { highlightHtml, highlightText } from "./searchHighlight";
 
@@ -27,6 +28,11 @@ export const SectionView = memo(function SectionView(props: {
     return () => observer.disconnect();
   }, [props.virtualized]);
   const mounted = props.virtualized || visible || props.active || props.searchQuery !== "";
+  const content = useTxtSection(props.section, mounted === true);
+  useLayoutEffect(() => {
+    if (props.section.textRange && content.ready)
+      root.current?.dispatchEvent(new Event("bcr-reader-content-ready", { bubbles: true }));
+  }, [props.section, content.ready]);
   const html = useMemo(
     () =>
       props.section.html === undefined
@@ -41,12 +47,23 @@ export const SectionView = memo(function SectionView(props: {
   return (
     <section
       ref={root}
-      style={mounted ? undefined : { height }}
+      style={mounted && content.ready ? undefined : { height }}
       className="reader-section"
       data-reader-section={props.section.id}
       data-reader-section-index={props.section.order}
+      data-reader-content-ready={content.ready ? "true" : "false"}
     >
-      {mounted && (
+      {mounted && !content.ready && (
+        <div className="reader-section-body" role="status" style={{ gridColumn: "1 / -1" }}>
+          {content.error ?? "正在加载正文…"}
+          {content.error && (
+            <button type="button" onClick={content.retry}>
+              重试
+            </button>
+          )}
+        </div>
+      )}
+      {mounted && content.ready && (
         <>
           <div className="reader-section-index">
             {String(props.section.order + 1).padStart(2, "0")}

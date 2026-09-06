@@ -1,3 +1,4 @@
+import { openLazyTxt, LAZY_TXT_MIN_BYTES, materializeTxt } from "./lazyTxt";
 import { contentHash, hashReadableStream, type ArtifactRef, type ArtifactStore } from "@bcr/core";
 import { MemoryStore } from "@bcr/storage-opfs";
 import { Effect } from "effect";
@@ -22,6 +23,9 @@ export async function parseReaderFile(
   signal?: AbortSignal,
 ): Promise<ReaderBook> {
   const format = formatForFile(file);
+  if (format === "txt" && file.size >= LAZY_TXT_MIN_BYTES) {
+    return openLazyTxt({ file, id, format, ...(signal ? { signal } : {}) });
+  }
   // PDF.js owns a rendering worker and keeps a Blob URL for canvas pages; keep
   // its lifecycle on the main thread until the dedicated page renderer lands.
   if (format === "pdf") {
@@ -258,7 +262,7 @@ export async function prepareReaderDocumentHandoff(
   };
   await Effect.runPromise(hostArtifacts.putStream(sourceRef, blob.stream()));
 
-  const content = readerBookToDocumentContent(book, sourceRef);
+  const content = readerBookToDocumentContent(await materializeTxt(book), sourceRef);
   const bytes = new TextEncoder().encode(JSON.stringify(content));
   const hash = contentHash(bytes);
   const contentRef: ArtifactRef = {

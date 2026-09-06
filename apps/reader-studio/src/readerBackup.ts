@@ -1,3 +1,5 @@
+import { attachTxtSections } from "./lazyTxt";
+import { validTxtRanges } from "./txtIndex";
 import {
   BlobReader,
   BlobWriter,
@@ -202,6 +204,16 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
         return fail();
       sectionIds.add(section["id"]);
     }
+    if (
+      book["sections"].some((section: { textRange?: unknown }) => section.textRange !== undefined)
+    ) {
+      if (
+        source["format"] !== "txt" ||
+        !entry["source"] ||
+        !validTxtRanges(book["sections"] as PersistedBook["sections"], source["size"])
+      )
+        return fail();
+    }
     if (entry["source"] !== undefined) {
       const file = entry["source"];
       if (
@@ -237,6 +249,7 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
           label: section.label,
           kind: section.kind,
           text: section.text,
+          ...(section.textRange ? { textRange: section.textRange } : {}),
           ...(typeof section.html === "string" ? { html: sanitizeHtml(section.html).html } : {}),
           ...(finite(section.pageNumber) ? { pageNumber: section.pageNumber } : {}),
           ...(finite(section.pageAspectRatio) && section.pageAspectRatio > 0
@@ -587,14 +600,23 @@ export async function prepareReaderRestore(
       };
       const durable = await durableRestoreSource(runtime, ref, blob, source.hash, signal);
       const binary = ["pdf", "epub", "docx", "cbz"].includes(book.source.format);
-      const parsed = binary
-        ? await parseReaderFile(
-            runtime,
-            new File([durable], book.source.name, { type: book.source.mime }),
-            book.id,
-            signal,
-          )
-        : book;
+      const lazyTxt = book.source.format === "txt" && book.sections[0]?.textRange !== undefined;
+      const parsed = lazyTxt
+        ? {
+            ...book,
+            sections: attachTxtSections(
+              durable,
+              book.sections.map((section) => section.textRange!),
+            ),
+          }
+        : binary
+          ? await parseReaderFile(
+              runtime,
+              new File([durable], book.source.name, { type: book.source.mime }),
+              book.id,
+              signal,
+            )
+          : book;
       allocated.push(parsed);
       const restored: ReaderBook = {
         ...parsed,

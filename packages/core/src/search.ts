@@ -61,7 +61,20 @@ export interface SearchPersistence {
   readonly save: (value: string) => Promise<void>;
 }
 
+export type SearchQuerySource = (
+  query: string,
+  signal: AbortSignal,
+) => Promise<ReadonlyArray<SearchDocument>>;
+
 export interface SearchIndex {
+  /** Query-time documents remain ephemeral; owners can search large sources without retaining full text. */
+  readonly registerQuerySource?: (
+    source: string,
+    provider: SearchQuerySource,
+    ownsScope?: (scope: string) => boolean,
+  ) => () => void;
+  /** False means this scope is queried on demand and missing excerpts are not proof of deletion. */
+  readonly isScopeIndexed?: (source: string, scope: string) => boolean;
   readonly ready: Promise<void>;
   readonly upsert: (document: SearchDocument) => void;
   readonly remove: (id: string) => void;
@@ -212,6 +225,73 @@ function decodePersisted(value: string | undefined): ReadonlyArray<SearchDocumen
 
 class MemorySearchIndex implements SearchIndex {
   readonly ready: Promise<void>;
+  private readonly querySources = new Map<
+    string,
+    {
+      provider: SearchQuerySource;
+      ownsScope?: ((scope: string) => boolean) | undefined;
+      query: string;
+      controller: AbortController;
+      documents: readonly SearchDocument[];
+    }
+  >();
+  registerQuerySource(
+    source: string,
+    provider: SearchQuerySource,
+    ownsScope?: (scope: string) => boolean,
+  ): () => void {
+    this.querySources.get(source)?.controller.abort();
+    const entry = {
+      provider,
+      ownsScope,
+      query: "",
+      controller: new AbortController(),
+      documents: [] as readonly SearchDocument[],
+    };
+    this.querySources.set(source, entry);
+    this.liveSources.add(source);
+    this.notify();
+    return () => {
+      entry.controller.abort();
+      if (this.querySources.get(source) === entry) {
+        this.querySources.delete(source);
+        this.notify();
+      }
+    };
+  }
+  isScopeIndexed(source: string, scope: string): boolean {
+    const entry = this.querySources.get(source);
+    return entry === undefined || (entry.ownsScope !== undefined && !entry.ownsScope(scope));
+  }
+  private queryDocuments(query: string, options: SearchQueryOptions): readonly SearchDocument[] {
+    const documents: SearchDocument[] = [];
+    for (const [source, entry] of this.querySources) {
+      if (options.sources && !options.sources.includes(source)) continue;
+      if (entry.query !== query) {
+        entry.controller.abort();
+        const controller = new AbortController();
+        entry.controller = controller;
+        entry.query = query;
+        entry.documents = [];
+        if (query.trim())
+          void Promise.resolve()
+            .then(() => entry.provider(query, controller.signal))
+            .then((results) => {
+              if (controller.signal.aborted) return;
+              entry.documents = results.slice(0, MAX_LIMIT).flatMap((document) => {
+                const decoded = decodeDocument({ ...document, source });
+                if (!decoded) return [];
+                this.fields.set(decoded, fieldText(decoded));
+                return [decoded];
+              });
+              this.notify();
+            })
+            .catch(() => {});
+      }
+      documents.push(...entry.documents);
+    }
+    return documents;
+  }
   private readonly entries = new Map<string, SearchDocument>();
   private readonly fields = new WeakMap<SearchDocument, ReturnType<typeof fieldText>>();
 
@@ -306,6 +386,7 @@ class MemorySearchIndex implements SearchIndex {
   search(query: string, options: SearchQueryOptions = {}): ReadonlyArray<SearchResult> {
     const phrase = normalized(query);
     const terms = queryTerms(phrase);
+    const queryDocuments = this.queryDocuments(query, options);
     if (terms.length === 0) return [];
     const kinds = options.kinds === undefined ? undefined : new Set(options.kinds);
     const sources = options.sources === undefined ? undefined : new Set(options.sources);
@@ -324,7 +405,7 @@ class MemorySearchIndex implements SearchIndex {
       right.score - left.score ||
       right.document.updatedAt - left.document.updatedAt ||
       left.document.title.localeCompare(right.document.title);
-    for (const document of this.entries.values()) {
+    for (const document of [...this.entries.values(), ...queryDocuments]) {
       if (kinds !== undefined && !kinds.has(document.kind)) continue;
       if (sources !== undefined && !sources.has(document.source)) continue;
       const fields = this.fields.get(document)!;
@@ -391,7 +472,10 @@ class MemorySearchIndex implements SearchIndex {
   }
 
   documents(): ReadonlyArray<SearchDocument> {
-    return [...this.entries.values()].sort(
+    return [
+      ...this.entries.values(),
+      ...[...this.querySources.values()].flatMap((entry) => entry.documents),
+    ].sort(
       (left, right) => right.updatedAt - left.updatedAt || left.title.localeCompare(right.title),
     );
   }
@@ -404,7 +488,7 @@ class MemorySearchIndex implements SearchIndex {
   async flush(): Promise<void> {
     if (this.persistence === undefined) return;
     await this.ready;
-    const payload: PersistedSearchIndex = { version: 1, documents: this.documents() };
+    const payload: PersistedSearchIndex = { version: 1, documents: [...this.entries.values()] };
     const raw = JSON.stringify(payload);
     const persistence = this.persistence;
     this.persistTail = this.persistTail.catch(() => undefined).then(() => persistence.save(raw));
@@ -412,6 +496,8 @@ class MemorySearchIndex implements SearchIndex {
   }
 
   async close(): Promise<void> {
+    for (const entry of this.querySources.values()) entry.controller.abort();
+    this.querySources.clear();
     if (this.persistTimer !== undefined) {
       clearTimeout(this.persistTimer);
       this.persistTimer = undefined;

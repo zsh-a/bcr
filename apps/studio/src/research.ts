@@ -209,6 +209,12 @@ export function assessExcerpt(
     anchor,
     documents.map((document) => ({ text: document.body!, source: document.citation! })),
   );
+  if (
+    resolved.status !== "exact" &&
+    search?.isScopeIndexed?.(excerpt.owner!, anchor.source.scope) === false
+  ) {
+    return { state: "unverified", label: "待核验 · 打开来源后检查", route: excerpt.route };
+  }
   const binding = excerpt.readerBindings?.find(
     (entry) =>
       entry.target === new URL(excerpt.route, "https://bcr.invalid").searchParams.get("book"),

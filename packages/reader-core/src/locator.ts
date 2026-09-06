@@ -244,7 +244,7 @@ function readingWeights(book: ReaderBook) {
 export function sectionReadingWeight(section: ReaderSection): number {
   if (section.kind === "pdf-page" || section.kind === "image") return 1000;
   const images = section.html?.match(/<(?:img|svg)\b/giu)?.length ?? 0;
-  return Math.max(1, images * 1000 + section.text.trim().length);
+  return Math.max(1, images * 1000 + (section.textRange?.length ?? section.text.trim().length));
 }
 
 export function progressForLocator(

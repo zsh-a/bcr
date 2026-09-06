@@ -1,3 +1,5 @@
+import { isLazyTxt } from "./lazyTxt";
+import { useTxtSection } from "./useTxtSection";
 import { Check } from "lucide-react";
 import {
   memo,
@@ -72,6 +74,9 @@ function ContinuousReadingView(props: {
   const progress = savedProgress?.percentage ?? 0;
   const searchQuery = useReader((state) => state.query);
   const searchReveal = useReader((state) => state.searchReveal);
+  const activeContent = useTxtSection(
+    props.book.sections.find((section) => section.id === activeSectionId),
+  );
   const containerRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<number | null>(null);
   const lastScrollUpdateRef = useRef(0);
@@ -92,8 +97,15 @@ function ContinuousReadingView(props: {
       userScrollTimerRef.current = null;
     }, 240);
   }, []);
+  const beginUserScroll = useCallback(() => {
+    restoreCancelRef.current?.();
+    programmaticScrollRef.current = false;
+    programmaticScrollTargetRef.current = null;
+    layoutCalibrationRef.current = false;
+    markUserScroll();
+  }, [markUserScroll]);
   const updateLocator = useCallback(() => {
-    if (layoutCalibrationRef.current) return;
+    if (layoutCalibrationRef.current || !activeContent.ready) return;
     // Search and modal surfaces occlude the caret probes. Measuring through
     // them can replace a valid text anchor with a different paragraph/page.
     if (getReaderState().searchOpen || document.querySelector("dialog[open]") !== null) return;
@@ -105,7 +117,7 @@ function ContinuousReadingView(props: {
       mapped?.locator ?? locatorAtPercentage(props.book, percentage),
       mapped?.percentage ?? percentage,
     );
-  }, [activeSectionId, props.book, settings.layout]);
+  }, [activeSectionId, props.book, settings.layout, activeContent.ready]);
   useEffect(() => {
     const capture = () => {
       if (getReaderState().searchOpen || document.querySelector("dialog[open]") !== null) return;
@@ -139,6 +151,10 @@ function ContinuousReadingView(props: {
         setContentReadyVersion((version) => version + 1);
       });
     };
+    const contentLoaded = () => {
+      if (!userScrollRef.current) scheduleCalibration();
+    };
+    container.addEventListener("bcr-reader-content-ready", contentLoaded);
     window.addEventListener("resize", scheduleCalibration);
     window.addEventListener("bcr-reader-fonts-ready", scheduleCalibration);
     container.addEventListener("load", scheduleCalibration, true);
@@ -147,6 +163,7 @@ function ContinuousReadingView(props: {
     return () => {
       cancelled = true;
       if (frame !== null) window.cancelAnimationFrame(frame);
+      container.removeEventListener("bcr-reader-content-ready", contentLoaded);
       window.removeEventListener("resize", scheduleCalibration);
       window.removeEventListener("bcr-reader-fonts-ready", scheduleCalibration);
       container.removeEventListener("load", scheduleCalibration, true);
@@ -154,7 +171,7 @@ function ContinuousReadingView(props: {
     };
   }, [props.book.id]);
   useLayoutEffect(() => {
-    if (activeSectionId === null || containerRef.current === null) return;
+    if (activeSectionId === null || containerRef.current === null || !activeContent.ready) return;
     const explicitNavigation = navigationSequence !== handledNavigationSequenceRef.current;
     const pendingInternalLink =
       explicitNavigation && pendingInternalLinkRef.current?.sectionId === activeSectionId
@@ -165,7 +182,7 @@ function ContinuousReadingView(props: {
       pendingInternalLinkRef.current = null;
       userScrollRef.current = false;
     } else if (userScrollRef.current) {
-      userScrollRef.current = false;
+      layoutCalibrationRef.current = false;
       return;
     }
     restoreCancelRef.current?.();
@@ -228,6 +245,7 @@ function ContinuousReadingView(props: {
     restoreCancelRef.current = settleReaderLayout(containerRef.current, attemptScroll, () => {
       programmaticScrollRef.current = false;
       programmaticScrollTargetRef.current = null;
+      if (isLazyTxt(props.book) && searchReveal) reader.clearSearchReveal(searchReveal.id);
     });
     return () => {
       cancelled = true;
@@ -237,6 +255,7 @@ function ContinuousReadingView(props: {
   }, [
     activeSectionId,
     contentReadyVersion,
+    activeContent.ready,
     navigationSequence,
     progress,
     props.book,
@@ -246,6 +265,8 @@ function ContinuousReadingView(props: {
   useEffect(() => {
     const reveal = searchReveal;
     if (
+      isLazyTxt(props.book) ||
+      !activeContent.ready ||
       reveal === null ||
       reveal.bookId !== props.book.id ||
       reveal.sectionId !== activeSectionId ||
@@ -276,7 +297,14 @@ function ContinuousReadingView(props: {
       reader.clearSearchReveal(reveal.id);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [activeSectionId, contentReadyVersion, props.book.id, searchQuery, searchReveal]);
+  }, [
+    activeSectionId,
+    contentReadyVersion,
+    props.book.id,
+    searchQuery,
+    searchReveal,
+    activeContent.ready,
+  ]);
   useEffect(
     () => () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
@@ -339,9 +367,12 @@ function ContinuousReadingView(props: {
           }
           props.onToggleMobileChrome();
         }}
+        onWheel={beginUserScroll}
+        onTouchMove={beginUserScroll}
         onScroll={() => {
-          if (layoutCalibrationRef.current) return;
+          if (layoutCalibrationRef.current || !activeContent.ready) return;
           if (programmaticScrollRef.current) {
+            if (isLazyTxt(props.book)) return;
             const expected = programmaticScrollTargetRef.current;
             const current = {
               top: containerRef.current?.scrollTop ?? 0,

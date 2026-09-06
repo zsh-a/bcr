@@ -1,3 +1,5 @@
+import { importReaderFile } from "../src/readerImports";
+import { loadTxtSection } from "../src/lazyTxt";
 import { describe, expect, it } from "vitest";
 import { Context, Effect, Layer } from "effect";
 import { artifactStore, ArtifactStoreTag, contentHash } from "@bcr/core";
@@ -48,6 +50,38 @@ async function runtime(): Promise<ReaderRuntime> {
 }
 
 describe("Reader portable backup", () => {
+  it("restores lazy TXT from its independent source and index without duplicating paragraph text", async () => {
+    const original = await runtime();
+    const text = Array.from(
+      { length: 1000 },
+      (_, index) => `${index} ${"备份正文".repeat(30)}`,
+    ).join("\n\n");
+    const book = await importReaderFile(
+      original,
+      new File([text], "lazy.txt", { type: "text/plain" }),
+    );
+    expect(book.sections[0]!.textRange).toBeDefined();
+    await loadTxtSection(book.sections[0]!);
+    const state = { ...getReaderState(), library: [book], activeBookId: book.id };
+    const backup = await inspectReaderBackup(await createReaderBackup(original, state));
+    expect(
+      backup.manifest.books[0]!.book.sections.every(
+        (section) => section.text === "" && section.textRange,
+      ),
+    ).toBe(true);
+    const independent = await runtime();
+    const restored = (await prepareReaderRestore(independent, backup, []))[0]!;
+    expect(restored.sections.every((section) => !section.text)).toBe(true);
+    await loadTxtSection(restored.sections[999]!);
+    expect(restored.sections[999]!.text).toBe(text.split("\n\n")[999]);
+    const malformed = JSON.parse(JSON.stringify(backup.manifest));
+    malformed.books[0]!.book.sections[0] = {
+      ...malformed.books[0]!.book.sections[0],
+      textRange: { start: -1, end: 10, length: 10 },
+    };
+    expect(() => decodeReaderBackup(malformed)).toThrow();
+  });
+
   it("round trips expanded typography and rejects malformed spacing", () => {
     const settings = {
       ...DEFAULT_READER_SETTINGS,

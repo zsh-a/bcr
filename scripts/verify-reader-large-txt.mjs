@@ -37,7 +37,8 @@ try {
     await page.waitForFunction((id) => {
       const section = document.querySelector(`[data-reader-section="section-${id + 1}"]`);
       const scroll = document.querySelector(".reader-reading-scroll");
-      if (!section || !scroll) return false;
+      if (!section || !scroll || section.getAttribute("data-reader-content-ready") !== "true")
+        return false;
       const rect = section.getBoundingClientRect(),
         viewport = scroll.getBoundingClientRect();
       return rect.top < viewport.bottom && rect.bottom > viewport.top;
@@ -59,6 +60,39 @@ try {
   }
   await navigate(0);
   await assertVisible(0);
+  async function assertLazyState() {
+    const stats = await page.evaluate(async () => {
+      const url = performance
+        .getEntriesByType("resource")
+        .map((entry) => entry.name)
+        .filter((url) => new URL(url).pathname.endsWith("/apps/reader-studio/src/store.ts"))
+        .at(-1);
+      const { getReaderState } = await import(url);
+      const book = getReaderState().library.find((book) => book.source.name === "large-window.txt");
+      const snapshot = JSON.parse(localStorage.getItem("bcr.reader.library.v1")).books.find(
+        (item) => item.id === book.id,
+      );
+      return {
+        indexed: book.sections.every((section) => section.textRange),
+        loaded: book.sections.filter((section) => section.text.length > 0).length,
+        snapshotText: snapshot.sections.reduce(
+          (length, section) => length + section.text.length + (section.html?.length ?? 0),
+          0,
+        ),
+      };
+    });
+    assert(stats.indexed, "large TXT must use a source range index");
+    assert(
+      stats.loaded > 0 && stats.loaded <= 128,
+      "full paragraph bodies must not reside in memory",
+    );
+    assert.equal(
+      stats.snapshotText,
+      0,
+      "durable snapshot must contain indexes, not duplicate prose",
+    );
+  }
+  await assertLazyState();
   const first = page.locator('.reader-chapter-rail [data-reader-toc-section="section-1"]');
   await first.focus();
   await page.keyboard.press("End");
@@ -69,6 +103,22 @@ try {
   await assertVisible(4999);
   await navigate(2500);
   await assertVisible(2500);
+  await page.locator(".reader-reading-scroll").hover();
+  await page.mouse.wheel(0, 2000);
+  await page.waitForTimeout(1000);
+  const scrolledIndex = await page.evaluate(async () => {
+    const url = performance
+      .getEntriesByType("resource")
+      .map((entry) => entry.name)
+      .filter((url) => new URL(url).pathname.endsWith("/apps/reader-studio/src/store.ts"))
+      .at(-1);
+    const { getReaderState } = await import(url);
+    return Number(getReaderState().activeSectionId.split("-").at(-1));
+  });
+  assert(
+    scrolledIndex > 2501 && scrolledIndex < 2600,
+    "wheel scrolling must advance through newly loaded paragraphs",
+  );
   await navigate(2500, { fontSize: 28, lineHeight: 2 });
   await assertVisible(2500);
   await page.keyboard.press("Control+f");
@@ -90,8 +140,37 @@ try {
   await page.getByLabel("筛选章节", { exact: true }).fill("段落 4999");
   await page.locator('.reader-navigation-sheet [data-reader-toc-section="section-4999"]').click();
   await assertVisible(4998);
+  await assertLazyState();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByRole("button", { name: "打开全局搜索" }).click();
+  await page.getByRole("textbox", { name: "全局搜索", exact: true }).fill("3456");
+  await page.getByRole("tab", { name: /^阅读器/u }).click();
+  await page.getByRole("option").filter({ hasText: "3456" }).first().click();
+  await assertVisible(3456);
+  await assertLazyState();
+  // Remove the explicit citation route before testing saved-position restoration.
+  await page.evaluate(() => {
+    history.replaceState(null, "", "/reader");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
+  await navigate(4000, { layout: "paged" });
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-reader-section="section-4001"]')
+        ?.getAttribute("data-reader-content-ready") === "true",
+  );
+  await page.waitForTimeout(1500);
+  await page.reload();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-reader-section="section-4001"]')
+        ?.getAttribute("data-reader-content-ready") === "true",
+  );
+  await assertLazyState();
   console.log(
-    "reader large TXT verification PASSED: bounded body/TOC, keyboard End, distant jumps, search, typography, reload and mobile TOC filtering",
+    "reader large TXT verification PASSED: bounded body/TOC, keyboard End, distant jumps, search, typography, reload, mobile TOC, lazy storage/cache, workspace citations and paged restore",
   );
 } finally {
   await browser.close();

@@ -43,6 +43,11 @@ export interface ReaderSection {
   readonly order: number;
   readonly label: string;
   readonly kind: ReaderSectionKind;
+  /** UTF-8 source range for demand-loaded TXT. Length is normalized UTF-16 text length. */
+  readonly textRange?:
+    | { readonly start: number; readonly end: number; readonly length: number }
+    | undefined;
+  /** For textRange sections this is cached content; load the section before resolving text anchors. */
   readonly text: string;
   readonly html?: string | undefined;
   readonly imageUrl?: string | undefined;

@@ -1,3 +1,4 @@
+import { loadTxtSection } from "../src/lazyTxt";
 import { artifactStore, ArtifactStoreTag, type ArtifactRef, type ArtifactStore } from "@bcr/core";
 import { progressForLocator } from "@bcr/reader-core";
 import {
@@ -10,6 +11,7 @@ import { Context, Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 import {
   importReaderDocumentHandoff,
+  importReaderFile,
   importReaderExportBundle,
   prepareReaderDocumentHandoff,
   persistReader,
@@ -100,6 +102,44 @@ async function withLocalStorage<T>(run: (values: Map<string, string>) => Promise
 }
 
 describe("reader durable Document handoff", () => {
+  it("restores TXT indexes without loading bodies and rebuilds an invalid index from its source", async () => {
+    await withLocalStorage(async (values) => {
+      const store = new MemoryStore();
+      const runtime: ReaderRuntime = {
+        binary: store,
+        artifacts: await makeArtifacts(store),
+        meta: undefined,
+        ftsReady: false,
+        indexSession: undefined,
+        parseSession: undefined,
+        parserMode: "main",
+      };
+      const text = Array.from(
+        { length: 1000 },
+        (_, index) => `${index} ${"索引恢复正文".repeat(20)}`,
+      ).join("\n\n");
+      const book = await importReaderFile(
+        runtime,
+        new File([text], "index.txt", { type: "text/plain" }),
+      );
+      await persistReader(runtime, readyReaderState([book]));
+      const restored = (await restoreReader(runtime, { deferBinary: true }))!.books[0]!;
+      expect(restored.sections.every((section) => section.text === "")).toBe(true);
+      expect(restored.sections.map((section) => section.textRange)).toEqual(
+        book.sections.map((section) => section.textRange),
+      );
+      await loadTxtSection(restored.sections[999]!);
+      expect(restored.sections[999]!.text).toBe(text.split("\n\n")[999]);
+      const raw = JSON.parse(values.get("bcr.reader.library.v1")!);
+      raw.books[0].sections[0].textRange.end = text.length * 100;
+      values.set("bcr.reader.library.v1", JSON.stringify(raw));
+      const rebuilt = (await restoreReader(runtime))!.books[0]!;
+      expect(rebuilt.sections.map((section) => section.textRange)).toEqual(
+        book.sections.map((section) => section.textRange),
+      );
+    });
+  });
+
   it("does not read paragraph content again for a session-only save", async () => {
     await withLocalStorage(async () => {
       const store = new MemoryStore();

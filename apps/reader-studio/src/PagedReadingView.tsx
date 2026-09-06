@@ -1,3 +1,4 @@
+import { useTxtSection } from "./useTxtSection";
 import {
   useCallback,
   useEffect,
@@ -35,6 +36,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
     props.book.sections.findIndex((section) => section.id === activeId),
   );
   const section = props.book.sections[sectionIndex];
+  const activeContent = useTxtSection(section);
   const viewportRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -80,7 +82,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
 
   const capture = useCallback(() => {
     const viewport = viewportRef.current;
-    if (viewport === null || section === undefined) return;
+    if (viewport === null || section === undefined || !activeContent.ready) return;
     if (restoring.current || transitioning.current) return;
     if (getReaderState().searchOpen || document.querySelector("dialog[open]") !== null) return;
     const index = pageAtOffset(viewport.scrollLeft, viewport.clientWidth, countRef.current);
@@ -97,12 +99,13 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
         ? createLocator(section, index / Math.max(1, countRef.current))
         : mapped.locator;
     reader.setLocator(locator);
-  }, [props.book, section]);
+  }, [props.book, section, activeContent.ready]);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
     const content = contentRef.current;
-    if (viewport === null || content === null || section === undefined) return;
+    if (viewport === null || content === null || section === undefined || !activeContent.ready)
+      return;
     let cancelRestore = () => {};
     let disposed = false;
     const calibrate = () => {
@@ -160,6 +163,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
     const observer = new ResizeObserver(calibrate);
     observer.observe(viewport);
     content.addEventListener("load", calibrate, true);
+    content.addEventListener("bcr-reader-content-ready", calibrate);
     window.addEventListener("bcr-reader-fonts-ready", calibrate);
     void document.fonts.ready.then(calibrate);
     return () => {
@@ -167,9 +171,20 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
       observer.disconnect();
       cancelRestore();
       content.removeEventListener("load", calibrate, true);
+      content.removeEventListener("bcr-reader-content-ready", calibrate);
       window.removeEventListener("bcr-reader-fonts-ready", calibrate);
     };
-  }, [navigation, props.book, section, settings, query, reveal, capture, columns]);
+  }, [
+    navigation,
+    props.book,
+    section,
+    settings,
+    query,
+    reveal,
+    capture,
+    columns,
+    activeContent.ready,
+  ]);
 
   useEffect(() => {
     const flush = () => {
@@ -188,7 +203,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
   const turn = (delta: number) => {
     const viewport = viewportRef.current;
     if (viewport === null) return;
-    if (restoring.current || transitioning.current) {
+    if (!activeContent.ready || restoring.current || transitioning.current) {
       queuedTurns.current.push(delta);
       return;
     }

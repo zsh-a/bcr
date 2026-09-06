@@ -1,3 +1,5 @@
+import { attachTxtSections, isLazyTxt, openLazyTxt, LAZY_TXT_MIN_BYTES } from "./lazyTxt";
+import { validTxtRanges } from "./txtIndex";
 import { artifactPath, type ArtifactRef } from "@bcr/core";
 import { Effect } from "effect";
 import {
@@ -46,6 +48,7 @@ export interface PersistedBook {
     readonly order: number;
     readonly label: string;
     readonly kind: ReaderBook["sections"][number]["kind"];
+    readonly textRange?: ReaderBook["sections"][number]["textRange"];
     readonly text: string;
     readonly html?: string | undefined;
     readonly pageNumber?: number | undefined;
@@ -151,8 +154,11 @@ export function persistBook(book: ReaderBook): PersistedBook {
       order: section.order,
       label: section.label,
       kind: section.kind,
-      text: section.text,
-      ...(section.html === undefined ? {} : { html: section.html }),
+      ...(section.textRange ? { textRange: section.textRange } : {}),
+      text: section.textRange ? "" : section.text,
+      ...(section.textRange === undefined && section.html !== undefined
+        ? { html: section.html }
+        : {}),
       ...(section.pageNumber === undefined ? {} : { pageNumber: section.pageNumber }),
       ...(section.pageAspectRatio === undefined
         ? {}
@@ -559,12 +565,8 @@ async function fileFromSource(
     format: ref.mime,
     hash: ref.hash,
   };
-  const bytes = await Effect.runPromise(runtime.artifacts.get(artifactRef));
-  const buffer = bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer;
-  return new File([buffer], book.source.name, { type: book.source.mime });
+  const sourceBlob = await Effect.runPromise(runtime.artifacts.getBlob(artifactRef));
+  return new File([sourceBlob], book.source.name, { type: book.source.mime });
 }
 
 interface RestoredBookResult {
@@ -588,6 +590,8 @@ export function restoreSectionSnapshots(
   parsed: ReaderBook,
   snapshot: Pick<PersistedBook, "sections">,
 ): ReaderBook["sections"] {
+  if (isLazyTxt(parsed) && snapshot.sections.every((section) => section.textRange))
+    return parsed.sections;
   if (
     parsed.sections.length !== snapshot.sections.length ||
     parsed.sections.some((section, i) => section.kind !== snapshot.sections[i]?.kind)
@@ -610,6 +614,40 @@ async function restoreBook(
   persisted: PersistedBook,
   signal?: AbortSignal,
 ): Promise<RestoredBookResult> {
+  if (
+    persisted.source.format === "txt" &&
+    (persisted.sections.some((section) => section.textRange) ||
+      (!persisted.preserveSectionSnapshot &&
+        persisted.source.ref &&
+        persisted.source.size >= LAZY_TXT_MIN_BYTES))
+  ) {
+    try {
+      const file = await fileFromSource(runtime, persisted);
+      if (!file) throw new Error("TXT 源文件不可用");
+      const projected = projectPersistedBook(persisted);
+      if (!projected.book) return projected;
+      return {
+        book: {
+          ...projected.book,
+          sections: validTxtRanges(persisted.sections, file.size)
+            ? attachTxtSections(
+                file,
+                persisted.sections.map((section) => section.textRange!),
+              )
+            : (
+                await openLazyTxt({
+                  file,
+                  id: persisted.id,
+                  format: "txt",
+                  ...(signal ? { signal } : {}),
+                })
+              ).sections,
+        },
+      };
+    } catch (reason) {
+      return { issue: restoreIssue(persisted, reason) };
+    }
+  }
   if (isBinaryBook(persisted) && persisted.source.ref !== undefined) {
     try {
       const file = await fileFromSource(runtime, persisted);
@@ -729,10 +767,15 @@ export async function restoreReader(
     // The persisted projection already contains the normalized text model.
     // Use it for the first paint and rehydrate binary resources separately.
     const restored = deferBinary
-      ? persistedBooks.map((persisted, index) => ({
-          index,
-          book: projectPersistedBook(persisted),
-        }))
+      ? await Promise.all(
+          persistedBooks.map(async (persisted, index) => ({
+            index,
+            book:
+              persisted.source.format === "txt"
+                ? await restoreBook(runtime, persisted)
+                : projectPersistedBook(persisted),
+          })),
+        )
       : await Promise.all(
           persistedBooks.map(async (persisted, index) => ({
             index,

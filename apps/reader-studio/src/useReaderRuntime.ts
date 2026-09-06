@@ -1,3 +1,4 @@
+import { searchReaderDetailed } from "./readerSearch";
 import type { ReaderBook } from "@bcr/reader-core";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -5,7 +6,6 @@ import {
   ensureReaderMetadata,
   indexBook,
   restoreReaderBooks,
-  searchIndexedDetailed,
   type ReaderRestoreDiagnostics,
   type ReaderRuntime,
 } from "./runtime";
@@ -137,7 +137,8 @@ export function useReaderSearch(runtime: ReaderRuntime | null): void {
   }, [runtime]);
   useEffect(() => {
     if (runtime === null) return;
-    const handle = window.setTimeout(() => {
+    const controller = new AbortController();
+    const handle = window.setTimeout(async () => {
       if (query.trim() === "") {
         reader.setSearch(query, [], null);
         reader.setSearchBusy(false);
@@ -145,19 +146,25 @@ export function useReaderSearch(runtime: ReaderRuntime | null): void {
       }
       reader.setSearchBusy(true);
       try {
-        const result = searchIndexedDetailed(
+        const result = await searchReaderDetailed(
           runtime,
           scope === "book" ? library.filter((book) => book.id === activeId) : library,
           query,
+          controller.signal,
         );
+        if (controller.signal.aborted) return;
         reader.setSearch(query, result.hits, getReaderState().searchBookId);
         reader.setSearchBusy(result.indexing);
       } catch {
+        if (controller.signal.aborted) return;
         reader.setSearch(query, [], null);
         reader.setSearchBusy(false);
       }
     }, 160);
-    return () => window.clearTimeout(handle);
+    return () => {
+      controller.abort();
+      window.clearTimeout(handle);
+    };
   }, [indexRevision, runtime, query, library, scope, activeId]);
 }
 

@@ -17,6 +17,43 @@ const document = (
 });
 
 describe("workspace search index", () => {
+  it("queries ephemeral sources on demand, aborts stale work and excludes results from persistence", async () => {
+    let saved = "";
+    const index = createSearchIndex({
+      load: async () => undefined,
+      save: async (raw) => {
+        saved = raw;
+      },
+    });
+    await index.ready;
+    const jobs: {
+      query: string;
+      signal: AbortSignal;
+      resolve: (documents: SearchDocument[]) => void;
+    }[] = [];
+    const remove = index.registerQuerySource!(
+      "lazy",
+      (query, signal) => new Promise((resolve) => jobs.push({ query, signal, resolve })),
+    );
+    expect(jobs).toHaveLength(0);
+    expect(index.search("first")).toEqual([]);
+    await Promise.resolve();
+    index.search("second");
+    await Promise.resolve();
+    expect(jobs[0]!.signal.aborted).toBe(true);
+    jobs[0]!.resolve([document("old", "first", "stale")]);
+    jobs[1]!.resolve([document("new", "second", "current")]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(index.search("second").map((hit) => hit.document.id)).toEqual(["new"]);
+    expect(index.documents().map((item) => item.id)).toEqual(["new"]);
+    expect(index.isScopeIndexed!("lazy", "scope")).toBe(false);
+    await index.flush();
+    expect(JSON.parse(saved).documents).toEqual([]);
+    remove();
+    expect(index.search("second")).toEqual([]);
+    await index.close();
+  });
+
   it("matches CJK and Latin terms, ranks title hits, and emits snippets", async () => {
     const index = createSearchIndex();
     await index.ready;
