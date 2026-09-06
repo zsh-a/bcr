@@ -11,6 +11,7 @@ import {
 } from "../researchManagement";
 import type { SearchIndex } from "@bcr/core";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ResearchPackagePanel } from "./ResearchPackagePanel";
 import { ResearchReview } from "./ResearchReview";
 import { ResearchBackupPanel } from "./ResearchBackupPanel";
 import type {
@@ -266,6 +267,12 @@ export function ResearchPanel(props: {
           )}
         </div>
       )}
+      <ResearchPackagePanel
+        library={props.library}
+        store={props.store}
+        busy={props.busy}
+        run={props.run}
+      />
       <ResearchBackupPanel
         library={props.library}
         store={props.store}

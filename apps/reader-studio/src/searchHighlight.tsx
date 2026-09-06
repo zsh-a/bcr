@@ -80,30 +80,43 @@ export function highlightHtml(value: string, query: string): string {
     if (textNode.parentElement?.closest("mark, script, style") === null) textNodes.push(textNode);
     node = walker.nextNode();
   }
+  // Citation text can cross inline elements, headings and paragraphs. Locate
+  // matches in the combined text, then split each range across its DOM nodes.
+  const source = textNodes.map((textNode) => textNode.data).join("");
+  const ranges: TextMatchRange[] = [];
+  let cursor = 0;
+  while (cursor < source.length) {
+    const match = textMatchRange(source.slice(cursor), query);
+    if (!match) break;
+    const start = cursor + match.start;
+    const end = cursor + match.end;
+    ranges.push({ start, end });
+    cursor = end;
+  }
+  let offset = 0;
+  let rangeIndex = 0;
   for (const textNode of textNodes) {
-    const parent = textNode.parentNode;
-    if (parent === null) continue;
-    const source = textNode.data;
+    const start = offset;
+    offset += textNode.length;
+    while (ranges[rangeIndex] && ranges[rangeIndex]!.end <= start) rangeIndex++;
     const fragment = document.createDocumentFragment();
-    let cursor = 0;
-    let highlighted = false;
-    while (cursor < source.length) {
-      const match = textMatchRange(source.slice(cursor), query);
-      if (match === undefined) {
-        fragment.append(document.createTextNode(source.slice(cursor)));
-        break;
-      }
-      const start = cursor + match.start;
-      const end = Math.max(start + 1, cursor + match.end);
-      if (start > cursor) fragment.append(document.createTextNode(source.slice(cursor, start)));
+    let localCursor = 0;
+    for (let i = rangeIndex; ranges[i] && ranges[i]!.start < offset; i++) {
+      const range = ranges[i]!;
+      const from = Math.max(0, range.start - start);
+      const to = Math.min(textNode.length, range.end - start);
+      if (from >= to) continue;
+      fragment.append(document.createTextNode(textNode.data.slice(localCursor, from)));
       const mark = document.createElement("mark");
       mark.setAttribute("data-reader-search-match", "true");
-      mark.textContent = source.slice(start, end);
+      mark.textContent = textNode.data.slice(from, to);
       fragment.append(mark);
-      cursor = end;
-      highlighted = true;
+      localCursor = to;
     }
-    if (highlighted) parent.replaceChild(fragment, textNode);
+    if (localCursor) {
+      fragment.append(document.createTextNode(textNode.data.slice(localCursor)));
+      textNode.parentNode?.replaceChild(fragment, textNode);
+    }
   }
   return body.innerHTML;
 }

@@ -64,6 +64,7 @@ export interface ReaderTocItem {
 }
 
 export interface ReaderBook {
+  readonly preserveSectionSnapshot?: boolean;
   readonly rendition?:
     | {
         readonly layout: "reflowable" | "pre-paginated";

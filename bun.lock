@@ -223,6 +223,7 @@
         "@sqlite.org/sqlite-wasm": "3.53.0-build1",
         "@tanstack/react-router": "^1.170.32",
         "@tanstack/react-virtual": "^3.14.10",
+        "@zip.js/zip.js": "2.9.0",
         "dockview-react": "^8.2.0",
         "effect": "^3.22.1",
         "lucide-react": "^1.37.0",

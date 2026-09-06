@@ -1,6 +1,11 @@
 import { useState } from "react";
 import type { SearchDocument, SearchIndex, TextRange } from "@bcr/core";
-import { citationRoute, type ResearchExcerpt, type ResearchStore } from "../research";
+import {
+  boundReaderExcerpt,
+  citationRoute,
+  type ResearchExcerpt,
+  type ResearchStore,
+} from "../research";
 import { linkPreview, relinkExcerpt } from "../researchReview";
 const button =
   "rounded border border-border px-3 py-1.5 text-[11px] text-muted hover:text-accent disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-accent";
@@ -18,7 +23,8 @@ export function ResearchReview(props: {
   const [document, setDocument] = useState<SearchDocument>();
   const [range, setRange] = useState<TextRange>({ start: 0, end: 0 });
   const [done, setDone] = useState("");
-  const scope = (props.item.links?.at(-1)?.citation ?? props.item.citation)?.source.scope;
+  const scope = boundReaderExcerpt({ ...props.item, ...props.item.links?.at(-1) }).citation?.source
+    .scope;
   const candidates = open
     ? (props.search?.documents() ?? [])
         .filter(

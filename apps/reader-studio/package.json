@@ -9,7 +9,8 @@
     "./model": "./src/model.ts",
     "./runtime": "./src/runtime.ts",
     "./adapters": "./src/adapters.ts",
-    "./formats": "./src/formats.ts"
+    "./formats": "./src/formats.ts",
+    "./research-transfer": "./src/researchTransfer.ts"
   },
   "dependencies": {
     "@bcr/core": "workspace:*",

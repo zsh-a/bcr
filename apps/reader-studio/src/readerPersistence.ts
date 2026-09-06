@@ -25,6 +25,7 @@ export interface PersistReaderOptions {
   readonly mirrorSession?: boolean;
 }
 export interface PersistedBook {
+  readonly preserveSectionSnapshot?: boolean;
   readonly id: string;
   readonly title: string;
   readonly author?: string | undefined;
@@ -128,6 +129,7 @@ const persistedLocalLibrarySignatures = new WeakMap<ReaderRuntime, string>();
 const persistedMetadataLibrarySignatures = new WeakMap<ReaderRuntime, string>();
 export function persistBook(book: ReaderBook): PersistedBook {
   return {
+    ...(book.preserveSectionSnapshot ? { preserveSectionSnapshot: true } : {}),
     ...(book.rendition === undefined ? {} : { rendition: book.rendition }),
     id: book.id,
     title: book.title,
@@ -563,6 +565,28 @@ function restoreIssue(persisted: PersistedBook, reason: unknown): ReaderRestoreI
   };
 }
 
+/** Keep citation identities/text while rebuilding transient binary resources. */
+export function restoreSectionSnapshots(
+  parsed: ReaderBook,
+  snapshot: Pick<PersistedBook, "sections">,
+): ReaderBook["sections"] {
+  if (
+    parsed.sections.length !== snapshot.sections.length ||
+    parsed.sections.some((section, i) => section.kind !== snapshot.sections[i]?.kind)
+  )
+    throw new Error("源文件解析结构与资料包快照不一致");
+  return snapshot.sections.map((section, i) => {
+    const fresh = parsed.sections[i]!;
+    return {
+      ...fresh,
+      ...section,
+      // Saved Blob URLs belong to the exporting browser. Use freshly parsed
+      // markup only when its text agrees; otherwise render the saved text.
+      html: fresh.text === section.text ? fresh.html : undefined,
+    };
+  });
+}
+
 async function restoreBook(
   runtime: ReaderRuntime,
   persisted: PersistedBook,
@@ -576,6 +600,12 @@ async function restoreBook(
         return {
           book: {
             ...reopened,
+            ...(persisted.preserveSectionSnapshot
+              ? {
+                  preserveSectionSnapshot: true,
+                  sections: restoreSectionSnapshots(reopened, persisted),
+                }
+              : {}),
             title: persisted.title,
             ...(persisted.author === undefined ? {} : { author: persisted.author }),
             ...(persisted.language === undefined ? {} : { language: persisted.language }),
@@ -614,6 +644,7 @@ function projectPersistedBook(persisted: PersistedBook): RestoredBookResult {
   try {
     return {
       book: {
+        ...(persisted.preserveSectionSnapshot ? { preserveSectionSnapshot: true } : {}),
         id: persisted.id,
         title: persisted.title,
         ...(persisted.author === undefined ? {} : { author: persisted.author }),

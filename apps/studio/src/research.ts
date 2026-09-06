@@ -27,6 +27,7 @@ export interface ResearchExcerpt {
   readonly source: string;
   readonly route: string;
   readonly text: string;
+  readonly readerBindings?: ReadonlyArray<{ readonly book: string; readonly target: string }>;
   readonly links?: ReadonlyArray<ResearchLink>;
   readonly note: string;
   /** Imported draft is durable until explicitly saved as a note. */
@@ -122,6 +123,42 @@ export function sameExcerpt(left: ResearchExcerpt, right: ResearchExcerpt): bool
     left.text === right.text
   );
 }
+/** Independent import mapping: original snapshots and revision routes are immutable. */
+export function boundReaderExcerpt(excerpt: ResearchExcerpt): ResearchExcerpt {
+  if (!excerpt.readerBindings?.length) return excerpt;
+  const url = new URL(excerpt.route, "https://bcr.invalid");
+  if (url.pathname !== "/reader") return excerpt;
+  const binding = excerpt.readerBindings.find((item) => item.book === url.searchParams.get("book"));
+  if (!binding) return excerpt;
+  url.searchParams.set("book", binding.target);
+  let citation = excerpt.citation;
+  if (citation) {
+    const remap = (value: string) => {
+      try {
+        const parts: unknown = JSON.parse(value);
+        if (Array.isArray(parts) && parts[0] === "reader" && parts[1] === binding.book) {
+          parts[1] = binding.target;
+          return JSON.stringify(parts);
+        }
+      } catch {
+        /* Legacy identity stays unverified. */
+      }
+      return value;
+    };
+    citation = {
+      ...citation,
+      source: {
+        ...citation.source,
+        scope: remap(citation.source.scope),
+        unit: remap(citation.source.unit),
+      },
+    };
+  }
+  const route = citation
+    ? withTextCitation(`${url.pathname}${url.search}`, citation)
+    : `${url.pathname}${url.search}`;
+  return { ...excerpt, route, ...(citation ? { citation } : {}) };
+}
 export interface ExcerptStatus {
   readonly state: "unverified" | "exact" | "relocated" | "missing" | "changed" | "ambiguous";
   readonly label: string;
@@ -133,6 +170,7 @@ export function assessExcerpt(
 ): ExcerptStatus {
   const latest = excerpt.links?.at(-1);
   if (latest) excerpt = { ...excerpt, ...latest };
+  excerpt = boundReaderExcerpt(excerpt);
   const anchor = excerpt.citation;
   const pending = !anchor || !excerpt.owner || !search?.isSourceLive(excerpt.owner);
   if (pending)
@@ -224,6 +262,19 @@ export function decodeResearch(raw: string | undefined): ResearchLibrary {
         !citationRoute(item.route) ||
         typeof item.savedAt !== "number" ||
         !Number.isFinite(new Date(item.savedAt).getTime()) ||
+        (item.readerBindings !== undefined &&
+          (!Array.isArray(item.readerBindings) ||
+            item.readerBindings.some(
+              (binding: { book: string; target: string }) =>
+                !binding ||
+                typeof binding.book !== "string" ||
+                !binding.book ||
+                typeof binding.target !== "string" ||
+                !binding.target,
+            ) ||
+            new Set(
+              item.readerBindings.map((binding: { book: string; target: string }) => binding.book),
+            ).size !== item.readerBindings.length)) ||
         (item.links !== undefined &&
           (!Array.isArray(item.links) || !item.links.every(validResearchLink))) ||
         (item.draft !== undefined &&

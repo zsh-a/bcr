@@ -114,6 +114,7 @@ await withServer({
     "scripts/verify-research.mjs",
     "scripts/verify-research-backup.mjs",
     "scripts/verify-research-search.mjs",
+    "scripts/verify-research-package.mjs",
     "scripts/verify-accessibility.mjs",
     "scripts/verify-runtime-lifecycle.mjs",
   ],

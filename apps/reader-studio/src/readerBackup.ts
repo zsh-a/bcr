@@ -18,6 +18,7 @@ import {
 } from "./model";
 import {
   persistBook,
+  restoreSectionSnapshots,
   restoredAnnotations,
   restoredBookmarks,
   restoreNavigationHistory,
@@ -27,6 +28,7 @@ import {
 import { normalizeReaderProgress } from "./session-contract";
 import { parseReaderFile } from "./readerImports";
 import { sanitizeHtml } from "./readerMarkup";
+import { releaseBookResources } from "./store";
 import type { ReaderRuntime } from "./readerRuntimeCore";
 
 const MAX_BYTES = 512 * 1024 * 1024;
@@ -190,6 +192,7 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
     return {
       book: {
         id: persisted.id,
+        ...(book["preserveSectionSnapshot"] === true ? { preserveSectionSnapshot: true } : {}),
         ...(toc === undefined ? {} : { toc }),
         title: persisted.title,
         ...(typeof book["author"] === "string" ? { author: book["author"] } : {}),
@@ -419,6 +422,7 @@ export async function prepareReaderRestore(
   signal?: AbortSignal,
 ): Promise<ReaderBook[]> {
   const books: ReaderBook[] = [];
+  const allocated: ReaderBook[] = [];
   try {
     for (const { book, source } of backupNewBooks(backup, library)) {
       check(signal);
@@ -445,8 +449,16 @@ export async function prepareReaderRestore(
             signal,
           )
         : book;
+      allocated.push(parsed);
       const restored: ReaderBook = {
         ...parsed,
+        ...(book.preserveSectionSnapshot
+          ? {
+              preserveSectionSnapshot: true,
+              sections: restoreSectionSnapshots(parsed, book),
+              toc: book.toc,
+            }
+          : {}),
         title: book.title,
         author: book.author,
         language: book.language,
@@ -470,14 +482,7 @@ export async function prepareReaderRestore(
     check(signal);
     return books;
   } catch (reason) {
-    for (const book of books) {
-      for (const url of [
-        book.source.objectUrl,
-        book.coverUrl,
-        ...book.sections.map((section) => section.imageUrl),
-      ])
-        if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
-    }
+    for (const book of allocated) releaseBookResources(book);
     throw reason;
   }
 }

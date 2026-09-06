@@ -24,7 +24,7 @@ import {
 
 const demo = createDemoBook();
 
-function releaseBookResources(book: ReaderBook): void {
+export function releaseBookResources(book: ReaderBook): void {
   const embedded = new Set(
     book.sections.flatMap((section) => section.html?.match(/blob:[^\s"'<>]+/gu) ?? []),
   );
@@ -146,7 +146,9 @@ class ReaderStore {
     const currentById = new Map(this.state.library.map((book) => [book.id, book] as const));
     const currentByHash = new Map(
       this.state.library.flatMap((book) =>
-        book.source.ref?.hash === undefined ? [] : [[book.source.ref.hash, book] as const],
+        book.preserveSectionSnapshot || book.source.ref?.hash === undefined
+          ? []
+          : [[book.source.ref.hash, book] as const],
       ),
     );
     const retained = new Set<string>();
@@ -154,7 +156,9 @@ class ReaderStore {
     const merged = library.map((book) => {
       const current =
         currentById.get(book.id) ??
-        (book.source.ref?.hash === undefined ? undefined : currentByHash.get(book.source.ref.hash));
+        (book.preserveSectionSnapshot || book.source.ref?.hash === undefined
+          ? undefined
+          : currentByHash.get(book.source.ref.hash));
       if (current !== undefined) {
         retained.add(current.id);
         return current;
@@ -195,7 +199,8 @@ class ReaderStore {
     const existing = this.state.library.find(
       (candidate) =>
         candidate.id === book.id ||
-        (candidate.source.ref?.hash !== undefined &&
+        (!candidate.preserveSectionSnapshot &&
+          candidate.source.ref?.hash !== undefined &&
           candidate.source.ref.hash === book.source.ref?.hash),
     );
     if (existing !== undefined) {
