@@ -1,3 +1,4 @@
+import { inlineTxtToc } from "./txtChapters";
 import type { ReaderBook, ReaderOpenInput } from "@bcr/reader-core";
 import { makeBook } from "./readerAdapterShared";
 import { markdownToHtml, sanitizeHtml, textSections } from "./readerMarkup";
@@ -42,7 +43,8 @@ export async function openText(input: ReaderOpenInput): Promise<ReaderBook> {
       parsed.title === undefined ? {} : { title: parsed.title },
     );
   }
-  return makeBook(input, textSections(raw, input.format));
+  const sections = textSections(raw, input.format);
+  return makeBook(input, sections, input.format === "txt" ? { toc: inlineTxtToc(sections) } : {});
 }
 
 function fb2Author(document: Document): string | undefined {

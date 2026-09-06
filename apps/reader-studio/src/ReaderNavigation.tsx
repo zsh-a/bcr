@@ -1,3 +1,4 @@
+import { currentTxtChapter } from "./txtChapters";
 import { VirtualSectionList } from "./VirtualSectionList";
 import { SECTION_WINDOW_THRESHOLD } from "./VirtualPublicationSections";
 import {
@@ -70,6 +71,8 @@ function ReaderTocTree(props: {
 }) {
   const level = props.level ?? 0;
   const query = props.query?.trim().toLocaleLowerCase() ?? "";
+  const highlightedId =
+    currentTxtChapter(props.book, props.activeSectionId)?.sectionId ?? props.activeSectionId;
   const visibleItems = props.items.filter((item) => tocItemMatchesQuery(item, query));
   return (
     <div className={`reader-toc-level reader-toc-level-${Math.min(level, 4)}`}>
@@ -80,8 +83,8 @@ function ReaderTocTree(props: {
           <div className="reader-toc-item" key={item.id}>
             <button
               type="button"
-              className={sectionId === props.activeSectionId ? "is-active" : ""}
-              aria-current={sectionId === props.activeSectionId ? "page" : undefined}
+              className={sectionId === highlightedId ? "is-active" : ""}
+              aria-current={sectionId === highlightedId ? "page" : undefined}
               data-reader-toc-section={sectionId}
               disabled={sectionId === undefined}
               title={sectionId === undefined ? "此条目未包含可读正文" : undefined}
@@ -127,6 +130,7 @@ export function MobileReadingBar(props: {
   pagination?: {
     columns?: number;
     physicalPages?: number;
+    scopeLabel?: string;
     page: number;
     pages: number;
     canPrevious: boolean;
@@ -141,9 +145,22 @@ export function MobileReadingBar(props: {
     0,
     props.book.sections.findIndex((section) => section.id === activeSectionId),
   );
-  const current = props.book.sections[activeIndex] ?? props.book.sections[0];
-  const unit = props.book.source.format === "pdf" ? "页" : "章";
+  const chapter = currentTxtChapter(props.book, activeSectionId);
+  const current = chapter ?? props.book.sections[activeIndex] ?? props.book.sections[0];
+  const navigationIndex = chapter ? props.book.toc!.indexOf(chapter) : activeIndex;
+  const navigationCount = chapter ? props.book.toc!.length : props.book.sections.length;
+  const unit =
+    props.book.source.format === "pdf"
+      ? "页"
+      : chapter || props.book.source.format !== "txt"
+        ? "章"
+        : "段";
   const openAdjacent = (delta: number) => {
+    if (chapter && props.book.toc) {
+      const adjacent = props.book.toc[props.book.toc.indexOf(chapter) + delta];
+      if (adjacent?.sectionId) reader.openBook(props.book.id, adjacent.sectionId, false);
+      return;
+    }
     const target = props.book.sections[activeIndex + delta];
     if (target !== undefined) reader.openBook(props.book.id, target.id, false);
   };
@@ -168,13 +185,13 @@ export function MobileReadingBar(props: {
           aria-controls="reader-mobile-navigation-sheet"
         >
           <span className="reader-mobile-nav-current-label">当前阅读</span>
-          <strong>{current?.label ?? "正文"}</strong>
+          <strong>{chapter?.label ?? current?.label ?? "正文"}</strong>
           <span className="reader-mobile-nav-current-meta">
             {props.pagination
               ? props.pagination.columns === 2
-                ? `${props.pagination.page * 2 + 1}–${Math.min(props.pagination.physicalPages ?? 1, props.pagination.page * 2 + 2)} / ${props.pagination.physicalPages} 页 · 本章`
-                : `${props.pagination.page + 1} / ${props.pagination.pages} 页 · 本章`
-              : `${activeIndex + 1} / ${props.book.sections.length} ${unit} · ${percent(progress)}`}
+                ? `${props.pagination.page * 2 + 1}–${Math.min(props.pagination.physicalPages ?? 1, props.pagination.page * 2 + 2)} / ${props.pagination.physicalPages} 页 · ${props.pagination.scopeLabel ?? "本章"}`
+                : `${props.pagination.page + 1} / ${props.pagination.pages} 页 · ${props.pagination.scopeLabel ?? "本章"}`
+              : `${navigationIndex + 1} / ${navigationCount} ${unit} · ${percent(progress)}`}
           </span>
           <ChevronUp className="reader-mobile-nav-current-chevron" aria-hidden="true" />
         </button>
@@ -182,7 +199,7 @@ export function MobileReadingBar(props: {
           type="button"
           className="reader-mobile-nav-step"
           onClick={() => (props.pagination ? props.pagination.turn(-1) : openAdjacent(-1))}
-          disabled={props.pagination ? !props.pagination.canPrevious : activeIndex <= 0}
+          disabled={props.pagination ? !props.pagination.canPrevious : navigationIndex <= 0}
           aria-label={props.pagination ? "上一页" : "上一章"}
           title={props.pagination ? "上一页" : "上一章"}
         >
@@ -193,9 +210,7 @@ export function MobileReadingBar(props: {
           className="reader-mobile-nav-step"
           onClick={() => (props.pagination ? props.pagination.turn(1) : openAdjacent(1))}
           disabled={
-            props.pagination
-              ? !props.pagination.canNext
-              : activeIndex >= props.book.sections.length - 1
+            props.pagination ? !props.pagination.canNext : navigationIndex >= navigationCount - 1
           }
           aria-label={props.pagination ? "下一页" : "下一章"}
           title={props.pagination ? "下一页" : "下一章"}
@@ -233,6 +248,7 @@ function MobileNavigationSheet(props: {
     (state) => state.annotationsByBook[props.book.id] ?? EMPTY_ANNOTATIONS,
   );
   const [query, setQuery] = useState("");
+  const chapter = currentTxtChapter(props.book, activeSectionId);
   const current =
     props.book.sections.find((section) => section.id === activeSectionId) ?? props.book.sections[0];
   const normalizedQuery = query.trim().toLocaleLowerCase();
@@ -252,12 +268,12 @@ function MobileNavigationSheet(props: {
     const frame = window.requestAnimationFrame(() => {
       const sheet = document.getElementById("reader-mobile-navigation-sheet");
       const active = sheet?.querySelector<HTMLElement>(
-        `[data-reader-toc-section="${CSS.escape(activeSectionId)}"]`,
+        `[data-reader-toc-section="${CSS.escape(currentTxtChapter(props.book, activeSectionId)?.sectionId ?? activeSectionId)}"]`,
       );
       active?.scrollIntoView({ block: "center", behavior: "auto" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [activeSectionId, props.panel]);
+  }, [activeSectionId, props.panel, props.book]);
 
   const navigateToSection = (sectionId: string) => {
     reader.openBook(props.book.id, sectionId);
@@ -268,7 +284,7 @@ function MobileNavigationSheet(props: {
     label: string;
     count: number;
   }> = [
-    { id: "toc", label: "目录", count: props.book.sections.length },
+    { id: "toc", label: "目录", count: props.book.toc?.length || props.book.sections.length },
     { id: "bookmarks", label: "书签", count: bookmarks.length },
     { id: "notes", label: "笔记", count: annotations.length },
   ];
@@ -341,11 +357,11 @@ function MobileNavigationSheet(props: {
             </div>
             <div className="reader-mobile-toc-context">
               <span>正在阅读</span>
-              <strong>{current?.label ?? "正文"}</strong>
+              <strong>{chapter?.label ?? current?.label ?? "正文"}</strong>
               <span>
                 {current === undefined
                   ? ""
-                  : `${current.order + 1} / ${props.book.sections.length} · ${percent(progress)}`}
+                  : `${chapter ? props.book.toc!.indexOf(chapter) + 1 : current.order + 1} / ${chapter ? props.book.toc!.length : props.book.sections.length} · ${percent(progress)}`}
               </span>
             </div>
             <div className="reader-mobile-sheet-scroll">

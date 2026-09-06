@@ -1,3 +1,4 @@
+import { inlineTxtToc } from "./txtChapters";
 import { restoreStructuredContent } from "./structuredContent";
 import { attachTxtSections, openLazyTxt, LAZY_TXT_MIN_BYTES } from "./lazyTxt";
 import { hasDeferredContent, releaseReaderContent, attachDeferredSource } from "./readerContent";
@@ -656,22 +657,27 @@ async function restoreBook(
       if (!file) throw new Error("TXT 源文件不可用");
       const projected = projectPersistedBook(persisted);
       if (!projected.book) return projected;
+      const reusable =
+        validTxtRanges(persisted.sections, file.size) &&
+        (persisted.toc !== undefined || persisted.preserveSectionSnapshot);
+      const opened = reusable
+        ? undefined
+        : await openLazyTxt({
+            file,
+            id: persisted.id,
+            format: "txt",
+            ...(signal ? { signal } : {}),
+          });
       return {
         book: {
           ...projected.book,
-          sections: validTxtRanges(persisted.sections, file.size)
-            ? attachTxtSections(
-                file,
-                persisted.sections.map((section) => section.textRange!),
-              )
-            : (
-                await openLazyTxt({
-                  file,
-                  id: persisted.id,
-                  format: "txt",
-                  ...(signal ? { signal } : {}),
-                })
-              ).sections,
+          sections:
+            opened?.sections ??
+            attachTxtSections(
+              file,
+              persisted.sections.map((section) => section.textRange!),
+            ),
+          ...(opened && !persisted.preserveSectionSnapshot ? { toc: opened.toc } : {}),
         },
       };
     } catch (reason) {
@@ -744,7 +750,11 @@ function projectPersistedBook(persisted: PersistedBook): RestoredBookResult {
           ...(persisted.source.ref === undefined ? {} : { ref: persisted.source.ref }),
         },
         sections: persisted.sections,
-        ...(persisted.toc === undefined ? {} : { toc: persisted.toc }),
+        ...(persisted.toc !== undefined
+          ? { toc: persisted.toc }
+          : persisted.source.format === "txt" && !persisted.preserveSectionSnapshot
+            ? { toc: inlineTxtToc(persisted.sections) }
+            : {}),
         importedAt: persisted.importedAt,
         updatedAt: persisted.updatedAt,
         tags: persisted.tags,

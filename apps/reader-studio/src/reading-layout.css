@@ -364,3 +364,16 @@
     transition: none !important;
   }
 }
+
+.reader-page-text-flow .reader-section-label {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .reader-page-viewport[data-turn-zone="previous"] {
+    cursor: w-resize;
+  }
+  .reader-page-viewport[data-turn-zone="next"] {
+    cursor: e-resize;
+  }
+}

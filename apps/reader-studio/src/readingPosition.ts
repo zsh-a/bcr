@@ -266,6 +266,7 @@ function readerTextAnchorRange(
 function readerRangeScrollPosition(
   container: HTMLElement,
   range: Range,
+  horizontal = false,
 ): ReaderScrollPosition | undefined {
   const rangeRect = [...range.getClientRects()].find((rect) => rect.width > 0 || rect.height > 0);
   if (rangeRect === undefined) return undefined;
@@ -284,7 +285,10 @@ function readerRangeScrollPosition(
       maxLeft,
       Math.max(
         0,
-        container.scrollLeft + rangeRect.left - containerRect.left - container.clientWidth * 0.32,
+        container.scrollLeft +
+          rangeRect.left -
+          containerRect.left -
+          (horizontal ? 0 : container.clientWidth * 0.32),
       ),
     ),
   };
@@ -363,7 +367,7 @@ export function readerLocatorScrollPosition(
   }
   const anchorRange = readerTextAnchorRange(target, locator);
   if (anchorRange !== undefined) {
-    const position = readerRangeScrollPosition(container, anchorRange);
+    const position = readerRangeScrollPosition(container, anchorRange, horizontal);
     if (position !== undefined) return position;
   }
   if (locator.progression <= 0) return readerElementScrollPosition(container, target);

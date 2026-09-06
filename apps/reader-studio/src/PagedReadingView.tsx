@@ -1,6 +1,8 @@
-import { useSectionContent } from "./useSectionContent";
+import { animatePageTurn, pageClickDirection, PAGE_INTERACTIVE_TARGET } from "./pageTurnMotion";
+import { useSectionsContent } from "./useSectionContent";
 import {
   useCallback,
+  useMemo,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -19,11 +21,16 @@ import {
 } from "./readingPosition";
 import { resolveReaderInternalLink, type ReaderInternalLinkTarget } from "./navigation";
 import { READER_CAPTURE_PROGRESS_EVENT } from "./useReaderRuntime";
-import { pageAtOffset, paginationGeometry, READER_PAGE_GUTTER } from "./pagination";
+import {
+  pageAtOffset,
+  paginationGroups,
+  paginationGeometry,
+  READER_PAGE_GUTTER,
+} from "./pagination";
 import { useReaderMobile } from "./useReaderMobile";
 import { settleReaderLayout } from "./readingRestore";
 
-/** One chapter in the DOM; one or two columns per viewport; semantic progress survives reflow. */
+/** One chapter or bounded TXT batch; semantic progress survives page turns and reflow. */
 export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome: () => void }) {
   const mobile = useReaderMobile();
   const settings = useReader((state) => state.settings);
@@ -35,8 +42,34 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
     0,
     props.book.sections.findIndex((section) => section.id === activeId),
   );
-  const section = props.book.sections[sectionIndex];
-  const activeContent = useSectionContent(section);
+  const groups = useMemo(() => paginationGroups(props.book), [props.book]);
+  const groupIndex = Math.max(
+    0,
+    groups.findIndex((group) => sectionIndex >= group.start && sectionIndex < group.end),
+  );
+  const group = groups[groupIndex];
+  const sections = useMemo(
+    () => props.book.sections.slice(group?.start ?? 0, group?.end ?? 0),
+    [props.book, group],
+  );
+  const section = sections[0];
+  const activeContent = useSectionsContent(sections);
+  const neighbors = useMemo(() => {
+    const previous = groups[groupIndex - 1],
+      next = groups[groupIndex + 1];
+    return [
+      ...(previous
+        ? props.book.sections.slice(Math.max(previous.start, previous.end - 2), previous.end)
+        : []),
+      ...(next ? props.book.sections.slice(next.start, Math.min(next.end, next.start + 2)) : []),
+    ].filter(
+      (item) =>
+        item.kind === "text" &&
+        !item.contentInfo?.imageCount &&
+        (item.contentInfo?.textLength ?? item.textRange?.length ?? item.text.length) <= 24000,
+    );
+  }, [props.book, groups, groupIndex]);
+  useSectionsContent(neighbors);
   const viewportRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -52,6 +85,20 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
   const turnRef = useRef<(delta: number) => void>(() => {});
   const gesture = useRef<{ x: number; y: number; page: number } | null>(null);
   const suppressClick = useRef(false);
+  const pointer = useRef<{
+    id: number;
+    x: number;
+    y: number;
+    started: number;
+    moved: boolean;
+    selected: boolean;
+  } | null>(null);
+  const cancelMotion = useRef<() => void>(() => {});
+  const stopMotion = useCallback(() => {
+    cancelMotion.current();
+    cancelMotion.current = () => {};
+  }, []);
+  useEffect(() => stopMotion, [stopMotion]);
   const [columns, setColumns] = useState(1);
   const [physicalPages, setPhysicalPages] = useState(1);
   const [layoutBusy, setLayoutBusy] = useState(true);
@@ -112,6 +159,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
       if (disposed) return;
       const width = viewport.clientWidth;
       if (width <= 0) return;
+      stopMotion();
       restoring.current = true;
       setLayoutBusy(true);
       targetPage.current = null;
@@ -119,22 +167,29 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
       const gap = Number.parseFloat(getComputedStyle(content).columnGap) || 0;
       content.style.setProperty("--reader-page-content-height", `${content.clientHeight}px`);
       const origin = content.getBoundingClientRect().left;
-      const fragments = Array.from(content.firstElementChild?.getClientRects() ?? []);
+      const fragments = Array.from(content.children).flatMap((child) =>
+        Array.from(child.getClientRects()),
+      );
       const extent = fragments.reduce((end, rect) => Math.max(end, rect.right - origin), 0);
       const { totalPages: total, spreads: count } = paginationGeometry(extent, width, gap, columns);
       setPhysicalPages(total);
       countRef.current = count;
       setPages(count);
       const locator = getReaderState().progressByBook[props.book.id]?.locator;
-      let target = locator?.sectionId === section.id ? Math.floor(locator.progression * count) : 0;
+      const locatedSection = sections.find((item) => item.id === locator?.sectionId);
+      let target = locatedSection && locator ? Math.floor(locator.progression * count) : 0;
       if (
-        locator?.sectionId === section.id &&
-        (locator.textAnchor !== undefined || locator.imageAnchor !== undefined)
+        locatedSection &&
+        locator &&
+        (sections.length > 1 || locator.textAnchor || locator.imageAnchor)
       ) {
-        const position = readerLocatorScrollPosition(viewport, section, locator, true);
+        const position = readerLocatorScrollPosition(viewport, locatedSection, locator, true);
         if (position !== undefined) target = Math.floor(position.left / width);
       }
-      if (pendingLink.current?.sectionId === section.id) {
+      if (
+        pendingLink.current &&
+        sections.some((item) => item.id === pendingLink.current?.sectionId)
+      ) {
         const position = readerInternalLinkScrollPosition(viewport, pendingLink.current);
         if (position !== undefined) target = Math.floor(position.left / width);
       }
@@ -170,6 +225,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
       disposed = true;
       observer.disconnect();
       cancelRestore();
+      stopMotion();
       content.removeEventListener("load", calibrate, true);
       content.removeEventListener("bcr-reader-content-ready", calibrate);
       window.removeEventListener("bcr-reader-fonts-ready", calibrate);
@@ -178,16 +234,19 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
     navigation,
     props.book,
     section,
+    sections,
     settings,
     query,
     reveal,
     capture,
     columns,
     activeContent.ready,
+    stopMotion,
   ]);
 
   useEffect(() => {
     const flush = () => {
+      stopMotion();
       const viewport = viewportRef.current;
       if (viewport && targetPage.current !== null)
         viewport.scrollTo({ left: targetPage.current * viewport.clientWidth, behavior: "instant" });
@@ -198,13 +257,13 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
       window.removeEventListener(READER_CAPTURE_PROGRESS_EVENT, flush);
       if (scrollTimer.current !== null) clearTimeout(scrollTimer.current);
     };
-  }, [capture]);
+  }, [capture, stopMotion]);
 
   const turn = (delta: number) => {
     const viewport = viewportRef.current;
     if (viewport === null) return;
     if (!activeContent.ready || restoring.current || transitioning.current) {
-      queuedTurns.current.push(delta);
+      if (queuedTurns.current.length < 8) queuedTurns.current.push(delta);
       return;
     }
     const current =
@@ -212,8 +271,9 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
       pageAtOffset(viewport.scrollLeft, viewport.clientWidth, countRef.current);
     const next = current + delta;
     if (next < 0 || next >= pages) {
-      const adjacent = props.book.sections[sectionIndex + delta];
+      const adjacent = props.book.sections[delta < 0 ? (group?.start ?? 0) - 1 : (group?.end ?? 0)];
       if (adjacent !== undefined) {
+        stopMotion();
         transitioning.current = true;
         targetPage.current = null;
         if (scrollTimer.current !== null) clearTimeout(scrollTimer.current);
@@ -222,12 +282,9 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
       }
     } else {
       targetPage.current = next;
-      viewport.scrollTo({
-        left: next * viewport.clientWidth,
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "instant"
-          : "smooth",
-      });
+      stopMotion();
+      setPage(next);
+      cancelMotion.current = animatePageTurn(viewport, next * viewport.clientWidth, capture);
     }
   };
   turnRef.current = turn;
@@ -248,13 +305,66 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
         ref={viewportRef}
         tabIndex={0}
         aria-label="分页正文"
-        aria-busy={layoutBusy}
-        onTouchStart={(event) => {
+        aria-description="点击左侧翻到上一页，右侧翻到下一页；也可使用方向键或空格翻页。手机点击中央显示或隐藏工具栏。"
+        onPointerDown={(event) => {
           suppressClick.current = false;
+          pointer.current = {
+            id: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            started: event.timeStamp,
+            moved: !event.isPrimary || event.button !== 0,
+            selected: window.getSelection()?.isCollapsed === false,
+          };
+        }}
+        onPointerMove={(event) => {
+          const start = pointer.current;
+          if (
+            start &&
+            start.id === event.pointerId &&
+            Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8
+          ) {
+            start.moved = true;
+            stopMotion();
+            targetPage.current = null;
+          }
+          const viewport = event.currentTarget;
+          const interactive =
+            event.target instanceof Element && event.target.closest(PAGE_INTERACTIVE_TARGET);
+          const direction = interactive
+            ? 0
+            : pageClickDirection(
+                event.clientX - viewport.getBoundingClientRect().left,
+                viewport.clientWidth,
+              );
+          const zone = direction < 0 ? "previous" : direction > 0 ? "next" : "center";
+          if (viewport.dataset.turnZone !== zone) viewport.dataset.turnZone = zone;
+        }}
+        onPointerUp={(event) => {
+          const start = pointer.current;
+          if (start && start.id === event.pointerId) {
+            suppressClick.current =
+              start.moved || start.selected || event.timeStamp - start.started > 450;
+            pointer.current = null;
+          }
+        }}
+        onPointerCancel={() => {
+          pointer.current = null;
+          suppressClick.current = true;
+        }}
+        onPointerLeave={(event) => {
+          delete event.currentTarget.dataset.turnZone;
+        }}
+        onWheel={() => {
+          stopMotion();
+          targetPage.current = null;
+        }}
+        aria-busy={layoutBusy || !activeContent.ready}
+        onTouchStart={(event) => {
+          stopMotion();
           if (
             event.touches.length !== 1 ||
-            (event.target instanceof Element &&
-              event.target.closest("a,button,input,textarea,select,pre,table"))
+            (event.target instanceof Element && event.target.closest(PAGE_INTERACTIVE_TARGET))
           ) {
             gesture.current = null;
             return;
@@ -289,9 +399,16 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
         }}
         onKeyDown={(event) => {
           if (event.target !== event.currentTarget) return;
-          if (["ArrowRight", "PageDown", "ArrowLeft", "PageUp"].includes(event.key)) {
+          if (event.altKey || event.ctrlKey || event.metaKey) return;
+          if (["ArrowRight", "PageDown", "ArrowLeft", "PageUp", " "].includes(event.key)) {
             event.preventDefault();
-            turn(event.key === "ArrowRight" || event.key === "PageDown" ? 1 : -1);
+            turn(
+              event.key === "ArrowRight" ||
+                event.key === "PageDown" ||
+                (event.key === " " && !event.shiftKey)
+                ? 1
+                : -1,
+            );
           }
         }}
         onScroll={() => {
@@ -303,6 +420,14 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
             suppressClick.current = false;
             return;
           }
+          if (
+            event.button !== 0 ||
+            event.altKey ||
+            event.ctrlKey ||
+            event.metaKey ||
+            event.shiftKey
+          )
+            return;
           const element = event.target instanceof Element ? event.target : null;
           const anchor = element?.closest<HTMLAnchorElement>("a[href]");
           if (anchor && section) {
@@ -319,15 +444,23 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
             return;
           }
           if (
-            element?.closest("button, input, textarea, select") ||
+            element?.closest(PAGE_INTERACTIVE_TARGET) ||
             window.getSelection()?.isCollapsed === false
           )
             return;
-          if (window.matchMedia("(max-width: 860px)").matches) props.onToggleMobileChrome();
+          const rect = event.currentTarget.getBoundingClientRect();
+          const direction = pageClickDirection(event.clientX - rect.left, rect.width);
+          if (event.detail > 0 && direction !== 0) turn(direction);
+          else if (mobile && direction === 0) props.onToggleMobileChrome();
         }}
       >
-        <div ref={contentRef} className="reader-page-content">
-          {section && <SectionView section={section} searchQuery={query} active />}
+        <div
+          ref={contentRef}
+          className={`reader-page-content ${props.book.source.format === "txt" ? "reader-page-text-flow" : ""}`}
+        >
+          {sections.map((item) => (
+            <SectionView key={item.id} section={item} searchQuery={query} active />
+          ))}
         </div>
         <div className="reader-page-stops" aria-hidden="true">
           {Array.from({ length: pages }, (_, index) => (
@@ -343,8 +476,9 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
           pages,
           columns,
           physicalPages,
-          canPrevious: page > 0 || sectionIndex > 0,
-          canNext: page < pages - 1 || sectionIndex < props.book.sections.length - 1,
+          canPrevious: page > 0 || groupIndex > 0,
+          canNext: page < pages - 1 || groupIndex < groups.length - 1,
+          scopeLabel: props.book.source.format === "txt" ? "当前阅读段" : "本章",
           turn,
         }}
       />

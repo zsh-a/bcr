@@ -1,3 +1,4 @@
+import { txtHeading, txtToc, type TxtHeading } from "./txtChapters";
 import { textVersion } from "@bcr/core";
 import { makeSnippet, searchTextRanges, type SearchHit } from "@bcr/reader-core";
 
@@ -14,7 +15,11 @@ export interface TxtSearchHit extends SearchHit {
 export const TXT_CHUNK_BYTES = 256 * 1024;
 
 /** Match textSections' CR/LF normalization, blank-line splitting and trim without retaining prose. */
-export async function scanTxt(file: Blob, signal?: AbortSignal): Promise<TxtRange[]> {
+export async function scanTxt(
+  file: Blob,
+  signal?: AbortSignal,
+  onParagraph?: (index: number, firstLine: string) => void,
+): Promise<TxtRange[]> {
   const ranges: TxtRange[] = [];
   const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
   let start = 0,
@@ -23,8 +28,15 @@ export async function scanTxt(file: Blob, signal?: AbortSignal): Promise<TxtRang
     previousCR = false;
   let length = 0,
     whitespace = 0;
+  let firstLine = "",
+    lineEnded = false;
   const append = (value: string) => {
     for (const character of value) {
+      if (!lineEnded) {
+        if (character === "\n") lineEnded = firstLine.length > 0;
+        else if (firstLine.length <= 80 && (firstLine.length > 0 || !/\s/u.test(character)))
+          firstLine += character;
+      }
       if (/\s/u.test(character)) {
         if (length > 0) whitespace += character.length;
       } else {
@@ -34,7 +46,12 @@ export async function scanTxt(file: Blob, signal?: AbortSignal): Promise<TxtRang
     }
   };
   const finish = (end: number) => {
-    if (length > 0) ranges.push({ start, end, length });
+    if (length > 0) {
+      onParagraph?.(ranges.length, firstLine);
+      ranges.push({ start, end, length });
+    }
+    firstLine = "";
+    lineEnded = false;
     length = 0;
     whitespace = 0;
   };
@@ -150,4 +167,13 @@ export function validTxtRanges(
       return true;
     })
   );
+}
+
+export async function scanTxtIndex(file: Blob, signal?: AbortSignal) {
+  const headings: TxtHeading[] = [];
+  const ranges = await scanTxt(file, signal, (index, line) => {
+    const label = txtHeading(line);
+    if (label) headings.push({ sectionId: `section-${index + 1}`, label });
+  });
+  return { ranges, toc: txtToc(headings) };
 }

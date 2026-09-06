@@ -2,7 +2,7 @@ import { attachReaderContent } from "./readerContent";
 import type { ReaderBook, ReaderOpenInput, ReaderSection } from "@bcr/reader-core";
 import { makeBook } from "./readerAdapterShared";
 import { escapeHtml } from "./readerMarkup";
-import { readTxtRange, scanTxt, searchTxt, type TxtRange } from "./txtIndex";
+import { readTxtRange, scanTxtIndex, searchTxt, type TxtRange } from "./txtIndex";
 
 export const LAZY_TXT_MIN_BYTES = 256 * 1024;
 async function txtTask<T>(
@@ -47,8 +47,12 @@ async function txtTask<T>(
 }
 
 export async function openLazyTxt(input: ReaderOpenInput): Promise<ReaderBook> {
-  const ranges = await txtTask(input.file, () => scanTxt(input.file, input.signal), input.signal);
-  return makeBook(input, attachTxtSections(input.file, ranges));
+  const index = await txtTask(
+    input.file,
+    () => scanTxtIndex(input.file, input.signal),
+    input.signal,
+  );
+  return makeBook(input, attachTxtSections(input.file, index.ranges), { toc: index.toc });
 }
 
 export function attachTxtSections(
