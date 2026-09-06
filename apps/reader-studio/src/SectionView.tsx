@@ -15,7 +15,7 @@ export const SectionView = memo(function SectionView(props: {
   const [height, setHeight] = useState(360);
   useEffect(() => {
     const element = root.current;
-    if (props.virtualized || !element || !window.IntersectionObserver) return;
+    if (props.active || props.virtualized || !element || !window.IntersectionObserver) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry) return;
@@ -26,7 +26,7 @@ export const SectionView = memo(function SectionView(props: {
     );
     observer.observe(element);
     return () => observer.disconnect();
-  }, [props.virtualized]);
+  }, [props.active, props.virtualized]);
   const mounted = props.virtualized || visible || props.active || props.searchQuery !== "";
   const content = useSectionContent(props.section, mounted === true);
   useLayoutEffect(() => {

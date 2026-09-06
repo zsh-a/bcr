@@ -283,8 +283,14 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
     } else {
       targetPage.current = next;
       stopMotion();
+      if (scrollTimer.current !== null) clearTimeout(scrollTimer.current);
       setPage(next);
-      cancelMotion.current = animatePageTurn(viewport, next * viewport.clientWidth, capture);
+      cancelMotion.current = animatePageTurn(
+        viewport,
+        next * viewport.clientWidth,
+        capture,
+        settings.pageAnimation,
+      );
     }
   };
   turnRef.current = turn;
@@ -411,7 +417,8 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
             );
           }
         }}
-        onScroll={() => {
+        onScroll={(event) => {
+          if (restoring.current || event.currentTarget.dataset.pageTurning) return;
           if (scrollTimer.current !== null) clearTimeout(scrollTimer.current);
           scrollTimer.current = setTimeout(capture, 140);
         }}

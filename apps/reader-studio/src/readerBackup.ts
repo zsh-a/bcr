@@ -326,6 +326,12 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
     const value = settings[key];
     if (value !== undefined && (!finite(value) || value < min || value > max)) return fail();
   }
+  if (
+    settings["pageAnimation"] !== undefined &&
+    (typeof settings["pageAnimation"] !== "string" ||
+      !["slide", "fade", "paper", "none"].includes(settings["pageAnimation"]))
+  )
+    return fail();
   for (const key of ["pageSpread", "tocPinned"]) {
     if (settings[key] !== undefined && typeof settings[key] !== "boolean") return fail();
   }

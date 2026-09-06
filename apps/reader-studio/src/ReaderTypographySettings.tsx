@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { ReaderSettings } from "./model";
+import type { ReaderPageAnimation, ReaderSettings } from "./model";
 import { DEFAULT_READER_SETTINGS } from "./model";
 import { reader } from "./store";
 import { readerTypographyStyle, READER_TYPOGRAPHY_PRESETS } from "./readerTypography";
@@ -76,6 +76,22 @@ export function ReaderTypographySettings({
         )}
       </p>
       <div className="reader-typography-fields">
+        <label>
+          翻页动画
+          <select
+            aria-label="翻页动画"
+            value={settings.pageAnimation ?? "slide"}
+            onChange={(event) =>
+              reader.setSettings({ pageAnimation: event.target.value as ReaderPageAnimation })
+            }
+          >
+            <option value="slide">平滑滑动</option>
+            <option value="fade">淡出淡入</option>
+            <option value="paper">仿真翻页</option>
+            <option value="none">无动画</option>
+          </select>
+          <small>用于分页模式的点击、按钮和键盘翻页；跟随系统减少动态效果设置。</small>
+        </label>
         <label>
           <input
             type="checkbox"

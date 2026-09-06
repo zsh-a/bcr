@@ -12,6 +12,9 @@ export function normalizeReaderTypography(settings: ReaderSettings): ReaderSetti
       : fallback;
   return {
     ...settings,
+    pageAnimation: ["slide", "fade", "paper", "none"].includes(settings.pageAnimation ?? "")
+      ? (settings.pageAnimation ?? "slide")
+      : "slide",
     fontFamily: READER_CJK_FONT_OPTIONS.some((font) => font.id === settings.fontFamily)
       ? settings.fontFamily
       : DEFAULT_READER_SETTINGS.fontFamily,

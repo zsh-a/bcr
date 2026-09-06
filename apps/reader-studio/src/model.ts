@@ -20,10 +20,12 @@ export type {
 
 export type ReaderTheme = "paper" | "night" | "sage";
 export type ReaderLayout = "scroll" | "paged";
+export type ReaderPageAnimation = "slide" | "fade" | "paper" | "none";
 export type ReaderFontFamily = "sans" | "serif" | "kai";
 export type ReaderLatinFontFamily = "sans" | "serif" | "mono" | "literata" | "atkinson";
 
 export interface ReaderSettings {
+  readonly pageAnimation?: ReaderPageAnimation;
   readonly pageSpread?: boolean;
   readonly tocPinned?: boolean;
   readonly fontWeight?: number;
@@ -137,6 +139,7 @@ export interface ReaderHistoryEntry {
 export const DEFAULT_READER_SETTINGS: ReaderSettings = {
   theme: "paper",
   layout: "scroll",
+  pageAnimation: "slide",
   fontSize: 20,
   fontFamily: "sans",
   latinFontFamily: "sans",

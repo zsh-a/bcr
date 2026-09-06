@@ -50,6 +50,26 @@ async function runtime(): Promise<ReaderRuntime> {
 }
 
 describe("Reader portable backup", () => {
+  it("restores page animation preferences and accepts older backups", () => {
+    for (const pageAnimation of ["slide", "fade", "paper", "none"]) {
+      expect(
+        decodeReaderBackup({
+          ...manifest(),
+          settings: { ...DEFAULT_READER_SETTINGS, pageAnimation },
+        }).settings.pageAnimation,
+      ).toBe(pageAnimation);
+    }
+    const { pageAnimation: _animation, ...legacy } = DEFAULT_READER_SETTINGS;
+    expect(decodeReaderBackup({ ...manifest(), settings: legacy }).settings.pageAnimation).toBe(
+      "slide",
+    );
+    for (const pageAnimation of ["unknown", 3, ["fade"]]) {
+      expect(() =>
+        decodeReaderBackup({ ...manifest(), settings: { ...legacy, pageAnimation } }),
+      ).toThrow();
+    }
+  });
+
   it("restores lazy TXT from its independent source and index without duplicating paragraph text", async () => {
     const original = await runtime();
     const text = Array.from(
