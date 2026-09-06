@@ -78,6 +78,21 @@ try {
   await page.waitForURL(/\/reader\?.*start=/u);
   assert.ok(Number(new URL(page.url()).searchParams.get("start")) > 12000);
   const readerLink = page.url();
+  await page
+    .locator('[data-reader-search-match="true"]')
+    .filter({ hasText: "独特研究证据" })
+    .first()
+    .waitFor();
+  await page.waitForFunction(() => {
+    const mark = [...document.querySelectorAll('[data-reader-search-match="true"]')].find(
+      (item) => item.textContent === "独特研究证据",
+    );
+    const root = document.querySelector(".reader-reading-scroll");
+    if (!mark || !root) return false;
+    const rect = mark.getBoundingClientRect(),
+      viewport = root.getBoundingClientRect();
+    return rect.top >= viewport.top - 1 && rect.top < viewport.bottom;
+  });
 
   // A durable block from the first job remains indexed after selecting the second.
   await page.goto(`${origin}/documents`, { waitUntil: "networkidle" });
@@ -99,7 +114,9 @@ try {
   await page.getByRole("option").filter({ hasText: "原文" }).first().waitFor();
   await page.getByRole("option").filter({ hasText: "原文" }).first().hover();
   await saveCurrent();
-  await page.keyboard.press("Escape");
+  await page.getByRole("option").filter({ hasText: "原文" }).first().click();
+  await page.locator('[data-document-citation="true"]').filter({ hasText: "文档证据甲" }).waitFor();
+  await page.locator('[data-document-citation-status="exact"]').waitFor();
 
   await page.goto(`${origin}/media`, { waitUntil: "networkidle" });
   await page
@@ -116,6 +133,10 @@ try {
   await page.getByRole("option").filter({ hasText: "音频证据时间点" }).click();
   await page.waitForURL(/\/media\?.*time=/u);
   const time = Number(new URL(page.url()).searchParams.get("time"));
+  await page
+    .locator('[data-citation-selected="true"] mark')
+    .filter({ hasText: "音频证据时间点" })
+    .waitFor();
   assert.ok(time > 0);
   await page.waitForFunction(
     (time) => Math.abs(document.querySelector("video").currentTime - time) < 0.1,
@@ -142,6 +163,9 @@ try {
       .inputValue(),
     "核对了章节中的原始证据",
   );
+  // Cached Reader/Document projections must not claim current-source verification.
+  await page.locator('[data-citation-status="unverified"]').first().waitFor();
+  await page.locator('[data-citation-status="exact"]').waitFor();
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "导出 Markdown", exact: true }).click();
   const download = await downloadPromise;
@@ -160,8 +184,48 @@ try {
   const popup = await page.getByRole("dialog").boundingBox();
   assert.ok(popup && popup.x >= 0 && popup.x + popup.width <= 390 && popup.y + popup.height <= 844);
   await page.keyboard.press("Escape");
+  // Timeline edits retain the quote, so revalidation should relocate and select it.
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const startInput = page.locator('[data-citation-selected="true"] input[type="number"]').first();
+  await startInput.fill(String(time + 0.2));
+  await openSearch("");
+  await collections();
+  const mediaArticle = page
+    .locator('[aria-label="集合摘录"] article')
+    .filter({ hasText: "音频证据时间点" });
+  await mediaArticle.locator('[data-citation-status="relocated"]').waitFor();
+  await mediaArticle.getByRole("button", { name: "回到原文", exact: true }).click();
+  await page.waitForFunction(
+    (time) => Math.abs(document.querySelector("video").currentTime - time) < 0.1,
+    time + 0.2,
+  );
+  // Editing the cited words must clear selection and prohibit a guessed jump.
+  await page
+    .locator('[data-citation-selected="true"] input:not([type])')
+    .first()
+    .fill("这段字幕已经改写");
+  await page.getByRole("alert").filter({ hasText: "引用字幕已修改或删除" }).waitFor();
+  assert.equal(await page.locator('[data-citation-selected="true"]').count(), 0);
+  await openSearch("");
+  await collections();
+  await mediaArticle.locator('[data-citation-status="changed"]').waitFor();
+  assert.equal(
+    await mediaArticle.getByRole("button", { name: "回到原文", exact: true }).isDisabled(),
+    true,
+  );
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "清空项目", exact: true }).click();
+  await openSearch("");
+  await collections();
+  await mediaArticle.locator('[data-citation-status="missing"]').waitFor();
+  await page.keyboard.press("Escape");
   await page.goto(readerLink, { waitUntil: "networkidle" });
   await page.getByLabel("阅读内容").waitFor();
+  await page
+    .locator('[data-reader-search-match="true"]')
+    .filter({ hasText: "独特研究证据" })
+    .first()
+    .waitFor();
   assert.deepEqual(errors, []);
   console.log("Research collections verification PASSED");
 } finally {

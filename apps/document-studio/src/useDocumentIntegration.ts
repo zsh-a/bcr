@@ -1,3 +1,4 @@
+import { documentCitationSources } from "./documentCitation";
 import { Effect } from "effect";
 import type { SearchDocument } from "@bcr/core";
 import {
@@ -83,17 +84,35 @@ export function useDocumentIntegration(
               ? decodeDocumentTranslationPackage(raw)
               : decodeDocumentContentPackage(raw);
             if (!content) continue;
-            for (const block of content.blocks) {
-              const translation = "translatedText" in block ? block.translatedText : undefined;
+            const field = translated ? "translation" : "original";
+            const sources = documentCitationSources(
+              job.id,
+              content.blocks.map((block) => ({
+                id: block.id,
+                text:
+                  translated &&
+                  "translatedText" in block &&
+                  typeof block.translatedText === "string"
+                    ? block.translatedText
+                    : block.text,
+              })),
+              field,
+            );
+            for (const [index, block] of content.blocks.entries()) {
+              const translation =
+                "translatedText" in block && typeof block.translatedText === "string"
+                  ? block.translatedText
+                  : undefined;
               records.push({
                 id: `document:${translated ? "translation" : "block"}:${job.id}:${block.id}`,
                 source: "documents",
                 kind: "document",
                 title: block.label,
-                subtitle: `${job.name} · ${translated ? (/fixture/iu.test(content.provenance.adapter) ? "原文 / 演示译文" : "原文 / 译文") : "原文"}`,
-                body: [block.text, translation].filter(Boolean).join("\n"),
+                subtitle: `${job.name} · ${translated ? (/fixture/iu.test(content.provenance.adapter) ? "演示译文" : "译文") : "原文"}`,
+                body: translated ? (translation ?? "") : block.text,
+                citation: sources[index],
                 tags: ["document", job.format, translated ? "translation" : "content"],
-                route: `/documents?job=${encodeURIComponent(job.id)}&block=${encodeURIComponent(block.id)}`,
+                route: `/documents?job=${encodeURIComponent(job.id)}&block=${encodeURIComponent(block.id)}&field=${field}`,
                 updatedAt: job.updatedAt,
               });
             }

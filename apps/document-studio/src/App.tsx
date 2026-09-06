@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useRuntime } from "@bcr/react";
+import { useRuntime, useLocationSearch } from "@bcr/react";
 import {
   createDocumentJob,
   documentOcrSettings,
@@ -90,6 +90,7 @@ export function App() {
   const [dragging, setDragging] = useState(false);
   const navigate = useNavigate();
   const services = useRuntime();
+  const citationParams = new URLSearchParams(useLocationSearch());
   const artifacts = useDocumentArtifacts(active);
   const {
     contentRef: extractRef,
@@ -292,6 +293,20 @@ export function App() {
 
   return (
     <div className="document-studio">
+      {citationParams.has("cite") &&
+        citationParams.get("job") !== active.id &&
+        !state.jobs.some((job) => job.id === citationParams.get("job")) && (
+          <p className="document-notice" role="status">
+            引用来源尚未载入或已移除，请恢复原资料后重试。
+          </p>
+        )}
+      {citationParams.has("cite") &&
+        citationParams.get("job") === active.id &&
+        contentPackage === undefined && (
+          <p className="document-notice" role="status">
+            引用正文尚未载入或已不可用，请检查文档处理结果。
+          </p>
+        )}
       <a className="document-skip-link" href="#document-canvas">
         跳到流水线
       </a>
@@ -580,6 +595,7 @@ export function App() {
           )}
           {contentPackage !== undefined && (
             <DocumentBlockContextCard
+              jobId={active.id}
               content={contentPackage}
               translation={translationPackage}
               focusBlockId={routeBlockId ?? undefined}

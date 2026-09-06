@@ -130,3 +130,20 @@ export {
   type TaskJournalPruneSkipped,
 } from "./task-journal";
 export { createTaskState, type TaskSnapshot, type TaskStateStore } from "./task-state";
+
+export {
+  textVersion,
+  mappedSearchText,
+  findTextMatches,
+  createTextCitation,
+  decodeCitationSource,
+  decodeTextCitation,
+  citationFromParams,
+  withTextCitation,
+  resolveTextCitation,
+  type TextRange,
+  type TextCitation,
+  type CitationSource,
+  type CitationCandidate,
+  type CitationResolution,
+} from "./citation";

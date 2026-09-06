@@ -1,3 +1,9 @@
+import {
+  decodeCitationSource,
+  findTextMatches,
+  type CitationSource,
+  type TextRange,
+} from "./citation";
 /**
  * Workspace-wide search primitives.
  *
@@ -30,6 +36,7 @@ export interface SearchDocument {
   /** A shell route that can reopen the owning app and selection. */
   readonly route?: string | undefined;
   readonly updatedAt: number;
+  readonly citation?: CitationSource | undefined;
 }
 
 export interface SearchQueryOptions {
@@ -43,6 +50,8 @@ export interface SearchResult {
   readonly score: number;
   readonly snippet: string;
   readonly matchedTerms: ReadonlyArray<string>;
+  /** Original UTF-16 range in document.body. Absent for metadata-only matches. */
+  readonly match?: TextRange | undefined;
 }
 
 export interface SearchPersistence {
@@ -58,6 +67,8 @@ export interface SearchIndex {
   readonly removeSource: (source: string) => void;
   readonly search: (query: string, options?: SearchQueryOptions) => ReadonlyArray<SearchResult>;
   readonly documents: () => ReadonlyArray<SearchDocument>;
+  /** Persisted projections are unverified until their owner republishes. */
+  readonly isSourceLive: (source: string) => boolean;
   readonly subscribe: (listener: () => void) => () => void;
   readonly flush: () => Promise<void>;
   readonly close: () => Promise<void>;
@@ -115,20 +126,13 @@ function occurrenceCount(value: string, term: string): number {
   return count;
 }
 
-function snippetFor(document: SearchDocument, terms: ReadonlyArray<string>): string {
-  const source = (document.body ?? document.subtitle ?? document.title)
-    .replace(/\s+/gu, " ")
-    .trim();
-  if (source.length <= SNIPPET_RADIUS * 2 + 1) return source;
-  const lower = normalized(source);
-  const start = terms
-    .map((term) => lower.indexOf(term))
-    .filter((index) => index >= 0)
-    .sort((left, right) => left - right)[0];
-  const center = start ?? 0;
-  const from = Math.max(0, center - SNIPPET_RADIUS);
-  const to = Math.min(source.length, center + SNIPPET_RADIUS);
-  return `${from > 0 ? "…" : ""}${source.slice(from, to).trim()}${to < source.length ? "…" : ""}`;
+function snippetFor(document: SearchDocument, range?: TextRange): string {
+  const source = document.body ?? document.subtitle ?? document.title;
+  let from = Math.max(0, (range?.start ?? 0) - SNIPPET_RADIUS);
+  let to = Math.min(source.length, (range?.end ?? 0) + SNIPPET_RADIUS);
+  if (/[\uDC00-\uDFFF]/u.test(source[from] ?? "")) from = Math.max(0, from - 1);
+  if (/[\uDC00-\uDFFF]/u.test(source[to] ?? "")) to++;
+  return `${from > 0 ? "…" : ""}${source.slice(from, to).replace(/\s+/gu, " ").trim()}${to < source.length ? "…" : ""}`;
 }
 
 function isSearchKind(value: unknown): value is SearchDocumentKind {
@@ -179,6 +183,7 @@ function decodeDocument(value: unknown): SearchDocument | undefined {
     ...(tags === undefined ? {} : { tags }),
     ...(route === undefined ? {} : { route }),
     updatedAt: candidate.updatedAt,
+    citation: decodeCitationSource(candidate.citation),
   };
 }
 
@@ -204,6 +209,8 @@ function decodePersisted(value: string | undefined): ReadonlyArray<SearchDocumen
 class MemorySearchIndex implements SearchIndex {
   readonly ready: Promise<void>;
   private readonly entries = new Map<string, SearchDocument>();
+  private readonly liveSources = new Set<string>();
+  isSourceLive = (source: string): boolean => this.liveSources.has(source);
   private readonly listeners = new Set<() => void>();
   private readonly persistence: SearchPersistence | undefined;
   private persistTimer: ReturnType<typeof setTimeout> | undefined;
@@ -260,6 +267,7 @@ class MemorySearchIndex implements SearchIndex {
   }
 
   replaceSource(source: string, documents: ReadonlyArray<SearchDocument>): void {
+    this.liveSources.add(source);
     for (const [id, document] of this.entries) {
       if (document.source === source) this.entries.delete(id);
     }
@@ -272,6 +280,7 @@ class MemorySearchIndex implements SearchIndex {
   }
 
   removeSource(source: string): void {
+    this.liveSources.add(source);
     let changed = false;
     for (const [id, document] of this.entries) {
       if (document.source === source) {
@@ -315,12 +324,27 @@ class MemorySearchIndex implements SearchIndex {
         titleMatches * 18 +
         Math.min(36, bodyMatches * 4) +
         matchedTerms.length * 8;
-      results.push({
-        document,
-        score,
-        snippet: snippetFor(document, matchedTerms),
-        matchedTerms,
-      });
+      const phraseMatches = document.body ? findTextMatches(document.body, query, limit) : [];
+      const ranges = phraseMatches.length
+        ? phraseMatches
+        : matchedTerms.flatMap((term) =>
+            document.body ? findTextMatches(document.body, term, limit) : [],
+          );
+      const unique = [
+        ...new Map(ranges.map((range) => [`${range.start}:${range.end}`, range])).values(),
+      ].sort((left, right) => left.start - right.start);
+      // Preserve the existing one-result semantics for metadata/application entries.
+      for (const match of document.citation && unique.length
+        ? unique.slice(0, limit)
+        : [unique[0]]) {
+        results.push({
+          document,
+          score,
+          snippet: snippetFor(document, match),
+          matchedTerms,
+          ...(match ? { match } : {}),
+        });
+      }
     }
     return results
       .sort(

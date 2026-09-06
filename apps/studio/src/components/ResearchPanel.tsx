@@ -1,3 +1,4 @@
+import type { SearchIndex } from "@bcr/core";
 import { useState } from "react";
 import type {
   ResearchCollection,
@@ -5,12 +6,13 @@ import type {
   ResearchLibrary,
   ResearchStore,
 } from "../research";
-import { exportResearch } from "../research";
+import { exportResearch, assessExcerpt, type ExcerptStatus } from "../research";
 
 const button =
   "rounded border border-border px-3 py-1.5 text-[11px] text-muted hover:border-accent hover:text-accent disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-accent";
 export function ResearchPanel(props: {
   readonly library: ResearchLibrary;
+  readonly search: SearchIndex | undefined;
   readonly store: ResearchStore;
   readonly selected: string;
   readonly onSelect: (id: string) => void;
@@ -130,8 +132,9 @@ export function ResearchPanel(props: {
           <ExcerptCard
             key={item.id}
             item={item}
+            status={assessExcerpt(item, props.search)}
             busy={props.busy}
-            onOpen={() => props.onOpen(item)}
+            onOpen={() => props.onOpen({ ...item, route: assessExcerpt(item, props.search).route })}
             onSave={(note) =>
               props.run(() =>
                 updateCollection((current) => ({
@@ -163,6 +166,7 @@ export function ResearchPanel(props: {
 }
 function ExcerptCard(props: {
   readonly item: ResearchExcerpt;
+  readonly status: ExcerptStatus;
   readonly busy: boolean;
   readonly onOpen: () => void;
   readonly onRemove: () => void;
@@ -176,10 +180,27 @@ function ExcerptCard(props: {
           <h3 className="text-[13px] font-medium text-text">{props.item.title}</h3>
           <p className="mt-1 text-[10px] text-faint">{props.item.source}</p>
         </div>
-        <button type="button" className={button} onClick={props.onOpen}>
+        <button
+          type="button"
+          className={button}
+          disabled={["missing", "changed", "ambiguous"].includes(props.status.state)}
+          onClick={props.onOpen}
+        >
           回到原文
         </button>
       </div>
+      <p
+        data-citation-status={props.status.state}
+        className="mt-2 text-[11px] text-muted"
+        role="status"
+      >
+        {props.status.label}
+      </p>
+      {props.item.citation && (
+        <p className="mt-1 font-mono text-[10px] text-faint">
+          来源版本 {props.item.citation.source.version.slice(0, 12)}
+        </p>
+      )}
       <blockquote className="my-3 max-h-36 overflow-auto whitespace-pre-wrap border-l-2 border-accent/50 pl-3 text-[12px] leading-6 text-muted">
         {props.item.text}
       </blockquote>

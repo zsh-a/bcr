@@ -1,4 +1,4 @@
-import type { SearchDocument } from "@bcr/core";
+import { citationFromParams, type SearchDocument } from "@bcr/core";
 import { notifyNavigation, RuntimeActivity, RuntimeProvider, useRuntimeSession } from "@bcr/react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Suspense, useEffect, useState } from "react";
@@ -66,9 +66,9 @@ export function Shell() {
     const route = document.route;
     if (route === undefined || route.length === 0) return;
     const target = new URL(route, window.location.origin);
-    const searchParams: Record<string, string | number> = Object.fromEntries(
-      target.searchParams.entries(),
-    );
+    const searchParams: Record<string, unknown> = Object.fromEntries(target.searchParams.entries());
+    if (target.searchParams.has("cite"))
+      searchParams["cite"] = citationFromParams(target.searchParams) ?? "invalid";
     for (const key of ["start", "end", "time"]) {
       const value = searchParams[key];
       if (typeof value === "string" && value.trim() && Number.isFinite(Number(value)))

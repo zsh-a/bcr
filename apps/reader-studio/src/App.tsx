@@ -1,5 +1,9 @@
 import { createTextLocator } from "@bcr/reader-core";
-import { readerResearchDocuments, resolveResearchRange } from "./researchDocuments";
+import {
+  readerResearchDocuments,
+  resolveResearchRange,
+  resolveReaderCitation,
+} from "./researchDocuments";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { SearchDocument } from "@bcr/core";
 import {
@@ -125,7 +129,31 @@ export function App() {
     appliedRouteRef.current = routeKey;
     reader.openBook(book.id, routeSearch.section);
     const params = new URLSearchParams(routeSearch.raw);
-    if (section && params.has("start")) {
+    if (section && params.has("cite")) {
+      const resolved = resolveReaderCitation(book.id, section, params);
+      if (resolved.status === "exact" || resolved.status === "relocated") {
+        const hit = {
+          bookId: book.id,
+          sectionId: section.id,
+          label: section.label,
+          snippet: section.text.slice(resolved.range.start, resolved.range.end),
+          score: 1,
+          matchStart: resolved.hit.start,
+          matchLength: resolved.hit.end - resolved.hit.start,
+        };
+        reader.setLocator(createTextLocator(section, resolved.hit.start, resolved.hit.end));
+        reader.setSearch(section.text.slice(resolved.hit.start, resolved.hit.end), [hit], book.id);
+        reader.revealSearchHit(hit);
+        setNotice(
+          resolved.status === "relocated" ? "来源内容已变化，已根据原文与前后文重新定位。" : null,
+        );
+      } else
+        setNotice(
+          resolved.status === "ambiguous"
+            ? "原文存在多个匹配位置，无法唯一定位，请对照摘录核对。"
+            : "引用正文已变化或缺失，已打开章节，请对照摘录核对。",
+        );
+    } else if (section && params.has("start")) {
       const range = resolveResearchRange(section.text, params);
       if (range) reader.setLocator(createTextLocator(section, range.start, range.end));
       else setNotice("引用正文已变化或尚未恢复，已打开章节；请对照集合中保存的原文。");

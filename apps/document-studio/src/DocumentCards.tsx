@@ -1,3 +1,6 @@
+import { useEffect, useRef } from "react";
+import { useLocationSearch } from "@bcr/react";
+import { resolveDocumentCitation } from "./documentCitation";
 import {
   Check,
   ChevronRight,
@@ -150,17 +153,43 @@ export function TranslationPackageCard(props: {
 }
 
 export function DocumentBlockContextCard(props: {
+  jobId: string;
   content: DocumentContentPackage;
   translation: DocumentTranslationPackage | undefined;
   focusBlockId?: string | undefined;
 }) {
+  const params = new URLSearchParams(useLocationSearch());
+  const resolution =
+    params.has("cite") && params.get("job") === props.jobId
+      ? resolveDocumentCitation(props.jobId, props.content, props.translation, params)
+      : undefined;
+  const resolved =
+    resolution?.status === "exact" || resolution?.status === "relocated" ? resolution : undefined;
+  const focusRef = useRef<HTMLDivElement>(null);
+  const routeCitation = params.get("cite");
+  useEffect(() => {
+    if (resolved) focusRef.current?.scrollIntoView({ block: "nearest" });
+  }, [resolved?.blockId, routeCitation]);
+  const renderedText = (text: string, blockId: string, field: string) => {
+    if (!resolved || resolved.blockId !== blockId || resolved.field !== field) return text;
+    return (
+      <>
+        {text.slice(0, resolved.hit.start)}
+        <mark data-document-citation="true">
+          {text.slice(resolved.hit.start, resolved.hit.end)}
+        </mark>
+        {text.slice(resolved.hit.end)}
+      </>
+    );
+  };
+  const focusBlockId = resolved?.blockId ?? (resolution ? undefined : props.focusBlockId);
   const translatedById = new Map(
     props.translation?.blocks.map((block) => [block.id, block.translatedText]) ?? [],
   );
   const focused =
-    props.focusBlockId === undefined
+    focusBlockId === undefined
       ? undefined
-      : props.content.blocks.find((block) => block.id === props.focusBlockId);
+      : props.content.blocks.find((block) => block.id === focusBlockId);
   const blocks =
     focused === undefined
       ? props.content.blocks.slice(0, 3)
@@ -174,6 +203,17 @@ export function DocumentBlockContextCard(props: {
         </div>
         <span>{props.content.blocks.length} total</span>
       </div>
+      {resolution && (
+        <p role="status" data-document-citation-status={resolution.status}>
+          {resolution.status === "exact"
+            ? "可定位 · 来源版本一致"
+            : resolution.status === "relocated"
+              ? "内容已变化，已根据原文重新定位"
+              : resolution.status === "ambiguous"
+                ? "原文存在多处匹配，请核对保存的摘录"
+                : "引用原文已修改或缺失，请核对保存的摘录"}
+        </p>
+      )}
       <div className="document-block-context-list">
         {blocks.map((block, index) => {
           const translated = translatedById.get(block.id);
@@ -181,12 +221,15 @@ export function DocumentBlockContextCard(props: {
             <div
               className={`document-block-context-item ${block.id === focused?.id ? "is-focused" : ""}`}
               key={block.id}
+              ref={block.id === resolved?.blockId ? focusRef : undefined}
             >
               <span className="document-block-context-label">
                 {String(index + 1).padStart(2, "0")} · {block.label}
               </span>
-              <p>{block.text}</p>
-              {translated !== undefined && translated.length > 0 && <p>{translated}</p>}
+              <p>{renderedText(block.text, block.id, "original")}</p>
+              {translated !== undefined && translated.length > 0 && (
+                <p>{renderedText(translated, block.id, "translation")}</p>
+              )}
             </div>
           );
         })}

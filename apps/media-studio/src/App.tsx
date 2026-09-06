@@ -57,6 +57,10 @@ function Studio() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const locationSearch = useLocationSearch();
   const [citationError, setCitationError] = useState("");
+  const [citationSelection, setCitationSelection] = useState<
+    { index: number; quote: string; sequence: number } | undefined
+  >();
+  const seekedCitationRef = useRef("");
   const [citationNavigation, setCitationNavigation] = useState(0);
   useEffect(() => {
     const navigate = () => setCitationNavigation((value) => value + 1);
@@ -65,21 +69,31 @@ function Studio() {
   }, []);
   useEffect(() => {
     if (window.location.pathname !== "/media") return;
-    const target = mediaCitationTarget(locationSearch, source?.ref.id);
-    setCitationError(target.error ?? "");
+    const target = mediaCitationTarget(locationSearch, source?.ref.id, cues);
+    setCitationError(
+      target.error ?? (target.relocated ? "字幕已变化，已根据保存的原文重新定位。" : ""),
+    );
+    setCitationSelection(
+      target.cueIndex === undefined
+        ? undefined
+        : { index: target.cueIndex, quote: target.quote ?? "", sequence: citationNavigation },
+    );
     const video = videoRef.current;
     if (target.time === undefined || !video) return;
+    const seekKey = `${locationSearch}|${source?.ref.id}|${citationNavigation}|${target.cueIndex}|${target.time}`;
+    if (seekedCitationRef.current === seekKey) return;
     const seekToCitation = () => {
       if (Number.isFinite(video.duration) && target.time! > video.duration) {
         setCitationError("引用时间超出当前媒体长度");
         return;
       }
       video.currentTime = target.time!;
+      seekedCitationRef.current = seekKey;
     };
     if (video.readyState >= 1) seekToCitation();
     else video.addEventListener("loadedmetadata", seekToCitation, { once: true });
     return () => video.removeEventListener("loadedmetadata", seekToCitation);
-  }, [locationSearch, source?.ref.id, source?.objectUrl, citationNavigation]);
+  }, [locationSearch, source?.ref.id, source?.objectUrl, citationNavigation, cues]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // 字幕编辑自动持久化（800ms 防抖；仅在用户改动过时写）
@@ -374,7 +388,11 @@ function Studio() {
                 />
               )}
               <Waveform videoRef={videoRef} onSeek={seek} />
-              <CueEditor onSeek={seek} getTime={() => videoRef.current?.currentTime ?? 0} />
+              <CueEditor
+                onSeek={seek}
+                getTime={() => videoRef.current?.currentTime ?? 0}
+                citation={citationSelection}
+              />
             </div>
           )}
         </main>

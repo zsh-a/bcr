@@ -14,7 +14,13 @@ import {
   TerminalSquare,
   WandSparkles,
 } from "lucide-react";
-import { ResearchStore, citationRoute, excerptFromDocument } from "../research";
+import {
+  ResearchStore,
+  citationRoute,
+  excerptFromResult,
+  resultDocument,
+  sameExcerpt,
+} from "../research";
 import { ResearchPanel } from "./ResearchPanel";
 import { useServices } from "../services";
 
@@ -168,7 +174,7 @@ export function SearchPanel(props: {
 
   const openResult = (result: SearchResult | undefined): void => {
     if (result === undefined) return;
-    props.onNavigate(result.document);
+    props.onNavigate(resultDocument(result));
     props.onOpenChange(false);
   };
 
@@ -220,6 +226,7 @@ export function SearchPanel(props: {
           {view === "research" ? (
             <ResearchPanel
               library={library}
+              search={search}
               store={research}
               selected={selectedCollection?.id ?? ""}
               onSelect={setCollectionId}
@@ -322,7 +329,7 @@ export function SearchPanel(props: {
                 ) : (
                   results.map((result, index) => (
                     <button
-                      key={result.document.id}
+                      key={`${result.document.id}:${result.match?.start ?? "meta"}:${result.match?.end ?? ""}`}
                       type="button"
                       role="option"
                       aria-selected={index === active}
@@ -354,6 +361,15 @@ export function SearchPanel(props: {
                         {result.document.subtitle !== undefined && (
                           <span className="mt-0.5 block truncate font-mono text-[10px] text-muted">
                             {result.document.subtitle}
+                          </span>
+                        )}
+                        {result.match && result.document.citation && (
+                          <span className="mt-1 block text-[10px] text-muted">
+                            命中：
+                            <mark className="bg-accent-dim text-accent">
+                              {result.document.body?.slice(result.match.start, result.match.end)}
+                            </mark>{" "}
+                            · 位置 {result.document.citation.offset + result.match.start + 1}
                           </span>
                         )}
                         <span className="mt-1 block line-clamp-2 text-[11px] leading-5 text-faint">
@@ -395,17 +411,13 @@ export function SearchPanel(props: {
                   onClick={() => {
                     const result = results[active];
                     if (!result || !selectedCollection) return;
-                    const excerpt = excerptFromDocument(result.document, Date.now());
+                    const excerpt = excerptFromResult(result, Date.now());
                     run(() =>
                       research.update((current) => ({
                         ...current,
                         collections: current.collections.map((item) =>
                           item.id !== selectedCollection.id ||
-                          item.excerpts.some(
-                            (saved) =>
-                              saved.documentId === excerpt.documentId &&
-                              saved.text === excerpt.text,
-                          )
+                          item.excerpts.some((saved) => sameExcerpt(saved, excerpt))
                             ? item
                             : { ...item, excerpts: [...item.excerpts, excerpt] },
                         ),

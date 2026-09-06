@@ -51,13 +51,23 @@ function activeCueIndex(cues: ReadonlyArray<SubtitleCue>, time: number): number 
 }
 
 /** 字幕编辑器：时间轴 / 文本 / 译文行内编辑，删除与拆分，跟随播放高亮，CPS 超速告警。 */
-export function CueEditor(props: { onSeek: (seconds: number) => void; getTime: () => number }) {
+export function CueEditor(props: {
+  onSeek: (seconds: number) => void;
+  getTime: () => number;
+  citation?: { index: number; quote: string; sequence: number } | undefined;
+}) {
   const cues = useStudio((state) => state.cues);
   const dirty = useStudio((state) => state.dirty);
   const [selected, setSelected] = useState<number | null>(null);
   const [active, setActive] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const activeRowRef = useRef<HTMLDivElement | null>(null);
+  const citationRowRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (props.citation === undefined) return;
+    setSelected(props.citation.index);
+    citationRowRef.current?.scrollIntoView({ block: "nearest" });
+  }, [props.citation?.index, props.citation?.sequence]);
 
   // 跟随播放：rAF 读取播放头（低频 setState——仅 active 变化时触发渲染）
   useEffect(() => {
@@ -99,7 +109,14 @@ export function CueEditor(props: { onSeek: (seconds: number) => void; getTime: (
         {cues.map((cue, index) => (
           <CueRow
             key={`${index}-${cue.start}`}
-            ref={index === active ? activeRowRef : undefined}
+            ref={
+              index === props.citation?.index
+                ? citationRowRef
+                : index === active
+                  ? activeRowRef
+                  : undefined
+            }
+            citation={index === props.citation?.index ? props.citation.quote : undefined}
             index={index}
             cue={cue}
             expanded={selected === index}
@@ -116,6 +133,7 @@ export function CueEditor(props: { onSeek: (seconds: number) => void; getTime: (
 
 function CueRow(props: {
   index: number;
+  citation?: string | undefined;
   cue: SubtitleCue;
   expanded: boolean;
   active: boolean;
@@ -129,6 +147,7 @@ function CueRow(props: {
     <div
       ref={props.ref}
       data-active={props.active || undefined}
+      data-citation-selected={props.citation !== undefined || undefined}
       className={`border-b border-[var(--color-border)] px-2 py-1.5 hover:bg-[var(--color-surface)] ${
         props.active
           ? "border-l-2 border-l-[var(--color-accent)] bg-[color-mix(in_srgb,var(--color-accent)_8%,transparent)]"
@@ -189,6 +208,11 @@ function CueRow(props: {
           </button>
         </div>
       </div>
+      {props.citation !== undefined && (
+        <p className="mt-1 px-3 text-[11px] text-[var(--color-muted)]">
+          引用命中：<mark>{props.citation}</mark>
+        </p>
+      )}
       {props.expanded && (
         <div className="mt-1 flex items-center gap-2 pl-12 font-mono text-[10px]">
           <label>

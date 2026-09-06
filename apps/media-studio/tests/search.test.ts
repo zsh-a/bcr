@@ -25,3 +25,34 @@ describe("media evidence search", () => {
     expect(mediaCitationTarget("", "a")).toEqual({});
   });
 });
+
+it("revalidates saved subtitle citations after timeline changes, edits and duplicates", async () => {
+  const { createTextCitation, withTextCitation, findTextMatches } = await import("@bcr/core");
+  const original = [
+    { start: 1, end: 2, text: "前段" },
+    { start: 4, end: 6, text: "关键字幕证据" },
+  ];
+  const doc = mediaDocuments({ ref: { id: "media-source" }, name: "audio" }, original)[2]!;
+  const citation = createTextCitation(
+    doc.body!,
+    doc.citation!,
+    findTextMatches(doc.body!, "字幕")[0]!,
+  );
+  const route = new URL(withTextCitation(doc.route!, citation), "https://example.org").search;
+  expect(mediaCitationTarget(route, "media-source", original).cueIndex).toBe(1);
+  const moved = [{ start: 8, end: 10, text: "关键字幕证据" }];
+  expect(mediaCitationTarget(route, "media-source", moved)).toMatchObject({
+    time: 8,
+    cueIndex: 0,
+    relocated: true,
+  });
+  expect(
+    mediaCitationTarget(route, "media-source", [{ start: 4, end: 6, text: "已修改正文" }]).time,
+  ).toBeUndefined();
+  expect(
+    mediaCitationTarget(route, "media-source", [
+      ...moved,
+      { start: 12, end: 14, text: "关键字幕证据" },
+    ]).error,
+  ).toContain("多个");
+});

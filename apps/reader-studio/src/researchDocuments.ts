@@ -1,10 +1,37 @@
-import type { SearchDocument } from "@bcr/core";
-import type { ReaderBook } from "@bcr/reader-core";
+import {
+  textVersion,
+  citationFromParams,
+  resolveTextCitation,
+  type CitationSource,
+  type CitationResolution,
+  type SearchDocument,
+} from "@bcr/core";
+import type { ReaderBook, ReaderSection } from "@bcr/reader-core";
+
+export function readerCitationSource(
+  bookId: string,
+  section: Pick<ReaderSection, "id" | "text">,
+): CitationSource {
+  const scope = JSON.stringify(["reader", bookId, section.id]);
+  return { scope, unit: scope, version: textVersion(section.text), offset: 0 };
+}
+export function resolveReaderCitation(
+  bookId: string,
+  section: ReaderSection,
+  params: URLSearchParams,
+): CitationResolution {
+  const citation = citationFromParams(params);
+  if (!citation) return { status: "changed" };
+  return resolveTextCitation(citation, [
+    { text: section.text, source: readerCitationSource(bookId, section) },
+  ]);
+}
 
 /** Bounded excerpts cover the complete chapter; offsets remain original UTF-16 positions. */
 export function readerResearchDocuments(book: ReaderBook): SearchDocument[] {
   return book.sections.flatMap((section) => {
     const records: SearchDocument[] = [];
+    const source = readerCitationSource(book.id, section);
     for (let start = 0; start < Math.max(1, section.text.length); start += 1680) {
       let end = Math.min(section.text.length, start + 1800);
       // Do not split an astral character at either boundary.
@@ -29,6 +56,7 @@ export function readerResearchDocuments(book: ReaderBook): SearchDocument[] {
         tags: ["reader", book.source.format, "section"],
         route: `/reader?${params}`,
         updatedAt: book.updatedAt,
+        citation: { ...source, offset: from },
       });
       if (end === section.text.length) break;
     }

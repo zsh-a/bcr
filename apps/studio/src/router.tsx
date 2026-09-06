@@ -21,6 +21,7 @@ export interface StudioSearch {
 }
 
 export interface MediaSearch {
+  cite?: unknown;
   source?: string | undefined;
   time?: number | undefined;
 }
@@ -30,6 +31,7 @@ export interface HandoffSearch {
 }
 
 export interface ReaderSearch extends HandoffSearch {
+  cite?: unknown;
   book?: string | undefined;
   section?: string | undefined;
   start?: number | undefined;
@@ -38,6 +40,8 @@ export interface ReaderSearch extends HandoffSearch {
 }
 
 export interface DocumentSearch {
+  cite?: unknown;
+  field?: string | undefined;
   job?: string | undefined;
   handoff?: string | undefined;
   block?: string | undefined;
@@ -82,6 +86,7 @@ const mediaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/media",
   validateSearch: (search: Record<string, unknown>): MediaSearch => ({
+    cite: search["cite"],
     source: typeof search["source"] === "string" ? search["source"] : undefined,
     time: typeof search["time"] === "number" ? search["time"] : undefined,
   }),
@@ -121,6 +126,8 @@ const documentsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/documents",
   validateSearch: (search: Record<string, unknown>): DocumentSearch => ({
+    cite: search["cite"],
+    field: typeof search["field"] === "string" ? search["field"] : undefined,
     job: typeof search["job"] === "string" ? search["job"] : undefined,
     handoff: typeof search["handoff"] === "string" ? search["handoff"] : undefined,
     block: typeof search["block"] === "string" ? search["block"] : undefined,
@@ -132,6 +139,7 @@ const readerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/reader",
   validateSearch: (search: Record<string, unknown>): ReaderSearch => ({
+    cite: search["cite"],
     document: typeof search["document"] === "string" ? search["document"] : undefined,
     book: typeof search["book"] === "string" ? search["book"] : undefined,
     section: typeof search["section"] === "string" ? search["section"] : undefined,

@@ -115,3 +115,36 @@ describe("research collections", () => {
     expect(writes).toBe(0);
   });
 });
+
+it("saves the hit sentence, retains legacy excerpts, and reports honest source states", async () => {
+  const { createSearchIndex, textVersion } = await import("@bcr/core");
+  const { excerptFromResult, assessExcerpt, sameExcerpt } = await import("../src/research");
+  const index = createSearchIndex();
+  const body = "前文。第一份证据。中间。第一份证据。结尾。";
+  const current = {
+    ...document,
+    body,
+    citation: { scope: "chapter", unit: "chapter", offset: 0, version: textVersion(body) },
+  };
+  index.replaceSource("reader", [current]);
+  const results = index.search("证据");
+  const first = excerptFromResult(results[0]!, 1000);
+  const second = excerptFromResult(results[1]!, 1000);
+  expect(first.text).toBe("第一份证据。");
+  expect(sameExcerpt(first, second)).toBe(false);
+  expect(sameExcerpt(first, excerptFromResult(results[0]!, 1001))).toBe(true);
+  expect(assessExcerpt(first, index).state).toBe("exact");
+  const changed = "插入。" + body;
+  index.replaceSource("reader", [
+    { ...current, body: changed, citation: { ...current.citation, version: textVersion(changed) } },
+  ]);
+  expect(assessExcerpt(first, index).state).toBe("relocated");
+  index.replaceSource("reader", []);
+  expect(assessExcerpt(first, index).state).toBe("missing");
+  expect(assessExcerpt(excerpt, index).state).toBe("unverified");
+  expect(
+    decodeResearch(
+      JSON.stringify({ version: 1, collections: [{ ...collection, excerpts: [excerpt, first] }] }),
+    ).collections[0]!.excerpts,
+  ).toHaveLength(2);
+});
