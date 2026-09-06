@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createSearchIndex, type SearchDocument } from "../src/search";
+import { textVersion } from "../src/citation";
+import { createSearchIndex, type SearchDocument, type SearchQueryOptions } from "../src/search";
 
 const document = (
   id: string,
@@ -71,5 +72,100 @@ describe("workspace search index", () => {
     await index.flush();
     expect(JSON.parse(saved)).toMatchObject({ version: 1 });
     expect(JSON.parse(saved).documents).toHaveLength(2);
+  });
+  it("matches exhaustive ranking with ties, repeated citations, Unicode and filters", () => {
+    const index = createSearchIndex();
+    const documents = Array.from({ length: 48 }, (_, i) => {
+      const body = [
+        "alpha beta alpha beta",
+        "ＡＬＰＨＡ\t beta e\u0301 👩‍💻 中文",
+        "beta only",
+        "alpha and then beta",
+        "ﬃ f ffi",
+        "metadata only",
+      ][i % 6]!;
+      return {
+        ...document(
+          `rank-${i}`,
+          i % 4 === 0 ? "alpha beta" : "Same title",
+          body,
+          i % 3 ? "reader-section" : "file",
+        ),
+        source: i % 2 ? "reader" : "document",
+        updatedAt: i % 3,
+        ...(i % 3
+          ? {
+              citation: {
+                scope: `source-${i}`,
+                version: textVersion(body),
+                unit: "section",
+                offset: 300,
+              },
+            }
+          : {}),
+      };
+    });
+    documents.forEach((item) => index.upsert(item));
+    for (const query of ["alpha beta", "ＡＬＰＨＡ", "é", "中文", "f", "Same title"]) {
+      for (const options of [
+        { limit: 1 },
+        { limit: 7 },
+        { limit: 40, sources: ["reader"] },
+        { limit: 12, kinds: ["file"] },
+      ] satisfies SearchQueryOptions[]) {
+        // Evaluate every document independently, then rank every emitted hit. This
+        // deliberately bypasses cross-document candidate pruning.
+        const exhaustive = documents
+          .flatMap((item) => {
+            const single = createSearchIndex();
+            single.upsert(item);
+            return single.search(query, options);
+          })
+          .sort(
+            (left, right) =>
+              right.score - left.score ||
+              right.document.updatedAt - left.document.updatedAt ||
+              left.document.title.localeCompare(right.document.title),
+          )
+          .slice(0, options.limit);
+        expect(index.search(query, options)).toEqual(exhaustive);
+      }
+    }
+  });
+
+  it("refreshes normalized fields on updates, replacements, deletion and restore", async () => {
+    const index = createSearchIndex();
+    index.upsert(document("one", "Old title", "old body"));
+    index.upsert(document("one", "New title", "new body"));
+    expect(index.search("old")).toEqual([]);
+    expect(index.search("new")).toHaveLength(1);
+    index.replaceSource("test", [document("two", "Replacement", "different")]);
+    expect(index.search("new")).toEqual([]);
+    index.remove("two");
+    expect(index.search("different")).toEqual([]);
+    const restored = createSearchIndex({
+      load: async () =>
+        JSON.stringify({
+          version: 1,
+          documents: [document("three", "ＦＵＬＬＷＩＤＴＨ", "恢复正文")],
+        }),
+      save: async () => {},
+    });
+    await restored.ready;
+    expect(restored.search("fullwidth")[0]?.document.id).toBe("three");
+    restored.removeSource("test");
+    expect(restored.search("恢复")).toEqual([]);
+  });
+
+  it("bounds malformed and extreme result limits", () => {
+    const index = createSearchIndex();
+    index.replaceSource(
+      "test",
+      Array.from({ length: 250 }, (_, i) => document(`${i}`, "alpha", "body")),
+    );
+    expect(index.search("alpha", { limit: NaN })).toHaveLength(40);
+    expect(index.search("alpha", { limit: Infinity })).toHaveLength(200);
+    expect(index.search("alpha", { limit: -1 })).toHaveLength(1);
+    expect(index.search("alpha", { limit: 2.8 })).toHaveLength(2);
   });
 });

@@ -209,6 +209,12 @@ function decodePersisted(value: string | undefined): ReadonlyArray<SearchDocumen
 class MemorySearchIndex implements SearchIndex {
   readonly ready: Promise<void>;
   private readonly entries = new Map<string, SearchDocument>();
+  private readonly fields = new WeakMap<SearchDocument, ReturnType<typeof fieldText>>();
+
+  private setDocument(document: SearchDocument): void {
+    this.fields.set(document, fieldText(document));
+    this.entries.set(document.id, document);
+  }
   private readonly liveSources = new Set<string>();
   isSourceLive = (source: string): boolean => this.liveSources.has(source);
   private readonly listeners = new Set<() => void>();
@@ -225,7 +231,7 @@ class MemorySearchIndex implements SearchIndex {
     if (this.persistence === undefined) return;
     try {
       for (const document of decodePersisted(await this.persistence.load())) {
-        this.entries.set(document.id, document);
+        this.setDocument(document);
       }
       this.notify();
     } catch {
@@ -255,7 +261,7 @@ class MemorySearchIndex implements SearchIndex {
   upsert(document: SearchDocument): void {
     const normalizedDocument = decodeDocument(document);
     if (normalizedDocument === undefined) return;
-    this.entries.set(normalizedDocument.id, normalizedDocument);
+    this.setDocument(normalizedDocument);
     this.schedulePersist();
     this.notify();
   }
@@ -273,7 +279,7 @@ class MemorySearchIndex implements SearchIndex {
     }
     for (const document of documents) {
       const decoded = decodeDocument({ ...document, source });
-      if (decoded !== undefined) this.entries.set(decoded.id, decoded);
+      if (decoded !== undefined) this.setDocument(decoded);
     }
     this.schedulePersist();
     this.notify();
@@ -294,18 +300,32 @@ class MemorySearchIndex implements SearchIndex {
   }
 
   search(query: string, options: SearchQueryOptions = {}): ReadonlyArray<SearchResult> {
-    const terms = queryTerms(query);
+    const phrase = normalized(query);
+    const terms = queryTerms(phrase);
     if (terms.length === 0) return [];
     const kinds = options.kinds === undefined ? undefined : new Set(options.kinds);
     const sources = options.sources === undefined ? undefined : new Set(options.sources);
-    const limit = Math.min(MAX_LIMIT, Math.max(1, Math.floor(options.limit ?? DEFAULT_LIMIT)));
-    const results: SearchResult[] = [];
+    const requestedLimit = options.limit ?? DEFAULT_LIMIT;
+    const limit = Math.min(
+      MAX_LIMIT,
+      Math.max(1, Math.floor(Number.isNaN(requestedLimit) ? DEFAULT_LIMIT : requestedLimit)),
+    );
+    // Every eligible document emits at least one result; documents below the top
+    // limit can never contribute to the final page, even with repeated citations.
+    const candidates: Array<{ document: SearchDocument; score: number }> = [];
+    const compare = (
+      left: { document: SearchDocument; score: number },
+      right: { document: SearchDocument; score: number },
+    ) =>
+      right.score - left.score ||
+      right.document.updatedAt - left.document.updatedAt ||
+      left.document.title.localeCompare(right.document.title);
     for (const document of this.entries.values()) {
       if (kinds !== undefined && !kinds.has(document.kind)) continue;
       if (sources !== undefined && !sources.has(document.source)) continue;
-      const fields = fieldText(document);
-      const matchedTerms = terms.filter((term) => fields.all.includes(term));
-      if (matchedTerms.length !== terms.length) continue;
+      const fields = this.fields.get(document)!;
+      if (!terms.every((term) => fields.all.includes(term))) continue;
+      const matchedTerms = terms;
       const titleMatches = matchedTerms.reduce(
         (total, term) => total + occurrenceCount(fields.title, term),
         0,
@@ -314,8 +334,8 @@ class MemorySearchIndex implements SearchIndex {
         (total, term) => total + occurrenceCount(fields.rest, term),
         0,
       );
-      const exactPhrase = normalized(query).length > 0 && fields.all.includes(normalized(query));
-      const exactTitle = fields.title === normalized(query);
+      const exactPhrase = fields.all.includes(phrase);
+      const exactTitle = fields.title === phrase;
       const titleStart = matchedTerms.some((term) => fields.title.startsWith(term));
       const score =
         (exactTitle ? 180 : 0) +
@@ -324,6 +344,22 @@ class MemorySearchIndex implements SearchIndex {
         titleMatches * 18 +
         Math.min(36, bodyMatches * 4) +
         matchedTerms.length * 8;
+      const candidate = { document, score };
+      if (candidates.length === limit && compare(candidate, candidates[limit - 1]!) >= 0) continue;
+      // Insert after equal-ranked documents to preserve the original stable order.
+      let low = 0,
+        high = candidates.length;
+      while (low < high) {
+        const middle = (low + high) >>> 1;
+        if (compare(candidate, candidates[middle]!) < 0) high = middle;
+        else low = middle + 1;
+      }
+      candidates.splice(low, 0, candidate);
+      if (candidates.length > limit) candidates.pop();
+    }
+    const results: SearchResult[] = [];
+    for (const { document, score } of candidates) {
+      const matchedTerms = terms;
       const phraseMatches = document.body ? findTextMatches(document.body, query, limit) : [];
       const ranges = phraseMatches.length
         ? phraseMatches
@@ -344,16 +380,10 @@ class MemorySearchIndex implements SearchIndex {
           matchedTerms,
           ...(match ? { match } : {}),
         });
+        if (results.length === limit) return results;
       }
     }
-    return results
-      .sort(
-        (left, right) =>
-          right.score - left.score ||
-          right.document.updatedAt - left.document.updatedAt ||
-          left.document.title.localeCompare(right.document.title),
-      )
-      .slice(0, limit);
+    return results;
   }
 
   documents(): ReadonlyArray<SearchDocument> {
