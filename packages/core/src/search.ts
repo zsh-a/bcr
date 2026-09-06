@@ -13,6 +13,8 @@ import {
  */
 
 export type SearchDocumentKind =
+  | "research-note"
+  | "research-excerpt"
   | "app"
   | "file"
   | "task"
@@ -137,6 +139,8 @@ function snippetFor(document: SearchDocument, range?: TextRange): string {
 
 function isSearchKind(value: unknown): value is SearchDocumentKind {
   return (
+    value === "research-note" ||
+    value === "research-excerpt" ||
     value === "app" ||
     value === "file" ||
     value === "task" ||

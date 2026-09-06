@@ -23,6 +23,9 @@ import { exportResearch, assessExcerpt, type ExcerptStatus } from "../research";
 const button =
   "rounded border border-border px-3 py-1.5 text-[11px] text-muted hover:border-accent hover:text-accent disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-accent";
 export function ResearchPanel(props: {
+  readonly focus?:
+    | { excerpt: string; field: "note" | "text"; start?: number; end?: number; exact?: string }
+    | undefined;
   readonly library: ResearchLibrary;
   readonly search: SearchIndex | undefined;
   readonly store: ResearchStore;
@@ -262,7 +265,8 @@ export function ResearchPanel(props: {
       <div className="max-h-[40vh] space-y-3 overflow-auto" aria-label="集合摘录">
         {matches.map((item) => (
           <ExcerptCard
-            key={item.id}
+            key={`${props.selected}:${item.id}`}
+            focus={props.focus?.excerpt === item.id ? props.focus : undefined}
             item={item}
             collections={props.library.collections.filter((entry) => entry.id !== props.selected)}
             onMove={(target) =>
@@ -313,6 +317,9 @@ export function ResearchPanel(props: {
   );
 }
 function ExcerptCard(props: {
+  readonly focus?:
+    | { field: "note" | "text"; start?: number; end?: number; exact?: string }
+    | undefined;
   readonly item: ResearchExcerpt;
   readonly collections: ReadonlyArray<ResearchCollection>;
   readonly onMove: (target: string) => void;
@@ -322,6 +329,38 @@ function ExcerptCard(props: {
   readonly onRemove: () => void;
   readonly onSave: (note: string, done: () => void) => void;
 }) {
+  const article = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!props.focus) return;
+    const frame = requestAnimationFrame(() => {
+      const target = article.current?.querySelector("[data-research-hit]") ?? article.current;
+      target?.scrollIntoView({ block: "nearest" });
+      article.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [props.focus]);
+  const highlight = (field: "note" | "text") => {
+    const value = props.item[field],
+      focus = props.focus;
+    if (
+      !focus ||
+      focus.field !== field ||
+      focus.start === undefined ||
+      focus.end === undefined ||
+      !focus.exact ||
+      value.slice(focus.start, focus.end) !== focus.exact
+    )
+      return value;
+    return (
+      <>
+        {value.slice(0, focus.start)}
+        <mark data-research-hit={field} className="bg-accent-dim text-accent">
+          {value.slice(focus.start, focus.end)}
+        </mark>
+        {value.slice(focus.end)}
+      </>
+    );
+  };
   const [initial] = useState(() => {
     try {
       return {
@@ -351,7 +390,12 @@ function ExcerptCard(props: {
     }
   };
   return (
-    <article className="rounded border border-border bg-surface p-3">
+    <article
+      ref={article}
+      tabIndex={-1}
+      data-research-focused={props.focus ? "true" : undefined}
+      className="rounded border border-border bg-surface p-3 focus:outline-2 focus:outline-accent"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-[13px] font-medium text-text">{props.item.title}</h3>
@@ -380,8 +424,19 @@ function ExcerptCard(props: {
       )}
       <p className="mt-3 text-[10px] text-faint">来源正文快照</p>
       <blockquote className="my-3 max-h-36 overflow-auto whitespace-pre-wrap border-l-2 border-accent/50 pl-3 text-[12px] leading-6 text-muted">
-        {props.item.text}
+        {highlight("text")}
       </blockquote>
+      {props.focus?.field === "note" && (
+        <div className="mb-3 text-[12px] text-muted">
+          <p className="mb-1 text-[10px] text-faint">已保存笔记 · 搜索命中</p>
+          <p
+            aria-label="已保存笔记命中"
+            className="max-h-36 overflow-auto whitespace-pre-wrap leading-6"
+          >
+            {highlight("note")}
+          </p>
+        </div>
+      )}
       <form
         onSubmit={(event) => {
           event.preventDefault();

@@ -61,6 +61,7 @@ try {
   });
   await page.getByText("导入完成", { exact: true }).waitFor();
   await openSearch("独特研究证据");
+  await page.getByRole("tab", { name: /^阅读器/u }).click();
   await page.getByRole("option").filter({ hasText: "独特研究证据" }).first().waitFor();
   await collections();
   await page.getByLabel("新集合名称").fill("跨格式研究");
@@ -165,6 +166,7 @@ try {
     await page.locator(".document-content-card").waitFor();
   }
   await openSearch("文档证据甲");
+  await page.getByRole("tab", { name: /^文档/u }).click();
   await page.getByRole("option").filter({ hasText: "原文" }).first().waitFor();
   await page.getByRole("option").filter({ hasText: "原文" }).first().hover();
   await saveCurrent();
@@ -182,6 +184,7 @@ try {
   await cue.waitFor();
   await cue.fill("音频证据时间点");
   await openSearch("音频证据时间点");
+  await page.getByRole("tab", { name: /^媒体/u }).click();
   await page.getByRole("option").filter({ hasText: "音频证据时间点" }).waitFor();
   await saveCurrent();
   await page.getByRole("option").filter({ hasText: "音频证据时间点" }).click();
@@ -200,6 +203,7 @@ try {
     document.querySelector("video").currentTime = 0;
   });
   await openSearch("音频证据时间点");
+  await page.getByRole("tab", { name: /^媒体/u }).click();
   await page.getByRole("option").filter({ hasText: "音频证据时间点" }).click();
   await page.waitForFunction(
     (time) => Math.abs(document.querySelector("video").currentTime - time) < 0.1,

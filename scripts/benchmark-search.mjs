@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const origin = new URL(process.env.BASE_URL ?? "http://localhost:5199").origin;
+const researchCorpus = process.env.BCR_BENCH_CORPUS === "research";
 const sizes = (process.env.BCR_BENCH_SIZES ?? "100,1000,5000").split(",").map(Number);
 assert.ok(
   sizes.length > 0 && sizes.every((size) => Number.isInteger(size) && size > 0 && size <= 50000),
@@ -29,7 +30,7 @@ try {
     );
     await page.goto(`${origin}/__search_benchmark__`);
     const result = await page.evaluate(
-      async ({ size, root }) => {
+      async ({ size, root, researchCorpus }) => {
         const { createSearchIndex } = await import(`/@fs/${root}packages/core/src/search.ts`);
         const { textVersion } = await import(`/@fs/${root}packages/core/src/citation.ts`);
         const pause = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -43,7 +44,7 @@ try {
           },
         });
         await index.ready;
-        const documents = Array.from({ length: size }, (_, i) => {
+        let documents = Array.from({ length: size }, (_, i) => {
           const body =
             `${i % 2 ? "分布式系统与本地资料研究。" : "Local research and distributed systems. "}`.repeat(
               18,
@@ -61,13 +62,43 @@ try {
             citation: { scope: `bench:${i}`, version: textVersion(body), unit: `${i}`, offset: 0 },
           };
         });
+        if (researchCorpus) {
+          const { researchDocuments } = await import(
+            `/@fs/${root}apps/studio/src/researchSearch.ts`
+          );
+          documents = researchDocuments({
+            version: 1,
+            collections: [
+              {
+                id: "benchmark",
+                name: "研究基准",
+                excerpts: documents.slice(0, Math.ceil(size / 2)).map((item, i) => ({
+                  id: item.id,
+                  documentId: item.id,
+                  title: item.title,
+                  source: "Reader",
+                  route: item.route,
+                  text: item.body,
+                  note: `个人理解 ${item.body}`,
+                  draft: "不会进入索引的草稿",
+                  savedAt: i,
+                })),
+              },
+            ],
+          }).slice(0, size);
+        }
         const corpusBytes = new TextEncoder().encode(JSON.stringify(documents)).byteLength;
         const buildStart = performance.now();
         index.replaceSource("bench", documents);
         const buildMs = performance.now() - buildStart;
         await index.flush(); // Remove background serialization from the measured query phase.
         await index.close();
-        const queries = ["唯一研究证据", "rare-evidence", "distributed systems", "不存在的检索词"];
+        const queries = [
+          researchCorpus ? "个人理解" : "唯一研究证据",
+          "rare-evidence",
+          "distributed systems",
+          "不存在的检索词",
+        ];
         for (const query of queries) index.search(query, { limit: 60 });
         await pause();
         const longTasks = [];
@@ -120,7 +151,7 @@ try {
           byQuery,
         };
       },
-      { size, root },
+      { size, root, researchCorpus },
     );
     assert.equal(result.restoredCount, size);
     assert.equal(result.byQuery.at(-1).hits, 0);
@@ -132,6 +163,7 @@ try {
     await context.close();
   }
   const report = {
+    corpus: researchCorpus ? "saved research notes and excerpts" : "reader projections",
     recordedAt: new Date().toISOString(),
     browser: browser.version(),
     platform: process.platform,
@@ -142,7 +174,10 @@ try {
     mode: "Vite development modules; synthetic main-thread corpus; in-memory persistence; 1 warm-up + 5 measured queries per case",
     rows,
   };
-  const output = new URL("./shots/search-benchmark.json", import.meta.url);
+  const output = new URL(
+    researchCorpus ? "./shots/search-benchmark-research.json" : "./shots/search-benchmark.json",
+    import.meta.url,
+  );
   await mkdir(new URL("./shots/", import.meta.url), { recursive: true });
   await writeFile(output, JSON.stringify(report, null, 2));
   console.log(`Report: ${fileURLToPath(output)}`);

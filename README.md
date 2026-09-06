@@ -342,7 +342,7 @@ Canonical Table Package → Schema / search / sort / export
 
 ## 资料集合备份与搜索基准
 
-全局搜索的「资料集合」支持集合管理、个人笔记草稿恢复，以及 JSON 集合备份/导入预览。可选择包含未保存草稿；冲突集合保留为副本，重复导入跳过相同内容。备份 v1 不含源文件，跨浏览器回跳仍需对应本地资料。契约与边界见 [资料引用与备份](docs/RESEARCH-CITATIONS.md)。
+全局搜索支持按集合查找已保存笔记与摘录，并打开卡片高亮命中；草稿不进入索引。「资料集合」支持集合管理、个人笔记草稿恢复，以及 JSON 集合备份/导入预览。可选择包含未保存草稿；冲突集合保留为副本，重复导入跳过相同内容。备份 v1 不含源文件，跨浏览器回跳仍需对应本地资料。契约与边界见 [资料引用与备份](docs/RESEARCH-CITATIONS.md)。
 
 启动 `bun run studio` 后，运行 `bun run bench:search` 生成真实 Chromium 的中英文搜索基准，报告位于 `scripts/shots/search-benchmark.json`。可用 `BCR_BENCH_SIZES=100,1000,5000` 指定规模；测量方法见 [搜索性能基准](docs/SEARCH-BENCHMARK.md)。
 

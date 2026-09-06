@@ -1,3 +1,9 @@
+import {
+  isResearchResult,
+  publishResearch,
+  researchSource,
+  researchTarget,
+} from "../researchSearch";
 import { Dialog } from "@base-ui/react/dialog";
 import type { SearchDocument, SearchDocumentKind, SearchResult } from "@bcr/core";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
@@ -25,6 +31,7 @@ import { ResearchPanel } from "./ResearchPanel";
 import { useServices } from "../services";
 
 type SearchFilterId =
+  | "research"
   | "all"
   | "file"
   | "task"
@@ -43,6 +50,7 @@ interface SearchFilter {
 
 const FILTERS: ReadonlyArray<SearchFilter> = [
   { id: "all", label: "全部" },
+  { id: "research", label: "资料集合", kinds: ["research-note", "research-excerpt"] },
   { id: "file", label: "文件", kinds: ["file"] },
   { id: "task", label: "任务", kinds: ["task"] },
   { id: "reader", label: "阅读器", kinds: ["reader-book", "reader-section"] },
@@ -54,6 +62,8 @@ const FILTERS: ReadonlyArray<SearchFilter> = [
 ];
 
 function iconFor(kind: SearchDocumentKind) {
+  if (kind === "research-note" || kind === "research-excerpt")
+    return <BookOpen className="size-4" />;
   if (kind === "app") return <LayoutGrid className="size-4" />;
   if (kind === "file" || kind === "document") return <FileText className="size-4" />;
   if (kind === "task") return <TerminalSquare className="size-4" />;
@@ -68,6 +78,8 @@ function iconFor(kind: SearchDocumentKind) {
 }
 
 function kindLabel(kind: SearchDocumentKind): string {
+  if (kind === "research-note") return "笔记";
+  if (kind === "research-excerpt") return "摘录";
   if (kind === "app") return "APP";
   if (kind === "file") return "FILE";
   if (kind === "task") return "TASK";
@@ -104,6 +116,14 @@ export function SearchPanel(props: {
   const [view, setView] = useState<"search" | "research">("search");
   const research = useMemo(() => new ResearchStore(services.metadata), [services.metadata]);
   const library = useSyncExternalStore(research.subscribe, research.getSnapshot);
+  const [scope, setScope] = useState("");
+  const [focus, setFocus] = useState<{
+    excerpt: string;
+    field: "note" | "text";
+    start?: number;
+    end?: number;
+    exact?: string;
+  }>();
   const [collectionId, setCollectionId] = useState("");
   const [researchReady, setResearchReady] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -123,6 +143,19 @@ export function SearchPanel(props: {
       live = false;
     };
   }, [research]);
+  useEffect(() => {
+    if (!search || !researchReady) return;
+    let live = true;
+    void search.ready.then(() => {
+      if (live) publishResearch(search, library);
+    });
+    return () => {
+      live = false;
+    };
+  }, [search, researchReady, library]);
+  useEffect(() => {
+    if (scope && !library.collections.some((item) => item.id === scope)) setScope("");
+  }, [library, scope]);
   const selectedCollection =
     library.collections.find((item) => item.id === collectionId) ?? library.collections[0];
   const run = (action: () => Promise<void>) => {
@@ -147,26 +180,39 @@ export function SearchPanel(props: {
     setQuery("");
     setView("search");
     setFilter("all");
+    setScope("");
+    setFocus(undefined);
     setActive(0);
   }, [props.open]);
+
+  const documents = useMemo(() => search?.documents() ?? [], [search, revision]);
 
   const selectedFilter = FILTERS.find((item) => item.id === filter) ?? FILTERS[0]!;
   const results = useMemo(() => {
     if (search === undefined) return [];
-    const options = selectedFilter.kinds === undefined ? {} : { kinds: selectedFilter.kinds };
+    const options = {
+      ...(selectedFilter.kinds ? { kinds: selectedFilter.kinds } : {}),
+      ...(filter === "research" && scope ? { sources: [researchSource(scope)] } : {}),
+    };
     const trimmed = query.trim();
     return trimmed.length === 0
-      ? search
-          .documents()
+      ? documents
           .filter((document) =>
             selectedFilter.kinds === undefined
               ? true
               : selectedFilter.kinds.includes(document.kind),
           )
+          .filter(
+            (document) =>
+              (!isResearchResult(document) || researchReady) &&
+              (!options.sources || options.sources.includes(document.source)),
+          )
           .slice(0, 10)
           .map(recentResult)
-      : search.search(trimmed, { ...options, limit: 60 });
-  }, [query, search, selectedFilter, revision]);
+      : search
+          .search(trimmed, { ...options, limit: 60 })
+          .filter((result) => !isResearchResult(result.document) || researchReady);
+  }, [query, search, selectedFilter, documents, filter, scope, researchReady]);
 
   useEffect(() => {
     setActive((value) => Math.min(Math.max(0, results.length - 1), value));
@@ -174,6 +220,32 @@ export function SearchPanel(props: {
 
   const openResult = (result: SearchResult | undefined): void => {
     if (result === undefined) return;
+    if (isResearchResult(result.document)) {
+      const target = researchTarget(result.document);
+      if (
+        !target ||
+        !library.collections
+          .find((item) => item.id === target.collection)
+          ?.excerpts.some((item) => item.id === target.excerpt)
+      ) {
+        setMessage("该摘录已不存在，请重新搜索");
+        return;
+      }
+      setCollectionId(target.collection);
+      setFocus({
+        excerpt: target.excerpt,
+        field: target.field,
+        ...(result.match
+          ? {
+              start: target.offset + result.match.start,
+              end: target.offset + result.match.end,
+              exact: result.document.body?.slice(result.match.start, result.match.end) ?? "",
+            }
+          : {}),
+      });
+      setView("research");
+      return;
+    }
     props.onNavigate(resultDocument(result));
     props.onOpenChange(false);
   };
@@ -212,7 +284,10 @@ export function SearchPanel(props: {
             <button
               type="button"
               aria-pressed={view === "research"}
-              onClick={() => setView("research")}
+              onClick={() => {
+                setFocus(undefined);
+                setView("research");
+              }}
               className="rounded px-3 py-2 text-[12px] text-muted aria-pressed:bg-overlay aria-pressed:text-accent"
             >
               资料集合 · {library.collections.length}
@@ -229,7 +304,11 @@ export function SearchPanel(props: {
               search={search}
               store={research}
               selected={selectedCollection?.id ?? ""}
-              onSelect={setCollectionId}
+              focus={focus}
+              onSelect={(id) => {
+                setFocus(undefined);
+                setCollectionId(id);
+              }}
               busy={busy || !researchReady}
               run={run}
               onOpen={(item) => {
@@ -273,11 +352,9 @@ export function SearchPanel(props: {
                   const count =
                     search === undefined
                       ? 0
-                      : search
-                          .documents()
-                          .filter((document) =>
-                            item.kinds === undefined ? true : item.kinds.includes(document.kind),
-                          ).length;
+                      : documents.filter((document) =>
+                          item.kinds === undefined ? true : item.kinds.includes(document.kind),
+                        ).length;
                   return (
                     <button
                       key={item.id}
@@ -300,6 +377,27 @@ export function SearchPanel(props: {
                   );
                 })}
               </div>
+              {filter === "research" && (
+                <label className="flex items-center gap-2 px-4 py-2 text-[11px] text-muted">
+                  集合范围
+                  <select
+                    aria-label="集合搜索范围"
+                    className="min-w-0 flex-1 rounded bg-surface p-2 text-text"
+                    value={scope}
+                    onChange={(event) => {
+                      setScope(event.target.value);
+                      setActive(0);
+                    }}
+                  >
+                    <option value="">全部集合</option>
+                    {library.collections.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <div className="flex items-center justify-between px-4 py-2 font-mono text-[10px] text-faint">
                 <span aria-live="polite">
                   {query.trim().length === 0
@@ -361,6 +459,16 @@ export function SearchPanel(props: {
                         {result.document.subtitle !== undefined && (
                           <span className="mt-0.5 block truncate font-mono text-[10px] text-muted">
                             {result.document.subtitle}
+                          </span>
+                        )}
+                        {isResearchResult(result.document) && (
+                          <span className="mt-1 block text-[10px] text-accent">
+                            {result.match
+                              ? result.document.kind === "research-note"
+                                ? "命中已保存笔记"
+                                : "命中摘录正文"
+                              : "命中标题或集合信息"}{" "}
+                            · 打开笔记
                           </span>
                         )}
                         {result.match && result.document.citation && (
