@@ -1,3 +1,12 @@
+import {
+  renameCollection,
+  deleteCollection,
+  moveExcerpt,
+  readDraft,
+  draftFailed,
+  writeDraft,
+  clearDraft,
+} from "../researchManagement";
 import type { SearchIndex } from "@bcr/core";
 import { useState } from "react";
 import type {
@@ -22,6 +31,9 @@ export function ResearchPanel(props: {
 }) {
   const [name, setName] = useState("");
   const [query, setQuery] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [rename, setRename] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [exportError, setExportError] = useState("");
   const collection = props.library.collections.find((item) => item.id === props.selected);
   const updateCollection = (change: (current: ResearchCollection) => ResearchCollection) =>
@@ -91,7 +103,11 @@ export function ResearchPanel(props: {
         <select
           id="research-collection"
           value={collection?.id ?? ""}
-          onChange={(event) => props.onSelect(event.target.value)}
+          onChange={(event) => {
+            props.onSelect(event.target.value);
+            setEditing(false);
+            setDeleting(false);
+          }}
           className="min-w-0 flex-1 rounded bg-surface p-2 text-[12px] text-text"
         >
           {!collection && <option value="">请选择集合</option>}
@@ -110,13 +126,94 @@ export function ResearchPanel(props: {
           导出 Markdown
         </button>
       </div>
+      {collection && (
+        <div className="flex flex-wrap items-center gap-2 py-2">
+          <button
+            type="button"
+            className={button}
+            disabled={props.busy}
+            onClick={() => {
+              setRename(collection.name);
+              setEditing(true);
+              setDeleting(false);
+            }}
+          >
+            重命名集合
+          </button>
+          <button
+            type="button"
+            className={button}
+            disabled={props.busy}
+            onClick={() => {
+              setDeleting(true);
+              setEditing(false);
+            }}
+          >
+            删除集合
+          </button>
+          {editing && (
+            <form
+              className="flex min-w-0 flex-wrap gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                props.run(async () => {
+                  await props.store.update((current) =>
+                    renameCollection(current, collection.id, rename),
+                  );
+                  setEditing(false);
+                });
+              }}
+            >
+              <input
+                aria-label="集合新名称"
+                className="min-w-0 rounded bg-surface p-2 text-text"
+                maxLength={120}
+                value={rename}
+                onChange={(event) => setRename(event.target.value)}
+              />
+              <button className={button} disabled={props.busy || !rename.trim()}>
+                保存名称
+              </button>
+              <button type="button" className={button} onClick={() => setEditing(false)}>
+                取消
+              </button>
+            </form>
+          )}
+          {deleting && (
+            <div role="alert" className="w-full space-y-2 text-[12px] text-muted">
+              <p>
+                删除「{collection.name}」及其中 {collection.excerpts.length}{" "}
+                条摘录和笔记？源文件仍会保留。
+              </p>
+              <button
+                type="button"
+                className={button}
+                disabled={props.busy}
+                onClick={() =>
+                  props.run(async () => {
+                    await props.store.update((current) => deleteCollection(current, collection.id));
+                    setDeleting(false);
+                    props.onSelect(props.store.getSnapshot().collections[0]?.id ?? "");
+                  })
+                }
+              >
+                确认删除集合
+              </button>
+              <button type="button" className={button} onClick={() => setDeleting(false)}>
+                取消
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       {exportError && (
         <p role="alert" className="py-2 text-danger">
           {exportError}
         </p>
       )}
       <p className="py-3 text-[11px] leading-5 text-faint">
-        在「工作区搜索」中选择正文结果，保存到当前集合。摘录保留保存时的正文与来源；修改笔记后请点击保存。
+        在「工作区搜索」中选择正文结果，保存到当前集合。摘录保留保存时的正文与来源；个人笔记草稿保留在当前浏览器；点击保存后写入资料库。Markdown
+        仅导出已保存的笔记。
       </p>
       {collection && (
         <input
@@ -132,18 +229,27 @@ export function ResearchPanel(props: {
           <ExcerptCard
             key={item.id}
             item={item}
+            collections={props.library.collections.filter((entry) => entry.id !== props.selected)}
+            onMove={(target) =>
+              props.run(() =>
+                props.store.update((current) =>
+                  moveExcerpt(current, props.selected, target, item.id),
+                ),
+              )
+            }
             status={assessExcerpt(item, props.search)}
             busy={props.busy}
             onOpen={() => props.onOpen({ ...item, route: assessExcerpt(item, props.search).route })}
             onSave={(note) =>
-              props.run(() =>
-                updateCollection((current) => ({
+              props.run(async () => {
+                await updateCollection((current) => ({
                   ...current,
                   excerpts: current.excerpts.map((excerpt) =>
                     excerpt.id === item.id ? { ...excerpt, note } : excerpt,
                   ),
-                })),
-              )
+                }));
+                clearDraft(item, note, window.localStorage);
+              })
             }
             onRemove={() =>
               props.run(() =>
@@ -166,13 +272,38 @@ export function ResearchPanel(props: {
 }
 function ExcerptCard(props: {
   readonly item: ResearchExcerpt;
+  readonly collections: ReadonlyArray<ResearchCollection>;
+  readonly onMove: (target: string) => void;
   readonly status: ExcerptStatus;
   readonly busy: boolean;
   readonly onOpen: () => void;
   readonly onRemove: () => void;
   readonly onSave: (note: string) => void;
 }) {
-  const [note, setNote] = useState(props.item.note);
+  const [initial] = useState(() => {
+    try {
+      return {
+        note: readDraft(props.item, window.localStorage),
+        error: draftFailed(props.item)
+          ? "草稿暂未写入浏览器，刷新可能丢失。请重试或保存笔记。"
+          : "",
+      };
+    } catch {
+      return { note: props.item.note, error: "无法读取浏览器草稿，请检查浏览器存储后重试。" };
+    }
+  });
+  const [note, setNote] = useState(initial.note);
+  const [draftError, setDraftError] = useState(initial.error);
+  const [target, setTarget] = useState("");
+  const retainDraft = (value: string) => {
+    setNote(value);
+    try {
+      writeDraft(props.item, value, window.localStorage);
+      setDraftError("");
+    } catch {
+      setDraftError("草稿暂未写入浏览器，刷新可能丢失。请重试或保存笔记。");
+    }
+  };
   return (
     <article className="rounded border border-border bg-surface p-3">
       <div className="flex items-start justify-between gap-3">
@@ -201,6 +332,7 @@ function ExcerptCard(props: {
           来源版本 {props.item.citation.source.version.slice(0, 12)}
         </p>
       )}
+      <p className="mt-3 text-[10px] text-faint">来源正文快照</p>
       <blockquote className="my-3 max-h-36 overflow-auto whitespace-pre-wrap border-l-2 border-accent/50 pl-3 text-[12px] leading-6 text-muted">
         {props.item.text}
       </blockquote>
@@ -213,10 +345,10 @@ function ExcerptCard(props: {
         <textarea
           aria-label={`笔记：${props.item.title}`}
           value={note}
-          onChange={(event) => setNote(event.target.value)}
+          onChange={(event) => retainDraft(event.target.value)}
           rows={2}
           maxLength={12000}
-          placeholder="写下你的理解…"
+          placeholder="个人笔记：写下你的理解…"
           className="w-full resize-y rounded border border-border bg-raised p-2 text-[12px] text-text"
         />
         <div className="mt-2 flex items-center gap-2">
@@ -231,6 +363,39 @@ function ExcerptCard(props: {
           </button>
         </div>
       </form>
+      {draftError && note !== props.item.note && (
+        <p role="alert" className="mt-2 text-[11px] text-danger">
+          {draftError}
+          <button type="button" className={button} onClick={() => retainDraft(note)}>
+            重试保留草稿
+          </button>
+        </p>
+      )}
+      {props.collections.length > 0 && (
+        <div className="mt-3 flex gap-2">
+          <select
+            aria-label={`移动目标：${props.item.title}`}
+            className="min-w-0 flex-1 rounded bg-raised p-2 text-[11px] text-text"
+            value={target}
+            onChange={(event) => setTarget(event.target.value)}
+          >
+            <option value="">选择目标集合</option>
+            {props.collections.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className={button}
+            disabled={props.busy || !target || !!draftError}
+            onClick={() => props.onMove(target)}
+          >
+            移动摘录
+          </button>
+        </div>
+      )}
     </article>
   );
 }

@@ -72,6 +72,60 @@ try {
   await collections();
   assert.equal(await page.locator('[aria-label="集合摘录"] article').count(), 1);
   await page.getByRole("textbox", { name: /^笔记：/u }).fill("核对了章节中的原始证据");
+  // Draft survives filtering, panel changes, page reload, and collection moves.
+  const originalCollection = await page.getByLabel("当前集合", { exact: true }).inputValue();
+  await page.getByLabel("搜索集合摘录").fill("no matching excerpt");
+  await page.getByLabel("搜索集合摘录").fill("");
+  assert.equal(
+    await page.getByRole("textbox", { name: /^笔记：/u }).inputValue(),
+    "核对了章节中的原始证据",
+  );
+  await page.getByRole("button", { name: "工作区搜索", exact: true }).click();
+  await collections();
+  assert.equal(
+    await page.getByRole("textbox", { name: /^笔记：/u }).inputValue(),
+    "核对了章节中的原始证据",
+  );
+  await page.reload({ waitUntil: "networkidle" });
+  await openSearch("");
+  await collections();
+  assert.equal(
+    await page.getByRole("textbox", { name: /^笔记：/u }).inputValue(),
+    "核对了章节中的原始证据",
+  );
+  await page.getByRole("button", { name: "重命名集合", exact: true }).click();
+  await page.getByLabel("集合新名称").fill("跨格式研究 · 整理中");
+  await page.getByRole("button", { name: "保存名称", exact: true }).click();
+  await page.getByLabel("集合新名称").waitFor({ state: "hidden" });
+  await page.getByLabel("新集合名称").fill("临时目标");
+  await page.getByRole("button", { name: "创建集合", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "已保存到本地" }).waitFor();
+  const destination = await page.getByLabel("当前集合", { exact: true }).inputValue();
+  await page.getByLabel("当前集合", { exact: true }).selectOption(originalCollection);
+  await page.getByLabel(/^移动目标：/u).selectOption(destination);
+  await page.getByRole("button", { name: "移动摘录", exact: true }).click();
+  await page.locator('[aria-label="集合摘录"] article').waitFor({ state: "hidden" });
+  await page.getByLabel("当前集合", { exact: true }).selectOption(destination);
+  assert.equal(
+    await page.getByRole("textbox", { name: /^笔记：/u }).inputValue(),
+    "核对了章节中的原始证据",
+  );
+  await page.getByRole("button", { name: "删除集合", exact: true }).click();
+  await page.getByRole("button", { name: "取消", exact: true }).click();
+  assert.equal(await page.locator('[aria-label="集合摘录"] article').count(), 1);
+  await page.getByLabel(/^移动目标：/u).selectOption(originalCollection);
+  await page.getByRole("button", { name: "移动摘录", exact: true }).click();
+  await page.locator('[aria-label="集合摘录"] article').waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "删除集合", exact: true }).click();
+  await page.getByRole("button", { name: "确认删除集合", exact: true }).click();
+  await page
+    .getByRole("button", { name: "确认删除集合", exact: true })
+    .waitFor({ state: "hidden" });
+  assert.equal(await page.getByLabel("当前集合", { exact: true }).inputValue(), originalCollection);
+  await page.getByRole("button", { name: "重命名集合", exact: true }).click();
+  await page.getByLabel("集合新名称").fill("跨格式研究");
+  await page.getByRole("button", { name: "保存名称", exact: true }).click();
+  await page.getByLabel("集合新名称").waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "保存笔记", exact: true }).click();
   await page.getByText("笔记尚未保存", { exact: true }).waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "回到原文", exact: true }).click();
