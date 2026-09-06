@@ -103,13 +103,7 @@ export function App() {
     ocrDrafts: ocrReviewDrafts,
     setOcrDrafts: setOcrReviewDrafts,
   } = artifacts;
-  const { routeBlockId, handoffHistory } = useDocumentIntegration(
-    services,
-    state.jobs,
-    active,
-    contentPackage,
-    translationPackage,
-  );
+  const { routeBlockId, handoffHistory } = useDocumentIntegration(services, state.jobs);
   const [savingReview, setSavingReview] = useState(false);
   const [savingOcrReview, setSavingOcrReview] = useState(false);
   const [ocrPreloading, setOcrPreloading] = useState(false);

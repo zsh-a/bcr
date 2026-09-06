@@ -264,8 +264,8 @@ class MemorySearchIndex implements SearchIndex {
       if (document.source === source) this.entries.delete(id);
     }
     for (const document of documents) {
-      if (document.source === source) this.upsert(document);
-      else this.upsert({ ...document, source });
+      const decoded = decodeDocument({ ...document, source });
+      if (decoded !== undefined) this.entries.set(decoded.id, decoded);
     }
     this.schedulePersist();
     this.notify();

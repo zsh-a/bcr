@@ -1,3 +1,5 @@
+import { createTextLocator } from "@bcr/reader-core";
+import { readerResearchDocuments, resolveResearchRange } from "./researchDocuments";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { SearchDocument } from "@bcr/core";
 import {
@@ -6,7 +8,7 @@ import {
   markDocumentHandoffExpired,
   publishDocumentHandoff,
 } from "@bcr/document-core";
-import { useLocationSearch, useOptionalRuntime } from "@bcr/react";
+import { RUNTIME_NAVIGATION_EVENT, useLocationSearch, useOptionalRuntime } from "@bcr/react";
 import {
   importReaderDocumentHandoff,
   importReaderExportBundle,
@@ -44,6 +46,7 @@ import "./reader-surface.css";
 interface ReaderRouteSearch {
   readonly book?: string;
   readonly section?: string;
+  readonly raw: string;
 }
 
 function parseReaderRouteSearch(value: string): ReaderRouteSearch {
@@ -51,6 +54,7 @@ function parseReaderRouteSearch(value: string): ReaderRouteSearch {
   const book = params.get("book");
   const section = params.get("section");
   return {
+    raw: value,
     ...(book === null ? {} : { book }),
     ...(section === null ? {} : { section }),
   };
@@ -80,6 +84,12 @@ export function App() {
   const [installHelpOpen, setInstallHelpOpen] = useState(false);
   const [mobileChromeVisible, setMobileChromeVisible] = useState(true);
   const appliedRouteRef = useRef("");
+  const [citationNavigation, setCitationNavigation] = useState(0);
+  useEffect(() => {
+    const navigate = () => setCitationNavigation((value) => value + 1);
+    window.addEventListener(RUNTIME_NAVIGATION_EVENT, navigate);
+    return () => window.removeEventListener(RUNTIME_NAVIGATION_EVENT, navigate);
+  }, []);
   const mobileSidebarInitializedRef = useRef(false);
 
   useEffect(() => {
@@ -95,14 +105,32 @@ export function App() {
   }, [status]);
 
   useEffect(() => {
-    if (status !== "ready" || routeSearch.book === undefined) return;
-    const routeKey = `${routeSearch.book}|${routeSearch.section ?? ""}`;
+    if (routeSearch.book === undefined) {
+      appliedRouteRef.current = "";
+      return;
+    }
+    if (status !== "ready") return;
+    const routeKey = `${routeSearch.raw}|${citationNavigation}`;
     if (appliedRouteRef.current === routeKey) return;
     const book = library.find((candidate) => candidate.id === routeSearch.book);
-    if (book === undefined) return;
+    if (book === undefined) {
+      setNotice("引用的读物不在本地书库中，请先恢复或导入原资料。");
+      return;
+    }
+    const section = book.sections.find((item) => item.id === routeSearch.section);
+    if (routeSearch.section && !section) {
+      setNotice("引用的章节不存在，请检查原资料是否已更新。");
+      return;
+    }
     appliedRouteRef.current = routeKey;
     reader.openBook(book.id, routeSearch.section);
-  }, [status, routeSearch.book, routeSearch.section, library]);
+    const params = new URLSearchParams(routeSearch.raw);
+    if (section && params.has("start")) {
+      const range = resolveResearchRange(section.text, params);
+      if (range) reader.setLocator(createTextLocator(section, range.start, range.end));
+      else setNotice("引用正文已变化或尚未恢复，已打开章节；请对照集合中保存的原文。");
+    }
+  }, [status, routeSearch.book, routeSearch.section, routeSearch.raw, library, citationNavigation]);
 
   useEffect(() => {
     const search = hostServices?.search;
@@ -123,19 +151,7 @@ export function App() {
         route: `/reader?book=${encodeURIComponent(book.id)}`,
         updatedAt: book.updatedAt,
       });
-      for (const section of book.sections) {
-        records.push({
-          id: `reader:section:${book.id}:${section.id}`,
-          source: "reader",
-          kind: "reader-section",
-          title: section.label,
-          subtitle: book.title,
-          body: section.text.slice(0, 12_000),
-          tags: ["reader", book.source.format, "section"],
-          route: `/reader?book=${encodeURIComponent(book.id)}&section=${encodeURIComponent(section.id)}`,
-          updatedAt: book.updatedAt,
-        });
-      }
+      records.push(...readerResearchDocuments(book));
     }
     search.replaceSource("reader", records);
   }, [hostServices?.search, runtime, status, library]);

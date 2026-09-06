@@ -20,6 +20,11 @@ export interface StudioSearch {
   task?: string | undefined;
 }
 
+export interface MediaSearch {
+  source?: string | undefined;
+  time?: number | undefined;
+}
+
 export interface HandoffSearch {
   document?: string | undefined;
 }
@@ -27,6 +32,9 @@ export interface HandoffSearch {
 export interface ReaderSearch extends HandoffSearch {
   book?: string | undefined;
   section?: string | undefined;
+  start?: number | undefined;
+  end?: number | undefined;
+  quote?: string | undefined;
 }
 
 export interface DocumentSearch {
@@ -73,6 +81,10 @@ const studioRoute = createRoute({
 const mediaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/media",
+  validateSearch: (search: Record<string, unknown>): MediaSearch => ({
+    source: typeof search["source"] === "string" ? search["source"] : undefined,
+    time: typeof search["time"] === "number" ? search["time"] : undefined,
+  }),
   component: () => null,
 });
 
@@ -123,6 +135,9 @@ const readerRoute = createRoute({
     document: typeof search["document"] === "string" ? search["document"] : undefined,
     book: typeof search["book"] === "string" ? search["book"] : undefined,
     section: typeof search["section"] === "string" ? search["section"] : undefined,
+    start: typeof search["start"] === "number" ? search["start"] : undefined,
+    end: typeof search["end"] === "number" ? search["end"] : undefined,
+    quote: typeof search["quote"] === "string" ? search["quote"] : undefined,
   }),
   component: () => null,
 });

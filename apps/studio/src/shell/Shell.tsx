@@ -66,7 +66,14 @@ export function Shell() {
     const route = document.route;
     if (route === undefined || route.length === 0) return;
     const target = new URL(route, window.location.origin);
-    const searchParams = Object.fromEntries(target.searchParams.entries());
+    const searchParams: Record<string, string | number> = Object.fromEntries(
+      target.searchParams.entries(),
+    );
+    for (const key of ["start", "end", "time"]) {
+      const value = searchParams[key];
+      if (typeof value === "string" && value.trim() && Number.isFinite(Number(value)))
+        searchParams[key] = Number(value);
+    }
     void navigate({ to: target.pathname as never, search: searchParams as never }).then(() => {
       notifyNavigation();
     });

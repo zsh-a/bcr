@@ -1,15 +1,17 @@
+import { Effect } from "effect";
 import type { SearchDocument } from "@bcr/core";
 import {
   DOCUMENT_HANDOFF_EVENT,
+  decodeDocumentContentPackage,
+  decodeDocumentTranslationPackage,
+  stageById,
   consumeDocumentHandoff,
   formatLabel,
   getDocumentHandoffMarker,
   listDocumentHandoffs,
   markDocumentHandoffExpired,
-  type DocumentContentPackage,
   type DocumentHandoffRecord,
   type DocumentJob,
-  type DocumentTranslationPackage,
 } from "@bcr/document-core";
 import { useLocationSearch, useOptionalRuntime, type RuntimeServices } from "@bcr/react";
 import { useNavigate } from "@tanstack/react-router";
@@ -26,9 +28,6 @@ interface DocumentIntegrationState {
 export function useDocumentIntegration(
   services: RuntimeServices,
   jobs: ReadonlyArray<DocumentJob>,
-  active: DocumentJob,
-  contentPackage: DocumentContentPackage | undefined,
-  translationPackage: DocumentTranslationPackage | undefined,
 ): DocumentIntegrationState {
   const hostServices = useOptionalRuntime();
   const routeSearch = useLocationSearch();
@@ -50,60 +49,66 @@ export function useDocumentIntegration(
   useEffect(() => {
     const search = hostServices?.search;
     if (search === undefined) return;
-    const records: SearchDocument[] = jobs.map((job) => {
-      const done = job.stages.filter((stage) => stage.status === "done").length;
-      const body = [
-        job.sourceTextPreview ?? "",
-        ...job.stages.map((stage) => `${stage.label} ${stage.status} ${stage.detail}`),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .slice(0, 24_000);
-      return {
-        id: `document:${job.id}`,
-        source: "documents",
-        kind: "document",
-        title: job.name,
-        subtitle: `${formatLabel(job.format)} · ${done}/${job.stages.length} stages ready`,
-        ...(body.length === 0 ? {} : { body }),
-        tags: ["document", job.format],
-        route: `/documents?job=${encodeURIComponent(job.id)}`,
-        updatedAt: job.updatedAt,
-      };
-    });
-    if (contentPackage !== undefined) {
-      for (const block of contentPackage.blocks) {
+    let cancelled = false;
+    // Load each job's durable packages, rather than replacing all block results
+    // with whichever job happens to be selected in the Inspector.
+    const publish = async () => {
+      const records: SearchDocument[] = [];
+      for (const job of jobs) {
+        if (cancelled) return;
         records.push({
-          id: `document:block:${active.id}:${block.id}`,
+          id: `document:${job.id}`,
           source: "documents",
           kind: "document",
-          title: block.label,
-          subtitle: `${active.name} · ${formatLabel(active.format)} · 原文`,
-          body: block.text,
-          tags: ["document", active.format, "content", block.kind],
-          route: `/documents?job=${encodeURIComponent(active.id)}&block=${encodeURIComponent(block.id)}`,
-          updatedAt: active.updatedAt,
+          title: job.name,
+          subtitle: `${formatLabel(job.format)} · 文档预览`,
+          body: job.sourceTextPreview ?? "",
+          tags: ["document", job.format],
+          route: `/documents?job=${encodeURIComponent(job.id)}`,
+          updatedAt: job.updatedAt,
         });
+        const contentRef =
+          stageById(job.stages, "extract")?.artifact ?? stageById(job.stages, "ocr")?.artifact;
+        const translationRef = stageById(job.stages, "translate")?.artifact;
+        for (const [ref, translated] of [
+          [contentRef, false],
+          [translationRef, true],
+        ] as const) {
+          if (!ref || cancelled) continue;
+          try {
+            const bytes = await Effect.runPromise(services.artifacts.get(ref));
+            if (cancelled) return;
+            const raw: unknown = JSON.parse(new TextDecoder().decode(bytes));
+            const content = translated
+              ? decodeDocumentTranslationPackage(raw)
+              : decodeDocumentContentPackage(raw);
+            if (!content) continue;
+            for (const block of content.blocks) {
+              const translation = "translatedText" in block ? block.translatedText : undefined;
+              records.push({
+                id: `document:${translated ? "translation" : "block"}:${job.id}:${block.id}`,
+                source: "documents",
+                kind: "document",
+                title: block.label,
+                subtitle: `${job.name} · ${translated ? (/fixture/iu.test(content.provenance.adapter) ? "原文 / 演示译文" : "原文 / 译文") : "原文"}`,
+                body: [block.text, translation].filter(Boolean).join("\n"),
+                tags: ["document", job.format, translated ? "translation" : "content"],
+                route: `/documents?job=${encodeURIComponent(job.id)}&block=${encodeURIComponent(block.id)}`,
+                updatedAt: job.updatedAt,
+              });
+            }
+          } catch {
+            // Missing or malformed artifacts retain the job-level entry only.
+          }
+        }
       }
-    }
-    if (translationPackage !== undefined) {
-      for (const block of translationPackage.blocks) {
-        const body = [block.text, block.translatedText].filter(Boolean).join(" ");
-        records.push({
-          id: `document:translation:${active.id}:${block.id}`,
-          source: "documents",
-          kind: "document",
-          title: `${block.label} · 译文`,
-          subtitle: `${active.name} · ${translationPackage.targetLanguage}`,
-          ...(body.length === 0 ? {} : { body }),
-          tags: ["document", active.format, "translation", block.status],
-          route: `/documents?job=${encodeURIComponent(active.id)}&block=${encodeURIComponent(block.id)}`,
-          updatedAt: active.updatedAt,
-        });
-      }
-    }
-    search.replaceSource("documents", records);
-  }, [active, contentPackage, hostServices?.search, jobs, translationPackage]);
+      if (!cancelled) search.replaceSource("documents", records);
+    };
+    void publish();
+    return () => {
+      cancelled = true;
+    };
+  }, [hostServices?.search, jobs, services.artifacts]);
 
   useEffect(() => {
     if (routeJobId === null || appliedRouteRef.current === routeJobId) return;

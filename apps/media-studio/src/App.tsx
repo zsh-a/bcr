@@ -1,5 +1,13 @@
-import { RuntimeProvider, usePublishRunningCount, useRuntime, useRuntimeSession } from "@bcr/react";
-import { useEffect, useRef } from "react";
+import {
+  RUNTIME_NAVIGATION_EVENT,
+  RuntimeProvider,
+  useLocationSearch,
+  usePublishRunningCount,
+  useRuntime,
+  useRuntimeSession,
+} from "@bcr/react";
+import { useEffect, useRef, useState } from "react";
+import { mediaCitationTarget } from "./mediaSearchDocuments";
 import { useMediaSearch } from "./search";
 // 样式随模块加载：Shell 懒加载本组件时 CSS 一并注入（standalone main.tsx 的重复 import 幂等）。
 import { CueEditor, UndoRedo } from "./components/CueEditor";
@@ -47,6 +55,31 @@ function Studio() {
   const view = useStudio((state) => state.view);
   const graph = useStudio((state) => state.graph);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const locationSearch = useLocationSearch();
+  const [citationError, setCitationError] = useState("");
+  const [citationNavigation, setCitationNavigation] = useState(0);
+  useEffect(() => {
+    const navigate = () => setCitationNavigation((value) => value + 1);
+    window.addEventListener(RUNTIME_NAVIGATION_EVENT, navigate);
+    return () => window.removeEventListener(RUNTIME_NAVIGATION_EVENT, navigate);
+  }, []);
+  useEffect(() => {
+    if (window.location.pathname !== "/media") return;
+    const target = mediaCitationTarget(locationSearch, source?.ref.id);
+    setCitationError(target.error ?? "");
+    const video = videoRef.current;
+    if (target.time === undefined || !video) return;
+    const seekToCitation = () => {
+      if (Number.isFinite(video.duration) && target.time! > video.duration) {
+        setCitationError("引用时间超出当前媒体长度");
+        return;
+      }
+      video.currentTime = target.time!;
+    };
+    if (video.readyState >= 1) seekToCitation();
+    else video.addEventListener("loadedmetadata", seekToCitation, { once: true });
+    return () => video.removeEventListener("loadedmetadata", seekToCitation);
+  }, [locationSearch, source?.ref.id, source?.objectUrl, citationNavigation]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // 字幕编辑自动持久化（800ms 防抖；仅在用户改动过时写）
@@ -110,6 +143,14 @@ function Studio() {
 
   return (
     <div className="media-studio flex h-full flex-col">
+      {citationError && (
+        <p
+          role="alert"
+          className="border-b border-[var(--color-border)] p-3 text-[var(--color-danger)]"
+        >
+          {citationError}
+        </p>
+      )}
       {/* 顶栏 */}
       <header className="media-header flex items-center gap-4 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3">
         <span className="media-brand font-mono text-[16px] font-semibold">
