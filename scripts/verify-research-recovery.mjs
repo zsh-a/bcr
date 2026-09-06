@@ -105,6 +105,19 @@ async function open(context) {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(`${origin}/reader`, { waitUntil: "networkidle" });
   await page.getByLabel("导入阅读文件").waitFor();
+  await page.evaluate(async () => {
+    const url = performance
+      .getEntriesByType("resource")
+      .map((e) => e.name)
+      .filter((url) => new URL(url).pathname.endsWith("/src/research.ts"))
+      .at(-1);
+    const { ResearchStore } = await import(url);
+    const read = ResearchStore.prototype.readPackageRecord;
+    ResearchStore.prototype.readPackageRecord = function (kind) {
+      window.__researchStore = this;
+      return read.call(this, kind);
+    };
+  });
   await page.getByRole("button", { name: "打开全局搜索" }).click();
   await page.getByRole("button", { name: /资料集合 ·/u }).click();
   await page.getByText("Reader 完整资料包", { exact: true }).click();
@@ -115,58 +128,71 @@ try {
   const wrongBuffer = await fixture(999);
   // Each cut closes the page while the operation is suspended. The same browser
   // context retains real OPFS/SQLite/localStorage for the next page.
-  for (const cut of ["sources-staged", "reader-library", "reader-restored", "collections-merged"]) {
+  for (const cut of [
+    "sources-staged",
+    "reader-library",
+    "reader-restored",
+    "collections-merged",
+    "legacy-reader",
+  ]) {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1100 } });
     let page = await open(context);
     await page
       .getByLabel("选择 Reader 资料包", { exact: true })
       .setInputFiles({ name: "recovery.zip", mimeType: "application/zip", buffer });
     await page.getByLabel("资料包恢复预览").waitFor();
-    await page.evaluate(async (phase) => {
-      const url = performance
-        .getEntriesByType("resource")
-        .map((e) => e.name)
-        .filter((url) => new URL(url).pathname.endsWith("/src/research.ts"))
-        .at(-1);
-      if (!url) throw new Error("Research module not loaded");
-      if (phase === "sources-staged" || phase === "reader-library") {
-        const runtimeUrl = performance
+    await page.evaluate(
+      async (phase) => {
+        const url = performance
           .getEntriesByType("resource")
           .map((e) => e.name)
-          .filter((url) =>
-            new URL(url).pathname.endsWith("/apps/reader-studio/src/readerRuntimeCore.ts"),
-          )
+          .filter((url) => new URL(url).pathname.endsWith("/src/research.ts"))
           .at(-1);
-        const { readerRuntime, ensureReaderMetadata } = await import(runtimeUrl);
-        const runtime = readerRuntime();
-        await ensureReaderMetadata(runtime);
-        const write = runtime.meta.kvSet.bind(runtime.meta);
-        runtime.meta.kvSet = async (key, raw) => {
-          if (key === "reader/library" && raw.includes("research-")) {
-            if (phase === "reader-library") await write(key, raw);
+        if (!url) throw new Error("Research module not loaded");
+        if (phase === "sources-staged" || phase === "reader-library") {
+          const runtimeUrl = performance
+            .getEntriesByType("resource")
+            .map((e) => e.name)
+            .filter((url) =>
+              new URL(url).pathname.endsWith("/apps/reader-studio/src/readerRuntimeCore.ts"),
+            )
+            .at(-1);
+          const { readerRuntime, ensureReaderMetadata } = await import(runtimeUrl);
+          const runtime = readerRuntime();
+          await ensureReaderMetadata(runtime);
+          const write = runtime.meta.kvSet.bind(runtime.meta);
+          runtime.meta.kvSet = async (key, raw) => {
+            if (key === "reader/library" && raw.includes("research-")) {
+              if (phase === "reader-library") await write(key, raw);
+              window.__recoveryCut = true;
+              await new Promise(() => {});
+            }
+            return write(key, raw);
+          };
+          return;
+        }
+        const { ResearchStore } = await import(url);
+        const original = ResearchStore.prototype.writePackageRecord;
+        ResearchStore.prototype.writePackageRecord = async function (kind, raw) {
+          if (kind === "recovery" && JSON.parse(raw).phase === phase) {
+            window.__recoveryStore = this;
             window.__recoveryCut = true;
             await new Promise(() => {});
           }
-          return write(key, raw);
+          return original.call(this, kind, raw);
         };
-        return;
-      }
-      const { ResearchStore } = await import(url);
-      const original = ResearchStore.prototype.writePackageRecord;
-      ResearchStore.prototype.writePackageRecord = async function (kind, raw) {
-        if (kind === "recovery" && JSON.parse(raw).phase === phase) {
-          window.__recoveryStore = this;
-          window.__recoveryCut = true;
-          await new Promise(() => {});
-        }
-        return original.call(this, kind, raw);
-      };
-    }, cut);
+      },
+      cut === "legacy-reader" ? "reader-restored" : cut,
+    );
     await page.getByRole("button", { name: "确认恢复 Reader 资料包", exact: true }).click();
     await page.waitForFunction(() => window.__recoveryCut);
     if (cut === "reader-restored" || cut === "collections-merged") {
       const catalog = await page.evaluate(async () => {
-        const record = JSON.parse(await window.__recoveryStore.readPackageRecord("recovery"));
+        const progress = JSON.parse(await window.__recoveryStore.readPackageRecord("recovery"));
+        const record =
+          progress.version === 2
+            ? JSON.parse(await window.__recoveryStore.readPackageRecord("recovery-snapshot"))
+            : progress;
         const url = performance
           .getEntriesByType("resource")
           .map((e) => e.name)
@@ -195,6 +221,27 @@ try {
         async (record) =>
           window.__recoveryStore.writePackageRecord("restore", JSON.stringify(record)),
         { volume: { catalog, set, index: 1 } },
+      );
+    }
+    if (cut === "legacy-reader") {
+      const legacy = await page.evaluate(async () => {
+        const progress = JSON.parse(await window.__recoveryStore.readPackageRecord("recovery"));
+        const snapshot = JSON.parse(
+          await window.__recoveryStore.readPackageRecord("recovery-snapshot"),
+        );
+        return {
+          version: 1,
+          id: progress.id,
+          identity: progress.identity,
+          phase: progress.phase,
+          backup: snapshot.backup,
+          manifest: snapshot.manifest,
+        };
+      });
+      const checksum = await hash(new Blob([JSON.stringify(legacy)]));
+      await page.evaluate(
+        (raw) => window.__recoveryStore.writePackageRecord("recovery", raw),
+        JSON.stringify({ ...legacy, checksum }),
       );
     }
     await page.close();
@@ -241,6 +288,14 @@ try {
       return getReaderState().library.filter((b) => b.id.startsWith("research-")).length;
     });
     assert.equal(count, cut === "collections-merged" ? 0 : 1);
+    const journal = await page.evaluate(async () => ({
+      progress: JSON.parse(await window.__researchStore.readPackageRecord("recovery")),
+      snapshot: await window.__researchStore.readPackageRecord("recovery-snapshot"),
+    }));
+    assert.equal(journal.progress.version, 2);
+    assert.equal(journal.progress.phase, "complete");
+    assert.equal(journal.snapshot, "");
+    assert.equal(journal.progress.manifest, undefined);
     if (cut === "reader-restored" || cut === "collections-merged") {
       await page
         .getByLabel("资料来源汇总")

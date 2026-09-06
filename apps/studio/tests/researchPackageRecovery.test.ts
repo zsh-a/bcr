@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { hashReadableStream } from "@bcr/core";
+import { textVersion, hashReadableStream } from "@bcr/core";
 import { createReaderRuntime } from "@bcr/reader-studio/runtime";
 import { reader, getReaderState } from "@bcr/reader-studio/store";
 import { DEFAULT_READER_SETTINGS } from "@bcr/reader-studio/model";
@@ -12,7 +12,14 @@ import {
   readResearchRecovery,
   resumeResearchRecovery,
   verifyRecoveryPackage,
+  clearResearchRecovery,
+  compactCompletedRecovery,
 } from "../src/researchPackageRecovery";
+import {
+  saveRecoverySnapshot,
+  saveRecoveryProgress,
+  loadRecoverySnapshot,
+} from "../src/researchRecoveryJournal";
 import type { PreparedResearchPackage } from "../src/researchPackage";
 
 async function fixture(): Promise<PreparedResearchPackage> {
@@ -87,7 +94,10 @@ describe("research import recovery", () => {
     const { store, metadata } = storage();
     const original = metadata.set;
     vi.spyOn(metadata, "set").mockImplementation(async (key, raw) => {
-      if (key.includes("recovery") && JSON.parse(raw).phase === "reader-restored")
+      if (
+        key === "workspace/research-package-recovery.v1" &&
+        JSON.parse(raw).phase === "reader-restored"
+      )
         throw new Error("crash");
       await original(key, raw);
     });
@@ -115,7 +125,8 @@ describe("research import recovery", () => {
           await original(key, raw);
           throw new Error("crash");
         }
-        if (key.includes("recovery") && JSON.parse(raw).phase === cut) throw new Error("crash");
+        if (key === "workspace/research-package-recovery.v1" && JSON.parse(raw).phase === cut)
+          throw new Error("crash");
         await original(key, raw);
       });
       await expect(resumeResearchRecovery(store, () => {}, await fixture())).rejects.toThrow(
@@ -141,7 +152,7 @@ describe("research import recovery", () => {
     const original = metadata.set;
     vi.spyOn(metadata, "set").mockImplementation(async (key, raw) => {
       await original(key, raw);
-      if (key.includes("recovery")) throw new Error("crash");
+      if (key === "workspace/research-package-recovery.v1") throw new Error("crash");
     });
     await expect(resumeResearchRecovery(store, () => {}, prepared)).rejects.toThrow("crash");
     vi.restoreAllMocks();
@@ -168,7 +179,7 @@ describe("research import recovery", () => {
     const { store, metadata } = storage();
     const original = metadata.set;
     vi.spyOn(metadata, "set").mockImplementation(async (key, raw) => {
-      if (key.includes("recovery") && JSON.parse(raw).phase === "complete")
+      if (key === "workspace/research-package-recovery.v1" && JSON.parse(raw).phase === "complete")
         throw new Error("crash");
       await original(key, raw);
     });
@@ -187,7 +198,10 @@ describe("research import recovery", () => {
     const prepared = await fixture();
     const original = metadata.set;
     vi.spyOn(metadata, "set").mockImplementation(async (key, raw) => {
-      if (key.includes("recovery") && JSON.parse(raw).phase === "reader-restored")
+      if (
+        key === "workspace/research-package-recovery.v1" &&
+        JSON.parse(raw).phase === "reader-restored"
+      )
         throw new Error("crash");
       await original(key, raw);
     });
@@ -267,7 +281,7 @@ describe("research import recovery", () => {
     const { store, metadata, data } = storage();
     const original = metadata.set;
     vi.spyOn(metadata, "set").mockImplementation(async (key, raw) => {
-      if (key.includes("recovery") && JSON.parse(raw).phase === "complete")
+      if (key === "workspace/research-package-recovery.v1" && JSON.parse(raw).phase === "complete")
         throw new Error("crash");
       await original(key, raw);
     });
@@ -283,7 +297,7 @@ describe("research import recovery", () => {
     const original = metadata.set;
     vi.spyOn(metadata, "set").mockImplementation(async (key, raw) => {
       await original(key, raw);
-      if (key.includes("recovery")) throw new Error("crash");
+      if (key === "workspace/research-package-recovery.v1") throw new Error("crash");
     });
     await expect(resumeResearchRecovery(store, () => {}, prepared)).rejects.toThrow("crash");
     vi.restoreAllMocks();
@@ -294,6 +308,172 @@ describe("research import recovery", () => {
     ).rejects.toThrow("同一资料包");
     await expect(verifyRecoveryPackage(store, prepared)).resolves.toBeUndefined();
     expect(data).toEqual(before);
+  });
+  it("writes the snapshot once and keeps stage updates small for large chapter snapshots", async () => {
+    const { store, metadata } = storage();
+    const prepared = await fixture();
+    const manifest = {
+      ...prepared.reader.manifest,
+      books: prepared.reader.manifest.books.map((entry) => ({
+        ...entry,
+        book: {
+          ...entry.book,
+          sections: entry.book.sections.map((section) => ({
+            ...section,
+            text: "x".repeat(1024 * 1024),
+          })),
+        },
+      })),
+    };
+    const writes = vi.spyOn(metadata, "set");
+    let progress = await saveRecoverySnapshot(
+      store,
+      { id: "large", identity: textVersion("large"), phase: "pending" },
+      { backup: prepared.backup, manifest },
+    );
+    for (const phase of ["reader-restored", "collections-merged", "complete"] as const)
+      progress = await saveRecoveryProgress(store, progress, phase);
+    expect(writes.mock.calls.filter(([key]) => key.includes("recovery-snapshot"))).toHaveLength(1);
+    const stages = writes.mock.calls.filter(
+      ([key]) => key === "workspace/research-package-recovery.v1",
+    );
+    expect(stages).toHaveLength(4);
+    expect(stages.every(([, raw]) => new Blob([raw]).size < 1024)).toBe(true);
+    const reads = vi.spyOn(metadata, "get");
+    expect((await readResearchRecovery(store))?.phase).toBe("complete");
+    expect(reads.mock.calls.some(([key]) => key.includes("snapshot"))).toBe(false);
+  });
+  it.each([false, true])(
+    "never starts Reader when the initial snapshot write fails (committed: %s)",
+    async (committed) => {
+      const { store, metadata } = storage();
+      const original = metadata.set;
+      vi.spyOn(metadata, "set").mockImplementation(async (key, raw) => {
+        if (key.includes("recovery-snapshot")) {
+          if (committed) await original(key, raw);
+          throw new Error("snapshot crash");
+        }
+        await original(key, raw);
+      });
+      const prepared = await fixture();
+      await expect(resumeResearchRecovery(store, () => {}, prepared)).rejects.toThrow(
+        "snapshot crash",
+      );
+      expect(await readResearchRecovery(store)).toBeUndefined();
+      expect(getReaderState().library.some((book) => book.id.startsWith("research-"))).toBe(false);
+      vi.restoreAllMocks();
+      await resumeResearchRecovery(store, () => {}, prepared);
+      expect(await store.readPackageRecord("recovery-snapshot")).toBe("");
+    },
+  );
+  it.each(["snapshot-before", "snapshot-after", "progress-before", "progress-after"])(
+    "resumes a legacy journal interrupted during migration at %s",
+    async (cut) => {
+      const { store, metadata } = storage();
+      const prepared = await fixture();
+      const legacy = {
+        version: 1,
+        id: "legacy",
+        identity: textVersion(
+          JSON.stringify([prepared.backup, prepared.reader.manifest.books, prepared.volume]),
+        ),
+        phase: "pending",
+        backup: prepared.backup,
+        manifest: prepared.reader.manifest,
+      };
+      await store.writePackageRecord(
+        "recovery",
+        JSON.stringify({ ...legacy, checksum: textVersion(JSON.stringify(legacy)) }),
+      );
+      const original = metadata.set;
+      vi.spyOn(metadata, "set").mockImplementation(async (key, raw) => {
+        const targeted = cut.startsWith("snapshot")
+          ? key.includes("recovery-snapshot")
+          : key === "workspace/research-package-recovery.v1";
+        if (targeted) {
+          if (cut.endsWith("after")) await original(key, raw);
+          throw new Error("migration crash");
+        }
+        await original(key, raw);
+      });
+      await expect(resumeResearchRecovery(store, () => {}, prepared)).rejects.toThrow(
+        "migration crash",
+      );
+      expect(getReaderState().library.some((book) => book.id.startsWith("research-"))).toBe(false);
+      expect((await readResearchRecovery(store))?.version).toBe(cut === "progress-after" ? 2 : 1);
+      vi.restoreAllMocks();
+      await resumeResearchRecovery(new ResearchStore(metadata), () => {}, prepared);
+      expect((await readResearchRecovery(store))?.version).toBe(2);
+      expect((await readResearchRecovery(store))?.phase).toBe("complete");
+      expect(await store.readPackageRecord("recovery-snapshot")).toBe("");
+    },
+  );
+  it.each(["missing", "corrupt", "wrong-task"])(
+    "rejects a %s snapshot before Reader writes",
+    async (damage) => {
+      const { store } = storage();
+      const prepared = await fixture();
+      const progress = await saveRecoverySnapshot(
+        store,
+        { id: "owner", identity: textVersion("owner"), phase: "pending" },
+        { backup: prepared.backup, manifest: prepared.reader.manifest },
+      );
+      if (damage === "missing") await store.writePackageRecord("recovery-snapshot", "");
+      if (damage === "corrupt") await store.writePackageRecord("recovery-snapshot", "broken");
+      const record = damage === "wrong-task" ? { ...progress, id: "another" } : progress;
+      await expect(loadRecoverySnapshot(store, record)).rejects.toThrow("恢复快照");
+      expect(getReaderState().library.some((book) => book.id.startsWith("research-"))).toBe(false);
+    },
+  );
+  it("retains completion when snapshot cleanup fails and retries cleanup without replay", async () => {
+    const { store, metadata } = storage();
+    const original = metadata.set;
+    vi.spyOn(metadata, "set").mockImplementation(async (key, raw) => {
+      if (key.includes("recovery-snapshot") && raw === "") throw new Error("cleanup crash");
+      await original(key, raw);
+    });
+    expect(await resumeResearchRecovery(store, () => {}, await fixture())).toBe("restored");
+    expect((await readResearchRecovery(store))?.phase).toBe("complete");
+    expect(await store.readPackageRecord("recovery-snapshot")).toBeTruthy();
+    vi.restoreAllMocks();
+    const before = getReaderState();
+    expect(await resumeResearchRecovery(store, () => {})).toBe("complete");
+    expect(getReaderState()).toBe(before);
+    expect(await store.readPackageRecord("recovery-snapshot")).toBe("");
+    await clearResearchRecovery(store);
+    expect(await readResearchRecovery(store)).toBeUndefined();
+  });
+  it("compacts completed legacy logs and leaves a newer pending task intact", async () => {
+    const { store } = storage();
+    const prepared = await fixture();
+    const legacy = {
+      version: 1,
+      id: "finished",
+      identity: textVersion("finished"),
+      phase: "complete",
+      backup: prepared.backup,
+      manifest: prepared.reader.manifest,
+    };
+    await store.writePackageRecord(
+      "recovery",
+      JSON.stringify({ ...legacy, checksum: textVersion(JSON.stringify(legacy)) }),
+    );
+    const before = getReaderState();
+    await compactCompletedRecovery(store);
+    const summary = await readResearchRecovery(store);
+    expect(summary?.version).toBe(2);
+    expect(summary?.phase).toBe("complete");
+    expect(JSON.stringify(summary)).not.toContain("manifest");
+    expect(getReaderState()).toBe(before);
+    await saveRecoverySnapshot(
+      store,
+      { id: "new", identity: textVersion("new"), phase: "pending" },
+      { backup: prepared.backup, manifest: prepared.reader.manifest },
+    );
+    const snapshot = await store.readPackageRecord("recovery-snapshot");
+    await compactCompletedRecovery(store);
+    expect(await store.readPackageRecord("recovery-snapshot")).toBe(snapshot);
+    expect((await readResearchRecovery(store))?.phase).toBe("pending");
   });
   it("rejects damaged journals without replacing them", async () => {
     const { store } = storage();

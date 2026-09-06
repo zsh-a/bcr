@@ -339,12 +339,17 @@ export class ResearchStore {
     this.restoreReceipt = raw ? JSON.parse(raw).packageRestoreReceipt : undefined;
     this.emit();
   }
-  async readPackageRecord(kind: "export" | "restore" | "recovery"): Promise<string | undefined> {
+  async readPackageRecord(
+    kind: "export" | "restore" | "recovery" | "recovery-snapshot",
+  ): Promise<string | undefined> {
     await this.ready;
     await this.packageTail.catch(() => undefined);
     return this.metadata!.get(`workspace/research-package-${kind}.v1`);
   }
-  writePackageRecord(kind: "export" | "restore" | "recovery", raw: string): Promise<void> {
+  writePackageRecord(
+    kind: "export" | "restore" | "recovery" | "recovery-snapshot",
+    raw: string,
+  ): Promise<void> {
     const operation = this.packageTail
       .catch(() => undefined)
       .then(async () => {

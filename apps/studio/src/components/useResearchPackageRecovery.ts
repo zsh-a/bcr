@@ -3,6 +3,7 @@ import type { ResearchStore } from "../research";
 import type { PreparedResearchPackage } from "../researchPackage";
 import {
   clearResearchRecovery,
+  compactCompletedRecovery,
   readResearchRecovery,
   resumeResearchRecovery,
   type ResearchRecovery,
@@ -24,7 +25,10 @@ export function useResearchPackageRecovery(store: ResearchStore) {
         setSnapshot({ scope, record, notice, ready: true });
     };
     try {
-      publish(await readResearchRecovery(store), "");
+      const record = await readResearchRecovery(store);
+      publish(record, "");
+      if (current() && revision === scope.revision && record?.phase === "complete")
+        void compactCompletedRecovery(store).catch(() => undefined);
     } catch (error) {
       publish(undefined, String(error));
     }

@@ -1,64 +1,44 @@
 import { textVersion } from "@bcr/core";
 import type { ResearchStore } from "./research";
-import { decodeResearchBackup, planResearchImport, type ResearchBackup } from "./researchBackup";
+import { planResearchImport } from "./researchBackup";
 import {
   bindResearchPackage,
   catalogBindings,
   type PreparedResearchPackage,
 } from "./researchPackage";
-import type { PreparedReaderBackup } from "@bcr/reader-studio/research-transfer";
 
-export type RecoveryPhase = "pending" | "reader-restored" | "collections-merged" | "complete";
-export interface ResearchRecovery {
-  version: 1;
-  id: string;
-  identity: string;
-  phase: RecoveryPhase;
-  backup: ResearchBackup;
-  manifest: PreparedReaderBackup["manifest"];
-}
-const phases: RecoveryPhase[] = ["pending", "reader-restored", "collections-merged", "complete"];
-export async function decodeResearchRecovery(
-  raw: string | undefined,
-): Promise<ResearchRecovery | undefined> {
-  if (!raw) return;
-  if (new Blob([raw]).size > 112 * 1024 * 1024) throw new Error("恢复日志过大");
-  const value = JSON.parse(raw);
-  if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new Error("恢复日志格式无效");
-  const { checksum, ...record } = value;
-  if (
-    record.version !== 1 ||
-    typeof record.id !== "string" ||
-    !record.id ||
-    typeof record.identity !== "string" ||
-    !phases.includes(record.phase) ||
-    checksum !== textVersion(JSON.stringify(record))
-  )
-    throw new Error("恢复日志损坏，请结束跟踪后重新导入");
-  const { decodeReaderBackup } = await import("@bcr/reader-studio/research-transfer");
-  return {
-    ...record,
-    backup: decodeResearchBackup(JSON.stringify(record.backup)),
-    manifest: decodeReaderBackup(record.manifest),
-  };
-}
-export async function readResearchRecovery(store: ResearchStore) {
-  return decodeResearchRecovery(await store.readPackageRecord("recovery"));
-}
-async function save(store: ResearchStore, record: ResearchRecovery) {
-  const raw = JSON.stringify({ ...record, checksum: textVersion(JSON.stringify(record)) });
-  await decodeResearchRecovery(raw);
-  await store.writePackageRecord("recovery", raw);
-}
+import {
+  readResearchRecovery,
+  saveRecoveryProgress,
+  saveRecoverySnapshot,
+  loadRecoverySnapshot,
+  cleanupRecoverySnapshot,
+  type ResearchRecovery,
+  type RecoverySnapshot,
+} from "./researchRecoveryJournal";
+export { decodeResearchRecovery, readResearchRecovery } from "./researchRecoveryJournal";
+export type { ResearchRecovery, RecoveryPhase } from "./researchRecoveryJournal";
+
 const queues = new WeakMap<ResearchStore, Promise<unknown>>();
 function serial<T>(store: ResearchStore, work: () => Promise<T>): Promise<T> {
   const operation = (queues.get(store) ?? Promise.resolve()).catch(() => undefined).then(work);
   queues.set(store, operation);
   return operation;
 }
+export function compactCompletedRecovery(store: ResearchStore) {
+  return serial(store, async () => {
+    // Re-read under the task queue: a new import may have started since the UI loaded.
+    const record = await readResearchRecovery(store);
+    if (record?.phase !== "complete") return;
+    if (record.version === 1) await saveRecoveryProgress(store, record, "complete");
+    await cleanupRecoverySnapshot(store);
+  });
+}
 export function clearResearchRecovery(store: ResearchStore) {
-  return serial(store, () => store.writePackageRecord("recovery", ""));
+  return serial(store, async () => {
+    await store.writePackageRecord("recovery", "");
+    await cleanupRecoverySnapshot(store).catch(() => undefined);
+  });
 }
 function identity(prepared: PreparedResearchPackage) {
   return textVersion(
@@ -86,12 +66,17 @@ export function resumeResearchRecovery(
 ): Promise<RecoveryResult> {
   return serial(store, async () => {
     let record = await readResearchRecovery(store);
-    if (record?.phase === "complete" && !prepared) return "complete";
+    if (record?.phase === "complete" && !prepared) {
+      if (record.version === 1) await saveRecoveryProgress(store, record, "complete");
+      await cleanupRecoverySnapshot(store).catch(() => undefined);
+      return "complete";
+    }
     if (prepared) assertRecoveryPackage(record, prepared);
     if (record && record.phase !== "complete" && (await store.hasRestoredPackage(record.id))) {
       // The collection receipt proves both stores committed. Later user changes
       // must not be interpreted as missing work belonging to this import.
-      await save(store, { ...record, phase: "complete" });
+      await saveRecoveryProgress(store, record, "complete");
+      await cleanupRecoverySnapshot(store).catch(() => undefined);
       report("恢复任务记录已完成，保留了后续修改。");
       return "finalized";
     }
@@ -101,6 +86,7 @@ export function resumeResearchRecovery(
       restoreReaderTransfer,
       flushReaderTransfer,
     } = await import("@bcr/reader-studio/research-transfer");
+    let snapshot: RecoverySnapshot;
     if (!record || record.phase === "complete") {
       if (!prepared) throw new Error("没有待续接的恢复任务");
       const bindings = prepared.volume
@@ -109,32 +95,38 @@ export function resumeResearchRecovery(
             book: entry.book.id,
             target: readerTransferIdentity(entry),
           }));
-      record = {
-        version: 1,
-        id: crypto.randomUUID(),
-        identity: identity(prepared),
-        phase: "pending",
+      snapshot = {
         backup: bindResearchPackage(prepared.backup, bindings),
         manifest: prepared.reader.manifest,
       };
-      // This must succeed before any Reader source or library writes.
-      await save(store, record);
+      record = await saveRecoverySnapshot(
+        store,
+        {
+          id: crypto.randomUUID(),
+          identity: identity(prepared),
+          phase: "pending",
+        },
+        snapshot,
+      );
+    } else {
+      snapshot = await loadRecoverySnapshot(store, record);
+      if (record.version === 1) record = await saveRecoverySnapshot(store, record, snapshot);
     }
+
     report("正在核验并续接 Reader 恢复任务…");
-    const reader = prepared?.reader ?? (await recoverReaderTransfer(record.manifest));
+    const reader = prepared?.reader ?? (await recoverReaderTransfer(snapshot.manifest));
     await restoreReaderTransfer(reader, report);
     // Repair a close between library and session metadata writes, including reused books.
     await flushReaderTransfer();
-    record = { ...record, phase: "reader-restored" };
-    await save(store, record);
-    const backup = record.backup;
+    record = await saveRecoveryProgress(store, record, "reader-restored");
+    const backup = snapshot.backup;
     await store.updateRestoredPackage(
       record.id,
       (current) => planResearchImport(current, backup).library,
     );
-    record = { ...record, phase: "collections-merged" };
-    await save(store, record);
-    await save(store, { ...record, phase: "complete" });
+    record = await saveRecoveryProgress(store, record, "collections-merged");
+    await saveRecoveryProgress(store, record, "complete");
+    await cleanupRecoverySnapshot(store).catch(() => undefined);
     report("Reader 资料包恢复完成，可从集合回到原文。");
     return "restored";
   });
