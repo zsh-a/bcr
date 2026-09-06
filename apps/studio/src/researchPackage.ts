@@ -390,7 +390,7 @@ export async function previewResearchPackageImport(
   };
 }
 
-function catalogBindings(catalog: ResearchVolumeCatalog, set: string): ReaderBinding[] {
+export function catalogBindings(catalog: ResearchVolumeCatalog, set: string): ReaderBinding[] {
   return catalog.books.map((entry) => ({
     book: entry.book,
     target: entry.target,

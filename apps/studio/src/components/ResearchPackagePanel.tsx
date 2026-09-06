@@ -48,6 +48,29 @@ export function ResearchPackagePanel(props: ResearchPackagePanelProps) {
   return (
     <details className="my-2 rounded border border-border p-3 text-[11px] text-muted">
       <summary className="cursor-pointer text-text">Reader 完整资料包</summary>
+      {(controller.recovery.notice ||
+        (controller.recovery.record && controller.recovery.record.phase !== "complete")) && (
+        <div className="my-2 rounded border border-border p-2" role="status">
+          <p>
+            {controller.recovery.notice ||
+              "发现未完成的资料包恢复任务。续接时将核验本地来源；缺少文件时请重新选择同一分卷。"}
+          </p>
+          {controller.recovery.record && (
+            <p>资料包标识：{controller.recovery.record.identity.slice(0, 16)}</p>
+          )}
+          <button
+            className={button}
+            disabled={disabled || !!controller.recovery.notice}
+            onClick={controller.resumeRecovery}
+          >
+            继续恢复
+          </button>
+          <button className={button} disabled={disabled} onClick={controller.clearRecovery}>
+            结束跟踪
+          </button>
+          <p>结束跟踪仅清除任务记录，保留已恢复的书籍和集合。</p>
+        </div>
+      )}
       <p className="my-2 leading-5">
         包含所选集合及关联的 Reader 源文件、章节快照。请先
         <a className="text-accent underline" href="/reader">

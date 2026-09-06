@@ -5,6 +5,7 @@ import {
 } from "../researchPackageFiles";
 import { verifyPackageTask } from "../researchPackageTask";
 import { writeResearchPackage } from "../researchPackageStream";
+import { useResearchPackageRecovery } from "./useResearchPackageRecovery";
 import { useRef, useState } from "react";
 import type { ResearchLibrary, ResearchStore } from "../research";
 import {
@@ -14,7 +15,6 @@ import {
   planResearchPackage,
   createResearchPackage,
   inspectResearchPackage,
-  restoreResearchPackage,
   type ResearchPackagePlan,
   type PreparedResearchPackage,
 } from "../researchPackage";
@@ -32,6 +32,7 @@ export interface ResearchPackagePanelProps {
   readonly run: (action: () => Promise<void>) => void;
 }
 export function useResearchPackageController(props: ResearchPackagePanelProps) {
+  const recovery = useResearchPackageRecovery(props.store);
   const [selected, setSelected] = useState<string[]>([]);
   const [drafts, setDrafts] = useState(false);
   const [plan, setPlan] = useState<ResearchPackagePlan>();
@@ -71,7 +72,7 @@ export function useResearchPackageController(props: ResearchPackagePanelProps) {
       },
     },
   );
-  const disabled = props.busy || working || !taskReady;
+  const disabled = props.busy || working || !taskReady || !recovery.ready;
   const resumeTask = () => {
     if (!savedTask) return;
     action(async (signal, report) => {
@@ -171,7 +172,7 @@ export function useResearchPackageController(props: ResearchPackagePanelProps) {
   const restorePackage = () => {
     if (!prepared) return;
     props.run(async () => {
-      await restoreResearchPackage(prepared, (change) => props.store.update(change), setMessage);
+      await recovery.resume(setMessage, prepared);
       setVolumeReport(await researchVolumeStatus(prepared));
       setPrepared(undefined);
       setMessage("Reader 资料包恢复完成，可从集合回到原文。未包含的来源仍待恢复。");
@@ -215,6 +216,9 @@ export function useResearchPackageController(props: ResearchPackagePanelProps) {
     });
   };
   return {
+    recovery,
+    resumeRecovery: () => props.run(() => recovery.resume(setMessage)),
+    clearRecovery: () => props.run(() => recovery.clear()),
     selected,
     changeSelection,
     drafts,

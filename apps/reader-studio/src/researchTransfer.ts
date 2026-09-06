@@ -1,3 +1,4 @@
+import { MemoryStore } from "@bcr/storage-opfs";
 import { sanitizeHtml } from "./readerMarkup";
 import { DEFAULT_READER_SETTINGS } from "./model";
 import { Effect } from "effect";
@@ -14,9 +15,9 @@ import {
 import { readerRuntime } from "./readerRuntimeCore";
 import { getReaderState, releaseBookResources } from "./store";
 import { persistBook, restoreSectionSnapshots } from "./readerPersistence";
-import { commitReaderBooks } from "./readerPersistenceQueue";
+import { commitReaderBooks, persistReaderSnapshot } from "./readerPersistenceQueue";
 import { indexBook } from "./readerSearch";
-export { inspectReaderBackup } from "./readerBackup";
+export { inspectReaderBackup, decodeReaderBackup } from "./readerBackup";
 export type { PreparedReaderBackup } from "./readerBackup";
 
 export function readerTransferState() {
@@ -269,4 +270,41 @@ export async function restoreReaderTransfer(
     if (book) await indexBook(runtime, book);
   }
   return bindings;
+}
+
+// Journal recovery reuses staged source files; binary data never enters metadata.
+export async function recoverReaderTransfer(
+  manifest: PreparedReaderBackup["manifest"],
+): Promise<PreparedReaderBackup> {
+  const { runtime, state } = readerTransferState();
+  const sources = new Map<string, Blob>();
+  for (const entry of manifest.books) {
+    const source = entry.source;
+    if (!source || sources.has(source.path)) continue;
+    const existing = state.library.find((book) => book.id === readerTransferIdentity(entry));
+    const ref = existing?.source.ref;
+    try {
+      const blob = await Effect.runPromise(
+        runtime.artifacts.getBlob({
+          id: ref?.id ?? `reader/${source.hash}`,
+          type: "file/publication",
+          hash: source.hash,
+          storage: ref?.storage ?? (runtime.binary instanceof MemoryStore ? "memory" : "opfs"),
+          format: entry.book.source.mime,
+        }),
+      );
+      if (blob.size !== source.size || (await hashReadableStream(blob.stream())) !== source.hash)
+        throw new Error("hash");
+      sources.set(source.path, blob);
+    } catch {
+      throw new Error("本地源文件缺失或损坏，请重新选择同一资料包分卷，再确认恢复。");
+    }
+  }
+  return { manifest, sources };
+}
+export async function flushReaderTransfer() {
+  await persistReaderSnapshot(readerTransferState().runtime, {
+    durableLibrary: true,
+    strict: true,
+  });
 }

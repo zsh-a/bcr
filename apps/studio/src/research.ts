@@ -319,6 +319,8 @@ export function decodeResearch(raw: string | undefined): ResearchLibrary {
 /** Writes are serialized and published only after persistence succeeds. */
 export class ResearchStore {
   private value: ResearchLibrary = EMPTY_RESEARCH;
+  private restoreReceipt: string | undefined;
+  private reloadRequired = false;
   private tail: Promise<unknown> = Promise.resolve();
   private packageTail: Promise<unknown> = Promise.resolve();
   private readonly listeners = new Set<() => void>();
@@ -331,15 +333,18 @@ export class ResearchStore {
   }
   private async load() {
     if (!this.metadata) throw new Error("本地元数据不可用，无法保存资料集合");
-    this.value = decodeResearch(await this.metadata.get(RESEARCH_KEY));
+    const raw = await this.metadata.get(RESEARCH_KEY);
+    const library = decodeResearch(raw);
+    this.value = { version: 1, collections: library.collections };
+    this.restoreReceipt = raw ? JSON.parse(raw).packageRestoreReceipt : undefined;
     this.emit();
   }
-  async readPackageRecord(kind: "export" | "restore"): Promise<string | undefined> {
+  async readPackageRecord(kind: "export" | "restore" | "recovery"): Promise<string | undefined> {
     await this.ready;
     await this.packageTail.catch(() => undefined);
     return this.metadata!.get(`workspace/research-package-${kind}.v1`);
   }
-  writePackageRecord(kind: "export" | "restore", raw: string): Promise<void> {
+  writePackageRecord(kind: "export" | "restore" | "recovery", raw: string): Promise<void> {
     const operation = this.packageTail
       .catch(() => undefined)
       .then(async () => {
@@ -360,14 +365,37 @@ export class ResearchStore {
     for (const listener of this.listeners) listener();
   }
   update(change: (current: ResearchLibrary) => ResearchLibrary): Promise<void> {
+    return this.writeLibrary(change);
+  }
+  updateRestoredPackage(id: string, change: (current: ResearchLibrary) => ResearchLibrary) {
+    return this.writeLibrary(change, id);
+  }
+  private writeLibrary(
+    change: (current: ResearchLibrary) => ResearchLibrary,
+    receipt?: string,
+  ): Promise<void> {
     const operation = this.tail
       .catch(() => undefined)
       .then(async () => {
         await this.ready;
+        // Re-read durable data after a write that might have committed before rejecting.
+        if (receipt || this.reloadRequired) await this.load();
+        this.reloadRequired = false;
+        if (receipt && this.restoreReceipt === receipt) return;
         const next = change(this.value);
-        const raw = JSON.stringify(next);
+        const nextReceipt = receipt ?? this.restoreReceipt;
+        const raw = JSON.stringify({
+          ...next,
+          ...(nextReceipt ? { packageRestoreReceipt: nextReceipt } : {}),
+        });
         decodeResearch(raw);
-        await this.metadata!.set(RESEARCH_KEY, raw);
+        try {
+          await this.metadata!.set(RESEARCH_KEY, raw);
+        } catch (error) {
+          this.reloadRequired = true;
+          throw error;
+        }
+        this.restoreReceipt = nextReceipt;
         this.value = next;
         this.emit();
       });
