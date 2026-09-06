@@ -21,7 +21,17 @@ async function open(page) {
   await page.getByRole("button", { name: "打开全局搜索" }).click();
   await page.getByRole("button", { name: /资料集合 ·/u }).click();
 }
-const saved = (page) => page.getByRole("status").filter({ hasText: "已保存到本地" }).waitFor();
+async function saved(page) {
+  try {
+    await page.getByRole("status").filter({ hasText: "已保存到本地" }).waitFor();
+  } catch (error) {
+    console.error("Research save diagnostics", {
+      alerts: await page.getByRole("alert").allTextContents(),
+      statuses: await page.getByRole("status").allTextContents(),
+    });
+    throw error;
+  }
+}
 async function choosePackage(page, buffer) {
   await page
     .getByLabel("选择 Reader 资料包", { exact: true })

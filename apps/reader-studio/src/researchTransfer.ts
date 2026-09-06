@@ -187,6 +187,21 @@ export function readerTransferPreview(prepared: PreparedReaderBackup) {
   ).length;
   return { added: prepared.manifest.books.length - reused, reused };
 }
+/** Compare snapshot values, not the property insertion order of different serializers. */
+function sectionSnapshotValue(
+  sections: PreparedReaderBackup["manifest"]["books"][number]["book"]["sections"],
+): string {
+  return JSON.stringify(
+    sections.map(({ html: _html, ...section }) => section),
+    (_key, value: unknown) => {
+      if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
+      return Object.fromEntries(
+        Object.entries(value).sort(([left], [right]) => left.localeCompare(right)),
+      );
+    },
+  );
+}
+
 /** Publish source books first. Retrying after a collection write failure reuses stable identities. */
 export async function restoreReaderTransfer(
   prepared: PreparedReaderBackup,
@@ -209,9 +224,8 @@ export async function restoreReaderTransfer(
       if (
         existing &&
         (existing.source.ref?.hash !== entry.source?.hash ||
-          JSON.stringify(
-            persistBook(existing).sections.map(({ html: _html, ...section }) => section),
-          ) !== JSON.stringify(entry.book.sections.map(({ html: _html, ...section }) => section)))
+          sectionSnapshotValue(persistBook(existing).sections) !==
+            sectionSnapshotValue(entry.book.sections))
       ) {
         throw new Error("此前导入的 Reader 资料已修改，请保留或移走该副本后重试");
       }

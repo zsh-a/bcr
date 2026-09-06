@@ -76,6 +76,46 @@ describe("Reader package source restoration", () => {
     expect(await checkReaderTransfer([restored.id])).toEqual([]);
     expect(getReaderState().library[1]).toBe(restored);
   });
+  it("reuses deferred snapshots regardless of JSON property order and still rejects edits", async () => {
+    const { prepared } = await setup();
+    vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {} });
+    const entry = prepared.manifest.books[0]!;
+    const deferred = {
+      ...prepared,
+      manifest: {
+        ...prepared.manifest,
+        books: [
+          {
+            ...entry,
+            book: {
+              ...entry.book,
+              sections: [
+                {
+                  id: "section-1",
+                  order: 0,
+                  label: "段落 1",
+                  kind: "text" as const,
+                  text: "",
+                  // The decoder places text before metadata; persistence emits metadata first.
+                  textRange: { length: 4, end: entry.source!.size, start: 0 },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+    const [binding] = await restoreReaderTransfer(deferred, () => {});
+    const original = getReaderState().library.find((book) => book.id === binding!.target)!;
+    await expect(restoreReaderTransfer(deferred, () => {})).resolves.toEqual([binding]);
+    expect(getReaderState().library.find((book) => book.id === original.id)).toBe(original);
+    reader.replaceBook({
+      ...original,
+      sections: original.sections.map((section) => ({ ...section, label: "已修改" })),
+    });
+    await expect(restoreReaderTransfer(deferred, () => {})).rejects.toThrow("资料已修改");
+  });
+
   it("retains distinct reviewed snapshots sharing the same source binary", async () => {
     const { prepared } = await setup();
     vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {} });
