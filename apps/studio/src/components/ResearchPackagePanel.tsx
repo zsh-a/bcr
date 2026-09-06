@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ResearchLibrary, ResearchStore } from "../research";
 import {
   PACKAGE_LIMIT,
@@ -25,13 +25,45 @@ export function ResearchPackagePanel(props: {
   const [importSummary, setImportSummary] = useState("");
   const [working, setWorking] = useState(false),
     [message, setMessage] = useState("");
-  const action = (work: () => Promise<void>) => {
-    if (props.busy || working) return;
+  const active = useRef<AbortController | null>(null);
+  useEffect(
+    () => () => {
+      active.current?.abort();
+      active.current = null;
+    },
+    [],
+  );
+  const action = (
+    work: (signal: AbortSignal, report: (message: string) => void) => Promise<() => void>,
+  ) => {
+    if (props.busy || active.current) return;
+    const task = new AbortController();
+    active.current = task;
     setWorking(true);
     setMessage("正在处理资料包…");
-    void work()
-      .catch((error: unknown) => setMessage(String(error)))
-      .finally(() => setWorking(false));
+    const current = () => active.current === task && !task.signal.aborted;
+    const report = (message: string) => {
+      if (current()) setMessage(message);
+    };
+    void work(task.signal, report)
+      .then((publish) => {
+        if (current()) publish();
+      })
+      .catch((error: unknown) => {
+        if (current()) setMessage(String(error));
+      })
+      .finally(() => {
+        if (active.current === task) {
+          active.current = null;
+          setWorking(false);
+        }
+      });
+  };
+  const cancel = () => {
+    active.current?.abort();
+    active.current = null;
+    setWorking(false);
+    setMessage("已取消资料包操作，可以重新检查或选择文件。");
   };
   const disabled = props.busy || working;
   return (
@@ -83,20 +115,24 @@ export function ResearchPackagePanel(props: {
           className={button}
           disabled={disabled || !selected.length}
           onClick={() =>
-            action(async () => {
+            action(async (signal, report) => {
               setPrepared(undefined);
-              setPlan(
-                await planResearchPackage(
-                  {
-                    ...props.library,
-                    collections: props.library.collections.filter((item) =>
-                      selected.includes(item.id),
-                    ),
-                  },
-                  drafts,
-                ),
+              setPlan(undefined);
+              const checked = await planResearchPackage(
+                {
+                  ...props.library,
+                  collections: props.library.collections.filter((item) =>
+                    selected.includes(item.id),
+                  ),
+                },
+                drafts,
+                report,
+                signal,
               );
-              setMessage("");
+              return () => {
+                setPlan(checked);
+                setMessage("");
+              };
             })
           }
         >
@@ -116,20 +152,30 @@ export function ResearchPackagePanel(props: {
               if (!file) return;
               setPlan(undefined);
               setPrepared(undefined);
-              action(async () => {
+              action(async (signal, report) => {
                 if (file.size > PACKAGE_LIMIT + 65536) throw new Error("资料包超过 600 MiB 上限");
-                const checked = await inspectResearchPackage(file);
+                const checked = await inspectResearchPackage(file, report, signal);
                 const preview = await previewResearchPackageImport(checked, props.library);
-                setImportSummary(
-                  `书籍：新增 ${preview.books.added}，复用 ${preview.books.reused}；集合：新增 ${preview.collections.added}，跳过 ${preview.collections.skipped}，冲突副本 ${preview.collections.copies}`,
-                );
-                setPrepared(checked);
-                setMessage("文件哈希与 Reader 源文件校验通过，请确认恢复。");
+                return () => {
+                  setImportSummary(
+                    `书籍：新增 ${preview.books.added}，复用 ${preview.books.reused}；集合：新增 ${preview.collections.added}，跳过 ${preview.collections.skipped}，冲突副本 ${preview.collections.copies}`,
+                  );
+                  setPrepared(checked);
+                  setMessage("文件哈希与 Reader 源文件校验通过，请确认恢复。");
+                };
               });
             }}
           />
         </label>
       </div>
+      {working && (
+        <div className="mt-3 flex items-center gap-3" aria-label="资料包任务进度">
+          <progress aria-label="资料包处理进度" className="h-1 flex-1 accent-accent" />
+          <button type="button" className={button} onClick={cancel}>
+            取消资料包操作
+          </button>
+        </div>
+      )}
       {plan && (
         <div aria-label="资料包导出预览" className="mt-3 space-y-2 border-t border-border pt-2">
           <p>
@@ -156,15 +202,17 @@ export function ResearchPackagePanel(props: {
             className={button}
             disabled={disabled}
             onClick={() =>
-              action(async () => {
-                const blob = await createResearchPackage(plan, setMessage);
-                const url = URL.createObjectURL(blob),
-                  anchor = document.createElement("a");
-                anchor.href = url;
-                anchor.download = "bcr-reader-research.zip";
-                anchor.click();
-                setTimeout(() => URL.revokeObjectURL(url), 1000);
-                setMessage("Reader 资料包已生成，请保存下载文件。");
+              action(async (signal, report) => {
+                const blob = await createResearchPackage(plan, report, signal);
+                return () => {
+                  const url = URL.createObjectURL(blob),
+                    anchor = document.createElement("a");
+                  anchor.href = url;
+                  anchor.download = "bcr-reader-research.zip";
+                  anchor.click();
+                  setTimeout(() => URL.revokeObjectURL(url), 1000);
+                  setMessage("Reader 资料包已生成，请保存下载文件。");
+                };
               })
             }
           >

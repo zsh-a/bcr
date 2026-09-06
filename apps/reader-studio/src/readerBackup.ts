@@ -301,7 +301,13 @@ export async function createReaderBackup(
             format: ref.mime,
           }),
         );
-        const hash = await hashReadableStream(blob.stream());
+        const hash = await hashReadableStream(blob.stream(), {
+          signal,
+          onProgress: (bytes) =>
+            report(
+              `正在校验源文件 · ${book.title} · ${Math.floor((bytes / Math.max(1, blob.size)) * 100)}%`,
+            ),
+        });
         if (hash !== ref.hash) throw new Error(`${book.title} 的源文件校验失败，备份未生成`);
         source = { path: `sources/${hash}`, hash, size: blob.size };
         if (!written.has(source.path)) {
@@ -342,7 +348,9 @@ export async function createReaderBackup(
       throw new Error("书库文字快照超过 64 MiB 上限，备份未生成");
     await zip.add(MANIFEST, new TextReader(raw), signal ? { signal } : {});
     check(signal);
-    return await zip.close();
+    const result = await zip.close();
+    check(signal);
+    return result;
   } catch (reason) {
     await zip.close().catch(() => undefined);
     throw reason;
@@ -354,11 +362,13 @@ export async function inspectReaderBackup(
   report: Report = () => {},
   signal?: AbortSignal,
 ): Promise<PreparedReaderBackup> {
+  check(signal);
   if (file.size > MAX_BYTES + 64 * 1024 * 1024)
     throw new Error("备份超过大小上限（512 MiB 源文件 + 64 MiB 清单）");
   const zip = new ZipReader(new BlobReader(file));
   try {
     const entries = await zip.getEntries();
+    check(signal);
     const files = entries.filter((entry) => !entry.directory);
     if (new Set(files.map((entry) => entry.filename)).size !== files.length)
       throw new Error("备份包含重复文件路径");
@@ -387,10 +397,20 @@ export async function inspectReaderBackup(
         ...(signal ? { signal } : {}),
         checkSignature: true,
       });
-      if (blob.size !== source.size || (await hashReadableStream(blob.stream())) !== source.hash)
+      if (
+        blob.size !== source.size ||
+        (await hashReadableStream(blob.stream(), {
+          signal,
+          onProgress: (bytes) =>
+            report(
+              `正在校验 · ${book.title} · ${Math.floor((bytes / Math.max(1, blob.size)) * 100)}%`,
+            ),
+        })) !== source.hash
+      )
         throw new Error(`${book.title} 的源文件校验失败`);
       sources.set(source.path, blob);
     }
+    check(signal);
     return { manifest, sources };
   } finally {
     await zip.close();

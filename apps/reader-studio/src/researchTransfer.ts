@@ -28,10 +28,16 @@ export function readerTransferStamp(ids: ReadonlyArray<string>): string {
     ),
   );
 }
-export async function checkReaderTransfer(ids: ReadonlyArray<string>): Promise<string[]> {
+export async function checkReaderTransfer(
+  ids: ReadonlyArray<string>,
+  report: (message: string) => void = () => {},
+  signal?: AbortSignal,
+): Promise<string[]> {
+  signal?.throwIfAborted();
   const { state, runtime } = readerTransferState();
   const missing: string[] = [];
   for (const id of ids) {
+    signal?.throwIfAborted();
     const book = state.library.find((item) => item.id === id),
       ref = book?.source.ref;
     if (!book || !ref) {
@@ -42,26 +48,39 @@ export async function checkReaderTransfer(ids: ReadonlyArray<string>): Promise<s
       const blob = await Effect.runPromise(
         runtime.artifacts.getBlob({ ...ref, type: "file/publication", format: ref.mime }),
       );
-      if (blob.size !== ref.size || (await hashReadableStream(blob.stream())) !== ref.hash)
+      if (
+        blob.size !== ref.size ||
+        (await hashReadableStream(blob.stream(), {
+          signal,
+          onProgress: (bytes) =>
+            report(
+              `正在检查 · ${book.title} · ${Math.floor((bytes / Math.max(1, blob.size)) * 100)}%`,
+            ),
+        })) !== ref.hash
+      )
         missing.push(id);
     } catch {
+      signal?.throwIfAborted();
       missing.push(id);
     }
   }
+  signal?.throwIfAborted();
   return missing;
 }
 export async function createReaderTransfer(
   ids: ReadonlyArray<string>,
   report: (message: string) => void,
   expectedStamp?: string,
+  signal?: AbortSignal,
 ) {
+  signal?.throwIfAborted();
   if (expectedStamp && readerTransferStamp(ids) !== expectedStamp)
     throw new Error("Reader 资料在预览后发生变化，请重新检查资料包");
   const { runtime, state } = readerTransferState();
   const library = state.library.filter((book) => ids.includes(book.id));
   if (library.length !== ids.length || library.some((book) => !book.source.ref))
     throw new Error("部分 Reader 源文件不可用，请重新检查资料包");
-  const result = await createReaderBackup(runtime, { ...state, library }, report);
+  const result = await createReaderBackup(runtime, { ...state, library }, report, signal);
   if (expectedStamp && readerTransferStamp(ids) !== expectedStamp)
     throw new Error("Reader 资料在打包期间发生变化，请重试");
   return result;

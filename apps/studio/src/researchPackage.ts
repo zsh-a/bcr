@@ -33,9 +33,14 @@ export interface ResearchPackagePlan {
 export async function planResearchPackage(
   library: ResearchLibrary,
   includeDrafts: boolean,
+  report: (message: string) => void = () => {},
+  signal?: AbortSignal,
 ): Promise<ResearchPackagePlan> {
+  signal?.throwIfAborted();
+  report("正在收集原始与历史引用…");
   const { readerTransferState, checkReaderTransfer, readerTransferStamp } =
     await import("@bcr/reader-studio/research-transfer");
+  signal?.throwIfAborted();
   const { state } = readerTransferState();
   const backup = createResearchBackup(library, includeDrafts, {
     getItem: (key) => localStorage.getItem(key),
@@ -72,7 +77,7 @@ export async function planResearchPackage(
   const candidateIds = [
     ...new Set(references.flatMap((entry) => (entry.book ? [entry.book] : []))),
   ];
-  const missing = new Set(await checkReaderTransfer(candidateIds));
+  const missing = new Set(await checkReaderTransfer(candidateIds, report, signal));
   for (let i = 0; i < references.length; i++) {
     const entry = references[i]!;
     if (entry.book && missing.has(entry.book)) references[i] = { ...entry, state: "missing" };
@@ -97,9 +102,11 @@ export async function planResearchPackage(
 export async function createResearchPackage(
   plan: ResearchPackagePlan,
   report: (message: string) => void,
+  signal?: AbortSignal,
 ): Promise<Blob> {
+  signal?.throwIfAborted();
   const { createReaderTransfer } = await import("@bcr/reader-studio/research-transfer");
-  const reader = await createReaderTransfer(plan.books, report, plan.readerStamp);
+  const reader = await createReaderTransfer(plan.books, report, plan.readerStamp, signal);
   const research = new Blob([JSON.stringify(plan.backup)], { type: "application/json" });
   if (research.size > 16 * 1024 * 1024) throw new Error("集合快照超过 16 MiB 上限，请减少所选集合");
   const manifest = {
@@ -109,19 +116,45 @@ export async function createResearchPackage(
       {
         path: "research.json",
         size: research.size,
-        hash: await hashReadableStream(research.stream()),
+        hash: await hashReadableStream(research.stream(), { signal }),
       },
-      { path: "reader.zip", size: reader.size, hash: await hashReadableStream(reader.stream()) },
+      {
+        path: "reader.zip",
+        size: reader.size,
+        hash: await hashReadableStream(reader.stream(), {
+          signal,
+          onProgress: (bytes) =>
+            report(
+              `正在校验 Reader 容器 · ${Math.floor((bytes / Math.max(1, reader.size)) * 100)}%`,
+            ),
+        }),
+      },
     ],
   };
   if (reader.size + research.size > PACKAGE_LIMIT)
     throw new Error("资料包超过 600 MiB 上限，请减少所选集合");
   const zip = new ZipWriter(new BlobWriter("application/zip"));
   try {
-    await zip.add("manifest.json", new TextReader(JSON.stringify(manifest)));
-    await zip.add("research.json", new BlobReader(research), { level: 0 });
-    await zip.add("reader.zip", new BlobReader(reader), { level: 0 });
-    return await zip.close();
+    signal?.throwIfAborted();
+    report("正在组装资料包…");
+    await zip.add(
+      "manifest.json",
+      new TextReader(JSON.stringify(manifest)),
+      signal ? { signal } : {},
+    );
+    await zip.add("research.json", new BlobReader(research), {
+      level: 0,
+      ...(signal ? { signal } : {}),
+    });
+    await zip.add("reader.zip", new BlobReader(reader), {
+      level: 0,
+      ...(signal ? { signal } : {}),
+      onprogress: (bytes, total) =>
+        report(`正在组装资料包 · ${Math.floor((bytes / Math.max(1, total)) * 100)}%`),
+    });
+    const result = await zip.close();
+    signal?.throwIfAborted();
+    return result;
   } catch (error) {
     await zip.close().catch(() => {});
     throw error;
@@ -131,11 +164,18 @@ export interface PreparedResearchPackage {
   readonly backup: ResearchBackup;
   readonly reader: PreparedReaderBackup;
 }
-export async function inspectResearchPackage(file: Blob): Promise<PreparedResearchPackage> {
+export async function inspectResearchPackage(
+  file: Blob,
+  report: (message: string) => void = () => {},
+  signal?: AbortSignal,
+): Promise<PreparedResearchPackage> {
+  signal?.throwIfAborted();
+  report("正在读取资料包清单…");
   if (file.size > PACKAGE_LIMIT + 65536) throw new Error("资料包超过 600 MiB 上限");
   const zip = new ZipReader(new BlobReader(file));
   try {
     const allEntries = await zip.getEntries();
+    signal?.throwIfAborted();
     const entries = allEntries.filter((entry) => !entry.directory);
     if (allEntries.length !== entries.length) throw new Error("资料包不允许目录条目");
     if (
@@ -151,7 +191,10 @@ export async function inspectResearchPackage(file: Blob): Promise<PreparedResear
     const header = entries.find((entry) => entry.filename === "manifest.json")!;
     if (header.uncompressedSize > 65536) throw new Error("资料包清单过大");
     const manifest = JSON.parse(
-      await header.getData!(new TextWriter(), { checkSignature: true }),
+      await header.getData!(new TextWriter(), {
+        checkSignature: true,
+        ...(signal ? { signal } : {}),
+      }),
     ) as {
       format?: unknown;
       version?: unknown;
@@ -167,6 +210,7 @@ export async function inspectResearchPackage(file: Blob): Promise<PreparedResear
       throw new Error("资料包版本或清单无效");
     const blobs = new Map<string, Blob>();
     for (const item of manifest.entries) {
+      signal?.throwIfAborted();
       if (
         !item ||
         !["research.json", "reader.zip"].includes(item.path) ||
@@ -180,14 +224,29 @@ export async function inspectResearchPackage(file: Blob): Promise<PreparedResear
         throw new Error("资料包文件清单无效");
       const entry = entries.find((entry) => entry.filename === item.path)!;
       if (entry.uncompressedSize !== item.size) throw new Error("资料包文件大小不符");
-      const blob = await entry.getData!(new BlobWriter(), { checkSignature: true });
-      if (blob.size !== item.size || (await hashReadableStream(blob.stream())) !== item.hash)
+      const label = item.path === "reader.zip" ? "Reader 源资料" : "集合与笔记";
+      report(`正在解包 · ${label}`);
+      const blob = await entry.getData!(new BlobWriter(), {
+        checkSignature: true,
+        ...(signal ? { signal } : {}),
+        onprogress: (bytes, total) =>
+          report(`正在解包 · ${label} · ${Math.floor((bytes / Math.max(1, total)) * 100)}%`),
+      });
+      if (
+        blob.size !== item.size ||
+        (await hashReadableStream(blob.stream(), {
+          signal,
+          onProgress: (bytes) =>
+            report(`正在校验 · ${label} · ${Math.floor((bytes / Math.max(1, blob.size)) * 100)}%`),
+        })) !== item.hash
+      )
         throw new Error("资料包文件哈希校验失败");
       blobs.set(item.path, blob);
     }
     const { inspectReaderBackup } = await import("@bcr/reader-studio/research-transfer");
     const backup = decodeResearchBackup(await blobs.get("research.json")!.text());
-    const reader = await inspectReaderBackup(blobs.get("reader.zip")!);
+    const reader = await inspectReaderBackup(blobs.get("reader.zip")!, report, signal);
+    signal?.throwIfAborted();
     if (reader.manifest.books.some((entry) => !entry.source))
       throw new Error("完整资料包中的 Reader 书籍缺少源文件");
     return { backup, reader };

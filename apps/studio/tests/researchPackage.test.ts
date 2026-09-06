@@ -7,6 +7,7 @@ import {
   bindResearchPackage,
   restoreResearchPackage,
   planResearchPackage,
+  createResearchPackage,
 } from "../src/researchPackage";
 import { boundReaderExcerpt, decodeResearch, type ResearchLibrary } from "../src/research";
 import { createResearchBackup, planResearchImport } from "../src/researchBackup";
@@ -187,6 +188,55 @@ describe("Reader research packages", () => {
     const corrupt = await planResearchPackage(bound, false);
     expect(corrupt.references[0]!.state).toBe("missing");
     expect(corrupt.books).toEqual([]);
+  });
+  it("cancels package inspection during nested Reader validation", async () => {
+    const file = await fixture();
+    const controller = new AbortController();
+    const before = getReaderState().library;
+    await expect(
+      inspectResearchPackage(
+        file,
+        (message) => {
+          if (message.startsWith("正在校验 · Title")) controller.abort();
+        },
+        controller.signal,
+      ),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(getReaderState().library).toBe(before);
+    await expect(inspectResearchPackage(file)).resolves.toBeDefined();
+  });
+  it("distinguishes cancellation from a missing source and stops archive assembly", async () => {
+    await createReaderRuntime();
+    reader.hydrate([], {}, DEFAULT_READER_SETTINGS);
+    vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {} });
+    const prepared = await inspectResearchPackage(await fixture());
+    const bindings = await restoreReaderTransfer(prepared.reader, () => {});
+    const bound = bindResearchPackage(prepared.backup, bindings).library;
+    const checking = new AbortController();
+    await expect(
+      planResearchPackage(
+        bound,
+        false,
+        (message) => {
+          if (message.startsWith("正在检查")) checking.abort();
+        },
+        checking.signal,
+      ),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    const plan = await planResearchPackage(bound, false);
+    expect(plan.references[0]!.state).toBe("ready");
+    const exporting = new AbortController();
+    await expect(
+      createResearchPackage(
+        plan,
+        (message) => {
+          if (message.startsWith("正在组装")) exporting.abort();
+        },
+        exporting.signal,
+      ),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    const completed = await createResearchPackage(plan, () => {});
+    expect((await inspectResearchPackage(completed)).reader.manifest.books).toHaveLength(1);
   });
   it("maps routes and citation identities without rewriting the original evidence", () => {
     const backup = createResearchBackup(library, false, { getItem: () => null });
