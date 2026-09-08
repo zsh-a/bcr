@@ -23,6 +23,7 @@ import { resolveReaderInternalLink, type ReaderInternalLinkTarget } from "./navi
 import { READER_CAPTURE_PROGRESS_EVENT } from "./useReaderRuntime";
 import {
   pageAtOffset,
+  pageTextHeight,
   paginationGroups,
   paginationGeometry,
   READER_PAGE_GUTTER,
@@ -164,8 +165,22 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
       setLayoutBusy(true);
       targetPage.current = null;
       if (scrollTimer.current !== null) clearTimeout(scrollTimer.current);
-      const gap = Number.parseFloat(getComputedStyle(content).columnGap) || 0;
-      content.style.setProperty("--reader-page-content-height", `${content.clientHeight}px`);
+      const contentStyle = getComputedStyle(content);
+      const gap = Number.parseFloat(contentStyle.columnGap) || 0;
+      if (props.book.source.format === "txt" && settings.txtParagraphStyle !== "spaced") {
+        const prose = content.querySelector(".reader-prose");
+        const available =
+          viewport.clientHeight -
+          Number.parseFloat(contentStyle.marginTop) -
+          Number.parseFloat(contentStyle.marginBottom);
+        const lineHeight = prose ? Number.parseFloat(getComputedStyle(prose).lineHeight) : 0;
+        const height = `${pageTextHeight(available, lineHeight)}px`;
+        if (content.style.getPropertyValue("--reader-page-text-height") !== height)
+          content.style.setProperty("--reader-page-text-height", height);
+      } else content.style.removeProperty("--reader-page-text-height");
+      const imageHeight = `${content.clientHeight}px`;
+      if (content.style.getPropertyValue("--reader-page-content-height") !== imageHeight)
+        content.style.setProperty("--reader-page-content-height", imageHeight);
       const origin = content.getBoundingClientRect().left;
       const fragments = Array.from(content.children).flatMap((child) =>
         Array.from(child.getClientRects()),
@@ -463,7 +478,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
       >
         <div
           ref={contentRef}
-          className={`reader-page-content ${props.book.source.format === "txt" ? "reader-page-text-flow" : ""}`}
+          className={`reader-page-content ${props.book.source.format === "txt" ? `reader-page-text-flow ${settings.txtParagraphStyle !== "spaced" ? "reader-page-text-indent" : ""}` : ""}`}
         >
           {sections.map((item) => (
             <SectionView key={item.id} section={item} searchQuery={query} active />

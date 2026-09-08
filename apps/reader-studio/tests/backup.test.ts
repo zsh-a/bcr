@@ -50,6 +50,23 @@ async function runtime(): Promise<ReaderRuntime> {
 }
 
 describe("Reader portable backup", () => {
+  it("preserves TXT paragraph style and defaults old backups to book layout", () => {
+    for (const txtParagraphStyle of ["indent", "spaced"]) {
+      expect(
+        decodeReaderBackup({
+          ...manifest(),
+          settings: { ...DEFAULT_READER_SETTINGS, txtParagraphStyle },
+        }).settings.txtParagraphStyle,
+      ).toBe(txtParagraphStyle);
+    }
+    const { txtParagraphStyle: _style, ...legacy } = DEFAULT_READER_SETTINGS;
+    expect(decodeReaderBackup({ ...manifest(), settings: legacy }).settings.txtParagraphStyle).toBe(
+      "indent",
+    );
+    expect(() =>
+      decodeReaderBackup({ ...manifest(), settings: { ...legacy, txtParagraphStyle: "invalid" } }),
+    ).toThrow();
+  });
   it("restores page animation preferences and accepts older backups", () => {
     for (const pageAnimation of ["slide", "fade", "paper", "none"]) {
       expect(

@@ -25,6 +25,7 @@ export type ReaderFontFamily = "sans" | "serif" | "kai";
 export type ReaderLatinFontFamily = "sans" | "serif" | "mono" | "literata" | "atkinson";
 
 export interface ReaderSettings {
+  readonly txtParagraphStyle?: "indent" | "spaced";
   readonly pageAnimation?: ReaderPageAnimation;
   readonly pageSpread?: boolean;
   readonly tocPinned?: boolean;
@@ -140,6 +141,7 @@ export const DEFAULT_READER_SETTINGS: ReaderSettings = {
   theme: "paper",
   layout: "scroll",
   pageAnimation: "slide",
+  txtParagraphStyle: "indent",
   fontSize: 20,
   fontFamily: "sans",
   latinFontFamily: "sans",

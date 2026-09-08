@@ -77,6 +77,22 @@ export function ReaderTypographySettings({
       </p>
       <div className="reader-typography-fields">
         <label>
+          TXT 分页段落
+          <select
+            aria-label="TXT 分页段落"
+            value={settings.txtParagraphStyle ?? "indent"}
+            onChange={(event) =>
+              reader.setSettings({
+                txtParagraphStyle: event.target.value === "spaced" ? "spaced" : "indent",
+              })
+            }
+          >
+            <option value="indent">首行缩进 · 整行排版</option>
+            <option value="spaced">段间留白 · 使用段间距</option>
+          </select>
+          <small>首行缩进两字，段落间不加空白，让普通正文页的行数更一致。</small>
+        </label>
+        <label>
           翻页动画
           <select
             aria-label="翻页动画"

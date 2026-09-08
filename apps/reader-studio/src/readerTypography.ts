@@ -12,6 +12,7 @@ export function normalizeReaderTypography(settings: ReaderSettings): ReaderSetti
       : fallback;
   return {
     ...settings,
+    txtParagraphStyle: settings.txtParagraphStyle === "spaced" ? "spaced" : "indent",
     pageAnimation: ["slide", "fade", "paper", "none"].includes(settings.pageAnimation ?? "")
       ? (settings.pageAnimation ?? "slide")
       : "slide",

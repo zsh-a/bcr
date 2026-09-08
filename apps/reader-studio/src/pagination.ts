@@ -2,6 +2,16 @@ import type { ReaderBook } from "@bcr/reader-core";
 
 export const READER_PAGE_GUTTER = 24;
 
+/** Fit whole line boxes without changing the reader's chosen line spacing. */
+export function pageTextHeight(available: number, lineHeight: number): number {
+  if (!Number.isFinite(available) || available <= 0) return 0;
+  if (!Number.isFinite(lineHeight) || lineHeight <= 0 || available < lineHeight) return available;
+  // Round upward to the browser's layout unit so fractional line heights cannot
+  // make the final line spill into another column.
+  const step = Math.ceil(lineHeight * 64) / 64;
+  return Math.floor(available / step) * step;
+}
+
 export function paginationGeometry(
   extent: number,
   viewportWidth: number,

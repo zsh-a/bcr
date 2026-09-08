@@ -332,6 +332,12 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
       !["slide", "fade", "paper", "none"].includes(settings["pageAnimation"]))
   )
     return fail();
+  if (
+    settings["txtParagraphStyle"] !== undefined &&
+    settings["txtParagraphStyle"] !== "indent" &&
+    settings["txtParagraphStyle"] !== "spaced"
+  )
+    return fail();
   for (const key of ["pageSpread", "tocPinned"]) {
     if (settings[key] !== undefined && typeof settings[key] !== "boolean") return fail();
   }

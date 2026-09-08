@@ -392,3 +392,20 @@
   box-shadow: 0 10px 28px rgb(0 0 0 / 0.18);
   backface-visibility: hidden;
 }
+
+/* TXT has plain paragraphs, not publisher-defined keep-together blocks. Allow
+ * a single line at either side of a page boundary rather than leaving a hole. */
+.reader-page-text-flow {
+  height: var(--reader-page-text-height, calc(100% - 2 * var(--reader-page-inset)));
+}
+.reader-page-text-flow .reader-prose,
+.reader-page-text-flow .reader-prose p {
+  orphans: 1;
+  widows: 1;
+  break-inside: auto;
+}
+
+.reader-page-text-indent :is(p.reader-prose, .reader-prose p) {
+  margin: 0 !important;
+  text-indent: 2em;
+}

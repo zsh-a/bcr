@@ -61,7 +61,11 @@ try {
       topInset: parseFloat(getComputedStyle(content).marginTop),
     };
   });
-  assert(typography.paragraphGap > 0, "TXT paragraphs retain the configured paragraph spacing");
+  assert.equal(
+    typography.paragraphGap,
+    0,
+    "TXT book layout uses indentation instead of paragraph gaps",
+  );
   assert(typography.topInset >= 24, "desktop pages leave breathing room above the text");
   await click(1);
   await page.waitForFunction(
