@@ -43,27 +43,39 @@ function textMatchRange(value: string, query: string): TextMatchRange | undefine
   };
 }
 
-export function highlightText(value: string, query: string): ReactNode {
+/** Match against the source paragraph, then clip marks to the visible page slice. */
+export function highlightText(
+  value: string,
+  query: string,
+  from = 0,
+  to = value.length,
+): ReactNode {
   const nodes: ReactNode[] = [];
+  const first = Math.max(0, Math.min(value.length, from));
+  const last = Math.max(first, Math.min(value.length, to));
   let cursor = 0;
+  let emitted = first;
   let key = 0;
-  while (cursor < value.length) {
+  while (cursor < last) {
     const match = textMatchRange(value.slice(cursor), query);
-    if (match === undefined) {
-      nodes.push(value.slice(cursor));
-      break;
-    }
+    if (match === undefined) break;
     const start = cursor + match.start;
     const end = Math.max(start + 1, cursor + match.end);
-    if (start > cursor) nodes.push(value.slice(cursor, start));
+    cursor = end;
+    if (end <= first) continue;
+    if (start >= last) break;
+    const visibleStart = Math.max(first, start);
+    const visibleEnd = Math.min(last, end);
+    if (visibleStart > emitted) nodes.push(value.slice(emitted, visibleStart));
     nodes.push(
       <mark data-reader-search-match="true" key={`match-${key++}`}>
-        {value.slice(start, end)}
+        {value.slice(visibleStart, visibleEnd)}
       </mark>,
     );
-    cursor = end;
+    emitted = visibleEnd;
   }
-  return nodes.length > 0 ? nodes : value;
+  if (emitted < last) nodes.push(value.slice(emitted, last));
+  return nodes.length > 0 ? nodes : value.slice(first, last);
 }
 
 /** Highlight sanitized HTML without interpolating user input into markup. */

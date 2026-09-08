@@ -1,3 +1,6 @@
+import { ReaderPageContext } from "./ReaderPageContext";
+import { useTxtPageFlow } from "./useTxtPageFlow";
+import { TxtPageContent } from "./TxtPageContent";
 import { animatePageTurn, pageClickDirection, PAGE_INTERACTIVE_TARGET } from "./pageTurnMotion";
 import { useSectionsContent } from "./useSectionContent";
 import {
@@ -23,7 +26,6 @@ import { resolveReaderInternalLink, type ReaderInternalLinkTarget } from "./navi
 import { READER_CAPTURE_PROGRESS_EVENT } from "./useReaderRuntime";
 import {
   pageAtOffset,
-  pageTextHeight,
   paginationGroups,
   paginationGeometry,
   READER_PAGE_GUTTER,
@@ -31,7 +33,7 @@ import {
 import { useReaderMobile } from "./useReaderMobile";
 import { settleReaderLayout } from "./readingRestore";
 
-/** One chapter or bounded TXT batch; semantic progress survives page turns and reflow. */
+/** Continuous TXT pages or structured chapters; source progress survives turns and reflow. */
 export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome: () => void }) {
   const mobile = useReaderMobile();
   const settings = useReader((state) => state.settings);
@@ -43,7 +45,10 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
     0,
     props.book.sections.findIndex((section) => section.id === activeId),
   );
-  const groups = useMemo(() => paginationGroups(props.book), [props.book]);
+  const groups = useMemo(
+    () => (props.book.source.format === "txt" ? [] : paginationGroups(props.book)),
+    [props.book],
+  );
   const groupIndex = Math.max(
     0,
     groups.findIndex((group) => sectionIndex >= group.start && sectionIndex < group.end),
@@ -104,6 +109,19 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
   const [physicalPages, setPhysicalPages] = useState(1);
   const [layoutBusy, setLayoutBusy] = useState(true);
 
+  const txt = useTxtPageFlow({
+    book: props.book,
+    settings,
+    navigation,
+    columns,
+    viewport: viewportRef,
+    content: contentRef,
+  });
+  const interruptMotion = () => {
+    stopMotion();
+    if (txt.enabled) txt.stop();
+  };
+
   useLayoutEffect(() => {
     const frame = frameRef.current;
     if (!frame) return;
@@ -129,6 +147,10 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
   ]);
 
   const capture = useCallback(() => {
+    if (txt.enabled) {
+      txt.flush();
+      return;
+    }
     const viewport = viewportRef.current;
     if (viewport === null || section === undefined || !activeContent.ready) return;
     if (restoring.current || transitioning.current) return;
@@ -147,7 +169,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
         ? createLocator(section, index / Math.max(1, countRef.current))
         : mapped.locator;
     reader.setLocator(locator);
-  }, [props.book, section, activeContent.ready]);
+  }, [props.book, section, activeContent.ready, txt.enabled, txt.flush]);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
@@ -167,17 +189,6 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
       if (scrollTimer.current !== null) clearTimeout(scrollTimer.current);
       const contentStyle = getComputedStyle(content);
       const gap = Number.parseFloat(contentStyle.columnGap) || 0;
-      if (props.book.source.format === "txt" && settings.txtParagraphStyle !== "spaced") {
-        const prose = content.querySelector(".reader-prose");
-        const available =
-          viewport.clientHeight -
-          Number.parseFloat(contentStyle.marginTop) -
-          Number.parseFloat(contentStyle.marginBottom);
-        const lineHeight = prose ? Number.parseFloat(getComputedStyle(prose).lineHeight) : 0;
-        const height = `${pageTextHeight(available, lineHeight)}px`;
-        if (content.style.getPropertyValue("--reader-page-text-height") !== height)
-          content.style.setProperty("--reader-page-text-height", height);
-      } else content.style.removeProperty("--reader-page-text-height");
       const imageHeight = `${content.clientHeight}px`;
       if (content.style.getPropertyValue("--reader-page-content-height") !== imageHeight)
         content.style.setProperty("--reader-page-content-height", imageHeight);
@@ -275,6 +286,10 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
   }, [capture, stopMotion]);
 
   const turn = (delta: number) => {
+    if (txt.enabled) {
+      txt.turn(delta);
+      return;
+    }
     const viewport = viewportRef.current;
     if (viewport === null) return;
     if (!activeContent.ready || restoring.current || transitioning.current) {
@@ -321,12 +336,13 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
         } as CSSProperties
       }
     >
+      <ReaderPageContext book={props.book} onShowTools={props.onToggleMobileChrome} />
       <div
-        className="reader-reading-scroll reader-page-viewport"
+        className={`reader-reading-scroll reader-page-viewport ${txt.enabled ? "reader-txt-viewport" : ""}`}
         ref={viewportRef}
         tabIndex={0}
         aria-label="分页正文"
-        aria-description="点击左侧翻到上一页，右侧翻到下一页；也可使用方向键或空格翻页。手机点击中央显示或隐藏工具栏。"
+        aria-description="点击左侧翻到上一页，右侧翻到下一页；也可使用方向键或空格翻页。点击中央显示或隐藏工具栏。"
         onPointerDown={(event) => {
           suppressClick.current = false;
           pointer.current = {
@@ -346,7 +362,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
             Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8
           ) {
             start.moved = true;
-            stopMotion();
+            interruptMotion();
             targetPage.current = null;
           }
           const viewport = event.currentTarget;
@@ -377,12 +393,12 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
           delete event.currentTarget.dataset.turnZone;
         }}
         onWheel={() => {
-          stopMotion();
+          interruptMotion();
           targetPage.current = null;
         }}
-        aria-busy={layoutBusy || !activeContent.ready}
+        aria-busy={txt.enabled ? !txt.ready : layoutBusy || !activeContent.ready}
         onTouchStart={(event) => {
-          stopMotion();
+          interruptMotion();
           if (
             event.touches.length !== 1 ||
             (event.target instanceof Element && event.target.closest(PAGE_INTERACTIVE_TARGET))
@@ -421,6 +437,11 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
         onKeyDown={(event) => {
           if (event.target !== event.currentTarget) return;
           if (event.altKey || event.ctrlKey || event.metaKey) return;
+          if (event.key === "Escape" && event.currentTarget.closest(".mobile-chrome-hidden")) {
+            event.preventDefault();
+            props.onToggleMobileChrome();
+            return;
+          }
           if (["ArrowRight", "PageDown", "ArrowLeft", "PageUp", " "].includes(event.key)) {
             event.preventDefault();
             turn(
@@ -433,7 +454,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
           }
         }}
         onScroll={(event) => {
-          if (restoring.current || event.currentTarget.dataset.pageTurning) return;
+          if (txt.enabled || restoring.current || event.currentTarget.dataset.pageTurning) return;
           if (scrollTimer.current !== null) clearTimeout(scrollTimer.current);
           scrollTimer.current = setTimeout(capture, 140);
         }}
@@ -473,22 +494,36 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
           const rect = event.currentTarget.getBoundingClientRect();
           const direction = pageClickDirection(event.clientX - rect.left, rect.width);
           if (event.detail > 0 && direction !== 0) turn(direction);
-          else if (mobile && direction === 0) props.onToggleMobileChrome();
+          else if (direction === 0) props.onToggleMobileChrome();
         }}
       >
         <div
           ref={contentRef}
-          className={`reader-page-content ${props.book.source.format === "txt" ? `reader-page-text-flow ${settings.txtParagraphStyle !== "spaced" ? "reader-page-text-indent" : ""}` : ""}`}
+          className={`reader-page-content ${props.book.source.format === "txt" ? `reader-page-text-flow ${settings.txtParagraphStyle !== "spaced" ? "reader-page-text-indent" : ""} reader-txt-pages` : ""}`}
         >
-          {sections.map((item) => (
-            <SectionView key={item.id} section={item} searchQuery={query} active />
-          ))}
+          {txt.enabled ? (
+            <TxtPageContent spreads={txt.spreads} query={query} />
+          ) : (
+            sections.map((item) => (
+              <SectionView key={item.id} section={item} searchQuery={query} active />
+            ))
+          )}
         </div>
-        <div className="reader-page-stops" aria-hidden="true">
-          {Array.from({ length: pages }, (_, index) => (
-            <span key={index} style={{ left: `${index * 100}%` }} />
-          ))}
-        </div>
+        {!txt.enabled && (
+          <div className="reader-page-stops" aria-hidden="true">
+            {Array.from({ length: pages }, (_, index) => (
+              <span key={index} style={{ left: `${index * 100}%` }} />
+            ))}
+          </div>
+        )}
+        {txt.error && (
+          <div className="reader-txt-error" role="alert">
+            {txt.error}
+            <button type="button" onClick={txt.retry}>
+              重试
+            </button>
+          </div>
+        )}
       </div>
       {!mobile && settings.tocPinned && <ChapterRail book={props.book} />}
       <MobileReadingBar
@@ -498,9 +533,10 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
           pages,
           columns,
           physicalPages,
-          canPrevious: page > 0 || groupIndex > 0,
-          canNext: page < pages - 1 || groupIndex < groups.length - 1,
-          scopeLabel: props.book.source.format === "txt" ? "当前阅读段" : "本章",
+          canPrevious: txt.enabled ? txt.canPrevious : page > 0 || groupIndex > 0,
+          canNext: txt.enabled ? txt.canNext : page < pages - 1 || groupIndex < groups.length - 1,
+          scopeLabel: "本章",
+          progressOnly: txt.enabled,
           turn,
         }}
       />

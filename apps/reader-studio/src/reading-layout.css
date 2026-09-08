@@ -409,3 +409,173 @@
   margin: 0 !important;
   text-indent: 2em;
 }
+
+/* TXT pages contain source slices with real line boundaries. The loading unit
+ * never creates a page break, and only an outgoing/incoming spread is mounted. */
+.reader-txt-viewport {
+  scroll-snap-type: none;
+  touch-action: pan-y;
+}
+.reader-txt-pages {
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  display: flex;
+  column-count: auto;
+  column-gap: normal;
+  position: relative;
+}
+.reader-txt-spread {
+  display: grid;
+  grid-template-columns: repeat(var(--reader-page-columns, 1), minmax(0, 1fr));
+  column-gap: calc(2 * var(--reader-page-gutter));
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 var(--reader-page-gutter);
+  flex: 0 0 auto;
+  height: 100%;
+}
+.reader-txt-page {
+  min-width: 0;
+}
+.reader-txt-pages .reader-prose {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+.reader-txt-page :is(p.reader-prose, .reader-prose p) {
+  margin: 0 !important;
+}
+.reader-txt-pages .reader-prose mark {
+  padding: 0;
+}
+.reader-txt-measure {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: auto;
+  margin: 0 !important;
+  visibility: hidden;
+  pointer-events: none;
+  contain: layout style;
+}
+.reader-txt-error {
+  position: absolute;
+  inset: 25% 24px auto;
+  padding: 20px;
+  background: var(--reader-raised);
+  color: var(--reader-text);
+}
+
+/* An unobtrusive chapter line and reading status remain when controls recede. */
+.reader-quiet-heading,
+.reader-quiet-status {
+  position: absolute;
+  z-index: 3;
+  left: max(24px, env(safe-area-inset-left));
+  right: max(24px, env(safe-area-inset-right));
+  color: var(--reader-muted);
+  font-family: var(--reader-font-sans);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 160ms ease,
+    visibility 160ms;
+}
+.reader-quiet-heading {
+  top: env(safe-area-inset-top, 0px);
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: start;
+  cursor: pointer;
+}
+.reader-quiet-heading span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reader-quiet-status {
+  bottom: env(safe-area-inset-bottom, 0px);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.reader-quiet-status-label {
+  margin-left: 6px;
+  font-size: 10px;
+}
+.mobile-chrome-hidden .reader-quiet-heading,
+.mobile-chrome-hidden .reader-quiet-status {
+  opacity: 1;
+  visibility: visible;
+}
+.reader-paged-session {
+  background: var(--reader-bg);
+}
+.reader-paged-session.reader-theme-night {
+  --reader-bg: #242523;
+  --reader-surface: #292b28;
+  --reader-raised: #2e302d;
+  --reader-text: #c9cbc3;
+  --reader-muted: #a1a49b;
+  --reader-faint: #8d9187;
+  background: var(--reader-bg);
+}
+@media (min-width: 861px) {
+  .reader-paged-session .reader-main {
+    position: relative;
+  }
+  .reader-paged-session .reader-toolbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 24;
+    min-height: 56px;
+    background: var(--reader-raised);
+    transition:
+      opacity 160ms ease,
+      visibility 160ms;
+  }
+  .reader-paged-session .reader-paged-frame {
+    padding-top: 56px;
+    box-sizing: border-box;
+  }
+  .reader-paged-session.mobile-chrome-hidden > .reader-header,
+  .reader-paged-session.mobile-chrome-hidden .reader-toolbar,
+  .reader-paged-session.mobile-chrome-hidden .reader-mobile-nav {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .reader-paged-session .reader-quiet-heading,
+  .reader-paged-session .reader-quiet-status {
+    grid-column: 1 / 2;
+    --reader-context-width: calc(
+      (var(--reader-line-length, 680px) + 2 * var(--reader-page-gutter)) *
+        var(--reader-page-columns, 1) - 2 * var(--reader-page-gutter)
+    );
+    left: max(24px, calc((100% - var(--reader-context-width)) / 2));
+    right: max(24px, calc((100% - var(--reader-context-width)) / 2));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reader-quiet-heading,
+  .reader-quiet-status,
+  .reader-paged-session .reader-toolbar {
+    transition: none;
+  }
+}
+
+.reader-paged-session.mobile-chrome-hidden .reader-import-progress[data-complete="true"] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}

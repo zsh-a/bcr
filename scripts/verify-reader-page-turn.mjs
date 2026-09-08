@@ -9,8 +9,8 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(new URL("/reader", process.env.BASE_URL ?? "http://localhost:5199").toString());
   await page.getByLabel("导入阅读文件").setInputFiles({
-    name: "click-turn.txt",
-    mimeType: "text/plain",
+    name: "click-turn.md",
+    mimeType: "text/markdown",
     buffer: Buffer.from(
       Array.from(
         { length: 90 },
@@ -61,11 +61,7 @@ try {
       topInset: parseFloat(getComputedStyle(content).marginTop),
     };
   });
-  assert.equal(
-    typography.paragraphGap,
-    0,
-    "TXT book layout uses indentation instead of paragraph gaps",
-  );
+  assert(typography.paragraphGap > 0, "Markdown paragraphs retain their spacing");
   assert(typography.topInset >= 24, "desktop pages leave breathing room above the text");
   await click(1);
   await page.waitForFunction(

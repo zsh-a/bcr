@@ -67,6 +67,31 @@ export function readerSelectionLocator(book: ReaderBook): ReaderLocator | undefi
   if (sectionId === undefined) return undefined;
   const section = book.sections.find((candidate) => candidate.id === sectionId);
   if (section === undefined) return undefined;
+  const startProse = elementForNode(range.startContainer)?.closest<HTMLElement>(
+    ".reader-prose[data-reader-text-start]",
+  );
+  const endProse = elementForNode(range.endContainer)?.closest<HTMLElement>(
+    ".reader-prose[data-reader-text-start]",
+  );
+  if (startProse && endProse) {
+    const start = readerTextNodeOffset(
+      readerRenderedText(startProse),
+      range.startContainer,
+      range.startOffset,
+    );
+    const end = readerTextNodeOffset(
+      readerRenderedText(endProse),
+      range.endContainer,
+      range.endOffset,
+    );
+    if (start !== undefined && end !== undefined) {
+      return createTextLocator(
+        section,
+        Number(startProse.dataset.readerTextStart) + start,
+        Number(endProse.dataset.readerTextStart) + end,
+      );
+    }
+  }
   const selected = selection.toString().replace(/\r\n?/gu, "\n").trim();
   if (selected.length === 0) return undefined;
   const match = searchTextRange(section.text, selected);
@@ -205,6 +230,20 @@ function readerTextLocatorAtPoint(
   const rendered = readerRenderedText(prose);
   const offset = readerTextNodeOffset(rendered, caret.node, caret.offset);
   if (offset === undefined || rendered.value.length === 0) return undefined;
+  if (prose.dataset.readerTextStart !== undefined) {
+    const sourceOffset = Number(prose.dataset.readerTextStart) + offset;
+    const total = Number(prose.dataset.readerTextLength);
+    const exact = rendered.value.slice(offset, offset + 96);
+    if (exact)
+      return {
+        locator: createLocator(section, sourceOffset / Math.max(1, total), undefined, {
+          exact,
+          start: sourceOffset,
+          end: sourceOffset + exact.length,
+        }),
+        sectionIndex,
+      };
+  }
   const progressionHint = offset / rendered.value.length;
   const afterStart = (() => {
     let start = offset;

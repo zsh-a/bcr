@@ -1,9 +1,11 @@
+import { currentTxtChapter } from "./txtChapters";
 import {
   ArrowUpRight,
   Bookmark,
   Check,
   ChevronRight,
   Columns2,
+  BookOpen,
   FileText,
   List,
   Maximize2,
@@ -20,7 +22,7 @@ import {
 } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { sameLocator, type ReaderBook, type ReaderLocator } from "@bcr/reader-core";
-import { type ReaderSettings, type ReaderTheme } from "./model";
+import { readerUsesPagedText, type ReaderSettings, type ReaderTheme } from "./model";
 import {
   READER_CJK_FONT_OPTIONS,
   READER_LATIN_FONT_OPTIONS,
@@ -43,6 +45,7 @@ export function ReaderToolbar(props: {
   fullscreen: ReaderFullscreenState;
   onInstall: () => void;
   showInstall: boolean;
+  onFocusReading: () => void;
 }) {
   const sidebarOpen = useReader((state) => state.sidebarOpen);
   const activeSectionId = useReader((state) => state.activeSectionId);
@@ -63,7 +66,9 @@ export function ReaderToolbar(props: {
     );
   });
   const current =
-    props.book.sections.find((section) => section.id === activeSectionId) ?? props.book.sections[0];
+    currentTxtChapter(props.book, activeSectionId) ??
+    props.book.sections.find((section) => section.id === activeSectionId) ??
+    props.book.sections[0];
   return (
     <div className="reader-toolbar">
       <div className="reader-toolbar-title">
@@ -107,7 +112,11 @@ export function ReaderToolbar(props: {
         </button>
         <div>
           <span className="reader-eyebrow">READING SESSION</span>
-          <strong>{current?.label ?? "正文"}</strong>
+          <strong>
+            {props.book.source.format === "txt" && !props.book.toc?.length
+              ? props.book.title
+              : (current?.label ?? "正文")}
+          </strong>
         </div>
       </div>
       <div
@@ -122,6 +131,17 @@ export function ReaderToolbar(props: {
         <span style={{ width: `${progress * 100}%` }} />
       </div>
       <div className="reader-toolbar-actions reader-toolbar-actions-desktop">
+        {readerUsesPagedText(props.book, props.settings) && (
+          <button
+            type="button"
+            className="reader-icon-button"
+            aria-label="专注阅读"
+            title="专注阅读 · 点击正文中央恢复工具栏"
+            onClick={props.onFocusReading}
+          >
+            <BookOpen className="reader-icon" />
+          </button>
+        )}
         <ReaderNavigationButton book={props.book} />
         <button
           type="button"

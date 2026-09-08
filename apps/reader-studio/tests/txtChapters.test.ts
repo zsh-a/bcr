@@ -3,9 +3,8 @@ import { inlineTxtToc, txtHeading, currentTxtChapter } from "../src/txtChapters"
 import { scanTxtIndex, TXT_CHUNK_BYTES } from "../src/txtIndex";
 import { textSections } from "../src/readerMarkup";
 import { createDemoBook } from "../src/model";
-import { paginationGroups } from "../src/pagination";
 
-describe("TXT chapter recognition and layout batches", () => {
+describe("TXT chapter recognition", () => {
   it("recognizes conventional complete title lines without treating sentences/lists as chapters", () => {
     for (const line of [
       "第一章 初见",
@@ -41,7 +40,7 @@ describe("TXT chapter recognition and layout batches", () => {
       sections.map((section) => section.text.length),
     );
   });
-  it("flows short paragraphs together, respects chapters and bounds resident batches", () => {
+  it("identifies the current chapter independently of paragraph loading boundaries", () => {
     const sections = textSections(
       Array.from({ length: 100 }, (_, i) =>
         i === 0 ? "第一章 开始" : i === 45 ? "第二章 继续" : `第${i}段普通正文`,
@@ -54,26 +53,6 @@ describe("TXT chapter recognition and layout batches", () => {
       sections,
       toc: inlineTxtToc(sections),
     };
-    const groups = paginationGroups(book);
-    expect(groups).toEqual([
-      { start: 0, end: 32 },
-      { start: 32, end: 45 },
-      { start: 45, end: 77 },
-      { start: 77, end: 100 },
-    ]);
     expect(currentTxtChapter(book, "section-70")?.label).toBe("第二章 继续");
-    expect(paginationGroups({ ...book, source: { ...book.source, format: "epub" } })).toHaveLength(
-      100,
-    );
-    expect(
-      paginationGroups({
-        ...book,
-        sections: sections.map((section) => ({
-          ...section,
-          text: "",
-          textRange: { start: 0, end: 20000, length: 20000 },
-        })),
-      }),
-    ).toHaveLength(100);
   });
 });

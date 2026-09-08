@@ -6,7 +6,7 @@ import {
   type ReaderLocator,
   type SearchHit,
 } from "@bcr/reader-core";
-import { activeBook } from "./model";
+import { activeBook, readerUsesPagedText } from "./model";
 import { AnnotationComposer, ReaderToolbar } from "./ReaderControls";
 import { ReadingView } from "./ReadingView";
 import { formatBadge, formatBytes, percent, sourceIcon } from "./readerPresentation";
@@ -74,15 +74,17 @@ export function ReaderWorkspace(props: {
         </ReaderSheet>
       )}
       <main id="reader-content" ref={readerMainRef} className="reader-main" aria-label="阅读内容">
-        <button
-          type="button"
-          className="reader-mobile-chrome-reveal"
-          onClick={props.onToggleMobileChrome}
-          aria-label="显示阅读工具栏"
-          title="显示阅读工具栏"
-        >
-          <Menu className="reader-icon" />
-        </button>
+        {!readerUsesPagedText(active, settings) && (
+          <button
+            type="button"
+            className="reader-mobile-chrome-reveal"
+            onClick={props.onToggleMobileChrome}
+            aria-label="显示阅读工具栏"
+            title="显示阅读工具栏"
+          >
+            <Menu className="reader-icon" />
+          </button>
+        )}
         {searchOpen && <SearchPanel hits={searchHits} />}
         <ReaderToolbar
           book={active}
@@ -93,6 +95,7 @@ export function ReaderWorkspace(props: {
           fullscreen={fullscreen}
           onInstall={props.onInstall}
           showInstall={props.showInstall}
+          onFocusReading={props.onToggleMobileChrome}
         />
         <ReaderSaveNotice runtime={props.runtime} />
         {annotationOpen && (

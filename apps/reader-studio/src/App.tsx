@@ -1,3 +1,4 @@
+import { readerUsesPagedText } from "./model";
 import {
   hasDeferredContent,
   searchReaderContent,
@@ -485,7 +486,7 @@ export function App() {
   }
   return (
     <div
-      className={`reader-studio reader-theme-${settings.theme} ${mobileChromeVisible ? "mobile-chrome-visible" : "mobile-chrome-hidden"}`}
+      className={`reader-studio reader-theme-${settings.theme} ${readerUsesPagedText(active, settings) ? "reader-paged-session" : ""} ${mobileChromeVisible ? "mobile-chrome-visible" : "mobile-chrome-hidden"}`}
     >
       <ReaderEffects runtime={runtime} />
       <a className="reader-skip-link" href="#reader-content">
@@ -529,7 +530,14 @@ export function App() {
         onOpenDocument={handoffDocument}
         documentHandoffBusy={documentHandoffBusy}
         onNotice={setNotice}
-        onToggleMobileChrome={() => setMobileChromeVisible((visible) => !visible)}
+        onToggleMobileChrome={() => {
+          setMobileChromeVisible((visible) => !visible);
+          requestAnimationFrame(() =>
+            document
+              .querySelector<HTMLElement>(".reader-reading-scroll")
+              ?.focus({ preventScroll: true }),
+          );
+        }}
       />
     </div>
   );

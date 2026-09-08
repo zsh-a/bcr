@@ -131,6 +131,7 @@ export function MobileReadingBar(props: {
     columns?: number;
     physicalPages?: number;
     scopeLabel?: string;
+    progressOnly?: boolean;
     page: number;
     pages: number;
     canPrevious: boolean;
@@ -187,11 +188,13 @@ export function MobileReadingBar(props: {
           <span className="reader-mobile-nav-current-label">当前阅读</span>
           <strong>{chapter?.label ?? current?.label ?? "正文"}</strong>
           <span className="reader-mobile-nav-current-meta">
-            {props.pagination
-              ? props.pagination.columns === 2
-                ? `${props.pagination.page * 2 + 1}–${Math.min(props.pagination.physicalPages ?? 1, props.pagination.page * 2 + 2)} / ${props.pagination.physicalPages} 页 · ${props.pagination.scopeLabel ?? "本章"}`
-                : `${props.pagination.page + 1} / ${props.pagination.pages} 页 · ${props.pagination.scopeLabel ?? "本章"}`
-              : `${navigationIndex + 1} / ${navigationCount} ${unit} · ${percent(progress)}`}
+            {props.pagination?.progressOnly
+              ? `${percent(progress)} · 全书`
+              : props.pagination
+                ? props.pagination.columns === 2
+                  ? `${props.pagination.page * 2 + 1}–${Math.min(props.pagination.physicalPages ?? 1, props.pagination.page * 2 + 2)} / ${props.pagination.physicalPages} 页 · ${props.pagination.scopeLabel ?? "本章"}`
+                  : `${props.pagination.page + 1} / ${props.pagination.pages} 页 · ${props.pagination.scopeLabel ?? "本章"}`
+                : `${navigationIndex + 1} / ${navigationCount} ${unit} · ${percent(progress)}`}
           </span>
           <ChevronUp className="reader-mobile-nav-current-chevron" aria-hidden="true" />
         </button>

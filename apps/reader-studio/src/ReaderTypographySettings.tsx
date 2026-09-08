@@ -41,7 +41,12 @@ export function ReaderTypographySettings({
             onClick={() =>
               reader.setSettings({
                 ...preset.settings,
-                fontSize: window.matchMedia("(max-width: 860px)").matches ? 21 : 20,
+                fontSize:
+                  "fontSize" in preset.settings
+                    ? preset.settings.fontSize
+                    : window.matchMedia("(max-width: 860px)").matches
+                      ? 21
+                      : 20,
                 contentWidth: "narrow",
               })
             }
@@ -59,7 +64,7 @@ export function ReaderTypographySettings({
         <span className="reader-eyebrow">LIVE PREVIEW</span>
         <div className="reader-prose">
           <p>春山可望，文字有自己的呼吸。读到这里，不必着急翻向下一页。</p>
-          <p>阅读进度由 Locator 记录，搜索通过 SQLite FTS5 找回原文。</p>
+          <p>一段文字，一页时光。合上书，再打开，仍能从熟悉的地方继续。</p>
           <p lang="en">Reading is a quiet conversation. Il1 · O0 · 2026.</p>
         </div>
       </div>

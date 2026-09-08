@@ -271,7 +271,16 @@ export function ReaderHeader(props: {
         </div>
       )}
       {props.importJob !== null && (
-        <div className="reader-import-progress" role="status" aria-live="polite">
+        <div
+          className="reader-import-progress"
+          data-complete={
+            props.importJob.settled && !props.importJob.cancelled && props.importJob.errors === 0
+              ? "true"
+              : undefined
+          }
+          role="status"
+          aria-live="polite"
+        >
           <div className="reader-import-progress-copy">
             <strong>
               {props.importJob.cancelled

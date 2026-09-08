@@ -53,6 +53,13 @@ export interface ReaderSettings {
   readonly contentWidth: "narrow" | "wide";
 }
 
+export function readerUsesPagedText(book: ReaderBook, settings: ReaderSettings): boolean {
+  const comic =
+    settings.books?.[book.id]?.comic ??
+    (book.source.format === "cbz" || book.rendition?.layout === "pre-paginated");
+  return settings.layout === "paged" && book.source.format !== "pdf" && !comic;
+}
+
 export interface ReaderSearchSession {
   readonly query: string;
   readonly searchBookId: string | null;

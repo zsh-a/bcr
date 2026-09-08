@@ -41,7 +41,7 @@ try {
         toc: book.toc,
         loaded: book.sections.filter((section) => section.text).length,
         locator: getReaderState().progressByBook[book.id]?.locator,
-        left: viewport?.scrollLeft,
+        start: viewport?.querySelector(".reader-txt-page")?.dataset.txtPageStart,
         width: viewport?.clientWidth,
       };
     }, action);
@@ -77,10 +77,10 @@ try {
   await page.keyboard.press("Space");
   await settled();
   const turned = await state();
-  assert(turned.left >= turned.width - 2, "Space must advance one page");
+  assert.notEqual(turned.start, "0:0", "Space must advance one page");
   await page.keyboard.press("Shift+Space");
   await settled();
-  assert((await state()).left < 2);
+  assert.equal((await state()).start, "0:0");
   await page.getByRole("button", { name: "下一页", exact: true }).click();
   await settled();
   const before = await state();
@@ -93,7 +93,7 @@ try {
     "reload must preserve the original paragraph locator",
   );
   assert(
-    Math.abs(after.left - before.left) < 2,
+    after.start === before.start,
     `reload must restore the same page: ${JSON.stringify({ before, after })}`,
   );
   await page.locator('.reader-chapter-rail [data-reader-toc-section="section-183"]').click();
@@ -106,10 +106,10 @@ try {
   const mobileBefore = await state();
   await page.mouse.click(rect.x + rect.width * 0.88, rect.y + rect.height * 0.7);
   await settled();
-  assert((await state()).left > mobileBefore.left, "right tap zone must advance");
+  assert.notEqual((await state()).start, mobileBefore.start, "right tap zone must advance");
   await page.mouse.click(rect.x + rect.width * 0.12, rect.y + rect.height * 0.7);
   await settled();
-  assert(Math.abs((await state()).left - mobileBefore.left) < 2, "left tap zone must go back");
+  assert.equal((await state()).start, mobileBefore.start, "left tap zone must go back");
   await page.setViewportSize({ width: 900, height: 375 });
   await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "dark" });
   await settled();

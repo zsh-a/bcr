@@ -48,7 +48,7 @@ describe("reader typography", () => {
     });
   });
   it("offers coherent regular-weight longform, literature and technical presets", () => {
-    expect(READER_TYPOGRAPHY_PRESETS).toHaveLength(4);
+    expect(READER_TYPOGRAPHY_PRESETS).toHaveLength(5);
     for (const preset of READER_TYPOGRAPHY_PRESETS) {
       const settings = { ...DEFAULT_READER_SETTINGS, ...preset.settings };
       expect(normalizeReaderTypography(settings)).toEqual(settings);

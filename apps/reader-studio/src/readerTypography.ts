@@ -103,6 +103,21 @@ export const READER_LATIN_FONT_OPTIONS: ReadonlyArray<ReaderFontOption<ReaderLat
 
 export const READER_TYPOGRAPHY_PRESETS = [
   {
+    id: "relaxed",
+    label: "宽松阅读",
+    description: "较大字号 · 从容行距",
+    settings: {
+      fontFamily: "sans",
+      latinFontFamily: "sans",
+      fontSize: 22,
+      fontWeight: 400,
+      lineHeight: 1.9,
+      paragraphSpacing: 0.65,
+      lineLength: 32,
+      txtParagraphStyle: "indent",
+    },
+  },
+  {
     id: "screen",
     label: "舒适屏幕",
     description: "黑体 × Plex Sans · 默认",

@@ -40,24 +40,25 @@ try {
       const viewport = document.querySelector(".reader-page-viewport");
       const content = viewport.querySelector(".reader-page-content");
       const bounds = content.getBoundingClientRect();
-      const style = getComputedStyle(content);
       const prose = content.querySelector(".reader-prose");
-      const columns = Number(style.columnCount);
-      const pitch = viewport.clientWidth / columns;
+      const pages = [...content.querySelectorAll(".reader-txt-page")];
+      const columns = pages.length;
       const bottoms = [];
       const tops = [];
-      // Text ranges, not paragraph boxes: block fragments include unused column space.
-      for (const paragraph of content.querySelectorAll(".reader-prose")) {
-        const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
-        let node;
-        while ((node = walker.nextNode())) {
-          const range = document.createRange();
-          range.selectNodeContents(node);
-          for (const rect of range.getClientRects()) {
-            if (!rect.width || !rect.height) continue;
-            const column = Math.floor((rect.left - bounds.left + 1) / pitch);
-            bottoms[column] = Math.max(bottoms[column] ?? 0, rect.bottom - bounds.top);
-            tops[column] = Math.min(tops[column] ?? Infinity, rect.top - bounds.top);
+      // Measure actual visible glyphs rather than source paragraph boxes.
+      for (const [column, physicalPage] of pages.entries()) {
+        const pageBounds = physicalPage.getBoundingClientRect();
+        for (const paragraph of physicalPage.querySelectorAll(".reader-prose")) {
+          const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
+          let node;
+          while ((node = walker.nextNode())) {
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            for (const rect of range.getClientRects()) {
+              if (!rect.width || !rect.height) continue;
+              bottoms[column] = Math.max(bottoms[column] ?? 0, rect.bottom - pageBounds.top);
+              tops[column] = Math.min(tops[column] ?? Infinity, rect.top - pageBounds.top);
+            }
           }
         }
       }
@@ -85,7 +86,12 @@ try {
     });
     await settled();
     const result = await measure();
-    const ordinary = result.bottoms.slice(0, -1);
+    const ordinary = [...result.bottoms];
+    for (let i = 0; i < 2; i++) {
+      await page.getByRole("button", { name: "下一页", exact: true }).click();
+      await settled();
+      ordinary.push(...(await measure()).bottoms);
+    }
     assert(ordinary.length > 1, "fixture must include multiple complete pages");
     const spread = Math.max(...ordinary) - Math.min(...ordinary);
     assert(spread < 1, `ordinary pages must share their final baseline: ${JSON.stringify(result)}`);
@@ -108,9 +114,10 @@ try {
   await settled();
   assert(
     await page
-      .locator(".reader-page-content .reader-prose p, .reader-page-content p.reader-prose")
-      .first()
-      .evaluate((p) => parseFloat(getComputedStyle(p).marginBottom) > 0),
+      .locator(".reader-txt-page .reader-section")
+      .evaluateAll((sections) =>
+        sections.some((section) => parseFloat(getComputedStyle(section).paddingTop) > 0),
+      ),
   );
   await page.reload();
   await settled();
