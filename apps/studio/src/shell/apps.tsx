@@ -2,6 +2,7 @@ import {
   AudioWaveform,
   BookOpenText,
   ChartCandlestick,
+  FileBadge,
   FileStack,
   Globe2,
   LayoutGrid,
@@ -17,7 +18,7 @@ import { Dock } from "../components/Dock";
  * 领域 App 经 workspace 包源码挂载，首次进入才加载对应 chunk。
  */
 export interface AppDef {
-  readonly id: "studio" | "media" | "quant" | "markets" | "manga" | "documents" | "reader" | "data";
+  readonly id: "studio" | "media" | "quant" | "markets" | "manga" | "documents" | "reader" | "data" | "docgen";
   readonly title: string;
   readonly path:
     | "/studio"
@@ -27,7 +28,8 @@ export interface AppDef {
     | "/manga"
     | "/documents"
     | "/reader"
-    | "/data";
+    | "/data"
+    | "/docgen";
   readonly icon: LucideIcon;
   readonly description: string;
   readonly component: ComponentType | LazyExoticComponent<ComponentType>;
@@ -97,6 +99,14 @@ export const APPS: ReadonlyArray<AppDef> = [
     icon: Table2,
     description: "本地表格探索 · CSV / JSON / NDJSON · Schema / 搜索 / 导出",
     component: lazy(() => import("@bcr/data-studio/app").then((m) => ({ default: m.App }))),
+  },
+  {
+    id: "docgen",
+    title: "DocGen Lab",
+    path: "/docgen",
+    icon: FileBadge,
+    description: "虚构账单生成 · 模板渲染 / 水印 / 实拍合成 · 纯端侧",
+    component: lazy(() => import("@bcr/docgen-studio/app").then((m) => ({ default: m.App }))),
   },
 ];
 

@@ -159,6 +159,12 @@ const dataRoute = createRoute({
   component: () => null,
 });
 
+const docgenRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/docgen",
+  component: () => null,
+});
+
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
     homeRoute,
@@ -170,6 +176,7 @@ export const router = createRouter({
     documentsRoute,
     readerRoute,
     dataRoute,
+    docgenRoute,
   ]),
 });
 

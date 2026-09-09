@@ -35,6 +35,23 @@
         "tailwindcss": "^4.3.3",
       },
     },
+    "apps/docgen-studio": {
+      "name": "@bcr/docgen-studio",
+      "version": "0.1.0",
+      "dependencies": {
+        "@bcr/docgen-core": "workspace:*",
+        "lucide-react": "^1.37.0",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
+      },
+      "devDependencies": {
+        "@tailwindcss/vite": "^4.3.3",
+        "@types/react": "^19.2.0",
+        "@types/react-dom": "^19.2.0",
+        "@vitejs/plugin-react": "^5.0.0",
+        "tailwindcss": "^4.3.3",
+      },
+    },
     "apps/document-studio": {
       "name": "@bcr/document-studio",
       "version": "0.1.0",
@@ -205,6 +222,7 @@
         "@bcr/core": "workspace:*",
         "@bcr/data-core": "workspace:*",
         "@bcr/data-studio": "workspace:*",
+        "@bcr/docgen-studio": "workspace:*",
         "@bcr/document-core": "workspace:*",
         "@bcr/document-studio": "workspace:*",
         "@bcr/manga-studio": "workspace:*",
@@ -279,6 +297,10 @@
       "devDependencies": {
         "typescript": "^5.9.0",
       },
+    },
+    "packages/docgen-core": {
+      "name": "@bcr/docgen-core",
+      "version": "0.1.0",
     },
     "packages/document-core": {
       "name": "@bcr/document-core",
@@ -413,6 +435,10 @@
     "@bcr/data-core": ["@bcr/data-core@workspace:packages/data-core"],
 
     "@bcr/data-studio": ["@bcr/data-studio@workspace:apps/data-studio"],
+
+    "@bcr/docgen-core": ["@bcr/docgen-core@workspace:packages/docgen-core"],
+
+    "@bcr/docgen-studio": ["@bcr/docgen-studio@workspace:apps/docgen-studio"],
 
     "@bcr/document-core": ["@bcr/document-core@workspace:packages/document-core"],
 
