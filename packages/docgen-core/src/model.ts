@@ -3,7 +3,7 @@
  * 所有机构 / 地区 / 货币均为虚构，仅用于版式学习演示。
  */
 
-export type RegionId = "nordhavn" | "caldera";
+export type RegionId = "nordhavn" | "caldera" | "veridia" | "castellan";
 
 export type BillKind = "water" | "power" | "gas" | "telecom";
 
@@ -51,6 +51,13 @@ export interface ChargeLine {
   readonly amount: number;
 }
 
+/** 美式流派的账户摘要：total = previousBalance − paymentsReceived + currentCharges */
+export interface AccountSummary {
+  readonly previousBalance: number;
+  readonly paymentsReceived: number;
+  readonly currentCharges: number;
+}
+
 /** 渲染所需的全部派生数据（renderHtml 不再做任何计算） */
 export interface BillViewModel {
   readonly docType: string;
@@ -82,6 +89,8 @@ export interface BillViewModel {
   readonly taxLabel: string;
   readonly tax: number;
   readonly total: number;
+  /** 美式流派模板才有：上期余额 / 已收款 / 本期费用 */
+  readonly accountSummary?: AccountSummary;
   readonly barcodePayload: string;
   readonly qrSeed: string;
   readonly notes: ReadonlyArray<string>;

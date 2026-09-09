@@ -6,16 +6,18 @@ import { validateBillInput } from "../src/validate";
 import type { BillInput } from "../src/model";
 
 describe("registry", () => {
-  it("2 个虚构地区、4 个模板、docType 唯一", () => {
-    expect(REGIONS).toHaveLength(2);
-    expect(TEMPLATES).toHaveLength(4);
-    expect(new Set(TEMPLATES.map((t) => t.docType)).size).toBe(4);
+  it("4 个虚构地区、8 个模板、docType 唯一", () => {
+    expect(REGIONS).toHaveLength(4);
+    expect(TEMPLATES).toHaveLength(8);
+    expect(new Set(TEMPLATES.map((t) => t.docType)).size).toBe(8);
   });
 
   it("listTemplates 按地区过滤；getTemplate 往返", () => {
     expect(listTemplates("nordhavn").map((t) => t.docType)).toEqual(["nh_water", "nh_power"]);
     expect(listTemplates("caldera").map((t) => t.docType)).toEqual(["ci_gas", "ci_telecom"]);
-    expect(listTemplates()).toHaveLength(4);
+    expect(listTemplates("veridia").map((t) => t.docType)).toEqual(["vd_power", "vd_water"]);
+    expect(listTemplates("castellan").map((t) => t.docType)).toEqual(["cs_power", "cs_water"]);
+    expect(listTemplates()).toHaveLength(8);
     for (const t of TEMPLATES) expect(getTemplate(t.docType)).toBe(t);
     expect(getTemplate("nope")).toBeUndefined();
   });
@@ -27,7 +29,9 @@ describe("registry", () => {
   });
 
   it("全部为虚构机构，不含真实公用事业公司名", () => {
-    const banned = /thames|bc hydro|british gas|edf|anglian|severn|octopus|sse\b|e\.on|veolia|suez/i;
+    // 真实机构黑名单（防回归）：新机构名同样不得命中
+    const banned =
+      /thames|bc hydro|british gas|edf|anglian|severn|octopus|sse\b|e\.on|eon\b|veolia|suez|pacific gas|pg&e|duke|con ?ed|southern company|national grid|scottish ?power|npower|centrica|xcel|dominion|iberdrola|enel|engie|united utilities|yorkshire water|southern water|wessex/i;
     for (const t of TEMPLATES) {
       const input: BillInput = {
         docType: t.docType,
@@ -124,12 +128,16 @@ describe("randomAddress", () => {
     expect(listAddresses("nordhavn")).toContainEqual(a);
   });
 
-  it("caldera 邮编均满足模板 pattern", () => {
-    const gas = getTemplate("ci_gas");
-    if (gas === undefined) throw new Error("missing ci_gas");
-    const postcodeField = gas.fields.find((f) => f.key === "postcode");
-    for (const entry of listAddresses("caldera")) {
-      expect(entry["postcode"] ?? "").toMatch(postcodeField?.pattern ?? /$^/);
+  it("每地区地址库均满足其模板字段 pattern（caldera 邮编 / veridia 州+zip / castellan 邮编等）", () => {
+    for (const t of TEMPLATES) {
+      for (const entry of listAddresses(t.regionId)) {
+        for (const field of t.fields) {
+          const value = entry[field.key] ?? "";
+          if (field.pattern !== undefined) {
+            expect(value, `${t.docType}.${field.key}=${value}`).toMatch(field.pattern);
+          }
+        }
+      }
     }
   });
 });

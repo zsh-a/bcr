@@ -5,7 +5,9 @@
 import { fnv1a, mulberry32 } from "./hash";
 import type { BillInput, BillTemplate, RegionId } from "./model";
 import { ciGas, ciTelecom } from "./templates/caldera";
+import { csPower, csWater } from "./templates/castellan";
 import { nhPower, nhWater } from "./templates/nordhavn";
+import { vdPower, vdWater } from "./templates/veridia";
 
 export interface RegionDef {
   readonly id: RegionId;
@@ -36,9 +38,34 @@ export const REGIONS: ReadonlyArray<RegionDef> = [
     accent: "#a8503c",
     description: "虚构的火山群岛 · 燃气 / 宽带",
   },
+  {
+    id: "veridia",
+    label: "维里迪亚",
+    labelEn: "Veridia",
+    flag: "🌲",
+    accent: "#1b4f8a",
+    description: "虚构的美式山谷州 · 电 / 水（阶梯水价）",
+  },
+  {
+    id: "castellan",
+    label: "卡斯泰兰",
+    labelEn: "Castellan",
+    flag: "🏰",
+    accent: "#0f6f6a",
+    description: "虚构的欧式市镇群 · 电 / 水（standing charge + VAT）",
+  },
 ];
 
-export const TEMPLATES: ReadonlyArray<BillTemplate> = [nhWater, nhPower, ciGas, ciTelecom];
+export const TEMPLATES: ReadonlyArray<BillTemplate> = [
+  nhWater,
+  nhPower,
+  ciGas,
+  ciTelecom,
+  vdPower,
+  vdWater,
+  csPower,
+  csWater,
+];
 
 export function listTemplates(regionId?: RegionId): ReadonlyArray<BillTemplate> {
   if (regionId === undefined) return TEMPLATES;
