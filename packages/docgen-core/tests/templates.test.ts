@@ -7,24 +7,138 @@ import type { BillInput } from "../src/model";
 const ADDRESSES: Record<string, Record<string, string>> = {
   nh_water: { street: "14 Fjordgate", city: "Nordhavn", province: "Havnmark" },
   nh_power: { street: "27 Havnevej", city: "Nordhavn", province: "Havnmark" },
-  ci_gas: { streetNumber: "12", streetName: "Cinder Lane", town: "Port Ember", postcode: "CE14 2PA" },
-  ci_telecom: { streetNumber: "7", streetName: "Obsidian Way", town: "Caldera City", postcode: "CC02 9QR" },
-  vd_power: { streetNumber: "742", streetName: "Birchwood Lane", city: "Bluehill", state: "VD", zip: "74210" },
-  vd_water: { streetNumber: "15", streetName: "Kestrel Court", city: "Kestrel Ridge", state: "VD", zip: "74318" },
+  ci_gas: {
+    streetNumber: "12",
+    streetName: "Cinder Lane",
+    town: "Port Ember",
+    postcode: "CE14 2PA",
+  },
+  ci_telecom: {
+    streetNumber: "7",
+    streetName: "Obsidian Way",
+    town: "Caldera City",
+    postcode: "CC02 9QR",
+  },
+  vd_power: {
+    streetNumber: "742",
+    streetName: "Birchwood Lane",
+    city: "Bluehill",
+    state: "VD",
+    zip: "74210",
+  },
+  vd_water: {
+    streetNumber: "15",
+    streetName: "Kestrel Court",
+    city: "Kestrel Ridge",
+    state: "VD",
+    zip: "74318",
+  },
   cs_power: { street: "24 Rue des Tilleuls", city: "Castelbrun", postcode: "4812 EX" },
   cs_water: { street: "8 Avenue du Clocher", city: "Montaubray", postcode: "3407 LM" },
   wl_power: { strasse: "Falkenstraße 12", plz: "91240", ort: "Falkenheim" },
   wl_gas: { strasse: "Waldweg 7", plz: "91244", ort: "Waldbrück" },
-  lc_water: { flat: "Flat A, 12/F", estate: "Lung Wah Estate, Block 3", district: "Lung Shing East" },
+  lc_water: {
+    flat: "Flat A, 12/F",
+    estate: "Lung Wah Estate, Block 3",
+    district: "Lung Shing East",
+  },
   lc_power: { flat: "Flat 5B, 23/F", estate: "Harbour Jade Court", district: "Harbourpoint" },
-  co_power: { streetNo: "14", streetName: "Banksia Street", suburb: "Coral Cove", state: "CQL", postcode: "4820" },
-  co_gas: { streetNo: "27", streetName: "Banyan Parade", suburb: "Banyan Bay", state: "CQL", postcode: "4822" },
-  nl_power: { streetNo: "142", streetName: "Spruce Hollow Road", city: "Northpine", province: "NP", postalCode: "N4P 2K1" },
-  nl_gas: { streetNo: "28", streetName: "Borealis Crescent", city: "Borealis Falls", province: "NP", postalCode: "N7B 3T9" },
+  co_power: {
+    streetNo: "14",
+    streetName: "Banksia Street",
+    suburb: "Coral Cove",
+    state: "CQL",
+    postcode: "4820",
+  },
+  co_gas: {
+    streetNo: "27",
+    streetName: "Banyan Parade",
+    suburb: "Banyan Bay",
+    state: "CQL",
+    postcode: "4822",
+  },
+  nl_power: {
+    streetNo: "142",
+    streetName: "Spruce Hollow Road",
+    city: "Northpine",
+    province: "NP",
+    postalCode: "N4P 2K1",
+  },
+  nl_gas: {
+    streetNo: "28",
+    streetName: "Borealis Crescent",
+    city: "Borealis Falls",
+    province: "NP",
+    postalCode: "N7B 3T9",
+  },
   eq_utilities: { blockStreet: "Blk 128 Equator Avenue", unitNo: "#12-34", postalCode: "560128" },
   eq_telecom: { blockStreet: "Blk 45 Meridian Walk", unitNo: "#03-08", postalCode: "541045" },
   wn_energy: { streetNo: "12", streetName: "Mill Lane", city: "Wenlock", postcode: "WN4 2QA" },
   wn_water: { streetNo: "3", streetName: "Abbey Close", city: "Wealdminster", postcode: "WM1 8TR" },
+  au_agl_gas: {
+    streetNo: "3",
+    streetName: "Pelican Close",
+    suburb: "Pelican Point",
+    state: "SCR",
+    postcode: "4705",
+  },
+  au_energyau_power: {
+    streetNo: "8",
+    streetName: "Wattlebrae Circuit",
+    suburb: "Wattlebrae",
+    state: "CQL",
+    postcode: "4833",
+  },
+  ca_bchydro_power: {
+    streetNo: "7",
+    streetName: "Timberline Drive",
+    city: "Timberline",
+    province: "BO",
+    postalCode: "B2L 8R4",
+  },
+  ca_enmax_power: {
+    streetNo: "903",
+    streetName: "Frost Lake Road",
+    city: "Frost Lake",
+    province: "BO",
+    postalCode: "B9F 1C6",
+  },
+  ca_hydroone_power: {
+    streetNo: "36",
+    streetName: "Caribou Trail",
+    city: "Caribou Crossing",
+    province: "NP",
+    postalCode: "N1X 5W7",
+  },
+  hk_electricity_power: {
+    flat: "Flat C, 7/F",
+    estate: "Dragon Gate Gardens, Tower 2",
+    district: "Lung Shing West",
+  },
+  hk_water_bill: { flat: "Flat 18D, 31/F", estate: "Golden Carp Court", district: "North Reef" },
+  sg_singtel_telecom: {
+    blockStreet: "Blk 302 Lagoon Drive",
+    unitNo: "#21-17",
+    postalCode: "572302",
+  },
+  uk_britishgas_gas: {
+    streetNo: "27",
+    streetName: "Foxglove Row",
+    city: "Foxglove",
+    postcode: "FX6 3LN",
+  },
+  uk_eonnext_power: {
+    streetNo: "48",
+    streetName: "Thistle Down",
+    city: "Thistledown",
+    postcode: "TD9 1PB",
+  },
+  uk_thameswater_water: {
+    streetNo: "9",
+    streetName: "Nether Combe Road",
+    city: "Nether Combe",
+    postcode: "NC2 7WD",
+  },
 };
 
 function makeInput(docType: string): BillInput {
@@ -96,6 +210,13 @@ describe("金额与日期推导", () => {
         nl_power: 60,
         wn_energy: 90,
         wn_water: 180,
+        au_agl_gas: 90,
+        au_energyau_power: 90,
+        hk_electricity_power: 60,
+        hk_water_bill: 123,
+        uk_britishgas_gas: 31,
+        uk_eonnext_power: 31,
+        uk_thameswater_water: 190,
       };
       expect(vm.periodDays).toBe(periodDays[template.docType] ?? 30);
     });
@@ -174,7 +295,9 @@ describe("vd_power（美式：账户摘要 + 12 期用量 + 回单存根）", ()
     if (s === undefined) return;
     const current = vm.subtotal + vm.tax;
     expect(Math.abs(s.currentCharges - current)).toBeLessThan(0.005);
-    expect(Math.abs(s.previousBalance - s.paymentsReceived + current - vm.total)).toBeLessThan(0.005);
+    expect(Math.abs(s.previousBalance - s.paymentsReceived + current - vm.total)).toBeLessThan(
+      0.005,
+    );
     expect(s.paymentsReceived).toBeLessThanOrEqual(s.previousBalance + 0.005);
   });
 
@@ -395,7 +518,9 @@ describe("wl_gas（Gas-Jahresabrechnung：热值换算）", () => {
     const conv = vm.conversion;
     expect(conv).toBeDefined();
     if (conv === undefined) return;
-    expect(Math.abs(conv.cubicMeters * conv.brennwert * conv.zustandszahl - conv.kwh)).toBeLessThan(0.51);
+    expect(Math.abs(conv.cubicMeters * conv.brennwert * conv.zustandszahl - conv.kwh)).toBeLessThan(
+      0.51,
+    );
     expect(conv.brennwert).toBeGreaterThan(11);
     expect(conv.zustandszahl).toBeGreaterThan(0.9);
     expect(conv.zustandszahl).toBeLessThan(1);
@@ -459,7 +584,9 @@ describe("lc_water（香港：分级水价 + 排污费 + 缴款回条）", () =>
       const qty = Number((match?.[2] ?? "0").replaceAll(",", ""));
       qtySum += qty;
       expect(Number(match?.[3])).toBe(rates[i]);
-      expect(Math.abs(line.amount - Math.round(qty * (rates[i] ?? 0) * 100) / 100)).toBeLessThan(0.005);
+      expect(Math.abs(line.amount - Math.round(qty * (rates[i] ?? 0) * 100) / 100)).toBeLessThan(
+        0.005,
+      );
     }
     expect(qtySum).toBe(m3);
     expect(tierLines[0]?.amount).toBe(0); // 首级免费
@@ -469,7 +596,9 @@ describe("lc_water（香港：分级水价 + 排污费 + 缴款回条）", () =>
     const sewage = vm.charges.find((c) => c.label.includes("Sewage"));
     expect(sewage).toBeDefined();
     const m3 = Number((vm.meterRows[0]?.usage ?? "0").replace(/[^\d]/g, ""));
-    expect(Math.abs((sewage?.amount ?? 0) - Math.round(m3 * 0.7 * 2.92 * 100) / 100)).toBeLessThan(0.01);
+    expect(Math.abs((sewage?.amount ?? 0) - Math.round(m3 * 0.7 * 2.92 * 100) / 100)).toBeLessThan(
+      0.01,
+    );
     expect(vm.tax).toBe(0);
     expect(vm.total).toBe(vm.subtotal);
   });
@@ -550,8 +679,12 @@ describe("nl_power（加拿大：Step 1 / Step 2 阶梯）", () => {
 
   it("Step1 + Step2 电量 = 总用量；GST 5%", () => {
     const kwh = Number((vm.meterRows[0]?.usage ?? "0").replace(/[^\d]/g, ""));
-    const s1 = /Step 1 · ([\d,]+) kWh/.exec(vm.charges.find((c) => c.label.startsWith("Step 1"))?.label ?? "");
-    const s2 = /Step 2 · ([\d,]+) kWh/.exec(vm.charges.find((c) => c.label.startsWith("Step 2"))?.label ?? "");
+    const s1 = /Step 1 · ([\d,]+) kWh/.exec(
+      vm.charges.find((c) => c.label.startsWith("Step 1"))?.label ?? "",
+    );
+    const s2 = /Step 2 · ([\d,]+) kWh/.exec(
+      vm.charges.find((c) => c.label.startsWith("Step 2"))?.label ?? "",
+    );
     const q1 = Number((s1?.[1] ?? "0").replaceAll(",", ""));
     const q2 = Number((s2?.[1] ?? "0").replaceAll(",", ""));
     expect(q1 + q2).toBe(kwh);
@@ -570,7 +703,9 @@ describe("nl_gas（加拿大：carbon charge per m³ 分行）", () => {
     const m3 = Number((vm.meterRows[0]?.usage ?? "0").replace(/[^\d]/g, ""));
     const carbon = vm.charges.find((c) => c.label.startsWith("Carbon charge"));
     expect(carbon).toBeDefined();
-    expect(Math.abs((carbon?.amount ?? 0) - Math.round(m3 * 0.1535 * 100) / 100)).toBeLessThan(0.005);
+    expect(Math.abs((carbon?.amount ?? 0) - Math.round(m3 * 0.1535 * 100) / 100)).toBeLessThan(
+      0.005,
+    );
     expect(vm.charges.some((c) => c.label.startsWith("Delivery charge"))).toBe(true);
     expect(vm.charges.some((c) => c.label.startsWith("Commodity charge"))).toBe(true);
   });

@@ -4,16 +4,21 @@
 
 import { fnv1a, mulberry32 } from "./hash";
 import type { BillInput, BillTemplate, RegionId } from "./model";
+import { auAglGas, auEnergyAustraliaPower } from "./templates/au-bills";
+import { caBcHydroPower, caEnmaxPower, caHydroOnePower } from "./templates/ca-bills";
 import { ciGas, ciTelecom } from "./templates/caldera";
 import { coGas, coPower } from "./templates/coralia";
 import { csPower, csWater } from "./templates/castellan";
 import { eqTelecom, eqUtilities } from "./templates/equatoria";
+import { hkElectricityPower, hkWaterBill } from "./templates/hk-bills";
 import { lcPower, lcWater } from "./templates/longcheng";
 import { nhPower, nhWater } from "./templates/nordhavn";
 import { nlGas, nlPower } from "./templates/northland";
+import { sgSingtelTelecom } from "./templates/sg-bills";
 import { vdPower, vdWater } from "./templates/veridia";
 import { wlGas, wlPower } from "./templates/waldland";
 import { wnEnergy, wnWater } from "./templates/wenlock";
+import { ukBritishGasGas, ukEonNextPower, ukThamesWaterWater } from "./templates/uk-bills";
 
 export interface RegionDef {
   readonly id: RegionId;
@@ -131,6 +136,17 @@ export const TEMPLATES: ReadonlyArray<BillTemplate> = [
   eqTelecom,
   wnEnergy,
   wnWater,
+  auAglGas,
+  auEnergyAustraliaPower,
+  caBcHydroPower,
+  caEnmaxPower,
+  caHydroOnePower,
+  hkElectricityPower,
+  hkWaterBill,
+  sgSingtelTelecom,
+  ukBritishGasGas,
+  ukEonNextPower,
+  ukThamesWaterWater,
 ];
 
 export function listTemplates(regionId?: RegionId): ReadonlyArray<BillTemplate> {

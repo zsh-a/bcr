@@ -6,10 +6,10 @@ import { validateBillInput } from "../src/validate";
 import type { BillInput } from "../src/model";
 
 describe("registry", () => {
-  it("10 个虚构地区、20 个模板、docType 唯一", () => {
+  it("10 个虚构地区、31 个模板、docType 唯一", () => {
     expect(REGIONS).toHaveLength(10);
-    expect(TEMPLATES).toHaveLength(20);
-    expect(new Set(TEMPLATES.map((t) => t.docType)).size).toBe(20);
+    expect(TEMPLATES).toHaveLength(31);
+    expect(new Set(TEMPLATES.map((t) => t.docType)).size).toBe(31);
   });
 
   it("listTemplates 按地区过滤；getTemplate 往返", () => {
@@ -18,12 +18,38 @@ describe("registry", () => {
     expect(listTemplates("veridia").map((t) => t.docType)).toEqual(["vd_power", "vd_water"]);
     expect(listTemplates("castellan").map((t) => t.docType)).toEqual(["cs_power", "cs_water"]);
     expect(listTemplates("waldland").map((t) => t.docType)).toEqual(["wl_power", "wl_gas"]);
-    expect(listTemplates("longcheng").map((t) => t.docType)).toEqual(["lc_water", "lc_power"]);
-    expect(listTemplates("coralia").map((t) => t.docType)).toEqual(["co_power", "co_gas"]);
-    expect(listTemplates("northland").map((t) => t.docType)).toEqual(["nl_power", "nl_gas"]);
-    expect(listTemplates("equatoria").map((t) => t.docType)).toEqual(["eq_utilities", "eq_telecom"]);
-    expect(listTemplates("wenlock").map((t) => t.docType)).toEqual(["wn_energy", "wn_water"]);
-    expect(listTemplates()).toHaveLength(20);
+    expect(listTemplates("longcheng").map((t) => t.docType)).toEqual([
+      "lc_water",
+      "lc_power",
+      "hk_electricity_power",
+      "hk_water_bill",
+    ]);
+    expect(listTemplates("coralia").map((t) => t.docType)).toEqual([
+      "co_power",
+      "co_gas",
+      "au_agl_gas",
+      "au_energyau_power",
+    ]);
+    expect(listTemplates("northland").map((t) => t.docType)).toEqual([
+      "nl_power",
+      "nl_gas",
+      "ca_bchydro_power",
+      "ca_enmax_power",
+      "ca_hydroone_power",
+    ]);
+    expect(listTemplates("equatoria").map((t) => t.docType)).toEqual([
+      "eq_utilities",
+      "eq_telecom",
+      "sg_singtel_telecom",
+    ]);
+    expect(listTemplates("wenlock").map((t) => t.docType)).toEqual([
+      "wn_energy",
+      "wn_water",
+      "uk_britishgas_gas",
+      "uk_eonnext_power",
+      "uk_thameswater_water",
+    ]);
+    expect(listTemplates()).toHaveLength(31);
     for (const t of TEMPLATES) expect(getTemplate(t.docType)).toBe(t);
     expect(getTemplate("nope")).toBeUndefined();
   });
@@ -45,10 +71,13 @@ describe("registry", () => {
         address: {},
         billDate: "2026-09-09",
       };
-      const vm = t.compute(input, (() => {
-        let i = 0;
-        return () => (i = (i + 0.37) % 1);
-      })());
+      const vm = t.compute(
+        input,
+        (() => {
+          let i = 0;
+          return () => (i = (i + 0.37) % 1);
+        })(),
+      );
       expect(vm.utilityName).not.toMatch(banned);
       expect(t.renderHtml(vm, { watermark: true })).not.toMatch(banned);
     }
