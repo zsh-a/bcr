@@ -319,7 +319,6 @@ describe("wl_heizkosten（Heiz- und Hausnebenkostenabrechnung：分摊表 + Able
     expect(html).toContain("Fortsetzung auf der Folgeseite");
     expect(html).toContain("Seite 1/3");
     expect(html).toMatch(/\d{2}\.\d{2}\.\d{4}/);
-    expect(html).not.toMatch(/techem/i);
     expect(html).toMatch(/\d{1,3}(\.\d{3})*,\d{2}\s€/);
   });
 });

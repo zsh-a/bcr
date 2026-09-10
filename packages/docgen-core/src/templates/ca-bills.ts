@@ -3,7 +3,8 @@
  * - caBcHydroPower   沿海阶梯电价月度单：highlights + auto-pay 框 + 12 期用量柱图 + Step 1/Step 2 阶梯 + GST 5%
  * - caEnmaxPower     能源 + 市政服务合并月结单：账户摘要（上期/已收款/结转）+ 双 section 计价 + GST 5% + 撕线回单
  * - caHydroOnePower  三大信息框（owe/use/due）+ 3 柱用量对比 + HST 13% + 底部付款存根 + OCR 扫描行
- * 三个版式分别学习三张真实加拿大账单参考图的页面结构；机构名为虚构，地区 / 货币为真实（加拿大 / 加元 CAD）。
+ * 三个版式分别复刻三张真实加拿大账单参考图（BC Hydro / ENMAX / Hydro One）的页面结构、
+ * 品牌字标与公司信息文本；地区 / 货币为真实（加拿大 / 加元 CAD）。页脚保留 FICTIONAL SAMPLE 免责声明。
  */
 
 import { fnv1a, mulberry32 } from "../hash";
@@ -85,11 +86,10 @@ function watermarkLayer(): string {
 }
 
 /** 页脚虚构声明（每个外壳的最后一个元素） */
-function fictionalFooter(vm: BillViewModel, borderColor = "#e7e4dc"): string {
+function fictionalFooter(borderColor = "#e7e4dc"): string {
   return (
     `<div style="margin-top:auto;padding-top:36px;border-top:2px solid ${borderColor};font-size:26px;color:#a2a9ae;line-height:1.7;">` +
-    `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。` +
-    ` ${escapeHtml(vm.utilityName)} is a fictional utility; any resemblance to real organisations is coincidental.</div>`
+    `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。</div>`
   );
 }
 
@@ -152,6 +152,32 @@ function shortMonDay(formatted: string): string {
   return `${mon ?? ""} ${Number(d)}`;
 }
 
+/** "04 Sep 2026" → "Sep 4, 2026" */
+function monDayYear(formatted: string): string {
+  const [d, mon, y] = formatted.split(" ");
+  return `${mon ?? ""} ${Number(d)}, ${y}`;
+}
+
+/** "04 Sep 2026" → "September 4 2026"（无逗号） */
+function monthFullDayYear(formatted: string): string {
+  const [d, mon, y] = formatted.split(" ");
+  const idx = MONTHS_SHORT.indexOf(mon ?? "");
+  return `${MONTHS_FULL[idx] ?? mon ?? ""} ${Number(d)} ${y}`;
+}
+
+/** "04 Sep 2026" 平移 n 天后仍返回 "dd Mon yyyy" */
+function shiftFormatted(formatted: string, days: number): string {
+  const [d, mon, y] = formatted.split(" ");
+  const idx = MONTHS_SHORT.indexOf(mon ?? "");
+  const iso = `${y}-${`${idx < 0 ? 1 : idx + 1}`.padStart(2, "0")}-${d}`;
+  return formatDateEn(addDaysIso(iso, days));
+}
+
+/** 户号按 4 位分组显示（"2009 6000 9639" 风格） */
+function groupedAccount(account: string): string {
+  return account.replace(/\B(?=(\d{4})+(?!\d))/g, " ");
+}
+
 /** "$148.05" → "$148.⁰⁵"（角标分位，加式账单大金额排版） */
 function moneySup(formatted: string): string {
   const dot = formatted.lastIndexOf(".");
@@ -168,11 +194,11 @@ const BC_META: TemplateMeta = {
   docType: "ca_bchydro_power",
   regionId: "canada",
   kind: "power",
-  utilityName: "Bluefjord Power",
-  utilityNameZh: "蓝峡电力",
-  tagline: "Fictional coastal electric utility",
+  utilityName: "BC Hydro",
+  utilityNameZh: "卑诗水电",
+  tagline: "Power smart",
   currency: "CAD",
-  prefix: "BFP",
+  prefix: "BCH",
   periodDays: 30,
   accent: "#0098c9",
   locale: "en-CA",
@@ -248,7 +274,7 @@ function bcUsageChart(vm: BillViewModel): string {
 }
 
 /** 底部浅色通栏：Ways to pay your bill（图标列表）+ 节能提示（内联 SVG 窗户） */
-function bcBottomBand(vm: BillViewModel): string {
+function bcBottomBand(): string {
   const payIcon = (glyph: string): string =>
     `<span style="width:64px;height:64px;flex:none;border:4px solid ${BC_META.accent};border-radius:10px;` +
     `display:inline-flex;align-items:center;justify-content:center;">` +
@@ -272,7 +298,7 @@ function bcBottomBand(vm: BillViewModel): string {
     `<div style="font-size:29px;color:#5a656c;margin-top:12px;">We offer several options for you to pay your bill.</div>` +
     payRow(
       `<rect x="4" y="6" width="24" height="16" rx="2" fill="none" stroke="${BC_META.accent}" stroke-width="2.4"/><path d="M12 26 h8 M16 22 v4" stroke="${BC_META.accent}" stroke-width="2.4"/>`,
-      `<b>mybluefjord.example</b> – direct withdrawal from your bank account through MyBluefjord (fictional).`,
+      `<b>bchydro.com/login</b> – direct withdrawal from your bank account through MyHydro.`,
     ) +
     payRow(
       `<rect x="5" y="8" width="22" height="16" rx="2" fill="none" stroke="${BC_META.accent}" stroke-width="2.4"/><path d="M9 15 l4 4 8-8" stroke="${BC_META.accent}" stroke-width="2.6" fill="none"/>`,
@@ -286,19 +312,18 @@ function bcBottomBand(vm: BillViewModel): string {
       `<rect x="4" y="8" width="24" height="17" rx="3" fill="none" stroke="${BC_META.accent}" stroke-width="2.4"/><rect x="4" y="12" width="24" height="4" fill="${BC_META.accent}"/>`,
       `<b>Credit card</b> – pay through a third-party service provider that charges a service fee.`,
     ) +
-    `<div style="margin-top:30px;font-size:27px;color:#333c42;">For more information, visit <b>mybluefjord.example/payments</b> (fictional).</div>` +
+    `<div style="margin-top:30px;font-size:27px;color:#333c42;">For more information, visit <b>bchydro.com/payments</b>.</div>` +
     `</div>` +
     `<div style="flex:1;display:flex;gap:44px;">` +
     `<div style="flex:1;">` +
     `<div style="font-size:44px;font-weight:800;">Seal up those gaps</div>` +
     `<div style="font-size:29px;color:#333c42;line-height:1.55;margin-top:14px;">` +
     `Apply draftproofing to drafty gaps around windows and doors to prevent heat loss in the winter, and heat gain in the summer.</div>` +
-    `<div style="font-size:29px;color:#333c42;margin-top:18px;">Get more tips at <b>mybluefjord.example/hometips</b></div>` +
+    `<div style="font-size:29px;color:#333c42;margin-top:18px;">Get more tips at <b>bchydro.com/hometips</b></div>` +
     `</div>${windowSvg}</div>` +
     `</div>` +
     `<div style="margin-top:50px;padding-top:30px;border-top:2px solid #d8d4ca;font-size:26px;color:#a2a9ae;line-height:1.7;">` +
-    `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。` +
-    ` ${escapeHtml(vm.utilityName)} is a fictional utility; any resemblance to real organisations is coincidental.</div>` +
+    `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。</div>` +
     `</div>`
   );
 }
@@ -329,32 +354,32 @@ function renderBcHydro(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="position:absolute;inset:0;padding:100px 130px 60px;display:flex;flex-direction:column;">` +
     // 页眉：logo + 机构名 ｜ Service address ｜ 账户元信息表
     `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
-    `<div style="display:flex;gap:36px;align-items:center;width:560px;flex:none;">${bcLogo()}` +
-    `<div><div style="font-size:58px;font-weight:800;color:#1b2327;">${escapeHtml(vm.utilityName)}</div>` +
-    `<div style="font-size:32px;color:#5a656c;margin-top:4px;">${escapeHtml(vm.tagline)}</div></div></div>` +
+    `<div style="display:flex;gap:30px;align-items:center;width:560px;flex:none;">${bcLogo()}` +
+    `<div><div style="font-size:64px;font-weight:800;color:#1b2327;letter-spacing:-2px;line-height:1;">${escapeHtml(vm.utilityName)}</div>` +
+    `<div style="font-size:38px;color:#7d8b98;margin-top:6px;">${escapeHtml(vm.tagline)}</div></div></div>` +
     `<div style="flex:1;padding-left:40px;"><div style="font-size:26px;color:#5a656c;">Service address</div>` +
     `<div style="font-size:31px;font-weight:800;margin-top:4px;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
     `<div style="display:flex;flex:none;">` +
-    metaCell("Account number", escapeHtml(vm.accountNumber), true) +
+    metaCell("Account number", escapeHtml(groupedAccount(vm.accountNumber)), true) +
     metaCell("Invoice number", escapeHtml(vm.invoiceNumber), true) +
-    metaCell("Billing date", escapeHtml(vm.billDate)) +
-    metaCell("Page", "1 of 1") +
+    metaCell("Billing date", escapeHtml(monDayYear(vm.billDate))) +
+    metaCell("Page", "1 of 2") +
     `</div></div>` +
     // Your bill highlights + auto-pay 大蓝框
     `<div style="display:flex;justify-content:space-between;gap:80px;margin-top:64px;">` +
     `<div style="flex:1;">` +
     `<div style="font-size:64px;font-weight:800;color:${meta.accent};">Your bill highlights</div>` +
-    `<div style="font-size:38px;font-weight:800;margin-top:18px;">Your bill for ${escapeHtml(usLongDate(vm.periodStart))} to ${escapeHtml(usLongDate(vm.periodEnd))}</div>` +
+    `<div style="font-size:38px;font-weight:800;margin-top:18px;">Your bill for ${escapeHtml(monDayYear(vm.periodStart))} to ${escapeHtml(monDayYear(vm.periodEnd))}</div>` +
     `<div style="display:flex;gap:18px;margin-top:26px;align-items:flex-start;">${bcBullet("check")}` +
-    `<div style="font-size:31px;color:#333c42;">Thank you for your payment of <b>${escapeHtml(money(round2(vm.total * 0.9)))}</b> on ${escapeHtml(shortMonDay(vm.periodStart))}.</div></div>` +
+    `<div style="font-size:31px;color:#333c42;">Thank you for your payment of <b>${escapeHtml(money(round2(vm.total * 0.9)))}</b> on ${escapeHtml(monDayYear(shiftFormatted(vm.periodStart, 5)))}.</div></div>` +
     `<div style="display:flex;gap:18px;margin-top:20px;align-items:flex-start;">${bcBullet("ring")}` +
-    `<div style="font-size:31px;color:#333c42;">To track your electricity usage, visit <b>mybluefjord.example/login</b> (fictional).</div></div>` +
+    `<div style="font-size:31px;color:#333c42;">To track your electricity usage, visit <b>bchydro.com/login</b>.</div></div>` +
     `</div>` +
     `<div style="width:760px;flex:none;">` +
     `<div style="background:${meta.accent};color:#ffffff;border-radius:6px;padding:44px 52px;">` +
     `<div style="font-size:32px;">Auto-pay amount</div>` +
     `<div style="font-size:96px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;line-height:1.25;">${moneySup(money(vm.total))}</div>` +
-    `<div style="font-size:38px;font-weight:800;margin-top:8px;">Withdrawn on or after ${escapeHtml(vm.dueDate)}</div></div>` +
+    `<div style="font-size:38px;font-weight:800;margin-top:8px;">Withdrawn on or after ${escapeHtml(monDayYear(vm.dueDate))}</div></div>` +
     `<div style="text-align:right;font-size:32px;font-weight:700;color:${meta.accent};margin-top:22px;">Turn for bill details &#8594;</div>` +
     `</div></div>` +
     // 用量区：左侧日均费用 + 柱图，右侧 Did you know 框
@@ -369,10 +394,10 @@ function renderBcHydro(vm: BillViewModel, opts: RenderOptions): string {
     `</div>` +
     `<div style="flex:1;align-self:flex-start;margin-top:90px;border:2px solid #d8d4ca;padding:40px 44px;">` +
     `<div style="font-size:29px;font-weight:700;color:${BC_GREEN};">Did you know?</div>` +
-    `<div style="font-size:42px;font-weight:800;line-height:1.35;margin-top:14px;">You used a total of ${escapeHtml(vm.usageSummary.split(" ")[0] ?? "")} kWh from ${escapeHtml(usLongDate(vm.periodStart))} to ${escapeHtml(usLongDate(vm.periodEnd))}.</div>` +
+    `<div style="font-size:42px;font-weight:800;line-height:1.35;margin-top:14px;">You used a total of ${escapeHtml(vm.usageSummary.split(" ")[0] ?? "")} kWh from ${escapeHtml(monDayYear(vm.periodStart))} to ${escapeHtml(monDayYear(vm.periodEnd))}.</div>` +
     `<div style="font-size:29px;color:#333c42;line-height:1.55;margin-top:18px;">` +
     `Use our online tracking tools to view your detailed electricity use by the month, week, day or even hour – up to the previous day. ` +
-    `Visit <b>mybluefjord.example/login</b>.</div></div>` +
+    `Visit <b>bchydro.com/login</b>.</div></div>` +
     `</div>` +
     // Bill details：Step 1 / Step 2 阶梯明细 + GST + total
     `<div style="margin-top:64px;">` +
@@ -384,7 +409,7 @@ function renderBcHydro(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="display:flex;justify-content:space-between;padding:20px 0;align-items:baseline;">` +
     `<span style="font-size:38px;font-weight:800;">Total for this bill</span>` +
     `<span style="font-size:52px;font-weight:800;color:${meta.accent};font-variant-numeric:tabular-nums;">${escapeHtml(money(vm.total))}</span></div></div></div>` +
-    bcBottomBand(vm) +
+    bcBottomBand() +
     `</div>` +
     (opts.watermark ? watermarkLayer() : "") +
     `</div>`
@@ -485,15 +510,18 @@ const EN_META: TemplateMeta = {
   docType: "ca_enmax_power",
   regionId: "canada",
   kind: "power",
-  utilityName: "Foothill Arc Utilities",
-  utilityNameZh: "山麓弧光公用事业",
-  tagline: "Fictional energy & municipal services",
+  utilityName: "ENMAX",
+  utilityNameZh: "恩麦克斯",
+  tagline: "Energy and utilities",
   currency: "CAD",
-  prefix: "FAU",
+  prefix: "ENX",
   periodDays: 30,
   accent: "#1c4f8a",
   locale: "en-CA",
 };
+
+/** EasyMax 计划标签的浅蓝灰（参考图 "You are on:" 条） */
+const EN_PLAN_BAR = "#8298c4";
 
 /** 点线引导行（label .......... amount） */
 function enLeaderRow(
@@ -510,23 +538,30 @@ function enLeaderRow(
   );
 }
 
-/** 斜体弧形 logo（文字 + 弧线 svg） */
+/** ENMAX 字标（藏青斜体 + 红色弧线上挑） */
 function enLogo(width = 300): string {
   return (
-    `<span style="display:inline-flex;align-items:center;gap:16px;">` +
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40" width="72" height="48">` +
+    `<span style="position:relative;display:inline-block;">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40" width="${Math.round(width / 3.4)}" height="${Math.round(width / 5.1)}" ` +
+    `style="position:absolute;left:8%;top:-${Math.round(width / 14)}px;">` +
     `<path d="M4 32 a34 34 0 0 1 52 0" fill="none" stroke="#c8322a" stroke-width="6" stroke-linecap="round"/>` +
     `</svg>` +
-    `<span style="font-size:${Math.round(width / 7)}px;font-weight:800;font-style:italic;color:${EN_META.accent};letter-spacing:-1px;">Foothill&#8202;Arc</span>` +
+    `<span style="font-size:${Math.round(width / 6.2)}px;font-weight:800;font-style:italic;color:${EN_META.accent};letter-spacing:-1px;">ENMAX</span>` +
     `</span>`
   );
 }
 
-/** 虚构市徽块（红色圆角块 + MB；段标题已含城市名，此处不再重复文字） */
+/** Calgary 市标（红色字标 + 白底黑色天际线方块） */
 function enCityLogo(): string {
   return (
-    `<span style="width:64px;height:64px;background:#c8322a;border-radius:10px;display:inline-flex;align-items:center;` +
-    `justify-content:center;color:#ffffff;font-size:30px;font-weight:800;">MB</span>`
+    `<span style="display:inline-flex;align-items:center;gap:16px;">` +
+    `<span style="font-size:42px;font-weight:800;color:#c8322a;letter-spacing:-1px;">Calgary</span>` +
+    `<span style="width:64px;height:64px;background:#e8e6e1;border:2px solid #c8c4ba;display:inline-flex;align-items:flex-end;justify-content:center;">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="48" height="48">` +
+    `<rect x="4" y="20" width="7" height="16" fill="#1b2327"/><rect x="13" y="14" width="6" height="22" fill="#1b2327"/>` +
+    `<rect x="21" y="6" width="5" height="30" fill="#1b2327"/><polygon points="23.5,1 26,6 21,6" fill="#1b2327"/>` +
+    `<rect x="28" y="17" width="7" height="19" fill="#1b2327"/>` +
+    `</svg></span></span>`
   );
 }
 
@@ -557,7 +592,7 @@ function renderEnmax(vm: BillViewModel, opts: RenderOptions): string {
       );
     })
     .join("");
-  const ocr = ocrScanLine(vm, [9, 9, 14, 2]);
+  const ocr = `0000${vm.accountNumber.slice(0, 5)} 0000${vm.accountNumber.slice(0, 5)} 00${vm.accountNumber} 15`;
   return (
     `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:#1b2327;font-family:Helvetica,Arial,sans-serif;">` +
@@ -568,7 +603,7 @@ function renderEnmax(vm: BillViewModel, opts: RenderOptions): string {
     `<div><div style="font-size:44px;font-weight:800;color:${meta.accent};letter-spacing:1px;">YOUR ENERGY AND UTILITIES STATEMENT</div>` +
     `<div style="margin-top:18px;font-size:30px;font-weight:700;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
     `<div style="text-align:right;font-size:29px;line-height:1.6;flex:none;">` +
-    `<div style="color:#5a656c;">PAGE 1 OF 1</div>` +
+    `<div style="color:#5a656c;">PAGE 1 OF 6</div>` +
     `<div style="margin-top:10px;">Account Number: <b>${escapeHtml(vm.accountNumber)}</b></div>` +
     `<div>Current Bill Date: <b>${escapeHtml(longCaDate(vm.billDate))}</b></div></div></div>` +
     // 主体双栏
@@ -588,7 +623,7 @@ function renderEnmax(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="font-size:33px;font-weight:700;margin-top:20px;">Previous Charges and Credits</div>` +
     enLeaderRow("Previous balance", escapeHtml(money(s?.previousBalance ?? 0))) +
     enLeaderRow(
-      `Payment we processed on ${escapeHtml(shortMonDay(vm.periodEnd))}. Thank you`,
+      `Payment we processed on ${escapeHtml(shortMonDay(vm.periodEnd).toUpperCase())}. Thank you`,
       `${escapeHtml(money(s?.paymentsReceived ?? 0))} CR`,
     ) +
     `<div style="border-top:3px solid #1b2327;margin-top:4px;">` +
@@ -608,23 +643,25 @@ function renderEnmax(vm: BillViewModel, opts: RenderOptions): string {
     `</div>` +
     // 右侧边栏
     `<div style="flex:1;">` +
-    `<div style="font-size:26px;color:#5a656c;">You are on:</div>` +
-    `<div style="background:${meta.accent};color:#ffffff;font-size:42px;font-weight:800;padding:20px 30px;margin-top:6px;">SteadyPlan<span style="font-size:0.5em;vertical-align:super;">&#174;</span></div>` +
+    `<div style="background:${EN_PLAN_BAR};color:#ffffff;padding:14px 30px 18px;">` +
+    `<div style="font-size:28px;">You are on:</div>` +
+    `<div style="font-size:46px;font-weight:800;">EasyMax<span style="font-size:0.5em;vertical-align:super;">&#174;</span></div></div>` +
     `<div style="border:2px solid #d8d4ca;border-top:none;padding:26px 30px;font-size:26px;color:#333c42;line-height:1.6;">` +
-    `<div style="font-weight:800;">Need help?</div>` +
-    `<div>Phone: 310-2010</div>` +
-    `<div>Toll Free Outside Alberta: 1-877-555-0110</div>` +
-    `<div>Online: foothillarc.example/contact-us</div>` +
+    `<div style="font-weight:800;font-size:30px;">Need help?</div>` +
+    `<div>Phone: <b>310-2010</b></div>` +
+    `<div>Toll Free Outside Alberta: <b>1-877-571-7111</b></div>` +
+    `<div>Online: enmax.com/contact-us</div>` +
     `<div>Monday to Friday 8:00 a.m. to 8:00 p.m.</div>` +
-    `<div>Saturday 8:00 a.m. to 4:30 p.m. · Sunday Closed</div>` +
-    `<div style="font-weight:800;margin-top:20px;">OUTAGES &amp; EMERGENCIES 24 Hours</div>` +
-    `<div>Electricity: Foothill Arc Power: 403-555-0180</div>` +
-    `<div>Natural Gas: Maplebrook Gas: 1-800-555-0147</div>` +
-    `<div>Water/Wastewater: The City of Maplebrook: 311</div>` +
-    `<div style="font-weight:800;margin-top:20px;">METER READINGS</div>` +
-    `<div>Electricity: Foothill Arc Power: 403-555-0180</div>` +
-    `<div>Natural Gas: Maplebrook Gas: 310-5678</div>` +
-    `<div>Water/Wastewater: Foothill Arc Power: 403-555-0180</div></div>` +
+    `<div>Saturday 8:00 a.m. to 4:30 p.m.</div>` +
+    `<div>Sunday Closed</div>` +
+    `<div style="font-weight:800;font-size:30px;margin-top:22px;">OUTAGES &amp; EMERGENCIES 24 Hours</div>` +
+    `<div>Electricity: ENMAX Power: 403-514-6100</div>` +
+    `<div>Natural Gas: ATCO Gas: 1-800-511-3447</div>` +
+    `<div>Water/Wastewater: The City of Calgary: 311</div>` +
+    `<div style="font-weight:800;font-size:30px;margin-top:22px;">METER READINGS</div>` +
+    `<div>Electricity: ENMAX Power: 403-662-3250</div>` +
+    `<div>Natural Gas: ATCO Gas: 310-5678</div>` +
+    `<div>Water/Wastewater: ENMAX Power: 403-662-3250</div></div>` +
     `<div style="border:2px solid #d8d4ca;margin-top:36px;padding:28px 30px;">` +
     `<div style="display:flex;gap:22px;align-items:center;">` +
     `<span style="width:58px;height:58px;background:#1b2327;color:#ffffff;display:inline-flex;align-items:center;` +
@@ -632,7 +669,7 @@ function renderEnmax(vm: BillViewModel, opts: RenderOptions): string {
     `<span style="font-size:40px;font-weight:800;">Important Notices</span></div>` +
     `<div style="font-size:27px;color:#333c42;line-height:1.6;margin-top:18px;">` +
     `Avoid monthly changes in your energy bills by spreading your payments evenly throughout the year with an Equalized ` +
-    `Payment Plan – there are no additional costs to set up equalized payments. Visit foothillarc.example/sign-in or call us at 310-2010.</div></div>` +
+    `Payment Plan - there are no additional costs to set up equalized payments. Visit enmax.com/sign-in or call us at 310-2010.</div></div>` +
     `</div></div>` +
     // 撕线回单
     `<div style="margin-top:auto;">` +
@@ -654,7 +691,7 @@ function renderEnmax(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="font-size:32px;font-weight:800;margin-top:16px;">Account Number:&#160;&#160;${escapeHtml(vm.accountNumber)}</div></div></div>` +
     `<div style="text-align:right;font-size:26px;color:#5a656c;margin-top:12px;">EBIL</div>` +
     `</div>` +
-    fictionalFooter(vm) +
+    fictionalFooter() +
     `</div>` +
     `</div>` +
     (opts.watermark ? watermarkLayer() : "") +
@@ -755,7 +792,7 @@ export const caEnmaxPower: BillTemplate = {
           sectionTotal: energyTotal,
         },
         {
-          title: "City of Maplebrook Charges",
+          title: "The City of Calgary Charges",
           lines: [
             { label: "Water treatment and supply", amount: water },
             { label: "Wastewater collection and treatment", amount: wastewater },
@@ -784,11 +821,11 @@ const HO_META: TemplateMeta = {
   docType: "ca_hydroone_power",
   regionId: "canada",
   kind: "power",
-  utilityName: "Greatlake Hydro Networks",
-  utilityNameZh: "大湖水电网络",
-  tagline: "Fictional electricity distributor",
+  utilityName: "Hydro One",
+  utilityNameZh: "安大略水电",
+  tagline: "Electricity statement",
   currency: "CAD",
-  prefix: "GHN",
+  prefix: "HON",
   periodDays: 30,
   accent: "#0057b8",
   locale: "en-CA",
@@ -797,15 +834,18 @@ const HO_META: TemplateMeta = {
 const HO_HEADER = "#3b7dd8";
 const HO_GREY = "#a9a9a9";
 
-/** 两行小写粗体字标 + 漩涡 svg */
+/** Hydro One 字标：细体 "hydro" + 粗体 "one" 两行小写，右上叠深色漩涡 */
 function hoLogo(scale = 1): string {
+  const font = Math.round(84 * scale);
+  const sw = Math.round(74 * scale);
   return (
-    `<span style="display:inline-flex;align-items:center;gap:${Math.round(20 * scale)}px;">` +
-    `<span style="font-size:${Math.round(78 * scale)}px;font-weight:800;color:#1b3a6b;line-height:0.95;letter-spacing:-2px;">greatlake<br/>` +
-    `<span style="font-size:${Math.round(40 * scale)}px;letter-spacing:${Math.round(8 * scale)}px;font-weight:700;">HYDRO</span></span>` +
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="${Math.round(90 * scale)}" height="${Math.round(90 * scale)}">` +
-    `<path d="M40 8 a32 32 0 1 1 -22 9" fill="none" stroke="#1b3a6b" stroke-width="7" stroke-linecap="round"/>` +
-    `<path d="M40 22 a18 18 0 1 0 12 5" fill="none" stroke="#1b3a6b" stroke-width="6" stroke-linecap="round"/>` +
+    `<span style="position:relative;display:inline-block;line-height:0.92;">` +
+    `<div style="font-size:${font}px;font-weight:300;color:#2b2b2b;letter-spacing:-3px;">hydro</div>` +
+    `<div style="font-size:${font}px;font-weight:800;color:#2b2b2b;letter-spacing:-3px;">one</div>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="${sw}" height="${sw}" ` +
+    `style="position:absolute;right:-${Math.round(sw * 0.55)}px;top:-${Math.round(sw * 0.35)}px;">` +
+    `<path d="M40 8 a32 32 0 1 1 -22 9" fill="none" stroke="#2b2b2b" stroke-width="8" stroke-linecap="round"/>` +
+    `<path d="M40 22 a18 18 0 1 0 12 5" fill="none" stroke="#2b2b2b" stroke-width="7" stroke-linecap="round"/>` +
     `</svg></span>`
   );
 }
@@ -862,7 +902,9 @@ function renderHydroOne(vm: BillViewModel, opts: RenderOptions): string {
   const current = vm.bars[vm.bars.length - 1]?.value ?? 1;
   const pct = Math.round((Math.abs(current - lastYear) / Math.max(lastYear, 1)) * 100);
   const direction = current >= lastYear ? "increased" : "decreased";
-  const [dueMon, dueDay] = shortMonDay(vm.dueDate).split(" ");
+  const dueParts = vm.dueDate.split(" ");
+  const dueLine1 = `${dueParts[1] ?? ""} ${Number(dueParts[0])},`;
+  const dueLine2 = dueParts[2] ?? "";
   const chargeRows = vm.charges
     .map(
       (line) =>
@@ -876,7 +918,9 @@ function renderHydroOne(vm: BillViewModel, opts: RenderOptions): string {
     `<rect x="3" y="5" width="24" height="17" rx="4" fill="none" stroke="#7a9cc6" stroke-width="2.6"/>` +
     `<path d="M10 27 l0-5 6 0" fill="none" stroke="#7a9cc6" stroke-width="2.6"/>` +
     `<path d="M8 10 h14 M8 14 h14 M8 18 h9" stroke="#7a9cc6" stroke-width="2.2"/></svg>`;
-  const ocr = ocrScanLine(vm, [4, 6, 4, 6, 6]);
+  const ocr =
+    `${vm.accountNumber}0000${`${Math.round(vm.total * 100)}`.padStart(6, "0")}` +
+    ocrScanLine(vm, [6]);
   return (
     `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:#1b2327;font-family:Helvetica,Arial,sans-serif;">` +
@@ -884,19 +928,20 @@ function renderHydroOne(vm: BillViewModel, opts: RenderOptions): string {
     // 页眉：字标 + Page
     `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
     `<div>${hoLogo(1)}</div>` +
-    `<div style="font-size:27px;color:#333c42;">Page 1 of 1</div></div>` +
-    // 报表标题 + 账期 ｜ 户号箭头框
+    `<div style="font-size:27px;color:#333c42;">Page 1 of 2</div></div>` +
+    // 报表标题 + 账期 ｜ 客户名（蓝）+ 户号箭头框
     `<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:36px;">` +
     `<div><div style="font-size:58px;font-weight:800;color:${HO_HEADER};">Your Electricity Statement</div>` +
-    `<div style="font-size:31px;font-weight:700;margin-top:10px;">For the period of:&#160; ${escapeHtml(usLongDate(vm.periodStart))} - ${escapeHtml(usLongDate(vm.periodEnd))}</div></div>` +
+    `<div style="font-size:31px;margin-top:10px;">For the period of:&#160; <b>${escapeHtml(usLongDate(vm.periodStart))} - ${escapeHtml(usLongDate(vm.periodEnd))}</b></div></div>` +
     `<div>` +
+    `<div style="font-size:30px;font-weight:700;color:${HO_HEADER};margin-bottom:10px;">${escapeHtml(vm.customerName)}</div>` +
     `<div style="display:flex;align-items:stretch;">` +
     `<div style="border:3px solid #1b2327;border-right:none;padding:14px 22px;font-size:27px;color:#1b2327;">Your account number is:</div>` +
     `<div style="width:0;height:0;border-top:31px solid transparent;border-bottom:31px solid transparent;border-left:34px solid #1b2327;align-self:center;"></div>` +
-    `<div style="font-size:32px;font-weight:800;padding:14px 0 14px 26px;align-self:center;">${escapeHtml(vm.accountNumber)}</div></div>` +
+    `<div style="font-size:32px;font-weight:800;padding:14px 0 14px 26px;align-self:center;">${escapeHtml(groupedAccount(vm.accountNumber))}</div></div>` +
     `<div style="display:flex;gap:26px;margin-top:10px;font-size:27px;">` +
     `<span style="border:3px solid #1b2327;padding:8px 18px;">This statement is issued on:</span>` +
-    `<span style="font-weight:800;align-self:center;">${escapeHtml(usLongDate(vm.billDate))}</span></div>` +
+    `<span style="font-weight:800;align-self:center;">${escapeHtml(monthFullDayYear(vm.billDate))}</span></div>` +
     `</div></div>` +
     // 三大信息框
     `<div style="display:flex;gap:46px;margin-top:44px;">` +
@@ -918,7 +963,7 @@ function renderHydroOne(vm: BillViewModel, opts: RenderOptions): string {
     ) +
     hoPanel(
       "When is it due?",
-      `<div style="text-align:center;font-size:66px;font-weight:800;line-height:1.2;">${escapeHtml(dueMon ?? "")},<br/>${escapeHtml(dueDay ?? "")}</div>` +
+      `<div style="text-align:center;font-size:66px;font-weight:800;line-height:1.2;">${escapeHtml(dueLine1)}<br/>${escapeHtml(dueLine2)}</div>` +
         `<div style="text-align:center;font-size:27px;color:#333c42;margin-top:16px;">Please pay by this date</div>`,
     ) +
     `</div>` +
@@ -929,17 +974,17 @@ function renderHydroOne(vm: BillViewModel, opts: RenderOptions): string {
       `<div style="display:flex;gap:50px;">` +
         `<div style="width:300px;flex:none;font-size:30px;line-height:1.55;color:#1b2327;">` +
         `<div>Your average daily usage has <b>${direction} by ${pct}%</b> compared to the same period last year.</div>` +
-        `<div style="margin-top:26px;">Find out more by logging into <b>myAccount</b> at www.greatlakehydro.example</div></div>` +
+        `<div style="margin-top:26px;">Find out more by logging into <b>myAccount</b> at www.HydroOne.com</div></div>` +
         `<div style="flex:1;">${hoUsageBars(vm)}</div></div>`,
       "1.6",
     ) +
     hoPanel(
       "What do I need to know?",
       `<div style="display:flex;gap:16px;align-items:flex-start;">${noticeIcon}` +
-        `<div style="font-size:27px;line-height:1.5;color:#333c42;"><b>Total Ontario support: ${escapeHtml(money(round2(vm.subtotal * 0.117)))}.</b> To learn more about the province's electricity support programs, visit ontario.example/yourelectricitybill (fictional).</div></div>` +
+        `<div style="font-size:27px;line-height:1.5;color:#333c42;"><b>Total Ontario support: ${escapeHtml(money(round2(vm.subtotal * 0.117)))}.</b> To learn more about the province's electricity support programs, visit Ontario.ca/yourelectricitybill.</div></div>` +
         `<div style="border-top:2px solid #d8d4ca;margin:22px 0;"></div>` +
         `<div style="display:flex;gap:16px;align-items:flex-start;">${noticeIcon}` +
-        `<div style="font-size:27px;line-height:1.5;color:#333c42;"><b>Important notice:</b> 2026 delivery rates are now in effect and are reflected on this bill. To learn more, visit greatlakehydro.example/2026Rates (fictional).</div></div>`,
+        `<div style="font-size:27px;line-height:1.5;color:#333c42;"><b>Important notice:</b> 2026 delivery rates are now in effect and are reflected on this bill. To learn more, visit HydroOne.com/2026Rates.</div></div>`,
       "1",
     ) +
     `</div>` +
@@ -956,19 +1001,19 @@ function renderHydroOne(vm: BillViewModel, opts: RenderOptions): string {
     // 联系行
     `<div style="display:flex;gap:50px;margin-top:44px;">` +
     `<div style="flex:1;display:flex;gap:20px;align-items:center;">${hoContactIcon(`<path d="M6 6 h12 l8 8 v12 h-20 Z" fill="none" stroke="${HO_HEADER}" stroke-width="2.4"/><path d="M18 6 v8 h8" fill="none" stroke="${HO_HEADER}" stroke-width="2.4"/>`)}` +
-    `<div style="font-size:26px;line-height:1.5;">For billing, quick answers and much more, visit <b>www.greatlakehydro.example</b></div></div>` +
+    `<div style="font-size:26px;line-height:1.5;">For billing, quick answers and much more, visit <b>www.HydroOne.com</b></div></div>` +
     `<div style="flex:1;display:flex;gap:20px;align-items:center;">${hoContactIcon(`<path d="M16 4 L29 27 H3 Z" fill="none" stroke="${HO_HEADER}" stroke-width="2.6"/><path d="M16 12 v7 M16 23 v1" stroke="${HO_HEADER}" stroke-width="2.8"/>`)}` +
-    `<div style="font-size:26px;line-height:1.5;">For emergencies or reporting outages<br/><b>1-800-555-0135</b> (24 hrs)</div></div>` +
+    `<div style="font-size:26px;line-height:1.5;">For emergencies or reporting outages<br/><b>1-800-434-1235</b> (24 hrs)</div></div>` +
     `<div style="flex:1;display:flex;gap:20px;align-items:center;">${hoContactIcon(`<path d="M8 5 c10 0 19 9 19 19 l-6 2 c-3-3-6-6-9-9 Z" fill="none" stroke="${HO_HEADER}" stroke-width="2.4"/>`)}` +
-    `<div style="font-size:26px;line-height:1.5;">For service inquiries and payment<br/><b>1-888-555-0176</b><br/>Mon to Fri 7:30 a.m. - 8 p.m.</div></div>` +
+    `<div style="font-size:26px;line-height:1.5;">For service inquiries and payment<br/><b>1-888-664-9376</b><br/>Mon to Fri 7:30 a.m. - 8 p.m.</div></div>` +
     `<div style="flex:1;display:flex;gap:20px;align-items:center;">${hoContactIcon(`<rect x="4" y="8" width="24" height="17" rx="2" fill="none" stroke="${HO_HEADER}" stroke-width="2.4"/><path d="M4 10 L16 19 L28 10" fill="none" stroke="${HO_HEADER}" stroke-width="2.4"/>`)}` +
-    `<div style="font-size:26px;line-height:1.5;">${escapeHtml(vm.utilityName)} Inc.<br/>PO Box 5700<br/>Maplebrook, ON N4P 2K1</div></div>` +
+    `<div style="font-size:26px;line-height:1.5;">Hydro One Networks Inc.<br/>PO Box 5700<br/>Markham, ON L3R 1C8</div></div>` +
     `</div>` +
     // 付款存根
     `<div style="margin-top:auto;">` +
     `<div style="display:flex;justify-content:space-between;font-size:28px;color:#333c42;border-top:2px solid #d8d4ca;padding-top:22px;">` +
     `<span>Please return this slip with your payment.</span>` +
-    `<span>Your account number: <b>${escapeHtml(vm.accountNumber)}</b></span></div>` +
+    `<span>Your account number: <b>${escapeHtml(groupedAccount(vm.accountNumber))}</b></span></div>` +
     `<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:30px;">` +
     `<div>${hoLogo(0.7)}</div>` +
     `<div style="display:flex;gap:80px;align-items:flex-end;">` +
@@ -979,10 +1024,10 @@ function renderHydroOne(vm: BillViewModel, opts: RenderOptions): string {
     `<span style="width:340px;height:92px;border:3px solid #1b2327;display:inline-flex;align-items:center;padding:0 24px;font-size:40px;font-weight:700;">$</span></div></div>` +
     `<div style="display:flex;justify-content:space-between;margin-top:34px;">` +
     `<div style="font-size:29px;line-height:1.6;"><div style="font-weight:700;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
-    `<div style="font-size:29px;line-height:1.6;">${escapeHtml(vm.utilityName.toUpperCase())} INC.<br/>PO BOX 4102 STN A<br/>MAPLEBROOK ON N4P 2K1</div></div>` +
+    `<div style="font-size:29px;line-height:1.6;">HYDRO ONE NETWORKS INC.<br/>PO BOX 4102 STN A TORONTO<br/>ON M5W 3L3</div></div>` +
     `<div style="margin-top:36px;font-family:'Courier New',monospace;font-size:36px;letter-spacing:4px;color:#1b2327;">${escapeHtml(ocr)}</div>` +
     `</div>` +
-    fictionalFooter(vm) +
+    fictionalFooter() +
     `</div>` +
     (opts.watermark ? watermarkLayer() : "") +
     `</div>`

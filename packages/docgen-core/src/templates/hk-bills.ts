@@ -1,14 +1,14 @@
 /**
  * 香港账单流派「版式 B」：贴近真实港式参考图版式的虚构双语（繁中 + EN）模板。
- * - hk_electricity_power  港暉電力 Harbour Bright Power：双月账期、顶部深蓝横幅、
- *   费用公式块（電力費用＋燃料調整費＋其他＝應繳總數圆徽）、分级电量表（首/次/超逾）、
- *   其他栏（政府電費補貼 / 零數撥來撥入）、平均每日用電量柱图、电表小表、
- *   「轉數快」伪 QR、底部存根（编账号码 + Code128 + OCR 行 + 環保訊息框）。
- * - hk_water_bill  城泉水務 Cityspring Water Services：约四月账期（参考图为 123 日）、
+ * - hk_electricity_power  中華電力 CLP Power：双月账期、顶部深蓝横幅（风车标 +
+ *   「照亮美好明天」标语 + CLP 中電字标）、费用公式块（電力費用＋燃料調整費＋其他＝應繳總數圆徽）、
+ *   分级电量表（首/次/超逾）、其他栏（政府電費紓緩/補貼 / 零數撥來撥入）、平均每日用電量柱图、
+ *   电表小表、「轉數快」伪 QR、底部存根（编账号码 + Code128 + OCR 行 + 環保訊息框）。
+ * - hk_water_bill  水務署 Water Supplies Department：约四月账期（参考图为 123 日）、
  *   用水量/日均用量条、每日平均用水量柱图、水表行（度數附 A/E/S 标注）、
  *   分级水费＋排污费双栏试算（餘額承前/撥入下期）、右侧應繳總額大圆角框（水滴圆标）、
- *   底部缴款回条（繳費靈商户编号 + 长数字 Code128 + 转数快伪 QR）。
- * 所有机构 / 编号 / 金额均为虚构，仅供版式学习。
+ *   底部缴款回条（繳費靈商户编号「08」+ 长数字 Code128 + 转数快伪 QR）。
+ * 版式 / 品牌字标以参考图为准；全部编号、金额、姓名等数据均为确定性派生的虚构值，仅供版式学习。
  */
 
 import { code128Svg } from "../barcode";
@@ -62,9 +62,9 @@ const POWER_META: TemplateMeta = {
   docType: "hk_electricity_power",
   regionId: "hongkong",
   kind: "power",
-  utilityName: "Harbour Bright Power",
-  utilityNameZh: "港暉電力",
-  tagline: "Fictional power utility — brightening every home",
+  utilityName: "CLP Power",
+  utilityNameZh: "中華電力",
+  tagline: "照亮美好明天 · Power Brighter Tomorrows",
   currency: "HKD",
   prefix: "HBP",
   periodDays: 60,
@@ -76,9 +76,9 @@ const WATER_META: TemplateMeta = {
   docType: "hk_water_bill",
   regionId: "hongkong",
   kind: "water",
-  utilityName: "Cityspring Water Services",
-  utilityNameZh: "城泉水務",
-  tagline: "Fictional municipal water supplies",
+  utilityName: "Water Supplies Department",
+  utilityNameZh: "水務署",
+  tagline: "付款通知書 Payment notice",
   currency: "HKD",
   prefix: "CSW",
   // 参考图账期明确印为「123日」（23/04/2026 - 24/08/2026），按图取值
@@ -179,23 +179,16 @@ function splitLabel(label: string): { caption: string; detail: string } {
   return { caption: parts[1] ?? "", detail: parts[2] ?? "" };
 }
 
-/** 虚构电力标志：三色斜条（绿/黄/蓝），仅版式装饰 */
+/** 电力标志：四片圆角方块旋转 45° 组成的风车标（黄/绿/蓝），对齐参考图 */
 function powerLogoMark(): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="120" height="120">` +
-    `<polygon points="14,42 56,10 72,26 30,58" fill="#f5c518"/>` +
-    `<polygon points="14,64 56,32 72,48 30,80" fill="#9dc43a"/>` +
-    `<polygon points="14,86 56,54 72,70 30,102" fill="#3f83c8"/>` +
-    `</svg>`
-  );
-}
-
-/** 白色闪电小图标（横幅圆形字徽 / 公式块用） */
-function boltGlyph(): string {
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="40" height="40">` +
-    `<polygon points="56,8 24,58 46,58 40,92 76,42 54,42" fill="#ffffff"/>` +
-    `</svg>`
+    `<g transform="rotate(45 50 50)">` +
+    `<rect x="12" y="12" width="34" height="34" rx="9" fill="#f5d70a"/>` +
+    `<rect x="54" y="12" width="34" height="34" rx="9" fill="#8dc63f"/>` +
+    `<rect x="12" y="54" width="34" height="34" rx="9" fill="#1b62ae"/>` +
+    `<rect x="54" y="54" width="34" height="34" rx="9" fill="#2b8ac4"/>` +
+    `</g></svg>`
   );
 }
 
@@ -211,13 +204,13 @@ function formulaIcon(kind: "energy" | "fuel" | "others"): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="44" height="44">${inner}</svg>`;
 }
 
-/** 虚构水务标志：蓝圆角块 + 白水滴与波纹 */
+/** 水务标志：蓝色倒三角盾形 + 两条白色竖向波纹（对齐参考图风格） */
 function waterLogoMark(accent: string): string {
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="120" height="120">` +
-    `<rect x="4" y="4" width="92" height="92" rx="20" fill="${accent}"/>` +
-    `<path d="M50 16 C50 16 28 46 28 64 a22 22 0 0 0 44 0 C72 46 50 16 50 16 Z" fill="#ffffff"/>` +
-    `<path d="M20 80 q10 -8 20 0 t20 0 t20 0" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round"/>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="130" height="130">` +
+    `<path d="M6 8 H94 L56 90 Q50 96 44 90 Z" fill="${accent}"/>` +
+    `<path d="M34 8 C46 26 24 42 36 60 C42 70 46 80 47 90" stroke="#ffffff" stroke-width="7" fill="none"/>` +
+    `<path d="M54 8 C66 26 44 42 56 60 C61 68 62 76 60 84" stroke="#ffffff" stroke-width="7" fill="none"/>` +
     `</svg>`
   );
 }
@@ -231,11 +224,11 @@ function dropletGlyph(): string {
   );
 }
 
-function fictionalFooter(vm: BillViewModel): string {
+/** 底部免责声明（保留中英双语句；不再声称机构为虚构） */
+function fictionalFooter(): string {
   return (
     `<div style="margin-top:14px;font-size:25px;color:#a2a9ae;line-height:1.7;">` +
-    `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虛構示例文件，僅供版式學習，非真實賬單。` +
-    ` ${escapeHtml(vm.utilityName)}（${escapeHtml(vm.utilityNameZh)}）is a fictional utility; any resemblance to real organisations is coincidental.</div>`
+    `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虛構示例文件，僅供版式學習，非真實賬單。</div>`
   );
 }
 
@@ -364,17 +357,17 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
   return (
     `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:#1b2327;font-family:${HK_FONT};">` +
-    // 顶部深蓝横幅：左标志 + 标语，右大字徽
+    // 顶部深蓝横幅：左风车标志 + 标语，右 CLP 中電字标
     `<div style="height:210px;background:${POWER_BANNER_BLUE};color:#ffffff;padding:0 110px;` +
     `display:flex;justify-content:space-between;align-items:center;box-sizing:border-box;">` +
     `<div style="display:flex;gap:30px;align-items:center;">${powerLogoMark()}` +
-    `<div><div style="font-size:36px;letter-spacing:10px;">點亮每個家園</div>` +
-    `<div style="font-size:26px;opacity:0.85;margin-top:8px;">Brightening Every Home</div></div></div>` +
-    `<div style="display:flex;gap:24px;align-items:center;">` +
-    `<span style="font-size:66px;font-weight:800;letter-spacing:4px;">HBP</span>` +
-    `<span style="width:82px;height:82px;border:5px solid #ffffff;border-radius:50%;` +
-    `display:flex;align-items:center;justify-content:center;">${boltGlyph()}</span>` +
-    `<span style="font-size:60px;font-weight:800;">${escapeHtml(vm.utilityNameZh)}</span></div></div>` +
+    `<div><div style="font-size:36px;letter-spacing:10px;">照亮美好明天</div>` +
+    `<div style="font-size:26px;opacity:0.85;margin-top:8px;">Power Brighter Tomorrows</div></div></div>` +
+    `<div style="display:flex;gap:22px;align-items:center;">` +
+    `<span style="font-size:72px;font-weight:700;letter-spacing:3px;">CLP</span>` +
+    `<span style="width:96px;height:96px;border:6px solid #ffffff;border-radius:50%;` +
+    `display:flex;align-items:center;justify-content:center;font-size:54px;font-weight:700;">中</span>` +
+    `<span style="font-size:72px;font-weight:700;">中電</span></div></div>` +
     // 正文
     `<div style="height:${CANVAS_HEIGHT - 210}px;padding:44px 110px 50px;display:flex;flex-direction:column;box-sizing:border-box;">` +
     // 客户块 + 注册客户及供电地址
@@ -456,7 +449,7 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<span style="flex:1.3;">${escapeHtml(meterNo)}</span><span style="flex:1;">1</span>` +
     `<span style="flex:1;">${escapeHtml(meter?.previous ?? "")}</span>` +
     `<span style="flex:1;">${escapeHtml(meter?.current ?? "")}</span></div>` +
-    `<div style="margin-top:16px;font-size:26px;line-height:1.6;">政府電費補貼計劃餘額為 ${escapeHtml(fmtMeta(meta, 0))}<br/>政府電費補貼餘額為 ${escapeHtml(fmtMeta(meta, 0))}</div></div>` +
+    `<div style="margin-top:16px;font-size:26px;line-height:1.6;">政府電費紓緩計劃餘額為 ${escapeHtml(fmtMeta(meta, 0))}<br/>政府電費補貼餘額為 ${escapeHtml(fmtMeta(meta, 0))}</div></div>` +
     `<div style="margin-top:30px;border:3px solid #9aa29b;border-radius:14px;padding:26px;text-align:center;">` +
     `<div style="font-size:32px;font-weight:700;">「轉數快」繳費</div>` +
     `<div style="margin-top:12px;display:inline-block;">${pseudoQrSvg(vm.qrSeed, { module: 10 })}</div></div>` +
@@ -474,7 +467,7 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="margin-top:18px;">${stubBarcode}</div>` +
     `<div style="margin-top:18px;font-family:'Courier New',monospace;font-size:40px;letter-spacing:6px;color:#1b2327;">${escapeHtml(ocr)}</div>` +
     `<div style="margin-top:16px;">${notesHtml}</div>` +
-    fictionalFooter(vm) +
+    fictionalFooter() +
     `</div>` +
     `</div>` +
     (opts.watermark ? watermarkLayer() : "") +
@@ -565,7 +558,10 @@ export const hkElectricityPower: BillTemplate = {
           label: `燃料調整費 Fuel cost adjustment · ${formatInt(kwh)} 度 kWh × 45.15¢/度`,
           amount: fromCents(fuelC),
         },
-        { label: "其他｜政府電費補貼 Government electricity subsidy", amount: fromCents(subsidyC) },
+        {
+          label: "其他｜政府電費紓緩/補貼 Government electricity subsidy",
+          amount: fromCents(subsidyC),
+        },
         { label: "其他｜上期零數撥來 Odd cents brought forward", amount: fromCents(carryInC) },
         { label: "其他｜零數撥入下次 Odd cents carried forward", amount: fromCents(-carryOutC) },
       ],
@@ -577,7 +573,7 @@ export const hkElectricityPower: BillTemplate = {
       qrSeed: `${base.invoiceNumber}|${fromCents(totalC).toFixed(2)}|${base.dueDate}`,
       notes: [
         "燃料調整費按實報實銷原則調整。The fuel cost adjustment is reconciled at cost.",
-        "請參閱電費單背頁了解更多資訊。For more information, please read overleaf of your electricity bill.",
+        "請參閱電費單背頁或中電網站了解更多中電資訊。 For more information, please read overleaf or the last page of your electricity bill or visit our website.",
       ],
     };
   },
@@ -646,6 +642,8 @@ function renderWaterHtml(vm: BillViewModel, opts: RenderOptions): string {
   const lastPayDate = fmtSlash(addDaysIso(billIso, -WATER_META.periodDays));
   const lastPayAmount = fromCents((200 + (fnv1a(`hkwater-lp::${vm.accountNumber}`) % 400)) * 100);
   const depositHeld = fromCents((300 + (h % 6) * 100) * 100);
+  // 页眉下方的小号流水数字（参考图样式，hash 确定性派生）
+  const serialNo = `${10000000 + (fnv1a(`hkwsn::${vm.accountNumber}`) % 89999999)}`;
   const meter = vm.meterRows[0];
   const waterLines = vm.charges.filter((c) => c.label.startsWith("水費"));
   const sewageLines = vm.charges.filter((c) => c.label.startsWith("排污費"));
@@ -691,8 +689,10 @@ function renderWaterHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="display:flex;font-size:32px;">` +
     `<span style="background:#b9cde6;padding:14px 30px;">付款通知書</span>` +
     `<span style="background:#d9dee6;padding:14px 30px;">發出日期 : ${escapeHtml(fmtSlash(billIso))}</span></div></div>` +
+    // 流水小数字（参考图位于页眉与地址块之间、约 1/3 页宽处）
+    `<div style="margin-left:34%;margin-top:2px;font-size:26px;color:#1b2327;">${serialNo}</div>` +
     // 客户块 + 用水楼宇地址
-    `<div style="display:flex;justify-content:space-between;margin-top:44px;">` +
+    `<div style="display:flex;justify-content:space-between;margin-top:22px;">` +
     `<div><div style="font-size:34px;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
     `<div><div style="font-size:30px;font-weight:700;text-decoration:underline;">用水樓宇地址</div>` +
     `<div style="margin-top:6px;">${addressHtml}</div></div></div>` +
@@ -781,8 +781,8 @@ function renderWaterHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<span>繳款單編號 : ${escapeHtml(acct.payload)}</span></div>` +
     `<div style="display:flex;gap:36px;align-items:center;margin-top:22px;">` +
     `<div style="text-align:center;font-size:29px;line-height:1.5;flex:none;">` +
-    `<div>繳費靈</div><div>商戶編號「63」</div>` +
-    `<div style="border:3px solid #1b2327;padding:6px 22px;margin-top:4px;">CRC${100 + (h % 900)}</div></div>` +
+    `<div>繳費靈</div><div>商戶編號「08」</div>` +
+    `<div style="border:3px solid #1b2327;padding:6px 22px;margin-top:4px;">CRC131</div></div>` +
     `<div style="border:4px solid ${accent};border-radius:24px;padding:18px 30px;font-size:34px;` +
     `text-align:center;line-height:1.5;flex:none;">節省用水<br/>節省金錢</div>` +
     `<div style="flex:1;border:10px solid ${accent};border-radius:30px;padding:22px 36px;` +
@@ -799,8 +799,10 @@ function renderWaterHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<div>${slipBarcode}</div>` +
     `<div style="text-align:right;">` +
     `<div style="font-size:30px;">發出日期　${escapeHtml(fmtSlash(billIso))}</div>` +
-    `<div style="font-size:27px;color:#5a656c;margin-top:8px;">總數1頁的第1頁</div></div></div>` +
-    fictionalFooter(vm) +
+    `<div style="display:flex;justify-content:flex-end;gap:44px;margin-top:8px;font-size:26px;">` +
+    `<span style="color:#8a9298;">BC v2.0.5 - 92FC</span>` +
+    `<span style="font-size:27px;color:#5a656c;">總數1頁的第1頁</span></div></div></div>` +
+    fictionalFooter() +
     `</div>` +
     `</div>` +
     (opts.watermark ? watermarkLayer() : "") +
@@ -843,9 +845,9 @@ export const hkWaterBill: BillTemplate = {
     const totalC = Math.floor(preTotalC / 10) * 10;
     const carryOutC = preTotalC - totalC;
     const acct = waterAccountCode(base.accountNumber);
-    // 回条长数字串（装饰性）：8710 + 商户63 + 8×0 + 缴款单编号 + 金额分 + 8 位随机
+    // 回条长数字串（装饰性）：8710 + 商户08 + 8×0 + 缴款单编号 + 金额分 + 8 位随机
     const extraDigits = Array.from({ length: 8 }, () => `${Math.floor(rng() * 10)}`).join("");
-    const slipDigits = `87106300000000${acct.payload}${`${totalC}`.padStart(8, "0")}${extraDigits}`;
+    const slipDigits = `87100800000000${acct.payload}${`${totalC}`.padStart(8, "0")}${extraDigits}`;
     const daily = m3 / periodDays;
     // 每日平均用水量柱图：近 7 期（约四月一期）
     const bars = Array.from({ length: 7 }, (_, i) => {

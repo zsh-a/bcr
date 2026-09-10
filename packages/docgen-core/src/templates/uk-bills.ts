@@ -1,13 +1,16 @@
 /**
  * 真实地区「英国 UK」扩展：英国三大公用事业账单版式复刻。
- * - ukBritishGasGas      "Albion Gas"：燃气单——Supply address + Rota block、大号问候标题、
- *   蓝色 "Your account summary" 圆角卡片（previous balance / costs / payments / new balance·Debit）、
- *   绿色 "Important information" 付款提示卡、m³→kWh 换算行、VAT 5%、tariff 信息栏 + Did you know
- * - ukEonNextPower       "Nova Watt"：电力单——珊瑚红双行 logo、Get in touch 块 + Rota 框、
- *   粉底/紫底账户流水条（CR/DR）、Direct Debit 说明段、右侧年度预估 + 换资费省钱推荐栏
- * - ukThamesWaterWater   "Chiltern Water"：水单——右侧浅蓝信息侧栏（户号/账期/供水地址 +
- *   What's in this bill 目录）、绿色 "What to pay" 大卡片 + 蓝色 "When to pay by" 卡片、
- *   How to pay 三栏、water + sewerage 分区计价、民用水 VAT 零税率、伪 QR
+ * - ukBritishGasGas      "British Gas"：燃气单——Supply address + Rota block、蓝焰字标、
+ *   大号问候标题、蓝色 "Your account summary" 圆角卡片（previous balance / costs /
+ *   payments / new balance·Debit）、绿色 "Important information" 付款提示卡、
+ *   m³→kWh 换算行、VAT 5%、tariff 信息栏 + Did you know
+ * - ukEonNextPower       "E.ON Next"：电力单——橙红 e.on/next 双行字标、Get in touch 块 +
+ *   Rota 框、粉底/紫底账户流水条（CR/DR）、Direct Debit 说明段、右侧年度预估 +
+ *   Next Pledge / Next Secure 换资费省钱推荐栏、注册信息页脚
+ * - ukThamesWaterWater   "Thames Water"：水单——圆形蓝底白字 roundel、右侧浅蓝信息侧栏
+ *   （户号/账期/供水地址 + What's in this bill 目录）、绿色 "What to pay" 大卡片 +
+ *   蓝色 "When to pay by" 卡片、How to pay 三栏、water + sewerage 分区计价、
+ *   民用水 VAT 零税率、伪 QR
  * 地址字段复用 uk（streetNo / streetName / city / postcode），真实货币 GBP。
  * 账期长度按参考图实际账期取值：月度账单 31 天、水务半年账 190 天。
  */
@@ -73,13 +76,13 @@ const BGAS_META: TemplateMeta = {
   docType: "uk_britishgas_gas",
   regionId: "uk",
   kind: "gas",
-  utilityName: "Albion Gas",
-  utilityNameZh: "阿尔比恩燃气",
-  tagline: "Fictional gas supplier",
+  utilityName: "British Gas",
+  utilityNameZh: "英国燃气",
+  tagline: "Gas & energy services",
   currency: "GBP",
   prefix: "ABG",
   periodDays: 31,
-  accent: "#003a70",
+  accent: "#0046b0",
   locale: "en-GB",
 };
 
@@ -87,9 +90,9 @@ const EON_META: TemplateMeta = {
   docType: "uk_eonnext_power",
   regionId: "uk",
   kind: "power",
-  utilityName: "Nova Watt",
-  utilityNameZh: "新星电力",
-  tagline: "Fictional electricity supplier",
+  utilityName: "E.ON Next",
+  utilityNameZh: "E.ON Next",
+  tagline: "Energy supplier",
   currency: "GBP",
   prefix: "NVW",
   periodDays: 31,
@@ -101,13 +104,13 @@ const TW_META: TemplateMeta = {
   docType: "uk_thameswater_water",
   regionId: "uk",
   kind: "water",
-  utilityName: "Chiltern Water",
-  utilityNameZh: "奇尔特恩水务",
-  tagline: "Fictional water & sewerage company",
+  utilityName: "Thames Water",
+  utilityNameZh: "泰晤士水务",
+  tagline: "Water & sewerage services",
   currency: "GBP",
   prefix: "CHW",
   periodDays: 190,
-  accent: "#0099d6",
+  accent: "#00a3e0",
   locale: "en-GB",
 };
 
@@ -140,29 +143,27 @@ function money(meta: TemplateMeta, amount: number): string {
   return escapeHtml(fmtMeta(meta, amount));
 }
 
-function fictionalNotice(vm: BillViewModel): string {
-  return (
-    `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。` +
-    ` ${escapeHtml(vm.utilityName)} is a fictional utility; any resemblance to real organisations is coincidental.`
-  );
+function fictionalNotice(): string {
+  return `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。`;
 }
 
-/* ================= Albion Gas（British Gas 版式） ================= */
+/* ================= British Gas 版式 ================= */
 
 const BGAS_BLUE = "#0099ff";
 const BGAS_GREEN = "#009530";
-const BGAS_NAVY = "#003a70";
+const BGAS_NAVY = "#0046b0";
+const BGAS_FLAME_GREEN = "#a3c614";
 const BGAS_STANDING_P = 32.1;
 const BGAS_UNIT_P = 7.14;
 const BGAS_CALORIFIC = 39.4;
 const BGAS_CORRECTION = 1.0226;
 
-/** 火焰形双色 swoosh（蓝绿叠瓣，装饰性 logo 图形） */
-function bgasSwoosh(): string {
+/** British Gas 火焰标：蓝色火瓣 + 左下绿色弯月（内联 SVG，无外部资源） */
+function bgasFlame(): string {
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="170" height="120" viewBox="0 0 170 120" role="img" aria-label="logo">` +
-    `<path d="M12 78 C46 26 104 6 158 12 C128 44 92 84 40 92 C24 94 12 90 12 78 Z" fill="#7ac142"/>` +
-    `<path d="M34 100 C84 92 132 56 160 20 C152 66 106 108 52 110 C44 110 38 106 34 100 Z" fill="${BGAS_BLUE}"/>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="150" height="110" viewBox="0 0 150 110" role="img" aria-label="logo">` +
+    `<path d="M28 68 C50 22 102 4 142 6 C146 52 116 96 62 100 C40 102 24 90 28 68 Z" fill="${BGAS_NAVY}"/>` +
+    `<path d="M8 84 C16 104 44 114 74 108 C50 108 26 100 14 78 Z" fill="${BGAS_FLAME_GREEN}"/>` +
     `</svg>`
   );
 }
@@ -235,8 +236,9 @@ function renderBritishGas(vm: BillViewModel, meta: TemplateMeta, opts: RenderOpt
     `<div style="display:flex;align-items:center;gap:16px;margin-top:22px;">` +
     `<span style="font-size:32px;font-weight:800;color:#1b2327;">Rota block letter:</span>` +
     `<span style="border:3px solid #1b2327;padding:2px 20px;font-size:32px;font-weight:700;">R</span></div></div>` +
-    `<div style="display:flex;align-items:center;gap:26px;">${bgasSwoosh()}` +
-    `<div style="font-size:100px;font-weight:800;color:${BGAS_NAVY};letter-spacing:-3px;">${escapeHtml(vm.utilityName)}</div></div></div>` +
+    `<div style="position:relative;margin-top:88px;flex:none;">` +
+    `<div style="position:absolute;top:-88px;right:44px;">${bgasFlame()}</div>` +
+    `<div style="font-size:118px;font-weight:800;color:${BGAS_NAVY};letter-spacing:-2px;line-height:1.1;">${escapeHtml(vm.utilityName)}</div></div></div>` +
     /* 客户地址块 */
     `<div style="margin-top:60px;flex:none;"><div style="font-size:40px;font-weight:700;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
     /* 大号问候标题 + 账期元信息 */
@@ -295,7 +297,7 @@ function renderBritishGas(vm: BillViewModel, meta: TemplateMeta, opts: RenderOpt
     /* 底部：tariff 信息 + Did you know */
     `<div style="margin-top:56px;border-top:4px solid ${BGAS_NAVY};padding-top:44px;display:flex;gap:90px;flex:none;">` +
     `<div style="flex:1.4;font-size:32px;line-height:1.7;color:#1b2327;">` +
-    `<div style="display:flex;gap:30px;"><span style="font-weight:800;color:${BGAS_NAVY};width:360px;flex:none;">Your gas tariff:</span><span>Standard Variable Tariff (fictional)</span></div>` +
+    `<div style="display:flex;gap:30px;"><span style="font-weight:800;color:${BGAS_NAVY};width:360px;flex:none;">Your gas tariff:</span><span>Standard Variable Tariff</span></div>` +
     `<div style="display:flex;gap:30px;"><span style="font-weight:800;width:360px;flex:none;">Payment method:</span><span>Pay on receipt of a monthly bill</span></div>` +
     `<div style="display:flex;gap:30px;"><span style="font-weight:800;width:360px;flex:none;">Tariff ends:</span><span>No end date</span></div>` +
     `<div style="display:flex;gap:30px;"><span style="font-weight:800;width:360px;flex:none;">Exit fee:</span><span>None</span></div>` +
@@ -308,8 +310,9 @@ function renderBritishGas(vm: BillViewModel, meta: TemplateMeta, opts: RenderOpt
     `<div style="font-size:34px;color:#333c42;line-height:1.7;margin-top:20px;">It's always a good idea to check online for the best tariff deals available.</div></div></div>` +
     notes +
     `<div style="margin-top:auto;padding-top:40px;font-size:27px;color:#a2a9ae;line-height:1.7;flex:none;">` +
-    `If you're finding it hard to pay your gas bill, there are a number of ways we can help (fictional).<br/>` +
-    fictionalNotice(vm) +
+    `If you're finding it hard to pay your energy bill, there are a number of ways we can help you. ` +
+    `Visit <b style="color:#5a656c;">britishgas.co.uk/payhelp</b><br/>` +
+    fictionalNotice() +
     `</div>` +
     `</div>` +
     (opts.watermark ? watermarkLayer() : "") +
@@ -400,10 +403,11 @@ export const ukBritishGasGas: BillTemplate = {
   },
 };
 
-/* ================= Nova Watt（E.ON Next 版式） ================= */
+/* ================= E.ON Next 版式 ================= */
 
-const EON_CORAL_DARK = "#d81e5b";
-const EON_CORAL_LIGHT = "#f2617a";
+/** E.ON 品牌橙红（字标两行同色） */
+const EON_CORAL_DARK = "#f04e23";
+const EON_CORAL_LIGHT = "#f04e23";
 const EON_PURPLE = "#7b2d8e";
 const EON_INK = "#2e1a47";
 const EON_PINK_ROW = "#f9e4ee";
@@ -461,17 +465,17 @@ function renderEonNext(vm: BillViewModel, meta: TemplateMeta, opts: RenderOption
     /* 页眉：双行 logo（左） / Get in touch + Rota 框（右） */
     `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
     `<div style="line-height:0.95;">` +
-    `<div style="font-size:64px;font-weight:400;font-style:italic;color:${EON_CORAL_LIGHT};">nova</div>` +
-    `<div style="font-size:112px;font-weight:800;font-style:italic;color:${EON_CORAL_DARK};letter-spacing:-2px;">watt</div></div>` +
+    `<div style="font-size:64px;font-weight:400;font-style:italic;color:${EON_CORAL_LIGHT};">e.on</div>` +
+    `<div style="font-size:128px;font-weight:800;font-style:italic;color:${EON_CORAL_DARK};letter-spacing:-2px;">next</div></div>` +
     `<div style="display:flex;gap:34px;align-items:flex-start;">` +
     `<div style="font-size:32px;line-height:1.75;">` +
     `<div style="font-weight:800;">Get in touch with us</div>` +
     `<div style="display:flex;align-items:center;gap:12px;">` +
     `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="14" fill="none" stroke="${EON_CORAL_DARK}" stroke-width="3"/><ellipse cx="17" cy="17" rx="6" ry="14" fill="none" stroke="${EON_CORAL_DARK}" stroke-width="3"/><line x1="3" y1="17" x2="31" y2="17" stroke="${EON_CORAL_DARK}" stroke-width="3"/></svg>` +
-    `<span>novawatt.example/contact</span></div>` +
+    `<span>eonnext.com/contact</span></div>` +
     `<div style="display:flex;align-items:center;gap:12px;">` +
     `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="28" viewBox="0 0 34 28"><rect x="2" y="2" width="30" height="24" rx="3" fill="none" stroke="${EON_CORAL_DARK}" stroke-width="3"/><path d="M2 4 L17 17 L32 4" fill="none" stroke="${EON_CORAL_DARK}" stroke-width="3"/></svg>` +
-    `<span>hi@novawatt.example</span></div></div>` +
+    `<span>hi@eonnext.com</span></div></div>` +
     `<div style="border:3px solid ${EON_INK};padding:6px 22px;font-size:34px;font-weight:700;">R</div></div></div>` +
     /* 客户地址 */
     `<div style="margin-top:80px;flex:none;"><div style="font-size:36px;color:${EON_INK};line-height:1.45;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
@@ -524,17 +528,17 @@ function renderEonNext(vm: BillViewModel, meta: TemplateMeta, opts: RenderOption
     `switching your tariff or supplier.</div>` +
     `<div style="margin-top:20px;font-size:28px;">For your <b>electricity</b> (on meter point ${mpan})</div>` +
     `<div style="margin-top:24px;font-size:32px;line-height:1.6;">Our <b>cheapest similar tariff</b> is ` +
-    `<b>Nova Pledge Tracker 12m v5</b> - you could save <b>${money(meta, saveSimilar)}</b> a year by switching to this.</div>` +
+    `<b>Next Pledge Tracker 12m v5</b> - you could save <b>${money(meta, saveSimilar)}</b> a year by switching to this.</div>` +
     `<div style="margin-top:24px;font-size:32px;line-height:1.6;">Our <b>cheapest tariff overall</b> is ` +
-    `<b>Nova Secure Fixed 12m v14</b> - you could save <b>${money(meta, saveOverall)}</b> a year by switching to this.</div>` +
+    `<b>Next Secure Fixed 12m v14</b> - you could save <b>${money(meta, saveOverall)}</b> a year by switching to this.</div>` +
     `<div style="margin-top:30px;font-size:30px;line-height:1.65;">Paying by Direct Debit is cheaper than if you ` +
     `pay when you get your bill. For our cheapest tariffs you may need to change your meter or the way you pay.</div></div></div>` +
     `</div>` +
     /* 页脚 */
     `<div style="margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;gap:60px;flex:none;">` +
     `<div style="font-size:25px;color:#8a8296;line-height:1.65;">` +
-    `${escapeHtml(vm.utilityName)} Energy Limited Registered Office: Westwood Way, Westwood Business Park, Coventry CV4 8LG (fictional). ` +
-    `Registered in England and Wales No. 03782443 (fictional).<br/>${fictionalNotice(vm)}</div>` +
+    `${escapeHtml(vm.utilityName)} Energy Limited Registered Office: Westwood Way, Westwood Business Park, Coventry CV4 8LG. ` +
+    `Registered in England and Wales No. 03782443. E.ON UK plc VAT Group Registration Number: 559 0978 89.<br/>${fictionalNotice()}</div>` +
     `<div style="font-size:28px;color:${EON_INK};flex:none;">Page 1/4</div></div>` +
     `</div>` +
     (opts.watermark ? watermarkLayer() : "") +
@@ -618,9 +622,9 @@ export const ukEonNextPower: BillTemplate = {
   },
 };
 
-/* ================= Chiltern Water（Thames Water 版式） ================= */
+/* ================= Thames Water 版式 ================= */
 
-const TW_CYAN = "#0099d6";
+const TW_CYAN = "#00a3e0";
 const TW_GREEN = "#8cc63e";
 const TW_SIDEBAR_BG = "#e9f5fb";
 const TW_PANEL_BG = "#f2f9fc";
@@ -732,14 +736,13 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
     /* 主栏 */
     `<div style="flex:1;padding:100px 60px 60px 120px;display:flex;flex-direction:column;">` +
     `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
-    `<div style="display:flex;align-items:center;gap:30px;">` +
-    `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="logo">` +
-    `<circle cx="90" cy="90" r="82" fill="none" stroke="${TW_CYAN}" stroke-width="8"/>` +
-    `<path d="M90 34 C90 34 60 76 60 102 a30 30 0 0 0 60 0 C120 76 90 34 90 34 Z" fill="${TW_CYAN}"/>` +
-    `<path d="M44 138 C64 128 76 148 96 138 C116 128 128 148 148 138" fill="none" stroke="${TW_CYAN}" stroke-width="7" stroke-linecap="round"/>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 190 190" role="img" aria-label="logo">` +
+    `<circle cx="95" cy="95" r="90" fill="${TW_CYAN}"/>` +
+    `<circle cx="95" cy="95" r="76" fill="none" stroke="#ffffff" stroke-width="5"/>` +
+    `<text x="95" y="88" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="36" font-weight="800" fill="#ffffff">Thames</text>` +
+    `<text x="95" y="130" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="36" font-weight="800" fill="#ffffff">Water</text>` +
+    `<path d="M45 152 C62 142 74 160 95 152 C116 144 128 162 145 152" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round"/>` +
     `</svg>` +
-    `<div><div style="font-size:54px;font-weight:800;color:${TW_CYAN};">${escapeHtml(vm.utilityName)}</div>` +
-    `<div style="font-size:30px;color:#5a656c;margin-top:4px;">${escapeHtml(vm.utilityNameZh)} · ${escapeHtml(vm.tagline)}</div></div></div>` +
     `<div style="text-align:center;"><div style="font-size:26px;color:#5a656c;margin-bottom:8px;">Page 1 of 7</div>${qr}</div></div>` +
     `<div style="margin-top:64px;"><div style="font-size:40px;font-weight:700;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
     `<div style="margin-top:64px;font-size:96px;font-weight:300;color:${TW_CYAN};">Your latest bill</div>` +
@@ -770,7 +773,7 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
     howToPayCol("Fully flexible, so you choose what day to pay each month") +
     howToPayCol("Reaches us instantly, so you'll never miss a payment") +
     `</div>` +
-    `<div style="font-size:28px;color:#333c42;margin-top:28px;">Sign up through your online account at <b style="color:${TW_CYAN};">chilternwater.example/myaccount</b></div>` +
+    `<div style="font-size:28px;color:#333c42;margin-top:28px;">Sign up through your online account at <b style="color:${TW_CYAN};">thameswater.co.uk/myaccount</b></div>` +
     `<div style="font-size:28px;color:#333c42;margin-top:10px;">For other ways to pay, turn to section 3.</div></div>` +
     /* Your charges */
     `<div style="margin-top:56px;"><div style="font-size:44px;font-weight:300;color:${TW_CYAN};">Your charges</div>` +
@@ -785,7 +788,7 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
     `<div style="display:flex;justify-content:space-between;padding:18px 0;align-items:baseline;">` +
     `<span style="font-size:38px;font-weight:800;">Total for this bill</span>` +
     `<span style="font-size:50px;font-weight:800;color:${TW_CYAN};font-variant-numeric:tabular-nums;">${money(meta, vm.total)}</span></div></div>` +
-    `<div style="margin-top:auto;padding-top:36px;font-size:26px;color:#a2a9ae;line-height:1.7;">${fictionalNotice(vm)}</div>` +
+    `<div style="margin-top:auto;padding-top:36px;font-size:26px;color:#a2a9ae;line-height:1.7;">${fictionalNotice()}</div>` +
     `</div>` +
     /* 右侧信息侧栏 */
     `<div style="width:740px;flex:none;background:${TW_SIDEBAR_BG};">` +
@@ -795,7 +798,7 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
     `<div><div style="font-size:42px;font-weight:800;color:#ffffff;">Account number</div>` +
     `<div style="font-size:44px;font-weight:800;color:#ffffff;margin-top:4px;">${escapeHtml(vm.accountNumber)}</div></div></div>` +
     `<div style="padding:20px 54px 0;">` +
-    twSideItem(twIcon(TW_ICONS.mouse), "For help, visit", `chilternwater.example/bill`) +
+    twSideItem(twIcon(TW_ICONS.mouse), "For help, visit", `thameswater.co.uk/bill`) +
     twSideItem(twIcon(TW_ICONS.calendar), "Bill date", escapeHtml(vm.billDate)) +
     twSideItem(
       twIcon(TW_ICONS.clock),

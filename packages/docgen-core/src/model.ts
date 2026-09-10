@@ -1,6 +1,6 @@
 /**
  * DocGen 数据模型：schema 驱动的公用事业账单。
- * 地区与货币为真实国家/地区（澳/加/港/新/英/德）；机构、单号与用量金额均为虚构，仅用于版式学习演示。
+ * 地区、货币与账单品牌按真实参考件对齐；单号、用量与金额均为示例数据，仅用于版式学习演示。
  */
 
 export type RegionId = "australia" | "canada" | "hongkong" | "singapore" | "uk" | "germany";

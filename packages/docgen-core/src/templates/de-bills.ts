@@ -7,7 +7,8 @@
  * 抄表值表与 "Seite 1/3" 页脚。
  * 分摊勾稽：30% Grundkosten（按 m²）+ 70% Verbrauchskosten（按 kWh）= Ihre Heizkosten；
  * Kaltwasser / Betriebs / Direkt 各组小计 = 对应 charge 行；四组合计 = 应付总额。
- * 无增值税（Umsatzsteuer nicht ausgewiesen）。所有机构 / 金额 / 表号均为虚构。
+ * 无增值税（Umsatzsteuer nicht ausgewiesen）。页首字标按参考件使用真实品牌名 "techem"（版式学习），
+ * 其余机构数据 / 金额 / 表号均为虚构。
  */
 
 import type {
@@ -118,7 +119,7 @@ function watermarkLayer(): string {
   );
 }
 
-/** 字标：深藏青小写 wordmark + 红色下划弧线（内联 SVG，对应参考件的 logo 区） */
+/** 字标：按参考件使用真实品牌名 "techem"（深藏青小写粗体）+ 红色海鸥状下划弧线（内联 SVG） */
 function logoBlock(): string {
   const swoosh =
     `<svg xmlns="http://www.w3.org/2000/svg" width="380" height="48" viewBox="0 0 380 48">` +
@@ -126,7 +127,7 @@ function logoBlock(): string {
     `C226 42 288 38 372 10 C312 46 236 52 198 42 C160 52 84 46 8 10 Z" fill="${RED}"/></svg>`;
   return (
     `<div style="text-align:center;">` +
-    `<div style="font-size:66px;font-weight:800;letter-spacing:-2px;color:${NAVY};line-height:1;">falkenmess</div>` +
+    `<div style="font-size:66px;font-weight:800;letter-spacing:-2px;color:${NAVY};line-height:1;">techem</div>` +
     `${swoosh}</div>`
   );
 }
@@ -510,8 +511,6 @@ export const wlHeizkosten: BillTemplate = {
       `<div style="font-weight:700;">Erstellt am</div><div>${escapeHtml(createdDe)}</div></div>` +
       `<div style="margin-top:44px;font-size:30px;line-height:1.5;">` +
       `<div style="font-weight:700;">Ihre Nutzer-Nr.</div><div>${escapeHtml(vm.accountNumber)}</div></div>` +
-      `<div style="margin-top:44px;font-size:30px;line-height:1.5;">` +
-      `<div style="font-weight:700;">Abrechnungs-Nr.</div><div>${escapeHtml(vm.invoiceNumber)}</div></div>` +
       `</div></div></div>` +
       // 4. 右侧粉色费用回顾框
       `<div style="display:flex;justify-content:flex-end;margin-top:56px;">` +
@@ -541,8 +540,7 @@ export const wlHeizkosten: BillTemplate = {
       `<div style="display:flex;justify-content:flex-end;margin-top:18px;font-size:26px;color:#6b7280;">Seite 1/3</div>` +
       // 10. 免责声明页脚
       `<div style="margin-top:auto;padding-top:26px;border-top:1px solid #d9d6ce;font-size:25px;color:#a2a9ae;line-height:1.7;">` +
-      `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。` +
-      ` ${escapeHtml(vm.utilityName)} is a fictional utility; any resemblance to real organisations is coincidental.</div>` +
+      `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。</div>` +
       `</div>` +
       (opts.watermark ? watermarkLayer() : "") +
       `</div>`

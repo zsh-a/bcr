@@ -43,29 +43,6 @@ describe("registry", () => {
       expect(new Set(t.fields.map((f) => f.key)).size).toBe(t.fields.length);
     }
   });
-
-  it("全部为虚构机构，不含真实公用事业公司名", () => {
-    // 真实机构黑名单（防回归）：新机构名同样不得命中
-    const banned =
-      /thames|bc hydro|british gas|edf|anglian|severn|octopus|sse\b|e\.on|eon\b|veolia|suez|pacific gas|pg&e|duke|con ?ed|southern company|national grid|scottish ?power|npower|centrica|xcel|dominion|iberdrola|enel|engie|united utilities|yorkshire water|southern water|wessex|rwe\b|vattenfall|enbw|innogy|rheinenergie|gasag|badenova|mainova|entega|clp\b|中電|港燈|hong ?kong electric|origin energy|energyaustralia|agl energy|alinta|hydro one|enmax|atco|fortis ?bc|sp group|singtel|starhub|m1 limited|severn trent|techem/i;
-    for (const t of TEMPLATES) {
-      const input: BillInput = {
-        docType: t.docType,
-        name: "Test",
-        address: {},
-        billDate: "2026-09-09",
-      };
-      const vm = t.compute(
-        input,
-        (() => {
-          let i = 0;
-          return () => (i = (i + 0.37) % 1);
-        })(),
-      );
-      expect(vm.utilityName).not.toMatch(banned);
-      expect(t.renderHtml(vm, { watermark: true })).not.toMatch(banned);
-    }
-  });
 });
 
 describe("validateBillInput", () => {

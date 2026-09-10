@@ -1,9 +1,10 @@
 /**
  * 真实地区「新加坡 Singapore」（货币 SGD）：新加坡电信账单流派（Singtel 版式复刻）。
- * - sg_singtel_telecom  Meridian Telecommunications：左侧品牌栏（弧形 logo +
- *   条码 + 客户地址 + eBill QR 推广 + App/帮助/热线三块），右侧浅灰
- *   「My Bill Overview」面板（账户元信息 + Total Due 大数字 + Outstanding /
- *   Current Charges + 「My Monthly Charges」三月横向条形图 + 注册号小字），
+ * - sg_singtel_telecom  Singtel：版式与品牌信息按参考图对齐——左侧品牌栏
+ *   （红弧 + 圆点标志、Singtel 字标、条码、客户地址、eBill QR 推广、
+ *   App/帮助/热线三块），右侧浅灰「My Bill Overview」面板（账户元信息 +
+ *   Total Due 大数字 + Outstanding / Current Charges +「My Monthly Charges」
+ *   三月横向条形图 + Singapore Telecommunications Limited 注册号小字），
  *   下方「My Bill Details」按 Mobile / Fibre Broadband / TV 分 section 计价
  *   （GST 9% 外加），底部撕线 Payment Slip（双条码 + 银行/支票填写框 +
  *   Page 1 of 3），GIRO 自动转账提示。
@@ -63,9 +64,9 @@ const SINGTEL_META: TemplateMeta = {
   docType: "sg_singtel_telecom",
   regionId: "singapore",
   kind: "telecom",
-  utilityName: "Meridian Telecommunications",
-  utilityNameZh: "子午电信",
-  tagline: "Fictional mobile, fibre & TV operator",
+  utilityName: "Singtel",
+  utilityNameZh: "新加坡电信",
+  tagline: "",
   currency: "SGD",
   prefix: "MDT",
   periodDays: 30,
@@ -113,21 +114,21 @@ function billIdOf(vm: BillViewModel): string {
   return `000${vm.accountNumber.slice(1, 10)}`;
 }
 
-/** 品牌 logo：红色三道弧 + 右侧递升圆点（弧形笑脸风格），下方字标 */
+/** 品牌 logo：红色三道弧 + 各弧末端圆点（参考图红弧标志风格），下方为字标 */
 function logoSvg(accent: string): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="560" height="240" viewBox="0 0 560 240" role="img" aria-label="logo">` +
     `<path d="M70 190 A170 170 0 0 1 380 78" stroke="${accent}" stroke-width="22" fill="none" stroke-linecap="round"/>` +
     `<path d="M126 190 A112 112 0 0 1 318 118" stroke="${accent}" stroke-width="18" fill="none" stroke-linecap="round"/>` +
     `<path d="M180 190 A60 60 0 0 1 268 152" stroke="${accent}" stroke-width="14" fill="none" stroke-linecap="round"/>` +
-    `<circle cx="404" cy="66" r="24" fill="${accent}"/>` +
-    `<circle cx="342" cy="112" r="19" fill="${accent}"/>` +
-    `<circle cx="288" cy="150" r="15" fill="${accent}"/>` +
+    `<circle cx="380" cy="78" r="24" fill="${accent}"/>` +
+    `<circle cx="318" cy="118" r="19" fill="${accent}"/>` +
+    `<circle cx="268" cy="152" r="15" fill="${accent}"/>` +
     `</svg>`
   );
 }
 
-/** 左栏推广小图标：红色圆角块 + 白色图形 */
+/** 左栏推广小图标：红色圆角块 + 白色图形（App 推广用，参考图第一个图标带红底） */
 function promoIcon(accent: string, inner: string): string {
   return (
     `<div style="width:96px;height:96px;border-radius:20px;background:${accent};flex:none;` +
@@ -135,17 +136,22 @@ function promoIcon(accent: string, inner: string): string {
   );
 }
 
-function promoIconGlyphs(): { app: string; help: string; phone: string } {
+/** 无底色红色图形（参考图的 "?" 与电话图标直接以红色呈现） */
+function plainIcon(inner: string): string {
+  return `<div style="width:96px;height:96px;flex:none;display:flex;align-items:center;justify-content:center;">${inner}</div>`;
+}
+
+function promoIconGlyphs(accent: string): { app: string; help: string; phone: string } {
   const miniArcs =
     `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 100 100">` +
     `<g stroke="#ffffff" stroke-width="10" fill="none" stroke-linecap="round">` +
     `<path d="M20 62 A44 44 0 0 1 78 34"/><path d="M32 66 A26 26 0 0 1 66 50"/></g>` +
     `<circle cx="82" cy="30" r="8" fill="#ffffff"/></svg>`;
-  const help = `<span style="font-size:64px;font-weight:800;color:#ffffff;line-height:1;">?</span>`;
+  const help = `<span style="font-size:72px;font-weight:800;color:${accent};line-height:1;">?</span>`;
   const phone =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="58" height="58" viewBox="0 0 24 24">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24">` +
     `<path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1` +
-    `C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z" fill="#ffffff"/></svg>`;
+    `C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z" fill="${accent}"/></svg>`;
   return { app: miniArcs, help, phone };
 }
 
@@ -160,35 +166,34 @@ function leftColumn(vm: BillViewModel, meta: TemplateMeta): string {
   const billId = billIdOf(vm);
   const headBarcode = code128Svg(billId, { moduleWidth: 4, height: 120 });
   const qr = pseudoQrSvg(vm.qrSeed, { module: 10 });
-  const icons = promoIconGlyphs();
+  const icons = promoIconGlyphs(meta.accent);
   const promoRow = (icon: string, html: string): string =>
     `<div style="display:flex;gap:36px;align-items:center;margin-top:30px;">${icon}` +
     `<div style="font-size:33px;color:#333c42;line-height:1.55;">${html}</div></div>`;
   return (
     `<div style="width:980px;flex:none;">` +
     logoSvg(meta.accent) +
-    `<div style="font-size:96px;font-weight:800;letter-spacing:-2px;color:#1b2327;line-height:1.05;margin-top:6px;">Meridian</div>` +
-    `<div style="font-size:34px;letter-spacing:10px;color:#5a656c;margin-top:4px;">TELECOMMUNICATIONS</div>` +
+    `<div style="font-size:110px;font-weight:800;letter-spacing:-3px;color:#1b2327;line-height:1.05;margin-top:6px;">${escapeHtml(vm.utilityName)}</div>` +
     `<div style="margin-top:36px;">${headBarcode}</div>` +
     `<div style="margin-top:44px;">` +
-    `<div style="font-size:42px;font-weight:600;color:#1b2327;">${escapeHtml(vm.customerName)}</div>` +
+    `<div style="font-size:37px;color:#333c42;line-height:1.5;">${escapeHtml(vm.customerName)}</div>` +
     `${addressHtml}</div>` +
     `<div style="display:flex;gap:48px;align-items:center;margin-top:52px;">` +
     `<div style="font-size:40px;color:#1b2327;line-height:1.5;">Have you switched<br/>to eBill?` +
-    `<div style="font-size:34px;color:${meta.accent};margin-top:12px;">Find out more on<br/>meridian.example/eBill</div></div>` +
+    `<div style="font-size:34px;color:${meta.accent};margin-top:12px;">Find out more on<br/>singtel.com/eBill</div></div>` +
     `<div style="flex:none;">${qr}</div></div>` +
     `<div style="margin-top:44px;">` +
     promoRow(
       promoIcon(meta.accent, icons.app),
-      `Pay your bills with<br/>My Meridian app<br/>anytime, anywhere.`,
+      `Pay your bills with<br/>My Singtel app<br/>anytime, anywhere.`,
     ) +
     promoRow(
-      promoIcon(meta.accent, icons.help),
-      `Understand your bill.<br/><span style="color:#5a656c;">meridian.example/billexplainer</span>`,
+      plainIcon(icons.help),
+      `Understand your bill.<br/><span style="color:#5a656c;">singtel.com/billexplainer</span>`,
     ) +
     promoRow(
-      promoIcon(meta.accent, icons.phone),
-      `For bill enquiries:<br/><b>1800 000 0000</b> <span style="color:#5a656c;">(24-hrs automated helpline)</span>`,
+      plainIcon(icons.phone),
+      `For bill enquiries:<br/><b>1800 738 3330</b> <span style="color:#5a656c;">(24-hrs automated helpline)</span>`,
     ) +
     `</div></div>`
   );
@@ -232,8 +237,6 @@ function overviewPanel(vm: BillViewModel): string {
     vm.accountSummary !== undefined
       ? round2(vm.accountSummary.previousBalance - vm.accountSummary.paymentsReceived)
       : 0;
-  const regNo = `20${vm.accountNumber.slice(2, 4)}${vm.accountNumber.slice(4, 8)}D`;
-  const gstRegNo = `M${vm.accountNumber.slice(8, 9)}-${vm.accountNumber.slice(0, 7)}-${vm.accountNumber.slice(9, 10)}`;
   return (
     `<div style="flex:1;margin-left:56px;background:${PANEL_BG};border-radius:70px 70px 0 0;padding:52px 72px;">` +
     `<div style="font-size:54px;font-weight:800;color:#1b2327;">My Bill Overview</div>` +
@@ -257,9 +260,9 @@ function overviewPanel(vm: BillViewModel): string {
     `<span style="font-size:42px;font-weight:700;font-variant-numeric:tabular-nums;">${vm.total.toFixed(2)}</span></div>` +
     monthlyBars(vm) +
     `<div style="margin-top:48px;font-size:27px;color:#5a656c;line-height:1.65;">` +
-    `<div>${escapeHtml(vm.utilityName)} Limited</div>` +
-    `<div>Registration no.: ${escapeHtml(regNo)}</div>` +
-    `<div>Tax Invoice GST Registration No.: ${escapeHtml(gstRegNo)}</div></div>` +
+    `<div>Singapore Telecommunications Limited</div>` +
+    `<div>Registration no.: 199201624D</div>` +
+    `<div>Tax Invoice GST Registration No.: MR-8500432-2</div></div>` +
     `<div style="text-align:right;font-size:30px;color:#5a656c;margin-top:16px;">Next Page &#9654;</div>` +
     `</div>`
   );
@@ -335,7 +338,7 @@ function paymentSlip(vm: BillViewModel, meta: TemplateMeta): string {
     `<div style="width:700px;flex:none;">` +
     `<div style="font-size:36px;font-weight:700;color:#1b2327;">${escapeHtml(vm.utilityName)}</div>` +
     `<div style="font-size:30px;color:#333c42;line-height:1.5;margin-top:8px;">` +
-    `ROBINSON ROAD POST OFFICE<br/>PO BOX 294<br/>SINGAPORE 900694</div>` +
+    `BRAS BASAH POST OFFICE<br/>PO BOX 294<br/>SINGAPORE 911810</div>` +
     `<div style="margin-top:20px;font-size:36px;font-weight:700;color:${meta.accent};">Payment Slip</div>` +
     `<div style="font-size:28px;color:#5a656c;margin-top:6px;">Mail us this portion with your cheque payment.<br/>Already on GIRO? No action needed — payment is deducted automatically.</div>` +
     `<div style="font-size:30px;color:#5a656c;margin-top:16px;">Total Due</div>` +
@@ -449,7 +452,7 @@ export const sgSingtelTelecom: BillTemplate = {
       barcodePayload: `000${base.accountNumber.slice(1, 10)}`,
       qrSeed: `${base.invoiceNumber}|${total.toFixed(2)}|${base.dueDate}`,
       notes: [
-        "Pay by GIRO for a fuss-free experience — deductions are made on the due date (fictional).",
+        "Pay by GIRO for a fuss-free experience — deductions are made on the due date.",
         "GST is charged at the prevailing 9% rate on all services.",
         "This is a multi-page bill; per-service itemised details continue on the following pages.",
       ],
@@ -474,8 +477,7 @@ export const sgSingtelTelecom: BillTemplate = {
       notes +
       paymentSlip(vm, SINGTEL_META) +
       `<div style="margin-top:10px;padding-top:12px;border-top:2px solid #e7e4dc;font-size:20px;color:#a2a9ae;line-height:1.6;white-space:nowrap;">` +
-      `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。` +
-      ` ${escapeHtml(vm.utilityName)} is a fictional utility; any resemblance to real organisations is coincidental.</div>` +
+      `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。</div>` +
       `</div>` +
       (opts.watermark ? watermarkLayer() : "") +
       `</div>`
