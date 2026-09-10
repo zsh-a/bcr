@@ -697,3 +697,71 @@ describe("新地区地址 pattern 校验", () => {
     expect(bad.errors["postcode"]).toBeDefined();
   });
 });
+
+/* ================= lc_power 升级（HK 住宅电费单流派特征） ================= */
+
+describe("lc_power 升级：费用公式块 / 按金 / 日均柱图 / 账户条码 / 存根 OCR", () => {
+  const template = getTemplate("lc_power");
+  if (template === undefined) throw new Error("missing lc_power");
+  const input = makeInput("lc_power");
+  const vm = template.compute(input, rngForInput(input));
+
+  it("费用公式勾稽：Energy + Fuel + Others = Total", () => {
+    const energy = vm.charges
+      .filter((c) => c.label.startsWith("Block"))
+      .reduce((s, c) => s + c.amount, 0);
+    const fuel = vm.charges.find((c) => c.label.includes("Fuel cost adjustment"))?.amount ?? -1;
+    const others = vm.charges.find((c) => c.label.startsWith("Other charges"))?.amount ?? -1;
+    expect(fuel).toBeGreaterThan(0);
+    expect(others).toBe(0);
+    expect(Math.abs(energy + fuel + others - vm.total)).toBeLessThan(0.005);
+    const html = template.renderHtml(vm, { watermark: false });
+    expect(html).toContain("Energy Charge");
+    expect(html).toContain("Fuel Cost Adjustment");
+    expect(html).toContain("Other Charges");
+    expect(html).toContain("應繳總數");
+  });
+
+  it("按金：渲染含 Deposit 行且确定性（两次渲染一致）", () => {
+    const html1 = template.renderHtml(vm, { watermark: false });
+    const html2 = template.renderHtml(vm, { watermark: false });
+    expect(html1).toBe(html2);
+    expect(html1).toContain("客戶按金 Deposit on account");
+    expect(html1).toMatch(/Deposit on account：<b[^>]*>LKD\s[\d,]+\.\d{2}<\/b>/);
+  });
+
+  it("平均每日用電量柱图：12 期、跨年、单位为度/日", () => {
+    expect(vm.bars).toHaveLength(12);
+    expect(vm.barUnit).toContain("度/日");
+    expect(vm.barTitle).toBe("平均每日用電量");
+    // 跨年：第一期与最后一期年份标签不同（billDate 2026-09-09，往前 11 个双月期）
+    expect(vm.bars[0]?.label.endsWith("/24")).toBe(true);
+    expect(vm.bars[11]?.label.endsWith("/26")).toBe(true);
+    // 本期柱 = 本期用量 / 60 天（1 位小数）
+    const kwh = Number((vm.meterRows[0]?.usage ?? "0").replace(/[^\d]/g, ""));
+    expect(vm.bars[11]?.value).toBeCloseTo(Math.round((kwh / 60) * 10) / 10, 5);
+    const html = template.renderHtml(vm, { watermark: false });
+    expect(html).toContain("Average daily consumption");
+  });
+
+  it("顶部账户条码：XXXXX-XXXXX-X 格式", () => {
+    const html = template.renderHtml(vm, { watermark: false });
+    expect(html).toContain("客戶號碼 Account number");
+    expect(html).toMatch(/\d{5}-\d{5}-\d/);
+  });
+
+  it("存根：双语 + OCR 扫描行（hash 派生、确定性）", () => {
+    const html = template.renderHtml(vm, { watermark: false });
+    expect(html).toContain("繳款回條");
+    expect(html).toContain("繳款限期");
+    expect(html).toMatch(/monospace;font-size:32px[^>]*>\d{10,}[\d ]+/);
+    // OCR 行确定性：与 vm 内容绑定
+    const vm2 = template.compute({ ...input }, rngForInput({ ...input }));
+    expect(template.renderHtml(vm2, { watermark: false })).toBe(html);
+  });
+
+  it("不含真实机构字样（黑名单回归）", () => {
+    const html = template.renderHtml(vm, { watermark: true });
+    expect(html).not.toMatch(/clp|中電|港燈|hong ?kong electric/i);
+  });
+});

@@ -7,7 +7,9 @@
  */
 
 import type { BillInput, BillTemplate, BillViewModel, RenderOptions } from "../model";
+import { fnv1a } from "../hash";
 import {
+  addDaysIso,
   buildBase,
   formatInt,
   renderHkShell,
@@ -123,7 +125,7 @@ export const lcWater: BillTemplate = {
   },
   renderHtml(vm: BillViewModel, opts: RenderOptions): string {
     // 商户编号：缴费灵风格 2 位数字（虚构）
-    return renderHkShell(vm, WATER_META, "", opts, "82");
+    return renderHkShell(vm, WATER_META, "", opts, { merchantNo: "82" });
   },
 };
 
@@ -149,8 +151,19 @@ export const lcPower: BillTemplate = {
     const a4 = round2(b4 * 1.42);
     // 燃料调整费：按每度电 46.0 仙
     const fuel = round2(kwh * 0.46);
-    const subtotal = round2(a1 + a2 + a3 + a4 + fuel);
+    const others = 0; // 其他收費（本期无）
+    const subtotal = round2(a1 + a2 + a3 + a4 + fuel + others);
     const total = subtotal;
+    // 平均每日用電量柱图：近 12 期（双月账期，跨年），值 = 各期用量 / 60 天
+    const bars = Array.from({ length: 12 }, (_, i) => {
+      const back = 11 - i;
+      const iso = addDaysIso(base.billDateIso, -60 * back);
+      const periodKwh = i === 11 ? kwh : Math.round(kwh * (0.65 + rng() * 0.7));
+      return {
+        label: `${iso.slice(5, 7)}/${iso.slice(2, 4)}`,
+        value: Math.round((periodKwh / 60) * 10) / 10,
+      };
+    });
     return {
       docType: POWER_META.docType,
       regionId: "longcheng",
@@ -177,15 +190,16 @@ export const lcPower: BillTemplate = {
         },
       ],
       usageSummary: `${formatInt(kwh)} kWh`,
-      bars: [],
-      barUnit: "",
-      barTitle: "",
+      bars,
+      barUnit: "度/日 kWh/day",
+      barTitle: "平均每日用電量",
       charges: [
         { label: `Block 1 第一級收費 · ${formatInt(b1)} kWh × LKD 0.93`, amount: a1 },
         { label: `Block 2 第二級收費 · ${formatInt(b2)} kWh × LKD 1.08`, amount: a2 },
         { label: `Block 3 第三級收費 · ${formatInt(b3)} kWh × LKD 1.24`, amount: a3 },
         { label: `Block 4 第四級收費 · ${formatInt(b4)} kWh × LKD 1.42`, amount: a4 },
         { label: `Fuel cost adjustment 燃料調整費 · ${formatInt(kwh)} kWh × 46.0 仙`, amount: fuel },
+        { label: "Other charges 其他收費", amount: others },
       ],
       subtotal,
       taxLabel: "No tax 無稅項",
@@ -200,6 +214,19 @@ export const lcPower: BillTemplate = {
     };
   },
   renderHtml(vm: BillViewModel, opts: RenderOptions): string {
-    return renderHkShell(vm, POWER_META, "", opts, "17");
+    const energy = round2(
+      vm.charges.filter((c) => c.label.startsWith("Block")).reduce((s, c) => s + c.amount, 0),
+    );
+    const fuel = vm.charges.find((c) => c.label.includes("Fuel cost adjustment"))?.amount ?? 0;
+    const others = vm.charges.find((c) => c.label.startsWith("Other charges"))?.amount ?? 0;
+    // 按金：hash 确定性派生（显示项，不计入应缴总数）
+    const deposit = round2(400 + (fnv1a(`deposit::${vm.accountNumber}`) % 90000) / 100);
+    return renderHkShell(vm, POWER_META, "", opts, {
+      merchantNo: "17",
+      accountBarcode: true,
+      formula: { energy, fuel, others },
+      deposit,
+      stubOcr: true,
+    });
   },
 };

@@ -798,9 +798,90 @@ export function renderDeShell(
 /** CJK 字体栈：双语账单必须带繁中 fallback（单引号——外层 style 属性用双引号） */
 const HK_FONT = `Helvetica, Arial, 'PingFang TC', 'Noto Sans CJK TC', 'Microsoft JhengHei', sans-serif`;
 
+/** 账户条码号：XXXXX-XXXXX-X 格式（10 位户号 + 1 位 hash 校验位，装饰性） */
+function hkAccountCode(vm: BillViewModel): { formatted: string; payload: string } {
+  const digits10 = vm.accountNumber;
+  const check = `${fnv1a(`hkacct::${digits10}`) % 10}`;
+  return {
+    formatted: `${digits10.slice(0, 5)}-${digits10.slice(5)}-${check}`,
+    payload: `${digits10}${check}`,
+  };
+}
+
+/** 存根底部 OCR 扫描行：hash 派生的等宽数字串（装饰性） */
+function hkOcrLine(vm: BillViewModel): string {
+  const rng = mulberry32(fnv1a(`hkocr::${vm.barcodePayload}::${vm.total.toFixed(2)}`));
+  const digits = (n: number): string =>
+    Array.from({ length: n }, () => `${Math.floor(rng() * 10)}`).join("");
+  const cents = `${Math.round(vm.total * 100)}`.padStart(8, "0");
+  return `${vm.accountNumber}${digits(4)} ${cents} ${digits(14)}`;
+}
+
+/** HK 外壳的扩展件（lc_power 全用；lc_water 只传 merchantNo） */
+export interface HkShellExtras {
+  /** 缴费灵风格 2 位商户编号（虚构） */
+  readonly merchantNo: string;
+  /** 顶部账户条码（XXXXX-XXXXX-X + Code128） */
+  readonly accountBarcode?: boolean;
+  /** 费用公式块：Energy + Fuel + Others = Total */
+  readonly formula?: { readonly energy: number; readonly fuel: number; readonly others: number };
+  /** 客戶按金 Deposit（显示项，不计入应缴） */
+  readonly deposit?: number;
+  /** 存根底部 OCR 扫描行 */
+  readonly stubOcr?: boolean;
+}
+
+/** 费用公式块：四个数值块横向排列，"+"、"+"、"=" 连接（流派通用结构） */
+function hkFormulaBlock(meta: TemplateMeta, f: { energy: number; fuel: number; others: number }, total: number): string {
+  const cell = (labelZh: string, labelEn: string, value: number, strong: boolean): string =>
+    `<div style="flex:1;border:3px solid ${meta.accent};border-radius:14px;padding:26px 20px;text-align:center;` +
+    `${strong ? `background:${meta.accent};color:#ffffff;` : "background:#ffffff;"}">` +
+    `<div style="font-size:29px;font-weight:700;">${labelZh}</div>` +
+    `<div style="font-size:24px;${strong ? "opacity:0.85;" : "color:#8a9298;"}">${labelEn}</div>` +
+    `<div style="font-size:${strong ? 54 : 46}px;font-weight:800;margin-top:10px;font-variant-numeric:tabular-nums;">` +
+    `${escapeHtml(fmtMeta(meta, value))}</div></div>`;
+  const connector = (ch: string): string =>
+    `<div style="flex:none;align-self:center;font-size:56px;font-weight:300;color:#8a9298;">${ch}</div>`;
+  return (
+    `<div style="display:flex;gap:22px;margin-top:46px;align-items:stretch;">` +
+    cell("電力費用", "Energy Charge", f.energy, false) +
+    connector("+") +
+    cell("燃料調整費", "Fuel Cost Adjustment", f.fuel, false) +
+    connector("+") +
+    cell("其他收費", "Other Charges", f.others, false) +
+    connector("=") +
+    cell("應繳總數", "Total Due", total, true) +
+    `</div>`
+  );
+}
+
+/** 平均每日用電量柱图：柱高 = 各期度/日，柱顶标数值（vm.bars 驱动） */
+function hkDailyBars(vm: BillViewModel, meta: TemplateMeta): string {
+  if (vm.bars.length === 0) return "";
+  const max = Math.max(...vm.bars.map((b) => b.value), 1);
+  const bars = vm.bars
+    .map((bar) => {
+      const height = Math.max(18, Math.round((bar.value / max) * 300));
+      return (
+        `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:390px;">` +
+        `<div style="font-size:22px;color:#5a656c;margin-bottom:6px;">${bar.value.toFixed(1)}</div>` +
+        `<div style="width:74%;height:${height}px;background:${meta.accent};border-radius:8px 8px 0 0;"></div>` +
+        `<div style="font-size:22px;color:#8a9298;margin-top:10px;">${escapeHtml(bar.label)}</div></div>`
+      );
+    })
+    .join("");
+  return (
+    `<div style="margin-top:56px;border:1px solid #b9b3a6;border-radius:14px;padding:36px 44px;">` +
+    `<div style="font-size:32px;font-weight:700;">${escapeHtml(vm.barTitle)}</div>` +
+    `<div style="font-size:26px;color:#8a9298;margin:2px 0 20px;">Average daily consumption · 單位：${escapeHtml(vm.barUnit)}</div>` +
+    `<div style="display:flex;gap:12px;align-items:flex-end;">${bars}</div></div>`
+  );
+}
+
 /**
  * 香港流派外壳：双语（EN 上 / 繁中下）标签、密集边框表格、
  * 底部缴款回条（商户编号 + Code128 条码 + 类 FPS 伪 QR + 缴款限期）。
+ * extras 可加：顶部账户条码、费用公式块、按金行、日均用量柱图、存根 OCR 行。
  * meta.locale 应设 "en-HK"。
  */
 export function renderHkShell(
@@ -808,7 +889,7 @@ export function renderHkShell(
   meta: TemplateMeta,
   bodyHtml: string,
   opts: RenderOptions,
-  merchantNo: string,
+  extras: HkShellExtras,
 ): string {
   const addressHtml = vm.addressLines
     .map((line) => `<div style="font-size:32px;color:#1b2327;line-height:1.55;">${escapeHtml(line)}</div>`)
@@ -859,6 +940,23 @@ export function renderHkShell(
     `<div>賬單號碼 Bill No. <b>${escapeHtml(vm.invoiceNumber)}</b></div>` +
     `<div>客戶編號 Account No. <b>${escapeHtml(vm.accountNumber)}</b></div>` +
     `<div>發單日期 Issue date ${escapeHtml(vm.billDate)}</div></div></div>` +
+    (extras.accountBarcode === true
+      ? (() => {
+          const acct = hkAccountCode(vm);
+          const acctBarcode = code128Svg(acct.payload, { moduleWidth: 3, height: 100 });
+          return (
+            `<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:36px;` +
+            `border:1px solid #b9b3a6;border-radius:12px;padding:22px 30px;">` +
+            `<div><div style="font-size:28px;color:#8a9298;">客戶號碼 Account number</div>` +
+            `<div style="font-size:44px;font-weight:800;font-family:'Courier New',monospace;letter-spacing:3px;">${escapeHtml(acct.formatted)}</div></div>` +
+            `<div style="text-align:center;">${acctBarcode}` +
+            `<div style="font-size:24px;letter-spacing:5px;color:#333c42;margin-top:6px;">${escapeHtml(acct.payload)}</div></div>` +
+            `<div style="text-align:right;font-size:28px;color:#5a656c;line-height:1.6;">` +
+            `<div>繳款限期 Payment due date</div>` +
+            `<div style="font-size:36px;font-weight:700;color:${meta.accent};">${escapeHtml(vm.dueDate)}</div></div></div>`
+          );
+        })()
+      : "") +
     `<div style="display:flex;justify-content:space-between;margin-top:50px;">` +
     `<div><div style="font-size:28px;color:#8a9298;margin-bottom:8px;">客戶地址 Customer address</div>` +
     `<div style="font-size:44px;font-weight:700;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
@@ -867,6 +965,12 @@ export function renderHkShell(
     `<div>${escapeHtml(vm.periodStart)} – ${escapeHtml(vm.periodEnd)}</div>` +
     `<div style="color:#5a656c;">${vm.periodDays} 天 days · ${escapeHtml(vm.usageSummary)}</div></div></div>` +
     `<div style="margin-top:44px;">${meterSection}${bodyHtml}</div>` +
+    (extras.formula !== undefined ? hkFormulaBlock(meta, extras.formula, vm.total) : "") +
+    (extras.deposit !== undefined
+      ? `<div style="margin-top:26px;font-size:30px;color:#5a656c;">` +
+        `客戶按金 Deposit on account：<b style="color:#1b2327;">${escapeHtml(fmtMeta(meta, extras.deposit))}</b>` +
+        `　·　按金不計入本期應繳總數 Deposit is not part of this bill's total.</div>`
+      : "") +
     `<div style="margin-top:50px;"><div style="font-size:30px;letter-spacing:2px;color:${meta.accent};` +
     `text-transform:uppercase;margin-bottom:10px;font-weight:700;">收費明細 Charge details</div>` +
     `<table style="width:100%;border-collapse:collapse;">${chargeRows}` +
@@ -874,6 +978,7 @@ export function renderHkShell(
     `<td style="padding:18px 10px;border:1px solid #b9b3a6;background:#f2efe6;">應繳總額 Total amount due</td>` +
     `<td style="padding:18px 10px;border:1px solid #b9b3a6;background:#f2efe6;text-align:right;` +
     `font-variant-numeric:tabular-nums;color:${meta.accent};">${escapeHtml(fmtMeta(meta, vm.total))}</td></tr></table></div>` +
+    hkDailyBars(vm, meta) +
     `<div style="margin-top:auto;">` +
     `<div style="padding-top:36px;font-size:25px;color:#a2a9ae;line-height:1.7;">` +
     `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虛構示例文件，僅供版式學習，非真實賬單。</div>` +
@@ -882,7 +987,7 @@ export function renderHkShell(
     `<div style="text-align:center;font-size:28px;letter-spacing:4px;color:#5a656c;">繳款回條 PAYMENT SLIP</div>` +
     `<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:22px;">` +
     `<div style="font-size:30px;color:#333c42;line-height:1.85;">` +
-    `<div>繳費靈商戶編號 Merchant code <b style="font-family:'Courier New',monospace;font-size:36px;">${escapeHtml(merchantNo)}</b></div>` +
+    `<div>繳費靈商戶編號 Merchant code <b style="font-family:'Courier New',monospace;font-size:36px;">${escapeHtml(extras.merchantNo)}</b></div>` +
     `<div>客戶編號 Account No. <b>${escapeHtml(vm.accountNumber)}</b></div>` +
     `<div>繳款限期 Pay by <b style="color:${meta.accent};">${escapeHtml(vm.dueDate)}</b></div>` +
     `<div style="margin-top:8px;">${barcode}</div>` +
@@ -893,7 +998,12 @@ export function renderHkShell(
     `<div style="font-size:26px;color:#8a9298;margin-top:8px;">應繳總額 Amount due</div></div>` +
     `<div style="text-align:center;"><div>${qr}</div>` +
     `<div style="font-size:25px;color:#8a9298;margin-top:8px;">轉數快掃碼繳費 FPS (decorative)</div></div>` +
-    `</div></div>` +
+    `</div>` +
+    (extras.stubOcr === true
+      ? `<div style="margin-top:22px;font-family:'Courier New',monospace;font-size:32px;letter-spacing:3px;color:#333c42;">` +
+        `${escapeHtml(hkOcrLine(vm))}</div>`
+      : "") +
+    `</div>` +
     `</div>` +
     `</div>` +
     (opts.watermark ? watermarkLayer() : "") +
