@@ -6,10 +6,10 @@ import { validateBillInput } from "../src/validate";
 import type { BillInput } from "../src/model";
 
 describe("registry", () => {
-  it("4 个虚构地区、8 个模板、docType 唯一", () => {
-    expect(REGIONS).toHaveLength(4);
-    expect(TEMPLATES).toHaveLength(8);
-    expect(new Set(TEMPLATES.map((t) => t.docType)).size).toBe(8);
+  it("10 个虚构地区、20 个模板、docType 唯一", () => {
+    expect(REGIONS).toHaveLength(10);
+    expect(TEMPLATES).toHaveLength(20);
+    expect(new Set(TEMPLATES.map((t) => t.docType)).size).toBe(20);
   });
 
   it("listTemplates 按地区过滤；getTemplate 往返", () => {
@@ -17,7 +17,13 @@ describe("registry", () => {
     expect(listTemplates("caldera").map((t) => t.docType)).toEqual(["ci_gas", "ci_telecom"]);
     expect(listTemplates("veridia").map((t) => t.docType)).toEqual(["vd_power", "vd_water"]);
     expect(listTemplates("castellan").map((t) => t.docType)).toEqual(["cs_power", "cs_water"]);
-    expect(listTemplates()).toHaveLength(8);
+    expect(listTemplates("waldland").map((t) => t.docType)).toEqual(["wl_power", "wl_gas"]);
+    expect(listTemplates("longcheng").map((t) => t.docType)).toEqual(["lc_water", "lc_power"]);
+    expect(listTemplates("coralia").map((t) => t.docType)).toEqual(["co_power", "co_gas"]);
+    expect(listTemplates("northland").map((t) => t.docType)).toEqual(["nl_power", "nl_gas"]);
+    expect(listTemplates("equatoria").map((t) => t.docType)).toEqual(["eq_utilities", "eq_telecom"]);
+    expect(listTemplates("wenlock").map((t) => t.docType)).toEqual(["wn_energy", "wn_water"]);
+    expect(listTemplates()).toHaveLength(20);
     for (const t of TEMPLATES) expect(getTemplate(t.docType)).toBe(t);
     expect(getTemplate("nope")).toBeUndefined();
   });
@@ -31,7 +37,7 @@ describe("registry", () => {
   it("全部为虚构机构，不含真实公用事业公司名", () => {
     // 真实机构黑名单（防回归）：新机构名同样不得命中
     const banned =
-      /thames|bc hydro|british gas|edf|anglian|severn|octopus|sse\b|e\.on|eon\b|veolia|suez|pacific gas|pg&e|duke|con ?ed|southern company|national grid|scottish ?power|npower|centrica|xcel|dominion|iberdrola|enel|engie|united utilities|yorkshire water|southern water|wessex/i;
+      /thames|bc hydro|british gas|edf|anglian|severn|octopus|sse\b|e\.on|eon\b|veolia|suez|pacific gas|pg&e|duke|con ?ed|southern company|national grid|scottish ?power|npower|centrica|xcel|dominion|iberdrola|enel|engie|united utilities|yorkshire water|southern water|wessex|rwe\b|vattenfall|enbw|innogy|rheinenergie|gasag|badenova|mainova|entega|clp\b|中電|港燈|hong ?kong electric|origin energy|energyaustralia|agl energy|alinta|hydro one|enmax|atco|fortis ?bc|sp group|singtel|starhub|m1 limited|severn trent/i;
     for (const t of TEMPLATES) {
       const input: BillInput = {
         docType: t.docType,

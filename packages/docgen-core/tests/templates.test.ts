@@ -13,6 +13,18 @@ const ADDRESSES: Record<string, Record<string, string>> = {
   vd_water: { streetNumber: "15", streetName: "Kestrel Court", city: "Kestrel Ridge", state: "VD", zip: "74318" },
   cs_power: { street: "24 Rue des Tilleuls", city: "Castelbrun", postcode: "4812 EX" },
   cs_water: { street: "8 Avenue du Clocher", city: "Montaubray", postcode: "3407 LM" },
+  wl_power: { strasse: "Falkenstraße 12", plz: "91240", ort: "Falkenheim" },
+  wl_gas: { strasse: "Waldweg 7", plz: "91244", ort: "Waldbrück" },
+  lc_water: { flat: "Flat A, 12/F", estate: "Lung Wah Estate, Block 3", district: "Lung Shing East" },
+  lc_power: { flat: "Flat 5B, 23/F", estate: "Harbour Jade Court", district: "Harbourpoint" },
+  co_power: { streetNo: "14", streetName: "Banksia Street", suburb: "Coral Cove", state: "CQL", postcode: "4820" },
+  co_gas: { streetNo: "27", streetName: "Banyan Parade", suburb: "Banyan Bay", state: "CQL", postcode: "4822" },
+  nl_power: { streetNo: "142", streetName: "Spruce Hollow Road", city: "Northpine", province: "NP", postalCode: "N4P 2K1" },
+  nl_gas: { streetNo: "28", streetName: "Borealis Crescent", city: "Borealis Falls", province: "NP", postalCode: "N7B 3T9" },
+  eq_utilities: { blockStreet: "Blk 128 Equator Avenue", unitNo: "#12-34", postalCode: "560128" },
+  eq_telecom: { blockStreet: "Blk 45 Meridian Walk", unitNo: "#03-08", postalCode: "541045" },
+  wn_energy: { streetNo: "12", streetName: "Mill Lane", city: "Wenlock", postcode: "WN4 2QA" },
+  wn_water: { streetNo: "3", streetName: "Abbey Close", city: "Wealdminster", postcode: "WM1 8TR" },
 };
 
 function makeInput(docType: string): BillInput {
@@ -61,7 +73,9 @@ describe("金额与日期推导", () => {
         expect(Math.abs(vm.subtotal + vm.tax - vm.total)).toBeLessThan(0.005);
       }
       expect(vm.total).toBeGreaterThan(0);
-      expect(formatMoney(vm.currency, vm.total)).toContain(vm.currency);
+      // EUR 用 de-DE 渲染为 "1.234,56 €"；虚构货币用 en-US 渲染为 "NDK 1,234.56"
+      const formatted = formatMoney(vm.currency, vm.total);
+      expect(formatted.includes(vm.currency) || formatted.includes("€")).toBe(true);
     });
 
     it(`${template.docType}：dueDate = billDate + 21 天，账期长度正确`, () => {
@@ -70,8 +84,20 @@ describe("金额与日期推导", () => {
       expect(vm.dueDate).toBe("30 Sep 2026");
       expect(vm.billDate).toBe("09 Sep 2026");
       expect(addDaysIso("2026-09-09", 21)).toBe("2026-09-30");
-      const quarterly = new Set(["nh_water", "cs_water"]);
-      expect(vm.periodDays).toBe(quarterly.has(template.docType) ? 90 : 30);
+      const periodDays: Record<string, number> = {
+        nh_water: 90,
+        cs_water: 90,
+        wl_power: 365,
+        wl_gas: 365,
+        lc_water: 90,
+        lc_power: 60,
+        co_power: 90,
+        co_gas: 90,
+        nl_power: 60,
+        wn_energy: 90,
+        wn_water: 180,
+      };
+      expect(vm.periodDays).toBe(periodDays[template.docType] ?? 30);
     });
   }
 
@@ -288,6 +314,385 @@ describe("veridia/castellan 地址 pattern 校验", () => {
     const bad = validateBillInput(tpl, {
       ...base,
       address: { ...base.address, postcode: "ABC-123" },
+    });
+    expect(bad.errors["postcode"]).toBeDefined();
+  });
+});
+
+/* ================= 德国流派（Jahresabrechnung）专项断言 ================= */
+
+describe("wl_power（Strom-Jahresabrechnung）", () => {
+  const template = getTemplate("wl_power");
+  if (template === undefined) throw new Error("missing wl_power");
+  const input = makeInput("wl_power");
+  const vm = template.compute(input, rngForInput(input));
+
+  it("netto = arbeit + grund + 税费；brutto = netto × 1.19", () => {
+    const chargesSum = vm.charges.reduce((s, c) => s + c.amount, 0);
+    expect(Math.abs(chargesSum - vm.subtotal)).toBeLessThan(0.005);
+    expect(Math.abs(vm.subtotal * 1.19 - vm.total)).toBeLessThan(0.015); // 分项四舍五入容差
+    expect(vm.taxLabel).toContain("19 %");
+    const labels = vm.charges.map((c) => c.label).join("|");
+    expect(labels).toContain("Arbeitspreis");
+    expect(labels).toContain("Grundpreis · 12 Monate");
+    expect(labels).toContain("Stromsteuer");
+    expect(labels).toContain("Konzessionsabgabe");
+  });
+
+  it("Abschlag 对冲：11 期、schlussbetrag = brutto − 预缴总额", () => {
+    const s = vm.settlement;
+    expect(s).toBeDefined();
+    if (s === undefined) return;
+    expect(s.installments).toHaveLength(11);
+    const instSum = s.installments.reduce((sum, i) => sum + i.amount, 0);
+    expect(Math.abs(instSum - s.installmentsTotal)).toBeLessThan(0.02);
+    expect(Math.abs(vm.total - s.installmentsTotal - s.schlussbetrag)).toBeLessThan(0.02);
+  });
+
+  it("Schlussbetrag 标签随符号切换（Guthaben / Nachzahlung）", () => {
+    const s = vm.settlement;
+    if (s === undefined) throw new Error("missing settlement");
+    const html = template.renderHtml(vm, { watermark: false });
+    if (s.schlussbetrag < 0) {
+      expect(html).toContain("Guthaben zu Ihren Gunsten");
+      expect(html).not.toContain("Nachzahlung fällig");
+    } else {
+      expect(html).toContain("Nachzahlung fällig");
+      expect(html).not.toContain("Guthaben zu Ihren Gunsten");
+    }
+  });
+
+  it("付款块：IBAN 格式合法、SEPA 提示、Verwendungszweck", () => {
+    const s = vm.settlement;
+    if (s === undefined) throw new Error("missing settlement");
+    expect(s.iban).toMatch(/^DE\d{2}( \d{4}){4} \d{2}$/);
+    expect(s.iban.replaceAll(" ", "")).toHaveLength(22);
+    const html = template.renderHtml(vm, { watermark: false });
+    // SEPA 扣款提示仅在补收（Nachzahlung）时出现；结余（Guthaben）时为退款提示
+    if (s.schlussbetrag < 0) {
+      expect(html).toContain("erstattet");
+    } else {
+      expect(html).toContain("SEPA-Lastschrift");
+    }
+    expect(html).toContain("Verwendungszweck");
+    expect(html).toContain("Jahresabrechnung");
+    expect(html).toContain("Zählerstände");
+  });
+
+  it("德语数字格式：千分位点 + 小数逗号", () => {
+    const html = template.renderHtml(vm, { watermark: false });
+    expect(html).toMatch(/\d{1,3}(\.\d{3})*,\d{2} €/);
+  });
+});
+
+describe("wl_gas（Gas-Jahresabrechnung：热值换算）", () => {
+  const template = getTemplate("wl_gas");
+  if (template === undefined) throw new Error("missing wl_gas");
+  const input = makeInput("wl_gas");
+  const vm = template.compute(input, rngForInput(input));
+
+  it("换算：m³ × Brennwert × Zustandszahl = kWh", () => {
+    const conv = vm.conversion;
+    expect(conv).toBeDefined();
+    if (conv === undefined) return;
+    expect(Math.abs(conv.cubicMeters * conv.brennwert * conv.zustandszahl - conv.kwh)).toBeLessThan(0.51);
+    expect(conv.brennwert).toBeGreaterThan(11);
+    expect(conv.zustandszahl).toBeGreaterThan(0.9);
+    expect(conv.zustandszahl).toBeLessThan(1);
+  });
+
+  it("勾稽：netto + USt = brutto；brutto − Abschläge = schlussbetrag", () => {
+    const s = vm.settlement;
+    if (s === undefined) throw new Error("missing settlement");
+    expect(Math.abs(vm.subtotal + vm.tax - vm.total)).toBeLessThan(0.005);
+    expect(Math.abs(vm.total - s.installmentsTotal - s.schlussbetrag)).toBeLessThan(0.02);
+  });
+
+  it("渲染含换算块与 Erdgassteuer", () => {
+    const html = template.renderHtml(vm, { watermark: false });
+    expect(html).toContain("Thermische Abrechnung");
+    expect(html).toContain("Brennwert");
+    expect(html).toContain("Zustandszahl");
+    expect(html).toContain("Erdgassteuer");
+  });
+
+  it("PLZ pattern：必须恰好 5 位数字", () => {
+    const base = makeInput("wl_gas");
+    expect(validateBillInput(template, base).ok).toBe(true);
+    const bad = validateBillInput(template, {
+      ...base,
+      address: { ...base.address, plz: "9124" },
+    });
+    expect(bad.errors["plz"]).toBeDefined();
+    const bad2 = validateBillInput(template, {
+      ...base,
+      address: { ...base.address, plz: "9124A" },
+    });
+    expect(bad2.errors["plz"]).toBeDefined();
+  });
+});
+
+/* ================= 港/澳/加/新/英 五个流派专项断言 ================= */
+
+function computeVm(docType: string) {
+  const template = getTemplate(docType);
+  if (template === undefined) throw new Error(`missing ${docType}`);
+  const input = makeInput(docType);
+  const vm = template.compute(input, rngForInput(input));
+  return { template, input, vm };
+}
+
+describe("lc_water（香港：分级水价 + 排污费 + 缴款回条）", () => {
+  const { template, vm } = computeVm("lc_water");
+
+  it("四级水价：各档用量之和 = 总用量，首级免费", () => {
+    const tierLines = vm.charges.filter((c) => c.label.startsWith("Tier"));
+    expect(tierLines).toHaveLength(4);
+    const m3 = Number((vm.meterRows[0]?.usage ?? "0").replace(/[^\d]/g, ""));
+    const rates = [0, 4.16, 6.45, 9.05];
+    let qtySum = 0;
+    for (let i = 0; i < 4; i++) {
+      const line = tierLines[i];
+      if (line === undefined) throw new Error("missing tier");
+      const match = /Tier (\d)[^·]*· ([\d,]+) m³ × LKD ([\d.]+)/.exec(line.label);
+      expect(match).not.toBeNull();
+      const qty = Number((match?.[2] ?? "0").replaceAll(",", ""));
+      qtySum += qty;
+      expect(Number(match?.[3])).toBe(rates[i]);
+      expect(Math.abs(line.amount - Math.round(qty * (rates[i] ?? 0) * 100) / 100)).toBeLessThan(0.005);
+    }
+    expect(qtySum).toBe(m3);
+    expect(tierLines[0]?.amount).toBe(0); // 首级免费
+  });
+
+  it("排污费 = 用水量 × 70% × 2.92，账单无税项", () => {
+    const sewage = vm.charges.find((c) => c.label.includes("Sewage"));
+    expect(sewage).toBeDefined();
+    const m3 = Number((vm.meterRows[0]?.usage ?? "0").replace(/[^\d]/g, ""));
+    expect(Math.abs((sewage?.amount ?? 0) - Math.round(m3 * 0.7 * 2.92 * 100) / 100)).toBeLessThan(0.01);
+    expect(vm.tax).toBe(0);
+    expect(vm.total).toBe(vm.subtotal);
+  });
+
+  it("双语 + 缴款回条：含 CJK、商户编号、缴款限期", () => {
+    const html = template.renderHtml(vm, { watermark: false });
+    expect(html).toContain("水費單");
+    expect(html).toContain("繳款回條");
+    expect(html).toContain("繳費靈商戶編號");
+    expect(html).toContain("繳款限期");
+    expect(html).toContain("PingFang TC"); // CJK 字体栈
+    expect(/[\u4e00-\u9fff]/.test(html)).toBe(true);
+  });
+});
+
+describe("lc_power（香港：分级电价 + 燃料调整费，双月账期）", () => {
+  const { template, vm } = computeVm("lc_power");
+
+  it("各档电量之和 = 总用量；燃料调整费 = kWh × 0.46", () => {
+    const blockLines = vm.charges.filter((c) => c.label.startsWith("Block"));
+    const kwh = Number((vm.meterRows[0]?.usage ?? "0").replace(/[^\d]/g, ""));
+    let qtySum = 0;
+    for (const line of blockLines) {
+      const match = /Block \d[^·]*· ([\d,]+) kWh × LKD [\d.]+/.exec(line.label);
+      expect(match).not.toBeNull();
+      qtySum += Number((match?.[1] ?? "0").replaceAll(",", ""));
+    }
+    expect(qtySum).toBe(kwh);
+    const fuel = vm.charges.find((c) => c.label.includes("Fuel cost adjustment"));
+    expect(Math.abs((fuel?.amount ?? 0) - Math.round(kwh * 0.46 * 100) / 100)).toBeLessThan(0.01);
+    expect(vm.periodDays).toBe(60);
+  });
+
+  it("双语渲染", () => {
+    const html = template.renderHtml(vm, { watermark: false });
+    expect(html).toContain("電費單");
+    expect(html).toContain("燃料調整費");
+  });
+});
+
+describe("co_power（澳洲：NMI + GST 内含 + BPAY + 柱图）", () => {
+  const { template, vm } = computeVm("co_power");
+
+  it("NMI 10 位数字；GST = subtotal × 10%；total 内含 GST", () => {
+    expect(vm.meterRows[0]?.label).toMatch(/NMI \d{10}/);
+    expect(Math.abs(vm.tax - Math.round(vm.subtotal * 0.1 * 100) / 100)).toBeLessThan(0.005);
+    expect(vm.taxLabel).toContain("included");
+    expect(Math.abs(vm.subtotal + vm.tax - vm.total)).toBeLessThan(0.005);
+  });
+
+  it("6 期柱图；渲染含 BPAY 块", () => {
+    expect(vm.bars).toHaveLength(6);
+    const html = template.renderHtml(vm, { watermark: false });
+    expect(html).toContain("BPAY");
+    expect(html).toContain("Biller Code");
+    expect(html).toContain("Ref:");
+  });
+});
+
+describe("co_gas（澳洲：MIRN + MJ）", () => {
+  const { template, vm } = computeVm("co_gas");
+
+  it("MIRN 10 位数字；MJ 单位；GST 内含", () => {
+    expect(vm.meterRows[0]?.label).toMatch(/MIRN \d{10}/);
+    expect(vm.usageSummary).toContain("MJ");
+    expect(vm.taxLabel).toContain("included");
+  });
+
+  it("渲染含 BPAY 与 MJ", () => {
+    const html = template.renderHtml(vm, { watermark: false });
+    expect(html).toContain("BPAY");
+    expect(html).toContain("MJ");
+  });
+});
+
+describe("nl_power（加拿大：Step 1 / Step 2 阶梯）", () => {
+  const { template, vm } = computeVm("nl_power");
+
+  it("Step1 + Step2 电量 = 总用量；GST 5%", () => {
+    const kwh = Number((vm.meterRows[0]?.usage ?? "0").replace(/[^\d]/g, ""));
+    const s1 = /Step 1 · ([\d,]+) kWh/.exec(vm.charges.find((c) => c.label.startsWith("Step 1"))?.label ?? "");
+    const s2 = /Step 2 · ([\d,]+) kWh/.exec(vm.charges.find((c) => c.label.startsWith("Step 2"))?.label ?? "");
+    const q1 = Number((s1?.[1] ?? "0").replaceAll(",", ""));
+    const q2 = Number((s2?.[1] ?? "0").replaceAll(",", ""));
+    expect(q1 + q2).toBe(kwh);
+    expect(q1).toBeLessThanOrEqual(1350);
+    expect(vm.taxLabel).toBe("GST (5%)");
+    expect(Math.abs(vm.subtotal * 0.05 - vm.tax)).toBeLessThan(0.005);
+    const html = template.renderHtml(vm, { watermark: false });
+    expect(html).toContain("Step 1");
+  });
+});
+
+describe("nl_gas（加拿大：carbon charge per m³ 分行）", () => {
+  const { vm } = computeVm("nl_gas");
+
+  it("carbon charge = m³ × 0.1535；delivery/commodity 分行", () => {
+    const m3 = Number((vm.meterRows[0]?.usage ?? "0").replace(/[^\d]/g, ""));
+    const carbon = vm.charges.find((c) => c.label.startsWith("Carbon charge"));
+    expect(carbon).toBeDefined();
+    expect(Math.abs((carbon?.amount ?? 0) - Math.round(m3 * 0.1535 * 100) / 100)).toBeLessThan(0.005);
+    expect(vm.charges.some((c) => c.label.startsWith("Delivery charge"))).toBe(true);
+    expect(vm.charges.some((c) => c.label.startsWith("Commodity charge"))).toBe(true);
+  });
+});
+
+describe("eq_utilities（新加坡：水电合一三 section + GIRO）", () => {
+  const { template, vm } = computeVm("eq_utilities");
+
+  it("三 section：Electricity / Water / Refuse；ΣsectionTotal = subtotal；GST 9% 外加", () => {
+    expect(vm.sections).toHaveLength(3);
+    const titles = (vm.sections ?? []).map((s) => s.title);
+    expect(titles[0]).toContain("Electricity");
+    expect(titles[1]).toContain("Water");
+    expect(titles[2]).toContain("Refuse");
+    const sum = (vm.sections ?? []).reduce((acc, s) => acc + s.sectionTotal, 0);
+    expect(Math.abs(sum - vm.subtotal)).toBeLessThan(0.005);
+    for (const s of vm.sections ?? []) {
+      const lineSum = s.lines.reduce((acc, l) => acc + l.amount, 0);
+      expect(Math.abs(lineSum - s.sectionTotal)).toBeLessThan(0.005);
+    }
+    expect(vm.taxLabel).toBe("GST (9%)");
+    expect(Math.abs(vm.subtotal * 0.09 - vm.tax)).toBeLessThan(0.005);
+  });
+
+  it("水 section 内含 conservation tax + waterborne fee 分行", () => {
+    const water = (vm.sections ?? [])[1];
+    expect(water?.lines.some((l) => l.label.includes("Water Conservation Tax"))).toBe(true);
+    expect(water?.lines.some((l) => l.label.includes("Waterborne Fee"))).toBe(true);
+  });
+
+  it("渲染含 GIRO 提示与三个 section 标题", () => {
+    const html = template.renderHtml(vm, { watermark: false });
+    expect(html).toContain("GIRO");
+    expect(html).toContain("Electricity");
+    expect(html).toContain("Refuse removal");
+  });
+});
+
+describe("eq_telecom（新加坡：月租 + 用量 itemized + GST 9%）", () => {
+  const { vm } = computeVm("eq_telecom");
+  it("subscription + usage 分行", () => {
+    expect(vm.charges.some((c) => c.label.includes("subscription"))).toBe(true);
+    expect(vm.charges.some((c) => c.label.includes("IDD voice usage"))).toBe(true);
+    expect(vm.taxLabel).toBe("GST (9%)");
+  });
+});
+
+describe("wn_energy（英国：dual fuel + MPAN/MPRN + VAT 5%）", () => {
+  const { template, vm } = computeVm("wn_energy");
+
+  it("Electricity + Gas 两 section，各 standing charge + unit rate", () => {
+    expect(vm.sections).toHaveLength(2);
+    const [elec, gas] = vm.sections ?? [];
+    expect(elec?.title).toContain("Electricity");
+    expect(gas?.title).toContain("Gas");
+    for (const s of vm.sections ?? []) {
+      expect(s.lines.some((l) => l.label.includes("standing charge"))).toBe(true);
+      expect(s.lines.some((l) => l.label.includes("unit rate"))).toBe(true);
+    }
+    const sum = (elec?.sectionTotal ?? 0) + (gas?.sectionTotal ?? 0);
+    expect(Math.abs(sum - vm.subtotal)).toBeLessThan(0.005);
+    expect(vm.taxLabel).toBe("VAT at 5%");
+  });
+
+  it("MPAN / MPRN 表号格式；抄表读数带 e/a 标记", () => {
+    const subtitles = (vm.sections ?? []).map((s) => s.subtitle ?? "").join("|");
+    expect(subtitles).toMatch(/MPAN \d{2} \d{4} \d{4} \d{3}/);
+    expect(subtitles).toMatch(/MPRN \d{10}/);
+    const readings = vm.meterRows.flatMap((r) => [r.previous, r.current]).join(" ");
+    expect(readings).toMatch(/ [ae] /);
+  });
+
+  it("渲染含 tariff name 与 Direct Debit", () => {
+    const html = template.renderHtml(vm, { watermark: false });
+    expect(html).toContain("Tariff: Standard Variable");
+    expect(html).toContain("Direct Debit");
+  });
+});
+
+describe("wn_water（英国：民用水免 VAT，半年账期）", () => {
+  const { vm } = computeVm("wn_water");
+
+  it("water + sewerage 分行；VAT 0 且带 zero-rated 说明", () => {
+    expect(vm.charges.some((c) => c.label.startsWith("Water"))).toBe(true);
+    expect(vm.charges.some((c) => c.label.startsWith("Sewerage"))).toBe(true);
+    expect(vm.tax).toBe(0);
+    expect(vm.taxLabel).toContain("zero-rated");
+    expect(vm.total).toBe(vm.subtotal);
+    expect(vm.periodDays).toBe(180);
+  });
+});
+
+describe("新地区地址 pattern 校验", () => {
+  it("northland postalCode：A1A 1A1 格式", () => {
+    const { template, input } = computeVm("nl_power");
+    void input;
+    expect(validateBillInput(template, makeInput("nl_power")).ok).toBe(true);
+    const bad = validateBillInput(template, {
+      ...makeInput("nl_power"),
+      address: { ...makeInput("nl_power").address, postalCode: "N4P2K" },
+    });
+    expect(bad.errors["postalCode"]).toBeDefined();
+  });
+
+  it("equatoria：unitNo 必须 #NN-NN，postalCode 必须 6 位", () => {
+    const tpl = getTemplate("eq_utilities");
+    if (tpl === undefined) throw new Error("missing eq_utilities");
+    expect(validateBillInput(tpl, makeInput("eq_utilities")).ok).toBe(true);
+    const bad = validateBillInput(tpl, {
+      ...makeInput("eq_utilities"),
+      address: { ...makeInput("eq_utilities").address, unitNo: "12-34" },
+    });
+    expect(bad.errors["unitNo"]).toBeDefined();
+  });
+
+  it("wenlock postcode：英制 pattern", () => {
+    const tpl = getTemplate("wn_energy");
+    if (tpl === undefined) throw new Error("missing wn_energy");
+    expect(validateBillInput(tpl, makeInput("wn_energy")).ok).toBe(true);
+    const bad = validateBillInput(tpl, {
+      ...makeInput("wn_energy"),
+      address: { ...makeInput("wn_energy").address, postcode: "WN4-2QA" },
     });
     expect(bad.errors["postcode"]).toBeDefined();
   });

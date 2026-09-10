@@ -100,7 +100,7 @@ export const csPower: BillTemplate = {
       taxLabel: "VAT at 8.5%",
       tax,
       total,
-      barcodePayload: `${POWER_META.prefix}${base.invoiceNumber.replaceAll("-", "")}`,
+      barcodePayload: base.invoiceNumber.replaceAll("-", ""),
       qrSeed: `${base.invoiceNumber}|${total.toFixed(2)}|${base.dueDate}`,
       notes: [
         "Direct Debit guarantee: you are notified of any change 5 working days in advance.",
@@ -167,7 +167,7 @@ export const csWater: BillTemplate = {
       taxLabel: "VAT at 5.5%",
       tax,
       total,
-      barcodePayload: `${WATER_META.prefix}${base.invoiceNumber.replaceAll("-", "")}`,
+      barcodePayload: base.invoiceNumber.replaceAll("-", ""),
       qrSeed: `${base.invoiceNumber}|${total.toFixed(2)}|${base.dueDate}`,
       notes: [
         "Sewerage is charged on 100% of metered water for unmetered drainage areas.",

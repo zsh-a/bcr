@@ -3,7 +3,17 @@
  * 所有机构 / 地区 / 货币均为虚构，仅用于版式学习演示。
  */
 
-export type RegionId = "nordhavn" | "caldera" | "veridia" | "castellan";
+export type RegionId =
+  | "nordhavn"
+  | "caldera"
+  | "veridia"
+  | "castellan"
+  | "waldland"
+  | "longcheng"
+  | "coralia"
+  | "northland"
+  | "equatoria"
+  | "wenlock";
 
 export type BillKind = "water" | "power" | "gas" | "telecom";
 
@@ -58,6 +68,43 @@ export interface AccountSummary {
   readonly currentCharges: number;
 }
 
+/** 德国流派的月度预缴（Abschlag）一行 */
+export interface SettlementInstallment {
+  readonly label: string;
+  readonly amount: number;
+}
+
+/**
+ * 德国流派的年度结算（Jahresabrechnung）附加块：
+ * 预缴对冲 → schlussbetrag = brutto − installmentsTotal（负 = Guthaben 结余退还，正 = Nachzahlung 补收），
+ * 附 SEPA 付款信息（IBAN/BIC 均为 hash 派生的装饰性格式，非真实银行数据）。
+ */
+export interface SettlementBlock {
+  readonly installments: ReadonlyArray<SettlementInstallment>;
+  readonly installmentsTotal: number;
+  readonly schlussbetrag: number;
+  readonly iban: string;
+  readonly bic: string;
+  readonly verwendungszweck: string;
+}
+
+/** 燃气账单的换算块：Verbrauch m³ × Brennwert × Zustandszahl = kWh */
+export interface GasConversion {
+  readonly cubicMeters: number;
+  readonly brennwert: number;
+  readonly zustandszahl: number;
+  readonly kwh: number;
+}
+
+/** 分区计价（新加坡三合一单 / 英国 dual fuel 单）：一个 section 内的明细行与小计 */
+export interface ChargeSection {
+  readonly title: string;
+  /** 副标题，如表号 "MPAN 12 3456 7890 123" / 资费名 */
+  readonly subtitle?: string;
+  readonly lines: ReadonlyArray<ChargeLine>;
+  readonly sectionTotal: number;
+}
+
 /** 渲染所需的全部派生数据（renderHtml 不再做任何计算） */
 export interface BillViewModel {
   readonly docType: string;
@@ -91,6 +138,12 @@ export interface BillViewModel {
   readonly total: number;
   /** 美式流派模板才有：上期余额 / 已收款 / 本期费用 */
   readonly accountSummary?: AccountSummary;
+  /** 德国流派模板才有：年度结算预缴对冲 + SEPA 付款信息 */
+  readonly settlement?: SettlementBlock;
+  /** 燃气年度结算才有：m³ × Brennwert × Zustandszahl = kWh 换算因子 */
+  readonly conversion?: GasConversion;
+  /** 分区计价模板才有（新加坡三合一 / 英国 dual fuel）：各 section 明细与 sectionTotal */
+  readonly sections?: ReadonlyArray<ChargeSection>;
   readonly barcodePayload: string;
   readonly qrSeed: string;
   readonly notes: ReadonlyArray<string>;

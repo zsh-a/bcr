@@ -57,6 +57,23 @@ export function formatMoney(currency: string, amount: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
 }
 
+/** 指定 locale 的货币格式化（各地区账单按其本地排版习惯） */
+export function formatMoneyLocale(locale: string, currency: string, amount: number): string {
+  return new Intl.NumberFormat(locale, { style: "currency", currency }).format(amount);
+}
+
+/** 德语数字格式：千分位点、小数逗号、€ 后缀（de-DE locale） */
+export function formatMoneyDe(amount: number): string {
+  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(amount);
+}
+
+export function formatNumDe(n: number, decimals = 2): string {
+  return new Intl.NumberFormat("de-DE", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(n);
+}
+
 export function formatInt(n: number): string {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
 }
@@ -65,14 +82,24 @@ export function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** 地址行排版：streetNumber+streetName 合并为一行；city/state/zip 合并为 "City, ST 12345"；其余字段各自成行 */
+/**
+ * 地址行排版（按地区习惯合并）：
+ * streetNumber/streetNo + streetName 合并为一行；
+ * 美式 "City, ST 12345"；加拿大 "City, PR A1A 1A1"；澳洲 "Suburb CQL 4820"；
+ * 德式 "91240 Falkenheim"；其余字段各自成行。
+ */
 export function formatAddressLines(address: Record<string, string>): string[] {
   const values = Object.entries(address).filter(([, v]) => v.trim().length > 0);
+  const get = (key: string): string | undefined => {
+    const v = address[key]?.trim();
+    return v !== undefined && v.length > 0 ? v : undefined;
+  };
   const lines: string[] = [];
   let pendingNumber: string | null = null;
-  const mergedCityStateZip = new Set<string>();
+  const consumed = new Set<string>();
   for (const [key, value] of values) {
-    if (key === "streetNumber") {
+    if (consumed.has(key)) continue;
+    if (key === "streetNumber" || key === "streetNo") {
       pendingNumber = value.trim();
       continue;
     }
@@ -81,23 +108,39 @@ export function formatAddressLines(address: Record<string, string>): string[] {
       pendingNumber = null;
       continue;
     }
-    if (key === "city") {
-      const state = address["state"]?.trim();
-      const zip = address["zip"]?.trim();
-      if (state !== undefined && state.length > 0) {
-        lines.push(
-          `${pendingNumber !== null ? `${pendingNumber} ` : ""}${value.trim()}, ${state}${zip !== undefined && zip.length > 0 ? ` ${zip}` : ""}`,
-        );
-        pendingNumber = null;
-        mergedCityStateZip.add("state");
-        mergedCityStateZip.add("zip");
-        continue;
-      }
-    }
-    if (mergedCityStateZip.has(key)) continue;
     if (pendingNumber !== null) {
       lines.push(pendingNumber);
       pendingNumber = null;
+    }
+    // 美式：city, state zip
+    if (key === "city" && get("state") !== undefined) {
+      const zip = get("zip");
+      lines.push(`${value.trim()}, ${get("state") ?? ""}${zip !== undefined ? ` ${zip}` : ""}`);
+      consumed.add("state");
+      consumed.add("zip");
+      continue;
+    }
+    // 加拿大：city, province postalCode
+    if (key === "city" && get("province") !== undefined) {
+      const pc = get("postalCode");
+      lines.push(`${value.trim()}, ${get("province") ?? ""}${pc !== undefined ? ` ${pc}` : ""}`);
+      consumed.add("province");
+      consumed.add("postalCode");
+      continue;
+    }
+    // 澳洲：suburb state postcode
+    if (key === "suburb" && get("state") !== undefined) {
+      const pc = get("postcode");
+      lines.push(`${value.trim()} ${get("state") ?? ""}${pc !== undefined ? ` ${pc}` : ""}`);
+      consumed.add("state");
+      consumed.add("postcode");
+      continue;
+    }
+    // 德式：plz ort
+    if (key === "plz" && get("ort") !== undefined) {
+      lines.push(`${value.trim()} ${get("ort") ?? ""}`);
+      consumed.add("ort");
+      continue;
     }
     lines.push(value.trim());
   }
@@ -117,6 +160,13 @@ export interface TemplateMeta {
   readonly prefix: string;
   readonly periodDays: number;
   readonly accent: string;
+  /** 金额排版的 locale（默认 en-US；德国模板走 formatMoneyDe 不使用此字段） */
+  readonly locale?: string;
+}
+
+/** 按 meta.locale 格式化金额（缺省 en-US） */
+export function fmtMeta(meta: TemplateMeta, amount: number): string {
+  return formatMoneyLocale(meta.locale ?? "en-US", meta.currency, amount);
 }
 
 export interface BaseVm {
@@ -569,6 +619,481 @@ export function renderEuShell(
     `<div style="font-size:26px;color:#a2a9ae;margin-top:8px;">Payment reference (decorative)</div></div></div>` +
     notes +
     `<div style="margin-top:48px;padding-top:32px;border-top:1px solid #e3e1d9;font-size:26px;color:#a2a9ae;line-height:1.7;">` +
+    `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。` +
+    ` ${escapeHtml(vm.utilityName)} is a fictional utility; any resemblance to real organisations is coincidental.</div>` +
+    `</div>` +
+    (opts.watermark ? watermarkLayer() : "") +
+    `</div>`
+  );
+}
+
+/* ================= 德国流派（DE-style 年度结算 Jahresabrechnung） ================= */
+
+/** 德式密表行 */
+function deRow(label: string, value: string, opts?: { bold?: boolean; topBorder?: boolean; color?: string }): string {
+  return (
+    `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:16px 0;` +
+    `border-bottom:1px solid #d9d6ce;${opts?.topBorder === true ? "border-top:3px solid #1b2327;" : ""}">` +
+    `<span style="font-size:33px;${opts?.bold === true ? "font-weight:700;" : "color:#333c42;"}">${label}</span>` +
+    `<span style="font-size:${opts?.bold === true ? 40 : 33}px;font-weight:${opts?.bold === true ? 800 : 500};` +
+    `font-variant-numeric:tabular-nums;${opts?.color !== undefined ? `color:${opts.color};` : ""}">${value}</span></div>`
+  );
+}
+
+/** Zählerstände 表：Zählernummer / Ablesedatum / alt / neu / Verbrauch（德式抄表表头） */
+function deMeterTable(vm: BillViewModel, unit: string): string {
+  const rows = vm.meterRows
+    .map(
+      (row) =>
+        `<tr style="font-size:30px;color:#1b2327;">` +
+        `<td style="padding:14px 0;border-bottom:1px solid #d9d6ce;">${escapeHtml(row.label)}</td>` +
+        `<td style="padding:14px 0;border-bottom:1px solid #d9d6ce;text-align:right;">${escapeHtml(vm.periodStart)}</td>` +
+        `<td style="padding:14px 0;border-bottom:1px solid #d9d6ce;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(row.previous)}</td>` +
+        `<td style="padding:14px 0;border-bottom:1px solid #d9d6ce;text-align:right;">${escapeHtml(vm.periodEnd)}</td>` +
+        `<td style="padding:14px 0;border-bottom:1px solid #d9d6ce;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(row.current)}</td>` +
+        `<td style="padding:14px 0;border-bottom:1px solid #d9d6ce;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;">${escapeHtml(row.usage)}</td></tr>`,
+    )
+    .join("");
+  return (
+    `<div style="margin-top:54px;"><div style="font-size:30px;letter-spacing:2px;color:#5a656c;` +
+    `text-transform:uppercase;margin-bottom:10px;">Zählerstände · 抄表记录（${unit}）</div>` +
+    `<table style="width:100%;border-collapse:collapse;">` +
+    `<tr style="font-size:26px;color:#8a9298;text-transform:uppercase;letter-spacing:1px;">` +
+    `<th style="text-align:left;padding:10px 0;font-weight:600;border-bottom:2px solid #1b2327;">Zähler</th>` +
+    `<th style="text-align:right;padding:10px 0;font-weight:600;border-bottom:2px solid #1b2327;">Ablesedatum alt</th>` +
+    `<th style="text-align:right;padding:10px 0;font-weight:600;border-bottom:2px solid #1b2327;">Zählerstand alt</th>` +
+    `<th style="text-align:right;padding:10px 0;font-weight:600;border-bottom:2px solid #1b2327;">Ablesedatum neu</th>` +
+    `<th style="text-align:right;padding:10px 0;font-weight:600;border-bottom:2px solid #1b2327;">Zählerstand neu</th>` +
+    `<th style="text-align:right;padding:10px 0;font-weight:600;border-bottom:2px solid #1b2327;">Verbrauch</th></tr>` +
+    rows +
+    `</table></div>`
+  );
+}
+
+/** Abschlag 对冲块：11 期预缴汇总 + 明细网格 + Schlussbetrag（Guthaben/Nachzahlung 随符号切换） */
+function deSettlementBlock(vm: BillViewModel, meta: TemplateMeta): string {
+  const s = vm.settlement;
+  if (s === undefined) return "";
+  const monthly = s.installments[0]?.amount ?? 0;
+  const grid = s.installments
+    .map(
+      (inst) =>
+        `<div style="display:flex;justify-content:space-between;padding:8px 18px;border-bottom:1px solid #eceae3;` +
+        `font-size:27px;color:#5a656c;"><span>${escapeHtml(inst.label)}</span>` +
+        `<span style="font-variant-numeric:tabular-nums;">${escapeHtml(formatMoneyDe(inst.amount))}</span></div>`,
+    )
+    .join("");
+  const isCredit = s.schlussbetrag < 0;
+  const label = isCredit ? "Guthaben zu Ihren Gunsten" : "Nachzahlung fällig";
+  return (
+    `<div style="margin-top:54px;"><div style="font-size:30px;letter-spacing:2px;color:#5a656c;` +
+    `text-transform:uppercase;margin-bottom:10px;">Verrechnung Ihrer Abschläge · 预缴对冲</div>` +
+    deRow(`${s.installments.length} Abschläge à ${escapeHtml(formatMoneyDe(monthly))}`, `− ${escapeHtml(formatMoneyDe(s.installmentsTotal))}`, {}) +
+    `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 36px;margin-top:14px;background:#f7f6f1;` +
+    `border-radius:12px;padding:16px 18px;">${grid}</div>` +
+    `<div style="margin-top:22px;padding:26px 34px;border:3px solid ${isCredit ? "#2e7d4f" : meta.accent};border-radius:14px;` +
+    `display:flex;justify-content:space-between;align-items:center;">` +
+    `<div><div style="font-size:42px;font-weight:800;color:${isCredit ? "#2e7d4f" : meta.accent};">${label}</div>` +
+    `<div style="font-size:28px;color:#5a656c;margin-top:4px;">Schlussbetrag = Gesamtbetrag brutto − Summe Abschläge</div></div>` +
+    `<div style="font-size:58px;font-weight:800;font-variant-numeric:tabular-nums;color:${isCredit ? "#2e7d4f" : "#1b2327"};">` +
+    `${isCredit ? "− " : ""}${escapeHtml(formatMoneyDe(Math.abs(s.schlussbetrag)))}</div></div></div>`
+  );
+}
+
+/** SEPA 付款块：IBAN / BIC / Verwendungszweck + Lastschrift 提示 */
+function dePaymentBlock(vm: BillViewModel, meta: TemplateMeta): string {
+  const s = vm.settlement;
+  if (s === undefined) return "";
+  const barcode = code128Svg(vm.barcodePayload, { moduleWidth: 3, height: 100 });
+  const isCredit = s.schlussbetrag < 0;
+  return (
+    `<div style="margin-top:54px;display:flex;justify-content:space-between;align-items:flex-end;">` +
+    `<div style="flex:1;"><div style="font-size:30px;letter-spacing:2px;color:#5a656c;text-transform:uppercase;margin-bottom:12px;">Zahlung · 付款信息</div>` +
+    `<div style="font-size:32px;color:#333c42;line-height:1.8;">` +
+    `<div>IBAN <b style="font-family:'Courier New',monospace;">${escapeHtml(s.iban)}</b></div>` +
+    `<div>BIC <b style="font-family:'Courier New',monospace;">${escapeHtml(s.bic)}</b></div>` +
+    `<div>Verwendungszweck <b>${escapeHtml(s.verwendungszweck)}</b></div></div>` +
+    `<div style="margin-top:16px;font-size:29px;color:#5a656c;line-height:1.7;">${
+      isCredit
+        ? "Das Guthaben wird innerhalb von 14 Tagen auf Ihr bekanntes Konto erstattet. 结余将于 14 日内退回您的账户。"
+        : "Der Betrag wird per SEPA-Lastschrift von Ihrem Konto eingezogen. Sie brauchen nichts zu veranlassen. 款项将通过 SEPA 直接扣款收取，无需操作。"
+    }</div></div>` +
+    `<div style="text-align:center;margin-left:60px;"><div>${barcode}</div>` +
+    `<div style="font-size:26px;letter-spacing:6px;color:#333c42;margin-top:8px;">${escapeHtml(vm.barcodePayload)}</div></div></div>`
+  );
+}
+
+/**
+ * 德国流派外壳：文字密集的表格流、公文语气。结构 =
+ * 发件人行 → 页眉（Kundennummer 元信息块）→ 客户地址 → 年度结算标题与引言 →
+ * Zählerstände 表 →（燃气的换算块经 bodyHtml 注入）→ Abrechnung 明细
+ * （netto → USt 19% → brutto）→ Abschlag 对冲块 → SEPA 付款块。
+ */
+export function renderDeShell(
+  vm: BillViewModel,
+  meta: TemplateMeta,
+  bodyHtml: string,
+  opts: RenderOptions,
+): string {
+  const addressHtml = vm.addressLines
+    .map((line) => `<div style="font-size:34px;color:#1b2327;line-height:1.6;">${escapeHtml(line)}</div>`)
+    .join("");
+  const chargeRows = vm.charges
+    .map((line) => deRow(escapeHtml(line.label), escapeHtml(formatMoneyDe(line.amount))))
+    .join("");
+  const notes =
+    vm.notes.length === 0
+      ? ""
+      : `<div style="margin-top:44px;font-size:27px;color:#8a9298;line-height:1.8;">` +
+        vm.notes.map((n) => `<div style="margin-bottom:8px;">${escapeHtml(n)}</div>`).join("") +
+        `</div>`;
+  const kindDe = vm.kind === "power" ? "Strom" : "Gas";
+  return (
+    `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
+    `background:#ffffff;color:#1b2327;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">` +
+    `<div style="position:absolute;inset:0;padding:120px 140px;display:flex;flex-direction:column;">` +
+    `<div style="font-size:26px;color:#8a9298;border-bottom:1px solid #d9d6ce;padding-bottom:12px;">` +
+    `${escapeHtml(vm.utilityName)} · Falkenplatz 1 · 91240 Falkenheim · fiktives Musterdokument</div>` +
+    `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:44px;">` +
+    `<div style="display:flex;gap:34px;align-items:center;">${logoBlock(meta)}` +
+    `<div><div style="font-size:58px;font-weight:800;letter-spacing:-0.5px;">${escapeHtml(vm.utilityName)}</div>` +
+    `<div style="font-size:34px;color:#5a656c;margin-top:4px;">${escapeHtml(vm.utilityNameZh)} · ${escapeHtml(vm.tagline)}</div></div></div>` +
+    `<div style="font-size:30px;color:#333c42;line-height:1.75;text-align:right;">` +
+    `<div>Kundennummer <b>${escapeHtml(vm.accountNumber)}</b></div>` +
+    `<div>Rechnungs-Nr. <b>${escapeHtml(vm.invoiceNumber)}</b></div>` +
+    `<div>Rechnungsdatum ${escapeHtml(vm.billDate)}</div>` +
+    `<div>Abrechnungszeitraum ${escapeHtml(vm.periodStart)} – ${escapeHtml(vm.periodEnd)}</div></div></div>` +
+    `<div style="display:flex;justify-content:space-between;margin-top:52px;">` +
+    `<div><div style="font-size:28px;color:#8a9298;margin-bottom:8px;">${escapeHtml(vm.utilityName)} an</div>` +
+    `<div style="font-size:42px;font-weight:700;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div></div>` +
+    `<div style="margin-top:50px;">` +
+    `<div style="font-size:56px;font-weight:800;color:${meta.accent};">Ihre ${kindDe}-Jahresabrechnung</div>` +
+    `<div style="font-size:32px;color:#5a656c;margin-top:12px;line-height:1.75;">` +
+    `Sehr geehrte Kundin, sehr geehrter Kunde, für den oben genannten Abrechnungszeitraum haben wir Ihren ` +
+    `tatsächlichen Verbrauch abgerechnet und mit Ihren geleisteten Abschlagszahlungen verrechnet. ` +
+    `本次年度结算将您的实际用量与已付月度预缴对冲。</div></div>` +
+    deMeterTable(vm, vm.kind === "power" ? "kWh" : "m³ / kWh") +
+    bodyHtml +
+    `<div style="margin-top:54px;"><div style="font-size:30px;letter-spacing:2px;color:#5a656c;` +
+    `text-transform:uppercase;margin-bottom:10px;">Ihre Abrechnung · 费用结算</div>` +
+    chargeRows +
+    deRow("Zwischensumme netto", escapeHtml(formatMoneyDe(vm.subtotal)), { bold: true, topBorder: true }) +
+    deRow(escapeHtml(vm.taxLabel), escapeHtml(formatMoneyDe(vm.tax)), {}) +
+    deRow("Gesamtbetrag brutto", escapeHtml(formatMoneyDe(vm.total)), { bold: true, color: meta.accent }) +
+    `</div>` +
+    deSettlementBlock(vm, meta) +
+    dePaymentBlock(vm, meta) +
+    notes +
+    `<div style="margin-top:auto;padding-top:36px;border-top:1px solid #d9d6ce;font-size:26px;color:#a2a9ae;line-height:1.7;">` +
+    `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。` +
+    ` ${escapeHtml(vm.utilityName)} is a fictional utility; any resemblance to real organisations is coincidental.</div>` +
+    `</div>` +
+    (opts.watermark ? watermarkLayer() : "") +
+    `</div>`
+  );
+}
+
+/* ================= 香港流派（HK-style 双语 + 缴款回条） ================= */
+
+/** CJK 字体栈：双语账单必须带繁中 fallback（单引号——外层 style 属性用双引号） */
+const HK_FONT = `Helvetica, Arial, 'PingFang TC', 'Noto Sans CJK TC', 'Microsoft JhengHei', sans-serif`;
+
+/**
+ * 香港流派外壳：双语（EN 上 / 繁中下）标签、密集边框表格、
+ * 底部缴款回条（商户编号 + Code128 条码 + 类 FPS 伪 QR + 缴款限期）。
+ * meta.locale 应设 "en-HK"。
+ */
+export function renderHkShell(
+  vm: BillViewModel,
+  meta: TemplateMeta,
+  bodyHtml: string,
+  opts: RenderOptions,
+  merchantNo: string,
+): string {
+  const addressHtml = vm.addressLines
+    .map((line) => `<div style="font-size:32px;color:#1b2327;line-height:1.55;">${escapeHtml(line)}</div>`)
+    .join("");
+  const meterRows = vm.meterRows
+    .map(
+      (row) =>
+        `<tr style="font-size:29px;">` +
+        `<td style="padding:14px 10px;border:1px solid #b9b3a6;">${escapeHtml(row.label)}</td>` +
+        `<td style="padding:14px 10px;border:1px solid #b9b3a6;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(row.previous)}</td>` +
+        `<td style="padding:14px 10px;border:1px solid #b9b3a6;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(row.current)}</td>` +
+        `<td style="padding:14px 10px;border:1px solid #b9b3a6;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;">${escapeHtml(row.usage)}</td></tr>`,
+    )
+    .join("");
+  const meterSection =
+    vm.meterRows.length === 0
+      ? ""
+      : `<table style="width:100%;border-collapse:collapse;margin-top:16px;">` +
+        `<tr style="font-size:25px;color:#5a656c;">` +
+        `<th style="text-align:left;padding:10px;border:1px solid #b9b3a6;background:#f2efe6;">水錶 Meter</th>` +
+        `<th style="text-align:right;padding:10px;border:1px solid #b9b3a6;background:#f2efe6;">上期讀數 Previous</th>` +
+        `<th style="text-align:right;padding:10px;border:1px solid #b9b3a6;background:#f2efe6;">本期讀數 Current</th>` +
+        `<th style="text-align:right;padding:10px;border:1px solid #b9b3a6;background:#f2efe6;">用量 Usage</th></tr>` +
+        meterRows +
+        `</table>`;
+  const chargeRows = vm.charges
+    .map(
+      (line) =>
+        `<tr style="font-size:30px;">` +
+        `<td style="padding:15px 10px;border:1px solid #b9b3a6;color:#333c42;">${escapeHtml(line.label)}</td>` +
+        `<td style="padding:15px 10px;border:1px solid #b9b3a6;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, line.amount))}</td></tr>`,
+    )
+    .join("");
+  const barcode = code128Svg(vm.barcodePayload, { moduleWidth: 3, height: 110 });
+  const qr = pseudoQrSvg(vm.qrSeed, { module: 8 });
+  const kindHk = vm.kind === "water" ? "水費單" : vm.kind === "power" ? "電費單" : "賬單";
+  return (
+    `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
+    `background:#ffffff;color:#1b2327;font-family:${HK_FONT};">` +
+    `<div style="position:absolute;left:0;top:0;right:0;height:24px;background:${meta.accent};"></div>` +
+    `<div style="position:absolute;inset:0;padding:110px 130px;display:flex;flex-direction:column;">` +
+    `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
+    `<div style="display:flex;gap:36px;align-items:center;">${logoBlock(meta)}` +
+    `<div><div style="font-size:62px;font-weight:800;">${escapeHtml(vm.utilityNameZh)}</div>` +
+    `<div style="font-size:40px;color:#5a656c;margin-top:2px;">${escapeHtml(vm.utilityName)}</div></div></div>` +
+    `<div style="text-align:right;font-size:30px;color:#333c42;line-height:1.7;">` +
+    `<div style="font-size:46px;font-weight:800;color:${meta.accent};">${kindHk} ${vm.kind.toUpperCase()} BILL</div>` +
+    `<div>賬單號碼 Bill No. <b>${escapeHtml(vm.invoiceNumber)}</b></div>` +
+    `<div>客戶編號 Account No. <b>${escapeHtml(vm.accountNumber)}</b></div>` +
+    `<div>發單日期 Issue date ${escapeHtml(vm.billDate)}</div></div></div>` +
+    `<div style="display:flex;justify-content:space-between;margin-top:50px;">` +
+    `<div><div style="font-size:28px;color:#8a9298;margin-bottom:8px;">客戶地址 Customer address</div>` +
+    `<div style="font-size:44px;font-weight:700;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
+    `<div style="text-align:right;font-size:32px;color:#333c42;line-height:1.75;">` +
+    `<div style="font-size:28px;color:#8a9298;">賬期 Billing period</div>` +
+    `<div>${escapeHtml(vm.periodStart)} – ${escapeHtml(vm.periodEnd)}</div>` +
+    `<div style="color:#5a656c;">${vm.periodDays} 天 days · ${escapeHtml(vm.usageSummary)}</div></div></div>` +
+    `<div style="margin-top:44px;">${meterSection}${bodyHtml}</div>` +
+    `<div style="margin-top:50px;"><div style="font-size:30px;letter-spacing:2px;color:${meta.accent};` +
+    `text-transform:uppercase;margin-bottom:10px;font-weight:700;">收費明細 Charge details</div>` +
+    `<table style="width:100%;border-collapse:collapse;">${chargeRows}` +
+    `<tr style="font-size:36px;font-weight:800;">` +
+    `<td style="padding:18px 10px;border:1px solid #b9b3a6;background:#f2efe6;">應繳總額 Total amount due</td>` +
+    `<td style="padding:18px 10px;border:1px solid #b9b3a6;background:#f2efe6;text-align:right;` +
+    `font-variant-numeric:tabular-nums;color:${meta.accent};">${escapeHtml(fmtMeta(meta, vm.total))}</td></tr></table></div>` +
+    `<div style="margin-top:auto;">` +
+    `<div style="padding-top:36px;font-size:25px;color:#a2a9ae;line-height:1.7;">` +
+    `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虛構示例文件，僅供版式學習，非真實賬單。</div>` +
+    `<div style="margin-top:30px;border-top:4px dashed #9aa29b;position:relative;padding-top:14px;">` +
+    `<span style="position:absolute;left:-26px;top:-28px;font-size:40px;color:#9aa29b;">✂</span>` +
+    `<div style="text-align:center;font-size:28px;letter-spacing:4px;color:#5a656c;">繳款回條 PAYMENT SLIP</div>` +
+    `<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:22px;">` +
+    `<div style="font-size:30px;color:#333c42;line-height:1.85;">` +
+    `<div>繳費靈商戶編號 Merchant code <b style="font-family:'Courier New',monospace;font-size:36px;">${escapeHtml(merchantNo)}</b></div>` +
+    `<div>客戶編號 Account No. <b>${escapeHtml(vm.accountNumber)}</b></div>` +
+    `<div>繳款限期 Pay by <b style="color:${meta.accent};">${escapeHtml(vm.dueDate)}</b></div>` +
+    `<div style="margin-top:8px;">${barcode}</div>` +
+    `<div style="font-size:26px;letter-spacing:5px;margin-top:6px;">${escapeHtml(vm.barcodePayload)}</div></div>` +
+    `<div style="text-align:center;">` +
+    `<div style="width:430px;height:100px;border:4px solid #1b2327;border-radius:8px;display:flex;align-items:center;` +
+    `justify-content:center;font-size:44px;font-weight:800;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, vm.total))}</div>` +
+    `<div style="font-size:26px;color:#8a9298;margin-top:8px;">應繳總額 Amount due</div></div>` +
+    `<div style="text-align:center;"><div>${qr}</div>` +
+    `<div style="font-size:25px;color:#8a9298;margin-top:8px;">轉數快掃碼繳費 FPS (decorative)</div></div>` +
+    `</div></div>` +
+    `</div>` +
+    `</div>` +
+    (opts.watermark ? watermarkLayer() : "") +
+    `</div>`
+  );
+}
+
+/* ================= 澳洲流派（AU-style：NMI/MIRN + GST 内含 + BPAY） ================= */
+
+export interface AuPaymentInfo {
+  readonly billerCode: string;
+  readonly ref: string;
+  /** 表号行，如 "NMI 3012345678" / "MIRN 5320012345" */
+  readonly meterIdLabel: string;
+}
+
+/** BPAY 付款块：Biller Code + Ref 两组数字（标志性） */
+function bpayBlock(meta: TemplateMeta, pay: AuPaymentInfo): string {
+  return (
+    `<div style="margin-top:70px;display:flex;gap:60px;align-items:center;border:3px solid #d8d4ca;` +
+    `border-radius:16px;padding:34px 44px;">` +
+    `<div style="background:${meta.accent};color:#ffffff;font-weight:800;font-size:40px;letter-spacing:2px;` +
+    `border-radius:12px;padding:18px 30px;flex:none;">BPAY</div>` +
+    `<div style="font-size:32px;color:#333c42;line-height:1.8;">` +
+    `<div>Biller Code: <b style="font-family:'Courier New',monospace;font-size:38px;">${escapeHtml(pay.billerCode)}</b></div>` +
+    `<div>Ref: <b style="font-family:'Courier New',monospace;font-size:38px;">${escapeHtml(pay.ref)}</b></div></div>` +
+    `<div style="margin-left:auto;font-size:27px;color:#8a9298;max-width:620px;line-height:1.7;">` +
+    `Pay via internet or phone banking. 通过网银或电话银行付款。其它付款方式见官网（fictional）。</div></div>`
+  );
+}
+
+/**
+ * 澳洲流派外壳：表号行（NMI/MIRN）、supply charge（c/day）+ usage（c/unit）、
+ * "Total includes GST 10%" 内含行、用量柱状图、BPAY 付款块。
+ * 金额按 ex-GST 拆分：charges/subtotal 为税前，taxLabel 注明 included。
+ */
+export function renderAuShell(
+  vm: BillViewModel,
+  meta: TemplateMeta,
+  bodyHtml: string,
+  opts: RenderOptions,
+  pay: AuPaymentInfo,
+): string {
+  const addressHtml = vm.addressLines
+    .map((line) => `<div style="font-size:34px;color:#333c42;line-height:1.55;">${escapeHtml(line)}</div>`)
+    .join("");
+  const chargeRows = vm.charges
+    .map(
+      (line) =>
+        `<tr><td style="padding:20px 0;border-bottom:2px solid #e7e4dc;font-size:35px;color:#333c42;">${escapeHtml(line.label)}</td>` +
+        `<td style="padding:20px 0;border-bottom:2px solid #e7e4dc;font-size:35px;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, line.amount))}</td></tr>`,
+    )
+    .join("");
+  return (
+    `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
+    `background:#ffffff;color:#1b2327;font-family:Helvetica,Arial,sans-serif;">` +
+    `<div style="position:absolute;left:0;top:0;right:0;height:30px;background:${meta.accent};"></div>` +
+    `<div style="position:absolute;inset:0;padding:115px 135px;display:flex;flex-direction:column;">` +
+    `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
+    `<div style="display:flex;gap:40px;align-items:center;">${logoBlock(meta)}` +
+    `<div><div style="font-size:64px;font-weight:800;letter-spacing:-1px;">${escapeHtml(vm.utilityName)}</div>` +
+    `<div style="font-size:36px;color:#5a656c;margin-top:4px;">${escapeHtml(vm.utilityNameZh)} · ${escapeHtml(vm.tagline)}</div></div></div>` +
+    `<div style="background:${meta.accent};color:#ffffff;border-radius:16px;padding:28px 44px;text-align:center;flex:none;">` +
+    `<div style="font-size:28px;letter-spacing:4px;opacity:0.85;text-transform:uppercase;">Total due</div>` +
+    `<div style="font-size:78px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15;">${escapeHtml(fmtMeta(meta, vm.total))}</div>` +
+    `<div style="font-size:30px;margin-top:4px;">Due ${escapeHtml(vm.dueDate)}</div></div></div>` +
+    `<div style="display:flex;justify-content:space-between;margin-top:52px;">` +
+    `<div><div style="font-size:30px;letter-spacing:3px;color:#8a9298;text-transform:uppercase;margin-bottom:10px;">Supply address · 供电地址</div>` +
+    `<div style="font-size:48px;font-weight:700;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
+    `<div style="text-align:right;font-size:32px;color:#333c42;line-height:1.8;">` +
+    `<div>Account <b>${escapeHtml(vm.accountNumber)}</b></div>` +
+    `<div>Invoice <b>${escapeHtml(vm.invoiceNumber)}</b></div>` +
+    `<div style="font-family:'Courier New',monospace;">${escapeHtml(pay.meterIdLabel)}</div>` +
+    `<div style="color:#5a656c;">${escapeHtml(vm.periodStart)} – ${escapeHtml(vm.periodEnd)} · ${escapeHtml(vm.usageSummary)}</div></div></div>` +
+    `<div style="margin-top:40px;">${meterTableHtml(vm)}${bodyHtml}</div>` +
+    barsHtml(vm, meta, 300) +
+    `<div style="margin-top:60px;"><div style="font-size:32px;letter-spacing:3px;color:${meta.accent};` +
+    `text-transform:uppercase;margin-bottom:10px;font-weight:700;">Your charges · 费用明细（excl. GST）</div>` +
+    `<table style="width:100%;border-collapse:collapse;">${chargeRows}` +
+    `<tr><td style="padding:20px 0;border-bottom:2px solid #e7e4dc;font-size:35px;color:#333c42;">${escapeHtml(vm.taxLabel)}</td>` +
+    `<td style="padding:20px 0;border-bottom:2px solid #e7e4dc;font-size:35px;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, vm.tax))}</td></tr>` +
+    `<tr><td style="padding:24px 0;font-size:40px;font-weight:800;">Total (includes GST)</td>` +
+    `<td style="padding:24px 0;font-size:44px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;color:${meta.accent};">${escapeHtml(fmtMeta(meta, vm.total))}</td></tr>` +
+    `</table></div>` +
+    `<div style="margin-top:auto;">` +
+    bpayBlock(meta, pay) +
+    `<div style="margin-top:44px;padding-top:36px;border-top:2px solid #e7e4dc;font-size:26px;color:#a2a9ae;line-height:1.7;">` +
+    `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。` +
+    ` ${escapeHtml(vm.utilityName)} is a fictional utility; any resemblance to real organisations is coincidental.</div>` +
+    `</div>` +
+    `</div>` +
+    (opts.watermark ? watermarkLayer() : "") +
+    `</div>`
+  );
+}
+
+/* ================= 分区计价外壳（新加坡三合一 / 英国 dual fuel 共用骨架） ================= */
+
+export interface SectionShellFlavor {
+  /** "sg" = GIRO 付款提示；"uk" = Direct Debit 提示 */
+  readonly flavor: "sg" | "uk";
+  /** 头部副行（如英国 tariff name） */
+  readonly tariffLine?: string;
+}
+
+/**
+ * 分区计价外壳：vm.sections 逐段渲染（段标题栏 + 明细行 + 段小计），
+ * 再汇总 subtotal → tax → total。SG 与 UK 的视觉差异经 flavor/accent 体现。
+ */
+export function renderSectionShell(
+  vm: BillViewModel,
+  meta: TemplateMeta,
+  bodyHtml: string,
+  opts: RenderOptions,
+  flavor: SectionShellFlavor,
+): string {
+  const addressHtml = vm.addressLines
+    .map((line) => `<div style="font-size:33px;color:#333c42;line-height:1.55;">${escapeHtml(line)}</div>`)
+    .join("");
+  const sections = (vm.sections ?? [])
+    .map((section) => {
+      const rows = section.lines
+        .map(
+          (line) =>
+            `<div style="display:flex;justify-content:space-between;padding:15px 0;border-bottom:1px solid #e7e4dc;">` +
+            `<span style="font-size:32px;color:#333c42;">${escapeHtml(line.label)}</span>` +
+            `<span style="font-size:32px;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, line.amount))}</span></div>`,
+        )
+        .join("");
+      return (
+        `<div style="margin-top:44px;">` +
+        `<div style="display:flex;justify-content:space-between;align-items:baseline;background:#f2f0e9;` +
+        `border-left:10px solid ${meta.accent};padding:18px 26px;border-radius:0 12px 12px 0;">` +
+        `<span style="font-size:36px;font-weight:700;">${escapeHtml(section.title)}</span>` +
+        (section.subtitle !== undefined
+          ? `<span style="font-size:27px;color:#5a656c;font-family:'Courier New',monospace;">${escapeHtml(section.subtitle)}</span>`
+          : "") +
+        `</div>` +
+        `<div style="padding:6px 26px 0;">${rows}` +
+        `<div style="display:flex;justify-content:space-between;padding:16px 0;">` +
+        `<span style="font-size:32px;font-weight:600;color:#5a656c;">Section total · 小计</span>` +
+        `<span style="font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, section.sectionTotal))}</span></div></div></div>`
+      );
+    })
+    .join("");
+  const payment =
+    flavor.flavor === "sg"
+      ? `<div style="margin-top:56px;border:3px solid ${meta.accent};border-radius:14px;padding:28px 36px;` +
+        `font-size:32px;color:#333c42;line-height:1.7;">Payment by <b>GIRO</b> — the amount will be deducted from your bank ` +
+        `account on ${escapeHtml(vm.dueDate)}. No action is required. 已通过 GIRO 自动转账，无需操作。</div>`
+      : `<div style="margin-top:56px;border:3px solid ${meta.accent};border-radius:14px;padding:28px 36px;` +
+        `font-size:32px;color:#333c42;line-height:1.7;">You pay by <b>Direct Debit</b> — we will collect ` +
+        `<b>${escapeHtml(fmtMeta(meta, vm.total))}</b> on or around ${escapeHtml(vm.dueDate)}. 已通过直接扣款支付，无需操作。</div>`;
+  const tariff =
+    flavor.tariffLine !== undefined
+      ? `<div style="font-size:30px;color:#5a656c;margin-top:10px;">${escapeHtml(flavor.tariffLine)}</div>`
+      : "";
+  const notes =
+    vm.notes.length === 0
+      ? ""
+      : `<ul style="margin:52px 0 0;padding-left:44px;font-size:28px;color:#8a9298;line-height:1.75;">` +
+        vm.notes.map((n) => `<li>${escapeHtml(n)}</li>`).join("") +
+        `</ul>`;
+  return (
+    `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
+    `background:#ffffff;color:#1b2327;font-family:Helvetica,Arial,sans-serif;">` +
+    `<div style="position:absolute;left:0;top:0;right:0;height:26px;background:${meta.accent};"></div>` +
+    `<div style="position:absolute;inset:0;padding:115px 135px;display:flex;flex-direction:column;">` +
+    `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
+    `<div style="display:flex;gap:38px;align-items:center;">${logoBlock(meta)}` +
+    `<div><div style="font-size:62px;font-weight:800;letter-spacing:-1px;">${escapeHtml(vm.utilityName)}</div>` +
+    `<div style="font-size:35px;color:#5a656c;margin-top:4px;">${escapeHtml(vm.utilityNameZh)} · ${escapeHtml(vm.tagline)}</div>` +
+    `${tariff}</div></div>` +
+    `<div style="text-align:right;font-size:31px;color:#333c42;line-height:1.75;">` +
+    `<div>Account <b>${escapeHtml(vm.accountNumber)}</b></div>` +
+    `<div>Invoice <b>${escapeHtml(vm.invoiceNumber)}</b></div>` +
+    `<div>Bill date ${escapeHtml(vm.billDate)}</div>` +
+    `<div>Due <b>${escapeHtml(vm.dueDate)}</b></div></div></div>` +
+    `<div style="display:flex;justify-content:space-between;margin-top:46px;">` +
+    `<div><div style="font-size:29px;letter-spacing:3px;color:#8a9298;text-transform:uppercase;margin-bottom:8px;">Customer · 客户</div>` +
+    `<div style="font-size:46px;font-weight:700;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
+    `<div style="text-align:right;font-size:31px;color:#333c42;line-height:1.75;">` +
+    `<div style="font-size:29px;letter-spacing:3px;color:#8a9298;text-transform:uppercase;">Billing period · 账期</div>` +
+    `<div>${escapeHtml(vm.periodStart)} – ${escapeHtml(vm.periodEnd)}</div>` +
+    `<div style="color:#5a656c;">${escapeHtml(vm.usageSummary)}</div></div></div>` +
+    `<div style="margin-top:36px;">${meterTableHtml(vm)}${bodyHtml}</div>` +
+    sections +
+    `<div style="margin-top:48px;border-top:3px solid #1b2327;padding-top:10px;">` +
+    `<div style="display:flex;justify-content:space-between;padding:14px 0;">` +
+    `<span style="font-size:34px;color:#333c42;">Charges before tax · 税前小计</span>` +
+    `<span style="font-size:34px;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, vm.subtotal))}</span></div>` +
+    `<div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid #e7e4dc;">` +
+    `<span style="font-size:34px;color:#333c42;">${escapeHtml(vm.taxLabel)}</span>` +
+    `<span style="font-size:34px;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, vm.tax))}</span></div>` +
+    `<div style="display:flex;justify-content:space-between;padding:20px 0;align-items:baseline;">` +
+    `<span style="font-size:40px;font-weight:800;">Total for this bill · 本期总额</span>` +
+    `<span style="font-size:56px;font-weight:800;color:${meta.accent};font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, vm.total))}</span></div></div>` +
+    payment +
+    notes +
+    `<div style="margin-top:auto;padding-top:36px;border-top:2px solid #e7e4dc;font-size:26px;color:#a2a9ae;line-height:1.7;">` +
     `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。` +
     ` ${escapeHtml(vm.utilityName)} is a fictional utility; any resemblance to real organisations is coincidental.</div>` +
     `</div>` +
