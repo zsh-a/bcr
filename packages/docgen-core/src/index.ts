@@ -1,11 +1,13 @@
 /**
- * @bcr/docgen-core — 纯端侧虚构公用事业账单生成器（纯逻辑入口）。
+ * @bcr/docgen-core — 纯端侧公用事业账单生成器（纯逻辑入口）。
+ * 地区 / 货币为真实国家地区；账单机构、单号与金额均为虚构。
  * 本入口不引用任何 DOM API，可在 node 环境直接跑测试；
  * DOM 栅格化 / 实拍合成请从 "@bcr/docgen-core/dom" 导入。
  */
 
 export type {
   AccountSummary,
+  AllocationRow,
   BillInput,
   BillKind,
   BillTemplate,
@@ -17,22 +19,22 @@ export type {
   MeterRow,
   RegionId,
   RenderOptions,
-  SettlementBlock,
-  SettlementInstallment,
   TextFieldSchema,
   UsageBar,
 } from "./model";
 
 export { fnv1a, djb2, mulberry32 } from "./hash";
 
-export {
-  ADDRESS_BOOKS,
-  listAddresses,
-  randomAddress,
-  type AddressBook,
-} from "./address";
+export { ADDRESS_BOOKS, listAddresses, randomAddress, type AddressBook } from "./address";
 
-export { REGIONS, TEMPLATES, getTemplate, listTemplates, rngForInput, type RegionDef } from "./registry";
+export {
+  REGIONS,
+  TEMPLATES,
+  getTemplate,
+  listTemplates,
+  rngForInput,
+  type RegionDef,
+} from "./registry";
 
 export { validateBillInput, type ValidationResult } from "./validate";
 

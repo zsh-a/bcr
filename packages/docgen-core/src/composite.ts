@@ -104,11 +104,12 @@ function paintDesk(ctx: CanvasRenderingContext2D, width: number, height: number)
   ctx.fillRect(0, 0, width, height);
 
   // 2) 水平板材分割线 + 每板轻微亮度差（固定 seed）
-  const rng = mulberry32(0xde5eED);
+  const rng = mulberry32(0xde5eed);
   const plankHeight = 264;
   for (let y = 0; y < height; y += plankHeight) {
-    const tone = (rng() - 0.5) * 0.10;
-    ctx.fillStyle = tone >= 0 ? `rgba(255,240,220,${tone.toFixed(3)})` : `rgba(0,0,0,${(-tone).toFixed(3)})`;
+    const tone = (rng() - 0.5) * 0.1;
+    ctx.fillStyle =
+      tone >= 0 ? `rgba(255,240,220,${tone.toFixed(3)})` : `rgba(0,0,0,${(-tone).toFixed(3)})`;
     ctx.fillRect(0, y, width, plankHeight);
     ctx.fillStyle = "rgba(0,0,0,0.38)";
     ctx.fillRect(0, y, width, 3);
@@ -125,7 +126,7 @@ function paintDesk(ctx: CanvasRenderingContext2D, width: number, height: number)
   // 3) 固定 seed 噪点（ImageData 逐像素微调亮度）
   const imageData = ctx.getImageData(0, 0, width, height);
   const data = imageData.data;
-  const noiseRng = mulberry32(0xC0FFEE);
+  const noiseRng = mulberry32(0xc0ffee);
   for (let i = 0; i < data.length; i += 4) {
     const n = (noiseRng() - 0.5) * 14;
     data[i] = Math.max(0, Math.min(255, (data[i] ?? 0) + n));
@@ -136,8 +137,12 @@ function paintDesk(ctx: CanvasRenderingContext2D, width: number, height: number)
 
   // 4) 四角暗角
   const vignette = ctx.createRadialGradient(
-    width / 2, height / 2, Math.min(width, height) * 0.35,
-    width / 2, height / 2, Math.hypot(width, height) * 0.62,
+    width / 2,
+    height / 2,
+    Math.min(width, height) * 0.35,
+    width / 2,
+    height / 2,
+    Math.hypot(width, height) * 0.62,
   );
   vignette.addColorStop(0, "rgba(0,0,0,0)");
   vignette.addColorStop(1, "rgba(0,0,0,0.52)");
@@ -186,9 +191,7 @@ function quadPath(ctx: CanvasRenderingContext2D, q: Quad): void {
   ctx.closePath();
 }
 
-export async function compositePaperPhoto(
-  bill: HTMLImageElement | ImageBitmap,
-): Promise<Blob> {
+export async function compositePaperPhoto(bill: HTMLImageElement | ImageBitmap): Promise<Blob> {
   const width = PHOTO_WIDTH;
   const height = PHOTO_HEIGHT;
   const sw = bill instanceof HTMLImageElement ? bill.naturalWidth : bill.width;
@@ -239,7 +242,7 @@ export async function compositePaperPhoto(
   lctx.save();
   quadPath(lctx, quad);
   lctx.clip();
-  const noiseRng = mulberry32(0xBEEF);
+  const noiseRng = mulberry32(0xbeef);
   for (let i = 0; i < 4200; i++) {
     const nx = noiseRng() * width;
     const ny = noiseRng() * height;
@@ -262,7 +265,8 @@ export async function compositePaperPhoto(
 
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
-      (blob) => (blob === null ? reject(new Error("实拍合成失败：canvas.toBlob 返回 null")) : resolve(blob)),
+      (blob) =>
+        blob === null ? reject(new Error("实拍合成失败：canvas.toBlob 返回 null")) : resolve(blob),
       "image/jpeg",
       0.92,
     );

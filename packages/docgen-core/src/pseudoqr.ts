@@ -71,13 +71,13 @@ export function pseudoQrSvg(seed: string, opts: PseudoQrSvgOptions): string {
   const size = (n + margin * 2) * m;
   const color = opts.color ?? "#101418";
   const background = opts.background ?? "#ffffff";
-  const rects: string[] = [
-    `<rect width="${size}" height="${size}" fill="${background}"/>`,
-  ];
+  const rects: string[] = [`<rect width="${size}" height="${size}" fill="${background}"/>`];
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
       if (grid[y]?.[x] === true) {
-        rects.push(`<rect x="${(x + margin) * m}" y="${(y + margin) * m}" width="${m}" height="${m}" fill="${color}"/>`);
+        rects.push(
+          `<rect x="${(x + margin) * m}" y="${(y + margin) * m}" width="${m}" height="${m}" fill="${color}"/>`,
+        );
       }
     }
   }

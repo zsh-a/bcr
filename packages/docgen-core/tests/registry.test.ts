@@ -6,54 +6,34 @@ import { validateBillInput } from "../src/validate";
 import type { BillInput } from "../src/model";
 
 describe("registry", () => {
-  it("10 个虚构地区、32 个模板、docType 唯一", () => {
-    expect(REGIONS).toHaveLength(10);
-    expect(TEMPLATES).toHaveLength(32);
-    expect(new Set(TEMPLATES.map((t) => t.docType)).size).toBe(32);
+  it("6 个地区、12 个模板、docType 唯一", () => {
+    expect(REGIONS).toHaveLength(6);
+    expect(TEMPLATES).toHaveLength(12);
+    expect(new Set(TEMPLATES.map((t) => t.docType)).size).toBe(12);
   });
 
   it("listTemplates 按地区过滤；getTemplate 往返", () => {
-    expect(listTemplates("nordhavn").map((t) => t.docType)).toEqual(["nh_water", "nh_power"]);
-    expect(listTemplates("caldera").map((t) => t.docType)).toEqual(["ci_gas", "ci_telecom"]);
-    expect(listTemplates("veridia").map((t) => t.docType)).toEqual(["vd_power", "vd_water"]);
-    expect(listTemplates("castellan").map((t) => t.docType)).toEqual(["cs_power", "cs_water"]);
-    expect(listTemplates("waldland").map((t) => t.docType)).toEqual([
-      "wl_power",
-      "wl_gas",
-      "wl_heizkosten",
-    ]);
-    expect(listTemplates("longcheng").map((t) => t.docType)).toEqual([
-      "lc_water",
-      "lc_power",
-      "hk_electricity_power",
-      "hk_water_bill",
-    ]);
-    expect(listTemplates("coralia").map((t) => t.docType)).toEqual([
-      "co_power",
-      "co_gas",
+    expect(listTemplates("australia").map((t) => t.docType)).toEqual([
       "au_agl_gas",
       "au_energyau_power",
     ]);
-    expect(listTemplates("northland").map((t) => t.docType)).toEqual([
-      "nl_power",
-      "nl_gas",
+    expect(listTemplates("canada").map((t) => t.docType)).toEqual([
       "ca_bchydro_power",
       "ca_enmax_power",
       "ca_hydroone_power",
     ]);
-    expect(listTemplates("equatoria").map((t) => t.docType)).toEqual([
-      "eq_utilities",
-      "eq_telecom",
-      "sg_singtel_telecom",
+    expect(listTemplates("hongkong").map((t) => t.docType)).toEqual([
+      "hk_electricity_power",
+      "hk_water_bill",
     ]);
-    expect(listTemplates("wenlock").map((t) => t.docType)).toEqual([
-      "wn_energy",
-      "wn_water",
+    expect(listTemplates("singapore").map((t) => t.docType)).toEqual(["sg_singtel_telecom"]);
+    expect(listTemplates("uk").map((t) => t.docType)).toEqual([
       "uk_britishgas_gas",
       "uk_eonnext_power",
       "uk_thameswater_water",
     ]);
-    expect(listTemplates()).toHaveLength(32);
+    expect(listTemplates("germany").map((t) => t.docType)).toEqual(["wl_heizkosten"]);
+    expect(listTemplates()).toHaveLength(12);
     for (const t of TEMPLATES) expect(getTemplate(t.docType)).toBe(t);
     expect(getTemplate("nope")).toBeUndefined();
   });
@@ -67,7 +47,7 @@ describe("registry", () => {
   it("全部为虚构机构，不含真实公用事业公司名", () => {
     // 真实机构黑名单（防回归）：新机构名同样不得命中
     const banned =
-      /thames|bc hydro|british gas|edf|anglian|severn|octopus|sse\b|e\.on|eon\b|veolia|suez|pacific gas|pg&e|duke|con ?ed|southern company|national grid|scottish ?power|npower|centrica|xcel|dominion|iberdrola|enel|engie|united utilities|yorkshire water|southern water|wessex|rwe\b|vattenfall|enbw|innogy|rheinenergie|gasag|badenova|mainova|entega|clp\b|中電|港燈|hong ?kong electric|origin energy|energyaustralia|agl energy|alinta|hydro one|enmax|atco|fortis ?bc|sp group|singtel|starhub|m1 limited|severn trent/i;
+      /thames|bc hydro|british gas|edf|anglian|severn|octopus|sse\b|e\.on|eon\b|veolia|suez|pacific gas|pg&e|duke|con ?ed|southern company|national grid|scottish ?power|npower|centrica|xcel|dominion|iberdrola|enel|engie|united utilities|yorkshire water|southern water|wessex|rwe\b|vattenfall|enbw|innogy|rheinenergie|gasag|badenova|mainova|entega|clp\b|中電|港燈|hong ?kong electric|origin energy|energyaustralia|agl energy|alinta|hydro one|enmax|atco|fortis ?bc|sp group|singtel|starhub|m1 limited|severn trent|techem/i;
     for (const t of TEMPLATES) {
       const input: BillInput = {
         docType: t.docType,
@@ -89,17 +69,17 @@ describe("registry", () => {
 });
 
 describe("validateBillInput", () => {
-  const gas = getTemplate("ci_gas");
-  if (gas === undefined) throw new Error("missing ci_gas");
+  const gas = getTemplate("uk_britishgas_gas");
+  if (gas === undefined) throw new Error("missing uk_britishgas_gas");
 
   const okInput: BillInput = {
-    docType: "ci_gas",
-    name: "Ana Ribeiro",
+    docType: "uk_britishgas_gas",
+    name: "Oliver Smith",
     address: {
-      streetNumber: "12",
-      streetName: "Cinder Lane",
-      town: "Port Ember",
-      postcode: "CE14 2PA",
+      streetNo: "12",
+      streetName: "Mill Lane",
+      city: "London",
+      postcode: "SW1A 1AA",
     },
     billDate: "2026-09-09",
   };
@@ -112,10 +92,10 @@ describe("validateBillInput", () => {
     const result = validateBillInput(gas, {
       ...okInput,
       name: "",
-      address: { streetNumber: "", streetName: "Cinder Lane", town: "", postcode: "CE14 2PA" },
+      address: { streetNo: "", streetName: "Mill Lane", city: "", postcode: "SW1A 1AA" },
     });
     expect(result.ok).toBe(false);
-    expect(Object.keys(result.errors).sort()).toEqual(["name", "streetNumber", "town"]);
+    expect(Object.keys(result.errors).sort()).toEqual(["city", "name", "streetNo"]);
   });
 
   it("postcode pattern 校验", () => {
@@ -124,10 +104,10 @@ describe("validateBillInput", () => {
       address: { ...okInput.address, postcode: "abcde" },
     });
     expect(bad.ok).toBe(false);
-    expect(bad.errors["postcode"]).toContain("邮编");
+    expect(bad.errors["postcode"]).toBeDefined();
     const good = validateBillInput(gas, {
       ...okInput,
-      address: { ...okInput.address, postcode: "CE142PA" }, // 空格可选
+      address: { ...okInput.address, postcode: "SW1A1AA" }, // 空格可选
     });
     expect(good.ok).toBe(true);
   });
@@ -161,13 +141,13 @@ describe("randomAddress", () => {
   });
 
   it("确定性：同 seed 同结果", () => {
-    const a = randomAddress("nordhavn", mulberry32(42));
-    const b = randomAddress("nordhavn", mulberry32(42));
+    const a = randomAddress("australia", mulberry32(42));
+    const b = randomAddress("australia", mulberry32(42));
     expect(a).toEqual(b);
-    expect(listAddresses("nordhavn")).toContainEqual(a);
+    expect(listAddresses("australia")).toContainEqual(a);
   });
 
-  it("每地区地址库均满足其模板字段 pattern（caldera 邮编 / veridia 州+zip / castellan 邮编等）", () => {
+  it("每地区地址库均满足其模板字段 pattern（州/省缩写、邮编格式等）", () => {
     for (const t of TEMPLATES) {
       for (const entry of listAddresses(t.regionId)) {
         for (const field of t.fields) {

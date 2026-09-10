@@ -1,5 +1,5 @@
 /**
- * 虚构地区「温洛克郡 Wenlock」扩展：英国三大公用事业账单版式复刻。
+ * 真实地区「英国 UK」扩展：英国三大公用事业账单版式复刻。
  * - ukBritishGasGas      "Albion Gas"：燃气单——Supply address + Rota block、大号问候标题、
  *   蓝色 "Your account summary" 圆角卡片（previous balance / costs / payments / new balance·Debit）、
  *   绿色 "Important information" 付款提示卡、m³→kWh 换算行、VAT 5%、tariff 信息栏 + Did you know
@@ -8,7 +8,7 @@
  * - ukThamesWaterWater   "Chiltern Water"：水单——右侧浅蓝信息侧栏（户号/账期/供水地址 +
  *   What's in this bill 目录）、绿色 "What to pay" 大卡片 + 蓝色 "When to pay by" 卡片、
  *   How to pay 三栏、water + sewerage 分区计价、民用水 VAT 零税率、伪 QR
- * 地址字段复用 wenlock（streetNo / streetName / city / postcode），虚构货币 WNP。
+ * 地址字段复用 uk（streetNo / streetName / city / postcode），真实货币 GBP。
  * 账期长度按参考图实际账期取值：月度账单 31 天、水务半年账 190 天。
  */
 
@@ -54,7 +54,7 @@ const UK_FIELDS = [
     kind: "text",
     key: "city",
     label: "城市",
-    placeholder: "Wenlock",
+    placeholder: "London",
     required: true,
     maxLength: 40,
   },
@@ -62,21 +62,21 @@ const UK_FIELDS = [
     kind: "text",
     key: "postcode",
     label: "邮编",
-    placeholder: "WN4 2QA",
+    placeholder: "SW1A 1AA",
     required: true,
     maxLength: 8,
-    pattern: /^[A-Z]{2}\d{1,2}\s?\d[A-Z]{2}$/,
+    pattern: /^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}$/,
   },
 ] as const;
 
 const BGAS_META: TemplateMeta = {
   docType: "uk_britishgas_gas",
-  regionId: "wenlock",
+  regionId: "uk",
   kind: "gas",
   utilityName: "Albion Gas",
   utilityNameZh: "阿尔比恩燃气",
   tagline: "Fictional gas supplier",
-  currency: "WNP",
+  currency: "GBP",
   prefix: "ABG",
   periodDays: 31,
   accent: "#003a70",
@@ -85,12 +85,12 @@ const BGAS_META: TemplateMeta = {
 
 const EON_META: TemplateMeta = {
   docType: "uk_eonnext_power",
-  regionId: "wenlock",
+  regionId: "uk",
   kind: "power",
   utilityName: "Nova Watt",
   utilityNameZh: "新星电力",
   tagline: "Fictional electricity supplier",
-  currency: "WNP",
+  currency: "GBP",
   prefix: "NVW",
   periodDays: 31,
   accent: "#7b2d8e",
@@ -99,12 +99,12 @@ const EON_META: TemplateMeta = {
 
 const TW_META: TemplateMeta = {
   docType: "uk_thameswater_water",
-  regionId: "wenlock",
+  regionId: "uk",
   kind: "water",
   utilityName: "Chiltern Water",
   utilityNameZh: "奇尔特恩水务",
   tagline: "Fictional water & sewerage company",
-  currency: "WNP",
+  currency: "GBP",
   prefix: "CHW",
   periodDays: 190,
   accent: "#0099d6",
@@ -319,7 +319,7 @@ function renderBritishGas(vm: BillViewModel, meta: TemplateMeta, opts: RenderOpt
 
 export const ukBritishGasGas: BillTemplate = {
   docType: BGAS_META.docType,
-  regionId: "wenlock",
+  regionId: "uk",
   label: "燃气账单 · British Gas 版式",
   kind: "gas",
   fields: UK_FIELDS,
@@ -339,7 +339,7 @@ export const ukBritishGasGas: BillTemplate = {
     const total = round2(previousBalance - paymentsReceived + subtotal + tax);
     return {
       docType: BGAS_META.docType,
-      regionId: "wenlock",
+      regionId: "uk",
       kind: "gas",
       utilityName: BGAS_META.utilityName,
       utilityNameZh: BGAS_META.utilityNameZh,
@@ -533,8 +533,8 @@ function renderEonNext(vm: BillViewModel, meta: TemplateMeta, opts: RenderOption
     /* 页脚 */
     `<div style="margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;gap:60px;flex:none;">` +
     `<div style="font-size:25px;color:#8a8296;line-height:1.65;">` +
-    `${escapeHtml(vm.utilityName)} Energy Limited Registered Office: Westwood Way, Westwood Business Park, Wenlock WN4 8LG (fictional). ` +
-    `Registered in Wendland and Wales No. 03782443 (fictional).<br/>${fictionalNotice(vm)}</div>` +
+    `${escapeHtml(vm.utilityName)} Energy Limited Registered Office: Westwood Way, Westwood Business Park, Coventry CV4 8LG (fictional). ` +
+    `Registered in England and Wales No. 03782443 (fictional).<br/>${fictionalNotice(vm)}</div>` +
     `<div style="font-size:28px;color:${EON_INK};flex:none;">Page 1/4</div></div>` +
     `</div>` +
     (opts.watermark ? watermarkLayer() : "") +
@@ -544,7 +544,7 @@ function renderEonNext(vm: BillViewModel, meta: TemplateMeta, opts: RenderOption
 
 export const ukEonNextPower: BillTemplate = {
   docType: EON_META.docType,
-  regionId: "wenlock",
+  regionId: "uk",
   label: "电费账单 · E.ON Next 版式",
   kind: "power",
   fields: UK_FIELDS,
@@ -563,7 +563,7 @@ export const ukEonNextPower: BillTemplate = {
     const total = round2(previousBalance - paymentsReceived + subtotal + tax);
     return {
       docType: EON_META.docType,
-      regionId: "wenlock",
+      regionId: "uk",
       kind: "power",
       utilityName: EON_META.utilityName,
       utilityNameZh: EON_META.utilityNameZh,
@@ -832,7 +832,7 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
 
 export const ukThamesWaterWater: BillTemplate = {
   docType: TW_META.docType,
-  regionId: "wenlock",
+  regionId: "uk",
   label: "水费账单 · Thames Water 版式",
   kind: "water",
   fields: UK_FIELDS,
@@ -858,7 +858,7 @@ export const ukThamesWaterWater: BillTemplate = {
         subtitle: "Metered supply",
         lines: [
           {
-            label: `Water usage · ${formatInt(m3)} m³ × WNP ${TW_WATER_RATE.toFixed(3)}/m³`,
+            label: `Water usage · ${formatInt(m3)} m³ × £${TW_WATER_RATE.toFixed(3)}/m³`,
             amount: waterUsage,
           },
           {
@@ -873,7 +873,7 @@ export const ukThamesWaterWater: BillTemplate = {
         subtitle: `${Math.round(TW_SEWER_FACTOR * 100)}% of metered water`,
         lines: [
           {
-            label: `Sewerage usage · ${formatInt(sewageM3)} m³ × WNP ${TW_SEWER_RATE.toFixed(3)}/m³`,
+            label: `Sewerage usage · ${formatInt(sewageM3)} m³ × £${TW_SEWER_RATE.toFixed(3)}/m³`,
             amount: sewerUsage,
           },
           {
@@ -887,7 +887,7 @@ export const ukThamesWaterWater: BillTemplate = {
     const charges = sections.flatMap((s) => s.lines);
     return {
       docType: TW_META.docType,
-      regionId: "wenlock",
+      regionId: "uk",
       kind: "water",
       utilityName: TW_META.utilityName,
       utilityNameZh: TW_META.utilityNameZh,

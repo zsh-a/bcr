@@ -1,5 +1,5 @@
 /**
- * 虚构地区「瓦尔德兰 Waldland」：德国暖气费分摊结算单
+ * 真实地区「德国 Germany」：暖气费分摊结算单
  * （Heiz- und Hausnebenkostenabrechnung，供熱與附屬費年度分攤結算）。
  * 版式复刻参考件：顶部居中字标 + 红色标题、地址/账期双栏、粉色费用回顾框、
  * 红条信息框（Energiekostenentlastung / EWPBG）、五列成本分摊表
@@ -29,12 +29,12 @@ import {
   type TemplateMeta,
 } from "./common";
 
-const WALDLAND_FIELDS = [
+const GERMANY_FIELDS = [
   {
     kind: "text",
     key: "strasse",
     label: "街道 + 门牌号",
-    placeholder: "Falkenstraße 12",
+    placeholder: "Hauptstraße 12",
     required: true,
     maxLength: 60,
   },
@@ -42,7 +42,7 @@ const WALDLAND_FIELDS = [
     kind: "text",
     key: "plz",
     label: "邮编 PLZ",
-    placeholder: "91240",
+    placeholder: "10115",
     required: true,
     maxLength: 5,
     pattern: /^\d{5}$/,
@@ -51,7 +51,7 @@ const WALDLAND_FIELDS = [
     kind: "text",
     key: "ort",
     label: "城市 Ort",
-    placeholder: "Falkenheim",
+    placeholder: "Berlin",
     required: true,
     maxLength: 40,
   },
@@ -59,7 +59,7 @@ const WALDLAND_FIELDS = [
 
 const HEIZ_META: TemplateMeta = {
   docType: "wl_heizkosten",
-  regionId: "waldland",
+  regionId: "germany",
   kind: "gas",
   utilityName: "Falkenmess Wärmeabrechnung GmbH",
   utilityNameZh: "法尔肯计量供暖结算公司",
@@ -216,10 +216,10 @@ function sectionHeading(title: string): string {
 
 export const wlHeizkosten: BillTemplate = {
   docType: HEIZ_META.docType,
-  regionId: "waldland",
+  regionId: "germany",
   label: "暖气费年度结算 · Techem 版式",
   kind: "gas",
-  fields: WALDLAND_FIELDS,
+  fields: GERMANY_FIELDS,
   compute(input: BillInput, rng: () => number): BillViewModel {
     const base = buildBase(input, HEIZ_META);
     // 结算周期自行推导：期末 = 出账日 − 70 天，期初 = 期末 − 183 天（共 184 天，如 01.05.–31.10.）
@@ -410,7 +410,7 @@ export const wlHeizkosten: BillTemplate = {
 
     return {
       docType: HEIZ_META.docType,
-      regionId: "waldland",
+      regionId: "germany",
       kind: "gas",
       utilityName: HEIZ_META.utilityName,
       utilityNameZh: HEIZ_META.utilityNameZh,

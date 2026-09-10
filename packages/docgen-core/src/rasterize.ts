@@ -40,7 +40,8 @@ export async function rasterizeHtml(html: string, opts: RasterizeOptions): Promi
 
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
-      (blob) => (blob === null ? reject(new Error("栅格化失败：canvas.toBlob 返回 null")) : resolve(blob)),
+      (blob) =>
+        blob === null ? reject(new Error("栅格化失败：canvas.toBlob 返回 null")) : resolve(blob),
       "image/png",
     );
   });

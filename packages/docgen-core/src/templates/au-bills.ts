@@ -6,8 +6,8 @@
  * - auEnergyAustraliaPower 澳式电费单版式：深绿标题栏（Need to get in touch? / Your bill）、
  *   "Your electricity account" 边框表、绿色 "save money" 横幅、
  *   底部 "payment options" 区（Billpay code + BPAY + Office use only + OCR 行）
- * 所有机构 / 地名 / 货币 / 号码均为虚构。GST 10% 内含（金额按 ex-GST 入账）。
- * 地址字段：streetNo / streetName / suburb / state(3 字母) / postcode(4 位)（与 coralia 一致）。
+ * 机构 / 地名 / 号码均为虚构；货币为真实 AUD（澳元）。GST 10% 内含（金额按 ex-GST 入账）。
+ * 地址字段：streetNo / streetName / suburb / state(2–3 字母) / postcode(4 位)（与 australia 一致）。
  */
 
 import { code128Svg } from "../barcode";
@@ -46,24 +46,24 @@ const AU_FIELDS = [
     kind: "text",
     key: "suburb",
     label: "Suburb",
-    placeholder: "Coral Cove",
+    placeholder: "Bondi",
     required: true,
     maxLength: 40,
   },
   {
     kind: "text",
     key: "state",
-    label: "州（3 位缩写）",
-    placeholder: "CQL",
+    label: "州（2–3 位缩写）",
+    placeholder: "NSW",
     required: true,
     maxLength: 3,
-    pattern: /^[A-Z]{3}$/,
+    pattern: /^[A-Z]{2,3}$/,
   },
   {
     kind: "text",
     key: "postcode",
     label: "邮编",
-    placeholder: "4820",
+    placeholder: "2026",
     required: true,
     maxLength: 4,
     pattern: /^\d{4}$/,
@@ -72,12 +72,12 @@ const AU_FIELDS = [
 
 const AGL_GAS_META: TemplateMeta = {
   docType: "au_agl_gas",
-  regionId: "coralia",
+  regionId: "australia",
   kind: "gas",
   utilityName: "Bluegum Gas",
   utilityNameZh: "蓝桉燃气",
   tagline: "Fictional Australian gas retailer",
-  currency: "CRD",
+  currency: "AUD",
   prefix: "BLG",
   periodDays: 90,
   accent: "#0072bc",
@@ -86,12 +86,12 @@ const AGL_GAS_META: TemplateMeta = {
 
 const EA_POWER_META: TemplateMeta = {
   docType: "au_energyau_power",
-  regionId: "coralia",
+  regionId: "australia",
   kind: "power",
   utilityName: "Wattle Energy",
   utilityNameZh: "金合欢能源",
   tagline: "Fictional Australian electricity retailer",
-  currency: "CRD",
+  currency: "AUD",
   prefix: "WTE",
   periodDays: 90,
   accent: "#0a7a3d",
@@ -337,7 +337,7 @@ function aglHowToPay(vm: BillViewModel): string {
     `<div style="display:flex;gap:20px;align-items:flex-start;">${iconSvg(ICON_MAIL, "#1b2327", 56)}` +
     `<div><div style="font-size:32px;font-weight:800;">Mail</div>` +
     `<div style="font-size:27px;color:#3c464d;line-height:1.55;margin-top:4px;">Send your cheque along with the reverse of this section to:<br/>` +
-    `<b style="color:#1b2327;">${escapeHtml(vm.utilityName)} Pty Ltd<br/>Locked Bag 1200, Coralia Central CQL 4820</b></div></div></div>` +
+    `<b style="color:#1b2327;">${escapeHtml(vm.utilityName)} Pty Ltd<br/>Locked Bag 1200, Sydney NSW 2001</b></div></div></div>` +
     `<div style="display:flex;gap:20px;margin-top:30px;align-items:flex-start;">` +
     `<div style="width:56px;height:56px;background:#1b2327;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;">` +
     `<span style="color:#ffffff;font-size:30px;font-weight:900;">P</span></div>` +
@@ -414,7 +414,7 @@ function renderAglGas(vm: BillViewModel, opts: RenderOptions): string {
 
 export const auAglGas: BillTemplate = {
   docType: AGL_GAS_META.docType,
-  regionId: "coralia",
+  regionId: "australia",
   label: "燃气账单 · AGL 版式",
   kind: "gas",
   fields: AU_FIELDS,
@@ -432,7 +432,7 @@ export const auAglGas: BillTemplate = {
     const refDigits = digits(rng, 6);
     return {
       docType: AGL_GAS_META.docType,
-      regionId: "coralia",
+      regionId: "australia",
       kind: "gas",
       utilityName: AGL_GAS_META.utilityName,
       utilityNameZh: AGL_GAS_META.utilityNameZh,
@@ -574,7 +574,7 @@ function eaPaymentOptions(vm: BillViewModel): string {
       ICON_MAIL,
       "Mail",
       `Please post this payslip with your cheque payable to: ${escapeHtml(vm.utilityName)}, ` +
-        `GPO BOX 4491, Coralia Central CQL 4820 (fictional)`,
+        `GPO BOX 4491, Sydney NSW 2001 (fictional)`,
     ) +
     method(
       ICON_PHONE,
@@ -691,7 +691,7 @@ function renderEaPower(vm: BillViewModel, opts: RenderOptions): string {
 
 export const auEnergyAustraliaPower: BillTemplate = {
   docType: EA_POWER_META.docType,
-  regionId: "coralia",
+  regionId: "australia",
   label: "电费账单 · EnergyAustralia 版式",
   kind: "power",
   fields: AU_FIELDS,
@@ -709,7 +709,7 @@ export const auEnergyAustraliaPower: BillTemplate = {
     const refDigits = digits(rng, 4);
     return {
       docType: EA_POWER_META.docType,
-      regionId: "coralia",
+      regionId: "australia",
       kind: "power",
       utilityName: EA_POWER_META.utilityName,
       utilityNameZh: EA_POWER_META.utilityNameZh,

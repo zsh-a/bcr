@@ -30,7 +30,7 @@ import {
 /** CJK 字体栈：双语账单必须带繁中 fallback（单引号——外层 style 属性用双引号） */
 const HK_FONT = `Helvetica, Arial, 'PingFang TC', 'Noto Sans CJK TC', 'Microsoft JhengHei', sans-serif`;
 
-/** 与 longcheng 地区一致的地址字段 schema（表单渲染 + 校验共用） */
+/** 与 hongkong 地区一致的地址字段 schema（表单渲染 + 校验共用） */
 const HK_FIELDS = [
   {
     kind: "text",
@@ -44,7 +44,7 @@ const HK_FIELDS = [
     kind: "text",
     key: "estate",
     label: "屋邨 / 屋苑",
-    placeholder: "Lung Wah Estate, Block 3",
+    placeholder: "Mei Foo Sun Chuen, Block 3",
     required: true,
     maxLength: 60,
   },
@@ -52,7 +52,7 @@ const HK_FIELDS = [
     kind: "text",
     key: "district",
     label: "地区",
-    placeholder: "Lung Shing East",
+    placeholder: "Kowloon",
     required: true,
     maxLength: 40,
   },
@@ -60,12 +60,12 @@ const HK_FIELDS = [
 
 const POWER_META: TemplateMeta = {
   docType: "hk_electricity_power",
-  regionId: "longcheng",
+  regionId: "hongkong",
   kind: "power",
   utilityName: "Harbour Bright Power",
   utilityNameZh: "港暉電力",
   tagline: "Fictional power utility — brightening every home",
-  currency: "LKD",
+  currency: "HKD",
   prefix: "HBP",
   periodDays: 60,
   accent: "#8aa92e",
@@ -74,12 +74,12 @@ const POWER_META: TemplateMeta = {
 
 const WATER_META: TemplateMeta = {
   docType: "hk_water_bill",
-  regionId: "longcheng",
+  regionId: "hongkong",
   kind: "water",
   utilityName: "Cityspring Water Services",
   utilityNameZh: "城泉水務",
   tagline: "Fictional municipal water supplies",
-  currency: "LKD",
+  currency: "HKD",
   prefix: "CSW",
   // 参考图账期明确印为「123日」（23/04/2026 - 24/08/2026），按图取值
   periodDays: 123,
@@ -141,7 +141,7 @@ function fmtDash2(iso: string): string {
   return `${d}-${m}-${(y ?? "").slice(2)}`;
 }
 
-/** 两位小数裸数字（千分位），配合栏头 "LKD $" 使用 */
+/** 两位小数裸数字（千分位），配合栏头 "HK$" 使用 */
 function fmtNum2(n: number): string {
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
@@ -417,7 +417,7 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<table style="width:100%;border-collapse:collapse;margin-top:8px;">` +
     `<tr style="font-size:27px;">` +
     `<th style="${thL}">用電級別</th><th style="${thR}">每度（¢）</th>` +
-    `<th style="${thR}">度數</th><th style="${thR}">費用（LKD $）</th></tr>` +
+    `<th style="${thR}">度數</th><th style="${thR}">費用（HK$）</th></tr>` +
     blockRowsHtml +
     `<tr style="font-size:31px;font-weight:800;">` +
     `<td style="${tdL}">小計</td><td style="${tdR}"></td>` +
@@ -484,7 +484,7 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
 
 export const hkElectricityPower: BillTemplate = {
   docType: POWER_META.docType,
-  regionId: "longcheng",
+  regionId: "hongkong",
   label: "電費單 · 港式版式 B",
   kind: "power",
   fields: HK_FIELDS,
@@ -521,7 +521,7 @@ export const hkElectricityPower: BillTemplate = {
     });
     return {
       docType: POWER_META.docType,
-      regionId: "longcheng",
+      regionId: "hongkong",
       kind: "power",
       utilityName: POWER_META.utilityName,
       utilityNameZh: POWER_META.utilityNameZh,
@@ -663,7 +663,7 @@ function renderWaterHtml(vm: BillViewModel, opts: RenderOptions): string {
 
   const tierRowHtml = (line: ChargeLine): string => {
     const { caption, detail } = splitLabel(line.label);
-    const m = /([\d.]+) 立方米 m³ @ LKD ([\d.]+)/.exec(detail);
+    const m = /([\d.]+) 立方米 m³ @ HK\$([\d.]+)/.exec(detail);
     return (
       `<div style="display:flex;justify-content:space-between;padding:7px 0;font-size:31px;">` +
       `<span>${escapeHtml(caption)} ${escapeHtml(m?.[1] ?? "-")} 立方米 @ $${escapeHtml(m?.[2] ?? "-")}</span>` +
@@ -745,7 +745,7 @@ function renderWaterHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="margin-top:30px;font-size:31px;">供水性質：住宅供水（010030）</div>` +
     `<div style="display:flex;gap:48px;margin-top:16px;">` +
     `<div style="flex:1;min-width:0;">` +
-    `<div style="text-align:right;font-size:27px;color:#5a656c;">LKD $</div>` +
+    `<div style="text-align:right;font-size:27px;color:#5a656c;">HK$</div>` +
     sumRow("餘額承前", fmtNum2(carryIn), false) +
     `<div style="font-size:33px;font-weight:800;margin-top:8px;">水費</div>` +
     `<div style="font-size:30px;margin-top:4px;">${escapeHtml(periodText)}</div>` +
@@ -754,7 +754,7 @@ function renderWaterHtml(vm: BillViewModel, opts: RenderOptions): string {
     `</div>` +
     `<div style="flex:none;width:9px;background:#1b2327;"></div>` +
     `<div style="flex:1;min-width:0;">` +
-    `<div style="text-align:right;font-size:27px;color:#5a656c;">LKD $</div>` +
+    `<div style="text-align:right;font-size:27px;color:#5a656c;">HK$</div>` +
     `<div style="font-size:33px;font-weight:800;">排污費</div>` +
     `<div style="font-size:30px;margin-top:4px;">${escapeHtml(periodText)}</div>` +
     `<div style="margin-top:6px;">${sewageLines.map(tierRowHtml).join("")}</div>` +
@@ -810,7 +810,7 @@ function renderWaterHtml(vm: BillViewModel, opts: RenderOptions): string {
 
 export const hkWaterBill: BillTemplate = {
   docType: WATER_META.docType,
-  regionId: "longcheng",
+  regionId: "hongkong",
   label: "水費單 · 港式版式 B",
   kind: "water",
   fields: HK_FIELDS,
@@ -833,7 +833,7 @@ export const hkWaterBill: BillTemplate = {
     const a2c = Math.round(q2 * 416);
     const a3c = Math.round(q3 * 645);
     const a4c = Math.round(q4 * 905);
-    // 排污费：首级免费，其余用水量 @ LKD 2.92/立方米
+    // 排污费：首级免费，其余用水量 @ HK$2.92/立方米
     const s2q = q3d(m3 - q1);
     const s2c = Math.round(s2q * 292);
     const subtotalC = a2c + a3c + a4c + s2c;
@@ -860,7 +860,7 @@ export const hkWaterBill: BillTemplate = {
     const meterNo = `MSL${58000000 + Math.floor(rng() * 999999)}`;
     return {
       docType: WATER_META.docType,
-      regionId: "longcheng",
+      regionId: "hongkong",
       kind: "water",
       utilityName: WATER_META.utilityName,
       utilityNameZh: WATER_META.utilityNameZh,
@@ -889,27 +889,27 @@ export const hkWaterBill: BillTemplate = {
       barTitle: "每日平均用水量 Daily average consumption",
       charges: [
         {
-          label: `水費 Water charge · 第一級 Tier 1 · ${q1.toFixed(3)} 立方米 m³ @ LKD 0.00`,
+          label: `水費 Water charge · 第一級 Tier 1 · ${q1.toFixed(3)} 立方米 m³ @ HK$0.00`,
           amount: 0,
         },
         {
-          label: `水費 Water charge · 第二級 Tier 2 · ${q2.toFixed(3)} 立方米 m³ @ LKD 4.16`,
+          label: `水費 Water charge · 第二級 Tier 2 · ${q2.toFixed(3)} 立方米 m³ @ HK$4.16`,
           amount: fromCents(a2c),
         },
         {
-          label: `水費 Water charge · 第三級 Tier 3 · ${q3.toFixed(3)} 立方米 m³ @ LKD 6.45`,
+          label: `水費 Water charge · 第三級 Tier 3 · ${q3.toFixed(3)} 立方米 m³ @ HK$6.45`,
           amount: fromCents(a3c),
         },
         {
-          label: `水費 Water charge · 第四級 Tier 4 · ${q4.toFixed(3)} 立方米 m³ @ LKD 9.05`,
+          label: `水費 Water charge · 第四級 Tier 4 · ${q4.toFixed(3)} 立方米 m³ @ HK$9.05`,
           amount: fromCents(a4c),
         },
         {
-          label: `排污費 Sewage charge · 第一級 Tier 1 · ${q1.toFixed(3)} 立方米 m³ @ LKD 0.00`,
+          label: `排污費 Sewage charge · 第一級 Tier 1 · ${q1.toFixed(3)} 立方米 m³ @ HK$0.00`,
           amount: 0,
         },
         {
-          label: `排污費 Sewage charge · 第二級 Tier 2 · ${s2q.toFixed(3)} 立方米 m³ @ LKD 2.92`,
+          label: `排污費 Sewage charge · 第二級 Tier 2 · ${s2q.toFixed(3)} 立方米 m³ @ HK$2.92`,
           amount: fromCents(s2c),
         },
       ],

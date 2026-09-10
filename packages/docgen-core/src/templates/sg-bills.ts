@@ -1,5 +1,5 @@
 /**
- * 虚构地区「赤道城 Equatoria」：新加坡电信账单流派（Singtel 版式复刻）。
+ * 真实地区「新加坡 Singapore」（货币 SGD）：新加坡电信账单流派（Singtel 版式复刻）。
  * - sg_singtel_telecom  Meridian Telecommunications：左侧品牌栏（弧形 logo +
  *   条码 + 客户地址 + eBill QR 推广 + App/帮助/热线三块），右侧浅灰
  *   「My Bill Overview」面板（账户元信息 + Total Due 大数字 + Outstanding /
@@ -7,7 +7,7 @@
  *   下方「My Bill Details」按 Mobile / Fibre Broadband / TV 分 section 计价
  *   （GST 9% 外加），底部撕线 Payment Slip（双条码 + 银行/支票填写框 +
  *   Page 1 of 3），GIRO 自动转账提示。
- * 地址字段复用 equatoria.ts（blockStreet / unitNo / postalCode）。
+ * 地址字段为新加坡式组屋地址（blockStreet / unitNo / postalCode）。
  */
 
 import { code128Svg } from "../barcode";
@@ -35,7 +35,7 @@ const SG_TELECOM_FIELDS = [
     kind: "text",
     key: "blockStreet",
     label: "座号 + 街道",
-    placeholder: "Blk 128 Equator Avenue",
+    placeholder: "Blk 128 Bishan Street 12",
     required: true,
     maxLength: 60,
   },
@@ -52,7 +52,7 @@ const SG_TELECOM_FIELDS = [
     kind: "text",
     key: "postalCode",
     label: "邮编",
-    placeholder: "560128",
+    placeholder: "570128",
     required: true,
     maxLength: 6,
     pattern: /^\d{6}$/,
@@ -61,12 +61,12 @@ const SG_TELECOM_FIELDS = [
 
 const SINGTEL_META: TemplateMeta = {
   docType: "sg_singtel_telecom",
-  regionId: "equatoria",
+  regionId: "singapore",
   kind: "telecom",
   utilityName: "Meridian Telecommunications",
   utilityNameZh: "子午电信",
   tagline: "Fictional mobile, fibre & TV operator",
-  currency: "EQD",
+  currency: "SGD",
   prefix: "MDT",
   periodDays: 30,
   accent: "#e2262e",
@@ -335,7 +335,7 @@ function paymentSlip(vm: BillViewModel, meta: TemplateMeta): string {
     `<div style="width:700px;flex:none;">` +
     `<div style="font-size:36px;font-weight:700;color:#1b2327;">${escapeHtml(vm.utilityName)}</div>` +
     `<div style="font-size:30px;color:#333c42;line-height:1.5;margin-top:8px;">` +
-    `EQUATOR BAY POST OFFICE<br/>PO BOX 294<br/>EQUATORIA 911810</div>` +
+    `ROBINSON ROAD POST OFFICE<br/>PO BOX 294<br/>SINGAPORE 900694</div>` +
     `<div style="margin-top:20px;font-size:36px;font-weight:700;color:${meta.accent};">Payment Slip</div>` +
     `<div style="font-size:28px;color:#5a656c;margin-top:6px;">Mail us this portion with your cheque payment.<br/>Already on GIRO? No action needed — payment is deducted automatically.</div>` +
     `<div style="font-size:30px;color:#5a656c;margin-top:16px;">Total Due</div>` +
@@ -363,7 +363,7 @@ function paymentSlip(vm: BillViewModel, meta: TemplateMeta): string {
 
 export const sgSingtelTelecom: BillTemplate = {
   docType: SINGTEL_META.docType,
-  regionId: "equatoria",
+  regionId: "singapore",
   label: "电信账单 · Singtel 版式",
   kind: "telecom",
   fields: SG_TELECOM_FIELDS,
@@ -380,7 +380,7 @@ export const sgSingtelTelecom: BillTemplate = {
       subtitle: `Mobile ${mobileNo.slice(0, 4)} ${mobileNo.slice(4)}`,
       lines: [
         { label: `Mobile plan · 60 GB monthly subscription`, amount: mobilePlan },
-        { label: `IDD voice usage · ${formatInt(iddMinutes)} mins × EQD 0.22/min`, amount: idd },
+        { label: `IDD voice usage · ${formatInt(iddMinutes)} mins × SGD 0.22/min`, amount: idd },
       ],
       sectionTotal: round2(mobilePlan + idd),
     };
@@ -415,7 +415,7 @@ export const sgSingtelTelecom: BillTemplate = {
     ];
     return {
       docType: SINGTEL_META.docType,
-      regionId: "equatoria",
+      regionId: "singapore",
       kind: "telecom",
       utilityName: SINGTEL_META.utilityName,
       utilityNameZh: SINGTEL_META.utilityNameZh,

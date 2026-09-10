@@ -19,12 +19,12 @@ function expand(values: ReadonlyArray<number>): number[] {
 }
 
 describe("Code128B", () => {
-  it("已知向量：\"HI\" → [StartB=104, 40, 41, checksum=20, Stop=106]", () => {
+  it('已知向量："HI" → [StartB=104, 40, 41, checksum=20, Stop=106]', () => {
     // checksum = (104 + 40*1 + 41*2) mod 103 = 226 mod 103 = 20
     expect(code128BValues("HI")).toEqual([104, 40, 41, 20, 106]);
   });
 
-  it("已知向量：单字符 \"P\"", () => {
+  it('已知向量：单字符 "P"', () => {
     // "P" = 80-32 = 48；checksum = (104 + 48) mod 103 = 49
     expect(code128BValues("P")).toEqual([104, 48, 49, 106]);
   });

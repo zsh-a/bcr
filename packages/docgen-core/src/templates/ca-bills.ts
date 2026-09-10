@@ -1,9 +1,9 @@
 /**
- * 虚构加拿大账单模板组（regionId 复用 "northland"，货币复用虚构代码 NLR）：
+ * 真实加拿大账单模板组（regionId "canada"，货币 CAD）：
  * - caBcHydroPower   沿海阶梯电价月度单：highlights + auto-pay 框 + 12 期用量柱图 + Step 1/Step 2 阶梯 + GST 5%
  * - caEnmaxPower     能源 + 市政服务合并月结单：账户摘要（上期/已收款/结转）+ 双 section 计价 + GST 5% + 撕线回单
  * - caHydroOnePower  三大信息框（owe/use/due）+ 3 柱用量对比 + HST 13% + 底部付款存根 + OCR 扫描行
- * 三个版式分别学习三张真实加拿大账单参考图的页面结构；机构名 / 地名 / 货币均为虚构。
+ * 三个版式分别学习三张真实加拿大账单参考图的页面结构；机构名为虚构，地区 / 货币为真实（加拿大 / 加元 CAD）。
  */
 
 import { fnv1a, mulberry32 } from "../hash";
@@ -21,7 +21,7 @@ import {
   type TemplateMeta,
 } from "./common";
 
-/** 与 northland.ts 完全一致的地址字段 schema（同键 / 同序 / 同校验） */
+/** 与其他区域模板一致的地址字段 schema（同键 / 同序 / 同校验） */
 const CA_FIELDS = [
   {
     kind: "text",
@@ -36,7 +36,7 @@ const CA_FIELDS = [
     kind: "text",
     key: "streetName",
     label: "街道名",
-    placeholder: "Spruce Hollow Road",
+    placeholder: "Granville Street",
     required: true,
     maxLength: 50,
   },
@@ -44,7 +44,7 @@ const CA_FIELDS = [
     kind: "text",
     key: "city",
     label: "城市",
-    placeholder: "Northpine",
+    placeholder: "Vancouver",
     required: true,
     maxLength: 40,
   },
@@ -52,7 +52,7 @@ const CA_FIELDS = [
     kind: "text",
     key: "province",
     label: "省（2 位缩写）",
-    placeholder: "NP",
+    placeholder: "BC",
     required: true,
     maxLength: 2,
     pattern: /^[A-Z]{2}$/,
@@ -61,7 +61,7 @@ const CA_FIELDS = [
     kind: "text",
     key: "postalCode",
     label: "邮政编码",
-    placeholder: "N4P 2K1",
+    placeholder: "V6B 1A1",
     required: true,
     maxLength: 7,
     pattern: /^[A-Z]\d[A-Z]\s?\d[A-Z]\d$/,
@@ -152,7 +152,7 @@ function shortMonDay(formatted: string): string {
   return `${mon ?? ""} ${Number(d)}`;
 }
 
-/** "NLR 148.05" → "NLR 148.⁰⁵"（角标分位，加式账单大金额排版） */
+/** "$148.05" → "$148.⁰⁵"（角标分位，加式账单大金额排版） */
 function moneySup(formatted: string): string {
   const dot = formatted.lastIndexOf(".");
   if (dot < 0) return escapeHtml(formatted);
@@ -166,12 +166,12 @@ function moneySup(formatted: string): string {
 
 const BC_META: TemplateMeta = {
   docType: "ca_bchydro_power",
-  regionId: "northland",
+  regionId: "canada",
   kind: "power",
   utilityName: "Bluefjord Power",
   utilityNameZh: "蓝峡电力",
   tagline: "Fictional coastal electric utility",
-  currency: "NLR",
+  currency: "CAD",
   prefix: "BFP",
   periodDays: 30,
   accent: "#0098c9",
@@ -393,7 +393,7 @@ function renderBcHydro(vm: BillViewModel, opts: RenderOptions): string {
 
 export const caBcHydroPower: BillTemplate = {
   docType: BC_META.docType,
-  regionId: "northland",
+  regionId: "canada",
   label: "电费账单 · BC Hydro 版式",
   kind: "power",
   fields: CA_FIELDS,
@@ -429,7 +429,7 @@ export const caBcHydroPower: BillTemplate = {
     });
     return {
       docType: BC_META.docType,
-      regionId: "northland",
+      regionId: "canada",
       kind: "power",
       utilityName: BC_META.utilityName,
       utilityNameZh: BC_META.utilityNameZh,
@@ -457,9 +457,9 @@ export const caBcHydroPower: BillTemplate = {
       barUnit: "kWh/day",
       barTitle: "Your electricity usage over time",
       charges: [
-        { label: `Basic charge · ${BC_META.periodDays} days × NLR 0.2250/day`, amount: basic },
-        { label: `Step 1 · ${formatInt(step1Qty)} kWh × NLR 0.1179`, amount: step1 },
-        { label: `Step 2 · ${formatInt(step2Qty)} kWh × NLR 0.1762`, amount: step2 },
+        { label: `Basic charge · ${BC_META.periodDays} days × $0.2250/day`, amount: basic },
+        { label: `Step 1 · ${formatInt(step1Qty)} kWh × $0.1179`, amount: step1 },
+        { label: `Step 2 · ${formatInt(step2Qty)} kWh × $0.1762`, amount: step2 },
         { label: "Rate rider · 5.0% of energy and basic charges", amount: rider },
       ],
       subtotal,
@@ -470,7 +470,7 @@ export const caBcHydroPower: BillTemplate = {
       qrSeed: `${base.invoiceNumber}|${total.toFixed(2)}|${base.dueDate}`,
       notes: [
         "Step 1 applies to the first 675 kWh in a 30-day billing period; usage above is billed at Step 2.",
-        "Rates are approved by the (fictional) Northland Utilities Commission.",
+        "Rates are approved by the provincial utilities commission (fictional).",
       ],
     };
   },
@@ -483,12 +483,12 @@ export const caBcHydroPower: BillTemplate = {
 
 const EN_META: TemplateMeta = {
   docType: "ca_enmax_power",
-  regionId: "northland",
+  regionId: "canada",
   kind: "power",
   utilityName: "Foothill Arc Utilities",
   utilityNameZh: "山麓弧光公用事业",
   tagline: "Fictional energy & municipal services",
-  currency: "NLR",
+  currency: "CAD",
   prefix: "FAU",
   periodDays: 30,
   accent: "#1c4f8a",
@@ -664,7 +664,7 @@ function renderEnmax(vm: BillViewModel, opts: RenderOptions): string {
 
 export const caEnmaxPower: BillTemplate = {
   docType: EN_META.docType,
-  regionId: "northland",
+  regionId: "canada",
   label: "电费账单 · ENMAX 版式",
   kind: "power",
   fields: CA_FIELDS,
@@ -692,7 +692,7 @@ export const caEnmaxPower: BillTemplate = {
     const previousBalance = round2(250 + rng() * 550);
     return {
       docType: EN_META.docType,
-      regionId: "northland",
+      regionId: "canada",
       kind: "power",
       utilityName: EN_META.utilityName,
       utilityNameZh: EN_META.utilityNameZh,
@@ -782,12 +782,12 @@ export const caEnmaxPower: BillTemplate = {
 
 const HO_META: TemplateMeta = {
   docType: "ca_hydroone_power",
-  regionId: "northland",
+  regionId: "canada",
   kind: "power",
   utilityName: "Greatlake Hydro Networks",
   utilityNameZh: "大湖水电网络",
   tagline: "Fictional electricity distributor",
-  currency: "NLR",
+  currency: "CAD",
   prefix: "GHN",
   periodDays: 30,
   accent: "#0057b8",
@@ -991,7 +991,7 @@ function renderHydroOne(vm: BillViewModel, opts: RenderOptions): string {
 
 export const caHydroOnePower: BillTemplate = {
   docType: HO_META.docType,
-  regionId: "northland",
+  regionId: "canada",
   label: "电费账单 · Hydro One 版式",
   kind: "power",
   fields: CA_FIELDS,
@@ -1011,7 +1011,7 @@ export const caHydroOnePower: BillTemplate = {
     const total = round2(subtotal + tax);
     return {
       docType: HO_META.docType,
-      regionId: "northland",
+      regionId: "canada",
       kind: "power",
       utilityName: HO_META.utilityName,
       utilityNameZh: HO_META.utilityNameZh,
@@ -1043,13 +1043,13 @@ export const caHydroOnePower: BillTemplate = {
       barUnit: "kWh",
       barTitle: "What does my electricity usage look like?",
       charges: [
-        { label: `Electricity used · ${formatInt(kwh)} kWh × NLR 0.1090`, amount: electricity },
+        { label: `Electricity used · ${formatInt(kwh)} kWh × $0.1090`, amount: electricity },
         {
-          label: `Delivery charge · NLR 36.50 + ${formatInt(kwh)} kWh × NLR 0.0312`,
+          label: `Delivery charge · $36.50 + ${formatInt(kwh)} kWh × $0.0312`,
           amount: delivery,
         },
         {
-          label: `Regulatory charges · NLR 3.20 + ${formatInt(kwh)} kWh × NLR 0.0042`,
+          label: `Regulatory charges · $3.20 + ${formatInt(kwh)} kWh × $0.0042`,
           amount: regulatory,
         },
       ],

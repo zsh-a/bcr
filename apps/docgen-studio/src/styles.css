@@ -112,8 +112,7 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(circle at 85% 0%, rgba(232, 180, 95, 0.05), transparent 26rem),
-    var(--color-bg);
+    radial-gradient(circle at 85% 0%, rgba(232, 180, 95, 0.05), transparent 26rem), var(--color-bg);
   color: var(--color-text);
 }
 
@@ -140,8 +139,7 @@ select:focus-visible {
 }
 
 .docgen-preview-frame {
-  background:
-    repeating-conic-gradient(#1b2122 0% 25%, #141819 0% 50%) 0 0 / 24px 24px;
+  background: repeating-conic-gradient(#1b2122 0% 25%, #141819 0% 50%) 0 0 / 24px 24px;
 }
 
 .docgen-toast {

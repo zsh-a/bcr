@@ -63,8 +63,8 @@ async function runPipeline(input: BillInput, watermark: boolean): Promise<Genera
 }
 
 export function App() {
-  const [regionId, setRegionId] = useState<RegionId>("nordhavn");
-  const [docType, setDocType] = useState<string>("nh_water");
+  const [regionId, setRegionId] = useState<RegionId>("australia");
+  const [docType, setDocType] = useState<string>("au_agl_gas");
   const [name, setName] = useState<string>("");
   const [address, setAddress] = useState<Record<string, string>>({});
   const [dateAuto, setDateAuto] = useState<boolean>(true);
@@ -155,7 +155,12 @@ export function App() {
       setEntries((prev) =>
         prev.map((e) =>
           e.id === active.id
-            ? { ...e, watermark, documentBlob: generated.documentPng, paperBlob: generated.paperJpeg }
+            ? {
+                ...e,
+                watermark,
+                documentBlob: generated.documentPng,
+                paperBlob: generated.paperJpeg,
+              }
             : e,
         ),
       );
@@ -171,15 +176,22 @@ export function App() {
     setAddress(randomAddress(regionId, rng));
     setErrors({});
     if (name.trim().length === 0) {
-      const names = regionId === "nordhavn"
-        ? ["Elin Sorensen", "Marek Volkov", "Ida Bergstrom", "Lars Nyholm"]
-        : ["Ana Ribeiro", "Theo Marchetti", "Priya Anand", "Jonah Whitfield"];
-      const pick = names[Math.floor(rng() * names.length)];
+      const names: Record<RegionId, string[]> = {
+        australia: ["Liam Walker", "Olivia Harris", "Noah Clarke", "Ruby Thompson"],
+        canada: ["Liam Tremblay", "Emma MacDonald", "Noah Gagnon", "Chloe Martin"],
+        hongkong: ["Chan Tai Man", "Cheung Ka Yan", "Lee Wai Kit", "Wong Siu Ling"],
+        singapore: ["Tan Wei Ming", "Lim Su Ling", "Ng Kai Jie", "Priya Anand"],
+        uk: ["Oliver Smith", "Amelia Jones", "George Brown", "Isla Wilson"],
+        germany: ["Lukas Müller", "Anna Schmidt", "Jonas Weber", "Lena Fischer"],
+      };
+      const pool = names[regionId];
+      const pick = pool[Math.floor(rng() * pool.length)];
       if (pick !== undefined) setName(pick);
     }
   };
 
-  const activeUrl = urls === null ? null : previewTab === "document" ? urls.documentUrl : urls.paperUrl;
+  const activeUrl =
+    urls === null ? null : previewTab === "document" ? urls.documentUrl : urls.paperUrl;
 
   return (
     <div className="docgen-studio">
@@ -298,7 +310,11 @@ export function App() {
               disabled={generating}
               onClick={() => void generate()}
             >
-              {generating ? <Loader2 size={15} className="animate-spin" /> : <FileBadge size={15} />}
+              {generating ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <FileBadge size={15} />
+              )}
               {generating ? "生成中…" : "生成预览"}
             </button>
           </div>
@@ -319,7 +335,8 @@ export function App() {
                     onClick={() => setActiveId(entry.id)}
                   >
                     <span className="truncate">
-                      {entry.time} · {getTemplate(entry.input.docType)?.label ?? entry.input.docType} ·{" "}
+                      {entry.time} ·{" "}
+                      {getTemplate(entry.input.docType)?.label ?? entry.input.docType} ·{" "}
                       {entry.vm.customerName}
                     </span>
                     <span className="ml-2 flex-none font-mono text-xs text-faint">
@@ -359,7 +376,7 @@ export function App() {
               onClick={() => void toggleWatermark()}
               title="切换后重新栅格化"
             >
-              水印：{active?.watermark ?? true ? "开" : "关"}
+              水印：{(active?.watermark ?? true) ? "开" : "关"}
             </button>
             <div className="ml-auto flex items-center gap-2">
               <button
@@ -416,7 +433,8 @@ export function App() {
           </div>
 
           <footer className="border-t border-border px-5 py-2 text-xs text-faint">
-            生成文档为虚构示例，仅供版式学习 — 所有机构、地名、货币均为虚构，伪 QR 仅供装饰不可扫描。
+            生成文档为虚构示例，仅供版式学习 — 所有机构、地名、货币均为虚构，伪 QR
+            仅供装饰不可扫描。
           </footer>
         </main>
       </div>
