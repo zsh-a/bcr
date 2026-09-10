@@ -139,6 +139,7 @@ const ADDRESSES: Record<string, Record<string, string>> = {
     city: "Nether Combe",
     postcode: "NC2 7WD",
   },
+  wl_heizkosten: { strasse: "Lindenallee 23", plz: "91317", ort: "Tannengrund" },
 };
 
 function makeInput(docType: string): BillInput {
@@ -217,6 +218,7 @@ describe("金额与日期推导", () => {
         uk_britishgas_gas: 31,
         uk_eonnext_power: 31,
         uk_thameswater_water: 190,
+        wl_heizkosten: 184,
       };
       expect(vm.periodDays).toBe(periodDays[template.docType] ?? 30);
     });
@@ -278,6 +280,22 @@ describe("renderHtml", () => {
     const vm = template.compute(input, rngForInput(input));
     const html = template.renderHtml(vm, { watermark: false });
     expect(html).toContain("Consumption history");
+  });
+
+  it("全模板 XML 安全：只含 XML 预定义/数值实体（foreignObject 栅格化前提）", () => {
+    // rasterize 把 HTML 嵌入 SVG data URL 按 XML 解析：&nbsp; 等命名实体或未转义的 &
+    // 会直接让 SVG 图像加载失败。这里静态拦截回归。
+    const unsafeEntity = /&(?!amp;|lt;|gt;|quot;|apos;|#)/;
+    for (const template of TEMPLATES) {
+      const input = makeInput(template.docType);
+      const vm = template.compute(input, rngForInput(input));
+      const html = template.renderHtml(vm, { watermark: true });
+      const match = unsafeEntity.exec(html);
+      expect(
+        match === null,
+        `${template.docType} 含非 XML 实体: ${match?.[0] ?? ""} …${html.slice((match?.index ?? 0) - 30, (match?.index ?? 0) + 30)}`,
+      ).toBe(true);
+    }
   });
 });
 
@@ -566,6 +584,58 @@ function computeVm(docType: string) {
   const vm = template.compute(input, rngForInput(input));
   return { template, input, vm };
 }
+
+/* ============ wl_heizkosten（德国暖气费分摊结算单 · Techem 版式） ============ */
+
+describe("wl_heizkosten（Heiz- und Hausnebenkostenabrechnung：分摊表 + Ablesewerte）", () => {
+  const { template, vm } = computeVm("wl_heizkosten");
+
+  it("四类费用 = subtotal = total，无增值税分行", () => {
+    expect(vm.charges).toHaveLength(4);
+    const labels = vm.charges.map((c) => c.label).join("|");
+    expect(labels).toContain("Heizkosten");
+    expect(labels).toContain("Kaltwasserkosten");
+    expect(labels).toContain("Betriebskosten");
+    expect(labels).toContain("Direktkosten");
+    expect(vm.tax).toBe(0);
+    expect(vm.total).toBe(vm.subtotal);
+  });
+
+  it("分摊表：30% Grundkosten + 70% Verbrauchskosten = Ihre Heizkosten = Heizkosten 费用行", () => {
+    const rows = vm.allocation;
+    expect(rows).toBeDefined();
+    if (rows === undefined) return;
+    const heizkosten = vm.charges.find((c) => c.label.includes("Heizkosten"));
+    const grund = rows.find((r) => r.label.includes("Grundkosten"));
+    const verbrauch = rows.find((r) => r.label.includes("Verbrauchskosten"));
+    const ihreHeiz = rows.find((r) => r.label.startsWith("Ihre Heizkosten"));
+    const de = (s: string): number =>
+      Number(
+        s
+          .replaceAll(".", "")
+          .replaceAll(",", ".")
+          .replace(/[^\d.\-−]/g, "")
+          .replace("−", "-"),
+      );
+    const sum = de(grund?.ownCost ?? "0") + de(verbrauch?.ownCost ?? "0");
+    expect(Math.abs(sum - de(ihreHeiz?.ownCost ?? "0"))).toBeLessThan(0.02);
+    expect(Math.abs(de(ihreHeiz?.ownCost ?? "0") - (heizkosten?.amount ?? -1))).toBeLessThan(0.02);
+    const finalRow = rows[rows.length - 1];
+    expect(finalRow?.label).toContain("Ihr Anteil an den Gesamtkosten");
+    expect(Math.abs(de(finalRow?.ownCost ?? "0") - vm.total)).toBeLessThan(0.02);
+  });
+
+  it("渲染含德式元素：EWPBG 信息框、Ablesewerte、Fortsetzung、Seite 1/3、DD.MM.YYYY 日期", () => {
+    const html = template.renderHtml(vm, { watermark: false });
+    expect(html).toContain("Information zur Energiekostenentlastung");
+    expect(html).toContain("Ihre Ablesewerte");
+    expect(html).toContain("Fortsetzung auf der Folgeseite");
+    expect(html).toContain("Seite 1/3");
+    expect(html).toMatch(/\d{2}\.\d{2}\.\d{4}/);
+    expect(html).not.toMatch(/techem/i);
+    expect(html).toMatch(/\d{1,3}(\.\d{3})*,\d{2}\s€/);
+  });
+});
 
 describe("lc_water（香港：分级水价 + 排污费 + 缴款回条）", () => {
   const { template, vm } = computeVm("lc_water");

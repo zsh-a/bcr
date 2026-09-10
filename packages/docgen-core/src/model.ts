@@ -96,6 +96,27 @@ export interface GasConversion {
   readonly kwh: number;
 }
 
+/**
+ * 德国暖气费分摊表（Heizkostenabrechnung）一行：
+ * Gesamtkosten / Gesamteinheiten / Preis je Einheit / Ihre Einheiten / Ihre Kosten，
+ * 全部为 compute 预格式化的 de-DE 字符串，renderHtml 直接平铺。
+ */
+export interface AllocationRow {
+  readonly label: string;
+  /** Gesamtkosten in EUR（如 "10.352,87"），汇总行可留空 */
+  readonly totalCost: string;
+  /** Gesamteinheiten（如 "674,000 Nutzfläche"） */
+  readonly totalUnits: string;
+  /** Preis je Einheit（如 "4,608101"） */
+  readonly pricePerUnit: string;
+  /** Ihre Einheiten（如 "55,000 m²"） */
+  readonly ownUnits: string;
+  /** Ihre Kosten in EUR（如 "185,01"），减去行以 "−" 前缀 */
+  readonly ownCost: string;
+  /** 加粗行（分组标题 / 小计行） */
+  readonly emphasis?: boolean;
+}
+
 /** 分区计价（新加坡三合一单 / 英国 dual fuel 单）：一个 section 内的明细行与小计 */
 export interface ChargeSection {
   readonly title: string;
@@ -142,6 +163,8 @@ export interface BillViewModel {
   readonly settlement?: SettlementBlock;
   /** 燃气年度结算才有：m³ × Brennwert × Zustandszahl = kWh 换算因子 */
   readonly conversion?: GasConversion;
+  /** 德国暖气费分摊结算单才有：Gesamtkosten → Ihre Kosten 的多列分摊表 */
+  readonly allocation?: ReadonlyArray<AllocationRow>;
   /** 分区计价模板才有（新加坡三合一 / 英国 dual fuel）：各 section 明细与 sectionTotal */
   readonly sections?: ReadonlyArray<ChargeSection>;
   readonly barcodePayload: string;

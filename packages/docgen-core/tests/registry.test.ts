@@ -6,10 +6,10 @@ import { validateBillInput } from "../src/validate";
 import type { BillInput } from "../src/model";
 
 describe("registry", () => {
-  it("10 个虚构地区、31 个模板、docType 唯一", () => {
+  it("10 个虚构地区、32 个模板、docType 唯一", () => {
     expect(REGIONS).toHaveLength(10);
-    expect(TEMPLATES).toHaveLength(31);
-    expect(new Set(TEMPLATES.map((t) => t.docType)).size).toBe(31);
+    expect(TEMPLATES).toHaveLength(32);
+    expect(new Set(TEMPLATES.map((t) => t.docType)).size).toBe(32);
   });
 
   it("listTemplates 按地区过滤；getTemplate 往返", () => {
@@ -17,7 +17,11 @@ describe("registry", () => {
     expect(listTemplates("caldera").map((t) => t.docType)).toEqual(["ci_gas", "ci_telecom"]);
     expect(listTemplates("veridia").map((t) => t.docType)).toEqual(["vd_power", "vd_water"]);
     expect(listTemplates("castellan").map((t) => t.docType)).toEqual(["cs_power", "cs_water"]);
-    expect(listTemplates("waldland").map((t) => t.docType)).toEqual(["wl_power", "wl_gas"]);
+    expect(listTemplates("waldland").map((t) => t.docType)).toEqual([
+      "wl_power",
+      "wl_gas",
+      "wl_heizkosten",
+    ]);
     expect(listTemplates("longcheng").map((t) => t.docType)).toEqual([
       "lc_water",
       "lc_power",
@@ -49,7 +53,7 @@ describe("registry", () => {
       "uk_eonnext_power",
       "uk_thameswater_water",
     ]);
-    expect(listTemplates()).toHaveLength(31);
+    expect(listTemplates()).toHaveLength(32);
     for (const t of TEMPLATES) expect(getTemplate(t.docType)).toBe(t);
     expect(getTemplate("nope")).toBeUndefined();
   });

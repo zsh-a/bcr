@@ -9,6 +9,7 @@ import { caBcHydroPower, caEnmaxPower, caHydroOnePower } from "./templates/ca-bi
 import { ciGas, ciTelecom } from "./templates/caldera";
 import { coGas, coPower } from "./templates/coralia";
 import { csPower, csWater } from "./templates/castellan";
+import { wlHeizkosten } from "./templates/de-bills";
 import { eqTelecom, eqUtilities } from "./templates/equatoria";
 import { hkElectricityPower, hkWaterBill } from "./templates/hk-bills";
 import { lcPower, lcWater } from "./templates/longcheng";
@@ -71,7 +72,7 @@ export const REGIONS: ReadonlyArray<RegionDef> = [
     labelEn: "Waldland",
     flag: "🦅",
     accent: "#7a1f2b",
-    description: "虚构的德国林区县 · 电力 / 燃气年度结算（Abschlag 对冲）",
+    description: "虚构的德国林区县 · 电力 / 燃气年度结算（Abschlag 对冲）/ 暖气费分摊结算",
   },
   {
     id: "longcheng",
@@ -147,6 +148,7 @@ export const TEMPLATES: ReadonlyArray<BillTemplate> = [
   ukBritishGasGas,
   ukEonNextPower,
   ukThamesWaterWater,
+  wlHeizkosten,
 ];
 
 export function listTemplates(regionId?: RegionId): ReadonlyArray<BillTemplate> {
