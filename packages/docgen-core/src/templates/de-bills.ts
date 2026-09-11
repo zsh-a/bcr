@@ -141,7 +141,7 @@ function logoBlock(): string {
  * emphasis 行加粗；小计行金额带下划线；末行上沿粗线。
  */
 function allocationTableHtml(vm: BillViewModel): string {
-  const cell = "padding:3px 6px;white-space:nowrap;";
+  const cell = "padding:8px 6px;white-space:nowrap;";
   const rows = (vm.allocation ?? [])
     .map((row, index, all) => {
       const bold = row.emphasis === true;
@@ -155,7 +155,7 @@ function allocationTableHtml(vm: BillViewModel): string {
       // 分组标题行与末行：参考件为浅粉底色
       const band = (bold && row.ownCost === "") || isLast ? `background:${PINK_BG};` : "";
       return (
-        `<tr style="font-size:${isLast ? 22 : 20}px;font-weight:${bold ? 700 : 400};color:${INK};${band}">` +
+        `<tr style="font-size:${isLast ? 26 : 24}px;line-height:1.35;font-weight:${bold ? 700 : 400};color:${INK};${band}">` +
         `<td style="${cell}text-align:left;white-space:normal;${lastStyle}">${escapeHtml(row.label)}</td>` +
         `<td style="${cell}text-align:right;font-variant-numeric:tabular-nums;${lastStyle}">${escapeHtml(row.totalCost)}</td>` +
         `<td style="${cell}text-align:right;${lastStyle}">${escapeHtml(row.totalUnits)}</td>` +
@@ -170,13 +170,13 @@ function allocationTableHtml(vm: BillViewModel): string {
     })
     .join("");
   const headCell =
-    "padding:4px 6px;font-weight:400;border-bottom:1px solid #8a9298;line-height:1.3;";
+    "padding:5px 6px;font-weight:400;border-bottom:1px solid #8a9298;line-height:1.3;";
   return (
-    `<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:45px;">` +
+    `<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:30px;">` +
     `<colgroup><col style="width:540px"/><col style="width:185px"/><col style="width:425px"/>` +
     `<col style="width:30px"/><col style="width:214px"/><col style="width:30px"/><col style="width:214px"/>` +
     `<col style="width:230px"/><col style="width:30px"/><col style="width:208px"/></colgroup>` +
-    `<tr style="font-size:17px;color:#6b7280;">` +
+    `<tr style="font-size:18px;color:#6b7280;">` +
     `<th style="${headCell}text-align:left;"></th>` +
     `<th style="${headCell}text-align:right;">Gesamtkosten<br/>in EUR</th>` +
     `<th style="${headCell}text-align:right;">Gesamteinheiten (2)</th>` +
@@ -199,17 +199,17 @@ function meterReadingsHtml(vm: BillViewModel): string {
   const rows = vm.meterRows
     .map(
       (row) =>
-        `<tr style="font-size:24px;color:${INK};">` +
-        `<td style="padding:8px 6px;font-weight:700;">${escapeHtml(row.label)}</td>` +
-        `<td style="padding:8px 6px;">K</td>` +
-        `<td style="padding:8px 6px;text-align:right;">${escapeHtml(vm.periodEnd)}</td>` +
-        `<td style="padding:8px 6px;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(row.previous)}</td>` +
-        `<td style="padding:8px 6px;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(row.current)}</td>` +
-        `<td style="padding:8px 6px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;">${escapeHtml(row.usage)}</td></tr>`,
+        `<tr style="font-size:26px;line-height:1.35;color:${INK};">` +
+        `<td style="padding:12px 6px;font-weight:700;">${escapeHtml(row.label)}</td>` +
+        `<td style="padding:12px 6px;">K</td>` +
+        `<td style="padding:12px 6px;text-align:right;">${escapeHtml(vm.periodEnd)}</td>` +
+        `<td style="padding:12px 6px;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(row.previous)}</td>` +
+        `<td style="padding:12px 6px;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(row.current)}</td>` +
+        `<td style="padding:12px 6px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;">${escapeHtml(row.usage)}</td></tr>`,
     )
     .join("");
   return (
-    `<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:20px;">` +
+    `<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:28px;">` +
     `<colgroup><col style="width:493px"/><col style="width:115px"/><col style="width:435px"/>` +
     `<col style="width:273px"/><col style="width:330px"/><col style="width:460px"/></colgroup>` +
     `<tr style="font-size:17px;color:#6b7280;">` +
@@ -220,7 +220,7 @@ function meterReadingsHtml(vm: BillViewModel): string {
     `<th style="${headCell}text-align:right;">Ablesewert<br/>neu</th>` +
     `<th style="${headCell}text-align:right;">Verbrauch</th></tr>` +
     rows +
-    `<tr><td colspan="6" style="padding:12px 6px 0;font-size:24px;font-weight:700;color:${INK};">Verbrauch (Kilowatt-Stunden)</td></tr>` +
+    `<tr><td colspan="6" style="padding:14px 6px 0;font-size:26px;font-weight:700;color:${INK};">Verbrauch (Kilowatt-Stunden)</td></tr>` +
     `</table>`
   );
 }
@@ -482,7 +482,10 @@ export const wlHeizkosten: BillTemplate = {
   },
   renderHtml(vm: BillViewModel, opts: RenderOptions): string {
     const createdDe = deDateFromEn(vm.billDate);
-    const periodYear = `${vm.periodStart.slice(6, 10)}/${Number(vm.periodStart.slice(6, 10)) + 1}`;
+    const periodEndYear = Number(vm.periodEnd.slice(6, 10));
+    const periodYear = `${periodEndYear - 1}/${periodEndYear}`;
+    const previousUsagePeriod = `01.11.${periodEndYear - 1} - 31.03.${periodEndYear}`;
+    const previousBillingPeriod = `01.04.${periodEndYear - 1} - 31.03.${periodEndYear}`;
     const addressHtml = vm.addressLines
       .map(
         (line) =>
@@ -492,10 +495,10 @@ export const wlHeizkosten: BillTemplate = {
     const recapRows = vm.charges
       .map(
         (line) =>
-          `<div style="display:flex;justify-content:space-between;padding:3px 28px;background:${PINK_BG};` +
-          `border-bottom:1px solid ${PINK_LINE};font-size:24px;color:${INK};">` +
+          `<div style="display:flex;justify-content:space-between;padding:5px 28px;background:${PINK_BG};` +
+          `border-bottom:1px solid ${PINK_LINE};font-size:26px;color:${INK};">` +
           `<span>${escapeHtml(line.label)}</span>` +
-          `<span style="font-variant-numeric:tabular-nums;">${escapeHtml(formatNumDe(line.amount))} €</span></div>`,
+          `<span style="font-variant-numeric:tabular-nums;">${escapeHtml(formatNumDe(line.amount))} EUR</span></div>`,
       )
       .join("");
     // 参考件信息框中金额加粗：先转义再把 "1.234,56 Euro" 包 <b>
@@ -513,19 +516,19 @@ export const wlHeizkosten: BillTemplate = {
       `<div style="position:absolute;inset:0;padding:30px 175px 55px 200px;display:flex;flex-direction:column;box-sizing:border-box;">` +
       // 1. 页眉：地址（左，缩进） + 居中字标 + 红色标题 / 元信息（中右栏，与粉色回顾框左缘对齐）
       `<div style="position:relative;">` +
-      `<div style="position:absolute;left:43.3%;top:0;transform:translateX(-50%);">${logoBlock()}</div>` +
+      `<div style="position:absolute;left:50%;top:0;transform:translateX(-50%);">${logoBlock()}</div>` +
       `<div style="display:flex;">` +
-      `<div style="width:700px;flex:none;margin-left:95px;padding-top:90px;">` +
+      `<div style="width:700px;flex:none;margin-left:95px;padding-top:115px;">` +
       `<div style="font-size:46px;font-weight:800;color:${INK};">${escapeHtml(vm.customerName)}</div>` +
       `${addressHtml}` +
-      `<div style="margin-top:118px;">` +
+      `<div style="margin-top:188px;">` +
       `<div style="font-size:30px;font-weight:700;">Ihr Nutzungszeitraum</div>` +
       `<div style="font-size:30px;margin-top:4px;">${escapeHtml(vm.periodStart)} - ${escapeHtml(vm.periodEnd)}</div></div>` +
       `<div style="margin-top:70px;">` +
       `<div style="font-size:30px;font-weight:700;">Abrechnungszeitraum</div>` +
       `<div style="font-size:30px;margin-top:4px;">${escapeHtml(vm.periodStart)} - ${escapeHtml(vm.periodEnd)}</div></div>` +
       `</div>` +
-      `<div style="width:560px;flex:none;margin-left:367px;padding-top:140px;">` +
+      `<div style="width:560px;flex:none;margin-left:367px;padding-top:170px;">` +
       `<div style="font-size:38px;font-weight:800;color:${RED};line-height:1.3;">` +
       `Heiz- und Hausnebenkosten-<br/>abrechnung ${escapeHtml(periodYear)}</div>` +
       `<div style="margin-top:55px;font-size:30px;line-height:1.3;">` +
@@ -533,16 +536,22 @@ export const wlHeizkosten: BillTemplate = {
       `<div style="margin-top:28px;font-size:30px;line-height:1.3;">` +
       `<div style="font-weight:700;">Ihre Nutzer-Nr.</div><div>${escapeHtml(vm.accountNumber)}</div></div>` +
       `</div></div></div>` +
-      // 4. 粉色费用回顾框（与右侧标题栏同左缘）
-      `<div style="margin-top:190px;margin-left:1162px;width:870px;border:2px solid ${PINK_LINE};">` +
+      // 4. 上期周期 + 粉色费用回顾框（两栏与参考件同一水平带）
+      `<div style="display:flex;align-items:flex-start;margin-top:266px;">` +
+      `<div style="width:700px;flex:none;margin-left:95px;">` +
+      `<div style="padding-top:48px;font-size:30px;font-weight:700;">Ihr Nutzungszeitraum</div>` +
+      `<div style="font-size:30px;margin-top:4px;">${escapeHtml(previousUsagePeriod)}</div>` +
+      `<div style="margin-top:35px;font-size:30px;font-weight:700;">Abrechnungszeitraum</div>` +
+      `<div style="font-size:30px;margin-top:4px;">${escapeHtml(previousBillingPeriod)}</div></div>` +
+      `<div style="margin-left:367px;width:870px;border:2px solid ${PINK_LINE};">` +
       recapRows +
-      `<div style="display:flex;justify-content:space-between;padding:4px 28px;background:${PINK_BG};` +
-      `font-size:25px;font-weight:800;color:${INK};">` +
+      `<div style="display:flex;justify-content:space-between;padding:5px 28px;background:${PINK_BG};` +
+      `font-size:27px;font-weight:800;color:${INK};">` +
       `<span>Ihr Anteil an den Gesamtkosten</span>` +
-      `<span style="font-variant-numeric:tabular-nums;">${escapeHtml(formatNumDe(vm.total))} €</span></div>` +
-      `</div>` +
+      `<span style="font-variant-numeric:tabular-nums;">${escapeHtml(formatNumDe(vm.total))} EUR</span></div>` +
+      `</div></div>` +
       // 5. 红条信息框：Energiekostenentlastung（EWPBG）
-      `<div style="margin-top:170px;border-left:10px solid ${RED};border-top:2px solid ${PINK_LINE};` +
+      `<div style="margin-top:40px;border-left:10px solid ${RED};border-top:2px solid ${PINK_LINE};` +
       `border-bottom:2px solid ${PINK_LINE};padding:12px 32px;">` +
       `<div style="display:flex;align-items:center;margin-bottom:8px;">` +
       `<span style="display:inline-block;width:14px;height:14px;background:${RED};margin-right:12px;flex:none;"></span>` +
@@ -551,11 +560,11 @@ export const wlHeizkosten: BillTemplate = {
       // 6. 分摊表
       `<div style="margin-top:100px;">${sectionHeading("Ihr Anteil an den Gesamtkosten (1)")}${allocationTableHtml(vm)}</div>` +
       // 7. 抄表值
-      `<div style="margin-top:4px;">${sectionHeading("Ihre Ablesewerte")}${meterReadingsHtml(vm)}</div>` +
+      `<div style="margin-top:55px;">${sectionHeading("Ihre Ablesewerte")}${meterReadingsHtml(vm)}</div>` +
       // 8. 续页提示
-      `<div style="margin-top:140px;font-size:30px;font-weight:700;color:${DARKRED};">Fortsetzung auf der Folgeseite</div>` +
+      `<div style="margin-top:242px;font-size:30px;font-weight:700;color:${DARKRED};">Fortsetzung auf der Folgeseite</div>` +
       // 9. 脚注框 + 页码
-      `<div style="margin-top:40px;border:2px solid #8a9298;padding:18px 28px;font-size:21px;color:#4a5560;line-height:1.75;">` +
+      `<div style="margin-top:10px;border:2px solid #8a9298;padding:26px 28px;font-size:28px;color:#4a5560;line-height:1.75;">` +
       `<div>(1)&#160; Die Gesamtkosten können Sie der nachfolgenden Kostenaufstellung des gesamten Objektes entnehmen</div>` +
       `<div>(2)&#160; Gesamteinheiten des Objektes</div>` +
       `<div>(3)&#160; Siehe Erläuterungen</div></div>` +

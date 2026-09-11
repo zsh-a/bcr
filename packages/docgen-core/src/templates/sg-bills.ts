@@ -216,11 +216,11 @@ function leftColumn(vm: BillViewModel, meta: TemplateMeta): string {
     `<div style="margin-top:24px;">` +
     `<div style="font-size:40px;color:#1b2327;line-height:1.3;">${escapeHtml(vm.customerName)}</div>` +
     `${addressHtml}</div>` +
-    `<div style="display:flex;gap:60px;align-items:flex-start;margin-top:300px;padding-left:65px;">` +
+    `<div style="display:flex;gap:60px;align-items:flex-start;margin-top:490px;padding-left:65px;">` +
     `<div style="font-size:52px;color:#1b2327;line-height:1.35;">Have you switched<br/>to eBill?` +
     `<div style="font-size:42px;color:${meta.accent};margin-top:14px;line-height:1.4;">Find out more on<br/>singtel.com/eBill</div></div>` +
     `<div style="flex:none;margin-top:-14px;">${qr}</div></div>` +
-    `<div style="margin-top:158px;padding-left:95px;">` +
+    `<div style="margin-top:418px;padding-left:95px;">` +
     promoRow(
       appIcon(meta.accent),
       `<b>Pay your bills with<br/>My Singtel app<br/>anytime, anywhere.</b>`,
@@ -261,7 +261,7 @@ function monthlyBars(vm: BillViewModel): string {
     })
     .join("");
   return (
-    `<div style="margin-top:230px;">` +
+    `<div style="margin-top:987px;">` +
     `<div style="font-size:50px;font-weight:800;color:#1b2327;">My Monthly Charges</div>${rows}</div>`
   );
 }
@@ -364,14 +364,14 @@ function paymentSlip(vm: BillViewModel): string {
   const cents = `${Math.round(vm.total * 100)}`.padStart(8, "0");
   const barcode2 = code128Svg(`${cents}B`, { moduleWidth: 3, height: 64 });
   const box = (value: string): string =>
-    `<div style="background:#ffffff;border-radius:4px;padding:18px 34px;font-size:34px;color:#1b2327;` +
+    `<div style="background:#ffffff;border-radius:4px;padding:10px 34px;font-size:34px;color:#1b2327;` +
     `min-height:44px;white-space:nowrap;">${value}</div>`;
   return (
     `<div style="margin-top:auto;">` +
     `<div style="border-top:6px dotted #ed193d;position:relative;">` +
     `<span style="position:absolute;right:100px;top:22px;font-size:34px;font-weight:700;color:#1b2327;">0000</span></div>` +
-    `<div style="display:flex;align-items:stretch;">` +
-    `<div style="width:880px;flex:none;padding-left:300px;padding-top:20px;">` +
+    `<div style="display:flex;align-items:flex-start;">` +
+    `<div style="width:880px;flex:none;padding-left:300px;padding-top:132px;">` +
     `<div style="font-size:42px;font-weight:700;color:#1b2327;">${escapeHtml(vm.utilityName)}</div>` +
     `<div style="font-size:36px;color:#1b2327;line-height:1.45;margin-top:6px;">` +
     `BRAS BASAH POST OFFICE<br/>PO BOX 294<br/>SINGAPORE 911810</div>` +
@@ -382,15 +382,15 @@ function paymentSlip(vm: BillViewModel): string {
     `${escapeHtml(vm.currency)}${vm.total.toFixed(2)}</div>` +
     `<div style="font-size:30px;font-weight:700;color:#1b2327;white-space:nowrap;">` +
     `Due date for Current Charges ${escapeHtml(vm.dueDate)}</div></div>` +
-    `<div style="flex:1;background:${PANEL_BG};border-radius:0 0 0 200px;padding:50px 150px 44px 90px;">` +
+    `<div style="flex:1;height:536px;box-sizing:border-box;background:${PANEL_BG};border-radius:0 0 0 200px;padding:177px 150px 44px 90px;">` +
     `<div style="display:flex;gap:30px;">` +
     `<div style="flex:1.4;">${box(escapeHtml(vm.customerName))}</div>` +
     `<div style="flex:1;">${box(`Acc. No: ${escapeHtml(vm.accountNumber)}`)}</div></div>` +
-    `<div style="display:flex;gap:30px;margin-top:22px;">` +
+    `<div style="display:flex;gap:30px;margin-top:43px;">` +
     `<div style="flex:1.4;">${box("Bank")}</div>` +
     `<div style="flex:1;">${box("Cheque No.")}</div></div>` +
     `</div></div>` +
-    `<div style="display:flex;align-items:flex-end;padding:6px 150px 0 290px;">` +
+    `<div style="display:flex;align-items:flex-end;margin-top:53px;padding:6px 150px 91px 290px;">` +
     `<div>${barcode1}` +
     `<div style="font-size:36px;letter-spacing:8px;color:#1b2327;margin-top:12px;font-family:'Courier New',monospace;white-space:nowrap;">` +
     `${escapeHtml(billId)}&#160;&#160;&#160;T101&#160;&#160;${escapeHtml(vm.accountNumber)}</div></div>` +
