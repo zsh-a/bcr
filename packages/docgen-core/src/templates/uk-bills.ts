@@ -143,6 +143,32 @@ function money(meta: TemplateMeta, amount: number): string {
   return escapeHtml(fmtMeta(meta, amount));
 }
 
+const MONTHS_FULL: Record<string, string> = {
+  Jan: "January",
+  Feb: "February",
+  Mar: "March",
+  Apr: "April",
+  May: "May",
+  Jun: "June",
+  Jul: "July",
+  Aug: "August",
+  Sep: "September",
+  Oct: "October",
+  Nov: "November",
+  Dec: "December",
+};
+
+/** "05 Sep 2026" → "5 September 2026"（参考图上的完整月份拼写） */
+function fullMonthDate(en: string): string {
+  const [d, m, y] = en.split(" ");
+  return `${Number(d)} ${MONTHS_FULL[m ?? ""] ?? m} ${y}`;
+}
+
+/** 参考图账户摘要的符号写法："-£ 70.86" / "+£ 70.86"（纯展示，vm 金额不变） */
+function signedMoney(meta: TemplateMeta, amount: number, sign: "-" | "+"): string {
+  return money(meta, amount).replace("£", `${sign}£&#160;`);
+}
+
 function fictionalNotice(): string {
   return `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。`;
 }
@@ -175,8 +201,8 @@ function bgasSummaryRow(
 ): string {
   const bold = opts?.bold === true;
   return (
-    `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:16px 0;` +
-    `${bold ? `border-top:2px solid #9ecceb;margin-top:8px;padding-top:24px;` : ""}">` +
+    `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:22px 0;` +
+    `${bold ? `border-top:2px solid #9ecceb;margin-top:8px;padding-top:28px;` : ""}">` +
     `<span style="font-size:${bold ? 40 : 36}px;font-weight:${bold ? 800 : 600};color:#1b2327;">${label}</span>` +
     (opts?.mid !== undefined
       ? `<span style="font-size:34px;font-weight:700;color:#1b2327;">${opts.mid}</span>`
@@ -208,28 +234,28 @@ function renderBritishGas(vm: BillViewModel, meta: TemplateMeta, opts: RenderOpt
   const chargeRows = vm.charges
     .map(
       (line) =>
-        `<div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid #dbe9f5;">` +
-        `<span style="font-size:32px;color:#333c42;">${escapeHtml(line.label)}</span>` +
-        `<span style="font-size:32px;font-variant-numeric:tabular-nums;color:#1b2327;">${money(meta, line.amount)}</span></div>`,
+        `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #dbe9f5;">` +
+        `<span style="font-size:30px;color:#333c42;">${escapeHtml(line.label)}</span>` +
+        `<span style="font-size:30px;font-variant-numeric:tabular-nums;color:#1b2327;">${money(meta, line.amount)}</span></div>`,
     )
     .join("");
   const conversionLine =
     conv !== undefined
-      ? `<div style="font-size:30px;color:#5a656c;margin-top:12px;">` +
+      ? `<div style="font-size:28px;color:#5a656c;margin-top:8px;">` +
         `Unit conversion: ${formatInt(conv.cubicMeters)} m³ × calorific value ${conv.brennwert.toFixed(1)} × ` +
         `correction factor ${conv.zustandszahl.toFixed(4)} ÷ 3.6 = <b style="color:#1b2327;">${formatInt(conv.kwh)} kWh</b></div>`
       : "";
   const notes =
     vm.notes.length === 0
       ? ""
-      : `<div style="margin-top:44px;font-size:27px;color:#8a9298;line-height:1.7;flex:none;">` +
+      : `<div style="margin-top:8px;font-size:27px;color:#8a9298;line-height:1.6;flex:none;">` +
         vm.notes.map((n) => `<div>${escapeHtml(n)}</div>`).join("") +
         `</div>`;
   return (
     `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:#1b2327;font-family:${UK_FONT};">` +
-    `<div style="position:absolute;inset:0;padding:110px 130px;display:flex;flex-direction:column;">` +
-    /* 页眉：Supply address + Rota block（左） / swoosh + 字标（右） */
+    `<div style="position:absolute;inset:0;padding:130px 130px;display:flex;flex-direction:column;">` +
+    /* 页眉：Supply address + Rota block（左） / 火焰 + 字标（右） */
     `<div style="display:flex;justify-content:space-between;align-items:flex-start;flex:none;">` +
     `<div><div style="font-size:34px;font-weight:800;color:#1b2327;">Supply address:</div>` +
     `<div style="margin-top:8px;">${addressHtml}</div>` +
@@ -240,76 +266,81 @@ function renderBritishGas(vm: BillViewModel, meta: TemplateMeta, opts: RenderOpt
     `<div style="position:absolute;top:-88px;right:44px;">${bgasFlame()}</div>` +
     `<div style="font-size:118px;font-weight:800;color:${BGAS_NAVY};letter-spacing:-2px;line-height:1.1;">${escapeHtml(vm.utilityName)}</div></div></div>` +
     /* 客户地址块 */
-    `<div style="margin-top:60px;flex:none;"><div style="font-size:40px;font-weight:700;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
+    `<div style="margin-top:100px;flex:none;"><div style="font-size:40px;font-weight:400;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
     /* 大号问候标题 + 账期元信息 */
-    `<div style="margin-top:60px;flex:none;"><div style="font-size:88px;font-weight:800;color:${BGAS_NAVY};">Hello,</div>` +
-    `<div style="font-size:60px;font-weight:800;color:${BGAS_NAVY};margin-top:10px;">we've prepared your gas bill for you</div></div>` +
-    `<div style="margin-top:44px;font-size:36px;line-height:1.8;color:#1b2327;flex:none;">` +
+    `<div style="margin-top:340px;flex:none;"><div style="font-size:82px;font-weight:800;color:${BGAS_NAVY};">Hello,</div>` +
+    `<div style="font-size:60px;font-weight:800;color:${BGAS_NAVY};margin-top:10px;">we've prepared your energy bill for you</div></div>` +
+    `<div style="margin-top:90px;font-size:36px;line-height:1.8;color:#1b2327;flex:none;">` +
     `<div><b>Covering:</b> ${escapeHtml(vm.periodStart)} to ${escapeHtml(vm.periodEnd)}</div>` +
     `<div><b>Bill date:</b> on ${escapeHtml(vm.billDate)}</div>` +
-    `<div><b>Customer account number:</b> ${escapeHtml(vm.accountNumber)}</div></div>` +
+    `<div><b>Customer account number:</b> A${escapeHtml(vm.accountNumber)}</div></div>` +
     /* 蓝色账户摘要卡 */
-    `<div style="margin-top:56px;border:4px solid ${BGAS_BLUE};border-radius:26px;overflow:hidden;max-width:1400px;flex:none;">` +
-    `<div style="background:${BGAS_BLUE};color:#ffffff;padding:20px 42px;font-size:44px;font-weight:700;` +
+    `<div style="margin-top:40px;border:4px solid ${BGAS_BLUE};border-radius:26px;overflow:hidden;max-width:1400px;flex:none;">` +
+    `<div style="background:${BGAS_BLUE};color:#ffffff;padding:26px 42px;font-size:44px;font-weight:700;` +
     `display:flex;align-items:center;gap:20px;">` +
     `<svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" viewBox="0 0 46 46"><rect x="7" y="5" width="32" height="36" rx="4" fill="none" stroke="#ffffff" stroke-width="4"/><line x1="14" y1="16" x2="32" y2="16" stroke="#ffffff" stroke-width="4"/><line x1="14" y1="24" x2="32" y2="24" stroke="#ffffff" stroke-width="4"/><line x1="14" y1="32" x2="26" y2="32" stroke="#ffffff" stroke-width="4"/></svg>` +
     `Your account summary</div>` +
     `<div style="padding:34px 44px 40px;">` +
     bgasSummaryRow(
       `Your previous balance on ${escapeHtml(vm.periodStart)}`,
-      money(meta, s.previousBalance),
+      signedMoney(meta, s.previousBalance, "-"),
     ) +
     bgasSummaryRow(
-      "Your total gas costs (inc. VAT and any adjustments)",
-      money(meta, s.currentCharges),
+      "Your total energy costs (inc. VAT and any adjustments)",
+      signedMoney(meta, s.currentCharges, "-"),
     ) +
-    bgasSummaryRow("Payments", `+ ${money(meta, s.paymentsReceived)}`) +
-    bgasSummaryRow(`Your new balance on ${escapeHtml(vm.billDate)}`, money(meta, vm.total), {
-      bold: true,
-      mid: "Debit",
-    }) +
+    bgasSummaryRow("Payments", signedMoney(meta, s.paymentsReceived, "+")) +
+    bgasSummaryRow(
+      `Your new balance on ${escapeHtml(vm.billDate)}`,
+      signedMoney(meta, vm.total, "-"),
+      {
+        bold: true,
+        mid: "Debit",
+      },
+    ) +
     `</div></div>` +
     /* 绿色付款提示卡 */
-    `<div style="margin-top:48px;border:4px solid ${BGAS_GREEN};border-radius:26px;overflow:hidden;max-width:1400px;flex:none;">` +
+    `<div style="margin-top:140px;border:4px solid ${BGAS_GREEN};border-radius:26px;overflow:hidden;max-width:1400px;flex:none;">` +
     `<div style="background:${BGAS_GREEN};color:#ffffff;padding:20px 42px;font-size:44px;font-weight:700;` +
     `display:flex;align-items:center;gap:20px;">` +
     `<svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="19" fill="none" stroke="#ffffff" stroke-width="4"/><line x1="23" y1="14" x2="23" y2="26" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><circle cx="23" cy="33" r="2.6" fill="#ffffff"/></svg>` +
     `Important information</div>` +
     `<div style="padding:34px 44px 40px;">` +
-    `<div style="font-size:42px;font-weight:800;color:#1b2327;">Please pay ${money(meta, vm.total)} by ${escapeHtml(vm.dueDate)} - thank you</div>` +
+    `<div style="font-size:42px;font-weight:800;color:#1b2327;">Please pay ${money(meta, vm.total)} by ${escapeHtml(fullMonthDate(vm.dueDate))} - thank you</div>` +
     `<div style="font-size:34px;color:#333c42;margin-top:24px;">You can find simple ways to pay on the last page of this bill.</div>` +
     `</div></div>` +
-    /* 燃气费用明细（含 m³→kWh 换算） */
-    `<div style="margin-top:64px;border-left:10px solid ${BGAS_NAVY};padding-left:36px;flex:none;">` +
-    `<div style="font-size:34px;letter-spacing:3px;color:${BGAS_NAVY};text-transform:uppercase;font-weight:800;">Your gas charges in detail · 费用明细</div>` +
+    /* 燃气费用明细（含 m³→kWh 换算；参考图第 2 页内容，合并到单页） */
+    `<div style="margin-top:40px;border-left:10px solid ${BGAS_NAVY};padding-left:36px;flex:none;">` +
+    `<div style="font-size:30px;letter-spacing:2px;color:${BGAS_NAVY};text-transform:uppercase;font-weight:800;">Your gas charges in detail · 费用明细</div>` +
     (meter !== undefined
-      ? `<div style="font-size:30px;color:#5a656c;margin-top:14px;">Meter reading: ${escapeHtml(meter.previous)} → ` +
+      ? `<div style="font-size:28px;color:#5a656c;margin-top:8px;">Meter reading: ${escapeHtml(meter.previous)} → ` +
         `${escapeHtml(meter.current)} (<b style="color:#1b2327;">${escapeHtml(meter.usage)}</b> used)</div>`
       : "") +
     conversionLine +
-    `<div style="margin-top:16px;">${chargeRows}` +
-    `<div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid #dbe9f5;">` +
-    `<span style="font-size:32px;color:#333c42;">${escapeHtml(vm.taxLabel)}</span>` +
-    `<span style="font-size:32px;font-variant-numeric:tabular-nums;color:#1b2327;">${money(meta, vm.tax)}</span></div>` +
-    `<div style="display:flex;justify-content:space-between;padding:20px 0;align-items:baseline;">` +
-    `<span style="font-size:38px;font-weight:800;">Total for this bill</span>` +
-    `<span style="font-size:48px;font-weight:800;color:${BGAS_NAVY};font-variant-numeric:tabular-nums;">${money(meta, vm.total)}</span></div></div></div>` +
-    /* 底部：tariff 信息 + Did you know */
-    `<div style="margin-top:56px;border-top:4px solid ${BGAS_NAVY};padding-top:44px;display:flex;gap:90px;flex:none;">` +
-    `<div style="flex:1.4;font-size:32px;line-height:1.7;color:#1b2327;">` +
-    `<div style="display:flex;gap:30px;"><span style="font-weight:800;color:${BGAS_NAVY};width:360px;flex:none;">Your gas tariff:</span><span>Standard Variable Tariff</span></div>` +
-    `<div style="display:flex;gap:30px;"><span style="font-weight:800;width:360px;flex:none;">Payment method:</span><span>Pay on receipt of a monthly bill</span></div>` +
-    `<div style="display:flex;gap:30px;"><span style="font-weight:800;width:360px;flex:none;">Tariff ends:</span><span>No end date</span></div>` +
-    `<div style="display:flex;gap:30px;"><span style="font-weight:800;width:360px;flex:none;">Exit fee:</span><span>None</span></div>` +
-    `<div style="margin-top:22px;display:flex;gap:30px;"><span style="font-weight:800;color:${BGAS_NAVY};width:360px;flex:none;">Annual estimates:</span><span>Gas</span></div>` +
-    `<div style="display:flex;gap:30px;"><span style="font-weight:800;width:360px;flex:none;">Estimated annual usage:</span><span>${formatInt(annualUsage)} kWh</span></div>` +
-    `<div style="display:flex;gap:30px;"><span style="font-weight:800;width:360px;flex:none;">Estimated annual cost:</span><span>${money(meta, annualCost)}</span></div></div>` +
+    `<div style="margin-top:10px;">${chargeRows}` +
+    `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #dbe9f5;">` +
+    `<span style="font-size:30px;color:#333c42;">${escapeHtml(vm.taxLabel)}</span>` +
+    `<span style="font-size:30px;font-variant-numeric:tabular-nums;color:#1b2327;">${money(meta, vm.tax)}</span></div>` +
+    `<div style="display:flex;justify-content:space-between;padding:12px 0;align-items:baseline;">` +
+    `<span style="font-size:34px;font-weight:800;">Total for this bill</span>` +
+    `<span style="font-size:42px;font-weight:800;color:${BGAS_NAVY};font-variant-numeric:tabular-nums;">${money(meta, vm.total)}</span></div></div></div>` +
+    /* 底部：tariff 信息 + 年度预估 + Did you know（参考图三栏节奏） */
+    `<div style="margin-top:32px;border-top:3px solid ${BGAS_NAVY};padding-top:32px;display:flex;gap:80px;flex:none;">` +
+    `<div style="flex:1.2;font-size:29px;line-height:1.5;color:#1b2327;">` +
+    `<div style="display:flex;gap:26px;"><span style="font-weight:800;color:${BGAS_NAVY};width:300px;flex:none;">Your gas tariff:</span><span>Standard Variable Tariff</span></div>` +
+    `<div style="display:flex;gap:26px;"><span style="font-weight:800;width:300px;flex:none;">Payment method:</span><span>Pay on receipt of a monthly bill</span></div>` +
+    `<div style="display:flex;gap:26px;"><span style="font-weight:800;width:300px;flex:none;">Tariff ends:</span><span>No end date</span></div>` +
+    `<div style="display:flex;gap:26px;"><span style="font-weight:800;width:300px;flex:none;">Exit fee:</span><span>None</span></div></div>` +
+    `<div style="flex:1.2;font-size:29px;line-height:1.5;color:#1b2327;">` +
+    `<div style="display:flex;gap:26px;"><span style="font-weight:800;color:${BGAS_NAVY};width:380px;flex:none;">Annual estimates:</span><span>Gas</span></div>` +
+    `<div style="display:flex;gap:26px;"><span style="font-weight:800;width:380px;flex:none;">Estimated annual usage:</span><span>${formatInt(annualUsage)} kWh</span></div>` +
+    `<div style="display:flex;gap:26px;"><span style="font-weight:800;width:380px;flex:none;">Estimated annual cost:</span><span>${money(meta, annualCost)}</span></div></div>` +
     `<div style="flex:1;"><div style="display:flex;align-items:center;gap:18px;">` +
     `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="52" viewBox="0 0 64 52"><rect x="3" y="3" width="58" height="38" rx="4" fill="none" stroke="${BGAS_NAVY}" stroke-width="5"/><line x1="24" y1="49" x2="40" y2="49" stroke="${BGAS_NAVY}" stroke-width="5"/><line x1="32" y1="41" x2="32" y2="49" stroke="${BGAS_NAVY}" stroke-width="5"/></svg>` +
-    `<span style="font-size:44px;font-weight:800;color:${BGAS_NAVY};">Did you know?</span></div>` +
-    `<div style="font-size:34px;color:#333c42;line-height:1.7;margin-top:20px;">It's always a good idea to check online for the best tariff deals available.</div></div></div>` +
+    `<span style="font-size:40px;font-weight:800;color:${BGAS_NAVY};">Did you know?</span></div>` +
+    `<div style="font-size:30px;color:#333c42;line-height:1.6;margin-top:16px;">It's always a good idea to check online for the best tariff deals available.</div></div></div>` +
     notes +
-    `<div style="margin-top:auto;padding-top:40px;font-size:27px;color:#a2a9ae;line-height:1.7;flex:none;">` +
+    `<div style="margin-top:auto;padding-top:24px;font-size:27px;color:#a2a9ae;line-height:1.6;flex:none;">` +
     `If you're finding it hard to pay your energy bill, there are a number of ways we can help you. ` +
     `Visit <b style="color:#5a656c;">britishgas.co.uk/payhelp</b><br/>` +
     fictionalNotice() +
@@ -417,7 +448,8 @@ const EON_UNIT_P = 26.4;
 /** 粉色闪电吉祥物（装饰性 SVG） */
 function eonBolt(): string {
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 100 100" role="img" aria-label="mascot">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="270" height="270" viewBox="0 0 100 100" role="img" aria-label="mascot" ` +
+    `style="transform:rotate(-6deg);">` +
     `<polygon points="58,4 20,56 43,56 36,96 80,40 55,40" fill="#f48fb1"/>` +
     `<circle cx="47" cy="34" r="7" fill="none" stroke="#2e1a47" stroke-width="3"/>` +
     `<circle cx="63" cy="30" r="7" fill="none" stroke="#2e1a47" stroke-width="3"/>` +
@@ -450,18 +482,11 @@ function renderEonNext(vm: BillViewModel, meta: TemplateMeta, opts: RenderOption
   );
   const periodParts = vm.periodStart.split(" ");
   const ddDate = `${5 + Math.floor(rr() * 20)} ${periodParts[1] ?? "Aug"} ${periodParts[2] ?? "2026"}`;
-  const chargeDetail = vm.charges
-    .map(
-      (line) =>
-        `<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:29px;color:#5a4a6e;">` +
-        `<span>${escapeHtml(line.label)}</span>` +
-        `<span style="font-variant-numeric:tabular-nums;">${money(meta, line.amount)}</span></div>`,
-    )
-    .join("");
+  const billRefDigits = vm.invoiceNumber.replace(/[^\d]/g, "");
   return (
     `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:${EON_INK};font-family:${UK_FONT};">` +
-    `<div style="position:absolute;inset:0;padding:105px 120px;display:flex;flex-direction:column;">` +
+    `<div style="position:absolute;inset:0;padding:130px 120px;display:flex;flex-direction:column;">` +
     /* 页眉：双行 logo（左） / Get in touch + Rota 框（右） */
     `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
     `<div style="line-height:0.95;">` +
@@ -478,60 +503,58 @@ function renderEonNext(vm: BillViewModel, meta: TemplateMeta, opts: RenderOption
     `<span>hi@eonnext.com</span></div></div>` +
     `<div style="border:3px solid ${EON_INK};padding:6px 22px;font-size:34px;font-weight:700;">R</div></div></div>` +
     /* 客户地址 */
-    `<div style="margin-top:80px;flex:none;"><div style="font-size:36px;color:${EON_INK};line-height:1.45;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
+    `<div style="margin-top:170px;flex:none;"><div style="font-size:36px;color:${EON_INK};line-height:1.45;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
     /* 账号元信息（右对齐行） */
-    `<div style="margin-top:60px;text-align:right;font-size:34px;line-height:1.7;">` +
-    `<div><b>Your account number.</b> ${escapeHtml(vm.accountNumber)}</div>` +
-    `<div><b>Bill reference.</b> ${escapeHtml(vm.invoiceNumber)}</div>` +
-    `<div><b>Date.</b> ${escapeHtml(vm.billDate)}</div></div>` +
-    `<div style="display:flex;gap:70px;margin-top:56px;flex:1 0 auto;">` +
+    `<div style="margin-top:90px;text-align:right;font-size:34px;line-height:1.7;">` +
+    `<div><b>Your account number.</b> A-${escapeHtml(vm.accountNumber)}B</div>` +
+    `<div><b>Bill reference.</b> ${escapeHtml(billRefDigits)}</div>` +
+    `<div><b>Date.</b> ${escapeHtml(fullMonthDate(vm.billDate))}</div></div>` +
+    `<div style="display:flex;gap:70px;margin-top:160px;flex:1 0 auto;">` +
     /* 左栏：账户流水 */
     `<div style="flex:1.3;">` +
-    `<div style="display:flex;align-items:center;gap:36px;">` +
-    `<div style="font-size:76px;font-weight:800;color:${EON_CORAL_DARK};">Your energy account.</div>${eonBolt()}</div>` +
-    `<div style="font-size:32px;margin-top:14px;">${addressInline}</div>` +
-    `<div style="font-size:34px;margin-top:44px;">${escapeHtml(vm.periodStart)} - ${escapeHtml(vm.periodEnd)}</div>` +
-    `<div style="margin-top:40px;background:${EON_PINK_ROW};padding:24px 34px;display:flex;justify-content:space-between;align-items:baseline;">` +
+    `<div style="position:relative;">` +
+    `<div style="font-size:88px;font-weight:800;color:${EON_CORAL_DARK};">Your energy account.</div>` +
+    `<div style="position:absolute;right:-30px;top:-80px;">${eonBolt()}</div></div>` +
+    `<div style="font-size:32px;margin-top:30px;">${addressInline}</div>` +
+    `<div style="font-size:34px;margin-top:50px;">${escapeHtml(vm.periodStart)} - ${escapeHtml(vm.periodEnd)}</div>` +
+    `<div style="margin-top:100px;background:${EON_PINK_ROW};padding:34px 34px;display:flex;justify-content:space-between;align-items:baseline;">` +
     `<span style="font-size:34px;font-weight:800;">On ${escapeHtml(vm.periodStart)} your previous balance was</span>` +
     `<span style="font-size:34px;font-variant-numeric:tabular-nums;">${money(meta, s.previousBalance)} CR</span></div>` +
-    `<div style="margin-top:36px;font-size:34px;font-weight:800;">We have charged you (VAT is included)</div>` +
-    `<div style="margin-top:16px;display:flex;justify-content:space-between;align-items:baseline;font-size:34px;">` +
+    `<div style="margin-top:70px;font-size:34px;font-weight:800;">We have charged you (VAT is included)</div>` +
+    `<div style="margin-top:30px;display:flex;justify-content:space-between;align-items:baseline;font-size:34px;">` +
     `<span>Electricity</span><span style="font-size:29px;color:#5a4a6e;">${escapeHtml(vm.periodStart)} - ${escapeHtml(vm.periodEnd)}</span>` +
     `<span style="font-variant-numeric:tabular-nums;">${money(meta, s.currentCharges)} DR</span></div>` +
-    `<div style="margin:10px 0 0;padding:14px 22px;background:#faf5fa;border-radius:10px;">${chargeDetail}` +
-    `<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:29px;color:#5a4a6e;">` +
-    `<span>${escapeHtml(vm.taxLabel)}</span><span style="font-variant-numeric:tabular-nums;">${money(meta, vm.tax)}</span></div></div>` +
-    `<div style="margin-top:36px;font-size:34px;font-weight:800;">You have paid</div>` +
-    `<div style="margin-top:16px;display:flex;justify-content:space-between;align-items:baseline;font-size:34px;">` +
+    `<div style="margin-top:70px;font-size:34px;font-weight:800;">You have paid</div>` +
+    `<div style="margin-top:30px;display:flex;justify-content:space-between;align-items:baseline;font-size:34px;">` +
     `<span>Direct Debit collection</span><span style="font-size:29px;color:#5a4a6e;">${escapeHtml(ddDate)}</span>` +
     `<span style="font-variant-numeric:tabular-nums;">${money(meta, s.paymentsReceived)} CR</span></div>` +
-    `<div style="margin-top:40px;background:${EON_PURPLE};color:#ffffff;padding:24px 34px;` +
+    `<div style="margin-top:100px;background:${EON_PURPLE};color:#ffffff;padding:34px 34px;` +
     `display:flex;justify-content:space-between;align-items:baseline;">` +
     `<span style="font-size:34px;font-weight:800;">On ${escapeHtml(vm.billDate)} your new balance was</span>` +
-    `<span style="font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;">${money(meta, vm.total)} DR</span></div>` +
-    `<div style="margin-top:44px;font-size:32px;line-height:1.65;">` +
+    `<span style="font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;">${money(meta, vm.total)} CR</span></div>` +
+    `<div style="margin-top:100px;font-size:32px;line-height:1.65;">` +
     `<b>Good news</b> - you pay by monthly Direct Debit (DD) so you're getting cheaper prices than if you pay ` +
     `when you receive your bill, and your payments are up to date. We regularly review how much you're paying ` +
     `to make sure it's the right amount and will let you know if it needs to change.</div>` +
-    `<div style="margin-top:26px;font-size:32px;line-height:1.65;">` +
+    `<div style="margin-top:50px;font-size:32px;line-height:1.65;">` +
     `<b>Remember</b>, if you cancel your DD your prices will increase.</div></div>` +
     /* 右栏：年度预估 + 资费推荐 */
-    `<div style="flex:1;border-left:1px solid #e3dcea;padding-left:56px;">` +
-    `<div style="font-size:38px;font-weight:800;">Your estimated cost for the year.</div>` +
-    `<div style="margin-top:22px;font-size:40px;"><b>${money(meta, annualCost)}</b> a year for electricity</div>` +
-    `<div style="margin-top:22px;font-size:30px;line-height:1.65;">This is an estimate based on your expected ` +
+    `<div style="flex:1;padding-left:56px;">` +
+    `<div style="font-size:44px;font-weight:800;margin-top:170px;">Your estimated cost for the year.</div>` +
+    `<div style="margin-top:22px;font-size:44px;"><b>${money(meta, annualCost)}</b> a year for electricity</div>` +
+    `<div style="margin-top:36px;font-size:30px;line-height:1.65;">This is an estimate based on your expected ` +
     `annual energy usage, and your current tariff rates, charges and discounts, including VAT. Actual bills ` +
     `will vary depending on your usage and tariff selection.</div>` +
-    `<div style="margin-top:40px;border-top:1px solid #e3dcea;padding-top:36px;">` +
+    `<div style="margin-top:60px;border-top:1px solid #e3dcea;padding-top:50px;">` +
     `<div style="font-size:38px;font-weight:800;">Could you save money and pay less?</div>` +
-    `<div style="margin-top:20px;font-size:30px;line-height:1.65;">Remember - it might be worth thinking about ` +
+    `<div style="margin-top:36px;font-size:30px;line-height:1.65;">Remember - it might be worth thinking about ` +
     `switching your tariff or supplier.</div>` +
-    `<div style="margin-top:20px;font-size:28px;">For your <b>electricity</b> (on meter point ${mpan})</div>` +
-    `<div style="margin-top:24px;font-size:32px;line-height:1.6;">Our <b>cheapest similar tariff</b> is ` +
+    `<div style="margin-top:36px;font-size:28px;">For your <b>electricity</b> (on meter point ${mpan})</div>` +
+    `<div style="margin-top:60px;font-size:32px;line-height:1.6;">Our <b>cheapest similar tariff</b> is ` +
     `<b>Next Pledge Tracker 12m v5</b> - you could save <b>${money(meta, saveSimilar)}</b> a year by switching to this.</div>` +
-    `<div style="margin-top:24px;font-size:32px;line-height:1.6;">Our <b>cheapest tariff overall</b> is ` +
+    `<div style="margin-top:60px;font-size:32px;line-height:1.6;">Our <b>cheapest tariff overall</b> is ` +
     `<b>Next Secure Fixed 12m v14</b> - you could save <b>${money(meta, saveOverall)}</b> a year by switching to this.</div>` +
-    `<div style="margin-top:30px;font-size:30px;line-height:1.65;">Paying by Direct Debit is cheaper than if you ` +
+    `<div style="margin-top:56px;font-size:30px;line-height:1.65;">Paying by Direct Debit is cheaper than if you ` +
     `pay when you get your bill. For our cheapest tariffs you may need to change your meter or the way you pay.</div></div></div>` +
     `</div>` +
     /* 页脚 */
@@ -653,7 +676,7 @@ function twSideItem(icon: string, label: string, valueHtml: string): string {
   return (
     `<div style="display:flex;gap:28px;align-items:flex-start;margin-top:60px;">` +
     `<div style="flex:none;width:92px;height:92px;border:4px solid ${TW_CYAN};border-radius:50%;` +
-    `display:flex;align-items:center;justify-content:center;background:#ffffff;">${icon}</div>` +
+    `display:flex;align-items:center;justify-content:center;">${icon}</div>` +
     `<div><div style="font-size:40px;font-weight:800;color:${TW_CYAN};">${label}</div>` +
     `<div style="font-size:37px;color:${TW_CYAN};line-height:1.45;margin-top:6px;">${valueHtml}</div></div></div>`
   );
@@ -673,7 +696,7 @@ function twLandscape(): string {
     `<rect x="${x - 3}" y="${y}" width="6" height="26" fill="#8a6d3b"/>` +
     `<circle cx="${x}" cy="${y - 10}" r="16" fill="#5f9e38"/>`;
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="230" viewBox="0 0 1600 230" ` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="260" viewBox="0 0 1600 230" ` +
     `preserveAspectRatio="none" role="img" aria-label="landscape">` +
     `<path d="M0 118 C200 58 380 140 560 98 C760 52 940 130 1140 88 C1340 52 1500 108 1600 78 L1600 230 L0 230 Z" fill="${TW_GREEN}"/>` +
     `<path d="M0 168 C260 128 420 190 640 158 C880 126 1060 184 1280 152 C1440 132 1560 162 1600 148 L1600 230 L0 230 Z" fill="#6aa929"/>` +
@@ -702,22 +725,22 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
       const rows = section.lines
         .map(
           (line) =>
-            `<div style="display:flex;justify-content:space-between;padding:13px 0;border-bottom:1px solid #d7ecf5;">` +
-            `<span style="font-size:31px;color:#333c42;">${escapeHtml(line.label)}</span>` +
-            `<span style="font-size:31px;font-variant-numeric:tabular-nums;color:#1b2327;">${money(meta, line.amount)}</span></div>`,
+            `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #d7ecf5;">` +
+            `<span style="font-size:29px;color:#333c42;">${escapeHtml(line.label)}</span>` +
+            `<span style="font-size:29px;font-variant-numeric:tabular-nums;color:#1b2327;">${money(meta, line.amount)}</span></div>`,
         )
         .join("");
       return (
-        `<div style="margin-top:34px;">` +
+        `<div style="margin-top:18px;">` +
         `<div style="display:flex;justify-content:space-between;align-items:baseline;">` +
-        `<span style="font-size:36px;font-weight:800;color:${TW_CYAN};">${escapeHtml(section.title)}</span>` +
+        `<span style="font-size:32px;font-weight:800;color:${TW_CYAN};">${escapeHtml(section.title)}</span>` +
         (section.subtitle !== undefined
-          ? `<span style="font-size:27px;color:#5a656c;">${escapeHtml(section.subtitle)}</span>`
+          ? `<span style="font-size:26px;color:#5a656c;">${escapeHtml(section.subtitle)}</span>`
           : "") +
-        `</div><div style="margin-top:8px;">${rows}` +
-        `<div style="display:flex;justify-content:space-between;padding:14px 0;">` +
-        `<span style="font-size:31px;font-weight:600;color:#5a656c;">${escapeHtml(section.title)} total</span>` +
-        `<span style="font-size:33px;font-weight:700;font-variant-numeric:tabular-nums;">${money(meta, section.sectionTotal)}</span></div></div></div>`
+        `</div><div style="margin-top:6px;">${rows}` +
+        `<div style="display:flex;justify-content:space-between;padding:10px 0;">` +
+        `<span style="font-size:29px;font-weight:600;color:#5a656c;">${escapeHtml(section.title)} total</span>` +
+        `<span style="font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;">${money(meta, section.sectionTotal)}</span></div></div></div>`
       );
     })
     .join("");
@@ -734,9 +757,9 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
     `background:#ffffff;color:#1b2327;font-family:${UK_FONT};">` +
     `<div style="position:absolute;inset:0;display:flex;">` +
     /* 主栏 */
-    `<div style="flex:1;padding:100px 60px 60px 120px;display:flex;flex-direction:column;">` +
-    `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
-    `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 190 190" role="img" aria-label="logo">` +
+    `<div style="flex:1;padding:100px 60px 20px 120px;display:flex;flex-direction:column;">` +
+    `<div style="display:flex;justify-content:space-between;align-items:flex-start;flex:none;">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 190 190" role="img" aria-label="logo">` +
     `<circle cx="95" cy="95" r="90" fill="${TW_CYAN}"/>` +
     `<circle cx="95" cy="95" r="76" fill="none" stroke="#ffffff" stroke-width="5"/>` +
     `<text x="95" y="88" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="36" font-weight="800" fill="#ffffff">Thames</text>` +
@@ -744,18 +767,19 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
     `<path d="M45 152 C62 142 74 160 95 152 C116 144 128 162 145 152" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round"/>` +
     `</svg>` +
     `<div style="text-align:center;"><div style="font-size:26px;color:#5a656c;margin-bottom:8px;">Page 1 of 7</div>${qr}</div></div>` +
-    `<div style="margin-top:64px;"><div style="font-size:40px;font-weight:700;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
-    `<div style="margin-top:64px;font-size:96px;font-weight:300;color:${TW_CYAN};">Your latest bill</div>` +
-    `<div style="margin-top:44px;">${twLandscape()}</div>` +
-    /* 绿色 What to pay 卡 */
-    `<div style="background:${TW_GREEN};border-radius:0 0 0 0;padding:44px 56px;display:flex;align-items:center;gap:40px;">` +
+    `<div style="margin-top:190px;flex:none;"><div style="font-size:40px;font-weight:700;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
+    `<div style="margin-top:270px;font-size:96px;font-weight:300;color:${TW_CYAN};flex:none;">Your latest bill</div>` +
+    `<div style="margin-top:90px;flex:none;">${twLandscape()}</div>` +
+    /* 绿色 What to pay 卡（圆角，上沿压住风景横幅底部） */
+    `<div style="background:${TW_GREEN};border-radius:18px;padding:52px 56px;display:flex;align-items:center;gap:40px;` +
+    `margin-top:-56px;position:relative;z-index:2;flex:none;">` +
     `<svg xmlns="http://www.w3.org/2000/svg" width="110" height="110" viewBox="0 0 110 110">` +
     `<circle cx="55" cy="55" r="50" fill="none" stroke="#ffffff" stroke-width="5"/>` +
     `<path d="M55 24 C55 24 34 54 34 70 a21 21 0 0 0 42 0 C76 54 55 24 55 24 Z" fill="none" stroke="#ffffff" stroke-width="5"/></svg>` +
     `<div><div style="font-size:42px;color:#ffffff;">What to pay</div>` +
     `<div style="font-size:110px;font-weight:300;color:#ffffff;line-height:1.15;font-variant-numeric:tabular-nums;">${money(meta, vm.total)}</div></div></div>` +
-    /* 蓝色 When to pay by 卡 */
-    `<div style="background:${TW_CYAN};padding:40px 56px;display:flex;align-items:center;gap:40px;border-radius:0 0 18px 18px;">` +
+    /* 蓝色 When to pay by 卡（独立圆角卡，与绿卡留有间隙） */
+    `<div style="background:${TW_CYAN};padding:48px 56px;display:flex;align-items:center;gap:40px;border-radius:18px;margin-top:85px;flex:none;">` +
     `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">` +
     `<circle cx="50" cy="50" r="46" fill="none" stroke="#ffffff" stroke-width="5"/>` +
     `<rect x="26" y="32" width="48" height="40" rx="5" fill="none" stroke="#ffffff" stroke-width="5"/>` +
@@ -763,9 +787,9 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
     `<line x1="38" y1="26" x2="38" y2="36" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>` +
     `<line x1="62" y1="26" x2="62" y2="36" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/></svg>` +
     `<div><div style="font-size:40px;color:#ffffff;">When to pay by</div>` +
-    `<div style="font-size:72px;font-weight:700;color:#ffffff;line-height:1.2;">${escapeHtml(vm.dueDate)}</div></div></div>` +
+    `<div style="font-size:72px;font-weight:700;color:#ffffff;line-height:1.2;">${escapeHtml(fullMonthDate(vm.dueDate))}</div></div></div>` +
     /* How to pay 面板 */
-    `<div style="margin-top:56px;background:${TW_PANEL_BG};border-radius:18px;padding:44px 50px;">` +
+    `<div style="margin-top:125px;background:${TW_PANEL_BG};border-radius:18px;padding:28px 50px;flex:none;">` +
     `<div style="font-size:44px;font-weight:300;color:${TW_CYAN};">How to pay</div>` +
     `<div style="font-size:36px;font-weight:700;color:${TW_CYAN};margin-top:10px;">Break your bill into instalments with Direct Debit</div>` +
     `<div style="display:flex;gap:34px;margin-top:30px;">` +
@@ -776,19 +800,19 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
     `<div style="font-size:28px;color:#333c42;margin-top:28px;">Sign up through your online account at <b style="color:${TW_CYAN};">thameswater.co.uk/myaccount</b></div>` +
     `<div style="font-size:28px;color:#333c42;margin-top:10px;">For other ways to pay, turn to section 3.</div></div>` +
     /* Your charges */
-    `<div style="margin-top:56px;"><div style="font-size:44px;font-weight:300;color:${TW_CYAN};">Your charges</div>` +
+    `<div style="margin-top:16px;flex:none;"><div style="font-size:44px;font-weight:300;color:${TW_CYAN};">Your charges</div>` +
     (meter !== undefined
       ? `<div style="font-size:29px;color:#5a656c;margin-top:10px;">Meter reading: ${escapeHtml(meter.previous)} → ` +
         `${escapeHtml(meter.current)} (<b style="color:#1b2327;">${escapeHtml(meter.usage)}</b> over the last ${vm.periodDays} days)</div>`
       : "") +
     sections +
-    `<div style="display:flex;justify-content:space-between;padding:13px 0;border-bottom:1px solid #d7ecf5;margin-top:10px;">` +
-    `<span style="font-size:31px;color:#333c42;">${escapeHtml(vm.taxLabel)}</span>` +
-    `<span style="font-size:31px;font-variant-numeric:tabular-nums;color:#1b2327;">${money(meta, vm.tax)}</span></div>` +
-    `<div style="display:flex;justify-content:space-between;padding:18px 0;align-items:baseline;">` +
-    `<span style="font-size:38px;font-weight:800;">Total for this bill</span>` +
-    `<span style="font-size:50px;font-weight:800;color:${TW_CYAN};font-variant-numeric:tabular-nums;">${money(meta, vm.total)}</span></div></div>` +
-    `<div style="margin-top:auto;padding-top:36px;font-size:26px;color:#a2a9ae;line-height:1.7;">${fictionalNotice()}</div>` +
+    `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #d7ecf5;margin-top:6px;">` +
+    `<span style="font-size:29px;color:#333c42;">${escapeHtml(vm.taxLabel)}</span>` +
+    `<span style="font-size:29px;font-variant-numeric:tabular-nums;color:#1b2327;">${money(meta, vm.tax)}</span></div>` +
+    `<div style="display:flex;justify-content:space-between;padding:12px 0;align-items:baseline;">` +
+    `<span style="font-size:34px;font-weight:800;">Total for this bill</span>` +
+    `<span style="font-size:44px;font-weight:800;color:${TW_CYAN};font-variant-numeric:tabular-nums;">${money(meta, vm.total)}</span></div></div>` +
+    `<div style="margin-top:20px;padding-top:20px;border-top:1px solid #d7ecf5;font-size:26px;color:#a2a9ae;line-height:1.7;">${fictionalNotice()}</div>` +
     `</div>` +
     /* 右侧信息侧栏 */
     `<div style="width:740px;flex:none;background:${TW_SIDEBAR_BG};">` +
@@ -797,7 +821,8 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
     `<g fill="none" stroke="#ffffff" stroke-width="3.4" stroke-linecap="round">${TW_ICONS.person}</g></svg>` +
     `<div><div style="font-size:42px;font-weight:800;color:#ffffff;">Account number</div>` +
     `<div style="font-size:44px;font-weight:800;color:#ffffff;margin-top:4px;">${escapeHtml(vm.accountNumber)}</div></div></div>` +
-    `<div style="padding:20px 54px 0;">` +
+    `<div style="padding:20px 54px 820px;height:100%;box-sizing:border-box;display:flex;flex-direction:column;">` +
+    `<div style="flex:none;">` +
     twSideItem(twIcon(TW_ICONS.mouse), "For help, visit", `thameswater.co.uk/bill`) +
     twSideItem(twIcon(TW_ICONS.calendar), "Bill date", escapeHtml(vm.billDate)) +
     twSideItem(
@@ -806,7 +831,9 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
       `${escapeHtml(vm.periodStart)}<br/>– ${escapeHtml(vm.periodEnd)}`,
     ) +
     twSideItem(twIcon(TW_ICONS.house), "Supply address", supplyAddressHtml) +
-    `<div style="margin-top:90px;font-size:50px;font-weight:300;color:${TW_CYAN};">What's in this bill</div>` +
+    `</div>` +
+    `<div style="margin-top:auto;flex:none;">` +
+    `<div style="font-size:50px;font-weight:300;color:${TW_CYAN};">What's in this bill</div>` +
     tocItem(
       1,
       "Estimated water use",
@@ -826,7 +853,7 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
       "Website links and phone numbers if you need a helping hand",
       "#3a4a8a",
     ) +
-    `</div></div>` +
+    `</div></div></div>` +
     `</div>` +
     (opts.watermark ? watermarkLayer() : "") +
     `</div>`

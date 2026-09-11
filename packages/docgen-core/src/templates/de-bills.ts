@@ -71,10 +71,13 @@ const HEIZ_META: TemplateMeta = {
   accent: "#e2001a",
 };
 
-const NAVY = "#1c2b4a";
+/** 正文墨色（参考件为近黑文字） */
+const INK = "#1a1a1a";
 const RED = "#e2001a";
-const PINK_BG = "#f8e9eb";
-const PINK_LINE = "#edd0d4";
+/** 节标题深红（参考件的 Ihr Anteil / Information / Fortsetzung 标题色） */
+const DARKRED = "#b50021";
+const PINK_BG = "#f7e8ea";
+const PINK_LINE = "#e0bcc1";
 
 /** "2026-07-01" → "01.07.2026"（DD.MM.YYYY，德式显示，不依赖 ICU） */
 function formatDateDe(iso: string): string {
@@ -119,7 +122,7 @@ function watermarkLayer(): string {
   );
 }
 
-/** 字标：按参考件使用真实品牌名 "techem"（深藏青小写粗体）+ 红色海鸥状下划弧线（内联 SVG） */
+/** 字标：按参考件使用真实品牌名 "techem"（近黑小写粗体）+ 红色海鸥状下划弧线（内联 SVG） */
 function logoBlock(): string {
   const swoosh =
     `<svg xmlns="http://www.w3.org/2000/svg" width="380" height="48" viewBox="0 0 380 48">` +
@@ -127,14 +130,19 @@ function logoBlock(): string {
     `C226 42 288 38 372 10 C312 46 236 52 198 42 C160 52 84 46 8 10 Z" fill="${RED}"/></svg>`;
   return (
     `<div style="text-align:center;">` +
-    `<div style="font-size:66px;font-weight:800;letter-spacing:-2px;color:${NAVY};line-height:1;">techem</div>` +
+    `<div style="font-size:66px;font-weight:800;letter-spacing:-2px;color:${INK};line-height:1;">techem</div>` +
     `${swoosh}</div>`
   );
 }
 
-/** 分摊表（Ihr Anteil an den Gesamtkosten）：五列数值 + × / = 连接符，emphasis 行加粗 */
+/**
+ * 分摊表（Ihr Anteil an den Gesamtkosten）：固定列宽对齐参考件 —
+ * label | Gesamtkosten | Gesamteinheiten | = | Preis je Einheit | × | Ihre Einheiten |
+ * Zeitfaktor（参考件该列基本为空，仅保留表头占位）| = | Ihre Kosten。
+ * emphasis 行加粗；小计行金额带下划线；末行上沿粗线。
+ */
 function allocationTableHtml(vm: BillViewModel): string {
-  const cell = "padding:11px 8px;white-space:nowrap;";
+  const cell = "padding:2px 6px;white-space:nowrap;";
   const rows = (vm.allocation ?? [])
     .map((row, index, all) => {
       const bold = row.emphasis === true;
@@ -142,76 +150,88 @@ function allocationTableHtml(vm: BillViewModel): string {
       const sep1 = row.totalUnits !== "" && row.pricePerUnit !== "" ? "=" : "";
       const sep2 = row.pricePerUnit !== "" && row.ownUnits !== "" ? "×" : "";
       const sep3 = row.ownUnits !== "" && row.ownCost !== "" ? "=" : "";
-      const lastStyle = isLast ? `border-top:3px solid ${NAVY};` : "";
+      const lastStyle = isLast ? `border-top:3px solid ${INK};` : "";
+      const subLine =
+        bold && row.ownCost !== "" && !isLast ? "border-bottom:2px solid #9aa2ad;" : "";
+      // 分组标题行与末行：参考件为浅粉底色
+      const band = (bold && row.ownCost === "") || isLast ? `background:${PINK_BG};` : "";
       return (
-        `<tr style="font-size:${isLast ? 31 : 28}px;font-weight:${bold ? 700 : 400};` +
-        `color:${bold ? NAVY : "#333c42"};">` +
-        `<td style="${cell}text-align:left;padding-left:24px;white-space:normal;${lastStyle}">${escapeHtml(row.label)}</td>` +
+        `<tr style="font-size:${isLast ? 22 : 20}px;font-weight:${bold ? 700 : 400};color:${INK};${band}">` +
+        `<td style="${cell}text-align:left;white-space:normal;${lastStyle}">${escapeHtml(row.label)}</td>` +
         `<td style="${cell}text-align:right;font-variant-numeric:tabular-nums;${lastStyle}">${escapeHtml(row.totalCost)}</td>` +
         `<td style="${cell}text-align:right;${lastStyle}">${escapeHtml(row.totalUnits)}</td>` +
-        `<td style="${cell}text-align:center;color:#8a9298;${lastStyle}">${sep1}</td>` +
+        `<td style="${cell}text-align:center;color:#6b7280;${lastStyle}">${sep1}</td>` +
         `<td style="${cell}text-align:right;font-variant-numeric:tabular-nums;${lastStyle}">${escapeHtml(row.pricePerUnit)}</td>` +
-        `<td style="${cell}text-align:center;color:#8a9298;${lastStyle}">${sep2}</td>` +
+        `<td style="${cell}text-align:center;color:#6b7280;${lastStyle}">${sep2}</td>` +
         `<td style="${cell}text-align:right;font-variant-numeric:tabular-nums;${lastStyle}">${escapeHtml(row.ownUnits)}</td>` +
-        `<td style="${cell}text-align:center;color:#8a9298;${lastStyle}">${sep3}</td>` +
-        `<td style="${cell}text-align:right;font-variant-numeric:tabular-nums;padding-right:24px;${lastStyle}">${escapeHtml(row.ownCost)}</td></tr>`
+        `<td style="${cell}text-align:right;font-variant-numeric:tabular-nums;${lastStyle}"></td>` +
+        `<td style="${cell}text-align:center;color:#6b7280;${lastStyle}">${sep3}</td>` +
+        `<td style="${cell}text-align:right;font-variant-numeric:tabular-nums;${lastStyle}${subLine}">${escapeHtml(row.ownCost)}</td></tr>`
       );
     })
     .join("");
-  const headCell = `padding:10px 8px;font-weight:600;border-bottom:2px solid ${NAVY};line-height:1.35;`;
+  const headCell =
+    "padding:4px 6px;font-weight:400;border-bottom:1px solid #8a9298;line-height:1.3;";
   return (
-    `<table style="width:100%;border-collapse:collapse;margin-top:20px;">` +
-    `<tr style="font-size:22px;color:#6b7280;">` +
-    `<th style="${headCell}text-align:left;padding-left:24px;"></th>` +
+    `<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:35px;">` +
+    `<colgroup><col style="width:540px"/><col style="width:185px"/><col style="width:425px"/>` +
+    `<col style="width:30px"/><col style="width:214px"/><col style="width:30px"/><col style="width:214px"/>` +
+    `<col style="width:230px"/><col style="width:30px"/><col style="width:208px"/></colgroup>` +
+    `<tr style="font-size:17px;color:#6b7280;">` +
+    `<th style="${headCell}text-align:left;"></th>` +
     `<th style="${headCell}text-align:right;">Gesamtkosten<br/>in EUR</th>` +
     `<th style="${headCell}text-align:right;">Gesamteinheiten (2)</th>` +
     `<th style="${headCell}"></th>` +
     `<th style="${headCell}text-align:right;">Preis je Einheit</th>` +
     `<th style="${headCell}"></th>` +
     `<th style="${headCell}text-align:right;">Ihre Einheiten (3)</th>` +
+    `<th style="${headCell}text-align:right;">Zeitfaktor (3)</th>` +
     `<th style="${headCell}"></th>` +
-    `<th style="${headCell}text-align:right;padding-right:24px;">Ihre Kosten<br/>in EUR</th></tr>` +
+    `<th style="${headCell}text-align:right;">Ihre Kosten<br/>in EUR</th></tr>` +
     rows +
     `</table>`
   );
 }
 
-/** 抄表值表（Ihre Ablesewerte）：Gerätenummer / Raum / Datum / alt / neu / Verbrauch */
+/** 抄表值表（Ihre Ablesewerte）：Gerätenummer / Raum / Datum / alt / neu / Verbrauch，固定列宽 */
 function meterReadingsHtml(vm: BillViewModel): string {
-  const headCell = "padding:10px 8px;font-weight:600;border-bottom:2px solid #9aa2ad;";
+  const headCell =
+    "padding:4px 6px;font-weight:400;border-bottom:1px solid #8a9298;line-height:1.3;";
   const rows = vm.meterRows
     .map(
       (row) =>
-        `<tr style="font-size:29px;color:${NAVY};">` +
-        `<td style="padding:16px 8px 16px 24px;font-weight:700;">${escapeHtml(row.label)}</td>` +
-        `<td style="padding:16px 8px;">K</td>` +
-        `<td style="padding:16px 8px;text-align:right;">${escapeHtml(vm.periodEnd)}</td>` +
-        `<td style="padding:16px 8px;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(row.previous)}</td>` +
-        `<td style="padding:16px 8px;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(row.current)}</td>` +
-        `<td style="padding:16px 24px 16px 8px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;">${escapeHtml(row.usage)}</td></tr>`,
+        `<tr style="font-size:24px;color:${INK};">` +
+        `<td style="padding:4px 6px;font-weight:700;">${escapeHtml(row.label)}</td>` +
+        `<td style="padding:4px 6px;">K</td>` +
+        `<td style="padding:4px 6px;text-align:right;">${escapeHtml(vm.periodEnd)}</td>` +
+        `<td style="padding:4px 6px;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(row.previous)}</td>` +
+        `<td style="padding:4px 6px;text-align:right;font-variant-numeric:tabular-nums;">${escapeHtml(row.current)}</td>` +
+        `<td style="padding:4px 6px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;">${escapeHtml(row.usage)}</td></tr>`,
     )
     .join("");
   return (
-    `<table style="width:100%;border-collapse:collapse;margin-top:20px;">` +
-    `<tr style="font-size:22px;color:#6b7280;">` +
-    `<th style="${headCell}text-align:left;padding-left:24px;">Gerätenummer/<br/>Stala</th>` +
+    `<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-top:12px;">` +
+    `<colgroup><col style="width:493px"/><col style="width:115px"/><col style="width:435px"/>` +
+    `<col style="width:273px"/><col style="width:330px"/><col style="width:460px"/></colgroup>` +
+    `<tr style="font-size:17px;color:#6b7280;">` +
+    `<th style="${headCell}text-align:left;">Gerätenummer/<br/>Stala</th>` +
     `<th style="${headCell}text-align:left;">Raum</th>` +
     `<th style="${headCell}text-align:right;">Datum</th>` +
     `<th style="${headCell}text-align:right;">Ablesewert<br/>alt</th>` +
     `<th style="${headCell}text-align:right;">Ablesewert<br/>neu</th>` +
-    `<th style="${headCell}text-align:right;padding-right:24px;">Verbrauch</th></tr>` +
+    `<th style="${headCell}text-align:right;">Verbrauch</th></tr>` +
     rows +
-    `<tr><td colspan="6" style="padding:14px 8px 0 24px;font-size:30px;font-weight:700;color:${NAVY};">Verbrauch (Kilowatt-Stunden)</td></tr>` +
+    `<tr><td colspan="6" style="padding:8px 6px 0;font-size:24px;font-weight:700;color:${INK};">Verbrauch (Kilowatt-Stunden)</td></tr>` +
     `</table>`
   );
 }
 
-/** 红色方块 + 加粗节标题（参考件的 red square bullet 风格） */
+/** 红色方块 + 深红加粗节标题（参考件的 red square bullet 风格） */
 function sectionHeading(title: string): string {
   return (
     `<div style="display:flex;align-items:center;">` +
-    `<span style="display:inline-block;width:20px;height:20px;background:${RED};margin-right:18px;flex:none;"></span>` +
-    `<span style="font-size:40px;font-weight:800;color:${NAVY};">${escapeHtml(title)}</span></div>`
+    `<span style="display:inline-block;width:18px;height:18px;background:${RED};margin-right:16px;flex:none;"></span>` +
+    `<span style="font-size:36px;font-weight:800;color:${DARKRED};">${escapeHtml(title)}</span></div>`
   );
 }
 
@@ -458,7 +478,6 @@ export const wlHeizkosten: BillTemplate = {
           `Dieser Betrag wurde in der Heizkostenabrechnung verrechnet.`,
         `Ihr individueller Anteil an der Entlastung gemäß EWPBG beträgt ${formatMoneyDe(entlastung)}. ` +
           `Dieser Anteil wurde schon bei Ihren Heizkosten berücksichtigt.`,
-        `Dieses Dokument ist ein fiktives Layout-Muster; alle Kostenstellen, Preise und Entlastungsbeträge sind frei erfunden.`,
       ],
     };
   },
@@ -468,78 +487,82 @@ export const wlHeizkosten: BillTemplate = {
     const addressHtml = vm.addressLines
       .map(
         (line) =>
-          `<div style="font-size:32px;color:${NAVY};line-height:1.55;">${escapeHtml(line)}</div>`,
+          `<div style="font-size:32px;color:${INK};line-height:1.5;">${escapeHtml(line)}</div>`,
       )
       .join("");
     const recapRows = vm.charges
       .map(
         (line) =>
-          `<div style="display:flex;justify-content:space-between;padding:15px 30px;background:${PINK_BG};` +
-          `border-bottom:2px solid ${PINK_LINE};font-size:30px;color:${NAVY};">` +
+          `<div style="display:flex;justify-content:space-between;padding:3px 28px;background:${PINK_BG};` +
+          `border-bottom:1px solid ${PINK_LINE};font-size:24px;color:${INK};">` +
           `<span>${escapeHtml(line.label)}</span>` +
           `<span style="font-variant-numeric:tabular-nums;">${escapeHtml(formatNumDe(line.amount))} EUR</span></div>`,
       )
       .join("");
+    // 参考件信息框中金额加粗：先转义再把 "1.234,56 €" 包 <b>
+    const boldAmounts = (text: string): string =>
+      escapeHtml(text).replace(/(\d{1,3}(?:\.\d{3})*,\d{2} €)/g, "<b>$1</b>");
     const notesHtml = vm.notes
       .map(
         (note) =>
-          `<p style="margin:0 0 14px;font-size:27px;color:#333c42;line-height:1.65;text-align:justify;">${escapeHtml(note)}</p>`,
+          `<p style="margin:0 0 8px;font-size:24px;color:${INK};line-height:1.5;text-align:justify;max-width:1000px;">${boldAmounts(note)}</p>`,
       )
       .join("");
     return (
       `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
-      `background:#ffffff;color:${NAVY};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">` +
-      `<div style="position:absolute;inset:0;padding:96px 110px;display:flex;flex-direction:column;box-sizing:border-box;">` +
-      // 1. 页眉：地址（左） + 居中字标 + 红色标题 / 元信息（右）
+      `background:#ffffff;color:${INK};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">` +
+      `<div style="position:absolute;inset:0;padding:30px 175px 55px 200px;display:flex;flex-direction:column;box-sizing:border-box;">` +
+      // 1. 页眉：地址（左，缩进） + 居中字标 + 红色标题 / 元信息（中右栏，与粉色回顾框左缘对齐）
       `<div style="position:relative;">` +
-      `<div style="position:absolute;left:50%;top:0;transform:translateX(-50%);">${logoBlock()}</div>` +
-      `<div style="display:flex;justify-content:space-between;">` +
-      `<div style="width:900px;flex:none;">` +
-      `<div style="font-size:46px;font-weight:800;color:${NAVY};">${escapeHtml(vm.customerName)}</div>` +
+      `<div style="position:absolute;left:43.3%;top:0;transform:translateX(-50%);">${logoBlock()}</div>` +
+      `<div style="display:flex;">` +
+      `<div style="width:700px;flex:none;margin-left:95px;padding-top:80px;">` +
+      `<div style="font-size:46px;font-weight:800;color:${INK};">${escapeHtml(vm.customerName)}</div>` +
       `${addressHtml}` +
-      `<div style="margin-top:64px;">` +
+      `<div style="margin-top:125px;">` +
       `<div style="font-size:30px;font-weight:700;">Ihr Nutzungszeitraum</div>` +
-      `<div style="font-size:30px;margin-top:6px;">${escapeHtml(vm.periodStart)} - ${escapeHtml(vm.periodEnd)}</div></div>` +
-      `<div style="margin-top:52px;">` +
+      `<div style="font-size:30px;margin-top:4px;">${escapeHtml(vm.periodStart)} - ${escapeHtml(vm.periodEnd)}</div></div>` +
+      `<div style="margin-top:90px;">` +
       `<div style="font-size:30px;font-weight:700;">Abrechnungszeitraum</div>` +
-      `<div style="font-size:30px;margin-top:6px;">${escapeHtml(vm.periodStart)} - ${escapeHtml(vm.periodEnd)}</div></div>` +
+      `<div style="font-size:30px;margin-top:4px;">${escapeHtml(vm.periodStart)} - ${escapeHtml(vm.periodEnd)}</div></div>` +
       `</div>` +
-      `<div style="width:720px;flex:none;padding-top:120px;">` +
-      `<div style="font-size:42px;font-weight:800;color:${RED};line-height:1.35;">` +
+      `<div style="width:560px;flex:none;margin-left:367px;padding-top:140px;">` +
+      `<div style="font-size:38px;font-weight:800;color:${RED};line-height:1.3;">` +
       `Heiz- und Hausnebenkosten-<br/>abrechnung ${escapeHtml(periodYear)}</div>` +
-      `<div style="margin-top:56px;font-size:30px;line-height:1.5;">` +
+      `<div style="margin-top:55px;font-size:30px;line-height:1.3;">` +
       `<div style="font-weight:700;">Erstellt am</div><div>${escapeHtml(createdDe)}</div></div>` +
-      `<div style="margin-top:44px;font-size:30px;line-height:1.5;">` +
+      `<div style="margin-top:45px;font-size:30px;line-height:1.3;">` +
       `<div style="font-weight:700;">Ihre Nutzer-Nr.</div><div>${escapeHtml(vm.accountNumber)}</div></div>` +
       `</div></div></div>` +
-      // 4. 右侧粉色费用回顾框
-      `<div style="display:flex;justify-content:flex-end;margin-top:56px;">` +
-      `<div style="width:940px;border:2px solid ${PINK_LINE};">` +
+      // 4. 粉色费用回顾框（与右侧标题栏同左缘）
+      `<div style="margin-top:170px;margin-left:1162px;width:870px;border:2px solid ${PINK_LINE};">` +
       recapRows +
-      `<div style="display:flex;justify-content:space-between;padding:17px 30px;background:${PINK_BG};` +
-      `font-size:31px;font-weight:800;color:${NAVY};">` +
+      `<div style="display:flex;justify-content:space-between;padding:4px 28px;background:${PINK_BG};` +
+      `font-size:25px;font-weight:800;color:${INK};">` +
       `<span>Ihr Anteil an den Gesamtkosten</span>` +
       `<span style="font-variant-numeric:tabular-nums;">${escapeHtml(formatNumDe(vm.total))} EUR</span></div>` +
-      `</div></div>` +
+      `</div>` +
       // 5. 红条信息框：Energiekostenentlastung（EWPBG）
-      `<div style="margin-top:56px;border-left:10px solid ${RED};border-top:2px solid ${PINK_LINE};` +
-      `border-bottom:2px solid ${PINK_LINE};padding:24px 36px;">` +
-      `<div style="font-size:34px;font-weight:800;color:${NAVY};margin-bottom:12px;">Information zur Energiekostenentlastung</div>` +
+      `<div style="margin-top:170px;border-left:10px solid ${RED};border-top:2px solid ${PINK_LINE};` +
+      `border-bottom:2px solid ${PINK_LINE};padding:12px 32px;">` +
+      `<div style="display:flex;align-items:center;margin-bottom:8px;">` +
+      `<span style="display:inline-block;width:14px;height:14px;background:${RED};margin-right:12px;flex:none;"></span>` +
+      `<span style="font-size:30px;font-weight:800;color:${DARKRED};">Information zur Energiekostenentlastung</span></div>` +
       `${notesHtml}</div>` +
       // 6. 分摊表
-      `<div style="margin-top:60px;">${sectionHeading("Ihr Anteil an den Gesamtkosten (1)")}${allocationTableHtml(vm)}</div>` +
+      `<div style="margin-top:100px;">${sectionHeading("Ihr Anteil an den Gesamtkosten (1)")}${allocationTableHtml(vm)}</div>` +
       // 7. 抄表值
-      `<div style="margin-top:56px;">${sectionHeading("Ihre Ablesewerte")}${meterReadingsHtml(vm)}</div>` +
+      `<div style="margin-top:30px;">${sectionHeading("Ihre Ablesewerte")}${meterReadingsHtml(vm)}</div>` +
       // 8. 续页提示
-      `<div style="margin-top:48px;font-size:32px;font-weight:700;color:${RED};">Fortsetzung auf der Folgeseite</div>` +
+      `<div style="margin-top:180px;font-size:30px;font-weight:700;color:${DARKRED};">Fortsetzung auf der Folgeseite</div>` +
       // 9. 脚注框 + 页码
-      `<div style="margin-top:44px;border:2px solid #9aa2ad;padding:20px 30px;font-size:25px;color:#4a5560;line-height:1.8;">` +
+      `<div style="margin-top:40px;border:2px solid #8a9298;padding:18px 28px;font-size:21px;color:#4a5560;line-height:1.75;">` +
       `<div>(1)&#160; Die Gesamtkosten können Sie der nachfolgenden Kostenaufstellung des gesamten Objektes entnehmen</div>` +
       `<div>(2)&#160; Gesamteinheiten des Objektes</div>` +
       `<div>(3)&#160; Siehe Erläuterungen</div></div>` +
-      `<div style="display:flex;justify-content:flex-end;margin-top:18px;font-size:26px;color:#6b7280;">Seite 1/3</div>` +
+      `<div style="display:flex;justify-content:flex-end;margin-top:34px;font-size:23px;color:#4a5560;">Seite 1/3</div>` +
       // 10. 免责声明页脚
-      `<div style="margin-top:auto;padding-top:26px;border-top:1px solid #d9d6ce;font-size:25px;color:#a2a9ae;line-height:1.7;">` +
+      `<div style="margin-top:auto;padding-top:20px;border-top:1px solid #d9d6ce;font-size:22px;color:#a2a9ae;line-height:1.7;">` +
       `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。</div>` +
       `</div>` +
       (opts.watermark ? watermarkLayer() : "") +
