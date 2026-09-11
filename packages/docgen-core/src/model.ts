@@ -144,6 +144,11 @@ export interface RenderOptions {
   readonly watermark: boolean;
 }
 
+export interface CanvasSize {
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface BillTemplate {
   readonly docType: string;
   readonly regionId: RegionId;
@@ -154,6 +159,8 @@ export interface BillTemplate {
   readonly fields: ReadonlyArray<FieldSchema>;
   /** 由确定性 rng 派生全部账单数据；input.billDate 为 null 时取当天 */
   compute(input: BillInput, rng: () => number): BillViewModel;
-  /** 返回完全自包含的 HTML 片段（2481×3509，A4@300DPI，CSS 内联） */
+  /** 可选的输出画布；未指定时使用默认 A4@300DPI 画布 */
+  readonly canvasSize?: CanvasSize;
+  /** 返回完全自包含的 HTML 片段（CSS 内联） */
   renderHtml(vm: BillViewModel, opts: RenderOptions): string;
 }

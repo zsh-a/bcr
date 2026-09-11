@@ -151,9 +151,9 @@ function paintDesk(ctx: CanvasRenderingContext2D, width: number, height: number)
 }
 
 /** 账单目标四边形：居中 + 约 -2.4° 旋转 + 轻微透视（上窄下宽、微微倾斜） */
-function billQuad(width: number, height: number): Quad {
+function billQuad(width: number, height: number, sourceWidth: number, sourceHeight: number): Quad {
   const bw = 1050;
-  const bh = Math.round((bw * 3509) / 2481);
+  const bh = Math.round((bw * sourceHeight) / sourceWidth);
   const cx = width / 2 + 20;
   const cy = height / 2 + 30;
   const angle = (-2.4 * Math.PI) / 180;
@@ -206,7 +206,7 @@ export async function compositePaperPhoto(bill: HTMLImageElement | ImageBitmap):
 
   paintDesk(ctx, width, height);
 
-  const quad = billQuad(width, height);
+  const quad = billQuad(width, height, sw, sh);
 
   // 1) 高斯模糊投影四边形（偏移右下）
   ctx.save();

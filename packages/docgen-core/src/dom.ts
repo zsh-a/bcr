@@ -27,7 +27,7 @@ export function renderBillHtml(input: BillInput, opts: RenderOptions): RenderedB
 
 export interface GeneratedBill {
   readonly vm: BillViewModel;
-  /** 账单本体 PNG（2481×3509，A4@300DPI） */
+  /** 账单本体 PNG（由模板画布决定，默认 2481×3509） */
   readonly documentPng: Blob;
   /** 「实拍」合成 JPEG（1620×2160） */
   readonly paperJpeg: Blob;
@@ -35,8 +35,11 @@ export interface GeneratedBill {
 
 /** 一键 pipeline：render → 栅格化 PNG → 透视合成 JPEG */
 export async function generateBill(input: BillInput, opts: RenderOptions): Promise<GeneratedBill> {
+  const template = getTemplate(input.docType);
+  if (template === undefined) throw new Error(`未知的账单类型：${input.docType}`);
   const { vm, html } = renderBillHtml(input, opts);
-  const documentPng = await rasterizeHtml(html, { width: CANVAS_WIDTH, height: CANVAS_HEIGHT });
+  const canvas = template.canvasSize ?? { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
+  const documentPng = await rasterizeHtml(html, canvas);
   const bitmap = await createImageBitmap(documentPng);
   try {
     const paperJpeg = await compositePaperPhoto(bitmap);

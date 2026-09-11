@@ -498,12 +498,6 @@ export const sgSingtelTelecom: BillTemplate = {
     };
   },
   renderHtml(vm: BillViewModel, opts: RenderOptions): string {
-    const notes =
-      vm.notes.length === 0
-        ? ""
-        : `<ul style="margin:2px 150px 0 300px;padding-left:40px;font-size:20px;color:#8a9298;line-height:1.35;">` +
-          vm.notes.map((n) => `<li>${escapeHtml(n)}</li>`).join("") +
-          `</ul>`;
     return (
       `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
       `background:#ffffff;color:#1b2327;font-family:Helvetica,Arial,sans-serif;">` +
@@ -512,8 +506,7 @@ export const sgSingtelTelecom: BillTemplate = {
       leftColumn(vm, SINGTEL_META) +
       overviewPanel(vm) +
       `</div>` +
-      billDetails(vm, SINGTEL_META) +
-      notes +
+      // 参考图首屏到这里结束；明细页另行排版，不能挤入首屏的付款回条区域。
       paymentSlip(vm) +
       `<div style="margin:2px 150px 0 260px;padding-top:4px;border-top:2px solid #e7e4dc;font-size:20px;color:#a2a9ae;line-height:1.6;white-space:nowrap;">` +
       `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。</div>` +

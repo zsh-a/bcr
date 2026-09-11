@@ -12,8 +12,6 @@ import type { BillInput, BillTemplate, BillViewModel, RenderOptions, UsageBar } 
 import {
   addDaysIso,
   buildBase,
-  CANVAS_HEIGHT,
-  CANVAS_WIDTH,
   escapeHtml,
   fmtMeta,
   formatDateEn,
@@ -21,6 +19,9 @@ import {
   round2,
   type TemplateMeta,
 } from "./common";
+
+const CA_CANVAS_WIDTH = 2550;
+const CA_CANVAS_HEIGHT = 3300;
 
 /** 与其他区域模板一致的地址字段 schema（同键 / 同序 / 同校验） */
 const CA_FIELDS = [
@@ -30,8 +31,8 @@ const CA_FIELDS = [
     label: "门牌号",
     placeholder: "142",
     required: true,
-    maxLength: 6,
-    pattern: /^\d{1,5}$/,
+    maxLength: 10,
+    pattern: /^\d{1,5}(?:-\d{1,5})?$/,
   },
   {
     kind: "text",
@@ -341,7 +342,7 @@ function renderBcHydro(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="padding:0 30px;"><div style="font-size:26px;color:#5a656c;">${label}</div>` +
     `<div style="font-size:31px;font-weight:${bold ? 800 : 600};color:#1b2327;margin-top:4px;">${value}</div></div>`;
   return (
-    `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
+    `<div style="width:${CA_CANVAS_WIDTH}px;height:${CA_CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:#1b2327;font-family:Helvetica,Arial,sans-serif;">` +
     `<div style="position:absolute;inset:0;padding:100px 130px 60px;display:flex;flex-direction:column;">` +
     // 页眉：logo + 机构名 ｜ Service address ｜ 账户元信息表
@@ -404,6 +405,7 @@ export const caBcHydroPower: BillTemplate = {
   regionId: "canada",
   label: "电费账单 · BC Hydro 版式",
   kind: "power",
+  canvasSize: { width: CA_CANVAS_WIDTH, height: CA_CANVAS_HEIGHT },
   fields: CA_FIELDS,
   compute(input: BillInput, rng: () => number): BillViewModel {
     const base = buildBase(input, BC_META);
@@ -577,7 +579,7 @@ function renderEnmax(vm: BillViewModel, opts: RenderOptions): string {
     .join("");
   const ocr = `0000${vm.accountNumber.slice(0, 5)} 0000${vm.accountNumber.slice(0, 5)} 00${vm.accountNumber} 15`;
   return (
-    `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
+    `<div style="width:${CA_CANVAS_WIDTH}px;height:${CA_CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:#1b2327;font-family:Helvetica,Arial,sans-serif;">` +
     `<div style="position:absolute;left:0;top:0;right:0;height:24px;background:#7f95cb;"></div>` +
     `<div style="position:absolute;inset:0;padding:130px 120px 60px;display:flex;flex-direction:column;">` +
@@ -687,6 +689,7 @@ export const caEnmaxPower: BillTemplate = {
   regionId: "canada",
   label: "电费账单 · ENMAX 版式",
   kind: "power",
+  canvasSize: { width: CA_CANVAS_WIDTH, height: CA_CANVAS_HEIGHT },
   fields: CA_FIELDS,
   compute(input: BillInput, rng: () => number): BillViewModel {
     const base = buildBase(input, EN_META);
@@ -897,7 +900,7 @@ function renderHydroOne(vm: BillViewModel, opts: RenderOptions): string {
     `${vm.accountNumber}0000${`${Math.round(vm.total * 100)}`.padStart(6, "0")}` +
     ocrScanLine(vm, [6]);
   return (
-    `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
+    `<div style="width:${CA_CANVAS_WIDTH}px;height:${CA_CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:#1b2327;font-family:Helvetica,Arial,sans-serif;">` +
     `<div style="position:absolute;inset:0;padding:90px 120px 60px;display:flex;flex-direction:column;">` +
     // 页眉：字标 + Page
@@ -1004,6 +1007,7 @@ export const caHydroOnePower: BillTemplate = {
   regionId: "canada",
   label: "电费账单 · Hydro One 版式",
   kind: "power",
+  canvasSize: { width: CA_CANVAS_WIDTH, height: CA_CANVAS_HEIGHT },
   fields: CA_FIELDS,
   compute(input: BillInput, rng: () => number): BillViewModel {
     const base = buildBase(input, HO_META);

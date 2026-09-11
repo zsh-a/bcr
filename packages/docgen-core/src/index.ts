@@ -12,6 +12,7 @@ export type {
   BillKind,
   BillTemplate,
   BillViewModel,
+  CanvasSize,
   ChargeLine,
   ChargeSection,
   FieldSchema,

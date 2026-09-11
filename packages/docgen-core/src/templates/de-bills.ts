@@ -495,7 +495,7 @@ export const wlHeizkosten: BillTemplate = {
           `<div style="display:flex;justify-content:space-between;padding:3px 28px;background:${PINK_BG};` +
           `border-bottom:1px solid ${PINK_LINE};font-size:24px;color:${INK};">` +
           `<span>${escapeHtml(line.label)}</span>` +
-          `<span style="font-variant-numeric:tabular-nums;">${escapeHtml(formatNumDe(line.amount))} EUR</span></div>`,
+          `<span style="font-variant-numeric:tabular-nums;">${escapeHtml(formatNumDe(line.amount))} €</span></div>`,
       )
       .join("");
     // 参考件信息框中金额加粗：先转义再把 "1.234,56 Euro" 包 <b>
@@ -539,7 +539,7 @@ export const wlHeizkosten: BillTemplate = {
       `<div style="display:flex;justify-content:space-between;padding:4px 28px;background:${PINK_BG};` +
       `font-size:25px;font-weight:800;color:${INK};">` +
       `<span>Ihr Anteil an den Gesamtkosten</span>` +
-      `<span style="font-variant-numeric:tabular-nums;">${escapeHtml(formatNumDe(vm.total))} EUR</span></div>` +
+      `<span style="font-variant-numeric:tabular-nums;">${escapeHtml(formatNumDe(vm.total))} €</span></div>` +
       `</div>` +
       // 5. 红条信息框：Energiekostenentlastung（EWPBG）
       `<div style="margin-top:170px;border-left:10px solid ${RED};border-top:2px solid ${PINK_LINE};` +

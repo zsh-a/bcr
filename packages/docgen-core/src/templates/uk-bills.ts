@@ -183,6 +183,8 @@ const BGAS_STANDING_P = 32.1;
 const BGAS_UNIT_P = 7.14;
 const BGAS_CALORIFIC = 39.4;
 const BGAS_CORRECTION = 1.0226;
+const BGAS_ELECTRICITY_STANDING_P = 49.2;
+const BGAS_ELECTRICITY_UNIT_P = 24.8;
 
 /** British Gas 火焰标：蓝色火瓣 + 左下绿色弯月（内联 SVG，无外部资源） */
 function bgasFlame(): string {
@@ -222,7 +224,6 @@ function renderBritishGas(vm: BillViewModel, meta: TemplateMeta, opts: RenderOpt
     currentCharges: vm.total,
   };
   const conv = vm.conversion;
-  const meter = vm.meterRows[0];
   const addressHtml = vm.addressLines
     .map(
       (line) =>
@@ -242,30 +243,49 @@ function renderBritishGas(vm: BillViewModel, meta: TemplateMeta, opts: RenderOpt
     )
     .join("");
   const kwh = conv?.kwh ?? 0;
-  const annualUsage = Math.round((kwh * 365) / vm.periodDays);
+  const annualUsage = round2((kwh * 365) / vm.periodDays);
   const annualCost = round2(
     ((annualUsage * BGAS_UNIT_P) / 100 + (365 * BGAS_STANDING_P) / 100) * 1.05,
   );
-  const chargeRows = vm.charges
-    .map(
-      (line) =>
-        `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #dbe9f5;">` +
-        `<span style="font-size:30px;color:#333c42;">${escapeHtml(line.label)}</span>` +
-        `<span style="font-size:30px;font-variant-numeric:tabular-nums;color:#1b2327;">${money(meta, line.amount)}</span></div>`,
-    )
-    .join("");
-  const conversionLine =
-    conv !== undefined
-      ? `<div style="font-size:28px;color:#5a656c;margin-top:8px;">` +
-        `Unit conversion: ${formatInt(conv.cubicMeters)} m³ × calorific value ${conv.brennwert.toFixed(1)} × ` +
-        `correction factor ${conv.zustandszahl.toFixed(4)} ÷ 3.6 = <b style="color:#1b2327;">${formatInt(conv.kwh)} kWh</b></div>`
-      : "";
   const notes =
     vm.notes.length === 0
       ? ""
       : `<div style="margin-top:8px;font-size:27px;color:#8a9298;line-height:1.6;flex:none;">` +
         vm.notes.map((n) => `<div>${escapeHtml(n)}</div>`).join("") +
         `</div>`;
+  const electricitySection = vm.sections?.find((section) => section.title === "Electricity");
+  const electricityKwh = Number(
+    electricitySection?.lines
+      .find((line) => line.label.includes("unit rate"))
+      ?.label.match(/([\d,]+) kWh/)?.[1]
+      ?.replaceAll(",", "") ?? "0",
+  );
+  const annualElectricityUsage = round2((electricityKwh * 365) / vm.periodDays);
+  const annualElectricityCost = round2(
+    ((annualElectricityUsage * BGAS_ELECTRICITY_UNIT_P) / 100 +
+      (365 * BGAS_ELECTRICITY_STANDING_P) / 100) *
+      1.05,
+  );
+  const tariffColumn = (
+    fuel: "gas" | "electricity",
+    annualUsageValue: number,
+    annualCostValue: number,
+    includeNotes = false,
+  ): string => {
+    const title = fuel === "gas" ? "Gas" : "Electricity";
+    return (
+      `<div style="flex:1;min-width:0;font-size:29px;line-height:1.5;color:#1b2327;">` +
+      `<div style="display:flex;gap:20px;"><span style="font-weight:800;white-space:nowrap;color:${BGAS_NAVY};width:320px;flex:none;">Your ${fuel} tariff:</span><span>Standard Variable Tariff</span></div>` +
+      `<div style="display:flex;gap:20px;"><span style="font-weight:800;white-space:nowrap;width:320px;flex:none;">Payment method:</span><span>Pay on receipt of a monthly bill</span></div>` +
+      `<div style="display:flex;gap:20px;margin-top:14px;"><span style="font-weight:800;white-space:nowrap;width:320px;flex:none;">Tariff ends:</span><span>No end date</span></div>` +
+      `<div style="display:flex;gap:20px;"><span style="font-weight:800;white-space:nowrap;width:320px;flex:none;">Exit fee:</span><span>None</span></div>` +
+      `<div style="margin-top:24px;display:flex;gap:20px;"><span style="font-weight:800;white-space:nowrap;color:${BGAS_NAVY};width:320px;flex:none;">Annual estimates:</span><span>${title}</span></div>` +
+      `<div style="display:flex;gap:20px;"><span style="font-weight:800;white-space:nowrap;width:320px;flex:none;">Estimated annual usage:</span><span>${annualUsageValue.toFixed(2)} kWh</span></div>` +
+      `<div style="display:flex;gap:20px;"><span style="font-weight:800;white-space:nowrap;width:320px;flex:none;">Estimated annual cost:</span><span>${money(meta, annualCostValue)}</span></div>` +
+      (includeNotes ? notes : "") +
+      `</div>`
+    );
+  };
   return (
     `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:#1b2327;font-family:${UK_FONT};">` +
@@ -321,37 +341,14 @@ function renderBritishGas(vm: BillViewModel, meta: TemplateMeta, opts: RenderOpt
     `<div style="font-size:42px;font-weight:800;color:#1b2327;">Please pay ${money(meta, vm.total)} by ${escapeHtml(fullMonthDate(vm.dueDate))} - thank you</div>` +
     `<div style="font-size:34px;color:#333c42;margin-top:24px;">You can find simple ways to pay on the last page of this bill.</div>` +
     `</div></div>` +
-    /* 燃气费用明细（含 m³→kWh 换算；参考图第 2 页内容，合并到单页） */
-    `<div style="margin-top:24px;border-left:10px solid ${BGAS_NAVY};padding-left:36px;flex:none;">` +
-    `<div style="font-size:30px;letter-spacing:2px;color:${BGAS_NAVY};text-transform:uppercase;font-weight:800;">Your gas charges in detail · 费用明细</div>` +
-    (meter !== undefined
-      ? `<div style="font-size:28px;color:#5a656c;margin-top:8px;">Meter reading: ${escapeHtml(meter.previous)} → ` +
-        `${escapeHtml(meter.current)} (<b style="color:#1b2327;">${escapeHtml(meter.usage)}</b> used)</div>`
-      : "") +
-    conversionLine +
-    `<div style="margin-top:10px;">${chargeRows}` +
-    `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #dbe9f5;">` +
-    `<span style="font-size:30px;color:#333c42;">${escapeHtml(vm.taxLabel)}</span>` +
-    `<span style="font-size:30px;font-variant-numeric:tabular-nums;color:#1b2327;">${money(meta, vm.tax)}</span></div>` +
-    `<div style="display:flex;justify-content:space-between;padding:12px 0;align-items:baseline;">` +
-    `<span style="font-size:34px;font-weight:800;">Total for this bill</span>` +
-    `<span style="font-size:42px;font-weight:800;color:${BGAS_NAVY};font-variant-numeric:tabular-nums;">${money(meta, vm.total)}</span></div></div></div>` +
-    /* 底部：tariff 信息 + 年度预估 + Did you know（参考图三栏节奏） */
-    `<div style="margin-top:24px;border-top:3px solid ${BGAS_NAVY};padding-top:32px;display:flex;gap:80px;flex:none;">` +
-    `<div style="flex:1.2;font-size:29px;line-height:1.5;color:#1b2327;">` +
-    `<div style="display:flex;gap:26px;"><span style="font-weight:800;color:${BGAS_NAVY};width:300px;flex:none;">Your gas tariff:</span><span>Standard Variable Tariff</span></div>` +
-    `<div style="display:flex;gap:26px;"><span style="font-weight:800;width:300px;flex:none;">Payment method:</span><span>Pay on receipt of a monthly bill</span></div>` +
-    `<div style="display:flex;gap:26px;margin-top:14px;"><span style="font-weight:800;width:300px;flex:none;">Tariff ends:</span><span>No end date</span></div>` +
-    `<div style="display:flex;gap:26px;"><span style="font-weight:800;width:300px;flex:none;">Exit fee:</span><span>None</span></div></div>` +
-    `<div style="flex:1.2;font-size:29px;line-height:1.5;color:#1b2327;">` +
-    `<div style="display:flex;gap:26px;"><span style="font-weight:800;color:${BGAS_NAVY};width:380px;flex:none;">Annual estimates:</span><span>Gas</span></div>` +
-    `<div style="display:flex;gap:26px;"><span style="font-weight:800;width:380px;flex:none;">Estimated annual usage:</span><span>${formatInt(annualUsage)} kWh</span></div>` +
-    `<div style="display:flex;gap:26px;"><span style="font-weight:800;width:380px;flex:none;">Estimated annual cost:</span><span>${money(meta, annualCost)}</span></div></div>` +
+    /* 底部：燃气/电力双资费信息 + 年度预估 + Did you know（对齐参考图首屏） */
+    `<div style="margin-top:100px;border-top:3px solid ${BGAS_NAVY};padding-top:32px;display:flex;gap:56px;flex:none;">` +
+    tariffColumn("gas", annualUsage, annualCost, true) +
+    tariffColumn("electricity", annualElectricityUsage, annualElectricityCost) +
     `<div style="flex:1;"><div style="display:flex;align-items:center;gap:18px;">` +
     `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="52" viewBox="0 0 64 52"><rect x="3" y="3" width="58" height="38" rx="4" fill="none" stroke="${BGAS_NAVY}" stroke-width="5"/><line x1="24" y1="49" x2="40" y2="49" stroke="${BGAS_NAVY}" stroke-width="5"/><line x1="32" y1="41" x2="32" y2="49" stroke="${BGAS_NAVY}" stroke-width="5"/></svg>` +
     `<span style="font-size:40px;font-weight:800;color:${BGAS_NAVY};">Did you know?</span></div>` +
     `<div style="font-size:30px;color:#333c42;line-height:1.6;margin-top:16px;">It's always a good idea to check online for the best tariff deals available.</div></div></div>` +
-    notes +
     `<div style="margin-top:auto;padding-top:24px;font-size:27px;color:#a2a9ae;line-height:1.6;flex:none;">` +
     `If you're finding it hard to pay your energy bill, there are a number of ways we can help you. ` +
     `Visit <b style="color:#5a656c;">britishgas.co.uk/payhelp</b><br/>` +
@@ -372,12 +369,47 @@ export const ukBritishGasGas: BillTemplate = {
   compute(input: BillInput, rng: () => number): BillViewModel {
     const base = buildBase(input, BGAS_META);
     const days = BGAS_META.periodDays;
-    const m3 = 100 + Math.floor(rng() * 260);
+    const m3 = 24 + Math.floor(rng() * 20);
     const kwh = Math.round((m3 * BGAS_CALORIFIC * BGAS_CORRECTION) / 3.6);
+    const electricityKwh = 90 + Math.floor(rng() * 100);
     const prevReading = 4300 + Math.floor(rng() * 2000);
     const standing = round2((days * BGAS_STANDING_P) / 100);
     const unit = round2((kwh * BGAS_UNIT_P) / 100);
-    const subtotal = round2(standing + unit);
+    const electricityStanding = round2((days * BGAS_ELECTRICITY_STANDING_P) / 100);
+    const electricityUnit = round2((electricityKwh * BGAS_ELECTRICITY_UNIT_P) / 100);
+    const gasSection: ChargeSection = {
+      title: "Gas",
+      subtitle: "Standard Variable Tariff",
+      lines: [
+        {
+          label: `Gas standing charge · ${days} days × ${BGAS_STANDING_P.toFixed(1)}p/day`,
+          amount: standing,
+        },
+        {
+          label: `Gas unit rate · ${formatInt(kwh)} kWh × ${BGAS_UNIT_P.toFixed(2)}p/kWh`,
+          amount: unit,
+        },
+      ],
+      sectionTotal: round2(standing + unit),
+    };
+    const electricitySection: ChargeSection = {
+      title: "Electricity",
+      subtitle: "Standard Variable Tariff",
+      lines: [
+        {
+          label: `Electricity standing charge · ${days} days × ${BGAS_ELECTRICITY_STANDING_P.toFixed(1)}p/day`,
+          amount: electricityStanding,
+        },
+        {
+          label: `Electricity unit rate · ${formatInt(electricityKwh)} kWh × ${BGAS_ELECTRICITY_UNIT_P.toFixed(1)}p/kWh`,
+          amount: electricityUnit,
+        },
+      ],
+      sectionTotal: round2(electricityStanding + electricityUnit),
+    };
+    const sections = [gasSection, electricitySection];
+    const charges = sections.flatMap((section) => section.lines);
+    const subtotal = round2(sections.reduce((sum, section) => sum + section.sectionTotal, 0));
     const tax = round2(subtotal * 0.05);
     const currentCharges = round2(subtotal + tax);
     const previousBalance = round2(30 + rng() * 90);
@@ -412,16 +444,8 @@ export const ukBritishGasGas: BillTemplate = {
       bars: [],
       barUnit: "",
       barTitle: "",
-      charges: [
-        {
-          label: `Gas standing charge · ${days} days × ${BGAS_STANDING_P.toFixed(1)}p/day`,
-          amount: standing,
-        },
-        {
-          label: `Gas unit rate · ${formatInt(kwh)} kWh × ${BGAS_UNIT_P.toFixed(2)}p/kWh`,
-          amount: unit,
-        },
-      ],
+      charges,
+      sections,
       subtotal,
       taxLabel: "VAT at 5%",
       tax,
@@ -456,6 +480,8 @@ const EON_INK = "#361549";
 const EON_PINK_ROW = "#ece3e8";
 const EON_STANDING_P = 48.9;
 const EON_UNIT_P = 26.4;
+const EON_GAS_STANDING_P = 32.1;
+const EON_GAS_UNIT_P = 7.14;
 
 /** 粉色闪电吉祥物（装饰性 SVG） */
 function eonBolt(): string {
@@ -492,9 +518,28 @@ function renderEonNext(vm: BillViewModel, meta: TemplateMeta, opts: RenderOption
   const annualCost = round2(
     ((kwhUsed * 365 * EON_UNIT_P) / vm.periodDays / 100 + (365 * EON_STANDING_P) / 100) * 1.05,
   );
+  const electricitySection = vm.sections?.find((section) => section.title === "Electricity");
+  const gasSection = vm.sections?.find((section) => section.title === "Gas");
+  const electricityCurrent = electricitySection?.sectionTotal ?? s.currentCharges;
+  const gasCurrent = gasSection?.sectionTotal ?? 0;
+  const annualGasCost = round2((gasCurrent * 365) / vm.periodDays);
+  const gasMpan = `${digitsFrom(rr, 2)} ${digitsFrom(rr, 4)} ${digitsFrom(rr, 4)} ${digitsFrom(rr, 3)}`;
+  const gasSaveSimilar = round2(saveSimilar + 0.97);
+  const gasSaveOverall = round2(saveOverall + 12.08);
   const periodParts = vm.periodStart.split(" ");
   const ddDate = `${5 + Math.floor(rr() * 20)} ${periodParts[1] ?? "Aug"} ${periodParts[2] ?? "2026"}`;
   const billRefDigits = vm.invoiceNumber.replace(/[^\d]/g, "");
+  const tariffRecommendation = (
+    fuel: "electricity" | "gas",
+    meterPoint: string,
+    similarSaving: number,
+    overallSaving: number,
+  ): string =>
+    `<div style="margin-top:36px;font-size:28px;">For your <b>${fuel}</b> (on meter point ${meterPoint})</div>` +
+    `<div style="margin-top:60px;font-size:32px;line-height:1.6;">Our <b>cheapest similar tariff</b> is ` +
+    `<b>Next Pledge Tracker 12m v5</b> - you could save <b>${money(meta, similarSaving)}</b> a year by switching to this.</div>` +
+    `<div style="margin-top:60px;font-size:32px;line-height:1.6;">Our <b>cheapest tariff overall</b> is ` +
+    `<b>Next Secure Fixed 12m v14</b> - you could save <b>${money(meta, overallSaving)}</b> a year by switching to this.</div>`;
   return (
     `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:${EON_INK};font-family:${UK_FONT};">` +
@@ -533,9 +578,13 @@ function renderEonNext(vm: BillViewModel, meta: TemplateMeta, opts: RenderOption
     `<span style="font-size:34px;font-weight:800;">On ${escapeHtml(vm.periodStart)} your previous balance was</span>` +
     `<span style="font-size:34px;font-variant-numeric:tabular-nums;">${money(meta, s.previousBalance)} CR</span></div>` +
     `<div style="margin-top:70px;font-size:34px;font-weight:800;">We have charged you (VAT is included)</div>` +
-    `<div style="margin-top:30px;display:flex;justify-content:space-between;align-items:baseline;font-size:34px;">` +
+    `<div style="margin-top:30px;font-size:34px;">` +
+    `<div style="display:flex;justify-content:space-between;align-items:baseline;">` +
     `<span>Electricity</span><span style="font-size:29px;color:#5a4a6e;">${escapeHtml(vm.periodStart)} - ${escapeHtml(vm.periodEnd)}</span>` +
-    `<span style="font-variant-numeric:tabular-nums;">${money(meta, s.currentCharges)} DR</span></div>` +
+    `<span style="font-variant-numeric:tabular-nums;">${money(meta, electricityCurrent)} DR</span></div>` +
+    `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:20px;">` +
+    `<span>Gas</span><span style="font-size:29px;color:#5a4a6e;">${escapeHtml(vm.periodStart)} - ${escapeHtml(vm.periodEnd)}</span>` +
+    `<span style="font-variant-numeric:tabular-nums;">${money(meta, gasCurrent)} DR</span></div></div>` +
     `<div style="margin-top:100px;font-size:34px;font-weight:800;">You have paid</div>` +
     `<div style="margin-top:40px;display:flex;justify-content:space-between;align-items:baseline;font-size:34px;">` +
     `<span>Direct Debit collection</span><span style="font-size:29px;color:#5a4a6e;">${escapeHtml(ddDate)}</span>` +
@@ -554,6 +603,7 @@ function renderEonNext(vm: BillViewModel, meta: TemplateMeta, opts: RenderOption
     `<div style="flex:1;padding-left:56px;">` +
     `<div style="font-size:44px;font-weight:800;margin-top:90px;">Your estimated cost for the year.</div>` +
     `<div style="margin-top:22px;font-size:44px;"><b>${money(meta, annualCost)}</b> a year for electricity</div>` +
+    `<div style="margin-top:22px;font-size:44px;"><b>${money(meta, annualGasCost)}</b> a year for gas</div>` +
     `<div style="margin-top:36px;font-size:30px;line-height:1.65;">This is an estimate based on your expected ` +
     `annual energy usage, and your current tariff rates, charges and discounts, including VAT. Actual bills ` +
     `will vary depending on your usage and tariff selection.</div>` +
@@ -561,11 +611,8 @@ function renderEonNext(vm: BillViewModel, meta: TemplateMeta, opts: RenderOption
     `<div style="font-size:38px;font-weight:800;">Could you save money and pay less?</div>` +
     `<div style="margin-top:36px;font-size:30px;line-height:1.65;">Remember - it might be worth thinking about ` +
     `switching your tariff or supplier.</div>` +
-    `<div style="margin-top:36px;font-size:28px;">For your <b>electricity</b> (on meter point ${mpan})</div>` +
-    `<div style="margin-top:60px;font-size:32px;line-height:1.6;">Our <b>cheapest similar tariff</b> is ` +
-    `<b>Next Pledge Tracker 12m v5</b> - you could save <b>${money(meta, saveSimilar)}</b> a year by switching to this.</div>` +
-    `<div style="margin-top:60px;font-size:32px;line-height:1.6;">Our <b>cheapest tariff overall</b> is ` +
-    `<b>Next Secure Fixed 12m v14</b> - you could save <b>${money(meta, saveOverall)}</b> a year by switching to this.</div>` +
+    tariffRecommendation("electricity", mpan, saveSimilar, saveOverall) +
+    tariffRecommendation("gas", gasMpan, gasSaveSimilar, gasSaveOverall) +
     `<div style="margin-top:56px;font-size:30px;line-height:1.65;">Paying by Direct Debit is cheaper than if you ` +
     `pay when you get your bill. For our cheapest tariffs you may need to change your meter or the way you pay.</div></div></div>` +
     `</div>` +
@@ -591,10 +638,45 @@ export const ukEonNextPower: BillTemplate = {
     const base = buildBase(input, EON_META);
     const days = EON_META.periodDays;
     const kwh = 180 + Math.floor(rng() * 320);
+    const gasKwh = 850 + Math.floor(rng() * 500);
     const prevReading = 8000 + Math.floor(rng() * 6000);
     const standing = round2((days * EON_STANDING_P) / 100);
     const unit = round2((kwh * EON_UNIT_P) / 100);
-    const subtotal = round2(standing + unit);
+    const gasStanding = round2((days * EON_GAS_STANDING_P) / 100);
+    const gasUnit = round2((gasKwh * EON_GAS_UNIT_P) / 100);
+    const electricitySection: ChargeSection = {
+      title: "Electricity",
+      subtitle: "Standard electricity tariff",
+      lines: [
+        {
+          label: `Electricity standing charge · ${days} days × ${EON_STANDING_P.toFixed(1)}p/day`,
+          amount: standing,
+        },
+        {
+          label: `Electricity unit rate · ${formatInt(kwh)} kWh × ${EON_UNIT_P.toFixed(1)}p/kWh`,
+          amount: unit,
+        },
+      ],
+      sectionTotal: round2(standing + unit),
+    };
+    const gasSection: ChargeSection = {
+      title: "Gas",
+      subtitle: "Standard gas tariff",
+      lines: [
+        {
+          label: `Gas standing charge · ${days} days × ${EON_GAS_STANDING_P.toFixed(1)}p/day`,
+          amount: gasStanding,
+        },
+        {
+          label: `Gas unit rate · ${formatInt(gasKwh)} kWh × ${EON_GAS_UNIT_P.toFixed(2)}p/kWh`,
+          amount: gasUnit,
+        },
+      ],
+      sectionTotal: round2(gasStanding + gasUnit),
+    };
+    const sections = [electricitySection, gasSection];
+    const charges = sections.flatMap((section) => section.lines);
+    const subtotal = round2(sections.reduce((sum, section) => sum + section.sectionTotal, 0));
     const tax = round2(subtotal * 0.05);
     const currentCharges = round2(subtotal + tax);
     const previousBalance = round2(20 + rng() * 60);
@@ -629,16 +711,8 @@ export const ukEonNextPower: BillTemplate = {
       bars: [],
       barUnit: "",
       barTitle: "",
-      charges: [
-        {
-          label: `Electricity standing charge · ${days} days × ${EON_STANDING_P.toFixed(1)}p/day`,
-          amount: standing,
-        },
-        {
-          label: `Electricity unit rate · ${formatInt(kwh)} kWh × ${EON_UNIT_P.toFixed(1)}p/kWh`,
-          amount: unit,
-        },
-      ],
+      charges,
+      sections,
       subtotal,
       taxLabel: "VAT at 5% (included in totals)",
       tax,
@@ -721,7 +795,7 @@ function twLandscape(): string {
   );
 }
 
-function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOptions): string {
+function renderThamesWater(vm: BillViewModel, opts: RenderOptions): string {
   const addressHtml = vm.addressLines
     .map(
       (line) =>
@@ -732,31 +806,6 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
     .map((line) => `<div>${escapeHtml(line)}</div>`)
     .join("");
   const qr = pseudoQrSvg(vm.qrSeed, { module: 7 });
-  const sections = (vm.sections ?? [])
-    .map((section) => {
-      const rows = section.lines
-        .map(
-          (line) =>
-            `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #d7ecf5;">` +
-            `<span style="font-size:29px;color:#333c42;">${escapeHtml(line.label)}</span>` +
-            `<span style="font-size:29px;font-variant-numeric:tabular-nums;color:#1b2327;">${money(meta, line.amount)}</span></div>`,
-        )
-        .join("");
-      return (
-        `<div style="margin-top:18px;">` +
-        `<div style="display:flex;justify-content:space-between;align-items:baseline;">` +
-        `<span style="font-size:32px;font-weight:800;color:${TW_CYAN};">${escapeHtml(section.title)}</span>` +
-        (section.subtitle !== undefined
-          ? `<span style="font-size:26px;color:#5a656c;">${escapeHtml(section.subtitle)}</span>`
-          : "") +
-        `</div><div style="margin-top:6px;">${rows}` +
-        `<div style="display:flex;justify-content:space-between;padding:10px 0;">` +
-        `<span style="font-size:29px;font-weight:600;color:#5a656c;">${escapeHtml(section.title)} total</span>` +
-        `<span style="font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;">${money(meta, section.sectionTotal)}</span></div></div></div>`
-      );
-    })
-    .join("");
-  const meter = vm.meterRows[0];
   const howToPayCol = (text: string): string =>
     `<div style="flex:1;display:flex;gap:18px;align-items:flex-start;">${twCheck()}` +
     `<div style="font-size:29px;color:#333c42;line-height:1.55;">${text}</div></div>`;
@@ -789,7 +838,7 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
     `<circle cx="55" cy="55" r="50" fill="none" stroke="#ffffff" stroke-width="5"/>` +
     `<path d="M55 24 C55 24 34 54 34 70 a21 21 0 0 0 42 0 C76 54 55 24 55 24 Z" fill="none" stroke="#ffffff" stroke-width="5"/></svg>` +
     `<div><div style="font-size:42px;color:#ffffff;">What to pay</div>` +
-    `<div style="font-size:110px;font-weight:300;color:#ffffff;line-height:1.15;font-variant-numeric:tabular-nums;">${money(meta, vm.total)}</div></div></div>` +
+    `<div style="font-size:110px;font-weight:300;color:#ffffff;line-height:1.15;font-variant-numeric:tabular-nums;">${money(TW_META, vm.total)}</div></div></div>` +
     /* 蓝色 When to pay by 卡（独立圆角卡，与绿卡留有间隙） */
     `<div style="background:${TW_CYAN};padding:48px 56px;display:flex;align-items:center;gap:40px;border-radius:18px;margin-top:95px;flex:none;">` +
     `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">` +
@@ -801,7 +850,7 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
     `<div><div style="font-size:40px;color:#ffffff;">When to pay by</div>` +
     `<div style="font-size:72px;font-weight:700;color:#ffffff;line-height:1.2;">${escapeHtml(fullMonthDate(vm.dueDate))}</div></div></div>` +
     /* How to pay 面板 */
-    `<div style="margin-top:160px;background:${TW_PANEL_BG};border-radius:18px;padding:30px 50px;flex:none;">` +
+    `<div style="margin-top:160px;background:${TW_PANEL_BG};border-radius:18px;padding:70px 56px 76px;min-height:720px;box-sizing:border-box;flex:none;">` +
     `<div style="font-size:44px;font-weight:300;color:${TW_CYAN};">How to pay</div>` +
     `<div style="font-size:36px;font-weight:700;color:${TW_CYAN};margin-top:10px;">Break your bill into instalments with Direct Debit</div>` +
     `<div style="display:flex;gap:34px;margin-top:30px;">` +
@@ -811,20 +860,6 @@ function renderThamesWater(vm: BillViewModel, meta: TemplateMeta, opts: RenderOp
     `</div>` +
     `<div style="font-size:28px;color:#333c42;margin-top:28px;">Sign up through your online account at <b style="color:${TW_CYAN};">thameswater.co.uk/myaccount</b></div>` +
     `<div style="font-size:28px;color:#333c42;margin-top:10px;">For other ways to pay, turn to section 3.</div></div>` +
-    /* Your charges */
-    `<div style="margin-top:10px;flex:none;"><div style="font-size:44px;font-weight:300;color:${TW_CYAN};">Your charges</div>` +
-    (meter !== undefined
-      ? `<div style="font-size:29px;color:#5a656c;margin-top:10px;">Meter reading: ${escapeHtml(meter.previous)} → ` +
-        `${escapeHtml(meter.current)} (<b style="color:#1b2327;">${escapeHtml(meter.usage)}</b> over the last ${vm.periodDays} days)</div>`
-      : "") +
-    sections +
-    `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #d7ecf5;margin-top:6px;">` +
-    `<span style="font-size:29px;color:#333c42;">${escapeHtml(vm.taxLabel)}</span>` +
-    `<span style="font-size:29px;font-variant-numeric:tabular-nums;color:#1b2327;">${money(meta, vm.tax)}</span></div>` +
-    `<div style="display:flex;justify-content:space-between;padding:12px 0;align-items:baseline;">` +
-    `<span style="font-size:34px;font-weight:800;">Total for this bill</span>` +
-    `<span style="font-size:44px;font-weight:800;color:${TW_CYAN};font-variant-numeric:tabular-nums;">${money(meta, vm.total)}</span></div></div>` +
-    `<div style="margin-top:16px;padding-top:14px;border-top:1px solid #d7ecf5;font-size:26px;color:#a2a9ae;line-height:1.7;">${fictionalNotice()}</div>` +
     `</div>` +
     /* 右侧信息侧栏 */
     `<div style="width:740px;flex:none;background:${TW_SIDEBAR_BG};">` +
@@ -971,6 +1006,6 @@ export const ukThamesWaterWater: BillTemplate = {
     };
   },
   renderHtml(vm: BillViewModel, opts: RenderOptions): string {
-    return renderThamesWater(vm, TW_META, opts);
+    return renderThamesWater(vm, opts);
   },
 };

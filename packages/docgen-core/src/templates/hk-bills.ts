@@ -154,6 +154,11 @@ function fmtNum2(n: number): string {
   }).format(n);
 }
 
+/** 参考单据的正文金额只显示美元符号；HK$ 仅作为明细栏的币种栏头。 */
+function hkMoney(n: number): string {
+  return `$${fmtNum2(n)}`;
+}
+
 /** 分 → 元（整数分运算保证勾稽分毫不差） */
 function fromCents(c: number): number {
   return round2(c / 100);
@@ -184,16 +189,15 @@ function splitLabel(label: string): { caption: string; detail: string } {
   return { caption: parts[1] ?? "", detail: parts[2] ?? "" };
 }
 
-/** 电力标志：四片圆角方块旋转 45° 组成的风车标（黄/绿/蓝），对齐参考图 */
+/** 电力标志：参考图中的中電四色折面标。 */
 function powerLogoMark(): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="120" height="120">` +
-    `<g transform="rotate(45 50 50)">` +
-    `<rect x="12" y="12" width="34" height="34" rx="9" fill="#f5d70a"/>` +
-    `<rect x="54" y="12" width="34" height="34" rx="9" fill="#8dc63f"/>` +
-    `<rect x="12" y="54" width="34" height="34" rx="9" fill="#1b62ae"/>` +
-    `<rect x="54" y="54" width="34" height="34" rx="9" fill="#2b8ac4"/>` +
-    `</g></svg>`
+    `<path d="M0 0H50L100 50H50Z" fill="#f5d70a"/>` +
+    `<path d="M0 0L50 50L0 100Z" fill="#2b3990"/>` +
+    `<path d="M50 0H100V50H50Z" fill="#8dc63f"/>` +
+    `<path d="M0 100H50L100 50V100Z" fill="#2b8ac4"/>` +
+    `</svg>`
   );
 }
 
@@ -286,7 +290,6 @@ function powerChart(vm: BillViewModel, billIso: string): string {
 }
 
 function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
-  const meta = POWER_META;
   const billIso = parseEnDate(vm.billDate);
   const dueIso = parseEnDate(vm.dueDate);
   const startIso = parseEnDate(vm.periodStart);
@@ -352,7 +355,7 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<span><span style="display:block;font-size:33px;font-weight:800;">${zh}</span>` +
     `<span style="display:block;font-size:24px;opacity:0.92;">${en}</span></span></div>` +
     `<div style="background:#ffffff;padding:20px 12px;text-align:center;font-size:48px;font-weight:800;` +
-    `font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, value))}</div></div>`;
+    `font-variant-numeric:tabular-nums;">${escapeHtml(hkMoney(value))}</div></div>`;
   const connector = (ch: string): string =>
     `<div style="flex:none;align-self:center;font-size:64px;font-weight:300;color:#8a9298;">${ch}</div>`;
   const acctBarcode = code128Svg(acct.payload, { moduleWidth: 5, height: 130 });
@@ -397,7 +400,7 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="font-size:26px;color:#5a656c;margin-top:2px;">發單日期（日 - 月 - 年）</div>` +
     `<div style="font-size:40px;font-weight:800;">${escapeHtml(fmtDash2(billIso))}</div></div>` +
     `<div style="font-size:30px;line-height:1.6;">由 ${escapeHtml(fmtDash2(startIso))} 至 ${escapeHtml(fmtDash2(endIso))}<br/>共 ${vm.periodDays} 日用電量</div>` +
-    `<div style="font-size:32px;margin-left:286px;">按金 <b style="font-size:36px;">${escapeHtml(fmtMeta(meta, deposit))}</b></div>` +
+    `<div style="font-size:32px;margin-left:286px;">按金 <b style="font-size:36px;">${escapeHtml(hkMoney(deposit))}</b></div>` +
     `<div style="font-size:30px;margin-left:auto;">第 1/2 頁</div></div>` +
     // 主区：左（公式块 + 奶黄明细框[内嵌柱图]） 右（應繳總數圆徽 + 电表小表 + 補貼餘額 + 转数快）
     // 负外边距让明细框/圆徽比正文文字更靠边缘（参考图：框 x≈44、圆徽右缘 x≈2432）
@@ -446,10 +449,10 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="width:640px;height:640px;border-radius:50%;border:16px solid ${POWER_GREEN};background:#ffffff;` +
     `display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;margin:0 auto;">` +
     `<div style="font-size:40px;">應繳總數</div>` +
-    `<div style="font-size:88px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15;">${escapeHtml(fmtMeta(meta, vm.total))}</div>` +
+    `<div style="font-size:88px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15;">${escapeHtml(hkMoney(vm.total))}</div>` +
     `<div style="font-size:30px;margin-top:10px;">繳款限期</div>` +
     `<div style="font-size:56px;font-weight:800;">${escapeHtml(fmtDash2(dueIso))}</div>` +
-    `<div style="font-size:27px;color:#333c42;margin-top:18px;line-height:1.6;">上次繳費 ${escapeHtml(fmtMeta(meta, lastPayment))}<br/>已於 ${escapeHtml(lastPayDate)} 收到　謝謝</div></div>` +
+    `<div style="font-size:27px;color:#333c42;margin-top:18px;line-height:1.6;">上次繳費 ${escapeHtml(hkMoney(lastPayment))}<br/>已於 ${escapeHtml(lastPayDate)} 收到　謝謝</div></div>` +
     `<div style="margin-top:320px;">` +
     `<div style="display:flex;gap:14px;font-size:24px;">` +
     `<span style="flex:1.3;text-decoration:underline;">電錶號碼</span>` +
@@ -460,7 +463,7 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<span style="flex:1.3;">${escapeHtml(meterNo)}</span><span style="flex:1;">1</span>` +
     `<span style="flex:1;">${escapeHtml(meter?.previous ?? "")}</span>` +
     `<span style="flex:1;">${escapeHtml(meter?.current ?? "")}</span></div>` +
-    `<div style="margin-top:16px;font-size:26px;line-height:1.6;">政府電費紓緩計劃餘額為 ${escapeHtml(fmtMeta(meta, 0))}<br/>政府電費補貼餘額為 ${escapeHtml(fmtMeta(meta, 0))}</div></div>` +
+    `<div style="margin-top:16px;font-size:26px;line-height:1.6;">政府電費紓緩計劃餘額為 ${escapeHtml(hkMoney(0))}<br/>政府電費補貼餘額為 ${escapeHtml(hkMoney(0))}</div></div>` +
     `<div style="margin-top:auto;border:3px solid #6d7872;border-radius:14px;padding:26px;text-align:center;">` +
     `<div style="font-size:32px;font-weight:700;">「轉數快」繳費</div>` +
     `<div style="margin-top:12px;display:inline-block;">${pseudoQrSvg(vm.qrSeed, { module: 10 })}</div></div>` +
@@ -470,7 +473,7 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
     `<div style="font-size:32px;">編賬號碼：　<b style="font-size:36px;">${escapeHtml(acct.formatted)}</b></div>` +
     `<div style="display:flex;align-items:center;gap:60px;">` +
-    `<div style="font-size:32px;">應繳總數：　<b style="font-size:42px;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, vm.total))}</b></div>` +
+    `<div style="font-size:32px;">應繳總數：　<b style="font-size:42px;font-variant-numeric:tabular-nums;">${escapeHtml(hkMoney(vm.total))}</b></div>` +
     `<div style="font-size:28px;color:#333c42;">存根</div></div>` +
     `<div style="border:3px solid #1b2327;text-align:center;">` +
     `<div style="padding:12px 24px;font-size:26px;line-height:1.4;">${emissionYear} 年平均每度電<br/>二氧化碳當量排放：</div>` +
@@ -742,17 +745,17 @@ function renderWaterHtml(vm: BillViewModel, opts: RenderOptions): string {
     `background:${soft};display:flex;align-items:center;justify-content:center;z-index:2;">${dropletGlyph()}</div>` +
     `<div style="border:10px solid ${soft};border-radius:42px;padding:80px 40px 50px;text-align:center;background:#ffffff;">` +
     `<div style="font-size:38px;">應繳總額</div>` +
-    `<div style="font-size:72px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.2;">${escapeHtml(fmtMeta(meta, vm.total))}</div>` +
+    `<div style="font-size:72px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.2;">${escapeHtml(hkMoney(vm.total))}</div>` +
     `<div style="font-size:32px;margin-top:8px;">繳款限期</div>` +
     `<div style="font-size:56px;font-weight:800;">${escapeHtml(fmtSlash(dueIso))}</div>` +
     `<div style="font-size:27px;margin-top:6px;">在此日期後加收5%附加費</div>` +
     `<div style="font-size:31px;font-weight:700;margin-top:30px;">繳款單編號 : ${escapeHtml(acct.payload)}</div></div></div>` +
     `<div style="margin-top:30px;font-size:29px;line-height:1.8;">` +
     `<div>上次繳款日期 : ${escapeHtml(lastPayDate)}</div>` +
-    `<div>上次繳款金額 : ${escapeHtml(fmtMeta(meta, lastPayAmount))}</div>` +
-    `<div>現存按金款額 : ${escapeHtml(fmtMeta(meta, depositHeld))}</div>` +
-    `<div>爭議金額 : ${escapeHtml(fmtMeta(meta, 0))}</div>` +
-    `<div>分期付款金額 : ${escapeHtml(fmtMeta(meta, 0))}</div></div>` +
+    `<div>上次繳款金額 : ${escapeHtml(hkMoney(lastPayAmount))}</div>` +
+    `<div>現存按金款額 : ${escapeHtml(hkMoney(depositHeld))}</div>` +
+    `<div>爭議金額 : ${escapeHtml(hkMoney(0))}</div>` +
+    `<div>分期付款金額 : ${escapeHtml(hkMoney(0))}</div></div>` +
     `</div></div>` +
     // 供水性质 + 双栏试算
     `<div style="margin-top:180px;font-size:31px;">供水性質：住宅供水（010030）</div>` +
@@ -801,7 +804,7 @@ function renderWaterHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="flex:1;border:10px solid ${soft};border-radius:30px;padding:14px 36px;` +
     `display:flex;justify-content:space-around;text-align:center;">` +
     `<div><div style="font-size:32px;font-weight:700;">應繳總額</div>` +
-    `<div style="font-size:46px;font-weight:800;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, vm.total))}</div></div>` +
+    `<div style="font-size:46px;font-weight:800;font-variant-numeric:tabular-nums;">${escapeHtml(hkMoney(vm.total))}</div></div>` +
     `<div><div style="font-size:32px;font-weight:700;">繳款限期</div>` +
     `<div style="font-size:42px;font-weight:800;">${escapeHtml(fmtSlash(dueIso))}</div>` +
     `<div style="font-size:22px;">在此日期後加收5%附加費</div></div></div>` +
