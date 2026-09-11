@@ -190,8 +190,8 @@ const ICON_DD = `<path d="M3 17 12 5l9 12z"/><path d="M8 21h8"/>`;
 /* ================= AGL 版式（燃气，浅蓝圆角面板流） ================= */
 
 const AGL_PALE = "#e3f1fb";
-const AGL_TEXT_BLUE = "#0046aa";
-const AGL_GRAY_BG = "#f5f5f5";
+const AGL_TEXT_BLUE = "#021eb0";
+const AGL_GRAY_BG = "#f3f3f3";
 
 /** 扇形渐变光芒 logo（按参考图：5 道蓝青渐变光芒）+ 黑色小写 "agl" 字标 */
 function aglLogo(): string {
@@ -252,11 +252,11 @@ function aglDetailRow(label: string, value: string): string {
 /** Amount due / Help and support 双卡片（渐变蓝药丸标题 + 白卡无描边） */
 function aglCards(vm: BillViewModel): string {
   const header = (icon: string, title: string): string =>
-    `<div style="background:linear-gradient(90deg,#0a5fa5,#00b4e0);border-radius:26px;` +
+    `<div style="background:linear-gradient(90deg,#0030b6,#00c9e6);border-radius:26px;` +
     `padding:20px 40px;display:flex;align-items:center;gap:20px;">${iconSvg(icon, "#ffffff", 44)}` +
     `<span style="font-size:46px;font-weight:800;color:#ffffff;">${title}</span></div>`;
   return (
-    `<div style="display:flex;justify-content:space-between;margin-top:80px;margin-left:640px;">` +
+    `<div style="display:flex;justify-content:space-between;margin-top:105px;margin-left:640px;">` +
     `<div style="width:640px;">` +
     header(ICON_HEADSET, "Help and support") +
     `<div style="padding:44px 44px 0;">` +
@@ -270,7 +270,7 @@ function aglCards(vm: BillViewModel): string {
     `<div style="padding:44px 44px 0;">` +
     `<div style="font-size:156px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;">` +
     `${escapeHtml(audSp(AGL_GAS_META, vm.total))}</div>` +
-    `<div style="border-top:3px solid #c9d6de;margin-top:52px;padding-top:36px;">` +
+    `<div style="border-top:3px solid #c9d6de;margin-top:66px;padding-top:36px;">` +
     `<div style="font-size:40px;color:#3c464d;">Due date</div>` +
     `<div style="font-size:100px;font-weight:800;margin-top:14px;">${escapeHtml(vm.dueDate)}</div></div>` +
     `</div></div></div>`
@@ -292,12 +292,12 @@ function aglHowToPay(vm: BillViewModel): string {
   const ref = aglRef(vm);
   const crn = `${seededDigits(`crn::${vm.invoiceNumber}`, 3)}-${seededDigits(`crn2::${vm.invoiceNumber}`, 3)}-${seededDigits(`crn3::${vm.invoiceNumber}`, 3)}-J`;
   const topRef = `${seededDigits(`topref::${vm.invoiceNumber}`, 14)}/${seededDigits(`topref2::${vm.invoiceNumber}`, 7)}E-${seededDigits(`topref3::${vm.invoiceNumber}`, 6)} S-${seededDigits(`topref4::${vm.invoiceNumber}`, 6)} I-${seededDigits(`topref5::${vm.invoiceNumber}`, 6)}`;
-  const barcode = code128Svg(ref.raw, { moduleWidth: 2.8, height: 140 });
+  const barcode = code128Svg(ref.raw, { moduleWidth: 2.8, height: 110 });
   const method = (icon: string, title: string, body: string): string =>
-    `<div style="display:flex;gap:26px;margin-top:24px;align-items:flex-start;">` +
+    `<div style="display:flex;gap:26px;margin-top:18px;align-items:flex-start;">` +
     `<div style="flex:none;margin-top:4px;">${iconSvg(icon, "#1b2327", 60)}</div>` +
-    `<div><div style="font-size:40px;font-weight:800;">${title}</div>` +
-    `<div style="font-size:32px;color:#3c464d;line-height:1.55;margin-top:8px;">${body}</div></div></div>`;
+    `<div><div style="font-size:36px;font-weight:800;">${title}</div>` +
+    `<div style="font-size:32px;color:#3c464d;line-height:1.45;margin-top:6px;">${body}</div></div></div>`;
   return (
     `<div style="margin-top:auto;">` +
     `<div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:16px;">` +
@@ -305,7 +305,7 @@ function aglHowToPay(vm: BillViewModel): string {
     `<span style="font-size:22px;color:#8a9298;font-family:'Courier New',monospace;">${topRef}</span></div>` +
     `<div style="border-top:4px dashed #b9b6ad;"></div>` +
     `<div style="background:${AGL_GRAY_BG};margin:0 -130px 0 -240px;padding:22px 130px 20px 240px;">` +
-    `<div style="display:inline-flex;align-items:center;gap:20px;background:${AGL_PALE};border-radius:20px;padding:16px 44px;">` +
+    `<div style="display:inline-flex;align-items:center;gap:20px;background:${AGL_PALE};border-radius:20px;padding:12px 44px;">` +
     `${iconSvg(ICON_WALLET, AGL_TEXT_BLUE, 46)}` +
     `<span style="font-size:46px;font-weight:800;color:${AGL_TEXT_BLUE};">How to pay</span></div>` +
     `<div style="display:flex;justify-content:space-between;margin-top:10px;">` +
@@ -324,28 +324,28 @@ function aglHowToPay(vm: BillViewModel): string {
     `</div>` +
     `<div style="width:640px;">` +
     `<div style="font-size:38px;font-weight:800;margin-top:14px;">Reference number ${escapeHtml(ref.grouped)}</div>` +
-    `<div style="display:flex;gap:28px;margin-top:40px;align-items:flex-start;">${bpayBadge("#123a7a", 104)}` +
+    `<div style="display:flex;gap:28px;margin-top:26px;align-items:flex-start;">${bpayBadge("#031e4a", 104)}` +
     `<div><div style="font-size:40px;font-weight:800;">Biller Code: 208868</div>` +
     `<div style="font-size:40px;font-weight:800;">Ref: ${escapeHtml(ref.grouped)}</div>` +
     `<div style="font-size:30px;color:#3c464d;margin-top:8px;">Make this payment from your preferred account.</div></div></div>` +
-    `<div style="display:flex;gap:28px;margin-top:48px;align-items:flex-start;">${iconSvg(ICON_DOC, "#1b2327", 72)}` +
+    `<div style="display:flex;gap:28px;margin-top:30px;align-items:flex-start;">${iconSvg(ICON_DOC, "#1b2327", 72)}` +
     `<div><div style="font-size:40px;font-weight:800;">Centrepay</div>` +
-    `<div style="font-size:30px;color:#3c464d;line-height:1.55;margin-top:6px;">For eligible individuals: go to ` +
+    `<div style="font-size:28px;color:#3c464d;line-height:1.45;margin-top:4px;">For eligible individuals: go to ` +
     `<b>servicesaustralia.gov.au/centrepay</b> for more information.<br/>AGL Centrepay CRN: <b>${crn}</b></div></div></div>` +
     `</div>` +
     `<div style="width:660px;">` +
     `<div style="display:flex;gap:24px;margin-top:8px;align-items:flex-start;">${iconSvg(ICON_MAIL, "#1b2327", 64)}` +
     `<div><div style="font-size:40px;font-weight:800;">Mail</div>` +
-    `<div style="font-size:32px;color:#1b2327;line-height:1.55;margin-top:6px;">Send your cheque along with the reverse of this section to:<br/>` +
+    `<div style="font-size:30px;color:#1b2327;line-height:1.45;margin-top:4px;">Send your cheque along with the reverse of this section to:<br/>` +
     `<b>AGL Sales Pty Limited<br/>Locked Bag 20024, Melbourne VIC 3001</b></div></div></div>` +
-    `<div style="display:flex;gap:24px;margin-top:44px;align-items:flex-start;">` +
+    `<div style="display:flex;gap:24px;margin-top:22px;align-items:flex-start;">` +
     `<div style="width:64px;height:64px;background:#1b2327;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;">` +
     `<span style="color:#ffffff;font-size:36px;font-weight:900;">P</span></div>` +
     `<div><div style="font-size:40px;font-weight:800;">Post Billpay&#174;^</div>` +
-    `<div style="font-size:32px;color:#1b2327;line-height:1.55;margin-top:6px;">Make a Post Billpay&#174; payment. ` +
+    `<div style="font-size:30px;color:#1b2327;line-height:1.45;margin-top:4px;">Make a Post Billpay&#174; payment. ` +
     `Online: <b>postbillpay.com.au</b> Phone: <b>131 816</b> In person at any Post Office.~ Billpay Code: <b>3201</b></div></div></div>` +
-    `<div style="margin-top:34px;">${barcode}</div>` +
-    `<div style="font-size:30px;letter-spacing:3px;color:#1b2327;margin-top:6px;font-family:'Courier New',monospace;">` +
+    `<div style="margin-top:20px;">${barcode}</div>` +
+    `<div style="font-size:28px;letter-spacing:3px;color:#1b2327;margin-top:4px;font-family:'Courier New',monospace;">` +
     `*3201 ${ref.raw}</div>` +
     `</div></div>` +
     `<div style="font-size:24px;color:#5a656c;line-height:1.6;margin-top:16px;">` +
@@ -391,7 +391,7 @@ function renderAglGas(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="margin-top:80px;">${topBarcode}</div>` +
     `<div style="font-size:26px;color:#3c464d;margin-top:8px;">${escapeHtml(shortCode)}</div>` +
     `<div style="margin-top:20px;"><div style="font-size:44px;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
-    `<div style="margin-top:130px;">` +
+    `<div style="margin-top:190px;">` +
     `<div style="font-size:58px;font-weight:800;color:${AGL_TEXT_BLUE};">Hi ${escapeHtml(vm.customerName)},</div>` +
     `<div style="font-size:50px;font-weight:800;color:${AGL_TEXT_BLUE};margin-top:12px;line-height:1.3;">` +
     `Here's your bi-monthly gas bill for supply address:</div>` +
@@ -399,9 +399,9 @@ function renderAglGas(vm: BillViewModel, opts: RenderOptions): string {
     `</div>` +
     `<div style="width:760px;flex:none;">` +
     `<div style="display:flex;justify-content:flex-end;">${aglGasPill()}</div>` +
-    `<div style="height:32px;"></div>` +
+    `<div style="height:24px;"></div>` +
     aglPanel(ICON_PERSON, "Your details", detailsBody, "0") +
-    aglPanel(ICON_CHAT, "Need help?", helpBody, "32px") +
+    aglPanel(ICON_CHAT, "Need help?", helpBody, "96px") +
     `</div></div>` +
     aglCards(vm) +
     aglHowToPay(vm) +
@@ -480,10 +480,10 @@ export const auAglGas: BillTemplate = {
 
 /* ================= EnergyAustralia 版式（电力，绿色标题栏流） ================= */
 
-const EA_DARK = "#0a5c34";
-const EA_MID = "#17a34a";
-const EA_BRIGHT = "#2e9e4f";
-const EA_PALE = "#eef3ea";
+const EA_DARK = "#004d23";
+const EA_MID = "#05932d";
+const EA_BRIGHT = "#2f963e";
+const EA_PALE = "#eef2ec";
 
 /** 绿色渐变旋涡 logo（按参考图：亮绿卷形弧线 + 内卷叶形）+ "EnergyAustralia" 粗细混排字标 */
 function eaLogo(): string {
@@ -491,7 +491,7 @@ function eaLogo(): string {
     `<div style="display:flex;align-items:center;gap:34px;">` +
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="190" height="190">` +
     `<defs><linearGradient id="eaSwirl" x1="0" y1="0" x2="1" y2="1">` +
-    `<stop offset="0" stop-color="#b5e021"/><stop offset="1" stop-color="#3f9e35"/></linearGradient></defs>` +
+    `<stop offset="0" stop-color="#a8d536"/><stop offset="1" stop-color="#4cb32e"/></linearGradient></defs>` +
     `<path d="M82 20 A42 42 0 1 0 88 52" fill="none" stroke="url(#eaSwirl)" stroke-width="14" stroke-linecap="round"/>` +
     `<path d="M28 48 Q52 28 82 34 Q62 54 40 56 Q30 56 28 48 Z" fill="url(#eaSwirl)"/></svg>` +
     `<div style="font-size:88px;color:#1a1d20;letter-spacing:-2px;white-space:nowrap;">` +
@@ -542,16 +542,16 @@ function eaPaymentOptions(vm: BillViewModel): string {
   const cents = `${Math.round(vm.total * 100)}`.padStart(14, "0");
   const barcode = code128Svg(ref.raw, { moduleWidth: 3, height: 150 });
   const method = (icon: string, title: string, body: string): string =>
-    `<div style="display:flex;gap:24px;margin-top:34px;align-items:flex-start;">` +
+    `<div style="display:flex;gap:24px;margin-top:18px;align-items:flex-start;">` +
     `<div style="flex:none;margin-top:2px;">${iconSvg(icon, EA_DARK, 56)}</div>` +
-    `<div><div style="font-size:38px;font-weight:800;">${title}</div>` +
-    `<div style="font-size:32px;color:#1b2327;line-height:1.55;margin-top:6px;">${body}</div></div></div>`;
+    `<div><div style="font-size:36px;font-weight:800;">${title}</div>` +
+    `<div style="font-size:30px;color:#1b2327;line-height:1.5;margin-top:4px;">${body}</div></div></div>`;
   return (
-    `<div style="margin-top:auto;background:${EA_PALE};margin-left:-110px;margin-right:-110px;padding:30px 110px 24px;">` +
+    `<div style="margin-top:auto;background:${EA_PALE};margin-left:-110px;margin-right:-110px;padding:22px 110px 16px;">` +
     `<div style="display:flex;justify-content:space-between;">` +
     `<div style="width:1560px;flex:none;">` +
-    `<div style="font-size:50px;font-weight:800;color:${EA_DARK};">Electricity payment options</div>` +
-    `<div style="font-size:32px;color:#1b2327;margin-top:8px;">If your bill has been delayed, you are entitled to an extended amount of time to pay.</div>` +
+    `<div style="font-size:46px;font-weight:800;color:${EA_DARK};">Electricity payment options</div>` +
+    `<div style="font-size:30px;color:#1b2327;margin-top:6px;">If your bill has been delayed, you are entitled to an extended amount of time to pay.</div>` +
     `<div style="display:flex;gap:60px;">` +
     `<div style="width:640px;flex:none;">` +
     method(ICON_CARD, "Direct debit", `Call <b>133 466</b>`) +
@@ -569,13 +569,13 @@ function eaPaymentOptions(vm: BillViewModel): string {
     ) +
     `</div>` +
     `<div style="flex:1;">` +
-    `<div style="display:flex;gap:24px;margin-top:34px;align-items:flex-start;">` +
+    `<div style="display:flex;gap:24px;margin-top:18px;align-items:flex-start;">` +
     `<div style="width:60px;height:60px;background:${EA_MID};border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;">` +
     `<span style="color:#ffffff;font-size:34px;font-weight:900;">P</span></div>` +
     `<div><div style="font-size:36px;font-weight:800;">Billpay code: 3248</div>` +
     `<div style="font-size:36px;font-weight:800;">Ref: ${escapeHtml(ref.grouped)}</div>` +
     `<div style="font-size:31px;color:#1b2327;line-height:1.5;margin-top:6px;">Pay in person at any post office, phone <b>13 18 16</b> or go to <b>postbillpay.com.au</b></div></div></div>` +
-    `<div style="display:flex;gap:24px;margin-top:40px;align-items:flex-start;">${bpayBadge(EA_MID, 88)}` +
+    `<div style="display:flex;gap:24px;margin-top:22px;align-items:flex-start;">${bpayBadge(EA_MID, 88)}` +
     `<div><div style="font-size:36px;font-weight:800;">Biller code: 97410</div>` +
     `<div style="font-size:36px;font-weight:800;">Ref: ${escapeHtml(ref.grouped)}</div>` +
     `<div style="font-size:31px;color:#1b2327;line-height:1.5;margin-top:6px;">BPAY&#174; - Make this payment via internet or phone banking.<br/>` +
@@ -583,21 +583,21 @@ function eaPaymentOptions(vm: BillViewModel): string {
     `BPAY View Registration No-${escapeHtml(vm.accountNumber)}<br/>` +
     `&#174; Registered to BPAY Pty Ltd, ABN 69 079 137 518</div></div></div>` +
     `</div></div>` +
-    `<div style="font-size:26px;color:#3c464d;line-height:1.6;margin-top:16px;">` +
+    `<div style="font-size:26px;color:#3c464d;line-height:1.55;margin-top:12px;">` +
     `A merchant service fee may apply to credit card payments: MasterCard or Visa 0.36%, American Express 1.5%. ` +
     `Fee is calculated on the total payment amount. Any fees applied will be shown on your next bill and are GST ` +
     `inclusive. Some exemptions apply.</div>` +
     `</div>` +
-    `<div style="width:640px;flex:none;background:#ffffff;padding:40px 40px 44px;align-self:flex-start;">` +
+    `<div style="width:640px;flex:none;background:#ffffff;padding:40px 40px 44px;align-self:flex-start;margin-top:40px;">` +
     `<div style="display:flex;justify-content:space-between;align-items:baseline;">` +
     `<span style="font-size:38px;font-weight:800;">Amount due</span>` +
     `<span style="text-align:right;"><span style="font-size:52px;font-weight:800;color:${EA_BRIGHT};font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(EA_POWER_META, vm.total))}</span>` +
     `<div style="font-size:28px;color:#3c464d;">(incl. GST)</div></span></div>` +
-    `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:36px;">` +
+    `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:64px;">` +
     `<span style="font-size:38px;font-weight:800;">Bill due date</span>` +
     `<span style="font-size:48px;color:${EA_BRIGHT};font-variant-numeric:tabular-nums;">${escapeHtml(vm.dueDate)}</span></div>` +
-    `<div style="margin-top:52px;">${barcode}</div>` +
-    `<div style="margin-top:40px;font-size:36px;font-weight:800;">Office use only</div>` +
+    `<div style="margin-top:100px;">${barcode}</div>` +
+    `<div style="margin-top:50px;font-size:36px;font-weight:800;">Office use only</div>` +
     `<table style="width:100%;border-collapse:collapse;margin-top:10px;">` +
     `<tr style="font-size:30px;color:#3c464d;"><td style="padding:8px 0;">Trancode</td><td style="padding:8px 0;">User code</td><td style="padding:8px 0;">Payment reference</td></tr>` +
     `<tr style="font-size:32px;font-variant-numeric:tabular-nums;"><td style="padding:6px 0;">831</td><td style="padding:6px 0;">${userCode}</td><td style="padding:6px 0;">${ref.raw}</td></tr>` +
@@ -641,9 +641,9 @@ function renderEaPower(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="position:absolute;inset:0;padding:110px 110px 50px;display:flex;flex-direction:column;">` +
     `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
     eaLogo() +
-    `<div style="text-align:right;line-height:1.6;padding-top:30px;">` +
+    `<div style="text-align:right;line-height:1.55;padding-top:8px;">` +
     `<div style="font-size:42px;color:#1b2327;">Tax invoice</div>` +
-    `<div style="font-size:34px;color:${EA_BRIGHT};margin-top:8px;">EnergyAustralia Pty Ltd ABN 99 086 014 968</div></div></div>` +
+    `<div style="font-size:34px;color:#06552c;margin-top:4px;">EnergyAustralia Pty Ltd ABN 99 086 014 968</div></div></div>` +
     `<div style="display:flex;justify-content:space-between;margin-top:40px;">` +
     `<div style="width:1330px;flex:none;">` +
     `<div>${topBarcode}</div>` +
@@ -666,7 +666,7 @@ function renderEaPower(vm: BillViewModel, opts: RenderOptions): string {
     `</div>` +
     `<div style="width:820px;flex:none;">` +
     eaPanel("Need to get in touch?", contactBody, ICON_PHONE, EA_DARK, 420) +
-    `<div style="height:70px;"></div>` +
+    `<div style="height:36px;"></div>` +
     eaPanel("Your bill", billBody, ICON_DOC, EA_MID, 1150) +
     `</div></div>` +
     eaPaymentOptions(vm) +

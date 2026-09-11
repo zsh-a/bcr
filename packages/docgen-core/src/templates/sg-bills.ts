@@ -71,14 +71,14 @@ const SINGTEL_META: TemplateMeta = {
   currency: "SGD",
   prefix: "MDT",
   periodDays: 30,
-  accent: "#e2262e",
+  accent: "#ed193d",
   locale: "en-SG",
 };
 
 /** 「My Monthly Charges」三色平涂条（参考图：新→旧由浅至深，直角） */
-const BAR_SHADES = ["#3bb4c9", "#1b8ea6", "#0f6b85"] as const;
+const BAR_SHADES = ["#2bb7d8", "#0099b5", "#006b8c"] as const;
 /** 右侧概览面板底色 */
-const PANEL_BG = "#f1f1f3";
+const PANEL_BG = "#f3f4f4";
 
 const MONTH_ABBR = [
   "Jan",
@@ -120,17 +120,17 @@ function billIdOf(vm: BillViewModel): string {
  */
 function logoDots(accent: string): string {
   const dots = [
-    { cx: 40, cy: 118, r: 22 },
-    { cx: 132, cy: 72, r: 29 },
-    { cx: 238, cy: 48, r: 34 },
-    { cx: 352, cy: 48, r: 34 },
-    { cx: 456, cy: 96, r: 40 },
+    { cx: 100, cy: 78, r: 20 },
+    { cx: 180, cy: 40, r: 26 },
+    { cx: 262, cy: 20, r: 30 },
+    { cx: 336, cy: 32, r: 30 },
+    { cx: 412, cy: 72, r: 35 },
   ];
   const circles = dots
     .map((d) => `<circle cx="${d.cx}" cy="${d.cy}" r="${d.r}" fill="${accent}"/>`)
     .join("");
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="140" viewBox="0 0 500 140" ` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="460" height="100" viewBox="0 0 460 100" ` +
     `role="img" aria-label="logo">${circles}</svg>`
   );
 }
@@ -143,7 +143,7 @@ function waveBarcode(text: string): string {
   const modules = encodeCode128B(text);
   const rng = mulberry32(fnv1a(`wave::${text}`));
   const mw = 2;
-  const full = 100;
+  const full = 72;
   const quiet = 8;
   const totalWidth = (modules.length + quiet * 2) * mw;
   const rects: string[] = [];
@@ -209,18 +209,18 @@ function leftColumn(vm: BillViewModel, meta: TemplateMeta): string {
     `<div style="display:flex;gap:44px;align-items:center;margin-top:24px;">${icon}` +
     `<div style="font-size:38px;color:#1b2327;line-height:1.45;">${html}</div></div>`;
   return (
-    `<div style="width:900px;flex:none;padding-left:260px;padding-top:55px;">` +
+    `<div style="width:915px;flex:none;padding-left:260px;padding-top:110px;">` +
     logoDots(meta.accent) +
     `<div style="font-size:170px;font-weight:800;letter-spacing:-6px;color:#1b2327;line-height:1.1;margin-top:2px;">${escapeHtml(vm.utilityName)}</div>` +
-    `<div style="margin-top:92px;">${waveBarcode(billId)}</div>` +
+    `<div style="margin-top:70px;">${waveBarcode(billId)}</div>` +
     `<div style="margin-top:24px;">` +
     `<div style="font-size:40px;color:#1b2327;line-height:1.3;">${escapeHtml(vm.customerName)}</div>` +
     `${addressHtml}</div>` +
-    `<div style="display:flex;gap:60px;align-items:flex-start;margin-top:210px;padding-left:65px;">` +
+    `<div style="display:flex;gap:60px;align-items:flex-start;margin-top:300px;padding-left:65px;">` +
     `<div style="font-size:52px;color:#1b2327;line-height:1.35;">Have you switched<br/>to eBill?` +
     `<div style="font-size:42px;color:${meta.accent};margin-top:14px;line-height:1.4;">Find out more on<br/>singtel.com/eBill</div></div>` +
     `<div style="flex:none;margin-top:-14px;">${qr}</div></div>` +
-    `<div style="margin-top:100px;padding-left:95px;">` +
+    `<div style="margin-top:158px;padding-left:95px;">` +
     promoRow(
       appIcon(meta.accent),
       `<b>Pay your bills with<br/>My Singtel app<br/>anytime, anywhere.</b>`,
@@ -261,7 +261,7 @@ function monthlyBars(vm: BillViewModel): string {
     })
     .join("");
   return (
-    `<div style="margin-top:40px;">` +
+    `<div style="margin-top:230px;">` +
     `<div style="font-size:50px;font-weight:800;color:#1b2327;">My Monthly Charges</div>${rows}</div>`
   );
 }
@@ -277,10 +277,10 @@ function overviewPanel(vm: BillViewModel): string {
     `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="50" viewBox="0 0 72 56">` +
     `<path d="M0 18h40v-14l32 24-32 24v-14H0z" fill="#1b2327"/></svg>`;
   return (
-    `<div style="flex:1;background:${PANEL_BG};border-radius:60px 200px 0 0;padding:48px 85px 36px 115px;">` +
-    `<div style="display:inline-block;background:#ffffff;border-radius:56px;padding:18px 88px;">` +
+    `<div style="flex:1;background:${PANEL_BG};border-radius:60px 200px 0 0;padding:100px 85px 36px 115px;">` +
+    `<div style="display:inline-block;background:#ffffff;border-radius:56px;padding:18px 60px 18px 40px;width:700px;box-sizing:border-box;">` +
     `<span style="font-size:52px;font-weight:800;color:#1b2327;">My Bill Overview</span></div>` +
-    `<div style="display:flex;justify-content:space-between;margin-top:36px;">` +
+    `<div style="display:flex;justify-content:space-between;margin-top:80px;">` +
     `<div>` +
     metaPair("Account No.", escapeHtml(vm.accountNumber)) +
     metaPair("Bill ID", escapeHtml(billId)) +
@@ -291,19 +291,19 @@ function overviewPanel(vm: BillViewModel): string {
     `<div style="font-size:42px;color:#1b2327;">Total Due (${escapeHtml(vm.currency)})</div>` +
     `<div style="font-size:96px;font-weight:800;color:#1b2327;font-variant-numeric:tabular-nums;line-height:1.2;">` +
     `${vm.total.toFixed(2)}</div></div></div>` +
-    `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:36px;">` +
+    `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:100px;">` +
     `<span style="font-size:48px;font-weight:800;color:#1b2327;">Outstanding Amount</span>` +
     `<span style="font-size:46px;font-weight:700;font-variant-numeric:tabular-nums;">${outstanding.toFixed(2)}</span></div>` +
-    `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:40px;">` +
+    `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:70px;">` +
     `<div><div style="font-size:48px;font-weight:800;color:#1b2327;">Current Charges</div>` +
     `<div style="font-size:34px;font-style:italic;color:#1b2327;margin-top:6px;">Due by ${escapeHtml(vm.dueDate)}</div></div>` +
     `<span style="font-size:46px;font-weight:700;font-variant-numeric:tabular-nums;">${vm.total.toFixed(2)}</span></div>` +
     monthlyBars(vm) +
-    `<div style="margin-top:26px;font-size:28px;font-weight:700;color:#1b2327;line-height:1.55;">` +
+    `<div style="margin-top:60px;font-size:28px;font-weight:700;color:#1b2327;line-height:1.55;">` +
     `<div>Singapore Telecommunications Limited</div>` +
     `<div>Registration no.: 199201624D</div>` +
     `<div>Tax Invoice GST Registration No.: MR-8500432-2</div></div>` +
-    `<div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:18px;">` +
+    `<div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:30px;">` +
     `<span style="font-size:32px;font-style:italic;color:#5a656c;">Next Page</span>${arrow}</div>` +
     `</div>`
   );
@@ -316,39 +316,39 @@ function billDetails(vm: BillViewModel, meta: TemplateMeta): string {
       const rows = section.lines
         .map(
           (line) =>
-            `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #e7e4dc;">` +
-            `<span style="font-size:28px;color:#333c42;">${escapeHtml(line.label)}</span>` +
-            `<span style="font-size:28px;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, line.amount))}</span></div>`,
+            `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e7e4dc;">` +
+            `<span style="font-size:26px;color:#333c42;">${escapeHtml(line.label)}</span>` +
+            `<span style="font-size:26px;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, line.amount))}</span></div>`,
         )
         .join("");
       return (
-        `<div style="margin-top:10px;">` +
+        `<div style="margin-top:8px;">` +
         `<div style="display:flex;justify-content:space-between;align-items:baseline;background:${PANEL_BG};` +
-        `border-left:10px solid ${meta.accent};padding:9px 26px;border-radius:0 12px 12px 0;">` +
-        `<span style="font-size:31px;font-weight:700;">${escapeHtml(section.title)}</span>` +
+        `border-left:10px solid ${meta.accent};padding:7px 26px;border-radius:0 12px 12px 0;">` +
+        `<span style="font-size:29px;font-weight:700;">${escapeHtml(section.title)}</span>` +
         (section.subtitle !== undefined
           ? `<span style="font-size:26px;color:#5a656c;font-family:'Courier New',monospace;">${escapeHtml(section.subtitle)}</span>`
           : "") +
         `</div>` +
         `<div style="padding:2px 26px 0;">${rows}` +
-        `<div style="display:flex;justify-content:space-between;padding:8px 0;">` +
-        `<span style="font-size:27px;font-weight:600;color:#5a656c;">Section total · 小计</span>` +
-        `<span style="font-size:29px;font-weight:700;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, section.sectionTotal))}</span></div></div></div>`
+        `<div style="display:flex;justify-content:space-between;padding:6px 0;">` +
+        `<span style="font-size:25px;font-weight:600;color:#5a656c;">Section total · 小计</span>` +
+        `<span style="font-size:27px;font-weight:700;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, section.sectionTotal))}</span></div></div></div>`
       );
     })
     .join("");
   const sumRow = (label: string, value: string, strong: boolean): string =>
     `<div style="display:flex;justify-content:space-between;align-items:baseline;` +
-    `${strong ? "margin-top:10px;padding-top:10px;border-top:3px solid #1b2327;" : "margin-top:6px;"}">` +
-    `<span style="font-size:${strong ? 35 : 30}px;${strong ? "font-weight:700;" : "color:#5a656c;"}">${label}</span>` +
+    `${strong ? "margin-top:8px;padding-top:8px;border-top:3px solid #1b2327;" : "margin-top:4px;"}">` +
+    `<span style="font-size:${strong ? 33 : 28}px;${strong ? "font-weight:700;" : "color:#5a656c;"}">${label}</span>` +
     `<span style="font-size:${strong ? 42 : 31}px;font-weight:${strong ? 800 : 500};` +
     `font-variant-numeric:tabular-nums;${strong ? `color:${meta.accent};` : ""}">${value}</span></div>`;
   return (
-    `<div style="margin-top:14px;padding:0 150px 0 260px;">` +
-    `<div style="font-size:38px;font-weight:800;color:#1b2327;">My Bill Details` +
+    `<div style="margin-top:8px;padding:0 150px 0 260px;">` +
+    `<div style="font-size:32px;font-weight:800;color:#1b2327;">My Bill Details` +
     `<span style="font-size:29px;font-weight:400;color:#8a9298;margin-left:20px;">费用明细 · 按服务分项</span></div>` +
     sections +
-    `<div style="margin-top:8px;display:flex;justify-content:flex-end;">` +
+    `<div style="margin-top:6px;display:flex;justify-content:flex-end;">` +
     `<div style="width:900px;">` +
     sumRow("Charges before tax · 税前小计", escapeHtml(fmtMeta(meta, vm.subtotal)), false) +
     sumRow(escapeHtml(vm.taxLabel), escapeHtml(fmtMeta(meta, vm.tax)), false) +
@@ -360,15 +360,15 @@ function billDetails(vm: BillViewModel, meta: TemplateMeta): string {
 /** 底部红色点线撕线 Payment Slip：回邮地址 + 应付金额 + 双条码 + 灰底白填写框 */
 function paymentSlip(vm: BillViewModel): string {
   const billId = billIdOf(vm);
-  const barcode1 = code128Svg(billId, { moduleWidth: 2.4, height: 68 });
+  const barcode1 = code128Svg(billId, { moduleWidth: 2.4, height: 64 });
   const cents = `${Math.round(vm.total * 100)}`.padStart(8, "0");
-  const barcode2 = code128Svg(`${cents}B`, { moduleWidth: 3, height: 68 });
+  const barcode2 = code128Svg(`${cents}B`, { moduleWidth: 3, height: 64 });
   const box = (value: string): string =>
     `<div style="background:#ffffff;border-radius:4px;padding:18px 34px;font-size:34px;color:#1b2327;` +
     `min-height:44px;white-space:nowrap;">${value}</div>`;
   return (
     `<div style="margin-top:auto;">` +
-    `<div style="border-top:6px dotted #e2262e;position:relative;">` +
+    `<div style="border-top:6px dotted #ed193d;position:relative;">` +
     `<span style="position:absolute;right:100px;top:22px;font-size:34px;font-weight:700;color:#1b2327;">0000</span></div>` +
     `<div style="display:flex;align-items:stretch;">` +
     `<div style="width:880px;flex:none;padding-left:300px;padding-top:20px;">` +
@@ -378,7 +378,7 @@ function paymentSlip(vm: BillViewModel): string {
     `<div style="margin-top:18px;font-size:38px;font-weight:700;color:#1b2327;">Payment Slip</div>` +
     `<div style="font-size:30px;color:#1b2327;margin-top:4px;">Mail us this portion with your cheque payment.</div>` +
     `<div style="font-size:30px;color:#1b2327;margin-top:2px;">Total Due</div>` +
-    `<div style="font-size:68px;font-weight:800;color:#1b2327;font-variant-numeric:tabular-nums;line-height:1.2;">` +
+    `<div style="font-size:72px;font-weight:800;color:#1b2327;font-variant-numeric:tabular-nums;line-height:1.15;">` +
     `${escapeHtml(vm.currency)}${vm.total.toFixed(2)}</div>` +
     `<div style="font-size:30px;font-weight:700;color:#1b2327;white-space:nowrap;">` +
     `Due date for Current Charges ${escapeHtml(vm.dueDate)}</div></div>` +
@@ -390,7 +390,7 @@ function paymentSlip(vm: BillViewModel): string {
     `<div style="flex:1.4;">${box("Bank")}</div>` +
     `<div style="flex:1;">${box("Cheque No.")}</div></div>` +
     `</div></div>` +
-    `<div style="display:flex;align-items:flex-end;padding:10px 150px 0 290px;">` +
+    `<div style="display:flex;align-items:flex-end;padding:6px 150px 0 290px;">` +
     `<div>${barcode1}` +
     `<div style="font-size:36px;letter-spacing:8px;color:#1b2327;margin-top:12px;font-family:'Courier New',monospace;white-space:nowrap;">` +
     `${escapeHtml(billId)}&#160;&#160;&#160;T101&#160;&#160;${escapeHtml(vm.accountNumber)}</div></div>` +
@@ -501,7 +501,7 @@ export const sgSingtelTelecom: BillTemplate = {
     const notes =
       vm.notes.length === 0
         ? ""
-        : `<ul style="margin:4px 150px 0 300px;padding-left:40px;font-size:22px;color:#8a9298;line-height:1.4;">` +
+        : `<ul style="margin:2px 150px 0 300px;padding-left:40px;font-size:20px;color:#8a9298;line-height:1.35;">` +
           vm.notes.map((n) => `<li>${escapeHtml(n)}</li>`).join("") +
           `</ul>`;
     return (
@@ -515,7 +515,7 @@ export const sgSingtelTelecom: BillTemplate = {
       billDetails(vm, SINGTEL_META) +
       notes +
       paymentSlip(vm) +
-      `<div style="margin:2px 150px 0 260px;padding-top:6px;border-top:2px solid #e7e4dc;font-size:20px;color:#a2a9ae;line-height:1.6;white-space:nowrap;">` +
+      `<div style="margin:2px 150px 0 260px;padding-top:4px;border-top:2px solid #e7e4dc;font-size:20px;color:#a2a9ae;line-height:1.6;white-space:nowrap;">` +
       `FICTIONAL SAMPLE DOCUMENT — layout study only, not a real bill. 虚构示例文档，仅供版式学习，非真实账单。</div>` +
       `</div>` +
       (opts.watermark ? watermarkLayer() : "") +
