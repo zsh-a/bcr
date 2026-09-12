@@ -1,16 +1,29 @@
 /**
- * 「实拍」合成：把账单位图贴到程序化生成的深色木桌面上。
- * - 桌面：base 渐变 + 水平板材分割线 + 固定 seed 噪点（ImageData）+ 四角暗角
- * - 账单：四角单应映射到略微旋转/透视的四边形，
- *   用 24×24 网格细分（每格两个三角形的仿射近似）实现平滑 warp
- * - 先画高斯模糊投影四边形，再贴账单，账单上叠轻噪点 + 0.5px 级模糊
- * 输出约 1620×2160 JPEG。纯端侧，确定性（固定 seed）。
+ * 「实拍」合成：把账单位图贴到带纸张材质和环境光的桌面上。
+ *
+ * 纸面素材只作为低频光照参考；素材里原有的账单文字和 alpha 不会直接覆盖到
+ * 生成的账单上，纸张边缘由独立的轻微扰动路径生成，避免不同国家模板串内容。
  */
 
 import { mulberry32 } from "./hash";
 
 export const PHOTO_WIDTH = 1620;
 export const PHOTO_HEIGHT = 2160;
+
+const PAPER_SURFACE_URL = new URL("./assets/paper-surface-map.png", import.meta.url).href;
+let paperSurfacePromise: Promise<HTMLImageElement | null> | undefined;
+
+function loadPaperSurface(): Promise<HTMLImageElement | null> {
+  if (paperSurfacePromise !== undefined) return paperSurfacePromise;
+  paperSurfacePromise = new Promise((resolve) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = PAPER_SURFACE_URL;
+  });
+  return paperSurfacePromise;
+}
 
 interface Pt {
   x: number;
@@ -95,47 +108,83 @@ function drawTriangle(
 }
 
 function paintDesk(ctx: CanvasRenderingContext2D, width: number, height: number): void {
-  // 1) base 渐变：深胡桃木色
-  const grad = ctx.createLinearGradient(0, 0, width * 0.3, height);
-  grad.addColorStop(0, "#3d3128");
-  grad.addColorStop(0.5, "#2e241c");
-  grad.addColorStop(1, "#211a14");
+  // 1) base 渐变：保留深色桌面，但去掉一眼可见的规则色块。
+  const grad = ctx.createRadialGradient(
+    width * 0.3,
+    height * 0.18,
+    0,
+    width * 0.48,
+    height * 0.48,
+    Math.hypot(width, height) * 0.82,
+  );
+  grad.addColorStop(0, "#655549");
+  grad.addColorStop(0.42, "#40342b");
+  grad.addColorStop(1, "#211914");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, width, height);
 
-  // 2) 水平板材分割线 + 每板轻微亮度差（固定 seed）
+  // 2) 大面积漫反射光斑，模拟木面上的不均匀环境光。
   const rng = mulberry32(0xde5eed);
-  const plankHeight = 264;
-  for (let y = 0; y < height; y += plankHeight) {
-    const tone = (rng() - 0.5) * 0.1;
-    ctx.fillStyle =
-      tone >= 0 ? `rgba(255,240,220,${tone.toFixed(3)})` : `rgba(0,0,0,${(-tone).toFixed(3)})`;
-    ctx.fillRect(0, y, width, plankHeight);
-    ctx.fillStyle = "rgba(0,0,0,0.38)";
-    ctx.fillRect(0, y, width, 3);
-    ctx.fillStyle = "rgba(255,235,210,0.05)";
-    ctx.fillRect(0, y + 3, width, 2);
-    // 每板的木纹横丝
-    for (let i = 0; i < 7; i++) {
-      const gy = y + 14 + rng() * (plankHeight - 28);
-      ctx.fillStyle = `rgba(0,0,0,${(0.03 + rng() * 0.05).toFixed(3)})`;
-      ctx.fillRect(0, gy, width, 1 + rng() * 2);
+  ctx.save();
+  ctx.filter = "blur(74px)";
+  for (let i = 0; i < 13; i++) {
+    const x = rng() * width;
+    const y = rng() * height;
+    const radius = 180 + rng() * 420;
+    const tone = rng() > 0.48 ? "255,235,212" : "0,0,0";
+    const alpha = 0.018 + rng() * 0.038;
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    glow.addColorStop(0, `rgba(${tone},${alpha.toFixed(3)})`);
+    glow.addColorStop(1, `rgba(${tone},0)`);
+    ctx.fillStyle = glow;
+    ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+  }
+  ctx.restore();
+
+  // 3) 柔和的木纹和板材接缝；曲线和低对比度避免出现“贴图网格感”。
+  let seamY = 205 + rng() * 80;
+  while (seamY < height) {
+    ctx.save();
+    ctx.filter = "blur(2.6px)";
+    ctx.beginPath();
+    ctx.moveTo(0, seamY);
+    for (let x = 180; x <= width; x += 180) {
+      ctx.lineTo(x, seamY + Math.sin(x / 145 + seamY / 91) * 3.5);
     }
+    ctx.strokeStyle = "rgba(7,5,4,0.18)";
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+    ctx.restore();
+
+    for (let i = 0; i < 11; i++) {
+      const y = seamY - 82 + rng() * 164;
+      ctx.beginPath();
+      ctx.moveTo(-20, y);
+      for (let x = 160; x <= width + 20; x += 160) {
+        ctx.lineTo(x, y + Math.sin(x / (38 + rng() * 55) + i) * (1 + rng() * 2.5));
+      }
+      ctx.strokeStyle = `rgba(${rng() > 0.45 ? "255,225,196" : "0,0,0"},${(
+        0.012 + rng() * 0.025
+      ).toFixed(3)})`;
+      ctx.lineWidth = 0.6 + rng() * 1.4;
+      ctx.stroke();
+    }
+    seamY += 310 + rng() * 100;
   }
 
-  // 3) 固定 seed 噪点（ImageData 逐像素微调亮度）
+  // 4) 固定 seed 噪点（ImageData 逐像素微调亮度）。
   const imageData = ctx.getImageData(0, 0, width, height);
   const data = imageData.data;
   const noiseRng = mulberry32(0xc0ffee);
   for (let i = 0; i < data.length; i += 4) {
-    const n = (noiseRng() - 0.5) * 14;
+    const n = (noiseRng() - 0.5) * 7;
     data[i] = Math.max(0, Math.min(255, (data[i] ?? 0) + n));
     data[i + 1] = Math.max(0, Math.min(255, (data[i + 1] ?? 0) + n));
     data[i + 2] = Math.max(0, Math.min(255, (data[i + 2] ?? 0) + n));
   }
   ctx.putImageData(imageData, 0, 0);
 
-  // 4) 四角暗角
+  // 5) 四角暗角：保留镜头感，但不压黑纸面。
   const vignette = ctx.createRadialGradient(
     width / 2,
     height / 2,
@@ -145,18 +194,21 @@ function paintDesk(ctx: CanvasRenderingContext2D, width: number, height: number)
     Math.hypot(width, height) * 0.62,
   );
   vignette.addColorStop(0, "rgba(0,0,0,0)");
-  vignette.addColorStop(1, "rgba(0,0,0,0.52)");
+  vignette.addColorStop(1, "rgba(0,0,0,0.34)");
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, width, height);
 }
 
-/** 账单目标四边形：居中 + 约 -2.4° 旋转 + 轻微透视（上窄下宽、微微倾斜） */
+/** 账单目标四边形：居中 + 轻微旋转 + 真实纸张常见的透视和倾斜。 */
 function billQuad(width: number, height: number, sourceWidth: number, sourceHeight: number): Quad {
-  const bw = 1050;
+  const maxWidth = Math.min(1140, width * 0.72);
+  const maxHeight = height * 0.84;
+  const scale = Math.min(1, maxHeight / ((maxWidth * sourceHeight) / sourceWidth));
+  const bw = Math.round(maxWidth * scale);
   const bh = Math.round((bw * sourceHeight) / sourceWidth);
-  const cx = width / 2 + 20;
-  const cy = height / 2 + 30;
-  const angle = (-2.4 * Math.PI) / 180;
+  const cx = width / 2 + 18;
+  const cy = height / 2 + 22;
+  const angle = (-1.8 * Math.PI) / 180;
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
   const corners: Quad = [
@@ -169,14 +221,14 @@ function billQuad(width: number, height: number, sourceWidth: number, sourceHeig
     x: cx + p.x * cos - p.y * sin,
     y: cy + p.x * sin + p.y * cos,
   })) as Quad;
-  // 透视：顶边向中线收 3.2%，底边外放 2.4%，整体向右下微倾
+  // 透视：顶边略窄、底边略宽，模拟手机从上方拍摄时的纸面变化。
   const pinch = (p: Pt, factor: number): Pt => ({ x: cx + (p.x - cx) * factor, y: p.y });
   const [tl, tr, br, bl] = rotated;
   return [
-    { x: pinch(tl, 0.968).x + 14, y: tl.y - 8 },
-    { x: pinch(tr, 0.968).x - 6, y: tr.y + 4 },
-    { x: pinch(br, 1.024).x + 2, y: br.y + 10 },
-    { x: pinch(bl, 1.024).x - 12, y: bl.y - 4 },
+    { x: pinch(tl, 0.978).x + 12, y: tl.y - 8 },
+    { x: pinch(tr, 0.978).x - 6, y: tr.y + 5 },
+    { x: pinch(br, 1.018).x + 4, y: br.y + 10 },
+    { x: pinch(bl, 1.018).x - 11, y: bl.y - 4 },
   ];
 }
 
@@ -191,12 +243,130 @@ function quadPath(ctx: CanvasRenderingContext2D, q: Quad): void {
   ctx.closePath();
 }
 
+function warpImageToQuad(
+  ctx: CanvasRenderingContext2D,
+  image: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+  quad: Quad,
+): void {
+  const project = squareToQuad(quad);
+  const gridSize = 24;
+  const sourcePoint = (i: number, j: number): Pt => ({
+    x: (i / gridSize) * sourceWidth,
+    y: (j / gridSize) * sourceHeight,
+  });
+  const destinationPoint = (i: number, j: number): Pt => project(i / gridSize, j / gridSize);
+  for (let j = 0; j < gridSize; j++) {
+    for (let i = 0; i < gridSize; i++) {
+      const dTl = destinationPoint(i, j);
+      const dTr = destinationPoint(i + 1, j);
+      const dBr = destinationPoint(i + 1, j + 1);
+      const dBl = destinationPoint(i, j + 1);
+      drawTriangle(ctx, image, [sourcePoint(i, j), sourcePoint(i + 1, j), sourcePoint(i, j + 1)], [dTl, dTr, dBl]);
+      drawTriangle(
+        ctx,
+        image,
+        [sourcePoint(i + 1, j), sourcePoint(i + 1, j + 1), sourcePoint(i, j + 1)],
+        [dTr, dBr, dBl],
+      );
+    }
+  }
+}
+
+function paperPath(ctx: CanvasRenderingContext2D, quad: Quad): void {
+  const [tl, tr, br, bl] = quad;
+  const sides: Array<[Pt, Pt, number]> = [
+    [tl, tr, 1.7],
+    [tr, br, 1.9],
+    [br, bl, 4.8],
+    [bl, tl, 2.2],
+  ];
+  const pointOnSide = (a: Pt, b: Pt, t: number, side: number, amount: number): Pt => {
+    const x = a.x + (b.x - a.x) * t;
+    const y = a.y + (b.y - a.y) * t;
+    const length = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    const nx = -(b.y - a.y) / length;
+    const ny = (b.x - a.x) / length;
+    const phase = side * 11.7 + t * 27.3;
+    const jitter = Math.sin(phase) * amount + Math.sin(phase * 2.41) * amount * 0.34;
+    return { x: x + nx * jitter, y: y + ny * jitter };
+  };
+
+  ctx.beginPath();
+  ctx.moveTo(tl.x, tl.y);
+  for (let side = 0; side < sides.length; side++) {
+    const sideEntry = sides[side];
+    if (sideEntry === undefined) continue;
+    const [a, b, amount] = sideEntry;
+    for (let i = 1; i <= 8; i++) {
+      const p = pointOnSide(a, b, i / 8, side, amount);
+      ctx.lineTo(p.x, p.y);
+    }
+  }
+  ctx.closePath();
+}
+
+function paintPaperGrain(ctx: CanvasRenderingContext2D, quad: Quad, width: number, height: number): void {
+  ctx.save();
+  paperPath(ctx, quad);
+  ctx.clip();
+  ctx.globalCompositeOperation = "soft-light";
+  const rng = mulberry32(0xface);
+  for (let i = 0; i < 13000; i++) {
+    const x = rng() * width;
+    const y = rng() * height;
+    const light = rng() > 0.48;
+    ctx.fillStyle = `rgba(${light ? "255,250,240" : "30,22,16"},${(
+      0.006 + rng() * 0.018
+    ).toFixed(3)})`;
+    const size = 0.35 + rng() * 1.35;
+    ctx.fillRect(x, y, size, size);
+  }
+  ctx.restore();
+}
+
+function paintShadow(
+  ctx: CanvasRenderingContext2D,
+  quad: Quad,
+): void {
+  const paintShadowStamp = (blur: number, alpha: number, dx: number, dy: number): void => {
+    ctx.save();
+    ctx.filter = `blur(${blur}px)`;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = "#000";
+    paperPath(
+      ctx,
+      quad.map((p) => ({ x: p.x + dx, y: p.y + dy })) as Quad,
+    );
+    ctx.fill();
+    ctx.restore();
+  };
+
+  // 接触阴影：只保留靠近纸边的短阴影，避免生成规则的“矩形光晕”。
+  paintShadowStamp(5, 0.12, 4, 7);
+}
+
+function createSurfaceTexture(surface: HTMLImageElement): HTMLCanvasElement | null {
+  const source = document.createElement("canvas");
+  source.width = surface.naturalWidth;
+  source.height = surface.naturalHeight;
+  const sourceCtx = source.getContext("2d");
+  if (sourceCtx === null) return null;
+  sourceCtx.fillStyle = "#d8d2c9";
+  sourceCtx.fillRect(0, 0, source.width, source.height);
+  sourceCtx.drawImage(surface, 0, 0);
+  return source;
+}
+
 export async function compositePaperPhoto(bill: HTMLImageElement | ImageBitmap): Promise<Blob> {
   const width = PHOTO_WIDTH;
   const height = PHOTO_HEIGHT;
   const sw = bill instanceof HTMLImageElement ? bill.naturalWidth : bill.width;
   const sh = bill instanceof HTMLImageElement ? bill.naturalHeight : bill.height;
   if (sw === 0 || sh === 0) throw new Error("实拍合成失败：账单图像为空");
+
+  const paperSurface = await loadPaperSurface();
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -207,61 +377,74 @@ export async function compositePaperPhoto(bill: HTMLImageElement | ImageBitmap):
   paintDesk(ctx, width, height);
 
   const quad = billQuad(width, height, sw, sh);
+  const surfaceTexture = paperSurface === null ? null : createSurfaceTexture(paperSurface);
 
-  // 1) 高斯模糊投影四边形（偏移右下）
-  ctx.save();
-  ctx.filter = "blur(40px)";
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
-  const shadowQuad = quad.map((p) => ({ x: p.x + 26, y: p.y + 44 })) as Quad;
-  quadPath(ctx, shadowQuad);
-  ctx.fill();
-  ctx.restore();
+  // 1) 贴边的接触阴影，避免规则的矩形光晕。
+  paintShadow(ctx, quad);
 
-  // 2) 账单 warp 到独立图层（24×24 网格细分，每格两个三角形仿射近似）
+  // 2) 账单 warp 到独立图层（24×24 网格细分，每格两个三角形仿射近似）。
   const layer = document.createElement("canvas");
   layer.width = width;
   layer.height = height;
   const lctx = layer.getContext("2d");
   if (lctx === null) throw new Error("实拍合成失败：无法创建图层上下文");
-  const project = squareToQuad(quad);
-  const N = 24;
-  const gridPt = (i: number, j: number): Pt => project(i / N, j / N);
-  for (let j = 0; j < N; j++) {
-    for (let i = 0; i < N; i++) {
-      const s = (u: number, v: number): Pt => ({ x: (u / N) * sw, y: (v / N) * sh });
-      const dTl = gridPt(i, j);
-      const dTr = gridPt(i + 1, j);
-      const dBr = gridPt(i + 1, j + 1);
-      const dBl = gridPt(i, j + 1);
-      drawTriangle(lctx, bill, [s(i, j), s(i + 1, j), s(i, j + 1)], [dTl, dTr, dBl]);
-      drawTriangle(lctx, bill, [s(i + 1, j), s(i + 1, j + 1), s(i, j + 1)], [dTr, dBr, dBl]);
-    }
-  }
+  warpImageToQuad(lctx, bill, sw, sh, quad);
 
-  // 3) 账单图层上叠轻噪点 + 顶部轻微环境光
+  // 3) 账单图层上叠轻微纸张颗粒和环境光；强度保持低，避免盖住票据文字。
   lctx.save();
   quadPath(lctx, quad);
   lctx.clip();
   const noiseRng = mulberry32(0xbeef);
-  for (let i = 0; i < 4200; i++) {
+  for (let i = 0; i < 5200; i++) {
     const nx = noiseRng() * width;
     const ny = noiseRng() * height;
-    lctx.fillStyle = `rgba(${noiseRng() > 0.5 ? "255,255,255" : "0,0,0"},${(0.02 + noiseRng() * 0.05).toFixed(3)})`;
-    lctx.fillRect(nx, ny, 1 + noiseRng() * 2.2, 1 + noiseRng() * 2.2);
+    lctx.fillStyle = `rgba(${noiseRng() > 0.5 ? "255,255,255" : "0,0,0"},${(
+      0.008 + noiseRng() * 0.022
+    ).toFixed(3)})`;
+    lctx.fillRect(nx, ny, 0.6 + noiseRng() * 1.7, 0.6 + noiseRng() * 1.7);
   }
-  const glare = lctx.createLinearGradient(0, quad[0].y, 0, quad[2].y);
-  glare.addColorStop(0, "rgba(255,246,230,0.10)");
-  glare.addColorStop(0.45, "rgba(255,246,230,0.02)");
-  glare.addColorStop(1, "rgba(20,10,0,0.10)");
+  const glare = lctx.createRadialGradient(width * 0.27, height * 0.18, 20, width * 0.45, height * 0.42, width * 0.84);
+  glare.addColorStop(0, "rgba(255,246,230,0.13)");
+  glare.addColorStop(0.5, "rgba(255,246,230,0.025)");
+  glare.addColorStop(1, "rgba(20,10,0,0.08)");
   lctx.fillStyle = glare;
   lctx.fillRect(0, 0, width, height);
   lctx.restore();
 
-  // 4) 0.5px 级模糊后贴回主画布（模拟相机景深/对焦）
+  if (surfaceTexture !== null) {
+    // 只在纸面路径内叠低强度的实拍纸面光照，避免把素材中的文字带入结果。
+    lctx.save();
+    paperPath(lctx, quad);
+    lctx.clip();
+    lctx.globalCompositeOperation = "soft-light";
+    lctx.globalAlpha = 0.22;
+    const left = Math.min(...quad.map((p) => p.x)) - 10;
+    const top = Math.min(...quad.map((p) => p.y)) - 10;
+    const right = Math.max(...quad.map((p) => p.x)) + 10;
+    const bottom = Math.max(...quad.map((p) => p.y)) + 10;
+    const cropX = surfaceTexture.width * 0.12;
+    const cropY = surfaceTexture.height * 0.1;
+    const cropWidth = surfaceTexture.width * 0.76;
+    const cropHeight = surfaceTexture.height * 0.8;
+    lctx.drawImage(surfaceTexture, cropX, cropY, cropWidth, cropHeight, left, top, right - left, bottom - top);
+    lctx.restore();
+  }
+
+  // 用独立的轻微不规则路径收纸边，避免纹理图的 alpha 参与主画布合成。
+  lctx.save();
+  lctx.globalCompositeOperation = "destination-in";
+  paperPath(lctx, quad);
+  lctx.fillStyle = "#fff";
+  lctx.fill();
+  lctx.restore();
+
+  // 先贴账单，再覆盖低强度纸面光照和颗粒，顺序能保留实际拍摄中的纸纤维质感。
   ctx.save();
-  ctx.filter = "blur(0.6px)";
+  ctx.filter = "blur(0.42px)";
   ctx.drawImage(layer, 0, 0);
   ctx.restore();
+
+  paintPaperGrain(ctx, quad, width, height);
 
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
