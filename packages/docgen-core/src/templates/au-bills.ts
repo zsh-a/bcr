@@ -259,7 +259,7 @@ function aglCards(vm: BillViewModel): string {
     `<div style="display:flex;justify-content:space-between;margin-top:110px;margin-left:640px;">` +
     `<div style="width:640px;">` +
     header(ICON_HEADSET, "Help and support") +
-      `<div style="padding:44px 44px 0;">` +
+    `<div style="padding:44px 44px 0;">` +
     `<div style="font-size:44px;font-weight:800;">We're here for you</div>` +
     `<div style="font-size:36px;color:#3c464d;margin-top:26px;line-height:1.55;">Questions, feedback or just need a ` +
     `bit of help?</div>` +
@@ -267,7 +267,7 @@ function aglCards(vm: BillViewModel): string {
     `<b>AGL app</b> or visit <b>agl.com.au/help</b></div></div></div>` +
     `<div style="width:713px;min-height:657px;background:${AGL_PALE};border-radius:26px;padding:29px;box-sizing:border-box;margin-top:-29px;">` +
     header(ICON_DOC, "Amount due") +
-      `<div style="padding:34px 34px 0;">` +
+    `<div style="padding:34px 34px 0;">` +
     `<div style="font-size:100px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;">` +
     `${escapeHtml(audSp(AGL_GAS_META, vm.total))}</div>` +
     `<div style="border-top:3px solid #c9d6de;margin-top:66px;padding-top:36px;">` +

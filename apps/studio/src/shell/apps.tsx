@@ -18,7 +18,16 @@ import { Dock } from "../components/Dock";
  * 领域 App 经 workspace 包源码挂载，首次进入才加载对应 chunk。
  */
 export interface AppDef {
-  readonly id: "studio" | "media" | "quant" | "markets" | "manga" | "documents" | "reader" | "data" | "docgen";
+  readonly id:
+    | "studio"
+    | "media"
+    | "quant"
+    | "markets"
+    | "manga"
+    | "documents"
+    | "reader"
+    | "data"
+    | "docgen";
   readonly title: string;
   readonly path:
     | "/studio"
