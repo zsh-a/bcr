@@ -68,7 +68,7 @@ const POWER_META: TemplateMeta = {
   currency: "HKD",
   prefix: "HBP",
   periodDays: 60,
-  accent: "#93bb48",
+  accent: "#8db542",
   locale: "en-HK",
 };
 
@@ -93,7 +93,7 @@ const WATER_CHIP_HEAD = "#bdcee2";
 const WATER_CHIP_BODY = "#ebeff8";
 
 const POWER_BANNER_BLUE = "#22338b";
-const POWER_GREEN = "#93bb48";
+const POWER_GREEN = "#8db542";
 
 /* ---------------- 本地 helper ---------------- */
 
@@ -383,7 +383,7 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="height:${CANVAS_HEIGHT - 227}px;padding:150px 110px 94px;display:flex;flex-direction:column;box-sizing:border-box;">` +
     // 客户块 + 注册客户及供电地址（右块比左块高 56px，与参考图一致）
     `<div style="display:flex;justify-content:space-between;">` +
-    `<div><div style="font-size:40px;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
+    `<div style="margin-left:64px;"><div style="font-size:40px;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
     `<div style="width:810px;margin-top:-56px;"><div style="font-size:30px;font-weight:700;color:#3f5aa8;">註冊客戶及供電地址</div>` +
     `<div style="font-size:30px;font-weight:700;color:#3f5aa8;">Registered Customer &amp; Supply Address</div>` +
     `<div style="font-size:32px;margin-top:8px;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div></div>` +
@@ -396,7 +396,7 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="font-size:30px;font-weight:700;margin-top:4px;">賬類及商戶編號：<b>02</b></div></div></div>` +
     // 住宅用電 / 发单日期 / 账期 / 按金 / 页码（参考图为非均布定位）
     `<div style="display:flex;align-items:flex-end;margin-top:76px;">` +
-    `<div style="margin-left:30px;width:470px;"><div style="font-size:40px;">住宅用電</div>` +
+    `<div style="margin-left:-34px;width:470px;"><div style="font-size:40px;">住宅用電</div>` +
     `<div style="font-size:26px;color:#5a656c;margin-top:2px;">發單日期（日 - 月 - 年）</div>` +
     `<div style="font-size:40px;font-weight:800;">${escapeHtml(fmtDash2(billIso))}</div></div>` +
     `<div style="font-size:30px;line-height:1.6;">由 ${escapeHtml(fmtDash2(startIso))} 至 ${escapeHtml(fmtDash2(endIso))}<br/>共 ${vm.periodDays} 日用電量</div>` +
@@ -404,9 +404,9 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="font-size:30px;margin-left:auto;">第 1/2 頁</div></div>` +
     // 主区：左（公式块 + 奶黄明细框[内嵌柱图]） 右（應繳總數圆徽 + 电表小表 + 補貼餘額 + 转数快）
     // 负外边距让明细框/圆徽比正文文字更靠边缘（参考图：框 x≈44、圆徽右缘 x≈2432）
-    `<div style="display:flex;gap:56px;margin:44px -66px 0;height:1870px;">` +
+    `<div style="display:flex;gap:56px;margin:44px -66px 0;height:1832px;flex:none;">` +
     `<div style="flex:2.3;min-width:0;display:flex;flex-direction:column;">` +
-    `<div style="display:flex;gap:16px;align-items:stretch;width:1140px;">` +
+    `<div style="display:flex;gap:16px;align-items:stretch;width:100%;">` +
     formulaBox("電力費用", "Energy Charge", energy, formulaIcon("energy")) +
     connector("+") +
     formulaBox("燃料調整費", "Fuel Cost Adjustment", fuel, formulaIcon("fuel")) +
@@ -415,8 +415,8 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
     connector("=") +
     `</div>` +
     // 费用明细框（奶黄底、虚线中分双栏；柱图内嵌框底；固定高度与参考图对齐）
-    `<div style="margin-top:48px;border:3px solid #6d7872;border-radius:14px;background:#fdfbe6;` +
-    `padding:38px 40px;height:1290px;display:flex;flex-direction:column;box-sizing:border-box;">` +
+    `<div style="margin-top:59px;border:3px solid #6d7872;border-radius:14px;background:#fdfbe6;` +
+    `padding:38px 40px;height:1560px;display:flex;flex-direction:column;box-sizing:border-box;">` +
     `<div style="display:flex;gap:40px;flex:1;">` +
     `<div style="flex:1.05;min-width:0;">` +
     `<div style="font-size:34px;font-weight:700;text-decoration:underline;">電力費用：</div>` +
@@ -464,7 +464,8 @@ function renderPowerHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<span style="flex:1;">${escapeHtml(meter?.previous ?? "")}</span>` +
     `<span style="flex:1;">${escapeHtml(meter?.current ?? "")}</span></div>` +
     `<div style="margin-top:16px;font-size:26px;line-height:1.6;">政府電費紓緩計劃餘額為 ${escapeHtml(hkMoney(0))}<br/>政府電費補貼餘額為 ${escapeHtml(hkMoney(0))}</div></div>` +
-    `<div style="margin-top:auto;border:3px solid #6d7872;border-radius:14px;padding:26px;text-align:center;">` +
+    `<div style="margin-top:auto;border:3px solid #6d7872;border-radius:14px;padding:26px;text-align:center;` +
+    `height:430px;box-sizing:border-box;background:#fdfbe6;">` +
     `<div style="font-size:32px;font-weight:700;">「轉數快」繳費</div>` +
     `<div style="margin-top:12px;display:inline-block;">${pseudoQrSvg(vm.qrSeed, { module: 10 })}</div></div>` +
     `</div></div>` +
@@ -630,7 +631,7 @@ function waterChart(vm: BillViewModel): string {
     )
     .join("");
   return (
-    `<div style="margin-top:60px;">` +
+    `<div style="margin-top:36px;">` +
     `<div style="font-size:26px;color:#333c42;margin-bottom:8px;">立方米 m³</div>` +
     `<div style="position:relative;height:${H}px;">${grid.join("")}` +
     `<div style="position:absolute;left:80px;right:0;top:0;bottom:0;border-left:3px solid #1b2327;border-bottom:3px solid #1b2327;"></div>` +
@@ -695,7 +696,7 @@ function renderWaterHtml(vm: BillViewModel, opts: RenderOptions): string {
   return (
     `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:#1b2327;font-family:${HK_FONT};">` +
-    `<div style="height:${CANVAS_HEIGHT}px;padding:56px 110px 50px;display:flex;flex-direction:column;box-sizing:border-box;">` +
+    `<div style="height:${CANVAS_HEIGHT}px;padding:56px 70px 50px 180px;display:flex;flex-direction:column;box-sizing:border-box;">` +
     // 页眉：左标志 + 双语机构名，右 付款通知書 / 發出日期
     `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
     `<div style="display:flex;gap:26px;align-items:center;">${waterLogoMark(accent)}` +
@@ -708,15 +709,15 @@ function renderWaterHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="margin-left:34%;margin-top:84px;font-size:26px;color:#1b2327;">${serialNo}</div>` +
     // 客户块 + 用水楼宇地址
     `<div style="display:flex;justify-content:space-between;margin-top:16px;">` +
-    `<div><div style="font-size:34px;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
+    `<div style="margin-left:30px;"><div style="font-size:34px;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
     `<div><div style="font-size:30px;font-weight:700;text-decoration:underline;">用水樓宇地址</div>` +
     `<div style="margin-top:6px;">${addressHtml}</div></div></div>` +
     // 用户编号
     `<div style="text-align:center;font-size:38px;margin-top:190px;">用戶編號 : ` +
     `<b style="letter-spacing:2px;">${escapeHtml(acct.formatted)}</b></div>` +
     // 主区：左（用量条 + 柱图 + 水表行） 右（應繳總額大框 + 缴款历史）
-    `<div style="display:flex;gap:64px;margin-top:60px;">` +
-    `<div style="flex:1.2;min-width:0;">` +
+    `<div style="display:flex;gap:56px;margin-top:20px;height:735px;flex:none;">` +
+    `<div style="flex:1.6;min-width:0;">` +
     `<div style="display:flex;text-align:center;gap:6px;">` +
     `<div style="flex:1;background:${WATER_CHIP_HEAD};border-radius:14px;font-size:32px;font-weight:700;color:#17375e;padding:12px 0;">用水量</div>` +
     `<div style="flex:1;background:${WATER_CHIP_HEAD};border-radius:14px;font-size:32px;font-weight:700;color:#17375e;padding:12px 0;">每日平均用水量</div></div>` +
@@ -724,7 +725,7 @@ function renderWaterHtml(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="flex:1;background:${WATER_CHIP_BODY};border-radius:14px;font-size:32px;padding:12px 0;">${escapeHtml(usagePart)}</div>` +
     `<div style="flex:1;background:${WATER_CHIP_BODY};border-radius:14px;font-size:32px;padding:12px 0;">${escapeHtml(dailyPart)}</div></div>` +
     waterChart(vm) +
-    `<div style="border-radius:14px;overflow:hidden;margin-top:30px;">` +
+    `<div style="border-radius:14px;overflow:hidden;margin-top:36px;">` +
     `<table style="width:100%;border-collapse:collapse;text-align:center;">` +
     `<tr style="background:${WATER_CHIP_HEAD};font-size:30px;font-weight:700;color:#17375e;">` +
     `<td style="padding:12px 6px;">水錶編號</td><td style="padding:12px 6px;">日期</td>` +
@@ -740,10 +741,10 @@ function renderWaterHtml(vm: BillViewModel, opts: RenderOptions): string {
     `</div>` +
     // 右栏
     `<div style="flex:1;min-width:0;">` +
-    `<div style="position:relative;margin-top:10px;margin-left:76px;">` +
-    `<div style="position:absolute;left:-76px;top:-76px;width:220px;height:220px;border-radius:50%;` +
+    `<div style="position:relative;margin-top:-38px;margin-left:76px;">` +
+    `<div style="position:absolute;left:-76px;top:-124px;width:220px;height:220px;border-radius:50%;` +
     `background:${soft};display:flex;align-items:center;justify-content:center;z-index:2;">${dropletGlyph()}</div>` +
-    `<div style="border:10px solid ${soft};border-radius:42px;padding:80px 40px 50px;text-align:center;background:#ffffff;">` +
+    `<div style="height:720px;box-sizing:border-box;border:10px solid ${soft};border-radius:42px;padding:80px 40px 50px;text-align:center;background:#ffffff;">` +
     `<div style="font-size:38px;">應繳總額</div>` +
     `<div style="font-size:72px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.2;">${escapeHtml(hkMoney(vm.total))}</div>` +
     `<div style="font-size:32px;margin-top:8px;">繳款限期</div>` +
