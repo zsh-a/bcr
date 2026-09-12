@@ -189,7 +189,7 @@ const ICON_DD = `<path d="M3 17 12 5l9 12z"/><path d="M8 21h8"/>`;
 
 /* ================= AGL 版式（燃气，浅蓝圆角面板流） ================= */
 
-const AGL_PALE = "#e3f1fb";
+const AGL_PALE = "#d9fafc";
 const AGL_TEXT_BLUE = "#021eb0";
 const AGL_GRAY_BG = "#f3f3f3";
 
@@ -223,7 +223,7 @@ function aglLogo(): string {
 /** 灰底 Gas 药丸（描边圆角方块内火焰图标 + 蓝色 Gas 字） */
 function aglGasPill(): string {
   return (
-    `<div style="display:flex;align-items:center;gap:34px;background:${AGL_GRAY_BG};border-radius:34px;padding:26px 90px;">` +
+    `<div style="width:713px;box-sizing:border-box;display:flex;align-items:center;gap:34px;background:${AGL_GRAY_BG};border-radius:34px;padding:44px 200px 44px 240px;">` +
     `<div style="width:100px;height:100px;border:5px solid ${AGL_GAS_META.accent};border-radius:26px;` +
     `display:flex;align-items:center;justify-content:center;">${iconSvg(ICON_FLAME, AGL_GAS_META.accent, 66)}</div>` +
     `<span style="font-size:64px;font-weight:800;color:${AGL_TEXT_BLUE};">Gas</span></div>`
@@ -234,10 +234,10 @@ function aglGasPill(): string {
 function aglPanel(icon: string, title: string, body: string, marginTop: string): string {
   return (
     `<div style="margin-top:${marginTop};">` +
-    `<div style="background:${AGL_PALE};border-radius:22px;padding:16px 40px;display:flex;align-items:center;gap:20px;">` +
+    `<div style="background:${AGL_PALE};border-radius:22px;padding:22px 40px;display:flex;align-items:center;gap:20px;">` +
     `${iconSvg(icon, AGL_TEXT_BLUE, 44)}` +
     `<span style="font-size:44px;font-weight:800;color:${AGL_TEXT_BLUE};">${title}</span></div>` +
-    `<div style="padding:20px 12px 0;">${body}</div></div>`
+    `<div style="padding:20px 12px 10px;">${body}</div></div>`
   );
 }
 
@@ -256,23 +256,23 @@ function aglCards(vm: BillViewModel): string {
     `padding:20px 40px;display:flex;align-items:center;gap:20px;">${iconSvg(icon, "#ffffff", 44)}` +
     `<span style="font-size:46px;font-weight:800;color:#ffffff;">${title}</span></div>`;
   return (
-    `<div style="display:flex;justify-content:space-between;margin-top:105px;margin-left:640px;">` +
+    `<div style="display:flex;justify-content:space-between;margin-top:110px;margin-left:640px;">` +
     `<div style="width:640px;">` +
     header(ICON_HEADSET, "Help and support") +
-    `<div style="padding:44px 44px 0;">` +
+      `<div style="padding:44px 44px 0;">` +
     `<div style="font-size:44px;font-weight:800;">We're here for you</div>` +
     `<div style="font-size:36px;color:#3c464d;margin-top:26px;line-height:1.55;">Questions, feedback or just need a ` +
     `bit of help?</div>` +
     `<div style="font-size:36px;color:#3c464d;margin-top:78px;line-height:1.55;">Message us in the ` +
     `<b>AGL app</b> or visit <b>agl.com.au/help</b></div></div></div>` +
-    `<div style="width:700px;">` +
+    `<div style="width:713px;min-height:657px;background:${AGL_PALE};border-radius:26px;padding:29px;box-sizing:border-box;margin-top:-29px;">` +
     header(ICON_DOC, "Amount due") +
-    `<div style="padding:44px 44px 0;">` +
-    `<div style="font-size:156px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;">` +
+      `<div style="padding:34px 34px 0;">` +
+    `<div style="font-size:100px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;">` +
     `${escapeHtml(audSp(AGL_GAS_META, vm.total))}</div>` +
     `<div style="border-top:3px solid #c9d6de;margin-top:66px;padding-top:36px;">` +
     `<div style="font-size:40px;color:#3c464d;">Due date</div>` +
-    `<div style="font-size:100px;font-weight:800;margin-top:14px;">${escapeHtml(vm.dueDate)}</div></div>` +
+    `<div style="font-size:70px;font-weight:800;margin-top:14px;">${escapeHtml(vm.dueDate)}</div></div>` +
     `</div></div></div>`
   );
 }
@@ -304,8 +304,8 @@ function aglHowToPay(vm: BillViewModel): string {
     `<span style="font-size:32px;color:#1b2327;">AGL Sales Pty Limited ABN 88 090 538 337</span>` +
     `<span style="font-size:22px;color:#8a9298;font-family:'Courier New',monospace;">${topRef}</span></div>` +
     `<div style="border-top:4px dashed #b9b6ad;"></div>` +
-    `<div style="background:${AGL_GRAY_BG};margin:0 -130px 0 -240px;padding:22px 130px 20px 240px;">` +
-    `<div style="display:inline-flex;align-items:center;gap:20px;background:${AGL_PALE};border-radius:20px;padding:12px 44px;">` +
+    `<div style="background:${AGL_GRAY_BG};margin:0 -137px 0 -200px;padding:22px 137px 20px 173px;">` +
+    `<div style="width:677px;height:92px;box-sizing:border-box;display:flex;align-items:center;gap:20px;background:${AGL_PALE};border-radius:20px;padding:12px 44px;">` +
     `${iconSvg(ICON_WALLET, AGL_TEXT_BLUE, 46)}` +
     `<span style="font-size:46px;font-weight:800;color:${AGL_TEXT_BLUE};">How to pay</span></div>` +
     `<div style="display:flex;justify-content:space-between;margin-top:10px;">` +
@@ -382,24 +382,24 @@ function renderAglGas(vm: BillViewModel, opts: RenderOptions): string {
   return (
     `<div style="width:${CANVAS_WIDTH}px;height:${CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:#1b2327;font-family:Helvetica,Arial,sans-serif;">` +
-    `<div style="position:absolute;left:200px;top:480px;transform:rotate(90deg);transform-origin:top left;">` +
+    `<div style="position:absolute;left:185px;top:460px;transform:rotate(90deg);transform-origin:top left;">` +
     `${code128Svg(vm.barcodePayload, { moduleWidth: 2, height: 92 })}</div>` +
-    `<div style="position:absolute;inset:0;padding:110px 130px 60px 240px;display:flex;flex-direction:column;">` +
+    `<div style="position:absolute;inset:0;padding:110px 137px 60px 200px;display:flex;flex-direction:column;">` +
     `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
     `<div style="width:1150px;flex:none;">` +
     aglLogo() +
-    `<div style="margin-top:80px;">${topBarcode}</div>` +
-    `<div style="font-size:26px;color:#3c464d;margin-top:8px;">${escapeHtml(shortCode)}</div>` +
-    `<div style="margin-top:20px;"><div style="font-size:44px;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
+    `<div style="margin-top:145px;margin-left:79px;">${topBarcode}</div>` +
+    `<div style="margin-left:109px;"><div style="font-size:26px;color:#3c464d;margin-top:8px;">${escapeHtml(shortCode)}</div>` +
+    `<div style="margin-top:20px;"><div style="font-size:44px;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div></div>` +
     `<div style="margin-top:190px;">` +
     `<div style="font-size:58px;font-weight:800;color:${AGL_TEXT_BLUE};">Hi ${escapeHtml(vm.customerName)},</div>` +
-    `<div style="font-size:50px;font-weight:800;color:${AGL_TEXT_BLUE};margin-top:12px;line-height:1.3;">` +
+    `<div style="font-size:46px;font-weight:800;color:${AGL_TEXT_BLUE};margin-top:12px;line-height:1.3;">` +
     `Here's your bi-monthly gas bill for supply address:</div>` +
     `<div style="font-size:48px;color:#1b2327;margin-top:34px;line-height:1.5;">${addressHtml}</div></div>` +
     `</div>` +
-    `<div style="width:760px;flex:none;">` +
-    `<div style="display:flex;justify-content:flex-end;">${aglGasPill()}</div>` +
-    `<div style="height:24px;"></div>` +
+    `<div style="width:713px;flex:none;margin-top:-80px;">` +
+    `<div style="display:flex;justify-content:flex-start;margin-left:-6px;">${aglGasPill()}</div>` +
+    `<div style="height:34px;"></div>` +
     aglPanel(ICON_PERSON, "Your details", detailsBody, "0") +
     aglPanel(ICON_CHAT, "Need help?", helpBody, "96px") +
     `</div></div>` +

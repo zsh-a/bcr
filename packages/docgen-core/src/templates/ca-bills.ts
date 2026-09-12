@@ -232,7 +232,7 @@ function bcUsageChart(vm: BillViewModel): string {
   if (vm.bars.length === 0) return "";
   const rawMax = Math.max(...vm.bars.map((b) => b.value), 1);
   const niceMax = Math.ceil(rawMax / 10) * 10;
-  const plotH = 700;
+  const plotH = 522;
   const gridLines = [1 / 3, 2 / 3, 1]
     .map((f) => {
       const y = Math.round(plotH * (1 - f));
@@ -292,7 +292,7 @@ function bcBottomBand(): string {
     `<polygon points="68,120 92,80 102,80 78,120" fill="#ffffff" opacity="0.7"/>` +
     `</svg>`;
   return (
-    `<div style="margin:auto -130px -60px;background:#f5f4ef;padding:60px 130px 100px;border-top:6px solid ${BC_GREEN};">` +
+    `<div style="margin:auto -31px 19px;background:#f5f4ef;padding:60px 75px 143px;border-top:6px solid ${BC_GREEN};">` +
     `<div style="display:flex;gap:110px;">` +
     `<div style="flex:1.25;">` +
     `<div style="font-size:44px;font-weight:800;">Ways to pay your bill</div>` +
@@ -344,7 +344,7 @@ function renderBcHydro(vm: BillViewModel, opts: RenderOptions): string {
   return (
     `<div style="width:${CA_CANVAS_WIDTH}px;height:${CA_CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:#1b2327;font-family:Helvetica,Arial,sans-serif;">` +
-    `<div style="position:absolute;inset:0;padding:100px 130px 60px;display:flex;flex-direction:column;">` +
+    `<div style="position:absolute;inset:0;padding:100px 100px 60px;display:flex;flex-direction:column;">` +
     // 页眉：logo + 机构名 ｜ Service address ｜ 账户元信息表
     `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
     `<div style="display:flex;gap:30px;align-items:center;width:560px;flex:none;">${bcLogo()}` +
@@ -359,7 +359,7 @@ function renderBcHydro(vm: BillViewModel, opts: RenderOptions): string {
     metaCell("Page", "1 of 2") +
     `</div></div>` +
     // Your bill highlights + auto-pay 大蓝框
-    `<div style="display:flex;justify-content:space-between;gap:80px;margin-top:120px;">` +
+    `<div style="display:flex;justify-content:space-between;gap:80px;margin-top:124px;">` +
     `<div style="flex:1;">` +
     `<div style="font-size:64px;font-weight:800;color:${meta.accent};">Your bill highlights</div>` +
     `<div style="font-size:38px;font-weight:800;margin-top:18px;">Your bill for ${escapeHtml(monDayYear(vm.periodStart))} to ${escapeHtml(monDayYear(vm.periodEnd))}</div>` +
@@ -368,8 +368,8 @@ function renderBcHydro(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="display:flex;gap:18px;margin-top:20px;align-items:flex-start;">${bcBullet("ring")}` +
     `<div style="font-size:31px;color:#333c42;">To track your electricity usage, visit <b>bchydro.com/login</b>.</div></div>` +
     `</div>` +
-    `<div style="width:900px;flex:none;">` +
-    `<div style="background:${meta.accent};color:#ffffff;border-radius:6px;padding:70px 56px;min-height:460px;` +
+    `<div style="width:914px;flex:none;">` +
+    `<div style="background:${meta.accent};color:#ffffff;border-radius:6px;padding:70px 56px;min-height:368px;` +
     `display:flex;flex-direction:column;justify-content:space-between;">` +
     `<div style="font-size:34px;">Auto-pay amount</div>` +
     `<div style="font-size:120px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;line-height:1.25;">${moneySup(money(vm.total))}</div>` +
@@ -377,7 +377,7 @@ function renderBcHydro(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="text-align:right;font-size:32px;font-weight:700;color:${meta.accent};margin-top:22px;">Turn for bill details &#8594;</div>` +
     `</div></div>` +
     // 用量区：左侧日均费用 + 柱图，右侧 Did you know 框
-    `<div style="display:flex;gap:90px;margin-top:300px;">` +
+    `<div style="display:flex;gap:90px;margin-top:245px;">` +
     `<div style="flex:1.5;">` +
     `<div style="font-size:44px;font-weight:800;">Your electricity usage over time</div>` +
     `<div style="display:flex;gap:22px;margin-top:24px;align-items:stretch;">` +
@@ -516,7 +516,7 @@ function enLeaderRow(
 ): string {
   const size = opts?.size ?? 32;
   return (
-    `<div style="display:flex;align-items:flex-end;padding:21px 0;">` +
+    `<div style="display:flex;align-items:flex-end;padding:13px 0;">` +
     `<span style="font-size:${size}px;${opts?.bold === true ? "font-weight:700;" : "color:#333c42;"}">${label}</span>` +
     `<span style="flex:1;border-bottom:3px dotted #c3bdae;margin:0 14px 9px;"></span>` +
     `<span style="font-size:${size}px;font-weight:${opts?.bold === true ? 700 : 500};font-variant-numeric:tabular-nums;">${value}</span></div>`
@@ -566,7 +566,7 @@ function renderEnmax(vm: BillViewModel, opts: RenderOptions): string {
         .map((line) => enLeaderRow(escapeHtml(line.label), escapeHtml(money(line.amount))))
         .join("");
       return (
-        `<div style="margin-top:76px;">` +
+        `<div style="margin-top:50px;">` +
         `<div style="display:flex;justify-content:center;position:relative;padding:6px 0 16px;">` +
         `<span style="position:absolute;left:0;top:0;">${idx === 0 ? enLogo(240) : enCityLogo()}</span>` +
         `<span style="font-size:44px;font-weight:800;">${escapeHtml(section.title)}</span></div>` +
@@ -581,10 +581,10 @@ function renderEnmax(vm: BillViewModel, opts: RenderOptions): string {
   return (
     `<div style="width:${CA_CANVAS_WIDTH}px;height:${CA_CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:#1b2327;font-family:Helvetica,Arial,sans-serif;">` +
-    `<div style="position:absolute;left:0;top:0;right:0;height:24px;background:#7f95cb;"></div>` +
+    `<div style="position:absolute;left:750px;top:90px;right:74px;height:18px;background:#7f95cb;"></div>` +
     `<div style="position:absolute;inset:0;padding:130px 120px 60px;display:flex;flex-direction:column;">` +
     // 页眉：报表标题 + 地址 ｜ 页码 / 户号 / 出账日
-    `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
+    `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-left:630px;margin-right:-46px;">` +
     `<div><div style="font-size:44px;font-weight:800;color:#302d2e;letter-spacing:1px;">YOUR ENERGY AND UTILITIES STATEMENT</div>` +
     `<div style="margin-top:18px;font-size:30px;font-weight:700;">${escapeHtml(vm.customerName)}</div>${addressHtml}</div>` +
     `<div style="text-align:right;font-size:29px;line-height:1.6;flex:none;">` +
@@ -592,8 +592,8 @@ function renderEnmax(vm: BillViewModel, opts: RenderOptions): string {
     `<div style="margin-top:10px;">Account Number: <b>${escapeHtml(vm.accountNumber)}</b></div>` +
     `<div>Current Bill Date: <b>${escapeHtml(longCaDate(vm.billDate))}</b></div></div></div>` +
     // 主体双栏：同一外框 + 中间竖向分隔线（参考图结构）
-    `<div style="display:flex;margin-top:90px;border:2px solid #c8c4ba;">` +
-    `<div style="flex:1.55;padding:36px 40px 48px;">` +
+    `<div style="display:flex;margin-top:118px;margin-left:105px;margin-right:-46px;border:2px solid #c8c4ba;">` +
+    `<div style="flex:2;padding:36px 40px 48px;">` +
     `<div style="display:flex;align-items:center;gap:26px;padding:8px 0 18px;">` +
     `<span style="width:64px;height:64px;background:#1b2327;color:#ffffff;display:inline-flex;align-items:center;` +
     `justify-content:center;font-size:40px;font-weight:800;flex:none;margin-left:-72px;">$</span>` +
@@ -619,7 +619,7 @@ function renderEnmax(vm: BillViewModel, opts: RenderOptions): string {
     ) +
     `</div>` +
     sectionHtml +
-    `<div style="border-top:3px solid #1b2327;margin-top:60px;padding-top:14px;">` +
+    `<div style="border-top:3px solid #1b2327;margin-top:30px;padding-top:14px;">` +
     enLeaderRow(`Total ${escapeHtml(vm.taxLabel)}`, escapeHtml(money(vm.tax))) +
     enLeaderRow("Total Current Charges", escapeHtml(money(vm.total)), { bold: true }) +
     `<div style="border-top:3px solid #1b2327;margin-top:8px;">` +
@@ -657,7 +657,7 @@ function renderEnmax(vm: BillViewModel, opts: RenderOptions): string {
     `Payment Plan - there are no additional costs to set up equalized payments. Visit enmax.com/sign-in or call us at 310-2010.</div></div>` +
     `</div></div>` +
     // 撕线回单
-    `<div style="margin-top:110px;">` +
+    `<div style="margin-top:65px;">` +
     `<div style="text-align:center;font-size:24px;color:#5a656c;margin-bottom:6px;">Tear off here</div>` +
     `<div style="border-top:4px dashed #9aa29b;position:relative;padding-top:24px;">` +
     `<span style="position:absolute;left:-30px;top:-32px;font-size:42px;color:#9aa29b;">&#9986;</span>` +
@@ -837,11 +837,11 @@ function hoLogo(scale = 1): string {
 }
 
 /** 顶部信息框：蓝色标题栏 + 圆角边框 */
-function hoPanel(title: string, body: string, flex = "1"): string {
+function hoPanel(title: string, body: string, flex = "1", bodyPadding = 54): string {
   return (
     `<div style="flex:${flex};border:3px solid #7a9cc6;border-radius:22px;overflow:hidden;">` +
     `<div style="background:${HO_HEADER};color:#ffffff;font-size:33px;font-weight:700;text-align:center;padding:18px 10px;">${title}</div>` +
-    `<div style="padding:54px 36px;">${body}</div></div>`
+    `<div style="padding:${bodyPadding}px 36px;">${body}</div></div>`
   );
 }
 
@@ -902,13 +902,13 @@ function renderHydroOne(vm: BillViewModel, opts: RenderOptions): string {
   return (
     `<div style="width:${CA_CANVAS_WIDTH}px;height:${CA_CANVAS_HEIGHT}px;position:relative;overflow:hidden;` +
     `background:#ffffff;color:#1b2327;font-family:Helvetica,Arial,sans-serif;">` +
-    `<div style="position:absolute;inset:0;padding:90px 120px 60px;display:flex;flex-direction:column;">` +
+    `<div style="position:absolute;inset:0;padding:90px 96px 60px 186px;display:flex;flex-direction:column;">` +
     // 页眉：字标 + Page
     `<div style="display:flex;justify-content:space-between;align-items:flex-start;">` +
     `<div>${hoLogo(1)}</div>` +
     `<div style="font-size:27px;color:#333c42;">Page 1 of 2</div></div>` +
     // 报表标题 + 账期 ｜ 客户名（蓝）+ 户号箭头框
-    `<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:36px;">` +
+    `<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;">` +
     `<div><div style="font-size:58px;font-weight:800;color:${meta.accent};">Your Electricity Statement</div>` +
     `<div style="font-size:31px;margin-top:10px;">For the period of:&#160; <b>${escapeHtml(usLongDate(vm.periodStart))} - ${escapeHtml(usLongDate(vm.periodEnd))}</b></div></div>` +
     `<div>` +
@@ -922,11 +922,13 @@ function renderHydroOne(vm: BillViewModel, opts: RenderOptions): string {
     `<span style="font-weight:800;align-self:center;">${escapeHtml(monthFullDayYear(vm.billDate))}</span></div>` +
     `</div></div>` +
     // 三大信息框
-    `<div style="display:flex;gap:46px;margin-top:80px;">` +
+    `<div style="display:flex;gap:34px;margin-top:52px;">` +
     hoPanel(
       "What do I owe?",
       `<div style="text-align:center;font-size:100px;font-weight:800;font-variant-numeric:tabular-nums;">${moneySup(money(vm.total))}</div>` +
         `<div style="text-align:center;font-size:27px;color:#333c42;margin-top:14px;line-height:1.5;">See reverse for a<br/>summary of your charges</div>`,
+      "1.08",
+      68,
     ) +
     hoPanel(
       "How much did I use?",
@@ -938,15 +940,19 @@ function renderHydroOne(vm: BillViewModel, opts: RenderOptions): string {
         `</svg>` +
         `<span style="font-size:88px;font-weight:800;font-variant-numeric:tabular-nums;">${escapeHtml(vm.usageSummary.split(" ")[0] ?? "")}&#160;<span style="font-size:40px;">kWh</span></span></div>` +
         `<div style="text-align:center;font-size:27px;color:#333c42;margin-top:8px;">of electricity this period</div>`,
+      "1.08",
+      68,
     ) +
     hoPanel(
       "When is it due?",
       `<div style="text-align:center;font-size:76px;font-weight:800;line-height:1.2;">${escapeHtml(dueLine1)}<br/>${escapeHtml(dueLine2)}</div>` +
         `<div style="text-align:center;font-size:27px;color:#333c42;margin-top:16px;">Please pay by this date</div>`,
+      "1",
+      68,
     ) +
     `</div>` +
     // 用量对比 + 须知
-    `<div style="display:flex;gap:46px;margin-top:80px;">` +
+    `<div style="display:flex;gap:34px;margin-top:90px;">` +
     hoPanel(
       "What does my electricity usage look like?",
       `<div style="display:flex;gap:50px;">` +
@@ -954,7 +960,8 @@ function renderHydroOne(vm: BillViewModel, opts: RenderOptions): string {
         `<div>Your average daily usage has <b>${direction} by ${pct}%</b> compared to the same period last year.</div>` +
         `<div style="margin-top:26px;">Find out more by logging into <b>myAccount</b> at www.HydroOne.com</div></div>` +
         `<div style="flex:1;">${hoUsageBars(vm)}</div></div>`,
-      "1.6",
+      "2.2",
+      42,
     ) +
     hoPanel(
       "What do I need to know?",
@@ -964,10 +971,11 @@ function renderHydroOne(vm: BillViewModel, opts: RenderOptions): string {
         `<div style="display:flex;gap:16px;align-items:flex-start;">${noticeIcon}` +
         `<div style="font-size:27px;line-height:1.5;color:#333c42;"><b>Important notice:</b> 2026 delivery rates are now in effect and are reflected on this bill. To learn more, visit HydroOne.com/2026Rates.</div></div>`,
       "1",
+      42,
     ) +
     `</div>` +
     // 联系行
-    `<div style="display:flex;gap:50px;margin-top:130px;">` +
+    `<div style="display:flex;gap:50px;margin-top:30px;">` +
     `<div style="flex:1;display:flex;gap:20px;align-items:center;">${hoContactIcon(`<path d="M6 6 h12 l8 8 v12 h-20 Z" fill="none" stroke="${HO_HEADER}" stroke-width="2.4"/><path d="M18 6 v8 h8" fill="none" stroke="${HO_HEADER}" stroke-width="2.4"/>`)}` +
     `<div style="font-size:26px;line-height:1.5;">For billing, quick answers and much more, visit <b>www.HydroOne.com</b></div></div>` +
     `<div style="flex:1;display:flex;gap:20px;align-items:center;">${hoContactIcon(`<path d="M16 4 L29 27 H3 Z" fill="none" stroke="${HO_HEADER}" stroke-width="2.6"/><path d="M16 12 v7 M16 23 v1" stroke="${HO_HEADER}" stroke-width="2.8"/>`)}` +

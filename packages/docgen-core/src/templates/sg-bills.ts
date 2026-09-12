@@ -277,7 +277,8 @@ function overviewPanel(vm: BillViewModel): string {
     `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="50" viewBox="0 0 72 56">` +
     `<path d="M0 18h40v-14l32 24-32 24v-14H0z" fill="#1b2327"/></svg>`;
   return (
-    `<div style="flex:1;background:${PANEL_BG};border-radius:60px 200px 0 0;padding:100px 85px 36px 115px;">` +
+    `<div style="flex:1;background:${PANEL_BG};border-radius:60px 200px 0 0;padding:100px 300px 36px 149px;` +
+    `margin-right:40px;box-sizing:border-box;">` +
     `<div style="display:inline-block;background:#ffffff;border-radius:56px;padding:18px 60px 18px 40px;width:700px;box-sizing:border-box;">` +
     `<span style="font-size:52px;font-weight:800;color:#1b2327;">My Bill Overview</span></div>` +
     `<div style="display:flex;justify-content:space-between;margin-top:80px;">` +
@@ -382,7 +383,8 @@ function paymentSlip(vm: BillViewModel): string {
     `${escapeHtml(vm.currency)}${vm.total.toFixed(2)}</div>` +
     `<div style="font-size:30px;font-weight:700;color:#1b2327;white-space:nowrap;">` +
     `Due date for Current Charges ${escapeHtml(vm.dueDate)}</div></div>` +
-    `<div style="flex:1;height:536px;box-sizing:border-box;background:${PANEL_BG};border-radius:0 0 0 200px;padding:177px 150px 44px 90px;">` +
+    `<div style="flex:1;height:536px;box-sizing:border-box;background:${PANEL_BG};border-radius:0 0 0 200px;` +
+    `padding:177px 150px 44px 90px;margin-right:40px;">` +
     `<div style="display:flex;gap:30px;">` +
     `<div style="flex:1.4;">${box(escapeHtml(vm.customerName))}</div>` +
     `<div style="flex:1;">${box(`Acc. No: ${escapeHtml(vm.accountNumber)}`)}</div></div>` +

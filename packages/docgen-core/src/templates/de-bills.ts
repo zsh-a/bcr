@@ -521,10 +521,10 @@ export const wlHeizkosten: BillTemplate = {
       `<div style="width:700px;flex:none;margin-left:95px;padding-top:115px;">` +
       `<div style="font-size:46px;font-weight:800;color:${INK};">${escapeHtml(vm.customerName)}</div>` +
       `${addressHtml}` +
-      `<div style="margin-top:188px;">` +
+      `<div style="margin-top:231px;">` +
       `<div style="font-size:30px;font-weight:700;">Ihr Nutzungszeitraum</div>` +
       `<div style="font-size:30px;margin-top:4px;">${escapeHtml(vm.periodStart)} - ${escapeHtml(vm.periodEnd)}</div></div>` +
-      `<div style="margin-top:70px;">` +
+      `<div style="margin-top:122px;">` +
       `<div style="font-size:30px;font-weight:700;">Abrechnungszeitraum</div>` +
       `<div style="font-size:30px;margin-top:4px;">${escapeHtml(vm.periodStart)} - ${escapeHtml(vm.periodEnd)}</div></div>` +
       `</div>` +
@@ -551,7 +551,7 @@ export const wlHeizkosten: BillTemplate = {
       `<span style="font-variant-numeric:tabular-nums;">${escapeHtml(formatNumDe(vm.total))} EUR</span></div>` +
       `</div></div>` +
       // 5. 红条信息框：Energiekostenentlastung（EWPBG）
-      `<div style="margin-top:40px;border-left:10px solid ${RED};border-top:2px solid ${PINK_LINE};` +
+      `<div style="margin-top:18px;border-left:10px solid ${RED};border-top:2px solid ${PINK_LINE};` +
       `border-bottom:2px solid ${PINK_LINE};padding:12px 32px;">` +
       `<div style="display:flex;align-items:center;margin-bottom:8px;">` +
       `<span style="display:inline-block;width:14px;height:14px;background:${RED};margin-right:12px;flex:none;"></span>` +
