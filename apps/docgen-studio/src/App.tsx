@@ -19,6 +19,7 @@ import {
   isoToday,
   listTemplates,
   mulberry32,
+  PHOTO_SCENES,
   randomAddress,
   REGIONS,
   validateBillInput,
@@ -26,6 +27,7 @@ import {
   type BillKind,
   type BillViewModel,
   type RegionId,
+  type PhotoScene,
 } from "@bcr/docgen-core";
 import type { GeneratedBill } from "@bcr/docgen-core/dom";
 import "./styles.css";
@@ -43,6 +45,7 @@ interface GeneratedEntry {
   readonly input: BillInput;
   readonly vm: BillViewModel;
   readonly watermark: boolean;
+  readonly photoScene: PhotoScene;
   readonly documentBlob: Blob;
   readonly paperBlob: Blob;
 }
@@ -56,10 +59,14 @@ function triggerDownload(url: string, filename: string): void {
   a.click();
 }
 
-async function runPipeline(input: BillInput, watermark: boolean): Promise<GeneratedBill> {
+async function runPipeline(
+  input: BillInput,
+  watermark: boolean,
+  scene: PhotoScene,
+): Promise<GeneratedBill> {
   // 动态导入 DOM 子路径：node 测试/首屏 bundle 不会碰到栅格化代码
   const { generateBill } = await import("@bcr/docgen-core/dom");
-  return await generateBill(input, { watermark });
+  return await generateBill(input, { watermark }, { scene });
 }
 
 export function App() {
@@ -69,6 +76,7 @@ export function App() {
   const [address, setAddress] = useState<Record<string, string>>({});
   const [dateAuto, setDateAuto] = useState<boolean>(true);
   const [billDate, setBillDate] = useState<string>(isoToday());
+  const [photoScene, setPhotoScene] = useState<PhotoScene>("daylight");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [generating, setGenerating] = useState<boolean>(false);
   const [entries, setEntries] = useState<ReadonlyArray<GeneratedEntry>>([]);
@@ -127,13 +135,14 @@ export function App() {
     }
     setGenerating(true);
     try {
-      const generated = await runPipeline(input, active?.watermark ?? true);
+      const generated = await runPipeline(input, active?.watermark ?? true, photoScene);
       const entry: GeneratedEntry = {
         id: nextEntryId++,
         time: new Date().toLocaleTimeString("zh-CN", { hour12: false }),
         input,
         vm: generated.vm,
         watermark: active?.watermark ?? true,
+        photoScene,
         documentBlob: generated.documentPng,
         paperBlob: generated.paperJpeg,
       };
@@ -151,7 +160,7 @@ export function App() {
     const watermark = !active.watermark;
     setGenerating(true);
     try {
-      const generated = await runPipeline(active.input, watermark);
+      const generated = await runPipeline(active.input, watermark, active.photoScene);
       setEntries((prev) =>
         prev.map((e) =>
           e.id === active.id
@@ -297,6 +306,24 @@ export function App() {
             {errors["billDate"] !== undefined && errors["billDate"] !== "" && (
               <div className="docgen-field-error">{errors["billDate"]}</div>
             )}
+          </div>
+
+          <div>
+            <label htmlFor="photo-scene" className="mb-1 block text-sm text-muted">
+              拍摄场景
+            </label>
+            <select
+              id="photo-scene"
+              value={photoScene}
+              disabled={generating}
+              onChange={(event) => setPhotoScene(event.target.value as PhotoScene)}
+            >
+              {PHOTO_SCENES.map((scene) => (
+                <option key={scene.id} value={scene.id}>
+                  {scene.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex gap-2">

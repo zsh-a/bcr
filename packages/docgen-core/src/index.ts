@@ -55,3 +55,5 @@ export {
 export { encodeCode128B, code128BValues, code128Svg, CODE128_PATTERNS } from "./barcode";
 
 export { pseudoQrMatrix, pseudoQrSvg, PSEUDO_QR_SIZE } from "./pseudoqr";
+
+export { PHOTO_SCENES, type PhotoScene } from "./photo-options";

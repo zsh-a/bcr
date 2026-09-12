@@ -15,6 +15,7 @@ async function sources(directory) {
   ).flat();
 }
 const rules = [
+  ["packages/scene-renderer/src", new Set()],
   ["packages/core/src", new Set(["@bcr/storage-opfs"])],
   ["packages/runtime-worker/src", new Set(["@bcr/core", "@bcr/storage-opfs"])],
   [

@@ -5,12 +5,15 @@
 
 import { getTemplate, rngForInput } from "./registry";
 import { rasterizeHtml } from "./rasterize";
-import { compositePaperPhoto, PHOTO_HEIGHT, PHOTO_WIDTH } from "./composite";
+import { compositePaperPhoto } from "./composite";
+import type { PaperPhotoOptions } from "./photo-options";
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "./templates/common";
 import type { BillInput, BillViewModel, RenderOptions } from "./model";
 
 export { rasterizeHtml, type RasterizeOptions } from "./rasterize";
 export { compositePaperPhoto, PHOTO_HEIGHT, PHOTO_WIDTH } from "./composite";
+export type { PaperPhotoOptions } from "./photo-options";
+export { createDocumentScene } from "./photo-scene";
 
 export interface RenderedBill {
   readonly vm: BillViewModel;
@@ -29,12 +32,16 @@ export interface GeneratedBill {
   readonly vm: BillViewModel;
   /** 账单本体 PNG（由模板画布决定，默认 2481×3509） */
   readonly documentPng: Blob;
-  /** 「实拍」合成 JPEG（1620×2160） */
+  /** 三维实拍 JPEG（默认长边 2160，方向随页面自动匹配） */
   readonly paperJpeg: Blob;
 }
 
-/** 一键 pipeline：render → 栅格化 PNG → 透视合成 JPEG */
-export async function generateBill(input: BillInput, opts: RenderOptions): Promise<GeneratedBill> {
+/** 一键 pipeline：render → 栅格化 PNG → 三维纸张渲染 JPEG */
+export async function generateBill(
+  input: BillInput,
+  opts: RenderOptions,
+  photoOptions: PaperPhotoOptions = {},
+): Promise<GeneratedBill> {
   const template = getTemplate(input.docType);
   if (template === undefined) throw new Error(`未知的账单类型：${input.docType}`);
   const { vm, html } = renderBillHtml(input, opts);
@@ -42,7 +49,7 @@ export async function generateBill(input: BillInput, opts: RenderOptions): Promi
   const documentPng = await rasterizeHtml(html, canvas);
   const bitmap = await createImageBitmap(documentPng);
   try {
-    const paperJpeg = await compositePaperPhoto(bitmap);
+    const paperJpeg = await compositePaperPhoto(bitmap, photoOptions);
     return { vm, documentPng, paperJpeg };
   } finally {
     bitmap.close();
