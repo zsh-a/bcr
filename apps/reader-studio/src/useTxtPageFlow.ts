@@ -1,16 +1,7 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-} from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { createLocator, resolveTextAnchor, type ReaderBook } from "@bcr/reader-core";
 import type { ReaderSettings } from "./model";
 import { reader, getReaderState } from "./store";
-import { READER_SEEK_PROGRESS_EVENT } from "./useReaderRuntime";
 import { TxtPageLayout, type TxtPage, type TxtPageCursor } from "./txtPageLayout";
 import { createTxtPageMeasurement } from "./txtPageMeasurement";
 import { animatePageTurn } from "./pageTurnMotion";
@@ -40,19 +31,19 @@ export function useTxtPageFlow(options: {
   book: ReaderBook;
   settings: ReaderSettings;
   navigation: number;
+  seekSequence: number;
   columns: number;
   viewport: RefObject<HTMLDivElement | null>;
   content: RefObject<HTMLDivElement | null>;
 }) {
-  const { book, settings, navigation, columns, viewport, content } = options;
+  const { book, settings, navigation, seekSequence, columns, viewport, content } = options;
   const enabled = book.source.format === "txt";
   const [current, setCurrent] = useState<TxtPageSpread>();
   const [motion, setMotion] = useState<PageMotion>();
   const [busy, setBusy] = useState(enabled);
   const [error, setError] = useState<string>();
   const [retry, setRetry] = useState(0);
-  const [seekVersion, setSeekVersion] = useState(0);
-  const handledSeekVersion = useRef(0);
+  const handledSeekSequence = useRef(seekSequence);
   const session = useRef<TxtFlowSession>(idleSession);
   const cancelMotion = useRef(() => {});
   const finishMotion = useRef(() => {});
@@ -75,16 +66,6 @@ export function useTxtPageFlow(options: {
   );
   useSectionsContent(sections);
 
-  useEffect(() => {
-    if (!enabled) return;
-    const handleSeek = () => {
-      session.current.seek();
-      setSeekVersion((value) => value + 1);
-    };
-    window.addEventListener(READER_SEEK_PROGRESS_EVENT, handleSeek);
-    return () => window.removeEventListener(READER_SEEK_PROGRESS_EVENT, handleSeek);
-  }, [enabled]);
-
   useLayoutEffect(() => {
     const element = viewport.current;
     const body = content.current;
@@ -93,8 +74,9 @@ export function useTxtPageFlow(options: {
     let disposed = false;
     let geometryKey = "";
     let scheduled = 0;
-    const seekRequested = seekVersion !== handledSeekVersion.current;
-    handledSeekVersion.current = seekVersion;
+    const seekRequested = seekSequence !== handledSeekSequence.current;
+    handledSeekSequence.current = seekSequence;
+    if (seekRequested) session.current.seek();
     const rebuild = (force = false) => {
       if (disposed) return;
       const style = getComputedStyle(body);
@@ -302,7 +284,7 @@ export function useTxtPageFlow(options: {
       document.fonts.removeEventListener("loadingdone", fonts);
       disposeLayout();
     };
-  }, [enabled, book, settings, navigation, columns, viewport, content, retry, seekVersion]);
+  }, [enabled, book, settings, navigation, seekSequence, columns, viewport, content, retry]);
 
   useLayoutEffect(() => {
     const element = viewport.current;

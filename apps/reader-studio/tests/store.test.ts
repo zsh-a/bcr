@@ -69,10 +69,12 @@ describe("Reader annotation anchors", () => {
   it("treats scrubber jumps as explicit viewport navigation without adding history", () => {
     const target = createLocator(book.sections[2]!, 0.45);
     const before = getReaderState().navigationSequence;
+    const beforeSeek = getReaderState().seekSequence;
 
     reader.seekLocator(target, 0.62);
 
     expect(getReaderState().navigationSequence).toBe(before + 1);
+    expect(getReaderState().seekSequence).toBe(beforeSeek + 1);
     expect(getReaderState().activeSectionId).toBe(book.sections[2]!.id);
     expect(getReaderState().progressByBook[book.id]?.percentage).toBe(0.62);
     expect(getReaderState().navigationHistory.back).toHaveLength(0);

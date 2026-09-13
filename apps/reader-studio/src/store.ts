@@ -38,6 +38,7 @@ function initialState(): ReaderState {
     activeBookId: demo.id,
     activeSectionId: demo.sections[0]?.id ?? null,
     navigationSequence: 0,
+    seekSequence: 0,
     progressByBook: { [demo.id]: progress },
     bookmarksByBook: { [demo.id]: [] },
     annotationsByBook: { [demo.id]: [] },
@@ -461,6 +462,7 @@ class ReaderStore {
     this.set({
       activeSectionId: nextProgress.locator.sectionId,
       navigationSequence: this.state.navigationSequence + 1,
+      seekSequence: this.state.seekSequence + 1,
       progressByBook: {
         ...this.state.progressByBook,
         [book.id]: nextProgress,

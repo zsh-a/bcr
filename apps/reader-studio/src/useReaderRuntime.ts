@@ -12,7 +12,6 @@ import {
 import { getReaderState, reader, useReader } from "./store";
 
 export const READER_CAPTURE_PROGRESS_EVENT = "bcr-reader-capture-progress";
-export const READER_SEEK_PROGRESS_EVENT = "bcr-reader-seek-progress";
 
 export { persistReaderSnapshot } from "./readerPersistenceQueue";
 import { persistReaderSnapshot, restoreReaderSnapshot } from "./readerPersistenceQueue";

@@ -23,7 +23,7 @@ import {
   readerLocatorScrollPosition,
 } from "./readingPosition";
 import { resolveReaderInternalLink, type ReaderInternalLinkTarget } from "./navigation";
-import { READER_CAPTURE_PROGRESS_EVENT, READER_SEEK_PROGRESS_EVENT } from "./useReaderRuntime";
+import { READER_CAPTURE_PROGRESS_EVENT } from "./useReaderRuntime";
 import {
   pageAtOffset,
   paginationGroups,
@@ -39,7 +39,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
   const settings = useReader((state) => state.settings);
   const activeId = useReader((state) => state.activeSectionId);
   const navigation = useReader((state) => state.navigationSequence);
-  const [seekVersion, setSeekVersion] = useState(0);
+  const seekSequence = useReader((state) => state.seekSequence);
   const query = useReader((state) => state.query);
   const reveal = useReader((state) => state.searchReveal);
   const sectionIndex = Math.max(
@@ -110,16 +110,11 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
   const [physicalPages, setPhysicalPages] = useState(1);
   const [layoutBusy, setLayoutBusy] = useState(true);
 
-  useEffect(() => {
-    const handleSeek = () => setSeekVersion((value) => value + 1);
-    window.addEventListener(READER_SEEK_PROGRESS_EVENT, handleSeek);
-    return () => window.removeEventListener(READER_SEEK_PROGRESS_EVENT, handleSeek);
-  }, []);
-
   const txt = useTxtPageFlow({
     book: props.book,
     settings,
     navigation,
+    seekSequence,
     columns,
     viewport: viewportRef,
     content: contentRef,
@@ -275,7 +270,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
     columns,
     activeContent.ready,
     stopMotion,
-    seekVersion,
+    seekSequence,
   ]);
 
   useEffect(() => {

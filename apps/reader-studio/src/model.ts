@@ -123,6 +123,8 @@ export interface ReaderState {
   readonly activeSectionId: string | null;
   /** Monotonic, transient signal for explicit navigation requests. */
   readonly navigationSequence: number;
+  /** Monotonic, transient signal for scrubber-driven seeks. */
+  readonly seekSequence: number;
   readonly progressByBook: Readonly<Record<string, ReaderProgress>>;
   readonly bookmarksByBook: Readonly<Record<string, ReadonlyArray<ReaderBookmark>>>;
   readonly annotationsByBook: Readonly<Record<string, ReadonlyArray<ReaderAnnotation>>>;
