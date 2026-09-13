@@ -66,6 +66,18 @@ describe("Reader annotation anchors", () => {
     expect(getReaderState().navigationSequence).toBe(before + 1);
   });
 
+  it("treats scrubber jumps as explicit viewport navigation without adding history", () => {
+    const target = createLocator(book.sections[2]!, 0.45);
+    const before = getReaderState().navigationSequence;
+
+    reader.seekLocator(target, 0.62);
+
+    expect(getReaderState().navigationSequence).toBe(before + 1);
+    expect(getReaderState().activeSectionId).toBe(book.sections[2]!.id);
+    expect(getReaderState().progressByBook[book.id]?.percentage).toBe(0.62);
+    expect(getReaderState().navigationHistory.back).toHaveLength(0);
+  });
+
   it("updates the reading font preferences in the shared settings state", () => {
     reader.setSettings({ fontSize: 22, fontFamily: "kai", latinFontFamily: "mono" });
 

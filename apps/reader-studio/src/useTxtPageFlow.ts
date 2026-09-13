@@ -1,7 +1,16 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { createLocator, resolveTextAnchor, type ReaderBook } from "@bcr/reader-core";
 import type { ReaderSettings } from "./model";
 import { reader, getReaderState } from "./store";
+import { READER_SEEK_PROGRESS_EVENT } from "./useReaderRuntime";
 import { TxtPageLayout, type TxtPage, type TxtPageCursor } from "./txtPageLayout";
 import { createTxtPageMeasurement } from "./txtPageMeasurement";
 import { animatePageTurn } from "./pageTurnMotion";
@@ -23,8 +32,9 @@ interface TxtFlowSession {
   turn: (direction: number) => void;
   flush: () => void;
   stop: () => void;
+  seek: () => void;
 }
-const idleSession: TxtFlowSession = { turn() {}, flush() {}, stop() {} };
+const idleSession: TxtFlowSession = { turn() {}, flush() {}, stop() {}, seek() {} };
 
 export function useTxtPageFlow(options: {
   book: ReaderBook;
@@ -41,6 +51,8 @@ export function useTxtPageFlow(options: {
   const [busy, setBusy] = useState(enabled);
   const [error, setError] = useState<string>();
   const [retry, setRetry] = useState(0);
+  const [seekVersion, setSeekVersion] = useState(0);
+  const handledSeekVersion = useRef(0);
   const session = useRef<TxtFlowSession>(idleSession);
   const cancelMotion = useRef(() => {});
   const finishMotion = useRef(() => {});
@@ -63,6 +75,16 @@ export function useTxtPageFlow(options: {
   );
   useSectionsContent(sections);
 
+  useEffect(() => {
+    if (!enabled) return;
+    const handleSeek = () => {
+      session.current.seek();
+      setSeekVersion((value) => value + 1);
+    };
+    window.addEventListener(READER_SEEK_PROGRESS_EVENT, handleSeek);
+    return () => window.removeEventListener(READER_SEEK_PROGRESS_EVENT, handleSeek);
+  }, [enabled]);
+
   useLayoutEffect(() => {
     const element = viewport.current;
     const body = content.current;
@@ -71,6 +93,8 @@ export function useTxtPageFlow(options: {
     let disposed = false;
     let geometryKey = "";
     let scheduled = 0;
+    const seekRequested = seekVersion !== handledSeekVersion.current;
+    handledSeekVersion.current = seekVersion;
     const rebuild = (force = false) => {
       if (disposed) return;
       const style = getComputedStyle(body);
@@ -81,7 +105,7 @@ export function useTxtPageFlow(options: {
       const key = `${width}:${available}`;
       if (!force && key === geometryKey) return;
       geometryKey = key;
-      session.current.flush();
+      if (!seekRequested) session.current.flush();
       disposeLayout();
       setBusy(true);
       setError(undefined);
@@ -111,6 +135,7 @@ export function useTxtPageFlow(options: {
       let active: TxtPageSpread | undefined;
       let running = false;
       let turnGeneration = 0;
+      let suppressPersist = false;
       const queue: number[] = [];
       const same = (a: TxtPageCursor, b: TxtPageCursor) =>
         a.section === b.section && a.offset === b.offset;
@@ -175,7 +200,7 @@ export function useTxtPageFlow(options: {
                   active = target;
                   setCurrent(target);
                   setMotion(undefined);
-                  persist();
+                  if (!suppressPersist) persist();
                 }
                 resolve();
               };
@@ -199,6 +224,14 @@ export function useTxtPageFlow(options: {
         cancelMotion.current();
         finishMotion.current();
       };
+      const seek = () => {
+        turnGeneration++;
+        queue.length = 0;
+        cancelMotion.current();
+        suppressPersist = true;
+        finishMotion.current();
+        suppressPersist = false;
+      };
       session.current = {
         turn(direction) {
           if (queue.length < 8) queue.push(direction);
@@ -209,6 +242,7 @@ export function useTxtPageFlow(options: {
           persist();
         },
         stop,
+        seek,
       };
       disposeLayout = () => {
         live = false;
@@ -253,7 +287,7 @@ export function useTxtPageFlow(options: {
       cancelAnimationFrame(scheduled);
       scheduled = requestAnimationFrame(() => rebuild(force));
     };
-    rebuild();
+    rebuild(seekRequested);
     const observer = new ResizeObserver(() => schedule());
     observer.observe(element);
     const fonts = () => schedule(true);
@@ -268,7 +302,7 @@ export function useTxtPageFlow(options: {
       document.fonts.removeEventListener("loadingdone", fonts);
       disposeLayout();
     };
-  }, [enabled, book, settings, navigation, columns, viewport, content, retry]);
+  }, [enabled, book, settings, navigation, columns, viewport, content, retry, seekVersion]);
 
   useLayoutEffect(() => {
     const element = viewport.current;

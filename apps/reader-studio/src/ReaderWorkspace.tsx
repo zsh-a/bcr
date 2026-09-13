@@ -19,6 +19,7 @@ import { persistReaderSnapshot } from "./useReaderRuntime";
 import { ReaderSheet } from "./ReaderSheet";
 import { useReaderMobile } from "./useReaderMobile";
 import { ReaderHistoryBar } from "./ReaderHistoryBar";
+import { ReaderProgressScrubber } from "./ReaderProgressScrubber";
 
 const ReaderBackupPanel = lazy(() =>
   import("./ReaderBackupPanel").then((module) => ({ default: module.ReaderBackupPanel })),
@@ -110,6 +111,7 @@ export function ReaderWorkspace(props: {
             onSubmit={submitAnnotation}
           />
         )}
+        <ReaderProgressScrubber book={active} />
         <ReadingView
           runtime={props.runtime}
           book={active}

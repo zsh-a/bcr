@@ -1,4 +1,8 @@
-import { readerPdfDocument } from "./readerPdfAdapter";
+import {
+  readerPdfDocument,
+  registerReaderPdfDocument,
+  unregisterReaderPdfDocument,
+} from "./readerPdfAdapter";
 import { useSectionContent } from "./useSectionContent";
 import { CircleAlert, ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
@@ -124,6 +128,7 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
           await document.destroy();
           return;
         }
+        registerReaderPdfDocument(props.book, document);
         setPdfDocument(document);
         setLoading(false);
         props.onReady?.();
@@ -136,8 +141,10 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
     void load();
     return () => {
       cancelled = true;
-      if (opened !== undefined) void opened.destroy();
-      else if (loadingTask !== undefined) void loadingTask.destroy();
+      if (opened !== undefined) {
+        unregisterReaderPdfDocument(props.book, opened);
+        void opened.destroy();
+      } else if (loadingTask !== undefined) void loadingTask.destroy();
     };
   }, [sourcePending, sourceUrl, loadAttempt]);
 

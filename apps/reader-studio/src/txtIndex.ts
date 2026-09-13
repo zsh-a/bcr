@@ -1,4 +1,4 @@
-import { txtHeading, txtToc, type TxtHeading } from "./txtChapters";
+import { txtHeadingFromText, txtToc, type TxtHeading } from "./txtChapters";
 import { textVersion } from "@bcr/core";
 import { makeSnippet, searchTextRanges, type SearchHit } from "@bcr/reader-core";
 
@@ -18,7 +18,7 @@ export const TXT_CHUNK_BYTES = 256 * 1024;
 export async function scanTxt(
   file: Blob,
   signal?: AbortSignal,
-  onParagraph?: (index: number, firstLine: string) => void,
+  onParagraph?: (index: number, firstLine: string, preview: string) => void,
 ): Promise<TxtRange[]> {
   const ranges: TxtRange[] = [];
   const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
@@ -29,13 +29,25 @@ export async function scanTxt(
   let length = 0,
     whitespace = 0;
   let firstLine = "",
-    lineEnded = false;
+    lineEnded = false,
+    preview = "",
+    previewLine = "",
+    previewLines = 0;
   const append = (value: string) => {
     for (const character of value) {
       if (!lineEnded) {
         if (character === "\n") lineEnded = firstLine.length > 0;
         else if (firstLine.length <= 80 && (firstLine.length > 0 || !/\s/u.test(character)))
           firstLine += character;
+      }
+      if (previewLines < 6) {
+        if (character === "\n") {
+          if (previewLine.trim()) preview += `${previewLine.trim()}\n`;
+          previewLine = "";
+          previewLines++;
+        } else if (previewLine.length < 96) {
+          previewLine += character;
+        }
       }
       if (/\s/u.test(character)) {
         if (length > 0) whitespace += character.length;
@@ -47,11 +59,15 @@ export async function scanTxt(
   };
   const finish = (end: number) => {
     if (length > 0) {
-      onParagraph?.(ranges.length, firstLine);
+      const fullPreview = `${preview}${previewLine.trim()}`.slice(0, 1_024);
+      onParagraph?.(ranges.length, firstLine, fullPreview);
       ranges.push({ start, end, length });
     }
     firstLine = "";
     lineEnded = false;
+    preview = "";
+    previewLine = "";
+    previewLines = 0;
     length = 0;
     whitespace = 0;
   };
@@ -171,8 +187,8 @@ export function validTxtRanges(
 
 export async function scanTxtIndex(file: Blob, signal?: AbortSignal) {
   const headings: TxtHeading[] = [];
-  const ranges = await scanTxt(file, signal, (index, line) => {
-    const label = txtHeading(line);
+  const ranges = await scanTxt(file, signal, (index, line, preview) => {
+    const label = txtHeadingFromText(preview || line);
     if (label) headings.push({ sectionId: `section-${index + 1}`, label });
   });
   return { ranges, toc: txtToc(headings) };

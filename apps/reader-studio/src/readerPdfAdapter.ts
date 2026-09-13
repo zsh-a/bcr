@@ -119,9 +119,24 @@ export async function mapPdfOutlineToToc(
 }
 
 const sharedDocuments = new WeakMap<ReaderSection, PDFDocumentProxy>();
+export const READER_PDF_DOCUMENT_EVENT = "bcr-reader-pdf-document-ready";
+
 export function readerPdfDocument(book: ReaderBook): PDFDocumentProxy | undefined {
   const section = book.sections[0];
   return section && sharedDocuments.get(section);
+}
+
+export function registerReaderPdfDocument(book: ReaderBook, document: PDFDocumentProxy): void {
+  const section = book.sections[0];
+  if (section === undefined) return;
+  sharedDocuments.set(section, document);
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(READER_PDF_DOCUMENT_EVENT));
+}
+
+export function unregisterReaderPdfDocument(book: ReaderBook, document: PDFDocumentProxy): void {
+  const section = book.sections[0];
+  if (section !== undefined && sharedDocuments.get(section) === document)
+    sharedDocuments.delete(section);
 }
 
 export async function openPdf(input: ReaderOpenInput): Promise<ReaderBook> {

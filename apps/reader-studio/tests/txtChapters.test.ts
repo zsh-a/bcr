@@ -27,6 +27,23 @@ describe("TXT chapter recognition", () => {
       expect(txtHeading(line), line).toBeUndefined();
     expect(inlineTxtToc(textSections("第一章\n\n普通内容", "txt"))).toEqual([]);
   });
+  it("normalizes common downloaded-novel title variants", () => {
+    for (const line of [
+      "第 12 章：风起",
+      "第一章初见",
+      "【第３回】重逢",
+      "卷一·旧日",
+      "CHAPTER 03 - Arrival",
+      "Book II: The Return",
+      "番外篇 2",
+      "### A quiet ending",
+    ]) {
+      expect(txtHeading(line), line).toBeTruthy();
+    }
+    for (const line of ["第一章介绍了问题", "卷一内容概要", "Chapter information"]) {
+      expect(txtHeading(line), line).toBeUndefined();
+    }
+  });
   it("produces the same TOC for inline and streamed UTF-8 input without changing paragraph identities", async () => {
     const raw =
       "\uFEFF\n  第一章 初见\r\n正文😀\r\n\r\n" +

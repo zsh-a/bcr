@@ -449,6 +449,25 @@ class ReaderStore {
     });
   }
 
+  /** Move to an explicit locator and notify readers that the viewport must follow it. */
+  seekLocator(locator: ReaderLocator, percentage?: number): void {
+    const book = activeBook(this.state);
+    if (book === undefined) return;
+    const progress = progressForLocator(book, locator);
+    const nextProgress =
+      percentage === undefined
+        ? progress
+        : { ...progress, percentage: Math.min(1, Math.max(0, percentage)) };
+    this.set({
+      activeSectionId: nextProgress.locator.sectionId,
+      navigationSequence: this.state.navigationSequence + 1,
+      progressByBook: {
+        ...this.state.progressByBook,
+        [book.id]: nextProgress,
+      },
+    });
+  }
+
   private currentPosition(): ReaderHistoryEntry | undefined {
     if (typeof window !== "undefined")
       window.dispatchEvent(new Event("bcr-reader-capture-progress"));

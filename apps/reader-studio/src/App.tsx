@@ -53,6 +53,7 @@ import "./styles.css";
 import "./reading-layout.css";
 import "./reader-tools.css";
 import "./reader-surface.css";
+import "./reader-progress.css";
 
 interface ReaderRouteSearch {
   readonly book?: string;
