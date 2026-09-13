@@ -8,7 +8,7 @@ import { CircleAlert, ChevronLeft, ChevronRight, Minus, Plus } from "lucide-reac
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { searchTextRanges, type ReaderBook, type ReaderSection } from "@bcr/reader-core";
-import { clamp } from "./readerPresentation";
+import { clamp, readerErrorMessage } from "./readerPresentation";
 import { getReaderState, reader, useReader } from "./store";
 import { createRenderQueue } from "./renderQueue";
 
@@ -134,7 +134,7 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
         props.onReady?.();
       } catch (reason) {
         if (cancelled) return;
-        setError(reason instanceof Error ? reason.message : String(reason));
+        setError(readerErrorMessage(reason, "PDF 打开失败"));
         setLoading(false);
       }
     };
@@ -248,9 +248,7 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
         </div>
       </div>
       {loading && (
-        <div className="reader-media-loading">
-          {sourcePending ? "恢复 PDF…" : "打开 PDF…"}
-        </div>
+        <div className="reader-media-loading">{sourcePending ? "恢复 PDF…" : "打开 PDF…"}</div>
       )}
       {error !== null && (
         <div className="reader-media-error" role="alert">
@@ -427,7 +425,7 @@ const PdfPageView = memo(function PdfPageView(props: {
       } catch (reason) {
         if (cancelled) return;
         setStatus("error");
-        setError(reason instanceof Error ? reason.message : String(reason));
+        setError(readerErrorMessage(reason, "页面渲染失败"));
       } finally {
         page?.cleanup();
       }

@@ -220,6 +220,18 @@ export function ReaderBackupPanel(props: { runtime: ReaderRuntime; onClose: () =
               />
               同时使用备份中的排版设置
             </label>
+            <label className="reader-data-option">
+              <input
+                type="checkbox"
+                checked={restoreHistory}
+                disabled={busy}
+                onChange={(event) => setRestoreHistory(event.target.checked)}
+              />
+              使用备份中的搜索与跳转历史（替换本机历史）
+            </label>
+            <p className="reader-data-summary">
+              现有书籍不会被覆盖；可选择是否一并恢复排版设置与阅读历史。
+            </p>
             <button
               type="button"
               disabled={busy || (fresh.length === 0 && !restoreSettings && !restoreHistory)}
@@ -265,15 +277,6 @@ export function ReaderBackupPanel(props: { runtime: ReaderRuntime; onClose: () =
             >
               确认合并恢复
             </button>
-            <label className="reader-data-option">
-              <input
-                type="checkbox"
-                checked={restoreHistory}
-                disabled={busy}
-                onChange={(event) => setRestoreHistory(event.target.checked)}
-              />
-              使用备份中的搜索与跳转历史（替换本机历史）
-            </label>
           </section>
         )}
         <p role="status" aria-live="polite">

@@ -40,3 +40,15 @@ export function sourceIcon(format: ReaderBook["source"]["format"]) {
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
+
+export function readerErrorMessage(reason: unknown, fallback: string): string {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  const normalized = message.toLocaleLowerCase();
+  if (normalized.includes("password") || normalized.includes("encrypted"))
+    return "PDF 受密码保护，请先解除密码后重试";
+  if (normalized.includes("invalidpdf") || normalized.includes("invalid pdf"))
+    return "PDF 文件格式无法识别，请换用有效文件";
+  if (normalized.includes("fetch") || normalized.includes("network"))
+    return "PDF 文件读取失败，请检查文件后重试";
+  return `${fallback}，请重试`;
+}

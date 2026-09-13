@@ -31,11 +31,7 @@ export function ReaderUpdateNotice(props: {
       <div className="reader-update-copy">
         <span className="reader-eyebrow">APP UPDATE</span>
         <strong>新版本已准备好</strong>
-        <span>
-          {blocked
-            ? "当前任务完成后即可安全更新。"
-            : "更新前保存位置，刷新后继续阅读。"}
-        </span>
+        <span>{blocked ? "当前任务完成后即可安全更新。" : "更新前保存位置，刷新后继续阅读。"}</span>
       </div>
       <div className="reader-update-actions">
         <button type="button" disabled={applying} onClick={onDismiss}>
@@ -136,8 +132,12 @@ export function ReaderHeader(props: {
   const searchActiveIndex = useReader((state) => state.searchActiveIndex);
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
   const fileInput = useRef<HTMLInputElement>(null);
-  const onSearch = (value: string) => {
+  const openLibrarySearch = () => {
+    if (getReaderState().searchScope !== "library") reader.setSearchScope("library");
     reader.setSearchOpen(true);
+  };
+  const onSearch = (value: string) => {
+    openLibrarySearch();
     // The query is kept in the external store so the search panel and header
     // share the same source of truth without prop drilling.
     reader.setSearch(value, getReaderState().searchHits, getReaderState().searchBookId);
@@ -176,7 +176,10 @@ export function ReaderHeader(props: {
           ref={props.searchRef}
           value={query}
           onChange={(event) => onSearch(event.target.value)}
-          onFocus={() => reader.setSearchOpen(true)}
+          onPointerDown={openLibrarySearch}
+          onFocus={() => {
+            if (!getReaderState().searchOpen) openLibrarySearch();
+          }}
           onKeyDown={(event) => {
             if (event.key === "ArrowDown") {
               event.preventDefault();

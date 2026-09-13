@@ -29,7 +29,7 @@ import {
   readerFontStack,
 } from "./readerTypography";
 import { clamp, percent, themeIcon, themeLabel } from "./readerPresentation";
-import { reader, useReader } from "./store";
+import { getReaderState, reader, useReader } from "./store";
 import type { ReaderFullscreenState } from "./useReaderPlatform";
 import { ReaderSheet } from "./ReaderSheet";
 import { ReaderTypographySettings } from "./ReaderTypographySettings";
@@ -69,6 +69,13 @@ export function ReaderToolbar(props: {
     currentTxtChapter(props.book, activeSectionId) ??
     props.book.sections.find((section) => section.id === activeSectionId) ??
     props.book.sections[0];
+  const openBookSearch = () => {
+    if (getReaderState().searchScope !== "book") reader.setSearchScope("book");
+    reader.setSearchOpen(true);
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLInputElement>(".reader-search input")?.focus(),
+    );
+  };
   return (
     <div className="reader-toolbar">
       <div className="reader-toolbar-title">
@@ -146,13 +153,8 @@ export function ReaderToolbar(props: {
         <button
           type="button"
           className="reader-icon-button"
-          aria-label="在书中搜索"
-          onClick={() => {
-            reader.setSearchOpen(true);
-            requestAnimationFrame(() =>
-              document.querySelector<HTMLInputElement>(".reader-search input")?.focus(),
-            );
-          }}
+          aria-label="在当前读物中搜索"
+          onClick={openBookSearch}
         >
           <Search className="reader-icon" />
         </button>
@@ -167,9 +169,6 @@ export function ReaderToolbar(props: {
           <Bookmark className="reader-icon" />
           <span>{bookmarked ? "已标记" : "书签"}</span>
         </button>
-        <span className="reader-locator">
-          <Bookmark className="reader-icon" /> {percent(progress)}
-        </span>
         <button
           type="button"
           className="reader-icon-button"
@@ -210,13 +209,8 @@ export function ReaderToolbar(props: {
         <button
           type="button"
           className="reader-mobile-toolbar-button"
-          aria-label="搜索书库"
-          onClick={() => {
-            reader.setSearchOpen(true);
-            requestAnimationFrame(() =>
-              document.querySelector<HTMLInputElement>(".reader-search input")?.focus(),
-            );
-          }}
+          aria-label="在当前读物中搜索"
+          onClick={openBookSearch}
         >
           <Search className="reader-icon" />
         </button>

@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   createLocator,
   locatorAtPercentage,
@@ -40,6 +41,9 @@ interface PdfThumbnailCacheEntry {
   readonly cssWidth: number;
   readonly cssHeight: number;
 }
+
+const PDF_THUMBNAIL_WIDTH = 60;
+const PDF_THUMBNAIL_HEIGHT = 76;
 
 const pdfThumbnailCache = new WeakMap<ReaderBook, Map<string, PdfThumbnailCacheEntry>>();
 
@@ -98,8 +102,32 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
   const [draft, setDraft] = useState(progress);
   const [dragging, setDragging] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const draftRef = useRef(progress);
   const committedRef = useRef(progress);
+  const collapseTimerRef = useRef<number | null>(null);
+
+  const clearCollapseTimer = () => {
+    if (collapseTimerRef.current === null) return;
+    window.clearTimeout(collapseTimerRef.current);
+    collapseTimerRef.current = null;
+  };
+
+  const scheduleCollapse = () => {
+    if (!window.matchMedia("(max-width: 860px)").matches) return;
+    clearCollapseTimer();
+    collapseTimerRef.current = window.setTimeout(() => {
+      collapseTimerRef.current = null;
+      setExpanded(false);
+    }, 1_600);
+  };
+
+  useEffect(
+    () => () => {
+      if (collapseTimerRef.current !== null) window.clearTimeout(collapseTimerRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     draftRef.current = draft;
@@ -116,6 +144,7 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
   const commit = () => {
     const next = clamp(draftRef.current, 0, 1);
     setDragging(false);
+    scheduleCollapse();
     if (Math.abs(next - committedRef.current) < 0.0005) return;
     committedRef.current = next;
     window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
@@ -133,13 +162,34 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
   const style = { "--reader-progress": `${draft * 100}%` } as CSSProperties;
 
   return (
-    <section className={`reader-progress-dock ${dragging ? "is-dragging" : ""}`} style={style}>
+    <section
+      className={`reader-progress-dock ${dragging ? "is-dragging" : ""} ${expanded ? "is-expanded" : ""}`}
+      style={style}
+    >
       <ReaderProgressPreview
         book={props.book}
         section={previewSection}
         context={previewContext}
         visible={dragging}
       />
+      <button
+        type="button"
+        className="reader-progress-toggle"
+        aria-expanded={expanded}
+        aria-controls="reader-progress-range"
+        onClick={() => {
+          clearCollapseTimer();
+          setExpanded((value) => !value);
+        }}
+      >
+        <span>{dragging ? previewContext : context}</span>
+        <output>{percent(draft)}</output>
+        {expanded ? (
+          <ChevronDown className="reader-icon" aria-hidden="true" />
+        ) : (
+          <ChevronUp className="reader-icon" aria-hidden="true" />
+        )}
+      </button>
       <div className="reader-progress-dock-meta">
         <span className="reader-progress-dock-label">阅读进度</span>
         <strong title={dragging ? previewContext : context}>
@@ -173,6 +223,8 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
           onPointerDown={(event) => {
             event.currentTarget.setPointerCapture?.(event.pointerId);
             window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
+            clearCollapseTimer();
+            setExpanded(true);
             setDragging(true);
           }}
           onPointerUp={commit}
@@ -185,9 +237,13 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
           onKeyDown={(event) => {
             if (
               ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)
-            )
+            ) {
+              clearCollapseTimer();
+              setExpanded(true);
               setDragging(true);
+            }
           }}
+          onFocus={() => setExpanded(true)}
           onKeyUp={commit}
           onBlur={commit}
         />
@@ -203,7 +259,11 @@ function previewSnippet(section: ReaderBook["sections"][number] | undefined): st
 }
 
 function previewLines(section: ReaderBook["sections"][number] | undefined): string[] {
-  return previewSnippet(section).match(/.{1,14}/gu)?.slice(0, 4) ?? [];
+  return (
+    previewSnippet(section)
+      .match(/.{1,14}/gu)
+      ?.slice(0, 4) ?? []
+  );
 }
 
 function ReaderProgressPreview(props: {
@@ -281,7 +341,10 @@ function PdfProgressThumbnail(props: { book: ReaderBook; pageNumber: number; vis
         page = loadedPage;
         if (cancelled) return;
         const baseViewport = loadedPage.getViewport({ scale: 1 });
-        const cssScale = Math.min(68 / baseViewport.width, 86 / baseViewport.height);
+        const cssScale = Math.min(
+          PDF_THUMBNAIL_WIDTH / baseViewport.width,
+          PDF_THUMBNAIL_HEIGHT / baseViewport.height,
+        );
         const viewport = loadedPage.getViewport({ scale: cssScale * deviceScale });
         const context = canvas.getContext("2d");
         if (context === null) throw new Error("Canvas 2D 不可用");

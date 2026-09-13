@@ -19,7 +19,7 @@
   --reader-border-strong: rgba(49, 61, 57, 0.29);
   --reader-text: #25302d;
   --reader-muted: #68736d;
-  --reader-faint: #909a93;
+  --reader-faint: #64716b;
   --reader-accent: #147a73;
   --reader-accent-soft: #d8eeea;
   --reader-ink: #183c38;
@@ -70,7 +70,7 @@
   --reader-border-strong: rgba(221, 236, 226, 0.26);
   --reader-text: #e8eee5;
   --reader-muted: #a1b0a7;
-  --reader-faint: #77857d;
+  --reader-faint: #9daaa1;
   --reader-accent: #76d7c9;
   --reader-accent-soft: #1b4c45;
   --reader-ink: #cce5db;
@@ -88,7 +88,7 @@
   --reader-border-strong: rgba(37, 75, 54, 0.3);
   --reader-text: #274035;
   --reader-muted: #65766b;
-  --reader-faint: #87978c;
+  --reader-faint: #5f6f63;
   --reader-accent: #2c8063;
   --reader-accent-soft: #d0e8d8;
   --reader-ink: #1c513f;
@@ -1860,21 +1860,10 @@
   opacity: 0.48;
 }
 
-.reader-locator {
-  display: inline-flex;
-  min-height: 36px;
-  align-items: center;
-  gap: 6px;
-  padding: 0 8px;
-  color: var(--reader-accent);
-  font-family: var(--reader-font-mono);
-  font-size: 10px;
-}
-
 .reader-bookmark-toggle,
 .reader-document-handoff {
   display: inline-flex;
-  min-height: 36px;
+  min-height: 44px;
   align-items: center;
   gap: 6px;
   border: 1px solid var(--reader-border);
@@ -2943,7 +2932,7 @@
 }
 
 .reader-media-retry {
-  min-height: 30px;
+  min-height: 44px;
   border: 1px solid color-mix(in srgb, currentColor 32%, var(--reader-border));
   border-radius: 7px;
   background: transparent;
@@ -3476,10 +3465,6 @@
     justify-content: center;
     padding: 0;
     scroll-snap-align: start;
-  }
-
-  .reader-locator {
-    display: none;
   }
 
   .reader-segmented button {

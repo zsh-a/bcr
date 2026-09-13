@@ -194,7 +194,7 @@ export function MobileReadingBar(props: {
                 ? props.pagination.columns === 2
                   ? `${props.pagination.page * 2 + 1}–${Math.min(props.pagination.physicalPages ?? 1, props.pagination.page * 2 + 2)} / ${props.pagination.physicalPages} 页 · ${props.pagination.scopeLabel ?? "本章"}`
                   : `${props.pagination.page + 1} / ${props.pagination.pages} 页 · ${props.pagination.scopeLabel ?? "本章"}`
-                : `${navigationIndex + 1} / ${navigationCount} ${unit} · ${percent(progress)}`}
+                : `${navigationIndex + 1} / ${navigationCount} ${unit}`}
           </span>
           <ChevronUp className="reader-mobile-nav-current-chevron" aria-hidden="true" />
         </button>
@@ -329,9 +329,11 @@ function MobileNavigationSheet(props: {
             <button
               type="button"
               key={tab.id}
+              id={`reader-navigation-tab-${tab.id}`}
               role="tab"
               className={props.panel === tab.id ? "is-active" : ""}
               aria-selected={props.panel === tab.id}
+              aria-controls={`reader-navigation-panel-${tab.id}`}
               onClick={() => props.onPanelChange(tab.id)}
             >
               <span>{tab.label}</span>
@@ -340,7 +342,12 @@ function MobileNavigationSheet(props: {
           ))}
         </div>
         {props.panel === "toc" && (
-          <div className="reader-mobile-sheet-content" role="tabpanel">
+          <div
+            id="reader-navigation-panel-toc"
+            className="reader-mobile-sheet-content"
+            role="tabpanel"
+            aria-labelledby="reader-navigation-tab-toc"
+          >
             <div className="reader-mobile-toc-search">
               <label>
                 <Search className="reader-icon" />
@@ -415,7 +422,12 @@ function MobileNavigationSheet(props: {
           </div>
         )}
         {props.panel === "bookmarks" && (
-          <div className="reader-mobile-sheet-content" role="tabpanel">
+          <div
+            id="reader-navigation-panel-bookmarks"
+            className="reader-mobile-sheet-content"
+            role="tabpanel"
+            aria-labelledby="reader-navigation-tab-bookmarks"
+          >
             <div className="reader-mobile-sheet-scroll">
               {bookmarks.length > 0 ? (
                 <div className="reader-mobile-saved-list">
@@ -458,7 +470,12 @@ function MobileNavigationSheet(props: {
           </div>
         )}
         {props.panel === "notes" && (
-          <div className="reader-mobile-sheet-content" role="tabpanel">
+          <div
+            id="reader-navigation-panel-notes"
+            className="reader-mobile-sheet-content"
+            role="tabpanel"
+            aria-labelledby="reader-navigation-tab-notes"
+          >
             <div className="reader-mobile-sheet-scroll">
               {annotations.length > 0 ? (
                 <div className="reader-mobile-saved-list">

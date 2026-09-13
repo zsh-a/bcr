@@ -222,6 +222,10 @@
     gap: 6px;
     overflow: hidden;
   }
+  .reader-toolbar-title > .reader-icon-button {
+    flex: 0 0 44px;
+    min-width: 44px;
+  }
   .reader-toolbar-title > div {
     min-width: 0;
   }
@@ -247,13 +251,22 @@
   .reader-reading-scroll {
     height: 100%;
     scroll-padding-top: var(--reader-chrome-top);
-    scroll-padding-bottom: var(--reader-chrome-bottom);
+    scroll-padding-bottom: calc(var(--reader-chrome-bottom) + 64px);
   }
   .reader-reading-column,
   .reader-width-wide .reader-reading-column {
     width: min(calc(100% - 40px), var(--reader-line-length, 720px));
     padding-top: calc(var(--reader-chrome-top) + 24px);
-    padding-bottom: calc(var(--reader-chrome-bottom) + 36px);
+    padding-bottom: calc(var(--reader-chrome-bottom) + 72px);
+  }
+  .reader-workspace:has(.reader-progress-dock.is-expanded) .reader-reading-scroll {
+    scroll-padding-bottom: calc(var(--reader-chrome-bottom) + 112px);
+  }
+  .reader-workspace:has(.reader-progress-dock.is-expanded) .reader-reading-column,
+  .reader-workspace:has(.reader-progress-dock.is-expanded)
+    .reader-width-wide
+    .reader-reading-column {
+    padding-bottom: calc(var(--reader-chrome-bottom) + 112px);
   }
   .reader-section {
     display: block;

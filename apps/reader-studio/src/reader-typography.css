@@ -42,6 +42,40 @@
   font-size: 12px;
   line-height: 1.7;
 }
+.reader-advanced-typography {
+  margin-top: 14px;
+  border-top: 1px solid var(--reader-border);
+}
+.reader-advanced-typography > summary {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--reader-text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  list-style: none;
+}
+.reader-advanced-typography > summary::-webkit-details-marker,
+.reader-font-licenses > summary::-webkit-details-marker {
+  display: none;
+}
+.reader-advanced-typography > summary::after,
+.reader-font-licenses > summary::after {
+  color: var(--reader-muted);
+  content: "+";
+  font-family: var(--reader-font-mono);
+  font-size: 16px;
+  font-weight: 400;
+}
+.reader-advanced-typography[open] > summary::after,
+.reader-font-licenses[open] > summary::after {
+  content: "−";
+}
+.reader-advanced-typography-body {
+  padding-bottom: 4px;
+}
 .reader-typography-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -79,6 +113,9 @@
   font-size: 12px;
 }
 .reader-font-licenses summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   min-height: 44px;
   padding-block: 12px;
   cursor: pointer;

@@ -404,9 +404,7 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
       {props.hits.length === 0 && !searchBusy && (
         <div className="reader-search-empty">
           <Search className="reader-icon" />
-          {query
-            ? "没有找到匹配内容，试试更短的关键词。"
-            : "搜索正文中的每一次出现，跳转后可返回原来的阅读位置。"}
+          {query ? "没有找到匹配内容，试试更短的关键词。" : "输入关键词，定位后可返回原处。"}
         </div>
       )}
       <div id="reader-search-results" className="reader-search-results" role="listbox">
