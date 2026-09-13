@@ -34,7 +34,7 @@ export function ReaderUpdateNotice(props: {
         <span>
           {blocked
             ? "当前任务完成后即可安全更新。"
-            : "更新前会保存阅读进度，刷新后从当前位置继续。"}
+            : "更新前保存位置，刷新后继续阅读。"}
         </span>
       </div>
       <div className="reader-update-actions">

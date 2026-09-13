@@ -141,7 +141,7 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
         visible={dragging}
       />
       <div className="reader-progress-dock-meta">
-        <span className="reader-progress-dock-label">READING PROGRESS</span>
+        <span className="reader-progress-dock-label">阅读进度</span>
         <strong title={dragging ? previewContext : context}>
           {dragging ? previewContext : context}
         </strong>
@@ -165,7 +165,7 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
           max="100"
           step="0.1"
           value={draft * 100}
-          aria-label="调整全书阅读进度"
+          aria-label="调整进度"
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(draft * 100)}
@@ -197,7 +197,7 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
 }
 
 function previewSnippet(section: ReaderBook["sections"][number] | undefined): string {
-  if (section === undefined) return "拖动滑块，快速定位到阅读位置";
+  if (section === undefined) return "拖动定位";
   const text = section.text.replace(/\s+/gu, " ").trim();
   return text.slice(0, 86) || section.label || "当前位置";
 }
@@ -233,7 +233,7 @@ function ReaderProgressPreview(props: {
       <div className="reader-progress-preview-copy">
         <span>
           {isPdf
-            ? `PDF · 第 ${pageNumber} 页 / ${props.book.sections.length}`
+            ? `第 ${pageNumber} / ${props.book.sections.length} 页`
             : `${Math.max(1, sectionIndex + 1)} / ${props.book.sections.length}`}
         </span>
         <strong>{props.context}</strong>

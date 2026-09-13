@@ -98,7 +98,7 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
     setError(null);
     if (sourceUrl === undefined) {
       if (!sourcePending) {
-        setError("PDF 源文件未恢复");
+        setError("PDF 文件未恢复");
         setLoading(false);
       }
       return () => {
@@ -249,7 +249,7 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
       </div>
       {loading && (
         <div className="reader-media-loading">
-          {sourcePending ? "正在从本地恢复 PDF…" : "正在打开 PDF…"}
+          {sourcePending ? "恢复 PDF…" : "打开 PDF…"}
         </div>
       )}
       {error !== null && (
@@ -514,11 +514,11 @@ const PdfPageView = memo(function PdfPageView(props: {
         style={{ aspectRatio: props.section.pageAspectRatio ?? 1 / Math.SQRT2 }}
       >
         {status === "idle" && <span className="reader-pdf-placeholder">滚动到此处加载页面</span>}
-        {status === "loading" && <span className="reader-media-loading">正在渲染页面…</span>}
+        {status === "loading" && <span className="reader-media-loading">渲染中…</span>}
         {status === "error" && (
           <div className="reader-media-error" role="alert">
             <CircleAlert className="reader-icon" />
-            <span>{error ?? "页面渲染失败"}</span>
+            <span>{error ?? "页面加载失败"}</span>
             <button
               type="button"
               className="reader-media-retry"
