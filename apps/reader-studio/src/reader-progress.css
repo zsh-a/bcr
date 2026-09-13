@@ -1,7 +1,7 @@
 /* A small, tactile seek control that floats above the reading navigation. */
 .reader-progress-dock {
   --reader-progress: 0%;
-  --reader-progress-preview-half: min(146px, calc((100vw - 32px) / 2));
+  --reader-progress-preview-half: min(138px, calc((100vw - 32px) / 2));
   position: absolute;
   right: 24px;
   bottom: 68px;
@@ -33,15 +33,15 @@
     calc(100% - var(--reader-progress-preview-half))
   );
   display: grid;
-  grid-template-columns: 68px minmax(0, 1fr);
-  gap: 10px;
-  width: min(292px, calc(100vw - 32px));
-  min-height: 104px;
+  grid-template-columns: 60px minmax(0, 1fr);
+  gap: 12px;
+  width: min(276px, calc(100vw - 32px));
+  min-height: 92px;
   padding: 8px;
-  border: 1px solid color-mix(in srgb, var(--reader-accent) 42%, var(--reader-border-strong));
+  border: 1px solid color-mix(in srgb, var(--reader-accent) 28%, var(--reader-border-strong));
   border-radius: 12px;
-  background: color-mix(in srgb, var(--reader-surface) 96%, transparent);
-  box-shadow: 0 16px 34px color-mix(in srgb, var(--reader-text) 18%, transparent);
+  background: var(--reader-raised);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--reader-text) 18%, transparent);
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, 5px) scale(0.98);
@@ -62,7 +62,7 @@
 .reader-progress-preview-media {
   position: relative;
   display: grid;
-  min-height: 86px;
+  min-height: 76px;
   place-items: center;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--reader-border-strong) 76%, transparent);
@@ -72,8 +72,8 @@
 
 .reader-progress-pdf-thumbnail {
   display: block;
-  max-width: 68px;
-  max-height: 86px;
+  max-width: 60px;
+  max-height: 76px;
   opacity: 0;
   object-fit: contain;
   transition: opacity 120ms ease;
@@ -302,7 +302,7 @@
 
 @media (max-width: 860px) {
   .reader-progress-dock {
-    --reader-progress-preview-half: min(146px, calc((100vw - 24px) / 2));
+    --reader-progress-preview-half: min(138px, calc((100vw - 24px) / 2));
     right: max(12px, env(safe-area-inset-right));
     bottom: calc(var(--reader-chrome-bottom, 60px) + 8px);
     left: max(12px, env(safe-area-inset-left));

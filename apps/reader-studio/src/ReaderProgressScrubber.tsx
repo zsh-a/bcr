@@ -216,6 +216,7 @@ function ReaderProgressPreview(props: {
     props.section === undefined ? -1 : props.book.sections.indexOf(props.section);
   const pageNumber = props.section?.pageNumber ?? sectionIndex + 1;
   const isPdf = props.book.source.format === "pdf" && pageNumber > 0;
+  const snippet = previewSnippet(props.section);
   return (
     <div className="reader-progress-preview" aria-hidden={!props.visible}>
       <div className="reader-progress-preview-media">
@@ -237,7 +238,7 @@ function ReaderProgressPreview(props: {
             : `${Math.max(1, sectionIndex + 1)} / ${props.book.sections.length}`}
         </span>
         <strong>{props.context}</strong>
-        <p>{previewSnippet(props.section)}</p>
+        {snippet !== props.context && <p>{snippet}</p>}
       </div>
     </div>
   );
