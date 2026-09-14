@@ -148,6 +148,7 @@ try {
   );
   const chooseAnimation = async (value) => {
     await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
+    await page.locator("details.reader-advanced-typography").locator("summary").first().click();
     await page.getByLabel("翻页动画", { exact: true }).selectOption(value);
     await page.getByLabel("关闭阅读设置", { exact: true }).click();
     await settled();
@@ -186,6 +187,7 @@ try {
     "fade completion preserves the destination across reload",
   );
   await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
+  await page.locator("details.reader-advanced-typography").locator("summary").first().click();
   assert.equal(await page.getByLabel("翻页动画", { exact: true }).inputValue(), "fade");
   await page.getByLabel("关闭阅读设置", { exact: true }).click();
   await settled();
@@ -248,6 +250,7 @@ try {
   await page.reload();
   await settled();
   await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
+  await page.locator("details.reader-advanced-typography").locator("summary").first().click();
   assert.equal(await page.getByLabel("翻页动画", { exact: true }).inputValue(), "paper");
   await page.getByLabel("关闭阅读设置", { exact: true }).click();
   await settled();

@@ -100,6 +100,7 @@ try {
 
   await page.setViewportSize({ width: 1920, height: 1080 });
   await settings();
+  await page.locator("details.reader-advanced-typography").locator("summary").first().click();
   await page.getByRole("checkbox", { name: "大屏双页", exact: false }).check();
   await close();
   await page.waitForFunction(

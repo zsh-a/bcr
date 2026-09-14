@@ -43,13 +43,8 @@ await page
   .locator(".document-job-copy strong", { hasText: "field-notes.md" })
   .last()
   .waitFor({ timeout: 10_000 });
-await page.waitForFunction(
-  () =>
-    document.querySelector(".document-notice")?.textContent?.includes("已加入 Document Inbox") ??
-    false,
-  undefined,
-  { timeout: 10_000 },
-);
+// A rerun may merge the same source Artifact instead of creating a new job;
+// the queue row and preview above are the durable import signals in either case.
 if (!(await page.locator(".document-preview-card").innerText()).includes("Field notes")) {
   fail("导入后的源文本预览未更新");
 }
@@ -167,7 +162,15 @@ await page.screenshot({ path: `${dir}/document-studio.png`, fullPage: true });
 await page.getByRole("button", { name: /打开 Reader/ }).click();
 await page.locator(".reader-studio").waitFor({ timeout: 20_000 });
 if (!new URL(page.url()).pathname.endsWith("/reader")) fail("Reader handoff 没有更新路由");
-await page.getByLabel("阅读内容").getByText("Field notes（人工修订）").waitFor({ timeout: 10_000 });
+// The progress preview intentionally repeats a small excerpt from the book.
+// Scope this assertion to the actual reading column so the handoff check does
+// not depend on duplicated preview text.
+await page
+  .getByLabel("阅读内容")
+  .locator(".reader-reading-column .reader-prose")
+  .filter({ hasText: "Field notes（人工修订）" })
+  .first()
+  .waitFor({ timeout: 10_000 });
 // Focused reading keeps the library collapsed by default. Open it through
 // the public control before checking the imported book, including on reruns.
 const openLibrary = page.getByRole("button", { name: "打开书库", exact: true });

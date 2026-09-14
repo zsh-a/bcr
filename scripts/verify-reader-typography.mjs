@@ -67,6 +67,13 @@ try {
   await page.screenshot({
     path: new URL("./shots/reader-typography-desktop.png", import.meta.url).pathname,
   });
+  const advancedTypography = page.locator("details.reader-advanced-typography");
+  const openAdvancedTypography = async () => {
+    if ((await page.locator("details.reader-advanced-typography[open]").count()) === 0) {
+      await advancedTypography.locator("summary").first().click();
+    }
+  };
+  await openAdvancedTypography();
   await page.getByLabel("正文字重", { exact: true }).selectOption("350");
   const lineHeight = page.getByRole("slider", { name: "正文行高" });
   await lineHeight.focus();
@@ -76,6 +83,7 @@ try {
   await page.reload();
   await page.locator(".reader-reading-scroll").waitFor();
   await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
+  await openAdvancedTypography();
   assert.equal(await page.getByLabel("正文字重", { exact: true }).inputValue(), "350");
   assert.equal(await lineHeight.inputValue(), "1.8");
   await page.getByRole("button", { name: "关闭阅读设置" }).click();
@@ -85,6 +93,7 @@ try {
   await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
   await page.getByRole("button", { name: "应用小说文学排版" }).click();
   await page.getByText("字体已就绪", { exact: false }).waitFor();
+  await openAdvancedTypography();
   assert(await page.getByLabel("正文字重", { exact: true }).isDisabled());
   const computed = await preview.locator(".reader-prose").evaluate((element) => {
     const style = getComputedStyle(element);
