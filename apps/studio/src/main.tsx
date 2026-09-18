@@ -114,6 +114,13 @@ if (rootElement === null) throw new Error("missing #root");
 const container: HTMLElement = rootElement;
 
 function isStandaloneReader(): boolean {
+  // A selection made in the lightweight installed Reader opens the workspace
+  // in the same tab, where the shared collection store owns persistence.
+  try {
+    if (sessionStorage.getItem("bcr-reader-pending-capture")) return false;
+  } catch {
+    /* The standalone Reader remains usable without sessionStorage. */
+  }
   if (window.location.pathname !== "/reader" && !window.location.pathname.startsWith("/reader/")) {
     return false;
   }

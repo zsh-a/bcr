@@ -107,6 +107,11 @@ export function BootScreen(props: { error: string | null }) {
           </span>
         </div>
         {props.error !== null && <CircleAlert className="reader-boot-alert" />}
+        {props.error !== null && (
+          <button type="button" onClick={() => window.location.reload()}>
+            重试打开
+          </button>
+        )}
       </div>
     </div>
   );

@@ -187,6 +187,7 @@
         "@bcr/document-core": "workspace:*",
         "@bcr/react": "workspace:*",
         "@bcr/reader-core": "workspace:*",
+        "@bcr/runtime-browser": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
         "@bcr/storage-sqlite": "workspace:*",

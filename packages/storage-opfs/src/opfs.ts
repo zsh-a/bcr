@@ -59,9 +59,10 @@ export class OpfsStore implements BinaryStore {
     const prev = this.writes.get(path) ?? Promise.resolve();
     const next = prev.catch(() => {}).then(() => withRetry(fn));
     this.writes.set(path, next);
-    void next.finally(() => {
+    const cleanup = () => {
       if (this.writes.get(path) === next) this.writes.delete(path);
-    });
+    };
+    void next.then(cleanup, cleanup);
     return next;
   }
 

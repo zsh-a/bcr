@@ -94,8 +94,35 @@ export function readerSelectionLocator(book: ReaderBook): ReaderLocator | undefi
   }
   const selected = selection.toString().replace(/\r\n?/gu, "\n").trim();
   if (selected.length === 0) return undefined;
+  // DOM paragraph separators and PDF item spacing differ from canonical text.
+  // Align the entire visible unit, not the first occurrence of a repeated quote.
+  const prose = startSection.querySelector(".reader-prose, .reader-pdf-text-layer");
+  if (prose) {
+    const rendered = readerRenderedText(prose);
+    const start = readerTextNodeOffset(rendered, range.startContainer, range.startOffset);
+    const end = readerTextNodeOffset(rendered, range.endContainer, range.endOffset);
+    const offsets: number[] = [];
+    let compact = "";
+    for (let i = 0; i < section.text.length; i++) {
+      if (!/\s/u.test(section.text[i]!)) {
+        compact += section.text[i];
+        offsets.push(i);
+      }
+    }
+    if (
+      start !== undefined &&
+      end !== undefined &&
+      compact === rendered.value.replace(/\s/gu, "")
+    ) {
+      const from = rendered.value.slice(0, start).replace(/\s/gu, "").length;
+      const to = rendered.value.slice(0, end).replace(/\s/gu, "").length;
+      if (to > from && offsets[from] !== undefined && offsets[to - 1] !== undefined)
+        return createTextLocator(section, offsets[from]!, offsets[to - 1]! + 1);
+    }
+  }
   const match = searchTextRange(section.text, selected);
   if (match === undefined || match.length === 0) return undefined;
+  if (searchTextRange(section.text.slice(match.start + match.length), selected)) return undefined;
   return createTextLocator(section, match.start, match.start + match.length);
 }
 

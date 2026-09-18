@@ -10,5 +10,5 @@ import { App } from "@bcr/reader-studio/app";
 
 /** Mount Reader without booting the workspace-wide Studio Runtime. */
 export function mountReader(container: HTMLElement): void {
-  createRoot(container).render(<App />);
+  createRoot(container).render(<App workspaceCollections />);
 }

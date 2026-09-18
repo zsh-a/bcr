@@ -22,7 +22,7 @@ Studio Shell
 
 领域会话的存储隔离与宿主的全局调度预算是两个独立维度。Media、Quant 嵌入 Studio 时继承宿主资源管理器；独立启动时创建自己的 Host。顶栏容量汇总覆盖当前 Host 注册的计算会话，而不是只观察 Studio 的 ArtifactStore。
 
-Reader 保留面向阅读首屏的延迟解析、索引和 SQLite 初始化流程，其专用解析／索引 Worker 尚不经过计算 Scheduler。它的独立阅读存储不属于上述 Host 的容量汇总或项目写锁覆盖范围。
+Reader 保留面向阅读首屏的延迟解析、索引和 SQLite 初始化流程，其专用解析／索引 Worker 尚不经过计算 Scheduler。它的独立阅读存储不属于上述 Host 的容量汇总；现在通过同一 `acquireProjectLease` 契约持有 `reader` 命名空间的独占写锁。第二个页面在恢复书库和发布可编辑界面之前失败，关闭原页面后可重试。卸载时串行完成保存队列、关闭元数据、阻止过期存储调用并排空已接受的操作，最后释放锁。浏览器缺少 Web Locks 时显示明确错误，不启用不安全的多页写入降级。
 
 阅读界面的分页、按需恢复和 PDF 资源生命周期见 [Reader 架构](./READER-ARCHITECTURE.md)。
 

@@ -20,12 +20,14 @@ import { ReaderSheet } from "./ReaderSheet";
 import { useReaderMobile } from "./useReaderMobile";
 import { ReaderHistoryBar } from "./ReaderHistoryBar";
 import { ReaderProgressScrubber } from "./ReaderProgressScrubber";
+import { ReaderSelectionCapture } from "./ReaderSelectionCapture";
 
 const ReaderBackupPanel = lazy(() =>
   import("./ReaderBackupPanel").then((module) => ({ default: module.ReaderBackupPanel })),
 );
 
 export function ReaderWorkspace(props: {
+  workspaceCollections: boolean;
   runtime: ReaderRuntime;
   onImport: (files: ReadonlyArray<File>) => void;
   onOpenDocument: () => void;
@@ -99,6 +101,12 @@ export function ReaderWorkspace(props: {
           onFocusReading={props.onToggleMobileChrome}
         />
         <ReaderSaveNotice runtime={props.runtime} />
+        <ReaderSelectionCapture
+          book={active}
+          runtime={props.runtime}
+          onNotice={props.onNotice}
+          workspaceCollections={props.workspaceCollections}
+        />
         {annotationOpen && (
           <AnnotationComposer
             value={annotationDraft}

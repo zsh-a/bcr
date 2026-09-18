@@ -9,6 +9,7 @@ import { createRuntimeServices } from "../runtime";
 import { SearchBridge } from "../search-bridge";
 import { appIdFromPath, APPS } from "./apps";
 import { Home } from "./Home";
+import { ResearchCaptureBridge } from "../ResearchCaptureBridge";
 
 /**
  * OS 式 Shell 根布局（§12：URL 即状态）：
@@ -93,36 +94,42 @@ export function Shell() {
 
   return (
     <RuntimeProvider services={services}>
-      <SearchBridge services={services} />
-      <div
-        className={`studio-shell-frame flex h-full flex-col ${active === "reader" ? "reader-active" : ""}`}
-      >
-        <TopBar
-          active={active}
-          onOpenPalette={() => setPaletteOpen(true)}
-          onOpenSearch={() => setSearchOpen(true)}
-        />
-        <div className="min-h-0 flex-1">
-          {active === "home" && <Home />}
-          {APPS.filter((app) => visited.includes(app.id)).map((app) => (
-            <div key={app.id} className={app.id === active ? "h-full min-h-0" : "hidden"}>
-              <Suspense
-                fallback={
-                  <div className="flex h-full items-center justify-center">
-                    <p className="font-mono text-[11px] text-faint">{app.title} 加载中…</p>
-                  </div>
-                }
-              >
-                <RuntimeActivity active={app.id === active}>
-                  <app.component />
-                </RuntimeActivity>
-              </Suspense>
-            </div>
-          ))}
+      <ResearchCaptureBridge>
+        <SearchBridge services={services} />
+        <div
+          className={`studio-shell-frame flex h-full flex-col ${active === "reader" ? "reader-active" : ""}`}
+        >
+          <TopBar
+            active={active}
+            onOpenPalette={() => setPaletteOpen(true)}
+            onOpenSearch={() => setSearchOpen(true)}
+          />
+          <div className="min-h-0 flex-1">
+            {active === "home" && <Home />}
+            {APPS.filter((app) => visited.includes(app.id)).map((app) => (
+              <div key={app.id} className={app.id === active ? "h-full min-h-0" : "hidden"}>
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center">
+                      <p className="font-mono text-[11px] text-faint">{app.title} 加载中…</p>
+                    </div>
+                  }
+                >
+                  <RuntimeActivity active={app.id === active}>
+                    <app.component />
+                  </RuntimeActivity>
+                </Suspense>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-      <SearchPanel open={searchOpen} onOpenChange={setSearchOpen} onNavigate={openSearchDocument} />
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+        <SearchPanel
+          open={searchOpen}
+          onOpenChange={setSearchOpen}
+          onNavigate={openSearchDocument}
+        />
+      </ResearchCaptureBridge>
     </RuntimeProvider>
   );
 }

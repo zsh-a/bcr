@@ -87,6 +87,7 @@ bun run build:cloudflare  # 构建 WASM + BCR Studio 静态产物
 bun run deploy:cloudflare # 部署 apps/studio/dist 到 Cloudflare Workers
 cargo test --manifest-path crates/kernels/Cargo.toml
 bun run test:browser   # 自动启停 dev server，运行离线 Playwright 主链路
+bun run test:pwa       # 使用已构建的 apps/studio/dist 验证生产版 Reader 离线与更新
 ```
 
 GitHub Actions 会执行格式/类型/单测、Rust/WASM、核心应用生产构建，并在真实 Chromium 中验证

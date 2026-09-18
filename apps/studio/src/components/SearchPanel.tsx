@@ -20,15 +20,10 @@ import {
   TerminalSquare,
   WandSparkles,
 } from "lucide-react";
-import {
-  ResearchStore,
-  citationRoute,
-  excerptFromResult,
-  resultDocument,
-  sameExcerpt,
-} from "../research";
+import { citationRoute, excerptFromResult, resultDocument, sameExcerpt } from "../research";
 import { ResearchPanel } from "./ResearchPanel";
 import { useServices } from "../services";
+import { workspaceResearch } from "../researchCapture";
 
 type SearchFilterId =
   | "research"
@@ -114,7 +109,7 @@ export function SearchPanel(props: {
   const [active, setActive] = useState(0);
   const [revision, setRevision] = useState(0);
   const [view, setView] = useState<"search" | "research">("search");
-  const research = useMemo(() => new ResearchStore(services.metadata), [services.metadata]);
+  const research = useMemo(() => workspaceResearch(services.metadata), [services.metadata]);
   const library = useSyncExternalStore(research.subscribe, research.getSnapshot);
   const [scope, setScope] = useState("");
   const [focus, setFocus] = useState<{

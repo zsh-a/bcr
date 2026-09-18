@@ -72,7 +72,7 @@ function parseReaderRouteSearch(value: string): ReaderRouteSearch {
   };
 }
 
-export function App() {
+export function App(props: { workspaceCollections?: boolean } = {}) {
   const { runtime, error: runtimeError, recovery } = useReaderBoot();
   const hostServices = useOptionalRuntime();
   const pwaInstall = useReaderPwaInstall();
@@ -374,12 +374,15 @@ export function App() {
             },
       );
       importAbortRef.current = null;
-      setNotice(
-        cancelled ? "导入已取消" : errors > 0 ? `导入完成，${errors} 个文件失败` : "导入完成",
-      );
+      const importNotice = cancelled
+        ? "导入已取消"
+        : errors > 0
+          ? `导入完成，${errors} 个文件失败`
+          : "导入完成";
+      setNotice(importNotice);
       importDismissRef.current = window.setTimeout(
         () => {
-          setNotice(null);
+          setNotice((current) => (current === importNotice ? null : current));
           setImportJob(null);
           importDismissRef.current = null;
         },
@@ -524,6 +527,7 @@ export function App() {
         />
       )}
       <ReaderWorkspace
+        workspaceCollections={props.workspaceCollections ?? false}
         onInstall={() => void installReader()}
         showInstall={!pwaInstall.isInstalled}
         runtime={runtime}

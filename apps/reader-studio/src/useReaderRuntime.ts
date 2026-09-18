@@ -1,6 +1,6 @@
 import { searchReaderDetailed } from "./readerSearch";
 import type { ReaderBook } from "@bcr/reader-core";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createReaderRuntime,
   ensureReaderMetadata,
@@ -14,7 +14,11 @@ import { getReaderState, reader, useReader } from "./store";
 export const READER_CAPTURE_PROGRESS_EVENT = "bcr-reader-capture-progress";
 
 export { persistReaderSnapshot } from "./readerPersistenceQueue";
-import { persistReaderSnapshot, restoreReaderSnapshot } from "./readerPersistenceQueue";
+import {
+  closeReaderRuntime,
+  persistReaderSnapshot,
+  restoreReaderSnapshot,
+} from "./readerPersistenceQueue";
 
 export function captureReaderProgress(): void {
   window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
@@ -55,8 +59,14 @@ export function useReaderPwaUpdate(runtime: ReaderRuntime | null): ReaderPwaUpda
     // Mirror state synchronously, then wait for the durable SQLite/OPFS queue
     // before allowing the new worker to take control and reload the Reader.
     captureReaderProgress();
-    await persistReaderSnapshot(runtime, { durableLibrary: true });
-    window.dispatchEvent(new Event("bcr-reader-apply-update"));
+    try {
+      await persistReaderSnapshot(runtime, { durableLibrary: true, strict: true });
+      window.dispatchEvent(new Event("bcr-reader-apply-update"));
+    } catch {
+      // The save notice retains the error. Keep the old release usable and
+      // allow retrying instead of activating an update after a failed write.
+      setApplying(false);
+    }
   }, [applying, runtime]);
 
   return {
@@ -175,6 +185,7 @@ export interface ReaderBootState {
 }
 
 export function useReaderBoot(): ReaderBootState {
+  const lifetime = useRef<Promise<void>>(Promise.resolve());
   const [runtime, setRuntime] = useState<ReaderRuntime | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recovery, setRecovery] = useState<ReaderRestoreDiagnostics | null>(null);
@@ -275,12 +286,12 @@ export function useReaderBoot(): ReaderBootState {
           });
       }, 1200);
     };
-    void createReaderRuntime()
+    const startup = lifetime.current
+      .then(() => (cancelled ? undefined : createReaderRuntime()))
       .then(async (nextRuntime) => {
+        if (nextRuntime === undefined) return;
         createdRuntime = nextRuntime;
         if (cancelled) {
-          nextRuntime.indexSession?.close();
-          nextRuntime.parseSession?.close();
           return;
         }
         setRuntime(nextRuntime);
@@ -329,8 +340,11 @@ export function useReaderBoot(): ReaderBootState {
       if (binaryRestoreTimer !== undefined) window.clearTimeout(binaryRestoreTimer);
       binaryRestoreController.abort();
       unsubscribeRestore();
-      createdRuntime?.indexSession?.close();
-      createdRuntime?.parseSession?.close();
+      lifetime.current = startup
+        .then(async () => {
+          if (createdRuntime !== null) await closeReaderRuntime(createdRuntime);
+        })
+        .catch((reason: unknown) => console.error("Reader cleanup failed", reason));
     };
   }, []);
   return { runtime, error, recovery };

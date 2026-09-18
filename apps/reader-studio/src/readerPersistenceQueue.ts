@@ -72,7 +72,9 @@ export function persistReaderSnapshot(
   options: { readonly durableLibrary?: boolean; readonly strict?: boolean } = {},
 ): Promise<void> {
   const state = getReaderState();
-  if (state.status !== "ready" || readerRuntime() !== runtime) return Promise.resolve();
+  if (runtime.closing || state.status !== "ready" || readerRuntime() !== runtime) {
+    return options.strict ? Promise.reject(new Error("Reader 会话不可写")) : Promise.resolve();
+  }
   mirrorReaderSession(state);
   mirrorReaderLibrary(runtime, state);
   const pending = enqueue(async () => {
@@ -87,11 +89,22 @@ export function persistReaderSnapshot(
   return options.strict ? pending : handled;
 }
 
+export async function closeReaderRuntime(runtime: ReaderRuntime): Promise<void> {
+  // Queue the last snapshot before shutting the gate; all accepted work finishes
+  // while this tab still owns the lease. Late callers can no longer mirror state.
+  const saved = persistReaderSnapshot(runtime);
+  runtime.closing = true;
+  await saved;
+  await tail;
+  await runtime.dispose?.();
+}
+
 /** Stage outside the queue, then validate/merge against live state on every attempt. */
 export function commitReaderBooks(
   runtime: ReaderRuntime,
   select: (state: ReaderState) => ReadonlyArray<ReaderBook>,
 ): Promise<ReadonlyArray<ReaderBook>> {
+  if (runtime.closing) return Promise.reject(new Error("Reader 会话已关闭"));
   return enqueue(async () => {
     let attempted = false;
     try {

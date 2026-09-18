@@ -116,6 +116,15 @@ jobs:
       - name: Install Chromium
         run: node_modules/.bin/playwright install --with-deps chromium
 
+      - name: Download production Studio bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: studio-dist
+          path: apps/studio/dist
+
+      - name: Verify production Reader PWA
+        run: bun run test:pwa
+
       - name: Run browser verification
         run: bun run test:browser
 

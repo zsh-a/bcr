@@ -43,11 +43,13 @@ await page
   .locator(".document-job-copy strong", { hasText: "field-notes.md" })
   .last()
   .waitFor({ timeout: 10_000 });
-// A rerun may merge the same source Artifact instead of creating a new job;
-// the queue row and preview above are the durable import signals in either case.
-if (!(await page.locator(".document-preview-card").innerText()).includes("Field notes")) {
-  fail("导入后的源文本预览未更新");
-}
+// A rerun can find a persisted queue row before the new import selects it and
+// loads its preview. Wait for the actual preview, not merely the existing row.
+await page.waitForFunction(
+  () => document.querySelector(".document-preview-card")?.textContent?.includes("Field notes"),
+  undefined,
+  { timeout: 10_000 },
+);
 
 await page.locator(".document-stage-card", { hasText: "Extract" }).click();
 await page.getByRole("button", { name: "运行 Extract" }).click();

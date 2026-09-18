@@ -14,6 +14,7 @@
     "typecheck": "node scripts/typecheck.mjs",
     "test": "vp test run",
     "test:browser": "node scripts/verify-ci.mjs",
+    "test:pwa": "node scripts/verify-reader-pwa.mjs",
     "demo": "cd examples/demo && vp dev",
     "dev": "cd apps/studio && vp dev",
     "studio": "cd apps/studio && vp dev",

@@ -20,6 +20,12 @@ import {
 import { ApplicationStatusProvider } from "./application-status";
 export type { RuntimeHost, RuntimeMetadata, RuntimeServices, RuntimeSession } from "@bcr/core";
 export { usePublishRunningCount, useRunningApps } from "./application-status";
+export {
+  ResearchCaptureProvider,
+  useResearchCapture,
+  type ResearchCapture,
+  type ResearchCaptureService,
+} from "./research-capture";
 
 /** Host-shell navigation event used by keep-alive apps without a router provider. */
 export const RUNTIME_NAVIGATION_EVENT = "bcr:navigation";
