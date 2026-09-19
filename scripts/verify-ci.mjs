@@ -119,6 +119,7 @@ await withServer({
     "scripts/verify-reader-comics.mjs",
     "scripts/verify-storage-cleanup.mjs",
     "scripts/verify-global-search.mjs",
+    "scripts/verify-knowledge.mjs",
     "scripts/verify-research.mjs",
     "scripts/verify-research-backup.mjs",
     "scripts/verify-research-search.mjs",

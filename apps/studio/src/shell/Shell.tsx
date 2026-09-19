@@ -10,6 +10,7 @@ import { SearchBridge } from "../search-bridge";
 import { appIdFromPath, APPS } from "./apps";
 import { Home } from "./Home";
 import { ResearchCaptureBridge } from "../ResearchCaptureBridge";
+import { KnowledgeBridge } from "../knowledge/KnowledgeBridge";
 
 /**
  * OS 式 Shell 根布局（§12：URL 即状态）：
@@ -96,6 +97,7 @@ export function Shell() {
     <RuntimeProvider services={services}>
       <ResearchCaptureBridge>
         <SearchBridge services={services} />
+        <KnowledgeBridge />
         <div
           className={`studio-shell-frame flex h-full flex-col ${active === "reader" ? "reader-active" : ""}`}
         >

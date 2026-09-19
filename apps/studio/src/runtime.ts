@@ -18,6 +18,7 @@ import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import { Effect } from "effect";
 import { COMPUTE_OPERATIONS } from "./compute-contract";
 import { studio, type FileRecord, type TaskRecord } from "./store";
+import { closeKnowledge } from "./knowledge/store";
 
 let taskSeq = 0;
 
@@ -82,6 +83,7 @@ export async function createRuntimeServices(): Promise<RuntimeSession> {
       search,
       dispose: async () => {
         try {
+          await closeKnowledge(metadata);
           await search.close();
         } finally {
           await session.host.dispose();

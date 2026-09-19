@@ -5,6 +5,8 @@
 当前实现的所有权、会话生命周期与接入契约见 [Runtime 架构](docs/RUNTIME-ARCHITECTURE.md)。
 计算应用通过 `@bcr/runtime-browser` 统一组装，嵌入 Studio 时共享资源预算，领域计算与搜索投影由应用自身提供。
 
+Studio 另提供[个人知识库与 Git 同步](docs/KNOWLEDGE-SYNC.md)：独立手写 Markdown、资料引用、全局搜索，以及基于 GitHub 私有仓库的多设备同步与冲突恢复。入口为 `/knowledge`。
+
 本版范围：**核心 Runtime 包 + Media / Quant / Markets / Manga / Reader / Document / Data 七类端到端垂直切片**——
 文件或行情 → OPFS → Worker Pipeline → Artifact → 内容寻址缓存 → 跨刷新项目恢复。
 

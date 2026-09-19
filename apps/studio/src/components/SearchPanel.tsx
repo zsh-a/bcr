@@ -26,6 +26,7 @@ import { useServices } from "../services";
 import { workspaceResearch } from "../researchCapture";
 
 type SearchFilterId =
+  | "knowledge"
   | "research"
   | "all"
   | "file"
@@ -45,6 +46,7 @@ interface SearchFilter {
 
 const FILTERS: ReadonlyArray<SearchFilter> = [
   { id: "all", label: "全部" },
+  { id: "knowledge", label: "个人笔记", kinds: ["knowledge-note"] },
   { id: "research", label: "资料集合", kinds: ["research-note", "research-excerpt"] },
   { id: "file", label: "文件", kinds: ["file"] },
   { id: "task", label: "任务", kinds: ["task"] },
@@ -57,6 +59,7 @@ const FILTERS: ReadonlyArray<SearchFilter> = [
 ];
 
 function iconFor(kind: SearchDocumentKind) {
+  if (kind === "knowledge-note") return <BookOpen className="size-4" />;
   if (kind === "research-note" || kind === "research-excerpt")
     return <BookOpen className="size-4" />;
   if (kind === "app") return <LayoutGrid className="size-4" />;
@@ -73,6 +76,7 @@ function iconFor(kind: SearchDocumentKind) {
 }
 
 function kindLabel(kind: SearchDocumentKind): string {
+  if (kind === "knowledge-note") return "个人笔记";
   if (kind === "research-note") return "笔记";
   if (kind === "research-excerpt") return "摘录";
   if (kind === "app") return "APP";

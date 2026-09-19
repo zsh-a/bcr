@@ -7,6 +7,7 @@ import {
   Globe2,
   LayoutGrid,
   LibraryBig,
+  NotebookPen,
   Table2,
   type LucideIcon,
 } from "lucide-react";
@@ -27,7 +28,8 @@ export interface AppDef {
     | "documents"
     | "reader"
     | "data"
-    | "docgen";
+    | "docgen"
+    | "knowledge";
   readonly title: string;
   readonly path:
     | "/studio"
@@ -38,7 +40,8 @@ export interface AppDef {
     | "/documents"
     | "/reader"
     | "/data"
-    | "/docgen";
+    | "/docgen"
+    | "/knowledge";
   readonly icon: LucideIcon;
   readonly description: string;
   readonly component: ComponentType | LazyExoticComponent<ComponentType>;
@@ -116,6 +119,16 @@ export const APPS: ReadonlyArray<AppDef> = [
     icon: FileBadge,
     description: "虚构账单生成 · 模板渲染 / 水印 / 实拍合成 · 纯端侧",
     component: lazy(() => import("@bcr/docgen-studio/app").then((m) => ({ default: m.App }))),
+  },
+  {
+    id: "knowledge",
+    title: "个人知识库",
+    path: "/knowledge",
+    icon: NotebookPen,
+    description: "独立 Markdown 笔记 · 资料引用 / 全文搜索 / GitHub 同步与版本恢复",
+    component: lazy(() =>
+      import("../knowledge/KnowledgeApp").then((m) => ({ default: m.KnowledgeApp })),
+    ),
   },
 ];
 

@@ -57,7 +57,7 @@ export function Home() {
                   </span>
                 </span>
                 <kbd className="rounded-[var(--radius-xs)] border border-border px-2 py-1 font-mono text-[10px] text-faint">
-                  Alt+{index + 1}
+                  {index < 9 ? `Alt+${index + 1}` : "⌘K"}
                 </kbd>
                 {running > 0 && (
                   <span className="absolute top-5 right-5 inline-flex items-center gap-2 font-mono text-[10px] text-accent">

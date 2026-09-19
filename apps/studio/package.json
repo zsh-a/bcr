@@ -29,11 +29,14 @@
     "@tanstack/react-router": "^1.170.32",
     "@tanstack/react-virtual": "^3.14.10",
     "@zip.js/zip.js": "2.9.0",
+    "diff": "^9.0.0",
     "dockview-react": "^8.2.0",
     "effect": "^3.22.1",
     "lucide-react": "^1.37.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

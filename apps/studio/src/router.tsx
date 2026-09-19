@@ -165,6 +165,15 @@ const docgenRoute = createRoute({
   component: () => null,
 });
 
+const knowledgeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/knowledge",
+  validateSearch: (search: Record<string, unknown>): { note?: string | undefined } => ({
+    note: typeof search["note"] === "string" ? search["note"] : undefined,
+  }),
+  component: () => null,
+});
+
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
     homeRoute,
@@ -177,6 +186,7 @@ export const router = createRouter({
     readerRoute,
     dataRoute,
     docgenRoute,
+    knowledgeRoute,
   ]),
 });
 

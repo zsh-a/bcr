@@ -11,6 +11,7 @@ import {
   Hash,
   House,
   LibraryBig,
+  NotebookPen,
   LayoutGrid,
   Search,
   Table2,
@@ -107,6 +108,12 @@ export function CommandPalette(props: { open: boolean; onOpenChange: (open: bool
         hint: "Alt+8",
         icon: <Table2 className="size-3.5" />,
         run: () => void navigate({ to: "/data" }),
+      },
+      {
+        id: "go-knowledge",
+        title: "打开个人知识库",
+        icon: <NotebookPen className="size-3.5" />,
+        run: () => void navigate({ to: "/knowledge" }),
       },
       {
         id: "import",
