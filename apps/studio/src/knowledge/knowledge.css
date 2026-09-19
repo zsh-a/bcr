@@ -290,16 +290,20 @@
   width: 100%;
   min-height: 380px;
   height: 48vh;
-  resize: vertical;
   border: 0;
   background: transparent;
   color: var(--color-muted);
-  font: 14px/1.95 var(--font-mono) !important;
-  padding: 0 4px 20px 0;
+  /* The editor reads these so typography stays owned by CSS, not the JS theme. */
+  --knowledge-note-font: 14px/1.95 var(--font-mono);
+  font: var(--knowledge-note-font) !important;
   tab-size: 2;
 }
-.knowledge-body::placeholder {
-  color: var(--color-faint);
+/* CodeMirror owns scrolling inside the host; the host itself must not scroll. */
+.knowledge-body .cm-editor {
+  height: 100%;
+}
+.knowledge-body .cm-scroller {
+  padding: 0 4px 20px 0;
 }
 .knowledge-editor-footer {
   display: flex;

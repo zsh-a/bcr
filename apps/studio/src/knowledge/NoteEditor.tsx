@@ -1,6 +1,7 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import Markdown from "react-markdown";
 import { decodeNote, same, type KnowledgeNote, type KnowledgeCollection } from "./model";
+import { MarkdownEditor } from "./MarkdownEditor";
 import type { KnowledgeStore } from "./store";
 
 export interface EditorHandle {
@@ -235,15 +236,13 @@ export function NoteEditor({
           </Markdown>
         </article>
       ) : (
-        <textarea
-          className="knowledge-body"
-          aria-label="笔记正文"
+        <MarkdownEditor
+          label="笔记正文"
           placeholder={"从这里开始写。\n\n支持 Markdown，也可以把资料摘录带进来慢慢整理。"}
           value={draft.body}
+          readOnly={locked || !!initial.error}
           maxLength={500_000}
-          disabled={locked || !!initial.error}
-          onChange={(e) => change({ body: e.target.value })}
-          spellCheck={false}
+          onChange={(body) => change({ body })}
         />
       )}
       <footer className="knowledge-editor-footer">

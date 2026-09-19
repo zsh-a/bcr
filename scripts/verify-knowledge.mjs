@@ -115,8 +115,15 @@ async function body(page, text) {
   await saved(page);
 }
 async function matchesBody(page, text) {
+  // The body is a CodeMirror surface, not a <textarea>. Match its rendered
+  // lines rather than a `.value` property that no longer exists: CodeMirror
+  // wraps each visual line in its own element, so joining `.cm-line` is the
+  // faithful read of the document text.
   await page.waitForFunction(
-    (expected) => document.querySelector('[aria-label="笔记正文"]')?.value === expected,
+    (expected) =>
+      [...document.querySelectorAll('[aria-label="笔记正文"] .cm-line')]
+        .map((line) => line.textContent)
+        .join("\n") === expected,
     text,
   );
 }
@@ -268,9 +275,13 @@ try {
   await b.page.getByRole("button", { name: "从资料集合导入", exact: true }).click();
   await b.page.locator(".knowledge-note-card").filter({ hasText: "独特引用证据" }).click();
   await b.page.locator(".knowledge-citations").waitFor();
-  assert(
-    (await b.page.getByLabel("笔记正文", { exact: true }).inputValue()).includes("> 独特引用证据"),
+  // Read the editor's rendered lines, not a textarea `.value`.
+  const importedBody = await b.page.evaluate(() =>
+    [...document.querySelectorAll('[aria-label="笔记正文"] .cm-line')]
+      .map((line) => line.textContent)
+      .join("\n"),
   );
+  assert(importedBody.includes("> 独特引用证据"));
   await body(b.page, "独特引用证据的手写整理，不应被重复导入覆盖。");
   const importedCount = await b.page.locator(".knowledge-note-card").count();
   await b.page.getByRole("button", { name: "从资料集合导入", exact: true }).click();
