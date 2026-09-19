@@ -1,8 +1,8 @@
 /* 截图走查：加载 Studio → 截图空状态 → 注入文件 → 跑任务 → 截图。 */
-import { launchVerifyBrowser } from "./verify-browser.mjs";
+import { ensureShots, launchVerifyBrowser } from "./lib/browser.mjs";
 
 const base = process.env.BASE_URL ?? "http://localhost:5199";
-const dir = new URL("./shots/", import.meta.url).pathname;
+const dir = ensureShots();
 
 const browser = await launchVerifyBrowser("studio");
 const page = browser.pages()[0] ?? (await browser.newPage());

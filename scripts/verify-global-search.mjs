@@ -1,11 +1,7 @@
 /* 全局搜索走查：索引跨域投影、键盘呼出、结果筛选与深链导航。 */
-import { launchVerifyBrowser } from "./verify-browser.mjs";
+import { fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
 const base = process.env.BASE_URL ?? "http://localhost:5199/studio";
-const fail = (message) => {
-  console.error(`FAIL: ${message}`);
-  process.exitCode = 1;
-};
 
 const browser = await launchVerifyBrowser("studio");
 const page = browser.pages()[0] ?? (await browser.newPage());

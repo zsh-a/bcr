@@ -22,7 +22,7 @@ try {
       const url = performance
         .getEntriesByType("resource")
         .map((entry) => entry.name)
-        .filter((url) => new URL(url).pathname.endsWith("/apps/reader-studio/src/store.ts"))
+        .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
         .at(-1);
       const { reader } = await import(url);
       reader.setSettings(patch);
@@ -117,10 +117,12 @@ try {
     window.getSelection().addRange(range);
     const urls = performance.getEntriesByType("resource").map((entry) => entry.name);
     const storeUrl = urls
-      .filter((url) => new URL(url).pathname.endsWith("/apps/reader-studio/src/store.ts"))
+      .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
       .at(-1);
     const positionUrl = urls
-      .filter((url) => new URL(url).pathname.endsWith("/apps/reader-studio/src/readingPosition.ts"))
+      .filter((url) =>
+        new URL(url).pathname.endsWith("/packages/reader-studio/src/readingPosition.ts"),
+      )
       .at(-1);
     const { getReaderState } = await import(storeUrl);
     const { readerSelectionLocator } = await import(positionUrl);
@@ -161,7 +163,7 @@ try {
     const url = performance
       .getEntriesByType("resource")
       .map((entry) => entry.name)
-      .filter((url) => new URL(url).pathname.endsWith("/apps/reader-studio/src/store.ts"))
+      .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
       .at(-1);
     const { reader, getReaderState } = await import(url);
     reader.setSearch("预备搜索", [], getReaderState().activeBookId);
@@ -180,7 +182,7 @@ try {
     const url = performance
       .getEntriesByType("resource")
       .map((entry) => entry.name)
-      .filter((url) => new URL(url).pathname.endsWith("/apps/reader-studio/src/store.ts"))
+      .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
       .at(-1);
     const { reader, getReaderState } = await import(url);
     const book = getReaderState().library.find((book) => book.id === getReaderState().activeBookId);

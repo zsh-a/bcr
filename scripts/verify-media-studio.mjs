@@ -1,12 +1,8 @@
 /* Subtitle Studio 走查：导入 → 生成（DAG 流水线）→ 字幕/波形/导出 → 刷新恢复。 */
-import { launchVerifyBrowser } from "./verify-browser.mjs";
+import { ensureShots, fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
 const base = process.env.BASE_URL ?? "http://localhost:5180";
-const dir = new URL("./shots/", import.meta.url).pathname;
-const fail = (message) => {
-  console.error(`FAIL: ${message}`);
-  process.exitCode = 1;
-};
+const dir = ensureShots();
 
 // 生成 6 秒测试音频（4 组“语音”脉冲 + 静音间隔），f32 WAV
 function makeWav(seconds = 6, sampleRate = 16000) {

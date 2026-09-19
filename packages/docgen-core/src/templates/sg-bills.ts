@@ -26,7 +26,6 @@ import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
   escapeHtml,
-  fmtMeta,
   formatInt,
   round2,
   type TemplateMeta,
@@ -307,54 +306,6 @@ function overviewPanel(vm: BillViewModel): string {
     `<div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:30px;">` +
     `<span style="font-size:32px;font-style:italic;color:#5a656c;">Next Page</span>${arrow}</div>` +
     `</div>`
-  );
-}
-
-/** 「My Bill Details」：按服务分 section 计价 + GST 汇总（参考图后续页内容，收于本页中部） */
-function billDetails(vm: BillViewModel, meta: TemplateMeta): string {
-  const sections = (vm.sections ?? [])
-    .map((section) => {
-      const rows = section.lines
-        .map(
-          (line) =>
-            `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e7e4dc;">` +
-            `<span style="font-size:26px;color:#333c42;">${escapeHtml(line.label)}</span>` +
-            `<span style="font-size:26px;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, line.amount))}</span></div>`,
-        )
-        .join("");
-      return (
-        `<div style="margin-top:8px;">` +
-        `<div style="display:flex;justify-content:space-between;align-items:baseline;background:${PANEL_BG};` +
-        `border-left:10px solid ${meta.accent};padding:7px 26px;border-radius:0 12px 12px 0;">` +
-        `<span style="font-size:29px;font-weight:700;">${escapeHtml(section.title)}</span>` +
-        (section.subtitle !== undefined
-          ? `<span style="font-size:26px;color:#5a656c;font-family:'Courier New',monospace;">${escapeHtml(section.subtitle)}</span>`
-          : "") +
-        `</div>` +
-        `<div style="padding:2px 26px 0;">${rows}` +
-        `<div style="display:flex;justify-content:space-between;padding:6px 0;">` +
-        `<span style="font-size:25px;font-weight:600;color:#5a656c;">Section total · 小计</span>` +
-        `<span style="font-size:27px;font-weight:700;font-variant-numeric:tabular-nums;">${escapeHtml(fmtMeta(meta, section.sectionTotal))}</span></div></div></div>`
-      );
-    })
-    .join("");
-  const sumRow = (label: string, value: string, strong: boolean): string =>
-    `<div style="display:flex;justify-content:space-between;align-items:baseline;` +
-    `${strong ? "margin-top:8px;padding-top:8px;border-top:3px solid #1b2327;" : "margin-top:4px;"}">` +
-    `<span style="font-size:${strong ? 33 : 28}px;${strong ? "font-weight:700;" : "color:#5a656c;"}">${label}</span>` +
-    `<span style="font-size:${strong ? 42 : 31}px;font-weight:${strong ? 800 : 500};` +
-    `font-variant-numeric:tabular-nums;${strong ? `color:${meta.accent};` : ""}">${value}</span></div>`;
-  return (
-    `<div style="margin-top:8px;padding:0 150px 0 260px;">` +
-    `<div style="font-size:32px;font-weight:800;color:#1b2327;">My Bill Details` +
-    `<span style="font-size:29px;font-weight:400;color:#8a9298;margin-left:20px;">费用明细 · 按服务分项</span></div>` +
-    sections +
-    `<div style="margin-top:6px;display:flex;justify-content:flex-end;">` +
-    `<div style="width:900px;">` +
-    sumRow("Charges before tax · 税前小计", escapeHtml(fmtMeta(meta, vm.subtotal)), false) +
-    sumRow(escapeHtml(vm.taxLabel), escapeHtml(fmtMeta(meta, vm.tax)), false) +
-    sumRow("Total for this bill · 本期总额", escapeHtml(fmtMeta(meta, vm.total)), true) +
-    `</div></div></div>`
   );
 }
 

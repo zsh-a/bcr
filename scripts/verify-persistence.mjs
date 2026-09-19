@@ -1,12 +1,8 @@
 /* 刷新恢复走查：导入 → 计算 → reload → 文件/任务历史恢复 + 缓存命中（§7/§8）。 */
-import { launchVerifyBrowser } from "./verify-browser.mjs";
+import { ensureShots, fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
 const base = process.env.BASE_URL ?? "http://localhost:5199/studio";
-const dir = new URL("./shots/", import.meta.url).pathname;
-const fail = (message) => {
-  console.error(`FAIL: ${message}`);
-  process.exitCode = 1;
-};
+const dir = ensureShots();
 
 const browser = await launchVerifyBrowser("studio");
 const page = browser.pages()[0] ?? (await browser.newPage());

@@ -1,4 +1,4 @@
-import { launchVerifyBrowser } from "./verify-browser.mjs";
+import { launchVerifyBrowser } from "./lib/browser.mjs";
 const base = "http://localhost:5173";
 const browser = await launchVerifyBrowser("media");
 const page = browser.pages()[0] ?? (await browser.newPage());

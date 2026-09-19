@@ -1,4 +1,3 @@
-import "./fontAssets";
 import { useEffect, useState } from "react";
 import type { ReaderSettings } from "./model";
 import { READER_CJK_FONT_OPTIONS, READER_LATIN_FONT_OPTIONS } from "./readerTypography";

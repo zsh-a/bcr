@@ -21,23 +21,33 @@ Studio 另提供[个人知识库与 Git 同步](docs/KNOWLEDGE-SYNC.md)：独立
 │   ├── storage-sqlite/   # @bcr/storage-sqlite：SQLite WASM 元数据引擎（Cache / 血缘 / TaskJournal）
 │   ├── market-data/      # @bcr/market-data：统一市场数据契约 / stock-sdk 适配 / 缓存降级
 │   ├── react/            # @bcr/react：RuntimeProvider / useSubmitTask / useTask / useArtifact
+│   ├── scene-renderer/   # @bcr/scene-renderer：WebGPU/WebGL 静态场景渲染（零业务依赖）
 │   ├── reader-core/      # @bcr/reader-core：出版物 / 章节 / Locator / 搜索契约
 │   ├── document-core/    # @bcr/document-core：文档格式 / 阶段状态 / 跨工作台 handoff 契约
-│   └── data-core/        # @bcr/data-core：表格 / Schema / 类型推断 / Canonical 数据契约
+│   ├── docgen-core/      # @bcr/docgen-core：账单模板 / 条码 / 水印 / 实拍合成
+│   ├── data-core/        # @bcr/data-core：表格 / Schema / 类型推断 / Canonical 数据契约
+│   ├── graph/            # @bcr/graph：计算图模型与 React 画布
+│   ├── reader-studio/    # Reader Studio——多格式本地阅读、全文搜索与进度恢复（库）
+│   ├── document-studio/  # Document Studio——Ingest / Extract / OCR / Translate 流水线入口（库）
+│   └── data-studio/      # Data Studio——CSV / JSON / NDJSON 表格探索与导出（库）
 ├── apps/
 │   ├── studio/           # BCR Studio 工作台 UI（Dockview + Tailwind 4 + Base UI）
 │   ├── media-studio/     # Media Studio · Subtitle——第一个上层应用（§0 孵化策略）
 │   ├── quant-lab/        # Quant Lab · Strategy Workbench——第二类 workload 验证
 │   ├── market-board/     # Market Atlas——CN / HK / US / 全球期货市场看板
 │   ├── manga-studio/     # Manga Studio——漫画 OCR / 翻译 / 清理 / CJK 排版审校
-│   ├── reader-studio/    # Reader Studio——多格式本地阅读、全文搜索与进度恢复
-│   ├── document-studio/  # Document Studio——Ingest / Extract / OCR / Translate 流水线入口
-│   └── data-studio/      # Data Studio——CSV / JSON / NDJSON 表格探索与导出
+│   └── docgen-studio/    # DocGen Lab——虚构账单生成
 ├── crates/
 │   └── kernels/          # bcr-kernels：wasm-bindgen kernel（流式 BLAKE3 / RMS / Peak）
-└── examples/
-    └── demo/             # 最小垂直切片 demo（Vite+ + React 19）
+├── examples/
+│   └── demo/             # 最小垂直切片 demo（Vite+ + React 19）
+└── scripts/              # 单元外的真实浏览器走查（Playwright）与共享 harness（scripts/lib/）
 ```
+
+> `apps/` 只放**可独立启动**的 Vite 应用（含 `index.html`）；只通过包 `exports` 被 Studio 壳以
+> `lazy(() => import("@bcr/xxx-studio/app"))` 挂载、没有独立入口的工作台归属 `packages/`。
+> 工具链配置集中在根 `vite.config.ts`（format / lint / test / 任务图），单 workspace 的
+> `vite.config.ts` 只保留端口、插件与 COOP/COEP 等应用专属配置。
 
 与架构文档的对应关系：
 
@@ -74,23 +84,32 @@ Studio 另提供[个人知识库与 Git 同步](docs/KNOWLEDGE-SYNC.md)：独立
 ## 命令
 
 ```bash
-bun install            # 安装依赖
+bun install            # 安装依赖（版本统一由根 package.json 的 catalog 提供）
 bun run build:wasm     # 构建 WASM kernel（首次或 kernel 变更后）
 bun run test           # vp test：全部单元测试
-bun run check          # format + lint + 全 workspace TypeScript 类型检查
+bun run check          # vp check（format + lint）+ tsc 全仓类型检查
+bun run typecheck      # 仅类型检查（单一 tsconfig.json 覆盖所有 workspace）
 bun run demo           # 启动 demo（examples/demo）
 bun run studio         # 启动 BCR Studio 工作台（apps/studio）
 bun run media          # 启动 Media Studio · Subtitle（apps/media-studio）
 bun run quant          # 启动 Quant Lab · Strategy Workbench（apps/quant-lab）
 bun run markets        # 启动 Market Atlas（apps/market-board）
 bun run manga          # 启动 Manga Studio（apps/manga-studio）
-bun run reader         # 启动 Reader Studio（apps/reader-studio）
+bun run docgen         # 启动 DocGen Lab（apps/docgen-studio）
 bun run build:cloudflare  # 构建 WASM + BCR Studio 静态产物
 bun run deploy:cloudflare # 部署 apps/studio/dist 到 Cloudflare Workers
 cargo test --manifest-path crates/kernels/Cargo.toml
 bun run test:browser   # 自动启停 dev server，运行离线 Playwright 主链路
 bun run test:pwa       # 使用已构建的 apps/studio/dist 验证生产版 Reader 离线与更新
 ```
+
+`bun run dev` / `bun run studio` 是唯一的工作台入口：Reader / Document / Data Studio 位于
+`packages/`，作为库被 Studio 壳在 `/reader`、`/documents`、`/data` 路由下懒加载，没有独立
+dev server。走查脚本位于 `scripts/`，共享的浏览器与路径 helper 在 `scripts/lib/`。
+
+架构边界（`packages/core` 只能依赖 storage、`runtime-worker` / `runtime-browser` 的分层、
+跨包不得直接 import 另一个包的 `src/`）由根 `vite.config.ts` 的 `lint.overrides` 中
+`no-restricted-imports` 强制，不再需要单独的手写 AST 校验脚本。
 
 GitHub Actions 会执行格式/类型/单测、Rust/WASM、核心应用生产构建，并在真实 Chromium 中验证
 Media Studio 短音频、150 秒分窗、Studio 刷新缓存/任务历史、Quant Lab 回测参数重跑以及
@@ -256,7 +275,7 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - 当前 MVP 支持原图 / 清理页 / 译文页切换、置信度审阅、CJK 排版参数和 PNG 导出；清理阶段会输出可追溯区域掩码，Inpainting 请求在适配器就绪前明确回退 Fill；CBZ/PDF 会先展开为页面队列
 - 操作契约与 DAG 回归位于 `apps/manga-studio/tests/operations.test.ts`
 
-## Document Studio（apps/document-studio）
+## Document Studio（packages/document-studio）
 
 Document Studio 是跨内容工作台的入口层，先把“文件已经进入哪一个阶段、下一步应该交给谁”做成可观测状态，
 再逐步替换本地适配器与真实模型：
@@ -293,7 +312,7 @@ File → Ingest → Normalize → Extract → OCR → Translate → Typeset → 
 
 走查：`node scripts/verify-document-studio.mjs`（由 `bun run test:browser` 自动执行）。
 
-## Reader Studio（apps/reader-studio）
+## Reader Studio（packages/reader-studio）
 
 Reader Studio 是一个离线优先的多格式阅读垂直切片：
 
@@ -319,7 +338,7 @@ Publication → Section → Locator / SearchHit
 
 走查：`node scripts/verify-reader-studio.mjs`（由 `bun run test:browser` 自动执行）。
 
-## Data Studio（apps/data-studio）
+## Data Studio（packages/data-studio）
 
 Data Studio 是面向本地数据文件的轻量表格工作台：解析和预览都在共享 Runtime 的 Worker 中完成，UI
 只消费版本化的 Canonical Table Artifact，不把大文件解析或状态堆在主线程。

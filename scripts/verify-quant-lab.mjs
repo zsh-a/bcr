@@ -1,14 +1,10 @@
 /* Quant Lab 主链路：列式行情 → Worker Pipeline → Parquet 往返 → 参数重跑。 */
-import { launchVerifyBrowser } from "./verify-browser.mjs";
+import { ensureShots, fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
 const base = new URL(process.env.BASE_URL ?? "http://localhost:5199/studio");
 base.pathname = "/quant";
 base.search = "";
-const dir = new URL("./shots/", import.meta.url).pathname;
-const fail = (message) => {
-  console.error(`FAIL: ${message}`);
-  process.exitCode = 1;
-};
+const dir = ensureShots();
 
 const browser = await launchVerifyBrowser("studio");
 const page = browser.pages()[0] ?? (await browser.newPage());

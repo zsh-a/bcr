@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@bcr/core": "workspace:*",
-    "effect": "^3.22.1"
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@bcr/storage-opfs": "workspace:*"

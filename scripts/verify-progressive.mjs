@@ -1,11 +1,7 @@
 /* 渐进渲染探针：whisper 分窗推理期间，字幕应分批出现而非结束后一次性填充。 */
-import { launchVerifyBrowser } from "./verify-browser.mjs";
+import { fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
 const base = process.env.BASE_URL ?? "http://localhost:5180";
-const fail = (message) => {
-  console.error(`FAIL: ${message}`);
-  process.exitCode = 1;
-};
 
 function makeWav(seconds = 150, sampleRate = 16000) {
   const samples = seconds * sampleRate;

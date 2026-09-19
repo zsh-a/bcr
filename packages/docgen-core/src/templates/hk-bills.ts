@@ -21,7 +21,6 @@ import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
   escapeHtml,
-  fmtMeta,
   formatInt,
   round2,
   type TemplateMeta,

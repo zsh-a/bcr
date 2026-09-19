@@ -9,9 +9,9 @@
   "dependencies": {
     "@bcr/core": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",
-    "effect": "^3.22.1"
+    "effect": "catalog:"
   },
   "devDependencies": {
-    "@sqlite.org/sqlite-wasm": "3.53.0-build1"
+    "@sqlite.org/sqlite-wasm": "catalog:"
   }
 }

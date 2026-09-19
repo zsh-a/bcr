@@ -15,11 +15,10 @@ export function safeUrl(value: string): string {
   // EPUB commonly uses bare publication-relative references such as
   // `chapter-2.xhtml#note`. Keep scheme-less paths while continuing to reject
   // executable or unknown protocols before the markup reaches the document.
-  const hasControlCharacter = [...trimmed].some((character) => {
-    const codePoint = character.codePointAt(0) ?? 0;
-    return codePoint <= 0x1f || codePoint === 0x7f;
-  });
-  if (!/^[a-z][a-z\d+.-]*:/iu.test(trimmed) && !hasControlCharacter) {
+  // Control characters (U+0000–U+001F, U+007F) would let a scheme-less path
+  // smuggle a protocol separator past the checks above.
+  // eslint-disable-next-line no-control-regex -- matching control characters is the point.
+  if (!/^[a-z][a-z\d+.-]*:/iu.test(trimmed) && !/[\u0000-\u001f\u007f]/u.test(trimmed)) {
     return trimmed;
   }
   return "#";

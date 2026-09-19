@@ -69,8 +69,10 @@ export const RESEARCH_KEY = "workspace/research.v1";
 /** Only local, known content routes may be reopened or emitted as citations. */
 export function citationRoute(value: string | undefined): string | undefined {
   if (!value || !/^\/(reader|documents|media|manga)(?:\?|$)/u.test(value)) return undefined;
-  if ([...value].some((character) => character.charCodeAt(0) <= 32 || character === "\\"))
-    return undefined;
+  // Raw C0 controls, space and backslash would let a caller smuggle a second
+  // path or authority past the route allowlist above.
+  // eslint-disable-next-line no-control-regex -- matching control characters is the point.
+  if (/[\u0000-\u0020\\]/u.test(value)) return undefined;
   const url = new URL(value, "https://bcr.invalid");
   if (url.origin !== "https://bcr.invalid") return undefined;
   return `${url.pathname}${url.search}`;

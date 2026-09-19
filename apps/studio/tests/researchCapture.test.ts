@@ -25,6 +25,7 @@ function setup() {
       kind: "reader-section" as const,
       title: "Chapter",
       route: "/reader?book=one",
+      updatedAt: 1,
     },
     citation,
     note: "My note",

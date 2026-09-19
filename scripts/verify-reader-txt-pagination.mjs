@@ -30,7 +30,7 @@ try {
       const url = performance
         .getEntriesByType("resource")
         .map((entry) => entry.name)
-        .filter((url) => new URL(url).pathname.endsWith("/apps/reader-studio/src/store.ts"))
+        .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
         .at(-1);
       const { reader, getReaderState } = await import(url);
       const book = getReaderState().library.find((book) => book.source.name === "txt-chapters.txt");

@@ -1,12 +1,8 @@
 /* M2 走查：device=auto 探测降级 + Whisper 识别 + opus-mt 文本翻译双语导出。 */
-import { launchVerifyBrowser } from "./verify-browser.mjs";
+import { ensureShots, fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
 const base = process.env.BASE_URL ?? "http://localhost:5180";
-const dir = new URL("./shots/", import.meta.url).pathname;
-const fail = (message) => {
-  console.error(`FAIL: ${message}`);
-  process.exitCode = 1;
-};
+const dir = ensureShots();
 
 function makeWav(seconds = 6, sampleRate = 16000) {
   const samples = seconds * sampleRate;

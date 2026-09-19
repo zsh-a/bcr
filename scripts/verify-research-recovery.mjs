@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { chromium } from "playwright";
-const require = createRequire(new URL("../apps/reader-studio/package.json", import.meta.url));
+import { requireFrom } from "./lib/paths.mjs";
+const require = requireFrom("reader");
 const { ZipWriter, BlobWriter, TextReader, BlobReader } = require("@zip.js/zip.js");
 const origin = new URL(process.env.BASE_URL ?? "http://localhost:5199").origin;
 const coreRequire = createRequire(new URL("../packages/core/package.json", import.meta.url));
@@ -163,7 +164,7 @@ try {
             .getEntriesByType("resource")
             .map((e) => e.name)
             .filter((url) =>
-              new URL(url).pathname.endsWith("/apps/reader-studio/src/readerRuntimeCore.ts"),
+              new URL(url).pathname.endsWith("/packages/reader-studio/src/readerRuntimeCore.ts"),
             )
             .at(-1);
           const { readerRuntime, ensureReaderMetadata } = await import(runtimeUrl);
@@ -205,7 +206,7 @@ try {
         const url = performance
           .getEntriesByType("resource")
           .map((e) => e.name)
-          .filter((url) => new URL(url).pathname.endsWith("/apps/reader-studio/src/store.ts"))
+          .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
           .at(-1);
         const { getReaderState } = await import(url);
         const book = getReaderState().library.find((b) => b.id.startsWith("research-"));
@@ -271,7 +272,7 @@ try {
         const url = performance
           .getEntriesByType("resource")
           .map((e) => e.name)
-          .filter((url) => new URL(url).pathname.endsWith("/apps/reader-studio/src/store.ts"))
+          .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
           .at(-1);
         const { reader, getReaderState } = await import(url);
         for (const book of getReaderState().library.filter((b) => b.id.startsWith("research-")))
@@ -291,7 +292,7 @@ try {
       const url = performance
         .getEntriesByType("resource")
         .map((e) => e.name)
-        .filter((url) => new URL(url).pathname.endsWith("/apps/reader-studio/src/store.ts"))
+        .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
         .at(-1);
       const { getReaderState } = await import(url);
       return getReaderState().library.filter((b) => b.id.startsWith("research-")).length;

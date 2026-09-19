@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { createRequire } from "node:module";
 import { chromium } from "playwright";
+import { modulePrefix, requireFrom } from "./lib/paths.mjs";
+const READER_MODULE_PREFIX = modulePrefix("reader");
 
-const require = createRequire(new URL("../apps/reader-studio/package.json", import.meta.url));
+const require = requireFrom("reader");
 const { BlobWriter, TextReader, ZipWriter } = require("@zip.js/zip.js");
 async function zip(entries) {
   const writer = new ZipWriter(new BlobWriter());
@@ -65,16 +66,13 @@ try {
   // Use the live module URLs so this exercises the same provider registry as the UI.
   async function run(name, buffer, query) {
     return page.evaluate(
-      async ({ name, bytes, query }) => {
+      async ({ name, bytes, query, storeModule, modulePrefix }) => {
         const urls = performance.getEntriesByType("resource").map((entry) => entry.name);
-        const base = urls
-          .filter((url) => new URL(url).pathname.endsWith("/apps/reader-studio/src/store.ts"))
-          .at(-1);
+        const base = urls.filter((url) => new URL(url).pathname.endsWith(storeModule)).at(-1);
         const load = (file) =>
           import(
-            urls
-              .filter((url) => new URL(url).pathname.endsWith(`/apps/reader-studio/src/${file}`))
-              .at(-1) ?? new URL(file, base).toString()
+            urls.filter((url) => new URL(url).pathname.endsWith(modulePrefix + file)).at(-1) ??
+              new URL(file, base).toString()
           );
         const { importReaderFile } = await load("readerImports.ts");
         const { readerRuntime, createReaderRuntime } = await load("readerRuntimeCore.ts");
@@ -149,7 +147,13 @@ try {
           count: book.sections.length,
         };
       },
-      { name, bytes: [...buffer], query },
+      {
+        name,
+        bytes: [...buffer],
+        query,
+        storeModule: "/packages/reader-studio/src/store.ts",
+        modulePrefix: READER_MODULE_PREFIX,
+      },
     );
   }
   for (const [name, bytes, query] of [

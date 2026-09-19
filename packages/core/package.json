@@ -9,6 +9,6 @@
   "dependencies": {
     "@bcr/storage-opfs": "workspace:*",
     "@noble/hashes": "^2.4.0",
-    "effect": "^3.22.1"
+    "effect": "catalog:"
   }
 }

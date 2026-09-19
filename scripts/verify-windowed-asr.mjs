@@ -1,12 +1,8 @@
 /* 分窗 ASR 走查：150s 音频 → 2 个 ASR 窗口 → 跨窗字幕归属 + 排序 + 导出。 */
-import { launchVerifyBrowser } from "./verify-browser.mjs";
+import { ensureShots, fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
 const base = process.env.BASE_URL ?? "http://localhost:5180";
-const dir = new URL("./shots/", import.meta.url).pathname;
-const fail = (message) => {
-  console.error(`FAIL: ${message}`);
-  process.exitCode = 1;
-};
+const dir = ensureShots();
 
 // 150s 音频：每 ~8s 一组 2s 语音脉冲（保证每个窗口内都有语音段）
 function makeWav(seconds = 150, sampleRate = 16000) {

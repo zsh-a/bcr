@@ -11,6 +11,6 @@
     "@bcr/core": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",
     "@bcr/storage-sqlite": "workspace:*",
-    "effect": "^3.22.1"
+    "effect": "catalog:"
   }
 }

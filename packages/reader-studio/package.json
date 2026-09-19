@@ -25,23 +25,23 @@
     "@fontsource-variable/literata": "^5.3.0",
     "@fontsource-variable/noto-sans-sc": "^5.3.0",
     "@fontsource-variable/noto-serif-sc": "^5.3.0",
-    "@fontsource/ibm-plex-mono": "^5.3.0",
-    "@fontsource/ibm-plex-sans": "^5.3.0",
-    "@sqlite.org/sqlite-wasm": "3.53.0-build1",
-    "@tanstack/react-virtual": "^3.14.10",
-    "@zip.js/zip.js": "2.9.0",
-    "effect": "^3.22.1",
-    "lucide-react": "^1.37.0",
+    "@fontsource/ibm-plex-mono": "catalog:",
+    "@fontsource/ibm-plex-sans": "catalog:",
+    "@sqlite.org/sqlite-wasm": "catalog:",
+    "@tanstack/react-virtual": "catalog:",
+    "@zip.js/zip.js": "catalog:",
+    "effect": "catalog:",
+    "lucide-react": "catalog:",
     "lxgw-wenkai-webfont": "^1.7.0",
-    "pdfjs-dist": "5.4.296",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "pdfjs-dist": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "tailwindcss": "^4.3.3"
+    "@tailwindcss/vite": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "tailwindcss": "catalog:"
   }
 }

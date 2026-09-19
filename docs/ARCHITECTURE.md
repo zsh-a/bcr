@@ -63,14 +63,14 @@ Browser Compute Runtime（下称 BCR）**不是一个 "WASM 框架"**，而是�
 ```
 
 Reader Studio 的现代化落点：`packages/reader-core` 只承载格式无关的出版物、章节、Locator、
-进度和搜索契约；`apps/reader-studio` 通过 Adapter 接入 TXT / Markdown / HTML / DOCX / EPUB / PDF / CBZ。
+进度和搜索契约；`packages/reader-studio` 通过 Adapter 接入 TXT / Markdown / HTML / DOCX / EPUB / PDF / CBZ。
 源文件使用 BLAKE3 内容地址写入 OPFS，SQLite WASM 保存书库、设置和进度；章节正文的规范化索引由
 `reader-index.worker` 通过统一 `WorkerPool` 执行，SQLite FTS5 trigram 与内存搜索作为渐进回退，主线程只负责
 React 交互；Locator v2 在旧版 section/progression 之外保存受限的 TextQuote/TextPosition 锚点，恢复时优先按引用重新定位并重新推导章节进度；搜索契约在归一化文本与原文之间保留 UTF-16 偏移，结果点击后精确滚动到首个高亮命中，兼容全角字符、Unicode 兼容形与空白差异；后续可将 DOCX/EPUB/PDF 深解析沿同一 Session 边界迁移到 Worker。
 Reader 文件入口还可直接校验并重放 Document Export Bundle：文本包复用 canonical blocks 与译文，不重复执行格式解析；视觉包在 Reader 边界拒绝并引导回 Manga，避免把图片内容误当作可排版文本。
 
 Document Studio 的落点是把跨工作台的内容生命周期显式化：`packages/document-core` 只承载格式识别、
-`DocumentJob`、阶段状态和一次性 handoff 契约；`apps/document-studio` 负责 Inbox、阶段可见性和目标工作台入口。
+`DocumentJob`、阶段状态和一次性 handoff 契约；`packages/document-studio` 负责 Inbox、阶段可见性和目标工作台入口。
 文件内容不进入 URL 或 localStorage；Reader / Manga handoff 以当前标签页的 `File` 作为快速路径，同时把源文件、规范化内容和译文的
 `ArtifactRef` 写入 marker，由宿主 ArtifactStore 在刷新后重建 Blob，再由目标应用写入自己的 Artifact / OPFS 命名空间。Reader 也可将已解析内容通过
 同一契约返回 Document，Extract / Translate 直接恢复为已完成状态；Manga 的视觉 provenance 还会将 OCR 恢复为适配器已完成。这样 OCR、翻译、

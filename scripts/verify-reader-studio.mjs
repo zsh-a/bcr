@@ -1,8 +1,8 @@
 /* Reader Studio：书库 → 全文搜索 → Locator 进度 → 主题切换 → 刷新恢复。 */
-import { createRequire } from "node:module";
-import { launchVerifyBrowser } from "./verify-browser.mjs";
+import { ensureShots, fail, launchVerifyBrowser } from "./lib/browser.mjs";
+import { requireFrom } from "./lib/paths.mjs";
 
-const require = createRequire(new URL("../apps/reader-studio/package.json", import.meta.url));
+const require = requireFrom("reader");
 const { BlobWriter, TextReader, ZipWriter } = require("@zip.js/zip.js");
 
 async function docxFixture() {
@@ -138,11 +138,7 @@ function preciseProgressFixture() {
 const base = new URL(process.env.BASE_URL ?? "http://localhost:5199/studio");
 base.pathname = "/reader";
 base.search = "";
-const dir = new URL("./shots/", import.meta.url).pathname;
-const fail = (message) => {
-  console.error(`FAIL: ${message}`);
-  process.exitCode = 1;
-};
+const dir = ensureShots();
 
 const browser = await launchVerifyBrowser("studio");
 const page = browser.pages()[0] ?? (await browser.newPage());

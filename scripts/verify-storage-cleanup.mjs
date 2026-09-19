@@ -1,11 +1,7 @@
 /* Storage plane 走查：容量状态可见，清理命令必须先打开 dry-run 对话框。 */
-import { launchVerifyBrowser } from "./verify-browser.mjs";
+import { fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
 const base = process.env.BASE_URL ?? "http://localhost:5199/studio";
-const fail = (message) => {
-  console.error(`FAIL: ${message}`);
-  process.exitCode = 1;
-};
 
 const browser = await launchVerifyBrowser("studio");
 const page = browser.pages()[0] ?? (await browser.newPage());

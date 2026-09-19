@@ -34,7 +34,8 @@ export function createKnowledgeGitHub() {
     truncated: false,
     mode: "100644",
     loseNextAck: false,
-    beforePublish: null,
+    /** Optional one-shot hook run before a publish; tests install it to force races. */
+    beforePublish: /** @type {null | (() => unknown)} */ (null),
     requests,
   };
   function ancestor(base, head) {

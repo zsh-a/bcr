@@ -1,12 +1,8 @@
 /* 卡拉 OK 探针：真实 Whisper 词级时间戳 → ASS \k 标签。需外网下载模型，网络抖动可重跑。 */
-import { launchVerifyBrowser } from "./verify-browser.mjs";
+import { ensureShots, fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
 const base = process.env.BASE_URL ?? "http://localhost:5180";
-const dir = new URL("./shots/", import.meta.url).pathname;
-const fail = (message) => {
-  console.error(`FAIL: ${message}`);
-  process.exit(1);
-};
+const dir = ensureShots();
 
 function makeWav(seconds = 6, sampleRate = 16000) {
   const samples = seconds * sampleRate;

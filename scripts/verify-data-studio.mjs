@@ -1,13 +1,9 @@
 /* Data Studio：CSV / JSON / NDJSON → Worker 表格 Artifact → 搜索 / 排序 / 导出 / 刷新恢复。 */
-import { launchVerifyBrowser } from "./verify-browser.mjs";
+import { fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
 const base = new URL(process.env.BASE_URL ?? "http://localhost:5199/studio");
 base.pathname = "/data";
 base.search = "";
-const fail = (message) => {
-  console.error(`FAIL: ${message}`);
-  process.exitCode = 1;
-};
 
 const browser = await launchVerifyBrowser("data");
 const page = browser.pages()[0] ?? (await browser.newPage());

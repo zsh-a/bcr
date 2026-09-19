@@ -95,7 +95,8 @@ interface PersistedReaderSession {
   readonly searchSession?: ReaderSearchSession;
 }
 
-interface RestoredReaderSnapshot {
+/** Durable restore projection returned by {@link restoreReader}. */
+export interface RestoredReaderSnapshot {
   readonly navigationHistory: ReaderState["navigationHistory"];
   readonly books: ReadonlyArray<ReaderBook>;
   readonly libraryOutdated: boolean;

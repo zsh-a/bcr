@@ -1,11 +1,7 @@
 /* 关键工作台的轻量无障碍审计：可命名控件、地标和重复 ID。 */
-import { launchVerifyBrowser } from "./verify-browser.mjs";
+import { fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
 const base = new URL(process.env.BASE_URL ?? "http://localhost:5199/studio");
-const fail = (message) => {
-  console.error(`FAIL: ${message}`);
-  process.exitCode = 1;
-};
 
 const routes = [
   { path: "/documents", root: ".document-studio", skip: ".document-skip-link" },

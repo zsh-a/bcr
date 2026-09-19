@@ -118,8 +118,8 @@ try {
     assert(writeRejected && (await names()).length === 0, "Partially written quota failure leaked");
     // PDF object URLs must outlive temporary files and reuse of the same source.
     const transferUrl =
-      loaded("/apps/reader-studio/src/researchTransfer.ts") ??
-      new URL("./researchTransfer.ts", loaded("/apps/reader-studio/src/store.ts")).href;
+      loaded("/packages/reader-studio/src/researchTransfer.ts") ??
+      new URL("./researchTransfer.ts", loaded("/packages/reader-studio/src/store.ts")).href;
     const { decodeReaderBackup, restoreReaderTransfer, readerTransferState } = await import(
       transferUrl
     );

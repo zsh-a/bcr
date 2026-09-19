@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { chromium } from "playwright";
-const require = createRequire(new URL("../apps/reader-studio/package.json", import.meta.url));
+import { requireFrom } from "./lib/paths.mjs";
+const require = requireFrom("reader");
 const { ZipWriter, BlobWriter, TextReader } = require("@zip.js/zip.js");
 const resumeTask = process.env.RESUME_TASK === "1";
 const streaming = process.env.STREAM_SAVE === "1";

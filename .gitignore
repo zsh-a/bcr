@@ -4,5 +4,8 @@ target/
 pkg/
 *.wasm
 .vp/
+*.tsbuildinfo
 scripts/shots/
 scripts/.pw-profile-*/
+.wrangler/
+tmp/

@@ -319,12 +319,13 @@ describe("Reader research packages", () => {
     const input = new ZipReader(new BlobReader(files[0]!));
     const output = new ZipWriter(new BlobWriter());
     for (const entry of await input.getEntries()) {
+      if (entry.directory) continue;
       if (entry.filename === "manifest.json") {
-        const manifest = JSON.parse(await entry.getData!(new TextWriter()));
+        const manifest = JSON.parse(await entry.getData(new TextWriter()));
         manifest.volume.index = 2;
         await output.add(entry.filename, new TextReader(JSON.stringify(manifest)));
       } else
-        await output.add(entry.filename, new BlobReader(await entry.getData!(new BlobWriter())));
+        await output.add(entry.filename, new BlobReader(await entry.getData(new BlobWriter())));
     }
     await input.close();
     await expect(inspectResearchPackage(await output.close())).rejects.toThrow("分卷目录不匹配");

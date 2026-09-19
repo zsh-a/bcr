@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 import { chromium } from "playwright";
+import { requireFrom } from "./lib/paths.mjs";
 
-const require = createRequire(new URL("../apps/reader-studio/package.json", import.meta.url));
+const require = requireFrom("reader");
 const { BlobWriter, TextReader, ZipWriter } = require("@zip.js/zip.js");
 const writer = new ZipWriter(new BlobWriter("application/epub+zip"));
 await writer.add("mimetype", new TextReader("application/epub+zip"));
