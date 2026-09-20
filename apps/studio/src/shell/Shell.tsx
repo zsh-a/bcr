@@ -7,14 +7,15 @@ import { SearchPanel } from "../components/SearchPanel";
 import { TopBar } from "../components/TopBar";
 import { createRuntimeServices } from "../runtime";
 import { SearchBridge } from "../search-bridge";
-import { appIdFromPath, APPS } from "./apps";
+import { appIdFromPath, APPS, LAUNCH_PAD_APPS } from "./apps";
 import { Home } from "./Home";
 import { ResearchCaptureBridge } from "../ResearchCaptureBridge";
 import { KnowledgeBridge } from "../knowledge/KnowledgeBridge";
 
 /**
  * OS 式 Shell 根布局（§12：URL 即状态）：
- * - `/` 启动台、`/studio`、`/media`、`/quant`、`/markets`、`/manga`、`/documents`、`/reader`、`/data`；浏览器前进/后退天然可用。
+ * - `/` 启动台，其余路由由 `APPS` 注册表定义（见 `shell/apps.tsx`），
+ *   浏览器前进/后退天然可用。
  * - Keep-alive：进入过的 App 常驻挂载，切走仅 display:none——
  *   worker 内任务、视频播放、字幕编辑状态全部保留。
  * - Shell 启动时初始化共享 Runtime（scheduler / worker pool / OPFS），
@@ -53,7 +54,9 @@ export function Shell() {
         return;
       }
       if (event.altKey && /^Digit[1-9]$/.test(event.code)) {
-        const app = APPS[Number(event.code.slice(5)) - 1];
+        // Index the launch pad, not the full registry: what the pad numbers is
+        // what the shortcut opens.
+        const app = LAUNCH_PAD_APPS[Number(event.code.slice(5)) - 1];
         if (app !== undefined) {
           event.preventDefault();
           void navigate({ to: app.path });

@@ -1,11 +1,15 @@
 import { useRunningApps } from "@bcr/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useStudio } from "../store";
-import { APPS } from "./apps";
+import { COMPUTE_APPS, LAUNCH_PAD_APPS, PERSONAL_APPS, type AppDef } from "./apps";
 
 /**
  * 启动台（OS 主页面）：App 图标网格 + 运行中任务角标。
  * 领域应用主动发布运行状态，启动台只读取通用状态投影。
+ *
+ * 分区呈现：「计算工作台」是本项目对外声明的垂直切片，「个人空间」是
+ * 信息管理类 surface。DocGen Lab 属内部合成数据工具，不在启动台展示
+ * （路由仍可用，命令面板可达）。
  */
 export function Home() {
   const navigate = useNavigate();
@@ -15,6 +19,41 @@ export function Home() {
   const runningBadge = (id: string): number => {
     if (id === "studio") return studioRunning;
     return activity[id] ?? 0;
+  };
+
+  const card = (app: AppDef) => {
+    const running = runningBadge(app.id);
+    // Shortcut number follows the launch pad, not the registry order.
+    const shortcut = LAUNCH_PAD_APPS.indexOf(app) + 1;
+    return (
+      <button
+        key={app.id}
+        type="button"
+        onClick={() => void navigate({ to: app.path })}
+        className="home-app-card group relative flex min-h-56 flex-col items-start justify-between gap-6 rounded-[var(--radius-md)] border border-border bg-surface p-7 text-left transition-colors hover:border-border-strong hover:bg-raised"
+      >
+        <span className="flex size-14 items-center justify-center rounded-[var(--radius-sm)] border border-border bg-overlay text-accent">
+          <app.icon className="size-6" />
+        </span>
+        <span>
+          <span className="block text-[20px] font-medium tracking-[-0.02em] text-text">
+            {app.title}
+          </span>
+          <span className="mt-2 block max-w-sm text-[13px] leading-6 text-muted">
+            {app.description}
+          </span>
+        </span>
+        <kbd className="rounded-[var(--radius-xs)] border border-border px-2 py-1 font-mono text-[10px] text-faint">
+          {shortcut <= 9 ? `Alt+${shortcut}` : "⌘K"}
+        </kbd>
+        {running > 0 && (
+          <span className="absolute top-5 right-5 inline-flex items-center gap-2 font-mono text-[10px] text-accent">
+            <span className="size-1.5 rounded-full bg-accent pulse-dot" />
+            {running} running
+          </span>
+        )}
+      </button>
+    );
   };
 
   return (
@@ -35,40 +74,15 @@ export function Home() {
           </p>
         </div>
 
-        <div className="home-app-grid grid grid-cols-2 gap-5">
-          {APPS.map((app, index) => {
-            const running = runningBadge(app.id);
-            return (
-              <button
-                key={app.id}
-                type="button"
-                onClick={() => void navigate({ to: app.path })}
-                className="home-app-card group relative flex min-h-56 flex-col items-start justify-between gap-6 rounded-[var(--radius-md)] border border-border bg-surface p-7 text-left transition-colors hover:border-border-strong hover:bg-raised"
-              >
-                <span className="flex size-14 items-center justify-center rounded-[var(--radius-sm)] border border-border bg-overlay text-accent">
-                  <app.icon className="size-6" />
-                </span>
-                <span>
-                  <span className="block text-[20px] font-medium tracking-[-0.02em] text-text">
-                    {app.title}
-                  </span>
-                  <span className="mt-2 block max-w-sm text-[13px] leading-6 text-muted">
-                    {app.description}
-                  </span>
-                </span>
-                <kbd className="rounded-[var(--radius-xs)] border border-border px-2 py-1 font-mono text-[10px] text-faint">
-                  {index < 9 ? `Alt+${index + 1}` : "⌘K"}
-                </kbd>
-                {running > 0 && (
-                  <span className="absolute top-5 right-5 inline-flex items-center gap-2 font-mono text-[10px] text-accent">
-                    <span className="size-1.5 rounded-full bg-accent pulse-dot" />
-                    {running} running
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        <section className="flex flex-col gap-5">
+          <h2 className="font-mono text-[11px] tracking-[0.12em] text-faint">COMPUTE WORKSPACES</h2>
+          <div className="home-app-grid grid grid-cols-2 gap-5">{COMPUTE_APPS.map(card)}</div>
+        </section>
+
+        <section className="flex flex-col gap-5">
+          <h2 className="font-mono text-[11px] tracking-[0.12em] text-faint">PERSONAL</h2>
+          <div className="home-app-grid grid grid-cols-2 gap-5">{PERSONAL_APPS.map(card)}</div>
+        </section>
       </div>
     </div>
   );

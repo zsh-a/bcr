@@ -2,22 +2,16 @@ import { Dialog } from "@base-ui/react/dialog";
 import { useNavigate } from "@tanstack/react-router";
 import {
   AudioWaveform,
-  BookOpenText,
-  ChartCandlestick,
   Eraser,
   FilePlus2,
-  FileStack,
-  Globe2,
   Hash,
   House,
-  LibraryBig,
-  NotebookPen,
   LayoutGrid,
   Search,
-  Table2,
   Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { APPS, LAUNCH_PAD_APPS } from "../shell/apps";
 import { resetLayout } from "./Dock";
 import { StorageMaintenanceDialogs } from "./StorageMaintenanceDialogs";
 import { useStorageMaintenance } from "./useStorageMaintenance";
@@ -53,68 +47,20 @@ export function CommandPalette(props: { open: boolean; onOpenChange: (open: bool
         icon: <House className="size-3.5" />,
         run: () => void navigate({ to: "/" }),
       },
-      {
-        id: "go-studio",
-        title: "打开 Studio 工作台",
-        hint: "Alt+1",
-        icon: <LayoutGrid className="size-3.5" />,
-        run: () => void navigate({ to: "/studio" }),
-      },
-      {
-        id: "go-media",
-        title: "打开 Media Studio",
-        hint: "Alt+2",
-        icon: <AudioWaveform className="size-3.5" />,
-        run: () => void navigate({ to: "/media" }),
-      },
-      {
-        id: "go-quant",
-        title: "打开 Quant Lab",
-        hint: "Alt+3",
-        icon: <ChartCandlestick className="size-3.5" />,
-        run: () => void navigate({ to: "/quant" }),
-      },
-      {
-        id: "go-markets",
-        title: "打开 Market Atlas",
-        hint: "Alt+4",
-        icon: <Globe2 className="size-3.5" />,
-        run: () => void navigate({ to: "/markets" }),
-      },
-      {
-        id: "go-manga",
-        title: "打开 Manga Studio",
-        hint: "Alt+5",
-        icon: <BookOpenText className="size-3.5" />,
-        run: () => void navigate({ to: "/manga" }),
-      },
-      {
-        id: "go-documents",
-        title: "打开 Document Studio",
-        hint: "Alt+6",
-        icon: <FileStack className="size-3.5" />,
-        run: () => void navigate({ to: "/documents" }),
-      },
-      {
-        id: "go-reader",
-        title: "打开 Reader Studio",
-        hint: "Alt+7",
-        icon: <LibraryBig className="size-3.5" />,
-        run: () => void navigate({ to: "/reader" }),
-      },
-      {
-        id: "go-data",
-        title: "打开 Data Studio",
-        hint: "Alt+8",
-        icon: <Table2 className="size-3.5" />,
-        run: () => void navigate({ to: "/data" }),
-      },
-      {
-        id: "go-knowledge",
-        title: "打开个人知识库",
-        icon: <NotebookPen className="size-3.5" />,
-        run: () => void navigate({ to: "/knowledge" }),
-      },
+      // Derived from the app registry so a new app cannot appear on the launch
+      // pad and in the Alt+N shortcuts but go missing here. Shortcut hints come
+      // from the launch-pad order, so a URL-only route (DocGen Lab) advertises
+      // no number instead of inheriting one it does not own.
+      ...APPS.map((app) => {
+        const shortcut = LAUNCH_PAD_APPS.indexOf(app) + 1;
+        return {
+          id: `go-${app.id}`,
+          title: `打开 ${app.paletteTitle ?? app.title}`,
+          ...(shortcut >= 1 && shortcut <= 9 ? { hint: `Alt+${shortcut}` } : {}),
+          icon: <app.icon className="size-3.5" />,
+          run: () => void navigate({ to: app.path }),
+        };
+      }),
       {
         id: "import",
         title: "导入文件…",
