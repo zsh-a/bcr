@@ -152,9 +152,14 @@ try {
   );
   unavailable.clear();
 
+  // Publish the release the probe will install before any other page can fetch
+  // `/sw.js`. Opening the probe tab while `version` still pointed at the
+  // rejected release let the browser install an unintended intermediate
+  // release, which then became the "immediately preceding" one and pushed the
+  // original out of the retention window.
+  version = 2;
   const oldClient = await context.newPage();
   await oldClient.goto(`${origin}/probe`);
-  version = 2;
   await page.evaluate(async () => {
     await (await navigator.serviceWorker.ready).update();
   });
@@ -253,7 +258,15 @@ try {
   await mkdir("scripts/shots", { recursive: true });
   await page.screenshot({ path: "scripts/shots/reader-pwa-failure.png" }).catch(() => {});
   console.error("page errors", errors);
-  console.error(await page.locator("body").innerText());
+  // Diagnostics must never replace the real failure: once the service worker
+  // is mid-update the page can be navigating, and a bare `body` lookup then
+  // times out on its own, hiding the error we actually need to read.
+  console.error(
+    await page
+      .locator("body")
+      .innerText({ timeout: 5_000 })
+      .catch((reason) => `unavailable: ${reason.message}`),
+  );
   throw error;
 } finally {
   await browser.close();
