@@ -29,17 +29,22 @@ export type AppSection = "compute" | "personal" | null;
  *
  * `module` is the app's compute entry (its `./compute` export); `backends` maps
  * each operation ID to the executor backend that serves it, which is what the
- * scheduler uses to size the worker pool.
+ * scheduler filters operations on.
+ *
+ * The operation lists are constrained to a literal union so the host can derive
+ * `StudioOperation` from the manifests without widening it to `string`. An app
+ * that lists a `string[]` here would silently erase the worker's handler-table
+ * check, so `backends` is typed against the union the app itself narrows to.
  */
-export interface AppCompute {
+export interface AppCompute<Operation extends string = string> {
   readonly module: () => Promise<Record<string, unknown>>;
   readonly backends: {
-    readonly wasm: ReadonlyArray<string>;
-    readonly js: ReadonlyArray<string>;
+    readonly wasm: ReadonlyArray<Operation>;
+    readonly js: ReadonlyArray<Operation>;
   };
 }
 
-export interface AppManifest {
+export interface AppManifest<Operation extends string = string> {
   readonly id: string;
   /** Launch-pad card title. */
   readonly title: string;
@@ -54,5 +59,5 @@ export interface AppManifest {
   readonly load: () => Promise<{ readonly App: AppComponent }>;
   /** Parses the URL search params this route owns. */
   readonly validateSearch?: (search: Record<string, unknown>) => Record<string, unknown>;
-  readonly compute?: AppCompute;
+  readonly compute?: AppCompute<Operation>;
 }

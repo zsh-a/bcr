@@ -2,7 +2,7 @@ import { ChartCandlestick } from "lucide-react";
 import type { AppManifest } from "@bcr/shell-contract";
 
 /** Quant Lab — local strategy research over columnar market data. */
-export const manifest: AppManifest = {
+export const manifest = {
   id: "quant",
   title: "Quant Lab",
   path: "/quant",
@@ -13,4 +13,4 @@ export const manifest: AppManifest = {
   validateSearch: (search) => ({
     dataset: typeof search["dataset"] === "string" ? search["dataset"] : undefined,
   }),
-};
+} as const satisfies AppManifest;

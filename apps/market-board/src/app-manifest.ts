@@ -8,7 +8,7 @@ import type { AppManifest } from "@bcr/shell-contract";
  * snapshots when the network is unavailable, so it is the one slice that is not
  * purely on-device.
  */
-export const manifest: AppManifest = {
+export const manifest = {
   id: "markets",
   title: "Market Atlas",
   path: "/markets",
@@ -19,4 +19,4 @@ export const manifest: AppManifest = {
   validateSearch: (search) => ({
     instrument: typeof search["instrument"] === "string" ? search["instrument"] : undefined,
   }),
-};
+} as const satisfies AppManifest;

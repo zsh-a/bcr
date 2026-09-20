@@ -7,7 +7,16 @@ import type { AppManifest } from "@bcr/shell-contract";
  * Contributes the largest handler set to the host compute worker: OCR, model
  * preload, translation and clean preview.
  */
-export const manifest: AppManifest = {
+/** Operations this app contributes to the host compute worker. */
+const MANGA_COMPUTE = {
+  module: () => import("./compute"),
+  backends: {
+    wasm: ["manga.ocr.onnx", "manga.model.preload", "manga.translate.onnx"],
+    js: ["manga.ocr.review", "manga.clean.preview"],
+  },
+} as const;
+
+export const manifest = {
   id: "manga",
   title: "Manga Studio",
   path: "/manga",
@@ -20,11 +29,5 @@ export const manifest: AppManifest = {
     page: typeof search["page"] === "string" ? search["page"] : undefined,
     region: typeof search["region"] === "string" ? search["region"] : undefined,
   }),
-  compute: {
-    module: () => import("./compute"),
-    backends: {
-      wasm: ["manga.ocr.onnx", "manga.model.preload", "manga.translate.onnx"],
-      js: ["manga.ocr.review", "manga.clean.preview"],
-    },
-  },
-};
+  compute: MANGA_COMPUTE,
+} as const satisfies AppManifest;

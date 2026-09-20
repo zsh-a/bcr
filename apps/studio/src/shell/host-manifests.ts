@@ -11,7 +11,7 @@ import { Dock } from "../components/Dock";
  * reads the same keys, so both stay defined next to their consumer.
  */
 
-export const STUDIO_MANIFEST: AppManifest = {
+export const STUDIO_MANIFEST = {
   id: "studio",
   title: "Studio",
   // A bare "Studio" competes with Media/Manga Studio in substring search.
@@ -21,9 +21,9 @@ export const STUDIO_MANIFEST: AppManifest = {
   description: "Compute Runtime 工作台 · 文件 / 任务 / 缓存血缘",
   section: "compute",
   load: async () => ({ App: Dock }),
-};
+} as const satisfies AppManifest;
 
-export const KNOWLEDGE_MANIFEST: AppManifest = {
+export const KNOWLEDGE_MANIFEST = {
   id: "knowledge",
   title: "个人知识库",
   path: "/knowledge",
@@ -31,4 +31,4 @@ export const KNOWLEDGE_MANIFEST: AppManifest = {
   description: "独立 Markdown 笔记 · 资料引用 / 全文搜索 / GitHub 同步与版本恢复",
   section: "personal",
   load: async () => ({ App: (await import("../knowledge/KnowledgeApp")).KnowledgeApp }),
-};
+} as const satisfies AppManifest;

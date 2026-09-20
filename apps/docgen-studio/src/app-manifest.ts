@@ -9,7 +9,7 @@ import type { AppManifest } from "@bcr/shell-contract";
  * synthetic input for the other pipelines (OCR, translation, reading), not user
  * content of its own.
  */
-export const manifest: AppManifest = {
+export const manifest = {
   id: "docgen",
   title: "DocGen Lab",
   path: "/docgen",
@@ -17,4 +17,4 @@ export const manifest: AppManifest = {
   description: "虚构账单生成 · 模板渲染 / 水印 / 实拍合成 · 纯端侧",
   section: null,
   load: () => import("./App"),
-};
+} as const satisfies AppManifest;

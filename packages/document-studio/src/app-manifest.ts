@@ -2,7 +2,16 @@ import { FileStack } from "lucide-react";
 import type { AppManifest } from "@bcr/shell-contract";
 
 /** Document Studio — cross-workspace ingest/extract/translate pipeline. */
-export const manifest: AppManifest = {
+/** Operations this app contributes to the host compute worker. */
+const DOCUMENT_COMPUTE = {
+  module: () => import("./compute"),
+  backends: {
+    wasm: ["document.ocr.onnx"],
+    js: ["document.extract", "document.translate.fixture", "document.typeset.preview"],
+  },
+} as const;
+
+export const manifest = {
   id: "documents",
   title: "Document Studio",
   path: "/documents",
@@ -17,11 +26,5 @@ export const manifest: AppManifest = {
     handoff: typeof search["handoff"] === "string" ? search["handoff"] : undefined,
     block: typeof search["block"] === "string" ? search["block"] : undefined,
   }),
-  compute: {
-    module: () => import("./compute"),
-    backends: {
-      wasm: ["document.ocr.onnx"],
-      js: ["document.extract", "document.translate.fixture", "document.typeset.preview"],
-    },
-  },
-};
+  compute: DOCUMENT_COMPUTE,
+} as const satisfies AppManifest;

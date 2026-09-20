@@ -7,7 +7,7 @@ import type { AppManifest } from "@bcr/shell-contract";
  * Its runtime composition and persistence facade stay in the package; the shell
  * only needs the route and the entry component.
  */
-export const manifest: AppManifest = {
+export const manifest = {
   id: "reader",
   title: "Reader Studio",
   path: "/reader",
@@ -24,4 +24,4 @@ export const manifest: AppManifest = {
     end: typeof search["end"] === "number" ? search["end"] : undefined,
     quote: typeof search["quote"] === "string" ? search["quote"] : undefined,
   }),
-};
+} as const satisfies AppManifest;

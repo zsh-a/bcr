@@ -7,7 +7,13 @@ import type { AppManifest } from "@bcr/shell-contract";
  * Contributes the BLAKE3 and waveform kernels to the host compute worker; the
  * streaming decode executor stays with the app's own runtime composition.
  */
-export const manifest: AppManifest = {
+/** Operations this app contributes to the host compute worker. */
+const MEDIA_COMPUTE = {
+  module: () => import("./compute"),
+  backends: { wasm: ["hash.blake3", "audio.waveform"], js: [] },
+} as const;
+
+export const manifest = {
   id: "media",
   title: "Media Studio",
   path: "/media",
@@ -20,8 +26,5 @@ export const manifest: AppManifest = {
     source: typeof search["source"] === "string" ? search["source"] : undefined,
     time: typeof search["time"] === "number" ? search["time"] : undefined,
   }),
-  compute: {
-    module: () => import("./compute"),
-    backends: { wasm: ["hash.blake3", "audio.waveform"], js: [] },
-  },
-};
+  compute: MEDIA_COMPUTE,
+} as const satisfies AppManifest;
