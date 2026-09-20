@@ -2,7 +2,7 @@ import type { SearchDocument } from "@bcr/core";
 import { listKnownInstruments } from "@bcr/market-data";
 import type { RuntimeServices } from "@bcr/react";
 import { useEffect } from "react";
-import { APPS } from "./shell/apps";
+import { MANIFESTS as APPS } from "./shell/registry";
 import { useStudio, type FileRecord, type TaskRecord } from "./store";
 
 function appDocuments(): ReadonlyArray<SearchDocument> {

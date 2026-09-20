@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./compute": "./src/compute.ts",
     "./app": "./src/App.tsx",
+    "./app-manifest": "./src/app-manifest.ts",
+    "./compute": "./src/compute.ts",
     "./store": "./src/store.ts"
   },
   "dependencies": {
@@ -13,6 +14,7 @@
     "@bcr/document-core": "workspace:*",
     "@bcr/react": "workspace:*",
     "@bcr/runtime-worker": "workspace:*",
+    "@bcr/shell-contract": "workspace:*",
     "@fontsource/ibm-plex-mono": "catalog:",
     "@fontsource/ibm-plex-sans": "catalog:",
     "@tanstack/react-router": "^1.170.32",

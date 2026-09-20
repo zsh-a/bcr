@@ -7,7 +7,7 @@ import { SearchPanel } from "../components/SearchPanel";
 import { TopBar } from "../components/TopBar";
 import { createRuntimeServices } from "../runtime";
 import { SearchBridge } from "../search-bridge";
-import { appIdFromPath, APPS, LAUNCH_PAD_APPS } from "./apps";
+import { appIdFromPath, LAUNCH_PAD_APPS, MANIFESTS } from "./registry";
 import { Home } from "./Home";
 import { ResearchCaptureBridge } from "../ResearchCaptureBridge";
 import { KnowledgeBridge } from "../knowledge/KnowledgeBridge";
@@ -111,7 +111,7 @@ export function Shell() {
           />
           <div className="min-h-0 flex-1">
             {active === "home" && <Home />}
-            {APPS.filter((app) => visited.includes(app.id)).map((app) => (
+            {MANIFESTS.filter((app) => visited.includes(app.id)).map((app) => (
               <div key={app.id} className={app.id === active ? "h-full min-h-0" : "hidden"}>
                 <Suspense
                   fallback={

@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { APPS, LAUNCH_PAD_APPS } from "../shell/apps";
+import { LAUNCH_PAD_APPS, MANIFESTS } from "../shell/registry";
 import { resetLayout } from "./Dock";
 import { StorageMaintenanceDialogs } from "./StorageMaintenanceDialogs";
 import { useStorageMaintenance } from "./useStorageMaintenance";
@@ -51,7 +51,7 @@ export function CommandPalette(props: { open: boolean; onOpenChange: (open: bool
       // pad and in the Alt+N shortcuts but go missing here. Shortcut hints come
       // from the launch-pad order, so a URL-only route (DocGen Lab) advertises
       // no number instead of inheriting one it does not own.
-      ...APPS.map((app) => {
+      ...MANIFESTS.map((app) => {
         const shortcut = LAUNCH_PAD_APPS.indexOf(app) + 1;
         return {
           id: `go-${app.id}`,

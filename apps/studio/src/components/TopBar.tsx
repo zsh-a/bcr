@@ -1,7 +1,7 @@
 import { useArtifactUsage, useRunningApps } from "@bcr/react";
 import { useNavigate } from "@tanstack/react-router";
 import { Command, Cpu, HardDrive, House, RefreshCw, Search, SquareTerminal } from "lucide-react";
-import { APPS, type ActiveView } from "../shell/apps";
+import { MANIFESTS, type ActiveView } from "../shell/registry";
 import { useStudio } from "../store";
 import { formatBytes } from "./ui";
 
@@ -17,7 +17,7 @@ export function TopBar(props: {
   const running = studioRunning + Object.values(activity).reduce((sum, count) => sum + count, 0);
   const taskTotal = useStudio((s) => s.tasks.length);
   const artifactUsage = useArtifactUsage();
-  const activeApp = APPS.find((app) => app.id === props.active);
+  const activeApp = MANIFESTS.find((app) => app.id === props.active);
 
   return (
     <header className="studio-topbar flex h-16 shrink-0 items-center gap-4 border-b border-border bg-bg px-5">

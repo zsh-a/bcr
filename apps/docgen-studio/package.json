@@ -4,10 +4,12 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./app": "./src/App.tsx"
+    "./app": "./src/App.tsx",
+    "./app-manifest": "./src/app-manifest.ts"
   },
   "dependencies": {
     "@bcr/docgen-core": "workspace:*",
+    "@bcr/shell-contract": "workspace:*",
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"

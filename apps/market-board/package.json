@@ -4,11 +4,13 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./app": "./src/App.tsx"
+    "./app": "./src/App.tsx",
+    "./app-manifest": "./src/app-manifest.ts"
   },
   "dependencies": {
     "@bcr/market-data": "workspace:*",
     "@bcr/react": "workspace:*",
+    "@bcr/shell-contract": "workspace:*",
     "@fontsource-variable/newsreader": "^5.2.8",
     "@fontsource/ibm-plex-mono": "catalog:",
     "@fontsource/ibm-plex-sans": "catalog:",

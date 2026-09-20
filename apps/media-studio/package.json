@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./compute": "./src/compute.ts",
     "./app": "./src/App.tsx",
+    "./app-manifest": "./src/app-manifest.ts",
+    "./compute": "./src/compute.ts",
     "./store": "./src/store.ts"
   },
   "dependencies": {
@@ -14,12 +15,14 @@
     "@bcr/react": "workspace:*",
     "@bcr/runtime-browser": "workspace:*",
     "@bcr/runtime-worker": "workspace:*",
+    "@bcr/shell-contract": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",
     "@bcr/storage-sqlite": "workspace:*",
     "@fontsource/ibm-plex-mono": "catalog:",
     "@fontsource/ibm-plex-sans": "catalog:",
     "@huggingface/transformers": "catalog:",
     "effect": "catalog:",
+    "lucide-react": "catalog:",
     "mediabunny": "^1.55.4",
     "react": "catalog:",
     "react-dom": "catalog:"

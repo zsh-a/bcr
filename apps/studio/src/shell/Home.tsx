@@ -1,7 +1,7 @@
 import { useRunningApps } from "@bcr/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useStudio } from "../store";
-import { COMPUTE_APPS, LAUNCH_PAD_APPS, PERSONAL_APPS, type AppDef } from "./apps";
+import { COMPUTE_APPS, LAUNCH_PAD_APPS, PERSONAL_APPS, type RegisteredApp } from "./registry";
 
 /**
  * 启动台（OS 主页面）：App 图标网格 + 运行中任务角标。
@@ -21,7 +21,7 @@ export function Home() {
     return activity[id] ?? 0;
   };
 
-  const card = (app: AppDef) => {
+  const card = (app: RegisteredApp) => {
     const running = runningBadge(app.id);
     // Shortcut number follows the launch pad, not the registry order.
     const shortcut = LAUNCH_PAD_APPS.indexOf(app) + 1;

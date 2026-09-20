@@ -20,6 +20,7 @@
     "@bcr/reader-studio": "workspace:*",
     "@bcr/runtime-browser": "workspace:*",
     "@bcr/runtime-worker": "workspace:*",
+    "@bcr/shell-contract": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",
     "@bcr/storage-sqlite": "workspace:*",
     "@codemirror/commands": "^6.11.1",

@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./compute": "./src/compute.ts",
     "./app": "./src/App.tsx",
+    "./app-manifest": "./src/app-manifest.ts",
+    "./compute": "./src/compute.ts",
     "./runtime": "./src/runtime.ts"
   },
   "dependencies": {
@@ -13,6 +14,7 @@
     "@bcr/data-core": "workspace:*",
     "@bcr/react": "workspace:*",
     "@bcr/runtime-worker": "workspace:*",
+    "@bcr/shell-contract": "workspace:*",
     "effect": "catalog:",
     "lucide-react": "catalog:",
     "react": "catalog:"

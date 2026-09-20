@@ -4,16 +4,17 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./compute": "./src/compute.ts",
     "./app": "./src/App.tsx",
+    "./app-manifest": "./src/app-manifest.ts",
     "./archive": "./src/archive.ts",
+    "./compute": "./src/compute.ts",
+    "./document-adapter": "./src/document-adapter.ts",
     "./glossary": "./src/glossary.ts",
-    "./store": "./src/store.ts",
     "./model": "./src/model.ts",
     "./model-cache": "./src/model-cache.ts",
     "./model-registry": "./src/model-registry.ts",
     "./operations": "./src/operations.ts",
-    "./document-adapter": "./src/document-adapter.ts"
+    "./store": "./src/store.ts"
   },
   "dependencies": {
     "@bcr/core": "workspace:*",
@@ -21,6 +22,7 @@
     "@bcr/graph": "workspace:*",
     "@bcr/react": "workspace:*",
     "@bcr/runtime-worker": "workspace:*",
+    "@bcr/shell-contract": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",
     "@bcr/storage-sqlite": "workspace:*",
     "@fontsource/ibm-plex-mono": "catalog:",

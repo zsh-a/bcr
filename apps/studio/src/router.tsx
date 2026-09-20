@@ -7,61 +7,19 @@ import {
 } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { Shell } from "./shell/Shell";
+import { MANIFESTS } from "./shell/registry";
 
 /**
  * §12：navigational state 归 TanStack Router——选择中的文件/任务放 URL，
  * 复制链接即可恢复同一个 workspace view。
  *
- * 路由只做 URL/search 状态机：`/` 启动台 · `/studio` · `/media` · `/quant` · `/markets` · `/manga` · `/documents` · `/reader` · `/data`。
+ * 路由由 `shell/registry.ts` 的各 app manifest 生成：`path` 与
+ * `validateSearch` 都由 app 自己声明，新增 app 不再需要改本文件。
  * App 组件不由 Outlet 渲染，而由 Shell 的 keep-alive 容器常驻挂载（切走仅隐藏）。
  */
 export interface StudioSearch {
   file?: string | undefined;
   task?: string | undefined;
-}
-
-export interface MediaSearch {
-  cite?: unknown;
-  source?: string | undefined;
-  time?: number | undefined;
-}
-
-export interface HandoffSearch {
-  document?: string | undefined;
-}
-
-export interface ReaderSearch extends HandoffSearch {
-  cite?: unknown;
-  book?: string | undefined;
-  section?: string | undefined;
-  start?: number | undefined;
-  end?: number | undefined;
-  quote?: string | undefined;
-}
-
-export interface DocumentSearch {
-  cite?: unknown;
-  field?: string | undefined;
-  job?: string | undefined;
-  handoff?: string | undefined;
-  block?: string | undefined;
-}
-
-export interface MangaSearch extends HandoffSearch {
-  page?: string | undefined;
-  region?: string | undefined;
-}
-
-export interface MarketSearch {
-  instrument?: string | undefined;
-}
-
-export interface QuantSearch {
-  dataset?: string | undefined;
-}
-
-export interface DataSearch {
-  query?: string | undefined;
 }
 
 const rootRoute = createRootRoute({ component: Shell });
@@ -72,123 +30,16 @@ const homeRoute = createRoute({
   component: () => null,
 });
 
-const studioRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/studio",
-  validateSearch: (search: Record<string, unknown>): StudioSearch => ({
-    file: typeof search["file"] === "string" ? search["file"] : undefined,
-    task: typeof search["task"] === "string" ? search["task"] : undefined,
+const appRoutes = MANIFESTS.map((app) =>
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: app.path,
+    ...(app.validateSearch === undefined ? {} : { validateSearch: app.validateSearch }),
+    component: () => null,
   }),
-  component: () => null,
-});
+);
 
-const mediaRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/media",
-  validateSearch: (search: Record<string, unknown>): MediaSearch => ({
-    cite: search["cite"],
-    source: typeof search["source"] === "string" ? search["source"] : undefined,
-    time: typeof search["time"] === "number" ? search["time"] : undefined,
-  }),
-  component: () => null,
-});
-
-const quantRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/quant",
-  validateSearch: (search: Record<string, unknown>): QuantSearch => ({
-    dataset: typeof search["dataset"] === "string" ? search["dataset"] : undefined,
-  }),
-  component: () => null,
-});
-
-const marketsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/markets",
-  validateSearch: (search: Record<string, unknown>): MarketSearch => ({
-    instrument: typeof search["instrument"] === "string" ? search["instrument"] : undefined,
-  }),
-  component: () => null,
-});
-
-const mangaRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/manga",
-  validateSearch: (search: Record<string, unknown>): MangaSearch => ({
-    document: typeof search["document"] === "string" ? search["document"] : undefined,
-    page: typeof search["page"] === "string" ? search["page"] : undefined,
-    region: typeof search["region"] === "string" ? search["region"] : undefined,
-  }),
-  component: () => null,
-});
-
-const documentsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/documents",
-  validateSearch: (search: Record<string, unknown>): DocumentSearch => ({
-    cite: search["cite"],
-    field: typeof search["field"] === "string" ? search["field"] : undefined,
-    job: typeof search["job"] === "string" ? search["job"] : undefined,
-    handoff: typeof search["handoff"] === "string" ? search["handoff"] : undefined,
-    block: typeof search["block"] === "string" ? search["block"] : undefined,
-  }),
-  component: () => null,
-});
-
-const readerRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/reader",
-  validateSearch: (search: Record<string, unknown>): ReaderSearch => ({
-    cite: search["cite"],
-    document: typeof search["document"] === "string" ? search["document"] : undefined,
-    book: typeof search["book"] === "string" ? search["book"] : undefined,
-    section: typeof search["section"] === "string" ? search["section"] : undefined,
-    start: typeof search["start"] === "number" ? search["start"] : undefined,
-    end: typeof search["end"] === "number" ? search["end"] : undefined,
-    quote: typeof search["quote"] === "string" ? search["quote"] : undefined,
-  }),
-  component: () => null,
-});
-
-const dataRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/data",
-  validateSearch: (search: Record<string, unknown>): DataSearch => ({
-    query: typeof search["query"] === "string" ? search["query"] : undefined,
-  }),
-  component: () => null,
-});
-
-const docgenRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/docgen",
-  component: () => null,
-});
-
-const knowledgeRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/knowledge",
-  validateSearch: (search: Record<string, unknown>): { note?: string | undefined } => ({
-    note: typeof search["note"] === "string" ? search["note"] : undefined,
-  }),
-  component: () => null,
-});
-
-export const router = createRouter({
-  routeTree: rootRoute.addChildren([
-    homeRoute,
-    studioRoute,
-    mediaRoute,
-    quantRoute,
-    marketsRoute,
-    mangaRoute,
-    documentsRoute,
-    readerRoute,
-    dataRoute,
-    docgenRoute,
-    knowledgeRoute,
-  ]),
-});
+export const router = createRouter({ routeTree: rootRoute.addChildren([homeRoute, ...appRoutes]) });
 
 declare module "@tanstack/react-router" {
   interface Register {

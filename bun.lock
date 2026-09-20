@@ -20,6 +20,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@bcr/docgen-core": "workspace:*",
+        "@bcr/shell-contract": "workspace:*",
         "lucide-react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
@@ -41,6 +42,7 @@
         "@bcr/graph": "workspace:*",
         "@bcr/react": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
+        "@bcr/shell-contract": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
         "@bcr/storage-sqlite": "workspace:*",
         "@fontsource/ibm-plex-mono": "catalog:",
@@ -68,6 +70,7 @@
       "dependencies": {
         "@bcr/market-data": "workspace:*",
         "@bcr/react": "workspace:*",
+        "@bcr/shell-contract": "workspace:*",
         "@fontsource-variable/newsreader": "^5.2.8",
         "@fontsource/ibm-plex-mono": "catalog:",
         "@fontsource/ibm-plex-sans": "catalog:",
@@ -90,12 +93,14 @@
         "@bcr/react": "workspace:*",
         "@bcr/runtime-browser": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
+        "@bcr/shell-contract": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
         "@bcr/storage-sqlite": "workspace:*",
         "@fontsource/ibm-plex-mono": "catalog:",
         "@fontsource/ibm-plex-sans": "catalog:",
         "@huggingface/transformers": "catalog:",
         "effect": "catalog:",
+        "lucide-react": "catalog:",
         "mediabunny": "^1.55.4",
         "react": "catalog:",
         "react-dom": "catalog:",
@@ -117,6 +122,7 @@
         "@bcr/react": "workspace:*",
         "@bcr/runtime-browser": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
+        "@bcr/shell-contract": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
         "@bcr/storage-sqlite": "workspace:*",
         "@duckdb/duckdb-wasm": "1.32.0",
@@ -155,6 +161,7 @@
         "@bcr/reader-studio": "workspace:*",
         "@bcr/runtime-browser": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
+        "@bcr/shell-contract": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
         "@bcr/storage-sqlite": "workspace:*",
         "@codemirror/commands": "^6.11.1",
@@ -236,6 +243,7 @@
         "@bcr/data-core": "workspace:*",
         "@bcr/react": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
+        "@bcr/shell-contract": "workspace:*",
         "effect": "catalog:",
         "lucide-react": "catalog:",
         "react": "catalog:",
@@ -270,6 +278,7 @@
         "@bcr/document-core": "workspace:*",
         "@bcr/react": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
+        "@bcr/shell-contract": "workspace:*",
         "@fontsource/ibm-plex-mono": "catalog:",
         "@fontsource/ibm-plex-sans": "catalog:",
         "@tanstack/react-router": "^1.170.32",
@@ -334,6 +343,7 @@
         "@bcr/reader-core": "workspace:*",
         "@bcr/runtime-browser": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
+        "@bcr/shell-contract": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
         "@bcr/storage-sqlite": "workspace:*",
         "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
@@ -389,6 +399,16 @@
       },
       "devDependencies": {
         "@types/three": "0.186.0",
+      },
+    },
+    "packages/shell-contract": {
+      "name": "@bcr/shell-contract",
+      "version": "0.1.0",
+      "dependencies": {
+        "react": "catalog:",
+      },
+      "devDependencies": {
+        "@types/react": "catalog:",
       },
     },
     "packages/storage-opfs": {
@@ -510,6 +530,8 @@
     "@bcr/runtime-worker": ["@bcr/runtime-worker@workspace:packages/runtime-worker"],
 
     "@bcr/scene-renderer": ["@bcr/scene-renderer@workspace:packages/scene-renderer"],
+
+    "@bcr/shell-contract": ["@bcr/shell-contract@workspace:packages/shell-contract"],
 
     "@bcr/storage-opfs": ["@bcr/storage-opfs@workspace:packages/storage-opfs"],
 

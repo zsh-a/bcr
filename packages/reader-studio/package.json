@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./app": "./src/App.tsx",
-    "./store": "./src/store.ts",
-    "./model": "./src/model.ts",
-    "./runtime": "./src/runtime.ts",
     "./adapters": "./src/adapters.ts",
+    "./app": "./src/App.tsx",
+    "./app-manifest": "./src/app-manifest.ts",
     "./formats": "./src/formats.ts",
-    "./research-transfer": "./src/researchTransfer.ts"
+    "./model": "./src/model.ts",
+    "./research-transfer": "./src/researchTransfer.ts",
+    "./runtime": "./src/runtime.ts",
+    "./store": "./src/store.ts"
   },
   "dependencies": {
     "@bcr/core": "workspace:*",
@@ -19,6 +20,7 @@
     "@bcr/reader-core": "workspace:*",
     "@bcr/runtime-browser": "workspace:*",
     "@bcr/runtime-worker": "workspace:*",
+    "@bcr/shell-contract": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",
     "@bcr/storage-sqlite": "workspace:*",
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
