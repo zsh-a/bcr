@@ -41,16 +41,29 @@ const server = createServer((req, res) => {
       "access-control-allow-origin": "*",
     });
     const send = (delta, finish) => {
-      requests.length; // keep the closure honest about ordering
       res.write(
         `data: ${JSON.stringify({ id: "x", model: "fake", choices: [{ delta, finish_reason: finish }] })}\n\n`,
       );
     };
+    // Stream text, then ask for the edit tool: the transcript should show both.
     send({ role: "assistant", content: "第二段" });
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 400));
     send({ content: "（由助手改写）" });
-    await new Promise((r) => setTimeout(r, 500));
-    send({ content: "" }, "stop");
+    await new Promise((r) => setTimeout(r, 400));
+    send({
+      tool_calls: [
+        {
+          index: 0,
+          id: "call_edit",
+          type: "function",
+          function: {
+            name: "apply_text_edit",
+            arguments: JSON.stringify({ replacement: "第二段（由助手改写）" }),
+          },
+        },
+      ],
+    });
+    send({ content: "" }, "tool_calls");
     res.end("data: [DONE]\n\n");
   });
 });
@@ -132,7 +145,10 @@ await page.waitForTimeout(900);
 const body = await editor.textContent();
 assert.ok(body?.includes(REWRITE), `applied edit should reach the body: ${body}`);
 assert.ok(body?.includes("第一段") && body?.includes("第三段"), "surrounding text must survive");
-assert.ok(await card.locator("p[role='status']").first().isVisible(), "outcome");
+assert.ok(
+  await card.locator(".bcr-chat-diff").first().isVisible(),
+  "the transcript should keep the proposed change",
+);
 
 // The pre-edit body is still recoverable.
 await page.getByRole("button", { name: "笔记版本历史" }).click();
@@ -143,7 +159,8 @@ assert.ok(
 );
 
 // The model got the instruction and only the targeted passage.
-assert.equal(requests.length, 1, "exactly one turn");
+// A tool call followed by its resume: the loop is what makes this more than one.
+assert.equal(requests.length, 2, `a tool call then a resume, got ${requests.length}`);
 const sent = JSON.stringify(requests[0]);
 assert.ok(sent.includes("改写得更简洁"), "instruction reaches the model");
 assert.ok(sent.includes("第二段"), "target passage is sent");

@@ -40,7 +40,7 @@ export class AgentError extends Error {
   }
 }
 
-type TurnEvent = {
+export type TurnEvent = {
   readonly kind: string;
   readonly content?: string;
   readonly tool_name?: string;
@@ -111,6 +111,9 @@ function runtimeFor(
   return runtime;
 }
 
+/** Enough rounds for a tool call plus the resume that answers it. */
+export const DEFAULT_MAX_TOOL_ROUNDS = 8;
+
 export interface CompleteOptions {
   /** Called with each streamed chunk as it arrives, for progressive display. */
   readonly onDelta?: (chunk: string) => void;
@@ -122,10 +125,22 @@ export interface CompleteOptions {
   /**
    * Aborts the host's interest in this turn.
    *
-   * The wasm boundary has no cancellation channel yet, so an aborted turn still
-   * runs to completion in Rust; its events are discarded here.
+   * Cancels the turn in the runtime, so an abandoned run stops rather than
+   * finishing unseen. Events already emitted have been delivered.
    */
   readonly signal?: AbortSignal;
+  /** Sees every event, not just deltas; needed to observe `round_finished`. */
+  readonly onEvent?: (event: TurnEvent) => void;
+  /**
+   * Continue a suspended turn instead of starting one.
+   *
+   * `state` comes from the `round_finished` event that reported
+   * `requires_tool_results`; `toolResults` are the host's answers to it.
+   */
+  readonly resume?: {
+    readonly state: Record<string, unknown>;
+    readonly toolResults: readonly unknown[];
+  };
 }
 
 /**
@@ -151,7 +166,9 @@ export async function complete(
     // `client` stops the turn so the host can run the tools; with none to run,
     // the default `runtime` execution is the only valid choice.
     tool_execution: tools.length > 0 ? "client" : "runtime",
-    max_tool_rounds: options.maxToolRounds ?? 1,
+    // The budget counts rounds, and a round that asks for tools needs a further
+    // round to resume with their results, so one is never enough.
+    max_tool_rounds: options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS,
     // Editing wants the model's most likely continuation, not its most varied.
     temperature: options.temperature ?? 0,
   };
@@ -169,6 +186,7 @@ export async function complete(
       } catch {
         return;
       }
+      options.onEvent?.(event);
       if (event.kind === "delta") {
         const chunk = event.content ?? "";
         if (chunk.length === 0) return;
@@ -183,11 +201,19 @@ export async function complete(
       }
       if (event.kind === "done") resolve();
     };
+    const runtime = runtimeFor(AgentRuntime, endpoint, tools);
     try {
-      handle = runtimeFor(AgentRuntime, endpoint, tools).stream_turn(
-        JSON.stringify(request),
-        onEvent,
-      );
+      handle =
+        options.resume === undefined
+          ? runtime.stream_turn(JSON.stringify(request), onEvent)
+          : runtime.stream_resume(
+              JSON.stringify({
+                protocol_version: "agent.v1",
+                state: options.resume.state,
+                tool_results: options.resume.toolResults,
+              }),
+              onEvent,
+            );
     } catch (error) {
       reject(new AgentError(`请求失败：${String(error)}`));
       return;

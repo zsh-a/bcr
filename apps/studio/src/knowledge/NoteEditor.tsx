@@ -138,6 +138,31 @@ export function NoteEditor({
         };
       },
       write: (next) => change({ body: next }),
+      // Read-only, so the loop runs them without asking. A write still goes
+      // through the edit tool and stops for approval.
+      tools: [
+        {
+          spec: {
+            name: "read_note",
+            description: "Read the open note's current body.",
+            input_schema: { type: "object" },
+            risk: "read_only",
+          },
+          call: async () => JSON.stringify({ body: state.current.draft.body }),
+        },
+        {
+          spec: {
+            name: "read_selection",
+            description: "Read the passage the user has selected in the open note.",
+            input_schema: { type: "object" },
+            risk: "read_only",
+          },
+          call: async () =>
+            JSON.stringify({
+              selection: targetTextNow(state.current.draft.body, agentTarget),
+            }),
+        },
+      ],
     });
     activateSurface("knowledge.note");
     return () => {
@@ -342,4 +367,12 @@ function scopeLabel(target: { from: number; to: number } | null, length: number)
   if (target.from !== target.to && target.to <= length)
     return `改写选中 ${target.to - target.from} 字符`;
   return "在光标处插入";
+}
+
+/** The selected passage, or the caret position when nothing is selected. */
+function targetTextNow(body: string, target: { from: number; to: number } | null): string {
+  if (target === null) return "";
+  const selection = target.from !== target.to && target.to <= body.length ? target : null;
+  if (selection !== null) return body.slice(selection.from, selection.to);
+  return "";
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AssistantRuntimeProvider,
   ComposerPrimitive,
@@ -8,7 +8,7 @@ import {
 } from "@assistant-ui/react";
 import { activeSurface, subscribeSurfaces, surfaceSummary } from "@bcr/agent";
 import { useSyncExternalStore } from "react";
-import { applySurfaceEdit, SURFACE_EDIT_TOOL, useAgentChat } from "./chat";
+import { asSuggestion, SURFACE_EDIT_TOOL, useAgentChat, type PendingApproval } from "./chat";
 import { useAgent } from "./agent";
 import "./chat.css";
 
@@ -22,7 +22,9 @@ import "./chat.css";
  */
 export function AgentChatPanel() {
   const [mode, setMode] = useState<"rewrite" | "continue">("rewrite");
-  const runtime = useAgentChat(mode);
+  const { runtime, subscribeApproval } = useAgentChat(mode);
+  const [approval, setApproval] = useState<PendingApproval | null>(null);
+  useEffect(() => subscribeApproval(setApproval), [subscribeApproval]);
   const agent = useAgent();
   const surface = useSyncExternalStore(subscribeSurfaces, surfaceSummary, () => null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -68,6 +70,8 @@ export function AgentChatPanel() {
           </p>
         )}
 
+        {approval !== null && <ApprovalPrompt approval={approval} />}
+
         <ThreadPrimitive.Root className="bcr-chat-thread">
           <ThreadPrimitive.Viewport className="bcr-chat-viewport">
             <ThreadPrimitive.Empty>
@@ -88,8 +92,13 @@ export function AgentChatPanel() {
                     <MessagePrimitive.Content
                       components={{
                         Text: ({ text }) => <p className="bcr-chat-text">{text}</p>,
-                        // The edit card: an explicit apply step, never a silent write.
-                        tools: { by_name: { [SURFACE_EDIT_TOOL]: EditCard } },
+                        tools: {
+                          by_name: {
+                            // A write: an explicit apply step, never a silent one.
+                            [SURFACE_EDIT_TOOL]: EditCard,
+                          },
+                          Fallback: ToolChip,
+                        },
                       }}
                     />
                   </MessagePrimitive.Root>
@@ -116,50 +125,94 @@ export function AgentChatPanel() {
 }
 
 /**
- * A proposed edit, held until applied.
+ * A proposed edit, held until the user applies it.
  *
- * Rendering the diff and applying it live here rather than in the runtime, so
- * the thread scrolls back to a past card and can still apply it — subject to the
- * version check, which is what makes that safe.
+ * The turn is still waiting on this, so applying resumes the loop with the
+ * outcome. Rendering the diff happens here rather than in the runtime, so the
+ * thread can render a past card too — subject to the version check, which is
+ * what makes that safe.
  */
-function EditCard({ args }: ToolCallMessagePartProps<Record<string, unknown>>) {
-  const [outcome, setOutcome] = useState("");
-  const suggestion = args as {
-    range?: { start: number; end: number };
-    replacement?: string;
-    summary?: string;
-  };
-  const range = suggestion.range;
+function EditCard({ args, result }: ToolCallMessagePartProps<Record<string, unknown>>) {
+  const suggestion = asSuggestion(args);
   const active = activeSurface();
   const target = active?.read() ?? null;
-  const removed = range && target ? target.text.slice(range.start, range.end) : "";
+  if (suggestion === null) return <p className="bcr-chat-hint">改动数据无效</p>;
+  const removed = target ? target.text.slice(suggestion.range.start, suggestion.range.end) : "";
   return (
     <div className="bcr-chat-card" role="group" aria-label="待应用的改动">
       <div className="bcr-chat-card-head">
-        <span>待应用</span>
-        <span>{suggestion.summary ?? ""}</span>
+        <span>待审批的改动</span>
+        <span>{suggestion.summary}</span>
       </div>
-      <pre className="bcr-chat-diff">
-        {`- ${removed || "(空)"}\n+ ${suggestion.replacement ?? ""}`}
-      </pre>
-      {outcome ? (
+      <pre className="bcr-chat-diff">{`- ${removed || "(空)"}\n+ ${suggestion.replacement}`}</pre>
+      {result === undefined ? (
         <p className="bcr-chat-hint" role="status">
-          {outcome}
+          等待你在上方确认…
         </p>
       ) : (
-        <div className="bcr-chat-card-actions">
-          <button
-            type="button"
-            className="bcr-chat-primary"
-            onClick={() => setOutcome(applySurfaceEdit(args))}
-          >
-            应用
-          </button>
-          <button type="button" className="bcr-chat-button" onClick={() => setOutcome("已放弃")}>
-            放弃
-          </button>
-        </div>
+        <p className="bcr-chat-hint" role="status">
+          {String((result as { applied?: string } | undefined)?.applied ?? "已处理")}
+        </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Any tool a surface contributed.
+ *
+ * Rendered by name and value, not by a hard-coded list: a domain can add a
+ * capability and see it in the transcript without the panel learning about it.
+ */
+function ToolChip({ toolName, result }: ToolCallMessagePartProps<Record<string, unknown>>) {
+  return (
+    <div className="bcr-chat-card" role="group" aria-label={`工具 ${toolName}`}>
+      <div className="bcr-chat-card-head">
+        <span>工具</span>
+        <span>{toolName}</span>
+      </div>
+      {result === undefined ? (
+        <p className="bcr-chat-hint" role="status">
+          执行中…
+        </p>
+      ) : (
+        <pre className="bcr-chat-diff">{JSON.stringify(result, null, 2)}</pre>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The approval the loop is waiting on.
+ *
+ * Approving writes through the surface's own storage path, which is what keeps
+ * the domain's guarantees — a revision in 历史 for notes — instead of a second
+ * writer bypassing them.
+ */
+function ApprovalPrompt({ approval }: { approval: PendingApproval }) {
+  const suggestion = approval.suggestion;
+  if (suggestion === null) return null;
+  const target = activeSurface()?.read() ?? null;
+  const removed = target ? target.text.slice(suggestion.range.start, suggestion.range.end) : "";
+  return (
+    <div className="bcr-chat-card" role="group" aria-label="待确认的修改">
+      <div className="bcr-chat-card-head">
+        <span>需要你确认</span>
+        <span>{suggestion.summary}</span>
+      </div>
+      <pre className="bcr-chat-diff">{`- ${removed || "(空)"}\n+ ${suggestion.replacement}`}</pre>
+      <div className="bcr-chat-card-actions">
+        <button
+          type="button"
+          className="bcr-chat-primary"
+          onClick={() => approval.settle(suggestion.replacement)}
+        >
+          应用
+        </button>
+        <button type="button" className="bcr-chat-button" onClick={() => approval.settle(null)}>
+          放弃
+        </button>
+      </div>
     </div>
   );
 }

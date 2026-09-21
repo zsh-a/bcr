@@ -1,4 +1,5 @@
 import type { TextRange } from "@bcr/core";
+import type { AgentTool } from "./runtime";
 
 /**
  * Something the agent is allowed to read and change.
@@ -26,6 +27,13 @@ export interface AgentSurface {
   readonly read: () => SurfaceTarget | null;
   /** Persist an accepted result. */
   readonly write: (next: string) => void;
+  /**
+   * What the agent may do with this content, e.g. search or read.
+   *
+   * Contributed by the domain rather than the panel, so a new workspace brings
+   * its own capabilities without the chat learning about them.
+   */
+  readonly tools?: readonly AgentTool[];
 }
 
 export interface SurfaceTarget {

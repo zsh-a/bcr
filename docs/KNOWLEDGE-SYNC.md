@@ -72,7 +72,14 @@ knowledge/
 - **对话历史仅存内存**（不持久化、不进同步仓库、不写入 `RuntimeMetadata`）。端点密钥同规格：只在本页内存，刷新后需重新填写。窗口尺寸会被记住，位置不会（避免下次开在屏幕外）。
 - **逐字流式与取消**：wasm 绑定按事件推送（`stream_turn` / `stream_resume` + 取消句柄），文字一边生成一边显示，不是结束后整段弹出。
 
-对话的界面层使用 `assistant-ui` 的 `LocalRuntime` 与无样式原语（消息列表、输入、滚动、无障碍、分支 / 重新生成由库负责，外观沿用 bcr 设计令牌）。接入点只有一个 `ChatModelAdapter.run`，它把「一次模型调用」对接到 `@bcr/agent` 的 `complete()`。模型**驱动的工具调用循环**尚未接入（`@bcr/agent` 已留出 `AgentTool` 与 `client` 执行模式），当前是「一次对话 = 一次改动建议」。
+**真正的 agent 循环已接入。** 每次对话跑的是完整循环：模型可以调用工具 → 宿主执行 → 结果回填 → 继续，直到回合结束。
+
+- **工具由业务贡献，不由聊天内置**。每个 `AgentSurface` 带自己的 `tools`（`read_note`、`read_selection` 等），面板不认识任何具体工具。新增能力只需在 surface 上加一个工具，循环与界面都不用改。
+- **写入按风险门禁，不按名单**。`requiresApproval(spec)` 只看工具声明的 `risk`：只读工具自动执行，可写工具一律停下等人工确认。因此后来新增的可写工具自动受同一规则约束，无需聊天知道它的名字。
+- **编辑工具只接受 `replacement`**。范围与版本由宿主从当前 surface 取 —— 模型算不准字符偏移，寻址留在确定性一侧。审批通过后走 `applySuggestion`，用 `textVersion` 比对原文后才写入。
+- **回合预算**：单次请求默认 8 个回合（`DEFAULT_MAX_TOOL_ROUNDS`），循环上限 8 轮（`DEFAULT_MAX_ROUNDS`），模型反复调用工具也不会失控。
+
+对话的界面层使用 `assistant-ui` 的 `LocalRuntime` 与无样式原语（消息列表、输入、滚动、无障碍、分支 / 重新生成由库负责，外观沿用 bcr 设计令牌）。接入点只有一个 `ChatModelAdapter.run`，它把「一次模型调用」对接到 `@bcr/agent` 的 `complete()`。
 
 已接入：知识库单篇笔记的改写／续写（就地面板 + 对话窗口两种入口）。可复用的下一位消费者是 document-studio 的 OCR / 译文审校 —— 它按 block 逐条编辑，寻址单位是一个 block 的文本，落盘函数已经存在。
 

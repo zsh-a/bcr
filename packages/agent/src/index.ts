@@ -50,6 +50,23 @@ export {
 } from "./textEdit";
 
 export {
+  DEFAULT_MAX_ROUNDS,
+  isRejection,
+  runAgentLoop,
+  type ChatTurnState,
+  type LoopOptions,
+  type LoopResult,
+  type PendingTurn,
+  type ToolCall,
+  type ToolDecision,
+  type ToolRejection,
+  type RunRound,
+  type ToolResult,
+} from "./loop";
+
+export { requiresApproval, toolSpecOf, type ToolRisk } from "./tools";
+
+export {
   activateSurface,
   activeSurface,
   registerSurface,
