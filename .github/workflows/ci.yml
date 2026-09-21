@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: true
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -33,7 +35,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             crates/kernels/target
-          key: rust-${{ runner.os }}-${{ hashFiles('crates/kernels/Cargo.lock') }}
+            crates/agent-runtime/target
+          key: rust-${{ runner.os }}-${{ hashFiles('crates/kernels/Cargo.lock', 'crates/agent-runtime/Cargo.lock') }}
 
       - name: Install dependencies
         run: bun ci
@@ -46,6 +49,9 @@ jobs:
       - name: Build WASM kernels
         run: bun run build:wasm
 
+      - name: Build Agent Runtime WASM
+        run: bun run build:wasm:agent
+
       - name: Check TypeScript, formatting, and lint
         run: bun run check
 
@@ -54,6 +60,9 @@ jobs:
 
       - name: Run Rust tests
         run: cargo test --manifest-path crates/kernels/Cargo.toml
+
+      - name: Run Agent Runtime Rust tests
+        run: cargo test --manifest-path crates/agent-runtime/Cargo.toml
 
       - name: Build Media Studio
         run: node_modules/.bin/vp -C apps/media-studio build
@@ -93,12 +102,22 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      - name: Upload Agent Runtime WASM package
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-wasm-package
+          path: crates/agent-wasm/pkg
+          if-no-files-found: error
+          retention-days: 1
+
   browser-e2e:
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: true
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -112,6 +131,12 @@ jobs:
         with:
           name: wasm-package
           path: crates/kernels/pkg
+
+      - name: Download Agent Runtime WASM package
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-wasm-package
+          path: crates/agent-wasm/pkg
 
       - name: Install Chromium
         run: node_modules/.bin/playwright install --with-deps chromium
@@ -127,6 +152,9 @@ jobs:
 
       - name: Verify production knowledge offline and sync
         run: BCR_KNOWLEDGE_PRODUCTION=1 node scripts/verify-knowledge.mjs
+
+      - name: Verify AI note editing against a stub endpoint
+        run: BCR_KNOWLEDGE_PRODUCTION=1 node scripts/verify-knowledge-agent.mjs
 
       - name: Run browser verification
         run: bun run test:browser
@@ -165,6 +193,8 @@ jobs:
       - name: Checkout
         if: steps.cloudflare.outputs.configured == 'true'
         uses: actions/checkout@v6
+        with:
+          submodules: true
 
       - name: Set up Bun
         if: steps.cloudflare.outputs.configured == 'true'

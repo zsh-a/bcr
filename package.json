@@ -10,6 +10,7 @@
   "type": "module",
   "scripts": {
     "build:wasm": "wasm-pack build crates/kernels --target web",
+    "build:wasm:agent": "wasm-pack build crates/agent-runtime/crates/agent-wasm --target web --out-dir ../../../agent-wasm/pkg",
     "check": "vp check && tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vp test run",

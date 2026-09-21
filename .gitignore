@@ -3,6 +3,9 @@ dist/
 target/
 pkg/
 *.wasm
+# Built from the crates/agent-runtime submodule; never committed.
+crates/agent-runtime/target/
+crates/agent-wasm/pkg/
 .vp/
 *.tsbuildinfo
 scripts/shots/

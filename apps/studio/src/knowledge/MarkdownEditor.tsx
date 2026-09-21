@@ -18,6 +18,7 @@ export function MarkdownEditor({
   placeholder,
   readOnly = false,
   maxLength,
+  onSelectionChange,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -26,12 +27,16 @@ export function MarkdownEditor({
   readOnly?: boolean;
   /** Mirrors the textarea cap: `decodeNote` rejects longer bodies on save. */
   maxLength?: number;
+  /** Reports the current ranges, so callers can address an edit at the caret or selection. */
+  onSelectionChange?: (ranges: ReadonlyArray<{ from: number; to: number }>) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   // Read the latest callback without rebuilding the view on every render.
   const change = useRef(onChange);
   change.current = onChange;
+  const selection = useRef(onSelectionChange);
+  selection.current = onSelectionChange;
 
   useEffect(() => {
     const parent = host.current;
@@ -41,7 +46,10 @@ export function MarkdownEditor({
       state: EditorState.create({
         doc: value,
         extensions: [
-          ...knowledgeEditorExtensions((next) => change.current(next)),
+          ...knowledgeEditorExtensions(
+            (next) => change.current(next),
+            (ranges) => selection.current?.(ranges),
+          ),
           EditorView.editable.of(!readOnly),
           EditorState.readOnly.of(readOnly),
           EditorView.contentAttributes.of({ "aria-label": label }),

@@ -120,7 +120,10 @@ export const knowledgeMarkdownLanguage: LanguageSupport = markdown({
  * History is included so Cmd/Ctrl+Z works inside the note, but the authoritative
  * undo boundary is the note itself: the component remounts per note id.
  */
-export function knowledgeEditorExtensions(onChange: (value: string) => void): Extension[] {
+export function knowledgeEditorExtensions(
+  onChange: (value: string) => void,
+  onSelectionChange?: (ranges: ReadonlyArray<{ from: number; to: number }>) => void,
+): Extension[] {
   return [
     knowledgeMarkdownLanguage,
     syntaxHighlighting(knowledgeMarkdownHighlight),
@@ -135,6 +138,12 @@ export function knowledgeEditorExtensions(onChange: (value: string) => void): Ex
     keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) onChange(update.state.doc.toString());
+      // Selection is reported so an editor action can address the caret or the
+      // selected passage; re-solving it here keeps the range authoritative.
+      if (update.selectionSet || update.docChanged)
+        onSelectionChange?.(
+          update.state.selection.ranges.map((range) => ({ from: range.from, to: range.to })),
+        );
     }),
   ];
 }

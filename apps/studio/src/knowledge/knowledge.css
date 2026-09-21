@@ -316,6 +316,110 @@
 .knowledge-editor-footer span:last-child {
   margin-left: auto;
 }
+/* AI editing: an editor control, not a chat. Quiet until it has something to say. */
+.knowledge-agent {
+  margin-bottom: 14px;
+}
+.knowledge-agent-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.knowledge-agent-scope {
+  font: 10px var(--font-mono);
+  color: var(--color-faint);
+  white-space: nowrap;
+}
+.knowledge-agent-instruction {
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text);
+}
+.knowledge-agent-instruction::placeholder {
+  color: var(--color-faint);
+}
+.knowledge-agent-hint {
+  font-size: 11px;
+  color: var(--color-faint);
+  margin-top: 8px;
+  line-height: 1.7;
+}
+.knowledge-agent-settings {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+  align-items: end;
+  margin-top: 12px;
+  padding: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+.knowledge-agent-settings label {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+.knowledge-agent-settings input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text);
+}
+.knowledge-agent-settings > div {
+  display: flex;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+.knowledge-agent-preview {
+  margin-top: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 28%, transparent);
+  border-radius: 8px;
+  background: var(--color-surface);
+  padding: 14px;
+}
+.knowledge-agent-preview-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font: 10px var(--font-mono);
+  color: var(--color-accent);
+  margin-bottom: 10px;
+}
+.knowledge-agent-diff {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  background: var(--color-bg);
+  border-radius: 6px;
+  font: 11px/1.7 var(--font-mono);
+  color: var(--color-muted);
+}
+.knowledge-agent-preview-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+.knowledge-agent-preview-actions .knowledge-agent-hint {
+  margin: 0;
+}
 .knowledge-prose {
   min-height: 380px;
   color: var(--color-muted);
@@ -657,6 +761,16 @@
   }
   .knowledge-editor-meta select {
     max-width: 110px;
+  }
+  .knowledge-agent-settings {
+    grid-template-columns: 1fr;
+  }
+  .knowledge-agent-instruction {
+    flex-basis: 100%;
+    order: 2;
+  }
+  .knowledge-agent-bar .knowledge-button {
+    padding: 8px 10px;
   }
   .knowledge-body {
     font-size: 13px !important;

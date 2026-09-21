@@ -142,9 +142,19 @@ function boundaryOverrides(apps: ReadonlyArray<string>) {
 
 export default defineConfig({
   fmt: {
-    ignorePatterns: ["**/dist/**", "**/node_modules/**", "crates/kernels/pkg/**"],
+    ignorePatterns: [
+      "**/dist/**",
+      "**/node_modules/**",
+      "crates/kernels/pkg/**",
+      // agent-runtime is a separate repository; its own toolchain owns it, and
+      // its generated wasm bindings are not ours to format.
+      "crates/agent-runtime/**",
+      "crates/agent-wasm/pkg/**",
+    ],
   },
   lint: {
+    // agent-runtime is a separate repository with its own linter.
+    ignorePatterns: ["crates/agent-runtime/**", "crates/agent-wasm/pkg/**"],
     options: {
       // Type-aware rules only. `typeCheck` is deliberately NOT enabled: the
       // tsgolint type checker reports false positives on `vite.config.ts`

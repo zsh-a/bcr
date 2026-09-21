@@ -1,0 +1,3 @@
+[submodule "crates/agent-runtime"]
+	path = crates/agent-runtime
+	url = https://github.com/zsh-a/agent-runtime
