@@ -48,3 +48,15 @@ export {
   type TextEditMode,
   type TextEditRequest,
 } from "./textEdit";
+
+export {
+  activateSurface,
+  activeSurface,
+  registerSurface,
+  subscribeSurfaces,
+  surfaceRevision,
+  surfaceSummary,
+  type AgentSurface,
+  type SurfaceSummary,
+  type SurfaceTarget,
+} from "./surface";

@@ -2,6 +2,7 @@ import { citationFromParams, type SearchDocument } from "@bcr/core";
 import { notifyNavigation, RuntimeActivity, RuntimeProvider, useRuntimeSession } from "@bcr/react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Suspense, useEffect, useState } from "react";
+import { AgentPanelBridge } from "../components/AgentPanelBridge";
 import { CommandPalette } from "../components/CommandPalette";
 import { SearchPanel } from "../components/SearchPanel";
 import { TopBar } from "../components/TopBar";
@@ -25,6 +26,7 @@ export function Shell() {
   const { services, error } = useRuntimeSession(createRuntimeServices);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [agentOpen, setAgentOpen] = useState(false);
   const navigate = useNavigate();
   const active = appIdFromPath(useRouterState({ select: (s) => s.location.pathname }));
   const [visited, setVisited] = useState<ReadonlyArray<string>>(active === "home" ? [] : [active]);
@@ -108,6 +110,7 @@ export function Shell() {
             active={active}
             onOpenPalette={() => setPaletteOpen(true)}
             onOpenSearch={() => setSearchOpen(true)}
+            onOpenAgent={() => setAgentOpen((open) => !open)}
           />
           <div className="min-h-0 flex-1">
             {active === "home" && <Home />}
@@ -128,6 +131,7 @@ export function Shell() {
             ))}
           </div>
         </div>
+        <AgentPanelBridge open={agentOpen} onOpenChange={setAgentOpen} />
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
         <SearchPanel
           open={searchOpen}

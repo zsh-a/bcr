@@ -1,6 +1,7 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import Markdown from "react-markdown";
 import { AgentEditPanel, useTextEditSuggestion } from "@bcr/react";
+import { activateSurface, registerSurface } from "@bcr/agent";
 import { decodeNote, same, type KnowledgeNote, type KnowledgeCollection } from "./model";
 import { MarkdownEditor } from "./MarkdownEditor";
 import type { KnowledgeStore } from "./store";
@@ -107,6 +108,43 @@ export function NoteEditor({
     if (state.current.dirty) await flush();
   };
   useImperativeHandle(editorRef, () => ({ flush }));
+  /**
+   * Publish the note as the agent's target.
+   *
+   * `read` re-resolves from the live draft so a range recorded before further
+   * typing cannot address the wrong passage, and `write` goes through `change`,
+   * which keeps the previous body in 历史 via the store.
+   */
+  useEffect(() => {
+    const unregister = registerSurface({
+      kind: "knowledge.note",
+      label: draft.title || "未命名笔记",
+      read: () => {
+        const body = state.current.draft.body;
+        const selection =
+          agentTarget !== null &&
+          agentTarget.from !== agentTarget.to &&
+          agentTarget.to <= body.length
+            ? agentTarget
+            : null;
+        const at =
+          agentTarget !== null && agentTarget.from <= body.length ? agentTarget.from : body.length;
+        const range = selection ?? { from: at, to: at };
+        return {
+          text: body,
+          range: { start: range.from, end: range.to },
+          instruction: body.slice(range.from, range.to) || "（光标处）",
+          scope: selection === null ? "在光标处插入" : `选中 ${selection.to - selection.from} 字符`,
+        };
+      },
+      write: (next) => change({ body: next }),
+    });
+    activateSurface("knowledge.note");
+    return () => {
+      unregister();
+      activateSurface(null);
+    };
+  }, [agentTarget, draft.title]);
   useEffect(() => {
     if (!state.current.dirty && !pending.current) {
       state.current = { draft: note, base: note, dirty: false, sequence: state.current.sequence };

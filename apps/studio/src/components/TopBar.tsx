@@ -1,6 +1,15 @@
 import { useArtifactUsage, useRunningApps } from "@bcr/react";
 import { useNavigate } from "@tanstack/react-router";
-import { Command, Cpu, HardDrive, House, RefreshCw, Search, SquareTerminal } from "lucide-react";
+import {
+  Bot,
+  Command,
+  Cpu,
+  HardDrive,
+  House,
+  RefreshCw,
+  Search,
+  SquareTerminal,
+} from "lucide-react";
 import { MANIFESTS, type ActiveView } from "../shell/registry";
 import { useStudio } from "../store";
 import { formatBytes } from "./ui";
@@ -10,6 +19,7 @@ export function TopBar(props: {
   active: ActiveView;
   onOpenPalette: () => void;
   onOpenSearch: () => void;
+  onOpenAgent: () => void;
 }) {
   const navigate = useNavigate();
   const studioRunning = useStudio((s) => s.runningCount);
@@ -97,6 +107,17 @@ export function TopBar(props: {
         <span className="studio-topbar-button-label font-mono text-[11px]">搜索</span>
       </button>
 
+      <button
+        type="button"
+        onClick={props.onOpenAgent}
+        title="打开 AI 助手（⌘J）"
+        aria-label="打开 AI 助手"
+        aria-keyshortcuts="Control+J"
+        className="studio-topbar-action inline-flex h-11 shrink-0 items-center gap-2 rounded-[var(--radius-sm)] border border-border bg-raised px-3 text-[12px] text-muted transition-colors hover:border-border-strong hover:text-text"
+      >
+        <Bot className="size-4" />
+        <span className="studio-topbar-button-label font-mono text-[11px]">AI</span>
+      </button>
       <button
         type="button"
         onClick={props.onOpenPalette}

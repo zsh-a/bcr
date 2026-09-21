@@ -61,6 +61,9 @@ type AgentRuntimeConstructor = new (
   tools: readonly AgentTool[],
 ) => AgentRuntime;
 
+/** Cancels an in-flight turn once the host no longer wants it. */
+type TurnHandle = { readonly cancel: () => void };
+
 /**
  * Load the module on first use.
  *
@@ -109,8 +112,8 @@ function runtimeFor(
 }
 
 export interface CompleteOptions {
-  /** Called for each streamed chunk, for progressive display. */
-  readonly onDelta?: (text: string) => void;
+  /** Called with each streamed chunk as it arrives, for progressive display. */
+  readonly onDelta?: (chunk: string) => void;
   /** Tools to offer the model. Client execution: `turn` stops and asks the host to run them. */
   readonly tools?: readonly AgentTool[];
   /** Caps how many tool rounds a turn may take. */
@@ -153,22 +156,58 @@ export async function complete(
     temperature: options.temperature ?? 0,
   };
 
-  let events: readonly TurnEvent[];
-  try {
-    events = JSON.parse(
-      await runtimeFor(AgentRuntime, endpoint, tools).turn(JSON.stringify(request)),
-    ) as TurnEvent[];
-  } catch (error) {
-    throw new AgentError(`请求失败：${String(error)}`);
-  }
-  if (options.signal?.aborted) throw new AgentError("已取消");
+  // The Rust side pushes each event as it arrives, so the host sees text while
+  // it is being generated rather than one batch at the end.
+  let text = "";
+  let failure: string | null = null;
+  let handle: TurnHandle | null = null;
+  await new Promise<void>((resolve, reject) => {
+    const onEvent = (json: string) => {
+      let event: TurnEvent;
+      try {
+        event = JSON.parse(json) as TurnEvent;
+      } catch {
+        return;
+      }
+      if (event.kind === "delta") {
+        const chunk = event.content ?? "";
+        if (chunk.length === 0) return;
+        text += chunk;
+        options.onDelta?.(chunk);
+        return;
+      }
+      if (event.kind === "error") {
+        failure = String(event.content ?? "模型返回错误");
+        resolve();
+        return;
+      }
+      if (event.kind === "done") resolve();
+    };
+    try {
+      handle = runtimeFor(AgentRuntime, endpoint, tools).stream_turn(
+        JSON.stringify(request),
+        onEvent,
+      );
+    } catch (error) {
+      reject(new AgentError(`请求失败：${String(error)}`));
+      return;
+    }
+    if (options.signal !== undefined) {
+      if (options.signal.aborted) {
+        handle.cancel();
+        reject(new AgentError("已取消"));
+        return;
+      }
+      options.signal.addEventListener(
+        "abort",
+        () => {
+          handle?.cancel();
+        },
+        { once: true },
+      );
+    }
+  });
 
-  const failure = events.find((event) => event.kind === "error");
-  if (failure) throw new AgentError(String(failure.content ?? "模型返回错误"));
-  const text = events
-    .filter((event) => event.kind === "delta")
-    .map((event) => event.content ?? "")
-    .join("");
-  if (options.onDelta !== undefined && text.length > 0) options.onDelta(text);
+  if (failure !== null) throw new AgentError(failure);
   return text;
 }

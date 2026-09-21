@@ -22,6 +22,9 @@ export type { RuntimeHost, RuntimeMetadata, RuntimeServices, RuntimeSession } fr
 export { usePublishRunningCount, useRunningApps } from "./application-status";
 export { AgentEditPanel, AgentSettings, type AgentEditPanelProps } from "./AgentPanel";
 
+export { AgentChatPanel } from "./AgentChatPanel";
+export { applySurfaceEdit, SURFACE_EDIT_TOOL, useAgentChat } from "./chat";
+
 export {
   useAgent,
   useTextEditSuggestion,

@@ -63,7 +63,27 @@ knowledge/
 
 因此消费方式与 `ResearchCaptureProvider` 同构：宿主配置一次端点，任何 `apps/*` 或 `packages/*` 用 `useAgent()` 读取，用 `AgentEditPanel` 呈现，用 `useTextEditSuggestion()` 走完「提案 → 预览 → 应用 / 丢弃」。建议协议以 `textVersion` 比对原文版本，用户在此期间继续编辑则丢弃而不是写入。写入仍由各业务自己的存储负责（笔记走 `KnowledgeStore.saveNote`，文档走既有的 OCR / 译文修订函数），所以「改前留版本」由各业务既有机制免费获得。
 
-已接入：知识库单篇笔记的改写／续写。可复用的下一位消费者是 document-studio 的 OCR / 译文审校 —— 它按 block 逐条编辑，寻址单位是一个 block 的文本，落盘函数已经存在。
+## AI 对话窗口（可选）
+
+编辑器内还有一处就地入口（「改写 / 续写」，适合写作时快速改写一段）。顶栏「AI」或 `⌘J` 打开的是**独立对话窗口**：浮动在任意工作区之上，非模态，可以一边指着内容一边改它，不阻塞页面。
+
+- **对话只产出建议，不直接写入**。助手的回复会作为一张**待应用卡片**出现在对话里，显示最小差分与「应用 / 放弃」。点「应用」才写入目标；写入前用内容版本比对原文，若你在模型运行期间改过原文，这次建议被丢弃而不是写坏正文。
+- **作用目标由「编辑面（surface）」决定**。每个业务在显示时注册一个 `AgentSurface`：怎么取当前范围、怎么落盘。窗口只认这两个回调，因此同一面板能服务笔记正文、OCR block、译文逐句等任意文本。**落盘仍走业务既有路径**（笔记走 `saveNote` → 自动进「历史」，文档走既有的 OCR / 译文修订函数），不新增第二条写入通道。
+- **对话历史仅存内存**（不持久化、不进同步仓库、不写入 `RuntimeMetadata`）。端点密钥同规格：只在本页内存，刷新后需重新填写。窗口尺寸会被记住，位置不会（避免下次开在屏幕外）。
+- **逐字流式与取消**：wasm 绑定按事件推送（`stream_turn` / `stream_resume` + 取消句柄），文字一边生成一边显示，不是结束后整段弹出。
+
+对话的界面层使用 `assistant-ui` 的 `LocalRuntime` 与无样式原语（消息列表、输入、滚动、无障碍、分支 / 重新生成由库负责，外观沿用 bcr 设计令牌）。接入点只有一个 `ChatModelAdapter.run`，它把「一次模型调用」对接到 `@bcr/agent` 的 `complete()`。模型**驱动的工具调用循环**尚未接入（`@bcr/agent` 已留出 `AgentTool` 与 `client` 执行模式），当前是「一次对话 = 一次改动建议」。
+
+已接入：知识库单篇笔记的改写／续写（就地面板 + 对话窗口两种入口）。可复用的下一位消费者是 document-studio 的 OCR / 译文审校 —— 它按 block 逐条编辑，寻址单位是一个 block 的文本，落盘函数已经存在。
+
+## 验证
+
+```bash
+bun run test packages/agent/tests/suggestion.test.ts
+bun run build:wasm:agent
+BASE_URL=http://127.0.0.1:5199 node scripts/verify-knowledge-agent.mjs         # 就地面板
+BASE_URL=http://127.0.0.1:5199 node scripts/verify-knowledge-agent-chat.mjs    # 对话窗口
+```
 
 运行时来自独立的 `agent-runtime` 仓库，以 submodule 固定在 `crates/agent-runtime`，用 `bun run build:wasm:agent` 编译到 `crates/agent-wasm/pkg`（生成物不入库，与 `crates/kernels/pkg` 一致）。
 

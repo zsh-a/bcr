@@ -1,0 +1,217 @@
+/* The agent chat panel (`@bcr/react`).
+   Composed from assistant-ui primitives, styled with BCR's design tokens so the
+   panel matches the shell instead of importing a second visual language. */
+
+.bcr-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.bcr-chat-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.bcr-chat-target {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.bcr-chat-eyebrow {
+  font: 9px var(--font-mono);
+  letter-spacing: 0.14em;
+  color: var(--color-faint);
+}
+.bcr-chat-target strong {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bcr-chat-target small {
+  font-size: 11px;
+  color: var(--color-faint);
+}
+.bcr-chat-modes {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.bcr-chat-modes button,
+.bcr-chat-button {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+.bcr-chat-modes button:hover,
+.bcr-chat-button:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+.bcr-chat-modes button[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-dim);
+  color: var(--color-text);
+}
+.bcr-chat-primary {
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.bcr-chat-primary:disabled,
+.bcr-chat-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.bcr-chat-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--color-faint);
+}
+.bcr-chat-settings {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+.bcr-chat-settings label {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+.bcr-chat-settings input {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  padding: 7px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text);
+}
+.bcr-chat-settings button {
+  justify-self: start;
+}
+
+/* Thread */
+.bcr-chat-thread {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.bcr-chat-viewport {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 6px 2px;
+}
+.bcr-chat-empty {
+  margin: 0;
+  font-size: 12px;
+  line-height: 2;
+  color: var(--color-faint);
+}
+.bcr-chat-line {
+  max-width: 100%;
+  font-size: 12px;
+  line-height: 1.85;
+}
+.bcr-chat-line.is-user p {
+  margin: 0;
+  color: var(--color-text);
+  border-left: 2px solid var(--color-border-strong);
+  padding-left: 10px;
+}
+.bcr-chat-text {
+  margin: 0;
+  color: var(--color-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Edit card: the explicit apply step. */
+.bcr-chat-card {
+  margin: 8px 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+.bcr-chat-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font: 10px var(--font-mono);
+  color: var(--color-accent);
+  margin-bottom: 8px;
+}
+.bcr-chat-diff {
+  margin: 0;
+  padding: 10px;
+  max-height: 200px;
+  overflow: auto;
+  background: var(--color-bg);
+  border-radius: 6px;
+  font: 11px/1.7 var(--font-mono);
+  color: var(--color-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.bcr-chat-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* Composer */
+.bcr-chat-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 10px;
+}
+.bcr-chat-input {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  resize: vertical;
+}
+.bcr-chat-input::placeholder {
+  color: var(--color-faint);
+}
+.bcr-chat-composer-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

@@ -79,7 +79,7 @@ export function editMessages(request: TextEditRequest): readonly AgentMessage[] 
  */
 export async function proposeTextEdit(
   request: TextEditRequest,
-  onDelta?: (text: string) => void,
+  onDelta?: (chunk: string) => void,
 ): Promise<TextEditSuggestion> {
   const content = await complete(
     request.endpoint,
