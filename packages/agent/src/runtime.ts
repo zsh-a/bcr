@@ -1,0 +1,174 @@
+/**
+ * Browser-side client over the agent-runtime wasm module.
+ *
+ * The runtime is a separate repository, vendored as the `crates/agent-runtime`
+ * submodule and compiled by `bun run build:wasm:agent` into `crates/agent-wasm/pkg`,
+ * mirroring the `crates/kernels` package.
+ *
+ * This module owns the protocol details no domain should know: which events
+ * carry streamed text, and what a turn request looks like. Everything above it
+ * passes plain strings in and gets plain strings out.
+ */
+
+/** One OpenAI-compatible endpoint. The key is never persisted. */
+export interface AgentEndpoint {
+  readonly baseUrl: string;
+  readonly apiKey: string;
+  readonly model: string;
+  /** Provider label recorded in the runtime's trace events. */
+  readonly provider?: string;
+}
+
+export interface AgentMessage {
+  readonly role: "system" | "user" | "assistant";
+  readonly content: string;
+}
+
+/** A tool the host executes. Registered once and offered on every turn. */
+export interface AgentTool {
+  /** A `ToolSpec` from agent-core: `name`, `description`, `input_schema`, `risk`, … */
+  readonly spec: unknown;
+  /** Receives the call input as JSON and resolves with the output as JSON. */
+  readonly call: (inputJson: string) => Promise<string>;
+}
+
+/** Raised for a turn that failed, so callers surface the reason instead of a partial result. */
+export class AgentError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AgentError";
+  }
+}
+
+type TurnEvent = {
+  readonly kind: string;
+  readonly content?: string;
+  readonly tool_name?: string;
+  readonly tool_input?: unknown;
+  readonly tool_call_id?: string;
+  readonly metadata?: Record<string, unknown>;
+};
+
+let loading: Promise<{ AgentRuntime: AgentRuntimeConstructor }> | null = null;
+
+/** The generated binding's class shape, resolved once the module loads. */
+type AgentRuntime = import("../../../crates/agent-wasm/pkg/agent_wasm.js").AgentRuntime;
+
+type AgentRuntimeConstructor = new (
+  provider: string,
+  baseUrl: string,
+  apiKey: string,
+  tools: readonly AgentTool[],
+) => AgentRuntime;
+
+/**
+ * Load the module on first use.
+ *
+ * The import is dynamic on purpose: the binary is ~3.5 MiB and the host is
+ * offline-first, so a user who never invokes a model should never fetch it. A
+ * failed load is not cached, so a later attempt can retry.
+ */
+export function ready(): Promise<{ AgentRuntime: AgentRuntimeConstructor }> {
+  loading ??= import("../../../crates/agent-wasm/pkg/agent_wasm.js")
+    .then(async (module) => {
+      await module.default();
+      return { AgentRuntime: module.AgentRuntime as AgentRuntimeConstructor };
+    })
+    .catch((error: unknown) => {
+      loading = null;
+      throw new AgentError(`无法加载 Agent 运行时：${String(error)}`);
+    });
+  return loading;
+}
+
+/** Constructing the Rust side is cheap, but not free; reuse it per endpoint. */
+let cached: { key: string; runtime: AgentRuntime } | null = null;
+
+function runtimeFor(
+  AgentRuntime: AgentRuntimeConstructor,
+  endpoint: AgentEndpoint,
+  tools: readonly AgentTool[],
+): AgentRuntime {
+  // Tool identity is part of the key: a runtime built without a tool would
+  // silently ignore that tool for every later turn.
+  const key = [
+    endpoint.provider ?? "openai",
+    endpoint.baseUrl,
+    endpoint.model,
+    tools.map((tool) => JSON.stringify(tool.spec)).join("\u0001"),
+  ].join("\u0000");
+  if (cached?.key === key) return cached.runtime;
+  const runtime = new AgentRuntime(
+    endpoint.provider ?? "openai",
+    endpoint.baseUrl,
+    endpoint.apiKey,
+    tools,
+  );
+  cached = { key, runtime };
+  return runtime;
+}
+
+export interface CompleteOptions {
+  /** Called for each streamed chunk, for progressive display. */
+  readonly onDelta?: (text: string) => void;
+  /** Tools to offer the model. Client execution: `turn` stops and asks the host to run them. */
+  readonly tools?: readonly AgentTool[];
+  /** Caps how many tool rounds a turn may take. */
+  readonly maxToolRounds?: number;
+  readonly temperature?: number;
+  /**
+   * Aborts the host's interest in this turn.
+   *
+   * The wasm boundary has no cancellation channel yet, so an aborted turn still
+   * runs to completion in Rust; its events are discarded here.
+   */
+  readonly signal?: AbortSignal;
+}
+
+/**
+ * Run one turn and return the assistant's text.
+ *
+ * Only `delta` events carry text. A turn that reports `error` rejects rather
+ * than returning the text accumulated so far: a truncated replacement would
+ * silently damage the target.
+ */
+export async function complete(
+  endpoint: AgentEndpoint,
+  messages: readonly AgentMessage[],
+  options: CompleteOptions = {},
+): Promise<string> {
+  const { AgentRuntime } = await ready();
+  const tools = options.tools ?? [];
+  const request = {
+    protocol_version: "agent.v1",
+    provider: endpoint.provider ?? "openai",
+    model: endpoint.model,
+    messages: messages.map((message) => ({ role: message.role, content: message.content })),
+    tools: tools.map((tool) => tool.spec),
+    // `client` stops the turn so the host can run the tools; with none to run,
+    // the default `runtime` execution is the only valid choice.
+    tool_execution: tools.length > 0 ? "client" : "runtime",
+    max_tool_rounds: options.maxToolRounds ?? 1,
+    // Editing wants the model's most likely continuation, not its most varied.
+    temperature: options.temperature ?? 0,
+  };
+
+  let events: readonly TurnEvent[];
+  try {
+    events = JSON.parse(
+      await runtimeFor(AgentRuntime, endpoint, tools).turn(JSON.stringify(request)),
+    ) as TurnEvent[];
+  } catch (error) {
+    throw new AgentError(`请求失败：${String(error)}`);
+  }
+  if (options.signal?.aborted) throw new AgentError("已取消");
+
+  const failure = events.find((event) => event.kind === "error");
+  if (failure) throw new AgentError(String(failure.content ?? "模型返回错误"));
+  const text = events
+    .filter((event) => event.kind === "delta")
+    .map((event) => event.content ?? "")
+    .join("");
+  if (options.onDelta !== undefined && text.length > 0) options.onDelta(text);
+  return text;
+}

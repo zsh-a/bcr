@@ -1,33 +1,30 @@
-import type { AgentEndpoint } from "./agentRuntime";
+import type { AgentEndpoint } from "./runtime";
 
 /**
  * The model endpoint for this browser session.
  *
- * Held in memory only, for the same reason the GitHub token is: `docs/KNOWLEDGE-SYNC.md`
- * promises that credentials are never written to localStorage, workspace metadata,
- * an export or a repository. A reload asks for the key again.
- *
- * A module singleton (like `workspaceKnowledge`) rather than React state, because
- * the settings are shared by the note editor and must outlive switching notes.
+ * Held in memory only: a credential is never written to localStorage, workspace
+ * metadata, an export or a repository. A reload asks for the key again. The
+ * configuration is a module singleton with an external-store interface, so any
+ * consumer can read it without the host passing it down.
  */
 let current: AgentEndpoint | null = null;
 const listeners = new Set<() => void>();
-
 const EMPTY: AgentEndpoint = { baseUrl: "", apiKey: "", model: "" };
 
 export function agentEndpoint(): AgentEndpoint | null {
   return current;
 }
 
-/** The same signature as `useSyncExternalStore`, so the editor can subscribe directly. */
-export function subscribeAgentEndpoint(listener: () => void): () => void {
+/** The same contract as `useSyncExternalStore`, so consumers can subscribe directly. */
+export function subscribeAgent(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
   };
 }
 
-/** A stable snapshot: `useSyncExternalStore` compares by identity, so keep one object per state. */
+/** A stable snapshot; `useSyncExternalStore` compares by identity. */
 export function agentSnapshot(): AgentEndpoint {
   return current ?? EMPTY;
 }

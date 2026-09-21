@@ -146,6 +146,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@base-ui/react": "^1.7.0",
+        "@bcr/agent": "workspace:*",
         "@bcr/core": "workspace:*",
         "@bcr/data-core": "workspace:*",
         "@bcr/data-studio": "workspace:*",
@@ -214,6 +215,13 @@
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
         "@vitejs/plugin-react": "catalog:",
+      },
+    },
+    "packages/agent": {
+      "name": "@bcr/agent",
+      "version": "0.1.0",
+      "dependencies": {
+        "@bcr/core": "workspace:*",
       },
     },
     "packages/core": {
@@ -318,6 +326,7 @@
       "name": "@bcr/react",
       "version": "0.1.0",
       "dependencies": {
+        "@bcr/agent": "workspace:*",
         "@bcr/core": "workspace:*",
         "effect": "catalog:",
         "react": "catalog:",
@@ -490,6 +499,8 @@
     "@base-ui/react": ["@base-ui/react@1.7.0", "https://registry.npmmirror.com/@base-ui/react/-/react-1.7.0.tgz", { "dependencies": { "@babel/runtime": "^7.29.2", "@base-ui/utils": "0.3.2", "@floating-ui/react-dom": "^2.1.9", "@floating-ui/utils": "^0.2.12", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "@date-fns/tz": "^1.2.0", "@types/react": "^17 || ^18 || ^19", "date-fns": "^4.0.0", "react": "^17 || ^18 || ^19", "react-dom": "^17 || ^18 || ^19" }, "optionalPeers": ["@date-fns/tz", "@types/react", "date-fns"] }, "sha512-j+8QjX44C32jrXD/qyEAGpFr70FRpGL2CY61mQd9nBPWN737CK0xxD1ceJ055rW4RtdvFDT1e7otzdlfxvsYug=="],
 
     "@base-ui/utils": ["@base-ui/utils@0.3.2", "https://registry.npmmirror.com/@base-ui/utils/-/utils-0.3.2.tgz", { "dependencies": { "@babel/runtime": "^7.29.2", "@floating-ui/utils": "^0.2.12", "reselect": "^5.2.0", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "@types/react": "^17 || ^18 || ^19", "react": "^17 || ^18 || ^19", "react-dom": "^17 || ^18 || ^19" }, "optionalPeers": ["@types/react"] }, "sha512-oWy1aq/I2GmYjpl4PhEAhzflF8VPGKgZeq0xAWTbfD5KBWyxcN0ZP2+WHSUm/5Z6lVMBDLReLcoXwSYoRc/zNQ=="],
+
+    "@bcr/agent": ["@bcr/agent@workspace:packages/agent"],
 
     "@bcr/core": ["@bcr/core@workspace:packages/core"],
 

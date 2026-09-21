@@ -51,7 +51,19 @@ knowledge/
 - **接口**：任意 OpenAI 兼容端点（官方 API、Ollama、LM Studio、网关）。填写接口地址、模型名与密钥；**密钥只保存在本页内存**，与 GitHub Token 同规格，刷新后需重新填写，也不写入本地存储、导出或仓库。本地端点可留空密钥，此时不发送 `Authorization` 头。
 - **加载时机**：运行时是约 3.5 MiB 的 wasm 模块，只在第一次点击「改写 / 续写」时才下载；不使用 AI 的读者不会付出这份体积。
 
-实现分为三层：`edit.ts` 是与来源无关的区间编辑协议（预览、应用、失效判定都在此），`noteAgent.ts` 把指令变成一份改动提案，`agentRuntime.ts` 负责 wasm 边界。写入始终经由既有的 `KnowledgeStore.saveNote(note, base)`，不新增写入路径。
+实现分为三层，知识库只提供最上面一层：
+
+| 层           | 位置                             | 职责                                                                                                                 |
+| ------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `@bcr/agent` | `packages/agent`                 | wasm 生命周期与懒加载、端点配置（仅内存）、turn 与流式、工具注册、**建议协议**（`textVersion` 版本守卫下的最小差分） |
+| `@bcr/react` | `packages/react`                 | `useAgent` / `useTextEditSuggestion`（提案生命周期）与 `AgentEditPanel`（共享 UI）                                   |
+| 各业务       | 例如 `apps/studio/src/knowledge` | 只提供 prompt 措辞与「如何寻址 + 如何落盘」                                                                          |
+
+`@bcr/agent` 只依赖 `@bcr/core`（取其 `textVersion` 与 `TextRange`），不含任何业务概念。不并入 `@bcr/core` 的理由与 `createBrowserRuntime` 放在 `@bcr/runtime-browser` 相同：这一层要 `fetch`、跑 WebAssembly，并动态 import 一个约 3.5 MiB 的二进制，框架无关的契约包不应背负。
+
+因此消费方式与 `ResearchCaptureProvider` 同构：宿主配置一次端点，任何 `apps/*` 或 `packages/*` 用 `useAgent()` 读取，用 `AgentEditPanel` 呈现，用 `useTextEditSuggestion()` 走完「提案 → 预览 → 应用 / 丢弃」。建议协议以 `textVersion` 比对原文版本，用户在此期间继续编辑则丢弃而不是写入。写入仍由各业务自己的存储负责（笔记走 `KnowledgeStore.saveNote`，文档走既有的 OCR / 译文修订函数），所以「改前留版本」由各业务既有机制免费获得。
+
+已接入：知识库单篇笔记的改写／续写。可复用的下一位消费者是 document-studio 的 OCR / 译文审校 —— 它按 block 逐条编辑，寻址单位是一个 block 的文本，落盘函数已经存在。
 
 运行时来自独立的 `agent-runtime` 仓库，以 submodule 固定在 `crates/agent-runtime`，用 `bun run build:wasm:agent` 编译到 `crates/agent-wasm/pkg`（生成物不入库，与 `crates/kernels/pkg` 一致）。
 

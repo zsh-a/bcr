@@ -20,6 +20,17 @@ import {
 import { ApplicationStatusProvider } from "./application-status";
 export type { RuntimeHost, RuntimeMetadata, RuntimeServices, RuntimeSession } from "@bcr/core";
 export { usePublishRunningCount, useRunningApps } from "./application-status";
+export { AgentEditPanel, AgentSettings, type AgentEditPanelProps } from "./AgentPanel";
+
+export {
+  useAgent,
+  useTextEditSuggestion,
+  type AgentService,
+  type ProposeInput,
+  type SuggestionState,
+  type TextEditController,
+} from "./agent";
+
 export {
   ResearchCaptureProvider,
   useResearchCapture,

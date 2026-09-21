@@ -34,6 +34,11 @@ const boundaries: { dir: string; allow: string[]; message: string }[] = [
     message: "@bcr/core may only depend on @bcr/storage-opfs.",
   },
   {
+    dir: "packages/agent",
+    allow: ["@bcr/core"],
+    message: "@bcr/agent is shared by every workspace and may only depend on @bcr/core.",
+  },
+  {
     dir: "packages/runtime-worker",
     allow: ["@bcr/core", "@bcr/storage-opfs"],
     message: "@bcr/runtime-worker may only depend on @bcr/core and @bcr/storage-opfs.",

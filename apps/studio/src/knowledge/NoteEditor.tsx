@@ -1,24 +1,9 @@
-import {
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type Ref,
-} from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import Markdown from "react-markdown";
+import { AgentEditPanel, useTextEditSuggestion } from "@bcr/react";
 import { decodeNote, same, type KnowledgeNote, type KnowledgeCollection } from "./model";
 import { MarkdownEditor } from "./MarkdownEditor";
 import type { KnowledgeStore } from "./store";
-import { type EditProposal, type EditTarget, resolve } from "./edit";
-import { proposeNoteEdit, type AgentMode } from "./noteAgent";
-import {
-  agentConfigured,
-  agentEndpoint,
-  agentSnapshot,
-  configureAgent,
-  subscribeAgentEndpoint,
-} from "./agentSettings";
 
 export interface EditorHandle {
   flush(): Promise<void>;
@@ -71,12 +56,7 @@ export function NoteEditor({
   const pending = useRef<Promise<void> | null>(null);
   const live = useRef(true);
   const [agentTarget, setAgentTarget] = useState<{ from: number; to: number } | null>(null);
-  const [agentText, setAgentText] = useState("");
-  const [proposal, setProposal] = useState<EditProposal | null>(null);
-  const [asking, setAsking] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const endpoint = useSyncExternalStore(subscribeAgentEndpoint, agentSnapshot);
-  const configured = agentConfigured(agentEndpoint());
+  const edit = useTextEditSuggestion();
   const flush = async (): Promise<void> => {
     if (pending.current) await pending.current;
     if (!state.current.dirty) return;
@@ -177,59 +157,28 @@ export function NoteEditor({
   }
 
   /**
-   * Where an AI edit applies. A selection is authoritative; otherwise the caret.
-   * Re-solving against the current draft means a range recorded before further
-   * typing cannot address the wrong passage.
+   * The range an AI edit addresses: the selection when there is one, else the
+   * caret. Text addressing is the only part the knowledge base owns; the
+   * proposal lifecycle lives in the shared controller.
    */
-  function editTarget(): EditTarget | null {
-    const current = state.current.draft.body;
-    if (agentTarget === null) return null;
-    if (agentTarget.from !== agentTarget.to && agentTarget.to <= current.length)
-      return { kind: "selection", from: agentTarget.from, to: agentTarget.to };
-    if (agentTarget.from <= current.length) return { kind: "cursor", at: agentTarget.from };
-    return null;
-  }
-
-  async function ask(mode: AgentMode) {
-    const target = editTarget();
-    if (!agentText.trim() || target === null || asking) return;
-    setAsking(true);
+  function ask(mode: "rewrite" | "continue", instruction: string) {
+    const body = state.current.draft.body;
+    const selection =
+      agentTarget !== null && agentTarget.from !== agentTarget.to && agentTarget.to <= body.length
+        ? agentTarget
+        : null;
+    const caret = agentTarget !== null && agentTarget.from <= body.length ? agentTarget.from : null;
+    const range = selection ?? (caret === null ? null : { from: caret, to: caret });
+    if (range === null) return;
     setError("");
-    try {
-      setProposal(
-        await proposeNoteEdit({
-          endpoint: endpoint,
-          mode,
-          instruction: agentText,
-          title: state.current.draft.title,
-          body: state.current.draft.body,
-          target,
-        }),
-      );
-    } catch (reason) {
-      setError(String(reason));
-    } finally {
-      setAsking(false);
-    }
-  }
-
-  /**
-   * Write an accepted proposal.
-   *
-   * A stale proposal is dropped rather than applied: the note moved on while the
-   * model was running, and the change no longer describes this text.
-   */
-  function acceptProposal() {
-    if (proposal === null) return;
-    const next = resolve(proposal, state.current.draft.body);
-    setProposal(null);
-    if (next === null) {
-      setError("正文已变化，这次改动已丢弃（没有写入笔记）");
-      return;
-    }
-    // `change` marks dirty and backs up a draft; the store turns the previous
-    // body into a revision on save, so this edit is recoverable from 历史.
-    change({ body: next });
+    void edit.propose({
+      mode,
+      instruction,
+      text: body,
+      start: range.from,
+      end: range.to,
+      label: state.current.draft.title || "未命名笔记",
+    });
   }
 
   return (
@@ -298,20 +247,19 @@ export function NoteEditor({
         }}
         onBlur={() => setTagText(state.current.draft.tags.join(", "))}
       />
-      <AgentPanel
-        configured={configured}
-        endpoint={endpoint}
-        settingsOpen={settingsOpen}
-        setSettingsOpen={setSettingsOpen}
+      <AgentEditPanel
+        text={draft.body}
+        scope={scopeLabel(agentTarget, draft.body.length)}
+        label={draft.title || "未命名笔记"}
+        state={edit.state}
+        notice={edit.notice}
         disabled={locked || !!initial.error}
-        asking={asking}
-        instruction={agentText}
-        setInstruction={setAgentText}
-        target={agentTarget}
-        proposal={proposal}
-        onAsk={ask}
-        onAccept={acceptProposal}
-        onDiscard={() => setProposal(null)}
+        placeholder="例如：改写得更简洁，保留结论"
+        onPropose={(input) => ask(input.mode, input.instruction)}
+        onAccept={(suggestion) =>
+          edit.apply(suggestion, state.current.draft.body, (body) => change({ body }))
+        }
+        onDiscard={edit.discard}
       />
       {preview ? (
         <article className="knowledge-prose">
@@ -350,206 +298,10 @@ export function NoteEditor({
   );
 }
 
-/**
- * The AI editing affordance.
- *
- * Deliberately an editor control rather than a chat: it transforms the passage
- * the caret is in, and nothing is written until the user accepts it. That
- * preview/accept step is what makes a model's output safe to apply to a note.
- */
-function AgentPanel({
-  configured,
-  endpoint,
-  settingsOpen,
-  setSettingsOpen,
-  disabled,
-  asking,
-  instruction,
-  setInstruction,
-  target,
-  proposal,
-  onAsk,
-  onAccept,
-  onDiscard,
-}: {
-  configured: boolean;
-  endpoint: { baseUrl: string; apiKey: string; model: string };
-  settingsOpen: boolean;
-  setSettingsOpen: (open: boolean) => void;
-  disabled: boolean;
-  asking: boolean;
-  instruction: string;
-  setInstruction: (value: string) => void;
-  target: { from: number; to: number } | null;
-  proposal: EditProposal | null;
-  onAsk: (mode: AgentMode) => Promise<void>;
-  onAccept: () => void;
-  onDiscard: () => void;
-}) {
-  const scope =
-    target === null
-      ? "正文尚无光标"
-      : target.from === target.to
-        ? "在光标处插入"
-        : `改写选中 ${target.to - target.from} 字符`;
-  return (
-    <div className="knowledge-agent">
-      <div className="knowledge-agent-bar">
-        <span className="knowledge-agent-scope" title="编辑范围由正文中的光标或选区决定">
-          {scope}
-        </span>
-        <input
-          className="knowledge-agent-instruction"
-          aria-label="告诉 AI 如何编辑这段正文"
-          placeholder="例如：改写得更简洁，保留结论"
-          value={instruction}
-          disabled={disabled || asking}
-          maxLength={2_000}
-          onChange={(event) => setInstruction(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              void onAsk("rewrite");
-            }
-          }}
-        />
-        <button
-          type="button"
-          className="knowledge-button"
-          disabled={disabled || asking || !instruction.trim() || !configured}
-          onClick={() => void onAsk("rewrite")}
-        >
-          {asking ? "生成中…" : "改写"}
-        </button>
-        <button
-          type="button"
-          className="knowledge-button"
-          disabled={disabled || asking || !instruction.trim() || !configured}
-          onClick={() => void onAsk("continue")}
-        >
-          续写
-        </button>
-        <button
-          type="button"
-          className="knowledge-button"
-          aria-label="AI 接口设置"
-          aria-pressed={settingsOpen}
-          onClick={() => setSettingsOpen(!settingsOpen)}
-        >
-          接口
-        </button>
-      </div>
-      {settingsOpen && <AgentSettings endpoint={endpoint} />}
-      {!configured && !settingsOpen && (
-        <p className="knowledge-agent-hint">
-          配置 OpenAI 兼容接口后可用；密钥只保存在本页内存，刷新后需重新填写。
-        </p>
-      )}
-      {proposal !== null && (
-        <div className="knowledge-agent-preview" role="group" aria-label="待应用的改动">
-          <div className="knowledge-agent-preview-head">
-            <span>待应用 · {proposal.summary}</span>
-            <span>{proposal.changes.length} 处改动</span>
-          </div>
-          <pre className="knowledge-agent-diff">{changedExcerpt(proposal)}</pre>
-          <div className="knowledge-agent-preview-actions">
-            <button type="button" className="knowledge-primary" onClick={onAccept}>
-              应用到笔记
-            </button>
-            <button type="button" className="knowledge-button" onClick={onDiscard}>
-              放弃
-            </button>
-            <span className="knowledge-agent-hint">
-              应用前的正文会进入「历史」，也可用 Ctrl/⌘+Z 撤销
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** The affected region with a little context, so the preview shows what actually changes. */
-function changedExcerpt(proposal: EditProposal): string {
-  const first = proposal.changes[0];
-  if (first === undefined) return "(无改动)";
-  const context = 60;
-  const from = Math.max(0, first.from - context);
-  const lead = proposal.base.slice(from, first.from);
-  const head = from > 0 ? "…" : "";
-  const nextLength = proposal.base.length - (first.to - first.from) + first.insert.length;
-  const tail = nextLength > first.from + first.insert.length + context ? "…" : "";
-  return [
-    `- ${head}${truncate(lead + proposal.base.slice(first.from, first.to), 240)}`,
-    `+ ${head}${truncate(lead + first.insert, 240)}${tail}`,
-  ].join("\n");
-}
-
-const truncate = (value: string, limit: number) =>
-  value.length > limit ? `${value.slice(0, limit)}…` : value;
-
-/** Endpoint settings. Memory-only, matching how the GitHub token is handled. */
-function AgentSettings({
-  endpoint,
-}: {
-  endpoint: { baseUrl: string; apiKey: string; model: string };
-}) {
-  const [baseUrl, setBaseUrl] = useState(endpoint.baseUrl);
-  const [apiKey, setApiKey] = useState(endpoint.apiKey);
-  const [model, setModel] = useState(endpoint.model);
-  return (
-    <form
-      className="knowledge-agent-settings"
-      onSubmit={(event) => {
-        event.preventDefault();
-        configureAgent({ baseUrl, apiKey, model });
-      }}
-    >
-      <label>
-        接口地址
-        <input
-          aria-label="AI 接口地址"
-          placeholder="http://127.0.0.1:11434/v1"
-          value={baseUrl}
-          onChange={(event) => setBaseUrl(event.target.value)}
-        />
-      </label>
-      <label>
-        模型
-        <input
-          aria-label="AI 模型名称"
-          placeholder="gpt-4o-mini"
-          value={model}
-          onChange={(event) => setModel(event.target.value)}
-        />
-      </label>
-      <label>
-        密钥
-        <input
-          aria-label="AI 接口密钥"
-          type="password"
-          placeholder="本地接口可留空"
-          value={apiKey}
-          onChange={(event) => setApiKey(event.target.value)}
-        />
-      </label>
-      <div>
-        <button type="submit" className="knowledge-button">
-          保存到本次会话
-        </button>
-        <button
-          type="button"
-          className="knowledge-button"
-          onClick={() => {
-            setBaseUrl("");
-            setApiKey("");
-            setModel("");
-            configureAgent(null);
-          }}
-        >
-          清除
-        </button>
-      </div>
-    </form>
-  );
+/** Human description of where an AI edit would apply. */
+function scopeLabel(target: { from: number; to: number } | null, length: number): string {
+  if (target === null || target.from > length) return "正文尚无光标";
+  if (target.from !== target.to && target.to <= length)
+    return `改写选中 ${target.to - target.from} 字符`;
+  return "在光标处插入";
 }

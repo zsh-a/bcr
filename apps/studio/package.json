@@ -5,6 +5,7 @@
   "type": "module",
   "dependencies": {
     "@base-ui/react": "^1.7.0",
+    "@bcr/agent": "workspace:*",
     "@bcr/core": "workspace:*",
     "@bcr/data-core": "workspace:*",
     "@bcr/data-studio": "workspace:*",

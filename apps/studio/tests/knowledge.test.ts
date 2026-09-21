@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createSearchIndex } from "@bcr/core";
+import { resolveEdit, suggestRange } from "@bcr/agent";
 import { createKnowledgeGitHub } from "../../../scripts/fixtures/knowledge-github.mjs";
 import {
   contentOf,
@@ -414,5 +415,50 @@ describe("GitHub multi-device synchronization", () => {
     await a.store.restore(previous);
     await syncKnowledge(a.store, api);
     expect(await api.history("note-one")).toHaveLength(3);
+  });
+});
+
+describe("AI suggestions against the note store", () => {
+  const body = "第一段\n\n第二段\n\n第三段\n";
+  function device() {
+    let raw: string | undefined;
+    return {
+      store: new KnowledgeStore({
+        get: async () => raw,
+        set: async (_: string, value: string) => {
+          raw = value;
+        },
+      }),
+    };
+  }
+  it("writes an accepted suggestion and keeps the previous body as a revision", async () => {
+    const d = device(),
+      base = { ...note(body), id: "note-ai" };
+    await d.store.saveNote(base, null);
+    const suggestion = suggestRange(body, 5, 8, "改写后", "改写第二段");
+    const next = resolveEdit(d.store.getSnapshot().notes["note-ai"]!.body, suggestion)!;
+    const current = d.store.getSnapshot().notes["note-ai"]!;
+    await d.store.saveNote({ ...current, body: next, updatedAt: 2 }, current);
+
+    const saved = d.store.getSnapshot();
+    expect(saved.notes["note-ai"]!.body).toBe("第一段\n\n改写后\n\n第三段\n");
+    expect(saved.history[0]).toMatchObject({ reason: "编辑前版本" });
+    expect(saved.history[0]!.note.body).toBe(body);
+
+    // The pre-edit body is recoverable, which is what makes an AI edit safe.
+    await d.store.restore(saved.history[0]!.note);
+    expect(d.store.getSnapshot().notes["note-ai"]!.body).toBe(body);
+  });
+  it("writes nothing when the user kept typing while the model ran", async () => {
+    const d = device(),
+      base = { ...note(body), id: "note-ai" };
+    await d.store.saveNote(base, null);
+    const suggestion = suggestRange(body, 5, 8, "改写后", "改写");
+    const current = d.store.getSnapshot().notes["note-ai"]!;
+    const typed = { ...current, body: `${body}用户继续输入`, updatedAt: 2 };
+    await d.store.saveNote(typed, current);
+
+    expect(resolveEdit(d.store.getSnapshot().notes["note-ai"]!.body, suggestion)).toBeNull();
+    expect(d.store.getSnapshot().notes["note-ai"]!.body).toBe(`${body}用户继续输入`);
   });
 });

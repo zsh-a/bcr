@@ -74,17 +74,17 @@ await page.getByLabel("AI 模型名称").fill("fake-model");
 await page.getByRole("button", { name: "保存到本次会话" }).click();
 assert.deepEqual(wasmRequests, [], "the wasm module must not load before an edit is requested");
 
-await page.getByLabel("告诉 AI 如何编辑这段正文").fill("改写得更简洁");
+await page.getByLabel("告诉 AI 如何编辑这段内容").fill("改写得更简洁");
 await page.getByRole("button", { name: "改写", exact: true }).click();
-await page.waitForSelector(".knowledge-agent-preview", { timeout: 30_000 });
+await page.waitForSelector(".bcr-agent-preview", { timeout: 30_000 });
 
-const diff = await page.locator(".knowledge-agent-diff").textContent();
+const diff = await page.locator(".bcr-agent-diff").textContent();
 const bodyBeforeAccept = await editor.textContent();
 
 // Nothing is written before the user accepts.
 assert.ok(!bodyBeforeAccept?.includes("已被 AI 改写"), "preview must not touch the note");
 
-await page.getByRole("button", { name: "应用到笔记" }).click();
+await page.getByRole("button", { name: "应用", exact: true }).click();
 await page.waitForTimeout(800);
 assert.ok(
   (await editor.textContent())?.includes(REWRITE),
