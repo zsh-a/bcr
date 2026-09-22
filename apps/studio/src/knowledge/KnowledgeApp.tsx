@@ -1,4 +1,3 @@
-import { contentHash } from "@bcr/core";
 import { useRuntime, useRuntimeActivity } from "@bcr/react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
@@ -16,31 +15,28 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { workspaceResearch } from "../researchCapture";
-import { assessExcerpt } from "../research";
-import { contentOf, emptyContent, newNote, pendingCount } from "./model";
-import { workspaceKnowledge } from "./store";
-import { FILE_LIMIT, importMarkdown, noteMarkdown } from "./files";
-import { GitHubKnowledge } from "./github";
-import { syncKnowledge } from "./sync";
+import { workspaceServices } from "../workspace";
+import { assessExcerpt } from "../research/index";
+import { pendingCount } from "./model";
+import { noteMarkdown } from "./files";
+import { createKnowledgeActions } from "./actions";
+import { useKnowledgeSync } from "./useKnowledgeSync";
 import { NoteEditor, type EditorHandle } from "./NoteEditor";
 import { KnowledgeSyncPanel, KnowledgeHistory } from "./KnowledgePanels";
 import "./knowledge.css";
 import { searchKnowledge } from "./retrieval";
 import { KnowledgeRestorePanel } from "./KnowledgeRestorePanel";
-import { writeKnowledgeBackup } from "./backup";
 
 export function KnowledgeApp() {
   const services = useRuntime(),
     active = useRuntimeActivity(),
     navigate = useNavigate();
-  const store = useMemo(() => workspaceKnowledge(services.metadata), [services.metadata]);
+  const store = useMemo(() => workspaceServices(services.metadata).knowledge, [services.metadata]);
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [ready, setReady] = useState(false),
     [error, setError] = useState("");
   const [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false),
-    [syncing, setSyncing] = useState(false);
+    [busy, setBusy] = useState(false);
   const [query, setQuery] = useState(""),
     [collection, setCollection] = useState("");
   const [panel, setPanel] = useState<"sync" | "history" | "restore" | null>(null),
@@ -50,7 +46,6 @@ export function KnowledgeApp() {
   const [collectionName, setCollectionName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const editor = useRef<EditorHandle>(null),
-    syncingRef = useRef(false),
     input = useRef<HTMLInputElement>(null);
   const selectedId = useRouterState({
     select: (s) => (s.location.search as { note?: string }).note,
@@ -98,121 +93,33 @@ export function KnowledgeApp() {
     setSidebar(false);
     setConfirmDelete(false);
   };
+  const flushEditor = useCallback(async () => {
+    await editor.current?.flush();
+  }, []);
+  const actions = useMemo(
+    () => createKnowledgeActions(store, workspaceServices(services.metadata).research, flushEditor),
+    [store, services.metadata, flushEditor],
+  );
   const create = async () => {
-    await editor.current?.flush();
-    const created = newNote("", collection || null);
-    await store.saveNote(created, null);
-    await select(created.id);
+    await select(await actions.create(collection || null));
   };
-  const sync = useCallback(async () => {
-    if (!ready || syncingRef.current) return;
-    const target = store.getSnapshot().sync.target;
-    if (!target || !token.trim()) {
-      setPanel("sync");
-      setMessage("填写仓库连接与当前会话 Token 后即可同步");
-      return;
-    }
-    syncingRef.current = true;
-    setSyncing(true);
-    setError("");
-    try {
-      await editor.current?.flush();
-      const result = await syncKnowledge(store, new GitHubKnowledge(target, token));
-      setMessage(
-        result === "conflicts"
-          ? "发现冲突，双方版本已保留"
-          : pendingCount(store.getSnapshot())
-            ? "本批已同步，新修改等待下一次同步"
-            : "已与 GitHub 同步",
-      );
-      if (result === "conflicts") setPanel("sync");
-    } catch (reason) {
-      setError(String(reason));
-    } finally {
-      syncingRef.current = false;
-      setSyncing(false);
-    }
-  }, [store, token, ready]);
-  useEffect(() => {
-    if (!auto || !token || !state.sync.target || !active) return;
-    const trigger = () => {
-      if (
-        navigator.onLine &&
-        document.visibilityState === "visible" &&
-        !store.getSnapshot().conflicts.length
-      )
-        void sync();
-    };
-    window.addEventListener("online", trigger);
-    window.addEventListener("focus", trigger);
-    document.addEventListener("visibilitychange", trigger);
-    const timer = setInterval(trigger, 30_000);
-    trigger();
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener("online", trigger);
-      window.removeEventListener("focus", trigger);
-      document.removeEventListener("visibilitychange", trigger);
-    };
-  }, [
-    auto,
-    token,
-    state.sync.target?.owner,
-    state.sync.target?.repo,
-    state.sync.target?.branch,
-    active,
+  const { sync, syncing } = useKnowledgeSync({
     store,
-    sync,
-  ]);
-  useEffect(() => {
-    if (!auto || !token || !state.sync.target || !pending || state.conflicts.length || !active)
-      return;
-    const timer = setTimeout(() => {
-      if (navigator.onLine && document.visibilityState === "visible") void sync();
-    }, 3_000);
-    return () => clearTimeout(timer);
-  }, [
-    state.notes,
-    state.collections,
-    pending,
-    auto,
+    ready,
     token,
+    auto,
     active,
-    sync,
-    state.conflicts.length,
-    state.sync.target,
-  ]);
+    flush: flushEditor,
+    setError,
+    setMessage,
+    setPanel,
+  });
   async function importResearch() {
-    await editor.current?.flush();
-    const research = workspaceResearch(services.metadata);
-    await research.ready;
-    const content = emptyContent();
-    for (const group of research.getSnapshot().collections) {
-      const groupId = contentHash(new TextEncoder().encode(`research-collection:${group.id}`));
-      content.collections[groupId] = { id: groupId, name: group.name };
-      for (const excerpt of group.excerpts) {
-        const id = contentHash(
-          new TextEncoder().encode(JSON.stringify(["research", group.id, excerpt.id])),
-        );
-        content.notes[id] = {
-          ...newNote(excerpt.title, groupId),
-          id,
-          body: `${excerpt.text
-            .split("\n")
-            .map((line) => `> ${line}`)
-            .join("\n")}\n\n${excerpt.note}`,
-          citations: [excerpt],
-        };
-      }
-    }
-    await store.importContent(content);
-    setMessage(
-      `已导入资料集合中的 ${Object.keys(content.notes).length} 条摘录；已有条目保留原笔记`,
-    );
+    const count = await actions.importResearch();
+    setMessage(`已导入资料集合中的 ${count} 条摘录；已有条目保留原笔记`);
   }
   async function exportAll() {
-    await editor.current?.flush();
-    download(await writeKnowledgeBackup(contentOf(store.getSnapshot())), "bcr-knowledge.zip");
+    download(await actions.exportBackup(), "bcr-knowledge.zip");
   }
   if (!ready)
     return (
@@ -365,11 +272,7 @@ export function KnowledgeApp() {
             e.target.value = "";
             if (file)
               void run(async () => {
-                if (file.size > FILE_LIMIT) throw new Error("单篇导入上限为 2 MiB");
-                const imported = importMarkdown(await file.text(), file.name);
-                await editor.current?.flush();
-                await store.saveNote(imported, null);
-                await select(imported.id);
+                await select(await actions.importMarkdown(file));
               });
           }}
         />

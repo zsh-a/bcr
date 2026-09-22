@@ -1,4 +1,4 @@
-import { decodeResearch, type ResearchExcerpt } from "../research";
+import { decodeResearch, type ResearchExcerpt } from "../research/index";
 
 export interface KnowledgeNote {
   id: string;

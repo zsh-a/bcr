@@ -17,7 +17,7 @@ import { StorageMaintenanceDialogs } from "./StorageMaintenanceDialogs";
 import { useStorageMaintenance } from "./useStorageMaintenance";
 import { importFile, runTask } from "../runtime";
 import { useSelection } from "../router";
-import { useServices } from "../services";
+import { useRuntime } from "@bcr/react";
 import { studio, useStudio } from "../store";
 
 interface Command {
@@ -34,7 +34,7 @@ export function CommandPalette(props: {
   onOpenChange: (open: boolean) => void;
   onOpenPanel: (id: string) => void;
 }) {
-  const services = useServices();
+  const services = useRuntime();
   const selection = useSelection();
   const navigate = useNavigate();
   const currentFile = useStudio((s) => s.files.find((f) => f.ref.id === selection.file));

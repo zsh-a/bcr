@@ -102,6 +102,9 @@ const browser = await chromium.launch({ args: ["--disable-dev-shm-usage"] });
 const errors = [];
 async function open(context) {
   const page = await context.newPage();
+  // Fault injection locates the already-loaded module instance, including its Vite query.
+  // A modular dev build exceeds the browser's default 250-entry resource buffer.
+  await page.addInitScript(() => performance.setResourceTimingBufferSize(5000));
   page.setDefaultTimeout(25000);
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(`${origin}/reader`, { waitUntil: "networkidle" });
@@ -110,7 +113,7 @@ async function open(context) {
     const url = performance
       .getEntriesByType("resource")
       .map((e) => e.name)
-      .filter((url) => new URL(url).pathname.endsWith("/src/research.ts"))
+      .filter((url) => new URL(url).pathname.endsWith("/src/research/index.ts"))
       .at(-1);
     const { ResearchStore } = await import(url);
     const read = ResearchStore.prototype.readPackageRecord;
@@ -156,7 +159,7 @@ try {
         const url = performance
           .getEntriesByType("resource")
           .map((e) => e.name)
-          .filter((url) => new URL(url).pathname.endsWith("/src/research.ts"))
+          .filter((url) => new URL(url).pathname.endsWith("/src/research/index.ts"))
           .at(-1);
         if (!url) throw new Error("Research module not loaded");
         if (phase === "sources-staged" || phase === "reader-library") {
@@ -340,7 +343,7 @@ try {
     const domModule = await import(loaded("/react-dom_client.js"));
     const { createRoot } = domModule.default ?? domModule;
     const { useResearchPackageRecovery } = await import(
-      loaded("/src/components/useResearchPackageRecovery.ts")
+      loaded("/src/research/components/useResearchPackageRecovery.ts")
     );
     const tick = () => new Promise((resolve) => setTimeout(resolve, 20));
     const wait = async (predicate) => {

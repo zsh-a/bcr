@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { contentHash } from "@bcr/core";
-import { createPackageStaging, IMPORT_MEMORY_LIMIT } from "../src/researchPackageStaging";
+import { createPackageStaging, IMPORT_MEMORY_LIMIT } from "../src/research/packageStaging";
 afterEach(() => vi.unstubAllGlobals());
 const bytes = new TextEncoder().encode("staged source");
 const extract = (stream: WritableStream<Uint8Array>) => new Blob([bytes]).stream().pipeTo(stream);

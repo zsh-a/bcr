@@ -3,7 +3,7 @@ import type { ArtifactInventoryEntry, CachePrunePlan, TaskJournalPrunePlan } fro
 import { Effect } from "effect";
 import { Database, HardDrive, RefreshCw, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useServices } from "../services";
+import { useRuntime } from "@bcr/react";
 import { useStudio } from "../store";
 import { CACHE_RETENTION, JOURNAL_RETENTION } from "../storage-policy";
 import { Badge, formatBytes, PanelEmpty, ProgressBar, SectionLabel } from "./ui";
@@ -20,7 +20,7 @@ interface StorageSnapshot {
  * 面板只读；实际清理沿用 ⌘K 中的安全 dry-run/确认流程。
  */
 export function StoragePanel() {
-  const services = useServices();
+  const services = useRuntime();
   const usage = useArtifactUsage();
   const files = useStudio((state) => state.files);
   const [snapshot, setSnapshot] = useState<StorageSnapshot | null>(null);

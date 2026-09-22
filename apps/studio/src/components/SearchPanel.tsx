@@ -3,7 +3,7 @@ import {
   publishResearch,
   researchSource,
   researchTarget,
-} from "../researchSearch";
+} from "../research/search";
 import { Dialog } from "@base-ui/react/dialog";
 import type { SearchDocument, SearchDocumentKind, SearchResult } from "@bcr/core";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
@@ -20,10 +20,10 @@ import {
   TerminalSquare,
   WandSparkles,
 } from "lucide-react";
-import { citationRoute, excerptFromResult, resultDocument, sameExcerpt } from "../research";
-import { ResearchPanel } from "./ResearchPanel";
-import { useServices } from "../services";
-import { workspaceResearch } from "../researchCapture";
+import { citationRoute, excerptFromResult, resultDocument, sameExcerpt } from "../research/index";
+import { ResearchPanel } from "../research/components/ResearchPanel";
+import { useRuntime } from "@bcr/react";
+import { workspaceServices } from "../workspace";
 
 type SearchFilterId =
   | "knowledge"
@@ -106,14 +106,17 @@ export function SearchPanel(props: {
   readonly onOpenChange: (open: boolean) => void;
   readonly onNavigate: (document: SearchDocument) => void;
 }) {
-  const services = useServices();
+  const services = useRuntime();
   const search = services.search;
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<SearchFilterId>("all");
   const [active, setActive] = useState(0);
   const [revision, setRevision] = useState(0);
   const [view, setView] = useState<"search" | "research">("search");
-  const research = useMemo(() => workspaceResearch(services.metadata), [services.metadata]);
+  const research = useMemo(
+    () => workspaceServices(services.metadata).research,
+    [services.metadata],
+  );
   const library = useSyncExternalStore(research.subscribe, research.getSnapshot);
   const [scope, setScope] = useState("");
   const [focus, setFocus] = useState<{

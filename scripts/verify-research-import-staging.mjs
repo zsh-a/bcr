@@ -6,6 +6,7 @@ const errors = [];
 try {
   const context = await browser.newContext();
   const page = await context.newPage();
+  await page.addInitScript(() => performance.setResourceTimingBufferSize(5000));
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(`${origin}/reader`, { waitUntil: "networkidle" });
   const metrics = await page.evaluate(async () => {
@@ -15,7 +16,7 @@ try {
         .map((e) => e.name)
         .filter((url) => new URL(url).pathname.endsWith(suffix))
         .at(-1);
-    const { createPackageStaging } = await import(loaded("/src/researchPackageStaging.ts"));
+    const { createPackageStaging } = await import(loaded("/src/research/packageStaging.ts"));
     const { createContentHasher, hashReadableStream } = await import(
       loaded("/packages/core/src/index.ts")
     );
@@ -223,7 +224,7 @@ try {
     const url = performance
       .getEntriesByType("resource")
       .map((e) => e.name)
-      .filter((url) => new URL(url).pathname.endsWith("/src/researchPackageStaging.ts"))
+      .filter((url) => new URL(url).pathname.endsWith("/src/research/packageStaging.ts"))
       .at(-1);
     const { createPackageStaging } = await import(url);
     const staging = await createPackageStaging();

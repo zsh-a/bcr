@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decodeVolumeCatalog, type ResearchVolumeCatalog } from "../src/researchVolumes";
+import { decodeVolumeCatalog, type ResearchVolumeCatalog } from "../src/research/volumes";
 const catalog: ResearchVolumeCatalog = {
   format: "bcr-research-volumes",
   version: 1,

@@ -6,9 +6,9 @@ import {
   exportResearch,
   ResearchStore,
   type ResearchLibrary,
-} from "../src/research";
-import { createResearchBackup, decodeResearchBackup } from "../src/researchBackup";
-import { linkPreview, relinkExcerpt } from "../src/researchReview";
+} from "../src/research/index";
+import { createResearchBackup, decodeResearchBackup } from "../src/research/backup";
+import { linkPreview, relinkExcerpt } from "../src/research/review";
 const originalText = "最初的证据。",
   updatedText = "修订后的证据。";
 const source = {

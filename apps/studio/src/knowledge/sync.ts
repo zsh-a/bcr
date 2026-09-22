@@ -7,10 +7,10 @@ import type { KnowledgeStore } from "./store";
 export async function syncKnowledge(
   store: KnowledgeStore,
   remote: KnowledgeRemote,
+  beforeSync?: () => Promise<void>,
 ): Promise<"synced" | "conflicts"> {
-  if (store.syncing) throw new Error("同步正在进行");
-  store.syncing = true;
-  try {
+  return store.runSync(async () => {
+    await beforeSync?.();
     await store.flush();
     if (!same(remote.target, store.getSnapshot().sync.target))
       throw new Error("同步连接已变化，请重新发起同步");
@@ -48,7 +48,5 @@ export async function syncKnowledge(
       return store.getSnapshot().conflicts.length ? "conflicts" : "synced";
     }
     throw new Error("远端持续变化，请稍后同步");
-  } finally {
-    store.syncing = false;
-  }
+  });
 }

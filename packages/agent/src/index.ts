@@ -31,13 +31,7 @@ export {
   type PendingApproval,
 } from "./session";
 
-export {
-  agentConfigured,
-  agentEndpoint,
-  agentSnapshot,
-  configureAgent,
-  subscribeAgent,
-} from "./settings";
+export { agentConfigured, createAgentSettings } from "./settings";
 
 export {
   EditError,

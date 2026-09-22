@@ -3,7 +3,7 @@ import { AudioWaveform, Hash, Upload } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { importFile, runTask } from "../runtime";
 import { useSelection } from "../router";
-import { useServices } from "../services";
+import { useRuntime } from "@bcr/react";
 import { useStudio } from "../store";
 import { Badge, Button, formatBytes, PanelEmpty } from "./ui";
 
@@ -12,7 +12,7 @@ import { Badge, Button, formatBytes, PanelEmpty } from "./ui";
  * 波形由 render.worker 在 OffscreenCanvas 中绘制（§5/§7 高频图形不进 React DOM）。
  */
 export function WorkspacePanel() {
-  const services = useServices();
+  const services = useRuntime();
   const selection = useSelection();
   const file = useStudio((s) => s.files.find((f) => f.ref.id === selection.file));
   const waveformTask = useStudio((s) =>

@@ -5,8 +5,8 @@ import { reader, getReaderState } from "@bcr/reader-studio/store";
 import { DEFAULT_READER_SETTINGS } from "@bcr/reader-studio/model";
 import { Effect } from "effect";
 import { decodeReaderBackup, readerTransferState } from "@bcr/reader-studio/research-transfer";
-import { ResearchStore } from "../src/research";
-import { createResearchBackup } from "../src/researchBackup";
+import { ResearchStore } from "../src/research/index";
+import { createResearchBackup } from "../src/research/backup";
 import {
   decodeResearchRecovery,
   readResearchRecovery,
@@ -14,13 +14,13 @@ import {
   verifyRecoveryPackage,
   clearResearchRecovery,
   compactCompletedRecovery,
-} from "../src/researchPackageRecovery";
+} from "../src/research/packageRecovery";
 import {
   saveRecoverySnapshot,
   saveRecoveryProgress,
   loadRecoverySnapshot,
-} from "../src/researchRecoveryJournal";
-import type { PreparedResearchPackage } from "../src/researchPackage";
+} from "../src/research/recoveryJournal";
+import type { PreparedResearchPackage } from "../src/research/package";
 
 async function fixture(): Promise<PreparedResearchPackage> {
   const blob = new Blob(["recovery source"]);

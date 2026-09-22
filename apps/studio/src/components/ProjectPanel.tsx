@@ -3,13 +3,13 @@ import { FilePlus2, File as FileIcon } from "lucide-react";
 import { useRef } from "react";
 import { importFile } from "../runtime";
 import { useSelection } from "../router";
-import { useServices } from "../services";
+import { useRuntime } from "@bcr/react";
 import { useStudio, type FileRecord } from "../store";
 import { formatBytes, PanelEmpty } from "./ui";
 
 /** 项目文件列表面板：大列表虚拟化（§12 TanStack Virtual）。 */
 export function ProjectPanel() {
-  const services = useServices();
+  const services = useRuntime();
   const files = useStudio((s) => s.files);
   const selection = useSelection();
   const parentRef = useRef<HTMLDivElement>(null);

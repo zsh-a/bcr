@@ -64,7 +64,7 @@ try {
         });
         if (researchCorpus) {
           const { researchDocuments } = await import(
-            `/@fs/${root}apps/studio/src/researchSearch.ts`
+            `/@fs/${root}apps/studio/src/research/search.ts`
           );
           documents = researchDocuments({
             version: 1,

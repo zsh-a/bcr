@@ -6,7 +6,7 @@ import {
   excerptFromDocument,
   ResearchStore,
   type ResearchLibrary,
-} from "../src/research";
+} from "../src/research/index";
 
 const document = {
   id: "reader:s:1",
@@ -147,7 +147,7 @@ describe("research collections", () => {
 
 it("saves the hit sentence, retains legacy excerpts, and reports honest source states", async () => {
   const { createSearchIndex, textVersion } = await import("@bcr/core");
-  const { excerptFromResult, assessExcerpt, sameExcerpt } = await import("../src/research");
+  const { excerptFromResult, assessExcerpt, sameExcerpt } = await import("../src/research/index");
   const index = createSearchIndex();
   const body = "前文。第一份证据。中间。第一份证据。结尾。";
   const current = {

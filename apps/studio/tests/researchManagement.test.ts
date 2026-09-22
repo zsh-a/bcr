@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ResearchStore, type ResearchLibrary, type ResearchExcerpt } from "../src/research";
+import { ResearchStore, type ResearchLibrary, type ResearchExcerpt } from "../src/research/index";
 import {
   renameCollection,
   deleteCollection,
@@ -10,7 +10,7 @@ import {
   draftKey,
   draftFailed,
   pruneDrafts,
-} from "../src/researchManagement";
+} from "../src/research/management";
 const excerpt: ResearchExcerpt = {
   id: "entry",
   documentId: "reader:1",

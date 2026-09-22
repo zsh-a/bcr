@@ -3,13 +3,13 @@ import { CircleStop } from "lucide-react";
 import { useRef } from "react";
 import { cancelTask } from "../runtime";
 import { useSelection } from "../router";
-import { useServices } from "../services";
+import { useRuntime } from "@bcr/react";
 import { useStudio, type TaskRecord } from "../store";
 import { Badge, formatDuration, PanelEmpty, ProgressBar, StatusDot } from "./ui";
 
 /** 任务历史面板：虚拟化列表（§12）。 */
 export function TasksPanel() {
-  const services = useServices();
+  const services = useRuntime();
   const tasks = useStudio((s) => s.tasks);
   const selection = useSelection();
   const parentRef = useRef<HTMLDivElement>(null);

@@ -3,7 +3,7 @@ import {
   decodeVolumeTaskState,
   hasVolumeOutput,
   nextPendingVolume,
-} from "../src/researchPackageState";
+} from "../src/research/packageState";
 describe("portable package task states", () => {
   it.each([
     ["待生成", "pending"],

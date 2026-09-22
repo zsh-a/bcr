@@ -1,4 +1,4 @@
-import type { RuntimeMetadata, SearchIndex, SearchDocument } from "@bcr/core";
+import type { RuntimeMetadata } from "@bcr/core";
 import { mergeContent } from "./merge";
 import {
   contentOf,
@@ -21,9 +21,34 @@ export class KnowledgeStore {
   private tail: Promise<unknown> = Promise.resolve();
   private reloadRequired = false;
   private closed = false;
+  private stopping = false;
+  private syncTask: Promise<unknown> | null = null;
+  private syncListeners = new Set<() => void>();
   private listeners = new Set<() => void>();
   readonly ready: Promise<void>;
-  syncing = false;
+  get syncing() {
+    return this.syncTask !== null;
+  }
+  getSyncSnapshot = () => this.syncing;
+  subscribeSync = (listener: () => void) => {
+    this.syncListeners.add(listener);
+    return () => {
+      this.syncListeners.delete(listener);
+    };
+  };
+  async runSync<T>(action: () => Promise<T>): Promise<T> {
+    if (this.stopping) throw new Error("知识库已关闭");
+    if (this.syncTask) throw new Error("同步正在进行");
+    const task = Promise.resolve().then(action);
+    this.syncTask = task;
+    for (const listener of this.syncListeners) listener();
+    try {
+      return await task;
+    } finally {
+      this.syncTask = null;
+      for (const listener of this.syncListeners) listener();
+    }
+  }
   constructor(private metadata: RuntimeMetadata | undefined) {
     this.ready = this.load();
     void this.ready.catch(() => undefined);
@@ -49,6 +74,9 @@ export class KnowledgeStore {
     if (this.reloadRequired) await this.update((state) => state);
   }
   async close() {
+    this.stopping = true;
+    // An accepted sync may still need to commit its durable publication receipt.
+    if (this.syncTask) await this.syncTask.catch(() => undefined);
     this.closed = true;
     await this.ready.catch(() => undefined);
     await this.tail.catch(() => undefined);
@@ -227,41 +255,4 @@ export class KnowledgeStore {
       return this.withHistory(state, restored, "备份恢复前版本");
     });
   }
-}
-const stores = new WeakMap<RuntimeMetadata, KnowledgeStore>();
-export function workspaceKnowledge(metadata: RuntimeMetadata | undefined): KnowledgeStore {
-  if (!metadata) return new KnowledgeStore(undefined);
-  let store = stores.get(metadata);
-  if (!store) {
-    store = new KnowledgeStore(metadata);
-    stores.set(metadata, store);
-  }
-  return store;
-}
-export async function closeKnowledge(metadata: RuntimeMetadata | undefined) {
-  if (metadata) await stores.get(metadata)?.close();
-}
-export function publishKnowledge(search: SearchIndex, content: KnowledgeContent) {
-  const documents: SearchDocument[] = Object.values(content.notes).flatMap((note) => {
-    const body = note.body || note.title,
-      result: SearchDocument[] = [];
-    for (let offset = 0; offset < body.length || offset === 0; offset += 1680) {
-      result.push({
-        id: `knowledge:${note.id}:${offset}`,
-        source: "knowledge",
-        kind: "knowledge-note",
-        title: note.title || "未命名笔记",
-        body: body.slice(offset, offset + 1800),
-        subtitle: note.collectionId
-          ? (content.collections[note.collectionId]?.name ?? "未归类")
-          : "个人笔记",
-        tags: note.tags,
-        route: `/knowledge?note=${encodeURIComponent(note.id)}`,
-        updatedAt: note.updatedAt,
-      });
-      if (offset + 1800 >= body.length) break;
-    }
-    return result;
-  });
-  search.replaceSource("knowledge", documents);
 }

@@ -144,6 +144,9 @@ export function createSurfaceRegistry() {
   }
 
   return {
+    refreshSurface(surface: AgentSurface) {
+      if (surfaces.get(surface.kind) === surface) emit();
+    },
     registerSurface,
     activateSurface,
     activeSurface,

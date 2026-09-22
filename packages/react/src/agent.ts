@@ -1,12 +1,6 @@
 import { useSyncExternalStore } from "react";
-import {
-  agentConfigured,
-  agentEndpoint,
-  agentSnapshot,
-  configureAgent,
-  subscribeAgent,
-  type AgentEndpoint,
-} from "@bcr/agent";
+import { agentConfigured, type AgentEndpoint } from "@bcr/agent";
+import { useAgentHost } from "./AgentProvider";
 
 export interface AgentService {
   readonly endpoint: AgentEndpoint;
@@ -16,10 +10,11 @@ export interface AgentService {
 
 /** Shared endpoint configuration; credentials remain in page memory. */
 export function useAgent(): AgentService {
-  const endpoint = useSyncExternalStore(subscribeAgent, agentSnapshot);
+  const { settings } = useAgentHost();
+  const endpoint = useSyncExternalStore(settings.subscribe, settings.getSnapshot);
   return {
     endpoint,
-    configured: agentConfigured(agentEndpoint()),
-    setEndpoint: configureAgent,
+    configured: agentConfigured(endpoint),
+    setEndpoint: settings.configure,
   };
 }

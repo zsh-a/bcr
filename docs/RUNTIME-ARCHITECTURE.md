@@ -88,6 +88,18 @@ Media、Quant 在自身数据初始化完成后发布搜索文档；宿主不导
 
 页面目前仍采用 keep-alive，避免在清理时丢失草稿、媒体资源和后台任务。自动回收页面、会话持久化与恢复不是本轮变更内容，需要先给领域状态增加明确的保存/恢复契约。
 
+### 领域服务与代码职责
+
+Studio 的 `workspace.ts` 是领域服务组合入口，按元数据会话共享 KnowledgeStore 和 ResearchStore；领域自身不再维护各自的 WeakMap。Runtime 持有组合入口返回的服务，正常关闭及初始化失败均按领域服务、搜索、底层 Runtime 的顺序释放。插件只负责注册能力与搜索投影，不拥有数据库或领域服务的关闭权。组合入口的关闭是幂等的。
+
+知识库同步的唯一运行状态由 `KnowledgeStore.runSync` 维护，并通过独立快照订阅发布。同步开始前的编辑器保存也在同一个同步互斥区内。关闭时先停止接受新同步，允许已经开始的同步提交远端发布回执，然后关闭并排空本地写入队列。ResearchStore 同时排空资料写入队列和资料包记录队列。
+
+知识库职责分为：`actions.ts` 编排创建、导入、导出并经过草稿保存屏障；`useKnowledgeSync.ts` 负责浏览器自动同步调度；`draft.ts` 负责单篇草稿、恢复副本和保存状态；`useNoteDraft.ts` 负责自动保存与卸载监听；`editorAgent.ts` 和 `useNoteAgent.ts` 适配编辑目标与工具；`search.ts` 发布搜索投影。页面保留导航与提示，编辑器保留输入和预览。标题、选区变化更新目标摘要，但不重新注册工具实例；切换笔记仍创建新的草稿与目标身份。
+
+Agent 的 `session.ts` 只编排单次任务和会话快照，`toolExecution.ts` 统一授权、审批、权限复核、执行及结果转换，`surfaceEdit.ts` 维护编辑建议与真实保存回执。模型配置由 AgentHost 的 `settings` 实例持有；不同 Host 的地址和密钥相互隔离，配置仍仅保存在内存。
+
+Research 实现统一位于 `apps/studio/src/research/`，其中 `model.ts` 是类型与规则、`store.ts` 是持久化、`components/` 是领域界面。`@bcr/react` 的入口只导出 API，Runtime、任务和产物 hooks 分别在 `runtime.ts`、`tasks.ts`、`artifacts.ts`；旧 `useServices` 别名已移除，调用方统一使用 `useRuntime`。
+
 ### 回归检查
 
 Agent 编辑目标的 `write()` 是异步持久化契约，返回资源 ID 和版本回执。会话只在回执成功后报告保存；资料构造由 `buildAgentMessages` 统一处理，系统消息只包含固定规则，不拼接领域文本。循环结果显式携带 `finishReason` 与轮次数，耗尽预算不再等同正常完成。

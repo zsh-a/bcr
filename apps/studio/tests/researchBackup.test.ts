@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createSearchIndex } from "@bcr/core";
-import { assessExcerpt, ResearchStore, type ResearchLibrary } from "../src/research";
+import { assessExcerpt, ResearchStore, type ResearchLibrary } from "../src/research/index";
 import {
   createResearchBackup,
   decodeResearchBackup,
   planResearchImport,
-} from "../src/researchBackup";
-import { readDraft } from "../src/researchManagement";
+} from "../src/research/backup";
+import { readDraft } from "../src/research/management";
 const empty: ResearchLibrary = { version: 1, collections: [] };
 const library: ResearchLibrary = {
   version: 1,

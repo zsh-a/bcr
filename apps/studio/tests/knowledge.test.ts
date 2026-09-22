@@ -20,7 +20,8 @@ import {
   parseNoteMarkdown,
 } from "../src/knowledge/files";
 import { mergeContent, mergeText } from "../src/knowledge/merge";
-import { KnowledgeStore, publishKnowledge } from "../src/knowledge/store";
+import { KnowledgeStore } from "../src/knowledge/store";
+import { publishKnowledge } from "../src/knowledge/search";
 import { GitHubKnowledge } from "../src/knowledge/github";
 import { syncKnowledge } from "../src/knowledge/sync";
 

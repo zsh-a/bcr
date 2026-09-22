@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { createSearchIndex } from "@bcr/core";
-import { ResearchStore, type ResearchLibrary } from "../src/research";
+import { ResearchStore, type ResearchLibrary } from "../src/research/index";
 import {
   publishResearch,
   researchDocuments,
   researchSource,
   researchTarget,
-} from "../src/researchSearch";
-import { moveExcerpt, renameCollection, deleteCollection } from "../src/researchManagement";
+} from "../src/research/search";
+import { moveExcerpt, renameCollection, deleteCollection } from "../src/research/management";
 const library: ResearchLibrary = {
   version: 1,
   collections: [

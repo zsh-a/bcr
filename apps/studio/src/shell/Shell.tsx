@@ -16,7 +16,7 @@ import { createRuntimeServices } from "../runtime";
 import { SearchBridge } from "../search-bridge";
 import { appIdFromPath, LAUNCH_PAD_APPS, MANIFESTS } from "./registry";
 import { Home } from "./Home";
-import { ResearchCaptureBridge } from "../ResearchCaptureBridge";
+import { ResearchCaptureBridge } from "../research/CaptureBridge";
 import { PluginHost } from "./PluginHost";
 import { AssistantWindow, type AssistantVisibility } from "../assistant/AssistantWindow";
 

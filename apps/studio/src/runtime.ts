@@ -8,7 +8,7 @@ import {
   type TaskHandle,
   type TaskJournalEntry,
 } from "@bcr/core";
-import type { RuntimeMetadata, RuntimeServices } from "@bcr/react";
+import type { RuntimeMetadata, RuntimeServices } from "@bcr/core";
 import { createBrowserRuntime } from "@bcr/runtime-browser";
 import { workerExecutor, WorkerPool } from "@bcr/runtime-worker";
 import type { BinaryStore } from "@bcr/storage-opfs";
@@ -18,7 +18,7 @@ import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import { Effect } from "effect";
 import { COMPUTE_OPERATIONS } from "./compute-contract";
 import { studio, type FileRecord, type TaskRecord } from "./store";
-import { closeKnowledge } from "./knowledge/store";
+import { workspaceServices } from "./workspace";
 
 let taskSeq = 0;
 
@@ -66,6 +66,7 @@ export async function createRuntimeServices(): Promise<RuntimeSession> {
     },
   });
   const metadata = session.metadata;
+  const workspace = workspaceServices(metadata);
   const search = createSearchIndex(
     metadata === undefined
       ? undefined
@@ -83,15 +84,23 @@ export async function createRuntimeServices(): Promise<RuntimeSession> {
       search,
       dispose: async () => {
         try {
-          await closeKnowledge(metadata);
-          await search.close();
+          try {
+            await workspace.close();
+          } finally {
+            await search.close();
+          }
         } finally {
           await session.host.dispose();
         }
       },
     };
   } catch (error) {
-    await session.host.dispose();
+    try {
+      await workspace.close();
+      await search.close();
+    } finally {
+      await session.host.dispose();
+    }
     throw error;
   }
 }

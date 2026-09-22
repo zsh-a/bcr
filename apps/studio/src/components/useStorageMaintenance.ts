@@ -9,7 +9,7 @@ import type {
 import { Effect } from "effect";
 import { useCallback, useState } from "react";
 import { CACHE_RETENTION, JOURNAL_RETENTION } from "../storage-policy";
-import { useServices } from "../services";
+import { useRuntime } from "@bcr/react";
 import { studio } from "../store";
 import { formatBytes } from "./ui";
 
@@ -55,7 +55,7 @@ function errorMessage(reason: unknown): string {
 }
 
 export function useStorageMaintenance(): StorageMaintenanceController {
-  const services = useServices();
+  const services = useRuntime();
   const [cleanup, setCleanup] = useState<CleanupState>({ status: "idle" });
   const [maintenance, setMaintenance] = useState<MaintenanceState>({ status: "idle" });
 

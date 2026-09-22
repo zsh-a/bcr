@@ -26,9 +26,9 @@
 
 ## 实现边界
 
-`ResearchPackagePanel` 只组装表单与展示组件；`ResearchPackageViews` 展示续传、导出、恢复及来源汇总。`useResearchPackageController` 编排业务命令，`useResearchPackageAction` 集中管理取消和过期结果隔离，`useResearchPackageRecords` 管理本地记录加载与串行保存。文件选择、下载 URL 生命周期位于 `researchPackageFiles`，其中选择器仍在点击调用栈中打开。
+领域实现统一位于 `apps/studio/src/research/`。`components/ResearchPackagePanel` 只组装表单与展示组件；`ResearchPackageViews` 展示续传、导出、恢复及来源汇总。`useResearchPackageController` 编排业务命令，`useResearchPackageAction` 集中管理取消和过期结果隔离，`useResearchPackageRecords` 管理本地记录加载与串行保存。文件选择、下载 URL 生命周期位于 `packageFiles.ts`，其中选择器仍在点击调用栈中打开。
 
-引用展开、状态分类与绑定组合位于 `researchPackageReferences`，保持原始引用、历史顺序和绑定顺序；目录校验使用按书籍 ID 建立的索引，每本书只计算一次身份。任务状态、旧记录迁移与来源展示规则由独立的类型和纯函数维护。
+引用展开、状态分类与绑定组合位于 `packageReferences.ts`，保持原始引用、历史顺序和绑定顺序；目录校验使用按书籍 ID 建立的索引，每本书只计算一次身份。任务状态、旧记录迁移与来源展示规则由独立的类型和纯函数维护。
 
 ## 文件契约
 

@@ -1,5 +1,5 @@
-import { decodePackageTask, verifyPackageTask } from "../src/researchPackageTask";
-import { writeResearchPackage } from "../src/researchPackageStream";
+import { decodePackageTask, verifyPackageTask } from "../src/research/packageTask";
+import { writeResearchPackage } from "../src/research/packageStream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   BlobWriter,
@@ -19,9 +19,9 @@ import {
   restoreResearchPackage,
   planResearchPackage,
   createResearchPackage,
-} from "../src/researchPackage";
-import { boundReaderExcerpt, decodeResearch, type ResearchLibrary } from "../src/research";
-import { createResearchBackup, planResearchImport } from "../src/researchBackup";
+} from "../src/research/package";
+import { boundReaderExcerpt, decodeResearch, type ResearchLibrary } from "../src/research/index";
+import { createResearchBackup, planResearchImport } from "../src/research/backup";
 import { createReaderRuntime } from "@bcr/reader-studio/runtime";
 import { reader, getReaderState } from "@bcr/reader-studio/store";
 import { readerTransferState, restoreReaderTransfer } from "@bcr/reader-studio/research-transfer";
