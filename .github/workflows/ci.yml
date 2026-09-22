@@ -29,6 +29,14 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
+      # The Agent submodule pins its own Rust version. Targets installed for
+      # stable are not shared with that toolchain; resolve it from its directory.
+      - name: Prepare Agent Runtime Rust toolchain
+        working-directory: crates/agent-runtime
+        run: |
+          rustup show active-toolchain
+          rustup target add wasm32-unknown-unknown
+
       - uses: actions/cache@v4
         with:
           path: |
@@ -36,7 +44,7 @@ jobs:
             ~/.cargo/git
             crates/kernels/target
             crates/agent-runtime/target
-          key: rust-${{ runner.os }}-${{ hashFiles('crates/kernels/Cargo.lock', 'crates/agent-runtime/Cargo.lock') }}
+          key: rust-${{ runner.os }}-${{ hashFiles('crates/kernels/Cargo.lock', 'crates/agent-runtime/Cargo.lock', 'crates/agent-runtime/rust-toolchain.toml') }}
 
       - name: Install dependencies
         run: bun ci
@@ -62,7 +70,8 @@ jobs:
         run: cargo test --manifest-path crates/kernels/Cargo.toml
 
       - name: Run Agent Runtime Rust tests
-        run: cargo test --manifest-path crates/agent-runtime/Cargo.toml
+        working-directory: crates/agent-runtime
+        run: cargo test
 
       - name: Build Media Studio
         run: node_modules/.bin/vp -C apps/media-studio build
