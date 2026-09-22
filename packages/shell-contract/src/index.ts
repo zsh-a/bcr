@@ -1,4 +1,17 @@
 import type { ComponentType, LazyExoticComponent } from "react";
+import type { RuntimeServices } from "@bcr/core";
+import type { AgentHost } from "@bcr/agent";
+
+export interface PluginContext {
+  readonly runtime: RuntimeServices;
+  readonly agent: AgentHost;
+  readonly reportError: (error: unknown) => void;
+}
+export interface WorkspacePlugin {
+  readonly id: string;
+  /** Registers services independently of the workspace view. Cleanup must be idempotent. */
+  readonly activate: (context: PluginContext) => () => void;
+}
 
 /**
  * The contract an application implements to be embedded in the Studio shell.
@@ -60,4 +73,16 @@ export interface AppManifest<Operation extends string = string> {
   /** Parses the URL search params this route owns. */
   readonly validateSearch?: (search: Record<string, unknown>) => Record<string, unknown>;
   readonly compute?: AppCompute<Operation>;
+  readonly plugins?: readonly WorkspacePlugin[];
+}
+
+/** Global tools are commands/panels, not empty workspace routes. */
+export interface PanelManifest {
+  readonly kind: "panel";
+  readonly id: string;
+  readonly title: string;
+  readonly icon: AppIcon;
+  readonly description: string;
+  readonly section: AppSection;
+  readonly paletteTitle?: string;
 }

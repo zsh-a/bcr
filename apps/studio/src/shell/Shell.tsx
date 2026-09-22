@@ -1,7 +1,14 @@
-import { citationFromParams, type SearchDocument } from "@bcr/core";
-import { notifyNavigation, RuntimeActivity, RuntimeProvider, useRuntimeSession } from "@bcr/react";
+import type { SearchDocument } from "@bcr/core";
+import { NavigationBridge } from "./NavigationBridge";
+import {
+  AgentProvider,
+  useNavigation,
+  RuntimeActivity,
+  RuntimeProvider,
+  useRuntimeSession,
+} from "@bcr/react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { CommandPalette } from "../components/CommandPalette";
 import { SearchPanel } from "../components/SearchPanel";
 import { TopBar } from "../components/TopBar";
@@ -10,13 +17,12 @@ import { SearchBridge } from "../search-bridge";
 import { appIdFromPath, LAUNCH_PAD_APPS, MANIFESTS } from "./registry";
 import { Home } from "./Home";
 import { ResearchCaptureBridge } from "../ResearchCaptureBridge";
-import { KnowledgeBridge } from "../knowledge/KnowledgeBridge";
+import { PluginHost } from "./PluginHost";
 import { AssistantWindow, type AssistantVisibility } from "../assistant/AssistantWindow";
-import { WorkspaceCapabilities } from "../assistant/WorkspaceCapabilities";
 
 /**
  * OS 式 Shell 根布局（§12：URL 即状态）：
- * - `/` 启动台，其余路由由 `APPS` 注册表定义（见 `shell/apps.tsx`），
+ * - `/` 启动台，其余路由由 `MANIFESTS` 注册表定义（见 `shell/registry.ts`），
  *   浏览器前进/后退天然可用。
  * - Keep-alive：进入过的 App 常驻挂载，切走仅 display:none——
  *   worker 内任务、视频播放、字幕编辑状态全部保留。
@@ -24,20 +30,40 @@ import { WorkspaceCapabilities } from "../assistant/WorkspaceCapabilities";
  *   领域计算会话继承 Host 预算；应用激活状态与计算生命周期独立。
  */
 export function Shell() {
+  return (
+    <NavigationBridge>
+      <AgentProvider>
+        <ShellContent />
+      </AgentProvider>
+    </NavigationBridge>
+  );
+}
+
+function ShellContent() {
+  const navigation = useNavigation();
   const { services, error } = useRuntimeSession(createRuntimeServices);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [assistantVisibility, setAssistantVisibility] = useState<AssistantVisibility>("closed");
   const navigate = useNavigate();
-  const active = appIdFromPath(useRouterState({ select: (s) => s.location.pathname }));
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const active = appIdFromPath(pathname);
+  const openPanel = useCallback((id: string) => {
+    if (id === "assistant") setAssistantVisibility("open");
+  }, []);
   const [visited, setVisited] = useState<ReadonlyArray<string>>(active === "home" ? [] : [active]);
 
   useEffect(() => {
-    if (active === "assistant") setAssistantVisibility("open");
     if (active !== "home") {
       setVisited((list) => (list.includes(active) ? list : [...list, active]));
     }
   }, [active]);
+
+  useEffect(() => {
+    if (pathname !== "/assistant") return;
+    openPanel("assistant");
+    void navigate({ to: "/", replace: true });
+  }, [pathname, navigate, openPanel]);
 
   // ⌘K 命令面板；Alt+0 主页 / Alt+数字 切 App（⌘+数字被浏览器标签页占用）
   useEffect(() => {
@@ -68,29 +94,19 @@ export function Shell() {
         const app = LAUNCH_PAD_APPS[Number(event.code.slice(5)) - 1];
         if (app !== undefined) {
           event.preventDefault();
-          void navigate({ to: app.path });
+          if (app.kind === "panel") openPanel(app.id);
+          else void navigate({ to: app.path });
         }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [navigate]);
+  }, [navigate, openPanel]);
 
   const openSearchDocument = (document: SearchDocument): void => {
     const route = document.route;
     if (route === undefined || route.length === 0) return;
-    const target = new URL(route, window.location.origin);
-    const searchParams: Record<string, unknown> = Object.fromEntries(target.searchParams.entries());
-    if (target.searchParams.has("cite"))
-      searchParams["cite"] = citationFromParams(target.searchParams) ?? "invalid";
-    for (const key of ["start", "end", "time"]) {
-      const value = searchParams[key];
-      if (typeof value === "string" && value.trim() && Number.isFinite(Number(value)))
-        searchParams[key] = Number(value);
-    }
-    void navigate({ to: target.pathname as never, search: searchParams as never }).then(() => {
-      notifyNavigation();
-    });
+    navigation.navigate(route);
   };
 
   if (error !== null) return <div role="alert">Runtime 启动失败：{error}</div>;
@@ -109,8 +125,7 @@ export function Shell() {
     <RuntimeProvider services={services}>
       <ResearchCaptureBridge>
         <SearchBridge services={services} />
-        <KnowledgeBridge />
-        <WorkspaceCapabilities />
+        <PluginHost />
         <div
           className={`studio-shell-frame flex h-full flex-col ${active === "reader" ? "reader-active" : ""}`}
         >
@@ -118,40 +133,37 @@ export function Shell() {
             active={active}
             onOpenPalette={() => setPaletteOpen(true)}
             onOpenSearch={() => setSearchOpen(true)}
-            onOpenAgent={() => setAssistantVisibility("open")}
+            onOpenAgent={() => openPanel("assistant")}
           />
           <div className="min-h-0 flex-1">
-            {(active === "home" || active === "assistant") && (
-              <Home onOpenAssistant={() => setAssistantVisibility("open")} />
-            )}
-            {MANIFESTS.filter((app) => app.id !== "assistant" && visited.includes(app.id)).map(
-              (app) => (
-                <div key={app.id} className={app.id === active ? "h-full min-h-0" : "hidden"}>
-                  <Suspense
-                    fallback={
-                      <div className="flex h-full items-center justify-center">
-                        <p className="font-mono text-[11px] text-faint">{app.title} 加载中…</p>
-                      </div>
-                    }
-                  >
-                    <RuntimeActivity active={app.id === active}>
-                      <app.component />
-                    </RuntimeActivity>
-                  </Suspense>
-                </div>
-              ),
-            )}
+            {active === "home" && <Home onOpenPanel={openPanel} />}
+            {MANIFESTS.filter((app) => visited.includes(app.id)).map((app) => (
+              <div
+                key={app.id}
+                className={app.id === active ? "relative isolate h-full min-h-0" : "hidden"}
+              >
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center">
+                      <p className="font-mono text-[11px] text-faint">{app.title} 加载中…</p>
+                    </div>
+                  }
+                >
+                  <RuntimeActivity active={app.id === active}>
+                    <app.component />
+                  </RuntimeActivity>
+                </Suspense>
+              </div>
+            ))}
           </div>
         </div>
         <AssistantWindow
           visibility={assistantVisibility}
           onVisibilityChange={setAssistantVisibility}
-          workspaceId={active === "assistant" ? "home" : active}
-          workspaceLabel={
-            MANIFESTS.find((app) => app.id === active && app.id !== "assistant")?.title ?? "工作台"
-          }
+          workspaceId={active}
+          workspaceLabel={MANIFESTS.find((app) => app.id === active)?.title ?? "工作台"}
         />
-        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onOpenPanel={openPanel} />
         <SearchPanel
           open={searchOpen}
           onOpenChange={setSearchOpen}

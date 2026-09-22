@@ -1,46 +1,7 @@
 @import "tailwindcss";
+@import "@bcr/react/theme.css";
 
 /* BCR Studio — Market Atlas 同源的现代编辑式计算工作台。 */
-@theme {
-  --color-bg: #090b0c;
-  --color-surface: #111516;
-  --color-raised: #181d1e;
-  --color-overlay: #202627;
-  --color-border: #343d3a;
-  --color-border-strong: #46524e;
-  --color-text: #f5f5ed;
-  --color-muted: #aab2ad;
-  --color-faint: #75807b;
-  --color-accent: #65d8d0;
-  --color-accent-dim: #173b39;
-  --color-amber: #efbc69;
-  --color-danger: #ff766d;
-  --color-info: #82aef7;
-
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
-
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-}
-
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
-}
-
-body {
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  overflow: hidden;
-}
 
 .studio-topbar {
   position: relative;

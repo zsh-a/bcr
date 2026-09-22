@@ -1,11 +1,12 @@
 @import "tailwindcss";
+@import "@bcr/react/theme.css";
 
 /* 作为 Shell 懒加载 chunk 时，vite root 是 apps/studio——
    自动源检测扫不到本包，必须显式声明扫描目录（相对本 CSS 文件）。 */
 @source ".";
 
 /* DocGen Lab — 与 media-studio 同源的暗色工作站主题（系统字体栈，本 app 不引外部字体包） */
-@theme {
+.docgen-studio {
   --color-bg: #0a0c0d;
   --color-surface: #121617;
   --color-raised: #191e1f;
@@ -26,36 +27,20 @@
   --radius-md: 12px;
 }
 
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
-}
-
-body {
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-}
-
-* {
+.docgen-studio * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border-strong) transparent;
 }
 
-input,
-select,
-button {
+.docgen-studio input,
+.docgen-studio select,
+.docgen-studio button {
   font: inherit;
   color: inherit;
 }
 
-input:not([type="checkbox"]),
-select {
+.docgen-studio input:not([type="checkbox"]),
+.docgen-studio select {
   min-height: 38px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
@@ -65,19 +50,19 @@ select {
   width: 100%;
 }
 
-button {
+.docgen-studio button {
   cursor: pointer;
   touch-action: manipulation;
 }
 
-button:focus-visible,
-input:focus-visible,
-select:focus-visible {
+.docgen-studio button:focus-visible,
+.docgen-studio input:focus-visible,
+.docgen-studio select:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 3px;
 }
 
-.btn {
+.docgen-studio .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -89,20 +74,20 @@ select:focus-visible {
   padding: 0 13px;
   white-space: nowrap;
 }
-.btn:hover:not(:disabled) {
+.docgen-studio .btn:hover:not(:disabled) {
   border-color: var(--color-accent);
 }
-.btn:disabled {
+.docgen-studio .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
-.btn-primary {
+.docgen-studio .btn-primary {
   background: var(--color-accent);
   border-color: var(--color-accent);
   color: #241a06;
   font-weight: 600;
 }
-.btn-primary:hover:not(:disabled) {
+.docgen-studio .btn-primary:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-accent) 85%, white);
 }
 

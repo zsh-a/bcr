@@ -8,14 +8,18 @@ const endpoint = { baseUrl: "http://x/v1", apiKey: "k", model: "m" };
 
 const parse = (value: string): unknown => JSON.parse(value) as unknown;
 
-const spec = (name: string, risk = "read_only") => ({
+const spec = (name: string, risk: import("../src/tools").ToolRisk = "read_only") => ({
   name,
   description: name,
   input_schema: { type: "object" },
   risk,
 });
 
-const tool = (name: string, output: unknown, risk = "read_only"): AgentTool => ({
+const tool = (
+  name: string,
+  output: unknown,
+  risk: import("../src/tools").ToolRisk = "read_only",
+): AgentTool => ({
   spec: spec(name, risk),
   call: async () => JSON.stringify(output),
 });
@@ -69,7 +73,7 @@ describe("tool risk policy", () => {
       risk: "read_only",
     });
     expect(requiresApproval(spec("lookup", "read_only"))).toBe(false);
-    for (const risk of ["low", "medium", "high"])
+    for (const risk of ["low", "medium", "high"] as const)
       expect(requiresApproval(spec("w", risk))).toBe(true);
     // An unparseable spec fails closed: unknown capability means ask a human.
     expect(requiresApproval(null)).toBe(true);

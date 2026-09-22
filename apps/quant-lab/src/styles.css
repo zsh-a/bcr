@@ -1,17 +1,5 @@
-:root {
+.quant-lab {
   color-scheme: dark;
-}
-
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
-}
-
-body {
-  overflow: hidden;
-  background: #080a09;
 }
 
 .quant-lab,

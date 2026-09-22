@@ -1,3 +1,4 @@
+import { useNavigation } from "@bcr/react";
 import type { SearchDocument } from "@bcr/core";
 import {
   consumeDocumentHandoff,
@@ -94,6 +95,7 @@ async function exportCurrentPage(): Promise<void> {
 }
 
 export function App() {
+  const navigation = useNavigation();
   const state = useMangaStudio((snapshot) => snapshot);
   usePublishRunningCount("manga", state.running ? 1 : 0);
   const hostServices = useOptionalRuntime();
@@ -485,7 +487,7 @@ export function App() {
     if (handoffId === null || handoffId === handoffRef.current) return;
     handoffRef.current = handoffId;
     const handoff = consumeDocumentHandoff(handoffId, "manga");
-    window.history.replaceState({}, "", "/manga");
+    navigation.navigate("/manga", true);
     if (handoff === undefined) {
       const marker = getDocumentHandoffMarker();
       markDocumentHandoffExpired(handoffId, "manga");

@@ -113,7 +113,7 @@ function boundaryOverrides(apps: ReadonlyArray<string>) {
         ? []
         : [
             {
-              group: apps.map((name) => `${name}/*`),
+              group: apps.flatMap((name) => [name, `${name}/*`]),
               message:
                 "App packages are only composed by the host; share behaviour through a @bcr/*-core package or the host instead.",
             },

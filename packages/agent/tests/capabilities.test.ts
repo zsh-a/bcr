@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  agentCapabilities,
-  availableAgentCapabilities,
-  registerAgentCapability,
-} from "../src/capabilities";
+import { createCapabilityRegistry } from "../src/capabilities";
+const { agentCapabilities, availableAgentCapabilities, registerAgentCapability } =
+  createCapabilityRegistry();
 
 describe("agent capabilities", () => {
   it("registers domain tools and removes them with their owner", () => {

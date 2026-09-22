@@ -1,3 +1,4 @@
+import { useNavigation } from "@bcr/react";
 import { readerUsesPagedText } from "./model";
 import {
   hasDeferredContent,
@@ -19,7 +20,7 @@ import {
   markDocumentHandoffExpired,
   publishDocumentHandoff,
 } from "@bcr/document-core";
-import { RUNTIME_NAVIGATION_EVENT, useLocationSearch, useOptionalRuntime } from "@bcr/react";
+import { useLocationSnapshot, useLocationSearch, useOptionalRuntime } from "@bcr/react";
 import {
   importReaderDocumentHandoff,
   importReaderExportBundle,
@@ -73,6 +74,7 @@ function parseReaderRouteSearch(value: string): ReaderRouteSearch {
 }
 
 export function App(props: { workspaceCollections?: boolean } = {}) {
+  const navigation = useNavigation();
   const { runtime, error: runtimeError, recovery } = useReaderBoot();
   const hostServices = useOptionalRuntime();
   const pwaInstall = useReaderPwaInstall();
@@ -96,12 +98,7 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
   const [installHelpOpen, setInstallHelpOpen] = useState(false);
   const [mobileChromeVisible, setMobileChromeVisible] = useState(true);
   const appliedRouteRef = useRef("");
-  const [citationNavigation, setCitationNavigation] = useState(0);
-  useEffect(() => {
-    const navigate = () => setCitationNavigation((value) => value + 1);
-    window.addEventListener(RUNTIME_NAVIGATION_EVENT, navigate);
-    return () => window.removeEventListener(RUNTIME_NAVIGATION_EVENT, navigate);
-  }, []);
+  const citationNavigation = useLocationSnapshot().revision;
   const mobileSidebarInitializedRef = useRef(false);
 
   useEffect(() => {
@@ -444,7 +441,7 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
     if (handoffId === null || handoffId === handoffRef.current) return;
     handoffRef.current = handoffId;
     const handoff = consumeDocumentHandoff(handoffId, "reader");
-    window.history.replaceState({}, "", "/reader");
+    navigation.navigate("/reader", true);
     if (handoff === undefined) {
       const marker = getDocumentHandoffMarker();
       markDocumentHandoffExpired(handoffId, "reader");

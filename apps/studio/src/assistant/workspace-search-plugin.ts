@@ -1,13 +1,10 @@
-import { useEffect } from "react";
-import { useRuntime } from "@bcr/react";
-import { registerAgentCapability } from "@bcr/agent";
+import type { WorkspacePlugin } from "@bcr/shell-contract";
 
-/** Every domain's published search documents are accessible through one shared tool. */
-export function WorkspaceCapabilities() {
-  const { search } = useRuntime();
-  useEffect(() => {
-    if (!search) return;
-    return registerAgentCapability({
+export const workspaceSearchPlugin: WorkspacePlugin = {
+  id: "workspace.search",
+  activate({ runtime: { search }, agent }) {
+    if (!search) return () => {};
+    return agent.registerAgentCapability({
       id: "workspace.search",
       label: "跨域搜索",
       description: "搜索各工作区已索引的文件、资料、市场标的和任务",
@@ -50,6 +47,5 @@ export function WorkspaceCapabilities() {
         },
       ],
     });
-  }, [search]);
-  return null;
-}
+  },
+};

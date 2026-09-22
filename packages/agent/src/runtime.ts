@@ -25,11 +25,23 @@ export interface AgentMessage {
 }
 
 /** A tool the host executes. Registered once and offered on every turn. */
+export interface AgentToolSpec {
+  readonly name: string;
+  readonly description?: string;
+  readonly input_schema?: Readonly<Record<string, unknown>>;
+  readonly risk?: import("./tools").ToolRisk;
+}
+
+export interface ToolExecutionContext {
+  readonly signal?: AbortSignal | undefined;
+  readonly callId: string;
+}
+
 export interface AgentTool {
   /** A `ToolSpec` from agent-core: `name`, `description`, `input_schema`, `risk`, … */
-  readonly spec: unknown;
+  readonly spec: AgentToolSpec;
   /** Receives the call input as JSON and resolves with the output as JSON. */
-  readonly call: (inputJson: string) => Promise<string>;
+  readonly call: (inputJson: string, context?: ToolExecutionContext) => Promise<string>;
 }
 
 /** Raised for a turn that failed, so callers surface the reason instead of a partial result. */

@@ -1,0 +1,24 @@
+/* Shared workstation tokens. Domain accents belong on domain roots. */
+@theme {
+  --color-bg: #090b0c;
+  --color-surface: #111516;
+  --color-raised: #181d1e;
+  --color-overlay: #202627;
+  --color-border: #343d3a;
+  --color-border-strong: #46524e;
+  --color-text: #f5f5ed;
+  --color-muted: #aab2ad;
+  --color-faint: #75807b;
+  --color-accent: #65d8d0;
+  --color-accent-dim: #173b39;
+  --color-amber: #efbc69;
+  --color-danger: #ff766d;
+  --color-info: #82aef7;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+}

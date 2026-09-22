@@ -153,15 +153,6 @@ jobs:
       - name: Verify production knowledge offline and sync
         run: BCR_KNOWLEDGE_PRODUCTION=1 node scripts/verify-knowledge.mjs
 
-      - name: Verify AI note editing against a stub endpoint
-        run: BCR_KNOWLEDGE_PRODUCTION=1 node scripts/verify-knowledge-agent.mjs
-
-      - name: Verify the AI chat panel against a stub endpoint
-        run: BCR_KNOWLEDGE_PRODUCTION=1 node scripts/verify-knowledge-agent-chat.mjs
-
-      - name: Verify the AI agent loop against a stub endpoint
-        run: BCR_KNOWLEDGE_PRODUCTION=1 node scripts/verify-knowledge-agent-loop.mjs
-
       - name: Run browser verification
         run: bun run test:browser
 

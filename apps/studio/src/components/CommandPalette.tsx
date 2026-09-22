@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { LAUNCH_PAD_APPS, MANIFESTS } from "../shell/registry";
+import { LAUNCH_PAD_APPS, MANIFESTS, PANELS } from "../shell/registry";
 import { resetLayout } from "./Dock";
 import { StorageMaintenanceDialogs } from "./StorageMaintenanceDialogs";
 import { useStorageMaintenance } from "./useStorageMaintenance";
@@ -29,7 +29,11 @@ interface Command {
 }
 
 /** 命令面板（Base UI Dialog + ⌘K）。 */
-export function CommandPalette(props: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function CommandPalette(props: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onOpenPanel: (id: string) => void;
+}) {
   const services = useServices();
   const selection = useSelection();
   const navigate = useNavigate();
@@ -51,14 +55,15 @@ export function CommandPalette(props: { open: boolean; onOpenChange: (open: bool
       // pad and in the Alt+N shortcuts but go missing here. Shortcut hints come
       // from the launch-pad order, so a URL-only route (DocGen Lab) advertises
       // no number instead of inheriting one it does not own.
-      ...MANIFESTS.map((app) => {
+      ...[...MANIFESTS, ...PANELS].map((app) => {
         const shortcut = LAUNCH_PAD_APPS.indexOf(app) + 1;
         return {
           id: `go-${app.id}`,
           title: `打开 ${app.paletteTitle ?? app.title}`,
           ...(shortcut >= 1 && shortcut <= 9 ? { hint: `Alt+${shortcut}` } : {}),
           icon: <app.icon className="size-3.5" />,
-          run: () => void navigate({ to: app.path }),
+          run: () =>
+            app.kind === "panel" ? props.onOpenPanel(app.id) : void navigate({ to: app.path }),
         };
       }),
       {
@@ -133,6 +138,7 @@ export function CommandPalette(props: { open: boolean; onOpenChange: (open: bool
       selection,
       currentFile,
       navigate,
+      props.onOpenPanel,
       storageMaintenance.startCleanup,
       storageMaintenance.startMaintenance,
     ],

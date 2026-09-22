@@ -22,7 +22,8 @@ export type { RuntimeHost, RuntimeMetadata, RuntimeServices, RuntimeSession } fr
 export { usePublishRunningCount, useRunningApps } from "./application-status";
 
 export { AgentChatPanel } from "./AgentChatPanel";
-export { asSuggestion, SURFACE_EDIT_TOOL, useAgentChat, type PendingApproval } from "./chat";
+export { AgentProvider, useAgentHost } from "./AgentProvider";
+export { useAgentChat, type PendingApproval } from "./chat";
 
 export { useAgent, type AgentService } from "./agent";
 
@@ -33,29 +34,14 @@ export {
   type ResearchCaptureService,
 } from "./research-capture";
 
-/** Host-shell navigation event used by keep-alive apps without a router provider. */
-export const RUNTIME_NAVIGATION_EVENT = "bcr:navigation";
-
-export function notifyNavigation(): void {
-  if (typeof window !== "undefined") window.dispatchEvent(new Event(RUNTIME_NAVIGATION_EVENT));
-}
-
-export function useLocationSearch(): string {
-  const [value, setValue] = useState(() =>
-    typeof window === "undefined" ? "" : window.location.search,
-  );
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const sync = () => setValue(window.location.search);
-    window.addEventListener("popstate", sync);
-    window.addEventListener(RUNTIME_NAVIGATION_EVENT, sync);
-    return () => {
-      window.removeEventListener("popstate", sync);
-      window.removeEventListener(RUNTIME_NAVIGATION_EVENT, sync);
-    };
-  }, []);
-  return value;
-}
+export {
+  NavigationProvider,
+  useNavigation,
+  useLocationSnapshot,
+  useLocationSearch,
+  type NavigationService,
+  type NavigationSnapshot,
+} from "./navigation";
 
 /**
  * React 绑定（架构文档 §12：状态分层——Runtime State 归 Runtime Core，

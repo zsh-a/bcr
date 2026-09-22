@@ -1,6 +1,7 @@
 import { LayoutGrid, NotebookPen, Sparkles } from "lucide-react";
-import type { AppManifest } from "@bcr/shell-contract";
+import type { AppManifest, PanelManifest } from "@bcr/shell-contract";
 import { Dock } from "../components/Dock";
+import { knowledgePlugin } from "../knowledge/plugin";
 
 /**
  * Routes the Studio host itself owns.
@@ -24,6 +25,7 @@ export const STUDIO_MANIFEST = {
 } as const satisfies AppManifest;
 
 export const KNOWLEDGE_MANIFEST = {
+  plugins: [knowledgePlugin],
   id: "knowledge",
   title: "个人知识库",
   path: "/knowledge",
@@ -33,13 +35,11 @@ export const KNOWLEDGE_MANIFEST = {
   load: async () => ({ App: (await import("../knowledge/KnowledgeApp")).KnowledgeApp }),
 } as const satisfies AppManifest;
 
-export const ASSISTANT_MANIFEST = {
+export const ASSISTANT_PANEL = {
+  kind: "panel",
   id: "assistant",
   title: "AI 助手",
-  path: "/assistant",
   icon: Sparkles,
   description: "全局浮动助手 · 共享领域能力 · 工具执行与审批",
   section: "personal",
-  // The shell opens its single persistent assistant; the route owns no second chat.
-  load: async () => ({ App: () => null }),
-} as const satisfies AppManifest;
+} as const satisfies PanelManifest;

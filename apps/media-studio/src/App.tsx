@@ -1,5 +1,5 @@
 import {
-  RUNTIME_NAVIGATION_EVENT,
+  useLocationSnapshot,
   RuntimeProvider,
   useLocationSearch,
   usePublishRunningCount,
@@ -61,12 +61,7 @@ function Studio() {
     { index: number; quote: string; sequence: number } | undefined
   >();
   const seekedCitationRef = useRef("");
-  const [citationNavigation, setCitationNavigation] = useState(0);
-  useEffect(() => {
-    const navigate = () => setCitationNavigation((value) => value + 1);
-    window.addEventListener(RUNTIME_NAVIGATION_EVENT, navigate);
-    return () => window.removeEventListener(RUNTIME_NAVIGATION_EVENT, navigate);
-  }, []);
+  const citationNavigation = useLocationSnapshot().revision;
   useEffect(() => {
     if (window.location.pathname !== "/media") return;
     const target = mediaCitationTarget(locationSearch, source?.ref.id, cues);

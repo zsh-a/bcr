@@ -39,7 +39,15 @@ const appRoutes = MANIFESTS.map((app) =>
   }),
 );
 
-export const router = createRouter({ routeTree: rootRoute.addChildren([homeRoute, ...appRoutes]) });
+// Compatibility URL only; the assistant is a global panel, not a workspace.
+const assistantAlias = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/assistant",
+  component: () => null,
+});
+export const router = createRouter({
+  routeTree: rootRoute.addChildren([homeRoute, assistantAlias, ...appRoutes]),
+});
 
 declare module "@tanstack/react-router" {
   interface Register {

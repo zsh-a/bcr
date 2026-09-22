@@ -18,8 +18,18 @@ export {
   type AgentEndpoint,
   type AgentMessage,
   type AgentTool,
+  type AgentToolSpec,
+  type ToolExecutionContext,
   type CompleteOptions,
 } from "./runtime";
+
+export {
+  createAgentSession,
+  SURFACE_EDIT_TOOL,
+  type AgentSessionOptions,
+  type AgentSessionSnapshot,
+  type PendingApproval,
+} from "./session";
 
 export {
   agentConfigured,
@@ -66,21 +76,11 @@ export {
 
 export { requiresApproval, toolSpecOf, type ToolRisk } from "./tools";
 
-export {
-  agentCapabilities,
-  availableAgentCapabilities,
-  registerAgentCapability,
-  subscribeAgentCapabilities,
-  type AgentCapability,
-} from "./capabilities";
+export { createCapabilityRegistry, type AgentCapability } from "./capabilities";
+export { createAgentHost, type AgentHost } from "./host";
 
 export {
-  activateSurface,
-  activeSurface,
-  registerSurface,
-  subscribeSurfaces,
-  surfaceRevision,
-  surfaceSummary,
+  createSurfaceRegistry,
   type AgentSurface,
   type SurfaceSummary,
   type SurfaceTarget,

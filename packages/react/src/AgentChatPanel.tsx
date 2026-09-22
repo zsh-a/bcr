@@ -1,4 +1,4 @@
-import { useEffect, useState, type FunctionComponent } from "react";
+import { useState, type FunctionComponent } from "react";
 import {
   AssistantRuntimeProvider,
   ComposerPrimitive,
@@ -6,16 +6,9 @@ import {
   ThreadPrimitive,
   type ToolCallMessagePartProps,
 } from "@assistant-ui/react";
-import {
-  activeSurface,
-  agentCapabilities,
-  availableAgentCapabilities,
-  subscribeAgentCapabilities,
-  subscribeSurfaces,
-  surfaceSummary,
-} from "@bcr/agent";
+import { useAgentHost } from "./AgentProvider";
 import { useSyncExternalStore } from "react";
-import { asSuggestion, SURFACE_EDIT_TOOL, useAgentChat, type PendingApproval } from "./chat";
+import { useAgentChat, type PendingApproval } from "./chat";
 import { useAgent } from "./agent";
 import "./chat.css";
 
@@ -36,16 +29,21 @@ export function AgentChatPanel({
   workspaceLabel?: string;
   renderText?: FunctionComponent<{ text: string }>;
 }) {
+  const {
+    subscribeSurfaces,
+    surfaceSummary,
+    subscribeAgentCapabilities,
+    agentCapabilities,
+    availableAgentCapabilities,
+  } = useAgentHost();
   const [includeContext, setIncludeContext] = useState(true);
   const [disabledCapabilities, setDisabledCapabilities] = useState<readonly string[]>([]);
-  const { runtime, subscribeApproval, activity } = useAgentChat({
+  const { runtime, approval, activity } = useAgentChat({
     workspaceId,
     workspaceLabel,
     includeContext,
     disabledCapabilities,
   });
-  const [approval, setApproval] = useState<PendingApproval | null>(null);
-  useEffect(() => subscribeApproval(setApproval), [subscribeApproval]);
   const agent = useAgent();
   const activeTarget = useSyncExternalStore(subscribeSurfaces, surfaceSummary, () => null);
   useSyncExternalStore(subscribeAgentCapabilities, agentCapabilities, agentCapabilities);
@@ -133,7 +131,7 @@ export function AgentChatPanel({
         {activity.length > 0 && (
           <div className="bcr-chat-activity" aria-live="polite">
             {activity.map((item) => (
-              <span key={item.name}>
+              <span key={item.id}>
                 <i />
                 {item.name} · {item.status}
               </span>
@@ -162,10 +160,6 @@ export function AgentChatPanel({
                       components={{
                         Text: renderText ?? (({ text }) => <p className="bcr-chat-text">{text}</p>),
                         tools: {
-                          by_name: {
-                            // A write: an explicit apply step, never a silent one.
-                            [SURFACE_EDIT_TOOL]: EditCard,
-                          },
                           Fallback: ToolChip,
                         },
                       }}
@@ -194,52 +188,22 @@ export function AgentChatPanel({
 }
 
 /**
- * A proposed edit, held until the user applies it.
- *
- * The turn is still waiting on this, so applying resumes the loop with the
- * outcome. Rendering the diff happens here rather than in the runtime, so the
- * thread can render a past card too — subject to the version check, which is
- * what makes that safe.
- */
-function EditCard({ args, result }: ToolCallMessagePartProps<Record<string, unknown>>) {
-  const suggestion = asSuggestion(args);
-  const active = activeSurface();
-  const target = active?.read() ?? null;
-  if (suggestion === null) return <p className="bcr-chat-hint">改动数据无效</p>;
-  const removed = target ? target.text.slice(suggestion.range.start, suggestion.range.end) : "";
-  return (
-    <div className="bcr-chat-card" role="group" aria-label="待应用的改动">
-      <div className="bcr-chat-card-head">
-        <span>待审批的改动</span>
-        <span>{suggestion.summary}</span>
-      </div>
-      <pre className="bcr-chat-diff">{`- ${removed || "(空)"}\n+ ${suggestion.replacement}`}</pre>
-      {result === undefined ? (
-        <p className="bcr-chat-hint" role="status">
-          等待你在上方确认…
-        </p>
-      ) : (
-        <p className="bcr-chat-hint" role="status">
-          {String((result as { applied?: string } | undefined)?.applied ?? "已处理")}
-        </p>
-      )}
-    </div>
-  );
-}
-
-/**
  * Any tool a surface contributed.
  *
  * Rendered by name and value, not by a hard-coded list: a domain can add a
  * capability and see it in the transcript without the panel learning about it.
  */
-function ToolChip({ toolName, result }: ToolCallMessagePartProps<Record<string, unknown>>) {
+function ToolChip({
+  toolName,
+  result,
+  isError,
+}: ToolCallMessagePartProps<Record<string, unknown>>) {
   return (
-    <div className="bcr-chat-card" role="group" aria-label={`工具 ${toolName}`}>
-      <div className="bcr-chat-card-head">
-        <span>工具</span>
+    <details className="bcr-chat-card bcr-chat-tool" aria-label={`工具 ${toolName}`}>
+      <summary className="bcr-chat-card-head">
+        <span>{isError ? "执行失败" : result === undefined ? "执行中" : "执行记录"}</span>
         <span>{toolName}</span>
-      </div>
+      </summary>
       {result === undefined ? (
         <p className="bcr-chat-hint" role="status">
           执行中…
@@ -247,7 +211,7 @@ function ToolChip({ toolName, result }: ToolCallMessagePartProps<Record<string, 
       ) : (
         <pre className="bcr-chat-diff">{JSON.stringify(result, null, 2)}</pre>
       )}
-    </div>
+    </details>
   );
 }
 

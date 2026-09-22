@@ -1,73 +1,35 @@
 @import "tailwindcss";
+@import "@bcr/react/theme.css";
 
 /* 作为 Shell 懒加载 chunk 时，vite root 是 apps/studio——
    自动源检测扫不到本包，必须显式声明扫描目录（相对本 CSS 文件）。 */
 @source ".";
 
 /* BCR Media Studio · Subtitle — 与 Workspace / Market Atlas 同源的编辑式工作站。 */
-@theme {
-  --color-bg: #090b0c;
-  --color-surface: #111516;
-  --color-raised: #181d1e;
-  --color-border: #343d3a;
-  --color-border-strong: #46524e;
-  --color-text: #f5f5ed;
-  --color-muted: #aab2ad;
-  --color-faint: #75807b;
-  --color-accent: #65d8d0;
-  --color-accent-dim: #173b39;
-  --color-amber: #efbc69;
-  --color-danger: #ff766d;
-  --color-info: #82aef7;
 
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
-
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-}
-
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
-}
-
-body {
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  overflow: hidden;
-}
-
-::selection {
+.media-studio ::selection {
   background: color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
-* {
+.media-studio * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border-strong) transparent;
 }
-*::-webkit-scrollbar {
+.media-studio *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-input,
-select,
-button,
-textarea {
+.media-studio input,
+.media-studio select,
+.media-studio button,
+.media-studio textarea {
   font: inherit;
   color: inherit;
 }
 
-input:not([type="checkbox"]):not([type="file"]),
-select {
+.media-studio input:not([type="checkbox"]):not([type="file"]),
+.media-studio select {
   min-height: 38px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
@@ -76,26 +38,26 @@ select {
   outline: none;
 }
 
-input[type="checkbox"] {
+.media-studio input[type="checkbox"] {
   width: 18px;
   height: 18px;
   accent-color: var(--color-accent);
 }
 
-button {
+.media-studio button {
   cursor: pointer;
   touch-action: manipulation;
 }
 
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
+.media-studio button:focus-visible,
+.media-studio input:focus-visible,
+.media-studio select:focus-visible,
+.media-studio textarea:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 3px;
 }
 
-.btn {
+.media-studio .btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -107,20 +69,20 @@ textarea:focus-visible {
   cursor: pointer;
   white-space: nowrap;
 }
-.btn:hover:not(:disabled) {
+.media-studio .btn:hover:not(:disabled) {
   border-color: var(--color-accent);
 }
-.btn:disabled {
+.media-studio .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
-.btn-primary {
+.media-studio .btn-primary {
   background: var(--color-accent);
   border-color: var(--color-accent);
   color: #06251a;
   font-weight: 600;
 }
-.btn-primary:hover:not(:disabled) {
+.media-studio .btn-primary:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-accent) 85%, white);
 }
 

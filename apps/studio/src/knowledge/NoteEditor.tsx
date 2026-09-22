@@ -1,7 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import Markdown from "react-markdown";
-import { useRuntimeActivity } from "@bcr/react";
-import { activateSurface, registerAgentCapability, registerSurface } from "@bcr/agent";
+import { useRuntimeActivity, useAgentHost } from "@bcr/react";
 import { decodeNote, same, type KnowledgeNote, type KnowledgeCollection } from "./model";
 import { MarkdownEditor } from "./MarkdownEditor";
 import type { KnowledgeStore } from "./store";
@@ -24,6 +23,7 @@ export function NoteEditor({
   editorRef: Ref<EditorHandle>;
 }) {
   const active = useRuntimeActivity();
+  const { activateSurface, registerAgentCapability, registerSurface } = useAgentHost();
   const [initial] = useState(() => {
     try {
       const raw = localStorage.getItem(draftKey(note.id));
@@ -177,9 +177,17 @@ export function NoteEditor({
     return () => {
       unregisterCapability();
       unregister();
-      activateSurface(null);
     };
-  }, [active, agentTarget, draft.title, locked, initial.error]);
+  }, [
+    active,
+    agentTarget,
+    draft.title,
+    locked,
+    initial.error,
+    activateSurface,
+    registerAgentCapability,
+    registerSurface,
+  ]);
   useEffect(() => {
     if (!state.current.dirty && !pending.current) {
       state.current = { draft: note, base: note, dirty: false, sequence: state.current.sequence };

@@ -1,8 +1,10 @@
 @import "tailwindcss";
+@import "@bcr/react/theme.css";
 
 @source ".";
 
-@theme {
+.manga-studio,
+.manga-boot {
   --color-bg: #090b0c;
   --color-surface: #111516;
   --color-raised: #181d1e;
@@ -18,7 +20,8 @@
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
 }
 
-:root {
+.manga-studio,
+.manga-boot {
   --manga-bg: #090b0c;
   --manga-surface: #111516;
   --manga-raised: #191f20;
@@ -35,18 +38,6 @@
   --manga-amber: #efbc69;
   --manga-danger: #ff8077;
   --manga-paper: #f7f3eb;
-}
-
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
-}
-
-body {
-  overflow: hidden;
-  background: var(--manga-bg);
 }
 
 .manga-boot {

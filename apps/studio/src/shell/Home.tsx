@@ -1,7 +1,7 @@
 import { useRunningApps } from "@bcr/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useStudio } from "../store";
-import { COMPUTE_APPS, LAUNCH_PAD_APPS, PERSONAL_APPS, type RegisteredApp } from "./registry";
+import { COMPUTE_APPS, LAUNCH_PAD_APPS, PERSONAL_APPS, type LaunchEntry } from "./registry";
 
 /**
  * 启动台（OS 主页面）：App 图标网格 + 运行中任务角标。
@@ -11,7 +11,7 @@ import { COMPUTE_APPS, LAUNCH_PAD_APPS, PERSONAL_APPS, type RegisteredApp } from
  * 信息管理类 surface。DocGen Lab 属内部合成数据工具，不在启动台展示
  * （路由仍可用，命令面板可达）。
  */
-export function Home({ onOpenAssistant }: { onOpenAssistant: () => void }) {
+export function Home({ onOpenPanel }: { onOpenPanel: (id: string) => void }) {
   const navigate = useNavigate();
   const studioRunning = useStudio((s) => s.runningCount);
   const activity = useRunningApps();
@@ -21,7 +21,7 @@ export function Home({ onOpenAssistant }: { onOpenAssistant: () => void }) {
     return activity[id] ?? 0;
   };
 
-  const card = (app: RegisteredApp) => {
+  const card = (app: LaunchEntry) => {
     const running = runningBadge(app.id);
     // Shortcut number follows the launch pad, not the registry order.
     const shortcut = LAUNCH_PAD_APPS.indexOf(app) + 1;
@@ -30,7 +30,7 @@ export function Home({ onOpenAssistant }: { onOpenAssistant: () => void }) {
         key={app.id}
         type="button"
         onClick={() =>
-          app.id === "assistant" ? onOpenAssistant() : void navigate({ to: app.path })
+          app.kind === "panel" ? onOpenPanel(app.id) : void navigate({ to: app.path })
         }
         className="home-app-card group relative flex min-h-56 flex-col items-start justify-between gap-6 rounded-[var(--radius-md)] border border-border bg-surface p-7 text-left transition-colors hover:border-border-strong hover:bg-raised"
       >

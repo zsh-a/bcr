@@ -118,7 +118,7 @@ export async function runAgentLoop(
   const tools = options.tools ?? [];
   const maxRounds = Math.max(1, options.maxRounds ?? DEFAULT_MAX_ROUNDS);
   const byName = new Map(tools.map((tool) => [toolSpecOf(tool.spec).name, tool]));
-  const decide = options.decide ?? defaultDecider();
+  const decide = options.decide ?? defaultDecider(options.signal);
 
   let text = "";
   const calls: ToolCall[] = [];
@@ -149,6 +149,7 @@ export async function runAgentLoop(
       calls.push(call);
       options.onToolCall?.(call);
       const verdict = await decide(call, byName.get(call.name));
+      options.signal?.throwIfAborted();
       const result = isRejection(verdict)
         ? {
             tool_call_id: call.id,
@@ -170,7 +171,7 @@ export async function runAgentLoop(
  * With no approval UI in play, the safe answer to "may I write?" is no — and it
  * is reported to the model as a tool error so it can ask the user instead.
  */
-function defaultDecider(): ToolDecision {
+function defaultDecider(signal?: AbortSignal): ToolDecision {
   return async (call, tool) => {
     if (tool === undefined) return { reject: `未注册的工具：${call.name}` };
     if (requiresApproval(tool.spec))
@@ -179,7 +180,9 @@ function defaultDecider(): ToolDecision {
       return {
         tool_call_id: call.id,
         tool_name: call.name,
-        output: parseJson(await tool.call(JSON.stringify(call.input ?? {}))),
+        output: parseJson(
+          await tool.call(JSON.stringify(call.input ?? {}), { signal, callId: call.id }),
+        ),
       };
     } catch (error) {
       return {
