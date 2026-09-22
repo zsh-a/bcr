@@ -36,6 +36,7 @@ const declared: ReadonlyArray<AppManifest> = [
 ];
 
 export const PLUGINS = [workspaceSearchPlugin, ...declared.flatMap((app) => app.plugins ?? [])];
+export const AGENT_RENDERERS = PLUGINS.flatMap((plugin) => plugin.agentRenderers ?? []);
 
 export interface RegisteredApp extends AppManifest {
   readonly kind: "workspace";

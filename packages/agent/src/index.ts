@@ -72,6 +72,23 @@ export { requiresApproval, toolSpecOf, type ToolRisk } from "./tools";
 
 export { createCapabilityRegistry, type AgentCapability } from "./capabilities";
 export { createAgentHost, type AgentHost } from "./host";
+export {
+  createConversations,
+  type AgentConversations,
+  type ConversationsSnapshot,
+} from "./conversations";
+export { conversationHistory } from "./conversationHistory";
+export { restoreConversationArchive } from "./conversationArchive";
+export type {
+  AgentConversation,
+  AgentRun,
+  AgentPart,
+  AgentToolPart,
+  ApprovalRecord,
+  ToolPresentation,
+  ConversationArchive,
+  ConversationStorage,
+} from "./conversationTypes";
 
 export {
   createSurfaceRegistry,

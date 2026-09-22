@@ -1,5 +1,5 @@
 import { textVersion } from "@bcr/core";
-import type { AgentHost } from "./host";
+import type { AgentHostServices } from "./host";
 import type { ToolCall } from "./loop";
 import type { AgentTool } from "./runtime";
 import { isCurrent, resolveEdit, type TextEditSuggestion } from "./suggestion";
@@ -33,7 +33,7 @@ export function suggestionFrom(
  * it no longer describes.
  */
 export async function applySuggestion(
-  host: AgentHost,
+  host: AgentHostServices,
   suggestion: TextEditSuggestion,
   surface = host.activeSurface(),
 ): Promise<{ status: "saved" | "unchanged"; message: string; id?: string; version?: string }> {
@@ -56,8 +56,9 @@ export async function applySuggestion(
  * reliably — addressing is the host's job, and keeping it there is what makes a
  * model-authored edit land in the right place.
  */
-export function surfaceEditTool(host: AgentHost): AgentTool {
+export function surfaceEditTool(host: AgentHostServices): AgentTool {
   return {
+    presentation: { kind: "document.change-set", version: 1, label: "修改内容" },
     spec: {
       name: SURFACE_EDIT_TOOL,
       description: "Replace the passage being edited with revised text. Requires user approval.",
@@ -81,7 +82,7 @@ export function surfaceEditTool(host: AgentHost): AgentTool {
 
 /** A suggestion for `replacement`, addressed against the active surface. */
 function suggestionFor(
-  host: AgentHost,
+  host: AgentHostServices,
   replacement: string,
   summary = "修改选中的正文",
 ): TextEditSuggestion | null {

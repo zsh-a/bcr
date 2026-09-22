@@ -4,6 +4,19 @@ import { chromium } from "playwright";
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage({ viewport: { width: 375, height: 900 }, hasTouch: true });
+  const modules = new Map();
+  // Resource Timing is bounded; preserve actual module URLs, including Vite versions.
+  page.on("request", (request) => {
+    const url = request.url();
+    for (const name of ["store", "readingPosition"]) {
+      if (new URL(url).pathname.endsWith(`/packages/reader-studio/src/${name}.ts`))
+        modules.set(name, url);
+    }
+  });
+  const moduleUrl = (name) => {
+    assert.ok(modules.has(name), `reader module was loaded: ${name}`);
+    return modules.get(name);
+  };
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(new URL("/reader", process.env.BASE_URL ?? "http://localhost:5199").toString());
@@ -18,15 +31,13 @@ try {
   });
   await page.getByText("导入完成", { exact: true }).waitFor();
   const settings = async (patch) =>
-    page.evaluate(async (patch) => {
-      const url = performance
-        .getEntriesByType("resource")
-        .map((entry) => entry.name)
-        .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
-        .at(-1);
-      const { reader } = await import(url);
-      reader.setSettings(patch);
-    }, patch);
+    page.evaluate(
+      async ({ patch, url }) => {
+        const { reader } = await import(url);
+        reader.setSettings(patch);
+      },
+      { patch, url: moduleUrl("store") },
+    );
   await settings({ layout: "paged", tocPinned: false, pageSpread: false, pageAnimation: "none" });
   const settled = async () => {
     await page.waitForFunction(
@@ -108,32 +119,28 @@ try {
     history[history.length - 14].text,
     "cold reverse paging reconstructs the previous page locally",
   );
-  const selection = await page.evaluate(async () => {
-    const prose = document.querySelector(".reader-txt-page .reader-prose");
-    const range = document.createRange();
-    range.setStart(prose.firstChild, 1);
-    range.setEnd(prose.firstChild, Math.min(5, prose.firstChild.textContent.length));
-    window.getSelection().removeAllRanges();
-    window.getSelection().addRange(range);
-    const urls = performance.getEntriesByType("resource").map((entry) => entry.name);
-    const storeUrl = urls
-      .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
-      .at(-1);
-    const positionUrl = urls
-      .filter((url) =>
-        new URL(url).pathname.endsWith("/packages/reader-studio/src/readingPosition.ts"),
-      )
-      .at(-1);
-    const { getReaderState } = await import(storeUrl);
-    const { readerSelectionLocator } = await import(positionUrl);
-    const book = getReaderState().library.find((book) => book.id === getReaderState().activeBookId);
-    const locator = readerSelectionLocator(book);
-    window.getSelection().removeAllRanges();
-    return {
-      expected: Number(prose.dataset.readerTextStart) + 1,
-      actual: locator?.textAnchor?.start,
-    };
-  });
+  const selection = await page.evaluate(
+    async ({ storeUrl, positionUrl }) => {
+      const prose = document.querySelector(".reader-txt-page .reader-prose");
+      const range = document.createRange();
+      range.setStart(prose.firstChild, 1);
+      range.setEnd(prose.firstChild, Math.min(5, prose.firstChild.textContent.length));
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      const { getReaderState } = await import(storeUrl);
+      const { readerSelectionLocator } = await import(positionUrl);
+      const book = getReaderState().library.find(
+        (book) => book.id === getReaderState().activeBookId,
+      );
+      const locator = readerSelectionLocator(book);
+      window.getSelection().removeAllRanges();
+      return {
+        expected: Number(prose.dataset.readerTextStart) + 1,
+        actual: locator?.textAnchor?.start,
+      };
+    },
+    { storeUrl: moduleUrl("store"), positionUrl: moduleUrl("readingPosition") },
+  );
   assert.equal(
     selection.actual,
     selection.expected,
@@ -159,37 +166,27 @@ try {
     );
   }
   // Open the search strip before capturing a boundary: it reserves vertical space.
-  await page.evaluate(async () => {
-    const url = performance
-      .getEntriesByType("resource")
-      .map((entry) => entry.name)
-      .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
-      .at(-1);
+  await page.evaluate(async (url) => {
     const { reader, getReaderState } = await import(url);
     reader.setSearch("预备搜索", [], getReaderState().activeBookId);
-  });
+  }, moduleUrl("store"));
   await settled();
   // A match split by a page boundary must be highlighted on both source slices.
   for (let i = 0; i < 3 && Number((await snapshot())[0].end.split(":")[1]) < 4; i++) {
     await page.getByRole("button", { name: "下一页", exact: true }).click();
     await settled();
   }
-  const query = await page.evaluate(async () => {
+  const query = await page.evaluate(async (url) => {
     const endpoint = document
       .querySelector(".reader-txt-page")
       .dataset.txtPageEnd.split(":")
       .map(Number);
-    const url = performance
-      .getEntriesByType("resource")
-      .map((entry) => entry.name)
-      .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
-      .at(-1);
     const { reader, getReaderState } = await import(url);
     const book = getReaderState().library.find((book) => book.id === getReaderState().activeBookId);
     const query = book.sections[endpoint[0]].text.slice(endpoint[1] - 4, endpoint[1] + 4);
     reader.setSearch(query, [], book.id);
     return query;
-  });
+  }, moduleUrl("store"));
   await settled();
   assert.equal(
     await page

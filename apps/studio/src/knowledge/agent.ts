@@ -12,6 +12,7 @@ export function knowledgeCapability(store: KnowledgeStore): AgentCapability {
     scope: "shared",
     tools: [
       {
+        presentation: { kind: "knowledge.search-results", version: 1, label: "检索知识库" },
         spec: {
           name: "knowledge_find_notes",
           description:
@@ -55,6 +56,7 @@ export function knowledgeCapability(store: KnowledgeStore): AgentCapability {
         },
       },
       {
+        presentation: { kind: "knowledge.note", version: 1, label: "阅读笔记" },
         spec: {
           name: "knowledge_read_note",
           description:

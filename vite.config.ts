@@ -39,6 +39,11 @@ const boundaries: { dir: string; allow: string[]; message: string }[] = [
     message: "@bcr/agent is shared by every workspace and may only depend on @bcr/core.",
   },
   {
+    dir: "packages/agent-ui",
+    allow: ["@bcr/agent", "@bcr/react"],
+    message: "Agent UI depends on host contracts and React bindings, never on domain apps.",
+  },
+  {
     dir: "packages/runtime-worker",
     allow: ["@bcr/core", "@bcr/storage-opfs"],
     message: "@bcr/runtime-worker may only depend on @bcr/core and @bcr/storage-opfs.",

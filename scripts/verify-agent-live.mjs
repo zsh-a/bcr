@@ -176,7 +176,7 @@ try {
     await approval.getByRole("button", { name: "应用修改" }).click();
     const text = await finish();
     assert.equal(await editor.textContent(), saved);
-    assert.match(await panel.locator(".bcr-chat-activity").innerText(), /已取消/);
+    assert.match(await panel.locator(".bcr-chat-activity").last().innerText(), /已取消/);
     return text;
   });
   await check("disabled capability omitted from actual model request", async () => {

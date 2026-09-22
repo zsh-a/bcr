@@ -1,6 +1,7 @@
 import type { ComponentType, LazyExoticComponent } from "react";
 import type { RuntimeServices } from "@bcr/core";
 import type { AgentHost } from "@bcr/agent";
+import type { ResultRenderer } from "@bcr/agent-ui";
 
 export interface PluginContext {
   readonly runtime: RuntimeServices;
@@ -9,6 +10,8 @@ export interface PluginContext {
 }
 export interface WorkspacePlugin {
   readonly id: string;
+  /** Optional presentation only; execution and approval remain owned by the host. */
+  readonly agentRenderers?: readonly ResultRenderer[];
   /** Registers services independently of the workspace view. Cleanup must be idempotent. */
   readonly activate: (context: PluginContext) => () => void;
 }

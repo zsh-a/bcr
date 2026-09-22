@@ -24,6 +24,31 @@ function setup(tool: AgentTool, getOptions = () => options) {
 }
 
 describe("agent session", () => {
+  it("can share current content without offering an edit tool", async () => {
+    const host = createAgentHost();
+    host.registerSurface({
+      kind: "note",
+      label: "Note",
+      read: () => ({
+        text: "readable context",
+        range: { start: 0, end: 16 },
+        scope: "all",
+        instruction: "read",
+      }),
+      write: vi.fn(),
+    });
+    host.activateSurface("note");
+    const session = createAgentSession(
+      () => ({ ...options, allowEdits: false }),
+      host,
+      async (_endpoint, prepared, round) => {
+        expect(round.tools.some((tool) => tool.spec.name === "apply_text_edit")).toBe(false);
+        expect(JSON.stringify(prepared)).toContain("readable context");
+        return null;
+      },
+    );
+    await session.run(endpoint, messages, new AbortController().signal);
+  });
   it("retains completed tool receipts when the following model round fails", async () => {
     const host = createAgentHost();
     host.registerAgentCapability({

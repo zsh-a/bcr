@@ -97,6 +97,7 @@ await withServer({
   url: "http://127.0.0.1:5199/studio",
   checks: [
     "scripts/verify-general-agent-chat.mjs",
+    "scripts/verify-agent-conversations.mjs",
     "scripts/verify-shell-architecture.mjs",
     "scripts/verify-persistence.mjs",
     "scripts/verify-quant-lab.mjs",

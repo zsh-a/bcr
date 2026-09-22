@@ -1,7 +1,17 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { AgentChatPanel } from "@bcr/react";
+import { AgentConversation, createResultRegistry } from "@bcr/agent-ui";
+import { AGENT_RENDERERS } from "../shell/registry";
 import Markdown from "react-markdown";
-import { GripHorizontal, Maximize2, Minimize2, Minus, RotateCcw, Sparkles, X } from "lucide-react";
+import {
+  GripHorizontal,
+  Maximize2,
+  Minimize2,
+  Minus,
+  PanelRight,
+  RotateCcw,
+  Sparkles,
+  X,
+} from "lucide-react";
 import {
   defaultWindow,
   fitWindow,
@@ -13,6 +23,7 @@ import "./window.css";
 
 export type AssistantVisibility = "closed" | "open" | "minimized";
 const STORAGE_KEY = "bcr.assistant.window.v1";
+const resultRenderers = createResultRegistry(AGENT_RENDERERS);
 const viewportSize = (): ViewportSize => ({ width: window.innerWidth, height: window.innerHeight });
 
 function AssistantMarkdown({ text }: { text: string }) {
@@ -47,13 +58,9 @@ function loadGeometry(): WindowGeometry {
 export function AssistantWindow({
   visibility,
   onVisibilityChange,
-  workspaceId,
-  workspaceLabel,
 }: {
   visibility: AssistantVisibility;
   onVisibilityChange: (value: AssistantVisibility) => void;
-  workspaceId: string;
-  workspaceLabel: string;
 }) {
   const titleId = useId();
   const panel = useRef<HTMLElement>(null);
@@ -62,6 +69,7 @@ export function AssistantWindow({
   const [geometry, setGeometry] = useState(loadGeometry);
   const geometryRef = useRef(geometry);
   const [expanded, setExpanded] = useState(false);
+  const [docked, setDocked] = useState(false);
   const [moving, setMoving] = useState(false);
   const gesture = useRef<{
     kind: "move" | "resize";
@@ -74,7 +82,17 @@ export function AssistantWindow({
   const visible = visibility === "open";
   const frame = maximized
     ? fitWindow({ x: 12, y: 76, width: viewport.width, height: viewport.height }, viewport)
-    : fitWindow(geometry, viewport);
+    : docked
+      ? fitWindow(
+          {
+            x: viewport.width - geometry.width - 12,
+            y: 76,
+            width: geometry.width,
+            height: viewport.height,
+          },
+          viewport,
+        )
+      : fitWindow(geometry, viewport);
 
   const place = (rect: WindowGeometry) => {
     const next = fitWindow(rect, viewportSize());
@@ -112,7 +130,7 @@ export function AssistantWindow({
   }, [visible]);
 
   const startGesture = (event: PointerEvent<HTMLButtonElement>, kind: "move" | "resize") => {
-    if (maximized || event.button !== 0) return;
+    if (maximized || docked || event.button !== 0) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     gesture.current = { kind, x: event.clientX, y: event.clientY, rect: geometryRef.current };
@@ -135,7 +153,11 @@ export function AssistantWindow({
     persist();
   };
   const keyboardGeometry = (event: KeyboardEvent<HTMLButtonElement>, kind: "move" | "resize") => {
-    if (maximized || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key))
+    if (
+      maximized ||
+      docked ||
+      !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)
+    )
       return;
     event.preventDefault();
     const step = event.shiftKey ? 48 : 16;
@@ -201,11 +223,24 @@ export function AssistantWindow({
               title="重置位置和大小"
               onClick={() => {
                 setExpanded(false);
+                setDocked(false);
                 place(defaultWindow(viewportSize()));
                 persist();
               }}
             >
               <RotateCcw size={14} />
+            </button>
+            <button
+              aria-label={docked ? "解除助手停靠" : "靠右停靠助手"}
+              title={docked ? "恢复浮动" : "靠右停靠"}
+              aria-pressed={docked}
+              disabled={compact}
+              onClick={() => {
+                setExpanded(false);
+                setDocked((value) => !value);
+              }}
+            >
+              <PanelRight size={15} />
             </button>
             <button
               aria-label={expanded ? "还原助手窗口" : "展开助手窗口"}
@@ -232,13 +267,9 @@ export function AssistantWindow({
           </nav>
         </header>
         <div className="assistant-window-content">
-          <AgentChatPanel
-            workspaceId={workspaceId}
-            workspaceLabel={workspaceLabel}
-            renderText={AssistantMarkdown}
-          />
+          <AgentConversation renderers={resultRenderers} renderText={AssistantMarkdown} />
         </div>
-        {!maximized && (
+        {!maximized && !docked && (
           <button
             className="assistant-window-resize"
             aria-label="调整助手窗口大小"

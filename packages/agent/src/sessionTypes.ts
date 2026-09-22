@@ -14,10 +14,12 @@ export interface AgentSessionOptions {
   readonly workspaceId: string;
   readonly workspaceLabel: string;
   readonly includeContext: boolean;
+  readonly allowEdits?: boolean;
   readonly disabledCapabilities: readonly string[];
 }
 
 export interface AgentSessionSnapshot {
+  readonly parts: readonly import("./conversationTypes").AgentPart[];
   readonly status:
     | "idle"
     | "running"

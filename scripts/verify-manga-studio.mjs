@@ -161,10 +161,15 @@ if (!download.suggestedFilename().endsWith("-zh.png")) fail("PNG 导出文件名
 await page.waitForTimeout(900);
 await page.reload({ waitUntil: "domcontentloaded" });
 await page.locator(".manga-studio").waitFor({ timeout: 20_000 });
-await page.locator("textarea").nth(1).waitFor({ timeout: 20_000 });
-if ((await page.locator("textarea").nth(1).inputValue()) !== "审校后的译文") {
-  fail("刷新后项目未恢复审校译文");
-}
+// The demo controls render before asynchronous SQLite/OPFS restoration finishes.
+// Wait for restored content, not merely for the textarea to exist.
+await page
+  .waitForFunction(
+    () => document.querySelectorAll("textarea")[1]?.value === "审校后的译文",
+    undefined,
+    { timeout: 20_000 },
+  )
+  .catch(() => fail("刷新后项目未恢复审校译文"));
 if ((await page.locator(".manga-page-card").count()) < 1) fail("刷新后页面队列未恢复");
 if ((await page.locator('[data-batch-status="completed"]').count()) !== 1) {
   fail("刷新后批处理状态未恢复");

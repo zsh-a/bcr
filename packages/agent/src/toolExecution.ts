@@ -1,4 +1,4 @@
-import type { AgentHost } from "./host";
+import type { AgentHostServices } from "./host";
 import type { ToolDecision } from "./loop";
 import type { AgentSurface, SurfaceTarget } from "./surface";
 import type { AgentSessionOptions, AgentSessionSnapshot, PendingApproval } from "./sessionTypes";
@@ -23,7 +23,7 @@ export function createToolDecision({
   onApproval,
   onActivity,
 }: {
-  host: AgentHost;
+  host: AgentHostServices;
   getOptions: () => AgentSessionOptions;
   surface: AgentSurface | null;
   target: SurfaceTarget | null;
@@ -46,7 +46,7 @@ export function createToolDecision({
         surface === host.activeSurface() &&
         (!surface?.capabilityId || capabilities.some((item) => item.id === surface.capabilityId));
       return editing
-        ? surfaceEnabled
+        ? surfaceEnabled && latest.allowEdits !== false
         : capabilities.some((item) => item.tools.includes(tool)) ||
             (surfaceEnabled && !!surface?.tools?.includes(tool));
     };

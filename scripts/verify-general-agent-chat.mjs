@@ -198,7 +198,7 @@ try {
   );
   await approval.getByRole("button", { name: "应用修改" }).click();
   await page.waitForFunction(() =>
-    document.querySelector(".bcr-chat-activity")?.textContent?.includes("已取消"),
+    [...document.querySelectorAll(".bcr-chat-activity")].at(-1)?.textContent?.includes("已取消"),
   );
   await page.waitForTimeout(350);
   assert.equal(
@@ -209,8 +209,8 @@ try {
   await input.fill("跨域查询知识库里的笔记");
   await input.press("Enter");
   await page.waitForFunction(() =>
-    document
-      .querySelector(".bcr-chat-activity")
+    [...document.querySelectorAll(".bcr-chat-activity")]
+      .at(-1)
       ?.textContent?.includes("knowledge_find_notes · 已完成"),
   );
   await panel.getByRole("button", { name: "发送", exact: true }).waitFor();

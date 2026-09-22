@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@bcr/agent": "workspace:*",
+    "@bcr/agent-ui": "workspace:*",
     "@bcr/core": "workspace:*",
     "react": "catalog:"
   },

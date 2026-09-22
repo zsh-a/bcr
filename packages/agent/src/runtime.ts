@@ -59,6 +59,8 @@ export interface ToolExecutionContext {
 }
 
 export interface AgentTool {
+  /** Host-only presentation hint; never sent to the model as a tool schema. */
+  readonly presentation?: import("./conversationTypes").ToolPresentation;
   /** A `ToolSpec` from agent-core: `name`, `description`, `input_schema`, `risk`, … */
   readonly spec: AgentToolSpec;
   /** Receives the call input as JSON and resolves with the output as JSON. */

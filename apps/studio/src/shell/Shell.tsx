@@ -2,13 +2,14 @@ import type { SearchDocument } from "@bcr/core";
 import { NavigationBridge } from "./NavigationBridge";
 import {
   AgentProvider,
+  useAgentHost,
   useNavigation,
   RuntimeActivity,
   RuntimeProvider,
   useRuntimeSession,
 } from "@bcr/react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { CommandPalette } from "../components/CommandPalette";
 import { SearchPanel } from "../components/SearchPanel";
 import { TopBar } from "../components/TopBar";
@@ -19,6 +20,8 @@ import { Home } from "./Home";
 import { ResearchCaptureBridge } from "../research/CaptureBridge";
 import { PluginHost } from "./PluginHost";
 import { AssistantWindow, type AssistantVisibility } from "../assistant/AssistantWindow";
+import { createAgentHost } from "@bcr/agent";
+import { createAgentStorage } from "@bcr/react";
 
 /**
  * OS 式 Shell 根布局（§12：URL 即状态）：
@@ -30,9 +33,20 @@ import { AssistantWindow, type AssistantVisibility } from "../assistant/Assistan
  *   领域计算会话继承 Host 预算；应用激活状态与计算生命周期独立。
  */
 export function Shell() {
+  const [agent] = useState(() => createAgentHost({ storage: createAgentStorage() }));
+  useEffect(() => {
+    const flush = () => {
+      void agent.conversations.flush();
+    };
+    window.addEventListener("pagehide", flush);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      agent.conversations.dispose();
+    };
+  }, [agent]);
   return (
     <NavigationBridge>
-      <AgentProvider>
+      <AgentProvider host={agent}>
         <ShellContent />
       </AgentProvider>
     </NavigationBridge>
@@ -40,6 +54,7 @@ export function Shell() {
 }
 
 function ShellContent() {
+  const { conversations } = useAgentHost();
   const navigation = useNavigation();
   const { services, error } = useRuntimeSession(createRuntimeServices);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -48,6 +63,12 @@ function ShellContent() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const active = appIdFromPath(pathname);
+  useLayoutEffect(() => {
+    conversations.setOptions({
+      workspaceId: active,
+      workspaceLabel: MANIFESTS.find((app) => app.id === active)?.title ?? "工作台",
+    });
+  }, [active, conversations]);
   const openPanel = useCallback((id: string) => {
     if (id === "assistant") setAssistantVisibility("open");
   }, []);
@@ -160,8 +181,6 @@ function ShellContent() {
         <AssistantWindow
           visibility={assistantVisibility}
           onVisibilityChange={setAssistantVisibility}
-          workspaceId={active}
-          workspaceLabel={MANIFESTS.find((app) => app.id === active)?.title ?? "工作台"}
         />
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onOpenPanel={openPanel} />
         <SearchPanel

@@ -2,9 +2,11 @@ import type { WorkspacePlugin } from "@bcr/shell-contract";
 import { publishKnowledge } from "./search";
 import { workspaceServices } from "../workspace";
 import { knowledgeCapability } from "./agent";
+import { knowledgeResultRenderers } from "./agentRenderers";
 
 export const knowledgePlugin: WorkspacePlugin = {
   id: "knowledge",
+  agentRenderers: knowledgeResultRenderers,
   activate({ runtime: { metadata, search }, agent, reportError }) {
     const store = workspaceServices(metadata).knowledge;
     const unregister = agent.registerAgentCapability(knowledgeCapability(store));

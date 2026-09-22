@@ -1,9 +1,8 @@
 export type { RuntimeHost, RuntimeMetadata, RuntimeServices, RuntimeSession } from "@bcr/core";
 export { usePublishRunningCount, useRunningApps } from "./application-status";
 
-export { AgentChatPanel } from "./AgentChatPanel";
 export { AgentProvider, useAgentHost } from "./AgentProvider";
-export { useAgentChat, type PendingApproval } from "./chat";
+export { createAgentStorage } from "./agentStorage";
 
 export { useAgent, type AgentService } from "./agent";
 
