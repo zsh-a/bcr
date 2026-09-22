@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FunctionComponent } from "react";
 import {
   AssistantRuntimeProvider,
   ComposerPrimitive,
@@ -6,7 +6,14 @@ import {
   ThreadPrimitive,
   type ToolCallMessagePartProps,
 } from "@assistant-ui/react";
-import { activeSurface, subscribeSurfaces, surfaceSummary } from "@bcr/agent";
+import {
+  activeSurface,
+  agentCapabilities,
+  availableAgentCapabilities,
+  subscribeAgentCapabilities,
+  subscribeSurfaces,
+  surfaceSummary,
+} from "@bcr/agent";
 import { useSyncExternalStore } from "react";
 import { asSuggestion, SURFACE_EDIT_TOOL, useAgentChat, type PendingApproval } from "./chat";
 import { useAgent } from "./agent";
@@ -20,13 +27,31 @@ import "./chat.css";
  * wherever a workspace wants it — a dock panel, a floating group, or an OS window
  * (dockview provides all three).
  */
-export function AgentChatPanel() {
-  const [mode, setMode] = useState<"rewrite" | "continue">("rewrite");
-  const { runtime, subscribeApproval } = useAgentChat(mode);
+export function AgentChatPanel({
+  workspaceId = "home",
+  workspaceLabel = "工作台",
+  renderText,
+}: {
+  workspaceId?: string;
+  workspaceLabel?: string;
+  renderText?: FunctionComponent<{ text: string }>;
+}) {
+  const [includeContext, setIncludeContext] = useState(true);
+  const [disabledCapabilities, setDisabledCapabilities] = useState<readonly string[]>([]);
+  const { runtime, subscribeApproval, activity } = useAgentChat({
+    workspaceId,
+    workspaceLabel,
+    includeContext,
+    disabledCapabilities,
+  });
   const [approval, setApproval] = useState<PendingApproval | null>(null);
   useEffect(() => subscribeApproval(setApproval), [subscribeApproval]);
   const agent = useAgent();
-  const surface = useSyncExternalStore(subscribeSurfaces, surfaceSummary, () => null);
+  const activeTarget = useSyncExternalStore(subscribeSurfaces, surfaceSummary, () => null);
+  useSyncExternalStore(subscribeAgentCapabilities, agentCapabilities, agentCapabilities);
+  const capabilities = availableAgentCapabilities(workspaceId);
+  const enabled = capabilities.filter((item) => !disabledCapabilities.includes(item.id));
+  const surface = activeTarget;
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
@@ -34,25 +59,10 @@ export function AgentChatPanel() {
       <div className="bcr-chat">
         <header className="bcr-chat-head">
           <div className="bcr-chat-target">
-            <span className="bcr-chat-eyebrow">TARGET</span>
-            <strong>{surface?.label ?? "没有活动目标"}</strong>
-            <small>{surface?.scope ?? "打开要修改的内容后重试"}</small>
+            <span className="bcr-chat-eyebrow">当前工作区</span>
+            <strong>{workspaceLabel}</strong>
           </div>
-          <div className="bcr-chat-modes" role="group" aria-label="编辑方式">
-            <button
-              type="button"
-              aria-pressed={mode === "rewrite"}
-              onClick={() => setMode("rewrite")}
-            >
-              改写
-            </button>
-            <button
-              type="button"
-              aria-pressed={mode === "continue"}
-              onClick={() => setMode("continue")}
-            >
-              续写
-            </button>
+          <div className="bcr-chat-modes" role="group" aria-label="助手设置">
             <button
               type="button"
               aria-pressed={settingsOpen}
@@ -63,6 +73,55 @@ export function AgentChatPanel() {
           </div>
         </header>
 
+        {(surface !== null || capabilities.length > 0) && (
+          <div className="bcr-chat-context" aria-label="可用能力">
+            {surface !== null && (
+              <button
+                type="button"
+                className={`bcr-chat-context-pill${includeContext ? " is-current" : ""}`}
+                aria-pressed={includeContext}
+                onClick={() => setIncludeContext((value) => !value)}
+                title="附加当前选区并启用编辑工具"
+              >
+                当前内容
+              </button>
+            )}
+            <details className="bcr-chat-capabilities">
+              <summary>
+                领域能力 <span>{enabled.length}</span>
+              </summary>
+              <div className="bcr-chat-capability-list">
+                {capabilities.map((item) => (
+                  <label key={item.id}>
+                    <input
+                      type="checkbox"
+                      aria-label={`启用${item.label}`}
+                      checked={!disabledCapabilities.includes(item.id)}
+                      onChange={(event) => {
+                        setDisabledCapabilities((values) =>
+                          event.target.checked
+                            ? values.filter((id) => id !== item.id)
+                            : [...values, item.id],
+                        );
+                      }}
+                    />
+                    <span>
+                      <strong>
+                        {item.label}
+                        <small>{item.scope === "workspace" ? "当前领域" : "跨领域共享"}</small>
+                      </strong>
+                      <em>{item.description ?? "为对话提供工具与上下文"}</em>
+                    </span>
+                  </label>
+                ))}
+                {capabilities.length === 0 && (
+                  <p className="bcr-chat-hint">当前没有可用领域能力，可以直接对话。</p>
+                )}
+              </div>
+            </details>
+          </div>
+        )}
+
         {settingsOpen && <EndpointSettings />}
         {!agent.configured && !settingsOpen && (
           <p className="bcr-chat-hint">
@@ -71,14 +130,24 @@ export function AgentChatPanel() {
         )}
 
         {approval !== null && <ApprovalPrompt approval={approval} />}
+        {activity.length > 0 && (
+          <div className="bcr-chat-activity" aria-live="polite">
+            {activity.map((item) => (
+              <span key={item.name}>
+                <i />
+                {item.name} · {item.status}
+              </span>
+            ))}
+          </div>
+        )}
 
         <ThreadPrimitive.Root className="bcr-chat-thread">
           <ThreadPrimitive.Viewport className="bcr-chat-viewport">
             <ThreadPrimitive.Empty>
               <p className="bcr-chat-empty">
-                说清要改什么，改动会先作为一张卡片出现，确认后才写入。
-                <br />
-                例如：「把这一段改得更简洁，保留结论。」
+                <span className="bcr-chat-empty-mark">✦</span>
+                <strong>从一个问题开始</strong>
+                <span>提问、整理思路，或交给我一个任务。当前工作区和共享能力都可以为你所用。</span>
               </p>
             </ThreadPrimitive.Empty>
             <ThreadPrimitive.Messages>
@@ -91,7 +160,7 @@ export function AgentChatPanel() {
                   <MessagePrimitive.Root className="bcr-chat-line is-agent">
                     <MessagePrimitive.Content
                       components={{
-                        Text: ({ text }) => <p className="bcr-chat-text">{text}</p>,
+                        Text: renderText ?? (({ text }) => <p className="bcr-chat-text">{text}</p>),
                         tools: {
                           by_name: {
                             // A write: an explicit apply step, never a silent one.
@@ -109,7 +178,7 @@ export function AgentChatPanel() {
           <ComposerPrimitive.Root className="bcr-chat-composer">
             <ComposerPrimitive.Input
               className="bcr-chat-input"
-              placeholder="告诉 AI 要如何修改…"
+              placeholder="提问、整理思路，或请我处理当前内容…"
               rows={2}
               submitMode="enter"
             />
@@ -191,25 +260,22 @@ function ToolChip({ toolName, result }: ToolCallMessagePartProps<Record<string, 
  */
 function ApprovalPrompt({ approval }: { approval: PendingApproval }) {
   const suggestion = approval.suggestion;
-  if (suggestion === null) return null;
-  const target = activeSurface()?.read() ?? null;
-  const removed = target ? target.text.slice(suggestion.range.start, suggestion.range.end) : "";
   return (
-    <div className="bcr-chat-card" role="group" aria-label="待确认的修改">
+    <div className="bcr-chat-card" role="group" aria-label="待确认的操作">
       <div className="bcr-chat-card-head">
         <span>需要你确认</span>
-        <span>{suggestion.summary}</span>
+        <span>{approval.targetLabel}</span>
       </div>
-      <pre className="bcr-chat-diff">{`- ${removed || "(空)"}\n+ ${suggestion.replacement}`}</pre>
+      {suggestion ? (
+        <pre className="bcr-chat-diff">{`- ${approval.original || "(空)"}\n+ ${suggestion.replacement}`}</pre>
+      ) : (
+        <pre className="bcr-chat-diff">{JSON.stringify(approval.call.input ?? {}, null, 2)}</pre>
+      )}
       <div className="bcr-chat-card-actions">
-        <button
-          type="button"
-          className="bcr-chat-primary"
-          onClick={() => approval.settle(suggestion.replacement)}
-        >
-          应用
+        <button type="button" className="bcr-chat-primary" onClick={() => approval.settle(true)}>
+          {suggestion ? "应用修改" : "允许执行"}
         </button>
-        <button type="button" className="bcr-chat-button" onClick={() => approval.settle(null)}>
+        <button type="button" className="bcr-chat-button" onClick={() => approval.settle(false)}>
           放弃
         </button>
       </div>

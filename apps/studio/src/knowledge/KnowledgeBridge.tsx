@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { useRuntime } from "@bcr/react";
 import { publishKnowledge, workspaceKnowledge } from "./store";
+import { registerAgentCapability } from "@bcr/agent";
+import { knowledgeCapability } from "./agent";
 
 export function KnowledgeBridge() {
   const { metadata, search } = useRuntime();
   const store = useMemo(() => workspaceKnowledge(metadata), [metadata]);
   const content = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  useEffect(() => registerAgentCapability(knowledgeCapability(store)), [store]);
   useEffect(() => {
     let active = true;
     if (search)

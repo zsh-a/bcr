@@ -123,10 +123,12 @@ export async function runAgentLoop(
   let text = "";
   const calls: ToolCall[] = [];
   const results: ToolResult[] = [];
+  let pendingResults: ToolResult[] = [];
   // Threaded between rounds: the runtime's state is what makes a resume legal.
   let state: ChatTurnState | null = null;
 
   for (let round = 0; round < maxRounds; round += 1) {
+    options.signal?.throwIfAborted();
     const run = options.runRound ?? runOnce;
     const pending = await run(endpoint, messages, {
       tools,
@@ -136,25 +138,27 @@ export async function runAgentLoop(
         text += chunk;
         options.onDelta?.(chunk);
       },
-      ...(state === null ? {} : { resume: { state, toolResults: results } }),
+      ...(state === null ? {} : { resume: { state, toolResults: pendingResults } }),
     });
     if (pending === null) break;
     state = pending.state;
+    pendingResults = [];
 
     for (const call of pending.toolCalls) {
+      options.signal?.throwIfAborted();
       calls.push(call);
       options.onToolCall?.(call);
       const verdict = await decide(call, byName.get(call.name));
-      results.push(
-        isRejection(verdict)
-          ? {
-              tool_call_id: call.id,
-              tool_name: call.name,
-              output: { error: verdict.reject },
-              is_error: true,
-            }
-          : verdict,
-      );
+      const result = isRejection(verdict)
+        ? {
+            tool_call_id: call.id,
+            tool_name: call.name,
+            output: { error: verdict.reject },
+            is_error: true,
+          }
+        : verdict;
+      results.push(result);
+      pendingResults.push(result);
     }
   }
   return { text, toolCalls: calls, toolResults: results };

@@ -8,7 +8,7 @@ import { manifest as manga } from "@bcr/manga-studio/app-manifest";
 import { manifest as markets } from "@bcr/market-board/app-manifest";
 import { manifest as media } from "@bcr/media-studio/app-manifest";
 import { manifest as quant } from "@bcr/quant-lab/app-manifest";
-import { KNOWLEDGE_MANIFEST, STUDIO_MANIFEST } from "./host-manifests";
+import { ASSISTANT_MANIFEST, KNOWLEDGE_MANIFEST, STUDIO_MANIFEST } from "./host-manifests";
 
 /**
  * The one list of applications the shell knows about.
@@ -32,6 +32,7 @@ const declared: ReadonlyArray<AppManifest> = [
   data,
   docgen,
   KNOWLEDGE_MANIFEST,
+  ASSISTANT_MANIFEST,
 ];
 
 export interface RegisteredApp extends AppManifest {

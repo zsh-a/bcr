@@ -67,6 +67,14 @@ export {
 export { requiresApproval, toolSpecOf, type ToolRisk } from "./tools";
 
 export {
+  agentCapabilities,
+  availableAgentCapabilities,
+  registerAgentCapability,
+  subscribeAgentCapabilities,
+  type AgentCapability,
+} from "./capabilities";
+
+export {
   activateSurface,
   activeSurface,
   registerSurface,

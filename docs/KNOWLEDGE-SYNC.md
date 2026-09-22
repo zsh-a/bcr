@@ -41,58 +41,20 @@ knowledge/
 
 此格式为后续 AI 检索、引用溯源与可审核修改提供基础；当前已接入单篇笔记的 AI 改写／续写（见下节），向量数据库、MCP 与自动改写代理仍未接入。
 
-## AI 编辑（可选）
+## 通用 AI 助手（可选）
 
-笔记编辑器提供「改写 / 续写」：把光标所在段落或选中片段交给模型，先给出一份**待应用**的改动，确认后才写入笔记。没有配置接口时这部分完全不可见之外的功能，本地编辑与同步不受影响。
+统一入口为顶栏「AI」、Ctrl/⌘+J 或启动台「AI 助手」。助手是 Shell 中唯一的常驻浮窗，打开时保留当前工作区；/assistant 直达链接也打开同一宿主。旧的笔记专用内联面板和浮窗实现已移除。
 
-- **范围由编辑器决定，不由模型决定**。模型只被要求返回该范围的替换文本；它与原文的差异在本地计算成一个最小替换区间。因此改一段不会重写全文，未触及的部分保持逐字节不变，多设备合并与冲突检测仍然有效。
-- **先预览后写入**。预览显示将要发生的最小改动；「应用到笔记者才会落盘。若模型运行期间你继续打字，这份改动因为基准已变而被丢弃（不会写坏正文），并给出提示。
-- **改前留版本**。应用前的正文会自动进入「历史」（与手工编辑同一机制），可用 `Ctrl/⌘+Z` 或历史恢复。
-- **接口**：任意 OpenAI 兼容端点（官方 API、Ollama、LM Studio、网关）。填写接口地址、模型名与密钥；**密钥只保存在本页内存**，与 GitHub Token 同规格，刷新后需重新填写，也不写入本地存储、导出或仓库。本地端点可留空密钥，此时不发送 `Authorization` 头。
-- **加载时机**：运行时是约 3.5 MiB 的 wasm 模块，只在第一次点击「改写 / 续写」时才下载；不使用 AI 的读者不会付出这份体积。
+- 支持拖动、边角缩放、展开/还原、收起、关闭和位置重置；位置与大小保存在本机，屏幕变小时自动约束到可见区域。拖动和缩放控件也支持方向键。
+- 无需打开笔记即可对话；标题固定为 AI 助手，当前工作区单独显示。「当前内容」可以控制是否向模型附加当前选区与编辑工具。
+- 领域通过 registerAgentCapability 注册工具和可选上下文。scope: workspace 的能力只在指定 domain 可用，scope: shared 的能力跨域可用；「领域能力」可逐项开关。
+- 知识库检索与读取由 KnowledgeBridge 注册，未打开编辑器时也能使用；跨域搜索查询各工作区已发布的索引快照。当前笔记的选区与写入能力仅在知识库活动时提供。
+- 只读工具自动执行，其他工具展示参数并等待确认。
+- 编辑审批锁定提出时的原文、范围和目标；确认前切换目标、工作区或关闭能力会阻止写入。
+- 会话与接口密钥只保存在页面内存，切换工作区保留会话，刷新后重置。
+- Agent WASM 运行时在首次请求模型时加载，支持流式响应、停止和最多 8 轮工具循环。
 
-实现分为三层，知识库只提供最上面一层：
-
-| 层           | 位置                             | 职责                                                                                                                 |
-| ------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `@bcr/agent` | `packages/agent`                 | wasm 生命周期与懒加载、端点配置（仅内存）、turn 与流式、工具注册、**建议协议**（`textVersion` 版本守卫下的最小差分） |
-| `@bcr/react` | `packages/react`                 | `useAgent` / `useTextEditSuggestion`（提案生命周期）与 `AgentEditPanel`（共享 UI）                                   |
-| 各业务       | 例如 `apps/studio/src/knowledge` | 只提供 prompt 措辞与「如何寻址 + 如何落盘」                                                                          |
-
-`@bcr/agent` 只依赖 `@bcr/core`（取其 `textVersion` 与 `TextRange`），不含任何业务概念。不并入 `@bcr/core` 的理由与 `createBrowserRuntime` 放在 `@bcr/runtime-browser` 相同：这一层要 `fetch`、跑 WebAssembly，并动态 import 一个约 3.5 MiB 的二进制，框架无关的契约包不应背负。
-
-因此消费方式与 `ResearchCaptureProvider` 同构：宿主配置一次端点，任何 `apps/*` 或 `packages/*` 用 `useAgent()` 读取，用 `AgentEditPanel` 呈现，用 `useTextEditSuggestion()` 走完「提案 → 预览 → 应用 / 丢弃」。建议协议以 `textVersion` 比对原文版本，用户在此期间继续编辑则丢弃而不是写入。写入仍由各业务自己的存储负责（笔记走 `KnowledgeStore.saveNote`，文档走既有的 OCR / 译文修订函数），所以「改前留版本」由各业务既有机制免费获得。
-
-## AI 对话窗口（可选）
-
-编辑器内还有一处就地入口（「改写 / 续写」，适合写作时快速改写一段）。顶栏「AI」或 `⌘J` 打开的是**独立对话窗口**：浮动在任意工作区之上，非模态，可以一边指着内容一边改它，不阻塞页面。
-
-- **对话只产出建议，不直接写入**。助手的回复会作为一张**待应用卡片**出现在对话里，显示最小差分与「应用 / 放弃」。点「应用」才写入目标；写入前用内容版本比对原文，若你在模型运行期间改过原文，这次建议被丢弃而不是写坏正文。
-- **作用目标由「编辑面（surface）」决定**。每个业务在显示时注册一个 `AgentSurface`：怎么取当前范围、怎么落盘。窗口只认这两个回调，因此同一面板能服务笔记正文、OCR block、译文逐句等任意文本。**落盘仍走业务既有路径**（笔记走 `saveNote` → 自动进「历史」，文档走既有的 OCR / 译文修订函数），不新增第二条写入通道。
-- **对话历史仅存内存**（不持久化、不进同步仓库、不写入 `RuntimeMetadata`）。端点密钥同规格：只在本页内存，刷新后需重新填写。窗口尺寸会被记住，位置不会（避免下次开在屏幕外）。
-- **逐字流式与取消**：wasm 绑定按事件推送（`stream_turn` / `stream_resume` + 取消句柄），文字一边生成一边显示，不是结束后整段弹出。
-
-**真正的 agent 循环已接入。** 每次对话跑的是完整循环：模型可以调用工具 → 宿主执行 → 结果回填 → 继续，直到回合结束。
-
-- **工具由业务贡献，不由聊天内置**。每个 `AgentSurface` 带自己的 `tools`（`read_note`、`read_selection` 等），面板不认识任何具体工具。新增能力只需在 surface 上加一个工具，循环与界面都不用改。
-- **写入按风险门禁，不按名单**。`requiresApproval(spec)` 只看工具声明的 `risk`：只读工具自动执行，可写工具一律停下等人工确认。因此后来新增的可写工具自动受同一规则约束，无需聊天知道它的名字。
-- **编辑工具只接受 `replacement`**。范围与版本由宿主从当前 surface 取 —— 模型算不准字符偏移，寻址留在确定性一侧。审批通过后走 `applySuggestion`，用 `textVersion` 比对原文后才写入。
-- **回合预算**：单次请求默认 8 个回合（`DEFAULT_MAX_TOOL_ROUNDS`），循环上限 8 轮（`DEFAULT_MAX_ROUNDS`），模型反复调用工具也不会失控。
-
-对话的界面层使用 `assistant-ui` 的 `LocalRuntime` 与无样式原语（消息列表、输入、滚动、无障碍、分支 / 重新生成由库负责，外观沿用 bcr 设计令牌）。接入点只有一个 `ChatModelAdapter.run`，它把「一次模型调用」对接到 `@bcr/agent` 的 `complete()`。
-
-已接入：知识库单篇笔记的改写／续写（就地面板 + 对话窗口两种入口）。可复用的下一位消费者是 document-studio 的 OCR / 译文审校 —— 它按 block 逐条编辑，寻址单位是一个 block 的文本，落盘函数已经存在。
-
-## 验证
-
-```bash
-bun run test packages/agent/tests/suggestion.test.ts
-bun run build:wasm:agent
-BASE_URL=http://127.0.0.1:5199 node scripts/verify-knowledge-agent.mjs         # 就地面板
-BASE_URL=http://127.0.0.1:5199 node scripts/verify-knowledge-agent-chat.mjs    # 对话窗口
-```
-
-运行时来自独立的 `agent-runtime` 仓库，以 submodule 固定在 `crates/agent-runtime`，用 `bun run build:wasm:agent` 编译到 `crates/agent-wasm/pkg`（生成物不入库，与 `crates/kernels/pkg` 一致）。
+共享实现位于 packages/agent（运行时与能力注册）和 packages/react（通用对话 UI）。运行时源自 crates/agent-runtime 子模块。
 
 ## 同步与恢复规则
 
@@ -117,9 +79,9 @@ BASE_URL=http://127.0.0.1:5199 node scripts/verify-knowledge.mjs
 # 生产资源与关闭页面后的离线冷启动
 bunx vp -C apps/studio build
 BCR_KNOWLEDGE_PRODUCTION=1 node scripts/verify-knowledge.mjs
-# AI 编辑：用桩端点，不需要真实密钥或外网
+# 通用 AI 对话：用桩端点，不需要真实密钥或外网
 bun run build:wasm:agent
-BASE_URL=http://127.0.0.1:5199 node scripts/verify-knowledge-agent.mjs
+BASE_URL=http://127.0.0.1:5199 node scripts/verify-general-agent-chat.mjs
 ```
 
-单测覆盖格式验证、三方合并、持久化故障、双设备同步、提交响应丢失、推送竞态、历史恢复等；`knowledge-edit.test.ts` 另外覆盖区间编辑（最小区间、批量偏移、重叠与越界拒绝）、基准失效丢弃与「改前留版本」。浏览器走查使用两个隔离存储上下文，共享模拟 GitHub 对象数据库，覆盖全局搜索、双设备合并与冲突、刷新恢复、Markdown 安全预览、导入导出和移动端布局；AI 走查另行断言预览阶段不写入正文、改写只影响目标区间、应用前版本可恢复、未使用 AI 时不下载 wasm。开发版走查已加入 `scripts/verify-ci.mjs`。
+单测覆盖格式验证、三方合并、持久化故障、双设备同步、提交响应丢失、推送竞态、历史恢复等；`knowledge-edit.test.ts` 另外覆盖区间编辑、基准失效丢弃与「改前留版本」。知识库浏览器走查使用两个隔离存储上下文，共享模拟 GitHub 对象数据库，覆盖全局搜索、双设备合并与冲突、刷新恢复、Markdown 安全预览、导入导出和移动端布局。通用助手走查另行检查全局打开、拖动缩放、收起还原、跨域会话与工具共享、能力开关、审批目标切换和移动端边界。

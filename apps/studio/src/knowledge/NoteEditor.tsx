@@ -1,7 +1,7 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import Markdown from "react-markdown";
-import { AgentEditPanel, useTextEditSuggestion } from "@bcr/react";
-import { activateSurface, registerSurface } from "@bcr/agent";
+import { useRuntimeActivity } from "@bcr/react";
+import { activateSurface, registerAgentCapability, registerSurface } from "@bcr/agent";
 import { decodeNote, same, type KnowledgeNote, type KnowledgeCollection } from "./model";
 import { MarkdownEditor } from "./MarkdownEditor";
 import type { KnowledgeStore } from "./store";
@@ -23,6 +23,7 @@ export function NoteEditor({
   locked: boolean;
   editorRef: Ref<EditorHandle>;
 }) {
+  const active = useRuntimeActivity();
   const [initial] = useState(() => {
     try {
       const raw = localStorage.getItem(draftKey(note.id));
@@ -57,7 +58,6 @@ export function NoteEditor({
   const pending = useRef<Promise<void> | null>(null);
   const live = useRef(true);
   const [agentTarget, setAgentTarget] = useState<{ from: number; to: number } | null>(null);
-  const edit = useTextEditSuggestion();
   const flush = async (): Promise<void> => {
     if (pending.current) await pending.current;
     if (!state.current.dirty) return;
@@ -118,8 +118,10 @@ export function NoteEditor({
   useEffect(() => {
     const unregister = registerSurface({
       kind: "knowledge.note",
+      capabilityId: "knowledge.note",
       label: draft.title || "未命名笔记",
       read: () => {
+        if (locked || initial.error) return null;
         const body = state.current.draft.body;
         const selection =
           agentTarget !== null &&
@@ -138,8 +140,15 @@ export function NoteEditor({
         };
       },
       write: (next) => change({ body: next }),
-      // Read-only, so the loop runs them without asking. A write still goes
-      // through the edit tool and stops for approval.
+    });
+    const unregisterCapability = registerAgentCapability({
+      id: "knowledge.note",
+      label: "知识库笔记",
+      description: "读取当前笔记与选区，确认后修改正文",
+      domain: "knowledge",
+      scope: "workspace",
+      available: () => active,
+      // Read tools are supplied by the domain; the host owns execution policy.
       tools: [
         {
           spec: {
@@ -164,12 +173,13 @@ export function NoteEditor({
         },
       ],
     });
-    activateSurface("knowledge.note");
+    activateSurface(active ? "knowledge.note" : null);
     return () => {
+      unregisterCapability();
       unregister();
       activateSurface(null);
     };
-  }, [agentTarget, draft.title]);
+  }, [active, agentTarget, draft.title, locked, initial.error]);
   useEffect(() => {
     if (!state.current.dirty && !pending.current) {
       state.current = { draft: note, base: note, dirty: false, sequence: state.current.sequence };
@@ -217,31 +227,6 @@ export function NoteEditor({
     }
     setDraft(next);
     setStatus("待保存…");
-  }
-
-  /**
-   * The range an AI edit addresses: the selection when there is one, else the
-   * caret. Text addressing is the only part the knowledge base owns; the
-   * proposal lifecycle lives in the shared controller.
-   */
-  function ask(mode: "rewrite" | "continue", instruction: string) {
-    const body = state.current.draft.body;
-    const selection =
-      agentTarget !== null && agentTarget.from !== agentTarget.to && agentTarget.to <= body.length
-        ? agentTarget
-        : null;
-    const caret = agentTarget !== null && agentTarget.from <= body.length ? agentTarget.from : null;
-    const range = selection ?? (caret === null ? null : { from: caret, to: caret });
-    if (range === null) return;
-    setError("");
-    void edit.propose({
-      mode,
-      instruction,
-      text: body,
-      start: range.from,
-      end: range.to,
-      label: state.current.draft.title || "未命名笔记",
-    });
   }
 
   return (
@@ -310,20 +295,6 @@ export function NoteEditor({
         }}
         onBlur={() => setTagText(state.current.draft.tags.join(", "))}
       />
-      <AgentEditPanel
-        text={draft.body}
-        scope={scopeLabel(agentTarget, draft.body.length)}
-        label={draft.title || "未命名笔记"}
-        state={edit.state}
-        notice={edit.notice}
-        disabled={locked || !!initial.error}
-        placeholder="例如：改写得更简洁，保留结论"
-        onPropose={(input) => ask(input.mode, input.instruction)}
-        onAccept={(suggestion) =>
-          edit.apply(suggestion, state.current.draft.body, (body) => change({ body }))
-        }
-        onDiscard={edit.discard}
-      />
       {preview ? (
         <article className="knowledge-prose">
           <Markdown
@@ -359,14 +330,6 @@ export function NoteEditor({
       </footer>
     </section>
   );
-}
-
-/** Human description of where an AI edit would apply. */
-function scopeLabel(target: { from: number; to: number } | null, length: number): string {
-  if (target === null || target.from > length) return "正文尚无光标";
-  if (target.from !== target.to && target.to <= length)
-    return `改写选中 ${target.to - target.from} 字符`;
-  return "在光标处插入";
 }
 
 /** The selected passage, or the caret position when nothing is selected. */

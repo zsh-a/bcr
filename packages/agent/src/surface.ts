@@ -14,6 +14,8 @@ import type { AgentTool } from "./runtime";
  * than a second writer that bypasses them.
  */
 export interface AgentSurface {
+  /** Owning capability; disabling it also removes the edit tool. */
+  readonly capabilityId?: string;
   /** Stable kind, e.g. `knowledge.note`. Used for display and diagnostics. */
   readonly kind: string;
   /** What the user is editing, e.g. a note title. */

@@ -1,4 +1,4 @@
-import { LayoutGrid, NotebookPen } from "lucide-react";
+import { LayoutGrid, NotebookPen, Sparkles } from "lucide-react";
 import type { AppManifest } from "@bcr/shell-contract";
 import { Dock } from "../components/Dock";
 
@@ -31,4 +31,15 @@ export const KNOWLEDGE_MANIFEST = {
   description: "独立 Markdown 笔记 · 资料引用 / 全文搜索 / GitHub 同步与版本恢复",
   section: "personal",
   load: async () => ({ App: (await import("../knowledge/KnowledgeApp")).KnowledgeApp }),
+} as const satisfies AppManifest;
+
+export const ASSISTANT_MANIFEST = {
+  id: "assistant",
+  title: "AI 助手",
+  path: "/assistant",
+  icon: Sparkles,
+  description: "全局浮动助手 · 共享领域能力 · 工具执行与审批",
+  section: "personal",
+  // The shell opens its single persistent assistant; the route owns no second chat.
+  load: async () => ({ App: () => null }),
 } as const satisfies AppManifest;

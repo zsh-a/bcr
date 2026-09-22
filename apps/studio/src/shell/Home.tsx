@@ -11,7 +11,7 @@ import { COMPUTE_APPS, LAUNCH_PAD_APPS, PERSONAL_APPS, type RegisteredApp } from
  * 信息管理类 surface。DocGen Lab 属内部合成数据工具，不在启动台展示
  * （路由仍可用，命令面板可达）。
  */
-export function Home() {
+export function Home({ onOpenAssistant }: { onOpenAssistant: () => void }) {
   const navigate = useNavigate();
   const studioRunning = useStudio((s) => s.runningCount);
   const activity = useRunningApps();
@@ -29,7 +29,9 @@ export function Home() {
       <button
         key={app.id}
         type="button"
-        onClick={() => void navigate({ to: app.path })}
+        onClick={() =>
+          app.id === "assistant" ? onOpenAssistant() : void navigate({ to: app.path })
+        }
         className="home-app-card group relative flex min-h-56 flex-col items-start justify-between gap-6 rounded-[var(--radius-md)] border border-border bg-surface p-7 text-left transition-colors hover:border-border-strong hover:bg-raised"
       >
         <span className="flex size-14 items-center justify-center rounded-[var(--radius-sm)] border border-border bg-overlay text-accent">

@@ -2,7 +2,6 @@ import { citationFromParams, type SearchDocument } from "@bcr/core";
 import { notifyNavigation, RuntimeActivity, RuntimeProvider, useRuntimeSession } from "@bcr/react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Suspense, useEffect, useState } from "react";
-import { AgentPanelBridge } from "../components/AgentPanelBridge";
 import { CommandPalette } from "../components/CommandPalette";
 import { SearchPanel } from "../components/SearchPanel";
 import { TopBar } from "../components/TopBar";
@@ -12,6 +11,8 @@ import { appIdFromPath, LAUNCH_PAD_APPS, MANIFESTS } from "./registry";
 import { Home } from "./Home";
 import { ResearchCaptureBridge } from "../ResearchCaptureBridge";
 import { KnowledgeBridge } from "../knowledge/KnowledgeBridge";
+import { AssistantWindow, type AssistantVisibility } from "../assistant/AssistantWindow";
+import { WorkspaceCapabilities } from "../assistant/WorkspaceCapabilities";
 
 /**
  * OS 式 Shell 根布局（§12：URL 即状态）：
@@ -26,12 +27,13 @@ export function Shell() {
   const { services, error } = useRuntimeSession(createRuntimeServices);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [agentOpen, setAgentOpen] = useState(false);
+  const [assistantVisibility, setAssistantVisibility] = useState<AssistantVisibility>("closed");
   const navigate = useNavigate();
   const active = appIdFromPath(useRouterState({ select: (s) => s.location.pathname }));
   const [visited, setVisited] = useState<ReadonlyArray<string>>(active === "home" ? [] : [active]);
 
   useEffect(() => {
+    if (active === "assistant") setAssistantVisibility("open");
     if (active !== "home") {
       setVisited((list) => (list.includes(active) ? list : [...list, active]));
     }
@@ -40,6 +42,11 @@ export function Shell() {
   // ⌘K 命令面板；Alt+0 主页 / Alt+数字 切 App（⌘+数字被浏览器标签页占用）
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "j") {
+        event.preventDefault();
+        setAssistantVisibility((value) => (value === "open" ? "minimized" : "open"));
+        return;
+      }
       if ((event.metaKey || event.ctrlKey) && event.key === "k") {
         event.preventDefault();
         setPaletteOpen((open) => !open);
@@ -103,6 +110,7 @@ export function Shell() {
       <ResearchCaptureBridge>
         <SearchBridge services={services} />
         <KnowledgeBridge />
+        <WorkspaceCapabilities />
         <div
           className={`studio-shell-frame flex h-full flex-col ${active === "reader" ? "reader-active" : ""}`}
         >
@@ -110,28 +118,39 @@ export function Shell() {
             active={active}
             onOpenPalette={() => setPaletteOpen(true)}
             onOpenSearch={() => setSearchOpen(true)}
-            onOpenAgent={() => setAgentOpen((open) => !open)}
+            onOpenAgent={() => setAssistantVisibility("open")}
           />
           <div className="min-h-0 flex-1">
-            {active === "home" && <Home />}
-            {MANIFESTS.filter((app) => visited.includes(app.id)).map((app) => (
-              <div key={app.id} className={app.id === active ? "h-full min-h-0" : "hidden"}>
-                <Suspense
-                  fallback={
-                    <div className="flex h-full items-center justify-center">
-                      <p className="font-mono text-[11px] text-faint">{app.title} 加载中…</p>
-                    </div>
-                  }
-                >
-                  <RuntimeActivity active={app.id === active}>
-                    <app.component />
-                  </RuntimeActivity>
-                </Suspense>
-              </div>
-            ))}
+            {(active === "home" || active === "assistant") && (
+              <Home onOpenAssistant={() => setAssistantVisibility("open")} />
+            )}
+            {MANIFESTS.filter((app) => app.id !== "assistant" && visited.includes(app.id)).map(
+              (app) => (
+                <div key={app.id} className={app.id === active ? "h-full min-h-0" : "hidden"}>
+                  <Suspense
+                    fallback={
+                      <div className="flex h-full items-center justify-center">
+                        <p className="font-mono text-[11px] text-faint">{app.title} 加载中…</p>
+                      </div>
+                    }
+                  >
+                    <RuntimeActivity active={app.id === active}>
+                      <app.component />
+                    </RuntimeActivity>
+                  </Suspense>
+                </div>
+              ),
+            )}
           </div>
         </div>
-        <AgentPanelBridge open={agentOpen} onOpenChange={setAgentOpen} />
+        <AssistantWindow
+          visibility={assistantVisibility}
+          onVisibilityChange={setAssistantVisibility}
+          workspaceId={active === "assistant" ? "home" : active}
+          workspaceLabel={
+            MANIFESTS.find((app) => app.id === active && app.id !== "assistant")?.title ?? "工作台"
+          }
+        />
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
         <SearchPanel
           open={searchOpen}

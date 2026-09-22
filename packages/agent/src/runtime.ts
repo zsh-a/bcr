@@ -97,6 +97,7 @@ function runtimeFor(
   const key = [
     endpoint.provider ?? "openai",
     endpoint.baseUrl,
+    endpoint.apiKey,
     endpoint.model,
     tools.map((tool) => JSON.stringify(tool.spec)).join("\u0001"),
   ].join("\u0000");

@@ -1,16 +1,19 @@
-/* The agent chat panel (`@bcr/react`).
-   Composed from assistant-ui primitives, styled with BCR's design tokens so the
-   panel matches the shell instead of importing a second visual language. */
-
 .bcr-chat {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  gap: 10px;
-  padding: 12px 14px;
-  background: var(--color-bg);
+  padding: 18px;
+  gap: 14px;
   color: var(--color-text);
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(
+      ellipse at 50% -18%,
+      color-mix(in srgb, var(--color-accent) 8%, transparent),
+      transparent 58%
+    ),
+    var(--color-bg);
 }
 .bcr-chat-head {
   display: flex;
@@ -19,18 +22,18 @@
 }
 .bcr-chat-target {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
   flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 .bcr-chat-eyebrow {
   font: 9px var(--font-mono);
-  letter-spacing: 0.14em;
-  color: var(--color-faint);
+  letter-spacing: 0.17em;
+  color: var(--color-accent);
 }
 .bcr-chat-target strong {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -42,18 +45,24 @@
 }
 .bcr-chat-modes {
   display: flex;
-  gap: 4px;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+  max-width: 56%;
 }
 .bcr-chat-modes button,
 .bcr-chat-button {
-  padding: 6px 10px;
+  padding: 6px 9px;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: transparent;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface) 66%, transparent);
   color: var(--color-muted);
-  font-size: 11px;
+  font: 11px var(--font-sans);
   cursor: pointer;
+  transition:
+    border-color 0.18s,
+    color 0.18s,
+    background 0.18s;
 }
 .bcr-chat-modes button:hover,
 .bcr-chat-button:hover:not(:disabled) {
@@ -61,19 +70,125 @@
   color: var(--color-text);
 }
 .bcr-chat-modes button[aria-pressed="true"] {
-  border-color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 44%, transparent);
   background: var(--color-accent-dim);
+  color: var(--color-accent);
+}
+.bcr-chat-context {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bcr-chat-context button {
+  background: transparent;
+  cursor: pointer;
+}
+.bcr-chat-capabilities {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+.bcr-chat-capabilities summary {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+  list-style: none;
+}
+.bcr-chat-capabilities summary::-webkit-details-marker {
+  display: none;
+}
+.bcr-chat-capabilities summary span {
+  color: var(--color-accent);
+}
+.bcr-chat-capabilities[open] summary {
+  border-color: var(--color-accent);
+}
+.bcr-chat-capability-list {
+  position: absolute;
+  z-index: 4;
+  left: 0;
+  right: 0;
+  top: calc(100% + 8px);
+  display: grid;
+  gap: 4px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: 0 12px 32px #0006;
+}
+.bcr-chat-capability-list label {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 8px 5px;
+  cursor: pointer;
+}
+.bcr-chat-capability-list input {
+  margin-top: 3px;
+  accent-color: var(--color-accent);
+}
+.bcr-chat-capability-list label > span {
+  flex: 1;
+  min-width: 0;
+}
+.bcr-chat-capability-list strong {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--color-text);
 }
+.bcr-chat-capability-list small {
+  color: var(--color-accent);
+  font-size: 10px;
+  font-weight: 400;
+}
+.bcr-chat-capability-list em {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-faint);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.6;
+}
+.bcr-chat-context-pill {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-faint);
+  font: 10px var(--font-mono);
+}
+.bcr-chat-context-pill.is-current {
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  color: var(--color-accent);
+}
 .bcr-chat-primary {
-  padding: 6px 12px;
-  border: 1px solid transparent;
-  border-radius: 6px;
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 8px;
   background: var(--color-accent);
   color: var(--color-bg);
-  font-size: 11px;
-  font-weight: 500;
+  font: 600 11px var(--font-sans);
   cursor: pointer;
+  transition:
+    filter 0.18s,
+    transform 0.18s;
+}
+.bcr-chat-primary:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
 }
 .bcr-chat-primary:disabled,
 .bcr-chat-button:disabled {
@@ -83,16 +198,18 @@
 .bcr-chat-hint {
   margin: 0;
   font-size: 11px;
-  line-height: 1.7;
+  line-height: 1.6;
   color: var(--color-faint);
 }
 .bcr-chat-settings {
+  max-height: 42vh;
+  overflow: auto;
   display: grid;
   gap: 10px;
-  padding: 12px;
-  background: var(--color-surface);
+  padding: 13px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 12px;
+  background: var(--color-surface);
 }
 .bcr-chat-settings label {
   font-size: 11px;
@@ -102,50 +219,97 @@
   display: block;
   width: 100%;
   margin-top: 5px;
-  padding: 7px 9px;
+  padding: 8px 10px;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: 7px;
   background: var(--color-bg);
-  font-family: var(--font-mono);
-  font-size: 12px;
+  font: 12px var(--font-mono);
   color: var(--color-text);
 }
 .bcr-chat-settings button {
   justify-self: start;
 }
-
-/* Thread */
+.bcr-chat-activity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bcr-chat-activity span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font: 10px var(--font-mono);
+}
+.bcr-chat-activity i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
 .bcr-chat-thread {
   display: flex;
-  flex-direction: column;
   flex: 1;
+  flex-direction: column;
   min-height: 0;
 }
 .bcr-chat-viewport {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  gap: 18px;
   min-height: 0;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 6px 2px;
+  padding: 10px 2px 18px;
+  scrollbar-color: var(--color-border-strong) transparent;
 }
 .bcr-chat-empty {
-  margin: 0;
-  font-size: 12px;
-  line-height: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  max-width: 290px;
+  margin: auto 0;
   color: var(--color-faint);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.bcr-chat-empty-mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 5px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 38%, transparent);
+  border-radius: 14px;
+  color: var(--color-accent);
+  background: var(--color-accent-dim);
+  font-size: 23px;
+}
+.bcr-chat-empty strong {
+  color: var(--color-text);
+  font-size: 17px;
+  font-weight: 500;
 }
 .bcr-chat-line {
   max-width: 100%;
   font-size: 12px;
-  line-height: 1.85;
+  line-height: 1.75;
+}
+.bcr-chat-line.is-user {
+  align-self: flex-end;
+  max-width: 88%;
 }
 .bcr-chat-line.is-user p {
   margin: 0;
+  padding: 10px 13px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px 12px 3px 12px;
+  background: var(--color-surface);
   color: var(--color-text);
-  border-left: 2px solid var(--color-border-strong);
-  padding-left: 10px;
 }
 .bcr-chat-text {
   margin: 0;
@@ -153,32 +317,30 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-
-/* Edit card: the explicit apply step. */
 .bcr-chat-card {
-  margin: 8px 0;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
-  border-radius: 8px;
+  margin: 4px 0;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 29%, var(--color-border));
+  border-radius: 11px;
   background: var(--color-surface);
 }
 .bcr-chat-card-head {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  font: 10px var(--font-mono);
+  margin-bottom: 9px;
   color: var(--color-accent);
-  margin-bottom: 8px;
+  font: 10px var(--font-mono);
 }
 .bcr-chat-diff {
+  max-height: 180px;
   margin: 0;
   padding: 10px;
-  max-height: 200px;
   overflow: auto;
+  border-radius: 7px;
   background: var(--color-bg);
-  border-radius: 6px;
-  font: 11px/1.7 var(--font-mono);
   color: var(--color-muted);
+  font: 11px/1.65 var(--font-mono);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -187,31 +349,47 @@
   gap: 8px;
   margin-top: 10px;
 }
-
-/* Composer */
 .bcr-chat-composer {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border-top: 1px solid var(--color-border);
-  padding-top: 10px;
+  padding: 8px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 13px;
+  background: var(--color-surface);
+  box-shadow: 0 12px 28px #0002;
+  transition: border-color 0.2s;
+}
+.bcr-chat-composer:focus-within {
+  border-color: color-mix(in srgb, var(--color-accent) 58%, var(--color-border));
 }
 .bcr-chat-input {
   width: 100%;
-  padding: 9px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-bg);
+  min-height: 54px;
+  padding: 5px 6px;
+  border: 0;
+  outline: 0;
+  background: transparent;
   color: var(--color-text);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  resize: vertical;
+  font: 12px/1.6 var(--font-sans);
+  resize: none;
 }
 .bcr-chat-input::placeholder {
   color: var(--color-faint);
 }
+.bcr-chat-input:focus-visible {
+  outline: none;
+}
 .bcr-chat-composer-actions {
   display: flex;
-  gap: 8px;
   justify-content: flex-end;
+  gap: 7px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bcr-chat-primary,
+  .bcr-chat-modes button,
+  .bcr-chat-button,
+  .bcr-chat-composer {
+    transition: none;
+  }
 }

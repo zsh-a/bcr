@@ -20,19 +20,11 @@ import {
 import { ApplicationStatusProvider } from "./application-status";
 export type { RuntimeHost, RuntimeMetadata, RuntimeServices, RuntimeSession } from "@bcr/core";
 export { usePublishRunningCount, useRunningApps } from "./application-status";
-export { AgentEditPanel, AgentSettings, type AgentEditPanelProps } from "./AgentPanel";
 
 export { AgentChatPanel } from "./AgentChatPanel";
 export { asSuggestion, SURFACE_EDIT_TOOL, useAgentChat, type PendingApproval } from "./chat";
 
-export {
-  useAgent,
-  useTextEditSuggestion,
-  type AgentService,
-  type ProposeInput,
-  type SuggestionState,
-  type TextEditController,
-} from "./agent";
+export { useAgent, type AgentService } from "./agent";
 
 export {
   ResearchCaptureProvider,
