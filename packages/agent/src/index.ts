@@ -84,4 +84,5 @@ export {
   type AgentSurface,
   type SurfaceSummary,
   type SurfaceTarget,
+  type SurfaceWriteReceipt,
 } from "./surface";

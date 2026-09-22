@@ -5,7 +5,12 @@ const { activeSurface, activateSurface, registerSurface, surfaceRevision } =
 
 describe("surface ownership", () => {
   it("does not unregister a replacement when the previous owner leaves", () => {
-    const first = { kind: "test.note", label: "First", read: () => null, write: () => {} };
+    const first = {
+      kind: "test.note",
+      label: "First",
+      read: () => null,
+      write: async () => ({ id: "note", version: "v1" }),
+    };
     const second = { ...first, label: "Second" };
     const removeFirst = registerSurface(first);
     activateSurface(first.kind);
@@ -26,7 +31,7 @@ describe("surface ownership", () => {
       kind: "test.inactive",
       label: "Inactive",
       read: () => null,
-      write: () => {},
+      write: async () => ({ id: "note", version: "v1" }),
     });
     const before = surfaceRevision();
     remove();

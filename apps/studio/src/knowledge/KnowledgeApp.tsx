@@ -20,12 +20,15 @@ import { workspaceResearch } from "../researchCapture";
 import { assessExcerpt } from "../research";
 import { contentOf, emptyContent, newNote, pendingCount } from "./model";
 import { workspaceKnowledge } from "./store";
-import { contentFiles, FILE_LIMIT, importMarkdown, noteMarkdown } from "./files";
+import { FILE_LIMIT, importMarkdown, noteMarkdown } from "./files";
 import { GitHubKnowledge } from "./github";
 import { syncKnowledge } from "./sync";
 import { NoteEditor, type EditorHandle } from "./NoteEditor";
 import { KnowledgeSyncPanel, KnowledgeHistory } from "./KnowledgePanels";
 import "./knowledge.css";
+import { searchKnowledge } from "./retrieval";
+import { KnowledgeRestorePanel } from "./KnowledgeRestorePanel";
+import { writeKnowledgeBackup } from "./backup";
 
 export function KnowledgeApp() {
   const services = useRuntime(),
@@ -40,7 +43,7 @@ export function KnowledgeApp() {
     [syncing, setSyncing] = useState(false);
   const [query, setQuery] = useState(""),
     [collection, setCollection] = useState("");
-  const [panel, setPanel] = useState<"sync" | "history" | null>(null),
+  const [panel, setPanel] = useState<"sync" | "history" | "restore" | null>(null),
     [sidebar, setSidebar] = useState(false);
   const [token, setToken] = useState(""),
     [auto, setAuto] = useState(false);
@@ -58,14 +61,10 @@ export function KnowledgeApp() {
   const note =
     (selectedId && Object.hasOwn(state.notes, selectedId) ? state.notes[selectedId] : undefined) ??
     notes[0];
-  const filtered = notes.filter(
-    (n) =>
-      (!collection || n.collectionId === collection) &&
-      `${n.title}\n${n.body}\n${n.tags.join(" ")}`
-        .normalize("NFKC")
-        .toLocaleLowerCase()
-        .includes(query.normalize("NFKC").toLocaleLowerCase()),
-  );
+  const filtered = searchKnowledge(notes, query, {
+    collectionId: collection,
+    limit: notes.length,
+  }).hits.map(({ note }) => note);
   const pending = pendingCount(state);
   useEffect(() => {
     let live = true;
@@ -213,11 +212,7 @@ export function KnowledgeApp() {
   }
   async function exportAll() {
     await editor.current?.flush();
-    const { ZipWriter, BlobWriter, TextReader } = await import("@zip.js/zip.js");
-    const zip = new ZipWriter(new BlobWriter("application/zip"));
-    for (const [path, text] of Object.entries(contentFiles(contentOf(store.getSnapshot()))))
-      await zip.add(path, new TextReader(text));
-    download(await zip.close(), "bcr-knowledge.zip");
+    download(await writeKnowledgeBackup(contentOf(store.getSnapshot())), "bcr-knowledge.zip");
   }
   if (!ready)
     return (
@@ -347,6 +342,17 @@ export function KnowledgeApp() {
             <Download size={15} />
             导出知识库
           </button>
+          <button
+            type="button"
+            disabled={busy || syncing}
+            onClick={() => {
+              setPanel("restore");
+              setSidebar(false);
+            }}
+          >
+            <Upload size={15} />
+            恢复 ZIP 备份
+          </button>
         </div>
         <input
           ref={input}
@@ -451,6 +457,19 @@ export function KnowledgeApp() {
               setAuto={setAuto}
               syncing={syncing}
               onError={setError}
+            />
+          )}
+          {panel === "restore" && (
+            <KnowledgeRestorePanel
+              store={store}
+              flush={async () => {
+                await editor.current?.flush();
+              }}
+              onClose={() => setPanel(null)}
+              onRestored={() => {
+                setPanel(null);
+                setMessage("备份已恢复到本机，未修改同步连接");
+              }}
             />
           )}
           {panel === "history" && (

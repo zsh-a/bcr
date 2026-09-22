@@ -1,9 +1,11 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import Markdown from "react-markdown";
+import { textVersion } from "@bcr/core";
 import { useRuntimeActivity, useAgentHost } from "@bcr/react";
 import { decodeNote, same, type KnowledgeNote, type KnowledgeCollection } from "./model";
 import { MarkdownEditor } from "./MarkdownEditor";
 import type { KnowledgeStore } from "./store";
+import { readNotePage } from "./retrieval";
 
 export interface EditorHandle {
   flush(): Promise<void>;
@@ -69,6 +71,12 @@ export function NoteEditor({
         setError("");
       }
       await store.saveNote(captured.draft, captured.base);
+      if (
+        store
+          .getSnapshot()
+          .conflicts.some((conflict) => conflict.kind === "note" && conflict.key === note.id)
+      )
+        throw new Error("保存产生同步冲突，草稿已保留，请先解决冲突");
       if (state.current.sequence === captured.sequence) {
         const saved = store.getSnapshot().notes[note.id] ?? captured.draft;
         state.current = { ...state.current, base: saved, draft: saved, dirty: false };
@@ -139,7 +147,13 @@ export function NoteEditor({
           scope: selection === null ? "在光标处插入" : `选中 ${selection.to - selection.from} 字符`,
         };
       },
-      write: (next) => change({ body: next }),
+      write: async (next) => {
+        change({ body: next });
+        await flush();
+        const saved = store.getSnapshot().notes[note.id];
+        if (!saved) throw new Error("笔记已删除，未保存");
+        return { id: saved.id, version: textVersion(saved.body) };
+      },
     });
     const unregisterCapability = registerAgentCapability({
       id: "knowledge.note",
@@ -153,11 +167,19 @@ export function NoteEditor({
         {
           spec: {
             name: "read_note",
-            description: "Read the open note's current body.",
-            input_schema: { type: "object" },
+            description:
+              "Read the open note's current draft in pages of 12000 characters. Subsequent pages require nextOffset and version from the first page.",
+            input_schema: {
+              type: "object",
+              properties: { offset: { type: "integer", minimum: 0 }, version: { type: "string" } },
+            },
             risk: "read_only",
           },
-          call: async () => JSON.stringify({ body: state.current.draft.body }),
+          call: async (input) =>
+            JSON.stringify({
+              ...readNotePage(state.current.draft, JSON.parse(input)),
+              state: "draft",
+            }),
         },
         {
           spec: {
@@ -166,10 +188,15 @@ export function NoteEditor({
             input_schema: { type: "object" },
             risk: "read_only",
           },
-          call: async () =>
-            JSON.stringify({
-              selection: targetTextNow(state.current.draft.body, agentTarget),
-            }),
+          call: async () => {
+            const selection = targetTextNow(state.current.draft.body, agentTarget);
+            return JSON.stringify({
+              selection: selection.slice(0, 12000),
+              truncated: selection.length > 12000,
+              version: textVersion(state.current.draft.body),
+              state: "draft",
+            });
+          },
         },
       ],
     });

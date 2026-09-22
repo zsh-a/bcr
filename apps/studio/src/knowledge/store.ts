@@ -3,6 +3,7 @@ import { mergeContent } from "./merge";
 import {
   contentOf,
   decodeNote,
+  decodeContent,
   decodeState,
   decodeTarget,
   emptyKnowledge,
@@ -214,6 +215,17 @@ export class KnowledgeStore {
   }
   restore(note: KnowledgeNote): Promise<void> {
     return this.saveNote({ ...note, updatedAt: Date.now() }, this.value.notes[note.id] ?? null);
+  }
+
+  restoreBackup(content: KnowledgeContent, base: KnowledgeContent): Promise<void> {
+    const restored = decodeContent(content);
+    return this.update((state) => {
+      if (this.syncing || state.conflicts.length || state.sync.pending)
+        throw new Error("请先完成同步或解决冲突，再恢复备份");
+      if (!same(contentOf(state), base))
+        throw new Error("预览后知识库已变化，请重新选择备份并确认");
+      return this.withHistory(state, restored, "备份恢复前版本");
+    });
   }
 }
 const stores = new WeakMap<RuntimeMetadata, KnowledgeStore>();

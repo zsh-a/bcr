@@ -145,6 +145,11 @@ try {
   await approval.waitFor();
   assert.ok(!(await editor.textContent()).includes("已确认"));
   await approval.getByRole("button", { name: "应用修改" }).click();
+  await page.waitForFunction(() =>
+    document
+      .querySelector('.knowledge-editor [role="status"]')
+      ?.textContent?.includes("已保存到本机"),
+  );
   await panel.getByText("本次操作已处理。", { exact: false }).waitFor();
   await page.waitForTimeout(700);
   assert.ok((await editor.textContent()).includes("已确认的补充内容"));

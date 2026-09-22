@@ -74,6 +74,11 @@ export function useAgentChat(options: AgentSessionOptions) {
             };
           });
           content.push({ type: "text", text: completed.text.trim() || "（本次没有产出文本）" });
+          if (completed.finishReason === "round_limit")
+            content.push({
+              type: "text",
+              text: `\n\n已达到本次 ${completed.rounds} 轮执行上限，任务可能尚未完成。已执行的工具结果保留在上方；如需继续，请发送新的指令。`,
+            });
           yield { content };
         } finally {
           unsubscribe();

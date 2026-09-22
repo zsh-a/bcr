@@ -27,8 +27,8 @@ export interface AgentSurface {
    * document), so the panel can say so instead of guessing.
    */
   readonly read: () => SurfaceTarget | null;
-  /** Persist an accepted result. */
-  readonly write: (next: string) => void;
+  /** Resolves only after durable domain storage accepts the edit; rejects on failure/conflict. */
+  readonly write: (next: string) => Promise<SurfaceWriteReceipt>;
   /**
    * What the agent may do with this content, e.g. search or read.
    *
@@ -36,6 +36,11 @@ export interface AgentSurface {
    * its own capabilities without the chat learning about them.
    */
   readonly tools?: readonly AgentTool[];
+}
+
+export interface SurfaceWriteReceipt {
+  readonly id: string;
+  readonly version: string;
 }
 
 export interface SurfaceTarget {

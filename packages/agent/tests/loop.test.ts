@@ -96,6 +96,7 @@ describe("agent loop", () => {
     });
 
     expect(result.text).toBe("先查一下查到了");
+    expect(result.finishReason).toBe("completed");
     expect(result.toolResults[0]).toMatchObject({
       tool_call_id: "c1",
       tool_name: "lookup",
@@ -176,12 +177,25 @@ describe("agent loop", () => {
         pending: { state: { round: i }, calls: [{ id: `c${i}`, name: "lookup", input: {} }] },
       })),
     );
-    await runAgentLoop(endpoint, [{ role: "user", content: "hi" }], {
+    const result = await runAgentLoop(endpoint, [{ role: "user", content: "hi" }], {
       tools: [tool("lookup", {})],
       maxRounds: 3,
       runRound: scripted.runRound,
     });
     expect(scripted.count).toBe(3);
+    expect(result.finishReason).toBe("round_limit");
+    expect(result.rounds).toBe(3);
+    expect(result.toolResults).toHaveLength(3);
+  });
+
+  it("rejects invalid budgets before starting the runtime", async () => {
+    const runRound = vi.fn(async () => null);
+    for (const maxRounds of [NaN, Infinity, 0, -1, 1.5]) {
+      await expect(runAgentLoop(endpoint, [], { maxRounds, runRound })).rejects.toThrow(
+        /maxRounds/,
+      );
+    }
+    expect(runRound).not.toHaveBeenCalled();
   });
 
   it("streams text from every round through one callback", async () => {

@@ -1,5 +1,6 @@
 import type { AgentCapability } from "@bcr/agent";
 import type { KnowledgeStore } from "./store";
+import { readNotePage, noteSearchHit, searchKnowledge } from "./retrieval";
 
 /** Knowledge access is independent of the editor being mounted or visible. */
 export function knowledgeCapability(store: KnowledgeStore): AgentCapability {
@@ -14,36 +15,42 @@ export function knowledgeCapability(store: KnowledgeStore): AgentCapability {
         spec: {
           name: "knowledge_find_notes",
           description:
-            "Find saved knowledge notes by text. An empty query lists recent notes. Returns note IDs for knowledge_read_note.",
+            "Find saved knowledge notes by text, ranked by title, tags and body. An empty query lists recent notes. Use nextOffset for more results. Returns matching passages, note IDs, versions, routes and source citations for knowledge_read_note.",
           input_schema: {
             type: "object",
-            properties: { query: { type: "string", maxLength: 256 } },
+            properties: {
+              query: { type: "string", maxLength: 256 },
+              offset: { type: "integer", minimum: 0 },
+              collectionId: { type: "string" },
+            },
             required: ["query"],
             additionalProperties: false,
           },
           risk: "read_only",
         },
-        call: async (input) => {
-          const args = JSON.parse(input) as { query?: unknown };
+        call: async (input, context) => {
+          const args = JSON.parse(input) as {
+            query?: unknown;
+            offset?: unknown;
+            collectionId?: unknown;
+          };
           if (!args || typeof args.query !== "string" || args.query.length > 256)
             throw new Error("请输入不超过 256 字的查询");
           await store.ready;
-          const query = args.query.trim().toLocaleLowerCase();
-          const notes = Object.values(store.getSnapshot().notes)
-            .filter((note) =>
-              `${note.title}\n${note.tags.join(" ")}\n${note.body}`
-                .toLocaleLowerCase()
-                .includes(query),
-            )
-            .sort((a, b) => b.updatedAt - a.updatedAt);
+          context?.signal?.throwIfAborted();
+          const offset = args.offset ?? 0;
+          if (typeof offset !== "number" || !Number.isSafeInteger(offset) || offset < 0)
+            throw new Error("分页位置无效");
+          if (args.collectionId !== undefined && typeof args.collectionId !== "string")
+            throw new Error("集合 ID 无效");
+          const result = searchKnowledge(Object.values(store.getSnapshot().notes), args.query, {
+            offset,
+            ...(typeof args.collectionId === "string" ? { collectionId: args.collectionId } : {}),
+          });
           return JSON.stringify({
-            total: notes.length,
-            notes: notes.slice(0, 20).map((note) => ({
-              id: note.id,
-              title: note.title,
-              tags: note.tags,
-              preview: note.body.slice(0, 240),
-            })),
+            total: result.total,
+            nextOffset: result.nextOffset,
+            notes: result.hits.map(({ note }) => noteSearchHit(note, args.query as string)),
           });
         },
       },
@@ -51,31 +58,31 @@ export function knowledgeCapability(store: KnowledgeStore): AgentCapability {
         spec: {
           name: "knowledge_read_note",
           description:
-            "Read a saved note by ID. Long notes are returned in pages of 12000 characters; use nextOffset to continue.",
+            "Read a saved note by ID with provenance. Long notes use pages of 12000 characters; subsequent pages require nextOffset and the returned version. If the note changes, restart reading.",
           input_schema: {
             type: "object",
-            properties: { id: { type: "string" }, offset: { type: "integer", minimum: 0 } },
+            properties: {
+              id: { type: "string" },
+              offset: { type: "integer", minimum: 0 },
+              version: { type: "string" },
+            },
             required: ["id"],
             additionalProperties: false,
           },
           risk: "read_only",
         },
-        call: async (input) => {
-          const args = JSON.parse(input) as { id?: unknown; offset?: unknown };
+        call: async (input, context) => {
+          const args = JSON.parse(input) as { id?: unknown; offset?: unknown; version?: unknown };
           if (!args || typeof args.id !== "string") throw new Error("缺少笔记 ID");
           const offset = args.offset ?? 0;
           if (typeof offset !== "number" || !Number.isSafeInteger(offset) || offset < 0)
             throw new Error("读取位置无效");
           await store.ready;
-          const note = store.getSnapshot().notes[args.id];
+          context?.signal?.throwIfAborted();
+          const notes = store.getSnapshot().notes;
+          const note = Object.hasOwn(notes, args.id) ? notes[args.id] : undefined;
           if (!note) throw new Error("笔记不存在或已删除");
-          return JSON.stringify({
-            id: note.id,
-            title: note.title,
-            body: note.body.slice(offset, offset + 12000),
-            totalLength: note.body.length,
-            nextOffset: offset + 12000 < note.body.length ? offset + 12000 : null,
-          });
+          return JSON.stringify(readNotePage(note, args));
         },
       },
     ],

@@ -118,4 +118,63 @@ describe("agent session", () => {
     expect(first.agentCapabilities()).toHaveLength(1);
     expect(second.agentCapabilities()).toEqual([]);
   });
+
+  it.each([false, true])(
+    "waits for durable edits and propagates storage failure=%s",
+    async (fail) => {
+      const host = createAgentHost();
+      const saved = Promise.withResolvers<{ id: string; version: string }>();
+      const started = Promise.withResolvers<void>();
+      host.registerSurface({
+        kind: "note",
+        label: "Note",
+        read: () => ({
+          text: "before",
+          range: { start: 0, end: 6 },
+          scope: "all",
+          instruction: "edit",
+        }),
+        write: () => {
+          started.resolve();
+          return saved.promise;
+        },
+      });
+      host.activateSurface("note");
+      let resumed = false;
+      const round: RunRound = async (_endpoint, _messages, opts) => {
+        if (opts.resume) {
+          resumed = true;
+          return null;
+        }
+        return {
+          state: {},
+          toolCalls: [{ id: "edit", name: "apply_text_edit", input: { replacement: "after" } }],
+        };
+      };
+      const session = createAgentSession(() => options, host, round);
+      const stop = session.subscribe(() => session.getSnapshot().approval?.settle(true));
+      try {
+        const running = session.run(endpoint, messages, new AbortController().signal);
+        await started.promise;
+        expect(resumed).toBe(false);
+        expect(session.getSnapshot().running).toBe(true);
+        if (fail) saved.reject(new Error("disk full"));
+        else saved.resolve({ id: "note", version: "saved-version" });
+        const result = await running;
+        if (fail)
+          expect(result.toolResults[0]).toMatchObject({
+            is_error: true,
+            output: { error: "Error: disk full" },
+          });
+        else
+          expect(result.toolResults[0]?.output).toMatchObject({
+            status: "saved",
+            id: "note",
+            version: "saved-version",
+          });
+      } finally {
+        stop();
+      }
+    },
+  );
 });

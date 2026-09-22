@@ -35,6 +35,8 @@ export interface PendingTurn {
 
 /** Everything the loop accumulated across its rounds. */
 export interface LoopResult {
+  readonly finishReason: "completed" | "round_limit";
+  readonly rounds: number;
   /** Concatenated assistant text from every round. */
   readonly text: string;
   readonly toolCalls: readonly ToolCall[];
@@ -116,7 +118,9 @@ export async function runAgentLoop(
   options: LoopOptions = {},
 ): Promise<LoopResult> {
   const tools = options.tools ?? [];
-  const maxRounds = Math.max(1, options.maxRounds ?? DEFAULT_MAX_ROUNDS);
+  const maxRounds = options.maxRounds ?? DEFAULT_MAX_ROUNDS;
+  if (!Number.isSafeInteger(maxRounds) || maxRounds < 1)
+    throw new Error("maxRounds must be a positive safe integer");
   const byName = new Map(tools.map((tool) => [toolSpecOf(tool.spec).name, tool]));
   const decide = options.decide ?? defaultDecider(options.signal);
 
@@ -140,7 +144,15 @@ export async function runAgentLoop(
       },
       ...(state === null ? {} : { resume: { state, toolResults: pendingResults } }),
     });
-    if (pending === null) break;
+    options.signal?.throwIfAborted();
+    if (pending === null)
+      return {
+        text,
+        toolCalls: calls,
+        toolResults: results,
+        finishReason: "completed",
+        rounds: round + 1,
+      };
     state = pending.state;
     pendingResults = [];
 
@@ -162,7 +174,13 @@ export async function runAgentLoop(
       pendingResults.push(result);
     }
   }
-  return { text, toolCalls: calls, toolResults: results };
+  return {
+    text,
+    toolCalls: calls,
+    toolResults: results,
+    finishReason: "round_limit",
+    rounds: maxRounds,
+  };
 }
 
 /**

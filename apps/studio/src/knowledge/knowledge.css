@@ -502,6 +502,29 @@
   gap: 10px;
   margin: 16px 0 6px;
 }
+
+.knowledge-restore-options {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.knowledge-restore-options label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.knowledge-restore-options input[type="radio"] {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--color-accent);
+}
 .knowledge-checkbox {
   display: inline-flex;
   align-items: center;
