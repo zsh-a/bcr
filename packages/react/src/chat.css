@@ -1,3 +1,27 @@
+.bcr-chat-error {
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  overflow-wrap: anywhere;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.bcr-chat-error > strong,
+.bcr-chat-error > span,
+.bcr-chat-error > p {
+  width: 100%;
+  margin: 0;
+}
+.bcr-chat-error > p {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.bcr-chat-error > button {
+  min-height: 44px;
+}
+
 .bcr-chat {
   display: flex;
   flex-direction: column;

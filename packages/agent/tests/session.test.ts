@@ -24,6 +24,31 @@ function setup(tool: AgentTool, getOptions = () => options) {
 }
 
 describe("agent session", () => {
+  it("retains completed tool receipts when the following model round fails", async () => {
+    const host = createAgentHost();
+    host.registerAgentCapability({
+      id: "test",
+      label: "Test",
+      tools: [{ spec: { name: "test", risk: "read_only" }, call: async () => '{"saved":true}' }],
+    });
+    const session = createAgentSession(
+      () => options,
+      host,
+      async (endpoint, messages, round) => {
+        if (round.resume) throw new Error("gateway unavailable");
+        return scripted(endpoint, messages, round);
+      },
+    );
+    await expect(session.run(endpoint, messages, new AbortController().signal)).rejects.toThrow(
+      "gateway unavailable",
+    );
+    expect(session.getSnapshot()).toMatchObject({
+      status: "failed",
+      running: false,
+      toolCalls: [{ id: "call-1" }],
+      toolResults: [{ tool_call_id: "call-1", output: { saved: true } }],
+    });
+  });
   it("executes without React and passes cancellation and invocation identity to tools", async () => {
     const call = vi.fn(async () => '{"ok":true}');
     const session = setup({ spec: { name: "test", risk: "read_only" }, call });

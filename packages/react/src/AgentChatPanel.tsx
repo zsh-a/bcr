@@ -1,6 +1,8 @@
 import { useState, type FunctionComponent } from "react";
 import {
   AssistantRuntimeProvider,
+  ActionBarPrimitive,
+  ErrorPrimitive,
   ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
@@ -164,6 +166,31 @@ export function AgentChatPanel({
                         },
                       }}
                     />
+                    <MessagePrimitive.Error>
+                      <div className="bcr-chat-error" role="alert">
+                        <strong>本次请求未完成</strong>
+                        <ErrorPrimitive.Message />
+                        <p>
+                          请检查接口、模型和网络。跨域失败时请配置同源代理。已执行的操作不会自动撤销。
+                        </p>
+                        {message.content.some((part) => part.type === "tool-call") ? (
+                          <p>
+                            本轮包含工具调用，请先核实上方执行记录，再发送新的指令，避免重复操作。
+                          </p>
+                        ) : (
+                          <ActionBarPrimitive.Reload className="bcr-chat-button">
+                            重试
+                          </ActionBarPrimitive.Reload>
+                        )}
+                        <button
+                          type="button"
+                          className="bcr-chat-button"
+                          onClick={() => setSettingsOpen(true)}
+                        >
+                          检查接口
+                        </button>
+                      </div>
+                    </MessagePrimitive.Error>
                   </MessagePrimitive.Root>
                 )
               }
@@ -291,6 +318,10 @@ function EndpointSettings() {
       <button type="submit" className="bcr-chat-button">
         保存到本次会话
       </button>
+      <p className="bcr-chat-hint">
+        支持同源路径，例如
+        /api/llm/v1（需服务端启用代理）。直接连接本地接口时，网关必须允许当前页面跨域访问。
+      </p>
     </form>
   );
 }

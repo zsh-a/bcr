@@ -20,8 +20,29 @@ export interface AgentEndpoint {
 }
 
 export interface AgentMessage {
-  readonly role: "system" | "user" | "assistant";
+  readonly role: "system" | "user" | "assistant" | "tool";
   readonly content: string;
+  readonly toolCalls?: readonly { id: string; name: string; input: unknown }[];
+  readonly toolCallId?: string;
+}
+
+/** Translate host history to agent-runtime's provider-neutral message blocks. */
+export function serializeAgentMessage(message: AgentMessage) {
+  if (message.role === "tool") {
+    return {
+      role: "user",
+      content: [{ type: "tool_result", tool_use_id: message.toolCallId, content: message.content }],
+    };
+  }
+  return {
+    role: message.role,
+    content: message.toolCalls?.length
+      ? [
+          ...(message.content ? [{ type: "text", text: message.content }] : []),
+          ...message.toolCalls.map((call) => ({ type: "tool_use", ...call })),
+        ]
+      : message.content,
+  };
 }
 
 /** A tool the host executes. Registered once and offered on every turn. */
@@ -116,7 +137,9 @@ function runtimeFor(
   if (cached?.key === key) return cached.runtime;
   const runtime = new AgentRuntime(
     endpoint.provider ?? "openai",
-    endpoint.baseUrl,
+    endpoint.baseUrl.startsWith("/") && typeof location !== "undefined"
+      ? new URL(endpoint.baseUrl, location.origin).href
+      : endpoint.baseUrl,
     endpoint.apiKey,
     tools,
   );
@@ -174,7 +197,7 @@ export async function complete(
     protocol_version: "agent.v1",
     provider: endpoint.provider ?? "openai",
     model: endpoint.model,
-    messages: messages.map((message) => ({ role: message.role, content: message.content })),
+    messages: messages.map(serializeAgentMessage),
     tools: tools.map((tool) => tool.spec),
     // `client` stops the turn so the host can run the tools; with none to run,
     // the default `runtime` execution is the only valid choice.

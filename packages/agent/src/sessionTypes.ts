@@ -1,4 +1,4 @@
-import type { ToolCall } from "./loop";
+import type { ToolCall, ToolResult } from "./loop";
 import type { TextEditSuggestion } from "./suggestion";
 
 export interface PendingApproval {
@@ -29,6 +29,8 @@ export interface AgentSessionSnapshot {
   readonly error: string | null;
   readonly running: boolean;
   readonly text: string;
+  readonly toolCalls: readonly ToolCall[];
+  readonly toolResults: readonly ToolResult[];
   readonly approval: PendingApproval | null;
   readonly activity: readonly { id: string; name: string; status: string }[];
 }

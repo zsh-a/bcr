@@ -6,6 +6,8 @@ import { chromium } from "playwright";
 
 const origin = new URL(process.env.BASE_URL ?? "http://127.0.0.1:5199").origin;
 const requests = [];
+let failNext = false;
+let failResume = false;
 const server = createServer((req, res) => {
   if (req.url !== "/v1/chat/completions") return void res.writeHead(404).end();
   if (req.method === "OPTIONS") {
@@ -23,9 +25,23 @@ const server = createServer((req, res) => {
   req.on("end", () => {
     const request = JSON.parse(body);
     requests.push(request);
+    if (failNext) {
+      failNext = false;
+      res
+        .writeHead(503, { "content-type": "application/json", "access-control-allow-origin": "*" })
+        .end(JSON.stringify({ error: { message: "gateway temporarily unavailable" } }));
+      return;
+    }
     const latest =
       [...request.messages].reverse().find((message) => message.role === "user")?.content ?? "";
     const resumed = request.messages.at(-1)?.role === "tool";
+    if (resumed && failResume) {
+      failResume = false;
+      res
+        .writeHead(503, { "content-type": "application/json", "access-control-allow-origin": "*" })
+        .end(JSON.stringify({ error: { message: "failed after tool receipt" } }));
+      return;
+    }
     res.writeHead(200, { "content-type": "text/event-stream", "access-control-allow-origin": "*" });
     const send = (delta, finish_reason) =>
       res.write(
@@ -71,8 +87,8 @@ const server = createServer((req, res) => {
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const endpoint = `http://127.0.0.1:${server.address().port}/v1`;
 const browser = await chromium.launch({ args: ["--disable-dev-shm-usage"] });
+const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 try {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors = [];
   page.on("pageerror", (error) => errors.push(String(error)));
   await page.goto(origin, { waitUntil: "networkidle" });
@@ -91,8 +107,11 @@ try {
   await panel.getByRole("button", { name: "保存到本次会话" }).click();
   await panel.getByRole("button", { name: "接口", exact: true }).click();
   const input = panel.getByPlaceholder("提问、整理思路，或请我处理当前内容…");
+  failNext = true;
   await input.fill("你好");
   await input.press("Enter");
+  await panel.getByRole("alert").filter({ hasText: "本次请求未完成" }).waitFor();
+  await panel.getByRole("button", { name: "重试", exact: true }).click();
   await panel.locator(".assistant-markdown strong").filter({ hasText: "你好" }).waitFor();
   const first = requests[0];
   assert.ok(
@@ -154,6 +173,15 @@ try {
   await page.waitForTimeout(700);
   assert.ok((await editor.textContent()).includes("已确认的补充内容"));
 
+  failResume = true;
+  await input.fill("跨域查询后模拟网络失败");
+  await input.press("Enter");
+  const failedMessage = panel.locator(".is-agent").last();
+  await failedMessage.getByRole("alert").waitFor();
+  assert.equal(await failedMessage.getByRole("button", { name: "重试", exact: true }).count(), 0);
+  assert.ok(await failedMessage.getByLabel("工具 knowledge_find_notes").count());
+  assert.ok((await failedMessage.locator("pre").textContent()).includes("跨域验证笔记"));
+
   // Approval targets are frozen; a workspace switch must not redirect a pending write.
   const savedBody = await editor.textContent();
   await input.fill("再次修改当前笔记");
@@ -187,7 +215,7 @@ try {
   );
   await panel.getByRole("button", { name: "发送", exact: true }).waitFor();
   await page.waitForTimeout(350);
-  const crossDomain = requests.find((request) =>
+  const crossDomain = requests.findLast((request) =>
     request.messages.some(
       (message) => message.role === "tool" && message.content?.includes("跨域验证笔记"),
     ),
@@ -238,6 +266,10 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log("Global assistant verification PASSED", { requests: requests.length });
+} catch (error) {
+  console.error(await page.locator(".bcr-chat").innerText());
+  console.error("Last request", JSON.stringify(requests.at(-1)));
+  throw error;
 } finally {
   await browser.close();
   server.close();

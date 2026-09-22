@@ -50,9 +50,7 @@ export function buildAgentMessages(
             : null,
       }),
   };
-  const conversation = history.filter(
-    (message) => message.role === "user" || message.role === "assistant",
-  );
+  const conversation = history.filter((message) => message.role !== "system");
   const lastUser = conversation.findLastIndex((message) => message.role === "user");
   const insertion = lastUser < 0 ? conversation.length : lastUser;
   return [

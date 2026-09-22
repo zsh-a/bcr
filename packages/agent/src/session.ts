@@ -21,6 +21,8 @@ export function createAgentSession(
     error: null,
     running: false,
     text: "",
+    toolCalls: [],
+    toolResults: [],
     approval: null,
     activity: [],
   };
@@ -52,6 +54,8 @@ export function createAgentSession(
         error: null,
         running: true,
         text: "",
+        toolCalls: [],
+        toolResults: [],
         activity: [],
         approval: null,
       });
@@ -110,6 +114,8 @@ export function createAgentSession(
           tools,
           signal: abortSignal,
           decide,
+          onToolCall: (call) => update({ toolCalls: [...snapshot.toolCalls, call] }),
+          onToolResult: (result) => update({ toolResults: [...snapshot.toolResults, result] }),
           ...(runRound ? { runRound } : {}),
           onDelta: (chunk) => {
             update({ text: snapshot.text + chunk });

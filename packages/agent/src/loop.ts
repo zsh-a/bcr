@@ -55,6 +55,7 @@ export interface LoopOptions {
   readonly onDelta?: (chunk: string) => void;
   /** Called before a tool is resolved, for transcript rendering. */
   readonly onToolCall?: (call: ToolCall) => void;
+  readonly onToolResult?: (result: ToolResult) => void;
   /**
    * Decides a pending tool call. Return a result to execute it, or a rejection
    * to hand the model an error instead. Defaults to running read-only tools and
@@ -161,7 +162,6 @@ export async function runAgentLoop(
       calls.push(call);
       options.onToolCall?.(call);
       const verdict = await decide(call, byName.get(call.name));
-      options.signal?.throwIfAborted();
       const result = isRejection(verdict)
         ? {
             tool_call_id: call.id,
@@ -171,6 +171,8 @@ export async function runAgentLoop(
           }
         : verdict;
       results.push(result);
+      options.onToolResult?.(result);
+      options.signal?.throwIfAborted();
       pendingResults.push(result);
     }
   }
