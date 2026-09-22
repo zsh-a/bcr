@@ -13,8 +13,21 @@ const readerModules = Object.fromEntries(
 const origin = new URL(process.env.BASE_URL ?? "http://localhost:5199").origin;
 const browser = await chromium.launch({ args: ["--disable-dev-shm-usage"] });
 const errors = [];
+const loadedModules = new WeakMap();
 async function pageIn(context) {
   const page = await context.newPage();
+  const modules = new Map();
+  loadedModules.set(page, modules);
+  // Resource Timing only retains a bounded number of requests (normally 250).
+  // Observe actual module requests before navigation, preserving Vite's HMR URL
+  // so importing the module below reuses the application's live singleton.
+  page.on("request", (request) => {
+    const url = request.url();
+    const pathname = new URL(url).pathname;
+    for (const [name, path] of Object.entries(readerModules)) {
+      if (pathname === path) modules.set(name, url);
+    }
+  });
   page.setDefaultTimeout(25000);
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(`${origin}/reader`, { waitUntil: "networkidle" });
@@ -126,21 +139,14 @@ try {
   await restored.getByRole("button", { name: "取消资料包恢复", exact: true }).click();
   assert.equal(await restored.locator('[aria-label="集合摘录"] article').count(), 0);
   await choosePackage(restored, buffer);
-  // Reuse the modules loaded by Vite, including their HMR version query.
-  const liveModules = await restored.evaluate(
-    (paths) =>
-      Object.fromEntries(
-        Object.entries(paths).map(([name, path]) => {
-          const loaded = performance
-            .getEntriesByType("resource")
-            .map((entry) => entry.name)
-            .filter((url) => new URL(url).pathname === path)
-            .at(-1);
-          if (!loaded) throw new Error(`Reader module not loaded: ${name}`);
-          return [name, loaded];
-        }),
-      ),
-    readerModules,
+  // Regression: module discovery must work even when Resource Timing is empty.
+  await restored.evaluate(() => performance.clearResourceTimings());
+  const liveModules = Object.fromEntries(
+    Object.keys(readerModules).map((name) => {
+      const loaded = loadedModules.get(restored).get(name);
+      assert.ok(loaded, `Reader module not requested: ${name}`);
+      return [name, loaded];
+    }),
   );
   // Pause an actual SQLite library write, then change the live library and
   // enqueue an autosave. The restore must merge against these newer changes.
