@@ -41,6 +41,12 @@ function validPart(value: unknown): value is AgentPart {
   if (value.approval !== undefined) {
     const a = value.approval;
     if (
+      object(a) &&
+      a.preview !== undefined &&
+      (!object(a.preview) || !string(a.preview.before) || !string(a.preview.after))
+    )
+      return false;
+    if (
       !object(a) ||
       !object(a.call) ||
       a.call.id !== value.call.id ||

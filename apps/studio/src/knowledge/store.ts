@@ -1,5 +1,6 @@
 import type { RuntimeMetadata } from "@bcr/core";
 import { mergeContent } from "./merge";
+import { noteRevision } from "./noteRevision";
 import {
   contentOf,
   decodeNote,
@@ -17,6 +18,54 @@ import {
 
 export const KNOWLEDGE_KEY = "workspace/knowledge.v1";
 export class KnowledgeStore {
+  private draftGuards = new Map<string, Set<() => boolean>>();
+  registerDraft(id: string, dirty: () => boolean) {
+    const guards = this.draftGuards.get(id) ?? new Set<() => boolean>();
+    guards.add(dirty);
+    this.draftGuards.set(id, guards);
+    return () => {
+      guards.delete(dirty);
+      if (!guards.size) this.draftGuards.delete(id);
+    };
+  }
+  assertAgentWritable(id: string) {
+    if ([...(this.draftGuards.get(id) ?? [])].some((dirty) => dirty()))
+      throw new Error("笔记有未保存草稿，请先保存或处理草稿");
+    if (this.value.conflicts.some((c) => c.kind === "note" && c.key === id))
+      throw new Error("请先解决笔记的同步冲突");
+  }
+  /** Strict compare-and-set inside the save queue; unlike editor saves, never auto-merge. */
+  async saveAgentNote(
+    note: KnowledgeNote,
+    revision: string | null,
+    check: () => void,
+  ): Promise<KnowledgeNote> {
+    const valid = decodeNote(note);
+    let saved = valid;
+    await this.update((state) => {
+      check();
+      this.assertAgentWritable(valid.id);
+      if (valid.collectionId !== null && !Object.hasOwn(state.collections, valid.collectionId))
+        throw new Error("目标集合不存在或已删除");
+      const current = state.notes[valid.id];
+      if (revision === null && current) {
+        if (
+          !same({ ...valid, createdAt: current.createdAt, updatedAt: current.updatedAt }, current)
+        )
+          throw new Error("创建请求已使用且内容不同，请核实原笔记，不要重复创建");
+        saved = current;
+        return state;
+      }
+      if (revision !== null && (!current || noteRevision(current) !== revision))
+        throw new Error("笔记版本已变化或已删除，请重新读取并确认修改");
+      return this.withHistory(
+        state,
+        { notes: { ...state.notes, [valid.id]: valid }, collections: state.collections },
+        "Agent 编辑前版本",
+      );
+    });
+    return saved;
+  }
   private value = emptyKnowledge();
   private tail: Promise<unknown> = Promise.resolve();
   private reloadRequired = false;

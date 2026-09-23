@@ -24,6 +24,10 @@ export function useNoteDraft(note: KnowledgeNote, store: KnowledgeStore, locked:
     return () => clearTimeout(timer);
   }, [controller, snapshot.note, snapshot.dirty, locked]);
   useEffect(() => {
+    const unregister = store.registerDraft(
+      note.id,
+      () => controller.getSnapshot().dirty || !controller.editable,
+    );
     const unload = (event: BeforeUnloadEvent) => {
       if (controller.getSnapshot().dirty) {
         event.preventDefault();
@@ -33,8 +37,11 @@ export function useNoteDraft(note: KnowledgeNote, store: KnowledgeStore, locked:
     window.addEventListener("beforeunload", unload);
     return () => {
       window.removeEventListener("beforeunload", unload);
-      void controller.flush().catch(() => undefined);
+      void controller
+        .flush()
+        .catch(() => undefined)
+        .finally(unregister);
     };
-  }, [controller]);
+  }, [controller, store, note.id]);
   return { controller, ...snapshot };
 }

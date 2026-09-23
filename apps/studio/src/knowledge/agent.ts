@@ -1,16 +1,21 @@
 import type { AgentCapability } from "@bcr/agent";
 import type { KnowledgeStore } from "./store";
 import { readNotePage, noteSearchHit, searchKnowledge } from "./retrieval";
+import { knowledgeWriteTools } from "./agentWrites";
 
 /** Knowledge access is independent of the editor being mounted or visible. */
-export function knowledgeCapability(store: KnowledgeStore): AgentCapability {
+export function knowledgeCapability(
+  store: KnowledgeStore,
+  checkDraft?: (id: string) => void,
+): AgentCapability {
   return {
     id: "knowledge.library",
     label: "知识库",
-    description: "跨工作区查找和读取已保存的笔记",
+    description: "跨工作区检索和阅读笔记，确认后创建或更新知识库",
     domain: "knowledge",
     scope: "shared",
     tools: [
+      ...knowledgeWriteTools(store, checkDraft),
       {
         presentation: { kind: "knowledge.search-results", version: 1, label: "检索知识库" },
         spec: {

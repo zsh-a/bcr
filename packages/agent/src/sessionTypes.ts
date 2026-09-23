@@ -2,6 +2,7 @@ import type { ToolCall, ToolResult } from "./loop";
 import type { TextEditSuggestion } from "./suggestion";
 
 export interface PendingApproval {
+  readonly preview?: { before: string; after: string };
   readonly call: ToolCall;
   readonly settle: (approved: boolean) => void;
   /** The change, addressed against the surface that is active now. */

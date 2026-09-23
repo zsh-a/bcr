@@ -54,6 +54,15 @@ export function createToolDecision({
     const report = (status: string) => onActivity({ id: call.id, name: call.name, status });
     const suggestion = editing ? suggestionFrom(call, target) : null;
     if (editing && !suggestion) return { reject: "改动数据无效" };
+    let preview: Awaited<ReturnType<NonNullable<typeof tool.preview>>> | undefined;
+    if (tool.preview && requiresApproval(tool.spec)) {
+      try {
+        preview = await tool.preview(JSON.stringify(call.input ?? {}));
+      } catch (error) {
+        return { reject: String(error) };
+      }
+      signal.throwIfAborted();
+    }
     if (requiresApproval(tool.spec)) {
       const { promise, resolve } = Promise.withResolvers<boolean>();
       const abort = () => resolve(false);
@@ -69,7 +78,8 @@ export function createToolDecision({
             target && suggestion
               ? target.text.slice(suggestion.range.start, suggestion.range.end)
               : "",
-          targetLabel: surface?.label ?? call.name,
+          targetLabel: preview?.targetLabel ?? (editing ? surface?.label : undefined) ?? call.name,
+          ...(preview ? { preview: { before: preview.before, after: preview.after } } : {}),
         });
         if (signal.aborted) resolve(false);
         approved = await promise;

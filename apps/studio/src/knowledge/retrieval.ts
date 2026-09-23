@@ -1,5 +1,6 @@
 import { findTextMatches, textVersion } from "@bcr/core";
 import type { KnowledgeNote } from "./model";
+import { noteRevision } from "./noteRevision";
 
 const normalize = (value: string) =>
   value.normalize("NFKC").toLowerCase().replace(/\s+/gu, " ").trim();
@@ -62,6 +63,7 @@ export function noteEvidence(note: KnowledgeNote) {
     title: note.title,
     source: "knowledge",
     version: textVersion(note.body),
+    revision: noteRevision(note),
     updatedAt: note.updatedAt,
     route: `/knowledge?note=${encodeURIComponent(note.id)}`,
     collectionId: note.collectionId,

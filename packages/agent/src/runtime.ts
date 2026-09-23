@@ -59,6 +59,10 @@ export interface ToolExecutionContext {
 }
 
 export interface AgentTool {
+  /** Read-only preparation for approval; the tool must recheck its version when writing. */
+  readonly preview?: (
+    inputJson: string,
+  ) => Promise<{ targetLabel: string; before: string; after: string }>;
   /** Host-only presentation hint; never sent to the model as a tool schema. */
   readonly presentation?: import("./conversationTypes").ToolPresentation;
   /** A `ToolSpec` from agent-core: `name`, `description`, `input_schema`, `risk`, … */
