@@ -73,8 +73,8 @@ try {
   await panel.getByLabel("AI 接口地址").fill(endpoint);
   await panel.getByLabel("AI 模型名称").fill("test");
   await panel.getByLabel("AI 接口密钥").fill("test-memory-only-key");
-  await panel.getByRole("button", { name: "保存到本次会话" }).click();
-  await panel.getByRole("button", { name: "接口", exact: true }).click();
+  await panel.getByRole("button", { name: "保存连接", exact: true }).click();
+  await panel.getByRole("button", { name: "← 返回对话", exact: true }).click();
   let input = panel.getByRole("textbox", { name: "发送给 AI 助手的消息" });
   await input.fill("中文输入");
   await input.dispatchEvent("compositionstart");
@@ -96,6 +96,12 @@ try {
   assert.ok(
     await viewport.evaluate((element) => element.scrollTop < 10),
     "streaming must respect reading position",
+  );
+  await panel.getByRole("button", { name: "接口", exact: true }).click();
+  await panel.getByRole("button", { name: "← 返回对话", exact: true }).click();
+  assert.ok(
+    await viewport.evaluate((element) => element.scrollTop < 10),
+    "settings preserve reading position during streaming",
   );
   await panel.getByRole("button", { name: "回到最新消息" }).click();
   assert.ok(
@@ -136,7 +142,7 @@ try {
     "",
     "credentials stay in memory only",
   );
-  await panel.getByRole("button", { name: "接口", exact: true }).click();
+  await panel.getByRole("button", { name: "← 返回对话", exact: true }).click();
   // Two tabs reading the same version: the second writer must surface a conflict.
   await savedDraft(page, "第二个对话的草稿");
   // Use an independent adapter (as another tab would) without acquiring the

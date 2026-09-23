@@ -104,8 +104,8 @@ try {
   await panel.getByRole("button", { name: "接口", exact: true }).click();
   await panel.getByLabel("AI 接口地址").fill(endpoint);
   await panel.getByLabel("AI 模型名称").fill("fake-model");
-  await panel.getByRole("button", { name: "保存到本次会话" }).click();
-  await panel.getByRole("button", { name: "接口", exact: true }).click();
+  await panel.getByRole("button", { name: "保存连接", exact: true }).click();
+  await panel.getByRole("button", { name: "← 返回对话", exact: true }).click();
   const input = panel.getByPlaceholder("提问、整理思路，或请我处理当前内容…");
   failNext = true;
   await input.fill("你好");

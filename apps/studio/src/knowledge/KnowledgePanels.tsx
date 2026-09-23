@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { GitBranch } from "lucide-react";
 import {
+  CredentialScopeField,
+  SecretField,
+  ConnectionSummary,
+  useAgentHost,
+  useCredential,
+} from "@bcr/react";
+import { knowledgeCredentialId } from "./credential";
+import {
   decodeTarget,
   type KnowledgeState,
   type KnowledgeNote,
@@ -13,7 +21,6 @@ export function KnowledgeSyncPanel({
   state,
   store,
   token,
-  setToken,
   auto,
   setAuto,
   syncing,
@@ -22,19 +29,44 @@ export function KnowledgeSyncPanel({
   state: KnowledgeState;
   store: KnowledgeStore;
   token: string;
-  setToken(value: string): void;
   auto: boolean;
   setAuto(value: boolean): void;
   syncing: boolean;
   onError(value: string): void;
 }) {
+  const { credentials } = useAgentHost();
+  const credential = useCredential(knowledgeCredentialId(state.sync.target));
+  const [replacement, setReplacement] = useState<string | null>(null);
+  const [editing, setEditing] = useState(!state.sync.target || !token);
+  const [confirm, setConfirm] = useState<"clear" | "disconnect" | null>(null);
+  const [scope, setScope] = useState(credential.scope);
   const [owner, setOwner] = useState(state.sync.target?.owner ?? ""),
     [repo, setRepo] = useState(state.sync.target?.repo ?? ""),
     [branch, setBranch] = useState(state.sync.target?.branch ?? "main");
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
+  const sameTarget =
+    knowledgeCredentialId({ owner, repo }) === knowledgeCredentialId(state.sync.target);
+  const draftToken = replacement ?? (sameTarget ? token : "");
+  const dirty =
+    owner !== (state.sync.target?.owner ?? "") ||
+    repo !== (state.sync.target?.repo ?? "") ||
+    branch !== (state.sync.target?.branch ?? "main") ||
+    draftToken !== token ||
+    scope !== credential.scope;
+  function reset() {
+    setOwner(state.sync.target?.owner ?? "");
+    setRepo(state.sync.target?.repo ?? "");
+    setBranch(state.sync.target?.branch ?? "main");
+    setReplacement(null);
+    setScope(credential.scope);
+    setMessage("");
+    setConfirm(null);
+    onError("");
+  }
   async function action(fn: () => Promise<void>) {
     setBusy(true);
+    setMessage("");
     onError("");
     try {
       await fn();
@@ -53,94 +85,239 @@ export function KnowledgeSyncPanel({
       <p>
         选择已添加 README 的私有仓库与已有分支。同步范围为 knowledge/ 下的笔记、集合和引用快照。
       </p>
+      {!editing && state.sync.target && (
+        <ConnectionSummary
+          title={`${state.sync.target.owner}/${state.sync.target.repo}`}
+          detail={`分支 · ${state.sync.target.branch}`}
+          status={token ? "Token 已配置" : "需要补充 Token"}
+        >
+          <button
+            type="button"
+            className="knowledge-button"
+            onClick={() => {
+              reset();
+              setEditing(true);
+            }}
+          >
+            编辑连接
+          </button>
+        </ConnectionSummary>
+      )}
       <form
+        onChange={() => {
+          setMessage("");
+          onError("");
+          setConfirm(null);
+        }}
         onSubmit={(e) => {
           e.preventDefault();
           void action(async () => {
             setAuto(false);
-            await store.configure(decodeTarget({ owner, repo, branch }));
+            const target = decodeTarget({ owner, repo, branch });
+            const previousId = knowledgeCredentialId(state.sync.target),
+              nextId = knowledgeCredentialId(target);
+            if (previousId !== nextId && state.sync.target) {
+              const removed = credentials.save(previousId, "", "memory");
+              if (removed.error) throw new Error(removed.error);
+            }
+            await store.configure(target);
+            const result = credentials.save(nextId, draftToken, scope);
+            if (result.error) throw new Error(result.error);
+            setReplacement(null);
+            setEditing(false);
             setMessage("连接已保存。点击「立即同步」开始；首次连接会合并本地与远端笔记。");
           });
         }}
       >
-        <div className="knowledge-connection-fields">
-          <label>
-            用户或组织
-            <input
-              aria-label="GitHub 用户或组织"
-              autoComplete="off"
-              value={owner}
-              onChange={(e) => setOwner(e.target.value)}
-              required
+        {editing && (
+          <fieldset
+            disabled={busy || syncing}
+            style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+          >
+            <div className="knowledge-connection-fields">
+              <label>
+                用户或组织
+                <input
+                  aria-label="GitHub 用户或组织"
+                  autoComplete="off"
+                  value={owner}
+                  onChange={(e) => {
+                    setOwner(e.target.value);
+                    if (e.target.value.trim().toLowerCase() !== owner.trim().toLowerCase()) {
+                      setReplacement(null);
+                      setScope("memory");
+                    }
+                  }}
+                  required
+                />
+              </label>
+              <label>
+                私有仓库
+                <input
+                  aria-label="GitHub 私有仓库"
+                  autoComplete="off"
+                  value={repo}
+                  onChange={(e) => {
+                    setRepo(e.target.value);
+                    if (e.target.value.trim().toLowerCase() !== repo.trim().toLowerCase()) {
+                      setReplacement(null);
+                      setScope("memory");
+                    }
+                  }}
+                  required
+                />
+              </label>
+              <label>
+                分支
+                <input
+                  aria-label="GitHub 分支"
+                  autoComplete="off"
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                  required
+                />
+              </label>
+            </div>
+            <SecretField
+              key={knowledgeCredentialId({ owner, repo })}
+              label="GitHub Token"
+              saved={sameTarget && !!token}
+              value={replacement}
+              onChange={(value) => {
+                setReplacement(value);
+                setMessage("");
+              }}
+              placeholder="仅授权该仓库的 Contents 读写权限"
             />
-          </label>
-          <label>
-            私有仓库
-            <input
-              aria-label="GitHub 私有仓库"
-              autoComplete="off"
-              value={repo}
-              onChange={(e) => setRepo(e.target.value)}
-              required
+            <CredentialScopeField
+              label="GitHub Token 保存范围"
+              value={scope}
+              onChange={setScope}
+              disabled={!draftToken}
             />
-          </label>
-          <label>
-            分支
-            <input
-              aria-label="GitHub 分支"
-              autoComplete="off"
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-              required
-            />
-          </label>
-        </div>
-        <label className="knowledge-token">
-          当前会话 Token
+            {credential.error && <p role="alert">{credential.error}</p>}
+            <p className="knowledge-small">
+              修改后请保存连接。更换仓库会清空
+              Token；建议只授权该仓库。已打开的其他标签页可能仍保留内存凭据。
+            </p>
+            <div className="knowledge-panel-actions">
+              <button
+                type="button"
+                className="knowledge-button"
+                onClick={() => {
+                  reset();
+                  if (state.sync.target) setEditing(false);
+                }}
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                className="knowledge-button"
+                disabled={busy || syncing || (!dirty && !!token)}
+              >
+                {busy ? "保存中…" : "保存连接"}
+              </button>
+            </div>
+          </fieldset>
+        )}
+        {!editing && (
+          <details className="bcr-connection-manage">
+            <summary>管理连接</summary>
+            <div className="knowledge-panel-actions">
+              <button
+                type="button"
+                className="knowledge-button"
+                disabled={busy || syncing}
+                onClick={() => setConfirm("clear")}
+              >
+                清除 Token
+              </button>
+              {state.sync.target && (
+                <button
+                  type="button"
+                  className="knowledge-button"
+                  disabled={busy || syncing}
+                  onClick={() => setConfirm("disconnect")}
+                >
+                  断开连接
+                </button>
+              )}
+            </div>
+          </details>
+        )}
+        {confirm && (
+          <div role="alert" className="bcr-connection-confirm">
+            <p>
+              {confirm === "clear"
+                ? "清除 Token？仓库配置会保留。"
+                : "断开连接并清除 Token？本地笔记不会删除。"}
+            </p>
+            <div className="knowledge-panel-actions">
+              <button
+                type="button"
+                className="knowledge-button"
+                disabled={busy || syncing}
+                onClick={() => setConfirm(null)}
+              >
+                继续保留
+              </button>
+              <button
+                type="button"
+                className="knowledge-button"
+                disabled={busy || syncing}
+                onClick={() => {
+                  if (confirm === "clear") {
+                    setMessage("");
+                    onError("");
+                    const result = credentials.save(
+                      knowledgeCredentialId(state.sync.target),
+                      "",
+                      "memory",
+                    );
+                    setReplacement(null);
+                    setScope("memory");
+                    setAuto(false);
+                    if (result.error) onError(result.error);
+                    else {
+                      setMessage("Token 已清除，仓库配置仍保留。");
+                      setConfirm(null);
+                    }
+                  } else
+                    void action(async () => {
+                      const result = credentials.save(
+                        knowledgeCredentialId(state.sync.target),
+                        "",
+                        "memory",
+                      );
+                      setReplacement(null);
+                      setScope("memory");
+                      if (result.error) throw new Error(result.error);
+                      await store.configure(null);
+                      setAuto(false);
+                      setConfirm(null);
+                      setOwner("");
+                      setRepo("");
+                      setBranch("main");
+                      setEditing(true);
+                      setMessage("已断开连接，本地笔记仍保留");
+                    });
+                }}
+              >
+                {confirm === "clear" ? "确认清除" : "确认断开"}
+              </button>
+            </div>
+          </div>
+        )}
+        <label className="knowledge-checkbox">
           <input
-            aria-label="GitHub Token"
-            type="password"
-            autoComplete="off"
-            spellCheck={false}
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder="仅授权该仓库的 Contents 读写权限"
+            type="checkbox"
+            checked={auto}
+            disabled={!state.sync.target || !token || syncing}
+            onChange={(e) => setAuto(e.target.checked)}
           />
+          本次会话自动同步
         </label>
-        <p className="knowledge-small">
-          Token 仅驻留当前页面内存，刷新后需重新填写。仓库应只授权给你信任的人。
-        </p>
-        <div className="knowledge-panel-actions">
-          <button type="submit" className="knowledge-button" disabled={busy || syncing}>
-            保存连接
-          </button>
-          {state.sync.target && (
-            <button
-              type="button"
-              className="knowledge-button"
-              disabled={busy || syncing}
-              onClick={() =>
-                void action(async () => {
-                  await store.configure(null);
-                  setToken("");
-                  setAuto(false);
-                  setMessage("已断开连接，本地笔记仍保留");
-                })
-              }
-            >
-              断开连接
-            </button>
-          )}
-          <label className="knowledge-checkbox">
-            <input
-              type="checkbox"
-              checked={auto}
-              disabled={!state.sync.target || !token || syncing}
-              onChange={(e) => setAuto(e.target.checked)}
-            />
-            本次会话自动同步
-          </label>
-        </div>
       </form>
       {message && <p role="status">{message}</p>}
       {state.sync.target && (

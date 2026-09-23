@@ -99,6 +99,7 @@ await withServer({
     "scripts/verify-general-agent-chat.mjs",
     "scripts/verify-knowledge-agent-writes.mjs",
     "scripts/verify-agent-conversations.mjs",
+    "scripts/verify-credentials.mjs",
     "scripts/verify-shell-architecture.mjs",
     "scripts/verify-persistence.mjs",
     "scripts/verify-quant-lab.mjs",

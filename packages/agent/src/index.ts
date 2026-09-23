@@ -32,6 +32,13 @@ export {
 } from "./session";
 
 export { agentConfigured, createAgentSettings } from "./settings";
+export {
+  createCredentialStore,
+  normalizeEndpointUrl,
+  type CredentialScope,
+  type CredentialStore,
+  type SettingsStorage,
+} from "./credentials";
 
 export {
   EditError,

@@ -1,4 +1,5 @@
-import { useRuntime, useRuntimeActivity } from "@bcr/react";
+import { useRuntime, useRuntimeActivity, useCredential } from "@bcr/react";
+import { knowledgeCredentialId } from "./credential";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   BookOpenText,
@@ -41,8 +42,9 @@ export function KnowledgeApp() {
     [collection, setCollection] = useState("");
   const [panel, setPanel] = useState<"sync" | "history" | "restore" | null>(null),
     [sidebar, setSidebar] = useState(false);
-  const [token, setToken] = useState(""),
-    [auto, setAuto] = useState(false);
+  const credential = useCredential(knowledgeCredentialId(state.sync.target));
+  const token = credential.value;
+  const [auto, setAuto] = useState(false);
   const [collectionName, setCollectionName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const editor = useRef<EditorHandle>(null),
@@ -355,7 +357,6 @@ export function KnowledgeApp() {
               state={state}
               store={store}
               token={token}
-              setToken={setToken}
               auto={auto}
               setAuto={setAuto}
               syncing={syncing}

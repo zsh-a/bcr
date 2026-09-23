@@ -180,6 +180,7 @@ try {
   await b.page.getByRole("button", { name: "保留双方", exact: true }).click();
   await b.page.locator(".knowledge-conflict").waitFor({ state: "hidden" });
   await b.page.getByLabel("GitHub Token", { exact: true }).fill("secret-browser-token");
+  await b.page.getByRole("button", { name: "保存连接", exact: true }).click();
   await sync(b.page);
   await sync(a.page);
   assert.equal(await a.page.locator(".knowledge-note-card").count(), 2);

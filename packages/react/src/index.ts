@@ -3,6 +3,11 @@ export { usePublishRunningCount, useRunningApps } from "./application-status";
 
 export { AgentProvider, useAgentHost } from "./AgentProvider";
 export { createAgentStorage } from "./agentStorage";
+export { createBrowserCredentials, browserSettingsStorage } from "./credentialStorage";
+export { useCredential } from "./useCredential";
+export { CredentialScopeField } from "./CredentialScopeField";
+export { SecretField } from "./SecretField";
+export { ConnectionSummary } from "./ConnectionSummary";
 
 export { useAgent, type AgentService } from "./agent";
 

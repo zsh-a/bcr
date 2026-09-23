@@ -1,15 +1,54 @@
 import type { AgentEndpoint } from "./runtime";
+import {
+  createCredentialStore,
+  normalizeEndpointUrl,
+  type CredentialScope,
+  type CredentialStore,
+  type SettingsStorage,
+} from "./credentials";
 
 /**
  * Host-local endpoint configuration.
  *
- * Held in memory only: a credential is never written to localStorage, workspace
- * metadata, an export or a repository. A reload asks for the key again. The
- * configuration is owned by the AgentHost and never shared between hosts.
+ * Browser persistence is optional and injected by the host. Connection metadata
+ * and credentials never enter conversation/workspace storage or exports.
  */
 const EMPTY: AgentEndpoint = Object.freeze({ baseUrl: "", apiKey: "", model: "" });
-export function createAgentSettings() {
+export function createAgentSettings(
+  storage?: SettingsStorage,
+  credentials: CredentialStore = createCredentialStore(),
+) {
   let current: AgentEndpoint | null = null;
+  let persistence = {
+    scope: "memory" as CredentialScope,
+    error: null as string | null,
+    needsKey: false,
+  };
+  const profileKey = "bcr/agent-connection/v1";
+  const credentialId = (url: string) => `agent:${url}`;
+  try {
+    const raw = storage?.getItem(profileKey);
+    if (raw) {
+      const profile = JSON.parse(raw);
+      if (
+        profile.version !== 1 ||
+        typeof profile.baseUrl !== "string" ||
+        typeof profile.model !== "string" ||
+        typeof profile.requiresKey !== "boolean"
+      )
+        throw new Error("Invalid connection");
+      const baseUrl = normalizeEndpointUrl(profile.baseUrl);
+      const credential = credentials.get(credentialId(baseUrl));
+      current = Object.freeze({ baseUrl, model: profile.model, apiKey: credential.value });
+      persistence = {
+        scope: credential.scope,
+        error: credential.error,
+        needsKey: profile.requiresKey && !credential.value,
+      };
+    }
+  } catch {
+    persistence.error = "无法恢复模型连接，请重新配置；未覆盖原存储。";
+  }
   const listeners = new Set<() => void>();
 
   /** The same contract as `useSyncExternalStore`, so consumers can subscribe directly. */
@@ -25,20 +64,55 @@ export function createAgentSettings() {
     return current ?? EMPTY;
   }
 
-  function configure(next: AgentEndpoint | null): void {
+  function configure(next: AgentEndpoint | null, scope: CredentialScope = "memory"): void {
     const normalized =
       next && next.baseUrl.trim() && next.model.trim()
         ? {
-            baseUrl: next.baseUrl.trim().replace(/\/+$/u, ""),
+            baseUrl: normalizeEndpointUrl(next.baseUrl),
             apiKey: next.apiKey.trim(),
             model: next.model.trim(),
           }
         : null;
-    if (JSON.stringify(normalized) === JSON.stringify(current)) return;
+    let error: string | null = null;
+    if (current && current.baseUrl !== normalized?.baseUrl) {
+      error = credentials.save(credentialId(current.baseUrl), "", "memory").error;
+      // Never carry an existing secret to a different endpoint through programmatic callers.
+      if (normalized && normalized.apiKey === current.apiKey) normalized.apiKey = "";
+    }
+    const credential = normalized
+      ? credentials.save(credentialId(normalized.baseUrl), normalized.apiKey, scope)
+      : null;
+    error = error ?? credential?.error ?? null;
+    try {
+      if (normalized)
+        storage?.setItem(
+          profileKey,
+          JSON.stringify({
+            version: 1,
+            baseUrl: normalized.baseUrl,
+            model: normalized.model,
+            requiresKey: !!normalized.apiKey,
+          }),
+        );
+      else storage?.removeItem(profileKey);
+    } catch {
+      error = error ?? "连接仅本页可用：无法保存接口地址和模型，请检查浏览器存储权限。";
+    }
+    const nextPersistence = {
+      scope: credential?.scope ?? ("memory" as CredentialScope),
+      error,
+      needsKey: false,
+    };
+    if (
+      JSON.stringify(normalized) === JSON.stringify(current) &&
+      JSON.stringify(nextPersistence) === JSON.stringify(persistence)
+    )
+      return;
+    persistence = nextPersistence;
     current = normalized ? Object.freeze(normalized) : null;
     for (const listener of listeners) listener();
   }
-  return { subscribe, getSnapshot, configure };
+  return { subscribe, getSnapshot, configure, getPersistenceSnapshot: () => persistence };
 }
 
 /**

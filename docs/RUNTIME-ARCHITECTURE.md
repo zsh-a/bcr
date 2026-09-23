@@ -96,7 +96,7 @@ Studio 的 `workspace.ts` 是领域服务组合入口，按元数据会话共享
 
 知识库职责分为：`actions.ts` 编排创建、导入、导出并经过草稿保存屏障；`useKnowledgeSync.ts` 负责浏览器自动同步调度；`draft.ts` 负责单篇草稿、恢复副本和保存状态；`useNoteDraft.ts` 负责自动保存与卸载监听；`editorAgent.ts` 和 `useNoteAgent.ts` 适配编辑目标与工具；`search.ts` 发布搜索投影。页面保留导航与提示，编辑器保留输入和预览。标题、选区变化更新目标摘要，但不重新注册工具实例；切换笔记仍创建新的草稿与目标身份。
 
-Agent 的 `session.ts` 只编排单次任务和会话快照，`toolExecution.ts` 统一授权、审批、权限复核、执行及结果转换，`surfaceEdit.ts` 维护编辑建议与真实保存回执。模型配置由 AgentHost 的 `settings` 实例持有；不同 Host 的地址和密钥相互隔离，配置仍仅保存在内存。
+Agent 的 `session.ts` 只编排单次任务和会话快照，`toolExecution.ts` 统一授权、审批、权限复核、执行及结果转换，`surfaceEdit.ts` 维护编辑建议与真实保存回执。模型配置由 AgentHost 的 `settings` 实例持有；默认无存储的 Host 仍相互隔离。Studio 注入独立的连接配置与凭据存储适配器：地址、模型自动保存，凭据默认内存，用户可选择标签页或设备记忆。凭据服务不使用会话或工作区数据库，不进入业务导出。浏览器共享存储的隔离边界是 origin，而不是 React Host。
 
 Research 实现统一位于 `apps/studio/src/research/`，其中 `model.ts` 是类型与规则、`store.ts` 是持久化、`components/` 是领域界面。`@bcr/react` 的入口只导出 API，Runtime、任务和产物 hooks 分别在 `runtime.ts`、`tasks.ts`、`artifacts.ts`；旧 `useServices` 别名已移除，调用方统一使用 `useRuntime`。
 

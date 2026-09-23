@@ -21,7 +21,7 @@ import { ResearchCaptureBridge } from "../research/CaptureBridge";
 import { PluginHost } from "./PluginHost";
 import { AssistantWindow, type AssistantVisibility } from "../assistant/AssistantWindow";
 import { createAgentHost } from "@bcr/agent";
-import { createAgentStorage } from "@bcr/react";
+import { createAgentStorage, createBrowserCredentials, browserSettingsStorage } from "@bcr/react";
 
 /**
  * OS 式 Shell 根布局（§12：URL 即状态）：
@@ -33,7 +33,13 @@ import { createAgentStorage } from "@bcr/react";
  *   领域计算会话继承 Host 预算；应用激活状态与计算生命周期独立。
  */
 export function Shell() {
-  const [agent] = useState(() => createAgentHost({ storage: createAgentStorage() }));
+  const [agent] = useState(() =>
+    createAgentHost({
+      storage: createAgentStorage(),
+      credentials: createBrowserCredentials(),
+      settingsStorage: browserSettingsStorage("localStorage"),
+    }),
+  );
   useEffect(() => {
     const flush = () => {
       void agent.conversations.flush();

@@ -110,6 +110,8 @@ export function createConversations(
     if (state.running) throw new Error("请先完成或停止正在执行的任务。");
     const endpoint = host.settings.getSnapshot();
     if (!agentConfigured(endpoint)) throw new Error("请先配置接口地址和模型。");
+    if (host.settings.getPersistenceSnapshot().needsKey)
+      throw new Error("连接已恢复，请重新填写密钥。");
     const messages = [
       ...conversationHistory(conversation.runs),
       { role: "user" as const, content: input.trim() },

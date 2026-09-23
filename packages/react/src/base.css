@@ -15,3 +15,173 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
+/* Shared connection settings: credentials remain separate from business data. */
+.bcr-credential-scope {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.bcr-credential-scope label {
+  display: grid;
+  gap: 6px;
+}
+.bcr-credential-scope select {
+  min-height: 44px;
+  width: 100%;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+.bcr-credential-scope p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-muted);
+}
+.bcr-credential-scope select:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.bcr-chat-settings > .bcr-connection-form,
+.bcr-connection-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.bcr-connection-header,
+.bcr-connection-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+.bcr-connection-header strong {
+  margin-left: auto;
+}
+.bcr-connection-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.bcr-connection-body h3,
+.bcr-connection-body p {
+  margin: 0;
+}
+.bcr-connection-body h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.bcr-connection-footer {
+  border-bottom: 0;
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+.bcr-connection-footer > span {
+  flex: 1;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.bcr-connection-footer .is-primary {
+  background: var(--color-text);
+  color: var(--color-bg);
+}
+.bcr-connection-summary {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+.bcr-connection-summary strong {
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+.bcr-connection-summary code {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.bcr-connection-summary p,
+.bcr-connection-eyebrow {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.bcr-connection-summary button {
+  justify-self: start;
+}
+.bcr-secret-field {
+  display: grid;
+  gap: 6px;
+}
+.bcr-secret-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bcr-secret-row > input {
+  flex: 1;
+  min-width: 100px;
+}
+.bcr-secret-row > span {
+  flex: 1;
+  color: var(--color-muted);
+}
+.bcr-secret-row button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+.bcr-connection-manage {
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+}
+.bcr-connection-manage summary {
+  min-height: 44px;
+  cursor: pointer;
+  color: var(--color-muted);
+}
+.bcr-connection-confirm {
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+}
+.bcr-secret-row button:focus-visible,
+.bcr-connection-manage summary:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.bcr-credential-scope select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (max-width: 640px) {
+  .bcr-connection-body {
+    padding: 18px 14px;
+  }
+  .bcr-chat-settings input,
+  .bcr-credential-scope select {
+    font-size: 16px;
+  }
+}

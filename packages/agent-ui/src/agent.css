@@ -415,15 +415,19 @@
 .bcr-chat-composer-meta small {
   font-size: 12px;
 }
-.bcr-chat-settings {
-  flex-shrink: 0;
-  display: grid;
-  gap: 8px;
-  max-height: 45%;
-  overflow: auto;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--agent-line);
-  font-size: 12px;
+.bcr-chat-shell {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.bcr-chat.bcr-chat-settings {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--color-bg);
+  font-size: 14px;
 }
 .bcr-chat-settings label {
   display: grid;
@@ -431,7 +435,7 @@
 }
 .bcr-chat-settings input {
   width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   padding: 8px 10px;
   border: 1px solid var(--agent-line);
   background: var(--agent-surface);
