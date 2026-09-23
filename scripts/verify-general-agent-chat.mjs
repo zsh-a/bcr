@@ -208,11 +208,14 @@ try {
   );
   await input.fill("跨域查询知识库里的笔记");
   await input.press("Enter");
-  await page.waitForFunction(() =>
-    [...document.querySelectorAll(".bcr-chat-activity")]
-      .at(-1)
-      ?.textContent?.includes("knowledge_find_notes · 已完成"),
-  );
+  const activity = panel
+    .locator(".bcr-chat-turn")
+    .filter({ hasText: "跨域查询知识库里的笔记" })
+    .locator(".bcr-chat-activity-group");
+  await activity.locator(":scope > summary").filter({ hasText: "已完成 1 项只读操作" }).waitFor();
+  assert.equal(await activity.getAttribute("open"), null, "read-only activity starts compact");
+  await activity.locator(":scope > summary").click();
+  await activity.getByRole("link", { name: /跨域验证笔记/ }).waitFor();
   await panel.getByRole("button", { name: "发送", exact: true }).waitFor();
   await page.waitForTimeout(350);
   const crossDomain = requests.findLast((request) =>

@@ -40,13 +40,15 @@ export function ToolExecutionCard({
       <header className="bcr-chat-card-head">
         <Icon size={15} aria-hidden="true" />
         <strong>{part.presentation?.label ?? part.call.name}</strong>
-        <span className="bcr-chat-activity">
-          {part.call.name} · {status}
-        </span>
+        <span className="bcr-chat-activity">{status}</span>
       </header>
       {part.approval &&
         (pending ? (
-          <ApprovalCard approval={part.approval} resolve={resolve} />
+          <ApprovalCard
+            approval={part.approval}
+            resolve={resolve}
+            actionLabel={part.presentation?.approvalLabel}
+          />
         ) : (
           <details className="bcr-chat-record">
             <summary>查看变更与审批</summary>
@@ -62,7 +64,11 @@ export function ToolExecutionCard({
         </summary>
         <pre className="bcr-chat-diff">
           {JSON.stringify(
-            { input: part.call.input, output: part.result ? part.result.output : "尚无执行回执" },
+            {
+              tool: part.call.name,
+              input: part.call.input,
+              output: part.result ? part.result.output : "尚无执行回执",
+            },
             null,
             2,
           )}

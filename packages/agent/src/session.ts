@@ -163,7 +163,8 @@ export function createAgentSession(
           signal: abortSignal,
           decide,
           onToolCall: (call) => {
-            const presentation = tools.find((tool) => tool.spec.name === call.name)?.presentation;
+            const tool = tools.find((tool) => tool.spec.name === call.name);
+            const presentation = tool?.presentation;
             update({
               toolCalls: [...snapshot.toolCalls, call],
               parts: [
@@ -172,6 +173,7 @@ export function createAgentSession(
                   type: "tool",
                   id: call.id,
                   call,
+                  ...(tool ? { risk: tool.spec.risk } : {}),
                   ...(presentation ? { presentation } : {}),
                 },
               ],

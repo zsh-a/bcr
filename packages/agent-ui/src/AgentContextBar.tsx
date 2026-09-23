@@ -38,7 +38,7 @@ export function AgentContextBar({
             disabled={!options.includeContext}
             onClick={() => manager.setOptions({ allowEdits: options.allowEdits === false })}
           >
-            允许编辑{options.allowEdits !== false ? " ✓" : ""}
+            允许修改当前内容{options.allowEdits !== false ? " ✓" : ""}
           </button>
         </>
       )}
@@ -73,7 +73,9 @@ export function AgentContextBar({
           {capabilities.length === 0 && (
             <p className="bcr-chat-hint">当前可直接对话，尚无领域工具。</p>
           )}
-          <p className="bcr-chat-hint">提供内容不等于授权修改；写操作仍需逐次确认。</p>
+          <p className="bcr-chat-hint">
+            当前内容的编辑开关不控制共享工具。知识库等共享能力的写入仍需逐次确认。
+          </p>
         </div>
       </details>
     </div>

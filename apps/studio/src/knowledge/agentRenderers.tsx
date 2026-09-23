@@ -57,7 +57,15 @@ function SearchResult({ part }: { part: AgentToolPart }) {
   return isSearch(part.result?.output) ? <EvidenceList notes={part.result.output.notes} /> : null;
 }
 function NoteResult({ part }: { part: AgentToolPart }) {
-  return isEvidence(part.result?.output) ? <EvidenceList notes={[part.result.output]} /> : null;
+  const output = part.result?.output;
+  return isEvidence(output) ? (
+    <>
+      {!part.result?.is_error && "status" in output && output.status === "saved" && (
+        <p className="bcr-chat-receipt">已保存到本机</p>
+      )}
+      <EvidenceList notes={[output]} />
+    </>
+  ) : null;
 }
 export const knowledgeResultRenderers: readonly ResultRenderer[] = [
   { kind: "knowledge.search-results", version: 1, accepts: isSearch, component: SearchResult },

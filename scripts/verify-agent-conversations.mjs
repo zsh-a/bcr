@@ -171,6 +171,8 @@ try {
       const frame = document.querySelector(".assistant-window").getBoundingClientRect();
       return frame.x >= 0 && frame.right <= innerWidth && frame.bottom <= innerHeight;
     });
+    // Short landscapes use one scroll surface so approvals and the composer remain reachable.
+    await input.scrollIntoViewIfNeeded();
     const frame = await panel.boundingBox();
     const composer = await input.boundingBox();
     assert.ok(frame.x >= 0 && frame.x + frame.width <= size.width);

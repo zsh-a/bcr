@@ -49,6 +49,7 @@ describe("host-owned conversations", () => {
     await manager.send(manager.getSnapshot().activeId, "hello");
     const runs = manager.getSnapshot().conversations[0]!.runs;
     expect(runs[0]?.parts.map((part) => part.type)).toEqual(["text", "tool", "text"]);
+    expect(runs[0]?.parts[1]).toMatchObject({ risk: "read_only" });
     expect(conversationHistory(runs)).toEqual([
       { role: "user", content: "hello" },
       { role: "assistant", content: "before" },

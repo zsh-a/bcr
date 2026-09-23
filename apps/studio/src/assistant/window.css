@@ -9,8 +9,8 @@
   background: var(--color-bg);
   color: var(--color-text);
   box-shadow:
-    0 24px 90px #0008,
-    0 5px 22px #0005;
+    0 20px 64px #0003,
+    0 4px 16px #0002;
   isolation: isolate;
 }
 .assistant-window[hidden] {
@@ -93,8 +93,8 @@
   position: absolute;
   right: 0;
   bottom: 0;
-  width: 21px;
-  height: 21px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 0;
   background: transparent;

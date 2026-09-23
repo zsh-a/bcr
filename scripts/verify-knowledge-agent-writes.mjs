@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 
 const origin = new URL(process.env.BASE_URL ?? "http://127.0.0.1:5199").origin;
@@ -74,7 +75,9 @@ try {
   }
   async function resolve(accept) {
     const next = completed + 1;
-    await approval.getByRole("button", { name: accept ? "应用修改" : "放弃", exact: true }).click();
+    await approval
+      .getByRole("button", { name: accept ? /创建笔记|保存修改/ : "放弃", exact: true })
+      .click();
     await panel.getByText(`处理完成 ${next}`, { exact: true }).waitFor();
   }
   await send("创建笔记但先放弃");
@@ -93,10 +96,24 @@ try {
   await send("更新笔记");
   assert.ok((await approval.textContent()).includes("跨域创建的正文。"));
   assert.ok((await approval.textContent()).includes("经确认更新后的正文。"));
+  await mkdir("scripts/shots", { recursive: true });
+  await approval.getByRole("button", { name: "保存修改" }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "scripts/shots/agent-review-desktop.png" });
+  await approval.getByText("查看完整内容", { exact: true }).click();
+  assert.ok(await approval.getByRole("region", { name: "完整变更内容" }).isVisible());
+  await approval.getByText("查看完整内容", { exact: true }).click();
   await page.setViewportSize({ width: 375, height: 812 });
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.waitForFunction(() => {
+    const frame = document.querySelector(".assistant-window").getBoundingClientRect();
+    return frame.x >= 0 && frame.right <= innerWidth;
+  });
   const box = await panel.boundingBox();
   assert.ok(box.x >= 0 && box.x + box.width <= 376, "mobile panel stays within viewport");
+  await page.screenshot({ path: "scripts/shots/agent-review-mobile.png" });
+  await page.setViewportSize({ width: 812, height: 375 });
+  await approval.getByRole("button", { name: "保存修改" }).scrollIntoViewIfNeeded();
+  assert.ok(await approval.getByRole("button", { name: "保存修改" }).isVisible());
   await resolve(true);
   assert.equal(receipt.body, "经确认更新后的正文。");
   assert.notEqual(receipt.revision, created.revision);

@@ -2,6 +2,8 @@ import { memo, useLayoutEffect, useRef, useState, type ComponentType } from "rea
 import { ArrowDown, Sparkles } from "lucide-react";
 import type { AgentConversation, AgentRun, AgentConversations } from "@bcr/agent";
 import { ToolExecutionCard } from "./ToolExecutionCard";
+import { ActivityGroup } from "./ActivityGroup";
+import { timelineGroups } from "./timelineGroups";
 import type { ResultRegistry } from "./renderers";
 
 const PlainText = ({ text }: { text: string }) => <p className="bcr-chat-text">{text}</p>;
@@ -44,9 +46,11 @@ const RunView = memo(function RunView({
               : "执行记录"}
           </span>
         </div>
-        {run.parts.map((part) =>
+        {timelineGroups(run.parts).map((part) =>
           part.type === "text" ? (
             <Text key={part.id} text={part.text} />
+          ) : part.type === "activity" ? (
+            <ActivityGroup key={part.id} tools={part.tools} running={running} registry={registry} />
           ) : (
             <ToolExecutionCard
               key={part.id}
@@ -128,6 +132,13 @@ export function AgentTimeline({
   const content = useRef<HTMLDivElement>(null);
   const following = useRef(true);
   const [unread, setUnread] = useState(false);
+  // Sending a new turn intentionally returns to the conversation's latest task.
+  // Streaming within that turn still respects the reader's scroll position.
+  useLayoutEffect(() => {
+    following.current = true;
+    setUnread(false);
+    if (viewport.current) viewport.current.scrollTop = viewport.current.scrollHeight;
+  }, [conversation.runs.length]);
   useLayoutEffect(() => {
     const view = viewport.current;
     if (!view || !content.current) return;

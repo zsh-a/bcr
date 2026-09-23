@@ -35,7 +35,13 @@ function validPart(value: unknown): value is AgentPart {
     (!object(value.presentation) ||
       !string(value.presentation.kind) ||
       !Number.isSafeInteger(value.presentation.version) ||
-      !string(value.presentation.label))
+      !string(value.presentation.label) ||
+      (value.presentation.approvalLabel !== undefined && !string(value.presentation.approvalLabel)))
+  )
+    return false;
+  if (
+    value.risk !== undefined &&
+    (typeof value.risk !== "string" || !["read_only", "low", "medium", "high"].includes(value.risk))
   )
     return false;
   if (value.approval !== undefined) {

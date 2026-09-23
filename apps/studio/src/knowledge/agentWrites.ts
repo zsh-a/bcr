@@ -70,6 +70,7 @@ export function knowledgeWriteTools(
       kind: "knowledge.note",
       version: 1,
       label: creating ? "创建知识库笔记" : "更新知识库笔记",
+      approvalLabel: creating ? "创建笔记" : "保存修改",
     },
     spec: {
       name: creating ? "knowledge_create_note" : "knowledge_update_note",

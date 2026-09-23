@@ -34,17 +34,26 @@ export function AgentConversation({
     <div className="bcr-chat">
       <header className="bcr-chat-head">
         <div className="bcr-chat-target">
-          <span className="bcr-chat-eyebrow">当前工作区</span>
           <strong>{state.options.workspaceLabel}</strong>
         </div>
-        <button
-          type="button"
-          className="bcr-chat-button"
-          aria-pressed={settingsOpen}
-          onClick={() => setSettingsOpen(!settingsOpen)}
-        >
-          接口
-        </button>
+        <div className="bcr-chat-session-bar">
+          <select
+            aria-label="切换对话"
+            value={conversation.id}
+            disabled={state.loading}
+            onChange={(event) => {
+              manager.select(event.target.value);
+              setActionError(null);
+            }}
+          >
+            {[...state.conversations].reverse().map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.title}
+                {state.running?.conversationId === item.id ? " · 进行中" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
         <button
           type="button"
           className="bcr-chat-button"
@@ -59,25 +68,6 @@ export function AgentConversation({
           <Plus size={17} aria-hidden="true" />
         </button>
       </header>
-      <div className="bcr-chat-session-bar">
-        <select
-          aria-label="切换对话"
-          value={conversation.id}
-          disabled={state.loading}
-          onChange={(event) => {
-            manager.select(event.target.value);
-            setActionError(null);
-          }}
-        >
-          {[...state.conversations].reverse().map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.title}
-              {state.running?.conversationId === item.id ? " · 进行中" : ""}
-            </option>
-          ))}
-        </select>
-        <span>{state.loading ? "恢复中" : "本地会话"}</span>
-      </div>
       {settingsOpen && <EndpointSettings />}
       {!agent.configured && !settingsOpen && (
         <button type="button" className="bcr-chat-setup" onClick={openSettings}>
@@ -133,7 +123,16 @@ export function AgentConversation({
         }}
         footer={
           <>
-            <span>{agent.endpoint.model || "尚未连接模型"}</span>
+            <button
+              type="button"
+              className="bcr-chat-model"
+              aria-label="接口"
+              aria-expanded={settingsOpen}
+              title="配置模型接口"
+              onClick={() => setSettingsOpen(!settingsOpen)}
+            >
+              {agent.endpoint.model || "连接模型"} <span aria-hidden="true">⌄</span>
+            </button>
             <small>Shift + Enter 换行</small>
           </>
         }

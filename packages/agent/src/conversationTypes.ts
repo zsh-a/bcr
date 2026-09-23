@@ -9,11 +9,14 @@ export interface ToolPresentation {
   readonly kind: string;
   readonly version: number;
   readonly label: string;
+  readonly approvalLabel?: string;
 }
 export interface AgentToolPart {
   readonly type: "tool";
   readonly id: string;
   readonly call: ToolCall;
+  /** Captured execution metadata; absent on older archives. Never grants permission. */
+  readonly risk?: import("./tools").ToolRisk;
   readonly presentation?: ToolPresentation;
   readonly result?: ToolResult;
   readonly approval?: ApprovalRecord;
