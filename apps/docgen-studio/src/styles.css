@@ -7,6 +7,7 @@
 
 /* DocGen Lab — 与 media-studio 同源的暗色工作站主题（系统字体栈，本 app 不引外部字体包） */
 .docgen-studio {
+  color-scheme: dark;
   --color-bg: #0a0c0d;
   --color-surface: #121617;
   --color-raised: #191e1f;

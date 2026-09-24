@@ -13,6 +13,7 @@ import {
 import { MANIFESTS, type ActiveView } from "../shell/registry";
 import { useStudio } from "../store";
 import { formatBytes } from "./ui";
+import { ThemePicker } from "../theme/ThemePicker";
 
 /** 顶部工具栏：⌂ 返回主页 / 当前 App / 运行中任务指示 / 命令面板入口。 */
 export function TopBar(props: {
@@ -95,6 +96,7 @@ export function TopBar(props: {
         />
       </button>
 
+      <ThemePicker />
       <button
         type="button"
         onClick={props.onOpenSearch}

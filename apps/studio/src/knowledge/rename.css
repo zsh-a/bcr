@@ -86,8 +86,8 @@
   padding-top: 16px;
 }
 .knowledge-rename-actions .knowledge-rename-confirm:not(:disabled) {
-  background: var(--color-accent);
-  color: var(--color-bg);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 @media (max-width: 600px) {
   .knowledge-rename-columns {

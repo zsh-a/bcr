@@ -6,7 +6,7 @@ type ButtonVariant = "default" | "primary" | "ghost" | "danger";
 
 const buttonVariants: Record<ButtonVariant, string> = {
   default: "bg-raised text-text border border-border hover:border-border-strong hover:bg-overlay",
-  primary: "bg-accent text-[#06251b] border border-accent hover:brightness-110 font-medium",
+  primary: "bg-primary text-on-primary border border-primary hover:brightness-110 font-medium",
   ghost: "text-muted border border-transparent hover:text-text hover:bg-raised",
   danger: "text-danger border border-transparent hover:bg-raised hover:border-danger/40",
 };
@@ -68,7 +68,7 @@ export function StatusDot({ status }: { status: string }) {
       : status === "queued"
         ? "bg-info pulse-dot"
         : status === "completed"
-          ? "bg-accent"
+          ? "bg-success"
           : status === "failed" || status === "blocked"
             ? "bg-danger"
             : status === "cancelled"

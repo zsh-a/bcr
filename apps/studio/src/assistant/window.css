@@ -8,9 +8,7 @@
   border-radius: 18px;
   background: var(--color-bg);
   color: var(--color-text);
-  box-shadow:
-    0 20px 64px #0003,
-    0 4px 16px #0002;
+  box-shadow: var(--shadow-floating);
   isolation: isolate;
 }
 .assistant-window[hidden] {
@@ -18,7 +16,7 @@
 }
 .assistant-window.is-moving {
   box-shadow:
-    0 30px 100px #000a,
+    var(--shadow-dialog),
     0 0 0 1px color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 .assistant-window-bar {
@@ -124,7 +122,7 @@
   border-radius: 99px;
   background: var(--color-surface);
   color: var(--color-accent);
-  box-shadow: 0 8px 32px #0006;
+  box-shadow: var(--shadow-floating);
   cursor: pointer;
 }
 .assistant-launcher span {

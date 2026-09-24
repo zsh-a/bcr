@@ -11,6 +11,7 @@
 }
 
 .document-studio {
+  color-scheme: dark;
   --document-bg: #111315;
   --document-surface: #171a1b;
   --document-raised: #1e2322;

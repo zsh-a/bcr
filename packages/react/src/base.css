@@ -7,8 +7,8 @@ body,
 }
 
 body {
-  background: var(--color-bg, #090b0c);
-  color: var(--color-text, #f5f5ed);
+  background: var(--color-bg, #151619);
+  color: var(--color-text, #ececf0);
   font-family: var(--font-sans, "IBM Plex Sans", system-ui, sans-serif);
   font-size: 14px;
   line-height: 1.5;
@@ -16,6 +16,11 @@ body {
   overflow: hidden;
 }
 /* Shared connection settings: credentials remain separate from business data. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-faint);
+  opacity: 1;
+}
 .bcr-credential-scope {
   display: grid;
   gap: 6px;
@@ -95,8 +100,8 @@ body {
   color: var(--color-muted);
 }
 .bcr-connection-footer .is-primary {
-  background: var(--color-text);
-  color: var(--color-bg);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 .bcr-connection-summary {
   display: grid;

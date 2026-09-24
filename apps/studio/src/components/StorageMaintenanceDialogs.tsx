@@ -247,7 +247,7 @@ function DialogActions(props: {
       <button
         type="button"
         onClick={props.done ? props.onCancel : props.onConfirm}
-        className="h-9 rounded-[var(--radius-sm)] bg-accent px-3 text-[12px] font-medium text-[#06251b] hover:brightness-110"
+        className="h-9 rounded-[var(--radius-sm)] bg-primary px-3 text-[12px] font-medium text-on-primary hover:brightness-110"
       >
         {props.done ? "完成" : props.confirmLabel}
       </button>

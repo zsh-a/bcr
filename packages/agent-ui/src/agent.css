@@ -78,10 +78,14 @@
   background: var(--agent-surface);
 }
 .bcr-chat-primary {
-  background: var(--color-accent, #a9c3ff);
-  color: var(--color-bg, #111);
+  background: var(--color-primary, #a9c3ff);
+  color: var(--color-on-primary, #111);
   border-color: transparent;
   font-weight: 600;
+}
+.bcr-chat-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary, #a9c3ff) 90%, var(--color-text, #111));
+  color: var(--color-on-primary, #111);
 }
 .bcr-chat-session-bar {
   display: flex;
@@ -192,7 +196,7 @@
   left: 50%;
   transform: translateX(-50%);
   background: var(--agent-surface);
-  box-shadow: 0 4px 18px #0003;
+  box-shadow: var(--shadow-floating, 0 4px 18px #0003);
   white-space: nowrap;
 }
 .bcr-chat-card {
@@ -264,7 +268,7 @@
   font-size: 12px;
   padding: 12px;
   margin: 8px 0;
-  border-left: 2px solid #e39786;
+  border-left: 2px solid var(--color-danger, #e39786);
   overflow-wrap: anywhere;
 }
 .bcr-chat-error p {
@@ -343,7 +347,7 @@
   background: var(--agent-surface);
   border: 1px solid var(--agent-line);
   border-radius: 12px;
-  box-shadow: 0 8px 30px #0005;
+  box-shadow: var(--shadow-floating, 0 8px 30px #0005);
 }
 .bcr-chat-capability-list label {
   display: flex;

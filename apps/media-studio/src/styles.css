@@ -77,9 +77,9 @@
   cursor: not-allowed;
 }
 .media-studio .btn-primary {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: #06251a;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
   font-weight: 600;
 }
 .media-studio .btn-primary:hover:not(:disabled) {
@@ -108,7 +108,7 @@
 .media-header {
   z-index: 10;
   min-height: 72px;
-  background: rgba(17, 21, 22, 0.94);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
   backdrop-filter: blur(18px);
 }
 
@@ -128,11 +128,11 @@
 }
 
 .media-sidebar {
-  background: rgba(12, 15, 15, 0.7);
+  background: color-mix(in srgb, var(--color-bg) 70%, transparent);
 }
 
 .media-dropzone {
-  background: rgba(17, 21, 22, 0.66);
+  background: color-mix(in srgb, var(--color-surface) 66%, transparent);
   transition:
     border-color 180ms ease,
     background 180ms ease;
@@ -143,7 +143,7 @@
 }
 
 .media-main {
-  background: rgba(9, 11, 12, 0.42);
+  background: color-mix(in srgb, var(--color-bg) 42%, transparent);
 }
 
 .media-tabs {

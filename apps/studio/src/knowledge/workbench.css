@@ -257,14 +257,14 @@
   border-radius: 14px;
   background: var(--color-bg);
   color: var(--color-text);
-  box-shadow: 0 24px 80px #0006;
+  box-shadow: var(--shadow-dialog);
 }
 .knowledge-switcher[open] {
   display: flex;
   flex-direction: column;
 }
 .knowledge-switcher::backdrop {
-  background: #0009;
+  background: var(--color-scrim);
 }
 .knowledge-switcher header {
   display: flex;

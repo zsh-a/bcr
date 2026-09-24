@@ -5,6 +5,7 @@
 
 .manga-studio,
 .manga-boot {
+  color-scheme: dark;
   --color-bg: #090b0c;
   --color-surface: #111516;
   --color-raised: #181d1e;
