@@ -14,8 +14,18 @@ import {
   Trash2,
   Upload,
   X,
+  Star,
+  CalendarDays,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { workspaceServices } from "../workspace";
 import { assessExcerpt } from "../research/index";
 import { pendingCount } from "./model";
@@ -25,8 +35,15 @@ import { useKnowledgeSync } from "./useKnowledgeSync";
 import { NoteEditor, type EditorHandle } from "./NoteEditor";
 import { KnowledgeSyncPanel, KnowledgeHistory } from "./KnowledgePanels";
 import "./knowledge.css";
-import { searchKnowledge } from "./retrieval";
+import "./workbench.css";
+import { searchKnowledge, noteSearchHit } from "./retrieval";
 import { KnowledgeRestorePanel } from "./KnowledgeRestorePanel";
+import { EditorSessions } from "./editorSessions";
+import { KnowledgeLinkIndex, resolveNoteLink, splitNoteTarget } from "./markdownAnalysis";
+import { useWorkbench } from "./useWorkbench";
+import { toggleFavorite } from "./workbench";
+import { NoteTabs } from "./NoteTabs";
+import { NoteSwitcher } from "./NoteSwitcher";
 
 export function KnowledgeApp() {
   const services = useRuntime(),
@@ -47,8 +64,24 @@ export function KnowledgeApp() {
   const [auto, setAuto] = useState(false);
   const [collectionName, setCollectionName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [sessions] = useState(() => new EditorSessions());
+  const [linkIndex] = useState(() => new KnowledgeLinkIndex());
+  const [view, setView] = useState<"all" | "favorites" | "recent">("all");
+  const [switcher, setSwitcher] = useState<{ query: string; heading?: string } | null>(null);
+  const [target, setTarget] = useState<{
+    id: string;
+    heading?: string;
+    offset?: number;
+    sequence: number;
+  } | null>(null);
+  const [navigation, setNavigation] = useState<{ ids: string[]; index: number }>({
+    ids: [],
+    index: -1,
+  });
   const editor = useRef<EditorHandle>(null),
     input = useRef<HTMLInputElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  const scrollPositions = useRef(new Map<string, number>());
   const selectedId = useRouterState({
     select: (s) => (s.location.search as { note?: string }).note,
   });
@@ -58,10 +91,59 @@ export function KnowledgeApp() {
   const note =
     (selectedId && Object.hasOwn(state.notes, selectedId) ? state.notes[selectedId] : undefined) ??
     notes[0];
-  const filtered = searchKnowledge(notes, query, {
+  const workbench = useWorkbench(ready ? note?.id : undefined);
+  useLayoutEffect(() => {
+    if (note && content.current)
+      content.current.scrollTop = scrollPositions.current.get(note.id) ?? 0;
+  }, [note?.id]);
+  useEffect(() => {
+    if (!ready || !note) return;
+    setNavigation((current) =>
+      current.ids[current.index] === note.id
+        ? current
+        : {
+            ids: [...current.ids.slice(0, current.index + 1), note.id].slice(-100),
+            index: Math.min(current.index + 1, 99),
+          },
+    );
+  }, [ready, note?.id]);
+  useEffect(() => {
+    if (!active || !ready) return;
+    const key = (event: KeyboardEvent) => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "o" &&
+        !document.querySelector("dialog[open]") &&
+        !(event.target instanceof Element && event.target.closest(".assistant-window"))
+      ) {
+        event.preventDefault();
+        setSwitcher({ query: "" });
+      }
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [active, ready]);
+  const backlinks = useMemo(() => {
+    const all = Object.values(state.notes);
+    linkIndex.update(all);
+    return note ? linkIndex.backlinks(all, note.id) : [];
+  }, [state.notes, note?.id, linkIndex]);
+  const listed =
+    view === "favorites"
+      ? notes.filter((n) => workbench.state.favorites.includes(n.id))
+      : view === "recent"
+        ? workbench.state.recent.flatMap((id) =>
+            Object.hasOwn(state.notes, id) ? [state.notes[id]!] : [],
+          )
+        : notes;
+  const filtered = searchKnowledge(listed, query, {
     collectionId: collection,
     limit: notes.length,
   }).hits.map(({ note }) => note);
+  if (view === "recent" && !query.trim())
+    filtered.sort(
+      (a, b) => workbench.state.recent.indexOf(a.id) - workbench.state.recent.indexOf(b.id),
+    );
   const pending = pendingCount(state);
   useEffect(() => {
     let live = true;
@@ -105,6 +187,26 @@ export function KnowledgeApp() {
   const create = async () => {
     await select(await actions.create(collection || null));
   };
+  async function openLink(value: string) {
+    await flushEditor();
+    const matches = resolveNoteLink(Object.values(store.getSnapshot().notes), value, note?.id);
+    const { name, heading } = splitNoteTarget(value);
+    if (matches.length === 1) {
+      await select(matches[0]!.id);
+      setTarget((old) => ({ id: matches[0]!.id, heading, sequence: (old?.sequence ?? 0) + 1 }));
+    } else {
+      setSwitcher({ query: name, heading });
+    }
+  }
+  async function navigateHistory(direction: -1 | 1) {
+    const index = navigation.index + direction,
+      id = navigation.ids[index];
+    if (!id) return;
+    if (!Object.hasOwn(state.notes, id)) throw new Error("这篇笔记已删除，可从历史恢复。");
+    await flushEditor();
+    setNavigation((current) => ({ ...current, index }));
+    await select(id);
+  }
   const { sync, syncing } = useKnowledgeSync({
     store,
     ready,
@@ -132,6 +234,26 @@ export function KnowledgeApp() {
   const locked = !!note && state.conflicts.some((c) => c.kind === "note" && c.key === note.id);
   return (
     <div className={`knowledge-app ${sidebar ? "show-sidebar" : ""}`}>
+      {switcher && (
+        <NoteSwitcher
+          notes={notes}
+          initialQuery={switcher.query}
+          onClose={() => setSwitcher(null)}
+          onSelect={async (id) => {
+            await select(id);
+            const hit = noteSearchHit(store.getSnapshot().notes[id]!, switcher.query);
+            setTarget((old) => ({
+              id,
+              heading: switcher.heading ?? "",
+              offset: hit.match?.start ?? 0,
+              sequence: (old?.sequence ?? 0) + 1,
+            }));
+          }}
+          onCreate={async (title) => {
+            await select(await actions.create(collection || null, title));
+          }}
+        />
+      )}
       {sidebar && (
         <button
           type="button"
@@ -165,6 +287,42 @@ export function KnowledgeApp() {
           <Plus size={17} />
           新建笔记
         </button>
+        <div className="knowledge-shortcuts">
+          <button
+            type="button"
+            aria-label="快速切换笔记"
+            onClick={() => setSwitcher({ query: "" })}
+          >
+            <Search size={15} />
+            <span>快速打开</span>
+            <kbd>⌘/Ctrl O</kbd>
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              void run(async () => {
+                await select(await actions.daily());
+              })
+            }
+          >
+            <CalendarDays size={15} />
+            <span>今日日记</span>
+          </button>
+        </div>
+        <div className="knowledge-library-views" aria-label="笔记范围">
+          {(
+            [
+              ["all", "全部"],
+              ["favorites", "收藏"],
+              ["recent", "最近"],
+            ] as const
+          ).map(([id, title]) => (
+            <button type="button" key={id} aria-pressed={view === id} onClick={() => setView(id)}>
+              {title}
+            </button>
+          ))}
+        </div>
         <label className="knowledge-search">
           <Search size={15} />
           <input
@@ -187,30 +345,37 @@ export function KnowledgeApp() {
             </option>
           ))}
         </select>
-        <form
-          className="knowledge-add-collection"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (collectionName.trim())
-              void run(async () => {
-                const id = crypto.randomUUID();
-                await store.saveCollection(id, collectionName);
-                setCollectionName("");
-                setCollection(id);
-              });
-          }}
-        >
-          <input
-            aria-label="新知识集合名称"
-            placeholder="新集合名称"
-            maxLength={200}
-            value={collectionName}
-            onChange={(e) => setCollectionName(e.target.value)}
-          />
-          <button type="submit" aria-label="创建知识集合" disabled={busy || !collectionName.trim()}>
-            <Plus size={15} />
-          </button>
-        </form>
+        <details className="knowledge-collection-create">
+          <summary>新建集合</summary>
+          <form
+            className="knowledge-add-collection"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (collectionName.trim())
+                void run(async () => {
+                  const id = crypto.randomUUID();
+                  await store.saveCollection(id, collectionName);
+                  setCollectionName("");
+                  setCollection(id);
+                });
+            }}
+          >
+            <input
+              aria-label="新知识集合名称"
+              placeholder="新集合名称"
+              maxLength={200}
+              value={collectionName}
+              onChange={(e) => setCollectionName(e.target.value)}
+            />
+            <button
+              type="submit"
+              aria-label="创建知识集合"
+              disabled={busy || !collectionName.trim()}
+            >
+              <Plus size={15} />
+            </button>
+          </form>
+        </details>
         <nav className="knowledge-note-list" aria-label="笔记列表">
           {filtered.length ? (
             filtered.map((n) => (
@@ -219,10 +384,24 @@ export function KnowledgeApp() {
                 key={n.id}
                 aria-current={n.id === note?.id ? "page" : undefined}
                 className={`knowledge-note-card ${n.id === note?.id ? "selected" : ""}`}
-                onClick={() => void run(() => select(n.id))}
+                onClick={() =>
+                  void run(async () => {
+                    await select(n.id);
+                    if (query.trim())
+                      setTarget((old) => ({
+                        id: n.id,
+                        offset: noteSearchHit(n, query).match?.start ?? 0,
+                        sequence: (old?.sequence ?? 0) + 1,
+                      }));
+                  })
+                }
               >
                 <span>{n.title || "未命名笔记"}</span>
-                <p>{n.body.replace(/[#*>`]/gu, "").slice(0, 90) || "等待一个想法…"}</p>
+                <p>
+                  {(query.trim() ? noteSearchHit(n, query).preview : n.body)
+                    .replace(/[#*>`]/gu, "")
+                    .slice(0, 140) || "等待一个想法…"}
+                </p>
                 <small>
                   {new Date(n.updatedAt).toLocaleDateString()}{" "}
                   {n.tags
@@ -238,7 +417,8 @@ export function KnowledgeApp() {
             </p>
           )}
         </nav>
-        <div className="knowledge-sidebar-bottom">
+        <details className="knowledge-sidebar-bottom">
+          <summary>导入、导出与备份</summary>
           <button type="button" onClick={() => input.current?.click()}>
             <Upload size={15} />
             导入 Markdown
@@ -262,7 +442,7 @@ export function KnowledgeApp() {
             <Upload size={15} />
             恢复 ZIP 备份
           </button>
-        </div>
+        </details>
         <input
           ref={input}
           type="file"
@@ -302,6 +482,20 @@ export function KnowledgeApp() {
             </span>
           </div>
           <div className="knowledge-toolbar-actions">
+            {note && (
+              <button
+                type="button"
+                className="knowledge-button"
+                aria-label="收藏当前笔记"
+                aria-pressed={workbench.state.favorites.includes(note.id)}
+                onClick={() => workbench.setState((current) => toggleFavorite(current, note.id))}
+              >
+                <Star
+                  size={16}
+                  fill={workbench.state.favorites.includes(note.id) ? "currentColor" : "none"}
+                />
+              </button>
+            )}
             <button
               type="button"
               className="knowledge-button"
@@ -333,6 +527,36 @@ export function KnowledgeApp() {
             </button>
           </div>
         </header>
+        <NoteTabs
+          notes={state.notes}
+          ids={workbench.state.tabs}
+          activeId={note?.id}
+          history={{
+            back: navigation.index > 0,
+            forward: navigation.index + 1 < navigation.ids.length,
+          }}
+          onHistory={(direction) => void run(() => navigateHistory(direction))}
+          onSelect={(id) => void run(() => select(id))}
+          onClose={(id) =>
+            void run(async () => {
+              await flushEditor();
+              const remaining = workbench.state.tabs.filter(
+                (item) => item !== id && Object.hasOwn(state.notes, item),
+              );
+              if (id === note?.id && remaining.length) await select(remaining.at(-1)!);
+              workbench.setState((current) => ({
+                ...current,
+                tabs: current.tabs.filter((item) => item !== id),
+              }));
+              sessions.delete(id);
+            })
+          }
+        />
+        {workbench.error && (
+          <p role="status" className="knowledge-alert">
+            {workbench.error}
+          </p>
+        )}
         {(message || error) && (
           <div
             role={error ? "alert" : "status"}
@@ -351,7 +575,16 @@ export function KnowledgeApp() {
             </button>
           </div>
         )}
-        <div className="knowledge-content">
+        <div
+          className="knowledge-content"
+          ref={content}
+          onScroll={(event) => {
+            if (!note) return;
+            scrollPositions.current.set(note.id, event.currentTarget.scrollTop);
+            if (scrollPositions.current.size > 100)
+              scrollPositions.current.delete(scrollPositions.current.keys().next().value!);
+          }}
+        >
           {panel === "sync" && (
             <KnowledgeSyncPanel
               state={state}
@@ -409,6 +642,11 @@ export function KnowledgeApp() {
                 collections={Object.values(state.collections)}
                 locked={locked}
                 editorRef={editor}
+                sessions={sessions}
+                notes={notes}
+                backlinks={backlinks}
+                onOpenLink={(value) => void run(() => openLink(value))}
+                target={target}
               />
               {note.citations.length > 0 && (
                 <section className="knowledge-citations">

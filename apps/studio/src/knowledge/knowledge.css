@@ -137,7 +137,7 @@
 .knowledge-note-card p {
   margin: 6px 0 8px;
   color: var(--color-faint);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.7;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -147,7 +147,7 @@
 }
 .knowledge-note-card small {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--color-faint);
   overflow: hidden;
   text-overflow: ellipsis;

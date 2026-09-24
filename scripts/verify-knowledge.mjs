@@ -273,6 +273,7 @@ try {
   await b.page.getByRole("button", { name: "保存当前结果", exact: true }).click();
   await b.page.getByRole("status").filter({ hasText: "已保存到本地" }).waitFor();
   await b.page.goto(`${origin}/knowledge`);
+  await b.page.getByText("导入、导出与备份", { exact: true }).click();
   await b.page.getByRole("button", { name: "从资料集合导入", exact: true }).click();
   await b.page.locator(".knowledge-note-card").filter({ hasText: "独特引用证据" }).click();
   await b.page.locator(".knowledge-citations").waitFor();

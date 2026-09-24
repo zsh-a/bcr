@@ -4,6 +4,7 @@ import { contentOf, emptyContent, newNote } from "./model";
 import type { KnowledgeStore } from "./store";
 import { FILE_LIMIT, importMarkdown } from "./files";
 import { writeKnowledgeBackup } from "./backup";
+import { localDay } from "./workbench";
 
 /** Stable source IDs make repeated imports idempotent without merging the two domain models. */
 export function researchToKnowledge(library: ResearchLibrary) {
@@ -36,11 +37,26 @@ export function createKnowledgeActions(
   flush: () => Promise<void>,
 ) {
   return {
-    async create(collection: string | null) {
+    async create(collection: string | null, title = "") {
       await flush();
-      const note = newNote("", collection);
+      const note = newNote(title, collection);
       await store.saveNote(note, null);
       return note.id;
+    },
+    async daily(date = new Date()) {
+      await flush();
+      const day = localDay(date),
+        id = `daily-${day}`;
+      const note = {
+        ...newNote(day),
+        id,
+        tags: ["日记"],
+        body: `# ${day}\n\n## 今日计划\n\n- [ ] \n\n## 记录\n\n`,
+      };
+      await store.update((state) =>
+        state.notes[id] ? state : { ...state, notes: { ...state.notes, [id]: note } },
+      );
+      return id;
     },
     async importMarkdown(file: Pick<File, "size" | "name" | "text">) {
       if (file.size > FILE_LIMIT) throw new Error("单篇导入上限为 2 MiB");

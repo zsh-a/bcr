@@ -125,6 +125,7 @@ await withServer({
     "scripts/verify-storage-cleanup.mjs",
     "scripts/verify-global-search.mjs",
     "scripts/verify-knowledge.mjs",
+    "scripts/verify-knowledge-workbench.mjs",
     "scripts/verify-knowledge-restore.mjs",
     "scripts/verify-research.mjs",
     "scripts/verify-research-backup.mjs",

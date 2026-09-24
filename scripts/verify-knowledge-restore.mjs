@@ -18,6 +18,7 @@ try {
   await saved();
   const id = new URL(page.url()).searchParams.get("note");
   const downloading = page.waitForEvent("download");
+  await page.getByText("导入、导出与备份", { exact: true }).click();
   await page.getByRole("button", { name: "导出知识库", exact: true }).click();
   const download = await downloading;
   const path = await download.path();
@@ -39,6 +40,7 @@ try {
   assert.equal(new URL(page.url()).searchParams.get("note"), id);
   await page.reload();
   await saved();
+  await page.getByText("导入、导出与备份", { exact: true }).click();
   assert.ok((await body.textContent()).includes("来自备份的正文"));
   await page.getByRole("button", { name: "恢复 ZIP 备份", exact: true }).click();
   await panel.getByLabel("选择知识库备份", { exact: true }).setInputFiles(path);

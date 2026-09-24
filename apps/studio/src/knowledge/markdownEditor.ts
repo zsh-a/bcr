@@ -1,4 +1,5 @@
-import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
+import { markdown, markdownLanguage, markdownKeymap } from "@codemirror/lang-markdown";
+import { search, searchKeymap } from "@codemirror/search";
 import { HighlightStyle, syntaxHighlighting, type LanguageSupport } from "@codemirror/language";
 import { EditorState, type Extension } from "@codemirror/state";
 import {
@@ -135,7 +136,14 @@ export function knowledgeEditorExtensions(
     drawSelection(),
     highlightActiveLine(),
     history(),
-    keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+    search({ top: true }),
+    keymap.of([
+      ...markdownKeymap,
+      ...searchKeymap,
+      ...defaultKeymap,
+      ...historyKeymap,
+      indentWithTab,
+    ]),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) onChange(update.state.doc.toString());
       // Selection is reported so an editor action can address the caret or the
