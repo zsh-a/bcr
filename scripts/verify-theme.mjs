@@ -41,8 +41,14 @@ try {
     ]) {
       await page.setViewportSize(viewport);
       await page.emulateMedia({ reducedMotion: "reduce" });
-      assert.ok(
-        await page.locator(".studio-topbar").evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+      // Viewport media queries can settle one frame after Chromium reports the resize.
+      await page.waitForFunction(
+        () => {
+          const bar = document.querySelector(".studio-topbar");
+          return bar && bar.scrollWidth <= bar.clientWidth + 1;
+        },
+        undefined,
+        { timeout: 5000 },
       );
       await page.getByRole("button", { name: "GitHub 同步设置", exact: true }).click();
       const dialog = page.getByRole("dialog", { name: "连接设置", exact: true });

@@ -3,6 +3,7 @@ import { Monitor, Moon, Sun } from "lucide-react";
 import { themeStore } from "./browser";
 import { themePreference } from "./store";
 import "./theme.css";
+import { BackgroundSettings } from "./BackgroundSettings";
 
 export function ThemePicker() {
   const { preference, error } = useSyncExternalStore(themeStore.subscribe, themeStore.getSnapshot);
@@ -20,6 +21,7 @@ export function ThemePicker() {
         <option value="light">浅色</option>
         <option value="dark">深色</option>
       </select>
+      <BackgroundSettings />
       {error && (
         <p role="status" className="studio-theme-error">
           {error}

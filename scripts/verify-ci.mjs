@@ -130,6 +130,7 @@ await withServer({
     "scripts/verify-knowledge-paths.mjs",
     "scripts/verify-knowledge-dialogs.mjs",
     "scripts/verify-theme.mjs",
+    "scripts/verify-background.mjs",
     "scripts/verify-knowledge-restore.mjs",
     "scripts/verify-research.mjs",
     "scripts/verify-research-backup.mjs",
