@@ -56,6 +56,10 @@ export interface SqliteDb {
   /** 应用级小状态（§8 settings 语义）：字符串键值。 */
   readonly kvGet: (key: string) => Promise<string | undefined>;
   readonly kvSet: (key: string, value: string) => Promise<void>;
+  /** Atomic SQL changes followed by one durable snapshot; a failed receipt is uncertain. */
+  readonly kvBatch?: (
+    entries: ReadonlyArray<readonly [key: string, value: string | undefined]>,
+  ) => Promise<void>;
 }
 
 export interface OpenSqliteDbOptions {
@@ -215,6 +219,26 @@ export async function openSqliteDb(options: OpenSqliteDbOptions): Promise<Sqlite
         sql: "INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)",
         bind: [key, value],
       });
+      await persist();
+    },
+    kvBatch: async (entries) => {
+      if (!entries.length) return;
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        for (const [key, value] of entries) {
+          db.exec(
+            value === undefined
+              ? { sql: "DELETE FROM kv WHERE key = ?", bind: [key] }
+              : { sql: "INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)", bind: [key, value] },
+          );
+        }
+        db.exec("COMMIT");
+      } catch (error) {
+        db.exec("ROLLBACK");
+        throw error;
+      }
+      // No awaits inside the transaction: unrelated runtime writes cannot interleave.
+      // Once committed, IO failure must not roll back newer writes from other domains.
       await persist();
     },
   };

@@ -80,6 +80,14 @@ export interface SearchIndex {
   readonly upsert: (document: SearchDocument) => void;
   readonly remove: (id: string) => void;
   readonly replaceSource: (source: string, documents: ReadonlyArray<SearchDocument>) => void;
+  /** Incremental projection update with one observer notification; cannot remove another source's documents. */
+  readonly patchSource?: (
+    source: string,
+    change: {
+      readonly upsert: ReadonlyArray<SearchDocument>;
+      readonly remove: ReadonlyArray<string>;
+    },
+  ) => void;
   readonly removeSource: (source: string) => void;
   readonly search: (query: string, options?: SearchQueryOptions) => ReadonlyArray<SearchResult>;
   readonly documents: () => ReadonlyArray<SearchDocument>;
@@ -369,6 +377,36 @@ class MemorySearchIndex implements SearchIndex {
     }
     this.schedulePersist();
     this.notify();
+  }
+
+  patchSource(
+    source: string,
+    change: {
+      readonly upsert: ReadonlyArray<SearchDocument>;
+      readonly remove: ReadonlyArray<string>;
+    },
+  ): void {
+    let changed = !this.liveSources.has(source);
+    this.liveSources.add(source);
+    for (const id of change.remove) {
+      if (this.entries.get(id)?.source === source) {
+        this.entries.delete(id);
+        changed = true;
+      }
+    }
+    for (const document of change.upsert) {
+      const existing = this.entries.get(document.id);
+      if (existing && existing.source !== source) continue;
+      const decoded = decodeDocument({ ...document, source });
+      if (decoded !== undefined) {
+        this.setDocument(decoded);
+        changed = true;
+      }
+    }
+    if (changed) {
+      this.schedulePersist();
+      this.notify();
+    }
   }
 
   removeSource(source: string): void {

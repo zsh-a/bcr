@@ -4,6 +4,8 @@ import { noteRevision } from "./noteRevision";
 import { preserveRenamedLinks } from "./renameLinks";
 import { planNoteRename, planNoteMove, noteVersions, type NoteChangePlan } from "./changePlan";
 import { availableCopyPath } from "./paths";
+import { KnowledgePersistence } from "./persistence";
+export { KNOWLEDGE_KEY } from "./persistence";
 import {
   contentOf,
   decodeNote,
@@ -19,7 +21,6 @@ import {
   type KnowledgeConflict,
 } from "./model";
 
-export const KNOWLEDGE_KEY = "workspace/knowledge.v1";
 export const KNOWLEDGE_PATH_BACKUP_KEY = "workspace/knowledge.before-paths.v1";
 export class KnowledgeStore {
   private plans = new WeakMap<NoteChangePlan, string>();
@@ -115,6 +116,7 @@ export class KnowledgeStore {
   private syncListeners = new Set<() => void>();
   private listeners = new Set<() => void>();
   readonly ready: Promise<void>;
+  private readonly persistence: KnowledgePersistence | undefined;
   get syncing() {
     return this.syncTask !== null;
   }
@@ -139,12 +141,13 @@ export class KnowledgeStore {
     }
   }
   constructor(private metadata: RuntimeMetadata | undefined) {
+    this.persistence = metadata ? new KnowledgePersistence(metadata) : undefined;
     this.ready = this.load();
     void this.ready.catch(() => undefined);
   }
   private async load() {
     if (!this.metadata) throw new Error("本地持久化不可用，笔记编辑已暂停");
-    this.value = decodeState(await this.metadata.get(KNOWLEDGE_KEY));
+    this.value = await this.persistence!.load();
     this.emit();
   }
   getSnapshot = (): KnowledgeState => this.value;
@@ -206,7 +209,7 @@ export class KnowledgeStore {
             (await this.metadata!.get(KNOWLEDGE_PATH_BACKUP_KEY)) === undefined
           )
             await this.metadata!.set(KNOWLEDGE_PATH_BACKUP_KEY, JSON.stringify(this.value));
-          await this.metadata!.set(KNOWLEDGE_KEY, raw);
+          await this.persistence!.save(validated);
         } catch (error) {
           this.reloadRequired = true;
           throw error;

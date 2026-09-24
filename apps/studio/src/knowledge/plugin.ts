@@ -1,5 +1,5 @@
 import type { WorkspacePlugin } from "@bcr/shell-contract";
-import { publishKnowledge } from "./search";
+import { createKnowledgePublisher } from "./search";
 import { workspaceServices } from "../workspace";
 import { knowledgeCapability } from "./agent";
 import { knowledgeResultRenderers } from "./agentRenderers";
@@ -18,8 +18,9 @@ export const knowledgePlugin: WorkspacePlugin = {
     );
     let disposed = false;
     let ready = false;
+    const publisher = search ? createKnowledgePublisher(search) : undefined;
     const publish = () => {
-      if (!disposed && ready && search) publishKnowledge(search, store.getSnapshot());
+      if (!disposed && ready) publisher?.publish(store.getSnapshot());
     };
     const unsubscribe = store.subscribe(publish);
     void Promise.all([store.ready, search?.ready])

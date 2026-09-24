@@ -52,4 +52,4 @@ bun run test apps/studio/tests/knowledge-paths.test.ts
 BASE_URL=http://127.0.0.1:5199 node scripts/verify-knowledge-paths.mjs
 ```
 
-下一步为分记录存储、可重建增量索引和独立回收站。之后依次推进属性/附件、Vault 交换、深度写作、图谱与扩展接口；上述功能不包含在本次路径阶段中。
+后续已完成[应用层分记录存储与全局搜索增量投影](./KNOWLEDGE-STORAGE.md)，本地物理清单升级为版本 3，领域状态仍保持版本 1/2。接下来实现独立回收站，再依次推进属性/附件、Vault 交换、深度写作、图谱与扩展接口。

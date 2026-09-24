@@ -17,6 +17,28 @@ const document = (
 });
 
 describe("workspace search index", () => {
+  it("patches one source with one notification and protects other sources", async () => {
+    const index = createSearchIndex();
+    await index.ready;
+    index.replaceSource("one", [document("a", "Old", "before"), document("b", "Gone", "before")]);
+    index.replaceSource("two", [document("foreign", "Foreign", "keep")]);
+    let notifications = 0;
+    const stop = index.subscribe(() => {
+      notifications++;
+    });
+    index.patchSource!("one", {
+      remove: ["b", "foreign"],
+      upsert: [document("a", "New", "after"), document("foreign", "Wrong", "overwrite")],
+    });
+    expect(notifications).toBe(1);
+    expect(index.documents().find((doc) => doc.id === "foreign")?.title).toBe("Foreign");
+    expect(index.documents().find((doc) => doc.id === "b")).toBeUndefined();
+    expect(index.search("after")[0]?.document.source).toBe("one");
+    index.patchSource!("one", { remove: ["missing"], upsert: [] });
+    expect(notifications).toBe(1);
+    stop();
+    await index.close();
+  });
   it("queries ephemeral sources on demand, aborts stale work and excludes results from persistence", async () => {
     let saved = "";
     const index = createSearchIndex({

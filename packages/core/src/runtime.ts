@@ -7,6 +7,11 @@ import type { SearchIndex } from "./search";
 export interface RuntimeMetadata {
   readonly get: (key: string) => Promise<string | undefined>;
   readonly set: (key: string, value: string) => Promise<void>;
+  /** Atomic logical batch, durably acknowledged together. undefined deletes a key.
+   * A rejected persistence receipt is uncertain: reread before retrying. */
+  readonly batch?: (
+    entries: ReadonlyArray<readonly [key: string, value: string | undefined]>,
+  ) => Promise<void>;
 }
 
 /** Framework-independent application services. Ownership belongs to a session. */

@@ -116,7 +116,15 @@ export async function createBrowserRuntime(
       artifacts,
       host,
       dispose,
-      ...(db === undefined ? {} : { metadata: { get: db.kvGet, set: db.kvSet } }),
+      ...(db === undefined
+        ? {}
+        : {
+            metadata: {
+              get: db.kvGet,
+              set: db.kvSet,
+              ...(db.kvBatch ? { batch: db.kvBatch } : {}),
+            },
+          }),
     };
     detach = host.attach(session);
     return session;

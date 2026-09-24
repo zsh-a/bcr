@@ -28,6 +28,40 @@ beforeEach(async () => {
 });
 
 describe("openSqliteDb (§8 元数据引擎)", () => {
+  it("atomically batches puts and deletes and persists them across reopen", async () => {
+    await db.kvSet("batch-old", "remove");
+    await db.kvBatch!([
+      ["batch-a", "one"],
+      ["batch-b", "two"],
+      ["batch-old", undefined],
+    ]);
+    const reopened = await openSqliteDb({
+      store,
+      path: "project/meta.db",
+      sqlite3: await initSqlite(),
+    });
+    expect(await reopened.kvGet("batch-a")).toBe("one");
+    expect(await reopened.kvGet("batch-b")).toBe("two");
+    expect(await reopened.kvGet("batch-old")).toBeUndefined();
+    await reopened.close();
+  });
+  it("rolls back every SQL mutation when any batch statement fails", async () => {
+    await db.kvSet("batch-safe", "before");
+    db.run(
+      "CREATE TRIGGER reject_batch BEFORE INSERT ON kv WHEN NEW.key = 'batch-reject' BEGIN SELECT RAISE(ABORT, 'injected failure'); END",
+    );
+    await expect(
+      db.kvBatch!([
+        ["batch-safe", "after"],
+        ["batch-reject", "fail"],
+      ]),
+    ).rejects.toThrow();
+    expect(await db.kvGet("batch-safe")).toBe("before");
+    expect(await db.kvGet("batch-reject")).toBeUndefined();
+    db.run("DROP TRIGGER reject_batch");
+    await db.kvBatch!([["batch-safe", "retry"]]);
+    expect(await db.kvGet("batch-safe")).toBe("retry");
+  });
   it("coalesces concurrent persistence requests without losing writes during IO", async () => {
     const writes: Uint8Array[] = [];
     let release!: () => void;
