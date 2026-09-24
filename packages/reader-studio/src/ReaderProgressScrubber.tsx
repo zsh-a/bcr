@@ -159,7 +159,7 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
   const previewChapter = currentTxtChapter(props.book, previewSection?.id ?? null);
   const previewContext = previewChapter?.label ?? previewSection?.label ?? context;
   const markers = useMemo(() => progressMarkers(props.book), [props.book]);
-  const style = { "--reader-progress": `${draft * 100}%` } as CSSProperties;
+  const style = { "--read-progress": `${draft * 100}%` } as CSSProperties;
 
   return (
     <section

@@ -1,31 +1,20 @@
-.quant-lab {
-  color-scheme: dark;
-}
+@import "@bcr/react/tokens.css";
+@import "@bcr/react/global.css";
+@import "@bcr/react/ui.css";
+
+/*
+ * Quant Lab —— 共享令牌之上的领域布局层。
+ * 只保留结构与排版：控件 chrome 由 .ui-* 承担，数据色仅语义使用
+ * （涨→success / 跌→danger / 中性序列→info / 次级序列→amber）。
+ * 动画仅浮层进出（@starting-style + allow-discrete）；加载只用 Skeleton/Spinner。
+ */
+
+/* ---------- 应用骨架 ---------- */
 
 .quant-lab,
 .ql-boot,
 .ql-boot-error {
-  --ql-bg: #090b0a;
-  --ql-panel: #111513;
-  --ql-panel-2: #181d1a;
-  --ql-line: #343d38;
-  --ql-grid: #232a26;
-  --ql-text: #f5f5ed;
-  --ql-muted: #aab2ad;
-  --ql-faint: #75807b;
-  --ql-lime: #c7f36a;
-  --ql-cyan: #65d8d0;
-  --ql-amber: #efbc69;
-  --ql-red: #ff766d;
-  --ql-micro: 10px;
-  --ql-caption: 11px;
-  --ql-label: 12px;
-  --ql-body: 14px;
-  --ql-radius-sm: 8px;
-  --ql-radius-md: 12px;
   box-sizing: border-box;
-  color: var(--ql-text);
-  font-family: "IBM Plex Sans", sans-serif;
 }
 
 .quant-lab *,
@@ -34,66 +23,38 @@
 }
 
 .quant-lab {
-  position: relative;
   display: grid;
-  grid-template-rows: 76px 96px minmax(0, 1fr) 44px;
+  grid-template-rows: var(--h-topbar) 96px minmax(0, 1fr) auto;
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 78% 22%, rgba(184, 243, 74, 0.045), transparent 32%),
-    linear-gradient(135deg, transparent 0 48%, rgba(255, 255, 255, 0.012) 48% 49%, transparent 49%),
-    var(--ql-bg);
-  font-size: var(--ql-body);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
   font-variant-numeric: tabular-nums;
-  line-height: 1.5;
-}
-
-.quant-lab button,
-.quant-lab input {
-  font: inherit;
+  line-height: var(--text-base--line-height);
 }
 
 .quant-lab button {
   touch-action: manipulation;
 }
 
-.quant-lab button:focus-visible,
-.quant-lab input:focus-visible {
-  outline: 2px solid var(--ql-cyan);
-  outline-offset: 3px;
-}
-
-.quant-lab::after {
-  position: absolute;
-  z-index: 20;
-  inset: 0;
-  pointer-events: none;
-  content: "";
-  opacity: 0.18;
-  background-image: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 3px,
-    rgba(255, 255, 255, 0.012) 3px,
-    rgba(255, 255, 255, 0.012) 4px
-  );
-}
+/* ---------- 顶栏 ---------- */
 
 .ql-header {
   z-index: 2;
   display: flex;
   align-items: stretch;
-  border-bottom: 1px solid var(--ql-line);
-  background: rgba(9, 11, 10, 0.94);
-  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .ql-brand {
   display: flex;
   align-items: center;
   width: 320px;
-  border-right: 1px solid var(--ql-line);
+  border-right: 1px solid var(--color-border);
 }
 
 .ql-brand > span {
@@ -101,60 +62,53 @@
   place-items: center;
   align-self: stretch;
   width: 76px;
-  background: var(--ql-lime);
-  color: #0a0c0a;
-  font:
-    500 var(--ql-label) "IBM Plex Mono",
-    monospace;
+  background: var(--color-accent);
+  color: var(--color-on-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 500;
   letter-spacing: -0.05em;
 }
 
 .ql-brand div {
-  padding-left: 18px;
+  padding-left: var(--space-5);
 }
 
 .ql-brand b {
   display: block;
-  font:
-    600 16px "IBM Plex Sans",
-    sans-serif;
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  font-weight: 600;
   letter-spacing: 0.08em;
 }
 
 .ql-brand small {
-  color: var(--ql-faint);
-  font:
-    var(--ql-micro) "IBM Plex Mono",
-    monospace;
+  display: block;
+  overflow: hidden;
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ql-market-status {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: var(--space-2);
   min-width: 0;
-  padding: 0 22px;
-  color: var(--ql-lime);
-  font:
-    var(--ql-caption) "IBM Plex Mono",
-    monospace;
-}
-
-.ql-market-status i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--ql-lime);
-  box-shadow: 0 0 10px rgba(184, 243, 74, 0.7);
-  animation: ql-pulse 1.8s ease-in-out infinite;
+  padding: 0 var(--space-6);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
 }
 
 .ql-market-status span {
   overflow: hidden;
   max-width: 260px;
-  margin-left: 12px;
-  color: var(--ql-muted);
+  margin-left: var(--space-3);
+  color: var(--color-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -162,48 +116,9 @@
 .ql-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   margin-left: auto;
-  padding: 0 14px;
-}
-
-.ql-actions button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 44px;
-  height: 44px;
-  padding: 0 13px;
-  border: 1px solid var(--ql-line);
-  border-radius: var(--ql-radius-sm);
-  background: var(--ql-panel-2);
-  color: var(--ql-muted);
-  font:
-    500 var(--ql-caption) "IBM Plex Mono",
-    monospace;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-}
-
-.ql-actions button:hover:not(:disabled) {
-  border-color: var(--ql-muted);
-  color: var(--ql-text);
-}
-
-.ql-actions button.primary {
-  border-color: var(--ql-lime);
-  background: var(--ql-lime);
-  color: #0b1008;
-}
-
-.ql-actions button.danger {
-  border-color: var(--ql-red);
-  color: var(--ql-red);
-}
-
-.ql-actions button:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+  padding: 0 var(--space-4);
 }
 
 .ql-actions svg,
@@ -214,64 +129,62 @@
   stroke-width: 1.7;
 }
 
+.ql-handoff-block > div svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ---------- 指标条 ---------- */
+
 .ql-tape {
   z-index: 2;
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  border-bottom: 1px solid var(--ql-line);
-  background: var(--ql-panel);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .ql-metric {
-  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0 20px;
-  border-right: 1px solid var(--ql-line);
-}
-
-.ql-metric::before {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: currentColor;
-  content: "";
-  opacity: 0.7;
+  padding: 0 var(--space-5);
+  border-right: 1px solid var(--color-border);
 }
 
 .ql-metric span {
-  color: var(--ql-faint);
-  font:
-    var(--ql-micro) "IBM Plex Mono",
-    monospace;
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
 }
 
 .ql-metric b {
-  margin-top: 7px;
-  font:
-    500 26px "IBM Plex Mono",
-    monospace;
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  font-weight: 500;
   letter-spacing: -0.04em;
 }
 
 .ql-metric.positive {
-  color: var(--ql-lime);
+  color: var(--color-success);
 }
+
 .ql-metric.negative {
-  color: var(--ql-red);
+  color: var(--color-danger);
 }
+
 .ql-metric.neutral {
-  color: var(--ql-muted);
+  color: var(--color-muted);
 }
+
+/* ---------- 三栏工作区 ---------- */
 
 .ql-layout {
   z-index: 1;
   display: grid;
-  grid-template-columns: 260px minmax(480px, 1fr) 320px;
+  grid-template-columns: var(--w-sidebar) minmax(480px, 1fr) var(--w-sidebar);
   min-height: 0;
 }
 
@@ -279,12 +192,17 @@
 .ql-blotter {
   min-height: 0;
   overflow: auto;
-  background: rgba(13, 16, 15, 0.92);
+  background: var(--color-surface);
+}
+
+.ql-control-rail {
+  border-right: 1px solid var(--color-border);
 }
 
 .ql-blotter {
   display: flex;
   flex-direction: column;
+  border-left: 1px solid var(--color-border);
 }
 
 .ql-trade-list {
@@ -293,186 +211,158 @@
   overflow: auto;
 }
 
-.ql-control-rail {
-  border-right: 1px solid var(--ql-line);
-}
-
 .ql-rail-title,
 .ql-panel-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 48px;
-  padding: 0 14px;
-  border-bottom: 1px solid var(--ql-line);
-  color: var(--ql-muted);
-  font:
-    var(--ql-caption) "IBM Plex Mono",
-    monospace;
+  height: var(--h-toolbar);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
 }
 
 .ql-rail-title {
   justify-content: flex-start;
-  gap: 9px;
-  color: var(--ql-amber);
+  gap: var(--space-2);
 }
+
+.ql-panel-heading strong {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+/* ---------- 策略参数栏 ---------- */
 
 .ql-control-rail > label {
   display: grid;
   grid-template-columns: 1fr 92px;
   align-items: center;
   min-height: 62px;
-  padding: 0 14px;
-  border-bottom: 1px solid var(--ql-line);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .ql-control-rail label span {
-  color: var(--ql-muted);
-  font:
-    var(--ql-caption) "IBM Plex Mono",
-    monospace;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   letter-spacing: 0.05em;
 }
 
 .ql-control-rail input {
-  width: 92px;
-  height: 40px;
-  padding: 0 10px;
-  border: 1px solid var(--ql-line);
-  border-radius: var(--ql-radius-sm);
-  outline: none;
-  background: #080a09;
-  color: var(--ql-amber);
-  font:
-    var(--ql-label) "IBM Plex Mono",
-    monospace;
+  width: 100%;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
-.ql-control-rail input:focus {
-  border-color: var(--ql-amber);
-}
-
 .ql-dataset-block {
-  padding: 18px 14px;
-  border-bottom: 1px solid var(--ql-line);
-  font-family: "IBM Plex Mono", monospace;
+  padding: var(--space-5) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-mono);
 }
 
-.ql-dataset-block div {
+.ql-dataset-block > div:first-child {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  color: var(--ql-cyan);
-  font-size: var(--ql-caption);
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
 }
 
-.ql-dataset-block b,
-.ql-dataset-block span,
-.ql-dataset-block small {
+.ql-dataset-block > b,
+.ql-dataset-block > span,
+.ql-dataset-block > small {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.ql-dataset-block > b {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.ql-dataset-block > span {
+  margin-top: var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.ql-dataset-block > small {
+  margin-top: var(--space-1);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+}
+
 .ql-dataset-block .ql-partition-index {
   display: grid;
   grid-template-columns: 38px 1fr;
   grid-template-rows: auto auto;
-  gap: 2px 9px;
-  margin: 12px 0 6px;
-  padding: 9px;
-  border-left: 2px solid var(--ql-cyan);
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(87, 217, 209, 0.035) 0,
-      rgba(87, 217, 209, 0.035) 6px,
-      transparent 6px,
-      transparent 9px
-    ),
-    #090d0c;
+  gap: var(--space-1) var(--space-2);
+  margin: var(--space-3) 0 var(--space-2);
+  padding: var(--space-2);
+  border-left: 1px solid var(--color-border-strong);
+  background: var(--color-raised);
 }
 
 .ql-partition-index strong {
   grid-row: 1 / 3;
   align-self: center;
-  color: var(--ql-cyan);
-  font-size: 20px;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
   font-weight: 500;
   letter-spacing: -0.08em;
 }
 
 .ql-dataset-block .ql-partition-index span {
-  margin: 0;
-  color: var(--ql-text);
-  font-size: var(--ql-micro);
+  color: var(--color-text);
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
 }
 
 .ql-dataset-block .ql-partition-index i {
-  color: var(--ql-faint);
-  font-size: var(--ql-micro);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
   font-style: normal;
   letter-spacing: 0.05em;
-}
-
-.ql-dataset-block b {
-  font-size: var(--ql-label);
-  font-weight: 500;
-}
-.ql-dataset-block span {
-  margin-top: 5px;
-  color: var(--ql-muted);
-  font-size: var(--ql-caption);
-}
-.ql-dataset-block small {
-  margin-top: 3px;
-  color: var(--ql-faint);
-  font-size: var(--ql-micro);
 }
 
 .ql-dataset-block .ql-columnar-formats {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 12px 0 7px;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-2);
 }
 
 .ql-columnar-formats em {
-  padding: 4px 6px;
-  border: 1px solid color-mix(in srgb, var(--ql-cyan) 38%, var(--ql-line));
-  color: var(--ql-cyan);
-  font-size: var(--ql-micro);
   font-style: normal;
-  letter-spacing: 0.03em;
 }
 
+/* ---------- Market Atlas 交接块 ---------- */
+
 .ql-handoff-block {
-  padding: 16px 14px 18px;
-  border-bottom: 1px solid var(--ql-line);
-  background:
-    linear-gradient(135deg, rgba(87, 217, 209, 0.08), transparent 62%), rgba(8, 12, 11, 0.55);
-  font-family: "IBM Plex Mono", monospace;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-mono);
 }
 
 .ql-handoff-block > div {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  color: var(--ql-cyan);
-  font-size: var(--ql-caption);
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
-}
-
-.ql-handoff-block > div svg {
-  width: 15px;
-  height: 15px;
 }
 
 .ql-handoff-block > b,
@@ -485,23 +375,23 @@
 }
 
 .ql-handoff-block > b {
-  color: var(--ql-text);
-  font-size: var(--ql-label);
+  color: var(--color-text);
+  font-size: var(--text-sm);
   font-weight: 500;
 }
 
 .ql-handoff-block > span,
 .ql-handoff-block > small {
-  margin-top: 4px;
-  color: var(--ql-muted);
-  font-size: var(--ql-micro);
+  margin-top: var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
   letter-spacing: 0.03em;
 }
 
 .ql-handoff-block ul {
   display: grid;
-  gap: 5px;
-  margin: 12px 0 0;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -511,16 +401,15 @@
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 7px 8px;
-  border-left: 2px solid color-mix(in srgb, var(--ql-cyan) 52%, var(--ql-line));
-  background: rgba(87, 217, 209, 0.035);
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-left: 1px solid var(--color-border);
 }
 
 .ql-handoff-block li span {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .ql-handoff-block li b,
@@ -532,44 +421,47 @@
 }
 
 .ql-handoff-block li b {
-  color: var(--ql-text);
-  font-size: var(--ql-micro);
+  color: var(--color-text);
+  font-size: var(--text-xs);
   font-weight: 500;
 }
 
 .ql-handoff-block li small {
-  color: var(--ql-faint);
-  font-size: 9px;
+  color: var(--color-faint);
+  font-size: var(--text-xs);
 }
 
 .ql-handoff-block li em {
   flex: none;
-  color: var(--ql-lime);
-  font-size: 9px;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
   font-style: normal;
 }
 
+/* ---------- 流水线节点 ---------- */
+
 .ql-pipeline-map {
-  padding: 22px 14px;
+  padding: var(--space-6) var(--space-4);
 }
 
 .ql-pipeline-map > i {
   display: block;
   width: 1px;
   height: 20px;
-  margin-left: 23px;
-  background: var(--ql-line);
+  margin-left: var(--space-6);
+  background: var(--color-border);
 }
 
 .ql-pipeline-node {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: var(--space-3);
   overflow: hidden;
   min-height: 60px;
-  border: 1px solid var(--ql-line);
-  background: #0a0d0b;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
 }
 
 .ql-pipeline-node > span {
@@ -577,55 +469,64 @@
   place-items: center;
   align-self: stretch;
   width: 46px;
-  border-right: 1px solid var(--ql-line);
-  color: var(--ql-faint);
-  font:
-    var(--ql-caption) "IBM Plex Mono",
-    monospace;
+  border-right: 1px solid var(--color-border);
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
 }
 
 .ql-pipeline-node b,
 .ql-pipeline-node small {
   display: block;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: var(--font-mono);
 }
+
 .ql-pipeline-node b {
-  color: var(--ql-muted);
-  font-size: var(--ql-caption);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
   font-weight: 500;
 }
+
 .ql-pipeline-node small {
-  margin-top: 3px;
-  color: var(--ql-faint);
-  font-size: var(--ql-micro);
+  margin-top: var(--space-1);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
 }
+
 .ql-pipeline-node.running {
-  border-color: var(--ql-amber);
+  border-color: var(--color-accent);
 }
+
 .ql-pipeline-node.completed {
-  border-color: color-mix(in srgb, var(--ql-lime) 45%, var(--ql-line));
+  border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-border));
 }
+
 .ql-pipeline-node.failed {
-  border-color: var(--ql-red);
+  border-color: var(--color-danger);
 }
+
 .ql-pipeline-node.running small {
-  color: var(--ql-amber);
+  color: var(--color-accent);
 }
+
 .ql-pipeline-node.completed small {
-  color: var(--ql-lime);
+  color: var(--color-success);
 }
+
 .ql-pipeline-node.failed small {
-  color: var(--ql-red);
+  color: var(--color-danger);
 }
 
 .ql-pipeline-node em {
   position: absolute;
   bottom: 0;
   left: 0;
-  height: 2px;
-  background: var(--ql-lime);
-  transition: width 160ms ease;
+  height: var(--space-1);
+  background: var(--color-accent);
+  transition: width var(--duration-slow) var(--ease-standard);
 }
+
+/* ---------- 图表工作区 ---------- */
 
 .ql-workspace {
   display: grid;
@@ -634,7 +535,7 @@
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  background: rgba(9, 11, 10, 0.68);
+  background: var(--color-bg);
 }
 
 .ql-chart-panel,
@@ -644,39 +545,37 @@
 }
 
 .ql-chart-panel {
-  border-bottom: 1px solid var(--ql-line);
-}
-.ql-panel-heading strong {
-  color: var(--ql-lime);
-  font-weight: 500;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .ql-legend {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .ql-legend span::before {
   display: inline-block;
   width: 12px;
   height: 1px;
-  margin: 0 5px 3px 0;
+  margin: 0 var(--space-1) var(--space-1) 0;
   background: currentColor;
   content: "";
 }
+
 .ql-legend .close {
-  color: var(--ql-lime);
+  color: var(--color-info);
 }
+
 .ql-legend .fast {
-  color: var(--ql-cyan);
+  color: var(--color-success);
 }
 .ql-legend .slow {
-  color: var(--ql-amber);
+  color: var(--color-amber);
 }
 
 .ql-chart-stage {
   position: relative;
-  height: calc(100% - 48px);
+  height: calc(100% - var(--h-toolbar));
   min-height: 240px;
 }
 
@@ -688,10 +587,9 @@
 }
 
 .ql-chart-stage svg text {
-  fill: var(--ql-faint);
-  font:
-    var(--ql-caption) "IBM Plex Mono",
-    monospace;
+  fill: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
 }
 
 .ql-line-close,
@@ -701,152 +599,189 @@
   fill: none;
   vector-effect: non-scaling-stroke;
 }
+
 .ql-line-close {
-  stroke: var(--ql-lime);
+  stroke: var(--color-info);
   stroke-width: 1.6;
 }
+
 .ql-line-fast {
-  stroke: var(--ql-cyan);
+  stroke: var(--color-success);
   stroke-width: 1;
   opacity: 0.92;
 }
+
 .ql-line-slow {
-  stroke: var(--ql-amber);
+  stroke: var(--color-amber);
   stroke-width: 1;
   opacity: 0.82;
 }
+
 .ql-buy-marker {
-  fill: var(--ql-lime);
+  fill: var(--color-success);
 }
+
 .ql-sell-marker {
-  fill: var(--ql-red);
+  fill: var(--color-danger);
 }
+
 .ql-crosshair {
-  stroke: #7f8a83;
+  stroke: var(--color-info);
   stroke-width: 1;
   stroke-dasharray: 3 4;
   vector-effect: non-scaling-stroke;
 }
+
 .ql-hover-point {
-  fill: var(--ql-bg);
-  stroke: var(--ql-lime);
+  fill: var(--color-bg);
+  stroke: var(--color-info);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
 
+/* 浮层：进出场都走 @starting-style + allow-discrete（[data-open] 切换）。 */
 .ql-chart-tooltip {
   position: absolute;
-  top: 15px;
-  display: grid;
+  top: var(--space-4);
+  display: none;
   grid-template-columns: repeat(2, auto);
-  gap: 5px 12px;
-  padding: 11px 13px;
-  border: 1px solid var(--ql-line);
-  background: rgba(8, 10, 9, 0.94);
-  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.25);
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-overlay);
+  box-shadow: var(--shadow-floating);
+  opacity: 0;
   transform: translateX(-50%);
-  font:
-    var(--ql-caption) "IBM Plex Mono",
-    monospace;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   pointer-events: none;
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    display var(--duration-base) allow-discrete,
+    overlay var(--duration-base) allow-discrete;
 }
+
+.ql-chart-tooltip[data-open] {
+  display: grid;
+  opacity: 1;
+}
+
+@starting-style {
+  .ql-chart-tooltip[data-open] {
+    opacity: 0;
+  }
+}
+
 .ql-chart-tooltip b {
   grid-column: 1 / -1;
-  color: var(--ql-text);
+  color: var(--color-text);
+  font-weight: 500;
 }
+
 .ql-chart-tooltip span {
-  color: var(--ql-muted);
+  color: var(--color-muted);
 }
+
 .ql-chart-tooltip em {
   grid-column: 1 / -1;
-  color: var(--ql-lime);
   font-style: normal;
+}
+
+.ql-chart-tooltip em.buy {
+  color: var(--color-success);
+}
+
+.ql-chart-tooltip em.sell {
+  color: var(--color-danger);
 }
 
 .ql-equity-panel {
   display: grid;
-  grid-template-rows: 48px minmax(0, 1fr);
+  grid-template-rows: var(--h-toolbar) minmax(0, 1fr);
 }
+
 .ql-equity-area {
-  fill: rgba(87, 217, 209, 0.08);
+  fill: color-mix(in srgb, var(--color-info) 10%, transparent);
 }
+
 .ql-equity-line {
-  stroke: var(--ql-cyan);
+  stroke: var(--color-info);
   stroke-width: 1.4;
 }
+
 .ql-equity-empty,
 .ql-chart-empty {
   display: grid;
   place-items: center;
-  color: var(--ql-faint);
-  font:
-    var(--ql-caption) "IBM Plex Mono",
-    monospace;
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
 }
+
+/* ---------- 组合分析 ---------- */
 
 .ql-portfolio-analysis {
   display: grid;
   grid-template-columns: minmax(0, 1.08fr) minmax(330px, 0.92fr);
-  gap: 12px;
+  gap: var(--space-3);
   min-width: 0;
-  padding: 12px;
-  border-top: 1px solid var(--ql-line);
-  background:
-    linear-gradient(135deg, rgba(101, 216, 208, 0.055), transparent 42%), rgba(9, 11, 10, 0.7);
+  padding: var(--space-3);
 }
 
 .ql-portfolio-card {
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--ql-line);
-  background: rgba(17, 21, 19, 0.88);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
 }
 
 .ql-portfolio-card-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
+  gap: var(--space-4);
   min-height: 62px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--ql-line);
-  font-family: "IBM Plex Mono", monospace;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-mono);
 }
 
 .ql-portfolio-card-heading > div:first-child {
   display: grid;
-  gap: 5px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
 .ql-portfolio-card-heading span,
 .ql-portfolio-subheading span {
-  color: var(--ql-muted);
-  font-size: var(--ql-caption);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
 }
 
 .ql-portfolio-card-heading small {
-  color: var(--ql-faint);
-  font-size: var(--ql-micro);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
   letter-spacing: 0.04em;
 }
 
 .ql-portfolio-card-heading > strong {
   flex: none;
-  color: var(--ql-cyan);
-  font:
-    500 var(--ql-label) "IBM Plex Mono",
-    monospace;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 500;
 }
 
 .ql-correlation-legend {
   display: flex;
   align-items: center;
-  gap: 5px;
-  color: var(--ql-faint);
-  font-size: var(--ql-micro);
+  gap: var(--space-1);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
   white-space: nowrap;
 }
 
@@ -854,24 +789,24 @@
   display: block;
   width: 34px;
   height: 6px;
-  background: linear-gradient(90deg, var(--ql-red), var(--ql-panel-2));
+  background: linear-gradient(90deg, var(--color-danger), var(--color-raised));
 }
 
 .ql-correlation-legend i.positive {
-  background: linear-gradient(90deg, var(--ql-panel-2), var(--ql-cyan));
+  background: linear-gradient(90deg, var(--color-raised), var(--color-success));
 }
 
 .ql-correlation-legend .negative {
-  color: var(--ql-red);
+  color: var(--color-danger);
 }
 
 .ql-correlation-legend .positive {
-  color: var(--ql-cyan);
+  color: var(--color-success);
 }
 
 .ql-correlation-scroll {
   overflow-x: auto;
-  padding: 14px 16px 10px;
+  padding: var(--space-4);
 }
 
 .ql-correlation-table {
@@ -879,15 +814,15 @@
   min-width: 360px;
   border-collapse: collapse;
   table-layout: fixed;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: var(--font-mono);
 }
 
 .ql-correlation-table th,
 .ql-correlation-table td {
   height: 42px;
-  padding: 4px 6px;
-  border: 1px solid color-mix(in srgb, var(--ql-line) 72%, transparent);
-  font-size: var(--ql-micro);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+  font-size: var(--text-xs);
   text-align: center;
 }
 
@@ -895,7 +830,7 @@
 .ql-correlation-table tbody th {
   overflow: hidden;
   max-width: 92px;
-  color: var(--ql-muted);
+  color: var(--color-muted);
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -909,87 +844,91 @@
 
 .ql-correlation-table td {
   min-width: 54px;
-  color: var(--ql-text);
+  color: var(--color-text);
   font-weight: 500;
 }
 
 .ql-portfolio-card-foot {
   display: flex;
   justify-content: space-between;
-  gap: 14px;
-  padding: 10px 16px 13px;
-  color: var(--ql-faint);
-  font:
-    var(--ql-micro) "IBM Plex Mono",
-    monospace;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   letter-spacing: 0.03em;
 }
 
 .ql-portfolio-card-foot span:last-child {
-  color: var(--ql-muted);
+  color: var(--color-muted);
   text-align: right;
 }
 
 .ql-portfolio-kpis {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--ql-line);
 }
 
 .ql-portfolio-kpis > div {
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
   min-height: 70px;
-  padding: 12px 14px;
-  background: var(--ql-panel);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+}
+
+/* 1px 细线网格：只画内部规则，外沿交给卡片描边。 */
+.ql-portfolio-kpis > div:nth-child(odd) {
+  border-right: 1px solid var(--color-border);
+}
+
+.ql-portfolio-kpis > div:nth-child(n + 3) {
+  border-top: 1px solid var(--color-border);
 }
 
 .ql-portfolio-kpis span {
-  color: var(--ql-faint);
-  font:
-    var(--ql-micro) "IBM Plex Mono",
-    monospace;
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   letter-spacing: 0.06em;
 }
 
 .ql-portfolio-kpis b {
-  font:
-    500 18px "IBM Plex Mono",
-    monospace;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: 500;
 }
 
 .ql-portfolio-kpis .positive b {
-  color: var(--ql-lime);
+  color: var(--color-success);
 }
 
 .ql-portfolio-kpis .negative b {
-  color: var(--ql-red);
+  color: var(--color-danger);
 }
 
 .ql-portfolio-kpis .neutral b {
-  color: var(--ql-cyan);
+  color: var(--color-text);
 }
 
 .ql-portfolio-curve {
-  padding: 14px 16px 8px;
-  border-bottom: 1px solid var(--ql-line);
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .ql-portfolio-subheading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-  font-family: "IBM Plex Mono", monospace;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+  font-family: var(--font-mono);
 }
 
 .ql-portfolio-subheading b {
-  color: var(--ql-cyan);
-  font:
-    500 var(--ql-label) "IBM Plex Mono",
-    monospace;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 500;
 }
 
 .ql-portfolio-curve svg {
@@ -999,35 +938,34 @@
 }
 
 .ql-portfolio-area {
-  fill: url("#ql-portfolio-fill");
+  fill: url("#quant-portfolio-fill");
 }
 
 .ql-portfolio-line {
   fill: none;
-  stroke: var(--ql-cyan);
+  stroke: var(--color-info);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
 
 .ql-portfolio-allocations {
   display: grid;
-  gap: 9px;
-  padding: 14px 16px 17px;
+  gap: var(--space-2);
+  padding: var(--space-4);
 }
 
 .ql-portfolio-allocations .ql-portfolio-subheading {
-  margin-bottom: 2px;
+  margin-bottom: var(--space-1);
 }
 
 .ql-allocation {
   display: grid;
   grid-template-columns: 70px minmax(40px, 1fr) 58px;
   align-items: center;
-  gap: 10px;
-  color: var(--ql-muted);
-  font:
-    var(--ql-micro) "IBM Plex Mono",
-    monospace;
+  gap: var(--space-3);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
 }
 
 .ql-allocation > span,
@@ -1038,23 +976,212 @@
 }
 
 .ql-allocation > b {
-  color: var(--ql-text);
+  color: var(--color-text);
   font-weight: 500;
   text-align: right;
 }
 
 .ql-allocation-track {
-  height: 5px;
+  height: var(--space-1);
   overflow: hidden;
-  background: var(--ql-grid);
+  border-radius: var(--radius-full);
+  background: var(--color-raised);
 }
 
 .ql-allocation-track i {
   display: block;
   height: 100%;
-  background: var(--ql-lime);
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
 }
 
+/* ---------- 成交回执 ---------- */
+
+.ql-blotter-head {
+  display: grid;
+  grid-template-columns: 1fr 88px;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+}
+
+.ql-blotter-head span:last-child {
+  text-align: right;
+}
+
+.ql-trade {
+  display: grid;
+  grid-template-columns: 1fr 96px;
+  gap: var(--space-3);
+  min-height: 72px;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.ql-trade:hover {
+  background: var(--color-raised);
+}
+
+.ql-trade b,
+.ql-trade span,
+.ql-trade small {
+  display: block;
+}
+
+.ql-trade b {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.ql-trade span {
+  margin-top: var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.ql-trade small {
+  margin-top: var(--space-1);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+}
+
+.ql-trade > strong {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.ql-trade > strong small {
+  font-weight: 400;
+}
+
+.ql-trade .positive {
+  color: var(--color-success);
+}
+
+.ql-trade .negative {
+  color: var(--color-danger);
+}
+
+.ql-empty-copy {
+  display: grid;
+  place-items: center;
+  gap: var(--space-2);
+  min-height: 180px;
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+}
+
+.ql-empty-copy span {
+  font-weight: 500;
+}
+
+.ql-empty-copy small {
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+  letter-spacing: 0;
+}
+
+/* ---------- 状态栏 ---------- */
+
+.ql-footer {
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 260px 1fr 100px;
+  align-items: center;
+  min-height: var(--h-control-lg);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+}
+
+.ql-footer > span {
+  padding-left: var(--space-4);
+  color: var(--color-accent);
+}
+
+.ql-footer > strong {
+  padding-right: var(--space-4);
+  color: var(--color-muted);
+  font-weight: 500;
+  text-align: right;
+}
+
+.ql-log-stream {
+  display: flex;
+  gap: var(--space-5);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ql-log-stream span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ql-log-stream .ok {
+  color: var(--color-success);
+}
+
+.ql-log-stream .warn {
+  color: var(--color-amber);
+}
+
+.ql-log-stream .error {
+  color: var(--color-danger);
+}
+
+.ql-log-stream .info {
+  color: var(--color-muted);
+}
+
+/* ---------- 启动 / 故障态 ---------- */
+
+.ql-boot,
+.ql-boot-error {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-2);
+  height: 100%;
+  background: var(--color-bg);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-align: center;
+  letter-spacing: 0.12em;
+}
+
+.ql-boot span {
+  color: var(--color-accent);
+}
+
+.ql-boot b {
+  font-weight: 500;
+}
+
+.ql-boot i {
+  width: 180px;
+  height: var(--space-1);
+}
+
+.ql-boot-error {
+  color: var(--color-danger);
+}
+
+/* 仅供屏幕阅读器的表格说明。 */
 .ql-sr-only {
   position: absolute;
   width: 1px;
@@ -1066,193 +1193,33 @@
   border: 0;
 }
 
-.ql-blotter {
-  border-left: 1px solid var(--ql-line);
-}
-
-.ql-blotter-head {
-  display: grid;
-  grid-template-columns: 1fr 88px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--ql-line);
-  color: var(--ql-faint);
-  font:
-    var(--ql-micro) "IBM Plex Mono",
-    monospace;
-  letter-spacing: 0.08em;
-}
-.ql-blotter-head span:last-child {
-  text-align: right;
-}
-
-.ql-trade {
-  display: grid;
-  grid-template-columns: 1fr 96px;
-  gap: 12px;
-  min-height: 72px;
-  padding: 13px 14px;
-  border-bottom: 1px solid var(--ql-line);
-  font-family: "IBM Plex Mono", monospace;
-}
-.ql-trade:hover {
-  background: rgba(255, 255, 255, 0.018);
-}
-.ql-trade b,
-.ql-trade span,
-.ql-trade small {
-  display: block;
-}
-.ql-trade b {
-  color: var(--ql-text);
-  font-size: var(--ql-label);
-  font-weight: 500;
-}
-.ql-trade span {
-  margin-top: 2px;
-  color: var(--ql-muted);
-  font-size: var(--ql-caption);
-}
-.ql-trade small {
-  margin-top: 4px;
-  color: var(--ql-faint);
-  font-size: var(--ql-micro);
-}
-.ql-trade > strong {
-  text-align: right;
-  font:
-    500 var(--ql-label) "IBM Plex Mono",
-    monospace;
-}
-.ql-trade > strong small {
-  font-weight: 400;
-}
-.ql-trade .positive {
-  color: var(--ql-lime);
-}
-.ql-trade .negative {
-  color: var(--ql-red);
-}
-
-.ql-empty-copy {
-  display: grid;
-  place-items: center;
-  min-height: 180px;
-  color: var(--ql-faint);
-  font:
-    var(--ql-caption) "IBM Plex Mono",
-    monospace;
-}
-.ql-empty-copy small {
-  margin-top: -70px;
-  color: #343c37;
-  font-size: inherit;
-}
-
-.ql-footer {
-  z-index: 2;
-  display: grid;
-  grid-template-columns: 260px 1fr 100px;
-  align-items: center;
-  border-top: 1px solid var(--ql-line);
-  background: #080a09;
-  color: var(--ql-faint);
-  font:
-    var(--ql-micro) "IBM Plex Mono",
-    monospace;
-  letter-spacing: 0.04em;
-}
-.ql-footer > span {
-  padding-left: 14px;
-  color: var(--ql-lime);
-}
-.ql-footer > strong {
-  padding-right: 14px;
-  color: var(--ql-muted);
-  text-align: right;
-}
-.ql-log-stream {
-  display: flex;
-  gap: 18px;
-  overflow: hidden;
-  white-space: nowrap;
-}
-.ql-log-stream span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ql-log-stream .ok {
-  color: var(--ql-lime);
-}
-.ql-log-stream .warn {
-  color: var(--ql-amber);
-}
-.ql-log-stream .error {
-  color: var(--ql-red);
-}
-
-.ql-boot,
-.ql-boot-error {
-  display: grid;
-  place-content: center;
-  gap: 9px;
-  height: 100%;
-  background: var(--ql-bg);
-  color: var(--ql-muted);
-  font:
-    var(--ql-caption) "IBM Plex Mono",
-    monospace;
-  text-align: center;
-  letter-spacing: 0.12em;
-}
-.ql-boot span {
-  color: var(--ql-lime);
-}
-.ql-boot i {
-  display: block;
-  width: 180px;
-  height: 2px;
-  background: var(--ql-line);
-}
-.ql-boot i::after {
-  display: block;
-  width: 40%;
-  height: 100%;
-  background: var(--ql-lime);
-  content: "";
-  animation: ql-load 1s ease-in-out infinite alternate;
-}
-.ql-boot-error {
-  color: var(--ql-red);
-}
-
-@keyframes ql-load {
-  to {
-    transform: translateX(150%);
-  }
-}
-@keyframes ql-pulse {
-  50% {
-    opacity: 0.35;
-  }
-}
+/* ---------- 响应式 ---------- */
 
 @media (max-width: 1120px) {
   .ql-layout {
-    grid-template-columns: 240px minmax(440px, 1fr);
+    grid-template-columns: var(--w-sidebar) minmax(440px, 1fr);
   }
+
   .ql-portfolio-analysis {
     grid-template-columns: 1fr;
   }
+
   .ql-blotter {
     display: none;
   }
+
   .ql-brand {
     width: 280px;
   }
-  .ql-actions button:not(.primary, .danger) {
-    padding: 0 10px;
-    font-size: 0;
+
+  .ql-actions button:not(.ui-btn-primary, .ui-btn-danger) {
+    padding: 0 var(--space-2);
   }
+
+  .ql-actions button:not(.ui-btn-primary, .ui-btn-danger) > span {
+    display: none;
+  }
+
   .ql-actions button svg {
     width: 13px;
     height: 13px;
@@ -1261,47 +1228,57 @@
 
 @media (max-width: 760px) {
   .quant-lab {
-    grid-template-rows: auto auto auto 44px;
+    grid-template-rows: auto auto auto auto;
     overflow: auto;
   }
+
   .ql-header {
     flex-wrap: wrap;
-    padding-bottom: 12px;
+    padding-bottom: var(--space-3);
   }
+
   .ql-brand {
     width: 100%;
     height: 68px;
   }
+
   .ql-market-status {
     width: 100%;
     min-height: 52px;
   }
+
   .ql-actions {
     width: 100%;
     min-width: 0;
     margin-left: 0;
     overflow-x: auto;
-    padding-right: max(14px, env(safe-area-inset-right));
-    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
     scrollbar-width: none;
   }
+
   .ql-actions::-webkit-scrollbar {
     display: none;
   }
+
   .ql-actions button {
     flex: 0 0 auto;
   }
+
   .ql-tape {
     grid-template-columns: repeat(3, 1fr);
   }
+
   .ql-metric {
     min-height: 82px;
   }
+
   .ql-layout {
     grid-template-columns: 1fr;
     min-height: max-content;
     overflow: visible;
   }
+
   .ql-control-rail {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -1312,34 +1289,32 @@
 
   .ql-control-rail input,
   .ql-actions button {
-    min-height: 44px;
+    min-height: var(--h-control-lg);
   }
+
   .ql-rail-title,
   .ql-dataset-block,
   .ql-pipeline-map {
     grid-column: 1 / -1;
   }
+
   .ql-workspace {
     min-height: 720px;
     overflow: visible;
   }
+
   .ql-blotter {
     display: flex;
     min-height: 360px;
-    border-top: 1px solid var(--ql-line);
+    border-top: 1px solid var(--color-border);
     border-left: 0;
   }
+
   .ql-portfolio-analysis {
-    padding: 10px;
+    padding: var(--space-3);
   }
+
   .ql-footer {
     grid-template-columns: 124px 1fr 72px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ql-market-status i,
-  .ql-boot i::after {
-    animation: none;
   }
 }

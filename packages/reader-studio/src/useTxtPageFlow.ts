@@ -98,7 +98,7 @@ export function useTxtPageFlow(options: {
       const lineHeight = parseFloat(getComputedStyle(probe).lineHeight);
       const height =
         settings.txtParagraphStyle === "spaced" ? available : pageTextHeight(available, lineHeight);
-      body.style.setProperty("--reader-page-text-height", `${height}px`);
+      body.style.setProperty("--read-page-text-height", `${height}px`);
       const measurement = createTxtPageMeasurement(book, probe);
       const layout = new TxtPageLayout(
         book,

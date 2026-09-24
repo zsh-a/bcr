@@ -3,9 +3,8 @@ import { CircleStop } from "lucide-react";
 import { useRef } from "react";
 import { cancelTask } from "../runtime";
 import { useSelection } from "../router";
-import { useRuntime } from "@bcr/react";
 import { useStudio, type TaskRecord } from "../store";
-import { Badge, formatDuration, PanelEmpty, ProgressBar, StatusDot } from "./ui";
+import { Badge, formatDuration, PanelEmpty, ProgressBar, StatusDot, useRuntime } from "@bcr/react";
 
 /** 任务历史面板：虚拟化列表（§12）。 */
 export function TasksPanel() {
@@ -78,19 +77,15 @@ function TaskRow(props: {
     >
       <div className="flex items-center gap-2">
         <StatusDot status={task.status} />
-        <span className="font-mono text-[11px] text-text">{task.operation}</span>
-        <span className="font-mono text-[10px] text-faint">{task.id}</span>
-        <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-faint">
-          {task.inputId}
-        </span>
+        <span className="font-mono text-xs text-text">{task.operation}</span>
+        <span className="font-mono text-xs text-faint">{task.id}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-xs text-faint">{task.inputId}</span>
         {task.cached && <Badge tone="amber">cache hit</Badge>}
         <Badge tone={task.status === "failed" || task.status === "blocked" ? "danger" : "muted"}>
           {task.runtime}
         </Badge>
         {task.durationMs !== undefined && (
-          <span className="font-mono text-[10px] text-muted">
-            {formatDuration(task.durationMs)}
-          </span>
+          <span className="font-mono text-xs text-muted">{formatDuration(task.durationMs)}</span>
         )}
         {(task.status === "queued" || task.status === "running") && (
           <button

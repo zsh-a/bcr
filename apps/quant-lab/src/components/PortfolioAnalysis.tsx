@@ -36,8 +36,8 @@ function sampled(values: ReadonlyArray<number>, limit = 280): number[] {
 
 function correlationBackground(value: number): string {
   const intensity = 18 + Math.round(Math.abs(value) * 58);
-  const color = value >= 0 ? "var(--ql-cyan)" : "var(--ql-red)";
-  return `color-mix(in srgb, ${color} ${intensity}%, var(--ql-panel-2))`;
+  const color = value >= 0 ? "var(--color-success)" : "var(--color-danger)";
+  return `color-mix(in srgb, ${color} ${intensity}%, var(--color-raised))`;
 }
 
 function PortfolioCurve({ analysis }: { analysis: PortfolioAnalysis }) {
@@ -57,9 +57,9 @@ function PortfolioCurve({ analysis }: { analysis: PortfolioAnalysis }) {
         aria-label="等权组合权益曲线"
       >
         <defs>
-          <linearGradient id="ql-portfolio-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--ql-cyan)" stopOpacity="0.23" />
-            <stop offset="100%" stopColor="var(--ql-cyan)" stopOpacity="0" />
+          <linearGradient id="quant-portfolio-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--color-info)" stopOpacity="0.23" />
+            <stop offset="100%" stopColor="var(--color-info)" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path

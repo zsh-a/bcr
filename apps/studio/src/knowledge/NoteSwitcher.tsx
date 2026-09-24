@@ -1,16 +1,25 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { Button, IconButton } from "@bcr/react";
 import { Search, X, Plus } from "lucide-react";
 import type { KnowledgeNote } from "./model";
 import { searchKnowledge, noteSearchHit } from "./retrieval";
 import { notePath } from "./paths";
 
+/**
+ * 快速切换（命令面板）。
+ *
+ * 常驻挂载：关闭时对话框留在 DOM 中跑完退场动画；每次打开重置查询与选择，
+ * 行为与原先的按需挂载一致。
+ */
 export function NoteSwitcher({
+  open,
   notes,
   initialQuery,
   onSelect,
   onCreate,
   onClose,
 }: {
+  open: boolean;
   notes: readonly KnowledgeNote[];
   initialQuery: string;
   onSelect: (id: string) => Promise<void>;
@@ -19,9 +28,10 @@ export function NoteSwitcher({
 }) {
   const dialog = useRef<HTMLDialogElement>(null),
     input = useRef<HTMLInputElement>(null);
+  const restore = useRef<HTMLElement | null>(null);
   const title = useId();
   const list = useId();
-  const [query, setQuery] = useState(initialQuery),
+  const [query, setQuery] = useState(""),
     [selected, setSelected] = useState(0);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -30,15 +40,23 @@ export function NoteSwitcher({
     document.getElementById(`${list}-${selected}`)?.scrollIntoView({ block: "nearest" });
   }, [selected, list]);
   useEffect(() => {
-    const previous = document.activeElement;
     const element = dialog.current!;
-    element.showModal();
-    input.current?.focus();
-    return () => {
+    if (open) {
+      restore.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setQuery(initialQuery);
+      setSelected(0);
+      setError("");
+      setBusy(false);
+      element.showModal();
+      input.current?.focus();
+    } else if (element.open) {
       element.close();
-      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
-    };
-  }, []);
+      if (restore.current?.isConnected) restore.current.focus();
+    }
+    // 只随开关切换重置；initialQuery 是打开瞬间的种子。
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 见上注。
+  }, [open]);
   async function run(action: () => Promise<void>) {
     if (busy) return;
     setBusy(true);
@@ -55,7 +73,7 @@ export function NoteSwitcher({
   return (
     <dialog
       ref={dialog}
-      className="knowledge-switcher"
+      className="ui-dialog knowledge-switcher"
       aria-labelledby={title}
       onCancel={(event) => {
         event.preventDefault();
@@ -63,10 +81,12 @@ export function NoteSwitcher({
       }}
     >
       <header>
-        <h2 id={title}>快速打开笔记</h2>
-        <button type="button" aria-label="关闭快速切换" disabled={busy} onClick={onClose}>
+        <h2 id={title} className="ui-dialog-title">
+          快速打开笔记
+        </h2>
+        <IconButton label="关闭快速切换" size="sm" disabled={busy} onClick={onClose}>
           <X size={18} />
-        </button>
+        </IconButton>
       </header>
       <div className="knowledge-switcher-search">
         <Search size={18} aria-hidden="true" />
@@ -134,14 +154,14 @@ export function NoteSwitcher({
           {busy ? "正在打开…" : `${hits.length} 个结果 · ↑↓ 选择 · Enter 打开`}
         </span>
         {query.trim() && (
-          <button
-            type="button"
+          <Button
+            variant="primary"
             disabled={busy}
             onClick={() => void run(() => onCreate(query.trim()))}
           >
             <Plus size={15} />
             创建「{query.trim().slice(0, 30)}」
-          </button>
+          </Button>
         )}
       </footer>
     </dialog>

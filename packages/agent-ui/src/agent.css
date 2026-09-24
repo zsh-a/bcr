@@ -1,42 +1,37 @@
+/*
+ * AI 助手对话界面——quiet editorial 工作站语言。
+ * 只消费共享令牌；滚动区域只有时间线一处，卡片内容就地展开。
+ * 焦点语言交给 global.css 的全局 :focus-visible，此处不再覆盖。
+ */
+
 .bcr-chat {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  color: var(--color-text, #e5e5e5);
-  font: 14px/1.6 var(--font-sans, sans-serif);
-  --agent-line: var(--color-border, #ffffff18);
-  --agent-muted: var(--color-muted, #aaa);
-  --agent-surface: var(--color-surface, #202020);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
 }
 .bcr-chat * {
   box-sizing: border-box;
-}
-.bcr-chat button,
-.bcr-chat input,
-.bcr-chat textarea,
-.bcr-chat select {
-  font: inherit;
 }
 .bcr-chat button,
 .bcr-chat summary,
 .bcr-chat select {
   cursor: pointer;
 }
-.bcr-chat :is(button, input, textarea, select, summary, a):focus-visible {
-  outline: 2px solid var(--color-accent, #98b9ff);
-  outline-offset: 3px;
-}
-.bcr-chat button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
+
+/* ---------- 头部与会话栏 ---------- */
+
 .bcr-chat-head {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  border-bottom: 1px solid var(--agent-line);
+  gap: var(--space-2);
+  min-height: var(--h-toolbar);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--color-border);
 }
 .bcr-chat-target {
   display: grid;
@@ -44,72 +39,80 @@
   min-width: 0;
 }
 .bcr-chat-target strong {
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 500;
-  color: var(--agent-muted);
+  color: var(--color-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.bcr-chat-eyebrow {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--agent-muted);
-}
-.bcr-chat-button,
-.bcr-chat-primary,
-.bcr-chat-context-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid var(--agent-line);
-  border-radius: 10px;
-  background: transparent;
-  color: inherit;
-  transition:
-    background-color 150ms ease,
-    border-color 150ms ease;
-}
-.bcr-chat-button:hover,
-.bcr-chat-context-pill:hover {
-  background: var(--agent-surface);
-}
-.bcr-chat-primary {
-  background: var(--color-primary, #a9c3ff);
-  color: var(--color-on-primary, #111);
-  border-color: transparent;
-  font-weight: 600;
-}
-.bcr-chat-primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-primary, #a9c3ff) 90%, var(--color-text, #111));
-  color: var(--color-on-primary, #111);
 }
 .bcr-chat-session-bar {
   display: flex;
   align-items: center;
   flex: 1;
   min-width: 0;
-  padding: 0;
 }
 .bcr-chat-session-bar select {
   min-width: 0;
   flex: 1;
-  height: 44px;
+  height: var(--h-control);
   border: 0;
   background: transparent;
   color: inherit;
 }
 .bcr-chat-session-bar option {
-  background: var(--agent-surface);
+  background: var(--color-surface);
 }
-.bcr-chat-session-bar > span {
-  font-size: 11px;
-  color: var(--agent-muted);
-  white-space: nowrap;
+.bcr-chat-setup {
+  display: grid;
+  text-align: left;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  color: inherit;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color var(--duration-fast) var(--ease-standard);
 }
+.bcr-chat-setup:hover {
+  background: var(--color-raised);
+}
+.bcr-chat-setup span {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+.bcr-chat-background {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+}
+.bcr-chat-run-status {
+  padding: 0 var(--space-5);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+.bcr-chat-run-status:empty {
+  display: none;
+}
+.bcr-chat-error,
+.bcr-chat-tool-error {
+  font-size: var(--text-sm);
+  padding: var(--space-3);
+  margin: var(--space-2) 0;
+  border-left: 2px solid var(--color-danger);
+  overflow-wrap: anywhere;
+}
+.bcr-chat-error p {
+  margin: var(--space-2) 0;
+}
+.bcr-chat-error button {
+  margin: var(--space-2) var(--space-2) 0 0;
+}
+
+/* ---------- 时间线——对话唯一的滚动区域 ---------- */
+
 .bcr-chat-thread {
   flex: 1;
   min-height: 0;
@@ -122,35 +125,36 @@
   scrollbar-gutter: stable;
 }
 .bcr-chat-timeline {
-  padding: 24px 20px;
+  padding: var(--space-6) var(--space-5);
   overflow-wrap: anywhere;
 }
 .bcr-chat-empty {
   display: grid;
   justify-items: start;
-  gap: 12px;
-  padding: 28px 8px;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-2);
 }
 .bcr-chat-empty > svg {
   color: var(--color-accent);
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2);
 }
-.bcr-chat-empty small,
-.bcr-chat-empty p {
-  color: var(--agent-muted);
+.bcr-chat-empty .ui-section-label {
+  padding: 0;
 }
 .bcr-chat-empty h2 {
-  font-size: clamp(19px, 3vw, 25px);
+  margin: 0;
+  font-size: var(--text-2xl);
+  line-height: var(--text-2xl--line-height);
   letter-spacing: -0.04em;
   font-weight: 500;
-  margin: 0;
 }
 .bcr-chat-empty p {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
 }
 .bcr-chat-turn + .bcr-chat-turn {
-  margin-top: 28px;
+  margin-top: var(--space-7);
 }
 .bcr-chat-line {
   min-width: 0;
@@ -159,25 +163,25 @@
   width: fit-content;
   max-width: 90%;
   margin-left: auto;
-  padding: 10px 15px;
-  background: var(--agent-surface);
-  border: 1px solid var(--agent-line);
-  border-radius: 16px 16px 4px 16px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 .bcr-chat-line.is-user p {
   white-space: pre-wrap;
   margin: 0;
 }
 .bcr-chat-line.is-agent {
-  margin-top: 20px;
+  margin-top: var(--space-5);
 }
 .bcr-chat-turn-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: var(--agent-muted);
-  font-size: 12px;
-  margin-bottom: 12px;
+  gap: var(--space-2);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-3);
 }
 .bcr-chat-turn-meta span:last-child {
   margin-left: auto;
@@ -187,22 +191,26 @@
 }
 .bcr-chat-wait,
 .bcr-chat-hint {
-  font-size: 12px;
-  color: var(--agent-muted);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
 }
 .bcr-chat-jump {
   position: absolute;
-  bottom: 12px;
+  bottom: var(--space-3);
   left: 50%;
   transform: translateX(-50%);
-  background: var(--agent-surface);
-  box-shadow: var(--shadow-floating, 0 4px 18px #0003);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-floating);
   white-space: nowrap;
 }
+
+/* ---------- 工具卡与审批 ---------- */
+
 .bcr-chat-card {
-  border: 1px solid var(--agent-line);
-  border-radius: 12px;
-  margin: 12px 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin: var(--space-3) 0;
+  background: var(--color-raised);
   overflow: hidden;
 }
 .bcr-chat-card.is-pending {
@@ -212,130 +220,183 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
-  background: var(--agent-surface);
+  gap: var(--space-2);
+  padding: var(--space-3);
 }
 .bcr-chat-card-head strong {
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 500;
 }
 .bcr-chat-activity {
-  font-size: 12px;
-  color: var(--agent-muted);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
   margin-left: auto;
   overflow-wrap: anywhere;
 }
 .bcr-chat-record {
-  padding: 0 12px;
-  border-top: 1px solid var(--agent-line);
+  padding: 0 var(--space-3);
+  border-top: 1px solid var(--color-border);
 }
 .bcr-chat-record > summary {
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  color: var(--agent-muted);
-  font-size: 12px;
+  gap: var(--space-2);
+  min-height: var(--h-control);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
   list-style: none;
 }
 .bcr-chat-record[open] > summary svg {
   transform: rotate(90deg);
 }
+/* 回执/技术详情就地展开，不再嵌套滚动条。 */
 .bcr-chat-diff {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  max-height: 250px;
-  overflow: auto;
-  font: 11px/1.7 var(--font-mono, monospace);
+  margin: 0;
+  padding-bottom: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
 }
 .bcr-chat-approval {
   display: grid;
-  gap: 10px;
-  padding: 14px;
-  font-size: 12px;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  font-size: var(--text-sm);
 }
 .bcr-chat-approval > span {
-  color: var(--agent-muted);
+  color: var(--color-muted);
 }
 .bcr-chat-card-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
-.bcr-chat-error,
-.bcr-chat-tool-error {
-  font-size: 12px;
-  padding: 12px;
-  margin: 8px 0;
-  border-left: 2px solid var(--color-danger, #e39786);
-  overflow-wrap: anywhere;
+
+/* ---------- 只读活动组——折叠语义不变 ---------- */
+
+.bcr-chat-activity-group {
+  margin: var(--space-3) 0 var(--space-5);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
 }
-.bcr-chat-error p {
-  margin: 5px 0;
-}
-.bcr-chat-error button {
-  margin: 6px 6px 0 0;
-}
-.bcr-chat-background {
+.bcr-chat-activity-group > summary {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  font-size: 12px;
+  gap: var(--space-2);
+  min-height: var(--h-control);
+  list-style: none;
 }
-.bcr-chat-setup {
-  display: grid;
-  text-align: left;
-  gap: 3px;
-  padding: 14px 18px;
-  background: var(--agent-surface);
-  color: inherit;
+.bcr-chat-disclosure {
+  margin-left: auto;
+}
+.bcr-chat-activity-group[open] > summary .bcr-chat-disclosure {
+  transform: rotate(90deg);
+}
+.bcr-chat-activity-body {
+  border-left: 1px solid var(--color-border);
+  padding-left: var(--space-4);
+}
+.bcr-chat-activity-body .bcr-chat-card {
   border: 0;
-  border-bottom: 1px solid var(--agent-line);
+  border-radius: 0;
+  margin: 0 0 var(--space-2);
+  background: transparent;
 }
-.bcr-chat-setup span {
-  font-size: 11px;
-  color: var(--agent-muted);
+.bcr-chat-activity-body .bcr-chat-card-head {
+  padding: var(--space-2) var(--space-3);
 }
-.bcr-chat-run-status {
-  padding: 0 18px;
-  font-size: 11px;
-  color: var(--agent-muted);
+
+/* ---------- 变更预览 ---------- */
+
+.bcr-chat-review {
+  min-width: 0;
 }
-.bcr-chat-run-status:empty {
-  display: none;
+.bcr-chat-change-summary {
+  margin-bottom: var(--space-2);
+  color: var(--color-muted);
 }
+.bcr-chat-change-excerpt,
+.bcr-chat-full-content {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+.bcr-chat-change-excerpt > div,
+.bcr-chat-full-content > section {
+  padding: var(--space-3);
+}
+.bcr-chat-change-excerpt small {
+  font-size: var(--text-xs);
+}
+.bcr-chat-change-excerpt .is-removed {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border-left: 2px solid var(--color-danger);
+}
+.bcr-chat-change-excerpt .is-removed > small {
+  color: var(--color-danger);
+}
+.bcr-chat-change-excerpt .is-added {
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+  border-left: 2px solid var(--color-success);
+}
+.bcr-chat-change-excerpt .is-added > small {
+  color: var(--color-success);
+}
+.bcr-chat-review pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: var(--space-2) 0;
+}
+.bcr-chat-review h4 {
+  margin: 0;
+}
+.bcr-chat-full-change > summary {
+  min-height: var(--h-control);
+  align-content: center;
+  color: var(--color-muted);
+}
+.bcr-chat-receipt {
+  margin: var(--space-3) var(--space-3) 0;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+/* ---------- 上下文与领域能力（浮层菜单，进出场同 ui.css） ---------- */
+
 .bcr-chat-context {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   flex-wrap: wrap;
-  padding: 4px 16px;
+  padding: var(--space-2) var(--space-4);
 }
 .bcr-chat-context-pill {
-  font-size: 12px;
-  padding: 5px 8px;
-  border-color: transparent;
-  color: var(--agent-muted);
+  border-radius: var(--radius-full);
+  color: var(--color-muted);
 }
 .bcr-chat-context-pill[aria-pressed="true"] {
+  background: var(--color-accent-dim);
   color: var(--color-accent);
 }
 .bcr-chat-capabilities {
   position: relative;
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .bcr-chat-capabilities > summary {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 44px;
+  gap: var(--space-2);
+  min-height: var(--h-control);
   list-style: none;
 }
 .bcr-chat-capabilities summary span {
-  color: var(--agent-muted);
+  color: var(--color-muted);
 }
 .bcr-chat-capability-list {
   position: absolute;
@@ -343,16 +404,35 @@
   right: 0;
   z-index: 2;
   width: min(300px, 80vw);
-  padding: 14px;
-  background: var(--agent-surface);
-  border: 1px solid var(--agent-line);
-  border-radius: 12px;
-  box-shadow: var(--shadow-floating, 0 8px 30px #0005);
+  padding: var(--space-4);
+  background: var(--color-overlay);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-floating);
+  opacity: 0;
+  transform: translateY(var(--space-1));
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard),
+    display var(--duration-base) allow-discrete;
+}
+.bcr-chat-capabilities:not([open]) .bcr-chat-capability-list {
+  display: none;
+}
+.bcr-chat-capabilities[open] .bcr-chat-capability-list {
+  opacity: 1;
+  transform: none;
+}
+@starting-style {
+  .bcr-chat-capabilities[open] .bcr-chat-capability-list {
+    opacity: 0;
+    transform: translateY(var(--space-1));
+  }
 }
 .bcr-chat-capability-list label {
   display: flex;
-  gap: 10px;
-  padding: 10px 0;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
   cursor: pointer;
 }
 .bcr-chat-capability-list input {
@@ -361,55 +441,51 @@
 .bcr-chat-capability-list strong {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-weight: 500;
 }
 .bcr-chat-capability-list small,
 .bcr-chat-capability-list em {
-  color: var(--agent-muted);
-  font-size: 12px;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
   font-style: normal;
 }
+
+/* ---------- 输入区 ---------- */
+
 .bcr-chat-composer {
-  margin: 0 14px 14px;
-  border: 1px solid var(--agent-line);
-  background: var(--agent-surface);
-  border-radius: 14px;
-  padding: 12px;
-}
-.bcr-chat-composer:focus-within {
-  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+  margin: 0 var(--space-4) var(--space-4);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
 }
 .bcr-chat-input {
   display: block;
   width: 100%;
-  min-height: 48px;
+  min-height: var(--h-control-lg);
   max-height: 180px;
   resize: none;
   border: 0;
   background: transparent;
   color: inherit;
-  outline: none;
-}
-.bcr-chat .bcr-chat-input:focus-visible {
-  outline: none;
 }
 .bcr-chat-input::placeholder {
-  color: var(--agent-muted);
-  font-size: 12px;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
 }
 .bcr-chat-composer-actions {
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .bcr-chat-composer-meta {
   display: grid;
   min-width: 0;
-  gap: 1px;
-  color: var(--agent-muted);
-  font-size: 12px;
+  gap: var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
 }
 .bcr-chat-composer-meta span {
   overflow: hidden;
@@ -417,8 +493,49 @@
   white-space: nowrap;
 }
 .bcr-chat-composer-meta small {
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
+.bcr-chat-model {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--h-control);
+  max-width: 100%;
+  padding: 0 var(--space-1);
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  text-align: left;
+  overflow-wrap: anywhere;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+.bcr-chat-model:hover {
+  color: var(--color-text);
+}
+
+/* ---------- 证据与回执（领域渲染器消费） ---------- */
+
+.bcr-chat-evidence {
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.bcr-chat-evidence a {
+  color: var(--color-accent);
+  min-height: var(--h-control);
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+.bcr-chat-evidence p {
+  margin: 0;
+  color: var(--color-muted);
+  white-space: pre-wrap;
+}
+
+/* ---------- 连接设置视图 ---------- */
+
 .bcr-chat-shell {
   position: relative;
   height: 100%;
@@ -431,66 +548,41 @@
   inset: 0;
   overflow: hidden;
   background: var(--color-bg);
-  font-size: 14px;
+  font-size: var(--text-base);
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    display var(--duration-base) allow-discrete;
+}
+@starting-style {
+  .bcr-chat.bcr-chat-settings {
+    opacity: 0;
+  }
 }
 .bcr-chat-settings label {
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
 }
-.bcr-chat-settings input {
-  width: 100%;
-  min-height: 44px;
-  padding: 8px 10px;
-  border: 1px solid var(--agent-line);
-  background: var(--agent-surface);
-  color: inherit;
-  border-radius: 8px;
-}
-.bcr-chat-settings > button {
-  justify-self: start;
-}
-.bcr-chat-evidence {
-  padding: 12px;
-  display: grid;
-  gap: 8px;
-  font-size: 12px;
-}
-.bcr-chat-evidence a {
-  color: var(--color-accent);
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-}
-.bcr-chat-evidence p {
-  margin: 0;
-  color: var(--agent-muted);
-  white-space: pre-wrap;
-}
+
+/* ---------- 窄屏 ---------- */
+
 @media (max-width: 640px) {
   .bcr-chat-timeline {
-    padding: 18px 14px;
+    padding: var(--space-5) var(--space-4);
   }
   .bcr-chat-input {
-    font-size: 16px;
+    font-size: var(--text-lg);
   }
   .bcr-chat-empty {
-    padding: 16px 4px;
-  }
-  .bcr-chat-card-head {
-    gap: 5px;
+    padding: var(--space-4) var(--space-1);
   }
   .bcr-chat-activity {
     width: 100%;
-    padding-left: 20px;
+    padding-left: var(--space-5);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .bcr-chat * {
-    transition: none !important;
-    scroll-behavior: auto !important;
-  }
-}
+
+/* ---------- 低高度：整个面板一滚到底 ---------- */
+
 @media (max-height: 520px) {
   .bcr-chat {
     position: relative;
@@ -513,132 +605,26 @@
     display: none;
   }
   .bcr-chat-head {
-    padding: 0 12px;
+    padding: 0 var(--space-3);
   }
-  .bcr-chat-target,
-  .bcr-chat-session-bar > span {
+  .bcr-chat-target {
     display: none;
   }
   .bcr-chat-session-bar {
     padding: 0;
   }
   .bcr-chat-context {
-    padding: 0 12px;
+    padding: 0 var(--space-3);
   }
   .bcr-chat-composer {
-    padding: 6px 10px;
-    margin: 0 10px 8px;
+    padding: var(--space-2) var(--space-3);
+    margin: 0 var(--space-3) var(--space-2);
   }
   .bcr-chat-input {
-    min-height: 32px;
+    min-height: var(--h-control);
     max-height: 60px;
   }
   .bcr-chat-timeline {
-    padding: 12px;
-  }
-}
-
-.bcr-chat-model {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  max-width: 100%;
-  padding: 0 4px;
-  border: 0;
-  background: transparent;
-  color: var(--agent-muted);
-  text-align: left;
-  overflow-wrap: anywhere;
-}
-.bcr-chat-model:hover {
-  color: var(--color-text);
-}
-.bcr-chat-activity-group {
-  margin: 12px 0 18px;
-  color: var(--agent-muted);
-  font-size: 12px;
-}
-.bcr-chat-activity-group > summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  list-style: none;
-}
-.bcr-chat-disclosure {
-  margin-left: auto;
-}
-.bcr-chat-activity-group[open] > summary .bcr-chat-disclosure {
-  transform: rotate(90deg);
-}
-.bcr-chat-activity-body {
-  border-left: 1px solid var(--agent-line);
-  padding-left: 14px;
-}
-.bcr-chat-activity-body .bcr-chat-card {
-  border: 0;
-  border-radius: 0;
-  margin: 0 0 8px;
-}
-.bcr-chat-activity-body .bcr-chat-card-head {
-  background: transparent;
-  padding: 6px 12px;
-}
-.bcr-chat-spinner {
-  animation: bcr-agent-spin 1.2s linear infinite;
-}
-@keyframes bcr-agent-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-.bcr-chat-review {
-  min-width: 0;
-}
-.bcr-chat-change-summary {
-  margin-bottom: 8px;
-  color: var(--agent-muted);
-}
-.bcr-chat-change-excerpt,
-.bcr-chat-full-content {
-  max-height: 320px;
-  overflow: auto;
-  border: 1px solid var(--agent-line);
-  border-radius: 8px;
-}
-.bcr-chat-change-excerpt > div,
-.bcr-chat-full-content > section {
-  padding: 10px 12px;
-}
-.bcr-chat-change-excerpt .is-removed {
-  background: color-mix(in srgb, var(--color-text) 5%, transparent);
-}
-.bcr-chat-change-excerpt .is-added {
-  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  border-left: 2px solid var(--color-accent);
-}
-.bcr-chat-review pre {
-  font: inherit;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  margin: 6px 0;
-}
-.bcr-chat-review h4 {
-  margin: 0;
-}
-.bcr-chat-full-change > summary {
-  min-height: 44px;
-  align-content: center;
-  color: var(--agent-muted);
-}
-.bcr-chat-receipt {
-  margin: 12px 12px 0;
-  font-size: 12px;
-  color: var(--color-text);
-}
-@media (prefers-reduced-motion: reduce) {
-  .bcr-chat-spinner {
-    animation: none;
+    padding: var(--space-3);
   }
 }

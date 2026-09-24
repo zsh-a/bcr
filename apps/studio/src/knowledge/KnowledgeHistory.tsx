@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Button } from "@bcr/react";
 import type { KnowledgeState, KnowledgeNote } from "./model";
 import { GitHubKnowledge } from "./github";
 
@@ -45,9 +46,8 @@ export function KnowledgeHistory({
           显示全部笔记与删除记录
         </label>
         {note && state.sync.target && (
-          <button
-            type="button"
-            className="knowledge-button"
+          <Button
+            variant="ghost"
             disabled={busy || !token}
             onClick={() =>
               void action(async () => {
@@ -59,7 +59,7 @@ export function KnowledgeHistory({
             }
           >
             读取 GitHub 历史
-          </button>
+          </Button>
         )}
       </div>
       <div className="knowledge-history-list">
@@ -98,14 +98,13 @@ export function KnowledgeHistory({
         <div className="knowledge-history-preview">
           <h3>{preview.title || "未命名笔记"}</h3>
           <pre>{preview.body}</pre>
-          <button
-            type="button"
-            className="knowledge-button"
+          <Button
+            variant="primary"
             disabled={busy}
             onClick={() => void action(() => onRestore(preview))}
           >
             恢复此版本
-          </button>
+          </Button>
         </div>
       )}
     </section>

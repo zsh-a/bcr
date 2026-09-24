@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Button } from "@bcr/react";
 import { Upload } from "lucide-react";
 import { contentOf, type KnowledgeContent } from "./model";
 import { planKnowledgeRestore, readKnowledgeBackup, type RestoreMode } from "./backup";
@@ -75,6 +76,7 @@ export function KnowledgeRestorePanel({
         知识库 ZIP 文件
         <input
           type="file"
+          className="ui-input"
           accept=".zip,application/zip"
           aria-label="选择知识库备份"
           disabled={busy}
@@ -142,17 +144,12 @@ export function KnowledgeRestorePanel({
         </p>
       )}
       <div className="knowledge-panel-actions">
-        <button type="button" className="knowledge-button" disabled={busy} onClick={onClose}>
+        <Button variant="ghost" disabled={busy} onClick={onClose}>
           取消恢复
-        </button>
-        <button
-          type="button"
-          className="knowledge-button"
-          disabled={busy || !preview.plan}
-          onClick={() => void restore()}
-        >
+        </Button>
+        <Button variant="primary" disabled={busy || !preview.plan} onClick={() => void restore()}>
           确认恢复
-        </button>
+        </Button>
       </div>
     </section>
   );

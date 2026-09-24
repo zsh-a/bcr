@@ -486,7 +486,8 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
   }
   return (
     <div
-      className={`reader-studio reader-theme-${settings.theme} ${readerUsesPagedText(active, settings) ? "reader-paged-session" : ""} ${mobileChromeVisible ? "mobile-chrome-visible" : "mobile-chrome-hidden"}`}
+      data-read-theme={settings.theme}
+      className={`reader-studio ${readerUsesPagedText(active, settings) ? "reader-paged-session" : ""} ${mobileChromeVisible ? "mobile-chrome-visible" : "mobile-chrome-hidden"}`}
     >
       <ReaderEffects runtime={runtime} />
       <a className="reader-skip-link" href="#reader-content">

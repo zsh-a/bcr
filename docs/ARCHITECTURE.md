@@ -83,7 +83,7 @@ Document Inbox 同时以源 Artifact hash 做任务幂等合并，重复交接�
 
 ```text
 ┌─────────────────────────────────────────────┐
-│ React 19 + TanStack Router + shadcn Rhea   │
+│ React 19 + TanStack Router + @bcr/react UI  │
 └──────────────────────┬──────────────────────┘
                        │ Events
 ┌──────────────────────▼──────────────────────┐
@@ -455,7 +455,7 @@ run_tool("statistics", input)
 | Package manager | Bun 1.4（仅开发环境；浏览器代码不依赖 Bun/Node API）                          |
 | Router          | TanStack Router（type-safe URL = 可分享的 Workspace View）                    |
 | Styling         | Tailwind 4.3                                                                  |
-| Components      | shadcn/ui + Base UI，风格 Rhea（高信息密度 product interface）                |
+| Components      | @bcr/react 统一控件原语 + 令牌体系（quiet editorial 工作台）                  |
 | Runtime Control | Effect 3 stable（→ Effect 4 正式后升级）                                      |
 | Worker IPC      | typed MessagePort 协议                                                        |
 | Stream 同步     | SharedArrayBuffer + Atomics.waitAsync                                         |

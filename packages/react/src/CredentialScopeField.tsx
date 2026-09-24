@@ -19,6 +19,7 @@ export function CredentialScopeField({
       <label>
         {label}
         <select
+          className="ui-select"
           aria-label={label}
           aria-describedby={hint}
           value={value}

@@ -16,6 +16,26 @@ export function Waveform(props: {
     const ctx = canvas.getContext("2d");
     if (ctx === null) return;
 
+    // 数据色从共享语义令牌取值（系列/游标/提示），主题切换时重新读取
+    const readTheme = () => {
+      const style = getComputedStyle(canvas);
+      return {
+        bg: style.getPropertyValue("--color-bg").trim(),
+        series: style.getPropertyValue("--color-success").trim(),
+        hint: style.getPropertyValue("--color-faint").trim(),
+        cursor: style.getPropertyValue("--color-amber").trim(),
+        font: `${style.getPropertyValue("--text-xs").trim() || "11px"} ${style.getPropertyValue("--font-sans").trim()}`,
+      };
+    };
+    let theme = readTheme();
+    const observer = new MutationObserver(() => {
+      theme = readTheme();
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
     let raf = 0;
     const draw = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -27,13 +47,13 @@ export function Waveform(props: {
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = "#0d1017";
+      ctx.fillStyle = theme.bg;
       ctx.fillRect(0, 0, width, height);
 
       const data = peaks;
       if (data !== null && data.length > 0) {
         const mid = height / 2;
-        ctx.fillStyle = "#3fe0a5";
+        ctx.fillStyle = theme.series;
         const bucketWidth = width / data.length;
         for (let i = 0; i < data.length; i += 1) {
           const amplitude = Math.min(1, (data[i] ?? 0) * 1.6);
@@ -46,8 +66,8 @@ export function Waveform(props: {
           );
         }
       } else {
-        ctx.fillStyle = "#5a6376";
-        ctx.font = "11px 'IBM Plex Sans'";
+        ctx.fillStyle = theme.hint;
+        ctx.font = theme.font;
         ctx.textAlign = "center";
         ctx.fillText("生成流水线后在此显示波形", width / 2, height / 2);
       }
@@ -56,20 +76,23 @@ export function Waveform(props: {
       const video = props.videoRef.current;
       if (video !== null && duration > 0) {
         const x = (video.currentTime / duration) * width;
-        ctx.fillStyle = "#f0b357";
+        ctx.fillStyle = theme.cursor;
         ctx.fillRect(x - 0.5, 0, 1.5, height);
       }
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
   }, [peaks, duration, props.videoRef]);
 
   return (
     <canvas
       ref={canvasRef}
       data-testid="waveform"
-      className="h-20 w-full cursor-crosshair rounded border border-[var(--color-border)]"
+      className="h-20 w-full cursor-crosshair rounded-sm border border-[var(--color-border)]"
       onClick={(event) => {
         const rect = event.currentTarget.getBoundingClientRect();
         props.onSeek(((event.clientX - rect.left) / rect.width) * duration);

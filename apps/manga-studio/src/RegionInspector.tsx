@@ -80,7 +80,7 @@ export function RegionInspector({
       </div>
       <button
         type="button"
-        className="manga-remove-region"
+        className="ui-btn ui-btn-danger ui-btn-sm manga-remove-region"
         onClick={() => manga.removeRegion(region.id)}
       >
         <X className="size-3.5" /> 删除此区域

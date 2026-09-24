@@ -21,24 +21,23 @@ import { tags } from "@lezer/highlight";
  * the exact text that gets saved and merged.
  */
 
-/** Studio design tokens, read through their CSS variables so the shell owns them. */
-const color = (name: string, fallback: string) => `var(${name}, ${fallback})`;
+/** 统一令牌经 CSS 变量读取，主题随外壳换肤；色彩只用共享语义名，禁用域内私有色彩名。 */
+const color = (name: string) => `var(${name})`;
 
-const accent = color("--color-accent", "#65d8d0");
-const accentDim = color("--color-accent-dim", "#173b39");
-const danger = color("--color-danger", "#ff766d");
-const warn = color("--color-warn", "#e8c07d");
-const ok = color("--color-ok", "#9ad6a0");
-const text = color("--color-text", "#f5f5ed");
-const muted = color("--color-muted", "#aab2ad");
-const faint = color("--color-faint", "#75807b");
-const border = color("--color-border", "#343d3a");
-const raised = color("--color-raised", "#181d1e");
+const accent = color("--color-accent");
+const selection = color("--color-selection");
+const danger = color("--color-danger");
+const amber = color("--color-amber");
+const success = color("--color-success");
+const text = color("--color-text");
+const muted = color("--color-muted");
+const faint = color("--color-faint");
+const border = color("--color-border");
+const raised = color("--color-raised");
 
 /**
- * The editor inherits `--font-mono` and the note pane's own `--knowledge-note-*`
- * overrides, so typography stays in CSS next to the rest of the knowledge
- * styles instead of being duplicated here.
+ * 编辑器排版由 CSS（.knowledge-body）持有，这里只继承；
+ * 编辑器 chrome（光标、选区、活动行、面板、提示层）全部落在共享令牌上。
  */
 export const knowledgeEditorTheme = EditorView.theme(
   {
@@ -46,44 +45,49 @@ export const knowledgeEditorTheme = EditorView.theme(
       color: muted,
       backgroundColor: "transparent",
       height: "100%",
-      font: "var(--knowledge-note-font, 14px/1.95 var(--font-mono))",
+      font: "inherit",
     },
     ".cm-scroller": {
       font: "inherit",
-      padding: "0 4px 20px 0",
+      padding: `0 var(--space-1) var(--space-5) 0`,
       tabSize: "2",
       overflowY: "auto",
     },
     ".cm-content": { caretColor: accent, padding: "0" },
     ".cm-line": { padding: "0" },
-    "&.cm-focused": { outline: "none" },
     ".cm-cursor, .cm-dropCursor": { borderLeftColor: accent, borderLeftWidth: "2px" },
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
-      backgroundColor: accentDim,
+      backgroundColor: selection,
     },
-    ".cm-activeLine": { backgroundColor: "transparent" },
-    ".cm-selectionMatch": { backgroundColor: accentDim },
+    ".cm-activeLine": {
+      backgroundColor: "color-mix(in srgb, var(--color-raised) 45%, transparent)",
+    },
+    ".cm-selectionMatch": { backgroundColor: selection },
+    /* 写作面保持无栏；行号未启用，槽位直接隐藏。 */
     ".cm-gutters": { display: "none" },
     ".cm-placeholder": { color: faint },
     ".cm-specialChar": { color: danger },
     ".cm-panels": { backgroundColor: raised, color: text, borderColor: border },
-    ".cm-tooltip": { backgroundColor: raised, border: `1px solid ${border}` },
+    ".cm-tooltip": {
+      backgroundColor: raised,
+      border: `1px solid ${border}`,
+      borderRadius: "var(--radius-sm)",
+    },
   },
   { dark: true },
 );
 
 /**
- * Markdown highlight style.
+ * Markdown 高亮。
  *
- * Structural emphasis keeps its weight cue but no added size, so the source
- * reads at the same rhythm as flowing prose. Syntax marks — bullets, fences,
- * link brackets — sit back in a faint tone rather than competing with content.
+ * 结构强调只靠字重，不放大字号，源码与正文保持同一节奏；
+ * 语法符号（列表符、围栏、链接括号）退到 faint，不与内容争夺注意力。
  */
 export const knowledgeMarkdownHighlight = HighlightStyle.define(
   [
-    { tag: tags.heading1, color: text, fontWeight: "600", fontSize: "1.45em" },
-    { tag: tags.heading2, color: text, fontWeight: "600", fontSize: "1.28em" },
-    { tag: tags.heading3, color: text, fontWeight: "600", fontSize: "1.14em" },
+    { tag: tags.heading1, color: text, fontWeight: "600" },
+    { tag: tags.heading2, color: text, fontWeight: "600" },
+    { tag: tags.heading3, color: text, fontWeight: "600" },
     { tag: tags.heading4, color: text, fontWeight: "600" },
     { tag: tags.heading5, color: text, fontWeight: "600" },
     { tag: tags.heading6, color: text, fontWeight: "600" },
@@ -92,16 +96,16 @@ export const knowledgeMarkdownHighlight = HighlightStyle.define(
     { tag: tags.strikethrough, color: faint, textDecoration: "line-through" },
     { tag: tags.link, color: accent },
     { tag: tags.url, color: accent },
-    { tag: tags.monospace, color: warn },
+    { tag: tags.monospace, color: amber },
     { tag: tags.quote, color: muted, fontStyle: "italic" },
     { tag: tags.content, color: muted },
     { tag: tags.contentSeparator, color: faint },
     { tag: tags.labelName, color: faint },
-    { tag: tags.string, color: ok },
+    { tag: tags.string, color: success },
     { tag: tags.comment, color: faint, fontStyle: "italic" },
     { tag: tags.processingInstruction, color: faint },
-    { tag: tags.escape, color: warn },
-    { tag: tags.character, color: warn },
+    { tag: tags.escape, color: amber },
+    { tag: tags.character, color: amber },
   ],
   { themeType: "dark" },
 );

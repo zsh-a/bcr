@@ -9,9 +9,8 @@ import type {
 import { Effect } from "effect";
 import { useCallback, useState } from "react";
 import { CACHE_RETENTION, JOURNAL_RETENTION } from "../storage-policy";
-import { useRuntime } from "@bcr/react";
+import { formatBytes, useRuntime } from "@bcr/react";
 import { studio } from "../store";
-import { formatBytes } from "./ui";
 
 export type CleanupState =
   | { readonly status: "idle" }

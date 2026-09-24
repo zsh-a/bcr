@@ -72,6 +72,8 @@ PDF.js `TextLayer` 与 Canvas 使用同一 CSS viewport；文字层支持系统�
 
 搜索通过 provider 逐块读取文字，不把正文或图片填入显示缓存；TXT 保留 worker 扫描。快照只保存索引，冷启动未打开的二进制读物通过 `attachDeferredSource` 首次读取时才打开源文件。备份携带原始源，结构化块缓存缺失时重新构建。显式交付 Document Studio 才物化完整内容。
 
+出版物内联样式在摄取时按标签剥离正文与标题的字体、字号、行高和段落 margin（`readerMarkup.ts` 的 `sanitizeInlineStyle`），只保留字重与颜色白名单；用户的阅读排版设置不被 EPUB/HTML 内联样式覆盖。
+
 `scripts/verify-reader-content.mjs` 覆盖多格式的冷加载、未打开书籍搜索、资源释放与重读、快照稳定性、备份源重建和实际视图显示；`verify-reader-large-txt.mjs` 覆盖大 TXT 的虚拟列表、远距离定位、搜索及刷新恢复。统一缓存与结构化块读取另有单元测试。
 
 TXT 的标题识别、短段落连续分页和实现边界见 [调研与设计说明](TXT-CHAPTER-RESEARCH.md)。

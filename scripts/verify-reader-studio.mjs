@@ -412,7 +412,7 @@ await page.getByRole("button", { name: "关闭阅读设置", exact: true }).clic
 if (
   !(await page
     .locator(".reader-studio")
-    .evaluate((element) => element.classList.contains("reader-theme-night")))
+    .evaluate((element) => element.dataset.readTheme === "night"))
 ) {
   fail("夜间主题切换未生效");
 }
@@ -443,7 +443,7 @@ await page.locator(".reader-studio").waitFor({ timeout: 20_000 });
 if (
   !(await page
     .locator(".reader-studio")
-    .evaluate((element) => element.classList.contains("reader-theme-night")))
+    .evaluate((element) => element.dataset.readTheme === "night"))
 ) {
   fail("刷新后阅读主题未恢复");
 }

@@ -1,4 +1,5 @@
 import {
+  Spinner,
   useLocationSnapshot,
   RuntimeProvider,
   useLocationSearch,
@@ -29,7 +30,8 @@ export function App() {
   }
   if (services === null) {
     return (
-      <div className="flex h-full items-center justify-center text-[var(--color-muted)]">
+      <div className="flex h-full items-center justify-center gap-3 text-[var(--color-muted)]">
+        <Spinner label="正在组装 Compute Runtime" />
         正在组装 Compute Runtime…
       </div>
     );
@@ -161,11 +163,11 @@ function Studio() {
         </p>
       )}
       {/* 顶栏 */}
-      <header className="media-header flex items-center gap-4 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3">
-        <span className="media-brand font-mono text-[16px] font-semibold">
+      <header className="media-header">
+        <span className="media-brand font-mono text-lg font-semibold">
           BCR / Media Studio <span className="text-[var(--color-faint)]">· subtitle</span>
         </span>
-        <span className="media-settings ml-2 flex items-center gap-2 text-[11px] text-[var(--color-faint)]">
+        <span className="media-settings ml-2 flex items-center gap-2 text-xs text-[var(--color-faint)]">
           <select
             value={settings.model}
             onChange={(event) => studio.setSettings({ model: event.target.value })}
@@ -225,11 +227,7 @@ function Studio() {
         </span>
         <span className="media-actions ml-auto flex items-center gap-2">
           <UndoRedo />
-          {engineUsed !== null && (
-            <span className="rounded border border-[var(--color-border-strong)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-muted)]">
-              {engineUsed}
-            </span>
-          )}
+          {engineUsed !== null && <span className="ui-badge ml-2 flex-none">{engineUsed}</span>}
           {(["srt", "vtt", "ass"] as const).map((format) => (
             <button
               key={format}
@@ -257,9 +255,9 @@ function Studio() {
 
       <div className="media-layout flex min-h-0 flex-1">
         {/* 左栏 */}
-        <aside className="media-sidebar flex w-[340px] shrink-0 flex-col gap-6 overflow-y-auto border-r border-[var(--color-border)] p-5">
+        <aside className="media-sidebar flex w-[var(--w-sidebar)] shrink-0 flex-col gap-6 overflow-y-auto border-r border-[var(--color-border)] p-5">
           <section>
-            <div className="mb-3 text-[11px] tracking-wider text-[var(--color-faint)]">SOURCE</div>
+            <div className="ui-section-label">SOURCE</div>
             <div
               data-testid="dropzone"
               className="media-dropzone flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-strong)] px-5 py-6 text-center hover:border-[var(--color-accent)]"
@@ -273,16 +271,16 @@ function Studio() {
             >
               {source !== null ? (
                 <>
-                  <div className="font-mono text-[13px]">{source.name}</div>
-                  <div className="text-[11px] text-[var(--color-faint)]">
+                  <div className="font-mono text-base">{source.name}</div>
+                  <div className="text-xs text-[var(--color-faint)]">
                     {(source.size / 1024 / 1024).toFixed(1)} MB · opfs
                     {mediaInfo !== null && ` · ${mediaInfo.durationS.toFixed(1)}s · 16kHz mono`}
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="text-[13px]">拖入 音频 / 视频文件</div>
-                  <div className="text-[11px] text-[var(--color-faint)]">
+                  <div className="text-base">拖入 音频 / 视频文件</div>
+                  <div className="text-xs text-[var(--color-faint)]">
                     wav / mp3 / m4a / mp4 / webm
                   </div>
                 </>
@@ -299,21 +297,18 @@ function Studio() {
               }}
             />
             {source !== null && (
-              <button
-                className="btn mt-2 w-full justify-center text-[10px]"
-                onClick={() => void clearProject(services)}
-              >
+              <button className="btn mt-2 w-full" onClick={() => void clearProject(services)}>
                 清空项目
               </button>
             )}
           </section>
 
           <section>
-            <div className="mb-3 flex items-center text-[11px] tracking-wider text-[var(--color-faint)]">
-              PIPELINE · DAG
+            <div className="flex items-center">
+              <div className="ui-section-label">PIPELINE · DAG</div>
               <button
                 type="button"
-                className="ml-auto normal-case tracking-normal hover:text-[var(--color-accent)]"
+                className="mr-3 ml-auto text-xs text-[var(--color-faint)] hover:text-[var(--color-accent)]"
                 onClick={() => studio.setView("pipeline")}
               >
                 自定义编排 →
@@ -323,8 +318,8 @@ function Studio() {
           </section>
 
           <section>
-            <div className="mb-3 text-[11px] tracking-wider text-[var(--color-faint)]">CONSOLE</div>
-            <div className="h-48 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 font-mono text-[11px] leading-relaxed">
+            <div className="ui-section-label">CONSOLE</div>
+            <div className="h-48 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 font-mono text-xs leading-relaxed">
               {logs.map((entry, index) => (
                 <div
                   key={index}
@@ -347,7 +342,7 @@ function Studio() {
 
         {/* 右侧：字幕 / 流水线 DAG 页签 */}
         <main className="media-main flex min-w-0 flex-1 flex-col">
-          <div className="media-tabs flex items-center gap-2 border-b border-[var(--color-border)] px-5 pt-3">
+          <div className="media-tabs">
             {(
               [
                 ["subtitles", "字幕"],
@@ -359,7 +354,7 @@ function Studio() {
                 type="button"
                 data-testid={`tab-${id}`}
                 onClick={() => studio.setView(id)}
-                className={`-mb-px min-h-11 border-b px-4 pb-2 text-[12px] transition-colors ${
+                className={`-mb-px min-h-[var(--h-control-lg)] border-b px-4 pb-2 text-sm transition-colors duration-[var(--duration-fast)] ${
                   view === id
                     ? "border-[var(--color-accent)] text-[var(--color-text)]"
                     : "border-transparent text-[var(--color-faint)] hover:text-[var(--color-muted)]"
@@ -379,7 +374,7 @@ function Studio() {
                   ref={videoRef}
                   src={source.objectUrl}
                   controls
-                  className="max-h-48 self-start rounded border border-[var(--color-border)] bg-black"
+                  className="max-h-48 self-start rounded-sm border border-[var(--color-border)] bg-bg"
                 />
               )}
               <Waveform videoRef={videoRef} onSeek={seek} />

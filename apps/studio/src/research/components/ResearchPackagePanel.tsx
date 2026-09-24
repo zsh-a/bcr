@@ -46,11 +46,11 @@ export function ResearchPackagePanel(props: ResearchPackagePanelProps) {
     canSaveDirectly,
   } = controller;
   return (
-    <details className="my-2 rounded border border-border p-3 text-[11px] text-muted">
+    <details className="my-2 rounded-md border border-border p-3 text-xs text-muted">
       <summary className="cursor-pointer text-text">Reader 完整资料包</summary>
       {(controller.recovery.notice ||
         (controller.recovery.record && controller.recovery.record.phase !== "complete")) && (
-        <div className="my-2 rounded border border-border p-2" role="status">
+        <div className="my-2 rounded-md border border-border p-2" role="status">
           <p>
             {controller.recovery.notice ||
               "发现未完成的资料包恢复任务。续接时将核验本地来源；缺少文件时请重新选择同一分卷。"}
@@ -118,7 +118,7 @@ export function ResearchPackagePanel(props: ResearchPackagePanelProps) {
         单卷源文件上限
         <select
           aria-label="单卷源文件上限"
-          className="rounded border border-border bg-surface p-1"
+          className="ui-select"
           disabled={disabled}
           value={volumeBytes}
           onChange={(event) => changeVolumeBytes(Number(event.target.value))}

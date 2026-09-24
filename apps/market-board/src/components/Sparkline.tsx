@@ -24,7 +24,7 @@ export function Sparkline(props: {
   const line = pathFor(props.values, width, height);
   const area = `${line} L${width},${height} L0,${height} Z`;
   const id = useId().replaceAll(":", "");
-  const tone = props.positive ? "var(--ma-positive)" : "var(--ma-negative)";
+  const tone = props.positive ? "var(--color-success)" : "var(--color-danger)";
 
   return (
     <svg

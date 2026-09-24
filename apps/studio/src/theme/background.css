@@ -1,114 +1,107 @@
+/* 工作区背景设置：原生 popover 浮层，基座与进出场来自 .ui-popover。 */
 .studio-background-trigger {
   anchor-name: --background-trigger;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  margin-left: 4px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-muted);
+  margin-left: var(--space-1);
 }
+
 .studio-background-settings {
   position: fixed;
-  inset: 72px 12px auto auto;
-  margin: 0;
-  width: min(360px, calc(100vw - 24px));
-  max-height: calc(100dvh - 88px);
+  inset: calc(var(--h-topbar) + var(--space-4)) var(--space-3) auto auto;
+  width: min(var(--w-sidebar), calc(100vw - 2 * var(--space-3)));
+  max-height: calc(100dvh - var(--h-topbar) - var(--space-8));
   overflow: auto;
   overscroll-behavior: contain;
-  padding: 20px;
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
-  background: var(--color-surface);
-  color: var(--color-text);
-  box-shadow: var(--shadow-floating);
 }
+
 @supports (top: anchor(bottom)) {
   .studio-background-settings {
     position-anchor: --background-trigger;
     top: anchor(bottom);
-    right: clamp(12px, anchor(right), max(12px, calc(100vw - 372px)));
-    margin-top: 8px;
+    right: clamp(
+      var(--space-3),
+      anchor(right),
+      max(var(--space-3), calc(100vw - var(--w-sidebar) - var(--space-3)))
+    );
+    margin-top: var(--space-2);
   }
 }
+
 .studio-background-settings header {
   display: flex;
   align-items: start;
-  gap: 8px;
+  gap: var(--space-2);
 }
+
 .studio-background-settings header > div {
   flex: 1;
 }
+
 .studio-background-settings h2 {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--text-lg);
+  font-weight: 600;
 }
+
 .studio-background-settings p,
 .studio-background-settings small {
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   color: var(--color-muted);
 }
-.studio-background-settings button {
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-}
-.studio-background-settings header button {
-  min-width: 44px;
-}
+
 .studio-background-settings fieldset {
-  border: 0;
-  padding: 0;
-  margin: 16px 0 0;
   min-width: 0;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  border: 0;
 }
+
 .studio-background-upload {
   position: relative;
   display: grid;
   place-items: center;
-  min-height: 44px;
-  border-radius: 8px;
+  min-height: var(--h-control-lg);
+  border-radius: var(--radius-sm);
   background: var(--color-primary);
   color: var(--color-on-primary);
-  font-size: 14px;
+  font-size: var(--text-base);
+  cursor: pointer;
 }
+
 .studio-background-upload input {
   position: absolute;
   inset: 0;
-  opacity: 0;
   width: 100%;
+  opacity: 0;
   cursor: pointer;
 }
-.studio-background-upload:focus-within {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 3px;
-}
+
 .studio-background-settings fieldset:disabled {
   opacity: 0.6;
 }
+
 .studio-background-shade {
   display: block;
-  margin: 20px 0;
-  font-size: 13px;
+  margin: var(--space-5) 0;
+  font-size: var(--text-sm);
 }
+
 .studio-background-shade output {
   float: right;
   color: var(--color-muted);
 }
+
 .studio-background-shade input {
   display: block;
   width: 100%;
-  min-height: 44px;
+  min-height: var(--h-control-lg);
   accent-color: var(--color-primary);
 }
+
 .studio-background-settings [role="alert"] {
   color: var(--color-danger);
 }
+
 .studio-background-preview {
   position: relative;
   isolation: isolate;
@@ -116,29 +109,34 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 6px;
-  min-height: 136px;
-  padding: 20px;
+  gap: var(--space-2);
+  min-height: calc(3 * var(--h-control-lg));
+  padding: var(--space-5);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--color-bg) center / cover;
 }
+
 .studio-background-preview::before {
+  /* 遮罩强度是功能层（--workspace-shade），不是装饰渐变。 */
   content: "";
   position: absolute;
   inset: 0;
   z-index: -1;
   background: color-mix(in srgb, var(--color-bg) var(--workspace-shade, 65%), transparent);
 }
+
 .studio-background-preview span,
 .studio-background-preview small {
   width: fit-content;
   max-width: 100%;
   overflow-wrap: anywhere;
-  padding: 3px 7px;
-  border-radius: 4px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
 }
+
+/* 自定义背景应用到启动台与知识库；阅读 / 创作画布不变。 */
 :root[data-background] :is(.studio-home, .knowledge-app) {
   background-image:
     linear-gradient(
@@ -149,6 +147,7 @@
   background-size: cover;
   background-position: center;
 }
+
 :root[data-background] .knowledge-editor,
 :root[data-background] .knowledge-empty,
 :root[data-background] .knowledge-context,
@@ -160,28 +159,33 @@
 :root[data-background] .studio-home > div > div:first-child {
   background: var(--color-bg);
 }
+
 :root[data-background] .studio-home > div > div:first-child,
-:root[data-background] .studio-home section > h2 {
-  padding: 16px;
-  border-radius: 12px;
+:root[data-background] .studio-home section > .ui-section-label {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
   background: var(--color-bg);
 }
+
 :root[data-background] .knowledge-empty {
-  margin: 24px;
-  border-radius: 12px;
+  margin: var(--space-6);
+  border-radius: var(--radius-md);
 }
+
 :root[data-background] .knowledge-editor {
-  width: calc(100% - 32px);
-  min-height: calc(100% - 32px);
-  margin: 16px auto;
+  width: calc(100% - 2 * var(--space-4));
+  min-height: calc(100% - 2 * var(--space-4));
+  margin: var(--space-4) auto;
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
 }
-@media (max-width: 600px) {
+
+@media (max-width: 37.5em) {
   .studio-theme-picker:has(.studio-background-trigger) {
     width: auto;
   }
+
   .studio-topbar:has(.studio-background-trigger) {
-    gap: 6px;
+    gap: var(--space-2);
   }
 }

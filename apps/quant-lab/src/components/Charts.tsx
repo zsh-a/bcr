@@ -108,18 +108,23 @@ export function MarketChart(props: {
           }}
         >
           <defs>
-            <linearGradient id="ql-price-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--ql-lime)" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="var(--ql-lime)" stopOpacity="0" />
+            <linearGradient id="quant-price-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--color-info)" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="var(--color-info)" stopOpacity="0" />
             </linearGradient>
-            <pattern id="ql-grid" width="50" height="44" patternUnits="userSpaceOnUse">
-              <path d="M 50 0 L 0 0 0 44" fill="none" stroke="var(--ql-grid)" strokeWidth="1" />
+            <pattern id="quant-chart-grid" width="50" height="44" patternUnits="userSpaceOnUse">
+              <path
+                d="M 50 0 L 0 0 0 44"
+                fill="none"
+                stroke="var(--color-border)"
+                strokeWidth="1"
+              />
             </pattern>
           </defs>
-          <rect width={WIDTH} height={PRICE_HEIGHT} fill="url(#ql-grid)" />
+          <rect width={WIDTH} height={PRICE_HEIGHT} fill="url(#quant-chart-grid)" />
           <path
             d={`${closePath}L${x(view.bars.length - 1)},${PAD.top + plotHeight}L${PAD.left},${PAD.top + plotHeight}Z`}
-            fill="url(#ql-price-fill)"
+            fill="url(#quant-price-fill)"
           />
           <path d={closePath} className="ql-line-close" />
           <path d={fastPath} className="ql-line-fast" />
@@ -166,21 +171,26 @@ export function MarketChart(props: {
             </>
           )}
         </svg>
-        {hoveredBar !== undefined && (
-          <div
-            className="ql-chart-tooltip"
-            style={{ left: `${Math.min(82, Math.max(8, (hoverX / WIDTH) * 100))}%` }}
-          >
-            <b>{hoveredBar.date}</b>
-            <span>O {money(hoveredBar.open)}</span>
-            <span>H {money(hoveredBar.high)}</span>
-            <span>L {money(hoveredBar.low)}</span>
-            <span>C {money(hoveredBar.close)}</span>
-            {hoveredSignal?.action !== null && hoveredSignal?.action !== undefined && (
-              <em>{hoveredSignal.action.toUpperCase()}</em>
-            )}
-          </div>
-        )}
+        <div
+          className="ql-chart-tooltip"
+          data-open={hoveredBar !== undefined ? "" : undefined}
+          style={{ left: `${Math.min(82, Math.max(8, (hoverX / WIDTH) * 100))}%` }}
+        >
+          {hoveredBar !== undefined && (
+            <>
+              <b>{hoveredBar.date}</b>
+              <span>O {money(hoveredBar.open)}</span>
+              <span>H {money(hoveredBar.high)}</span>
+              <span>L {money(hoveredBar.low)}</span>
+              <span>C {money(hoveredBar.close)}</span>
+              {hoveredSignal?.action !== null && hoveredSignal?.action !== undefined && (
+                <em className={hoveredSignal.action === "buy" ? "buy" : "sell"}>
+                  {hoveredSignal.action.toUpperCase()}
+                </em>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </section>
   );

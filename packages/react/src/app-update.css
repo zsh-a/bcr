@@ -1,69 +1,61 @@
+/* 更新提示——浮层语言同 ui.css：细边框 + 层次底色 + 两个阴影令牌。 */
+
 .bcr-update-content {
   display: contents;
 }
 .bcr-update-notice {
   position: fixed;
   z-index: 2000;
-  bottom: max(20px, env(safe-area-inset-bottom));
-  left: max(20px, env(safe-area-inset-left));
+  bottom: max(var(--space-5), env(safe-area-inset-bottom));
+  left: max(var(--space-5), env(safe-area-inset-left));
   box-sizing: border-box;
-  width: min(360px, calc(100vw - 40px));
-  max-height: calc(100dvh - 40px);
+  width: min(360px, calc(100vw - 2 * var(--space-8)));
+  max-height: calc(100dvh - 2 * var(--space-8));
   overflow: auto;
-  padding: 20px;
-  border: 1px solid var(--color-border, #d5cfc4);
-  border-radius: 16px;
-  background: var(--color-surface, #faf8f3);
-  color: var(--color-text, #292d2b);
-  box-shadow: 0 8px 32px #0002;
-  font:
-    14px/1.6 "IBM Plex Sans",
-    sans-serif;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-floating);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard),
+    display var(--duration-base) allow-discrete;
+}
+@starting-style {
+  .bcr-update-notice {
+    opacity: 0;
+    transform: translateY(var(--space-1));
+  }
 }
 .bcr-update-notice strong {
-  font-size: 15px;
+  font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
   font-weight: 600;
 }
 .bcr-update-notice p {
-  margin: 6px 0 0;
-  color: var(--color-muted, #626660);
+  margin: var(--space-2) 0 0;
+  color: var(--color-muted);
 }
 .bcr-update-notice [role="alert"] {
-  color: var(--color-warning, #875219);
+  color: var(--color-danger);
 }
 .bcr-update-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-}
-.bcr-update-notice button {
-  min-height: 44px;
-  padding: 8px 14px;
-  border: 1px solid var(--color-border, #d5cfc4);
-  border-radius: 9px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-.bcr-update-notice button.is-primary {
-  background: var(--color-text, #292d2b);
-  color: var(--color-surface, #faf8f3);
-}
-.bcr-update-notice button:focus-visible {
-  outline: 2px solid var(--color-focus, #347d75);
-  outline-offset: 3px;
-}
-.bcr-update-notice button:disabled {
-  opacity: 0.6;
-  cursor: wait;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
 }
 .bcr-update-notice.is-collapsed {
   width: auto;
   padding: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-full);
 }
 .bcr-update-notice.is-collapsed button {
-  border: none;
+  border: 0;
+  border-radius: var(--radius-full);
 }

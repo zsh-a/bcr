@@ -1,64 +1,52 @@
-/* Shared workstation tokens. Domain accents belong on domain roots. */
-@theme {
-  --color-bg: #151619;
-  --color-surface: #1c1d21;
-  --color-raised: #24252a;
-  --color-overlay: #2c2d33;
-  --color-border: #3c3e46;
-  --color-border-strong: #666974;
-  --color-text: #ececf0;
-  --color-muted: #b8bac3;
-  --color-faint: #a0a3ae;
-  --color-accent: #79cdbf;
-  --color-accent-dim: #263f3b;
-  --color-amber: #efbc69;
-  --color-danger: #ff766d;
-  --color-info: #82aef7;
-  --color-primary: var(--color-accent);
-  --color-on-primary: #102521;
-  --color-selection: #263f3b;
-  --color-focus: var(--color-accent);
-  --color-success: #89cca2;
-  --color-warning: var(--color-amber);
-  --color-scrim: #08090cb3;
-  --shadow-floating: 0 20px 64px #0005, 0 4px 16px #0003;
-  --shadow-dialog: 0 24px 100px #0007;
+/* Tailwind 桥接：把统一令牌映射为工具类名（bg-bg、rounded-md、text-sm …）。 */
+@import "tailwindcss";
+@import "./tokens.css";
+@import "./global.css";
 
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-raised: var(--color-raised);
+  --color-overlay: var(--color-overlay);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-text: var(--color-text);
+  --color-muted: var(--color-muted);
+  --color-faint: var(--color-faint);
+  --color-accent: var(--color-accent);
+  --color-accent-dim: var(--color-accent-dim);
+  --color-amber: var(--color-amber);
+  --color-danger: var(--color-danger);
+  --color-info: var(--color-info);
+  --color-success: var(--color-success);
+  --color-primary: var(--color-primary);
+  --color-on-primary: var(--color-on-primary);
+  --color-selection: var(--color-selection);
+  --color-focus: var(--color-focus);
+  --color-scrim: var(--color-scrim);
 
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-}
+  --shadow-floating: var(--shadow-floating);
+  --shadow-dialog: var(--shadow-dialog);
 
-/* Explicit opt-in: standalone domain entrypoints retain their dark default. */
-:root[data-theme="light"] {
-  color-scheme: light;
-  --color-bg: #f4f4f2;
-  --color-surface: #ffffff;
-  --color-raised: #efefed;
-  --color-overlay: #e7e8e6;
-  --color-border: #d0d2d2;
-  --color-border-strong: #7d8088;
-  --color-text: #24262c;
-  --color-muted: #51555f;
-  --color-faint: #626570;
-  --color-accent: #17685e;
-  --color-accent-dim: #dcece7;
-  --color-primary: #17685e;
-  --color-on-primary: #ffffff;
-  --color-selection: #dcece7;
-  --color-focus: #17685e;
-  --color-success: #286842;
-  --color-amber: #855008;
-  --color-warning: #855008;
-  --color-danger: #b52f35;
-  --color-info: #305db4;
-  --color-scrim: #20242e66;
-  --shadow-floating: 0 20px 64px #24262c1a, 0 4px 16px #24262c12;
-  --shadow-dialog: 0 24px 100px #24262c26;
-}
-:root[data-theme="dark"] {
-  color-scheme: dark;
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-full: var(--radius-full);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-display: var(--font-display);
+
+  --text-xs: var(--text-xs);
+  --text-xs--line-height: var(--text-xs--line-height);
+  --text-sm: var(--text-sm);
+  --text-sm--line-height: var(--text-sm--line-height);
+  --text-base: var(--text-base);
+  --text-base--line-height: var(--text-base--line-height);
+  --text-lg: var(--text-lg);
+  --text-lg--line-height: var(--text-lg--line-height);
+  --text-xl: var(--text-xl);
+  --text-xl--line-height: var(--text-xl--line-height);
+  --text-2xl: var(--text-2xl);
+  --text-2xl--line-height: var(--text-2xl--line-height);
 }

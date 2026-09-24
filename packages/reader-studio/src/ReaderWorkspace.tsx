@@ -69,8 +69,12 @@ export function ReaderWorkspace(props: {
           {sidebarOpen && <LibraryPanel runtime={props.runtime} onImport={props.onImport} />}
         </aside>
       )}
-      {mobile && sidebarOpen && (
-        <ReaderSheet labelId="reader-library-title" onClose={() => reader.toggleSidebar()}>
+      {mobile && (
+        <ReaderSheet
+          open={sidebarOpen}
+          labelId="reader-library-title"
+          onClose={() => reader.toggleSidebar()}
+        >
           <section className="reader-mobile-sheet reader-library-sheet">
             <LibraryPanel runtime={props.runtime} onImport={props.onImport} />
           </section>
@@ -107,18 +111,17 @@ export function ReaderWorkspace(props: {
           onNotice={props.onNotice}
           workspaceCollections={props.workspaceCollections}
         />
-        {annotationOpen && (
-          <AnnotationComposer
-            value={annotationDraft}
-            onChange={setAnnotationDraft}
-            anchor={annotationLocator}
-            onCancel={() => {
-              setAnnotationLocator(null);
-              setAnnotationOpen(false);
-            }}
-            onSubmit={submitAnnotation}
-          />
-        )}
+        <AnnotationComposer
+          open={annotationOpen}
+          value={annotationDraft}
+          onChange={setAnnotationDraft}
+          anchor={annotationLocator}
+          onCancel={() => {
+            setAnnotationLocator(null);
+            setAnnotationOpen(false);
+          }}
+          onSubmit={submitAnnotation}
+        />
         <ReaderProgressScrubber book={active} />
         <ReadingView
           runtime={props.runtime}
@@ -185,12 +188,12 @@ function LibraryPanel(props: {
     <div className="reader-library-panel">
       <div className="reader-sidebar-heading">
         <div>
-          <span className="reader-eyebrow">YOUR LIBRARY</span>
+          <span className="ui-section-label">YOUR LIBRARY</span>
           <strong id="reader-library-title">{library.length} 本读物</strong>
         </div>
         <button
           type="button"
-          className="reader-icon-button"
+          className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
           onClick={() => reader.toggleSidebar()}
           aria-label="收起书库"
         >
@@ -198,7 +201,7 @@ function LibraryPanel(props: {
         </button>
       </div>
       <div className="reader-library-toolbar">
-        <span className="reader-eyebrow">SORT BY</span>
+        <span className="ui-section-label">SORT BY</span>
         <select
           aria-label="书库排序"
           value={sortMode}
@@ -228,7 +231,7 @@ function LibraryPanel(props: {
       </div>
       <input
         ref={fileInput}
-        className="reader-visually-hidden"
+        className="ui-sr-only"
         type="file"
         multiple
         accept={readerAcceptAttribute()}
@@ -249,11 +252,13 @@ function LibraryPanel(props: {
       <button type="button" className="reader-library-add" onClick={() => setBackupOpen(true)}>
         备份与恢复
       </button>
-      {backupOpen && (
-        <Suspense fallback={<p role="status">正在打开备份工具…</p>}>
-          <ReaderBackupPanel runtime={props.runtime} onClose={() => setBackupOpen(false)} />
-        </Suspense>
-      )}
+      <Suspense fallback={backupOpen ? <p role="status">正在打开备份工具…</p> : null}>
+        <ReaderBackupPanel
+          open={backupOpen}
+          runtime={props.runtime}
+          onClose={() => setBackupOpen(false)}
+        />
+      </Suspense>
       <div className="reader-library-list">
         {sortedLibrary.map((book) => (
           <LibraryBookCard
@@ -275,13 +280,13 @@ function LibraryPanel(props: {
       </div>
       <div className="reader-sidebar-footer">
         <span>
-          <span className="reader-live-dot" /> LOCAL ONLY
+          <span className="ui-dot ui-dot-running" /> LOCAL ONLY
         </span>
         <span>
           OPFS · FTS5 · {props.runtime.parserMode === "worker" ? "PARSER WORKER" : "PARSER MAIN"}
         </span>
       </div>
-      <a className="reader-library-home reader-button" href="/">
+      <a className="reader-library-home ui-btn ui-btn-lg ui-btn-default" href="/">
         返回工作区主页
       </a>
     </div>
@@ -375,7 +380,7 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
     <section className="reader-search-panel" aria-label="搜索结果">
       <div className="reader-search-panel-top">
         <div>
-          <span className="reader-eyebrow">SEARCH</span>
+          <span className="ui-section-label">SEARCH</span>
           <strong>
             {searchBusy
               ? "正在搜索…"
@@ -385,7 +390,7 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
         <span className="reader-search-query">{query ? `“${query}”` : "输入关键词查找原文"}</span>
         <button
           type="button"
-          className="reader-icon-button"
+          className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
           onClick={() => reader.setSearchOpen(false)}
           aria-label="关闭搜索结果"
         >

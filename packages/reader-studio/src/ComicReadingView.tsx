@@ -298,54 +298,56 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
           标记为已读完
         </button>
       )}
-      {thumbnails && (
-        <ReaderSheet labelId="reader-comic-pages-title" onClose={() => setThumbnails(false)}>
-          <section className="reader-mobile-sheet">
-            <h2 id="reader-comic-pages-title">浏览漫画页</h2>
-            <label>
-              跳到页码
-              <input
-                type="number"
-                min={1}
-                max={pages.length}
-                defaultValue={current + 1}
-                onChange={(event) => {
-                  const value = Number(event.target.value);
-                  if (Number.isInteger(value) && value >= 1 && value <= pages.length) go(value - 1);
-                }}
-              />
-            </label>
-            <div className="reader-comic-thumbnails">
-              {pages.slice(Math.max(0, current - 8), current + 9).map((item, offset) => {
-                const index = Math.max(0, current - 8) + offset;
-                return (
-                  <button
-                    type="button"
-                    key={index}
-                    aria-label={`前往漫画第 ${index + 1} 页`}
-                    aria-current={index === current ? "page" : undefined}
-                    onClick={() => {
-                      go(index);
-                      setThumbnails(false);
-                    }}
-                  >
-                    <ContentImage
-                      section={item.section}
-                      index={item.index}
-                      fallback={item.src}
-                      alt=""
-                    />
-                    <span>{index + 1}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <button type="button" onClick={() => setThumbnails(false)}>
-              返回阅读
-            </button>
-          </section>
-        </ReaderSheet>
-      )}
+      <ReaderSheet
+        open={thumbnails}
+        labelId="reader-comic-pages-title"
+        onClose={() => setThumbnails(false)}
+      >
+        <section className="reader-mobile-sheet">
+          <h2 id="reader-comic-pages-title">浏览漫画页</h2>
+          <label>
+            跳到页码
+            <input
+              type="number"
+              min={1}
+              max={pages.length}
+              defaultValue={current + 1}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+                if (Number.isInteger(value) && value >= 1 && value <= pages.length) go(value - 1);
+              }}
+            />
+          </label>
+          <div className="reader-comic-thumbnails">
+            {pages.slice(Math.max(0, current - 8), current + 9).map((item, offset) => {
+              const index = Math.max(0, current - 8) + offset;
+              return (
+                <button
+                  type="button"
+                  key={index}
+                  aria-label={`前往漫画第 ${index + 1} 页`}
+                  aria-current={index === current ? "page" : undefined}
+                  onClick={() => {
+                    go(index);
+                    setThumbnails(false);
+                  }}
+                >
+                  <ContentImage
+                    section={item.section}
+                    index={item.index}
+                    fallback={item.src}
+                    alt=""
+                  />
+                  <span>{index + 1}</span>
+                </button>
+              );
+            })}
+          </div>
+          <button type="button" onClick={() => setThumbnails(false)}>
+            返回阅读
+          </button>
+        </section>
+      </ReaderSheet>
     </section>
   );
 }

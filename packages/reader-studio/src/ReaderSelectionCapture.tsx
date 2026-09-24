@@ -133,14 +133,14 @@ export function ReaderSelectionCapture(props: {
   return (
     <>
       {selectionTooLong && !capture && (
-        <span className="reader-selection-capture reader-button" role="status">
+        <span className="reader-selection-capture ui-btn ui-btn-lg ui-btn-default" role="status">
           选段过长，请选择不超过 512 个字符
         </span>
       )}
       {selection && !capture && (
         <button
           type="button"
-          className="reader-selection-capture reader-button reader-button-primary"
+          className="reader-selection-capture ui-btn ui-btn-lg ui-btn-primary"
           onPointerDown={(event) => event.preventDefault()}
           onClick={() => {
             if (!service) {
@@ -169,8 +169,12 @@ export function ReaderSelectionCapture(props: {
           加入资料集合
         </button>
       )}
-      {capture && service && (
-        <ReaderSheet labelId="reader-capture-title" onClose={close}>
+      <ReaderSheet
+        open={Boolean(capture && service)}
+        labelId="reader-capture-title"
+        onClose={close}
+      >
+        {capture && service ? (
           <form
             className="reader-mobile-sheet reader-data-sheet reader-capture-sheet"
             onSubmit={(event) => {
@@ -180,12 +184,12 @@ export function ReaderSelectionCapture(props: {
           >
             <div className="reader-annotation-composer-heading">
               <div>
-                <span className="reader-eyebrow">COLLECT</span>
+                <span className="ui-section-label">COLLECT</span>
                 <strong id="reader-capture-title">保存选段</strong>
               </div>
               <button
                 type="button"
-                className="reader-icon-button"
+                className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
                 aria-label="关闭摘录"
                 disabled={busy}
                 onClick={close}
@@ -243,14 +247,14 @@ export function ReaderSelectionCapture(props: {
             )}
             <button
               type="submit"
-              className="reader-button reader-button-primary"
+              className="ui-btn ui-btn-lg ui-btn-primary"
               disabled={busy || !service.ready || (!collectionId && !name.trim())}
             >
               {busy ? "正在保存…" : "保存到集合"}
             </button>
           </form>
-        </ReaderSheet>
-      )}
+        ) : null}
+      </ReaderSheet>
     </>
   );
 }

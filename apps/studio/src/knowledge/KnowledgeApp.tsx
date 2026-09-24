@@ -1,4 +1,15 @@
-import { useRuntime, useRuntimeActivity, useCredential, useUpdateParticipant } from "@bcr/react";
+import {
+  Button,
+  IconButton,
+  Kbd,
+  Select,
+  Spinner,
+  StatusDot,
+  useRuntime,
+  useRuntimeActivity,
+  useCredential,
+  useUpdateParticipant,
+} from "@bcr/react";
 import { knowledgeCredentialId } from "./credential";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
@@ -242,32 +253,32 @@ export function KnowledgeApp() {
   if (!ready)
     return (
       <div className="knowledge-loading" role={error ? "alert" : "status"}>
+        {!error && <Spinner size="sm" label="加载中" />}
         {error || "正在打开本地知识库…"}
       </div>
     );
   const locked = !!note && state.conflicts.some((c) => c.kind === "note" && c.key === note.id);
   return (
     <div className={`knowledge-app ${sidebar ? "show-sidebar" : ""}`}>
-      {switcher && (
-        <NoteSwitcher
-          notes={notes}
-          initialQuery={switcher.query}
-          onClose={() => setSwitcher(null)}
-          onSelect={async (id) => {
-            await select(id);
-            const hit = noteSearchHit(store.getSnapshot().notes[id]!, switcher.query);
-            setTarget((old) => ({
-              id,
-              heading: switcher.heading ?? "",
-              offset: hit.match?.start ?? 0,
-              sequence: (old?.sequence ?? 0) + 1,
-            }));
-          }}
-          onCreate={async (title) => {
-            await select(await actions.create(collection || null, title));
-          }}
-        />
-      )}
+      <NoteSwitcher
+        open={switcher !== null}
+        notes={notes}
+        initialQuery={switcher?.query ?? ""}
+        onClose={() => setSwitcher(null)}
+        onSelect={async (id) => {
+          await select(id);
+          const hit = noteSearchHit(store.getSnapshot().notes[id]!, switcher?.query ?? "");
+          setTarget((old) => ({
+            id,
+            heading: switcher?.heading ?? "",
+            offset: hit.match?.start ?? 0,
+            sequence: (old?.sequence ?? 0) + 1,
+          }));
+        }}
+        onCreate={async (title) => {
+          await select(await actions.create(collection || null, title));
+        }}
+      />
       {sidebar && (
         <button
           type="button"
@@ -280,27 +291,21 @@ export function KnowledgeApp() {
         <div className="knowledge-brand">
           <BookOpenText size={22} />
           <div>
-            <span>KNOWLEDGE</span>
+            <span className="ui-section-label knowledge-eyebrow">KNOWLEDGE</span>
             <h1>个人知识库</h1>
           </div>
-          <button
-            type="button"
+          <IconButton
+            label="收起列表"
             className="knowledge-mobile-close"
-            aria-label="收起列表"
             onClick={() => setSidebar(false)}
           >
             <X size={18} />
-          </button>
+          </IconButton>
         </div>
-        <button
-          type="button"
-          className="knowledge-primary"
-          disabled={busy}
-          onClick={() => void run(create)}
-        >
+        <Button variant="primary" size="lg" disabled={busy} onClick={() => void run(create)}>
           <Plus size={17} />
           新建笔记
-        </button>
+        </Button>
         <div className="knowledge-shortcuts">
           <button
             type="button"
@@ -309,7 +314,7 @@ export function KnowledgeApp() {
           >
             <Search size={15} />
             <span>快速打开</span>
-            <kbd>⌘/Ctrl O</kbd>
+            <Kbd>⌘/Ctrl O</Kbd>
           </button>
           <button
             type="button"
@@ -346,7 +351,7 @@ export function KnowledgeApp() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
-        <select
+        <Select
           aria-label="筛选笔记集合"
           className="knowledge-select"
           value={collection}
@@ -358,7 +363,7 @@ export function KnowledgeApp() {
               {c.name}
             </option>
           ))}
-        </select>
+        </Select>
         <details className="knowledge-collection-create">
           <summary>新建集合</summary>
           <form
@@ -381,13 +386,14 @@ export function KnowledgeApp() {
               value={collectionName}
               onChange={(e) => setCollectionName(e.target.value)}
             />
-            <button
+            <IconButton
               type="submit"
-              aria-label="创建知识集合"
+              label="创建知识集合"
+              size="sm"
               disabled={busy || !collectionName.trim()}
             >
               <Plus size={15} />
-            </button>
+            </IconButton>
           </form>
         </details>
         <div className="knowledge-library-views" aria-label="笔记导航方式">
@@ -490,16 +496,15 @@ export function KnowledgeApp() {
       </aside>
       <main className="knowledge-main">
         <header className="knowledge-toolbar">
-          <button
-            type="button"
-            className="knowledge-menu knowledge-button"
-            aria-label="打开笔记列表"
+          <IconButton
+            label="打开笔记列表"
+            className="knowledge-menu"
             onClick={() => setSidebar(true)}
           >
             <Menu size={18} />
-          </button>
+          </IconButton>
           <div className="knowledge-sync-summary">
-            <span className={`knowledge-dot ${pending ? "pending" : ""}`} />
+            <StatusDot status={pending ? "pending" : "synced"} />
             <span>
               {state.conflicts.length
                 ? `${state.conflicts.length} 处冲突待处理`
@@ -512,10 +517,9 @@ export function KnowledgeApp() {
           </div>
           <div className="knowledge-toolbar-actions">
             {note && (
-              <button
-                type="button"
-                className="knowledge-button"
-                aria-label="收藏当前笔记"
+              <IconButton
+                label="收藏当前笔记"
+                variant="default"
                 aria-pressed={workbench.state.favorites.includes(note.id)}
                 onClick={() => workbench.setState((current) => toggleFavorite(current, note.id))}
               >
@@ -523,59 +527,47 @@ export function KnowledgeApp() {
                   size={16}
                   fill={workbench.state.favorites.includes(note.id) ? "currentColor" : "none"}
                 />
-              </button>
+              </IconButton>
             )}
-            <button
-              type="button"
-              className="knowledge-button"
+            <Button
+              variant="default"
               aria-label="笔记版本历史"
               aria-pressed={panel === "history"}
               onClick={() => setPanel(panel === "history" ? null : "history")}
             >
               <History size={16} />
               <span>历史</span>
-            </button>
-            <button
-              type="button"
-              className="knowledge-button"
+            </Button>
+            <Button
+              variant="default"
               aria-label="GitHub 同步设置"
               aria-pressed={panel === "sync"}
               onClick={() => setPanel(panel === "sync" ? null : "sync")}
             >
               <Settings2 size={16} />
               <span>连接</span>
-            </button>
-            <button
-              type="button"
-              className="knowledge-button"
-              disabled={syncing || busy}
-              onClick={() => void sync()}
-            >
-              <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
+            </Button>
+            <Button variant="ghost" disabled={syncing || busy} onClick={() => void sync()}>
+              {syncing ? <Spinner size="sm" label="同步中" /> : <RefreshCw size={15} />}
               {syncing ? "同步中…" : "立即同步"}
-            </button>
+            </Button>
           </div>
         </header>
         {note && (
           <div className="knowledge-pathbar" aria-label="笔记位置">
             <span>{notePath(note)}</span>
-            <button
-              type="button"
-              className="knowledge-button"
-              onClick={() => setMoveTarget({ noteId: note.id })}
-            >
+            <Button variant="ghost" onClick={() => setMoveTarget({ noteId: note.id })}>
               移动笔记
-            </button>
+            </Button>
           </div>
         )}
-        {moveTarget && (
-          <NoteMove
-            target={moveTarget}
-            store={store}
-            flush={flushEditor}
-            onClose={() => setMoveTarget(null)}
-          />
-        )}
+        <NoteMove
+          open={moveTarget !== null}
+          target={moveTarget}
+          store={store}
+          flush={flushEditor}
+          onClose={() => setMoveTarget(null)}
+        />
         <NoteTabs
           notes={state.notes}
           ids={workbench.state.tabs}
@@ -612,16 +604,16 @@ export function KnowledgeApp() {
             className={`knowledge-notice ${error ? "is-error" : ""}`}
           >
             <span>{error || message}</span>
-            <button
-              type="button"
-              aria-label="关闭提示"
+            <IconButton
+              label="关闭提示"
+              size="sm"
               onClick={() => {
                 setError("");
                 setMessage("");
               }}
             >
               <X size={15} />
-            </button>
+            </IconButton>
           </div>
         )}
         <div
@@ -696,9 +688,9 @@ export function KnowledgeApp() {
               {locked && (
                 <div role="alert" className="knowledge-alert">
                   这篇笔记存在同步冲突，双方内容已保留。
-                  <button type="button" onClick={() => setPanel("sync")}>
+                  <Button variant="ghost" size="sm" onClick={() => setPanel("sync")}>
                     处理冲突
-                  </button>
+                  </Button>
                 </div>
               )}
               <NoteEditor
@@ -735,9 +727,8 @@ export function KnowledgeApp() {
                 </section>
               )}
               <div className="knowledge-note-actions">
-                <button
-                  type="button"
-                  className="knowledge-button"
+                <Button
+                  variant="ghost"
                   onClick={() =>
                     void run(async () => {
                       await editor.current?.flush();
@@ -751,13 +742,12 @@ export function KnowledgeApp() {
                 >
                   <Download size={14} />
                   导出这篇笔记
-                </button>
+                </Button>
                 {confirmDelete ? (
                   <>
                     <span>删除后可从历史恢复。</span>
-                    <button
-                      type="button"
-                      className="knowledge-button danger"
+                    <Button
+                      variant="danger"
                       disabled={busy || locked}
                       onClick={() =>
                         void run(async () => {
@@ -769,31 +759,22 @@ export function KnowledgeApp() {
                       }
                     >
                       确认删除笔记
-                    </button>
-                    <button
-                      type="button"
-                      className="knowledge-button"
-                      onClick={() => setConfirmDelete(false)}
-                    >
+                    </Button>
+                    <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
                       取消
-                    </button>
+                    </Button>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    className="knowledge-button"
-                    disabled={locked}
-                    onClick={() => setConfirmDelete(true)}
-                  >
+                  <Button variant="ghost" disabled={locked} onClick={() => setConfirmDelete(true)}>
                     <Trash2 size={14} />
                     删除
-                  </button>
+                  </Button>
                 )}
               </div>
             </>
           ) : (
             <section className="knowledge-empty">
-              <span className="knowledge-eyebrow">A SPACE FOR YOUR THINKING</span>
+              <span className="ui-section-label knowledge-eyebrow">A SPACE FOR YOUR THINKING</span>
               <h2>
                 把想法写下来，
                 <br />
@@ -804,10 +785,10 @@ export function KnowledgeApp() {
                 <br />
                 内容保存在本机，连接私有仓库后在设备间同步。
               </p>
-              <button type="button" className="knowledge-primary" onClick={() => void run(create)}>
+              <Button variant="primary" size="lg" onClick={() => void run(create)}>
                 <Plus size={17} />
                 写第一篇笔记
-              </button>
+              </Button>
               <span className="knowledge-empty-foot">
                 <GitBranch size={14} />
                 开放 Markdown · 本地优先 · 版本可恢复

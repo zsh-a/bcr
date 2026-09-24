@@ -1,4 +1,4 @@
-import { Dialog } from "@base-ui/react/dialog";
+import { Dialog, Kbd, useRuntime } from "@bcr/react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   AudioWaveform,
@@ -10,14 +10,13 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LAUNCH_PAD_APPS, MANIFESTS, PANELS } from "../shell/registry";
 import { resetLayout } from "./Dock";
 import { StorageMaintenanceDialogs } from "./StorageMaintenanceDialogs";
 import { useStorageMaintenance } from "./useStorageMaintenance";
 import { importFile, runTask } from "../runtime";
 import { useSelection } from "../router";
-import { useRuntime } from "@bcr/react";
 import { studio, useStudio } from "../store";
 
 interface Command {
@@ -28,7 +27,7 @@ interface Command {
   readonly run: () => void;
 }
 
-/** 命令面板（Base UI Dialog + ⌘K）。 */
+/** 命令面板（⌘K）：统一 ui-dialog 浮层 + 键盘导航，进出场由 ui.css 统一。 */
 export function CommandPalette(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -148,6 +147,13 @@ export function CommandPalette(props: {
 
   const close = () => props.onOpenChange(false);
 
+  useEffect(() => {
+    if (props.open) {
+      setQuery("");
+      setActive(0);
+    }
+  }, [props.open]);
+
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -164,65 +170,47 @@ export function CommandPalette(props: {
 
   return (
     <>
-      <Dialog.Root
-        open={props.open}
-        onOpenChange={(open) => {
-          props.onOpenChange(open);
-          if (open) {
-            setQuery("");
-            setActive(0);
-          }
-        }}
-      >
-        <Dialog.Portal>
-          <Dialog.Backdrop className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px]" />
-          <Dialog.Popup className="fixed top-[18%] left-1/2 z-50 w-[min(26rem,calc(100vw-1rem))] -translate-x-1/2 overflow-hidden rounded-[var(--radius-md)] border border-border-strong bg-raised shadow-2xl shadow-black/60 outline-none studio-enter">
-            <Dialog.Title className="sr-only">命令面板</Dialog.Title>
-            <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
-              <Search className="size-3.5 text-faint" />
-              <input
-                autoFocus
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setActive(0);
-                }}
-                onKeyDown={onKeyDown}
-                placeholder="输入命令…"
-                className="min-w-0 flex-1 bg-transparent text-[12px] text-text outline-none placeholder:text-faint"
-              />
-              <kbd className="rounded-[var(--radius-xs)] border border-border px-1 font-mono text-[10px] text-faint">
-                esc
-              </kbd>
-            </div>
-            <div className="max-h-64 overflow-auto py-1">
-              {filtered.length === 0 && (
-                <p className="px-3 py-3 text-[11px] text-faint">无匹配命令</p>
+      <Dialog open={props.open} onClose={close} title="命令面板" className="studio-command-palette">
+        <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+          <Search className="size-3.5 shrink-0 text-faint" />
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setActive(0);
+            }}
+            onKeyDown={onKeyDown}
+            placeholder="输入命令…"
+            aria-label="搜索命令"
+            className="min-w-0 flex-1 bg-transparent text-sm text-text placeholder:text-faint"
+          />
+          <Kbd>esc</Kbd>
+        </div>
+        <div className="max-h-64 overflow-auto py-1">
+          {filtered.length === 0 && <p className="px-3 py-3 text-xs text-faint">无匹配命令</p>}
+          {filtered.map((command, index) => (
+            <button
+              key={command.id}
+              type="button"
+              onMouseEnter={() => setActive(index)}
+              onClick={() => {
+                command.run();
+                close();
+              }}
+              className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm transition-colors ${
+                index === active ? "bg-accent-dim/50 text-text" : "text-muted"
+              }`}
+            >
+              <span className="text-faint">{command.icon}</span>
+              <span className="flex-1">{command.title}</span>
+              {command.hint !== undefined && (
+                <span className="font-mono text-xs text-faint">{command.hint}</span>
               )}
-              {filtered.map((command, index) => (
-                <button
-                  key={command.id}
-                  type="button"
-                  onMouseEnter={() => setActive(index)}
-                  onClick={() => {
-                    command.run();
-                    close();
-                  }}
-                  className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-[12px] transition-colors ${
-                    index === active ? "bg-accent-dim/50 text-text" : "text-muted"
-                  }`}
-                >
-                  <span className="text-faint">{command.icon}</span>
-                  <span className="flex-1">{command.title}</span>
-                  {command.hint !== undefined && (
-                    <span className="font-mono text-[10px] text-faint">{command.hint}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </Dialog.Popup>
-        </Dialog.Portal>
-      </Dialog.Root>
+            </button>
+          ))}
+        </div>
+      </Dialog>
 
       <StorageMaintenanceDialogs controller={storageMaintenance} />
     </>

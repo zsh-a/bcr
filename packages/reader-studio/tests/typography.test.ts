@@ -24,9 +24,9 @@ describe("reader typography", () => {
       fontSize: 21,
       lineLength: 34,
     });
-    expect(style["--reader-reader-font-weight"]).toBe(400);
-    expect(style["--reader-line-length"]).toBe("714px");
-    expect(style["--reader-paragraph-spacing"]).toBe("0.65em");
+    expect(style["--read-font-weight"]).toBe(400);
+    expect(style["--read-line-length"]).toBe("714px");
+    expect(style["--read-paragraph-spacing"]).toBe("0.65em");
   });
   it("repairs malformed numeric settings while retaining unrelated preferences", () => {
     const normalized = normalizeReaderTypography({

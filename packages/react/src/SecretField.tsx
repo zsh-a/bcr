@@ -24,6 +24,7 @@ export function SecretField({
           <span>密钥已配置</span>
           <button
             type="button"
+            className="ui-btn ui-btn-default"
             onClick={() => {
               setVisible(false);
               onChange("");
@@ -36,6 +37,7 @@ export function SecretField({
         <div className="bcr-secret-row">
           <input
             id={id}
+            className="ui-input"
             aria-label={label}
             type={visible ? "text" : "password"}
             autoComplete="off"
@@ -44,12 +46,18 @@ export function SecretField({
             placeholder={placeholder}
             onChange={(event) => onChange(event.target.value)}
           />
-          <button type="button" aria-pressed={visible} onClick={() => setVisible(!visible)}>
+          <button
+            type="button"
+            className="ui-btn ui-btn-default"
+            aria-pressed={visible}
+            onClick={() => setVisible(!visible)}
+          >
             {visible ? "隐藏" : "显示"}
           </button>
           {saved && (
             <button
               type="button"
+              className="ui-btn ui-btn-default"
               onClick={() => {
                 setVisible(false);
                 onChange(null);

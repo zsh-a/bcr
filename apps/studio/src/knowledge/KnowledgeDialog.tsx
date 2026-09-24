@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { IconButton } from "@bcr/react";
 import { X } from "lucide-react";
 import "./dialog.css";
 
@@ -54,7 +55,7 @@ export function KnowledgeDialog({
   return (
     <dialog
       ref={ref}
-      className="knowledge-dialog"
+      className="ui-dialog ui-dialog-sheet knowledge-dialog"
       aria-labelledby={id}
       onKeyDown={(event) => {
         if (event.key !== "Tab" || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -91,24 +92,25 @@ export function KnowledgeDialog({
         startedOutside.current = false;
       }}
     >
-      <div className="knowledge-dialog-surface">
-        <header className="knowledge-dialog-heading">
-          <div>
-            <span>知识工作台</span>
-            <h2 id={id}>{title}</h2>
+      <div className="ui-dialog-frame">
+        <header className="ui-dialog-head">
+          <div className="knowledge-dialog-heading">
+            <span className="ui-section-label knowledge-eyebrow">知识工作台</span>
+            <h2 id={id} className="ui-dialog-title">
+              {title}
+            </h2>
           </div>
-          <button
-            type="button"
-            className="knowledge-button"
-            aria-label={`关闭${title}`}
+          <IconButton
+            label={`关闭${title}`}
             disabled={busy}
             onClick={dismiss}
             autoFocus
+            style={{ marginLeft: "auto" }}
           >
             <X size={20} />
-          </button>
+          </IconButton>
         </header>
-        <div className="knowledge-dialog-body">
+        <div className="ui-dialog-body">
           {error && (
             <p role="alert" className="knowledge-alert">
               {error}

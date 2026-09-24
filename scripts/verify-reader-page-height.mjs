@@ -109,7 +109,8 @@ try {
   }
   await page.setViewportSize({ width: 375, height: 900 });
   await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
-  await page.locator("details.reader-advanced-typography").locator("summary").first().click();
+  if ((await page.locator("details.reader-advanced-typography[open]").count()) === 0)
+    await page.locator("details.reader-advanced-typography").locator("summary").first().click();
   await page.getByLabel("TXT 分页段落", { exact: true }).selectOption("spaced");
   await page.getByLabel("关闭阅读设置", { exact: true }).click();
   await settled();
@@ -123,7 +124,8 @@ try {
   await page.reload();
   await settled();
   await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
-  await page.locator("details.reader-advanced-typography").locator("summary").first().click();
+  if ((await page.locator("details.reader-advanced-typography[open]").count()) === 0)
+    await page.locator("details.reader-advanced-typography").locator("summary").first().click();
   assert.equal(await page.getByLabel("TXT 分页段落", { exact: true }).inputValue(), "spaced");
   assert.deepEqual(errors, []);
   console.log(

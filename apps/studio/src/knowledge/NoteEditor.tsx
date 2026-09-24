@@ -20,7 +20,7 @@ import { useNoteDraft } from "./useNoteDraft";
 import { useNoteAgent } from "./useNoteAgent";
 import type { NoteSelection } from "./editorAgent";
 import { NoteRename } from "./NoteRename";
-import { useUpdateParticipant } from "@bcr/react";
+import { Badge, Button, Select, useUpdateParticipant } from "@bcr/react";
 
 export interface EditorHandle {
   flush(): Promise<void>;
@@ -96,7 +96,7 @@ export function NoteEditor({
     <div className={`knowledge-document ${contextOpen ? "with-context" : ""}`}>
       <section className="knowledge-editor" aria-label="笔记编辑器">
         <div className="knowledge-editor-meta">
-          <select
+          <Select
             aria-label="笔记所属集合"
             value={draft.collectionId ?? ""}
             disabled={locked || !!initialError}
@@ -111,32 +111,26 @@ export function NoteEditor({
                 {c.name}
               </option>
             ))}
-          </select>
+          </Select>
           <span role="status">{status}</span>
-          <button
-            type="button"
-            className="knowledge-button"
-            aria-pressed={preview}
-            onClick={() => setPreview(!preview)}
-          >
+          <Button variant="default" aria-pressed={preview} onClick={() => setPreview(!preview)}>
             {preview ? "继续编辑" : "预览"}
-          </button>
-          <button
-            type="button"
-            className="knowledge-button"
+          </Button>
+          <Button
+            variant="default"
             aria-expanded={contextOpen}
             onClick={() => setContextOpen(!contextOpen)}
           >
             大纲与链接
-          </button>
+          </Button>
         </div>
         {error && (
           <div role="alert" className="knowledge-alert">
             {error}
             {!initialError && (
-              <button type="button" onClick={() => void flush().catch(() => undefined)}>
+              <Button variant="ghost" size="sm" onClick={() => void flush().catch(() => undefined)}>
                 重试保存
-              </button>
+              </Button>
             )}
           </div>
         )}
@@ -165,9 +159,8 @@ export function NoteEditor({
           onBlur={() => setTagText(controller.getSnapshot().note.tags.join(", "))}
         />
         <div className="knowledge-writing-tools">
-          <button
-            type="button"
-            className="knowledge-button"
+          <Button
+            variant="default"
             aria-pressed={live}
             onClick={() => {
               setPreview(false);
@@ -175,9 +168,9 @@ export function NoteEditor({
             }}
           >
             {live ? "源码模式" : "实时预览"}
-          </button>
+          </Button>
           <span>[[ 关联笔记 · / 插入 · Ctrl/⌘+F 查找</span>
-          <select
+          <Select
             aria-label="插入笔记模板"
             value=""
             disabled={locked || !!initialError}
@@ -201,18 +194,14 @@ export function NoteEditor({
                   {item.title || "未命名模板"}
                 </option>
               ))}
-          </select>
+          </Select>
         </div>
         {preview && (
           <article ref={reading} className="knowledge-prose">
             <Markdown
               remarkPlugins={[remarkGfm, remarkKnowledgeLinks]}
               components={{
-                img: ({ alt }) => (
-                  <span className="text-muted">
-                    [图片：{alt || "附件"} · 首期不自动加载外部资源]
-                  </span>
-                ),
+                img: ({ alt }) => <span>[图片：{alt || "附件"} · 首期不自动加载外部资源]</span>,
                 a: ({ children, href }) => {
                   const prefix = "#knowledge-link=";
                   const target = href?.startsWith(prefix)
@@ -258,7 +247,7 @@ export function NoteEditor({
           />
         </div>
         <footer className="knowledge-editor-footer">
-          <span>MARKDOWN</span>
+          <Badge>MARKDOWN</Badge>
           <span>{draft.body.length.toLocaleString()} 字符</span>
           <span>本地自动保存</span>
         </footer>

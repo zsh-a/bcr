@@ -449,7 +449,7 @@ function ReadingIntro(props: { book: ReaderBook; progress: number }) {
   return (
     <section className="reader-reading-intro">
       <div className="reader-intro-kicker">
-        <span className="reader-live-dot" /> {formatBadge(props.book.source.format)} ·{" "}
+        <span className="ui-dot ui-dot-running" /> {formatBadge(props.book.source.format)} ·{" "}
         {props.book.sections.length} 个{unit}
       </div>
       <h1>{props.book.title}</h1>

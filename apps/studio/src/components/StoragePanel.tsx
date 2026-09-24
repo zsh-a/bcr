@@ -1,12 +1,19 @@
-import { useArtifactUsage } from "@bcr/react";
 import type { ArtifactInventoryEntry, CachePrunePlan, TaskJournalPrunePlan } from "@bcr/core";
 import { Effect } from "effect";
 import { Database, HardDrive, RefreshCw, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRuntime } from "@bcr/react";
 import { useStudio } from "../store";
 import { CACHE_RETENTION, JOURNAL_RETENTION } from "../storage-policy";
-import { Badge, formatBytes, PanelEmpty, ProgressBar, SectionLabel } from "./ui";
+import {
+  Badge,
+  formatBytes,
+  PanelEmpty,
+  ProgressBar,
+  SectionLabel,
+  Spinner,
+  useArtifactUsage,
+  useRuntime,
+} from "@bcr/react";
 
 interface StorageSnapshot {
   readonly inventory: ReadonlyArray<ArtifactInventoryEntry>;
@@ -71,46 +78,42 @@ export function StoragePanel() {
 
   return (
     <div className="studio-storage-panel h-full overflow-auto pb-6">
-      <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between border-b border-border pr-3">
+        <div className="ui-section-label flex items-center gap-2">
           <HardDrive className="size-4 text-accent" />
-          <span className="font-mono text-[10px] tracking-[0.1em] text-faint uppercase">
-            Storage Plane
-          </span>
+          Storage Plane
         </div>
         <button
           type="button"
           onClick={refresh}
           title="刷新存储统计"
           aria-label="刷新存储统计"
-          className="inline-flex size-8 items-center justify-center rounded-[var(--radius-xs)] text-faint transition-colors hover:bg-raised hover:text-text"
+          className="inline-flex size-8 items-center justify-center rounded-sm text-faint transition-colors hover:bg-raised hover:text-text"
         >
-          <RefreshCw className={`size-3.5 ${status === "loading" ? "animate-spin" : ""}`} />
+          {status === "loading" ? <Spinner size="sm" /> : <RefreshCw className="size-3.5" />}
         </button>
       </div>
 
       <section className="border-b border-border px-3 py-4">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <div className="font-mono text-[27px] leading-none tracking-[-0.05em] text-text">
+            <div className="font-mono text-2xl leading-none tracking-tight text-text">
               {usage.status === "ready" && usage.usage !== undefined
                 ? formatBytes(usage.usage.totalBytes)
                 : "—"}
             </div>
-            <div className="mt-2 font-mono text-[10px] tracking-[0.08em] text-faint uppercase">
-              materialized artifacts
-            </div>
+            <div className="ui-section-label -mx-3">materialized artifacts</div>
           </div>
-          <div className="text-right">
-            <div className="font-mono text-[16px] text-accent">
+          <div className="pb-2 text-right">
+            <div className="font-mono text-lg text-accent">
               {usage.status === "ready" && usage.usage !== undefined
                 ? usage.usage.totalObjects
                 : "—"}
             </div>
-            <div className="mt-1 font-mono text-[10px] text-faint">objects</div>
+            <div className="mt-1 font-mono text-xs text-faint">objects</div>
           </div>
         </div>
-        <div className="mt-4 flex items-center gap-2 text-[11px] text-muted">
+        <div className="mt-2 flex items-center gap-2 text-xs text-muted">
           <Database className="size-3.5 text-faint" />
           <span>{files.length} 个项目源文件</span>
           <span className="text-faint">·</span>
@@ -121,16 +124,13 @@ export function StoragePanel() {
       <SectionLabel>Backends</SectionLabel>
       <section className="space-y-2 px-3">
         {usageRows.length === 0 && usage.status !== "error" && (
-          <p className="text-[11px] text-faint">暂无存储后端数据</p>
+          <p className="text-xs text-faint">暂无存储后端数据</p>
         )}
         {usageRows.map((row) => (
-          <div
-            key={row.storage}
-            className="rounded-[var(--radius-sm)] border border-border bg-surface px-2.5 py-2"
-          >
+          <div key={row.storage} className="rounded-sm border border-border bg-surface px-2.5 py-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-mono text-[11px] text-text">{row.storage}</span>
-              <span className="font-mono text-[10px] text-muted">
+              <span className="font-mono text-xs text-text">{row.storage}</span>
+              <span className="font-mono text-xs text-muted">
                 {formatBytes(row.bytes)} · {row.objects}
               </span>
             </div>
@@ -140,7 +140,7 @@ export function StoragePanel() {
           </div>
         ))}
         {usage.status === "error" && (
-          <p className="rounded-[var(--radius-sm)] border border-danger/30 bg-danger/10 px-2.5 py-2 font-mono text-[10px] text-danger">
+          <p className="rounded-sm border border-danger/30 bg-danger/10 px-2.5 py-2 font-mono text-xs text-danger">
             {usage.error ?? "storage unavailable"}
           </p>
         )}
@@ -149,7 +149,7 @@ export function StoragePanel() {
       <SectionLabel>Retention</SectionLabel>
       <section className="space-y-2 px-3">
         {snapshot === null ? (
-          <p className="text-[11px] text-faint">{status === "error" ? error : "正在读取元数据…"}</p>
+          <p className="text-xs text-faint">{status === "error" ? error : "正在读取元数据…"}</p>
         ) : (
           <>
             <RetentionRow
@@ -162,7 +162,7 @@ export function StoragePanel() {
               count={snapshot.journal.candidates.length}
               detail={`${snapshot.journal.scannedEntries} records · ${snapshot.journal.activeEntries} active protected`}
             />
-            <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-accent/20 bg-accent-dim/25 px-2.5 py-2 font-mono text-[10px] text-accent">
+            <div className="flex items-center gap-2 rounded-sm border border-accent/20 bg-accent-dim/25 px-2.5 py-2 font-mono text-xs text-accent">
               <ShieldCheck className="size-3.5" />
               <span>清理前会生成计划并二次校验</span>
             </div>
@@ -179,19 +179,19 @@ export function StoragePanel() {
             {snapshot?.inventory.slice(0, 12).map((entry) => (
               <div
                 key={`${entry.storage}:${entry.path}`}
-                className="flex items-center gap-2 rounded-[var(--radius-xs)] px-1 py-1"
+                className="flex items-center gap-2 rounded-sm px-1 py-1"
               >
                 <span className="size-1.5 shrink-0 rounded-full bg-accent/70" />
-                <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted">
+                <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted">
                   {entry.id}
                 </span>
-                <span className="shrink-0 font-mono text-[10px] text-faint">
+                <span className="shrink-0 font-mono text-xs text-faint">
                   {formatBytes(entry.size)}
                 </span>
               </div>
             ))}
             {(snapshot?.inventory.length ?? 0) > 12 && (
-              <p className="pt-1 font-mono text-[10px] text-faint">
+              <p className="pt-1 font-mono text-xs text-faint">
                 + {(snapshot?.inventory.length ?? 0) - 12} more · use ⌘K to manage
               </p>
             )}
@@ -212,13 +212,13 @@ export function StoragePanel() {
 
 function RetentionRow(props: { label: string; count: number; detail: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-border bg-surface px-2.5 py-2">
+    <div className="flex items-center gap-2 rounded-sm border border-border bg-surface px-2.5 py-2">
       <span className={`size-1.5 rounded-full ${props.count > 0 ? "bg-amber" : "bg-accent"}`} />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[11px] text-text">{props.label}</div>
-        <div className="mt-0.5 truncate font-mono text-[10px] text-faint">{props.detail}</div>
+        <div className="truncate text-xs text-text">{props.label}</div>
+        <div className="mt-0.5 truncate font-mono text-xs text-faint">{props.detail}</div>
       </div>
-      <span className="font-mono text-[15px] text-accent">{props.count}</span>
+      <span className="font-mono text-lg text-accent">{props.count}</span>
     </div>
   );
 }

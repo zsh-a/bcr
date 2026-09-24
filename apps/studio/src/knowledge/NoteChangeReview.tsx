@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Button } from "@bcr/react";
 import type { NoteChangePlan } from "./changePlan";
 import { notePath } from "./paths";
 import "./rename.css";
@@ -31,10 +32,9 @@ export function NoteChangeReview({ plan }: { plan: NoteChangePlan }) {
     <>
       <div className="knowledge-rename-notes" aria-label="受影响的笔记">
         {plan.changes.map((item) => (
-          <button
-            type="button"
+          <Button
+            variant="default"
             key={item.before.id}
-            className="knowledge-button"
             aria-pressed={change?.before.id === item.before.id}
             onClick={() => {
               setSelected(item.before.id);
@@ -50,7 +50,7 @@ export function NoteChangeReview({ plan }: { plan: NoteChangePlan }) {
                   : "引用"}{" "}
               · {item.before.id.slice(0, 8)}
             </small>
-          </button>
+          </Button>
         ))}
       </div>
       {change && (
@@ -69,14 +69,9 @@ export function NoteChangeReview({ plan }: { plan: NoteChangePlan }) {
           )}
           {change.before.body !== change.after.body && (
             <>
-              <button
-                type="button"
-                className="knowledge-button"
-                aria-pressed={full}
-                onClick={() => setFull(!full)}
-              >
+              <Button variant="default" aria-pressed={full} onClick={() => setFull(!full)}>
                 {full ? "仅看变更片段" : "查看完整正文"}
-              </button>
+              </Button>
               <div className="knowledge-rename-columns">
                 <div>
                   <h3>修改前</h3>

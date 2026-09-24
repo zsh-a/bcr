@@ -158,7 +158,7 @@ function ShellContent() {
   if (services === null) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="font-mono text-[11px] text-faint">
+        <p className="font-mono text-xs text-faint">
           runtime 初始化中…（scheduler · worker pool · opfs）
         </p>
       </div>
@@ -190,7 +190,7 @@ function ShellContent() {
                 <Suspense
                   fallback={
                     <div className="flex h-full items-center justify-center">
-                      <p className="font-mono text-[11px] text-faint">{app.title} 加载中…</p>
+                      <p className="font-mono text-xs text-faint">{app.title} 加载中…</p>
                     </div>
                   }
                 >

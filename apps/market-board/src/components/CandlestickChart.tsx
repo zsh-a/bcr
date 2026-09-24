@@ -1,3 +1,4 @@
+import { Spinner } from "@bcr/react";
 import type { MarketHistoryBar } from "@bcr/market-data";
 import { useMemo, useState, type PointerEvent } from "react";
 
@@ -78,7 +79,7 @@ export function CandlestickChart(props: {
   if (props.loading && bars.length === 0) {
     return (
       <div className="ma-candle-loading" aria-label="Loading historical prices">
-        <i />
+        <Spinner size="sm" />
         <span>ASSEMBLING DAILY BARS</span>
       </div>
     );

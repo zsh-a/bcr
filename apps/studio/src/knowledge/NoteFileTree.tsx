@@ -1,5 +1,6 @@
 import { FileText, Folder, FolderInput } from "lucide-react";
 import { useMemo } from "react";
+import { IconButton } from "@bcr/react";
 import type { KnowledgeNote } from "./model";
 import { notePath, pathKey } from "./paths";
 
@@ -52,14 +53,14 @@ export function NoteFileTree({
                   <Folder size={15} aria-hidden="true" />
                   <span>{folder.name}</span>
                 </summary>
-                <button
-                  type="button"
+                <IconButton
+                  label={`移动文件夹 ${folder.path}`}
                   className="knowledge-folder-move"
-                  aria-label={`移动文件夹 ${folder.path}`}
+                  size="sm"
                   onClick={() => onMoveFolder(folder.path)}
                 >
                   <FolderInput size={15} aria-hidden="true" />
-                </button>
+                </IconButton>
                 {render(folder)}
               </details>
             </li>

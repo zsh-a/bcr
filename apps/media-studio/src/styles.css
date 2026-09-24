@@ -5,37 +5,22 @@
    自动源检测扫不到本包，必须显式声明扫描目录（相对本 CSS 文件）。 */
 @source ".";
 
-/* BCR Media Studio · Subtitle — 与 Workspace / Market Atlas 同源的编辑式工作站。 */
-
-.media-studio ::selection {
-  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
-}
-
-.media-studio * {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border-strong) transparent;
-}
-.media-studio *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+/* BCR Media Studio · Subtitle — 统一工作站外观：chrome 一律消费共享令牌。 */
 
 .media-studio input,
 .media-studio select,
 .media-studio button,
 .media-studio textarea {
-  font: inherit;
   color: inherit;
 }
 
 .media-studio input:not([type="checkbox"]):not([type="file"]),
 .media-studio select {
-  min-height: 38px;
-  background: var(--color-bg);
+  min-height: var(--h-control);
+  padding: 0 var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  padding: 0 10px;
-  outline: none;
+  background: var(--color-surface);
 }
 
 .media-studio input[type="checkbox"] {
@@ -49,72 +34,73 @@
   touch-action: manipulation;
 }
 
-.media-studio button:focus-visible,
-.media-studio input:focus-visible,
-.media-studio select:focus-visible,
-.media-studio textarea:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 3px;
-}
-
 .media-studio .btn {
   display: inline-flex;
+  min-height: var(--h-control);
   align-items: center;
-  gap: 6px;
-  border: 1px solid var(--color-border-strong);
-  background: var(--color-raised);
-  min-height: 40px;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  padding: 0 13px;
-  cursor: pointer;
+  background: var(--color-raised);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1;
   white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 .media-studio .btn:hover:not(:disabled) {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-strong);
+  background: var(--color-overlay);
 }
 .media-studio .btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+  opacity: 0.4;
+  cursor: default;
 }
 .media-studio .btn-primary {
-  background: var(--color-primary);
   border-color: var(--color-primary);
+  background: var(--color-primary);
   color: var(--color-on-primary);
-  font-weight: 600;
 }
 .media-studio .btn-primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-accent) 85%, white);
+  border-color: transparent;
+  background: color-mix(in srgb, var(--color-primary) 88%, var(--color-text));
 }
 
 .media-studio {
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 85% 0%, rgba(101, 216, 208, 0.055), transparent 26rem),
-    var(--color-bg);
+  background: var(--color-bg);
   color: var(--color-text);
-  font-size: 14px;
 }
 
 .media-studio button:not(.btn) {
-  min-height: 36px;
+  min-height: var(--h-control);
 }
 
 .media-studio textarea {
-  min-height: 38px;
+  min-height: var(--h-control);
 }
 
 .media-header {
   z-index: 10;
-  min-height: 72px;
-  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
-  backdrop-filter: blur(18px);
+  display: flex;
+  min-height: var(--h-topbar);
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .media-brand {
   flex: none;
-  letter-spacing: -0.02em;
 }
 
 .media-settings {
@@ -127,27 +113,23 @@
   flex: none;
 }
 
-.media-sidebar {
-  background: color-mix(in srgb, var(--color-bg) 70%, transparent);
-}
-
 .media-dropzone {
-  background: color-mix(in srgb, var(--color-surface) 66%, transparent);
+  background: var(--color-surface);
   transition:
-    border-color 180ms ease,
-    background 180ms ease;
+    border-color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
 }
-
 .media-dropzone:hover {
   background: var(--color-raised);
 }
 
-.media-main {
-  background: color-mix(in srgb, var(--color-bg) 42%, transparent);
-}
-
 .media-tabs {
-  min-height: 56px;
+  display: flex;
+  min-height: var(--h-toolbar);
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-5) 0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 @media (max-width: 1180px) {
@@ -159,7 +141,7 @@
     order: 3;
     width: 100%;
     margin-left: 0;
-    padding-top: 4px;
+    padding-top: var(--space-1);
   }
 }
 
@@ -173,18 +155,19 @@
   .media-header {
     position: sticky;
     top: 0;
-    padding: 12px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
+    padding: var(--space-3) max(var(--space-4), env(safe-area-inset-right)) var(--space-3)
+      max(var(--space-4), env(safe-area-inset-left));
   }
 
   .media-actions {
     width: 100%;
     overflow-x: auto;
     margin-left: 0;
-    padding-bottom: 2px;
+    padding-bottom: var(--space-1);
   }
 
   .media-settings {
-    padding-bottom: 2px;
+    padding-bottom: var(--space-1);
   }
 
   .media-layout {
@@ -194,7 +177,7 @@
   .media-sidebar {
     width: 100%;
     max-height: none;
-    padding: 24px 18px;
+    padding: var(--space-6) var(--space-4);
     border-right: 0;
     border-bottom: 1px solid var(--color-border);
   }
@@ -204,28 +187,21 @@
   }
 
   .media-content {
-    padding: 18px;
+    padding: var(--space-4);
   }
 
   .media-studio button,
   .media-studio input:not([type="checkbox"]):not([type="file"]),
   .media-studio select {
-    min-height: 44px;
+    min-height: var(--h-control-lg);
   }
 
   .media-studio button:not(.btn) {
-    min-height: 44px;
+    min-height: var(--h-control-lg);
   }
 
   .media-studio button[aria-label="撤销"],
   .media-studio button[aria-label="重做"] {
-    min-width: 44px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .media-studio * {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+    min-width: var(--h-control-lg);
   }
 }

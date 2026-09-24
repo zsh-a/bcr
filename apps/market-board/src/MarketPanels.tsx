@@ -1,11 +1,5 @@
-import {
-  BarChart3,
-  CalendarDays,
-  ChevronRight,
-  CircleDollarSign,
-  RefreshCw,
-  Star,
-} from "lucide-react";
+import { BarChart3, CalendarDays, ChevronRight, CircleDollarSign, Star } from "lucide-react";
+import { Spinner } from "@bcr/react";
 import { useState } from "react";
 import type {
   DividendSeries,
@@ -122,8 +116,9 @@ export function MarketCartography(props: {
                   }}
                   style={
                     {
-                      "--sector-rgb": sector.changePercent >= 0 ? "199, 243, 106" : "255, 118, 109",
-                      "--sector-heat": heat,
+                      "--sector-color":
+                        sector.changePercent >= 0 ? "var(--color-success)" : "var(--color-danger)",
+                      "--sector-heat": `${(heat * 100).toFixed(2)}%`,
                     } as React.CSSProperties
                   }
                   aria-label={
@@ -271,7 +266,7 @@ export function CorporateActions(props: {
       </div>
       {props.loading ? (
         <div className="ma-corporate-state">
-          <RefreshCw className="spinning" /> RESOLVING CORPORATE ACTIONS
+          <Spinner size="sm" /> RESOLVING CORPORATE ACTIONS
         </div>
       ) : props.error !== null ? (
         <div className="ma-corporate-state error">DIVIDEND FEED · {props.error}</div>
@@ -367,7 +362,7 @@ export function QuoteCard(props: {
   return (
     <article
       className={`ma-quote-card ${props.selected ? "selected" : ""}`}
-      style={{ "--delay": `${props.index * 35}ms` } as React.CSSProperties}
+      style={{ "--i": String(props.index) } as React.CSSProperties}
     >
       <button type="button" className="ma-quote-main" onClick={props.onSelect}>
         <span className="ma-quote-market">
@@ -380,7 +375,9 @@ export function QuoteCard(props: {
       </button>
       <button
         type="button"
-        className={`ma-card-star ${props.watched ? "watched" : ""}`}
+        className={`ma-card-star ui-btn ui-btn-ghost ui-btn-lg ui-icon-btn ${
+          props.watched ? "watched" : ""
+        }`}
         onClick={props.onWatch}
         aria-label={`Watch ${props.quote.instrument.name}`}
       >

@@ -1,3 +1,4 @@
+/* 主题选择器：原生 select + --h-control-lg 触控区。 */
 .studio-theme-picker {
   position: relative;
   display: flex;
@@ -5,53 +6,63 @@
   flex-shrink: 0;
   color: var(--color-muted);
 }
+
 .studio-theme-picker > svg {
   position: absolute;
-  left: 12px;
+  left: var(--space-3);
   pointer-events: none;
 }
+
 .studio-theme-picker select {
-  min-height: 44px;
-  padding: 0 8px 0 34px;
+  min-height: var(--h-control-lg);
+  padding: 0 var(--space-2) 0 var(--space-8);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: inherit;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--text-sm);
   cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-standard);
 }
-.studio-theme-picker select:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
+
+.studio-theme-picker select:hover {
+  border-color: var(--color-border-strong);
 }
+
 .studio-theme-error {
   position: absolute;
   top: 100%;
   right: 0;
-  width: min(280px, 80vw);
-  padding: 12px;
+  z-index: 1;
+  width: min(var(--w-sidebar), 80vw);
+  padding: var(--space-3);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   box-shadow: var(--shadow-floating);
-  color: var(--color-warning);
-  font-size: 13px;
+  color: var(--color-amber);
+  font-size: var(--text-sm);
 }
-@media (max-width: 600px) {
+
+@media (max-width: 37.5em) {
   .studio-theme-picker {
-    width: 44px;
+    width: var(--h-control-lg);
   }
+
   .studio-theme-picker select {
-    width: 44px;
+    width: var(--h-control-lg);
     padding: 0;
     color: transparent;
     appearance: none;
   }
+
   .studio-theme-picker select option {
     color: var(--color-text);
   }
+
   .studio-theme-picker > svg {
-    left: 14px;
+    /* --h-control-lg 触控区内图标水平居中：(44 - 16) / 2。 */
+    left: calc((var(--h-control-lg) - var(--space-4)) / 2);
   }
 }

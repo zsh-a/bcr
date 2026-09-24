@@ -80,7 +80,7 @@ export function ContentPackageCard(props: {
     <section className="document-content-card" aria-label="标准化内容包摘要">
       <div className="document-content-card-heading">
         <div>
-          <span className="document-eyebrow">CONTENT PACKAGE / V1</span>
+          <span className="ui-section-label document-eyebrow">CONTENT PACKAGE / V1</span>
           <strong>结构化内容已就绪</strong>
         </div>
         <span className="document-content-version">V{props.content.version}</span>
@@ -120,7 +120,7 @@ export function TranslationPackageCard(props: {
     <section className="document-translation-card" aria-label="翻译包摘要">
       <div className="document-content-card-heading">
         <div>
-          <span className="document-eyebrow">TRANSLATION PACKAGE / V1</span>
+          <span className="ui-section-label document-eyebrow">TRANSLATION PACKAGE / V1</span>
           <strong>译文已生成，等待审校</strong>
         </div>
         <span className="document-translation-target">{props.package.targetLanguage}</span>
@@ -198,7 +198,7 @@ export function DocumentBlockContextCard(props: {
     <section className="document-block-context" aria-label="内容块上下文">
       <div className="document-block-context-heading">
         <div>
-          <span className="document-eyebrow">BLOCK CONTEXT</span>
+          <span className="ui-section-label document-eyebrow">BLOCK CONTEXT</span>
           <strong>{props.translation === undefined ? "抽取内容" : "原文 · 译文"}</strong>
         </div>
         <span>{props.content.blocks.length} total</span>
@@ -258,7 +258,7 @@ export function DocumentOcrReviewCard(props: {
     <section className="document-ocr-review" aria-label="OCR 文本审校">
       <div className="document-block-context-heading">
         <div>
-          <span className="document-eyebrow">OCR REVIEW</span>
+          <span className="ui-section-label document-eyebrow">OCR REVIEW</span>
           <strong>识别文本审校</strong>
         </div>
         <span>{props.content.blocks.length} regions</span>
@@ -291,7 +291,7 @@ export function DocumentOcrReviewCard(props: {
       </div>
       <button
         type="button"
-        className="document-ocr-review-save"
+        className="ui-btn ui-btn-primary document-ocr-review-save"
         onClick={props.onSave}
         disabled={!changed || props.saving}
       >
@@ -322,7 +322,7 @@ export function TranslationReviewCard(props: {
     <section className="document-translation-review" aria-label="译文审校">
       <div className="document-block-context-heading">
         <div>
-          <span className="document-eyebrow">REVIEW QUEUE</span>
+          <span className="ui-section-label document-eyebrow">REVIEW QUEUE</span>
           <strong>快速审校</strong>
         </div>
         <span>{props.package.targetLanguage}</span>
@@ -345,7 +345,7 @@ export function TranslationReviewCard(props: {
       </div>
       <button
         type="button"
-        className="document-review-save"
+        className="ui-btn ui-btn-primary document-review-save"
         onClick={props.onSave}
         disabled={!changed || props.saving}
       >
@@ -375,9 +375,7 @@ export function JobCard(props: {
         onClick={props.onSelect}
         aria-current={props.active ? "page" : undefined}
       >
-        <span className={`document-job-icon document-format-${props.job.format}`}>
-          {sourceIcon(props.job.format)}
-        </span>
+        <span className="document-job-icon">{sourceIcon(props.job.format)}</span>
         <span className="document-job-copy">
           <strong>{props.job.name}</strong>
           <span>
@@ -388,7 +386,7 @@ export function JobCard(props: {
       </button>
       <button
         type="button"
-        className="document-job-remove"
+        className="ui-btn ui-btn-ghost ui-icon-btn document-job-remove"
         aria-label={`移除 ${props.job.name}`}
         onClick={props.onRemove}
       >
@@ -445,7 +443,7 @@ function DocumentOcrSettingsCard(props: {
     <section className="document-ocr-settings" aria-label="视觉 OCR 设置">
       <div className="document-ocr-settings-heading">
         <div>
-          <span className="document-eyebrow">LOCAL VISION OCR</span>
+          <span className="ui-section-label document-eyebrow">LOCAL VISION OCR</span>
           <strong>整页识别配置</strong>
         </div>
         <ScanText className="document-icon" />
@@ -513,7 +511,7 @@ function DocumentOcrSettingsCard(props: {
       {props.onPreload !== undefined && (
         <button
           type="button"
-          className="document-ocr-preload"
+          className="ui-btn ui-btn-default document-ocr-preload"
           onClick={props.onPreload}
           disabled={props.disabled || props.preloading}
         >
@@ -620,13 +618,21 @@ export function StageInspector(props: {
         </div>
       )}
       {canRun && (
-        <button type="button" className="document-inspector-run" onClick={props.onRun}>
+        <button
+          type="button"
+          className="ui-btn ui-btn-primary document-inspector-run"
+          onClick={props.onRun}
+        >
           <Play className="document-icon" />
           {stageActionLabel}
         </button>
       )}
       {isRunning && (
-        <button type="button" className="document-inspector-cancel" onClick={props.onCancel}>
+        <button
+          type="button"
+          className="ui-btn ui-btn-danger document-inspector-cancel"
+          onClick={props.onCancel}
+        >
           <X className="document-icon" />
           停止 {props.stage.label}
         </button>

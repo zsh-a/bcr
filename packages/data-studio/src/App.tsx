@@ -9,6 +9,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { StatusDot } from "@bcr/react";
 import { useRef } from "react";
 import { DataTableView, dataColumnTypeLabel } from "./DataTableView";
 import { formatBytes } from "./dataFormat";
@@ -69,7 +70,7 @@ export function App() {
           </div>
         </div>
         <div className="data-header-status">
-          <span className="data-live-dot" /> LOCAL-FIRST
+          <StatusDot status="running" /> LOCAL-FIRST
           <span className="data-status-separator">·</span>
           <span>
             {status === "running" ? `PARSING ${Math.round(progress * 100)}%` : "RUNTIME READY"}
@@ -91,7 +92,7 @@ export function App() {
           {status === "running" ? (
             <button
               type="button"
-              className="data-button data-button-danger"
+              className="ui-btn ui-btn-danger"
               onClick={() => void cancelDataTableImport()}
             >
               <X className="data-icon" /> 取消解析
@@ -99,7 +100,7 @@ export function App() {
           ) : (
             <button
               type="button"
-              className="data-button data-button-primary"
+              className="ui-btn ui-btn-primary"
               onClick={() => inputRef.current?.click()}
             >
               <Upload className="data-icon" /> 导入数据
@@ -112,7 +113,12 @@ export function App() {
         <div className="data-notice" role="status" aria-live="polite">
           <Check className="data-icon" />
           <span>{notice}</span>
-          <button type="button" aria-label="关闭提示" onClick={() => setNotice(null)}>
+          <button
+            type="button"
+            className="ui-btn ui-btn-ghost ui-icon-btn ui-btn-sm"
+            aria-label="关闭提示"
+            onClick={() => setNotice(null)}
+          >
             <X className="data-icon" />
           </button>
         </div>
@@ -122,7 +128,7 @@ export function App() {
         <section className="data-asset-catalog" aria-label="数据资产目录">
           <div className="data-catalog-heading">
             <div>
-              <span className="data-eyebrow">WORKSPACE / ASSETS</span>
+              <span className="ui-section-label data-eyebrow">WORKSPACE / ASSETS</span>
               <strong>数据资产目录</strong>
             </div>
             <small>
@@ -163,12 +169,12 @@ export function App() {
         <section className="data-storage-governance" aria-label="数据存储治理">
           <div className="data-storage-heading">
             <div>
-              <span className="data-eyebrow">STORAGE / GOVERN</span>
+              <span className="ui-section-label data-eyebrow">STORAGE / GOVERN</span>
               <strong>Artifact 存储治理</strong>
             </div>
             <button
               type="button"
-              className="data-button data-button-secondary"
+              className="ui-btn ui-btn-default"
               onClick={() => void cleanupStorage()}
               disabled={
                 storageBusy ||
@@ -214,7 +220,7 @@ export function App() {
           <div className="data-empty-icon">
             <Database className="data-icon" />
           </div>
-          <p className="data-eyebrow">DATA / 01 · SCHEMA FIRST</p>
+          <p className="ui-section-label data-eyebrow">DATA / 01 · SCHEMA FIRST</p>
           <h1>
             把表格留在本地，
             <br />
@@ -226,7 +232,7 @@ export function App() {
           </p>
           <button
             type="button"
-            className="data-button data-button-primary data-empty-button"
+            className="ui-btn ui-btn-primary ui-btn-lg data-empty-button"
             onClick={() => inputRef.current?.click()}
           >
             <Upload className="data-icon" /> 选择一个数据文件
@@ -237,7 +243,7 @@ export function App() {
         <main className="data-main">
           <div className="data-main-heading">
             <div>
-              <p className="data-eyebrow">TABLE / {table.id.slice(-12)}</p>
+              <p className="ui-section-label data-eyebrow">TABLE / {table.id.slice(-12)}</p>
               <h1>{table.sourceName}</h1>
               <p className="data-source-line">
                 {table.format.toUpperCase()} ·{" "}
@@ -248,23 +254,19 @@ export function App() {
             <div className="data-export-actions">
               <button
                 type="button"
-                className="data-button data-button-secondary"
+                className="ui-btn ui-btn-default"
                 onClick={() => exportTable("csv")}
               >
                 <Download className="data-icon" /> CSV
               </button>
               <button
                 type="button"
-                className="data-button data-button-secondary"
+                className="ui-btn ui-btn-default"
                 onClick={() => exportTable("json")}
               >
                 <FileJson className="data-icon" /> JSON
               </button>
-              <button
-                type="button"
-                className="data-button data-button-quiet"
-                onClick={() => void clear()}
-              >
+              <button type="button" className="ui-btn ui-btn-ghost" onClick={() => void clear()}>
                 <X className="data-icon" /> 清除
               </button>
             </div>
@@ -301,7 +303,12 @@ export function App() {
                 placeholder="Search across rows…"
               />
               {query.length > 0 && (
-                <button type="button" aria-label="清除数据搜索" onClick={() => setQuery("")}>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-ghost ui-icon-btn ui-btn-sm"
+                  aria-label="清除数据搜索"
+                  onClick={() => setQuery("")}
+                >
                   <X className="data-icon" />
                 </button>
               )}

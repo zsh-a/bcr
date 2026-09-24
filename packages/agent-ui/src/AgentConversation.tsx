@@ -35,7 +35,11 @@ export function AgentConversation({
     wasSettingsOpen.current = settingsOpen;
     if (!restore) return;
     // Let the browser remove the inert subtree before restoring keyboard focus.
-    const frame = requestAnimationFrame(() => settingsTrigger.current?.focus());
+    // 用户已把焦点移到别处（如输入框）时不抢回，避免覆盖正在进行的输入。
+    const frame = requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (active === null || active === document.body) settingsTrigger.current?.focus();
+    });
     return () => cancelAnimationFrame(frame);
   }, [settingsOpen]);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -79,7 +83,7 @@ export function AgentConversation({
           </div>
           <button
             type="button"
-            className="bcr-chat-button"
+            className="ui-btn ui-icon-btn ui-btn-ghost"
             aria-label="新建对话"
             title="新建对话"
             disabled={state.loading}
@@ -105,7 +109,7 @@ export function AgentConversation({
           <div className="bcr-chat-background" role="status">
             另一个对话正在执行任务。
             <button
-              className="bcr-chat-button"
+              className="ui-btn ui-btn-default"
               onClick={() => manager.select(state.running!.conversationId)}
             >
               查看任务

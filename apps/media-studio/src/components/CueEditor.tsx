@@ -17,7 +17,7 @@ export function UndoRedo() {
     <span className="flex items-center gap-1" data-testid="undo-redo">
       <button
         aria-label="撤销"
-        className="w-9 text-[12px] text-[var(--color-faint)] hover:text-[var(--color-text)] disabled:opacity-30"
+        className="w-9 text-sm text-[var(--color-faint)] hover:text-[var(--color-text)] disabled:opacity-30"
         data-testid="undo"
         disabled={!canUndo}
         title="撤销 (Ctrl+Z)"
@@ -27,7 +27,7 @@ export function UndoRedo() {
       </button>
       <button
         aria-label="重做"
-        className="w-9 text-[12px] text-[var(--color-faint)] hover:text-[var(--color-text)] disabled:opacity-30"
+        className="w-9 text-sm text-[var(--color-faint)] hover:text-[var(--color-text)] disabled:opacity-30"
         data-testid="redo"
         disabled={!canRedo}
         title="重做 (Ctrl+Shift+Z)"
@@ -100,7 +100,7 @@ export function CueEditor(props: {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="cue-editor">
-      <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-2 py-1 text-[10px] text-[var(--color-faint)]">
+      <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-faint)]">
         <span>{cues.length} 条</span>
         {dirty && <span className="text-[var(--color-amber)]">未保存的编辑（自动持久化）</span>}
         <span className="ml-auto">CPS 上限 {CPS_LIMIT}</span>
@@ -156,14 +156,14 @@ function CueRow(props: {
     >
       <div className="flex items-start gap-2">
         <button
-          className="mt-0.5 w-10 shrink-0 text-left font-mono text-[10px] text-[var(--color-info)]"
+          className="mt-1 w-10 shrink-0 text-left font-mono text-xs text-[var(--color-info)]"
           onClick={() => props.onSeek(cue.start)}
           title="定位播放"
         >
           {String(index + 1).padStart(3, "0")}
         </button>
         <button
-          className="mt-0.5 shrink-0 font-mono text-[10px] text-[var(--color-faint)] tabular-nums"
+          className="mt-1 shrink-0 font-mono text-xs text-[var(--color-faint)] tabular-nums"
           onClick={props.onToggle}
           title="展开时间轴编辑"
         >
@@ -171,7 +171,7 @@ function CueRow(props: {
         </button>
         {props.overspeed && (
           <span
-            className="mt-0.5 shrink-0 rounded bg-[color-mix(in_srgb,var(--color-amber)_18%,transparent)] px-1 font-mono text-[10px] text-[var(--color-amber)]"
+            className="ui-badge ui-badge-amber mt-1 shrink-0"
             title={`显示速度超过 ${CPS_LIMIT} 单位/秒，观众可能读不完`}
           >
             CPS!
@@ -179,13 +179,13 @@ function CueRow(props: {
         )}
         <div className="min-w-0 flex-1">
           <input
-            className="w-full bg-transparent px-1 py-0.5"
+            className="w-full px-1 py-1"
             value={cue.text}
             onChange={(event) => studio.patchCue(index, { text: event.target.value })}
           />
           {cue.translation !== undefined && (
             <input
-              className="w-full bg-transparent px-1 py-0.5 text-[var(--color-muted)]"
+              className="w-full px-1 py-1 text-[var(--color-muted)]"
               value={cue.translation}
               onChange={(event) => studio.patchCue(index, { translation: event.target.value })}
             />
@@ -193,14 +193,14 @@ function CueRow(props: {
         </div>
         <div className="flex shrink-0 gap-1">
           <button
-            className="text-[10px] text-[var(--color-faint)] hover:text-[var(--color-info)]"
+            className="text-xs text-[var(--color-faint)] hover:text-[var(--color-info)]"
             title="拆分"
             onClick={() => studio.splitCue(index, 0.5)}
           >
             ⇄
           </button>
           <button
-            className="text-[10px] text-[var(--color-faint)] hover:text-[var(--color-danger)]"
+            className="text-xs text-[var(--color-faint)] hover:text-[var(--color-danger)]"
             title="删除"
             onClick={() => studio.deleteCue(index)}
           >
@@ -209,12 +209,12 @@ function CueRow(props: {
         </div>
       </div>
       {props.citation !== undefined && (
-        <p className="mt-1 px-3 text-[11px] text-[var(--color-muted)]">
+        <p className="mt-1 px-3 text-xs text-[var(--color-muted)]">
           引用命中：<mark>{props.citation}</mark>
         </p>
       )}
       {props.expanded && (
-        <div className="mt-1 flex items-center gap-2 pl-12 font-mono text-[10px]">
+        <div className="mt-1 flex items-center gap-2 pl-12 font-mono text-xs">
           <label>
             start
             <input

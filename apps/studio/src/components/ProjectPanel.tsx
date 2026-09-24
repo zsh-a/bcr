@@ -3,9 +3,8 @@ import { FilePlus2, File as FileIcon } from "lucide-react";
 import { useRef } from "react";
 import { importFile } from "../runtime";
 import { useSelection } from "../router";
-import { useRuntime } from "@bcr/react";
 import { useStudio, type FileRecord } from "../store";
-import { formatBytes, PanelEmpty } from "./ui";
+import { formatBytes, PanelEmpty, useRuntime } from "@bcr/react";
 
 /** 项目文件列表面板：大列表虚拟化（§12 TanStack Virtual）。 */
 export function ProjectPanel() {
@@ -23,10 +22,8 @@ export function ProjectPanel() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border px-2 py-1.5">
-        <span className="font-mono text-[10px] tracking-[0.08em] text-faint uppercase">
-          {files.length} files
-        </span>
+      <div className="flex items-center justify-between border-b border-border pr-2">
+        <span className="ui-section-label">{files.length} files</span>
         <button
           type="button"
           onClick={() => {
@@ -40,7 +37,7 @@ export function ProjectPanel() {
             };
             input.click();
           }}
-          className="inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-xs)] px-2.5 text-[11px] text-muted transition-colors hover:bg-raised hover:text-text"
+          className="inline-flex h-9 items-center gap-1.5 rounded-sm px-2.5 text-xs text-muted transition-colors hover:bg-raised hover:text-text"
         >
           <FilePlus2 className="size-3" />
           导入
@@ -97,8 +94,8 @@ function FileRow(props: {
       }`}
     >
       <FileIcon className="size-3.5 shrink-0 text-faint" />
-      <span className="min-w-0 flex-1 truncate text-[11px] text-text">{file.name}</span>
-      <span className="shrink-0 font-mono text-[10px] text-faint">{formatBytes(file.size)}</span>
+      <span className="min-w-0 flex-1 truncate text-xs text-text">{file.name}</span>
+      <span className="shrink-0 font-mono text-xs text-faint">{formatBytes(file.size)}</span>
     </button>
   );
 }

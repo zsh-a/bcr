@@ -8,8 +8,7 @@ import {
   type ResearchBackup,
 } from "../backup";
 
-const button =
-  "rounded border border-border px-3 py-1.5 text-[11px] text-muted hover:border-accent hover:text-accent disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-accent";
+const button = "ui-btn ui-btn-default ui-btn-sm";
 export function ResearchBackupPanel(props: {
   readonly library: ResearchLibrary;
   readonly store: ResearchStore;
@@ -41,10 +40,8 @@ export function ResearchBackupPanel(props: {
     }
   };
   return (
-    <details className="my-2 rounded border border-border p-3 text-[11px] text-muted">
-      <summary className="cursor-pointer text-text focus-visible:outline-2 focus-visible:outline-accent">
-        集合备份与恢复
-      </summary>
+    <details className="my-2 rounded-md border border-border p-3 text-xs text-muted">
+      <summary className="cursor-pointer text-text">集合备份与恢复</summary>
       <p className="py-2 leading-5">
         备份全部集合、正文快照、已保存笔记与引用。不包含源文件；在新浏览器恢复后，回到原文仍需对应的本地资料。
       </p>
@@ -72,7 +69,7 @@ export function ResearchBackupPanel(props: {
             type="file"
             accept="../../components/.json,application/json"
             disabled={props.busy || reading}
-            className="mt-1 block max-w-full text-[11px]"
+            className="mt-1 block max-w-full text-xs"
             onChange={(event) => {
               const file = event.target.files?.[0];
               event.target.value = "";

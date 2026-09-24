@@ -18,6 +18,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
+import { Spinner } from "@bcr/react";
 import { useState } from "react";
 import { Sparkline } from "./components/Sparkline";
 import { CandlestickChart } from "./components/CandlestickChart";
@@ -179,7 +180,6 @@ export function App() {
 
   return (
     <div className="market-atlas" data-quality={snapshot.quality}>
-      <div className="ma-ambient" />
       <header className="ma-header">
         <div className="ma-wordmark">
           <span>MA/01</span>
@@ -190,7 +190,7 @@ export function App() {
         </div>
         <div className="ma-search-shell">
           <div className="ma-search">
-            <Search className={search.loading ? "spinning" : ""} />
+            {search.loading ? <Spinner size="sm" /> : <Search />}
             <input
               ref={searchRef}
               role="combobox"
@@ -229,60 +229,59 @@ export function App() {
               }}
               placeholder="Search stocks, indices or ETFs"
             />
-            <kbd>/</kbd>
+            <kbd className="ui-kbd">/</kbd>
           </div>
-          {searchOpen && query.trim().length >= 2 && (
-            <div id="ma-search-results" className="ma-search-results" role="listbox">
-              <div className="ma-search-summary">
-                <span>GLOBAL DISCOVERY</span>
-                <small>
-                  {search.loading
-                    ? search.results.length > 0
-                      ? "LOCAL READY · SEARCHING STOCK-SDK"
-                      : "SEARCHING STOCK-SDK"
-                    : search.remoteAvailable === false
-                      ? `${search.results.length} LOCAL MATCHES · REMOTE DEGRADED`
-                      : `${search.results.length} QUOTEABLE MATCHES`}
-                </small>
-              </div>
-              {search.results.map((result, index) => (
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={index === searchCursor}
-                  key={result.instrument.id}
-                  className={index === searchCursor ? "active" : ""}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onMouseEnter={() => setSearchCursor(index)}
-                  onClick={() => void selectSearchResult(result)}
-                  disabled={searchingQuote !== null}
-                >
-                  <i>{result.instrument.market}</i>
-                  <span>
-                    <b>{result.instrument.name}</b>
-                    <small>
-                      {result.instrument.symbol} · {result.instrument.venue}
-                    </small>
-                  </span>
-                  <em>{result.providerType}</em>
-                  {searchingQuote === result.instrument.id ? (
-                    <RefreshCw className="spinning" />
-                  ) : (
-                    <ChevronRight />
-                  )}
-                </button>
-              ))}
-              {!search.loading && search.results.length === 0 && (
-                <div className="ma-search-state">
-                  {search.error ?? quoteError ?? "NO QUOTEABLE INSTRUMENTS FOUND"}
-                </div>
-              )}
-              {quoteError !== null && search.results.length > 0 && (
-                <div className="ma-search-state error">QUOTE · {quoteError}</div>
-              )}
-              <footer>CN · HK · US · GLOBAL · STOCKS / INDICES / FUNDS / FUTURES</footer>
+          <div
+            id="ma-search-results"
+            className="ma-search-results"
+            role="listbox"
+            data-open={searchOpen && query.trim().length >= 2 ? "" : undefined}
+          >
+            <div className="ma-search-summary">
+              <span>GLOBAL DISCOVERY</span>
+              <small>
+                {search.loading
+                  ? search.results.length > 0
+                    ? "LOCAL READY · SEARCHING STOCK-SDK"
+                    : "SEARCHING STOCK-SDK"
+                  : search.remoteAvailable === false
+                    ? `${search.results.length} LOCAL MATCHES · REMOTE DEGRADED`
+                    : `${search.results.length} QUOTEABLE MATCHES`}
+              </small>
             </div>
-          )}
+            {search.results.map((result, index) => (
+              <button
+                type="button"
+                role="option"
+                aria-selected={index === searchCursor}
+                key={result.instrument.id}
+                className={`ui-btn ui-btn-ghost ${index === searchCursor ? "active" : ""}`}
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => setSearchCursor(index)}
+                onClick={() => void selectSearchResult(result)}
+                disabled={searchingQuote !== null}
+              >
+                <i>{result.instrument.market}</i>
+                <span>
+                  <b>{result.instrument.name}</b>
+                  <small>
+                    {result.instrument.symbol} · {result.instrument.venue}
+                  </small>
+                </span>
+                <em>{result.providerType}</em>
+                {searchingQuote === result.instrument.id ? <Spinner size="sm" /> : <ChevronRight />}
+              </button>
+            ))}
+            {!search.loading && search.results.length === 0 && (
+              <div className="ma-search-state">
+                {search.error ?? quoteError ?? "NO QUOTEABLE INSTRUMENTS FOUND"}
+              </div>
+            )}
+            {quoteError !== null && search.results.length > 0 && (
+              <div className="ma-search-state error">QUOTE · {quoteError}</div>
+            )}
+            <footer>CN · HK · US · GLOBAL · STOCKS / INDICES / FUNDS / FUTURES</footer>
+          </div>
         </div>
         <div className="ma-header-actions">
           <div className={`ma-quality ${snapshot.quality}`}>
@@ -292,12 +291,12 @@ export function App() {
           </div>
           <button
             type="button"
-            className="ma-refresh"
+            className="ma-refresh ui-btn ui-btn-ghost"
             onClick={() => void refresh()}
             disabled={refreshing}
             aria-label="Refresh market data"
           >
-            <RefreshCw className={refreshing ? "spinning" : ""} />
+            {refreshing ? <Spinner size="sm" /> : <RefreshCw />}
             {receivedTime(snapshot.receivedAt)}
           </button>
         </div>
@@ -336,7 +335,9 @@ export function App() {
                 </span>
                 <button
                   type="button"
-                  className={activeInstrumentIds.includes(selected.instrument.id) ? "watched" : ""}
+                  className={`ui-btn ui-btn-default ui-btn-lg ui-icon-btn ${
+                    activeInstrumentIds.includes(selected.instrument.id) ? "watched" : ""
+                  }`}
                   onClick={() => toggleWatch(selected.instrument.id)}
                   aria-label={`Toggle ${activeGroup.name} watchlist`}
                 >
@@ -403,7 +404,7 @@ export function App() {
               </div>
               <button
                 type="button"
-                className="ma-open-quant"
+                className="ma-open-quant ui-btn ui-btn-ghost ui-btn-lg"
                 onClick={openQuant}
                 disabled={history.loading || (currentHistory?.bars.length ?? 0) < 30}
               >
@@ -590,16 +591,16 @@ export function App() {
               <div className="ma-watchlist-actions">
                 <button
                   type="button"
-                  className="ma-watchlist-send"
+                  className="ma-watchlist-send ui-btn ui-btn-ghost ui-btn-lg"
                   onClick={() => void openWatchlistQuant()}
                   disabled={handoffLoading || watched.length === 0}
                 >
-                  {handoffLoading ? <RefreshCw className="spinning" /> : <ArrowUpRight />}
+                  {handoffLoading ? <Spinner size="sm" /> : <ArrowUpRight />}
                   SEND GROUP
                 </button>
                 <button
                   type="button"
-                  className="ma-watchlist-add"
+                  className="ma-watchlist-add ui-btn ui-btn-ghost ui-btn-lg ui-icon-btn"
                   onClick={() => setCreatingGroup((open) => !open)}
                   aria-label="Create watchlist group"
                   aria-expanded={creatingGroup}
@@ -633,13 +634,18 @@ export function App() {
               >
                 <input
                   autoFocus
+                  className="ui-input"
                   aria-label="New watchlist group name"
                   value={newGroupName}
                   onChange={(event) => setNewGroupName(event.target.value)}
                   placeholder="New group name"
                   maxLength={24}
                 />
-                <button type="submit" disabled={newGroupName.trim().length === 0}>
+                <button
+                  type="submit"
+                  className="ui-btn ui-btn-primary"
+                  disabled={newGroupName.trim().length === 0}
+                >
                   CREATE
                 </button>
               </form>

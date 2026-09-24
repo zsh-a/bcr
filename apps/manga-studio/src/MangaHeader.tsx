@@ -1,4 +1,5 @@
 import { ArrowUpRight, FileText, FileUp, ListChecks, PanelRight, Play, Square } from "lucide-react";
+import { StatusDot } from "@bcr/react";
 import type { RefObject } from "react";
 import { cancelMangaPipeline, cancelMangaQueue } from "./pipeline";
 import type { MangaState } from "./model";
@@ -50,10 +51,10 @@ export function MangaHeader({
       </div>
 
       <div className="manga-header-status">
-        <span className="manga-chip manga-chip-cyan">
-          <span className="manga-live-dot" /> LOCAL-FIRST
+        <span className="ui-badge ui-badge-accent manga-chip">
+          <StatusDot status="running" /> LOCAL-FIRST
         </span>
-        <span className="manga-chip">{sourceLabel(state.source)}</span>
+        <span className="ui-badge manga-chip">{sourceLabel(state.source)}</span>
         <span className="manga-header-size">
           {state.source.width} × {state.source.height}
         </span>
@@ -62,7 +63,7 @@ export function MangaHeader({
       <div className="manga-header-actions">
         <button
           type="button"
-          className="manga-button manga-button-secondary manga-mobile-tools-button"
+          className="ui-btn ui-btn-default manga-mobile-tools-button"
           onClick={onOpenTools}
           aria-expanded={mobileToolsOpen}
           aria-controls="manga-mobile-tools-panel"
@@ -72,7 +73,7 @@ export function MangaHeader({
         </button>
         <button
           type="button"
-          className="manga-button manga-button-secondary"
+          className="ui-btn ui-btn-default"
           disabled={state.running || batchRunning || documentHandoffBusy}
           onClick={() => fileInputRef.current?.click()}
         >
@@ -81,7 +82,7 @@ export function MangaHeader({
         </button>
         <button
           type="button"
-          className="manga-button manga-button-secondary"
+          className="ui-btn ui-btn-default"
           disabled={
             state.running || batchRunning || documentHandoffBusy || state.source.ref === undefined
           }
@@ -94,25 +95,17 @@ export function MangaHeader({
           <ArrowUpRight className="size-3.5" />
         </button>
         {batchRunning ? (
-          <button
-            type="button"
-            className="manga-button manga-button-danger"
-            onClick={cancelMangaQueue}
-          >
+          <button type="button" className="ui-btn ui-btn-danger" onClick={cancelMangaQueue}>
             <Square className="size-3.5" />
             暂停队列
           </button>
         ) : state.running ? (
-          <button
-            type="button"
-            className="manga-button manga-button-danger"
-            onClick={cancelMangaPipeline}
-          >
+          <button type="button" className="ui-btn ui-btn-danger" onClick={cancelMangaPipeline}>
             <Square className="size-3.5" />
             停止处理
           </button>
         ) : (
-          <button type="button" className="manga-button manga-button-primary" onClick={onRunPage}>
+          <button type="button" className="ui-btn ui-btn-primary" onClick={onRunPage}>
             <Play className="size-4" />
             {resumableCurrentPage ? "继续当前页" : "翻译当前页"}
           </button>
@@ -121,11 +114,7 @@ export function MangaHeader({
           !state.running &&
           !batchRunning &&
           (pendingPages > 0 || batchPaused || batchError) && (
-            <button
-              type="button"
-              className="manga-button manga-button-secondary"
-              onClick={onRunQueue}
-            >
+            <button type="button" className="ui-btn ui-btn-default" onClick={onRunQueue}>
               <ListChecks className="size-4" />
               {batchPaused ? "继续队列" : batchError ? "重试队列" : "处理队列"}
             </button>

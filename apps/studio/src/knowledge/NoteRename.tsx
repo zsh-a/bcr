@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Button } from "@bcr/react";
 import type { NoteDraft, DraftSnapshot } from "./draft";
 import type { KnowledgeStore } from "./store";
 import type { NoteChangePlan } from "./changePlan";
@@ -78,17 +79,12 @@ export function NoteRename({
       {pending && (
         <div className="knowledge-rename-pending">
           <span>新标题待确认 · 正文仍自动保存</span>
-          <button
-            type="button"
-            className="knowledge-button"
-            disabled={busy}
-            onClick={() => void preview()}
-          >
+          <Button variant="ghost" disabled={busy} onClick={() => void preview()}>
             预览重命名
-          </button>
-          <button type="button" className="knowledge-button" disabled={busy} onClick={cancel}>
+          </Button>
+          <Button variant="ghost" disabled={busy} onClick={cancel}>
             取消重命名
-          </button>
+          </Button>
         </div>
       )}
       {error && !plan && (
@@ -107,25 +103,19 @@ export function NoteRename({
           </p>
           {plan && <NoteChangeReview plan={plan} />}
           <div className="knowledge-rename-actions">
-            <button type="button" className="knowledge-button" disabled={busy} onClick={cancel}>
+            <Button variant="ghost" disabled={busy} onClick={cancel}>
               取消重命名
-            </button>
-            <button
-              type="button"
-              className="knowledge-button"
-              disabled={busy}
-              onClick={() => void preview()}
-            >
+            </Button>
+            <Button variant="ghost" disabled={busy} onClick={() => void preview()}>
               刷新预览
-            </button>
-            <button
-              type="button"
-              className="knowledge-button knowledge-rename-confirm"
+            </Button>
+            <Button
+              variant="primary"
               disabled={busy || !!error || !plan?.changes.length}
               onClick={() => void confirm()}
             >
               {busy ? "处理中…" : "确认全部修改"}
-            </button>
+            </Button>
           </div>
         </section>
       </KnowledgeDialog>

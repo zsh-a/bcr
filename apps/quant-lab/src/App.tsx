@@ -49,7 +49,7 @@ export function App() {
       <div className="ql-boot">
         <span>QL/02</span>
         <b>ASSEMBLING QUANT RUNTIME</b>
-        <i />
+        <i className="ui-skeleton" />
       </div>
     );
   }
@@ -199,7 +199,7 @@ function Workbench() {
           </div>
         </div>
         <div className="ql-market-status">
-          <i />
+          <i className="ui-dot ui-dot-running" />
           REPLAY ONLINE
           <span>
             {state.marketHandoff !== null
@@ -222,26 +222,50 @@ function Workbench() {
               event.target.value = "";
             }}
           />
-          <button type="button" onClick={() => inputRef.current?.click()} disabled={state.running}>
-            <Upload /> IMPORT DATA
+          <button
+            type="button"
+            className="ui-btn ui-btn-default"
+            onClick={() => inputRef.current?.click()}
+            disabled={state.running}
+          >
+            <Upload />
+            <span>IMPORT DATA</span>
           </button>
           <button
             type="button"
+            className="ui-btn ui-btn-default"
             onClick={() => void exportParquet()}
             disabled={state.dataset?.parquetRef == null}
           >
-            <Database /> PARQUET
+            <Database />
+            <span>PARQUET</span>
           </button>
-          <button type="button" onClick={exportTrades} disabled={state.result === null}>
-            <Download /> TRADES CSV
+          <button
+            type="button"
+            className="ui-btn ui-btn-default"
+            onClick={exportTrades}
+            disabled={state.result === null}
+          >
+            <Download />
+            <span>TRADES CSV</span>
           </button>
           {state.running ? (
-            <button type="button" className="danger" onClick={() => void cancelStrategy()}>
-              <Square /> CANCEL
+            <button
+              type="button"
+              className="ui-btn ui-btn-danger ui-btn-lg"
+              onClick={() => void cancelStrategy()}
+            >
+              <Square />
+              <span>CANCEL</span>
             </button>
           ) : (
-            <button type="button" className="primary" onClick={() => void runStrategy(services)}>
-              <Play /> RUN BACKTEST
+            <button
+              type="button"
+              className="ui-btn ui-btn-primary ui-btn-lg"
+              onClick={() => void runStrategy(services)}
+            >
+              <Play />
+              <span>RUN BACKTEST</span>
             </button>
           )}
         </div>
@@ -285,6 +309,7 @@ function Workbench() {
             <span>FAST WINDOW</span>
             <input
               aria-label="Fast window"
+              className="ui-input"
               type="number"
               min="2"
               max="250"
@@ -297,6 +322,7 @@ function Workbench() {
             <span>SLOW WINDOW</span>
             <input
               aria-label="Slow window"
+              className="ui-input"
               type="number"
               min="3"
               max="500"
@@ -309,6 +335,7 @@ function Workbench() {
             <span>INITIAL CAPITAL</span>
             <input
               aria-label="Initial capital"
+              className="ui-input"
               type="number"
               min="1000"
               step="1000"
@@ -321,6 +348,7 @@ function Workbench() {
             <span>FEE / BPS</span>
             <input
               aria-label="Fee bps"
+              className="ui-input"
               type="number"
               min="0"
               max="100"
@@ -350,8 +378,12 @@ function Workbench() {
               </i>
             </div>
             <div className="ql-columnar-formats" data-columnar="ready">
-              <em>ARROW {formatBytes(state.dataset?.columnar.arrowBytes ?? 0)}</em>
-              <em>PARQUET {formatBytes(state.dataset?.columnar.parquetBytes ?? 0)}</em>
+              <em className="ui-badge">
+                ARROW {formatBytes(state.dataset?.columnar.arrowBytes ?? 0)}
+              </em>
+              <em className="ui-badge">
+                PARQUET {formatBytes(state.dataset?.columnar.parquetBytes ?? 0)}
+              </em>
             </div>
             <small>{state.dataset?.columnar.engine ?? "COLUMNAR ENGINE OFFLINE"}</small>
             <small>{state.dataset?.ref.hash?.slice(0, 16) ?? "NO CONTENT HASH"}</small>

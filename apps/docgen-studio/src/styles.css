@@ -5,137 +5,108 @@
    自动源检测扫不到本包，必须显式声明扫描目录（相对本 CSS 文件）。 */
 @source ".";
 
-/* DocGen Lab — 与 media-studio 同源的暗色工作站主题（系统字体栈，本 app 不引外部字体包） */
-.docgen-studio {
-  color-scheme: dark;
-  --color-bg: #0a0c0d;
-  --color-surface: #121617;
-  --color-raised: #191e1f;
-  --color-border: #333c39;
-  --color-border-strong: #47534f;
-  --color-text: #f4f4ec;
-  --color-muted: #a8b0ab;
-  --color-faint: #747f7a;
-  --color-accent: #e8b45f;
-  --color-accent-dim: #3a2f18;
-  --color-info: #82aef7;
-  --color-danger: #ff766d;
-
-  --font-sans: ui-sans-serif, system-ui, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
-
-  --radius-sm: 8px;
-  --radius-md: 12px;
-}
-
-.docgen-studio * {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border-strong) transparent;
-}
-
-.docgen-studio input,
-.docgen-studio select,
-.docgen-studio button {
-  font: inherit;
-  color: inherit;
-}
-
-.docgen-studio input:not([type="checkbox"]),
-.docgen-studio select {
-  min-height: 38px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 0 10px;
-  outline: none;
-  width: 100%;
-}
-
-.docgen-studio button {
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.docgen-studio button:focus-visible,
-.docgen-studio input:focus-visible,
-.docgen-studio select:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 3px;
-}
-
-.docgen-studio .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 1px solid var(--color-border-strong);
-  background: var(--color-raised);
-  min-height: 40px;
-  border-radius: var(--radius-sm);
-  padding: 0 13px;
-  white-space: nowrap;
-}
-.docgen-studio .btn:hover:not(:disabled) {
-  border-color: var(--color-accent);
-}
-.docgen-studio .btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.docgen-studio .btn-primary {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: #241a06;
-  font-weight: 600;
-}
-.docgen-studio .btn-primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-accent) 85%, white);
-}
+/* DocGen Lab — 统一工作站外观：chrome 一律消费 tokens.css 共享令牌。 */
 
 .docgen-studio {
+  display: flex;
   height: 100%;
   min-height: 0;
-  display: flex;
   flex-direction: column;
-  background:
-    radial-gradient(circle at 85% 0%, rgba(232, 180, 95, 0.05), transparent 26rem), var(--color-bg);
+  background: var(--color-bg);
   color: var(--color-text);
+}
+
+.docgen-header {
+  display: flex;
+  min-height: var(--h-topbar);
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .docgen-tab {
   display: inline-flex;
+  min-height: var(--h-control);
+  flex: none;
   align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 0 14px;
-  border-radius: var(--radius-sm);
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
   border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   color: var(--color-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+.docgen-tab-group {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.docgen-tab:hover:not(:disabled) {
+  color: var(--color-text);
 }
 .docgen-tab[data-active="true"] {
   color: var(--color-text);
   background: var(--color-raised);
   border-color: var(--color-border-strong);
 }
+.docgen-tab:disabled {
+  opacity: 0.4;
+}
 
 .docgen-field-error {
+  margin-top: var(--space-1);
   color: var(--color-danger);
-  font-size: 12px;
-  margin-top: 4px;
+  font-size: var(--text-sm);
 }
 
+/* 预览舞台：成图浮在纯色底上；空态占位由 .ui-skeleton 组成。 */
 .docgen-preview-frame {
-  background: repeating-conic-gradient(#1b2122 0% 25%, #141819 0% 50%) 0 0 / 24px 24px;
+  background: var(--color-bg);
 }
 
+.docgen-preview-image {
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-floating);
+}
+
+/* 浮层提示：进出场用 @starting-style + allow-discrete（与 ui.css 同一套语言）。 */
 .docgen-toast {
   position: fixed;
-  right: 24px;
-  bottom: 24px;
+  right: var(--space-6);
+  bottom: var(--space-6);
   z-index: 100;
-  background: var(--color-raised);
+  display: none;
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  padding: 10px 16px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-floating);
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard),
+    display var(--duration-base) allow-discrete;
+}
+
+.docgen-toast[data-open] {
+  display: block;
+  opacity: 1;
+  transform: none;
+}
+
+@starting-style {
+  .docgen-toast[data-open] {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }

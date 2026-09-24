@@ -14,7 +14,11 @@ import { getReaderState, reader, useReader } from "./store";
 import { captureReaderProgress, persistReaderSnapshot } from "./useReaderRuntime";
 import { formatBytes } from "./readerPresentation";
 
-export function ReaderBackupPanel(props: { runtime: ReaderRuntime; onClose: () => void }) {
+export function ReaderBackupPanel(props: {
+  open: boolean;
+  runtime: ReaderRuntime;
+  onClose: () => void;
+}) {
   const library = useReader((state) => state.library);
   const saveError = useReader((state) => state.saveError);
   const [prepared, setPrepared] = useState<PreparedReaderBackup | null>(null);
@@ -63,6 +67,7 @@ export function ReaderBackupPanel(props: { runtime: ReaderRuntime; onClose: () =
   const fresh = prepared === null ? [] : backupNewBooks(prepared, library);
   return (
     <ReaderSheet
+      open={props.open}
       labelId="reader-backup-title"
       onClose={() => {
         if (!busy) props.onClose();
@@ -71,12 +76,12 @@ export function ReaderBackupPanel(props: { runtime: ReaderRuntime; onClose: () =
       <section className="reader-mobile-sheet reader-data-sheet">
         <header className="reader-data-heading">
           <div>
-            <span className="reader-eyebrow">YOUR READING, KEPT SAFE</span>
+            <span className="ui-section-label">YOUR READING, KEPT SAFE</span>
             <h2 id="reader-backup-title">备份与恢复</h2>
           </div>
           <button
             type="button"
-            className="reader-icon-button"
+            className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
             disabled={busy}
             aria-label="关闭备份与恢复"
             onClick={props.onClose}
@@ -175,7 +180,7 @@ export function ReaderBackupPanel(props: { runtime: ReaderRuntime; onClose: () =
         )}
         <input
           ref={fileInput}
-          className="reader-visually-hidden"
+          className="ui-sr-only"
           type="file"
           accept=".zip,application/zip"
           aria-label="选择 Reader 备份"
@@ -193,7 +198,7 @@ export function ReaderBackupPanel(props: { runtime: ReaderRuntime; onClose: () =
         />
         {prepared !== null && (
           <section className="reader-backup-preview" aria-label="恢复预览">
-            <span className="reader-eyebrow">RESTORE PREVIEW</span>
+            <span className="ui-section-label">RESTORE PREVIEW</span>
             <h3>
               新增 {fresh.length} 本 · 跳过 {prepared.manifest.books.length - fresh.length} 本
             </h3>

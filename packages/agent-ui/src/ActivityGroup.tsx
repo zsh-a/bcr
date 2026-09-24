@@ -1,4 +1,4 @@
-import { Check, ChevronRight, LoaderCircle } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
 import type { AgentToolPart } from "@bcr/agent";
 import { ToolExecutionCard } from "./ToolExecutionCard";
 import type { ResultRegistry } from "./renderers";
@@ -14,15 +14,15 @@ export function ActivityGroup({
 }) {
   const pending = tools.find((part) => !part.result);
   const complete = tools.filter((part) => part.result).length;
-  const Icon = pending && running ? LoaderCircle : pending ? ChevronRight : Check;
+  const Icon = pending ? ChevronRight : Check;
   return (
     <details className="bcr-chat-activity-group">
       <summary>
-        <Icon
-          size={15}
-          aria-hidden="true"
-          className={pending && running ? "bcr-chat-spinner" : undefined}
-        />
+        {pending && running ? (
+          <span aria-hidden="true" className="ui-spinner" />
+        ) : (
+          <Icon size={15} aria-hidden="true" />
+        )}
         <span>
           {pending
             ? running

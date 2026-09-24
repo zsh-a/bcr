@@ -1,4 +1,5 @@
-import { useId, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
+import { Button, Input } from "@bcr/react";
 import { folderMoves, type NoteChangePlan } from "./changePlan";
 import { KnowledgeDialog } from "./KnowledgeDialog";
 import { NoteChangeReview } from "./NoteChangeReview";
@@ -7,30 +8,45 @@ import type { KnowledgeStore } from "./store";
 
 export type MoveTarget = { noteId: string } | { folder: string };
 
+/**
+ * 移动对话框。常驻挂载以便关闭时跑完退场动画；打开时按目标重置草稿，
+ * 与原先的按需挂载行为一致。
+ */
 export function NoteMove({
+  open,
   target,
   store,
   flush,
   onClose,
 }: {
-  target: MoveTarget;
+  open: boolean;
+  target: MoveTarget | null;
   store: KnowledgeStore;
   flush: () => Promise<void>;
   onClose: () => void;
 }) {
-  const [original] = useState(() =>
-    "folder" in target
-      ? target.folder
-      : notePath(store.getSnapshot().notes[target.noteId] ?? { id: target.noteId }),
-  );
-  const [path, setPath] = useState(original);
+  const [original, setOriginal] = useState("");
+  const [path, setPath] = useState("");
   const [plan, setPlan] = useState<NoteChangePlan | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const id = useId();
+  useLayoutEffect(() => {
+    if (!open || !target) return;
+    const from =
+      "folder" in target
+        ? target.folder
+        : notePath(store.getSnapshot().notes[target.noteId] ?? { id: target.noteId });
+    setOriginal(from);
+    setPath(from);
+    setPlan(null);
+    setError("");
+    setBusy(false);
+  }, [open, target, store]);
+  const folder = !!target && "folder" in target;
   async function run(confirm: boolean) {
-    if (pending.current) return;
+    if (!target || pending.current) return;
     pending.current = true;
     setBusy(true);
     setError("");
@@ -56,8 +72,8 @@ export function NoteMove({
   }
   return (
     <KnowledgeDialog
-      open
-      title={"folder" in target ? "移动文件夹" : "移动笔记"}
+      open={open}
+      title={folder ? "移动文件夹" : "移动笔记"}
       onClose={() => {
         if (!pending.current) onClose();
       }}
@@ -71,8 +87,8 @@ export function NoteMove({
             void run(false);
           }}
         >
-          <label htmlFor={id}>{"folder" in target ? "目标文件夹路径" : "目标笔记路径"}</label>
-          <input
+          <label htmlFor={id}>{folder ? "目标文件夹路径" : "目标笔记路径"}</label>
+          <Input
             id={id}
             value={path}
             maxLength={500}
@@ -86,13 +102,13 @@ export function NoteMove({
             }}
           />
           <p id={`${id}-hint`} className="knowledge-small">
-            {"folder" in target
+            {folder
               ? "填写新的完整文件夹路径，留空移至根目录；包含全部子文件夹。"
               : "例如：项目/产品设计.md。目录随路径建立，标题保持不变。"}
           </p>
-          <button className="knowledge-button" disabled={busy} type="submit">
+          <Button variant="ghost" disabled={busy} type="submit">
             {busy ? "处理中…" : plan ? "刷新预览" : "预览移动"}
-          </button>
+          </Button>
         </form>
         {plan && (
           <>
@@ -106,17 +122,16 @@ export function NoteMove({
           已解析的笔记链接会保持原目标。图片、附件及未解析链接暂不自动调整；集合与稳定 ID 不变。
         </p>
         <div className="knowledge-rename-actions">
-          <button type="button" className="knowledge-button" disabled={busy} onClick={onClose}>
+          <Button variant="ghost" disabled={busy} onClick={onClose}>
             取消
-          </button>
-          <button
-            type="button"
-            className="knowledge-button knowledge-rename-confirm"
+          </Button>
+          <Button
+            variant="primary"
             disabled={busy || !plan?.changes.length || !!error}
             onClick={() => void run(true)}
           >
             确认移动
-          </button>
+          </Button>
         </div>
       </section>
     </KnowledgeDialog>

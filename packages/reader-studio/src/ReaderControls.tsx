@@ -82,7 +82,7 @@ export function ReaderToolbar(props: {
         {props.book.source.format !== "pdf" && (
           <button
             type="button"
-            className="reader-icon-button"
+            className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
             aria-label="切换漫画模式"
             aria-pressed={
               props.settings.books?.[props.book.id]?.comic ??
@@ -106,7 +106,7 @@ export function ReaderToolbar(props: {
         )}
         <button
           type="button"
-          className="reader-icon-button reader-sidebar-toggle"
+          className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-sidebar-toggle"
           onClick={() => reader.toggleSidebar()}
           aria-label={sidebarOpen ? "收起书库" : "打开书库"}
           title={sidebarOpen ? "收起书库" : "打开书库"}
@@ -118,7 +118,7 @@ export function ReaderToolbar(props: {
           )}
         </button>
         <div>
-          <span className="reader-eyebrow">READING SESSION</span>
+          <span className="ui-section-label">READING SESSION</span>
           <strong>
             {props.book.source.format === "txt" && !props.book.toc?.length
               ? props.book.title
@@ -141,7 +141,7 @@ export function ReaderToolbar(props: {
         {readerUsesPagedText(props.book, props.settings) && (
           <button
             type="button"
-            className="reader-icon-button"
+            className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
             aria-label="专注阅读"
             title="专注阅读 · 点击正文中央恢复工具栏"
             onClick={props.onFocusReading}
@@ -152,7 +152,7 @@ export function ReaderToolbar(props: {
         <ReaderNavigationButton book={props.book} />
         <button
           type="button"
-          className="reader-icon-button"
+          className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
           aria-label="在当前读物中搜索"
           onClick={openBookSearch}
         >
@@ -171,7 +171,7 @@ export function ReaderToolbar(props: {
         </button>
         <button
           type="button"
-          className="reader-icon-button"
+          className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
           aria-label="打开阅读设置"
           title="阅读设置"
           aria-expanded={settingsOpen}
@@ -182,7 +182,7 @@ export function ReaderToolbar(props: {
         </button>
         <button
           type="button"
-          className={`reader-icon-button reader-fullscreen-toggle ${props.fullscreen.isFullscreen ? "is-active" : ""}`}
+          className={`ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-fullscreen-toggle ${props.fullscreen.isFullscreen ? "is-active" : ""}`}
           onClick={() => void props.fullscreen.toggle()}
           disabled={!props.fullscreen.supported}
           aria-label={props.fullscreen.isFullscreen ? "退出全屏" : "进入全屏"}
@@ -283,11 +283,10 @@ function ReaderSettingsSheet(props: {
   documentHandoffBusy: boolean;
   fullscreen: ReaderFullscreenState;
 }) {
-  if (!props.open) return null;
   const themes: ReadonlyArray<ReaderTheme> = ["paper", "sage", "night"];
   const layouts: ReadonlyArray<ReaderSettings["layout"]> = ["scroll", "paged"];
   return (
-    <ReaderSheet onClose={props.onClose} labelId="reader-mobile-settings-title">
+    <ReaderSheet open={props.open} onClose={props.onClose} labelId="reader-mobile-settings-title">
       <section
         id={props.id}
         className="reader-mobile-sheet reader-settings-sheet"
@@ -296,12 +295,12 @@ function ReaderSettingsSheet(props: {
       >
         <div className="reader-mobile-sheet-heading">
           <div>
-            <span className="reader-eyebrow">VIEW MENU</span>
+            <span className="ui-section-label">VIEW MENU</span>
             <strong id="reader-mobile-settings-title">阅读设置</strong>
           </div>
           <button
             type="button"
-            className="reader-icon-button"
+            className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
             onClick={props.onClose}
             aria-label="关闭阅读设置"
           >
@@ -310,14 +309,18 @@ function ReaderSettingsSheet(props: {
         </div>
         <div className="reader-mobile-settings-scroll">
           <section className="reader-mobile-setting-group" aria-label="阅读操作">
-            <button type="button" className="reader-button" onClick={props.onAddAnnotation}>
+            <button
+              type="button"
+              className="ui-btn ui-btn-lg ui-btn-default"
+              onClick={props.onAddAnnotation}
+            >
               <MessageSquarePlus className="reader-icon" />
               添加阅读笔记
             </button>
             {props.showInstall && (
               <button
                 type="button"
-                className="reader-button"
+                className="ui-btn ui-btn-lg ui-btn-default"
                 onClick={() => {
                   props.onClose();
                   props.onInstall();
@@ -547,6 +550,7 @@ function ReaderSettingsSheet(props: {
 }
 
 export function AnnotationComposer(props: {
+  open: boolean;
   value: string;
   onChange: (value: string) => void;
   anchor: ReaderLocator | null;
@@ -554,16 +558,16 @@ export function AnnotationComposer(props: {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <ReaderSheet onClose={props.onCancel} labelId="reader-note-title">
+    <ReaderSheet open={props.open} onClose={props.onCancel} labelId="reader-note-title">
       <form className="reader-annotation-composer reader-note-sheet" onSubmit={props.onSubmit}>
         <div className="reader-annotation-composer-heading">
           <div>
-            <span className="reader-eyebrow">NEW NOTE</span>
+            <span className="ui-section-label">NEW NOTE</span>
             <strong id="reader-note-title">把这一刻留下来</strong>
           </div>
           <button
             type="button"
-            className="reader-icon-button"
+            className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
             aria-label="取消添加笔记"
             onClick={props.onCancel}
           >
@@ -587,7 +591,7 @@ export function AnnotationComposer(props: {
           </span>
           <button
             type="submit"
-            className="reader-button reader-button-primary"
+            className="ui-btn ui-btn-lg ui-btn-primary"
             disabled={!props.value.trim()}
           >
             保存笔记

@@ -69,7 +69,11 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
           aria-label="应用更新"
         >
           {collapsed ? (
-            <button type="button" onClick={() => setCollapsed(false)}>
+            <button
+              type="button"
+              className="ui-btn ui-btn-ghost"
+              onClick={() => setCollapsed(false)}
+            >
               新版本可用 ↗
             </button>
           ) : (
@@ -80,11 +84,16 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
               </div>
               {error && <p role="alert">{error}</p>}
               <div className="bcr-update-actions">
-                <button type="button" disabled={applying} onClick={() => setCollapsed(true)}>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-default"
+                  disabled={applying}
+                  onClick={() => setCollapsed(true)}
+                >
                   稍后
                 </button>
                 <button
-                  className="is-primary"
+                  className="ui-btn ui-btn-primary"
                   type="button"
                   disabled={applying}
                   onClick={() => void apply()}

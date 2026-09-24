@@ -84,56 +84,54 @@ export function ReaderHistoryBar() {
           </button>
         </div>
       )}
-      {open && (
-        <ReaderSheet labelId="reader-history-title" onClose={() => setOpen(false)}>
-          <section className="reader-mobile-sheet reader-data-sheet">
-            <header className="reader-data-heading">
-              <div>
-                <span className="reader-eyebrow">READING TRAIL</span>
-                <h2 id="reader-history-title">跳转历史</h2>
-              </div>
-              <button
-                type="button"
-                className="reader-icon-button"
-                aria-label="关闭跳转历史"
-                onClick={() => setOpen(false)}
-              >
-                <X className="reader-icon" />
-              </button>
-            </header>
-            <p>保留最近 50 个跳转位置，刷新后仍可返回。连续滚动和正常分页不会留下记录。</p>
-            {back.length === 0 && <p>还没有可返回的位置。</p>}
-            <div className="reader-history-list">
-              {[...back].reverse().map((entry, ordinal) => {
-                const publication = library.find((item) => item.id === entry.bookId);
-                return (
-                  <button
-                    type="button"
-                    key={`${entry.bookId}-${ordinal}`}
-                    onClick={() => {
-                      reader.navigateHistory("back", ordinal + 1);
-                      setOpen(false);
-                    }}
-                  >
-                    <span>
-                      <strong>{publication?.title}</strong>
-                      <small>
-                        {
-                          publication?.sections.find(
-                            (section) => section.id === entry.locator.sectionId,
-                          )?.label
-                        }{" "}
-                        · {Math.round(entry.locator.progression * 100)}%
-                      </small>
-                    </span>
-                    <ArrowLeft className="reader-icon" />
-                  </button>
-                );
-              })}
+      <ReaderSheet open={open} labelId="reader-history-title" onClose={() => setOpen(false)}>
+        <section className="reader-mobile-sheet reader-data-sheet">
+          <header className="reader-data-heading">
+            <div>
+              <span className="ui-section-label">READING TRAIL</span>
+              <h2 id="reader-history-title">跳转历史</h2>
             </div>
-          </section>
-        </ReaderSheet>
-      )}
+            <button
+              type="button"
+              className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
+              aria-label="关闭跳转历史"
+              onClick={() => setOpen(false)}
+            >
+              <X className="reader-icon" />
+            </button>
+          </header>
+          <p>保留最近 50 个跳转位置，刷新后仍可返回。连续滚动和正常分页不会留下记录。</p>
+          {back.length === 0 && <p>还没有可返回的位置。</p>}
+          <div className="reader-history-list">
+            {[...back].reverse().map((entry, ordinal) => {
+              const publication = library.find((item) => item.id === entry.bookId);
+              return (
+                <button
+                  type="button"
+                  key={`${entry.bookId}-${ordinal}`}
+                  onClick={() => {
+                    reader.navigateHistory("back", ordinal + 1);
+                    setOpen(false);
+                  }}
+                >
+                  <span>
+                    <strong>{publication?.title}</strong>
+                    <small>
+                      {
+                        publication?.sections.find(
+                          (section) => section.id === entry.locator.sectionId,
+                        )?.label
+                      }{" "}
+                      · {Math.round(entry.locator.progression * 100)}%
+                    </small>
+                  </span>
+                  <ArrowLeft className="reader-icon" />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      </ReaderSheet>
     </nav>
   );
 }

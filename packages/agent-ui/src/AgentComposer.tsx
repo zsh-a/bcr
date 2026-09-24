@@ -63,12 +63,16 @@ export function AgentComposer({
       <div className="bcr-chat-composer-actions">
         <div className="bcr-chat-composer-meta">{footer}</div>
         {running ? (
-          <button type="button" className="bcr-chat-button" onClick={cancel}>
+          <button type="button" className="ui-btn ui-btn-default ui-btn-lg" onClick={cancel}>
             <Square size={13} aria-hidden="true" />
             停止
           </button>
         ) : (
-          <button type="submit" className="bcr-chat-primary" disabled={disabled || !draft.trim()}>
+          <button
+            type="submit"
+            className="ui-btn ui-btn-primary ui-btn-lg"
+            disabled={disabled || !draft.trim()}
+          >
             <ArrowUp size={16} aria-hidden="true" />
             发送
           </button>

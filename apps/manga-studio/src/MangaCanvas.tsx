@@ -39,7 +39,7 @@ export function MangaCanvas({ state }: { readonly state: MangaState }) {
           </span>
           <button
             type="button"
-            className="manga-icon-button"
+            className="ui-btn ui-btn-ghost ui-icon-btn"
             aria-label="缩小页面"
             onClick={() => setZoom((value) => Math.max(0.55, Number((value - 0.08).toFixed(2))))}
           >
@@ -48,7 +48,7 @@ export function MangaCanvas({ state }: { readonly state: MangaState }) {
           <span className="manga-zoom-value">{Math.round(zoom * 100)}%</span>
           <button
             type="button"
-            className="manga-icon-button"
+            className="ui-btn ui-btn-ghost ui-icon-btn"
             aria-label="放大页面"
             onClick={() => setZoom((value) => Math.min(1.2, Number((value + 0.08).toFixed(2))))}
           >
@@ -56,7 +56,7 @@ export function MangaCanvas({ state }: { readonly state: MangaState }) {
           </button>
           <button
             type="button"
-            className="manga-icon-button"
+            className="ui-btn ui-btn-ghost ui-icon-btn"
             aria-label="重置缩放"
             onClick={() => setZoom(0.82)}
           >
@@ -66,7 +66,6 @@ export function MangaCanvas({ state }: { readonly state: MangaState }) {
       </div>
 
       <div className="manga-canvas-area">
-        <div className="manga-canvas-grid" aria-hidden="true" />
         <div className="manga-canvas-scroll">
           <div className="manga-page-stage" style={{ transform: `scale(${zoom})` }}>
             <div className="manga-page-art">

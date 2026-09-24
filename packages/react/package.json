@@ -6,6 +6,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./theme.css": "./src/theme.css",
+    "./tokens.css": "./src/tokens.css",
+    "./global.css": "./src/global.css",
+    "./ui.css": "./src/ui.css",
     "./base.css": "./src/base.css"
   },
   "dependencies": {

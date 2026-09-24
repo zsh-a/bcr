@@ -1,133 +1,85 @@
+/*
+ * 知识对话框——在 ui-dialog 之上补尺寸与标题排版。
+ * 进出场沿用 ui.css 的 @starting-style + allow-discrete 模式，并补齐 overlay 退场。
+ */
+
 .knowledge-dialog {
   position: fixed;
   inset: 0;
-  margin: auto;
-  padding: 0;
-  width: min(760px, calc(100vw - 48px));
-  max-width: none;
   max-height: min(820px, calc(100dvh - 64px));
   overflow: hidden;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 20px;
-  box-shadow: var(--shadow-dialog);
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard),
+    display var(--duration-base) allow-discrete,
+    overlay var(--duration-base) allow-discrete;
 }
+
+/* 桌面居中宽卡；小屏交给 ui-dialog-sheet 的底部抽屉形态。 */
+@media (min-width: 641px) {
+  .knowledge-dialog {
+    width: min(760px, calc(100vw - 48px));
+    max-width: none;
+    margin: auto;
+  }
+}
+
 .knowledge-dialog::backdrop {
   background: var(--color-scrim);
-  backdrop-filter: blur(5px);
 }
-.knowledge-dialog[open] {
-  animation: knowledge-dialog-enter 180ms ease-out;
-}
-.knowledge-dialog-surface {
-  display: flex;
-  flex-direction: column;
+
+.knowledge-dialog .ui-dialog-frame {
   max-height: min(820px, calc(100dvh - 64px));
 }
+
+.knowledge-dialog .ui-dialog-head {
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-6);
+}
+
 .knowledge-dialog-heading {
   display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 24px 28px;
-  border-bottom: 1px solid var(--color-border);
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
 }
-.knowledge-dialog-heading span {
-  font-size: 12px;
-  color: var(--color-muted);
-}
-.knowledge-dialog-heading h2 {
-  font-size: 22px;
-  margin: 4px 0 0;
-  font-weight: 600;
-}
-.knowledge-dialog-heading button {
-  min-width: 44px;
-  min-height: 44px;
-}
-.knowledge-dialog-body {
-  overflow-y: auto;
+
+.knowledge-dialog .ui-dialog-body {
+  padding: var(--space-6);
   overscroll-behavior: contain;
-  min-height: 0;
-  padding: 24px 28px 28px;
-  scrollbar-gutter: stable;
 }
+
+/* 面板放进对话框时去掉卡片外壳，由对话框提供层级。 */
 .knowledge-dialog .knowledge-panel {
   margin: 0;
   padding: 0;
   border: 0;
+  border-radius: 0;
   background: transparent;
   max-width: none;
 }
+
 .knowledge-dialog .knowledge-panel > header {
   display: none;
 }
+
 .knowledge-dialog .knowledge-panel > p:first-of-type {
   margin-top: 0;
 }
-.knowledge-dialog .knowledge-panel p {
-  font-size: 14px;
-  line-height: 1.7;
-}
-.knowledge-dialog .knowledge-panel input:not([type="checkbox"]):not([type="radio"]),
-.knowledge-dialog .knowledge-button {
-  min-height: 44px;
-}
-.knowledge-dialog .knowledge-checkbox {
-  min-height: 44px;
-}
-.knowledge-dialog button[type="submit"] {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  border-color: var(--color-accent);
-}
+
 .knowledge-dialog .knowledge-history-list {
   max-height: none;
 }
+
 .knowledge-dialog .knowledge-history-list button {
-  padding: 14px 16px;
-  min-height: 64px;
-  border-radius: 10px;
+  padding: var(--space-3) var(--space-4);
+  min-height: var(--h-control-lg);
+  border-radius: var(--radius-sm);
 }
-.knowledge-dialog :focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 3px;
-}
-@keyframes knowledge-dialog-enter {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@media (max-width: 600px) {
-  .knowledge-dialog {
-    width: 100%;
-    margin: auto 0 0;
-    max-height: calc(100dvh - 16px);
-    border-radius: 20px 20px 0 0;
-  }
-  .knowledge-dialog-surface {
-    max-height: calc(100dvh - 16px);
-  }
-  .knowledge-dialog-heading {
-    padding: 20px;
-  }
-  .knowledge-dialog-body {
-    padding: 20px 20px max(24px, env(safe-area-inset-bottom));
-  }
-  .knowledge-dialog .knowledge-panel input:not([type="checkbox"]):not([type="radio"]),
-  .knowledge-dialog select {
-    font-size: 16px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .knowledge-dialog[open] {
-    animation: none;
+
+@media (max-width: 640px) {
+  .knowledge-dialog .ui-dialog-body {
+    padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
   }
 }

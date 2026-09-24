@@ -179,13 +179,12 @@ export function readerLineWidth(settings: ReaderSettings): number {
 
 export function readerTypographyStyle(settings: ReaderSettings): Record<string, string | number> {
   return {
-    "--reader-reader-font-family": readerFontStack(settings),
-    "--reader-reader-font-size": `${settings.fontSize}px`,
-    "--reader-reader-line-height": settings.lineHeight,
-    "--reader-reader-font-weight":
-      settings.fontFamily === "kai" ? 400 : (settings.fontWeight ?? 400),
-    "--reader-paragraph-spacing": `${settings.paragraphSpacing ?? 0.65}em`,
-    "--reader-line-length": `${readerLineWidth(settings)}px`,
+    "--read-font-family": readerFontStack(settings),
+    "--read-font-size": `${settings.fontSize}px`,
+    "--read-line-height": settings.lineHeight,
+    "--read-font-weight": settings.fontFamily === "kai" ? 400 : (settings.fontWeight ?? 400),
+    "--read-paragraph-spacing": `${settings.paragraphSpacing ?? 0.65}em`,
+    "--read-line-length": `${readerLineWidth(settings)}px`,
   };
 }
 

@@ -11,14 +11,14 @@ import {
 } from "../management";
 import type { SearchIndex } from "@bcr/core";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { SectionLabel } from "@bcr/react";
 import { ResearchPackagePanel } from "./ResearchPackagePanel";
 import { ResearchReview } from "./ResearchReview";
 import { ResearchBackupPanel } from "./ResearchBackupPanel";
 import type { ResearchCollection, ResearchExcerpt, ResearchLibrary, ResearchStore } from "../index";
 import { exportResearch, assessExcerpt, type ExcerptStatus } from "../index";
 
-const button =
-  "rounded border border-border px-3 py-1.5 text-[11px] text-muted hover:border-accent hover:text-accent disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-accent";
+const button = "ui-btn ui-btn-default ui-btn-sm";
 export function ResearchPanel(props: {
   readonly focus?:
     | { excerpt: string; field: "note" | "text"; start?: number; end?: number; exact?: string }
@@ -146,14 +146,14 @@ export function ResearchPanel(props: {
           maxLength={120}
           value={name}
           onChange={(event) => setName(event.target.value)}
-          className="min-w-0 flex-1 rounded border border-border bg-surface px-3 py-2 text-[12px] text-text"
+          className="ui-input min-w-0 flex-1"
         />
         <button className={button} disabled={props.busy || !name.trim()}>
           创建集合
         </button>
       </form>
       <div className="flex flex-wrap items-center gap-2 border-y border-border py-3">
-        <label className="text-[11px] text-faint" htmlFor="research-collection">
+        <label className="text-xs text-faint" htmlFor="research-collection">
           当前集合
         </label>
         <select
@@ -164,7 +164,7 @@ export function ResearchPanel(props: {
             setEditing(false);
             setDeleting(false);
           }}
-          className="min-w-0 flex-1 rounded bg-surface p-2 text-[12px] text-text"
+          className="ui-select min-w-0 flex-1"
         >
           {!collection && <option value="">请选择集合</option>}
           {props.library.collections.map((item) => (
@@ -222,7 +222,7 @@ export function ResearchPanel(props: {
             >
               <input
                 aria-label="集合新名称"
-                className="min-w-0 rounded bg-surface p-2 text-text"
+                className="ui-input min-w-0"
                 maxLength={120}
                 value={rename}
                 onChange={(event) => setRename(event.target.value)}
@@ -236,7 +236,7 @@ export function ResearchPanel(props: {
             </form>
           )}
           {deleting && (
-            <div role="alert" className="w-full space-y-2 text-[12px] text-muted">
+            <div role="alert" className="w-full space-y-2 text-sm text-muted">
               <p>
                 删除「{collection.name}」及其中 {collection.excerpts.length}{" "}
                 条摘录和笔记？源文件仍会保留。
@@ -275,7 +275,7 @@ export function ResearchPanel(props: {
         run={props.run}
       />
       {cleanupError && (
-        <p role="alert" className="py-2 text-[11px] text-danger">
+        <p role="alert" className="py-2 text-xs text-danger">
           {cleanupError}
           <button type="button" className={button} disabled={props.busy} onClick={cleanup}>
             重试清理草稿
@@ -287,7 +287,7 @@ export function ResearchPanel(props: {
           {exportError}
         </p>
       )}
-      <p className="py-3 text-[11px] leading-5 text-faint">
+      <p className="py-3 text-xs leading-5 text-faint">
         在「工作区搜索」中选择正文结果，保存到当前集合。摘录保留保存时的正文与来源；个人笔记草稿保留在当前浏览器；点击保存后写入资料库。Markdown
         仅导出已保存的笔记。
       </p>
@@ -297,11 +297,11 @@ export function ResearchPanel(props: {
           placeholder="在标题、正文和笔记中查找…"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          className="mb-3 w-full rounded border border-border bg-surface px-3 py-2 text-[12px] text-text"
+          className="ui-input mb-3 w-full"
         />
       )}
       {collection && (
-        <div className="mb-3 space-y-2 text-[11px] text-muted">
+        <div className="mb-3 space-y-2 text-xs text-muted">
           <div className="flex flex-wrap gap-2">
             <label className="flex min-w-0 flex-1 items-center gap-2">
               引用状态
@@ -309,7 +309,7 @@ export function ResearchPanel(props: {
                 aria-label="引用状态筛选"
                 value={stateFilter}
                 onChange={(event) => setStateFilter(event.target.value as typeof stateFilter)}
-                className="min-w-0 flex-1 rounded bg-surface p-2 text-text"
+                className="ui-select min-w-0 flex-1"
               >
                 <option value="all">全部状态</option>
                 <option value="unverified">待核验</option>
@@ -334,7 +334,7 @@ export function ResearchPanel(props: {
           {checked && <p role="status">{checked}</p>}
         </div>
       )}
-      <div className="max-h-[40vh] space-y-3 overflow-auto" aria-label="集合摘录">
+      <div className="max-h-96 space-y-3 overflow-auto" aria-label="集合摘录">
         {matches.map((item) => (
           <ExcerptCard
             key={`${props.selected}:${item.id}`}
@@ -390,7 +390,7 @@ export function ResearchPanel(props: {
           />
         ))}
         {matches.length === 0 && (
-          <p className="py-8 text-center text-[12px] text-muted">
+          <p className="py-8 text-center text-sm text-muted">
             {collection ? "暂无匹配摘录" : "创建一个集合，开始整理资料"}
           </p>
         )}
@@ -477,12 +477,12 @@ function ExcerptCard(props: {
       ref={article}
       tabIndex={-1}
       data-research-focused={props.focus ? "true" : undefined}
-      className="rounded border border-border bg-surface p-3 focus:outline-2 focus:outline-accent"
+      className="rounded-md border border-border bg-surface p-3"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-[13px] font-medium text-text">{props.item.title}</h3>
-          <p className="mt-1 text-[10px] text-faint">{props.item.source}</p>
+          <h3 className="text-base font-medium text-text">{props.item.title}</h3>
+          <p className="mt-1 text-xs text-faint">{props.item.source}</p>
         </div>
         <button
           type="button"
@@ -495,29 +495,29 @@ function ExcerptCard(props: {
       </div>
       <p
         data-citation-status={props.status.state}
-        className="mt-2 text-[11px] text-muted"
+        className="mt-2 text-xs text-muted"
         role="status"
       >
         {props.status.label}
       </p>
       {props.item.citation && (
-        <p className="mt-1 font-mono text-[10px] text-faint">
+        <p className="mt-1 font-mono text-xs text-faint">
           保存快照版本 {props.item.citation.source.version.slice(0, 12)}
         </p>
       )}
       {props.item.links?.at(-1) && (
-        <p className="mt-1 text-[11px] text-muted">
+        <p className="mt-1 text-xs text-muted">
           当前关联：{props.item.links.at(-1)!.source} · 版本{" "}
           {props.item.links.at(-1)!.citation.source.version.slice(0, 12)}
         </p>
       )}
-      <p className="mt-3 text-[10px] text-faint">来源正文快照</p>
-      <blockquote className="my-3 max-h-36 overflow-auto whitespace-pre-wrap border-l-2 border-accent/50 pl-3 text-[12px] leading-6 text-muted">
+      <SectionLabel>来源正文快照</SectionLabel>
+      <blockquote className="my-3 max-h-36 overflow-auto whitespace-pre-wrap border-l border-accent/50 pl-3 text-sm leading-6 text-muted">
         {highlight("text")}
       </blockquote>
       {props.focus?.field === "note" && (
-        <div className="mb-3 text-[12px] text-muted">
-          <p className="mb-1 text-[10px] text-faint">已保存笔记 · 搜索命中</p>
+        <div className="mb-3 text-sm text-muted">
+          <SectionLabel>已保存笔记 · 搜索命中</SectionLabel>
           <p
             aria-label="已保存笔记命中"
             className="max-h-36 overflow-auto whitespace-pre-wrap leading-6"
@@ -545,7 +545,7 @@ function ExcerptCard(props: {
           rows={2}
           maxLength={12000}
           placeholder="个人笔记：写下你的理解…"
-          className="w-full resize-y rounded border border-border bg-raised p-2 text-[12px] text-text"
+          className="ui-textarea w-full"
         />
         <div className="mt-2 flex items-center gap-2">
           <button
@@ -558,7 +558,7 @@ function ExcerptCard(props: {
           >
             保存笔记
           </button>
-          <span className="flex-1 text-[10px] text-faint">
+          <span className="flex-1 text-xs text-faint">
             {note === props.item.note ? "已保存" : "笔记尚未保存"}
           </span>
           <button type="button" className={button} disabled={props.busy} onClick={props.onRemove}>
@@ -567,7 +567,7 @@ function ExcerptCard(props: {
         </div>
       </form>
       {draftError && (
-        <p role="alert" className="mt-2 text-[11px] text-danger">
+        <p role="alert" className="mt-2 text-xs text-danger">
           {draftError}
           <button
             type="button"
@@ -598,7 +598,7 @@ function ExcerptCard(props: {
         <div className="mt-3 flex gap-2">
           <select
             aria-label={`移动目标：${props.item.title}`}
-            className="min-w-0 flex-1 rounded bg-raised p-2 text-[11px] text-text"
+            className="ui-select min-w-0 flex-1"
             value={target}
             onChange={(event) => setTarget(event.target.value)}
           >

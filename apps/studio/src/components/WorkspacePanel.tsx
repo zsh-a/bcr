@@ -3,9 +3,8 @@ import { AudioWaveform, Hash, Upload } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { importFile, runTask } from "../runtime";
 import { useSelection } from "../router";
-import { useRuntime } from "@bcr/react";
 import { useStudio } from "../store";
-import { Badge, Button, formatBytes, PanelEmpty } from "./ui";
+import { Badge, Button, formatBytes, PanelEmpty, useRuntime } from "@bcr/react";
 
 /**
  * Workspace 中央面板：文件操作 + 波形视口。
@@ -100,7 +99,7 @@ export function WorkspacePanel() {
   if (file === undefined) {
     return (
       <div className="h-full p-3" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
-        <div className="flex h-full flex-col items-center justify-center gap-3 rounded-[var(--radius-md)] border border-dashed border-border-strong">
+        <div className="flex h-full flex-col items-center justify-center gap-3 rounded-md border border-dashed border-border-strong">
           <Upload className="size-5 text-faint" />
           <PanelEmpty
             title="拖入文件，或从左侧项目文件导入"
@@ -115,8 +114,8 @@ export function WorkspacePanel() {
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[12px] font-medium text-text">{file.name}</div>
-          <div className="font-mono text-[10px] text-faint">
+          <div className="truncate text-sm font-medium text-text">{file.name}</div>
+          <div className="font-mono text-xs text-faint">
             {formatBytes(file.size)} · {file.ref.type} · opfs
           </div>
         </div>
@@ -134,11 +133,11 @@ export function WorkspacePanel() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
-        <div className="relative min-h-0 flex-1 overflow-hidden rounded-[var(--radius-md)] border border-border bg-surface">
+        <div className="relative min-h-0 flex-1 overflow-hidden rounded-md border border-border bg-surface">
           <canvas ref={canvasRef} className="absolute inset-0 size-full" />
           {!waveformDone && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <p className="text-[11px] text-faint">
+              <p className="text-xs text-faint">
                 运行「提取波形」后在此渲染（Worker + OffscreenCanvas）
               </p>
             </div>
@@ -150,19 +149,17 @@ export function WorkspacePanel() {
           )}
         </div>
 
-        <div className="shrink-0 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2">
-          <div className="mb-1 font-mono text-[10px] tracking-[0.08em] text-faint uppercase">
-            BLAKE3
-          </div>
+        <div className="shrink-0 rounded-md border border-border bg-surface px-3">
+          <div className="ui-section-label -mx-3">BLAKE3</div>
           {hashTask?.outputs?.[0]?.hash !== undefined ? (
-            <div className="flex items-center gap-2">
-              <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-accent">
+            <div className="flex items-center gap-2 pb-2">
+              <code className="min-w-0 flex-1 truncate font-mono text-xs text-accent">
                 {hashTask.outputs[0].hash}
               </code>
               {hashTask.cached && <Badge tone="amber">cache hit</Badge>}
             </div>
           ) : (
-            <p className="text-[11px] text-faint">尚未计算</p>
+            <p className="pb-2 text-xs text-faint">尚未计算</p>
           )}
         </div>
       </div>

@@ -6,7 +6,6 @@ import {
   Flame,
   History,
   Image as ImageIcon,
-  Loader2,
   Shuffle,
   Wifi,
   Zap,
@@ -30,6 +29,7 @@ import {
   type PhotoScene,
 } from "@bcr/docgen-core";
 import type { GeneratedBill } from "@bcr/docgen-core/dom";
+import { Skeleton, Spinner } from "@bcr/react";
 import "./styles.css";
 
 const KIND_ICONS: Record<BillKind, LucideIcon> = {
@@ -82,7 +82,8 @@ export function App() {
   const [entries, setEntries] = useState<ReadonlyArray<GeneratedEntry>>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [previewTab, setPreviewTab] = useState<"document" | "paper">("document");
-  const [toast, setToast] = useState<string | null>(null);
+  const [toastText, setToastText] = useState("");
+  const [toastOpen, setToastOpen] = useState(false);
 
   const template = getTemplate(docType) ?? listTemplates(regionId)[0];
   const region = REGIONS.find((r) => r.id === regionId);
@@ -103,11 +104,16 @@ export function App() {
     };
   }, [active]);
 
+  // 浮层提示：常驻 DOM 以便退场过渡，展示 4200ms 后收起
+  const showToast = (text: string): void => {
+    setToastText(text);
+    setToastOpen(true);
+  };
   useEffect(() => {
-    if (toast === null) return;
-    const timer = setTimeout(() => setToast(null), 4200);
+    if (!toastOpen) return;
+    const timer = setTimeout(() => setToastOpen(false), 4200);
     return () => clearTimeout(timer);
-  }, [toast]);
+  }, [toastText, toastOpen]);
 
   const selectRegion = (id: RegionId): void => {
     setRegionId(id);
@@ -130,7 +136,7 @@ export function App() {
     const validation = validateBillInput(template, input);
     setErrors(validation.errors);
     if (!validation.ok) {
-      setToast("表单校验未通过，请检查标红字段");
+      showToast("表单校验未通过，请检查标红字段");
       return;
     }
     setGenerating(true);
@@ -149,7 +155,7 @@ export function App() {
       setEntries((prev) => [entry, ...prev].slice(0, 12));
       setActiveId(entry.id);
     } catch (error) {
-      setToast(`生成失败：${error instanceof Error ? error.message : String(error)}`);
+      showToast(`生成失败：${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setGenerating(false);
     }
@@ -174,7 +180,7 @@ export function App() {
         ),
       );
     } catch (error) {
-      setToast(`重新渲染失败：${error instanceof Error ? error.message : String(error)}`);
+      showToast(`重新渲染失败：${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setGenerating(false);
     }
@@ -204,12 +210,12 @@ export function App() {
 
   return (
     <div className="docgen-studio">
-      <header className="flex items-center gap-4 border-b border-border bg-surface/95 px-5 py-3">
-        <div className="flex items-center gap-2 font-semibold tracking-tight">
+      <header className="docgen-header">
+        <div className="flex shrink-0 items-center gap-2 whitespace-nowrap font-semibold">
           <FileBadge size={20} className="text-accent" />
           DocGen Lab
         </div>
-        <div className="flex items-center gap-1">
+        <div className="docgen-tab-group flex items-center gap-1">
           {REGIONS.map((r) => (
             <button
               key={r.id}
@@ -223,7 +229,7 @@ export function App() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1 border-l border-border pl-4">
+        <div className="docgen-tab-group flex items-center gap-1 border-l border-border pl-4">
           {listTemplates(regionId).map((t) => {
             const Icon = KIND_ICONS[t.kind];
             return (
@@ -243,16 +249,19 @@ export function App() {
             );
           })}
         </div>
-        <div className="ml-auto text-xs text-faint">{region?.description ?? ""}</div>
+        <div className="ml-auto shrink-0 whitespace-nowrap pl-4 text-xs text-faint">
+          {region?.description ?? ""}
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="flex w-[380px] flex-none flex-col gap-4 overflow-y-auto border-r border-border p-5">
+        <aside className="flex w-[var(--w-sidebar)] flex-none flex-col gap-4 overflow-y-auto border-r border-border p-5">
           <div>
             <label className="mb-1 block text-sm text-muted">
               客户姓名 <span className="text-danger">*</span>
             </label>
             <input
+              className="ui-input w-full"
               value={name}
               placeholder="Elin Sorensen"
               aria-invalid={errors["name"] !== undefined}
@@ -273,6 +282,7 @@ export function App() {
                 {field.required && <span className="text-danger"> *</span>}
               </label>
               <input
+                className="ui-input w-full"
                 value={address[field.key] ?? ""}
                 placeholder={field.placeholder}
                 aria-invalid={errors[field.key] !== undefined}
@@ -292,15 +302,20 @@ export function App() {
             <label className="mb-1 block text-sm text-muted">账单日期</label>
             <div className="flex items-center gap-2">
               <select
+                className="ui-select"
                 value={dateAuto ? "auto" : "manual"}
                 onChange={(e) => setDateAuto(e.target.value === "auto")}
-                style={{ width: "auto" }}
               >
                 <option value="auto">自动（当天）</option>
                 <option value="manual">手动</option>
               </select>
               {!dateAuto && (
-                <input type="date" value={billDate} onChange={(e) => setBillDate(e.target.value)} />
+                <input
+                  className="ui-input flex-1"
+                  type="date"
+                  value={billDate}
+                  onChange={(e) => setBillDate(e.target.value)}
+                />
               )}
             </div>
             {errors["billDate"] !== undefined && errors["billDate"] !== "" && (
@@ -314,6 +329,7 @@ export function App() {
             </label>
             <select
               id="photo-scene"
+              className="ui-select w-full"
               value={photoScene}
               disabled={generating}
               onChange={(event) => setPhotoScene(event.target.value as PhotoScene)}
@@ -327,21 +343,17 @@ export function App() {
           </div>
 
           <div className="flex gap-2">
-            <button type="button" className="btn" onClick={fillRandomAddress}>
+            <button type="button" className="ui-btn ui-btn-default" onClick={fillRandomAddress}>
               <Shuffle size={15} />
               随机地址
             </button>
             <button
               type="button"
-              className="btn btn-primary flex-1"
+              className="ui-btn ui-btn-primary flex-1"
               disabled={generating}
               onClick={() => void generate()}
             >
-              {generating ? (
-                <Loader2 size={15} className="animate-spin" />
-              ) : (
-                <FileBadge size={15} />
-              )}
+              {generating ? <Spinner size="sm" label="生成中" /> : <FileBadge size={15} />}
               {generating ? "生成中…" : "生成预览"}
             </button>
           </div>
@@ -408,7 +420,7 @@ export function App() {
             <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
-                className="btn"
+                className="ui-btn ui-btn-default"
                 disabled={urls === null || active === null}
                 onClick={() => {
                   if (urls !== null && active !== null) {
@@ -421,7 +433,7 @@ export function App() {
               </button>
               <button
                 type="button"
-                className="btn"
+                className="ui-btn ui-btn-default"
                 disabled={urls === null || active === null}
                 onClick={() => {
                   if (urls !== null && active !== null) {
@@ -437,9 +449,9 @@ export function App() {
 
           <div className="docgen-preview-frame relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-6">
             {generating && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-bg/60 backdrop-blur-sm">
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-scrim">
                 <div className="flex items-center gap-2 text-muted">
-                  <Loader2 size={18} className="animate-spin" />
+                  <Spinner label="正在栅格化与合成" />
                   正在栅格化与合成…
                 </div>
               </div>
@@ -448,13 +460,21 @@ export function App() {
               <img
                 src={activeUrl}
                 alt={previewTab === "document" ? "账单预览" : "实拍合成预览"}
-                className="max-h-full max-w-full rounded-sm object-contain shadow-2xl"
+                className="docgen-preview-image max-h-full max-w-full object-contain"
               />
             ) : (
-              <div className="text-center text-faint">
-                <FileBadge size={40} className="mx-auto mb-3 opacity-40" />
-                填写左侧表单后点击「生成预览」
-                <div className="mt-1 text-xs">同一姓名 + 地址将生成完全一致的虚构账单</div>
+              <div className="flex flex-col items-center gap-4 text-center text-faint">
+                <div className="flex w-60 flex-col gap-3">
+                  <Skeleton style={{ height: 20, width: "60%" }} />
+                  <Skeleton style={{ height: 11, width: "85%" }} />
+                  <Skeleton style={{ height: 11, width: "70%" }} />
+                  <Skeleton style={{ height: 96 }} />
+                  <Skeleton style={{ height: 11, width: "45%", marginLeft: "auto" }} />
+                </div>
+                <div>
+                  填写左侧表单后点击「生成预览」
+                  <div className="mt-1 text-xs">同一姓名 + 地址将生成完全一致的虚构账单</div>
+                </div>
               </div>
             )}
           </div>
@@ -466,7 +486,9 @@ export function App() {
         </main>
       </div>
 
-      {toast !== null && <div className="docgen-toast">{toast}</div>}
+      <div className="docgen-toast" data-open={toastOpen || undefined}>
+        {toastText}
+      </div>
     </div>
   );
 }

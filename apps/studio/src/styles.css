@@ -1,119 +1,101 @@
 @import "tailwindcss";
 @import "@bcr/react/theme.css";
 
-/* BCR Studio — Market Atlas 同源的现代编辑式计算工作台。 */
+/* BCR Studio — quiet editorial 计算工作台。
+ * chrome 一律消费统一令牌；圆角/间距/字号/动效禁止字面量（hairline 边框、100%/auto 除外）。 */
 
+/* ---------- App 级顶栏 ---------- */
 .studio-topbar {
   position: relative;
   z-index: 30;
   min-width: 0;
-  background: color-mix(in srgb, var(--color-bg) 94%, transparent);
-  backdrop-filter: blur(20px);
+  height: var(--h-topbar);
+  background: var(--color-bg);
 }
 
+/* 阅读器全屏（独立窗口 / 窄屏）时让出顶栏；overlay 不改变内容视口几何。 */
 @media (display-mode: standalone) {
   .studio-shell-frame.reader-active > .studio-topbar {
     display: none;
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 53.75em) {
   .studio-shell-frame.reader-active > .studio-topbar {
     display: none;
   }
 }
 
+/* 顶栏图标按钮统一 --h-control-lg 触控区。 */
+.studio-topbar .ui-icon-btn {
+  width: var(--h-control-lg);
+  height: var(--h-control-lg);
+}
+
+/* 运行时眉标：复用 ui-section-label，嵌入顶栏时去掉内边距。 */
+.studio-topbar .studio-runtime-label {
+  padding: 0;
+}
+
+/* ---------- 启动台 ---------- */
+.studio-home {
+  background: var(--color-bg);
+}
+
+.studio-home-inner {
+  max-width: var(--content-max);
+}
+
+/* 启动台卡片：hairline + 背景层叠，hover 只做颜色/边框变化，无光晕。 */
+.home-app-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+}
+
+.home-app-card:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-raised);
+}
+
+/* ---------- Dock 工作区外壳 ---------- */
 .studio-dock-shell {
   position: relative;
   height: 100%;
   min-height: 0;
 }
 
+/* 移动端面板抽屉：桌面隐藏，窄屏媒体查询里以 data-open 进出场。 */
 .studio-mobile-panel-trigger,
 .studio-mobile-panel-backdrop,
 .studio-mobile-panel-surface {
   display: none;
 }
 
-.studio-home {
-  background: var(--color-bg);
+/* ---------- 浮层尺寸（ui-dialog 基座上的表面特化） ---------- */
+.studio-command-palette .ui-dialog-body,
+.studio-search-dialog .ui-dialog-body {
+  padding: 0;
 }
 
-.home-app-card {
-  overflow: hidden;
-  box-shadow: var(--shadow-floating);
+.studio-search-dialog {
+  max-width: min(var(--content-max), calc(100vw - 2 * var(--space-7)));
 }
 
-.home-app-card::after {
-  position: absolute;
-  right: -32px;
-  bottom: -52px;
-  width: 150px;
-  height: 150px;
-  border: 1px solid color-mix(in srgb, var(--color-accent) 18%, transparent);
-  border-radius: 50%;
-  content: "";
-  opacity: 0;
-  transform: scale(0.8);
-  transition:
-    opacity 220ms ease,
-    transform 220ms ease;
+.studio-search-results {
+  max-height: min(28rem, 55vh);
 }
 
-.home-app-card:hover::after {
-  opacity: 1;
-  transform: none;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
-button {
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 3px;
-}
-
-::selection {
-  background: var(--color-selection);
-  color: var(--color-text);
-}
-
-/* 细滚动条——工作站质感 */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border-strong) transparent;
-}
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-*::-webkit-scrollbar-thumb {
-  background: var(--color-border-strong);
-  border-radius: 4px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-/* ============ Dockview 主题覆盖（themeAbyss 为底，压到 Rhea 密度） ============ */
+/* ============ Dockview 主题覆盖（themeAbyss 为底，映射到统一令牌） ============ */
 .studio-dock {
   --dv-background-color: var(--color-bg);
   --dv-group-view-background-color: var(--color-surface);
   --dv-tabs-and-actions-container-background-color: var(--color-bg);
-  --dv-tabs-and-actions-container-height: 42px;
-  --dv-tabs-and-actions-container-font-size: 12px;
+  --dv-tabs-and-actions-container-height: var(--h-toolbar);
+  --dv-tabs-and-actions-container-font-size: var(--text-sm);
   --dv-activegroup-visiblepanel-tab-background-color: var(--color-surface);
   --dv-activegroup-hiddenpanel-tab-background-color: transparent;
   --dv-inactivegroup-visiblepanel-tab-background-color: var(--color-surface);
@@ -131,7 +113,7 @@ textarea:focus-visible {
   --dv-tabs-and-actions-container-border-bottom: var(--color-border);
   --dv-active-sash-color: var(--color-accent);
   --dv-sash-color: transparent;
-  --dv-sash-hover-size: 4px;
+  --dv-sash-hover-size: var(--space-1);
 }
 
 .studio-dock .dv-dockview {
@@ -142,13 +124,22 @@ textarea:focus-visible {
   border-bottom: 1px solid var(--color-border);
 }
 
+/* tab：控件圆角 + hairline；活动 tab 以 accent hairline 标识。 */
 .studio-dock .dv-tab {
   font-family: var(--font-sans);
-  letter-spacing: 0.01em;
 }
 
-.studio-dock .dv-tab-content {
-  padding: 0 14px;
+.studio-dock .dv-tab .dv-default-tab {
+  border-bottom: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.studio-dock .dv-tab.dv-active-tab .dv-default-tab {
+  border-bottom-color: var(--color-accent);
+}
+
+.studio-dock .dv-tab .dv-default-tab-content {
+  padding: 0 var(--space-3);
 }
 
 /* 面板内容充满容器 */
@@ -160,51 +151,39 @@ textarea:focus-visible {
 @keyframes studio-in {
   from {
     opacity: 0;
-    transform: translateY(3px);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
 
 .studio-enter {
-  animation: studio-in 160ms ease-out both;
+  animation: studio-in var(--duration-base) var(--ease-standard) both;
 }
 
-@keyframes pulse-dot {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
-
-.pulse-dot {
-  animation: pulse-dot 1.1s ease-in-out infinite;
-}
-
-@media (max-width: 1200px) {
-  .studio-runtime-label,
-  .studio-system-status,
-  .studio-storage-status {
+/* ============ 响应式 ============ */
+@media (max-width: 75em) {
+  /* 提升特异性：.ui-btn 的 display 同级且更晚加载。 */
+  .studio-topbar .studio-runtime-label,
+  .studio-topbar .studio-system-status,
+  .studio-topbar .studio-storage-status {
     display: none;
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 47.5em) {
   body {
-    font-size: 16px;
+    /* 阻止 iOS 聚焦缩放。 */
+    font-size: var(--text-lg);
   }
 
   .studio-topbar {
-    gap: 10px;
-    min-height: 64px;
+    gap: var(--space-3);
+    height: auto;
+    min-height: var(--h-topbar);
     padding-top: env(safe-area-inset-top);
-    padding-right: max(10px, env(safe-area-inset-right));
-    padding-left: max(10px, env(safe-area-inset-left));
+    padding-right: max(var(--space-3), env(safe-area-inset-right));
+    padding-left: max(var(--space-3), env(safe-area-inset-left));
   }
 
   .studio-topbar-brand-copy {
@@ -214,8 +193,8 @@ textarea:focus-visible {
   }
 
   .studio-topbar-action {
-    width: 44px;
-    min-width: 44px;
+    width: var(--h-control-lg);
+    min-width: var(--h-control-lg);
     justify-content: center;
     padding-right: 0;
     padding-left: 0;
@@ -225,14 +204,8 @@ textarea:focus-visible {
     display: none;
   }
 
-  .studio-runtime-label,
-  .studio-system-status,
-  .studio-storage-status {
-    display: none;
-  }
-
   .studio-home {
-    padding: 40px 18px;
+    padding: var(--space-8) var(--space-5);
   }
 
   .home-app-grid {
@@ -240,60 +213,90 @@ textarea:focus-visible {
   }
 
   .home-app-card {
-    min-height: 220px;
-    padding: 24px;
+    padding: var(--space-6);
   }
 
   .studio-dock button {
-    min-height: 44px;
+    min-height: var(--h-control-lg);
   }
 
   .studio-mobile-panel-trigger {
     position: absolute;
-    top: 10px;
-    left: max(10px, env(safe-area-inset-left));
+    top: var(--space-3);
+    left: max(var(--space-3), env(safe-area-inset-left));
     z-index: 24;
     display: inline-flex;
-    min-height: 44px;
+    min-height: var(--h-control-lg);
     align-items: center;
-    gap: 7px;
-    border: 1px solid var(--color-border-strong);
+    gap: var(--space-2);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--color-raised) 94%, transparent);
-    padding: 0 12px;
+    background: var(--color-raised);
+    padding: 0 var(--space-3);
     color: var(--color-muted);
     font-family: var(--font-mono);
-    font-size: 11px;
-    box-shadow: var(--shadow-floating);
+    font-size: var(--text-xs);
   }
 
   .studio-mobile-panel-trigger:hover {
-    border-color: var(--color-accent);
+    border-color: var(--color-border-strong);
     color: var(--color-text);
   }
 
+  /* 抽屉进出场：@starting-style + allow-discrete，位移与时长走令牌。 */
   .studio-mobile-panel-backdrop {
     position: absolute;
     z-index: 25;
     inset: 0;
-    display: block;
     border: 0;
     background: var(--color-scrim);
-    backdrop-filter: blur(2px);
+    opacity: 0;
+    transition:
+      opacity var(--duration-base) var(--ease-standard),
+      display var(--duration-base) allow-discrete;
+  }
+
+  .studio-mobile-panel-backdrop[data-open] {
+    display: block;
+    opacity: 1;
+  }
+
+  @starting-style {
+    .studio-mobile-panel-backdrop[data-open] {
+      opacity: 0;
+    }
   }
 
   .studio-mobile-panel-surface {
     position: absolute;
     z-index: 26;
     inset: 0 auto 0 0;
-    display: flex;
-    width: min(360px, calc(100% - 16px));
-    min-width: 0;
     flex-direction: column;
-    border-right: 1px solid var(--color-border-strong);
+    width: min(var(--w-sidebar), calc(100% - var(--space-4)));
+    min-width: 0;
+    border-right: 1px solid var(--color-border);
     background: var(--color-surface);
     padding-bottom: env(safe-area-inset-bottom);
     box-shadow: var(--shadow-dialog);
+    opacity: 0;
+    transform: translateX(-100%);
+    transition:
+      opacity var(--duration-slow) var(--ease-standard),
+      transform var(--duration-slow) var(--ease-standard),
+      display var(--duration-slow) allow-discrete;
+  }
+
+  .studio-mobile-panel-surface[data-open] {
+    display: flex;
+    opacity: 1;
+    transform: none;
+  }
+
+  @starting-style {
+    .studio-mobile-panel-surface[data-open] {
+      opacity: 0;
+      transform: translateX(-100%);
+    }
   }
 
   .studio-mobile-panel-header,
@@ -304,19 +307,20 @@ textarea:focus-visible {
   }
 
   .studio-mobile-panel-header {
-    min-height: 52px;
+    min-height: var(--h-toolbar);
     justify-content: space-between;
-    padding: 0 12px 0 16px;
+    padding: 0 var(--space-2) 0 var(--space-4);
     color: var(--color-faint);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.08em;
+  }
+
+  .studio-mobile-panel-header .ui-section-label {
+    padding: 0;
   }
 
   .studio-mobile-panel-close {
     display: inline-grid;
-    width: 44px;
-    height: 44px;
+    width: var(--h-control-lg);
+    height: var(--h-control-lg);
     place-items: center;
     border: 0;
     border-radius: var(--radius-sm);
@@ -330,18 +334,18 @@ textarea:focus-visible {
   }
 
   .studio-mobile-panel-tabs {
-    gap: 4px;
-    padding: 6px;
+    gap: var(--space-1);
+    padding: var(--space-2);
   }
 
   .studio-mobile-panel-tabs button {
-    min-height: 40px;
+    min-height: var(--h-control-lg);
     flex: 1;
     border: 1px solid transparent;
-    border-radius: var(--radius-xs);
+    border-radius: var(--radius-sm);
     background: transparent;
     color: var(--color-muted);
-    font-size: 12px;
+    font-size: var(--text-sm);
   }
 
   .studio-mobile-panel-tabs button.is-active {
@@ -355,6 +359,8 @@ textarea:focus-visible {
     flex: 1;
   }
 
+  /* 窄屏只留 Workspace 列，两侧列移入抽屉。
+   * dockview 会把 width/left 写成 inline 样式——用约束值中和，不做优先级硬提升。 */
   .studio-dock
     .dv-split-view-container.dv-horizontal
     > .dv-view-container
@@ -370,19 +376,30 @@ textarea:focus-visible {
     .dv-split-view-container.dv-horizontal
     > .dv-view-container
     > .dv-view:has(.dv-groupview[aria-label="Workspace"]) {
-    left: 0 !important;
-    width: 100% !important;
+    position: static;
+    min-width: 100%;
+    max-width: 100%;
+  }
+
+  .studio-dock
+    .dv-split-view-container.dv-horizontal
+    > .dv-view-container
+    > .dv-view:has(.dv-groupview[aria-label="Workspace"])::before {
+    display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .studio-enter,
-  .pulse-dot {
+  .studio-enter {
     animation: none;
   }
 
-  * {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+  .studio-mobile-panel-backdrop,
+  .studio-mobile-panel-surface {
+    transition: none;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }

@@ -13,7 +13,7 @@ export function ConnectionSummary({
 }) {
   return (
     <section className="bcr-connection-summary" aria-label="连接摘要">
-      <span className="bcr-connection-eyebrow">当前连接</span>
+      <span className="ui-section-label">当前连接</span>
       <strong>{title}</strong>
       <code>{detail}</code>
       <p>{status}</p>

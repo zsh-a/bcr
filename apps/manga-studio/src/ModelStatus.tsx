@@ -42,7 +42,7 @@ export function ModelStatusNote({
       <div className="manga-model-actions">
         <button
           type="button"
-          className="manga-model-action"
+          className="ui-btn ui-btn-sm ui-btn-default"
           data-model-preload={execution.model ?? ""}
           disabled={disabled || !canPreload || status === "loading"}
           onClick={onPreload}
@@ -52,7 +52,7 @@ export function ModelStatusNote({
         {status === "ready" && (
           <button
             type="button"
-            className="manga-model-action manga-model-action-danger"
+            className="ui-btn ui-btn-sm ui-btn-danger"
             disabled={disabled}
             onClick={onClear}
           >
@@ -97,7 +97,7 @@ export function ModelCacheSummary({
       <div className="manga-model-actions">
         <button
           type="button"
-          className="manga-model-action"
+          className="ui-btn ui-btn-sm ui-btn-default"
           disabled={busy}
           onClick={onRefresh}
           aria-label="刷新模型缓存状态"
@@ -107,7 +107,7 @@ export function ModelCacheSummary({
         {info !== null && info.supported && info.entryCount > 0 && (
           <button
             type="button"
-            className="manga-model-action manga-model-action-danger"
+            className="ui-btn ui-btn-sm ui-btn-danger"
             disabled={busy}
             onClick={onClear}
           >

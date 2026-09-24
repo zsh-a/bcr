@@ -1,95 +1,106 @@
+/*
+ * 重命名 / 移动的修改预览与确认流程。
+ * 按钮走 ui 原语，这里只做组合排版；圆角、间距、字号只用令牌。
+ */
+
 .knowledge-rename-pending {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 0 20px;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-5);
   color: var(--color-muted);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
-.knowledge-rename-pending button,
-.knowledge-rename-review button {
-  min-height: 44px;
-}
+
 .knowledge-rename-review {
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
 }
+
 .knowledge-rename-review > p:first-child {
   margin-top: 0;
 }
+
 .knowledge-rename-notes {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   overflow-x: auto;
-  padding: 4px 2px 12px;
+  padding: var(--space-1) 0 var(--space-3);
 }
-.knowledge-rename-notes button {
+
+/* 受影响笔记是两行的切换块：在按钮原语上只放开高度与排版。 */
+.knowledge-rename-notes .ui-btn {
   flex: 0 0 auto;
-  display: flex;
   flex-direction: column;
   align-items: flex-start;
+  height: auto;
   max-width: 250px;
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
 .knowledge-rename-notes small {
-  font-size: 12px;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   color: var(--color-muted);
 }
-.knowledge-rename-notes button[aria-pressed="true"] {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
+
 .knowledge-rename-diff {
-  margin: 12px 0 24px;
+  margin: var(--space-3) 0 var(--space-6);
 }
+
 .knowledge-rename-title-diff {
   display: grid;
-  gap: 8px;
-  padding: 16px;
+  gap: var(--space-2);
+  padding: var(--space-4);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
-  margin-bottom: 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
   overflow-wrap: anywhere;
 }
+
 .knowledge-rename-title-diff strong {
   color: var(--color-accent);
   font-weight: 500;
 }
+
 .knowledge-rename-columns {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
-  margin-top: 12px;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
 }
+
 .knowledge-rename-columns h3 {
-  font-size: 13px;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   font-weight: 500;
 }
+
 .knowledge-rename-columns pre {
+  margin: 0;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 16px;
-  font-size: 13px;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--text-base--line-height);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  margin: 0;
 }
+
 .knowledge-rename-actions {
   display: flex;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
   border-top: 1px solid var(--color-border);
-  padding-top: 16px;
+  padding-top: var(--space-4);
 }
-.knowledge-rename-actions .knowledge-rename-confirm:not(:disabled) {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-}
-@media (max-width: 600px) {
+
+@media (max-width: 640px) {
   .knowledge-rename-columns {
     grid-template-columns: minmax(0, 1fr);
   }

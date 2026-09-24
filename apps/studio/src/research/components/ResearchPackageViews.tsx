@@ -7,8 +7,7 @@ import {
   sourceStatusCounts,
   type ResearchSourceStatus,
 } from "../volumes";
-export const packageButton =
-  "rounded border border-border px-3 py-1.5 text-[11px] text-muted hover:text-accent disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-accent";
+export const packageButton = "ui-btn ui-btn-default ui-btn-sm";
 const button = packageButton;
 const referenceStateLabels: Record<PackageReference["state"], string> = {
   ready: "可打包当前版本",
@@ -25,7 +24,7 @@ export function ResearchPackageResume(props: {
   const { savedTask, disabled, resumeTask, clearTask } = props;
 
   return (
-    <div aria-label="上次分卷任务" className="my-3 space-y-2 rounded border border-border p-2">
+    <div aria-label="上次分卷任务" className="my-3 space-y-2 rounded-md border border-border p-2">
       <p>
         任务 {savedTask.plan.set.slice(0, 12)} · {savedTask.plan.volumes.length} 卷 ·{" "}
         {Object.values(savedTask.states).filter(hasVolumeOutput).length} 卷已有输出记录
@@ -75,7 +74,7 @@ export function ResearchPackageExport(props: {
         选择资料包分卷
         <select
           aria-label="选择资料包分卷"
-          className="rounded border border-border bg-surface p-1"
+          className="ui-select"
           disabled={disabled}
           value={volumeIndex}
           onChange={(event) => setVolumeIndex(Number(event.target.value))}
@@ -89,7 +88,7 @@ export function ResearchPackageExport(props: {
       </label>
       <ul aria-label="资料包分卷清单" className="max-h-48 space-y-2 overflow-auto">
         {plan.volumes.map((volume, index) => (
-          <li key={index} className="rounded border border-border p-2">
+          <li key={index} className="rounded-md border border-border p-2">
             第 {index + 1}/{plan.volumes.length} 卷 · {volume.books.length} 本 · 预计{" "}
             {(volume.estimatedBytes / 1024 / 1024).toFixed(2)} MiB ·{" "}
             {volumeStateLabels[volumeStates[index] ?? "pending"]}
@@ -187,7 +186,7 @@ export function ResearchPackageSources(props: {
             按卷查看来源{" "}
             <select
               aria-label="按卷查看来源"
-              className="rounded border border-border bg-surface p-1"
+              className="ui-select"
               value={sourceVolume}
               onChange={(event) => setSourceVolume(Number(event.target.value))}
             >

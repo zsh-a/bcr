@@ -7,10 +7,10 @@ export function applyPublicationStyles(document: Document, css: string): void {
   const rules = css.replace(/\/\*[\s\S]*?\*\//gu, "").matchAll(/([^{}]+)\{([^{}]*)\}/gu);
   for (const [, selector, body] of rules) {
     if (!selector || selector.includes("@") || !body) continue;
-    const safe = sanitizeInlineStyle(body);
-    if (!safe) continue;
     try {
       for (const node of document.querySelectorAll(selector.trim())) {
+        const safe = sanitizeInlineStyle(body, node.localName);
+        if (!safe) continue;
         node.setAttribute("style", `${safe};${node.getAttribute("style") ?? ""}`);
       }
     } catch {

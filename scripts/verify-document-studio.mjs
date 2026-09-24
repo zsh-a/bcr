@@ -27,7 +27,7 @@ if ((await page.locator(".document-stage-card.is-blocked").count()) < 1) {
   fail("尚未接入的 OCR 阶段没有显式阻塞");
 }
 
-const input = page.locator(".document-visually-hidden");
+const input = page.getByLabel("导入文档或图片文件");
 await input.setInputFiles({
   name: "field-notes.md",
   mimeType: "text/markdown",
@@ -199,7 +199,7 @@ if (!(await page.locator(".document-content-card").innerText()).includes("结构
 // The same artifact boundary also feeds a page-image handoff into Manga.
 await page.goto(base.toString(), { waitUntil: "domcontentloaded" });
 await page.locator(".document-studio").waitFor({ timeout: 20_000 });
-await page.locator(".document-visually-hidden").setInputFiles({
+await page.getByLabel("导入文档或图片文件").setInputFiles({
   name: "page.png",
   mimeType: "image/png",
   buffer: Buffer.from(

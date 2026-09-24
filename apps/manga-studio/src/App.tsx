@@ -6,7 +6,12 @@ import {
   markDocumentHandoffExpired,
   publishDocumentHandoff,
 } from "@bcr/document-core";
-import { useLocationSearch, useOptionalRuntime, usePublishRunningCount } from "@bcr/react";
+import {
+  StatusDot,
+  useLocationSearch,
+  useOptionalRuntime,
+  usePublishRunningCount,
+} from "@bcr/react";
 import { CircleAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { expandMangaArchive, formatForMangaFile } from "./archive";
@@ -649,14 +654,13 @@ export function App() {
         onRunQueue={() => void runMangaQueue(hostServices ?? undefined)}
       />
 
-      {mobileToolsOpen && (
-        <button
-          type="button"
-          className="manga-mobile-tools-scrim"
-          onClick={() => setMobileToolsOpen(false)}
-          aria-label="关闭工具面板"
-        />
-      )}
+      <button
+        type="button"
+        className="manga-mobile-tools-scrim"
+        onClick={() => setMobileToolsOpen(false)}
+        aria-label="关闭工具面板"
+        hidden={!mobileToolsOpen}
+      />
 
       <div className="manga-workspace">
         <MangaProjectPanel
@@ -699,8 +703,8 @@ export function App() {
 
       <footer className="manga-footer">
         <div className="manga-footer-log">
-          <span className="manga-footer-pulse" />
-          <span className="manga-footer-log-label">RUNTIME LOG</span>
+          <StatusDot status="running" />
+          <span className="ui-section-label manga-footer-log-label">RUNTIME LOG</span>
           <span className="manga-footer-message">{state.logs.at(-1)?.message ?? "ready"}</span>
         </div>
         <div className="manga-footer-meta">

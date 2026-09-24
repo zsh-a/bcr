@@ -95,7 +95,7 @@ try {
   await page.getByText("字体已就绪", { exact: false }).waitFor();
   await openAdvancedTypography();
   assert(await page.getByLabel("正文字重", { exact: true }).isDisabled());
-  const computed = await preview.locator(".reader-prose").evaluate((element) => {
+  const computed = await preview.locator(".reader-typography-sample").evaluate((element) => {
     const style = getComputedStyle(element);
     return { font: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
   });
@@ -152,10 +152,16 @@ try {
           });
         return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
       };
+      // 正文的实际衬底是阅读画布：向上取第一个不透明背景。移动端根部使用
+      // 应用底色（保持 chrome 可读），阅读层另行铺主题底色，故不能固定取根节点。
+      let backdrop = element;
+      while (backdrop) {
+        const backdropColor = getComputedStyle(backdrop).backgroundColor;
+        if (backdropColor && !/^rgba\(0, 0, 0, 0\)$/u.test(backdropColor)) break;
+        backdrop = backdrop.parentElement;
+      }
       const foreground = luminance(getComputedStyle(element).color);
-      const background = luminance(
-        getComputedStyle(document.querySelector(".reader-studio")).backgroundColor,
-      );
+      const background = luminance(getComputedStyle(backdrop ?? element).backgroundColor);
       return {
         contrast:
           (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05),

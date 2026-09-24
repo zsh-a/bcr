@@ -1,5 +1,12 @@
 import { useRef, useState } from "react";
-import { SecretField, ConnectionSummary, useAgentHost, useCredential } from "@bcr/react";
+import {
+  Button,
+  Input,
+  SecretField,
+  ConnectionSummary,
+  useAgentHost,
+  useCredential,
+} from "@bcr/react";
 import { knowledgeCredentialId } from "./credential";
 import { pendingCount, type KnowledgeState, type KnowledgeConflict } from "./model";
 import type { KnowledgeStore } from "./store";
@@ -91,14 +98,13 @@ export function KnowledgeSyncPanel({
           detail={`${state.sync.target.branch} · ${pendingCount(state)} 项待同步`}
           status={token ? "Token 已配置" : "需要补充 Token"}
         >
-          <button
-            type="button"
-            className="knowledge-button"
+          <Button
+            variant="ghost"
             disabled={busy || syncing || !token}
             onClick={() => void action(onSync)}
           >
             {busy || syncing ? "同步中…" : "立即同步"}
-          </button>
+          </Button>
         </ConnectionSummary>
       )}
       <form
@@ -144,13 +150,10 @@ export function KnowledgeSyncPanel({
         }}
       >
         {editing && (
-          <fieldset
-            disabled={busy || syncing}
-            style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
-          >
+          <fieldset disabled={busy || syncing}>
             <label>
               仓库地址
-              <input
+              <Input
                 aria-label="GitHub 仓库地址"
                 autoComplete="off"
                 placeholder="https://github.com/you/notes"
@@ -188,7 +191,7 @@ export function KnowledgeSyncPanel({
               <summary>高级设置</summary>
               <label>
                 分支
-                <input
+                <Input
                   aria-label="GitHub 分支"
                   autoComplete="off"
                   value={branch}
@@ -200,24 +203,23 @@ export function KnowledgeSyncPanel({
             {credential.error && <p role="alert">{credential.error}</p>}
             <div className="knowledge-panel-actions">
               {state.sync.target && (
-                <button
-                  type="button"
-                  className="knowledge-button"
+                <Button
+                  variant="ghost"
                   onClick={() => {
                     reset();
                     if (state.sync.target) setEditing(false);
                   }}
                 >
                   取消
-                </button>
+                </Button>
               )}
-              <button
+              <Button
                 type="submit"
-                className="knowledge-button"
+                variant="primary"
                 disabled={busy || syncing || !address.trim() || !draftToken.trim()}
               >
                 {busy ? "连接并同步中…" : "连接并同步"}
-              </button>
+              </Button>
             </div>
           </fieldset>
         )}
@@ -225,9 +227,8 @@ export function KnowledgeSyncPanel({
           <details className="bcr-connection-manage">
             <summary>管理连接</summary>
             <div className="knowledge-panel-actions">
-              <button
-                type="button"
-                className="knowledge-button"
+              <Button
+                variant="ghost"
                 disabled={busy || syncing}
                 onClick={() => {
                   reset();
@@ -235,24 +236,22 @@ export function KnowledgeSyncPanel({
                 }}
               >
                 编辑连接
-              </button>
-              <button
-                type="button"
-                className="knowledge-button"
+              </Button>
+              <Button
+                variant="ghost"
                 disabled={busy || syncing}
                 onClick={() => setConfirm("clear")}
               >
                 清除 Token
-              </button>
+              </Button>
               {state.sync.target && (
-                <button
-                  type="button"
-                  className="knowledge-button"
+                <Button
+                  variant="ghost"
                   disabled={busy || syncing}
                   onClick={() => setConfirm("disconnect")}
                 >
                   断开连接
-                </button>
+                </Button>
               )}
             </div>
           </details>
@@ -265,17 +264,11 @@ export function KnowledgeSyncPanel({
                 : "断开连接并清除 Token？本地笔记不会删除。"}
             </p>
             <div className="knowledge-panel-actions">
-              <button
-                type="button"
-                className="knowledge-button"
-                disabled={busy || syncing}
-                onClick={() => setConfirm(null)}
-              >
+              <Button variant="ghost" disabled={busy || syncing} onClick={() => setConfirm(null)}>
                 继续保留
-              </button>
-              <button
-                type="button"
-                className="knowledge-button"
+              </Button>
+              <Button
+                variant="danger"
                 disabled={busy || syncing}
                 onClick={() => {
                   if (confirm === "clear") {
@@ -319,7 +312,7 @@ export function KnowledgeSyncPanel({
                 }}
               >
                 {confirm === "clear" ? "确认清除" : "确认断开"}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -368,15 +361,14 @@ export function KnowledgeSyncPanel({
           </div>
           <div className="knowledge-panel-actions">
             {(["local", "remote", "both"] as const).map((choice) => (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 key={choice}
-                className="knowledge-button"
                 disabled={busy || syncing}
                 onClick={() => void action(() => store.resolve(conflict, choice))}
               >
                 {{ local: "保留本机版本", remote: "采用远端版本", both: "保留双方" }[choice]}
-              </button>
+              </Button>
             ))}
           </div>
         </article>

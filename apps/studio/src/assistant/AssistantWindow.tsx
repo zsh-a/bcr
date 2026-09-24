@@ -182,7 +182,7 @@ export function AssistantWindow({
         >
           <Sparkles size={16} />
           <span>继续对话</span>
-          <kbd>⌘J</kbd>
+          <kbd className="ui-kbd">⌘J</kbd>
         </button>
       )}
       <section
@@ -219,6 +219,7 @@ export function AssistantWindow({
           </button>
           <nav aria-label="助手窗口操作">
             <button
+              className="ui-btn ui-icon-btn ui-btn-ghost"
               aria-label="重置窗口位置"
               title="重置位置和大小"
               onClick={() => {
@@ -231,6 +232,7 @@ export function AssistantWindow({
               <RotateCcw size={14} />
             </button>
             <button
+              className="ui-btn ui-icon-btn ui-btn-ghost"
               aria-label={docked ? "解除助手停靠" : "靠右停靠助手"}
               title={docked ? "恢复浮动" : "靠右停靠"}
               aria-pressed={docked}
@@ -243,6 +245,7 @@ export function AssistantWindow({
               <PanelRight size={15} />
             </button>
             <button
+              className="ui-btn ui-icon-btn ui-btn-ghost"
               aria-label={expanded ? "还原助手窗口" : "展开助手窗口"}
               title={expanded ? "还原窗口" : "展开窗口"}
               disabled={compact}
@@ -251,6 +254,7 @@ export function AssistantWindow({
               {expanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
             </button>
             <button
+              className="ui-btn ui-icon-btn ui-btn-ghost"
               aria-label="收起 AI 助手"
               title="收起，保留对话"
               onClick={() => onVisibilityChange("minimized")}
@@ -258,6 +262,7 @@ export function AssistantWindow({
               <Minus size={16} />
             </button>
             <button
+              className="ui-btn ui-icon-btn ui-btn-ghost"
               aria-label="关闭 AI 助手"
               title="关闭窗口，保留对话"
               onClick={() => onVisibilityChange("closed")}

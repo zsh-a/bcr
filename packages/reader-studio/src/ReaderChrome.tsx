@@ -12,7 +12,7 @@ export function ReaderRecoveryBanner(props: { recovery: ReaderRestoreDiagnostics
   return (
     <section className="reader-recovery-banner" aria-label="书库恢复检查" role="status">
       <div className="reader-recovery-heading">
-        <span className="reader-eyebrow">RECOVERY CHECK</span>
+        <span className="ui-section-label">RECOVERY CHECK</span>
         <strong>
           已恢复 {recovery.restoredBooks}/{recovery.attemptedBooks} 本读物
         </strong>
@@ -108,7 +108,7 @@ export function ReaderHeader(props: {
     <header className={`reader-header ${searchOpen ? "is-searching" : ""}`}>
       <button
         type="button"
-        className="reader-icon-button reader-mobile-exit"
+        className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-mobile-exit"
         onClick={props.onExit}
         aria-label="返回工作区主页"
         title="返回工作区主页"
@@ -128,7 +128,7 @@ export function ReaderHeader(props: {
       </div>
       <div className="reader-header-divider" />
       <div className="reader-now-reading">
-        <span className="reader-eyebrow">NOW READING</span>
+        <span className="ui-section-label">NOW READING</span>
         <strong>{props.book.title}</strong>
       </div>
       <div className="reader-header-spacer" />
@@ -171,17 +171,17 @@ export function ReaderHeader(props: {
         {query && (
           <button
             type="button"
-            className="reader-icon-button reader-search-clear"
+            className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-search-clear"
             onClick={() => onSearch("")}
             aria-label="清空搜索"
           >
             <X className="reader-icon" />
           </button>
         )}
-        <kbd>⌘F</kbd>
+        <kbd className="ui-kbd">⌘F</kbd>
         <button
           type="button"
-          className="reader-icon-button reader-mobile-search-close"
+          className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-mobile-search-close"
           aria-label="退出搜索"
           onClick={() => reader.setSearchOpen(false)}
         >
@@ -196,7 +196,7 @@ export function ReaderHeader(props: {
       {props.showInstall && (
         <button
           type="button"
-          className="reader-button reader-install-button"
+          className="ui-btn ui-btn-lg ui-btn-default reader-install-button"
           onClick={props.onInstall}
           aria-label={props.installAvailable ? "安装 Reader 应用" : "查看 Reader 安装方式"}
           title={props.installAvailable ? "安装 Reader 应用" : "查看 Reader 安装方式"}
@@ -207,7 +207,7 @@ export function ReaderHeader(props: {
       )}
       <input
         ref={fileInput}
-        className="reader-visually-hidden"
+        className="ui-sr-only"
         type="file"
         multiple
         accept={readerAcceptAttribute()}
@@ -220,7 +220,7 @@ export function ReaderHeader(props: {
       />
       <button
         type="button"
-        className="reader-button reader-button-primary"
+        className="ui-btn ui-btn-lg ui-btn-primary"
         onClick={() => fileInput.current?.click()}
       >
         <Upload className="reader-icon" /> <span>导入</span>
@@ -292,12 +292,12 @@ export function ReaderHeader(props: {
 }
 
 export function ReaderInstallHelp(props: { open: boolean; isIos: boolean; onClose: () => void }) {
-  if (!props.open) return null;
   const steps = props.isIos
     ? ["点击浏览器的分享按钮", "选择“添加到主屏幕”", "确认添加，从主屏幕打开 Reader"]
     : ["打开浏览器菜单", "选择“安装应用”或“添加到主屏幕”", "确认后从主屏幕启动 Reader"];
   return (
     <ReaderSheet
+      open={props.open}
       onClose={props.onClose}
       labelId="reader-install-title"
       className="reader-install-layer"
@@ -309,12 +309,12 @@ export function ReaderInstallHelp(props: { open: boolean; isIos: boolean; onClos
       >
         <div className="reader-install-card-heading">
           <div>
-            <span className="reader-eyebrow">READ ON THE GO</span>
+            <span className="ui-section-label">READ ON THE GO</span>
             <strong id="reader-install-title">把 Reader 放到手机桌面</strong>
           </div>
           <button
             type="button"
-            className="reader-icon-button"
+            className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
             onClick={props.onClose}
             aria-label="关闭安装说明"
           >
@@ -327,11 +327,7 @@ export function ReaderInstallHelp(props: { open: boolean; isIos: boolean; onClos
             <li key={step}>{step}</li>
           ))}
         </ol>
-        <button
-          type="button"
-          className="reader-button reader-button-primary"
-          onClick={props.onClose}
-        >
+        <button type="button" className="ui-btn ui-btn-lg ui-btn-primary" onClick={props.onClose}>
           知道了
         </button>
       </section>

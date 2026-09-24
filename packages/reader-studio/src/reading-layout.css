@@ -1,4 +1,12 @@
 /* Reading surfaces own geometry; chrome only overlays it. */
+.reader-modal-layer {
+  opacity: 0;
+  transform: scale(0.98);
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard),
+    display var(--duration-base) allow-discrete;
+}
 .reader-modal-layer[open] {
   display: flex;
   width: 100%;
@@ -7,11 +15,19 @@
   max-height: none;
   margin: 0;
   border: 0;
-  color: var(--reader-text);
+  color: var(--color-text);
   overscroll-behavior: contain;
+  opacity: 1;
+  transform: none;
+}
+@starting-style {
+  .reader-modal-layer[open] {
+    opacity: 0;
+    transform: scale(0.98);
+  }
 }
 .reader-modal-layer::backdrop {
-  background: transparent;
+  background: var(--color-scrim);
 }
 .reader-modal-layer:not([open]) {
   display: none;
@@ -21,8 +37,10 @@
   max-height: 85dvh;
   overflow: auto;
   margin: 0;
-  border-radius: 20px;
-  background: var(--reader-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-dialog);
 }
 .reader-library-sheet {
   height: min(85dvh, 760px);
@@ -42,8 +60,8 @@
   width: 100%;
 }
 .reader-pdf-canvas-shell .reader-pdf-canvas {
-  width: 100% !important;
-  height: 100% !important;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 .reader-pdf-canvas-shell:not(.is-ready) .reader-pdf-canvas {
@@ -52,7 +70,7 @@
 }
 .reader-pdf-canvas-shell > :not(canvas, .reader-pdf-text-layer) {
   position: absolute;
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .reader-paged-frame {
@@ -64,11 +82,11 @@
   grid-column: 1 / -1;
   grid-template-columns: 64px minmax(0, 1fr) 48px 48px;
   align-items: center;
-  gap: 8px;
-  padding: 6px 20px;
+  gap: var(--space-2);
+  padding: 6px var(--space-5);
 }
 .reader-paged-frame .reader-mobile-nav button {
-  min-height: 44px;
+  min-height: var(--h-control-lg);
 }
 .reader-page-viewport {
   position: relative;
@@ -81,20 +99,19 @@
   width: min(
     100%,
     calc(
-      (var(--reader-line-length, 680px) + 2 * var(--reader-page-gutter)) *
-        var(--reader-page-columns, 1)
+      (var(--read-line-length, 680px) + 2 * var(--read-page-gutter)) * var(--read-page-columns, 1)
     )
   );
   justify-self: center;
 }
 .reader-page-content {
-  width: calc(100% - 2 * var(--reader-page-gutter));
-  --reader-page-inset: clamp(16px, 3dvh, 32px);
-  height: calc(100% - 2 * var(--reader-page-inset));
-  margin: var(--reader-page-inset) var(--reader-page-gutter);
+  width: calc(100% - 2 * var(--read-page-gutter));
+  --read-page-inset: clamp(16px, 3dvh, 32px);
+  height: calc(100% - 2 * var(--read-page-inset));
+  margin: var(--read-page-inset) var(--read-page-gutter);
   column-width: auto;
-  column-count: var(--reader-page-columns, 1);
-  column-gap: calc(2 * var(--reader-page-gutter));
+  column-count: var(--read-page-columns, 1);
+  column-gap: calc(2 * var(--read-page-gutter));
   column-fill: auto;
 }
 .reader-page-content .reader-section {
@@ -136,7 +153,7 @@
   object-fit: contain;
 }
 .reader-page-content img {
-  max-height: var(--reader-page-content-height, 100%);
+  max-height: var(--read-page-content-height, 100%);
   object-fit: contain;
   break-inside: avoid;
 }
@@ -159,9 +176,9 @@
 
 @media (max-width: 860px) {
   .reader-studio {
-    --reader-chrome-top: calc(56px + env(safe-area-inset-top));
-    --reader-chrome-bottom: calc(60px + env(safe-area-inset-bottom));
-    background: var(--reader-bg);
+    --read-overlay-top: calc(var(--h-topbar) + env(safe-area-inset-top));
+    --read-overlay-bottom: calc(var(--h-toolbar) + var(--space-3) + env(safe-area-inset-bottom));
+    background: var(--color-bg);
   }
   .reader-header,
   .mobile-chrome-hidden > .reader-header {
@@ -176,27 +193,43 @@
   .reader-header > .reader-import-progress {
     display: grid;
   }
+  .reader-header > .reader-search {
+    opacity: 0;
+    transform: translateY(-4px);
+    transition:
+      opacity var(--duration-base) var(--ease-standard),
+      transform var(--duration-base) var(--ease-standard),
+      display var(--duration-base) allow-discrete;
+  }
   .reader-header.is-searching > .reader-search {
     position: fixed;
     z-index: 40;
-    top: max(6px, env(safe-area-inset-top));
-    left: max(12px, env(safe-area-inset-left));
-    right: max(12px, env(safe-area-inset-right));
+    top: max(var(--space-2), env(safe-area-inset-top));
+    left: max(var(--space-3), env(safe-area-inset-left));
+    right: max(var(--space-3), env(safe-area-inset-right));
     width: auto;
     display: flex;
-    background: var(--reader-raised);
-    box-shadow: var(--reader-shadow);
+    background: var(--color-raised);
+    box-shadow: var(--shadow-floating);
+    opacity: 1;
+    transform: none;
+  }
+  @starting-style {
+    .reader-header.is-searching > .reader-search {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
   }
   .reader-mobile-search-close {
     display: inline-grid;
-    flex: 0 0 44px;
+    flex: 0 0 var(--h-control-lg);
   }
   .reader-search input {
-    font-size: 16px;
+    font-size: var(--text-lg);
   }
   .reader-search-panel {
-    top: 60px;
-    max-height: calc(100dvh - 140px);
+    top: calc(var(--h-toolbar) + var(--space-3));
+    max-height: calc(100dvh - var(--h-topbar) - var(--h-toolbar) - var(--h-control));
     z-index: 41;
   }
   .reader-toolbar,
@@ -207,32 +240,32 @@
     left: 0;
     right: 0;
     z-index: 24;
-    min-height: var(--reader-chrome-top);
-    padding: env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 0
-      max(12px, env(safe-area-inset-left));
-    gap: 8px;
-    background: var(--reader-raised);
+    min-height: var(--read-overlay-top);
+    padding: env(safe-area-inset-top) max(var(--space-3), env(safe-area-inset-right)) 0
+      max(var(--space-3), env(safe-area-inset-left));
+    gap: var(--space-2);
+    background: var(--color-raised);
     transition:
-      transform 180ms ease,
-      opacity 180ms ease,
-      visibility 180ms;
+      transform var(--duration-base) var(--ease-standard),
+      opacity var(--duration-base) var(--ease-standard),
+      visibility var(--duration-base) var(--ease-standard);
   }
   .reader-toolbar-title {
     flex: 1;
-    gap: 6px;
+    gap: var(--space-2);
     overflow: hidden;
   }
-  .reader-toolbar-title > .reader-icon-button {
-    flex: 0 0 44px;
-    min-width: 44px;
+  .reader-toolbar-title > .ui-icon-btn {
+    flex: 0 0 var(--h-control-lg);
+    min-width: var(--h-control-lg);
   }
   .reader-toolbar-title > div {
     min-width: 0;
   }
   .reader-toolbar-title strong {
-    font-size: 13px;
+    font-size: var(--text-base);
   }
-  .reader-toolbar-title .reader-eyebrow,
+  .reader-toolbar-title .ui-section-label,
   .reader-mobile-progress {
     display: none;
   }
@@ -240,7 +273,7 @@
     gap: 0;
   }
   .reader-mobile-toolbar-button {
-    width: 44px;
+    width: var(--h-control-lg);
   }
   .reader-reading-frame,
   .mobile-chrome-hidden .reader-reading-frame {
@@ -250,37 +283,37 @@
   }
   .reader-reading-scroll {
     height: 100%;
-    scroll-padding-top: var(--reader-chrome-top);
-    scroll-padding-bottom: calc(var(--reader-chrome-bottom) + 64px);
+    scroll-padding-top: var(--read-overlay-top);
+    scroll-padding-bottom: calc(var(--read-overlay-bottom) + 64px);
   }
   .reader-reading-column,
   .reader-width-wide .reader-reading-column {
-    width: min(calc(100% - 40px), var(--reader-line-length, 720px));
-    padding-top: calc(var(--reader-chrome-top) + 24px);
-    padding-bottom: calc(var(--reader-chrome-bottom) + 72px);
+    width: min(calc(100% - 40px), var(--read-line-length, 720px));
+    padding-top: calc(var(--read-overlay-top) + 24px);
+    padding-bottom: calc(var(--read-overlay-bottom) + 72px);
   }
   .reader-workspace:has(.reader-progress-dock.is-expanded) .reader-reading-scroll {
-    scroll-padding-bottom: calc(var(--reader-chrome-bottom) + 112px);
+    scroll-padding-bottom: calc(var(--read-overlay-bottom) + 112px);
   }
   .reader-workspace:has(.reader-progress-dock.is-expanded) .reader-reading-column,
   .reader-workspace:has(.reader-progress-dock.is-expanded)
     .reader-width-wide
     .reader-reading-column {
-    padding-bottom: calc(var(--reader-chrome-bottom) + 112px);
+    padding-bottom: calc(var(--read-overlay-bottom) + 112px);
   }
   .reader-section {
     display: block;
-    margin-bottom: 32px;
+    margin-bottom: var(--space-7);
   }
   .reader-section-index {
     display: none;
   }
   .reader-section-label {
-    font-size: 12px;
-    margin-bottom: 10px;
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-3);
   }
   .reader-reading-intro {
-    margin-bottom: 36px;
+    margin-bottom: var(--space-8);
   }
   .reader-chapter-rail {
     display: none;
@@ -294,17 +327,18 @@
     left: 0;
     right: 0;
     z-index: 22;
-    min-height: var(--reader-chrome-bottom);
+    min-height: var(--read-overlay-bottom);
     grid-template-columns: 48px minmax(0, 1fr) 44px 44px;
-    padding: 4px max(12px, env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom))
-      max(12px, env(safe-area-inset-left));
-    gap: 8px;
-    background: var(--reader-raised);
+    padding: var(--space-1) max(var(--space-3), env(safe-area-inset-right))
+      calc(var(--space-1) + env(safe-area-inset-bottom))
+      max(var(--space-3), env(safe-area-inset-left));
+    gap: var(--space-2);
+    background: var(--color-raised);
     backdrop-filter: none;
     transition:
-      transform 180ms ease,
-      opacity 180ms ease,
-      visibility 180ms;
+      transform var(--duration-base) var(--ease-standard),
+      opacity var(--duration-base) var(--ease-standard),
+      visibility var(--duration-base) var(--ease-standard);
   }
   .reader-mobile-nav-toc,
   .reader-mobile-nav-step,
@@ -318,11 +352,11 @@
   }
   .reader-mobile-nav-current {
     align-items: center;
-    padding: 8px;
+    padding: var(--space-2);
   }
   .reader-mobile-nav-current-meta {
-    font-size: 12px;
-    color: var(--reader-muted);
+    font-size: var(--text-sm);
+    color: var(--color-muted);
   }
   .reader-mobile-nav-progress {
     display: none;
@@ -344,12 +378,12 @@
     visibility: visible;
   }
   .reader-page-viewport {
-    top: var(--reader-chrome-top);
-    height: calc(100% - var(--reader-chrome-top) - var(--reader-chrome-bottom));
+    top: var(--read-overlay-top);
+    height: calc(100% - var(--read-overlay-top) - var(--read-overlay-bottom));
     scroll-padding: 0;
   }
   .reader-page-content {
-    --reader-page-inset: clamp(12px, 2.5dvh, 24px);
+    --read-page-inset: clamp(12px, 2.5dvh, 24px);
   }
   .reader-library-sheet .reader-dropzone {
     display: none;
@@ -368,14 +402,7 @@
     display: flex;
     justify-content: center;
     flex-shrink: 0;
-    margin: 8px 16px 16px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reader-toolbar,
-  .reader-mobile-nav {
-    transition: none !important;
+    margin: var(--space-2) var(--space-4) var(--space-4);
   }
 }
 
@@ -395,21 +422,21 @@
 /* TXT paragraphs are separate sections. Preserve their spacing even when the
  * paragraph is the last child of its prose wrapper. */
 .reader-page-text-flow :is(p.reader-prose, .reader-prose p) {
-  margin: 0 0 var(--reader-paragraph-spacing, 0.65em) !important;
+  margin: 0 0 var(--read-paragraph-spacing);
 }
 
 .reader-page-viewport[data-page-effect="paper"] {
   background:
     linear-gradient(90deg, rgb(0 0 0 / 0.07), transparent 12%, transparent 88%, rgb(0 0 0 / 0.07)),
-    var(--reader-bg);
-  box-shadow: 0 10px 28px rgb(0 0 0 / 0.18);
+    var(--read-bg);
+  box-shadow: var(--shadow-floating);
   backface-visibility: hidden;
 }
 
 /* TXT has plain paragraphs, not publisher-defined keep-together blocks. Allow
  * a single line at either side of a page boundary rather than leaving a hole. */
 .reader-page-text-flow {
-  height: var(--reader-page-text-height, calc(100% - 2 * var(--reader-page-inset)));
+  height: var(--read-page-text-height, calc(100% - 2 * var(--read-page-inset)));
 }
 .reader-page-text-flow .reader-prose,
 .reader-page-text-flow .reader-prose p {
@@ -419,7 +446,7 @@
 }
 
 .reader-page-text-indent :is(p.reader-prose, .reader-prose p) {
-  margin: 0 !important;
+  margin: 0;
   text-indent: 2em;
 }
 
@@ -440,11 +467,11 @@
 }
 .reader-txt-spread {
   display: grid;
-  grid-template-columns: repeat(var(--reader-page-columns, 1), minmax(0, 1fr));
-  column-gap: calc(2 * var(--reader-page-gutter));
+  grid-template-columns: repeat(var(--read-page-columns, 1), minmax(0, 1fr));
+  column-gap: calc(2 * var(--read-page-gutter));
   box-sizing: border-box;
   width: 100%;
-  padding: 0 var(--reader-page-gutter);
+  padding: 0 var(--read-page-gutter);
   flex: 0 0 auto;
   height: 100%;
 }
@@ -456,7 +483,7 @@
   overflow-wrap: break-word;
 }
 .reader-txt-page :is(p.reader-prose, .reader-prose p) {
-  margin: 0 !important;
+  margin: 0;
 }
 .reader-txt-pages .reader-prose mark {
   padding: 0;
@@ -466,17 +493,19 @@
   left: 0;
   top: 0;
   height: auto;
-  margin: 0 !important;
   visibility: hidden;
   pointer-events: none;
   contain: layout style;
+}
+p.reader-prose.reader-txt-measure {
+  margin: 0;
 }
 .reader-txt-error {
   position: absolute;
   inset: 25% 24px auto;
   padding: 20px;
-  background: var(--reader-raised);
-  color: var(--reader-text);
+  background: var(--read-raised);
+  color: var(--read-text);
 }
 
 /* An unobtrusive chapter line and reading status remain when controls recede. */
@@ -486,15 +515,15 @@
   z-index: 3;
   left: max(24px, env(safe-area-inset-left));
   right: max(24px, env(safe-area-inset-right));
-  color: var(--reader-muted);
-  font-family: var(--reader-font-sans);
-  font-size: 12px;
+  color: var(--read-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
   letter-spacing: 0.02em;
   opacity: 0;
   visibility: hidden;
   transition:
-    opacity 160ms ease,
-    visibility 160ms;
+    opacity var(--duration-base) var(--ease-standard),
+    visibility var(--duration-base) var(--ease-standard);
 }
 .reader-quiet-heading {
   top: env(safe-area-inset-top, 0px);
@@ -522,24 +551,20 @@
 }
 .reader-quiet-status-label {
   margin-left: 6px;
-  font-size: 10px;
+  font-size: var(--text-xs);
 }
 .mobile-chrome-hidden .reader-quiet-heading,
 .mobile-chrome-hidden .reader-quiet-status {
   opacity: 1;
   visibility: visible;
 }
-.reader-paged-session {
-  background: var(--reader-bg);
+/* 滚动版式由阅读框直接铺主题画布：移动端根部是 chrome 底色，
+ * 正文衬底必须在阅读层，保证夜间等主题的实际对比度。 */
+.reader-reading-frame {
+  background: var(--read-bg);
 }
-.reader-paged-session.reader-theme-night {
-  --reader-bg: #242523;
-  --reader-surface: #292b28;
-  --reader-raised: #2e302d;
-  --reader-text: #c9cbc3;
-  --reader-muted: #a1a49b;
-  --reader-faint: #8d9187;
-  background: var(--reader-bg);
+.reader-paged-session {
+  background: var(--read-bg);
 }
 @media (min-width: 861px) {
   .reader-paged-session .reader-main {
@@ -551,14 +576,14 @@
     left: 0;
     right: 0;
     z-index: 24;
-    min-height: 56px;
-    background: var(--reader-raised);
+    min-height: var(--h-topbar);
+    background: var(--color-raised);
     transition:
-      opacity 160ms ease,
-      visibility 160ms;
+      opacity var(--duration-base) var(--ease-standard),
+      visibility var(--duration-base) var(--ease-standard);
   }
   .reader-paged-session .reader-paged-frame {
-    padding-top: 56px;
+    padding-top: var(--h-topbar);
     box-sizing: border-box;
   }
   .reader-paged-session.mobile-chrome-hidden > .reader-header,
@@ -571,19 +596,12 @@
   .reader-paged-session .reader-quiet-heading,
   .reader-paged-session .reader-quiet-status {
     grid-column: 1 / 2;
-    --reader-context-width: calc(
-      (var(--reader-line-length, 680px) + 2 * var(--reader-page-gutter)) *
-        var(--reader-page-columns, 1) - 2 * var(--reader-page-gutter)
+    --read-context-width: calc(
+      (var(--read-line-length, 680px) + 2 * var(--read-page-gutter)) * var(--read-page-columns, 1) -
+        2 * var(--read-page-gutter)
     );
-    left: max(24px, calc((100% - var(--reader-context-width)) / 2));
-    right: max(24px, calc((100% - var(--reader-context-width)) / 2));
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .reader-quiet-heading,
-  .reader-quiet-status,
-  .reader-paged-session .reader-toolbar {
-    transition: none;
+    left: max(24px, calc((100% - var(--read-context-width)) / 2));
+    right: max(24px, calc((100% - var(--read-context-width)) / 2));
   }
 }
 

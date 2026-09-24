@@ -35,10 +35,14 @@ export function ApprovalCard({
       )}
       {pending && (
         <div className="bcr-chat-card-actions">
-          <button type="button" className="bcr-chat-primary" onClick={() => resolve(true)}>
+          <button
+            type="button"
+            className="ui-btn ui-btn-primary ui-btn-lg"
+            onClick={() => resolve(true)}
+          >
             {actionLabel ?? (approval.suggestion || approval.preview ? "应用修改" : "允许执行")}
           </button>
-          <button type="button" className="bcr-chat-button" onClick={() => resolve(false)}>
+          <button type="button" className="ui-btn ui-btn-default" onClick={() => resolve(false)}>
             放弃
           </button>
         </div>

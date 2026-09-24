@@ -89,12 +89,12 @@ export function MangaToolsPanel({
       aria-label="翻译工具"
     >
       <section className="manga-sidebar-section manga-config-section">
-        <div className="manga-section-heading">
+        <div className="ui-section-label manga-section-heading">
           <span>TRANSLATION</span>
-          <Languages className="size-4 text-[var(--manga-cyan)]" />
+          <Languages className="size-4 text-accent" />
           <button
             type="button"
-            className="manga-icon-button manga-mobile-tools-close"
+            className="ui-btn ui-btn-ghost ui-icon-btn manga-mobile-tools-close"
             onClick={onClose}
             aria-label="关闭工具面板"
           >
@@ -305,7 +305,7 @@ export function MangaToolsPanel({
       </section>
 
       <section className="manga-sidebar-section manga-glossary-section">
-        <div className="manga-section-heading">
+        <div className="ui-section-label manga-section-heading">
           <span>GLOSSARY</span>
           <span className="manga-count">{state.glossary.length}</span>
         </div>
@@ -340,7 +340,7 @@ export function MangaToolsPanel({
           </label>
           <button
             type="button"
-            className="manga-button manga-button-secondary manga-glossary-add"
+            className="ui-btn ui-btn-default manga-glossary-add"
             disabled={glossarySource.trim().length === 0 || glossaryTarget.trim().length === 0}
             onClick={onAddGlossary}
           >
@@ -372,7 +372,7 @@ export function MangaToolsPanel({
                 />
                 <button
                   type="button"
-                  className="manga-icon-button manga-glossary-remove"
+                  className="ui-btn ui-btn-ghost ui-icon-btn ui-btn-sm manga-glossary-remove"
                   aria-label={`删除术语：${entry.source}`}
                   onClick={() => manga.removeGlossaryEntry(entry.id)}
                 >
@@ -385,9 +385,9 @@ export function MangaToolsPanel({
       </section>
 
       <section className="manga-sidebar-section manga-region-section">
-        <div className="manga-section-heading">
+        <div className="ui-section-label manga-section-heading">
           <span>TEXT REGIONS</span>
-          <button type="button" className="manga-add-region" onClick={onAddRegion}>
+          <button type="button" className="ui-btn ui-btn-ghost ui-btn-sm" onClick={onAddRegion}>
             <Plus className="size-3.5" /> 添加区域
           </button>
         </div>
@@ -428,9 +428,9 @@ export function MangaToolsPanel({
       </section>
 
       <section className="manga-sidebar-section manga-inspector-section">
-        <div className="manga-section-heading">
+        <div className="ui-section-label manga-section-heading">
           <span>INSPECTOR</span>
-          <PanelRight className="size-4 text-[var(--manga-muted)]" />
+          <PanelRight className="size-4 text-muted" />
         </div>
         {selectedRegion === null ? (
           <div className="manga-inspector-empty">选择一个文本区域开始审校</div>
@@ -446,7 +446,7 @@ export function MangaToolsPanel({
         </div>
         <button
           type="button"
-          className="manga-button manga-button-primary manga-export-button"
+          className="ui-btn ui-btn-primary manga-export-button"
           disabled={exporting}
           onClick={onExportPage}
         >

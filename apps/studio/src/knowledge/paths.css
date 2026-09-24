@@ -1,115 +1,127 @@
+/*
+ * 笔记路径栏与文件夹树，以及移动表单。
+ * 输入控件走 ui-input，行级触控高度用 --h-control-lg。
+ */
+
 .knowledge-pathbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 24px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-6);
   color: var(--color-muted);
   border-bottom: 1px solid var(--color-border);
-  font-size: 12px;
+  font-size: var(--text-sm);
   min-width: 0;
 }
+
 .knowledge-pathbar > span {
   flex: 1;
   overflow-wrap: anywhere;
   min-width: 0;
 }
-.knowledge-pathbar button {
-  flex-shrink: 0;
-  min-height: 44px;
-}
+
 .knowledge-file-tree ul {
   list-style: none;
   padding: 0;
   margin: 0;
 }
+
 .knowledge-file-tree ul ul {
-  padding-left: 12px;
+  padding-left: var(--space-3);
   border-left: 1px solid var(--color-border);
-  margin-left: 12px;
+  margin-left: var(--space-3);
 }
+
 .knowledge-file-folder {
   position: relative;
 }
+
 .knowledge-file-folder > summary {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
-  padding: 8px 44px 8px 8px;
-  min-height: 44px;
+  padding: var(--space-2) var(--h-control-lg) var(--space-2) var(--space-2);
+  min-height: var(--h-control-lg);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--color-muted);
+  font-size: var(--text-sm);
 }
+
 .knowledge-file-folder > summary span,
 .knowledge-file-note span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .knowledge-file-folder > summary::before {
   content: "›";
-  transform: rotate(0deg);
+  transition: transform var(--duration-fast) var(--ease-standard);
 }
+
 .knowledge-file-folder[open] > summary::before {
   transform: rotate(90deg);
 }
+
 .knowledge-folder-move {
   position: absolute;
   top: 0;
   right: 0;
-  min-width: 44px;
-  min-height: 44px;
+  width: var(--h-control-lg);
+  height: var(--h-control-lg);
   display: grid;
   place-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
 }
+
 .knowledge-file-note {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
   width: 100%;
-  min-height: 44px;
+  min-height: var(--h-control-lg);
   text-align: left;
-  padding: 8px;
-  border-radius: 6px;
-  font-size: 13px;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-sm);
 }
+
 .knowledge-file-tree svg {
   flex-shrink: 0;
 }
+
 .knowledge-file-note[aria-current="page"] {
   color: var(--color-accent);
   background: var(--color-surface);
 }
+
 .knowledge-file-tree button:hover,
 .knowledge-file-folder > summary:hover {
   background: var(--color-surface);
 }
-.knowledge-file-tree :is(button, summary):focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: -2px;
-}
+
 .knowledge-move form {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
+
 .knowledge-move form > button {
   justify-self: start;
 }
-.knowledge-move input {
-  width: 100%;
-  min-width: 0;
-  min-height: 44px;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-size: 16px;
-}
+
 .knowledge-move > p {
   overflow-wrap: anywhere;
 }
-@media (max-width: 600px) {
+
+@media (max-width: 640px) {
   .knowledge-pathbar {
-    padding: 8px 16px;
+    padding: var(--space-2) var(--space-4);
   }
 }

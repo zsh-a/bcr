@@ -122,10 +122,10 @@ export function Dock() {
     }
 
     // 布局变化 → 持久化（debounce）
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timer: number | undefined;
     const disposable = api.onDidLayoutChange(() => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
         localStorage.setItem(LAYOUT_KEY, JSON.stringify(api.toJSON()));
       }, 400);
     });
@@ -138,6 +138,8 @@ export function Dock() {
 
     return () => disposable.dispose();
   }, []);
+
+  const open = mobilePanel !== null;
 
   return (
     <div className="studio-dock-shell">
@@ -153,65 +155,67 @@ export function Dock() {
         className="studio-mobile-panel-trigger"
         onClick={() => setMobilePanel("project")}
         aria-label="打开工作区面板"
-        aria-expanded={mobilePanel !== null}
+        aria-expanded={open}
         aria-controls="studio-mobile-panels"
       >
         <PanelLeft className="size-4" />
         <span>面板</span>
       </button>
 
-      {mobilePanel !== null && (
-        <>
+      {/* 抽屉常驻挂载：进出场交给 display allow-discrete 过渡；关闭时仅卸载内容。 */}
+      <button
+        type="button"
+        className="studio-mobile-panel-backdrop"
+        data-open={open ? "" : undefined}
+        onClick={() => setMobilePanel(null)}
+        aria-label="关闭工作区面板"
+      />
+      <aside
+        id="studio-mobile-panels"
+        className="studio-mobile-panel-surface"
+        data-open={open ? "" : undefined}
+        role="dialog"
+        aria-modal="true"
+        aria-hidden={open ? undefined : "true"}
+        aria-label="工作区面板"
+      >
+        <div className="studio-mobile-panel-header">
+          <span className="ui-section-label">WORKSPACE PANELS</span>
           <button
             type="button"
-            className="studio-mobile-panel-backdrop"
+            className="studio-mobile-panel-close"
             onClick={() => setMobilePanel(null)}
             aria-label="关闭工作区面板"
-          />
-          <aside
-            id="studio-mobile-panels"
-            className="studio-mobile-panel-surface"
-            role="dialog"
-            aria-modal="true"
-            aria-label="工作区面板"
           >
-            <div className="studio-mobile-panel-header">
-              <span>WORKSPACE PANELS</span>
-              <button
-                type="button"
-                className="studio-mobile-panel-close"
-                onClick={() => setMobilePanel(null)}
-                aria-label="关闭工作区面板"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <div className="studio-mobile-panel-tabs" role="tablist" aria-label="工作区面板类型">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mobilePanel === "project"}
-                className={mobilePanel === "project" ? "is-active" : ""}
-                onClick={() => setMobilePanel("project")}
-              >
-                项目文件
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mobilePanel === "inspector"}
-                className={mobilePanel === "inspector" ? "is-active" : ""}
-                onClick={() => setMobilePanel("inspector")}
-              >
-                Inspector
-              </button>
-            </div>
-            <div className="studio-mobile-panel-content">
-              {mobilePanel === "project" ? <ProjectPanel /> : <InspectorPanel />}
-            </div>
-          </aside>
-        </>
-      )}
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="studio-mobile-panel-tabs" role="tablist" aria-label="工作区面板类型">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobilePanel === "project"}
+            className={mobilePanel === "project" ? "is-active" : ""}
+            onClick={() => setMobilePanel("project")}
+          >
+            项目文件
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobilePanel === "inspector"}
+            className={mobilePanel === "inspector" ? "is-active" : ""}
+            onClick={() => setMobilePanel("inspector")}
+          >
+            Inspector
+          </button>
+        </div>
+        {open && (
+          <div className="studio-mobile-panel-content">
+            {mobilePanel === "project" ? <ProjectPanel /> : <InspectorPanel />}
+          </div>
+        )}
+      </aside>
     </div>
   );
 }

@@ -270,7 +270,8 @@ try {
   assert.deepEqual(errors, []);
   console.log("Global assistant verification PASSED", { requests: requests.length });
 } catch (error) {
-  console.error(await page.locator(".bcr-chat").innerText());
+  const chat = page.locator(".bcr-chat");
+  if ((await chat.count()) > 0) console.error(await chat.first().innerText());
   console.error("Last request", JSON.stringify(requests.at(-1)));
   throw error;
 } finally {

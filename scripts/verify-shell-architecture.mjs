@@ -11,7 +11,10 @@ try {
   const open = async (name) => {
     await page.getByRole("button", { name: "打开命令面板", exact: true }).click();
     await page.getByPlaceholder("输入命令…").fill(name);
-    await page.getByRole("button", { name: new RegExp(`^打开 ${name}(?:\\s|$)`) }).click();
+    await page
+      .getByLabel("命令面板", { exact: true })
+      .getByRole("button", { name: new RegExp(`^打开 ${name}(?:\\s|$)`) })
+      .click();
   };
   const theme = () =>
     page.evaluate(() => {

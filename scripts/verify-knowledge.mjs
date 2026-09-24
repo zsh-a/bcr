@@ -100,10 +100,17 @@ async function connect(page) {
   await page.getByRole("button", { name: "连接并同步", exact: true }).click();
   await page.getByRole("status").filter({ hasText: "已与 GitHub 同步" }).waitFor();
   await page.getByRole("button", { name: "关闭连接设置", exact: true }).click();
+  // 浮层关闭有退场过渡：等它真正隐藏，后续步骤的可见性判断才稳定。
+  await page
+    .getByRole("button", { name: "关闭连接设置", exact: true })
+    .waitFor({ state: "hidden" });
 }
 async function sync(page, conflict = false) {
   const close = page.getByRole("button", { name: "关闭连接设置", exact: true });
-  if (await close.isVisible()) await close.click();
+  if (await close.isVisible()) {
+    await close.click();
+    await close.waitFor({ state: "hidden" });
+  }
   await page.getByRole("button", { name: "立即同步", exact: true }).click();
   // Conflict handling may open the dialog, which has its own sync button.
   await page

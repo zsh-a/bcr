@@ -4,7 +4,6 @@ import {
   researchSource,
   researchTarget,
 } from "../research/search";
-import { Dialog } from "@base-ui/react/dialog";
 import type { SearchDocument, SearchDocumentKind, SearchResult } from "@bcr/core";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
@@ -22,7 +21,7 @@ import {
 } from "lucide-react";
 import { citationRoute, excerptFromResult, resultDocument, sameExcerpt } from "../research/index";
 import { ResearchPanel } from "../research/components/ResearchPanel";
-import { useRuntime } from "@bcr/react";
+import { Button, Dialog, Kbd, Select, useRuntime } from "@bcr/react";
 import { workspaceServices } from "../workspace";
 
 type SearchFilterId =
@@ -269,279 +268,275 @@ export function SearchPanel(props: {
   };
 
   return (
-    <Dialog.Root open={props.open} onOpenChange={props.onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-40 bg-black/65 backdrop-blur-[3px]" />
-        <Dialog.Popup className="fixed top-[12%] left-1/2 z-50 w-[min(46rem,calc(100vw-1.5rem))] -translate-x-1/2 max-h-[80dvh] overflow-y-auto rounded-[var(--radius-md)] border border-border-strong bg-raised shadow-2xl shadow-black/60 outline-none studio-enter">
-          <Dialog.Title className="sr-only">全局搜索</Dialog.Title>
-          <div className="flex gap-2 border-b border-border px-4 py-2">
-            <button
-              type="button"
-              aria-pressed={view === "search"}
-              onClick={() => setView("search")}
-              className="rounded px-3 py-2 text-[12px] text-muted aria-pressed:bg-overlay aria-pressed:text-accent"
-            >
-              工作区搜索
-            </button>
-            <button
-              type="button"
-              aria-pressed={view === "research"}
-              onClick={() => {
-                setFocus(undefined);
-                setView("research");
+    <Dialog
+      open={props.open}
+      onClose={() => props.onOpenChange(false)}
+      title="全局搜索"
+      className="studio-search-dialog"
+    >
+      <div className="flex gap-2 border-b border-border px-4 py-2">
+        <button
+          type="button"
+          aria-pressed={view === "search"}
+          onClick={() => setView("search")}
+          className="rounded-sm px-3 py-2 text-sm text-muted aria-pressed:bg-overlay aria-pressed:text-accent"
+        >
+          工作区搜索
+        </button>
+        <button
+          type="button"
+          aria-pressed={view === "research"}
+          onClick={() => {
+            setFocus(undefined);
+            setView("research");
+          }}
+          className="rounded-sm px-3 py-2 text-sm text-muted aria-pressed:bg-overlay aria-pressed:text-accent"
+        >
+          资料集合 · {library.collections.length}
+        </button>
+      </div>
+      {message && (
+        <p role="status" className="px-4 py-2 text-xs text-muted">
+          {message}
+        </p>
+      )}
+      {view === "research" ? (
+        <ResearchPanel
+          library={library}
+          search={search}
+          store={research}
+          selected={selectedCollection?.id ?? ""}
+          focus={focus}
+          onSelect={(id) => {
+            setFocus(undefined);
+            setCollectionId(id);
+          }}
+          busy={busy || !researchReady}
+          run={run}
+          onOpen={(item) => {
+            props.onNavigate({
+              id: item.documentId,
+              title: item.title,
+              source: "research",
+              kind: "document",
+              route: item.route,
+              updatedAt: item.savedAt,
+            });
+            props.onOpenChange(false);
+          }}
+        />
+      ) : (
+        <>
+          <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+            <Search className="size-4 shrink-0 text-accent" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setActive(0);
               }}
-              className="rounded px-3 py-2 text-[12px] text-muted aria-pressed:bg-overlay aria-pressed:text-accent"
-            >
-              资料集合 · {library.collections.length}
-            </button>
-          </div>
-          {message && (
-            <p role="status" className="px-4 py-2 text-[11px] text-muted">
-              {message}
-            </p>
-          )}
-          {view === "research" ? (
-            <ResearchPanel
-              library={library}
-              search={search}
-              store={research}
-              selected={selectedCollection?.id ?? ""}
-              focus={focus}
-              onSelect={(id) => {
-                setFocus(undefined);
-                setCollectionId(id);
-              }}
-              busy={busy || !researchReady}
-              run={run}
-              onOpen={(item) => {
-                props.onNavigate({
-                  id: item.documentId,
-                  title: item.title,
-                  source: "research",
-                  kind: "document",
-                  route: item.route,
-                  updatedAt: item.savedAt,
-                });
-                props.onOpenChange(false);
-              }}
+              onKeyDown={onKeyDown}
+              placeholder="搜索工作区、文档、阅读内容或市场标的…"
+              aria-label="全局搜索"
+              className="min-w-0 flex-1 bg-transparent text-lg text-text placeholder:text-faint"
             />
-          ) : (
-            <>
-              <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-                <Search className="size-4 shrink-0 text-accent" />
-                <input
-                  autoFocus
-                  value={query}
-                  onChange={(event) => {
-                    setQuery(event.target.value);
+            <Kbd>esc</Kbd>
+          </div>
+          <div
+            className="flex gap-1 overflow-x-auto border-b border-border px-3 py-2"
+            role="tablist"
+            aria-label="搜索范围"
+          >
+            {FILTERS.map((item) => {
+              const count =
+                search === undefined
+                  ? 0
+                  : documents.filter((document) =>
+                      item.kinds === undefined ? true : item.kinds.includes(document.kind),
+                    ).length;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === item.id}
+                  onClick={() => {
+                    setFilter(item.id);
                     setActive(0);
                   }}
-                  onKeyDown={onKeyDown}
-                  placeholder="搜索工作区、文档、阅读内容或市场标的…"
-                  aria-label="全局搜索"
-                  className="min-w-0 flex-1 bg-transparent text-[15px] text-text outline-none placeholder:text-faint"
-                />
-                <kbd className="rounded-[var(--radius-xs)] border border-border px-1.5 py-1 font-mono text-[10px] text-faint">
-                  esc
-                </kbd>
-              </div>
-              <div
-                className="flex gap-1 overflow-x-auto border-b border-border px-3 py-2"
-                role="tablist"
-                aria-label="搜索范围"
-              >
-                {FILTERS.map((item) => {
-                  const count =
-                    search === undefined
-                      ? 0
-                      : documents.filter((document) =>
-                          item.kinds === undefined ? true : item.kinds.includes(document.kind),
-                        ).length;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={filter === item.id}
-                      onClick={() => {
-                        setFilter(item.id);
-                        setActive(0);
-                      }}
-                      className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--radius-xs)] px-2.5 text-[11px] transition-colors ${
-                        filter === item.id
-                          ? "bg-accent-dim/55 text-accent"
-                          : "text-faint hover:bg-overlay hover:text-text"
-                      }`}
-                    >
-                      {item.label}
-                      <span className="font-mono text-[9px] opacity-60">{count}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {filter === "research" && (
-                <label className="flex items-center gap-2 px-4 py-2 text-[11px] text-muted">
-                  集合范围
-                  <select
-                    aria-label="集合搜索范围"
-                    className="min-w-0 flex-1 rounded bg-surface p-2 text-text"
-                    value={scope}
-                    onChange={(event) => {
-                      setScope(event.target.value);
-                      setActive(0);
-                    }}
-                  >
-                    <option value="">全部集合</option>
-                    {library.collections.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <div className="flex items-center justify-between px-4 py-2 font-mono text-[10px] text-faint">
-                <span aria-live="polite">
-                  {query.trim().length === 0
-                    ? "最近更新"
-                    : `${results.length} 个结果 · ${selectedFilter.label}`}
-                </span>
-                <span className="hidden sm:inline">↑↓ 选择 · Enter 打开 · ⌘⇧F 呼出</span>
-              </div>
-              <div
-                className="max-h-[min(28rem,55vh)] overflow-auto px-2 pb-2"
-                role="listbox"
-                aria-label="搜索结果"
-              >
-                {search === undefined ? (
-                  <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
-                    <FileSearch className="size-6 text-faint" />
-                    <p className="text-[13px] text-muted">当前运行时未启用搜索索引</p>
-                  </div>
-                ) : results.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
-                    <FileSearch className="size-6 text-faint" />
-                    <p className="text-[13px] text-muted">没有找到匹配内容</p>
-                    <p className="max-w-sm text-[11px] leading-5 text-faint">
-                      试试文件名、章节标题、股票代码或字幕中的关键词。
-                    </p>
-                  </div>
-                ) : (
-                  results.map((result, index) => (
-                    <button
-                      key={`${result.document.id}:${result.match?.start ?? "meta"}:${result.match?.end ?? ""}`}
-                      type="button"
-                      role="option"
-                      aria-selected={index === active}
-                      onMouseEnter={() => setActive(index)}
-                      onFocus={() => setActive(index)}
-                      onClick={() => openResult(result)}
-                      className={`group flex w-full items-start gap-3 rounded-[var(--radius-sm)] px-3 py-3 text-left transition-colors ${
-                        index === active ? "bg-accent-dim/45" : "hover:bg-overlay"
-                      }`}
-                    >
-                      <span
-                        className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-xs)] border ${
-                          index === active
-                            ? "border-accent/35 bg-accent/10 text-accent"
-                            : "border-border bg-surface text-faint"
-                        }`}
-                      >
-                        {iconFor(result.document.kind)}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center gap-2">
-                          <strong className="min-w-0 truncate text-[13px] font-medium text-text">
-                            {result.document.title}
-                          </strong>
-                          <span className="shrink-0 font-mono text-[9px] tracking-[0.06em] text-faint">
-                            {kindLabel(result.document.kind)}
-                          </span>
-                        </span>
-                        {result.document.subtitle !== undefined && (
-                          <span className="mt-0.5 block truncate font-mono text-[10px] text-muted">
-                            {result.document.subtitle}
-                          </span>
-                        )}
-                        {isResearchResult(result.document) && (
-                          <span className="mt-1 block text-[10px] text-accent">
-                            {result.match
-                              ? result.document.kind === "research-note"
-                                ? "命中已保存笔记"
-                                : "命中摘录正文"
-                              : "命中标题或集合信息"}{" "}
-                            · 打开笔记
-                          </span>
-                        )}
-                        {result.match && result.document.citation && (
-                          <span className="mt-1 block text-[10px] text-muted">
-                            命中：
-                            <mark className="bg-accent-dim text-accent">
-                              {result.document.body?.slice(result.match.start, result.match.end)}
-                            </mark>{" "}
-                            · 位置 {result.document.citation.offset + result.match.start + 1}
-                          </span>
-                        )}
-                        <span className="mt-1 block line-clamp-2 text-[11px] leading-5 text-faint">
-                          {result.snippet}
-                        </span>
-                      </span>
-                      <span className="mt-2 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                        →
-                      </span>
-                    </button>
-                  ))
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
-                <span className="text-[11px] text-faint">保存正文到</span>
-                <select
-                  aria-label="摘录目标集合"
-                  value={selectedCollection?.id ?? ""}
-                  onChange={(event) => setCollectionId(event.target.value)}
-                  className="min-w-0 flex-1 rounded bg-surface p-2 text-[11px] text-text"
+                  className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-sm px-2.5 text-xs transition-colors ${
+                    filter === item.id
+                      ? "bg-accent-dim/55 text-accent"
+                      : "text-faint hover:bg-overlay hover:text-text"
+                  }`}
                 >
-                  {!selectedCollection && <option value="">请先创建资料集合</option>}
-                  {library.collections.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="rounded border border-border px-3 py-2 text-[11px] text-accent disabled:opacity-40"
-                  disabled={
-                    busy ||
-                    !researchReady ||
-                    !selectedCollection ||
-                    !results[active]?.document.body?.trim() ||
-                    !citationRoute(results[active]?.document.route)
-                  }
-                  onClick={() => {
-                    const result = results[active];
-                    if (!result || !selectedCollection) return;
-                    const excerpt = excerptFromResult(result, Date.now());
-                    run(() =>
-                      research.update((current) => ({
-                        ...current,
-                        collections: current.collections.map((item) =>
-                          item.id !== selectedCollection.id ||
-                          item.excerpts.some((saved) => sameExcerpt(saved, excerpt))
-                            ? item
-                            : { ...item, excerpts: [...item.excerpts, excerpt] },
-                        ),
-                      })),
-                    );
-                  }}
-                >
-                  保存当前结果
+                  {item.label}
+                  <span className="font-mono text-xs opacity-60">{count}</span>
                 </button>
-              </div>
-            </>
+              );
+            })}
+          </div>
+          {filter === "research" && (
+            <label className="flex items-center gap-2 px-4 py-2 text-xs text-muted">
+              集合范围
+              <Select
+                aria-label="集合搜索范围"
+                className="min-w-0 flex-1"
+                value={scope}
+                onChange={(event) => {
+                  setScope(event.target.value);
+                  setActive(0);
+                }}
+              >
+                <option value="">全部集合</option>
+                {library.collections.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
           )}
-        </Dialog.Popup>
-      </Dialog.Portal>
-    </Dialog.Root>
+          <div className="flex items-center justify-between px-4 py-2 font-mono text-xs text-faint">
+            <span aria-live="polite">
+              {query.trim().length === 0
+                ? "最近更新"
+                : `${results.length} 个结果 · ${selectedFilter.label}`}
+            </span>
+            <span className="hidden sm:inline">↑↓ 选择 · Enter 打开 · ⌘⇧F 呼出</span>
+          </div>
+          <div
+            className="studio-search-results overflow-auto px-2 pb-2"
+            role="listbox"
+            aria-label="搜索结果"
+          >
+            {search === undefined ? (
+              <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
+                <FileSearch className="size-6 text-faint" />
+                <p className="text-base text-muted">当前运行时未启用搜索索引</p>
+              </div>
+            ) : results.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
+                <FileSearch className="size-6 text-faint" />
+                <p className="text-base text-muted">没有找到匹配内容</p>
+                <p className="max-w-sm text-sm text-faint">
+                  试试文件名、章节标题、股票代码或字幕中的关键词。
+                </p>
+              </div>
+            ) : (
+              results.map((result, index) => (
+                <button
+                  key={`${result.document.id}:${result.match?.start ?? "meta"}:${result.match?.end ?? ""}`}
+                  type="button"
+                  role="option"
+                  aria-selected={index === active}
+                  onMouseEnter={() => setActive(index)}
+                  onFocus={() => setActive(index)}
+                  onClick={() => openResult(result)}
+                  className={`group flex w-full items-start gap-3 rounded-sm px-3 py-3 text-left transition-colors ${
+                    index === active ? "bg-accent-dim/45" : "hover:bg-overlay"
+                  }`}
+                >
+                  <span
+                    className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-sm border ${
+                      index === active
+                        ? "border-accent/35 bg-accent/10 text-accent"
+                        : "border-border bg-surface text-faint"
+                    }`}
+                  >
+                    {iconFor(result.document.kind)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <strong className="min-w-0 truncate text-base font-medium text-text">
+                        {result.document.title}
+                      </strong>
+                      <span className="shrink-0 font-mono text-xs text-faint">
+                        {kindLabel(result.document.kind)}
+                      </span>
+                    </span>
+                    {result.document.subtitle !== undefined && (
+                      <span className="mt-0.5 block truncate font-mono text-xs text-muted">
+                        {result.document.subtitle}
+                      </span>
+                    )}
+                    {isResearchResult(result.document) && (
+                      <span className="mt-1 block text-xs text-accent">
+                        {result.match
+                          ? result.document.kind === "research-note"
+                            ? "命中已保存笔记"
+                            : "命中摘录正文"
+                          : "命中标题或集合信息"}{" "}
+                        · 打开笔记
+                      </span>
+                    )}
+                    {result.match && result.document.citation && (
+                      <span className="mt-1 block text-xs text-muted">
+                        命中：
+                        <mark className="bg-accent-dim text-accent">
+                          {result.document.body?.slice(result.match.start, result.match.end)}
+                        </mark>{" "}
+                        · 位置 {result.document.citation.offset + result.match.start + 1}
+                      </span>
+                    )}
+                    <span className="mt-1 block line-clamp-2 text-sm text-faint">
+                      {result.snippet}
+                    </span>
+                  </span>
+                  <span className="mt-2 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                    →
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
+            <span className="text-xs text-faint">保存正文到</span>
+            <Select
+              aria-label="摘录目标集合"
+              value={selectedCollection?.id ?? ""}
+              onChange={(event) => setCollectionId(event.target.value)}
+              className="min-w-0 flex-1"
+            >
+              {!selectedCollection && <option value="">请先创建资料集合</option>}
+              {library.collections.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </Select>
+            <Button
+              variant="primary"
+              disabled={
+                busy ||
+                !researchReady ||
+                !selectedCollection ||
+                !results[active]?.document.body?.trim() ||
+                !citationRoute(results[active]?.document.route)
+              }
+              onClick={() => {
+                const result = results[active];
+                if (!result || !selectedCollection) return;
+                const excerpt = excerptFromResult(result, Date.now());
+                run(() =>
+                  research.update((current) => ({
+                    ...current,
+                    collections: current.collections.map((item) =>
+                      item.id !== selectedCollection.id ||
+                      item.excerpts.some((saved) => sameExcerpt(saved, excerpt))
+                        ? item
+                        : { ...item, excerpts: [...item.excerpts, excerpt] },
+                    ),
+                  })),
+                );
+              }}
+            >
+              保存当前结果
+            </Button>
+          </div>
+        </>
+      )}
+    </Dialog>
   );
 }

@@ -1,22 +1,19 @@
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
-}
+/* Reader 入口基座：令牌与控件原语由此进入，正文排版由阅读根的主题变量负责。 */
+@import "@bcr/react/tokens.css";
+@import "@bcr/react/global.css";
+@import "@bcr/react/ui.css";
 
 body {
   overflow: hidden;
-  background: #ede9e0;
 }
 
 .bcr-bootstrap-error {
   box-sizing: border-box;
   min-height: 100%;
   margin: 0;
-  padding: 24px;
-  color: #7d3028;
-  font:
-    15px/1.6 system-ui,
-    sans-serif;
+  padding: var(--space-6);
+  color: var(--color-danger);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
 }

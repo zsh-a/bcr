@@ -192,8 +192,8 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
       const contentStyle = getComputedStyle(content);
       const gap = Number.parseFloat(contentStyle.columnGap) || 0;
       const imageHeight = `${content.clientHeight}px`;
-      if (content.style.getPropertyValue("--reader-page-content-height") !== imageHeight)
-        content.style.setProperty("--reader-page-content-height", imageHeight);
+      if (content.style.getPropertyValue("--read-page-content-height") !== imageHeight)
+        content.style.setProperty("--read-page-content-height", imageHeight);
       const origin = content.getBoundingClientRect().left;
       const fragments = Array.from(content.children).flatMap((child) =>
         Array.from(child.getClientRects()),
@@ -334,8 +334,8 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
       style={
         {
           ...readerTypographyStyle(settings),
-          "--reader-page-columns": columns,
-          "--reader-page-gutter": `${READER_PAGE_GUTTER}px`,
+          "--read-page-columns": columns,
+          "--read-page-gutter": `${READER_PAGE_GUTTER}px`,
         } as CSSProperties
       }
     >

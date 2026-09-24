@@ -1,7 +1,7 @@
 /* A small, tactile seek control that floats above the reading navigation. */
 .reader-progress-dock {
-  --reader-progress: 0%;
-  --reader-progress-preview-half: min(138px, calc((100vw - 32px) / 2));
+  --read-progress: 0%;
+  --read-progress-preview-half: min(138px, calc((100vw - 32px) / 2));
   position: absolute;
   right: 24px;
   bottom: 68px;
@@ -9,48 +9,47 @@
   z-index: 18;
   display: grid;
   width: min(560px, calc(100% - 48px));
-  gap: 5px;
+  gap: var(--space-1);
   transform: translateX(-50%);
-  border: 1px solid color-mix(in srgb, var(--reader-border-strong) 72%, transparent);
-  border-radius: 14px;
-  background: var(--reader-raised);
-  box-shadow: 0 14px 38px color-mix(in srgb, var(--reader-text) 13%, transparent);
-  padding: 9px 14px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-floating);
+  padding: var(--space-2) var(--space-4) var(--space-2);
   backdrop-filter: blur(18px);
   transition:
-    opacity 180ms ease,
-    transform 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease;
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard);
 }
 
 .reader-progress-preview {
   position: absolute;
   bottom: calc(100% + 10px);
   left: clamp(
-    var(--reader-progress-preview-half),
-    var(--reader-progress),
-    calc(100% - var(--reader-progress-preview-half))
+    var(--read-progress-preview-half),
+    var(--read-progress),
+    calc(100% - var(--read-progress-preview-half))
   );
   display: grid;
   grid-template-columns: 60px minmax(0, 1fr);
-  gap: 12px;
-  width: min(276px, calc(100vw - 32px));
+  gap: var(--space-3);
+  width: min(276px, calc(100vw - var(--space-7)));
   min-height: 92px;
-  padding: 8px;
-  border: 1px solid color-mix(in srgb, var(--reader-accent) 28%, var(--reader-border-strong));
-  border-radius: 12px;
-  background: var(--reader-raised);
-  box-shadow: 0 14px 30px color-mix(in srgb, var(--reader-text) 18%, transparent);
+  padding: var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 28%, var(--color-border-strong));
+  border-radius: var(--radius-md);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-floating);
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, 5px) scale(0.98);
   transform-origin: bottom center;
   visibility: hidden;
   transition:
-    opacity 140ms ease,
-    transform 140ms ease,
-    visibility 140ms ease;
+    opacity var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard),
+    visibility var(--duration-fast) var(--ease-standard);
 }
 
 .reader-progress-toggle {
@@ -58,18 +57,18 @@
   min-width: 0;
   min-height: 44px;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-2);
   border: 0;
   background: transparent;
-  padding: 0 2px;
-  color: var(--reader-muted);
-  font-size: 11px;
+  padding: 0 var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
   text-align: left;
 }
 
 .reader-progress-toggle:hover,
 .reader-progress-toggle:focus-visible {
-  color: var(--reader-text);
+  color: var(--color-text);
 }
 
 .reader-progress-toggle span {
@@ -81,8 +80,8 @@
 
 .reader-progress-toggle output {
   margin-left: auto;
-  color: var(--reader-accent);
-  font-family: var(--reader-font-mono);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -105,9 +104,9 @@
   min-height: 76px;
   place-items: center;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--reader-border-strong) 76%, transparent);
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--reader-raised) 78%, var(--reader-accent) 4%);
+  border: 1px solid var(--read-border);
+  border-radius: var(--radius-sm);
+  background: var(--read-raised);
 }
 
 .reader-progress-pdf-thumbnail {
@@ -116,7 +115,7 @@
   max-height: 76px;
   opacity: 0;
   object-fit: contain;
-  transition: opacity 120ms ease;
+  transition: opacity var(--duration-fast) var(--ease-standard);
 }
 
 .reader-progress-pdf-thumbnail.is-ready {
@@ -125,9 +124,9 @@
 
 .reader-progress-preview-page-number {
   position: absolute;
-  color: var(--reader-muted);
-  font-family: var(--reader-font-mono);
-  font-size: 18px;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
   font-weight: 650;
   line-height: 1;
 }
@@ -135,19 +134,18 @@
 .reader-progress-preview-paper {
   display: grid;
   width: 49px;
-  gap: 6px;
-  padding: 8px 6px;
-  border: 1px solid color-mix(in srgb, var(--reader-border-strong) 64%, transparent);
-  border-radius: 3px;
-  background: var(--reader-raised);
-  box-shadow: 0 3px 8px color-mix(in srgb, var(--reader-text) 8%, transparent);
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--read-border);
+  border-radius: var(--radius-sm);
+  background: var(--read-raised);
 }
 
 .reader-progress-preview-paper span {
   overflow: hidden;
-  color: var(--reader-accent);
-  font-family: var(--reader-font-mono);
-  font-size: 6px;
+  color: var(--read-accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -156,10 +154,10 @@
 .reader-progress-preview-paper i {
   display: block;
   overflow: hidden;
-  color: var(--reader-muted);
-  font-size: 6px;
+  color: var(--read-muted);
+  font-size: var(--text-xs);
   font-style: normal;
-  line-height: 1.35;
+  line-height: var(--text-xs--line-height);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -168,21 +166,21 @@
   display: grid;
   align-content: center;
   min-width: 0;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .reader-progress-preview-copy > span {
-  color: var(--reader-accent);
-  font-family: var(--reader-font-mono);
-  font-size: 9px;
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
 .reader-progress-preview-copy strong {
   overflow: hidden;
-  color: var(--reader-text);
-  font-size: 12px;
+  color: var(--color-text);
+  font-size: var(--text-sm);
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -192,50 +190,50 @@
   display: -webkit-box;
   margin: 0;
   overflow: hidden;
-  color: var(--reader-muted);
-  font-size: 10px;
-  line-height: 1.45;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
 .reader-progress-dock.is-dragging,
 .reader-progress-dock:focus-within {
-  border-color: color-mix(in srgb, var(--reader-accent) 58%, var(--reader-border-strong));
-  box-shadow: 0 16px 42px color-mix(in srgb, var(--reader-accent) 18%, transparent);
+  border-color: var(--color-border-strong);
 }
 
 .reader-progress-dock-meta {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 9px;
+  gap: var(--space-2);
   min-width: 0;
   line-height: 1.2;
 }
 
 .reader-progress-dock-label {
-  color: var(--reader-faint);
-  font-family: var(--reader-font-mono);
-  font-size: 8px;
-  letter-spacing: 0.1em;
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .reader-progress-dock-meta strong {
   min-width: 0;
   overflow: hidden;
-  color: var(--reader-muted);
-  font-size: 11px;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
   font-weight: 550;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .reader-progress-dock-meta output {
-  color: var(--reader-accent);
-  font-family: var(--reader-font-mono);
-  font-size: 11px;
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -260,10 +258,9 @@
   top: 0;
   width: 4px;
   height: 4px;
-  border: 1px solid var(--reader-raised);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--reader-accent) 72%, var(--reader-muted));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--reader-text) 14%, transparent);
+  border: 1px solid var(--color-raised);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-accent) 72%, var(--color-muted));
   transform: translateX(-50%);
 }
 
@@ -282,24 +279,24 @@
 
 .reader-progress-range input::-webkit-slider-runnable-track {
   height: 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: linear-gradient(
     90deg,
-    var(--reader-accent) 0 var(--reader-progress),
-    color-mix(in srgb, var(--reader-border-strong) 58%, transparent) var(--reader-progress) 100%
+    var(--color-accent) 0 var(--read-progress),
+    var(--color-border) var(--read-progress) 100%
   );
 }
 
 .reader-progress-range input::-moz-range-track {
   height: 4px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--reader-border-strong) 58%, transparent);
+  border-radius: var(--radius-full);
+  background: var(--color-border);
 }
 
 .reader-progress-range input::-moz-range-progress {
   height: 4px;
-  border-radius: 999px;
-  background: var(--reader-accent);
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
 }
 
 .reader-progress-range input::-webkit-slider-thumb {
@@ -307,26 +304,17 @@
   height: 14px;
   margin-top: -5px;
   appearance: none;
-  border: 3px solid var(--reader-raised);
-  border-radius: 50%;
-  background: var(--reader-accent);
-  box-shadow: 0 1px 6px color-mix(in srgb, var(--reader-text) 28%, transparent);
-  transition: transform 150ms ease;
+  border: 3px solid var(--color-raised);
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
 }
 
 .reader-progress-range input::-moz-range-thumb {
   width: 10px;
   height: 10px;
-  border: 3px solid var(--reader-raised);
-  border-radius: 50%;
-  background: var(--reader-accent);
-  box-shadow: 0 1px 6px color-mix(in srgb, var(--reader-text) 28%, transparent);
-}
-
-.reader-progress-range input:hover::-webkit-slider-thumb,
-.reader-progress-range input:focus-visible::-webkit-slider-thumb,
-.reader-progress-dock.is-dragging .reader-progress-range input::-webkit-slider-thumb {
-  transform: scale(1.22);
+  border: 3px solid var(--color-raised);
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
 }
 
 .mobile-chrome-hidden .reader-progress-dock {
@@ -342,21 +330,21 @@
 
 @media (max-width: 860px) {
   .reader-progress-dock {
-    --reader-progress-preview-half: min(138px, calc((100vw - 24px) / 2));
+    --read-progress-preview-half: min(138px, calc((100vw - 24px) / 2));
     right: auto;
-    bottom: calc(var(--reader-chrome-bottom, 60px) + 8px);
+    bottom: calc(var(--read-overlay-bottom, 60px) + var(--space-2));
     left: 50%;
-    width: min(196px, calc(100vw - 24px));
+    width: min(196px, calc(100vw - var(--space-6)));
     transform: translateX(-50%);
-    padding: 5px 9px;
+    padding: var(--space-1) var(--space-2);
   }
 
   .reader-progress-dock.is-expanded {
-    right: max(12px, env(safe-area-inset-right));
-    left: max(12px, env(safe-area-inset-left));
+    right: max(var(--space-3), env(safe-area-inset-right));
+    left: max(var(--space-3), env(safe-area-inset-left));
     width: auto;
     transform: none;
-    padding: 8px 12px 7px;
+    padding: var(--space-2) var(--space-3) var(--space-2);
   }
 
   .reader-progress-toggle {
@@ -373,7 +361,10 @@
   }
 
   .reader-progress-preview {
-    width: min(276px, calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    width: min(
+      276px,
+      calc(100vw - var(--space-6) - env(safe-area-inset-left) - env(safe-area-inset-right))
+    );
   }
 
   .reader-progress-dock-label {
@@ -381,7 +372,7 @@
   }
 
   .reader-progress-dock-meta {
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .mobile-chrome-hidden .reader-progress-dock {
@@ -397,15 +388,6 @@
   }
 
   .reader-main:has(.reader-comic) .reader-progress-dock {
-    bottom: calc(var(--reader-chrome-bottom, 60px) + 8px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reader-progress-dock,
-  .reader-progress-preview,
-  .reader-progress-pdf-thumbnail,
-  .reader-progress-range input::-webkit-slider-thumb {
-    transition: none;
+    bottom: calc(var(--read-overlay-bottom, 60px) + var(--space-2));
   }
 }

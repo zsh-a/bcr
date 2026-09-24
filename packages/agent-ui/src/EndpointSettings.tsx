@@ -72,7 +72,7 @@ export function EndpointSettings({ onClose }: { onClose: () => void }) {
       }}
     >
       <header className="bcr-connection-header">
-        <button ref={back} type="button" className="bcr-chat-button" onClick={leave}>
+        <button ref={back} type="button" className="ui-btn ui-btn-default" onClick={leave}>
           ← 返回对话
         </button>
         <strong>模型连接</strong>
@@ -116,7 +116,7 @@ export function EndpointSettings({ onClose }: { onClose: () => void }) {
               >
                 <button
                   type="button"
-                  className="bcr-chat-button"
+                  className="ui-btn ui-btn-default"
                   onClick={() => {
                     reset();
                     setEditing(true);
@@ -133,7 +133,7 @@ export function EndpointSettings({ onClose }: { onClose: () => void }) {
                 <div className="bcr-chat-card-actions">
                   <button
                     type="button"
-                    className="bcr-chat-button"
+                    className="ui-btn ui-btn-default"
                     disabled={!agent.endpoint.apiKey && !agent.persistence.needsKey}
                     onClick={() => setConfirm("clear")}
                   >
@@ -141,7 +141,7 @@ export function EndpointSettings({ onClose }: { onClose: () => void }) {
                   </button>
                   <button
                     type="button"
-                    className="bcr-chat-button"
+                    className="ui-btn ui-btn-default"
                     onClick={() => setConfirm("delete")}
                   >
                     删除连接
@@ -159,6 +159,7 @@ export function EndpointSettings({ onClose }: { onClose: () => void }) {
                 接口地址
                 <input
                   required
+                  className="ui-input"
                   aria-label="AI 接口地址"
                   placeholder="/api/llm/v1"
                   value={baseUrl}
@@ -176,6 +177,7 @@ export function EndpointSettings({ onClose }: { onClose: () => void }) {
                 模型
                 <input
                   required
+                  className="ui-input"
                   aria-label="AI 模型名称"
                   placeholder="mimo-v2.6-pro"
                   value={model}
@@ -221,12 +223,16 @@ export function EndpointSettings({ onClose }: { onClose: () => void }) {
                     : "删除连接及其保存的密钥？对话记录不会删除。"}
               </p>
               <div className="bcr-chat-card-actions">
-                <button type="button" className="bcr-chat-button" onClick={() => setConfirm(null)}>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-default"
+                  onClick={() => setConfirm(null)}
+                >
                   继续保留
                 </button>
                 <button
                   type="button"
-                  className="bcr-chat-button"
+                  className="ui-btn ui-btn-default"
                   onClick={() => {
                     if (confirm === "leave") {
                       onClose();
@@ -259,7 +265,7 @@ export function EndpointSettings({ onClose }: { onClose: () => void }) {
             <span>{dirty ? "有未保存的修改" : "修改后保存生效"}</span>
             <button
               type="button"
-              className="bcr-chat-button"
+              className="ui-btn ui-btn-default"
               onClick={() => {
                 reset();
                 if (agent.endpoint.baseUrl) setEditing(false);
@@ -270,7 +276,7 @@ export function EndpointSettings({ onClose }: { onClose: () => void }) {
             </button>
             <button
               type="submit"
-              className="bcr-chat-button is-primary"
+              className="ui-btn ui-btn-primary"
               disabled={!dirty && !agent.persistence.needsKey}
             >
               保存连接

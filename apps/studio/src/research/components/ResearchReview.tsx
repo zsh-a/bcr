@@ -6,9 +6,9 @@ import {
   type ResearchExcerpt,
   type ResearchStore,
 } from "../index";
+import { SectionLabel } from "@bcr/react";
 import { linkPreview, relinkExcerpt } from "../review";
-const button =
-  "rounded border border-border px-3 py-1.5 text-[11px] text-muted hover:text-accent disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-accent";
+const button = "ui-btn ui-btn-default ui-btn-sm";
 export function ResearchReview(props: {
   readonly item: ResearchExcerpt;
   readonly collection: string;
@@ -62,12 +62,12 @@ export function ResearchReview(props: {
         核对与重新关联
       </button>
       {done && (
-        <p role="status" className="mt-2 text-[11px] text-accent">
+        <p role="status" className="mt-2 text-xs text-accent">
           {done}
         </p>
       )}
       {open && (
-        <div className="mt-3 space-y-3 text-[11px] text-muted" aria-label="引用核对">
+        <div className="mt-3 space-y-3 text-xs text-muted" aria-label="引用核对">
           <p>原始快照始终保留。请选择并核对当前正文，再确认新的来源关联。</p>
           <label className="flex items-center gap-2">
             <input
@@ -85,14 +85,14 @@ export function ResearchReview(props: {
             placeholder="输入当前正文或标题中的关键词…"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            className="w-full rounded bg-raised p-2 text-text"
+            className="ui-input w-full"
           />
           <p>
             仅列出已加载且可精确引用的来源，最多显示 30 个片段。未加载的资料请先在来源工作台打开。
           </p>
           <select
             aria-label="选择当前来源片段"
-            className="w-full min-w-0 rounded bg-raised p-2 text-text"
+            className="ui-select w-full"
             value={document?.id ?? ""}
             onChange={(event) => {
               setDocument(candidates.find((item) => item.id === event.target.value));
@@ -110,19 +110,19 @@ export function ResearchReview(props: {
             <>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <p className="mb-1 text-faint">最初保存的正文</p>
+                  <SectionLabel>最初保存的正文</SectionLabel>
                   <blockquote className="max-h-48 overflow-auto whitespace-pre-wrap leading-5">
                     {props.item.text}
                   </blockquote>
                 </div>
                 <div>
-                  <p className="mb-1 text-faint">当前来源正文（可选择文字）</p>
+                  <SectionLabel>当前来源正文（可选择文字）</SectionLabel>
                   <textarea
                     aria-label="当前来源正文"
                     readOnly
                     value={document.body}
                     rows={7}
-                    className="w-full rounded bg-raised p-2 leading-5 text-text"
+                    className="ui-textarea w-full"
                     onSelect={(event) =>
                       setRange({
                         start: event.currentTarget.selectionStart,
@@ -142,7 +142,7 @@ export function ResearchReview(props: {
                     max={document.body!.length}
                     value={range.start}
                     onChange={(event) => setRange({ ...range, start: Number(event.target.value) })}
-                    className="ml-1 w-20 rounded bg-raised p-1 text-text"
+                    className="ui-input ml-1 w-20"
                   />
                 </label>
                 <label>
@@ -154,12 +154,12 @@ export function ResearchReview(props: {
                     max={document.body!.length}
                     value={range.end}
                     onChange={(event) => setRange({ ...range, end: Number(event.target.value) })}
-                    className="ml-1 w-20 rounded bg-raised p-1 text-text"
+                    className="ui-input ml-1 w-20"
                   />
                 </label>
               </div>
               {preview ? (
-                <div className="rounded border border-accent/30 p-2">
+                <div className="rounded-md border border-accent/30 p-2">
                   <p>将关联到：{preview.source}</p>
                   <p className="mt-1 whitespace-pre-wrap">{preview.text}</p>
                   <p className="mt-1 font-mono text-faint">
@@ -198,7 +198,7 @@ export function ResearchReview(props: {
         </div>
       )}
       {!!props.item.links?.length && (
-        <details className="mt-3 text-[11px] text-muted">
+        <details className="mt-3 text-xs text-muted">
           <summary className="cursor-pointer">关联修订记录 · {props.item.links.length}</summary>
           <ol className="mt-2 max-h-48 space-y-3 overflow-auto">
             {props.item.links.map((link, i) => (

@@ -1,4 +1,5 @@
-import { Check, CircleAlert, Sparkles } from "lucide-react";
+import { Spinner, StatusDot } from "@bcr/react";
+import { Check, CircleAlert } from "lucide-react";
 import type { MangaAdapterExecution, MangaSource } from "./model";
 
 export function formatBytes(bytes: number): string {
@@ -20,9 +21,9 @@ export function statusLabel(status: string): string {
 
 export function statusIcon(status: string) {
   if (status === "done") return <Check className="size-3.5" />;
-  if (status === "running") return <Sparkles className="size-3.5 manga-spin" />;
+  if (status === "running") return <Spinner size="sm" label="运行中" />;
   if (status === "error") return <CircleAlert className="size-3.5" />;
-  return <span className="manga-stage-idle" />;
+  return <StatusDot status="idle" />;
 }
 
 export function sourceLabel(source: MangaSource): string {

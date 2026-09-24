@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useRuntime, useLocationSearch } from "@bcr/react";
+import { StatusDot, useRuntime, useLocationSearch } from "@bcr/react";
 import {
   createDocumentJob,
   documentOcrSettings,
@@ -324,16 +324,20 @@ export function App() {
         </div>
         <div className="document-header-divider" />
         <div className="document-header-context">
-          <span className="document-eyebrow">LOCAL DOCUMENT PIPELINE</span>
+          <span className="ui-section-label document-eyebrow">LOCAL DOCUMENT PIPELINE</span>
           <strong>
             {state.jobs.length} 个本地任务 · {formatLabel(active.format)}
           </strong>
         </div>
         <div className="document-header-spacer" />
         <span className="document-runtime-chip">
-          <span className="document-live-dot" /> LOCAL-FIRST
+          <StatusDot status="running" /> LOCAL-FIRST
         </span>
-        <button type="button" className="document-header-button" onClick={openImport}>
+        <button
+          type="button"
+          className="ui-btn ui-btn-primary document-header-button"
+          onClick={openImport}
+        >
           <Upload className="document-icon" />
           <span>导入文件</span>
         </button>
@@ -341,7 +345,7 @@ export function App() {
 
       <input
         ref={fileInputRef}
-        className="document-visually-hidden"
+        className="ui-sr-only"
         type="file"
         multiple
         accept=".txt,.md,.markdown,.mdown,.html,.htm,.docx,.fb2,.epub,.pdf,.cbz,.png,.jpg,.jpeg,.webp,.avif,.json,application/json"
@@ -357,12 +361,12 @@ export function App() {
         <aside className="document-inbox" aria-label="文档队列">
           <div className="document-panel-heading">
             <div>
-              <span className="document-eyebrow">DOCUMENT INBOX</span>
+              <span className="ui-section-label document-eyebrow">DOCUMENT INBOX</span>
               <strong>{state.jobs.length} 个任务</strong>
             </div>
             <button
               type="button"
-              className="document-icon-button"
+              className="ui-btn ui-btn-ghost ui-icon-btn"
               aria-label="导入文件"
               onClick={openImport}
             >
@@ -410,7 +414,7 @@ export function App() {
           </div>
           <div className="document-inbox-footer">
             <span>
-              <span className="document-live-dot" /> BROWSER STORAGE
+              <StatusDot status="running" /> BROWSER STORAGE
             </span>
             <span>LOCAL / V1</span>
           </div>
@@ -419,7 +423,9 @@ export function App() {
         <main id="document-canvas" className="document-canvas" aria-label="文档流水线">
           <div className="document-canvas-topline">
             <div>
-              <span className="document-eyebrow">PIPELINE MAP / {active.id.slice(-8)}</span>
+              <span className="ui-section-label document-eyebrow">
+                PIPELINE MAP / {active.id.slice(-8)}
+              </span>
               <h1>{active.name}</h1>
               <p>
                 {formatBytes(active.size)} · {formatLabel(active.format)} ·{" "}
@@ -433,7 +439,7 @@ export function App() {
             <div className="document-canvas-actions">
               <button
                 type="button"
-                className="document-button document-button-secondary"
+                className="ui-btn ui-btn-default"
                 onClick={refreshAvailableStages}
               >
                 <Sparkles className="document-icon" /> 刷新就绪阶段
@@ -442,7 +448,7 @@ export function App() {
                 <>
                   <button
                     type="button"
-                    className="document-button document-button-secondary"
+                    className="ui-btn ui-btn-default"
                     onClick={() => downloadExport("json")}
                     disabled={exportBusy !== null}
                   >
@@ -451,7 +457,7 @@ export function App() {
                   </button>
                   <button
                     type="button"
-                    className="document-button document-button-secondary"
+                    className="ui-btn ui-btn-default"
                     onClick={() => downloadExport("markdown")}
                     disabled={exportBusy !== null}
                   >
@@ -460,11 +466,7 @@ export function App() {
                   </button>
                 </>
               )}
-              <button
-                type="button"
-                className="document-button document-button-primary"
-                onClick={openImport}
-              >
+              <button type="button" className="ui-btn ui-btn-primary" onClick={openImport}>
                 <FolderOpen className="document-icon" /> 添加到队列
               </button>
             </div>
@@ -474,7 +476,12 @@ export function App() {
             <div className="document-notice" role="status" aria-live="polite">
               <CircleAlert className="document-icon" />
               <span>{state.notice}</span>
-              <button type="button" aria-label="关闭提示" onClick={() => documents.setNotice(null)}>
+              <button
+                type="button"
+                className="ui-btn ui-btn-ghost ui-icon-btn ui-btn-sm"
+                aria-label="关闭提示"
+                onClick={() => documents.setNotice(null)}
+              >
                 <X className="document-icon" />
               </button>
             </div>
@@ -494,7 +501,7 @@ export function App() {
 
           <section className="document-handoff-strip">
             <div className="document-handoff-copy">
-              <span className="document-eyebrow">NEXT SAFE HANDOFF</span>
+              <span className="ui-section-label document-eyebrow">NEXT SAFE HANDOFF</span>
               <strong>
                 {canOpenInReader(active.format)
                   ? "把结构化内容交给 Reader Studio"
@@ -504,21 +511,13 @@ export function App() {
             </div>
             <div className="document-handoff-actions">
               {canOpenInReader(active.format) && (
-                <button
-                  type="button"
-                  className="document-button document-button-primary"
-                  onClick={handoffReader}
-                >
+                <button type="button" className="ui-btn ui-btn-primary" onClick={handoffReader}>
                   <BookOpen className="document-icon" /> 打开 Reader
                   <ArrowUpRight className="document-icon" />
                 </button>
               )}
               {canOpenInManga(active.format) && (
-                <button
-                  type="button"
-                  className="document-button document-button-secondary"
-                  onClick={handoffManga}
-                >
+                <button type="button" className="ui-btn ui-btn-default" onClick={handoffManga}>
                   <ImagePlus className="document-icon" /> 打开 Manga
                   <ArrowUpRight className="document-icon" />
                 </button>
@@ -530,7 +529,7 @@ export function App() {
             <section className="document-handoff-history" aria-label="最近工作台交接">
               <div className="document-handoff-history-heading">
                 <div>
-                  <span className="document-eyebrow">HANDOFF HISTORY</span>
+                  <span className="ui-section-label document-eyebrow">HANDOFF HISTORY</span>
                   <strong>最近的工作台交接</strong>
                 </div>
                 <span>仅保存状态，不保存文件内容</span>
@@ -575,7 +574,7 @@ export function App() {
 
         <aside className="document-inspector" aria-label="阶段详情">
           <div className="document-inspector-heading">
-            <span className="document-eyebrow">INSPECTOR</span>
+            <span className="ui-section-label document-eyebrow">INSPECTOR</span>
             <strong>{selected?.label ?? "Stage"}</strong>
           </div>
           {selected !== undefined && (
@@ -626,7 +625,7 @@ export function App() {
           )}
           <div className="document-preview-card">
             <div className="document-preview-heading">
-              <span className="document-eyebrow">SOURCE PREVIEW</span>
+              <span className="ui-section-label document-eyebrow">SOURCE PREVIEW</span>
               <span>{formatLabel(active.format)}</span>
             </div>
             {active.sourceUrl !== undefined ? (

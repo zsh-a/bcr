@@ -1,0 +1,113 @@
+/*
+ * 统一工作站令牌——视觉的唯一事实来源。
+ * 色彩：石墨深色（默认）/ 柔和浅色，青绿单 accent。
+ * 其余尺度：间距、圆角、字号、动效、层级、布局高度。
+ * 领域数据色（涨跌等）可在领域根另行声明，但 chrome 一律消费这里的名称。
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* 色彩（深色默认） */
+  --color-bg: #151619;
+  --color-surface: #1c1d21;
+  --color-raised: #24252a;
+  --color-overlay: #2c2d33;
+  --color-border: #3c3e46;
+  --color-border-strong: #666974;
+  --color-text: #ececf0;
+  --color-muted: #b8bac3;
+  --color-faint: #a0a3ae;
+  --color-accent: #79cdbf;
+  --color-accent-dim: #263f3b;
+  --color-amber: #efbc69;
+  --color-danger: #ff766d;
+  --color-info: #82aef7;
+  --color-success: #89cca2;
+  --color-primary: var(--color-accent);
+  --color-on-primary: #102521;
+  --color-selection: #263f3b;
+  --color-focus: var(--color-accent);
+  --color-scrim: #08090cb3;
+
+  /* 层级——只允许这两档 */
+  --shadow-floating: 0 20px 64px #0005, 0 4px 16px #0003;
+  --shadow-dialog: 0 24px 100px #0007;
+
+  /* 间距——4px 基数 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  /* 圆角——控件 / 卡片 / 浮层三档 + 胶囊 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+
+  /* 字体与字号 */
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+  --font-display: "Newsreader Variable", Georgia, serif;
+  --text-xs: 11px;
+  --text-xs--line-height: 1.45;
+  --text-sm: 12px;
+  --text-sm--line-height: 1.5;
+  --text-base: 14px;
+  --text-base--line-height: 1.5;
+  --text-lg: 16px;
+  --text-lg--line-height: 1.4;
+  --text-xl: 20px;
+  --text-xl--line-height: 1.3;
+  --text-2xl: 26px;
+  --text-2xl--line-height: 1.2;
+
+  /* 布局高度 */
+  --h-topbar: 56px;
+  --h-toolbar: 48px;
+  --h-control: 36px;
+  --h-control-lg: 44px;
+  --w-sidebar: 280px;
+  --content-max: 960px;
+
+  /* 动效——快（反馈）/ 中（浮层）/ 慢（位移）三档 */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 260ms;
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-bg: #f4f4f2;
+  --color-surface: #ffffff;
+  --color-raised: #efefed;
+  --color-overlay: #e7e8e6;
+  --color-border: #d0d2d2;
+  --color-border-strong: #7d8088;
+  --color-text: #24262c;
+  --color-muted: #51555f;
+  --color-faint: #626570;
+  --color-accent: #17685e;
+  --color-accent-dim: #dcece7;
+  --color-primary: #17685e;
+  --color-on-primary: #ffffff;
+  --color-selection: #dcece7;
+  --color-focus: #17685e;
+  --color-success: #286842;
+  --color-amber: #855008;
+  --color-danger: #b52f35;
+  --color-info: #305db4;
+  --color-scrim: #20242e66;
+  --shadow-floating: 0 20px 64px #24262c1a, 0 4px 16px #24262c12;
+  --shadow-dialog: 0 24px 100px #24262c26;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}

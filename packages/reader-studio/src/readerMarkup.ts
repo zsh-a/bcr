@@ -68,15 +68,72 @@ const SAFE_INLINE_STYLE_PROPERTIES = new Set([
   "writing-mode",
 ]);
 
+/*
+ * 阅读设置拥有正文字族/字号与段落节奏：这些声明在入口处剥离，
+ * 正文排版便不必用 !important 压过出版物的内联样式。
+ * 标签集合与 styles.css 的 .reader-prose 排版重置一一对应。
+ */
+const READER_TYPOGRAPHY_TAGS: Record<string, true> = {
+  a: true,
+  article: true,
+  b: true,
+  blockquote: true,
+  dd: true,
+  div: true,
+  dl: true,
+  dt: true,
+  em: true,
+  figcaption: true,
+  figure: true,
+  font: true,
+  h1: true,
+  h2: true,
+  h3: true,
+  h4: true,
+  h5: true,
+  h6: true,
+  i: true,
+  li: true,
+  mark: true,
+  ol: true,
+  p: true,
+  s: true,
+  section: true,
+  span: true,
+  strong: true,
+  table: true,
+  tbody: true,
+  td: true,
+  tfoot: true,
+  th: true,
+  thead: true,
+  tr: true,
+  u: true,
+  ul: true,
+};
+const PARAGRAPH_STYLE_PROPERTIES: Record<string, true> = {
+  "line-height": true,
+  margin: true,
+  "margin-bottom": true,
+  "margin-left": true,
+  "margin-right": true,
+  "margin-top": true,
+};
+
 /** Keep common publication typography while rejecting executable/escaping CSS. */
-export function sanitizeInlineStyle(value: string): string | undefined {
+export function sanitizeInlineStyle(value: string, tagName?: string): string | undefined {
   const declarations = value.split(";").flatMap((declaration) => {
     const separator = declaration.indexOf(":");
     if (separator <= 0) return [];
     const property = declaration.slice(0, separator).trim().toLocaleLowerCase();
     const propertyValue = declaration.slice(separator + 1).trim();
+    const readerTypography =
+      READER_TYPOGRAPHY_TAGS[tagName ?? ""] === true &&
+      (property === "font-family" || property === "font-size");
     if (
       !SAFE_INLINE_STYLE_PROPERTIES.has(property) ||
+      readerTypography ||
+      (tagName === "p" && PARAGRAPH_STYLE_PROPERTIES[property] === true) ||
       propertyValue.length === 0 ||
       /[{}<>]|(?:url|expression|javascript|vbscript|@import)/iu.test(propertyValue)
     ) {
@@ -208,7 +265,7 @@ export function sanitizeHtml(rawHtml: string): { html: string; text: string; tit
       if (name.startsWith("on")) {
         element.removeAttribute(attribute.name);
       } else if (name === "style") {
-        const safe = sanitizeInlineStyle(value);
+        const safe = sanitizeInlineStyle(value, element.localName);
         if (safe === undefined) element.removeAttribute(attribute.name);
         else element.setAttribute(attribute.name, safe);
       } else if (name === "srcset") {

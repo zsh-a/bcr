@@ -69,9 +69,12 @@ function luminance(hex: string) {
     .map((value) => (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4))
     .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index]!, 0);
 }
-const css = readFileSync(new URL("../../../packages/react/src/theme.css", import.meta.url), "utf8");
+const css = readFileSync(
+  new URL("../../../packages/react/src/tokens.css", import.meta.url),
+  "utf8",
+);
 for (const [theme, block] of [
-  ["dark", css.split("@theme {")[1]!.split("}")[0]!],
+  ["dark", css.split(":root {")[1]!.split("}")[0]!],
   ["light", css.split(':root[data-theme="light"] {')[1]!.split("}")[0]!],
 ]) {
   const colors = Object.fromEntries(

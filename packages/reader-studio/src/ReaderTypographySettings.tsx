@@ -61,8 +61,8 @@ export function ReaderTypographySettings({
         style={readerTypographyStyle(settings) as CSSProperties}
         aria-label="中英混排预览"
       >
-        <span className="reader-eyebrow">LIVE PREVIEW</span>
-        <div className="reader-prose">
+        <span className="ui-section-label">LIVE PREVIEW</span>
+        <div className="reader-typography-sample">
           <p>春山可望，文字有自己的呼吸。读到这里，不必着急翻向下一页。</p>
           <p>一段文字，一页时光。合上书，再打开，仍能从熟悉的地方继续。</p>
           <p lang="en">Reading is a quiet conversation. Il1 · O0 · 2026.</p>
@@ -189,7 +189,7 @@ export function ReaderTypographySettings({
           </p>
           <button
             type="button"
-            className="reader-button"
+            className="ui-btn ui-btn-lg ui-btn-default"
             onClick={() =>
               reader.setSettings({
                 fontFamily: DEFAULT_READER_SETTINGS.fontFamily,

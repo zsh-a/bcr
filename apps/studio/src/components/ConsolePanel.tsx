@@ -2,7 +2,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { Trash2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { studio, useStudio, type LogLevel } from "../store";
-import { formatTime, PanelEmpty } from "./ui";
+import { formatTime, PanelEmpty } from "@bcr/react";
 
 const levelColor: Record<LogLevel, string> = {
   info: "text-info",
@@ -32,14 +32,12 @@ export function ConsolePanel() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border px-2 py-1">
-        <span className="font-mono text-[10px] tracking-[0.08em] text-faint uppercase">
-          runtime log · {logs.length}
-        </span>
+      <div className="flex items-center justify-between border-b border-border pr-2">
+        <span className="ui-section-label">runtime log · {logs.length}</span>
         <button
           type="button"
           onClick={() => studio.clearLogs()}
-          className="inline-flex h-5 items-center gap-1 rounded-[var(--radius-xs)] px-1.5 text-[11px] text-muted transition-colors hover:bg-raised hover:text-text"
+          className="inline-flex h-5 items-center gap-1 rounded-sm px-1.5 text-xs text-muted transition-colors hover:bg-raised hover:text-text"
         >
           <Trash2 className="size-3" />
           清空
@@ -76,7 +74,7 @@ export function ConsolePanel() {
                     left: 0,
                     width: "100%",
                   }}
-                  className="flex items-baseline gap-2 px-2 font-mono text-[11px]"
+                  className="flex items-baseline gap-2 px-2 font-mono text-xs"
                 >
                   <span className="shrink-0 text-faint">{formatTime(log.ts)}</span>
                   <span

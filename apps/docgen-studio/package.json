@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@bcr/docgen-core": "workspace:*",
+    "@bcr/react": "workspace:*",
     "@bcr/shell-contract": "workspace:*",
     "lucide-react": "catalog:",
     "react": "catalog:",

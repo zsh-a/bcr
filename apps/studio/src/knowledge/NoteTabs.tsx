@@ -1,3 +1,4 @@
+import { IconButton } from "@bcr/react";
 import { X, ArrowLeft, ArrowRight } from "lucide-react";
 import type { KnowledgeNote } from "./model";
 
@@ -22,22 +23,22 @@ export function NoteTabs({
   return (
     <div className="knowledge-tabs-bar">
       <div className="knowledge-nav-history">
-        <button
-          type="button"
-          aria-label="上一条笔记"
+        <IconButton
+          label="上一条笔记"
+          size="sm"
           disabled={!history.back}
           onClick={() => onHistory(-1)}
         >
           <ArrowLeft size={16} />
-        </button>
-        <button
-          type="button"
-          aria-label="下一条笔记"
+        </IconButton>
+        <IconButton
+          label="下一条笔记"
+          size="sm"
           disabled={!history.forward}
           onClick={() => onHistory(1)}
         >
           <ArrowRight size={16} />
-        </button>
+        </IconButton>
       </div>
       <nav className="knowledge-tabs" aria-label="打开的笔记">
         {tabs.map((id) => (

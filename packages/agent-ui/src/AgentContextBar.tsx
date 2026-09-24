@@ -24,7 +24,7 @@ export function AgentContextBar({
         <>
           <button
             type="button"
-            className="bcr-chat-context-pill"
+            className="ui-btn ui-btn-ghost bcr-chat-context-pill"
             aria-pressed={options.includeContext}
             title={surface.label}
             onClick={() => manager.setOptions({ includeContext: !options.includeContext })}
@@ -33,7 +33,7 @@ export function AgentContextBar({
           </button>
           <button
             type="button"
-            className="bcr-chat-context-pill"
+            className="ui-btn ui-btn-ghost bcr-chat-context-pill"
             aria-pressed={options.allowEdits !== false}
             disabled={!options.includeContext}
             onClick={() => manager.setOptions({ allowEdits: options.allowEdits === false })}

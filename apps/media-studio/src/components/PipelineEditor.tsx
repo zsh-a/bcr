@@ -34,9 +34,9 @@ export function PipelineEditor() {
   return (
     <div className="flex min-h-0 flex-1">
       <aside className="w-[168px] shrink-0 overflow-y-auto border-r border-[var(--color-border)] p-2">
-        <div className="mb-1.5 text-[10px] tracking-wider text-[var(--color-faint)]">节点</div>
+        <div className="ui-section-label">节点</div>
         <OperationPalette registry={OPERATIONS} onAdd={addOperation} />
-        <p className="mt-2 text-[10px] leading-relaxed text-[var(--color-faint)]">
+        <p className="mt-2 text-xs leading-relaxed text-[var(--color-faint)]">
           拖动输出端口连线 · 点击选中后 Delete 删除 · 节点 config 参与缓存键
         </p>
       </aside>
@@ -54,13 +54,11 @@ export function PipelineEditor() {
       {selectedNode !== undefined && selectedOp !== undefined && (
         <aside className="w-[200px] shrink-0 overflow-y-auto border-l border-[var(--color-border)] p-3">
           <div className="mb-2 flex items-center gap-2">
-            <span className="text-[11px] font-semibold">{selectedOp.label}</span>
-            <span className="font-mono text-[10px] text-[var(--color-faint)]">
-              {selectedNode.id}
-            </span>
+            <span className="text-xs font-semibold">{selectedOp.label}</span>
+            <span className="font-mono text-xs text-[var(--color-faint)]">{selectedNode.id}</span>
             <button
               type="button"
-              className="ml-auto text-[10px] text-[var(--color-faint)] hover:text-[var(--color-danger)]"
+              className="ml-auto text-xs text-[var(--color-faint)] hover:text-[var(--color-danger)]"
               onClick={() => {
                 studio.setGraph(removeNode(graph, selectedNode.id));
                 studio.setSelectedNode(null);

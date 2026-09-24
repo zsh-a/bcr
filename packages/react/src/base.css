@@ -1,55 +1,34 @@
 /* Loaded only by standalone entrypoints, never by lazy domain views. */
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
-}
+@import "./global.css";
 
+/* 独立入口在容器内滚动，不滚动 body。 */
 body {
-  background: var(--color-bg, #151619);
-  color: var(--color-text, #ececf0);
-  font-family: var(--font-sans, "IBM Plex Sans", system-ui, sans-serif);
-  font-size: 14px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
-/* Shared connection settings: credentials remain separate from business data. */
-input::placeholder,
-textarea::placeholder {
-  color: var(--color-faint);
-  opacity: 1;
-}
+
+/* 共享连接设置：凭据与业务数据分离；表单控件一律 ui-* 原语。 */
 .bcr-credential-scope {
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
   min-width: 0;
 }
 .bcr-credential-scope label {
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
 }
 .bcr-credential-scope select {
-  min-height: 44px;
   width: 100%;
   max-width: 100%;
-  padding: 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
 }
 .bcr-credential-scope p {
   margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   color: var(--color-muted);
 }
-.bcr-credential-scope select:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+.bcr-credential-scope select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .bcr-chat-settings > .bcr-connection-form,
 .bcr-connection-form {
@@ -62,9 +41,9 @@ textarea::placeholder {
 .bcr-connection-footer {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   flex-shrink: 0;
-  padding: 12px 18px;
+  padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid var(--color-border);
 }
 .bcr-connection-header strong {
@@ -75,19 +54,20 @@ textarea::placeholder {
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
-  padding: 24px 20px;
+  padding: var(--space-6) var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-5);
 }
 .bcr-connection-body h3,
 .bcr-connection-body p {
   margin: 0;
 }
 .bcr-connection-body h3 {
-  font-size: 20px;
+  font-size: var(--text-xl);
+  line-height: var(--text-xl--line-height);
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-bottom: var(--space-2);
 }
 .bcr-connection-footer {
   border-bottom: 0;
@@ -96,46 +76,46 @@ textarea::placeholder {
 }
 .bcr-connection-footer > span {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--color-muted);
-}
-.bcr-connection-footer .is-primary {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
 }
 .bcr-connection-summary {
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
   min-width: 0;
-  padding: 20px;
+  padding: var(--space-5);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--color-surface);
 }
+.bcr-connection-summary .ui-section-label {
+  padding: 0;
+}
 .bcr-connection-summary strong {
-  font-size: 20px;
+  font-size: var(--text-xl);
+  line-height: var(--text-xl--line-height);
   overflow-wrap: anywhere;
 }
 .bcr-connection-summary code {
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
   overflow-wrap: anywhere;
 }
-.bcr-connection-summary p,
-.bcr-connection-eyebrow {
+.bcr-connection-summary p {
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .bcr-connection-summary button {
   justify-self: start;
 }
 .bcr-secret-field {
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
 }
 .bcr-secret-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 .bcr-secret-row > input {
@@ -146,47 +126,26 @@ textarea::placeholder {
   flex: 1;
   color: var(--color-muted);
 }
-.bcr-secret-row button {
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-}
 .bcr-connection-manage {
   border-top: 1px solid var(--color-border);
-  padding-top: 12px;
+  padding-top: var(--space-3);
 }
 .bcr-connection-manage summary {
-  min-height: 44px;
+  min-height: var(--h-control);
   cursor: pointer;
   color: var(--color-muted);
 }
 .bcr-connection-confirm {
-  padding: 14px;
+  padding: var(--space-4);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   display: grid;
-  gap: 12px;
-}
-.bcr-secret-row button:focus-visible,
-.bcr-connection-manage summary:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-.bcr-credential-scope select:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  gap: var(--space-3);
 }
 @media (max-width: 640px) {
-  .bcr-connection-body {
-    padding: 18px 14px;
-  }
   .bcr-chat-settings input,
   .bcr-credential-scope select {
-    font-size: 16px;
+    /* 触屏上避免聚焦缩放。 */
+    font-size: var(--text-lg);
   }
 }

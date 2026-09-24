@@ -79,7 +79,7 @@ const RunView = memo(function RunView({
             </p>
             {last && !hasTools && (
               <button
-                className="bcr-chat-button"
+                className="ui-btn ui-btn-default"
                 disabled={busy}
                 onClick={() => {
                   setRetryError(null);
@@ -92,7 +92,7 @@ const RunView = memo(function RunView({
               </button>
             )}
             {retryError && <p role="alert">{retryError}</p>}
-            <button className="bcr-chat-button" onClick={settings}>
+            <button className="ui-btn ui-btn-default" onClick={settings}>
               检查接口
             </button>
           </div>
@@ -169,7 +169,7 @@ export function AgentTimeline({
           {conversation.runs.length === 0 ? (
             <div className="bcr-chat-empty">
               <Sparkles size={25} strokeWidth={1.3} aria-hidden="true" />
-              <small>随时开始 · 跨领域协作</small>
+              <small className="ui-section-label">随时开始 · 跨领域协作</small>
               <h2>把下一步，交给助手。</h2>
               <p>
                 从一个问题开始，或一起处理当前内容。
@@ -197,7 +197,7 @@ export function AgentTimeline({
       {unread && (
         <button
           type="button"
-          className="bcr-chat-jump bcr-chat-button"
+          className="ui-btn ui-btn-default bcr-chat-jump"
           onClick={() => {
             following.current = true;
             setUnread(false);

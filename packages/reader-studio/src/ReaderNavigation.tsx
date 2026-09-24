@@ -26,21 +26,20 @@ export function ReaderNavigationButton({ book }: { book: ReaderBook }) {
     <>
       <button
         type="button"
-        className="reader-icon-button"
+        className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
         aria-label="打开阅读目录"
         aria-expanded={panel !== null}
         onClick={() => setPanel("toc")}
       >
         <List className="reader-icon" />
       </button>
-      {panel && (
-        <MobileNavigationSheet
-          book={book}
-          panel={panel}
-          onPanelChange={setPanel}
-          onClose={() => setPanel(null)}
-        />
-      )}
+      <MobileNavigationSheet
+        book={book}
+        open={panel !== null}
+        panel={panel ?? "toc"}
+        onPanelChange={setPanel}
+        onClose={() => setPanel(null)}
+      />
     </>
   );
 }
@@ -225,20 +224,20 @@ export function MobileReadingBar(props: {
         </div>
         <ReaderHistoryBar />
       </nav>
-      {panel !== null && (
-        <MobileNavigationSheet
-          book={props.book}
-          panel={panel}
-          onPanelChange={setPanel}
-          onClose={() => setPanel(null)}
-        />
-      )}
+      <MobileNavigationSheet
+        book={props.book}
+        open={panel !== null}
+        panel={panel ?? "toc"}
+        onPanelChange={setPanel}
+        onClose={() => setPanel(null)}
+      />
     </>
   );
 }
 
 function MobileNavigationSheet(props: {
   book: ReaderBook;
+  open: boolean;
   panel: MobileNavigationPanel;
   onPanelChange: (panel: MobileNavigationPanel) => void;
   onClose: () => void;
@@ -264,10 +263,10 @@ function MobileNavigationSheet(props: {
 
   useEffect(() => {
     setQuery("");
-  }, [props.panel]);
+  }, [props.panel, props.open]);
 
   useEffect(() => {
-    if (props.panel !== "toc" || activeSectionId === null) return;
+    if (!props.open || props.panel !== "toc" || activeSectionId === null) return;
     const frame = window.requestAnimationFrame(() => {
       const sheet = document.getElementById("reader-mobile-navigation-sheet");
       const active = sheet?.querySelector<HTMLElement>(
@@ -276,7 +275,7 @@ function MobileNavigationSheet(props: {
       active?.scrollIntoView({ block: "center", behavior: "auto" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [activeSectionId, props.panel, props.book]);
+  }, [activeSectionId, props.panel, props.open, props.book]);
 
   const navigateToSection = (sectionId: string) => {
     reader.openBook(props.book.id, sectionId);
@@ -292,7 +291,7 @@ function MobileNavigationSheet(props: {
     { id: "notes", label: "笔记", count: annotations.length },
   ];
   return (
-    <ReaderSheet onClose={props.onClose} labelId="reader-mobile-navigation-title">
+    <ReaderSheet open={props.open} onClose={props.onClose} labelId="reader-mobile-navigation-title">
       <section
         id="reader-mobile-navigation-sheet"
         className="reader-mobile-sheet reader-navigation-sheet"
@@ -301,12 +300,12 @@ function MobileNavigationSheet(props: {
       >
         <div className="reader-mobile-sheet-heading">
           <div>
-            <span className="reader-eyebrow">READING MAP</span>
+            <span className="ui-section-label">READING MAP</span>
             <strong id="reader-mobile-navigation-title">{props.book.title}</strong>
           </div>
           <button
             type="button"
-            className="reader-icon-button"
+            className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
             onClick={props.onClose}
             aria-label="关闭阅读导航"
           >
@@ -315,7 +314,7 @@ function MobileNavigationSheet(props: {
         </div>
         <button
           type="button"
-          className="reader-button reader-pin-toc"
+          className="ui-btn ui-btn-lg ui-btn-default reader-pin-toc"
           aria-pressed={tocPinned}
           onClick={() => {
             reader.setSettings({ tocPinned: !tocPinned });
@@ -351,7 +350,7 @@ function MobileNavigationSheet(props: {
             <div className="reader-mobile-toc-search">
               <label>
                 <Search className="reader-icon" />
-                <span className="reader-visually-hidden">筛选目录</span>
+                <span className="ui-sr-only">筛选目录</span>
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}

@@ -35,7 +35,7 @@ export function MangaProjectPanel({
   return (
     <aside className="manga-sidebar manga-sidebar-left">
       <section className="manga-sidebar-section manga-project-section">
-        <div className="manga-section-kicker">PROJECT / 01</div>
+        <div className="ui-section-label manga-section-kicker">PROJECT / 01</div>
         <div className="manga-project-name">Spring Notes</div>
         <div className="manga-project-meta">
           <span>
@@ -49,7 +49,7 @@ export function MangaProjectPanel({
       </section>
 
       <section className="manga-sidebar-section">
-        <div className="manga-section-heading">
+        <div className="ui-section-label manga-section-heading">
           <span>PAGE QUEUE</span>
           <span className="manga-count">
             {String(activePageIndex + 1).padStart(2, "0")} /{" "}
@@ -125,8 +125,8 @@ export function MangaProjectPanel({
                 {state.batch.completedPageIds.length}/{state.batch.pageIds.length}
               </strong>
             </div>
-            <div className="manga-batch-progress" aria-label="批处理进度">
-              <span style={{ width: `${batchProgress * 100}%` }} />
+            <div className="ui-progress manga-batch-progress" aria-label="批处理进度">
+              <div className="ui-progress-fill" style={{ width: `${batchProgress * 100}%` }} />
             </div>
             <small>
               {state.batch.status === "running"
@@ -142,7 +142,7 @@ export function MangaProjectPanel({
       </section>
 
       <section className="manga-sidebar-section manga-pipeline-section">
-        <div className="manga-section-heading">
+        <div className="ui-section-label manga-section-heading">
           <span>PIPELINE</span>
           <span className="manga-count">
             {state.stages.filter((stage) => stage.status === "done").length}/9

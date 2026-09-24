@@ -4,6 +4,7 @@ import {
   unregisterReaderPdfDocument,
 } from "./readerPdfAdapter";
 import { useSectionContent } from "./useSectionContent";
+import { Skeleton } from "@bcr/react";
 import { CircleAlert, ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
@@ -170,7 +171,7 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
             <ChevronLeft className="reader-icon" />
           </button>
           <label>
-            <span className="reader-visually-hidden">PDF 页码</span>
+            <span className="ui-sr-only">PDF 页码</span>
             <input
               aria-label="PDF 页码"
               inputMode="numeric"
@@ -190,7 +191,7 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
             />
           </label>
           <span>/ {props.book.sections.length}</span>
-          <button type="submit" className="reader-visually-hidden">
+          <button type="submit" className="ui-sr-only">
             跳转到 PDF 页码
           </button>
           <button
@@ -394,8 +395,6 @@ const PdfPageView = memo(function PdfPageView(props: {
         if (context === null) throw new Error("Canvas 2D 不可用");
         canvas.width = Math.ceil(viewport.width);
         canvas.height = Math.ceil(viewport.height);
-        canvas.style.width = `${Math.ceil(viewport.width / deviceScale)}px`;
-        canvas.style.height = `${Math.ceil(viewport.height / deviceScale)}px`;
         renderTask = loadedPage.render({ canvas, canvasContext: context, viewport });
         await renderTask.promise;
         if (cancelled) return;
@@ -512,7 +511,12 @@ const PdfPageView = memo(function PdfPageView(props: {
         style={{ aspectRatio: props.section.pageAspectRatio ?? 1 / Math.SQRT2 }}
       >
         {status === "idle" && <span className="reader-pdf-placeholder">滚动到此处加载页面</span>}
-        {status === "loading" && <span className="reader-media-loading">渲染中…</span>}
+        {status === "loading" && (
+          <>
+            <Skeleton className="reader-pdf-skeleton" />
+            <span className="reader-media-loading">渲染中…</span>
+          </>
+        )}
         {status === "error" && (
           <div className="reader-media-error" role="alert">
             <CircleAlert className="reader-icon" />

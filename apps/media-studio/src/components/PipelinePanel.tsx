@@ -1,11 +1,12 @@
 import { findOperation, type NodeRunState } from "@bcr/graph";
+import { ProgressBar } from "@bcr/react";
 import { OPERATIONS } from "../operations";
 import { useStudio } from "../store";
 
 const STATUS_STYLE: Record<NodeRunState["status"], { dot: string; text: string; label: string }> = {
   pending: { dot: "bg-[var(--color-faint)]", text: "text-[var(--color-faint)]", label: "待执行" },
   running: {
-    dot: "bg-[var(--color-info)] animate-pulse",
+    dot: "bg-[var(--color-info)]",
     text: "text-[var(--color-info)]",
     label: "运行中",
   },
@@ -28,14 +29,12 @@ export function PipelinePanel() {
         return (
           <div
             key={node.id}
-            className="relative flex flex-col gap-0.5 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5"
+            className="relative flex flex-col gap-1 rounded-sm border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2"
           >
             <div className="flex items-center gap-2">
-              <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-              <span className="font-mono text-[11px] font-medium">
-                {op?.label ?? node.operation}
-              </span>
-              <span className={`ml-auto text-[10px] ${style.text}`}>
+              <span className={`h-2 w-2 rounded-full ${style.dot}`} />
+              <span className="font-mono text-xs font-medium">{op?.label ?? node.operation}</span>
+              <span className={`ml-auto text-xs ${style.text}`}>
                 {status.status === "running"
                   ? `${Math.round(status.progress * 100)}%`
                   : status.status === "failed"
@@ -43,12 +42,12 @@ export function PipelinePanel() {
                     : style.label}
               </span>
             </div>
-            <div className="text-[10px] text-[var(--color-faint)]">{op?.detail ?? ""}</div>
+            <div className="text-xs text-[var(--color-faint)]">{op?.detail ?? ""}</div>
             {status.status === "running" && (
-              <div className="absolute inset-x-0 bottom-0 h-0.5 bg-[var(--color-border)]">
-                <div
-                  className="h-full bg-[var(--color-info)] transition-[width] duration-200"
-                  style={{ width: `${status.progress * 100}%` }}
+              <div className="absolute inset-x-0 bottom-0 overflow-hidden rounded-b-[var(--radius-sm)]">
+                <ProgressBar
+                  value={status.progress}
+                  label={`${op?.label ?? node.operation} 进度`}
                 />
               </div>
             )}
