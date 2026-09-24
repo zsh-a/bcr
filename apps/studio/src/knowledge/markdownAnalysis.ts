@@ -7,6 +7,7 @@ import type { KnowledgeNote } from "./model";
 const parser = unified().use(remarkParse).use(remarkGfm);
 export const linkKey = (value: string) => value.normalize("NFKC").trim().toLowerCase();
 export interface NoteLink {
+  kind: "wiki" | "markdown";
   target: string;
   label: string;
   from: number;
@@ -42,6 +43,7 @@ function wikiLinks(node: Text, source: string): NoteLink[] {
     const [target, ...alias] = match[1]!.split("|");
     if (!target?.trim() || target.length > 600) continue;
     links.push({
+      kind: "wiki",
       target: target.trim(),
       label: alias.join("|") || target.trim(),
       from: start + from,
@@ -74,6 +76,7 @@ function walk(node: Root | RootContent, source: string, result: NoteAnalysis, tr
     const target = internalTarget(node.url);
     if (target !== null)
       result.links.push({
+        kind: "markdown",
         target,
         label: textOf(node),
         from: node.position?.start.offset ?? 0,

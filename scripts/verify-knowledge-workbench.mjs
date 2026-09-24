@@ -120,6 +120,13 @@ try {
     await page.getByRole("button", { name: "收藏当前笔记" }).getAttribute("aria-pressed"),
     "true",
   );
+  await title().fill("Alpha renamed");
+  await saved();
+  await tab("Beta");
+  assert.ok((await body().innerText()).includes(`[[${alpha}#First|Go to Alpha]]`));
+  await tab("Alpha renamed");
+  await title().fill("Alpha");
+  await saved();
   await body().fill("[[Al");
   await page.getByRole("option").filter({ hasText: "Alpha" }).first().waitFor();
   await body().press("Enter");

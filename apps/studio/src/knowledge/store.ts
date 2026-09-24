@@ -1,6 +1,7 @@
 import type { RuntimeMetadata } from "@bcr/core";
 import { mergeContent } from "./merge";
 import { noteRevision } from "./noteRevision";
+import { preserveRenamedLinks } from "./renameLinks";
 import {
   contentOf,
   decodeNote,
@@ -181,12 +182,16 @@ export class KnowledgeStore {
       const result = mergeContent(baseline, local, remote);
       if (same(result.content.notes[note.id], state.notes[note.id]) && !result.conflicts.length)
         return state;
+      let notes = { ...state.notes, ...result.content.notes };
+      if (!result.conflicts.length) {
+        notes = preserveRenamedLinks(state.notes, notes, valid.id);
+        for (const related of Object.values(notes)) {
+          if (related.id !== valid.id && related.body !== state.notes[related.id]?.body)
+            this.assertAgentWritable(related.id);
+        }
+      }
       return {
-        ...this.withHistory(
-          state,
-          { notes: { ...state.notes, ...result.content.notes }, collections: state.collections },
-          "编辑前版本",
-        ),
+        ...this.withHistory(state, { notes, collections: state.collections }, "编辑前版本"),
         conflicts: [...state.conflicts, ...result.conflicts],
       };
     });
