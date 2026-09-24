@@ -21,11 +21,22 @@ export function preserveRenamedLinks(
       const matches = resolveNoteLink(candidates, link.target, note.id);
       if (matches.length !== 1 || matches[0]!.id !== id) continue;
       if (link.kind === "markdown") {
-        if (!link.destination) continue;
-        const { from, to } = link.destination;
         // Stable identity is also a valid relative Markdown destination.
         const replacement = `${encodeURIComponent(id)}.md${heading ? `#${encodeURIComponent(heading)}` : ""}`;
-        body = body.slice(0, from) + replacement + body.slice(to);
+        if (link.reference) {
+          // Never retarget shared definitions: image references may use them too.
+          const title =
+            link.reference.title === null
+              ? ""
+              : ` "${link.reference.title.replace(/[\\"]/gu, "\\$&")}"`;
+          body =
+            body.slice(0, link.from) +
+            `[${link.reference.label}](${replacement}${title})` +
+            body.slice(link.to);
+        } else if (link.destination) {
+          const { from, to } = link.destination;
+          body = body.slice(0, from) + replacement + body.slice(to);
+        }
         continue;
       }
       const literal = body.slice(link.from + 2, link.to - 2);

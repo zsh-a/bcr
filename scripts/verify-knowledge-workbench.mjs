@@ -50,7 +50,7 @@ try {
   await saved();
   await create(
     "Beta",
-    '# Links\n\n[[Alpha#First|Go to Alpha]]\n\n[Go via Markdown](Alpha.md#First "Keep tooltip")\n\n- [x] Complete\n\n| Name | Value |\n| --- | --- |\n| A | B |',
+    '# Links\n\n[[Alpha#First|Go to Alpha]]\n\n[Go via Markdown](Alpha.md#First "Keep tooltip")\n\n[Go via reference][alpha-ref]\n\n- [x] Complete\n\n| Name | Value |\n| --- | --- |\n| A | B |\n\n[alpha-ref]: Alpha.md#First "Reference tooltip"',
   );
   await tab("Alpha");
   await body().focus();
@@ -120,10 +120,32 @@ try {
     await page.getByRole("button", { name: "收藏当前笔记" }).getAttribute("aria-pressed"),
     "true",
   );
+  await tab("Beta");
+  await page
+    .locator(".cm-line")
+    .filter({ hasText: "Go via reference" })
+    .click({ modifiers: ["Control"], position: { x: 35, y: 8 } });
+  await page.waitForFunction(
+    () => document.querySelector('[aria-label="笔记标题"]')?.value === "Alpha",
+  );
   await title().fill("Alpha renamed");
   await saved();
   await tab("Beta");
+  await page
+    .locator(".cm-line")
+    .filter({ hasText: "Go via reference" })
+    .click({ modifiers: ["Control"], position: { x: 35, y: 8 } });
+  await page.waitForFunction(
+    () => document.querySelector('[aria-label="笔记标题"]')?.value === "Alpha renamed",
+  );
+  await tab("Beta");
   assert.ok((await body().innerText()).includes(`[[${alpha}#First|Go to Alpha]]`));
+  assert.ok(
+    (await body().innerText()).includes(
+      `[Go via reference](${alpha}.md#First "Reference tooltip")`,
+    ),
+  );
+  assert.ok((await body().innerText()).includes('[alpha-ref]: Alpha.md#First "Reference tooltip"'));
   assert.ok(
     (await body().innerText()).includes(`[Go via Markdown](${alpha}.md#First "Keep tooltip")`),
   );

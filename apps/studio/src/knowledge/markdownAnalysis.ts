@@ -1,7 +1,7 @@
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
-import type { Root, RootContent, PhrasingContent, Text } from "mdast";
+import type { Root, RootContent, PhrasingContent, Text, Definition } from "mdast";
 import type { KnowledgeNote } from "./model";
 
 const parser = unified().use(remarkParse).use(remarkGfm);
@@ -14,6 +14,8 @@ export interface NoteLink {
   to: number;
   /** Raw inline Markdown destination, excluding angle brackets and optional title. */
   destination?: { from: number; to: number };
+  /** Raw display text for safely detaching a reference without changing shared definitions. */
+  reference?: { label: string; title: string | null };
 }
 export interface NoteHeading {
   text: string;
@@ -96,7 +98,24 @@ function markdownDestination(node: Extract<RootContent, { type: "link" }>, sourc
   return cursor > start && cursor < end ? { from: start, to: cursor } : undefined;
 }
 
-function walk(node: Root | RootContent, source: string, result: NoteAnalysis, transform: boolean) {
+function definitionsIn(tree: Root) {
+  const definitions = new Map<string, Definition>();
+  function collect(node: Root | RootContent) {
+    if (node.type === "definition" && !definitions.has(node.identifier))
+      definitions.set(node.identifier, node);
+    if ("children" in node) for (const child of node.children) collect(child);
+  }
+  collect(tree);
+  return definitions;
+}
+
+function walk(
+  node: Root | RootContent,
+  source: string,
+  result: NoteAnalysis,
+  transform: boolean,
+  definitions: ReadonlyMap<string, Definition>,
+) {
   if (node.type === "heading") {
     const from = node.position?.start.offset ?? 0;
     result.headings.push({ text: textOf(node), depth: node.depth, from });
@@ -105,6 +124,32 @@ function walk(node: Root | RootContent, source: string, result: NoteAnalysis, tr
         ...node.data,
         hProperties: { ...node.data?.hProperties, id: `note-heading-${from}` },
       };
+  }
+  if (node.type === "linkReference") {
+    const definition = definitions.get(node.identifier);
+    const target = definition ? internalTarget(definition.url) : null;
+    const from = node.position?.start.offset,
+      to = node.position?.end.offset;
+    const labelEnd =
+      node.children.at(-1)?.position?.end.offset ?? (from === undefined ? undefined : from + 1);
+    if (target !== null && definition && from !== undefined && to !== undefined) {
+      result.links.push({
+        kind: "markdown",
+        target,
+        label: textOf(node),
+        from,
+        to,
+        ...(labelEnd === undefined
+          ? {}
+          : {
+              reference: {
+                label: source.slice(from + 1, labelEnd),
+                title: definition.title ?? null,
+              },
+            }),
+      });
+    }
+    return;
   }
   if (node.type === "link") {
     const target = internalTarget(node.url);
@@ -121,12 +166,12 @@ function walk(node: Root | RootContent, source: string, result: NoteAnalysis, tr
     }
     return;
   }
-  if (!("children" in node) || node.type === "linkReference") return;
+  if (!("children" in node)) return;
   const children = node.children as RootContent[];
   for (let index = 0; index < children.length; index++) {
     const child = children[index]!;
     if (child.type !== "text") {
-      walk(child, source, result, transform);
+      walk(child, source, result, transform, definitions);
       continue;
     }
     const links = wikiLinks(child, source);
@@ -157,14 +202,21 @@ function walk(node: Root | RootContent, source: string, result: NoteAnalysis, tr
 
 export function analyzeMarkdown(source: string): NoteAnalysis {
   const result: NoteAnalysis = { links: [], headings: [] };
-  walk(parser.parse(source), source, result, false);
+  const tree = parser.parse(source);
+  walk(tree, source, result, false, definitionsIn(tree));
   return result;
 }
 
 /** Shared semantics for reading mode and the relationship index. No raw HTML injection. */
 export function remarkKnowledgeLinks() {
   return (tree: Root, file: { value: unknown }) => {
-    walk(tree, typeof file.value === "string" ? file.value : "", { links: [], headings: [] }, true);
+    walk(
+      tree,
+      typeof file.value === "string" ? file.value : "",
+      { links: [], headings: [] },
+      true,
+      definitionsIn(tree),
+    );
   };
 }
 

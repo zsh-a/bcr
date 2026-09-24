@@ -68,7 +68,7 @@ describe("editor rename reference transaction", () => {
     ["[](旧标题.md)", "[](target.md)"],
     ['[说明](\n  %E6%97%A7%E6%A0%87%E9%A2%98.md\n  "提示"\n)', '[说明](\n  target.md\n  "提示"\n)'],
     ["[![图片](image.png)](旧标题.md)", "[![图片](image.png)](target.md)"],
-    ["[引用][ref]\n\n[ref]: 旧标题.md", "[引用][ref]\n\n[ref]: 旧标题.md"],
+    ["[引用][ref]\n\n[ref]: 旧标题.md", "[引用](target.md)\n\n[ref]: 旧标题.md"],
     [
       "![图片](旧标题.md) [外链](https://example.com/旧标题.md)",
       "![图片](旧标题.md) [外链](https://example.com/旧标题.md)",
