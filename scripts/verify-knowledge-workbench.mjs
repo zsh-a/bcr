@@ -129,6 +129,8 @@ try {
     () => document.querySelector('[aria-label="笔记标题"]')?.value === "Alpha",
   );
   await title().fill("Alpha renamed");
+  await page.getByRole("button", { name: "预览重命名", exact: true }).click();
+  await page.getByRole("button", { name: "确认全部修改", exact: true }).click();
   await saved();
   await tab("Beta");
   await page
@@ -167,6 +169,8 @@ try {
   );
   await tab("Alpha renamed");
   await title().fill("Alpha");
+  await page.getByRole("button", { name: "预览重命名", exact: true }).click();
+  await page.getByRole("button", { name: "确认全部修改", exact: true }).click();
   await saved();
   for (const text of ["\\[[Al", "```md\n[[Al"]) {
     await body().fill(text);

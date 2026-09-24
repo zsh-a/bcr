@@ -19,6 +19,7 @@ import type { KnowledgeStore } from "./store";
 import { useNoteDraft } from "./useNoteDraft";
 import { useNoteAgent } from "./useNoteAgent";
 import type { NoteSelection } from "./editorAgent";
+import { NoteRename } from "./NoteRename";
 
 export interface EditorHandle {
   flush(): Promise<void>;
@@ -46,7 +47,8 @@ export function NoteEditor({
   onOpenLink: (target: string) => void;
   target: { id: string; heading?: string; offset?: number; sequence: number } | null;
 }) {
-  const { controller, note: draft, status, error } = useNoteDraft(note, store, locked);
+  const snapshot = useNoteDraft(note, store, locked);
+  const { controller, note: draft, status, error } = snapshot;
   const { flush, change, initialError } = controller;
   const [tagText, setTagText] = useState(draft.tags.join(", "));
   const [preview, setPreview] = useState(false);
@@ -83,7 +85,7 @@ export function NoteEditor({
   }, [target, note.id, controller]);
   const [agentTarget, setAgentTarget] = useState<NoteSelection>(null);
   useNoteAgent(controller, agentTarget);
-  useImperativeHandle(editorRef, () => ({ flush }), [flush]);
+  useImperativeHandle(editorRef, () => ({ flush: controller.flushForNavigation }), [controller]);
   useEffect(() => {
     if (!controller.getSnapshot().dirty) setTagText(controller.getSnapshot().note.tags.join(", "));
   }, [controller, note]);
@@ -141,15 +143,7 @@ export function NoteEditor({
             {navigationError}
           </p>
         )}
-        <input
-          className="knowledge-title"
-          aria-label="笔记标题"
-          placeholder="给这个想法一个名字"
-          value={draft.title}
-          maxLength={500}
-          disabled={locked || !!initialError}
-          onChange={(e) => change({ title: e.target.value })}
-        />
+        <NoteRename controller={controller} snapshot={snapshot} store={store} />
         <input
           className="knowledge-tags"
           aria-label="笔记标签"

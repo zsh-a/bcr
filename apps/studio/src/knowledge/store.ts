@@ -2,6 +2,7 @@ import type { RuntimeMetadata } from "@bcr/core";
 import { mergeContent } from "./merge";
 import { noteRevision } from "./noteRevision";
 import { preserveRenamedLinks } from "./renameLinks";
+import { planNoteRename, noteVersions, type NoteChangePlan } from "./changePlan";
 import {
   contentOf,
   decodeNote,
@@ -19,6 +20,36 @@ import {
 
 export const KNOWLEDGE_KEY = "workspace/knowledge.v1";
 export class KnowledgeStore {
+  private plans = new WeakMap<NoteChangePlan, string>();
+  async previewRename(id: string, title: string): Promise<NoteChangePlan> {
+    await this.flush();
+    const plan = planNoteRename(this.value.notes, id, title);
+    this.plans.set(plan, JSON.stringify(plan));
+    return plan;
+  }
+  /** Explicit approval applies exactly the previewed changes inside the durable queue. */
+  applyChangePlan(plan: NoteChangePlan, check: () => void = () => {}): Promise<void> {
+    return this.update((state) => {
+      if (this.plans.get(plan) !== JSON.stringify(plan))
+        throw new Error("修改计划无效或已执行，请刷新预览");
+      if (!same(noteVersions(state.notes), plan.versions))
+        throw new Error("预览后知识库已变化，请刷新预览后重新确认");
+      check();
+      if (!plan.changes.length) return state;
+      const notes = { ...state.notes };
+      for (const change of plan.changes) {
+        this.assertNoteWritable(change.before.id);
+        notes[change.after.id] = decodeNote(change.after);
+      }
+      return this.withHistory(
+        state,
+        { notes, collections: state.collections },
+        "重命名与引用更新前版本",
+      );
+    }).then(() => {
+      this.plans.delete(plan);
+    });
+  }
   private draftGuards = new Map<string, Set<() => boolean>>();
   registerDraft(id: string, dirty: () => boolean) {
     const guards = this.draftGuards.get(id) ?? new Set<() => boolean>();
@@ -29,7 +60,7 @@ export class KnowledgeStore {
       if (!guards.size) this.draftGuards.delete(id);
     };
   }
-  assertAgentWritable(id: string) {
+  assertNoteWritable(id: string) {
     if ([...(this.draftGuards.get(id) ?? [])].some((dirty) => dirty()))
       throw new Error("笔记有未保存草稿，请先保存或处理草稿");
     if (this.value.conflicts.some((c) => c.kind === "note" && c.key === id))
@@ -45,7 +76,7 @@ export class KnowledgeStore {
     let saved = valid;
     await this.update((state) => {
       check();
-      this.assertAgentWritable(valid.id);
+      this.assertNoteWritable(valid.id);
       if (valid.collectionId !== null && !Object.hasOwn(state.collections, valid.collectionId))
         throw new Error("目标集合不存在或已删除");
       const current = state.notes[valid.id];
@@ -185,10 +216,12 @@ export class KnowledgeStore {
       let notes = { ...state.notes, ...result.content.notes };
       if (!result.conflicts.length) {
         notes = preserveRenamedLinks(state.notes, notes, valid.id);
-        for (const related of Object.values(notes)) {
-          if (related.id !== valid.id && related.body !== state.notes[related.id]?.body)
-            this.assertAgentWritable(related.id);
-        }
+        if (
+          Object.values(notes).some(
+            (related) => related.id !== valid.id && related.body !== state.notes[related.id]?.body,
+          )
+        )
+          throw new Error("重命名会修改其他笔记，请预览并确认修改计划");
       }
       return {
         ...this.withHistory(state, { notes, collections: state.collections }, "编辑前版本"),

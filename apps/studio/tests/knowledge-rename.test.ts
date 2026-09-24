@@ -36,6 +36,9 @@ async function fixture(extra: KnowledgeNote[] = []) {
     },
   };
 }
+async function rename(store: KnowledgeStore) {
+  await store.applyChangePlan(await store.previewRename(target.id, "新标题"));
+}
 
 describe("editor rename reference transaction", () => {
   it("preserves the visible title when the original alias is empty", () => {
@@ -107,7 +110,7 @@ describe("editor rename reference transaction", () => {
   it("persists rename, backlinks and history in one write and survives reopening", async () => {
     const f = await fixture();
     const writes = f.writes();
-    await f.store.saveNote({ ...target, title: "新标题" }, target);
+    await rename(f.store);
     expect(f.writes()).toBe(writes + 1);
     expect(f.store.getSnapshot().notes.source!.body).toContain("[[target#章节|别名]]");
     expect(
@@ -124,12 +127,10 @@ describe("editor rename reference transaction", () => {
     const f = await fixture();
     const original = f.store.getSnapshot();
     const unregister = f.store.registerDraft("source", () => true);
-    await expect(f.store.saveNote({ ...target, title: "新标题" }, target)).rejects.toThrow(
-      "未保存草稿",
-    );
+    await expect(rename(f.store)).rejects.toThrow("未保存草稿");
     expect(f.store.getSnapshot()).toBe(original);
     unregister();
-    await f.store.saveNote({ ...target, title: "新标题" }, target);
+    await rename(f.store);
     expect(f.store.getSnapshot().notes.target!.title).toBe("新标题");
   });
   it("rejects conflicted references without partial writes", async () => {
@@ -147,18 +148,14 @@ describe("editor rename reference transaction", () => {
       ],
     }));
     const original = f.store.getSnapshot();
-    await expect(f.store.saveNote({ ...target, title: "新标题" }, target)).rejects.toThrow(
-      "同步冲突",
-    );
+    await expect(rename(f.store)).rejects.toThrow("同步冲突");
     expect(f.store.getSnapshot()).toBe(original);
   });
   it("does not publish partial in-memory updates on persistence failure", async () => {
     const f = await fixture();
     const original = f.store.getSnapshot();
     f.fail();
-    await expect(f.store.saveNote({ ...target, title: "新标题" }, target)).rejects.toThrow(
-      "disk full",
-    );
+    await expect(rename(f.store)).rejects.toThrow("disk full");
     expect(f.store.getSnapshot()).toBe(original);
   });
   it("keeps an Agent single-note approval scoped to that note", async () => {

@@ -7,6 +7,7 @@ export interface DraftSnapshot {
   readonly dirty: boolean;
   readonly status: string;
   readonly error: string;
+  readonly proposedTitle: string | null;
 }
 
 /** One note's draft, recovery copy and durable-save barrier, independent of React/Agent. */
@@ -27,6 +28,7 @@ export class NoteDraft {
   ) {
     this.key = `bcr/knowledge-draft/v1/${note.id}`;
     this.base = note;
+    let proposedTitle: string | null = null;
     let draft = note,
       error = "";
     try {
@@ -35,7 +37,17 @@ export class NoteDraft {
         const data = JSON.parse(raw);
         draft = decodeNote(data.note);
         this.base = decodeNote(data.base);
+        if (data.proposedTitle !== undefined && data.proposedTitle !== null) {
+          if (typeof data.proposedTitle !== "string" || data.proposedTitle.length > 500)
+            throw new Error("重命名草稿无效");
+          proposedTitle = data.proposedTitle;
+        }
         if (draft.id !== note.id || this.base.id !== note.id) throw new Error("草稿身份不匹配");
+        // Upgrade pre-review recovery drafts without silently approving their title changes.
+        if (this.base.title && draft.title !== this.base.title && proposedTitle === null) {
+          proposedTitle = draft.title;
+          draft = { ...draft, title: this.base.title };
+        }
       }
     } catch {
       draft = note;
@@ -48,6 +60,7 @@ export class NoteDraft {
       note: draft,
       dirty,
       error,
+      proposedTitle,
       status: dirty ? "已恢复未保存草稿" : "已保存到本机",
     };
   }
@@ -76,8 +89,38 @@ export class NoteDraft {
     }
   }
   private backup(note = this.snapshot.note) {
-    this.storage.setItem(this.key, JSON.stringify({ base: this.base, note }));
+    this.storage.setItem(
+      this.key,
+      JSON.stringify({ base: this.base, note, proposedTitle: this.snapshot.proposedTitle }),
+    );
   }
+  changeTitle = (title: string) => {
+    if (!this.editable) throw new Error(this.initialError || "请先解决同步冲突");
+    // Naming a new untitled note remains part of normal writing.
+    if (!this.base.title && this.snapshot.proposedTitle === null) {
+      this.change({ title });
+      return;
+    }
+    this.publish({ proposedTitle: title === this.snapshot.note.title ? null : title });
+    try {
+      this.backup();
+    } catch {
+      this.publish({ error: "重命名草稿备份失败，请保持页面打开" });
+    }
+  };
+  cancelRename = () => {
+    this.publish({ proposedTitle: null });
+    try {
+      if (this.snapshot.dirty) this.backup();
+      else this.storage.removeItem(this.key);
+    } catch {
+      this.publish({ error: "草稿清理失败，请检查浏览器存储" });
+    }
+  };
+  flushForNavigation = async () => {
+    await this.flush();
+    if (this.snapshot.proposedTitle !== null) throw new Error("请先预览确认或取消重命名");
+  };
   change = (patch: Partial<KnowledgeNote>) => {
     if (!this.editable) throw new Error(this.initialError || "请先解决同步冲突，编辑草稿已保留");
     const note = {
@@ -132,7 +175,8 @@ export class NoteDraft {
       this.base = saved;
       let error = "";
       try {
-        this.storage.removeItem(this.key);
+        if (this.snapshot.proposedTitle !== null) this.backup(saved);
+        else this.storage.removeItem(this.key);
       } catch {
         error = "笔记已保存，草稿清理失败；可以继续编辑";
       }

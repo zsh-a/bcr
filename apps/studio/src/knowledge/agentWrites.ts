@@ -20,7 +20,7 @@ export function knowledgeWriteTools(
   checkDraft: (id: string) => void = () => {},
 ): AgentTool[] {
   function check(id: string) {
-    store.assertAgentWritable(id);
+    store.assertNoteWritable(id);
     checkDraft(id);
   }
   async function prepare(raw: string, creating: boolean) {

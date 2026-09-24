@@ -29,7 +29,7 @@ export function useNoteDraft(note: KnowledgeNote, store: KnowledgeStore, locked:
       () => controller.getSnapshot().dirty || !controller.editable,
     );
     const unload = (event: BeforeUnloadEvent) => {
-      if (controller.getSnapshot().dirty) {
+      if (controller.getSnapshot().dirty || controller.getSnapshot().proposedTitle !== null) {
         event.preventDefault();
         event.returnValue = "";
       }

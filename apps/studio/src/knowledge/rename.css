@@ -1,0 +1,99 @@
+.knowledge-rename-pending {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 20px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.knowledge-rename-pending button,
+.knowledge-rename-review button {
+  min-height: 44px;
+}
+.knowledge-rename-review {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.knowledge-rename-review > p:first-child {
+  margin-top: 0;
+}
+.knowledge-rename-notes {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 12px;
+}
+.knowledge-rename-notes button {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 250px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.knowledge-rename-notes small {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.knowledge-rename-notes button[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.knowledge-rename-diff {
+  margin: 12px 0 24px;
+}
+.knowledge-rename-title-diff {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  overflow-wrap: anywhere;
+}
+.knowledge-rename-title-diff strong {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+.knowledge-rename-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+.knowledge-rename-columns h3 {
+  font-size: 13px;
+  font-weight: 500;
+}
+.knowledge-rename-columns pre {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+.knowledge-rename-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 16px;
+}
+.knowledge-rename-actions .knowledge-rename-confirm:not(:disabled) {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+@media (max-width: 600px) {
+  .knowledge-rename-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .knowledge-rename-actions button {
+    flex: 1 1 auto;
+  }
+}
