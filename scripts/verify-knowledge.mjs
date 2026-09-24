@@ -95,18 +95,21 @@ const saved = (page) =>
   page.locator('.knowledge-editor [role="status"]').filter({ hasText: "已保存到本机" }).waitFor();
 async function connect(page) {
   await page.getByRole("button", { name: "GitHub 同步设置", exact: true }).click();
-  await page.getByLabel("GitHub 用户或组织").fill("alice");
-  await page.getByLabel("GitHub 私有仓库").fill("notes");
+  await page.getByLabel("GitHub 仓库地址").fill("https://github.com/alice/notes");
   await page.getByLabel("GitHub Token", { exact: true }).fill("secret-browser-token");
-  await page.getByRole("button", { name: "保存连接", exact: true }).click();
-  await page.getByText(/连接已保存/u).waitFor();
+  await page.getByRole("button", { name: "连接并同步", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "已与 GitHub 同步" }).waitFor();
   await page.getByRole("button", { name: "关闭连接设置", exact: true }).click();
 }
 async function sync(page, conflict = false) {
   const close = page.getByRole("button", { name: "关闭连接设置", exact: true });
   if (await close.isVisible()) await close.click();
   await page.getByRole("button", { name: "立即同步", exact: true }).click();
-  await page.getByRole("button", { name: "立即同步", exact: true }).waitFor();
+  // Conflict handling may open the dialog, which has its own sync button.
+  await page
+    .locator(".knowledge-toolbar")
+    .getByRole("button", { name: "立即同步", exact: true })
+    .waitFor();
   await page
     .locator(".knowledge-notice")
     .filter({ hasText: conflict ? "发现冲突" : "已与 GitHub 同步" })
@@ -181,7 +184,8 @@ try {
   await b.page.getByRole("button", { name: "保留双方", exact: true }).click();
   await b.page.locator(".knowledge-conflict").waitFor({ state: "hidden" });
   await b.page.getByLabel("GitHub Token", { exact: true }).fill("secret-browser-token");
-  await b.page.getByRole("button", { name: "保存连接", exact: true }).click();
+  await b.page.getByRole("button", { name: "连接并同步", exact: true }).click();
+  await b.page.getByRole("status").filter({ hasText: "已与 GitHub 同步" }).waitFor();
   await sync(b.page);
   await sync(a.page);
   assert.equal(await a.page.locator(".knowledge-note-card").count(), 2);

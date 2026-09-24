@@ -32,7 +32,7 @@ try {
   assert.ok(Math.abs(box.x + box.width / 2 - 720) < 2);
   assert.ok(Math.abs(box.y + box.height / 2 - 500) < 2);
   assert.equal(await page.locator(".knowledge-content").evaluate((el) => el.scrollTop), before);
-  await dialog.getByLabel("GitHub 用户或组织").fill("draft-owner");
+  await dialog.getByLabel("GitHub 仓库地址").fill("draft-owner/notes");
   for (let i = 0; i < 18; i++) {
     await page.keyboard.press("Tab");
     assert.ok(await dialog.evaluate((el) => el.contains(document.activeElement)));
@@ -42,7 +42,7 @@ try {
   assert.ok(await trigger.evaluate((el) => el === document.activeElement));
   assert.equal(await page.locator(".knowledge-content").evaluate((el) => el.scrollTop), before);
   await trigger.click();
-  assert.equal(await dialog.getByLabel("GitHub 用户或组织").inputValue(), "draft-owner");
+  assert.equal(await dialog.getByLabel("GitHub 仓库地址").inputValue(), "draft-owner/notes");
   await mkdir("scripts/shots", { recursive: true });
   await page.screenshot({ path: "scripts/shots/knowledge-dialog-desktop.png" });
   await page.mouse.click(8, 8);
@@ -68,8 +68,7 @@ try {
     assert.ok(bounds.x + bounds.width <= viewport.width + 1);
     assert.ok(bounds.y + bounds.height <= viewport.height + 1);
     assert.ok(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1));
-    await dialog.getByLabel("GitHub 分支").fill("main");
-    await dialog.getByRole("button", { name: "保存连接" }).scrollIntoViewIfNeeded();
+    await dialog.getByRole("button", { name: "连接并同步" }).scrollIntoViewIfNeeded();
     await page.screenshot({ path: `scripts/shots/knowledge-dialog-${viewport.width}.png` });
     await page.keyboard.press("Escape");
   }
@@ -78,7 +77,7 @@ try {
     content: ".knowledge-dialog :is(p, label, input, button, span) { font-size: 24px !important; }",
   });
   await trigger.click();
-  await dialog.getByRole("button", { name: "保存连接" }).scrollIntoViewIfNeeded();
+  await dialog.getByRole("button", { name: "连接并同步" }).scrollIntoViewIfNeeded();
   assert.ok(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1));
   await page.keyboard.press("Escape");
   assert.deepEqual(errors, []);

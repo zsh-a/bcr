@@ -34,7 +34,7 @@ export function useKnowledgeSync({
     const target = store.getSnapshot().sync.target;
     if (!target || !token.trim()) {
       setPanel("sync");
-      setMessage("填写仓库连接与当前会话 Token 后即可同步");
+      setMessage("填写仓库地址与 Token 后即可连接并同步");
       return;
     }
     setError("");

@@ -32,8 +32,10 @@ import { pendingCount } from "./model";
 import { noteMarkdown } from "./files";
 import { createKnowledgeActions } from "./actions";
 import { useKnowledgeSync } from "./useKnowledgeSync";
+import { useAutoSync } from "./useAutoSync";
 import { NoteEditor, type EditorHandle } from "./NoteEditor";
-import { KnowledgeSyncPanel, KnowledgeHistory } from "./KnowledgePanels";
+import { KnowledgeSyncPanel } from "./KnowledgeSyncPanel";
+import { KnowledgeHistory } from "./KnowledgeHistory";
 import "./knowledge.css";
 import "./workbench.css";
 import { searchKnowledge, noteSearchHit } from "./retrieval";
@@ -66,7 +68,7 @@ export function KnowledgeApp() {
     [sidebar, setSidebar] = useState(false);
   const credential = useCredential(knowledgeCredentialId(state.sync.target));
   const token = credential.value;
-  const [auto, setAuto] = useState(false);
+  const [auto, setAuto] = useAutoSync(state.sync.target, setError);
   const [collectionName, setCollectionName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [fileView, setFileView] = useState(false);
@@ -218,7 +220,7 @@ export function KnowledgeApp() {
     store,
     ready,
     token,
-    auto,
+    auto: auto && panel !== "sync",
     active,
     flush: flushEditor,
     setError,
@@ -641,6 +643,8 @@ export function KnowledgeApp() {
               setAuto={setAuto}
               syncing={syncing}
               onError={setError}
+              flush={flushEditor}
+              onSync={sync}
             />
           </KnowledgeDialog>
           <KnowledgeDialog

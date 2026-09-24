@@ -31,6 +31,7 @@ export function createKnowledgeGitHub() {
   const state = {
     head: initial,
     private: true,
+    defaultBranch: "main",
     truncated: false,
     mode: "100644",
     loseNextAck: false,
@@ -60,7 +61,7 @@ export function createKnowledgeGitHub() {
       path = decodeURIComponent(request.pathname.replace(/^\/repos\/[^/]+\/[^/]+/u, ""));
     requests.push({ method, path, body });
     const ok = (json) => ({ status: 200, json });
-    if (!path) return ok({ private: state.private });
+    if (!path) return ok({ private: state.private, default_branch: state.defaultBranch });
     if (path.startsWith("/git/ref/heads/")) return ok({ object: { sha: state.head } });
     if (path.startsWith("/git/refs/heads/") && method === "PATCH") {
       if (state.beforePublish) {

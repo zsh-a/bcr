@@ -1,5 +1,6 @@
 import { contentFiles, FILE_LIMIT, filesContent, isManagedPath, TRANSFER_LIMIT } from "./files";
 import { decodeTarget, object, type GitTarget, type KnowledgeContent } from "./model";
+import { parseRepository } from "./repository";
 
 export interface RemoteKnowledge {
   head: string;
@@ -35,6 +36,22 @@ function sha(value: unknown): string {
   return value;
 }
 export class GitHubKnowledge implements KnowledgeRemote {
+  static async connect(address: string, token: string, branch = "", fetcher?: typeof fetch) {
+    const identity = parseRepository(address);
+    const probe = new GitHubKnowledge({ ...identity, branch: "main" }, token, fetcher);
+    const repository = object(await probe.request(""));
+    if (repository.private !== true) throw new Error("请使用私有仓库；当前连接未上传任何笔记");
+    if (repository.archived === true || repository.disabled === true)
+      throw new Error("仓库已归档或停用，请选择可写入的私有仓库");
+    const target = decodeTarget({
+      ...identity,
+      branch: branch.trim() || repository.default_branch,
+    });
+    const remote = new GitHubKnowledge(target, token, fetcher);
+    // Validate the branch and remote content before replacing a working connection.
+    await remote.read();
+    return remote;
+  }
   readonly target: GitTarget;
   private root: string;
   constructor(
@@ -44,7 +61,7 @@ export class GitHubKnowledge implements KnowledgeRemote {
   ) {
     this.target = decodeTarget(target);
     this.root = `https://api.github.com/repos/${encodeURIComponent(this.target.owner)}/${encodeURIComponent(this.target.repo)}`;
-    if (!token.trim()) throw new Error("请填写当前会话使用的 GitHub Token");
+    if (!token.trim()) throw new Error("请填写 GitHub Token");
   }
   private async request(path: string, method = "GET", body?: unknown): Promise<unknown> {
     const controller = new AbortController(),

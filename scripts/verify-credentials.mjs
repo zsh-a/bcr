@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 import { mkdir } from "node:fs/promises";
+import { createKnowledgeGitHub } from "./fixtures/knowledge-github.mjs";
 
 const origin = new URL(process.env.BASE_URL ?? "http://127.0.0.1:5199").origin;
 const browser = await chromium.launch({ args: ["--disable-dev-shm-usage"] });
@@ -126,37 +127,69 @@ try {
   await panel.getByRole("button", { name: "确认删除", exact: true }).click();
   assert.equal(await page.evaluate(() => localStorage.getItem("bcr/agent-connection/v1")), null);
 
+  const github = createKnowledgeGitHub();
+  github.state.defaultBranch = "trunk";
+  await context.route("https://api.github.com/**", async (route) => {
+    const request = route.request();
+    const result = await github.handle(request.url(), request.method(), request.postDataJSON());
+    await route.fulfill({ status: result.status, json: result.json });
+  });
   await page.goto(`${origin}/knowledge`, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "GitHub 同步设置", exact: true }).click();
-  await page.getByLabel("GitHub 用户或组织").fill("test-owner");
-  await page.getByLabel("GitHub 私有仓库").fill("notes");
+  await page.getByLabel("GitHub 仓库地址").fill("https://github.com/test-owner/notes");
   await page.getByLabel("GitHub Token", { exact: true }).fill("github-test-token");
-  await page.getByLabel("GitHub Token 保存范围").selectOption("device");
-  await page.getByRole("button", { name: "保存连接", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "连接已保存" }).waitFor();
+  await page.getByLabel("记住此设备").check();
+  await page.getByRole("button", { name: "连接并同步", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "已与 GitHub 同步" }).waitFor();
+  assert.ok(github.state.requests.some((request) => request.path === "/git/ref/heads/trunk"));
+  await page.getByLabel("自动同步", { exact: true }).check();
   await page.reload({ waitUntil: "networkidle" });
   await page.getByRole("button", { name: "GitHub 同步设置", exact: true }).click();
+  assert.equal(await page.getByLabel("自动同步", { exact: true }).isChecked(), true);
+  await page.getByText("管理连接", { exact: true }).click();
   await page.getByRole("button", { name: "编辑连接", exact: true }).click();
   assert.equal(await page.getByLabel("GitHub Token", { exact: true }).count(), 0);
-  await page.getByLabel("GitHub 私有仓库").fill("discarded-repo");
+  await page.getByLabel("GitHub 仓库地址").fill("test-owner/discarded-repo");
   await page.getByRole("button", { name: "取消", exact: true }).click();
+  await page.getByText("管理连接", { exact: true }).click();
   await page.getByRole("button", { name: "编辑连接", exact: true }).click();
-  assert.equal(await page.getByLabel("GitHub 私有仓库").inputValue(), "notes");
+  assert.equal(await page.getByLabel("GitHub 仓库地址").inputValue(), "test-owner/notes");
   assert.equal(await page.getByLabel("GitHub Token", { exact: true }).count(), 0);
-  await page.getByLabel("GitHub 私有仓库").fill("other-notes");
+  await page.getByLabel("GitHub 仓库地址").fill("test-owner/other-notes");
   assert.equal(await page.getByLabel("GitHub Token", { exact: true }).inputValue(), "");
-  await page.getByRole("button", { name: "保存连接", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "连接已保存" }).waitFor();
+  assert.equal(
+    await page.getByRole("button", { name: "连接并同步", exact: true }).isDisabled(),
+    true,
+  );
+  await page.getByLabel("GitHub Token", { exact: true }).fill("new-token");
+  github.state.private = false;
+  await page.getByRole("button", { name: "连接并同步", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "连接设置", exact: true })
+    .getByRole("alert")
+    .filter({ hasText: "请使用私有仓库" })
+    .waitFor();
+  assert.equal(
+    await page.evaluate(
+      () => Object.keys(localStorage).filter((key) => key.startsWith("bcr/credentials/")).length,
+    ),
+    1,
+  );
+  github.state.private = true;
+  await page.getByRole("button", { name: "连接并同步", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "已与 GitHub 同步" }).waitFor();
+  assert.equal(await page.getByLabel("自动同步", { exact: true }).isChecked(), false);
   assert.equal(
     await page.evaluate(
       () => Object.keys(localStorage).filter((key) => key.startsWith("bcr/credentials/")).length,
     ),
     0,
   );
+  await page.getByText("管理连接", { exact: true }).click();
   await page.getByRole("button", { name: "编辑连接", exact: true }).click();
-  await page.getByLabel("GitHub Token", { exact: true }).fill("new-token");
-  await page.getByLabel("GitHub Token 保存范围").selectOption("device");
-  await page.getByRole("button", { name: "保存连接", exact: true }).click();
+  await page.getByLabel("记住此设备").check();
+  await page.getByRole("button", { name: "连接并同步", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "已与 GitHub 同步" }).waitFor();
   await page.getByText("管理连接", { exact: true }).click();
   await page.getByRole("button", { name: "清除 Token", exact: true }).click();
   await page.getByRole("button", { name: "确认清除", exact: true }).click();

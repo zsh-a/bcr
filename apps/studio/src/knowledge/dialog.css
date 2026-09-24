@@ -121,9 +121,6 @@
   .knowledge-dialog-body {
     padding: 20px 20px max(24px, env(safe-area-inset-bottom));
   }
-  .knowledge-dialog .knowledge-connection-fields {
-    grid-template-columns: 1fr;
-  }
   .knowledge-dialog .knowledge-panel input:not([type="checkbox"]):not([type="radio"]),
   .knowledge-dialog select {
     font-size: 16px;

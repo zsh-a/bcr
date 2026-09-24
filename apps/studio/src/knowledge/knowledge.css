@@ -474,11 +474,22 @@
   font-size: 11px;
   color: var(--color-faint);
 }
-.knowledge-connection-fields {
+.knowledge-sync fieldset {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 12px;
-  margin: 20px 0 12px;
+  gap: 16px;
+}
+.knowledge-sync .knowledge-small {
+  margin: 0;
+}
+.knowledge-sync .bcr-connection-manage > label {
+  display: block;
+  margin-top: 12px;
+}
+.knowledge-sync .knowledge-panel-actions {
+  flex-wrap: wrap;
+}
+.knowledge-sync button[type="submit"] {
+  flex: 1;
 }
 .knowledge-panel label {
   font-size: 11px;
@@ -693,9 +704,6 @@
   .knowledge-panel {
     margin: 12px;
     padding: 18px;
-  }
-  .knowledge-connection-fields {
-    grid-template-columns: 1fr;
   }
   .knowledge-conflict-versions {
     grid-template-columns: 1fr;

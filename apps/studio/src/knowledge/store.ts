@@ -302,6 +302,7 @@ export class KnowledgeStore {
       const next = target ? decodeTarget(target) : null;
       if (same(next, s.sync.target)) return s;
       if (s.conflicts.length) throw new Error("请先解决冲突，再更换同步仓库");
+      if (s.sync.pending) throw new Error("请先同步并核对上次提交，再更换或断开仓库");
       return { ...s, sync: { ...emptyKnowledge().sync, target: next } };
     });
   }

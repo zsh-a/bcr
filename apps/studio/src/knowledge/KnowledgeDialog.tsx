@@ -66,6 +66,7 @@ export function KnowledgeDialog({
           (element) =>
             element.tabIndex >= 0 &&
             !element.matches(":disabled") &&
+            element.checkVisibility() &&
             element.getClientRects().length > 0,
         );
         const first = controls[0],
