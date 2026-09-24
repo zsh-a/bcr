@@ -38,7 +38,7 @@ const parquetPath = `${dir}/quant-market.parquet`;
 const download = page.waitForEvent("download");
 await page.getByRole("button", { name: "PARQUET" }).click();
 await (await download).saveAs(parquetPath);
-await page.locator('input[type="file"]').setInputFiles(parquetPath);
+await page.getByLabel("导入行情数据", { exact: true }).setInputFiles(parquetPath);
 try {
   await page.waitForFunction(
     () => {

@@ -57,7 +57,7 @@ if ((await page.locator('[data-execution^="review.manual · REVIEW"]').count()) 
 // Imported pages use the real shared WorkerPool for the review OCR adapter.
 // The adapter only serializes known/manual regions; it never claims to have
 // recognized pixels without a vision model.
-await page.locator('input[type="file"]').setInputFiles({
+await page.getByLabel("导入漫画图片或压缩包", { exact: true }).setInputFiles({
   name: "review-page.png",
   mimeType: "image/png",
   buffer: Buffer.from(
@@ -89,7 +89,7 @@ if ((await page.locator('[data-execution^="review.manual · REVIEW"]').count()) 
 
 // A second pending page exercises the durable queue cursor and its pause/resume
 // surface. Existing completed pages are skipped instead of being recomputed.
-await page.locator('input[type="file"]').setInputFiles({
+await page.getByLabel("导入漫画图片或压缩包", { exact: true }).setInputFiles({
   name: "review-page-2.png",
   mimeType: "image/png",
   buffer: Buffer.from(

@@ -213,6 +213,7 @@ function Workbench() {
           <input
             ref={inputRef}
             type="file"
+            aria-label="导入行情数据"
             accept=".csv,.parquet,text/csv,application/vnd.apache.parquet"
             hidden
             onChange={(event) => {
