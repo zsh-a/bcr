@@ -77,7 +77,7 @@ export function KnowledgeSyncPanel({
     }
   }
   return (
-    <section className="knowledge-panel" aria-label="GitHub 同步设置">
+    <section className="knowledge-panel" aria-label="GitHub 同步设置" aria-busy={busy}>
       <header>
         <GitBranch size={18} />
         <h2>连接你的私有知识仓库</h2>
@@ -407,7 +407,7 @@ export function KnowledgeHistory({
   }
   const revisions = state.history.filter((h) => all || !note || h.note.id === note.id);
   return (
-    <section className="knowledge-panel" aria-label="笔记版本历史">
+    <section className="knowledge-panel" aria-label="笔记版本历史" aria-busy={busy}>
       <header>
         <h2>版本与恢复</h2>
       </header>

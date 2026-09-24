@@ -100,8 +100,11 @@ async function connect(page) {
   await page.getByLabel("GitHub Token", { exact: true }).fill("secret-browser-token");
   await page.getByRole("button", { name: "保存连接", exact: true }).click();
   await page.getByText(/连接已保存/u).waitFor();
+  await page.getByRole("button", { name: "关闭连接设置", exact: true }).click();
 }
 async function sync(page, conflict = false) {
+  const close = page.getByRole("button", { name: "关闭连接设置", exact: true });
+  if (await close.isVisible()) await close.click();
   await page.getByRole("button", { name: "立即同步", exact: true }).click();
   await page.getByRole("button", { name: "立即同步", exact: true }).waitFor();
   await page
@@ -155,8 +158,6 @@ try {
   await connect(b.page);
   await sync(b.page);
   await matchesBody(b.page, "# 独立手写知识\n\n第一段\n\n第三段\n");
-  await a.page.getByRole("button", { name: "GitHub 同步设置", exact: true }).click();
-  await b.page.getByRole("button", { name: "GitHub 同步设置", exact: true }).click();
 
   await a.context.setOffline(true);
   await body(a.page, "# 独立手写知识\n\n设备 A 的第一段\n\n第三段\n");
@@ -194,7 +195,7 @@ try {
     .click();
   await a.page.getByRole("button", { name: "恢复此版本", exact: true }).click();
   await matchesBody(a.page, "# 独立手写知识\n\n第一段\n\n第三段\n");
-  await a.page.getByRole("button", { name: "笔记版本历史", exact: true }).click();
+  await a.page.getByRole("button", { name: "关闭版本历史", exact: true }).click();
 
   // Rendering untrusted Markdown must not execute HTML or fetch remote images.
   let externalImages = 0;
@@ -236,7 +237,7 @@ try {
     .click();
   await a.page.getByRole("button", { name: "恢复此版本", exact: true }).click();
   await matchesBody(a.page, "# 导入手写笔记\n\n开放格式保持可读。");
-  await a.page.getByRole("button", { name: "笔记版本历史", exact: true }).click();
+  await a.page.getByRole("button", { name: "关闭版本历史", exact: true }).click();
 
   await mkdir("scripts/shots", { recursive: true });
   await a.page.screenshot({ path: "scripts/shots/knowledge-desktop.png", fullPage: true });

@@ -45,8 +45,10 @@ try {
   await page.getByRole("button", { name: "恢复 ZIP 备份", exact: true }).click();
   await panel.getByLabel("选择知识库备份", { exact: true }).setInputFiles(path);
   await panel.getByText(/将新增 0 篇/).waitFor();
+  await page.getByRole("button", { name: "关闭恢复备份", exact: true }).click();
   await body.fill("预览后的新修改");
   await saved();
+  await page.getByRole("button", { name: "恢复 ZIP 备份", exact: true }).click();
   await panel.getByRole("button", { name: "确认恢复", exact: true }).click();
   await panel.getByRole("alert").filter({ hasText: "预览后知识库已变化" }).waitFor();
   assert.ok((await body.textContent()).includes("预览后的新修改"));

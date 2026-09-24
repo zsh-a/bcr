@@ -53,6 +53,7 @@ export function KnowledgeRestorePanel({
     try {
       await flush();
       await store.restoreBackup(preview.plan.content, source.base);
+      setSource(null);
       onRestored();
     } catch (reason) {
       setError(String(reason));

@@ -44,6 +44,7 @@ import { useWorkbench } from "./useWorkbench";
 import { toggleFavorite } from "./workbench";
 import { NoteTabs } from "./NoteTabs";
 import { NoteSwitcher } from "./NoteSwitcher";
+import { KnowledgeDialog } from "./KnowledgeDialog";
 
 export function KnowledgeApp() {
   const services = useRuntime(),
@@ -585,7 +586,12 @@ export function KnowledgeApp() {
               scrollPositions.current.delete(scrollPositions.current.keys().next().value!);
           }}
         >
-          {panel === "sync" && (
+          <KnowledgeDialog
+            open={active && panel === "sync"}
+            title="连接设置"
+            onClose={() => setPanel(null)}
+            error={error}
+          >
             <KnowledgeSyncPanel
               state={state}
               store={store}
@@ -595,8 +601,12 @@ export function KnowledgeApp() {
               syncing={syncing}
               onError={setError}
             />
-          )}
-          {panel === "restore" && (
+          </KnowledgeDialog>
+          <KnowledgeDialog
+            open={active && panel === "restore"}
+            title="恢复备份"
+            onClose={() => setPanel(null)}
+          >
             <KnowledgeRestorePanel
               store={store}
               flush={async () => {
@@ -608,9 +618,15 @@ export function KnowledgeApp() {
                 setMessage("备份已恢复到本机，未修改同步连接");
               }}
             />
-          )}
-          {panel === "history" && (
+          </KnowledgeDialog>
+          <KnowledgeDialog
+            open={active && panel === "history"}
+            title="版本历史"
+            onClose={() => setPanel(null)}
+            error={error}
+          >
             <KnowledgeHistory
+              key={note?.id ?? "all"}
               state={state}
               note={note ?? null}
               token={token}
@@ -624,7 +640,7 @@ export function KnowledgeApp() {
               }
               onError={setError}
             />
-          )}
+          </KnowledgeDialog>
           {note ? (
             <>
               {locked && (
