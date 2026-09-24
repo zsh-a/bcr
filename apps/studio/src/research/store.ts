@@ -114,6 +114,10 @@ export class ResearchStore {
     this.tail = operation;
     return operation;
   }
+  async flush(): Promise<void> {
+    await this.ready;
+    await Promise.all([this.tail, this.packageTail]);
+  }
   async close(): Promise<void> {
     this.closed = true;
     await this.ready.catch(() => undefined);

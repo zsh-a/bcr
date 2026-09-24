@@ -44,7 +44,7 @@ PDF.js `TextLayer` 与 Canvas 使用同一 CSS viewport；文字层支持系统�
 
 `scripts/verify-reader-capture.mjs` 验证正文直接创建集合、笔记、重复选段去重、刷新恢复、精确回跳和移动端弹层，已加入浏览器 CI。
 
-`bun run test:pwa` 启动独立静态服务器，使用 `apps/studio/dist` 生产产物验证多页面写入保护、关闭后重开、离线冷启动、不完整版本安装失败、保存失败阻止更新、更新恢复阅读位置以及旧页面资源缓存。先运行 `bun run build:cloudflare`；CI 直接下载构建阶段的产物。此测试通过替换同一产物的 Service Worker 构建标识模拟发布，不覆盖应用数据 schema 迁移。更新仅在阅读状态保存成功后激活。
+`bun run test:pwa` 启动独立静态服务器，使用 `apps/studio/dist` 生产产物验证多页面写入保护、关闭后重开、离线冷启动、不完整版本安装失败、保存失败阻止更新、更新恢复阅读位置以及旧页面资源缓存。先运行 `bun run build:cloudflare`；CI 直接下载构建阶段的产物。此测试通过替换同一产物的 Service Worker 构建标识模拟发布，不覆盖应用数据 schema 迁移。更新提示已提升为[全局能力](APP-UPDATES.md)，Reader 通过统一的更新前保存接口保护阅读状态，不再单独管理提示与激活。
 
 `scripts/verify-reader-mobile.mjs` 使用隔离 Chromium 上下文，覆盖长文分页、单章节 DOM、翻页、刷新恢复、工具显隐几何稳定、横屏、模态焦点与 40 页 PDF 的位图回收及重渲染。其位图分配断言并非浏览器总内存测量。
 

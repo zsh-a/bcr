@@ -20,6 +20,7 @@ import { useNoteDraft } from "./useNoteDraft";
 import { useNoteAgent } from "./useNoteAgent";
 import type { NoteSelection } from "./editorAgent";
 import { NoteRename } from "./NoteRename";
+import { useUpdateParticipant } from "@bcr/react";
 
 export interface EditorHandle {
   flush(): Promise<void>;
@@ -50,6 +51,7 @@ export function NoteEditor({
   const snapshot = useNoteDraft(note, store, locked);
   const { controller, note: draft, status, error } = snapshot;
   const { flush, change, initialError } = controller;
+  useUpdateParticipant({ blocked: () => null, save: controller.flushForNavigation });
   const [tagText, setTagText] = useState(draft.tags.join(", "));
   const [preview, setPreview] = useState(false);
   const [live, setLive] = useState(false);

@@ -7,8 +7,13 @@ import "./reader-entry.css";
 
 import { createRoot } from "react-dom/client";
 import { App } from "@bcr/reader-studio/app";
+import { AppUpdateProvider } from "@bcr/react";
 
 /** Mount Reader without booting the workspace-wide Studio Runtime. */
 export function mountReader(container: HTMLElement): void {
-  createRoot(container).render(<App workspaceCollections />);
+  createRoot(container).render(
+    <AppUpdateProvider>
+      <App workspaceCollections />
+    </AppUpdateProvider>,
+  );
 }

@@ -43,7 +43,9 @@ const server = createServer(async (request, response) => {
     }
     const file = resolve(
       root,
-      pathname === "/" || pathname === "/reader" ? "index.html" : `.${pathname}`,
+      pathname === "/" || pathname === "/reader" || pathname === "/knowledge"
+        ? "index.html"
+        : `.${pathname}`,
     );
     if (!file.startsWith(root + sep)) {
       response.writeHead(403).end();
@@ -158,12 +160,43 @@ try {
   // release, which then became the "immediately preceding" one and pushed the
   // original out of the retention window.
   version = 2;
+  // Navigations are served from the atomic app shell. Seed a tiny controlled
+  // probe so it does not accidentally boot a second Studio and acquire its lease.
+  await page.evaluate(async (id) => {
+    const cache = await caches.open(`bcr-reader-shell-${id}`);
+    await cache.put(
+      "/probe",
+      new Response("<!doctype html><title>Old client</title>", {
+        headers: { "Content-Type": "text/html" },
+      }),
+    );
+  }, buildId);
   const oldClient = await context.newPage();
   await oldClient.goto(`${origin}/probe`);
   await page.evaluate(async () => {
     await (await navigator.serviceWorker.ready).update();
   });
   await page.getByRole("button", { name: "立即更新", exact: true }).waitFor();
+  // The same waiting release is visible outside Reader, including on cold entry.
+  const studio = await context.newPage();
+  monitor(studio);
+  await studio.goto(origin);
+  await studio.getByRole("button", { name: "立即更新", exact: true }).waitFor();
+  assert.equal(await studio.getByLabel("应用更新", { exact: true }).count(), 1);
+  await studio.getByRole("button", { name: "稍后", exact: true }).click();
+  await studio.getByRole("button", { name: "新版本可用 ↗", exact: true }).click();
+  await studio.locator(".home-app-card").filter({ hasText: "个人知识库" }).click();
+  await studio.getByRole("button", { name: "立即更新", exact: true }).waitFor();
+  await studio.getByRole("button", { name: "新建笔记", exact: true }).click();
+  await studio.getByLabel("笔记标题", { exact: true }).fill("更新后保留的笔记");
+  await studio.evaluate(() => {
+    window.updateProbe = true;
+  });
+  await studio.setViewportSize({ width: 375, height: 812 });
+  const noticeBounds = await studio.getByLabel("应用更新", { exact: true }).boundingBox();
+  assert(noticeBounds && noticeBounds.x >= 0 && noticeBounds.x + noticeBounds.width <= 375);
+  await mkdir("scripts/shots", { recursive: true });
+  await studio.screenshot({ path: "scripts/shots/global-update-mobile.png" });
   // Fail both metadata backends. The new worker must remain waiting.
   await page.evaluate(() => {
     const setItem = Storage.prototype.setItem;
@@ -186,7 +219,7 @@ try {
   await page.getByRole("button", { name: "立即更新", exact: true }).click();
   await page.locator(".reader-save-notice").waitFor();
   await page.waitForFunction(
-    () => document.querySelector(".reader-update-actions .is-primary")?.disabled === false,
+    () => document.querySelector(".bcr-update-actions .is-primary")?.disabled === false,
   );
   assert(await page.evaluate(() => window.updateProbe === true));
   assert(await page.evaluate(async () => (await navigator.serviceWorker.ready).waiting !== null));
@@ -198,6 +231,25 @@ try {
   ]);
   await page.locator(".reader-workspace").waitFor();
   await page.getByRole("heading", { name: "PWA durable reading", exact: true }).waitFor();
+  // Another tab's activation must not force a reload of the open workspace.
+  assert(await studio.evaluate(() => window.updateProbe === true));
+  // An unconfirmed rename must not be silently discarded by the reload.
+  await studio.getByLabel("笔记标题", { exact: true }).fill("尚未确认的重命名");
+  await studio.getByRole("button", { name: "立即更新", exact: true }).click();
+  await studio.getByLabel("应用更新", { exact: true }).getByRole("alert").waitFor();
+  assert(await studio.evaluate(() => window.updateProbe === true));
+  await studio.getByLabel("笔记标题", { exact: true }).fill("更新后保留的笔记");
+  await Promise.all([
+    studio.waitForEvent("load"),
+    studio.getByRole("button", { name: "立即更新", exact: true }).click(),
+  ]);
+  assert(await studio.evaluate(() => window.updateProbe !== true));
+  await studio.getByLabel("笔记标题", { exact: true }).waitFor();
+  assert.equal(
+    await studio.getByLabel("笔记标题", { exact: true }).inputValue(),
+    "更新后保留的笔记",
+  );
+  await studio.close();
   assert.equal((await session(page)).activeBookId, savedPosition.activeBookId);
   const restoredPosition = (await session(page)).progressByBook[savedPosition.activeBookId];
   assert(
@@ -252,7 +304,7 @@ try {
   await page.getByText("已加入资料集合", { exact: true }).waitFor();
   assert.deepEqual(errors, []);
   console.log(
-    "Reader production PWA PASSED: exclusive writer, reopen, offline cold boot, incomplete update, failed-save guard, update recovery, old asset cache",
+    "Global production PWA PASSED: home/knowledge/Reader notice, mobile layout, save/rename guards, cross-tab activation, offline boot, update recovery, old asset cache",
   );
 } catch (error) {
   await mkdir("scripts/shots", { recursive: true });

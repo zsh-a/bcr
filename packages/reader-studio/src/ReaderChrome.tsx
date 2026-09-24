@@ -1,13 +1,4 @@
-import {
-  ArrowLeft,
-  BookOpen,
-  CircleAlert,
-  Download,
-  RefreshCw,
-  Search,
-  Upload,
-  X,
-} from "lucide-react";
+import { ArrowLeft, BookOpen, CircleAlert, Download, Search, Upload, X } from "lucide-react";
 import { useRef, type RefObject } from "react";
 import { readerAcceptAttribute, type ReaderBook } from "@bcr/reader-core";
 import type { ReaderRestoreDiagnostics } from "./runtime";
@@ -15,40 +6,6 @@ import { percent } from "./readerPresentation";
 import { openSearchHit } from "./readerSearchNavigation";
 import { getReaderState, reader, useReader } from "./store";
 import { ReaderSheet } from "./ReaderSheet";
-
-export function ReaderUpdateNotice(props: {
-  readonly applying: boolean;
-  readonly blocked: boolean;
-  readonly onApply: () => void;
-  readonly onDismiss: () => void;
-}) {
-  const { applying, blocked, onApply, onDismiss } = props;
-  return (
-    <section className="reader-update-notice" aria-label="应用更新" role="status">
-      <span className="reader-update-mark" aria-hidden="true">
-        <RefreshCw className={`reader-icon${applying ? " is-spinning" : ""}`} />
-      </span>
-      <div className="reader-update-copy">
-        <span className="reader-eyebrow">APP UPDATE</span>
-        <strong>新版本已准备好</strong>
-        <span>{blocked ? "当前任务完成后即可安全更新。" : "更新前保存位置，刷新后继续阅读。"}</span>
-      </div>
-      <div className="reader-update-actions">
-        <button type="button" disabled={applying} onClick={onDismiss}>
-          稍后
-        </button>
-        <button
-          className="is-primary"
-          type="button"
-          disabled={applying || blocked}
-          onClick={onApply}
-        >
-          {applying ? "正在保存…" : blocked ? "任务完成后更新" : "立即更新"}
-        </button>
-      </div>
-    </section>
-  );
-}
 
 export function ReaderRecoveryBanner(props: { recovery: ReaderRestoreDiagnostics }) {
   const { recovery } = props;

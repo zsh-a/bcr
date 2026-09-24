@@ -1,5 +1,6 @@
 export type { RuntimeHost, RuntimeMetadata, RuntimeServices, RuntimeSession } from "@bcr/core";
 export { usePublishRunningCount, useRunningApps } from "./application-status";
+export { AppUpdateProvider, useUpdateParticipant } from "./AppUpdate";
 
 export { AgentProvider, useAgentHost } from "./AgentProvider";
 export { createAgentStorage } from "./agentStorage";

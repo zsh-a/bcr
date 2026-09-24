@@ -7,6 +7,8 @@ import {
   RuntimeActivity,
   RuntimeProvider,
   useRuntimeSession,
+  useUpdateParticipant,
+  useRunningApps,
 } from "@bcr/react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Suspense, useCallback, useEffect, useLayoutEffect, useState } from "react";
@@ -22,6 +24,7 @@ import { PluginHost } from "./PluginHost";
 import { AssistantWindow, type AssistantVisibility } from "../assistant/AssistantWindow";
 import { createAgentHost } from "@bcr/agent";
 import { createAgentStorage, createBrowserCredentials, browserSettingsStorage } from "@bcr/react";
+import { studio } from "../store";
 
 /**
  * OS 式 Shell 根布局（§12：URL 即状态）：
@@ -63,6 +66,20 @@ function ShellContent() {
   const { conversations } = useAgentHost();
   const navigation = useNavigation();
   const { services, error } = useRuntimeSession(createRuntimeServices);
+  useUpdateParticipant({
+    blocked: () =>
+      services === null
+        ? "工作台尚未就绪，请稍后更新。"
+        : conversations.getSnapshot().running
+          ? "Agent 正在执行任务，请完成或停止后再更新。"
+          : null,
+    save: async () => {
+      await conversations.flush();
+      const snapshot = conversations.getSnapshot();
+      if (snapshot.loading || snapshot.storageError)
+        throw new Error(snapshot.storageError ?? "会话正在加载，请稍后更新。");
+    },
+  });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [assistantVisibility, setAssistantVisibility] = useState<AssistantVisibility>("closed");
@@ -150,6 +167,7 @@ function ShellContent() {
 
   return (
     <RuntimeProvider services={services}>
+      <RuntimeUpdateGuard />
       <ResearchCaptureBridge>
         <SearchBridge services={services} />
         <PluginHost />
@@ -197,4 +215,16 @@ function ShellContent() {
       </ResearchCaptureBridge>
     </RuntimeProvider>
   );
+}
+
+function RuntimeUpdateGuard() {
+  const running = useRunningApps();
+  useUpdateParticipant({
+    blocked: () =>
+      studio.getSnapshot().runningCount > 0 || Object.values(running).some((count) => count > 0)
+        ? "仍有任务运行中，请完成后再更新。"
+        : null,
+    save: async () => {},
+  });
+  return null;
 }

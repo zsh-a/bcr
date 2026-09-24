@@ -1,4 +1,4 @@
-import { useRuntime, useRuntimeActivity, useCredential } from "@bcr/react";
+import { useRuntime, useRuntimeActivity, useCredential, useUpdateParticipant } from "@bcr/react";
 import { knowledgeCredentialId } from "./credential";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
@@ -62,6 +62,11 @@ export function KnowledgeApp() {
     [error, setError] = useState("");
   const [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
+  useUpdateParticipant({
+    blocked: () =>
+      !ready || busy || store.syncing ? "知识库正在加载、保存或同步，请完成后再更新。" : null,
+    save: () => store.flush(),
+  });
   const [query, setQuery] = useState(""),
     [collection, setCollection] = useState("");
   const [panel, setPanel] = useState<"sync" | "history" | "restore" | null>(null),

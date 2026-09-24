@@ -33,7 +33,6 @@ import {
   ReaderHeader,
   ReaderInstallHelp,
   ReaderRecoveryBanner,
-  ReaderUpdateNotice,
   type ImportFailure,
   type ImportJob,
 } from "./ReaderChrome";
@@ -78,7 +77,6 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
   const { runtime, error: runtimeError, recovery } = useReaderBoot();
   const hostServices = useOptionalRuntime();
   const pwaInstall = useReaderPwaInstall();
-  const pwaUpdate = useReaderPwaUpdate(runtime);
   const routeSearch = parseReaderRouteSearch(useLocationSearch());
   const status = useReader((state) => state.status);
   const stateError = useReader((state) => state.error);
@@ -95,6 +93,7 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
   const [handoffRecovery, setHandoffRecovery] = useState(false);
   const [documentHandoffBusy, setDocumentHandoffBusy] = useState(false);
   const [importJob, setImportJob] = useState<ImportJob | null>(null);
+  useReaderPwaUpdate(runtime, documentHandoffBusy || (importJob !== null && !importJob.settled));
   const [installHelpOpen, setInstallHelpOpen] = useState(false);
   const [mobileChromeVisible, setMobileChromeVisible] = useState(true);
   const appliedRouteRef = useRef("");
@@ -514,14 +513,6 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
       />
       {recovery !== null && recovery.skippedBooks.length > 0 && (
         <ReaderRecoveryBanner recovery={recovery} />
-      )}
-      {pwaUpdate.visible && (
-        <ReaderUpdateNotice
-          applying={pwaUpdate.applying}
-          blocked={documentHandoffBusy || (importJob !== null && !importJob.settled)}
-          onApply={() => void pwaUpdate.apply()}
-          onDismiss={pwaUpdate.dismiss}
-        />
       )}
       <ReaderWorkspace
         workspaceCollections={props.workspaceCollections ?? false}

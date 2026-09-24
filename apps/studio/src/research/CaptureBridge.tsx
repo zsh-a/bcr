@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
-import { ResearchCaptureProvider, useRuntime, type ResearchCaptureService } from "@bcr/react";
+import {
+  ResearchCaptureProvider,
+  useRuntime,
+  useUpdateParticipant,
+  type ResearchCaptureService,
+} from "@bcr/react";
 import { saveResearchCapture } from "./capture";
 import { workspaceServices } from "../workspace";
 
@@ -8,6 +13,18 @@ export function ResearchCaptureBridge(props: { children: ReactNode }) {
   const store = useMemo(() => workspaceServices(metadata).research, [metadata]);
   const library = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [state, setState] = useState({ ready: false, error: null as string | null });
+  useUpdateParticipant({
+    blocked: () =>
+      !state.ready
+        ? "资料库尚未就绪，请稍后更新。"
+        : workspaceServices(metadata).knowledge.syncing
+          ? "知识库正在同步，请完成后再更新。"
+          : null,
+    save: async () => {
+      await workspaceServices(metadata).knowledge.flush();
+      await store.flush();
+    },
+  });
   useEffect(() => {
     let active = true;
     setState({ ready: false, error: null });

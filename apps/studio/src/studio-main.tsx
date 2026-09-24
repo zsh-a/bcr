@@ -10,10 +10,15 @@ import "./styles.css";
 import { RouterProvider } from "@tanstack/react-router";
 import { createRoot } from "react-dom/client";
 import { router } from "./router";
+import { AppUpdateProvider } from "@bcr/react";
 
 /** Mount the complete multi-tool Studio shell for browser/desktop routes. */
 export function mountStudio(container: HTMLElement): void {
   // 不用 StrictMode：OffscreenCanvas 的 transferControlToOffscreen
   // 每块 canvas 只能执行一次，double-effect 会破坏 render.worker 挂载。
-  createRoot(container).render(<RouterProvider router={router} />);
+  createRoot(container).render(
+    <AppUpdateProvider>
+      <RouterProvider router={router} />
+    </AppUpdateProvider>,
+  );
 }

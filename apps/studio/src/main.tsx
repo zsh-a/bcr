@@ -1,11 +1,11 @@
-const READER_UPDATE_READY_EVENT = "bcr-reader-update-ready";
-const READER_APPLY_UPDATE_EVENT = "bcr-reader-apply-update";
+const UPDATE_READY_EVENT = "bcr-update-ready";
+const APPLY_UPDATE_EVENT = "bcr-apply-update";
 const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1_000;
 const UPDATE_CHECK_THROTTLE_MS = 60 * 1_000;
 
 type ReaderPwaWindow = Window & {
   __bcrReaderInstallPrompt?: Event;
-  __bcrReaderUpdateReady?: boolean;
+  __bcrUpdateReady?: boolean;
 };
 
 function captureReaderInstallPrompt(): void {
@@ -21,7 +21,7 @@ function captureReaderInstallPrompt(): void {
   });
 }
 
-function registerReaderServiceWorker(): void {
+function registerAppServiceWorker(): void {
   const viteEnv = (import.meta as ImportMeta & { readonly env?: { readonly PROD?: boolean } }).env;
   if (viteEnv?.PROD !== true || !("serviceWorker" in navigator)) return;
   // Registration is non-blocking and starts the install while the selected
@@ -38,24 +38,24 @@ function registerReaderServiceWorker(): void {
       const activateWaitingWorker = () => {
         const waiting = registration.waiting;
         if (waiting === null) {
-          // Another open Reader can activate the shared worker first. In that
+          // Another open tab can activate the shared worker first. In that
           // case this page is already controlled by the new release and only
           // needs the user-approved reload.
-          if (pwaWindow.__bcrReaderUpdateReady === true && !reloadStarted) {
+          if (pwaWindow.__bcrUpdateReady === true && !reloadStarted) {
             reloadStarted = true;
             window.location.reload();
           }
           return;
         }
-        pwaWindow.__bcrReaderUpdateReady = false;
+        pwaWindow.__bcrUpdateReady = false;
         waiting.postMessage({ type: "SKIP_WAITING" });
       };
 
       const announceUpdate = (worker: ServiceWorker) => {
         if (worker === announcedWorker) return;
         announcedWorker = worker;
-        pwaWindow.__bcrReaderUpdateReady = true;
-        window.dispatchEvent(new Event(READER_UPDATE_READY_EVENT));
+        pwaWindow.__bcrUpdateReady = true;
+        window.dispatchEvent(new Event(UPDATE_READY_EVENT));
         if (updateRequested) activateWaitingWorker();
       };
 
@@ -78,7 +78,7 @@ function registerReaderServiceWorker(): void {
         announceUpdate(registration.waiting);
       }
 
-      window.addEventListener(READER_APPLY_UPDATE_EVENT, () => {
+      window.addEventListener(APPLY_UPDATE_EVENT, () => {
         updateRequested = true;
         activateWaitingWorker();
       });
@@ -107,7 +107,7 @@ function registerReaderServiceWorker(): void {
 }
 
 captureReaderInstallPrompt();
-registerReaderServiceWorker();
+registerAppServiceWorker();
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) throw new Error("missing #root");

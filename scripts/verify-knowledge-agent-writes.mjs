@@ -81,6 +81,12 @@ try {
     await panel.getByText(`处理完成 ${next}`, { exact: true }).waitFor();
   }
   await send("创建笔记但先放弃");
+  // A global update must not interrupt an Agent waiting for tool approval.
+  await page.evaluate(() => window.dispatchEvent(new Event("bcr-update-ready")));
+  const update = page.getByLabel("应用更新", { exact: true });
+  await update.getByRole("button", { name: "立即更新", exact: true }).click();
+  await update.getByRole("alert").filter({ hasText: "Agent 正在执行任务" }).waitFor();
+  await update.getByRole("button", { name: "稍后", exact: true }).click();
   assert.ok((await approval.textContent()).includes("跨域创建的正文。"));
   assert.equal(receipt, undefined);
   await resolve(false);
@@ -133,6 +139,9 @@ try {
   console.log(
     "knowledge agent writes PASSED: approval, denial, deduplication, update, mobile and durable save",
   );
+} catch (error) {
+  console.error(await page.locator("body").innerText());
+  throw error;
 } finally {
   await browser.close();
 }

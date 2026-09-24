@@ -1,6 +1,6 @@
 import { searchReaderDetailed } from "./readerSearch";
 import type { ReaderBook } from "@bcr/reader-core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createReaderRuntime,
   ensureReaderMetadata,
@@ -10,6 +10,7 @@ import {
   type ReaderRuntime,
 } from "./runtime";
 import { getReaderState, reader, useReader } from "./store";
+import { useUpdateParticipant } from "@bcr/react";
 
 export const READER_CAPTURE_PROGRESS_EVENT = "bcr-reader-capture-progress";
 
@@ -24,57 +25,15 @@ export function captureReaderProgress(): void {
   window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
 }
 
-export interface ReaderPwaUpdateState {
-  readonly visible: boolean;
-  readonly applying: boolean;
-  readonly apply: () => Promise<void>;
-  readonly dismiss: () => void;
-}
-
-function pendingReaderPwaUpdate(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    (window as Window & { readonly __bcrReaderUpdateReady?: boolean }).__bcrReaderUpdateReady ===
-    true
-  );
-}
-
-export function useReaderPwaUpdate(runtime: ReaderRuntime | null): ReaderPwaUpdateState {
-  const [ready, setReady] = useState(pendingReaderPwaUpdate);
-  const [dismissed, setDismissed] = useState(false);
-  const [applying, setApplying] = useState(false);
-
-  useEffect(() => {
-    const onUpdateReady = () => {
-      setReady(true);
-      setDismissed(false);
-    };
-    window.addEventListener("bcr-reader-update-ready", onUpdateReady);
-    return () => window.removeEventListener("bcr-reader-update-ready", onUpdateReady);
-  }, []);
-
-  const apply = useCallback(async () => {
-    if (runtime === null || applying) return;
-    setApplying(true);
-    // Mirror state synchronously, then wait for the durable SQLite/OPFS queue
-    // before allowing the new worker to take control and reload the Reader.
-    captureReaderProgress();
-    try {
+export function useReaderPwaUpdate(runtime: ReaderRuntime | null, busy: boolean): void {
+  useUpdateParticipant({
+    blocked: () => (runtime === null || busy ? "阅读器正在加载或处理任务，请完成后再更新。" : null),
+    save: async () => {
+      if (runtime === null) throw new Error("阅读器尚未就绪");
+      captureReaderProgress();
       await persistReaderSnapshot(runtime, { durableLibrary: true, strict: true });
-      window.dispatchEvent(new Event("bcr-reader-apply-update"));
-    } catch {
-      // The save notice retains the error. Keep the old release usable and
-      // allow retrying instead of activating an update after a failed write.
-      setApplying(false);
-    }
-  }, [applying, runtime]);
-
-  return {
-    visible: ready && !dismissed,
-    applying,
-    apply,
-    dismiss: () => setDismissed(true),
-  };
+    },
+  });
 }
 
 export function isAbortError(reason: unknown): boolean {
