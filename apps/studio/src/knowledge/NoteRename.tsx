@@ -3,26 +3,8 @@ import type { NoteDraft, DraftSnapshot } from "./draft";
 import type { KnowledgeStore } from "./store";
 import type { NoteChangePlan } from "./changePlan";
 import { KnowledgeDialog } from "./KnowledgeDialog";
+import { NoteChangeReview } from "./NoteChangeReview";
 import "./rename.css";
-
-function excerpt(before: string, after: string) {
-  let start = 0,
-    end = 0;
-  while (start < before.length && start < after.length && before[start] === after[start]) start++;
-  while (
-    end < before.length - start &&
-    end < after.length - start &&
-    before[before.length - end - 1] === after[after.length - end - 1]
-  )
-    end++;
-  const from = Math.max(0, start - 100);
-  const clip = (text: string) => {
-    const to = Math.min(text.length, text.length - end + 100);
-    const shown = text.slice(from, Math.min(to, from + 4000));
-    return `${from ? "…\n" : ""}${shown}${to < text.length || to > from + 4000 ? "\n…" : ""}`;
-  };
-  return [clip(before), clip(after)];
-}
 
 export function NoteRename({
   controller,
@@ -34,8 +16,6 @@ export function NoteRename({
   store: KnowledgeStore;
 }) {
   const [plan, setPlan] = useState<NoteChangePlan | null>(null);
-  const [selected, setSelected] = useState(0);
-  const [full, setFull] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const titleInput = useRef<HTMLInputElement>(null);
@@ -57,8 +37,6 @@ export function NoteRename({
       if (current.proposedTitle === null) return;
       const next = await store.previewRename(current.note.id, current.proposedTitle);
       setPlan(next);
-      setSelected(0);
-      setFull(false);
     } catch (reason) {
       setError(String(reason));
     } finally {
@@ -85,8 +63,6 @@ export function NoteRename({
       setBusy(false);
     }
   }
-  const change = plan?.changes[selected];
-  const snippets = change ? excerpt(change.before.body, change.after.body) : [];
   return (
     <>
       <input
@@ -129,63 +105,7 @@ export function NoteRename({
           <p className="knowledge-small">
             预览后若笔记或引用范围发生变化，需要刷新预览并重新确认。
           </p>
-          <div className="knowledge-rename-notes" aria-label="受影响的笔记">
-            {plan?.changes.map((item, index) => (
-              <button
-                type="button"
-                key={item.before.id}
-                className="knowledge-button"
-                aria-pressed={selected === index}
-                onClick={() => {
-                  setSelected(index);
-                  setFull(false);
-                }}
-              >
-                {item.before.title || "未命名笔记"}
-                <small>
-                  {item.before.id === plan.targetId ? "标题" : "引用"} ·{" "}
-                  {item.before.id.slice(0, 8)}
-                </small>
-              </button>
-            ))}
-          </div>
-          {change && (
-            <div className="knowledge-rename-diff">
-              {change.before.title !== change.after.title && (
-                <div className="knowledge-rename-title-diff">
-                  <span>原标题：{change.before.title || "未命名笔记"}</span>
-                  <strong>新标题：{change.after.title || "未命名笔记"}</strong>
-                </div>
-              )}
-              {change.before.body !== change.after.body && (
-                <>
-                  <button
-                    type="button"
-                    className="knowledge-button"
-                    aria-pressed={full}
-                    onClick={() => setFull(!full)}
-                  >
-                    {full ? "仅看变更片段" : "查看完整正文"}
-                  </button>
-                  <div className="knowledge-rename-columns">
-                    <div>
-                      <h3>修改前</h3>
-                      <pre>{full ? change.before.body : snippets[0]}</pre>
-                    </div>
-                    <div>
-                      <h3>修改后</h3>
-                      <pre>{full ? change.after.body : snippets[1]}</pre>
-                    </div>
-                  </div>
-                  {!full && (
-                    <p className="knowledge-small">
-                      仅显示变更附近片段，省略内容以 … 标记，可展开完整正文。
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          )}
+          {plan && <NoteChangeReview plan={plan} />}
           <div className="knowledge-rename-actions">
             <button type="button" className="knowledge-button" disabled={busy} onClick={cancel}>
               取消重命名

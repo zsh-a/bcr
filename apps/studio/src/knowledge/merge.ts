@@ -62,7 +62,7 @@ function mergeNote(
   const body = mergeText(base.body, local.body, remote.body);
   if (body === null) return null;
   result.body = body;
-  for (const key of ["title", "tags", "collectionId", "createdAt", "citations"] as const) {
+  for (const key of ["title", "path", "tags", "collectionId", "createdAt", "citations"] as const) {
     if (same(local[key], remote[key]) || same(remote[key], base[key])) continue;
     if (!same(local[key], base[key])) return null;
     Object.assign(result, { [key]: remote[key] });

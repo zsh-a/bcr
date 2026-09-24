@@ -17,13 +17,14 @@ export const FILE_LIMIT = 2 * 1024 * 1024;
 export const TRANSFER_LIMIT = 16 * 1024 * 1024;
 export function noteMarkdown(note: KnowledgeNote): string {
   const { body, citations: _citations, ...metadata } = note;
-  return `---\n${stringify({ bcr: 1, ...metadata }, { lineWidth: 0 })}---\n${body}`;
+  return `---\n${stringify({ bcr: note.path === undefined ? 1 : 2, ...metadata }, { lineWidth: 0 })}---\n${body}`;
 }
 export function parseNoteMarkdown(raw: string, id: string, citations: unknown = []): KnowledgeNote {
   const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u.exec(raw);
   if (!match || match[1]!.length > 32_000) throw new Error(`笔记 ${id} 缺少有效的元数据`);
   const metadata = object(parse(match[1]!, { maxAliasCount: 0, uniqueKeys: true, schema: "core" }));
-  if (metadata.bcr !== 1 || metadata.id !== id) throw new Error(`笔记 ${id} 的格式或身份不匹配`);
+  if ((metadata.bcr !== 1 && metadata.bcr !== 2) || metadata.id !== id)
+    throw new Error(`笔记 ${id} 的格式或身份不匹配`);
   return decodeNote({ ...metadata, body: raw.slice(match[0].length), citations });
 }
 export function importMarkdown(raw: string, filename: string): KnowledgeNote {
@@ -31,13 +32,16 @@ export function importMarkdown(raw: string, filename: string): KnowledgeNote {
   const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u.exec(raw);
   if (match) {
     const metadata = object(parse(match[1]!, { maxAliasCount: 0, schema: "core" }));
-    if (metadata.bcr === 1 && validId(metadata.id))
+    if ((metadata.bcr === 1 || metadata.bcr === 2) && validId(metadata.id))
       return { ...parseNoteMarkdown(raw, metadata.id), id: note.id, collectionId: null };
   }
   return decodeNote({ ...note, body: raw });
 }
 export function contentFiles(content: KnowledgeContent): Record<string, string> {
-  const files: Record<string, string> = { [MANIFEST]: '{"format":"bcr-knowledge","version":1}\n' };
+  const version = Object.values(content.notes).some((note) => note.path !== undefined) ? 2 : 1;
+  const files: Record<string, string> = {
+    [MANIFEST]: JSON.stringify({ format: "bcr-knowledge", version }) + "\n",
+  };
   for (const note of Object.values(content.notes).sort((a, b) => a.id.localeCompare(b.id))) {
     files[`${PREFIX}notes/${note.id}.md`] = noteMarkdown(note);
     files[`${PREFIX}citations/${note.id}.json`] = JSON.stringify(note.citations, null, 2) + "\n";
@@ -59,7 +63,7 @@ export function filesContent(files: Record<string, string>): KnowledgeContent {
     return emptyContent();
   }
   const manifest = object(JSON.parse(files[MANIFEST]));
-  if (manifest.format !== "bcr-knowledge" || manifest.version !== 1)
+  if (manifest.format !== "bcr-knowledge" || (manifest.version !== 1 && manifest.version !== 2))
     throw new Error("远端知识库格式不支持");
   const result = emptyContent();
   for (const [path, raw] of Object.entries(files)) {

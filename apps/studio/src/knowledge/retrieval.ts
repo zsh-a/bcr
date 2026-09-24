@@ -1,15 +1,20 @@
 import { findTextMatches, textVersion } from "@bcr/core";
 import type { KnowledgeNote } from "./model";
 import { noteRevision } from "./noteRevision";
+import { notePath } from "./paths";
 
 const normalize = (value: string) =>
   value.normalize("NFKC").toLowerCase().replace(/\s+/gu, " ").trim();
-const cache = new WeakMap<KnowledgeNote, { title: string; tags: string; body: string }>();
+const cache = new WeakMap<
+  KnowledgeNote,
+  { title: string; path: string; tags: string; body: string }
+>();
 function searchable(note: KnowledgeNote) {
   let value = cache.get(note);
   if (!value) {
     value = {
       title: normalize(note.title),
+      path: normalize(notePath(note)),
       tags: normalize(note.tags.join(" ")),
       body: normalize(note.body),
     };
@@ -33,7 +38,7 @@ export function searchKnowledge(
       const score =
         value.title === needle
           ? 4
-          : value.title.includes(needle)
+          : value.title.includes(needle) || value.path.includes(needle)
             ? 3
             : value.tags.includes(needle)
               ? 2

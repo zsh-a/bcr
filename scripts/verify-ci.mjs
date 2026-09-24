@@ -127,6 +127,7 @@ await withServer({
     "scripts/verify-knowledge.mjs",
     "scripts/verify-knowledge-workbench.mjs",
     "scripts/verify-knowledge-change-plan.mjs",
+    "scripts/verify-knowledge-paths.mjs",
     "scripts/verify-knowledge-dialogs.mjs",
     "scripts/verify-knowledge-restore.mjs",
     "scripts/verify-research.mjs",

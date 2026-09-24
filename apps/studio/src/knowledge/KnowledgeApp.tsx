@@ -45,6 +45,10 @@ import { toggleFavorite } from "./workbench";
 import { NoteTabs } from "./NoteTabs";
 import { NoteSwitcher } from "./NoteSwitcher";
 import { KnowledgeDialog } from "./KnowledgeDialog";
+import { NoteFileTree } from "./NoteFileTree";
+import { NoteMove, type MoveTarget } from "./NoteMove";
+import { notePath } from "./paths";
+import "./paths.css";
 
 export function KnowledgeApp() {
   const services = useRuntime(),
@@ -65,6 +69,8 @@ export function KnowledgeApp() {
   const [auto, setAuto] = useState(false);
   const [collectionName, setCollectionName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [fileView, setFileView] = useState(false);
+  const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
   const [sessions] = useState(() => new EditorSessions());
   const [linkIndex] = useState(() => new KnowledgeLinkIndex());
   const [view, setView] = useState<"all" | "favorites" | "recent">("all");
@@ -328,7 +334,7 @@ export function KnowledgeApp() {
           <Search size={15} />
           <input
             aria-label="搜索个人笔记"
-            placeholder="搜索标题、正文、标签"
+            placeholder="搜索标题、路径、正文、标签"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -377,8 +383,23 @@ export function KnowledgeApp() {
             </button>
           </form>
         </details>
+        <div className="knowledge-library-views" aria-label="笔记导航方式">
+          <button type="button" aria-pressed={!fileView} onClick={() => setFileView(false)}>
+            列表
+          </button>
+          <button type="button" aria-pressed={fileView} onClick={() => setFileView(true)}>
+            文件夹
+          </button>
+        </div>
         <nav className="knowledge-note-list" aria-label="笔记列表">
-          {filtered.length ? (
+          {filtered.length && fileView ? (
+            <NoteFileTree
+              notes={filtered}
+              activeId={note?.id}
+              onSelect={(id) => void run(() => select(id))}
+              onMoveFolder={(folder) => setMoveTarget({ folder })}
+            />
+          ) : filtered.length ? (
             filtered.map((n) => (
               <button
                 type="button"
@@ -528,6 +549,26 @@ export function KnowledgeApp() {
             </button>
           </div>
         </header>
+        {note && (
+          <div className="knowledge-pathbar" aria-label="笔记位置">
+            <span>{notePath(note)}</span>
+            <button
+              type="button"
+              className="knowledge-button"
+              onClick={() => setMoveTarget({ noteId: note.id })}
+            >
+              移动笔记
+            </button>
+          </div>
+        )}
+        {moveTarget && (
+          <NoteMove
+            target={moveTarget}
+            store={store}
+            flush={flushEditor}
+            onClose={() => setMoveTarget(null)}
+          />
+        )}
         <NoteTabs
           notes={state.notes}
           ids={workbench.state.tabs}

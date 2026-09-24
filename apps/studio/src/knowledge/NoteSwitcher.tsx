@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Search, X, Plus } from "lucide-react";
 import type { KnowledgeNote } from "./model";
 import { searchKnowledge, noteSearchHit } from "./retrieval";
+import { notePath } from "./paths";
 
 export function NoteSwitcher({
   notes,
@@ -77,7 +78,7 @@ export function NoteSwitcher({
           aria-expanded="true"
           aria-controls={list}
           aria-activedescendant={hits[selected] ? `${list}-${selected}` : undefined}
-          placeholder="搜索标题、标签或正文…"
+          placeholder="搜索标题、路径、标签或正文…"
           value={query}
           disabled={busy}
           onChange={(event) => {
@@ -121,7 +122,7 @@ export function NoteSwitcher({
             <strong>{note.title || "未命名笔记"}</strong>
             <span>{noteSearchHit(note, query).preview.slice(0, 140)}</span>
             <small>
-              {note.id.slice(0, 8)} · {new Date(note.updatedAt).toLocaleDateString()}
+              {notePath(note)} · {new Date(note.updatedAt).toLocaleDateString()}
             </small>
           </button>
         ))}

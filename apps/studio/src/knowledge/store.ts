@@ -2,7 +2,8 @@ import type { RuntimeMetadata } from "@bcr/core";
 import { mergeContent } from "./merge";
 import { noteRevision } from "./noteRevision";
 import { preserveRenamedLinks } from "./renameLinks";
-import { planNoteRename, noteVersions, type NoteChangePlan } from "./changePlan";
+import { planNoteRename, planNoteMove, noteVersions, type NoteChangePlan } from "./changePlan";
+import { availableCopyPath } from "./paths";
 import {
   contentOf,
   decodeNote,
@@ -19,11 +20,18 @@ import {
 } from "./model";
 
 export const KNOWLEDGE_KEY = "workspace/knowledge.v1";
+export const KNOWLEDGE_PATH_BACKUP_KEY = "workspace/knowledge.before-paths.v1";
 export class KnowledgeStore {
   private plans = new WeakMap<NoteChangePlan, string>();
   async previewRename(id: string, title: string): Promise<NoteChangePlan> {
     await this.flush();
     const plan = planNoteRename(this.value.notes, id, title);
+    this.plans.set(plan, JSON.stringify(plan));
+    return plan;
+  }
+  async previewMove(moves: Readonly<Record<string, string>>): Promise<NoteChangePlan> {
+    await this.flush();
+    const plan = planNoteMove(this.value.notes, moves);
     this.plans.set(plan, JSON.stringify(plan));
     return plan;
   }
@@ -44,7 +52,7 @@ export class KnowledgeStore {
       return this.withHistory(
         state,
         { notes, collections: state.collections },
-        "重命名与引用更新前版本",
+        plan.kind === "move" ? "移动与引用更新前版本" : "重命名与引用更新前版本",
       );
     }).then(() => {
       this.plans.delete(plan);
@@ -172,11 +180,32 @@ export class KnowledgeStore {
           await this.load();
           this.reloadRequired = false;
         }
-        const next = change(this.value);
+        let next = change(this.value);
         if (next === this.value) return;
+        if (
+          next.version === 1 &&
+          [
+            ...Object.values(next.notes),
+            ...Object.values(next.sync.base.notes),
+            ...Object.values(next.sync.pending?.content.notes ?? {}),
+            ...next.history.map((entry) => entry.note),
+            ...next.conflicts.flatMap((conflict) => [
+              conflict.base,
+              conflict.local,
+              conflict.remote,
+            ]),
+          ].some((note) => note && "path" in note && note.path !== undefined)
+        )
+          next = { ...next, version: 2 };
         const raw = JSON.stringify(next);
         const validated = decodeState(raw);
         try {
+          if (
+            this.value.version === 1 &&
+            next.version === 2 &&
+            (await this.metadata!.get(KNOWLEDGE_PATH_BACKUP_KEY)) === undefined
+          )
+            await this.metadata!.set(KNOWLEDGE_PATH_BACKUP_KEY, JSON.stringify(this.value));
           await this.metadata!.set(KNOWLEDGE_KEY, raw);
         } catch (error) {
           this.reloadRequired = true;
@@ -204,6 +233,12 @@ export class KnowledgeStore {
     return this.update((state) => {
       if (state.conflicts.some((c) => c.kind === "note" && c.key === note.id))
         throw new Error("请先解决这篇笔记的同步冲突，草稿已保留");
+      if (
+        state.notes[note.id] &&
+        valid.path !== state.notes[note.id]!.path &&
+        valid.path !== base?.path
+      )
+        throw new Error("移动笔记需要预览并确认修改计划");
       const baseline = { notes: base ? { [base.id]: base } : {}, collections: {} };
       const local = { notes: { [valid.id]: valid }, collections: {} };
       const remote = {
@@ -305,6 +340,9 @@ export class KnowledgeStore {
             ...(current.remote as KnowledgeNote),
             id,
             title: `${(current.remote as KnowledgeNote).title.slice(0, 494)}（远端副本）`,
+            ...((current.remote as KnowledgeNote).path === undefined
+              ? {}
+              : { path: availableCopyPath((current.remote as KnowledgeNote).path!, notes) }),
             updatedAt: Date.now(),
           };
         else

@@ -1,8 +1,11 @@
 import { decodeResearch, type ResearchExcerpt } from "../research/index";
+import { normalizeNotePath, assertUniquePaths } from "./paths";
 
 export interface KnowledgeNote {
   id: string;
   title: string;
+  /** Absent on legacy notes: logical path defaults to <id>.md. */
+  path?: string;
   body: string;
   tags: string[];
   collectionId: string | null;
@@ -37,7 +40,7 @@ export interface NoteRevision {
   reason: string;
 }
 export interface KnowledgeState extends KnowledgeContent {
-  version: 1;
+  version: 1 | 2;
   history: NoteRevision[];
   conflicts: KnowledgeConflict[];
   sync: {
@@ -102,6 +105,7 @@ export function decodeNote(value: unknown): KnowledgeNote {
   return {
     id: n.id,
     title: string(n.title, 500),
+    ...(n.path === undefined ? {} : { path: normalizeNotePath(n.path) }),
     body: string(n.body, 500_000),
     tags: n.tags.map((tag) => string(tag, 100)),
     collectionId: n.collectionId,
@@ -132,6 +136,7 @@ export function decodeContent(value: unknown): KnowledgeContent {
     if (id !== collection.id) throw new Error("集合身份不一致");
     collections[id] = collection;
   }
+  assertUniquePaths(notes);
   return { notes, collections };
 }
 export function decodeTarget(value: unknown): GitTarget {
@@ -159,7 +164,11 @@ export function decodeState(raw: string | undefined): KnowledgeState {
     throw new Error("本地知识库超过 32 MiB 限制");
   const s = object(JSON.parse(raw)),
     sync = object(s.sync);
-  if (s.version !== 1 || !Array.isArray(s.history) || !Array.isArray(s.conflicts))
+  if (
+    (s.version !== 1 && s.version !== 2) ||
+    !Array.isArray(s.history) ||
+    !Array.isArray(s.conflicts)
+  )
     throw new Error("知识库版本不支持，原数据已保留");
   const sha = (v: unknown): string | null => {
     if (v === null) return null;
@@ -196,7 +205,7 @@ export function decodeState(raw: string | undefined): KnowledgeState {
   const pending = sync.pending === null ? null : object(sync.pending);
   if (pending && !sha(pending.head)) throw new Error("待确认提交无效");
   return {
-    version: 1,
+    version: s.version,
     ...decodeContent(s),
     history,
     conflicts,

@@ -7,6 +7,7 @@ import {
   isManagedPath,
 } from "./files";
 import { decodeContent, same, type KnowledgeContent } from "./model";
+import { availableCopyPath } from "./paths";
 
 export type RestoreMode = "skip" | "replace" | "both";
 
@@ -149,7 +150,12 @@ export function planKnowledgeRestore(
       replaced += 1;
     } else {
       const id = crypto.randomUUID();
-      notes[id] = { ...note, id, title: `${note.title.slice(0, 494)}（恢复副本）` };
+      notes[id] = {
+        ...note,
+        id,
+        title: `${note.title.slice(0, 494)}（恢复副本）`,
+        ...(note.path === undefined ? {} : { path: availableCopyPath(note.path, notes) }),
+      };
       copied += 1;
     }
   }

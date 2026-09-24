@@ -1,6 +1,7 @@
 import { autocompletion, type CompletionContext } from "@codemirror/autocomplete";
 import { syntaxTree } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
+import { notePath } from "./paths";
 import type { KnowledgeNote } from "./model";
 import { analyzeMarkdown, noteWikiLink } from "./markdownAnalysis";
 import { localDay } from "./workbench";
@@ -39,12 +40,14 @@ export function noteEditing(notes: () => readonly KnowledgeNote[], open: (target
               filter: false,
               options: notes()
                 .filter((note) =>
-                  note.title.toLocaleLowerCase().includes(wiki.text.slice(2).toLocaleLowerCase()),
+                  [note.title, notePath(note)].some((value) =>
+                    value.toLocaleLowerCase().includes(wiki.text.slice(2).toLocaleLowerCase()),
+                  ),
                 )
                 .slice(0, 40)
                 .map((note) => ({
                   label: note.title || "未命名笔记",
-                  detail: note.id.slice(0, 8),
+                  detail: notePath(note),
                   type: "text",
                   apply: noteWikiLink(note),
                 })),

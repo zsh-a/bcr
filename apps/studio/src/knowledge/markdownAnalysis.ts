@@ -3,6 +3,7 @@ import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import type { Root, RootContent, PhrasingContent, Text, Definition } from "mdast";
 import type { KnowledgeNote } from "./model";
+import { notePath, pathKey, relativeNotePath } from "./paths";
 
 const parser = unified().use(remarkParse).use(remarkGfm);
 export const linkKey = (value: string) => value.normalize("NFKC").trim().toLowerCase();
@@ -232,11 +233,44 @@ export function resolveNoteLink(
   target: string,
   currentId?: string,
 ): KnowledgeNote[] {
-  const { name } = splitNoteTarget(target);
-  if (!name && currentId) return notes.filter((note) => note.id === currentId);
-  const exact = notes.find((note) => note.id === name);
-  if (exact) return [exact];
-  return notes.filter((note) => !!note.title.trim() && linkKey(note.title) === linkKey(name));
+  return createNoteResolver(notes)(target, currentId);
+}
+
+export function createNoteResolver(notes: readonly KnowledgeNote[]) {
+  const byId = new Map(notes.map((note) => [note.id, note]));
+  const byPath = new Map<string, KnowledgeNote[]>(),
+    byTitle = new Map<string, KnowledgeNote[]>();
+  for (const note of notes) {
+    // Legacy IDs remain case-sensitive; do not turn a title into an implicit path match.
+    if (note.path !== undefined) {
+      const path = pathKey(note.path);
+      byPath.set(path, [...(byPath.get(path) ?? []), note]);
+    }
+    if (note.title.trim()) {
+      const key = linkKey(note.title);
+      byTitle.set(key, [...(byTitle.get(key) ?? []), note]);
+    }
+  }
+  return (target: string, currentId?: string): KnowledgeNote[] => {
+    const { name } = splitNoteTarget(target);
+    const source = currentId ? byId.get(currentId) : undefined;
+    if (!name) return source ? [source] : [];
+    const direct = byId.get(name.replace(/\.md$/iu, ""));
+    if (direct) return [direct];
+    const relative = relativeNotePath(name, source ? notePath(source) : "root.md");
+    const local = relative ? byPath.get(pathKey(relative)) : undefined;
+    if (local) return local;
+    if (relative && !relative.includes("/")) {
+      const legacy = byId.get(relative.slice(0, -3));
+      if (legacy?.path === undefined && legacy) return [legacy];
+    }
+    if (name.startsWith("./") || name.startsWith("../")) return [];
+    const root = relativeNotePath(name, "root.md");
+    const absolute = root ? byPath.get(pathKey(root)) : undefined;
+    if (absolute) return absolute;
+    if (name.includes("/") || name.includes("\\")) return [];
+    return byTitle.get(linkKey(name)) ?? byTitle.get(linkKey(name.replace(/\.md$/iu, ""))) ?? [];
+  };
 }
 
 /** Generated links use stable identity so a title change cannot silently retarget them. */
@@ -259,22 +293,12 @@ export class KnowledgeLinkIndex {
     return this.cache.get(id)?.analysis ?? { links: [], headings: [] };
   }
   backlinks(notes: readonly KnowledgeNote[], id: string) {
-    const byId = new Map(notes.map((note) => [note.id, note]));
-    const byTitle = new Map<string, KnowledgeNote[]>();
-    for (const note of notes) {
-      if (!note.title.trim()) continue;
-      const key = linkKey(note.title);
-      const group = byTitle.get(key) ?? [];
-      group.push(note);
-      byTitle.set(key, group);
-    }
+    const resolve = createNoteResolver(notes);
     return notes.filter(
       (note) =>
         note.id !== id &&
         this.get(note.id).links.some((link) => {
-          const { name } = splitNoteTarget(link.target);
-          const direct = byId.get(name || note.id);
-          const matches = direct ? [direct] : (byTitle.get(linkKey(name)) ?? []);
+          const matches = resolve(link.target, note.id);
           return matches.length === 1 && matches[0]!.id === id;
         }),
     );
