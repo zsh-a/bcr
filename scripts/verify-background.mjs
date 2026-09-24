@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 
-const origin = process.env.BASE_URL ?? "http://127.0.0.1:5199";
+const origin = new URL(process.env.BASE_URL ?? "http://127.0.0.1:5199").origin;
 const browser = await chromium.launch({ args: ["--disable-dev-shm-usage"] });
 const context = await browser.newContext();
 const page = await context.newPage();

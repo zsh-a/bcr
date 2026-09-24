@@ -45,8 +45,7 @@ try {
   await page.locator(".reader-reading-scroll").waitFor();
   assert.equal(await page.locator(".reader-chapter-rail").count(), 0);
   await page
-    .locator("input[type=file]")
-    .first()
+    .getByLabel("导入阅读文件", { exact: true })
     .setInputFiles({ name: "pagination.epub", mimeType: "application/epub+zip", buffer: fixture });
   await page.getByRole("heading", { name: "分页边界测试", exact: true }).waitFor();
   const settings = async () =>

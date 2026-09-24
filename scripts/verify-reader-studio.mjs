@@ -258,7 +258,7 @@ await page.setViewportSize({ width: 1440, height: 900 });
 // A long, single-section publication catches the old behavior that only
 // restored a section start or a layout-dependent percentage. Capture a text
 // quote, reflow it with a font change, then verify it again after reload.
-await page.locator("input[type=file]").first().setInputFiles({
+await page.getByLabel("导入阅读文件", { exact: true }).setInputFiles({
   name: "precise-progress.html",
   mimeType: "text/html",
   buffer: preciseProgressFixture(),
@@ -323,7 +323,7 @@ if (!preciseAnchorAfterReload) fail("刷新后没有恢复到保存的精确文�
 // Reader can consume the canonical Document JSON bundle directly, without
 // invoking a format parser. Keep this on the real file input so the same path
 // is covered as a user dropping an exported package into the library.
-await page.locator("input[type=file]").first().setInputFiles({
+await page.getByLabel("导入阅读文件", { exact: true }).setInputFiles({
   name: "reader-export-browser.json",
   mimeType: "application/json",
   buffer: documentExportFixture(),
@@ -486,7 +486,7 @@ if ((await page.locator(".reader-annotation-item").count()) < 1) {
 }
 
 const docx = await docxFixture();
-await page.locator("input[type=file]").first().setInputFiles({
+await page.getByLabel("导入阅读文件", { exact: true }).setInputFiles({
   name: "reader-format-fixture.docx",
   mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   buffer: docx,
@@ -501,7 +501,7 @@ if (!docxText.includes("来自 Word 的段落") || !docxText.includes("表格 3"
 }
 
 const epub = await epubFixture();
-await page.locator("input[type=file]").first().setInputFiles({
+await page.getByLabel("导入阅读文件", { exact: true }).setInputFiles({
   name: "reader-navigation-fixture.epub",
   mimeType: "application/epub+zip",
   buffer: epub,
@@ -564,7 +564,7 @@ if (!(await page.locator(".reader-toolbar-title").innerText()).includes("第二�
 }
 
 const pdf = pdfFixture();
-await page.locator("input[type=file]").first().setInputFiles({
+await page.getByLabel("导入阅读文件", { exact: true }).setInputFiles({
   name: "reader-continuous-fixture.pdf",
   mimeType: "application/pdf",
   buffer: pdf,

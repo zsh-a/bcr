@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
+import { trackModuleRequests } from "./lib/modules.mjs";
 
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, hasTouch: true });
+  await trackModuleRequests(page);
   page.setDefaultTimeout(30000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -20,9 +22,7 @@ try {
   });
   await page.getByText("导入完成", { exact: true }).waitFor();
   await page.evaluate(async () => {
-    const url = performance
-      .getEntriesByType("resource")
-      .map((entry) => entry.name)
+    const url = (await window.__bcrTestModuleUrls())
       .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
       .at(-1);
     const { reader } = await import(url);

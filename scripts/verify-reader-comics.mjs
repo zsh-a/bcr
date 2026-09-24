@@ -30,8 +30,7 @@ try {
     await page.goto(new URL("/reader", process.env.BASE_URL ?? "http://localhost:5199").toString());
     await page.locator(".reader-reading-scroll").waitFor();
     await page
-      .locator("input[type=file]")
-      .first()
+      .getByLabel("导入阅读文件", { exact: true })
       .setInputFiles({ name: "comic.epub", mimeType: "application/epub+zip", buffer: epub });
     const images = page.locator(".reader-prose img");
     await images.nth(7).waitFor();
@@ -175,8 +174,7 @@ try {
   );
   await fixedPage.locator(".reader-reading-scroll").waitFor();
   await fixedPage
-    .locator("input[type=file]")
-    .first()
+    .getByLabel("导入阅读文件", { exact: true })
     .setInputFiles({ name: "fixed-comic.epub", mimeType: "application/epub+zip", buffer: fixed });
   await fixedPage.locator(".reader-comic-viewport img").first().waitFor();
   assert.equal(await fixedPage.getByLabel("漫画阅读方向", { exact: true }).inputValue(), "rtl");

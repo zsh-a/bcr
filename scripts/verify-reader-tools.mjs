@@ -23,16 +23,13 @@ try {
     (_, i) =>
       `<p>${i % 10 === 0 ? "needle " : ""}Paragraph ${i}. ${"Quiet reading with stable positions. ".repeat(12)}</p>`,
   ).join("");
-  await page
-    .locator("input[type=file]")
-    .first()
-    .setInputFiles({
-      name: "search-journey.html",
-      mimeType: "text/html",
-      buffer: Buffer.from(
-        `<html><head><title>Search Journey</title></head><body>${paragraphs}</body></html>`,
-      ),
-    });
+  await page.getByLabel("导入阅读文件", { exact: true }).setInputFiles({
+    name: "search-journey.html",
+    mimeType: "text/html",
+    buffer: Buffer.from(
+      `<html><head><title>Search Journey</title></head><body>${paragraphs}</body></html>`,
+    ),
+  });
   await page.getByRole("heading", { name: "Search Journey", exact: true }).waitFor();
   await page.waitForTimeout(1000);
   const scroll = page.locator(".reader-reading-scroll");
@@ -61,8 +58,7 @@ try {
   assert((await scroll.evaluate((element) => element.scrollTop)) > before + 1000);
 
   await page
-    .locator("input[type=file]")
-    .first()
+    .getByLabel("导入阅读文件", { exact: true })
     .setInputFiles({ name: "selectable.pdf", mimeType: "application/pdf", buffer: pdfFixture(12) });
   await page.locator(".reader-pdf-canvas-shell.is-ready").first().waitFor();
   const first = page.locator(".reader-pdf-page").first();

@@ -38,16 +38,13 @@ try {
     (_, i) =>
       `<p id="paragraph-${i}">段落 ${i}。${"阅读应当流畅而安静，页面应跟随视口，进度应跟随文字。".repeat(8)}</p>`,
   ).join("");
-  await page
-    .locator("input[type=file]")
-    .first()
-    .setInputFiles({
-      name: "mobile-long.html",
-      mimeType: "text/html",
-      buffer: Buffer.from(
-        `<html><head><title>移动端长文回归</title></head><body><h1>长文</h1>${paragraphs}</body></html>`,
-      ),
-    });
+  await page.getByLabel("导入阅读文件", { exact: true }).setInputFiles({
+    name: "mobile-long.html",
+    mimeType: "text/html",
+    buffer: Buffer.from(
+      `<html><head><title>移动端长文回归</title></head><body><h1>长文</h1>${paragraphs}</body></html>`,
+    ),
+  });
   await page.getByRole("heading", { name: "移动端长文回归", exact: true }).waitFor();
   await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
   await page.getByRole("button", { name: "分页阅读", exact: true }).click();
@@ -99,14 +96,11 @@ try {
   await page.getByRole("button", { name: "关闭阅读设置", exact: true }).click();
   await page.setViewportSize({ width: 375, height: 812 });
 
-  await page
-    .locator("input[type=file]")
-    .first()
-    .setInputFiles({
-      name: "mobile-window.pdf",
-      mimeType: "application/pdf",
-      buffer: pdfFixture(40),
-    });
+  await page.getByLabel("导入阅读文件", { exact: true }).setInputFiles({
+    name: "mobile-window.pdf",
+    mimeType: "application/pdf",
+    buffer: pdfFixture(40),
+  });
   await page.locator(".reader-pdf-canvas-shell.is-ready").first().waitFor({ timeout: 30000 });
   const allocation = () =>
     page.locator(".reader-pdf-canvas").evaluateAll((canvases) => ({

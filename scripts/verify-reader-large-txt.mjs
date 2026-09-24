@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
+import { trackModuleRequests } from "./lib/modules.mjs";
 
 const browser = await chromium.launch();
 const base = new URL("/reader", process.env.BASE_URL ?? "http://localhost:5199").toString();
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await trackModuleRequests(page);
   page.setDefaultTimeout(60_000);
   await page.goto(base);
   const text = Array.from(
@@ -15,12 +17,12 @@ try {
     .getByLabel("导入阅读文件")
     .setInputFiles({ name: "large-window.txt", mimeType: "text/plain", buffer: Buffer.from(text) });
   await page.getByText("导入完成", { exact: true }).waitFor();
+  // Module lookup must survive a full/cleared browser resource timing buffer.
+  await page.evaluate(() => performance.clearResourceTimings());
   async function navigate(index, settings = {}) {
     await page.evaluate(
       async ({ index, settings }) => {
-        const url = performance
-          .getEntriesByType("resource")
-          .map((entry) => entry.name)
+        const url = (await window.__bcrTestModuleUrls())
           .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
           .at(-1);
         const { reader, getReaderState } = await import(url);
@@ -62,9 +64,7 @@ try {
   await assertVisible(0);
   async function assertLazyState() {
     const stats = await page.evaluate(async () => {
-      const url = performance
-        .getEntriesByType("resource")
-        .map((entry) => entry.name)
+      const url = (await window.__bcrTestModuleUrls())
         .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
         .at(-1);
       const { getReaderState } = await import(url);
@@ -107,9 +107,7 @@ try {
   await page.mouse.wheel(0, 2000);
   await page.waitForTimeout(1000);
   const scrolledIndex = await page.evaluate(async () => {
-    const url = performance
-      .getEntriesByType("resource")
-      .map((entry) => entry.name)
+    const url = (await window.__bcrTestModuleUrls())
       .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
       .at(-1);
     const { getReaderState } = await import(url);

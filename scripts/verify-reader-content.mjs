@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
+import { trackModuleRequests } from "./lib/modules.mjs";
 import { modulePrefix, requireFrom } from "./lib/paths.mjs";
 const READER_MODULE_PREFIX = modulePrefix("reader");
 
@@ -58,6 +59,7 @@ function pdf() {
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await trackModuleRequests(page);
   page.setDefaultTimeout(60_000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -67,7 +69,7 @@ try {
   async function run(name, buffer, query) {
     return page.evaluate(
       async ({ name, bytes, query, storeModule, modulePrefix }) => {
-        const urls = performance.getEntriesByType("resource").map((entry) => entry.name);
+        const urls = await window.__bcrTestModuleUrls();
         const base = urls.filter((url) => new URL(url).pathname.endsWith(storeModule)).at(-1);
         const load = (file) =>
           import(
