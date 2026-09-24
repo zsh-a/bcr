@@ -24,8 +24,22 @@ import {
 } from "../src/knowledge/workbench";
 import { createWorkspaceServices } from "../src/workspace";
 import { createKnowledgeActions } from "../src/knowledge/actions";
+import { editorAnalysis } from "../src/knowledge/editorAnalysis";
 
 describe("knowledge Markdown relationships", () => {
+  it("shares parser semantics across editor consumers and caches immutable documents", () => {
+    const source =
+      "\\[[escaped]] \\\\[[valid]] ![[embed]] `[[code]]`\n\n[[target|label]] [inline](target.md)";
+    const state = EditorState.create({ doc: source });
+    const first = editorAnalysis(state);
+    expect(first.links.map((link) => link.target)).toEqual(["valid", "target", "target"]);
+    expect(first).toEqual(analyzeMarkdown(source));
+    expect(editorAnalysis(state.update({ selection: { anchor: 2 } }).state)).toBe(first);
+    const changed = state.update({
+      changes: { from: 0, to: state.doc.length, insert: "[[new]]" },
+    }).state;
+    expect(editorAnalysis(changed).links.map((link) => link.target)).toEqual(["new"]);
+  });
   it("extracts headings, aliases and normal Markdown links, excluding code, escapes, HTML and embeds", () => {
     const body =
       "# 第一节\n\n[[目标|显示名称]] [正文](目标.md#小节)\n\n`[[inline]]`\n\n```md\n# not heading\n[[fenced]]\n```\n\n    [[indented]]\n\n\\[[escaped]] ![[embed]]\n\n<!-- [[comment]] -->";

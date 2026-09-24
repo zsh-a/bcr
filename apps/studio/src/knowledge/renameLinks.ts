@@ -16,11 +16,18 @@ export function preserveRenamedLinks(
     let body = note.body;
     const links = analyzeMarkdown(body).links;
     for (const link of links.toSorted((a, b) => b.from - a.from)) {
-      if (link.kind !== "wiki") continue;
       const { name, heading } = splitNoteTarget(link.target);
       if (!name || name === id) continue;
       const matches = resolveNoteLink(candidates, link.target, note.id);
       if (matches.length !== 1 || matches[0]!.id !== id) continue;
+      if (link.kind === "markdown") {
+        if (!link.destination) continue;
+        const { from, to } = link.destination;
+        // Stable identity is also a valid relative Markdown destination.
+        const replacement = `${encodeURIComponent(id)}.md${heading ? `#${encodeURIComponent(heading)}` : ""}`;
+        body = body.slice(0, from) + replacement + body.slice(to);
+        continue;
+      }
       const literal = body.slice(link.from + 2, link.to - 2);
       const separator = literal.indexOf("|");
       const label =

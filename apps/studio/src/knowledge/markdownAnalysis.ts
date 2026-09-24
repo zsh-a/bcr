@@ -12,6 +12,8 @@ export interface NoteLink {
   label: string;
   from: number;
   to: number;
+  /** Raw inline Markdown destination, excluding angle brackets and optional title. */
+  destination?: { from: number; to: number };
 }
 export interface NoteHeading {
   text: string;
@@ -62,6 +64,38 @@ export function internalTarget(url: string): string | null {
   }
 }
 
+function markdownDestination(node: Extract<RootContent, { type: "link" }>, source: string) {
+  const from = node.position?.start.offset,
+    end = node.position?.end.offset;
+  if (from === undefined || end === undefined || source[from] !== "[") return undefined;
+  const labelEnd = node.children.at(-1)?.position?.end.offset ?? from + 1;
+  // AST children give the end of the label, including nested formatting/images.
+  if (source.slice(labelEnd, labelEnd + 2) !== "](") return undefined;
+  let start = labelEnd + 2;
+  while (/\s/u.test(source[start] ?? "") && start < end) start++;
+  const angled = source[start] === "<";
+  if (angled) start++;
+  let depth = 0,
+    cursor = start;
+  for (; cursor < end; cursor++) {
+    const char = source[cursor];
+    if (char === "\\") {
+      cursor++;
+      continue;
+    }
+    if (angled) {
+      if (char === ">") break;
+    } else {
+      if (char === "(") depth++;
+      else if (char === ")") {
+        if (!depth) break;
+        depth--;
+      } else if (/\s/u.test(char!)) break;
+    }
+  }
+  return cursor > start && cursor < end ? { from: start, to: cursor } : undefined;
+}
+
 function walk(node: Root | RootContent, source: string, result: NoteAnalysis, transform: boolean) {
   if (node.type === "heading") {
     const from = node.position?.start.offset ?? 0;
@@ -74,14 +108,17 @@ function walk(node: Root | RootContent, source: string, result: NoteAnalysis, tr
   }
   if (node.type === "link") {
     const target = internalTarget(node.url);
-    if (target !== null)
+    if (target !== null) {
+      const destination = markdownDestination(node, source);
       result.links.push({
         kind: "markdown",
         target,
         label: textOf(node),
         from: node.position?.start.offset ?? 0,
         to: node.position?.end.offset ?? 0,
+        ...(destination ? { destination } : {}),
       });
+    }
     return;
   }
   if (!("children" in node) || node.type === "linkReference") return;

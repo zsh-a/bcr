@@ -50,7 +50,7 @@ try {
   await saved();
   await create(
     "Beta",
-    "# Links\n\n[[Alpha#First|Go to Alpha]]\n\n- [x] Complete\n\n| Name | Value |\n| --- | --- |\n| A | B |",
+    '# Links\n\n[[Alpha#First|Go to Alpha]]\n\n[Go via Markdown](Alpha.md#First "Keep tooltip")\n\n- [x] Complete\n\n| Name | Value |\n| --- | --- |\n| A | B |',
   );
   await tab("Alpha");
   await body().focus();
@@ -124,9 +124,38 @@ try {
   await saved();
   await tab("Beta");
   assert.ok((await body().innerText()).includes(`[[${alpha}#First|Go to Alpha]]`));
+  assert.ok(
+    (await body().innerText()).includes(`[Go via Markdown](${alpha}.md#First "Keep tooltip")`),
+  );
+  await page
+    .locator(".cm-line")
+    .filter({ hasText: "Go via Markdown" })
+    .click({ modifiers: ["Control"], position: { x: 35, y: 8 } });
+  await page.waitForFunction(
+    () => document.querySelector('[aria-label="笔记标题"]')?.value === "Alpha renamed",
+  );
+  await tab("Beta");
+  await page.getByRole("button", { name: "预览", exact: true }).click();
+  await page
+    .locator(".knowledge-prose")
+    .getByRole("link", { name: "Go via Markdown", exact: true })
+    .click();
+  await page.waitForFunction(
+    () => document.querySelector('[aria-label="笔记标题"]')?.value === "Alpha renamed",
+  );
   await tab("Alpha renamed");
   await title().fill("Alpha");
   await saved();
+  for (const text of ["\\[[Al", "```md\n[[Al"]) {
+    await body().fill(text);
+    await body().press("Control+Space");
+    await page.waitForTimeout(350);
+    assert.equal(
+      await page.getByRole("option").filter({ hasText: "Alpha" }).count(),
+      0,
+      "escaped/code links must not offer note completion",
+    );
+  }
   await body().fill("[[Al");
   await page.getByRole("option").filter({ hasText: "Alpha" }).first().waitFor();
   await body().press("Enter");

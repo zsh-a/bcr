@@ -47,7 +47,7 @@ describe("editor rename reference transaction", () => {
     );
     expect(next.source!.body).toBe("[[target|旧标题]]");
   });
-  it("preserves source formatting, aliases and headings; ignores code, embeds and non-wiki links", () => {
+  it("preserves source formatting, aliases and headings; ignores code and embeds", () => {
     const before = { target, source };
     const next = preserveRenamedLinks(
       before,
@@ -55,13 +55,44 @@ describe("editor rename reference transaction", () => {
       "target",
     );
     expect(next.source!.body).toBe(
-      source.body.replace(
-        "[[旧标题]] [[旧标题#章节|别名]]",
-        "[[target|旧标题]] [[target#章节|别名]]",
-      ),
+      source.body
+        .replace("[[旧标题]] [[旧标题#章节|别名]]", "[[target|旧标题]] [[target#章节|别名]]")
+        .replace("[原链接](旧标题.md)", "[原链接](target.md)"),
     );
     expect(next.target!.body).toBe("[[target|旧标题]]");
     expect(before.source.body).toBe(source.body);
+  });
+  it.each([
+    ['[**加粗** 与 `代码`](旧标题.md "提示")', '[**加粗** 与 `代码`](target.md "提示")'],
+    ["[说明](<旧标题.md#章节> '提示')", "[说明](<target.md#%E7%AB%A0%E8%8A%82> '提示')"],
+    ["[](旧标题.md)", "[](target.md)"],
+    ['[说明](\n  %E6%97%A7%E6%A0%87%E9%A2%98.md\n  "提示"\n)', '[说明](\n  target.md\n  "提示"\n)'],
+    ["[![图片](image.png)](旧标题.md)", "[![图片](image.png)](target.md)"],
+    ["[引用][ref]\n\n[ref]: 旧标题.md", "[引用][ref]\n\n[ref]: 旧标题.md"],
+    [
+      "![图片](旧标题.md) [外链](https://example.com/旧标题.md)",
+      "![图片](旧标题.md) [外链](https://example.com/旧标题.md)",
+    ],
+    ["`[代码](旧标题.md)` \\[转义](旧标题.md)", "`[代码](旧标题.md)` \\[转义](旧标题.md)"],
+  ])("rewrites only an inline destination: %s", (body, expected) => {
+    const before = { target, source: { ...source, body } };
+    const next = preserveRenamedLinks(
+      before,
+      { ...before, target: { ...target, title: "新标题" } },
+      "target",
+    );
+    expect(next.source!.body).toBe(expected);
+  });
+  it("handles balanced and escaped parentheses in destinations without replacing tooltip text", () => {
+    const old = { ...target, title: "旧(标题)" };
+    const before = {
+      target: old,
+      source: { ...source, body: '[说明](旧(标题).md "旧(标题).md") [另一个](旧\\(标题\\).md)' },
+    };
+    expect(
+      preserveRenamedLinks(before, { ...before, target: { ...old, title: "新标题" } }, "target")
+        .source!.body,
+    ).toBe('[说明](target.md "旧(标题).md") [另一个](target.md)');
   });
   it("does not guess ambiguous titles or change already stable links", () => {
     const before = { target, source, duplicate: { ...target, id: "duplicate" } };

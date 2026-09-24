@@ -8,6 +8,7 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import type { Range } from "@codemirror/state";
+import { editorAnalysis } from "./editorAnalysis";
 
 class WikiLinkWidget extends WidgetType {
   constructor(
@@ -57,27 +58,15 @@ export function livePreview(open: (target: string) => void) {
           ranges.push(Decoration.replace({}).range(node.from, end));
         },
       });
-      const from = view.state.doc.lineAt(visible.from).from;
-      const text = view.state.sliceDoc(from, visible.to);
-      for (const match of text.matchAll(/\[\[([^\]\n|[]+)(?:\|([^\]\n]*))?\]\]/gu)) {
-        const start = from + match.index,
-          end = start + match[0].length;
-        if (editing(start, end) || text[match.index - 1] === "\\" || text[match.index - 1] === "!")
+      for (const link of editorAnalysis(view.state).links) {
+        const start = link.from,
+          end = link.to;
+        if (link.kind !== "wiki" || start < visible.from || end > visible.to || editing(start, end))
           continue;
-        let blocked = false;
-        for (let node = tree.resolveInner(start + 2, 1); node; node = node.parent!) {
-          if (
-            /Code|HTML|Image/u.test(node.name) ||
-            (/Link/u.test(node.name) && (node.from < start || node.to > end))
-          ) {
-            blocked = true;
-            break;
-          }
-        }
-        if (blocked || ranges.some((range) => range.from < end && range.to > start)) continue;
+        if (ranges.some((range) => range.from < end && range.to > start)) continue;
         ranges.push(
           Decoration.replace({
-            widget: new WikiLinkWidget(match[2] || match[1]!, match[1]!, open),
+            widget: new WikiLinkWidget(link.label, link.target, open),
           }).range(start, end),
         );
       }
