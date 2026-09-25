@@ -1,23 +1,14 @@
 import {
   Button,
   IconButton,
-  Spinner,
   StatusDot,
   formatBytes,
   useArtifactUsage,
   useRunningApps,
 } from "@bcr/react";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  Bot,
-  Command,
-  Cpu,
-  HardDrive,
-  House,
-  RefreshCw,
-  Search,
-  SquareTerminal,
-} from "lucide-react";
+import { Bot, Command, House, RefreshCw, Search, SquareTerminal } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
 import { MANIFESTS, type ActiveView } from "../shell/registry";
 import { useStudio } from "../store";
 import { ThemePicker } from "../theme/ThemePicker";
@@ -36,6 +27,25 @@ export function TopBar(props: {
   const taskTotal = useStudio((s) => s.tasks.length);
   const artifactUsage = useArtifactUsage();
   const activeApp = MANIFESTS.find((app) => app.id === props.active);
+  const telemetryId = useId();
+  const telemetryTrigger = useRef<HTMLButtonElement>(null);
+  const telemetryPop = useRef<HTMLDivElement>(null);
+  const [telemetryOpen, setTelemetryOpen] = useState(false);
+  const pool = Math.max(1, (navigator.hardwareConcurrency ?? 2) - 1);
+  const usage = artifactUsage.status === "ready" ? artifactUsage.usage : undefined;
+  const dot = artifactUsage.status === "error" ? "failed" : running > 0 ? "running" : "idle";
+  // 浮层开合状态仅用于 aria-expanded；关闭后焦点若掉回 body，归还给触发器。
+  useEffect(() => {
+    const element = telemetryPop.current;
+    if (!element) return;
+    const toggle = () => {
+      const shown = element.matches(":popover-open");
+      setTelemetryOpen(shown);
+      if (!shown && document.activeElement === document.body) telemetryTrigger.current?.focus();
+    };
+    element.addEventListener("toggle", toggle);
+    return () => element.removeEventListener("toggle", toggle);
+  }, []);
 
   return (
     <header className="studio-topbar flex shrink-0 items-center gap-4 border-b border-border bg-bg px-5">
@@ -59,8 +69,6 @@ export function TopBar(props: {
 
       <div className="h-6 w-px shrink-0 bg-border" />
 
-      <span className="studio-runtime-label ui-section-label">BROWSER COMPUTE RUNTIME</span>
-
       <div className="flex-1" />
 
       {running > 0 && (
@@ -69,38 +77,76 @@ export function TopBar(props: {
           {running} running
         </span>
       )}
-      <span className="studio-system-status inline-flex items-center gap-2 font-mono text-xs text-faint">
-        <Cpu className="size-4" />
-        wasm · pool {Math.max(1, (navigator.hardwareConcurrency ?? 2) - 1)} · {taskTotal} tasks
-      </span>
 
-      <Button
-        variant="ghost"
-        size="lg"
-        className="studio-storage-status"
-        onClick={artifactUsage.refresh}
-        title="刷新本地 Artifact 容量"
-        aria-label="刷新本地 Artifact 容量"
+      <button
+        ref={telemetryTrigger}
+        type="button"
+        className="studio-status-trigger"
+        popoverTarget={telemetryId}
+        aria-expanded={telemetryOpen}
+        title="浏览器运行时与存储状态"
       >
-        <HardDrive className="size-4" />
-        <span className="font-mono text-xs">
-          {artifactUsage.status === "ready" && artifactUsage.usage !== undefined ? (
-            <span>
-              {formatBytes(artifactUsage.usage.totalBytes)} · {artifactUsage.usage.totalObjects}{" "}
-              objects
-            </span>
-          ) : artifactUsage.status === "error" ? (
-            <span className="text-danger">storage unavailable</span>
-          ) : (
-            <span>scanning storage</span>
-          )}
-        </span>
-        {artifactUsage.status === "loading" ? (
-          <Spinner size="sm" label="正在扫描存储" />
-        ) : (
+        <StatusDot status={dot} />
+        <span className="studio-status-line font-mono text-xs">wasm · {taskTotal} tasks</span>
+      </button>
+      <div
+        ref={telemetryPop}
+        id={telemetryId}
+        popover="auto"
+        className="ui-popover studio-telemetry-popover"
+      >
+        <dl className="studio-telemetry-facts">
+          <div>
+            <dt>运行时</dt>
+            <dd>wasm · pool {pool}</dd>
+          </div>
+          <div>
+            <dt>任务</dt>
+            <dd>
+              {taskTotal} tasks · {running} running
+            </dd>
+          </div>
+        </dl>
+        <Button
+          variant="ghost"
+          onClick={artifactUsage.refresh}
+          title="刷新本地 Artifact 容量"
+          aria-label="刷新本地 Artifact 容量"
+        >
           <RefreshCw className="size-3" aria-hidden="true" />
-        )}
-      </Button>
+          刷新 Artifact 容量
+        </Button>
+        <dl className="studio-telemetry-facts">
+          {usage !== undefined ? (
+            <>
+              <div>
+                <dt>容量</dt>
+                <dd>{formatBytes(usage.totalBytes)}</dd>
+              </div>
+              <div>
+                <dt>对象</dt>
+                <dd>{usage.totalObjects} objects</dd>
+              </div>
+            </>
+          ) : (
+            <div>
+              <dt>容量</dt>
+              <dd className={artifactUsage.status === "error" ? "text-danger" : ""}>
+                {artifactUsage.status === "error" ? "storage unavailable" : "scanning storage"}
+              </dd>
+            </div>
+          )}
+        </dl>
+        <Button
+          variant="ghost"
+          onClick={artifactUsage.refresh}
+          title="刷新本地存储容量"
+          aria-label="刷新本地存储容量"
+        >
+          <RefreshCw className="size-3" aria-hidden="true" />
+          刷新
+        </Button>
+      </div>
 
       <Button
         variant="default"

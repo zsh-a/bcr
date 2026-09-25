@@ -115,7 +115,12 @@ export function MarkdownEditor({
         ),
         typewriterMode(() => latest.current.typewriter),
         presentation.current.of(
-          live ? livePreview((target) => latest.current.onOpenLink?.(target)) : [],
+          live
+            ? livePreview(
+                (target) => latest.current.onOpenLink?.(target),
+                () => latest.current.notes,
+              )
+            : [],
         ),
         editability.current.of([
           EditorView.editable.of(!readOnly),
@@ -169,7 +174,12 @@ export function MarkdownEditor({
   useEffect(() => {
     view.current?.dispatch({
       effects: presentation.current.reconfigure(
-        live ? livePreview((target) => latest.current.onOpenLink?.(target)) : [],
+        live
+          ? livePreview(
+              (target) => latest.current.onOpenLink?.(target),
+              () => latest.current.notes,
+            )
+          : [],
       ),
     });
   }, [live]);

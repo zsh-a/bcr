@@ -32,9 +32,89 @@
   height: var(--h-control-lg);
 }
 
-/* 运行时眉标：复用 ui-section-label，嵌入顶栏时去掉内边距。 */
-.studio-topbar .studio-runtime-label {
-  padding: 0;
+/* ---------- 遥测状态插槽：状态点 + 一行短文案，弹出浮层看明细。 ---------- */
+.studio-status-trigger {
+  anchor-name: --telemetry-trigger;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.studio-status-trigger:hover {
+  color: var(--color-muted);
+  border-color: var(--color-border);
+}
+
+.studio-status-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 明细浮层：进出场走 ui.css 的 .ui-popover，这里只做定位与内部布局。 */
+.studio-telemetry-popover {
+  position: fixed;
+  inset: calc(var(--h-topbar) + var(--space-2)) var(--space-3) auto auto;
+  width: min(280px, calc(100vw - 2 * var(--space-3)));
+  max-height: calc(100dvh - var(--h-topbar) - var(--space-8));
+  overflow: auto;
+  overscroll-behavior: contain;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* display 只在展开态生效：关闭态让位给原生 [popover] 的 display:none。 */
+.studio-telemetry-popover:popover-open {
+  display: flex;
+}
+
+@supports (top: anchor(bottom)) {
+  .studio-telemetry-popover {
+    position-anchor: --telemetry-trigger;
+    top: anchor(bottom);
+    right: clamp(
+      var(--space-3),
+      anchor(right),
+      max(var(--space-3), calc(100vw - 280px - var(--space-3)))
+    );
+    margin-top: var(--space-2);
+  }
+}
+
+.studio-telemetry-facts {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.studio-telemetry-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+.studio-telemetry-facts dt {
+  color: var(--color-faint);
+}
+
+.studio-telemetry-facts dd {
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
 }
 
 /* ---------- 启动台 ---------- */
@@ -162,15 +242,6 @@
 }
 
 /* ============ 响应式 ============ */
-@media (max-width: 75em) {
-  /* 提升特异性：.ui-btn 的 display 同级且更晚加载。 */
-  .studio-topbar .studio-runtime-label,
-  .studio-topbar .studio-system-status,
-  .studio-topbar .studio-storage-status {
-    display: none;
-  }
-}
-
 @media (max-width: 47.5em) {
   body {
     /* 阻止 iOS 聚焦缩放。 */

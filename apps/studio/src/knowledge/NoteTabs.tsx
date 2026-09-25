@@ -1,7 +1,8 @@
 import { Pin, X } from "lucide-react";
+import type { ReactNode } from "react";
 import type { KnowledgeNote } from "./model";
 
-/** 显式标签栏：无历史箭头，每个标签可固定、可关闭。 */
+/** 显式标签栏：无历史箭头，每个标签可固定、可关闭；右端挂状态簇与笔记工具。 */
 export function NoteTabs({
   notes,
   ids,
@@ -10,6 +11,7 @@ export function NoteTabs({
   onSelect,
   onClose,
   onTogglePin,
+  actions,
 }: {
   notes: Record<string, KnowledgeNote>;
   ids: string[];
@@ -18,6 +20,8 @@ export function NoteTabs({
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
   onTogglePin: (id: string) => void;
+  /** tab 条右端的安静工具区（收藏/历史/状态簇）。 */
+  actions?: ReactNode;
 }) {
   const tabs = ids.filter((id) => Object.hasOwn(notes, id));
   return (
@@ -59,6 +63,7 @@ export function NoteTabs({
           );
         })}
       </nav>
+      {actions && <div className="knowledge-tabs-actions">{actions}</div>}
     </div>
   );
 }

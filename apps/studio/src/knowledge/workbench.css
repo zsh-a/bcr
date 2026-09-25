@@ -5,28 +5,70 @@
 
 /* ---------- 行内链接（实时预览控件） ---------- */
 
-.knowledge-inline-link {
+/* quiet chip：label 文本 + 微底色/细边；hover 只做颜色与边框变化。 */
+.knowledge-inline-link,
+.knowledge-inline-chip {
   display: inline;
-  padding: 0 var(--space-1);
-  border: 0;
-  border-bottom: 1px solid var(--color-accent-dim);
-  background: transparent;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   color: var(--color-accent);
   font: inherit;
+}
+
+.knowledge-inline-link {
   cursor: pointer;
 }
 
-.knowledge-inline-link:hover {
-  border-bottom-color: var(--color-accent);
+.knowledge-inline-link:hover,
+.knowledge-inline-chip:hover {
+  border-color: var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
 /* ---------- 视图切换与集合筛选 ---------- */
 
+/* 视图行：范围细分段（.knowledge-segmented）+ 右侧列表/文件夹小图标切换。 */
 .knowledge-view-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
+}
+
+.knowledge-view-mode {
+  display: inline-flex;
+  align-items: stretch;
+  margin-left: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.knowledge-view-mode button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-faint);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.knowledge-view-mode button:last-child {
+  border-right: 0;
+}
+
+.knowledge-view-mode button:hover {
+  color: var(--color-text);
+}
+
+.knowledge-view-mode button[aria-pressed="true"] {
+  background: var(--color-raised);
+  color: var(--color-text);
 }
 
 .knowledge-chip-group {
@@ -89,35 +131,49 @@
   padding: var(--space-1) 0;
 }
 
-/* ---------- 标签页（显式打开，安静底色） ---------- */
+/* ---------- 标签页（显式打开，文本 tab，安静底色） ---------- */
 
 .knowledge-tabs-bar {
   display: flex;
   flex-shrink: 0;
   min-width: 0;
-  min-height: var(--h-toolbar);
+  min-height: calc(var(--h-toolbar) - var(--space-1));
   border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface);
+  background: var(--color-bg);
 }
 
 .knowledge-tabs {
   display: flex;
+  flex: 1;
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: thin;
 }
 
+/* tab 条右端：收藏/历史/状态簇，一行安静工具区，不随标签滚动。 */
+.knowledge-tabs-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0 var(--space-3);
+  border-left: 1px solid var(--color-border);
+  color: var(--color-faint);
+}
+
+/* 文本 tab：无卡片描边；活动 tab 以底部 accent hairline 标识。 */
 .knowledge-tab {
   display: flex;
   align-items: stretch;
   flex-shrink: 0;
   max-width: 230px;
-  border-right: 1px solid var(--color-border);
-  color: var(--color-faint);
+  border-bottom: 1px solid transparent;
+  color: var(--color-muted);
 }
 
 .knowledge-tab.active {
-  background: var(--color-bg);
+  border-bottom-color: var(--color-accent);
   color: var(--color-text);
 }
 
@@ -137,8 +193,15 @@
   overflow: hidden;
   text-align: left;
   font-size: var(--text-sm);
+  transition: color var(--duration-fast) var(--ease-standard);
 }
 
+.knowledge-tab button:first-child:hover {
+  color: var(--color-text);
+}
+
+/* 固定/关闭图标 hover 或键盘聚焦才显（占位不塌陷，避免 hover 时布局跳动）；
+ * 固定态图钉常驻，作 quiet 状态提示。 */
 .knowledge-tab-pin,
 .knowledge-tab-close {
   width: var(--h-control);
@@ -146,6 +209,17 @@
   place-items: center;
   flex-shrink: 0;
   color: var(--color-faint);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.knowledge-tab:hover .knowledge-tab-pin,
+.knowledge-tab:hover .knowledge-tab-close,
+.knowledge-tab:focus-within .knowledge-tab-pin,
+.knowledge-tab:focus-within .knowledge-tab-close {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .knowledge-tab-pin:hover,
@@ -155,6 +229,8 @@
 
 .knowledge-tab-pin[aria-pressed="true"] {
   color: var(--color-text);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* ---------- 文档与写作工具 ---------- */
@@ -296,23 +372,26 @@
   flex: 0 0 230px;
   max-height: calc(100dvh - 180px);
   overflow: auto;
-  padding: var(--space-6) var(--space-4);
+  padding: var(--space-6) var(--space-4) 64px;
   border-left: 1px solid var(--color-border);
 }
 
-.knowledge-context section + section {
+/* 小节之间用细分隔线；0 计数小节折叠成一行静默文案，同样保持分节节奏。 */
+.knowledge-context > * + * {
   border-top: 1px solid var(--color-border);
   margin-top: var(--space-6);
   padding-top: var(--space-5);
 }
 
-/* 小节标题是 11px 大写等宽眉标（更强的排版角色），链接行是普通 13px 文本。 */
-.knowledge-context h2 {
+/* 小节头是 11px 大写等宽眉标（.ui-section-label 语言）+ 可折叠；链接行是普通 13px 文本。 */
+.knowledge-context-heading {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
   margin: 0 0 var(--space-2);
   padding: 0;
+  cursor: pointer;
+  list-style: none;
   color: var(--color-faint);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -320,9 +399,30 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 500;
+  user-select: none;
 }
 
-.knowledge-context h2 span {
+.knowledge-context-heading::-webkit-details-marker {
+  display: none;
+}
+
+.knowledge-context-heading:hover {
+  color: var(--color-text);
+}
+
+.knowledge-context-heading::after {
+  content: "▾";
+  margin-left: auto;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.knowledge-context-section:not([open]) > .knowledge-context-heading::after {
+  transform: rotate(-90deg);
+}
+
+.knowledge-context-heading span {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--color-faint);
@@ -347,17 +447,43 @@
   color: var(--color-accent);
 }
 
+/* 大纲层级递进：h1 实色，h2/h3 缩进并逐级弱化。 */
+.knowledge-context button[data-depth="2"] {
+  padding-left: var(--space-5);
+  color: var(--color-muted);
+}
+
+.knowledge-context button[data-depth="3"] {
+  padding-left: var(--space-6);
+  color: var(--color-faint);
+}
+
+.knowledge-context button[data-depth="4"],
+.knowledge-context button[data-depth="5"],
+.knowledge-context button[data-depth="6"] {
+  padding-left: var(--space-7);
+  color: var(--color-faint);
+}
+
+/* scrollspy：当前标题安静高亮，不做位移。 */
+.knowledge-context button.is-current {
+  color: var(--color-accent);
+}
+
 .knowledge-context button small {
   display: block;
   color: var(--color-amber);
   font-size: var(--text-xs);
 }
 
-.knowledge-context p {
+/* 0 计数小节的一行静默文案；说明文字在 tooltip/aria-description 里。 */
+.knowledge-context-empty {
   margin: 0;
+  padding: var(--space-1) var(--space-2);
   color: var(--color-faint);
   font-size: var(--text-sm);
   line-height: var(--text-base--line-height);
+  cursor: help;
 }
 
 /* 窄屏折叠段：上下文直接挂在标题下，去掉常驻栏外观。 */
@@ -424,11 +550,26 @@
   position: fixed;
   inset: 12vh 0 auto;
   margin: 0 auto;
-  width: min(600px, calc(100vw - 24px));
+  width: min(600px, 92vw);
   max-width: none;
   max-height: 76dvh;
   overflow: hidden;
-  /* ui-dialog 提供进出场；补齐 overlay 以保住退场的 top-layer 位置。 */
+  opacity: 0;
+  transform: translateY(var(--space-2));
+  /* 进场 180ms（--duration-base）轻移淡入、退场 120ms（--duration-fast）；
+   * overlay 以保住退场的 top-layer 位置。 */
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard),
+    display var(--duration-fast) allow-discrete,
+    overlay var(--duration-fast) allow-discrete;
+}
+
+.knowledge-switcher[open] {
+  display: flex;
+  flex-direction: column;
+  opacity: 1;
+  transform: none;
   transition:
     opacity var(--duration-base) var(--ease-standard),
     transform var(--duration-base) var(--ease-standard),
@@ -436,9 +577,11 @@
     overlay var(--duration-base) allow-discrete;
 }
 
-.knowledge-switcher[open] {
-  display: flex;
-  flex-direction: column;
+@starting-style {
+  .knowledge-switcher[open] {
+    opacity: 0;
+    transform: translateY(var(--space-2));
+  }
 }
 
 .knowledge-switcher header {
@@ -568,12 +711,5 @@
 @media (min-width: 1100px) {
   .knowledge-context-inline {
     display: none;
-  }
-}
-
-@media (max-width: 720px) {
-  .knowledge-switcher {
-    top: 5dvh;
-    max-height: 90dvh;
   }
 }

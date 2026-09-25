@@ -103,11 +103,10 @@ try {
   await page.getByLabel("笔记标题").fill(title);
   const editor = page.locator(".cm-content");
   await editor.fill(original);
-  await page.waitForFunction(() =>
-    document
-      .querySelector('.knowledge-editor [role="status"]')
-      ?.textContent?.includes("已保存到本机"),
-  );
+  await page.waitForFunction(() => {
+    const line = document.querySelector('[data-testid="knowledge-status"] .knowledge-status-line');
+    return /^(已保存|已同步)/u.test(line?.textContent ?? "");
+  });
   await page.keyboard.press("Alt+Digit1");
   await page.waitForURL(/\/studio(?:\?|$)/);
   await page.keyboard.press("Control+j");
@@ -146,11 +145,12 @@ try {
     assert.match(await approval.innerText(), /LIVE_EDIT_826/);
     await approval.getByRole("button", { name: "应用修改" }).click();
     const text = await finish();
-    await page.waitForFunction(() =>
-      document
-        .querySelector('.knowledge-editor [role="status"]')
-        ?.textContent?.includes("已保存到本机"),
-    );
+    await page.waitForFunction(() => {
+      const line = document.querySelector(
+        '[data-testid="knowledge-status"] .knowledge-status-line',
+      );
+      return /^(已保存|已同步)/u.test(line?.textContent ?? "");
+    });
     assert.match(await editor.textContent(), /LIVE_EDIT_826/);
     return { text, body: await editor.textContent() };
   });

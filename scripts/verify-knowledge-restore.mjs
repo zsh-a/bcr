@@ -13,7 +13,10 @@ try {
   await page.getByLabel("笔记标题", { exact: true }).fill("备份恢复验证");
   const body = page.getByLabel("笔记正文", { exact: true });
   const saved = () =>
-    page.locator('.knowledge-editor [role="status"]').filter({ hasText: "已保存到本机" }).waitFor();
+    page
+      .locator('[data-testid="knowledge-status"] .knowledge-status-line')
+      .filter({ hasText: /^(已保存|已同步)/u })
+      .waitFor();
   await body.fill("来自备份的正文");
   await saved();
   const id = new URL(page.url()).searchParams.get("note");

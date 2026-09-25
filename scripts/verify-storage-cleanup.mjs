@@ -9,11 +9,14 @@ page.on("pageerror", (error) => fail(`pageerror: ${error.message}`));
 
 await page.goto(base, { waitUntil: "networkidle" });
 await page.waitForTimeout(1_500);
+// 顶栏遥测收纳为状态点 + 浮层：展开后容量状态与刷新入口可见。
+await page.locator(".studio-status-trigger").click();
 await page.getByRole("button", { name: "刷新本地 Artifact 容量" }).waitFor();
+const body = await page.locator("body").innerText();
+if (!/(objects|scanning storage)/u.test(body)) fail("顶栏遥测浮层未显示本地存储状态");
+await page.keyboard.press("Escape");
 await page.getByRole("tab", { name: "存储" }).click();
 await page.getByText("Storage Plane").waitFor();
-const body = await page.locator("body").innerText();
-if (!/(objects|scanning storage)/u.test(body)) fail("顶栏未显示本地存储状态");
 
 const orphanCreated = await page.evaluate(async () => {
   if (typeof navigator.storage?.getDirectory !== "function") return false;

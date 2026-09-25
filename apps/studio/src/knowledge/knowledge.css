@@ -197,26 +197,11 @@
   flex-direction: column;
 }
 
-.knowledge-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: var(--space-3);
-  min-height: var(--h-toolbar);
-  padding: 0 var(--space-6);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.knowledge-toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-/* 标题区一行：移动端顶栏（菜单/标题/状态/更多），桌面端只留状态。 */
+/* 独立状态行已消解：状态簇挂在 tab 条右端（.knowledge-tabs-actions）。
+   移动端顶栏只留菜单/标题/更多；桌面端不占任何条带。 */
 .knowledge-titlebar {
+  display: none;
   position: relative;
-  display: flex;
   align-items: center;
   gap: var(--space-3);
   min-height: var(--h-control);
@@ -305,7 +290,8 @@
   flex: 1;
   overflow: auto;
   min-height: 0;
-  padding-bottom: var(--space-7);
+  /* 右下「继续对话 ⌘J」浮标安全区：文档列底部留 ≥64px，避免遮住正文/出站链接。 */
+  padding-bottom: 64px;
 }
 
 .knowledge-notice {
@@ -336,40 +322,19 @@
   padding: var(--space-7) var(--space-8) 0;
 }
 
-.knowledge-editor-meta {
+/* 标题行：标题占住左侧，右上角是安静的写作模式分段（编辑/阅读 + 源码 + ⋯）。
+   细线分段，非肥胶囊；11-12px 文字，hover 仅变色。 */
+.knowledge-editor-head {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-7);
-  color: var(--color-faint);
-  font-size: var(--text-xs);
-}
-
-.knowledge-editor-meta select {
-  max-width: 200px;
-}
-
-.knowledge-editor-meta select option {
-  background: var(--color-surface);
-}
-
-.knowledge-editor-meta > [role="status"] {
-  margin-right: auto;
-}
-
-/* 视图模式（编辑/阅读）+ 源码逃生口 + ⋯ 溢出菜单；右对齐成一簇。 */
-.knowledge-mode-controls {
-  display: flex;
   align-items: center;
-  gap: var(--space-2);
-  margin-left: auto;
-  position: relative;
+  gap: var(--space-3);
 }
 
-.knowledge-mode-controls .knowledge-chip-group button {
-  min-height: var(--h-control);
-  font-size: var(--text-xs);
+.knowledge-editor-head .knowledge-title {
+  order: 1;
+  flex: 1 1 260px;
+  min-width: 0;
 }
 
 .knowledge-title {
@@ -390,16 +355,133 @@
   color: var(--color-faint);
 }
 
-/* 标签：安静的 11px 弱化行，去掉等宽与强调色。 */
+.knowledge-mode-controls {
+  order: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  position: relative;
+}
+
+.knowledge-editor-head .knowledge-rename-progress {
+  order: 3;
+  flex-basis: 100%;
+}
+
+.knowledge-segmented {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.knowledge-segmented button {
+  min-height: 26px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-right: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-faint);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.knowledge-segmented button:last-child {
+  border-right: 0;
+}
+
+.knowledge-segmented button:hover {
+  color: var(--color-text);
+}
+
+.knowledge-segmented button[aria-pressed="true"] {
+  background: var(--color-raised);
+  color: var(--color-text);
+}
+
+/* quiet 文字开关（源码 / ⋯）：无边框无底色，hover 仅变色。 */
+.knowledge-quiet-toggle {
+  min-height: 26px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-faint);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.knowledge-quiet-toggle:hover {
+  color: var(--color-text);
+}
+
+.knowledge-quiet-toggle[aria-pressed="true"],
+.knowledge-quiet-toggle[aria-expanded="true"] {
+  color: var(--color-accent);
+}
+
+/* 标题下方一行：标签 chips + 集合选择，安静紧凑，不再留中段空洞。 */
+.knowledge-editor-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  margin: var(--space-3) 0 var(--space-5);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+}
+
+.knowledge-collection-select {
+  max-width: 200px;
+  height: 26px;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+}
+
+.knowledge-collection-select:hover {
+  border-color: transparent;
+  color: var(--color-text);
+}
+
+.knowledge-collection-select option {
+  background: var(--color-surface);
+}
+
+/* 标签：安静的 11px 弱化行，去掉等宽与强调色；无标签时只有「+ 标签」。 */
 .knowledge-tags {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-2);
-  margin: var(--space-3) 0 var(--space-5);
   font-family: var(--font-sans);
   font-size: var(--text-xs);
   color: var(--color-muted);
+}
+
+.knowledge-tag-add {
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--color-faint);
+  font: inherit;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.knowledge-tag-add:hover,
+.knowledge-tag-add:focus-visible {
+  color: var(--color-text);
 }
 
 .knowledge-tag-chip {
@@ -419,7 +501,7 @@
 }
 
 .knowledge-tag-input {
-  flex: 1;
+  flex: 1 1 10em;
   min-width: var(--space-8);
   border: 0;
   background: transparent;
@@ -472,9 +554,18 @@
   line-height: var(--text-base--line-height);
 }
 
-/* CodeMirror 负责内部滚动，宿主本身不滚动。 */
+/* CodeMirror 负责内部滚动，宿主本身不滚动。
+   去框化写作面：默认边框/背景全部归零，聚焦不画框（焦点由全局 :focus-visible
+   承担键盘导航，文本输入聚焦本身不加框），编辑区与页面底色融为一体。 */
 .knowledge-body .cm-editor {
   height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+.knowledge-body .cm-editor.cm-focused,
+.knowledge-body .cm-content:focus-visible {
+  outline: none;
 }
 
 /* 实时预览：引用与代码块贴合正文渲染器的样式（行类由 livePreview 注入）。 */
@@ -508,6 +599,79 @@
   border-radius: var(--radius-md);
 }
 
+/* 实时预览装饰：列表圆点/序号/任务复选框（widget 由 livePreview 注入）。
+   hover 只做颜色/边框变化，不位移、不发光、不缩放。 */
+.knowledge-list-bullet {
+  color: var(--color-muted);
+  padding-right: var(--space-1);
+}
+
+.knowledge-list-bullet[data-depth="1"],
+.knowledge-list-bullet[data-depth="2"] {
+  color: var(--color-faint);
+}
+
+.knowledge-list-ordinal {
+  color: var(--color-faint);
+}
+
+.knowledge-task-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-3);
+  height: var(--space-3);
+  margin-right: var(--space-1);
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.knowledge-task-box:hover {
+  border-color: var(--color-accent);
+}
+
+.knowledge-task-box[aria-checked="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-dim);
+}
+
+/* 行内代码的安静底色；链接 chip 见 workbench.css 的 .knowledge-inline-link/.knowledge-inline-chip。 */
+.knowledge-inline-code {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+}
+
+/* 链接 hover 小浮层：解析后的目标标题/路径 + 原始目标（找不到时只显示原文）。 */
+.knowledge-link-popover {
+  position: fixed;
+  z-index: 20;
+  max-width: 280px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-overlay);
+  box-shadow: var(--shadow-floating);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+  pointer-events: none;
+}
+
+.knowledge-link-popover-detail {
+  margin-top: var(--space-1);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
 /* 页脚只留实时字符数。 */
 .knowledge-editor-footer {
   display: flex;
@@ -529,15 +693,14 @@
 
 /* ---------- 专注模式（data-focus-mode 契约） ----------
  * NoteEditor 的「专注模式」开关在最近的 .knowledge-app 根节点写入
- * data-focus-mode="on"（退出时移除）。开启后收起侧栏、标签栏、状态簇与
- * 编辑器元信息行（集合/状态/视图模式/源码），只留「⋯」按钮与它的菜单作为
- * 退出入口；正文与标题保持原位。 */
+ * data-focus-mode="on"（退出时移除）。开启后收起侧栏、标签栏（含状态簇）、
+ * 标签/集合行与编辑器页脚，只留「⋯」按钮与它的菜单作为退出入口；
+ * 正文与标题保持原位。 */
 .knowledge-app[data-focus-mode="on"] .knowledge-sidebar,
 .knowledge-app[data-focus-mode="on"] .knowledge-tabs-bar,
-.knowledge-app[data-focus-mode="on"] .knowledge-status,
-.knowledge-app[data-focus-mode="on"] .knowledge-tags,
+.knowledge-app[data-focus-mode="on"] .knowledge-editor-meta,
+.knowledge-app[data-focus-mode="on"] .knowledge-context-inline,
 .knowledge-app[data-focus-mode="on"] .knowledge-editor-footer,
-.knowledge-app[data-focus-mode="on"] .knowledge-editor-meta > *:not(.knowledge-mode-controls),
 .knowledge-app[data-focus-mode="on"]
   .knowledge-mode-controls
   > *:not(.knowledge-tools):not(.knowledge-tools-menu) {
@@ -1095,8 +1258,9 @@
     min-width: var(--h-control-lg);
     min-height: var(--h-control-lg);
   }
-  /* 顶行 = 菜单 + 标题 + 状态点 + 更多；工具栏并入更多菜单。 */
+  /* 顶行 = 菜单 + 标题 + 更多；状态簇在 tab 条右端（只留状态点）。 */
   .knowledge-titlebar {
+    display: flex;
     order: -1;
     padding: var(--space-2) var(--space-3);
     min-height: var(--h-control-lg);
@@ -1113,14 +1277,8 @@
   .knowledge-overflow {
     display: block;
   }
-  .knowledge-toolbar {
-    display: none;
-  }
-  .knowledge-tabs-bar {
-    overflow-x: auto;
-  }
   .knowledge-content {
-    padding-bottom: var(--space-8);
+    padding-bottom: 64px;
   }
   .knowledge-editor {
     padding: var(--space-6) var(--space-5) 0;
@@ -1128,7 +1286,7 @@
   .knowledge-editor-meta {
     margin-bottom: var(--space-6);
   }
-  .knowledge-editor-meta select {
+  .knowledge-collection-select {
     max-width: 110px;
   }
   .knowledge-body {

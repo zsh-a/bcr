@@ -27,7 +27,6 @@ import { tags } from "@lezer/highlight";
 const color = (name: string) => `var(${name})`;
 
 const accent = color("--color-accent");
-const selection = color("--color-selection");
 const danger = color("--color-danger");
 const amber = color("--color-amber");
 const success = color("--color-success");
@@ -59,12 +58,14 @@ export const knowledgeEditorTheme = EditorView.theme(
     ".cm-line": { padding: "0" },
     ".cm-cursor, .cm-dropCursor": { borderLeftColor: accent, borderLeftWidth: "2px" },
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
-      backgroundColor: selection,
+      backgroundColor: "color-mix(in srgb, var(--color-selection) 50%, transparent)",
     },
     ".cm-activeLine": {
-      backgroundColor: "color-mix(in srgb, var(--color-raised) 45%, transparent)",
+      backgroundColor: "color-mix(in srgb, var(--color-selection) 45%, transparent)",
     },
-    ".cm-selectionMatch": { backgroundColor: selection },
+    ".cm-selectionMatch": {
+      backgroundColor: "color-mix(in srgb, var(--color-selection) 50%, transparent)",
+    },
     /* 写作面保持无栏；行号未启用，槽位直接隐藏。 */
     ".cm-gutters": { display: "none" },
     ".cm-placeholder": { color: faint },
@@ -173,6 +174,45 @@ export const knowledgeMarkdownLanguage: LanguageSupport = markdown({
 });
 
 /**
+ * 点击正文空白处 = 就近定位光标并聚焦（posAtCoords 兜底到末尾）。
+ * 监听挂在 .knowledge-document 祖先上：编辑器外部的页面留白也能落笔，
+ * 控件、上下文栏与阅读视图的点击一律不拦截。
+ */
+function clickToFocus() {
+  return ViewPlugin.fromClass(
+    class {
+      private host: Element | null;
+      private readonly onPointerDown = (event: Event) => {
+        const view = this.view;
+        const mouse = event as MouseEvent;
+        if (mouse.button !== 0 || mouse.defaultPrevented || view.dom.offsetParent === null) return;
+        const target = mouse.target;
+        if (!(target instanceof Element)) return;
+        if (
+          target.closest(
+            ".cm-editor, .knowledge-context, .knowledge-context-inline, .knowledge-prose, button, a, input, select, textarea, summary, label, [contenteditable]",
+          )
+        )
+          return;
+        const pos =
+          view.posAtCoords({ x: mouse.clientX, y: mouse.clientY }) ?? view.state.doc.length;
+        // preventDefault：否则浏览器默认的聚焦目标会把焦点从编辑器拉回 body。
+        mouse.preventDefault();
+        view.dispatch({ selection: { anchor: pos }, scrollIntoView: true });
+        view.focus();
+      };
+      constructor(private view: EditorView) {
+        this.host = view.dom.closest(".knowledge-document");
+        this.host?.addEventListener("mousedown", this.onPointerDown);
+      }
+      destroy() {
+        this.host?.removeEventListener("mousedown", this.onPointerDown);
+      }
+    },
+  );
+}
+
+/**
  * Editor extensions.
  *
  * History is included so Cmd/Ctrl+Z works inside the note, but the authoritative
@@ -192,6 +232,7 @@ export function knowledgeEditorExtensions(
     highlightSpecialChars(),
     drawSelection(),
     highlightActiveLine(),
+    clickToFocus(),
     history(),
     search({ top: true }),
     keymap.of([

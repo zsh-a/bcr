@@ -91,8 +91,13 @@ async function device() {
   await page.getByRole("navigation", { name: "笔记列表" }).waitFor();
   return { context, page };
 }
+// 保存/同步状态只保留 data-testid="knowledge-status" 状态簇：落库后的稳态文案
+// 以「已保存/已同步」开头（未配置同步恒为「已保存到本机」）。
 const saved = (page) =>
-  page.locator('.knowledge-editor [role="status"]').filter({ hasText: "已保存到本机" }).waitFor();
+  page
+    .locator('[data-testid="knowledge-status"] .knowledge-status-line')
+    .filter({ hasText: /^(已保存|已同步)/u })
+    .waitFor();
 async function openSyncPopover(page) {
   const popover = page.locator(".knowledge-sync-popover");
   if (!(await popover.isVisible())) await page.locator(".knowledge-status-trigger").click();
@@ -229,6 +234,8 @@ try {
   await a.page.goto(`${origin}/knowledge?note=__proto__`);
   await a.page.getByRole("button", { name: "新建笔记", exact: true }).click();
   await a.page.getByLabel("笔记标题", { exact: true }).fill("AI Native 知识系统");
+  // 标签入口是安静的「+ 标签」，点击后才出现输入框（提示在 placeholder 里）。
+  await a.page.getByRole("button", { name: "添加标签", exact: true }).click();
   await a.page.getByLabel("笔记标签", { exact: true }).pressSequentially("local, markdown");
   // 新的标签输入是 chip 语义：逗号/回车提交，最后一段留在草稿里，回车落库。
   await a.page.getByLabel("笔记标签", { exact: true }).press("Enter");

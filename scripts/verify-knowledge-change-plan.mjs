@@ -13,7 +13,10 @@ const body = page.getByLabel("笔记正文", { exact: true });
 const dialog = page.getByRole("dialog", { name: "确认重命名", exact: true });
 const toast = page.locator(".knowledge-undo-toast");
 const saved = () =>
-  page.locator('.knowledge-editor [role="status"]').filter({ hasText: "已保存到本机" }).waitFor();
+  page
+    .locator('[data-testid="knowledge-status"] .knowledge-status-line')
+    .filter({ hasText: /^(已保存|已同步)/u })
+    .waitFor();
 const bodyText = () =>
   body.evaluate((el) =>
     [...el.querySelectorAll(".cm-line")].map((line) => line.textContent).join("\n"),

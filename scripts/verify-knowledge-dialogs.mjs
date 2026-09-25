@@ -16,8 +16,8 @@ try {
     .getByLabel("笔记正文", { exact: true })
     .fill("# 保留写作现场\n\n" + "正文内容\n\n".repeat(80));
   await page
-    .locator('.knowledge-editor [role="status"]')
-    .filter({ hasText: "已保存到本机" })
+    .locator('[data-testid="knowledge-status"] .knowledge-status-line')
+    .filter({ hasText: /^(已保存|已同步)/u })
     .waitFor();
   await page.locator(".knowledge-content").evaluate((el) => {
     el.scrollTop = 300;
@@ -227,8 +227,8 @@ try {
   await page.emulateMedia({ media: null, reducedMotion: "no-preference" });
   await page.getByLabel("笔记正文", { exact: true }).fill("远端改写\n第二行");
   await page
-    .locator('.knowledge-editor [role="status"]')
-    .filter({ hasText: "已保存到本机" })
+    .locator('[data-testid="knowledge-status"] .knowledge-status-line')
+    .filter({ hasText: /^(已保存|已同步)/u })
     .waitFor();
   const noteId = new URL(page.url()).searchParams.get("note");
   assert.ok(noteId, "created note keeps ?note id");

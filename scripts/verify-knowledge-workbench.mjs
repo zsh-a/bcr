@@ -10,8 +10,13 @@ const errors = [];
 page.on("pageerror", (error) => errors.push(String(error)));
 const body = () => page.getByLabel("笔记正文", { exact: true });
 const title = () => page.getByLabel("笔记标题", { exact: true });
+// 保存/同步状态只保留 data-testid="knowledge-status" 状态簇：落库后的稳态文案
+// 以「已保存/已同步」开头（未配置同步恒为「已保存到本机」）。
 const saved = () =>
-  page.locator('.knowledge-editor [role="status"]').filter({ hasText: "已保存到本机" }).waitFor();
+  page
+    .locator('[data-testid="knowledge-status"] .knowledge-status-line')
+    .filter({ hasText: /^(已保存|已同步)/u })
+    .waitFor();
 const palette = () => page.locator("dialog.knowledge-switcher");
 const rail = () => page.locator("aside.knowledge-context:visible");
 async function create(name, content) {
@@ -84,7 +89,7 @@ try {
   await saved();
   // 视图模式：编辑 / 阅读 + 独立源码按钮（旧的预览/继续编辑/实时预览/源码模式已移除）。
   assert.equal(
-    await page.locator('.knowledge-chip-group[role="group"][aria-label="视图模式"]').count(),
+    await page.locator('.knowledge-segmented[role="group"][aria-label="视图模式"]').count(),
     1,
   );
   const pressed = (button) =>
@@ -191,6 +196,8 @@ try {
   assert.equal(await title().inputValue(), "New from switcher");
   // 模板：给笔记打上「模板」标签后，通过 / 插入面板与编辑器溢出菜单插入。
   await create("My template", "# {{title}}\n\nDate: {{date}}\n\n## Notes\n");
+  // 标签入口是安静的「+ 标签」，点击后才出现输入框（提示在 placeholder 里）。
+  await page.getByRole("button", { name: "添加标签", exact: true }).click();
   await page.getByLabel("笔记标签", { exact: true }).fill("模板");
   await page.getByLabel("笔记标签", { exact: true }).press("Enter");
   await saved();
@@ -336,6 +343,11 @@ try {
   for (const heading of ["下一步", "关联阅读"]) {
     await rail().getByRole("button", { name: heading, exact: true }).waitFor();
   }
+  // 侧栏卡片日期是相对时间（本次跑批都是今天新建：刚刚/N 分钟前/N 小时前），不再是绝对日期。
+  const cardTimes = await page.locator(".knowledge-note-meta time").allTextContents();
+  assert.ok(cardTimes.length >= 2, "list cards show their dates");
+  for (const text of cardTimes)
+    assert.match(text, /^(刚刚|\d+ 分钟前|\d+ 小时前)$/u, `relative card time: ${text}`);
   await mkdir("scripts/shots", { recursive: true });
   await page.screenshot({ path: "scripts/shots/knowledge-workbench-desktop.png" });
   for (const viewport of [

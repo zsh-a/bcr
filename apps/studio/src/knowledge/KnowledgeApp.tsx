@@ -13,7 +13,9 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   BookOpenText,
   Download,
+  Folder,
   History,
+  List,
   Menu,
   MoreHorizontal,
   Plus,
@@ -44,7 +46,7 @@ import { useAutoSync } from "./useAutoSync";
 import { NoteEditor, type EditorHandle } from "./NoteEditor";
 import { KnowledgeSyncPanel } from "./KnowledgeSyncPanel";
 import { KnowledgeHistory } from "./KnowledgeHistory";
-import { SyncStatus } from "./syncPopover";
+import { SyncStatus, relativeTime } from "./syncPopover";
 import { ConflictList, type ConflictChoice } from "./conflicts";
 import "./knowledge.css";
 import "./workbench.css";
@@ -495,24 +497,31 @@ export function KnowledgeApp() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
+        {/* 视图行：范围=细分段；列表/文件夹=右侧小图标切换（保留导航语义）。 */}
         <div className="knowledge-view-row" aria-label="笔记范围与导航方式">
-          <div className="knowledge-chip-group" role="group" aria-label="笔记范围">
+          <div className="knowledge-segmented" role="group" aria-label="笔记范围">
             {VIEW_DEFS.map(([id, label]) => (
               <button type="button" key={id} aria-pressed={view === id} onClick={() => setView(id)}>
                 {label}
               </button>
             ))}
           </div>
-          <div
-            className="knowledge-chip-group knowledge-view-mode"
-            role="group"
-            aria-label="导航方式"
-          >
-            <button type="button" aria-pressed={!fileView} onClick={() => setFileView(false)}>
-              列表
+          <div className="knowledge-view-mode" role="group" aria-label="导航方式">
+            <button
+              type="button"
+              aria-label="列表视图"
+              aria-pressed={!fileView}
+              onClick={() => setFileView(false)}
+            >
+              <List size={14} />
             </button>
-            <button type="button" aria-pressed={fileView} onClick={() => setFileView(true)}>
-              文件夹
+            <button
+              type="button"
+              aria-label="文件夹视图"
+              aria-pressed={fileView}
+              onClick={() => setFileView(true)}
+            >
+              <Folder size={14} />
             </button>
           </div>
         </div>
@@ -613,7 +622,7 @@ export function KnowledgeApp() {
                 </p>
                 <small className="knowledge-note-meta">
                   <time dateTime={new Date(n.updatedAt).toISOString()}>
-                    {new Date(n.updatedAt).toLocaleDateString()}
+                    {noteWhen(n.updatedAt)}
                   </time>
                   {n.tags
                     .filter(Boolean)
@@ -701,27 +710,6 @@ export function KnowledgeApp() {
         />
       </aside>
       <main className="knowledge-main">
-        <header className="knowledge-toolbar">
-          <div className="knowledge-toolbar-actions">
-            {note && (
-              <IconButton
-                label="收藏当前笔记"
-                title={favorite ? "取消收藏" : "收藏"}
-                aria-pressed={favorite}
-                onClick={() => workbench.setState((current) => toggleFavorite(current, note.id))}
-              >
-                <Star size={16} fill={favorite ? "currentColor" : "none"} />
-              </IconButton>
-            )}
-            <IconButton
-              label="笔记版本历史"
-              title="笔记版本历史"
-              onClick={() => setPanel(panel === "history" ? null : "history")}
-            >
-              <History size={16} />
-            </IconButton>
-          </div>
-        </header>
         <NoteMove
           open={moveTarget !== null}
           target={moveTarget}
@@ -734,6 +722,46 @@ export function KnowledgeApp() {
           ids={workbench.state.tabs}
           pinned={workbench.state.pinned}
           activeId={note?.id}
+          actions={
+            <>
+              {note && (
+                <IconButton
+                  label="收藏当前笔记"
+                  title={favorite ? "取消收藏" : "收藏"}
+                  size="sm"
+                  aria-pressed={favorite}
+                  onClick={() => workbench.setState((current) => toggleFavorite(current, note.id))}
+                >
+                  <Star size={15} fill={favorite ? "currentColor" : "none"} />
+                </IconButton>
+              )}
+              <IconButton
+                label="笔记版本历史"
+                title="笔记版本历史"
+                size="sm"
+                onClick={() => setPanel(panel === "history" ? null : "history")}
+              >
+                <History size={15} />
+              </IconButton>
+              <div className="knowledge-status" data-testid="knowledge-status">
+                <SyncStatus
+                  facts={{
+                    error,
+                    conflicts: state.conflicts.length,
+                    hasTarget: !!state.sync.target,
+                    pending,
+                    lastSyncedAt: state.sync.lastSyncedAt,
+                    syncing,
+                  }}
+                  auto={auto}
+                  onToggleAuto={setAuto}
+                  onSync={() => void sync()}
+                  onOpenSettings={() => setPanel("sync")}
+                  onViewConflicts={() => setPanel("conflicts")}
+                />
+              </div>
+            </>
+          }
           onSelect={(id) => go(() => select(id))}
           onClose={(id) =>
             void run(async () => {
@@ -763,23 +791,6 @@ export function KnowledgeApp() {
             <Menu size={18} />
           </IconButton>
           <span className="knowledge-titlebar-title">{note?.title || "个人知识库"}</span>
-          <div className="knowledge-status" data-testid="knowledge-status">
-            <SyncStatus
-              facts={{
-                error,
-                conflicts: state.conflicts.length,
-                hasTarget: !!state.sync.target,
-                pending,
-                lastSyncedAt: state.sync.lastSyncedAt,
-                syncing,
-              }}
-              auto={auto}
-              onToggleAuto={setAuto}
-              onSync={() => void sync()}
-              onOpenSettings={() => setPanel("sync")}
-              onViewConflicts={() => setPanel("conflicts")}
-            />
-          </div>
           <div className="knowledge-overflow">
             <IconButton
               label="更多操作"
@@ -1100,6 +1111,20 @@ export function KnowledgeApp() {
       </main>
     </div>
   );
+}
+/** 列表卡片日期：今天走 relativeTime 语义，昨天/N 天前递进，更早保留日期。 */
+export function noteWhen(ts: number, now = Date.now()): string {
+  if (!Number.isFinite(ts) || ts <= 0) return "未知时间";
+  const dayStart = (value: number) => {
+    const date = new Date(value);
+    date.setHours(0, 0, 0, 0);
+    return date.getTime();
+  };
+  const days = Math.round((dayStart(now) - dayStart(ts)) / 86_400_000);
+  if (days <= 0) return relativeTime(ts, now);
+  if (days === 1) return "昨天";
+  if (days < 7) return `${days} 天前`;
+  return new Date(ts).toLocaleDateString();
 }
 function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob),

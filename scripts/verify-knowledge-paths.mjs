@@ -11,7 +11,10 @@ page.on("pageerror", (error) => errors.push(String(error)));
 const title = page.getByLabel("笔记标题", { exact: true });
 const body = page.getByLabel("笔记正文", { exact: true });
 const saved = () =>
-  page.locator('.knowledge-editor [role="status"]').filter({ hasText: "已保存到本机" }).waitFor();
+  page
+    .locator('[data-testid="knowledge-status"] .knowledge-status-line')
+    .filter({ hasText: /^(已保存|已同步)/u })
+    .waitFor();
 async function create(name) {
   const old = page.url();
   await page.getByRole("button", { name: "新建笔记", exact: true }).click();
@@ -70,7 +73,7 @@ const diffForms = (dialog) =>
   });
 // 路径条已删除：切回列表视图，用路径筛选验证笔记当前所在路径。
 async function atPath(query, name) {
-  await page.getByRole("button", { name: "列表", exact: true }).click();
+  await page.getByRole("button", { name: "列表视图", exact: true }).click();
   const search = page.getByLabel("搜索个人笔记", { exact: true });
   await search.fill(query);
   const list = page.getByRole("navigation", { name: "笔记列表" });
@@ -285,7 +288,7 @@ try {
   await dialog.waitFor({ state: "hidden" });
   assert.equal(await atPath(`old/${b}.md`, "Beta"), true, "collision keeps the old path");
   // Folder move new -> archive/项目 from the sidebar 文件夹 view.
-  await page.getByRole("button", { name: "文件夹", exact: true }).click();
+  await page.getByRole("button", { name: "文件夹视图", exact: true }).click();
   await page.getByRole("button", { name: "移动文件夹 new", exact: true }).click();
   const fdlg = page.getByRole("dialog", { name: "移动文件夹", exact: true });
   await fdlg.waitFor();
@@ -319,7 +322,7 @@ try {
   await fdlg.getByRole("button", { name: "完成", exact: true }).click();
   await fdlg.waitFor({ state: "hidden" });
   // Sidebar path search finds the note at its new path; it survives reload.
-  await page.getByRole("button", { name: "列表", exact: true }).click();
+  await page.getByRole("button", { name: "列表视图", exact: true }).click();
   await page.getByLabel("搜索个人笔记", { exact: true }).fill("archive/项目");
   const list = page.getByRole("navigation", { name: "笔记列表" });
   await list.getByRole("button").filter({ hasText: "Alpha" }).waitFor();
@@ -330,7 +333,7 @@ try {
     true,
     "sidebar path search finds the note by its new path",
   );
-  await page.getByRole("button", { name: "文件夹", exact: true }).click();
+  await page.getByRole("button", { name: "文件夹视图", exact: true }).click();
   await page
     .getByRole("navigation", { name: "笔记列表" })
     .getByRole("button", { name: `${a}.md`, exact: true })
