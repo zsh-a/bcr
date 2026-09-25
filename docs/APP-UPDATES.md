@@ -1,6 +1,6 @@
 # 全局应用更新
 
-Studio 和独立 Reader 的入口均挂载 `AppUpdateProvider`，全站共享一份更新提示。Service Worker 仍采用后台检测、用户确认激活的方式：首次启动、返回可见页面、网络恢复及每 30 分钟检查；首次离线安装不会提示升级。
+Studio、独立 Reader 与独立 Notes（`/notes/`）的入口均挂载 `AppUpdateProvider`，共享同一套更新提示与事件协议；各入口的 Service Worker 按各自 scope 独立预缓存与更新（见 `docs/KNOWLEDGE-PWA.md`）。Service Worker 仍采用后台检测、用户确认激活的方式：首次启动、返回可见页面、网络恢复及每 30 分钟检查；首次离线安装不会提示升级。
 
 提示可以收起，保留“新版本可用”入口；路由切换不丢失提示。另一标签页激活新版本不会强制刷新当前页面，当前页面仍需确认并保存。
 

@@ -1,27 +1,28 @@
-const BUILD_ID = globalThis.__BCR_READER_BUILD_ID__;
-const CACHE_PREFIX = "bcr-reader-shell-";
+const BUILD_ID = globalThis.__BCR_NOTES_BUILD_ID__;
+const CACHE_PREFIX = "bcr-knowledge-shell-";
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_ID}`;
 const BUILD_MANIFEST = "/build-manifest.json";
 const NETWORK_TIMEOUT_MS = 2_000;
 const INSTALL_TIMEOUT_MS = 12_000;
 const APP_SHELL = [
-  "/",
-  "/reader",
-  "/manifest.webmanifest",
-  "/icons/reader-icon-192.svg",
-  "/icons/reader-icon-512.svg",
+  "/notes/",
+  "/notes/knowledge/",
+  "/notes/manifest.webmanifest",
+  "/icons/knowledge-icon-192.svg",
+  "/icons/knowledge-icon-512.svg",
 ];
 
-function isRequiredReaderAsset(url) {
-  // These are loaded only by metadata warmup or PDF reading. Leaving them to
-  // the runtime cache keeps PWA installation and first launch lightweight.
-  return !/pdf\.worker|sqlite3(?:-opfs-async-proxy)?|\.wasm$/u.test(url);
+function isRequiredNotesAsset(url) {
+  // Notes 的 runtime 启动即加载 sqlite 及其 OPFS 代理，属于关键路径，必须随
+  // 外壳预缓存；只有阅读 / 媒体域的重资源（PDF worker、本地模型、duckdb）
+  // 不在知识库启动图里，留给运行时缓存。
+  return !/pdf\.worker|onnxruntime|transformers|duckdb/u.test(url);
 }
 
 function addAsset(urls, value) {
   if (typeof value !== "string") return;
   const normalized = `/assets/${value.replace(/^\/?assets\//, "")}`;
-  if (isRequiredReaderAsset(normalized)) urls.add(normalized);
+  if (isRequiredNotesAsset(normalized)) urls.add(normalized);
 }
 
 function addManifestEntry(manifest, key, urls, visited) {
@@ -60,22 +61,19 @@ async function shellUrls() {
     { cache: "no-store" },
     INSTALL_TIMEOUT_MS,
   );
-  if (!response.ok) throw new Error(`Reader build manifest returned ${response.status}`);
+  if (!response.ok) throw new Error(`Notes build manifest returned ${response.status}`);
 
   const manifest = await response.json();
   const urls = new Set(APP_SHELL);
   urls.add(BUILD_MANIFEST);
   const visited = new Set();
-  // The lightweight bootstrap chooses one of these graphs at runtime. Only
-  // precache the Reader graph here; other Studio apps remain on demand.
-  addManifestEntry(manifest, "index.html", urls, visited);
-  addManifestEntry(manifest, "src/reader-main.tsx", urls, visited);
+  // 只预缓存 Notes 独立入口的模块图；宿主 Studio 的其余应用保持按需加载。
+  addManifestEntry(manifest, "notes/knowledge/index.html", urls, visited);
   return [...urls];
 }
 
 async function stageShell() {
-  // A failed deployment or a transient network error must never expose a
-  // partially populated cache as the next application version.
+  // 部署失败或瞬时网络错误绝不能把填充了一半的缓存当作下一个版本暴露出去。
   await caches.delete(CACHE_NAME);
   const cache = await caches.open(CACHE_NAME);
   try {
@@ -83,7 +81,7 @@ async function stageShell() {
     await Promise.all(
       urls.map(async (url) => {
         const response = await fetchWithTimeout(url, { cache: "reload" }, INSTALL_TIMEOUT_MS);
-        if (!response.ok) throw new Error(`Reader shell asset returned ${response.status}: ${url}`);
+        if (!response.ok) throw new Error(`Notes shell asset returned ${response.status}: ${url}`);
         await cache.put(new Request(url), response);
       }),
     );
@@ -97,9 +95,16 @@ function refreshAllowed() {
   return globalThis.navigator?.onLine !== false;
 }
 
-async function readerCacheNames() {
+async function knowledgeCacheNames() {
   const keys = await caches.keys();
   return keys.filter((key) => key.startsWith(CACHE_PREFIX));
+}
+
+function notesPath(url) {
+  // 目录型地址与无斜杠变体都归一到预缓存的 shell 键上。
+  if (url.pathname === "/notes") return "/notes/";
+  if (url.pathname === "/notes/knowledge") return "/notes/knowledge/";
+  return url.pathname;
 }
 
 async function matchCached(request, pathname) {
@@ -110,9 +115,8 @@ async function matchCached(request, pathname) {
     (await current.match(pathRequest, { ignoreSearch: true, ignoreVary: true }));
   if (currentMatch !== undefined) return currentMatch;
 
-  // Keep old, already-open tabs functional after activation. Their lazy
-  // imports may still refer to the immediately preceding hashed chunk graph.
-  const fallbackNames = (await readerCacheNames())
+  // 保住激活后仍开着的旧标签页：它们的懒加载 chunk 可能仍指向上一个版本。
+  const fallbackNames = (await knowledgeCacheNames())
     .filter((name) => name !== CACHE_NAME)
     .sort()
     .reverse();
@@ -127,8 +131,7 @@ async function matchCached(request, pathname) {
 }
 
 globalThis.addEventListener("install", (event) => {
-  // Do not skip waiting here. Reader asks the user before replacing a running
-  // release, then saves the current reading snapshot before sending the signal.
+  // 不在这里 skipWaiting：与 Reader 一致，先经用户确认再替换运行中的版本。
   event.waitUntil(stageShell());
 });
 
@@ -139,20 +142,15 @@ globalThis.addEventListener("message", (event) => {
 globalThis.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      const candidates = (await readerCacheNames()).filter((name) => name !== CACHE_NAME);
-      const generatedCandidates = candidates
+      const names = await knowledgeCacheNames();
+      const generated = names
         .filter((name) => /^\d+$/u.test(name.slice(CACHE_PREFIX.length)))
         .sort()
         .reverse();
-      // During the first migration the old cache is named "v3". Retain it
-      // once, then prefer the immediately preceding timestamped release.
-      const previous = generatedCandidates.slice(0, 1);
-      if (previous.length === 0 && candidates[0] !== undefined) previous.push(candidates[0]);
-      const retained = new Set([CACHE_NAME, ...previous]);
+      // 保留上一个时间戳版本，让已打开的旧标签页能继续取到旧 chunk。
+      const retained = new Set([CACHE_NAME, ...generated.slice(0, 1)]);
       await Promise.all(
-        (await readerCacheNames())
-          .filter((name) => !retained.has(name))
-          .map((name) => caches.delete(name)),
+        names.filter((name) => !retained.has(name)).map((name) => caches.delete(name)),
       );
       await globalThis.clients.claim();
     })(),
@@ -165,28 +163,15 @@ globalThis.addEventListener("fetch", (event) => {
   if (request.method !== "GET" || url.origin !== globalThis.location.origin) return;
 
   if (request.mode === "navigate") {
-    // The Notes PWA owns /notes/ through its own scoped service worker. Until
-    // that worker is registered this shell must stay out of the way: serving
-    // the Studio SPA under a notes address would boot the wrong router.
-    if (url.pathname === "/notes" || url.pathname.startsWith("/notes/")) {
-      event.respondWith(
-        refreshAllowed()
-          ? fetchWithTimeout(request).catch(() => Response.error())
-          : Response.error(),
-      );
-      return;
-    }
     event.respondWith(
       (async () => {
-        const cached = await matchCached(request, url.pathname);
+        const pathname = notesPath(url);
+        const cached = await matchCached(request, pathname);
         if (cached !== undefined) return cached;
-        const shellPath = url.pathname.startsWith("/reader") ? "/reader" : "/";
-        const shell = await matchCached(new Request(shellPath), shellPath);
+        const shell = await matchCached(new Request("/notes/knowledge/"), "/notes/knowledge/");
         if (shell !== undefined) return shell;
         if (!refreshAllowed()) return Response.error();
-        // Navigation documents are an atomic part of the versioned shell.
-        // Never write a newly deployed index into an older active cache; the
-        // installing worker will stage it together with its matching chunks.
+        // 导航文档是版本化外壳的一部分：绝不把新部署的 index 写进旧缓存。
         return fetchWithTimeout(request).catch(() => Response.error());
       })(),
     );
@@ -195,7 +180,7 @@ globalThis.addEventListener("fetch", (event) => {
 
   event.respondWith(
     (async () => {
-      const cached = await matchCached(request, url.pathname);
+      const cached = await matchCached(request, notesPath(url));
       if (cached !== undefined && !refreshAllowed()) return cached;
       const network = fetchWithTimeout(request)
         .then(async (response) => {

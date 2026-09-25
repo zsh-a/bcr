@@ -1,0 +1,29 @@
+{
+  "id": "/notes/",
+  "name": "BCR 笔记",
+  "short_name": "笔记",
+  "description": "个人知识库 · 独立 Markdown 笔记 · 资料引用 / 全文搜索 / GitHub 同步与版本恢复",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "/notes/knowledge/",
+  "scope": "/notes/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#151619",
+  "theme_color": "#147a73",
+  "categories": ["productivity"],
+  "icons": [
+    {
+      "src": "/icons/knowledge-icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/knowledge-icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

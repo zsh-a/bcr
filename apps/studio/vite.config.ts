@@ -6,7 +6,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 // Keep the build timestamp in the service-worker source itself. A deployment
 // with unchanged application chunks must still produce different sw.js bytes,
 // otherwise an installed PWA has no signal that a new release is available.
-const readerBuildId = String(Date.now());
+const buildId = String(Date.now());
 
 // Explicit opt-in: never turn a static/public deployment into an open LLM proxy.
 const localGateway = process.env.BCR_LOCAL_LLM === "1";
@@ -42,20 +42,28 @@ export default defineConfig({
   plugins: [tailwindcss(), react()],
   preview: { proxy: gatewayProxy },
   define: {
-    "globalThis.__BCR_READER_BUILD_ID__": JSON.stringify(readerBuildId),
+    "globalThis.__BCR_READER_BUILD_ID__": JSON.stringify(buildId),
+    "globalThis.__BCR_NOTES_BUILD_ID__": JSON.stringify(buildId),
   },
   build: {
-    // The service worker reads this stable manifest at install time to
-    // precache the hashed Reader entry graph without hard-coding filenames.
+    // The service workers read this stable manifest at install time to
+    // precache their hashed entry graphs without hard-coding filenames.
     manifest: "build-manifest.json",
     rolldownOptions: {
       input: {
         index: new URL("./index.html", import.meta.url).pathname,
         "service-worker": new URL("./src/service-worker.js", import.meta.url).pathname,
+        notes: new URL("./notes/knowledge/index.html", import.meta.url).pathname,
+        "notes-service-worker": new URL("./src/knowledge/service-worker.js", import.meta.url)
+          .pathname,
       },
       output: {
         entryFileNames: (chunk) =>
-          chunk.name === "service-worker" ? "sw.js" : "assets/[name]-[hash].js",
+          chunk.name === "service-worker"
+            ? "sw.js"
+            : chunk.name === "notes-service-worker"
+              ? "notes/sw.js"
+              : "assets/[name]-[hash].js",
       },
     },
   },

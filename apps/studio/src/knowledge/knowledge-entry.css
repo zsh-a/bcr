@@ -1,0 +1,27 @@
+/* Notes 独立入口基座：令牌、控件原语与凭据样式由此进入（对齐 reader-entry.css 的
+ * 职责，但知识库视图消费 tailwind 工具类，故经 theme.css 引入整套桥接）。 */
+@import "@bcr/react/theme.css";
+@import "@bcr/react/ui.css";
+@import "@bcr/react/base.css";
+
+body {
+  overflow: hidden;
+}
+
+.knowledge-boot {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.bcr-bootstrap-error {
+  box-sizing: border-box;
+  min-height: 100%;
+  margin: 0;
+  padding: var(--space-6);
+  color: var(--color-danger);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+}

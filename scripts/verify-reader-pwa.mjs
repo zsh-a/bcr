@@ -219,7 +219,7 @@ try {
   await page.getByRole("button", { name: "立即更新", exact: true }).click();
   await page.locator(".reader-save-notice").waitFor();
   await page.waitForFunction(
-    () => document.querySelector(".bcr-update-actions .is-primary")?.disabled === false,
+    () => document.querySelector(".bcr-update-actions .ui-btn-primary")?.disabled === false,
   );
   assert(await page.evaluate(() => window.updateProbe === true));
   assert(await page.evaluate(async () => (await navigator.serviceWorker.ready).waiting !== null));

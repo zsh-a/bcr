@@ -101,6 +101,7 @@ bun run deploy:cloudflare # 部署 apps/studio/dist 到 Cloudflare Workers
 cargo test --manifest-path crates/kernels/Cargo.toml
 bun run test:browser   # 自动启停 dev server，运行离线 Playwright 主链路
 bun run test:pwa       # 使用已构建的 apps/studio/dist 验证生产版 Reader 离线与更新
+bun run test:pwa:knowledge # 使用已构建的 apps/studio/dist 验证生产版 Notes 独立 PWA（/notes/）
 ```
 
 `bun run dev` / `bun run studio` 是唯一的工作台入口：Reader / Document / Data Studio 位于
