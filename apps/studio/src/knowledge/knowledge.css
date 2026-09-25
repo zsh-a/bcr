@@ -5,6 +5,18 @@
 
 /* ---------- 外壳与侧栏 ---------- */
 
+/* 知识模块排版变量：标题/行文档位由类型令牌推导（22/18/13），笔记标题 26px 始终最大；
+   阅读字体与行高三档属阅读体验选项，令牌未覆盖的字号在此集中声明。 */
+:root {
+  --prose-h1: calc(var(--text-2xl) - var(--space-1));
+  --prose-h2: calc(var(--text-xl) - var(--space-1) / 2);
+  --prose-row: calc(var(--text-base) - 1px);
+  --font-reading: "Newsreader Variable", "Noto Serif SC", "Songti SC", Georgia, serif;
+  --reading-compact: 1.55;
+  --reading-standard: 1.75;
+  --reading-loose: 2.05;
+}
+
 .knowledge-app {
   position: relative;
   display: flex;
@@ -25,32 +37,9 @@
   min-height: 0;
 }
 
-.knowledge-brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-  color: var(--color-accent);
-}
-
 /* 眉标统一走 .ui-section-label；行内场景仅中和列表内边距。 */
 .ui-section-label.knowledge-eyebrow {
   padding: 0;
-}
-
-.knowledge-brand h1 {
-  margin: var(--space-1) 0 0;
-  color: var(--color-text);
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  line-height: var(--text-lg--line-height);
-  font-weight: 500;
-}
-
-/* 切换类按钮的按下态：accent 边框与文字。 */
-.knowledge-app .ui-btn[aria-pressed="true"] {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
 }
 
 .knowledge-app button:disabled {
@@ -78,8 +67,19 @@
   font-size: var(--text-sm);
 }
 
-.knowledge-select {
+.knowledge-create {
   width: 100%;
+}
+
+.knowledge-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.knowledge-collection-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .knowledge-add-collection {
@@ -140,20 +140,46 @@
   overflow-wrap: anywhere;
 }
 
-.knowledge-note-card small {
-  display: block;
+.knowledge-note-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--text-xs);
   line-height: var(--text-xs--line-height);
   color: var(--color-faint);
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.knowledge-note-meta time {
+  flex-shrink: 0;
+}
+
+.knowledge-chip {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-raised);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .knowledge-list-empty {
   padding: var(--space-6) var(--space-3);
   font-size: var(--text-sm);
   color: var(--color-faint);
+}
+
+.knowledge-list-empty p {
+  margin: 0 0 var(--space-3);
+}
+
+.knowledge-list-empty-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 .knowledge-sidebar-bottom {
@@ -173,7 +199,7 @@
 
 .knowledge-toolbar {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--space-3);
   min-height: var(--h-toolbar);
@@ -184,15 +210,86 @@
 .knowledge-toolbar-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 
-.knowledge-sync-summary {
+/* 标题区一行：移动端顶栏（菜单/标题/状态/更多），桌面端只留状态。 */
+.knowledge-titlebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--h-control);
+  padding: var(--space-2) var(--space-6);
+}
+
+.knowledge-titlebar-title {
+  display: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+  color: var(--color-text);
+}
+
+/* 同步与保存状态的唯一插槽；Wave 2b 在此挂弹出层触发器。 */
+.knowledge-status {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   color: var(--color-faint);
   font-size: var(--text-xs);
+}
+
+.knowledge-overflow {
+  display: none;
+  position: relative;
+  margin-left: auto;
+}
+
+.knowledge-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.knowledge-overflow-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 41;
+  display: grid;
+  gap: var(--space-1);
+  min-width: 180px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-overlay);
+  box-shadow: var(--shadow-floating);
+}
+
+.knowledge-overflow-menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--h-control-lg);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  font-size: var(--text-sm);
+}
+
+.knowledge-overflow-menu button:hover {
+  background: var(--color-raised);
 }
 
 /* 同步状态点沿用 StatusDot，这里只补知识语义色。 */
@@ -261,6 +358,20 @@
   margin-right: auto;
 }
 
+/* 视图模式（编辑/阅读）+ 源码逃生口 + ⋯ 溢出菜单；右对齐成一簇。 */
+.knowledge-mode-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  position: relative;
+}
+
+.knowledge-mode-controls .knowledge-chip-group button {
+  min-height: var(--h-control);
+  font-size: var(--text-xs);
+}
+
 .knowledge-title {
   display: block;
   width: 100%;
@@ -279,18 +390,69 @@
   color: var(--color-faint);
 }
 
+/* 标签：安静的 11px 弱化行，去掉等宽与强调色。 */
 .knowledge-tags {
-  display: block;
-  width: 100%;
-  margin: var(--space-3) 0 var(--space-6);
-  border: 0;
-  background: transparent;
-  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: var(--space-3) 0 var(--space-5);
+  font-family: var(--font-sans);
   font-size: var(--text-xs);
-  color: var(--color-accent);
+  color: var(--color-muted);
 }
 
-/* 正文书写排版由 CSS 持有，CodeMirror 主题继承；小屏放大便于触控输入。 */
+.knowledge-tag-chip {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.knowledge-tag-chip:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.knowledge-tag-input {
+  flex: 1;
+  min-width: var(--space-8);
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+}
+
+.knowledge-tag-input::placeholder {
+  color: var(--color-faint);
+}
+
+/* 正文书写排版由 CSS 持有，CodeMirror 主题继承；小屏放大便于触控输入。
+   阅读字体/行高由 .knowledge-editor 的 data 属性切换，源码模式保持等宽与密排。 */
+.knowledge-editor[data-reading-font="sans"] {
+  --reading-font: var(--font-sans);
+}
+
+.knowledge-editor[data-reading-font="serif"] {
+  --reading-font: var(--font-reading);
+}
+
+.knowledge-editor[data-reading-line="compact"] {
+  --reading-leading: var(--reading-compact);
+}
+
+.knowledge-editor[data-reading-line="standard"] {
+  --reading-leading: var(--reading-standard);
+}
+
+.knowledge-editor[data-reading-line="loose"] {
+  --reading-leading: var(--reading-loose);
+}
+
 .knowledge-body {
   display: block;
   width: 100%;
@@ -299,10 +461,15 @@
   border: 0;
   background: transparent;
   color: var(--color-muted);
-  font-family: var(--font-mono);
+  font-family: var(--reading-font, var(--font-sans));
   font-size: var(--text-base);
-  line-height: var(--text-base--line-height);
+  line-height: var(--reading-leading, var(--text-base--line-height));
   tab-size: 2;
+}
+
+.knowledge-editor[data-source="on"] .knowledge-body {
+  font-family: var(--font-mono);
+  line-height: var(--text-base--line-height);
 }
 
 /* CodeMirror 负责内部滚动，宿主本身不滚动。 */
@@ -310,10 +477,41 @@
   height: 100%;
 }
 
+/* 实时预览：引用与代码块贴合正文渲染器的样式（行类由 livePreview 注入）。 */
+.knowledge-body .cm-line.knowledge-live-quote {
+  border-left: 2px solid var(--color-accent);
+  padding-left: var(--space-4);
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.knowledge-body .cm-line.knowledge-live-code {
+  background: var(--color-surface);
+  padding-inline: var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.knowledge-body .cm-line.knowledge-live-code-start {
+  border-top: 1px solid var(--color-border);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  padding-top: var(--space-2);
+}
+
+.knowledge-body .cm-line.knowledge-live-code-end {
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  padding-bottom: var(--space-2);
+}
+
+.knowledge-body .cm-line.knowledge-live-code-start.knowledge-live-code-end {
+  border-radius: var(--radius-md);
+}
+
+/* 页脚只留实时字符数。 */
 .knowledge-editor-footer {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
   border-top: 1px solid var(--color-border);
   padding: var(--space-3) 0;
   color: var(--color-faint);
@@ -321,8 +519,29 @@
   font-size: var(--text-xs);
 }
 
-.knowledge-editor-footer span:last-child {
-  margin-left: auto;
+/* 安静的行内提示：空状态与非操作性状态用它，不占用整行横幅。 */
+.knowledge-hint {
+  margin: 0;
+  color: var(--color-faint);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+/* ---------- 专注模式（data-focus-mode 契约） ----------
+ * NoteEditor 的「专注模式」开关在最近的 .knowledge-app 根节点写入
+ * data-focus-mode="on"（退出时移除）。开启后收起侧栏、标签栏、状态簇与
+ * 编辑器元信息行（集合/状态/视图模式/源码），只留「⋯」按钮与它的菜单作为
+ * 退出入口；正文与标题保持原位。 */
+.knowledge-app[data-focus-mode="on"] .knowledge-sidebar,
+.knowledge-app[data-focus-mode="on"] .knowledge-tabs-bar,
+.knowledge-app[data-focus-mode="on"] .knowledge-status,
+.knowledge-app[data-focus-mode="on"] .knowledge-tags,
+.knowledge-app[data-focus-mode="on"] .knowledge-editor-footer,
+.knowledge-app[data-focus-mode="on"] .knowledge-editor-meta > *:not(.knowledge-mode-controls),
+.knowledge-app[data-focus-mode="on"]
+  .knowledge-mode-controls
+  > *:not(.knowledge-tools):not(.knowledge-tools-menu) {
+  display: none;
 }
 
 /* ---------- 正文预览 ---------- */
@@ -330,7 +549,8 @@
 .knowledge-prose {
   min-height: 380px;
   color: var(--color-muted);
-  line-height: var(--text-base--line-height);
+  font-family: var(--reading-font, var(--font-sans));
+  line-height: var(--reading-leading, var(--text-base--line-height));
   overflow-wrap: anywhere;
 }
 
@@ -342,13 +562,14 @@
   font-weight: 500;
 }
 
+/* 标题层级永远低于笔记标题（26px）：H1 22 / H2 18 / H3 16。 */
 .knowledge-prose h1 {
-  font-size: var(--text-2xl);
+  font-size: var(--prose-h1);
   line-height: var(--text-2xl--line-height);
 }
 
 .knowledge-prose h2 {
-  font-size: var(--text-xl);
+  font-size: var(--prose-h2);
   line-height: var(--text-xl--line-height);
 }
 
@@ -492,13 +713,11 @@
   margin-bottom: var(--space-7);
 }
 
-.knowledge-empty-foot {
+.knowledge-empty-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-8);
-  color: var(--color-faint);
-  font-size: var(--text-xs);
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 /* ---------- 面板（历史 / 同步 / 恢复） ---------- */
@@ -706,6 +925,53 @@
   margin-top: var(--space-3);
 }
 
+/* ---------- 撤销提示（undoToast.tsx） ---------- */
+
+.knowledge-undo-toast {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: min(480px, calc(100vw - var(--space-8)));
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  background: var(--color-overlay);
+  box-shadow: var(--shadow-floating);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  opacity: 0;
+  transform: translate(-50%, var(--space-3));
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard),
+    display var(--duration-base) allow-discrete;
+}
+
+.knowledge-undo-toast-show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@starting-style {
+  .knowledge-undo-toast-show {
+    opacity: 0;
+    transform: translate(-50%, var(--space-3));
+  }
+}
+
+.knowledge-undo-toast-message {
+  overflow-wrap: anywhere;
+}
+
+.knowledge-undo-toast-action {
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
 /* ---------- 提示与加载 ---------- */
 
 .knowledge-alert {
@@ -720,23 +986,70 @@
   margin-left: var(--space-3);
 }
 
-.knowledge-loading {
+/* ---------- 启动骨架与失败重试 ---------- */
+
+.knowledge-boot {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
+  height: 100%;
   padding: var(--space-8);
+  text-align: center;
+}
+
+.knowledge-boot-title {
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
+}
+
+.knowledge-boot-error {
+  margin: 0 0 var(--space-3);
+  max-width: 42em;
   color: var(--color-muted);
   font-size: var(--text-sm);
+  line-height: var(--text-base--line-height);
+  overflow-wrap: anywhere;
+}
+
+.knowledge-boot-shell .ui-skeleton {
+  display: block;
+  width: 100%;
+  height: var(--h-control);
+  border-radius: var(--radius-sm);
+}
+
+.knowledge-boot-shell .ui-skeleton.knowledge-skeleton-sm {
+  height: var(--space-5);
+}
+
+.knowledge-boot-shell .ui-skeleton.knowledge-skeleton-fill {
+  flex: 1;
+  min-height: 160px;
+  height: auto;
+}
+
+.knowledge-boot-shell .knowledge-main {
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+}
+
+.knowledge-boot-shell .knowledge-sidebar {
+  gap: var(--space-3);
 }
 
 .knowledge-menu,
 .knowledge-mobile-close,
-.knowledge-backdrop {
+.knowledge-backdrop,
+.knowledge-mobile-nav {
   display: none;
 }
 
-/* ---------- 小屏：侧栏抽屉与触控尺寸 ---------- */
+/* ---------- 小屏：抽屉 + 顶行 + 底部视图导航 ---------- */
 
 @media (max-width: 720px) {
   .knowledge-sidebar {
@@ -746,6 +1059,8 @@
     bottom: 0;
     left: 0;
     width: min(var(--w-sidebar), 85vw);
+    padding: var(--space-4) var(--space-4) var(--space-4);
+    gap: var(--space-3);
     transform: translateX(-105%);
     transition: transform var(--duration-slow) var(--ease-standard);
   }
@@ -764,26 +1079,48 @@
   .knowledge-mobile-close {
     display: inline-flex;
     margin-left: auto;
+    min-width: var(--h-control-lg);
+    min-height: var(--h-control-lg);
+  }
+  /* 抽屉只留筛选与视图切换：列表、筛选、视图胶囊。 */
+  .knowledge-create,
+  .knowledge-collection-row,
+  .knowledge-add-collection,
+  .knowledge-view-mode,
+  .knowledge-sidebar-bottom {
+    display: none;
   }
   .knowledge-menu {
     display: inline-flex;
+    min-width: var(--h-control-lg);
+    min-height: var(--h-control-lg);
+  }
+  /* 顶行 = 菜单 + 标题 + 状态点 + 更多；工具栏并入更多菜单。 */
+  .knowledge-titlebar {
+    order: -1;
+    padding: var(--space-2) var(--space-3);
+    min-height: var(--h-control-lg);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+  .knowledge-titlebar-title {
+    display: block;
+    flex: 1;
+  }
+  .knowledge-status span {
+    display: none;
+  }
+  .knowledge-overflow {
+    display: block;
   }
   .knowledge-toolbar {
-    padding: 0 var(--space-3);
-    gap: var(--space-2);
-  }
-  .knowledge-sync-summary {
     display: none;
   }
-  .knowledge-toolbar-actions {
-    margin-left: auto;
-    gap: var(--space-1);
+  .knowledge-tabs-bar {
+    overflow-x: auto;
   }
-  .knowledge-toolbar-actions .ui-btn {
-    padding: var(--space-2);
-  }
-  .knowledge-toolbar-actions .ui-btn > span {
-    display: none;
+  .knowledge-content {
+    padding-bottom: var(--space-8);
   }
   .knowledge-editor {
     padding: var(--space-6) var(--space-5) 0;
@@ -815,5 +1152,41 @@
   }
   .knowledge-empty {
     padding: var(--space-8) var(--space-6);
+  }
+  .knowledge-note-card {
+    min-height: var(--h-control-lg);
+    padding: var(--space-4);
+  }
+  /* 底部导航：视图胶囊 + 新建。 */
+  .knowledge-mobile-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+  .knowledge-mobile-nav > button {
+    flex: 1;
+    min-height: var(--h-control-lg);
+    border: 0;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+  .knowledge-mobile-nav > button[aria-pressed="true"] {
+    background: var(--color-raised);
+    color: var(--color-text);
+  }
+  .knowledge-fab {
+    flex: 0 0 var(--h-control-lg);
+    min-width: var(--h-control-lg);
+    min-height: var(--h-control-lg);
+    border-radius: var(--radius-full);
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    display: grid;
+    place-items: center;
   }
 }

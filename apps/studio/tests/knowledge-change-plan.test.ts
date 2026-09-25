@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { KnowledgeStore } from "../src/knowledge/store";
 import { newNote } from "../src/knowledge/model";
 import { NoteDraft } from "../src/knowledge/draft";
+import { revertChangePlan } from "../src/knowledge/liveRename";
 
 async function fixture() {
   let writes = 0;
@@ -119,5 +120,29 @@ describe("reviewed note changes", () => {
     await restored.flushForNavigation();
     expect(restored.getSnapshot().note.body).toBe("new body");
     expect(f.backups.size).toBe(0);
+  });
+  it("counts rewrites and reports ambiguity on the rename plan", async () => {
+    const f = await fixture();
+    const plan = await f.store.previewRename("alpha", "Renamed");
+    expect(plan.rewrites).toBe(1);
+    expect(plan.ambiguous).toEqual([]);
+    await f.store.importContent({
+      notes: { duplicate: { ...newNote("Alpha"), id: "duplicate", body: "same name" } },
+      collections: {},
+    });
+    const ambiguous = await f.store.previewRename("alpha", "Renamed");
+    expect(ambiguous.ambiguous.some((link) => link.noteId === "beta")).toBe(true);
+    expect(ambiguous.rewrites).toBe(0);
+    expect(f.store.getSnapshot().notes.beta!.body).toBe("[[Alpha]]");
+  });
+  it("undoes an applied rename exactly and refuses stale undos", async () => {
+    const f = await fixture();
+    const plan = await f.store.previewRename("alpha", "Renamed");
+    await f.store.applyChangePlan(plan);
+    expect(f.store.getSnapshot().notes.beta!.body).toBe("[[alpha|Alpha]]");
+    await revertChangePlan(f.store, plan);
+    expect(f.store.getSnapshot().notes.alpha).toEqual(f.target);
+    expect(f.store.getSnapshot().notes.beta).toEqual(f.source);
+    await expect(revertChangePlan(f.store, plan)).rejects.toThrow("笔记已变化");
   });
 });

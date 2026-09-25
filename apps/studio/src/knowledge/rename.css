@@ -1,16 +1,27 @@
 /*
- * 重命名 / 移动的修改预览与确认流程。
- * 按钮走 ui 原语，这里只做组合排版；圆角、间距、字号只用令牌。
+ * 行内重命名与确认对话框的组合排版。
+ * 按钮走 ui 原语；前后对比渲染由 NoteChangeReview（.knowledge-review-*）自带样式。
+ * 圆角、间距、字号只用令牌。
  */
 
-.knowledge-rename-pending {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-5);
+/* 行内重命名只留一行安静状态：处理中/失败提示，不做横幅。 */
+.knowledge-rename-progress {
+  margin: var(--space-2) 0 0;
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+}
+
+.knowledge-rename-progress.has-notice {
+  color: var(--color-amber);
+}
+
+.knowledge-rename-ambiguous {
+  margin: var(--space-2) 0 var(--space-4);
+  padding-left: var(--space-5);
   color: var(--color-muted);
   font-size: var(--text-sm);
+  line-height: var(--text-base--line-height);
 }
 
 .knowledge-rename-review {
@@ -20,75 +31,6 @@
 
 .knowledge-rename-review > p:first-child {
   margin-top: 0;
-}
-
-.knowledge-rename-notes {
-  display: flex;
-  gap: var(--space-2);
-  overflow-x: auto;
-  padding: var(--space-1) 0 var(--space-3);
-}
-
-/* 受影响笔记是两行的切换块：在按钮原语上只放开高度与排版。 */
-.knowledge-rename-notes .ui-btn {
-  flex: 0 0 auto;
-  flex-direction: column;
-  align-items: flex-start;
-  height: auto;
-  max-width: 250px;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-.knowledge-rename-notes small {
-  font-size: var(--text-sm);
-  line-height: var(--text-sm--line-height);
-  color: var(--color-muted);
-}
-
-.knowledge-rename-diff {
-  margin: var(--space-3) 0 var(--space-6);
-}
-
-.knowledge-rename-title-diff {
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--space-4);
-  overflow-wrap: anywhere;
-}
-
-.knowledge-rename-title-diff strong {
-  color: var(--color-accent);
-  font-weight: 500;
-}
-
-.knowledge-rename-columns {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--space-3);
-  margin-top: var(--space-3);
-}
-
-.knowledge-rename-columns h3 {
-  font-size: var(--text-sm);
-  line-height: var(--text-sm--line-height);
-  font-weight: 500;
-}
-
-.knowledge-rename-columns pre {
-  margin: 0;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  line-height: var(--text-base--line-height);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
 }
 
 .knowledge-rename-actions {
@@ -101,9 +43,6 @@
 }
 
 @media (max-width: 640px) {
-  .knowledge-rename-columns {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .knowledge-rename-actions button {
     flex: 1 1 auto;
   }

@@ -1,16 +1,21 @@
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Button, Input } from "@bcr/react";
 import { folderMoves, type NoteChangePlan } from "./changePlan";
 import { KnowledgeDialog } from "./KnowledgeDialog";
 import { NoteChangeReview } from "./NoteChangeReview";
-import { notePath } from "./paths";
+import { NoteFileTree } from "./NoteFileTree";
+import { countRewrittenLinks } from "./moveSummary";
+import { notePath, normalizeNotePath, parentPath, pathKey } from "./paths";
 import type { KnowledgeStore } from "./store";
+import { showUndoToast } from "./undoToast";
+import "./paths.css";
 
 export type MoveTarget = { noteId: string } | { folder: string };
 
 /**
- * 移动对话框。常驻挂载以便关闭时跑完退场动画；打开时按目标重置草稿，
- * 与原先的按需挂载行为一致。
+ * 移动对话框：文件夹树选目标（含内联新建文件夹），点移动即落地并即时改写链接；
+ * 撤销提示走 showUndoToast，落地后可在对话框里查看渲染式改动明细——不再是预览确认向导。
+ * 常驻挂载以便关闭时跑完退场动画；打开时按目标重置草稿。
  */
 export function NoteMove({
   open,
@@ -25,46 +30,81 @@ export function NoteMove({
   flush: () => Promise<void>;
   onClose: () => void;
 }) {
-  const [original, setOriginal] = useState("");
-  const [path, setPath] = useState("");
-  const [plan, setPlan] = useState<NoteChangePlan | null>(null);
+  const [dest, setDest] = useState("");
+  const [created, setCreated] = useState<string[]>([]);
+  const [folderName, setFolderName] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{
+    plan: NoteChangePlan;
+    links: number;
+    originals: Record<string, string>;
+  } | null>(null);
   const pending = useRef(false);
-  const id = useId();
   useLayoutEffect(() => {
     if (!open || !target) return;
+    const snapshot = store.getSnapshot();
     const from =
       "folder" in target
         ? target.folder
-        : notePath(store.getSnapshot().notes[target.noteId] ?? { id: target.noteId });
-    setOriginal(from);
-    setPath(from);
-    setPlan(null);
+        : notePath(snapshot.notes[target.noteId] ?? { id: target.noteId });
+    setDest(parentPath(from));
+    setCreated([]);
+    setFolderName("");
+    setResult(null);
     setError("");
     setBusy(false);
   }, [open, target, store]);
+  const snapshot = store.getSnapshot();
   const folder = !!target && "folder" in target;
-  async function run(confirm: boolean) {
-    if (!target || pending.current) return;
+  const from = target
+    ? "folder" in target
+      ? target.folder
+      : notePath(snapshot.notes[target.noteId] ?? { id: target.noteId })
+    : "";
+  const base = from.split("/").at(-1) ?? "";
+  const to = `${dest ? `${dest}/` : ""}${base}`;
+  const unchanged = !!from && pathKey(to) === pathKey(from);
+  const intoSelf = folder && pathKey(to).startsWith(`${pathKey(from)}/`);
+  async function undo(originals: Record<string, string>) {
+    if (pending.current) return;
     pending.current = true;
     setBusy(true);
     setError("");
     try {
-      if (confirm && plan) {
-        await store.applyChangePlan(plan);
-        onClose();
-      } else {
-        await flush();
-        const moves =
-          "folder" in target
-            ? folderMoves(store.getSnapshot().notes, target.folder, path)
-            : { [target.noteId]: path };
-        setPlan(await store.previewMove(moves));
-      }
+      await flush();
+      const plan = await store.previewMove(originals);
+      await store.applyChangePlan(plan);
+      setResult(null);
     } catch (reason) {
       setError(String(reason));
-      setPlan(null);
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
+  }
+  async function move() {
+    if (!target || !from || unchanged || intoSelf || pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await flush();
+      const notes = store.getSnapshot().notes;
+      const moves =
+        "folder" in target ? folderMoves(notes, target.folder, to) : { [target.noteId]: to };
+      const originals = Object.fromEntries(
+        Object.keys(moves).map((id) => [id, notePath(notes[id] ?? { id })]),
+      );
+      const plan = await store.previewMove(moves);
+      await store.applyChangePlan(plan);
+      const links = countRewrittenLinks(plan.changes);
+      showUndoToast(links ? `已移动并更新 ${links} 处链接` : "已移动，无需更新链接", () => {
+        void undo(originals);
+      });
+      setResult({ plan, links, originals });
+    } catch (reason) {
+      setError(String(reason));
     } finally {
       pending.current = false;
       setBusy(false);
@@ -79,61 +119,116 @@ export function NoteMove({
       }}
       error={error}
     >
-      <section className="knowledge-rename-review knowledge-move" aria-busy={busy}>
-        <p className="knowledge-small">当前位置：{original}</p>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void run(false);
-          }}
-        >
-          <label htmlFor={id}>{folder ? "目标文件夹路径" : "目标笔记路径"}</label>
-          <Input
-            id={id}
-            value={path}
-            maxLength={500}
-            disabled={busy}
-            spellCheck={false}
-            aria-describedby={`${id}-hint`}
-            onChange={(event) => {
-              setPath(event.target.value);
-              setPlan(null);
-              setError("");
-            }}
-          />
-          <p id={`${id}-hint`} className="knowledge-small">
-            {folder
-              ? "填写新的完整文件夹路径，留空移至根目录；包含全部子文件夹。"
-              : "例如：项目/产品设计.md。目录随路径建立，标题保持不变。"}
+      {result ? (
+        <section className="knowledge-move" aria-busy={busy}>
+          <p role="status">
+            {result.links ? `已移动并更新 ${result.links} 处链接。` : "已移动，无需更新链接。"}
+            已保存到本机，下次同步时提交。
           </p>
-          <Button variant="ghost" disabled={busy} type="submit">
-            {busy ? "处理中…" : plan ? "刷新预览" : "预览移动"}
-          </Button>
-        </form>
-        {plan && (
-          <>
-            <p role="status">
-              将修改 {plan.changes.length} 篇笔记。路径和受影响的笔记引用一并保存。
+          <NoteChangeReview plan={result.plan} />
+          <div className="knowledge-move-actions">
+            <Button variant="ghost" disabled={busy} onClick={() => void undo(result.originals)}>
+              撤销移动
+            </Button>
+            <Button variant="primary" disabled={busy} onClick={onClose}>
+              完成
+            </Button>
+          </div>
+        </section>
+      ) : (
+        <section className="knowledge-move" aria-busy={busy}>
+          <p className="knowledge-move-path">
+            当前位置：<span>{from || "（未知）"}</span>
+          </p>
+          <p className="knowledge-move-path">
+            {folder ? "文件夹将移动到：" : "将移动到："}
+            <strong>{to || "根目录"}</strong>
+          </p>
+          <div className="knowledge-move-picker" role="group" aria-label="选择目标文件夹">
+            <Button
+              variant="default"
+              aria-pressed={dest === ""}
+              disabled={busy}
+              onClick={() => setDest("")}
+            >
+              根目录
+            </Button>
+            <NoteFileTree
+              notes={Object.values(snapshot.notes)}
+              onSelect={(id) => {
+                const note = snapshot.notes[id];
+                if (note) setDest(parentPath(notePath(note)));
+              }}
+              onMoveFolder={(path) => setDest(path)}
+            />
+          </div>
+          {created.length > 0 && (
+            <p className="knowledge-move-created">
+              新建：
+              {created.map((path) => (
+                <Button
+                  key={path}
+                  variant="ghost"
+                  size="sm"
+                  aria-pressed={pathKey(dest) === pathKey(path)}
+                  onClick={() => setDest(path)}
+                >
+                  {path}
+                </Button>
+              ))}
             </p>
-            <NoteChangeReview plan={plan} />
-          </>
-        )}
-        <p className="knowledge-small">
-          已解析的笔记链接会保持原目标。图片、附件及未解析链接暂不自动调整；集合与稳定 ID 不变。
-        </p>
-        <div className="knowledge-rename-actions">
-          <Button variant="ghost" disabled={busy} onClick={onClose}>
-            取消
-          </Button>
-          <Button
-            variant="primary"
-            disabled={busy || !plan?.changes.length || !!error}
-            onClick={() => void run(true)}
+          )}
+          <form
+            className="knowledge-move-new-folder"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const name = folderName.trim();
+              if (!name) return;
+              try {
+                const path = parentPath(
+                  normalizeNotePath(`${dest ? `${dest}/` : ""}${name}/placeholder.md`),
+                );
+                setCreated([...created, path]);
+                setDest(path);
+                setFolderName("");
+                setError("");
+              } catch (reason) {
+                setError(String(reason));
+              }
+            }}
           >
-            确认移动
-          </Button>
-        </div>
-      </section>
+            <Input
+              aria-label="新建文件夹名称"
+              value={folderName}
+              maxLength={120}
+              disabled={busy}
+              spellCheck={false}
+              placeholder="新建文件夹名称"
+              onChange={(event) => setFolderName(event.target.value)}
+            />
+            <Button variant="ghost" type="submit" disabled={busy || !folderName.trim()}>
+              新建文件夹
+            </Button>
+          </form>
+          <p className="knowledge-small">
+            已解析的笔记链接会保持原目标。图片、附件及未解析链接暂不自动调整；集合与稳定 ID 不变。
+          </p>
+          {unchanged && <p className="knowledge-small">目标与当前位置相同，无需移动。</p>}
+          {intoSelf && <p className="knowledge-small">不能将文件夹移动到自身或子目录。</p>}
+          <div className="knowledge-move-actions">
+            <Button variant="ghost" disabled={busy} onClick={onClose}>
+              取消
+            </Button>
+            <Button
+              variant="primary"
+              disabled={busy || !from || unchanged || intoSelf}
+              onClick={() => void move()}
+            >
+              {folder ? "移动文件夹" : "移动笔记"}
+            </Button>
+          </div>
+        </section>
+      )}
     </KnowledgeDialog>
   );
 }

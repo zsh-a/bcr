@@ -68,18 +68,174 @@
   margin-top: 0;
 }
 
-.knowledge-dialog .knowledge-history-list {
-  max-height: none;
-}
-
-.knowledge-dialog .knowledge-history-list button {
-  padding: var(--space-3) var(--space-4);
-  min-height: var(--h-control-lg);
-  border-radius: var(--radius-sm);
-}
-
 @media (max-width: 640px) {
   .knowledge-dialog .ui-dialog-body {
     padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
+  }
+}
+
+/* ---------- 同步设置（渐进披露） ---------- */
+
+.knowledge-sync .knowledge-sync-quiet {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  color: var(--color-faint);
+}
+
+.knowledge-sync-advanced {
+  margin-top: var(--space-2);
+}
+
+.knowledge-sync-advanced > summary {
+  cursor: pointer;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+.knowledge-sync-manage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.knowledge-sync-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.knowledge-sync-confirm p {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+/* ---------- 版本历史：页签 + 条目 ---------- */
+
+.knowledge-history-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.knowledge-history-quiet {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  color: var(--color-faint);
+}
+
+.knowledge-history-entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.knowledge-history-entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.knowledge-history-entry-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.knowledge-history-entry-head time {
+  min-width: 64px;
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+.knowledge-history-entry-head strong {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-history-entry-summary {
+  flex: 1;
+  min-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+.knowledge-history-entry-reason {
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+}
+
+/* ---------- 冲突面板 ---------- */
+
+.knowledge-conflict-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.knowledge-conflict-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.knowledge-conflict-row h3 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
+  font-weight: 500;
+}
+
+.knowledge-conflict-row h3 small {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+  overflow-wrap: anywhere;
+}
+
+.knowledge-conflict-modes {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.knowledge-conflict-note {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  color: var(--color-faint);
+}
+
+@media (max-width: 640px) {
+  .knowledge-history-entry-summary {
+    flex-basis: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 }

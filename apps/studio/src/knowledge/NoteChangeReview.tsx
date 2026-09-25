@@ -2,44 +2,22 @@ import { useState } from "react";
 import { Button } from "@bcr/react";
 import type { NoteChangePlan } from "./changePlan";
 import { notePath } from "./paths";
-import "./rename.css";
+import { DiffView } from "./diffView";
+import "./diffView.css";
 
-function excerpt(before: string, after: string) {
-  let start = 0,
-    end = 0;
-  while (start < before.length && start < after.length && before[start] === after[start]) start++;
-  while (
-    end < before.length - start &&
-    end < after.length - start &&
-    before[before.length - end - 1] === after[after.length - end - 1]
-  )
-    end++;
-  const from = Math.max(0, start - 100);
-  const clip = (text: string) => {
-    const to = Math.min(text.length, text.length - end + 100);
-    const shown = text.slice(from, Math.min(to, from + 4000));
-    return `${from ? "…\n" : ""}${shown}${to < text.length || to > from + 4000 ? "\n…" : ""}`;
-  };
-  return [clip(before), clip(after)];
-}
-
+/** 修改计划审阅：笔记以「标题 + 路径」标识，正文差异用词级渲染片段呈现。 */
 export function NoteChangeReview({ plan }: { plan: NoteChangePlan }) {
   const [selected, setSelected] = useState(plan.changes[0]?.before.id);
-  const [full, setFull] = useState(false);
   const change = plan.changes.find((item) => item.before.id === selected) ?? plan.changes[0];
-  const snippets = change ? excerpt(change.before.body, change.after.body) : [];
   return (
     <>
-      <div className="knowledge-rename-notes" aria-label="受影响的笔记">
+      <div className="knowledge-review-notes" aria-label="受影响的笔记">
         {plan.changes.map((item) => (
           <Button
             variant="default"
             key={item.before.id}
             aria-pressed={change?.before.id === item.before.id}
-            onClick={() => {
-              setSelected(item.before.id);
-              setFull(false);
-            }}
+            onClick={() => setSelected(item.before.id)}
           >
             {item.before.title || "未命名笔记"}
             <small>
@@ -48,46 +26,27 @@ export function NoteChangeReview({ plan }: { plan: NoteChangePlan }) {
                 : item.before.title !== item.after.title
                   ? "标题"
                   : "引用"}{" "}
-              · {item.before.id.slice(0, 8)}
+              · {notePath(item.after)}
             </small>
           </Button>
         ))}
       </div>
       {change && (
-        <div className="knowledge-rename-diff">
+        <div className="knowledge-review-diff">
           {notePath(change.before) !== notePath(change.after) && (
-            <div className="knowledge-rename-title-diff">
+            <div className="knowledge-review-meta">
               <span>原路径：{notePath(change.before)}</span>
               <strong>新路径：{notePath(change.after)}</strong>
             </div>
           )}
           {change.before.title !== change.after.title && (
-            <div className="knowledge-rename-title-diff">
+            <div className="knowledge-review-meta">
               <span>原标题：{change.before.title || "未命名笔记"}</span>
               <strong>新标题：{change.after.title || "未命名笔记"}</strong>
             </div>
           )}
           {change.before.body !== change.after.body && (
-            <>
-              <Button variant="default" aria-pressed={full} onClick={() => setFull(!full)}>
-                {full ? "仅看变更片段" : "查看完整正文"}
-              </Button>
-              <div className="knowledge-rename-columns">
-                <div>
-                  <h3>修改前</h3>
-                  <pre>{full ? change.before.body : snippets[0]}</pre>
-                </div>
-                <div>
-                  <h3>修改后</h3>
-                  <pre>{full ? change.after.body : snippets[1]}</pre>
-                </div>
-              </div>
-              {!full && (
-                <p className="knowledge-small">
-                  仅显示变更附近片段，省略内容以 … 标记，可展开完整正文。
-                </p>
-              )}
-            </>
+            <DiffView before={change.before.body} after={change.after.body} />
           )}
         </div>
       )}

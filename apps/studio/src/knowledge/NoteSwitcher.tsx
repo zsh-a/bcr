@@ -1,15 +1,26 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Button, IconButton } from "@bcr/react";
-import { Search, X, Plus } from "lucide-react";
+import { IconButton, SectionLabel } from "@bcr/react";
+import { Search, X } from "lucide-react";
 import type { KnowledgeNote } from "./model";
 import { searchKnowledge, noteSearchHit } from "./retrieval";
-import { notePath } from "./paths";
+
+export interface PaletteAction {
+  id: string;
+  label: string;
+  hint?: string;
+  disabled?: boolean;
+  run: () => void | Promise<void>;
+}
+
+type Row =
+  | { kind: "note"; note: KnowledgeNote }
+  | { kind: "create"; title: string }
+  | { kind: "action"; action: PaletteAction };
 
 /**
- * 快速切换（命令面板）。
+ * 命令面板：笔记搜索（打开 / 按标题创建）与操作入口。
  *
- * 常驻挂载：关闭时对话框留在 DOM 中跑完退场动画；每次打开重置查询与选择，
- * 行为与原先的按需挂载一致。
+ * 常驻挂载：关闭时对话框留在 DOM 中跑完退场动画；每次打开重置查询与选择。
  */
 export function NoteSwitcher({
   open,
@@ -18,6 +29,7 @@ export function NoteSwitcher({
   onSelect,
   onCreate,
   onClose,
+  actions = [],
 }: {
   open: boolean;
   notes: readonly KnowledgeNote[];
@@ -25,6 +37,7 @@ export function NoteSwitcher({
   onSelect: (id: string) => Promise<void>;
   onCreate: (title: string) => Promise<void>;
   onClose: () => void;
+  actions?: readonly PaletteAction[];
 }) {
   const dialog = useRef<HTMLDialogElement>(null),
     input = useRef<HTMLInputElement>(null);
@@ -35,7 +48,17 @@ export function NoteSwitcher({
     [selected, setSelected] = useState(0);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const hits = searchKnowledge(notes, query, { limit: 30 }).hits;
+  const keyword = query.trim().toLowerCase();
+  const hits = searchKnowledge(notes, query, { limit: 30 }).hits.map(({ note }) => note);
+  const shownActions = actions.filter(
+    (action) => !action.disabled && (!keyword || action.label.toLowerCase().includes(keyword)),
+  );
+  const rows: Row[] = [
+    ...hits.map((note) => ({ kind: "note", note }) as Row),
+    ...(query.trim() ? [{ kind: "create", title: query.trim() } as Row] : []),
+    ...shownActions.map((action) => ({ kind: "action", action }) as Row),
+  ];
+  const noteRows = hits.length + (query.trim() ? 1 : 0);
   useEffect(() => {
     document.getElementById(`${list}-${selected}`)?.scrollIntoView({ block: "nearest" });
   }, [selected, list]);
@@ -57,7 +80,7 @@ export function NoteSwitcher({
     // 只随开关切换重置；initialQuery 是打开瞬间的种子。
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 见上注。
   }, [open]);
-  async function run(action: () => Promise<void>) {
+  async function run(action: () => void | Promise<void>) {
     if (busy) return;
     setBusy(true);
     setError("");
@@ -70,6 +93,12 @@ export function NoteSwitcher({
       setBusy(false);
     }
   }
+  const openRow = (row: Row | undefined) => {
+    if (!row) return;
+    if (row.kind === "note") void run(() => onSelect(row.note.id));
+    else if (row.kind === "create") void run(() => onCreate(row.title));
+    else void run(() => row.action.run());
+  };
   return (
     <dialog
       ref={dialog}
@@ -82,9 +111,9 @@ export function NoteSwitcher({
     >
       <header>
         <h2 id={title} className="ui-dialog-title">
-          快速打开笔记
+          命令面板
         </h2>
-        <IconButton label="关闭快速切换" size="sm" disabled={busy} onClick={onClose}>
+        <IconButton label="关闭命令面板" size="sm" disabled={busy} onClick={onClose}>
           <X size={18} />
         </IconButton>
       </header>
@@ -92,13 +121,13 @@ export function NoteSwitcher({
         <Search size={18} aria-hidden="true" />
         <input
           ref={input}
-          aria-label="查找或创建笔记"
+          aria-label="搜索笔记或操作"
           role="combobox"
           aria-autocomplete="list"
           aria-expanded="true"
           aria-controls={list}
-          aria-activedescendant={hits[selected] ? `${list}-${selected}` : undefined}
-          placeholder="搜索标题、路径、标签或正文…"
+          aria-activedescendant={rows[selected] ? `${list}-${selected}` : undefined}
+          placeholder="搜索笔记或操作…"
           value={query}
           disabled={busy}
           onChange={(event) => {
@@ -113,56 +142,79 @@ export function NoteSwitcher({
               setSelected((value) =>
                 Math.max(
                   0,
-                  Math.min(hits.length - 1, value + (event.key === "ArrowDown" ? 1 : -1)),
+                  Math.min(rows.length - 1, value + (event.key === "ArrowDown" ? 1 : -1)),
                 ),
               );
             }
             if (event.key === "Enter") {
               event.preventDefault();
-              const hit = hits[selected];
-              if (hit) void run(() => onSelect(hit.note.id));
-              else if (query.trim()) void run(() => onCreate(query.trim()));
+              openRow(rows[selected]);
             }
           }}
         />
       </div>
-      <div id={list} role="listbox" className="knowledge-switcher-results" aria-label="匹配笔记">
-        {hits.map(({ note }, index) => (
-          <button
-            type="button"
-            role="option"
-            id={`${list}-${index}`}
-            aria-selected={selected === index}
-            key={note.id}
-            disabled={busy}
-            className={selected === index ? "selected" : ""}
-            onFocus={() => setSelected(index)}
-            onClick={() => void run(() => onSelect(note.id))}
-          >
-            <strong>{note.title || "未命名笔记"}</strong>
-            <span>{noteSearchHit(note, query).preview.slice(0, 140)}</span>
-            <small>
-              {notePath(note)} · {new Date(note.updatedAt).toLocaleDateString()}
-            </small>
-          </button>
-        ))}
-        {!hits.length && <p>没有匹配的笔记，可以直接创建。</p>}
+      <div id={list} role="listbox" className="knowledge-switcher-results" aria-label="搜索结果">
+        <div className="knowledge-switcher-group">
+          <SectionLabel>笔记</SectionLabel>
+          {rows.slice(0, noteRows).map((row, index) => (
+            <button
+              type="button"
+              role="option"
+              id={`${list}-${index}`}
+              aria-selected={selected === index}
+              key={row.kind === "note" ? row.note.id : "create"}
+              disabled={busy}
+              className={selected === index ? "selected" : ""}
+              onFocus={() => setSelected(index)}
+              onClick={() => openRow(row)}
+            >
+              {row.kind === "note" ? (
+                <>
+                  <strong>{row.note.title || "未命名笔记"}</strong>
+                  <span>{noteSearchHit(row.note, query).preview.slice(0, 140)}</span>
+                  {row.note.path && !row.note.path.includes(row.note.id) && (
+                    <small>{row.note.path}</small>
+                  )}
+                </>
+              ) : row.kind === "create" ? (
+                <>
+                  <strong>创建「{row.title.slice(0, 30)}」</strong>
+                  <span>用这个标题新建一篇笔记</span>
+                </>
+              ) : null}
+            </button>
+          ))}
+          {!noteRows && <p>没有匹配的笔记。</p>}
+        </div>
+        {shownActions.length > 0 && (
+          <div className="knowledge-switcher-group">
+            <SectionLabel>操作</SectionLabel>
+            {rows.slice(noteRows).map((row, index) => {
+              const at = noteRows + index;
+              const action = (row as { action: PaletteAction }).action;
+              return (
+                <button
+                  type="button"
+                  role="option"
+                  id={`${list}-${at}`}
+                  aria-selected={selected === at}
+                  key={action.id}
+                  disabled={busy}
+                  className={selected === at ? "selected" : ""}
+                  onFocus={() => setSelected(at)}
+                  onClick={() => openRow(row)}
+                >
+                  <strong>{action.label}</strong>
+                  {action.hint && <small>{action.hint}</small>}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
       {error && <p role="alert">{error}</p>}
       <footer>
-        <span role="status">
-          {busy ? "正在打开…" : `${hits.length} 个结果 · ↑↓ 选择 · Enter 打开`}
-        </span>
-        {query.trim() && (
-          <Button
-            variant="primary"
-            disabled={busy}
-            onClick={() => void run(() => onCreate(query.trim()))}
-          >
-            <Plus size={15} />
-            创建「{query.trim().slice(0, 30)}」
-          </Button>
-        )}
+        <span role="status">{busy ? "正在处理…" : "↑↓ 选择 · Enter 打开 · Esc 关闭"}</span>
       </footer>
     </dialog>
   );

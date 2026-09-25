@@ -127,6 +127,17 @@ try {
   await panel.getByRole("button", { name: "确认删除", exact: true }).click();
   assert.equal(await page.evaluate(() => localStorage.getItem("bcr/agent-connection/v1")), null);
 
+  // New knowledge sync UX: the dialog opens from the sync status popover.
+  const syncSettings = async (target) => {
+    const trigger = target.locator(".knowledge-status-trigger");
+    const popover = target.locator(".knowledge-sync-popover");
+    await trigger.click();
+    if (!(await popover.evaluate((el) => el.matches(":popover-open")))) await trigger.click();
+    await popover.getByRole("button", { name: "同步设置…", exact: true }).click();
+    const dialog = target.getByRole("dialog", { name: "同步设置", exact: true });
+    await dialog.waitFor();
+    return dialog;
+  };
   const github = createKnowledgeGitHub();
   github.state.defaultBranch = "trunk";
   await context.route("https://api.github.com/**", async (route) => {
@@ -135,40 +146,45 @@ try {
     await route.fulfill({ status: result.status, json: result.json });
   });
   await page.goto(`${origin}/knowledge`, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "GitHub 同步设置", exact: true }).click();
-  await page.getByLabel("GitHub 仓库地址").fill("https://github.com/test-owner/notes");
-  await page.getByLabel("GitHub Token", { exact: true }).fill("github-test-token");
-  await page.getByLabel("记住此设备").check();
-  await page.getByRole("button", { name: "连接并同步", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "已与 GitHub 同步" }).waitFor();
+  let sync = await syncSettings(page);
+  await sync.getByLabel("GitHub 仓库地址").fill("https://github.com/test-owner/notes");
+  await sync.getByLabel("GitHub Token", { exact: true }).fill("github-test-token");
+  await sync.getByLabel("记住此设备").check();
+  await sync.getByRole("button", { name: "连接并同步", exact: true }).click();
+  await sync.getByRole("status").filter({ hasText: "已与 GitHub 同步" }).waitFor();
   assert.ok(github.state.requests.some((request) => request.path === "/git/ref/heads/trunk"));
-  await page.getByLabel("自动同步", { exact: true }).check();
+  await sync.getByLabel("自动同步", { exact: true }).check();
   await page.reload({ waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "GitHub 同步设置", exact: true }).click();
-  assert.equal(await page.getByLabel("自动同步", { exact: true }).isChecked(), true);
-  await page.getByText("管理连接", { exact: true }).click();
-  await page.getByRole("button", { name: "编辑连接", exact: true }).click();
-  assert.equal(await page.getByLabel("GitHub Token", { exact: true }).count(), 0);
-  await page.getByLabel("GitHub 仓库地址").fill("test-owner/discarded-repo");
-  await page.getByRole("button", { name: "取消", exact: true }).click();
-  await page.getByText("管理连接", { exact: true }).click();
-  await page.getByRole("button", { name: "编辑连接", exact: true }).click();
-  assert.equal(await page.getByLabel("GitHub 仓库地址").inputValue(), "test-owner/notes");
-  assert.equal(await page.getByLabel("GitHub Token", { exact: true }).count(), 0);
-  await page.getByLabel("GitHub 仓库地址").fill("test-owner/other-notes");
-  assert.equal(await page.getByLabel("GitHub Token", { exact: true }).inputValue(), "");
+  sync = await syncSettings(page);
+  assert.equal(await sync.getByLabel("自动同步", { exact: true }).isChecked(), true);
+  // The stored token is never rendered into an input: SecretField shows a masked
+  // 密钥已配置 row instead, so the token input does not exist at all.
+  assert.equal(await sync.getByLabel("GitHub Token", { exact: true }).count(), 0);
+  await sync.getByText("密钥已配置", { exact: true }).waitFor();
+  await sync.getByLabel("GitHub 仓库地址").fill("test-owner/discarded-repo");
+  await sync.getByRole("button", { name: "关闭同步设置", exact: true }).click();
+  sync = await syncSettings(page);
+  // The dialog keeps its children mounted, so closing keeps the unsaved draft…
+  assert.equal(await sync.getByLabel("GitHub 仓库地址").inputValue(), "test-owner/discarded-repo");
+  // …but the draft never touches the stored connection.
   assert.equal(
-    await page.getByRole("button", { name: "连接并同步", exact: true }).isDisabled(),
+    await sync.locator(".bcr-connection-summary strong").textContent(),
+    "test-owner/notes",
+  );
+  await page.reload({ waitUntil: "networkidle" });
+  sync = await syncSettings(page);
+  assert.equal(await sync.getByLabel("GitHub 仓库地址").inputValue(), "test-owner/notes");
+  assert.equal(await sync.getByLabel("GitHub Token", { exact: true }).count(), 0);
+  await sync.getByLabel("GitHub 仓库地址").fill("test-owner/other-notes");
+  assert.equal(await sync.getByLabel("GitHub Token", { exact: true }).inputValue(), "");
+  assert.equal(
+    await sync.getByRole("button", { name: "连接并同步", exact: true }).isDisabled(),
     true,
   );
-  await page.getByLabel("GitHub Token", { exact: true }).fill("new-token");
+  await sync.getByLabel("GitHub Token", { exact: true }).fill("new-token");
   github.state.private = false;
-  await page.getByRole("button", { name: "连接并同步", exact: true }).click();
-  await page
-    .getByRole("dialog", { name: "连接设置", exact: true })
-    .getByRole("alert")
-    .filter({ hasText: "请使用私有仓库" })
-    .waitFor();
+  await sync.getByRole("button", { name: "连接并同步", exact: true }).click();
+  await sync.getByRole("alert").filter({ hasText: "请使用私有仓库" }).waitFor();
   assert.equal(
     await page.evaluate(
       () => Object.keys(localStorage).filter((key) => key.startsWith("bcr/credentials/")).length,
@@ -176,23 +192,20 @@ try {
     1,
   );
   github.state.private = true;
-  await page.getByRole("button", { name: "连接并同步", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "已与 GitHub 同步" }).waitFor();
-  assert.equal(await page.getByLabel("自动同步", { exact: true }).isChecked(), false);
+  await sync.getByRole("button", { name: "连接并同步", exact: true }).click();
+  await sync.getByRole("status").filter({ hasText: "已与 GitHub 同步" }).waitFor();
+  assert.equal(await sync.getByLabel("自动同步", { exact: true }).isChecked(), false);
   assert.equal(
     await page.evaluate(
       () => Object.keys(localStorage).filter((key) => key.startsWith("bcr/credentials/")).length,
     ),
     0,
   );
-  await page.getByText("管理连接", { exact: true }).click();
-  await page.getByRole("button", { name: "编辑连接", exact: true }).click();
-  await page.getByLabel("记住此设备").check();
-  await page.getByRole("button", { name: "连接并同步", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "已与 GitHub 同步" }).waitFor();
-  await page.getByText("管理连接", { exact: true }).click();
-  await page.getByRole("button", { name: "清除 Token", exact: true }).click();
-  await page.getByRole("button", { name: "确认清除", exact: true }).click();
+  await sync.getByLabel("记住此设备").check();
+  await sync.getByRole("button", { name: "连接并同步", exact: true }).click();
+  await sync.getByRole("status").filter({ hasText: "已与 GitHub 同步" }).waitFor();
+  await sync.getByRole("button", { name: "清除 Token", exact: true }).click();
+  await sync.getByRole("button", { name: "确认清除", exact: true }).click();
   assert.equal(
     await page.evaluate(
       () => Object.keys(localStorage).filter((key) => key.startsWith("bcr/credentials/")).length,

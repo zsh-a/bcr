@@ -1,15 +1,17 @@
 import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
 import { Compartment, EditorState, Transaction } from "@codemirror/state";
 import { EditorView, placeholder as placeholderExtension } from "@codemirror/view";
-import { knowledgeEditorExtensions } from "./markdownEditor";
+import { knowledgeEditorExtensions, typewriterMode } from "./markdownEditor";
 import { EditorSessions } from "./editorSessions";
-import { noteEditing } from "./noteEditing";
+import { noteEditing, type SlashContext } from "./noteEditing";
 import type { KnowledgeNote } from "./model";
 import { livePreview } from "./livePreview";
 
 export interface MarkdownEditorHandle {
   reveal(offset: number): void;
   insert(text: string): void;
+  /** 聚焦编辑器但不移动光标（模式切换回到编辑时用）。 */
+  focus(): void;
 }
 
 /**
@@ -34,6 +36,8 @@ export function MarkdownEditor({
   onOpenLink,
   editorRef,
   live = false,
+  typewriter = false,
+  slashContext,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -50,6 +54,10 @@ export function MarkdownEditor({
   onOpenLink?: (target: string) => void;
   editorRef?: Ref<MarkdownEditorHandle>;
   live?: boolean;
+  /** 打字机模式：光标行保持在视区约 60% 高度。 */
+  typewriter?: boolean;
+  /** / 插入面板展开模板变量所需的当前笔记信息。 */
+  slashContext?: () => SlashContext;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -58,8 +66,8 @@ export function MarkdownEditor({
   change.current = onChange;
   const selection = useRef(onSelectionChange);
   selection.current = onSelectionChange;
-  const latest = useRef({ notes, onOpenLink });
-  latest.current = { notes, onOpenLink };
+  const latest = useRef({ notes, onOpenLink, slashContext, typewriter });
+  latest.current = { notes, onOpenLink, slashContext, typewriter };
   const editability = useRef(new Compartment());
   const presentation = useRef(new Compartment());
   useImperativeHandle(
@@ -83,6 +91,9 @@ export function MarkdownEditor({
         });
         current.focus();
       },
+      focus() {
+        view.current?.focus();
+      },
     }),
     [],
   );
@@ -100,7 +111,9 @@ export function MarkdownEditor({
         ...noteEditing(
           () => latest.current.notes,
           (target) => latest.current.onOpenLink?.(target),
+          () => latest.current.slashContext?.() ?? { id: "", title: "" },
         ),
+        typewriterMode(() => latest.current.typewriter),
         presentation.current.of(
           live ? livePreview((target) => latest.current.onOpenLink?.(target)) : [],
         ),

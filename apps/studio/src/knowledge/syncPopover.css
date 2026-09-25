@@ -1,0 +1,105 @@
+/*
+ * 同步状态插槽与浮层排版。状态点补知识语义色（全走令牌），
+ * 浮层进出场沿用 ui.css 的 .ui-popover，这里只做定位与内部布局。
+ */
+
+.knowledge-status-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.knowledge-status-trigger:hover {
+  color: var(--color-muted);
+  border-color: var(--color-border);
+}
+
+.knowledge-status-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-status-line.is-error {
+  color: var(--color-danger);
+}
+
+.knowledge-status-line.is-pending {
+  color: var(--color-amber);
+}
+
+.knowledge-status-line.is-synced {
+  color: var(--color-muted);
+}
+
+.knowledge-status .ui-dot-sync-local {
+  background: var(--color-faint);
+}
+
+.knowledge-status .ui-dot-sync-pending {
+  background: var(--color-amber);
+}
+
+.knowledge-status .ui-dot-sync-done {
+  background: var(--color-success);
+}
+
+.knowledge-status .ui-dot-sync-running {
+  background: var(--color-accent);
+}
+
+.knowledge-status .ui-dot-sync-conflict,
+.knowledge-status .ui-dot-sync-error {
+  background: var(--color-danger);
+}
+
+.knowledge-sync-popover {
+  position: fixed;
+  width: min(280px, calc(100vw - 32px));
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* display 只在展开态生效：关闭态必须让位给原生 [popover] 的 display:none，
+ * 否则不可见的浮层会参与命中测试、吞掉下方点击。 */
+.knowledge-sync-popover:popover-open {
+  display: flex;
+}
+
+.knowledge-sync-facts {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.knowledge-sync-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+.knowledge-sync-facts dt {
+  color: var(--color-faint);
+}
+
+.knowledge-sync-facts dd {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.knowledge-sync-popover .knowledge-checkbox {
+  justify-content: flex-start;
+}

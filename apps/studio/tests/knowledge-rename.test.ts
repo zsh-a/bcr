@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { newNote, type KnowledgeNote } from "../src/knowledge/model";
 import { KnowledgeStore } from "../src/knowledge/store";
-import { preserveRenamedLinks } from "../src/knowledge/renameLinks";
+import { applyRenamedLinks, preserveRenamedLinks } from "../src/knowledge/renameLinks";
 import { noteRevision } from "../src/knowledge/noteRevision";
 
 const target = { ...newNote("旧标题"), id: "target", body: "[[旧标题]]" };
@@ -106,6 +106,30 @@ describe("editor rename reference transaction", () => {
     );
     expect(next.source).toBe(source);
     expect(next.duplicate).toBe(before.duplicate);
+  });
+  it("reports every same-name link it refuses to rewrite", () => {
+    const before = { target, source, duplicate: { ...target, id: "duplicate" } };
+    const result = applyRenamedLinks(
+      before,
+      { ...before, target: { ...target, title: "新标题" } },
+      "target",
+    );
+    expect(result.rewrites).toBe(0);
+    expect(result.notes.source).toBe(source);
+    expect(result.ambiguous.some((link) => link.noteId === "target")).toBe(true);
+    expect(
+      result.ambiguous.filter((link) => link.noteId === "source" && link.target === "旧标题"),
+    ).toHaveLength(2);
+  });
+  it("counts rewritten links for the undo toast message", () => {
+    const before = { target, source };
+    const result = applyRenamedLinks(
+      before,
+      { ...before, target: { ...target, title: "新标题" } },
+      "target",
+    );
+    expect(result.rewrites).toBe(4);
+    expect(result.ambiguous).toEqual([]);
   });
   it("persists rename, backlinks and history in one write and survives reopening", async () => {
     const f = await fixture();

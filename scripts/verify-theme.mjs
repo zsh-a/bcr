@@ -10,6 +10,17 @@ const errors = [];
 page.on("pageerror", (error) => errors.push(String(error)));
 const theme = async (value) =>
   page.waitForFunction((expected) => document.documentElement.dataset.theme === expected, value);
+// New knowledge sync UX: the dialog opens from the sync status popover.
+const openSyncSettings = async (target) => {
+  const trigger = target.locator(".knowledge-status-trigger");
+  const popover = target.locator(".knowledge-sync-popover");
+  await trigger.click();
+  if (!(await popover.evaluate((el) => el.matches(":popover-open")))) await trigger.click();
+  await popover.getByRole("button", { name: "同步设置…", exact: true }).click();
+  const dialog = target.getByRole("dialog", { name: "同步设置", exact: true });
+  await dialog.waitFor();
+  return dialog;
+};
 try {
   await mkdir("scripts/shots", { recursive: true });
   await page.goto(`${origin}/knowledge`);
@@ -50,9 +61,7 @@ try {
         undefined,
         { timeout: 5000 },
       );
-      await page.getByRole("button", { name: "GitHub 同步设置", exact: true }).click();
-      const dialog = page.getByRole("dialog", { name: "连接设置", exact: true });
-      await dialog.waitFor();
+      const dialog = await openSyncSettings(page);
       assert.ok(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1));
       await page.screenshot({ path: `scripts/shots/theme-${mode}-${viewport.width}.png` });
       if (viewport.width === 375) {

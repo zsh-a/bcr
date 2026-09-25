@@ -107,17 +107,80 @@
   background: var(--color-surface);
 }
 
-.knowledge-move form {
-  display: grid;
+.knowledge-move {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+}
+
+.knowledge-move-path {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+.knowledge-move-path strong {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.knowledge-move-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 320px;
+  overflow: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.knowledge-move-picker > .ui-btn {
+  justify-content: flex-start;
+  align-self: stretch;
+}
+
+.knowledge-move-picker .knowledge-file-tree {
+  border: 0;
+  padding: 0;
+}
+
+.knowledge-move-created {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  color: var(--color-faint);
+}
+
+.knowledge-move-new-folder {
+  display: flex;
   gap: var(--space-2);
 }
 
-.knowledge-move form > button {
-  justify-self: start;
+.knowledge-move-new-folder .ui-input {
+  flex: 1;
+  min-width: 0;
 }
 
 .knowledge-move > p {
   overflow-wrap: anywhere;
+}
+
+.knowledge-move-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4);
 }
 
 @media (max-width: 640px) {

@@ -18,6 +18,10 @@ import {
   decodeWorkbench,
   emptyWorkbench,
   visitNote,
+  openNote,
+  closeNote,
+  closeOtherNotes,
+  togglePinned,
   toggleFavorite,
   fillTemplate,
   localDay,
@@ -139,20 +143,49 @@ describe("editor sessions", () => {
 });
 
 describe("personal workspace", () => {
-  it("validates optional UI state and bounds open tabs", () => {
+  it("validates optional UI state and keeps pinned tabs inside the strip", () => {
     expect(decodeWorkbench("bad")).toEqual(emptyWorkbench());
     expect(
       decodeWorkbench(
-        JSON.stringify({ version: 1, tabs: ["a", "a", "__proto__"], favorites: [false, "b"] }),
+        JSON.stringify({
+          version: 1,
+          tabs: ["a", "a", "__proto__"],
+          pinned: ["a", "b"],
+          favorites: [false, "b"],
+        }),
       ),
-    ).toEqual({ tabs: ["a"], recent: [], favorites: ["b"] });
-    let state = emptyWorkbench();
-    for (let i = 0; i < 60; i++) state = visitNote(state, `note-${i}`);
-    expect(state.tabs).toHaveLength(20);
-    expect(state.recent).toHaveLength(50);
-    state = toggleFavorite(state, "note-2");
+    ).toEqual({ tabs: ["a"], pinned: ["a"], recent: [], favorites: ["b"] });
+    const state = toggleFavorite(emptyWorkbench(), "note-2");
     expect(state.favorites).toEqual(["note-2"]);
     expect(toggleFavorite(state, "note-2").favorites).toEqual([]);
+  });
+  it("opens tabs only on explicit open; visits just record recent", () => {
+    let state = emptyWorkbench();
+    for (let i = 0; i < 60; i++) state = visitNote(state, `note-${i}`);
+    expect(state.tabs).toEqual([]);
+    expect(state.pinned).toEqual([]);
+    expect(state.recent).toHaveLength(50);
+    expect(state.recent[0]).toBe("note-59");
+  });
+  it("bounds open tabs and keeps pinned tabs through eviction and close-others", () => {
+    let state = emptyWorkbench();
+    for (let i = 0; i < 25; i++) state = openNote(state, `note-${i}`);
+    expect(state.tabs).toHaveLength(20);
+    expect(state.tabs).not.toContain("note-0");
+
+    state = togglePinned(openNote(emptyWorkbench(), "note-0"), "note-0");
+    expect(state.pinned).toEqual(["note-0"]);
+    for (let i = 1; i < 25; i++) state = openNote(state, `note-${i}`);
+    expect(state.tabs).toHaveLength(20);
+    expect(state.tabs).toContain("note-0");
+    expect(state.tabs).toContain("note-24");
+    expect(state.tabs).not.toContain("note-5");
+
+    state = closeOtherNotes(state, "note-24");
+    expect(state.tabs).toEqual(["note-0", "note-24"]);
+    state = closeNote(state, "note-0");
+    expect(state.tabs).toEqual(["note-24"]);
+    expect(state.pinned).toEqual([]);
   });
   it("uses local dates and supports templates without executing code", () => {
     const date = new Date(2026, 8, 23, 1);

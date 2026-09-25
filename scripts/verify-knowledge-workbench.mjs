@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 
-const origin = new URL(process.env.BASE_URL ?? "http://127.0.0.1:5199").origin;
+const origin = new URL(process.env.BASE_URL ?? "http://127.0.0.1:5213").origin;
 const browser = await chromium.launch({ args: ["--disable-dev-shm-usage"] });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 page.setDefaultTimeout(15000);
@@ -12,6 +12,8 @@ const body = () => page.getByLabel("笔记正文", { exact: true });
 const title = () => page.getByLabel("笔记标题", { exact: true });
 const saved = () =>
   page.locator('.knowledge-editor [role="status"]').filter({ hasText: "已保存到本机" }).waitFor();
+const palette = () => page.locator("dialog.knowledge-switcher");
+const rail = () => page.locator("aside.knowledge-context:visible");
 async function create(name, content) {
   const previous = new URL(page.url()).searchParams.get("note");
   await page.getByRole("button", { name: "新建笔记", exact: true }).click();
@@ -32,21 +34,88 @@ async function tab(name) {
     name,
   );
 }
+async function mode(button) {
+  await page.getByRole("button", { name: button, exact: true }).click();
+  await page.waitForTimeout(150);
+}
+// 源码是独立于编辑/阅读的逃生舱开关（data-source=on 显示原始 Markdown）。
+async function source(on) {
+  const button = page.getByRole("button", { name: "源码", exact: true });
+  if ((await button.getAttribute("aria-pressed")) !== String(on)) await mode("源码");
+  assert.equal(
+    await page.locator(".knowledge-editor").getAttribute("data-source"),
+    on ? "on" : null,
+  );
+}
+// 命令面板：Ctrl/Cmd+K 与 Ctrl/Cmd+O 都能打开；操作入口在最后一个分组。
+async function openPalette() {
+  await page.keyboard.press("Control+o");
+  await palette().waitFor({ state: "visible" });
+}
+async function command(label) {
+  await openPalette();
+  await palette().getByLabel("搜索笔记或操作").fill(label);
+  const groups = palette().locator(".knowledge-switcher-group");
+  assert.ok(
+    await groups.last().getByText("操作", { exact: true }).count(),
+    "操作 is the last group",
+  );
+  await groups.last().getByRole("option", { name: label, exact: false }).click();
+  await palette().waitFor({ state: "hidden" });
+}
 try {
   await page.goto(`${origin}/knowledge`, { waitUntil: "networkidle" });
+  // 覆盖断言：关闭态同步浮层不得吞掉下方控件的点击。
+  assert.equal(
+    await page.evaluate(() => {
+      const button = document.querySelector(".knowledge-create");
+      const rect = button.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+      return button.contains(hit) && !hit.closest(".knowledge-sync-popover");
+    }),
+    true,
+    "closed sync popover must not intercept clicks on the sidebar",
+  );
   const alpha = await create("Alpha", "# First\n\nOriginal note.");
   // Separate user typing from the initial paste into distinct CodeMirror undo groups.
   await page.waitForTimeout(600);
   await body().press("Control+End");
   await body().pressSequentially(" Extra sentence.");
   await saved();
-  await page.getByRole("button", { name: "预览", exact: true }).click();
-  await page.getByRole("button", { name: "继续编辑", exact: true }).click();
+  // 视图模式：编辑 / 阅读 + 独立源码按钮（旧的预览/继续编辑/实时预览/源码模式已移除）。
+  assert.equal(
+    await page.locator('.knowledge-chip-group[role="group"][aria-label="视图模式"]').count(),
+    1,
+  );
+  const pressed = (button) =>
+    page.getByRole("button", { name: button, exact: true }).getAttribute("aria-pressed");
+  assert.equal(await pressed("编辑"), "true");
+  assert.equal(await pressed("阅读"), "false");
+  await mode("阅读");
+  assert.equal(await pressed("阅读"), "true");
+  assert.equal(await pressed("编辑"), "false");
+  assert.equal(await page.locator(".knowledge-prose").count(), 1);
+  await mode("编辑");
+  await body().focus();
   await body().press("Control+z");
   assert.match(await body().innerText(), /Original note\./);
   assert.ok(!(await body().innerText()).includes("Extra sentence."), "reading mode preserves undo");
   await body().press("Control+y");
   assert.match(await body().innerText(), /Extra sentence\./);
+  await saved();
+  await source(true);
+  assert.equal(await pressed("源码"), "true");
+  assert.match(await body().innerText(), /^# First/);
+  await body().press("Control+z");
+  assert.ok(!(await body().innerText()).includes("Extra sentence."), "undo works in source mode");
+  await body().press("Control+y");
+  assert.match(await body().innerText(), /Extra sentence\./);
+  await source(false);
+  assert.equal(await pressed("源码"), "false");
+  await body().focus();
+  await body().press("Control+z");
+  assert.ok(!(await body().innerText()).includes("Extra sentence."), "source mode preserves undo");
+  await body().press("Control+y");
   await saved();
   await create(
     "Beta",
@@ -61,13 +130,33 @@ try {
   );
   await saved();
   await page.getByRole("button", { name: "收藏当前笔记", exact: true }).click();
-  await page.getByRole("button", { name: "收藏", exact: true }).click();
+  assert.equal(await pressed("收藏当前笔记"), "true");
+  await page
+    .getByRole("group", { name: "笔记范围" })
+    .getByRole("button", { name: "收藏", exact: true })
+    .click();
   assert.equal(await page.locator(".knowledge-note-card").count(), 1);
-  await page.getByRole("button", { name: "大纲与链接", exact: true }).click();
-  const context = page.getByRole("complementary", { name: "笔记上下文" });
-  await context.getByRole("button", { name: "First", exact: true }).click();
-  await context.getByRole("button", { name: "Beta", exact: true }).click();
-  await page.getByRole("button", { name: "预览", exact: true }).click();
+  await page
+    .getByRole("group", { name: "笔记范围" })
+    .getByRole("button", { name: "全部", exact: true })
+    .click();
+  // 上下文栏（常驻）：大纲跳转 + 反向链接/出站链接导航。
+  await rail().getByRole("button", { name: "First", exact: true }).click();
+  await page.waitForTimeout(250);
+  assert.equal(await title().inputValue(), "Alpha");
+  assert.match(
+    await page.evaluate(
+      () =>
+        document.getSelection()?.anchorNode?.parentElement?.closest(".cm-line")?.textContent ?? "",
+    ),
+    /First/,
+    "outline click reveals the heading in the editor",
+  );
+  await rail().getByRole("button", { name: "Beta", exact: true }).click();
+  await page.waitForFunction(
+    () => document.querySelector('[aria-label="笔记标题"]')?.value === "Beta",
+  );
+  await mode("阅读");
   assert.equal(await page.locator(".knowledge-prose table").count(), 1);
   assert.equal(await page.locator('.knowledge-prose input[type="checkbox"]').count(), 1);
   await page
@@ -77,49 +166,100 @@ try {
   await page.waitForFunction(
     () => document.querySelector('[aria-label="笔记标题"]')?.value === "Alpha",
   );
-  await page.getByRole("button", { name: "上一条笔记", exact: true }).click();
-  await page.waitForFunction(
-    () => document.querySelector('[aria-label="笔记标题"]')?.value === "Beta",
-  );
-  await page.getByRole("button", { name: "下一条笔记", exact: true }).click();
+  await tab("Beta");
+  await rail().getByRole("button", { name: "Go to Alpha", exact: true }).click();
   await page.waitForFunction(
     () => document.querySelector('[aria-label="笔记标题"]')?.value === "Alpha",
   );
-  await page.keyboard.press("Control+o");
-  const picker = page.getByRole("dialog", { name: "快速打开笔记" });
-  await picker.getByLabel("查找或创建笔记").fill("New from switcher");
-  await picker
-    .getByLabel("查找或创建笔记")
+  await tab("Beta");
+  await tab("Alpha");
+  // 命令面板：两个快捷键都可用；IME 确认（Enter + isComposing）不得新建笔记。
+  await page.keyboard.press("Control+k");
+  await palette().waitFor({ state: "visible" });
+  await page.keyboard.press("Escape");
+  await palette().waitFor({ state: "hidden" });
+  await openPalette();
+  await palette().getByLabel("搜索笔记或操作").fill("New from switcher");
+  await palette().getByText("创建「New from switcher」", { exact: true }).waitFor();
+  await palette()
+    .getByLabel("搜索笔记或操作")
     .dispatchEvent("keydown", { key: "Enter", isComposing: true });
-  assert.ok(await picker.isVisible(), "IME confirmation must not create a note");
-  await picker.getByLabel("查找或创建笔记").press("Enter");
-  await picker.waitFor({ state: "hidden" });
+  assert.ok(await palette().isVisible(), "IME confirmation must not create a note");
+  assert.notEqual(await title().inputValue(), "New from switcher");
+  await palette().getByLabel("搜索笔记或操作").press("Enter");
+  await palette().waitFor({ state: "hidden" });
   assert.equal(await title().inputValue(), "New from switcher");
+  // 模板：给笔记打上「模板」标签后，通过 / 插入面板与编辑器溢出菜单插入。
   await create("My template", "# {{title}}\n\nDate: {{date}}\n\n## Notes\n");
   await page.getByLabel("笔记标签", { exact: true }).fill("模板");
+  await page.getByLabel("笔记标签", { exact: true }).press("Enter");
   await saved();
   await tab("New from switcher");
-  await page.getByLabel("插入笔记模板").selectOption({ label: "My template" });
+  await body().click();
+  await body().press("Control+End");
+  await body().press("Enter");
+  await body().pressSequentially("/");
+  const slash = page.locator(".cm-tooltip-autocomplete");
+  await slash.waitFor({ state: "visible" });
+  for (const label of [
+    "代码块",
+    "任务列表",
+    "分割线",
+    "引用",
+    "无序列表",
+    "日期",
+    "标题 1",
+    "标题 2",
+    "标题 3",
+    "表格",
+  ]) {
+    assert.ok(
+      await slash.getByRole("option").filter({ hasText: label }).count(),
+      `/${label} insert item`,
+    );
+  }
+  await slash.getByRole("option").filter({ hasText: "模板 My template" }).first().click();
   await saved();
-  assert.match(await body().innerText(), /# New from switcher/);
-  assert.ok(!(await body().innerText()).includes("{{date}}"));
-  await page.getByRole("button", { name: "今日日记", exact: true }).click();
+  await source(true);
+  let raw = await body().innerText();
+  assert.match(raw, /# New from switcher/);
+  assert.match(raw, /Date: \d{4}-\d{2}-\d{2}/);
+  assert.ok(!raw.includes("{{"), "template variables are substituted");
+  await source(false);
+  // 编辑器溢出菜单：更多写作工具 -> .knowledge-tools-menu。
+  await page.getByRole("button", { name: "更多写作工具" }).click();
+  const tools = page.locator(".knowledge-tools-menu");
+  await tools.waitFor({ state: "visible" });
+  await tools.getByRole("button", { name: "源码模式", exact: true }).waitFor();
+  await tools.getByRole("button", { name: "专注模式", exact: true }).waitFor();
+  await tools.getByRole("button", { name: "打字机模式", exact: true }).waitFor();
+  await tools.getByText("阅读字体", { exact: true }).waitFor();
+  await tools.getByText("行高", { exact: true }).waitFor();
+  await tools.getByText("插入模板", { exact: true }).click();
+  await tools.getByRole("button", { name: "My template", exact: true }).click();
+  await saved();
+  await page.keyboard.press("Escape");
+  await source(true);
+  raw = await body().innerText();
+  assert.equal(raw.split("Date: ").length - 1, 2, "overflow insert reuses the template");
+  assert.ok(!raw.includes("{{"));
+  await source(false);
+  // 今日日记：幂等（同一天同一个 daily- 笔记）。
+  await command("今日日记");
   await page.waitForURL((url) => url.searchParams.get("note")?.startsWith("daily-"));
   const daily = new URL(page.url()).searchParams.get("note");
   assert.ok(daily.startsWith("daily-"));
   await body().fill("My daily record");
   await saved();
   await tab("Alpha");
-  await page.getByRole("button", { name: "今日日记", exact: true }).click();
+  await command("今日日记");
   await page.waitForURL((url) => url.searchParams.get("note") === daily);
   assert.equal(new URL(page.url()).searchParams.get("note"), daily);
   assert.equal((await body().innerText()).trim(), "My daily record");
   await page.reload({ waitUntil: "networkidle" });
   await tab("Alpha");
-  assert.equal(
-    await page.getByRole("button", { name: "收藏当前笔记" }).getAttribute("aria-pressed"),
-    "true",
-  );
+  assert.equal(await pressed("收藏当前笔记"), "true");
+  // Ctrl+点击链接：从正文链接跳到目标笔记。
   await tab("Beta");
   await page
     .locator(".cm-line")
@@ -128,50 +268,17 @@ try {
   await page.waitForFunction(
     () => document.querySelector('[aria-label="笔记标题"]')?.value === "Alpha",
   );
-  await title().fill("Alpha renamed");
-  await page.getByRole("button", { name: "预览重命名", exact: true }).click();
-  await page.getByRole("button", { name: "确认全部修改", exact: true }).click();
-  await saved();
   await tab("Beta");
-  await page
-    .locator(".cm-line")
-    .filter({ hasText: "Go via reference" })
-    .click({ modifiers: ["Control"], position: { x: 35, y: 8 } });
-  await page.waitForFunction(
-    () => document.querySelector('[aria-label="笔记标题"]')?.value === "Alpha renamed",
-  );
-  await tab("Beta");
-  assert.ok((await body().innerText()).includes(`[[${alpha}#First|Go to Alpha]]`));
-  assert.ok(
-    (await body().innerText()).includes(
-      `[Go via reference](${alpha}.md#First "Reference tooltip")`,
-    ),
-  );
-  assert.ok((await body().innerText()).includes('[alpha-ref]: Alpha.md#First "Reference tooltip"'));
-  assert.ok(
-    (await body().innerText()).includes(`[Go via Markdown](${alpha}.md#First "Keep tooltip")`),
-  );
-  await page
-    .locator(".cm-line")
-    .filter({ hasText: "Go via Markdown" })
-    .click({ modifiers: ["Control"], position: { x: 35, y: 8 } });
-  await page.waitForFunction(
-    () => document.querySelector('[aria-label="笔记标题"]')?.value === "Alpha renamed",
-  );
-  await tab("Beta");
-  await page.getByRole("button", { name: "预览", exact: true }).click();
+  await mode("阅读");
   await page
     .locator(".knowledge-prose")
     .getByRole("link", { name: "Go via Markdown", exact: true })
     .click();
   await page.waitForFunction(
-    () => document.querySelector('[aria-label="笔记标题"]')?.value === "Alpha renamed",
+    () => document.querySelector('[aria-label="笔记标题"]')?.value === "Alpha",
   );
-  await tab("Alpha renamed");
-  await title().fill("Alpha");
-  await page.getByRole("button", { name: "预览重命名", exact: true }).click();
-  await page.getByRole("button", { name: "确认全部修改", exact: true }).click();
-  await saved();
+  await mode("编辑");
+  // 笔记补全：[[Al 提供补全；转义/代码块中的链接不补全。
   for (const text of ["\\[[Al", "```md\n[[Al"]) {
     await body().fill(text);
     await body().press("Control+Space");
@@ -181,27 +288,54 @@ try {
       0,
       "escaped/code links must not offer note completion",
     );
+    await body().press("Escape");
   }
   await body().fill("[[Al");
+  await body().press("Control+Space");
   await page.getByRole("option").filter({ hasText: "Alpha" }).first().waitFor();
+  // Enter 立即接受选中项：补全刚被 Ctrl+Space 重启也一样，不给列表任何落定时间。
   await body().press("Enter");
   assert.match(await body().innerText(), new RegExp(alpha));
   await saved();
-  const originalLink = await body().innerText();
-  await page.getByRole("button", { name: "实时预览", exact: true }).click();
-  await page.locator(".knowledge-inline-link").filter({ hasText: "Alpha" }).waitFor();
-  assert.ok(
-    !(await body().innerText()).includes(alpha),
-    "live preview hides stable IDs without rewriting Markdown",
+  // 列表已可见时再按 Ctrl+Space 重启（pending 落定窗口）：Enter 同样立刻接受，不偷跑成换行。
+  await body().fill("[[Al");
+  await page.getByRole("option").filter({ hasText: "Alpha" }).first().waitFor();
+  await body().press("Control+Space");
+  await body().press("Enter");
+  assert.match(await body().innerText(), new RegExp(alpha));
+  await saved();
+  // 实时预览：稳定 ID 隐藏为可读文本，Markdown 原文不被改写。
+  await title().click();
+  await page.locator("button.knowledge-inline-link").filter({ hasText: "Alpha" }).waitFor();
+  const widget = page.locator("button.knowledge-inline-link").filter({ hasText: "Alpha" }).first();
+  assert.equal(await widget.innerText(), "Alpha");
+  assert.ok(!(await body().innerText()).includes(alpha), "live preview hides stable IDs");
+  await source(true);
+  assert.equal(
+    (await body().innerText()).trim(),
+    `[[${alpha}|Alpha]]`,
+    "live preview must not rewrite Markdown",
   );
-  await page.getByRole("button", { name: "源码模式", exact: true }).click();
-  assert.equal(await body().innerText(), originalLink);
+  await source(false);
   await body().fill(
     "# 把零散想法连成知识\n\n记录只是开始，让笔记之间建立联系。\n\n## 下一步\n\n- [ ] 回顾今天的想法\n- [ ] 整理资料与来源\n\n## 关联阅读\n\n[[Beta|链接与引用示例]]\n\n**保留原始 Markdown，让知识可以随时带走。**",
   );
   await saved();
-  await page.getByRole("button", { name: "实时预览", exact: true }).click();
-  await page.getByRole("button", { name: "大纲与链接", exact: true }).click();
+  await page
+    .locator("button.knowledge-inline-link")
+    .filter({ hasText: "链接与引用示例" })
+    .waitFor();
+  assert.equal(
+    await page
+      .locator("button.knowledge-inline-link")
+      .filter({ hasText: "链接与引用示例" })
+      .innerText(),
+    "链接与引用示例",
+    "live preview shows the readable link text",
+  );
+  for (const heading of ["下一步", "关联阅读"]) {
+    await rail().getByRole("button", { name: heading, exact: true }).waitFor();
+  }
   await mkdir("scripts/shots", { recursive: true });
   await page.screenshot({ path: "scripts/shots/knowledge-workbench-desktop.png" });
   for (const viewport of [
@@ -213,19 +347,26 @@ try {
     assert.ok(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
     );
+    // 小屏：上下文收进标题下的「大纲与链接」折叠段。
+    const inline = page.locator("details.knowledge-context-inline");
+    await inline.getByText("大纲与链接", { exact: true }).waitFor();
     if (viewport.width === 375) {
+      await inline.getByText("大纲与链接", { exact: true }).click();
+      await rail().getByRole("button", { name: "关联阅读", exact: true }).waitFor();
+      await inline.getByText("大纲与链接", { exact: true }).click();
+      await page.keyboard.press("Control+o");
+      const mobilePicker = palette();
+      await mobilePicker.getByLabel("搜索笔记或操作").fill("Alpha");
+      await mobilePicker.getByLabel("搜索笔记或操作").press("Escape");
+      await mobilePicker.waitFor({ state: "hidden" });
       await page.getByRole("button", { name: "打开笔记列表", exact: true }).click();
-      await page.getByRole("button", { name: "快速切换笔记", exact: true }).click();
-      await picker.getByLabel("查找或创建笔记").fill("Alpha");
-      await picker.getByLabel("查找或创建笔记").press("Escape");
-      await picker.waitFor({ state: "hidden" });
       await page.getByRole("button", { name: "收起列表", exact: true }).click();
     }
     await page.screenshot({ path: `scripts/shots/knowledge-workbench-${viewport.width}.png` });
   }
   assert.deepEqual(errors, []);
   console.log(
-    "knowledge workbench PASSED: undo, navigation, backlinks, GFM, switcher, templates, daily notes, favorites, completion and mobile",
+    "knowledge workbench PASSED: undo across modes and notes, tabs, context rail (outline/backlinks/outlinks), GFM, palette IME-safety, / and overflow templates, daily notes, favorites, completion, live preview and mobile",
   );
 } catch (error) {
   await mkdir("scripts/shots", { recursive: true });

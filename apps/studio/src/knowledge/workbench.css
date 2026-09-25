@@ -1,5 +1,5 @@
 /*
- * 知识工作台——写作流：快捷入口、视图切换、标签页、上下文与快速切换。
+ * 知识工作台——写作流：视图切换、显式标签、上下文与命令面板。
  * 令牌与原语同 knowledge.css；hover 只做颜色/背景变化。
  */
 
@@ -20,58 +20,43 @@
   border-bottom-color: var(--color-accent);
 }
 
-/* ---------- 侧栏快捷入口 ---------- */
+/* ---------- 视图切换与集合筛选 ---------- */
 
-.knowledge-shortcuts {
-  display: grid;
-  gap: var(--space-1);
-}
-
-.knowledge-shortcuts button {
+.knowledge-view-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: var(--h-control-lg);
-  padding: 0 var(--space-2);
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-muted);
-  text-align: left;
-  font-size: var(--text-sm);
+  flex-wrap: wrap;
 }
 
-.knowledge-shortcuts button:hover {
+.knowledge-chip-group {
+  display: flex;
+  gap: var(--space-1);
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+.knowledge-chip-group button {
+  min-height: var(--h-control);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.knowledge-chip-group button:hover {
   background: var(--color-raised);
   color: var(--color-text);
 }
 
-.knowledge-shortcuts kbd {
-  margin-left: auto;
+.knowledge-chip-group button[aria-pressed="true"] {
+  background: var(--color-raised);
+  color: var(--color-text);
 }
 
-.knowledge-library-views {
-  display: flex;
-  gap: var(--space-1);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.knowledge-library-views button {
-  flex: 1;
-  min-height: var(--h-control-lg);
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  font-size: var(--text-sm);
-  color: var(--color-muted);
-}
-
-.knowledge-library-views button[aria-pressed="true"] {
-  color: var(--color-accent);
-  border-bottom-color: var(--color-accent);
-}
-
-.knowledge-collection-create summary,
 .knowledge-sidebar-bottom summary {
   display: list-item;
   min-height: var(--h-control);
@@ -100,11 +85,11 @@
   color: var(--color-accent);
 }
 
-.knowledge-collection-create form {
-  padding: var(--space-2) 0;
+.knowledge-add-collection {
+  padding: var(--space-1) 0;
 }
 
-/* ---------- 标签页 ---------- */
+/* ---------- 标签页（显式打开，安静底色） ---------- */
 
 .knowledge-tabs-bar {
   display: flex;
@@ -113,14 +98,6 @@
   min-height: var(--h-toolbar);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
-}
-
-.knowledge-nav-history {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 0 var(--space-2);
-  border-right: 1px solid var(--color-border);
 }
 
 .knowledge-tabs {
@@ -136,14 +113,12 @@
   flex-shrink: 0;
   max-width: 230px;
   border-right: 1px solid var(--color-border);
-  border-bottom: 2px solid transparent;
-  color: var(--color-muted);
+  color: var(--color-faint);
 }
 
 .knowledge-tab.active {
   background: var(--color-bg);
   color: var(--color-text);
-  border-bottom-color: var(--color-accent);
 }
 
 .knowledge-tab button {
@@ -154,7 +129,9 @@
 
 .knowledge-tab button:first-child {
   min-width: 0;
-  padding: 0 var(--space-3) 0 var(--space-4);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-1) 0 var(--space-4);
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -162,11 +139,22 @@
   font-size: var(--text-sm);
 }
 
-.knowledge-tab button:last-child {
-  width: var(--h-control-lg);
+.knowledge-tab-pin,
+.knowledge-tab-close {
+  width: var(--h-control);
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  color: var(--color-faint);
+}
+
+.knowledge-tab-pin:hover,
+.knowledge-tab-close:hover {
+  color: var(--color-text);
+}
+
+.knowledge-tab-pin[aria-pressed="true"] {
+  color: var(--color-text);
 }
 
 /* ---------- 文档与写作工具 ---------- */
@@ -183,22 +171,121 @@
   min-width: 0;
 }
 
-.knowledge-writing-tools {
+/* ⋯ 溢出菜单：写作工具全部收进这一层浮出。 */
+.knowledge-tools {
+  position: relative;
+}
+
+.knowledge-tools-toggle {
+  min-width: var(--h-control);
+  letter-spacing: 0.08em;
+}
+
+.knowledge-tools-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  display: none;
+  min-width: 230px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-floating);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard),
+    display var(--duration-base) allow-discrete;
+}
+
+.knowledge-tools-menu[data-open="true"] {
+  display: grid;
+  gap: var(--space-1);
+  opacity: 1;
+  transform: none;
+}
+
+@starting-style {
+  .knowledge-tools-menu[data-open="true"] {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.knowledge-tools-menu button {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
-  color: var(--color-faint);
+  width: 100%;
+  min-height: var(--h-control);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.knowledge-tools-menu button:hover {
+  color: var(--color-text);
+}
+
+.knowledge-tools-menu button[aria-pressed="true"] {
+  color: var(--color-accent);
+}
+
+.knowledge-tools-menu button[aria-pressed="true"]::after {
+  content: "✓";
+  margin-left: auto;
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
 }
 
-.knowledge-writing-tools > span {
-  flex: 1;
+.knowledge-tools-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
 }
 
-.knowledge-writing-tools select {
-  max-width: 180px;
+.knowledge-tools-row .ui-section-label {
+  padding: 0;
+}
+
+.knowledge-tools-row .knowledge-chip-group button {
+  min-height: var(--space-6);
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.knowledge-tools-section summary {
+  min-height: var(--h-control);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.knowledge-tools-section summary:hover {
+  color: var(--color-text);
+}
+
+.knowledge-tools-list {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-1) 0 var(--space-2) var(--space-3);
+}
+
+.knowledge-tools-section .knowledge-hint {
+  padding: var(--space-1) var(--space-2) var(--space-2);
 }
 
 /* ---------- 上下文栏 ---------- */
@@ -219,14 +306,19 @@
   padding-top: var(--space-5);
 }
 
+/* 小节标题是 11px 大写等宽眉标（更强的排版角色），链接行是普通 13px 文本。 */
 .knowledge-context h2 {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--space-2);
-  font-size: var(--text-sm);
-  line-height: var(--text-sm--line-height);
-  margin: 0 0 var(--space-3);
-  color: var(--color-muted);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   font-weight: 500;
 }
 
@@ -239,19 +331,20 @@
 .knowledge-context button {
   display: block;
   width: 100%;
-  min-height: var(--h-control-lg);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1) var(--space-2);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
   text-align: left;
-  font-size: var(--text-sm);
+  font-size: var(--prose-row);
+  line-height: var(--text-base--line-height);
   color: var(--color-text);
   overflow-wrap: anywhere;
+  transition: color var(--duration-fast) var(--ease-standard);
 }
 
 .knowledge-context button:hover {
-  background: var(--color-raised);
+  color: var(--color-accent);
 }
 
 .knowledge-context button small {
@@ -261,9 +354,39 @@
 }
 
 .knowledge-context p {
+  margin: 0;
+  color: var(--color-faint);
   font-size: var(--text-sm);
-  color: var(--color-muted);
   line-height: var(--text-base--line-height);
+}
+
+/* 窄屏折叠段：上下文直接挂在标题下，去掉常驻栏外观。 */
+.knowledge-context-inline {
+  margin: 0 0 var(--space-5);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-2);
+}
+
+.knowledge-context-inline > summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--h-control);
+  cursor: pointer;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.knowledge-context-inline .knowledge-context {
+  position: static;
+  flex: none;
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  padding: var(--space-2) 0 var(--space-3);
+  border-left: 0;
 }
 
 /* ---------- 预览中的表格与任务列表 ---------- */
@@ -364,6 +487,16 @@
   padding: 0 var(--space-2);
 }
 
+.knowledge-switcher-group + .knowledge-switcher-group {
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+}
+
+.knowledge-switcher-group .ui-section-label {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+}
+
 .knowledge-switcher-results button {
   display: grid;
   gap: var(--space-1);
@@ -425,28 +558,20 @@
 
 /* ---------- 响应式 ---------- */
 
-@media (max-width: 1100px) {
-  .knowledge-document.with-context {
-    flex-direction: column;
+/* 上下文栏 ≥1100px 常驻右侧；窄屏改用标题下的折叠段（DOM 顺序即视觉顺序）。 */
+@media (max-width: 1099px) {
+  .knowledge-document > .knowledge-context {
+    display: none;
   }
-  .knowledge-context {
-    position: static;
-    flex: none;
-    width: 100%;
-    max-height: none;
-    border-left: 0;
-    border-top: 1px solid var(--color-border);
-    padding: var(--space-5);
+}
+
+@media (min-width: 1100px) {
+  .knowledge-context-inline {
+    display: none;
   }
 }
 
 @media (max-width: 720px) {
-  .knowledge-shortcuts kbd {
-    display: none;
-  }
-  .knowledge-writing-tools > span {
-    display: none;
-  }
   .knowledge-switcher {
     top: 5dvh;
     max-height: 90dvh;

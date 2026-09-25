@@ -88,58 +88,140 @@ async function device() {
     diagnostics.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText}`),
   );
   await page.goto(`${origin}/knowledge`);
-  await page.getByRole("heading", { name: "个人知识库", exact: true }).waitFor();
+  await page.getByRole("navigation", { name: "笔记列表" }).waitFor();
   return { context, page };
 }
 const saved = (page) =>
   page.locator('.knowledge-editor [role="status"]').filter({ hasText: "已保存到本机" }).waitFor();
+async function openSyncPopover(page) {
+  const popover = page.locator(".knowledge-sync-popover");
+  if (!(await popover.isVisible())) await page.locator(".knowledge-status-trigger").click();
+  await popover.waitFor();
+  return popover;
+}
+async function closeSyncPopover(page) {
+  const popover = page.locator(".knowledge-sync-popover");
+  if (await popover.isVisible()) {
+    await page.keyboard.press("Escape");
+    await popover.waitFor({ state: "hidden" });
+  }
+}
+// 同步按钮运行期间会改文案（同步中…/连接并同步中…）并禁用提交；完成信号取
+// 「闲置文案回来 + 本轮确实打到了 mock GitHub」，再断言状态行，避免拿上一次
+// 同步留下的旧状态交差。
+async function runAndWait(page, button, idleText) {
+  const before = fixture.state.requests.length;
+  await button.click();
+  for (let attempt = 0; attempt < 300; attempt++) {
+    const label = (await button.textContent())?.trim();
+    if (fixture.state.requests.length > before && label === idleText) return;
+    await page.waitForTimeout(100);
+  }
+  throw new Error(`同步操作未在预期时间内完成：${idleText}`);
+}
 async function connect(page) {
-  await page.getByRole("button", { name: "GitHub 同步设置", exact: true }).click();
+  const popover = await openSyncPopover(page);
+  await popover.getByRole("button", { name: "同步设置…", exact: true }).click();
+  // SecretField 从不把已存密钥渲染进输入框：已配置时只有「替换密钥」入口。
+  const token = page.getByLabel("GitHub Token", { exact: true });
+  if (!(await token.count()))
+    await page.getByRole("button", { name: "替换密钥", exact: true }).click();
   await page.getByLabel("GitHub 仓库地址").fill("https://github.com/alice/notes");
-  await page.getByLabel("GitHub Token", { exact: true }).fill("secret-browser-token");
-  await page.getByRole("button", { name: "连接并同步", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "已与 GitHub 同步" }).waitFor();
-  await page.getByRole("button", { name: "关闭连接设置", exact: true }).click();
+  await token.fill("secret-browser-token");
+  await runAndWait(
+    page,
+    page.locator("section.knowledge-sync").getByRole("button", { name: /连接并同步/u }),
+    "连接并同步",
+  );
+  // 完成提示是 连接成功，请处理内容冲突。/ 本批已同步… / 已与 GitHub 同步 之一；
+  // 冲突场景顶栏状态行也会给出冲突待处理。
+  await page.waitForFunction(() => {
+    const message =
+      document.querySelector("section.knowledge-sync [role='status']")?.textContent ?? "";
+    const line = document.querySelector(".knowledge-status-line")?.textContent ?? "";
+    return /已与 GitHub 同步|本批已同步|连接成功/u.test(message) || /已同步|冲突待处理/u.test(line);
+  });
+  assert.equal(await page.locator("section.knowledge-sync [role='alert']").count(), 0);
+  await page.getByRole("button", { name: "关闭同步设置", exact: true }).click();
   // 浮层关闭有退场过渡：等它真正隐藏，后续步骤的可见性判断才稳定。
   await page
-    .getByRole("button", { name: "关闭连接设置", exact: true })
+    .getByRole("button", { name: "关闭同步设置", exact: true })
     .waitFor({ state: "hidden" });
+  await closeSyncPopover(page);
 }
 async function sync(page, conflict = false) {
-  const close = page.getByRole("button", { name: "关闭连接设置", exact: true });
+  const close = page.getByRole("button", { name: "关闭同步设置", exact: true });
   if (await close.isVisible()) {
     await close.click();
     await close.waitFor({ state: "hidden" });
   }
-  await page.getByRole("button", { name: "立即同步", exact: true }).click();
-  // Conflict handling may open the dialog, which has its own sync button.
-  await page
-    .locator(".knowledge-toolbar")
-    .getByRole("button", { name: "立即同步", exact: true })
-    .waitFor();
-  await page
-    .locator(".knowledge-notice")
-    .filter({ hasText: conflict ? "发现冲突" : "已与 GitHub 同步" })
-    .waitFor();
+  // 上一次同步的提示还挂着时，同样的提示文本不代表新同步已完成；先清掉旧提示。
+  const dismiss = page.getByRole("button", { name: "关闭提示", exact: true });
+  if (await dismiss.isVisible()) {
+    await dismiss.click();
+    await page.locator(".knowledge-notice").waitFor({ state: "hidden" });
+  }
+  const popover = await openSyncPopover(page);
+  await runAndWait(page, popover.getByRole("button", { name: /立即同步|同步中/u }), "立即同步");
+  // 同步落定后的顶栏状态行是本轮结果：干净同步为已同步，冲突为 N 处冲突待处理。
+  if (conflict)
+    await page.locator(".knowledge-status-line").filter({ hasText: "冲突待处理" }).waitFor();
+  else await page.locator(".knowledge-status-line").filter({ hasText: "已同步" }).waitFor();
   assert.equal(await page.locator(".knowledge-notice.is-error").count(), 0);
+  await closeSyncPopover(page);
 }
 async function body(page, text) {
   await page.getByLabel("笔记正文", { exact: true }).fill(text);
   await saved(page);
 }
+// 实时预览装饰是纯呈现层：编辑模式会把标题/链接标记 `Decoration.replace` 掉，
+// .cm-line 的渲染文本不等于文档原文。保留 `.cm-line` join 的读法，但在「源码」
+// 模式（live 关闭）下读到的才是完整 Markdown（含 #、[[…]] 等标记）。
+async function rawBody(page) {
+  await page.getByLabel("笔记正文", { exact: true }).waitFor();
+  const source = page.getByRole("button", { name: "源码", exact: true });
+  const raw = (await source.getAttribute("aria-pressed")) !== "true";
+  if (raw) await source.click();
+  try {
+    return await page.evaluate(() =>
+      [...document.querySelectorAll('[aria-label="笔记正文"] .cm-line')]
+        .map((line) => line.textContent)
+        .join("\n"),
+    );
+  } finally {
+    if (raw) await source.click();
+  }
+}
 async function matchesBody(page, text) {
   // The body is a CodeMirror surface, not a <textarea>. Match its rendered
   // lines rather than a `.value` property that no longer exists: CodeMirror
   // wraps each visual line in its own element, so joining `.cm-line` is the
-  // faithful read of the document text.
-  await page.waitForFunction(
-    (expected) =>
-      [...document.querySelectorAll('[aria-label="笔记正文"] .cm-line')]
-        .map((line) => line.textContent)
-        .join("\n") === expected,
-    text,
-  );
+  // faithful read of the document text (in source mode, see rawBody).
+  await page.getByLabel("笔记正文", { exact: true }).waitFor();
+  const source = page.getByRole("button", { name: "源码", exact: true });
+  const raw = (await source.getAttribute("aria-pressed")) !== "true";
+  if (raw) await source.click();
+  try {
+    await page.waitForFunction(
+      (expected) =>
+        [...document.querySelectorAll('[aria-label="笔记正文"] .cm-line')]
+          .map((line) => line.textContent)
+          .join("\n") === expected,
+      text,
+    );
+  } finally {
+    if (raw) await source.click();
+  }
 }
+async function retitle(page, text) {
+  // 行内重命名是防抖异步的；撤销提示出现代表改名（含链接改写）已经落库。
+  await page.getByLabel("笔记标题", { exact: true }).fill(text);
+  await page.locator(".knowledge-undo-toast-message").filter({ hasText: "已重命名" }).waitFor();
+}
+const historyEntry = (page, reason) =>
+  page
+    .locator("li.knowledge-history-entry")
+    .filter({ has: page.locator(".knowledge-history-entry-reason", { hasText: reason }) });
 let a, b;
 try {
   a = await device();
@@ -148,13 +230,14 @@ try {
   await a.page.getByRole("button", { name: "新建笔记", exact: true }).click();
   await a.page.getByLabel("笔记标题", { exact: true }).fill("AI Native 知识系统");
   await a.page.getByLabel("笔记标签", { exact: true }).pressSequentially("local, markdown");
+  // 新的标签输入是 chip 语义：逗号/回车提交，最后一段留在草稿里，回车落库。
+  await a.page.getByLabel("笔记标签", { exact: true }).press("Enter");
   await body(a.page, "# 独立手写知识\n\n第一段\n\n第三段\n");
   await a.page.reload();
   await saved(a.page);
-  assert.equal(
-    await a.page.getByLabel("笔记标签", { exact: true }).inputValue(),
-    "local, markdown",
-  );
+  // 标签在新 UI 里是 chip（移除标签 X 按钮），不再回填输入框文本。
+  for (const tag of ["local", "markdown"])
+    await a.page.getByRole("button", { name: `移除标签 ${tag}`, exact: true }).waitFor();
   await matchesBody(a.page, "# 独立手写知识\n\n第一段\n\n第三段\n");
 
   await a.page.getByRole("button", { name: "打开全局搜索" }).click();
@@ -180,33 +263,66 @@ try {
   await matchesBody(a.page, merged);
   await matchesBody(b.page, merged);
 
-  await body(a.page, "设备 A 同一段冲突");
-  await body(b.page, "设备 B 同一段冲突");
+  // 真冲突：标题被双方各自改写（无法自动合并 -> 冲突行），正文改动落在不同行
+  // （保守行合并可合并 -> 「合并」可用，双方正文改动都保留）。
+  await body(a.page, "# 独立手写知识\n\n设备 A 的冲突段\n\n设备 B 的第三段\n");
+  await retitle(a.page, "冲突标题 A");
+  await body(b.page, "# 独立手写知识\n\n设备 A 的第一段\n\n设备 B 的冲突段\n");
+  await retitle(b.page, "冲突标题 B");
   await sync(a.page);
   await sync(b.page, true);
   await b.page.reload();
+  await b.page.getByText("这篇笔记存在同步冲突，双方内容已保留。").waitFor();
   await b.page.getByRole("button", { name: "处理冲突", exact: true }).click();
+  assert.equal(await b.page.locator("article.knowledge-conflict-row").count(), 1);
+  await b.page.getByText("合并保留本机的标题与路径，正文改动双方保留。").waitFor();
+  await b.page.getByRole("button", { name: "合并", exact: true }).click();
+  await b.page.getByText("已合并双方正文改动；标题与路径保留本机，远端版本已存入历史").waitFor();
+  await b.page.locator("article.knowledge-conflict-row").waitFor({ state: "hidden" });
+  await b.page.getByRole("button", { name: "关闭处理冲突", exact: true }).click();
+  await b.page
+    .getByRole("button", { name: "关闭处理冲突", exact: true })
+    .waitFor({ state: "hidden" });
+  // SecretField 不回显已存密钥：重载之后只能看到空的 Token 输入框。
+  const popover = await openSyncPopover(b.page);
+  await popover.getByRole("button", { name: "同步设置…", exact: true }).click();
   assert.equal(await b.page.getByLabel("GitHub Token", { exact: true }).inputValue(), "");
-  assert.equal(await b.page.locator(".knowledge-conflict").count(), 1);
-  await b.page.getByRole("button", { name: "保留双方", exact: true }).click();
-  await b.page.locator(".knowledge-conflict").waitFor({ state: "hidden" });
   await b.page.getByLabel("GitHub Token", { exact: true }).fill("secret-browser-token");
-  await b.page.getByRole("button", { name: "连接并同步", exact: true }).click();
-  await b.page.getByRole("status").filter({ hasText: "已与 GitHub 同步" }).waitFor();
+  await runAndWait(
+    b.page,
+    b.page.locator("section.knowledge-sync").getByRole("button", { name: /连接并同步/u }),
+    "连接并同步",
+  );
+  await b.page.getByRole("button", { name: "关闭同步设置", exact: true }).click();
+  await b.page
+    .getByRole("button", { name: "关闭同步设置", exact: true })
+    .waitFor({ state: "hidden" });
+  await closeSyncPopover(b.page);
   await sync(b.page);
   await sync(a.page);
-  assert.equal(await a.page.locator(".knowledge-note-card").count(), 2);
+  // 合并诚实：两台设备收敛到同一合并正文（双方正文改动都在），本机标题胜出，
+  // 且「保留双方」不再制造第二篇笔记。
+  const conflictMerged = "# 独立手写知识\n\n设备 A 的冲突段\n\n设备 B 的冲突段\n";
+  await matchesBody(b.page, conflictMerged);
+  await matchesBody(a.page, conflictMerged);
+  assert.equal(await a.page.locator(".knowledge-note-card").count(), 1);
+  assert.equal(await b.page.locator(".knowledge-note-card").count(), 1);
+  await a.page.locator(".knowledge-note-card").filter({ hasText: "冲突标题 B" }).waitFor();
 
   await a.page.getByRole("button", { name: "笔记版本历史", exact: true }).click();
+  await a.page.getByRole("tab", { name: "GitHub", exact: true }).click();
   await a.page.getByRole("button", { name: "读取 GitHub 历史", exact: true }).click();
-  await a.page
-    .locator(".knowledge-history-list button")
-    .filter({ hasText: "GitHub ·" })
+  await historyEntry(a.page, "GitHub").last().waitFor();
+  await historyEntry(a.page, "GitHub")
     .last()
+    .getByRole("button", { name: "恢复", exact: true })
     .click();
-  await a.page.getByRole("button", { name: "恢复此版本", exact: true }).click();
-  await matchesBody(a.page, "# 独立手写知识\n\n第一段\n\n第三段\n");
+  // 恢复是异步落库的，弹窗不自动关；模态会挡住模式切换，先关再断言正文。
   await a.page.getByRole("button", { name: "关闭版本历史", exact: true }).click();
+  await a.page
+    .getByRole("button", { name: "关闭版本历史", exact: true })
+    .waitFor({ state: "hidden" });
+  await matchesBody(a.page, "# 独立手写知识\n\n第一段\n\n第三段\n");
 
   // Rendering untrusted Markdown must not execute HTML or fetch remote images.
   let externalImages = 0;
@@ -218,12 +334,12 @@ try {
     a.page,
     "# 安全预览\n<script>window.knowledgeXss=true</script>\n![private](https://tracking.invalid/pixel)\n[unsafe](javascript:alert(1))",
   );
-  await a.page.getByRole("button", { name: "预览", exact: true }).click();
+  await a.page.getByRole("button", { name: "阅读", exact: true }).click();
   await a.page.locator(".knowledge-prose h1").waitFor();
   assert.equal(await a.page.evaluate(() => window.knowledgeXss), undefined);
   assert.equal(externalImages, 0);
   assert.equal(await a.page.locator('.knowledge-prose a[href^="javascript:"]').count(), 0);
-  await a.page.getByRole("button", { name: "继续编辑", exact: true }).click();
+  await a.page.getByRole("button", { name: "编辑", exact: true }).click();
   await body(a.page, merged);
 
   const downloadEvent = a.page.waitForEvent("download");
@@ -241,14 +357,12 @@ try {
   await a.page.getByRole("button", { name: "确认删除笔记", exact: true }).click();
   await a.page.getByRole("button", { name: "笔记版本历史", exact: true }).click();
   await a.page.getByLabel("显示全部笔记与删除记录").check();
-  await a.page
-    .locator(".knowledge-history-list button")
-    .filter({ hasText: "删除前版本" })
+  await historyEntry(a.page, "删除前版本")
     .first()
+    .getByRole("button", { name: "恢复", exact: true })
     .click();
-  await a.page.getByRole("button", { name: "恢复此版本", exact: true }).click();
-  await matchesBody(a.page, "# 导入手写笔记\n\n开放格式保持可读。");
   await a.page.getByRole("button", { name: "关闭版本历史", exact: true }).click();
+  await matchesBody(a.page, "# 导入手写笔记\n\n开放格式保持可读。");
 
   await mkdir("scripts/shots", { recursive: true });
   await a.page.screenshot({ path: "scripts/shots/knowledge-desktop.png", fullPage: true });
@@ -289,12 +403,8 @@ try {
   await b.page.getByRole("button", { name: "从资料集合导入", exact: true }).click();
   await b.page.locator(".knowledge-note-card").filter({ hasText: "独特引用证据" }).click();
   await b.page.locator(".knowledge-citations").waitFor();
-  // Read the editor's rendered lines, not a textarea `.value`.
-  const importedBody = await b.page.evaluate(() =>
-    [...document.querySelectorAll('[aria-label="笔记正文"] .cm-line')]
-      .map((line) => line.textContent)
-      .join("\n"),
-  );
+  // Read the editor's rendered lines, not a textarea `.value` (source mode: raw text).
+  const importedBody = await rawBody(b.page);
   assert(importedBody.includes("> 独特引用证据"));
   await body(b.page, "独特引用证据的手写整理，不应被重复导入覆盖。");
   const importedCount = await b.page.locator(".knowledge-note-card").count();

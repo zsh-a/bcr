@@ -26,11 +26,16 @@ try {
   await body.fill("当前本机的新正文");
   await saved();
   await page.getByRole("button", { name: "恢复 ZIP 备份", exact: true }).click();
-  const panel = page.getByRole("region", { name: "恢复知识库备份", exact: true });
+  const dialog = page.getByRole("dialog", { name: "恢复备份", exact: true });
+  await dialog.waitFor();
+  const panel = dialog.getByRole("region", { name: "恢复知识库备份", exact: true });
   await panel.getByLabel("选择知识库备份", { exact: true }).setInputFiles(path);
   await panel.getByText(/将新增 0 篇/).waitFor();
+  assert.equal(await panel.getByRole("radio").count(), 3, "restore mode offers keep/copy/replace");
+  await panel.getByText(/替换 0 篇、跳过 1 篇/).waitFor();
   await panel.getByLabel("使用备份版本替换同 ID 的内容").check();
   await panel.getByText(/替换 1 篇/).waitFor();
+  await panel.getByText(/跳过 0 篇/).waitFor();
   assert.ok((await body.textContent()).includes("当前本机的新正文"), "preview must not write");
   await panel.getByRole("button", { name: "确认恢复", exact: true }).click();
   await page.getByText("备份已恢复到本机，未修改同步连接", { exact: true }).waitFor();

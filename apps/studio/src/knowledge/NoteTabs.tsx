@@ -1,66 +1,63 @@
-import { IconButton } from "@bcr/react";
-import { X, ArrowLeft, ArrowRight } from "lucide-react";
+import { Pin, X } from "lucide-react";
 import type { KnowledgeNote } from "./model";
 
+/** 显式标签栏：无历史箭头，每个标签可固定、可关闭。 */
 export function NoteTabs({
   notes,
   ids,
+  pinned,
   activeId,
   onSelect,
   onClose,
-  history,
-  onHistory,
+  onTogglePin,
 }: {
   notes: Record<string, KnowledgeNote>;
   ids: string[];
+  pinned: readonly string[];
   activeId: string | undefined;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
-  history: { back: boolean; forward: boolean };
-  onHistory: (direction: -1 | 1) => void;
+  onTogglePin: (id: string) => void;
 }) {
   const tabs = ids.filter((id) => Object.hasOwn(notes, id));
   return (
     <div className="knowledge-tabs-bar">
-      <div className="knowledge-nav-history">
-        <IconButton
-          label="上一条笔记"
-          size="sm"
-          disabled={!history.back}
-          onClick={() => onHistory(-1)}
-        >
-          <ArrowLeft size={16} />
-        </IconButton>
-        <IconButton
-          label="下一条笔记"
-          size="sm"
-          disabled={!history.forward}
-          onClick={() => onHistory(1)}
-        >
-          <ArrowRight size={16} />
-        </IconButton>
-      </div>
       <nav className="knowledge-tabs" aria-label="打开的笔记">
-        {tabs.map((id) => (
-          <div key={id} className={`knowledge-tab ${activeId === id ? "active" : ""}`}>
-            <button
-              type="button"
-              aria-current={activeId === id ? "page" : undefined}
-              onClick={() => onSelect(id)}
-              title={notes[id]!.title}
-            >
-              {notes[id]!.title || "未命名笔记"}
-            </button>
-            <button
-              type="button"
-              aria-label={`关闭笔记标签 ${notes[id]!.title || "未命名笔记"}`}
-              disabled={tabs.length === 1}
-              onClick={() => onClose(id)}
-            >
-              <X size={13} />
-            </button>
-          </div>
-        ))}
+        {tabs.map((id) => {
+          const name = notes[id]!.title || "未命名笔记";
+          const isPinned = pinned.includes(id);
+          return (
+            <div key={id} className={`knowledge-tab ${activeId === id ? "active" : ""}`}>
+              <button
+                type="button"
+                aria-current={activeId === id ? "page" : undefined}
+                onClick={() => onSelect(id)}
+                title={name}
+              >
+                {name}
+              </button>
+              <button
+                type="button"
+                className="knowledge-tab-pin"
+                aria-label={`${isPinned ? "取消固定" : "固定"}标签 ${name}`}
+                aria-pressed={isPinned}
+                title={isPinned ? "取消固定" : "固定"}
+                onClick={() => onTogglePin(id)}
+              >
+                <Pin size={11} fill={isPinned ? "currentColor" : "none"} />
+              </button>
+              <button
+                type="button"
+                className="knowledge-tab-close"
+                aria-label={`关闭标签 ${name}`}
+                title="关闭"
+                onClick={() => onClose(id)}
+              >
+                <X size={12} />
+              </button>
+            </div>
+          );
+        })}
       </nav>
     </div>
   );

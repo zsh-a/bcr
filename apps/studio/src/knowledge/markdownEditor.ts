@@ -4,10 +4,12 @@ import { HighlightStyle, syntaxHighlighting, type LanguageSupport } from "@codem
 import { EditorState, type Extension } from "@codemirror/state";
 import {
   EditorView,
+  ViewPlugin,
   drawSelection,
   highlightActiveLine,
   highlightSpecialChars,
   keymap,
+  type ViewUpdate,
 } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { tags } from "@lezer/highlight";
@@ -73,6 +75,55 @@ export const knowledgeEditorTheme = EditorView.theme(
       border: `1px solid ${border}`,
       borderRadius: "var(--radius-sm)",
     },
+    /* / 插入面板：图标列 + 单行预览，行距走令牌。 */
+    ".cm-tooltip-autocomplete": {
+      padding: "var(--space-1)",
+      minWidth: "260px",
+    },
+    ".cm-tooltip-autocomplete > ul > li": {
+      display: "flex",
+      alignItems: "baseline",
+      gap: "var(--space-2)",
+      padding: "var(--space-2) var(--space-3)",
+      borderRadius: "var(--radius-sm)",
+      fontSize: "var(--prose-row)",
+      lineHeight: "var(--text-sm--line-height)",
+    },
+    ".cm-completionIcon": {
+      width: "var(--space-6)",
+      flexShrink: "0",
+      fontFamily: "var(--font-mono)",
+      fontSize: "var(--text-xs)",
+      color: faint,
+    },
+    ".cm-completionLabel": {
+      color: text,
+      fontFamily: "var(--font-sans)",
+    },
+    ".cm-completionDetail": {
+      marginLeft: "auto",
+      color: faint,
+      fontStyle: "normal",
+      fontFamily: "var(--font-mono)",
+      fontSize: "var(--text-xs)",
+    },
+    ".cm-completionMatchedText": {
+      textDecoration: "none",
+      color: accent,
+      fontWeight: "600",
+    },
+    /* 图标 = 字形标记，保持安静；类型名与 noteEditing 的 type 字段对应。 */
+    ".cm-completionIcon-heading1::before": { content: '"H1"' },
+    ".cm-completionIcon-heading2::before": { content: '"H2"' },
+    ".cm-completionIcon-heading3::before": { content: '"H3"' },
+    ".cm-completionIcon-list::before": { content: '"•"' },
+    ".cm-completionIcon-task::before": { content: '"☐"' },
+    ".cm-completionIcon-quote::before": { content: '"❯"' },
+    ".cm-completionIcon-code::before": { content: '"</>"' },
+    ".cm-completionIcon-divider::before": { content: '"—"' },
+    ".cm-completionIcon-table::before": { content: '"⊞"' },
+    ".cm-completionIcon-date::before": { content: '"◷"' },
+    ".cm-completionIcon-template::before": { content: '"≡"' },
   },
   { dark: true },
 );
@@ -80,24 +131,26 @@ export const knowledgeEditorTheme = EditorView.theme(
 /**
  * Markdown 高亮。
  *
- * 结构强调只靠字重，不放大字号，源码与正文保持同一节奏；
- * 语法符号（列表符、围栏、链接括号）退到 faint，不与内容争夺注意力。
+ * 标题在源码与实时预览里保持同一层级缩放（H1/H2/H3 = 22/18/16，w500），
+ * 永远低于笔记标题的 26px；语法符号（列表符、围栏、链接括号）退到 faint，
+ * 不与内容争夺注意力。字号只读知识模块声明的排版变量。
  */
 export const knowledgeMarkdownHighlight = HighlightStyle.define(
   [
-    { tag: tags.heading1, color: text, fontWeight: "600" },
-    { tag: tags.heading2, color: text, fontWeight: "600" },
-    { tag: tags.heading3, color: text, fontWeight: "600" },
-    { tag: tags.heading4, color: text, fontWeight: "600" },
-    { tag: tags.heading5, color: text, fontWeight: "600" },
-    { tag: tags.heading6, color: text, fontWeight: "600" },
+    { tag: tags.heading1, color: text, fontWeight: "500", fontSize: "var(--prose-h1)" },
+    { tag: tags.heading2, color: text, fontWeight: "500", fontSize: "var(--prose-h2)" },
+    { tag: tags.heading3, color: text, fontWeight: "500", fontSize: "var(--text-lg)" },
+    { tag: tags.heading4, color: text, fontWeight: "500" },
+    { tag: tags.heading5, color: text, fontWeight: "500" },
+    { tag: tags.heading6, color: text, fontWeight: "500" },
     { tag: tags.strong, color: text, fontWeight: "600" },
     { tag: tags.emphasis, color: text, fontStyle: "italic" },
     { tag: tags.strikethrough, color: faint, textDecoration: "line-through" },
     { tag: tags.link, color: accent },
-    { tag: tags.url, color: accent },
+    { tag: tags.url, color: faint },
     { tag: tags.monospace, color: amber },
     { tag: tags.quote, color: muted, fontStyle: "italic" },
+    { tag: tags.list, color: faint },
     { tag: tags.content, color: muted },
     { tag: tags.contentSeparator, color: faint },
     { tag: tags.labelName, color: faint },
@@ -158,4 +211,35 @@ export function knowledgeEditorExtensions(
         );
     }),
   ];
+}
+
+/**
+ * 打字机模式：光标移动时把光标行滚动到视区约 60% 高度（scrollIntoView）。
+ * 防抖收敛连续按键的滚动；`enabled` 关闭时完全不干预原生滚动。
+ */
+export function typewriterMode(enabled: () => boolean) {
+  return ViewPlugin.fromClass(
+    class {
+      private timer: number | undefined;
+      update(update: ViewUpdate) {
+        if (!enabled() || !update.view.hasFocus) return;
+        if (!update.selectionSet && !update.docChanged) return;
+        if (this.timer !== undefined) window.clearTimeout(this.timer);
+        this.timer = window.setTimeout(() => {
+          this.timer = undefined;
+          const view = update.view;
+          if (!view.hasFocus || !enabled()) return;
+          view.dispatch({
+            effects: EditorView.scrollIntoView(view.state.selection.main.head, {
+              y: "start",
+              yMargin: view.dom.clientHeight * 0.6,
+            }),
+          });
+        }, 150);
+      }
+      destroy() {
+        if (this.timer !== undefined) window.clearTimeout(this.timer);
+      }
+    },
+  );
 }

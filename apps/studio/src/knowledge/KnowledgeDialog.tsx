@@ -1,7 +1,15 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 import { IconButton } from "@bcr/react";
 import { X } from "lucide-react";
 import "./dialog.css";
+
+/** 聚焦目标必须是可聚焦的可见控件；返回是否真的拿到了焦点。 */
+function refocus(element: Element | null | undefined) {
+  if (!(element instanceof HTMLElement) || element === document.body || !element.isConnected)
+    return false;
+  element.focus({ preventScroll: true });
+  return document.activeElement === element;
+}
 
 /** Native top-layer dialog: keeps form drafts mounted without moving the document. */
 export function KnowledgeDialog({
@@ -10,12 +18,15 @@ export function KnowledgeDialog({
   onClose,
   children,
   error,
+  returnFocusRef,
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
   children: ReactNode;
   error?: string;
+  /** 打开元素会随弹层卸载（溢出菜单、命令面板）时的首选焦点归还目标；可选。 */
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const visited = useRef(false);
@@ -43,8 +54,13 @@ export function KnowledgeDialog({
       observer.disconnect();
       dialog.close();
       document.body.style.overflow = overflow;
-      if (previous instanceof HTMLElement && previous.isConnected)
-        previous.focus({ preventScroll: true });
+      // 打开元素可能已卸载（溢出菜单/命令面板这类瞬时入口），焦点停在 body 时
+      // 退回可见的稳定触发器：调用方指定的目标优先，其次状态区/更多操作按钮。
+      if (!refocus(previous)) {
+        refocus(returnFocusRef?.current) ||
+          refocus(document.querySelector('[data-testid="knowledge-status"] button')) ||
+          refocus(document.querySelector('button[aria-label="更多操作"]'));
+      }
     };
   }, [open]);
   function dismiss() {
