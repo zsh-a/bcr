@@ -135,11 +135,29 @@ try {
     "Readable page 8",
   );
   await page.locator(".reader-import-progress").waitFor({ state: "hidden" });
+  // Search navigation and PDF rendering can still adjust the sticky layout.
+  // Compare against the actual mobile chrome, allowing subpixel rounding.
+  await page.waitForFunction(() => {
+    const tools = document.querySelector(".reader-pdf-tools")?.getBoundingClientRect();
+    const chrome = document.querySelector(".reader-toolbar")?.getBoundingClientRect();
+    return (
+      tools &&
+      chrome &&
+      tools.top >= chrome.bottom - 1 &&
+      tools.top < chrome.bottom + 64 &&
+      tools.bottom <= innerHeight
+    );
+  });
+  await page.getByRole("spinbutton", { name: "PDF 页码" }).click({ trial: true });
   await page.screenshot({ path: join(directory, "pdf-mobile.png") });
   const toolbar = await page.locator(".reader-pdf-tools").boundingBox();
+  const chrome = await page.locator(".reader-toolbar").boundingBox();
   assert(
-    toolbar !== null && toolbar.y >= 56 && toolbar.y < 120,
-    "PDF toolbar must stay reachable below mobile chrome",
+    toolbar !== null &&
+      chrome !== null &&
+      toolbar.y >= chrome.y + chrome.height - 1 &&
+      toolbar.y < chrome.y + chrome.height + 64,
+    `PDF toolbar must stay reachable below mobile chrome: ${JSON.stringify({ toolbar, chrome })}`,
   );
 
   await page.getByRole("button", { name: "返回原处", exact: true }).click();
