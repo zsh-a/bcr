@@ -7,6 +7,8 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   color: var(--color-muted);
 }
 
@@ -17,6 +19,8 @@
 }
 
 .studio-theme-picker select {
+  flex: 1;
+  min-width: 0;
   min-height: var(--h-control-lg);
   padding: 0 var(--space-2) 0 var(--space-8);
   border: 1px solid var(--color-border);
@@ -34,11 +38,8 @@
 }
 
 .studio-theme-error {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  z-index: 1;
-  width: min(var(--w-sidebar), calc(100vw - 2 * var(--space-4)));
+  flex-basis: 100%;
+  margin: 0;
   padding: var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -46,26 +47,4 @@
   box-shadow: var(--shadow-floating);
   color: var(--color-amber);
   font-size: var(--text-sm);
-}
-
-@media (width <= theme(--bp-sm)) {
-  .studio-theme-picker {
-    width: var(--h-control-lg);
-  }
-
-  .studio-theme-picker select {
-    width: var(--h-control-lg);
-    padding: 0;
-    color: transparent;
-    appearance: none;
-  }
-
-  .studio-theme-picker select option {
-    color: var(--color-text);
-  }
-
-  .studio-theme-picker > svg {
-    /* --h-control-lg 触控区内图标水平居中：(44 - 16) / 2。 */
-    left: calc((var(--h-control-lg) - var(--space-4)) / 2);
-  }
 }

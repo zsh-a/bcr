@@ -351,7 +351,8 @@ try {
   await body(a.page, merged);
 
   const downloadEvent = a.page.waitForEvent("download");
-  await a.page.getByRole("button", { name: "导出这篇笔记", exact: true }).click();
+  await a.page.getByRole("button", { name: "更多操作", exact: true }).click();
+  await a.page.getByRole("menuitem", { name: "导出这篇笔记", exact: true }).click();
   const download = await downloadEvent,
     markdown = await readFile(await download.path(), "utf8");
   assert(markdown.includes("bcr: 1") && markdown.endsWith(merged));
@@ -361,7 +362,8 @@ try {
     buffer: Buffer.from("# 导入手写笔记\n\n开放格式保持可读。"),
   });
   await matchesBody(a.page, "# 导入手写笔记\n\n开放格式保持可读。");
-  await a.page.getByRole("button", { name: "删除", exact: true }).click();
+  await a.page.getByRole("button", { name: "更多操作", exact: true }).click();
+  await a.page.getByRole("menuitem", { name: "删除", exact: true }).click();
   await a.page.getByRole("button", { name: "确认删除笔记", exact: true }).click();
   await a.page.getByRole("button", { name: "笔记版本历史", exact: true }).click();
   await a.page.getByLabel("显示全部笔记与删除记录").check();

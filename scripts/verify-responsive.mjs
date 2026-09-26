@@ -1,3 +1,4 @@
+import { openWorkspaceOptions } from "./lib/topbar.mjs";
 /* 响应式验证：三档语义断点 + 容器降级 + 矮窗/安全区 + reduced-motion + 浮标避让。
  *
  * BASE_URL 语义与其他走查脚本一致（verify-ci 注入 dev server 地址）。
@@ -51,12 +52,19 @@ async function noHScroll(label) {
 async function topbarFits(label) {
   const bar = await page.evaluate(() => {
     const el = document.querySelector(".studio-topbar");
-    return { scrollWidth: el.scrollWidth, clientWidth: el.clientWidth };
+    const style = getComputedStyle(el);
+    return {
+      scrollWidth: el.scrollWidth,
+      clientWidth: el.clientWidth,
+      height: el.getBoundingClientRect().height,
+      maxHeight: parseFloat(style.getPropertyValue("--h-topbar")) + parseFloat(style.paddingTop),
+    };
   });
   assert(
     bar.scrollWidth <= bar.clientWidth + 1,
     `${label}: 顶栏横向溢出 scrollWidth=${bar.scrollWidth} > clientWidth=${bar.clientWidth}`,
   );
+  assert(bar.height <= bar.maxHeight + 1, `${label}: 工具栏必须保持单行（${bar.height}px）`);
 }
 
 function parseDurationMs(value) {
@@ -125,6 +133,26 @@ await group("1. 320px reflow（WCAG 1.4.10，禁双向滚动）", async () => {
     await noHScroll(`320×256 ${name}`);
     await topbarFits(`320×256 ${name}`);
   }
+
+  // 单行工具栏的次要操作仍可达，面板在矮窗内独立滚动。
+  const options = await openWorkspaceOptions(page);
+  assert(await options.getByRole("combobox", { name: "外观主题" }).isVisible());
+  const optionsBox = await options.boundingBox();
+  assert(
+    optionsBox &&
+      optionsBox.x >= 0 &&
+      optionsBox.x + optionsBox.width <= 321 &&
+      optionsBox.y + optionsBox.height <= 257,
+  );
+  await options.getByRole("button", { name: "打开命令面板", exact: true }).click();
+  await page.getByRole("dialog", { name: "命令面板", exact: true }).waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog", { name: "命令面板", exact: true }).waitFor({ state: "hidden" });
+  assert(
+    await page
+      .getByRole("button", { name: "工作区选项", exact: true })
+      .evaluate((el) => el === document.activeElement),
+  );
 
   // 对话框打开态
   await openKnowledge();
@@ -389,7 +417,7 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
       const statusLine = document.querySelector(".knowledge-status-line");
       const iconButtons = [
         ...main.querySelectorAll(
-          "button:has(> svg):not(.knowledge-overflow-menu button, .knowledge-tools-menu button)",
+          "button:has(> svg):not(.knowledge-overflow-menu button, .knowledge-tools-menu button, .knowledge-tag-chip)",
         ),
       ].map((button) => getComputedStyle(button).fontSize);
       return {
@@ -579,7 +607,7 @@ await group("5. 矮窗（1440×480）全屏 sheet + 安全区 max() 兜底", asy
   await settle(350);
   const safe = await page.evaluate(() => {
     const nav = document.querySelector(".knowledge-mobile-nav");
-    const titlebar = document.querySelector(".knowledge-titlebar");
+    const titlebar = document.querySelector(".knowledge-tabs-bar");
     const px = (value) => Number.parseFloat(value);
     return {
       navTop: px(getComputedStyle(nav).paddingTop),
@@ -712,9 +740,7 @@ await group("7. 「继续对话」浮标不遮挡知识库内容与移动端导�
         .querySelector(".assistant-launcher")
         .getBoundingClientRect()
         .toJSON();
-      const probes = [
-        ...document.querySelectorAll(".knowledge-editor-footer, .knowledge-note-actions"),
-      ]
+      const probes = [...document.querySelectorAll(".knowledge-editor-footer")]
         .filter((element) => {
           const rect = element.getBoundingClientRect();
           return rect.width > 0 && rect.height > 0;

@@ -36,8 +36,8 @@
   flex: 0 0 var(--w-sidebar);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-6) var(--space-5) var(--space-4);
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-4);
   border-right: 1px solid var(--color-border);
   background: var(--color-surface);
   min-height: 0;
@@ -76,8 +76,47 @@
   font-size: var(--text-sm);
 }
 
+.knowledge-sidebar-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--h-control);
+}
+
+.knowledge-sidebar-heading > span {
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
 .knowledge-create {
-  width: 100%;
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+}
+
+.knowledge-search-clear {
+  display: grid;
+  place-items: center;
+  flex: 0 0 var(--space-6);
+  height: var(--space-6);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.knowledge-search-clear:hover {
+  background: var(--color-raised);
+  color: var(--color-text);
+}
+
+.knowledge-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
 }
 
 .knowledge-select {
@@ -113,7 +152,8 @@
   padding: var(--space-4) var(--space-3);
   border: 0;
   border-left: 2px solid transparent;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 45%, transparent);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-1);
   background: transparent;
   color: var(--color-text);
 }
@@ -216,29 +256,6 @@
   flex-direction: column;
 }
 
-/* 独立状态行已消解：状态簇挂在 tab 条右端（.knowledge-tabs-actions）。
-   移动端顶栏只留菜单/标题/更多；桌面端不占任何条带。 */
-.knowledge-titlebar {
-  display: none;
-  position: relative;
-  align-items: center;
-  gap: var(--space-3);
-  min-height: var(--h-control);
-  padding: var(--space-2) var(--space-6);
-}
-
-.knowledge-titlebar-title {
-  display: none;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-display);
-  font-size: var(--text-base);
-  line-height: var(--text-base--line-height);
-  color: var(--color-text);
-}
-
 /* 同步与保存状态的唯一插槽；Wave 2b 在此挂弹出层触发器。 */
 .knowledge-status {
   display: flex;
@@ -248,34 +265,33 @@
   font-size: var(--text-xs);
 }
 
-.knowledge-overflow {
-  display: none;
-  position: relative;
-  margin-left: auto;
-}
-
-.knowledge-menu-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  border: 0;
-  padding: 0;
-  background: transparent;
-}
-
 .knowledge-overflow-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  z-index: 41;
+  position: fixed;
+  width: min(240px, calc(100vw - 2 * var(--space-3)));
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-2);
+}
+
+.knowledge-overflow-menu:popover-open {
   display: grid;
   gap: var(--space-1);
-  min-width: 180px;
-  padding: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-overlay);
-  box-shadow: var(--shadow-floating);
+}
+
+.knowledge-overflow-menu .has-separator {
+  position: relative;
+  margin-top: var(--space-2);
+}
+
+.knowledge-overflow-menu .has-separator::before {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--space-1)) 0 auto;
+  border-top: 1px solid var(--color-border);
+}
+
+.knowledge-overflow-menu .is-danger {
+  color: var(--color-danger);
 }
 
 .knowledge-overflow-menu button {
@@ -816,18 +832,6 @@
   padding-left: var(--space-5);
 }
 
-.knowledge-note-actions {
-  max-width: var(--content-max);
-  margin: var(--space-3) auto;
-  padding: 0 var(--space-8);
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  font-size: var(--text-xs);
-  color: var(--color-faint);
-}
-
 /* ---------- 引用 ---------- */
 
 .knowledge-citations {
@@ -1303,26 +1307,15 @@
     min-width: var(--h-control-lg);
     min-height: var(--h-control-lg);
   }
-  /* 顶行 = 菜单 + 标题 + 更多；状态簇在 tab 条右端（只留状态点）。 */
-  .knowledge-titlebar {
-    display: flex;
-    order: -1;
+  /* 导航、标签与笔记操作共用一条栏，留出更多正文空间。 */
+  .knowledge-tabs-bar {
     padding: max(var(--space-2), env(safe-area-inset-top))
       max(var(--space-3), env(safe-area-inset-right)) var(--space-2)
       max(var(--space-3), env(safe-area-inset-left));
-    min-height: var(--h-control-lg);
-    border-bottom: 1px solid var(--color-border);
     background: var(--color-surface);
   }
-  .knowledge-titlebar-title {
-    display: block;
-    flex: 1;
-  }
-  .knowledge-status span {
+  .knowledge-tabs-actions .knowledge-note-shortcut {
     display: none;
-  }
-  .knowledge-overflow {
-    display: block;
   }
   .knowledge-content {
     padding-bottom: 64px;
@@ -1338,9 +1331,6 @@
   }
   .knowledge-body {
     font-size: var(--text-lg);
-  }
-  .knowledge-note-actions {
-    padding: 0 var(--space-5);
   }
   .knowledge-citations {
     margin: var(--space-5);
@@ -1404,7 +1394,11 @@
   /* 工具条按钮文字隐藏（icon-only）：裸文本随字号归零；
    * svg 与显式字号元素（span、SectionLabel）不受影响；浮层菜单保持可读。 */
   .knowledge-main
-    button:has(> svg):not(.knowledge-overflow-menu button, .knowledge-tools-menu button) {
+    button:has(> svg):not(
+      .knowledge-overflow-menu button,
+      .knowledge-tools-menu button,
+      .knowledge-tag-chip
+    ) {
     font-size: 0;
   }
 

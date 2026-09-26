@@ -17,7 +17,6 @@ import {
   History,
   List,
   Menu,
-  MoreHorizontal,
   Plus,
   RefreshCw,
   Search,
@@ -58,6 +57,7 @@ import { useWorkbench } from "./useWorkbench";
 import { closeNote, closeOtherNotes, openNote, toggleFavorite, togglePinned } from "./workbench";
 import { KnowledgeStore } from "./store";
 import { NoteTabs } from "./NoteTabs";
+import { NoteActionsMenu } from "./NoteActionsMenu";
 import { NoteSwitcher, type PaletteAction } from "./NoteSwitcher";
 import { KnowledgeDialog } from "./KnowledgeDialog";
 import { NoteFileTree } from "./NoteFileTree";
@@ -104,7 +104,6 @@ export function KnowledgeApp() {
     [addingCollection, setAddingCollection] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [fileView, setFileView] = useState(false);
-  const [menu, setMenu] = useState(false);
   const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
   const [sessions] = useState(() => new EditorSessions());
   const [linkIndex] = useState(() => new KnowledgeLinkIndex());
@@ -472,22 +471,25 @@ export function KnowledgeApp() {
         />
       )}
       <aside className="knowledge-sidebar" aria-label="知识库导航">
-        <IconButton
-          label="收起列表"
-          className="knowledge-mobile-close"
-          onClick={() => setSidebar(false)}
-        >
-          <X size={18} />
-        </IconButton>
-        <Button
-          className="knowledge-create"
-          variant="primary"
-          disabled={busy}
-          onClick={() => void run(create)}
-        >
-          <Plus size={16} />
-          新建笔记
-        </Button>
+        <div className="knowledge-sidebar-heading">
+          <span>我的笔记</span>
+          <IconButton
+            label="收起列表"
+            className="knowledge-mobile-close"
+            onClick={() => setSidebar(false)}
+          >
+            <X size={18} />
+          </IconButton>
+          <Button
+            className="knowledge-create"
+            variant="ghost"
+            disabled={busy}
+            onClick={() => void run(create)}
+          >
+            <Plus size={16} />
+            新建笔记
+          </Button>
+        </div>
         <label className="knowledge-search">
           <Search size={15} />
           <input
@@ -495,7 +497,27 @@ export function KnowledgeApp() {
             placeholder="搜索笔记"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && query) {
+                event.preventDefault();
+                event.stopPropagation();
+                setQuery("");
+              }
+            }}
           />
+          {query && (
+            <button
+              type="button"
+              className="knowledge-search-clear"
+              aria-label="清除搜索"
+              onClick={(event) => {
+                setQuery("");
+                event.currentTarget.closest("label")?.querySelector("input")?.focus();
+              }}
+            >
+              <X size={14} />
+            </button>
+          )}
         </label>
         {/* 视图行：范围=细分段；列表/文件夹=右侧小图标切换（保留导航语义）。 */}
         <div className="knowledge-view-row" aria-label="笔记范围与导航方式">
@@ -717,7 +739,44 @@ export function KnowledgeApp() {
           flush={flushEditor}
           onClose={() => setMoveTarget(null)}
         />
+        <KnowledgeDialog
+          open={confirmDelete && !!note}
+          title="删除笔记"
+          onClose={() => setConfirmDelete(false)}
+          error={error}
+        >
+          <p>删除「{note?.title || "未命名笔记"}」？之后仍可从版本历史恢复。</p>
+          <div className="knowledge-dialog-actions">
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
+              取消
+            </Button>
+            <Button
+              variant="danger"
+              disabled={busy || locked}
+              onClick={() =>
+                void run(async () => {
+                  if (!note) return;
+                  await flushEditor();
+                  await store.deleteNote(note.id);
+                  await navigate({ to: "/knowledge", search: {} });
+                  setConfirmDelete(false);
+                })
+              }
+            >
+              确认删除笔记
+            </Button>
+          </div>
+        </KnowledgeDialog>
         <NoteTabs
+          leading={
+            <IconButton
+              label="打开笔记列表"
+              className="knowledge-menu"
+              onClick={() => setSidebar(true)}
+            >
+              <Menu size={18} />
+            </IconButton>
+          }
           notes={state.notes}
           ids={workbench.state.tabs}
           pinned={workbench.state.pinned}
@@ -727,6 +786,7 @@ export function KnowledgeApp() {
               {note && (
                 <IconButton
                   label="收藏当前笔记"
+                  className="knowledge-note-shortcut"
                   title={favorite ? "取消收藏" : "收藏"}
                   size="sm"
                   aria-pressed={favorite}
@@ -737,6 +797,7 @@ export function KnowledgeApp() {
               )}
               <IconButton
                 label="笔记版本历史"
+                className="knowledge-note-shortcut"
                 title="笔记版本历史"
                 size="sm"
                 onClick={() => setPanel(panel === "history" ? null : "history")}
@@ -760,6 +821,54 @@ export function KnowledgeApp() {
                   onViewConflicts={() => setPanel("conflicts")}
                 />
               </div>
+              <NoteActionsMenu
+                actions={[
+                  {
+                    label: "移动笔记",
+                    icon: <Folder size={15} />,
+                    disabled: !note || locked,
+                    run: () => note && setMoveTarget({ noteId: note.id }),
+                  },
+                  {
+                    label: "导出这篇笔记",
+                    icon: <Download size={15} />,
+                    disabled: !note || busy,
+                    run: () => void run(exportNote),
+                  },
+                  {
+                    label: favorite ? "取消收藏" : "收藏当前笔记",
+                    icon: <Star size={15} />,
+                    disabled: !note,
+                    run: () =>
+                      note && workbench.setState((current) => toggleFavorite(current, note.id)),
+                  },
+                  {
+                    label: "版本历史",
+                    icon: <History size={15} />,
+                    run: () => setPanel("history"),
+                  },
+                  {
+                    label: "同步设置",
+                    icon: <Settings2 size={15} />,
+                    separator: true,
+                    run: () => setPanel("sync"),
+                  },
+                  {
+                    label: "立即同步",
+                    icon: <RefreshCw size={15} />,
+                    disabled: syncing || busy,
+                    run: () => void sync(),
+                  },
+                  {
+                    label: "删除",
+                    icon: <Trash2 size={15} />,
+                    separator: true,
+                    danger: true,
+                    disabled: !note || locked,
+                    run: () => setConfirmDelete(true),
+                  },
+                ]}
+              />
             </>
           }
           onSelect={(id) => go(() => select(id))}
@@ -782,83 +891,6 @@ export function KnowledgeApp() {
           }
           onTogglePin={(id) => workbench.setState((current) => togglePinned(current, id))}
         />
-        <div className="knowledge-titlebar">
-          <IconButton
-            label="打开笔记列表"
-            className="knowledge-menu"
-            onClick={() => setSidebar(true)}
-          >
-            <Menu size={18} />
-          </IconButton>
-          <span className="knowledge-titlebar-title">{note?.title || "个人知识库"}</span>
-          <div className="knowledge-overflow">
-            <IconButton
-              label="更多操作"
-              aria-expanded={menu}
-              onClick={() => setMenu((open) => !open)}
-            >
-              <MoreHorizontal size={18} />
-            </IconButton>
-            {menu && (
-              <>
-                <button
-                  type="button"
-                  className="knowledge-menu-backdrop"
-                  aria-label="关闭菜单"
-                  onClick={() => setMenu(false)}
-                />
-                <div className="knowledge-overflow-menu" role="menu" aria-label="更多操作">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={!note}
-                    onClick={() => {
-                      setMenu(false);
-                      if (note) workbench.setState((current) => toggleFavorite(current, note.id));
-                    }}
-                  >
-                    <Star size={15} fill={favorite ? "currentColor" : "none"} />
-                    {favorite ? "取消收藏" : "收藏当前笔记"}
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setMenu(false);
-                      setPanel("history");
-                    }}
-                  >
-                    <History size={15} />
-                    版本历史
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setMenu(false);
-                      setPanel("sync");
-                    }}
-                  >
-                    <Settings2 size={15} />
-                    同步设置
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={syncing || busy}
-                    onClick={() => {
-                      setMenu(false);
-                      void sync();
-                    }}
-                  >
-                    <RefreshCw size={15} />
-                    立即同步
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
         {workbench.error && (
           <p role="status" className="knowledge-alert">
             {workbench.error}
@@ -1019,46 +1051,6 @@ export function KnowledgeApp() {
                   })}
                 </section>
               )}
-              <div className="knowledge-note-actions">
-                <Button
-                  variant="ghost"
-                  onClick={() => setMoveTarget({ noteId: note.id })}
-                  disabled={locked}
-                >
-                  移动笔记
-                </Button>
-                <Button variant="ghost" onClick={() => void run(exportNote)}>
-                  <Download size={14} />
-                  导出这篇笔记
-                </Button>
-                {confirmDelete ? (
-                  <>
-                    <span>删除后可从历史恢复。</span>
-                    <Button
-                      variant="danger"
-                      disabled={busy || locked}
-                      onClick={() =>
-                        void run(async () => {
-                          await editor.current?.flush();
-                          await store.deleteNote(note.id);
-                          await navigate({ to: "/knowledge", search: {} });
-                          setConfirmDelete(false);
-                        })
-                      }
-                    >
-                      确认删除笔记
-                    </Button>
-                    <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
-                      取消
-                    </Button>
-                  </>
-                ) : (
-                  <Button variant="ghost" disabled={locked} onClick={() => setConfirmDelete(true)}>
-                    <Trash2 size={14} />
-                    删除
-                  </Button>
-                )}
-              </div>
             </>
           ) : (
             <section className="knowledge-empty">

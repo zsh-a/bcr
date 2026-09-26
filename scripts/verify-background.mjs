@@ -1,3 +1,4 @@
+import { openWorkspaceOptions } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
@@ -12,6 +13,7 @@ try {
   await mkdir("scripts/shots", { recursive: true });
   await page.goto(origin);
   const trigger = page.getByRole("button", { name: "自定义背景", exact: true });
+  await openWorkspaceOptions(page);
   await trigger.click();
   const panel = page.getByRole("dialog", { name: "背景设置", exact: true });
   const data = await page.evaluate(() => {
@@ -51,7 +53,14 @@ try {
   await page.keyboard.press("Escape");
   await panel.waitFor({ state: "hidden" });
   assert.equal(await trigger.evaluate((el) => el === document.activeElement), true);
+  assert.equal(
+    await page
+      .getByRole("button", { name: "工作区选项", exact: true })
+      .getAttribute("aria-expanded"),
+    "true",
+  );
   await page.reload();
+  await openWorkspaceOptions(page);
   await trigger.waitFor();
   assert.equal(
     await page.evaluate(() => document.documentElement.hasAttribute("data-background")),
@@ -67,6 +76,7 @@ try {
     () => document.documentElement.style.getPropertyValue("--workspace-shade") === "75%",
   );
   await other.close();
+  await openWorkspaceOptions(page);
   await trigger.click();
   await panel
     .getByLabel("背景图片", { exact: true })
@@ -78,14 +88,21 @@ try {
   );
   await page.keyboard.press("Escape");
   for (const theme of ["light", "dark"]) {
+    await openWorkspaceOptions(page);
     await page.getByRole("combobox", { name: "外观主题" }).selectOption(theme);
-    for (const width of [1440, 375, 812]) {
-      await page.setViewportSize({ width, height: width === 812 ? 375 : 900 });
+    for (const [width, height] of [
+      [1440, 900],
+      [375, 900],
+      [812, 375],
+      [320, 256],
+    ]) {
+      await page.setViewportSize({ width, height });
       await page.emulateMedia({ reducedMotion: "reduce" });
+      await openWorkspaceOptions(page);
       await trigger.click();
       const box = await panel.boundingBox();
       assert.ok(box.x >= 0 && box.x + box.width <= width + 1);
-      assert.ok(box.y >= 0 && box.y + box.height <= (width === 812 ? 375 : 900));
+      assert.ok(box.y >= 0 && box.y + box.height <= height);
       assert.ok(await panel.evaluate((el) => el.scrollWidth <= el.clientWidth + 1));
       assert.ok(
         await page.locator(".studio-topbar").evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
@@ -105,6 +122,7 @@ try {
   }
   await page.setViewportSize({ width: 1440, height: 960 });
   await page.goto(`${origin}/knowledge`);
+  await openWorkspaceOptions(page);
   await trigger.waitFor();
   assert.equal(
     await page
@@ -124,6 +142,7 @@ try {
       "rgba(0, 0, 0, 0)",
     );
   }
+  await openWorkspaceOptions(page);
   await trigger.click();
   await page.evaluate(() => {
     const remove = Object.getOwnPropertyDescriptor(Storage.prototype, "removeItem").value;
@@ -139,7 +158,9 @@ try {
     true,
   );
   await page.reload();
+  await openWorkspaceOptions(page);
   await trigger.waitFor();
+  await openWorkspaceOptions(page);
   await trigger.click();
   await panel.getByRole("button", { name: "恢复默认背景" }).click();
   assert.equal(await page.evaluate(() => localStorage.getItem("bcr/background")), null);

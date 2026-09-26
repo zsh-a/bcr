@@ -1,3 +1,4 @@
+import { openWorkspaceOptions } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
@@ -25,14 +26,17 @@ try {
   await mkdir("scripts/shots", { recursive: true });
   await page.goto(`${origin}/knowledge`);
   const picker = page.getByRole("combobox", { name: "外观主题" });
+  await openWorkspaceOptions(page);
   await picker.waitFor();
   await theme("light");
   assert.equal(await picker.inputValue(), "system");
   await page.emulateMedia({ colorScheme: "dark" });
   await theme("dark");
+  await openWorkspaceOptions(page);
   await picker.selectOption("light");
   await theme("light");
   await page.reload();
+  await openWorkspaceOptions(page);
   await picker.waitFor();
   await theme("light");
   assert.equal(await picker.inputValue(), "light");
@@ -43,8 +47,10 @@ try {
   await theme("dark");
   await other.close();
   for (const mode of ["light", "dark"]) {
+    await openWorkspaceOptions(page);
     await picker.selectOption(mode);
     await theme(mode);
+    await page.keyboard.press("Escape");
     for (const viewport of [
       { width: 1440, height: 960 },
       { width: 375, height: 812 },
@@ -80,6 +86,7 @@ try {
     await page.screenshot({ path: `scripts/shots/theme-agent-${mode}.png` });
     await page.keyboard.press("Control+j");
   }
+  await openWorkspaceOptions(page);
   await picker.selectOption("system");
   await page.emulateMedia({ colorScheme: "light" });
   await theme("light");
@@ -88,6 +95,7 @@ try {
       throw new DOMException("blocked", "SecurityError");
     };
   });
+  await openWorkspaceOptions(page);
   await picker.selectOption("dark");
   await theme("dark");
   await page.getByRole("status").filter({ hasText: "无法保存" }).waitFor();

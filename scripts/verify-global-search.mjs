@@ -1,3 +1,4 @@
+import { openWorkspaceOptions } from "./lib/topbar.mjs";
 /* 全局搜索走查：索引跨域投影、键盘呼出、结果筛选与深链导航。 */
 import { fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
@@ -30,6 +31,7 @@ await page.waitForURL(/\/markets\?instrument=/u);
 
 // Visit Reader once so its hydrated publication projection is available to
 // the shared index, then verify a section result carries a deep-link locator.
+await openWorkspaceOptions(page);
 await page.getByRole("button", { name: "打开命令面板" }).click();
 await page.getByPlaceholder("输入命令…").fill("打开 Reader Studio");
 await page.getByRole("button", { name: /打开 Reader Studio/u }).click();
@@ -41,6 +43,7 @@ const openLibrary = page.getByRole("button", { name: "打开书库", exact: true
 if (await openLibrary.isVisible()) await openLibrary.click();
 await page.locator(".reader-book-card", { hasText: "把时间还给阅读" }).waitFor();
 await page.waitForTimeout(1_200);
+await openWorkspaceOptions(page);
 await page.getByRole("button", { name: "打开命令面板" }).click();
 await page.getByPlaceholder("输入命令…").fill("打开 Studio 工作台");
 await page.getByRole("button", { name: /打开 Studio 工作台/u }).click();

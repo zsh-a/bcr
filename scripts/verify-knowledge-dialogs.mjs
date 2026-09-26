@@ -27,9 +27,9 @@ try {
   const statusTrigger = page.locator(".knowledge-status-trigger");
 
   // 关闭弹层后焦点必须回到可见触发器：瞬时入口（溢出菜单、命令面板）会卸载打开元素。
-  async function assertFocusReturned(label) {
+  async function assertFocusReturned(label, trigger = statusTrigger) {
     assert.ok(
-      await statusTrigger.evaluate(
+      await trigger.evaluate(
         (el) =>
           el === document.activeElement && el.checkVisibility() && el.getClientRects().length > 0,
       ),
@@ -186,12 +186,35 @@ try {
   const overflow = page.locator('div.knowledge-overflow-menu[role="menu"][aria-label="更多操作"]');
   await overflow.waitFor();
   assert.deepEqual(await overflow.getByRole("menuitem").allTextContents(), [
+    "移动笔记",
+    "导出这篇笔记",
     "收藏当前笔记",
     "版本历史",
     "同步设置",
     "立即同步",
+    "删除",
   ]);
-  await page.getByRole("button", { name: "关闭菜单", exact: true }).click();
+  await page.keyboard.press("End");
+  assert.equal(
+    await overflow
+      .getByRole("menuitem", { name: "删除", exact: true })
+      .evaluate((el) => el === document.activeElement),
+    true,
+  );
+  await page.keyboard.press("Home");
+  await page.keyboard.press("ArrowDown");
+  assert.equal(
+    await overflow
+      .getByRole("menuitem", { name: "导出这篇笔记", exact: true })
+      .evaluate((el) => el === document.activeElement),
+    true,
+  );
+  await page.keyboard.press("Escape");
+  await overflow.waitFor({ state: "hidden" });
+  await assertFocusReturned(
+    "菜单 Esc",
+    page.getByRole("button", { name: "更多操作", exact: true }),
+  );
   await page.getByRole("button", { name: "更多写作工具", exact: true }).click();
   const tools = page.locator(".knowledge-tools-menu[data-open]");
   await tools.waitFor();
@@ -201,7 +224,7 @@ try {
   assert.equal(await tools.getByRole("button", { name: "同步设置", exact: true }).count(), 0);
   await page.keyboard.press("Escape");
 
-  // --- 溢出菜单是瞬时入口（菜单项随菜单卸载）：关闭后焦点必须回到可见触发器。
+  // --- 溢出菜单是瞬时入口（菜单项随浮层隐藏）：关闭后焦点必须回到可见触发器。
   for (const item of ["同步设置", "版本历史"]) {
     await page.getByRole("button", { name: "更多操作", exact: true }).click();
     await overflow.getByRole("menuitem", { name: item, exact: true }).click();
@@ -209,7 +232,10 @@ try {
     await opened.waitFor();
     await page.keyboard.press("Escape");
     await opened.waitFor({ state: "hidden" });
-    await assertFocusReturned(`更多操作菜单「${item}」`);
+    await assertFocusReturned(
+      `更多操作菜单「${item}」`,
+      page.getByRole("button", { name: "更多操作", exact: true }),
+    );
   }
 
   // --- 大字号：24px 下弹层仍无横向溢出

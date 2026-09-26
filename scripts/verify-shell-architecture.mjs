@@ -1,3 +1,4 @@
+import { openWorkspaceOptions } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 
@@ -9,6 +10,7 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(origin, { waitUntil: "networkidle" });
   const open = async (name) => {
+    await openWorkspaceOptions(page);
     await page.getByRole("button", { name: "打开命令面板", exact: true }).click();
     await page.getByPlaceholder("输入命令…").fill(name);
     await page

@@ -1,3 +1,4 @@
+import { openWorkspaceOptions } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { writeFile, mkdtemp } from "node:fs/promises";
@@ -130,6 +131,7 @@ try {
     return { text, tools: [...new Set(names)] };
   });
   await panel.getByRole("button", { name: "关闭 AI 助手", exact: true }).click();
+  await openWorkspaceOptions(page);
   await page.getByRole("button", { name: "打开命令面板", exact: true }).click();
   await page.getByPlaceholder("输入命令…").fill("个人知识库");
   await page.getByRole("button", { name: /^打开 个人知识库/ }).click();

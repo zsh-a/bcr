@@ -8,9 +8,68 @@
 .studio-topbar {
   position: relative;
   z-index: 30;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
   min-width: 0;
-  height: var(--h-topbar);
+  height: calc(var(--h-topbar) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(var(--space-5), env(safe-area-inset-right)) 0
+    max(var(--space-5), env(safe-area-inset-left));
+  border-bottom: 1px solid var(--color-border);
   background: var(--color-bg);
+}
+
+.studio-topbar-brand {
+  flex: 1;
+  min-width: 0;
+}
+
+.studio-topbar-brand-copy {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.studio-topbar-product {
+  margin-right: var(--space-2);
+  color: var(--color-muted);
+}
+
+.studio-topbar-product > span {
+  margin-left: var(--space-2);
+  color: var(--color-faint);
+}
+
+.studio-topbar-action {
+  flex-shrink: 0;
+}
+
+.studio-topbar-action > svg {
+  flex-shrink: 0;
+}
+
+.studio-topbar-button-label {
+  font-size: var(--text-sm);
+}
+
+.studio-topbar .studio-topbar-search {
+  width: clamp(180px, 18vw, 240px);
+  justify-content: flex-start;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.studio-topbar-search-key {
+  margin-left: auto;
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
 }
 
 /* 阅读器全屏（独立窗口 / 窄屏）时让出顶栏；overlay 不改变内容视口几何。 */
@@ -34,66 +93,84 @@
   height: var(--h-control-lg);
 }
 
-/* ---------- 遥测状态插槽：状态点 + 一行短文案，弹出浮层看明细。 ---------- */
-.studio-status-trigger {
-  anchor-name: --telemetry-trigger;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid transparent;
-  border-radius: var(--radius-full);
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  transition:
-    color var(--duration-fast) var(--ease-standard),
-    border-color var(--duration-fast) var(--ease-standard);
+/* ---------- 工作区选项：命令、外观与按需展开的运行状态 ---------- */
+.studio-options-trigger {
+  position: relative;
 }
 
-.studio-status-trigger:hover {
-  color: var(--color-muted);
-  border-color: var(--color-border);
-}
-
-.studio-status-line {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 明细浮层：进出场走 ui.css 的 .ui-popover，这里只做定位与内部布局。 */
-.studio-telemetry-popover {
-  position: fixed;
-  inset: calc(var(--h-topbar) + var(--space-2)) max(var(--space-3), env(safe-area-inset-right)) auto
-    auto;
-  width: min(280px, calc(100vw - 2 * var(--space-3)));
-  max-height: calc(100dvh - var(--h-topbar) - var(--space-8) - env(safe-area-inset-bottom));
-  overflow: auto;
-  overscroll-behavior: contain;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-/* display 只在展开态生效：关闭态让位给原生 [popover] 的 display:none。 */
-.studio-telemetry-popover:popover-open {
+.studio-options-indicator {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
   display: flex;
 }
 
-@supports (top: anchor(bottom)) {
-  .studio-telemetry-popover {
-    position-anchor: --telemetry-trigger;
-    top: anchor(bottom);
-    right: clamp(
-      var(--space-3),
-      anchor(right),
-      max(var(--space-3), calc(100vw - 280px - var(--space-3)))
-    );
-    margin-top: var(--space-2);
-    /* anchor() 不支持 max-height（见 background.css 同注）；基础预算兜底。 */
-  }
+.studio-options-popover {
+  position: fixed;
+  inset: calc(var(--h-topbar) + env(safe-area-inset-top) + var(--space-2))
+    max(var(--space-3), env(safe-area-inset-right)) auto auto;
+  width: min(300px, calc(100vw - 2 * var(--space-3)));
+  max-height: calc(
+    100dvh - var(--h-topbar) - var(--space-6) - env(safe-area-inset-top) -
+      env(safe-area-inset-bottom)
+  );
+  padding: var(--space-4);
+}
+
+.studio-options-heading,
+.studio-options-section h2 {
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.studio-options-popover .studio-options-command {
+  width: 100%;
+  min-height: var(--h-control-lg);
+  justify-content: flex-start;
+}
+
+.studio-options-command kbd {
+  margin-left: auto;
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+}
+
+.studio-options-section {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.studio-status-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--h-control-lg);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.studio-status-trigger::after {
+  content: "+";
+  margin-left: auto;
+  color: var(--color-faint);
+}
+
+.studio-options-status[open] > .studio-status-trigger::after {
+  content: "−";
+}
+
+.studio-status-trigger:hover {
+  color: var(--color-text);
+}
+
+.studio-options-facts {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
 }
 
 .studio-telemetry-facts {
@@ -259,15 +336,6 @@
 
 /* ============ 响应式 ============ */
 
-/* 矮窗口（height < 500px）：顶栏在三档断点内统一允许换行而非溢出（与 ≤bp-md 同一套逻辑）。 */
-@media (height < 500px) {
-  .studio-topbar {
-    height: auto;
-    min-height: var(--h-topbar);
-    flex-wrap: wrap;
-  }
-}
-
 @media (width <= theme(--bp-md)) {
   body {
     /* 阻止 iOS 聚焦缩放。 */
@@ -275,23 +343,12 @@
   }
 
   .studio-topbar {
-    gap: var(--space-3);
-    height: auto;
-    /* 高度自适应下允许换行：极窄视口控件簇不横向溢出、不压住内容。 */
-    flex-wrap: wrap;
-    min-height: var(--h-topbar);
-    padding-top: env(safe-area-inset-top);
+    gap: var(--space-1);
     padding-right: max(var(--space-3), env(safe-area-inset-right));
     padding-left: max(var(--space-3), env(safe-area-inset-left));
   }
 
-  .studio-topbar-brand-copy {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .studio-topbar-action {
+  .studio-topbar .studio-topbar-action {
     width: var(--h-control-lg);
     min-width: var(--h-control-lg);
     justify-content: center;
@@ -299,8 +356,15 @@
     padding-left: 0;
   }
 
-  .studio-topbar-button-label {
+  .studio-topbar-product,
+  .studio-topbar-button-label,
+  .studio-topbar-search-key {
     display: none;
+  }
+
+  .studio-topbar .studio-topbar-search {
+    background: transparent;
+    border-color: transparent;
   }
 
   .studio-home {

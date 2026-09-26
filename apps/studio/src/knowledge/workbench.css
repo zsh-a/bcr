@@ -742,14 +742,22 @@
 /* ---------- 容器降级 ---------- */
 
 @container kb-doc (width < 560px) {
-  /* 标题字号用容器单位收窄（cqi 参与 clamp 中值）；meta 行换行成多行。 */
+  /* 标题字号用容器单位收窄（cqi 参与 clamp 中值）；meta 行按内容换行，避免空标签也独占一整行。 */
   .knowledge-title {
     font-size: clamp(var(--text-xl), 5cqi, var(--text-2xl));
   }
 
   .knowledge-editor-meta > * {
-    flex-basis: 100%;
+    min-width: 0;
     max-width: 100%;
+  }
+
+  .knowledge-editor-meta .knowledge-tags {
+    flex: 1 1 auto;
+  }
+
+  .knowledge-editor-meta .knowledge-collection-select {
+    flex: 0 1 auto;
   }
 }
 
@@ -793,4 +801,45 @@
   .knowledge-editor .knowledge-editor-head .knowledge-title {
     flex: 0 1 260px;
   }
+}
+
+/* 侧栏控件弱化容器边线，标题与选中项承担层级。 */
+.knowledge-view-row .knowledge-segmented,
+.knowledge-view-mode {
+  border-color: transparent;
+  background: var(--color-raised);
+  padding: var(--space-1);
+  gap: var(--space-1);
+}
+
+.knowledge-view-row .knowledge-segmented button,
+.knowledge-view-mode button {
+  border: 0;
+  border-radius: var(--radius-sm);
+  min-height: var(--space-6);
+}
+
+.knowledge-view-row .knowledge-segmented button[aria-pressed="true"],
+.knowledge-view-mode button[aria-pressed="true"] {
+  background: var(--color-surface);
+}
+
+.knowledge-tabs-bar > .knowledge-menu {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.knowledge-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.knowledge-tag-chip svg {
+  flex-shrink: 0;
+  opacity: 0.55;
+}
+
+.knowledge-tag-chip:hover svg {
+  opacity: 1;
 }

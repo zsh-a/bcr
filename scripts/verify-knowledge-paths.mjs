@@ -43,9 +43,10 @@ async function readBody() {
   if ((await toggle.getAttribute("aria-pressed")) === "true") await toggle.click();
   return text;
 }
-const moveButton = () => page.getByRole("button", { name: "移动笔记", exact: true });
+const moveButton = () => page.getByRole("button", { name: "更多操作", exact: true });
 async function openMove(name = "移动笔记") {
   await moveButton().click();
+  await page.getByRole("menuitem", { name: "移动笔记", exact: true }).click();
   const dialog = page.getByRole("dialog", { name, exact: true });
   await dialog.waitFor();
   return dialog;
@@ -168,7 +169,7 @@ try {
   assert.equal(
     await moveButton().evaluate((el) => document.activeElement === el),
     true,
-    "cancel returns focus to 移动笔记",
+    "cancel returns focus to the note actions trigger",
   );
   assert.equal(await atPath(`old/${a}.md`, "Alpha"), true, "canceled move keeps the old path");
   dialog = await openMove();

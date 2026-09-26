@@ -3,32 +3,20 @@
 @import "@bcr/react/tokens.css";
 
 .studio-background-trigger {
-  anchor-name: --background-trigger;
   margin-left: var(--space-1);
 }
 
 .studio-background-settings {
   position: fixed;
-  inset: calc(var(--h-topbar) + var(--space-4)) var(--space-3) auto auto;
+  inset: calc(var(--h-topbar) + env(safe-area-inset-top) + var(--space-2))
+    max(var(--space-3), env(safe-area-inset-right)) auto auto;
   width: min(var(--w-sidebar), calc(100vw - 2 * var(--space-3)));
-  max-height: calc(100dvh - 2 * var(--h-topbar) - var(--space-2));
+  max-height: calc(
+    100dvh - var(--h-topbar) - var(--space-6) - env(safe-area-inset-top) -
+      env(safe-area-inset-bottom)
+  );
   overflow: auto;
   overscroll-behavior: contain;
-}
-
-@supports (top: anchor(bottom)) {
-  .studio-background-settings {
-    position-anchor: --background-trigger;
-    top: anchor(bottom);
-    right: clamp(
-      var(--space-3),
-      anchor(right),
-      max(var(--space-3), calc(100vw - var(--w-sidebar) - var(--space-3)))
-    );
-    margin-top: var(--space-2);
-    /* 注意：anchor() 不支持 max-height（此 Chromium CSS.supports 为 false，
-     * 该声明会把预算压成 none）。高度钳制见 BackgroundSettings 的 JS clamp。 */
-  }
 }
 
 .studio-background-settings header {

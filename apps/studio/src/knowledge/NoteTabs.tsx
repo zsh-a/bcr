@@ -1,5 +1,5 @@
 import { Pin, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import type { KnowledgeNote } from "./model";
 
 /** 显式标签栏：无历史箭头，每个标签可固定、可关闭；右端挂状态簇与笔记工具。 */
@@ -12,6 +12,7 @@ export function NoteTabs({
   onClose,
   onTogglePin,
   actions,
+  leading,
 }: {
   notes: Record<string, KnowledgeNote>;
   ids: string[];
@@ -22,11 +23,26 @@ export function NoteTabs({
   onTogglePin: (id: string) => void;
   /** tab 条右端的安静工具区（收藏/历史/状态簇）。 */
   actions?: ReactNode;
+  leading?: ReactNode;
 }) {
+  const strip = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const element = strip.current;
+    if (!element) return;
+    const reveal = () =>
+      element
+        .querySelector(".knowledge-tab.active")
+        ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    const observer = new ResizeObserver(reveal);
+    observer.observe(element);
+    reveal();
+    return () => observer.disconnect();
+  }, [activeId, ids]);
   const tabs = ids.filter((id) => Object.hasOwn(notes, id));
   return (
     <div className="knowledge-tabs-bar">
-      <nav className="knowledge-tabs" aria-label="打开的笔记">
+      {leading}
+      <nav ref={strip} className="knowledge-tabs" aria-label="打开的笔记">
         {tabs.map((id) => {
           const name = notes[id]!.title || "未命名笔记";
           const isPinned = pinned.includes(id);

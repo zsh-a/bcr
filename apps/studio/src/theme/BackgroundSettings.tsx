@@ -1,12 +1,5 @@
 import { Button, IconButton } from "@bcr/react";
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type CSSProperties,
-} from "react";
+import { useId, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { ImagePlus, X } from "lucide-react";
 import { backgroundStore } from "./backgroundBrowser";
 import { prepareBackground } from "./background";
@@ -24,39 +17,11 @@ export function BackgroundSettings() {
   const locked = useRef(false);
   const [message, setMessage] = useState("");
   const panel = useRef<HTMLDivElement>(null);
-  // anchor() 在本 Chromium 不支持 max-height（解析期存活、计算期无效）。
-  // toggle 时刻的 rect.top 是布局未定态（顶栏换行/主题重排在其后落定），
-  // 故 clamp 自校正：rAF 合并 + ResizeObserver 兜住一切布局漂移，逐帧收敛。
-  useEffect(() => {
-    const element = panel.current;
-    if (!element) return;
-    let frame = 0;
-    const clamp = () => {
-      if (!element.matches(":popover-open")) return;
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        if (!element.matches(":popover-open")) return;
-        const top = element.getBoundingClientRect().top;
-        element.style.maxHeight = `calc(100dvh - ${Math.round(top)}px - var(--space-2) - env(safe-area-inset-bottom, 0px))`;
-      });
-    };
-    const observer = new ResizeObserver(clamp);
-    observer.observe(document.body);
-    const toggle = () => {
-      if (element.matches(":popover-open")) clamp();
-      // 关闭即清残留：display:none 时 rect.top=0 的假量不得跨开启存活，
-      // 下次开启的首帧回落到 CSS 地板预算。
-      else element.style.removeProperty("max-height");
-    };
-    element.addEventListener("toggle", toggle);
-    window.addEventListener("resize", clamp);
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-      element.removeEventListener("toggle", toggle);
-      window.removeEventListener("resize", clamp);
-    };
-  }, []);
+  const trigger = useRef<HTMLButtonElement>(null);
+  function close() {
+    panel.current?.hidePopover();
+    trigger.current?.focus();
+  }
   async function upload(file: File) {
     if (locked.current) return;
     locked.current = true;
@@ -92,6 +57,7 @@ export function BackgroundSettings() {
   return (
     <>
       <IconButton
+        ref={trigger}
         label="自定义背景"
         title="自定义背景"
         className="studio-background-trigger"
@@ -106,13 +72,20 @@ export function BackgroundSettings() {
         role="dialog"
         aria-label="背景设置"
         className="ui-popover studio-background-settings"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            close();
+          }
+        }}
       >
         <header>
           <div>
             <h2>工作区背景</h2>
             <p>用于主页与知识库，阅读和创作画布不变。</p>
           </div>
-          <IconButton label="关闭背景设置" size="sm" popoverTarget={id} popoverTargetAction="hide">
+          <IconButton label="关闭背景设置" size="sm" onClick={close}>
             <X size={18} />
           </IconButton>
         </header>

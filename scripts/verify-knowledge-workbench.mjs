@@ -200,6 +200,14 @@ try {
   await page.getByRole("button", { name: "添加标签", exact: true }).click();
   await page.getByLabel("笔记标签", { exact: true }).fill("模板");
   await page.getByLabel("笔记标签", { exact: true }).press("Enter");
+  await page.getByLabel("笔记标签", { exact: true }).fill("待整理");
+  await title().click();
+  await page.getByRole("button", { name: "移除标签 待整理", exact: true }).waitFor();
+  await page.getByRole("button", { name: "添加标签", exact: true }).click();
+  await page.getByLabel("笔记标签", { exact: true }).fill("不提交");
+  await page.getByLabel("笔记标签", { exact: true }).press("Escape");
+  assert.equal(await page.getByRole("button", { name: "移除标签 不提交", exact: true }).count(), 0);
+  await page.getByRole("button", { name: "移除标签 待整理", exact: true }).click();
   await saved();
   await tab("New from switcher");
   await body().click();

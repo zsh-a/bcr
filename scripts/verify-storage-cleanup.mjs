@@ -1,3 +1,4 @@
+import { openWorkspaceOptions } from "./lib/topbar.mjs";
 /* Storage plane 走查：容量状态可见，清理命令必须先打开 dry-run 对话框。 */
 import { fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
@@ -10,6 +11,7 @@ page.on("pageerror", (error) => fail(`pageerror: ${error.message}`));
 await page.goto(base, { waitUntil: "networkidle" });
 await page.waitForTimeout(1_500);
 // 顶栏遥测收纳为状态点 + 浮层：展开后容量状态与刷新入口可见。
+await openWorkspaceOptions(page);
 await page.locator(".studio-status-trigger").click();
 await page.getByRole("button", { name: "刷新本地 Artifact 容量" }).waitFor();
 const body = await page.locator("body").innerText();
@@ -31,6 +33,7 @@ const orphanCreated = await page.evaluate(async () => {
   return true;
 });
 
+await openWorkspaceOptions(page);
 await page.getByRole("button", { name: "打开命令面板" }).click();
 await page.getByPlaceholder("输入命令…").fill("清理未追踪 Artifact");
 await page.getByRole("button", { name: /清理未追踪 Artifact/u }).click();
@@ -58,6 +61,7 @@ if (orphanCreated) {
 }
 
 await page.getByRole("button", { name: orphanCreated ? "完成" : "关闭" }).click();
+await openWorkspaceOptions(page);
 await page.getByRole("button", { name: "打开命令面板" }).click();
 await page.getByPlaceholder("输入命令…").fill("整理过期缓存与历史");
 await page.getByRole("button", { name: /整理过期缓存与历史/u }).click();

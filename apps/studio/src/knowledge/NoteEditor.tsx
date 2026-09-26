@@ -8,6 +8,7 @@ import {
   type Ref,
 } from "react";
 import Markdown from "react-markdown";
+import { X } from "lucide-react";
 import remarkGfm from "remark-gfm";
 import { type KnowledgeNote, type KnowledgeCollection } from "./model";
 import { MarkdownEditor, type MarkdownEditorHandle } from "./MarkdownEditor";
@@ -113,7 +114,7 @@ export function NoteEditor({
   const [agentTarget, setAgentTarget] = useState<NoteSelection>(null);
   useNoteAgent(controller, agentTarget);
 
-  // 进入标签输入态立即聚焦；失焦且草稿为空时收回到「+ 标签」。
+  // 标签输入立即聚焦；失焦提交，Escape 放弃尚未提交的输入。
   useEffect(() => {
     if (tagEditing) tagInput.current?.focus();
   }, [tagEditing]);
@@ -126,7 +127,11 @@ export function NoteEditor({
         setMenuOpen(false);
     };
     const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMenuOpen(false);
+        tools.current?.querySelector<HTMLButtonElement>(".knowledge-tools-toggle")?.focus();
+      }
     };
     document.addEventListener("pointerdown", close);
     document.addEventListener("keydown", escape);
@@ -368,9 +373,11 @@ export function NoteEditor({
                 key={tag}
                 className="knowledge-tag-chip"
                 aria-label={`移除标签 ${tag}`}
+                disabled={locked || !!initialError}
                 onClick={() => change({ tags: draft.tags.filter((item) => item !== tag) })}
               >
                 {tag}
+                <X size={12} aria-hidden="true" />
               </button>
             ))}
             {tagEditing ? (
@@ -391,6 +398,7 @@ export function NoteEditor({
                   } else setTagDraft(event.target.value);
                 }}
                 onKeyDown={(event) => {
+                  if (event.nativeEvent.isComposing) return;
                   if (event.key === "Enter") {
                     event.preventDefault();
                     const addition = tagDraft.trim();
@@ -406,7 +414,16 @@ export function NoteEditor({
                   }
                 }}
                 onBlur={() => {
-                  if (!tagDraft) setTagEditing(false);
+                  const addition = tagDraft.trim();
+                  if (addition && !locked && !initialError)
+                    change({
+                      tags: [...new Set([...controller.getSnapshot().note.tags, addition])].slice(
+                        0,
+                        100,
+                      ),
+                    });
+                  setTagDraft("");
+                  setTagEditing(false);
                 }}
               />
             ) : (

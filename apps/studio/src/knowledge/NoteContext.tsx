@@ -119,15 +119,7 @@ export function NoteContext({
             </button>
           ))}
         </details>
-      ) : (
-        <p
-          className="knowledge-context-empty"
-          title="还没有其他笔记引用这里。"
-          aria-description="还没有其他笔记引用这里。"
-        >
-          无反向链接
-        </p>
-      )}
+      ) : null}
       {analysis.links.length ? (
         <details className="knowledge-context-section" open>
           <summary className="ui-section-label knowledge-context-heading">
@@ -149,13 +141,10 @@ export function NoteContext({
             );
           })}
         </details>
-      ) : (
-        <p
-          className="knowledge-context-empty"
-          title="输入 [[ 关联笔记，或 ⌘/Ctrl+点击链接打开。"
-          aria-description="输入 [[ 关联笔记，或 ⌘/Ctrl+点击链接打开。"
-        >
-          无出站链接
+      ) : null}
+      {!backlinks.length && !analysis.links.length && (
+        <p className="knowledge-context-empty" title="输入 [[ 关联笔记，或 ⌘/Ctrl+点击链接打开。">
+          输入 [[，连接相关笔记
         </p>
       )}
     </aside>
