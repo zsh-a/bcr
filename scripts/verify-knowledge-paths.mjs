@@ -14,7 +14,7 @@ const saved = () =>
   page
     .locator('[data-testid="knowledge-status"] .knowledge-status-line')
     .filter({ hasText: /^(已保存|已同步)/u })
-    .waitFor();
+    .waitFor({ state: "attached" });
 async function create(name) {
   const old = page.url();
   await page.getByRole("button", { name: "新建笔记", exact: true }).click();

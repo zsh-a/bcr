@@ -16,7 +16,7 @@ const saved = () =>
   page
     .locator('[data-testid="knowledge-status"] .knowledge-status-line')
     .filter({ hasText: /^(已保存|已同步)/u })
-    .waitFor();
+    .waitFor({ state: "attached" });
 const palette = () => page.locator("dialog.knowledge-switcher");
 const rail = () => page.locator("aside.knowledge-context:visible");
 async function create(name, content) {
