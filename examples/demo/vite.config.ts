@@ -1,8 +1,9 @@
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [tailwindcss(), react()],
   server: {
     headers: {
       // §11：SharedArrayBuffer 需要 cross-origin isolation，部署层直接内置
