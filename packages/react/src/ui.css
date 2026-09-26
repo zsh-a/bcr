@@ -133,6 +133,8 @@
 /* ---------- 对话框 / 浮层 ---------- */
 
 .ui-dialog {
+  /* 内部 inline-size 容器不参与固有宽度计算，外层必须明确宽度。 */
+  width: 100%;
   max-width: min(560px, calc(100vw - 2 * var(--space-4)));
   max-height: var(--h-overlay-max);
   padding: 0;
