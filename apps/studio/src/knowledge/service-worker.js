@@ -8,8 +8,8 @@ const APP_SHELL = [
   "/notes/",
   "/notes/knowledge/",
   "/notes/manifest.webmanifest",
-  "/icons/knowledge-icon-192.svg",
-  "/icons/knowledge-icon-512.svg",
+  "/icons/knowledge-icon-192.png",
+  "/icons/knowledge-icon-512.png",
 ];
 
 function isRequiredNotesAsset(url) {
@@ -69,6 +69,9 @@ async function shellUrls() {
   const visited = new Set();
   // 只预缓存 Notes 独立入口的模块图；宿主 Studio 的其余应用保持按需加载。
   addManifestEntry(manifest, "notes/knowledge/index.html", urls, visited);
+  for (const key of Object.keys(manifest)) {
+    if (key.endsWith("/bcr_kernels_bg.wasm")) addManifestEntry(manifest, key, urls, visited);
+  }
   return [...urls];
 }
 
@@ -144,7 +147,7 @@ globalThis.addEventListener("activate", (event) => {
     (async () => {
       const names = await knowledgeCacheNames();
       const generated = names
-        .filter((name) => /^\d+$/u.test(name.slice(CACHE_PREFIX.length)))
+        .filter((name) => name !== CACHE_NAME && /^\d+$/u.test(name.slice(CACHE_PREFIX.length)))
         .sort()
         .reverse();
       // 保留上一个时间戳版本，让已打开的旧标签页能继续取到旧 chunk。

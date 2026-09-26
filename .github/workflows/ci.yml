@@ -159,6 +159,12 @@ jobs:
       - name: Verify production Reader PWA
         run: bun run test:pwa
 
+      - name: Verify independent PWA installation and offline starts
+        run: bun run test:pwa:apps
+
+      - name: Verify production Notes PWA
+        run: bun run test:pwa:knowledge
+
       - name: Verify production knowledge offline and sync
         run: BCR_KNOWLEDGE_PRODUCTION=1 node scripts/verify-knowledge.mjs
 

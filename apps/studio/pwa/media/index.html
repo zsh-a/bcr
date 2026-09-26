@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      // Set the appearance before styles/modules load; storage may be unavailable.
+      let preference = "system";
+      try {
+        preference = localStorage.getItem("bcr/theme") || "system";
+      } catch {}
+      const dark =
+        preference === "dark" ||
+        (preference !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+      document.documentElement.classList.toggle("dark", dark);
+      document.documentElement.style.colorScheme = dark ? "dark" : "light";
+    </script>
+    <meta name="theme-color" content="#147a73" />
+    <meta name="application-name" content="BCR Media Studio" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="apple-touch-icon" href="/icons/media-icon-192.png" />
+    <link rel="manifest" href="/pwa/media/manifest.webmanifest" />
+    <title>BCR Media Studio</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/pwa/main.ts"></script>
+  </body>
+</html>

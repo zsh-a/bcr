@@ -168,7 +168,12 @@ globalThis.addEventListener("fetch", (event) => {
     // The Notes PWA owns /notes/ through its own scoped service worker. Until
     // that worker is registered this shell must stay out of the way: serving
     // the Studio SPA under a notes address would boot the wrong router.
-    if (url.pathname === "/notes" || url.pathname.startsWith("/notes/")) {
+    if (
+      url.pathname === "/notes" ||
+      url.pathname.startsWith("/notes/") ||
+      url.pathname === "/pwa" ||
+      url.pathname.startsWith("/pwa/")
+    ) {
       event.respondWith(
         refreshAllowed()
           ? fetchWithTimeout(request).catch(() => Response.error())

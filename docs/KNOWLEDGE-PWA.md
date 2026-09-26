@@ -1,5 +1,7 @@
 # 个人知识库独立 PWA（/notes/）
 
+全套应用的安装身份、非重叠作用域与 Reader 迁移见 [独立 PWA 安装](./INDEPENDENT-PWAS.md)。
+
 个人知识库除了作为 Studio 壳内的 `/knowledge` 嵌入路由，还提供一个可独立安装的
 PWA：manifest `id "/notes/"`、`scope "/notes/"`、`display standalone`，图标与
 Reader 同族（青底 + 纸页 + 铅笔）。两个入口共享同源 OPFS / localStorage，笔记、
@@ -33,7 +35,8 @@ basepath 使它与宿主的 `/knowledge` 在 URL 上互不相扰。样式基座�
 
 ## Service Worker
 
-`src/knowledge/service-worker.js` 与 Reader SW 同一套协议与策略：
+`src/knowledge/service-worker.js` 与 Reader SW 同一套协议与策略；注册与更新监听共用
+`src/pwa/register.ts`，Worker 嵌套资源另由 `/assets/sw.js` 的资源作用域负责：
 
 - 安装时按 `build-manifest.json` 的 `notes/knowledge/index.html` 条目递归预缓存
   入口模块图；**sqlite wasm 及其 OPFS 代理不排除**——Notes 的 runtime 启动即加载

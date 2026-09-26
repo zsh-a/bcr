@@ -1,3 +1,7 @@
+import { preparePwaAssets, registerPwaWorker } from "../pwa/register";
+import { captureInstallPrompt } from "../pwa/install";
+import { InstallControl } from "../pwa/InstallControl";
+import { pwaForApp } from "../pwa/apps";
 import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";
 import "@fontsource/ibm-plex-sans/600.css";
@@ -40,95 +44,6 @@ import { KnowledgeApp } from "./KnowledgeApp";
  * KnowledgeApp 内部把选择硬编码导航到 `/knowledge`，路由树必须保留这个
  * path；basepath /notes 让它与宿主的 /knowledge 嵌入路由在 URL 上互不相扰。
  */
-
-const UPDATE_READY_EVENT = "bcr-update-ready";
-const APPLY_UPDATE_EVENT = "bcr-apply-update";
-const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1_000;
-const UPDATE_CHECK_THROTTLE_MS = 60 * 1_000;
-
-type NotesPwaWindow = Window & {
-  __bcrUpdateReady?: boolean;
-};
-
-function registerNotesServiceWorker(): void {
-  const viteEnv = (import.meta as ImportMeta & { readonly env?: { readonly PROD?: boolean } }).env;
-  if (viteEnv?.PROD !== true || !("serviceWorker" in navigator)) return;
-  void navigator.serviceWorker
-    .register("/notes/sw.js", { scope: "/notes/", updateViaCache: "none" })
-    .then((registration) => {
-      const pwaWindow = window as NotesPwaWindow;
-      let announcedWorker: ServiceWorker | null = null;
-      let updateRequested = false;
-      let reloadStarted = false;
-      let lastUpdateCheck = 0;
-
-      const activateWaitingWorker = () => {
-        const waiting = registration.waiting;
-        if (waiting === null) {
-          if (pwaWindow.__bcrUpdateReady === true && !reloadStarted) {
-            reloadStarted = true;
-            window.location.reload();
-          }
-          return;
-        }
-        pwaWindow.__bcrUpdateReady = false;
-        waiting.postMessage({ type: "SKIP_WAITING" });
-      };
-
-      const announceUpdate = (worker: ServiceWorker) => {
-        if (worker === announcedWorker) return;
-        announcedWorker = worker;
-        pwaWindow.__bcrUpdateReady = true;
-        window.dispatchEvent(new Event(UPDATE_READY_EVENT));
-        if (updateRequested) activateWaitingWorker();
-      };
-
-      const watchInstallingWorker = (worker: ServiceWorker) => {
-        const handleState = () => {
-          if (worker.state === "installed" && navigator.serviceWorker.controller !== null) {
-            announceUpdate(worker);
-          }
-        };
-        worker.addEventListener("statechange", handleState);
-        handleState();
-      };
-
-      registration.addEventListener("updatefound", () => {
-        const worker = registration.installing;
-        if (worker !== null) watchInstallingWorker(worker);
-      });
-      if (registration.installing !== null) watchInstallingWorker(registration.installing);
-      if (registration.waiting !== null && navigator.serviceWorker.controller !== null) {
-        announceUpdate(registration.waiting);
-      }
-
-      window.addEventListener(APPLY_UPDATE_EVENT, () => {
-        updateRequested = true;
-        activateWaitingWorker();
-      });
-
-      navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (!updateRequested || reloadStarted) return;
-        reloadStarted = true;
-        window.location.reload();
-      });
-
-      const checkForUpdate = (force = false) => {
-        if (document.visibilityState !== "visible" || navigator.onLine === false) return;
-        const now = Date.now();
-        if (!force && now - lastUpdateCheck < UPDATE_CHECK_THROTTLE_MS) return;
-        lastUpdateCheck = now;
-        void registration.update().catch(() => undefined);
-      };
-      window.addEventListener("online", () => checkForUpdate(true));
-      document.addEventListener("visibilitychange", () => checkForUpdate());
-      window.setInterval(checkForUpdate, UPDATE_CHECK_INTERVAL_MS);
-      if (registration.installing === null && registration.waiting === null) {
-        checkForUpdate(true);
-      }
-    })
-    .catch(() => undefined);
-}
 
 function NotesRuntime({ children }: { children: ReactNode }) {
   const { services, error } = useRuntimeSession(createRuntimeServices);
@@ -176,7 +91,15 @@ function NotesRoot() {
   return (
     <AgentProvider host={agent}>
       <NotesRuntime>
-        <Outlet />
+        <div className="notes-standalone-frame">
+          <div className="notes-standalone-toolbar">
+            <span>BCR 笔记</span>
+            <InstallControl app={pwaForApp("knowledge")!} />
+          </div>
+          <div className="notes-standalone-content">
+            <Outlet />
+          </div>
+        </div>
       </NotesRuntime>
     </AgentProvider>
   );
@@ -195,13 +118,25 @@ const notesRouter = createRouter({
   basepath: "/notes",
 });
 
-registerNotesServiceWorker();
+registerPwaWorker("/notes/sw.js", "/notes/");
+captureInstallPrompt();
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) throw new Error("missing #root");
 
-createRoot(rootElement).render(
-  <AppUpdateProvider>
-    <RouterProvider router={notesRouter} />
-  </AppUpdateProvider>,
-);
+const root = createRoot(rootElement);
+void preparePwaAssets()
+  .then(() => {
+    root.render(
+      <AppUpdateProvider>
+        <RouterProvider router={notesRouter} />
+      </AppUpdateProvider>,
+    );
+  })
+  .catch((reason: unknown) => {
+    root.render(
+      <p role="alert">
+        笔记库启动失败：{reason instanceof Error ? reason.message : String(reason)}
+      </p>,
+    );
+  });

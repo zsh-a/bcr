@@ -1,3 +1,4 @@
+import { ReaderNavigation } from "./pwa/ReaderNavigation";
 import "@fontsource/ibm-plex-sans/latin-400.css";
 import "@fontsource/ibm-plex-sans/latin-500.css";
 import "@fontsource/ibm-plex-sans/latin-600.css";
@@ -13,7 +14,9 @@ import { AppUpdateProvider } from "@bcr/react";
 export function mountReader(container: HTMLElement): void {
   createRoot(container).render(
     <AppUpdateProvider>
-      <App workspaceCollections />
+      <ReaderNavigation>
+        <App workspaceCollections />
+      </ReaderNavigation>
     </AppUpdateProvider>,
   );
 }

@@ -1,0 +1,26 @@
+{
+  "id": "/pwa/quant/",
+  "name": "BCR Quant Lab",
+  "short_name": "量化",
+  "lang": "zh-CN",
+  "start_url": "/pwa/quant/",
+  "scope": "/pwa/quant/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#151619",
+  "theme_color": "#147a73",
+  "icons": [
+    {
+      "src": "/icons/quant-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/quant-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,3 +1,6 @@
+import { InstallControl } from "../pwa/InstallControl";
+import { currentPwa } from "../pwa/routing";
+import { pwaForApp } from "../pwa/apps";
 import {
   Button,
   IconButton,
@@ -126,6 +129,9 @@ export function TopBar(props: {
           <span>命令面板</span>
           {props.active !== "knowledge" && <kbd>{modifier}K</kbd>}
         </Button>
+        <section className="studio-options-section" aria-label="应用安装">
+          <InstallControl app={currentPwa ?? pwaForApp(props.active) ?? pwaForApp("workspace")!} />
+        </section>
         <section className="studio-options-section" aria-label="外观设置">
           <h2>外观</h2>
           <ThemePicker />

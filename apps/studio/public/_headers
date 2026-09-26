@@ -23,3 +23,12 @@
 /manifest.webmanifest
   Cache-Control: public, max-age=3600
   Content-Type: application/manifest+json
+
+/pwa/*
+  Cache-Control: no-cache, must-revalidate
+
+/notes/*
+  Cache-Control: no-cache, must-revalidate
+
+/assets/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate

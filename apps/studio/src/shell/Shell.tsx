@@ -1,3 +1,6 @@
+import { currentPwa } from "../pwa/routing";
+import { pwaForApp } from "../pwa/apps";
+import { syncInstallMetadata } from "../pwa/install";
 import type { SearchDocument } from "@bcr/core";
 import { NavigationBridge } from "./NavigationBridge";
 import {
@@ -86,6 +89,9 @@ function ShellContent() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const active = appIdFromPath(pathname);
+  useLayoutEffect(() => {
+    syncInstallMetadata(currentPwa ?? (active === "home" ? undefined : pwaForApp(active)));
+  }, [active]);
   useLayoutEffect(() => {
     conversations.setOptions({
       workspaceId: active,

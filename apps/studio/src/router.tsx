@@ -1,5 +1,7 @@
+import { currentPwa, pwaRewrite } from "./pwa/routing";
 import {
   createRootRoute,
+  redirect,
   createRoute,
   createRouter,
   useNavigate,
@@ -22,7 +24,22 @@ export interface StudioSearch {
   task?: string | undefined;
 }
 
-const rootRoute = createRootRoute({ component: Shell });
+const rootRoute = createRootRoute({
+  component: Shell,
+  beforeLoad: ({ location }) => {
+    if (
+      currentPwa &&
+      currentPwa.key !== "workspace" &&
+      location.pathname.replace(/\/$/u, "") !== currentPwa.path
+    ) {
+      // A different tool belongs to the browser workspace, not this installed app.
+      throw redirect({
+        href: `${location.pathname}${location.searchStr}${location.hash ? `#${location.hash}` : ""}`,
+        reloadDocument: true,
+      });
+    }
+  },
+});
 
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -46,6 +63,7 @@ const assistantAlias = createRoute({
   component: () => null,
 });
 export const router = createRouter({
+  ...(currentPwa ? { rewrite: pwaRewrite(currentPwa) } : {}),
   routeTree: rootRoute.addChildren([homeRoute, assistantAlias, ...appRoutes]),
 });
 

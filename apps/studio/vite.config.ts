@@ -1,3 +1,5 @@
+import { pwaBuildManifest } from "./pwa-build";
+import { PWA_APPS } from "./src/pwa/apps";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, type ProxyOptions } from "vite-plus";
@@ -39,10 +41,12 @@ const gatewayProxy: Record<string, ProxyOptions> = localGateway
   : {};
 
 export default defineConfig({
-  plugins: [tailwindcss(), react()],
+  plugins: [tailwindcss(), react(), pwaBuildManifest()],
   preview: { proxy: gatewayProxy },
   define: {
     "globalThis.__BCR_READER_BUILD_ID__": JSON.stringify(buildId),
+    "globalThis.__BCR_PWA_APPS__": JSON.stringify(PWA_APPS),
+    "globalThis.__BCR_CLOUDFLARE__": JSON.stringify(process.env.VITE_BCR_CLOUDFLARE === "1"),
     "globalThis.__BCR_NOTES_BUILD_ID__": JSON.stringify(buildId),
   },
   build: {
@@ -52,6 +56,14 @@ export default defineConfig({
     rolldownOptions: {
       input: {
         index: new URL("./index.html", import.meta.url).pathname,
+        ...Object.fromEntries(
+          PWA_APPS.filter((app) => app.key !== "knowledge").map((app) => [
+            `pwa-${app.key}`,
+            new URL(`./pwa/${app.key}/index.html`, import.meta.url).pathname,
+          ]),
+        ),
+        "pwa-assets-worker": new URL("./src/pwa/assets-worker.js", import.meta.url).pathname,
+        "pwa-service-worker": new URL("./src/pwa/service-worker.js", import.meta.url).pathname,
         "service-worker": new URL("./src/service-worker.js", import.meta.url).pathname,
         notes: new URL("./notes/knowledge/index.html", import.meta.url).pathname,
         "notes-service-worker": new URL("./src/knowledge/service-worker.js", import.meta.url)
@@ -59,11 +71,15 @@ export default defineConfig({
       },
       output: {
         entryFileNames: (chunk) =>
-          chunk.name === "service-worker"
-            ? "sw.js"
-            : chunk.name === "notes-service-worker"
-              ? "notes/sw.js"
-              : "assets/[name]-[hash].js",
+          chunk.name === "pwa-assets-worker"
+            ? "assets/sw.js"
+            : chunk.name === "pwa-service-worker"
+              ? "pwa/sw.js"
+              : chunk.name === "service-worker"
+                ? "sw.js"
+                : chunk.name === "notes-service-worker"
+                  ? "notes/sw.js"
+                  : "assets/[name]-[hash].js",
       },
     },
   },

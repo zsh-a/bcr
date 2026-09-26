@@ -1,0 +1,26 @@
+{
+  "id": "/pwa/documents/",
+  "name": "BCR Document Studio",
+  "short_name": "文档",
+  "lang": "zh-CN",
+  "start_url": "/pwa/documents/",
+  "scope": "/pwa/documents/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#151619",
+  "theme_color": "#147a73",
+  "icons": [
+    {
+      "src": "/icons/documents-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/documents-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
