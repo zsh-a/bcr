@@ -22,6 +22,17 @@ import { WorkspacePanel } from "./WorkspacePanel";
 
 const LAYOUT_KEY = "bcr.studio.layout.v1";
 
+/** 面板最小宽高（dockview 约束）：窄容器下不塌缩，放不下的内容以溢出滚动让位。
+ *  取值贴着默认布局的 initial 尺寸之下，不改变默认形态。 */
+const MIN_SIZES: Record<string, { minimumWidth?: number; minimumHeight?: number }> = {
+  workspace: { minimumWidth: 320, minimumHeight: 200 },
+  project: { minimumWidth: 200 },
+  inspector: { minimumWidth: 240 },
+  storage: { minimumWidth: 240 },
+  tasks: { minimumHeight: 120 },
+  console: { minimumHeight: 120 },
+};
+
 const components: Record<string, React.FunctionComponent<IDockviewPanelProps>> = {
   project: () => <ProjectPanel />,
   workspace: () => <WorkspacePanel />,
@@ -38,6 +49,7 @@ function defaultLayout(api: DockviewApi): void {
     id: "workspace",
     component: "workspace",
     title: "Workspace",
+    ...MIN_SIZES.workspace,
   });
   api.addPanel({
     id: "project",
@@ -45,6 +57,7 @@ function defaultLayout(api: DockviewApi): void {
     title: "项目文件",
     position: { referencePanel: "workspace", direction: "left" },
     initialWidth: 232,
+    ...MIN_SIZES.project,
   });
   api.addPanel({
     id: "inspector",
@@ -52,6 +65,7 @@ function defaultLayout(api: DockviewApi): void {
     title: "Inspector",
     position: { referencePanel: "workspace", direction: "right" },
     initialWidth: 304,
+    ...MIN_SIZES.inspector,
   });
   api.addPanel({
     id: "storage",
@@ -59,6 +73,7 @@ function defaultLayout(api: DockviewApi): void {
     title: "存储",
     position: { referencePanel: "inspector", direction: "within" },
     inactive: true,
+    ...MIN_SIZES.storage,
   });
   const tasks = api.addPanel({
     id: "tasks",
@@ -66,14 +81,29 @@ function defaultLayout(api: DockviewApi): void {
     title: "任务",
     position: { referencePanel: "workspace", direction: "below" },
     initialHeight: 176,
+    ...MIN_SIZES.tasks,
   });
   api.addPanel({
     id: "console",
     component: "console",
     title: "控制台",
     position: { referencePanel: "tasks", direction: "within" },
+    ...MIN_SIZES.console,
   });
   tasks.api.setActive();
+}
+
+/** 持久化布局回灌前补上面板最小宽高：dockview 只在面板创建时取约束（旧布局没有这些字段）。 */
+function withMinSizes<T>(layout: T): T {
+  if (layout && typeof layout === "object" && "panels" in layout) {
+    const panels: unknown = layout.panels;
+    if (panels && typeof panels === "object")
+      for (const [id, panel] of Object.entries(panels)) {
+        const min = MIN_SIZES[id];
+        if (min && panel && typeof panel === "object") Object.assign(panel, min);
+      }
+  }
+  return layout;
 }
 
 export function resetLayout(): void {
@@ -100,7 +130,7 @@ export function Dock() {
     const saved = localStorage.getItem(LAYOUT_KEY);
     if (saved !== null) {
       try {
-        api.fromJSON(JSON.parse(saved));
+        api.fromJSON(withMinSizes(JSON.parse(saved)));
         restored = true;
       } catch {
         restored = false;

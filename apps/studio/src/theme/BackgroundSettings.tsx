@@ -1,5 +1,12 @@
 import { Button, IconButton } from "@bcr/react";
-import { useId, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+} from "react";
 import { ImagePlus, X } from "lucide-react";
 import { backgroundStore } from "./backgroundBrowser";
 import { prepareBackground } from "./background";
@@ -16,6 +23,40 @@ export function BackgroundSettings() {
   const [shade, setShade] = useState<number | null>(null);
   const locked = useRef(false);
   const [message, setMessage] = useState("");
+  const panel = useRef<HTMLDivElement>(null);
+  // anchor() 在本 Chromium 不支持 max-height（解析期存活、计算期无效）。
+  // toggle 时刻的 rect.top 是布局未定态（顶栏换行/主题重排在其后落定），
+  // 故 clamp 自校正：rAF 合并 + ResizeObserver 兜住一切布局漂移，逐帧收敛。
+  useEffect(() => {
+    const element = panel.current;
+    if (!element) return;
+    let frame = 0;
+    const clamp = () => {
+      if (!element.matches(":popover-open")) return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (!element.matches(":popover-open")) return;
+        const top = element.getBoundingClientRect().top;
+        element.style.maxHeight = `calc(100dvh - ${Math.round(top)}px - var(--space-2) - env(safe-area-inset-bottom, 0px))`;
+      });
+    };
+    const observer = new ResizeObserver(clamp);
+    observer.observe(document.body);
+    const toggle = () => {
+      if (element.matches(":popover-open")) clamp();
+      // 关闭即清残留：display:none 时 rect.top=0 的假量不得跨开启存活，
+      // 下次开启的首帧回落到 CSS 地板预算。
+      else element.style.removeProperty("max-height");
+    };
+    element.addEventListener("toggle", toggle);
+    window.addEventListener("resize", clamp);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      element.removeEventListener("toggle", toggle);
+      window.removeEventListener("resize", clamp);
+    };
+  }, []);
   async function upload(file: File) {
     if (locked.current) return;
     locked.current = true;
@@ -59,6 +100,7 @@ export function BackgroundSettings() {
         <ImagePlus size={16} aria-hidden="true" />
       </IconButton>
       <div
+        ref={panel}
         id={id}
         popover="auto"
         role="dialog"

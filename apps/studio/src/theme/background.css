@@ -1,4 +1,7 @@
 /* 工作区背景设置：原生 popover 浮层，基座与进出场来自 .ui-popover。 */
+/* 断点桥接：@media 条件里的 theme(--bp-*) 需要本文件编译域内有 @theme。 */
+@import "@bcr/react/tokens.css";
+
 .studio-background-trigger {
   anchor-name: --background-trigger;
   margin-left: var(--space-1);
@@ -8,7 +11,7 @@
   position: fixed;
   inset: calc(var(--h-topbar) + var(--space-4)) var(--space-3) auto auto;
   width: min(var(--w-sidebar), calc(100vw - 2 * var(--space-3)));
-  max-height: calc(100dvh - var(--h-topbar) - var(--space-8));
+  max-height: calc(100dvh - 2 * var(--h-topbar) - var(--space-2));
   overflow: auto;
   overscroll-behavior: contain;
 }
@@ -23,6 +26,8 @@
       max(var(--space-3), calc(100vw - var(--w-sidebar) - var(--space-3)))
     );
     margin-top: var(--space-2);
+    /* 注意：anchor() 不支持 max-height（此 Chromium CSS.supports 为 false，
+     * 该声明会把预算压成 none）。高度钳制见 BackgroundSettings 的 JS clamp。 */
   }
 }
 
@@ -180,7 +185,7 @@
   border-radius: var(--radius-md);
 }
 
-@media (max-width: 37.5em) {
+@media (width <= theme(--bp-sm)) {
   .studio-theme-picker:has(.studio-background-trigger) {
     width: auto;
   }

@@ -3,10 +3,13 @@
  * 进出场沿用 ui.css 的 @starting-style + allow-discrete 模式，并补齐 overlay 退场。
  */
 
+/* 断点桥接：@media 条件里的 theme(--bp-*) 需要本文件编译域内有 @theme。 */
+@import "@bcr/react/tokens.css";
+
 .knowledge-dialog {
   position: fixed;
   inset: 0;
-  max-height: min(820px, calc(100dvh - 64px));
+  max-height: min(820px, var(--h-overlay-max));
   overflow: hidden;
   transition:
     opacity var(--duration-base) var(--ease-standard),
@@ -16,9 +19,9 @@
 }
 
 /* 桌面居中宽卡；小屏交给 ui-dialog-sheet 的底部抽屉形态。 */
-@media (min-width: 641px) {
+@media (width > theme(--bp-sm)) {
   .knowledge-dialog {
-    width: min(760px, calc(100vw - 48px));
+    width: min(760px, calc(100vw - 2 * var(--space-6)));
     max-width: none;
     margin: auto;
   }
@@ -29,7 +32,7 @@
 }
 
 .knowledge-dialog .ui-dialog-frame {
-  max-height: min(820px, calc(100dvh - 64px));
+  max-height: min(820px, var(--h-overlay-max));
 }
 
 .knowledge-dialog .ui-dialog-head {
@@ -68,7 +71,35 @@
   margin-top: 0;
 }
 
-@media (max-width: 640px) {
+@media (width <= theme(--bp-sm)) {
+  .knowledge-dialog .ui-dialog-body {
+    padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
+  }
+}
+
+/* 矮窗口（height < 500px）：对话框变全屏 sheet——宽卡/抽屉两档形态统一让位给内容高度。 */
+@media (height < 500px) {
+  .knowledge-dialog {
+    --h-overlay-max: calc(100dvh - env(safe-area-inset-top) - var(--space-2));
+    width: 100%;
+    max-width: none;
+    height: var(--h-overlay-max);
+    max-height: none;
+    margin: auto auto 0;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .knowledge-dialog .ui-dialog-frame {
+    max-height: 100%;
+  }
+
+  .knowledge-dialog .ui-dialog-head {
+    padding-top: max(var(--space-6), env(safe-area-inset-top));
+  }
+
   .knowledge-dialog .ui-dialog-body {
     padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
   }
@@ -232,7 +263,8 @@
   color: var(--color-faint);
 }
 
-@media (max-width: 640px) {
+/* 版本条目摘要随对话框体容器而非视口换行（原视口 640px 组件级规则迁入）。 */
+@container ui-body (width <= 640px) {
   .knowledge-history-entry-summary {
     flex-basis: 100%;
     white-space: normal;

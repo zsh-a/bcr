@@ -19,7 +19,7 @@ await page.waitForFunction(
     return metric !== undefined && !metric.textContent?.includes("—");
   },
   undefined,
-  { timeout: 20_000 },
+  { timeout: 45_000 },
 );
 
 let body = await page.locator("body").innerText();

@@ -4,6 +4,9 @@
  * 交互语言：hover 只做颜色/边框变化，不位移、不发光、不缩放。
  */
 
+/* 断点桥接：@media 条件里的 theme(--bp-*) 需要本文件编译域内有 @theme。 */
+@import "./tokens.css";
+
 /* ---------- 按钮 ---------- */
 
 .ui-btn {
@@ -130,7 +133,8 @@
 /* ---------- 对话框 / 浮层 ---------- */
 
 .ui-dialog {
-  max-width: min(560px, calc(100vw - 32px));
+  max-width: min(560px, calc(100vw - 2 * var(--space-4)));
+  max-height: var(--h-overlay-max);
   padding: 0;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
@@ -142,7 +146,8 @@
   transition:
     opacity var(--duration-base) var(--ease-standard),
     transform var(--duration-base) var(--ease-standard),
-    display var(--duration-base) allow-discrete;
+    display var(--duration-base) allow-discrete,
+    overlay var(--duration-base) allow-discrete;
 }
 
 .ui-dialog[open] {
@@ -164,7 +169,7 @@
 .ui-dialog-frame {
   display: grid;
   grid-template-rows: auto 1fr;
-  max-height: calc(100vh - 2 * var(--space-8));
+  max-height: var(--h-overlay-max);
 }
 
 .ui-dialog-head {
@@ -181,12 +186,14 @@
   font-weight: 600;
 }
 
+/* 对话框体是具名容器（ui-body）：内部表单随容器而非视口降级。 */
 .ui-dialog-body {
+  container: ui-body / inline-size;
   padding: var(--space-5);
   overflow: auto;
 }
 
-@media (max-width: 640px) {
+@media (width <= theme(--bp-sm)) {
   .ui-dialog-sheet {
     width: 100%;
     max-width: none;
@@ -198,8 +205,43 @@
   }
 }
 
+/* 矮窗口（height < 500px）：对话框一律变全屏 sheet，把有限的纵向空间留给内容。 */
+@media (height < 500px) {
+  .ui-dialog,
+  .ui-dialog-sheet {
+    --h-overlay-max: calc(100dvh - env(safe-area-inset-top) - var(--space-2));
+    width: 100%;
+    max-width: none;
+    height: var(--h-overlay-max);
+    max-height: none;
+    margin: auto auto 0;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .ui-dialog-body {
+    padding-bottom: max(var(--space-5), env(safe-area-inset-bottom));
+  }
+}
+
+@container ui-body (width < 400px) {
+  /* 表单 label 上置堆叠：行内「label 文字 + 控件」改竖排；
+   * 单选/复选行（label 内联语义）保持原样。 */
+  label:has(> input:not([type="radio"], [type="checkbox"]), > select, > textarea) {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+}
+
 .ui-popover {
   margin: 0;
+  max-height: var(--h-overlay-max);
+  overflow: auto;
+  overscroll-behavior: contain;
   padding: var(--space-4);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);

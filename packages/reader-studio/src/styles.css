@@ -3066,7 +3066,7 @@
   }
 }
 
-@media (max-width: 860px) and (orientation: landscape) {
+@media (width <= theme(--bp-reader-landscape)) and (orientation: landscape) {
   .reader-brand-subtitle {
     display: none;
   }

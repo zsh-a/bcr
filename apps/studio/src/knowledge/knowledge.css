@@ -3,6 +3,9 @@
  * 视觉令牌来自 tokens.css，控件原语来自 ui.css；圆角、间距、字号、动效只用令牌。
  */
 
+/* 断点桥接：@media 条件里的 theme(--bp-*) 需要本文件编译域内有 @theme。 */
+@import "@bcr/react/tokens.css";
+
 /* ---------- 外壳与侧栏 ---------- */
 
 /* 知识模块排版变量：标题/行文档位由类型令牌推导（22/18/13），笔记标题 26px 始终最大；
@@ -25,7 +28,10 @@
   background: var(--color-bg);
 }
 
+/* 侧栏是具名容器（kb-side）：卡片随容器而非视口降级。
+   形态过渡：clamp 流体宽度以 --duration-slow 连续跟随，断点之间不跳变。 */
 .knowledge-sidebar {
+  container: kb-side / inline-size;
   width: var(--w-sidebar);
   flex: 0 0 var(--w-sidebar);
   display: flex;
@@ -35,6 +41,9 @@
   border-right: 1px solid var(--color-border);
   background: var(--color-surface);
   min-height: 0;
+  transition:
+    width var(--duration-slow) var(--ease-standard),
+    flex-basis var(--duration-slow) var(--ease-standard);
 }
 
 /* 眉标统一走 .ui-section-label；行内场景仅中和列表内边距。 */
@@ -187,9 +196,19 @@
   padding-top: var(--space-3);
 }
 
+@container kb-side (width < 220px) {
+  /* 卡片只留标题 + 相对时间：preview 行与卡片标签隐藏。 */
+  .knowledge-note-card p,
+  .knowledge-note-meta .knowledge-chip {
+    display: none;
+  }
+}
+
 /* ---------- 主区与工具栏 ---------- */
 
+/* 主区是具名容器（kb-main）：工具条、分段与标签行随容器而非视口降级。 */
 .knowledge-main {
+  container: kb-main / inline-size;
   flex: 1;
   min-width: 0;
   min-height: 0;
@@ -292,6 +311,9 @@
   min-height: 0;
   /* 右下「继续对话 ⌘J」浮标安全区：文档列底部留 ≥64px，避免遮住正文/出站链接。 */
   padding-bottom: 64px;
+  /* 粘性条/浮标不遮挡落点（WCAG Focus Not Obscured）：大纲跳转、Tab 聚焦、
+     搜索高亮落点统一带上下间隙。 */
+  scroll-padding-block: var(--space-6) 64px;
 }
 
 .knowledge-notice {
@@ -538,8 +560,9 @@
 .knowledge-body {
   display: block;
   width: 100%;
-  min-height: 380px;
-  height: 48vh;
+  /* 高度语义：48dvh 起步，最小高度按 min(380px, 60dvh) 预算——矮窗口收缩但正文始终可滚动可达。 */
+  min-height: min(380px, 60dvh);
+  height: 48dvh;
   border: 0;
   background: transparent;
   color: var(--color-muted);
@@ -710,11 +733,17 @@
 /* ---------- 正文预览 ---------- */
 
 .knowledge-prose {
-  min-height: 380px;
+  /* 与 .knowledge-body 同一高度预算：矮窗口下不再硬撑 380px。 */
+  min-height: min(380px, 60dvh);
   color: var(--color-muted);
   font-family: var(--reading-font, var(--font-sans));
   line-height: var(--reading-leading, var(--text-base--line-height));
   overflow-wrap: anywhere;
+}
+
+/* 锚点落点（大纲跳转/搜索高亮/Tab 聚焦）不被粘性条与浮标遮挡。 */
+.knowledge-prose :is(h1, h2, h3, [id^="note-heading-"]) {
+  scroll-margin-top: var(--space-6);
 }
 
 .knowledge-prose h1,
@@ -1094,11 +1123,11 @@
   position: fixed;
   z-index: 60;
   left: 50%;
-  bottom: var(--space-6);
+  bottom: max(var(--space-6), env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  max-width: min(480px, calc(100vw - var(--space-8)));
+  max-width: min(480px, calc(100vw - 2 * var(--space-5)));
   padding: var(--space-2) var(--space-2) var(--space-2) var(--space-5);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-full);
@@ -1214,7 +1243,9 @@
 
 /* ---------- 小屏：抽屉 + 顶行 + 底部视图导航 ---------- */
 
-@media (max-width: 720px) {
+@media (width <= theme(--bp-md)) {
+  /* 抽屉覆盖正文（overlay，不挤开内容）；进出场按 ui.css 语言：位移 + 淡入淡出。
+     宽度/flex-basis 保持形态过渡，跨断点拉伸不跳变。 */
   .knowledge-sidebar {
     position: absolute;
     z-index: 42;
@@ -1222,12 +1253,19 @@
     bottom: 0;
     left: 0;
     width: min(var(--w-sidebar), 85vw);
-    padding: var(--space-4) var(--space-4) var(--space-4);
+    padding: var(--space-4) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom))
+      max(var(--space-4), env(safe-area-inset-left));
     gap: var(--space-3);
+    opacity: 0;
     transform: translateX(-105%);
-    transition: transform var(--duration-slow) var(--ease-standard);
+    transition:
+      transform var(--duration-slow) var(--ease-standard),
+      opacity var(--duration-slow) var(--ease-standard),
+      width var(--duration-slow) var(--ease-standard),
+      flex-basis var(--duration-slow) var(--ease-standard);
   }
   .knowledge-app.show-sidebar .knowledge-sidebar {
+    opacity: 1;
     transform: none;
   }
   .knowledge-app.show-sidebar .knowledge-backdrop {
@@ -1238,6 +1276,13 @@
     border: 0;
     padding: 0;
     background: var(--color-scrim);
+    /* 压暗层随抽屉一起淡入（元素随开关挂载，退场即卸载，不做退场过渡）。 */
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+  @starting-style {
+    .knowledge-app.show-sidebar .knowledge-backdrop {
+      opacity: 0;
+    }
   }
   .knowledge-mobile-close {
     display: inline-flex;
@@ -1262,7 +1307,9 @@
   .knowledge-titlebar {
     display: flex;
     order: -1;
-    padding: var(--space-2) var(--space-3);
+    padding: max(var(--space-2), env(safe-area-inset-top))
+      max(var(--space-3), env(safe-area-inset-right)) var(--space-2)
+      max(var(--space-3), env(safe-area-inset-left));
     min-height: var(--h-control-lg);
     border-bottom: 1px solid var(--color-border);
     background: var(--color-surface);
@@ -1315,12 +1362,14 @@
     min-height: var(--h-control-lg);
     padding: var(--space-4);
   }
-  /* 底部导航：视图胶囊 + 新建。 */
+  /* 底部导航：视图胶囊 + 新建；底部/侧边让开安全区（与 reader 对齐）。 */
   .knowledge-mobile-nav {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-2) max(var(--space-3), env(safe-area-inset-right))
+      max(var(--space-2), env(safe-area-inset-bottom))
+      max(var(--space-3), env(safe-area-inset-left));
     border-top: 1px solid var(--color-border);
     background: var(--color-surface);
   }
@@ -1346,5 +1395,43 @@
     color: var(--color-on-primary);
     display: grid;
     place-items: center;
+  }
+}
+
+/* ---------- 容器降级：主区 < 640px（随容器而非视口） ---------- */
+
+@container kb-main (width < 640px) {
+  /* 工具条按钮文字隐藏（icon-only）：裸文本随字号归零；
+   * svg 与显式字号元素（span、SectionLabel）不受影响；浮层菜单保持可读。 */
+  .knowledge-main
+    button:has(> svg):not(.knowledge-overflow-menu button, .knowledge-tools-menu button) {
+    font-size: 0;
+  }
+
+  /* 状态插槽同理：只留状态点。 */
+  .knowledge-status-line {
+    display: none;
+  }
+
+  /* 模式分段收成 ⋯：内联「编辑/阅读 + 源码」收进 ⋯ 菜单（菜单内已有「源码模式」等开关）。 */
+  .knowledge-mode-controls .knowledge-segmented,
+  .knowledge-mode-controls > .knowledge-quiet-toggle:not(.knowledge-tools-toggle) {
+    display: none;
+  }
+
+  /* 标签 chips 横滚单行，不再折行占高。 */
+  .knowledge-tags {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .knowledge-tags > * {
+    flex: 0 0 auto;
+  }
+
+  /* 路径栏收紧水平内边距（原视口 640px 组件级规则迁入；该组件当前无渲染方）。 */
+  .knowledge-pathbar {
+    padding: var(--space-2) var(--space-4);
   }
 }

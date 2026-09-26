@@ -254,6 +254,28 @@ export function NoteEditor({
                     )}
                   </div>
                 </details>
+                <div className="knowledge-tools-row">
+                  <span className="ui-section-label">视图模式</span>
+                  <div className="knowledge-chip-group">
+                    <button
+                      type="button"
+                      aria-pressed={mode === "edit"}
+                      onClick={() => {
+                        setMode("edit");
+                        requestAnimationFrame(() => source.current?.focus());
+                      }}
+                    >
+                      编辑
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={mode === "read"}
+                      onClick={() => setMode("read")}
+                    >
+                      阅读
+                    </button>
+                  </div>
+                </div>
                 <button
                   type="button"
                   aria-pressed={sourceMode}

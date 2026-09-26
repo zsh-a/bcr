@@ -139,6 +139,7 @@ try {
     true,
   );
   await page.reload();
+  await trigger.waitFor();
   await trigger.click();
   await panel.getByRole("button", { name: "恢复默认背景" }).click();
   assert.equal(await page.evaluate(() => localStorage.getItem("bcr/background")), null);

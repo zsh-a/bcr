@@ -3,6 +3,9 @@
  * 令牌与原语同 knowledge.css；hover 只做颜色/背景变化。
  */
 
+/* 断点桥接：@media 条件里的 theme(--bp-*) 需要本文件编译域内有 @theme。 */
+@import "@bcr/react/tokens.css";
+
 /* ---------- 行内链接（实时预览控件） ---------- */
 
 /* quiet chip：label 文本 + 微底色/细边；hover 只做颜色与边框变化。 */
@@ -235,7 +238,9 @@
 
 /* ---------- 文档与写作工具 ---------- */
 
+/* 文档列是具名容器（kb-doc）：标题与 meta 行随容器而非视口降级。 */
 .knowledge-document {
+  container: kb-doc / inline-size;
   display: flex;
   align-items: flex-start;
   min-width: 0;
@@ -366,11 +371,13 @@
 
 /* ---------- 上下文栏 ---------- */
 
+/* 上下文栏是具名容器（kb-rail）：小节计数与大纲缩进随容器而非视口降级。 */
 .knowledge-context {
+  container: kb-rail / inline-size;
   position: sticky;
   top: 0;
-  flex: 0 0 230px;
-  max-height: calc(100dvh - 180px);
+  flex: 0 0 var(--w-rail);
+  max-height: calc(100dvh - 180px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   overflow: auto;
   padding: var(--space-6) var(--space-4) 64px;
   border-left: 1px solid var(--color-border);
@@ -548,9 +555,9 @@
 
 .knowledge-switcher {
   position: fixed;
-  inset: 12vh 0 auto;
+  inset: 12dvh 0 auto;
   margin: 0 auto;
-  width: min(600px, 92vw);
+  width: min(560px, calc(100vw - 2 * var(--space-7)));
   max-width: none;
   max-height: 76dvh;
   overflow: hidden;
@@ -701,15 +708,89 @@
 
 /* ---------- 响应式 ---------- */
 
-/* 上下文栏 ≥1100px 常驻右侧；窄屏改用标题下的折叠段（DOM 顺序即视觉顺序）。 */
-@media (max-width: 1099px) {
-  .knowledge-document > .knowledge-context {
-    display: none;
+/* 上下文栏与标题下折叠段的形态切换：120ms 淡入淡出，display swap 走 allow-discrete，
+ * 跨 bp-lg 不再是瞬时跳变。 */
+.knowledge-document > .knowledge-context,
+.knowledge-context-inline {
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    display var(--duration-fast) allow-discrete;
+}
+
+@starting-style {
+  .knowledge-document > .knowledge-context,
+  .knowledge-context-inline {
+    opacity: 0;
   }
 }
 
-@media (min-width: 1100px) {
+/* 上下文栏 ≥--bp-lg 常驻右侧；窄屏改用标题下的折叠段（DOM 顺序即视觉顺序）。 */
+@media (width < theme(--bp-lg)) {
+  .knowledge-document > .knowledge-context {
+    display: none;
+    opacity: 0;
+  }
+}
+
+@media (width >= theme(--bp-lg)) {
   .knowledge-context-inline {
     display: none;
+    opacity: 0;
+  }
+}
+
+/* ---------- 容器降级 ---------- */
+
+@container kb-doc (width < 560px) {
+  /* 标题字号用容器单位收窄（cqi 参与 clamp 中值）；meta 行换行成多行。 */
+  .knowledge-title {
+    font-size: clamp(var(--text-xl), 5cqi, var(--text-2xl));
+  }
+
+  .knowledge-editor-meta > * {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+}
+
+@container kb-rail (width < 180px) {
+  /* 小节头计数隐藏；大纲缩进减半。 */
+  .knowledge-context-heading span {
+    display: none;
+  }
+
+  .knowledge-context button[data-depth="2"] {
+    padding-left: calc(var(--space-5) / 2);
+  }
+
+  .knowledge-context button[data-depth="3"] {
+    padding-left: calc(var(--space-6) / 2);
+  }
+
+  .knowledge-context button[data-depth="4"],
+  .knowledge-context button[data-depth="5"],
+  .knowledge-context button[data-depth="6"] {
+    padding-left: calc(var(--space-7) / 2);
+  }
+}
+
+/* ---------- 矮窗口（height < 500px）：工具条行折叠为一行 ----------
+ * 标题行与 meta 行不再竖向堆叠成多行：单行 + 横向滚动，把纵向空间留给正文。 */
+@media (height < 500px) {
+  .knowledge-editor-head,
+  .knowledge-editor-meta {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .knowledge-editor .knowledge-editor-head > *,
+  .knowledge-editor .knowledge-editor-meta > * {
+    flex: 0 0 auto;
+    max-width: none;
+  }
+
+  .knowledge-editor .knowledge-editor-head .knowledge-title {
+    flex: 0 1 260px;
   }
 }

@@ -20,7 +20,9 @@
   }
 }
 
-@media (max-width: 53.75em) {
+/* 阅读器让位顶栏沿用阅读器横屏阈值（860px 语义），不能并入 --bp-md（720px），
+ * 否则 812×375 横屏下顶栏回来挤掉阅读视口。 */
+@media (width <= theme(--bp-reader-landscape)) {
   .studio-shell-frame.reader-active > .studio-topbar {
     display: none;
   }
@@ -65,9 +67,10 @@
 /* 明细浮层：进出场走 ui.css 的 .ui-popover，这里只做定位与内部布局。 */
 .studio-telemetry-popover {
   position: fixed;
-  inset: calc(var(--h-topbar) + var(--space-2)) var(--space-3) auto auto;
+  inset: calc(var(--h-topbar) + var(--space-2)) max(var(--space-3), env(safe-area-inset-right)) auto
+    auto;
   width: min(280px, calc(100vw - 2 * var(--space-3)));
-  max-height: calc(100dvh - var(--h-topbar) - var(--space-8));
+  max-height: calc(100dvh - var(--h-topbar) - var(--space-8) - env(safe-area-inset-bottom));
   overflow: auto;
   overscroll-behavior: contain;
   flex-direction: column;
@@ -89,6 +92,7 @@
       max(var(--space-3), calc(100vw - 280px - var(--space-3)))
     );
     margin-top: var(--space-2);
+    /* anchor() 不支持 max-height（见 background.css 同注）；基础预算兜底。 */
   }
 }
 
@@ -166,7 +170,7 @@
 }
 
 .studio-search-results {
-  max-height: min(28rem, 55vh);
+  max-height: min(28rem, 55dvh);
 }
 
 /* ============ Dockview 主题覆盖（themeAbyss 为底，映射到统一令牌） ============ */
@@ -222,9 +226,21 @@
   padding: 0 var(--space-3);
 }
 
-/* 面板内容充满容器 */
+/* 面板内容充满容器；每个面板内容容器是具名容器（dock-panel），面板内部随容器降级。
+   窄容器下最小尺寸由 dockview 约束兜底，放不下的内容以溢出滚动让位，不压塌布局。 */
 .studio-dock .dv-content-container {
+  container: dock-panel / inline-size;
   background: var(--color-surface);
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+@container dock-panel (width < 420px) {
+  /* 面板内部按钮 icon-only：裸文本随字号归零，svg 与显式字号元素（span、SectionLabel）不受影响。 */
+  .studio-dock button:has(> svg) {
+    font-size: 0;
+  }
 }
 
 /* ============ 微动效 ============ */
@@ -242,7 +258,17 @@
 }
 
 /* ============ 响应式 ============ */
-@media (max-width: 47.5em) {
+
+/* 矮窗口（height < 500px）：顶栏在三档断点内统一允许换行而非溢出（与 ≤bp-md 同一套逻辑）。 */
+@media (height < 500px) {
+  .studio-topbar {
+    height: auto;
+    min-height: var(--h-topbar);
+    flex-wrap: wrap;
+  }
+}
+
+@media (width <= theme(--bp-md)) {
   body {
     /* 阻止 iOS 聚焦缩放。 */
     font-size: var(--text-lg);
@@ -251,6 +277,8 @@
   .studio-topbar {
     gap: var(--space-3);
     height: auto;
+    /* 高度自适应下允许换行：极窄视口控件簇不横向溢出、不压住内容。 */
+    flex-wrap: wrap;
     min-height: var(--h-topbar);
     padding-top: env(safe-area-inset-top);
     padding-right: max(var(--space-3), env(safe-area-inset-right));

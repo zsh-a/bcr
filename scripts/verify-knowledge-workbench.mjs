@@ -356,6 +356,9 @@ try {
   ]) {
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: "reduce" });
+    // 形态切换的 120ms 淡入淡出是设计行为；reduced-motion 兜底不打断进行中的过渡，
+    // 断言前等跨断点的右栏/折叠段交换落定。
+    await page.waitForTimeout(200);
     assert.ok(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
     );

@@ -1,5 +1,7 @@
 /* Loaded only by standalone entrypoints, never by lazy domain views. */
 @import "./global.css";
+/* 断点桥接：@media 条件里的 theme(--bp-*) 需要本文件编译域内有 @theme。 */
+@import "./tokens.css";
 
 /* 独立入口在容器内滚动，不滚动 body。 */
 body {
@@ -142,7 +144,7 @@ body {
   display: grid;
   gap: var(--space-3);
 }
-@media (max-width: 640px) {
+@media (width <= theme(--bp-sm)) {
   .bcr-chat-settings input,
   .bcr-credential-scope select {
     /* 触屏上避免聚焦缩放。 */

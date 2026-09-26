@@ -172,6 +172,7 @@ await withServer({
     "scripts/verify-research-task.mjs",
     "scripts/verify-research-package-cancel.mjs",
     "scripts/verify-accessibility.mjs",
+    "scripts/verify-responsive.mjs",
     "scripts/verify-runtime-lifecycle.mjs",
   ],
 });

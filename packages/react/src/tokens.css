@@ -62,9 +62,10 @@
   --text-base--line-height: 1.5;
   --text-lg: 16px;
   --text-lg--line-height: 1.4;
-  --text-xl: 20px;
+  /* 展示级字号流体化：连续过渡，不设台阶。 */
+  --text-xl: clamp(18px, 1.15rem + 0.35vw, 22px);
   --text-xl--line-height: 1.3;
-  --text-2xl: 26px;
+  --text-2xl: clamp(22px, 1.35rem + 0.9vw, 32px);
   --text-2xl--line-height: 1.2;
 
   /* 布局高度 */
@@ -72,8 +73,23 @@
   --h-toolbar: 48px;
   --h-control: 36px;
   --h-control-lg: 44px;
-  --w-sidebar: 280px;
-  --content-max: 960px;
+  /* 浮层高度预算：dvh 计量并扣安全区，弹层/对话框的最大高度一律取它。 */
+  --h-overlay-max: calc(
+    100dvh - 2 * var(--space-8) - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+  );
+  /* 布局宽度流体化。 */
+  --w-sidebar: clamp(240px, 22vw, 300px);
+  --w-rail: clamp(200px, 18vw, 260px);
+  --content-max: min(960px, 100%);
+
+  /* 断点——唯一事实来源（em，内容驱动）。
+   * 媒体/容器条件无法消费 var()，各处一律经 theme(--bp-*) 在构建期取值（桥接见文末）。
+   * sm=形态级（弹层成 sheet、极窄排版）；md=布局级（多栏→单栏+抽屉）；lg=列数级（第二列出现）。 */
+  --bp-sm: 40em;
+  --bp-md: 45em;
+  --bp-lg: 68.75em;
+  /* 阅读器横屏形态阈值（宿主让位与阅读器内部横屏布局共用，防止两侧断点失配）。 */
+  --bp-reader-landscape: 53.75em;
 
   /* 动效——快（反馈）/ 中（浮层）/ 慢（位移）三档 */
   --duration-fast: 120ms;
@@ -110,4 +126,13 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
+}
+
+/* Tailwind 桥接：媒体/容器条件里用不了 var()，theme(--bp-*) 在构建期替换成字面值。
+ * 与 :root 里的 --bp-* 同源同值；inline 避免重复发射 :root 变量。 */
+@theme inline {
+  --bp-sm: 40em;
+  --bp-md: 45em;
+  --bp-lg: 68.75em;
+  --bp-reader-landscape: 53.75em;
 }

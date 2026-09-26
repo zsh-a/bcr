@@ -42,7 +42,8 @@
   padding-top: var(--space-4);
 }
 
-@media (max-width: 640px) {
+/* 确认按钮随对话框体容器而非视口拉伸（原视口 640px 组件级规则迁入）。 */
+@container ui-body (width <= 640px) {
   .knowledge-rename-actions button {
     flex: 1 1 auto;
   }

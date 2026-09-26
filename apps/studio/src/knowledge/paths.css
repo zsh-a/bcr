@@ -182,9 +182,3 @@
   border-top: 1px solid var(--color-border);
   padding-top: var(--space-4);
 }
-
-@media (max-width: 640px) {
-  .knowledge-pathbar {
-    padding: var(--space-2) var(--space-4);
-  }
-}
