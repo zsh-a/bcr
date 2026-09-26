@@ -233,12 +233,9 @@ try {
   await page.getByRole("heading", { name: "PWA durable reading", exact: true }).waitFor();
   // Another tab's activation must not force a reload of the open workspace.
   assert(await studio.evaluate(() => window.updateProbe === true));
-  // An unconfirmed rename must not be silently discarded by the reload.
-  await studio.getByLabel("笔记标题", { exact: true }).fill("尚未确认的重命名");
-  await studio.getByRole("button", { name: "立即更新", exact: true }).click();
-  await studio.getByLabel("应用更新", { exact: true }).getByRole("alert").waitFor();
-  assert(await studio.evaluate(() => window.updateProbe === true));
-  await studio.getByLabel("笔记标题", { exact: true }).fill("更新后保留的笔记");
+  // Inline renames now settle automatically at the update save barrier.
+  // Update immediately after typing so a pending rename must survive reload.
+  await studio.getByLabel("笔记标题", { exact: true }).fill("更新前自动保存的重命名");
   await Promise.all([
     studio.waitForEvent("load"),
     studio.getByRole("button", { name: "立即更新", exact: true }).click(),
@@ -247,7 +244,7 @@ try {
   await studio.getByLabel("笔记标题", { exact: true }).waitFor();
   assert.equal(
     await studio.getByLabel("笔记标题", { exact: true }).inputValue(),
-    "更新后保留的笔记",
+    "更新前自动保存的重命名",
   );
   await studio.close();
   assert.equal((await session(page)).activeBookId, savedPosition.activeBookId);

@@ -133,7 +133,13 @@
 
 /* 受影响笔记按钮随所在容器而非视口收窄（原视口 640px 组件级规则迁入；
  * 审阅块既出现在对话框体（ui-body）里，也出现在行内重命名（kb-doc）里）。 */
-@container ui-body (width <= 640px), kb-doc (width <= 640px) {
+@container ui-body (width <= 640px) {
+  .knowledge-review-notes .ui-btn {
+    max-width: 200px;
+  }
+}
+
+@container kb-doc (width <= 640px) {
   .knowledge-review-notes .ui-btn {
     max-width: 200px;
   }
