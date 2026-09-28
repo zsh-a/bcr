@@ -224,7 +224,7 @@ const schedulerLayer: Layer.Layer<
       task: ComputeTask,
       options: SubmitOptions = {},
       /** 存在时，任务事件在产生处同步转发（pipeline 编排用，避免 relay 订阅竞态）。 */
-      sink: PubSub.PubSub<TaskEvent> | undefined = undefined,
+      sink?: PubSub.PubSub<TaskEvent>,
     ): Effect.Effect<TaskHandle, NoExecutor | TaskFailed> =>
       admission.withPermits(1)(
         Effect.gen(function* () {

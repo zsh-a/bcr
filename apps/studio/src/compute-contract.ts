@@ -56,7 +56,6 @@ type RoutedOperation =
   | NonNullable<(typeof manga)["compute"]>["backends"]["js"][number]
   | NonNullable<(typeof documents)["compute"]>["backends"]["wasm"][number]
   | NonNullable<(typeof documents)["compute"]>["backends"]["js"][number]
-  | NonNullable<(typeof data)["compute"]>["backends"]["wasm"][number]
   | NonNullable<(typeof data)["compute"]>["backends"]["js"][number];
 
 /**
