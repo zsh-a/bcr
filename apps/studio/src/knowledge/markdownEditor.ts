@@ -60,8 +60,15 @@ export const knowledgeEditorTheme = EditorView.theme(
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
       backgroundColor: "color-mix(in srgb, var(--color-selection) 50%, transparent)",
     },
+    /* 活动行只在聚焦时提示，且压到很淡：行宽 600px+ 时高亮会变成一条横贯色带。 */
     ".cm-activeLine": {
-      backgroundColor: "color-mix(in srgb, var(--color-selection) 45%, transparent)",
+      backgroundColor: "color-mix(in srgb, var(--color-selection) 18%, transparent)",
+    },
+    "&.cm-focused .cm-activeLine": {
+      backgroundColor: "color-mix(in srgb, var(--color-selection) 18%, transparent)",
+    },
+    "&:not(.cm-focused) .cm-activeLine": {
+      backgroundColor: "transparent",
     },
     ".cm-selectionMatch": {
       backgroundColor: "color-mix(in srgb, var(--color-selection) 50%, transparent)",

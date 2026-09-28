@@ -131,7 +131,9 @@ try {
   await assertFocusReturned("命令面板「打开同步设置」背景点击关闭");
 
   // --- 版本历史：打开/关闭（关闭按钮「关闭版本历史」把焦点还给触发按钮）
-  await page.getByRole("button", { name: "笔记版本历史", exact: true }).click();
+  // 入口是「更多操作」菜单里的「版本历史」，标签栏不再单独放一个按钮。
+  await page.getByRole("button", { name: "更多操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "版本历史", exact: true }).click();
   const history = page.getByRole("dialog", { name: "版本历史", exact: true });
   await history.waitFor();
   await history
@@ -143,7 +145,7 @@ try {
   await history.waitFor({ state: "hidden" });
   assert.ok(
     await page
-      .getByRole("button", { name: "笔记版本历史", exact: true })
+      .getByRole("button", { name: "更多操作", exact: true })
       .evaluate((el) => el === document.activeElement),
   );
 

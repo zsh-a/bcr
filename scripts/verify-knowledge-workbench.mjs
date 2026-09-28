@@ -134,8 +134,10 @@ try {
     "switching notes preserves undo",
   );
   await saved();
-  await page.getByRole("button", { name: "收藏当前笔记", exact: true }).click();
-  assert.equal(await pressed("收藏当前笔记"), "true");
+  // 收藏入口在「更多操作」菜单里，标签栏不再有独立星标按钮；
+  // 收藏态以下面「收藏」筛选命中的卡片数为准。
+  await page.getByRole("button", { name: "更多操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "收藏当前笔记", exact: true }).click();
   await page
     .getByRole("group", { name: "笔记范围" })
     .getByRole("button", { name: "收藏", exact: true })
@@ -242,14 +244,19 @@ try {
   assert.ok(!raw.includes("{{"), "template variables are substituted");
   await source(false);
   // 编辑器溢出菜单：更多写作工具 -> .knowledge-tools-menu。
+  // 只留写作偏好；视图模式与源码在标题栏已有控件，宽容器下这里不重复出现。
   await page.getByRole("button", { name: "更多写作工具" }).click();
   const tools = page.locator(".knowledge-tools-menu");
   await tools.waitFor({ state: "visible" });
-  await tools.getByRole("button", { name: "源码模式", exact: true }).waitFor();
   await tools.getByRole("button", { name: "专注模式", exact: true }).waitFor();
   await tools.getByRole("button", { name: "打字机模式", exact: true }).waitFor();
   await tools.getByText("阅读字体", { exact: true }).waitFor();
   await tools.getByText("行高", { exact: true }).waitFor();
+  assert.equal(
+    await tools.getByRole("button", { name: "源码模式", exact: true }).count(),
+    0,
+    "源码模式 not duplicated while the title-bar toggle is visible",
+  );
   await tools.getByText("插入模板", { exact: true }).click();
   await tools.getByRole("button", { name: "My template", exact: true }).click();
   await saved();
@@ -273,7 +280,16 @@ try {
   assert.equal((await body().innerText()).trim(), "My daily record");
   await page.reload({ waitUntil: "networkidle" });
   await tab("Alpha");
-  assert.equal(await pressed("收藏当前笔记"), "true");
+  // 刷新后收藏仍在：同样以侧栏「收藏」筛选命中数为准。
+  await page
+    .getByRole("group", { name: "笔记范围" })
+    .getByRole("button", { name: "收藏", exact: true })
+    .click();
+  assert.equal(await page.locator(".knowledge-note-card").count(), 1);
+  await page
+    .getByRole("group", { name: "笔记范围" })
+    .getByRole("button", { name: "全部", exact: true })
+    .click();
   // Ctrl+点击链接：从正文链接跳到目标笔记。
   await tab("Beta");
   await page
@@ -384,6 +400,14 @@ try {
       await mobilePicker.waitFor({ state: "hidden" });
       await page.getByRole("button", { name: "打开笔记列表", exact: true }).click();
       await page.getByRole("button", { name: "收起列表", exact: true }).click();
+      // 窄容器（主区 < 640px）：标题栏的模式控件收成 ⋯，菜单接管视图模式与源码，
+      // 保证这两个开关在任何宽度下都有且只有一个入口。
+      await page.getByRole("button", { name: "更多写作工具" }).click();
+      const mobileTools = page.locator(".knowledge-tools-menu");
+      await mobileTools.getByRole("button", { name: "源码模式", exact: true }).waitFor();
+      await mobileTools.getByRole("button", { name: "阅读", exact: true }).waitFor();
+      await page.keyboard.press("Escape");
+      await mobileTools.waitFor({ state: "hidden" });
     }
     await page.screenshot({ path: `scripts/shots/knowledge-workbench-${viewport.width}.png` });
   }
@@ -392,9 +416,19 @@ try {
     "knowledge workbench PASSED: undo across modes and notes, tabs, context rail (outline/backlinks/outlinks), GFM, palette IME-safety, / and overflow templates, daily notes, favorites, completion, live preview and mobile",
   );
 } catch (error) {
+  // 失败诊断不能被截图本身的问题顶掉：截图失败时仍要抛出真正的断言错误。
   await mkdir("scripts/shots", { recursive: true });
-  await page.screenshot({ path: "scripts/shots/knowledge-workbench-failure.png" });
-  console.error(await page.locator(".knowledge-tabs").textContent(), await title().inputValue());
+  await page
+    .screenshot({ path: "scripts/shots/knowledge-workbench-failure.png", timeout: 5000 })
+    .catch(() => undefined);
+  const snapshot = await page
+    .evaluate(() => ({
+      url: location.href,
+      tabs: document.querySelector(".knowledge-tabs")?.textContent ?? "(no tabs)",
+      title: document.querySelector('[aria-label="笔记标题"]')?.value ?? "(no title)",
+    }))
+    .catch(() => null);
+  console.error("workbench failure snapshot:", snapshot);
   throw error;
 } finally {
   await browser.close();

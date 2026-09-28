@@ -1,10 +1,13 @@
 import { validId } from "./model";
 
+/** 侧栏形态：展开（完整面板）/ 图标栏（56px）/ 全隐藏。 */
+export type SidebarForm = "expanded" | "rail" | "hidden";
 export interface WorkbenchState {
   tabs: string[];
   pinned: string[];
   recent: string[];
   favorites: string[];
+  sidebar: SidebarForm;
 }
 export const MAX_TABS = 20;
 export const emptyWorkbench = (): WorkbenchState => ({
@@ -12,6 +15,7 @@ export const emptyWorkbench = (): WorkbenchState => ({
   pinned: [],
   recent: [],
   favorites: [],
+  sidebar: "expanded",
 });
 export const WORKBENCH_KEY = "bcr/knowledge-workbench/v1";
 export function decodeWorkbench(raw: string | null): WorkbenchState {
@@ -20,16 +24,22 @@ export function decodeWorkbench(raw: string | null): WorkbenchState {
     if (value?.version !== 1) return emptyWorkbench();
     const ids = (items: unknown, max: number): string[] =>
       Array.isArray(items) ? [...new Set(items.filter(validId))].slice(0, max) : [];
+    const form: unknown = value.sidebar;
     const tabs = ids(value.tabs, MAX_TABS);
     return {
       tabs,
       pinned: ids(value.pinned, MAX_TABS).filter((id) => tabs.includes(id)),
       recent: ids(value.recent, 50),
       favorites: ids(value.favorites, 500),
+      sidebar: form === "rail" || form === "hidden" ? form : "expanded",
     };
   } catch {
     return emptyWorkbench();
   }
+}
+/** 切换侧栏形态；形态未变时返回原对象，避免无谓的持久化写入。 */
+export function setSidebar(state: WorkbenchState, sidebar: SidebarForm): WorkbenchState {
+  return state.sidebar === sidebar ? state : { ...state, sidebar };
 }
 /** 记录“最近”浏览，不隐式开标签；标签只由显式打开动作创建。 */
 export function visitNote(state: WorkbenchState, id: string): WorkbenchState {

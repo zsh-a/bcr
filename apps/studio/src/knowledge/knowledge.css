@@ -14,10 +14,16 @@
   --prose-h1: calc(var(--text-2xl) - var(--space-1));
   --prose-h2: calc(var(--text-xl) - var(--space-1) / 2);
   --prose-row: calc(var(--text-base) - 1px);
+  /* 写作/阅读列：17px 正文配 720px 盒（内含 80px 内边距 → 约 37 汉字/行），
+     落在中文 25–40 字的舒适行宽内；--content-max 的 960px 是资料列表的宽度，不用于正文。 */
+  --prose-font-size: 17px;
+  --prose-width: 720px;
   --font-reading: "Newsreader Variable", "Noto Serif SC", "Songti SC", Georgia, serif;
   --reading-compact: 1.55;
   --reading-standard: 1.75;
   --reading-loose: 2.05;
+  /* 侧栏收起后的图标栏宽度：容得下 --h-control-lg 触控区。 */
+  --w-sidebar-rail: 56px;
 }
 
 .knowledge-app {
@@ -43,7 +49,68 @@
   min-height: 0;
   transition:
     width var(--duration-slow) var(--ease-standard),
-    flex-basis var(--duration-slow) var(--ease-standard);
+    flex-basis var(--duration-slow) var(--ease-standard),
+    padding var(--duration-slow) var(--ease-standard);
+}
+
+/* ---------- 桌面侧栏形态：expanded / rail / hidden ----------
+   形态只在 >bp-md 生效，小屏仍走抽屉（show-sidebar），两套状态正交互不干扰。
+   rail 只留图标栏，其余子元素整体隐藏，不做逐个适配。 */
+.knowledge-sidebar-rail {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* 视图组与隐藏按钮压到底部，顶部留展开/搜索/新建。 */
+.knowledge-sidebar-rail-views {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: auto;
+}
+
+.knowledge-sidebar-collapse {
+  display: none;
+}
+
+@media (width > theme(--bp-md)) {
+  .knowledge-sidebar-collapse {
+    display: inline-flex;
+  }
+
+  .knowledge-app[data-sidebar="rail"] .knowledge-sidebar {
+    width: var(--w-sidebar-rail);
+    flex-basis: var(--w-sidebar-rail);
+    padding-inline: var(--space-1);
+    gap: var(--space-2);
+  }
+
+  .knowledge-app[data-sidebar="rail"] .knowledge-sidebar > :not(.knowledge-sidebar-rail) {
+    display: none;
+  }
+
+  .knowledge-app[data-sidebar="rail"] .knowledge-sidebar-rail {
+    display: flex;
+  }
+
+  .knowledge-app[data-sidebar="hidden"] .knowledge-sidebar {
+    width: 0;
+    flex-basis: 0;
+    padding: 0;
+    border-right-width: 0;
+    overflow: hidden;
+  }
+
+  /* 全隐藏后标签栏左侧出现展开按钮；rail 态图标栏内已有展开，不重复。 */
+  .knowledge-app[data-sidebar="hidden"] .knowledge-menu {
+    display: inline-flex;
+    min-width: var(--h-control-lg);
+    min-height: var(--h-control-lg);
+  }
 }
 
 /* 眉标统一走 .ui-section-label；行内场景仅中和列表内边距。 */
@@ -85,6 +152,7 @@
 }
 
 .knowledge-sidebar-heading > span {
+  margin-right: auto;
   font-size: var(--text-base);
   font-weight: 600;
 }
@@ -325,8 +393,10 @@
   flex: 1;
   overflow: auto;
   min-height: 0;
-  /* 右下「继续对话 ⌘J」浮标安全区：文档列底部留 ≥64px，避免遮住正文/出站链接。 */
-  padding-bottom: 64px;
+  /* 右下「继续对话 ⌘J」浮标安全区：必须盖住浮标从内容底部起的完整占位，
+     即底部内缩 --space-5 加浮标本体高度（--h-control-lg 量级），再留 --space-2 余量。
+     只留 64px 会差约 2px，页脚贴到文档底时正好钻进浮标左下角。 */
+  padding-bottom: calc(var(--space-5) + var(--h-control-lg) + var(--space-2));
   /* 粘性条/浮标不遮挡落点（WCAG Focus Not Obscured）：大纲跳转、Tab 聚焦、
      搜索高亮落点统一带上下间隙。 */
   scroll-padding-block: var(--space-6) 64px;
@@ -355,9 +425,12 @@
 /* ---------- 编辑区 ---------- */
 
 .knowledge-editor {
-  max-width: var(--content-max);
+  max-width: min(var(--prose-width), 100%);
   margin: 0 auto;
   padding: var(--space-7) var(--space-8) 0;
+  /* 纵列：正文/阅读面 flex:1 吃掉剩余高度，页脚贴底，底部不再留死白。 */
+  display: flex;
+  flex-direction: column;
 }
 
 /* 标题行：标题占住左侧，右上角是安静的写作模式分段（编辑/阅读 + 源码 + ⋯）。
@@ -576,16 +649,34 @@
 .knowledge-body {
   display: block;
   width: 100%;
-  /* 高度语义：48dvh 起步，最小高度按 min(380px, 60dvh) 预算——矮窗口收缩但正文始终可滚动可达。 */
-  min-height: min(380px, 60dvh);
-  height: 48dvh;
+  /* 吃满编辑区剩余高度：CodeMirror 内部滚动，页面不再为正文另起一屏。
+     min-height:0 让矮窗口也能收缩到可用高度，正文始终滚动可达。 */
+  /* flex-basis 字面量 0，理由同 .knowledge-editor-source。 */
+  flex: 1 1 0;
+  min-height: 0;
   border: 0;
   background: transparent;
   color: var(--color-muted);
   font-family: var(--reading-font, var(--font-sans));
-  font-size: var(--text-base);
+  font-size: var(--prose-font-size);
   line-height: var(--reading-leading, var(--text-base--line-height));
   tab-size: 2;
+}
+
+/* 源码编辑器的宿主层：接进 .knowledge-editor 纵列；显式还原 hidden，
+   免得下面的 display 覆盖 UA 的 [hidden]{display:none}。 */
+.knowledge-editor-source {
+  display: flex;
+  flex-direction: column;
+  /* flex-basis 必须是字面量 0：外层 .knowledge-editor 高度由内容决定，
+     百分比基准（flex:1 展开成 0%）在高度不定的容器里会回退成内容尺寸，
+     正文就一路撑高、页面跟着滚，内部滚动条永不出现。 */
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.knowledge-editor-source[hidden] {
+  display: none;
 }
 
 .knowledge-editor[data-source="on"] .knowledge-body {
@@ -691,7 +782,7 @@
 /* 链接 hover 小浮层：解析后的目标标题/路径 + 原始目标（找不到时只显示原文）。 */
 .knowledge-link-popover {
   position: fixed;
-  z-index: 20;
+  z-index: var(--layer-tip);
   max-width: 280px;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
@@ -749,10 +840,13 @@
 /* ---------- 正文预览 ---------- */
 
 .knowledge-prose {
-  /* 与 .knowledge-body 同一高度预算：矮窗口下不再硬撑 380px。 */
-  min-height: min(380px, 60dvh);
+  /* 短文吃满剩余高度，长文随内容撑开（min-height:auto 兜底），
+     仍由 .knowledge-content 负责滚动，阅读进度恢复与大纲高亮不受影响。
+     flex-basis 用字面量 0，理由同 .knowledge-editor-source。 */
+  flex: 1 1 0;
   color: var(--color-muted);
   font-family: var(--reading-font, var(--font-sans));
+  font-size: var(--prose-font-size);
   line-height: var(--reading-leading, var(--text-base--line-height));
   overflow-wrap: anywhere;
 }
@@ -1125,7 +1219,7 @@
 
 .knowledge-undo-toast {
   position: fixed;
-  z-index: 60;
+  z-index: var(--layer-toast);
   left: 50%;
   bottom: max(var(--space-6), env(safe-area-inset-bottom));
   display: flex;
@@ -1252,7 +1346,7 @@
      宽度/flex-basis 保持形态过渡，跨断点拉伸不跳变。 */
   .knowledge-sidebar {
     position: absolute;
-    z-index: 42;
+    z-index: var(--layer-drawer);
     top: 0;
     bottom: 0;
     left: 0;
@@ -1276,7 +1370,7 @@
     display: block;
     position: absolute;
     inset: 0;
-    z-index: 41;
+    z-index: var(--layer-scrim);
     border: 0;
     padding: 0;
     background: var(--color-scrim);
@@ -1313,9 +1407,6 @@
       max(var(--space-3), env(safe-area-inset-right)) var(--space-2)
       max(var(--space-3), env(safe-area-inset-left));
     background: var(--color-surface);
-  }
-  .knowledge-tabs-actions .knowledge-note-shortcut {
-    display: none;
   }
   .knowledge-content {
     padding-bottom: 64px;

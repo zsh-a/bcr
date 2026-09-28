@@ -12,11 +12,15 @@ import { knowledgeCredentialId } from "./credential";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   BookOpenText,
+  Clock,
   Download,
+  Files,
   Folder,
   History,
   List,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   RefreshCw,
   Search,
@@ -54,7 +58,14 @@ import { KnowledgeRestorePanel } from "./KnowledgeRestorePanel";
 import { EditorSessions } from "./editorSessions";
 import { KnowledgeLinkIndex, resolveNoteLink, splitNoteTarget } from "./markdownAnalysis";
 import { useWorkbench } from "./useWorkbench";
-import { closeNote, closeOtherNotes, openNote, toggleFavorite, togglePinned } from "./workbench";
+import {
+  closeNote,
+  closeOtherNotes,
+  openNote,
+  setSidebar,
+  toggleFavorite,
+  togglePinned,
+} from "./workbench";
 import { KnowledgeStore } from "./store";
 import { NoteTabs } from "./NoteTabs";
 import { NoteActionsMenu } from "./NoteActionsMenu";
@@ -95,8 +106,12 @@ export function KnowledgeApp() {
   });
   const [query, setQuery] = useState(""),
     [collection, setCollection] = useState("");
-  const [panel, setPanel] = useState<"sync" | "history" | "restore" | "conflicts" | null>(null),
-    [sidebar, setSidebar] = useState(false);
+  const [panel, setPanel] = useState<"sync" | "history" | "restore" | "conflicts" | null>(null);
+  // 移动端抽屉覆盖层（show-sidebar）与桌面侧栏形态（workbench.sidebar）正交：
+  // 抽屉只在 ≤bp-md 生效，形态只在 >bp-md 生效，互不干扰。
+  const [drawer, setDrawer] = useState(false);
+  // 专注模式：外壳持有，命令面板与 Esc 才能开关；渲染成 data-focus-mode 供样式收起 chrome。
+  const [focusMode, setFocusMode] = useState(false);
   const credential = useCredential(knowledgeCredentialId(state.sync.target));
   const token = credential.value;
   const [auto, setAuto] = useAutoSync(state.sync.target, setError);
@@ -116,7 +131,8 @@ export function KnowledgeApp() {
     sequence: number;
   } | null>(null);
   const editor = useRef<EditorHandle>(null),
-    input = useRef<HTMLInputElement>(null);
+    input = useRef<HTMLInputElement>(null),
+    search = useRef<HTMLInputElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const scrollPositions = useRef(new Map<string, number>());
   const selectedId = useRouterState({
@@ -134,6 +150,8 @@ export function KnowledgeApp() {
         ? undefined
         : notes[0];
   const workbench = useWorkbench(ready ? note?.id : undefined);
+  // 侧栏形态随 workbench 持久化，刷新后保持；rail/hidden 都是桌面收起态。
+  const sidebar = workbench.state.sidebar;
   useLayoutEffect(() => {
     if (note && content.current)
       content.current.scrollTop = scrollPositions.current.get(note.id) ?? 0;
@@ -160,7 +178,34 @@ export function KnowledgeApp() {
     const key = (event: KeyboardEvent) => {
       const pressed = event.key.toLowerCase();
       const chord = (event.ctrlKey || event.metaKey) && (pressed === "k" || pressed === "o");
-      if (!chord) return;
+      if (!chord) {
+        // ⌘/Ctrl+B 切换侧栏展开↔收起（与 VS Code 一致）；停在 rail 需用侧栏按钮。
+        if (
+          (event.ctrlKey || event.metaKey) &&
+          pressed === "b" &&
+          !event.altKey &&
+          !event.shiftKey
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          workbench.setState((current) =>
+            setSidebar(current, current.sidebar === "expanded" ? "hidden" : "expanded"),
+          );
+          return;
+        }
+        // Esc 退出专注模式；浮层/对话框/⋯ 菜单在前时让它们先收（本监听在捕获阶段）。
+        if (event.key === "Escape" && focusMode) {
+          if (
+            document.querySelector("dialog[open]") ||
+            document.querySelector("[popover]:popover-open") ||
+            document.querySelector(".knowledge-tools-menu[data-open='true']")
+          )
+            return;
+          event.preventDefault();
+          setFocusMode(false);
+        }
+        return;
+      }
       if (document.querySelector("dialog.knowledge-switcher[open]")) {
         // 命令面板开着时再按一次收起；不让位给全局面板。
         event.preventDefault();
@@ -180,7 +225,7 @@ export function KnowledgeApp() {
     };
     window.addEventListener("keydown", key, { capture: true });
     return () => window.removeEventListener("keydown", key, { capture: true });
-  }, [active, ready]);
+  }, [active, ready, focusMode]);
   const backlinks = useMemo(() => {
     const all = Object.values(state.notes);
     linkIndex.update(all);
@@ -224,7 +269,7 @@ export function KnowledgeApp() {
     if (open) workbench.setState((current) => openNote(current, id));
     setClosedAll(false);
     await navigate({ to: "/knowledge", search: { note: id } });
-    setSidebar(false);
+    setDrawer(false);
     setConfirmDelete(false);
   };
   const flushEditor = useCallback(async () => {
@@ -351,7 +396,7 @@ export function KnowledgeApp() {
       label: "打开版本历史",
       run: async () => {
         setPanel("history");
-        setSidebar(false);
+        setDrawer(false);
       },
     },
     {
@@ -359,7 +404,7 @@ export function KnowledgeApp() {
       label: "打开同步设置",
       run: async () => {
         setPanel("sync");
-        setSidebar(false);
+        setDrawer(false);
       },
     },
     {
@@ -367,7 +412,7 @@ export function KnowledgeApp() {
       label: "备份与恢复",
       run: async () => {
         setPanel("restore");
-        setSidebar(false);
+        setDrawer(false);
       },
     },
     {
@@ -439,9 +484,31 @@ export function KnowledgeApp() {
         workbench.setState((current) => closeOtherNotes(current, note!.id));
       },
     },
+    {
+      id: "toggle-sidebar",
+      label: "切换侧边栏",
+      hint: "⌘B",
+      run: async () => {
+        workbench.setState((current) =>
+          setSidebar(current, current.sidebar === "expanded" ? "hidden" : "expanded"),
+        );
+      },
+    },
+    {
+      id: "toggle-focus",
+      label: focusMode ? "退出专注模式" : "进入专注模式",
+      hint: "Esc 退出",
+      run: async () => {
+        setFocusMode(!focusMode);
+      },
+    },
   ];
   return (
-    <div className={`knowledge-app ${sidebar ? "show-sidebar" : ""}`}>
+    <div
+      className={`knowledge-app ${drawer ? "show-sidebar" : ""}`}
+      data-sidebar={sidebar}
+      data-focus-mode={focusMode ? "on" : undefined}
+    >
       <NoteSwitcher
         open={switcher !== null}
         notes={notes}
@@ -462,21 +529,78 @@ export function KnowledgeApp() {
         }}
         actions={paletteActions}
       />
-      {sidebar && (
+      {drawer && (
         <button
           type="button"
           className="knowledge-backdrop"
           aria-label="关闭笔记列表"
-          onClick={() => setSidebar(false)}
+          onClick={() => setDrawer(false)}
         />
       )}
       <aside className="knowledge-sidebar" aria-label="知识库导航">
+        {/* 图标栏：桌面收起后的窄形态（>bp-md 才显示）；rail 态下其余子元素整体隐藏。 */}
+        <nav className="knowledge-sidebar-rail" aria-label="知识库快捷栏">
+          <IconButton
+            label="展开侧栏"
+            onClick={() => workbench.setState((current) => setSidebar(current, "expanded"))}
+          >
+            <PanelLeftOpen size={18} />
+          </IconButton>
+          <IconButton
+            label="搜索笔记"
+            onClick={() => {
+              workbench.setState((current) => setSidebar(current, "expanded"));
+              requestAnimationFrame(() => search.current?.focus());
+            }}
+          >
+            <Search size={18} />
+          </IconButton>
+          <IconButton label="新建笔记" disabled={busy} onClick={() => void run(create)}>
+            <Plus size={18} />
+          </IconButton>
+          <div className="knowledge-sidebar-rail-views" role="group" aria-label="笔记范围">
+            <IconButton
+              label="全部笔记"
+              aria-pressed={view === "all"}
+              onClick={() => setView("all")}
+            >
+              <Files size={18} />
+            </IconButton>
+            <IconButton
+              label="收藏笔记"
+              aria-pressed={view === "favorites"}
+              onClick={() => setView("favorites")}
+            >
+              <Star size={18} />
+            </IconButton>
+            <IconButton
+              label="最近笔记"
+              aria-pressed={view === "recent"}
+              onClick={() => setView("recent")}
+            >
+              <Clock size={18} />
+            </IconButton>
+          </div>
+          <IconButton
+            label="隐藏侧栏"
+            onClick={() => workbench.setState((current) => setSidebar(current, "hidden"))}
+          >
+            <PanelLeftClose size={18} />
+          </IconButton>
+        </nav>
         <div className="knowledge-sidebar-heading">
           <span>我的笔记</span>
           <IconButton
+            label="收起侧栏"
+            className="knowledge-sidebar-collapse"
+            onClick={() => workbench.setState((current) => setSidebar(current, "rail"))}
+          >
+            <PanelLeftClose size={18} />
+          </IconButton>
+          <IconButton
             label="收起列表"
             className="knowledge-mobile-close"
-            onClick={() => setSidebar(false)}
+            onClick={() => setDrawer(false)}
           >
             <X size={18} />
           </IconButton>
@@ -493,6 +617,7 @@ export function KnowledgeApp() {
         <label className="knowledge-search">
           <Search size={15} />
           <input
+            ref={search}
             aria-label="搜索个人笔记"
             placeholder="搜索笔记"
             value={query}
@@ -708,7 +833,7 @@ export function KnowledgeApp() {
             disabled={busy || syncing}
             onClick={() => {
               setPanel("restore");
-              setSidebar(false);
+              setDrawer(false);
             }}
           >
             <Upload size={15} />
@@ -772,7 +897,11 @@ export function KnowledgeApp() {
             <IconButton
               label="打开笔记列表"
               className="knowledge-menu"
-              onClick={() => setSidebar(true)}
+              onClick={() => {
+                // 移动端开抽屉，桌面端把侧栏展开（两个状态各管各的断点）。
+                setDrawer(true);
+                workbench.setState((current) => setSidebar(current, "expanded"));
+              }}
             >
               <Menu size={18} />
             </IconButton>
@@ -783,27 +912,7 @@ export function KnowledgeApp() {
           activeId={note?.id}
           actions={
             <>
-              {note && (
-                <IconButton
-                  label="收藏当前笔记"
-                  className="knowledge-note-shortcut"
-                  title={favorite ? "取消收藏" : "收藏"}
-                  size="sm"
-                  aria-pressed={favorite}
-                  onClick={() => workbench.setState((current) => toggleFavorite(current, note.id))}
-                >
-                  <Star size={15} fill={favorite ? "currentColor" : "none"} />
-                </IconButton>
-              )}
-              <IconButton
-                label="笔记版本历史"
-                className="knowledge-note-shortcut"
-                title="笔记版本历史"
-                size="sm"
-                onClick={() => setPanel(panel === "history" ? null : "history")}
-              >
-                <History size={15} />
-              </IconButton>
+              {/* 收藏与版本历史已在这条 ⋯ 菜单里，标签栏不再各留一个按钮占位。 */}
               <div className="knowledge-status" data-testid="knowledge-status">
                 <SyncStatus
                   facts={{
@@ -1030,6 +1139,8 @@ export function KnowledgeApp() {
                 backlinks={backlinks}
                 onOpenLink={(value) => void run(() => openLink(value))}
                 target={target}
+                focusMode={focusMode}
+                onFocusModeChange={setFocusMode}
               />
               {note.citations.length > 0 && (
                 <section className="knowledge-citations">

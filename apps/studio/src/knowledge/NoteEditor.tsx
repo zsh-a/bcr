@@ -46,6 +46,8 @@ export function NoteEditor({
   backlinks,
   onOpenLink,
   target,
+  focusMode,
+  onFocusModeChange,
 }: {
   note: KnowledgeNote;
   store: KnowledgeStore;
@@ -57,6 +59,9 @@ export function NoteEditor({
   backlinks: readonly KnowledgeNote[];
   onOpenLink: (target: string) => void;
   target: { id: string; heading?: string; offset?: number; sequence: number } | null;
+  /** 专注模式由外壳持有，以便命令面板与 Esc 也能开关。 */
+  focusMode: boolean;
+  onFocusModeChange: (next: boolean) => void;
 }) {
   const snapshot = useNoteDraft(note, store, locked);
   const { controller, note: draft, error } = snapshot;
@@ -67,7 +72,6 @@ export function NoteEditor({
     decodeReadingSettings(localStorage.getItem(READING_SETTINGS_KEY)),
   );
   const [menuOpen, setMenuOpen] = useState(false);
-  const [focusMode, setFocusMode] = useState(false);
   const [tagDraft, setTagDraft] = useState("");
   const [tagEditing, setTagEditing] = useState(false);
   const tagInput = useRef<HTMLInputElement>(null);
@@ -140,21 +144,6 @@ export function NoteEditor({
       document.removeEventListener("keydown", escape);
     };
   }, [menuOpen]);
-
-  /**
-   * 专注模式契约：开启时在最近的 .knowledge-app 根节点写 data-focus-mode="on"，
-   * 退出时移除；knowledge.css 据此收起侧栏/标签栏/状态与编辑器元信息行。
-   */
-  useEffect(() => {
-    setFocusMode(host.current?.closest(".knowledge-app")?.getAttribute("data-focus-mode") === "on");
-  }, []);
-  function toggleFocusMode(next: boolean) {
-    const root = host.current?.closest(".knowledge-app");
-    if (!root) return;
-    if (next) root.setAttribute("data-focus-mode", "on");
-    else root.removeAttribute("data-focus-mode");
-    setFocusMode(next);
-  }
 
   function updateSettings(patch: Partial<ReadingSettings>) {
     setSettings((current) => {
@@ -259,39 +248,43 @@ export function NoteEditor({
                     )}
                   </div>
                 </details>
-                <div className="knowledge-tools-row">
-                  <span className="ui-section-label">视图模式</span>
-                  <div className="knowledge-chip-group">
-                    <button
-                      type="button"
-                      aria-pressed={mode === "edit"}
-                      onClick={() => {
-                        setMode("edit");
-                        requestAnimationFrame(() => source.current?.focus());
-                      }}
-                    >
-                      编辑
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={mode === "read"}
-                      onClick={() => setMode("read")}
-                    >
-                      阅读
-                    </button>
+                <div className="knowledge-tools-divider" />
+                {/* 视图模式与源码开关在标题栏已有同样的控件；外层可见时（容器 ≥640px）这里收起，避免同屏重复。 */}
+                <div className="knowledge-tools-modes">
+                  <div className="knowledge-tools-row">
+                    <span className="ui-section-label">视图模式</span>
+                    <div className="knowledge-chip-group">
+                      <button
+                        type="button"
+                        aria-pressed={mode === "edit"}
+                        onClick={() => {
+                          setMode("edit");
+                          requestAnimationFrame(() => source.current?.focus());
+                        }}
+                      >
+                        编辑
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={mode === "read"}
+                        onClick={() => setMode("read")}
+                      >
+                        阅读
+                      </button>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    aria-pressed={sourceMode}
+                    onClick={() => setSourceMode(!sourceMode)}
+                  >
+                    源码模式
+                  </button>
                 </div>
                 <button
                   type="button"
-                  aria-pressed={sourceMode}
-                  onClick={() => setSourceMode(!sourceMode)}
-                >
-                  源码模式
-                </button>
-                <button
-                  type="button"
                   aria-pressed={focusMode}
-                  onClick={() => toggleFocusMode(!focusMode)}
+                  onClick={() => onFocusModeChange(!focusMode)}
                 >
                   专注模式
                 </button>
@@ -302,6 +295,7 @@ export function NoteEditor({
                 >
                   打字机模式
                 </button>
+                <div className="knowledge-tools-divider" />
                 <div className="knowledge-tools-row">
                   <span className="ui-section-label">阅读字体</span>
                   <div className="knowledge-chip-group">
@@ -336,9 +330,12 @@ export function NoteEditor({
                     ))}
                   </div>
                 </div>
+                <div className="knowledge-tools-divider" />
                 <details className="knowledge-tools-section">
                   <summary>快捷键</summary>
-                  <p className="knowledge-hint">[[ 关联笔记 · / 插入 · Ctrl/⌘+F 查找</p>
+                  <p className="knowledge-hint">
+                    [[ 关联笔记 · / 插入 · Ctrl/⌘+F 查找 · Ctrl/⌘+B 侧栏 · Esc 退出专注模式
+                  </p>
                 </details>
               </div>
             </div>
@@ -456,7 +453,8 @@ export function NoteEditor({
             ))}
           </Select>
         </div>
-        <div hidden={mode === "read"}>
+        {/* 阅读态用 hidden 收起；类名用于把它接进编辑区的 flex 纵列。 */}
+        <div className="knowledge-editor-source" hidden={mode === "read"}>
           <MarkdownEditor
             sessionId={note.id}
             sessions={sessions}

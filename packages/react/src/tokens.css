@@ -96,6 +96,14 @@
   --duration-base: 180ms;
   --duration-slow: 260ms;
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* 层级——内容之上只有五层，顺序即语义：提示 < 菜单 < 压暗层 < 抽屉 < 撤销提示。
+     域内一律用这些名字，禁止再写裸数字。 */
+  --layer-tip: 20;
+  --layer-menu: 30;
+  --layer-scrim: 41;
+  --layer-drawer: 42;
+  --layer-toast: 60;
 }
 
 :root[data-theme="light"] {

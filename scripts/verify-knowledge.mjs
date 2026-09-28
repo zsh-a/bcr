@@ -112,6 +112,11 @@ async function closeSyncPopover(page) {
     await popover.waitFor({ state: "hidden" });
   }
 }
+// 版本历史的入口在「更多操作」菜单里，不在标签栏上单独占一个按钮。
+async function openHistory(page) {
+  await page.getByRole("button", { name: "更多操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "版本历史", exact: true }).click();
+}
 // 同步按钮运行期间会改文案（同步中…/连接并同步中…）并禁用提交；完成信号取
 // 「闲置文案回来 + 本轮确实打到了 mock GitHub」，再断言状态行，避免拿上一次
 // 同步留下的旧状态交差。
@@ -317,7 +322,7 @@ try {
   assert.equal(await b.page.locator(".knowledge-note-card").count(), 1);
   await a.page.locator(".knowledge-note-card").filter({ hasText: "冲突标题 B" }).waitFor();
 
-  await a.page.getByRole("button", { name: "笔记版本历史", exact: true }).click();
+  await openHistory(a.page);
   await a.page.getByRole("tab", { name: "GitHub", exact: true }).click();
   await a.page.getByRole("button", { name: "读取 GitHub 历史", exact: true }).click();
   await historyEntry(a.page, "GitHub").last().waitFor();
@@ -365,7 +370,7 @@ try {
   await a.page.getByRole("button", { name: "更多操作", exact: true }).click();
   await a.page.getByRole("menuitem", { name: "删除", exact: true }).click();
   await a.page.getByRole("button", { name: "确认删除笔记", exact: true }).click();
-  await a.page.getByRole("button", { name: "笔记版本历史", exact: true }).click();
+  await openHistory(a.page);
   await a.page.getByLabel("显示全部笔记与删除记录").check();
   await historyEntry(a.page, "删除前版本")
     .first()

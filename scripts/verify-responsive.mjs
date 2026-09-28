@@ -718,11 +718,21 @@ await group("7. 「继续对话」浮标不遮挡知识库内容与移动端导�
   assert(insets.right >= 20, `浮标右侧安全区应 ≥20px（${insets.right}px）`);
   assert(insets.bottom >= 20, `浮标底部安全区应 ≥20px（${insets.bottom}px）`);
 
-  // 文档列底部 ≥64px 避让区（设计契约）
-  const clearance = await page.evaluate(() =>
-    Number.parseFloat(getComputedStyle(document.querySelector(".knowledge-content")).paddingBottom),
-  );
+  // 文档列底部避让区（设计契约）：≥64px，且必须盖住浮标探入内容区的完整深度。
+  // 后者才是真约束：只写死 64px 时页脚贴到文档底会钻进浮标左下角。
+  const { clearance, floatInset } = await page.evaluate(() => {
+    const content = document.querySelector(".knowledge-content");
+    const launcher = document.querySelector(".assistant-launcher");
+    return {
+      clearance: Number.parseFloat(getComputedStyle(content).paddingBottom),
+      floatInset: content.getBoundingClientRect().bottom - launcher.getBoundingClientRect().top,
+    };
+  });
   assert(clearance >= 64, `文档列底部避让区应 ≥64px（${clearance}px）`);
+  assert(
+    clearance >= floatInset,
+    `避让区 ${clearance}px 应盖住浮标探入深度 ${Math.round(floatInset)}px`,
+  );
 
   for (const viewport of [
     { width: 1024, height: 768 },

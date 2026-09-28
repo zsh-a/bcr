@@ -90,6 +90,8 @@
   background: transparent;
   font-size: var(--text-sm);
   color: var(--color-muted);
+  /* 胶囊是定宽标签：CJK 不逐字换行，也不被 flex 压缩。 */
+  white-space: nowrap;
 }
 
 .knowledge-chip-group button:hover {
@@ -151,6 +153,20 @@
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: thin;
+}
+
+/* 无标签时这条栏只剩空占位：收掉空条与分隔线，栏高退回普通控件高度。
+   栏本身保留——侧栏入口、同步状态与笔记操作都在这里，隐藏会让它们失去入口。 */
+.knowledge-tabs-bar[data-empty="true"] {
+  min-height: var(--h-control);
+}
+
+.knowledge-tabs-bar[data-empty="true"] .knowledge-tabs {
+  display: none;
+}
+
+.knowledge-tabs-bar[data-empty="true"] .knowledge-tabs-actions {
+  border-left: 0;
 }
 
 /* tab 条右端：收藏/历史/状态簇，一行安静工具区，不随标签滚动。 */
@@ -244,12 +260,16 @@
   display: flex;
   align-items: flex-start;
   min-width: 0;
+  /* 至少填满滚动区，编辑区才有剩余高度可以分给正文。 */
+  min-height: 100%;
 }
 
 .knowledge-document > .knowledge-editor {
   flex: 1;
   width: 100%;
   min-width: 0;
+  /* 只拉伸编辑列；右栏保持 flex-start，才能 sticky 跟随。 */
+  align-self: stretch;
 }
 
 /* ⋯ 溢出菜单：写作工具全部收进这一层浮出。 */
@@ -264,11 +284,11 @@
 
 .knowledge-tools-menu {
   position: absolute;
-  z-index: 30;
+  z-index: var(--layer-menu);
   top: calc(100% + var(--space-1));
   right: 0;
   display: none;
-  min-width: 230px;
+  min-width: 280px;
   padding: var(--space-2);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
@@ -332,13 +352,24 @@
   justify-content: space-between;
   gap: var(--space-2);
   padding: var(--space-1) 0;
+  /* 标签放不下时换行，而不是把右侧胶囊挤到逐字换行。 */
+  flex-wrap: wrap;
 }
 
 .knowledge-tools-row .ui-section-label {
   padding: 0;
 }
 
+/* 覆盖 .knowledge-tools-menu button 的 width:100%（同特异性靠后胜出），
+   胶囊按内容定宽；选中态追加的 ✓ 也随内容扩宽，不再挤压标签。 */
+.knowledge-tools-row .knowledge-chip-group {
+  flex: 0 0 auto;
+}
+
 .knowledge-tools-row .knowledge-chip-group button {
+  width: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
   min-height: var(--space-6);
   padding: 0 var(--space-2);
   font-size: var(--text-xs);
@@ -367,6 +398,21 @@
 
 .knowledge-tools-section .knowledge-hint {
   padding: var(--space-1) var(--space-2) var(--space-2);
+}
+
+/* 组间细分隔线：靠线分组，不加重型标题。 */
+.knowledge-tools-divider {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--color-border);
+}
+
+/* 与标题栏 .knowledge-mode-controls 重复的模式开关：外层可见时不重复出现。
+   窄容器下外层已收成 ⋯，这里保留同一组开关作为唯一入口。 */
+@container kb-main (width >= 640px) {
+  .knowledge-tools-modes {
+    display: none;
+  }
 }
 
 /* ---------- 上下文栏 ---------- */

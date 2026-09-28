@@ -23,6 +23,7 @@ import {
   closeOtherNotes,
   togglePinned,
   toggleFavorite,
+  setSidebar,
   fillTemplate,
   localDay,
 } from "../src/knowledge/workbench";
@@ -154,7 +155,26 @@ describe("personal workspace", () => {
           favorites: [false, "b"],
         }),
       ),
-    ).toEqual({ tabs: ["a"], pinned: ["a"], recent: [], favorites: ["b"] });
+    ).toEqual({
+      tabs: ["a"],
+      pinned: ["a"],
+      recent: [],
+      favorites: ["b"],
+      sidebar: "expanded",
+    });
+    // 侧栏形态：三种合法值原样回读，缺失/非法一律回落到展开。
+    expect(decodeWorkbench(JSON.stringify({ version: 1, sidebar: "rail" })).sidebar).toBe("rail");
+    expect(decodeWorkbench(JSON.stringify({ version: 1, sidebar: "hidden" })).sidebar).toBe(
+      "hidden",
+    );
+    expect(decodeWorkbench(JSON.stringify({ version: 1, sidebar: "bogus" })).sidebar).toBe(
+      "expanded",
+    );
+    expect(decodeWorkbench(JSON.stringify({ version: 1 })).sidebar).toBe("expanded");
+    // 形态未变时返回同一对象，避免每次渲染都触发一次持久化写入。
+    const expanded = emptyWorkbench();
+    expect(setSidebar(expanded, "expanded")).toBe(expanded);
+    expect(setSidebar(expanded, "rail").sidebar).toBe("rail");
     const state = toggleFavorite(emptyWorkbench(), "note-2");
     expect(state.favorites).toEqual(["note-2"]);
     expect(toggleFavorite(state, "note-2").favorites).toEqual([]);

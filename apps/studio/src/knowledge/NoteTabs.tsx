@@ -40,7 +40,7 @@ export function NoteTabs({
   }, [activeId, ids]);
   const tabs = ids.filter((id) => Object.hasOwn(notes, id));
   return (
-    <div className="knowledge-tabs-bar">
+    <div className="knowledge-tabs-bar" data-empty={tabs.length === 0 ? "true" : undefined}>
       {leading}
       <nav ref={strip} className="knowledge-tabs" aria-label="打开的笔记">
         {tabs.map((id) => {
