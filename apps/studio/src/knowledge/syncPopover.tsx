@@ -1,20 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Button, StatusDot } from "@bcr/react";
+import { relativeTime } from "./model";
 import "./syncPopover.css";
 
 /**
  * 同步状态插槽：一个状态点 + 一行合成文案，点击弹出同步浮层。
  * 浮层用原生 popover（ui.css 承担进出场），键盘 Esc 关闭并归还焦点。
  */
-
-export function relativeTime(ts: number, now = Date.now()): string {
-  if (!Number.isFinite(ts) || ts <= 0) return "未知时间";
-  const delta = now - ts;
-  if (delta < 60_000) return "刚刚";
-  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)} 分钟前`;
-  if (delta < 86_400_000) return `${Math.floor(delta / 3_600_000)} 小时前`;
-  return new Date(ts).toLocaleDateString();
-}
 
 export interface SyncStatusFacts {
   error: string;

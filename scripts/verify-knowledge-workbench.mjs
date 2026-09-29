@@ -136,14 +136,14 @@ try {
   );
   await saved();
   // 收藏入口在「更多操作」菜单里，标签栏不再有独立星标按钮；
-  // 收藏态以下面「收藏」筛选命中的卡片数为准。
+  // 收藏态以下面「收藏」筛选命中的目录树行数为准。
   await page.getByRole("button", { name: "更多操作", exact: true }).click();
   await page.getByRole("menuitem", { name: "收藏当前笔记", exact: true }).click();
   await page
     .getByRole("group", { name: "笔记范围" })
     .getByRole("button", { name: "收藏", exact: true })
     .click();
-  assert.equal(await page.locator(".knowledge-note-card").count(), 1);
+  assert.equal(await page.locator(".knowledge-file-note").count(), 1);
   await page
     .getByRole("group", { name: "笔记范围" })
     .getByRole("button", { name: "全部", exact: true })
@@ -286,7 +286,7 @@ try {
     .getByRole("group", { name: "笔记范围" })
     .getByRole("button", { name: "收藏", exact: true })
     .click();
-  assert.equal(await page.locator(".knowledge-note-card").count(), 1);
+  assert.equal(await page.locator(".knowledge-file-note").count(), 1);
   await page
     .getByRole("group", { name: "笔记范围" })
     .getByRole("button", { name: "全部", exact: true })
@@ -368,9 +368,9 @@ try {
   for (const heading of ["下一步", "关联阅读"]) {
     await rail().getByRole("button", { name: heading, exact: true }).waitFor();
   }
-  // 侧栏卡片日期是相对时间（本次跑批都是今天新建：刚刚/N 分钟前/N 小时前），不再是绝对日期。
-  const cardTimes = await page.locator(".knowledge-note-meta time").allTextContents();
-  assert.ok(cardTimes.length >= 2, "list cards show their dates");
+  // 目录树行的日期是相对时间（本次跑批都是今天新建：刚刚/N 分钟前/N 小时前），不再是绝对日期。
+  const cardTimes = await page.locator(".knowledge-file-note time").allTextContents();
+  assert.ok(cardTimes.length >= 2, "tree rows show their dates");
   for (const text of cardTimes)
     assert.match(text, /^(刚刚|\d+ 分钟前|\d+ 小时前)$/u, `relative card time: ${text}`);
   await mkdir("scripts/shots", { recursive: true });

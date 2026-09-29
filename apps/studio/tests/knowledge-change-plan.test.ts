@@ -14,7 +14,11 @@ async function fixture() {
   });
   const target = { ...newNote("Alpha"), id: "alpha", body: "original" };
   const source = { ...newNote("Beta"), id: "beta", body: "[[Alpha]]" };
-  await store.importContent({ notes: { alpha: target, beta: source }, collections: {} });
+  await store.importContent({
+    notes: { alpha: target, beta: source },
+    collections: {},
+    folders: [],
+  });
   const backups = new Map<string, string>();
   const storage = {
     getItem: (key: string) => backups.get(key) ?? null,
@@ -129,6 +133,7 @@ describe("reviewed note changes", () => {
     await f.store.importContent({
       notes: { duplicate: { ...newNote("Alpha"), id: "duplicate", body: "same name" } },
       collections: {},
+      folders: [],
     });
     const ambiguous = await f.store.previewRename("alpha", "Renamed");
     expect(ambiguous.ambiguous.some((link) => link.noteId === "beta")).toBe(true);

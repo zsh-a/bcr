@@ -26,6 +26,7 @@ async function fixture(extra: KnowledgeNote[] = []) {
   await store.importContent({
     notes: Object.fromEntries([target, source, ...extra].map((n) => [n.id, n])),
     collections: {},
+    folders: [],
   });
   return {
     store,

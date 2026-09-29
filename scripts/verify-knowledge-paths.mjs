@@ -73,15 +73,13 @@ const diffForms = (dialog) =>
     }
     return { before, after };
   });
-// 路径条已删除：切回列表视图，用路径筛选验证笔记当前所在路径。
+// 路径条已删除：用路径筛选验证笔记当前所在路径（目录树行按标题匹配）。
 async function atPath(query, name) {
-  await page.getByRole("button", { name: "列表视图", exact: true }).click();
   const search = page.getByLabel("筛选笔记列表", { exact: true });
   await search.fill(query);
-  const list = page.getByRole("navigation", { name: "笔记列表" });
-  const cards = list.getByRole("button");
-  await cards.filter({ hasText: name }).waitFor();
-  const matched = await cards.count();
+  const rows = page.getByRole("navigation", { name: "笔记列表" }).locator(".knowledge-file-note");
+  await rows.filter({ hasText: name }).waitFor();
+  const matched = await rows.count();
   await search.fill("");
   return matched === 1;
 }
@@ -134,7 +132,7 @@ try {
   const b = await create("Beta");
   // Clicking a note row in the picker selects its parent folder as destination.
   dialog = await openMove();
-  await dialog.getByRole("button", { name: `${a}.md`, exact: true }).click();
+  await dialog.getByRole("button", { name: "Alpha", exact: true }).click();
   assert.ok((await destLine(dialog)).includes(`将移动到：old/${b}.md`));
   await dialog.getByRole("button", { name: "移动笔记", exact: true }).click();
   await dialog.locator('p[role="status"]').waitFor();
@@ -289,9 +287,16 @@ try {
   await dialog.getByRole("button", { name: "取消", exact: true }).click();
   await dialog.waitFor({ state: "hidden" });
   assert.equal(await atPath(`old/${b}.md`, "Beta"), true, "collision keeps the old path");
-  // Folder move new -> archive/项目 from the sidebar 文件夹 view.
-  await page.getByRole("button", { name: "文件夹视图", exact: true }).click();
-  await page.getByRole("button", { name: "移动文件夹 new", exact: true }).click();
+  // Folder move new -> archive/项目 from the sidebar directory tree.
+  await page
+    .getByRole("navigation", { name: "笔记列表" })
+    .locator(".knowledge-file-folder > summary")
+    .filter({ hasText: /^new$/ })
+    .hover();
+  await page
+    .getByRole("navigation", { name: "笔记列表" })
+    .getByRole("button", { name: "移动文件夹 new", exact: true })
+    .click();
   const fdlg = page.getByRole("dialog", { name: "移动文件夹", exact: true });
   await fdlg.waitFor();
   assert.equal(await fdlg.getByRole("button", { name: "关闭移动文件夹", exact: true }).count(), 1);
@@ -324,21 +329,19 @@ try {
   await fdlg.getByRole("button", { name: "完成", exact: true }).click();
   await fdlg.waitFor({ state: "hidden" });
   // Sidebar path search finds the note at its new path; it survives reload.
-  await page.getByRole("button", { name: "列表视图", exact: true }).click();
   await page.getByLabel("筛选笔记列表", { exact: true }).fill("archive/项目");
   const list = page.getByRole("navigation", { name: "笔记列表" });
-  await list.getByRole("button").filter({ hasText: "Alpha" }).waitFor();
-  assert.equal(await list.getByRole("button").count(), 1);
+  await list.locator(".knowledge-file-note").filter({ hasText: "Alpha" }).waitFor();
+  assert.equal(await list.locator(".knowledge-file-note").count(), 1);
   await page.getByLabel("筛选笔记列表", { exact: true }).fill("");
   assert.equal(
     await atPath(`archive/项目/new/${a}.md`, "Alpha"),
     true,
     "sidebar path search finds the note by its new path",
   );
-  await page.getByRole("button", { name: "文件夹视图", exact: true }).click();
   await page
     .getByRole("navigation", { name: "笔记列表" })
-    .getByRole("button", { name: `${a}.md`, exact: true })
+    .getByRole("button", { name: "Alpha", exact: true })
     .click();
   await page.screenshot({ path: "scripts/shots/knowledge-file-tree.png" });
   await page.reload({ waitUntil: "networkidle" });

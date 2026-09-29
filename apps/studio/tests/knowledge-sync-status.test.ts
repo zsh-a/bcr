@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { composeStatusLine, relativeTime } from "../src/knowledge/syncPopover";
+import { composeStatusLine } from "../src/knowledge/syncPopover";
+import { relativeTime } from "../src/knowledge/model";
 
 const facts = {
   error: "",

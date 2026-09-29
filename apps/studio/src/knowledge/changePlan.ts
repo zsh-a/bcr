@@ -62,6 +62,7 @@ export function planNoteRename(
 export function planNoteMove(
   notes: Readonly<Record<string, KnowledgeNote>>,
   moves: Readonly<Record<string, string>>,
+  folders: readonly string[] = [],
 ): NoteChangePlan {
   const next = { ...notes },
     ids = Object.keys(moves);
@@ -72,7 +73,7 @@ export function planNoteMove(
     const path = normalizeNotePath(moves[id]);
     if (path !== notePath(note)) next[id] = { ...note, path, updatedAt: Date.now() };
   }
-  assertUniquePaths(next);
+  assertUniquePaths(next, folders);
   const beforeResolve = createNoteResolver(Object.values(notes)),
     afterResolve = createNoteResolver(Object.values(next));
   let rewrites = 0;

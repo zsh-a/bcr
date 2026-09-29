@@ -29,11 +29,12 @@ function partition(state: KnowledgeState) {
       collections: Object.values(value.collections).map((collection) =>
         put(`${prefix}collections`, collection.id, collection),
       ),
+      folders: [...value.folders],
     };
   }
   const manifest = JSON.stringify({
     format: FORMAT,
-    version: 3,
+    version: 4,
     commit: crypto.randomUUID(),
     state: {
       version: state.version,
@@ -68,7 +69,7 @@ export class KnowledgePersistence {
     const raw = await this.metadata.get(KNOWLEDGE_KEY);
     if (raw !== undefined && bytes(raw) > LIMIT) throw new Error("本地知识库超过 32 MiB 限制");
     const manifest = raw === undefined ? null : object(JSON.parse(raw));
-    if (manifest?.version !== 3) {
+    if (manifest?.version !== 3 && manifest?.version !== 4) {
       const state = decodeState(raw);
       this.root = raw;
       this.records = new Map();
@@ -105,10 +106,20 @@ export class KnowledgePersistence {
     };
     const content = async (value: unknown, prefix: string) => {
       const c = object(value),
-        result = { notes: {}, collections: {} } as Record<
+        result = { notes: {}, collections: {}, folders: [] as string[] } as Record<
           "notes" | "collections",
           Record<string, unknown>
-        >;
+        > & { folders: string[] };
+      const rawFolders = c.folders;
+      if (rawFolders !== undefined) {
+        if (
+          !Array.isArray(rawFolders) ||
+          rawFolders.length > 2_000 ||
+          rawFolders.some((folder) => typeof folder !== "string" || folder.length > 500)
+        )
+          throw new Error("知识库目录清单无效，原数据已保留");
+        result.folders = [...rawFolders] as string[];
+      }
       for (const field of ["notes", "collections"] as const) {
         for (const id of ids(c[field], true)) {
           const entity = await read(`${prefix}${field}`, id);

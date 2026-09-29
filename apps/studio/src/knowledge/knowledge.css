@@ -124,7 +124,8 @@
     .knowledge-sidebar-bottom,
     .knowledge-context-section,
     .knowledge-context-inline,
-    .knowledge-tools-section
+    .knowledge-tools-section,
+    .knowledge-file-folder
   )
   > summary {
   display: flex;
@@ -137,7 +138,8 @@
     .knowledge-sidebar-bottom,
     .knowledge-context-section,
     .knowledge-context-inline,
-    .knowledge-tools-section
+    .knowledge-tools-section,
+    .knowledge-file-folder
   )
   > summary::-webkit-details-marker {
   display: none;
@@ -147,7 +149,8 @@
     .knowledge-sidebar-bottom,
     .knowledge-context-section,
     .knowledge-context-inline,
-    .knowledge-tools-section
+    .knowledge-tools-section,
+    .knowledge-file-folder
   )
   > summary::before {
   content: "";
@@ -164,7 +167,8 @@
     .knowledge-sidebar-bottom,
     .knowledge-context-section,
     .knowledge-context-inline,
-    .knowledge-tools-section
+    .knowledge-tools-section,
+    .knowledge-file-folder
   ):not([open])
   > summary::before {
   transform: rotate(-45deg);
@@ -265,85 +269,7 @@
   margin: 0 calc(-1 * var(--space-2));
 }
 
-.knowledge-note-card {
-  display: block;
-  text-align: left;
-  width: 100%;
-  padding: var(--space-4) var(--space-3);
-  border: 0;
-  border-left: 2px solid transparent;
-  border-radius: var(--radius-sm);
-  margin-bottom: var(--space-1);
-  background: transparent;
-  color: var(--color-text);
-}
-
-.knowledge-note-card.selected {
-  background: var(--color-raised);
-  border-left-color: var(--color-accent);
-}
-
-.knowledge-note-card:hover {
-  background: var(--color-raised);
-}
-
-.knowledge-note-card > span {
-  display: block;
-  font-size: var(--text-base);
-  line-height: var(--text-base--line-height);
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.knowledge-note-card p {
-  margin: var(--space-2) 0;
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-  line-height: var(--text-sm--line-height);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-}
-
-.knowledge-note-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-xs);
-  line-height: var(--text-xs--line-height);
-  color: var(--color-faint);
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.knowledge-note-meta time {
-  flex-shrink: 0;
-}
-
-/* 空笔记降级成一行静默标题：不占预览与元信息的视觉重量。 */
-.knowledge-note-card[data-empty="true"] > p,
-.knowledge-note-card[data-empty="true"] .knowledge-note-meta {
-  display: none;
-}
-
-.knowledge-note-card[data-empty="true"] > span {
-  color: var(--color-muted);
-  font-weight: 400;
-}
-
-.knowledge-chip {
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-full);
-  background: var(--color-raised);
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+/* 笔记列表行（目录树）的样式在 paths.css，与移动表单的文件夹选择器共用。 */
 
 .knowledge-list-empty {
   padding: var(--space-6) var(--space-3);
@@ -368,9 +294,9 @@
 }
 
 @container kb-side (width < 220px) {
-  /* 卡片只留标题 + 相对时间：preview 行与卡片标签隐藏。 */
-  .knowledge-note-card p,
-  .knowledge-note-meta .knowledge-chip {
+  /* 树行只留标题：行图标与尾随时间隐藏。 */
+  .knowledge-file-note > svg,
+  .knowledge-file-note > time {
     display: none;
   }
 }
@@ -1444,13 +1370,16 @@
     min-width: var(--h-control-lg);
     min-height: var(--h-control-lg);
   }
-  /* 抽屉只留筛选与视图切换：列表、筛选、视图胶囊。 */
+  /* 抽屉只留筛选、范围分段与目录树；树行抬到触控高度。 */
   .knowledge-create,
   .knowledge-collection-row,
   .knowledge-add-collection,
-  .knowledge-view-mode,
   .knowledge-sidebar-bottom {
     display: none;
+  }
+  .knowledge-file-note,
+  .knowledge-file-folder > summary {
+    min-height: var(--h-control-lg);
   }
   .knowledge-menu {
     display: inline-flex;

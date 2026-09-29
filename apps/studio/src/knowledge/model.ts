@@ -1,5 +1,5 @@
 import { decodeResearch, type ResearchExcerpt } from "../research/index";
-import { normalizeNotePath, assertUniquePaths } from "./paths";
+import { normalizeFolderPath, normalizeNotePath, assertUniquePaths } from "./paths";
 
 export interface KnowledgeNote {
   id: string;
@@ -20,6 +20,8 @@ export interface KnowledgeCollection {
 export interface KnowledgeContent {
   notes: Record<string, KnowledgeNote>;
   collections: Record<string, KnowledgeCollection>;
+  /** 显式目录（含空目录）；其余目录仍由笔记路径推导。 */
+  folders: string[];
 }
 export interface GitTarget {
   owner: string;
@@ -51,7 +53,7 @@ export interface KnowledgeState extends KnowledgeContent {
     lastSyncedAt: number | null;
   };
 }
-export const emptyContent = (): KnowledgeContent => ({ notes: {}, collections: {} });
+export const emptyContent = (): KnowledgeContent => ({ notes: {}, collections: {}, folders: [] });
 export const emptyKnowledge = (): KnowledgeState => ({
   version: 1,
   ...emptyContent(),
@@ -62,6 +64,7 @@ export const emptyKnowledge = (): KnowledgeState => ({
 export const contentOf = (value: KnowledgeContent): KnowledgeContent => ({
   notes: value.notes,
   collections: value.collections,
+  folders: [...value.folders],
 });
 export const validId = (value: unknown): value is string =>
   typeof value === "string" &&
@@ -136,8 +139,12 @@ export function decodeContent(value: unknown): KnowledgeContent {
     if (id !== collection.id) throw new Error("集合身份不一致");
     collections[id] = collection;
   }
-  assertUniquePaths(notes);
-  return { notes, collections };
+  const rawFolders = v.folders === undefined ? [] : v.folders;
+  if (!Array.isArray(rawFolders) || rawFolders.length > 2_000)
+    throw new Error("知识库目录清单无效");
+  const folders = [...new Set(rawFolders.map((folder) => normalizeFolderPath(folder)))];
+  assertUniquePaths(notes, folders);
+  return { notes, collections, folders };
 }
 export function decodeTarget(value: unknown): GitTarget {
   const t = object(value);
@@ -240,4 +247,26 @@ export function pendingCount(state: KnowledgeState): number {
     for (const id of ids) if (!same(state[field][id], state.sync.base[field][id])) count++;
   }
   return count;
+}
+export function relativeTime(ts: number, now = Date.now()): string {
+  if (!Number.isFinite(ts) || ts <= 0) return "未知时间";
+  const delta = now - ts;
+  if (delta < 60_000) return "刚刚";
+  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)} 分钟前`;
+  if (delta < 86_400_000) return `${Math.floor(delta / 3_600_000)} 小时前`;
+  return new Date(ts).toLocaleDateString();
+}
+/** 列表行日期：今天走 relativeTime 语义，昨天/N 天前递进，更早保留日期。 */
+export function noteWhen(ts: number, now = Date.now()): string {
+  if (!Number.isFinite(ts) || ts <= 0) return "未知时间";
+  const dayStart = (value: number) => {
+    const date = new Date(value);
+    date.setHours(0, 0, 0, 0);
+    return date.getTime();
+  };
+  const days = Math.round((dayStart(now) - dayStart(ts)) / 86_400_000);
+  if (days <= 0) return relativeTime(ts, now);
+  if (days === 1) return "昨天";
+  if (days < 7) return `${days} 天前`;
+  return new Date(ts).toLocaleDateString();
 }

@@ -2,8 +2,21 @@ import type { RuntimeMetadata } from "@bcr/core";
 import { mergeContent } from "./merge";
 import { noteRevision } from "./noteRevision";
 import { preserveRenamedLinks } from "./renameLinks";
-import { planNoteRename, planNoteMove, noteVersions, type NoteChangePlan } from "./changePlan";
-import { availableCopyPath } from "./paths";
+import {
+  folderMoves,
+  planNoteRename,
+  planNoteMove,
+  noteVersions,
+  type NoteChangePlan,
+} from "./changePlan";
+import { countRewrittenLinks } from "./moveSummary";
+import {
+  assertUniquePaths,
+  availableCopyPath,
+  normalizeFolderPath,
+  notePath,
+  pathKey,
+} from "./paths";
 import { KnowledgePersistence } from "./persistence";
 export { KNOWLEDGE_KEY } from "./persistence";
 import {
@@ -32,9 +45,100 @@ export class KnowledgeStore {
   }
   async previewMove(moves: Readonly<Record<string, string>>): Promise<NoteChangePlan> {
     await this.flush();
-    const plan = planNoteMove(this.value.notes, moves);
+    const plan = planNoteMove(this.value.notes, moves, this.value.folders);
     this.plans.set(plan, JSON.stringify(plan));
     return plan;
+  }
+  /** 拖放/右键/对话框共用的即时移动：计划校验、原子落地、撤销入口。 */
+  async moveNotes(moves: Readonly<Record<string, string>>): Promise<{
+    plan: NoteChangePlan | null;
+    links: number;
+    undo: () => Promise<void>;
+  }> {
+    const notes = this.value.notes;
+    const originals = Object.fromEntries(
+      Object.keys(moves).map((id) => [id, notePath(notes[id] ?? { id })]),
+    );
+    if (!Object.keys(moves).length)
+      return { plan: null, links: 0, undo: async () => Promise.resolve() };
+    const plan = await this.previewMove(moves);
+    await this.applyChangePlan(plan);
+    return {
+      plan,
+      links: countRewrittenLinks(plan.changes),
+      undo: async () => {
+        const back = await this.previewMove(originals);
+        await this.applyChangePlan(back);
+      },
+    };
+  }
+  /** 登记显式目录（含空目录）；重复登记是无操作。 */
+  saveFolder(path: string): Promise<void> {
+    const folder = normalizeFolderPath(path);
+    return this.update((state) => {
+      if (state.folders.some((item) => pathKey(item) === pathKey(folder))) return state;
+      const folders = [...state.folders, folder].sort();
+      assertUniquePaths(state.notes, folders);
+      return { ...state, folders };
+    });
+  }
+  /** 删除显式目录登记（含子目录）；目录里的笔记不受影响，仍由路径推导存在。 */
+  removeFolders(paths: readonly string[]): Promise<void> {
+    return this.update((state) => {
+      const keys = paths.map((path) => pathKey(path));
+      const folders = state.folders.filter((folder) => {
+        const key = pathKey(folder);
+        return !keys.some((prefix) => key === prefix || key.startsWith(`${prefix}/`));
+      });
+      if (folders.length === state.folders.length) return state;
+      return { ...state, folders };
+    });
+  }
+  /** 目录级移动：整棵目录（含显式子目录登记）改换前缀，引用随移动改写。 */
+  async moveFolder(
+    source: string,
+    destination: string,
+  ): Promise<{ plan: NoteChangePlan | null; links: number; undo: () => Promise<void> }> {
+    const entries = this.folderEntries(source);
+    const renamed = entries.map((entry) => `${destination}${entry.slice(source.length)}`);
+    const moved = await this.moveNotes(folderMoves(this.value.notes, source, destination));
+    await this.removeFolders([source]);
+    for (const entry of renamed) await this.saveFolder(entry);
+    return {
+      ...moved,
+      undo: async () => {
+        await moved.undo();
+        await this.removeFolders(renamed);
+        for (const entry of entries) await this.saveFolder(entry);
+      },
+    };
+  }
+  /** 删除目录：目录名连同子目录名不再保留，其中笔记平铺到库根（引用随移动改写）。 */
+  async deleteFolder(
+    source: string,
+  ): Promise<{ plan: NoteChangePlan | null; links: number; undo: () => Promise<void> }> {
+    const entries = this.folderEntries(source);
+    const prefix = `${pathKey(source)}/`;
+    const moves = Object.fromEntries(
+      Object.values(this.value.notes)
+        .filter((note) => pathKey(notePath(note)).startsWith(prefix))
+        .map((note) => [note.id, notePath(note).split("/").at(-1)!]),
+    );
+    const removed = await this.moveNotes(moves);
+    await this.removeFolders([source]);
+    return {
+      ...removed,
+      undo: async () => {
+        await removed.undo();
+        for (const entry of entries) await this.saveFolder(entry);
+      },
+    };
+  }
+  private folderEntries(source: string) {
+    const key = pathKey(source);
+    return this.value.folders.filter(
+      (entry) => pathKey(entry) === key || pathKey(entry).startsWith(`${key}/`),
+    );
   }
   /** Explicit approval applies exactly the previewed changes inside the durable queue. */
   applyChangePlan(plan: NoteChangePlan, check: () => void = () => {}): Promise<void> {
@@ -52,7 +156,7 @@ export class KnowledgeStore {
       }
       return this.withHistory(
         state,
-        { notes, collections: state.collections },
+        { notes, collections: state.collections, folders: state.folders },
         plan.kind === "move" ? "移动与引用更新前版本" : "重命名与引用更新前版本",
       );
     }).then(() => {
@@ -101,7 +205,11 @@ export class KnowledgeStore {
         throw new Error("笔记版本已变化或已删除，请重新读取并确认修改");
       return this.withHistory(
         state,
-        { notes: { ...state.notes, [valid.id]: valid }, collections: state.collections },
+        {
+          notes: { ...state.notes, [valid.id]: valid },
+          collections: state.collections,
+          folders: state.folders,
+        },
         "Agent 编辑前版本",
       );
     });
@@ -242,11 +350,16 @@ export class KnowledgeStore {
         valid.path !== base?.path
       )
         throw new Error("移动笔记需要预览并确认修改计划");
-      const baseline = { notes: base ? { [base.id]: base } : {}, collections: {} };
-      const local = { notes: { [valid.id]: valid }, collections: {} };
+      const baseline = {
+        notes: base ? { [base.id]: base } : {},
+        collections: {},
+        folders: [],
+      };
+      const local = { notes: { [valid.id]: valid }, collections: {}, folders: [] };
       const remote = {
         notes: state.notes[note.id] ? { [note.id]: state.notes[note.id]! } : {},
         collections: {},
+        folders: [],
       };
       const result = mergeContent(baseline, local, remote);
       if (same(result.content.notes[note.id], state.notes[note.id]) && !result.conflicts.length)
@@ -262,7 +375,11 @@ export class KnowledgeStore {
           throw new Error("重命名会修改其他笔记，请预览并确认修改计划");
       }
       return {
-        ...this.withHistory(state, { notes, collections: state.collections }, "编辑前版本"),
+        ...this.withHistory(
+          state,
+          { notes, collections: state.collections, folders: state.folders },
+          "编辑前版本",
+        ),
         conflicts: [...state.conflicts, ...result.conflicts],
       };
     });
@@ -274,7 +391,11 @@ export class KnowledgeStore {
       if (!state.notes[id]) return state;
       const notes = { ...state.notes };
       delete notes[id];
-      return this.withHistory(state, { notes, collections: state.collections }, "删除前版本");
+      return this.withHistory(
+        state,
+        { notes, collections: state.collections, folders: state.folders },
+        "删除前版本",
+      );
     });
   }
   saveCollection(id: string, name: string): Promise<void> {
@@ -292,7 +413,12 @@ export class KnowledgeStore {
       const notes = { ...state.notes },
         collections = { ...state.collections, ...content.collections };
       for (const note of Object.values(content.notes)) if (!notes[note.id]) notes[note.id] = note;
-      return { ...state, notes, collections };
+      return {
+        ...state,
+        notes,
+        collections,
+        folders: [...new Set([...state.folders, ...content.folders])].sort(),
+      };
     });
   }
   configure(target: GitTarget | null): Promise<void> {
@@ -355,7 +481,11 @@ export class KnowledgeStore {
             name: `${("name" in current.remote ? current.remote.name : "集合").slice(0, 194)}（远端副本）`,
           };
       }
-      const next = this.withHistory(state, { notes, collections }, "解决冲突前版本");
+      const next = this.withHistory(
+        state,
+        { notes, collections, folders: state.folders },
+        "解决冲突前版本",
+      );
       // Also retain the unselected remote note in history, including delete/edit conflicts.
       if (current.kind === "note" && current.remote && !same(current.remote, selected))
         next.history = [

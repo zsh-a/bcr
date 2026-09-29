@@ -74,7 +74,7 @@ export function mergeContent(
   local: KnowledgeContent,
   remote: KnowledgeContent,
 ): { content: KnowledgeContent; conflicts: KnowledgeConflict[] } {
-  const content: KnowledgeContent = { notes: {}, collections: {} },
+  const content: KnowledgeContent = { notes: {}, collections: {}, folders: [] },
     conflicts: KnowledgeConflict[] = [];
   for (const field of ["notes", "collections"] as const) {
     for (const id of new Set([
@@ -106,5 +106,7 @@ export function mergeContent(
       if (selected) Object.assign(content[field], { [id]: selected });
     }
   }
+  // 目录名是集合语义：两端并集、双方都删除才消失，不产生逐条冲突。
+  content.folders = [...new Set([...local.folders, ...remote.folders])].sort();
   return { content, conflicts };
 }

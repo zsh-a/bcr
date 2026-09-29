@@ -318,9 +318,9 @@ try {
   const conflictMerged = "# 独立手写知识\n\n设备 A 的冲突段\n\n设备 B 的冲突段\n";
   await matchesBody(b.page, conflictMerged);
   await matchesBody(a.page, conflictMerged);
-  assert.equal(await a.page.locator(".knowledge-note-card").count(), 1);
-  assert.equal(await b.page.locator(".knowledge-note-card").count(), 1);
-  await a.page.locator(".knowledge-note-card").filter({ hasText: "冲突标题 B" }).waitFor();
+  assert.equal(await a.page.locator(".knowledge-file-note").count(), 1);
+  assert.equal(await b.page.locator(".knowledge-file-note").count(), 1);
+  await a.page.locator(".knowledge-file-note").filter({ hasText: "冲突标题 B" }).waitFor();
 
   await openHistory(a.page);
   await a.page.getByRole("tab", { name: "GitHub", exact: true }).click();
@@ -416,16 +416,16 @@ try {
   await b.page.goto(`${origin}/knowledge`);
   await b.page.getByText("导入、导出与备份", { exact: true }).click();
   await b.page.getByRole("button", { name: "从资料集合导入", exact: true }).click();
-  await b.page.locator(".knowledge-note-card").filter({ hasText: "独特引用证据" }).click();
+  await b.page.locator(".knowledge-file-note").filter({ hasText: "知识来源" }).click();
   await b.page.locator(".knowledge-citations").waitFor();
   // Read the editor's rendered lines, not a textarea `.value` (source mode: raw text).
   const importedBody = await rawBody(b.page);
   assert(importedBody.includes("> 独特引用证据"));
   await body(b.page, "独特引用证据的手写整理，不应被重复导入覆盖。");
-  const importedCount = await b.page.locator(".knowledge-note-card").count();
+  const importedCount = await b.page.locator(".knowledge-file-note").count();
   await b.page.getByRole("button", { name: "从资料集合导入", exact: true }).click();
   await b.page.getByText(/已有条目保留原笔记/u).waitFor();
-  assert.equal(await b.page.locator(".knowledge-note-card").count(), importedCount);
+  assert.equal(await b.page.locator(".knowledge-file-note").count(), importedCount);
   await matchesBody(b.page, "独特引用证据的手写整理，不应被重复导入覆盖。");
   await connect(b.page);
   await sync(b.page);

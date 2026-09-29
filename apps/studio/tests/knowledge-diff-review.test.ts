@@ -109,10 +109,15 @@ describe("conflict merge application", () => {
       path: "旧/笔记.md",
     });
     await store.saveNote(local, null);
-    await store.integrate({ notes: { alpha: remote }, collections: {} }, "a".repeat(40), {
-      notes: { alpha: base },
-      collections: {},
-    });
+    await store.integrate(
+      { notes: { alpha: remote }, collections: {}, folders: [] },
+      "a".repeat(40),
+      {
+        notes: { alpha: base },
+        collections: {},
+        folders: [],
+      },
+    );
     const conflict = store.getSnapshot().conflicts[0]!;
     expect(conflict.kind).toBe("note");
     // 与冲突面板相同的落地次序：采用本机清冲突，再写入合并结果。

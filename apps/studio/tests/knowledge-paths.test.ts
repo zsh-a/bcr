@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assertUniquePaths,
+  normalizeFolderPath,
   normalizeNotePath,
   notePath,
   relativeNotePath,
@@ -32,6 +33,7 @@ const note = (id: string, path?: string, body = ""): KnowledgeNote => ({
 const content = (...notes: KnowledgeNote[]) => ({
   notes: Object.fromEntries(notes.map((n) => [n.id, n])),
   collections: {},
+  folders: [],
 });
 function fixture() {
   const data = new Map<string, string>();
@@ -258,5 +260,54 @@ describe("reviewed moves", () => {
     }));
     expect(f.store.getSnapshot().version).toBe(2);
     expect(f.data.has(KNOWLEDGE_PATH_BACKUP_KEY)).toBe(true);
+  });
+});
+
+describe("explicit folder registry", () => {
+  it("normalizes folder paths under the note segment rules without .md", () => {
+    expect(normalizeFolderPath("工作/项目")).toBe("工作/项目");
+    for (const bad of [
+      "",
+      "工作/",
+      "/工作",
+      "工作//项目",
+      "工作/..",
+      ".hidden/x",
+      "a\\b",
+      " 工作",
+      "工作 ",
+    ])
+      expect(() => normalizeFolderPath(bad), bad).toThrow();
+  });
+  it("rejects duplicates and file/folder aliasing", () => {
+    const notes = { alpha: note("alpha", "工作.md"), beta: note("beta") };
+    expect(() => assertUniquePaths(notes, ["草稿", "草稿"])).toThrow(/目录重复/);
+    expect(() => assertUniquePaths(notes, ["工作.md"])).toThrow(/同时作为文件和文件夹/);
+    expect(() => assertUniquePaths(notes, ["beta.md"])).toThrow(/同时作为文件和文件夹/);
+    expect(() => assertUniquePaths(notes, ["alpha.md"])).toThrow(/身份别名/);
+    expect(() => assertUniquePaths({ a: note("a", "工作/笔记.md") }, ["工作/笔记.md"])).toThrow(
+      /同时作为文件和文件夹/,
+    );
+    assertUniquePaths(notes, ["工作", "工作/子目录"]);
+  });
+  it("creates and removes explicit folders through the store", async () => {
+    const { store } = fixture();
+    await store.saveFolder("工作/项目");
+    await store.saveFolder("工作/项目");
+    expect(store.getSnapshot().folders).toEqual(["工作/项目"]);
+    await store.removeFolders(["工作"]);
+    expect(store.getSnapshot().folders).toEqual([]);
+  });
+  it("moves notes instantly with a one-step undo", async () => {
+    const { store } = fixture();
+    await store.importContent(content(note("alpha", "根/笔记.md")));
+    await store.saveFolder("工作");
+    const { links, undo } = await store.moveNotes({ alpha: "工作/笔记.md" });
+    expect(links).toBe(0);
+    expect(store.getSnapshot().notes.alpha?.path).toBe("工作/笔记.md");
+    expect(store.getSnapshot().folders).toEqual(["工作"]);
+    await undo();
+    expect(store.getSnapshot().notes.alpha?.path).toBe("根/笔记.md");
+    expect(store.getSnapshot().folders).toEqual(["工作"]);
   });
 });

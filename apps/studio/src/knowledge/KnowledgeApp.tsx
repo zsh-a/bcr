@@ -14,17 +14,20 @@ import {
   BookOpenText,
   Clock,
   Download,
+  FileText,
   Files,
   Folder,
+  FolderPlus,
   History,
-  List,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
   Settings2,
+  SquareArrowOutUpRight,
   Star,
   Trash2,
   Upload,
@@ -49,7 +52,7 @@ import { useAutoSync } from "./useAutoSync";
 import { NoteEditor, type EditorHandle } from "./NoteEditor";
 import { KnowledgeSyncPanel } from "./KnowledgeSyncPanel";
 import { KnowledgeHistory } from "./KnowledgeHistory";
-import { SyncStatus, relativeTime } from "./syncPopover";
+import { SyncStatus } from "./syncPopover";
 import { ConflictList, type ConflictChoice } from "./conflicts";
 import "./knowledge.css";
 import "./workbench.css";
@@ -71,7 +74,10 @@ import { NoteTabs } from "./NoteTabs";
 import { NoteActionsMenu } from "./NoteActionsMenu";
 import { NoteSwitcher, type PaletteAction } from "./NoteSwitcher";
 import { KnowledgeDialog } from "./KnowledgeDialog";
-import { NoteFileTree } from "./NoteFileTree";
+import { NoteFileTree, type TreeDrag, type TreeTarget } from "./NoteFileTree";
+import { TreeMenu, type TreeMenuItem } from "./TreeMenu";
+import { normalizeFolderPath, notePath, parentPath, pathKey } from "./paths";
+import { showUndoToast } from "./undoToast";
 import { NoteMove, type MoveTarget } from "./NoteMove";
 import "./paths.css";
 
@@ -117,8 +123,18 @@ export function KnowledgeApp() {
   const [auto, setAuto] = useAutoSync(state.sync.target, setError);
   const [collectionName, setCollectionName] = useState(""),
     [addingCollection, setAddingCollection] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [fileView, setFileView] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [treeMenu, setTreeMenu] = useState<{
+    x: number;
+    y: number;
+    target: TreeTarget;
+  } | null>(null);
+  const [treeEdit, setTreeEdit] = useState<{
+    kind: "create" | "rename";
+    parent: string;
+    path: string;
+  } | null>(null);
+  const [folderDelete, setFolderDelete] = useState<string | null>(null);
   const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
   const [sessions] = useState(() => new EditorSessions());
   const [linkIndex] = useState(() => new KnowledgeLinkIndex());
@@ -270,11 +286,153 @@ export function KnowledgeApp() {
     setClosedAll(false);
     await navigate({ to: "/knowledge", search: { note: id } });
     setDrawer(false);
-    setConfirmDelete(false);
+    setConfirmDelete(null);
   };
   const flushEditor = useCallback(async () => {
     await editor.current?.flush();
   }, []);
+  const treeToast = (links: number, undo: () => Promise<void>, text: string) =>
+    showUndoToast(links ? `${text}并更新 ${links} 处链接` : text, () => {
+      void run(undo);
+    });
+  async function commitTreeEdit(value: string) {
+    const edit = treeEdit;
+    setTreeEdit(null);
+    const name = value.trim();
+    if (!edit || !name) return;
+    await run(async () => {
+      if (edit.kind === "create") {
+        const path = normalizeFolderPath(edit.parent ? `${edit.parent}/${name}` : name);
+        await store.saveFolder(path);
+        showUndoToast(`已新建目录「${name}」`, () => {
+          void run(() => store.removeFolders([path]));
+        });
+      } else {
+        const dest = normalizeFolderPath(
+          parentPath(edit.path) ? `${parentPath(edit.path)}/${name}` : name,
+        );
+        if (pathKey(dest) === pathKey(edit.path)) return;
+        const moved = await store.moveFolder(edit.path, dest);
+        treeToast(moved.links, moved.undo, "已重命名目录");
+      }
+    });
+  }
+  async function dropMove(payload: TreeDrag, destination: string) {
+    const snapshot = store.getSnapshot();
+    await run(async () => {
+      if (payload.kind === "folder") {
+        const name = payload.path.split("/").at(-1)!;
+        const dest = destination ? `${destination}/${name}` : name;
+        if (
+          pathKey(dest).startsWith(`${pathKey(payload.path)}/`) ||
+          pathKey(dest) === pathKey(payload.path)
+        )
+          return;
+        const moved = await store.moveFolder(payload.path, dest);
+        treeToast(moved.links, moved.undo, "已移动目录");
+      } else {
+        const target = snapshot.notes[payload.id];
+        if (!target) return;
+        const dest = `${destination ? `${destination}/` : ""}${notePath(target).split("/").at(-1)!}`;
+        if (pathKey(dest) === pathKey(notePath(target))) return;
+        const moved = await store.moveNotes({ [payload.id]: dest });
+        treeToast(moved.links, moved.undo, "已移动笔记");
+      }
+    });
+  }
+  async function removeFolder(path: string) {
+    await run(async () => {
+      const removed = await store.deleteFolder(path);
+      treeToast(removed.links, removed.undo, "已删除目录");
+    });
+  }
+  const treeItems = (target: TreeTarget): TreeMenuItem[] =>
+    target.kind === "root"
+      ? [
+          {
+            label: "新建目录",
+            icon: <FolderPlus size={15} />,
+            run: () => setTreeEdit({ kind: "create", parent: "", path: "" }),
+          },
+          { label: "新建笔记", icon: <Plus size={15} />, run: () => void run(create) },
+        ]
+      : target.kind === "folder"
+        ? [
+            {
+              label: "新建子目录",
+              icon: <FolderPlus size={15} />,
+              run: () => setTreeEdit({ kind: "create", parent: target.path, path: "" }),
+            },
+            {
+              label: "重命名目录",
+              icon: <Pencil size={15} />,
+              run: () =>
+                setTreeEdit({ kind: "rename", parent: parentPath(target.path), path: target.path }),
+            },
+            {
+              label: "移动到…",
+              icon: <Folder size={15} />,
+              run: () => setMoveTarget({ folder: target.path }),
+            },
+            {
+              label: "删除目录",
+              icon: <Trash2 size={15} />,
+              danger: true,
+              run: () => {
+                const count = notes.filter((item) =>
+                  pathKey(notePath(item)).startsWith(`${pathKey(target.path)}/`),
+                ).length;
+                if (count) setFolderDelete(target.path);
+                else void removeFolder(target.path);
+              },
+            },
+          ]
+        : [
+            {
+              label: "打开",
+              icon: <FileText size={15} />,
+              run: () =>
+                go(async () => {
+                  await select(target.id);
+                  requestAnimationFrame(() =>
+                    document.querySelector<HTMLInputElement>(".knowledge-title")?.focus(),
+                  );
+                }),
+            },
+            {
+              label: "在新标签打开",
+              icon: <SquareArrowOutUpRight size={15} />,
+              run: () => go(() => select(target.id, true)),
+            },
+            {
+              label: "重命名",
+              icon: <Pencil size={15} />,
+              run: () =>
+                go(async () => {
+                  if (target.id !== note?.id) await select(target.id);
+                  requestAnimationFrame(() =>
+                    document.querySelector<HTMLInputElement>(".knowledge-title")?.focus(),
+                  );
+                }),
+            },
+            {
+              label: "移动到…",
+              icon: <Folder size={15} />,
+              run: () => setMoveTarget({ noteId: target.id }),
+            },
+            {
+              label: workbench.state.favorites.includes(target.id) ? "取消收藏" : "收藏",
+              icon: <Star size={15} />,
+              run: () => workbench.setState((current) => toggleFavorite(current, target.id)),
+            },
+            {
+              label: "删除",
+              icon: <Trash2 size={15} />,
+              danger: true,
+              disabled: locked,
+              run: () => setConfirmDelete(target.id),
+            },
+          ];
   const actions = useMemo(
     () => createKnowledgeActions(store, workspaceServices(services.metadata).research, flushEditor),
     [store, services.metadata, flushEditor],
@@ -450,7 +608,7 @@ export function KnowledgeApp() {
       disabled: !note || locked,
       run: async () => {
         await flushEditor();
-        setConfirmDelete(true);
+        if (note) setConfirmDelete(note.id);
       },
     },
     {
@@ -591,6 +749,12 @@ export function KnowledgeApp() {
         <div className="knowledge-sidebar-heading">
           <span>我的笔记</span>
           <IconButton
+            label="新建目录"
+            onClick={() => setTreeEdit({ kind: "create", parent: "", path: "" })}
+          >
+            <FolderPlus size={18} />
+          </IconButton>
+          <IconButton
             label="收起侧栏"
             className="knowledge-sidebar-collapse"
             onClick={() => workbench.setState((current) => setSidebar(current, "rail"))}
@@ -645,34 +809,6 @@ export function KnowledgeApp() {
               </button>
             )}
           </label>
-          <div className="knowledge-view-mode" role="group" aria-label="导航方式">
-            <button
-              type="button"
-              aria-label="列表视图"
-              aria-pressed={!fileView}
-              onClick={() => setFileView(false)}
-            >
-              <List size={14} />
-            </button>
-            <button
-              type="button"
-              aria-label="文件夹视图"
-              aria-pressed={fileView}
-              onClick={() => setFileView(true)}
-            >
-              <Folder size={14} />
-            </button>
-          </div>
-        </div>
-        {/* 筛选行：范围细分段 + 集合选择与新建集合，两个筛选维度并成一行。 */}
-        <div className="knowledge-filter-row">
-          <div className="knowledge-segmented" role="group" aria-label="笔记范围">
-            {VIEW_DEFS.map(([id, label]) => (
-              <button type="button" key={id} aria-pressed={view === id} onClick={() => setView(id)}>
-                {label}
-              </button>
-            ))}
-          </div>
           <div className="knowledge-collection-row">
             <Select
               aria-label="筛选笔记集合"
@@ -680,7 +816,7 @@ export function KnowledgeApp() {
               value={collection}
               onChange={(e) => setCollection(e.target.value)}
             >
-              <option value="">全部笔记 · {notes.length}</option>
+              <option value="">全部笔记</option>
               {Object.values(state.collections).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -695,6 +831,16 @@ export function KnowledgeApp() {
             >
               <Plus size={15} />
             </IconButton>
+          </div>
+        </div>
+        {/* 筛选行：范围细分段，两个筛选维度（文本/集合在上一行，范围在此行）。 */}
+        <div className="knowledge-filter-row">
+          <div className="knowledge-segmented" role="group" aria-label="笔记范围">
+            {VIEW_DEFS.map(([id, label]) => (
+              <button type="button" key={id} aria-pressed={view === id} onClick={() => setView(id)}>
+                {label}
+              </button>
+            ))}
           </div>
         </div>
         {addingCollection && (
@@ -730,61 +876,33 @@ export function KnowledgeApp() {
           </form>
         )}
         <nav className="knowledge-note-list" aria-label="笔记列表">
-          {filtered.length && fileView ? (
+          {filtered.length ? (
             <NoteFileTree
               notes={filtered}
               activeId={note?.id}
-              onSelect={(id) => go(() => select(id))}
+              folders={state.folders}
+              editing={treeEdit}
+              onSelect={(id) =>
+                go(async () => {
+                  await select(id);
+                  if (query.trim())
+                    setTarget((old) => ({
+                      id,
+                      offset: noteSearchHit(state.notes[id]!, query).match?.start ?? 0,
+                      sequence: (old?.sequence ?? 0) + 1,
+                    }));
+                })
+              }
+              onOpen={(id) => go(() => select(id, true))}
               onMoveFolder={(folder) => setMoveTarget({ folder })}
+              onEditCommit={(value) => void commitTreeEdit(value)}
+              onEditCancel={() => setTreeEdit(null)}
+              onMenu={(event, target) => {
+                event.preventDefault();
+                setTreeMenu({ x: event.clientX, y: event.clientY, target });
+              }}
+              onDropMove={(payload, destination) => void dropMove(payload, destination)}
             />
-          ) : filtered.length ? (
-            filtered.map((n) => (
-              <button
-                type="button"
-                key={n.id}
-                aria-current={n.id === note?.id ? "page" : undefined}
-                className={`knowledge-note-card ${n.id === note?.id ? "selected" : ""}`}
-                data-empty={!n.title.trim() && !n.body.trim() ? "true" : undefined}
-                onClick={() =>
-                  go(async () => {
-                    await select(n.id);
-                    if (query.trim())
-                      setTarget((old) => ({
-                        id: n.id,
-                        offset: noteSearchHit(n, query).match?.start ?? 0,
-                        sequence: (old?.sequence ?? 0) + 1,
-                      }));
-                  })
-                }
-                onDoubleClick={() => go(() => select(n.id, true))}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-                    event.preventDefault();
-                    go(() => select(n.id, true));
-                  }
-                }}
-              >
-                <span>{n.title || "未命名笔记"}</span>
-                <p>
-                  {(query.trim() ? noteSearchHit(n, query).preview : n.body)
-                    .replace(/[#*>`]/gu, "")
-                    .slice(0, 140) || "等待一个想法…"}
-                </p>
-                <small className="knowledge-note-meta">
-                  <time dateTime={new Date(n.updatedAt).toISOString()}>
-                    {noteWhen(n.updatedAt)}
-                  </time>
-                  {n.tags
-                    .filter(Boolean)
-                    .slice(0, 3)
-                    .map((tag) => (
-                      <span key={tag} className="knowledge-chip">
-                        {tag}
-                      </span>
-                    ))}
-                </small>
-              </button>
-            ))
           ) : (
             <div className="knowledge-list-empty">
               {notes.length ? (
@@ -868,14 +986,17 @@ export function KnowledgeApp() {
           onClose={() => setMoveTarget(null)}
         />
         <KnowledgeDialog
-          open={confirmDelete && !!note}
+          open={confirmDelete !== null}
           title="删除笔记"
-          onClose={() => setConfirmDelete(false)}
+          onClose={() => setConfirmDelete(null)}
           error={error}
         >
-          <p>删除「{note?.title || "未命名笔记"}」？之后仍可从版本历史恢复。</p>
+          <p>
+            删除「{state.notes[confirmDelete ?? ""]?.title || "未命名笔记"}
+            」？之后仍可从版本历史恢复。
+          </p>
           <div className="knowledge-dialog-actions">
-            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
+            <Button variant="ghost" onClick={() => setConfirmDelete(null)}>
               取消
             </Button>
             <Button
@@ -883,11 +1004,12 @@ export function KnowledgeApp() {
               disabled={busy || locked}
               onClick={() =>
                 void run(async () => {
-                  if (!note) return;
+                  const id = confirmDelete;
+                  if (!id) return;
                   await flushEditor();
-                  await store.deleteNote(note.id);
+                  await store.deleteNote(id);
                   await navigate({ to: "/knowledge", search: {} });
-                  setConfirmDelete(false);
+                  setConfirmDelete(null);
                 })
               }
             >
@@ -895,6 +1017,46 @@ export function KnowledgeApp() {
             </Button>
           </div>
         </KnowledgeDialog>
+        <KnowledgeDialog
+          open={folderDelete !== null}
+          title="删除目录"
+          onClose={() => setFolderDelete(null)}
+          error={error}
+        >
+          <p>
+            删除「{folderDelete ?? ""}」？其中的{" "}
+            {
+              notes.filter((item) =>
+                pathKey(notePath(item)).startsWith(`${pathKey(folderDelete ?? "\u0000")}/`),
+              ).length
+            }{" "}
+            篇笔记将移到库根并改写引用，子目录一并删除。
+          </p>
+          <div className="knowledge-dialog-actions">
+            <Button variant="ghost" onClick={() => setFolderDelete(null)}>
+              取消
+            </Button>
+            <Button
+              variant="danger"
+              disabled={busy}
+              onClick={() => {
+                const path = folderDelete;
+                setFolderDelete(null);
+                if (path) void removeFolder(path);
+              }}
+            >
+              确认删除目录
+            </Button>
+          </div>
+        </KnowledgeDialog>
+        {treeMenu && (
+          <TreeMenu
+            x={treeMenu.x}
+            y={treeMenu.y}
+            items={treeItems(treeMenu.target)}
+            onClose={() => setTreeMenu(null)}
+          />
+        )}
         <NoteTabs
           leading={
             <IconButton
@@ -1140,7 +1302,7 @@ export function KnowledgeApp() {
                         separator: true,
                         danger: true,
                         disabled: !note || locked,
-                        run: () => setConfirmDelete(true),
+                        run: () => note && setConfirmDelete(note.id),
                       },
                     ]}
                   />
@@ -1218,20 +1380,6 @@ export function KnowledgeApp() {
       </main>
     </div>
   );
-}
-/** 列表卡片日期：今天走 relativeTime 语义，昨天/N 天前递进，更早保留日期。 */
-export function noteWhen(ts: number, now = Date.now()): string {
-  if (!Number.isFinite(ts) || ts <= 0) return "未知时间";
-  const dayStart = (value: number) => {
-    const date = new Date(value);
-    date.setHours(0, 0, 0, 0);
-    return date.getTime();
-  };
-  const days = Math.round((dayStart(now) - dayStart(ts)) / 86_400_000);
-  if (days <= 0) return relativeTime(ts, now);
-  if (days === 1) return "昨天";
-  if (days < 7) return `${days} 天前`;
-  return new Date(ts).toLocaleDateString();
 }
 function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob),

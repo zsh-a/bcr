@@ -322,18 +322,18 @@ await group("3. 连续拉伸 320→1920→320（无溢出 + 三态正确切换�
 await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body）", async () => {
   await openKnowledge();
 
-  // kb-side < 220：卡片只留标题 + 相对时间
+  // kb-side < 220：树行只留标题（行图标与尾随时间隐藏）
   const sideProbe = () =>
     page.evaluate(() => {
       const side = document.querySelector(".knowledge-sidebar");
-      const card = document.querySelector(".knowledge-note-card:not([data-empty])");
+      const row = document.querySelector(".knowledge-file-note:not([data-empty])");
       return {
         width: side.getBoundingClientRect().width,
-        preview: card?.querySelector("p")
-          ? getComputedStyle(card.querySelector("p")).display
+        preview: row?.querySelector("time")
+          ? getComputedStyle(row.querySelector("time")).display
           : null,
-        chips: [...document.querySelectorAll(".knowledge-note-meta .knowledge-chip")].map(
-          (chip) => getComputedStyle(chip).display,
+        chips: [...document.querySelectorAll(".knowledge-file-note > svg")].map(
+          (icon) => getComputedStyle(icon).display,
         ),
       };
     });
@@ -347,15 +347,15 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
   await settle(320);
   const sideWide = await sideProbe();
   assert(sideWide.width >= 220, `kb-side 基线宽度应 ≥220（${sideWide.width}）`);
-  assert(sideWide.preview !== "none", "kb-side 基线应显示卡片预览行");
+  assert(sideWide.preview !== "none", "kb-side 基线应显示行尾时间");
   await setSideWidth("200px");
   await settle(320);
   const sideNarrow = await sideProbe();
   assert(sideNarrow.width < 220, `kb-side 探针应跨过 220 阈值（${sideNarrow.width}）`);
-  assert.equal(sideNarrow.preview, "none", "kb-side<220 应隐藏卡片预览行");
+  assert.equal(sideNarrow.preview, "none", "kb-side<220 应隐藏行尾时间");
   assert(
     sideNarrow.chips.every((display) => display === "none"),
-    "kb-side<220 应隐藏卡片标签",
+    "kb-side<220 应隐藏行图标",
   );
   await setSideWidth(null);
   await settle(320);

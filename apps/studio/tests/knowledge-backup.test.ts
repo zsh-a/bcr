@@ -12,6 +12,7 @@ const note = { ...newNote("Backup"), id: "note", body: "original", collectionId:
 const original = {
   notes: { note },
   collections: { collection: { id: "collection", name: "Collection" } },
+  folders: [],
 };
 
 describe("portable knowledge backup", () => {

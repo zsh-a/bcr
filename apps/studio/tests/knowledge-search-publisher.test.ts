@@ -5,7 +5,7 @@ import { newNote, type KnowledgeContent } from "../src/knowledge/model";
 
 const a = { ...newNote("Alpha"), id: "a", body: "alpha text", updatedAt: 1 };
 const b = { ...newNote("Beta"), id: "b", body: "beta text", updatedAt: 1 };
-const initial: KnowledgeContent = { notes: { a, b }, collections: {} };
+const initial: KnowledgeContent = { notes: { a, b }, collections: {}, folders: [] };
 
 describe("incremental knowledge projections", () => {
   it("rebuilds stale persisted projections once, then preserves untouched document identity", async () => {
@@ -44,7 +44,7 @@ describe("incremental knowledge projections", () => {
     expect(search.documents().filter((doc) => doc.id.startsWith("knowledge:a:"))).toHaveLength(3);
     publisher.publish(initial);
     expect(search.documents().filter((doc) => doc.id.startsWith("knowledge:a:"))).toHaveLength(1);
-    publisher.publish({ notes: { b }, collections: {} });
+    publisher.publish({ notes: { b }, collections: {}, folders: [] });
     expect(search.documents().map((doc) => doc.id)).toEqual(["knowledge:b:0"]);
   });
   it("updates collection names and paths and can be fully rebuilt from canonical notes", async () => {
@@ -54,6 +54,7 @@ describe("incremental knowledge projections", () => {
     const content = {
       notes: { a: { ...a, collectionId: "group", path: "项目/想法.md" } },
       collections: { group: { id: "group", name: "Old" } },
+      folders: [],
     };
     publisher.publish(content);
     publisher.publish({ ...content, collections: { group: { id: "group", name: "Renamed" } } });
@@ -76,13 +77,13 @@ describe("incremental knowledge projections", () => {
     await search.ready;
     const publisher = createKnowledgePublisher(search);
     publisher.publish(initial);
-    publisher.publish({ notes: { a }, collections: {} });
+    publisher.publish({ notes: { a }, collections: {}, folders: [] });
     await search.close();
     const reopened = createSearchIndex(persistence);
     await reopened.ready;
     expect(reopened.isSourceLive("knowledge")).toBe(false);
     expect(reopened.documents()).toHaveLength(1);
-    createKnowledgePublisher(reopened).publish({ notes: {}, collections: {} });
+    createKnowledgePublisher(reopened).publish({ notes: {}, collections: {}, folders: [] });
     expect(reopened.documents()).toEqual([]);
     expect(reopened.isSourceLive("knowledge")).toBe(true);
     await reopened.close();

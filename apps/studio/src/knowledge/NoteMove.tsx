@@ -1,10 +1,9 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Button, Input } from "@bcr/react";
-import { folderMoves, type NoteChangePlan } from "./changePlan";
+import { type NoteChangePlan } from "./changePlan";
 import { KnowledgeDialog } from "./KnowledgeDialog";
 import { NoteChangeReview } from "./NoteChangeReview";
 import { NoteFileTree } from "./NoteFileTree";
-import { countRewrittenLinks } from "./moveSummary";
 import { notePath, normalizeNotePath, parentPath, pathKey } from "./paths";
 import type { KnowledgeStore } from "./store";
 import { showUndoToast } from "./undoToast";
@@ -36,9 +35,9 @@ export function NoteMove({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{
-    plan: NoteChangePlan;
+    plan: NoteChangePlan | null;
     links: number;
-    originals: Record<string, string>;
+    undo: () => Promise<void>;
   } | null>(null);
   const pending = useRef(false);
   useLayoutEffect(() => {
@@ -66,15 +65,14 @@ export function NoteMove({
   const to = `${dest ? `${dest}/` : ""}${base}`;
   const unchanged = !!from && pathKey(to) === pathKey(from);
   const intoSelf = folder && pathKey(to).startsWith(`${pathKey(from)}/`);
-  async function undo(originals: Record<string, string>) {
+  async function run(revert: () => Promise<void>) {
     if (pending.current) return;
     pending.current = true;
     setBusy(true);
     setError("");
     try {
       await flush();
-      const plan = await store.previewMove(originals);
-      await store.applyChangePlan(plan);
+      await revert();
       setResult(null);
     } catch (reason) {
       setError(String(reason));
@@ -90,19 +88,17 @@ export function NoteMove({
     setError("");
     try {
       await flush();
-      const notes = store.getSnapshot().notes;
-      const moves =
-        "folder" in target ? folderMoves(notes, target.folder, to) : { [target.noteId]: to };
-      const originals = Object.fromEntries(
-        Object.keys(moves).map((id) => [id, notePath(notes[id] ?? { id })]),
+      const moved =
+        "folder" in target
+          ? await store.moveFolder(target.folder, to)
+          : await store.moveNotes({ [target.noteId]: to });
+      showUndoToast(
+        moved.links ? `已移动并更新 ${moved.links} 处链接` : "已移动，无需更新链接",
+        () => {
+          void run(moved.undo);
+        },
       );
-      const plan = await store.previewMove(moves);
-      await store.applyChangePlan(plan);
-      const links = countRewrittenLinks(plan.changes);
-      showUndoToast(links ? `已移动并更新 ${links} 处链接` : "已移动，无需更新链接", () => {
-        void undo(originals);
-      });
-      setResult({ plan, links, originals });
+      setResult({ plan: moved.plan, links: moved.links, undo: moved.undo });
     } catch (reason) {
       setError(String(reason));
     } finally {
@@ -125,9 +121,9 @@ export function NoteMove({
             {result.links ? `已移动并更新 ${result.links} 处链接。` : "已移动，无需更新链接。"}
             已保存到本机，下次同步时提交。
           </p>
-          <NoteChangeReview plan={result.plan} />
+          {result.plan && <NoteChangeReview plan={result.plan} />}
           <div className="knowledge-move-actions">
-            <Button variant="ghost" disabled={busy} onClick={() => void undo(result.originals)}>
+            <Button variant="ghost" disabled={busy} onClick={() => void run(result.undo)}>
               撤销移动
             </Button>
             <Button variant="primary" disabled={busy} onClick={onClose}>

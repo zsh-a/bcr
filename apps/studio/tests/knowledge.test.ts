@@ -4,6 +4,7 @@ import { resolveEdit, suggestRange } from "@bcr/agent";
 import { createKnowledgeGitHub } from "../../../scripts/fixtures/knowledge-github.mjs";
 import {
   contentOf,
+  decodeContent,
   decodeState,
   decodeTarget,
   emptyContent,
@@ -33,7 +34,7 @@ const note = (body = "first\nmiddle\nlast\n"): KnowledgeNote => ({
   createdAt: 1,
   updatedAt: 1,
 });
-const content = (n: KnowledgeNote) => ({ notes: { [n.id]: n }, collections: {} });
+const content = (n: KnowledgeNote) => ({ notes: { [n.id]: n }, collections: {}, folders: [] });
 function device() {
   let raw: string | undefined;
   let fail = false;
@@ -118,6 +119,26 @@ describe("portable knowledge format", () => {
       }),
     ).toThrow();
   });
+  it("roundtrips explicit folders and refuses folder layout mismatches", () => {
+    const value = decodeContent({
+      ...content(note("a")),
+      folders: ["工作/项目", "草稿", "工作/项目"],
+    });
+    expect(value.folders).toEqual(["工作/项目", "草稿"]);
+    const files = contentFiles(value);
+    expect(JSON.parse(files[MANIFEST]!).version).toBe(3);
+    expect(filesContent(files)).toEqual(value);
+    const legacy = contentFiles(content({ ...note("a"), path: "工作/笔记.md" }));
+    expect(JSON.parse(legacy[MANIFEST]!).version).toBe(2);
+    expect(() => filesContent({ ...legacy, "knowledge/folders.json": '["草稿"]' })).toThrow(
+      "格式不支持",
+    );
+    const missing = { ...files };
+    delete missing["knowledge/folders.json"];
+    expect(() => filesContent(missing)).toThrow("缺少目录清单");
+    expect(() => decodeContent({ ...content(note()), folders: "草稿" })).toThrow();
+    expect(() => decodeContent({ ...content(note()), folders: ["工作/"] })).toThrow();
+  });
   it("rejects YAML aliases and executable citations", () => {
     expect(() =>
       parseNoteMarkdown(
@@ -151,6 +172,15 @@ describe("portable knowledge format", () => {
 });
 
 describe("conservative three-way merge", () => {
+  it("unions folders across devices and only drops folders deleted on both", () => {
+    const base = { ...emptyContent(), folders: ["共同", "双方删除"] };
+    const local = { ...emptyContent(), folders: ["共同", "本地新增"] };
+    const remote = { ...emptyContent(), folders: ["双方删除", "远端新增"] };
+    expect(mergeContent(base, local, remote).content.folders).toEqual(
+      ["共同", "双方删除", "本地新增", "远端新增"].sort(),
+    );
+    expect(mergeContent(base, emptyContent(), emptyContent()).content.folders).toEqual([]);
+  });
   it("combines distant line edits and preserves trailing newline", () => {
     expect(mergeText("a\nb\nc\n", "A\nb\nc\n", "a\nb\nC\n")).toBe("A\nb\nC\n");
     expect(mergeText("a\n", "a\nend\n", "a\nend\n")).toBe("a\nend\n");

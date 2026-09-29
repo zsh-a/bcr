@@ -100,7 +100,7 @@ describe("knowledge record persistence", () => {
     await store.saveNote({ ...a, body: "changed" }, a);
     expect(f.batches).toHaveLength(1);
     expect(f.data.get(KNOWLEDGE_RECORD_BACKUP_KEY)).toBe(original);
-    expect(JSON.parse(f.data.get(KNOWLEDGE_KEY)!).version).toBe(3);
+    expect(JSON.parse(f.data.get(KNOWLEDGE_KEY)!).version).toBe(4);
     expect(() => decodeState(f.data.get(KNOWLEDGE_KEY))).toThrow();
     const reopened = new KnowledgeStore(f.metadata);
     await reopened.ready;
@@ -116,7 +116,7 @@ describe("knowledge record persistence", () => {
       store = new KnowledgeStore(f.metadata),
       a = note("a"),
       b = note("b", "b".repeat(10000));
-    await store.importContent({ notes: { a, b }, collections: {} });
+    await store.importContent({ notes: { a, b }, collections: {}, folders: [] });
     await store.saveNote({ ...a, body: "updated" }, a);
     const written = f.batches.at(-1)!.map(([key]) => key);
     expect(written).toHaveLength(3);
@@ -131,7 +131,11 @@ describe("knowledge record persistence", () => {
   it("roundtrips paths, collections, history, conflict snapshots, base and pending content", async () => {
     const f = fixture(),
       a = { ...note("a"), path: "项目/笔记.md", collectionId: "group" };
-    const base = { notes: { a }, collections: { group: { id: "group", name: "Group" } } };
+    const base = {
+      notes: { a },
+      collections: { group: { id: "group", name: "Group" } },
+      folders: [],
+    };
     const state = {
       ...emptyKnowledge(),
       ...base,
@@ -203,7 +207,7 @@ describe("knowledge record persistence", () => {
       first = new KnowledgeStore(f.metadata),
       a = note("a"),
       b = note("b");
-    await first.importContent({ notes: { a, b }, collections: {} });
+    await first.importContent({ notes: { a, b }, collections: {}, folders: [] });
     const second = new KnowledgeStore(f.metadata);
     await second.ready;
     await first.saveNote({ ...a, body: "one" }, a);
