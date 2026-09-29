@@ -265,6 +265,7 @@
   letter-spacing: 0.08em;
 }
 
+/* 写作工具菜单：只留锚定与显隐，材质和行语言统一走 ui-popover + ui-menu。 */
 .knowledge-tools-menu {
   position: absolute;
   z-index: var(--layer-menu);
@@ -272,61 +273,10 @@
   right: 0;
   display: none;
   min-width: 280px;
-  padding: var(--space-2);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-floating);
-  opacity: 0;
-  transform: translateY(-4px);
-  transition:
-    opacity var(--duration-base) var(--ease-standard),
-    transform var(--duration-base) var(--ease-standard),
-    display var(--duration-base) allow-discrete;
 }
 
 .knowledge-tools-menu[data-open="true"] {
   display: grid;
-  gap: var(--space-1);
-  opacity: 1;
-  transform: none;
-}
-
-@starting-style {
-  .knowledge-tools-menu[data-open="true"] {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-}
-
-.knowledge-tools-menu button {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  min-height: var(--h-control);
-  padding: 0 var(--space-2);
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  text-align: left;
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-.knowledge-tools-menu button:hover {
-  color: var(--color-text);
-}
-
-.knowledge-tools-menu button[aria-pressed="true"] {
-  color: var(--color-accent);
-}
-
-.knowledge-tools-menu button[aria-pressed="true"]::after {
-  content: "✓";
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
 }
 
 .knowledge-tools-row {
@@ -381,13 +331,6 @@
 
 .knowledge-tools-section .knowledge-hint {
   padding: var(--space-1) var(--space-2) var(--space-2);
-}
-
-/* 组间细分隔线：靠线分组，不加重型标题。 */
-.knowledge-tools-divider {
-  height: 1px;
-  margin: var(--space-1) 0;
-  background: var(--color-border);
 }
 
 /* 与文档工具行 .knowledge-mode-controls 重复的视图开关：外层可见时不重复出现。

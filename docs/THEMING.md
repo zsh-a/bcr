@@ -11,15 +11,15 @@ Tailwind 界面引入 `@bcr/react/theme.css`；手写 CSS 的界面引入 `@bcr/
 
 ## 尺度
 
-| 维度 | 取值                                                                                                                                                       |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 间距 | `--space-1..8`：4 / 8 / 12 / 16 / 20 / 24 / 32 / 40px                                                                                                      |
-| 圆角 | `--radius-sm` 8px（控件）/ `--radius-md` 12px（卡片）/ `--radius-lg` 16px（对话框、面板）/ `--radius-full`（胶囊）                                         |
-| 字号 | `--text-xs` 11px / `--text-sm` 12px / `--text-base` 14px / `--text-lg` 16px / `--text-xl` 20px / `--text-2xl` 26px（含 `--text-*--line-height`）           |
-| 字体 | `--font-sans`（IBM Plex Sans）/ `--font-mono` / `--font-display`（Newsreader Variable，仅标题与字标）                                                      |
-| 布局 | `--h-topbar` 56px / `--h-toolbar` 48px / `--h-control` 36px / `--h-control-lg` 44px / `--w-sidebar` 280px / `--content-max` 960px                          |
-| 动效 | `--duration-fast` 120ms（反馈）/ `--duration-base` 180ms（浮层、菜单）/ `--duration-slow` 260ms（面板、位移）/ `--ease-standard`                           |
-| 层级 | `--layer-tip` 20 / `--layer-menu` 30 / `--layer-scrim` 41 / `--layer-drawer` 42 / `--layer-toast` 60；阴影仅 `--shadow-floating` 与 `--shadow-dialog` 两档 |
+| 维度 | 取值                                                                                                                                                                                                                                                                 |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 间距 | `--space-1..8`：4 / 8 / 12 / 16 / 20 / 24 / 32 / 40px                                                                                                                                                                                                                |
+| 圆角 | `--radius-sm` 8px（控件）/ `--radius-md` 12px（卡片）/ `--radius-lg` 16px（对话框、面板）/ `--radius-full`（胶囊）                                                                                                                                                   |
+| 字号 | `--text-xs` 11px / `--text-sm` 12px / `--text-base` 14px / `--text-lg` 16px / `--text-xl` 20px / `--text-2xl` 26px（含 `--text-*--line-height`）                                                                                                                     |
+| 字体 | `--font-sans`（IBM Plex Sans）/ `--font-mono` / `--font-display`（Newsreader Variable，仅标题与字标）                                                                                                                                                                |
+| 布局 | `--h-topbar` 56px / `--h-toolbar` 48px / `--h-control` 36px / `--h-control-lg` 44px / `--h-menu-row` 32px（桌面菜单行；触屏回 44）/ `--w-sidebar` 280px / `--content-max` 960px                                                                                      |
+| 动效 | `--duration-fast` 120ms（反馈、浮层出场）/ `--duration-base` 180ms（浮层入场、菜单）/ `--duration-slow` 260ms（面板、位移）/ `--ease-standard`；进出同源不同速，出场约为入场的 2/3                                                                                   |
+| 层级 | `--layer-tip` 20 / `--layer-menu` 30 / `--layer-scrim` 41 / `--layer-drawer` 42 / `--layer-toast` 60；阴影三档 `--shadow-menu`（菜单）/ `--shadow-floating`（浮标）/ `--shadow-dialog`（对话框），浮层材质 `--surface-menu`（半透明染色面 + 毛玻璃，对话框保持实色） |
 
 圆角、间距、字号、动效、层级一律使用令牌；允许的字面量只有 1px 发丝线、`100%`/`auto` 与内容几何（画布、PDF、分页排版内部）。`z-index` 只能写 `var(--layer-*)`，禁止裸数字：浮层之间的顺序由令牌的数值本身表达（提示 < 菜单 < 压暗层 < 抽屉 < 撤销提示）。
 

@@ -30,7 +30,11 @@
   --color-focus: var(--color-accent);
   --color-scrim: #08090cb3;
 
-  /* 层级——只允许这两档 */
+  /* 浮层材质：菜单/浮层用半透明染色面 + 毛玻璃；对话框保持实色。 */
+  --surface-menu: color-mix(in srgb, var(--color-surface) 78%, transparent);
+
+  /* 层级——三档：菜单（近身+中景）、浮标（柔和）、对话框（全景）。 */
+  --shadow-menu: 0 1px 2px #0004, 0 12px 32px #0006;
   --shadow-floating: 0 20px 64px #0005, 0 4px 16px #0003;
   --shadow-dialog: 0 24px 100px #0007;
 
@@ -73,6 +77,8 @@
   --h-toolbar: 48px;
   --h-control: 36px;
   --h-control-lg: 44px;
+  /* 桌面菜单行高；触屏媒体下回到 --h-control-lg。 */
+  --h-menu-row: 32px;
   /* 浮层高度预算：dvh 计量并扣安全区，弹层/对话框的最大高度一律取它。 */
   --h-overlay-max: calc(
     100dvh - 2 * var(--space-8) - env(safe-area-inset-top) - env(safe-area-inset-bottom)
@@ -128,6 +134,8 @@
   --color-danger: #b52f35;
   --color-info: #305db4;
   --color-scrim: #20242e66;
+  --surface-menu: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  --shadow-menu: 0 1px 2px #24262c14, 0 12px 32px #24262c1f;
   --shadow-floating: 0 20px 64px #24262c1a, 0 4px 16px #24262c12;
   --shadow-dialog: 0 24px 100px #24262c26;
 }

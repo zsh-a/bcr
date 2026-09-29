@@ -226,7 +226,10 @@ export function NoteEditor({
               >
                 <SlidersHorizontal size={15} aria-hidden="true" />
               </button>
-              <div className="knowledge-tools-menu" data-open={menuOpen ? "true" : undefined}>
+              <div
+                className="ui-popover ui-menu knowledge-tools-menu"
+                data-open={menuOpen ? "true" : undefined}
+              >
                 <details className="knowledge-tools-section">
                   <summary>插入模板</summary>
                   <div className="knowledge-tools-list">
@@ -249,7 +252,7 @@ export function NoteEditor({
                     )}
                   </div>
                 </details>
-                <div className="knowledge-tools-divider" />
+                <div className="ui-menu-separator" />
                 {/* 视图分段在文档工具行已有同样的控件；外层可见时（容器 ≥640px）这里收起，避免同屏重复。 */}
                 <div className="knowledge-tools-modes">
                   <div className="knowledge-tools-row">
@@ -296,7 +299,7 @@ export function NoteEditor({
                 >
                   打字机模式
                 </button>
-                <div className="knowledge-tools-divider" />
+                <div className="ui-menu-separator" />
                 <div className="knowledge-tools-row">
                   <span className="ui-section-label">阅读字体</span>
                   <div className="knowledge-chip-group">
@@ -331,7 +334,7 @@ export function NoteEditor({
                     ))}
                   </div>
                 </div>
-                <div className="knowledge-tools-divider" />
+                <div className="ui-menu-separator" />
                 <details className="knowledge-tools-section">
                   <summary>快捷键</summary>
                   <p className="knowledge-hint">

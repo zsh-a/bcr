@@ -69,7 +69,7 @@ export function NoteActionsMenu({ actions }: { actions: NoteAction[] }) {
         ref={menu}
         id={id}
         popover="auto"
-        className="ui-popover knowledge-overflow-menu"
+        className="ui-popover ui-menu knowledge-overflow-menu"
         role="menu"
         aria-label="更多操作"
         onKeyDown={(event) => {

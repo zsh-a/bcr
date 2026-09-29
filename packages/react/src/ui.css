@@ -166,6 +166,7 @@
 
 .ui-dialog::backdrop {
   background: var(--color-scrim);
+  backdrop-filter: blur(6px);
 }
 
 .ui-dialog-frame {
@@ -239,35 +240,151 @@
   }
 }
 
+/* 浮层唯一材质：半透明染色面 + 毛玻璃 + 内高光，阴影走 --shadow-menu/--shadow-dialog 分档。
+   入场从触发角生长（transform-origin 默认右上，指针定位的浮层由代码覆写），出场更快收束。 */
 .ui-popover {
   margin: 0;
   max-height: var(--h-overlay-max);
   overflow: auto;
   overscroll-behavior: contain;
   padding: var(--space-4);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 45%, transparent);
   border-radius: var(--radius-md);
-  background: var(--color-surface);
+  background: var(--surface-menu);
   color: var(--color-text);
-  box-shadow: var(--shadow-floating);
+  box-shadow:
+    var(--shadow-menu),
+    inset 0 1px 0 color-mix(in srgb, var(--color-text) 6%, transparent);
+  backdrop-filter: blur(20px) saturate(1.6);
+  transform-origin: top right;
   opacity: 0;
-  transform: translateY(-4px);
+  transform: translateY(-2px) scale(0.97);
   transition:
-    opacity var(--duration-base) var(--ease-standard),
-    transform var(--duration-base) var(--ease-standard),
-    display var(--duration-base) allow-discrete,
-    overlay var(--duration-base) allow-discrete;
+    opacity var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard),
+    display var(--duration-fast) allow-discrete,
+    overlay var(--duration-fast) allow-discrete;
 }
 
-.ui-popover:popover-open {
+.ui-popover:popover-open,
+.ui-popover[data-open="true"] {
   opacity: 1;
   transform: none;
+  transition-duration: var(--duration-base);
 }
 
 @starting-style {
-  .ui-popover:popover-open {
+  .ui-popover:popover-open,
+  .ui-popover[data-open="true"] {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translateY(-2px) scale(0.97);
+  }
+}
+
+/* 菜单密度：紧凑行、图标槽、内缩发丝线、手绘勾选；触屏回到触控高度。 */
+.ui-menu {
+  gap: 2px;
+  padding: var(--space-2);
+}
+
+.ui-menu > button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--h-menu-row);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.ui-menu > button:hover {
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.ui-menu > button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ui-menu > button:disabled:hover {
+  background: transparent;
+}
+
+.ui-menu > button > svg:first-child {
+  flex: 0 0 var(--space-4);
+  width: var(--space-4);
+  height: var(--space-4);
+  color: color-mix(in srgb, currentColor 70%, transparent);
+}
+
+.ui-menu > button[aria-pressed="true"],
+.ui-menu > button[aria-current] {
+  color: var(--color-accent);
+}
+
+/* 勾选与折叠标记同一套手绘几何，不再用文本字形。 */
+.ui-menu > button[aria-pressed="true"]::after {
+  content: "";
+  width: 10px;
+  height: 5px;
+  margin-left: auto;
+  border-left: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+.ui-menu > button.is-danger {
+  color: var(--color-danger);
+}
+
+.ui-menu > button.is-danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+}
+
+.ui-menu kbd {
+  margin-left: auto;
+  padding-left: var(--space-3);
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+/* 分隔线内缩到边距，不再横贯整卡。 */
+.ui-menu-separator,
+.ui-menu .has-separator::before {
+  content: "";
+  display: block;
+  height: 1px;
+  margin: var(--space-1) var(--space-2);
+  border: 0;
+  background: color-mix(in srgb, var(--color-border-strong) 45%, transparent);
+}
+
+.ui-menu .has-separator {
+  position: relative;
+  margin-top: var(--space-1);
+}
+
+.ui-menu .has-separator::before {
+  position: absolute;
+  inset: calc(-1 * var(--space-1)) var(--space-2) auto;
+  margin: 0;
+}
+
+@media (hover: none) {
+  .ui-menu > button {
+    min-height: var(--h-control-lg);
   }
 }
 

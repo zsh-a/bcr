@@ -28,28 +28,47 @@ export function TreeMenu({
   useLayoutEffect(() => {
     const element = menu.current;
     if (!element) return;
-    element.showPopover();
-    const rect = element.getBoundingClientRect();
-    element.style.left = `${Math.max(8, Math.min(x, window.innerWidth - rect.width - 8))}px`;
-    element.style.top = `${Math.max(8, Math.min(y, window.innerHeight - rect.height - 8))}px`;
-    element.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    // 先按指针预置落点与生长角（避免首帧居中闪现），下一帧再入顶层：
+    // 与 display/overlay 的离散过渡同帧 showPopover 会被 Chromium 误判为关闭。
+    element.style.left = `${Math.max(8, Math.min(x, window.innerWidth - 8))}px`;
+    element.style.top = `${Math.max(8, Math.min(y, window.innerHeight - 8))}px`;
+    element.style.transformOrigin = `${x > window.innerWidth / 2 ? "right" : "left"} ${
+      y > window.innerHeight / 2 ? "bottom" : "top"
+    }`;
+    const frame = requestAnimationFrame(() => {
+      element.showPopover();
+      const rect = element.getBoundingClientRect();
+      element.style.left = `${Math.max(8, Math.min(x, window.innerWidth - rect.width - 8))}px`;
+      element.style.top = `${Math.max(8, Math.min(y, window.innerHeight - rect.height - 8))}px`;
+      element.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
   }, [x, y]);
   useEffect(() => {
     const element = menu.current;
     if (!element) return;
+    // manual 浮层没有轻 dismiss：发起右键的那次手势若被当成「外部点击」，
+    // 松开就会把刚打开的菜单关掉。收束只认三件事——点到菜单外、Esc、点菜单项。
+    const outside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !element.contains(event.target)) onClose();
+    };
     const toggle = () => {
       if (!element.matches(":popover-open")) onClose();
     };
+    document.addEventListener("pointerdown", outside);
     element.addEventListener("toggle", toggle);
-    return () => element.removeEventListener("toggle", toggle);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      element.removeEventListener("toggle", toggle);
+    };
   }, [onClose]);
   return (
     <div
       ref={menu}
-      popover="auto"
+      popover="manual"
       role="menu"
       aria-label="目录树操作"
-      className="knowledge-overflow-menu knowledge-tree-menu"
+      className="ui-popover ui-menu knowledge-overflow-menu knowledge-tree-menu"
       onKeyDown={(event) => {
         const enabled = [
           ...(menu.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? []),
