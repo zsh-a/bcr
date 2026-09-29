@@ -41,6 +41,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
 } from "react";
 import { workspaceServices } from "../workspace";
 import { assessExcerpt } from "../research/index";
@@ -66,11 +67,13 @@ import {
   closeOtherNotes,
   openNote,
   setSidebar,
+  setSidebarWidth,
   toggleFavorite,
   togglePinned,
 } from "./workbench";
 import { KnowledgeStore } from "./store";
 import { NoteTabs } from "./NoteTabs";
+import { SidebarResizer } from "./SidebarResizer";
 import { NoteActionsMenu } from "./NoteActionsMenu";
 import { NoteSwitcher, type PaletteAction } from "./NoteSwitcher";
 import { KnowledgeDialog } from "./KnowledgeDialog";
@@ -149,6 +152,7 @@ export function KnowledgeApp() {
   const editor = useRef<EditorHandle>(null),
     input = useRef<HTMLInputElement>(null),
     search = useRef<HTMLInputElement>(null);
+  const sidebarElement = useRef<HTMLElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const scrollPositions = useRef(new Map<string, number>());
   const selectedId = useRouterState({
@@ -695,7 +699,16 @@ export function KnowledgeApp() {
           onClick={() => setDrawer(false)}
         />
       )}
-      <aside className="knowledge-sidebar" aria-label="知识库导航">
+      <aside
+        ref={sidebarElement}
+        className="knowledge-sidebar"
+        aria-label="知识库导航"
+        style={
+          workbench.state.sidebarWidth === null
+            ? {}
+            : ({ "--w-sidebar-override": `${workbench.state.sidebarWidth}px` } as CSSProperties)
+        }
+      >
         {/* 图标栏：桌面收起后的窄形态（>bp-md 才显示）；rail 态下其余子元素整体隐藏。 */}
         <nav className="knowledge-sidebar-rail" aria-label="知识库快捷栏">
           <IconButton
@@ -975,6 +988,11 @@ export function KnowledgeApp() {
                 await select(await actions.importMarkdown(file), true);
               });
           }}
+        />
+        <SidebarResizer
+          sidebar={sidebarElement}
+          width={workbench.state.sidebarWidth}
+          onCommit={(width) => workbench.setState((current) => setSidebarWidth(current, width))}
         />
       </aside>
       <main className="knowledge-main">

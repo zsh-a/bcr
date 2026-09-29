@@ -35,11 +35,14 @@
 }
 
 /* 侧栏是具名容器（kb-side）：卡片随容器而非视口降级。
-   形态过渡：clamp 流体宽度以 --duration-slow 连续跟随，断点之间不跳变。 */
+   形态过渡：clamp 流体宽度以 --duration-slow 连续跟随，断点之间不跳变。
+   宽度优先取用户拖出来的 --w-sidebar-override（SidebarResizer 写入），
+   否则回到 --w-sidebar 流体默认；50% 封顶保住正文写作面。 */
 .knowledge-sidebar {
+  position: relative;
   container: kb-side / inline-size;
-  width: var(--w-sidebar);
-  flex: 0 0 var(--w-sidebar);
+  width: min(var(--w-sidebar-override, var(--w-sidebar)), 50%);
+  flex: 0 0 min(var(--w-sidebar-override, var(--w-sidebar)), 50%);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -51,6 +54,39 @@
     width var(--duration-slow) var(--ease-standard),
     flex-basis var(--duration-slow) var(--ease-standard),
     padding var(--duration-slow) var(--ease-standard);
+}
+
+/* 拖拽宽度时关掉形态过渡：宽度要跟手，不做补间。 */
+.knowledge-sidebar[data-resizing] {
+  transition: none;
+}
+
+/* 宽度手柄：8px 抓取区压在右缘发丝线上，hover/拖动时强调线亮起；
+   拖拽/键盘细节见 SidebarResizer。 */
+.knowledge-sidebar-resize {
+  display: none;
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: calc(-1 * var(--space-1));
+  width: var(--space-2);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.knowledge-sidebar-resize::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  width: 1px;
+  background: transparent;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.knowledge-sidebar-resize:hover::after,
+.knowledge-sidebar-resize:focus-visible::after,
+.knowledge-sidebar[data-resizing] .knowledge-sidebar-resize::after {
+  background: var(--color-accent);
 }
 
 /* ---------- 桌面侧栏形态：expanded / rail / hidden ----------
@@ -80,6 +116,10 @@
 @media (width > theme(--bp-md)) {
   .knowledge-sidebar-collapse {
     display: inline-flex;
+  }
+
+  .knowledge-app[data-sidebar="expanded"] .knowledge-sidebar-resize {
+    display: block;
   }
 
   .knowledge-app[data-sidebar="rail"] .knowledge-sidebar {
@@ -1295,7 +1335,7 @@
     top: 0;
     bottom: 0;
     left: 0;
-    width: min(var(--w-sidebar), 85vw);
+    width: min(var(--w-sidebar-override, var(--w-sidebar)), 85vw);
     padding: var(--space-4) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom))
       max(var(--space-4), env(safe-area-inset-left));
     gap: var(--space-3);

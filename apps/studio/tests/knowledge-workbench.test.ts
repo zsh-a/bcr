@@ -24,6 +24,7 @@ import {
   togglePinned,
   toggleFavorite,
   setSidebar,
+  setSidebarWidth,
   fillTemplate,
   localDay,
 } from "../src/knowledge/workbench";
@@ -161,6 +162,7 @@ describe("personal workspace", () => {
       recent: [],
       favorites: ["b"],
       sidebar: "expanded",
+      sidebarWidth: null,
     });
     // 侧栏形态：三种合法值原样回读，缺失/非法一律回落到展开。
     expect(decodeWorkbench(JSON.stringify({ version: 1, sidebar: "rail" })).sidebar).toBe("rail");
@@ -175,6 +177,24 @@ describe("personal workspace", () => {
     const expanded = emptyWorkbench();
     expect(setSidebar(expanded, "expanded")).toBe(expanded);
     expect(setSidebar(expanded, "rail").sidebar).toBe("rail");
+    // 侧栏宽度：null 跟随流体默认，数值夹到 [240, 640] 整像素，脏值回落。
+    expect(decodeWorkbench(JSON.stringify({ version: 1, sidebarWidth: 360 })).sidebarWidth).toBe(
+      360,
+    );
+    expect(decodeWorkbench(JSON.stringify({ version: 1, sidebarWidth: 5000 })).sidebarWidth).toBe(
+      640,
+    );
+    expect(decodeWorkbench(JSON.stringify({ version: 1, sidebarWidth: 1 })).sidebarWidth).toBe(240);
+    expect(decodeWorkbench(JSON.stringify({ version: 1, sidebarWidth: "360" })).sidebarWidth).toBe(
+      null,
+    );
+    expect(decodeWorkbench(JSON.stringify({ version: 1 })).sidebarWidth).toBeNull();
+    expect(setSidebarWidth(expanded, null)).toBe(expanded);
+    expect(setSidebarWidth(expanded, 9000).sidebarWidth).toBe(640);
+    const wide = setSidebarWidth(expanded, 320.4);
+    expect(wide.sidebarWidth).toBe(320);
+    expect(setSidebarWidth(wide, 320)).toBe(wide);
+    expect(setSidebarWidth(wide, null).sidebarWidth).toBeNull();
     const state = toggleFavorite(emptyWorkbench(), "note-2");
     expect(state.favorites).toEqual(["note-2"]);
     expect(toggleFavorite(state, "note-2").favorites).toEqual([]);

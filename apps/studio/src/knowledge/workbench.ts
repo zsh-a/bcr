@@ -8,14 +8,20 @@ export interface WorkbenchState {
   recent: string[];
   favorites: string[];
   sidebar: SidebarForm;
+  /** 拖拽调节后的侧栏宽度（px）；null 表示跟随 --w-sidebar 的流体默认。 */
+  sidebarWidth: number | null;
 }
 export const MAX_TABS = 20;
+/** 侧栏宽度上下限：下限容得下目录树行，上限不把正文挤出舒适行宽。 */
+export const SIDEBAR_MIN_WIDTH = 240;
+export const SIDEBAR_MAX_WIDTH = 640;
 export const emptyWorkbench = (): WorkbenchState => ({
   tabs: [],
   pinned: [],
   recent: [],
   favorites: [],
   sidebar: "expanded",
+  sidebarWidth: null,
 });
 export const WORKBENCH_KEY = "bcr/knowledge-workbench/v1";
 export function decodeWorkbench(raw: string | null): WorkbenchState {
@@ -25,6 +31,7 @@ export function decodeWorkbench(raw: string | null): WorkbenchState {
     const ids = (items: unknown, max: number): string[] =>
       Array.isArray(items) ? [...new Set(items.filter(validId))].slice(0, max) : [];
     const form: unknown = value.sidebar;
+    const width: unknown = value.sidebarWidth;
     const tabs = ids(value.tabs, MAX_TABS);
     return {
       tabs,
@@ -32,14 +39,28 @@ export function decodeWorkbench(raw: string | null): WorkbenchState {
       recent: ids(value.recent, 50),
       favorites: ids(value.favorites, 500),
       sidebar: form === "rail" || form === "hidden" ? form : "expanded",
+      sidebarWidth:
+        typeof width === "number" && Number.isFinite(width) ? clampSidebarWidth(width) : null,
     };
   } catch {
     return emptyWorkbench();
   }
 }
+/** 侧栏宽度夹到 [SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH] 的整像素值。 */
+export function clampSidebarWidth(value: number): number {
+  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(value)));
+}
 /** 切换侧栏形态；形态未变时返回原对象，避免无谓的持久化写入。 */
 export function setSidebar(state: WorkbenchState, sidebar: SidebarForm): WorkbenchState {
   return state.sidebar === sidebar ? state : { ...state, sidebar };
+}
+/** 记住侧栏宽度；null 回到流体默认，数值未变时返回原对象。 */
+export function setSidebarWidth(
+  state: WorkbenchState,
+  sidebarWidth: number | null,
+): WorkbenchState {
+  const width = sidebarWidth === null ? null : clampSidebarWidth(sidebarWidth);
+  return state.sidebarWidth === width ? state : { ...state, sidebarWidth: width };
 }
 /** 记录“最近”浏览，不隐式开标签；标签只由显式打开动作创建。 */
 export function visitNote(state: WorkbenchState, id: string): WorkbenchState {
