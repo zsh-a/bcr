@@ -5,10 +5,11 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type Ref,
 } from "react";
 import Markdown from "react-markdown";
-import { X } from "lucide-react";
+import { SlidersHorizontal, X } from "lucide-react";
 import remarkGfm from "remark-gfm";
 import { type KnowledgeNote, type KnowledgeCollection } from "./model";
 import { MarkdownEditor, type MarkdownEditorHandle } from "./MarkdownEditor";
@@ -33,7 +34,7 @@ export interface EditorHandle {
   flush(): Promise<void>;
 }
 
-type EditorMode = "edit" | "read";
+type EditorView = "edit" | "source" | "read";
 
 export function NoteEditor({
   note,
@@ -48,6 +49,7 @@ export function NoteEditor({
   target,
   focusMode,
   onFocusModeChange,
+  documentActions,
 }: {
   note: KnowledgeNote;
   store: KnowledgeStore;
@@ -62,12 +64,13 @@ export function NoteEditor({
   /** 专注模式由外壳持有，以便命令面板与 Esc 也能开关。 */
   focusMode: boolean;
   onFocusModeChange: (next: boolean) => void;
+  /** 笔记操作溢出菜单（移动/导出/收藏/历史/删除）由外壳提供，挂在文档工具行右端。 */
+  documentActions?: ReactNode;
 }) {
   const snapshot = useNoteDraft(note, store, locked);
   const { controller, note: draft, error } = snapshot;
   const { flush, change, initialError } = controller;
-  const [mode, setMode] = useState<EditorMode>("edit");
-  const [sourceMode, setSourceMode] = useState(false);
+  const [view, setView] = useState<EditorView>("edit");
   const [settings, setSettings] = useState<ReadingSettings>(() =>
     decodeReadingSettings(localStorage.getItem(READING_SETTINGS_KEY)),
   );
@@ -92,7 +95,7 @@ export function NoteEditor({
   useImperativeHandle(editorRef, () => ({ flush: flushForNavigation }), [controller]);
 
   function reveal(offset: number) {
-    if (mode === "read")
+    if (view === "read")
       reading.current?.querySelector(`#note-heading-${offset}`)?.scrollIntoView({ block: "start" });
     else source.current?.reveal(offset);
   }
@@ -109,7 +112,7 @@ export function NoteEditor({
       return;
     }
     setNavigationError("");
-    setMode("edit");
+    setView("edit");
     const frame = requestAnimationFrame(() =>
       source.current?.reveal(found?.from ?? target.offset ?? 0),
     );
@@ -178,7 +181,7 @@ export function NoteEditor({
         aria-label="笔记编辑器"
         data-reading-font={settings.font}
         data-reading-line={settings.lineHeight}
-        data-source={sourceMode ? "on" : undefined}
+        data-source={view === "source" ? "on" : undefined}
       >
         <div className="knowledge-editor-head">
           <NoteRename
@@ -187,34 +190,32 @@ export function NoteEditor({
             store={store}
             renameRef={rename}
           />
-          {/* 右上角安静分段：视图模式 + 源码 + ⋯ 写作工具（细线、hover 仅变色）。 */}
+        </div>
+        {/* 文档工具行：左列标签/集合/字符数，右列视图分段、写作工具与笔记操作。 */}
+        <div className="knowledge-editor-meta">
           <div className="knowledge-mode-controls">
             <div className="knowledge-segmented" role="group" aria-label="视图模式">
               <button
                 type="button"
-                aria-pressed={mode === "edit"}
+                aria-pressed={view === "edit"}
                 onClick={() => {
-                  setMode("edit");
+                  setView("edit");
                   requestAnimationFrame(() => source.current?.focus());
                 }}
               >
                 编辑
               </button>
-              <button type="button" aria-pressed={mode === "read"} onClick={() => setMode("read")}>
+              <button
+                type="button"
+                aria-pressed={view === "source"}
+                onClick={() => setView("source")}
+              >
+                源码
+              </button>
+              <button type="button" aria-pressed={view === "read"} onClick={() => setView("read")}>
                 阅读
               </button>
             </div>
-            <button
-              type="button"
-              className="knowledge-quiet-toggle"
-              aria-pressed={sourceMode}
-              onClick={() => {
-                setMode("edit");
-                setSourceMode(!sourceMode);
-              }}
-            >
-              源码
-            </button>
             <div className="knowledge-tools" ref={tools}>
               <button
                 type="button"
@@ -223,7 +224,7 @@ export function NoteEditor({
                 aria-expanded={menuOpen}
                 onClick={() => setMenuOpen((open) => !open)}
               >
-                ⋯
+                <SlidersHorizontal size={15} aria-hidden="true" />
               </button>
               <div className="knowledge-tools-menu" data-open={menuOpen ? "true" : undefined}>
                 <details className="knowledge-tools-section">
@@ -235,7 +236,7 @@ export function NoteEditor({
                           type="button"
                           key={template.id}
                           onClick={() => {
-                            setMode("edit");
+                            setView("edit");
                             source.current?.insert(fillTemplate(template.body, draft.title));
                             setMenuOpen(false);
                           }}
@@ -249,16 +250,16 @@ export function NoteEditor({
                   </div>
                 </details>
                 <div className="knowledge-tools-divider" />
-                {/* 视图模式与源码开关在标题栏已有同样的控件；外层可见时（容器 ≥640px）这里收起，避免同屏重复。 */}
+                {/* 视图分段在文档工具行已有同样的控件；外层可见时（容器 ≥640px）这里收起，避免同屏重复。 */}
                 <div className="knowledge-tools-modes">
                   <div className="knowledge-tools-row">
                     <span className="ui-section-label">视图模式</span>
                     <div className="knowledge-chip-group">
                       <button
                         type="button"
-                        aria-pressed={mode === "edit"}
+                        aria-pressed={view === "edit"}
                         onClick={() => {
-                          setMode("edit");
+                          setView("edit");
                           requestAnimationFrame(() => source.current?.focus());
                         }}
                       >
@@ -266,20 +267,20 @@ export function NoteEditor({
                       </button>
                       <button
                         type="button"
-                        aria-pressed={mode === "read"}
-                        onClick={() => setMode("read")}
+                        aria-pressed={view === "source"}
+                        onClick={() => setView("source")}
+                      >
+                        源码
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={view === "read"}
+                        onClick={() => setView("read")}
                       >
                         阅读
                       </button>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    aria-pressed={sourceMode}
-                    onClick={() => setSourceMode(!sourceMode)}
-                  >
-                    源码模式
-                  </button>
                 </div>
                 <button
                   type="button"
@@ -339,30 +340,8 @@ export function NoteEditor({
                 </details>
               </div>
             </div>
+            {documentActions && <div className="knowledge-doc-actions">{documentActions}</div>}
           </div>
-        </div>
-        {error && (
-          <div role="alert" className="knowledge-alert">
-            {error}
-            {!initialError && (
-              <Button variant="ghost" size="sm" onClick={() => void flush().catch(() => undefined)}>
-                重试保存
-              </Button>
-            )}
-          </div>
-        )}
-        {navigationError && (
-          <p role="status" className="knowledge-hint">
-            {navigationError}
-          </p>
-        )}
-        {/* 小屏（<1100px）：上下文收在标题下方的折叠段；宽屏用右侧持久栏。 */}
-        <details className="knowledge-context-inline">
-          <summary>大纲与链接</summary>
-          {context}
-        </details>
-        {/* 标题下方一行：标签 chips + 集合选择。教学占位退场，无标签时只有安静的「+ 标签」。 */}
-        <div className="knowledge-editor-meta">
           <div className="knowledge-tags">
             {draft.tags.map((tag) => (
               <button
@@ -452,16 +431,37 @@ export function NoteEditor({
               </option>
             ))}
           </Select>
+          <span className="knowledge-editor-count">{draft.body.length.toLocaleString()} 字符</span>
         </div>
+        {error && (
+          <div role="alert" className="knowledge-alert">
+            {error}
+            {!initialError && (
+              <Button variant="ghost" size="sm" onClick={() => void flush().catch(() => undefined)}>
+                重试保存
+              </Button>
+            )}
+          </div>
+        )}
+        {navigationError && (
+          <p role="status" className="knowledge-hint">
+            {navigationError}
+          </p>
+        )}
+        {/* 小屏（<1100px）：上下文收在标题下方的折叠段；宽屏用右侧持久栏。 */}
+        <details className="knowledge-context-inline">
+          <summary>大纲与链接</summary>
+          {context}
+        </details>
         {/* 阅读态用 hidden 收起；类名用于把它接进编辑区的 flex 纵列。 */}
-        <div className="knowledge-editor-source" hidden={mode === "read"}>
+        <div className="knowledge-editor-source" hidden={view === "read"}>
           <MarkdownEditor
             sessionId={note.id}
             sessions={sessions}
             notes={notes}
             onOpenLink={onOpenLink}
             editorRef={source}
-            live={!sourceMode}
+            live={view !== "source"}
             typewriter={settings.typewriter}
             slashContext={() => ({ id: note.id, title: draft.title })}
             label="笔记正文"
@@ -473,7 +473,7 @@ export function NoteEditor({
             onSelectionChange={(ranges) => setAgentTarget(ranges[0] ?? null)}
           />
         </div>
-        {mode === "read" && (
+        {view === "read" && (
           <article ref={reading} className="knowledge-prose">
             {body ? (
               <Markdown
@@ -510,9 +510,6 @@ export function NoteEditor({
             )}
           </article>
         )}
-        <footer className="knowledge-editor-footer">
-          <span>{draft.body.length.toLocaleString()} 字符</span>
-        </footer>
       </section>
       {context}
     </div>

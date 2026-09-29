@@ -547,7 +547,7 @@ export function KnowledgeApp() {
             <PanelLeftOpen size={18} />
           </IconButton>
           <IconButton
-            label="搜索笔记"
+            label="筛选笔记"
             onClick={() => {
               workbench.setState((current) => setSidebar(current, "expanded"));
               requestAnimationFrame(() => search.current?.focus());
@@ -614,45 +614,37 @@ export function KnowledgeApp() {
             新建笔记
           </Button>
         </div>
-        <label className="knowledge-search">
-          <Search size={15} />
-          <input
-            ref={search}
-            aria-label="搜索个人笔记"
-            placeholder="搜索笔记"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && query) {
-                event.preventDefault();
-                event.stopPropagation();
-                setQuery("");
-              }
-            }}
-          />
-          {query && (
-            <button
-              type="button"
-              className="knowledge-search-clear"
-              aria-label="清除搜索"
-              onClick={(event) => {
-                setQuery("");
-                event.currentTarget.closest("label")?.querySelector("input")?.focus();
+        <div className="knowledge-search-row">
+          <label className="knowledge-search">
+            <Search size={15} />
+            <input
+              ref={search}
+              aria-label="筛选笔记列表"
+              placeholder="筛选笔记…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape" && query) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setQuery("");
+                }
               }}
-            >
-              <X size={14} />
-            </button>
-          )}
-        </label>
-        {/* 视图行：范围=细分段；列表/文件夹=右侧小图标切换（保留导航语义）。 */}
-        <div className="knowledge-view-row" aria-label="笔记范围与导航方式">
-          <div className="knowledge-segmented" role="group" aria-label="笔记范围">
-            {VIEW_DEFS.map(([id, label]) => (
-              <button type="button" key={id} aria-pressed={view === id} onClick={() => setView(id)}>
-                {label}
+            />
+            {query && (
+              <button
+                type="button"
+                className="knowledge-search-clear"
+                aria-label="清除筛选"
+                onClick={(event) => {
+                  setQuery("");
+                  event.currentTarget.closest("label")?.querySelector("input")?.focus();
+                }}
+              >
+                <X size={14} />
               </button>
-            ))}
-          </div>
+            )}
+          </label>
           <div className="knowledge-view-mode" role="group" aria-label="导航方式">
             <button
               type="button"
@@ -672,28 +664,38 @@ export function KnowledgeApp() {
             </button>
           </div>
         </div>
-        <div className="knowledge-collection-row">
-          <Select
-            aria-label="筛选笔记集合"
-            className="knowledge-select"
-            value={collection}
-            onChange={(e) => setCollection(e.target.value)}
-          >
-            <option value="">全部笔记 · {notes.length}</option>
-            {Object.values(state.collections).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+        {/* 筛选行：范围细分段 + 集合选择与新建集合，两个筛选维度并成一行。 */}
+        <div className="knowledge-filter-row">
+          <div className="knowledge-segmented" role="group" aria-label="笔记范围">
+            {VIEW_DEFS.map(([id, label]) => (
+              <button type="button" key={id} aria-pressed={view === id} onClick={() => setView(id)}>
+                {label}
+              </button>
             ))}
-          </Select>
-          <IconButton
-            label="新建集合"
-            size="sm"
-            aria-expanded={addingCollection}
-            onClick={() => setAddingCollection((open) => !open)}
-          >
-            <Plus size={15} />
-          </IconButton>
+          </div>
+          <div className="knowledge-collection-row">
+            <Select
+              aria-label="筛选笔记集合"
+              className="knowledge-select"
+              value={collection}
+              onChange={(e) => setCollection(e.target.value)}
+            >
+              <option value="">全部笔记 · {notes.length}</option>
+              {Object.values(state.collections).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+            <IconButton
+              label="新建集合"
+              size="sm"
+              aria-expanded={addingCollection}
+              onClick={() => setAddingCollection((open) => !open)}
+            >
+              <Plus size={15} />
+            </IconButton>
+          </div>
         </div>
         {addingCollection && (
           <form
@@ -742,6 +744,7 @@ export function KnowledgeApp() {
                 key={n.id}
                 aria-current={n.id === note?.id ? "page" : undefined}
                 className={`knowledge-note-card ${n.id === note?.id ? "selected" : ""}`}
+                data-empty={!n.title.trim() && !n.body.trim() ? "true" : undefined}
                 onClick={() =>
                   go(async () => {
                     await select(n.id);
@@ -911,74 +914,24 @@ export function KnowledgeApp() {
           pinned={workbench.state.pinned}
           activeId={note?.id}
           actions={
-            <>
-              {/* 收藏与版本历史已在这条 ⋯ 菜单里，标签栏不再各留一个按钮占位。 */}
-              <div className="knowledge-status" data-testid="knowledge-status">
-                <SyncStatus
-                  facts={{
-                    error,
-                    conflicts: state.conflicts.length,
-                    hasTarget: !!state.sync.target,
-                    pending,
-                    lastSyncedAt: state.sync.lastSyncedAt,
-                    syncing,
-                  }}
-                  auto={auto}
-                  onToggleAuto={setAuto}
-                  onSync={() => void sync()}
-                  onOpenSettings={() => setPanel("sync")}
-                  onViewConflicts={() => setPanel("conflicts")}
-                />
-              </div>
-              <NoteActionsMenu
-                actions={[
-                  {
-                    label: "移动笔记",
-                    icon: <Folder size={15} />,
-                    disabled: !note || locked,
-                    run: () => note && setMoveTarget({ noteId: note.id }),
-                  },
-                  {
-                    label: "导出这篇笔记",
-                    icon: <Download size={15} />,
-                    disabled: !note || busy,
-                    run: () => void run(exportNote),
-                  },
-                  {
-                    label: favorite ? "取消收藏" : "收藏当前笔记",
-                    icon: <Star size={15} />,
-                    disabled: !note,
-                    run: () =>
-                      note && workbench.setState((current) => toggleFavorite(current, note.id)),
-                  },
-                  {
-                    label: "版本历史",
-                    icon: <History size={15} />,
-                    run: () => setPanel("history"),
-                  },
-                  {
-                    label: "同步设置",
-                    icon: <Settings2 size={15} />,
-                    separator: true,
-                    run: () => setPanel("sync"),
-                  },
-                  {
-                    label: "立即同步",
-                    icon: <RefreshCw size={15} />,
-                    disabled: syncing || busy,
-                    run: () => void sync(),
-                  },
-                  {
-                    label: "删除",
-                    icon: <Trash2 size={15} />,
-                    separator: true,
-                    danger: true,
-                    disabled: !note || locked,
-                    run: () => setConfirmDelete(true),
-                  },
-                ]}
+            /* 同步/保存状态是应用级事实（无打开笔记时也要可见），安静地留在标签条右端。 */
+            <div className="knowledge-status" data-testid="knowledge-status">
+              <SyncStatus
+                facts={{
+                  error,
+                  conflicts: state.conflicts.length,
+                  hasTarget: !!state.sync.target,
+                  pending,
+                  lastSyncedAt: state.sync.lastSyncedAt,
+                  syncing,
+                }}
+                auto={auto}
+                onToggleAuto={setAuto}
+                onSync={() => void sync()}
+                onOpenSettings={() => setPanel("sync")}
+                onViewConflicts={() => setPanel("conflicts")}
               />
-            </>
+            </div>
           }
           onSelect={(id) => go(() => select(id))}
           onClose={(id) =>
@@ -1141,6 +1094,57 @@ export function KnowledgeApp() {
                 target={target}
                 focusMode={focusMode}
                 onFocusModeChange={setFocusMode}
+                documentActions={
+                  /* 收藏与版本历史也在这条 ⋯ 菜单里；菜单跟随文档工具行，标签栏不再各留按钮。 */
+                  <NoteActionsMenu
+                    actions={[
+                      {
+                        label: "移动笔记",
+                        icon: <Folder size={15} />,
+                        disabled: !note || locked,
+                        run: () => note && setMoveTarget({ noteId: note.id }),
+                      },
+                      {
+                        label: "导出这篇笔记",
+                        icon: <Download size={15} />,
+                        disabled: !note || busy,
+                        run: () => void run(exportNote),
+                      },
+                      {
+                        label: favorite ? "取消收藏" : "收藏当前笔记",
+                        icon: <Star size={15} />,
+                        disabled: !note,
+                        run: () =>
+                          note && workbench.setState((current) => toggleFavorite(current, note.id)),
+                      },
+                      {
+                        label: "版本历史",
+                        icon: <History size={15} />,
+                        run: () => setPanel("history"),
+                      },
+                      {
+                        label: "同步设置",
+                        icon: <Settings2 size={15} />,
+                        separator: true,
+                        run: () => setPanel("sync"),
+                      },
+                      {
+                        label: "立即同步",
+                        icon: <RefreshCw size={15} />,
+                        disabled: syncing || busy,
+                        run: () => void sync(),
+                      },
+                      {
+                        label: "删除",
+                        icon: <Trash2 size={15} />,
+                        separator: true,
+                        danger: true,
+                        disabled: !note || locked,
+                        run: () => setConfirmDelete(true),
+                      },
+                    ]}
+                  />
+                }
               />
               {note.citations.length > 0 && (
                 <section className="knowledge-citations">

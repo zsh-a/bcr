@@ -32,12 +32,27 @@
 
 /* ---------- 视图切换与集合筛选 ---------- */
 
-/* 视图行：范围细分段（.knowledge-segmented）+ 右侧列表/文件夹小图标切换。 */
-.knowledge-view-row {
+/* 搜索行：筛选输入吃满余宽，列表/文件夹切换靠右；筛选行：范围细分段 + 集合选择。 */
+.knowledge-search-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  flex-wrap: wrap;
+}
+
+.knowledge-search-row .knowledge-search {
+  flex: 1;
+  min-width: 0;
+}
+
+.knowledge-filter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.knowledge-filter-row .knowledge-collection-row {
+  flex: 1;
+  min-width: 0;
 }
 
 .knowledge-view-mode {
@@ -105,7 +120,6 @@
 }
 
 .knowledge-sidebar-bottom summary {
-  display: list-item;
   min-height: var(--h-control);
   padding: var(--space-2) var(--space-1);
   cursor: pointer;
@@ -169,7 +183,7 @@
   border-left: 0;
 }
 
-/* tab 条右端：收藏/历史/状态簇，一行安静工具区，不随标签滚动。 */
+/* tab 条右端：只剩保存/同步状态簇，一行安静提示，不随标签滚动。 */
 .knowledge-tabs-actions {
   display: flex;
   align-items: center;
@@ -407,8 +421,8 @@
   background: var(--color-border);
 }
 
-/* 与标题栏 .knowledge-mode-controls 重复的模式开关：外层可见时不重复出现。
-   窄容器下外层已收成 ⋯，这里保留同一组开关作为唯一入口。 */
+/* 与文档工具行 .knowledge-mode-controls 重复的视图开关：外层可见时不重复出现。
+   窄容器下外层已收起，这里保留同一组开关作为唯一入口。 */
 @container kb-main (width >= 640px) {
   .knowledge-tools-modes {
     display: none;
@@ -463,18 +477,6 @@
   color: var(--color-text);
 }
 
-.knowledge-context-heading::after {
-  content: "▾";
-  margin-left: auto;
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  transition: transform var(--duration-fast) var(--ease-standard);
-}
-
-.knowledge-context-section:not([open]) > .knowledge-context-heading::after {
-  transform: rotate(-90deg);
-}
-
 .knowledge-context-heading span {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -492,7 +494,9 @@
   font-size: var(--prose-row);
   line-height: var(--text-base--line-height);
   color: var(--color-text);
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: color var(--duration-fast) var(--ease-standard);
 }
 
@@ -508,14 +512,14 @@
 
 .knowledge-context button[data-depth="3"] {
   padding-left: var(--space-6);
-  color: var(--color-faint);
+  color: var(--color-muted);
 }
 
 .knowledge-context button[data-depth="4"],
 .knowledge-context button[data-depth="5"],
 .knowledge-context button[data-depth="6"] {
   padding-left: var(--space-7);
-  color: var(--color-faint);
+  color: var(--color-muted);
 }
 
 /* scrollspy：当前标题安静高亮，不做位移。 */
@@ -527,16 +531,25 @@
   display: block;
   color: var(--color-amber);
   font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 0 计数小节的一行静默文案；说明文字在 tooltip/aria-description 里。 */
 .knowledge-context-empty {
   margin: 0;
   padding: var(--space-1) var(--space-2);
-  color: var(--color-faint);
+  color: var(--color-muted);
   font-size: var(--text-sm);
   line-height: var(--text-base--line-height);
   cursor: help;
+}
+
+/* 链接空态提示是尾注而非小节：不带分隔线，静默跟在大纲之后。 */
+.knowledge-context > .knowledge-context-empty {
+  border-top: 0;
+  margin-top: var(--space-4);
 }
 
 /* 窄屏折叠段：上下文直接挂在标题下，去掉常驻栏外观。 */
@@ -850,7 +863,7 @@
 }
 
 /* 侧栏控件弱化容器边线，标题与选中项承担层级。 */
-.knowledge-view-row .knowledge-segmented,
+.knowledge-filter-row .knowledge-segmented,
 .knowledge-view-mode {
   border-color: transparent;
   background: var(--color-raised);
@@ -858,14 +871,14 @@
   gap: var(--space-1);
 }
 
-.knowledge-view-row .knowledge-segmented button,
+.knowledge-filter-row .knowledge-segmented button,
 .knowledge-view-mode button {
   border: 0;
   border-radius: var(--radius-sm);
   min-height: var(--space-6);
 }
 
-.knowledge-view-row .knowledge-segmented button[aria-pressed="true"],
+.knowledge-filter-row .knowledge-segmented button[aria-pressed="true"],
 .knowledge-view-mode button[aria-pressed="true"] {
   background: var(--color-surface);
 }

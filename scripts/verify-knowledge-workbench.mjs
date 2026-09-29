@@ -43,10 +43,11 @@ async function mode(button) {
   await page.getByRole("button", { name: button, exact: true }).click();
   await page.waitForTimeout(150);
 }
-// 源码是独立于编辑/阅读的逃生舱开关（data-source=on 显示原始 Markdown）。
+// 视图是编辑/源码/阅读的单选分段（data-source=on 显示原始 Markdown）；
+// 退出源码回到「编辑」，再点「源码」不会关闭。
 async function source(on) {
   const button = page.getByRole("button", { name: "源码", exact: true });
-  if ((await button.getAttribute("aria-pressed")) !== String(on)) await mode("源码");
+  if ((await button.getAttribute("aria-pressed")) !== String(on)) await mode(on ? "源码" : "编辑");
   assert.equal(
     await page.locator(".knowledge-editor").getAttribute("data-source"),
     on ? "on" : null,
@@ -87,7 +88,7 @@ try {
   await body().press("Control+End");
   await body().pressSequentially(" Extra sentence.");
   await saved();
-  // 视图模式：编辑 / 阅读 + 独立源码按钮（旧的预览/继续编辑/实时预览/源码模式已移除）。
+  // 视图模式：编辑 / 源码 / 阅读 单选分段（旧的预览/继续编辑/实时预览/独立源码开关已移除）。
   assert.equal(
     await page.locator('.knowledge-segmented[role="group"][aria-label="视图模式"]').count(),
     1,
@@ -253,9 +254,9 @@ try {
   await tools.getByText("阅读字体", { exact: true }).waitFor();
   await tools.getByText("行高", { exact: true }).waitFor();
   assert.equal(
-    await tools.getByRole("button", { name: "源码模式", exact: true }).count(),
+    await tools.getByRole("button", { name: "源码", exact: true }).count(),
     0,
-    "源码模式 not duplicated while the title-bar toggle is visible",
+    "视图分段不在工具菜单里重复（宽容器下分段常驻文档工具行）",
   );
   await tools.getByText("插入模板", { exact: true }).click();
   await tools.getByRole("button", { name: "My template", exact: true }).click();
@@ -400,11 +401,11 @@ try {
       await mobilePicker.waitFor({ state: "hidden" });
       await page.getByRole("button", { name: "打开笔记列表", exact: true }).click();
       await page.getByRole("button", { name: "收起列表", exact: true }).click();
-      // 窄容器（主区 < 640px）：标题栏的模式控件收成 ⋯，菜单接管视图模式与源码，
-      // 保证这两个开关在任何宽度下都有且只有一个入口。
+      // 窄容器（主区 < 640px）：文档工具行的分段收起，菜单接管视图模式与源码，
+      // 保证这三个开关在任何宽度下都有且只有一个入口。
       await page.getByRole("button", { name: "更多写作工具" }).click();
       const mobileTools = page.locator(".knowledge-tools-menu");
-      await mobileTools.getByRole("button", { name: "源码模式", exact: true }).waitFor();
+      await mobileTools.getByRole("button", { name: "源码", exact: true }).waitFor();
       await mobileTools.getByRole("button", { name: "阅读", exact: true }).waitFor();
       await page.keyboard.press("Escape");
       await mobileTools.waitFor({ state: "hidden" });

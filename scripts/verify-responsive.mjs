@@ -326,7 +326,7 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
   const sideProbe = () =>
     page.evaluate(() => {
       const side = document.querySelector(".knowledge-sidebar");
-      const card = document.querySelector(".knowledge-note-card");
+      const card = document.querySelector(".knowledge-note-card:not([data-empty])");
       return {
         width: side.getBoundingClientRect().width,
         preview: card?.querySelector("p")
@@ -750,7 +750,7 @@ await group("7. 「继续对话」浮标不遮挡知识库内容与移动端导�
         .querySelector(".assistant-launcher")
         .getBoundingClientRect()
         .toJSON();
-      const probes = [...document.querySelectorAll(".knowledge-editor-footer")]
+      const probes = [...document.querySelectorAll(".knowledge-editor-source, .knowledge-prose")]
         .filter((element) => {
           const rect = element.getBoundingClientRect();
           return rect.width > 0 && rect.height > 0;

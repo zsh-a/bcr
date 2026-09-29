@@ -6,7 +6,7 @@ import { resolveNoteLink, type NoteAnalysis } from "./markdownAnalysis";
  * 上下文栏：大纲 / 反向链接 / 出站链接。
  * 小节标题是 11px 大写等宽眉标（.ui-section-label 语言）且可折叠（默认展开）；
  * 计数为 0 时收敛成一行静默文案，说明文字退到 tooltip/aria-description；
- * 大纲带 h1/h2/h3 层级缩进，滚动时高亮当前标题。桌面为右侧常驻栏，
+ * 大纲带 h1/h2/h3 层级缩进，长条目单行截断（全文在 title 提示），滚动时高亮当前标题。桌面为右侧常驻栏，
  * 小屏由 NoteEditor 包进标题下的折叠段。
  */
 export function NoteContext({
@@ -95,6 +95,7 @@ export function NoteContext({
               type="button"
               key={heading.from}
               data-depth={heading.depth}
+              title={heading.text}
               className={current === heading.from ? "is-current" : undefined}
               aria-current={current === heading.from ? "location" : undefined}
               onClick={() => onReveal(heading.from)}
@@ -114,7 +115,12 @@ export function NoteContext({
             反向链接 <span>{backlinks.length}</span>
           </summary>
           {backlinks.map((source) => (
-            <button type="button" key={source.id} onClick={() => onOpen(source.id)}>
+            <button
+              type="button"
+              key={source.id}
+              title={source.title || "未命名笔记"}
+              onClick={() => onOpen(source.id)}
+            >
               {source.title || "未命名笔记"}
             </button>
           ))}
@@ -131,6 +137,7 @@ export function NoteContext({
               <button
                 type="button"
                 key={`${link.from}:${link.to}`}
+                title={link.label}
                 onClick={() => onOpen(link.target)}
               >
                 {link.label}

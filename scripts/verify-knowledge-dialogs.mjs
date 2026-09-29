@@ -222,7 +222,7 @@ try {
   await tools.waitFor();
   assert.equal(await tools.getAttribute("role"), null);
   assert.equal(await tools.getByRole("menuitem").count(), 0);
-  assert.ok(await tools.getByRole("button", { name: "源码模式", exact: true }).isVisible());
+  assert.ok(await tools.getByRole("button", { name: "源码", exact: true }).isVisible());
   assert.equal(await tools.getByRole("button", { name: "同步设置", exact: true }).count(), 0);
   await page.keyboard.press("Escape");
 

@@ -40,7 +40,8 @@ async function readBody() {
   const toggle = sourceToggle();
   if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
   const text = (await body.locator(".cm-line").allInnerTexts()).join("\n");
-  if ((await toggle.getAttribute("aria-pressed")) === "true") await toggle.click();
+  if ((await toggle.getAttribute("aria-pressed")) === "true")
+    await page.getByRole("button", { name: "编辑", exact: true }).click();
   return text;
 }
 const moveButton = () => page.getByRole("button", { name: "更多操作", exact: true });
@@ -75,7 +76,7 @@ const diffForms = (dialog) =>
 // 路径条已删除：切回列表视图，用路径筛选验证笔记当前所在路径。
 async function atPath(query, name) {
   await page.getByRole("button", { name: "列表视图", exact: true }).click();
-  const search = page.getByLabel("搜索个人笔记", { exact: true });
+  const search = page.getByLabel("筛选笔记列表", { exact: true });
   await search.fill(query);
   const list = page.getByRole("navigation", { name: "笔记列表" });
   const cards = list.getByRole("button");
@@ -324,11 +325,11 @@ try {
   await fdlg.waitFor({ state: "hidden" });
   // Sidebar path search finds the note at its new path; it survives reload.
   await page.getByRole("button", { name: "列表视图", exact: true }).click();
-  await page.getByLabel("搜索个人笔记", { exact: true }).fill("archive/项目");
+  await page.getByLabel("筛选笔记列表", { exact: true }).fill("archive/项目");
   const list = page.getByRole("navigation", { name: "笔记列表" });
   await list.getByRole("button").filter({ hasText: "Alpha" }).waitFor();
   assert.equal(await list.getByRole("button").count(), 1);
-  await page.getByLabel("搜索个人笔记", { exact: true }).fill("");
+  await page.getByLabel("筛选笔记列表", { exact: true }).fill("");
   assert.equal(
     await atPath(`archive/项目/new/${a}.md`, "Alpha"),
     true,

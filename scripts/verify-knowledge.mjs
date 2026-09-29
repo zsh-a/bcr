@@ -200,7 +200,7 @@ async function rawBody(page) {
         .join("\n"),
     );
   } finally {
-    if (raw) await source.click();
+    if (raw) await page.getByRole("button", { name: "编辑", exact: true }).click();
   }
 }
 async function matchesBody(page, text) {
@@ -221,7 +221,7 @@ async function matchesBody(page, text) {
       text,
     );
   } finally {
-    if (raw) await source.click();
+    if (raw) await page.getByRole("button", { name: "编辑", exact: true }).click();
   }
 }
 async function retitle(page, text) {

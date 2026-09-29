@@ -2,7 +2,7 @@ import { Pin, X } from "lucide-react";
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import type { KnowledgeNote } from "./model";
 
-/** 显式标签栏：无历史箭头，每个标签可固定、可关闭；右端挂状态簇与笔记工具。 */
+/** 显式标签栏：无历史箭头，每个标签可固定、可关闭；右端只挂保存/同步状态簇（文档操作在编辑器工具行）。 */
 export function NoteTabs({
   notes,
   ids,
