@@ -23,6 +23,8 @@ import {
   closeOtherNotes,
   togglePinned,
   toggleFavorite,
+  setContext,
+  setContextWidth,
   setSidebar,
   setSidebarWidth,
   fillTemplate,
@@ -163,6 +165,8 @@ describe("personal workspace", () => {
       favorites: ["b"],
       sidebar: "expanded",
       sidebarWidth: null,
+      context: "expanded",
+      contextWidth: null,
     });
     // 侧栏形态：三种合法值原样回读，缺失/非法一律回落到展开。
     expect(decodeWorkbench(JSON.stringify({ version: 1, sidebar: "rail" })).sidebar).toBe("rail");
@@ -195,6 +199,30 @@ describe("personal workspace", () => {
     expect(wide.sidebarWidth).toBe(320);
     expect(setSidebarWidth(wide, 320)).toBe(wide);
     expect(setSidebarWidth(wide, null).sidebarWidth).toBeNull();
+    // 上下文栏形态与宽度：同样回落/夹取/身份返回，宽度跟随 --w-rail 时为 null。
+    expect(decodeWorkbench(JSON.stringify({ version: 1, context: "hidden" })).context).toBe(
+      "hidden",
+    );
+    expect(decodeWorkbench(JSON.stringify({ version: 1, context: "bogus" })).context).toBe(
+      "expanded",
+    );
+    expect(decodeWorkbench(JSON.stringify({ version: 1, contextWidth: 300 })).contextWidth).toBe(
+      300,
+    );
+    expect(decodeWorkbench(JSON.stringify({ version: 1, contextWidth: 9000 })).contextWidth).toBe(
+      480,
+    );
+    expect(decodeWorkbench(JSON.stringify({ version: 1, contextWidth: 10 })).contextWidth).toBe(
+      200,
+    );
+    expect(decodeWorkbench(JSON.stringify({ version: 1, contextWidth: true })).contextWidth).toBe(
+      null,
+    );
+    expect(setContext(expanded, "expanded")).toBe(expanded);
+    expect(setContext(expanded, "hidden").context).toBe("hidden");
+    expect(setContextWidth(expanded, null)).toBe(expanded);
+    expect(setContextWidth(expanded, 300.7).contextWidth).toBe(301);
+    expect(setContextWidth(expanded, 9000).contextWidth).toBe(480);
     const state = toggleFavorite(emptyWorkbench(), "note-2");
     expect(state.favorites).toEqual(["note-2"]);
     expect(toggleFavorite(state, "note-2").favorites).toEqual([]);

@@ -2,6 +2,8 @@ import { validId } from "./model";
 
 /** 侧栏形态：展开（完整面板）/ 图标栏（56px）/ 全隐藏。 */
 export type SidebarForm = "expanded" | "rail" | "hidden";
+/** 上下文栏形态：展开（右侧常驻栏）/ 全隐藏；窄屏的标题下折叠段不受它影响。 */
+export type ContextForm = "expanded" | "hidden";
 export interface WorkbenchState {
   tabs: string[];
   pinned: string[];
@@ -10,11 +12,17 @@ export interface WorkbenchState {
   sidebar: SidebarForm;
   /** 拖拽调节后的侧栏宽度（px）；null 表示跟随 --w-sidebar 的流体默认。 */
   sidebarWidth: number | null;
+  context: ContextForm;
+  /** 拖拽调节后的上下文栏宽度（px）；null 表示跟随 --w-rail 的流体默认。 */
+  contextWidth: number | null;
 }
 export const MAX_TABS = 20;
 /** 侧栏宽度上下限：下限容得下目录树行，上限不把正文挤出舒适行宽。 */
 export const SIDEBAR_MIN_WIDTH = 240;
 export const SIDEBAR_MAX_WIDTH = 640;
+/** 上下文栏宽度上下限：大纲行要读得清，也不与正文争宽。 */
+export const CONTEXT_MIN_WIDTH = 200;
+export const CONTEXT_MAX_WIDTH = 480;
 export const emptyWorkbench = (): WorkbenchState => ({
   tabs: [],
   pinned: [],
@@ -22,6 +30,8 @@ export const emptyWorkbench = (): WorkbenchState => ({
   favorites: [],
   sidebar: "expanded",
   sidebarWidth: null,
+  context: "expanded",
+  contextWidth: null,
 });
 export const WORKBENCH_KEY = "bcr/knowledge-workbench/v1";
 export function decodeWorkbench(raw: string | null): WorkbenchState {
@@ -32,6 +42,8 @@ export function decodeWorkbench(raw: string | null): WorkbenchState {
       Array.isArray(items) ? [...new Set(items.filter(validId))].slice(0, max) : [];
     const form: unknown = value.sidebar;
     const width: unknown = value.sidebarWidth;
+    const contextForm: unknown = value.context;
+    const contextWidth: unknown = value.contextWidth;
     const tabs = ids(value.tabs, MAX_TABS);
     return {
       tabs,
@@ -41,6 +53,11 @@ export function decodeWorkbench(raw: string | null): WorkbenchState {
       sidebar: form === "rail" || form === "hidden" ? form : "expanded",
       sidebarWidth:
         typeof width === "number" && Number.isFinite(width) ? clampSidebarWidth(width) : null,
+      context: contextForm === "hidden" ? "hidden" : "expanded",
+      contextWidth:
+        typeof contextWidth === "number" && Number.isFinite(contextWidth)
+          ? clampContextWidth(contextWidth)
+          : null,
     };
   } catch {
     return emptyWorkbench();
@@ -49,6 +66,10 @@ export function decodeWorkbench(raw: string | null): WorkbenchState {
 /** 侧栏宽度夹到 [SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH] 的整像素值。 */
 export function clampSidebarWidth(value: number): number {
   return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(value)));
+}
+/** 上下文栏宽度夹到 [CONTEXT_MIN_WIDTH, CONTEXT_MAX_WIDTH] 的整像素值。 */
+export function clampContextWidth(value: number): number {
+  return Math.min(CONTEXT_MAX_WIDTH, Math.max(CONTEXT_MIN_WIDTH, Math.round(value)));
 }
 /** 切换侧栏形态；形态未变时返回原对象，避免无谓的持久化写入。 */
 export function setSidebar(state: WorkbenchState, sidebar: SidebarForm): WorkbenchState {
@@ -61,6 +82,18 @@ export function setSidebarWidth(
 ): WorkbenchState {
   const width = sidebarWidth === null ? null : clampSidebarWidth(sidebarWidth);
   return state.sidebarWidth === width ? state : { ...state, sidebarWidth: width };
+}
+/** 切换上下文栏形态；形态未变时返回原对象。 */
+export function setContext(state: WorkbenchState, context: ContextForm): WorkbenchState {
+  return state.context === context ? state : { ...state, context };
+}
+/** 记住上下文栏宽度；null 回到流体默认，数值未变时返回原对象。 */
+export function setContextWidth(
+  state: WorkbenchState,
+  contextWidth: number | null,
+): WorkbenchState {
+  const width = contextWidth === null ? null : clampContextWidth(contextWidth);
+  return state.contextWidth === width ? state : { ...state, contextWidth: width };
 }
 /** 记录“最近”浏览，不隐式开标签；标签只由显式打开动作创建。 */
 export function visitNote(state: WorkbenchState, id: string): WorkbenchState {

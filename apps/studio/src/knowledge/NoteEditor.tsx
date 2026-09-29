@@ -5,18 +5,20 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
   type Ref,
 } from "react";
 import Markdown from "react-markdown";
-import { SlidersHorizontal, X } from "lucide-react";
+import { PanelRightClose, PanelRightOpen, SlidersHorizontal, X } from "lucide-react";
 import remarkGfm from "remark-gfm";
 import { type KnowledgeNote, type KnowledgeCollection } from "./model";
 import { MarkdownEditor, type MarkdownEditorHandle } from "./MarkdownEditor";
 import type { EditorSessions } from "./editorSessions";
 import { analyzeMarkdown, internalTarget, remarkKnowledgeLinks, linkKey } from "./markdownAnalysis";
 import { NoteContext } from "./NoteContext";
-import { fillTemplate } from "./workbench";
+import { PanelResizer } from "./PanelResizer";
+import { CONTEXT_MAX_WIDTH, CONTEXT_MIN_WIDTH, fillTemplate } from "./workbench";
 import type { KnowledgeStore } from "./store";
 import { useNoteDraft } from "./useNoteDraft";
 import { useNoteAgent } from "./useNoteAgent";
@@ -49,6 +51,10 @@ export function NoteEditor({
   target,
   focusMode,
   onFocusModeChange,
+  contextOpen,
+  onContextOpenChange,
+  contextWidth,
+  onContextWidthChange,
   documentActions,
 }: {
   note: KnowledgeNote;
@@ -64,6 +70,11 @@ export function NoteEditor({
   /** 专注模式由外壳持有，以便命令面板与 Esc 也能开关。 */
   focusMode: boolean;
   onFocusModeChange: (next: boolean) => void;
+  /** 上下文栏形态与宽度由外壳（工作台偏好）持有，刷新后保持。 */
+  contextOpen: boolean;
+  onContextOpenChange: (open: boolean) => void;
+  contextWidth: number | null;
+  onContextWidthChange: (width: number | null) => void;
   /** 笔记操作溢出菜单（移动/导出/收藏/历史/删除）由外壳提供，挂在文档工具行右端。 */
   documentActions?: ReactNode;
 }) {
@@ -175,7 +186,15 @@ export function NoteEditor({
   );
 
   return (
-    <div className="knowledge-document" ref={host}>
+    <div
+      className="knowledge-document"
+      ref={host}
+      style={
+        {
+          "--w-rail-override": contextWidth === null ? undefined : `${contextWidth}px`,
+        } as CSSProperties
+      }
+    >
       <section
         className="knowledge-editor"
         aria-label="笔记编辑器"
@@ -344,6 +363,19 @@ export function NoteEditor({
               </div>
             </div>
             {documentActions && <div className="knowledge-doc-actions">{documentActions}</div>}
+            {/* 上下文栏开关：只在右栏存在的宽屏（≥bp-lg）出现，窄屏用标题下的折叠段。 */}
+            <button
+              type="button"
+              className="knowledge-quiet-toggle knowledge-context-collapse"
+              aria-label={contextOpen ? "收起上下文栏" : "展开上下文栏"}
+              onClick={() => onContextOpenChange(!contextOpen)}
+            >
+              {contextOpen ? (
+                <PanelRightClose size={15} aria-hidden="true" />
+              ) : (
+                <PanelRightOpen size={15} aria-hidden="true" />
+              )}
+            </button>
           </div>
           <div className="knowledge-tags">
             {draft.tags.map((tag) => (
@@ -515,6 +547,17 @@ export function NoteEditor({
         )}
       </section>
       {context}
+      {/* 右栏宽度手柄：贴在上下文栏左缘，宽度变量随拖拽写在本容器上。 */}
+      <PanelResizer
+        edge="left"
+        variable="--w-rail-override"
+        label="调整上下文栏宽度"
+        width={contextWidth}
+        min={CONTEXT_MIN_WIDTH}
+        max={CONTEXT_MAX_WIDTH}
+        getPanel={() => host.current?.querySelector<HTMLElement>(":scope > .knowledge-context")}
+        onCommit={onContextWidthChange}
+      />
     </div>
   );
 }

@@ -61,19 +61,18 @@
   transition: none;
 }
 
-/* 宽度手柄：8px 抓取区压在右缘发丝线上，hover/拖动时强调线亮起；
-   拖拽/键盘细节见 SidebarResizer。 */
-.knowledge-sidebar-resize {
+/* 面板宽度手柄：8px 抓取区压在面板边缘发丝线上，hover/拖动时强调线亮起；
+   贴边位置由各面板的规则决定（侧栏右缘、上下文栏左缘），拖拽/键盘细节见 PanelResizer。 */
+.knowledge-panel-resize {
   display: none;
   position: absolute;
   inset-block: 0;
-  inset-inline-end: calc(-1 * var(--space-1));
   width: var(--space-2);
   cursor: col-resize;
   touch-action: none;
 }
 
-.knowledge-sidebar-resize::after {
+.knowledge-panel-resize::after {
   content: "";
   position: absolute;
   inset-block: 0;
@@ -83,10 +82,15 @@
   transition: background var(--duration-fast) var(--ease-standard);
 }
 
-.knowledge-sidebar-resize:hover::after,
-.knowledge-sidebar-resize:focus-visible::after,
-.knowledge-sidebar[data-resizing] .knowledge-sidebar-resize::after {
+.knowledge-panel-resize:hover::after,
+.knowledge-panel-resize:focus-visible::after,
+.knowledge-panel-resize[data-resizing]::after {
   background: var(--color-accent);
+}
+
+/* 侧栏手柄贴右缘：8px 区一半压在发丝线上。 */
+.knowledge-sidebar > .knowledge-panel-resize {
+  inset-inline-end: calc(-1 * var(--space-1));
 }
 
 /* ---------- 桌面侧栏形态：expanded / rail / hidden ----------
@@ -118,7 +122,7 @@
     display: inline-flex;
   }
 
-  .knowledge-app[data-sidebar="expanded"] .knowledge-sidebar-resize {
+  .knowledge-app[data-sidebar="expanded"] .knowledge-sidebar > .knowledge-panel-resize {
     display: block;
   }
 

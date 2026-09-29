@@ -66,14 +66,18 @@ import {
   closeNote,
   closeOtherNotes,
   openNote,
+  setContext,
+  setContextWidth,
   setSidebar,
   setSidebarWidth,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_MIN_WIDTH,
   toggleFavorite,
   togglePinned,
 } from "./workbench";
 import { KnowledgeStore } from "./store";
 import { NoteTabs } from "./NoteTabs";
-import { SidebarResizer } from "./SidebarResizer";
+import { PanelResizer } from "./PanelResizer";
 import { NoteActionsMenu } from "./NoteActionsMenu";
 import { NoteSwitcher, type PaletteAction } from "./NoteSwitcher";
 import { KnowledgeDialog } from "./KnowledgeDialog";
@@ -657,6 +661,15 @@ export function KnowledgeApp() {
       },
     },
     {
+      id: "toggle-context",
+      label: "切换上下文栏",
+      run: async () => {
+        workbench.setState((current) =>
+          setContext(current, current.context === "expanded" ? "hidden" : "expanded"),
+        );
+      },
+    },
+    {
       id: "toggle-focus",
       label: focusMode ? "退出专注模式" : "进入专注模式",
       hint: "Esc 退出",
@@ -669,7 +682,14 @@ export function KnowledgeApp() {
     <div
       className={`knowledge-app ${drawer ? "show-sidebar" : ""}`}
       data-sidebar={sidebar}
+      data-context={workbench.state.context}
       data-focus-mode={focusMode ? "on" : undefined}
+      style={
+        {
+          "--w-sidebar-override":
+            workbench.state.sidebarWidth === null ? undefined : `${workbench.state.sidebarWidth}px`,
+        } as CSSProperties
+      }
     >
       <NoteSwitcher
         open={switcher !== null}
@@ -699,16 +719,7 @@ export function KnowledgeApp() {
           onClick={() => setDrawer(false)}
         />
       )}
-      <aside
-        ref={sidebarElement}
-        className="knowledge-sidebar"
-        aria-label="知识库导航"
-        style={
-          workbench.state.sidebarWidth === null
-            ? {}
-            : ({ "--w-sidebar-override": `${workbench.state.sidebarWidth}px` } as CSSProperties)
-        }
-      >
+      <aside ref={sidebarElement} className="knowledge-sidebar" aria-label="知识库导航">
         {/* 图标栏：桌面收起后的窄形态（>bp-md 才显示）；rail 态下其余子元素整体隐藏。 */}
         <nav className="knowledge-sidebar-rail" aria-label="知识库快捷栏">
           <IconButton
@@ -989,9 +1000,14 @@ export function KnowledgeApp() {
               });
           }}
         />
-        <SidebarResizer
-          sidebar={sidebarElement}
+        <PanelResizer
+          edge="right"
+          variable="--w-sidebar-override"
+          label="调整侧边栏宽度"
           width={workbench.state.sidebarWidth}
+          min={SIDEBAR_MIN_WIDTH}
+          max={SIDEBAR_MAX_WIDTH}
+          getPanel={() => sidebarElement.current}
           onCommit={(width) => workbench.setState((current) => setSidebarWidth(current, width))}
         />
       </aside>
@@ -1274,6 +1290,14 @@ export function KnowledgeApp() {
                 target={target}
                 focusMode={focusMode}
                 onFocusModeChange={setFocusMode}
+                contextOpen={workbench.state.context === "expanded"}
+                onContextOpenChange={(open) =>
+                  workbench.setState((current) => setContext(current, open ? "expanded" : "hidden"))
+                }
+                contextWidth={workbench.state.contextWidth}
+                onContextWidthChange={(width) =>
+                  workbench.setState((current) => setContextWidth(current, width))
+                }
                 documentActions={
                   /* 收藏与版本历史也在这条 ⋯ 菜单里；菜单跟随文档工具行，标签栏不再各留按钮。 */
                   <NoteActionsMenu
