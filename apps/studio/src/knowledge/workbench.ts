@@ -13,7 +13,7 @@ export interface WorkbenchState {
   /** 拖拽调节后的侧栏宽度（px）；null 表示跟随 --w-sidebar 的流体默认。 */
   sidebarWidth: number | null;
   context: ContextForm;
-  /** 拖拽调节后的上下文栏宽度（px）；null 表示跟随 --w-rail 的流体默认。 */
+  /** 拖拽调节后的上下文栏宽度（px）；null 表示跟随 --w-context 的流体默认。 */
   contextWidth: number | null;
 }
 export const MAX_TABS = 20;
@@ -139,12 +139,4 @@ export function toggleFavorite(state: WorkbenchState, id: string): WorkbenchStat
       ? state.favorites.filter((item) => item !== id)
       : [...state.favorites, id].slice(-500),
   };
-}
-export function localDay(date = new Date()) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-export function fillTemplate(body: string, title: string, date = new Date()) {
-  return body.replace(/\{\{(date|title)\}\}/gu, (_, name: string) =>
-    name === "date" ? localDay(date) : title,
-  );
 }

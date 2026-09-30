@@ -8,8 +8,9 @@
 
 .studio-background-settings {
   position: fixed;
-  inset: calc(var(--h-topbar) + env(safe-area-inset-top) + var(--space-2))
-    max(var(--space-3), env(safe-area-inset-right)) auto auto;
+  /* 锚定公式与工作区选项浮层共用，单一声明点在 styles.css 的
+     --studio-topbar-popover-inset（同属 apps/studio 构建域，随 studio-main 一并加载）。 */
+  inset: var(--studio-topbar-popover-inset);
   width: min(var(--w-sidebar), calc(100vw - 2 * var(--space-3)));
   max-height: calc(
     100dvh - var(--h-topbar) - var(--space-6) - env(safe-area-inset-top) -
@@ -141,14 +142,9 @@
   background-position: center;
 }
 
-:root[data-background] .knowledge-editor,
-:root[data-background] .knowledge-empty,
-:root[data-background] .knowledge-context,
-:root[data-background] .knowledge-citations,
-:root[data-background] .knowledge-note-actions,
-:root[data-background] .knowledge-tabs-bar,
-:root[data-background] .knowledge-toolbar,
-:root[data-background] .knowledge-pathbar,
+/* 知识域面板的不透明面已随背景联动整体迁往 knowledge.css（同选择器同行为），
+   主题层不再反向伸手进知识域类；.knowledge-toolbar / .knowledge-note-actions
+   全仓库无源码引用，是死选择器，随迁移删除。 */
 :root[data-background] .studio-home > div > div:first-child {
   background: var(--color-bg);
 }

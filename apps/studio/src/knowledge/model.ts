@@ -1,6 +1,15 @@
 import { decodeResearch, type ResearchExcerpt } from "../research/index";
 import { normalizeFolderPath, normalizeNotePath, assertUniquePaths } from "./paths";
 
+/** 领域字段上限：decode 校验与副本命名共用，副本后缀的长度要算进上限（copyName）。 */
+export const NOTE_TITLE_MAX = 500;
+export const COLLECTION_NAME_MAX = 200;
+
+/** 副本命名：留出后缀长度再截断；「保留双方」与「恢复双份」两处副本共用一套规则。 */
+export function copyName(name: string, max: number, suffix: string): string {
+  return `${name.slice(0, max - suffix.length)}${suffix}`;
+}
+
 export interface KnowledgeNote {
   id: string;
   title: string;
@@ -107,7 +116,7 @@ export function decodeNote(value: unknown): KnowledgeNote {
   ).collections[0]!.excerpts;
   return {
     id: n.id,
-    title: string(n.title, 500),
+    title: string(n.title, NOTE_TITLE_MAX),
     ...(n.path === undefined ? {} : { path: normalizeNotePath(n.path) }),
     body: string(n.body, 500_000),
     tags: n.tags.map((tag) => string(tag, 100)),
@@ -120,7 +129,7 @@ export function decodeNote(value: unknown): KnowledgeNote {
 export function decodeCollection(value: unknown): KnowledgeCollection {
   const c = object(value);
   if (!validId(c.id)) throw new Error("集合身份无效");
-  return { id: c.id, name: string(c.name, 200) };
+  return { id: c.id, name: string(c.name, COLLECTION_NAME_MAX) };
 }
 export function decodeContent(value: unknown): KnowledgeContent {
   const v = object(value);
@@ -247,26 +256,4 @@ export function pendingCount(state: KnowledgeState): number {
     for (const id of ids) if (!same(state[field][id], state.sync.base[field][id])) count++;
   }
   return count;
-}
-export function relativeTime(ts: number, now = Date.now()): string {
-  if (!Number.isFinite(ts) || ts <= 0) return "未知时间";
-  const delta = now - ts;
-  if (delta < 60_000) return "刚刚";
-  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)} 分钟前`;
-  if (delta < 86_400_000) return `${Math.floor(delta / 3_600_000)} 小时前`;
-  return new Date(ts).toLocaleDateString();
-}
-/** 列表行日期：今天走 relativeTime 语义，昨天/N 天前递进，更早保留日期。 */
-export function noteWhen(ts: number, now = Date.now()): string {
-  if (!Number.isFinite(ts) || ts <= 0) return "未知时间";
-  const dayStart = (value: number) => {
-    const date = new Date(value);
-    date.setHours(0, 0, 0, 0);
-    return date.getTime();
-  };
-  const days = Math.round((dayStart(now) - dayStart(ts)) / 86_400_000);
-  if (days <= 0) return relativeTime(ts, now);
-  if (days === 1) return "昨天";
-  if (days < 7) return `${days} 天前`;
-  return new Date(ts).toLocaleDateString();
 }

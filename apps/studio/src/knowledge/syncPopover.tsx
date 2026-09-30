@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Button, StatusDot } from "@bcr/react";
-import { relativeTime } from "./model";
+import { relativeTime } from "./format";
 import "./syncPopover.css";
 
 /**

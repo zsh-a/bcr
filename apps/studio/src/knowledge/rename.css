@@ -42,7 +42,9 @@
   padding-top: var(--space-4);
 }
 
-/* 确认按钮随对话框体容器而非视口拉伸（原视口 640px 组件级规则迁入）。 */
+/* 确认按钮随对话框体容器而非视口拉伸（原视口 640px 组件级规则迁入）。
+   同阈值 640px 的 ui-body 降级另有 dialog.css（版本条目摘要）与
+   diffView.css（审阅按钮限宽）：三处规则体各不相同，按各自组件保留，只互指不合并。 */
 @container ui-body (width <= 640px) {
   .knowledge-rename-actions button {
     flex: 1 1 auto;

@@ -14,7 +14,7 @@ import { EditorView } from "@codemirror/view";
 import { notePath } from "./paths";
 import type { KnowledgeNote } from "./model";
 import { analyzeMarkdown, noteWikiLink } from "./markdownAnalysis";
-import { fillTemplate, localDay } from "./workbench";
+import { fillTemplate, localDay } from "./format";
 import { editorAnalysis } from "./editorAnalysis";
 
 /** 当前笔记身份与标题；模板的 {{title}} 变量取实时标题。 */

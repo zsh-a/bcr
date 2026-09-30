@@ -3,7 +3,8 @@ import { openWorkspaceOptions } from "./lib/topbar.mjs";
  *
  * BASE_URL 语义与其他走查脚本一致（verify-ci 注入 dev server 地址）。
  * 断言分 7 组，逐组输出 PASS/FAIL；任一组失败进程退出码非 0。
- * 容器阈值用「元素样式注入 + 真实布局宽度」触发：--w-sidebar / --w-rail 令牌
+ * 容器阈值用「元素样式注入 + 真实布局宽度」触发：--w-context-override 令牌与
+ * 侧栏自身 width/flex-basis 直写（--w-sidebar 链有 50% 封顶，见 kb-main 段注释）
  * 直接驱动布局宽度，dock-panel / ui-body 改写容器自身 width，均需实测宽度
  * 跨过阈值后才断言降级形态，避免空断言。 */
 import assert from "node:assert/strict";
@@ -375,11 +376,13 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
         ]),
       };
     });
+  // 右栏宽度链条（--context-width）在 .knowledge-document 上解析，注入点必须与
+  // PanelResizer 的写入目标一致：写到右栏的布局父级，而不是右栏自身。
   const setRailWidth = (width) =>
     page.evaluate((value) => {
-      const rail = document.querySelector(".knowledge-document > .knowledge-context");
-      if (value === null) rail.style.removeProperty("--w-rail");
-      else rail.style.setProperty("--w-rail", value);
+      const doc = document.querySelector(".knowledge-document");
+      if (value === null) doc.style.removeProperty("--w-context-override");
+      else doc.style.setProperty("--w-context-override", value);
     }, width);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await settle(250);
@@ -427,10 +430,19 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
         iconButtons,
       };
     });
+  // kb-main 的窄态靠加宽侧栏挤压出来：直接写侧栏自身的 width/flex-basis。
+  // 不走 --w-sidebar 令牌注入——那条链带「正文保一半」的 50% 封顶（拖拽宽度的
+  // 不变式），会把 900px 截在 720；直接写布局属性仍是真实布局宽度。
   const setSidebarToken = (width) =>
     page.evaluate((value) => {
-      if (value === null) document.documentElement.style.removeProperty("--w-sidebar");
-      else document.documentElement.style.setProperty("--w-sidebar", value);
+      const side = document.querySelector(".knowledge-sidebar");
+      if (value === null) {
+        side.style.removeProperty("width");
+        side.style.removeProperty("flex-basis");
+      } else {
+        side.style.setProperty("width", value);
+        side.style.setProperty("flex-basis", value);
+      }
     }, width);
   await setSidebarToken("300px");
   await settle(320);

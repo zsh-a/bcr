@@ -85,7 +85,7 @@
   );
   /* 布局宽度流体化。 */
   --w-sidebar: clamp(240px, 22vw, 300px);
-  --w-rail: clamp(200px, 18vw, 260px);
+  --w-context: clamp(200px, 18vw, 260px);
   --content-max: min(960px, 100%);
 
   /* 断点——唯一事实来源（em，内容驱动）。

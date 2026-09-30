@@ -3,6 +3,7 @@ import { createKnowledgePublisher } from "./search";
 import { workspaceServices } from "../workspace";
 import { knowledgeCapability } from "./agent";
 import { knowledgeResultRenderers } from "./agentRenderers";
+import { draftStorageKey } from "./draft";
 
 export const knowledgePlugin: WorkspacePlugin = {
   id: "knowledge",
@@ -12,7 +13,7 @@ export const knowledgePlugin: WorkspacePlugin = {
     const unregister = agent.registerAgentCapability(
       knowledgeCapability(store, (id) => {
         // Includes recoverable drafts whose editor is not mounted. Fail closed if storage is unavailable.
-        if (localStorage.getItem(`bcr/knowledge-draft/v1/${id}`) !== null)
+        if (localStorage.getItem(draftStorageKey(id)) !== null)
           throw new Error("笔记有本地恢复草稿，请先打开笔记并保存或处理草稿");
       }),
     );

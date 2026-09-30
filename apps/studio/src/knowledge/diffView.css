@@ -85,6 +85,8 @@
   gap: var(--space-2);
   overflow-x: auto;
   padding: var(--space-1) 0 var(--space-3);
+  /* 窄容器下受影响笔记按钮的限宽值：单一声明点，文末两个 @container 块只切换它。 */
+  --review-notes-btn-narrow-max: 200px;
 }
 
 /* 受影响笔记是两行的切换块：在按钮原语上只放开高度与排版。 */
@@ -132,15 +134,19 @@
 }
 
 /* 受影响笔记按钮随所在容器而非视口收窄（原视口 640px 组件级规则迁入；
- * 审阅块既出现在对话框体（ui-body）里，也出现在行内重命名（kb-doc）里）。 */
+ * 审阅块既出现在对话框体（ui-body）里，也出现在行内重命名（kb-doc）里）。
+ * @container 无法跨容器名合并查询（or / 逗号列表在目标引擎不解析），
+ * 两块只负责开关同一限宽值（.knowledge-review-notes 的 --review-notes-btn-narrow-max），
+ * 规则主体不再逐字重复。同阈值 640px 的 ui-body 降级另有 dialog.css（版本条目摘要）
+ * 与 rename.css（确认按钮），三处规则体各不相同，只互指不合并。 */
 @container ui-body (width <= 640px) {
   .knowledge-review-notes .ui-btn {
-    max-width: 200px;
+    max-width: var(--review-notes-btn-narrow-max);
   }
 }
 
 @container kb-doc (width <= 640px) {
   .knowledge-review-notes .ui-btn {
-    max-width: 200px;
+    max-width: var(--review-notes-btn-narrow-max);
   }
 }

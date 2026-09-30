@@ -1,7 +1,8 @@
 import { FileText, Folder, FolderInput } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { IconButton } from "@bcr/react";
-import { noteWhen, type KnowledgeNote } from "./model";
+import { noteWhen } from "./format";
+import { type KnowledgeNote } from "./model";
 import { notePath, parentPath, pathKey } from "./paths";
 
 interface FolderNode {

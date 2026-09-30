@@ -93,6 +93,14 @@
   height: var(--h-control-lg);
 }
 
+/* 顶栏右下浮层的锚定公式（top 让开顶栏与安全区、right 贴安全区内缘、左下 auto）：
+ * 工作区选项浮层与背景设置面板（theme/background.css 的 .studio-background-settings）
+ * 共用同一公式，只在这一处声明，避免两份逐字重复的 inset。 */
+:root {
+  --studio-topbar-popover-inset: calc(var(--h-topbar) + env(safe-area-inset-top) + var(--space-2))
+    max(var(--space-3), env(safe-area-inset-right)) auto auto;
+}
+
 /* ---------- 工作区选项：命令、外观与按需展开的运行状态 ---------- */
 .studio-options-trigger {
   position: relative;
@@ -107,8 +115,7 @@
 
 .studio-options-popover {
   position: fixed;
-  inset: calc(var(--h-topbar) + env(safe-area-inset-top) + var(--space-2))
-    max(var(--space-3), env(safe-area-inset-right)) auto auto;
+  inset: var(--studio-topbar-popover-inset);
   width: min(300px, calc(100vw - 2 * var(--space-3)));
   max-height: calc(
     100dvh - var(--h-topbar) - var(--space-6) - env(safe-area-inset-top) -

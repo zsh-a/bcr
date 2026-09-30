@@ -238,13 +238,13 @@
 /* ---------- 文档与写作工具 ---------- */
 
 /* 文档列是具名容器（kb-doc）：标题与 meta 行随容器而非视口降级。
-   --context-width 是右栏宽度链条：用户拖出来的 --w-rail-override（PanelResizer
-   与 NoteEditor 都写在本容器上）优先，否则回到 --w-rail 流体默认；50% 封顶，
+   --context-width 是右栏宽度链条：用户拖出来的 --w-context-override（PanelResizer
+   与 NoteEditor 都写在本容器上）优先，否则回到 --w-context 流体默认；50% 封顶，
    正文与右栏各占一半写作面。 */
 .knowledge-document {
   container: kb-doc / inline-size;
   position: relative;
-  --context-width: min(var(--w-rail-override, var(--w-rail)), 50%);
+  --context-width: min(var(--w-context-override, var(--w-context)), 50%);
   display: flex;
   align-items: flex-start;
   min-width: 0;
@@ -353,7 +353,7 @@
   container: kb-rail / inline-size;
   position: sticky;
   top: 0;
-  flex: 0 0 var(--context-width, var(--w-rail));
+  flex: 0 0 var(--context-width, var(--w-context));
   max-height: calc(100dvh - 180px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   overflow: auto;
   padding: var(--space-6) var(--space-4) 64px;

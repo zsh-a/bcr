@@ -4,7 +4,7 @@ import { contentOf, emptyContent, newNote } from "./model";
 import type { KnowledgeStore } from "./store";
 import { FILE_LIMIT, importMarkdown } from "./files";
 import { writeKnowledgeBackup } from "./backup";
-import { localDay } from "./workbench";
+import { localDay } from "./format";
 
 /** Stable source IDs make repeated imports idempotent without merging the two domain models. */
 export function researchToKnowledge(library: ResearchLibrary) {

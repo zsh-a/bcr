@@ -12,6 +12,24 @@ import { knowledgePlugin } from "../knowledge/plugin";
  * reads the same keys, so both stay defined next to their consumer.
  */
 
+/**
+ * 知识库在路由树里的 path，两处共用一个来源：
+ * - 本文件 KNOWLEDGE_MANIFEST（宿主 /knowledge 嵌入路由）；
+ * - knowledge/standalone.tsx（独立 PWA 入口的 route path，外面另有 basepath
+ *   /notes 做 URL 隔离，别把两者当成同一层）。
+ * 第三处声明在 KnowledgeApp.tsx 内部的硬编码导航（不归壳层管），改这里必须同步它。
+ */
+export const KNOWLEDGE_PATH = "/knowledge";
+
+/**
+ * 与 pwa/apps.ts 的安装清单是同一套应用的两份平行事实，靠取值巧合对齐：Shell.tsx
+ * 拿这里的 manifest id 直接当 PWA key 查安装身份（pwaForApp(active)），首页路由
+ * "/" 又叫 "home"，靠 pwaForApp 里 home→workspace 的字面映射找回 key "workspace"。
+ * 也就是说同一个宿主工作区有三个名字——安装清单叫 key "workspace"、本清单叫
+ * id "studio"（宿主包名 @bcr/studio）、路由叫 "/"——仅靠取值巧合保持一致，改名即断。
+ * key/id/scope/startUrl 是已发布的安装身份，取值绝不能改（用户已安装的 PWA 靠它
+ * 识别自己，改了会失去身份并被重复安装）；对应注释见 pwa/apps.ts 顶部。
+ */
 export const STUDIO_MANIFEST = {
   id: "studio",
   title: "Studio",
@@ -28,7 +46,7 @@ export const KNOWLEDGE_MANIFEST = {
   plugins: [knowledgePlugin],
   id: "knowledge",
   title: "个人知识库",
-  path: "/knowledge",
+  path: KNOWLEDGE_PATH,
   icon: NotebookPen,
   description: "独立 Markdown 笔记 · 资料引用 / 全文搜索 / GitHub 同步与版本恢复",
   section: "personal",

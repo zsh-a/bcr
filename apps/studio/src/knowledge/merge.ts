@@ -53,6 +53,29 @@ export function mergeText(base: string, local: string, remote: string): string |
     lines.splice(edit.start, edit.end - edit.start, ...edit.lines);
   return lines.join("\n");
 }
+/**
+ * 逐键合并元数据：远端改、本机未改才取远端；双改不覆盖本机并记入返回值。
+ * 双改怎么收场由调用方定：自动合并放弃（mergeNote 返回 null），
+ * 冲突预览保留本机并在界面明示（mergeConflictNote）。返回 true 表示出现过双改。
+ */
+export function mergeMetadata(
+  merged: KnowledgeNote,
+  local: KnowledgeNote,
+  remote: KnowledgeNote,
+  base: KnowledgeNote | null,
+  keys: readonly (keyof KnowledgeNote)[],
+): boolean {
+  let conflicted = false;
+  for (const key of keys) {
+    if (same(local[key], remote[key]) || same(remote[key], base?.[key])) continue;
+    if (!same(local[key], base?.[key])) {
+      conflicted = true;
+      continue;
+    }
+    Object.assign(merged, { [key]: remote[key] });
+  }
+  return conflicted;
+}
 function mergeNote(
   base: KnowledgeNote,
   local: KnowledgeNote,
@@ -62,11 +85,18 @@ function mergeNote(
   const body = mergeText(base.body, local.body, remote.body);
   if (body === null) return null;
   result.body = body;
-  for (const key of ["title", "path", "tags", "collectionId", "createdAt", "citations"] as const) {
-    if (same(local[key], remote[key]) || same(remote[key], base[key])) continue;
-    if (!same(local[key], base[key])) return null;
-    Object.assign(result, { [key]: remote[key] });
-  }
+  // 自动合并的键集包含标题与路径；任何一键双改都放弃，交给冲突流程。
+  if (
+    mergeMetadata(result, local, remote, base, [
+      "title",
+      "path",
+      "tags",
+      "collectionId",
+      "createdAt",
+      "citations",
+    ])
+  )
+    return null;
   return result;
 }
 export function mergeContent(

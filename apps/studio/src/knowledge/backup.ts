@@ -6,7 +6,14 @@ import {
   contentFiles,
   isManagedPath,
 } from "./files";
-import { decodeContent, same, type KnowledgeContent } from "./model";
+import {
+  copyName,
+  decodeContent,
+  same,
+  COLLECTION_NAME_MAX,
+  NOTE_TITLE_MAX,
+  type KnowledgeContent,
+} from "./model";
 import { availableCopyPath } from "./paths";
 
 export type RestoreMode = "skip" | "replace" | "both";
@@ -129,7 +136,11 @@ export function planKnowledgeRestore(
       collections[collection.id] = collection;
     else if (mode === "both") {
       const id = crypto.randomUUID();
-      collections[id] = { ...collection, id, name: `${collection.name.slice(0, 194)}（恢复副本）` };
+      collections[id] = {
+        ...collection,
+        id,
+        name: copyName(collection.name, COLLECTION_NAME_MAX, "（恢复副本）"),
+      };
       collectionIds.set(collection.id, id);
     }
   }
@@ -153,7 +164,7 @@ export function planKnowledgeRestore(
       notes[id] = {
         ...note,
         id,
-        title: `${note.title.slice(0, 494)}（恢复副本）`,
+        title: copyName(note.title, NOTE_TITLE_MAX, "（恢复副本）"),
         ...(note.path === undefined ? {} : { path: availableCopyPath(note.path, notes) }),
       };
       copied += 1;

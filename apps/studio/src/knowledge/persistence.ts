@@ -84,6 +84,8 @@ export class KnowledgePersistence {
       sync = object(shape.sync);
     const records = new Map<string, string>();
     let total = bytes(raw!);
+    // 记录清单是存储索引层的规模上限（各分区 id 合计），与领域容量
+    // （model.decodeContent 的 5000 笔记/1000 集合/2000 目录）分属两层，故意不同值。
     function ids(value: unknown, strict: boolean): string[] {
       if (
         !Array.isArray(value) ||

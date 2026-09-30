@@ -1511,3 +1511,17 @@
     padding: var(--space-2) var(--space-4);
   }
 }
+
+/* ---------- 背景主题联动（自定义背景） ---------- */
+
+/* 自定义背景铺满 .knowledge-app 画布时，这组面板保持 --color-bg 不透明面，
+   只让外围露出背景图。规则原在背景主题层 theme/background.css（同选择器同行为），
+   知识域类的声明点归本文件，主题层不再反向伸手进知识域。 */
+:root[data-background] .knowledge-editor,
+:root[data-background] .knowledge-empty,
+:root[data-background] .knowledge-context,
+:root[data-background] .knowledge-citations,
+:root[data-background] .knowledge-tabs-bar,
+:root[data-background] .knowledge-pathbar {
+  background: var(--color-bg);
+}

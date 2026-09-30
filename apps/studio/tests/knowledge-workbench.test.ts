@@ -27,9 +27,8 @@ import {
   setContextWidth,
   setSidebar,
   setSidebarWidth,
-  fillTemplate,
-  localDay,
 } from "../src/knowledge/workbench";
+import { fillTemplate, localDay } from "../src/knowledge/format";
 import { createWorkspaceServices } from "../src/workspace";
 import { createKnowledgeActions } from "../src/knowledge/actions";
 import { editorAnalysis } from "../src/knowledge/editorAnalysis";
@@ -199,7 +198,7 @@ describe("personal workspace", () => {
     expect(wide.sidebarWidth).toBe(320);
     expect(setSidebarWidth(wide, 320)).toBe(wide);
     expect(setSidebarWidth(wide, null).sidebarWidth).toBeNull();
-    // 上下文栏形态与宽度：同样回落/夹取/身份返回，宽度跟随 --w-rail 时为 null。
+    // 上下文栏形态与宽度：同样回落/夹取/身份返回，宽度跟随 --w-context 时为 null。
     expect(decodeWorkbench(JSON.stringify({ version: 1, context: "hidden" })).context).toBe(
       "hidden",
     );

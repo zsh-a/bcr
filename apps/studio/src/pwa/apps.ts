@@ -1,6 +1,18 @@
-/** Installation identities are stable and separate from the shell's component registry. */
+/**
+ * Installation identities are stable and separate from the shell's component registry.
+ *
+ * 命名对照（与 shell/host-manifests.ts 的壳层清单互相指认）：两份清单是同一套
+ * 应用的平行事实，path 对齐只靠取值巧合——Shell.tsx 拿壳层 manifest id 直接当
+ * 本清单的 key 查安装身份（pwaForApp），首页路由 "/" 在壳层叫 "home"，靠下面
+ * pwaForApp 里 home→workspace 的字面映射找回 key "workspace"。也就是说
+ * workspace（本清单的 key）/ studio（壳层 STUDIO_MANIFEST 的 id、宿主包名
+ * @bcr/studio）/ "/"（路由）是同一个宿主工作区的三个名字，改名即断。
+ * key/id/scope/startUrl 是已发布的安装身份，取值必须逐字节不变：改了会让用户
+ * 已安装的 PWA 失去身份、被当成新应用重复安装。
+ */
 export const PWA_APPS = [
   {
+    // 宿主工作区首页的安装身份（见顶部命名对照）；key 不能改。
     key: "workspace",
     name: "BCR Workspace",
     shortName: "工作区",

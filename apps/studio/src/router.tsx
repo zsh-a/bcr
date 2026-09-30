@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { Shell } from "./shell/Shell";
+import { STUDIO_MANIFEST } from "./shell/host-manifests";
 import { MANIFESTS } from "./shell/registry";
 
 /**
@@ -81,7 +82,7 @@ export function useSelection() {
   const select = useCallback(
     (patch: { file?: string | undefined; task?: string | undefined }) => {
       void navigate({
-        to: "/studio",
+        to: STUDIO_MANIFEST.path,
         search: (prev: StudioSearch) => ({ ...prev, ...patch }),
         replace: true,
       });

@@ -21,12 +21,15 @@ import { KnowledgePersistence } from "./persistence";
 export { KNOWLEDGE_KEY } from "./persistence";
 import {
   contentOf,
+  copyName,
   decodeNote,
   decodeContent,
   decodeState,
   decodeTarget,
   emptyKnowledge,
   same,
+  COLLECTION_NAME_MAX,
+  NOTE_TITLE_MAX,
   type GitTarget,
   type KnowledgeContent,
   type KnowledgeState,
@@ -451,7 +454,8 @@ export class KnowledgeStore {
       };
     });
   }
-  resolve(conflict: KnowledgeConflict, choice: "local" | "remote" | "both"): Promise<void> {
+  /** 解决冲突：取本机 / 取远端 / 保留双方（远端另存为副本，注意与恢复的 RestoreMode 各表其事）。 */
+  resolve(conflict: KnowledgeConflict, choice: "local" | "remote" | "keep-both"): Promise<void> {
     return this.update((state) => {
       const current = state.conflicts.find(
         (c) => c.kind === conflict.kind && c.key === conflict.key,
@@ -463,13 +467,17 @@ export class KnowledgeStore {
       const map = current.kind === "note" ? notes : collections;
       if (selected) Object.assign(map, { [current.key]: selected });
       else delete map[current.key];
-      if (choice === "both" && current.remote) {
+      if (choice === "keep-both" && current.remote) {
         const id = crypto.randomUUID();
         if (current.kind === "note")
           notes[id] = {
             ...(current.remote as KnowledgeNote),
             id,
-            title: `${(current.remote as KnowledgeNote).title.slice(0, 494)}（远端副本）`,
+            title: copyName(
+              (current.remote as KnowledgeNote).title,
+              NOTE_TITLE_MAX,
+              "（远端副本）",
+            ),
             ...((current.remote as KnowledgeNote).path === undefined
               ? {}
               : { path: availableCopyPath((current.remote as KnowledgeNote).path!, notes) }),
@@ -478,7 +486,11 @@ export class KnowledgeStore {
         else
           collections[id] = {
             id,
-            name: `${("name" in current.remote ? current.remote.name : "集合").slice(0, 194)}（远端副本）`,
+            name: copyName(
+              "name" in current.remote ? current.remote.name : "集合",
+              COLLECTION_NAME_MAX,
+              "（远端副本）",
+            ),
           };
       }
       const next = this.withHistory(

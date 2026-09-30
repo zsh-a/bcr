@@ -3,7 +3,7 @@ import { Button } from "@bcr/react";
 import type { KnowledgeState, KnowledgeNote } from "./model";
 import { GitHubKnowledge } from "./github";
 import { DiffView } from "./diffView";
-import { relativeTime } from "./model";
+import { relativeTime } from "./format";
 
 function summary(body: string): string {
   const line = body

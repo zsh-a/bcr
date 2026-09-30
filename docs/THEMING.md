@@ -50,7 +50,7 @@ Tailwind 界面引入 `@bcr/react/theme.css`；手写 CSS 的界面引入 `@bcr/
 ### 流体令牌
 
 - 展示级字号连续过渡，不设台阶：`--text-xl` / `--text-2xl` 为 `clamp()`；kb-doc 标题另以 `5cqi` 参与 clamp 中值。
-- 布局宽度流体化：`--w-sidebar` clamp(240px, 22vw, 300px) / `--w-rail` clamp(200px, 18vw, 260px) / `--content-max` min(960px, 100%)。
+- 布局宽度流体化：`--w-sidebar` clamp(240px, 22vw, 300px) / `--w-context` clamp(200px, 18vw, 260px) / `--content-max` min(960px, 100%)。
 - 浮层高度预算：`--h-overlay-max`（dvh 计量并扣安全区），弹层/对话框最大高度一律取它；矮窗内重定义为全屏高度。
 - 安全区一律 `max(var(--space-*), env(safe-area-inset-*))` 兜底，移动端 chrome（标题栏、底部导航、抽屉、浮标）同此。
 

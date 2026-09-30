@@ -2,7 +2,6 @@ import {
   Button,
   IconButton,
   Select,
-  Skeleton,
   useRuntime,
   useRuntimeActivity,
   useCredential,
@@ -44,6 +43,7 @@ import {
   type CSSProperties,
 } from "react";
 import { workspaceServices } from "../workspace";
+import { KNOWLEDGE_PATH } from "../shell/host-manifests";
 import { assessExcerpt } from "../research/index";
 import { pendingCount } from "./model";
 import { noteMarkdown } from "./files";
@@ -64,7 +64,6 @@ import { KnowledgeLinkIndex, resolveNoteLink, splitNoteTarget } from "./markdown
 import { useWorkbench } from "./useWorkbench";
 import {
   closeNote,
-  closeOtherNotes,
   openNote,
   setContext,
   setContextWidth,
@@ -77,9 +76,11 @@ import {
 } from "./workbench";
 import { KnowledgeStore } from "./store";
 import { NoteTabs } from "./NoteTabs";
+import { knowledgePaletteActions } from "./knowledgePalette";
+import { KnowledgeBootError, KnowledgeBootShell } from "./KnowledgeBoot";
 import { PanelResizer } from "./PanelResizer";
 import { NoteActionsMenu } from "./NoteActionsMenu";
-import { NoteSwitcher, type PaletteAction } from "./NoteSwitcher";
+import { NoteSwitcher } from "./NoteSwitcher";
 import { KnowledgeDialog } from "./KnowledgeDialog";
 import { NoteFileTree, type TreeDrag, type TreeTarget } from "./NoteFileTree";
 import { TreeMenu, type TreeMenuItem } from "./TreeMenu";
@@ -292,7 +293,7 @@ export function KnowledgeApp() {
     await editor.current?.flush();
     if (open) workbench.setState((current) => openNote(current, id));
     setClosedAll(false);
-    await navigate({ to: "/knowledge", search: { note: id } });
+    await navigate({ to: KNOWLEDGE_PATH, search: { note: id } });
     setDrawer(false);
     setConfirmDelete(null);
   };
@@ -496,40 +497,16 @@ export function KnowledgeApp() {
   }
   if (!ready)
     return error ? (
-      <div className="knowledge-boot" role="alert">
-        <p className="knowledge-boot-title">知识库没有打开。</p>
-        <p className="knowledge-boot-error">{error}</p>
-        <Button
-          variant="primary"
-          onClick={() => {
-            setError("");
-            setReady(false);
-            setBootAttempt((attempt) => attempt + 1);
-          }}
-        >
-          <RefreshCw size={15} />
-          重试
-        </Button>
-      </div>
+      <KnowledgeBootError
+        error={error}
+        onRetry={() => {
+          setError("");
+          setReady(false);
+          setBootAttempt((attempt) => attempt + 1);
+        }}
+      />
     ) : (
-      <div
-        className="knowledge-app knowledge-boot-shell"
-        role="status"
-        aria-label="正在打开本地知识库"
-      >
-        <aside className="knowledge-sidebar">
-          <Skeleton className="knowledge-skeleton-sm" />
-          <Skeleton />
-          <Skeleton />
-          <Skeleton />
-          <Skeleton className="knowledge-skeleton-fill" />
-        </aside>
-        <main className="knowledge-main">
-          <Skeleton className="knowledge-skeleton-sm" />
-          <Skeleton />
-          <Skeleton className="knowledge-skeleton-fill" />
-        </main>
-      </div>
+      <KnowledgeBootShell />
     );
   const locked = !!note && state.conflicts.some((c) => c.kind === "note" && c.key === note.id);
   const favorite = !!note && workbench.state.favorites.includes(note.id);
@@ -538,146 +515,30 @@ export function KnowledgeApp() {
     setCollection("");
     setView("all");
   };
-  const paletteActions: PaletteAction[] = [
-    {
-      id: "new",
-      label: "新建笔记",
-      hint: `新建到${collection ? `「${state.collections[collection]?.name ?? "所选集合"}」` : "「未归类」"}`,
-      run: async () => {
-        await run(create);
-      },
-    },
-    {
-      id: "daily",
-      label: "今日日记",
-      hint: "打开或创建今天的日记",
-      run: async () => {
-        await run(async () => {
-          await select(await actions.daily(), true);
-        });
-      },
-    },
-    {
-      id: "history",
-      label: "打开版本历史",
-      run: async () => {
-        setPanel("history");
-        setDrawer(false);
-      },
-    },
-    {
-      id: "sync",
-      label: "打开同步设置",
-      run: async () => {
-        setPanel("sync");
-        setDrawer(false);
-      },
-    },
-    {
-      id: "restore",
-      label: "备份与恢复",
-      run: async () => {
-        setPanel("restore");
-        setDrawer(false);
-      },
-    },
-    {
-      id: "export-note",
-      label: "导出当前笔记",
-      disabled: !note,
-      run: async () => {
-        await run(exportNote);
-      },
-    },
-    {
-      id: "move",
-      label: "移动当前笔记",
-      hint: "更改集合与文件夹",
-      disabled: !note,
-      run: async () => {
-        await flushEditor();
-        setMoveTarget({ noteId: note!.id });
-      },
-    },
-    {
-      id: "rename",
-      label: "重命名当前笔记",
-      hint: "在标题处直接编辑",
-      disabled: !note,
-      run: async () => {
-        await flushEditor();
-        document.querySelector<HTMLInputElement>(".knowledge-title")?.focus();
-      },
-    },
-    {
-      id: "delete",
-      label: "删除当前笔记",
-      hint: "删除后可从历史恢复",
-      disabled: !note || locked,
-      run: async () => {
-        await flushEditor();
-        if (note) setConfirmDelete(note.id);
-      },
-    },
-    {
-      id: "import-md",
-      label: "导入 Markdown",
-      run: async () => {
-        input.current?.click();
-      },
-    },
-    {
-      id: "import-research",
-      label: "从资料集合导入",
-      run: async () => {
-        await run(importResearch);
-      },
-    },
-    {
-      id: "export-all",
-      label: "导出知识库",
-      run: async () => {
-        await run(exportAll);
-      },
-    },
-    {
-      id: "close-others",
-      label: "关闭其他标签",
-      hint: "固定标签保留",
-      disabled: !note || workbench.state.tabs.length < 2,
-      run: async () => {
-        await flushEditor();
-        workbench.setState((current) => closeOtherNotes(current, note!.id));
-      },
-    },
-    {
-      id: "toggle-sidebar",
-      label: "切换侧边栏",
-      hint: "⌘B",
-      run: async () => {
-        workbench.setState((current) =>
-          setSidebar(current, current.sidebar === "expanded" ? "hidden" : "expanded"),
-        );
-      },
-    },
-    {
-      id: "toggle-context",
-      label: "切换上下文栏",
-      run: async () => {
-        workbench.setState((current) =>
-          setContext(current, current.context === "expanded" ? "hidden" : "expanded"),
-        );
-      },
-    },
-    {
-      id: "toggle-focus",
-      label: focusMode ? "退出专注模式" : "进入专注模式",
-      hint: "Esc 退出",
-      run: async () => {
-        setFocusMode(!focusMode);
-      },
-    },
-  ];
+  const paletteActions = knowledgePaletteActions({
+    note,
+    locked,
+    newTargetHint: collection
+      ? `「${state.collections[collection]?.name ?? "所选集合"}」`
+      : "「未归类」",
+    tabCount: workbench.state.tabs.length,
+    focusMode,
+    setWorkbench: workbench.setState,
+    setFocusMode,
+    run,
+    select,
+    create,
+    daily: actions.daily,
+    flushEditor,
+    exportNote,
+    importResearch,
+    exportAll,
+    openPanel: setPanel,
+    closeDrawer: () => setDrawer(false),
+    moveNote: (id) => setMoveTarget({ noteId: id }),
+    confirmDelete: setConfirmDelete,
+    importMarkdown: () => input.current?.click(),
+  });
   return (
     <div
       className={`knowledge-app ${drawer ? "show-sidebar" : ""}`}
@@ -1042,7 +903,7 @@ export function KnowledgeApp() {
                   if (!id) return;
                   await flushEditor();
                   await store.deleteNote(id);
-                  await navigate({ to: "/knowledge", search: {} });
+                  await navigate({ to: KNOWLEDGE_PATH, search: {} });
                   setConfirmDelete(null);
                 })
               }
@@ -1142,7 +1003,7 @@ export function KnowledgeApp() {
                 if (remaining.length) await select(remaining.at(-1)!);
                 else {
                   setClosedAll(true);
-                  await navigate({ to: "/knowledge", search: {} });
+                  await navigate({ to: KNOWLEDGE_PATH, search: {} });
                 }
               }
             })
@@ -1212,6 +1073,8 @@ export function KnowledgeApp() {
               onResolve={(conflict, choice: ConflictChoice, merged) =>
                 void run(async () => {
                   if (choice === "merge" && merged) {
+                    // 「合并」是两步组合：正文取合并结果（restore 走历史可回滚），
+                    // 标题与路径必须保留本机（改名/移动要走修改计划），故先 resolve 本机。
                     await store.resolve(conflict, "local");
                     await store.restore(merged);
                     setMessage("已合并双方正文改动；标题与路径保留本机，远端版本已存入历史");

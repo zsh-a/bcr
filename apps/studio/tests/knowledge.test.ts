@@ -339,7 +339,7 @@ describe("GitHub multi-device synchronization", () => {
     await reopened.ready;
     expect(reopened.getSnapshot().conflicts).toHaveLength(1);
     await expect(syncKnowledge(reopened, api)).rejects.toThrow("冲突");
-    await reopened.resolve(reopened.getSnapshot().conflicts[0]!, "both");
+    await reopened.resolve(reopened.getSnapshot().conflicts[0]!, "keep-both");
     await syncKnowledge(reopened, api);
     await syncKnowledge(a.store, api);
     expect(

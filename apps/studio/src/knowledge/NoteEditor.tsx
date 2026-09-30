@@ -18,7 +18,8 @@ import type { EditorSessions } from "./editorSessions";
 import { analyzeMarkdown, internalTarget, remarkKnowledgeLinks, linkKey } from "./markdownAnalysis";
 import { NoteContext } from "./NoteContext";
 import { PanelResizer } from "./PanelResizer";
-import { CONTEXT_MAX_WIDTH, CONTEXT_MIN_WIDTH, fillTemplate } from "./workbench";
+import { CONTEXT_MAX_WIDTH, CONTEXT_MIN_WIDTH } from "./workbench";
+import { fillTemplate } from "./format";
 import type { KnowledgeStore } from "./store";
 import { useNoteDraft } from "./useNoteDraft";
 import { useNoteAgent } from "./useNoteAgent";
@@ -191,7 +192,7 @@ export function NoteEditor({
       ref={host}
       style={
         {
-          "--w-rail-override": contextWidth === null ? undefined : `${contextWidth}px`,
+          "--w-context-override": contextWidth === null ? undefined : `${contextWidth}px`,
         } as CSSProperties
       }
     >
@@ -550,12 +551,14 @@ export function NoteEditor({
       {/* 右栏宽度手柄：贴在上下文栏左缘，宽度变量随拖拽写在本容器上。 */}
       <PanelResizer
         edge="left"
-        variable="--w-rail-override"
+        variable="--w-context-override"
         label="调整上下文栏宽度"
         width={contextWidth}
         min={CONTEXT_MIN_WIDTH}
         max={CONTEXT_MAX_WIDTH}
-        getPanel={() => host.current?.querySelector<HTMLElement>(":scope > .knowledge-context")}
+        getPanel={() =>
+          host.current?.querySelector<HTMLElement>(":scope > .knowledge-context") ?? null
+        }
         onCommit={onContextWidthChange}
       />
     </div>

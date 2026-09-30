@@ -30,6 +30,7 @@ import {
 import { createRoot } from "react-dom/client";
 import { useEffect, useState, type ReactNode } from "react";
 import { createRuntimeServices } from "../runtime";
+import { KNOWLEDGE_PATH } from "../shell/host-manifests";
 import { KnowledgeApp } from "./KnowledgeApp";
 
 /**
@@ -42,7 +43,8 @@ import { KnowledgeApp } from "./KnowledgeApp";
  * 原样复用。
  *
  * KnowledgeApp 内部把选择硬编码导航到 `/knowledge`，路由树必须保留这个
- * path；basepath /notes 让它与宿主的 /knowledge 嵌入路由在 URL 上互不相扰。
+ * path（与宿主嵌入路由共用 host-manifests 的 KNOWLEDGE_PATH 常量）；
+ * basepath /notes 让它与宿主的 /knowledge 嵌入路由在 URL 上互不相扰。
  */
 
 function NotesRuntime({ children }: { children: ReactNode }) {
@@ -109,7 +111,9 @@ const rootRoute = createRootRoute({ component: NotesRoot });
 
 const knowledgeRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/knowledge",
+  // 与宿主嵌入路由共用 host-manifests 的 KNOWLEDGE_PATH；basepath 是 /notes，
+  // 不要把 route path 和 basepath 混为一层。
+  path: KNOWLEDGE_PATH,
   component: KnowledgeApp,
 });
 

@@ -1,12 +1,7 @@
 import { useState } from "react";
 import { Button } from "@bcr/react";
-import { mergeText } from "./merge";
-import {
-  same,
-  type KnowledgeCollection,
-  type KnowledgeConflict,
-  type KnowledgeNote,
-} from "./model";
+import { mergeMetadata, mergeText } from "./merge";
+import { type KnowledgeCollection, type KnowledgeConflict, type KnowledgeNote } from "./model";
 import { notePath } from "./paths";
 import { DiffView } from "./diffView";
 
@@ -30,11 +25,9 @@ export function mergeConflictNote(
     body,
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
   };
-  for (const key of ["tags", "collectionId", "createdAt", "citations"] as const) {
-    if (same(local[key], remote[key]) || same(remote[key], base?.[key])) continue;
-    if (!same(local[key], base?.[key])) continue;
-    Object.assign(merged, { [key]: remote[key] });
-  }
+  // 标题与路径保留本机（改名/移动必须走修改计划），其余键用 merge.ts 的单键规则；
+  // 双改保留本机，预览里明示，不放弃整个合并。
+  mergeMetadata(merged, local, remote, base, ["tags", "collectionId", "createdAt", "citations"]);
   return merged;
 }
 

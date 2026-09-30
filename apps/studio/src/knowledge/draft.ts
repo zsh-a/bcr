@@ -2,6 +2,10 @@ import { decodeNote, same, type KnowledgeNote } from "./model";
 import type { KnowledgeStore } from "./store";
 
 export type DraftStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+/** 草稿存储键格式的唯一声明；插件的「有未处理草稿」守卫也用它。 */
+export function draftStorageKey(noteId: string): string {
+  return `bcr/knowledge-draft/v1/${noteId}`;
+}
 export interface DraftSnapshot {
   readonly note: KnowledgeNote;
   readonly dirty: boolean;
@@ -26,7 +30,7 @@ export class NoteDraft {
     private store: KnowledgeStore,
     private storage: DraftStorage,
   ) {
-    this.key = `bcr/knowledge-draft/v1/${note.id}`;
+    this.key = draftStorageKey(note.id);
     this.base = note;
     let proposedTitle: string | null = null;
     let draft = note,
