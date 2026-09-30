@@ -6,8 +6,10 @@ import {
   contentOf,
   decodeContent,
   decodeState,
+  decodeStateChanges,
   decodeTarget,
   emptyContent,
+  emptyKnowledge,
   newNote,
   pendingCount,
   type KnowledgeNote,
@@ -168,6 +170,55 @@ describe("portable knowledge format", () => {
     const { a } = await pair();
     expect(a.raw()).not.toContain("secret-test-token");
     expect(decodeState(a.raw()).sync.target).toEqual(target);
+  });
+});
+
+describe("incremental save validation", () => {
+  it("matches full decode semantics while reusing unchanged records", () => {
+    const one = newNote("甲"),
+      two = newNote("乙");
+    const previous = decodeState(
+      JSON.stringify({ ...emptyKnowledge(), notes: { [one.id]: one, [two.id]: two } }),
+    );
+    const changed = {
+      ...previous.notes[two.id]!,
+      title: "乙改",
+      body: "正文只改这一篇",
+    };
+    const next = {
+      ...previous,
+      notes: { ...previous.notes, [two.id]: changed },
+    };
+    const incremental = decodeStateChanges(next, previous);
+    // 与全量 decodeState(JSON.stringify(next)) 同语义。
+    expect(incremental).toEqual(decodeState(JSON.stringify(next)));
+    expect(incremental.notes[two.id]!.title).toBe("乙改");
+    // 未变记录按引用复用——保存路径不再 O(库大小) 重建。
+    expect(incremental.notes[one.id]).toBe(previous.notes[one.id]);
+    expect(incremental.folders).toEqual(previous.folders);
+  });
+
+  it("keeps the identity, length and capacity guards on changed content", () => {
+    const one = newNote("甲");
+    const previous = decodeState(JSON.stringify({ ...emptyKnowledge(), notes: { [one.id]: one } }));
+    const swapped = { ...previous.notes[one.id]!, id: "note-two" };
+    expect(() =>
+      decodeStateChanges({ ...previous, notes: { [one.id]: swapped } }, previous),
+    ).toThrow(/身份不一致/u);
+    const tooLong = { ...previous.notes[one.id]!, title: "改".repeat(600) };
+    expect(() =>
+      decodeStateChanges({ ...previous, notes: { [one.id]: tooLong } }, previous),
+    ).toThrow(/文本无效/u);
+    const clash = { ...previous.notes[one.id]!, path: "共享路径.md" };
+    expect(() =>
+      decodeStateChanges(
+        {
+          ...previous,
+          notes: { [one.id]: clash, "note-two": { ...clash, id: "note-two" } },
+        },
+        previous,
+      ),
+    ).toThrow(/路径/u);
   });
 });
 

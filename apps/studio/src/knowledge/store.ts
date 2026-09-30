@@ -24,7 +24,7 @@ import {
   copyName,
   decodeNote,
   decodeContent,
-  decodeState,
+  decodeStateChanges,
   decodeTarget,
   emptyKnowledge,
   same,
@@ -311,8 +311,7 @@ export class KnowledgeStore {
           ].some((note) => note && "path" in note && note.path !== undefined)
         )
           next = { ...next, version: 2 };
-        const raw = JSON.stringify(next);
-        const validated = decodeState(raw);
+        const validated = decodeStateChanges(next, this.value);
         try {
           if (
             this.value.version === 1 &&

@@ -186,11 +186,6 @@ export function decodeState(raw: string | undefined): KnowledgeState {
     !Array.isArray(s.conflicts)
   )
     throw new Error("知识库版本不支持，原数据已保留");
-  const sha = (v: unknown): string | null => {
-    if (v === null) return null;
-    if (typeof v !== "string" || !/^[a-f0-9]{40}$/u.test(v)) throw new Error("同步版本无效");
-    return v;
-  };
   const history = s.history.map((entry) => {
     const h = object(entry);
     return {
@@ -219,7 +214,7 @@ export function decodeState(raw: string | undefined): KnowledgeState {
     };
   });
   const pending = sync.pending === null ? null : object(sync.pending);
-  if (pending && !sha(pending.head)) throw new Error("待确认提交无效");
+  if (pending && decodeSha(pending.head) === null) throw new Error("待确认提交无效");
   return {
     version: s.version,
     ...decodeContent(s),
@@ -227,14 +222,104 @@ export function decodeState(raw: string | undefined): KnowledgeState {
     conflicts,
     sync: {
       target: sync.target === null ? null : decodeTarget(sync.target),
-      head: sha(sync.head),
+      head: decodeSha(sync.head),
       base: decodeContent(sync.base),
       pending: pending
-        ? { head: sha(pending.head)!, content: decodeContent(pending.content) }
+        ? { head: decodeSha(pending.head)!, content: decodeContent(pending.content) }
         : null,
       lastSyncedAt: sync.lastSyncedAt === null ? null : time(sync.lastSyncedAt),
     },
   };
+}
+
+function decodeSha(value: unknown): string | null {
+  if (value === null) return null;
+  if (typeof value !== "string" || !/^[a-f0-9]{40}$/u.test(value)) throw new Error("同步版本无效");
+  return value;
+}
+
+/**
+ * 保存路径的增量校验：只对引用变化的记录做 decodeState 级深解码，未变记录沿用
+ * 上一份已校验对象——更新器一律不可变更新（引用即变更信号；React 快照语义
+ * 同样依赖这条约定），于是保存不再 O(库大小) 全量重扫。
+ * 输出与 `decodeState(JSON.stringify(next))` 同语义（有单测锁住）。
+ */
+export function decodeStateChanges(next: KnowledgeState, previous: KnowledgeState): KnowledgeState {
+  if (next.version !== 1 && next.version !== 2) throw new Error("知识库版本不支持，原数据已保留");
+  const pending = next.sync.pending;
+  if (pending && decodeSha(pending.head) === null) throw new Error("待确认提交无效");
+  return {
+    version: next.version,
+    ...decodeContentChanges(next, previous),
+    // 历史 ≤100 条、冲突有界，照旧全量解码，换取与 decodeState 完全一致的校验面。
+    history: next.history.map((entry) => ({
+      id: string(entry.id, 100),
+      note: decodeNote(entry.note),
+      at: time(entry.at),
+      reason: string(entry.reason, 200),
+    })),
+    conflicts: next.conflicts.map((entry): KnowledgeConflict => {
+      if (!validId(entry.key) || (entry.kind !== "note" && entry.kind !== "collection"))
+        throw new Error("冲突记录无效");
+      const decode = (value: KnowledgeNote | KnowledgeCollection | null) => {
+        if (value === null) return null;
+        const entity = entry.kind === "note" ? decodeNote(value) : decodeCollection(value);
+        if (entity.id !== entry.key) throw new Error("冲突身份不一致");
+        return entity;
+      };
+      return {
+        key: entry.key,
+        kind: entry.kind,
+        base: decode(entry.base),
+        local: decode(entry.local),
+        remote: decode(entry.remote),
+      };
+    }),
+    sync: {
+      target: next.sync.target === null ? null : decodeTarget(next.sync.target),
+      head: decodeSha(next.sync.head),
+      base: decodeContentChanges(next.sync.base, previous.sync.base),
+      pending: pending
+        ? {
+            head: decodeSha(pending.head)!,
+            content: decodeContentChanges(pending.content, previous.sync.pending?.content),
+          }
+        : null,
+      lastSyncedAt: next.sync.lastSyncedAt === null ? null : time(next.sync.lastSyncedAt),
+    },
+  };
+}
+
+function decodeContentChanges(
+  next: KnowledgeContent,
+  previous: KnowledgeContent | undefined,
+): KnowledgeContent {
+  const notes: KnowledgeContent["notes"] = {},
+    collections: KnowledgeContent["collections"] = {};
+  if (Object.keys(next.notes).length > 5_000 || Object.keys(next.collections).length > 1_000)
+    throw new Error("知识库超过首期容量限制");
+  for (const [id, note] of Object.entries(next.notes)) {
+    if (previous?.notes[id] === note) {
+      notes[id] = note;
+      continue;
+    }
+    const decoded = decodeNote(note);
+    if (decoded.id !== id) throw new Error("笔记身份不一致");
+    notes[id] = decoded;
+  }
+  for (const [id, collection] of Object.entries(next.collections)) {
+    if (previous?.collections[id] === collection) {
+      collections[id] = collection;
+      continue;
+    }
+    const decoded = decodeCollection(collection);
+    if (decoded.id !== id) throw new Error("集合身份不一致");
+    collections[id] = decoded;
+  }
+  if (next.folders.length > 2_000) throw new Error("知识库目录清单无效");
+  const folders = [...new Set(next.folders.map((folder) => normalizeFolderPath(folder)))];
+  assertUniquePaths(notes, folders);
+  return { notes, collections, folders };
 }
 export function newNote(title = "未命名笔记", collectionId: string | null = null): KnowledgeNote {
   const now = Date.now();

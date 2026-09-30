@@ -10,17 +10,27 @@ const recordKey = (section: string, id: string) => `${PREFIX}${section}/${encode
 const bytes = (value: string) => new TextEncoder().encode(value).length;
 
 /** Persisted layout is independent of the domain state and Git/ZIP formats. */
-function partition(state: KnowledgeState) {
+type RecordMemo = { source: unknown; raw: string; bytes: number };
+function partition(state: KnowledgeState, previous?: ReadonlyMap<string, RecordMemo>) {
   const records = new Map<string, string>();
+  const sources = new Map<string, RecordMemo>();
   const counts = new Map<string, number>();
+  let total = 0;
   function put(section: string, id: string, value: unknown) {
     const count = (counts.get(section) ?? 0) + 1;
     if (count > 12000) throw new Error("知识库记录数量超过限制，未写入数据");
     counts.set(section, count);
-    const key = recordKey(section, id),
-      raw = JSON.stringify(value);
+    const key = recordKey(section, id);
+    // 引用未变的记录沿用上一轮序列化结果（更新器不可变更新——引用即变更信号，
+    // store 的增量校验同此约定）；保存不再 O(库大小) 逐记录重扫。
+    const seen = previous?.get(key);
+    const memoized = seen !== undefined && seen.source === value;
+    const raw = memoized ? seen.raw : JSON.stringify(value);
+    const size = memoized ? seen.bytes : bytes(raw);
     if (records.has(key)) throw new Error("知识库记录身份重复，未写入数据");
     records.set(key, raw);
+    sources.set(key, { source: value, raw, bytes: size });
+    total += size;
     return id;
   }
   function content(value: KnowledgeContent, prefix: string) {
@@ -53,14 +63,14 @@ function partition(state: KnowledgeState) {
       },
     },
   });
-  if (bytes(manifest) + [...records.values()].reduce((total, raw) => total + bytes(raw), 0) > LIMIT)
-    throw new Error("本地知识库超过 32 MiB 限制");
-  return { records, manifest };
+  if (bytes(manifest) + total > LIMIT) throw new Error("本地知识库超过 32 MiB 限制");
+  return { records, manifest, sources };
 }
 
 /** Only atomic-capable adapters migrate. Legacy adapters retain the single-key format. */
 export class KnowledgePersistence {
   private records = new Map<string, string>();
+  private sources = new Map<string, RecordMemo>();
   private root: string | undefined;
   private partitioned = false;
   constructor(private readonly metadata: RuntimeMetadata) {}
@@ -169,6 +179,7 @@ export class KnowledgePersistence {
   async save(state: KnowledgeState): Promise<void> {
     if (!this.metadata.batch) {
       const raw = JSON.stringify(state);
+      if (bytes(raw) > LIMIT) throw new Error("本地知识库超过 32 MiB 限制");
       await this.metadata.set(KNOWLEDGE_KEY, raw);
       this.root = raw;
       return;
@@ -177,7 +188,7 @@ export class KnowledgePersistence {
     // owns one Store per runtime; this is a stale-writer guard, not cross-tab CAS.
     if ((await this.metadata.get(KNOWLEDGE_KEY)) !== this.root)
       throw new Error("知识库持久化状态已变化，请重新加载后重试");
-    const { records, manifest } = partition(state);
+    const { records, manifest, sources } = partition(state, this.sources);
     const writes: [string, string | undefined][] = [];
     if (
       !this.partitioned &&
@@ -192,6 +203,7 @@ export class KnowledgePersistence {
     await this.metadata.batch(writes);
     this.root = manifest;
     this.records = records;
+    this.sources = sources;
     this.partitioned = true;
   }
 }
