@@ -123,21 +123,20 @@ async function openHistory(page) {
 // 「闲置文案回来 + 本轮确实产生了效果」：网络请求增长，或完成/空同步提示出现
 // （sync() 每条路径都会 setMessage，含无待同步的空转与未配置提示）。只认请求
 // 会在空同步时死等——上一轮自动同步抢跑后，手动点击本就无可推送内容。
-async function runAndWait(page, button, idleText) {
+async function runAndWait(page, button, idleText, trustStoreIdle = false) {
   const before = fixture.state.requests.length;
   const noticeBefore = await page
     .locator(".knowledge-notice")
     .textContent({ timeout: 250 })
     .catch(() => null);
-  // 空同步完成证据：打开中的同步浮层显示「无待同步修改」——这是活的 store 状态，
-  // 不是遗留提示；限定 :popover-open，避免被关闭浮层里的陈旧文案误判。
+  // 空同步完成证据：同步浮层的「无待同步修改」是 React 渲染的活状态，隐藏时同样
+  // 跟随 store——注意浮层在点「立即同步」时会主动收起，探针不能要求 :popover-open。
+  // 只有 sync() 传 trustStoreIdle；connect() 的完成语义仍以请求与提示为准。
   const storeIdle = () =>
     page
       .evaluate(() => {
         const pop = document.querySelector(".knowledge-sync-popover");
-        return (
-          !!pop && pop.matches(":popover-open") && (pop.textContent ?? "").includes("无待同步修改")
-        );
+        return !!pop && (pop.textContent ?? "").includes("无待同步修改");
       })
       .catch(() => false);
   await button.click();
@@ -151,7 +150,7 @@ async function runAndWait(page, button, idleText) {
       if (
         fixture.state.requests.length > before ||
         (notice ?? "") !== (noticeBefore ?? "") ||
-        (await storeIdle())
+        (trustStoreIdle && (await storeIdle()))
       )
         return;
     }
@@ -213,7 +212,12 @@ async function sync(page, conflict = false) {
     await page.locator(".knowledge-notice").waitFor({ state: "hidden" });
   }
   const popover = await openSyncPopover(page);
-  await runAndWait(page, popover.getByRole("button", { name: /立即同步|同步中/u }), "立即同步");
+  await runAndWait(
+    page,
+    popover.getByRole("button", { name: /立即同步|同步中/u }),
+    "立即同步",
+    true,
+  );
   // 同步落定后的顶栏状态行是本轮结果：干净同步为已同步，冲突为 N 处冲突待处理。
   if (conflict)
     await page.locator(".knowledge-status-line").filter({ hasText: "冲突待处理" }).waitFor();
