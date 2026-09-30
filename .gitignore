@@ -12,3 +12,6 @@ scripts/shots/
 scripts/.pw-profile-*/
 .wrangler/
 tmp/
+# Python export adapter bytecode.
+__pycache__/
+*.pyc

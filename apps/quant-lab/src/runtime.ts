@@ -64,6 +64,7 @@ export async function createRuntimeServices(host?: RuntimeHost): Promise<Runtime
         executors: [
           workerExecutor(pool, "js", "quant-signals-1", artifacts, ["quant.signal.sma-cross"]),
           workerExecutor(pool, "wasm", "quant-backtest-1", artifacts, ["quant.backtest.long-only"]),
+          workerExecutor(pool, "wasm", "jsg-adjusted-1", artifacts, ["quant.backtest.jsg"]),
         ],
         dispose: () => pool.shutdown(),
       };
