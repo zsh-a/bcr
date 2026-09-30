@@ -272,10 +272,9 @@ async function matchesBody(page, text) {
               .join("\n"),
           )
           .catch((reason) => `（探测失败：${String(reason)}）`);
-        throw new Error(
-          `正文不匹配；期望=${JSON.stringify(text)} 实际=${JSON.stringify(actual)}`,
-          { cause: error },
-        );
+        throw new Error(`正文不匹配；期望=${JSON.stringify(text)} 实际=${JSON.stringify(actual)}`, {
+          cause: error,
+        });
       });
   } finally {
     if (raw) await page.getByRole("button", { name: "编辑", exact: true }).click();
