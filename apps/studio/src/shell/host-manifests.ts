@@ -1,6 +1,5 @@
 import { LayoutGrid, NotebookPen, Sparkles } from "lucide-react";
 import type { AppManifest, PanelManifest } from "@bcr/shell-contract";
-import { Dock } from "../components/Dock";
 import { knowledgePlugin } from "../knowledge/plugin";
 
 /**
@@ -39,7 +38,10 @@ export const STUDIO_MANIFEST = {
   icon: LayoutGrid,
   description: "Compute Runtime 工作台 · 文件 / 任务 / 缓存血缘",
   section: "compute",
-  load: async () => ({ App: Dock }),
+  // Dock 必须走 load 惰性加载：静态 import 会把 Dock→面板→router 的模块图
+  // 拉进 host-manifests，与 registry 形成环——打包后模块初始化交错，
+  // registry 顶层会读到尚未初始化的 STUDIO_MANIFEST（启动即崩）。
+  load: async () => ({ App: (await import("../components/Dock")).Dock }),
 } as const satisfies AppManifest;
 
 export const KNOWLEDGE_MANIFEST = {
