@@ -81,6 +81,8 @@ async function device() {
   const page = await context.newPage();
   page.setDefaultTimeout(25_000);
   page.on("pageerror", (error) => errors.push(error.message));
+  // 渲染进程崩溃对 locator 是静默挂起（不进 pageerror），必须单列成失败证据。
+  page.on("crash", () => errors.push("renderer crashed"));
   page.on("console", (message) => {
     if (message.type() === "error") diagnostics.push(message.text());
   });
@@ -119,16 +121,26 @@ async function openHistory(page) {
 }
 // 同步按钮运行期间会改文案（同步中…/连接并同步中…）并禁用提交；完成信号取
 // 「闲置文案回来 + 本轮确实打到了 mock GitHub」，再断言状态行，避免拿上一次
-// 同步留下的旧状态交差。
+// 同步留下的旧状态交差。单次读取限时：浮层在同步中被收起（隐藏元素仍可读），
+// 但子树卸载或渲染进程崩溃会让 locator 静默挂满超时，逐轮限时 + 失败自证现场。
 async function runAndWait(page, button, idleText) {
   const before = fixture.state.requests.length;
   await button.click();
   for (let attempt = 0; attempt < 300; attempt++) {
-    const label = (await button.textContent())?.trim();
-    if (fixture.state.requests.length > before && label === idleText) return;
+    const label = await button.textContent({ timeout: 1000 }).catch(() => null);
+    if (fixture.state.requests.length > before && label?.trim() === idleText) return;
     await page.waitForTimeout(100);
   }
-  throw new Error(`同步操作未在预期时间内完成：${idleText}`);
+  const scene = await page
+    .evaluate(() => ({
+      url: location.href,
+      popovers: document.querySelectorAll(".knowledge-sync-popover").length,
+      labels: [...document.querySelectorAll(".knowledge-sync-popover button")].map((b) =>
+        b.textContent?.trim(),
+      ),
+    }))
+    .catch((error) => ({ probe: String(error) }));
+  throw new Error(`同步操作未在预期时间内完成：${idleText}；现场=${JSON.stringify(scene)}`);
 }
 async function connect(page) {
   const popover = await openSyncPopover(page);
