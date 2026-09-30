@@ -22,9 +22,9 @@ locally; repeated identical jobs use BCR's existing content-addressed task cache
 
 ## ClickHouse connection
 
-The exporter reads the existing quent tables (`stock_daily`, `trade_dates`,
+The native exporter reads the existing quent tables (`stock_daily`, `trade_dates`,
 `index_stocks`, `finicial_report`, `shares_info`, `industry_info`). It executes
-read-only, parameterized HTTP queries; credentials stay outside the browser.
+read-only, parameterized HTTP queries; native credentials come from environment variables.
 ClickHouse filters the universe/date range and computes financial/share/industry
 ASOF joins. Price results travel as an ArrowStream; the exporter
 reassembles complete days and writes bounded IPC streams, without accumulating the
@@ -127,7 +127,7 @@ claim of byte-for-byte parity with quent or a complete exchange simulator.
   ReplacingMergeTree keys that may overwrite old revisions; a temporal join cannot
   restore revisions already lost from the source.
 - Only daily JSG is ported. General Python strategy loading, minute/tick simulation,
-  live trading and direct authenticated browser access to ClickHouse are out of scope.
+  and live trading are out of scope. Browser ClickHouse access is described below.
 
 ## Validation
 
@@ -246,7 +246,58 @@ python scripts/benchmark-jsg.py /tmp/jsg-q2/manifest.json \
 BASE_URL=http://localhost:5201/?strategy=jsg node scripts/benchmark-jsg.mjs /tmp/jsg-q2 /tmp/jsg-browser
 ```
 
-WASM/network dependencies are separated by compilation target. The normal browser path never holds
-ClickHouse credentials. Native JSONL and browser artifacts stream full outputs; the UI loads one order
+WASM/network dependencies are separated by compilation target. In native mode, credentials remain outside the browser. The optional direct mode keeps the entered
+password in page/Worker memory and omits it from profiles, artifacts, cache keys and scheduler tasks. Native JSONL and browser artifacts stream full outputs; the UI loads one order
 interval at a time and writes complete exports to a temporary OPFS file. Sampling affects only the chart
 preview, while full result artifacts retain every event.
+
+## Connect from the browser
+
+Open Quant Lab's JSG tab and click **连接 ClickHouse**. Enter an HTTP(S) endpoint, database,
+username and password, then click **测试连接**. The dialog shows source coverage and a usable
+end date. Select a date range and click **加载并回测**; the browser fetches data and starts the
+same Rust/WASM portfolio engine automatically. No CLI export or application backend is required.
+
+The default source is `http://localhost:8123/`, database `stock_data`, user `default`, empty password.
+`localhost` refers to the computer running the browser. Connections, date ranges and the history-mode
+choice persist as a profile; passwords stay in the current page session and are cleared on reload.
+
+The database must support CORS for the page's origin, POST/OPTIONS and the
+`X-ClickHouse-User` / `X-ClickHouse-Key` headers. Requests use `credentials: omit` and
+`readonly=1`. When prompted by the browser, allow the site's local-network access for a local
+endpoint. A small Window query triggers this permission before the data Worker fetches the snapshot.
+Use an account with SELECT access to the required tables and permitted query/format settings;
+server-side account grants enforce permissions. No database configuration or source data is modified.
+
+The dedicated Worker queries the same fixed SQL compiled into Rust, streams bounded raw Arrow
+responses into temporary OPFS files, and uses shared Rust normalization to reassemble complete daily
+batches. Requests initially cover 20 sessions; oversized responses retry with shorter windows. Each
+raw/normalized partition is limited to 32 MiB, and Arrow IPC buffer compression is explicitly disabled
+for WASM compatibility. HTTP content compression may still be handled transparently by the browser.
+Only small metadata uses JSON; market rows are never converted to JavaScript row objects.
+
+A complete manifest and local snapshot index are published after all requested days validate. Loading
+an identical source/range reuses the local snapshot without network requests, including when offline.
+Check **重新获取数据** to query updated source data. Cancellation or a failed refresh removes the
+new attempt's temporary files/artifacts and retains the previous complete snapshot and research result.
+The browser's storage quota still limits how many full snapshots can be kept.
+
+**严格历史数据** requires the optional source contracts and audited coverage, with the same
+membership/revision/actions/limits checks as native export. The existing legacy source runs in snapshot
+mode and does not acquire historical completeness through direct access.
+
+```sh
+bun run quant
+# Optional integration check against an explicit read-only test source:
+BASE_URL=http://localhost:5201/ CLICKHOUSE_TEST_URL=http://localhost:8123/ \
+  bun run test:browser:jsg:clickhouse
+```
+
+The browser check covers real Arrow loading, cached reloads with no network, password lifetime,
+failed refresh, cancellation, retained results and mobile layout. It accepts `CLICKHOUSE_DATABASE`,
+`CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `JSG_TEST_START` and `JSG_TEST_END`; defaults use
+2026-04-01 through 2026-06-30. Ordinary CI tests use synthetic read-only responses rather than a live DB.
+
+References: [ClickHouse HTTP interface](https://clickhouse.com/docs/interfaces/http),
+[Arrow output settings](https://clickhouse.com/docs/operations/settings/formats#output_format_arrow_compression_method),
+[local-network browser permissions](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Local_network_access).

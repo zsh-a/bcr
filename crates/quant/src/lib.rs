@@ -4,6 +4,7 @@ pub mod model;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod native;
 pub mod reader;
+mod source;
 
 use arrow_ipc::reader::StreamReader;
 use engine::Engine;
@@ -20,6 +21,71 @@ pub struct JsgBacktest {
 }
 fn js_error(error: impl ToString) -> JsValue {
     JsValue::from_str(&error.to_string())
+}
+
+/// Shared fixed SELECT; HTTP transport lives in the browser Worker.
+#[wasm_bindgen]
+pub fn clickhouse_sql(historical: bool) -> String {
+    if historical {
+        source::HISTORICAL_SQL
+    } else {
+        source::SNAPSHOT_SQL
+    }
+    .to_owned()
+}
+
+#[wasm_bindgen]
+pub fn validate_research_manifest(json: &str) -> Result<(), JsValue> {
+    let manifest: Manifest = serde_json::from_str(json).map_err(js_error)?;
+    manifest.validate().map_err(js_error)
+}
+
+#[wasm_bindgen]
+pub struct ClickHouseNormalizer {
+    codes: std::collections::BTreeMap<String, u32>,
+    industries: std::collections::BTreeMap<String, u32>,
+    rows: usize,
+}
+#[wasm_bindgen]
+impl ClickHouseNormalizer {
+    #[wasm_bindgen(constructor)]
+    pub fn new(codes: &str, industries: &str) -> Result<ClickHouseNormalizer, JsValue> {
+        fn dictionary(json: &str) -> Result<std::collections::BTreeMap<String, u32>, JsValue> {
+            let values: Vec<String> = serde_json::from_str(json).map_err(js_error)?;
+            if values.is_empty()
+                || values.len() > model::MAX_INSTRUMENTS
+                || values.iter().any(|v| v.is_empty() || v.len() > 2000)
+            {
+                return Err(js_error("invalid ClickHouse dictionary"));
+            }
+            let count = values.len();
+            let map: std::collections::BTreeMap<_, _> = values
+                .into_iter()
+                .enumerate()
+                .map(|(i, v)| (v, i as u32))
+                .collect();
+            if map.len() != count {
+                return Err(js_error("duplicate ClickHouse dictionary entries"));
+            }
+            Ok(map)
+        }
+        Ok(Self {
+            codes: dictionary(codes)?,
+            industries: dictionary(industries)?,
+            rows: 0,
+        })
+    }
+    pub fn normalize(&mut self, bytes: Vec<u8>, dates: &str) -> Result<Vec<u8>, JsValue> {
+        let dates: Vec<u32> = serde_json::from_str(dates).map_err(js_error)?;
+        let (output, rows) =
+            source::normalize_partition(bytes, &dates, &self.codes, &self.industries)
+                .map_err(js_error)?;
+        self.rows = rows;
+        Ok(output)
+    }
+    pub fn rows(&self) -> usize {
+        self.rows
+    }
 }
 #[wasm_bindgen]
 impl JsgBacktest {

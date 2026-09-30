@@ -1,7 +1,7 @@
 import { type ArtifactRef, type TaskHandle } from "@bcr/core";
 import { useRuntime } from "@bcr/react";
 import { Effect } from "effect";
-import { Download, Play, Square, Upload } from "lucide-react";
+import { Database, Download, Play, Square, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   exportResearchResult,
@@ -10,6 +10,8 @@ import {
   restoreResearch,
   saveResearch,
 } from "./data";
+import { ClickHouseDialog } from "./ClickHouseDialog";
+import type { ClickHouseLoadResult } from "./clickhouse-browser";
 import { demoResearch } from "./demo";
 import {
   DEFAULT_CONFIG,
@@ -94,6 +96,7 @@ function EquityPlot({ result }: { result: JsgResult }) {
 
 export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
   const services = useRuntime();
+  const [connectionOpen, setConnectionOpen] = useState(false);
   const [dataset, setDataset] = useState<ResearchDataset | null>(null);
   const [config, setConfig] = useState<JsgConfig>({ ...DEFAULT_CONFIG });
   const [result, setResult] = useState<JsgResult | null>(null);
@@ -199,10 +202,30 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
       setBusy(false);
     }
   };
-  const run = async () => {
-    if (dataset === null || busy || active.current !== null) return;
+  const loadedFromClickHouse = async ({
+    dataset: loaded,
+    cached: reused,
+  }: ClickHouseLoadResult) => {
+    const strategy: JsgConfig =
+      loaded.manifest.version === 1 && config.executionModel === "jsg-raw-v2"
+        ? { ...config, executionModel: MODEL, fees: [] }
+        : config;
+    await saveResearch(services, loaded, strategy, null);
+    setDataset(loaded);
+    setConfig(strategy);
+    setResult(null);
+    setResultRef(null);
+    setDuration(null);
+    setCached(false);
+    setError(null);
+    setStatus(reused ? "已复用本地数据快照" : "ClickHouse 数据就绪");
+    setConnectionOpen(false);
+    await run(loaded, strategy);
+  };
+  const run = async (input: ResearchDataset | null = dataset, strategy: JsgConfig = config) => {
+    if (input === null || active.current !== null) return;
     try {
-      validateConfig(config);
+      validateConfig(strategy);
     } catch (e) {
       setError(message(e));
       return;
@@ -226,13 +249,13 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
           runtime: "wasm",
           operation: "quant.backtest.jsg",
           inputs: [
-            { ...dataset.manifestRef, port: "manifest" },
-            ...dataset.partitions.map((ref, i) => ({ ...ref, port: `partition-${i}` })),
+            { ...input.manifestRef, port: "manifest" },
+            ...input.partitions.map((ref, i) => ({ ...ref, port: `partition-${i}` })),
           ],
           outputs: [{ name: "result", type: "quant/jsg-result", storage: "opfs", format: "json" }],
           resources: { memoryMB: 256, threads: 1 },
           cache: { enabled: true },
-          config: { model: config.executionModel ?? MODEL, strategy: config },
+          config: { model: strategy.executionModel ?? MODEL, strategy },
         }),
       );
       token.handle = handle;
@@ -253,7 +276,7 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
       if (ref === undefined) throw new Error("回测没有产生结果");
       const output = await readJson<JsgResult>(services, ref);
       if (token.cancelled) throw new Error("回测已取消");
-      await saveResearch(services, dataset, config, ref);
+      await saveResearch(services, input, strategy, ref);
       if (token.cancelled) throw new Error("回测已取消");
       setResult(output);
       setResultRef(ref);
@@ -386,6 +409,14 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
           <span>{m === undefined ? "" : `${m.instruments.length} 只股票 · ${mode}`}</span>
         </div>
         <div className="ql-actions">
+          <button
+            className="ui-btn ui-btn-ghost"
+            disabled={!ready || busy}
+            onClick={() => setConnectionOpen(true)}
+          >
+            <Database size={14} />
+            连接 ClickHouse
+          </button>
           <input
             ref={input}
             type="file"
@@ -778,6 +809,25 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
         <progress value={progress} max="1" aria-label="JSG 回测进度" />
         <span>{config.executionModel ?? MODEL}</span>
       </footer>
+      <ClickHouseDialog
+        open={connectionOpen}
+        services={services}
+        onClose={() => setConnectionOpen(false)}
+        onBusy={(value) => {
+          setBusy(value);
+          if (value) {
+            setStatus("连接研究数据…");
+            setProgress(0);
+          } else if (active.current === null) {
+            setStatus(result === null ? "研究数据就绪" : "当前研究结果保留");
+          }
+        }}
+        onProgress={(value) => {
+          setStatus(value.text);
+          setProgress(value.total > 0 ? value.completed / value.total : 0);
+        }}
+        onLoaded={loadedFromClickHouse}
+      />
     </div>
   );
 }

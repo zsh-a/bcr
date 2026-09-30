@@ -1,8 +1,7 @@
 //! Native I/O only. Credentials never enter manifests, errors, WASM or the UI.
+use crate::source::normalize;
 use crate::{model::*, reader::decode_day};
-use arrow_array::{
-    Array, ArrayRef, BinaryArray, LargeStringArray, RecordBatch, StringArray, UInt32Array,
-};
+use arrow_array::{RecordBatch, UInt32Array};
 use arrow_ipc::{reader::StreamReader, writer::StreamWriter};
 use arrow_select::concat::concat_batches;
 use chrono::{Datelike, NaiveDate};
@@ -18,12 +17,10 @@ use std::{
     fs::{self, File},
     io::{BufReader, Read},
     path::Path,
-    sync::Arc,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-pub type Error = Box<dyn std::error::Error + Send + Sync>;
-pub const SNAPSHOT_SQL: &str = include_str!("../sql/snapshot.sql");
+pub use crate::source::{Error, SNAPSHOT_SQL};
 pub struct ClickHouse {
     client: Client,
     url: Url,
@@ -187,100 +184,6 @@ pub fn read_snapshot(
     }
     Ok(manifest)
 }
-fn string_value(array: &ArrayRef, index: usize) -> Result<&str, Error> {
-    if array.is_null(index) {
-        return Err("null dictionary value".into());
-    }
-    if let Some(a) = array.as_any().downcast_ref::<StringArray>() {
-        return Ok(a.value(index));
-    }
-    if let Some(a) = array.as_any().downcast_ref::<LargeStringArray>() {
-        return Ok(a.value(index));
-    }
-    if let Some(a) = array.as_any().downcast_ref::<BinaryArray>() {
-        return Ok(std::str::from_utf8(a.value(index))?);
-    }
-    Err("ClickHouse code/industry must be Arrow UTF8/Binary".into())
-}
-fn normalize(
-    batch: &RecordBatch,
-    codes: &BTreeMap<String, u32>,
-    industries: &BTreeMap<String, u32>,
-) -> Result<RecordBatch, Error> {
-    let code = batch.column_by_name("code").ok_or("missing code")?;
-    let industry = batch
-        .column_by_name("industry_code")
-        .ok_or("missing industry")?;
-    let ids: Vec<u32> = (0..batch.num_rows())
-        .map(|i| {
-            let c = string_value(code, i)?;
-            codes
-                .get(c)
-                .copied()
-                .ok_or_else(|| "unknown instrument".into())
-        })
-        .collect::<Result<_, Error>>()?;
-    let sectors: Vec<u32> = (0..batch.num_rows())
-        .map(|i| {
-            let c = string_value(industry, i)?;
-            industries
-                .get(c)
-                .copied()
-                .ok_or_else(|| "unknown industry".into())
-        })
-        .collect::<Result<_, Error>>()?;
-    let mut arrays: Vec<ArrayRef> = vec![];
-    for name in [
-        "date",
-        "id",
-        "industry",
-        "open",
-        "high",
-        "low",
-        "close",
-        "preclose",
-        "adjfactor",
-        "profit",
-        "shares",
-        "is_st",
-        "tradable",
-        "breadth_member",
-        "selection_member",
-    ] {
-        let array: ArrayRef = match name {
-            "id" => Arc::new(UInt32Array::from(ids.clone())),
-            "industry" => Arc::new(UInt32Array::from(sectors.clone())),
-            _ => batch.column_by_name(name).ok_or("missing feature")?.clone(),
-        };
-        arrays.push(array);
-    }
-    let mut names = vec![
-        "date",
-        "id",
-        "industry",
-        "open",
-        "high",
-        "low",
-        "close",
-        "preclose",
-        "adjfactor",
-        "profit",
-        "shares",
-        "is_st",
-        "tradable",
-        "breadth_member",
-        "selection_member",
-    ];
-    for name in ["volume", "limit_up", "limit_down"] {
-        if let Some(a) = batch.column_by_name(name) {
-            names.push(name);
-            arrays.push(a.clone());
-        }
-    }
-    let schema = arrow_array::RecordBatch::try_from_iter(names.into_iter().zip(arrays))?;
-    Ok(schema)
-}
-
 struct DailyWriter<'a> {
     root: &'a Path,
     writer: Option<StreamWriter<File>>,
@@ -452,7 +355,7 @@ pub fn export_snapshot(
     let result = (|| -> Result<Value, Error> {
         let query_timer = Instant::now();
         let sql = if strict_pit {
-            include_str!("../sql/historical.sql")
+            crate::source::HISTORICAL_SQL
         } else {
             SNAPSHOT_SQL
         };
