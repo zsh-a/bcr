@@ -1,6 +1,7 @@
 import { registerPwaWorker } from "./pwa/register";
 import { captureInstallPrompt, syncInstallMetadata } from "./pwa/install";
 import { pwaAtPath, PWA_APPS } from "./pwa/apps";
+import { appendBootRecovery } from "./boot-recovery";
 
 const dedicated = pwaAtPath(location.pathname);
 // Direct embedded URLs must advertise their own identity, never Reader by default.
@@ -42,6 +43,7 @@ function showBootstrapError(reason: unknown): void {
   error.className = "bcr-bootstrap-error";
   error.textContent = `BCR 启动失败：${message}`;
   container.append(error);
+  appendBootRecovery(container);
 }
 
 // The installed Reader is a focused PWA surface. Keep the Studio shell out of

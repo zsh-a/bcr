@@ -8,6 +8,42 @@ body {
   overflow: hidden;
 }
 
+/* 启动失败自救区：提示与两个动作（重试 / 清除缓存并重载，见 boot-recovery.ts）。 */
+.bcr-bootstrap-hint {
+  margin: var(--space-3) 0 0;
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+.bcr-bootstrap-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.bcr-bootstrap-actions button {
+  min-height: var(--h-control);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.bcr-bootstrap-actions button:hover {
+  background: var(--color-raised);
+}
+
+.bcr-bootstrap-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* 共享连接设置：凭据与业务数据分离；表单控件一律 ui-* 原语。 */
 .bcr-credential-scope {
   display: grid;

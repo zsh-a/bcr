@@ -1,6 +1,7 @@
 import { pwaAtPath } from "./apps";
 import { captureInstallPrompt } from "./install";
 import { preparePwaAssets, registerPwaWorker } from "./register";
+import { appendBootRecovery } from "../boot-recovery";
 const app = pwaAtPath(location.pathname);
 if (!app || app.key === "knowledge") throw new Error("Unknown PWA entry");
 captureInstallPrompt();
@@ -17,4 +18,5 @@ void mounted.catch((reason: unknown) => {
   message.setAttribute("role", "alert");
   message.textContent = `${app.name} 启动失败：${reason instanceof Error ? reason.message : String(reason)}`;
   container.replaceChildren(message);
+  appendBootRecovery(container);
 });
