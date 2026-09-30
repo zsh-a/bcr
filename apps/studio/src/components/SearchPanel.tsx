@@ -5,7 +5,7 @@ import {
   researchTarget,
 } from "../research/search";
 import type { SearchDocument, SearchDocumentKind, SearchResult } from "@bcr/core";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   Activity,
   AudioWaveform,
@@ -176,7 +176,10 @@ export function SearchPanel(props: {
     return search.subscribe(() => setRevision((value) => value + 1));
   }, [search]);
 
-  useEffect(() => {
+  // 打开时重置搜索态。必须走 layout effect：与「打开」同一次提交内、绘制前完成。
+  // 曾用 useEffect——它在绘制后才跑，打开后立刻输入/填充会与它赛跑并被 setQuery("")
+  // 静默清空（竞态随首帧成本时隐时现）。
+  useLayoutEffect(() => {
     if (!props.open) return;
     setQuery("");
     setView("search");
