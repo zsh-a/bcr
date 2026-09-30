@@ -32,7 +32,8 @@
     "generate:pwa": "bun scripts/generate-pwa-entries.mjs && node scripts/generate-pwa-icons.mjs",
     "build:wasm:quant": "wasm-pack build crates/quant --target web",
     "test:rust:quant": "cargo test --manifest-path crates/quant/Cargo.toml",
-    "test:browser:jsg": "node scripts/verify-jsg.mjs"
+    "test:browser:jsg": "node scripts/verify-jsg.mjs",
+    "test:browser:jsg:clickhouse": "node scripts/verify-jsg-clickhouse.mjs"
   },
   "dependencies": {
     "@sqlite.org/sqlite-wasm": "3.53.0-build1"
