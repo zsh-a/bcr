@@ -83,6 +83,10 @@ jobs:
         run: |
           python -m pip install -r scripts/requirements-jsg.txt
           python scripts/test_export_jsg.py
+          python scripts/test_reconcile_jsg.py
+          python -m pip install chdb==4.4.0
+          cargo build --release --manifest-path crates/quant/Cargo.toml --bin jsg
+          python scripts/test_native_jsg.py
 
       - name: Run Agent Runtime Rust tests
         working-directory: crates/agent-runtime

@@ -8,6 +8,12 @@ pub const MAX_ORDERS: usize = 200_000;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Config {
+    #[serde(default = "research_model")]
+    pub execution_model: String,
+    #[serde(default)]
+    pub fees: Vec<FeeSchedule>,
+    #[serde(default = "default_participation")]
+    pub participation: f64,
     pub initial_capital: f64,
     pub pool_size: usize,
     pub stock_count: usize,
@@ -22,6 +28,9 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            execution_model: research_model(),
+            fees: vec![],
+            participation: default_participation(),
             initial_capital: 1_000_000.0,
             pool_size: 20,
             stock_count: 10,
@@ -37,6 +46,30 @@ impl Default for Config {
 }
 impl Config {
     pub fn validate(&self) -> Result<(), String> {
+        if !["jsg-adjusted-v1", "jsg-raw-v2"].contains(&self.execution_model.as_str())
+            || !self.participation.is_finite()
+            || !(0.0..=1.0).contains(&self.participation)
+            || self.participation == 0.0
+        {
+            return Err("invalid execution model/participation".into());
+        }
+        let mut previous = 0;
+        for f in &self.fees {
+            if f.commission_bps
+                .is_some_and(|v| !v.is_finite() || !(0.0..=100.0).contains(&v))
+            {
+                return Err("invalid dated commission".into());
+            }
+            if !valid_date(f.from) || f.from <= previous {
+                return Err("fee schedule must have sorted unique dates".into());
+            }
+            for v in [f.minimum_commission, f.transfer_bps, f.sell_tax_bps] {
+                if !v.is_finite() || !(0.0..=10000.0).contains(&v) {
+                    return Err("invalid fees".into());
+                }
+            }
+            previous = f.from;
+        }
         if !self.initial_capital.is_finite()
             || self.initial_capital <= 0.0
             || self.initial_capital > 1e15
@@ -59,6 +92,45 @@ impl Config {
         }
         Ok(())
     }
+}
+fn research_model() -> String {
+    "jsg-adjusted-v1".into()
+}
+fn default_participation() -> f64 {
+    0.1
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FeeSchedule {
+    #[serde(default)]
+    pub commission_bps: Option<f64>,
+    pub from: u32,
+    pub minimum_commission: f64,
+    pub transfer_bps: f64,
+    pub sell_tax_bps: f64,
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CorporateAction {
+    pub id: usize,
+    pub record_date: u32,
+    pub ex_date: u32,
+    pub pay_date: u32,
+    pub share_available_date: u32,
+    pub known_date: u32,
+    pub cash_per_share: f64,
+    pub withholding_per_share: f64,
+    /// Additional shares per old share; explicit cash in lieu for fractional shares.
+    pub share_ratio: f64,
+    pub fractional_cash_price: f64,
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DataQuality {
+    pub membership: String,
+    pub financials: String,
+    pub corporate_actions: String,
+    pub price_limits: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -83,6 +155,10 @@ pub struct Partition {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Manifest {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub corporate_actions: Vec<CorporateAction>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_quality: Option<DataQuality>,
     pub version: u32,
     pub schema: String,
     pub name: String,
@@ -98,8 +174,61 @@ pub struct Manifest {
 }
 impl Manifest {
     pub fn validate(&self) -> Result<(), String> {
-        if self.version != 1 || self.schema != "jsg-daily-v1" {
+        if !((self.version == 1 && self.schema == "jsg-daily-v1")
+            || (self.version == 2 && self.schema == "jsg-daily-v2"))
+        {
             return Err("unsupported research schema".into());
+        }
+        if let Some(q) = &self.data_quality {
+            if !["historical", "snapshot"].contains(&q.membership.as_str())
+                || !["revisions", "latest"].contains(&q.financials.as_str())
+                || !["complete", "missing"].contains(&q.corporate_actions.as_str())
+                || !["daily", "static"].contains(&q.price_limits.as_str())
+            {
+                return Err("invalid data quality provenance".into());
+            }
+        }
+        if self.version == 2 && self.data_quality.is_none() {
+            return Err("v2 requires data quality provenance".into());
+        }
+        if self.corporate_actions.len() > MAX_DAYS {
+            return Err("too many corporate actions".into());
+        }
+        let mut actions = std::collections::BTreeSet::new();
+        for a in &self.corporate_actions {
+            if a.id >= self.instruments.len()
+                || ![
+                    a.record_date,
+                    a.ex_date,
+                    a.pay_date,
+                    a.share_available_date,
+                    a.known_date,
+                ]
+                .into_iter()
+                .all(valid_date)
+                || a.record_date >= a.ex_date
+                || a.known_date > a.record_date
+                || a.pay_date < a.ex_date
+                || a.share_available_date < a.ex_date
+                || !actions.insert((a.id, a.ex_date))
+                || a.withholding_per_share > a.cash_per_share
+                || [
+                    a.cash_per_share,
+                    a.withholding_per_share,
+                    a.share_ratio,
+                    a.fractional_cash_price,
+                ]
+                .iter()
+                .any(|v| !v.is_finite() || !(0.0..=1e6).contains(v))
+            {
+                return Err("invalid/duplicate corporate action or availability dates".into());
+            }
+            if a.record_date >= self.start_date
+                && a.record_date <= self.end_date
+                && !self.calendar.iter().any(|s| s.date == a.record_date)
+            {
+                return Err("corporate action record date missing from trading calendar".into());
+            }
         }
         if self.instruments.is_empty()
             || self.instruments.len() > MAX_INSTRUMENTS
@@ -192,6 +321,9 @@ pub fn date_text(date: u32) -> String {
 
 #[derive(Clone, Debug)]
 pub struct Bar {
+    pub volume: Option<u64>,
+    pub limit_up: Option<f64>,
+    pub limit_down: Option<f64>,
     pub id: usize,
     pub industry: usize,
     pub date: u32,
@@ -274,4 +406,34 @@ pub struct ResultData {
     pub decisions: Vec<Decision>,
     pub pending_orders: usize,
     pub warnings: Vec<String>,
+    pub receivables: f64,
+}
+
+/// Optional daily reconciliation output; drained by the caller, never retained for a whole run.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AuditDay {
+    pub date: String,
+    pub cash: f64,
+    pub equity: f64,
+    pub breadth: Vec<Breadth>,
+    pub targets: Option<Vec<String>>,
+    pub holdings: Vec<Holding>,
+    pub orders: Vec<Order>,
+}
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Breadth {
+    pub industry: String,
+    pub above: usize,
+    pub total: usize,
+    pub ratio: f64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputChunk {
+    pub equity: Vec<Equity>,
+    pub orders: Vec<Order>,
+    pub decisions: Vec<Decision>,
 }

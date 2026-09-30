@@ -6,7 +6,9 @@ import {
   parseManifest,
   validateConfig,
   type JsgConfig,
+  type JsgResult,
   type ResearchDataset,
+  type ResearchManifest,
 } from "./model";
 
 let kernelsReady: Promise<unknown> | undefined;
@@ -135,4 +137,56 @@ export async function restoreResearch(
       throw new Error("本地研究分片已被删除，请重新导入");
   }
   return { ...project, dataset: { ...project.dataset, manifest } };
+}
+
+/** Assemble a portable full result in a temporary OPFS file, retaining only one result chunk. */
+export async function exportResearchResult(
+  services: RuntimeServices,
+  config: JsgConfig,
+  manifest: ResearchManifest | undefined,
+  result: JsgResult,
+): Promise<{ blob: Blob; cleanup: () => Promise<void> }> {
+  const directory = await (
+    await navigator.storage.getDirectory()
+  ).getDirectoryHandle("jsg-exports", { create: true });
+  const name = `result-${crypto.randomUUID()}.json`;
+  const file = await directory.getFileHandle(name, { create: true });
+  const writer = await file.createWritable();
+  const cleanup = () => directory.removeEntry(name);
+  try {
+    if (result.chunks === undefined) {
+      await writer.write(JSON.stringify({ config, manifest, result }));
+    } else {
+      const {
+        chunks,
+        equity: _equity,
+        orders: _orders,
+        decisions: _decisions,
+        ...summary
+      } = result;
+      const header = JSON.stringify({ config, manifest });
+      await writer.write(header.slice(0, -1) + ',"result":' + JSON.stringify(summary).slice(0, -1));
+      for (const field of ["equity", "orders", "decisions"] as const) {
+        await writer.write(`,"${field}":[`);
+        let first = true;
+        for (const chunk of chunks) {
+          const data = await readJson<Pick<JsgResult, "equity" | "orders" | "decisions">>(
+            services,
+            chunk.ref,
+          );
+          if (data[field].length === 0) continue;
+          await writer.write((first ? "" : ",") + JSON.stringify(data[field]).slice(1, -1));
+          first = false;
+        }
+        await writer.write("]");
+      }
+      await writer.write("}}");
+    }
+    await writer.close();
+    return { blob: await file.getFile(), cleanup };
+  } catch (error) {
+    await writer.abort().catch(() => undefined);
+    await cleanup().catch(() => undefined);
+    throw error;
+  }
 }

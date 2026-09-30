@@ -1,5 +1,5 @@
 use crate::model::*;
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeSet, VecDeque};
 
 #[derive(Clone, Default)]
 struct Position {
@@ -35,6 +35,20 @@ pub struct Engine {
     orders: Vec<Order>,
     decisions: Vec<Decision>,
     missing_marks: usize,
+    audit_enabled: bool,
+    audit: Option<AuditDay>,
+    entitlements: Vec<u64>,
+    receivables: f64,
+    volume_used: Vec<u64>,
+    streamed: bool,
+    total_days: usize,
+    return_mean: f64,
+    return_m2: f64,
+    last_equity: f64,
+    worst_drawdown: f64,
+    total_filled: usize,
+    total_rejected: usize,
+    total_fees: f64,
 }
 impl Engine {
     pub fn new(manifest: Manifest, config: Config) -> Result<Self, String> {
@@ -42,6 +56,24 @@ impl Engine {
         config.validate()?;
         let count = manifest.instruments.len();
         let capital = config.initial_capital;
+        if config.execution_model == "jsg-raw-v2" {
+            let q = manifest
+                .data_quality
+                .as_ref()
+                .ok_or("raw v2 requires v2 execution data")?;
+            if manifest.version != 2
+                || q.corporate_actions != "complete"
+                || q.price_limits != "daily"
+                || config.fees.is_empty()
+                || config.fees[0].from > manifest.start_date
+            {
+                return Err(
+                    "raw v2 requires complete corporate actions, daily limits and dated fees"
+                        .into(),
+                );
+            }
+        }
+        let actions = manifest.corporate_actions.len();
         Ok(Self {
             manifest,
             config,
@@ -58,21 +90,83 @@ impl Engine {
             orders: vec![],
             decisions: vec![],
             missing_marks: 0,
+            audit_enabled: false,
+            audit: None,
+            entitlements: vec![0; actions],
+            receivables: 0.0,
+            volume_used: vec![0; count],
+            streamed: false,
+            total_days: 0,
+            return_mean: 0.0,
+            return_m2: 0.0,
+            last_equity: capital,
+            worst_drawdown: 0.0,
+            total_filled: 0,
+            total_rejected: 0,
+            total_fees: 0.0,
         })
+    }
+    pub fn enable_streaming(&mut self) {
+        self.streamed = true;
+    }
+    pub fn drain_output(&mut self) -> OutputChunk {
+        OutputChunk {
+            equity: std::mem::take(&mut self.equity),
+            orders: std::mem::take(&mut self.orders),
+            decisions: std::mem::take(&mut self.decisions),
+        }
+    }
+    pub fn enable_audit(&mut self) {
+        self.audit_enabled = true;
+    }
+    pub fn take_audit(&mut self) -> Option<AuditDay> {
+        self.audit.take()
     }
     pub fn processed_days(&self) -> usize {
         self.next_session
     }
     pub fn day(&mut self, bars: Vec<Bar>) -> Result<(), String> {
+        self.day_with_features(bars, None)
+    }
+    pub(crate) fn day_with_features(
+        &mut self,
+        bars: Vec<Bar>,
+        features: Option<&crate::features::PreparedDay>,
+    ) -> Result<(), String> {
         let session = self
             .manifest
             .calendar
             .get(self.next_session)
             .ok_or("more batches than calendar sessions")?
             .clone();
+        if features.is_some_and(|f| f.date != session.date) {
+            return Err("prepared feature date mismatch".into());
+        }
+        if features.is_none() && self.histories.len() != self.positions.len() {
+            return Err("shared-feature engine requires prepared features".into());
+        }
+        if features.is_some() {
+            self.histories.clear();
+        }
         let mut book = vec![None; self.positions.len()];
         let mut last_id = None;
+        let raw_model = self.raw_model();
         for bar in bars {
+            if raw_model
+                && (bar.volume.is_none() || bar.limit_up.is_none() || bar.limit_down.is_none())
+            {
+                return Err("raw v2 requires volume/limit_up/limit_down columns".into());
+            }
+            for limit in [bar.limit_up, bar.limit_down].into_iter().flatten() {
+                if !limit.is_finite() || !(0.0..=1e12).contains(&limit) {
+                    return Err("invalid explicit price limit".into());
+                }
+            }
+            if let (Some(up), Some(down)) = (bar.limit_up, bar.limit_down) {
+                if (up == 0.0) != (down == 0.0) || (up > 0.0 && down >= up) {
+                    return Err("invalid daily price limit interval".into());
+                }
+            }
             if bar.date != session.date
                 || bar.id >= book.len()
                 || bar.industry >= self.manifest.industries.len()
@@ -114,6 +208,12 @@ impl Engine {
         for position in &mut self.positions {
             position.today = 0;
         }
+        self.volume_used.fill(0);
+        if raw_model {
+            self.apply_actions(session.date)?;
+        }
+        let first_order = self.orders.len();
+        let first_decision = self.decisions.len();
         let trading = session.date >= self.manifest.start_date;
         if trading {
             // Sales release cash before purchases; a rejected next-open order expires that day.
@@ -127,12 +227,15 @@ impl Engine {
         for (id, bar) in book.iter().enumerate() {
             if let Some(bar) = bar {
                 let adjusted = bar.close * bar.adjfactor;
-                self.positions[id].mark = adjusted;
-                let history = &mut self.histories[id];
-                if history.len() == 20 {
-                    history.pop_front();
+                let mark = if raw_model { bar.close } else { adjusted };
+                self.positions[id].mark = mark;
+                if features.is_none() {
+                    let history = &mut self.histories[id];
+                    if history.len() == 20 {
+                        history.pop_front();
+                    }
+                    history.push_back(adjusted);
                 }
-                history.push_back(adjusted);
                 if self.at_limit(bar, bar.close, true) {
                     limit_up.insert(id);
                 }
@@ -158,7 +261,16 @@ impl Engine {
                     self.risk_peak = self.account_equity();
                 }
                 if !stopped {
-                    self.rebalance(session.date, opening_equity, &book)?;
+                    self.rebalance(
+                        session.date,
+                        if raw_model {
+                            self.account_equity()
+                        } else {
+                            opening_equity
+                        },
+                        &book,
+                        features,
+                    )?;
                 }
             }
             let equity = self.account_equity();
@@ -166,6 +278,13 @@ impl Engine {
                 return Err("non-finite or depleted portfolio".into());
             }
             self.equity_peak = self.equity_peak.max(equity);
+            let daily_return = equity / self.last_equity - 1.0;
+            self.total_days += 1;
+            let delta = daily_return - self.return_mean;
+            self.return_mean += delta / self.total_days as f64;
+            self.return_m2 += delta * (daily_return - self.return_mean);
+            self.last_equity = equity;
+            self.worst_drawdown = self.worst_drawdown.min(equity / self.equity_peak - 1.0);
             self.equity.push(Equity {
                 date: date_text(session.date),
                 equity,
@@ -174,12 +293,85 @@ impl Engine {
                 holdings: self.positions.iter().filter(|p| p.quantity > 0).count(),
             });
         }
+        if trading && self.audit_enabled {
+            self.audit = Some(AuditDay {
+                date: date_text(session.date),
+                cash: self.cash,
+                equity: self.account_equity(),
+                breadth: features.map_or_else(|| self.breadth(&book), |f| f.breadth.clone()),
+                targets: self
+                    .decisions
+                    .get(first_decision)
+                    .map(|d| d.targets.clone()),
+                holdings: self.holdings(),
+                orders: self.orders[first_order..].to_vec(),
+            });
+        }
+        if raw_model {
+            for (i, a) in self.manifest.corporate_actions.iter().enumerate() {
+                if a.record_date == session.date {
+                    self.entitlements[i] = self.positions[a.id].quantity;
+                }
+            }
+        }
         self.previous_limit_up = limit_up;
         self.next_session += 1;
         Ok(())
     }
+    fn raw_model(&self) -> bool {
+        self.config.execution_model == "jsg-raw-v2"
+    }
+    fn apply_actions(&mut self, date: u32) -> Result<(), String> {
+        for (i, a) in self.manifest.corporate_actions.iter().enumerate() {
+            // Non-trading ex/payment dates become effective before the next session.
+            let previous = self
+                .next_session
+                .checked_sub(1)
+                .map_or(0, |j| self.manifest.calendar[j].date);
+            let qty = self.entitlements[i];
+            if a.ex_date > previous && a.ex_date <= date && qty > 0 {
+                let p = &mut self.positions[a.id];
+                let exact = qty as f64 * a.share_ratio;
+                let added = exact.floor() as u64;
+                let distribution = qty as f64 * (a.cash_per_share - a.withholding_per_share)
+                    + (exact - added as f64) * a.fractional_cash_price;
+                let old_cost = p.cost * p.quantity as f64;
+                p.quantity = p
+                    .quantity
+                    .checked_add(added)
+                    .ok_or("corporate action share overflow")?;
+                if p.quantity > 1_000_000_000_000 {
+                    return Err("corporate action quantity limit".into());
+                }
+                p.cost = if p.quantity > 0 {
+                    (old_cost - distribution).max(0.0) / p.quantity as f64
+                } else {
+                    0.0
+                };
+                p.peak = (p.peak - a.cash_per_share) / (1.0 + a.share_ratio);
+                self.receivables += distribution;
+                // An overnight order no longer represents the original signal after an ex event.
+                self.pending.retain(|o| o.id != a.id);
+            }
+            if a.pay_date > previous && a.pay_date <= date && qty > 0 {
+                let exact = qty as f64 * a.share_ratio;
+                let distribution = qty as f64 * (a.cash_per_share - a.withholding_per_share)
+                    + exact.fract() * a.fractional_cash_price;
+                self.receivables -= distribution;
+                self.cash += distribution;
+            }
+        }
+        if self.receivables.abs() < 1e-7 {
+            self.receivables = 0.0;
+        }
+        if !self.cash.is_finite() || !self.receivables.is_finite() {
+            return Err("corporate action amount overflow".into());
+        }
+        Ok(())
+    }
     fn account_equity(&self) -> f64 {
         self.cash
+            + self.receivables
             + self
                 .positions
                 .iter()
@@ -187,6 +379,19 @@ impl Engine {
                 .sum::<f64>()
     }
     fn at_limit(&self, bar: &Bar, price: f64, up: bool) -> bool {
+        if self.raw_model() {
+            let limit = if up {
+                bar.limit_up.unwrap_or(0.0)
+            } else {
+                bar.limit_down.unwrap_or(0.0)
+            };
+            return limit > 0.0
+                && if up {
+                    price >= limit - 1e-8
+                } else {
+                    price <= limit + 1e-8
+                };
+        }
         let ratio = if bar.is_st {
             0.05
         } else {
@@ -211,7 +416,9 @@ impl Engine {
         book: &[Option<Bar>],
         open: bool,
     ) -> Result<(), String> {
-        if self.orders.len() >= MAX_ORDERS {
+        if (!self.streamed && self.total_filled + self.total_rejected >= MAX_ORDERS)
+            || self.orders.len() >= MAX_ORDERS
+        {
             return Err("order output limit exceeded; shorten range".into());
         }
         let mut quantity = 0;
@@ -220,30 +427,104 @@ impl Engine {
         let mut status = "missing-bar";
         if let Some(bar) = &book[order.id] {
             let raw = if open { bar.open } else { bar.close };
+            let factor = if self.raw_model() { 1.0 } else { bar.adjfactor };
             price = raw
-                * bar.adjfactor
+                * factor
                 * (1.0
                     + if order.buy {
                         self.config.slippage_bps / 10000.0
                     } else {
                         -self.config.slippage_bps / 10000.0
                     });
+            if self.raw_model() {
+                price = (price * 100.0).round() / 100.0;
+                if bar.limit_up.unwrap_or(0.0) > 0.0 {
+                    price = price
+                        .min(bar.limit_up.unwrap())
+                        .max(bar.limit_down.unwrap());
+                }
+                price = price.min(bar.high).max(bar.low);
+            }
             if !bar.tradable {
                 status = "suspended";
             } else if self.at_limit(bar, raw, order.buy) {
                 status = if order.buy { "limit-up" } else { "limit-down" };
             } else {
+                let raw_model = self.raw_model();
+                let max_volume = if raw_model {
+                    (bar.volume.unwrap() as f64 * self.config.participation).floor() as u64
+                } else {
+                    u64::MAX
+                };
+                let available_volume = max_volume.saturating_sub(self.volume_used[order.id]);
+                let requested = order.quantity.min(available_volume);
+                let schedule = self.config.fees.iter().rev().find(|f| f.from <= date);
+                let fee_for = |q: u64| -> f64 {
+                    if q == 0 {
+                        return 0.0;
+                    }
+                    let amount = q as f64 * price;
+                    let commission = if raw_model {
+                        schedule
+                            .and_then(|f| f.commission_bps)
+                            .unwrap_or(self.config.commission_bps)
+                    } else {
+                        self.config.commission_bps
+                    };
+                    let proportional = amount * commission / 10000.0;
+                    if !raw_model {
+                        return proportional;
+                    }
+                    let f = schedule.unwrap();
+                    let total = proportional.max(f.minimum_commission)
+                        + amount * (f.transfer_bps + if order.buy { 0.0 } else { f.sell_tax_bps })
+                            / 10000.0;
+                    (total * 100.0).round() / 100.0
+                };
+                let locked: u64 = if raw_model {
+                    self.manifest
+                        .corporate_actions
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, a)| {
+                            a.id == order.id && a.ex_date <= date && date < a.share_available_date
+                        })
+                        .map(|(i, a)| (self.entitlements[i] as f64 * a.share_ratio).floor() as u64)
+                        .sum()
+                } else {
+                    0
+                };
                 let position = &mut self.positions[order.id];
                 if order.buy {
                     let affordable = (self.cash
-                        / (price * (1.0 + self.config.commission_bps / 10000.0))
+                        / (price
+                            * (1.0
+                                + if raw_model {
+                                    0.0
+                                } else {
+                                    self.config.commission_bps / 10000.0
+                                }))
                         / 100.0)
                         .floor()
                         .clamp(0.0, 1e10) as u64
                         * 100;
-                    quantity = order.quantity.min(affordable);
+                    quantity = requested.min(affordable) / 100 * 100;
+                    // Binary search avoids a loop proportional to the position size.
+                    if quantity as f64 * price + fee_for(quantity) > self.cash {
+                        let mut low = 0;
+                        let mut high = quantity / 100;
+                        while low < high {
+                            let mid = (low + high + 1) / 2;
+                            if (mid * 100) as f64 * price + fee_for(mid * 100) <= self.cash {
+                                low = mid;
+                            } else {
+                                high = mid - 1;
+                            }
+                        }
+                        quantity = low * 100;
+                    }
                     if quantity > 0 {
-                        fee = quantity as f64 * price * self.config.commission_bps / 10000.0;
+                        fee = fee_for(quantity);
                         let amount = quantity as f64 * price + fee;
                         position.cost = (position.cost * position.quantity as f64 + amount)
                             / (position.quantity + quantity) as f64;
@@ -260,15 +541,21 @@ impl Engine {
                         "filled"
                     };
                 } else {
-                    let sellable = position.quantity
-                        - if self.config.t_plus_one {
+                    let sellable = position
+                        .quantity
+                        .saturating_sub(if self.config.t_plus_one || raw_model {
                             position.today
                         } else {
                             0
-                        };
-                    quantity = order.quantity.min(sellable);
+                        })
+                        .saturating_sub(locked);
+                    quantity = requested.min(sellable);
+                    // Odd shares may be sold only when clearing the complete sellable holding.
+                    if raw_model && quantity < sellable {
+                        quantity = quantity / 100 * 100;
+                    }
                     if quantity > 0 {
-                        fee = quantity as f64 * price * self.config.commission_bps / 10000.0;
+                        fee = fee_for(quantity);
                         self.cash += quantity as f64 * price - fee;
                         position.quantity -= quantity;
                         position.today = position.today.min(position.quantity);
@@ -285,8 +572,18 @@ impl Engine {
                         "filled"
                     };
                 }
-                position.mark = raw * bar.adjfactor;
+                if quantity == 0 && available_volume < 100 {
+                    status = "volume-limit";
+                }
+                self.volume_used[order.id] += quantity;
+                position.mark = raw * factor;
             }
+        }
+        self.total_fees += fee;
+        if quantity > 0 {
+            self.total_filled += 1;
+        } else {
+            self.total_rejected += 1;
         }
         self.orders.push(Order {
             date: date_text(date),
@@ -368,57 +665,39 @@ impl Engine {
         }
         Ok(false)
     }
-    fn rebalance(&mut self, date: u32, equity: f64, book: &[Option<Bar>]) -> Result<(), String> {
-        let mut breadth: BTreeMap<usize, (usize, usize)> = BTreeMap::new();
-        for bar in book
-            .iter()
-            .flatten()
-            .filter(|b| b.breadth_member && self.manifest.industries[b.industry] != "unknown")
-        {
-            let h = &self.histories[bar.id];
-            if h.len() != 20 {
-                continue;
-            }
-            let entry = breadth.entry(bar.industry).or_default();
-            entry.1 += 1;
-            if bar.close * bar.adjfactor > h.iter().sum::<f64>() / 20.0 {
-                entry.0 += 1;
-            }
-        }
-        let mut ranked: Vec<(usize, f64)> = breadth
-            .into_iter()
-            .map(|(id, (above, total))| {
-                (id, (above as f64 / total as f64 * 100.0).round_ties_even())
-            })
-            .collect();
-        ranked.sort_by(|a, b| {
-            b.1.total_cmp(&a.1)
-                .then_with(|| self.manifest.industries[a.0].cmp(&self.manifest.industries[b.0]))
+    fn rebalance(
+        &mut self,
+        date: u32,
+        equity: f64,
+        book: &[Option<Bar>],
+        features: Option<&crate::features::PreparedDay>,
+    ) -> Result<(), String> {
+        let ranked = features.map_or_else(|| self.breadth(book), |f| f.breadth.clone());
+        let top = ranked.first().map(|b| {
+            (
+                self.manifest
+                    .industries
+                    .iter()
+                    .position(|i| i == &b.industry)
+                    .unwrap(),
+                b.ratio,
+            )
         });
-        let top = ranked.first().copied();
         let allowed = top.is_some_and(|(id, _)| {
             !self
                 .config
                 .industry_blacklist
                 .contains(&self.manifest.industries[id])
         });
-        let mut selected: Vec<&Bar> = if allowed {
-            book.iter()
-                .flatten()
-                .filter(|b| b.selection_member && !b.is_st && b.profit > 0.0 && b.shares > 0.0)
-                .collect()
+        let ids = if allowed {
+            features.map_or_else(
+                || crate::features::candidates(&self.manifest, book.iter().flatten()),
+                |f| f.candidates.clone(),
+            )
         } else {
             vec![]
         };
-        selected.sort_by(|a, b| {
-            (a.close * a.shares)
-                .total_cmp(&(b.close * b.shares))
-                .then_with(|| {
-                    self.manifest.instruments[a.id]
-                        .code
-                        .cmp(&self.manifest.instruments[b.id].code)
-                })
-        });
+        let mut selected: Vec<&Bar> = ids.iter().filter_map(|id| book[*id].as_ref()).collect();
         selected.truncate(self.config.pool_size.min(self.config.stock_count));
         let targets: BTreeSet<usize> = selected.iter().map(|b| b.id).collect();
         for id in 0..self.positions.len() {
@@ -435,7 +714,10 @@ impl Engine {
         }
         let allocation = equity * 0.95 / selected.len().max(1) as f64;
         for bar in &selected {
-            let lots = (allocation / (bar.close * bar.adjfactor) / 100.0).floor();
+            let lots = (allocation
+                / (bar.close * if self.raw_model() { 1.0 } else { bar.adjfactor })
+                / 100.0)
+                .floor();
             if !lots.is_finite() || lots > 1e10 {
                 return Err("position quantity exceeds research model limit".into());
             }
@@ -462,44 +744,11 @@ impl Engine {
         });
         Ok(())
     }
-    pub fn finish(self) -> Result<ResultData, String> {
-        if self.next_session != self.manifest.calendar.len() {
-            return Err("incomplete dataset: calendar sessions missing".into());
-        }
-        let last = self.equity.last().ok_or("no trading sessions")?.equity;
-        let mut returns = vec![];
-        let mut previous = self.config.initial_capital;
-        for point in &self.equity {
-            returns.push(point.equity / previous - 1.0);
-            previous = point.equity;
-        }
-        let mean = returns.iter().sum::<f64>() / returns.len() as f64;
-        let variance = returns.iter().map(|r| (r - mean).powi(2)).sum::<f64>()
-            / returns.len().saturating_sub(1).max(1) as f64;
-        let metrics = Metrics {
-            engine: "rust-wasm/native".into(),
-            model: "jsg-adjusted-v1".into(),
-            final_equity: last,
-            total_return: last / self.config.initial_capital - 1.0,
-            annualized_return: (last / self.config.initial_capital)
-                .powf(252.0 / self.equity.len() as f64)
-                - 1.0,
-            sharpe: if variance > 0.0 {
-                mean / variance.sqrt() * 252.0_f64.sqrt()
-            } else {
-                0.0
-            },
-            max_drawdown: self.equity.iter().map(|e| e.drawdown).fold(0.0, f64::min),
-            filled_orders: self.orders.iter().filter(|o| o.quantity > 0).count(),
-            rejected_orders: self.orders.iter().filter(|o| o.quantity == 0).count(),
-            fees: self.orders.iter().map(|o| o.fee).sum(),
-            days: self.equity.len(),
-        };
-        if !metrics.annualized_return.is_finite() || !metrics.sharpe.is_finite() {
-            return Err("metric overflow; inspect prices and adjustment factors".into());
-        }
-        let holdings = self
-            .positions
+    fn breadth(&self, book: &[Option<Bar>]) -> Vec<Breadth> {
+        crate::features::breadth(&self.manifest, book.iter().flatten(), &self.histories)
+    }
+    fn holdings(&self) -> Vec<Holding> {
+        self.positions
             .iter()
             .enumerate()
             .filter(|(_, p)| p.quantity > 0)
@@ -510,7 +759,41 @@ impl Engine {
                 price: p.mark,
                 value: p.mark * p.quantity as f64,
             })
-            .collect();
+            .collect()
+    }
+    pub fn finish(self) -> Result<ResultData, String> {
+        if self.next_session != self.manifest.calendar.len() {
+            return Err("incomplete dataset: calendar sessions missing".into());
+        }
+        if self.total_days == 0 {
+            return Err("no trading sessions".into());
+        }
+        let last = self.last_equity;
+        let mean = self.return_mean;
+        let variance = self.return_m2 / self.total_days.saturating_sub(1).max(1) as f64;
+        let metrics = Metrics {
+            engine: "rust-wasm/native".into(),
+            model: self.config.execution_model.clone(),
+            final_equity: last,
+            total_return: last / self.config.initial_capital - 1.0,
+            annualized_return: (last / self.config.initial_capital)
+                .powf(252.0 / self.total_days as f64)
+                - 1.0,
+            sharpe: if variance > 0.0 {
+                mean / variance.sqrt() * 252.0_f64.sqrt()
+            } else {
+                0.0
+            },
+            max_drawdown: self.worst_drawdown,
+            filled_orders: self.total_filled,
+            rejected_orders: self.total_rejected,
+            fees: self.total_fees,
+            days: self.total_days,
+        };
+        if !metrics.annualized_return.is_finite() || !metrics.sharpe.is_finite() {
+            return Err("metric overflow; inspect prices and adjustment factors".into());
+        }
+        let holdings = self.holdings();
         let mut warnings = self.manifest.warnings;
         if self.missing_marks > 0 {
             warnings.push(format!(
@@ -526,6 +809,7 @@ impl Engine {
             decisions: self.decisions,
             pending_orders: self.pending.len(),
             warnings,
+            receivables: self.receivables,
         })
     }
 }

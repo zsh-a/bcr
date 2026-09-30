@@ -1,0 +1,8 @@
+-r requirements-jsg.txt
+# Only for running the original Python reference, not needed by the Rust CLI.
+pandas>=2.3,<4
+TA-Lib>=0.6.8,<1
+clickhouse-connect>=0.10,<1
+loguru>=0.7,<1
+PyYAML>=6,<7
+pydantic-settings>=2,<3

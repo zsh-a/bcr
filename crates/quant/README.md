@@ -28,15 +28,16 @@ read-only, parameterized HTTP queries; credentials stay outside the browser.
 ClickHouse filters the universe/date range and computes financial/share/industry
 ASOF joins. Price results travel as an ArrowStream; the exporter
 reassembles complete days and writes bounded IPC streams, without accumulating the
-whole price history. Python here is an offline data adapter, not the backtest core
-or a running backend service.
+whole price history. Native Rust is the primary adapter and backtest core. The
+legacy Python adapter below remains useful for comparison; native commands appear
+in the final section. Neither path requires an additional running backend service.
 
 ```sh
 python3 -m venv tmp/jsg-export
 # Windows users can activate the environment and call python/pip normally.
 tmp/jsg-export/bin/pip install -r scripts/requirements-jsg.txt
 export CLICKHOUSE_URL=http://localhost:8123/
-export CLICKHOUSE_DATABASE=quent
+export CLICKHOUSE_DATABASE=stock_data
 export CLICKHOUSE_USER=default
 # Set CLICKHOUSE_PASSWORD through your environment or secret manager.
 tmp/jsg-export/bin/python scripts/export-jsg.py \
@@ -92,14 +93,14 @@ sequentially through BCR's streaming Artifact API. The Worker loads at most one 
 batch at a time and keeps portfolio state plus 20 closes per instrument. It yields
 between daily batches on a 16 ms time budget so cancellation can be delivered. Native Rust reads partitions with
 a buffered file reader. Limits: 20,000 instruments, 20,000 calendar sessions,
-200,000 order records. The Worker reserves 256 MiB in the scheduler; this is a
-scheduling estimate rather than a guarantee on measured browser memory. Equity
-and bounded order output accumulate in memory and are exported as JSON; very large
-parameter grids or larger result histories need a future streamed result sink.
+200,000 retained order records (streaming drains them into bounded chunks). The Worker
+reserves 256 MiB in the scheduler; this is a scheduling estimate rather than a
+guarantee on measured browser memory. Native JSONL and browser artifacts stream
+full histories; metrics are accumulated online and the UI loads order intervals on demand.
 
 ## Execution model and known limits
 
-The explicit model version is **`jsg-adjusted-v1`**, a research migration, not a
+The compatibility model version is **`jsg-adjusted-v1`**, a research migration, not a
 claim of byte-for-byte parity with quent or a complete exchange simulator.
 
 - MA and theoretical execution use `raw price × adjfactor`, matching the original
@@ -164,3 +165,88 @@ The fixture had 1,220 trading sessions after warmup and only 10 fills, so this
 measures data throughput and memory behavior, not general strategy throughput.
 It excludes ClickHouse export time and is not a cold-storage or hardware-neutral
 benchmark. Browser peak memory was not measured.
+
+## Native ClickHouse and raw-price v2
+
+The primary snapshot exporter is now Rust. Python remains an optional reference/reconciliation tool.
+See [RECONCILIATION.md](RECONCILIATION.md) for the real-data comparison, gaps and measured performance.
+
+```sh
+cargo build --release --manifest-path crates/quant/Cargo.toml --bin jsg
+# Defaults: localhost:8123, default user, stock_data database.
+# For another source set CLICKHOUSE_URL, CLICKHOUSE_USER, CLICKHOUSE_PASSWORD, CLICKHOUSE_DATABASE.
+crates/quant/target/release/jsg inspect
+crates/quant/target/release/jsg export 2026-04-01 2026-06-30 /tmp/jsg-q2
+crates/quant/target/release/jsg /tmp/jsg-q2/manifest.json --trace /tmp/jsg-audit.jsonl
+crates/quant/target/release/jsg /tmp/jsg-q2/manifest.json --jsonl > /tmp/jsg-results.jsonl
+# configs.json is an array of complete strategy configurations.
+crates/quant/target/release/jsg grid /tmp/jsg-q2/manifest.json configs.json --threads 8
+# Requires the optional source contracts AND audited coverage over the full warmup/range.
+crates/quant/target/release/jsg export 2026-04-01 2026-06-30 /tmp/jsg-history --strict-pit
+```
+
+`inspect` reports source capabilities; `--strict-pit` fails on the current legacy schema.
+The exporter executes fixed SELECT queries with typed parameters and `readonly=1`, streams compressed
+Arrow from ClickHouse, writes uncompressed portable daily batches, and records source capabilities,
+query timings and SHA-256 integrity hashes. The engine validates these hashes before native replay.
+No Python process or additional backend is needed for export or backtesting.
+
+V1 manifests remain valid. V2 uses `version:2`, `schema:"jsg-daily-v2"`, `dataQuality` and explicit
+`corporateActions`. Daily batches additionally require `volume:UInt64`, `limit_up:Float64`,
+`limit_down:Float64`; `(0,0)` means explicitly unlimited for that session. Corporate action fields
+are `id`, `recordDate`, `exDate`, `payDate`, `shareAvailableDate`, `knownDate`, `cashPerShare`,
+`withholdingPerShare`, `shareRatio` (additional shares per old share), `fractionalCashPrice`.
+The raw model requires complete action coverage and daily limits. The new source SQL contract is
+[sql/history-schema.sql](sql/history-schema.sql); the CLI never creates or mutates source tables.
+
+Add these fields to the strategy configuration for raw v2 (rates here are explicit example values,
+not a prescribed market fee schedule):
+
+```json
+{
+  "executionModel": "jsg-raw-v2",
+  "participation": 0.1,
+  "fees": [
+    {
+      "from": 20200101,
+      "commissionBps": 3,
+      "minimumCommission": 5,
+      "transferBps": 0.1,
+      "sellTaxBps": 5
+    }
+  ]
+}
+```
+
+`fees` is ordered by effective date; commission overrides are optional. Merge these fields into a
+complete strategy config (available in an exported result's `config` field). This fragment is not a
+standalone config. The UI exposes
+model selection, participation and fee periods after importing a v2 snapshot.
+
+To capture and replay the original quent implementation, use an environment containing quent's
+original dependencies plus PyArrow. This tool intentionally imports that implementation unchanged:
+
+```sh
+python scripts/reconcile-jsg.py --quent /path/to/quent --manifest /tmp/jsg-q2/manifest.json \
+  --output /tmp/jsg-reconciliation --capture --rust-trace /tmp/jsg-audit.jsonl
+# Run again with --capture omitted: reads frozen queries only and verifies source/input hashes.
+```
+
+Reconciliation only needs Python for the reference run. The source project's settings govern reference
+capture; run with its configured environment. The reduced real-price fixture and daily audit are checked
+by `cargo test`. Native integration tests run an isolated embedded ClickHouse, never the user's database:
+
+```sh
+python -m pip install pyarrow==23.0.1 chdb==4.4.0
+python scripts/test_export_jsg.py
+python scripts/test_reconcile_jsg.py
+python scripts/test_native_jsg.py
+python scripts/benchmark-jsg.py /tmp/jsg-q2/manifest.json \
+  --binary crates/quant/target/release/jsg --configs configs.json --output /tmp/jsg-bench
+BASE_URL=http://localhost:5201/?strategy=jsg node scripts/benchmark-jsg.mjs /tmp/jsg-q2 /tmp/jsg-browser
+```
+
+WASM/network dependencies are separated by compilation target. The normal browser path never holds
+ClickHouse credentials. Native JSONL and browser artifacts stream full outputs; the UI loads one order
+interval at a time and writes complete exports to a temporary OPFS file. Sampling affects only the chart
+preview, while full result artifacts retain every event.
