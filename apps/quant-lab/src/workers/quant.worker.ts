@@ -1,10 +1,11 @@
 import { artifactPath, contentHash, type ArtifactRef, type ComputeTask } from "@bcr/core";
-import { defineWorker, type WorkerContext } from "@bcr/runtime-worker";
+import { createArtifactIO, defineWorker, type WorkerContext } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
 import initWasm from "../../../../crates/kernels/pkg/bcr_kernels.js";
 import { decodeMarketArrow } from "../arrow";
 import { computeSmaSignals, runBacktest, validateMarketBars } from "../engine";
 import type { BacktestResult, MarketBar, SignalPoint, StrategyConfig } from "../model";
+import { jsgHandler } from "../jsg/compute";
 import { runWasmBacktest } from "../wasm-backtest";
 
 const opfs = new OpfsStore("quant");
@@ -175,6 +176,7 @@ async function backtestTask(
 }
 
 defineWorker({
+  "quant.backtest.jsg": jsgHandler(createArtifactIO(opfs, "opfs")),
   "quant.signal.sma-cross": signalTask,
   "quant.backtest.long-only": backtestTask,
 });

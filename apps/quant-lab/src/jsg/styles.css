@@ -1,0 +1,329 @@
+.ql-research-shell {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 38px minmax(0, 1fr);
+}
+.ql-research-tabs {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.ql-research-tabs button {
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  padding: 9px 15px;
+  cursor: pointer;
+}
+.ql-research-tabs button[aria-selected="true"] {
+  color: var(--color-accent);
+  box-shadow: inset 0 -2px var(--color-accent);
+}
+.ql-research-view {
+  height: 100%;
+  min-height: 0;
+}
+.ql-research-view[hidden] {
+  display: none;
+}
+.jsg-lab {
+  grid-template-rows: minmax(62px, auto) 96px minmax(0, 1fr) 34px;
+}
+.jsg-lab .ql-brand {
+  min-width: 290px;
+}
+.jsg-lab .ql-brand b {
+  letter-spacing: 0;
+}
+.jsg-lab .ql-actions {
+  margin-left: auto;
+  padding: 8px 16px;
+  align-items: center;
+  gap: 8px;
+}
+.jsg-lab .ql-market-status {
+  justify-content: center;
+}
+.jsg-metrics .ql-metric strong {
+  font-size: clamp(18px, 2vw, 28px);
+}
+.jsg-workbench {
+  display: grid;
+  grid-template-columns: 242px minmax(360px, 1fr) 270px;
+  min-height: 0;
+}
+.jsg-controls,
+.jsg-data-rail {
+  overflow: auto;
+  padding: 20px;
+  border-right: 1px solid var(--color-border);
+}
+.jsg-data-rail {
+  border-right: 0;
+  border-left: 1px solid var(--color-border);
+}
+.jsg-section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 14px;
+  font-size: 12px;
+}
+.jsg-section-title > span:last-child {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.jsg-controls fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.jsg-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-size: 12px;
+}
+.jsg-field input {
+  width: 100%;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.jsg-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  margin: 18px 0;
+}
+.jsg-note,
+.jsg-warning {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 12px 0 24px;
+}
+.jsg-warning {
+  color: var(--color-warning, var(--color-muted));
+  border-left: 2px solid currentColor;
+  padding-left: 10px;
+}
+.jsg-results {
+  overflow: auto;
+  min-width: 0;
+  padding: 24px;
+}
+.jsg-dataset-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding-bottom: 24px;
+}
+.jsg-dataset-summary b {
+  color: var(--color-accent);
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+.jsg-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 330px;
+  padding: 6vw 4vw;
+  border: 1px solid var(--color-border);
+}
+.jsg-empty > span {
+  font-family: var(--font-mono);
+  color: var(--color-muted);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+}
+.jsg-empty h2 {
+  font-size: clamp(24px, 3vw, 42px);
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin: 24px 0 16px;
+}
+.jsg-empty p {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.jsg-equity {
+  padding: 12px 0 28px;
+}
+.jsg-equity svg {
+  width: 100%;
+  display: block;
+}
+.jsg-grid-line {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+.jsg-axis {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.jsg-order-section {
+  border-top: 1px solid var(--color-border);
+  padding-top: 20px;
+}
+.jsg-table-scroll {
+  overflow: auto;
+  max-height: 390px;
+}
+.jsg-table-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.jsg-table-scroll th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface);
+  text-align: left;
+  color: var(--color-muted);
+  font-weight: 500;
+}
+.jsg-table-scroll th,
+.jsg-table-scroll td {
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+.jsg-table-scroll td[data-side="buy"] {
+  color: var(--color-success);
+}
+.jsg-table-scroll td[data-side="sell"] {
+  color: var(--color-danger);
+}
+.jsg-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 24px;
+}
+.jsg-targets span {
+  padding: 4px 6px;
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font: 10px var(--font-mono);
+}
+.jsg-holding {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+  font: 11px var(--font-mono);
+}
+.jsg-holding small {
+  display: block;
+  color: var(--color-muted);
+  margin-top: 5px;
+  font-size: 10px;
+}
+.jsg-holding b {
+  font-weight: 500;
+}
+.jsg-alert {
+  padding: 12px;
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
+  margin-bottom: 18px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.jsg-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 18px;
+  border-top: 1px solid var(--color-border);
+  font: 10px var(--font-mono);
+  color: var(--color-muted);
+}
+.jsg-footer progress {
+  width: 100px;
+  height: 3px;
+  accent-color: var(--color-accent);
+}
+@media (max-width: 1200px) {
+  .jsg-workbench {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+  .jsg-data-rail {
+    display: block;
+    grid-column: 1/-1;
+    border: 0;
+    border-top: 1px solid var(--color-border);
+  }
+  .jsg-workbench {
+    overflow: auto;
+  }
+  .jsg-controls,
+  .jsg-results {
+    overflow: visible;
+  }
+  .jsg-lab .ql-market-status {
+    display: none;
+  }
+}
+@media (max-width: 700px) {
+  .jsg-lab {
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+  }
+  .jsg-lab .ql-header {
+    flex-wrap: wrap;
+  }
+  .jsg-lab .ql-brand {
+    width: 100%;
+    min-height: 62px;
+  }
+  .jsg-lab .ql-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .jsg-metrics {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .jsg-workbench {
+    display: block;
+  }
+  .jsg-controls {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .jsg-field {
+    grid-template-columns: 1fr 130px;
+  }
+  .jsg-results {
+    padding: 18px;
+  }
+  .jsg-footer {
+    flex-wrap: wrap;
+    padding: 8px 14px;
+  }
+}

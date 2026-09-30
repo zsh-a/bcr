@@ -132,6 +132,7 @@ await withServer({
     "scripts/verify-shell-architecture.mjs",
     "scripts/verify-persistence.mjs",
     "scripts/verify-quant-lab.mjs",
+    "scripts/verify-jsg.mjs",
     ...liveMarketChecks,
     "scripts/verify-manga-studio.mjs",
     "scripts/verify-document-studio.mjs",

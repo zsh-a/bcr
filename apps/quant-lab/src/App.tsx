@@ -7,10 +7,11 @@ import {
   type RuntimeServices,
 } from "@bcr/react";
 import { Activity, Database, Download, Play, Square, Upload } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EquityChart, MarketChart } from "./components/Charts";
 import { PortfolioAnalysisView } from "./components/PortfolioAnalysis";
 import { TradeBlotter } from "./components/TradeBlotter";
+import { JsgWorkbench } from "./jsg/Workbench";
 import { cancelStrategy, runStrategy } from "./pipeline";
 import {
   createRuntimeServices,
@@ -26,6 +27,7 @@ import { quant, useQuantLab } from "./store";
 import "./styles.css";
 
 async function initializeWorkspace(runtime: RuntimeServices): Promise<void> {
+  if (new URLSearchParams(window.location.search).get("strategy") === "jsg") return;
   const handoff = consumeQuantHandoff();
   if (handoff !== null) {
     await importMarketAtlasHandoff(runtime, handoff);
@@ -55,8 +57,62 @@ export function App() {
   }
   return (
     <RuntimeProvider services={services}>
-      <Workbench />
+      <ResearchWorkbench />
     </RuntimeProvider>
+  );
+}
+
+function ResearchWorkbench() {
+  const initialJsg = new URLSearchParams(window.location.search).get("strategy") === "jsg";
+  const [tab, setTab] = useState<"sma" | "jsg">(initialJsg ? "jsg" : "sma");
+  const [opened, setOpened] = useState(initialJsg);
+  const [jsgBusy, setJsgBusy] = useState(false);
+  const smaRunning = useQuantLab((state) => state.running);
+  usePublishRunningCount("quant", Number(smaRunning) + Number(jsgBusy));
+  return (
+    <div className="ql-research-shell">
+      <div className="ql-research-tabs" role="tablist" aria-label="策略类型">
+        <button
+          role="tab"
+          id="sma-tab"
+          aria-controls="sma-panel"
+          aria-selected={tab === "sma"}
+          onClick={() => setTab("sma")}
+        >
+          SMA 单股票
+        </button>
+        <button
+          role="tab"
+          id="jsg-tab"
+          aria-controls="jsg-panel"
+          aria-selected={tab === "jsg"}
+          onClick={() => {
+            setOpened(true);
+            setTab("jsg");
+          }}
+        >
+          JSG 多股票
+        </button>
+      </div>
+      <div
+        className="ql-research-view"
+        id="sma-panel"
+        role="tabpanel"
+        aria-labelledby="sma-tab"
+        hidden={tab !== "sma"}
+      >
+        {tab === "sma" && <Workbench />}
+      </div>
+      <div
+        className="ql-research-view"
+        id="jsg-panel"
+        role="tabpanel"
+        aria-labelledby="jsg-tab"
+        hidden={tab !== "jsg"}
+      >
+        {opened && <JsgWorkbench onBusy={setJsgBusy} />}
+      </div>
+    </div>
   );
 }
 
@@ -102,8 +158,16 @@ function downloadFile(blob: Blob, name: string): void {
 function Workbench() {
   useQuantSearch();
   const services = useRuntime();
+  useEffect(() => {
+    if (quant.getSnapshot().dataset !== null) return;
+    void (async () => {
+      const restored = await restoreProject(services);
+      if (!restored) await loadDemoDataset(services);
+      await runStrategy(services);
+    })().catch((error: unknown) => quant.log("error", String(error)));
+  }, [services]);
   const state = useQuantLab((snapshot) => snapshot);
-  usePublishRunningCount("quant", state.running ? 1 : 0);
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {

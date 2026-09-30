@@ -9,7 +9,7 @@
   ],
   "type": "module",
   "scripts": {
-    "build:wasm": "wasm-pack build crates/kernels --target web",
+    "build:wasm": "wasm-pack build crates/kernels --target web && bun run build:wasm:quant",
     "build:wasm:agent": "wasm-pack build crates/agent-runtime/crates/agent-wasm --target web --out-dir ../../../agent-wasm/pkg",
     "check": "vp check && tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -29,7 +29,10 @@
     "deploy:cloudflare": "wrangler deploy --config wrangler.jsonc",
     "bench:search": "node scripts/benchmark-search.mjs",
     "test:pwa:apps": "bun scripts/verify-pwa-apps.mjs",
-    "generate:pwa": "bun scripts/generate-pwa-entries.mjs && node scripts/generate-pwa-icons.mjs"
+    "generate:pwa": "bun scripts/generate-pwa-entries.mjs && node scripts/generate-pwa-icons.mjs",
+    "build:wasm:quant": "wasm-pack build crates/quant --target web",
+    "test:rust:quant": "cargo test --manifest-path crates/quant/Cargo.toml",
+    "test:browser:jsg": "node scripts/verify-jsg.mjs"
   },
   "dependencies": {
     "@sqlite.org/sqlite-wasm": "3.53.0-build1"
