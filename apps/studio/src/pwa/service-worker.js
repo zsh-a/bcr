@@ -196,7 +196,11 @@ globalThis.addEventListener("fetch", (event) => {
       if (cached !== undefined && !refreshAllowed()) return cached;
       const network = fetchWithTimeout(request)
         .then(async (response) => {
-          if (response.ok) {
+          // SPA 兜底会以 200 + text/html 应答缺失的 /assets/ 请求；把它当失败，
+          // 绝不写进缓存——写进去就是永久的「Unable to preload CSS/JS」。
+          const type = response.headers.get("content-type") ?? "";
+          const fallbackHtml = url.pathname.startsWith("/assets/") && type.includes("text/html");
+          if (response.ok && !fallbackHtml) {
             const cache = await caches.open(CACHE_NAME);
             await cache.put(request, response.clone());
           }

@@ -231,3 +231,8 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: bun run deploy:cloudflare -- --message "BCR Studio ${GITHUB_SHA::12}"
+
+      - name: Verify deployed assets
+        if: steps.cloudflare.outputs.configured == 'true'
+        # 部署面自检：资产必须是资产而非 SPA 兜底 HTML（本地套件没有这层语义）。
+        run: node scripts/verify-deploy.mjs https://bcr-studio.2494726068.workers.dev

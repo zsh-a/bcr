@@ -66,10 +66,11 @@ async function shellUrls() {
   const urls = new Set(APP_SHELL);
   urls.add(BUILD_MANIFEST);
   const visited = new Set();
-  // The lightweight bootstrap chooses one of these graphs at runtime. Only
-  // precache the Reader graph here; other Studio apps remain on demand.
+  // 工作区外壳在引导时按 URL 分流到 Reader 或 Studio；两条静态图都要随外壳
+  // 原子预缓存。重度按需资产（PDF worker、sqlite 代理、wasm）仍走运行时缓存。
   addManifestEntry(manifest, "index.html", urls, visited);
   addManifestEntry(manifest, "src/reader-main.tsx", urls, visited);
+  addManifestEntry(manifest, "src/studio-main.tsx", urls, visited);
   return [...urls];
 }
 
@@ -204,7 +205,11 @@ globalThis.addEventListener("fetch", (event) => {
       if (cached !== undefined && !refreshAllowed()) return cached;
       const network = fetchWithTimeout(request)
         .then(async (response) => {
-          if (response.ok) {
+          // SPA 兜底会以 200 + text/html 应答缺失的 /assets/ 请求；把它当失败，
+          // 绝不写进缓存——写进去就是永久的「Unable to preload CSS/JS」。
+          const type = response.headers.get("content-type") ?? "";
+          const fallbackHtml = url.pathname.startsWith("/assets/") && type.includes("text/html");
+          if (response.ok && !fallbackHtml) {
             const cache = await caches.open(CACHE_NAME);
             await cache.put(request, response.clone());
           }
