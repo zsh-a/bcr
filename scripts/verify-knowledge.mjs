@@ -212,12 +212,10 @@ async function sync(page, conflict = false) {
     await page.locator(".knowledge-notice").waitFor({ state: "hidden" });
   }
   const popover = await openSyncPopover(page);
-  await runAndWait(
-    page,
-    popover.getByRole("button", { name: /立即同步|同步中/u }),
-    "立即同步",
-    true,
-  );
+  // 点「立即同步」会 hidePopover 收起浮层；getByRole 的 ARIA 匹配对隐藏元素
+  // 直接不成立，收起后读标签必然超时（且连带跳过其它完成信号）。CSS 定位的
+  // textContent 只要求挂载、不要求可见，隐藏照读。
+  await runAndWait(page, popover.locator("button.ui-btn-primary"), "立即同步", true);
   // 同步落定后的顶栏状态行是本轮结果：干净同步为已同步，冲突为 N 处冲突待处理。
   if (conflict)
     await page.locator(".knowledge-status-line").filter({ hasText: "冲突待处理" }).waitFor();
