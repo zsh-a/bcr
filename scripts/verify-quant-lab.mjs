@@ -19,7 +19,9 @@ await page.waitForFunction(
     return metric !== undefined && !metric.textContent?.includes("—");
   },
   undefined,
-  { timeout: 45_000 },
+  // 计算型等待（DuckDB/WASM 流水线出数）：家族连跑时 CPU 竞争会拖慢出数，
+  // 预算按「慢机器的最坏首算」给足，失败由断言而非超时兜底。
+  { timeout: 120_000 },
 );
 
 let body = await page.locator("body").innerText();

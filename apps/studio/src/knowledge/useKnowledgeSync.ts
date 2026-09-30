@@ -30,7 +30,15 @@ export function useKnowledgeSync({
   const syncing = useSyncExternalStore(store.subscribeSync, store.getSyncSnapshot);
   const pending = pendingCount(state);
   const sync = useCallback(async () => {
-    if (!ready || store.syncing) return;
+    // 手动同步绝不静默吞掉：撞上进行中的同步也要给出可见反馈，避免「点了没反应」。
+    if (store.syncing) {
+      setMessage("同步正在进行，完成后状态会自动刷新");
+      return;
+    }
+    if (!ready) {
+      setMessage("知识库仍在加载，请稍候再同步");
+      return;
+    }
     const target = store.getSnapshot().sync.target;
     if (!target || !token.trim()) {
       setPanel("sync");
