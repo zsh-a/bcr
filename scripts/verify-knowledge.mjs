@@ -255,13 +255,28 @@ async function matchesBody(page, text) {
   const raw = (await source.getAttribute("aria-pressed")) !== "true";
   if (raw) await source.click();
   try {
-    await page.waitForFunction(
-      (expected) =>
-        [...document.querySelectorAll('[aria-label="笔记正文"] .cm-line')]
-          .map((line) => line.textContent)
-          .join("\n") === expected,
-      text,
-    );
+    await page
+      .waitForFunction(
+        (expected) =>
+          [...document.querySelectorAll('[aria-label="笔记正文"] .cm-line')]
+            .map((line) => line.textContent)
+            .join("\n") === expected,
+        text,
+      )
+      .catch(async (error) => {
+        // 失败自证：把编辑器当时的实际文本带出来，区分「正文被改写」与「没保存上」。
+        const actual = await page
+          .evaluate(() =>
+            [...document.querySelectorAll('[aria-label="笔记正文"] .cm-line')]
+              .map((line) => line.textContent)
+              .join("\n"),
+          )
+          .catch((reason) => `（探测失败：${String(reason)}）`);
+        throw new Error(
+          `正文不匹配；期望=${JSON.stringify(text)} 实际=${JSON.stringify(actual)}`,
+          { cause: error },
+        );
+      });
   } finally {
     if (raw) await page.getByRole("button", { name: "编辑", exact: true }).click();
   }
