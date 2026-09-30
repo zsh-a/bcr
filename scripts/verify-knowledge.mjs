@@ -135,7 +135,9 @@ async function runAndWait(page, button, idleText) {
     page
       .evaluate(() => {
         const pop = document.querySelector(".knowledge-sync-popover");
-        return !!pop && pop.matches(":popover-open") && (pop.textContent ?? "").includes("无待同步修改");
+        return (
+          !!pop && pop.matches(":popover-open") && (pop.textContent ?? "").includes("无待同步修改")
+        );
       })
       .catch(() => false);
   await button.click();
