@@ -14,10 +14,12 @@
   --prose-h1: calc(var(--text-2xl) - var(--space-1));
   --prose-h2: calc(var(--text-xl) - var(--space-1) / 2);
   --prose-row: calc(var(--text-base) - 1px);
-  /* 写作/阅读列：17px 正文配 720px 盒（内含 80px 内边距 → 约 37 汉字/行），
-     落在中文 25–40 字的舒适行宽内；--content-max 的 960px 是资料列表的宽度，不用于正文。 */
+  /* 写作/阅读行长是不变量：正文块度量恒为文档列减内边距（约 37 汉字/行），
+     落在中文 25–40 字的舒适行宽内，不随窗口漂移。文档列本身随容器生长
+     （见 .knowledge-editor），闲置宽度归标题/工具行与破格的宽内容。 */
   --prose-font-size: 17px;
   --prose-width: 720px;
+  --prose-measure: calc(var(--prose-width) - 2 * var(--space-8));
   --font-reading: "Newsreader Variable", "Noto Serif SC", "Songti SC", Georgia, serif;
   --reading-compact: 1.55;
   --reading-standard: 1.75;
@@ -421,7 +423,9 @@
 /* ---------- 编辑区 ---------- */
 
 .knowledge-editor {
-  max-width: min(var(--prose-width), 100%);
+  /* 文档列吃宽度：至少内容列宽（--content-max），随 kb-doc 容器向 60% 生长；
+     正文行长（--prose-measure）不动，闲置宽度归标题/工具行与破格的表格/代码。 */
+  max-width: min(100%, max(var(--content-max), 60cqi));
   margin: 0 auto;
   padding: var(--space-7) var(--space-8) 0;
   /* 纵列：正文/阅读面 flex:1 吃掉剩余高度，页脚贴底，底部不再留死白。 */
@@ -690,6 +694,10 @@
    承担键盘导航，文本输入聚焦本身不加框），编辑区与页面底色融为一体。 */
 .knowledge-body .cm-editor {
   height: 100%;
+  /* 与阅读态同一条行长不变量：写作面居中锁 --prose-measure，表格等宽内容
+     在编辑态是文本行、不破格；列变宽只让两侧余白变多，打字手感不变。 */
+  max-width: var(--prose-measure);
+  margin-inline: auto;
   border: 0;
   background: transparent;
 }
@@ -838,6 +846,21 @@
   font-size: var(--prose-font-size);
   line-height: var(--reading-leading, var(--text-base--line-height));
   overflow-wrap: anywhere;
+}
+
+/* 行长不变量：正文块居中锁在 --prose-measure（约 37 汉字），
+   宽内容破格吃满文档列——宽度利用率交给真正需要它的元素，段落可读性不动。 */
+.knowledge-prose > * {
+  max-width: var(--prose-measure);
+  margin-inline: auto;
+}
+
+.knowledge-prose > :is(table, pre, hr) {
+  max-width: none;
+}
+
+.knowledge-prose p {
+  text-wrap: pretty;
 }
 
 /* 锚点落点（大纲跳转/搜索高亮/Tab 聚焦）不被粘性条与浮标遮挡。 */
