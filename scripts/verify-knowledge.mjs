@@ -120,15 +120,39 @@ async function openHistory(page) {
   await page.getByRole("menuitem", { name: "版本历史", exact: true }).click();
 }
 // 同步按钮运行期间会改文案（同步中…/连接并同步中…）并禁用提交；完成信号取
-// 「闲置文案回来 + 本轮确实打到了 mock GitHub」，再断言状态行，避免拿上一次
-// 同步留下的旧状态交差。单次读取限时：浮层在同步中被收起（隐藏元素仍可读），
-// 但子树卸载或渲染进程崩溃会让 locator 静默挂满超时，逐轮限时 + 失败自证现场。
+// 「闲置文案回来 + 本轮确实产生了效果」：网络请求增长，或完成/空同步提示出现
+// （sync() 每条路径都会 setMessage，含无待同步的空转与未配置提示）。只认请求
+// 会在空同步时死等——上一轮自动同步抢跑后，手动点击本就无可推送内容。
 async function runAndWait(page, button, idleText) {
   const before = fixture.state.requests.length;
+  const noticeBefore = await page
+    .locator(".knowledge-notice")
+    .textContent({ timeout: 250 })
+    .catch(() => null);
+  // 空同步完成证据：打开中的同步浮层显示「无待同步修改」——这是活的 store 状态，
+  // 不是遗留提示；限定 :popover-open，避免被关闭浮层里的陈旧文案误判。
+  const storeIdle = () =>
+    page
+      .evaluate(() => {
+        const pop = document.querySelector(".knowledge-sync-popover");
+        return !!pop && pop.matches(":popover-open") && (pop.textContent ?? "").includes("无待同步修改");
+      })
+      .catch(() => false);
   await button.click();
   for (let attempt = 0; attempt < 300; attempt++) {
     const label = await button.textContent({ timeout: 1000 }).catch(() => null);
-    if (fixture.state.requests.length > before && label?.trim() === idleText) return;
+    if (label?.trim() === idleText) {
+      const notice = await page
+        .locator(".knowledge-notice")
+        .textContent({ timeout: 250 })
+        .catch(() => null);
+      if (
+        fixture.state.requests.length > before ||
+        (notice ?? "") !== (noticeBefore ?? "") ||
+        (await storeIdle())
+      )
+        return;
+    }
     await page.waitForTimeout(100);
   }
   const scene = await page
@@ -138,6 +162,8 @@ async function runAndWait(page, button, idleText) {
       labels: [...document.querySelectorAll(".knowledge-sync-popover button")].map((b) =>
         b.textContent?.trim(),
       ),
+      status: document.querySelector(".knowledge-status-line")?.textContent?.trim() ?? null,
+      notice: document.querySelector(".knowledge-notice")?.textContent?.trim() ?? null,
     }))
     .catch((error) => ({ probe: String(error) }));
   throw new Error(`同步操作未在预期时间内完成：${idleText}；现场=${JSON.stringify(scene)}`);
