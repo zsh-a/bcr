@@ -1,5 +1,5 @@
 use crate::model::{Bar, MAX_INSTRUMENTS};
-use arrow_array::{Array, Float64Array, RecordBatch, UInt32Array, UInt8Array};
+use arrow_array::{Array, Float64Array, RecordBatch, UInt32Array, UInt64Array, UInt8Array};
 
 /// Strict typed protocol. No row objects or Arrow decoding are needed on the JavaScript side.
 pub fn decode_day(batch: &RecordBatch) -> Result<Vec<Bar>, String> {
@@ -32,6 +32,21 @@ pub fn decode_day(batch: &RecordBatch) -> Result<Vec<Bar>, String> {
     let tradable = column::<UInt8Array>(batch, "tradable")?;
     let breadth = column::<UInt8Array>(batch, "breadth_member")?;
     let selection = column::<UInt8Array>(batch, "selection_member")?;
+    let volume = if batch.column_by_name("volume").is_some() {
+        Some(column::<UInt64Array>(batch, "volume")?)
+    } else {
+        None
+    };
+    let limit_up = if batch.column_by_name("limit_up").is_some() {
+        Some(column::<Float64Array>(batch, "limit_up")?)
+    } else {
+        None
+    };
+    let limit_down = if batch.column_by_name("limit_down").is_some() {
+        Some(column::<Float64Array>(batch, "limit_down")?)
+    } else {
+        None
+    };
     let mut bars = Vec::with_capacity(batch.num_rows());
     for i in 0..batch.num_rows() {
         if [
@@ -46,6 +61,9 @@ pub fn decode_day(batch: &RecordBatch) -> Result<Vec<Bar>, String> {
             return Err("Arrow flags must be 0 or 1".into());
         }
         bars.push(Bar {
+            volume: volume.map(|v| v.value(i)),
+            limit_up: limit_up.map(|v| v.value(i)),
+            limit_down: limit_down.map(|v| v.value(i)),
             date: date.value(i),
             id: id.value(i) as usize,
             industry: industry.value(i) as usize,

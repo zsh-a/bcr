@@ -1,5 +1,8 @@
 pub mod engine;
+mod features;
 pub mod model;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod native;
 pub mod reader;
 
 use arrow_ipc::reader::StreamReader;
@@ -29,6 +32,21 @@ impl JsgBacktest {
             reader: None,
             rows: 0,
         })
+    }
+    pub fn enable_streaming(&mut self) -> Result<(), JsValue> {
+        self.engine
+            .as_mut()
+            .ok_or_else(|| js_error("backtest finished"))?
+            .enable_streaming();
+        Ok(())
+    }
+    pub fn drain_output(&mut self) -> Result<String, JsValue> {
+        let chunk = self
+            .engine
+            .as_mut()
+            .ok_or_else(|| js_error("backtest finished"))?
+            .drain_output();
+        serde_json::to_string(&chunk).map_err(js_error)
     }
     pub fn load_partition(&mut self, bytes: Vec<u8>) -> Result<(), JsValue> {
         if bytes.is_empty() || bytes.len() > MAX_PARTITION_BYTES {

@@ -2,6 +2,8 @@ use crate::{engine::Engine, model::*};
 
 fn manifest(days: usize) -> Manifest {
     Manifest {
+        corporate_actions: vec![],
+        data_quality: None,
         version: 1,
         schema: "jsg-daily-v1".into(),
         name: "test".into(),
@@ -49,6 +51,9 @@ fn bars(day: usize) -> Vec<Bar> {
         .map(|id| {
             let close = 10.0 + day as f64 * 0.01;
             Bar {
+                volume: None,
+                limit_up: None,
+                limit_down: None,
                 id,
                 date: 20240100 + day as u32,
                 industry: 0,
@@ -349,4 +354,252 @@ fn unclassified_breadth_cannot_open_the_stock_selection_gate() {
     let r = e.finish().unwrap();
     assert!(r.orders.is_empty());
     assert!(r.decisions[0].top_industry.is_none());
+}
+
+fn raw_manifest(days: usize) -> Manifest {
+    let mut m = manifest(days);
+    m.version = 2;
+    m.schema = "jsg-daily-v2".into();
+    m.data_quality = Some(DataQuality {
+        membership: "snapshot".into(),
+        financials: "latest".into(),
+        corporate_actions: "complete".into(),
+        price_limits: "daily".into(),
+    });
+    m
+}
+fn raw_config() -> Config {
+    Config {
+        execution_model: "jsg-raw-v2".into(),
+        fees: vec![FeeSchedule {
+            commission_bps: None,
+            from: 20200101,
+            minimum_commission: 5.0,
+            transfer_bps: 1.0,
+            sell_tax_bps: 5.0,
+        }],
+        ..config()
+    }
+}
+fn raw_bars(day: usize) -> Vec<Bar> {
+    bars(day)
+        .into_iter()
+        .map(|mut b| {
+            b.volume = Some(1_000_000);
+            b.limit_up = Some(100.0);
+            b.limit_down = Some(1.0);
+            b.adjfactor = 2.0;
+            b
+        })
+        .collect()
+}
+#[test]
+fn raw_execution_uses_real_shares_minimum_fees_and_volume_budget() {
+    let mut c = raw_config();
+    c.participation = 0.00025;
+    let mut e = Engine::new(raw_manifest(22), c).unwrap();
+    for d in 1..=22 {
+        e.day(raw_bars(d)).unwrap();
+    }
+    let r = e.finish().unwrap();
+    assert_eq!(r.orders[0].quantity, 200);
+    assert_eq!(r.orders[0].status, "partial");
+    assert_eq!(r.orders[0].price, 10.22);
+    assert!((r.orders[0].fee - 5.20).abs() < 1e-8);
+    assert_eq!(r.metrics.model, "jsg-raw-v2");
+}
+#[test]
+fn explicit_action_preserves_equity_and_pays_record_date_holder_after_sale() {
+    let mut m = raw_manifest(25);
+    m.calendar[23].rebalance = true;
+    m.corporate_actions.push(CorporateAction {
+        id: 0,
+        record_date: 20240122,
+        ex_date: 20240123,
+        pay_date: 20240125,
+        known_date: 20240120,
+        share_available_date: 20240124,
+        cash_per_share: 1.0,
+        withholding_per_share: 0.0,
+        share_ratio: 1.0,
+        fractional_cash_price: 0.0,
+    });
+    let mut c = raw_config();
+    c.fees[0].minimum_commission = 0.0;
+    c.fees[0].transfer_bps = 0.0;
+    c.fees[0].sell_tax_bps = 0.0;
+    let mut e = Engine::new(m, c).unwrap();
+    e.enable_audit();
+    for d in 1..=22 {
+        e.day(raw_bars(d)).unwrap();
+    }
+    let before = e.take_audit().unwrap();
+    let qty = before.holdings[0].quantity;
+    let mut day = raw_bars(23);
+    let price = (10.22 - 1.0) / 2.0;
+    day[0].open = price;
+    day[0].close = price;
+    day[0].high = price;
+    day[0].low = price;
+    e.day(day).unwrap();
+    let ex = e.take_audit().unwrap();
+    assert_eq!(ex.holdings[0].quantity, qty * 2);
+    assert!((ex.equity - before.equity).abs() < 1e-7);
+    assert!((ex.cash - before.cash).abs() < 1e-7);
+    let mut after = raw_bars(24);
+    for b in &mut after {
+        b.profit = 0.0;
+    }
+    after[0].open = price;
+    after[0].close = price;
+    after[0].high = price;
+    after[0].low = price;
+    e.day(after).unwrap();
+    let mut paid_day = raw_bars(25);
+    paid_day[0].open = price;
+    paid_day[0].close = price;
+    paid_day[0].high = price;
+    paid_day[0].low = price;
+    e.day(paid_day).unwrap();
+    let paid = e.take_audit().unwrap();
+    assert!((paid.cash - before.cash - qty as f64 - 2.0 * qty as f64 * price).abs() < 1e-7);
+    assert!(paid.holdings.is_empty());
+    assert_eq!(e.finish().unwrap().receivables, 0.0);
+}
+#[test]
+fn raw_model_rejects_missing_actions_or_limits_instead_of_inferring_from_adjustment() {
+    assert!(Engine::new(manifest(22), raw_config()).is_err());
+    let mut e = Engine::new(raw_manifest(22), raw_config()).unwrap();
+    assert!(e.day(bars(1)).is_err());
+    let mut m = raw_manifest(22);
+    m.data_quality.as_mut().unwrap().corporate_actions = "missing".into();
+    assert!(Engine::new(m, raw_config()).is_err());
+}
+
+#[test]
+fn streaming_and_full_output_have_identical_metrics_and_events() {
+    let mut full = Engine::new(manifest(25), config()).unwrap();
+    let mut streamed = Engine::new(manifest(25), config()).unwrap();
+    streamed.enable_streaming();
+    let mut orders = vec![];
+    let mut equity = vec![];
+    for d in 1..=25 {
+        full.day(bars(d)).unwrap();
+        streamed.day(bars(d)).unwrap();
+        let chunk = streamed.drain_output();
+        orders.extend(chunk.orders);
+        equity.extend(chunk.equity);
+    }
+    let a = full.finish().unwrap();
+    let b = streamed.finish().unwrap();
+    assert_eq!(
+        serde_json::to_value(&a.metrics).unwrap(),
+        serde_json::to_value(&b.metrics).unwrap()
+    );
+    assert_eq!(
+        serde_json::to_value(&a.orders).unwrap(),
+        serde_json::to_value(orders).unwrap()
+    );
+    assert_eq!(
+        serde_json::to_value(&a.equity).unwrap(),
+        serde_json::to_value(equity).unwrap()
+    );
+    assert!(b.equity.is_empty());
+    assert!(b.orders.is_empty());
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn frozen_real_prices_match_daily_audit_golden() {
+    use std::{
+        fs::File,
+        io::{BufRead, BufReader},
+        path::Path,
+    };
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/real-q2");
+    let m: Manifest =
+        serde_json::from_reader(File::open(root.join("manifest.json")).unwrap()).unwrap();
+    let mut engine = Engine::new(m, Config::default()).unwrap();
+    engine.enable_audit();
+    let expected: Vec<serde_json::Value> =
+        BufReader::new(File::open(root.join("audit.jsonl")).unwrap())
+            .lines()
+            .map(|s| serde_json::from_str(&s.unwrap()).unwrap())
+            .collect();
+    let mut i = 0;
+    crate::native::read_snapshot(&root.join("manifest.json"), |bars| {
+        engine.day(bars)?;
+        if let Some(day) = engine.take_audit() {
+            let actual = serde_json::to_value(day)?;
+            for key in [
+                "date", "targets", "orders", "holdings", "breadth", "cash", "equity",
+            ] {
+                assert_json_close(&actual[key], &expected[i][key]);
+            }
+            i += 1;
+        }
+        Ok(())
+    })
+    .unwrap();
+    assert_eq!(i, expected.len());
+    assert_eq!(i, 60);
+    let result = engine.finish().unwrap();
+    assert!(result.metrics.filled_orders > 10);
+}
+fn assert_json_close(a: &serde_json::Value, b: &serde_json::Value) {
+    use serde_json::Value;
+    match (a, b) {
+        (Value::Number(x), Value::Number(y)) => {
+            let x = x.as_f64().unwrap();
+            let y = y.as_f64().unwrap();
+            assert!(
+                (x - y).abs() <= 1e-11 * x.abs().max(y.abs()).max(1.0),
+                "{x} != {y}"
+            );
+        }
+        (Value::Array(x), Value::Array(y)) => {
+            assert_eq!(x.len(), y.len());
+            for (x, y) in x.iter().zip(y) {
+                assert_json_close(x, y);
+            }
+        }
+        (Value::Object(x), Value::Object(y)) => {
+            assert_eq!(x.len(), y.len());
+            for (k, v) in x {
+                assert_json_close(v, &y[k]);
+            }
+        }
+        _ => assert_eq!(a, b),
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn shared_factors_match_independent_portfolios_with_different_risk_parameters() {
+    use std::{fs::File, path::Path};
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/real-q2/manifest.json");
+    let manifest: Manifest = serde_json::from_reader(File::open(&path).unwrap()).unwrap();
+    let configs: Vec<Config> = (0..3)
+        .map(|i| Config {
+            stock_count: [1, 5, 10][i],
+            stop_loss: [0.0, 0.04, 0.12][i],
+            trailing_stop: [0.0, 0.1, 0.0][i],
+            max_drawdown: [0.0, 0.2, 0.0][i],
+            ..Config::default()
+        })
+        .collect();
+    let shared = crate::native::grid(&path, configs.clone(), 2).unwrap();
+    assert_eq!(shared["decodedRows"], 1890);
+    for (i, c) in configs.into_iter().enumerate() {
+        let mut engine = Engine::new(manifest.clone(), c).unwrap();
+        crate::native::read_snapshot(&path, |bars| {
+            engine.day(bars)?;
+            Ok(())
+        })
+        .unwrap();
+        assert_json_close(
+            &shared["results"][i]["metrics"],
+            &serde_json::to_value(engine.finish().unwrap().metrics).unwrap(),
+        );
+    }
 }

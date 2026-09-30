@@ -3,7 +3,13 @@ import { useRuntime } from "@bcr/react";
 import { Effect } from "effect";
 import { Download, Play, Square, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { importResearch, readJson, restoreResearch, saveResearch } from "./data";
+import {
+  exportResearchResult,
+  importResearch,
+  readJson,
+  restoreResearch,
+  saveResearch,
+} from "./data";
 import { demoResearch } from "./demo";
 import {
   DEFAULT_CONFIG,
@@ -29,7 +35,10 @@ function EquityPlot({ result }: { result: JsgResult }) {
   const high = Math.max(...values);
   const step = Math.max(1, Math.ceil(points.length / 1000));
   const indices = points.map((_, i) => i).filter((i) => i % step === 0 || i === points.length - 1);
-  const x = (i: number) => (i / Math.max(1, points.length - 1)) * 1000;
+  const dates = points.map((p) => Date.parse(p.date));
+  const beginning = dates[0] ?? 0;
+  const span = Math.max(1, (dates.at(-1) ?? beginning) - beginning);
+  const x = (i: number) => (((dates[i] ?? beginning) - beginning) / span) * 1000;
   const y = (v: number) => 20 + ((high - v) / Math.max(1, high - low)) * 260;
   const path = indices
     .map((i, k) => `${k === 0 ? "M" : "L"}${x(i).toFixed(2)},${y(values[i] ?? 0).toFixed(2)}`)
@@ -50,10 +59,19 @@ function EquityPlot({ result }: { result: JsgResult }) {
         onMouseLeave={() => setHover(null)}
         onMouseMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
+          const target = beginning + ((e.clientX - rect.left) / rect.width) * span;
+          let left = 0,
+            right = points.length - 1;
+          while (left < right) {
+            const middle = Math.floor((left + right) / 2);
+            if ((dates[middle] ?? 0) < target) left = middle + 1;
+            else right = middle;
+          }
           setHover(
-            Math.round(
-              Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * (points.length - 1),
-            ),
+            left > 0 &&
+              Math.abs((dates[left - 1] ?? 0) - target) < Math.abs((dates[left] ?? 0) - target)
+              ? left - 1
+              : left,
           );
         }}
       >
@@ -79,6 +97,12 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
   const [dataset, setDataset] = useState<ResearchDataset | null>(null);
   const [config, setConfig] = useState<JsgConfig>({ ...DEFAULT_CONFIG });
   const [result, setResult] = useState<JsgResult | null>(null);
+  const [orderChunk, setOrderChunk] = useState(-1);
+  const [pageOrders, setPageOrders] = useState<JsgResult["orders"] | null>(null);
+  const [orderOffset, setOrderOffset] = useState(0);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const orderRequest = useRef(0);
   const [resultRef, setResultRef] = useState<ArtifactRef | null>(null);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
@@ -208,7 +232,7 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
           outputs: [{ name: "result", type: "quant/jsg-result", storage: "opfs", format: "json" }],
           resources: { memoryMB: 256, threads: 1 },
           cache: { enabled: true },
-          config: { model: MODEL, strategy: config },
+          config: { model: config.executionModel ?? MODEL, strategy: config },
         }),
       );
       token.handle = handle;
@@ -251,6 +275,35 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
       setBusy(false);
     }
   };
+  useEffect(() => {
+    orderRequest.current += 1;
+    setOrderChunk(-1);
+    setPageOrders(null);
+    setOrderOffset(0);
+  }, [result]);
+  const loadOrders = async (index: number) => {
+    if (result?.chunks?.[index] === undefined) {
+      setOrderChunk(-1);
+      setPageOrders(null);
+      return;
+    }
+    setLoadingOrders(true);
+    const request = ++orderRequest.current;
+    try {
+      const chunk = await readJson<{ orders: JsgResult["orders"] }>(
+        services,
+        result.chunks[index]!.ref,
+      );
+      if (request !== orderRequest.current) return;
+      setOrderChunk(index);
+      setPageOrders(chunk.orders);
+      setOrderOffset(0);
+    } catch (e) {
+      setError(message(e));
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
   const cancel = () => {
     const token = active.current;
     if (token === null) return;
@@ -259,18 +312,30 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
     if (token.handle !== null)
       void Effect.runPromise(token.handle.cancel).catch((e: unknown) => setError(message(e)));
   };
-  const exportResult = () => {
+  const exportResult = async () => {
     if (result === null) return;
-    const blob = new Blob(
-      [JSON.stringify({ config, manifest: dataset?.manifest, result }, null, 2)],
-      { type: "application/json" },
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "jsg-research.json";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    setExporting(true);
+    try {
+      const { blob, cleanup } = await exportResearchResult(
+        services,
+        config,
+        dataset?.manifest,
+        result,
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "jsg-research.json";
+      a.click();
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        void cleanup().catch(() => undefined);
+      }, 60000);
+    } catch (e) {
+      setError(message(e));
+    } finally {
+      setExporting(false);
+    }
   };
   const m = dataset?.manifest;
   const metrics = result?.metrics;
@@ -344,8 +409,8 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
           </button>
           <button
             className="ui-btn ui-btn-ghost"
-            disabled={result === null || busy}
-            onClick={exportResult}
+            disabled={result === null || busy || exporting}
+            onClick={() => void exportResult()}
           >
             <Download size={14} />
             导出结果
@@ -391,6 +456,107 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
             <b>策略参数</b>
             <span>JSG / 01</span>
           </div>
+          <label>
+            成交模型
+            <select
+              value={config.executionModel ?? MODEL}
+              onChange={(e) =>
+                change({
+                  executionModel: e.currentTarget.value as "jsg-adjusted-v1" | "jsg-raw-v2",
+                  fees: config.fees ?? [
+                    {
+                      from: m?.startDate ?? 20200101,
+                      minimumCommission: 0,
+                      transferBps: 0,
+                      sellTaxBps: 0,
+                    },
+                  ],
+                })
+              }
+            >
+              <option value="jsg-adjusted-v1">复权研究 v1</option>
+              <option value="jsg-raw-v2" disabled={m?.version !== 2}>
+                原始价格 v2
+              </option>
+            </select>
+          </label>
+          {config.executionModel === "jsg-raw-v2" && (
+            <div>
+              <label>
+                成交量参与率
+                <input
+                  type="number"
+                  min="0.001"
+                  max="1"
+                  step="0.01"
+                  value={config.participation ?? 0.1}
+                  onChange={(e) => change({ participation: Number(e.currentTarget.value) })}
+                />
+              </label>
+              {(config.fees ?? []).map((f, i) => (
+                <div key={i}>
+                  <label>
+                    费用生效日
+                    <input
+                      type="number"
+                      value={f.from}
+                      onChange={(e) =>
+                        change({
+                          fees: config.fees!.map((old, j) =>
+                            j === i ? { ...old, from: Number(e.currentTarget.value) } : old,
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                  {(
+                    ["commissionBps", "minimumCommission", "transferBps", "sellTaxBps"] as const
+                  ).map((key) => (
+                    <label key={key}>
+                      {key === "commissionBps"
+                        ? "佣金 / bps"
+                        : key === "minimumCommission"
+                          ? "最低佣金 / 元"
+                          : key === "transferBps"
+                            ? "过户费用 / bps"
+                            : "卖出税费 / bps"}
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={f[key] ?? config.commissionBps}
+                        onChange={(e) =>
+                          change({
+                            fees: config.fees!.map((old, j) =>
+                              j === i ? { ...old, [key]: Number(e.currentTarget.value) } : old,
+                            ),
+                          })
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
+              ))}
+              <button
+                className="ui-btn ui-btn-ghost"
+                onClick={() =>
+                  change({
+                    fees: [
+                      ...(config.fees ?? []),
+                      {
+                        from: Math.min(22001231, (config.fees?.at(-1)?.from ?? 20200101) + 10000),
+                        minimumCommission: 0,
+                        transferBps: 0,
+                        sellTaxBps: 0,
+                      },
+                    ],
+                  })
+                }
+              >
+                添加费用生效区间
+              </button>
+            </div>
+          )}
           <fieldset disabled={busy || !ready}>
             {fields.map(({ key, label, scale = 1, step }) => (
               <label className="jsg-field" key={key}>
@@ -480,10 +646,44 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
                 <div className="jsg-section-title">
                   <b>订单记录</b>
                   <span>
-                    最近 {Math.min(200, result.orders.length)} / {result.orders.length} 笔 ·{" "}
+                    显示 {Math.min(200, (pageOrders ?? result.orders).length)} /{" "}
+                    {result.metrics.filledOrders + result.metrics.rejectedOrders} 笔 ·{" "}
                     {result.metrics.rejectedOrders} 笔拒单
                   </span>
                 </div>
+                {(result.chunks?.length ?? 0) > 0 && (
+                  <div className="jsg-order-controls">
+                    <select
+                      aria-label="订单日期区间"
+                      disabled={loadingOrders}
+                      value={orderChunk}
+                      onChange={(e) => void loadOrders(Number(e.currentTarget.value))}
+                    >
+                      <option value={-1}>最近订单</option>
+                      {result.chunks!.map((c, i) => (
+                        <option key={i} value={i}>
+                          {c.start} — {c.end} · {c.orders} 笔
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="ui-btn ui-btn-ghost"
+                      disabled={orderOffset === 0 || loadingOrders}
+                      onClick={() => setOrderOffset((v) => Math.max(0, v - 200))}
+                    >
+                      上一页
+                    </button>
+                    <button
+                      className="ui-btn ui-btn-ghost"
+                      disabled={
+                        orderOffset + 200 >= (pageOrders ?? result.orders).length || loadingOrders
+                      }
+                      onClick={() => setOrderOffset((v) => v + 200)}
+                    >
+                      下一页
+                    </button>
+                  </div>
+                )}
                 <div className="jsg-table-scroll">
                   <table>
                     <thead>
@@ -499,9 +699,10 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {result.orders
-                        .slice(-200)
+                      {(pageOrders ?? result.orders)
+                        .slice()
                         .reverse()
+                        .slice(orderOffset, orderOffset + 200)
                         .map((o, i) => (
                           <tr key={i}>
                             <td>{o.date}</td>
@@ -529,7 +730,9 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
             <span>DAILY</span>
           </div>
           <p className="jsg-note">
-            使用复权价格计算均线与模拟成交，以未复权价格判断涨跌停及市值。持仓单位为研究模型单位；真实除权、分红、印花税与逐笔撮合尚未建模。
+            {config.executionModel === "jsg-raw-v2"
+              ? "原始价格撮合，真实股数记账；复权价格只用于均线。分红送转、涨跌停和费用来自明确事件与日期规则；默认 T+1，并限制成交量参与率。"
+              : "复权价格用于均线与研究成交；原始价格用于涨跌停及市值。持仓数量为研究单位。"}
           </p>
           {m?.universeMode === "snapshot" && (
             <p className="jsg-warning">当前成分快照不能还原历史股票池，结果可能存在幸存者偏差。</p>
@@ -573,7 +776,7 @@ export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
       <footer className="jsg-footer" aria-live="polite">
         <span>{status}</span>
         <progress value={progress} max="1" aria-label="JSG 回测进度" />
-        <span>{MODEL}</span>
+        <span>{config.executionModel ?? MODEL}</span>
       </footer>
     </div>
   );

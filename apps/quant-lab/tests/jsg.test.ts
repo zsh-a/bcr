@@ -211,3 +211,103 @@ describe("JSG Rust + Arrow research boundary", () => {
     expect((await store.list("artifacts/jsg/result")).length).toBe(0);
   });
 });
+
+it("streams every Rust event into bounded artifacts while keeping a small UI preview", async () => {
+  const store = new MemoryStore();
+  const layer = await Effect.runPromise(Effect.scoped(Layer.build(artifactStore({ opfs: store }))));
+  const dataset = await importResearch(
+    { artifacts: Context.get(layer, ArtifactStoreTag) },
+    demoResearch().files,
+    () => undefined,
+  );
+  const io = createArtifactIO(store, "opfs");
+  const ctx = {
+    signal: new AbortController().signal,
+    progress: () => undefined,
+    emitChunk: () => undefined,
+  };
+  const outputs = await jsgHandler(io)(
+    {
+      id: "stream-test",
+      runtime: "wasm",
+      operation: "quant.backtest.jsg",
+      outputs: [],
+      inputs: [
+        { ...dataset.manifestRef, port: "manifest" },
+        ...dataset.partitions.map((p, i) => ({ ...p, port: `partition-${i}` })),
+      ],
+      config: { strategy: DEFAULT_CONFIG },
+    },
+    ctx,
+  );
+  const summaryRef = outputs.find((r) => r.type === "quant/jsg-result")!;
+  const summary = await io.readJsonArtifact<JsgResult>(summaryRef, ctx);
+  expect(summary.orders.length).toBeLessThanOrEqual(200);
+  expect(summary.decisions.length).toBeLessThanOrEqual(1);
+  const chunks = await Promise.all(
+    summary.chunks!.map((c) =>
+      io.readJsonArtifact<Pick<JsgResult, "equity" | "orders" | "decisions">>(c.ref, ctx),
+    ),
+  );
+  const full = await execute(false);
+  expect(chunks.flatMap((c) => c.orders)).toEqual(full.orders);
+  expect(chunks.flatMap((c) => c.equity)).toEqual(full.equity);
+  expect(chunks.flatMap((c) => c.decisions)).toEqual(full.decisions);
+  expect(summary.metrics).toEqual(full.metrics);
+});
+
+it("removes result chunks when cancellation arrives after the first persisted chunk", async () => {
+  const store = new MemoryStore();
+  const io = createArtifactIO(store, "opfs");
+  const demo = demoResearch();
+  const layer = await Effect.runPromise(Effect.scoped(Layer.build(artifactStore({ opfs: store }))));
+  const dataset = await importResearch(
+    { artifacts: Context.get(layer, ArtifactStoreTag) },
+    demo.files,
+    () => undefined,
+  );
+  const abort = new AbortController();
+  let days = 0,
+    freed = false;
+  const engine: BacktestSession = {
+    enable_streaming: () => undefined,
+    load_partition: () => undefined,
+    advance: () => {
+      days++;
+      if (days === 6) abort.abort();
+      return true;
+    },
+    processed_days: () => days,
+    processed_rows: () => days * 64,
+    drain_output: () =>
+      JSON.stringify({
+        equity: [{ date: "2024-01-01", equity: 1, cash: 1, drawdown: 0, holdings: 0 }],
+        orders: [],
+        decisions: [],
+      }),
+    finish: () => {
+      throw new Error("must not finish");
+    },
+    free: () => {
+      freed = true;
+    },
+  };
+  await expect(
+    jsgHandler(io, async () => engine)(
+      {
+        id: "cancel-stream",
+        runtime: "wasm",
+        operation: "quant.backtest.jsg",
+        outputs: [],
+        inputs: [
+          { ...dataset.manifestRef, port: "manifest" },
+          ...dataset.partitions.map((p, i) => ({ ...p, port: `partition-${i}` })),
+        ],
+        config: { strategy: DEFAULT_CONFIG },
+      },
+      { signal: abort.signal, progress: () => undefined, emitChunk: () => undefined },
+    ),
+  ).rejects.toThrow("cancelled");
+  expect(freed).toBe(true);
+  expect((await store.list("artifacts/jsg-")).length).toBe(0);
+});
