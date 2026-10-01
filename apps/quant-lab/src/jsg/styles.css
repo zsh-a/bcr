@@ -1175,7 +1175,7 @@
     padding-inline: var(--space-4);
   }
 }
-@container research (max-width: 22em) {
+@container research (max-width: 22rem) {
   .research-actions > .ui-btn > span {
     display: none;
   }
