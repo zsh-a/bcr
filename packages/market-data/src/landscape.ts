@@ -7,7 +7,6 @@ import type {
 } from "./model";
 
 const RANKING_SIZE = 8;
-const SECTOR_SIZE = 14;
 
 export interface MarketLandscapeSource {
   readonly quotes: ReadonlyArray<FullQuote>;
@@ -132,8 +131,7 @@ export function buildMarketLandscape(source: MarketLandscapeSource): MarketLands
       const item = sectorPulse(board, flowMap);
       return item === null ? [] : [item];
     })
-    .sort((left, right) => Math.abs(right.changePercent) - Math.abs(left.changePercent))
-    .slice(0, SECTOR_SIZE);
+    .sort((left, right) => Math.abs(right.changePercent) - Math.abs(left.changePercent));
   const errors = source.errors ?? [];
 
   return {

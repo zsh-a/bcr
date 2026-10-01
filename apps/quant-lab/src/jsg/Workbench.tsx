@@ -1,6 +1,16 @@
 import { WorkspaceTrigger } from "@bcr/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button, Dialog, Select, Spinner, useRuntime } from "@bcr/react";
+import {
+  Button,
+  Dialog,
+  Select,
+  Spinner,
+  useRuntime,
+  useLocationSearch,
+  useNavigation,
+  useRuntimeActivity,
+} from "@bcr/react";
+import { readMarketSnapshot } from "@bcr/market-data/research/catalog";
 import {
   Download,
   History,
@@ -57,6 +67,50 @@ export function JsgWorkbench({
   const research = useResearch(services);
   const { state } = research;
   const source = useDataSource(services, state.dataset);
+  const active = useRuntimeActivity();
+  const query = new URLSearchParams(useLocationSearch()),
+    navigation = useNavigation();
+  const incomingSnapshot = query.get("snapshot"),
+    importedSnapshot = useRef<string | null>(null);
+  const incomingDate = query.get("date");
+  useEffect(() => {
+    if (!incomingSnapshot) {
+      importedSnapshot.current = null;
+      return;
+    }
+    if (
+      !active ||
+      query.get("strategy") !== "jsg" ||
+      !state.ready ||
+      !source.restored ||
+      !incomingSnapshot ||
+      importedSnapshot.current === incomingSnapshot
+    )
+      return;
+    importedSnapshot.current = incomingSnapshot;
+    let disposed = false;
+    void readMarketSnapshot(incomingSnapshot)
+      .then(async (dataset) => {
+        if (disposed) return;
+        await research.useDataset(dataset);
+        if (disposed) return;
+        await source.useLocal();
+        if (disposed) return;
+        await research.flush();
+        if (disposed) return;
+        research.notice(null, "已载入 Market 冻结快照，可调整参数后运行回测");
+        navigation.navigate(
+          `/quant?strategy=jsg${incomingDate && /^\d{4}-\d{2}-\d{2}$/u.test(incomingDate) ? `&date=${incomingDate}` : ""}`,
+          true,
+        );
+      })
+      .catch((error) => {
+        if (!disposed) research.notice(String(error));
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [active, state.ready, source.restored, incomingSnapshot]);
   const root = useRef<HTMLDivElement>(null),
     input = useRef<HTMLInputElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false),

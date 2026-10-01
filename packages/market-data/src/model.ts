@@ -94,6 +94,7 @@ export interface DividendEvent {
 }
 
 export interface DividendSeries {
+  readonly quality?: DataQuality;
   readonly instrument: MarketInstrument;
   readonly coverage: "available" | "empty" | "unsupported";
   readonly events: ReadonlyArray<DividendEvent>;
@@ -204,7 +205,7 @@ export interface MarketAtlasSnapshot {
 export interface MarketDataProvider {
   readonly id: string;
   readonly capabilities?: MarketProviderCapabilities;
-  loadSnapshot(): Promise<MarketAtlasSnapshot>;
+  loadSnapshot(signal?: AbortSignal): Promise<MarketAtlasSnapshot>;
 }
 
 export interface MarketProviderCapabilities {
@@ -220,7 +221,7 @@ export interface MarketProviderCapabilities {
 export interface MarketHistoryProvider {
   readonly id: string;
   readonly capabilities?: MarketProviderCapabilities;
-  loadHistory(request: MarketHistoryRequest): Promise<MarketHistorySeries>;
+  loadHistory(request: MarketHistoryRequest, signal?: AbortSignal): Promise<MarketHistorySeries>;
 }
 
 export interface MarketDiscoveryProvider {
@@ -228,13 +229,13 @@ export interface MarketDiscoveryProvider {
   readonly capabilities?: MarketProviderCapabilities;
   searchInstruments(keyword: string): Promise<ReadonlyArray<MarketSearchResult>>;
   loadQuote(instrument: MarketInstrument): Promise<QuoteSnapshot>;
-  loadDividends(instrument: MarketInstrument): Promise<DividendSeries>;
+  loadDividends(instrument: MarketInstrument, signal?: AbortSignal): Promise<DividendSeries>;
 }
 
 export interface MarketLandscapeProvider {
   readonly id: string;
   readonly capabilities?: MarketProviderCapabilities;
-  loadMarketLandscape(): Promise<MarketLandscapeSnapshot>;
+  loadMarketLandscape(signal?: AbortSignal): Promise<MarketLandscapeSnapshot>;
 }
 
 export interface QuantMarketHandoff {

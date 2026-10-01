@@ -114,9 +114,12 @@ export async function columnarizeMarketBars(
   const id = relationId++;
   const relation = `market_${id}`;
   const fileName = `market_${id}.parquet`;
+  let stage = "导入 Arrow";
   try {
     await connection.insertArrowTable(table, { name: relation, create: true });
+    stage = "导出 Parquet";
     const parquet = await exportParquet(connection, db, relation, fileName);
+    stage = "读取统计信息";
     const metadata = await metadataFor(
       connection,
       relation,
@@ -125,6 +128,10 @@ export async function columnarizeMarketBars(
       parquet.byteLength,
     );
     return { bars: decodeMarketArrow(arrow, minimumRows), arrow, parquet, metadata };
+  } catch (error) {
+    throw new Error(`行情${stage}失败：${error instanceof Error ? error.message : String(error)}`, {
+      cause: error,
+    });
   } finally {
     await connection.query(`DROP TABLE IF EXISTS "${relation}"`).catch(() => undefined);
     await db.dropFile(fileName).catch(() => null);

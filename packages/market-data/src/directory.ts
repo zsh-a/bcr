@@ -6,6 +6,12 @@ interface DirectoryEntry {
   readonly aliases: string;
   readonly providerType: string;
 }
+/** Curated bilingual directory labels; vendor names remain the fallback for unknown instruments. */
+export function marketInstrumentName(instrument: MarketInstrument): string {
+  if (/[\u4e00-\u9fff]/u.test(instrument.name)) return instrument.name;
+  const aliases = PULSE_ALIASES[instrument.id] ?? GLOBAL_ALIASES[instrument.id];
+  return aliases?.split(" ")[0] || instrument.name;
+}
 
 const PULSE_ALIASES: Readonly<Record<string, string>> = {
   "CN:SSE:000001": "上证指数 shanghai composite",

@@ -34,7 +34,7 @@ Studio 另提供[个人知识库与 Git 同步](docs/KNOWLEDGE-SYNC.md)：独立
 │   ├── studio/           # BCR Studio 工作台 UI（Dockview + Tailwind 4 + Base UI）
 │   ├── media-studio/     # Media Studio · Subtitle——第一个上层应用（§0 孵化策略）
 │   ├── quant-lab/        # Quant Lab · Strategy Workbench——第二类 workload 验证
-│   ├── market-board/     # Market Atlas——CN / HK / US / 全球期货市场看板
+│   ├── market-board/     # Market——行情 / 行业 / 历史宽度 / 自选研究
 │   ├── manga-studio/     # Manga Studio——漫画 OCR / 翻译 / 清理 / CJK 排版审校
 │   └── docgen-studio/    # DocGen Lab——虚构账单生成
 ├── crates/
@@ -76,7 +76,7 @@ Studio 另提供[个人知识库与 Git 同步](docs/KNOWLEDGE-SYNC.md)：独立
 | §10.2 Whisper ASR                     | transformers.js ONNX（q8 / webgpu fp32+q4），失败回退演示引擎                               |
 | 文本翻译                              | opus-mt（英↔中方向可选）：逐条 cue 批量平移，1:1 对齐，无二次音频推理                       |
 | §14 Quant workload                    | DuckDB WASM + Arrow IPC + Parquet → SMA Signal → Backtest Pipeline                          |
-| Market Atlas                          | stock-sdk → Quote / Search / OHLCV / Dividend 契约 → 多市场看板与组合级 Quant handoff       |
+| Market Atlas                          | stock-sdk / ClickHouse → 行情 / 行业 / Rust 每日宽度 → OPFS 冻结快照与 Quant 引用交接       |
 | Document Studio                       | DocumentJob / Stage 状态机 → 本地导入 / 格式边界 / Reader·Manga handoff                     |
 | Data Studio                           | CSV / JSON / NDJSON → Worker 解析 → Canonical Table Artifact → Schema / 搜索 / 导出         |
 | §11 COOP/COEP                         | `apps/studio/vite.config.ts` 与 `apps/media-studio/vite.config.ts` 内置                     |

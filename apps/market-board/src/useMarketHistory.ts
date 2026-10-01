@@ -15,27 +15,40 @@ export function useMarketHistory(
   const [series, setSeries] = useState<MarketHistorySeries | null>(null);
   const [loading, setLoading] = useState(quote !== undefined);
   const request = useRef(0);
+  const controller = useRef<AbortController | null>(null);
+  const currentQuote = useRef(quote);
+  currentQuote.current = quote;
 
   const refresh = useCallback(async () => {
-    if (quote === undefined) return;
+    const quote = currentQuote.current;
+    if (quote === undefined) {
+      setLoading(false);
+      return;
+    }
+    controller.current?.abort();
+    const abort = new AbortController();
+    controller.current = abort;
     const current = ++request.current;
     setLoading(true);
-    const next = await historyService.load({
-      instrument: quote.instrument,
-      range,
-      referencePrice: quote.price,
-    });
-    if (request.current === current) {
-      setSeries(next);
-      setLoading(false);
+    try {
+      const next = await historyService.load(
+        { instrument: quote.instrument, range, referencePrice: quote.price },
+        abort.signal,
+      );
+      if (request.current === current && !abort.signal.aborted) setSeries(next);
+    } catch (error) {
+      if (!abort.signal.aborted) console.error(error);
+    } finally {
+      if (request.current === current) setLoading(false);
     }
-  }, [quote?.instrument.id, quote?.price, range]);
+  }, [quote?.instrument.id, range]);
 
   useEffect(() => {
     setSeries(null);
     void refresh();
     return () => {
       request.current += 1;
+      controller.current?.abort();
     };
   }, [refresh]);
 

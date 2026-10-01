@@ -29,12 +29,15 @@ function writeCache(snapshot: MarketAtlasSnapshot): void {
 export class ResilientMarketService {
   constructor(private readonly provider: MarketDataProvider) {}
 
-  async load(): Promise<MarketAtlasSnapshot> {
+  async load(signal?: AbortSignal): Promise<MarketAtlasSnapshot> {
+    signal?.throwIfAborted();
     try {
-      const snapshot = await this.provider.loadSnapshot();
+      const snapshot = await this.provider.loadSnapshot(signal);
+      signal?.throwIfAborted();
       writeCache(snapshot);
       return snapshot;
     } catch (error) {
+      signal?.throwIfAborted();
       const message = error instanceof Error ? error.message : String(error);
       const cached = readCache();
       if (cached !== null) {

@@ -8,9 +8,11 @@
     "./app-manifest": "./src/app-manifest.ts"
   },
   "dependencies": {
+    "@bcr/core": "workspace:*",
     "@bcr/market-data": "workspace:*",
     "@bcr/react": "workspace:*",
     "@bcr/shell-contract": "workspace:*",
+    "@bcr/storage-opfs": "workspace:*",
     "@fontsource-variable/newsreader": "^5.2.8",
     "@fontsource/ibm-plex-mono": "catalog:",
     "@fontsource/ibm-plex-sans": "catalog:",

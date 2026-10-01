@@ -24,6 +24,75 @@ fn js_error(error: impl ToString) -> JsValue {
     JsValue::from_str(&error.to_string())
 }
 
+/// Independent daily indicator: the same MA20 feature kernel, without portfolio state.
+#[wasm_bindgen]
+pub struct MarketBreadth {
+    factors: features::FactorState,
+    reader: Option<StreamReader<Cursor<Vec<u8>>>>,
+    expected_days: usize,
+    start: u32,
+    finished: bool,
+}
+#[wasm_bindgen]
+impl MarketBreadth {
+    #[wasm_bindgen(constructor)]
+    pub fn new(manifest: &str) -> Result<MarketBreadth, JsValue> {
+        let mut manifest: Manifest = serde_json::from_str(manifest).map_err(js_error)?;
+        manifest.validate().map_err(js_error)?;
+        manifest.display_names = None;
+        Ok(Self {
+            expected_days: manifest.calendar.len(),
+            start: manifest.start_date,
+            factors: features::FactorState::new(manifest),
+            reader: None,
+            finished: false,
+        })
+    }
+    pub fn load_partition(&mut self, bytes: Vec<u8>) -> Result<(), JsValue> {
+        if self.finished || self.reader.is_some() {
+            return Err(js_error("indicator finished or partition still active"));
+        }
+        if bytes.is_empty() || bytes.len() > MAX_PARTITION_BYTES {
+            return Err(js_error("Arrow partition exceeds 32 MiB"));
+        }
+        self.reader = Some(StreamReader::try_new(Cursor::new(bytes), None).map_err(js_error)?);
+        Ok(())
+    }
+    pub fn advance(&mut self) -> Result<String, JsValue> {
+        let reader = self
+            .reader
+            .as_mut()
+            .ok_or_else(|| js_error("no Arrow partition"))?;
+        match reader.next() {
+            Some(batch) => {
+                let bars = reader::decode_day(&batch.map_err(js_error)?).map_err(js_error)?;
+                let day = self.factors.advance_daily(&bars).map_err(js_error)?;
+                if day.date < self.start {
+                    return Ok("{}".into());
+                }
+                serde_json::to_string(&serde_json::json!({
+                    "date": model::date_text(day.date), "breadth": day.breadth
+                }))
+                .map_err(js_error)
+            }
+            None => {
+                self.reader = None;
+                Ok(String::new())
+            }
+        }
+    }
+    pub fn finish(&mut self) -> Result<(), JsValue> {
+        if self.finished
+            || self.reader.is_some()
+            || self.factors.processed_days() != self.expected_days
+        {
+            return Err(js_error("incomplete indicator calendar"));
+        }
+        self.finished = true;
+        Ok(())
+    }
+}
+
 /// Shared fixed SELECT; HTTP transport lives in the browser Worker.
 #[wasm_bindgen]
 pub fn clickhouse_sql(historical: bool) -> String {

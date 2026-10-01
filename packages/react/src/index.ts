@@ -1,5 +1,6 @@
 export type { RuntimeHost, RuntimeMetadata, RuntimeServices, RuntimeSession } from "@bcr/core";
 export * from "./ui";
+export { BreadthHeatmap, type BreadthHeatmapDay } from "./BreadthHeatmap";
 export { Toast, EmptyState, type Notice, type NoticeTone } from "./Feedback";
 export { useMediaQuery } from "./useMediaQuery";
 export {

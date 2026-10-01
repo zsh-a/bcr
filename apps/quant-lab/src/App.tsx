@@ -1,10 +1,16 @@
 import { WorkspaceTrigger } from "@bcr/react";
-import { consumeQuantHandoff, QUANT_HANDOFF_EVENT, type QuantHandoff } from "@bcr/market-data";
+import {
+  consumeQuantHandoff,
+  receiveQuantReference,
+  QUANT_HANDOFF_EVENT,
+  type QuantHandoff,
+} from "@bcr/market-data";
 import {
   RuntimeProvider,
   usePublishRunningCount,
   useRuntime,
   useRuntimeSession,
+  useLocationSearch,
   type RuntimeServices,
 } from "@bcr/react";
 import { Activity, Database, Download, Play, Square, Upload } from "lucide-react";
@@ -29,12 +35,17 @@ import "./styles.css";
 
 async function initializeWorkspace(runtime: RuntimeServices): Promise<void> {
   if (new URLSearchParams(window.location.search).get("strategy") === "jsg") return;
-  const handoff = consumeQuantHandoff();
+  const received = await receiveQuantReference(async (handoff) => {
+    await importMarketAtlasHandoff(runtime, handoff);
+    await persistProject(runtime);
+    quant.log("ok", handoffLog(handoff));
+  });
+  const handoff = received ? null : consumeQuantHandoff();
   if (handoff !== null) {
     await importMarketAtlasHandoff(runtime, handoff);
     await persistProject(runtime);
     quant.log("ok", handoffLog(handoff));
-  } else {
+  } else if (!received) {
     const restored = await restoreProject(runtime);
     if (!restored) await loadDemoDataset(runtime);
   }
@@ -64,10 +75,18 @@ export function App() {
 }
 
 function ResearchWorkbench() {
-  const initialJsg = new URLSearchParams(window.location.search).get("strategy") === "jsg";
+  const search = useLocationSearch();
+  const requestedStrategy = new URLSearchParams(search).get("strategy");
+  const initialJsg = requestedStrategy === "jsg";
   const [tab, setTab] = useState<"sma" | "jsg">(initialJsg ? "jsg" : "sma");
   const [opened, setOpened] = useState(initialJsg);
   const [jsgBusy, setJsgBusy] = useState(false);
+  useEffect(() => {
+    if (requestedStrategy === "jsg" || requestedStrategy === "sma") {
+      setTab(requestedStrategy);
+      if (requestedStrategy === "jsg") setOpened(true);
+    }
+  }, [requestedStrategy]);
   const smaRunning = useQuantLab((state) => state.running);
   usePublishRunningCount("quant", Number(smaRunning) + Number(jsgBusy));
   const strategyControl = (
@@ -177,6 +196,21 @@ function Workbench() {
 
   useEffect(() => {
     const receiveHandoff = async (): Promise<void> => {
+      try {
+        const received = await receiveQuantReference(async (handoff) => {
+          if (quant.getSnapshot().running) await cancelStrategy();
+          await importMarketAtlasHandoff(services, handoff);
+          await persistProject(services);
+          quant.log("ok", handoffLog(handoff));
+        });
+        if (received) {
+          await runStrategy(services);
+          return;
+        }
+      } catch (error) {
+        quant.log("error", `handoff · ${error instanceof Error ? error.message : String(error)}`);
+        return;
+      }
       const handoff = consumeQuantHandoff();
       if (handoff === null) return;
       try {

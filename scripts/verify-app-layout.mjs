@@ -106,7 +106,7 @@ try {
       await page.keyboard.press("Escape");
       await page.locator(".studio-topbar").waitFor({ state: "hidden" });
       if (route === "markets") {
-        const hero = await page.locator(".ma-hero-grid").boundingBox();
+        const hero = await page.locator(".ma-overview-summary").boundingBox();
         assert(hero.y <= 250, `Markets: core content starts at ${hero.y}`);
       }
       if (route === "media") {

@@ -12,6 +12,7 @@ import { datasetKey } from "./session";
 import { parseManifest, type JsgResult, type ResearchDataset } from "./model";
 import { withResearchFiles } from "./file-lease";
 import { readSmallRecord, type PartitionRecord } from "./partition-cache";
+import { marketPinnedIds } from "@bcr/market-data/research/catalog";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -86,8 +87,9 @@ function datasets(state: ResearchSession): DatasetRefs[] {
 export async function protectedResearchIds(
   services: StorageServices,
   state: ResearchSession,
+  store: BinaryStore = researchStore(),
 ): Promise<Set<string>> {
-  const roots = new Set<string>();
+  const roots = await marketPinnedIds(store);
   if (state.grid) roots.add(state.grid.run.resultRef.id);
   if (state.study) roots.add(state.study.run.resultRef.id);
   for (const d of datasets(state))
@@ -138,7 +140,7 @@ export async function planResearchCleanup(
   store: BinaryStore = researchStore(),
 ): Promise<ResearchCleanupPlan> {
   if (state.operation) throw new Error("请等待研究任务结束后清理");
-  const roots = await protectedResearchIds(services, state);
+  const roots = await protectedResearchIds(services, state, store);
   const cache = {
     ...(await Effect.runPromise(services.scheduler.planCachePrune({ maxEntries: 0 }))),
   };
@@ -215,7 +217,7 @@ export async function reclaimResearch(
     const released = new Set(journal.removed.map((c) => c.entry.task.id));
     for (const c of cache.removed) for (const id of c.taskIds) released.add(id);
     for (const id of released) await Effect.runPromise(services.artifacts.releaseTask(id));
-    const roots = await protectedResearchIds(services, current());
+    const roots = await protectedResearchIds(services, current(), store);
     for (const skipped of cache.skipped)
       for (const ref of skipped.candidate.outputs) roots.add(ref.id);
     const actual = {

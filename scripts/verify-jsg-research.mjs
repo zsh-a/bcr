@@ -73,10 +73,10 @@ try {
   await page.getByLabel("账本视图", { exact: true }).selectOption("risk");
   assert((await page.locator(".research-insights").innerText()).includes("63 日滚动观察"));
   await page.getByRole("tab", { name: "选股解释", exact: true }).click();
-  await page.locator(".research-breadth-map button").first().waitFor();
+  await page.locator(".ui-breadth-table button").first().waitFor();
   assert(
     (await page
-      .locator(".research-breadth-map button")
+      .locator(".ui-breadth-table button")
       .first()
       .evaluate((el) => getComputedStyle(el).backgroundColor)) !== "rgba(0, 0, 0, 0)",
   );

@@ -22,16 +22,17 @@ export function useDividends(instrument: MarketInstrument | undefined): Dividend
       setError(null);
       return;
     }
+    const abort = new AbortController();
     setSeries(null);
     setLoading(true);
     setError(null);
     void dividendService
-      .load(instrument)
+      .load(instrument, abort.signal)
       .then((next) => {
         if (request.current === current) setSeries(next);
       })
       .catch((reason: unknown) => {
-        if (request.current === current) {
+        if (request.current === current && !abort.signal.aborted) {
           setError(reason instanceof Error ? reason.message : String(reason));
         }
       })
@@ -40,6 +41,7 @@ export function useDividends(instrument: MarketInstrument | undefined): Dividend
       });
     return () => {
       request.current += 1;
+      abort.abort();
     };
   }, [instrument?.id]);
 

@@ -1,8 +1,11 @@
 import { OpfsStore } from "@bcr/storage-opfs";
-import { clickHouseClient } from "../jsg/clickhouse-http";
-import { inspectClickHouse, loadClickHouse } from "../jsg/clickhouse-load";
-import { fetchBenchmark } from "../jsg/benchmark";
-import type { ClickHouseWorkerRequest, ClickHouseWorkerResponse } from "../jsg/clickhouse-browser";
+import { clickHouseClient } from "../research/clickhouse-http";
+import { inspectClickHouse, loadClickHouse } from "../research/clickhouse-load";
+import { fetchBenchmark } from "../research/benchmark";
+import type {
+  ClickHouseWorkerRequest,
+  ClickHouseWorkerResponse,
+} from "../research/clickhouse-browser";
 
 const scope = globalThis as unknown as {
   postMessage(message: ClickHouseWorkerResponse): void;

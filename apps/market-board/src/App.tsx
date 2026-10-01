@@ -1,71 +1,93 @@
-import { WorkspaceTrigger } from "@bcr/react";
-import "@fontsource-variable/newsreader/wght.css";
+import { lazy, Suspense, useEffect, useState } from "react";
+import {
+  WorkspaceTrigger,
+  Button,
+  Dialog,
+  EmptyState,
+  Input,
+  Spinner,
+  useLocationSearch,
+  useNavigation,
+  useRuntimeActivity,
+} from "@bcr/react";
 import "@fontsource/ibm-plex-mono/400.css";
-import "@fontsource/ibm-plex-mono/500.css";
 import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";
-import type { HistoryRange, QuoteSnapshot } from "@bcr/market-data";
-import { publishQuantHandoff } from "@bcr/market-data";
+import type {
+  MarketInstrument,
+  MarketRankingItem,
+  MarketSectorPulse,
+  MarketHistorySeries,
+} from "@bcr/market-data";
+import { publishQuantReference } from "@bcr/market-data";
+import { ChevronRight, Info, Plus, RefreshCw } from "lucide-react";
+import { QuoteCard, Session } from "./MarketPanels";
 import {
-  ArrowUpRight,
-  ChevronRight,
-  Clock3,
-  Plus,
-  RefreshCw,
-  Search,
-  ShieldCheck,
-  Star,
-  TrendingDown,
-  TrendingUp,
-} from "lucide-react";
-import { Spinner } from "@bcr/react";
-import { useState } from "react";
-import { Sparkline } from "./components/Sparkline";
-import { CandlestickChart } from "./components/CandlestickChart";
-import { CorporateActions, MarketCartography, QuoteCard, Session } from "./MarketPanels";
-import { compact, price, qualityLabel, receivedTime, signed } from "./marketFormat";
+  BreadthSummary,
+  DataStamp,
+  RankingList,
+  SectorDetail,
+  SectorMap,
+  SectorView,
+  WatchRows,
+} from "./MarketViews";
+import { MarketSearch } from "./MarketSearch";
+import { StockDetail } from "./StockDetail";
 import { historyService } from "./marketServices";
-import { useDividends } from "./useDividends";
 import { useMarketAtlas } from "./useMarketAtlas";
-import { useMarketDiscovery } from "./useMarketDiscovery";
-import { useMarketHistory } from "./useMarketHistory";
 import { useMarketLandscape } from "./useMarketLandscape";
+import { useMarketDiscovery } from "./useMarketDiscovery";
 import { useMarketWatchlists } from "./useMarketWatchlists";
 import "./styles.css";
 
+const BreadthView = lazy(() => import("./BreadthView"));
+const VIEWS = [
+  { id: "overview", label: "概览" },
+  { id: "sectors", label: "行业" },
+  { id: "breadth", label: "宽度" },
+  { id: "watchlist", label: "自选" },
+] as const;
+type MarketView = (typeof VIEWS)[number]["id"];
 export function App() {
-  const { snapshot, refreshing: atlasRefreshing, refresh: refreshAtlas } = useMarketAtlas();
+  const active = useRuntimeActivity();
+  const navigation = useNavigation(),
+    params = new URLSearchParams(useLocationSearch());
+  const view: MarketView = VIEWS.find((item) => item.id === params.get("view"))?.id ?? "overview";
+  const {
+    snapshot,
+    refreshing: atlasRefreshing,
+    refresh: refreshAtlas,
+  } = useMarketAtlas(view === "overview" || view === "watchlist");
   const {
     snapshot: landscape,
     refreshing: landscapeRefreshing,
     refresh: refreshLandscape,
-  } = useMarketLandscape();
-  const refreshing = atlasRefreshing || landscapeRefreshing;
-  const refresh = async (): Promise<void> => {
-    await Promise.all([refreshAtlas(), refreshLandscape()]);
-  };
-  const [historyRange, setHistoryRange] = useState<HistoryRange>("1Y");
-  const [handoffLoading, setHandoffLoading] = useState(false);
-  const [handoffError, setHandoffError] = useState<string | null>(null);
+  } = useMarketLandscape(view === "overview" || view === "sectors");
+  const refreshing =
+    view === "overview"
+      ? atlasRefreshing || landscapeRefreshing
+      : view === "sectors"
+        ? landscapeRefreshing
+        : atlasRefreshing;
+  const refresh = () =>
+    view === "sectors"
+      ? refreshLandscape()
+      : view === "watchlist"
+        ? refreshAtlas()
+        : Promise.all([refreshAtlas(), refreshLandscape()]);
+  const discovery = useMarketDiscovery(snapshot.quotes, snapshot.futures);
   const {
     allQuotes,
     selected,
     region,
-    query,
-    searchOpen,
-    searchCursor,
     searchingQuote,
     quoteError,
     searchRef,
-    search,
     setSelectedId,
     setRegion,
-    setQuery,
     setSearchOpen,
-    setSearchCursor,
-    setQuoteError,
     selectSearchResult,
-  } = useMarketDiscovery(snapshot.quotes, snapshot.futures);
+  } = discovery;
   const {
     watchlists,
     activeGroup,
@@ -74,630 +96,416 @@ export function App() {
     setNewGroupName,
     setCreatingGroup,
     toggleWatch,
-    selectGroup: selectWatchlistGroup,
-    createGroup: createWatchlistGroup,
+    selectGroup,
+    createGroup,
   } = useMarketWatchlists();
-  const activeInstrumentIds = activeGroup.instrumentIds;
-  const dividends = useDividends(selected?.instrument);
-  const history = useMarketHistory(selected, historyRange);
-  const historySeries = history.series;
-  const currentHistory =
-    historySeries !== null &&
-    historySeries.instrument.id === selected?.instrument.id &&
-    historySeries.range === historyRange
-      ? historySeries
-      : null;
-  const visibleQuotes = snapshot.quotes.filter((quote) => {
-    const matchesRegion = region === "ALL" || quote.instrument.market === region;
-    const needle = query.trim().toLowerCase();
-    const matchesQuery =
-      needle.length === 0 ||
-      `${quote.instrument.name} ${quote.instrument.symbol} ${quote.instrument.shortName}`
-        .toLowerCase()
-        .includes(needle);
-    return matchesRegion && matchesQuery;
-  });
-  const movers = [...allQuotes]
-    .sort((left, right) => Math.abs(right.changePercent) - Math.abs(left.changePercent))
-    .slice(0, 5);
-  const watched = activeInstrumentIds.flatMap((id) => {
-    const found = allQuotes.find((quote) => quote.instrument.id === id);
-    return found === undefined ? [] : [found];
-  });
-  const advancers = landscape.breadth.advancing;
-  const decliners = landscape.breadth.declining;
-
-  const openQuant = (): void => {
-    if (selected === undefined || currentHistory === null || currentHistory.bars.length < 30)
-      return;
-    publishQuantHandoff({
-      version: 1,
-      createdAt: Date.now(),
-      instrument: selected.instrument,
-      range: historyRange,
-      bars: currentHistory.bars,
-      source: currentHistory.source,
-    });
-    window.location.assign("/quant");
-  };
-
-  const openWatchlistQuant = async (): Promise<void> => {
-    if (handoffLoading || activeGroup === undefined || activeInstrumentIds.length === 0) return;
-    const groupQuotes = activeInstrumentIds.flatMap((id) => {
-      const quote = allQuotes.find((item) => item.instrument.id === id);
-      return quote === undefined ? [] : [quote];
-    });
-    if (groupQuotes.length === 0) {
-      setHandoffError("ACTIVE GROUP HAS NO QUOTEABLE INSTRUMENTS");
+  const [detailId, setDetailId] = useState<string | null>(null),
+    [sector, setSector] = useState<MarketSectorPulse | null>(null),
+    [sourceOpen, setSourceOpen] = useState(false);
+  const [handoffLoading, setHandoffLoading] = useState(false),
+    [handoffError, setHandoffError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!active) {
+      setDetailId(null);
+      setSector(null);
+      setSourceOpen(false);
+    }
+  }, [active]);
+  const stockId = params.get("instrument") ?? detailId,
+    stockOpen = stockId !== null;
+  const stockQuote =
+    selected?.instrument.id === stockId
+      ? selected
+      : allQuotes.find((q) => q.instrument.id === stockId);
+  const openInstrument = async (instrument: MarketInstrument, ranking?: MarketRankingItem) => {
+    setDetailId(instrument.id);
+    setSector(null);
+    setHandoffError(null);
+    navigation.navigate(`/markets?view=${view}&instrument=${encodeURIComponent(instrument.id)}`);
+    const existing = allQuotes.find((q) => q.instrument.id === instrument.id);
+    if (existing) {
+      setSelectedId(existing.instrument.id);
       return;
     }
+    const fallback = ranking
+      ? {
+          instrument,
+          price: ranking.price,
+          change: 0,
+          changePercent: ranking.changePercent,
+          previousClose: null,
+          high: null,
+          low: null,
+          volume: null,
+          amount: ranking.amount,
+          receivedAt: landscape.receivedAt,
+          sourceTimestamp: null,
+          quality: landscape.quality === "partial" ? ("delayed" as const) : landscape.quality,
+          source: landscape.provider,
+          sparkline: [],
+        }
+      : undefined;
+    await selectSearchResult({ instrument, providerType: "stock" }, fallback);
+  };
+  const closeStock = () => {
+    setDetailId(null);
+    navigation.navigate(`/markets?view=${view}`, true);
+  };
+  const moveView = (next: MarketView) => {
+    setDetailId(null);
+    setSector(null);
+    setSearchOpen(false);
+    navigation.navigate(`/markets?view=${next}`);
+  };
+  const watched = activeGroup.instrumentIds.flatMap((id) => {
+    const quote = allQuotes.find((q) => q.instrument.id === id);
+    return quote ? [quote] : [];
+  });
+  const visibleQuotes = snapshot.quotes.filter(
+    (quote) => region === "ALL" || quote.instrument.market === region,
+  );
+  const openQuant = async (series: MarketHistorySeries) => {
     setHandoffLoading(true);
     setHandoffError(null);
     try {
-      const loaded = await Promise.allSettled(
-        groupQuotes.map((quote) => {
-          if (quote.instrument.id === selected?.instrument.id && currentHistory !== null) {
-            return Promise.resolve(currentHistory);
-          }
-          return historyService.load({
-            instrument: quote.instrument,
-            range: historyRange,
-            referencePrice: quote.price,
-          });
-        }),
-      );
-      const series = loaded.flatMap((result) =>
-        result.status === "fulfilled" && result.value.bars.length >= 30
-          ? [
-              {
-                instrument: result.value.instrument,
-                range: result.value.range,
-                bars: result.value.bars,
-                source: result.value.source,
-              },
-            ]
-          : [],
-      );
-      if (series.length === 0) {
-        throw new Error("NO GROUP HISTORY SERIES PASSED THE 30-BAR MINIMUM");
-      }
-      publishQuantHandoff({
-        version: 2,
+      await publishQuantReference({
+        version: 1,
         createdAt: Date.now(),
-        groupId: activeGroup.id,
-        groupName: activeGroup.name,
-        range: historyRange,
-        series,
-        source: `Market Atlas · ${activeGroup.name}`,
+        instrument: series.instrument,
+        range: series.range,
+        bars: series.bars,
+        source: `${series.source} · ${series.quality}`,
       });
-      window.location.assign("/quant");
-    } catch (error) {
-      setHandoffError(error instanceof Error ? error.message : String(error));
+      setDetailId(null);
+      navigation.navigate("/quant?strategy=sma");
+    } catch (e) {
+      setHandoffError(String(e));
     } finally {
       setHandoffLoading(false);
     }
   };
-
+  const openWatchlistQuant = async () => {
+    if (handoffLoading || !watched.length) return;
+    setHandoffLoading(true);
+    setHandoffError(null);
+    try {
+      if (activeGroup.instrumentIds.length > 64)
+        throw new Error("组合交接最多 64 只证券，请拆分自选分组");
+      const series: {
+        instrument: MarketInstrument;
+        range: "1Y";
+        bars: MarketHistorySeries["bars"];
+        source: string;
+      }[] = [];
+      // Limit concurrent history downloads instead of launching the entire group at once.
+      for (let offset = 0; offset < watched.length; offset += 3) {
+        const loaded = await Promise.all(
+          watched.slice(offset, offset + 3).map((q) =>
+            historyService.load({
+              instrument: q.instrument,
+              range: "1Y",
+              referencePrice: q.price,
+            }),
+          ),
+        );
+        for (const item of loaded) {
+          if (item.bars.length < 30) throw new Error(`${item.instrument.name} 历史行情不足 30 条`);
+          series.push({
+            instrument: item.instrument,
+            range: "1Y",
+            bars: item.bars,
+            source: `${item.source} · ${item.quality}`,
+          });
+        }
+      }
+      if (watched.length !== activeGroup.instrumentIds.length)
+        throw new Error("部分自选证券尚无行情，请先搜索加载后再导入组合");
+      await publishQuantReference({
+        version: 2,
+        createdAt: Date.now(),
+        groupId: activeGroup.id,
+        groupName: activeGroup.name,
+        range: "1Y",
+        series,
+        source: `Market · ${activeGroup.name}`,
+      });
+      navigation.navigate("/quant?strategy=sma");
+    } catch (e) {
+      setHandoffError(String(e));
+    } finally {
+      setHandoffLoading(false);
+    }
+  };
   return (
-    <div className="market-atlas" data-quality={snapshot.quality}>
+    <div className="market-atlas" data-view={view}>
       <header className="ma-header">
         <div className="ma-wordmark">
           <WorkspaceTrigger />
-          <div>
-            <small>GLOBAL MARKET INTELLIGENCE</small>
-            <b>Market Atlas</b>
-          </div>
+          <b>Market</b>
         </div>
-        <div className="ma-search-shell">
-          <div className="ma-search">
-            {search.loading ? <Spinner size="sm" /> : <Search />}
-            <input
-              ref={searchRef}
-              role="combobox"
-              aria-label="Search global instruments"
-              aria-expanded={searchOpen && query.trim().length >= 2}
-              aria-controls="ma-search-results"
-              aria-autocomplete="list"
-              value={query}
-              onFocus={() => setSearchOpen(true)}
-              onBlur={() => window.setTimeout(() => setSearchOpen(false), 160)}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setSearchCursor(0);
-                setSearchOpen(true);
-                setQuoteError(null);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") {
-                  setSearchOpen(false);
-                  event.currentTarget.blur();
-                } else if (event.key === "ArrowDown") {
-                  event.preventDefault();
-                  setSearchCursor((cursor) =>
-                    Math.min(Math.max(0, search.results.length - 1), cursor + 1),
-                  );
-                } else if (event.key === "ArrowUp") {
-                  event.preventDefault();
-                  setSearchCursor((cursor) => Math.max(0, cursor - 1));
-                } else if (event.key === "Enter") {
-                  const result = search.results[searchCursor];
-                  if (result !== undefined) {
-                    event.preventDefault();
-                    void selectSearchResult(result);
-                  }
-                }
-              }}
-              placeholder="搜索股票、指数或基金"
-            />
-            <kbd className="ui-kbd">/</kbd>
-          </div>
-          <div
-            id="ma-search-results"
-            className="ma-search-results"
-            role="listbox"
-            data-open={searchOpen && query.trim().length >= 2 ? "" : undefined}
-          >
-            <div className="ma-search-summary">
-              <span>搜索市场</span>
-              <small>
-                {search.loading
-                  ? search.results.length > 0
-                    ? "正在补充在线结果"
-                    : "正在搜索"
-                  : search.remoteAvailable === false
-                    ? `${search.results.length} 个本地结果 · 在线搜索暂不可用`
-                    : `${search.results.length} 个结果`}
-              </small>
-            </div>
-            {search.results.map((result, index) => (
-              <button
-                type="button"
-                role="option"
-                aria-selected={index === searchCursor}
-                key={result.instrument.id}
-                className={`ui-btn ui-btn-ghost ${index === searchCursor ? "active" : ""}`}
-                onMouseDown={(event) => event.preventDefault()}
-                onMouseEnter={() => setSearchCursor(index)}
-                onClick={() => void selectSearchResult(result)}
-                disabled={searchingQuote !== null}
-              >
-                <i>{result.instrument.market}</i>
-                <span>
-                  <b>{result.instrument.name}</b>
-                  <small>
-                    {result.instrument.symbol} · {result.instrument.venue}
-                  </small>
-                </span>
-                <em>{result.providerType}</em>
-                {searchingQuote === result.instrument.id ? <Spinner size="sm" /> : <ChevronRight />}
-              </button>
-            ))}
-            {!search.loading && search.results.length === 0 && (
-              <div className="ma-search-state">
-                {search.error ?? quoteError ?? "没有找到相关标的，试试名称或代码"}
-              </div>
-            )}
-            {quoteError !== null && search.results.length > 0 && (
-              <div className="ma-search-state error">QUOTE · {quoteError}</div>
-            )}
-            <footer>CN · HK · US · GLOBAL · STOCKS / INDICES / FUNDS / FUTURES</footer>
-          </div>
-        </div>
+        <nav className="ma-view-nav" aria-label="Market 视图">
+          {VIEWS.map((item) => (
+            <Button
+              key={item.id}
+              variant="ghost"
+              aria-current={view === item.id ? "page" : undefined}
+              onClick={() => moveView(item.id)}
+            >
+              {item.label}
+            </Button>
+          ))}
+        </nav>
+        <MarketSearch discovery={discovery} onOpen={openInstrument} />
         <div className="ma-header-actions">
-          <div className={`ma-quality ${snapshot.quality}`}>
-            <i />
-            <span>{qualityLabel(snapshot.quality)}</span>
-            <small>{snapshot.provider}</small>
-          </div>
-          <button
-            type="button"
-            className="ma-refresh ui-btn ui-btn-ghost"
-            onClick={() => void refresh()}
-            disabled={refreshing}
-            aria-label="Refresh market data"
+          <Button
+            variant="ghost"
+            className="ui-icon-btn"
+            aria-label="数据来源与市场时段"
+            onClick={() => setSourceOpen(true)}
           >
-            {refreshing ? <Spinner size="sm" /> : <RefreshCw />}
-            {receivedTime(snapshot.receivedAt)}
-          </button>
+            <Info size={16} />
+          </Button>
+          {view !== "breadth" && (
+            <Button
+              variant="ghost"
+              className="ma-refresh ui-icon-btn"
+              aria-label="刷新行情"
+              disabled={refreshing}
+              onClick={() => void refresh()}
+            >
+              {refreshing ? <Spinner size="sm" /> : <RefreshCw size={16} />}
+            </Button>
+          )}
         </div>
       </header>
-
-      <section className="ma-session-rail" aria-label="Global market sessions">
-        {snapshot.sessions.map((session, index) => (
-          <Session key={session.city} session={session} index={index + 1} />
-        ))}
-      </section>
-
       <main className="ma-content">
-        <section className="ma-intro">
-          <h1>市场概览</h1>
-          <p>股票 · 指数 · 基金 · 期货</p>
-        </section>
-
-        {selected !== undefined && (
-          <section className="ma-hero-grid">
-            <article className="ma-focus-card">
-              <div className="ma-card-topline">
-                <span>
-                  {selected.instrument.market} / {selected.instrument.venue}
-                </span>
-                <button
-                  type="button"
-                  className={`ui-btn ui-btn-default ui-btn-lg ui-icon-btn ${
-                    activeInstrumentIds.includes(selected.instrument.id) ? "watched" : ""
-                  }`}
-                  onClick={() => toggleWatch(selected.instrument.id)}
-                  aria-label={`Toggle ${activeGroup.name} watchlist`}
-                >
-                  <Star />
-                </button>
+        {view === "overview" && (
+          <>
+            <div className="ma-view-heading">
+              <div>
+                <h1>市场概览</h1>
+                <p>市场状态、主要资产与行业动向</p>
               </div>
-              <div className="ma-focus-body">
-                <div className="ma-focus-copy">
-                  <span className="ma-symbol">{selected.instrument.symbol}</span>
-                  <h2>{selected.instrument.name}</h2>
-                  <b>{price(selected.price)}</b>
-                  <em className={selected.changePercent >= 0 ? "positive" : "negative"}>
-                    {signed(selected.changePercent)} · {selected.change >= 0 ? "+" : ""}
-                    {price(selected.change)}
-                  </em>
-                  <dl>
-                    <div>
-                      <dt>最高</dt>
-                      <dd>{selected.high === null ? "—" : price(selected.high)}</dd>
-                    </div>
-                    <div>
-                      <dt>最低</dt>
-                      <dd>{selected.low === null ? "—" : price(selected.low)}</dd>
-                    </div>
-                    <div>
-                      <dt>成交量</dt>
-                      <dd>{compact(selected.volume)}</dd>
-                    </div>
-                    <div>
-                      <dt>币种</dt>
-                      <dd>{selected.instrument.currency}</dd>
-                    </div>
-                  </dl>
-                </div>
-                <div className="ma-focus-chart">
-                  <div className="ma-history-toolbar">
-                    <div className="ma-chart-meta">
-                      <span>{historyRange} · 日线</span>
-                      <small>
-                        {history.loading
-                          ? "正在加载历史行情"
-                          : `${currentHistory?.bars.length ?? 0} BARS · ${currentHistory?.quality.toUpperCase() ?? "—"}`}
-                      </small>
-                    </div>
-                    <nav aria-label="Historical range">
-                      {(["1M", "3M", "6M", "1Y", "3Y"] as const).map((item) => (
-                        <button
-                          type="button"
-                          key={item}
-                          className={historyRange === item ? "active" : ""}
-                          onClick={() => setHistoryRange(item)}
-                        >
-                          {item}
-                        </button>
-                      ))}
-                    </nav>
-                  </div>
-                  <CandlestickChart
-                    bars={currentHistory?.bars ?? []}
-                    loading={history.loading}
-                    onRetry={() => void history.refresh()}
+              <span className="ma-caption">
+                {snapshot.sessions
+                  .filter((s) => s.state === "open")
+                  .map((s) => s.city)
+                  .join(" · ") || "主要市场休市"}
+              </span>
+            </div>
+            <BreadthSummary snapshot={landscape} />
+            <section>
+              <div className="ma-section-heading">
+                <h2>主要资产</h2>
+                <nav aria-label="市场区域">
+                  {(["ALL", "CN", "HK", "US", "GLOBAL"] as const).map((item) => (
+                    <Button
+                      key={item}
+                      size="sm"
+                      variant="ghost"
+                      aria-pressed={region === item}
+                      onClick={() => setRegion(item)}
+                    >
+                      {item === "ALL" ? "全部" : item}
+                    </Button>
+                  ))}
+                </nav>
+              </div>
+              <div className="ma-quote-grid">
+                {visibleQuotes.map((quote, index) => (
+                  <QuoteCard
+                    key={quote.instrument.id}
+                    quote={quote}
+                    index={index + 1}
+                    selected={false}
+                    watched={activeGroup.instrumentIds.includes(quote.instrument.id)}
+                    onSelect={() => void openInstrument(quote.instrument)}
+                    onWatch={() => toggleWatch(quote.instrument.id)}
                   />
-                  <div className="ma-history-source">
-                    <span>{currentHistory?.source ?? "正在连接数据源"}</span>
-                    <small>前复权 · 日线</small>
-                  </div>
-                </div>
+                ))}
               </div>
-              <button
-                type="button"
-                className="ma-open-quant ui-btn ui-btn-ghost ui-btn-lg"
-                onClick={openQuant}
-                disabled={history.loading || (currentHistory?.bars.length ?? 0) < 30}
-              >
-                在 Quant Lab 中回测 <ArrowUpRight />
-              </button>
-            </article>
-
-            <aside className="ma-breadth-card">
-              <div className="ma-section-label">
-                <span>市场宽度</span>
-                <small>A 股市场</small>
-              </div>
-              <div
-                className="ma-breadth-orbit"
-                style={
-                  {
-                    "--advance": `${(advancers / Math.max(1, landscape.breadth.total)) * 360}deg`,
-                  } as React.CSSProperties
-                }
-              >
-                <div>
-                  <strong>
-                    {Math.round((advancers / Math.max(1, landscape.breadth.total)) * 100)}%
-                  </strong>
-                  <span>上涨占比</span>
-                </div>
-              </div>
-              <div className="ma-breadth-counts">
-                <span>
-                  <i className="up" /> {advancers.toLocaleString("en-US")} ABOVE
-                </span>
-                <span>
-                  <i className="down" /> {decliners.toLocaleString("en-US")} BELOW
-                </span>
-              </div>
-              <p>
-                Full A-share scan across {landscape.breadth.total.toLocaleString("en-US")} active
-                listings. {landscape.breadth.unchanged.toLocaleString("en-US")} unchanged.
-              </p>
-            </aside>
-            <CorporateActions
-              instrument={selected.instrument}
-              series={dividends.series}
-              loading={dividends.loading}
-              error={dividends.error}
-            />
-          </section>
-        )}
-
-        <section className="ma-pulse-section">
-          <div className="ma-section-heading">
-            <div>
-              <span>02</span>
-              <h2>Global pulse</h2>
-              <small>ASIA → AMERICAS</small>
-            </div>
-            <nav aria-label="Market region filter">
-              {(["ALL", "CN", "HK", "US"] as const).map((item) => (
-                <button
-                  type="button"
-                  key={item}
-                  className={region === item ? "active" : ""}
-                  onClick={() => setRegion(item)}
-                >
-                  {item}
-                </button>
-              ))}
-            </nav>
-          </div>
-          <div className="ma-pulse-grid">
-            {visibleQuotes.map((quote, index) => (
-              <QuoteCard
-                key={quote.instrument.id}
-                quote={quote}
-                index={index}
-                selected={quote.instrument.id === selected?.instrument.id}
-                watched={activeInstrumentIds.includes(quote.instrument.id)}
-                onSelect={() => setSelectedId(quote.instrument.id)}
-                onWatch={() => toggleWatch(quote.instrument.id)}
+              <DataStamp
+                source={snapshot.provider}
+                quality={snapshot.quality}
+                at={snapshot.receivedAt}
               />
-            ))}
-            {visibleQuotes.length === 0 && (
-              <div className="ma-empty">NO INSTRUMENTS MATCH “{query.toUpperCase()}”</div>
-            )}
-          </div>
-        </section>
-
-        <MarketCartography
-          snapshot={landscape}
-          loading={landscapeRefreshing}
-          onOpen={(instrument, ranking) => {
-            const previousClose =
-              ranking === undefined ? null : ranking.price / (1 + ranking.changePercent / 100);
-            const fallbackQuote: QuoteSnapshot | undefined =
-              ranking === undefined
-                ? undefined
-                : {
-                    instrument,
-                    price: ranking.price,
-                    change: previousClose === null ? 0 : ranking.price - previousClose,
-                    changePercent: ranking.changePercent,
-                    previousClose,
-                    high: null,
-                    low: null,
-                    volume: null,
-                    amount: ranking.amount,
-                    sourceTimestamp: null,
-                    receivedAt: landscape.receivedAt,
-                    quality: landscape.quality === "demo" ? "demo" : "delayed",
-                    source: `${landscape.provider} · ranking fallback`,
-                    sparkline: [previousClose ?? ranking.price, ranking.price],
-                  };
-            void selectSearchResult({ instrument, providerType: "MARKET SCAN" }, fallbackQuote);
-          }}
-        />
-
-        <section className="ma-lower-grid">
-          <article className="ma-list-panel ma-futures-panel">
-            <div className="ma-section-heading compact">
+            </section>
+            <div className="ma-overview-grid">
+              <section>
+                <div className="ma-section-heading">
+                  <h2>行业动向</h2>
+                  <Button variant="ghost" size="sm" onClick={() => moveView("sectors")}>
+                    全部行业 <ChevronRight size={14} />
+                  </Button>
+                </div>
+                <SectorMap sectors={landscape.sectors.slice(0, 12)} onSelect={setSector} />
+                <DataStamp
+                  source={landscape.provider}
+                  quality={landscape.quality}
+                  at={landscape.receivedAt}
+                />
+              </section>
+              <RankingList
+                snapshot={landscape}
+                onOpen={(instrument, ranking) => void openInstrument(instrument, ranking)}
+              />
+            </div>
+          </>
+        )}
+        {view === "sectors" && <SectorView snapshot={landscape} onSelect={setSector} />}
+        {view === "breadth" && (
+          <Suspense
+            fallback={
+              <p className="ma-operation">
+                <Spinner size="sm" />
+                正在加载宽度分析…
+              </p>
+            }
+          >
+            <BreadthView
+              requestedSnapshot={params.get("snapshot")}
+              requestedDate={params.get("date")}
+            />
+          </Suspense>
+        )}
+        {view === "watchlist" && (
+          <section>
+            <div className="ma-view-heading">
               <div>
-                <span>04</span>
-                <h2>Cross-asset tape</h2>
-                <small>GLOBAL FUTURES</small>
+                <h1>我的自选</h1>
+                <p>按研究主题组织证券 · 点击名称查看详情</p>
               </div>
+              <Button
+                disabled={!watched.length || handoffLoading}
+                onClick={() => void openWatchlistQuant()}
+              >
+                {handoffLoading ? <Spinner size="sm" /> : <ChevronRight size={16} />}在 Quant
+                分析组合
+              </Button>
             </div>
-            <div className="ma-futures-grid">
-              {snapshot.futures.slice(0, 6).map((quote) => (
-                <button
-                  type="button"
-                  key={quote.instrument.id}
-                  onClick={() => setSelectedId(quote.instrument.id)}
-                >
-                  <span>{quote.instrument.shortName}</span>
-                  <b>{price(quote.price)}</b>
-                  <em className={quote.changePercent >= 0 ? "positive" : "negative"}>
-                    {signed(quote.changePercent)}
-                  </em>
-                  <Sparkline values={quote.sparkline} positive={quote.changePercent >= 0} />
-                </button>
-              ))}
-            </div>
-          </article>
-
-          <article className="ma-list-panel">
-            <div className="ma-section-heading compact">
-              <div>
-                <span>05</span>
-                <h2>Largest moves</h2>
-                <small>ABSOLUTE CHANGE</small>
-              </div>
-            </div>
-            <div className="ma-movers">
-              {movers.map((quote, index) => (
-                <button
-                  type="button"
-                  key={quote.instrument.id}
-                  onClick={() => setSelectedId(quote.instrument.id)}
-                >
-                  <i>{String(index + 1).padStart(2, "0")}</i>
-                  <span>
-                    <b>{quote.instrument.shortName}</b>
-                    <small>
-                      {quote.instrument.market} · {quote.instrument.symbol}
-                    </small>
-                  </span>
-                  <em className={quote.changePercent >= 0 ? "positive" : "negative"}>
-                    {quote.changePercent >= 0 ? <TrendingUp /> : <TrendingDown />}
-                    {signed(quote.changePercent)}
-                  </em>
-                </button>
-              ))}
-            </div>
-          </article>
-
-          <article className="ma-list-panel">
-            <div className="ma-section-heading compact ma-watchlist-heading">
-              <div>
-                <span>06</span>
-                <h2>Watchlist</h2>
-                <small>
-                  {watched.length} INSTRUMENTS · {activeGroup.name.toUpperCase()}
-                </small>
-              </div>
-              <div className="ma-watchlist-actions">
-                <button
-                  type="button"
-                  className="ma-watchlist-send ui-btn ui-btn-ghost ui-btn-lg"
-                  onClick={() => void openWatchlistQuant()}
-                  disabled={handoffLoading || watched.length === 0}
-                >
-                  {handoffLoading ? <Spinner size="sm" /> : <ArrowUpRight />}
-                  SEND GROUP
-                </button>
-                <button
-                  type="button"
-                  className="ma-watchlist-add ui-btn ui-btn-ghost ui-btn-lg ui-icon-btn"
-                  onClick={() => setCreatingGroup((open) => !open)}
-                  aria-label="Create watchlist group"
-                  aria-expanded={creatingGroup}
-                >
-                  <Plus />
-                </button>
-              </div>
-            </div>
-            <div className="ma-watchlist-groups" role="tablist" aria-label="Watchlist groups">
-              {watchlists.groups.map((group) => (
-                <button
-                  type="button"
-                  role="tab"
-                  key={group.id}
-                  aria-selected={group.id === activeGroup.id}
-                  className={group.id === activeGroup.id ? "active" : ""}
-                  onClick={() => selectWatchlistGroup(group.id)}
-                >
-                  {group.name}
-                  <small>{group.instrumentIds.length}</small>
-                </button>
-              ))}
+            <div className="ma-watchlist-groups">
+              <nav aria-label="自选分组">
+                {watchlists.groups.map((group) => (
+                  <Button
+                    key={group.id}
+                    variant="ghost"
+                    aria-pressed={activeGroup.id === group.id}
+                    onClick={() => selectGroup(group.id)}
+                  >
+                    {group.name}
+                    <small>{group.instrumentIds.length}</small>
+                  </Button>
+                ))}
+              </nav>
+              <Button size="sm" variant="ghost" onClick={() => setCreatingGroup((v) => !v)}>
+                <Plus size={16} />
+                新建分组
+              </Button>
             </div>
             {creatingGroup && (
               <form
-                className="ma-watchlist-create"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  createWatchlistGroup();
+                className="ma-new-group"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  createGroup();
                 }}
               >
-                <input
+                <Input
                   autoFocus
-                  className="ui-input"
-                  aria-label="New watchlist group name"
+                  aria-label="分组名称"
                   value={newGroupName}
-                  onChange={(event) => setNewGroupName(event.target.value)}
-                  placeholder="New group name"
-                  maxLength={24}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  placeholder="分组名称"
                 />
-                <button
-                  type="submit"
-                  className="ui-btn ui-btn-primary"
-                  disabled={newGroupName.trim().length === 0}
-                >
-                  CREATE
-                </button>
+                <Button type="submit" variant="primary" disabled={!newGroupName.trim()}>
+                  创建
+                </Button>
+                <Button onClick={() => setCreatingGroup(false)}>取消</Button>
               </form>
             )}
-            <div className="ma-watchlist">
-              {watched.map((quote) => (
-                <button
-                  type="button"
-                  key={quote.instrument.id}
-                  onClick={() => setSelectedId(quote.instrument.id)}
-                >
-                  <Star />
-                  <span>
-                    <b>{quote.instrument.shortName}</b>
-                    <small>{quote.instrument.symbol}</small>
-                  </span>
-                  <strong>{price(quote.price)}</strong>
-                  <em className={quote.changePercent >= 0 ? "positive" : "negative"}>
-                    {signed(quote.changePercent)}
-                  </em>
-                </button>
-              ))}
-              {watched.length === 0 && <p>Star an instrument to keep it close.</p>}
-            </div>
-            {handoffError !== null && <p className="ma-watchlist-error">QUANT · {handoffError}</p>}
-          </article>
-        </section>
-
-        <section className="ma-provider-panel">
-          <div className="ma-provider-heading">
-            <ShieldCheck />
-            <div>
-              <b>Source integrity</b>
-              <span>Public feeds · delayed · informational use only</span>
-            </div>
-          </div>
-          <div className="ma-feed-grid">
-            {snapshot.feeds.map((feed) => (
-              <div key={feed.market} className={feed.state}>
-                <span>{feed.market}</span>
-                <b>{feed.state.toUpperCase()}</b>
-                <small>
-                  {feed.itemCount} ITEMS · {feed.message}
-                </small>
-              </div>
-            ))}
-          </div>
-          {snapshot.errors.length > 0 && (
-            <p className="ma-provider-error">{snapshot.errors.slice(0, 2).join(" · ")}</p>
-          )}
-        </section>
+            <WatchRows
+              quotes={watched}
+              watched={activeGroup.instrumentIds}
+              onOpen={(quote) => void openInstrument(quote.instrument)}
+              onWatch={toggleWatch}
+            />
+            {!activeGroup.instrumentIds.length && (
+              <EmptyState
+                title="开始整理你的研究标的"
+                description="搜索证券，打开详情后加入当前自选分组。"
+                action={<Button onClick={() => searchRef.current?.focus()}>搜索证券</Button>}
+              />
+            )}
+            {activeGroup.instrumentIds.length > watched.length && (
+              <p className="ma-caption">
+                {activeGroup.instrumentIds.length - watched.length}{" "}
+                只证券尚未取得行情，可通过顶部搜索加载。
+              </p>
+            )}
+            {handoffError && (
+              <p className="ma-error" role="alert">
+                {handoffError}
+              </p>
+            )}
+            <DataStamp
+              source={snapshot.provider}
+              quality={snapshot.quality}
+              at={snapshot.receivedAt}
+            />
+          </section>
+        )}
       </main>
-
-      <footer className="ma-footer">
-        <span>
-          <Clock3 /> AS OF {receivedTime(snapshot.receivedAt)}
-        </span>
-        <p>Prices may be delayed by seconds or minutes. Not for order execution.</p>
-        <b>BCR / MARKET ATLAS 0.5</b>
-      </footer>
+      <SectorDetail
+        sector={active ? sector : null}
+        onClose={() => setSector(null)}
+        onOpen={(instrument, ranking) => void openInstrument(instrument, ranking)}
+      />
+      <StockDetail
+        open={active && stockOpen}
+        quote={stockQuote}
+        loading={searchingQuote !== null || (!stockQuote && !quoteError)}
+        error={quoteError ?? handoffError}
+        onClose={closeStock}
+        watched={stockQuote ? activeGroup.instrumentIds.includes(stockQuote.instrument.id) : false}
+        onWatch={() => {
+          if (stockQuote) toggleWatch(stockQuote.instrument.id);
+        }}
+        onQuant={openQuant}
+        busy={handoffLoading}
+      />
+      <Dialog
+        open={active && sourceOpen}
+        onClose={() => setSourceOpen(false)}
+        title="数据来源与市场时段"
+        className="ma-source-dialog"
+      >
+        <div className="ma-sessions">
+          {snapshot.sessions.map((session, index) => (
+            <Session key={session.city} session={session} index={index + 1} />
+          ))}
+        </div>
+        <h3>主要资产行情</h3>
+        <DataStamp source={snapshot.provider} quality={snapshot.quality} at={snapshot.receivedAt} />
+        {snapshot.errors.map((error, index) => (
+          <p className="ma-caption" key={index}>
+            {error}
+          </p>
+        ))}
+        <h3>行业与市场分布</h3>
+        <DataStamp
+          source={landscape.provider}
+          quality={landscape.quality}
+          at={landscape.receivedAt}
+        />
+        {landscape.errors.map((error, index) => (
+          <p className="ma-caption" key={index}>
+            {error}
+          </p>
+        ))}
+        <p className="ma-caption">
+          宽度使用独立的 ClickHouse 冻结快照。各模块显示自己的来源与数据时间。
+        </p>
+      </Dialog>
     </div>
   );
 }

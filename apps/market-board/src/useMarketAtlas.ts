@@ -11,26 +11,35 @@ export interface MarketAtlasResource {
   readonly refresh: () => Promise<void>;
 }
 
-export function useMarketAtlas(): MarketAtlasResource {
+export function useMarketAtlas(enabled = true): MarketAtlasResource {
   const active = useRuntimeActivity();
   const [snapshot, setSnapshot] = useState<MarketAtlasSnapshot>(() => createDemoSnapshot());
   const [refreshing, setRefreshing] = useState(true);
   const request = useRef(0);
+  const controller = useRef<AbortController | null>(null);
   const receivedAt = useRef(snapshot.receivedAt);
 
   const refresh = useCallback(async () => {
+    controller.current?.abort();
+    const abort = new AbortController();
+    controller.current = abort;
     const current = ++request.current;
     setRefreshing(true);
-    const next = await atlasService.load();
-    if (current === request.current) {
-      receivedAt.current = next.receivedAt;
-      setSnapshot(next);
-      setRefreshing(false);
+    try {
+      const next = await atlasService.load(abort.signal);
+      if (current === request.current && !abort.signal.aborted) {
+        receivedAt.current = next.receivedAt;
+        setSnapshot(next);
+      }
+    } catch (error) {
+      if (!abort.signal.aborted) console.error(error);
+    } finally {
+      if (current === request.current) setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || !enabled) return;
     void refresh();
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
@@ -43,10 +52,11 @@ export function useMarketAtlas(): MarketAtlasResource {
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       request.current += 1;
+      controller.current?.abort();
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [refresh, active]);
+  }, [refresh, active, enabled]);
 
   return { snapshot, refreshing, refresh };
 }

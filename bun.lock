@@ -69,9 +69,11 @@
       "name": "@bcr/market-board",
       "version": "0.1.0",
       "dependencies": {
+        "@bcr/core": "workspace:*",
         "@bcr/market-data": "workspace:*",
         "@bcr/react": "workspace:*",
         "@bcr/shell-contract": "workspace:*",
+        "@bcr/storage-opfs": "workspace:*",
         "@fontsource-variable/newsreader": "^5.2.8",
         "@fontsource/ibm-plex-mono": "catalog:",
         "@fontsource/ibm-plex-sans": "catalog:",
@@ -346,6 +348,9 @@
       "name": "@bcr/market-data",
       "version": "0.1.0",
       "dependencies": {
+        "@bcr/core": "workspace:*",
+        "@bcr/storage-opfs": "workspace:*",
+        "effect": "catalog:",
         "stock-sdk": "2.4.2",
       },
     },

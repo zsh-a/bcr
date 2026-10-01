@@ -536,22 +536,21 @@ Long-only Backtester 已下沉 Rust/WASM，以 f64 close + u8 position TypedArra
 大数据集、组合优化以及 SIMD/多线程 kernel。
 **Media + Quant + Markets 都能良好运行在同一 Runtime 上，即证明抽象成立。**
 
-### Phase 2.5 — Market Atlas（首个实时数据表面已落地）
+### Phase 2.5 — Market（行情分析与策略研究分工）
 
-`@bcr/market-data` 将 `stock-sdk` 隔离在 provider adapter 内，规范为统一的 instrument、quote、
-search-result、dividend-event、market-landscape、daily OHLCV、session、feed-health 数据契约。CN / HK / US / 全球期货分别请求；上游整体失败时按
-`live delayed → partial → cached → demo` 语义降级。`apps/market-board` 以第四个 keep-alive 路由
-挂入 Studio，当前完成全球时区轨道、市场脉搏、焦点行情、全 A 股宽度、行业热图、三类排行、期货、异动、Watchlist 与
-1M—3Y 日线蜡烛图。跨市场搜索以 41 个常用标的目录即时响应（含 8 个全球期货），再与 `sdk.search()` 远程结果合并；Provider adapter 同时暴露 markets / quote / history / search / dividends / landscape capabilities，后续可据此挂载更多数据源；
-Studio / Market Board 使用 `COEP: credentialless`，在维持 `crossOriginIsolated` 的同时允许 SDK 的
-跨域 JSONP 搜索脚本。Market Cartography 以 `batch.cn()` 生成 5,000+ 标的广度与领涨/领跌/成交额排行，
-行业板块和资金流分别请求；任一层为空时从最后快照或确定性 fixture 补齐，并保持 `partial` 标签。A 股分红进入 Income Ledger，默认选中贵州茅台，并按实时 → localStorage 最近记录 → 明确标注的 deterministic fixture 提供可见参考；其他市场保持显式 unsupported 语义。
-看板通过版本化 handoff 传递完整历史柱；Quant Lab 接收后规范化为
-`market/symbol/year` Arrow / Parquet 内容寻址分区并自动运行回测。当前 v2 handoff 已支持
-Watchlist 分组内的多序列交接：Quant Lab 会保留完整 intake 摘要，以首个序列作为当前策略
-数据集，同时按共同交易日生成 Pearson 相关性矩阵、等权组合基准、权益曲线、年化波动率与最大回撤，
-并将分析快照随项目元数据跨刷新恢复。下一步是把组合计算下沉至 Worker/Scheduler，接入用户权重、
-再平衡成本、风险预算与滚动窗口优化。
+`apps/market-board` 使用「概览 / 行业 / 宽度 / 自选」四个 URL 视图。单层工具栏集成导航和证券搜索；交易时段与来源详情收进对话框。个股 K 线与分红按需加载，行业热图点击进入成分股抽屉，不依赖是否存在领涨股。成分股每页最多 50 只，历史热图每页最多 63 日。只有可见视图的行情轮询运行，报价更新不会重复下载个股历史。
+
+`@bcr/market-data` 隔离 `stock-sdk`，提供 instrument、quote、search、dividend、landscape、OHLCV、session 数据契约。在线响应的空行业或排行保持为空，不混入旧快照或演示数据；整体失败才返回明确标记的 cached/demo 快照。每个数据块展示来源、质量和时间，缓存保留原数据时间。东方财富行业当日涨跌热图与历史 MA20 宽度使用独立入口，行业分类随数据集显示，合成数据不标作真实申万行业。
+
+共享研究模块位于 `packages/market-data/src/research`，Quant 中的原路径仅作重导出。连接、密码隔离、名称字典、数据清单、ClickHouse Arrow 分片缓存与 Worker 加载器共用；公开连接配置不保存密码。Market 可直接检查只读 ClickHouse 连接并获取冻结快照，也可选择已有 Quant 快照，无需运行回测。初版复用完整 JSG 日线事实快照，以保证之后进入 Quant 时不会重复下载或改变研究输入；暂未引入专用的宽度聚合 SQL 或更轻量的价格专用数据契约。
+
+Rust `MarketBreadth` 复用 MA20 特征核，按日计算行业中复权收盘价高于 20 次观测均线的成员占比，不创建交易、持仓或策略参数。浏览器 Worker 每次只读取一个经过尺寸和摘要校验的 Arrow 分片（上限 32 MiB）；累计指标限制为 150,000 个单元格和 16 MiB，超出时要求缩小区间。派生宽度缓存在 OPFS，主线程只接收紧凑指标，使用与 Quant 共用的热图组件。
+
+Market ↔ Quant 的 JSG 跳转传递快照内容引用和观察日期：`/markets?view=breadth&snapshot=…&date=…`、`/quant?strategy=jsg&snapshot=…`。共享引用保存在 `quant/cache/market-pins`，清理保护其清单与 Arrow 文件；「宽度 → 数据源 → 解除共享保留」可释放引用。Quant 导入并持久化成功后确认跳转，只准备研究数据，不自动运行策略；策略的选股解释、交易、账本和冻结运行结果仍在 Quant。
+
+证券与自选组合的 SMA 交接把柱数据写入 `market/handoffs` OPFS，localStorage 仅保存小引用。消费者在导入与保存成功后确认并删除交接；失败保留待处理引用。组内下载并发为 3，交接最多 64 只证券与 16 MiB，避免在主线程或 localStorage 承载无界数据。Quant 保留 intake 摘要，以首个序列运行 SMA，并按共同交易日计算相关性与等权组合分析。
+
+浏览器走查：`verify-market-atlas.mjs` 验证四视图、证券详情、自选、OPFS 交接、Rust 宽度、往返和窄屏；`verify-market-clickhouse.mjs` 使用只读 HTTP fixture 验证独立加载、中文名称、密码隔离、刷新复用和 Quant 引用导入。HTTP fixture 校验传输协议，真实 SQL 正确性仍由量化的独立原生测试覆盖。
 
 ### Phase 2.75 — Document Studio（内容流水线入口已落地）
 

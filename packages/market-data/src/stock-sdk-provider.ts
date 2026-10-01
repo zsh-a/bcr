@@ -12,7 +12,7 @@ import {
 } from "stock-sdk";
 import { fallbackSessions } from "./demo";
 import { instrumentsFor } from "./instruments";
-import { buildMarketLandscape } from "./landscape";
+import { aShareInstrument, buildMarketLandscape } from "./landscape";
 import type {
   DividendSeries,
   MarketAtlasSnapshot,
@@ -27,6 +27,7 @@ import type {
   MarketLandscapeSnapshot,
   MarketProviderCapabilities,
   MarketRegion,
+  MarketRankingItem,
   MarketSession,
   MarketSearchResult,
   ProviderFeed,
@@ -313,15 +314,40 @@ export class StockSdkProvider
     MarketLandscapeProvider
 {
   readonly id = "stock-sdk@2.4.2";
+
+  async loadSectorMembers(code: string, signal?: AbortSignal): Promise<MarketRankingItem[]> {
+    signal?.throwIfAborted();
+    if (signal) return new StockSdkProvider(signal).loadSectorMembers(code);
+    if (!/^BK\d{4}$/u.test(code)) throw new Error("行业代码无效");
+    const rows = await this.sdk.board.industry.constituents(code);
+    return rows.flatMap((row) => {
+      const instrument = aShareInstrument(row.code, row.name);
+      if (!instrument || row.price === null || row.changePercent === null) return [];
+      return [
+        {
+          rank: row.rank,
+          instrument,
+          price: row.price,
+          changePercent: row.changePercent,
+          amount: row.amount ?? 0,
+          turnoverRate: row.turnoverRate,
+        },
+      ];
+    });
+  }
   readonly capabilities = STOCK_SDK_CAPABILITIES;
-  private readonly sdk = new StockSDK({
-    timeout: 10_000,
-    retry: { maxRetries: 1, baseDelay: 350 },
-    providerPolicies: {
-      eastmoney: { timeout: 12_000, rateLimit: { requestsPerSecond: 3, maxBurst: 3 } },
-      tencent: { timeout: 10_000, rateLimit: { requestsPerSecond: 4, maxBurst: 4 } },
-    },
-  });
+  private readonly sdk: StockSDK;
+  constructor(signal?: AbortSignal) {
+    this.sdk = new StockSDK({
+      ...(signal ? { signal } : {}),
+      timeout: 10_000,
+      retry: { maxRetries: 1, baseDelay: 350 },
+      providerPolicies: {
+        eastmoney: { timeout: 12_000, rateLimit: { requestsPerSecond: 3, maxBurst: 3 } },
+        tencent: { timeout: 10_000, rateLimit: { requestsPerSecond: 4, maxBurst: 4 } },
+      },
+    });
+  }
 
   async searchInstruments(keyword: string): Promise<ReadonlyArray<MarketSearchResult>> {
     if (keyword.trim().length < 2) return [];
@@ -359,7 +385,9 @@ export class StockSdkProvider
     return quoteForInstrument(instrument, quote, receivedAt);
   }
 
-  async loadDividends(instrument: MarketInstrument): Promise<DividendSeries> {
+  async loadDividends(instrument: MarketInstrument, signal?: AbortSignal): Promise<DividendSeries> {
+    signal?.throwIfAborted();
+    if (signal) return new StockSdkProvider(signal).loadDividends(instrument);
     const receivedAt = Date.now();
     if (instrument.market !== "CN" || instrument.assetClass !== "equity") {
       return {
@@ -392,7 +420,12 @@ export class StockSdkProvider
     };
   }
 
-  async loadHistory(request: MarketHistoryRequest): Promise<MarketHistorySeries> {
+  async loadHistory(
+    request: MarketHistoryRequest,
+    signal?: AbortSignal,
+  ): Promise<MarketHistorySeries> {
+    signal?.throwIfAborted();
+    if (signal) return new StockSdkProvider(signal).loadHistory(request);
     const receivedAt = Date.now();
     const options = {
       period: "daily" as const,
@@ -425,7 +458,9 @@ export class StockSdkProvider
     };
   }
 
-  async loadMarketLandscape(): Promise<MarketLandscapeSnapshot> {
+  async loadMarketLandscape(signal?: AbortSignal): Promise<MarketLandscapeSnapshot> {
+    signal?.throwIfAborted();
+    if (signal) return new StockSdkProvider(signal).loadMarketLandscape();
     const receivedAt = Date.now();
     const [quotes, boards, sectorFlows] = await Promise.allSettled([
       this.sdk.batch.cn({ batchSize: 500, concurrency: 5 }),
@@ -470,7 +505,9 @@ export class StockSdkProvider
     };
   }
 
-  async loadSnapshot(): Promise<MarketAtlasSnapshot> {
+  async loadSnapshot(signal?: AbortSignal): Promise<MarketAtlasSnapshot> {
+    signal?.throwIfAborted();
+    if (signal) return new StockSdkProvider(signal).loadSnapshot();
     const receivedAt = Date.now();
     const [cn, hk, us, futures] = await Promise.allSettled([
       this.sdk.quotes.cnSimple(instrumentsFor("CN").map((item) => item.sourceSymbol)),

@@ -10,13 +10,26 @@ import type { AppManifest } from "@bcr/shell-contract";
  */
 export const manifest = {
   id: "markets",
-  title: "Market Atlas",
+  title: "Market",
   path: "/markets",
   icon: Globe2,
-  description: "全球市场脉搏 · 5K+ A 股广度 / 板块热图 / 排行 · 实时行情，离线回退缓存与演示数据",
+  description: "行情、行业表现、历史宽度与自选研究",
   section: "compute",
   load: () => import("./App"),
   validateSearch: (search) => ({
+    view:
+      typeof search["view"] === "string" &&
+      ["overview", "sectors", "breadth", "watchlist"].includes(search["view"])
+        ? search["view"]
+        : undefined,
+    snapshot:
+      typeof search["snapshot"] === "string" && /^[a-f0-9]{64}$/u.test(search["snapshot"])
+        ? search["snapshot"]
+        : undefined,
+    date:
+      typeof search["date"] === "string" && /^\d{4}-\d{2}-\d{2}$/u.test(search["date"])
+        ? search["date"]
+        : undefined,
     instrument: typeof search["instrument"] === "string" ? search["instrument"] : undefined,
   }),
 } as const satisfies AppManifest;

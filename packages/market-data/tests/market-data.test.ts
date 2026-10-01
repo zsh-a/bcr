@@ -256,4 +256,59 @@ describe("Market data contracts", () => {
       }),
     ).toBe(true);
   });
+  it("空的在线行业层不混入演示热图，平盘市场不替换为虚构涨跌", async () => {
+    const base = createDemoMarketLandscape();
+    const live = {
+      ...base,
+      quality: "partial" as const,
+      provider: "live fixture",
+      receivedAt: 123,
+      breadth: {
+        ...base.breadth,
+        advancing: 0,
+        declining: 0,
+        unchanged: base.breadth.total,
+        amount: 0,
+      },
+      sectors: [],
+      rankings: { gainers: [], decliners: [], turnover: [] },
+    };
+    const { ResilientMarketLandscapeService } = await import("../src");
+    const result = await new ResilientMarketLandscapeService({
+      id: "live",
+      loadMarketLandscape: async () => live,
+    }).load();
+    expect(result).toEqual(live);
+  });
+  it("取消的行情扫描停止加载，不回退或发布演示数据", async () => {
+    const abort = new AbortController();
+    const provider = {
+      id: "cancelled",
+      loadMarketLandscape: async (signal?: AbortSignal) => {
+        expect(signal).toBe(abort.signal);
+        abort.abort();
+        throw new Error("aborted");
+      },
+    };
+    const { ResilientMarketLandscapeService } = await import("../src");
+    await expect(
+      new ResilientMarketLandscapeService(provider).load(abort.signal),
+    ).rejects.toHaveProperty("name", "AbortError");
+  });
+  it("行业扫描保留全部行业，不再只截取涨跌最大的 14 个", () => {
+    const boards = Array.from({ length: 40 }, (_, i) => ({
+      code: `BK${String(i).padStart(4, "0")}`,
+      name: `行业 ${i}`,
+      changePercent: i / 10,
+      riseCount: 10,
+      fallCount: 2,
+      turnoverRate: 1,
+      totalMarketCap: 100,
+      leadingStock: null,
+      leadingStockChangePercent: null,
+    })) as unknown as IndustryBoard[];
+    expect(buildMarketLandscape({ quotes: [], boards, provider: "fixture" }).sectors).toHaveLength(
+      40,
+    );
+  });
 });

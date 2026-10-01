@@ -1,11 +1,13 @@
 export { createDemoDividendSeries } from "./dividend";
 export { ResilientDividendService } from "./dividend-service";
 export { createDemoMarketLandscape, createDemoSnapshot, fallbackSessions } from "./demo";
-export { listKnownInstruments, searchKnownInstruments } from "./directory";
+export { listKnownInstruments, searchKnownInstruments, marketInstrumentName } from "./directory";
 export {
   consumeQuantHandoff,
   isQuantHandoff,
   publishQuantHandoff,
+  publishQuantReference,
+  receiveQuantReference,
   QUANT_HANDOFF_EVENT,
 } from "./handoff";
 export { createDemoHistory, historyMinimumBars } from "./history";

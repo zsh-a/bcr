@@ -73,15 +73,37 @@ impl FactorState {
         }
     }
     pub fn advance(&mut self, bars: &[Bar]) -> Result<PreparedDay, String> {
+        self.advance_mode(bars, false)
+    }
+    pub fn advance_daily(&mut self, bars: &[Bar]) -> Result<PreparedDay, String> {
+        self.advance_mode(bars, true)
+    }
+    pub fn processed_days(&self) -> usize {
+        self.next
+    }
+    fn advance_mode(&mut self, bars: &[Bar], daily: bool) -> Result<PreparedDay, String> {
         let session = self
             .manifest
             .calendar
             .get(self.next)
             .ok_or("too many factor sessions")?;
+        let mut previous_id = None;
         for b in bars {
             if b.date != session.date || b.industry >= self.manifest.industries.len() {
                 return Err("factor calendar/industry mismatch".into());
             }
+            if previous_id.is_some_and(|id| id >= b.id)
+                || !b.close.is_finite()
+                || b.close <= 0.0
+                || b.close > 1e12
+                || !b.adjfactor.is_finite()
+                || b.adjfactor <= 0.0
+                || b.adjfactor > 1e12
+                || b.close * b.adjfactor > 1e15
+            {
+                return Err("invalid factor price, adjustment or instrument order".into());
+            }
+            previous_id = Some(b.id);
             let h = self
                 .histories
                 .get_mut(b.id)
@@ -94,12 +116,12 @@ impl FactorState {
         self.next += 1;
         Ok(PreparedDay {
             date: session.date,
-            breadth: if session.rebalance {
+            breadth: if daily || session.rebalance {
                 breadth(&self.manifest, bars.iter(), &self.histories)
             } else {
                 vec![]
             },
-            candidates: if session.rebalance {
+            candidates: if !daily && session.rebalance {
                 candidates(&self.manifest, bars.iter())
             } else {
                 vec![]

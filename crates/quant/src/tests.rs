@@ -80,6 +80,36 @@ fn warm(engine: &mut Engine) {
     }
 }
 #[test]
+fn daily_market_breadth_matches_rebalance_and_excludes_warmup_or_non_members() {
+    let mut portfolio = crate::features::FactorState::new(manifest(23));
+    let mut indicator = crate::features::FactorState::new(manifest(23));
+    for day in 1..=23 {
+        let mut input = bars(day);
+        if day == 22 {
+            input[1].breadth_member = false;
+        }
+        let weekly = portfolio.advance(&input).unwrap();
+        let daily = indicator.advance_daily(&input).unwrap();
+        assert!(daily.candidates.is_empty());
+        if day < 20 {
+            assert!(daily.breadth.is_empty());
+        }
+        if day == 21 {
+            assert_eq!(
+                serde_json::to_value(&weekly.breadth).unwrap(),
+                serde_json::to_value(&daily.breadth).unwrap()
+            );
+        }
+        if day == 22 {
+            assert!(weekly.breadth.is_empty());
+            assert_eq!(daily.breadth[0].total, 1);
+            assert_eq!(daily.breadth[0].above, 1);
+        }
+    }
+    assert_eq!(indicator.processed_days(), 23);
+    assert!(indicator.advance_daily(&bars(24)).is_err());
+}
+#[test]
 fn names_round_trip_without_affecting_replay_or_identities() {
     let plain = manifest(22);
     let mut named = plain.clone();

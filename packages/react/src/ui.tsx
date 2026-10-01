@@ -111,7 +111,9 @@ export function Dialog({
       tabIndex={-1}
       aria-labelledby={title !== undefined ? titleId : undefined}
       className={`ui-dialog ui-dialog-${placement} ${className}`.trim()}
-      onClose={onClose}
+      onClose={() => {
+        if (open) onClose();
+      }}
       onCancel={(event) => {
         event.preventDefault();
         event.stopPropagation();

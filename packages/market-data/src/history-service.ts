@@ -29,18 +29,20 @@ function writeCache(request: MarketHistoryRequest, series: MarketHistorySeries):
 export class ResilientHistoryService {
   constructor(private readonly provider: MarketHistoryProvider) {}
 
-  async load(request: MarketHistoryRequest): Promise<MarketHistorySeries> {
+  async load(request: MarketHistoryRequest, signal?: AbortSignal): Promise<MarketHistorySeries> {
+    signal?.throwIfAborted();
     try {
-      const series = await this.provider.loadHistory(request);
+      const series = await this.provider.loadHistory(request, signal);
+      signal?.throwIfAborted();
       writeCache(request, series);
       return series;
     } catch (error) {
+      signal?.throwIfAborted();
       const message = error instanceof Error ? error.message : String(error);
       const cached = readCache(request);
       if (cached !== null) {
         return {
           ...cached,
-          receivedAt: Date.now(),
           quality: "cached",
           errors: [message],
         };

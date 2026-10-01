@@ -1,147 +1,165 @@
-/* Market Atlas：全市场扫描 → 板块/排行 → 搜索/股息 → 历史 K 线 → Quant 交接。 */
-import { ensureShots, fail, launchVerifyBrowser } from "./lib/browser.mjs";
-
-const base = new URL(process.env.BASE_URL ?? "http://localhost:5199/studio");
-base.pathname = "/markets";
-base.search = "";
-const dir = ensureShots();
-
-const browser = await launchVerifyBrowser("studio");
-const page = browser.pages()[0] ?? (await browser.newPage());
-page.on("pageerror", (error) => fail(`pageerror: ${error.message}`));
-
-await page.goto(base.toString(), { waitUntil: "domcontentloaded" });
-await page.locator(".market-atlas").waitFor({ timeout: 20_000 });
-await page.locator(".ma-refresh:not(:disabled)").waitFor({ timeout: 45_000 });
-
-const body = await page.locator("body").innerText();
-if (!body.includes("Market Atlas") || !body.includes("Market overview")) {
-  fail("Market Atlas 主界面未渲染");
-}
-if ((await page.locator(".ma-session").count()) !== 4) fail("全球市场时区轨道不完整");
-if ((await page.locator(".ma-quote-card").count()) < 3) fail("市场脉搏数据不足");
-if ((await page.locator(".ma-sector-map > button").count()) < 8) fail("行业热图数据不足");
-if ((await page.locator(".ma-market-ranking > button").count()) !== 8) {
-  fail("全市场排行未完整渲染");
-}
-const universe = Number(
-  (
-    await page.locator(".ma-market-breadth-strip > div").first().locator("b").innerText()
-  ).replaceAll(",", ""),
-);
-if (!Number.isFinite(universe) || universe < 5_000) fail("A 股全市场广度未加载");
-await page.locator("[data-dividend-ledger]").waitFor({ timeout: 30_000 });
-const initialIncome = await page.locator("[data-dividend-ledger]").innerText();
-if (
-  (await page.locator(".ma-hero-grid [data-dividend-ledger]").count()) !== 1 ||
-  !/(A-SHARE REFERENCE ONLINE|CACHED REFERENCE|DEMO REFERENCE)/.test(initialIncome) ||
-  (await page.locator(".ma-dividend-timeline article").count()) < 1
-) {
-  fail("默认焦点未展示股息账本");
-}
-await page.getByRole("button", { name: "TURNOVER", exact: true }).click();
-const firstRank = page.locator(".ma-market-ranking > button").first();
-const rankedSymbol = (await firstRank.locator("span small").innerText()).split(" · ")[0];
-await firstRank.click();
-await page.waitForFunction(
-  (symbol) => document.querySelector(".ma-focus-copy .ma-symbol")?.textContent?.includes(symbol),
-  rankedSymbol,
-  { timeout: 20_000 },
-);
-if (!body.includes("Source integrity") || !body.includes("informational use only")) {
-  fail("数据质量与延迟声明缺失");
-}
-
-await page.getByRole("button", { name: "HK", exact: true }).click();
-const hkCards = page.locator(".ma-quote-card");
-if ((await hkCards.count()) < 1) fail("HK 市场筛选无结果");
-await hkCards.first().locator(".ma-quote-main").click();
-await page.locator(".ma-open-quant:not(:disabled)").waitFor({ timeout: 45_000 });
-if ((await page.locator(".ma-candle-chart .body").count()) < 20) {
-  fail("历史 K 线未渲染");
-}
-
-const firstStar = hkCards.first().locator(".ma-card-star");
-const wasWatched = await firstStar.evaluate((element) => element.classList.contains("watched"));
-await firstStar.click();
-if ((await firstStar.evaluate((element) => element.classList.contains("watched"))) === wasWatched) {
-  fail("Watchlist 交互未生效");
-}
-const watchlistGroups = page.locator(".ma-watchlist-groups [role=tab]");
-if ((await watchlistGroups.count()) < 2) fail("Watchlist 分组未渲染");
-await watchlistGroups.nth(1).click();
-const groupSend = page.getByRole("button", { name: "SEND GROUP", exact: true });
-await groupSend.waitFor({ timeout: 10_000 });
-await Promise.all([
-  page.waitForURL((url) => url.pathname === "/quant", {
-    timeout: 30_000,
-    waitUntil: "commit",
-  }),
-  groupSend.click(),
-]);
-await page.locator(".ql-handoff-block").waitFor({ timeout: 60_000 });
-const handoffSeriesCount = await page
-  .locator(".ql-handoff-block")
-  .getAttribute("data-series-count");
-if (Number(handoffSeriesCount) < 3) {
-  fail(`多标的 handoff 序列数量错误: ${handoffSeriesCount ?? "missing"}`);
-}
-if (!(await page.locator(".ql-market-status").innerText()).includes("MARKET ATLAS")) {
-  fail("Quant Lab 未显示 Market Atlas 多序列状态");
-}
-await page.locator("[data-portfolio-analysis]").waitFor({ timeout: 60_000 });
-if ((await page.locator("[data-correlation-matrix] tbody tr").count()) < 3) {
-  fail("Quant Lab 组合相关性矩阵未覆盖多标的");
-}
-if (!(await page.locator("[data-portfolio-metrics]").innerText()).includes("EQUAL-WEIGHT")) {
-  fail("Quant Lab 等权组合基准未渲染");
-}
-await page.reload({ waitUntil: "domcontentloaded" });
-await page.locator(".ql-handoff-block").waitFor({ timeout: 60_000 });
-await page.locator("[data-portfolio-analysis]").waitFor({ timeout: 60_000 });
-await page.goto(base.toString(), { waitUntil: "domcontentloaded" });
-await page.locator(".market-atlas").waitFor({ timeout: 20_000 });
-await page.locator(".ma-refresh:not(:disabled)").waitFor({ timeout: 45_000 });
-
-const search = page.getByLabel("Search global instruments");
-await search.fill("茅台");
-await page.locator(".ma-search-results > button").first().waitFor({ timeout: 20_000 });
-await page.locator(".ma-search-results > button").first().click();
-await page.waitForFunction(
-  () => document.querySelector(".ma-focus-copy h2")?.textContent?.includes("贵州茅台"),
-  undefined,
-  { timeout: 20_000 },
-);
-await page.locator(".ma-dividend-timeline article").first().waitFor({ timeout: 30_000 });
-const incomeText = await page.locator(".ma-corporate-section").innerText();
-if (!incomeText.includes("A-SHARE REFERENCE ONLINE") || !incomeText.includes("CNY / 10 SHARES")) {
-  fail("A 股股息与公司行动未渲染");
-}
-await page.locator(".ma-open-quant:not(:disabled)").waitFor({ timeout: 45_000 });
-
-await page.screenshot({ path: `${dir}/market-atlas.png`, fullPage: true });
-await Promise.all([
-  page.waitForURL((url) => url.pathname === "/quant", {
-    timeout: 30_000,
-    waitUntil: "commit",
-  }),
-  page.locator(".ma-open-quant").click(),
-]);
+import assert from "node:assert/strict";
+import { ensureShots, launchEphemeralBrowser } from "./lib/browser.mjs";
+const url = new URL(process.env.BASE_URL ?? "http://127.0.0.1:5206/");
+url.pathname = "/markets";
+url.search = "";
+const browser = await launchEphemeralBrowser({ headless: true });
+const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+const page = await context.newPage(),
+  errors = [],
+  shots = ensureShots();
+page.on("pageerror", (e) => errors.push(e.message));
+// Deterministic offline quotes exercise labelled fallback and don't depend on market hours.
+await context.route("**/*", async (route) => {
+  const request = new URL(route.request().url());
+  if (/eastmoney|sina|sinajs|gtimg|qq\.com|xueqiu/u.test(request.hostname)) await route.abort();
+  else await route.continue();
+});
 try {
+  await page.goto(url.toString(), { waitUntil: "networkidle" });
+  await page.locator(".ma-overview-summary").waitFor();
+  assert.equal(await page.locator(".ma-view-nav button").count(), 4);
+  assert((await page.locator(".ma-header").boundingBox()).height <= 64);
+  assert.equal(
+    await page.locator(".ma-candle-chart").count(),
+    0,
+    "Overview must not render/load stock history",
+  );
+  assert.equal(await page.locator("[data-dividend-ledger]").count(), 0);
+  assert((await page.locator(".ma-data-stamp.demo").count()) > 0, "Demo source must be explicit");
+  await page.getByRole("button", { name: "行业", exact: true }).click();
+  assert.equal(new URL(page.url()).searchParams.get("view"), "sectors");
+  assert.equal(
+    await page.locator(".ma-sector-map button:disabled").count(),
+    0,
+    "Industry exploration must not depend on a leader",
+  );
+  await page.locator(".ma-sector-map button").first().click();
+  await page.locator(".ma-sector-detail[open]").waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "宽度", exact: true }).click();
+  await page.getByRole("heading", { name: "历史行业宽度", exact: true }).waitFor();
+  assert((await page.locator(".ma-content").innerText()).includes("无需先运行回测"));
+  await page.getByRole("button", { name: "自选", exact: true }).click();
+  await page.getByRole("button", { name: "新建分组", exact: true }).click();
+  await page.getByLabel("分组名称", { exact: true }).fill("行业研究");
+  await page.getByRole("button", { name: "创建", exact: true }).click();
+  await page.getByRole("heading", { name: "开始整理你的研究标的", exact: true }).waitFor();
+  await page.getByRole("button", { name: "概览", exact: true }).click();
+  await page.locator(".ma-quote-card .ma-card-star").first().click();
+  await page.locator(".ma-quote-main").first().click();
+  await page.locator(".ma-stock-detail[open]").waitFor();
+  await page.locator(".ma-candle-chart").waitFor();
+  const dialogBox = await page.locator(".ma-stock-detail").boundingBox();
+  assert(dialogBox.x > 100 && dialogBox.y > 0, "Stock detail must use centered shared dialog");
+  await page.getByRole("button", { name: "使用此行情研究 SMA", exact: true }).click();
+  await page
+    .locator(".ql-handoff-block, .ql-boot-error")
+    .first()
+    .waitFor({ timeout: 60000, state: "attached" });
+  assert.equal(
+    await page.locator(".ql-boot-error").count(),
+    0,
+    await page.locator("body").innerText(),
+  );
+  assert.equal(new URL(page.url()).pathname, "/quant");
+  assert.equal(await page.locator(".ql-research-shell").getAttribute("data-strategy"), "sma");
+  assert.equal(
+    await page.evaluate(() => localStorage.getItem("bcr.market.quant-reference.v1")),
+    null,
+    "Reference acknowledged after import",
+  );
+  assert.equal(
+    await page.evaluate(() => localStorage.getItem("bcr.market-atlas.quant-handoff.v2")),
+    null,
+    "No bar arrays in localStorage handoff",
+  );
+  await page.getByLabel("选择策略", { exact: true }).selectOption("jsg");
+  await page.locator(".research-run-button:not(:disabled)").waitFor({ timeout: 60000 });
+  await page.getByRole("button", { name: "运行回测", exact: true }).click();
   await page.waitForFunction(
-    () => document.querySelector(".ql-market-status")?.textContent?.includes("MARKET ATLAS"),
-    undefined,
-    { timeout: 45_000 },
+    () => document.querySelector(".research-status")?.textContent.includes("回测完成"),
+    null,
+    { timeout: 60000 },
+  );
+  await page.getByRole("tab", { name: "选股解释", exact: true }).click();
+  await page.locator(".ui-breadth-table button").first().waitFor();
+  await page.getByRole("button", { name: "在 Market 查看", exact: true }).click();
+  await page
+    .locator(".ma-breadth-view .ui-breadth-table button")
+    .first()
+    .waitFor({ timeout: 60000 });
+  assert(new URL(page.url()).searchParams.get("snapshot"));
+  assert((await page.locator(".ma-breadth-view").innerText()).includes("科技"));
+  await page.locator(".ma-breadth-view .ui-breadth-table button").first().click();
+  assert((await page.locator(".ma-breadth-inspector").innerText()).includes("高于 MA20"));
+  await page.screenshot({ path: `${shots}/market-breadth.png`, fullPage: true });
+  const reference = new URL(page.url()).searchParams.get("snapshot");
+  await page.reload({ waitUntil: "networkidle" });
+  await page
+    .locator(".ma-breadth-view .ui-breadth-table button")
+    .first()
+    .waitFor({ timeout: 60000 });
+  assert.equal(new URL(page.url()).searchParams.get("snapshot"), reference);
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
+    const bounds = await page.locator(".ma-header").boundingBox();
+    assert(bounds.height <= 110);
+    await page.getByRole("button", { name: "行业", exact: true }).click();
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
+    await page.getByRole("button", { name: "自选", exact: true }).click();
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
+  }
+  await page.screenshot({ path: `${shots}/market-mobile.png`, fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByRole("button", { name: "宽度", exact: true }).click();
+  await page.getByLabel("选择冻结数据快照", { exact: true }).selectOption(reference);
+  await page
+    .locator(".ma-breadth-view .ui-breadth-table button")
+    .first()
+    .waitFor({ timeout: 60000 });
+  await page.getByRole("button", { name: "在 Quant 研究", exact: true }).click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector(".research-status")?.textContent.includes("已载入 Market 冻结快照"),
+    null,
+    { timeout: 60000 },
+  );
+  assert.equal(
+    await page.locator(".ql-research-shell").getAttribute("data-strategy"),
+    "jsg",
+    "Kept-alive app must respond to strategy query",
+  );
+  assert.equal(
+    new URL(page.url()).searchParams.get("snapshot"),
+    null,
+    "URL acknowledged only after successful dataset import",
+  );
+  assert.deepEqual(errors, []);
+  console.log(
+    "Market architecture browser verification passed: navigation, sectors, lazy details, OPFS handoff, Rust breadth, frozen round trip, reload and mobile.",
   );
 } catch (error) {
-  console.error(`Market handoff diagnostics:\n${await page.locator("body").innerText()}`);
+  console.error(
+    "Market test failed at",
+    page.url(),
+    "body:",
+    await page.locator("body").innerText(),
+    "page errors:",
+    errors,
+  );
   throw error;
+} finally {
+  await context.close();
+  await browser.close();
 }
-await page.getByRole("button", { name: "RUN BACKTEST" }).waitFor({ timeout: 30_000 });
-const quantBody = await page.locator("body").innerText();
-if (!quantBody.includes("daily bars from Market Atlas")) fail("Quant Lab 未记录市场数据交接");
-
-await browser.close();
-console.log(
-  process.exitCode ? "market atlas verification FAILED" : "market atlas verification PASSED",
-);

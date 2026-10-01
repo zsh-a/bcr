@@ -41,6 +41,7 @@ export function useMarketDiscovery(
   const appliedRouteRef = useRef("");
   const searchRef = useRef<HTMLInputElement>(null);
   const search = useInstrumentSearch(query);
+  const quoteRequest = useRef(0);
   const allQuotes = useMemo(() => {
     const seen = new Set<string>();
     return [...customQuotes, ...quotes, ...futures].filter((quote) => {
@@ -61,7 +62,10 @@ export function useMarketDiscovery(
       return;
     }
     const known = listKnownInstruments().find((item) => item.instrument.id === routeInstrumentId);
-    if (known === undefined) return;
+    if (known === undefined) {
+      setQuoteError("无法识别该证券，请通过搜索重新打开");
+      return;
+    }
     appliedRouteRef.current = routeInstrumentId;
     void marketProvider
       .loadQuote(known.instrument)
@@ -73,7 +77,7 @@ export function useMarketDiscovery(
         setSelectedId(known.instrument.id);
         setRegion("ALL");
       })
-      .catch(() => undefined);
+      .catch((error) => setQuoteError(error instanceof Error ? error.message : String(error)));
   }, [allQuotes, routeInstrumentId]);
 
   useEffect(() => {
@@ -117,6 +121,7 @@ export function useMarketDiscovery(
     fallbackQuote?: QuoteSnapshot,
   ): Promise<void> => {
     const existing = allQuotes.find((quote) => quote.instrument.id === result.instrument.id);
+    const current = ++quoteRequest.current;
     setSearchingQuote(result.instrument.id);
     setQuoteError(null);
     try {
@@ -125,6 +130,7 @@ export function useMarketDiscovery(
         if (fallbackQuote !== undefined) return fallbackQuote;
         throw error;
       });
+      if (quoteRequest.current !== current) return;
       setCustomQuotes((items) => [
         ...items.filter((item) => item.instrument.id !== result.instrument.id),
         quote,
@@ -137,9 +143,10 @@ export function useMarketDiscovery(
       setQuery("");
       setSearchOpen(false);
     } catch (error) {
-      setQuoteError(error instanceof Error ? error.message : String(error));
+      if (quoteRequest.current === current)
+        setQuoteError(error instanceof Error ? error.message : String(error));
     } finally {
-      setSearchingQuote(null);
+      if (quoteRequest.current === current) setSearchingQuote(null);
     }
   };
 

@@ -12,7 +12,7 @@ export function price(value: number): string {
 
 export function compact(value: number | null): string {
   if (value === null) return "—";
-  return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(
+  return new Intl.NumberFormat("zh-CN", { notation: "compact", maximumFractionDigits: 1 }).format(
     value,
   );
 }

@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { Button, Select, Spinner } from "@bcr/react";
+import {
+  BreadthHeatmap,
+  Button,
+  Select,
+  Spinner,
+  useNavigation,
+  useLocationSearch,
+} from "@bcr/react";
+import { pinMarketSnapshot, saveMarketLabels } from "@bcr/market-data/research/catalog";
 import type { SelectedRun } from "./session";
 import { dateText } from "./model";
 import { queryBreadthHistory, queryResearchDay } from "./result-reader";
@@ -7,16 +15,34 @@ import type { ResearchDayPage } from "./research-analysis";
 import { CANDIDATE_REASONS, type ResearchDay } from "./research-model";
 import { money } from "./Orders";
 import { Identity, useNames } from "./ResearchNames";
-import { displayLabel } from "./display-names";
 
 export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
   const names = useNames();
+  const requestedDate = new URLSearchParams(useLocationSearch()).get("date");
+  const navigation = useNavigation();
+  const [openingMarket, setOpeningMarket] = useState(false);
+  const openMarket = async () => {
+    setOpeningMarket(true);
+    try {
+      await saveMarketLabels(selected.dataset, names);
+      const id = await pinMarketSnapshot(selected.dataset);
+      navigation.navigate(`/markets?view=breadth&snapshot=${id}&date=${date}`);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setOpeningMarket(false);
+    }
+  };
   const sessions = selected.dataset.manifest.calendar.filter(
     (d) => d.date >= selected.run.startDate && d.date <= selected.run.endDate,
   );
   const dates = sessions.map((d) => dateText(d.date)),
     rebalances = sessions.filter((d) => d.rebalance).map((d) => dateText(d.date));
-  const [date, setDate] = useState(rebalances.at(-1) ?? dates.at(-1) ?? ""),
+  const [date, setDate] = useState(
+      requestedDate && dates.includes(requestedDate)
+        ? requestedDate
+        : (rebalances.at(-1) ?? dates.at(-1) ?? ""),
+    ),
     [page, setPage] = useState(0),
     [historyPage, setHistoryPage] = useState(Math.max(0, Math.ceil(dates.length / 63) - 1));
   const [day, setDay] = useState<ResearchDayPage | null>(),
@@ -24,6 +50,12 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
     [error, setError] = useState("");
   const start = dates[historyPage * 63] ?? "",
     end = dates[Math.min(dates.length - 1, (historyPage + 1) * 63 - 1)] ?? "";
+  useEffect(() => {
+    if (!requestedDate || !dates.includes(requestedDate)) return;
+    setDate(requestedDate);
+    setPage(0);
+    setHistoryPage(Math.floor(dates.indexOf(requestedDate) / 63));
+  }, [requestedDate, selected.run.id]);
   useEffect(() => {
     const abort = new AbortController();
     setDay(undefined);
@@ -45,9 +77,6 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
       });
     return () => abort.abort();
   }, [selected, start, end]);
-  const industries = [
-    ...new Set(history?.flatMap((d) => d.breadth.map((b) => b.industry)) ?? []),
-  ].sort();
   const selectDate = (next: string) => {
     setDate(next);
     setPage(0);
@@ -62,6 +91,14 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
           {start} — {end}
         </span>
         <div className="research-insights-export">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={openingMarket}
+            onClick={() => void openMarket()}
+          >
+            在 Market 查看
+          </Button>
           <Button
             size="sm"
             variant="ghost"
@@ -86,52 +123,12 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
         </p>
       )}
       {history && (
-        <div className="research-insights-scroll research-breadth-map">
-          <table>
-            <caption className="sr-only">行业中复权收盘价高于 20 日均线的证券占比</caption>
-            <thead>
-              <tr>
-                <th>行业</th>
-                {history.map((d) => (
-                  <th key={d.date}>{d.date.slice(5)}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {industries.map((industry) => (
-                <tr key={industry}>
-                  <th scope="row">
-                    <Identity code={industry} kind="industries" />
-                  </th>
-                  {history.map((d) => {
-                    const b = d.breadth.find((v) => v.industry === industry);
-                    const label = `${d.date} ${displayLabel(names, "industries", industry)} ${b ? `${b.ratio}% · ${b.above}/${b.total}` : "历史不足"}`;
-                    return (
-                      <td key={d.date}>
-                        <button
-                          aria-label={label}
-                          title={label}
-                          style={
-                            b
-                              ? {
-                                  background: `color-mix(in srgb, var(--color-accent) ${8 + b.ratio * 0.32}%, var(--color-surface))`,
-                                }
-                              : undefined
-                          }
-                          onClick={() => {
-                            selectDate(d.date);
-                          }}
-                        >
-                          {b ? Math.round(b.ratio) : "—"}
-                        </button>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <BreadthHeatmap
+          days={history}
+          labels={names.industries}
+          selectedDate={date}
+          onSelect={(_, next) => selectDate(next)}
+        />
       )}
       <p className="research-help">
         色深代表宽度，并非涨幅。每页最多 63 日；缺少 20

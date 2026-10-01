@@ -40,36 +40,37 @@ function message(reason: unknown): string {
 export class ResilientDividendService {
   constructor(private readonly provider: Pick<MarketDiscoveryProvider, "loadDividends">) {}
 
-  async load(instrument: MarketInstrument): Promise<DividendSeries> {
+  async load(instrument: MarketInstrument, signal?: AbortSignal): Promise<DividendSeries> {
+    signal?.throwIfAborted();
     try {
-      const series = await this.provider.loadDividends(instrument);
+      const series = await this.provider.loadDividends(instrument, signal);
+      signal?.throwIfAborted();
       if (series.coverage === "available") {
         writeCache(instrument, series);
-        return series;
+        return { ...series, quality: "delayed" };
       }
       const cached = readCache(instrument);
       if (cached !== null && cached.events.length > 0) {
         return {
           ...cached,
-          receivedAt: Date.now(),
+          quality: "cached",
           source: `${cached.source} · CACHED AFTER EMPTY RESPONSE`,
         };
       }
-      return series.coverage === "empty"
-        ? createDemoDividendSeries(instrument, "UPSTREAM EMPTY")
-        : series;
+      return { ...series, quality: "delayed" };
     } catch (error) {
+      signal?.throwIfAborted();
       const reason = message(error);
       const cached = readCache(instrument);
       if (cached !== null && cached.events.length > 0) {
         return {
           ...cached,
-          receivedAt: Date.now(),
+          quality: "cached",
           source: `${cached.source} · CACHED AFTER ${reason}`,
         };
       }
       const fallback = createDemoDividendSeries(instrument, `UPSTREAM ${reason}`);
-      if (fallback.events.length > 0) return fallback;
+      if (fallback.events.length > 0) return { ...fallback, quality: "demo" };
       throw error;
     }
   }

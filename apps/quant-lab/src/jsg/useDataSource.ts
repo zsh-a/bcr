@@ -11,6 +11,7 @@ import {
   type ClickHouseRange,
 } from "./clickhouse-http";
 import type { ResearchDataset } from "./model";
+import { readMarketProfile, saveMarketProfile } from "@bcr/market-data/research/catalog";
 
 export function useDataSource(services: RuntimeServices, dataset: ResearchDataset | null) {
   const [connection, setConnection] = useState<ClickHouseConnection>({ ...DEFAULT_CONNECTION });
@@ -55,6 +56,34 @@ export function useDataSource(services: RuntimeServices, dataset: ResearchDatase
             start: safe.start,
             end: safe.end,
             strictPit: safe.strictPit,
+            refresh: false,
+          };
+          dateEdited.current = true;
+        }
+        const shared = readMarketProfile();
+        if (shared) {
+          setConnection({
+            url: shared.url,
+            database: shared.database,
+            user: shared.user,
+            password: "",
+          });
+          setRange({
+            start: shared.start,
+            end: shared.end,
+            strictPit: shared.strictPit,
+            refresh: false,
+          });
+          latest.current.connection = {
+            url: shared.url,
+            database: shared.database,
+            user: shared.user,
+            password: "",
+          };
+          latest.current.range = {
+            start: shared.start,
+            end: shared.end,
+            strictPit: shared.strictPit,
             refresh: false,
           };
           dateEdited.current = true;
@@ -130,6 +159,7 @@ export function useDataSource(services: RuntimeServices, dataset: ResearchDatase
   };
   const persist = async () => {
     const profile = latest.current;
+    if (profile.kind === "clickhouse") saveMarketProfile(profile.connection, profile.range);
     await services.metadata?.set("jsg-source-choice", profile.kind);
     if (profile.kind === "clickhouse")
       await services.metadata?.set(

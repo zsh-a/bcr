@@ -8,14 +8,14 @@ const DEFAULT_WATCHLIST = ["CN:SSE:000300", "HK:HKEX:HSI", "US:INDEX:INX"];
 const DEFAULT_WATCHLIST_GROUPS: ReadonlyArray<MarketWatchlistGroup> = [
   {
     id: "core",
-    name: "Core",
+    name: "核心资产",
     instrumentIds: DEFAULT_WATCHLIST,
     createdAt: 0,
     updatedAt: 0,
   },
   {
     id: "macro",
-    name: "Macro",
+    name: "宏观观察",
     instrumentIds: ["CN:SSE:000001", "US:INDEX:DJI", "GLOBAL:FUTURE:GC00Y"],
     createdAt: 0,
     updatedAt: 0,
