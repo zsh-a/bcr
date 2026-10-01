@@ -11,6 +11,7 @@ const primary = [
   ["quant", "Quant Lab"],
   ["reader", "Reader Studio"],
   ["knowledge", "个人知识库"],
+  ["diagram", "绘图"],
   ["media", "Media Studio"],
   ["data", "Data Studio"],
 ];

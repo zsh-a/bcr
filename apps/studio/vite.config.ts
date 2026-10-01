@@ -1,4 +1,5 @@
 import { pwaBuildManifest } from "./pwa-build";
+import { diagramAssets } from "./diagram-assets";
 import { PWA_APPS } from "./src/pwa/apps";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -41,7 +42,7 @@ const gatewayProxy: Record<string, ProxyOptions> = localGateway
   : {};
 
 export default defineConfig({
-  plugins: [tailwindcss(), react(), pwaBuildManifest()],
+  plugins: [tailwindcss(), react(), pwaBuildManifest(), diagramAssets()],
   preview: { proxy: gatewayProxy },
   define: {
     "globalThis.__BCR_READER_BUILD_ID__": JSON.stringify(buildId),

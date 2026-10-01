@@ -1,18 +1,33 @@
 import type { RuntimeMetadata } from "@bcr/core";
 import { KnowledgeStore } from "./knowledge/store";
 import { ResearchStore } from "./research/index";
+import { DiagramStore } from "./diagram/store";
+import { createDiagramStorage } from "./diagram/browserStorage";
 
 /** The composition root owns domain stores; plugins only attach projections/capabilities. */
 export function createWorkspaceServices(metadata: RuntimeMetadata | undefined) {
   const knowledge = new KnowledgeStore(metadata);
   const research = new ResearchStore(metadata);
+  const diagramStorage = typeof indexedDB === "undefined" ? undefined : createDiagramStorage();
+  const diagrams = new DiagramStore(diagramStorage ?? metadata);
   let closing: Promise<void> | undefined;
   return {
     knowledge,
     research,
+    diagrams,
     close() {
       // Stop new sync/research work, drain accepted commits, then release persistence.
-      return (closing ??= Promise.all([knowledge.close(), research.close()]).then(() => undefined));
+      return (closing ??= Promise.allSettled([
+        knowledge.close(),
+        research.close(),
+        diagrams.close(),
+      ])
+        .then((results) => {
+          const failure = results.find((result) => result.status === "rejected");
+          if (failure?.status === "rejected") throw failure.reason;
+        })
+        .finally(() => diagramStorage?.close())
+        .then(() => undefined));
     },
   };
 }

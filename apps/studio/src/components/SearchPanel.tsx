@@ -16,6 +16,7 @@ import {
   Globe2,
   LayoutGrid,
   Search,
+  Shapes,
   TerminalSquare,
   WandSparkles,
 } from "lucide-react";
@@ -58,6 +59,7 @@ const FILTERS: ReadonlyArray<SearchFilter> = [
 ];
 
 function iconFor(kind: SearchDocumentKind) {
+  if (kind === "diagram") return <Shapes className="size-4" />;
   if (kind === "knowledge-note") return <BookOpen className="size-4" />;
   if (kind === "research-note" || kind === "research-excerpt")
     return <BookOpen className="size-4" />;
@@ -75,6 +77,7 @@ function iconFor(kind: SearchDocumentKind) {
 }
 
 function kindLabel(kind: SearchDocumentKind): string {
+  if (kind === "diagram") return "绘图";
   if (kind === "knowledge-note") return "个人笔记";
   if (kind === "research-note") return "笔记";
   if (kind === "research-excerpt") return "摘录";

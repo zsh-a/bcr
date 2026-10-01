@@ -9,7 +9,12 @@ import { manifest as manga } from "@bcr/manga-studio/app-manifest";
 import { manifest as markets } from "@bcr/market-board/app-manifest";
 import { manifest as media } from "@bcr/media-studio/app-manifest";
 import { manifest as quant } from "@bcr/quant-lab/app-manifest";
-import { ASSISTANT_PANEL, KNOWLEDGE_MANIFEST, STUDIO_MANIFEST } from "./host-manifests";
+import {
+  ASSISTANT_PANEL,
+  KNOWLEDGE_MANIFEST,
+  STUDIO_MANIFEST,
+  DIAGRAM_MANIFEST,
+} from "./host-manifests";
 
 /**
  * The one list of applications the shell knows about.
@@ -28,6 +33,7 @@ const declared: ReadonlyArray<AppManifest> = [
   quant,
   reader,
   KNOWLEDGE_MANIFEST,
+  DIAGRAM_MANIFEST,
   media,
   data,
   manga,

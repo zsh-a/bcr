@@ -17,6 +17,7 @@
     "test:browser": "node scripts/verify-ci.mjs",
     "test:browser:layout": "node scripts/verify-app-layout.mjs",
     "test:browser:ui": "node scripts/verify-modern-ui.mjs",
+    "test:browser:diagram": "node scripts/verify-diagram.mjs",
     "test:browser:navigation": "node scripts/verify-workspace-navigation.mjs",
     "test:pwa": "node scripts/verify-reader-pwa.mjs",
     "test:pwa:knowledge": "node scripts/verify-knowledge-pwa.mjs",

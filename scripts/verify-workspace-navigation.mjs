@@ -123,6 +123,7 @@ try {
     ["/docgen", ".docgen-header"],
     ["/markets", ".ma-header"],
     ["/knowledge", ".knowledge-app"],
+    ["/diagram", ".diagram-app"],
     ["/studio", ".studio-dock"],
   ]) {
     await page.goto(`${origin}${route}`, { waitUntil: "domcontentloaded" });

@@ -32,7 +32,7 @@ import {
   READING_SETTINGS_KEY,
   type ReadingSettings,
 } from "./readingSettings";
-import { Button, Select, useUpdateParticipant } from "@bcr/react";
+import { Button, Select, useNavigation, useUpdateParticipant } from "@bcr/react";
 
 export interface EditorHandle {
   flush(): Promise<void>;
@@ -80,6 +80,7 @@ export function NoteEditor({
   /** 笔记操作溢出菜单（移动/导出/收藏/历史/删除）由外壳提供，挂在文档工具行右端。 */
   documentActions?: ReactNode;
 }) {
+  const navigation = useNavigation();
   const snapshot = useNoteDraft(note, store, locked);
   const { controller, note: draft, error } = snapshot;
   const { flush, change, initialError } = controller;
@@ -195,6 +196,16 @@ export function NoteEditor({
     <div
       className="knowledge-document"
       ref={host}
+      onClickCapture={(event) => {
+        if (!(event.target instanceof Element) || event.button !== 0) return;
+        const link = event.target.closest<HTMLElement>("[data-link-target], a");
+        const href = link?.dataset.linkTarget ?? link?.getAttribute("href");
+        if (!href?.startsWith("/diagram?")) return;
+        if (link?.dataset.linkTarget && !event.ctrlKey && !event.metaKey) return;
+        event.preventDefault();
+        event.stopPropagation();
+        navigation.navigate(href);
+      }}
       style={
         {
           "--w-context-override": contextWidth === null ? undefined : `${contextWidth}px`,

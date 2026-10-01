@@ -7,10 +7,16 @@ interface WorkspaceNavigation {
   reveal: (source?: HTMLButtonElement, focus?: boolean) => void;
   preview: (source: HTMLButtonElement) => void;
   cancelPreview: () => void;
+  openAssistant?: () => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceNavigation | null>(null);
 export const WorkspaceNavigationProvider = WorkspaceContext.Provider;
+
+/** Domain actions open the host's shared assistant without changing the workspace route. */
+export function useOpenAssistant() {
+  return useContext(WorkspaceContext)?.openAssistant;
+}
 
 /** App chrome shares one height, navigation entry and responsive control contract. */
 export function AppToolbar({

@@ -127,6 +127,7 @@ await withServer({
   checks: [
     "scripts/verify-general-agent-chat.mjs",
     "scripts/verify-knowledge-agent-writes.mjs",
+    "scripts/verify-diagram.mjs",
     "scripts/verify-agent-conversations.mjs",
     "scripts/verify-credentials.mjs",
     "scripts/verify-shell-architecture.mjs",

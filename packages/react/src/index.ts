@@ -8,6 +8,7 @@ export {
   WorkspaceTrigger,
   WorkspaceNavigationProvider,
   ActionMenu,
+  useOpenAssistant,
 } from "./AppControls";
 export { usePublishRunningCount, useRunningApps } from "./application-status";
 export { AppUpdateProvider, useUpdateParticipant } from "./AppUpdate";

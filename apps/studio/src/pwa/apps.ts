@@ -41,6 +41,13 @@ export const PWA_APPS = [
     entry: "notes/knowledge/index.html",
   },
   {
+    key: "diagram",
+    name: "BCR 绘图",
+    shortName: "绘图",
+    path: "/diagram",
+    entry: "src/diagram/DiagramApp.tsx",
+  },
+  {
     key: "markets",
     name: "BCR Market Atlas",
     shortName: "市场",

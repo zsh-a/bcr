@@ -118,6 +118,7 @@ export function WorkspaceNavigation(props: Parameters<typeof TopBar>[0] & { chil
           revealTimer.current = setTimeout(() => reveal(source), 220);
         },
         cancelPreview: () => clearTimeout(revealTimer.current),
+        openAssistant: props.onOpenAgent,
       }}
     >
       <div className="studio-shell-frame flex h-full flex-col" data-app={props.active}>

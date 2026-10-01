@@ -66,6 +66,7 @@ const selectors = {
   documents: ".document-workspace",
   data: ".data-studio",
   docgen: ".docgen-studio",
+  diagram: ".diagram-app",
 };
 const ids = new Set();
 try {
@@ -128,6 +129,20 @@ try {
         { timeout: 45_000 },
       );
       assert.equal(await page.locator(".research-run-result").count(), 1);
+    }
+    if (app.key === "diagram") {
+      await page.getByRole("button", { name: "系统架构", exact: false }).click();
+      await page.locator(".excalidraw").waitFor();
+      await page.locator(".diagram-save-state").filter({ hasText: "已保存" }).waitFor();
+      assert.match(page.url(), /\/pwa\/diagram\/\?diagram=/u);
+      await page.getByRole("button", { name: "整理布局", exact: true }).click();
+      await page.getByRole("button", { name: "从 Mermaid 插入", exact: true }).click();
+      const code = page.getByRole("dialog", { name: "从 Mermaid 插入", exact: true });
+      await code.getByLabel("Mermaid 代码").fill("flowchart LR\nA[离线读取] --> B[本地计算]");
+      await code.getByRole("button", { name: "插入图形", exact: true }).click();
+      await code.waitFor({ state: "hidden" });
+      await page.locator(".diagram-save-state").filter({ hasText: "已保存" }).waitFor();
+      assert.equal(await page.getByRole("alert").count(), 0);
     }
     assert.deepEqual(errors, [], `${app.key}: runtime errors`);
     await context.close();

@@ -393,6 +393,7 @@ function toDecorations(
           Decoration.mark({
             class: "knowledge-inline-chip",
             attributes: {
+              "data-link-target": mark.target,
               "data-tip": tip.main,
               ...(tip.detail ? { "data-tip-detail": tip.detail } : {}),
             },

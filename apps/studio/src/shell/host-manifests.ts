@@ -1,6 +1,7 @@
-import { LayoutGrid, NotebookPen, Sparkles } from "lucide-react";
+import { LayoutGrid, NotebookPen, Sparkles, Shapes } from "lucide-react";
 import type { AppManifest, PanelManifest } from "@bcr/shell-contract";
 import { knowledgePlugin } from "../knowledge/plugin";
+import { diagramPlugin } from "../diagram/plugin";
 
 /**
  * Routes the Studio host itself owns.
@@ -63,3 +64,17 @@ export const ASSISTANT_PANEL = {
   description: "全局浮动助手 · 共享领域能力 · 工具执行与审批",
   section: null,
 } as const satisfies PanelManifest;
+
+export const DIAGRAM_MANIFEST = {
+  id: "diagram",
+  title: "绘图",
+  path: "/diagram",
+  icon: Shapes,
+  description: "绘制流程与架构，让 AI 协助生成和修改",
+  section: "reading",
+  plugins: [diagramPlugin],
+  validateSearch: (search: Record<string, unknown>) => ({
+    diagram: typeof search.diagram === "string" ? search.diagram : undefined,
+  }),
+  load: async () => ({ App: (await import("../diagram/DiagramApp")).DiagramApp }),
+} as const satisfies AppManifest;

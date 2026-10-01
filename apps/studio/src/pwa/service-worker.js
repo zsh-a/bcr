@@ -31,7 +31,7 @@ function addAsset(urls, value) {
   if (isRequiredAppAsset(normalized)) urls.add(normalized);
 }
 
-function addManifestEntry(manifest, key, urls, visited) {
+function addManifestEntry(manifest, key, urls, visited, includeDynamic = false) {
   if (visited.has(key)) return;
   visited.add(key);
   const entry = manifest[key];
@@ -44,10 +44,13 @@ function addManifestEntry(manifest, key, urls, visited) {
       for (const asset of value) addAsset(urls, asset);
     }
   }
-  const imports = entry.imports;
+  const imports = includeDynamic
+    ? [...(entry.imports ?? []), ...(entry.dynamicImports ?? [])]
+    : entry.imports;
   if (!Array.isArray(imports)) return;
   for (const dependency of imports) {
-    if (typeof dependency === "string") addManifestEntry(manifest, dependency, urls, visited);
+    if (typeof dependency === "string")
+      addManifestEntry(manifest, dependency, urls, visited, includeDynamic);
   }
 }
 
@@ -77,6 +80,12 @@ async function shellUrls() {
   addManifestEntry(manifest, `pwa/${app.key}/index.html`, urls, visited);
   if (app.key !== "reader") addManifestEntry(manifest, "src/studio-main.tsx", urls, visited);
   addManifestEntry(manifest, app.entry, urls, visited);
+  if (app.key === "diagram") {
+    // Native editor chunks, Mermaid conversion and layout Worker must work on a cold offline start.
+    addManifestEntry(manifest, app.entry, urls, new Set(), true);
+    // Default native text and Mermaid text; other selectable font families cache on demand.
+    for (const font of globalThis.__BCR_DIAGRAM_FONT_ASSETS__) urls.add(font);
+  }
   // Vite emits workers as assets, so their nested wasm imports are not edges
   // in the page's static module graph. The shared compute kernel is boot-critical.
   if (app.key !== "reader") {
