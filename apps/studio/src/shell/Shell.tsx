@@ -144,8 +144,7 @@ function ShellContent() {
         const app = LAUNCH_PAD_APPS[Number(event.code.slice(5)) - 1];
         if (app !== undefined) {
           event.preventDefault();
-          if (app.kind === "panel") openPanel(app.id);
-          else void navigate({ to: app.path });
+          void navigate({ to: app.path });
         }
       }
     };
@@ -183,7 +182,7 @@ function ShellContent() {
           onOpenSearch={() => setSearchOpen(true)}
           onOpenAgent={() => openPanel("assistant")}
         >
-          {active === "home" && <Home onOpenPanel={openPanel} />}
+          {active === "home" && <Home />}
           {MANIFESTS.filter((app) => visited.includes(app.id)).map((app) => (
             <div
               key={app.id}

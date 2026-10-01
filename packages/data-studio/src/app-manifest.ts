@@ -13,8 +13,8 @@ export const manifest = {
   title: "Data Studio",
   path: "/data",
   icon: Table2,
-  description: "本地表格探索 · CSV / JSON / NDJSON · Schema / 搜索 / 导出",
-  section: "compute",
+  description: "导入表格，浏览、搜索与导出数据",
+  section: "tools",
   load: () => import("./App"),
   validateSearch: (search) => ({
     query: typeof search["query"] === "string" ? search["query"] : undefined,

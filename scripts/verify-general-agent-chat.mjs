@@ -147,7 +147,7 @@ try {
   await panel.getByRole("button", { name: "关闭 AI 助手", exact: true }).click();
 
   // Opening in a domain preserves the route and adds that domain's edit tools.
-  await page.getByRole("button", { name: /个人知识库/ }).click();
+  await page.getByRole("link", { name: /个人知识库/ }).click();
   await page.getByRole("button", { name: "写第一篇笔记" }).click();
   await page.getByLabel("笔记标题").fill("跨域验证笔记");
   const editor = page.locator(".cm-content");
@@ -190,9 +190,9 @@ try {
   await approval.waitFor();
 
   // Switching workspaces preserves the window and history; knowledge remains callable.
-  await page.keyboard.press("Alt+Digit1");
-  await page.waitForURL(/\/studio(?:\?|$)/);
-  await panel.locator(".bcr-chat-target strong").filter({ hasText: "Studio" }).waitFor();
+  await page.keyboard.press("Alt+Digit6");
+  await page.waitForURL(/\/data(?:\?|$)/);
+  await panel.locator(".bcr-chat-target strong").filter({ hasText: "Data Studio" }).waitFor();
   assert.ok(
     (await approval.textContent()).includes("跨域验证笔记"),
     "approval keeps its original target label",

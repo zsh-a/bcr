@@ -130,6 +130,7 @@ await withServer({
     "scripts/verify-agent-conversations.mjs",
     "scripts/verify-credentials.mjs",
     "scripts/verify-shell-architecture.mjs",
+    "scripts/verify-home-organization.mjs",
     "scripts/verify-workspace-navigation.mjs",
     "scripts/verify-app-layout.mjs",
     "scripts/verify-modern-ui.mjs",

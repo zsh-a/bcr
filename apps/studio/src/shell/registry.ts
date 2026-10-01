@@ -1,6 +1,6 @@
 import { lazy, type ComponentType } from "react";
 import { workspaceSearchPlugin } from "../assistant/workspace-search-plugin";
-import type { AppManifest, PanelManifest } from "@bcr/shell-contract";
+import type { AppManifest, AppSection, PanelManifest } from "@bcr/shell-contract";
 import { manifest as data } from "@bcr/data-studio/app-manifest";
 import { manifest as documents } from "@bcr/document-studio/app-manifest";
 import { manifest as reader } from "@bcr/reader-studio/app-manifest";
@@ -20,19 +20,20 @@ import { ASSISTANT_PANEL, KNOWLEDGE_MANIFEST, STUDIO_MANIFEST } from "./host-man
  * not an edit to the router, the palette, the launch pad and the compute worker
  * in lockstep.
  *
- * Order matters: it is the launch-pad order, which `Alt+1..9` indexes.
+ * Within each section, declaration order determines the launch order. Routing,
+ * plugins and compute contributions include every app, regardless of placement.
  */
 const declared: ReadonlyArray<AppManifest> = [
-  STUDIO_MANIFEST,
-  media,
-  quant,
   markets,
+  quant,
+  reader,
+  KNOWLEDGE_MANIFEST,
+  media,
+  data,
   manga,
   documents,
-  reader,
-  data,
+  STUDIO_MANIFEST,
   docgen,
-  KNOWLEDGE_MANIFEST,
 ];
 
 export const PLUGINS = [workspaceSearchPlugin, ...declared.flatMap((app) => app.plugins ?? [])];
@@ -52,16 +53,36 @@ export const MANIFESTS: ReadonlyArray<RegisteredApp> = declared.map((app) => ({
 
 export type ActiveView = "home" | string;
 
-/** Apps advertised on the launch pad, in `Alt+N` order. */
-export type LaunchEntry = RegisteredApp | PanelManifest;
 export const PANELS: readonly PanelManifest[] = [ASSISTANT_PANEL];
-export const LAUNCH_PAD_APPS: ReadonlyArray<LaunchEntry> = [...MANIFESTS, ...PANELS].filter(
-  (app) => app.section !== null,
-);
 
-/** Launch pad split by where the app belongs. */
-export const COMPUTE_APPS = LAUNCH_PAD_APPS.filter((app) => app.section === "compute");
-export const PERSONAL_APPS = LAUNCH_PAD_APPS.filter((app) => app.section === "personal");
+interface WorkspaceSection {
+  readonly id: Exclude<AppSection, null>;
+  readonly title: string;
+  readonly apps: readonly RegisteredApp[];
+}
+
+function section(id: WorkspaceSection["id"], title: string): WorkspaceSection {
+  return { id, title, apps: MANIFESTS.filter((app) => app.section === id) };
+}
+
+/** Product navigation, expressed as tasks rather than runtime capabilities. */
+export const HOME_SECTIONS = [
+  section("research", "市场与策略"),
+  section("reading", "阅读与知识"),
+  section("tools", "数据与媒体"),
+];
+export const MORE_TOOL_SECTIONS = [
+  section("experimental", "实验工具"),
+  section("developer", "开发工具"),
+];
+
+/** Only primary workspaces receive Alt+N; panels retain their own shortcuts. */
+export const LAUNCH_PAD_APPS = HOME_SECTIONS.flatMap((group) => group.apps);
+
+export function launchShortcut(id: string): string | undefined {
+  const index = LAUNCH_PAD_APPS.findIndex((app) => app.id === id);
+  return index >= 0 && index < 9 ? `Alt+${index + 1}` : undefined;
+}
 
 export function appIdFromPath(pathname: string): ActiveView {
   const app = MANIFESTS.find((a) => pathname === a.path || pathname.startsWith(`${a.path}/`));

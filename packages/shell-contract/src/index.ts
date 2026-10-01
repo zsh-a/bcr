@@ -37,8 +37,8 @@ export type AppComponent = ComponentType | LazyExoticComponent<ComponentType>;
  */
 export type AppIcon = ComponentType<{ readonly className?: string }>;
 
-/** Where the app belongs on the launch pad. */
-export type AppSection = "compute" | "personal" | null;
+/** User-facing workspace groups. Auxiliary tools stay outside the primary launch pad. */
+export type AppSection = "research" | "reading" | "tools" | "experimental" | "developer" | null;
 
 /**
  * Compute handlers the app contributes to the host's compute worker.

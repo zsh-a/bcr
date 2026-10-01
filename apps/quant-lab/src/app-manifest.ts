@@ -7,8 +7,8 @@ export const manifest = {
   title: "Quant Lab",
   path: "/quant",
   icon: ChartCandlestick,
-  description: "本地策略研究 · SMA / JSG 多股票 / Rust 回测 / 成交分析",
-  section: "compute",
+  description: "策略回测、参数比较与成交分析",
+  section: "research",
   load: () => import("./App"),
   validateSearch: (search) => ({
     dataset: typeof search["dataset"] === "string" ? search["dataset"] : undefined,

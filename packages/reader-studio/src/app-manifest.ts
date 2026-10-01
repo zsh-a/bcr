@@ -12,8 +12,8 @@ export const manifest = {
   title: "Reader Studio",
   path: "/reader",
   icon: LibraryBig,
-  description: "本地阅读空间 · TXT / Markdown / HTML / DOCX / EPUB / PDF / CBZ · 进度与全文搜索",
-  section: "compute",
+  description: "阅读书籍与文档，整理书签和笔记",
+  section: "reading",
   load: () => import("./App"),
   validateSearch: (search) => ({
     cite: search["cite"],

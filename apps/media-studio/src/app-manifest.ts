@@ -18,8 +18,8 @@ export const manifest = {
   title: "Media Studio",
   path: "/media",
   icon: AudioWaveform,
-  description: "本地语音转字幕 · Whisper ASR / 双语翻译 / SRT·VTT·ASS 导出",
-  section: "compute",
+  description: "音视频转字幕，校对、翻译与导出",
+  section: "tools",
   load: () => import("./App"),
   validateSearch: (search) => ({
     cite: search["cite"],

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@bcr/react/theme.css";
+@import "./shell/home.css";
 
 /* BCR Studio — quiet editorial 计算工作台。
  * chrome 一律消费统一令牌；圆角/间距/字号/动效禁止字面量（hairline 边框、100%/auto 除外）。 */
@@ -224,30 +225,6 @@
   font-size: var(--text-xs);
 }
 
-/* ---------- 启动台 ---------- */
-.studio-home {
-  background: var(--color-bg);
-}
-
-.studio-home-inner {
-  max-width: var(--content-max);
-}
-
-/* 启动台卡片：hairline + 背景层叠，hover 只做颜色/边框变化，无光晕。 */
-.home-app-card {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  transition:
-    border-color var(--duration-fast) var(--ease-standard),
-    background-color var(--duration-fast) var(--ease-standard);
-}
-
-.home-app-card:hover {
-  border-color: var(--color-border-strong);
-  background: var(--color-raised);
-}
-
 /* ---------- Dock 工作区外壳 ---------- */
 .studio-dock-shell {
   position: relative;
@@ -384,18 +361,6 @@
   .studio-topbar .studio-topbar-search {
     background: transparent;
     border-color: transparent;
-  }
-
-  .studio-home {
-    padding: var(--space-8) var(--space-5);
-  }
-
-  .home-app-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .home-app-card {
-    padding: var(--space-6);
   }
 
   .studio-dock button {

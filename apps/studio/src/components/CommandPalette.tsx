@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { LAUNCH_PAD_APPS, MANIFESTS, PANELS } from "../shell/registry";
+import { LAUNCH_PAD_APPS, MANIFESTS, PANELS, launchShortcut } from "../shell/registry";
 import { resetLayout } from "./Dock";
 import { StorageMaintenanceDialogs } from "./StorageMaintenanceDialogs";
 import { useStorageMaintenance } from "./useStorageMaintenance";
@@ -50,16 +50,18 @@ export function CommandPalette(props: {
         icon: <House className="size-3.5" />,
         run: () => void navigate({ to: "/" }),
       },
-      // Derived from the app registry so a new app cannot appear on the launch
-      // pad and in the Alt+N shortcuts but go missing here. Shortcut hints come
-      // from the launch-pad order, so a URL-only route (DocGen Lab) advertises
-      // no number instead of inheriting one it does not own.
-      ...[...MANIFESTS, ...PANELS].map((app) => {
-        const shortcut = LAUNCH_PAD_APPS.indexOf(app) + 1;
+      // Primary workspaces first, then auxiliary apps and global panels. All
+      // registered capabilities remain searchable when their home cards are hidden.
+      ...[
+        ...LAUNCH_PAD_APPS,
+        ...MANIFESTS.filter((app) => !LAUNCH_PAD_APPS.includes(app)),
+        ...PANELS,
+      ].map((app) => {
+        const shortcut = launchShortcut(app.id);
         return {
           id: `go-${app.id}`,
           title: `打开 ${app.paletteTitle ?? app.title}`,
-          ...(shortcut >= 1 && shortcut <= 9 ? { hint: `Alt+${shortcut}` } : {}),
+          ...(shortcut === undefined ? {} : { hint: shortcut }),
           icon: <app.icon className="size-3.5" />,
           run: () =>
             app.kind === "panel" ? props.onOpenPanel(app.id) : void navigate({ to: app.path }),

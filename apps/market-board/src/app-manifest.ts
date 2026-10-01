@@ -14,7 +14,7 @@ export const manifest = {
   path: "/markets",
   icon: Globe2,
   description: "行情、行业表现、历史宽度与自选研究",
-  section: "compute",
+  section: "research",
   load: () => import("./App"),
   validateSearch: (search) => ({
     view:

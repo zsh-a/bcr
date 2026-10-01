@@ -21,8 +21,8 @@ export const manifest = {
   title: "Manga Studio",
   path: "/manga",
   icon: BookOpenText,
-  description: "漫画翻译工作台 · OCR / 翻译 / 清理 / CJK 排版审校",
-  section: "compute",
+  description: "漫画文字识别、翻译与排版审校",
+  section: "experimental",
   load: () => import("./App"),
   validateSearch: (search) => ({
     document: typeof search["document"] === "string" ? search["document"] : undefined,

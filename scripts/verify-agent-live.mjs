@@ -98,7 +98,7 @@ try {
     return text;
   });
   await panel.getByRole("button", { name: "关闭 AI 助手", exact: true }).click();
-  await page.getByRole("button", { name: /个人知识库/ }).click();
+  await page.getByRole("link", { name: /个人知识库/ }).click();
   await page.getByRole("button", { name: "写第一篇笔记" }).click();
   const title = "MIMO实测-" + Date.now();
   const original = "本次虚构项目代号是琥珀灯塔，验收编号是 AMBER-59317。此笔记只用于自动化测试。";
@@ -109,8 +109,8 @@ try {
     const line = document.querySelector('[data-testid="knowledge-status"] .knowledge-status-line');
     return /^(已保存|已同步)/u.test(line?.textContent ?? "");
   });
-  await page.keyboard.press("Alt+Digit1");
-  await page.waitForURL(/\/studio(?:\?|$)/);
+  await page.keyboard.press("Alt+Digit6");
+  await page.waitForURL(/\/data(?:\?|$)/);
   await page.keyboard.press("Control+j");
   await panel.waitFor();
   await check("cross-domain search and read real persisted note", async () => {
@@ -174,8 +174,8 @@ try {
       "请调用 apply_text_edit 在当前光标处插入 STALE_EDIT_271。只调用一次，如果失败请停止不要重试。",
     );
     await approval.waitFor();
-    await page.keyboard.press("Alt+Digit1");
-    await page.waitForURL(/\/studio(?:\?|$)/);
+    await page.keyboard.press("Alt+Digit6");
+    await page.waitForURL(/\/data(?:\?|$)/);
     await approval.getByRole("button", { name: "应用修改" }).click();
     const text = await finish();
     assert.equal(await editor.textContent(), saved);

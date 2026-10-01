@@ -36,8 +36,8 @@ export const STUDIO_MANIFEST = {
   paletteTitle: "Studio 工作台",
   path: "/studio",
   icon: LayoutGrid,
-  description: "Compute Runtime 工作台 · 文件 / 任务 / 缓存血缘",
-  section: "compute",
+  description: "查看文件、计算任务、缓存与本地存储",
+  section: "developer",
   // Dock 必须走 load 惰性加载：静态 import 会把 Dock→面板→router 的模块图
   // 拉进 host-manifests，与 registry 形成环——打包后模块初始化交错，
   // registry 顶层会读到尚未初始化的 STUDIO_MANIFEST（启动即崩）。
@@ -50,8 +50,8 @@ export const KNOWLEDGE_MANIFEST = {
   title: "个人知识库",
   path: KNOWLEDGE_PATH,
   icon: NotebookPen,
-  description: "独立 Markdown 笔记 · 资料引用 / 全文搜索 / GitHub 同步与版本恢复",
-  section: "personal",
+  description: "记录想法，管理资料与关联阅读引用",
+  section: "reading",
   load: async () => ({ App: (await import("../knowledge/KnowledgeApp")).KnowledgeApp }),
 } as const satisfies AppManifest;
 
@@ -61,5 +61,5 @@ export const ASSISTANT_PANEL = {
   title: "AI 助手",
   icon: Sparkles,
   description: "全局浮动助手 · 共享领域能力 · 工具执行与审批",
-  section: "personal",
+  section: null,
 } as const satisfies PanelManifest;

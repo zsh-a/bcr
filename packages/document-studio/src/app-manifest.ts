@@ -16,8 +16,8 @@ export const manifest = {
   title: "Document Studio",
   path: "/documents",
   icon: FileStack,
-  description: "文档流水线入口 · Ingest / Extract / OCR / Translate / Handoff · DOCX",
-  section: "compute",
+  description: "提取文档内容、识别图片文字与跨应用交接",
+  section: "experimental",
   load: () => import("./App"),
   validateSearch: (search) => ({
     cite: search["cite"],

@@ -145,12 +145,9 @@
 /* 知识域面板的不透明面已随背景联动整体迁往 knowledge.css（同选择器同行为），
    主题层不再反向伸手进知识域类；.knowledge-toolbar / .knowledge-note-actions
    全仓库无源码引用，是死选择器，随迁移删除。 */
-:root[data-background] .studio-home > div > div:first-child {
-  background: var(--color-bg);
-}
-
-:root[data-background] .studio-home > div > div:first-child,
-:root[data-background] .studio-home section > .ui-section-label {
+:root[data-background] .home-heading,
+:root[data-background] .home-section > h2,
+:root[data-background] .home-more-tools {
   padding: var(--space-4);
   border-radius: var(--radius-md);
   background: var(--color-bg);
