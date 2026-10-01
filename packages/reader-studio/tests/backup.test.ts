@@ -14,7 +14,7 @@ import {
   prepareReaderRestore,
   planReaderBackup,
 } from "../src/readerBackup";
-import { createDemoBook, DEFAULT_READER_SETTINGS } from "../src/model";
+import { createDemoBook, DEFAULT_READER_SETTINGS, type ReaderSettings } from "../src/model";
 import { getReaderState } from "../src/store";
 import type { ReaderRuntime } from "../src/runtime";
 import { persistReader, restoreNavigationHistory } from "../src/readerPersistence";
@@ -63,9 +63,9 @@ describe("Reader portable backup", () => {
     expect(decodeReaderBackup({ ...manifest(), settings: legacy }).settings.txtParagraphStyle).toBe(
       "indent",
     );
-    expect(() =>
-      decodeReaderBackup({ ...manifest(), settings: { ...legacy, txtParagraphStyle: "invalid" } }),
-    ).toThrow();
+    expect(
+      decodeReaderBackup({ ...manifest(), settings: { ...legacy, txtParagraphStyle: "future" } }),
+    ).toMatchObject({ settingsFallback: true, settings: { txtParagraphStyle: "indent" } });
   });
   it("restores page animation preferences and accepts older backups", () => {
     for (const pageAnimation of ["slide", "fade", "paper", "none"]) {
@@ -81,9 +81,9 @@ describe("Reader portable backup", () => {
       "slide",
     );
     for (const pageAnimation of ["unknown", 3, ["fade"]]) {
-      expect(() =>
+      expect(
         decodeReaderBackup({ ...manifest(), settings: { ...legacy, pageAnimation } }),
-      ).toThrow();
+      ).toMatchObject({ settingsFallback: true, settings: { pageAnimation: "slide" } });
     }
   });
 
@@ -129,9 +129,12 @@ describe("Reader portable backup", () => {
     };
     expect(decodeReaderBackup({ ...manifest(), settings }).settings).toMatchObject(settings);
     for (const patch of [{ paragraphSpacing: -1 }, { lineLength: 1000 }, { fontWeight: "400" }]) {
-      expect(() =>
-        decodeReaderBackup({ ...manifest(), settings: { ...settings, ...patch } }),
-      ).toThrow();
+      const decoded = decodeReaderBackup({ ...manifest(), settings: { ...settings, ...patch } });
+      expect(decoded.settingsFallback).toBe(true);
+      for (const key of Object.keys(patch))
+        expect(decoded.settings[key as keyof ReaderSettings]).toBe(
+          DEFAULT_READER_SETTINGS[key as keyof ReaderSettings],
+        );
     }
   });
   it("plans bounded independent volumes without omitting selected books", () => {
@@ -179,6 +182,7 @@ describe("Reader portable backup", () => {
       ...base,
       artifacts: {
         ...base.artifacts,
+        has: () => Effect.succeed(true),
         getStream: () =>
           Effect.succeed(
             new ReadableStream<Uint8Array>({
@@ -354,15 +358,15 @@ describe("Reader portable backup", () => {
     expect(backupNewBooks(inspected, [{ ...restored[0]!, id: "other-id" }])).toHaveLength(0);
   });
 
-  it("rejects unknown versions, duplicate ids, unsafe ids and invalid preferences", () => {
+  it("rejects unknown versions and unsafe identities while falling back on unsupported settings", () => {
     expect(() => decodeReaderBackup({ ...manifest(), version: 2 })).toThrow();
     expect(() => decodeReaderBackup({ ...manifest(), books: [{ book }, { book }] })).toThrow();
     expect(() =>
       decodeReaderBackup({ ...manifest(), books: [{ book: { ...book, id: "__proto__" } }] }),
     ).toThrow();
-    expect(() =>
+    expect(
       decodeReaderBackup({ ...manifest(), settings: { ...DEFAULT_READER_SETTINGS, fontSize: -1 } }),
-    ).toThrow();
+    ).toMatchObject({ settingsFallback: true, settings: { fontSize: 20 } });
   });
 
   it("rejects missing or tampered source files before restoring anything", async () => {

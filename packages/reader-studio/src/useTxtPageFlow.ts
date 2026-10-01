@@ -29,6 +29,7 @@ const idleSession: TxtFlowSession = { turn() {}, flush() {}, stop() {}, seek() {
 
 export function useTxtPageFlow(options: {
   book: ReaderBook;
+  fontsReady: boolean;
   settings: ReaderSettings;
   navigation: number;
   seekSequence: number;
@@ -36,7 +37,8 @@ export function useTxtPageFlow(options: {
   viewport: RefObject<HTMLDivElement | null>;
   content: RefObject<HTMLDivElement | null>;
 }) {
-  const { book, settings, navigation, seekSequence, columns, viewport, content } = options;
+  const { book, settings, navigation, seekSequence, columns, viewport, content, fontsReady } =
+    options;
   const enabled = book.source.format === "txt";
   const [current, setCurrent] = useState<TxtPageSpread>();
   const [motion, setMotion] = useState<PageMotion>();
@@ -69,11 +71,12 @@ export function useTxtPageFlow(options: {
   useLayoutEffect(() => {
     const element = viewport.current;
     const body = content.current;
-    if (!enabled || !element || !body) return;
+    if (!enabled || !element || !body || !fontsReady) return;
     let disposeLayout = () => {};
     let disposed = false;
     let geometryKey = "";
     let scheduled = 0;
+    let fontTimer = 0;
     const seekRequested = seekSequence !== handledSeekSequence.current;
     handledSeekSequence.current = seekSequence;
     if (seekRequested) session.current.seek();
@@ -174,6 +177,13 @@ export function useTxtPageFlow(options: {
             const target = await makeSpread(direction > 0 ? active.end : active.start, direction);
             if (!live || generation !== turnGeneration) break;
             if (!target) continue;
+            if (queue.length) {
+              active = target;
+              setCurrent(target);
+              setMotion(undefined);
+              if (!suppressPersist) persist();
+              continue;
+            }
             const from = active;
             await new Promise<void>((resolve) => {
               const finish = () => {
@@ -216,7 +226,11 @@ export function useTxtPageFlow(options: {
       };
       session.current = {
         turn(direction) {
-          if (queue.length < 8) queue.push(direction);
+          queue.push(direction);
+          if (queue.length > 1) {
+            cancelMotion.current();
+            finishMotion.current();
+          }
           void drain();
         },
         flush() {
@@ -269,22 +283,39 @@ export function useTxtPageFlow(options: {
       cancelAnimationFrame(scheduled);
       scheduled = requestAnimationFrame(() => rebuild(force));
     };
-    rebuild(seekRequested);
+    void document.fonts.ready.then(() => rebuild(seekRequested));
     const observer = new ResizeObserver(() => schedule());
     observer.observe(element);
-    const fonts = () => schedule(true);
+    // Every measured paragraph awaits its own glyphs. New unicode subsets do
+    // not invalidate previously measured pages; only geometry changes rebuild.
+    const fonts = () => {
+      window.clearTimeout(fontTimer);
+      fontTimer = window.setTimeout(() => schedule(), 120);
+    };
     window.addEventListener("bcr-reader-fonts-ready", fonts);
     document.fonts.addEventListener("loadingdone", fonts);
     void document.fonts.ready.then(fonts);
     return () => {
       disposed = true;
       cancelAnimationFrame(scheduled);
+      window.clearTimeout(fontTimer);
       observer.disconnect();
       window.removeEventListener("bcr-reader-fonts-ready", fonts);
       document.fonts.removeEventListener("loadingdone", fonts);
       disposeLayout();
     };
-  }, [enabled, book, settings, navigation, seekSequence, columns, viewport, content, retry]);
+  }, [
+    enabled,
+    fontsReady,
+    book,
+    settings,
+    navigation,
+    seekSequence,
+    columns,
+    viewport,
+    content,
+    retry,
+  ]);
 
   useLayoutEffect(() => {
     const element = viewport.current;

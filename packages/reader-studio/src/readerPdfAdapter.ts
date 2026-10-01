@@ -172,7 +172,7 @@ export async function openPdf(input: ReaderOpenInput): Promise<ReaderBook> {
       const viewport = page.getViewport({ scale: 1 });
       const text = content?.items
         .map((item) => ("str" in item ? item.str : ""))
-        .join(" ")
+        .join("")
         .trim();
       sections.push({
         id: `page-${pageNumber}`,
@@ -196,7 +196,7 @@ export async function openPdf(input: ReaderOpenInput): Promise<ReaderBook> {
               signal.throwIfAborted();
               const text = content.items
                 .map((item) => ("str" in item ? item.str : ""))
-                .join(" ")
+                .join("")
                 .trim();
               return { text: text || `PDF page ${index + 1}` };
             } finally {

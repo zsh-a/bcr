@@ -15,10 +15,13 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ReaderAnnotation, ReaderBook, ReaderBookmark, ReaderTocItem } from "@bcr/reader-core";
+import { percentageForLocator } from "@bcr/reader-core";
+import { ReaderRecordEditor } from "./ReaderRecordEditor";
 import { percent } from "./readerPresentation";
 import { reader, useReader } from "./store";
 import { ReaderSheet } from "./ReaderSheet";
 import { ReaderHistoryBar } from "./ReaderHistoryBar";
+import { currentReaderTocItem, resolveReaderTocTarget, openReaderTocItem } from "./navigation";
 
 export function ReaderNavigationButton({ book }: { book: ReaderBook }) {
   const [panel, setPanel] = useState<MobileNavigationPanel | null>(null);
@@ -48,16 +51,7 @@ const EMPTY_BOOKMARKS: ReadonlyArray<ReaderBookmark> = [];
 const EMPTY_ANNOTATIONS: ReadonlyArray<ReaderAnnotation> = [];
 
 function tocSectionId(book: ReaderBook, item: ReaderTocItem): string | undefined {
-  if (
-    item.sectionId !== undefined &&
-    book.sections.some((section) => section.id === item.sectionId)
-  ) {
-    return item.sectionId;
-  }
-  if (item.href !== undefined) {
-    return book.sections.find((section) => section.href === item.href)?.id;
-  }
-  return undefined;
+  return resolveReaderTocTarget(book, item)?.sectionId;
 }
 
 function ReaderTocTree(props: {
@@ -70,8 +64,7 @@ function ReaderTocTree(props: {
 }) {
   const level = props.level ?? 0;
   const query = props.query?.trim().toLocaleLowerCase() ?? "";
-  const highlightedId =
-    currentTxtChapter(props.book, props.activeSectionId)?.sectionId ?? props.activeSectionId;
+  const highlightedId = currentReaderTocItem(props.book, props.items, props.activeSectionId)?.id;
   const visibleItems = props.items.filter((item) => tocItemMatchesQuery(item, query));
   return (
     <div className={`reader-toc-level reader-toc-level-${Math.min(level, 4)}`}>
@@ -82,14 +75,14 @@ function ReaderTocTree(props: {
           <div className="reader-toc-item" key={item.id}>
             <button
               type="button"
-              className={sectionId === highlightedId ? "is-active" : ""}
-              aria-current={sectionId === highlightedId ? "page" : undefined}
+              className={item.id === highlightedId ? "is-active" : ""}
+              aria-current={item.id === highlightedId ? "page" : undefined}
               data-reader-toc-section={sectionId}
               disabled={sectionId === undefined}
               title={sectionId === undefined ? "此条目未包含可读正文" : undefined}
               onClick={() => {
                 if (sectionId !== undefined) {
-                  reader.openBook(props.book.id, sectionId);
+                  openReaderTocItem(props.book, item);
                   props.onNavigate?.();
                 }
               }}
@@ -430,33 +423,38 @@ function MobileNavigationSheet(props: {
             <div className="reader-mobile-sheet-scroll">
               {bookmarks.length > 0 ? (
                 <div className="reader-mobile-saved-list">
-                  {bookmarks.map((bookmark) => (
-                    <div className="reader-mobile-saved-row" key={bookmark.id}>
-                      <button
-                        type="button"
-                        className="reader-mobile-saved-item"
-                        onClick={() => {
-                          reader.openBookmark(props.book.id, bookmark.id);
-                          props.onClose();
-                        }}
-                      >
-                        <Bookmark className="reader-icon" />
-                        <span>
-                          <strong>{bookmark.label}</strong>
-                          <small>{percent(bookmark.locator.progression)} · 本章位置</small>
-                        </span>
-                        <ChevronRight className="reader-icon" />
-                      </button>
-                      <button
-                        type="button"
-                        className="reader-mobile-saved-remove"
-                        aria-label={`移除书签 ${bookmark.label}`}
-                        onClick={() => reader.removeBookmark(props.book.id, bookmark.id)}
-                      >
-                        <X className="reader-icon" />
-                      </button>
-                    </div>
-                  ))}
+                  {[...bookmarks]
+                    .sort((a, b) => b.createdAt - a.createdAt)
+                    .map((bookmark) => (
+                      <div className="reader-mobile-saved-row" key={bookmark.id}>
+                        <button
+                          type="button"
+                          className="reader-mobile-saved-item"
+                          onClick={() => {
+                            reader.openBookmark(props.book.id, bookmark.id);
+                            props.onClose();
+                          }}
+                        >
+                          <Bookmark className="reader-icon" />
+                          <span>
+                            <strong>{bookmark.label}</strong>
+                            <small>
+                              {percent(percentageForLocator(props.book, bookmark.locator))} · 全书
+                            </small>
+                          </span>
+                          <ChevronRight className="reader-icon" />
+                        </button>
+                        <ReaderRecordEditor bookId={props.book.id} record={bookmark} />
+                        <button
+                          type="button"
+                          className="reader-mobile-saved-remove"
+                          aria-label={`移除书签 ${bookmark.label}`}
+                          onClick={() => reader.removeBookmark(props.book.id, bookmark.id)}
+                        >
+                          <X className="reader-icon" />
+                        </button>
+                      </div>
+                    ))}
                 </div>
               ) : (
                 <MobileNavigationEmpty
@@ -478,33 +476,36 @@ function MobileNavigationSheet(props: {
             <div className="reader-mobile-sheet-scroll">
               {annotations.length > 0 ? (
                 <div className="reader-mobile-saved-list">
-                  {annotations.map((annotation) => (
-                    <div className="reader-mobile-saved-row" key={annotation.id}>
-                      <button
-                        type="button"
-                        className="reader-mobile-saved-item"
-                        onClick={() => {
-                          reader.openAnnotation(props.book.id, annotation.id);
-                          props.onClose();
-                        }}
-                      >
-                        <MessageSquarePlus className="reader-icon" />
-                        <span>
-                          <strong>{annotation.label}</strong>
-                          <small>{annotation.note}</small>
-                        </span>
-                        <ChevronRight className="reader-icon" />
-                      </button>
-                      <button
-                        type="button"
-                        className="reader-mobile-saved-remove"
-                        aria-label={`移除笔记 ${annotation.label}`}
-                        onClick={() => reader.removeAnnotation(props.book.id, annotation.id)}
-                      >
-                        <X className="reader-icon" />
-                      </button>
-                    </div>
-                  ))}
+                  {[...annotations]
+                    .sort((a, b) => b.createdAt - a.createdAt)
+                    .map((annotation) => (
+                      <div className="reader-mobile-saved-row" key={annotation.id}>
+                        <button
+                          type="button"
+                          className="reader-mobile-saved-item"
+                          onClick={() => {
+                            reader.openAnnotation(props.book.id, annotation.id);
+                            props.onClose();
+                          }}
+                        >
+                          <MessageSquarePlus className="reader-icon" />
+                          <span>
+                            <strong>{annotation.label}</strong>
+                            <small>{annotation.note}</small>
+                          </span>
+                          <ChevronRight className="reader-icon" />
+                        </button>
+                        <ReaderRecordEditor bookId={props.book.id} record={annotation} />
+                        <button
+                          type="button"
+                          className="reader-mobile-saved-remove"
+                          aria-label={`移除笔记 ${annotation.label}`}
+                          onClick={() => reader.removeAnnotation(props.book.id, annotation.id)}
+                        >
+                          <X className="reader-icon" />
+                        </button>
+                      </div>
+                    ))}
                 </div>
               ) : (
                 <MobileNavigationEmpty
@@ -574,29 +575,34 @@ export function ChapterRail(props: { book: ReaderBook }) {
             <span>书签 · {bookmarks.length}</span>
           </div>
           <div className="reader-bookmark-list">
-            {bookmarks.map((bookmark) => (
-              <div className="reader-bookmark-row" key={bookmark.id}>
-                <button
-                  type="button"
-                  className="reader-bookmark-item"
-                  onClick={() => reader.openBookmark(props.book.id, bookmark.id)}
-                >
-                  <Bookmark className="reader-icon" />
-                  <span>
-                    <strong>{bookmark.label}</strong>
-                    <small>{percent(bookmark.locator.progression)} · 本章位置</small>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="reader-bookmark-remove"
-                  aria-label={`移除书签 ${bookmark.label}`}
-                  onClick={() => reader.removeBookmark(props.book.id, bookmark.id)}
-                >
-                  <X className="reader-icon" />
-                </button>
-              </div>
-            ))}
+            {[...bookmarks]
+              .sort((a, b) => b.createdAt - a.createdAt)
+              .map((bookmark) => (
+                <div className="reader-bookmark-row" key={bookmark.id}>
+                  <button
+                    type="button"
+                    className="reader-bookmark-item"
+                    onClick={() => reader.openBookmark(props.book.id, bookmark.id)}
+                  >
+                    <Bookmark className="reader-icon" />
+                    <span>
+                      <strong>{bookmark.label}</strong>
+                      <small>
+                        {percent(percentageForLocator(props.book, bookmark.locator))} · 全书
+                      </small>
+                    </span>
+                  </button>
+                  <ReaderRecordEditor bookId={props.book.id} record={bookmark} />
+                  <button
+                    type="button"
+                    className="reader-bookmark-remove"
+                    aria-label={`移除书签 ${bookmark.label}`}
+                    onClick={() => reader.removeBookmark(props.book.id, bookmark.id)}
+                  >
+                    <X className="reader-icon" />
+                  </button>
+                </div>
+              ))}
           </div>
         </>
       )}
@@ -608,29 +614,32 @@ export function ChapterRail(props: { book: ReaderBook }) {
             <span>笔记 · {annotations.length}</span>
           </div>
           <div className="reader-annotation-list">
-            {annotations.map((annotation) => (
-              <div className="reader-annotation-row" key={annotation.id}>
-                <button
-                  type="button"
-                  className="reader-annotation-item"
-                  onClick={() => reader.openAnnotation(props.book.id, annotation.id)}
-                >
-                  <MessageSquarePlus className="reader-icon" />
-                  <span>
-                    <strong>{annotation.label}</strong>
-                    <small>{annotation.note}</small>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="reader-annotation-remove"
-                  aria-label={`移除笔记 ${annotation.label}`}
-                  onClick={() => reader.removeAnnotation(props.book.id, annotation.id)}
-                >
-                  <X className="reader-icon" />
-                </button>
-              </div>
-            ))}
+            {[...annotations]
+              .sort((a, b) => b.createdAt - a.createdAt)
+              .map((annotation) => (
+                <div className="reader-annotation-row" key={annotation.id}>
+                  <button
+                    type="button"
+                    className="reader-annotation-item"
+                    onClick={() => reader.openAnnotation(props.book.id, annotation.id)}
+                  >
+                    <MessageSquarePlus className="reader-icon" />
+                    <span>
+                      <strong>{annotation.label}</strong>
+                      <small>{annotation.note}</small>
+                    </span>
+                  </button>
+                  <ReaderRecordEditor bookId={props.book.id} record={annotation} />
+                  <button
+                    type="button"
+                    className="reader-annotation-remove"
+                    aria-label={`移除笔记 ${annotation.label}`}
+                    onClick={() => reader.removeAnnotation(props.book.id, annotation.id)}
+                  >
+                    <X className="reader-icon" />
+                  </button>
+                </div>
+              ))}
           </div>
         </>
       )}

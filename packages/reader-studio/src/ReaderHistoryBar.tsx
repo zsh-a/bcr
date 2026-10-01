@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ReaderSheet } from "./ReaderSheet";
 import { reader, useReader } from "./store";
 import { openSearchHit } from "./readerSearchNavigation";
+import { percentageForLocator } from "@bcr/reader-core";
 
 export function ReaderHistoryBar() {
   const [open, setOpen] = useState(false);
@@ -11,6 +12,7 @@ export function ReaderHistoryBar() {
   const query = useReader((state) => state.query);
   const index = useReader((state) => state.searchActiveIndex);
   const library = useReader((state) => state.library);
+  const truncated = useReader((state) => state.searchTruncated);
   const back = history.back.filter((entry) => library.some((book) => book.id === entry.bookId));
   const forward = history.forward.filter((entry) =>
     library.some((book) => book.id === entry.bookId),
@@ -20,11 +22,13 @@ export function ReaderHistoryBar() {
   const move = (delta: number) => {
     const next = (index + delta + hits.length) % hits.length;
     const hit = hits[next];
-    if (hit !== undefined) openSearchHit(hit, next);
+    if (hit !== undefined) void openSearchHit(hit, next);
   };
-  if (back.length === 0 && forward.length === 0 && !query) return null;
   return (
-    <nav className="reader-history-bar" aria-label="跳转历史与搜索导航">
+    <nav
+      className={`reader-history-bar ${back.length === 0 && forward.length === 0 && !query ? "is-empty" : ""}`}
+      aria-label="跳转历史与搜索导航"
+    >
       <div className="reader-history-controls">
         <button
           type="button"
@@ -61,9 +65,7 @@ export function ReaderHistoryBar() {
           >
             <Search className="reader-icon" />
             <span>
-              {hits.length
-                ? `${index + 1} / ${hits.length}${hits.length === 80 ? "+" : ""}`
-                : "搜索"}
+              {hits.length ? `${index + 1} / ${hits.length}${truncated ? "+" : ""}` : "搜索"}
             </span>
           </button>
           <button
@@ -122,7 +124,11 @@ export function ReaderHistoryBar() {
                           (section) => section.id === entry.locator.sectionId,
                         )?.label
                       }{" "}
-                      · {Math.round(entry.locator.progression * 100)}%
+                      · 全书{" "}
+                      {Math.round(
+                        (publication ? percentageForLocator(publication, entry.locator) : 0) * 100,
+                      )}
+                      %
                     </small>
                   </span>
                   <ArrowLeft className="reader-icon" />

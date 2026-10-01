@@ -94,9 +94,13 @@ try {
   );
   assert(history.length > 20);
   const ordinary = history.slice(0, -1).map((entry) => entry.bottom);
+  const lineHeight = await page
+    .locator(".reader-txt-page .reader-prose")
+    .first()
+    .evaluate((element) => parseFloat(getComputedStyle(element).lineHeight));
   assert(
-    Math.max(...ordinary) - Math.min(...ordinary) < 1,
-    "technical loading boundaries must not create short pages",
+    Math.max(...ordinary) - Math.min(...ordinary) <= lineHeight * 2 + 1,
+    "widow corrections may leave at most two lines of page space",
   );
   // Reverse well beyond the eight-spread cache, then reload and reconstruct the preceding page.
   for (let i = 0; i < 12; i++) {
@@ -255,7 +259,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "TXT flow PASSED: exact full-book text, no loading-boundary short pages, reverse beyond cache, cold reload/back, four animations, rapid turns and dual-page continuity",
+    "TXT flow PASSED: exact full-book text, bounded widow correction, reverse beyond cache, cold reload/back, four animations, rapid turns and dual-page continuity",
     { pages: history.length },
   );
 } finally {

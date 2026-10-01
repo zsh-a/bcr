@@ -87,6 +87,7 @@ export function ReaderHeader(props: {
   showInstall: boolean;
   installAvailable: boolean;
   onInstall: () => void;
+  onShortcuts: () => void;
 }) {
   const query = useReader((state) => state.query);
   const searchOpen = useReader((state) => state.searchOpen);
@@ -153,11 +154,11 @@ export function ReaderHeader(props: {
               const hit = searchHits[searchActiveIndex];
               if (hit !== undefined) {
                 event.preventDefault();
-                openSearchHit(hit);
+                void openSearchHit(hit);
               }
             }
           }}
-          placeholder="在书库中搜索…"
+          placeholder="搜索书库全文…"
           aria-label="在书库中搜索"
           role="combobox"
           aria-expanded={searchOpen}
@@ -178,7 +179,9 @@ export function ReaderHeader(props: {
             <X className="reader-icon" />
           </button>
         )}
-        <kbd className="ui-kbd">⌘F</kbd>
+        <kbd className="ui-kbd">
+          {/Mac|iPhone|iPad/u.test(navigator.platform) ? "⌘F" : "Ctrl+F"}
+        </kbd>
         <button
           type="button"
           className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-mobile-search-close"
@@ -193,6 +196,15 @@ export function ReaderHeader(props: {
           <span>{percent(progress)}</span>
         </div>
       </div>
+      <button
+        type="button"
+        className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-shortcut-button"
+        aria-label="阅读快捷键帮助"
+        title="快捷键 (?)"
+        onClick={props.onShortcuts}
+      >
+        ?
+      </button>
       {props.showInstall && (
         <button
           type="button"

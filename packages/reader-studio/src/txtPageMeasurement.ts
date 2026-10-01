@@ -8,40 +8,57 @@ export function createTxtPageMeasurement(book: ReaderBook, probe: HTMLElement) {
   let retained = 0;
   let disposed = false;
   const headings = new Set(book.toc?.map((item) => item.sectionId));
+  let pending = Promise.resolve();
+  async function measure(index: number): Promise<TxtMeasuredParagraph> {
+    if (disposed) throw new DOMException("Layout superseded", "AbortError");
+    const cached = cache.get(index);
+    if (cached) {
+      cache.delete(index);
+      cache.set(index, cached);
+      return cached;
+    }
+    const section = book.sections[index]!;
+    await loadSectionContent(section);
+    if (disposed) throw new DOMException("Layout superseded", "AbortError");
+    const text = section.text;
+    const heading = headings.has(section.id) && !text.includes("\n");
+    probe.style.fontWeight = heading ? "600" : "";
+    probe.style.textIndent = heading ? "0px" : "";
+    probe.textContent = text;
+    const style = getComputedStyle(probe);
+    try {
+      await document.fonts.load(`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`, text);
+      await document.fonts.ready;
+    } catch {
+      /* Offline glyphs keep the measured fallback font. */
+    }
+    if (disposed) throw new DOMException("Layout superseded", "AbortError");
+    const node = probe.firstChild;
+    const breaks = node ? textLineBreaks(node, text) : [0, 0];
+    probe.textContent = "";
+    const result = { text, breaks, heading };
+    cache.set(index, result);
+    retained += text.length;
+    // A source paragraph can itself exceed the budget; retain only that one unit.
+    while (cache.size > 1 && (cache.size > 32 || retained > 24000)) {
+      const oldest = cache.keys().next().value!;
+      retained -= cache.get(oldest)!.text.length;
+      cache.delete(oldest);
+    }
+    return result;
+  }
   return {
     dispose() {
       disposed = true;
       cache.clear();
     },
-    async measure(index: number): Promise<TxtMeasuredParagraph> {
-      if (disposed) throw new DOMException("Layout superseded", "AbortError");
-      const cached = cache.get(index);
-      if (cached) {
-        cache.delete(index);
-        cache.set(index, cached);
-        return cached;
-      }
-      const section = book.sections[index]!;
-      await loadSectionContent(section);
-      if (disposed) throw new DOMException("Layout superseded", "AbortError");
-      const text = section.text;
-      const heading = headings.has(section.id) && !text.includes("\n");
-      probe.style.fontWeight = heading ? "600" : "";
-      probe.style.textIndent = heading ? "0px" : "";
-      probe.textContent = text;
-      const node = probe.firstChild;
-      const breaks = node ? textLineBreaks(node, text) : [0, 0];
-      probe.textContent = "";
-      const result = { text, breaks, heading };
-      cache.set(index, result);
-      retained += text.length;
-      // A source paragraph can itself exceed the budget; retain only that one unit.
-      while (cache.size > 1 && (cache.size > 32 || retained > 24000)) {
-        const oldest = cache.keys().next().value!;
-        retained -= cache.get(oldest)!.text.length;
-        cache.delete(oldest);
-      }
-      return result;
+    measure(this: void, index: number): Promise<TxtMeasuredParagraph> {
+      const task = pending.then(() => measure(index));
+      pending = task.then(
+        () => undefined,
+        () => undefined,
+      );
+      return task;
     },
   };
 }

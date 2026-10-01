@@ -1,6 +1,6 @@
 import { textVersion } from "@bcr/core";
 import {
-  makeSnippet,
+  makeSearchSnippet,
   normalizeSearchQuery,
   searchTextRanges,
   type ReaderBook,
@@ -225,7 +225,7 @@ export async function searchReaderContent(
   for (const section of book.sections) {
     const content = await readSectionContent(section, signal);
     try {
-      const ranges = searchTextRanges(content.text, query, 80 - hits.length);
+      const ranges = searchTextRanges(content.text, query, 81 - hits.length);
       const version = ranges.length ? textVersion(content.text) : "";
       for (const range of ranges) {
         const excerptStart = Math.max(0, range.start - 80);
@@ -236,7 +236,7 @@ export async function searchReaderContent(
           score: 1,
           matchStart: range.start,
           matchLength: range.length,
-          snippet: makeSnippet(content.text, range.start, range.length),
+          ...makeSearchSnippet(content.text, range.start, range.length),
           excerpt: content.text.slice(excerptStart, range.start + range.length + 80),
           excerptStart,
           version,
@@ -245,7 +245,7 @@ export async function searchReaderContent(
     } finally {
       content.dispose?.();
     }
-    if (hits.length >= 80) break;
+    if (hits.length >= 81) break;
   }
   signal?.throwIfAborted();
   return hits;

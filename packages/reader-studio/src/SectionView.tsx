@@ -1,7 +1,8 @@
 import { useSectionContent } from "./useSectionContent";
 import { memo, useMemo, useLayoutEffect, useEffect, useRef, useState } from "react";
-import type { ReaderSection } from "@bcr/reader-core";
+import { searchTextRanges, type ReaderSection } from "@bcr/reader-core";
 import { highlightHtml, highlightText } from "./searchHighlight";
+import { useReader } from "./store";
 
 /** Publication content never subscribes to scroll progress. */
 export const SectionView = memo(function SectionView(props: {
@@ -27,8 +28,25 @@ export const SectionView = memo(function SectionView(props: {
     observer.observe(element);
     return () => observer.disconnect();
   }, [props.active, props.virtualized]);
-  const mounted = props.virtualized || visible || props.active || props.searchQuery !== "";
+  const mounted = props.virtualized || visible || props.active;
   const content = useSectionContent(props.section, mounted === true);
+  const currentStart = useReader((state) => {
+    const hit = state.searchHits[state.searchActiveIndex];
+    return hit?.bookId === state.activeBookId &&
+      hit?.bookId === state.searchBookId &&
+      hit.sectionId === props.section.id
+      ? hit.matchStart
+      : undefined;
+  });
+  const currentOrdinal = useMemo(
+    () =>
+      currentStart === undefined
+        ? undefined
+        : searchTextRanges(props.section.text, props.searchQuery, 10000).findIndex(
+            (range) => range.start === currentStart,
+          ),
+    [props.section.text, props.searchQuery, currentStart],
+  );
   useLayoutEffect(() => {
     if ((props.section.textRange || props.section.contentInfo) && content.ready)
       root.current?.dispatchEvent(new Event("bcr-reader-content-ready", { bubbles: true }));
@@ -37,12 +55,21 @@ export const SectionView = memo(function SectionView(props: {
     () =>
       props.section.html === undefined
         ? undefined
-        : highlightHtml(props.section.html, props.searchQuery),
-    [props.section.html, props.searchQuery],
+        : highlightHtml(props.section.html, props.searchQuery, currentOrdinal),
+    [props.section.html, props.searchQuery, currentOrdinal],
   );
   const text = useMemo(
-    () => (html === undefined ? highlightText(props.section.text, props.searchQuery) : null),
-    [html, props.section.text, props.searchQuery],
+    () =>
+      html === undefined
+        ? highlightText(
+            props.section.text,
+            props.searchQuery,
+            0,
+            props.section.text.length,
+            currentStart,
+          )
+        : null,
+    [html, props.section.text, props.searchQuery, currentStart],
   );
   return (
     <section

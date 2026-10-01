@@ -4,15 +4,26 @@ import { indexBook, type ReaderRuntime } from "./runtime";
 import { ReaderSheet } from "./ReaderSheet";
 import {
   backupNewBooks,
+  backupSkippedBooks,
   createReaderBackup,
   inspectReaderBackup,
   prepareReaderRestore,
   planReaderBackup,
+  readerBookMissingSource,
+  readerBackupSnapshotBytes,
+  preflightReaderBackup,
   type PreparedReaderBackup,
 } from "./readerBackup";
 import { getReaderState, reader, useReader } from "./store";
 import { captureReaderProgress, persistReaderSnapshot } from "./useReaderRuntime";
 import { formatBytes } from "./readerPresentation";
+
+type BackupErrorPhase = "export" | "restore" | "save";
+const ERROR_HINTS: Record<BackupErrorPhase, string> = {
+  export: "请调整备份选择后重试；现有书籍不会被删除。",
+  restore: "可重新选择备份文件或重试；现有书籍不会被删除。",
+  save: "请释放存储空间并重试，不要关闭页面。",
+};
 
 export function ReaderBackupPanel(props: {
   open: boolean;
@@ -25,6 +36,9 @@ export function ReaderBackupPanel(props: {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [errorPhase, setErrorPhase] = useState<BackupErrorPhase>("export");
+  const [sourceCheck, setSourceCheck] = useState<string[]>([]);
+  const [checking, setChecking] = useState(true);
   const [restoreSettings, setRestoreSettings] = useState(false);
   const [restoreHistory, setRestoreHistory] = useState(false);
   const [selected, setSelected] = useState(() => new Set(library.map((book) => book.id)));
@@ -33,14 +47,39 @@ export function ReaderBackupPanel(props: {
   let planningError = "";
   let volumes: (typeof library)[] = [];
   try {
-    volumes = planReaderBackup(chosen);
+    volumes = planReaderBackup(chosen, undefined, {
+      snapshotSize: (book) =>
+        readerBackupSnapshotBytes({ ...getReaderState(), library: [book] }, [book]),
+      snapshotLimit: 64 * 1024 * 1024,
+    });
   } catch (reason) {
-    planningError = String(reason);
+    planningError = reason instanceof Error ? reason.message : String(reason);
   }
   const activeVolume = Math.min(volume, Math.max(0, volumes.length - 1));
   const controller = useRef<AbortController | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const [download, setDownload] = useState<{ url: string; name: string } | null>(null);
+  useEffect(() => {
+    if (!props.open) return;
+    let cancelled = false;
+    setChecking(true);
+    void preflightReaderBackup(props.runtime, chosen)
+      .then((missing) => {
+        if (!cancelled) {
+          setSourceCheck(missing);
+          setChecking(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSourceCheck(["源文件检查失败，请重试打开备份面板"]);
+          setChecking(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [props.open, props.runtime, library, selected]);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(
     () => () => {
@@ -48,12 +87,16 @@ export function ReaderBackupPanel(props: {
     },
     [download],
   );
-  const run = async (action: (signal: AbortSignal) => Promise<void>) => {
+  const run = async (
+    action: (signal: AbortSignal) => Promise<void>,
+    phase: BackupErrorPhase = "restore",
+  ) => {
     if (controller.current !== null) return;
     const task = new AbortController();
     controller.current = task;
     setBusy(true);
     setError("");
+    setErrorPhase(phase);
     try {
       await action(task.signal);
     } catch (reason) {
@@ -65,6 +108,11 @@ export function ReaderBackupPanel(props: {
     }
   };
   const fresh = prepared === null ? [] : backupNewBooks(prepared, library);
+  const skipped = prepared === null ? [] : backupSkippedBooks(prepared.manifest, library);
+  const skippedRecords = skipped.reduce(
+    (sum, item) => sum + item.bookmarks + item.annotations + Number(item.progress),
+    0,
+  );
   return (
     <ReaderSheet
       open={props.open}
@@ -123,6 +171,7 @@ export function ReaderBackupPanel(props: {
                   }}
                 />
                 {book.title}
+                {readerBookMissingSource(book) && <small> · 缺少源文件</small>}
               </label>
             ))}
           </details>
@@ -144,10 +193,27 @@ export function ReaderBackupPanel(props: {
               <small>逐卷生成并下载，每一卷均可独立恢复。</small>
             </label>
           )}
-          {planningError && <p role="alert">{planningError}，请调整选择。</p>}
+          {planningError && <p role="alert">{planningError}</p>}
+          {checking && <p role="status">正在检查源文件…</p>}
+          {sourceCheck.length > 0 && (
+            <div role="alert">
+              <strong>以下源文件需要重新导入，或从本次备份中取消选择：</strong>
+              <ul>
+                {sourceCheck.map((title) => (
+                  <li key={title}>{title}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <button
             type="button"
-            disabled={busy || chosen.length === 0 || planningError !== ""}
+            disabled={
+              busy ||
+              checking ||
+              sourceCheck.length > 0 ||
+              chosen.length === 0 ||
+              planningError !== ""
+            }
             onClick={() =>
               void run(async (signal) => {
                 captureReaderProgress();
@@ -162,7 +228,7 @@ export function ReaderBackupPanel(props: {
                   name: `reader-backup-${new Date().toISOString().slice(0, 10)}-part-${activeVolume + 1}.zip`,
                 });
                 setMessage(`备份已生成 · ${formatBytes(blob.size)}。请点击下载并保管文件。`);
-              })
+              }, "export")
             }
           >
             <Download className="reader-icon" />
@@ -205,17 +271,29 @@ export function ReaderBackupPanel(props: {
             <p>
               {new Date(prepared.manifest.createdAt).toLocaleString()} 的备份。相同书籍按 ID
               或源文件校验值去重，保留本机已有进度与笔记。
+              {skippedRecords > 0 &&
+                `跳过读物在备份中的 ${skippedRecords} 条阅读记录（进度、书签、笔记）不会合并到本机。`}
             </p>
             <ul>
               {prepared.manifest.books.map(({ book }) => (
                 <li key={book.id}>
                   <span>{book.title}</span>
                   <small>
-                    {fresh.some((entry) => entry.book.id === book.id) ? "新增" : "保留本机"}
+                    {fresh.some((entry) => entry.book.id === book.id)
+                      ? "新增"
+                      : (() => {
+                          const item = skipped.find((entry) => entry.id === book.id);
+                          return `保留本机 · ${item?.matchedBy === "source" ? "同源文件" : item?.matchedBy === "duplicate" ? "备份内重复" : "相同 ID"} · 跳过${item?.progress ? "进度、" : ""}${item?.bookmarks ?? 0} 个书签、${item?.annotations ?? 0} 条笔记`;
+                        })()}
                   </small>
                 </li>
               ))}
             </ul>
+            {prepared.manifest.settingsFallback && (
+              <p role="status">
+                备份包含当前版本不支持的排版值，已回退到默认设置；书籍与阅读记录仍可恢复。
+              </p>
+            )}
             <label className="reader-data-option">
               <input
                 type="checkbox"
@@ -276,7 +354,9 @@ export function ReaderBackupPanel(props: {
                   });
                   for (const book of books) await indexBook(props.runtime, book);
                   setPrepared(null);
-                  setMessage(`恢复完成，已新增 ${books.length} 本读物。现有书籍未被覆盖。`);
+                  setMessage(
+                    `恢复完成，已新增 ${books.length} 本读物；跳过 ${skipped.length} 本已有读物及其 ${skippedRecords} 条备份阅读记录。${restoreSettings && snapshot.settingsFallback ? "部分排版设置已回退默认值。" : ""}`,
+                  );
                 })
               }
             >
@@ -289,7 +369,7 @@ export function ReaderBackupPanel(props: {
         </p>
         {error && (
           <p className="reader-data-error" role="alert">
-            {error}。可重新选择文件或重试；现有书籍不会被删除。
+            {error}。{ERROR_HINTS[errorPhase]}
           </p>
         )}
         {saveError && (
@@ -306,7 +386,7 @@ export function ReaderBackupPanel(props: {
                   });
                   setPrepared(null);
                   setMessage("书库与阅读记录已重新保存。");
-                })
+                }, "save")
               }
             >
               重试保存

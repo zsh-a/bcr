@@ -1,6 +1,6 @@
 import { storeStructuredContent } from "./structuredContent";
 import { openLazyTxt, LAZY_TXT_MIN_BYTES } from "./lazyTxt";
-import { materializeReaderContent } from "./readerContent";
+import { materializeReaderContent, releaseBookResources } from "./readerContent";
 import { contentHash, hashReadableStream, type ArtifactRef, type ArtifactStore } from "@bcr/core";
 import { MemoryStore } from "@bcr/storage-opfs";
 import { Effect } from "effect";
@@ -61,6 +61,7 @@ export async function importReaderFile(
   runtime: ReaderRuntime,
   file: File,
   signal?: AbortSignal,
+  knownBooks: ReadonlyArray<ReaderBook> = [],
 ): Promise<ReaderBook> {
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
   const hash = await hashReadableStream(file.stream());
@@ -74,22 +75,36 @@ export async function importReaderFile(
     format: file.type || format,
     hash,
   };
-  await Effect.runPromise(runtime.artifacts.putStream(ref, file.stream()));
-  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-  const book = await parseReaderFile(runtime, file, `book-${hash.slice(0, 16)}`, signal);
-  return {
-    ...book,
-    source: {
-      ...book.source,
-      ref: {
-        id: ref.id,
-        hash,
-        storage: storage === "memory" ? "memory" : "opfs",
-        mime: file.type || book.source.mime,
-        size: file.size,
+  const existed = await Effect.runPromise(runtime.artifacts.has(ref));
+  const existing = knownBooks.find(
+    (book) => !book.preserveSectionSnapshot && book.source.ref?.hash === hash,
+  );
+  if (existing && existed && (existing.source.format !== "pdf" || existing.source.objectUrl))
+    return existing;
+  let parsed: ReaderBook | undefined;
+  try {
+    await Effect.runPromise(runtime.artifacts.putStream(ref, file.stream()));
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    const book = await parseReaderFile(runtime, file, `book-${hash.slice(0, 16)}`, signal);
+    parsed = book;
+    return {
+      ...book,
+      source: {
+        ...book.source,
+        ref: {
+          id: ref.id,
+          hash,
+          storage: storage === "memory" ? "memory" : "opfs",
+          mime: file.type || book.source.mime,
+          size: file.size,
+        },
       },
-    },
-  };
+    };
+  } catch (reason) {
+    if (parsed) releaseBookResources(parsed);
+    if (!existed) await Effect.runPromise(runtime.artifacts.delete(ref)).catch(() => undefined);
+    throw reason;
+  }
 }
 
 /** Import a Document Studio handoff without parsing the publication twice. */

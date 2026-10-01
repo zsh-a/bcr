@@ -109,7 +109,9 @@ try {
   );
 } catch (error) {
   await mkdir("scripts/shots", { recursive: true });
-  await page.screenshot({ path: "scripts/shots/reader-capture-failure.png" });
+  await page
+    .screenshot({ path: "scripts/shots/reader-capture-failure.png", timeout: 5000 })
+    .catch(() => undefined);
   throw error;
 } finally {
   await browser.close();

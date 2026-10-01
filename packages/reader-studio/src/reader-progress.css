@@ -325,7 +325,7 @@
 }
 
 .reader-main:has(.reader-comic) .reader-progress-dock {
-  bottom: 106px;
+  bottom: calc(var(--h-control-lg) * 2 + var(--space-2) * 3 + 1px);
 }
 
 @media (max-width: 860px) {
@@ -388,6 +388,6 @@
   }
 
   .reader-main:has(.reader-comic) .reader-progress-dock {
-    bottom: calc(var(--read-overlay-bottom, 60px) + var(--space-2));
+    bottom: calc(var(--h-control-lg) * 2 + var(--space-2) * 3 + 1px + env(safe-area-inset-bottom));
   }
 }

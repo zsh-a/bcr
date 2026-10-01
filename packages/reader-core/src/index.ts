@@ -41,6 +41,7 @@ export {
 export {
   buildSearchIndex,
   makeSnippet,
+  makeSearchSnippet,
   normalizeSearchQuery,
   searchBook,
   searchIndexedDocuments,

@@ -52,3 +52,10 @@ export function readerErrorMessage(reason: unknown, fallback: string): string {
     return "PDF 文件读取失败，请检查文件后重试";
   return `${fallback}，请重试`;
 }
+
+export function readerImportErrorMessage(reason: unknown): string {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  if (/quota|storage.*full|disk.*full/iu.test(message))
+    return "存储空间不足，请释放存储空间后重试导入";
+  return message.replace(/^Error:\s*/u, "");
+}

@@ -1,6 +1,6 @@
 import { txtHeadingFromText, txtToc, type TxtHeading } from "./txtChapters";
 import { textVersion } from "@bcr/core";
-import { makeSnippet, searchTextRanges, type SearchHit } from "@bcr/reader-core";
+import { makeSearchSnippet, searchTextRanges, type SearchHit } from "@bcr/reader-core";
 
 export interface TxtRange {
   readonly start: number;
@@ -122,7 +122,7 @@ export async function searchTxt(
 ): Promise<TxtSearchHit[]> {
   const hits: TxtSearchHit[] = [];
   // Read batches instead of making one storage request per short paragraph.
-  for (let index = 0; index < ranges.length && hits.length < 80;) {
+  for (let index = 0; index < ranges.length && hits.length < 81;) {
     signal?.throwIfAborted();
     const first = ranges[index]!;
     let endIndex = index + 1;
@@ -130,14 +130,14 @@ export async function searchTxt(
       endIndex++;
     const end = ranges[endIndex - 1]!.end;
     const batch = await file.slice(first.start, end).arrayBuffer();
-    for (; index < endIndex && hits.length < 80; index++) {
+    for (; index < endIndex && hits.length < 81; index++) {
       const range = ranges[index]!;
       const text =
         new TextDecoder()
           .decode(new Uint8Array(batch, range.start - first.start, range.end - range.start))
           .replace(/\r\n?/gu, "\n")
           .trim() || "暂无内容";
-      for (const match of searchTextRanges(text, query, 80 - hits.length)) {
+      for (const match of searchTextRanges(text, query, 81 - hits.length)) {
         const excerptStart = Math.max(0, match.start - 80);
         hits.push({
           excerpt: text.slice(excerptStart, match.start + match.length + 80),
@@ -146,7 +146,7 @@ export async function searchTxt(
           bookId,
           sectionId: `section-${index + 1}`,
           label: `段落 ${index + 1}`,
-          snippet: makeSnippet(text, match.start, match.length),
+          ...makeSearchSnippet(text, match.start, match.length),
           score: 1,
           matchStart: match.start,
           matchLength: match.length,

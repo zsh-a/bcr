@@ -83,7 +83,7 @@ export function VirtualPublicationSections(props: {
               section={section}
               virtualized
               active={section.id === props.activeSectionId}
-              searchQuery={section.id === props.activeSectionId ? props.searchQuery : ""}
+              searchQuery={props.searchQuery}
             />
           </div>
         );

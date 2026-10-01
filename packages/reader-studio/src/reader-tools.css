@@ -452,3 +452,35 @@
   min-height: 90px;
   resize: vertical;
 }
+
+.reader-record-edit {
+  flex: 0 0 44px;
+  width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--color-muted);
+}
+
+.reader-shortcut-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+.reader-shortcut-list dd {
+  margin: 0;
+}
+@media (max-width: 860px) {
+  .reader-shortcut-button {
+    display: none;
+  }
+}
+
+.reader-mobile-saved-row,
+.reader-bookmark-row,
+.reader-annotation-row {
+  grid-template-columns: minmax(0, 1fr) 44px 44px;
+}

@@ -34,13 +34,18 @@ import { useReaderMobile } from "./useReaderMobile";
 import { settleReaderLayout } from "./readingRestore";
 
 /** Continuous TXT pages or structured chapters; source progress survives turns and reflow. */
-export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome: () => void }) {
+export function PagedReadingView(props: {
+  book: ReaderBook;
+  fontsReady: boolean;
+  onToggleMobileChrome: () => void;
+}) {
   const mobile = useReaderMobile();
   const settings = useReader((state) => state.settings);
   const activeId = useReader((state) => state.activeSectionId);
   const navigation = useReader((state) => state.navigationSequence);
   const seekSequence = useReader((state) => state.seekSequence);
   const query = useReader((state) => state.query);
+  const wheel = useRef({ delta: 0, last: 0, turned: 0 });
   const reveal = useReader((state) => state.searchReveal);
   const sectionIndex = Math.max(
     0,
@@ -81,6 +86,15 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
   const frameRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const pendingLink = useRef<ReaderInternalLinkTarget | null>(null);
+  useEffect(() => {
+    const receive = (event: Event) => {
+      const detail = (event as CustomEvent<{ bookId: string; target: ReaderInternalLinkTarget }>)
+        .detail;
+      if (detail.bookId === props.book.id) pendingLink.current = detail.target;
+    };
+    window.addEventListener("bcr-reader-internal-link", receive);
+    return () => window.removeEventListener("bcr-reader-internal-link", receive);
+  }, [props.book.id]);
   const [pages, setPages] = useState(1);
   const [page, setPage] = useState(0);
   const countRef = useRef(1);
@@ -112,6 +126,7 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
 
   const txt = useTxtPageFlow({
     book: props.book,
+    fontsReady: props.fontsReady,
     settings,
     navigation,
     seekSequence,
@@ -395,9 +410,39 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
         onPointerLeave={(event) => {
           delete event.currentTarget.dataset.turnZone;
         }}
-        onWheel={() => {
-          interruptMotion();
-          targetPage.current = null;
+        onWheel={(event) => {
+          if (!txt.enabled) {
+            interruptMotion();
+            targetPage.current = null;
+            return;
+          }
+          if (
+            event.ctrlKey ||
+            event.metaKey ||
+            window.getSelection()?.isCollapsed === false ||
+            (event.target instanceof Element && event.target.closest(PAGE_INTERACTIVE_TARGET))
+          )
+            return;
+          const state = wheel.current;
+          const now = performance.now();
+          const value =
+            Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+          const delta =
+            value *
+            (event.deltaMode === 1
+              ? 16
+              : event.deltaMode === 2
+                ? event.currentTarget.clientHeight
+                : 1);
+          if (now - state.last > 180 || Math.sign(delta) !== Math.sign(state.delta))
+            state.delta = 0;
+          state.last = now;
+          state.delta += delta;
+          if (Math.abs(state.delta) >= 60 && now - state.turned >= 250) {
+            turn(Math.sign(state.delta));
+            state.delta = 0;
+            state.turned = now;
+          }
         }}
         aria-busy={txt.enabled ? !txt.ready : layoutBusy || !activeContent.ready}
         onTouchStart={(event) => {
@@ -431,7 +476,11 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
           if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
           suppressClick.current = true;
           // Native scrolling handles in-chapter gestures; only the edge crosses a chapter.
-          if ((dx < 0 && start.page === countRef.current - 1) || (dx > 0 && start.page === 0))
+          if (
+            txt.enabled ||
+            (dx < 0 && start.page === countRef.current - 1) ||
+            (dx > 0 && start.page === 0)
+          )
             turn(dx < 0 ? 1 : -1);
         }}
         onTouchCancel={() => {
@@ -525,6 +574,11 @@ export function PagedReadingView(props: { book: ReaderBook; onToggleMobileChrome
             <button type="button" onClick={txt.retry}>
               重试
             </button>
+          </div>
+        )}
+        {txt.enabled && !txt.ready && !txt.error && !txt.current && (
+          <div className="reader-txt-loading" role="status">
+            正在准备字体与分页…
           </div>
         )}
       </div>

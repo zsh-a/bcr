@@ -246,6 +246,7 @@ export function ReaderToolbar(props: {
         </button>
       </div>
       <ReaderSettingsSheet
+        txt={props.book.source.format === "txt"}
         fixedLayout={props.book.source.format === "pdf"}
         comicMode={
           props.settings.books?.[props.book.id]?.comic ??
@@ -270,6 +271,7 @@ export function ReaderToolbar(props: {
 }
 
 function ReaderSettingsSheet(props: {
+  txt: boolean;
   comicMode: boolean;
   fixedLayout: boolean;
   onAddAnnotation: () => void;
@@ -385,6 +387,7 @@ function ReaderSettingsSheet(props: {
           </section>
           <ReaderTypographySettings
             settings={props.settings}
+            txtPaged={props.txt && props.settings.layout === "paged"}
             fixedLayout={props.fixedLayout || props.comicMode}
           />
           <section className="reader-mobile-setting-group" aria-labelledby="reader-font-label">

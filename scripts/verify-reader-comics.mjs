@@ -23,7 +23,10 @@ const epub = Buffer.from(await (await writer.close()).arrayBuffer());
 const browser = await chromium.launch({ headless: true });
 try {
   for (const width of [375, 1440]) {
-    const context = await browser.newContext({ viewport: { width, height: 900 } });
+    const context = await browser.newContext({
+      viewport: { width, height: 900 },
+      hasTouch: width === 375,
+    });
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -146,6 +149,36 @@ try {
     await page.getByRole("button", { name: "6 / 8 页", exact: true }).click();
     await page.getByRole("button", { name: "前往漫画第 2 页", exact: true }).click();
     assert.match(await page.locator(".reader-comic-viewport img").getAttribute("alt"), /第 2 页/);
+    if (width === 375) {
+      await page.getByLabel("漫画画面适配", { exact: true }).selectOption("page");
+      await page.setViewportSize({ width: 844, height: 390 });
+      await page.waitForFunction(() => {
+        const root = document.querySelector(".reader-comic-viewport");
+        const image = root.querySelector("img");
+        return (
+          image.complete && Math.abs(image.getBoundingClientRect().height - root.clientHeight) < 2
+        );
+      });
+      const bounds = await page.locator(".reader-comic-viewport").boundingBox();
+      assert(bounds.height > 150, `landscape comic viewport is only ${bounds.height}px`);
+      const touch = await context.newCDPSession(page);
+      const y = bounds.y + bounds.height / 2;
+      const x = bounds.x + bounds.width / 2;
+      await touch.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+      await touch.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [{ x: x + 40, y }],
+      });
+      await touch.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [{ x: x + 100, y }],
+      });
+      await touch.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await page.waitForFunction(() =>
+        document.querySelector(".reader-comic-viewport img")?.alt.startsWith("第 3 页"),
+      );
+      await touch.detach();
+    }
     await page.setViewportSize({ width, height: 900 });
     await page.screenshot({ path: `/tmp/reader-comic-${width}.png` });
     assert.deepEqual(errors, []);
@@ -185,7 +218,7 @@ try {
   );
   await fixedContext.close();
   console.log(
-    "reader comics verification PASSED: EPUB image anchors, precise reload and responsive reflow on mobile/desktop",
+    "reader comics verification PASSED: EPUB image anchors, reload/reflow, landscape fit and touch swipe",
   );
 } finally {
   await browser.close();

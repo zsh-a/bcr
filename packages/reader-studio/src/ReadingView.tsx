@@ -41,6 +41,7 @@ export function ReadingView(props: {
   runtime: ReaderRuntime;
   book: ReaderBook;
   onToggleMobileChrome: () => void;
+  onImport: (files: ReadonlyArray<File>) => void;
 }) {
   const layout = useReader((state) => state.settings.layout);
   const comic = useReader((state) => state.settings.books?.[props.book.id]?.comic);
@@ -48,12 +49,13 @@ export function ReadingView(props: {
   const comicMode =
     comic ??
     (props.book.source.format === "cbz" || props.book.rendition?.layout === "pre-paginated");
-  useReaderFonts(settings, props.book.source.format !== "pdf" && !comicMode);
+  const fonts = useReaderFonts(settings, props.book.source.format !== "pdf" && !comicMode);
   if (comicMode) return <ComicReadingView book={props.book} />;
   return layout === "paged" && props.book.source.format !== "pdf" ? (
     <PagedReadingView
       key={props.book.id}
       book={props.book}
+      fontsReady={fonts.status !== "loading"}
       onToggleMobileChrome={props.onToggleMobileChrome}
     />
   ) : (
@@ -65,6 +67,7 @@ function ContinuousReadingView(props: {
   runtime: ReaderRuntime;
   book: ReaderBook;
   onToggleMobileChrome: () => void;
+  onImport: (files: ReadonlyArray<File>) => void;
 }) {
   const mobile = useReaderMobile();
   const settings = useReader((state) => state.settings);
@@ -87,6 +90,15 @@ function ContinuousReadingView(props: {
   const programmaticScrollTargetRef = useRef<ReaderScrollPosition | null>(null);
   const restoreCancelRef = useRef<(() => void) | null>(null);
   const pendingInternalLinkRef = useRef<ReaderInternalLinkTarget | null>(null);
+  useEffect(() => {
+    const receive = (event: Event) => {
+      const detail = (event as CustomEvent<{ bookId: string; target: ReaderInternalLinkTarget }>)
+        .detail;
+      if (detail.bookId === props.book.id) pendingInternalLinkRef.current = detail.target;
+    };
+    window.addEventListener("bcr-reader-internal-link", receive);
+    return () => window.removeEventListener("bcr-reader-internal-link", receive);
+  }, [props.book.id]);
   const handledNavigationSequenceRef = useRef(navigationSequence);
   const [contentReadyVersion, setContentReadyVersion] = useState(0);
   const markUserScroll = useCallback(() => {
@@ -317,7 +329,7 @@ function ContinuousReadingView(props: {
   );
   return (
     <div
-      className={`reader-reading-frame reader-layout-scroll reader-width-${settings.contentWidth} ${settings.tocPinned ? "reader-toc-pinned" : ""}`}
+      className={`reader-reading-frame reader-layout-scroll ${props.book.source.format === "txt" ? "reader-scroll-text-flow" : ""} reader-width-${settings.contentWidth} ${settings.tocPinned ? "reader-toc-pinned" : ""}`}
       style={
         {
           ...readerTypographyStyle(settings),
@@ -327,6 +339,38 @@ function ContinuousReadingView(props: {
       <div
         className="reader-reading-scroll"
         ref={containerRef}
+        tabIndex={0}
+        aria-label="滚动正文"
+        aria-description="方向键滚动，PageUp、PageDown 或空格逐屏阅读，Home、End 跳到开头或结尾。"
+        onKeyDown={(event) => {
+          if (
+            event.target !== event.currentTarget ||
+            event.altKey ||
+            event.ctrlKey ||
+            event.metaKey
+          )
+            return;
+          const amount = Math.max(1, event.currentTarget.clientHeight * 0.85);
+          const keys: Record<string, number> = {
+            ArrowDown: 48,
+            ArrowUp: -48,
+            PageDown: amount,
+            PageUp: -amount,
+            " ": event.shiftKey ? -amount : amount,
+          };
+          if (event.key in keys || event.key === "Home" || event.key === "End") {
+            event.preventDefault();
+            beginUserScroll();
+            const container = event.currentTarget;
+            const top =
+              event.key === "Home"
+                ? 0
+                : event.key === "End"
+                  ? container.scrollHeight
+                  : container.scrollTop + keys[event.key]!;
+            container.scrollTo({ top, behavior: "instant" });
+          }
+        }}
         onClick={(event) => {
           const anchor =
             event.target instanceof Element
@@ -417,6 +461,7 @@ function ContinuousReadingView(props: {
           {props.book.source.format === "pdf" ? (
             <PdfReaderView
               book={props.book}
+              onImport={props.onImport}
               onReady={() => setContentReadyVersion((version) => version + 1)}
             />
           ) : props.book.sections.length > SECTION_WINDOW_THRESHOLD ? (
@@ -445,12 +490,19 @@ function ContinuousReadingView(props: {
 }
 
 function ReadingIntro(props: { book: ReaderBook; progress: number }) {
-  const unit = props.book.source.format === "pdf" ? "页" : "章节";
+  const hasChapters = props.book.source.format === "txt" && Boolean(props.book.toc?.length);
+  const unit =
+    props.book.source.format === "pdf"
+      ? "页"
+      : props.book.source.format === "txt" && !hasChapters
+        ? "段"
+        : "章";
+  const count = hasChapters ? props.book.toc!.length : props.book.sections.length;
   return (
     <section className="reader-reading-intro">
       <div className="reader-intro-kicker">
-        <span className="ui-dot ui-dot-running" /> {formatBadge(props.book.source.format)} ·{" "}
-        {props.book.sections.length} 个{unit}
+        <span className="ui-dot ui-dot-running" /> {formatBadge(props.book.source.format)} · {count}{" "}
+        {unit}
       </div>
       <h1>{props.book.title}</h1>
       <p className="reader-intro-author">{props.book.author ?? "本地出版物"}</p>
@@ -473,7 +525,7 @@ const PublicationSections = memo(function PublicationSections(props: {
       key={section.id}
       section={section}
       active={section.id === props.activeSectionId}
-      searchQuery={section.id === props.activeSectionId ? props.searchQuery : ""}
+      searchQuery={props.searchQuery}
     />
   ));
 });

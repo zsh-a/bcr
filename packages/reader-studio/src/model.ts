@@ -25,6 +25,7 @@ export type ReaderFontFamily = "sans" | "serif" | "kai";
 export type ReaderLatinFontFamily = "sans" | "serif" | "mono" | "literata" | "atkinson";
 
 export interface ReaderSettings {
+  readonly textAlign?: "start" | "justify";
   readonly txtParagraphStyle?: "indent" | "spaced";
   readonly pageAnimation?: ReaderPageAnimation;
   readonly pageSpread?: boolean;
@@ -133,6 +134,10 @@ export interface ReaderState {
   readonly searchBookId: string | null;
   readonly searchActiveIndex: number;
   readonly searchBusy: boolean;
+  readonly searchError: string | null;
+  readonly searchRevision: number;
+  readonly searchTruncated: boolean;
+  readonly sourceErrorsByBook: Readonly<Record<string, string>>;
   readonly searchReveal: ReaderSearchReveal | null;
   readonly settings: ReaderSettings;
   readonly sidebarOpen: boolean;
@@ -159,7 +164,13 @@ export const DEFAULT_READER_SETTINGS: ReaderSettings = {
   paragraphSpacing: 0.65,
   lineLength: 34,
   contentWidth: "narrow",
+  textAlign: "start",
 };
+
+export type ReaderReadingStatus = "unread" | "reading" | "finished";
+export function readingStatus(percentage = 0): ReaderReadingStatus {
+  return percentage >= 1 ? "finished" : percentage > 0 ? "reading" : "unread";
+}
 
 function section(
   id: string,

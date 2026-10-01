@@ -26,6 +26,29 @@ function fixture(gap = 0) {
 }
 
 describe("TXT source-boundary pagination", () => {
+  it("keeps a three-line paragraph together when a split would leave one line", async () => {
+    const { book } = fixture();
+    const short = {
+      ...book,
+      sections: book.sections
+        .slice(0, 2)
+        .map((section) => ({ ...section, text: section.text.slice(0, 30) })),
+    };
+    const layout = new TxtPageLayout(
+      short,
+      { height: 50, lineHeight: 10, paragraphGap: 0 },
+      async (index) => ({
+        text: short.sections[index]!.text,
+        breaks: [0, 10, 20, 30],
+        heading: false,
+      }),
+    );
+    expect((await layout.next({ section: 0, offset: 0 }))?.end).toEqual({ section: 1, offset: 0 });
+    expect((await layout.previous({ section: 2, offset: 0 }))?.start).toEqual({
+      section: 1,
+      offset: 0,
+    });
+  });
   it("fills pages across loading boundaries without omissions or duplicate text", async () => {
     const { book, layout } = fixture();
     let cursor = { section: 0, offset: 0 };
@@ -37,12 +60,17 @@ describe("TXT source-boundary pagination", () => {
       expect(page.start).toEqual(cursor);
       expect(compareTxtCursor(page.end, cursor)).toBeGreaterThan(0);
       const value = page.fragments.map((fragment) => fragment.text).join("");
-      if (page.end.section < book.sections.length) expect(value.length).toBe(70);
+      expect(value.length).toBeLessThanOrEqual(70);
+      for (const fragment of page.fragments) {
+        // Five-line paragraphs never leave a lone line at a page boundary.
+        if (fragment.start > 0 || fragment.end < fragment.total)
+          expect(fragment.text.length).toBeGreaterThanOrEqual(20);
+      }
       text.push(value);
       cursor = page.end;
       pages++;
     }
-    expect(pages).toBe(Math.ceil(5000 / 70));
+    expect(pages).toBeGreaterThanOrEqual(Math.ceil(5000 / 70));
     expect(text.join("")).toBe(book.sections.map((section) => section.text).join(""));
   });
   it("reconstructs preceding pages locally from an exact continuation cursor", async () => {

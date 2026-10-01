@@ -198,9 +198,7 @@ try {
   await restored.getByLabel("选择 Reader 备份", { exact: true }).setInputFiles(archive);
   await restored.getByRole("heading", { name: "新增 2 本 · 跳过 1 本", exact: true }).waitFor();
   await restored.getByRole("button", { name: "确认合并恢复", exact: true }).click();
-  await restored
-    .getByText("恢复完成，已新增 2 本读物。现有书籍未被覆盖。", { exact: true })
-    .waitFor();
+  await restored.getByText(/^恢复完成，已新增 2 本读物；跳过 1 本已有读物及其 /u).waitFor();
   await restored.getByRole("button", { name: "关闭备份与恢复", exact: true }).click();
   await restored.locator(".reader-book-card").filter({ hasText: "selectable" }).click();
   await restored.locator(".reader-pdf-canvas-shell.is-ready").first().waitFor();

@@ -156,6 +156,8 @@ export interface SearchHit {
   readonly sectionId: string;
   readonly label: string;
   readonly snippet: string;
+  readonly snippetMatchStart?: number;
+  readonly snippetMatchLength?: number;
   readonly score: number;
   readonly matchStart: number;
   readonly matchLength: number;

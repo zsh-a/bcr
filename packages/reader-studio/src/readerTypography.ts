@@ -13,6 +13,7 @@ export function normalizeReaderTypography(settings: ReaderSettings): ReaderSetti
   return {
     ...settings,
     txtParagraphStyle: settings.txtParagraphStyle === "spaced" ? "spaced" : "indent",
+    textAlign: settings.textAlign === "justify" ? "justify" : "start",
     pageAnimation: ["slide", "fade", "paper", "none"].includes(settings.pageAnimation ?? "")
       ? (settings.pageAnimation ?? "slide")
       : "slide",
@@ -185,6 +186,7 @@ export function readerTypographyStyle(settings: ReaderSettings): Record<string, 
     "--read-font-weight": settings.fontFamily === "kai" ? 400 : (settings.fontWeight ?? 400),
     "--read-paragraph-spacing": `${settings.paragraphSpacing ?? 0.65}em`,
     "--read-line-length": `${readerLineWidth(settings)}px`,
+    "--read-text-align": settings.textAlign ?? "start",
   };
 }
 

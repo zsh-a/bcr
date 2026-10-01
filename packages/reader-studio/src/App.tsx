@@ -38,7 +38,7 @@ import {
 } from "./ReaderChrome";
 import { ReaderWorkspace } from "./ReaderWorkspace";
 import { activeBook } from "./model";
-import { formatBadge } from "./readerPresentation";
+import { formatBadge, readerImportErrorMessage } from "./readerPresentation";
 import { getReaderState, reader, useReader } from "./store";
 import { useReaderPwaInstall } from "./useReaderPlatform";
 import {
@@ -54,6 +54,8 @@ import "./reading-layout.css";
 import "./reader-tools.css";
 import "./reader-surface.css";
 import "./reader-progress.css";
+import { connectReaderBrowserHistory } from "./browserHistory";
+import { ReaderShortcutHelp } from "./ReaderShortcutHelp";
 
 interface ReaderRouteSearch {
   readonly book?: string;
@@ -95,10 +97,17 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
   const [importJob, setImportJob] = useState<ImportJob | null>(null);
   useReaderPwaUpdate(runtime, documentHandoffBusy || (importJob !== null && !importJob.settled));
   const [installHelpOpen, setInstallHelpOpen] = useState(false);
+  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [mobileChromeVisible, setMobileChromeVisible] = useState(true);
   const appliedRouteRef = useRef("");
   const citationNavigation = useLocationSnapshot().revision;
   const mobileSidebarInitializedRef = useRef(false);
+  useEffect(() => {
+    // Embedded Studio navigation is owned by its router; the lightweight
+    // Reader and standalone entry use the browser stack directly.
+    if (status !== "ready" || hostServices !== null) return;
+    return connectReaderBrowserHistory();
+  }, [status, hostServices]);
 
   useEffect(() => {
     document.title = active === undefined ? "BCR Reader" : `${active.title} · BCR Reader`;
@@ -249,6 +258,7 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || document.querySelector("dialog[open]") !== null) return;
       if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === "f") {
         event.preventDefault();
         reader.setSearchOpen(true);
@@ -258,6 +268,35 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
         if (document.fullscreenElement !== null) return;
         if (searchOpen) reader.setSearchOpen(false);
         else if (sidebarOpen) reader.toggleSidebar();
+      }
+      const editable =
+        event.target instanceof Element &&
+        event.target.closest("input, textarea, select, [contenteditable='true']");
+      if (
+        editable ||
+        event.isComposing ||
+        event.repeat ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey
+      )
+        return;
+      const key = event.key.toLocaleLowerCase();
+      if (key === "?") {
+        event.preventDefault();
+        setShortcutHelpOpen(true);
+      } else if (key === "b") {
+        event.preventDefault();
+        window.dispatchEvent(new Event("bcr-reader-capture-progress"));
+        reader.toggleBookmark();
+      } else if (key === "t" || key === "s") {
+        const button = document.querySelector<HTMLButtonElement>(
+          key === "t" ? '[aria-label="打开阅读目录"]' : '[aria-label="打开阅读设置"]',
+        );
+        if (button) {
+          event.preventDefault();
+          button.click();
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -301,6 +340,7 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
       });
       let errors = 0;
       let completed = 0;
+      let duplicates = 0;
       const failedFiles: ImportFailure[] = [];
       for (const file of files) {
         if (controller.signal.aborted) break;
@@ -313,7 +353,7 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
             file.type.toLocaleLowerCase().startsWith("application/json");
           const book = isExportBundle
             ? await importReaderExportBundle(runtime, file, controller.signal)
-            : await importReaderFile(runtime, file, controller.signal);
+            : await importReaderFile(runtime, file, controller.signal, getReaderState().library);
           if (controller.signal.aborted) break;
           const added = reader.addBook(book);
           await persistReaderSnapshot(runtime, { durableLibrary: true });
@@ -325,12 +365,13 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
                 : `${book.title} 已加入书库`,
             );
           } else {
+            duplicates++;
             setNotice(`${file.name} 已在书库`);
           }
         } catch (reason) {
           if (isAbortError(reason)) break;
           errors += 1;
-          const message = reason instanceof Error ? reason.message : String(reason);
+          const message = readerImportErrorMessage(reason);
           failedFiles.push({ file, error: message });
           setNotice(message);
         } finally {
@@ -374,7 +415,9 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
         ? "导入已取消"
         : errors > 0
           ? `导入完成，${errors} 个文件失败`
-          : "导入完成";
+          : duplicates > 0
+            ? `导入完成 · ${duplicates} 个文件已在书库`
+            : "导入完成";
       setNotice(importNotice);
       importDismissRef.current = window.setTimeout(
         () => {
@@ -401,6 +444,27 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
     setNotice(`正在重试 ${files.length} 个失败文件`);
     void importFiles(files);
   }, [importFiles, importJob]);
+
+  useEffect(() => {
+    const containsFiles = (event: DragEvent) =>
+      Array.from(event.dataTransfer?.types ?? []).includes("Files");
+    const over = (event: DragEvent) => {
+      if (containsFiles(event)) event.preventDefault();
+    };
+    const drop = (event: DragEvent) => {
+      if (!containsFiles(event)) return;
+      if (event.defaultPrevented) return;
+      event.preventDefault();
+      if (!event.dataTransfer?.files.length) return;
+      void importFiles([...event.dataTransfer.files]);
+    };
+    window.addEventListener("dragover", over);
+    window.addEventListener("drop", drop);
+    return () => {
+      window.removeEventListener("dragover", over);
+      window.removeEventListener("drop", drop);
+    };
+  }, [importFiles]);
 
   const handoffDocument = useCallback(() => {
     if (active === undefined || runtime === null || documentHandoffBusy) return;
@@ -506,7 +570,9 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
         showInstall={!pwaInstall.isInstalled}
         installAvailable={pwaInstall.canInstall}
         onInstall={() => void installReader()}
+        onShortcuts={() => setShortcutHelpOpen(true)}
       />
+      <ReaderShortcutHelp open={shortcutHelpOpen} onClose={() => setShortcutHelpOpen(false)} />
       <ReaderInstallHelp
         open={installHelpOpen}
         isIos={pwaInstall.isIos}

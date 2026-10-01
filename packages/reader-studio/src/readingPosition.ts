@@ -12,6 +12,7 @@ import {
 } from "@bcr/reader-core";
 import type { ReaderSettings } from "./model";
 import type { ReaderInternalLinkTarget } from "./navigation";
+import { loadSectionContent, subscribeSectionContent } from "./readerContent";
 
 export interface ReaderScrollPosition {
   readonly top: number;
@@ -40,6 +41,53 @@ function clamp(value: number, min: number, max: number): number {
 
 function elementForNode(node: Node): Element | null {
   return node instanceof Element ? node : node.parentElement;
+}
+
+/** Pin deferred text while validating a selection. A changed selection cancels the result. */
+export async function loadReaderSelection<T>(
+  book: ReaderBook,
+  project: (locator: ReaderLocator) => T,
+): Promise<{ value?: T; error?: string }> {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed || !selection.rangeCount) return {};
+  const range = selection.getRangeAt(0).cloneRange();
+  const start = elementForNode(range.startContainer)?.closest<HTMLElement>("[data-reader-section]");
+  const end = elementForNode(range.endContainer)?.closest<HTMLElement>("[data-reader-section]");
+  if (!start && !end) return {};
+  if (!start || !end || start.dataset.readerSection !== end.dataset.readerSection)
+    return { error: "暂不支持跨章节选段，请在同一段正文中重新选择。" };
+  const text = selection.toString();
+  if (text.length > 512) return { error: "选段过长，请选择不超过 512 个字符" };
+  const section = book.sections.find((item) => item.id === start.dataset.readerSection);
+  if (!section) return { error: "选段所属正文已变化，请重新选择。" };
+  const release = subscribeSectionContent(section, () => {});
+  const unchanged = () => {
+    const current = window.getSelection();
+    if (!current || current.isCollapsed || !current.rangeCount || current.toString() !== text)
+      return false;
+    const next = current.getRangeAt(0);
+    return (
+      next.startContainer === range.startContainer &&
+      next.startOffset === range.startOffset &&
+      next.endContainer === range.endContainer &&
+      next.endOffset === range.endOffset
+    );
+  };
+  try {
+    try {
+      await loadSectionContent(section);
+    } catch {
+      return unchanged() ? { error: "选段正文尚未加载成功，请重试加载正文后重新选择。" } : {};
+    }
+    if (!unchanged()) return {};
+    const locator = readerSelectionLocator(book);
+    if (!locator) return { error: "选段与原文无法对齐，请重新选择正文。" };
+    return { value: project(locator) };
+  } catch (reason) {
+    return { error: reason instanceof Error ? reason.message : "选段采集失败，请重新选择正文。" };
+  } finally {
+    release();
+  }
 }
 
 /** Capture a same-section text selection as a reflow-safe Reader locator. */

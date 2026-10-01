@@ -61,8 +61,8 @@
   object-fit: contain;
 }
 .reader-comic-fit-page img {
-  height: 100%;
-  max-height: calc(100dvh - 260px);
+  height: auto;
+  max-height: 100%;
 }
 .reader-comic-thumbnails {
   display: grid;

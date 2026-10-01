@@ -6,11 +6,11 @@ import {
   type ReaderLocator,
   type SearchHit,
 } from "@bcr/reader-core";
-import { activeBook, readerUsesPagedText } from "./model";
+import { activeBook, readerUsesPagedText, readingStatus, type ReaderReadingStatus } from "./model";
 import { AnnotationComposer, ReaderToolbar } from "./ReaderControls";
 import { ReadingView } from "./ReadingView";
 import { formatBadge, formatBytes, percent, sourceIcon } from "./readerPresentation";
-import { readerSelectionLocator } from "./readingPosition";
+import { loadReaderSelection } from "./readingPosition";
 import { openSearchHit } from "./readerSearchNavigation";
 import type { ReaderRuntime } from "./runtime";
 import { reader, useReader } from "./store";
@@ -49,9 +49,16 @@ export function ReaderWorkspace(props: {
   const readerMainRef = useRef<HTMLElement>(null);
   const fullscreen = useReaderFullscreen(readerMainRef, props.onNotice);
   if (active === undefined) return null;
-  const openAnnotationComposer = (selected?: ReaderLocator) => {
+  const openAnnotationComposer = async (selected?: ReaderLocator) => {
+    const result = selected
+      ? { value: selected }
+      : await loadReaderSelection(active, (locator) => locator);
+    if (result.error) {
+      props.onNotice(result.error);
+      return;
+    }
     setAnnotationDraft("");
-    setAnnotationLocator(selected ?? readerSelectionLocator(active) ?? null);
+    setAnnotationLocator(result.value ?? null);
     setAnnotationOpen(true);
   };
   const submitAnnotation = (event: FormEvent<HTMLFormElement>) => {
@@ -127,6 +134,7 @@ export function ReaderWorkspace(props: {
           runtime={props.runtime}
           book={active}
           onToggleMobileChrome={props.onToggleMobileChrome}
+          onImport={props.onImport}
         />
         {(settings.books?.[active.id]?.comic ??
           (active.source.format === "cbz" || active.rendition?.layout === "pre-paginated")) && (
@@ -170,20 +178,26 @@ function LibraryPanel(props: {
   const fileInput = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [sortMode, setSortMode] = useState<LibrarySortMode>("recent");
+  const [filter, setFilter] = useState<ReaderReadingStatus | "all">("all");
+  const sourceErrors = useReader((state) => state.sourceErrorsByBook);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [backupOpen, setBackupOpen] = useState(false);
-  const sortedLibrary = [...library].sort((left, right) => {
-    if (sortMode === "title") return left.title.localeCompare(right.title, "zh-CN");
-    if (sortMode === "progress") {
+  const sortedLibrary = library
+    .filter(
+      (book) => filter === "all" || readingStatus(progressByBook[book.id]?.percentage) === filter,
+    )
+    .sort((left, right) => {
+      if (sortMode === "title") return left.title.localeCompare(right.title, "zh-CN");
+      if (sortMode === "progress") {
+        return (
+          (progressByBook[right.id]?.percentage ?? 0) - (progressByBook[left.id]?.percentage ?? 0)
+        );
+      }
       return (
-        (progressByBook[right.id]?.percentage ?? 0) - (progressByBook[left.id]?.percentage ?? 0)
+        (progressByBook[right.id]?.updatedAt ?? right.updatedAt) -
+        (progressByBook[left.id]?.updatedAt ?? left.updatedAt)
       );
-    }
-    return (
-      (progressByBook[right.id]?.updatedAt ?? right.updatedAt) -
-      (progressByBook[left.id]?.updatedAt ?? left.updatedAt)
-    );
-  });
+    });
   return (
     <div className="reader-library-panel">
       <div className="reader-sidebar-heading">
@@ -201,6 +215,16 @@ function LibraryPanel(props: {
         </button>
       </div>
       <div className="reader-library-toolbar">
+        <select
+          aria-label="阅读状态筛选"
+          value={filter}
+          onChange={(event) => setFilter(event.target.value as ReaderReadingStatus | "all")}
+        >
+          <option value="all">全部读物</option>
+          <option value="unread">未读</option>
+          <option value="reading">在读</option>
+          <option value="finished">读完</option>
+        </select>
         <span className="ui-section-label">SORT BY</span>
         <select
           aria-label="书库排序"
@@ -266,6 +290,10 @@ function LibraryPanel(props: {
             book={book}
             active={book.id === activeBookId}
             progress={progressByBook[book.id]?.percentage ?? 0}
+            missingSource={
+              Boolean(sourceErrors[book.id]) ||
+              (book.source.format === "pdf" && !book.source.ref && !book.source.objectUrl)
+            }
             confirming={confirmingId === book.id}
             onRemove={() => setConfirmingId(book.id)}
             onConfirmRemove={() => {
@@ -277,6 +305,7 @@ function LibraryPanel(props: {
             onCancelRemove={() => setConfirmingId(null)}
           />
         ))}
+        {sortedLibrary.length === 0 && <p role="status">此分类还没有读物。</p>}
       </div>
       <div className="reader-sidebar-footer">
         <span>
@@ -299,6 +328,7 @@ function LibraryBookCard(props: {
   book: ReaderBook;
   active: boolean;
   progress: number;
+  missingSource: boolean;
   confirming: boolean;
   onRemove: () => void;
   onConfirmRemove: () => void;
@@ -327,12 +357,18 @@ function LibraryBookCard(props: {
         </div>
         <div className="reader-book-card-copy">
           <strong>{props.book.title}</strong>
+          {props.book.tags.includes("DEMO") && <small>示例读物 · 可从右上角导入你的文件</small>}
+          {props.missingSource && <small role="status">缺少源文件 · 请重新导入</small>}
           <span>{props.book.author ?? "本地文档"}</span>
           <div className="reader-book-meta">
             <span>{formatBadge(props.book.source.format)}</span>
             <span>
               {formatBytes(props.book.source.size)} ·{" "}
-              {props.progress > 0 ? `${percent(props.progress)} · 继续阅读` : "未开始"}
+              {readingStatus(props.progress) === "finished"
+                ? "100% · 已读完"
+                : props.progress > 0
+                  ? `${percent(props.progress)} · 在读`
+                  : "未读"}
             </span>
           </div>
           <div className="reader-book-progress">
@@ -371,6 +407,8 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
   const query = useReader((state) => state.query);
   const scope = useReader((state) => state.searchScope);
   const searchBusy = useReader((state) => state.searchBusy);
+  const searchError = useReader((state) => state.searchError);
+  const searchTruncated = useReader((state) => state.searchTruncated);
   const searchActiveIndex = useReader((state) => state.searchActiveIndex);
   const activeResultRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -384,7 +422,9 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
           <strong>
             {searchBusy
               ? "正在搜索…"
-              : `${props.hits.length === 80 ? "前 " : ""}${props.hits.length} 个命中`}
+              : searchError
+                ? "搜索遇到问题"
+                : `${searchTruncated ? "前 " : ""}${props.hits.length} 个命中`}
           </strong>
         </div>
         <span className="reader-search-query">{query ? `“${query}”` : "输入关键词查找原文"}</span>
@@ -412,9 +452,17 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
         >
           整个书库 · {library.length}
         </button>
-        {props.hits.length === 80 && <small>显示前 80 次出现，请缩小范围或细化关键词。</small>}
+        {searchTruncated && <small>显示前 80 次出现，请缩小范围或细化关键词。</small>}
       </div>
-      {props.hits.length === 0 && !searchBusy && (
+      {searchError && (
+        <div className="reader-search-empty" role="alert">
+          <span>{searchError}</span>
+          <button type="button" onClick={() => reader.retrySearch()}>
+            重试搜索
+          </button>
+        </div>
+      )}
+      {props.hits.length === 0 && !searchBusy && !searchError && (
         <div className="reader-search-empty">
           <Search className="reader-icon" />
           {query ? "没有找到匹配内容，试试更短的关键词。" : "输入关键词，定位后可返回原处。"}
@@ -437,7 +485,22 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
             <span className="reader-search-result-copy">
               <strong>{library.find((book) => book.id === hit.bookId)?.title ?? "未知读物"}</strong>
               <span>{hit.label}</span>
-              <em>{hit.snippet}</em>
+              <em>
+                {hit.snippetMatchStart === undefined ? (
+                  hit.snippet
+                ) : (
+                  <>
+                    {hit.snippet.slice(0, hit.snippetMatchStart)}
+                    <mark>
+                      {hit.snippet.slice(
+                        hit.snippetMatchStart,
+                        hit.snippetMatchStart + (hit.snippetMatchLength ?? 0),
+                      )}
+                    </mark>
+                    {hit.snippet.slice(hit.snippetMatchStart + (hit.snippetMatchLength ?? 0))}
+                  </>
+                )}
+              </em>
             </span>
             <ChevronRight className="reader-icon" />
           </button>

@@ -227,7 +227,7 @@ export function createReaderIndexSession(artifacts: ArtifactStore): ReaderIndexS
       const indexedBooks = books.filter((book) => indexed.has(book.id));
       const documents = indexedBooks.flatMap((book) => indexed.get(book.id)?.documents ?? []);
       return {
-        hits: searchIndexedDocuments(documents, indexedBooks, query),
+        hits: searchIndexedDocuments(documents, indexedBooks, query, 81),
         indexedBookIds: indexedBooks.map((book) => book.id),
         pendingBookIds: books.filter((book) => pending.has(book.id)).map((book) => book.id),
       };

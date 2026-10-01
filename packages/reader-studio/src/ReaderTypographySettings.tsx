@@ -15,9 +15,11 @@ import wenkaiWebLicense from "lxgw-wenkai-webfont/LICENSE?raw";
 export function ReaderTypographySettings({
   settings,
   fixedLayout,
+  txtPaged,
 }: {
   settings: ReaderSettings;
   fixedLayout: boolean;
+  txtPaged: boolean;
 }) {
   const fonts = useReaderFonts(settings, !fixedLayout);
   if (fixedLayout)
@@ -48,6 +50,7 @@ export function ReaderTypographySettings({
                       ? 21
                       : 20,
                 contentWidth: "narrow",
+                textAlign: DEFAULT_READER_SETTINGS.textAlign ?? "start",
               })
             }
           >
@@ -138,12 +141,27 @@ export function ReaderTypographySettings({
               </select>
             </label>
             <label>
+              正文对齐
+              <select
+                aria-label="正文对齐"
+                value={settings.textAlign ?? "start"}
+                onChange={(event) =>
+                  reader.setSettings({
+                    textAlign: event.target.value === "justify" ? "justify" : "start",
+                  })
+                }
+              >
+                <option value="start">自然对齐</option>
+                <option value="justify">两端对齐</option>
+              </select>
+            </label>
+            <label>
               行高 <output>{settings.lineHeight.toFixed(2)}</output>
               <input
                 aria-label="正文行高"
                 type="range"
-                min={1.4}
-                max={2.2}
+                min={1}
+                max={3}
                 step={0.05}
                 value={settings.lineHeight}
                 onChange={(event) => reader.setSettings({ lineHeight: Number(event.target.value) })}
@@ -153,6 +171,7 @@ export function ReaderTypographySettings({
               段间距 <output>{(settings.paragraphSpacing ?? 0.65).toFixed(2)} em</output>
               <input
                 aria-label="正文段间距"
+                disabled={txtPaged && settings.txtParagraphStyle !== "spaced"}
                 type="range"
                 min={0.3}
                 max={1.2}
@@ -162,6 +181,9 @@ export function ReaderTypographySettings({
                   reader.setSettings({ paragraphSpacing: Number(event.target.value) })
                 }
               />
+              {txtPaged && settings.txtParagraphStyle !== "spaced" && (
+                <small>TXT 首行缩进模式不使用段间距；选择段间留白后可调整。</small>
+              )}
             </label>
             <label>
               正文行宽{" "}
@@ -200,6 +222,7 @@ export function ReaderTypographySettings({
                 paragraphSpacing: 0.65,
                 lineLength: DEFAULT_READER_SETTINGS.lineLength!,
                 contentWidth: "narrow",
+                textAlign: DEFAULT_READER_SETTINGS.textAlign ?? "start",
               })
             }
           >

@@ -95,12 +95,37 @@ export function searchTextRangeNear(
 }
 
 export function makeSnippet(text: string, start: number, length: number, radius = 58): string {
+  return makeSearchSnippet(text, start, length, radius).snippet;
+}
+
+/** Map the exact occurrence into the whitespace-collapsed summary. */
+export function makeSearchSnippet(
+  text: string,
+  start: number,
+  length: number,
+  radius = 58,
+): Pick<SearchHit, "snippet" | "snippetMatchStart" | "snippetMatchLength"> {
   const safeStart = Math.max(0, start);
   const from = Math.max(0, safeStart - radius);
   const to = Math.min(text.length, safeStart + length + radius);
   const prefix = from > 0 ? "…" : "";
   const suffix = to < text.length ? "…" : "";
-  return `${prefix}${text.slice(from, to).replace(/\s+/gu, " ").trim()}${suffix}`;
+  const raw = text.slice(from, to);
+  const collapsed = raw.replace(/\s+/gu, " ");
+  const leading = collapsed.length - collapsed.trimStart().length;
+  const offset = (index: number) =>
+    prefix.length + raw.slice(0, index).replace(/\s+/gu, " ").length - leading;
+  const snippetMatchStart = Math.max(prefix.length, offset(safeStart - from));
+  const snippet = `${prefix}${collapsed.trim()}${suffix}`;
+  return {
+    snippet,
+    snippetMatchStart,
+    snippetMatchLength: Math.max(
+      0,
+      Math.min(snippet.length - suffix.length, offset(safeStart + length - from)) -
+        snippetMatchStart,
+    ),
+  };
 }
 
 export function buildSearchIndex(
@@ -142,7 +167,7 @@ export function searchIndexedDocuments(
         bookId: document.bookId,
         sectionId: document.sectionId,
         label: document.label,
-        snippet: makeSnippet(section.text, range.start, range.length),
+        ...makeSearchSnippet(section.text, range.start, range.length),
         score: 1,
         matchStart: range.start,
         matchLength: range.length,
@@ -178,7 +203,7 @@ export function searchBook(book: ReaderBook, query: string, limit = 80): Readonl
         bookId: book.id,
         sectionId: section.id,
         label: section.label,
-        snippet: makeSnippet(section.text, match.start, match.length),
+        ...makeSearchSnippet(section.text, match.start, match.length),
         score: 1,
         matchStart: match.start,
         matchLength: match.length,

@@ -30,10 +30,43 @@ import {
 import { normalizeReaderProgress } from "./session-contract";
 import { parseReaderFile } from "./readerImports";
 import { sanitizeHtml } from "./readerMarkup";
-import { releaseBookResources } from "./store";
+import { releaseBookResources } from "./readerContent";
 import type { ReaderRuntime } from "./readerRuntimeCore";
 
 const MAX_BYTES = 512 * 1024 * 1024;
+
+/** Binary publications cannot be rebuilt from text snapshots; they travel with their source file. */
+const SOURCE_REQUIRED_FORMATS: ReadonlyArray<string> = ["pdf", "epub", "docx", "cbz"];
+const MISSING_SOURCE_GUIDANCE = "缺少源文件，无法创建完整备份。请重新导入该书源文件或先移除它";
+
+export function readerBookMissingSource(book: Pick<ReaderBook, "source">): boolean {
+  return SOURCE_REQUIRED_FORMATS.includes(book.source.format) && book.source.ref === undefined;
+}
+
+export async function preflightReaderBackup(
+  runtime: ReaderRuntime,
+  books: ReadonlyArray<ReaderBook>,
+): Promise<string[]> {
+  const missing: string[] = [];
+  for (const book of books) {
+    const source = book.source.ref;
+    if (
+      readerBookMissingSource(book) ||
+      (source &&
+        !(await Effect.runPromise(
+          runtime.artifacts.has({
+            id: source.id,
+            type: "file/publication",
+            storage: source.storage,
+            format: source.mime,
+            hash: source.hash,
+          }),
+        )))
+    )
+      missing.push(book.title);
+  }
+  return missing;
+}
 
 /** Independent volumes: each ZIP can be checked/restored without the others. */
 export function planReaderBackup(
@@ -46,6 +79,7 @@ export function planReaderBackup(
 ): ReaderBook[][] {
   const groups = new Map<string, ReaderBook[]>();
   for (const book of books) {
+    if (readerBookMissingSource(book)) throw new Error(`${book.title} ${MISSING_SOURCE_GUIDANCE}`);
     const key = book.source.ref?.hash ?? book.id;
     groups.set(key, [...(groups.get(key) ?? []), book]);
   }
@@ -57,7 +91,9 @@ export function planReaderBackup(
     const bytes = book.source.ref?.size ?? book.source.size;
     const snapshot = group.reduce((sum, item) => sum + (capacity?.snapshotSize(item) ?? 0), 0);
     if (bytes > limit)
-      throw new Error(`${book.title} 超过单卷 ${Math.round(limit / 1024 / 1024)} MiB 源文件上限`);
+      throw new Error(
+        `${book.title} 超过单卷 ${Math.round(limit / 1024 / 1024)} MiB 源文件上限，请调整选择`,
+      );
     if (capacity && snapshot > capacity.snapshotLimit)
       throw new Error(`${book.title} 的同源章节快照超过单卷上限，请减少所选集合`);
     if (
@@ -91,6 +127,8 @@ export interface ReaderBackup {
   readonly progressByBook: ReaderState["progressByBook"];
   readonly bookmarksByBook: ReaderState["bookmarksByBook"];
   readonly annotationsByBook: ReaderState["annotationsByBook"];
+  /** Set when settings values from a newer Reader fell back to defaults; never serialized. */
+  readonly settingsFallback?: boolean;
   readonly settings: ReaderSettings;
 }
 export interface PreparedReaderBackup {
@@ -149,19 +187,82 @@ function backupToc(
   });
 }
 
-/** Validate before opening parsers or writing artifacts. Unknown versions fail closed. */
-export function decodeReaderBackup(value: unknown): ReaderBackup {
-  const fail = (): never => {
-    throw new Error("备份格式无效或版本不受支持，请选择 Reader 导出的 ZIP 备份");
+const SETTINGS_ENUMS = {
+  theme: ["paper", "night", "sage"],
+  layout: ["scroll", "paged"],
+  fontFamily: ["sans", "serif", "kai"],
+  latinFontFamily: ["sans", "serif", "mono", "literata", "atkinson"],
+  contentWidth: ["narrow", "wide"],
+  pageAnimation: ["slide", "fade", "paper", "none"],
+  txtParagraphStyle: ["indent", "spaced"],
+  textAlign: ["start", "justify"],
+} as const;
+const SETTINGS_RANGES = {
+  fontSize: [12, 48],
+  lineHeight: [1, 3],
+  fontWeight: [350, 500],
+  paragraphSpacing: [0.3, 1.2],
+  lineLength: [28, 44],
+} as const;
+const SETTINGS_FLAG_KEYS = ["pageSpread", "tocPinned"] as const;
+
+/**
+ * Settings fail open: a backup written by a newer Reader may carry enum values this
+ * build does not know. Unknown values fall back to that field's default instead of
+ * rejecting the whole backup; fields added by newer versions pass through untouched.
+ */
+function decodeBackupSettings(raw: unknown): { settings: ReaderSettings; fallback: boolean } {
+  const source = object(raw) ? raw : {};
+  let fallback = !object(raw);
+  const kept: Record<string, unknown> = {};
+  for (const [key, allowed] of Object.entries(SETTINGS_ENUMS)) {
+    const value = source[key];
+    if (value === undefined) continue;
+    if ((allowed as ReadonlyArray<unknown>).includes(value)) kept[key] = value;
+    else fallback = true;
+  }
+  for (const [key, range] of Object.entries(SETTINGS_RANGES)) {
+    const value = source[key];
+    if (value === undefined) continue;
+    if (finite(value) && value >= range[0] && value <= range[1]) kept[key] = value;
+    else fallback = true;
+  }
+  for (const key of SETTINGS_FLAG_KEYS) {
+    const value = source[key];
+    if (value === undefined) continue;
+    if (typeof value === "boolean") kept[key] = value;
+    else fallback = true;
+  }
+  const known = new Set<string>([
+    ...Object.keys(SETTINGS_ENUMS),
+    ...Object.keys(SETTINGS_RANGES),
+    ...SETTINGS_FLAG_KEYS,
+    "books",
+  ]);
+  const extra = Object.fromEntries(Object.entries(source).filter(([key]) => !known.has(key)));
+  return {
+    settings: {
+      ...DEFAULT_READER_SETTINGS,
+      ...extra,
+      ...kept,
+      books: normalizeBookSettings(source["books"]),
+    } as ReaderSettings,
+    fallback,
   };
-  if (
-    !object(value) ||
-    value["format"] !== "bcr-reader-backup" ||
-    value["version"] !== 1 ||
-    !finite(value["createdAt"]) ||
-    !Array.isArray(value["books"]) ||
-    value["books"].length > 5000
-  )
+}
+
+/** Validate before opening parsers or writing artifacts. Only format, version and structure fail closed. */
+export function decodeReaderBackup(value: unknown): ReaderBackup {
+  const fail = (unsupportedVersion = false): never => {
+    throw new Error(
+      unsupportedVersion
+        ? "备份版本不受支持，请使用当前版本的 Reader 重新导出备份"
+        : "备份格式无效，请选择 Reader 导出的 ZIP 备份",
+    );
+  };
+  if (!object(value) || value["format"] !== "bcr-reader-backup") return fail();
+  if (value["version"] !== 1) return fail(true);
+  if (!finite(value["createdAt"]) || !Array.isArray(value["books"]) || value["books"].length > 5000)
     return fail();
   const ids = new Set<string>();
   const books: BackupBook[] = value["books"].map((entry: unknown) => {
@@ -258,7 +359,7 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
         file["size"] < 0
       )
         return fail();
-    } else if (["pdf", "epub", "docx", "cbz"].includes(String(source["format"]))) return fail();
+    } else if (SOURCE_REQUIRED_FORMATS.includes(String(source["format"]))) return fail();
     // Keep a narrow, validated projection. Never trust paths/refs/URLs in JSON.
     const persisted = book as unknown as PersistedBook;
     const toc = backupToc(book["toc"], sectionIds);
@@ -300,47 +401,7 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
         : { source: entry["source"] as unknown as NonNullable<BackupBook["source"]> }),
     };
   });
-  const settings = value["settings"];
-  if (
-    !object(settings) ||
-    !["paper", "night", "sage"].includes(String(settings["theme"])) ||
-    !["scroll", "paged"].includes(String(settings["layout"])) ||
-    !["sans", "serif", "kai"].includes(String(settings["fontFamily"])) ||
-    !["sans", "serif", "mono", "literata", "atkinson"].includes(
-      String(settings["latinFontFamily"]),
-    ) ||
-    !["narrow", "wide"].includes(String(settings["contentWidth"])) ||
-    !finite(settings["fontSize"]) ||
-    settings["fontSize"] < 12 ||
-    settings["fontSize"] > 48 ||
-    !finite(settings["lineHeight"]) ||
-    settings["lineHeight"] < 1 ||
-    settings["lineHeight"] > 3
-  )
-    return fail();
-  for (const [key, min, max] of [
-    ["fontWeight", 350, 500],
-    ["paragraphSpacing", 0.3, 1.2],
-    ["lineLength", 28, 44],
-  ] as const) {
-    const value = settings[key];
-    if (value !== undefined && (!finite(value) || value < min || value > max)) return fail();
-  }
-  if (
-    settings["pageAnimation"] !== undefined &&
-    (typeof settings["pageAnimation"] !== "string" ||
-      !["slide", "fade", "paper", "none"].includes(settings["pageAnimation"]))
-  )
-    return fail();
-  if (
-    settings["txtParagraphStyle"] !== undefined &&
-    settings["txtParagraphStyle"] !== "indent" &&
-    settings["txtParagraphStyle"] !== "spaced"
-  )
-    return fail();
-  for (const key of ["pageSpread", "tocPinned"]) {
-    if (settings[key] !== undefined && typeof settings[key] !== "boolean") return fail();
-  }
+  const { settings, fallback: settingsFallback } = decodeBackupSettings(value["settings"]);
   for (const key of ["progressByBook", "bookmarksByBook", "annotationsByBook"])
     if (!object(value[key])) return fail();
   const projected = books.map((entry) => entry.book);
@@ -349,11 +410,8 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
     version: 1,
     createdAt: value["createdAt"],
     books,
-    settings: {
-      ...DEFAULT_READER_SETTINGS,
-      ...settings,
-      books: normalizeBookSettings(settings.books),
-    } as ReaderSettings,
+    ...(settingsFallback ? { settingsFallback: true } : {}),
+    settings,
     progressByBook: normalizeReaderProgress(projected, value["progressByBook"]),
     bookmarksByBook: restoredBookmarks(projected, value["bookmarksByBook"]),
     annotationsByBook: restoredAnnotations(projected, value["annotationsByBook"]),
@@ -388,6 +446,35 @@ export function readerBackupManifest(
   };
 }
 
+/** Manifest and per-book text snapshots dominate a note-heavy library's backup size. */
+export function readerBackupSnapshotBytes(
+  state: ReaderState,
+  books: ReadonlyArray<ReaderBook>,
+): number {
+  const header = new Blob([JSON.stringify(readerBackupManifest(state, []))]).size;
+  const entries = books.reduce(
+    (sum, book) =>
+      sum +
+      new Blob([
+        JSON.stringify({
+          book: persistBook(book),
+          ...(book.source.ref === undefined
+            ? {}
+            : {
+                source: {
+                  path: `sources/${book.source.ref.hash}`,
+                  hash: book.source.ref.hash,
+                  size: book.source.ref.size,
+                },
+              }),
+        }),
+      ]).size +
+      1,
+    0,
+  );
+  return header + entries;
+}
+
 export async function createReaderBackup(
   runtime: ReaderRuntime,
   state: ReaderState,
@@ -412,6 +499,10 @@ async function encodeReaderBackup(
   signal?: AbortSignal,
   destination?: WritableStream<Uint8Array>,
 ): Promise<unknown> {
+  check(signal);
+  const missing = await preflightReaderBackup(runtime, state.library);
+  check(signal);
+  if (missing.length) throw new Error(`${missing.join("、")} ${MISSING_SOURCE_GUIDANCE}`);
   const zip = new ZipWriter(destination ?? new BlobWriter("application/zip"));
   const books: BackupBook[] = [];
   const written = new Set<string>();
@@ -484,8 +575,8 @@ async function encodeReaderBackup(
             written.add(source.path);
           }
         }
-      } else if (["pdf", "epub", "docx", "cbz"].includes(book.source.format))
-        throw new Error(`${book.title} 缺少源文件，无法创建完整备份`);
+      } else if (SOURCE_REQUIRED_FORMATS.includes(book.source.format))
+        throw new Error(`${book.title} ${MISSING_SOURCE_GUIDANCE}`);
       books.push({ book: persistBook(book), ...(source === undefined ? {} : { source }) });
     }
     const manifest = readerBackupManifest(state, books);
@@ -578,20 +669,71 @@ export async function inspectReaderBackup(
   }
 }
 
+export interface BackupSkippedBook {
+  readonly id: string;
+  readonly title: string;
+  /** Why restore keeps the local copy: same id, same source file, or a second copy inside the backup. */
+  readonly matchedBy: "id" | "source" | "duplicate";
+  readonly progress: boolean;
+  readonly bookmarks: number;
+  readonly annotations: number;
+}
+
+/**
+ * Split backup entries into fresh books and skipped ones. A skipped book keeps the
+ * local copy while its backup-side progress, bookmarks and notes are dropped, so the
+ * drops are reported per book instead of disappearing silently.
+ */
+function classifyBackupBooks(
+  backup: ReaderBackup,
+  library: ReadonlyArray<ReaderBook>,
+): { fresh: BackupBook[]; skipped: BackupSkippedBook[] } {
+  const ids = new Set(library.map((book) => book.id));
+  const localHashes = new Set(
+    library.flatMap((book) => (book.source.ref ? [book.source.ref.hash] : [])),
+  );
+  const hashes = new Set(localHashes);
+  const fresh: BackupBook[] = [];
+  const skipped: BackupSkippedBook[] = [];
+  for (const entry of backup.books) {
+    const { book, source } = entry;
+    const matchedBy = ids.has(book.id)
+      ? "id"
+      : source !== undefined && hashes.has(source.hash)
+        ? localHashes.has(source.hash)
+          ? ("source" as const)
+          : ("duplicate" as const)
+        : undefined;
+    if (matchedBy !== undefined) {
+      skipped.push({
+        id: book.id,
+        title: book.title,
+        matchedBy,
+        progress: backup.progressByBook[book.id] !== undefined,
+        bookmarks: backup.bookmarksByBook[book.id]?.length ?? 0,
+        annotations: backup.annotationsByBook[book.id]?.length ?? 0,
+      });
+      continue;
+    }
+    ids.add(book.id);
+    if (source !== undefined) hashes.add(source.hash);
+    fresh.push(entry);
+  }
+  return { fresh, skipped };
+}
+
 export function backupNewBooks(
   backup: PreparedReaderBackup,
   library: ReadonlyArray<ReaderBook>,
 ): ReadonlyArray<BackupBook> {
-  const ids = new Set(library.map((book) => book.id));
-  const hashes = new Set(
-    library.flatMap((book) => (book.source.ref ? [book.source.ref.hash] : [])),
-  );
-  return backup.manifest.books.filter(({ book, source }) => {
-    if (ids.has(book.id) || (source !== undefined && hashes.has(source.hash))) return false;
-    ids.add(book.id);
-    if (source !== undefined) hashes.add(source.hash);
-    return true;
-  });
+  return classifyBackupBooks(backup.manifest, library).fresh;
+}
+
+export function backupSkippedBooks(
+  backup: ReaderBackup,
+  library: ReadonlyArray<ReaderBook>,
+): ReadonlyArray<BackupSkippedBook> {
+  return classifyBackupBooks(backup, library).skipped;
 }
 
 async function durableRestoreSource(

@@ -98,6 +98,7 @@ export function useReaderSearch(runtime: ReaderRuntime | null): void {
   const activeId = useReader((state) => (state.searchScope === "book" ? state.activeBookId : null));
   const library = useReader((state) => state.library);
   const [indexRevision, setIndexRevision] = useState(0);
+  const searchRevision = useReader((state) => state.searchRevision);
   useEffect(() => {
     const unsubscribe = runtime?.indexSession?.subscribe(() => {
       setIndexRevision((revision) => revision + 1);
@@ -111,6 +112,8 @@ export function useReaderSearch(runtime: ReaderRuntime | null): void {
       if (query.trim() === "") {
         reader.setSearch(query, [], null);
         reader.setSearchBusy(false);
+        reader.setSearchError(null);
+        reader.setSearchTruncated(false);
         return;
       }
       reader.setSearchBusy(true);
@@ -124,17 +127,19 @@ export function useReaderSearch(runtime: ReaderRuntime | null): void {
         if (controller.signal.aborted) return;
         reader.setSearch(query, result.hits, getReaderState().searchBookId);
         reader.setSearchBusy(result.indexing);
-      } catch {
+        reader.setSearchTruncated(result.truncated ?? false);
+      } catch (reason) {
         if (controller.signal.aborted) return;
-        reader.setSearch(query, [], null);
-        reader.setSearchBusy(false);
+        reader.setSearchError(
+          `搜索失败：${reason instanceof Error ? reason.message : "正文读取异常"}。请重试。`,
+        );
       }
     }, 160);
     return () => {
       controller.abort();
       window.clearTimeout(handle);
     };
-  }, [indexRevision, runtime, query, library, scope, activeId]);
+  }, [indexRevision, searchRevision, runtime, query, library, scope, activeId]);
 }
 
 export interface ReaderBootState {
@@ -181,9 +186,12 @@ export function useReaderBoot(): ReaderBootState {
       void restoreReaderBooks(nextRuntime, [id], binaryRestoreController.signal, (book) => {
         if (!cancelled) reader.replaceBook(book);
       })
-        .then(({ issues }) => {
+        .then(({ books, issues }) => {
           if (cancelled) return;
+          if (books.length === 0 && issues.length === 0)
+            reader.setSourceError(id, "源文件恢复记录缺失，请重新导入原文件。");
           if (issues.length > 0) {
+            for (const issue of issues) reader.setSourceError(issue.bookId, issue.reason);
             setRecovery((previous) =>
               previous === null
                 ? previous
@@ -196,8 +204,7 @@ export function useReaderBoot(): ReaderBootState {
           }
         })
         .catch(() => {
-          // The cached projection remains readable when a source cannot be
-          // rehydrated in the background.
+          if (!cancelled) reader.setSourceError(id, "源文件恢复失败，请重新导入原文件。");
         })
         .finally(() => {
           restoringBinary = false;

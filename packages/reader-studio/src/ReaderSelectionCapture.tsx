@@ -3,7 +3,7 @@ import { BookmarkPlus, X } from "lucide-react";
 import { useResearchCapture, useRuntimeActivity, type ResearchCapture } from "@bcr/react";
 import type { ReaderBook } from "@bcr/reader-core";
 import type { ReaderRuntime } from "./runtime";
-import { readerSelectionLocator } from "./readingPosition";
+import { loadReaderSelection } from "./readingPosition";
 import { captureReaderSelection } from "./readerCapture";
 import { ReaderSheet } from "./ReaderSheet";
 import { persistReaderSnapshot } from "./readerPersistenceQueue";
@@ -21,7 +21,7 @@ export function ReaderSelectionCapture(props: {
   const service = useResearchCapture();
   const active = useRuntimeActivity();
   const [selection, setSelection] = useState<ResearchCapture | null>(null);
-  const [selectionTooLong, setSelectionTooLong] = useState(false);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
   const [capture, setCapture] = useState<ResearchCapture | null>(null);
   const [collectionId, setCollectionId] = useState("");
   const [name, setName] = useState("");
@@ -32,30 +32,29 @@ export function ReaderSelectionCapture(props: {
   const newId = useRef(crypto.randomUUID());
   useEffect(() => {
     if (!active || capture || (!service && !props.workspaceCollections)) return;
+    let sequence = 0;
     const update = () => {
-      const text = window.getSelection()?.toString() ?? "";
-      const anchor = window.getSelection()?.anchorNode;
-      const element = anchor instanceof Element ? anchor : anchor?.parentElement;
-      const tooLong = text.length > 512 && !!element?.closest("[data-reader-section]");
-      setSelectionTooLong(tooLong);
-      if (tooLong) {
-        setSelection(null);
-        return;
-      }
-      const locator = readerSelectionLocator(props.book);
-      try {
-        setSelection(locator ? captureReaderSelection(props.book, locator) : null);
-      } catch {
-        setSelection(null);
-      }
+      const request = ++sequence;
+      setSelection(null);
+      setSelectionError(null);
+      void loadReaderSelection(props.book, (locator) =>
+        captureReaderSelection(props.book, locator),
+      ).then((result) => {
+        if (request !== sequence) return;
+        setSelection(result.value ?? null);
+        setSelectionError(result.error ?? null);
+      });
     };
     document.addEventListener("selectionchange", update);
-    return () => document.removeEventListener("selectionchange", update);
+    return () => {
+      sequence++;
+      document.removeEventListener("selectionchange", update);
+    };
   }, [service, active, capture, props.book, props.workspaceCollections]);
   useEffect(() => {
     setSelection(null);
     setCapture(null);
-    setSelectionTooLong(false);
+    setSelectionError(null);
   }, [props.book.id, active]);
   useEffect(() => {
     if (!service || !active) return;
@@ -83,6 +82,7 @@ export function ReaderSelectionCapture(props: {
           ])
       ) {
         sessionStorage.removeItem(PENDING_CAPTURE_KEY);
+        props.onNotice("待保存的摘录已失效，请回到正文重新选择。");
         return;
       }
       if (route.searchParams.get("book") !== props.book.id) return;
@@ -90,6 +90,7 @@ export function ReaderSelectionCapture(props: {
       setCollectionId(service.collections[0]?.id ?? "");
       sessionStorage.removeItem(PENDING_CAPTURE_KEY);
     } catch {
+      props.onNotice("待保存的摘录无法恢复，请回到正文重新选择。");
       try {
         sessionStorage.removeItem(PENDING_CAPTURE_KEY);
       } catch {
@@ -132,9 +133,9 @@ export function ReaderSelectionCapture(props: {
   };
   return (
     <>
-      {selectionTooLong && !capture && (
+      {selectionError && !capture && (
         <span className="reader-selection-capture ui-btn ui-btn-lg ui-btn-default" role="status">
-          选段过长，请选择不超过 512 个字符
+          {selectionError}
         </span>
       )}
       {selection && !capture && (
@@ -149,7 +150,9 @@ export function ReaderSelectionCapture(props: {
               void persistReaderSnapshot(props.runtime, { durableLibrary: true, strict: true })
                 .then(() => {
                   sessionStorage.setItem(PENDING_CAPTURE_KEY, JSON.stringify(selection));
-                  window.location.assign(`/reader?book=${encodeURIComponent(props.book.id)}`);
+                  window.location.assign(
+                    selection.document.route ?? `/reader?book=${encodeURIComponent(props.book.id)}`,
+                  );
                 })
                 .catch((reason: unknown) => {
                   saving.current = false;

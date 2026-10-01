@@ -49,6 +49,7 @@ export function highlightText(
   query: string,
   from = 0,
   to = value.length,
+  currentStart?: number,
 ): ReactNode {
   const nodes: ReactNode[] = [];
   const first = Math.max(0, Math.min(value.length, from));
@@ -68,7 +69,11 @@ export function highlightText(
     const visibleEnd = Math.min(last, end);
     if (visibleStart > emitted) nodes.push(value.slice(emitted, visibleStart));
     nodes.push(
-      <mark data-reader-search-match="true" key={`match-${key++}`}>
+      <mark
+        data-reader-search-match="true"
+        className={start === currentStart ? "is-current" : undefined}
+        key={`match-${key++}`}
+      >
         {value.slice(visibleStart, visibleEnd)}
       </mark>,
     );
@@ -79,7 +84,7 @@ export function highlightText(
 }
 
 /** Highlight sanitized HTML without interpolating user input into markup. */
-export function highlightHtml(value: string, query: string): string {
+export function highlightHtml(value: string, query: string, currentOrdinal?: number): string {
   if (!normalizeSearchQuery(query) || typeof DOMParser === "undefined") return value;
   const document = new DOMParser().parseFromString(`<body>${value}</body>`, "text/html");
   const body = document.body;
@@ -121,6 +126,7 @@ export function highlightHtml(value: string, query: string): string {
       fragment.append(document.createTextNode(textNode.data.slice(localCursor, from)));
       const mark = document.createElement("mark");
       mark.setAttribute("data-reader-search-match", "true");
+      if (i === currentOrdinal) mark.className = "is-current";
       mark.textContent = textNode.data.slice(from, to);
       fragment.append(mark);
       localCursor = to;

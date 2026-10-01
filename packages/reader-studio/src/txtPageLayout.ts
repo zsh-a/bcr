@@ -65,7 +65,19 @@ export class TxtPageLayout {
       const line = this.lineAt(paragraph.breaks, cursor.offset);
       const gap = fragments.length ? this.gapAfter(fragments.at(-1)!.heading) : 0;
       const room = this.linesThatFit(used + gap, fragments.length === 0);
-      const count = Math.min(paragraph.breaks.length - 1 - line, room);
+      const remaining = paragraph.breaks.length - 1 - line;
+      let count = Math.min(remaining, room);
+      // Keep at least two lines on either side when the page can accommodate it.
+      if (fragments.length && count === 1 && remaining > 1) break;
+      if (fragments.length && remaining === 3 && count === 2) break;
+      if (remaining - count === 1 && count >= 3) count--;
+      if (
+        paragraph.heading &&
+        fragments.length &&
+        cursor.section + 1 < this.book.sections.length &&
+        room < remaining + 3
+      )
+        break;
       if (count <= 0) break;
       const end = paragraph.breaks[line + count]!;
       fragments.push(this.fragment(cursor.section, paragraph, cursor.offset, end, gap));
@@ -90,7 +102,10 @@ export class TxtPageLayout {
       const limit = cursor.offset === 0 ? paragraph.text.length : cursor.offset;
       const lineEnd = this.lineAt(paragraph.breaks, limit);
       const gap = fragments.length ? this.gapAfter(paragraph.heading) : 0;
-      const count = Math.min(lineEnd, this.linesThatFit(used + gap, fragments.length === 0));
+      let count = Math.min(lineEnd, this.linesThatFit(used + gap, fragments.length === 0));
+      if (fragments.length && count === 1 && lineEnd > 1) break;
+      if (fragments.length && lineEnd === 3 && count === 2) break;
+      if (lineEnd - count === 1 && count >= 3) count--;
       if (count <= 0) break;
       const start = paragraph.breaks[lineEnd - count]!;
       if (fragments.length) fragments[0] = { ...fragments[0]!, gap };

@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import { highlightText } from "./searchHighlight";
 import type { TxtPageSpread } from "./useTxtPageFlow";
 import type { TxtPageFragment } from "./txtPageLayout";
+import { useReader } from "./store";
 
 export const TxtPageContent = memo(function TxtPageContent({
   spreads,
@@ -41,12 +42,26 @@ const TxtFragment = memo(function TxtFragment({
   source: string;
   query: string;
 }) {
+  const currentStart = useReader((state) => {
+    const hit = state.searchHits[state.searchActiveIndex];
+    return hit?.bookId === state.activeBookId &&
+      hit?.bookId === state.searchBookId &&
+      hit.sectionId === fragment.section.id
+      ? hit.matchStart
+      : undefined;
+  });
   const text = useMemo(
     () =>
       source
-        ? highlightText(source, query, fragment.start, fragment.end)
-        : highlightText(fragment.text, query),
-    [source, fragment.text, fragment.start, fragment.end, query],
+        ? highlightText(source, query, fragment.start, fragment.end, currentStart)
+        : highlightText(
+            fragment.text,
+            query,
+            0,
+            fragment.text.length,
+            currentStart === undefined ? undefined : currentStart - fragment.start,
+          ),
+    [source, fragment.text, fragment.start, fragment.end, query, currentStart],
   );
   return (
     <section
@@ -67,8 +82,11 @@ const TxtFragment = memo(function TxtFragment({
           style={{
             textIndent: fragment.start > 0 || fragment.heading ? 0 : undefined,
             fontWeight: fragment.heading ? 600 : undefined,
-            textAlign: fragment.heading ? "start" : "justify",
-            textAlignLast: fragment.end < fragment.total ? "justify" : "auto",
+            textAlign: fragment.heading ? "start" : ("var(--read-text-align)" as "start"),
+            textAlignLast:
+              fragment.end < fragment.total && !fragment.heading
+                ? ("var(--read-text-align)" as "start")
+                : "auto",
           }}
         >
           {text}

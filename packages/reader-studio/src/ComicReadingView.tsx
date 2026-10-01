@@ -1,5 +1,5 @@
 import { useSectionContent } from "./useSectionContent";
-import { sectionImages } from "./readerContent";
+import { loadSectionContent, sectionImages, subscribeSectionContent } from "./readerContent";
 import type { ReaderSection } from "@bcr/reader-core";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Minus, Plus, Images } from "lucide-react";
@@ -17,7 +17,9 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
   const restoring = useRef(false);
   const cancelRestore = useRef<(() => void) | null>(null);
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  const swipe = useRef<{ id: number; x: number; y: number; time: number } | null>(null);
   const [zoom, setZoom] = useState(1);
+  const [viewportHeight, setViewportHeight] = useState(0);
   const [thumbnails, setThumbnails] = useState(false);
   const [landscape, setLandscape] = useState(() => window.innerWidth > window.innerHeight);
   useEffect(() => {
@@ -59,6 +61,22 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
   const direction = preferences?.direction ?? book.rendition?.direction ?? "ltr";
   const fit = preferences?.fit ?? "page";
   const spread = (preferences?.spread ?? book.rendition?.spread === "both") && landscape;
+  useEffect(() => {
+    const visible = new Set(
+      pages.slice(current, current + (spread ? 2 : 1)).map((item) => item.section),
+    );
+    const adjacent = [
+      ...new Set(
+        [
+          ...pages.slice(Math.max(0, current - (spread ? 2 : 1)), current),
+          ...pages.slice(current + (spread ? 2 : 1), current + (spread ? 4 : 2)),
+        ].map((item) => item.section),
+      ),
+    ].filter((section) => !visible.has(section));
+    const releases = adjacent.map((section) => subscribeSectionContent(section, () => {}));
+    for (const section of adjacent) void loadSectionContent(section).catch(() => undefined);
+    return () => releases.forEach((release) => release());
+  }, [pages, current, spread]);
   const patch = (value: NonNullable<typeof preferences>) => {
     const books = getReaderState().settings.books ?? {};
     reader.setSettings({ books: { ...books, [book.id]: { ...books[book.id], ...value } } });
@@ -105,9 +123,13 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
     return () => cancelRestore.current?.();
   }, [current, navigation, fit, spread, zoom]);
   useEffect(() => {
-    if (!viewport.current) return;
-    const observer = new ResizeObserver(restore);
-    observer.observe(viewport.current);
+    const root = viewport.current;
+    if (!root) return;
+    const observer = new ResizeObserver(() => {
+      setViewportHeight(root.clientHeight);
+      restore();
+    });
+    observer.observe(root);
     return () => observer.disconnect();
   }, [book.id, pages.length]);
   const save = useCallback(() => {
@@ -193,6 +215,7 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
           ref={viewport}
           className="reader-comic-viewport"
           tabIndex={0}
+          style={{ touchAction: zoom <= 1 ? "pan-y pinch-zoom" : "auto" }}
           aria-label="漫画画面，方向键翻页，双击缩放"
           onDoubleClick={() => setZoom(zoom > 1 ? 1 : 2)}
           onScroll={save}
@@ -210,6 +233,13 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
           onPointerDown={(event) => {
             cancelRestore.current?.();
             restoring.current = false;
+            if (event.pointerType === "touch") {
+              swipe.current =
+                event.isPrimary && zoom <= 1
+                  ? { id: event.pointerId, x: event.clientX, y: event.clientY, time: Date.now() }
+                  : null;
+              return;
+            }
             if (event.pointerType !== "mouse" || zoom <= 1) return;
             event.currentTarget.setPointerCapture(event.pointerId);
             drag.current = {
@@ -224,11 +254,24 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
             event.currentTarget.scrollLeft = drag.current.left + drag.current.x - event.clientX;
             event.currentTarget.scrollTop = drag.current.top + drag.current.y - event.clientY;
           }}
-          onPointerUp={() => {
+          onPointerUp={(event) => {
             drag.current = null;
+            const start = swipe.current;
+            swipe.current = null;
+            if (!start || start.id !== event.pointerId || zoom > 1) return;
+            const dx = event.clientX - start.x;
+            const dy = event.clientY - start.y;
+            if (
+              Math.abs(dx) < 60 ||
+              Math.abs(dx) < Math.abs(dy) * 1.3 ||
+              Date.now() - start.time > 1000
+            )
+              return;
+            go(current + (dx < 0 ? 1 : -1) * (direction === "rtl" ? -1 : 1) * (spread ? 2 : 1));
           }}
           onPointerCancel={() => {
             drag.current = null;
+            swipe.current = null;
           }}
           onWheel={() => {
             cancelRestore.current?.();
@@ -248,7 +291,9 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
                 alt={`第 ${current + offset + 1} 页 · ${item.section.label}`}
                 draggable={false}
                 style={
-                  fit === "page" ? { maxHeight: `calc((100dvh - 260px) * ${zoom})` } : undefined
+                  fit === "page" && viewportHeight > 0
+                    ? { maxHeight: `${viewportHeight * zoom}px` }
+                    : undefined
                 }
                 onLoad={restore}
               />

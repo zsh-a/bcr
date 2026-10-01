@@ -13,7 +13,11 @@ import { clamp, readerErrorMessage } from "./readerPresentation";
 import { getReaderState, reader, useReader } from "./store";
 import { createRenderQueue } from "./renderQueue";
 
-export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void }) {
+export function PdfReaderView(props: {
+  book: ReaderBook;
+  onImport: (files: ReadonlyArray<File>) => void;
+  onReady?: () => void;
+}) {
   const activeSectionId = useReader((state) => state.activeSectionId);
   const query = useReader((state) => state.query);
   const hit = useReader((state) => state.searchHits[state.searchActiveIndex]);
@@ -28,6 +32,7 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
     });
   };
   const rootRef = useRef<HTMLDivElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const toolsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const scroll = rootRef.current?.closest<HTMLElement>(".reader-reading-scroll");
@@ -89,7 +94,9 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
   const [loadAttempt, setLoadAttempt] = useState(0);
   const renderQueue = useMemo(() => createRenderQueue(), [props.book.id]);
   const sourceUrl = props.book.source.objectUrl;
-  const sourcePending = sourceUrl === undefined && props.book.source.ref !== undefined;
+  const sourceIssue = useReader((state) => state.sourceErrorsByBook[props.book.id]);
+  const sourcePending =
+    sourceUrl === undefined && props.book.source.ref !== undefined && !sourceIssue;
   useEffect(() => {
     let cancelled = false;
     let opened: PDFDocumentProxy | undefined;
@@ -99,7 +106,7 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
     setError(null);
     if (sourceUrl === undefined) {
       if (!sourcePending) {
-        setError("PDF 文件未恢复");
+        setError("PDF 源文件缺失或无法读取，请重新导入原 PDF；已有进度、书签和笔记会保留。");
         setLoading(false);
       }
       return () => {
@@ -147,7 +154,7 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
         void opened.destroy();
       } else if (loadingTask !== undefined) void loadingTask.destroy();
     };
-  }, [sourcePending, sourceUrl, loadAttempt]);
+  }, [props.book.id, sourcePending, sourceUrl, loadAttempt]);
 
   return (
     <div className="reader-pdf-view" ref={rootRef}>
@@ -249,7 +256,9 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
         </div>
       </div>
       {loading && (
-        <div className="reader-media-loading">{sourcePending ? "恢复 PDF…" : "打开 PDF…"}</div>
+        <div className="reader-media-loading" role="status">
+          {sourcePending ? "恢复 PDF…" : "打开 PDF…"}
+        </div>
       )}
       {error !== null && (
         <div className="reader-media-error" role="alert">
@@ -258,12 +267,28 @@ export function PdfReaderView(props: { book: ReaderBook; onReady?: () => void })
           <button
             type="button"
             className="reader-media-retry"
-            onClick={() => setLoadAttempt((attempt) => attempt + 1)}
+            onClick={() =>
+              sourceUrl === undefined
+                ? fileInput.current?.click()
+                : setLoadAttempt((attempt) => attempt + 1)
+            }
           >
-            重试
+            {sourceUrl === undefined ? "重新导入 PDF" : "重试"}
           </button>
         </div>
       )}
+      <input
+        ref={fileInput}
+        className="ui-sr-only"
+        type="file"
+        accept=".pdf,application/pdf"
+        aria-label="恢复 PDF 源文件"
+        onChange={(event) => {
+          const files = [...(event.target.files ?? [])];
+          event.target.value = "";
+          props.onImport(files);
+        }}
+      />
       {pdfDocument !== null && (
         <div
           className="reader-pdf-pages"
@@ -448,15 +473,13 @@ const PdfPageView = memo(function PdfPageView(props: {
     const spans = [...container.querySelectorAll<HTMLSpanElement>("span[role='presentation']")];
     const text = textStrings.current.join("");
     const ranges = searchTextRanges(text, props.query, 1000);
-    const original = searchTextRanges(props.section.text, props.query, 1000);
-    const selected = original.findIndex((range) => range.start === props.matchStart);
     let offset = 0;
     let target: HTMLElement | undefined;
     spans.forEach((span, index) => {
       const value = textStrings.current[index] ?? "";
       span.replaceChildren();
       let cursor = 0;
-      ranges.forEach((range, ordinal) => {
+      ranges.forEach((range) => {
         const from = Math.max(0, range.start - offset);
         const to = Math.min(value.length, range.start + range.length - offset);
         if (from >= to) return;
@@ -464,7 +487,7 @@ const PdfPageView = memo(function PdfPageView(props: {
         const mark = document.createElement("mark");
         mark.textContent = value.slice(from, to);
         mark.dataset.readerSearchMatch = "true";
-        if (ordinal === selected) {
+        if (range.start === props.matchStart) {
           mark.className = "is-current";
           target ??= mark;
         }

@@ -10,6 +10,7 @@ import type { ReaderRuntime } from "./readerRuntimeCore";
 export interface ReaderSearchResult {
   readonly hits: ReadonlyArray<SearchHit>;
   readonly indexing: boolean;
+  readonly truncated?: boolean;
 }
 export async function indexBook(
   runtime: ReaderRuntime,
@@ -55,7 +56,7 @@ export function searchIndexedDetailed(
     const indexedBookIds = new Set(workerResults.indexedBookIds);
     const pendingBooks = books.filter((book) => !indexedBookIds.has(book.id));
     return {
-      hits: [...workerResults.hits, ...searchLibrary(pendingBooks, query)]
+      hits: [...workerResults.hits, ...searchLibrary(pendingBooks, query, 81)]
         .sort(
           (left, right) =>
             books.findIndex((book) => book.id === left.bookId) -
@@ -68,14 +69,14 @@ export function searchIndexedDetailed(
                 ?.sections.findIndex((section) => section.id === right.sectionId) ?? 0) ||
             left.matchStart - right.matchStart,
         )
-        .slice(0, 80),
+        .slice(0, 81),
       indexing: workerResults.pendingBookIds.length > 0,
     };
   }
   // FTS tokenization differs from our whitespace/NFKC substring contract.
   // Without a worker index, enumerate the original text rather than silently
   // returning only the first occurrence or an incomplete set of FTS candidates.
-  return { hits: searchLibrary(books, query), indexing: false };
+  return { hits: searchLibrary(books, query, 81), indexing: false };
 }
 
 export function searchIndexed(
@@ -103,8 +104,8 @@ export async function searchReaderDetailed(
       hits.push(...result.hits);
       indexing ||= result.indexing;
     }
-    if (hits.length >= 80) break;
+    if (hits.length > 80) break;
   }
   signal?.throwIfAborted();
-  return { hits: hits.slice(0, 80), indexing };
+  return { hits: hits.slice(0, 80), indexing, truncated: hits.length > 80 };
 }

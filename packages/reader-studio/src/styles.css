@@ -22,8 +22,8 @@
   --read-border: rgba(49, 61, 57, 0.15);
   --read-border-strong: rgba(49, 61, 57, 0.29);
   --read-text: #25302d;
-  --read-muted: #68736d;
-  --read-faint: #64716b;
+  --read-muted: #56635b;
+  --read-faint: #56635b;
   --read-accent: #147a73;
   --read-accent-soft: #d8eeea;
 }
@@ -48,8 +48,8 @@
   --read-border: rgba(37, 75, 54, 0.16);
   --read-border-strong: rgba(37, 75, 54, 0.3);
   --read-text: #274035;
-  --read-muted: #65766b;
-  --read-faint: #5f6f63;
+  --read-muted: #526457;
+  --read-faint: #526457;
   --read-accent: #2c8063;
   --read-accent-soft: #d0e8d8;
 }
@@ -974,7 +974,9 @@
 }
 
 .reader-mobile-toolbar-button {
-  flex: 0 0 var(--h-control-lg);
+  flex: 0 0 44px;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .reader-mobile-toolbar-button.is-active {
@@ -3148,4 +3150,16 @@
   color: var(--color-faint);
   font-size: var(--text-xs);
   text-align: center;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .reader-book-remove {
+    opacity: 1;
+    pointer-events: auto;
+    width: 44px;
+    height: 44px;
+  }
+  .reader-book-active-icon {
+    visibility: hidden;
+  }
 }
