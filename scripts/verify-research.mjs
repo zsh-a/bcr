@@ -1,3 +1,4 @@
+import { openTopBar } from "./lib/topbar.mjs";
 /* Isolated browser: Reader/Document/Media evidence → collection → notes → export → restore. */
 import assert from "node:assert/strict";
 import { mkdir, readFile } from "node:fs/promises";
@@ -11,6 +12,7 @@ page.setDefaultTimeout(20000);
 const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
 async function openSearch(query) {
+  await openTopBar(page);
   await page.getByRole("button", { name: "打开全局搜索" }).click();
   await page.getByRole("textbox", { name: "全局搜索", exact: true }).fill(query);
 }

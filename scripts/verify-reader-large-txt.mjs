@@ -1,3 +1,4 @@
+import { openTopBar } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 import { trackModuleRequests } from "./lib/modules.mjs";
@@ -140,6 +141,7 @@ try {
   await assertVisible(4998);
   await assertLazyState();
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await openTopBar(page);
   await page.getByRole("button", { name: "打开全局搜索" }).click();
   await page.getByRole("textbox", { name: "全局搜索", exact: true }).fill("3456");
   await page.getByRole("tab", { name: /^阅读器/u }).click();

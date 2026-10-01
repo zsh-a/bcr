@@ -1,3 +1,4 @@
+import { openTopBar } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { readFile, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -11,6 +12,7 @@ page.setDefaultTimeout(20000);
 const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
 async function openCollections(target = page) {
+  await openTopBar(target);
   await target.getByRole("button", { name: "打开全局搜索" }).click();
   await target.getByRole("button", { name: /资料集合 ·/u }).click();
 }

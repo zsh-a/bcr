@@ -1,4 +1,4 @@
-import { openWorkspaceOptions } from "./lib/topbar.mjs";
+import { openTopBar, openWorkspaceOptions } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { writeFile, mkdtemp } from "node:fs/promises";
@@ -58,6 +58,7 @@ async function check(name, action) {
 }
 try {
   await page.goto(appUrl, { waitUntil: "networkidle" });
+  await openTopBar(page);
   await page.getByRole("button", { name: "打开 AI 助手", exact: true }).click();
   const panel = page.getByRole("dialog", { name: "AI 助手", exact: true });
   await panel.getByRole("button", { name: "接口", exact: true }).click();

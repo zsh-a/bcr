@@ -1,3 +1,4 @@
+import { openTopBar } from "./lib/topbar.mjs";
 /* Document Studio：导入 → 阶段边界 → 本地状态 → Reader handoff。 */
 import { ensureShots, fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
@@ -99,6 +100,7 @@ if (!(await page.locator(".document-content-card").innerText()).includes("结构
   fail("JSON Export Bundle 回放后没有恢复 Content Package");
 }
 
+await openTopBar(page);
 await page.getByRole("button", { name: "打开全局搜索" }).click();
 const workspaceSearch = page.getByRole("textbox", { name: "全局搜索" });
 await workspaceSearch.fill("local-first document pipeline");

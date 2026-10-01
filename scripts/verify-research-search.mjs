@@ -1,3 +1,4 @@
+import { openTopBar } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
@@ -31,6 +32,7 @@ try {
     buffer: Buffer.from("# 搜索笔记来源\n\n集合原始证据需要核对。"),
   });
   await page.getByText("导入完成", { exact: true }).waitFor();
+  await openTopBar(page);
   await page.getByRole("button", { name: "打开全局搜索" }).click();
   await collection();
   const first = await create("笔记集合甲");
@@ -108,6 +110,7 @@ try {
   await page.getByRole("button", { name: "保存名称", exact: true }).click();
   await saved();
   await page.reload({ waitUntil: "networkidle" });
+  await openTopBar(page);
   await page.getByRole("button", { name: "打开全局搜索" }).click();
   await search("更新后的笔记标记");
   await page
@@ -130,6 +133,7 @@ try {
   await page.getByRole("button", { name: "回到原文", exact: true }).click();
   await page.waitForURL(/\/reader\?.*start=/u);
   await page.locator('[data-reader-search-match="true"]').first().waitFor();
+  await openTopBar(page);
   await page.getByRole("button", { name: "打开全局搜索" }).click();
   await search("更新后的笔记标记");
   await page.getByRole("listbox", { name: "搜索结果" }).getByRole("option").first().click();

@@ -1,3 +1,4 @@
+import { openTopBar } from "./lib/topbar.mjs";
 // Host ownership, IME, streaming scroll, recovery and storage isolation in the real app.
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
@@ -48,6 +49,7 @@ const page = await context.newPage();
 const errors = [];
 page.on("pageerror", (error) => errors.push(String(error)));
 async function open(target) {
+  await openTopBar(target);
   await target.getByRole("button", { name: "打开 AI 助手", exact: true }).click();
   return target.getByRole("dialog", { name: "AI 助手", exact: true });
 }

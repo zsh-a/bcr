@@ -76,6 +76,18 @@ try {
   await page.locator(".reader-page-viewport").tap({ position: { x: 180, y: 200 } });
   await page.waitForTimeout(250);
   assert.deepEqual(await geometry(), before, "hiding chrome changed the reading geometry");
+  const navigation = page.getByRole("button", { name: "展开工作区导航", exact: true });
+  if (await navigation.count()) {
+    const entry = await navigation.boundingBox();
+    const chapter = await page
+      .getByRole("button", { name: "显示阅读工具栏", exact: true })
+      .boundingBox();
+    assert(chapter.x + chapter.width <= entry.x, "workspace entry overlaps the chapter control");
+    await navigation.tap();
+    assert.deepEqual(await geometry(), before, "opening workspace navigation changed pagination");
+    await page.getByRole("button", { name: "收起工作区导航", exact: true }).tap();
+    assert.deepEqual(await geometry(), before, "closing workspace navigation changed pagination");
+  }
   await page.getByRole("button", { name: "显示阅读工具栏", exact: true }).click();
   await page.waitForTimeout(1200);
   await page.reload();

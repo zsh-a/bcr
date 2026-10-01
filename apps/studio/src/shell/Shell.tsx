@@ -17,7 +17,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Suspense, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { CommandPalette } from "../components/CommandPalette";
 import { SearchPanel } from "../components/SearchPanel";
-import { TopBar } from "../components/TopBar";
+import { WorkspaceNavigation } from "../components/WorkspaceNavigation";
 import { createRuntimeServices } from "../runtime";
 import { SearchBridge } from "../search-bridge";
 import { appIdFromPath, LAUNCH_PAD_APPS, MANIFESTS } from "./registry";
@@ -177,10 +177,8 @@ function ShellContent() {
       <ResearchCaptureBridge>
         <SearchBridge services={services} />
         <PluginHost />
-        <div
-          className={`studio-shell-frame flex h-full flex-col ${active === "reader" ? "reader-active" : ""}`}
-        >
-          <TopBar
+        <div className="studio-shell-frame flex h-full flex-col" data-app={active}>
+          <WorkspaceNavigation
             active={active}
             onOpenPalette={() => setPaletteOpen(true)}
             onOpenSearch={() => setSearchOpen(true)}

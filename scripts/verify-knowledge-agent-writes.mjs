@@ -1,3 +1,4 @@
+import { openTopBar } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
@@ -59,6 +60,7 @@ try {
     });
   });
   await page.goto(origin, { waitUntil: "networkidle" });
+  await openTopBar(page);
   await page.getByRole("button", { name: "打开 AI 助手", exact: true }).click();
   const panel = page.getByRole("dialog", { name: "AI 助手", exact: true });
   await panel.getByRole("button", { name: "接口", exact: true }).click();

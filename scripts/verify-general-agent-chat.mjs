@@ -1,3 +1,4 @@
+import { openTopBar } from "./lib/topbar.mjs";
 // Exercises the single global assistant, window controls and real domain tools with a mock model.
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
@@ -92,6 +93,7 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(String(error)));
   await page.goto(origin, { waitUntil: "networkidle" });
+  await openTopBar(page);
   await page.getByRole("button", { name: "打开 AI 助手", exact: true }).click();
   assert.equal(
     new URL(page.url()).pathname,

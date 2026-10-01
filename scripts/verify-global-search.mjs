@@ -1,4 +1,4 @@
-import { openWorkspaceOptions } from "./lib/topbar.mjs";
+import { openTopBar, openWorkspaceOptions } from "./lib/topbar.mjs";
 /* 全局搜索走查：索引跨域投影、键盘呼出、结果筛选与深链导航。 */
 import { fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
@@ -10,6 +10,7 @@ page.on("pageerror", (error) => fail(`pageerror: ${error.message}`));
 
 await page.goto(base, { waitUntil: "networkidle" });
 await page.waitForTimeout(1_500);
+await openTopBar(page);
 await page.getByRole("button", { name: "打开全局搜索" }).waitFor();
 
 await page.getByRole("button", { name: "打开全局搜索" }).click();
@@ -21,6 +22,7 @@ await page.waitForURL(/\/markets/u);
 
 await page.goto(base, { waitUntil: "networkidle" });
 await page.waitForTimeout(700);
+await openTopBar(page);
 await page.getByRole("button", { name: "打开全局搜索" }).click();
 await input.fill("贵州茅台");
 await page.getByRole("option", { name: /贵州茅台/u }).waitFor();
@@ -48,6 +50,7 @@ await page.getByRole("button", { name: "打开命令面板" }).click();
 await page.getByPlaceholder("输入命令…").fill("打开 Studio 工作台");
 await page.getByRole("button", { name: /打开 Studio 工作台/u }).click();
 await page.waitForURL(/\/studio(?:\?|$)/u);
+await openTopBar(page);
 await page.getByRole("button", { name: "打开全局搜索" }).click();
 await input.fill("轻量的内核");
 await page.getByRole("option", { name: /轻量的内核/u }).waitFor();

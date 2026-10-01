@@ -1,3 +1,4 @@
+import { openTopBar } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
@@ -73,6 +74,7 @@ try {
   await page.getByText("此选段已在集合中，已有笔记保留。", { exact: true }).waitFor();
   await page.reload();
   await page.locator(".reader-workspace").waitFor();
+  await openTopBar(page);
   await page.getByRole("button", { name: "打开全局搜索", exact: true }).click();
   await page.getByRole("button", { name: /资料集合 ·/u }).click();
   assert.equal(await page.locator('[aria-label="集合摘录"] article').count(), 1);

@@ -126,12 +126,16 @@ Market Atlas 数据质量与交互，以及 Manga Studio 单页翻译、Reader S
 - **Tailwind 4 + 原生 CSS variables tokens**：Rhea 风格高信息密度暗色主题（IBM Plex Sans/Mono）
 - **Base UI**：命令面板（⌘K）等 headless 交互原语；本地 shadcn 风格组件源码（Button/Badge/...）
 - **TanStack Router**：选中文件/任务在 URL search（`?file=&task=`），链接可恢复 workspace view
+- **自动隐藏全局导航**：主页保留完整顶栏，进入 App 后收起全局栏，释放 56px 高度，各 App 操作栏保持可见。
+  悬停或点击顶部短线、聚焦入口后按 Enter，或使用 Alt + 反引号展开导航浮层；离开后自动收起，也可用 Esc 或收起按钮关闭。
+  菜单、对话框和键盘焦点正在使用导航时保持展开；展开/收起不改变 App 视口，回测会话与阅读分页保持稳定。
+  浏览器走查：`bun run test:browser:navigation`（通过 `BASE_URL` 指定已启动的 Studio 服务）。
 - **TanStack Virtual**：项目文件 / 任务历史 / 控制台日志全部虚拟化
 - **OffscreenCanvas**：波形由 `render.worker` 在 Worker 内绘制，主线程零图形负载
 - **SQLite WASM 持久化（§8）**：元数据库落 `opfs://studio/project/meta.db`——缓存条目、任务血缘、
   文件列表与 TaskJournal 全部跨刷新保留；异常退出遗留任务在输入 Artifact 完整时自动重放，输入缺失则标记
   `blocked`；导入 → 计算 → **刷新浏览器 → 历史恢复、重跑直接缓存命中**（`node scripts/verify-persistence.mjs`）
-- **Artifact 存储可观测性**：共享 Runtime 顶栏展示本地 Artifact 对象数与容量；统计按 30 秒低频刷新，
+- **Artifact 存储可观测性**：全局导航「工作区选项 → 存储与运行状态」展示本地 Artifact 对象数与容量；统计按 30 秒低频刷新，
   也可手动刷新，清单查询只访问 OPFS/Memory 的路径和 size，不读取大对象内容。
 - **Storage Plane 面板**：Studio 的「存储」Dock tab 集中展示 Artifact 后端分布、项目源文件、最近产物及
   Cache / TaskJournal 保留候选；面板只读，治理动作统一从 ⌘K 命令进入。

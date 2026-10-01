@@ -1,3 +1,4 @@
+import { openTopBar } from "./lib/topbar.mjs";
 /* Production-only checks: independent identities, real Chromium installation,
  * scope ownership, and cold offline starts for every registered PWA. */
 import assert from "node:assert/strict";
@@ -186,6 +187,7 @@ try {
   assert.equal(await page.evaluate(() => localStorage.getItem("pwa-migration-probe")), "preserved");
   await page.goto(`${origin}/pwa/media/`);
   await page.locator(".media-studio").waitFor();
+  await openTopBar(page);
   await page.getByRole("button", { name: "返回工作区主页", exact: true }).click();
   await page.waitForURL(`${origin}/`);
   await page.locator(".home-app-card").first().waitFor();
@@ -203,6 +205,7 @@ try {
     await page.locator('link[rel="manifest"]').getAttribute("href"),
     "/pwa/workspace/manifest.webmanifest",
   );
+  await openTopBar(page);
   await page.getByRole("button", { name: "工作区选项", exact: true }).click();
   assert.equal(await page.getByRole("button", { name: "安装工作区", exact: true }).count(), 1);
   await context.close();

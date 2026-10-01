@@ -1,3 +1,4 @@
+import { openTopBar } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { mkdir, readFile } from "node:fs/promises";
 import { createServer } from "node:http";
@@ -309,6 +310,7 @@ try {
     await a.page.getByRole("button", { name: `移除标签 ${tag}`, exact: true }).waitFor();
   await matchesBody(a.page, "# 独立手写知识\n\n第一段\n\n第三段\n");
 
+  await openTopBar(a.page);
   await a.page.getByRole("button", { name: "打开全局搜索" }).click();
   await a.page.getByRole("textbox", { name: "全局搜索", exact: true }).fill("独立手写知识");
   await a.page.getByRole("tab", { name: /^个人笔记/u }).click();
@@ -458,6 +460,7 @@ try {
     buffer: Buffer.from("# 知识来源\n\n独特引用证据，用于知识库整理。"),
   });
   await b.page.getByText("导入完成", { exact: true }).waitFor();
+  await openTopBar(b.page);
   await b.page.getByRole("button", { name: "打开全局搜索" }).click();
   await b.page.getByRole("textbox", { name: "全局搜索", exact: true }).fill("独特引用证据");
   await b.page.getByRole("tab", { name: /^阅读器/u }).click();

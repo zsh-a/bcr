@@ -1,3 +1,4 @@
+import { openTopBar } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 import { mkdir } from "node:fs/promises";
@@ -11,6 +12,7 @@ const errors = [];
 page.on("pageerror", (error) => errors.push(String(error)));
 async function settings(target) {
   await target.goto(origin, { waitUntil: "networkidle" });
+  await openTopBar(target);
   await target.getByRole("button", { name: "打开 AI 助手", exact: true }).click();
   const panel = target.getByRole("dialog", { name: "AI 助手", exact: true });
   await panel.getByRole("button", { name: "接口", exact: true }).click();

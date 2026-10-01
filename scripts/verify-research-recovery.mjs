@@ -1,3 +1,4 @@
+import { openTopBar } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { chromium } from "playwright";
@@ -122,6 +123,7 @@ async function open(context) {
       return read.call(this, kind);
     };
   });
+  await openTopBar(page);
   await page.getByRole("button", { name: "打开全局搜索" }).click();
   await page.getByRole("button", { name: /资料集合 ·/u }).click();
   await page.getByText("Reader 完整资料包", { exact: true }).click();

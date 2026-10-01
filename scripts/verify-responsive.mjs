@@ -1,4 +1,4 @@
-import { openWorkspaceOptions } from "./lib/topbar.mjs";
+import { closeTopBar, openTopBar, openWorkspaceOptions } from "./lib/topbar.mjs";
 /* 响应式验证：三档语义断点 + 容器降级 + 矮窗/安全区 + reduced-motion + 浮标避让。
  *
  * BASE_URL 语义与其他走查脚本一致（verify-ci 注入 dev server 地址）。
@@ -51,6 +51,8 @@ async function noHScroll(label) {
 }
 
 async function topbarFits(label) {
+  const wasOpen = await page.locator(".studio-topbar").isVisible();
+  await openTopBar(page);
   const bar = await page.evaluate(() => {
     const el = document.querySelector(".studio-topbar");
     const style = getComputedStyle(el);
@@ -66,6 +68,7 @@ async function topbarFits(label) {
     `${label}: 顶栏横向溢出 scrollWidth=${bar.scrollWidth} > clientWidth=${bar.clientWidth}`,
   );
   assert(bar.height <= bar.maxHeight + 1, `${label}: 工具栏必须保持单行（${bar.height}px）`);
+  if (!wasOpen) await closeTopBar(page);
 }
 
 function parseDurationMs(value) {
@@ -202,6 +205,7 @@ await group("2. 400% 缩放等效（320px + root 64px 核心功能可达）", as
   await page.waitForURL((url) => url.searchParams.get("note") !== noteId);
 
   // 搜索可点击：全局搜索对话框打开并可关闭
+  await openTopBar(page);
   const search = page.getByRole("button", { name: "打开全局搜索" });
   await search.click();
   await page.locator("dialog.studio-search-dialog").waitFor({ state: "visible" });
@@ -610,9 +614,9 @@ await group("5. 矮窗（1440×480）全屏 sheet + 安全区 max() 兜底", asy
     `对话框体应保留安全区 max() 下限（${sheet.bodyPaddingBottom}px）`,
   );
   await noHScroll("1440×480 对话框 sheet");
-  await topbarFits("1440×480");
   await page.keyboard.press("Escape");
   await page.getByRole("dialog", { name: "恢复备份" }).waitFor({ state: "hidden" });
+  await topbarFits("1440×480");
 
   // 安全区：env() 在桌面为 0，max() 应退到令牌下限（断言 padding 存在）
   await page.setViewportSize({ width: 320, height: 800 });
@@ -712,6 +716,7 @@ const intersects = (a, b) =>
 await group("7. 「继续对话」浮标不遮挡知识库内容与移动端导航", async () => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await openKnowledge();
+  await openTopBar(page);
   await page.getByRole("button", { name: "打开 AI 助手" }).click();
   await page.locator(".assistant-window").waitFor({ state: "visible" });
   await page.getByRole("button", { name: "收起 AI 助手" }).click();

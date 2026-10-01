@@ -166,7 +166,7 @@ try {
   // The embedded host route must be untouched by the new sub-path app.
   await page.goto(`${origin}/knowledge`);
   await page.locator(".knowledge-app").waitFor();
-  await page.locator(".studio-topbar").waitFor();
+  await page.locator(".studio-topbar").waitFor({ state: "attached" });
 
   assert.deepEqual(errors, []);
   console.log(

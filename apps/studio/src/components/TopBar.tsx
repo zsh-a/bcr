@@ -10,18 +10,19 @@ import {
   useRunningApps,
 } from "@bcr/react";
 import { useNavigate } from "@tanstack/react-router";
-import { Bot, Command, House, RefreshCw, Search, Settings2 } from "lucide-react";
+import { Bot, ChevronUp, Command, House, RefreshCw, Search, Settings2 } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { MANIFESTS, type ActiveView } from "../shell/registry";
 import { useStudio } from "../store";
 import { ThemePicker } from "../theme/ThemePicker";
 
-/** 高频搜索与助手常驻；命令、外观和运行状态归入工作区选项。 */
+/** 全局导航：搜索、助手及归入工作区选项的命令、外观和运行状态。 */
 export function TopBar(props: {
   active: ActiveView;
   onOpenPalette: () => void;
   onOpenSearch: () => void;
   onOpenAgent: () => void;
+  onCollapse?: (() => void) | undefined;
 }) {
   const navigate = useNavigate();
   const modifier = /Mac|iPhone|iPad/u.test(navigator.platform) ? "⌘" : "Ctrl";
@@ -103,6 +104,17 @@ export function TopBar(props: {
           </span>
         )}
       </IconButton>
+      {props.onCollapse && (
+        <IconButton
+          label="收起工作区导航"
+          title="收起工作区导航 · Esc"
+          variant="ghost"
+          className="studio-navigation-collapse"
+          onClick={props.onCollapse}
+        >
+          <ChevronUp className="size-4" />
+        </IconButton>
+      )}
       <div
         ref={options}
         id={optionsId}

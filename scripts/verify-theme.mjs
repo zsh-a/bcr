@@ -1,4 +1,4 @@
-import { openWorkspaceOptions } from "./lib/topbar.mjs";
+import { closeTopBar, openTopBar, openWorkspaceOptions } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
@@ -13,6 +13,7 @@ const theme = async (value) =>
   page.waitForFunction((expected) => document.documentElement.dataset.theme === expected, value);
 // New knowledge sync UX: the dialog opens from the sync status popover.
 const openSyncSettings = async (target) => {
+  await closeTopBar(target);
   const trigger = target.locator(".knowledge-status-trigger");
   const popover = target.locator(".knowledge-sync-popover");
   await trigger.click();
@@ -51,6 +52,7 @@ try {
     await picker.selectOption(mode);
     await theme(mode);
     await page.keyboard.press("Escape");
+    await closeTopBar(page);
     for (const viewport of [
       { width: 1440, height: 960 },
       { width: 375, height: 812 },
@@ -58,15 +60,9 @@ try {
     ]) {
       await page.setViewportSize(viewport);
       await page.emulateMedia({ reducedMotion: "reduce" });
-      // Viewport media queries can settle one frame after Chromium reports the resize.
-      await page.waitForFunction(
-        () => {
-          const bar = document.querySelector(".studio-topbar");
-          return bar && bar.scrollWidth <= bar.clientWidth + 1;
-        },
-        undefined,
-        { timeout: 5000 },
-      );
+      // Verify the overlay at this size before using the app's own toolbar.
+      const bar = await openTopBar(page);
+      assert.ok(await bar.evaluate((el) => el.scrollWidth <= el.clientWidth + 1));
       const dialog = await openSyncSettings(page);
       assert.ok(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1));
       await page.screenshot({ path: `scripts/shots/theme-${mode}-${viewport.width}.png` });
@@ -81,6 +77,7 @@ try {
       await page.keyboard.press("Escape");
     }
     await page.setViewportSize({ width: 1440, height: 960 });
+    await openTopBar(page);
     await page.getByRole("button", { name: "打开 AI 助手", exact: true }).click();
     await page.getByRole("dialog", { name: "AI 助手", exact: true }).waitFor();
     await page.screenshot({ path: `scripts/shots/theme-agent-${mode}.png` });

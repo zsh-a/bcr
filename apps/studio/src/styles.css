@@ -4,7 +4,106 @@
 /* BCR Studio — quiet editorial 计算工作台。
  * chrome 一律消费统一令牌；圆角/间距/字号/动效禁止字面量（hairline 边框、100%/auto 除外）。 */
 
-/* ---------- App 级顶栏 ---------- */
+/* ---------- 全局导航：主页常驻，应用内浮层 ---------- */
+.studio-navigation {
+  flex-shrink: 0;
+}
+
+.studio-navigation[data-floating="true"] {
+  position: relative;
+  height: 0;
+  z-index: var(--layer-menu);
+}
+
+.studio-navigation[data-floating="true"] .studio-navigation-surface {
+  position: fixed;
+  inset: 0 0 auto;
+  box-shadow: var(--shadow-menu);
+  animation: studio-navigation-in var(--duration-base) var(--ease-standard);
+}
+
+.studio-navigation-surface[hidden],
+.studio-navigation-reveal[hidden] {
+  display: none;
+}
+
+.studio-navigation-reveal {
+  position: fixed;
+  top: env(safe-area-inset-top);
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  place-items: start center;
+  width: calc(2 * var(--space-7));
+  height: var(--space-6);
+  padding-top: var(--space-1);
+  border: 0;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.studio-navigation-reveal > span {
+  width: var(--space-7);
+  height: var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--color-border-strong);
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    width var(--duration-fast) var(--ease-standard);
+}
+
+.studio-navigation-reveal:hover > span,
+.studio-navigation-reveal:focus-visible > span {
+  width: var(--space-8);
+  background: var(--color-muted);
+}
+
+.studio-navigation-reveal:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 0;
+  background: var(--color-surface);
+}
+
+/* In quiet reading, keep the workspace entry beside the chapter control. */
+.studio-shell-frame[data-app="reader"]:has(.reader-paged-session.mobile-chrome-hidden)
+  .studio-navigation-reveal {
+  left: auto;
+  right: env(safe-area-inset-right);
+  transform: none;
+}
+
+.studio-shell-frame[data-app="reader"]:has(.reader-paged-session.mobile-chrome-hidden)
+  .reader-quiet-heading {
+  right: max(
+    calc(2 * var(--space-7) + var(--space-3) + env(safe-area-inset-right)),
+    calc((100% - var(--read-context-width, 100%)) / 2)
+  );
+}
+
+@keyframes studio-navigation-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--space-3)));
+  }
+}
+
+@media (pointer: coarse) {
+  .studio-navigation-reveal {
+    min-height: var(--h-control-lg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-navigation[data-floating="true"] .studio-navigation-surface {
+    animation: none;
+  }
+  .studio-navigation-reveal > span {
+    transition: none;
+  }
+}
+
 .studio-topbar {
   position: relative;
   z-index: 30;
@@ -70,21 +169,6 @@
   color: var(--color-faint);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-}
-
-/* 阅读器全屏（独立窗口 / 窄屏）时让出顶栏；overlay 不改变内容视口几何。 */
-@media (display-mode: standalone) {
-  .studio-shell-frame.reader-active > .studio-topbar {
-    display: none;
-  }
-}
-
-/* 阅读器让位顶栏沿用阅读器横屏阈值（860px 语义），不能并入 --bp-md（720px），
- * 否则 812×375 横屏下顶栏回来挤掉阅读视口。 */
-@media (width <= theme(--bp-reader-landscape)) {
-  .studio-shell-frame.reader-active > .studio-topbar {
-    display: none;
-  }
 }
 
 /* 顶栏图标按钮统一 --h-control-lg 触控区。 */
