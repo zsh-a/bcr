@@ -4,12 +4,20 @@ import { artifactStore, ArtifactStoreTag, contentHash } from "@bcr/core";
 import { createLocator, makeSearchSnippet } from "@bcr/reader-core";
 import { MemoryStore } from "@bcr/storage-opfs";
 import { createDemoBook, DEFAULT_READER_SETTINGS, readingStatus } from "../src/model";
+import { readerBookmarksDocument } from "../src/bookmarkExport";
 import { getReaderState, reader } from "../src/store";
 import { attachReaderContent } from "../src/readerContent";
 import { importReaderFile } from "../src/readerImports";
 import { searchReaderDetailed } from "../src/readerSearch";
 import { openSearchHit } from "../src/readerSearchNavigation";
-import { decodeReaderBackup, backupSkippedBooks, preflightReaderBackup } from "../src/readerBackup";
+import {
+  decodeReaderBackup,
+  backupSkippedBooks,
+  preflightReaderBackup,
+  createReaderBackup,
+  inspectReaderBackup,
+  prepareReaderRestore,
+} from "../src/readerBackup";
 import { resolveReaderTocTarget, currentReaderTocItem } from "../src/navigation";
 import type { ReaderRuntime } from "../src/runtime";
 
@@ -32,6 +40,132 @@ const book = createDemoBook();
 beforeEach(() => reader.hydrate([book], {}, DEFAULT_READER_SETTINGS, {}, book.id));
 
 describe("Reader audit regressions", () => {
+  it("retains renamed metadata during source restoration and validates favorite preferences", () => {
+    reader.renameBook(book.id, "  自定义书名  ");
+    reader.toggleFavorite(book.id);
+    const renamed = getReaderState().library[0]!;
+    reader.replaceBook(book);
+    expect(getReaderState().library[0]).toMatchObject({
+      title: "自定义书名",
+      updatedAt: renamed.updatedAt,
+    });
+    expect(getReaderState().library[0]?.favorite).toBe(true);
+    const manifest = decodeReaderBackup({
+      format: "bcr-reader-backup",
+      version: 1,
+      createdAt: 1,
+      books: [
+        {
+          book: {
+            ...renamed,
+            sections: renamed.sections.map(({ html: _html, ...section }) => section),
+          },
+        },
+      ],
+      settings: getReaderState().settings,
+      progressByBook: {},
+      bookmarksByBook: {},
+      annotationsByBook: {},
+    });
+    expect(manifest.books[0]?.book.favorite).toBe(true);
+    const invalid = decodeReaderBackup({
+      ...manifest,
+      books: [{ book: { ...manifest.books[0]!.book, favorite: "yes" } }],
+    });
+    expect(invalid.books[0]?.book.favorite).toBeUndefined();
+  });
+
+  it("removes a batch atomically without moving the unselected active reader", () => {
+    const other = { ...book, id: "other-book" };
+    const third = { ...book, id: "third-book" };
+    reader.hydrate([book, other, third], {}, DEFAULT_READER_SETTINGS, {}, book.id);
+    reader.openBook(other.id);
+    reader.toggleBookmark();
+    reader.addAnnotation("将移除的笔记");
+    reader.toggleFavorite(other.id);
+    reader.setSettings({ books: { [other.id]: { pdfZoom: 1.5 } } });
+    reader.openBook(book.id);
+    const locator = createLocator(book.sections[1]!, 0.4);
+    reader.setLocator(locator);
+    const before = getReaderState().navigationSequence;
+    reader.removeBooks([other.id, third.id]);
+    expect(getReaderState().library.map((item) => item.id)).toEqual([book.id]);
+    expect(getReaderState().activeBookId).toBe(book.id);
+    expect(getReaderState().progressByBook[book.id]?.locator).toEqual(locator);
+    expect(getReaderState().navigationSequence).toBe(before);
+    expect(getReaderState().bookmarksByBook[other.id]).toBeUndefined();
+    expect(getReaderState().annotationsByBook[other.id]).toBeUndefined();
+    expect(getReaderState().settings.books?.[other.id]).toBeUndefined();
+    expect(getReaderState().navigationHistory.back.every((entry) => entry.bookId === book.id)).toBe(
+      true,
+    );
+  });
+
+  it("restores favorite metadata from a verified ZIP independently of layout settings", async () => {
+    const rt = await runtime();
+    const favorite = {
+      ...book,
+      favorite: true,
+      title: "收藏的书",
+      sections: book.sections.map(({ html: _html, ...section }) => section),
+    };
+    const blob = await createReaderBackup(rt, { ...getReaderState(), library: [favorite] });
+    const inspected = await inspectReaderBackup(blob);
+    const restored = await prepareReaderRestore(rt, inspected, []);
+    expect(restored[0]).toMatchObject({ title: favorite.title, favorite: true });
+  });
+
+  it("navigates to a retained book when the batch includes the current reader", () => {
+    const other = { ...book, id: "retained-book" };
+    reader.hydrate([book, other], {}, DEFAULT_READER_SETTINGS, {}, book.id);
+    reader.setLocator(createLocator(book.sections[2]!, 0.8));
+    const sequence = getReaderState().navigationSequence;
+    reader.removeBooks([book.id]);
+    expect(getReaderState().activeBookId).toBe(other.id);
+    expect(getReaderState().progressByBook[book.id]).toBeUndefined();
+    expect(getReaderState().progressByBook[other.id]?.locator).toEqual(
+      createLocator(other.sections[0]!),
+    );
+    expect(getReaderState().navigationSequence).toBe(sequence + 1);
+  });
+
+  it("shares search capacity across books while reallocating unused slots", async () => {
+    const rt = await runtime();
+    const fixtures = [100, 100, 2].map((count, index) => ({
+      ...book,
+      id: `fair-${index}`,
+      sections: [{ ...book.sections[0]!, text: "needle ".repeat(count) }],
+    }));
+    const result = await searchReaderDetailed(rt, fixtures, "needle");
+    expect(
+      fixtures.map((item) => result.hits.filter((hit) => hit.bookId === item.id).length),
+    ).toEqual([39, 39, 2]);
+    expect(result.truncated).toBe(true);
+    expect(result.hits[0]?.bookId).toBe(fixtures[0]!.id);
+    expect(result.hits.at(-1)?.bookId).toBe(fixtures[2]!.id);
+  });
+
+  it("exports standalone bookmark positions and source identity without temporary URLs", () => {
+    reader.setLocator(createLocator(book.sections[1]!, 0.4));
+    reader.toggleBookmark();
+    const bookmarks = getReaderState().bookmarksByBook[book.id]!;
+    const exported = JSON.parse(
+      JSON.stringify(
+        readerBookmarksDocument(
+          { ...book, source: { ...book.source, objectUrl: "blob:temporary" } },
+          bookmarks,
+          123,
+        ),
+      ),
+    );
+    expect(exported).toMatchObject({
+      format: "bcr-reader-bookmarks",
+      version: 1,
+      exportedAt: 123,
+      bookmarks,
+    });
+    expect(JSON.stringify(exported)).not.toContain("blob:temporary");
+  });
   it("preserves anchor and timestamps when editing a note or renaming a bookmark", () => {
     const locator = createLocator(book.sections[1]!, 0.4);
     reader.addAnnotation("原笔记", locator);

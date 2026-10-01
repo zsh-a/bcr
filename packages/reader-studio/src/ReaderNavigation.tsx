@@ -17,6 +17,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { ReaderAnnotation, ReaderBook, ReaderBookmark, ReaderTocItem } from "@bcr/reader-core";
 import { percentageForLocator } from "@bcr/reader-core";
 import { ReaderRecordEditor } from "./ReaderRecordEditor";
+import { ReaderBookmarkExport } from "./ReaderBookmarkExport";
 import { percent } from "./readerPresentation";
 import { reader, useReader } from "./store";
 import { ReaderSheet } from "./ReaderSheet";
@@ -421,6 +422,7 @@ function MobileNavigationSheet(props: {
             aria-labelledby="reader-navigation-tab-bookmarks"
           >
             <div className="reader-mobile-sheet-scroll">
+              <ReaderBookmarkExport book={props.book} bookmarks={bookmarks} />
               {bookmarks.length > 0 ? (
                 <div className="reader-mobile-saved-list">
                   {[...bookmarks]
@@ -574,6 +576,7 @@ export function ChapterRail(props: { book: ReaderBook }) {
             <Bookmark className="reader-icon" />
             <span>书签 · {bookmarks.length}</span>
           </div>
+          <ReaderBookmarkExport book={props.book} bookmarks={bookmarks} />
           <div className="reader-bookmark-list">
             {[...bookmarks]
               .sort((a, b) => b.createdAt - a.createdAt)

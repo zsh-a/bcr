@@ -78,6 +78,8 @@ export interface ReaderTocItem {
 }
 
 export interface ReaderBook {
+  /** User library metadata, retained independently of source parsing. */
+  readonly favorite?: boolean | undefined;
   readonly preserveSectionSnapshot?: boolean;
   readonly rendition?:
     | {

@@ -5,6 +5,7 @@ import {
   percentageForLocator,
   type ReaderBook,
   type ReaderLocator,
+  type ReaderTocItem,
 } from "@bcr/reader-core";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { currentTxtChapter } from "./txtChapters";
@@ -12,6 +13,7 @@ import { READER_PDF_DOCUMENT_EVENT, readerPdfDocument } from "./readerPdfAdapter
 import { clamp, percent } from "./readerPresentation";
 import { reader, useReader } from "./store";
 import { READER_CAPTURE_PROGRESS_EVENT } from "./useReaderRuntime";
+import { openReaderTocItem, resolveReaderTocTarget } from "./navigation";
 
 function seekLocatorAtPercentage(book: ReaderBook, value: number): ReaderLocator {
   const locator = locatorAtPercentage(book, clamp(value, 0, 1));
@@ -34,6 +36,7 @@ interface ReaderProgressMarker {
   readonly id: string;
   readonly label: string;
   readonly percentage: number;
+  readonly item: ReaderTocItem;
 }
 
 interface PdfThumbnailCacheEntry {
@@ -76,13 +79,14 @@ function progressMarkers(book: ReaderBook): readonly ReaderProgressMarker[] {
   const markers: ReaderProgressMarker[] = [];
   const visit = (items: NonNullable<ReaderBook["toc"]>) => {
     for (const item of items) {
-      const section = sections.get(item.sectionId ?? "");
+      const section = sections.get(resolveReaderTocTarget(book, item)?.sectionId ?? "");
       if (section !== undefined && !positions.has(section.id)) {
         positions.add(section.id);
         markers.push({
           id: item.id,
           label: item.label,
           percentage: percentageForLocator(book, createLocator(section)),
+          item,
         });
       }
       if (item.children?.length) visit(item.children);
@@ -248,6 +252,27 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
           onBlur={commit}
         />
       </div>
+      {markers.length > 0 && (
+        <nav className="reader-progress-chapters" aria-label="章节进度跳转">
+          {markers.map((marker, index) => (
+            <button
+              type="button"
+              key={marker.id}
+              aria-label={`从进度条前往 ${marker.label}`}
+              title={`${marker.label} · 全书 ${percent(marker.percentage)}`}
+              onClick={() => {
+                clearCollapseTimer();
+                window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
+                openReaderTocItem(props.book, marker.item);
+                scheduleCollapse();
+              }}
+            >
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              {marker.label}
+            </button>
+          ))}
+        </nav>
+      )}
     </section>
   );
 }

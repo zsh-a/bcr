@@ -94,18 +94,35 @@ export async function searchReaderDetailed(
   query: string,
   signal?: AbortSignal,
 ): Promise<ReaderSearchResult> {
-  const hits: SearchHit[] = [];
+  const results: ReadonlyArray<SearchHit>[] = [];
   let indexing = false;
   for (const book of books) {
     signal?.throwIfAborted();
-    if (hasDeferredContent(book)) hits.push(...(await searchReaderContent(book, query, signal)));
+    if (hasDeferredContent(book)) results.push(await searchReaderContent(book, query, signal));
     else {
       const result = searchIndexedDetailed(runtime, [book], query);
-      hits.push(...result.hits);
+      results.push(result.hits);
       indexing ||= result.indexing;
     }
-    if (hits.length > 80) break;
   }
   signal?.throwIfAborted();
-  return { hits: hits.slice(0, 80), indexing, truncated: hits.length > 80 };
+  // Allocate occurrences in rounds, then retain the existing book/section order.
+  // Books with few matches give their unused slots to the remaining books.
+  const counts = results.map(() => 0);
+  let allocated = 0;
+  while (allocated < 80) {
+    let added = false;
+    for (let index = 0; index < results.length && allocated < 80; index++) {
+      if (counts[index]! >= results[index]!.length) continue;
+      counts[index] = counts[index]! + 1;
+      allocated++;
+      added = true;
+    }
+    if (!added) break;
+  }
+  return {
+    hits: results.flatMap((hits, index) => hits.slice(0, counts[index])),
+    indexing,
+    truncated: results.some((hits, index) => hits.length > counts[index]!),
+  };
 }

@@ -369,6 +369,7 @@ export function decodeReaderBackup(value: unknown): ReaderBackup {
         ...(book["preserveSectionSnapshot"] === true ? { preserveSectionSnapshot: true } : {}),
         ...(toc === undefined ? {} : { toc }),
         title: persisted.title,
+        ...(typeof book["favorite"] === "boolean" ? { favorite: book["favorite"] } : {}),
         ...(typeof book["author"] === "string" ? { author: book["author"] } : {}),
         ...(typeof book["language"] === "string" ? { language: book["language"] } : {}),
         source: {
@@ -819,6 +820,7 @@ export async function prepareReaderRestore(
           : {}),
         title: book.title,
         author: book.author,
+        favorite: book.favorite,
         language: book.language,
         tags: book.tags,
         importedAt: book.importedAt,

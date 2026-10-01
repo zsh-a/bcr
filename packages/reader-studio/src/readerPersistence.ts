@@ -33,6 +33,7 @@ export interface PersistReaderOptions {
   readonly assertCurrent?: () => void;
 }
 export interface PersistedBook {
+  readonly favorite?: boolean | undefined;
   readonly rendition?: ReaderBook["rendition"];
   readonly preserveSectionSnapshot?: boolean;
   readonly id: string;
@@ -145,6 +146,7 @@ export function persistBook(book: ReaderBook): PersistedBook {
     ...(book.rendition === undefined ? {} : { rendition: book.rendition }),
     id: book.id,
     title: book.title,
+    ...(typeof book.favorite === "boolean" ? { favorite: book.favorite } : {}),
     ...(book.author === undefined ? {} : { author: book.author }),
     ...(book.language === undefined ? {} : { language: book.language }),
     source: {
@@ -700,6 +702,7 @@ async function restoreBook(
                 }
               : {}),
             title: persisted.title,
+            ...(typeof persisted.favorite === "boolean" ? { favorite: persisted.favorite } : {}),
             ...(persisted.author === undefined ? {} : { author: persisted.author }),
             ...(persisted.language === undefined ? {} : { language: persisted.language }),
             importedAt: persisted.importedAt,
@@ -741,6 +744,7 @@ function projectPersistedBook(persisted: PersistedBook): RestoredBookResult {
         ...(persisted.rendition === undefined ? {} : { rendition: persisted.rendition }),
         id: persisted.id,
         title: persisted.title,
+        ...(typeof persisted.favorite === "boolean" ? { favorite: persisted.favorite } : {}),
         ...(persisted.author === undefined ? {} : { author: persisted.author }),
         ...(persisted.language === undefined ? {} : { language: persisted.language }),
         source: {

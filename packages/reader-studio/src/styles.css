@@ -655,12 +655,100 @@
   position: relative;
 }
 
+.reader-library-filter {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  padding-inline: var(--space-3);
+  color: var(--color-text);
+}
+.reader-library-management,
+.reader-library-batch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block: var(--space-2);
+}
+.reader-library-management {
+  justify-content: space-between;
+}
+.reader-library-management label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+}
+.reader-library-management input {
+  accent-color: var(--color-accent);
+}
+.reader-library-management button,
+.reader-library-batch button,
+.reader-bookmark-export {
+  min-height: 44px;
+}
+.reader-book-title-form,
+.reader-book-title-form label {
+  display: grid;
+  gap: var(--space-2);
+}
+.reader-book-title-form {
+  margin-block: var(--space-4);
+}
+.reader-book-title-form input {
+  min-width: 0;
+  min-height: 44px;
+}
+.reader-batch-remove-list {
+  max-height: 240px;
+  overflow: auto;
+}
+.reader-book-favorite {
+  width: 14px;
+  height: 14px;
+  margin-inline-end: var(--space-1);
+  color: var(--color-accent);
+  vertical-align: -2px;
+}
+.reader-book-actions {
+  position: absolute;
+  top: 55px;
+  right: 4px;
+  display: inline-grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-muted);
+}
+.reader-book-card.is-managing {
+  grid-template-columns: 20px 45px minmax(0, 1fr);
+  padding-right: var(--space-2);
+}
+.reader-book-card.is-selected {
+  border-color: var(--color-accent);
+}
+.reader-book-selection {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+}
+
 .reader-book-card {
   position: relative;
   display: grid;
   width: 100%;
   min-width: 0;
-  min-height: 82px;
+  min-height: 104px;
   grid-template-columns: 45px minmax(0, 1fr);
   align-items: center;
   gap: var(--space-3);

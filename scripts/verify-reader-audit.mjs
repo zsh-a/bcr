@@ -87,7 +87,10 @@ try {
   await page.waitForFunction(
     () => document.querySelectorAll(".reader-search-result").length === 80,
   );
-  assert.equal(await page.getByText("显示前 80 次出现，请缩小范围或细化关键词。").count(), 0);
+  assert.equal(
+    await page.getByText("显示 80 次出现，已按读物分配结果；请缩小范围或细化关键词。").count(),
+    0,
+  );
   assert.equal(await page.locator(".reader-search-result em mark").count(), 80);
   await page.locator(".reader-search-result").first().click();
   await page.locator(".reader-prose mark.is-current").first().waitFor();

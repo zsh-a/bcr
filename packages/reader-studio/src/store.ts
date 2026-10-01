@@ -226,6 +226,7 @@ class ReaderStore {
         ...book,
         id: existing.id,
         title: existing.title,
+        favorite: existing.favorite,
         ...(existing.author === undefined ? {} : { author: existing.author }),
         ...(existing.language === undefined ? {} : { language: existing.language }),
         importedAt: existing.importedAt,
@@ -300,7 +301,18 @@ class ReaderStore {
         ? progressForLocator(book, firstLocator(book))
         : progressForLocator(book, storedProgress.locator);
     const library = this.state.library.map((candidate) =>
-      candidate.id === book.id ? book : candidate,
+      candidate.id === book.id
+        ? {
+            ...book,
+            title: existing.title,
+            favorite: existing.favorite,
+            ...(existing.author === undefined ? {} : { author: existing.author }),
+            ...(existing.language === undefined ? {} : { language: existing.language }),
+            tags: existing.tags,
+            importedAt: existing.importedAt,
+            updatedAt: Math.max(existing.updatedAt, book.updatedAt),
+          }
+        : candidate,
     );
     this.set({
       library,
@@ -315,26 +327,67 @@ class ReaderStore {
   }
 
   removeBook(bookId: string): void {
-    const removed = this.state.library.find((book) => book.id === bookId);
-    if (removed !== undefined) releaseBookResources(removed);
-    const library = this.state.library.filter((book) => book.id !== bookId);
-    const fallback = library[0] ?? demo;
+    this.removeBooks([bookId]);
+  }
+
+  renameBook(bookId: string, title: string): void {
+    const trimmed = title.trim().slice(0, 300);
+    const book = this.state.library.find((item) => item.id === bookId);
+    if (!book || !trimmed || book.title === trimmed) return;
+    this.set({
+      library: this.state.library.map((item) =>
+        item.id === bookId
+          ? { ...item, title: trimmed, updatedAt: Math.max(Date.now(), item.updatedAt + 1) }
+          : item,
+      ),
+    });
+  }
+
+  toggleFavorite(bookId: string): void {
+    if (!this.state.library.some((book) => book.id === bookId)) return;
+    this.set({
+      library: this.state.library.map((book) =>
+        book.id === bookId
+          ? {
+              ...book,
+              favorite: !book.favorite,
+              updatedAt: Math.max(Date.now(), book.updatedAt + 1),
+            }
+          : book,
+      ),
+    });
+  }
+
+  /** Remove a batch atomically and retain the current read when it is not selected. */
+  removeBooks(bookIds: ReadonlyArray<string>): void {
+    const ids = new Set(bookIds);
+    const removed = this.state.library.filter((book) => ids.has(book.id));
+    if (!removed.length) return;
+    removed.forEach(releaseBookResources);
+    const library = this.state.library.filter((book) => !ids.has(book.id));
+    const fallback =
+      library.find((book) => book.id === this.state.activeBookId) ?? library[0] ?? demo;
     const nextLibrary = library.length > 0 ? library : [demo];
     const progress =
-      this.state.progressByBook[fallback.id] ??
+      (ids.has(fallback.id) ? undefined : this.state.progressByBook[fallback.id]) ??
       progressForLocator(fallback, firstLocator(fallback));
     const progressByBook = { ...this.state.progressByBook };
-    delete progressByBook[bookId];
     const bookmarksByBook = { ...this.state.bookmarksByBook };
-    delete bookmarksByBook[bookId];
     const annotationsByBook = { ...this.state.annotationsByBook };
-    delete annotationsByBook[bookId];
     const sourceErrorsByBook = { ...this.state.sourceErrorsByBook };
-    delete sourceErrorsByBook[bookId];
+    const books = { ...this.state.settings.books };
+    for (const book of removed) {
+      delete progressByBook[book.id];
+      delete bookmarksByBook[book.id];
+      delete annotationsByBook[book.id];
+      delete sourceErrorsByBook[book.id];
+      delete books[book.id];
+    }
+    progressByBook[fallback.id] = progress;
     this.set({
       navigationHistory: {
-        back: this.state.navigationHistory.back.filter((entry) => entry.bookId !== bookId),
-        forward: this.state.navigationHistory.forward.filter((entry) => entry.bookId !== bookId),
+        back: this.state.navigationHistory.back.filter((entry) => !ids.has(entry.bookId)),
+        forward: this.state.navigationHistory.forward.filter((entry) => !ids.has(entry.bookId)),
       },
       library: nextLibrary,
       activeBookId: fallback.id,
@@ -343,11 +396,17 @@ class ReaderStore {
       bookmarksByBook,
       annotationsByBook,
       sourceErrorsByBook,
+      settings: { ...this.state.settings, books },
+      navigationSequence:
+        this.state.navigationSequence + Number(fallback.id !== this.state.activeBookId),
       query: "",
       searchHits: [],
       searchBookId: null,
       searchActiveIndex: -1,
       searchReveal: null,
+      searchError: null,
+      searchTruncated: false,
+      searchBusy: false,
     });
   }
 

@@ -1,4 +1,15 @@
-import { ChevronRight, Menu, PanelLeftClose, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import {
+  Check,
+  ChevronRight,
+  Menu,
+  PanelLeftClose,
+  Plus,
+  Search,
+  Star,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   readerAcceptAttribute,
@@ -21,6 +32,7 @@ import { useReaderMobile } from "./useReaderMobile";
 import { ReaderHistoryBar } from "./ReaderHistoryBar";
 import { ReaderProgressScrubber } from "./ReaderProgressScrubber";
 import { ReaderSelectionCapture } from "./ReaderSelectionCapture";
+import { ReaderLibraryBookActions } from "./ReaderLibraryBookActions";
 
 const ReaderBackupPanel = lazy(() =>
   import("./ReaderBackupPanel").then((module) => ({ default: module.ReaderBackupPanel })),
@@ -179,15 +191,30 @@ function LibraryPanel(props: {
   const [dragging, setDragging] = useState(false);
   const [sortMode, setSortMode] = useState<LibrarySortMode>("recent");
   const [filter, setFilter] = useState<ReaderReadingStatus | "all">("all");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [titleFilter, setTitleFilter] = useState("");
+  const [managing, setManaging] = useState(false);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [batchConfirm, setBatchConfirm] = useState(false);
   const sourceErrors = useReader((state) => state.sourceErrorsByBook);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [backupOpen, setBackupOpen] = useState(false);
   const sortedLibrary = library
     .filter(
-      (book) => filter === "all" || readingStatus(progressByBook[book.id]?.percentage) === filter,
+      (book) =>
+        (filter === "all" || readingStatus(progressByBook[book.id]?.percentage) === filter) &&
+        (!favoritesOnly || book.favorite) &&
+        `${book.title}\n${book.author ?? ""}`
+          .toLocaleLowerCase()
+          .includes(titleFilter.trim().toLocaleLowerCase()),
     )
     .sort((left, right) => {
       if (sortMode === "title") return left.title.localeCompare(right.title, "zh-CN");
+      if (sortMode === "imported") return right.importedAt - left.importedAt;
+      if (sortMode === "favorite") {
+        const difference = Number(Boolean(right.favorite)) - Number(Boolean(left.favorite));
+        if (difference) return difference;
+      }
       if (sortMode === "progress") {
         return (
           (progressByBook[right.id]?.percentage ?? 0) - (progressByBook[left.id]?.percentage ?? 0)
@@ -197,6 +224,14 @@ function LibraryPanel(props: {
         (progressByBook[right.id]?.updatedAt ?? right.updatedAt) -
         (progressByBook[left.id]?.updatedAt ?? left.updatedAt)
       );
+    });
+  const selectedBooks = library.filter((book) => selected.has(book.id));
+  const toggleSelection = (id: string) =>
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   return (
     <div className="reader-library-panel">
@@ -214,6 +249,14 @@ function LibraryPanel(props: {
           <PanelLeftClose className="reader-icon" />
         </button>
       </div>
+      <input
+        className="reader-library-filter"
+        type="search"
+        aria-label="筛选书名或作者"
+        placeholder="筛选书名或作者…"
+        value={titleFilter}
+        onChange={(event) => setTitleFilter(event.target.value)}
+      />
       <div className="reader-library-toolbar">
         <select
           aria-label="阅读状态筛选"
@@ -234,7 +277,31 @@ function LibraryPanel(props: {
           <option value="recent">最近阅读</option>
           <option value="title">标题</option>
           <option value="progress">阅读进度</option>
+          <option value="imported">最近添加</option>
+          <option value="favorite">收藏优先</option>
         </select>
+      </div>
+      <div className="reader-library-management">
+        <label>
+          <input
+            type="checkbox"
+            checked={favoritesOnly}
+            onChange={(event) => setFavoritesOnly(event.target.checked)}
+          />
+          仅收藏
+        </label>
+        <button
+          type="button"
+          className="ui-btn ui-btn-default"
+          aria-pressed={managing}
+          onClick={() => {
+            setManaging(!managing);
+            setSelected(new Set());
+            setConfirmingId(null);
+          }}
+        >
+          {managing ? "完成管理" : "管理书库"}
+        </button>
       </div>
       <div
         className={`reader-dropzone ${dragging ? "is-dragging" : ""}`}
@@ -283,6 +350,87 @@ function LibraryPanel(props: {
           onClose={() => setBackupOpen(false)}
         />
       </Suspense>
+      {managing && (
+        <div className="reader-library-batch">
+          <span role="status">已选择 {selectedBooks.length} 本</span>
+          <button
+            type="button"
+            className="ui-btn ui-btn-default"
+            disabled={!sortedLibrary.length}
+            onClick={() =>
+              setSelected(
+                (current) => new Set([...current, ...sortedLibrary.map((book) => book.id)]),
+              )
+            }
+          >
+            选择当前列表
+          </button>
+          <button
+            type="button"
+            className="ui-btn ui-btn-default"
+            disabled={!selectedBooks.length}
+            onClick={() => setSelected(new Set())}
+          >
+            取消选择
+          </button>
+          <button
+            type="button"
+            className="ui-btn ui-btn-default"
+            disabled={!selectedBooks.length}
+            onClick={() => setBatchConfirm(true)}
+          >
+            移除所选…
+          </button>
+        </div>
+      )}
+      <ReaderSheet
+        open={batchConfirm}
+        labelId="reader-batch-remove-title"
+        onClose={() => setBatchConfirm(false)}
+      >
+        <section className="reader-mobile-sheet reader-data-sheet">
+          <header className="reader-data-heading">
+            <h2 id="reader-batch-remove-title">移除 {selectedBooks.length} 本读物？</h2>
+            <button
+              type="button"
+              className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
+              aria-label="关闭批量移除"
+              onClick={() => setBatchConfirm(false)}
+            >
+              <X className="reader-icon" />
+            </button>
+          </header>
+          <p>将从本机书库移除以下读物，以及它们的阅读进度、书签和笔记。</p>
+          <ul className="reader-batch-remove-list">
+            {selectedBooks.map((book) => (
+              <li key={book.id}>{book.title}</li>
+            ))}
+          </ul>
+          <div className="reader-data-actions">
+            <button
+              type="button"
+              className="ui-btn ui-btn-lg ui-btn-default"
+              onClick={() => setBatchConfirm(false)}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              className="ui-btn ui-btn-lg ui-btn-primary"
+              disabled={!selectedBooks.length}
+              onClick={() => {
+                for (const book of selectedBooks) props.runtime.indexSession?.removeBook(book.id);
+                reader.removeBooks(selectedBooks.map((book) => book.id));
+                void persistReaderSnapshot(props.runtime, { durableLibrary: true });
+                setSelected(new Set());
+                setBatchConfirm(false);
+              }}
+            >
+              确认移除所选读物
+            </button>
+          </div>
+        </section>
+      </ReaderSheet>
       <div className="reader-library-list">
         {sortedLibrary.map((book) => (
           <LibraryBookCard
@@ -290,6 +438,10 @@ function LibraryPanel(props: {
             book={book}
             active={book.id === activeBookId}
             progress={progressByBook[book.id]?.percentage ?? 0}
+            favorite={book.favorite ?? false}
+            managing={managing}
+            selected={selected.has(book.id)}
+            onSelect={() => toggleSelection(book.id)}
             missingSource={
               Boolean(sourceErrors[book.id]) ||
               (book.source.format === "pdf" && !book.source.ref && !book.source.objectUrl)
@@ -322,12 +474,16 @@ function LibraryPanel(props: {
   );
 }
 
-type LibrarySortMode = "recent" | "title" | "progress";
+type LibrarySortMode = "recent" | "title" | "progress" | "imported" | "favorite";
 
 function LibraryBookCard(props: {
   book: ReaderBook;
   active: boolean;
   progress: number;
+  favorite: boolean;
+  managing: boolean;
+  selected: boolean;
+  onSelect: () => void;
   missingSource: boolean;
   confirming: boolean;
   onRemove: () => void;
@@ -338,13 +494,24 @@ function LibraryBookCard(props: {
     <div className="reader-book-entry">
       <button
         type="button"
-        className={`reader-book-card ${props.active ? "is-active" : ""}`}
+        className={`reader-book-card ${props.active ? "is-active" : ""} ${props.managing ? "is-managing" : ""} ${props.selected ? "is-selected" : ""}`}
         onClick={() => {
+          if (props.managing) {
+            props.onSelect();
+            return;
+          }
           reader.openBook(props.book.id);
           if (window.matchMedia("(max-width: 860px)").matches) reader.toggleSidebar();
         }}
         aria-current={props.active ? "page" : undefined}
+        aria-pressed={props.managing ? props.selected : undefined}
+        aria-label={props.managing ? `选择 ${props.book.title}` : undefined}
       >
+        {props.managing && (
+          <span className="reader-book-selection" aria-hidden="true">
+            {props.selected && <Check className="reader-icon" />}
+          </span>
+        )}
         <div className={`reader-book-cover reader-cover-${props.book.source.format}`}>
           {props.book.coverUrl ? (
             <img src={props.book.coverUrl} alt="" />
@@ -356,7 +523,12 @@ function LibraryBookCard(props: {
           )}
         </div>
         <div className="reader-book-card-copy">
-          <strong>{props.book.title}</strong>
+          <strong>
+            {props.favorite && (
+              <Star className="reader-book-favorite" fill="currentColor" aria-label="已收藏" />
+            )}
+            {props.book.title}
+          </strong>
           {props.book.tags.includes("DEMO") && <small>示例读物 · 可从右上角导入你的文件</small>}
           {props.missingSource && <small role="status">缺少源文件 · 请重新导入</small>}
           <span>{props.book.author ?? "本地文档"}</span>
@@ -377,14 +549,23 @@ function LibraryBookCard(props: {
         </div>
         {props.active && <ChevronRight className="reader-book-active-icon" />}
       </button>
-      <button
-        type="button"
-        className="reader-book-remove"
-        aria-label={`移除 ${props.book.title}`}
-        onClick={props.onRemove}
-      >
-        <Trash2 className="reader-icon" />
-      </button>
+      {!props.managing && (
+        <>
+          <button
+            type="button"
+            className="reader-book-remove"
+            aria-label={`移除 ${props.book.title}`}
+            onClick={props.onRemove}
+          >
+            <Trash2 className="reader-icon" />
+          </button>
+          <ReaderLibraryBookActions
+            book={props.book}
+            favorite={props.favorite}
+            onRemove={props.onRemove}
+          />
+        </>
+      )}
       {props.confirming && (
         <div className="reader-book-confirm" role="alert">
           <span>从本地书库移除？</span>
@@ -424,7 +605,7 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
               ? "正在搜索…"
               : searchError
                 ? "搜索遇到问题"
-                : `${searchTruncated ? "前 " : ""}${props.hits.length} 个命中`}
+                : `${props.hits.length} 个命中${searchTruncated ? " · 已截断" : ""}`}
           </strong>
         </div>
         <span className="reader-search-query">{query ? `“${query}”` : "输入关键词查找原文"}</span>
@@ -452,7 +633,13 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
         >
           整个书库 · {library.length}
         </button>
-        {searchTruncated && <small>显示前 80 次出现，请缩小范围或细化关键词。</small>}
+        {searchTruncated && (
+          <small>
+            {scope === "library"
+              ? "显示 80 次出现，已按读物分配结果；请缩小范围或细化关键词。"
+              : "显示前 80 次出现，请缩小范围或细化关键词。"}
+          </small>
+        )}
       </div>
       {searchError && (
         <div className="reader-search-empty" role="alert">
