@@ -2,7 +2,7 @@ import type { ArtifactRef, RuntimeServices } from "@bcr/core";
 import { readJson } from "./data";
 import type { JsgResult } from "./model";
 
-type ResultStorage = {
+export type ResultStorage = {
   artifacts: Pick<RuntimeServices["artifacts"], "get">;
   readChunk?: (ref: ArtifactRef, signal: AbortSignal) => Promise<ResultChunk>;
 };
@@ -17,7 +17,7 @@ export interface OrderFilter {
 }
 export const EMPTY_ORDER_FILTER: OrderFilter = { from: "", to: "", code: "", side: "", status: "" };
 export type ResultChunk = Pick<JsgResult, "equity" | "orders" | "decisions">;
-const chunkData = (services: ResultStorage, ref: ArtifactRef, signal: AbortSignal) =>
+export const chunkData = (services: ResultStorage, ref: ArtifactRef, signal: AbortSignal) =>
   services.readChunk ? services.readChunk(ref, signal) : readJson<ResultChunk>(services, ref);
 export async function queryOrders(
   services: ResultStorage,

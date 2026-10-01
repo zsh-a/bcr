@@ -94,6 +94,7 @@ export async function protectedResearchIds(
   if (state.selected) retained.set(state.selected.run.id, state.selected.run);
   for (const run of retained.values()) {
     roots.add(run.resultRef.id);
+    if (run.benchmark) roots.add(run.benchmark.ref.id);
     // Fail closed when a retained run is corrupt: never infer that its chunks are disposable.
     const result = await readJson<JsgResult>(services, run.resultRef);
     for (const c of result.chunks ?? []) roots.add(c.ref.id);

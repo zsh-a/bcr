@@ -1,6 +1,7 @@
 import { OpfsStore } from "@bcr/storage-opfs";
 import { clickHouseClient } from "../jsg/clickhouse-http";
 import { inspectClickHouse, loadClickHouse } from "../jsg/clickhouse-load";
+import { fetchBenchmark } from "../jsg/benchmark";
 import type { ClickHouseWorkerRequest, ClickHouseWorkerResponse } from "../jsg/clickhouse-browser";
 
 const scope = globalThis as unknown as {
@@ -49,6 +50,15 @@ scope.onmessage = (event) => {
           controller.signal,
         );
         scope.postMessage({ type: "inspected", value });
+      } else if (request.type === "benchmark") {
+        await requestConnection();
+        const value = await fetchBenchmark(
+          request.connection,
+          request.code,
+          request.manifest,
+          controller.signal,
+        );
+        scope.postMessage({ type: "benchmark-loaded", value });
       } else {
         const value = await loadClickHouse(
           request.connection,

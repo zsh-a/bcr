@@ -141,6 +141,24 @@ async function setup() {
   return { store, services: { artifacts, scheduler }, state, caches, journal, dataset, put, run };
 }
 describe("research storage lifecycle", () => {
+  it("retains frozen benchmark files until their run binding is removed", async () => {
+    const s = await setup(),
+      run = await s.run("with-benchmark", false);
+    const ref: ArtifactRef = {
+      id: "jsg/benchmark/frozen",
+      type: "quant/jsg-benchmark",
+      storage: "opfs",
+      format: "json",
+    };
+    await s.put(ref, { version: 1 });
+    run.benchmark = { ref, name: "基准", kind: "price", acquiredAt: "2026-10-01T00:00:00Z" };
+    s.state.runs = [run];
+    const kept = await planResearchCleanup(s.services, s.state, s.store);
+    expect(kept.candidates.some((c) => c.id === ref.id)).toBe(false);
+    delete run.benchmark;
+    const discarded = await planResearchCleanup(s.services, s.state, s.store);
+    expect(discarded.candidates.some((c) => c.id === ref.id)).toBe(true);
+  });
   it("protects a retained grid and releases its cache and task after it is removed", async () => {
     const s = await setup();
     const run = await s.run("grid", false);

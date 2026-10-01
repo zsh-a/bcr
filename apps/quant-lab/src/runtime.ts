@@ -9,6 +9,7 @@ import { openSqliteDb, type SqliteDb } from "@bcr/storage-sqlite";
 import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import { Effect } from "effect";
+import { SINGLE_EXECUTOR_VERSION, GRID_EXECUTOR_VERSION } from "./jsg/versions";
 import { decodeMarketArrow } from "./arrow";
 import { columnarizeMarketBars, readMarketParquet, type ColumnarDatasetPayload } from "./columnar";
 import {
@@ -64,8 +65,8 @@ export async function createRuntimeServices(host?: RuntimeHost): Promise<Runtime
         executors: [
           workerExecutor(pool, "js", "quant-signals-1", artifacts, ["quant.signal.sma-cross"]),
           workerExecutor(pool, "wasm", "quant-backtest-1", artifacts, ["quant.backtest.long-only"]),
-          workerExecutor(pool, "wasm", "jsg-streamed-4", artifacts, ["quant.backtest.jsg"]),
-          workerExecutor(pool, "wasm", "jsg-grid-shared-1", artifacts, ["quant.grid.jsg"]),
+          workerExecutor(pool, "wasm", SINGLE_EXECUTOR_VERSION, artifacts, ["quant.backtest.jsg"]),
+          workerExecutor(pool, "wasm", GRID_EXECUTOR_VERSION, artifacts, ["quant.grid.jsg"]),
         ],
         dispose: () => pool.shutdown(),
       };

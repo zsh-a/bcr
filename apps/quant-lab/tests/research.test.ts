@@ -18,6 +18,8 @@ import {
   type SelectedRun,
 } from "../src/jsg/session";
 import { EMPTY_ORDER_FILTER, queryCurve, queryDecision, queryOrders } from "../src/jsg/result-data";
+import { saveBenchmark, readBenchmark } from "../src/jsg/benchmark";
+import { replayVersions } from "../src/jsg/versions";
 
 const ref = (id: string, type = "quant/jsg-result"): ArtifactRef => ({
   id,
@@ -118,6 +120,46 @@ async function putRun(services: Awaited<ReturnType<typeof storage>>, snapshot: S
 }
 
 describe("immutable research runs", () => {
+  it("persists a benchmark for its captured run while preserving a different selected result and draft", async () => {
+    const services = await storage(),
+      old = selected("old"),
+      current = selected("current");
+    await putRun(services, old);
+    await putRun(services, current);
+    const binding = await saveBenchmark(services, {
+      version: 1,
+      name: "固定基准",
+      kind: "price",
+      source: "fixture",
+      acquiredAt: "2026-10-01T00:00:00Z",
+      points: [
+        { date: "2024-02-02", close: 100 },
+        { date: "2024-02-05", close: 110 },
+      ],
+    });
+    old.run.versions = replayVersions();
+    const before = {
+      ...ready(current),
+      runs: [old.run, current.run],
+      draft: { ...DEFAULT_CONFIG, stockCount: 6 },
+    };
+    const bound = sessionReducer(before, {
+      type: "benchmark",
+      runId: old.run.id,
+      benchmark: binding,
+    });
+    expect(bound.selected!.run.id).toBe("current");
+    expect(bound.selected!.run.benchmark).toBeUndefined();
+    expect(bound.draft.stockCount).toBe(6);
+    await saveSession(services, bound);
+    const restored = await restoreSession(services);
+    expect(restored!.runs[0]!.versions).toEqual(replayVersions());
+    expect(
+      (await readBenchmark(services, restored!.runs[0]!.benchmark!)).points.at(-1)!.close,
+    ).toBe(110);
+    const removed = sessionReducer({ ...before, ...restored }, { type: "benchmark", runId: "old" });
+    expect(removed.runs[0]!.benchmark).toBeUndefined();
+  });
   it("keeps the last result when parameters change, including invalid draft fields", () => {
     const before = ready(),
       after = sessionReducer(before, { type: "draft", patch: { stockCount: 6 } });

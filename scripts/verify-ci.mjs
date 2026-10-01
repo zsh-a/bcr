@@ -135,6 +135,7 @@ await withServer({
     "scripts/verify-jsg.mjs",
     "scripts/verify-jsg-storage.mjs",
     "scripts/verify-jsg-grid.mjs",
+    "scripts/verify-jsg-evaluation.mjs",
     "scripts/verify-jsg-clickhouse-fixture.mjs",
     ...liveMarketChecks,
     "scripts/verify-manga-studio.mjs",

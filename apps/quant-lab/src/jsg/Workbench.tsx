@@ -103,7 +103,8 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
       disposeResultReader();
     };
   }, []);
-  const busy = state.operation !== null || storageBusy;
+  const [evaluationBusy, setEvaluationBusy] = useState(false);
+  const busy = state.operation !== null || storageBusy || evaluationBusy;
   const ready =
     state.ready &&
     source.restored &&
@@ -201,6 +202,7 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
           snapshot.dataset.manifest,
           snapshot.result,
           snapshot.dataset.snapshot,
+          snapshot.run,
         ),
       );
       const url = URL.createObjectURL(exported.blob);
@@ -547,6 +549,10 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                 services={services}
                 selected={selected}
                 comparison={comparison}
+                connection={source.connection}
+                busy={busy}
+                onBenchmark={research.attachBenchmark}
+                onWorking={setEvaluationBusy}
               />
             </div>
           ) : state.grid ? null : (

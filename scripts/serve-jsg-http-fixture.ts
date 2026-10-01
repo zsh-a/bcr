@@ -50,7 +50,13 @@ const server = createServer(async (request, response) => {
   }
   let rows: unknown[];
   if (sql.includes("1 AS connected")) rows = [{ connected: 1 }];
-  else if (sql.includes("version()")) rows = [{ version: "synthetic-http-fixture" }];
+  else if (sql.includes("stock_daily FINAL") && sql.includes("{code:String}")) {
+    const start = url.searchParams.get("param_start")!,
+      end = url.searchParams.get("param_end")!;
+    rows = fixture.calendar
+      .filter((date) => date >= start && date <= end)
+      .map((date, i) => ({ date, close: 100 + i * 0.1 }));
+  } else if (sql.includes("version()")) rows = [{ version: "synthetic-http-fixture" }];
   else if (sql.includes("min(date)"))
     rows = [{ firstDate: fixture.calendar[0], lastDate: fixture.calendar.at(-1) }];
   else if (sql.includes("system.columns")) rows = [];

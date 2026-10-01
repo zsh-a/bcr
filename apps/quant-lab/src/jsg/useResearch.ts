@@ -8,6 +8,8 @@ import { rememberSnapshot, recoverResearchFiles, researchStore } from "./storage
 import { loadFromBrowser } from "./clickhouse-browser";
 import type { ClickHouseConnection, ClickHouseRange } from "./clickhouse-http";
 import { validateGrid, type GridAxis, type GridResult } from "./grid";
+import { replayVersions } from "./versions";
+import type { BenchmarkBinding } from "./benchmark";
 import {
   DEFAULT_CONFIG,
   MODEL,
@@ -168,6 +170,7 @@ export function useResearch(services: RuntimeServices) {
       const result = await readJson<JsgResult>(services, ref);
       token.abort.signal.throwIfAborted();
       const run: ResearchRun = {
+        versions: replayVersions(),
         ...(dataset.snapshot ? { snapshot: structuredClone(dataset.snapshot) } : {}),
         id: token.id,
         createdAt: new Date().toISOString(),
@@ -381,6 +384,7 @@ export function useResearch(services: RuntimeServices) {
         id: token.id,
         grid: {
           run: {
+            versions: replayVersions(true),
             id: token.id,
             createdAt: new Date().toISOString(),
             axes: capturedAxes,
@@ -449,6 +453,8 @@ export function useResearch(services: RuntimeServices) {
     ) => withResearchFiles("shared", () => runGrid(configs, axes, source)),
     viewGridResult: (index: number) => withResearchFiles("shared", () => viewGridResult(index)),
     forgetGrid: () => send({ type: "forget-grid" }),
+    attachBenchmark: (runId: string, benchmark?: BenchmarkBinding) =>
+      send({ type: "benchmark", runId, ...(benchmark ? { benchmark } : {}) }),
     connectAndRun: (connection: ClickHouseConnection, range: ClickHouseRange) =>
       withResearchFiles("shared", () => connectAndRun(connection, range)),
     importFiles: (files: readonly File[]) => withResearchFiles("shared", () => importFiles(files)),

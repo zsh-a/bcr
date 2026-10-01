@@ -405,3 +405,56 @@ BASE_URL='http://localhost:5201/?strategy=jsg' node scripts/benchmark-jsg-grid.m
 The grid test covers independent-run metric parity, validation, sorting/pagination, cache,
 cancel/restore, detail generation, immutable exports, storage reclamation and 320 px layouts.
 See [BENCHMARKS.md](BENCHMARKS.md) for the large-data measurements and native comparison.
+
+## Research evaluation and benchmarks
+
+Open **分析** on a selected full-result run to inspect monthly/yearly compound returns and
+annualized volatility. A dedicated result Worker scans the complete OPFS chunks once; the
+chart preview is never the source of statistics. Period tables show at most 24 rows per page.
+The first day's return uses the run's initial capital. Later periods start from the previous
+session's closing equity, so compound period returns reproduce the complete run's return.
+Partial first/last months and years display their actual dates and session counts.
+
+**设置基准** supports the current ClickHouse connection or a CSV file. ClickHouse fetches
+`stock_daily FINAL` close values for an explicit code (default `sh.000300`, CSI 300), using
+typed HTTP parameters in a temporary data Worker. This is a **price-return** comparison and
+excludes dividends. CSV files use `date,close` and `YYYY-MM-DD,positive-value` rows; users
+explicitly declare price or total return. Declaring total return does not reconstruct dividends.
+Inputs must be strictly ordered, unique, at most 20,000 rows and 2 MiB. Every backtest date,
+plus the exact preceding trading session from the frozen calendar, must be present. Missing
+dates are rejected without interpolation or forward-fill; extra dates do not affect the statistics.
+
+A successfully validated benchmark is stored as an immutable artifact and bound to that run.
+Changing the next source, dates or draft does not replace it. Failure/cancellation preserves
+the previous binding; reload reads the saved artifact without contacting ClickHouse. The
+binding is protected by storage cleanup while its run is retained. **移除所选运行基准**
+releases the reference; ordinary unused-data cleanup can then reclaim the file. Benchmarks
+are fetched by one bounded query, but are not a transaction snapshot shared with the earlier
+market download. Acquisition time and source are included in exports; passwords are not.
+
+**导出研究评估** saves the run references/configuration, manifest, frozen benchmark, exact
+statistics, periods and bounded chart curve. The ordinary full-result export also includes
+benchmark data and replay versions in a separate `research` header, leaving the existing
+engine result fields intact. New runs/grid experiments record engine, executor and metric
+versions; historical runs with no version metadata remain explicitly unrecorded. Version
+constants live in `src/jsg/versions.ts`; replay behavior changes require an engine/executor
+version bump, and metric formula changes require a metric/evaluation version bump.
+
+The contract uses 252 sessions per year, zero risk-free return, daily simple returns, sample
+variance and closing portfolio equity after fees. CAGR is `(last / initial)^(252 / days) - 1`;
+volatility is `sample_std(daily_returns) * sqrt(252)`; Sharpe is
+`mean(daily_returns) / sample_std(daily_returns) * sqrt(252)` (zero for constant returns).
+Drawdown includes the initial capital as the starting peak. Excess return is strategy minus
+benchmark return in **percentage points**, distinct from relative wealth return
+`(1 + strategy_return) / (1 + benchmark_return) - 1`. The exported conventions and
+**指标口径与版本** panel state these assumptions.
+
+```sh
+BASE_URL=http://localhost:5201/ bun run test:browser:jsg:evaluation
+BASE_URL='http://localhost:5201/?strategy=jsg' node scripts/benchmark-jsg-evaluation.mjs \
+  /tmp/bcr-research-benchmarks/input /tmp/bcr-research-benchmarks/evaluation
+```
+
+The deterministic browser test mocks only the benchmark HTTP response; the source fixture
+and optional real ClickHouse browser integration also fetch and validate a benchmark through
+the same application path. See [BENCHMARKS.md](BENCHMARKS.md) for measurement boundaries.

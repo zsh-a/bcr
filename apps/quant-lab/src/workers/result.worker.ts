@@ -4,6 +4,8 @@ import { Effect } from "effect";
 import { queryOrders, queryCurve, queryDecision, type ResultChunk } from "../jsg/result-data";
 import type { ResultRequest, ResultResponse } from "../jsg/result-reader";
 import { withResearchFiles } from "../jsg/file-lease";
+import { evaluateResult } from "../jsg/evaluation";
+import { readBenchmark } from "../jsg/benchmark";
 
 const scope = globalThis as unknown as {
   postMessage: (value: ResultResponse) => void;
@@ -77,23 +79,33 @@ scope.onmessage = (event) => {
     try {
       controller.signal.throwIfAborted();
       const value =
-        message.type === "orders"
-          ? await queryOrders(
+        message.type === "evaluation"
+          ? await evaluateResult(
               services,
               message.result,
-              message.filter,
-              message.offset,
+              message.capital,
+              message.dates,
+              message.baselineDate,
+              message.benchmark ? await readBenchmark(services, message.benchmark) : undefined,
               controller.signal,
             )
-          : message.type === "curve"
-            ? await queryCurve(
+          : message.type === "orders"
+            ? await queryOrders(
                 services,
                 message.result,
-                message.from,
-                message.to,
+                message.filter,
+                message.offset,
                 controller.signal,
               )
-            : await queryDecision(services, message.result, message.date, controller.signal);
+            : message.type === "curve"
+              ? await queryCurve(
+                  services,
+                  message.result,
+                  message.from,
+                  message.to,
+                  controller.signal,
+                )
+              : await queryDecision(services, message.result, message.date, controller.signal);
       if (!controller.signal.aborted) scope.postMessage({ id: message.id, value });
     } catch (error) {
       scope.postMessage({

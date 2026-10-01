@@ -1,10 +1,21 @@
 import type { RuntimeServices } from "@bcr/core";
 import type { JsgResult } from "./model";
 import type { OrderFilter, ResultSource } from "./result-data";
+import type { BenchmarkBinding } from "./benchmark";
+import type { Evaluation } from "./evaluation";
 export type ResultRequest =
   | { id: number; type: "orders"; result: ResultSource; filter: OrderFilter; offset: number }
   | { id: number; type: "curve"; result: ResultSource; from: string; to: string }
   | { id: number; type: "decision"; result: ResultSource; date: string }
+  | {
+      id: number;
+      type: "evaluation";
+      result: ResultSource;
+      capital: number;
+      dates: string[];
+      baselineDate: string;
+      benchmark?: BenchmarkBinding;
+    }
   | { id: number; type: "cancel" }
   | { id: number; type: "clear" };
 export type ResultResponse = { id: number; value?: unknown; error?: string; cancelled?: boolean };
@@ -101,5 +112,25 @@ export const queryDecision = (
 ) =>
   request<JsgResult["decisions"][number] | undefined>(
     { id: ++sequence, type: "decision", result: source(result), date },
+    signal,
+  );
+export const queryEvaluation = (
+  result: JsgResult,
+  capital: number,
+  dates: string[],
+  baselineDate: string,
+  benchmark: BenchmarkBinding | undefined,
+  signal: AbortSignal,
+) =>
+  request<Evaluation>(
+    {
+      id: ++sequence,
+      type: "evaluation",
+      result: source(result),
+      capital,
+      dates,
+      baselineDate,
+      ...(benchmark ? { benchmark } : {}),
+    },
     signal,
   );

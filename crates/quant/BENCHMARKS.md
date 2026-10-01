@@ -139,3 +139,24 @@ node scripts/verify-jsg-grid-parity.mjs /tmp/bcr-research-benchmarks/native-grid
 机器可读摘要见 [browser-grid-2026-10-01.json](fixtures/benchmarks/browser-grid-2026-10-01.json)。
 完整报告位于 worktree 外的 `/home/zs/workspace/bcr-research-benchmarks/grid-16` 与
 `grid-16-native`；`grid.json` 为首轮实验，`configs.json` 为相同配置的原生对账输入。
+
+## 完整结果研究评估
+
+```sh
+BASE_URL='http://localhost:5201/?strategy=jsg' node scripts/benchmark-jsg-evaluation.mjs \
+  /tmp/bcr-research-benchmarks/input /tmp/bcr-research-benchmarks/evaluation
+```
+
+2026-10-01，在同一 625 万行冻结输入上先生成完整回测结果，再在 Studio 生产 `/quant`
+打开分析页。1,220 个交易日、57 个月的分析约 **739 ms**，包含 UI 自动化操作、完整结果
+分片读取、指标计算与渲染等待；不包含此前导入和回测耗时，也不是纯计算内核耗时。
+该阶段未观测到 ≥50 ms 主线程长任务。图表返回 1,040 个采样点（上限 3,072），表格
+首屏 24 期，下一页验证分页。所有统计使用完整日线结果，采样只影响曲线展示。
+
+月度收益复利与累计收益对账通过。独立重算原生完整 JSONL 后，57 个月、5 个年度的
+日期、日数和收益均一致，累计指标最大数值差为 0。源码单元测试另验证跨年/跨月、初始本金、样本方差、
+精确基准日历、缺失数据拒绝与独立 Rust/WASM 统计一致性。测量为预热环境的单次观测，
+本轮没有测量浏览器内存。摘要见
+[research-evaluation-2026-10-01.json](fixtures/benchmarks/research-evaluation-2026-10-01.json)，
+完整报告和独立浏览器 profile 保存在 worktree 外的
+`/home/zs/workspace/bcr-research-benchmarks/evaluation-1`。

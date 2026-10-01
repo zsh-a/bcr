@@ -2,6 +2,8 @@ import type { ArtifactRef, RuntimeServices } from "@bcr/core";
 import { Effect } from "effect";
 import { readJson, restoreResearch } from "./data";
 import type { GridAxis, GridResult } from "./grid";
+import type { BenchmarkBinding } from "./benchmark";
+import type { ReplayVersions } from "./versions";
 import {
   DEFAULT_CONFIG,
   MODEL,
@@ -16,6 +18,8 @@ export const MAX_RUNS = 20;
 type ResearchStorage = Pick<RuntimeServices, "artifacts" | "metadata">;
 export type DatasetRefs = Pick<ResearchDataset, "manifestRef" | "partitions" | "snapshot">;
 export interface ResearchRun {
+  versions?: ReplayVersions;
+  benchmark?: BenchmarkBinding;
   snapshot?: ResearchDataset["snapshot"];
   id: string;
   createdAt: string;
@@ -136,6 +140,7 @@ export type SessionEvent =
   | { type: "finished"; id: string; selected: SelectedRun }
   | { type: "grid-finished"; id: string; grid: SelectedGrid }
   | { type: "forget-grid" }
+  | { type: "benchmark"; runId: string; benchmark?: BenchmarkBinding }
   | { type: "stopped"; id: string; error?: string }
   | { type: "selected"; selected: SelectedRun }
   | { type: "notice"; error: string | null; status?: string }
@@ -213,6 +218,18 @@ export function sessionReducer(state: ResearchSession, event: SessionEvent): Res
         : state;
     case "forget-grid":
       return { ...state, grid: null };
+    case "benchmark": {
+      const patch = (run: ResearchRun): ResearchRun => {
+        if (run.id !== event.runId) return run;
+        const { benchmark: _benchmark, ...remaining } = run;
+        return event.benchmark ? { ...remaining, benchmark: event.benchmark } : remaining;
+      };
+      return {
+        ...state,
+        runs: state.runs.map(patch),
+        selected: state.selected ? { ...state.selected, run: patch(state.selected.run) } : null,
+      };
+    }
     case "stopped":
       return state.operation?.id === event.id
         ? {

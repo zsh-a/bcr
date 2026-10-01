@@ -1525,3 +1525,158 @@
     grid-template-columns: 1fr;
   }
 }
+
+.research-evaluation {
+  padding-top: 22px;
+}
+.research-evaluation-head,
+.research-period-heading,
+.research-evaluation-head > div:last-child,
+.research-benchmark-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.research-evaluation h3 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 6px 0 0;
+}
+.research-evaluation-source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+  margin: 14px 0 22px;
+}
+.research-evaluation-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 22px 0;
+  border-block: 1px solid var(--color-border);
+  margin: 0 0 24px;
+  gap: 20px;
+}
+.research-evaluation-metrics dt {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+.research-evaluation-metrics dd {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  margin: 8px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.research-evaluation-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.research-evaluation-legend > span:first-child {
+  color: var(--color-accent);
+}
+.research-evaluation-legend > span:nth-child(2) {
+  color: #c28a43;
+}
+.research-evaluation-legend small {
+  color: var(--color-text-secondary);
+  margin-left: auto;
+}
+.research-evaluation-chart {
+  height: 240px;
+  width: 100%;
+}
+.research-period-heading {
+  margin: 28px 0 14px;
+}
+.research-period-heading h4 {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+}
+.research-period-heading .ui-select {
+  width: auto;
+}
+.research-period-table td small {
+  display: block;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  margin-top: 5px;
+}
+.research-period-table [data-tone="positive"] {
+  color: var(--color-accent);
+}
+.research-period-table [data-tone="negative"] {
+  color: var(--color-danger);
+}
+.research-evaluation-conventions {
+  margin-top: 22px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.research-evaluation-conventions summary {
+  cursor: pointer;
+}
+.research-evaluation-conventions p {
+  line-height: 1.9;
+}
+.research-evaluation-conventions dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+}
+.research-evaluation-conventions dd {
+  margin: 6px 0;
+  font-family: var(--font-mono);
+}
+.research-evaluation-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.research-benchmark-dialog label {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+  font-size: 12px;
+}
+.research-benchmark-dialog .ui-input,
+.research-benchmark-dialog .ui-select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.research-benchmark-dialog input[type="file"] {
+  max-width: 100%;
+  font-size: 12px;
+}
+.research-benchmark-progress {
+  margin-top: 16px;
+  font-size: 12px;
+}
+@container research (max-width: 40rem) {
+  .research-evaluation-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .research-evaluation-head {
+    align-items: flex-start;
+  }
+  .research-evaluation-head > div:last-child {
+    gap: 0;
+  }
+  .research-evaluation-head button {
+    padding-inline: 8px;
+  }
+  .research-evaluation-legend small {
+    margin-left: 0;
+    width: 100%;
+  }
+}
