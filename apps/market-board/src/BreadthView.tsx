@@ -71,6 +71,7 @@ export default function BreadthView({
     const abort = new AbortController();
     operation.current = abort;
     setBusy(true);
+    setStatus("正在加载数据…");
     setError("");
     return abort;
   };
@@ -116,11 +117,15 @@ export default function BreadthView({
     try {
       await withResearchFiles("shared", () => work(abort));
     } catch (e) {
-      if (!abort.signal.aborted) setError(e instanceof Error ? e.message : String(e));
+      if (!abort.signal.aborted) {
+        setError(e instanceof Error ? e.message : String(e));
+        setStatus("");
+      }
     } finally {
       if (operation.current === abort) {
         operation.current = null;
         setBusy(false);
+        if (abort.signal.aborted) setStatus("已取消操作");
       }
     }
   };
@@ -199,7 +204,7 @@ export default function BreadthView({
         ?.breadth.find((b) => b.industry === selection.industry)
     : undefined;
   return (
-    <section className="ma-breadth-view" aria-label="历史行业宽度">
+    <section className="ma-breadth-view" aria-label="历史行业宽度" aria-busy={busy}>
       <div className="ma-view-heading">
         <div>
           <h1>历史行业宽度</h1>
@@ -247,15 +252,17 @@ export default function BreadthView({
           {error}
         </p>
       )}
-      <div className="ma-operation" role="status">
-        {busy && <Spinner size="sm" />}
-        <span>{status || "选择冻结快照，或从 ClickHouse 获取数据；无需先运行回测。"}</span>
-        {busy && (
-          <Button size="sm" onClick={() => operation.current?.abort()}>
-            取消
-          </Button>
-        )}
-      </div>
+      {(busy || status) && (
+        <div className="ma-operation" role="status">
+          {busy && <Spinner size="sm" />}
+          <span className="ma-operation-message">{status}</span>
+          {busy && (
+            <Button size="sm" onClick={() => operation.current?.abort()}>
+              取消
+            </Button>
+          )}
+        </div>
+      )}
       {dataset && (
         <>
           <div className="ma-data-stamp">
@@ -345,8 +352,8 @@ export default function BreadthView({
       )}
       {!dataset && !busy && (
         <EmptyState
-          title="宽度分析独立于回测"
-          description="可复用 Quant 的本地快照，也可直接读取 ClickHouse。每日指标由 Rust 在浏览器 Worker 中计算。"
+          title="尚未选择数据"
+          description="选择已有快照，或连接 ClickHouse 获取数据。无需先运行回测。"
           action={
             <Button variant="primary" onClick={() => setSourceOpen(true)}>
               连接 ClickHouse
@@ -454,7 +461,7 @@ export default function BreadthView({
         )}
         <p className="ma-operation" role="status">
           {busy && <Spinner size="sm" />}
-          {status}
+          <span className="ma-operation-message">{status}</span>
         </p>
         <div className="ma-dialog-actions">
           <Button onClick={() => void inspect()} disabled={busy}>

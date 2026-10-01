@@ -8,6 +8,7 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 1000
 const page = await context.newPage(),
   errors = [],
   shots = ensureShots();
+let releaseProbe;
 page.on("pageerror", (e) => errors.push(e.message));
 // Deterministic offline quotes exercise labelled fallback and don't depend on market hours.
 await context.route("**/*", async (route) => {
@@ -40,6 +41,73 @@ try {
   await page.getByRole("button", { name: "宽度", exact: true }).click();
   await page.getByRole("heading", { name: "历史行业宽度", exact: true }).waitFor();
   assert((await page.locator(".ma-content").innerText()).includes("无需先运行回测"));
+  await page.getByRole("heading", { name: "尚未选择数据", exact: true }).waitFor();
+  const heldProbe = new Promise((resolve) => {
+    releaseProbe = resolve;
+  });
+  const holdProbe = async (route) => {
+    await heldProbe;
+    await route.abort().catch(() => {});
+  };
+  await context.route("http://localhost:8123/**", holdProbe);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.getByRole("button", { name: "数据源", exact: true }).click();
+  const sourceDialog = page.locator(".ma-source-dialog[open]");
+  await sourceDialog.getByLabel("HTTP 地址", { exact: true }).fill("http://localhost:8123");
+  await sourceDialog.getByRole("button", { name: "检查连接", exact: true }).click();
+  await sourceDialog.locator(".ui-spinner").waitFor();
+  const assertCompactLoading = async (expectedCount) => {
+    const bounds = await page.locator(".ma-operation .ui-spinner").evaluateAll((spinners) =>
+      spinners
+        .filter((spinner) => spinner.offsetWidth > 0 && !spinner.closest("dialog:not([open])"))
+        .map((spinner) => {
+          const box = spinner.getBoundingClientRect();
+          return { width: box.width, height: box.height };
+        }),
+    );
+    assert.equal(bounds.length, expectedCount);
+    assert(
+      bounds.every(({ width, height }) => width <= 24 && height <= 24),
+      `Loading indicators must stay compact while rotating: ${JSON.stringify(bounds)}`,
+    );
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
+  };
+  await assertCompactLoading(2);
+  await sourceDialog.getByRole("button", { name: "关闭", exact: true }).click();
+  await page.locator(".ma-breadth-view .ma-source-dialog").waitFor({ state: "hidden" });
+  await assertCompactLoading(1);
+  assert.equal(await page.locator(".ma-breadth-view").getAttribute("aria-busy"), "true");
+  await page.screenshot({ path: `${shots}/market-breadth-loading.png`, fullPage: true });
+  await page.setViewportSize({ width: 320, height: 844 });
+  await assertCompactLoading(1);
+  await page.getByRole("button", { name: "数据源", exact: true }).click();
+  await assertCompactLoading(2);
+  await sourceDialog.getByRole("button", { name: "取消", exact: true }).click();
+  await sourceDialog.locator(".ui-spinner").waitFor({ state: "hidden" });
+  assert((await sourceDialog.innerText()).includes("已取消操作"));
+  assert.equal(await page.locator(".ma-breadth-view").getAttribute("aria-busy"), "false");
+  await sourceDialog.getByRole("button", { name: "关闭", exact: true }).click();
+  await page.locator(".ma-breadth-view .ma-source-dialog").waitFor({ state: "hidden" });
+  await page.getByRole("heading", { name: "尚未选择数据", exact: true }).waitFor();
+  releaseProbe();
+  await context.unroute("http://localhost:8123/**", holdProbe);
+  const failProbe = (route) =>
+    route.fulfill({ status: 503, contentType: "text/plain", body: "测试数据源暂时不可用" });
+  await context.route("http://localhost:8123/**", failProbe);
+  await page.getByRole("button", { name: "数据源", exact: true }).click();
+  await sourceDialog.getByRole("button", { name: "检查连接", exact: true }).click();
+  await sourceDialog.locator(".ma-error").waitFor();
+  await sourceDialog.locator(".ui-spinner").waitFor({ state: "hidden" });
+  assert.equal(await page.locator(".ma-breadth-view").getAttribute("aria-busy"), "false");
+  assert(!(await sourceDialog.innerText()).includes("正在检查"));
+  await sourceDialog.getByRole("button", { name: "关闭", exact: true }).click();
+  await page.locator(".ma-breadth-view .ma-source-dialog").waitFor({ state: "hidden" });
+  await context.unroute("http://localhost:8123/**", failProbe);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.emulateMedia({ colorScheme: "light" });
   await page.getByRole("button", { name: "自选", exact: true }).click();
   await page.getByRole("button", { name: "新建分组", exact: true }).click();
   await page.getByLabel("分组名称", { exact: true }).fill("行业研究");
@@ -133,7 +201,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "Market architecture browser verification passed: navigation, sectors, lazy details, retained watchlists, Rust breadth, frozen round trip, reload and mobile.",
+    "Market architecture browser verification passed: navigation, sectors, compact loading, cancellation and errors, lazy details, retained watchlists, Rust breadth, frozen round trip, reload and mobile.",
   );
 } catch (error) {
   console.error(
@@ -146,6 +214,7 @@ try {
   );
   throw error;
 } finally {
+  releaseProbe?.();
   await context.close();
   await browser.close();
 }

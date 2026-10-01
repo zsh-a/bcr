@@ -277,9 +277,9 @@ export function App() {
         {view === "breadth" && (
           <Suspense
             fallback={
-              <p className="ma-operation">
+              <p className="ma-operation" role="status">
                 <Spinner size="sm" />
-                正在加载宽度分析…
+                <span className="ma-operation-message">正在加载宽度分析…</span>
               </p>
             }
           >

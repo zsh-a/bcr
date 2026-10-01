@@ -48,9 +48,9 @@ export function StockDetail({
       className="ma-stock-detail"
     >
       {loading ? (
-        <p className="ma-operation">
+        <p className="ma-operation" role="status">
           <Spinner size="sm" />
-          正在获取行情…
+          <span className="ma-operation-message">正在获取行情…</span>
         </p>
       ) : (
         quote && (
@@ -138,9 +138,9 @@ export function StockDetail({
             ) : (
               <section data-dividend-ledger>
                 {dividend.loading ? (
-                  <p className="ma-operation">
+                  <p className="ma-operation" role="status">
                     <Spinner size="sm" />
-                    正在加载分红记录…
+                    <span className="ma-operation-message">正在加载分红记录…</span>
                   </p>
                 ) : actions && actions.events.length > 0 ? (
                   <>

@@ -544,8 +544,10 @@
   font-size: var(--text-sm);
   margin: var(--space-3) 0;
 }
-.ma-operation > span {
+.ma-operation-message {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .ma-breadth-toolbar {
   display: flex;

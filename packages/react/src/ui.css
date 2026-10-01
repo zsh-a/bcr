@@ -731,6 +731,7 @@
 
 .ui-spinner {
   display: inline-block;
+  flex: none;
   width: 16px;
   height: 16px;
   border: 2px solid color-mix(in srgb, var(--color-muted) 30%, transparent);

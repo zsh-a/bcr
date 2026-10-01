@@ -304,7 +304,7 @@ export function SectorDetail({
           {loading && (
             <p className="ma-operation" role="status">
               <Spinner size="sm" />
-              正在加载成分股…
+              <span className="ma-operation-message">正在加载成分股…</span>
             </p>
           )}
           {error && (
