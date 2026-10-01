@@ -8,6 +8,8 @@ pub const MAX_ORDERS: usize = 200_000;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Config {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub research_window: Option<ResearchWindow>,
     #[serde(default = "research_model")]
     pub execution_model: String,
     #[serde(default)]
@@ -28,6 +30,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            research_window: None,
             execution_model: research_model(),
             fees: vec![],
             participation: default_participation(),
@@ -46,6 +49,13 @@ impl Default for Config {
 }
 impl Config {
     pub fn validate(&self) -> Result<(), String> {
+        if self
+            .research_window
+            .as_ref()
+            .is_some_and(|w| !valid_date(w.start) || !valid_date(w.end) || w.start > w.end)
+        {
+            return Err("invalid research window".into());
+        }
         if !["jsg-adjusted-v1", "jsg-raw-v2"].contains(&self.execution_model.as_str())
             || !self.participation.is_finite()
             || !(0.0..=1.0).contains(&self.participation)
@@ -92,6 +102,12 @@ impl Config {
         }
         Ok(())
     }
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ResearchWindow {
+    pub start: u32,
+    pub end: u32,
 }
 fn research_model() -> String {
     "jsg-adjusted-v1".into()
@@ -399,6 +415,8 @@ pub struct Metrics {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ResultData {
+    pub diagnostics: crate::research::Diagnostics,
+    pub research: Vec<crate::research::ResearchDay>,
     pub metrics: Metrics,
     pub equity: Vec<Equity>,
     pub orders: Vec<Order>,
@@ -433,6 +451,7 @@ pub struct Breadth {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputChunk {
+    pub research: Vec<crate::research::ResearchDay>,
     pub equity: Vec<Equity>,
     pub orders: Vec<Order>,
     pub decisions: Vec<Decision>,

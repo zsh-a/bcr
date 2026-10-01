@@ -1,5 +1,6 @@
 import type { ArtifactRef } from "@bcr/core";
 import type { ClickHouseProfile } from "./clickhouse-http";
+import type { Diagnostics, ResearchDay } from "./research-model";
 
 export const MAX_PARTITION_BYTES = 32 * 1024 * 1024;
 export const MAX_MANIFEST_BYTES = 4 * 1024 * 1024;
@@ -30,6 +31,7 @@ export interface DataQuality {
   priceLimits: "daily" | "static";
 }
 export interface JsgConfig {
+  researchWindow?: { start: number; end: number };
   executionModel?: "jsg-adjusted-v1" | "jsg-raw-v2";
   fees?: FeeSchedule[];
   participation?: number;
@@ -86,6 +88,8 @@ export interface ResearchDataset {
   partitions: ArtifactRef[];
 }
 export interface JsgResult {
+  diagnostics?: Diagnostics;
+  research?: ResearchDay[];
   timings?: {
     totalMs: number;
     readMs: number;
@@ -307,6 +311,12 @@ export function parseManifest(value: unknown): ResearchManifest {
   };
 }
 export function validateConfig(config: JsgConfig): void {
+  if (config.researchWindow) {
+    dateValue(config.researchWindow.start);
+    dateValue(config.researchWindow.end);
+    if (config.researchWindow.start > config.researchWindow.end)
+      throw new Error("研究窗口日期无效");
+  }
   if (
     config.executionModel !== undefined &&
     config.executionModel !== "jsg-adjusted-v1" &&

@@ -141,6 +141,30 @@ async function setup() {
   return { store, services: { artifacts, scheduler }, state, caches, journal, dataset, put, run };
 }
 describe("research storage lifecycle", () => {
+  it("protects validation and its input snapshot until the study is removed", async () => {
+    const s = await setup(),
+      run = await s.run("study-source", false);
+    const resultRef = ref("jsg/study/kept", "quant/jsg-study-result");
+    await s.put(resultRef, { version: 1 });
+    const request = {
+      mode: "cost" as const,
+      objective: "sharpe" as const,
+      axes: [],
+      trainPercent: 70,
+      trainDays: 60,
+      testDays: 20,
+    };
+    s.state.study = {
+      run: { ...run, resultRef },
+      dataset: s.dataset,
+      result: { version: 1, request, training: [], folds: [], costs: [], costBase: DEFAULT_CONFIG },
+    };
+    const kept = await planResearchCleanup(s.services, s.state, s.store);
+    expect(kept.candidates.some((c) => c.id === resultRef.id)).toBe(false);
+    s.state.study = null;
+    const removed = await planResearchCleanup(s.services, s.state, s.store);
+    expect(removed.candidates.some((c) => c.id === resultRef.id)).toBe(true);
+  });
   it("retains frozen benchmark files until their run binding is removed", async () => {
     const s = await setup(),
       run = await s.run("with-benchmark", false);

@@ -6,6 +6,7 @@ import type { ResultRequest, ResultResponse } from "../jsg/result-reader";
 import { withResearchFiles } from "../jsg/file-lease";
 import { evaluateResult } from "../jsg/evaluation";
 import { readBenchmark } from "../jsg/benchmark";
+import { researchSummary, researchDay, breadthHistory } from "../jsg/research-analysis";
 
 const scope = globalThis as unknown as {
   postMessage: (value: ResultResponse) => void;
@@ -79,33 +80,58 @@ scope.onmessage = (event) => {
     try {
       controller.signal.throwIfAborted();
       const value =
-        message.type === "evaluation"
-          ? await evaluateResult(
-              services,
-              message.result,
-              message.capital,
-              message.dates,
-              message.baselineDate,
-              message.benchmark ? await readBenchmark(services, message.benchmark) : undefined,
-              controller.signal,
-            )
-          : message.type === "orders"
-            ? await queryOrders(
+        message.type === "research-summary"
+          ? await researchSummary(services, message.result, message.capital, controller.signal)
+          : message.type === "research-day"
+            ? await researchDay(
                 services,
                 message.result,
-                message.filter,
+                message.date,
                 message.offset,
                 controller.signal,
               )
-            : message.type === "curve"
-              ? await queryCurve(
+            : message.type === "breadth-history"
+              ? await breadthHistory(
                   services,
                   message.result,
                   message.from,
                   message.to,
                   controller.signal,
                 )
-              : await queryDecision(services, message.result, message.date, controller.signal);
+              : message.type === "evaluation"
+                ? await evaluateResult(
+                    services,
+                    message.result,
+                    message.capital,
+                    message.dates,
+                    message.baselineDate,
+                    message.benchmark
+                      ? await readBenchmark(services, message.benchmark)
+                      : undefined,
+                    controller.signal,
+                  )
+                : message.type === "orders"
+                  ? await queryOrders(
+                      services,
+                      message.result,
+                      message.filter,
+                      message.offset,
+                      controller.signal,
+                    )
+                  : message.type === "curve"
+                    ? await queryCurve(
+                        services,
+                        message.result,
+                        message.from,
+                        message.to,
+                        controller.signal,
+                      )
+                    : await queryDecision(
+                        services,
+                        message.result,
+                        message.date,
+                        controller.signal,
+                      );
       if (!controller.signal.aborted) scope.postMessage({ id: message.id, value });
     } catch (error) {
       scope.postMessage({

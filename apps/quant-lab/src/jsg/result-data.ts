@@ -6,7 +6,10 @@ export type ResultStorage = {
   artifacts: Pick<RuntimeServices["artifacts"], "get">;
   readChunk?: (ref: ArtifactRef, signal: AbortSignal) => Promise<ResultChunk>;
 };
-export type ResultSource = Pick<JsgResult, "chunks" | "equity" | "orders" | "decisions">;
+export type ResultSource = Pick<
+  JsgResult,
+  "chunks" | "equity" | "orders" | "decisions" | "research" | "diagnostics"
+>;
 export const ORDER_PAGE_SIZE = 50;
 export interface OrderFilter {
   from: string;
@@ -16,7 +19,7 @@ export interface OrderFilter {
   status: string;
 }
 export const EMPTY_ORDER_FILTER: OrderFilter = { from: "", to: "", code: "", side: "", status: "" };
-export type ResultChunk = Pick<JsgResult, "equity" | "orders" | "decisions">;
+export type ResultChunk = Pick<JsgResult, "equity" | "orders" | "decisions" | "research">;
 export const chunkData = (services: ResultStorage, ref: ArtifactRef, signal: AbortSignal) =>
   services.readChunk ? services.readChunk(ref, signal) : readJson<ResultChunk>(services, ref);
 export async function queryOrders(

@@ -80,6 +80,7 @@ function datasets(state: ResearchSession): DatasetRefs[] {
     ...state.runs.map((r) => r.dataset),
     ...(state.selected ? [state.selected.dataset] : []),
     ...(state.grid ? [state.grid.dataset] : []),
+    ...(state.study ? [state.study.dataset] : []),
   ];
 }
 export async function protectedResearchIds(
@@ -88,6 +89,7 @@ export async function protectedResearchIds(
 ): Promise<Set<string>> {
   const roots = new Set<string>();
   if (state.grid) roots.add(state.grid.run.resultRef.id);
+  if (state.study) roots.add(state.study.run.resultRef.id);
   for (const d of datasets(state))
     for (const ref of [d.manifestRef, ...d.partitions]) roots.add(ref.id);
   const retained = new Map(state.runs.map((run) => [run.id, run]));

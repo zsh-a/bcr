@@ -5,6 +5,58 @@ and Quant Lab's WASM Worker. It migrates the daily JSG workflow from quent:
 20-bar industry breadth, profitability/ST filters, smallest market-cap targets,
 weekly rebalance, limit-up opening exits, and optional portfolio/position stops.
 
+## Research diagnostics and validation
+
+The single-run engine now emits input diagnostics and daily research observations.
+In the workbench, the data-quality badge shows covered sessions, warmup, source
+freshness at acquisition, universe coverage and observed financial/industry gaps.
+Universe coverage is observed rows / (instruments × active sessions); an absent
+pre-listing or post-delisting row is not automatically a missing-data error. A
+nonpositive profit observation is not automatically a missing financial report.
+PIT capability labels are snapshot declarations; diagnostics cannot create absent
+membership history, financial revisions or corporate-action events.
+
+The ledger uses actual fills, not matched buy/sell pairs: per-code net profit is
+net trading/distribution cashflow + marked value + distribution receivables.
+Fees are included, and slippage is already in execution prices. Unrealized profit
+uses weighted acquisition cost including buy fees, redistributed over bonus shares;
+cash distributions accrue as realized income and do not reduce acquisition cost.
+Realized profit is net profit minus unrealized profit; the strategy's existing
+distribution-adjusted risk cost remains unchanged. The adjusted research model retains adjusted
+price units. Daily cash + holdings + receivables and daily P&L are reconciled;
+stale holding marks retain their actual last observation date. Sector contribution
+accumulates daily P&L under that day's sector, while exposure uses closing value.
+CSV exports the complete per-code ledger; the escaped, standalone HTML report can
+be printed to PDF. Drawdown episodes and 63-session return/volatility/Sharpe use
+the complete daily account history; the rolling display is bounded to 1,024 points.
+
+Industry breadth is recorded every active day using the same MA20 history and
+rounding as strategy signals. Historical heatmaps page through at most 63 sessions.
+Rebalance explanations retain every selection-universe observation, market-cap
+rank, filtering reason and tradability. Suspended securities remain candidates,
+as in the original engine; their orders are subject to execution restrictions.
+
+Parameter experiments provide a two-axis sensitivity map; additional dimensions
+are fixed by explicit filters. Robustness validation works against the already
+frozen dataset. Holdout splits by chronological trading sessions; rolling tests
+follow trailing training windows, never overlap and include only complete test
+windows. Selection uses only training metrics, with input order breaking ties.
+Each train/test portfolio starts from equal capital and no holdings; earlier
+prices supply indicator warmup. Test returns are not concatenated as a continuous
+portfolio. `researchWindow: {start: YYYYMMDD, end: YYYYMMDD}` is available to native
+and WASM configs; later bars are validated but never mark the window's holdings.
+Training combinations × folds are bounded to 64 and use shared Rust factors.
+Cost pressure holds the draft parameters fixed and scales commission, slippage,
+dated commission, minimum commission, transfer fees and sell taxes by 0.5/1/2/3.
+
+Browser research output drains daily and packs up to five sessions or 8 MiB per
+file, with a hard 32 MiB file limit. Only result previews enter the main result;
+full analysis uses the existing OPFS query Worker. Native large runs should use
+`--jsonl`; retained research rows are bounded when streaming is disabled.
+Completed validation and its data snapshot survive reload and are protected from
+storage cleanup. Older runs without research observations can be replayed to
+produce the ledger and diagnostics.
+
 ## Run
 
 ```sh

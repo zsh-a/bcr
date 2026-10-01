@@ -1,4 +1,4 @@
-import type { RuntimeServices, TaskHandle } from "@bcr/core";
+import { contentHash, type ArtifactRef, type RuntimeServices, type TaskHandle } from "@bcr/core";
 import { Effect } from "effect";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { importResearch, readJson } from "./data";
@@ -11,6 +11,13 @@ import { validateGrid, type GridAxis, type GridResult } from "./grid";
 import { replayVersions } from "./versions";
 import type { BenchmarkBinding } from "./benchmark";
 import {
+  validationPlan,
+  selectValidationTests,
+  costStress,
+  type ValidationRequest,
+  type ValidationResult,
+} from "./validation";
+import {
   DEFAULT_CONFIG,
   MODEL,
   validateConfig,
@@ -21,6 +28,7 @@ import {
 import {
   copyConfig,
   canonicalConfig,
+  configKey,
   initialSession,
   readRun,
   readDataset,
@@ -105,6 +113,7 @@ export function useResearch(services: RuntimeServices) {
     state.runs,
     state.selected,
     state.grid,
+    state.study,
   ]);
   const start = (kind: ResearchOperation["kind"], label: string): Active | null => {
     if (active.current !== null || !current.current.ready) return null;
@@ -181,8 +190,8 @@ export function useResearch(services: RuntimeServices) {
           ...(dataset.snapshot ? { snapshot: dataset.snapshot } : {}),
         },
         name: dataset.manifest.name,
-        startDate: dataset.manifest.startDate,
-        endDate: dataset.manifest.endDate,
+        startDate: config.researchWindow?.start ?? dataset.manifest.startDate,
+        endDate: config.researchWindow?.end ?? dataset.manifest.endDate,
         resultRef: ref,
         metrics: result.metrics,
         durationMs: performance.now() - began,
@@ -428,6 +437,143 @@ export function useResearch(services: RuntimeServices) {
       if (active.current === token) active.current = null;
     }
   };
+  const runValidation = async (request: ValidationRequest) => {
+    const dataset = current.current.dataset;
+    if (!dataset) return;
+    const base = canonicalConfig(current.current.draft);
+    let plan: ReturnType<typeof validationPlan>, costs: ReturnType<typeof costStress>;
+    try {
+      plan = validationPlan(dataset.manifest, base, request);
+      costs = costStress(base);
+    } catch (error) {
+      send({ type: "notice", error: message(error) });
+      return;
+    }
+    const token = start("grid", "准备稳健性验证…");
+    if (!token) return;
+    const began = performance.now();
+    const batch = async (configs: JsgConfig[], stage: string): Promise<GridResult> => {
+      validateGrid(configs);
+      progress(token, stage, 0, "grid");
+      const memoryMB =
+        256 +
+        Math.ceil(
+          (configs.length *
+            (dataset.manifest.instruments.length * 128 +
+              JSON.stringify(dataset.manifest).length * 2)) /
+            1048576,
+        );
+      const handle = await Effect.runPromise(
+        services.scheduler.submit({
+          id: `jsg-study-${token.id}-${stage.startsWith("训练") ? "train" : stage.startsWith("测试") ? "test" : "cost"}`,
+          runtime: "wasm",
+          operation: "quant.grid.jsg",
+          inputs: [
+            { ...dataset.manifestRef, port: "manifest" },
+            ...dataset.partitions.map((ref, i) => ({ ...ref, port: `partition-${i}` })),
+          ],
+          outputs: [
+            { name: "result", type: "quant/jsg-grid-result", storage: "opfs", format: "json" },
+          ],
+          resources: { memoryMB, threads: 1 },
+          cache: { enabled: true },
+          config: { strategies: configs },
+        }),
+      );
+      token.handle = handle;
+      if (token.abort.signal.aborted) {
+        await Effect.runPromise(handle.cancel);
+        token.abort.signal.throwIfAborted();
+      }
+      const unsubscribe = handle.state.subscribe(() => {
+        if (!token.abort.signal.aborted)
+          progress(token, stage, handle.state.getSnapshot().progress);
+      });
+      try {
+        const outputs = await Effect.runPromise(handle.await);
+        token.abort.signal.throwIfAborted();
+        const ref = outputs.find((r) => r.type === "quant/jsg-grid-result");
+        if (!ref) throw new Error("验证没有产生结果");
+        const result = await readJson<GridResult>(services, ref);
+        if (result.results.length !== configs.length) throw new Error("验证结果不完整");
+        return result;
+      } finally {
+        unsubscribe();
+        token.handle = null;
+      }
+    };
+    try {
+      const training = plan.training.length
+        ? await batch(plan.training, `训练 · ${plan.training.length} 组`)
+        : { results: [], decodedRows: 0 };
+      token.abort.signal.throwIfAborted();
+      const choices = selectValidationTests(plan, training, request.objective);
+      const tests = choices.length
+        ? await batch(
+            choices.map((c) => c.config),
+            `测试 · ${choices.length} 个窗口`,
+          )
+        : { results: [], decodedRows: 0 };
+      const costResult = await batch(costs.configs, "成本压力 · 0.5 / 1 / 2 / 3 倍");
+      token.abort.signal.throwIfAborted();
+      const result: ValidationResult = {
+        version: 1,
+        request: structuredClone(request),
+        training: training.results,
+        costBase: base,
+        folds: plan.folds.map((f, i) => ({
+          ...f,
+          config: choices[i]!.config,
+          trainMetrics: choices[i]!.trainMetrics,
+          testMetrics: tests.results[i]!.metrics,
+        })),
+        costs: costs.rows.map((r) => ({
+          multiplier: r.multiplier,
+          metrics: costResult.results.find((c) => configKey(c.config) === configKey(r.config))!
+            .metrics,
+        })),
+      };
+      const bytes = new TextEncoder().encode(JSON.stringify(result));
+      const resultRef: ArtifactRef = {
+        id: `jsg/study/${token.id}`,
+        hash: contentHash(bytes),
+        type: "quant/jsg-study-result",
+        format: "json",
+        storage: "opfs",
+      };
+      await Effect.runPromise(services.artifacts.put(resultRef, bytes));
+      token.abort.signal.throwIfAborted();
+      send({
+        type: "study-finished",
+        id: token.id,
+        study: {
+          dataset,
+          result,
+          run: {
+            versions: replayVersions(true),
+            id: token.id,
+            createdAt: new Date().toISOString(),
+            dataset: {
+              manifestRef: dataset.manifestRef,
+              partitions: dataset.partitions,
+              ...(dataset.snapshot ? { snapshot: dataset.snapshot } : {}),
+            },
+            ...(dataset.snapshot ? { snapshot: structuredClone(dataset.snapshot) } : {}),
+            name: dataset.manifest.name,
+            startDate: dataset.manifest.startDate,
+            endDate: dataset.manifest.endDate,
+            resultRef,
+            durationMs: performance.now() - began,
+            cached: false,
+          },
+        },
+      });
+    } catch (error) {
+      stop(token, error);
+    } finally {
+      if (active.current === token) active.current = null;
+    }
+  };
   const selectRun = async (id: string) => {
     const run = current.current.runs.find((item) => item.id === id);
     if (!run) return;
@@ -453,6 +599,9 @@ export function useResearch(services: RuntimeServices) {
     ) => withResearchFiles("shared", () => runGrid(configs, axes, source)),
     viewGridResult: (index: number) => withResearchFiles("shared", () => viewGridResult(index)),
     forgetGrid: () => send({ type: "forget-grid" }),
+    runValidation: (request: ValidationRequest) =>
+      withResearchFiles("shared", () => runValidation(request)),
+    forgetStudy: () => send({ type: "forget-study" }),
     attachBenchmark: (runId: string, benchmark?: BenchmarkBinding) =>
       send({ type: "benchmark", runId, ...(benchmark ? { benchmark } : {}) }),
     connectAndRun: (connection: ClickHouseConnection, range: ClickHouseRange) =>

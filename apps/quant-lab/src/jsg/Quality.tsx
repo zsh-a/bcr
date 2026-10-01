@@ -1,9 +1,18 @@
 import { useState } from "react";
 import { Badge, Dialog } from "@bcr/react";
 import { CircleCheck, Info } from "lucide-react";
-import type { JsgResult, ResearchManifest } from "./model";
+import { dateText, type JsgResult, type ResearchManifest, type ResearchDataset } from "./model";
+import { percent } from "./Orders";
 
-export function Quality({ manifest, result }: { manifest: ResearchManifest; result?: JsgResult }) {
+export function Quality({
+  manifest,
+  result,
+  snapshot,
+}: {
+  manifest: ResearchManifest;
+  result?: JsgResult;
+  snapshot?: ResearchDataset["snapshot"];
+}) {
   const [open, setOpen] = useState(false);
   const complete =
     manifest.universeMode === "historical" &&
@@ -42,6 +51,33 @@ export function Quality({ manifest, result }: { manifest: ResearchManifest; resu
         </p>
         <dl className="research-facts">
           {[
+            ["请求区间", `${dateText(manifest.startDate)} — ${dateText(manifest.endDate)}`],
+            [
+              "交易日 / 预热日",
+              `${manifest.calendar.filter((d) => d.date >= manifest.startDate).length} / ${manifest.calendar.filter((d) => d.date < manifest.startDate).length}`,
+            ],
+            [
+              "证券 / 行业",
+              `${manifest.instruments.length.toLocaleString()} / ${manifest.industries.length.toLocaleString()}`,
+            ],
+            [
+              "冻结数据",
+              `${manifest.partitions.reduce((n, p) => n + p.rows, 0).toLocaleString()} 行 · ${(manifest.partitions.reduce((n, p) => n + p.bytes, 0) / 1048576).toFixed(1)} MiB`,
+            ],
+            [
+              "快照获取时间",
+              snapshot
+                ? new Date(snapshot.createdAt).toLocaleString("zh-CN")
+                : "导入文件 · 获取时间未知",
+            ],
+            ["获取时源数据最新日", snapshot?.sourceLastDate ?? "未知"],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+          {[
             [
               "成分股",
               manifest.universeMode === "historical"
@@ -69,6 +105,65 @@ export function Quality({ manifest, result }: { manifest: ResearchManifest; resu
             </div>
           ))}
         </dl>
+        <p className="research-help">
+          新鲜度基于获取时的源覆盖与快照时间；冻结结果不会随源库更新。历史能力按快照声明展示。
+        </p>
+        {result?.diagnostics ? (
+          <>
+            <h3>本次窗口观测诊断</h3>
+            <dl className="research-facts">
+              {[
+                [
+                  "实际观测范围",
+                  `${result.diagnostics.firstDate} — ${result.diagnostics.lastDate}`,
+                ],
+                [
+                  "实际行情观测",
+                  `${result.diagnostics.rows.toLocaleString()} 行 · ${result.diagnostics.days} 日`,
+                ],
+                [
+                  "宇宙格点覆盖率",
+                  percent(result.diagnostics.rows / Math.max(1, result.diagnostics.instrumentDays)),
+                ],
+                [
+                  "无正利润观测",
+                  percent(
+                    result.diagnostics.nonPositiveProfit / Math.max(1, result.diagnostics.rows),
+                  ),
+                ],
+                [
+                  "股本不可用率",
+                  percent(result.diagnostics.zeroShares / Math.max(1, result.diagnostics.rows)),
+                ],
+                [
+                  "行业未知率",
+                  percent(
+                    result.diagnostics.unknownIndustry / Math.max(1, result.diagnostics.rows),
+                  ),
+                ],
+                [
+                  "停牌 / ST 观测",
+                  `${result.diagnostics.suspended.toLocaleString()} / ${result.diagnostics.st.toLocaleString()}`,
+                ],
+                [
+                  "持仓沿用旧价格",
+                  `${result.diagnostics.staleHeldMarks.toLocaleString()} 个证券交易日`,
+                ],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="research-help">
+              格点覆盖以证券宇宙 ×
+              交易日为分母，上市前、退市后和停牌可能没有行情，因此未覆盖格点不等同于数据缺失。无正利润观测也不等同于缺失财报。
+            </p>
+          </>
+        ) : result ? (
+          <p className="research-help">此运行尚无观测诊断，重新回测后可查看。</p>
+        ) : null}
         {warnings.length > 0 && (
           <ul className="research-warning-list">
             {warnings.map((warning) => (

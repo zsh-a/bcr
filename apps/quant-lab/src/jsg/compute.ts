@@ -52,17 +52,20 @@ export function jsgHandler(io: ArtifactIO, factory: Factory = createSession) {
         decisions: [],
       };
       let lastDrain = 0;
-      const drain = async () => {
-        if (!streamed) return;
-        const computeStart = performance.now();
-        const chunk = JSON.parse(engine.drain_output!()) as Pick<
-          JsgResult,
-          "equity" | "orders" | "decisions"
-        >;
-        timings.computeMs += performance.now() - computeStart;
-        lastDrain = engine.processed_days();
-        if (chunk.equity.length === 0 && chunk.orders.length === 0 && chunk.decisions.length === 0)
-          return;
+      let buffered: Pick<JsgResult, "equity" | "orders" | "decisions" | "research"> = {
+        equity: [],
+        orders: [],
+        decisions: [],
+        research: [],
+      };
+      let bufferedBytes = 0;
+      const flush = async () => {
+        const chunk = buffered;
+        if (!chunk.equity.length && !chunk.orders.length && !chunk.decisions.length) return;
+        buffered = { equity: [], orders: [], decisions: [], research: [] };
+        bufferedBytes = 0;
+        if (new TextEncoder().encode(JSON.stringify(chunk)).byteLength > MAX_PARTITION_BYTES)
+          throw new Error("单日研究结果超过 32 MiB，请减少目标股票数或数据宇宙");
         const writeStart = performance.now();
         const ref = await io.writeTypedJsonArtifact(
           outputNamespace,
@@ -104,6 +107,22 @@ export function jsgHandler(io: ArtifactIO, factory: Factory = createSession) {
         preview.orders = preview.orders.concat(chunk.orders).slice(-200);
         preview.decisions = preview.decisions.concat(chunk.decisions).slice(-1);
       };
+      const drain = async (final = false) => {
+        if (!streamed) return;
+        const computeStart = performance.now();
+        const json = engine.drain_output!();
+        const chunk = JSON.parse(json) as typeof buffered;
+        const bytes = new TextEncoder().encode(json).byteLength;
+        timings.computeMs += performance.now() - computeStart;
+        lastDrain = engine.processed_days();
+        if (bufferedBytes + bytes > 8 * 1024 * 1024) await flush();
+        buffered.equity.push(...chunk.equity);
+        buffered.orders.push(...chunk.orders);
+        buffered.decisions.push(...chunk.decisions);
+        buffered.research!.push(...(chunk.research ?? []));
+        bufferedBytes += bytes;
+        if (final || buffered.equity.length >= 5 || bufferedBytes >= 8 * 1024 * 1024) await flush();
+      };
       let yieldedAt = performance.now() - 16;
       for (const [index, partition] of manifest.partitions.entries()) {
         throwIfAborted(ctx);
@@ -124,7 +143,7 @@ export function jsgHandler(io: ArtifactIO, factory: Factory = createSession) {
           const advanced = engine.advance();
           timings.computeMs += performance.now() - computeStart;
           if (!advanced) break;
-          if (streamed && engine.processed_days() - lastDrain >= 5) await drain();
+          if (streamed && engine.processed_days() > lastDrain) await drain();
           // Keep cancellation responsive without paying a timer for every small day.
           if (performance.now() - yieldedAt >= 16) {
             ctx.progress(
@@ -141,7 +160,7 @@ export function jsgHandler(io: ArtifactIO, factory: Factory = createSession) {
         timings.partitions++;
       }
       throwIfAborted(ctx);
-      await drain();
+      await drain(true);
       const finishStart = performance.now();
       const result = JSON.parse(engine.finish()) as JsgResult;
       timings.computeMs += performance.now() - finishStart;

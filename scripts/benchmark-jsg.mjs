@@ -120,6 +120,7 @@ try {
   await phase("chart");
   const chartStart = performance.now();
   const firstPoint = result.equity[0];
+  await page.locator(".research-chart-inspector > summary").click();
   await page.getByLabel("查看净值日期", { exact: true }).fill(firstPoint.date);
   const cash = new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(firstPoint.cash);
   await page

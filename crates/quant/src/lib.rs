@@ -4,6 +4,7 @@ pub mod model;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod native;
 pub mod reader;
+pub mod research;
 mod source;
 
 use arrow_ipc::reader::StreamReader;

@@ -1,4 +1,5 @@
 use crate::model::*;
+use crate::research::{Account, Candidate, Diagnostics, LedgerRow, ResearchDay};
 use std::collections::{BTreeSet, VecDeque};
 
 #[derive(Clone, Default)]
@@ -49,17 +50,33 @@ pub struct Engine {
     total_filled: usize,
     total_rejected: usize,
     total_fees: f64,
+    research_enabled: bool,
+    accounts: Vec<Account>,
+    research: Vec<ResearchDay>,
+    diagnostics: Diagnostics,
+    research_cells: usize,
 }
 impl Engine {
     pub(crate) fn new_shared(manifest: Manifest, config: Config) -> Result<Self, String> {
         let mut engine = Self::new(manifest, config)?;
         engine.histories = Vec::new();
+        engine.research_enabled = false;
+        engine.accounts = Vec::new();
         engine.enable_streaming();
         Ok(engine)
     }
     pub fn new(manifest: Manifest, config: Config) -> Result<Self, String> {
         manifest.validate()?;
         config.validate()?;
+        if let Some(w) = &config.research_window {
+            if w.start < manifest.start_date
+                || w.end > manifest.end_date
+                || !manifest.calendar.iter().any(|d| d.date == w.start)
+                || !manifest.calendar.iter().any(|d| d.date == w.end)
+            {
+                return Err("research window must use covered trading sessions".into());
+            }
+        }
         let count = manifest.instruments.len();
         let capital = config.initial_capital;
         if config.execution_model == "jsg-raw-v2" {
@@ -110,13 +127,23 @@ impl Engine {
             total_filled: 0,
             total_rejected: 0,
             total_fees: 0.0,
+            research_enabled: true,
+            accounts: vec![Account::default(); count],
+            research: vec![],
+            research_cells: 0,
+            diagnostics: Diagnostics {
+                version: 1,
+                ..Diagnostics::default()
+            },
         })
     }
     pub fn enable_streaming(&mut self) {
         self.streamed = true;
     }
     pub fn drain_output(&mut self) -> OutputChunk {
+        self.research_cells = 0;
         OutputChunk {
+            research: std::mem::take(&mut self.research),
             equity: std::mem::take(&mut self.equity),
             orders: std::mem::take(&mut self.orders),
             decisions: std::mem::take(&mut self.decisions),
@@ -211,6 +238,21 @@ impl Engine {
         if book.iter().all(Option::is_none) {
             return Err("empty trading day".into());
         }
+        let start = self
+            .config
+            .research_window
+            .as_ref()
+            .map_or(self.manifest.start_date, |w| w.start);
+        let end = self
+            .config
+            .research_window
+            .as_ref()
+            .map_or(self.manifest.end_date, |w| w.end);
+        // Validate the complete frozen input, but never mark or trade using data beyond a window.
+        if session.date > end {
+            self.next_session += 1;
+            return Ok(());
+        }
         for position in &mut self.positions {
             position.today = 0;
         }
@@ -220,7 +262,7 @@ impl Engine {
         }
         let first_order = self.orders.len();
         let first_decision = self.decisions.len();
-        let trading = session.date >= self.manifest.start_date;
+        let trading = session.date >= start;
         if trading {
             // Sales release cash before purchases; a rejected next-open order expires that day.
             let mut pending = std::mem::take(&mut self.pending);
@@ -235,6 +277,10 @@ impl Engine {
                 let adjusted = bar.close * bar.adjfactor;
                 let mark = if raw_model { bar.close } else { adjusted };
                 self.positions[id].mark = mark;
+                if self.research_enabled {
+                    self.accounts[id].industry = bar.industry;
+                    self.accounts[id].mark_date = session.date;
+                }
                 if features.is_none() {
                     let history = &mut self.histories[id];
                     if history.len() == 20 {
@@ -298,6 +344,9 @@ impl Engine {
                 drawdown: equity / self.equity_peak - 1.0,
                 holdings: self.positions.iter().filter(|p| p.quantity > 0).count(),
             });
+            if self.research_enabled {
+                self.observe(session.date, session.rebalance, &book, first_decision)?;
+            }
         }
         if trading && self.audit_enabled {
             self.audit = Some(AuditDay {
@@ -356,6 +405,11 @@ impl Engine {
                 };
                 p.peak = (p.peak - a.cash_per_share) / (1.0 + a.share_ratio);
                 self.receivables += distribution;
+                if self.research_enabled {
+                    self.accounts[a.id].dirty = true;
+                    self.accounts[a.id].receivable += distribution;
+                    self.accounts[a.id].income += distribution;
+                }
                 // An overnight order no longer represents the original signal after an ex event.
                 self.pending.retain(|o| o.id != a.id);
             }
@@ -365,6 +419,11 @@ impl Engine {
                     + exact.fract() * a.fractional_cash_price;
                 self.receivables -= distribution;
                 self.cash += distribution;
+                if self.research_enabled {
+                    self.accounts[a.id].dirty = true;
+                    self.accounts[a.id].receivable -= distribution;
+                    self.accounts[a.id].cashflow += distribution;
+                }
             }
         }
         if self.receivables.abs() < 1e-7 {
@@ -586,6 +645,22 @@ impl Engine {
             }
         }
         self.total_fees += fee;
+        if self.research_enabled && quantity > 0 {
+            let a = &mut self.accounts[order.id];
+            a.dirty = true;
+            if order.buy {
+                a.basis += quantity as f64 * price + fee;
+            } else {
+                let remaining = self.positions[order.id].quantity;
+                a.basis *= remaining as f64 / (remaining + quantity) as f64;
+            }
+            a.cashflow += if order.buy {
+                -(quantity as f64 * price + fee)
+            } else {
+                quantity as f64 * price - fee
+            };
+            a.fees += fee;
+        }
         if quantity > 0 {
             self.total_filled += 1;
         } else {
@@ -753,6 +828,147 @@ impl Engine {
     fn breadth(&self, book: &[Option<Bar>]) -> Vec<Breadth> {
         crate::features::breadth(&self.manifest, book.iter().flatten(), &self.histories)
     }
+    fn observe(
+        &mut self,
+        date: u32,
+        rebalance: bool,
+        book: &[Option<Bar>],
+        first_decision: usize,
+    ) -> Result<(), String> {
+        let day = date_text(date);
+        let equity = self.account_equity();
+        let d = &mut self.diagnostics;
+        d.days += 1;
+        d.instrument_days += book.len();
+        d.first_date.get_or_insert_with(|| day.clone());
+        d.last_date = Some(day.clone());
+        d.stale_held_marks = self.missing_marks;
+        for b in book.iter().flatten() {
+            d.rows += 1;
+            d.non_positive_profit += usize::from(b.profit <= 0.0);
+            d.zero_shares += usize::from(b.shares == 0.0);
+            d.unknown_industry += usize::from(self.manifest.industries[b.industry] == "unknown");
+            d.suspended += usize::from(!b.tradable);
+            d.st += usize::from(b.is_st);
+        }
+        let breadth = self.breadth(book);
+        let candidates = if rebalance {
+            let ids = crate::features::candidates(&self.manifest, book.iter().flatten());
+            let mut ranks = vec![None; book.len()];
+            for (i, id) in ids.iter().enumerate() {
+                ranks[*id] = Some(i + 1);
+            }
+            let decision = self.decisions.get(first_decision);
+            let blocked = match decision {
+                None => Some("portfolio-stop"),
+                Some(d) if d.top_industry.is_none() => Some("insufficient-history"),
+                Some(d)
+                    if d.top_industry
+                        .as_ref()
+                        .is_some_and(|i| self.config.industry_blacklist.contains(i)) =>
+                {
+                    Some("industry-blacklist")
+                }
+                _ => None,
+            };
+            let mut rows: Vec<Candidate> = book
+                .iter()
+                .flatten()
+                .filter(|b| b.selection_member)
+                .map(|b| {
+                    let reason = if b.is_st {
+                        "st"
+                    } else if b.profit <= 0.0 {
+                        "non-positive-profit"
+                    } else if b.shares <= 0.0 {
+                        "zero-shares"
+                    } else if let Some(reason) = blocked {
+                        reason
+                    } else if ranks[b.id]
+                        .is_some_and(|r| r <= self.config.stock_count.min(self.config.pool_size))
+                    {
+                        "target"
+                    } else if ranks[b.id].is_some_and(|r| r <= self.config.pool_size) {
+                        "pool"
+                    } else {
+                        "outside-pool"
+                    };
+                    Candidate {
+                        code: self.manifest.instruments[b.id].code.clone(),
+                        industry: self.manifest.industries[b.industry].clone(),
+                        market_cap: b.close * b.shares,
+                        rank: ranks[b.id],
+                        reason: reason.into(),
+                        tradable: b.tradable,
+                    }
+                })
+                .collect();
+            rows.sort_by(|a, b| {
+                a.rank
+                    .unwrap_or(usize::MAX)
+                    .cmp(&b.rank.unwrap_or(usize::MAX))
+                    .then(a.code.cmp(&b.code))
+            });
+            Some(rows)
+        } else {
+            None
+        };
+        let mut ledger = vec![];
+        for (id, p) in self.positions.iter().enumerate() {
+            let a = &mut self.accounts[id];
+            let value = p.mark * p.quantity as f64;
+            let profit = value + a.receivable + a.cashflow;
+            let daily_profit = profit - a.previous_profit;
+            if p.quantity > 0
+                || a.previous_quantity > 0
+                || a.dirty
+                || a.receivable.abs() > 1e-8
+                || daily_profit.abs() > 1e-8
+            {
+                let unrealized = value - a.basis;
+                ledger.push(LedgerRow {
+                    code: self.manifest.instruments[id].code.clone(),
+                    industry: self.manifest.industries[a.industry].clone(),
+                    quantity: p.quantity,
+                    average_cost: if p.quantity > 0 {
+                        a.basis / p.quantity as f64
+                    } else {
+                        0.0
+                    },
+                    price: p.mark,
+                    mark_date: date_text(a.mark_date),
+                    value,
+                    weight: value / equity,
+                    cashflow: a.cashflow,
+                    receivable: a.receivable,
+                    income: a.income,
+                    fees: a.fees,
+                    daily_profit,
+                    profit,
+                    realized: profit - unrealized,
+                    unrealized,
+                });
+            }
+            a.previous_profit = profit;
+            a.previous_quantity = p.quantity;
+            a.dirty = false;
+        }
+        self.research_cells +=
+            ledger.len() + breadth.len() + candidates.as_ref().map_or(0, Vec::len);
+        if self.research_cells > MAX_ORDERS {
+            return Err("research output limit exceeded; use streaming / native --jsonl".into());
+        }
+        self.research.push(ResearchDay {
+            date: day,
+            cash: self.cash,
+            receivables: self.receivables,
+            equity,
+            breadth,
+            ledger,
+            candidates,
+        });
+        Ok(())
+    }
     fn holdings(&self) -> Vec<Holding> {
         self.positions
             .iter()
@@ -808,6 +1024,8 @@ impl Engine {
             ));
         }
         Ok(ResultData {
+            diagnostics: self.diagnostics,
+            research: self.research,
             metrics,
             equity: self.equity,
             orders: self.orders,

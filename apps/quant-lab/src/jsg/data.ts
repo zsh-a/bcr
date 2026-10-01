@@ -199,19 +199,26 @@ export async function exportResearchResult(
         equity: _equity,
         orders: _orders,
         decisions: _decisions,
+        research: _research,
         ...summary
       } = result;
       const header = JSON.stringify({ config, manifest, snapshot, research });
       await writer.write(header.slice(0, -1) + ',"result":' + JSON.stringify(summary).slice(0, -1));
-      for (const field of ["equity", "orders", "decisions"] as const) {
+      for (const field of (result.diagnostics
+        ? ["equity", "orders", "decisions", "research"]
+        : ["equity", "orders", "decisions"]) as (
+        | "equity"
+        | "orders"
+        | "decisions"
+        | "research"
+      )[]) {
         await writer.write(`,"${field}":[`);
         let first = true;
         for (const chunk of chunks) {
-          const data = await readJson<Pick<JsgResult, "equity" | "orders" | "decisions">>(
-            services,
-            chunk.ref,
-          );
-          if (data[field].length === 0) continue;
+          const data = await readJson<
+            Pick<JsgResult, "equity" | "orders" | "decisions" | "research">
+          >(services, chunk.ref);
+          if (!data[field]?.length) continue;
           await writer.write((first ? "" : ",") + JSON.stringify(data[field]).slice(1, -1));
           first = false;
         }

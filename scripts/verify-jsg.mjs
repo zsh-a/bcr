@@ -135,9 +135,9 @@ try {
       .first()
       .evaluate((el) => el === document.activeElement),
   );
-  await page.getByRole("tab", { name: "调仓", exact: true }).click();
-  await page.getByLabel("调仓日期", { exact: true }).fill(changed.result.decisions[0].date);
-  await page.locator(".research-targets").waitFor();
+  await page.getByRole("tab", { name: "选股解释", exact: true }).click();
+  await page.getByLabel("解释日期", { exact: true }).selectOption(changed.result.decisions[0].date);
+  await page.locator(".research-reason-summary").waitFor();
   await page.getByRole("tab", { name: "概览", exact: true }).click();
   await page.getByRole("button", { name: "运行历史", exact: true }).click();
   await page.locator(".research-history-row > button:first-child").last().click();

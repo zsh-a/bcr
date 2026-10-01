@@ -13,6 +13,7 @@ import {
   type GridMetric,
 } from "./grid";
 import { money, percent } from "./Orders";
+import { SensitivityMap } from "./SensitivityMap";
 
 export function GridSettings({
   open,
@@ -240,6 +241,7 @@ export function GridResults({
       </p>
       {expanded && (
         <>
+          <SensitivityMap grid={grid} onView={onView} busy={busy} />
           <div className="research-grid-table-wrap">
             <table className="research-grid-table">
               <thead>

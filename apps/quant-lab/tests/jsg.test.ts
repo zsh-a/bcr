@@ -280,13 +280,19 @@ it("streams every Rust event into bounded artifacts while keeping a small UI pre
   expect(summary.decisions.length).toBeLessThanOrEqual(1);
   const chunks = await Promise.all(
     summary.chunks!.map((c) =>
-      io.readJsonArtifact<Pick<JsgResult, "equity" | "orders" | "decisions">>(c.ref, ctx),
+      io.readJsonArtifact<Pick<JsgResult, "equity" | "orders" | "decisions" | "research">>(
+        c.ref,
+        ctx,
+      ),
     ),
   );
   const full = await execute(false);
   expect(chunks.flatMap((c) => c.orders)).toEqual(full.orders);
   expect(chunks.flatMap((c) => c.equity)).toEqual(full.equity);
   expect(chunks.flatMap((c) => c.decisions)).toEqual(full.decisions);
+  expect(chunks.flatMap((c) => c.research ?? [])).toEqual(full.research);
+  expect(summary.diagnostics).toEqual(full.diagnostics);
+  expect(summary.research).toEqual([]);
   expect(summary.metrics).toEqual(full.metrics);
 });
 

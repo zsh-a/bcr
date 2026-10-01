@@ -10,6 +10,8 @@ import { ResearchTabs } from "./ResearchTabs";
 import { EvaluationPanel } from "./EvaluationPanel";
 import type { ClickHouseConnection } from "./clickhouse-http";
 import type { BenchmarkBinding } from "./benchmark";
+import { LedgerPanel } from "./LedgerPanel";
+import { ExplanationPanel } from "./ExplanationPanel";
 
 const ResearchChart = lazy(() => import("./ResearchChart"));
 
@@ -193,7 +195,7 @@ function Decisions({ services, selected }: { services: RuntimeServices; selected
             </div>
             <div>
               <dt>行业宽度</dt>
-              <dd>{percent(value.breadth)}</dd>
+              <dd>{percent(value.breadth / 100)}</dd>
             </div>
             <div>
               <dt>目标证券</dt>
@@ -264,8 +266,8 @@ export function ResultExplorer({
           { value: "overview", label: "概览" },
           { value: "evaluation", label: "分析" },
           { value: "orders", label: "成交", count: metrics.filledOrders + metrics.rejectedOrders },
-          { value: "holdings", label: "持仓", count: selected.result.holdings.length },
-          { value: "decisions", label: "调仓" },
+          { value: "holdings", label: "账本" },
+          { value: "decisions", label: "选股解释" },
         ]}
       >
         <div className="research-overview" hidden={tab !== "overview"}>
@@ -352,10 +354,21 @@ export function ResultExplorer({
         {tab === "orders" && (
           <Orders key={selected.run.id} services={services} result={selected.result} />
         )}
-        {tab === "holdings" && <Holdings key={selected.run.id} result={selected.result} />}
-        {tab === "decisions" && (
-          <Decisions key={selected.run.id} services={services} selected={selected} />
-        )}
+        {tab === "holdings" &&
+          (selected.result.diagnostics ? (
+            <LedgerPanel key={selected.run.id} selected={selected} />
+          ) : (
+            <>
+              <p className="research-help">此运行只保存期末持仓，重新回测可生成每日盈亏账本。</p>
+              <Holdings key={selected.run.id} result={selected.result} />
+            </>
+          ))}
+        {tab === "decisions" &&
+          (selected.result.diagnostics ? (
+            <ExplanationPanel key={selected.run.id} selected={selected} />
+          ) : (
+            <Decisions key={selected.run.id} services={services} selected={selected} />
+          ))}
         {tab === "evaluation" && (
           <EvaluationPanel
             key={selected.run.id}

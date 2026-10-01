@@ -1,7 +1,7 @@
 /** Bump the engine version when replay behavior changes; executor versions invalidate task caches. */
-export const ENGINE_VERSION = "jsg-engine-1";
-export const SINGLE_EXECUTOR_VERSION = "jsg-streamed-4";
-export const GRID_EXECUTOR_VERSION = "jsg-grid-shared-1";
+export const ENGINE_VERSION = "jsg-engine-2";
+export const SINGLE_EXECUTOR_VERSION = "jsg-streamed-5";
+export const GRID_EXECUTOR_VERSION = "jsg-grid-shared-2";
 export const METRICS_VERSION = "jsg-daily-metrics-1";
 export const EVALUATION_VERSION = "jsg-evaluation-1";
 export const METRIC_CONVENTIONS = {

@@ -464,7 +464,120 @@ fn explicit_action_preserves_equity_and_pays_record_date_holder_after_sale() {
     let paid = e.take_audit().unwrap();
     assert!((paid.cash - before.cash - qty as f64 - 2.0 * qty as f64 * price).abs() < 1e-7);
     assert!(paid.holdings.is_empty());
-    assert_eq!(e.finish().unwrap().receivables, 0.0);
+    let result = e.finish().unwrap();
+    assert_eq!(result.receivables, 0.0);
+    let ex_ledger = &result.research[2].ledger[0];
+    assert_eq!(ex_ledger.quantity, qty * 2);
+    assert!((ex_ledger.receivable - qty as f64).abs() < 1e-7);
+    assert!(ex_ledger.daily_profit.abs() < 1e-7);
+    assert!((ex_ledger.realized - qty as f64).abs() < 1e-7);
+    assert!((ex_ledger.unrealized + qty as f64).abs() < 1e-7);
+    let paid_ledger = &result.research[4].ledger[0];
+    assert_eq!(paid_ledger.quantity, 0);
+    assert_eq!(paid_ledger.receivable, 0.0);
+    assert_eq!(paid_ledger.income, qty as f64);
+    assert!(
+        (paid_ledger.profit - (result.metrics.final_equity - config().initial_capital)).abs()
+            < 1e-7
+    );
+}
+
+#[test]
+fn ledger_reconciles_actual_fees_unrealized_and_stale_marks() {
+    let mut c = config();
+    c.commission_bps = 3.0;
+    c.slippage_bps = 10.0;
+    let mut e = Engine::new(manifest(24), c.clone()).unwrap();
+    for d in 1..=24 {
+        let mut rows = bars(d);
+        if d == 23 {
+            rows.remove(0);
+        }
+        e.day(rows).unwrap();
+    }
+    let r = e.finish().unwrap();
+    let mut previous = c.initial_capital;
+    for day in &r.research {
+        let daily = day.ledger.iter().map(|r| r.daily_profit).sum::<f64>();
+        assert!((day.equity - previous - daily).abs() < 1e-7);
+        assert!(
+            (day.cash + day.receivables + day.ledger.iter().map(|r| r.value).sum::<f64>()
+                - day.equity)
+                .abs()
+                < 1e-7
+        );
+        previous = day.equity;
+    }
+    let last = &r.research.last().unwrap().ledger[0];
+    assert!((last.fees - r.metrics.fees).abs() < 1e-8);
+    assert!((last.profit - (r.metrics.final_equity - c.initial_capital)).abs() < 1e-7);
+    assert!((last.profit - last.realized - last.unrealized).abs() < 1e-8);
+    assert_eq!(r.research[2].ledger[0].mark_date, "2024-01-22");
+    assert_eq!(r.diagnostics.stale_held_marks, 1);
+    assert_eq!(r.diagnostics.rows, 7);
+}
+
+#[test]
+fn research_window_is_independent_of_later_prices_and_starts_without_positions() {
+    let mut c = config();
+    c.research_window = Some(ResearchWindow {
+        start: 20240121,
+        end: 20240122,
+    });
+    let mut a = Engine::new(manifest(24), c.clone()).unwrap();
+    let mut b = Engine::new(manifest(24), c).unwrap();
+    for d in 1..=24 {
+        a.day(bars(d)).unwrap();
+        let mut rows = bars(d);
+        if d > 22 {
+            for r in &mut rows {
+                r.open = 50.0;
+                r.close = 50.0;
+                r.high = 50.0;
+                r.low = 50.0;
+            }
+        }
+        b.day(rows).unwrap();
+    }
+    let a = a.finish().unwrap();
+    let b = b.finish().unwrap();
+    assert_eq!(
+        serde_json::to_value(&a).unwrap(),
+        serde_json::to_value(&b).unwrap()
+    );
+    assert_eq!(a.metrics.days, 2);
+    assert_eq!(a.equity[0].holdings, 0);
+    assert_eq!(a.research[1].ledger[0].mark_date, "2024-01-22");
+    let mut c = config();
+    c.research_window = Some(ResearchWindow {
+        start: 20240122,
+        end: 20240124,
+    });
+    let mut e = Engine::new(manifest(24), c).unwrap();
+    for d in 1..=24 {
+        e.day(bars(d)).unwrap();
+    }
+    let r = e.finish().unwrap();
+    assert!(r.orders.is_empty());
+    assert_eq!(r.metrics.total_return, 0.0);
+}
+
+#[test]
+fn explanations_preserve_suspended_candidates_and_financial_exclusions() {
+    let mut e = Engine::new(manifest(22), config()).unwrap();
+    for d in 1..=22 {
+        let mut rows = bars(d);
+        rows[0].tradable = false;
+        rows[1].profit = 0.0;
+        e.day(rows).unwrap();
+    }
+    let r = e.finish().unwrap();
+    let candidates = r.research[0].candidates.as_ref().unwrap();
+    assert_eq!(candidates[0].reason, "target");
+    assert!(!candidates[0].tradable);
+    assert_eq!(candidates[1].reason, "non-positive-profit");
+    assert_eq!(r.orders[0].status, "suspended");
+    assert!(r.research[1].ledger.is_empty());
 }
 #[test]
 fn raw_model_rejects_missing_actions_or_limits_instead_of_inferring_from_adjustment() {

@@ -3,7 +3,12 @@ import type { JsgResult } from "./model";
 import type { OrderFilter, ResultSource } from "./result-data";
 import type { BenchmarkBinding } from "./benchmark";
 import type { Evaluation } from "./evaluation";
+import type { ResearchSummary, ResearchDayPage } from "./research-analysis";
+import type { ResearchDay } from "./research-model";
 export type ResultRequest =
+  | { id: number; type: "research-summary"; result: ResultSource; capital: number }
+  | { id: number; type: "research-day"; result: ResultSource; date: string; offset: number }
+  | { id: number; type: "breadth-history"; result: ResultSource; from: string; to: string }
   | { id: number; type: "orders"; result: ResultSource; filter: OrderFilter; offset: number }
   | { id: number; type: "curve"; result: ResultSource; from: string; to: string }
   | { id: number; type: "decision"; result: ResultSource; date: string }
@@ -66,8 +71,41 @@ function request<T>(message: ResultRequest, signal: AbortSignal): Promise<T> {
   });
 }
 function source(result: JsgResult): ResultSource {
-  return result.chunks ? { chunks: result.chunks, equity: [], orders: [], decisions: [] } : result;
+  return result.chunks
+    ? {
+        chunks: result.chunks,
+        ...(result.diagnostics ? { diagnostics: result.diagnostics } : {}),
+        equity: [],
+        orders: [],
+        decisions: [],
+      }
+    : result;
 }
+export const queryResearchSummary = (result: JsgResult, capital: number, signal: AbortSignal) =>
+  request<ResearchSummary>(
+    { id: ++sequence, type: "research-summary", result: source(result), capital },
+    signal,
+  );
+export const queryResearchDay = (
+  result: JsgResult,
+  date: string,
+  offset: number,
+  signal: AbortSignal,
+) =>
+  request<ResearchDayPage | null>(
+    { id: ++sequence, type: "research-day", result: source(result), date, offset },
+    signal,
+  );
+export const queryBreadthHistory = (
+  result: JsgResult,
+  from: string,
+  to: string,
+  signal: AbortSignal,
+) =>
+  request<Pick<ResearchDay, "date" | "breadth">[]>(
+    { id: ++sequence, type: "breadth-history", result: source(result), from, to },
+    signal,
+  );
 export function clearResultCache() {
   worker?.postMessage({ id: ++sequence, type: "clear" } satisfies ResultRequest);
 }

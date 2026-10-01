@@ -22,12 +22,50 @@ import { saveBenchmark, readBenchmark } from "../src/jsg/benchmark";
 import { replayVersions } from "../src/jsg/versions";
 import { draftChanges } from "../src/jsg/draft";
 import { DEFAULT_CONNECTION } from "../src/jsg/clickhouse-http";
+import type { ValidationResult } from "../src/jsg/validation";
 
 const ref = (id: string, type = "quant/jsg-result"): ArtifactRef => ({
   id,
   type,
   storage: "opfs",
   format: "json",
+});
+it("persists completed validation with its frozen snapshot and preserves it after a canceled replacement", async () => {
+  const services = await storage(),
+    snapshot = selected();
+  await putRun(services, snapshot);
+  const resultRef = ref("study", "quant/jsg-study-result");
+  const studyResult: ValidationResult = {
+    version: 1,
+    request: {
+      mode: "cost",
+      objective: "sharpe",
+      axes: [],
+      trainPercent: 70,
+      trainDays: 60,
+      testDays: 20,
+    },
+    training: [],
+    folds: [],
+    costs: [{ multiplier: 1, metrics: result().metrics }],
+    costBase: copyConfig(DEFAULT_CONFIG),
+  };
+  await putJson(services, resultRef, studyResult);
+  const state = ready(snapshot);
+  state.study = {
+    run: { ...snapshot.run, resultRef },
+    dataset: snapshot.dataset,
+    result: studyResult,
+  };
+  await saveSession(services, state);
+  expect((await restoreSession(services))!.study).toEqual(state.study);
+  const started = sessionReducer(state, {
+    type: "started",
+    operation: { id: "new", kind: "grid", label: "training", progress: 0 },
+  });
+  const canceled = sessionReducer(started, { type: "stopped", id: "new" });
+  expect(canceled.study).toEqual(state.study);
+  expect(canceled.selected).toEqual(state.selected);
 });
 function result(): JsgResult {
   return {

@@ -28,6 +28,7 @@ import { demoResearch } from "./demo";
 import { disposeResultReader } from "./result-reader";
 import { StorageSettings } from "./StorageSettings";
 import { GridSettings, GridResults } from "./GridExperiment";
+import { ValidationSettings, ValidationResults } from "./ValidationStudy";
 import type { GridAxis } from "./grid";
 import type { JsgConfig } from "./model";
 import { withResearchFiles } from "./file-lease";
@@ -68,11 +69,20 @@ export function JsgWorkbench({
   };
   const [gridOpen, setGridOpen] = useState(false),
     [gridExpanded, setGridExpanded] = useState(true);
+  const [studyOpen, setStudyOpen] = useState(false),
+    [studyExpanded, setStudyExpanded] = useState(false);
+  useEffect(() => {
+    if (state.study) {
+      setStudyExpanded(true);
+      setGridExpanded(false);
+    }
+  }, [state.study?.run.id]);
   useEffect(() => {
     setGridExpanded(true);
   }, [state.grid?.run.id]);
   useEffect(() => {
     setGridExpanded(false);
+    setStudyExpanded(false);
   }, [state.selected?.run.id]);
   const [exporting, setExporting] = useState(false),
     [comparison, setComparison] = useState<SelectedRun | null>(null),
@@ -333,6 +343,17 @@ export function JsgWorkbench({
               </Button>
               <Button
                 variant="ghost"
+                disabled={!state.dataset || busy || invalid}
+                onClick={() => {
+                  if (actionMenu.current) actionMenu.current.open = false;
+                  setStudyOpen(true);
+                }}
+              >
+                <FlaskConical size={15} />
+                稳健性验证
+              </Button>
+              <Button
+                variant="ghost"
                 disabled={busy || !state.ready}
                 onClick={() => {
                   if (actionMenu.current) actionMenu.current.open = false;
@@ -444,7 +465,10 @@ export function JsgWorkbench({
               grid={state.grid}
               busy={busy}
               expanded={gridExpanded}
-              onExpand={() => setGridExpanded((value) => !value)}
+              onExpand={() => {
+                setGridExpanded((value) => !value);
+                setStudyExpanded(false);
+              }}
               onForget={research.forgetGrid}
               onUse={research.reset}
               onView={(index) => {
@@ -456,11 +480,24 @@ export function JsgWorkbench({
               }}
             />
           )}
+          {state.study && (
+            <ValidationResults
+              key={state.study.run.id}
+              study={state.study}
+              busy={busy}
+              expanded={studyExpanded}
+              onExpand={() => {
+                setStudyExpanded((v) => !v);
+                setGridExpanded(false);
+              }}
+              onForget={research.forgetStudy}
+            />
+          )}
           {selected ? (
             <div
               className="research-run-result"
               data-run-id={selected.run.id}
-              hidden={!!state.grid && gridExpanded}
+              hidden={(!!state.grid && gridExpanded) || (!!state.study && studyExpanded)}
             >
               <div className="research-result-heading">
                 <div>
@@ -495,7 +532,11 @@ export function JsgWorkbench({
                   </p>
                 </div>
                 <div className="research-result-context">
-                  <Quality manifest={selected.dataset.manifest} result={selected.result} />
+                  <Quality
+                    manifest={selected.dataset.manifest}
+                    result={selected.result}
+                    snapshot={selected.dataset.snapshot}
+                  />
                   {research.selecting && <Spinner size="sm" />}
                   <Button
                     variant="ghost"
@@ -534,7 +575,7 @@ export function JsgWorkbench({
                 onWorking={setEvaluationBusy}
               />
             </div>
-          ) : state.grid ? null : (
+          ) : state.grid || state.study ? null : (
             <div className="research-empty">
               <span className="research-eyebrow">从一次回测开始</span>
               <div className="research-empty-mark" aria-hidden="true">
@@ -569,7 +610,9 @@ export function JsgWorkbench({
                   选择数据源
                 </Button>
               </div>
-              {state.dataset && <Quality manifest={state.dataset.manifest} />}
+              {state.dataset && (
+                <Quality manifest={state.dataset.manifest} snapshot={state.dataset.snapshot} />
+              )}
             </div>
           )}
         </main>
@@ -636,6 +679,18 @@ export function JsgWorkbench({
             : (state.dataset?.manifest.name ?? "本地快照")
         }
         onRun={(configs, axes) => void executeGrid(configs, axes)}
+      />
+      <ValidationSettings
+        key={`${studyOpen}-${state.dataset?.manifestRef.id}`}
+        open={studyOpen}
+        onClose={() => setStudyOpen(false)}
+        base={state.draft}
+        dataset={state.dataset}
+        busy={busy}
+        onRun={(request) => {
+          setStudyOpen(false);
+          void research.runValidation(request);
+        }}
       />
       <StorageSettings
         services={services}

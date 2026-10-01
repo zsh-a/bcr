@@ -4,6 +4,7 @@ import { readJson, restoreResearch } from "./data";
 import type { GridAxis, GridResult } from "./grid";
 import type { BenchmarkBinding } from "./benchmark";
 import type { ReplayVersions } from "./versions";
+import type { ValidationResult } from "./validation";
 import {
   DEFAULT_CONFIG,
   MODEL,
@@ -44,6 +45,11 @@ export interface SelectedGrid {
   dataset: ResearchDataset;
   result: GridResult;
 }
+export interface SelectedStudy {
+  run: Omit<ResearchRun, "config" | "metrics">;
+  dataset: ResearchDataset;
+  result: ValidationResult;
+}
 export interface ResearchOperation {
   id: string;
   kind: "import" | "load" | "backtest" | "grid";
@@ -57,6 +63,7 @@ export interface ResearchSession {
   runs: ResearchRun[];
   selected: SelectedRun | null;
   grid?: SelectedGrid | null;
+  study?: SelectedStudy | null;
   operation: ResearchOperation | null;
   status: string;
   error: string | null;
@@ -66,6 +73,9 @@ export function copyConfig(config: JsgConfig): JsgConfig {
 }
 export function configKey(c: JsgConfig): string {
   return JSON.stringify({
+    ...(c.researchWindow
+      ? { researchWindow: { start: c.researchWindow.start, end: c.researchWindow.end } }
+      : {}),
     executionModel: c.executionModel ?? MODEL,
     initialCapital: c.initialCapital,
     poolSize: c.poolSize,
@@ -123,7 +133,7 @@ export type SessionEvent =
   | { type: "choose-dataset"; dataset: ResearchDataset }
   | {
       type: "restored";
-      value: Pick<ResearchSession, "dataset" | "draft" | "runs" | "selected" | "grid">;
+      value: Pick<ResearchSession, "dataset" | "draft" | "runs" | "selected" | "grid" | "study">;
     }
   | { type: "ready"; dataset?: ResearchDataset; error?: string }
   | { type: "draft"; patch: Partial<JsgConfig> }
@@ -140,6 +150,8 @@ export type SessionEvent =
   | { type: "finished"; id: string; selected: SelectedRun }
   | { type: "grid-finished"; id: string; grid: SelectedGrid }
   | { type: "forget-grid" }
+  | { type: "study-finished"; id: string; study: SelectedStudy }
+  | { type: "forget-study" }
   | { type: "benchmark"; runId: string; benchmark?: BenchmarkBinding }
   | { type: "stopped"; id: string; error?: string }
   | { type: "selected"; selected: SelectedRun }
@@ -218,6 +230,12 @@ export function sessionReducer(state: ResearchSession, event: SessionEvent): Res
         : state;
     case "forget-grid":
       return { ...state, grid: null };
+    case "study-finished":
+      return state.operation?.id === event.id
+        ? { ...state, operation: null, study: event.study, error: null, status: "稳健性验证完成" }
+        : state;
+    case "forget-study":
+      return { ...state, study: null };
     case "benchmark": {
       const patch = (run: ResearchRun): ResearchRun => {
         if (run.id !== event.runId) return run;
@@ -288,6 +306,9 @@ export async function saveSession(
     ...(state.grid
       ? { grid: { ...state.grid.run, dataset: register(state.grid.run.dataset) } }
       : {}),
+    ...(state.study
+      ? { study: { ...state.study.run, dataset: register(state.study.run.dataset) } }
+      : {}),
     selectedId: state.selected?.run.id ?? null,
   });
   if (saved.length > 4 * 1024 * 1024) throw new Error("本地研究记录过大");
@@ -314,7 +335,10 @@ export async function readRun(services: ResearchStorage, run: ResearchRun): Prom
 }
 export async function restoreSession(
   services: ResearchStorage,
-): Promise<Pick<ResearchSession, "dataset" | "draft" | "runs" | "selected" | "grid"> | null> {
+): Promise<Pick<
+  ResearchSession,
+  "dataset" | "draft" | "runs" | "selected" | "grid" | "study"
+> | null> {
   const raw = await services.metadata?.get(KEY);
   if (raw !== undefined) {
     if (raw.length > 4 * 1024 * 1024) throw new Error("本地研究记录过大");
@@ -326,6 +350,7 @@ export async function restoreSession(
       runs: (Omit<ResearchRun, "dataset"> & { dataset: DatasetRefs | number })[];
       selectedId: string | null;
       grid?: Omit<ResearchGrid, "dataset"> & { dataset: DatasetRefs | number };
+      study?: Omit<SelectedStudy["run"], "dataset"> & { dataset: DatasetRefs | number };
     };
     if (saved.version !== 2 || !Array.isArray(saved.runs) || saved.runs.length > MAX_RUNS)
       throw new Error("本地研究记录格式无效");
@@ -376,7 +401,26 @@ export async function restoreSession(
       for (const row of result.results) validateConfig(row.config);
       grid = { run, dataset: run.snapshot ? { ...input, snapshot: run.snapshot } : input, result };
     }
-    return { dataset, draft: copyConfig(saved.draft), runs, selected, grid };
+    let study: SelectedStudy | null = null;
+    if (saved.study) {
+      const run = { ...saved.study, dataset: resolveDataset(saved.study.dataset) };
+      if (run.resultRef.type !== "quant/jsg-study-result") throw new Error("本地验证结果类型无效");
+      const input = await readDataset(services, run.dataset);
+      const result = await readJson<ValidationResult>(services, run.resultRef);
+      if (
+        result.version !== 1 ||
+        !Array.isArray(result.folds) ||
+        result.folds.length > 64 ||
+        !Array.isArray(result.training) ||
+        result.training.length > 64 ||
+        !Array.isArray(result.costs)
+      )
+        throw new Error("本地验证结果格式无效");
+      validateConfig(result.costBase);
+      for (const fold of result.folds) validateConfig(fold.config);
+      study = { run, dataset: input, result };
+    }
+    return { dataset, draft: copyConfig(saved.draft), runs, selected, grid, study };
   }
   const old = await restoreResearch(services);
   if (old === null) return null;
