@@ -59,6 +59,12 @@ export function demoResearch(): { manifest: ResearchManifest; files: File[] } {
     files.push(new File([bytes.slice().buffer], `daily-${String(offset).padStart(4, "0")}.arrow`));
   }
   const manifest: ResearchManifest = {
+    displayNames: {
+      instruments: Object.fromEntries(
+        instruments.map(({ code }, index) => [code, `演示证券 ${index + 1}`]),
+      ),
+      industries: { technology: "科技", manufacturing: "制造", ads: "广告", consumer: "消费" },
+    },
     version: 1,
     schema: "jsg-daily-v1",
     name: "JSG · 64 股演示",

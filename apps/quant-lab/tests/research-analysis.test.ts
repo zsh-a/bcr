@@ -134,7 +134,11 @@ describe("fill-based research ledger", () => {
         sessions: 2,
       },
     ]);
-    expect(ledgerCsv(summary)).toContain('"A","industrial","0","0","7"');
+    const csv = ledgerCsv(summary, {
+      instruments: { A: "示例证券" },
+      industries: { industrial: "制造" },
+    });
+    expect(csv).toContain('"A","示例证券","industrial","制造","0","0","7"');
   });
   it("scans complete chunks even when the result preview is empty", async () => {
     const full = source(),

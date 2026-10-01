@@ -33,6 +33,8 @@ import {
   type ClickHouseRange,
   type MetadataRow,
 } from "./clickhouse-http";
+import { loadDisplayNames } from "./clickhouse-names";
+import { subsetNames } from "./display-names";
 
 let ready: Promise<unknown> | undefined;
 const encoder = new TextEncoder();
@@ -258,6 +260,14 @@ export async function loadClickHouse(
   ].sort();
   if (codes.length === 0 || codes.length > 20_000 || new Set(codes).size !== codes.length)
     throw new Error("成分股数据为空或证券数量无效");
+  // Missing optional name tables must not prevent a valid price snapshot from loading.
+  const displayNames = await loadDisplayNames(
+    client,
+    AbortSignal.any([signal, AbortSignal.timeout(15_000)]),
+  ).catch(() => {
+    signal.throwIfAborted();
+    return undefined;
+  });
   const fullParams = { ...params, start: calendar.dates[0]!, end: calendar.last };
   const corporateActions: NonNullable<ResearchManifest["corporateActions"]> = [];
   if (range.strictPit) {
@@ -409,6 +419,7 @@ export async function loadClickHouse(
       report(`已加载 ${completed}/${total} 个交易日 · ${rows.toLocaleString()} 行`);
     }
     const manifest = parseManifest({
+      ...(displayNames ? { displayNames: subsetNames(displayNames, codes, industries) } : {}),
       version: range.strictPit ? 2 : 1,
       schema: range.strictPit ? "jsg-daily-v2" : "jsg-daily-v1",
       name: `JSG ${calendar.first} to ${calendar.last}`,

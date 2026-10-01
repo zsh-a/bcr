@@ -45,6 +45,7 @@ export async function clickHouseHttpFixture() {
     String(date).replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3"),
   );
   return {
+    names: demo.manifest.displayNames!,
     calendar,
     codes: demo.manifest.instruments.map((i) => i.code),
     industries: demo.manifest.industries,

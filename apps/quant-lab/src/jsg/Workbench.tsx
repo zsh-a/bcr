@@ -33,6 +33,8 @@ import type { GridAxis } from "./grid";
 import type { JsgConfig } from "./model";
 import { withResearchFiles } from "./file-lease";
 import { money, percent } from "./Orders";
+import { NamesProvider, NamesStatus, useResearchNames } from "./ResearchNames";
+import { EMPTY_DISPLAY_NAMES } from "./display-names";
 import "./styles.css";
 
 const timeLabel = (value: string) =>
@@ -125,6 +127,16 @@ export function JsgWorkbench({
     (source.kind === "clickhouse" ? source.dateError() === null : state.dataset !== null);
   const invalid = Object.keys(configErrors(state.draft)).length > 0;
   const selected = state.selected;
+  const namedDataset = selected?.dataset ?? state.dataset;
+  const names = useResearchNames(
+    services,
+    namedDataset,
+    source.restored ? source.connection : undefined,
+  );
+  const draftNames =
+    state.dataset?.manifestRef.id === namedDataset?.manifestRef.id
+      ? names.names
+      : (state.dataset?.manifest.displayNames ?? EMPTY_DISPLAY_NAMES);
   const changes = draftChanges(state, source);
   const changed = changes.length > 0;
   useEffect(() => {
@@ -203,7 +215,7 @@ export function JsgWorkbench({
         exportResearchResult(
           services,
           snapshot.run.config,
-          snapshot.dataset.manifest,
+          { ...snapshot.dataset.manifest, displayNames: names.names },
           snapshot.result,
           snapshot.dataset.snapshot,
           snapshot.run,
@@ -565,15 +577,18 @@ export function JsgWorkbench({
                   </div>
                 ))}
               </dl>
-              <ResultExplorer
-                services={services}
-                selected={selected}
-                comparison={comparison}
-                connection={source.connection}
-                busy={busy}
-                onBenchmark={research.attachBenchmark}
-                onWorking={setEvaluationBusy}
-              />
+              <NamesProvider names={names.names}>
+                <ResultExplorer
+                  services={services}
+                  selected={selected}
+                  comparison={comparison}
+                  connection={source.connection}
+                  busy={busy}
+                  onBenchmark={research.attachBenchmark}
+                  onWorking={setEvaluationBusy}
+                />
+              </NamesProvider>
+              <NamesStatus metadata={names} onSettings={() => openSettings("data")} />
             </div>
           ) : state.grid || state.study ? null : (
             <div className="research-empty">
@@ -618,6 +633,7 @@ export function JsgWorkbench({
         </main>
       </div>
       <RunSettings
+        names={draftNames}
         open={settingsOpen}
         tab={settingsTab}
         onTab={setSettingsTab}

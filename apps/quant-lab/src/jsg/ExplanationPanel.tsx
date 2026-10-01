@@ -6,8 +6,11 @@ import { queryBreadthHistory, queryResearchDay } from "./result-reader";
 import type { ResearchDayPage } from "./research-analysis";
 import { CANDIDATE_REASONS, type ResearchDay } from "./research-model";
 import { money } from "./Orders";
+import { Identity, useNames } from "./ResearchNames";
+import { displayLabel } from "./display-names";
 
 export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
+  const names = useNames();
   const sessions = selected.dataset.manifest.calendar.filter(
     (d) => d.date >= selected.run.startDate && d.date <= selected.run.endDate,
   );
@@ -97,10 +100,12 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
             <tbody>
               {industries.map((industry) => (
                 <tr key={industry}>
-                  <th>{industry}</th>
+                  <th scope="row">
+                    <Identity code={industry} kind="industries" />
+                  </th>
                   {history.map((d) => {
                     const b = d.breadth.find((v) => v.industry === industry);
-                    const label = `${d.date} ${industry} ${b ? `${b.ratio}% · ${b.above}/${b.total}` : "历史不足"}`;
+                    const label = `${d.date} ${displayLabel(names, "industries", industry)} ${b ? `${b.ratio}% · ${b.above}/${b.total}` : "历史不足"}`;
                     return (
                       <td key={d.date}>
                         <button
@@ -154,7 +159,13 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
           <dl className="research-secondary-metrics">
             <div>
               <dt>当日最宽行业</dt>
-              <dd>{day.breadth[0]?.industry ?? "历史不足"}</dd>
+              <dd>
+                {day.breadth[0] ? (
+                  <Identity code={day.breadth[0].industry} kind="industries" />
+                ) : (
+                  "历史不足"
+                )}
+              </dd>
             </div>
             <div>
               <dt>宽度</dt>
@@ -189,8 +200,12 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
                     {day.candidates.map((c) => (
                       <tr key={c.code}>
                         <td className="numeric">{c.rank ?? "—"}</td>
-                        <td>{c.code}</td>
-                        <td>{c.industry}</td>
+                        <td>
+                          <Identity code={c.code} />
+                        </td>
+                        <td>
+                          <Identity code={c.industry} kind="industries" />
+                        </td>
                         <td className="numeric">{money(c.marketCap)}</td>
                         <td>
                           {CANDIDATE_REASONS[c.reason] ?? c.reason}

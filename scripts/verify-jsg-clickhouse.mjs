@@ -26,6 +26,8 @@ let queries = 0,
   arrowQueries = 0,
   fail = false,
   delay = false;
+const expectNames = process.env.JSG_EXPECT_NAMES === "1";
+let failNames = expectNames;
 context.on("request", (request) => {
   if (request.method() === "POST" && request.url().startsWith(source)) {
     queries++;
@@ -33,6 +35,17 @@ context.on("request", (request) => {
   }
 });
 await context.route(`${source}**`, async (route) => {
+  if (
+    failNames &&
+    route.request().postData()?.includes("IN ('stock_daily_meta','industry_info')")
+  ) {
+    await route.fulfill({
+      status: 502,
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: "optional names temporarily unavailable",
+    });
+    return;
+  }
   if (route.request().postData()?.includes("FORMAT ArrowStream")) {
     if (fail) {
       await route.fulfill({
@@ -121,6 +134,41 @@ try {
   await load();
   await done();
   const first = await exportResult("jsg-clickhouse-result.json");
+  if (expectNames) {
+    // An existing snapshot without names can be enriched without touching price partitions or replaying.
+    failNames = false;
+    const runId = await page.locator(".research-run-result").getAttribute("data-run-id");
+    const beforeNames = arrowQueries;
+    await page.getByRole("button", { name: "补充名称", exact: true }).click();
+    await page.getByRole("button", { name: "更新名称", exact: true }).waitFor();
+    const named = await exportResult("jsg-clickhouse-names.json");
+    assert.equal(named.manifest.displayNames.industries.technology, "科技");
+    assert.equal(named.manifest.displayNames.instruments["sz.001000"], "演示证券 1");
+    assert.deepEqual(named.result, first.result);
+    assert.equal(arrowQueries, beforeNames);
+    assert.equal(await page.locator(".research-run-result").getAttribute("data-run-id"), runId);
+    await page.getByRole("tab", { name: "选股解释", exact: true }).click();
+    await page.locator(".research-breadth-map button").first().waitFor();
+    assert((await page.locator(".research-breadth-map").innerText()).includes("科技"));
+    await page.waitForFunction(() =>
+      document
+        .querySelector(".research-insights .research-table")
+        ?.textContent.includes("演示证券"),
+    );
+    await page.screenshot({ path: `${shots}/jsg-chinese-names.png`, fullPage: true });
+    await page.getByRole("tab", { name: /^成交/ }).click();
+    const target = named.result.orders[0].code;
+    await page
+      .getByLabel("筛选证券", { exact: true })
+      .fill(named.manifest.displayNames.instruments[target]);
+    await page.waitForFunction((code) => {
+      const table = document.querySelector(".research-orders tbody");
+      return (
+        table?.querySelectorAll("tr").length &&
+        [...table.querySelectorAll("tr")].every((row) => row.textContent.includes(code))
+      );
+    }, target);
+  }
   assert.equal(
     first.manifest.source,
     `Browser / ClickHouse ${new URL(source).toString()} / ${database}`,
@@ -211,6 +259,12 @@ try {
   await page.waitForFunction(() =>
     document.querySelector(".research-status")?.textContent?.includes("已恢复本地研究"),
   );
+  if (expectNames) {
+    await page.getByRole("tab", { name: "选股解释", exact: true }).click();
+    await page.waitForFunction(() =>
+      document.querySelector(".research-breadth-map")?.textContent.includes("科技"),
+    );
+  }
   await open();
   assert.equal(await page.getByLabel("ClickHouse 密码", { exact: true }).inputValue(), "");
   await page.getByLabel("ClickHouse 密码", { exact: true }).fill(password);

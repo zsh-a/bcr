@@ -23,7 +23,7 @@ class NativeIntegration(unittest.TestCase):
         cls.tmp=tempfile.TemporaryDirectory();cls.root=Path(cls.tmp.name)
         cls.db=chdb.session.Session(str(cls.root/'ch'))
         def query(sql,fmt='CSV'):return cls.db.query(sql,fmt)
-        cls.query=query
+        cls.query=staticmethod(query)
         query('CREATE DATABASE stock_data')
         for statement in re.sub(r'--[^\n]*','',(ROOT/'crates/quant/sql/history-schema.sql').read_text()).split(';'):
             if 'CREATE TABLE' in statement:query(statement.replace('CREATE TABLE ','CREATE TABLE stock_data.'))
@@ -32,10 +32,11 @@ class NativeIntegration(unittest.TestCase):
             'trade_dates':'calendar_date Date,is_trading_day UInt8',
             'index_stocks':'`index` String,code String,enter_date Date',
             'industry_info':'code String,enter_date Date,industry_code String,industry_name String',
+            'stock_daily_meta':'code String,name String,last_update_date Date',
             'shares_info':'code String,change_date Date,publish_date Date,total_shares Float64',
             'finicial_report':'code String,publish_date Date,report_date Date,adjusted_profit_diff Float64,circulating_a Float64',
         }
-        keys={'stock_daily':'code,date','trade_dates':'calendar_date','index_stocks':'`index`,code','industry_info':'code,enter_date','shares_info':'code,change_date,publish_date','finicial_report':'code,report_date'}
+        keys={'stock_daily':'code,date','trade_dates':'calendar_date','index_stocks':'`index`,code','industry_info':'code,enter_date','stock_daily_meta':'code','shares_info':'code,change_date,publish_date','finicial_report':'code,report_date'}
         for table,cols in definitions.items():query(f'CREATE TABLE stock_data.{table} ({cols}) ENGINE=ReplacingMergeTree ORDER BY ({keys[table]})')
         dates=[dt.date(2023,11,1)+dt.timedelta(days=i) for i in range(160)]
         dates=[d for d in dates if d.weekday()<5]
@@ -54,7 +55,9 @@ class NativeIntegration(unittest.TestCase):
             query(f"INSERT INTO stock_data.financial_revisions VALUES ('{code}','2023-09-30','2023-10-31',1,100000000,100000000,1)")
             query(f"INSERT INTO stock_data.finicial_report VALUES ('{code}','2023-10-31','2023-09-30',1,100000000)")
             query(f"INSERT INTO stock_data.industry_info VALUES ('{code}','2023-01-01','tech','Tech')")
+            query(f"INSERT INTO stock_data.stock_daily_meta VALUES ('{code}','示例证券 {code}','2024-01-31')")
             query(f"INSERT INTO stock_data.shares_info VALUES ('{code}','2023-01-01','2023-01-01',100000000)")
+        query("INSERT INTO stock_data.industry_info VALUES ('sz.001001','2024-01-01','tech','科技')")
         for name in ['membership','financials','corporateActions','priceLimits']:
             query(f"INSERT INTO stock_data.research_coverage VALUES ('{name}','2023-01-01','2025-01-01',1,'fixture',now())")
         # Exit is effective Jan 25 but published Jan 26; not visible until Jan 27.
@@ -69,7 +72,7 @@ class NativeIntegration(unittest.TestCase):
                 sql=self.rfile.read(int(self.headers['Content-Length'])).decode()
                 if not re.match(r'\s*(SELECT|WITH)\b',sql):self.send_error(400);return
                 sql=re.sub(r'\{(\w+):[^}]+\}',lambda m:"'"+options['param_'+m[1]][0].replace("'","''")+"'",sql)
-                sql=re.sub(r'\bFROM (stock_daily|trade_dates|index_stocks|industry_info|shares_info|finicial_report|index_membership_history|financial_revisions|stock_daily_execution|corporate_actions|research_coverage)\b',r'FROM stock_data.\1',sql)
+                sql=re.sub(r'\bFROM (stock_daily|stock_daily_meta|trade_dates|index_stocks|industry_info|shares_info|finicial_report|index_membership_history|financial_revisions|stock_daily_execution|corporate_actions|research_coverage)\b',r'FROM stock_data.\1',sql)
                 sql=re.sub(r'\bJOIN (stock_daily_execution)\b',r'JOIN stock_data.\1',sql)
                 fmt='ArrowStream' if sql.rstrip().endswith('FORMAT ArrowStream') else 'JSONEachRow'
                 sql=re.sub(r'\s+FORMAT \w+\s*$','',sql)
@@ -89,9 +92,24 @@ class NativeIntegration(unittest.TestCase):
         if success:self.assertEqual(p.returncode,0,p.stderr+"\n"+"\n".join(self.request_errors))
         return p
 
+    def test_display_names_legacy_field_and_empty_preferred_field(self):
+        self.query('ALTER TABLE stock_data.industry_info RENAME COLUMN industry_name TO industry')
+        added=False
+        try:
+            legacy=self.root/'legacy-names';self.cli('export','2024-01-24','2024-01-31',legacy)
+            self.assertEqual(json.loads((legacy/'manifest.json').read_text())['displayNames']['industries']['tech'],'科技')
+            self.query("ALTER TABLE stock_data.industry_info ADD COLUMN industry_name String DEFAULT ''");added=True
+            both=self.root/'both-names';self.cli('export','2024-01-24','2024-01-31',both)
+            self.assertEqual(json.loads((both/'manifest.json').read_text())['displayNames']['industries']['tech'],'科技')
+        finally:
+            if added:self.query('ALTER TABLE stock_data.industry_info DROP COLUMN industry_name')
+            self.query('ALTER TABLE stock_data.industry_info RENAME COLUMN industry TO industry_name')
+
     def test_snapshot_raw_history_and_tamper_detection(self):
         output=self.root/'historical';self.cli('export','2024-01-24','2024-01-31',output,'--strict-pit')
         manifest=json.loads((output/'manifest.json').read_text());self.assertEqual(manifest['version'],2)
+        self.assertEqual(manifest['displayNames']['industries']['tech'],'科技')
+        self.assertEqual(manifest['displayNames']['instruments']['sz.001001'],'示例证券 sz.001001')
         config={'initialCapital':100000,'poolSize':2,'stockCount':1,'commissionBps':0,'slippageBps':0,'stopLoss':0,'trailingStop':0,'maxDrawdown':0,'tPlusOne':False,'industryBlacklist':[], 'executionModel':'jsg-raw-v2','fees':[{'from':20200101,'minimumCommission':0,'transferBps':0,'sellTaxBps':0}]}
         path=self.root/'config.json';path.write_text(json.dumps(config))
         result=json.loads(self.cli(output/'manifest.json',path).stdout)

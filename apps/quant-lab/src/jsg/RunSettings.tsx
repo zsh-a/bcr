@@ -8,6 +8,8 @@ import type { DataSourceController } from "./useDataSource";
 import type { ResearchSession } from "./session";
 import type { JsgConfig } from "./model";
 import type { DraftChange } from "./draft";
+import { NamesProvider } from "./ResearchNames";
+import type { DisplayNames } from "./display-names";
 
 export function RunSettings({
   open,
@@ -25,6 +27,7 @@ export function RunSettings({
   onRun,
   onImport,
   onDemo,
+  names,
 }: {
   open: boolean;
   tab: "parameters" | "data" | "changes";
@@ -41,6 +44,7 @@ export function RunSettings({
   onRun: () => void;
   onImport: () => void;
   onDemo: () => void;
+  names: DisplayNames;
 }) {
   const [restoring, setRestoring] = useState(false),
     [error, setError] = useState<string | null>(null);
@@ -65,13 +69,15 @@ export function RunSettings({
         ]}
       >
         {tab === "parameters" && (
-          <Parameters
-            config={state.draft}
-            manifest={state.dataset?.manifest}
-            onChange={onChange}
-            onReset={onReset}
-            busy={busy || restoring}
-          />
+          <NamesProvider names={names}>
+            <Parameters
+              config={state.draft}
+              manifest={state.dataset?.manifest}
+              onChange={onChange}
+              onReset={onReset}
+              busy={busy || restoring}
+            />
+          </NamesProvider>
         )}
         {tab === "data" && (
           <DataSettings

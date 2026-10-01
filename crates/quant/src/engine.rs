@@ -65,8 +65,9 @@ impl Engine {
         engine.enable_streaming();
         Ok(engine)
     }
-    pub fn new(manifest: Manifest, config: Config) -> Result<Self, String> {
+    pub fn new(mut manifest: Manifest, config: Config) -> Result<Self, String> {
         manifest.validate()?;
+        manifest.display_names = None;
         config.validate()?;
         if let Some(w) = &config.research_window {
             if w.start < manifest.start_date

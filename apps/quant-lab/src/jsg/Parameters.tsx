@@ -1,6 +1,8 @@
 import { ChevronDown, RotateCcw, X } from "lucide-react";
 import { Button, Input, Select } from "@bcr/react";
 import { useId, useState } from "react";
+import { useNames } from "./ResearchNames";
+import { displayLabel } from "./display-names";
 import { dateText, MODEL, validateConfig, type JsgConfig, type ResearchManifest } from "./model";
 import { numericDate } from "./clickhouse-http";
 
@@ -113,6 +115,8 @@ export function Parameters({
   busy: boolean;
 }) {
   const errors = configErrors(config);
+  const names = useNames();
+  const industryLabel = (code: string) => displayLabel(names, "industries", code);
   const [industryQuery, setIndustryQuery] = useState("");
   const raw = config.executionModel === "jsg-raw-v2";
   const updateFee = (index: number, patch: Partial<NonNullable<JsgConfig["fees"]>[number]>) =>
@@ -351,7 +355,7 @@ export function Parameters({
           <Input
             type="search"
             aria-label="搜索行业"
-            placeholder="搜索行业代码"
+            placeholder="搜索行业名称或代码"
             value={industryQuery}
             onChange={(event) => setIndustryQuery(event.currentTarget.value)}
           />
@@ -366,16 +370,20 @@ export function Parameters({
                   industryBlacklist: config.industryBlacklist.filter((item) => item !== code),
                 })
               }
-              aria-label={`移除黑名单 ${code}`}
+              aria-label={`移除黑名单 ${industryLabel(code)}`}
             >
-              {code}
+              {industryLabel(code)}
               <X size={11} />
             </button>
           ))}
         </div>
         <div className="research-industry-list">
           {(manifest?.industries ?? [])
-            .filter((code) => code.toLowerCase().includes(industryQuery.toLowerCase()))
+            .filter((code) =>
+              industryLabel(code)
+                .toLocaleLowerCase()
+                .includes(industryQuery.trim().toLocaleLowerCase()),
+            )
             .slice(0, 100)
             .map((code) => (
               <label key={code}>
@@ -390,7 +398,7 @@ export function Parameters({
                     })
                   }
                 />
-                <span>{code}</span>
+                <span>{industryLabel(code)}</span>
               </label>
             ))}
         </div>

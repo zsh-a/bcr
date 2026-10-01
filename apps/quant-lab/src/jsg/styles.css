@@ -49,6 +49,27 @@
   font-size: var(--text-xs);
   margin-block-start: 3px;
 }
+.research-identity {
+  display: inline-grid;
+  gap: 2px;
+  text-align: start;
+  font-family: var(--font-sans);
+  line-height: 1.4;
+}
+.research-identity small {
+  color: var(--color-muted);
+  font: var(--text-xs) / 1.4 var(--font-mono);
+  font-weight: 400;
+}
+.research-name-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 8px;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
 .research-insights caption,
 .research-sensitivity caption {
   text-align: start;
@@ -85,6 +106,8 @@
   background: var(--color-surface);
   z-index: 1;
   text-align: left;
+  min-width: 100px;
+  padding-inline: 8px;
 }
 .research-breadth-map button {
   width: 38px;

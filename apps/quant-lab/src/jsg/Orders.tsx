@@ -5,6 +5,8 @@ import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import type { JsgResult } from "./model";
 import { queryOrders } from "./result-reader";
 import { EMPTY_ORDER_FILTER, ORDER_PAGE_SIZE, type OrderFilter } from "./result-data";
+import { Identity, useNames } from "./ResearchNames";
+import { displayLabel, nameMatches } from "./display-names";
 
 export const money = (value: number) =>
   new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(value);
@@ -36,6 +38,7 @@ export const orderStatus = (value: string) => statuses[value] ?? value;
 export const orderTiming = (value: string) =>
   value === "next-open" ? "次日开盘" : value === "close" ? "当日收盘" : value;
 export function Orders({ services, result }: { services: RuntimeServices; result: JsgResult }) {
+  const names = useNames();
   const [filter, setFilter] = useState<OrderFilter>({ ...EMPTY_ORDER_FILTER });
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState<{ rows: JsgResult["orders"]; count: number }>({
@@ -50,7 +53,13 @@ export function Orders({ services, result }: { services: RuntimeServices; result
     setLoading(true);
     setError(null);
     const timer = setTimeout(() => {
-      void queryOrders(services, result, filter, offset, abort.signal)
+      void queryOrders(
+        services,
+        result,
+        { ...filter, nameCodes: nameMatches(names, filter.code) },
+        offset,
+        abort.signal,
+      )
         .then((value) => {
           if (!abort.signal.aborted) {
             setData(value);
@@ -68,7 +77,7 @@ export function Orders({ services, result }: { services: RuntimeServices; result
       clearTimeout(timer);
       abort.abort();
     };
-  }, [services, result, filter, offset]);
+  }, [services, result, filter, offset, names]);
   const update = (patch: Partial<OrderFilter>) => {
     setFilter((value) => ({ ...value, ...patch }));
     setOffset(0);
@@ -81,7 +90,7 @@ export function Orders({ services, result }: { services: RuntimeServices; result
           <Input
             type="search"
             aria-label="筛选证券"
-            placeholder="搜索证券代码"
+            placeholder="搜索证券名称或代码"
             value={filter.code}
             onChange={(event) => update({ code: event.currentTarget.value })}
           />
@@ -155,9 +164,9 @@ export function Orders({ services, result }: { services: RuntimeServices; result
                   <button
                     className="research-table-link"
                     onClick={() => setDetail(order)}
-                    aria-label={`查看订单 ${order.code} ${order.date} ${index + 1}`}
+                    aria-label={`查看订单 ${displayLabel(names, "instruments", order.code)} ${order.date} ${index + 1}`}
                   >
-                    {order.code}
+                    <Identity code={order.code} />
                   </button>
                 </td>
                 <td>
@@ -229,7 +238,9 @@ export function Orders({ services, result }: { services: RuntimeServices; result
         {detail && (
           <>
             <div className="research-detail-title">
-              <b>{detail.code}</b>
+              <b>
+                <Identity code={detail.code} />
+              </b>
               <span className="research-side" data-side={detail.side}>
                 {detail.side === "buy" ? "买入" : "卖出"}
               </span>

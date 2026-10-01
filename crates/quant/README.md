@@ -5,6 +5,17 @@ and Quant Lab's WASM Worker. It migrates the daily JSG workflow from quent:
 20-bar industry breadth, profitability/ST filters, smallest market-cap targets,
 weekly rebalance, limit-up opening exits, and optional portfolio/position stops.
 
+Snapshots can include optional `displayNames` dictionaries for instruments and
+industries. Browser and native exports read `stock_daily_meta.name` and
+`industry_info.industry_name` (or the older `industry` column), choosing the latest
+nonblank record with deterministic tie breaks. These are current display labels,
+not historical trading inputs: codes, ordering, blacklists and calculations retain
+their original identities. Tables, heatmap tooltips, Chinese-name searches, CSV
+and HTML reports use the same dictionaries. Existing browser snapshots can fetch
+names independently and keep one source-scoped local metadata record, without
+redownloading Arrow or replaying the engine; the original artifact hashes stay
+unchanged. Missing names keep their codes, and “更新名称” retries name-only reads.
+
 ## Research diagnostics and validation
 
 The single-run engine now emits input diagnostics and daily research observations.

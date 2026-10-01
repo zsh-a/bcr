@@ -12,6 +12,7 @@ import type { ClickHouseConnection } from "./clickhouse-http";
 import type { BenchmarkBinding } from "./benchmark";
 import { LedgerPanel } from "./LedgerPanel";
 import { ExplanationPanel } from "./ExplanationPanel";
+import { Identity } from "./ResearchNames";
 
 const ResearchChart = lazy(() => import("./ResearchChart"));
 
@@ -37,7 +38,7 @@ function Holdings({ result }: { result: JsgResult }) {
               <tr key={holding.code}>
                 <td>
                   <button className="research-table-link" onClick={() => setDetail(holding)}>
-                    {holding.code}
+                    <Identity code={holding.code} />
                   </button>
                 </td>
                 <td className="numeric">{holding.quantity.toLocaleString()}</td>
@@ -84,7 +85,9 @@ function Holdings({ result }: { result: JsgResult }) {
         {detail && (
           <>
             <div className="research-detail-title">
-              <b>{detail.code}</b>
+              <b>
+                <Identity code={detail.code} />
+              </b>
             </div>
             <dl className="research-facts">
               {[
@@ -191,7 +194,9 @@ function Decisions({ services, selected }: { services: RuntimeServices; selected
           <dl className="research-secondary-metrics">
             <div>
               <dt>领涨行业</dt>
-              <dd>{value.topIndustry ?? "—"}</dd>
+              <dd>
+                {value.topIndustry ? <Identity code={value.topIndustry} kind="industries" /> : "—"}
+              </dd>
             </div>
             <div>
               <dt>行业宽度</dt>
@@ -207,7 +212,9 @@ function Decisions({ services, selected }: { services: RuntimeServices; selected
           </p>
           <div className="research-targets">
             {value.targets.slice(page * 50, (page + 1) * 50).map((code) => (
-              <span key={code}>{code}</span>
+              <span key={code}>
+                <Identity code={code} />
+              </span>
             ))}
           </div>
           {value.targets.length > 50 && (

@@ -59,7 +59,24 @@ const server = createServer(async (request, response) => {
   } else if (sql.includes("version()")) rows = [{ version: "synthetic-http-fixture" }];
   else if (sql.includes("min(date)"))
     rows = [{ firstDate: fixture.calendar[0], lastDate: fixture.calendar.at(-1) }];
-  else if (sql.includes("system.columns")) rows = [];
+  else if (sql.includes("system.columns"))
+    rows = [
+      ...["code", "name", "last_update_date"].map((name) => ({ table: "stock_daily_meta", name })),
+      ...["code", "industry_code", "industry_name", "enter_date"].map((name) => ({
+        table: "industry_info",
+        name,
+      })),
+    ];
+  else if (sql.includes("AS display_name FROM stock_daily_meta"))
+    rows = Object.entries(fixture.names.instruments).map(([code, display_name]) => ({
+      code,
+      display_name,
+    }));
+  else if (sql.includes("AS display_name FROM industry_info"))
+    rows = Object.entries(fixture.names.industries).map(([code, display_name]) => ({
+      code,
+      display_name,
+    }));
   else if (sql.includes("ORDER BY calendar_date DESC"))
     rows = fixture.calendar
       .slice(-2)

@@ -191,7 +191,10 @@ pub struct JsgGrid {
 impl JsgGrid {
     #[wasm_bindgen(constructor)]
     pub fn new(manifest: &str, configs: &str) -> Result<JsgGrid, JsValue> {
-        let manifest: Manifest = serde_json::from_str(manifest).map_err(js_error)?;
+        let mut manifest: Manifest = serde_json::from_str(manifest).map_err(js_error)?;
+        manifest.validate().map_err(js_error)?;
+        // UI labels need not be cloned into every independent portfolio.
+        manifest.display_names = None;
         let configs: Vec<Config> = serde_json::from_str(configs).map_err(js_error)?;
         if configs.is_empty() || configs.len() > 64 {
             return Err(js_error("browser grid requires 1–64 configs"));

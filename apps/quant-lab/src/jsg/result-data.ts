@@ -12,6 +12,7 @@ export type ResultSource = Pick<
 >;
 export const ORDER_PAGE_SIZE = 50;
 export interface OrderFilter {
+  nameCodes?: string[];
   from: string;
   to: string;
   code: string;
@@ -31,10 +32,14 @@ export async function queryOrders(
 ) {
   const rows: JsgResult["orders"] = [];
   let count = 0;
+  const names = new Set(filter.nameCodes ?? []);
+  const codeQuery = filter.code.trim().toLocaleLowerCase();
+  const matchesCode = (code: string) =>
+    !codeQuery || code.toLocaleLowerCase().includes(codeQuery) || names.has(code);
   const accepts = (order: JsgResult["orders"][number]) =>
     (!filter.from || order.date >= filter.from) &&
     (!filter.to || order.date <= filter.to) &&
-    (!filter.code || order.code.toLowerCase().includes(filter.code.toLowerCase())) &&
+    matchesCode(order.code) &&
     (!filter.side || order.side === filter.side) &&
     (!filter.status ||
       (filter.status === "filled"
@@ -58,15 +63,13 @@ export async function queryOrders(
       const chunk = result.chunks[i]!;
       if (
         chunk.orders === 0 ||
-        (filter.code &&
-          chunk.codes &&
-          !chunk.codes.some((code) => code.toLowerCase().includes(filter.code.toLowerCase()))) ||
+        (codeQuery && chunk.codes && !chunk.codes.some(matchesCode)) ||
         (filter.from && chunk.end < filter.from) ||
         (filter.to && chunk.start > filter.to)
       )
         continue;
       const entireChunk =
-        !filter.code &&
+        !codeQuery &&
         (!filter.from || filter.from <= chunk.start) &&
         (!filter.to || filter.to >= chunk.end);
       const matching = !entireChunk

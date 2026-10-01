@@ -110,7 +110,7 @@ impl ClickHouse {
     }
     pub fn inspect(&self) -> Result<Value, Error> {
         let p = BTreeMap::from([("db".into(), self.database.clone())]);
-        let columns=self.json("SELECT table,name,type FROM system.columns WHERE database={db:String} AND table IN ('index_stocks','finicial_report','index_membership_history','financial_revisions','corporate_actions','stock_daily_execution') ORDER BY table,position",&p)?;
+        let columns=self.json("SELECT table,name,type FROM system.columns WHERE database={db:String} AND table IN ('index_stocks','finicial_report','index_membership_history','financial_revisions','corporate_actions','stock_daily_execution','stock_daily_meta','industry_info') ORDER BY table,position",&p)?;
         let has = |table: &str, name: &str| {
             columns
                 .iter()
@@ -128,6 +128,89 @@ impl ClickHouse {
             json!({"membershipHistory":membership,"financialRevisions":financials,"corporateActions":actions,"dailyLimits":limits,"strictPitReady":membership&&financials&&actions&&limits,"columns":columns}),
         )
     }
+}
+
+fn display_names(
+    ch: &ClickHouse,
+    columns: &[Value],
+    codes: &BTreeMap<String, u32>,
+    sectors: &BTreeMap<String, u32>,
+) -> Result<DisplayNames, Error> {
+    let has = |table: &str, name: &str| {
+        columns
+            .iter()
+            .any(|r| r["table"] == table && r["name"] == name)
+    };
+    let read = |table: &str,
+                code: &str,
+                name: &str,
+                date: &str,
+                keys: &BTreeMap<String, u32>|
+     -> Result<BTreeMap<String, String>, Error> {
+        let order = if has(table, date) {
+            format!("tuple({date},{name})")
+        } else {
+            name.to_owned()
+        };
+        let rows = ch.json(&format!("SELECT {code} AS code,argMax({name},{order}) AS display_name FROM {table} FINAL WHERE {code}!='' AND {name}!='' GROUP BY {code} ORDER BY {code} LIMIT 20001"), &BTreeMap::new())?;
+        if rows.len() > MAX_INSTRUMENTS {
+            return Err("display name count exceeds 20000".into());
+        }
+        let mut names = BTreeMap::new();
+        for row in rows {
+            let key = row["code"].as_str().ok_or("invalid display name code")?;
+            let name = row["display_name"].as_str().ok_or("invalid display name")?;
+            if keys.contains_key(key) {
+                if name.trim().is_empty()
+                    || name.encode_utf16().count() > 200
+                    || name.chars().any(|c| c < '\u{20}' || c == '\u{7f}')
+                    || names
+                        .insert(key.to_owned(), name.trim().to_owned())
+                        .is_some()
+                {
+                    return Err("invalid/duplicate display name".into());
+                }
+            }
+        }
+        Ok(names)
+    };
+    let instruments = if has("stock_daily_meta", "code") && has("stock_daily_meta", "name") {
+        read(
+            "stock_daily_meta",
+            "code",
+            "trimBoth(ifNull(name,''))",
+            "last_update_date",
+            codes,
+        )?
+    } else {
+        BTreeMap::new()
+    };
+    let industry_column = match (
+        has("industry_info", "industry_name"),
+        has("industry_info", "industry"),
+    ) {
+        (true, true) => Some(
+            "coalesce(nullIf(trimBoth(ifNull(industry_name,'')),''),trimBoth(ifNull(industry,'')))",
+        ),
+        (true, false) => Some("trimBoth(ifNull(industry_name,''))"),
+        (false, true) => Some("trimBoth(ifNull(industry,''))"),
+        _ => None,
+    };
+    let industries = match industry_column {
+        Some(name) if has("industry_info", "industry_code") => read(
+            "industry_info",
+            "industry_code",
+            name,
+            "enter_date",
+            sectors,
+        )?,
+        _ => BTreeMap::new(),
+    };
+    Ok(DisplayNames {
+        instruments,
+        industries,
+        captured_at: Some(chrono::Utc::now().to_rfc3339()),
+    })
 }
 
 pub fn hash_file(path: &Path) -> Result<String, Error> {
@@ -339,6 +422,16 @@ pub fn export_snapshot(
         .enumerate()
         .map(|(i, s)| (s.clone(), i as u32))
         .collect();
+    let names = display_names(
+        &ch,
+        quality["columns"]
+            .as_array()
+            .map(Vec::as_slice)
+            .unwrap_or_default(),
+        &codes,
+        &industries,
+    )
+    .ok();
     params.insert("start".into(), date_text(sessions[0].date));
     params.insert("end".into(), last.to_string());
     let parent = output
@@ -446,6 +539,7 @@ pub fn export_snapshot(
             return Err("ClickHouse dates differ from exchange calendar".into());
         }
         let manifest = Manifest {
+            display_names: names,
             version: if strict_pit { 2 } else { 1 },
             schema: if strict_pit {
                 "jsg-daily-v2"
@@ -535,7 +629,9 @@ pub fn grid(path: &Path, configs: Vec<Config>, threads: usize) -> Result<Value, 
     if configs.is_empty() || configs.len() > 256 || threads == 0 || threads > 64 {
         return Err("grid requires 1–256 configs and 1–64 threads".into());
     }
-    let manifest: Manifest = serde_json::from_reader(File::open(path)?)?;
+    let mut manifest: Manifest = serde_json::from_reader(File::open(path)?)?;
+    manifest.validate()?;
+    manifest.display_names = None;
     let mut engines: Vec<crate::engine::Engine> = configs
         .iter()
         .map(|c| crate::engine::Engine::new_shared(manifest.clone(), c.clone()))

@@ -614,6 +614,18 @@ describe("bounded complete-result queries", () => {
         .count,
     ).toBe(0);
     expect(reads).toBe(0);
+    const named = await queryOrders(
+      counted,
+      summary,
+      { ...EMPTY_ORDER_FILTER, code: "示例证券", nameCodes: [first[0]!.code, second[0]!.code] },
+      0,
+      signal(),
+    );
+    expect(named.count).toBe(2);
+    expect(new Set(named.rows.map((row) => row.code))).toEqual(
+      new Set([first[0]!.code, second[0]!.code]),
+    );
+    expect(reads).toBe(2);
     const partial = await queryOrders(
       counted,
       summary,

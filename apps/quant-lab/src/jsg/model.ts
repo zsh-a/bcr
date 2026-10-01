@@ -1,6 +1,7 @@
 import type { ArtifactRef } from "@bcr/core";
 import type { ClickHouseProfile } from "./clickhouse-http";
 import type { Diagnostics, ResearchDay } from "./research-model";
+import { parseDisplayNames, type DisplayNames } from "./display-names";
 
 export const MAX_PARTITION_BYTES = 32 * 1024 * 1024;
 export const MAX_MANIFEST_BYTES = 4 * 1024 * 1024;
@@ -59,6 +60,7 @@ export const DEFAULT_CONFIG: JsgConfig = {
   industryBlacklist: ["ads"],
 };
 export interface ResearchManifest {
+  displayNames?: DisplayNames;
   version: 1 | 2;
   schema: "jsg-daily-v1" | "jsg-daily-v2";
   corporateActions?: CorporateAction[];
@@ -296,6 +298,11 @@ export function parseManifest(value: unknown): ResearchManifest {
   }
   return {
     ...extras,
+    ...(m["displayNames"] !== undefined
+      ? {
+          displayNames: subsetManifestNames(m["displayNames"], instruments, industries),
+        }
+      : {}),
     version: m["version"] as 1 | 2,
     schema: m["schema"] as ResearchManifest["schema"],
     name: text(m["name"]),
@@ -309,6 +316,21 @@ export function parseManifest(value: unknown): ResearchManifest {
     calendar,
     partitions,
   };
+}
+function subsetManifestNames(
+  value: unknown,
+  instruments: ResearchManifest["instruments"],
+  industries: string[],
+) {
+  const names = parseDisplayNames(value);
+  const codes = new Set(instruments.map((instrument) => instrument.code));
+  const sectors = new Set(industries);
+  if (
+    Object.keys(names.instruments).some((code) => !codes.has(code)) ||
+    Object.keys(names.industries).some((code) => !sectors.has(code))
+  )
+    throw new Error("名称代码不属于研究清单");
+  return names;
 }
 export function validateConfig(config: JsgConfig): void {
   if (config.researchWindow) {

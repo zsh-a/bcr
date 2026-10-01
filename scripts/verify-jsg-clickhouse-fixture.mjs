@@ -30,6 +30,7 @@ try {
       CLICKHOUSE_PASSWORD: "",
       JSG_TEST_START: "2024-02-13",
       JSG_TEST_END: "2024-08-30",
+      JSG_EXPECT_NAMES: "1",
     },
   });
   const [code] = await once(verify, "exit");

@@ -2,6 +2,7 @@ use crate::{engine::Engine, model::*};
 
 fn manifest(days: usize) -> Manifest {
     Manifest {
+        display_names: None,
         corporate_actions: vec![],
         data_quality: None,
         version: 1,
@@ -77,6 +78,40 @@ fn warm(engine: &mut Engine) {
     for day in 1..=21 {
         engine.day(bars(day)).unwrap();
     }
+}
+#[test]
+fn names_round_trip_without_affecting_replay_or_identities() {
+    let plain = manifest(22);
+    let mut named = plain.clone();
+    named.display_names = Some(DisplayNames {
+        instruments: std::collections::BTreeMap::from([("sz.001001".into(), "示例证券".into())]),
+        industries: std::collections::BTreeMap::from([("tech".into(), "科技".into())]),
+        captured_at: Some("2026-10-01T00:00:00Z".into()),
+    });
+    named.validate().unwrap();
+    let encoded = serde_json::to_string(&named).unwrap();
+    let restored: Manifest = serde_json::from_str(&encoded).unwrap();
+    assert_eq!(
+        restored.display_names.as_ref().unwrap().industries["tech"],
+        "科技"
+    );
+    let mut a = Engine::new(plain, config()).unwrap();
+    let mut b = Engine::new(restored, config()).unwrap();
+    for day in 1..=22 {
+        a.day(bars(day)).unwrap();
+        b.day(bars(day)).unwrap();
+    }
+    assert_eq!(
+        serde_json::to_value(a.finish().unwrap()).unwrap(),
+        serde_json::to_value(b.finish().unwrap()).unwrap()
+    );
+    named
+        .display_names
+        .as_mut()
+        .unwrap()
+        .instruments
+        .insert("absent".into(), "错误证券".into());
+    assert!(named.validate().is_err());
 }
 fn set_close(bar: &mut Bar, close: f64) {
     bar.close = close;

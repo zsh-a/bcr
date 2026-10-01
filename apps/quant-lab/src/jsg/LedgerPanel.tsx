@@ -7,8 +7,11 @@ import { queryResearchDay, queryResearchSummary } from "./result-reader";
 import type { ResearchSummary, ResearchDayPage } from "./research-analysis";
 import { money, percent } from "./Orders";
 import { downloadText, ledgerCsv, researchReport } from "./report";
+import { Identity, useNames } from "./ResearchNames";
+import { displayLabel } from "./display-names";
 
 export function LedgerPanel({ selected }: { selected: SelectedRun }) {
+  const names = useNames();
   const [mode, setMode] = useState("history"),
     [date, setDate] = useState(dateText(selected.run.endDate)),
     [page, setPage] = useState(0);
@@ -74,7 +77,7 @@ export function LedgerPanel({ selected }: { selected: SelectedRun }) {
             disabled={!summary}
             onClick={() =>
               summary &&
-              downloadText(ledgerCsv(summary), "jsg-ledger.csv", "text/csv;charset=utf-8")
+              downloadText(ledgerCsv(summary, names), "jsg-ledger.csv", "text/csv;charset=utf-8")
             }
           >
             <Download size={14} />
@@ -87,7 +90,7 @@ export function LedgerPanel({ selected }: { selected: SelectedRun }) {
             onClick={() =>
               summary &&
               downloadText(
-                researchReport(selected, summary),
+                researchReport(selected, summary, names),
                 "jsg-report.html",
                 "text/html;charset=utf-8",
               )
@@ -146,7 +149,9 @@ export function LedgerPanel({ selected }: { selected: SelectedRun }) {
               <tbody>
                 {summary.industries.map((s) => (
                   <tr key={s.industry}>
-                    <td>{s.industry}</td>
+                    <td>
+                      <Identity code={s.industry} kind="industries" />
+                    </td>
                     <td className="numeric">{money(s.profit)}</td>
                     <td className="numeric">{money(s.value)}</td>
                     <td className="numeric">{percent(s.weight)}</td>
@@ -176,8 +181,10 @@ export function LedgerPanel({ selected }: { selected: SelectedRun }) {
                   {rows.map((a) => (
                     <tr key={a.code}>
                       <td>
-                        {a.code}
-                        <small className="research-cell-note">{a.industry}</small>
+                        <Identity code={a.code} />
+                        <small className="research-cell-note">
+                          {displayLabel(names, "industries", a.industry)}
+                        </small>
                       </td>
                       <td className="numeric">{a.quantity.toLocaleString()}</td>
                       <td className="numeric">

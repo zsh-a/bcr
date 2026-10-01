@@ -170,7 +170,17 @@ pub struct Partition {
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DisplayNames {
+    pub instruments: std::collections::BTreeMap<String, String>,
+    pub industries: std::collections::BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub captured_at: Option<String>,
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Manifest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_names: Option<DisplayNames>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub corporate_actions: Vec<CorporateAction>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -190,6 +200,31 @@ pub struct Manifest {
 }
 impl Manifest {
     pub fn validate(&self) -> Result<(), String> {
+        if let Some(names) = &self.display_names {
+            let codes: std::collections::BTreeSet<_> =
+                self.instruments.iter().map(|i| &i.code).collect();
+            let sectors: std::collections::BTreeSet<_> = self.industries.iter().collect();
+            for (dictionary, keys) in [(&names.instruments, &codes), (&names.industries, &sectors)]
+            {
+                if dictionary.len() > MAX_INSTRUMENTS
+                    || dictionary.iter().any(|(code, name)| {
+                        !keys.contains(code)
+                            || name.trim().is_empty()
+                            || name.encode_utf16().count() > 200
+                            || name.chars().any(|c| c < '\u{20}' || c == '\u{7f}')
+                    })
+                {
+                    return Err("invalid display name metadata".into());
+                }
+            }
+            if names
+                .captured_at
+                .as_ref()
+                .is_some_and(|date| date.len() > 64)
+            {
+                return Err("invalid display name timestamp".into());
+            }
+        }
         if !((self.version == 1 && self.schema == "jsg-daily-v1")
             || (self.version == 2 && self.schema == "jsg-daily-v2"))
         {
