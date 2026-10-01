@@ -38,6 +38,7 @@
     "test:browser:jsg": "node scripts/verify-jsg.mjs",
     "test:browser:jsg:grid": "node scripts/verify-jsg-grid.mjs",
     "test:browser:jsg:evaluation": "node scripts/verify-jsg-evaluation.mjs",
+    "test:browser:jsg:features": "node scripts/verify-jsg-features.mjs",
     "test:browser:jsg:research": "node scripts/verify-jsg-research.mjs",
     "test:browser:jsg:layout": "node scripts/verify-jsg-layout.mjs",
     "test:browser:jsg:storage": "node scripts/verify-jsg-storage.mjs",

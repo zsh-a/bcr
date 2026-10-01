@@ -458,6 +458,144 @@ fn raw_bars(day: usize) -> Vec<Bar> {
         })
         .collect()
 }
+
+#[test]
+fn position_cap_uses_actual_open_valuation_and_net_equity_after_fees() {
+    for raw in [false, true] {
+        let mut c = if raw { raw_config() } else { config() };
+        c.max_position_pct = 0.2;
+        c.commission_bps = 100.0;
+        let mut e = Engine::new(if raw { raw_manifest(22) } else { manifest(22) }, c).unwrap();
+        for d in 1..=21 {
+            e.day(if raw { raw_bars(d) } else { bars(d) }).unwrap();
+        }
+        let mut b = if raw { raw_bars(22) } else { bars(22) };
+        b[0].open = 11.0;
+        b[0].high = 11.0;
+        b[0].preclose = 11.0;
+        e.day(b).unwrap();
+        let r = e.finish().unwrap();
+        let buy = &r.orders[0];
+        let value = buy.quantity as f64 * buy.price;
+        assert_eq!(buy.risk_reason.as_deref(), Some("position-cap"));
+        assert_eq!(buy.status, "partial");
+        assert!(value <= (100_000.0 - buy.fee) * 0.2 + 1e-8);
+        assert_eq!(buy.quantity, 1800);
+        // It must not size the open using the cheaper close available later that day.
+        assert!(buy.requested > buy.quantity);
+    }
+}
+
+#[test]
+fn exposure_cap_applies_across_symbols_and_records_zero_and_partial_fills() {
+    for raw in [false, true] {
+        let mut c = if raw { raw_config() } else { config() };
+        c.stock_count = 2;
+        c.max_exposure_pct = 0.35;
+        let mut e = Engine::new(if raw { raw_manifest(22) } else { manifest(22) }, c).unwrap();
+        for d in 1..=22 {
+            e.day(if raw { raw_bars(d) } else { bars(d) }).unwrap();
+        }
+        let r = e.finish().unwrap();
+        let exposure: f64 = r.holdings.iter().map(|p| p.value).sum();
+        assert!(exposure <= r.metrics.final_equity * 0.35 + 1e-8);
+        assert_eq!(r.orders[0].risk_reason.as_deref(), Some("exposure-cap"));
+        assert_eq!(r.orders[0].status, "partial");
+        assert_eq!(r.orders[1].status, "exposure-cap");
+        assert_eq!(r.orders[1].quantity, 0);
+    }
+}
+
+#[test]
+fn mixed_caps_report_the_binding_limit_after_lot_rounding() {
+    let mut c = config();
+    c.max_position_pct = 0.6;
+    c.max_exposure_pct = 0.2;
+    let mut e = Engine::new(manifest(22), c).unwrap();
+    warm(&mut e);
+    e.day(bars(22)).unwrap();
+    let r = e.finish().unwrap();
+    assert_eq!(r.orders[0].risk_reason.as_deref(), Some("exposure-cap"));
+    assert_eq!(r.orders[0].quantity, 1900);
+}
+
+#[test]
+fn daily_loss_uses_previous_session_equity_and_retries_limit_down() {
+    let mut c = config();
+    c.max_daily_loss = 0.05;
+    let mut m = manifest(24);
+    m.calendar[21].rebalance = true;
+    m.calendar[22].rebalance = true;
+    let mut e = Engine::new(m, c).unwrap();
+    warm(&mut e);
+    let mut b = bars(22);
+    set_close(&mut b[0], 9.0);
+    e.day(b).unwrap();
+    let mut b = bars(23);
+    b[0].preclose = 9.0;
+    set_close(&mut b[0], 9.1);
+    e.day(b).unwrap();
+    e.day(bars(24)).unwrap();
+    let r = e.finish().unwrap();
+    assert_eq!(r.orders[1].reason, "daily-loss");
+    assert_eq!(r.orders[1].status, "limit-down");
+    assert_eq!(r.orders[2].reason, "daily-loss");
+    assert_eq!(r.orders[2].status, "filled");
+    assert_eq!(r.orders.iter().filter(|o| o.side == "buy").count(), 1);
+    assert!(r.holdings.is_empty());
+}
+
+#[test]
+fn take_profit_retries_after_t_plus_one_even_if_profit_falls_and_does_not_rebuy() {
+    let mut c = raw_config();
+    c.take_profit = 0.05;
+    let mut m = raw_manifest(23);
+    m.calendar[21].rebalance = true;
+    m.calendar[22].rebalance = true;
+    let mut e = Engine::new(m, c).unwrap();
+    for d in 1..=21 {
+        e.day(raw_bars(d)).unwrap();
+    }
+    let mut b = raw_bars(22);
+    set_close(&mut b[0], 11.0);
+    e.day(b).unwrap();
+    e.day(raw_bars(23)).unwrap();
+    let r = e.finish().unwrap();
+    assert_eq!(r.orders[1].reason, "take-profit");
+    assert_eq!(r.orders[1].status, "not-sellable");
+    assert_eq!(r.orders[2].reason, "take-profit");
+    assert_eq!(r.orders[2].status, "filled");
+    assert!(r.holdings.is_empty());
+    assert_eq!(r.pending_orders, 0);
+}
+
+#[test]
+fn new_risk_settings_validate_and_default_to_disabled_when_omitted() {
+    let mut value = serde_json::to_value(config()).unwrap();
+    for key in [
+        "maxPositionPct",
+        "maxExposurePct",
+        "maxDailyLoss",
+        "takeProfit",
+    ] {
+        value.as_object_mut().unwrap().remove(key);
+    }
+    let restored: Config = serde_json::from_value(value).unwrap();
+    assert_eq!(restored.max_position_pct, 0.0);
+    assert_eq!(restored.max_exposure_pct, 0.0);
+    assert_eq!(restored.max_daily_loss, 0.0);
+    assert_eq!(restored.take_profit, 0.0);
+    let mut c = config();
+    c.max_position_pct = 1.0;
+    c.max_exposure_pct = 1.0;
+    c.take_profit = 2.0;
+    assert!(c.validate().is_ok());
+    c.max_daily_loss = 1.0;
+    assert!(c.validate().is_err());
+    c.max_daily_loss = 0.0;
+    c.max_position_pct = f64::NAN;
+    assert!(c.validate().is_err());
+}
 #[test]
 fn raw_execution_uses_real_shares_minimum_fees_and_volume_budget() {
     let mut c = raw_config();
@@ -762,6 +900,10 @@ fn shared_factors_match_independent_portfolios_with_different_risk_parameters() 
             stock_count: [1, 5, 10][i],
             stop_loss: [0.0, 0.04, 0.12][i],
             trailing_stop: [0.0, 0.1, 0.0][i],
+            max_position_pct: [0.0, 0.1, 0.2][i],
+            max_exposure_pct: [0.0, 0.4, 0.7][i],
+            max_daily_loss: [0.0, 0.02, 0.05][i],
+            take_profit: [0.0, 0.1, 0.03][i],
             max_drawdown: [0.0, 0.2, 0.0][i],
             ..Config::default()
         })

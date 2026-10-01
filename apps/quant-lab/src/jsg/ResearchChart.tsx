@@ -14,6 +14,7 @@ import type { RuntimeServices } from "@bcr/core";
 import { dateText, type JsgResult } from "./model";
 import type { SelectedRun } from "./session";
 import { queryCurve } from "./result-reader";
+import { COMPARISON_COLORS } from "./comparison";
 import { money, percent } from "./Orders";
 
 function day(time: Time): string {
@@ -34,14 +35,16 @@ function mergePoints(
 export default function ResearchChart({
   services,
   selected,
-  comparison,
+  comparisons,
 }: {
   services: RuntimeServices;
   selected: SelectedRun;
-  comparison: SelectedRun | null;
+  comparisons: SelectedRun[];
 }) {
   const container = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const visibleRange =
+    useRef<ReturnType<ReturnType<IChartApi["timeScale"]>["getVisibleRange"]>>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState(selected.result.equity.at(-1));
@@ -51,16 +54,15 @@ export default function ResearchChart({
     date: string;
     net?: number;
     drawdown?: number;
-    baseline?: number;
+    baselines: (number | undefined)[];
   } | null>(null);
   const result = selected.result,
-    capital = selected.run.config.initialCapital,
-    other = comparison?.result,
-    otherCapital = comparison?.run.config.initialCapital;
+    capital = selected.run.config.initialCapital;
   const first = dateText(selected.run.startDate),
     last = dateText(selected.run.endDate);
   useEffect(() => {
     if (!container.current) return;
+    setHover(null);
     let disposed = false,
       timer: ReturnType<typeof setTimeout> | undefined,
       frame = 0;
@@ -93,16 +95,16 @@ export default function ResearchChart({
       lastValueVisible: false,
       priceLineVisible: false,
     });
-    const baseline = other
-      ? chart.addSeries(LineSeries, {
-          title: "对照",
-          lineWidth: 1,
-          lineStyle: 2,
-          lastValueVisible: false,
-          priceLineVisible: false,
-          priceFormat: { type: "price", precision: 3, minMove: 0.001 },
-        })
-      : null;
+    const baselines = comparisons.map((_, index) =>
+      chart.addSeries(LineSeries, {
+        title: `对照 ${index + 1}`,
+        lineWidth: 1,
+        lineStyle: 2,
+        lastValueVisible: false,
+        priceLineVisible: false,
+        priceFormat: { type: "price", precision: 3, minMove: 0.001 },
+      }),
+    );
     const drawdown = chart.addSeries(
       AreaSeries,
       {
@@ -145,7 +147,9 @@ export default function ResearchChart({
         },
       });
       net.applyOptions({ color: color("accent") });
-      baseline?.applyOptions({ color: color("info") });
+      baselines.forEach((series, index) =>
+        series.applyOptions({ color: color(COMPARISON_COLORS[index]!) }),
+      );
       drawdown.applyOptions({
         lineColor: color("danger"),
         topColor: "transparent",
@@ -166,14 +170,16 @@ export default function ResearchChart({
       drawdown.setData(points.map((p) => ({ time: p.date, value: p.drawdown * 100 })));
     };
     setPoints(result.equity);
-    if (baseline && other)
-      baseline.setData(
-        other!.equity.map((p) => ({
+    baselines.forEach((series, index) =>
+      series.setData(
+        comparisons[index]!.result.equity.map((p) => ({
           time: p.date,
-          value: p.equity / otherCapital!,
+          value: p.equity / comparisons[index]!.run.config.initialCapital,
         })),
-      );
-    chart.timeScale().fitContent();
+      ),
+    );
+    if (visibleRange.current) chart.timeScale().setVisibleRange(visibleRange.current);
+    else chart.timeScale().fitContent();
     const readRange = (from: string, to: string) => {
       if (querying) return;
       const key = `${from}:${to}`;
@@ -187,20 +193,28 @@ export default function ResearchChart({
         setError(null);
         void Promise.all([
           queryCurve(services, result, from, to, request.signal),
-          other ? queryCurve(services, other!, from, to, request.signal) : Promise.resolve([]),
+          ...comparisons.map((other) =>
+            queryCurve(services, other.result, from, to, request.signal),
+          ),
         ])
-          .then(([points, comparisonPoints]) => {
+          .then(([points, ...comparisonPoints]) => {
             if (disposed || request.signal.aborted) return;
             const range = chart.timeScale().getVisibleRange();
             querying = true;
             setPoints(mergePoints(result.equity, points, from, to));
-            if (baseline && other)
-              baseline.setData(
-                mergePoints(other!.equity, comparisonPoints, from, to).map((p) => ({
+            baselines.forEach((series, index) =>
+              series.setData(
+                mergePoints(
+                  comparisons[index]!.result.equity,
+                  comparisonPoints[index]!,
+                  from,
+                  to,
+                ).map((p) => ({
                   time: p.date,
-                  value: p.equity / otherCapital!,
+                  value: p.equity / comparisons[index]!.run.config.initialCapital,
                 })),
-              );
+              ),
+            );
             if (range) chart.timeScale().setVisibleRange(range);
             querying = false;
             loadedRange = key;
@@ -215,6 +229,7 @@ export default function ResearchChart({
       }, 200);
     };
     chart.timeScale().subscribeVisibleTimeRangeChange((range) => {
+      visibleRange.current = range;
       if (range && !querying)
         readRange(
           day(range.from) < first ? first : day(range.from),
@@ -231,13 +246,17 @@ export default function ResearchChart({
           return;
         }
         const n = event.seriesData.get(net),
-          d = event.seriesData.get(drawdown),
-          b = baseline ? event.seriesData.get(baseline) : undefined;
+          d = event.seriesData.get(drawdown);
         setHover({
           date: day(event.time),
           ...(n && "value" in n ? { net: n.value } : {}),
           ...(d && "value" in d ? { drawdown: d.value / 100 } : {}),
-          ...(b && "value" in b && typeof b.value === "number" ? { baseline: b.value } : {}),
+          baselines: baselines.map((series) => {
+            const value = event.seriesData.get(series);
+            return value && "value" in value && typeof value.value === "number"
+              ? value.value
+              : undefined;
+          }),
         });
       });
     });
@@ -250,7 +269,7 @@ export default function ResearchChart({
       chartRef.current = null;
       chart.remove();
     };
-  }, [services, result, capital, other, otherCapital, first, last]);
+  }, [services, result, capital, comparisons, first, last]);
   useEffect(() => {
     if (!inspectDate) return;
     const abort = new AbortController();
@@ -307,18 +326,23 @@ export default function ResearchChart({
               (selected.result.metrics.finalEquity / selected.run.config.initialCapital).toFixed(3)}
           </b>
         </span>
-        {comparison && (
-          <span className="comparison">
-            <i />
-            对照运行{" "}
+        {comparisons.map((comparison, index) => (
+          <span
+            key={comparison.run.id}
+            className="comparison"
+            style={{ color: `var(--color-${COMPARISON_COLORS[index]})` }}
+            title={`${comparison.run.name} · ${comparison.run.config.stockCount} 只`}
+          >
+            <i style={{ background: "currentColor" }} />
+            对照 {index + 1}{" "}
             <b>
-              {hover?.baseline?.toFixed(3) ??
+              {hover?.baselines[index]?.toFixed(3) ??
                 (
                   comparison.result.metrics.finalEquity / comparison.run.config.initialCapital
                 ).toFixed(3)}
             </b>
           </span>
-        )}
+        ))}
         <span>
           {hover?.date ?? last}
           {hover?.drawdown !== undefined ? ` · 回撤 ${percent(hover.drawdown)}` : ""}

@@ -24,6 +24,14 @@ pub struct Config {
     pub stop_loss: f64,
     pub trailing_stop: f64,
     pub max_drawdown: f64,
+    #[serde(default)]
+    pub max_position_pct: f64,
+    #[serde(default)]
+    pub max_exposure_pct: f64,
+    #[serde(default)]
+    pub max_daily_loss: f64,
+    #[serde(default)]
+    pub take_profit: f64,
     pub t_plus_one: bool,
     pub industry_blacklist: Vec<String>,
 }
@@ -42,6 +50,10 @@ impl Default for Config {
             stop_loss: 0.0,
             trailing_stop: 0.0,
             max_drawdown: 0.0,
+            max_position_pct: 0.0,
+            max_exposure_pct: 0.0,
+            max_daily_loss: 0.0,
+            take_profit: 0.0,
             t_plus_one: false,
             industry_blacklist: vec!["ads".into()],
         }
@@ -95,10 +107,23 @@ impl Config {
                 return Err("commission/slippage must be between 0 and 100 bps".into());
             }
         }
-        for value in [self.stop_loss, self.trailing_stop, self.max_drawdown] {
+        for value in [
+            self.stop_loss,
+            self.trailing_stop,
+            self.max_drawdown,
+            self.max_daily_loss,
+        ] {
             if !value.is_finite() || !(0.0..1.0).contains(&value) {
                 return Err("risk thresholds must be in [0, 1)".into());
             }
+        }
+        for value in [self.max_position_pct, self.max_exposure_pct] {
+            if !value.is_finite() || !(0.0..=1.0).contains(&value) {
+                return Err("position caps must be in [0, 1]".into());
+            }
+        }
+        if !self.take_profit.is_finite() || !(0.0..=10.0).contains(&self.take_profit) {
+            return Err("take profit must be in [0, 10]".into());
         }
         Ok(())
     }
@@ -409,6 +434,8 @@ pub struct Order {
     pub side: String,
     pub timing: String,
     pub reason: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub risk_reason: Option<String>,
     pub requested: u64,
     pub quantity: u64,
     pub price: f64,

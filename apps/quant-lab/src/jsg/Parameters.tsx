@@ -25,9 +25,15 @@ export function configErrors(config: JsgConfig): Record<string, string> {
   for (const key of ["commissionBps", "slippageBps"] as const)
     if (!Number.isFinite(config[key]) || config[key] < 0 || config[key] > 100)
       errors[key] = "请输入 0–100 bps 的有效数值";
-  for (const key of ["stopLoss", "trailingStop", "maxDrawdown"] as const)
-    if (!Number.isFinite(config[key]) || config[key] < 0 || config[key] >= 1)
+  for (const key of ["stopLoss", "trailingStop", "maxDrawdown", "maxDailyLoss"] as const)
+    if (!Number.isFinite(config[key] ?? 0) || (config[key] ?? 0) < 0 || (config[key] ?? 0) >= 1)
       errors[key] = "请输入小于 100% 的有效比例";
+  for (const key of ["maxPositionPct", "maxExposurePct", "takeProfit"] as const) {
+    const value = config[key] ?? 0,
+      max = key === "takeProfit" ? 10 : 1;
+    if (!Number.isFinite(value) || value < 0 || value > max)
+      errors[key] = `请输入 0–${max * 100}% 的有效比例`;
+  }
   try {
     validateConfig(config);
   } catch (error) {
@@ -194,6 +200,10 @@ export function Parameters({
             ["stopLoss", "个股止损", 0.1],
             ["trailingStop", "移动止盈", 0.1],
             ["maxDrawdown", "组合回撤", 0.2],
+            ["maxPositionPct", "单股仓位上限", 0.1],
+            ["maxExposurePct", "总仓位上限", 0.8],
+            ["maxDailyLoss", "单日亏损", 0.05],
+            ["takeProfit", "固定止盈", 0.15],
           ] as const
         ).map(([key, label, baseline]) => (
           <div className="research-risk" key={key}>
@@ -201,17 +211,17 @@ export function Parameters({
               <input
                 type="checkbox"
                 aria-label={`启用${label}`}
-                checked={config[key] !== 0}
+                checked={(config[key] ?? 0) !== 0}
                 onChange={(event) =>
                   onChange({ [key]: event.currentTarget.checked ? baseline : 0 })
                 }
               />
               <span>{label}</span>
             </label>
-            {config[key] !== 0 && (
+            {(config[key] ?? 0) !== 0 && (
               <NumberField
                 label={`${label} / %`}
-                value={config[key] * 100}
+                value={(config[key] ?? 0) * 100}
                 onChange={(value) => onChange({ [key]: value / 100 })}
                 unit="%"
                 error={errors[key]}
@@ -219,7 +229,9 @@ export function Parameters({
             )}
           </div>
         ))}
-        <p className="research-help">风控信号按交易日收盘处理。</p>
+        <p className="research-help">
+          仓位上限在买入成交前检查，按成交时净资产限额缩量。止盈止损按收盘价检查；单日亏损以昨日资产为基准。无法卖出时持续重试，触发当日不重新买入。
+        </p>
       </details>
       <details className="research-parameter-details">
         <summary>

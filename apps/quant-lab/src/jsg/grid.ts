@@ -8,6 +8,10 @@ export const GRID_FIELDS = {
   stopLoss: { label: "个股止损", unit: "%", scale: 100 },
   trailingStop: { label: "移动止盈", unit: "%", scale: 100 },
   maxDrawdown: { label: "组合回撤", unit: "%", scale: 100 },
+  maxPositionPct: { label: "单股仓位上限", unit: "%", scale: 100 },
+  maxExposurePct: { label: "总仓位上限", unit: "%", scale: 100 },
+  maxDailyLoss: { label: "单日亏损", unit: "%", scale: 100 },
+  takeProfit: { label: "固定止盈", unit: "%", scale: 100 },
   slippageBps: { label: "滑点", unit: "bps", scale: 1 },
   commissionBps: { label: "佣金", unit: "bps", scale: 1 },
 } as const;

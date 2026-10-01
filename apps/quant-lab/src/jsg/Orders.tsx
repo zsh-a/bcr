@@ -16,6 +16,10 @@ const reasons: Record<string, string> = {
   "stop-loss": "个股止损",
   "trailing-stop": "移动止盈",
   "max-drawdown": "组合回撤",
+  "daily-loss": "单日亏损",
+  "take-profit": "固定止盈",
+  "position-cap": "单股仓位上限",
+  "exposure-cap": "总仓位上限",
   "limit-open": "涨停打开",
   "limit-up-open": "涨停打开",
   "limit-up-opened": "涨停打开",
@@ -32,6 +36,8 @@ const statuses: Record<string, string> = {
   "not-sellable": "数量不可卖",
   "volume-limit": "成交量限制",
   "insufficient-cash": "现金不足",
+  "position-cap": "单股仓位限制",
+  "exposure-cap": "总仓位限制",
   "no-cash": "现金不足",
 };
 export const orderStatus = (value: string) => statuses[value] ?? value;
@@ -177,7 +183,12 @@ export function Orders({ services, result }: { services: RuntimeServices; result
                 <td className="numeric">{order.quantity.toLocaleString()}</td>
                 <td className="numeric">{money(order.price)}</td>
                 <td className="numeric">{money(order.fee)}</td>
-                <td>{orderReason(order.reason)}</td>
+                <td>
+                  {[order.reason, order.riskReason]
+                    .filter(Boolean)
+                    .map((reason) => orderReason(reason!))
+                    .join(" · ")}
+                </td>
                 <td>
                   <span
                     className="research-order-status"
@@ -251,6 +262,7 @@ export function Orders({ services, result }: { services: RuntimeServices; result
                 ["信号日期", detail.signalDate],
                 ["撮合时点", orderTiming(detail.timing)],
                 ["触发原因", orderReason(detail.reason)],
+                ...(detail.riskReason ? [["仓位限制", orderReason(detail.riskReason)]] : []),
                 ["请求数量", detail.requested.toLocaleString()],
                 ["成交数量", detail.quantity.toLocaleString()],
                 ["成交价格", `¥${money(detail.price)}`],

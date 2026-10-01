@@ -124,7 +124,9 @@ export function GridSettings({
                   ...current,
                   {
                     field,
-                    values: String(Number((base[field] * GRID_FIELDS[field].scale).toFixed(8))),
+                    values: String(
+                      Number(((base[field] ?? 0) * GRID_FIELDS[field].scale).toFixed(8)),
+                    ),
                   },
                 ]);
             }}
@@ -288,9 +290,9 @@ export function GridResults({
                     {grid.run.axes.map((axis) => (
                       <td key={axis.field}>
                         {Number(
-                          (row.config[axis.field] * (GRID_FIELDS[axis.field]?.scale ?? 1)).toFixed(
-                            8,
-                          ),
+                          (
+                            (row.config[axis.field] ?? 0) * (GRID_FIELDS[axis.field]?.scale ?? 1)
+                          ).toFixed(8),
                         )}
                         <small>{GRID_FIELDS[axis.field]?.unit}</small>
                       </td>

@@ -4,9 +4,10 @@ import { Button, Dialog, Input, Spinner } from "@bcr/react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Orders, money, percent } from "./Orders";
 import { dateText, type JsgResult } from "./model";
-import { datasetKey, type SelectedRun } from "./session";
+import { type SelectedRun } from "./session";
 import { queryDecision } from "./result-reader";
 import { ResearchTabs } from "./ResearchTabs";
+import { ComparisonPanel } from "./ComparisonPanel";
 import { EvaluationPanel } from "./EvaluationPanel";
 import type { ClickHouseConnection } from "./clickhouse-http";
 import type { BenchmarkBinding } from "./benchmark";
@@ -244,7 +245,7 @@ function Decisions({ services, selected }: { services: RuntimeServices; selected
 export function ResultExplorer({
   services,
   selected,
-  comparison,
+  comparisons,
   connection,
   busy,
   onBenchmark,
@@ -252,7 +253,7 @@ export function ResultExplorer({
 }: {
   services: RuntimeServices;
   selected: SelectedRun;
-  comparison: SelectedRun | null;
+  comparisons: SelectedRun[];
   connection: ClickHouseConnection;
   busy: boolean;
   onBenchmark: (runId: string, benchmark?: BenchmarkBinding) => void;
@@ -290,7 +291,7 @@ export function ResultExplorer({
               key={selected.run.id}
               services={services}
               selected={selected}
-              comparison={comparison}
+              comparisons={comparisons}
             />
           </Suspense>
           <dl className="research-secondary-metrics">
@@ -311,51 +312,8 @@ export function ResultExplorer({
               </div>
             ))}
           </dl>
-          {comparison && (
-            <div className="research-comparison">
-              <h3>与对照运行比较</h3>
-              <p>相同回测区间 · 净值按各自初始本金归一化</p>
-              <p>
-                对照数据：{comparison.run.name}
-                {datasetKey(selected.run.dataset) !== datasetKey(comparison.run.dataset) &&
-                  " · 数据快照不同，差值同时包含数据变化的影响"}
-              </p>
-              <table className="research-table">
-                <thead>
-                  <tr>
-                    <th>指标</th>
-                    <th className="numeric">本次运行</th>
-                    <th className="numeric">对照运行</th>
-                    <th className="numeric">差值</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(
-                    [
-                      ["总收益", metrics.totalReturn, comparison.result.metrics.totalReturn, true],
-                      [
-                        "最大回撤",
-                        metrics.maxDrawdown,
-                        comparison.result.metrics.maxDrawdown,
-                        true,
-                      ],
-                      ["Sharpe", metrics.sharpe, comparison.result.metrics.sharpe, false],
-                    ] as const
-                  ).map(([label, value, other, ratio]) => (
-                    <tr key={label}>
-                      <td>{label}</td>
-                      <td className="numeric">{ratio ? percent(value) : value.toFixed(2)}</td>
-                      <td className="numeric">{ratio ? percent(other) : other.toFixed(2)}</td>
-                      <td className="numeric">
-                        {ratio
-                          ? `${((value - other) * 100).toFixed(2)} pp`
-                          : (value - other).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {comparisons.length > 0 && (
+            <ComparisonPanel selected={selected} comparisons={comparisons} />
           )}
         </div>
         {tab === "orders" && (

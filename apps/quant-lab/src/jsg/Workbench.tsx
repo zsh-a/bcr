@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   Button,
   Dialog,
-  Select,
   Spinner,
   useRuntime,
   useLocationSearch,
@@ -26,6 +25,7 @@ import {
 } from "lucide-react";
 import { RunSettings } from "./RunSettings";
 import { draftChanges } from "./draft";
+import { compatibleRun, MAX_COMPARISONS } from "./comparison";
 import { configErrors } from "./Parameters";
 import { ResultExplorer } from "./ResultExplorer";
 import { Quality } from "./Quality";
@@ -134,8 +134,9 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
     setStudyExpanded(false);
   }, [state.selected?.run.id]);
   const [exporting, setExporting] = useState(false),
-    [comparison, setComparison] = useState<SelectedRun | null>(null),
-    [comparing, setComparing] = useState(false);
+    [comparisons, setComparisons] = useState<SelectedRun[]>([]),
+    [pendingComparison, setPendingComparison] = useState<string | null>(null);
+  const comparing = pendingComparison !== null;
   const comparisonRequest = useRef(0);
   const actionMenu = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
@@ -192,17 +193,16 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
   }, [busy, onBusy]);
   useEffect(() => {
     comparisonRequest.current++;
-    setComparing(false);
-    setComparison((value) =>
-      value &&
-      selected &&
-      value.run.id !== selected.run.id &&
-      value.run.startDate === selected.run.startDate &&
-      value.run.endDate === selected.run.endDate
-        ? value
-        : null,
+    setPendingComparison(null);
+    setComparisons((values) =>
+      values.filter(
+        (value) =>
+          selected &&
+          compatibleRun(selected.run, value.run) &&
+          state.runs.some((run) => run.id === value.run.id),
+      ),
     );
-  }, [selected?.run.id]);
+  }, [selected?.run.id, state.runs]);
   const execute = async () => {
     if (!ready || busy || invalid) return;
     setSettingsOpen(false);
@@ -285,23 +285,29 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
     }
   };
   const compare = async (id: string) => {
+    if (comparing) return;
     const request = ++comparisonRequest.current;
-    if (!id) {
-      setComparison(null);
-      setComparing(false);
+    if (comparisons.some((item) => item.run.id === id)) {
+      setComparisons((values) => values.filter((item) => item.run.id !== id));
       return;
     }
     const run = state.runs.find((item) => item.id === id);
-    if (!run) return;
-    setComparing(true);
+    if (
+      !run ||
+      !selected ||
+      !compatibleRun(selected.run, run) ||
+      comparisons.length >= MAX_COMPARISONS
+    )
+      return;
+    setPendingComparison(id);
     try {
-      const value = await readRun(services, run);
-      if (comparisonRequest.current === request) setComparison(value);
+      const value = await withResearchFiles("shared", () => readRun(services, run));
+      if (comparisonRequest.current === request) setComparisons((values) => [...values, value]);
     } catch (error) {
       if (comparisonRequest.current === request)
         research.notice(error instanceof Error ? error.message : String(error));
     } finally {
-      if (comparisonRequest.current === request) setComparing(false);
+      if (comparisonRequest.current === request) setPendingComparison(null);
     }
   };
   const closeSettings = () => {
@@ -599,10 +605,12 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    aria-label="添加对照"
+                    aria-label={
+                      comparisons.length ? `管理对照（${comparisons.length}）` : "添加对照"
+                    }
                     onClick={() => setComparisonOpen(true)}
                   >
-                    {comparison ? "对照已开启" : "添加对照"}
+                    {comparisons.length ? `对照 ${comparisons.length}` : "添加对照"}
                   </Button>
                 </div>
               </div>
@@ -627,7 +635,7 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                 <ResultExplorer
                   services={services}
                   selected={selected}
-                  comparison={comparison}
+                  comparisons={comparisons}
                   connection={source.connection}
                   busy={busy}
                   onBenchmark={research.attachBenchmark}
@@ -708,27 +716,45 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
         title="对照运行"
         className="research-comparison-dialog"
       >
-        <p className="research-dialog-lead">选择相同回测区间的运行，对比参数调整前后的表现。</p>
-        <Select
-          aria-label="选择对照运行"
-          disabled={!compatible.length || comparing}
-          value={comparison?.run.id ?? ""}
-          onChange={(event) => {
-            void compare(event.currentTarget.value);
-            setComparisonOpen(false);
-          }}
-        >
-          <option value="">{compatible.length ? "不使用对照" : "此区间尚无其他运行"}</option>
-          {compatible.toReversed().map((run) => (
-            <option key={run.id} value={run.id}>
-              {timeLabel(run.createdAt)} · {run.config.stockCount} 只 ·{" "}
-              {percent(run.metrics.totalReturn)}
-            </option>
-          ))}
-        </Select>
+        <p className="research-dialog-lead">选择相同回测区间的运行，最多添加四次对照。</p>
+        <div className="research-comparison-options">
+          {compatible.toReversed().map((run) => {
+            const checked =
+              pendingComparison === run.id || comparisons.some((item) => item.run.id === run.id);
+            return (
+              <label key={run.id}>
+                <input
+                  type="checkbox"
+                  aria-label={`对照 ${timeLabel(run.createdAt)}，${run.config.stockCount} 只，收益 ${percent(run.metrics.totalReturn)}`}
+                  data-comparison-id={run.id}
+                  checked={checked}
+                  disabled={comparing || (!checked && comparisons.length >= MAX_COMPARISONS)}
+                  onChange={() => void compare(run.id)}
+                />
+                <span>
+                  {timeLabel(run.createdAt)} · {run.config.stockCount} 只<small>{run.name}</small>
+                </span>
+                <b>{percent(run.metrics.totalReturn)}</b>
+              </label>
+            );
+          })}
+        </div>
         {!compatible.length && (
-          <p className="research-help">调整参数并运行一次后，可在这里选择之前的结果。</p>
+          <p className="research-help">此区间尚无其他运行。调整参数并运行后，可以在这里比较。</p>
         )}
+        <div className="research-comparison-footer">
+          <span aria-live="polite">
+            {comparing ? "正在读取…" : `已选 ${comparisons.length} / ${MAX_COMPARISONS}`}
+          </span>
+          <Button
+            variant="ghost"
+            disabled={comparing || !comparisons.length}
+            onClick={() => setComparisons([])}
+          >
+            清空
+          </Button>
+          <Button onClick={() => setComparisonOpen(false)}>完成</Button>
+        </div>
       </Dialog>
       <GridSettings
         open={gridOpen}

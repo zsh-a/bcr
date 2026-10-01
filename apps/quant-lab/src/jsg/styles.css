@@ -523,6 +523,83 @@
 .research-comparison h3 {
   font-size: var(--text-base);
 }
+.research-comparison-heading,
+.research-comparison-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+.research-comparison-heading h3 span,
+.research-comparison-footer > span {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: normal;
+}
+.research-comparison th small {
+  display: block;
+  color: var(--color-muted);
+  font-weight: normal;
+  margin-top: var(--space-1);
+}
+.research-comparison th[scope="row"] {
+  text-align: left;
+  font-weight: normal;
+  top: auto;
+  left: 0;
+  z-index: 1;
+  min-width: 112px;
+}
+.research-comparison thead th:first-child {
+  left: 0;
+  z-index: 3;
+}
+.research-comparison-parameters {
+  margin-top: var(--space-4);
+}
+.research-comparison-parameters summary {
+  cursor: pointer;
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-3);
+}
+.research-comparison-options {
+  max-height: 50dvh;
+  overflow: auto;
+}
+.research-comparison-options label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+}
+.research-comparison-options input {
+  accent-color: var(--color-accent);
+}
+.research-comparison-options span {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+.research-comparison-options small {
+  display: block;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: var(--space-1);
+}
+.research-comparison-options b {
+  font: var(--text-sm) var(--font-mono);
+}
+.research-comparison-footer {
+  margin-top: var(--space-4);
+}
+.research-comparison-footer > span {
+  margin-right: auto;
+}
 .research-comparison p {
   color: var(--color-muted);
   font-size: var(--text-xs);
@@ -2033,4 +2110,16 @@
 }
 .research-action-menu > summary {
   min-width: calc(var(--space-8) + var(--space-1));
+}
+
+.research-evaluation-details {
+  border-block: 1px solid var(--color-border);
+  padding-block: 12px;
+}
+.research-evaluation-details > summary {
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+.research-evaluation-details .research-evaluation-metrics {
+  margin-block: 16px;
 }

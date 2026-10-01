@@ -44,6 +44,10 @@ export interface JsgConfig {
   stopLoss: number;
   trailingStop: number;
   maxDrawdown: number;
+  maxPositionPct?: number;
+  maxExposurePct?: number;
+  maxDailyLoss?: number;
+  takeProfit?: number;
   tPlusOne: boolean;
   industryBlacklist: string[];
 }
@@ -56,6 +60,10 @@ export const DEFAULT_CONFIG: JsgConfig = {
   stopLoss: 0,
   trailingStop: 0,
   maxDrawdown: 0,
+  maxPositionPct: 0,
+  maxExposurePct: 0,
+  maxDailyLoss: 0,
+  takeProfit: 0,
   tPlusOne: false,
   industryBlacklist: ["ads"],
 };
@@ -130,6 +138,7 @@ export interface JsgResult {
     side: string;
     timing: string;
     reason: string;
+    riskReason?: string;
     requested: number;
     quantity: number;
     price: number;
@@ -391,8 +400,20 @@ export function validateConfig(config: JsgConfig): void {
     if (!Number.isFinite(bps) || bps < 0 || bps > 100)
       throw new Error("费率或滑点应在 0–100 bps 内");
   }
-  for (const risk of [config.stopLoss, config.trailingStop, config.maxDrawdown]) {
+  for (const risk of [
+    config.stopLoss,
+    config.trailingStop,
+    config.maxDrawdown,
+    config.maxDailyLoss ?? 0,
+  ]) {
     if (!Number.isFinite(risk) || risk < 0 || risk >= 1)
       throw new Error("风控比例应在 0–100% 内，0 为关闭");
   }
+  for (const cap of [config.maxPositionPct ?? 0, config.maxExposurePct ?? 0]) {
+    if (!Number.isFinite(cap) || cap < 0 || cap > 1)
+      throw new Error("仓位上限应在 0–100% 内，0 为关闭");
+  }
+  const takeProfit = config.takeProfit ?? 0;
+  if (!Number.isFinite(takeProfit) || takeProfit < 0 || takeProfit > 10)
+    throw new Error("固定止盈应在 0–1000% 内，0 为关闭");
 }

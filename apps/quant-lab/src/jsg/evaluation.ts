@@ -10,6 +10,15 @@ export interface ReturnStats {
   volatility: number;
   sharpe: number;
   maxDrawdown: number;
+  downsideDeviation: number;
+  sortino: number | null;
+  calmar: number | null;
+  winningDays: number;
+  losingDays: number;
+  winRate: number;
+  profitFactor: number | null;
+  avgWin: number;
+  avgLoss: number;
 }
 export interface PeriodReturn {
   period: string;
@@ -44,6 +53,11 @@ class Accumulator {
   peak: number;
   worst = 0;
   previous: number;
+  downsideSquares = 0;
+  winningDays = 0;
+  losingDays = 0;
+  positivePnl = 0;
+  negativePnl = 0;
   constructor(readonly initial: number) {
     this.previous = initial;
     this.peak = initial;
@@ -52,6 +66,17 @@ class Accumulator {
     if (!Number.isFinite(value) || value < 0 || (this.previous === 0 && value > 0))
       throw new Error("净值数据无效");
     const change = this.previous === 0 ? 0 : value / this.previous - 1;
+    const pnl = value - this.previous;
+    if (!Number.isFinite(change) || !Number.isFinite(pnl)) throw new Error("日收益超出计算范围");
+    this.downsideSquares += Math.min(change, 0) ** 2;
+    if (pnl > 0) {
+      this.winningDays++;
+      this.positivePnl += pnl;
+    }
+    if (pnl < 0) {
+      this.losingDays++;
+      this.negativePnl += pnl;
+    }
     this.days++;
     const delta = change - this.mean;
     this.mean += delta / this.days;
@@ -62,14 +87,30 @@ class Accumulator {
   }
   finish(): ReturnStats {
     const variance = this.m2 / Math.max(1, this.days - 1),
-      totalReturn = this.previous / this.initial - 1;
+      totalReturn = this.previous / this.initial - 1,
+      annualizedReturn = Math.pow(1 + totalReturn, 252 / this.days) - 1,
+      downsideDeviation = Math.sqrt(this.downsideSquares / this.days) * Math.sqrt(252);
+    if (!Number.isFinite(annualizedReturn)) throw new Error("收益无法有限年化，请延长分析区间");
+    const ratio = (numerator: number, denominator: number): number | null => {
+      const value = numerator / denominator;
+      return denominator > 0 && Number.isFinite(value) ? value : null;
+    };
     return {
       days: this.days,
       totalReturn,
-      annualizedReturn: Math.pow(1 + totalReturn, 252 / this.days) - 1,
+      annualizedReturn,
       volatility: Math.sqrt(Math.max(0, variance)) * Math.sqrt(252),
       sharpe: variance > 0 ? (this.mean / Math.sqrt(variance)) * Math.sqrt(252) : 0,
       maxDrawdown: this.worst,
+      downsideDeviation,
+      sortino: ratio(this.mean * 252, downsideDeviation),
+      calmar: ratio(annualizedReturn, -this.worst),
+      winningDays: this.winningDays,
+      losingDays: this.losingDays,
+      winRate: this.winningDays / this.days,
+      profitFactor: ratio(this.positivePnl, -this.negativePnl),
+      avgWin: this.winningDays ? this.positivePnl / this.winningDays : 0,
+      avgLoss: this.losingDays ? this.negativePnl / this.losingDays : 0,
     };
   }
 }
@@ -208,7 +249,11 @@ export async function evaluateResult(
       excessReturn: stats.totalReturn - baseStats.totalReturn,
       relativeReturn: (1 + stats.totalReturn) / (1 + baseStats.totalReturn) - 1,
     };
-  if ([stats, baseStats].some((s) => s && Object.values(s).some((v) => !Number.isFinite(v))))
+  if (
+    [stats, baseStats].some(
+      (s) => s && Object.values(s).some((v) => v !== null && !Number.isFinite(v)),
+    )
+  )
     throw new Error("分析指标溢出");
   signal.throwIfAborted();
   return analysis;

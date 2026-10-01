@@ -6,7 +6,7 @@ export interface DraftChange {
   before: string;
   after: string;
 }
-const labels: Record<string, string> = {
+export const CONFIG_LABELS: Record<string, string> = {
   initialCapital: "初始本金",
   poolSize: "候选池大小",
   stockCount: "目标股票数",
@@ -15,6 +15,10 @@ const labels: Record<string, string> = {
   stopLoss: "个股止损",
   trailingStop: "移动止盈",
   maxDrawdown: "组合回撤",
+  maxPositionPct: "单股仓位上限",
+  maxExposurePct: "总仓位上限",
+  maxDailyLoss: "单日亏损",
+  takeProfit: "固定止盈",
   tPlusOne: "T+1",
   executionModel: "成交模型",
   industryBlacklist: "行业黑名单",
@@ -30,13 +34,24 @@ const display = (value: unknown): string => {
   if (Array.isArray(value)) return value.length ? JSON.stringify(value) : "未设置";
   return JSON.stringify(value) ?? "未设置";
 };
-const configDisplay = (
+export const formatConfigValue = (
   config: ReturnType<typeof canonicalConfig>,
   key: keyof typeof config,
 ): string => {
   if (config[key] === null) return "无效值";
   if (key === "executionModel") return config[key] === "jsg-raw-v2" ? "原始价格" : "复权研究";
-  if (["stopLoss", "trailingStop", "maxDrawdown", "participation"].includes(key))
+  if (
+    [
+      "stopLoss",
+      "trailingStop",
+      "maxDrawdown",
+      "participation",
+      "maxPositionPct",
+      "maxExposurePct",
+      "maxDailyLoss",
+      "takeProfit",
+    ].includes(key)
+  )
     return `${((config[key] as number) * 100).toLocaleString("zh-CN")}%`;
   if (key === "industryBlacklist") return config.industryBlacklist.join("、") || "未设置";
   if (key === "fees")
@@ -66,9 +81,9 @@ export function draftChanges(
   for (const key of Object.keys(before) as (keyof typeof before)[])
     if (JSON.stringify(before[key]) !== JSON.stringify(after[key]))
       changes.push({
-        label: labels[key] ?? key,
-        before: configDisplay(before, key),
-        after: configDisplay(after, key),
+        label: CONFIG_LABELS[key] ?? key,
+        before: formatConfigValue(before, key),
+        after: formatConfigValue(after, key),
       });
   const request = selected.dataset.snapshot?.request;
   if (source.kind === "clickhouse") {

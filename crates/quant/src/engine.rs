@@ -32,6 +32,9 @@ pub struct Engine {
     risk_peak: f64,
     equity_peak: f64,
     drawdown_triggered: bool,
+    daily_loss_triggered: bool,
+    risk_pending: Vec<Option<&'static str>>,
+    risk_exited: BTreeSet<usize>,
     equity: Vec<Equity>,
     orders: Vec<Order>,
     decisions: Vec<Decision>,
@@ -110,6 +113,9 @@ impl Engine {
             risk_peak: capital,
             equity_peak: capital,
             drawdown_triggered: false,
+            daily_loss_triggered: false,
+            risk_pending: vec![None; count],
+            risk_exited: BTreeSet::new(),
             equity: vec![],
             orders: vec![],
             decisions: vec![],
@@ -265,6 +271,7 @@ impl Engine {
         let first_decision = self.decisions.len();
         let trading = session.date >= start;
         if trading {
+            self.risk_exited.clear();
             // Sales release cash before purchases; a rejected next-open order expires that day.
             let mut pending = std::mem::take(&mut self.pending);
             pending.sort_by_key(|order| order.buy);
@@ -491,6 +498,7 @@ impl Engine {
         let mut price = 0.0;
         let mut fee = 0.0;
         let mut status = "missing-bar";
+        let mut risk_reason = None;
         if let Some(bar) = &book[order.id] {
             let raw = if open { bar.open } else { bar.close };
             let factor = if self.raw_model() { 1.0 } else { bar.adjfactor };
@@ -560,7 +568,44 @@ impl Engine {
                 } else {
                     0
                 };
-                let position = &mut self.positions[order.id];
+                // Value all holdings at this execution's open/close, never a future close.
+                let mark_for = |id: usize| {
+                    book[id].as_ref().map_or(self.positions[id].mark, |b| {
+                        (if open { b.open } else { b.close })
+                            * if raw_model { 1.0 } else { b.adjfactor }
+                    })
+                };
+                let holdings_value: f64 = if order.buy
+                    && (self.config.max_position_pct > 0.0 || self.config.max_exposure_pct > 0.0)
+                {
+                    self.positions
+                        .iter()
+                        .enumerate()
+                        .map(|(id, p)| p.quantity as f64 * mark_for(id))
+                        .sum()
+                } else {
+                    0.0
+                };
+                let mark = raw * factor;
+                let held_value = self.positions[order.id].quantity as f64 * mark;
+                let equity = self.cash + holdings_value + self.receivables;
+                let cap_reason = |q: u64| -> Option<&'static str> {
+                    let purchased_value = q as f64 * mark;
+                    let after_equity = equity + purchased_value - q as f64 * price - fee_for(q);
+                    if self.config.max_position_pct > 0.0
+                        && held_value + purchased_value
+                            > after_equity * self.config.max_position_pct + 1e-8
+                    {
+                        Some("position-cap")
+                    } else if self.config.max_exposure_pct > 0.0
+                        && holdings_value + purchased_value
+                            > after_equity * self.config.max_exposure_pct + 1e-8
+                    {
+                        Some("exposure-cap")
+                    } else {
+                        None
+                    }
+                };
                 if order.buy {
                     let affordable = (self.cash
                         / (price
@@ -590,6 +635,26 @@ impl Engine {
                         quantity = low * 100;
                     }
                     if quantity > 0 {
+                        risk_reason = cap_reason(quantity);
+                        if risk_reason.is_some() {
+                            let mut low = 0;
+                            let mut high = quantity / 100;
+                            while low < high {
+                                let mid = (low + high + 1) / 2;
+                                if cap_reason(mid * 100).is_none() {
+                                    low = mid;
+                                } else {
+                                    high = mid - 1;
+                                }
+                            }
+                            quantity = low * 100;
+                            // Report the cap that actually prevents the next lot, not the
+                            // first cap exceeded by the original, larger request.
+                            risk_reason = cap_reason(quantity + 100);
+                        }
+                    }
+                    let position = &mut self.positions[order.id];
+                    if quantity > 0 {
                         fee = fee_for(quantity);
                         let amount = quantity as f64 * price + fee;
                         position.cost = (position.cost * position.quantity as f64 + amount)
@@ -600,13 +665,14 @@ impl Engine {
                         self.cash = (self.cash - amount).max(0.0);
                     }
                     status = if quantity == 0 {
-                        "insufficient-cash"
+                        risk_reason.unwrap_or("insufficient-cash")
                     } else if quantity < order.quantity {
                         "partial"
                     } else {
                         "filled"
                     };
                 } else {
+                    let position = &mut self.positions[order.id];
                     let sellable = position
                         .quantity
                         .saturating_sub(if self.config.t_plus_one || raw_model {
@@ -642,7 +708,7 @@ impl Engine {
                     status = "volume-limit";
                 }
                 self.volume_used[order.id] += quantity;
-                position.mark = raw * factor;
+                self.positions[order.id].mark = raw * factor;
             }
         }
         self.total_fees += fee;
@@ -674,6 +740,7 @@ impl Engine {
             side: if order.buy { "buy" } else { "sell" }.into(),
             timing: if open { "next-open" } else { "close" }.into(),
             reason: order.reason.into(),
+            risk_reason: risk_reason.map(str::to_owned),
             requested: order.quantity,
             quantity,
             price,
@@ -709,40 +776,70 @@ impl Engine {
     fn risk(&mut self, date: u32, book: &[Option<Bar>]) -> Result<bool, String> {
         let equity = self.account_equity();
         self.risk_peak = self.risk_peak.max(equity);
-        if self.config.max_drawdown > 0.0
+        let drawdown_now = self.config.max_drawdown > 0.0
             && !self.drawdown_triggered
-            && 1.0 - equity / self.risk_peak >= self.config.max_drawdown
-        {
+            && 1.0 - equity / self.risk_peak >= self.config.max_drawdown;
+        if drawdown_now {
             self.drawdown_triggered = true;
-            for id in 0..self.positions.len() {
-                self.close_position(id, date, "max-drawdown", book)?;
-            }
-            return Ok(true);
         }
-        // Retry liquidation if a limit-down, suspension or T+1 restriction prevented a fill.
-        if self.drawdown_triggered {
+        let daily_now = self.config.max_daily_loss > 0.0
+            && 1.0 - equity / self.last_equity >= self.config.max_daily_loss;
+        if daily_now {
+            self.daily_loss_triggered = true;
+        }
+        // A portfolio exit remains active until all holdings can actually be sold.
+        if self.drawdown_triggered || self.daily_loss_triggered {
+            let had_positions = self.positions.iter().any(|p| p.quantity > 0);
+            let reason = if self.drawdown_triggered {
+                "max-drawdown"
+            } else {
+                "daily-loss"
+            };
+            self.pending.retain(|order| !order.buy);
             for id in 0..self.positions.len() {
-                self.close_position(id, date, "max-drawdown", book)?;
+                self.close_position(id, date, reason, book)?;
             }
+            let remaining = self.positions.iter().any(|p| p.quantity > 0);
+            if drawdown_now || daily_now || remaining || had_positions {
+                return Ok(true);
+            }
+            self.daily_loss_triggered = false;
         }
         for (id, bar) in book.iter().enumerate() {
             let p = &mut self.positions[id];
-            if p.quantity == 0 || bar.is_none() {
+            if p.quantity == 0 {
+                self.risk_pending[id] = None;
                 continue;
             }
-            p.peak = p.peak.max(p.mark);
-            let reason =
-                if self.config.stop_loss > 0.0 && p.mark / p.cost - 1.0 <= -self.config.stop_loss {
+            if bar.is_some() {
+                p.peak = p.peak.max(p.mark);
+            }
+            let reason = self.risk_pending[id].or_else(|| {
+                if bar.is_none() {
+                    None
+                } else if self.config.stop_loss > 0.0
+                    && p.mark / p.cost - 1.0 <= -self.config.stop_loss
+                {
                     Some("stop-loss")
                 } else if self.config.trailing_stop > 0.0
                     && 1.0 - p.mark / p.peak >= self.config.trailing_stop
                 {
                     Some("trailing-stop")
+                } else if self.config.take_profit > 0.0
+                    && p.mark / p.cost - 1.0 >= self.config.take_profit
+                {
+                    Some("take-profit")
                 } else {
                     None
-                };
+                }
+            });
             if let Some(reason) = reason {
+                self.risk_pending[id] = Some(reason);
+                self.risk_exited.insert(id);
                 self.close_position(id, date, reason, book)?;
+                if self.positions[id].quantity == 0 {
+                    self.risk_pending[id] = None;
+                }
             }
         }
         Ok(false)
@@ -796,6 +893,9 @@ impl Engine {
         }
         let allocation = equity * 0.95 / selected.len().max(1) as f64;
         for bar in &selected {
+            if self.risk_exited.contains(&bar.id) {
+                continue;
+            }
             let lots = (allocation
                 / (bar.close * if self.raw_model() { 1.0 } else { bar.adjfactor })
                 / 100.0)

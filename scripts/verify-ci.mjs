@@ -140,6 +140,7 @@ await withServer({
     "scripts/verify-jsg-storage.mjs",
     "scripts/verify-jsg-grid.mjs",
     "scripts/verify-jsg-evaluation.mjs",
+    "scripts/verify-jsg-features.mjs",
     "scripts/verify-jsg-layout.mjs",
     "scripts/verify-jsg-clickhouse-fixture.mjs",
     "scripts/verify-market-trends.mjs",

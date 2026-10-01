@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { RuntimeServices } from "@bcr/core";
 import { Button, Dialog, Input, Select, Spinner } from "@bcr/react";
 import { Download, Settings2, X } from "lucide-react";
@@ -17,7 +17,7 @@ import {
 import { benchmarkFromBrowser } from "./clickhouse-browser";
 import { queryEvaluation } from "./result-reader";
 import { dateText } from "./model";
-import { percent } from "./Orders";
+import { money, percent } from "./Orders";
 import type { Evaluation, PeriodReturn } from "./evaluation";
 import { withResearchFiles } from "./file-lease";
 const EvaluationChart = lazy(() => import("./EvaluationChart"));
@@ -51,6 +51,14 @@ export function EvaluationPanel({
   const active = useRef<AbortController | null>(null),
     latest = useRef({ onWorking, onBenchmark });
   latest.current = { onWorking, onBenchmark };
+  const manifest = useMemo(
+    () => ({
+      ...selected.dataset.manifest,
+      startDate: selected.run.startDate,
+      endDate: selected.run.endDate,
+    }),
+    [selected.dataset.manifest, selected.run.startDate, selected.run.endDate],
+  );
   useEffect(
     () => () => {
       active.current?.abort();
@@ -63,14 +71,17 @@ export function EvaluationPanel({
     setLoading(true);
     setEvaluation(null);
     setError(null);
-    const manifest = selected.dataset.manifest;
-    void queryEvaluation(
-      selected.result,
-      selected.run.config.initialCapital,
-      manifest.calendar.filter((s) => s.date >= manifest.startDate).map((s) => dateText(s.date)),
-      benchmarkBaseline(manifest),
-      selected.run.benchmark,
-      abort.signal,
+    void withResearchFiles("shared", () =>
+      queryEvaluation(
+        selected.result,
+        selected.run.config.initialCapital,
+        manifest.calendar
+          .filter((s) => s.date >= manifest.startDate && s.date <= manifest.endDate)
+          .map((s) => dateText(s.date)),
+        benchmarkBaseline(manifest),
+        selected.run.benchmark,
+        abort.signal,
+      ),
     )
       .then((value) => {
         if (!abort.signal.aborted) {
@@ -86,12 +97,7 @@ export function EvaluationPanel({
         }
       });
     return () => abort.abort();
-  }, [
-    selected.result,
-    selected.run.config.initialCapital,
-    selected.run.benchmark,
-    selected.dataset.manifest,
-  ]);
+  }, [selected.result, selected.run.config.initialCapital, selected.run.benchmark, manifest]);
   const attach = async (load: (signal: AbortSignal) => Promise<BenchmarkSnapshot>) => {
     if (active.current || busy) return;
     const abort = new AbortController();
@@ -103,7 +109,7 @@ export function EvaluationPanel({
       await withResearchFiles("shared", async () => {
         const snapshot = await load(abort.signal);
         abort.signal.throwIfAborted();
-        validateBenchmarkCoverage(snapshot, selected.dataset.manifest);
+        validateBenchmarkCoverage(snapshot, manifest);
         const binding = await saveBenchmark(services, snapshot);
         abort.signal.throwIfAborted();
         latest.current.onBenchmark(selected.run.id, binding);
@@ -229,6 +235,31 @@ export function EvaluationPanel({
               </div>
             ))}
           </dl>
+          <details className="research-evaluation-details">
+            <summary>风险与收益质量</summary>
+            <dl className="research-evaluation-metrics">
+              {[
+                ["Sortino", annual.sortino === null ? "—" : annual.sortino.toFixed(2)],
+                ["Calmar", annual.calmar === null ? "—" : annual.calmar.toFixed(2)],
+                ["年化下行波动", percent(annual.downsideDeviation)],
+                ["盈利日比例", percent(annual.winRate)],
+                ["日盈亏比", annual.profitFactor === null ? "—" : annual.profitFactor.toFixed(2)],
+                ["盈利 / 亏损日", `${annual.winningDays} / ${annual.losingDays}`],
+                ["平均盈利日", money(annual.avgWin)],
+                ["平均亏损日", money(annual.avgLoss)],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="research-help">
+              按完整日收盘权益计算，包含首日与交易费用。盈利日比例包含平盘日；日盈亏比与平均盈亏按日统计，金额单位为元。Sortino
+              使用零目标收益、全部交易日下行均方根；Calmar
+              使用年化收益除以最大回撤绝对值。分母为零的比率显示「—」，导出为 null。
+            </p>
+          </details>
           {evaluation.benchmark && (
             <>
               <div className="research-evaluation-legend">
@@ -384,9 +415,7 @@ export function EvaluationPanel({
               variant="primary"
               disabled={working || busy}
               onClick={() =>
-                void attach((signal) =>
-                  benchmarkFromBrowser(connection, code, selected.dataset.manifest, signal),
-                )
+                void attach((signal) => benchmarkFromBrowser(connection, code, manifest, signal))
               }
             >
               获取并绑定基准
@@ -417,9 +446,8 @@ export function EvaluationPanel({
               </Select>
             </label>
             <p className="research-dialog-lead">
-              表头 date,close；每行 YYYY-MM-DD,收盘值。包含{" "}
-              {benchmarkBaseline(selected.dataset.manifest)} 及所有回测交易日，最多 20,000 行 / 2
-              MiB。
+              表头 date,close；每行 YYYY-MM-DD,收盘值。包含 {benchmarkBaseline(manifest)}{" "}
+              及所有回测交易日，最多 20,000 行 / 2 MiB。
             </p>
             <input
               type="file"

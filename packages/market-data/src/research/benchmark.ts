@@ -64,7 +64,9 @@ export function validateBenchmarkCoverage(b: BenchmarkSnapshot, manifest: Resear
   const dates = new Set(b.points.map((p) => p.date));
   for (const date of [
     benchmarkBaseline(manifest),
-    ...manifest.calendar.filter((s) => s.date >= manifest.startDate).map((s) => dateText(s.date)),
+    ...manifest.calendar
+      .filter((s) => s.date >= manifest.startDate && s.date <= manifest.endDate)
+      .map((s) => dateText(s.date)),
   ])
     if (!dates.has(date)) throw new Error(`基准缺少交易日 ${date}，请补齐数据；不自动填充`);
 }

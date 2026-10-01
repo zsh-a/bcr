@@ -97,7 +97,8 @@ try {
   assert.equal(changed.config.stockCount, 6);
   assert.notEqual(changed.result.metrics.finalEquity, first.result.metrics.finalEquity);
   await page.getByRole("button", { name: "添加对照", exact: true }).click();
-  await page.getByLabel("选择对照运行", { exact: true }).selectOption(firstId);
+  await page.locator(`input[data-comparison-id="${firstId}"]`).check();
+  await page.getByRole("button", { name: "完成", exact: true }).click();
   await page.locator(".research-comparison").waitFor();
   await page.locator(".research-chart-legend .comparison").waitFor();
   await page.getByRole("tab", { name: "概览", exact: true }).focus();

@@ -9,6 +9,7 @@ import {
   validateBenchmark,
   fetchBenchmark,
   benchmarkBaseline,
+  validateBenchmarkCoverage,
   type BenchmarkSnapshot,
 } from "../src/jsg/benchmark";
 import { demoResearch } from "../src/jsg/demo";
@@ -44,6 +45,39 @@ beforeAll(async () => {
   });
 });
 describe("research evaluation", () => {
+  it("evaluates a detail window and only requires its preceding session and covered dates", async () => {
+    const full = demoResearch().manifest;
+    const sessions = full.calendar.filter((s) => s.date >= full.startDate);
+    const manifest = { ...full, startDate: sessions[10]!.date, endDate: sessions[19]!.date };
+    const baseline = benchmarkBaseline(manifest);
+    const timeline = sessions.slice(10, 20).map((s) => dateText(s.date));
+    const snapshot = {
+      ...benchmark(),
+      points: [baseline, ...timeline].map((date, i) => ({ date, close: 100 + i })),
+    };
+    expect(() => validateBenchmarkCoverage(snapshot, manifest)).not.toThrow();
+    expect(() =>
+      validateBenchmarkCoverage({ ...snapshot, points: snapshot.points.slice(1) }, manifest),
+    ).toThrow(/缺少交易日/u);
+    const window = {
+      ...result,
+      equity: timeline.map((date, i) => ({ ...result.equity[0]!, date, equity: 101 + i })),
+    };
+    const evaluated = await evaluateResult(
+      storage,
+      window,
+      100,
+      timeline,
+      baseline,
+      snapshot,
+      signal(),
+    );
+    expect(evaluated.strategy.days).toBe(10);
+    expect(evaluated.first).toBe(timeline[0]);
+    expect(evaluated.last).toBe(timeline.at(-1));
+    expect(evaluated.strategy.totalReturn).toBeCloseTo(0.1);
+    expect(evaluated.benchmark?.stats.totalReturn).toBeCloseTo(0.1);
+  });
   it("bounds curve output and retains benchmark extrema independently of strategy prices", async () => {
     const timeline = Array.from({ length: 5000 }, (_, i) =>
       new Date(Date.UTC(2020, 0, 2 + i)).toISOString().slice(0, 10),
@@ -282,5 +316,64 @@ describe("research evaluation", () => {
     } finally {
       globalThis.fetch = original;
     }
+  });
+});
+
+describe("complete daily risk and profit statistics", () => {
+  it("uses every daily return and first-day monetary P&L", async () => {
+    const { strategy: s, benchmark: b } = await evaluateResult(
+      storage,
+      result,
+      100,
+      dates,
+      baseline,
+      benchmark(),
+      signal(),
+    );
+    expect(s.downsideDeviation).toBeCloseTo(Math.sqrt((0.01 / 4) * 252), 12);
+    expect(s.sortino).toBeCloseTo((0.05 * 252) / s.downsideDeviation, 10);
+    expect(s.calmar).toBeCloseTo(s.annualizedReturn / 0.1, 8);
+    expect(s.winningDays).toBe(3);
+    expect(s.losingDays).toBe(1);
+    expect(s.winRate).toBe(0.75);
+    expect(s.profitFactor).toBeCloseTo(30.79 / 11, 12);
+    expect(s.avgWin).toBeCloseTo(30.79 / 3, 12);
+    expect(s.avgLoss).toBeCloseTo(-11, 12);
+    expect(b!.stats.winningDays).toBe(3);
+  });
+  it.each([
+    [100, 100, 100, 100],
+    [110, 121, 133.1, 146.41],
+  ])("exports undefined ratios as null for %j", async (...values) => {
+    const r = { ...result, equity: result.equity.map((p, i) => ({ ...p, equity: values[i]! })) };
+    const e = await evaluateResult(storage, r, 100, dates, baseline, undefined, signal());
+    expect(e.strategy.sortino).toBeNull();
+    expect(e.strategy.calmar).toBeNull();
+    expect(e.strategy.profitFactor).toBeNull();
+    expect(e.strategy.downsideDeviation).toBe(0);
+    expect(JSON.parse(JSON.stringify(e)).strategy.sortino).toBeNull();
+  });
+  it("includes flat sessions in win rate and handles all losing sessions", async () => {
+    const r = {
+      ...result,
+      equity: result.equity.map((p, i) => ({ ...p, equity: [100, 90, 90, 81][i]! })),
+    };
+    const { strategy: s } = await evaluateResult(
+      storage,
+      r,
+      100,
+      dates,
+      baseline,
+      undefined,
+      signal(),
+    );
+    expect(s.winRate).toBe(0);
+    expect(s.losingDays).toBe(2);
+    expect(s.winningDays).toBe(0);
+    expect(s.profitFactor).toBe(0);
+    expect(s.avgWin).toBe(0);
+    expect(s.avgLoss).toBe(-9.5);
+    expect(s.sortino).toBeLessThan(0);
+    expect(s.calmar).toBeLessThan(0);
   });
 });

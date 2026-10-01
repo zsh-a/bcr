@@ -445,7 +445,8 @@ BASE_URL=http://localhost:5201/ bun run test:browser:jsg:clickhouse
 ## Browser parameter experiments
 
 Use **更多 → 参数实验** to vary 1–6 settings: stock count, pool size, stop loss,
-trailing stop, portfolio drawdown, slippage and commission. Enter comma-separated candidate
+trailing stop, portfolio drawdown, single-symbol/total exposure caps, daily loss,
+fixed take profit, slippage and commission. Enter comma-separated candidate
 values; risk limits use percentages (`5` means 5%, `0` disables the limit). Other settings use
 the current draft. Equivalent values are deduplicated, every combination is validated, and
 the Cartesian product is limited to 64 independent configurations.
@@ -523,6 +524,65 @@ Drawdown includes the initial capital as the starting peak. Excess return is str
 benchmark return in **percentage points**, distinct from relative wealth return
 `(1 + strategy_return) / (1 + benchmark_return) - 1`. The exported conventions and
 **指标口径与版本** panel state these assumptions.
+
+**风险与收益质量** adds Sortino, Calmar, annual downside deviation, winning-day
+ratio, daily profit factor, and average winning/losing-day P&L. Downside deviation is
+`sqrt(sum(min(daily_return, 0)^2) / all_sessions) * sqrt(252)`; Sortino divides
+`mean(daily_return) * 252` by this deviation, and Calmar divides CAGR by absolute
+maximum drawdown. Winning-day ratio counts positive daily account P&L over all
+sessions, including flat days. Profit factor divides total positive daily P&L by
+absolute total negative daily P&L. These are account-day statistics, not matched
+trade statistics. Average P&L values are in account currency. Ratios with zero
+denominators are `null` in evaluation exports and shown as `—`; they are never
+replaced with an arbitrary large number. Benchmark statistics use the same formulas.
+
+**添加对照** selects up to four other completed runs with exactly the same start/end
+sessions, for five runs total. All net curves use each run's own initial capital;
+colors consistently identify curves and table columns. Comparison metrics scan
+complete local result chunks in the result Worker, including validation detail
+windows, rather than using chart samples. The table includes risk/profit statistics,
+collapsible canonical parameter differences, and CSV export with immutable run IDs.
+Different input snapshots or engine versions are labeled. Removing a retained run
+or changing to an incompatible selected interval removes its comparison. Comparison
+choices are temporary; completed runs and risk settings persist across reload.
+
+## Optional risk controls
+
+All new controls default to `0` (disabled), and work in both native Rust and WASM,
+single runs, shared-factor grids, and validation. **运行设置 → 参数 → 风险控制**
+exposes the same settings that JSON configurations accept:
+
+| Field            | Meaning                                                    | Valid values |
+| ---------------- | ---------------------------------------------------------- | ------------ |
+| `maxPositionPct` | Maximum value of one holding / account equity at purchase  | 0–1          |
+| `maxExposurePct` | Maximum total stock value / account equity at purchase     | 0–1          |
+| `maxDailyLoss`   | Close equity loss from the previous session's final equity | 0–<1         |
+| `takeProfit`     | Fixed gain over the engine's weighted position risk cost   | 0–10         |
+
+Purchase caps value every holding using the current execution's open or close
+(the last known mark for a missing bar), including adjustment units in the research
+model. They use equity after the proposed fill's actual fees and slippage, including
+receivables, and shrink orders by whole 100-share lots using a bounded binary search.
+They restrict new purchases; subsequent price changes can move exposure above a
+cap and do not force sales. Partially filled orders preserve `status: "partial"`
+and add `riskReason: "position-cap"` or `"exposure-cap"`. A purchase blocked entirely
+uses the corresponding cap status. Orders and full exports retain these reasons.
+
+Daily loss is checked at the close, including that day's fills and distributions;
+it is not an intraday maximum-loss guarantee. A trigger cancels queued purchases,
+liquidates the portfolio, and retries exits on later sessions if a suspension,
+price limit, or T+1 prevents selling. Fixed take profit is also checked at the close;
+once triggered, its exit persists even if the gain falls below the threshold.
+All individual risk exits persist until the shares can be sold. An exited symbol
+is not scheduled for purchase on that exit session. Portfolio liquidation blocks
+re-entry through the liquidation session; after clearing, a later scheduled
+rebalance can resume purchases. New engine/executor versions invalidate old replay
+cache entries; previously stored complete runs remain available for comparison.
+
+```sh
+bun run test:rust:quant
+BASE_URL=http://localhost:5201/ bun run test:browser:jsg:features
+```
 
 ```sh
 BASE_URL=http://localhost:5201/ bun run test:browser:jsg:evaluation
