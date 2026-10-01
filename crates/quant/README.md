@@ -253,10 +253,11 @@ preview, while full result artifacts retain every event.
 
 ## Connect from the browser
 
-Open Quant Lab's JSG tab and click **连接 ClickHouse**. Enter an HTTP(S) endpoint, database,
-username and password, then click **测试连接**. The dialog shows source coverage and a usable
-end date. Select a date range and click **加载并回测**; the browser fetches data and starts the
-same Rust/WASM portfolio engine automatically. No CLI export or application backend is required.
+Open Quant Lab's JSG tab and click the data source in the **下一次运行** bar. Select
+**ClickHouse**, enter an HTTP(S) endpoint, database, username and password, then click
+**测试连接** and **连接并使用**. Set dates separately with **设置回测区间** and click
+**运行回测**. The browser fetches data and starts the same Rust/WASM portfolio engine.
+No CLI export or application backend is required.
 
 The default source is `http://localhost:8123/`, database `stock_data`, user `default`, empty password.
 `localhost` refers to the computer running the browser. Connections, date ranges and the history-mode
@@ -293,7 +294,7 @@ BASE_URL=http://localhost:5201/ CLICKHOUSE_TEST_URL=http://localhost:8123/ \
   bun run test:browser:jsg:clickhouse
 ```
 
-The browser check covers real Arrow loading, cached reloads with no network, password lifetime,
+The browser script covers real Arrow loading, cached reloads with no network, password lifetime,
 failed refresh, cancellation, retained results and mobile layout. It accepts `CLICKHOUSE_DATABASE`,
 `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `JSG_TEST_START` and `JSG_TEST_END`; defaults use
 2026-04-01 through 2026-06-30. Ordinary CI tests use synthetic read-only responses rather than a live DB.
@@ -301,3 +302,45 @@ failed refresh, cancellation, retained results and mobile layout. It accepts `CL
 References: [ClickHouse HTTP interface](https://clickhouse.com/docs/interfaces/http),
 [Arrow output settings](https://clickhouse.com/docs/operations/settings/formats#output_format_arrow_compression_method),
 [local-network browser permissions](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Local_network_access).
+
+## JSG research interface
+
+The working draft, next dataset, active task and displayed result are separate states. Editing
+parameters or changing source/dates leaves the selected run visible with **待运行的修改**.
+Each completed run captures its own configuration and dataset references; cancellation, failed
+loads and failed backtests retain the last result. **导出结果** always exports the selected run's
+captured configuration and complete result, even while the next run's parameters differ.
+Invalid in-progress inputs do not overwrite the last valid saved draft or prevent completed runs
+from being recorded. The v1 saved research project migrates to a v2 session on restore.
+
+Desktop parameters can be collapsed; narrow workspaces show results first and use a parameter
+sheet. Connection credentials and date/range controls live in separate dialogs. Common settings,
+costs, optional risk limits and execution/industry settings are grouped with field-level validation.
+Arrow-key navigation applies to both strategy tabs and result tabs; Ctrl/Cmd+Enter starts the next
+run when no dialog is open. Native dialogs handle Escape, focus containment and focus restoration.
+
+Net value and drawdown use Lightweight Charts with resize handling, theme updates, pan/zoom
+and 3-month/1-year/full-range controls. Net values normalize each run by its own starting capital.
+A date control provides an accessible numeric reading of an exact trading day. Preview curves
+are refined from complete OPFS result chunks for the visible range, keeping at most 4,096 refined
+points per series and preserving equity and drawdown extrema. Comparison is available for runs
+with the same start/end dates; underlying datasets can differ, so compare source assumptions as
+well as parameters. See [third-party notices](../../THIRD_PARTY_NOTICES.md) for chart attribution.
+
+**成交** filters the full history by security, dates, direction and fill status; partial fills count as
+executed orders and concrete engine rejection reasons remain visible. Pages render at most 50
+rows. Unfiltered pagination uses chunk counts to read only the necessary files; arbitrary filters
+scan one result chunk at a time. **持仓** is paginated and **调仓** reads the chosen day's chunk.
+Order and position details open in sheets. No full market dataset is assembled in JavaScript.
+
+**运行历史** retains metadata for the latest 20 runs. Selecting history changes the displayed
+result while preserving the current draft; **使用所选运行参数** explicitly applies that run's
+configuration. History deduplicates shared dataset references and stores small metrics, never copies of market rows,
+inline complete result arrays or connection passwords. The 20-run metadata limit does not clean
+up Runtime caches or old OPFS artifacts; browser storage quota still applies.
+
+```sh
+bun run test:browser:jsg
+# Local source integration, when a browser and localhost listener are permitted:
+BASE_URL=http://localhost:5201/ bun run test:browser:jsg:clickhouse
+```

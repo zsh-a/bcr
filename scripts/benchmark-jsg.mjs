@@ -52,7 +52,7 @@ function browserRss() {
 await page.goto(process.env.BASE_URL ?? "http://localhost:5202/?strategy=jsg", {
   waitUntil: "networkidle",
 });
-await page.waitForFunction(() => !document.querySelector(".jsg-lab .ui-btn-primary")?.disabled);
+await page.waitForFunction(() => !document.querySelector(".research-run-button")?.disabled);
 const session = await context.newCDPSession(page);
 try {
   const browserSession = await context.browser()?.newBrowserCDPSession();
@@ -76,31 +76,36 @@ try {
       ...manifest.partitions.map((p) => path.join(root, p.file)),
     ]);
   await page.waitForFunction(
-    () => document.querySelector(".jsg-footer")?.textContent?.startsWith("研究数据就绪"),
+    () => document.querySelector(".research-taskbar")?.textContent?.startsWith("研究数据就绪"),
     undefined,
     { timeout: 180000 },
   );
   const importMs = performance.now() - importStart;
   const start = performance.now();
-  await page.getByRole("button", { name: "运行 JSG", exact: true }).click();
+  await page.getByRole("button", { name: "运行回测", exact: true }).click();
   await page.waitForFunction(
-    () => document.querySelector(".jsg-footer")?.textContent?.includes("回测完成"),
+    () => document.querySelector(".research-taskbar")?.textContent?.includes("回测完成"),
     undefined,
     { timeout: 180000 },
   );
   const replayMs = performance.now() - start;
+  await page.locator(".research-action-menu > summary").click();
   const event = page.waitForEvent("download");
   await page.getByRole("button", { name: "导出结果", exact: true }).click();
   await (await event).saveAs(path.join(dir, "result.json"));
   const result = JSON.parse(readFileSync(path.join(dir, "result.json"), "utf8")).result;
   assert(result.orders.length === result.metrics.filledOrders + result.metrics.rejectedOrders);
-  const chunks = await page.getByLabel("订单日期区间").locator("option").count();
-  assert(chunks > 2);
-  await page.getByLabel("订单日期区间").selectOption("1");
-  await page.waitForFunction(
-    () => !document.querySelector('[aria-label="订单日期区间"]')?.disabled,
-  );
-  assert((await page.locator(".jsg-order-section tbody tr").count()) <= 200);
+  await page.getByRole("tab", { name: /^成交/ }).click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: /共 .* 笔/ })
+    .waitFor();
+  assert((await page.locator(".research-table tbody tr").count()) <= 50);
+  if (result.orders.length > 50) {
+    await page.getByRole("button", { name: "下一页订单", exact: true }).click();
+    await page.getByRole("status").filter({ hasText: /51–/ }).waitFor();
+    assert((await page.locator(".research-table tbody tr").count()) <= 50);
+  }
   assert.deepEqual(errors, []);
   const report = {
     rows: manifest.partitions.reduce((n, p) => n + p.rows, 0),
@@ -112,7 +117,8 @@ try {
     sampledBrowserPeakRssMiB: peakBrowserRss > 0 ? peakBrowserRss / 1048576 : null,
     memoryScope:
       "CDP main-page JS heap/backing storage; RSS sampled at 50 ms across automation Chromium process tree; may include other automation contexts and counts shared pages in each process",
-    chunks: chunks - 1,
+    resultRows: result.orders.length,
+    renderedOrderRows: await page.locator(".research-table tbody tr").count(),
     metrics: result.metrics,
   };
   writeFileSync(path.join(dir, "statistics.json"), JSON.stringify(report, null, 2));

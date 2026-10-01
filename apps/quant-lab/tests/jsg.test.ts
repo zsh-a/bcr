@@ -147,6 +147,40 @@ describe("JSG Rust + Arrow research boundary", () => {
     await expect(importResearch(services, files.slice(0, -1), () => undefined)).rejects.toThrow();
     expect((await Effect.runPromise(artifacts.inventory())).length).toBe(total);
   });
+  it("canceling an import removes new artifacts while retaining existing content-addressed data", async () => {
+    const context = await Effect.runPromise(
+      Effect.scoped(Layer.build(artifactStore({ opfs: new MemoryStore() }))),
+    );
+    const artifacts = Context.get(context, ArtifactStoreTag);
+    const services = { artifacts },
+      { files } = demoResearch();
+    const abort = new AbortController();
+    await expect(
+      importResearch(
+        services,
+        files,
+        (text) => {
+          if (text.startsWith("导入 2/")) abort.abort();
+        },
+        abort.signal,
+      ),
+    ).rejects.toThrow();
+    expect((await Effect.runPromise(artifacts.inventory())).length).toBe(0);
+    await importResearch(services, files, () => undefined);
+    const before = await Effect.runPromise(artifacts.inventory());
+    const again = new AbortController();
+    await expect(
+      importResearch(
+        services,
+        files,
+        (text) => {
+          if (text.startsWith("导入 2/")) again.abort();
+        },
+        again.signal,
+      ),
+    ).rejects.toThrow();
+    expect(await Effect.runPromise(artifacts.inventory())).toEqual(before);
+  });
   it("worker cancellation frees Rust state and never loads later partitions or publishes a result", async () => {
     const store = new MemoryStore();
     const io = createArtifactIO(store, "opfs");

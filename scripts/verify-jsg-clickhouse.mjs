@@ -46,18 +46,32 @@ await context.route(`${source}**`, async (route) => {
   await route.continue().catch(() => undefined);
 });
 page.on("pageerror", (error) => errors.push(error.message));
-const open = () => page.getByRole("button", { name: "连接 ClickHouse", exact: true }).click();
-const load = () => page.getByRole("button", { name: "加载并回测", exact: true }).click();
+const open = async () => {
+  await page.getByRole("button", { name: "设置研究数据", exact: true }).click();
+  await page.locator(".research-source-options > button").first().click();
+};
+const close = () => page.getByRole("button", { name: "关闭数据连接", exact: true }).click();
+const dates = () => page.getByRole("button", { name: "设置回测区间", exact: true }).click();
+const applyDates = () => page.getByRole("button", { name: "应用区间", exact: true }).click();
+let previousRun = null;
+const load = async () => {
+  previousRun = await page
+    .locator(".research-run-result")
+    .getAttribute("data-run-id")
+    .catch(() => null);
+  await page.getByRole("button", { name: "运行回测", exact: true }).click();
+};
 const done = () =>
   page.waitForFunction(
-    () =>
-      !document.querySelector(".jsg-connection-dialog")?.open &&
-      !document.querySelector(".ql-actions > .ui-btn-primary")?.disabled &&
-      document.querySelector(".jsg-footer")?.textContent?.includes("回测完成"),
-    undefined,
+    (id) =>
+      document.querySelector(".jsg-workspace")?.getAttribute("data-busy") === "false" &&
+      document.querySelector(".research-taskbar")?.textContent?.includes("回测完成") &&
+      document.querySelector(".research-run-result")?.getAttribute("data-run-id") !== id,
+    previousRun,
     { timeout: 90_000 },
   );
 const exportResult = async (name) => {
+  await page.locator(".research-action-menu > summary").click();
   const event = page.waitForEvent("download");
   await page.getByRole("button", { name: "导出结果", exact: true }).click();
   const path = `${shots}/${name}`;
@@ -88,11 +102,15 @@ try {
   await page.getByRole("button", { name: "测试连接", exact: true }).click();
   await page.waitForFunction(
     () =>
-      document.querySelector(".jsg-connection-status")?.getAttribute("data-connected") === "true",
+      document.querySelector(".research-connection-status")?.getAttribute("data-connected") ===
+      "true",
   );
+  await page.getByRole("button", { name: "连接并使用", exact: true }).click();
+  await dates();
   await page.getByLabel("回测开始日期", { exact: true }).fill(start);
   await page.getByLabel("回测结束日期", { exact: true }).fill(end);
   await page.screenshot({ path: `${shots}/jsg-clickhouse-connection.png`, fullPage: true });
+  await applyDates();
   await load();
   await done();
   const first = await exportResult("jsg-clickhouse-result.json");
@@ -108,20 +126,24 @@ try {
   await open();
   // Cached snapshots are local data: they can be reused without sending a password.
   await page.getByLabel("ClickHouse 密码", { exact: true }).fill("session-only-placeholder");
+  await close();
   await load();
   await done();
   assert.equal(queries, count);
-  assert((await page.locator(".jsg-footer").innerText()).includes("复用已有结果"));
+  assert((await page.locator(".research-taskbar").innerText()).includes("复用已有结果"));
   assert.deepEqual((await exportResult("jsg-clickhouse-cached.json")).result, first.result);
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForFunction(() =>
-    document.querySelector(".jsg-footer")?.textContent?.includes("已恢复本地研究"),
+    document.querySelector(".research-taskbar")?.textContent?.includes("已恢复本地研究"),
   );
   await open();
   assert.equal(await page.getByLabel("ClickHouse 密码", { exact: true }).inputValue(), "");
-  assert.equal(await page.getByLabel("回测开始日期", { exact: true }).inputValue(), start);
   await page.getByLabel("ClickHouse 密码", { exact: true }).fill(password);
+  await close();
+  await dates();
+  assert.equal(await page.getByLabel("回测开始日期", { exact: true }).inputValue(), start);
   await page.getByLabel("重新获取数据", { exact: true }).check();
+  await applyDates();
   const before = await inventory();
   fail = true;
   await load();
@@ -134,17 +156,18 @@ try {
   });
   await load();
   await requested;
-  await page.getByRole("button", { name: "取消加载", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "数据加载已取消" }).waitFor();
+  await page.getByRole("button", { name: "取消研究任务", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "已取消，已有结果保留" }).waitFor();
   delay = false;
   assert.deepEqual(await inventory(), before);
-  await page.getByRole("button", { name: "关闭数据连接", exact: true }).click();
   assert.deepEqual((await exportResult("jsg-clickhouse-preserved.json")).result, first.result);
-  await open();
+  await dates();
   await page.getByLabel("重新获取数据", { exact: true }).uncheck();
+  await applyDates();
+  await open();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-  assert(await page.getByRole("button", { name: "加载并回测", exact: true }).isVisible());
+  assert(await page.getByRole("button", { name: "连接并使用", exact: true }).isVisible());
   await page.screenshot({ path: `${shots}/jsg-clickhouse-mobile.png`, fullPage: true });
   assert.deepEqual(errors, []);
   console.log(
@@ -156,7 +179,7 @@ try {
     .catch(() => undefined);
   console.error(
     await page
-      .locator(".jsg-connection-dialog")
+      .locator(".research-source-dialog")
       .innerText()
       .catch(() => "dialog unavailable"),
   );

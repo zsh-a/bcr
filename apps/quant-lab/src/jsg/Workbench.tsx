@@ -1,833 +1,586 @@
-import { type ArtifactRef, type TaskHandle } from "@bcr/core";
-import { useRuntime } from "@bcr/react";
-import { Effect } from "effect";
-import { Database, Download, Play, Square, Upload } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Button, Dialog, Select, Spinner, useRuntime } from "@bcr/react";
 import {
-  exportResearchResult,
-  importResearch,
-  readJson,
-  restoreResearch,
-  saveResearch,
-} from "./data";
-import { ClickHouseDialog } from "./ClickHouseDialog";
-import type { ClickHouseLoadResult } from "./clickhouse-browser";
+  CalendarDays,
+  ChevronDown,
+  Database,
+  Download,
+  History,
+  MoreHorizontal,
+  Play,
+  SlidersHorizontal,
+  Square,
+  Upload,
+  X,
+} from "lucide-react";
+import { ConnectionSettings, DateRangeSettings } from "./DataSource";
+import { Parameters, configErrors } from "./Parameters";
+import { ResultExplorer } from "./ResultExplorer";
+import { Quality } from "./Quality";
+import { useResearch } from "./useResearch";
+import { useDataSource } from "./useDataSource";
+import { dateText, DEFAULT_CONFIG } from "./model";
+import { configKey, isDraftChanged, readRun, type SelectedRun } from "./session";
+import { exportResearchResult } from "./data";
 import { demoResearch } from "./demo";
-import {
-  DEFAULT_CONFIG,
-  MODEL,
-  dateText,
-  validateConfig,
-  type JsgConfig,
-  type JsgResult,
-  type ResearchDataset,
-} from "./model";
+import { money, percent } from "./Orders";
 import "./styles.css";
 
-const money = (value: number) =>
-  new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(value);
-const percent = (value: number) => `${(value * 100).toFixed(2)}%`;
-const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
-
-function EquityPlot({ result }: { result: JsgResult }) {
-  const [hover, setHover] = useState<number | null>(null);
-  const points = result.equity;
-  const values = points.map((p) => p.equity);
-  const low = Math.min(...values);
-  const high = Math.max(...values);
-  const step = Math.max(1, Math.ceil(points.length / 1000));
-  const indices = points.map((_, i) => i).filter((i) => i % step === 0 || i === points.length - 1);
-  const dates = points.map((p) => Date.parse(p.date));
-  const beginning = dates[0] ?? 0;
-  const span = Math.max(1, (dates.at(-1) ?? beginning) - beginning);
-  const x = (i: number) => (((dates[i] ?? beginning) - beginning) / span) * 1000;
-  const y = (v: number) => 20 + ((high - v) / Math.max(1, high - low)) * 260;
-  const path = indices
-    .map((i, k) => `${k === 0 ? "M" : "L"}${x(i).toFixed(2)},${y(values[i] ?? 0).toFixed(2)}`)
-    .join("");
-  const point = hover === null ? points.at(-1) : points[hover];
-  return (
-    <section className="jsg-equity">
-      <div className="jsg-section-title">
-        <span>组合净值</span>
-        <span>
-          {point?.date} · ¥{money(point?.equity ?? 0)} · 回撤 {percent(point?.drawdown ?? 0)}
-        </span>
-      </div>
-      <svg
-        viewBox="0 0 1000 310"
-        role="img"
-        aria-label="JSG 组合权益曲线"
-        onMouseLeave={() => setHover(null)}
-        onMouseMove={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const target = beginning + ((e.clientX - rect.left) / rect.width) * span;
-          let left = 0,
-            right = points.length - 1;
-          while (left < right) {
-            const middle = Math.floor((left + right) / 2);
-            if ((dates[middle] ?? 0) < target) left = middle + 1;
-            else right = middle;
-          }
-          setHover(
-            left > 0 &&
-              Math.abs((dates[left - 1] ?? 0) - target) < Math.abs((dates[left] ?? 0) - target)
-              ? left - 1
-              : left,
-          );
-        }}
-      >
-        {[20, 85, 150, 215, 280].map((line) => (
-          <line key={line} x1="0" x2="1000" y1={line} y2={line} className="jsg-grid-line" />
-        ))}
-        <path d={`${path}L1000,300L0,300Z`} className="ql-equity-area" />
-        <path d={path} className="ql-equity-line" />
-        {hover !== null && (
-          <line x1={x(hover)} x2={x(hover)} y1="0" y2="300" className="ql-crosshair" />
-        )}
-      </svg>
-      <div className="jsg-axis">
-        <span>{points[0]?.date}</span>
-        <span>{points.at(-1)?.date}</span>
-      </div>
-    </section>
-  );
-}
-
-export function JsgWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
+const ResearchChart = lazy(() => import("./ResearchChart"));
+const timeLabel = (value: string) =>
+  new Date(value).toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+const sourceUrl = (value: string) => {
+  try {
+    return new URL(value).toString();
+  } catch {
+    return value;
+  }
+};
+export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
   const services = useRuntime();
-  const [connectionOpen, setConnectionOpen] = useState(false);
-  const [dataset, setDataset] = useState<ResearchDataset | null>(null);
-  const [config, setConfig] = useState<JsgConfig>({ ...DEFAULT_CONFIG });
-  const [result, setResult] = useState<JsgResult | null>(null);
-  const [orderChunk, setOrderChunk] = useState(-1);
-  const [pageOrders, setPageOrders] = useState<JsgResult["orders"] | null>(null);
-  const [orderOffset, setOrderOffset] = useState(0);
-  const [loadingOrders, setLoadingOrders] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const orderRequest = useRef(0);
-  const [resultRef, setResultRef] = useState<ArtifactRef | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [status, setStatus] = useState("准备研究数据…");
-  const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState<number | null>(null);
-  const [cached, setCached] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
-  const active = useRef<{ cancelled: boolean; handle: TaskHandle | null } | null>(null);
-
+  const research = useResearch(services);
+  const { state } = research;
+  const source = useDataSource(services, state.dataset);
+  const root = useRef<HTMLDivElement>(null),
+    input = useRef<HTMLInputElement>(null);
+  const [compact, setCompact] = useState(false),
+    [parametersOpen, setParametersOpen] = useState(true);
+  const [parametersSheet, setParametersSheet] = useState(false),
+    [connectionOpen, setConnectionOpen] = useState(false),
+    [rangeOpen, setRangeOpen] = useState(false),
+    [historyOpen, setHistoryOpen] = useState(false);
+  const [exporting, setExporting] = useState(false),
+    [comparison, setComparison] = useState<SelectedRun | null>(null),
+    [comparing, setComparing] = useState(false);
+  const comparisonRequest = useRef(0);
+  const actionMenu = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
-    onBusy(busy);
+    const outside = (event: MouseEvent) => {
+      if (
+        actionMenu.current?.open &&
+        event.target instanceof Node &&
+        !actionMenu.current.contains(event.target)
+      )
+        actionMenu.current.open = false;
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (
+        event.key === "Escape" &&
+        actionMenu.current?.open &&
+        !document.querySelector("dialog[open]")
+      ) {
+        actionMenu.current.open = false;
+        actionMenu.current.querySelector<HTMLElement>("summary")?.focus();
+      }
+    };
+    document.addEventListener("click", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("click", outside);
+      document.removeEventListener("keydown", escape);
+      comparisonRequest.current++;
+    };
+  }, []);
+  const busy = state.operation !== null;
+  const ready =
+    state.ready &&
+    source.restored &&
+    (source.kind === "clickhouse" ? source.dateError() === null : state.dataset !== null);
+  const invalid = Object.keys(configErrors(state.draft)).length > 0;
+  const selected = state.selected;
+  const changed =
+    isDraftChanged(state) ||
+    (selected !== null &&
+      source.kind === "clickhouse" &&
+      (source.range.start !== dateText(selected.run.startDate) ||
+        source.range.end !== dateText(selected.run.endDate) ||
+        !selected.dataset.manifest.source.includes(
+          `ClickHouse ${sourceUrl(source.connection.url)} / ${source.connection.database}`,
+        )));
+  useEffect(() => {
+    onBusy?.(busy);
+    return () => onBusy?.(false);
   }, [busy, onBusy]);
   useEffect(() => {
-    let disposed = false;
-    void (async () => {
+    if (!root.current) return;
+    const observer = new ResizeObserver((entries) =>
+      setCompact((entries[0]?.contentRect.width ?? 0) < 880),
+    );
+    observer.observe(root.current);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    comparisonRequest.current++;
+    setComparing(false);
+    setComparison((value) =>
+      value &&
+      selected &&
+      value.run.id !== selected.run.id &&
+      value.run.startDate === selected.run.startDate &&
+      value.run.endDate === selected.run.endDate
+        ? value
+        : null,
+    );
+  }, [selected?.run.id]);
+  const execute = async () => {
+    if (!ready || busy || invalid) return;
+    setParametersSheet(false);
+    if (source.kind === "clickhouse") {
       try {
-        const restored = await restoreResearch(services);
-        if (restored !== null) {
-          const restoredResult =
-            restored.resultRef === null
-              ? null
-              : await readJson<JsgResult>(services, restored.resultRef);
-          if (!disposed) {
-            setDataset(restored.dataset);
-            setConfig(restored.config);
-            setResult(restoredResult);
-            setResultRef(restored.resultRef);
-            setStatus("已恢复本地研究");
-          }
-        } else {
-          const demo = demoResearch();
-          const data = await importResearch(services, demo.files, (s) => {
-            if (!disposed) setStatus(s);
-          });
-          if (!disposed) {
-            setDataset(data);
-            setStatus("演示数据就绪 · 64 股 / 156 个回测交易日");
-          }
-        }
-      } catch (e) {
-        if (!disposed) {
-          setError(message(e));
-          setStatus("请选择研究数据，或重新加载演示");
-        }
-      } finally {
-        if (!disposed) setReady(true);
+        await source.persist();
+        await research.connectAndRun(source.connection, source.range);
+      } catch (error) {
+        research.notice(error instanceof Error ? error.message : String(error));
       }
-    })();
-    return () => {
-      disposed = true;
+    } else await research.run();
+  };
+  const executeRef = useRef(execute);
+  executeRef.current = execute;
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key === "Enter" &&
+        root.current?.getClientRects().length &&
+        !document.querySelector("dialog[open]")
+      ) {
+        event.preventDefault();
+        void executeRef.current();
+      }
     };
-  }, [services]);
-  useEffect(() => {
-    if (!ready || dataset === null || busy) return;
-    try {
-      validateConfig(config);
-    } catch {
-      return;
-    }
-    const timer = setTimeout(() => {
-      void saveResearch(services, dataset, config, resultRef).catch((e: unknown) =>
-        setError(`保存研究失败：${message(e)}`),
-      );
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [services, dataset, config, resultRef, busy, ready]);
-
-  const change = (patch: Partial<JsgConfig>) => {
-    setConfig((c) => ({ ...c, ...patch }));
-    setResult(null);
-    setResultRef(null);
-    setError(null);
-    setDuration(null);
-    setCached(false);
-  };
-  const importFiles = async (files: readonly File[]) => {
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const data = await importResearch(services, files, setStatus);
-      await saveResearch(services, data, config, null);
-      setDataset(data);
-      setResult(null);
-      setResultRef(null);
-      setDuration(null);
-      setCached(false);
-      setStatus("研究数据就绪");
-    } catch (e) {
-      setError(message(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-  const loadedFromClickHouse = async ({
-    dataset: loaded,
-    cached: reused,
-  }: ClickHouseLoadResult) => {
-    const strategy: JsgConfig =
-      loaded.manifest.version === 1 && config.executionModel === "jsg-raw-v2"
-        ? { ...config, executionModel: MODEL, fees: [] }
-        : config;
-    await saveResearch(services, loaded, strategy, null);
-    setDataset(loaded);
-    setConfig(strategy);
-    setResult(null);
-    setResultRef(null);
-    setDuration(null);
-    setCached(false);
-    setError(null);
-    setStatus(reused ? "已复用本地数据快照" : "ClickHouse 数据就绪");
-    setConnectionOpen(false);
-    await run(loaded, strategy);
-  };
-  const run = async (input: ResearchDataset | null = dataset, strategy: JsgConfig = config) => {
-    if (input === null || active.current !== null) return;
-    try {
-      validateConfig(strategy);
-    } catch (e) {
-      setError(message(e));
-      return;
-    }
-    const token = { cancelled: false, handle: null as TaskHandle | null };
-    active.current = token;
-    const start = performance.now();
-    let unsubscribe: (() => void) | undefined;
-    setBusy(true);
-    setError(null);
-    setProgress(0);
-    setResult(null);
-    setResultRef(null);
-    setDuration(null);
-    setCached(false);
-    setStatus("排队等待回测…");
-    try {
-      const handle = await Effect.runPromise(
-        services.scheduler.submit({
-          id: `jsg-${crypto.randomUUID()}`,
-          runtime: "wasm",
-          operation: "quant.backtest.jsg",
-          inputs: [
-            { ...input.manifestRef, port: "manifest" },
-            ...input.partitions.map((ref, i) => ({ ...ref, port: `partition-${i}` })),
-          ],
-          outputs: [{ name: "result", type: "quant/jsg-result", storage: "opfs", format: "json" }],
-          resources: { memoryMB: 256, threads: 1 },
-          cache: { enabled: true },
-          config: { model: strategy.executionModel ?? MODEL, strategy },
-        }),
-      );
-      token.handle = handle;
-      if (token.cancelled) {
-        await Effect.runPromise(handle.cancel);
-        throw new Error("回测已取消");
-      }
-      const update = () => {
-        const snapshot = handle.state.getSnapshot();
-        setProgress(snapshot.progress);
-      };
-      unsubscribe = handle.state.subscribe(update);
-      update();
-      setStatus("正在逐日回放…");
-      const outputs = await Effect.runPromise(handle.await);
-      if (token.cancelled) throw new Error("回测已取消");
-      const ref = outputs.find((output) => output.type === "quant/jsg-result");
-      if (ref === undefined) throw new Error("回测没有产生结果");
-      const output = await readJson<JsgResult>(services, ref);
-      if (token.cancelled) throw new Error("回测已取消");
-      await saveResearch(services, input, strategy, ref);
-      if (token.cancelled) throw new Error("回测已取消");
-      setResult(output);
-      setResultRef(ref);
-      setDuration(performance.now() - start);
-      setCached(handle.cached);
-      setProgress(1);
-      setStatus(
-        `回测完成 · ${output.metrics.days} 个交易日 · ${output.metrics.filledOrders} 笔成交${handle.cached ? " · 复用已有结果" : ""}`,
-      );
-    } catch (e) {
-      if (token.cancelled) setStatus("回测已取消");
-      else {
-        setError(message(e));
-        setStatus("回测失败");
-      }
-    } finally {
-      unsubscribe?.();
-      active.current = null;
-      setBusy(false);
-    }
-  };
-  useEffect(() => {
-    orderRequest.current += 1;
-    setOrderChunk(-1);
-    setPageOrders(null);
-    setOrderOffset(0);
-  }, [result]);
-  const loadOrders = async (index: number) => {
-    if (result?.chunks?.[index] === undefined) {
-      setOrderChunk(-1);
-      setPageOrders(null);
-      return;
-    }
-    setLoadingOrders(true);
-    const request = ++orderRequest.current;
-    try {
-      const chunk = await readJson<{ orders: JsgResult["orders"] }>(
-        services,
-        result.chunks[index]!.ref,
-      );
-      if (request !== orderRequest.current) return;
-      setOrderChunk(index);
-      setPageOrders(chunk.orders);
-      setOrderOffset(0);
-    } catch (e) {
-      setError(message(e));
-    } finally {
-      setLoadingOrders(false);
-    }
-  };
-  const cancel = () => {
-    const token = active.current;
-    if (token === null) return;
-    token.cancelled = true;
-    setStatus("正在取消…");
-    if (token.handle !== null)
-      void Effect.runPromise(token.handle.cancel).catch((e: unknown) => setError(message(e)));
-  };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, []);
   const exportResult = async () => {
-    if (result === null) return;
+    if (!selected || exporting) return;
+    const snapshot = selected;
+    if (actionMenu.current) actionMenu.current.open = false;
     setExporting(true);
     try {
-      const { blob, cleanup } = await exportResearchResult(
+      const exported = await exportResearchResult(
         services,
-        config,
-        dataset?.manifest,
-        result,
+        snapshot.run.config,
+        snapshot.dataset.manifest,
+        snapshot.result,
       );
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "jsg-research.json";
-      a.click();
+      const url = URL.createObjectURL(exported.blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "jsg-research.json";
+      anchor.click();
       setTimeout(() => {
         URL.revokeObjectURL(url);
-        void cleanup().catch(() => undefined);
-      }, 60000);
-    } catch (e) {
-      setError(message(e));
+        void exported.cleanup().catch(() => undefined);
+      }, 60_000);
+      research.notice(null, "已导出所选运行的完整结果");
+    } catch (error) {
+      research.notice(error instanceof Error ? error.message : String(error));
     } finally {
       setExporting(false);
     }
   };
-  const m = dataset?.manifest;
-  const metrics = result?.metrics;
-  const latestDecision = result?.decisions.at(-1);
-  const mode =
-    m?.universeMode === "synthetic"
-      ? "合成演示"
-      : m?.universeMode === "snapshot"
-        ? "当前成分快照"
-        : "历史成分";
-  const fields: {
-    key: keyof Pick<
-      JsgConfig,
-      | "initialCapital"
-      | "poolSize"
-      | "stockCount"
-      | "commissionBps"
-      | "slippageBps"
-      | "stopLoss"
-      | "trailingStop"
-      | "maxDrawdown"
-    >;
-    label: string;
-    scale?: number;
-    step: number;
-  }[] = [
-    { key: "initialCapital", label: "初始本金", step: 10000 },
-    { key: "poolSize", label: "候选池大小", step: 1 },
-    { key: "stockCount", label: "目标股票数", step: 1 },
-    { key: "commissionBps", label: "佣金 / bps", step: 1 },
-    { key: "slippageBps", label: "滑点 / bps", step: 1 },
-    { key: "stopLoss", label: "个股止损 / %", scale: 100, step: 1 },
-    { key: "trailingStop", label: "移动止盈 / %", scale: 100, step: 1 },
-    { key: "maxDrawdown", label: "组合回撤 / %", scale: 100, step: 1 },
-  ];
+  const compare = async (id: string) => {
+    const request = ++comparisonRequest.current;
+    if (!id) {
+      setComparison(null);
+      setComparing(false);
+      return;
+    }
+    const run = state.runs.find((item) => item.id === id);
+    if (!run) return;
+    setComparing(true);
+    try {
+      const value = await readRun(services, run);
+      if (comparisonRequest.current === request) setComparison(value);
+    } catch (error) {
+      if (comparisonRequest.current === request)
+        research.notice(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (comparisonRequest.current === request) setComparing(false);
+    }
+  };
+  const parameterContent = (
+    <Parameters
+      config={state.draft}
+      manifest={state.dataset?.manifest}
+      onChange={research.change}
+      onReset={() => research.reset(DEFAULT_CONFIG)}
+      onRun={() => void execute()}
+      busy={busy}
+      ready={ready}
+    />
+  );
+  const compatible = selected
+    ? state.runs.filter(
+        (run) =>
+          run.id !== selected.run.id &&
+          run.startDate === selected.run.startDate &&
+          run.endDate === selected.run.endDate,
+      )
+    : [];
   return (
-    <div className="quant-lab jsg-lab" data-testid="jsg-workbench">
-      <header className="ql-header">
-        <div className="ql-brand">
-          <span>JSG</span>
-          <div>
-            <b>多股票策略研究</b>
-            <small>行业宽度 · 小市值 · 周频调仓</small>
-          </div>
+    <div ref={root} className="jsg-workspace" data-busy={busy} data-draft-changed={changed}>
+      <header className="research-header">
+        <div className="research-brand">
+          <span className="research-eyebrow">策略研究 / JSG</span>
+          <h1>行业宽度轮动</h1>
         </div>
-        <div className="ql-market-status">
-          <span>{m?.name ?? "等待数据"}</span>
-          <span>{m === undefined ? "" : `${m.instruments.length} 只股票 · ${mode}`}</span>
-        </div>
-        <div className="ql-actions">
-          <button
-            className="ui-btn ui-btn-ghost"
-            disabled={!ready || busy}
-            onClick={() => setConnectionOpen(true)}
+        <div className="research-actions">
+          <Button
+            variant="ghost"
+            aria-label="运行历史"
+            disabled={state.runs.length === 0}
+            onClick={() => setHistoryOpen(true)}
           >
-            <Database size={14} />
-            连接 ClickHouse
-          </button>
-          <input
-            ref={input}
-            type="file"
-            multiple
-            accept=".json,.arrow"
-            hidden
-            aria-label="导入 JSG 研究数据"
-            onChange={(e) => {
-              const files = Array.from(e.currentTarget.files ?? []);
-              e.currentTarget.value = "";
-              if (files.length > 0) void importFiles(files);
-            }}
-          />
-          <button
-            className="ui-btn ui-btn-ghost"
-            disabled={!ready || busy}
-            onClick={() => input.current?.click()}
+            <History size={16} />
+            <span>历史</span>
+            <small>{state.runs.length || ""}</small>
+          </Button>
+          <Button
+            variant="ghost"
+            aria-label="策略参数"
+            aria-expanded={compact ? parametersSheet : parametersOpen}
+            onClick={() =>
+              compact ? setParametersSheet(true) : setParametersOpen((value) => !value)
+            }
           >
-            <Upload size={14} />
-            导入数据
-          </button>
-          <button
-            className="ui-btn ui-btn-ghost"
-            disabled={result === null || busy || exporting}
-            onClick={() => void exportResult()}
+            <SlidersHorizontal size={16} />
+            <span>参数</span>
+          </Button>
+          <details ref={actionMenu} className="research-action-menu">
+            <summary aria-label="更多研究操作">
+              <MoreHorizontal size={19} />
+            </summary>
+            <div>
+              <Button
+                variant="ghost"
+                disabled={busy || !state.ready}
+                onClick={() => {
+                  if (actionMenu.current) actionMenu.current.open = false;
+                  input.current?.click();
+                }}
+              >
+                <Upload size={15} />
+                导入研究数据
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={!selected || exporting}
+                onClick={() => void exportResult()}
+              >
+                {exporting ? <Spinner size="sm" /> : <Download size={15} />}导出结果
+              </Button>
+            </div>
+          </details>
+          <Button
+            className="research-run-button"
+            variant="primary"
+            disabled={!ready || busy || invalid}
+            title="运行回测 · Ctrl / ⌘ Enter"
+            onClick={() => void execute()}
           >
-            <Download size={14} />
-            导出结果
-          </button>
-          {active.current !== null ? (
-            <button className="ui-btn" onClick={cancel}>
-              <Square size={14} />
-              取消回测
-            </button>
-          ) : (
-            <button
-              className="ui-btn ui-btn-primary"
-              disabled={!ready || busy || dataset === null}
-              onClick={() => void run()}
-            >
-              <Play size={14} />
-              运行 JSG
-            </button>
-          )}
+            <Play size={15} />
+            运行回测
+          </Button>
         </div>
       </header>
-      <section className="ql-tape jsg-metrics" aria-label="JSG 回测指标">
-        {[
-          ["TOTAL RETURN", metrics ? percent(metrics.totalReturn) : "—"],
-          ["MAX DRAWDOWN", metrics ? percent(metrics.maxDrawdown) : "—"],
-          ["SHARPE", metrics?.sharpe.toFixed(2) ?? "—"],
-          ["FINAL EQUITY", metrics ? `¥${money(metrics.finalEquity)}` : "—"],
-          ["FILLED ORDERS", metrics?.filledOrders ?? "—"],
-          [
-            "EXECUTION",
-            cached ? "CACHED" : duration === null ? "—" : `${(duration / 1000).toFixed(2)} s`,
-          ],
-        ].map(([label, value]) => (
-          <div className="ql-metric" key={label}>
-            <span>{label}</span>
-            <strong>{value}</strong>
-          </div>
-        ))}
-      </section>
-      <main className="jsg-workbench">
-        <aside className="jsg-controls">
-          <div className="jsg-section-title">
-            <b>策略参数</b>
-            <span>JSG / 01</span>
-          </div>
-          <label>
-            成交模型
-            <select
-              value={config.executionModel ?? MODEL}
-              onChange={(e) =>
-                change({
-                  executionModel: e.currentTarget.value as "jsg-adjusted-v1" | "jsg-raw-v2",
-                  fees: config.fees ?? [
-                    {
-                      from: m?.startDate ?? 20200101,
-                      minimumCommission: 0,
-                      transferBps: 0,
-                      sellTaxBps: 0,
-                    },
-                  ],
-                })
-              }
-            >
-              <option value="jsg-adjusted-v1">复权研究 v1</option>
-              <option value="jsg-raw-v2" disabled={m?.version !== 2}>
-                原始价格 v2
-              </option>
-            </select>
-          </label>
-          {config.executionModel === "jsg-raw-v2" && (
-            <div>
-              <label>
-                成交量参与率
-                <input
-                  type="number"
-                  min="0.001"
-                  max="1"
-                  step="0.01"
-                  value={config.participation ?? 0.1}
-                  onChange={(e) => change({ participation: Number(e.currentTarget.value) })}
-                />
-              </label>
-              {(config.fees ?? []).map((f, i) => (
-                <div key={i}>
-                  <label>
-                    费用生效日
-                    <input
-                      type="number"
-                      value={f.from}
-                      onChange={(e) =>
-                        change({
-                          fees: config.fees!.map((old, j) =>
-                            j === i ? { ...old, from: Number(e.currentTarget.value) } : old,
-                          ),
-                        })
-                      }
-                    />
-                  </label>
-                  {(
-                    ["commissionBps", "minimumCommission", "transferBps", "sellTaxBps"] as const
-                  ).map((key) => (
-                    <label key={key}>
-                      {key === "commissionBps"
-                        ? "佣金 / bps"
-                        : key === "minimumCommission"
-                          ? "最低佣金 / 元"
-                          : key === "transferBps"
-                            ? "过户费用 / bps"
-                            : "卖出税费 / bps"}
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={f[key] ?? config.commissionBps}
-                        onChange={(e) =>
-                          change({
-                            fees: config.fees!.map((old, j) =>
-                              j === i ? { ...old, [key]: Number(e.currentTarget.value) } : old,
-                            ),
-                          })
-                        }
-                      />
-                    </label>
-                  ))}
-                </div>
-              ))}
-              <button
-                className="ui-btn ui-btn-ghost"
-                onClick={() =>
-                  change({
-                    fees: [
-                      ...(config.fees ?? []),
-                      {
-                        from: Math.min(22001231, (config.fees?.at(-1)?.from ?? 20200101) + 10000),
-                        minimumCommission: 0,
-                        transferBps: 0,
-                        sellTaxBps: 0,
-                      },
-                    ],
-                  })
-                }
-              >
-                添加费用生效区间
-              </button>
-            </div>
-          )}
-          <fieldset disabled={busy || !ready}>
-            {fields.map(({ key, label, scale = 1, step }) => (
-              <label className="jsg-field" key={key}>
-                <span>{label}</span>
-                <input
-                  className="ui-input"
-                  aria-label={label}
-                  type="number"
-                  min="0"
-                  step={step}
-                  value={
-                    Number.isFinite(config[key]) ? Number((config[key] * scale).toFixed(8)) : ""
-                  }
-                  onChange={(e) => change({ [key]: e.currentTarget.valueAsNumber / scale })}
-                />
-              </label>
-            ))}
-            <label className="jsg-field">
-              <span>行业黑名单</span>
-              <input
-                className="ui-input"
-                aria-label="行业黑名单"
-                value={config.industryBlacklist.join(",")}
-                onChange={(e) =>
-                  change({
-                    industryBlacklist: e.currentTarget.value
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  })
-                }
-              />
-            </label>
-            <label className="jsg-toggle">
-              <input
-                type="checkbox"
-                checked={config.tPlusOne}
-                onChange={(e) => change({ tPlusOne: e.currentTarget.checked })}
-              />
-              启用 T+1 可卖数量约束
-            </label>
-          </fieldset>
-          <p className="jsg-note">
-            风控设为 0
-            时关闭。周末收盘生成调仓指令，下一交易日开盘成交；风控与涨停打开按当日收盘撮合。
-          </p>
-          <button
-            className="ui-btn ui-btn-ghost"
-            disabled={!ready || busy}
-            onClick={() => void importFiles(demoResearch().files)}
+      <div className="research-sourcebar">
+        <span className="research-eyebrow">下一次运行</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label="设置研究数据"
+          onClick={() => setConnectionOpen(true)}
+        >
+          <Database size={14} />
+          <span>
+            {source.kind === "clickhouse"
+              ? `ClickHouse · ${source.connection.database}`
+              : (state.dataset?.manifest.name ?? "选择数据源")}
+          </span>
+          <ChevronDown size={12} />
+        </Button>
+        {source.kind === "clickhouse" ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="设置回测区间"
+            onClick={() => setRangeOpen(true)}
           >
-            加载演示数据
-          </button>
-        </aside>
-        <div className="jsg-results">
-          {error !== null && (
-            <div className="jsg-alert" role="alert">
-              {error}
-            </div>
-          )}
-          {m !== undefined && (
-            <div className="jsg-dataset-summary">
-              <b>{mode}</b>
-              <span>
-                {dateText(m.startDate)} — {dateText(m.endDate)}
-              </span>
-              <span>
-                {m.partitions.length} 个分片 ·{" "}
-                {m.partitions.reduce((s, p) => s + p.rows, 0).toLocaleString()} 行
-              </span>
-            </div>
-          )}
-          {result === null ? (
-            <div className="jsg-empty">
-              <span>JSG / RESEARCH</span>
-              <h2>
-                观察行业宽度
-                <br />
-                回放一整个股票池
-              </h2>
-              <p>选择参数，运行回测，查看组合净值与每一笔订单。</p>
-            </div>
-          ) : (
-            <>
-              <EquityPlot result={result} />
-              <section className="jsg-order-section">
-                <div className="jsg-section-title">
-                  <b>订单记录</b>
-                  <span>
-                    显示 {Math.min(200, (pageOrders ?? result.orders).length)} /{" "}
-                    {result.metrics.filledOrders + result.metrics.rejectedOrders} 笔 ·{" "}
-                    {result.metrics.rejectedOrders} 笔拒单
-                  </span>
-                </div>
-                {(result.chunks?.length ?? 0) > 0 && (
-                  <div className="jsg-order-controls">
-                    <select
-                      aria-label="订单日期区间"
-                      disabled={loadingOrders}
-                      value={orderChunk}
-                      onChange={(e) => void loadOrders(Number(e.currentTarget.value))}
-                    >
-                      <option value={-1}>最近订单</option>
-                      {result.chunks!.map((c, i) => (
-                        <option key={i} value={i}>
-                          {c.start} — {c.end} · {c.orders} 笔
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      className="ui-btn ui-btn-ghost"
-                      disabled={orderOffset === 0 || loadingOrders}
-                      onClick={() => setOrderOffset((v) => Math.max(0, v - 200))}
-                    >
-                      上一页
-                    </button>
-                    <button
-                      className="ui-btn ui-btn-ghost"
-                      disabled={
-                        orderOffset + 200 >= (pageOrders ?? result.orders).length || loadingOrders
-                      }
-                      onClick={() => setOrderOffset((v) => v + 200)}
-                    >
-                      下一页
-                    </button>
-                  </div>
-                )}
-                <div className="jsg-table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>成交日期</th>
-                        <th>证券</th>
-                        <th>方向</th>
-                        <th>数量</th>
-                        <th>价格</th>
-                        <th>费用</th>
-                        <th>时点 / 原因</th>
-                        <th>状态</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(pageOrders ?? result.orders)
-                        .slice()
-                        .reverse()
-                        .slice(orderOffset, orderOffset + 200)
-                        .map((o, i) => (
-                          <tr key={i}>
-                            <td>{o.date}</td>
-                            <td>{o.code}</td>
-                            <td data-side={o.side}>{o.side === "buy" ? "买" : "卖"}</td>
-                            <td>{o.quantity.toLocaleString()}</td>
-                            <td>{money(o.price)}</td>
-                            <td>{money(o.fee)}</td>
-                            <td>
-                              {o.timing} / {o.reason}
-                            </td>
-                            <td>{o.status}</td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            </>
-          )}
-        </div>
-        <aside className="jsg-data-rail">
-          <div className="jsg-section-title">
-            <b>研究口径</b>
-            <span>DAILY</span>
-          </div>
-          <p className="jsg-note">
-            {config.executionModel === "jsg-raw-v2"
-              ? "原始价格撮合，真实股数记账；复权价格只用于均线。分红送转、涨跌停和费用来自明确事件与日期规则；默认 T+1，并限制成交量参与率。"
-              : "复权价格用于均线与研究成交；原始价格用于涨跌停及市值。持仓数量为研究单位。"}
-          </p>
-          {m?.universeMode === "snapshot" && (
-            <p className="jsg-warning">当前成分快照不能还原历史股票池，结果可能存在幸存者偏差。</p>
-          )}
-          {(result?.warnings ?? m?.warnings ?? []).map((w, i) => (
-            <p className="jsg-warning" key={i}>
-              {w}
-            </p>
-          ))}
-          <div className="jsg-section-title">
-            <b>最近调仓</b>
-          </div>
-          <p className="jsg-note">
-            {latestDecision === undefined
-              ? "运行后显示行业宽度与候选股票。"
-              : `${latestDecision.date} · ${latestDecision.topIndustry ?? "无有效行业"} · ${latestDecision.breadth}%`}
-          </p>
-          <div className="jsg-targets">
-            {latestDecision?.targets.map((code) => (
-              <span key={code}>{code}</span>
-            ))}
-          </div>
-          <div className="jsg-section-title">
-            <b>期末持仓</b>
-            <span>{result?.holdings.length ?? 0}</span>
-          </div>
-          {result?.holdings.map((h) => (
-            <div className="jsg-holding" key={h.code}>
-              <span>
-                {h.code}
-                <small>{h.quantity.toLocaleString()} 单位</small>
-              </span>
-              <b>¥{money(h.value)}</b>
-            </div>
-          ))}
-          {result !== null && (
-            <p className="jsg-note">期末未成交调仓单 {result.pendingOrders} 笔，不作强制平仓。</p>
-          )}
-        </aside>
-      </main>
-      <footer className="jsg-footer" aria-live="polite">
-        <span>{status}</span>
-        <progress value={progress} max="1" aria-label="JSG 回测进度" />
-        <span>{config.executionModel ?? MODEL}</span>
-      </footer>
-      <ClickHouseDialog
-        open={connectionOpen}
-        services={services}
-        onClose={() => setConnectionOpen(false)}
-        onBusy={(value) => {
-          setBusy(value);
-          if (value) {
-            setStatus("连接研究数据…");
-            setProgress(0);
-          } else if (active.current === null) {
-            setStatus(result === null ? "研究数据就绪" : "当前研究结果保留");
+            <CalendarDays size={14} />
+            <span>
+              {source.range.start && source.range.end
+                ? `${source.range.start} — ${source.range.end}`
+                : "选择回测区间"}
+            </span>
+            <ChevronDown size={12} />
+          </Button>
+        ) : (
+          <span className="research-local-range">
+            <CalendarDays size={14} />
+            {state.dataset
+              ? `${dateText(state.dataset.manifest.startDate)} — ${dateText(state.dataset.manifest.endDate)}`
+              : "尚无快照"}
+          </span>
+        )}
+        {source.kind === "clickhouse" && source.range.refresh && (
+          <span className="research-source-hint">重新获取</span>
+        )}
+      </div>
+      <input
+        ref={input}
+        type="file"
+        multiple
+        accept=".json,.arrow"
+        aria-label="导入 JSG 研究数据"
+        hidden
+        onChange={(event) => {
+          const files = Array.from(event.currentTarget.files ?? []);
+          event.currentTarget.value = "";
+          if (files.length) {
+            void source.useLocal().catch((error) => research.notice(String(error)));
+            void research.importFiles(files);
           }
         }}
-        onProgress={(value) => {
-          setStatus(value.text);
-          setProgress(value.total > 0 ? value.completed / value.total : 0);
-        }}
-        onLoaded={loadedFromClickHouse}
       />
+      {state.error && (
+        <div className="research-error-banner" role="alert">
+          <span>{state.error}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="关闭错误提示"
+            onClick={() => research.notice(null)}
+          >
+            <X size={14} />
+          </Button>
+        </div>
+      )}
+      <div className="research-body" data-parameters={parametersOpen && !compact}>
+        {!compact && parametersOpen && (
+          <aside className="research-parameter-rail" aria-label="策略参数编辑">
+            {parameterContent}
+          </aside>
+        )}
+        <main className="research-results" aria-busy={research.selecting}>
+          {selected ? (
+            <div className="research-run-result" data-run-id={selected.run.id}>
+              <div className="research-result-heading">
+                <div>
+                  <span className="research-eyebrow">
+                    所选运行 · {timeLabel(selected.run.createdAt)}
+                  </span>
+                  <h2>{selected.run.name}</h2>
+                  <p>
+                    {dateText(selected.run.startDate)} — {dateText(selected.run.endDate)}
+                    <span>
+                      目标 {selected.run.config.stockCount} 只 · 本金 ¥
+                      {money(selected.run.config.initialCapital)}
+                    </span>
+                  </p>
+                </div>
+                <div className="research-result-context">
+                  <Quality manifest={selected.dataset.manifest} result={selected.result} />
+                  {research.selecting && <Spinner size="sm" />}
+                  {changed && <span className="research-draft-badge">待运行的修改</span>}
+                </div>
+              </div>
+              <dl className="research-metrics" aria-label="所选运行核心指标">
+                {[
+                  [
+                    "总收益",
+                    percent(selected.result.metrics.totalReturn),
+                    selected.result.metrics.totalReturn >= 0 ? "positive" : "negative",
+                  ],
+                  ["最大回撤", percent(selected.result.metrics.maxDrawdown), "neutral"],
+                  ["Sharpe", selected.result.metrics.sharpe.toFixed(2), "neutral"],
+                  ["期末资产", `¥${money(selected.result.metrics.finalEquity)}`, "neutral"],
+                ].map(([label, value, tone]) => (
+                  <div key={label} data-tone={tone}>
+                    <dt>{label}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <div className="research-result-tools">
+                <label>
+                  对照
+                  <Select
+                    aria-label="选择对照运行"
+                    disabled={compatible.length === 0 || comparing}
+                    value={comparison?.run.id ?? ""}
+                    onChange={(event) => void compare(event.currentTarget.value)}
+                  >
+                    <option value="">
+                      {compatible.length ? "选择相同区间的运行" : "同区间再次运行后可比较"}
+                    </option>
+                    {compatible.toReversed().map((run) => (
+                      <option key={run.id} value={run.id}>
+                        {timeLabel(run.createdAt)} · 目标 {run.config.stockCount} 只 ·{" "}
+                        {percent(run.metrics.totalReturn)}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                {comparing && <Spinner size="sm" />}
+                {configKey(state.draft) !== configKey(selected.run.config) && (
+                  <Button variant="ghost" size="sm" onClick={research.useRunConfig}>
+                    使用所选运行参数
+                  </Button>
+                )}
+              </div>
+              <Suspense
+                fallback={
+                  <div className="research-chart-loading">
+                    <Spinner />
+                    正在载入图表…
+                  </div>
+                }
+              >
+                <ResearchChart
+                  key={selected.run.id}
+                  services={services}
+                  selected={selected}
+                  comparison={comparison}
+                />
+              </Suspense>
+              <ResultExplorer
+                key={selected.run.id}
+                services={services}
+                selected={selected}
+                comparison={comparison}
+              />
+            </div>
+          ) : (
+            <div className="research-empty">
+              <span className="research-eyebrow">从一次回测开始</span>
+              <div className="research-empty-mark" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+              </div>
+              <h2>
+                让策略的每一次调整
+                <br />
+                都有结果可对照。
+              </h2>
+              <p>
+                选择数据和区间，调整目标股票数，然后运行回测。
+                <br />
+                净值、成交与调仓记录会保存为独立的运行。
+              </p>
+              <div>
+                <Button
+                  variant="primary"
+                  disabled={!ready || busy || invalid}
+                  onClick={() => void execute()}
+                >
+                  <Play size={15} />
+                  运行首次回测
+                </Button>
+                <Button variant="ghost" onClick={() => setConnectionOpen(true)}>
+                  选择数据源
+                </Button>
+              </div>
+              {state.dataset && <Quality manifest={state.dataset.manifest} />}
+            </div>
+          )}
+        </main>
+      </div>
+      <footer className="research-taskbar">
+        <div>
+          <span className="research-task-dot" data-active={busy} />
+          <span role="status">{state.operation?.label ?? state.status}</span>
+        </div>
+        {busy ? (
+          <div>
+            <progress
+              max={1}
+              value={state.operation?.progress ?? undefined}
+              aria-label="研究任务进度"
+            />
+            <Button variant="ghost" size="sm" aria-label="取消研究任务" onClick={research.cancel}>
+              <Square size={12} />
+              取消
+            </Button>
+          </div>
+        ) : (
+          <span>
+            {selected?.run.cached
+              ? "已复用结果"
+              : selected?.run.durationMs !== null && selected?.run.durationMs !== undefined
+                ? `${(selected.run.durationMs / 1000).toFixed(2)} 秒`
+                : "本地运行"}
+            <kbd>⌘ / Ctrl ↵</kbd>
+          </span>
+        )}
+      </footer>
+      <ConnectionSettings
+        source={source}
+        open={connectionOpen}
+        onClose={() => setConnectionOpen(false)}
+        onImport={() => input.current?.click()}
+        onDemo={() => void research.importFiles(demoResearch().files)}
+      />
+      <DateRangeSettings source={source} open={rangeOpen} onClose={() => setRangeOpen(false)} />
+      <Dialog
+        open={parametersSheet && compact}
+        onClose={() => setParametersSheet(false)}
+        title="编辑策略参数"
+        placement="sheet"
+        className="research-parameter-sheet"
+      >
+        {compact && parameterContent}
+      </Dialog>
+      <Dialog
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        title="运行历史"
+        placement="sheet"
+        className="research-history-dialog"
+      >
+        <p className="research-dialog-lead">
+          保留最近 20 次运行。选择历史只切换结果，下一次运行的参数保持当前编辑值。
+        </p>
+        <div className="research-history-list">
+          {state.runs.toReversed().map((run) => (
+            <button
+              type="button"
+              key={run.id}
+              aria-pressed={selected?.run.id === run.id}
+              onClick={() => {
+                setHistoryOpen(false);
+                void research.selectRun(run.id);
+              }}
+            >
+              <span>
+                <b>{timeLabel(run.createdAt)}</b>
+                <small>
+                  {dateText(run.startDate)} — {dateText(run.endDate)}
+                </small>
+                <small>
+                  目标 {run.config.stockCount} 只 · 佣金 {run.config.commissionBps / 100}% · 滑点{" "}
+                  {run.config.slippageBps} bps
+                </small>
+              </span>
+              <span>
+                <strong>{percent(run.metrics.totalReturn)}</strong>
+                <small>回撤 {percent(run.metrics.maxDrawdown)}</small>
+                {selected?.run.id === run.id && <small>当前查看</small>}
+              </span>
+            </button>
+          ))}
+        </div>
+      </Dialog>
     </div>
   );
 }
