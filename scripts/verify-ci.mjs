@@ -150,6 +150,7 @@ await withServer({
     "scripts/verify-reader-focus.mjs",
     "scripts/verify-reader-audit.mjs",
     "scripts/verify-reader-library.mjs",
+    "scripts/verify-reader-restore-records.mjs",
     "scripts/verify-reader-page-height.mjs",
     "scripts/verify-reader-page-turn.mjs",
     "scripts/verify-reader-tools.mjs",

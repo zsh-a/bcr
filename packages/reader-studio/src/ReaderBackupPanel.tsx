@@ -4,7 +4,6 @@ import { indexBook, type ReaderRuntime } from "./runtime";
 import { ReaderSheet } from "./ReaderSheet";
 import {
   backupNewBooks,
-  backupSkippedBooks,
   createReaderBackup,
   inspectReaderBackup,
   prepareReaderRestore,
@@ -17,6 +16,11 @@ import {
 import { getReaderState, reader, useReader } from "./store";
 import { captureReaderProgress, persistReaderSnapshot } from "./useReaderRuntime";
 import { formatBytes } from "./readerPresentation";
+import { planReaderRestoreRecords, type ReaderRestoreRecordSummary } from "./readerRestoreRecords";
+
+function recordSummary(item: ReaderRestoreRecordSummary): string {
+  return `${item.fresh ? "新增读物" : "保留本机读物"} · 导入 ${item.bookmarksAdded} 个书签、${item.annotationsAdded} 条笔记${item.progressAdded ? " · 补入进度" : ""}${item.progressKept ? " · 保留本机进度" : ""}${item.conflicts ? ` · ${item.conflicts} 条不同版本均保留` : ""}${item.skipped ? ` · ${item.skipped} 条记录无法对齐，不导入` : ""}`;
+}
 
 type BackupErrorPhase = "export" | "restore" | "save";
 const ERROR_HINTS: Record<BackupErrorPhase, string> = {
@@ -30,7 +34,8 @@ export function ReaderBackupPanel(props: {
   runtime: ReaderRuntime;
   onClose: () => void;
 }) {
-  const library = useReader((state) => state.library);
+  const state = useReader((state) => state);
+  const library = state.library;
   const saveError = useReader((state) => state.saveError);
   const [prepared, setPrepared] = useState<PreparedReaderBackup | null>(null);
   const [busy, setBusy] = useState(false);
@@ -108,11 +113,11 @@ export function ReaderBackupPanel(props: {
     }
   };
   const fresh = prepared === null ? [] : backupNewBooks(prepared, library);
-  const skipped = prepared === null ? [] : backupSkippedBooks(prepared.manifest, library);
-  const skippedRecords = skipped.reduce(
-    (sum, item) => sum + item.bookmarks + item.annotations + Number(item.progress),
-    0,
-  );
+  const restorePlan = prepared === null ? null : planReaderRestoreRecords(prepared.manifest, state);
+  const mergedBooks =
+    restorePlan?.entries.filter(
+      (item) => !item.fresh && item.progressAdded + item.bookmarksAdded + item.annotationsAdded > 0,
+    ).length ?? 0;
   return (
     <ReaderSheet
       open={props.open}
@@ -266,26 +271,18 @@ export function ReaderBackupPanel(props: {
           <section className="reader-backup-preview" aria-label="恢复预览">
             <span className="ui-section-label">RESTORE PREVIEW</span>
             <h3>
-              新增 {fresh.length} 本 · 跳过 {prepared.manifest.books.length - fresh.length} 本
+              新增 {fresh.length} 本 · 合并 {mergedBooks} 本 · 保留{" "}
+              {prepared.manifest.books.length - fresh.length - mergedBooks} 本
             </h3>
             <p>
               {new Date(prepared.manifest.createdAt).toLocaleString()} 的备份。相同书籍按 ID
-              或源文件校验值去重，保留本机已有进度与笔记。
-              {skippedRecords > 0 &&
-                `跳过读物在备份中的 ${skippedRecords} 条阅读记录（进度、书签、笔记）不会合并到本机。`}
+              或源文件校验值去重，保留本机进度并补入缺失进度。书签与笔记去重合并，同一记录的不同版本均保留；重复恢复不会重复添加。
             </p>
             <ul>
-              {prepared.manifest.books.map(({ book }) => (
-                <li key={book.id}>
-                  <span>{book.title}</span>
-                  <small>
-                    {fresh.some((entry) => entry.book.id === book.id)
-                      ? "新增"
-                      : (() => {
-                          const item = skipped.find((entry) => entry.id === book.id);
-                          return `保留本机 · ${item?.matchedBy === "source" ? "同源文件" : item?.matchedBy === "duplicate" ? "备份内重复" : "相同 ID"} · 跳过${item?.progress ? "进度、" : ""}${item?.bookmarks ?? 0} 个书签、${item?.annotations ?? 0} 条笔记`;
-                        })()}
-                  </small>
+              {restorePlan?.entries.map((item) => (
+                <li key={item.id}>
+                  <span>{item.title}</span>
+                  <small>{recordSummary(item)}</small>
                 </li>
               ))}
             </ul>
@@ -313,13 +310,17 @@ export function ReaderBackupPanel(props: {
               使用备份中的搜索与跳转历史（替换本机历史）
             </label>
             <p className="reader-data-summary">
-              现有书籍不会被覆盖；可选择是否一并恢复排版设置与阅读历史。
+              保留本机书名和收藏；新增或合并阅读记录。无法对齐的记录在上方明确列出，可选择一并恢复排版设置与阅读历史。
             </p>
             <button
               type="button"
-              disabled={busy || (fresh.length === 0 && !restoreSettings && !restoreHistory)}
+              disabled={
+                busy ||
+                (fresh.length === 0 && !restorePlan?.added && !restoreSettings && !restoreHistory)
+              }
               onClick={() =>
                 void run(async (signal) => {
+                  captureReaderProgress();
                   const books = await prepareReaderRestore(
                     props.runtime,
                     prepared,
@@ -328,34 +329,26 @@ export function ReaderBackupPanel(props: {
                     signal,
                   );
                   const snapshot = prepared.manifest;
-                  const ids = new Set(books.map((book) => book.id));
-                  reader.reconcileLibrary(
-                    books,
-                    Object.fromEntries(
-                      Object.entries(snapshot.progressByBook).filter(([id]) => ids.has(id)),
-                    ),
-                    Object.fromEntries(
-                      Object.entries(snapshot.bookmarksByBook).filter(([id]) => ids.has(id)),
-                    ),
-                    getReaderState().activeBookId,
-                    Object.fromEntries(
-                      Object.entries(snapshot.annotationsByBook).filter(([id]) => ids.has(id)),
-                    ),
-                  );
-                  if (restoreSettings) reader.setSettings(snapshot.settings);
+                  const plan = planReaderRestoreRecords(snapshot, getReaderState(), books);
+                  reader.mergeBackupRecords(books, plan.records);
+                  if (restoreSettings) reader.setSettings(plan.settings);
                   if (restoreHistory)
-                    reader.restoreReadingHistory(
-                      snapshot.navigationHistory ?? { back: [], forward: [] },
-                      snapshot.searchSession,
-                    );
+                    reader.restoreReadingHistory(plan.navigationHistory, plan.searchSession);
                   await persistReaderSnapshot(props.runtime, {
                     durableLibrary: true,
                     strict: true,
                   });
                   for (const book of books) await indexBook(props.runtime, book);
                   setPrepared(null);
+                  const merged = plan.entries.filter(
+                    (item) =>
+                      !item.fresh &&
+                      item.progressAdded + item.bookmarksAdded + item.annotationsAdded > 0,
+                  ).length;
+                  const skipped = plan.entries.reduce((sum, item) => sum + item.skipped, 0);
+                  const conflicts = plan.entries.reduce((sum, item) => sum + item.conflicts, 0);
                   setMessage(
-                    `恢复完成，已新增 ${books.length} 本读物；跳过 ${skipped.length} 本已有读物及其 ${skippedRecords} 条备份阅读记录。${restoreSettings && snapshot.settingsFallback ? "部分排版设置已回退默认值。" : ""}`,
+                    `恢复完成，已新增 ${books.length} 本读物，合并 ${merged} 本已有读物，导入 ${plan.added} 条阅读记录；本机已有进度保留。${conflicts ? `${conflicts} 条不同版本均已保留。` : ""}${skipped ? `${skipped} 条记录无法对齐，未导入。` : ""}${restoreSettings && snapshot.settingsFallback ? "部分排版设置已回退默认值。" : ""}`,
                   );
                 })
               }

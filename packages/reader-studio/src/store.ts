@@ -201,6 +201,28 @@ class ReaderStore {
     if (added.length) this.set({ library: [...this.state.library, ...added] });
   }
 
+  /** Publish a verified backup merge without resetting live navigation or user metadata. */
+  mergeBackupRecords(
+    books: ReadonlyArray<ReaderBook>,
+    records: Pick<ReaderState, "progressByBook" | "bookmarksByBook" | "annotationsByBook">,
+  ): void {
+    const added = books.filter(
+      (book) => !this.state.library.some((current) => current.id === book.id),
+    );
+    const active = this.state.activeBookId;
+    const progress = active === null ? undefined : records.progressByBook[active];
+    const previous = active === null ? undefined : this.state.progressByBook[active];
+    const moved =
+      progress !== undefined &&
+      (previous === undefined || !sameLocator(previous.locator, progress.locator, 0));
+    this.set({
+      library: [...this.state.library, ...added],
+      ...records,
+      ...(progress ? { activeSectionId: progress.locator.sectionId } : {}),
+      navigationSequence: this.state.navigationSequence + Number(moved),
+    });
+  }
+
   addBook(book: ReaderBook): boolean {
     const existing = this.state.library.find(
       (candidate) =>

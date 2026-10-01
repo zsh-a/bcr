@@ -181,7 +181,9 @@ try {
   const archive = join(directory, "backup.zip");
   await download.saveAs(archive);
   await page.getByLabel("选择 Reader 备份", { exact: true }).setInputFiles(archive);
-  await page.getByRole("heading", { name: "新增 0 本 · 跳过 3 本", exact: true }).waitFor();
+  await page
+    .getByRole("heading", { name: "新增 0 本 · 合并 0 本 · 保留 3 本", exact: true })
+    .waitFor();
   await page.screenshot({ path: join(directory, "backup-mobile.png") });
   assert(await page.getByRole("button", { name: "确认合并恢复", exact: true }).isDisabled());
 
@@ -196,9 +198,11 @@ try {
   await restored.getByRole("button", { name: "打开书库", exact: true }).click();
   await restored.getByRole("button", { name: "备份与恢复", exact: true }).click();
   await restored.getByLabel("选择 Reader 备份", { exact: true }).setInputFiles(archive);
-  await restored.getByRole("heading", { name: "新增 2 本 · 跳过 1 本", exact: true }).waitFor();
+  await restored
+    .getByRole("heading", { name: "新增 2 本 · 合并 0 本 · 保留 1 本", exact: true })
+    .waitFor();
   await restored.getByRole("button", { name: "确认合并恢复", exact: true }).click();
-  await restored.getByText(/^恢复完成，已新增 2 本读物；跳过 1 本已有读物及其 /u).waitFor();
+  await restored.getByText(/^恢复完成，已新增 2 本读物，合并 0 本已有读物/u).waitFor();
   await restored.getByRole("button", { name: "关闭备份与恢复", exact: true }).click();
   await restored.locator(".reader-book-card").filter({ hasText: "selectable" }).click();
   await restored.locator(".reader-pdf-canvas-shell.is-ready").first().waitFor();

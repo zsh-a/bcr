@@ -113,7 +113,7 @@ export function planReaderBackup(
 }
 
 const MANIFEST = "reader.json";
-interface BackupBook {
+export interface BackupBook {
   readonly book: PersistedBook;
   readonly source?: { readonly path: string; readonly hash: string; readonly size: number };
 }
@@ -680,28 +680,33 @@ export interface BackupSkippedBook {
   readonly annotations: number;
 }
 
-/**
- * Split backup entries into fresh books and skipped ones. A skipped book keeps the
- * local copy while its backup-side progress, bookmarks and notes are dropped, so the
- * drops are reported per book instead of disappearing silently.
- */
-function classifyBackupBooks(
+/** Resolve publication identity separately from the reading records being merged. */
+export function classifyBackupBooks(
   backup: ReaderBackup,
   library: ReadonlyArray<ReaderBook>,
-): { fresh: BackupBook[]; skipped: BackupSkippedBook[] } {
-  const ids = new Set(library.map((book) => book.id));
-  const localHashes = new Set(
-    library.flatMap((book) => (book.source.ref ? [book.source.ref.hash] : [])),
+): { fresh: BackupBook[]; skipped: BackupSkippedBook[]; targets: ReadonlyMap<string, ReaderBook> } {
+  const ids = new Map(library.map((book) => [book.id, book]));
+  const localHashes = new Map(
+    library.flatMap((book) =>
+      !book.preserveSectionSnapshot && book.source.ref
+        ? [[book.source.ref.hash, book] as const]
+        : [],
+    ),
   );
-  const hashes = new Set(localHashes);
+  const hashes = new Map(localHashes);
   const fresh: BackupBook[] = [];
   const skipped: BackupSkippedBook[] = [];
+  const targets = new Map<string, ReaderBook>();
   for (const entry of backup.books) {
     const { book, source } = entry;
+    const sourceMatch =
+      !book.preserveSectionSnapshot && source !== undefined ? hashes.get(source.hash) : undefined;
+    const target = ids.get(book.id) ?? sourceMatch;
+    targets.set(book.id, target ?? book);
     const matchedBy = ids.has(book.id)
       ? "id"
-      : source !== undefined && hashes.has(source.hash)
-        ? localHashes.has(source.hash)
+      : sourceMatch !== undefined
+        ? source !== undefined && localHashes.has(source.hash)
           ? ("source" as const)
           : ("duplicate" as const)
         : undefined;
@@ -716,11 +721,11 @@ function classifyBackupBooks(
       });
       continue;
     }
-    ids.add(book.id);
-    if (source !== undefined) hashes.add(source.hash);
+    ids.set(book.id, book);
+    if (source !== undefined && !book.preserveSectionSnapshot) hashes.set(source.hash, book);
     fresh.push(entry);
   }
-  return { fresh, skipped };
+  return { fresh, skipped, targets };
 }
 
 export function backupNewBooks(
