@@ -12,7 +12,7 @@ import {
 } from "./model";
 
 let kernelsReady: Promise<unknown> | undefined;
-async function hashPartition(file: File): Promise<string> {
+async function hashPartition(file: File, signal?: AbortSignal): Promise<string> {
   kernelsReady ??= initKernels();
   await kernelsReady;
   const hasher = new StreamingBlake3();
@@ -20,10 +20,12 @@ async function hashPartition(file: File): Promise<string> {
   let yieldedAt = performance.now();
   try {
     for (;;) {
+      signal?.throwIfAborted();
       const { done, value } = await reader.read();
       if (done) return hasher.finalize_hex();
       // Keep the import window bounded even if a stream supplies unusually large chunks.
       for (let offset = 0; offset < value.length; offset += 1024 * 1024) {
+        signal?.throwIfAborted();
         hasher.update(value.subarray(offset, offset + 1024 * 1024));
         if (performance.now() - yieldedAt >= 16) {
           await new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -40,7 +42,10 @@ async function hashPartition(file: File): Promise<string> {
   }
 }
 
-export async function readJson<T>(services: RuntimeServices, ref: ArtifactRef): Promise<T> {
+export async function readJson<T>(
+  services: Pick<RuntimeServices, "artifacts">,
+  ref: ArtifactRef,
+): Promise<T> {
   const bytes = await Effect.runPromise(services.artifacts.get(ref));
   return JSON.parse(new TextDecoder().decode(bytes)) as T;
 }
@@ -48,7 +53,9 @@ export async function importResearch(
   services: Pick<RuntimeServices, "artifacts">,
   files: readonly File[],
   progress: (text: string) => void,
+  signal?: AbortSignal,
 ): Promise<ResearchDataset> {
+  signal?.throwIfAborted();
   const jsons = files.filter((f) => f.name.endsWith(".json"));
   const manifestFile = jsons[0];
   if (jsons.length !== 1 || manifestFile === undefined || manifestFile.size > MAX_MANIFEST_BYTES)
@@ -68,7 +75,8 @@ export async function importResearch(
       const file = byName.get(p.file);
       if (file === undefined) throw new Error(`分片缺失：${p.file}`);
       progress(`导入 ${index + 1}/${manifest.partitions.length} · ${p.file}`);
-      const hash = await hashPartition(file);
+      const hash = await hashPartition(file, signal);
+      signal?.throwIfAborted();
       const ref: ArtifactRef = {
         id: `jsg/input/${hash}`,
         hash,
@@ -78,11 +86,20 @@ export async function importResearch(
       };
       if (!(await Effect.runPromise(services.artifacts.has(ref)))) {
         written.push(ref);
-        await Effect.runPromise(services.artifacts.putStream(ref, file.stream()));
+        const stream = file.stream().pipeThrough(
+          new TransformStream<Uint8Array, Uint8Array>({
+            transform(chunk, controller) {
+              signal?.throwIfAborted();
+              controller.enqueue(chunk);
+            },
+          }),
+        );
+        await Effect.runPromise(services.artifacts.putStream(ref, stream));
       }
       partitions.push(ref);
     }
     const bytes = new TextEncoder().encode(JSON.stringify(manifest));
+    signal?.throwIfAborted();
     const hash = contentHash(bytes);
     const manifestRef: ArtifactRef = {
       id: `jsg/manifest/${hash}`,
@@ -95,6 +112,7 @@ export async function importResearch(
       written.push(manifestRef);
       await Effect.runPromise(services.artifacts.put(manifestRef, bytes));
     }
+    signal?.throwIfAborted();
     return { manifest, manifestRef, partitions };
   } catch (error) {
     await Promise.allSettled(
@@ -119,7 +137,7 @@ export async function saveResearch(
   );
 }
 export async function restoreResearch(
-  services: RuntimeServices,
+  services: Pick<RuntimeServices, "artifacts" | "metadata">,
 ): Promise<{ dataset: ResearchDataset; config: JsgConfig; resultRef: ArtifactRef | null } | null> {
   const raw = await services.metadata?.get("jsg-project-v1");
   if (raw === undefined) return null;

@@ -221,7 +221,12 @@ CSV / Parquet → DuckDB WASM → Year Manifest → Arrow IPC shards → SMA Cro
 - 行情、列式缓存、结果 Artifact、Cache、血缘、TaskJournal 与项目参数经 OPFS + SQLite 跨刷新恢复
 - UI 采用高密度策略终端：价格/双均线/买卖点、单标的权益曲线、组合相关性矩阵、等权权益曲线、Pipeline 状态和 Trade Blotter 同屏
 
-走查：`node scripts/verify-quant-lab.mjs`（由 `bun run test:browser` 自动执行）。
+JSG 多股票研究使用独立的结果工作台：浏览器直连 ClickHouse → 分块 Arrow → Rust/WASM
+逐日回放。参数编辑与运行快照分离，支持交互净值/回撤图、完整成交筛选、持仓/调仓明细和
+最近 20 次运行的同区间比较；移动端通过参数抽屉操作。详情见 [JSG 文档](crates/quant/README.md)。
+
+走查：`node scripts/verify-quant-lab.mjs`（由 `bun run test:browser` 自动执行）；
+JSG 使用 `bun run test:browser:jsg`，数据库集成使用 `bun run test:browser:jsg:clickhouse`。
 
 ## Market Atlas（apps/market-board）
 

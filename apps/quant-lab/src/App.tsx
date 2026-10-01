@@ -67,16 +67,38 @@ function ResearchWorkbench() {
   const [tab, setTab] = useState<"sma" | "jsg">(initialJsg ? "jsg" : "sma");
   const [opened, setOpened] = useState(initialJsg);
   const [jsgBusy, setJsgBusy] = useState(false);
+  const strategyTabs = useRef<HTMLDivElement>(null);
   const smaRunning = useQuantLab((state) => state.running);
   usePublishRunningCount("quant", Number(smaRunning) + Number(jsgBusy));
   return (
     <div className="ql-research-shell">
-      <div className="ql-research-tabs" role="tablist" aria-label="策略类型">
+      <div
+        ref={strategyTabs}
+        className="ql-research-tabs"
+        role="tablist"
+        aria-label="策略类型"
+        onKeyDown={(event) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          const next =
+            event.key === "Home"
+              ? "sma"
+              : event.key === "End"
+                ? "jsg"
+                : tab === "sma"
+                  ? "jsg"
+                  : "sma";
+          setOpened(true);
+          setTab(next);
+          strategyTabs.current?.querySelector<HTMLButtonElement>(`#${next}-tab`)?.focus();
+        }}
+      >
         <button
           role="tab"
           id="sma-tab"
           aria-controls="sma-panel"
           aria-selected={tab === "sma"}
+          tabIndex={tab === "sma" ? 0 : -1}
           onClick={() => setTab("sma")}
         >
           SMA 单股票
@@ -86,6 +108,7 @@ function ResearchWorkbench() {
           id="jsg-tab"
           aria-controls="jsg-panel"
           aria-selected={tab === "jsg"}
+          tabIndex={tab === "jsg" ? 0 : -1}
           onClick={() => {
             setOpened(true);
             setTab("jsg");

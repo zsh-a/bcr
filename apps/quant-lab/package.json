@@ -23,6 +23,7 @@
     "@sqlite.org/sqlite-wasm": "catalog:",
     "apache-arrow": "17.0.0",
     "effect": "catalog:",
+    "lightweight-charts": "5.2.0",
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
