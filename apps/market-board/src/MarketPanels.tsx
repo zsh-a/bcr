@@ -3,6 +3,7 @@ import { Star } from "lucide-react";
 import type { MarketSession, QuoteSnapshot } from "@bcr/market-data";
 import { Sparkline } from "./components/Sparkline";
 import { price, sessionLabel, signed, qualityLabel } from "./marketFormat";
+import type { QuoteTrendResource } from "./useQuoteTrends";
 export function Session(props: { session: MarketSession; index: number }) {
   return (
     <div className={`ma-session ${props.session.state}`}>
@@ -19,6 +20,7 @@ export function Session(props: { session: MarketSession; index: number }) {
 
 export function QuoteCard(props: {
   quote: QuoteSnapshot;
+  trend: QuoteTrendResource | undefined;
   index: number;
   selected: boolean;
   watched: boolean;
@@ -26,6 +28,12 @@ export function QuoteCard(props: {
   onWatch: () => void;
 }) {
   const positive = props.quote.changePercent >= 0;
+  const trend = props.quote.quality === "demo" ? null : props.trend?.series;
+  const values = trend?.points.map((point) => point.close) ?? [];
+  const period = `近${values.length}日${trend?.quality === "cached" ? " · 缓存" : ""}`;
+  const description = trend
+    ? `${period}收盘价走势，${trend.points[0]!.date} 至 ${trend.points.at(-1)!.date}，${trend.source}`
+    : "暂无真实历史价格走势";
   return (
     <article
       className={`ma-quote-card ${props.selected ? "selected" : ""}`}
@@ -39,7 +47,16 @@ export function QuoteCard(props: {
         <small>{qualityLabel(props.quote.quality)}</small>
         <strong>{price(props.quote.price)}</strong>
         <em className={positive ? "positive" : "negative"}>{signed(props.quote.changePercent)}</em>
-        <Sparkline values={props.quote.sparkline} positive={positive} />
+        {trend ? (
+          <span className="ma-quote-trend" role="img" aria-label={description} title={description}>
+            <Sparkline values={values} positive={values.at(-1)! >= values[0]!} />
+            <span>{period}</span>
+          </span>
+        ) : (
+          <span className="ma-trend-status">
+            {props.quote.quality !== "demo" && props.trend?.loading ? "加载走势…" : "暂无走势"}
+          </span>
+        )}
       </button>
       <button
         type="button"

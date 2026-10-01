@@ -361,14 +361,27 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
 }
-.ma-quote-main > svg {
+.ma-quote-trend,
+.ma-trend-status {
   position: absolute;
   bottom: var(--space-3);
   right: var(--space-3);
+  font-size: 10px;
+  color: var(--color-faint);
+}
+.ma-quote-trend {
+  display: grid;
+  gap: 4px;
   width: 40%;
-  height: 32px;
-  opacity: 0.7;
-  pointer-events: none;
+  text-align: right;
+}
+.ma-quote-trend svg {
+  width: 100%;
+  height: 28px;
+}
+.ma-quote-trend > span {
+  justify-self: end;
+  white-space: nowrap;
 }
 .ma-card-star {
   position: absolute;
@@ -904,6 +917,17 @@
   }
   .ma-quote-main {
     padding: var(--space-3);
+    padding-bottom: var(--space-8);
+    min-height: 150px;
+  }
+  .ma-quote-trend {
+    width: calc(100% - 2 * var(--space-3));
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .ma-quote-trend svg {
+    height: 20px;
   }
   .ma-section-heading {
     flex-wrap: wrap;

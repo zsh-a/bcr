@@ -12,6 +12,7 @@ export {
 } from "./handoff";
 export { createDemoHistory, historyMinimumBars } from "./history";
 export { ResilientHistoryService } from "./history-service";
+export { MarketTrendService, type MarketPriceTrend } from "./trend-service";
 export { ResilientMarketLandscapeService } from "./landscape-service";
 export { buildMarketLandscape } from "./landscape";
 export { GLOBAL_INSTRUMENTS, PULSE_INSTRUMENTS, instrumentsFor } from "./instruments";

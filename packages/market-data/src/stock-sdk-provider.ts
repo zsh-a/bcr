@@ -13,6 +13,7 @@ import {
 import { fallbackSessions } from "./demo";
 import { instrumentsFor } from "./instruments";
 import { aShareInstrument, buildMarketLandscape } from "./landscape";
+import { loadTencentTrendHistory } from "./tencent-trend";
 import type {
   DividendSeries,
   MarketAtlasSnapshot,
@@ -245,7 +246,7 @@ function quoteForInstrument(
     receivedAt,
     quality: "delayed",
     source: String(quote.source),
-    sparkline: [previousClose ?? quote.price, quote.price],
+    sparkline: [],
   };
 }
 
@@ -293,7 +294,7 @@ function futureSnapshot(
     receivedAt,
     quality: "delayed",
     source: "eastmoney",
-    sparkline: [quote.prevSettle ?? quote.price - change, quote.price],
+    sparkline: [],
   };
 }
 
@@ -418,6 +419,21 @@ export class StockSdkProvider
       receivedAt,
       source: `${this.id} · eastmoney dividend reference`,
     };
+  }
+
+  /** Price-only card history: fast Tencent daily series, then the SDK's Eastmoney history. */
+  async loadTrendHistory(
+    request: MarketHistoryRequest,
+    signal?: AbortSignal,
+  ): Promise<MarketHistorySeries> {
+    if (request.range === "1M" && request.instrument.market !== "GLOBAL") {
+      try {
+        return await loadTencentTrendHistory(request, signal);
+      } catch {
+        signal?.throwIfAborted();
+      }
+    }
+    return this.loadHistory(request, signal);
   }
 
   async loadHistory(

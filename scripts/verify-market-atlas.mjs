@@ -23,7 +23,7 @@ try {
   assert.equal(
     await page.locator(".ma-candle-chart").count(),
     0,
-    "Overview must not render/load stock history",
+    "Overview must not render the detailed candlestick chart",
   );
   assert.equal(await page.locator("[data-dividend-ledger]").count(), 0);
   assert((await page.locator(".ma-data-stamp.demo").count()) > 0, "Demo source must be explicit");

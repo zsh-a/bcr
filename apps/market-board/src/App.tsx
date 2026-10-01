@@ -35,6 +35,7 @@ import { MarketSearch } from "./MarketSearch";
 import { StockDetail } from "./StockDetail";
 import { historyService } from "./marketServices";
 import { useMarketAtlas } from "./useMarketAtlas";
+import { useQuoteTrends } from "./useQuoteTrends";
 import { useMarketLandscape } from "./useMarketLandscape";
 import { useMarketDiscovery } from "./useMarketDiscovery";
 import { useMarketWatchlists } from "./useMarketWatchlists";
@@ -164,6 +165,7 @@ export function App() {
   const visibleQuotes = snapshot.quotes.filter(
     (quote) => region === "ALL" || quote.instrument.market === region,
   );
+  const quoteTrends = useQuoteTrends(visibleQuotes, view === "overview");
   const openQuant = async (series: MarketHistorySeries) => {
     setHandoffLoading(true);
     setHandoffError(null);
@@ -316,6 +318,7 @@ export function App() {
                   <QuoteCard
                     key={quote.instrument.id}
                     quote={quote}
+                    trend={quoteTrends.get(quote.instrument.id)}
                     index={index + 1}
                     selected={false}
                     watched={activeGroup.instrumentIds.includes(quote.instrument.id)}

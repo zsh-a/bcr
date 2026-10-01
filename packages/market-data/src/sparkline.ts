@@ -7,7 +7,7 @@ function hashText(value: string): number {
   return hash >>> 0;
 }
 
-/** 行情快照没有历史序列时，生成只表达当日方向的确定性微型走势。 */
+/** 仅供明确标记的演示 fixture 使用，不代表真实历史价格。 */
 export function quoteSparkline(
   key: string,
   price: number,

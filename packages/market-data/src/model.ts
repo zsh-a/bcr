@@ -39,6 +39,7 @@ export interface QuoteSnapshot {
   readonly receivedAt: number;
   readonly quality: Exclude<DataQuality, "partial">;
   readonly source: string;
+  /** Demo fixtures only; live quotes carry no history. Use the independent daily trend service. */
   readonly sparkline: ReadonlyArray<number>;
 }
 

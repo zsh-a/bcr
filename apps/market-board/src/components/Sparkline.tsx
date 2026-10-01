@@ -8,7 +8,8 @@ function pathFor(values: ReadonlyArray<number>, width: number, height: number): 
   return values
     .map((value, index) => {
       const x = (index / Math.max(1, values.length - 1)) * width;
-      const y = height - ((value - minimum) / span) * (height - 8) - 4;
+      const y =
+        maximum === minimum ? height / 2 : height - ((value - minimum) / span) * (height - 8) - 4;
       return `${index === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
     })
     .join(" ");
