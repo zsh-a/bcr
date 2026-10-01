@@ -55,6 +55,7 @@ import { KnowledgeSyncPanel } from "./KnowledgeSyncPanel";
 import { KnowledgeHistory } from "./KnowledgeHistory";
 import { SyncStatus } from "./syncPopover";
 import { ConflictList, type ConflictChoice } from "./conflicts";
+import "./fonts.scss";
 import "./knowledge.css";
 import "./workbench.css";
 import { searchKnowledge, noteSearchHit } from "./retrieval";
@@ -655,12 +656,14 @@ export function KnowledgeApp() {
           </IconButton>
           <Button
             className="knowledge-create"
+            aria-label="新建笔记"
+            title="新建笔记"
             variant="ghost"
             disabled={busy}
             onClick={() => void run(create)}
           >
             <Plus size={16} />
-            新建笔记
+            <span>新建笔记</span>
           </Button>
         </div>
         <div className="knowledge-search-row">

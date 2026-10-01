@@ -25,9 +25,11 @@ const types = {
 // directories, directory indexes for `/notes/` and `/notes/knowledge/`, and
 // SPA fallback for the host's own routes (embedded `/knowledge` must survive).
 const redirects = { "/notes": "/notes/", "/notes/knowledge": "/notes/knowledge/" };
+const fontRequests = new Set();
 const server = createServer(async (request, response) => {
   try {
     const pathname = decodeURIComponent(new URL(request.url, "http://localhost").pathname);
+    if (/IBMPlexSansSC-|noto-serif-sc-/u.test(pathname)) fontRequests.add(pathname);
     response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
     response.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
     response.setHeader("Cache-Control", "no-store");
@@ -111,8 +113,41 @@ try {
   assert.equal(manifest.json.display, "standalone");
   assert.deepEqual(manifest.reachable, [true, true], "manifest icons must resolve");
 
+  await page.evaluate(() => document.fonts.ready);
+  assert.ok(
+    ![...fontRequests].some((url) => /noto-serif-sc-/u.test(url)),
+    "installation does not preload the optional serif font",
+  );
+  assert.ok(
+    fontRequests.size > 0 && fontRequests.size < 80,
+    "installation does not download the complete Chinese font set",
+  );
+
   await page.getByRole("button", { name: "新建笔记", exact: true }).click();
   await page.getByLabel("笔记标题", { exact: true }).fill("独立 PWA 冒烟笔记");
+  await page.getByLabel("笔记正文", { exact: true }).fill("离线阅读字体 Chinese typography");
+  await page.getByRole("button", { name: "阅读", exact: true }).click();
+  await page.getByRole("button", { name: "更多写作工具", exact: true }).click();
+  await page
+    .getByRole("group", { name: "阅读字体", exact: true })
+    .getByRole("button", { name: "衬线", exact: true })
+    .click();
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() =>
+    [...document.fonts].some(
+      (font) => font.family.includes("Noto Serif SC") && font.status === "loaded",
+    ),
+  );
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForFunction(async () => {
+    const fonts = performance
+      .getEntriesByType("resource")
+      .filter((entry) => /noto-serif-sc-.*\.woff2/u.test(entry.name));
+    return (
+      fonts.length > 0 &&
+      (await Promise.all(fonts.map((entry) => caches.match(entry.name)))).every(Boolean)
+    );
+  });
   await page.getByLabel("笔记标题", { exact: true }).waitFor({ state: "visible" });
   // The standalone entry shares the host's OPFS stores; give the store a beat
   // to persist the new note before the offline boot.
@@ -123,6 +158,9 @@ try {
   await context.setOffline(true);
   page = await context.newPage();
   monitor(page);
+  const fontSession = await context.newCDPSession(page);
+  await fontSession.send("Network.enable");
+  await fontSession.send("Network.setCacheDisabled", { cacheDisabled: true });
   await page.goto(`${origin}/notes/knowledge/`);
   await page.locator(".knowledge-app").waitFor();
   await page.getByLabel("笔记标题", { exact: true }).waitFor();
@@ -130,6 +168,20 @@ try {
     await page.getByLabel("笔记标题", { exact: true }).inputValue(),
     "独立 PWA 冒烟笔记",
     "offline boot must restore the shared knowledge store",
+  );
+  await page.getByRole("button", { name: "阅读", exact: true }).click();
+  await page.evaluate(() => document.fonts.ready);
+  await fontSession.send("DOM.enable");
+  await fontSession.send("CSS.enable");
+  const { root: documentRoot } = await fontSession.send("DOM.getDocument");
+  const { nodeId } = await fontSession.send("DOM.querySelector", {
+    nodeId: documentRoot.nodeId,
+    selector: ".knowledge-prose p",
+  });
+  const { fonts } = await fontSession.send("CSS.getPlatformFontsForNode", { nodeId });
+  assert.ok(
+    fonts.some((font) => font.isCustomFont && /NotoSerifSC/u.test(font.postScriptName)),
+    "visited Chinese serif subsets render offline with the HTTP cache disabled",
   );
   await context.setOffline(false);
 

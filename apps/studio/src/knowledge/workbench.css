@@ -270,17 +270,26 @@
   letter-spacing: 0.08em;
 }
 
-/* 写作工具菜单：只留锚定与显隐，材质和行语言统一走 ui-popover + ui-menu。 */
-.knowledge-tools-menu {
-  position: absolute;
-  z-index: var(--layer-menu);
-  top: calc(100% + var(--space-1));
-  right: 0;
-  display: none;
-  min-width: 280px;
+/* 原生顶层浮窗：跟随触发器，并在窄屏内收住左右边界。 */
+.ui-popover.knowledge-tools-menu {
+  position: fixed;
+  inset: auto;
+  top: anchor(bottom);
+  --writing-menu-width: min(304px, calc(100vw - 2 * var(--space-3)));
+  right: clamp(
+    var(--space-3),
+    anchor(right),
+    calc(100vw - var(--writing-menu-width) - var(--space-3))
+  );
+  margin: var(--space-2) 0 0;
+  position-try-fallbacks: flip-block;
+  width: var(--writing-menu-width);
+  max-height: min(480px, calc(100dvh - 200px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-.knowledge-tools-menu[data-open="true"] {
+.knowledge-tools-menu:popover-open {
   display: grid;
 }
 
@@ -742,11 +751,7 @@
 /* ---------- 容器降级 ---------- */
 
 @container kb-doc (width < 560px) {
-  /* 标题字号用容器单位收窄（cqi 参与 clamp 中值）；meta 行按内容换行，避免空标签也独占一整行。 */
-  .knowledge-title {
-    font-size: clamp(var(--text-xl), 5cqi, var(--text-2xl));
-  }
-
+  /* meta 行按内容换行，避免空标签也独占一整行。 */
   .knowledge-editor-meta > * {
     min-width: 0;
     max-width: 100%;

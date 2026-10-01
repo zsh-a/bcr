@@ -15,7 +15,9 @@ const APP_SHELL = [
 function isRequiredReaderAsset(url) {
   // These are loaded only by metadata warmup or PDF reading. Leaving them to
   // the runtime cache keeps PWA installation and first launch lightweight.
-  return !/pdf\.worker|sqlite3(?:-opfs-async-proxy)?|\.wasm$/u.test(url);
+  return !/pdf\.worker|sqlite3(?:-opfs-async-proxy)?|\.wasm$|IBMPlexSansSC-|noto-serif-sc-/u.test(
+    url,
+  );
 }
 
 function addAsset(urls, value) {

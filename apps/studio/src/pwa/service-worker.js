@@ -21,7 +21,7 @@ function isRequiredAppAsset(url) {
   // 外壳预缓存；只有阅读 / 媒体域的重资源（PDF worker、本地模型、duckdb）
   // 不在知识库启动图里，留给运行时缓存。
   if (/duckdb.*\.wasm$/u.test(url)) return app.key === "quant" && !globalThis.__BCR_CLOUDFLARE__;
-  return !/pdf\.worker|onnxruntime|transformers/u.test(url);
+  return !/pdf\.worker|onnxruntime|transformers|IBMPlexSansSC-|noto-serif-sc-/u.test(url);
 }
 
 function addAsset(urls, value) {

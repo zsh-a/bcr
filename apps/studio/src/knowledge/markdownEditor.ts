@@ -43,7 +43,7 @@ const raised = color("--color-raised");
 export const knowledgeEditorTheme = EditorView.theme(
   {
     "&": {
-      color: muted,
+      color: text,
       backgroundColor: "transparent",
       height: "100%",
       font: "inherit",
@@ -139,18 +139,18 @@ export const knowledgeEditorTheme = EditorView.theme(
 /**
  * Markdown 高亮。
  *
- * 标题在源码与实时预览里保持同一层级缩放（H1/H2/H3 = 22/18/16，w500），
- * 永远低于笔记标题的 26px；语法符号（列表符、围栏、链接括号）退到 faint，
+ * 标题与阅读视图共享相对正文的层级缩放与字重；
+ * 语法符号（列表符、围栏、链接括号）退到 faint，
  * 不与内容争夺注意力。字号只读知识模块声明的排版变量。
  */
 export const knowledgeMarkdownHighlight = HighlightStyle.define(
   [
-    { tag: tags.heading1, color: text, fontWeight: "500", fontSize: "var(--prose-h1)" },
-    { tag: tags.heading2, color: text, fontWeight: "500", fontSize: "var(--prose-h2)" },
-    { tag: tags.heading3, color: text, fontWeight: "500", fontSize: "var(--text-lg)" },
-    { tag: tags.heading4, color: text, fontWeight: "500" },
-    { tag: tags.heading5, color: text, fontWeight: "500" },
-    { tag: tags.heading6, color: text, fontWeight: "500" },
+    { tag: tags.heading1, color: text, fontWeight: "600", fontSize: "var(--prose-h1)" },
+    { tag: tags.heading2, color: text, fontWeight: "600", fontSize: "var(--prose-h2)" },
+    { tag: tags.heading3, color: text, fontWeight: "600", fontSize: "var(--prose-h3)" },
+    { tag: tags.heading4, color: text, fontWeight: "600" },
+    { tag: tags.heading5, color: text, fontWeight: "600" },
+    { tag: tags.heading6, color: text, fontWeight: "600" },
     { tag: tags.strong, color: text, fontWeight: "600" },
     { tag: tags.emphasis, color: text, fontStyle: "italic" },
     { tag: tags.strikethrough, color: faint, textDecoration: "line-through" },

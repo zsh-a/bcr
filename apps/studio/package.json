@@ -32,9 +32,11 @@
     "@codemirror/search": "^6.5.11",
     "@codemirror/state": "^6.7.5",
     "@codemirror/view": "^6.43.12",
+    "@fontsource-variable/noto-serif-sc": "5.3.0",
     "@fontsource/ibm-plex-mono": "catalog:",
     "@fontsource/ibm-plex-sans": "catalog:",
     "@huggingface/transformers": "catalog:",
+    "@ibm/plex-sans-sc": "1.1.0",
     "@lezer/highlight": "^1.2.3",
     "@sqlite.org/sqlite-wasm": "catalog:",
     "@tanstack/react-router": "^1.170.32",
@@ -58,6 +60,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "sass": "^1.105.1",
     "tailwindcss": "catalog:"
   }
 }

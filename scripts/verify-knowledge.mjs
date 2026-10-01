@@ -1,4 +1,4 @@
-import { openTopBar } from "./lib/topbar.mjs";
+import { closeTopBar, openTopBar } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { mkdir, readFile } from "node:fs/promises";
 import { createServer } from "node:http";
@@ -315,6 +315,7 @@ try {
   await a.page.getByRole("textbox", { name: "全局搜索", exact: true }).fill("独立手写知识");
   await a.page.getByRole("tab", { name: /^个人笔记/u }).click();
   await a.page.getByRole("option").filter({ hasText: "AI Native 知识系统" }).first().click();
+  await closeTopBar(a.page);
   await a.page.getByLabel("笔记正文", { exact: true }).waitFor();
 
   await connect(a.page);

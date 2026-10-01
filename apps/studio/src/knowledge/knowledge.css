@@ -8,21 +8,20 @@
 
 /* ---------- 外壳与侧栏 ---------- */
 
-/* 知识模块排版变量：标题/行文档位由类型令牌推导（22/18/13），笔记标题 26px 始终最大；
-   阅读字体与行高三档属阅读体验选项，令牌未覆盖的字号在此集中声明。 */
-:root {
-  --prose-h1: calc(var(--text-2xl) - var(--space-1));
-  --prose-h2: calc(var(--text-xl) - var(--space-1) / 2);
-  --prose-row: calc(var(--text-base) - 1px);
+/* 知识库使用完整的中西文 Plex 字体；排版设置只作用于文档正文。 */
+.knowledge-app {
+  --font-sans: "IBM Plex Sans", "IBM Plex Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-reading: "Noto Serif SC Variable", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+  --prose-title: clamp(28px, 2.2vw, 32px);
+  --prose-row: var(--text-base);
   /* 写作/阅读行长是不变量：正文块度量恒为文档列减内边距（约 37 汉字/行），
      落在中文 25–40 字的舒适行宽内，不随窗口漂移。文档列本身随容器生长
      （见 .knowledge-editor），闲置宽度归标题/工具行与破格的宽内容。 */
-  --prose-font-size: 17px;
+  --prose-font-size: 18px;
   --prose-width: 720px;
   --prose-measure: calc(var(--prose-width) - 2 * var(--space-8));
-  --font-reading: "Newsreader Variable", "Noto Serif SC", "Songti SC", Georgia, serif;
-  --reading-compact: 1.55;
-  --reading-standard: 1.75;
+  --reading-compact: 1.6;
+  --reading-standard: 1.8;
   --reading-loose: 2.05;
   /* 侧栏收起后的图标栏宽度：容得下 --h-control-lg 触控区。 */
   --w-sidebar-rail: 56px;
@@ -34,6 +33,7 @@
   height: 100%;
   min-height: 0;
   background: var(--color-bg);
+  font-family: var(--font-sans);
 }
 
 /* 侧栏是具名容器（kb-side）：卡片随容器而非视口降级。
@@ -254,9 +254,13 @@
 }
 
 .knowledge-sidebar-heading > span {
+  min-width: 0;
   margin-right: auto;
   font-size: var(--text-base);
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .knowledge-create {
@@ -337,6 +341,17 @@
 .knowledge-sidebar-bottom {
   border-top: 1px solid var(--color-border);
   padding-top: var(--space-3);
+}
+
+@container kb-side (width < 260px) {
+  .knowledge-create {
+    width: var(--h-control);
+    padding-inline: 0;
+  }
+
+  .knowledge-create > span {
+    display: none;
+  }
 }
 
 @container kb-side (width < 220px) {
@@ -452,11 +467,11 @@
   border: 0;
   background: transparent;
   color: var(--color-text);
-  font-family: var(--font-display);
-  font-size: var(--text-2xl);
-  line-height: var(--text-2xl--line-height);
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-family: var(--font-sans);
+  font-size: var(--prose-title);
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.015em;
 }
 
 .knowledge-title::placeholder {
@@ -631,12 +646,27 @@
 
 /* 正文书写排版由 CSS 持有，CodeMirror 主题继承；小屏放大便于触控输入。
    阅读字体/行高由 .knowledge-editor 的 data 属性切换，源码模式保持等宽与密排。 */
+.knowledge-editor {
+  --prose-h1: min(calc(var(--prose-font-size) * 1.5), calc(var(--prose-title) - 2px));
+  --prose-h2: calc(var(--prose-font-size) * 1.25);
+  --prose-h3: var(--prose-font-size);
+}
+
 .knowledge-editor[data-reading-font="sans"] {
   --reading-font: var(--font-sans);
 }
 
 .knowledge-editor[data-reading-font="serif"] {
   --reading-font: var(--font-reading);
+  --reading-standard: 1.9;
+}
+
+.knowledge-editor[data-reading-size="small"] {
+  --prose-font-size: 16px;
+}
+
+.knowledge-editor[data-reading-size="large"] {
+  --prose-font-size: 20px;
 }
 
 .knowledge-editor[data-reading-line="compact"] {
@@ -661,7 +691,7 @@
   min-height: 0;
   border: 0;
   background: transparent;
-  color: var(--color-muted);
+  color: var(--color-text);
   font-family: var(--reading-font, var(--font-sans));
   font-size: var(--prose-font-size);
   line-height: var(--reading-leading, var(--text-base--line-height));
@@ -841,7 +871,7 @@
      仍由 .knowledge-content 负责滚动，阅读进度恢复与大纲高亮不受影响。
      flex-basis 用字面量 0，理由同 .knowledge-editor-source。 */
   flex: 1 1 0;
-  color: var(--color-muted);
+  color: var(--color-text);
   font-family: var(--reading-font, var(--font-sans));
   font-size: var(--prose-font-size);
   line-height: var(--reading-leading, var(--text-base--line-height));
@@ -868,28 +898,28 @@
   scroll-margin-top: var(--space-6);
 }
 
-.knowledge-prose h1,
-.knowledge-prose h2,
-.knowledge-prose h3 {
+.knowledge-prose :is(h1, h2, h3, h4, h5, h6) {
   color: var(--color-text);
   margin: var(--space-6) 0 var(--space-3);
-  font-weight: 500;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
-/* 标题层级永远低于笔记标题（26px）：H1 22 / H2 18 / H3 16。 */
+/* 文内标题随正文字号缩放；三级标题靠字重区分，不再小于正文。 */
 .knowledge-prose h1 {
   font-size: var(--prose-h1);
-  line-height: var(--text-2xl--line-height);
 }
 
 .knowledge-prose h2 {
   font-size: var(--prose-h2);
-  line-height: var(--text-xl--line-height);
 }
 
-.knowledge-prose h3 {
-  font-size: var(--text-lg);
-  line-height: var(--text-lg--line-height);
+.knowledge-prose :is(h3, h4, h5, h6) {
+  font-size: var(--prose-h3);
+}
+
+.knowledge-prose strong {
+  font-weight: 600;
 }
 
 .knowledge-prose p {
@@ -1000,7 +1030,7 @@
 }
 
 .knowledge-empty h2 {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: var(--text-2xl);
   line-height: var(--text-2xl--line-height);
   font-weight: 400;
@@ -1304,7 +1334,7 @@
 .knowledge-boot-title {
   margin: 0;
   color: var(--color-text);
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: var(--text-lg);
   line-height: var(--text-lg--line-height);
 }

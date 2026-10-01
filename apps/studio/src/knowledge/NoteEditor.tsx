@@ -1,6 +1,7 @@
 import {
   useDeferredValue,
   useEffect,
+  useId,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -87,6 +88,8 @@ export function NoteEditor({
     decodeReadingSettings(localStorage.getItem(READING_SETTINGS_KEY)),
   );
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuId = useId();
+  const menuAnchor = `--writing-menu-${menuId.replaceAll(/[^a-zA-Z0-9]/g, "")}`;
   const [tagDraft, setTagDraft] = useState("");
   const [tagEditing, setTagEditing] = useState(false);
   const tagInput = useRef<HTMLInputElement>(null);
@@ -94,7 +97,8 @@ export function NoteEditor({
   const source = useRef<MarkdownEditorHandle>(null);
   const reading = useRef<HTMLElement>(null);
   const host = useRef<HTMLDivElement>(null);
-  const tools = useRef<HTMLDivElement>(null);
+  const toolsMenu = useRef<HTMLDivElement>(null);
+  const toolsTrigger = useRef<HTMLButtonElement>(null);
   const rename = useRef<LiveRename>(null);
   const body = useDeferredValue(draft.body);
   const analysis = useMemo(() => analyzeMarkdown(body), [body]);
@@ -133,29 +137,30 @@ export function NoteEditor({
   const [agentTarget, setAgentTarget] = useState<NoteSelection>(null);
   useNoteAgent(controller, agentTarget);
 
+  // The optional reading face stays out of the default entry graph. Both
+  // fonts are self-hosted; an unavailable subset can use the system fallback.
+  useEffect(() => {
+    if (settings.font === "serif" && view !== "source")
+      void import("@fontsource-variable/noto-serif-sc/wght.css").catch(() => {});
+  }, [settings.font, view]);
+
   // 标签输入立即聚焦；失焦提交，Escape 放弃尚未提交的输入。
   useEffect(() => {
     if (tagEditing) tagInput.current?.focus();
   }, [tagEditing]);
 
-  // 菜单打开时：点外部或 Esc 收起。
+  // 原生浮层处理外部点击；Esc 先收起设置，并把焦点归还触发器。
   useEffect(() => {
     if (!menuOpen) return;
-    const close = (event: PointerEvent) => {
-      if (event.target instanceof Node && !tools.current?.contains(event.target))
-        setMenuOpen(false);
-    };
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        setMenuOpen(false);
-        tools.current?.querySelector<HTMLButtonElement>(".knowledge-tools-toggle")?.focus();
+        toolsMenu.current?.hidePopover();
+        toolsTrigger.current?.focus();
       }
     };
-    document.addEventListener("pointerdown", close);
     document.addEventListener("keydown", escape);
     return () => {
-      document.removeEventListener("pointerdown", close);
       document.removeEventListener("keydown", escape);
     };
   }, [menuOpen]);
@@ -200,6 +205,7 @@ export function NoteEditor({
         className="knowledge-editor"
         aria-label="笔记编辑器"
         data-reading-font={settings.font}
+        data-reading-size={settings.fontSize}
         data-reading-line={settings.lineHeight}
         data-source={view === "source" ? "on" : undefined}
       >
@@ -236,19 +242,30 @@ export function NoteEditor({
                 阅读
               </button>
             </div>
-            <div className="knowledge-tools" ref={tools}>
+            <div className="knowledge-tools">
               <button
+                ref={toolsTrigger}
                 type="button"
                 className="knowledge-quiet-toggle knowledge-tools-toggle"
                 aria-label="更多写作工具"
+                aria-haspopup="dialog"
                 aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((open) => !open)}
+                popoverTarget={menuId}
+                style={{ anchorName: menuAnchor }}
               >
                 <SlidersHorizontal size={15} aria-hidden="true" />
               </button>
               <div
+                ref={toolsMenu}
+                id={menuId}
+                popover="auto"
+                role="dialog"
+                aria-label="写作与阅读设置"
                 className="ui-popover ui-menu knowledge-tools-menu"
-                data-open={menuOpen ? "true" : undefined}
+                style={{ positionAnchor: menuAnchor }}
+                onToggle={(event) => {
+                  if (event.target === event.currentTarget) setMenuOpen(event.newState === "open");
+                }}
               >
                 <details className="knowledge-tools-section">
                   <summary>插入模板</summary>
@@ -261,7 +278,7 @@ export function NoteEditor({
                           onClick={() => {
                             setView("edit");
                             source.current?.insert(fillTemplate(template.body, draft.title));
-                            setMenuOpen(false);
+                            toolsMenu.current?.hidePopover();
                           }}
                         >
                           {template.title || "未命名模板"}
@@ -322,7 +339,7 @@ export function NoteEditor({
                 <div className="ui-menu-separator" />
                 <div className="knowledge-tools-row">
                   <span className="ui-section-label">阅读字体</span>
-                  <div className="knowledge-chip-group">
+                  <div className="knowledge-chip-group" role="group" aria-label="阅读字体">
                     <button
                       type="button"
                       aria-pressed={settings.font === "sans"}
@@ -340,8 +357,23 @@ export function NoteEditor({
                   </div>
                 </div>
                 <div className="knowledge-tools-row">
+                  <span className="ui-section-label">字号</span>
+                  <div className="knowledge-chip-group" role="group" aria-label="正文字号">
+                    {(["small", "standard", "large"] as const).map((size) => (
+                      <button
+                        type="button"
+                        key={size}
+                        aria-pressed={settings.fontSize === size}
+                        onClick={() => updateSettings({ fontSize: size })}
+                      >
+                        {size === "small" ? "小" : size === "standard" ? "标准" : "大"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="knowledge-tools-row">
                   <span className="ui-section-label">行高</span>
-                  <div className="knowledge-chip-group">
+                  <div className="knowledge-chip-group" role="group" aria-label="正文行高">
                     {(["compact", "standard", "loose"] as const).map((line) => (
                       <button
                         type="button"
