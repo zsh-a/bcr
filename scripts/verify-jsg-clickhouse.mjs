@@ -55,10 +55,8 @@ const dates = () => page.getByRole("button", { name: "设置回测区间", exact
 const applyDates = () => page.getByRole("button", { name: "应用区间", exact: true }).click();
 let previousRun = null;
 const load = async () => {
-  previousRun = await page
-    .locator(".research-run-result")
-    .getAttribute("data-run-id")
-    .catch(() => null);
+  const result = page.locator(".research-run-result");
+  previousRun = (await result.count()) ? await result.getAttribute("data-run-id") : null;
   await page.getByRole("button", { name: "运行回测", exact: true }).click();
 };
 const done = () =>

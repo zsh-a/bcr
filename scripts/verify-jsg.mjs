@@ -34,9 +34,12 @@ const page = await context.newPage(),
   errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 const runButton = () => page.getByRole("button", { name: "运行回测", exact: true });
-const runId = () => page.locator(".research-run-result").getAttribute("data-run-id");
+const runId = async () => {
+  const result = page.locator(".research-run-result");
+  return (await result.count()) ? result.getAttribute("data-run-id") : null;
+};
 const run = async () => {
-  const previous = await runId().catch(() => null);
+  const previous = await runId();
   await runButton().click();
   await page.waitForFunction(
     (id) =>
