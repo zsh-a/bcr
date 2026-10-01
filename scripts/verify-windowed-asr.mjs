@@ -1,3 +1,4 @@
+import { openActionMenu } from "./lib/app-controls.mjs";
 /* 分窗 ASR 走查：150s 音频 → 2 个 ASR 窗口 → 跨窗字幕归属 + 排序 + 导出。 */
 import { ensureShots, fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
@@ -71,8 +72,12 @@ if (!text.includes("long-form.wav")) fail("导入失败");
 
 // 引擎可参数化：demo（离线确定性）/ whisper（真实模型，推理需数分钟）
 const engine = process.env.ENGINE ?? "demo";
-await page.locator("select").nth(1).selectOption(engine);
+await openActionMenu(page, "字幕设置");
+await page.getByLabel("识别方式", { exact: true }).selectOption(engine);
+await page.keyboard.press("Escape");
 await page.getByRole("button", { name: "生成字幕" }).click();
+await page.locator(".media-pipeline-details summary").click();
+await page.locator(".media-console-details summary").click();
 
 // 轮询等待流水线完成（console 出现 "pipeline · done"），whisper 长音频最长达 8 分钟
 let done = false;
@@ -89,6 +94,7 @@ if (!done) fail(`流水线未完成：${text.slice(-200)}`);
 if (!text.includes("150.0s")) fail("解码时长不符（应 150s）");
 
 // 导出 SRT 检查跨窗结果
+await openActionMenu(page, "导出字幕");
 const [download] = await Promise.all([
   page.waitForEvent("download", { timeout: 5000 }),
   page.getByRole("button", { name: "SRT" }).click(),

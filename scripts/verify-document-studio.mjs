@@ -1,3 +1,4 @@
+import { openActionMenu } from "./lib/app-controls.mjs";
 import { openTopBar } from "./lib/topbar.mjs";
 /* Document Studio：导入 → 阶段边界 → 本地状态 → Reader handoff。 */
 import { ensureShots, fail, launchVerifyBrowser } from "./lib/browser.mjs";
@@ -219,6 +220,7 @@ await page
   .locator(".manga-page-card", { hasText: "page.png" })
   .first()
   .waitFor({ timeout: 20_000 });
+await openActionMenu(page, "更多漫画操作");
 await page.getByRole("button", { name: /交给 Document Studio/ }).click();
 await page.locator(".document-studio").waitFor({ timeout: 20_000 });
 await page

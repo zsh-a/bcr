@@ -8,6 +8,49 @@
 @import "./tokens.css";
 
 /* ---------- 按钮 ---------- */
+.ui-icon-btn.ui-workspace-trigger,
+.ui-action-menu > .ui-icon-btn {
+  flex: 0 0 calc(var(--space-8) + var(--space-1));
+  width: calc(var(--space-8) + var(--space-1));
+  min-width: calc(var(--space-8) + var(--space-1));
+  height: calc(var(--space-8) + var(--space-1));
+  min-height: calc(var(--space-8) + var(--space-1));
+}
+.ui-action-menu {
+  display: inline-flex;
+  flex: none;
+}
+.ui-popover.ui-action-menu-panel {
+  inset: auto;
+  top: anchor(bottom);
+  --app-menu-width: min(320px, calc(100vw - 2 * var(--space-3)));
+  right: clamp(var(--space-3), anchor(right), calc(100vw - var(--app-menu-width) - var(--space-3)));
+  margin: var(--space-2) 0 0;
+  position-try-fallbacks: flip-block;
+  width: var(--app-menu-width);
+  max-height: calc(100dvh - var(--h-topbar) - 2 * var(--space-3));
+  overflow: auto;
+  padding: var(--space-3);
+}
+.ui-action-menu-panel:popover-open {
+  display: grid;
+  gap: var(--space-2);
+}
+.ui-action-menu-panel label {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+.ui-action-menu-panel label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+}
+.ui-action-menu-panel :is(select, input:not([type="checkbox"]), button) {
+  min-width: 0;
+  width: 100%;
+  min-height: var(--h-control-lg);
+}
 
 .ui-btn {
   display: inline-flex;

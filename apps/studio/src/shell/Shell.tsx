@@ -177,35 +177,32 @@ function ShellContent() {
       <ResearchCaptureBridge>
         <SearchBridge services={services} />
         <PluginHost />
-        <div className="studio-shell-frame flex h-full flex-col" data-app={active}>
-          <WorkspaceNavigation
-            active={active}
-            onOpenPalette={() => setPaletteOpen(true)}
-            onOpenSearch={() => setSearchOpen(true)}
-            onOpenAgent={() => openPanel("assistant")}
-          />
-          <div className="min-h-0 flex-1">
-            {active === "home" && <Home onOpenPanel={openPanel} />}
-            {MANIFESTS.filter((app) => visited.includes(app.id)).map((app) => (
-              <div
-                key={app.id}
-                className={app.id === active ? "relative isolate h-full min-h-0" : "hidden"}
+        <WorkspaceNavigation
+          active={active}
+          onOpenPalette={() => setPaletteOpen(true)}
+          onOpenSearch={() => setSearchOpen(true)}
+          onOpenAgent={() => openPanel("assistant")}
+        >
+          {active === "home" && <Home onOpenPanel={openPanel} />}
+          {MANIFESTS.filter((app) => visited.includes(app.id)).map((app) => (
+            <div
+              key={app.id}
+              className={app.id === active ? "relative isolate h-full min-h-0" : "hidden"}
+            >
+              <Suspense
+                fallback={
+                  <div className="flex h-full items-center justify-center">
+                    <p className="font-mono text-xs text-faint">{app.title} 加载中…</p>
+                  </div>
+                }
               >
-                <Suspense
-                  fallback={
-                    <div className="flex h-full items-center justify-center">
-                      <p className="font-mono text-xs text-faint">{app.title} 加载中…</p>
-                    </div>
-                  }
-                >
-                  <RuntimeActivity active={app.id === active}>
-                    <app.component />
-                  </RuntimeActivity>
-                </Suspense>
-              </div>
-            ))}
-          </div>
-        </div>
+                <RuntimeActivity active={app.id === active}>
+                  <app.component />
+                </RuntimeActivity>
+              </Suspense>
+            </div>
+          ))}
+        </WorkspaceNavigation>
         <AssistantWindow
           visibility={assistantVisibility}
           onVisibilityChange={setAssistantVisibility}

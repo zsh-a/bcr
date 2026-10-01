@@ -1,3 +1,4 @@
+import { ActionMenu, WorkspaceTrigger } from "@bcr/react";
 import { ArrowUpRight, FileText, FileUp, ListChecks, PanelRight, Play, Square } from "lucide-react";
 import { StatusDot } from "@bcr/react";
 import type { RefObject } from "react";
@@ -40,6 +41,7 @@ export function MangaHeader({
 }: MangaHeaderProps) {
   return (
     <header className="manga-header">
+      <WorkspaceTrigger />
       <div className="manga-brand-lockup">
         <div className="manga-brand-mark">M/01</div>
         <div>
@@ -65,34 +67,12 @@ export function MangaHeader({
           type="button"
           className="ui-btn ui-btn-default manga-mobile-tools-button"
           onClick={onOpenTools}
+          aria-label="工具"
           aria-expanded={mobileToolsOpen}
           aria-controls="manga-mobile-tools-panel"
         >
           <PanelRight className="size-4" />
-          工具
-        </button>
-        <button
-          type="button"
-          className="ui-btn ui-btn-default"
-          disabled={state.running || batchRunning || documentHandoffBusy}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <FileUp className="size-4" />
-          导入文件
-        </button>
-        <button
-          type="button"
-          className="ui-btn ui-btn-default"
-          disabled={
-            state.running || batchRunning || documentHandoffBusy || state.source.ref === undefined
-          }
-          onClick={onHandoffDocument}
-          aria-label="交给 Document Studio"
-          title={state.source.ref === undefined ? "请先导入原始图片" : "交给 Document Studio"}
-        >
-          <FileText className="size-4" />
-          {documentHandoffBusy ? "交接中…" : "交给 Document"}
-          <ArrowUpRight className="size-3.5" />
+          <span className="manga-action-label">工具</span>
         </button>
         {batchRunning ? (
           <button type="button" className="ui-btn ui-btn-danger" onClick={cancelMangaQueue}>
@@ -105,20 +85,55 @@ export function MangaHeader({
             停止处理
           </button>
         ) : (
-          <button type="button" className="ui-btn ui-btn-primary" onClick={onRunPage}>
+          <button
+            type="button"
+            className="ui-btn ui-btn-primary"
+            aria-label={resumableCurrentPage ? "继续当前页" : "翻译当前页"}
+            onClick={onRunPage}
+          >
             <Play className="size-4" />
-            {resumableCurrentPage ? "继续当前页" : "翻译当前页"}
+            <span className="manga-action-label">
+              {resumableCurrentPage ? "继续当前页" : "翻译当前页"}
+            </span>
+            <span className="manga-primary-short" aria-hidden="true">
+              {resumableCurrentPage ? "继续" : "翻译"}
+            </span>
           </button>
         )}
-        {state.pages.length > 1 &&
-          !state.running &&
-          !batchRunning &&
-          (pendingPages > 0 || batchPaused || batchError) && (
-            <button type="button" className="ui-btn ui-btn-default" onClick={onRunQueue}>
-              <ListChecks className="size-4" />
-              {batchPaused ? "继续队列" : batchError ? "重试队列" : "处理队列"}
-            </button>
-          )}
+        <ActionMenu label="更多漫画操作">
+          <button
+            type="button"
+            className="ui-btn ui-btn-default"
+            disabled={state.running || batchRunning || documentHandoffBusy}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <FileUp className="size-4" />
+            导入文件
+          </button>
+          <button
+            type="button"
+            className="ui-btn ui-btn-default"
+            disabled={
+              state.running || batchRunning || documentHandoffBusy || state.source.ref === undefined
+            }
+            onClick={onHandoffDocument}
+            aria-label="交给 Document Studio"
+            title={state.source.ref === undefined ? "请先导入原始图片" : "交给 Document Studio"}
+          >
+            <FileText className="size-4" />
+            {documentHandoffBusy ? "交接中…" : "交给 Document"}
+            <ArrowUpRight className="size-3.5" />
+          </button>
+          {state.pages.length > 1 &&
+            !state.running &&
+            !batchRunning &&
+            (pendingPages > 0 || batchPaused || batchError) && (
+              <button type="button" className="ui-btn ui-btn-default" onClick={onRunQueue}>
+                <ListChecks className="size-4" />
+                {batchPaused ? "继续队列" : batchError ? "重试队列" : "处理队列"}
+              </button>
+            )}
+        </ActionMenu>
         <input
           ref={fileInputRef}
           type="file"

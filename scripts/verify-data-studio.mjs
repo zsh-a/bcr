@@ -1,3 +1,4 @@
+import { openActionMenu } from "./lib/app-controls.mjs";
 /* Data Studio：CSV / JSON / NDJSON → Worker 表格 Artifact → 搜索 / 排序 / 导出 / 刷新恢复。 */
 import { fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
@@ -33,13 +34,17 @@ await page.locator(".data-main-heading h1", { hasText: "signals.json" }).waitFor
 if (!(await page.locator(".data-stat").allInnerTexts()).some((text) => text.includes("3"))) {
   fail("JSON 数组没有解析为 3 行表格");
 }
-if (!(await page.locator(".data-schema-strip").innerText()).includes("NUMBER")) {
+if (!(await page.locator(".data-schema-strip").textContent()).includes("NUMBER")) {
   fail("JSON 字段类型推断没有展示");
 }
+await openActionMenu(page, "更多数据操作");
+await page.getByRole("button", { name: "存储管理", exact: true }).click();
 await page.locator("[aria-label='数据存储治理']").waitFor({ timeout: 10_000 });
 if (!(await page.locator("[aria-label='数据存储治理']").innerText()).includes("DATA STORE")) {
   fail("Data Artifact 存储治理面板没有渲染");
 }
+
+await page.getByRole("button", { name: "关闭", exact: true }).click();
 
 const search = page.getByRole("textbox", { name: "搜索数据行" });
 await search.fill("DATA");
@@ -53,6 +58,7 @@ if (!(await page.locator("th[aria-sort='ascending']").count())) {
 }
 
 const downloadPromise = page.waitForEvent("download");
+await openActionMenu(page, "更多数据操作");
 await page.getByRole("button", { name: "JSON", exact: true }).click();
 const download = await downloadPromise;
 const stream = await download.createReadStream();
@@ -80,6 +86,7 @@ await page.locator(".data-main-heading h1", { hasText: "second.json" }).waitFor(
 if ((await page.locator(".data-asset-card").count()) !== 2) {
   fail("多资产导入没有保留资产目录历史");
 }
+await page.locator(".data-asset-catalog summary").click();
 await page.locator(".data-asset-card", { hasText: "signals.json" }).click();
 await page.locator(".data-main-heading h1", { hasText: "signals.json" }).waitFor({
   timeout: 20_000,
@@ -88,6 +95,7 @@ await page.locator(".data-asset-card", { hasText: "second.json" }).click();
 await page.locator(".data-main-heading h1", { hasText: "second.json" }).waitFor({
   timeout: 20_000,
 });
+await openActionMenu(page, "更多数据操作");
 await page.getByRole("button", { name: "清除", exact: true }).click();
 await page.locator(".data-main-heading h1", { hasText: "signals.json" }).waitFor({
   timeout: 20_000,
@@ -128,17 +136,20 @@ await page.locator(".data-main-heading h1", { hasText: "events.ndjson" }).waitFo
 if ((await page.locator(".data-table tbody tr").count()) !== 2) {
   fail("NDJSON 没有解析为 2 行表格");
 }
-if (!(await page.locator(".data-schema-strip").innerText()).includes("BOOL")) {
+if (!(await page.locator(".data-schema-strip").textContent()).includes("BOOL")) {
   fail("NDJSON 布尔字段类型推断没有展示");
 }
+await openActionMenu(page, "更多数据操作");
 await page.getByRole("button", { name: "清除" }).click();
 await page.locator(".data-main-heading h1", { hasText: "quoted.csv" }).waitFor({
   timeout: 20_000,
 });
+await openActionMenu(page, "更多数据操作");
 await page.getByRole("button", { name: "清除", exact: true }).click();
 await page.locator(".data-main-heading h1", { hasText: "signals.json" }).waitFor({
   timeout: 20_000,
 });
+await openActionMenu(page, "更多数据操作");
 await page.getByRole("button", { name: "清除", exact: true }).click();
 await page.locator(".data-empty-state").waitFor({ timeout: 10_000 });
 

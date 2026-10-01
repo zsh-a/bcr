@@ -1,13 +1,18 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { WorkspaceNavigationProvider } from "@bcr/react";
 import { TopBar } from "./TopBar";
 
 /** Global navigation overlays app content; opening it never changes the app's viewport. */
-export function WorkspaceNavigation(props: Parameters<typeof TopBar>[0]) {
+export function WorkspaceNavigation(props: Parameters<typeof TopBar>[0] & { children: ReactNode }) {
   const floating = props.active !== "home";
   const [open, setOpen] = useState(false);
   const id = useId();
   const surface = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
+  const trigger = useRef<HTMLButtonElement | undefined>(undefined);
+  const availableTrigger = () =>
+    [...document.querySelectorAll<HTMLButtonElement>("[data-workspace-trigger]")].find(
+      (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility === "visible",
+    );
   const revealTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const visible = !floating || open;
@@ -26,9 +31,13 @@ export function WorkspaceNavigation(props: Parameters<typeof TopBar>[0]) {
       ?.querySelectorAll<HTMLElement>(":popover-open")
       .forEach((el) => el.hidePopover());
     setOpen(false);
-    if (restoreFocus) requestAnimationFrame(() => trigger.current?.focus({ preventScroll: true }));
+    if (restoreFocus)
+      requestAnimationFrame(() =>
+        (trigger.current ?? availableTrigger())?.focus({ preventScroll: true }),
+      );
   };
-  const reveal = (focus = false) => {
+  const reveal = (source?: HTMLButtonElement, focus = false) => {
+    trigger.current = source ?? availableTrigger();
     clearTimers();
     if (document.querySelector("dialog[open]")) return;
     setOpen(true);
@@ -63,7 +72,7 @@ export function WorkspaceNavigation(props: Parameters<typeof TopBar>[0]) {
       if (event.altKey && !event.ctrlKey && !event.metaKey && event.code === "Backquote") {
         event.preventDefault();
         if (state.open) state.close(true);
-        else state.reveal(true);
+        else state.reveal(undefined, true);
       } else if (
         event.key === "Escape" &&
         state.open &&
@@ -99,47 +108,35 @@ export function WorkspaceNavigation(props: Parameters<typeof TopBar>[0]) {
   }, []);
 
   return (
-    <div className="studio-navigation" data-floating={floating} data-open={visible}>
-      {floating && (
-        <button
-          ref={trigger}
-          className="studio-navigation-reveal"
-          type="button"
-          hidden={open}
-          aria-label="展开工作区导航"
-          title="工作区导航 · Alt+`"
-          aria-controls={id}
-          aria-expanded={open}
-          aria-keyshortcuts="Alt+`"
-          onClick={() => reveal(true)}
-          onPointerEnter={(event) => {
-            if (
-              event.pointerType !== "mouse" ||
-              !window.matchMedia("(hover: hover) and (pointer: fine)").matches
-            )
-              return;
-            clearTimeout(revealTimer.current);
-            revealTimer.current = setTimeout(() => reveal(), 220);
-          }}
-          onPointerLeave={() => {
-            clearTimeout(revealTimer.current);
-          }}
-        >
-          <span aria-hidden="true" />
-        </button>
-      )}
-      <div
-        ref={surface}
-        id={id}
-        className="studio-navigation-surface"
-        hidden={!visible}
-        onPointerEnter={() => clearTimeout(hideTimer.current)}
-        onPointerLeave={scheduleHide}
-        onFocusCapture={() => clearTimeout(hideTimer.current)}
-        onBlurCapture={scheduleHide}
-      >
-        <TopBar {...props} onCollapse={floating ? () => close(true) : undefined} />
+    <WorkspaceNavigationProvider
+      value={{
+        expanded: open,
+        controls: id,
+        reveal,
+        preview: (source) => {
+          clearTimeout(revealTimer.current);
+          revealTimer.current = setTimeout(() => reveal(source), 220);
+        },
+        cancelPreview: () => clearTimeout(revealTimer.current),
+      }}
+    >
+      <div className="studio-shell-frame flex h-full flex-col" data-app={props.active}>
+        <div className="studio-navigation" data-floating={floating} data-open={visible}>
+          <div
+            ref={surface}
+            id={id}
+            className="studio-navigation-surface"
+            hidden={!visible}
+            onPointerEnter={() => clearTimeout(hideTimer.current)}
+            onPointerLeave={scheduleHide}
+            onFocusCapture={() => clearTimeout(hideTimer.current)}
+            onBlurCapture={scheduleHide}
+          >
+            <TopBar {...props} onCollapse={floating ? () => close(true) : undefined} />
+          </div>
+        </div>
+        <div className="min-h-0 flex-1">{props.children}</div>
       </div>
-    </div>
+    </WorkspaceNavigationProvider>
   );
 }

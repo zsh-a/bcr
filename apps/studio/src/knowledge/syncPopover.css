@@ -7,7 +7,6 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  min-width: 0;
   padding: var(--space-1) var(--space-2);
   border: 1px solid transparent;
   border-radius: var(--radius-full);
@@ -15,6 +14,8 @@
   color: inherit;
   font: inherit;
   cursor: pointer;
+  min-height: var(--h-control-lg);
+  min-width: var(--h-control-lg);
   transition:
     color var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard);

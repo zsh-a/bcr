@@ -1,3 +1,4 @@
+import { openStudioPanel } from "./lib/app-controls.mjs";
 import { openWorkspaceOptions } from "./lib/topbar.mjs";
 /* Storage plane 走查：容量状态可见，清理命令必须先打开 dry-run 对话框。 */
 import { fail, launchVerifyBrowser } from "./lib/browser.mjs";
@@ -17,7 +18,8 @@ await page.getByRole("button", { name: "刷新本地 Artifact 容量" }).waitFor
 const body = await page.locator("body").innerText();
 if (!/(objects|scanning storage)/u.test(body)) fail("顶栏遥测浮层未显示本地存储状态");
 await page.keyboard.press("Escape");
-await page.getByRole("tab", { name: "存储" }).click();
+await page.keyboard.press("Escape");
+await openStudioPanel(page, "存储");
 await page.getByText("Storage Plane").waitFor();
 
 const orphanCreated = await page.evaluate(async () => {

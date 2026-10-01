@@ -1,3 +1,4 @@
+import { ActionMenu, Dialog, WorkspaceTrigger } from "@bcr/react";
 import {
   Check,
   Database,
@@ -10,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { StatusDot } from "@bcr/react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { DataTableView, dataColumnTypeLabel } from "./DataTableView";
 import { formatBytes } from "./dataFormat";
 import { cancelDataTableImport } from "./runtime";
@@ -18,6 +19,7 @@ import { useDataWorkspace } from "./useDataWorkspace";
 import "./styles.css";
 
 export function App() {
+  const [storageOpen, setStorageOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const {
     services,
@@ -50,6 +52,7 @@ export function App() {
   return (
     <div
       className="data-studio"
+      data-status={status}
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault();
@@ -58,6 +61,7 @@ export function App() {
       }}
     >
       <header className="data-header">
+        <WorkspaceTrigger />
         <div className="data-brand">
           <div className="data-brand-mark">
             <Table2 className="data-icon" />
@@ -77,6 +81,36 @@ export function App() {
           </span>
         </div>
         <div className="data-actions">
+          <ActionMenu label="更多数据操作">
+            <button
+              type="button"
+              className="ui-btn ui-btn-ghost"
+              onClick={() => setStorageOpen(true)}
+            >
+              存储管理
+            </button>
+            {table !== null && (
+              <>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-default"
+                  onClick={() => exportTable("csv")}
+                >
+                  <Download className="data-icon" /> CSV
+                </button>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-default"
+                  onClick={() => exportTable("json")}
+                >
+                  <FileJson className="data-icon" /> JSON
+                </button>
+                <button type="button" className="ui-btn ui-btn-ghost" onClick={() => void clear()}>
+                  <X className="data-icon" /> 清除
+                </button>
+              </>
+            )}
+          </ActionMenu>
           <input
             ref={inputRef}
             className="data-hidden-input"
@@ -125,7 +159,11 @@ export function App() {
       )}
 
       {assets.length > 0 && (
-        <section className="data-asset-catalog" aria-label="数据资产目录">
+        <details className="data-asset-catalog" aria-label="数据资产目录">
+          <summary>
+            数据集 · {assets.length}
+            <span>{table?.sourceName ?? "选择数据集"}</span>
+          </summary>
           <div className="data-catalog-heading">
             <div>
               <span className="ui-section-label data-eyebrow">WORKSPACE / ASSETS</span>
@@ -162,57 +200,59 @@ export function App() {
               );
             })}
           </div>
-        </section>
+        </details>
       )}
 
       {storageReport !== null && (
-        <section className="data-storage-governance" aria-label="数据存储治理">
-          <div className="data-storage-heading">
-            <div>
-              <span className="ui-section-label data-eyebrow">STORAGE / GOVERN</span>
-              <strong>Artifact 存储治理</strong>
+        <Dialog open={storageOpen} onClose={() => setStorageOpen(false)} title="存储管理">
+          <section className="data-storage-governance" aria-label="数据存储治理">
+            <div className="data-storage-heading">
+              <div>
+                <span className="ui-section-label data-eyebrow">STORAGE / GOVERN</span>
+                <strong>Artifact 存储治理</strong>
+              </div>
+              <button
+                type="button"
+                className="ui-btn ui-btn-default"
+                onClick={() => void cleanupStorage()}
+                disabled={
+                  storageBusy ||
+                  storageReport.orphaned.length === 0 ||
+                  services.metadata === undefined
+                }
+                data-storage-action="reclaim"
+              >
+                {storageBusy ? "回收中…" : "回收未引用 Artifact"}
+              </button>
             </div>
-            <button
-              type="button"
-              className="ui-btn ui-btn-default"
-              onClick={() => void cleanupStorage()}
-              disabled={
-                storageBusy ||
-                storageReport.orphaned.length === 0 ||
-                services.metadata === undefined
-              }
-              data-storage-action="reclaim"
-            >
-              {storageBusy ? "回收中…" : "回收未引用 Artifact"}
-            </button>
-          </div>
-          <div className="data-storage-metrics">
-            <div>
-              <span>DATA STORE</span>
-              <strong>{formatBytes(storageReport.dataUsage.bytes)}</strong>
-              <small>{storageReport.dataUsage.objects} objects</small>
+            <div className="data-storage-metrics">
+              <div>
+                <span>DATA STORE</span>
+                <strong>{formatBytes(storageReport.dataUsage.bytes)}</strong>
+                <small>{storageReport.dataUsage.objects} objects</small>
+              </div>
+              <div>
+                <span>CATALOG ROOTS</span>
+                <strong>{storageReport.catalogObjectCount}</strong>
+                <small>protected refs</small>
+              </div>
+              <div>
+                <span>ORPHAN CANDIDATES</span>
+                <strong>{storageReport.orphaned.length}</strong>
+                <small>data namespace only</small>
+              </div>
+              <div>
+                <span>WORKSPACE</span>
+                <strong>{formatBytes(storageReport.usage.totalBytes)}</strong>
+                <small>{storageReport.usage.totalObjects} total objects</small>
+              </div>
             </div>
-            <div>
-              <span>CATALOG ROOTS</span>
-              <strong>{storageReport.catalogObjectCount}</strong>
-              <small>protected refs</small>
-            </div>
-            <div>
-              <span>ORPHAN CANDIDATES</span>
-              <strong>{storageReport.orphaned.length}</strong>
-              <small>data namespace only</small>
-            </div>
-            <div>
-              <span>WORKSPACE</span>
-              <strong>{formatBytes(storageReport.usage.totalBytes)}</strong>
-              <small>{storageReport.usage.totalObjects} total objects</small>
-            </div>
-          </div>
-          <small className="data-storage-note">
-            仅扫描 <code>data/</code>；当前目录引用与其它工作台 Artifact
-            自动受保护。移除资产不会立即删源文件，确认回收后才清理未引用对象。
-          </small>
-        </section>
+            <small className="data-storage-note">
+              仅扫描 <code>data/</code>；当前目录引用与其它工作台 Artifact
+              自动受保护。移除资产不会立即删源文件，确认回收后才清理未引用对象。
+            </small>
+          </section>
+        </Dialog>
       )}
 
       {table === null ? (
@@ -246,29 +286,8 @@ export function App() {
               <p className="ui-section-label data-eyebrow">TABLE / {table.id.slice(-12)}</p>
               <h1>{table.sourceName}</h1>
               <p className="data-source-line">
-                {table.format.toUpperCase()} ·{" "}
-                {table.provenance.sampled ? "SAMPLED PREVIEW" : "FULL INPUT"} ·{" "}
-                {table.provenance.adapter}
+                {table.format.toUpperCase()} · {table.provenance.sampled ? "抽样预览" : "完整数据"}
               </p>
-            </div>
-            <div className="data-export-actions">
-              <button
-                type="button"
-                className="ui-btn ui-btn-default"
-                onClick={() => exportTable("csv")}
-              >
-                <Download className="data-icon" /> CSV
-              </button>
-              <button
-                type="button"
-                className="ui-btn ui-btn-default"
-                onClick={() => exportTable("json")}
-              >
-                <FileJson className="data-icon" /> JSON
-              </button>
-              <button type="button" className="ui-btn ui-btn-ghost" onClick={() => void clear()}>
-                <X className="data-icon" /> 清除
-              </button>
             </div>
           </div>
           <div className="data-stat-grid">
@@ -300,7 +319,7 @@ export function App() {
                 aria-label="搜索数据行"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search across rows…"
+                placeholder="搜索数据行…"
               />
               {query.length > 0 && (
                 <button
@@ -314,10 +333,11 @@ export function App() {
               )}
             </label>
             <div className="data-toolbar-meta">
-              <Filter className="data-icon" /> schema locked · click a column to sort
+              <Filter className="data-icon" /> 点击列名排序
             </div>
           </div>
-          <div className="data-schema-strip" aria-label="数据字段">
+          <details className="data-schema-strip" aria-label="数据字段">
+            <summary>字段类型 · {table.columns.length}</summary>
             {table.columns.map((column) => (
               <span key={column.id} className="data-schema-pill">
                 <b>{column.name}</b>
@@ -326,7 +346,7 @@ export function App() {
                 </small>
               </span>
             ))}
-          </div>
+          </details>
           <DataTableView
             table={table}
             query={query}

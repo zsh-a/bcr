@@ -20,10 +20,14 @@
   display: flex;
   min-height: var(--h-topbar);
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-2) var(--space-5);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
+  flex: none;
+  min-width: 0;
+  height: var(--h-topbar);
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
 }
 
 .docgen-tab {
@@ -43,11 +47,6 @@
     background-color var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard),
     color var(--duration-fast) var(--ease-standard);
-}
-.docgen-tab-group {
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 .docgen-tab:hover:not(:disabled) {
   color: var(--color-text);
@@ -108,5 +107,103 @@
   .docgen-toast[data-open] {
     opacity: 0;
     transform: translateY(4px);
+  }
+}
+
+/* One compact toolbar, with a responsive form/preview workspace. */
+
+.docgen-layout {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+}
+.docgen-form {
+  display: flex;
+  flex: 0 0 var(--w-sidebar);
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-4);
+  overflow: auto;
+  border-right: 1px solid var(--color-border);
+  padding: var(--space-5);
+}
+.docgen-selectors {
+  display: grid;
+  gap: var(--space-3);
+}
+.docgen-selectors label {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+.docgen-selectors select {
+  min-width: 0;
+  width: 100%;
+}
+.docgen-template-description {
+  margin: 0;
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+}
+.docgen-form-actions {
+  display: flex;
+  gap: var(--space-2);
+  position: sticky;
+  bottom: 0;
+  padding-block: var(--space-2);
+  background: var(--color-bg);
+}
+.docgen-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+.docgen-preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.docgen-preview-actions {
+  margin-left: auto;
+}
+.docgen-workspace-tabs {
+  display: none;
+  margin-left: auto;
+}
+@media (max-width: 720px) {
+  .docgen-workspace-tabs {
+    display: flex;
+  }
+  .docgen-workspace-tabs button {
+    min-width: var(--h-control-lg);
+    min-height: var(--h-control-lg);
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-muted);
+  }
+  .docgen-workspace-tabs [aria-pressed="true"] {
+    background: var(--color-raised);
+    color: var(--color-text);
+  }
+  .docgen-form {
+    flex-basis: 100%;
+    border: 0;
+  }
+  .docgen-layout[data-view="edit"] .docgen-main,
+  .docgen-layout[data-view="preview"] .docgen-form {
+    display: none;
+  }
+  .docgen-form :is(input, select, button) {
+    min-height: var(--h-control-lg);
+  }
+  .docgen-preview-toolbar .docgen-tab {
+    padding-inline: var(--space-2);
   }
 }

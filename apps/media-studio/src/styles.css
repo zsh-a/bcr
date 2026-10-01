@@ -88,29 +88,36 @@
   min-height: var(--h-control);
 }
 
+/* One toolbar keeps generation visible while settings and exports stay in menus. */
 .media-header {
-  z-index: 10;
   display: flex;
-  min-height: var(--h-topbar);
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-2) var(--space-5);
+  height: var(--h-topbar);
+  min-height: var(--h-topbar);
+  flex: none;
+  flex-wrap: nowrap;
+  min-width: 0;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
+  z-index: 10;
 }
-
 .media-brand {
-  flex: none;
-}
-
-.media-settings {
   min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 var(--text-base) var(--font-sans);
 }
-
 .media-actions {
   flex: none;
+  width: auto;
+  margin-left: auto;
+  overflow: visible;
+  padding: 0;
+  gap: var(--space-1);
 }
 
 .media-dropzone {
@@ -132,76 +139,64 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-@media (max-width: 1180px) {
-  .media-header {
-    flex-wrap: wrap;
-  }
-
-  .media-settings {
-    order: 3;
-    width: 100%;
-    margin-left: 0;
-    padding-top: var(--space-1);
-  }
+.media-pipeline-details summary,
+.media-console-details summary {
+  padding-block: var(--space-2);
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: var(--text-sm);
 }
-
+.media-pipeline-details > div,
+.media-console-details > div {
+  margin-top: var(--space-2);
+}
 @media (max-width: 760px) {
   .media-studio {
-    height: 100%;
-    min-height: 0;
     overflow: auto;
   }
-
   .media-header {
     position: sticky;
     top: 0;
-    padding: var(--space-3) max(var(--space-4), env(safe-area-inset-right)) var(--space-3)
-      max(var(--space-4), env(safe-area-inset-left));
   }
-
-  .media-actions {
-    width: 100%;
-    overflow-x: auto;
-    margin-left: 0;
-    padding-bottom: var(--space-1);
+  .media-brand {
+    font-size: var(--text-sm);
   }
-
-  .media-settings {
-    padding-bottom: var(--space-1);
-  }
-
   .media-layout {
     display: block;
   }
-
   .media-sidebar {
     width: 100%;
     max-height: none;
-    padding: var(--space-6) var(--space-4);
     border-right: 0;
     border-bottom: 1px solid var(--color-border);
   }
-
-  .media-main {
-    min-height: 760px;
-  }
-
   .media-content {
     padding: var(--space-4);
   }
-
-  .media-studio button,
-  .media-studio input:not([type="checkbox"]):not([type="file"]),
-  .media-studio select {
+  .media-studio :is(button, select, input:not([type="checkbox"]):not([type="file"])) {
     min-height: var(--h-control-lg);
   }
 
-  .media-studio button:not(.btn) {
-    min-height: var(--h-control-lg);
+  .media-actions > :is(.ui-badge, .media-history-actions) {
+    display: none;
   }
 
-  .media-studio button[aria-label="撤销"],
-  .media-studio button[aria-label="重做"] {
-    min-width: var(--h-control-lg);
+  .media-actions > .btn-primary,
+  .media-actions > .btn {
+    padding-inline: var(--space-2);
+  }
+  .media-sidebar {
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-2);
+  }
+  .media-dropzone {
+    min-height: var(--space-8);
+    padding: var(--space-3);
+  }
+  .media-main {
+    min-height: 0;
+  }
+  .media-tabs {
+    padding-inline: var(--space-4);
   }
 }

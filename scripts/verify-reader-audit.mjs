@@ -205,14 +205,16 @@ try {
     buffer: Buffer.from("触屏删除入口"),
   });
   await mobile.getByText("导入完成", { exact: true }).waitFor();
-  const sizes = await mobile.locator(".reader-mobile-toolbar-button").evaluateAll((buttons) =>
-    buttons.map((button) => ({
-      width: button.getBoundingClientRect().width,
-      height: button.getBoundingClientRect().height,
-    })),
-  );
+  const sizes = await mobile
+    .locator(".reader-mobile-toolbar-button:visible")
+    .evaluateAll((buttons) =>
+      buttons.map((button) => ({
+        width: button.getBoundingClientRect().width,
+        height: button.getBoundingClientRect().height,
+      })),
+    );
   assert(
-    sizes.length >= 4 && sizes.every((size) => size.width >= 44 && size.height >= 44),
+    sizes.length >= 3 && sizes.every((size) => size.width >= 44 && size.height >= 44),
     JSON.stringify(sizes),
   );
   await mobile.getByRole("button", { name: "打开书库", exact: true }).click();

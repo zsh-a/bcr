@@ -1,3 +1,4 @@
+import { WorkspaceTrigger } from "@bcr/react";
 import { consumeQuantHandoff, QUANT_HANDOFF_EVENT, type QuantHandoff } from "@bcr/market-data";
 import {
   RuntimeProvider,
@@ -87,7 +88,12 @@ function ResearchWorkbench() {
   );
   return (
     <div className="ql-research-shell" data-strategy={tab}>
-      {tab === "sma" && <div className="ql-strategy-toolbar">{strategyControl}</div>}
+      {tab === "sma" && (
+        <div className="ql-strategy-toolbar">
+          <WorkspaceTrigger />
+          {strategyControl}
+        </div>
+      )}
       <div
         className="ql-research-view"
         id="sma-panel"

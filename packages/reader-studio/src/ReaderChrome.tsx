@@ -1,8 +1,9 @@
 import { ArrowLeft, BookOpen, CircleAlert, Download, Search, Upload, X } from "lucide-react";
-import { useRef, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
+import { createPortal } from "react-dom";
+import { ActionMenu } from "@bcr/react";
 import { readerAcceptAttribute, type ReaderBook } from "@bcr/reader-core";
 import type { ReaderRestoreDiagnostics } from "./runtime";
-import { percent } from "./readerPresentation";
 import { openSearchHit } from "./readerSearchNavigation";
 import { getReaderState, reader, useReader } from "./store";
 import { ReaderSheet } from "./ReaderSheet";
@@ -74,9 +75,82 @@ export function BootScreen(props: { error: string | null }) {
   );
 }
 
+export function ReaderSearchInput(props: { searchRef: RefObject<HTMLInputElement | null> }) {
+  const query = useReader((state) => state.query);
+  const searchOpen = useReader((state) => state.searchOpen);
+  const searchHits = useReader((state) => state.searchHits);
+  const searchActiveIndex = useReader((state) => state.searchActiveIndex);
+  const onSearch = (value: string) => {
+    reader.setSearchOpen(true);
+    // The query is kept in the external store so the search panel and header
+    // share the same source of truth without prop drilling.
+    reader.setSearch(value, getReaderState().searchHits, getReaderState().searchBookId);
+  };
+  useEffect(() => {
+    props.searchRef.current?.focus();
+  }, [props.searchRef]);
+  return (
+    <div className={`reader-search ${searchOpen ? "is-open" : ""}`}>
+      <Search className="reader-icon" />
+      <input
+        ref={props.searchRef}
+        value={query}
+        onChange={(event) => onSearch(event.target.value)}
+        onFocus={() => {
+          reader.setSearchOpen(true);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            reader.moveSearch(1);
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            reader.moveSearch(-1);
+          } else if (event.key === "Enter") {
+            const hit = searchHits[searchActiveIndex];
+            if (hit !== undefined) {
+              event.preventDefault();
+              void openSearchHit(hit);
+            }
+          }
+        }}
+        placeholder="搜索书库全文…"
+        aria-label="在书库中搜索"
+        role="combobox"
+        aria-expanded={searchOpen}
+        aria-controls={searchOpen ? "reader-search-results" : undefined}
+        aria-activedescendant={
+          searchOpen && searchActiveIndex >= 0
+            ? `reader-search-hit-${searchActiveIndex}`
+            : undefined
+        }
+      />
+      {query && (
+        <button
+          type="button"
+          className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-search-clear"
+          onClick={() => onSearch("")}
+          aria-label="清空搜索"
+        >
+          <X className="reader-icon" />
+        </button>
+      )}
+      <kbd className="ui-kbd">{/Mac|iPhone|iPad/u.test(navigator.platform) ? "⌘F" : "Ctrl+F"}</kbd>
+      <button
+        type="button"
+        className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-mobile-search-close"
+        aria-label="退出搜索"
+        onClick={() => reader.setSearchOpen(false)}
+      >
+        <X className="reader-icon" />
+      </button>
+    </div>
+  );
+}
+
 export function ReaderHeader(props: {
   book: ReaderBook;
-  searchRef: RefObject<HTMLInputElement | null>;
+  controlsHost: HTMLDivElement | null;
   onExit: () => void;
   onImport: (files: ReadonlyArray<File>) => void;
   notice: string | null;
@@ -89,24 +163,14 @@ export function ReaderHeader(props: {
   onInstall: () => void;
   onShortcuts: () => void;
 }) {
-  const query = useReader((state) => state.query);
-  const searchOpen = useReader((state) => state.searchOpen);
-  const searchHits = useReader((state) => state.searchHits);
-  const searchActiveIndex = useReader((state) => state.searchActiveIndex);
-  const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
   const fileInput = useRef<HTMLInputElement>(null);
-  const openLibrarySearch = () => {
-    if (getReaderState().searchScope !== "library") reader.setSearchScope("library");
-    reader.setSearchOpen(true);
-  };
-  const onSearch = (value: string) => {
-    openLibrarySearch();
-    // The query is kept in the external store so the search panel and header
-    // share the same source of truth without prop drilling.
-    reader.setSearch(value, getReaderState().searchHits, getReaderState().searchBookId);
-  };
-  return (
-    <header className={`reader-header ${searchOpen ? "is-searching" : ""}`}>
+  const comic = useReader(
+    (state) =>
+      state.settings.books?.[props.book.id]?.comic ??
+      (props.book.source.format === "cbz" || props.book.rendition?.layout === "pre-paginated"),
+  );
+  const controls = (
+    <ActionMenu label="更多阅读操作" className="reader-library-menu">
       <button
         type="button"
         className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-mobile-exit"
@@ -116,86 +180,34 @@ export function ReaderHeader(props: {
       >
         <ArrowLeft className="reader-icon" />
       </button>
-      <div className="reader-brand">
-        <div className="reader-brand-mark">
-          <BookOpen className="reader-icon" />
-        </div>
-        <div>
-          <div className="reader-brand-title">
-            Reader <span>Studio</span>
-          </div>
-          <div className="reader-brand-subtitle">LOCAL PUBLICATION SPACE</div>
-        </div>
-      </div>
-      <div className="reader-header-divider" />
-      <div className="reader-now-reading">
-        <span className="ui-section-label">NOW READING</span>
-        <strong>{props.book.title}</strong>
-      </div>
-      <div className="reader-header-spacer" />
-      <div className={`reader-search ${searchOpen ? "is-open" : ""}`}>
+      <button
+        type="button"
+        className="ui-btn ui-btn-ghost"
+        onClick={() => {
+          if (getReaderState().searchScope !== "library") reader.setSearchScope("library");
+          reader.setSearchOpen(true);
+        }}
+      >
         <Search className="reader-icon" />
-        <input
-          ref={props.searchRef}
-          value={query}
-          onChange={(event) => onSearch(event.target.value)}
-          onPointerDown={openLibrarySearch}
-          onFocus={() => {
-            if (!getReaderState().searchOpen) openLibrarySearch();
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "ArrowDown") {
-              event.preventDefault();
-              reader.moveSearch(1);
-            } else if (event.key === "ArrowUp") {
-              event.preventDefault();
-              reader.moveSearch(-1);
-            } else if (event.key === "Enter") {
-              const hit = searchHits[searchActiveIndex];
-              if (hit !== undefined) {
-                event.preventDefault();
-                void openSearchHit(hit);
-              }
-            }
-          }}
-          placeholder="搜索书库全文…"
-          aria-label="在书库中搜索"
-          role="combobox"
-          aria-expanded={searchOpen}
-          aria-controls={searchOpen ? "reader-search-results" : undefined}
-          aria-activedescendant={
-            searchOpen && searchActiveIndex >= 0
-              ? `reader-search-hit-${searchActiveIndex}`
-              : undefined
-          }
-        />
-        {query && (
-          <button
-            type="button"
-            className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-search-clear"
-            onClick={() => onSearch("")}
-            aria-label="清空搜索"
-          >
-            <X className="reader-icon" />
-          </button>
-        )}
-        <kbd className="ui-kbd">
-          {/Mac|iPhone|iPad/u.test(navigator.platform) ? "⌘F" : "Ctrl+F"}
-        </kbd>
+        搜索书库
+      </button>
+      {props.book.source.format !== "pdf" && (
         <button
           type="button"
-          className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-mobile-search-close"
-          aria-label="退出搜索"
-          onClick={() => reader.setSearchOpen(false)}
+          className="ui-btn ui-btn-ghost reader-library-comic"
+          aria-label="切换漫画模式"
+          aria-pressed={comic}
+          onClick={() => {
+            window.dispatchEvent(new Event("bcr-reader-capture-progress"));
+            const books = getReaderState().settings.books ?? {};
+            reader.setSettings({
+              books: { ...books, [props.book.id]: { ...books[props.book.id], comic: !comic } },
+            });
+          }}
         >
-          <X className="reader-icon" />
+          阅读模式：{comic ? "漫画" : "正文"}
         </button>
-      </div>
-      <div className="reader-header-progress" title={`当前进度 ${percent(progress)}`}>
-        <div className="reader-progress-ring">
-          <span>{percent(progress)}</span>
-        </div>
-      </div>
+      )}
       <button
         type="button"
         className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-shortcut-button"
@@ -237,6 +249,11 @@ export function ReaderHeader(props: {
       >
         <Upload className="reader-icon" /> <span>导入</span>
       </button>
+    </ActionMenu>
+  );
+  return (
+    <header className="reader-header">
+      {props.controlsHost && createPortal(controls, props.controlsHost)}
       {props.notice !== null && props.importJob === null && (
         <div className="reader-toast" role="status" aria-live="polite">
           <span>{props.notice}</span>

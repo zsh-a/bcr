@@ -15,7 +15,7 @@ await page.locator(".market-atlas").waitFor({ timeout: 20_000 });
 await page.locator(".ma-refresh:not(:disabled)").waitFor({ timeout: 45_000 });
 
 const body = await page.locator("body").innerText();
-if (!body.includes("Market Atlas") || !body.includes("Markets never move")) {
+if (!body.includes("Market Atlas") || !body.includes("Market overview")) {
   fail("Market Atlas 主界面未渲染");
 }
 if ((await page.locator(".ma-session").count()) !== 4) fail("全球市场时区轨道不完整");

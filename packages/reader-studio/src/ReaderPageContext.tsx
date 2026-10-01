@@ -1,3 +1,4 @@
+import { WorkspaceTrigger } from "@bcr/react";
 import { useEffect, useState } from "react";
 import type { ReaderBook } from "@bcr/reader-core";
 import { currentTxtChapter } from "./txtChapters";
@@ -25,6 +26,7 @@ export function ReaderPageContext({
   }, []);
   return (
     <>
+      <WorkspaceTrigger className="reader-quiet-workspace" />
       <button
         type="button"
         className="reader-quiet-heading"

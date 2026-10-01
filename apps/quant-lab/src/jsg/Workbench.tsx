@@ -1,3 +1,4 @@
+import { WorkspaceTrigger } from "@bcr/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Dialog, Select, Spinner, useRuntime } from "@bcr/react";
 import {
@@ -275,6 +276,7 @@ export function JsgWorkbench({
   return (
     <div ref={root} className="jsg-workspace" data-busy={busy} data-draft-changed={changed}>
       <header className="research-header">
+        <WorkspaceTrigger />
         <div className="research-brand">
           <h1 className="sr-only">行业宽度轮动</h1>
           {strategyControl ?? <span>行业宽度轮动</span>}

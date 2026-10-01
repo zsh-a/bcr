@@ -119,7 +119,7 @@ try {
     ["/documents", ".document-header"],
     ["/data", ".data-header"],
     ["/manga", ".manga-header"],
-    ["/reader", ".reader-header"],
+    ["/reader", ".reader-toolbar"],
     ["/docgen", ".docgen-header"],
     ["/markets", ".ma-header"],
     ["/knowledge", ".knowledge-app"],

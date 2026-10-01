@@ -1,3 +1,4 @@
+import { WorkspaceTrigger } from "@bcr/react";
 import {
   ArrowUpRight,
   BookOpen,
@@ -311,6 +312,7 @@ export function App() {
         跳到流水线
       </a>
       <header className="document-header">
+        <WorkspaceTrigger />
         <div className="document-brand">
           <div className="document-brand-mark">
             <Files className="document-icon" />

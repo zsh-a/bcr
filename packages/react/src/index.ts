@@ -1,5 +1,6 @@
 export type { RuntimeHost, RuntimeMetadata, RuntimeServices, RuntimeSession } from "@bcr/core";
 export * from "./ui";
+export { WorkspaceTrigger, WorkspaceNavigationProvider, ActionMenu } from "./AppControls";
 export { usePublishRunningCount, useRunningApps } from "./application-status";
 export { AppUpdateProvider, useUpdateParticipant } from "./AppUpdate";
 

@@ -1,3 +1,4 @@
+import { openActionMenu } from "./lib/app-controls.mjs";
 /* Manga Studio：单页导入 → 区域审校 → 翻译流水线 → PNG 导出。 */
 import { ensureShots, fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
@@ -101,6 +102,7 @@ await page
   .locator(".manga-page-card", { hasText: "review-page-2.png" })
   .last()
   .waitFor({ timeout: 20_000 });
+await openActionMenu(page, "更多漫画操作");
 await page.getByRole("button", { name: "处理队列" }).click();
 await page.waitForFunction(
   () => document.querySelector('[data-batch-status="completed"]') !== null,

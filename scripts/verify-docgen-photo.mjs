@@ -1,3 +1,4 @@
+import { openActionMenu } from "./lib/app-controls.mjs";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -34,10 +35,7 @@ try {
     false,
     "GPU engine was eagerly loaded",
   );
-  await page
-    .getByRole("button", { name: /新加坡/ })
-    .first()
-    .click();
+  await page.getByLabel("账单地区", { exact: true }).selectOption("singapore");
   await page.getByRole("button", { name: "随机地址", exact: true }).click();
   await page.locator("aside input").first().fill("Sample Person");
   await page.getByLabel("拍摄场景", { exact: true }).selectOption("studio");
@@ -51,6 +49,7 @@ try {
   });
   assert.deepEqual(size, [1620, 2160]);
   const downloadEvent = page.waitForEvent("download");
+  await openActionMenu(page, "更多预览操作");
   await page.getByRole("button", { name: "下载实拍 JPG", exact: true }).click();
   const download = await downloadEvent;
   assert.match(download.suggestedFilename(), /-photo\.jpg$/);

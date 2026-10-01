@@ -1,3 +1,4 @@
+import { WorkspaceTrigger } from "@bcr/react";
 import "@fontsource-variable/newsreader/wght.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
@@ -9,7 +10,6 @@ import {
   ArrowUpRight,
   ChevronRight,
   Clock3,
-  Globe2,
   Plus,
   RefreshCw,
   Search,
@@ -182,7 +182,7 @@ export function App() {
     <div className="market-atlas" data-quality={snapshot.quality}>
       <header className="ma-header">
         <div className="ma-wordmark">
-          <span>MA/01</span>
+          <WorkspaceTrigger />
           <div>
             <small>GLOBAL MARKET INTELLIGENCE</small>
             <b>Market Atlas</b>
@@ -310,20 +310,8 @@ export function App() {
 
       <main className="ma-content">
         <section className="ma-intro">
-          <div>
-            <span className="ma-kicker">
-              <Globe2 /> THE WORLD, IN MOTION
-            </span>
-            <h1>
-              Markets never move
-              <br />
-              in isolation.
-            </h1>
-          </div>
-          <p>
-            Follow the hand-off from Asia to New York. Delayed public-market data, normalized in the
-            browser and kept honest with explicit source health.
-          </p>
+          <h1>Market overview</h1>
+          <p>Stocks · Indices · Funds · Futures</p>
         </section>
 
         {selected !== undefined && (

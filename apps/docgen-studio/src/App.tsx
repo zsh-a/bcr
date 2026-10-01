@@ -1,16 +1,5 @@
-import {
-  Camera,
-  Download,
-  Droplets,
-  FileBadge,
-  Flame,
-  History,
-  Image as ImageIcon,
-  Shuffle,
-  Wifi,
-  Zap,
-  type LucideIcon,
-} from "lucide-react";
+import { ActionMenu, WorkspaceTrigger } from "@bcr/react";
+import { Camera, Download, FileBadge, History, Image as ImageIcon, Shuffle } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   formatMoney,
@@ -23,7 +12,6 @@ import {
   REGIONS,
   validateBillInput,
   type BillInput,
-  type BillKind,
   type BillViewModel,
   type RegionId,
   type PhotoScene,
@@ -31,13 +19,6 @@ import {
 import type { GeneratedBill } from "@bcr/docgen-core/dom";
 import { Skeleton, Spinner } from "@bcr/react";
 import "./styles.css";
-
-const KIND_ICONS: Record<BillKind, LucideIcon> = {
-  water: Droplets,
-  power: Zap,
-  gas: Flame,
-  telecom: Wifi,
-};
 
 interface GeneratedEntry {
   readonly id: number;
@@ -82,6 +63,7 @@ export function App() {
   const [entries, setEntries] = useState<ReadonlyArray<GeneratedEntry>>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [previewTab, setPreviewTab] = useState<"document" | "paper">("document");
+  const [workspaceTab, setWorkspaceTab] = useState<"edit" | "preview">("edit");
   const [toastText, setToastText] = useState("");
   const [toastOpen, setToastOpen] = useState(false);
 
@@ -154,6 +136,7 @@ export function App() {
       };
       setEntries((prev) => [entry, ...prev].slice(0, 12));
       setActiveId(entry.id);
+      setWorkspaceTab("preview");
     } catch (error) {
       showToast(`生成失败：${error instanceof Error ? error.message : String(error)}`);
     } finally {
@@ -211,57 +194,79 @@ export function App() {
   return (
     <div className="docgen-studio">
       <header className="docgen-header">
+        <WorkspaceTrigger />
         <div className="flex shrink-0 items-center gap-2 whitespace-nowrap font-semibold">
           <FileBadge size={20} className="text-accent" />
           DocGen Lab
         </div>
-        <div className="docgen-tab-group flex items-center gap-1">
-          {REGIONS.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              className="docgen-tab"
-              data-active={r.id === regionId}
-              onClick={() => selectRegion(r.id)}
-            >
-              <span aria-hidden>{r.flag}</span>
-              {r.label}
-            </button>
-          ))}
-        </div>
-        <div className="docgen-tab-group flex items-center gap-1 border-l border-border pl-4">
-          {listTemplates(regionId).map((t) => {
-            const Icon = KIND_ICONS[t.kind];
-            return (
-              <button
-                key={t.docType}
-                type="button"
-                className="docgen-tab"
-                data-active={t.docType === docType}
-                onClick={() => {
-                  setDocType(t.docType);
+        <nav className="docgen-workspace-tabs" aria-label="文档工作区">
+          <button
+            type="button"
+            aria-pressed={workspaceTab === "edit"}
+            onClick={() => setWorkspaceTab("edit")}
+          >
+            填写
+          </button>
+          <button
+            type="button"
+            aria-pressed={workspaceTab === "preview"}
+            onClick={() => setWorkspaceTab("preview")}
+          >
+            预览
+          </button>
+        </nav>
+      </header>
+
+      <div className="docgen-layout" data-view={workspaceTab}>
+        <aside className="docgen-form">
+          <div className="docgen-selectors">
+            <label>
+              地区
+              <select
+                className="ui-select"
+                aria-label="账单地区"
+                value={regionId}
+                onChange={(event) => selectRegion(event.target.value as RegionId)}
+              >
+                {REGIONS.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              模板
+              <select
+                className="ui-select"
+                aria-label="账单模板"
+                value={docType}
+                onChange={(event) => {
+                  setDocType(event.target.value);
                   setErrors({});
                 }}
               >
-                <Icon size={15} />
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-        <div className="ml-auto shrink-0 whitespace-nowrap pl-4 text-xs text-faint">
-          {region?.description ?? ""}
-        </div>
-      </header>
-
-      <div className="flex min-h-0 flex-1">
-        <aside className="flex w-[var(--w-sidebar)] flex-none flex-col gap-4 overflow-y-auto border-r border-border p-5">
+                {listTemplates(regionId).map((t) => (
+                  <option key={t.docType} value={t.docType}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p className="docgen-template-description">{region?.description}</p>
           <div>
-            <label className="mb-1 block text-sm text-muted">
-              客户姓名 <span className="text-danger">*</span>
+            <label htmlFor="docgen-name" className="mb-1 block text-sm text-muted">
+              客户姓名{" "}
+              <span className="text-danger" aria-hidden="true">
+                *
+              </span>
             </label>
             <input
               className="ui-input w-full"
+              id="docgen-name"
+              aria-label="客户姓名"
+              aria-required="true"
               value={name}
               placeholder="Elin Sorensen"
               aria-invalid={errors["name"] !== undefined}
@@ -277,12 +282,21 @@ export function App() {
 
           {template?.fields.map((field) => (
             <div key={field.key}>
-              <label className="mb-1 block text-sm text-muted">
+              <label
+                htmlFor={`docgen-field-${field.key}`}
+                className="mb-1 block text-sm text-muted"
+              >
                 {field.label}
-                {field.required && <span className="text-danger"> *</span>}
+                {field.required && (
+                  <span className="text-danger" aria-hidden="true">
+                    {" "}
+                    *
+                  </span>
+                )}
               </label>
               <input
                 className="ui-input w-full"
+                id={`docgen-field-${field.key}`}
                 value={address[field.key] ?? ""}
                 placeholder={field.placeholder}
                 aria-invalid={errors[field.key] !== undefined}
@@ -342,7 +356,7 @@ export function App() {
             </select>
           </div>
 
-          <div className="flex gap-2">
+          <div className="docgen-form-actions">
             <button type="button" className="ui-btn ui-btn-default" onClick={fillRandomAddress}>
               <Shuffle size={15} />
               随机地址
@@ -371,7 +385,10 @@ export function App() {
                     type="button"
                     className="docgen-tab w-full justify-between"
                     data-active={entry.id === activeId}
-                    onClick={() => setActiveId(entry.id)}
+                    onClick={() => {
+                      setActiveId(entry.id);
+                      setWorkspaceTab("preview");
+                    }}
                   >
                     <span className="truncate">
                       {entry.time} ·{" "}
@@ -388,8 +405,8 @@ export function App() {
           )}
         </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center gap-2 border-b border-border px-5 py-2.5">
+        <main className="docgen-main">
+          <div className="docgen-preview-toolbar">
             <button
               type="button"
               className="docgen-tab"
@@ -408,16 +425,17 @@ export function App() {
               <Camera size={15} />
               实拍 JPG
             </button>
-            <button
-              type="button"
-              className="docgen-tab"
-              disabled={active === null || generating}
-              onClick={() => void toggleWatermark()}
-              title="切换后重新栅格化"
-            >
-              水印：{(active?.watermark ?? true) ? "开" : "关"}
-            </button>
-            <div className="ml-auto flex items-center gap-2">
+            <ActionMenu label="更多预览操作" className="docgen-preview-actions">
+              <button
+                type="button"
+                className="docgen-tab"
+                disabled={active === null || generating}
+                onClick={() => void toggleWatermark()}
+                title="切换后重新栅格化"
+              >
+                水印：{(active?.watermark ?? true) ? "开" : "关"}
+              </button>
+
               <button
                 type="button"
                 className="ui-btn ui-btn-default"
@@ -444,7 +462,7 @@ export function App() {
                 <Download size={15} />
                 下载实拍 JPG
               </button>
-            </div>
+            </ActionMenu>
           </div>
 
           <div className="docgen-preview-frame relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-6">
@@ -472,7 +490,7 @@ export function App() {
                   <Skeleton style={{ height: 11, width: "45%", marginLeft: "auto" }} />
                 </div>
                 <div>
-                  填写左侧表单后点击「生成预览」
+                  填写信息后点击「生成预览」
                   <div className="mt-1 text-xs">同一姓名 + 地址将生成完全一致的虚构账单</div>
                 </div>
               </div>

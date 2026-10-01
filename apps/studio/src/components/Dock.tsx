@@ -1,12 +1,16 @@
+import { ActionMenu, WorkspaceTrigger } from "@bcr/react";
 import {
   DockviewReact,
   themeAbyss,
   type DockviewApi,
   type DockviewReadyEvent,
   type IDockviewPanelProps,
+  type IDockviewHeaderActionsProps,
 } from "dockview-react";
 import { PanelLeft, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { useSelection } from "../router";
+import { useStudio } from "../store";
 import { ConsolePanel } from "./ConsolePanel";
 import { InspectorPanel } from "./InspectorPanel";
 import { ProjectPanel } from "./ProjectPanel";
@@ -20,7 +24,7 @@ import { WorkspacePanel } from "./WorkspacePanel";
  * 布局 JSON 持久化到 localStorage（SQLite 持久化留待 storage-sqlite 包）。
  */
 
-const LAYOUT_KEY = "bcr.studio.layout.v1";
+const LAYOUT_KEY = "bcr.studio.layout.v2";
 
 /** 面板最小宽高（dockview 约束）：窄容器下不塌缩，放不下的内容以溢出滚动让位。
  *  取值贴着默认布局的 initial 尺寸之下，不改变默认形态。 */
@@ -59,38 +63,92 @@ function defaultLayout(api: DockviewApi): void {
     initialWidth: 232,
     ...MIN_SIZES.project,
   });
-  api.addPanel({
-    id: "inspector",
-    component: "inspector",
-    title: "Inspector",
-    position: { referencePanel: "workspace", direction: "right" },
-    initialWidth: 304,
-    ...MIN_SIZES.inspector,
+}
+
+const PANEL_TITLES = {
+  workspace: "Workspace",
+  project: "项目文件",
+  inspector: "详情",
+  storage: "存储",
+  tasks: "任务",
+  console: "控制台",
+};
+type OptionalPanel = keyof typeof PANEL_TITLES;
+const MobilePanelContext = createContext<(panel: MobilePanel) => void>(() => {});
+
+function showPanel(api: DockviewApi, id: OptionalPanel, activate = true) {
+  const existing = api.getPanel(id);
+  if (existing) {
+    if (activate) existing.api.setActive();
+    return;
+  }
+  const bottom = id === "tasks" || id === "console";
+  const reference =
+    api.getPanel(bottom ? "tasks" : "inspector") ?? api.getPanel("workspace") ?? api.panels[0];
+  if (!reference) return;
+  const panel = api.addPanel({
+    id,
+    component: id,
+    title: PANEL_TITLES[id],
+    ...MIN_SIZES[id],
+    position: {
+      referencePanel: reference,
+      direction:
+        reference?.id === "workspace"
+          ? bottom
+            ? "below"
+            : id === "project"
+              ? "left"
+              : "right"
+          : id === "workspace"
+            ? "right"
+            : "within",
+    },
+    initialWidth: id === "project" ? 232 : 304,
+    ...(bottom ? { initialHeight: 176 } : {}),
+    inactive: !activate,
   });
-  api.addPanel({
-    id: "storage",
-    component: "storage",
-    title: "存储",
-    position: { referencePanel: "inspector", direction: "within" },
-    inactive: true,
-    ...MIN_SIZES.storage,
-  });
-  const tasks = api.addPanel({
-    id: "tasks",
-    component: "tasks",
-    title: "任务",
-    position: { referencePanel: "workspace", direction: "below" },
-    initialHeight: 176,
-    ...MIN_SIZES.tasks,
-  });
-  api.addPanel({
-    id: "console",
-    component: "console",
-    title: "控制台",
-    position: { referencePanel: "tasks", direction: "within" },
-    ...MIN_SIZES.console,
-  });
-  tasks.api.setActive();
+  if (activate) panel.api.setActive();
+}
+
+function WorkspaceHeader({ panels, containerApi }: IDockviewHeaderActionsProps) {
+  const openMobilePanel = useContext(MobilePanelContext);
+  const [, refresh] = useState(0);
+  useEffect(() => {
+    const added = containerApi.onDidAddPanel(() => refresh((version) => version + 1));
+    const removed = containerApi.onDidRemovePanel(() => refresh((version) => version + 1));
+    return () => {
+      added.dispose();
+      removed.dispose();
+    };
+  }, [containerApi]);
+  const navigationPanel = containerApi.getPanel("workspace") ?? containerApi.panels[0];
+  if (!panels.some((panel) => panel === navigationPanel)) return null;
+  return (
+    <div className="studio-workspace-controls">
+      <WorkspaceTrigger />
+      <button
+        type="button"
+        className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg studio-panel-toggle"
+        aria-label="打开工作区面板"
+        onClick={() => openMobilePanel("project")}
+      >
+        <PanelLeft className="size-4" />
+      </button>
+      <ActionMenu label="工作区面板" className="studio-panel-menu">
+        {Object.entries(PANEL_TITLES).map(([id, title]) => (
+          <button
+            type="button"
+            className="ui-btn ui-btn-ghost"
+            key={id}
+            onClick={() => showPanel(containerApi, id as OptionalPanel)}
+          >
+            {title}
+          </button>
+        ))}
+      </ActionMenu>
+    </div>
+  );
 }
 
 /** 持久化布局回灌前补上面板最小宽高：dockview 只在面板创建时取约束（旧布局没有这些字段）。 */
@@ -112,6 +170,9 @@ export function resetLayout(): void {
 }
 
 export function Dock() {
+  const [dockApi, setDockApi] = useState<DockviewApi | null>(null);
+  const selection = useSelection();
+  const taskCount = useStudio((state) => state.tasks.length);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel | null>(null);
 
   useEffect(() => {
@@ -137,60 +198,46 @@ export function Dock() {
       }
     }
     if (!restored) defaultLayout(api);
-    // 旧版用户布局可能没有 Storage tab；补 panel 时保持当前活动面板不变。
-    if (api.getPanel("storage") === undefined) {
-      const reference = api.getPanel("inspector") ?? api.getPanel("workspace");
-      if (reference !== undefined) {
-        api.addPanel({
-          id: "storage",
-          component: "storage",
-          title: "存储",
-          position: { referencePanel: reference, direction: "within" },
-          inactive: true,
-        });
-      }
-    }
-
-    // 布局变化 → 持久化（debounce）
-    let timer: number | undefined;
-    const disposable = api.onDidLayoutChange(() => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        localStorage.setItem(LAYOUT_KEY, JSON.stringify(api.toJSON()));
-      }, 400);
-    });
-
-    // 面板被全部关闭时回到默认布局
-    const onRemoved = api.onDidRemovePanel(() => {
-      if (api.panels.length === 0) defaultLayout(api);
-    });
-    void onRemoved;
-
-    return () => disposable.dispose();
+    setDockApi(api);
   }, []);
 
+  useEffect(() => {
+    if (!dockApi) return;
+    if (selection.file || selection.task) showPanel(dockApi, "inspector", false);
+    if (taskCount) showPanel(dockApi, "tasks", false);
+  }, [dockApi, selection.file, selection.task, taskCount]);
+  useEffect(() => {
+    if (!dockApi) return;
+    let timer: number | undefined;
+    const layout = dockApi.onDidLayoutChange(() => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(
+        () => localStorage.setItem(LAYOUT_KEY, JSON.stringify(dockApi.toJSON())),
+        400,
+      );
+    });
+    const removed = dockApi.onDidRemovePanel(() => {
+      if (!dockApi.panels.length) defaultLayout(dockApi);
+    });
+    return () => {
+      clearTimeout(timer);
+      layout.dispose();
+      removed.dispose();
+    };
+  }, [dockApi]);
   const open = mobilePanel !== null;
 
   return (
     <div className="studio-dock-shell">
-      <DockviewReact
-        className="studio-dock"
-        theme={themeAbyss}
-        components={components}
-        onReady={onReady}
-      />
-
-      <button
-        type="button"
-        className="studio-mobile-panel-trigger"
-        onClick={() => setMobilePanel("project")}
-        aria-label="打开工作区面板"
-        aria-expanded={open}
-        aria-controls="studio-mobile-panels"
-      >
-        <PanelLeft className="size-4" />
-        <span>面板</span>
-      </button>
+      <MobilePanelContext value={setMobilePanel}>
+        <DockviewReact
+          className="studio-dock"
+          theme={themeAbyss}
+          prefixHeaderActionsComponent={WorkspaceHeader}
+          components={components}
+          onReady={onReady}
+        />
+      </MobilePanelContext>
 
       {/* 抽屉常驻挂载：进出场交给 display allow-discrete 过渡；关闭时仅卸载内容。 */}
       <button
@@ -237,7 +284,7 @@ export function Dock() {
             className={mobilePanel === "inspector" ? "is-active" : ""}
             onClick={() => setMobilePanel("inspector")}
           >
-            Inspector
+            详情
           </button>
         </div>
         {open && (

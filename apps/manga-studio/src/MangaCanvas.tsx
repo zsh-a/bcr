@@ -33,6 +33,16 @@ export function MangaCanvas({ state }: { readonly state: MangaState }) {
             </button>
           ))}
         </div>
+        <select
+          className="ui-select manga-view-select"
+          aria-label="漫画视图"
+          value={state.outputMode}
+          onChange={(event) => manga.setOutputMode(event.target.value as OutputMode)}
+        >
+          <option value="translated">译文</option>
+          <option value="clean">清除文字</option>
+          <option value="original">原图</option>
+        </select>
         <div className="manga-canvas-tools">
           <span className="manga-canvas-label">
             <FileImage className="size-3.5" /> {state.source.name}

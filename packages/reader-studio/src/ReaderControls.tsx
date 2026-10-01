@@ -1,3 +1,4 @@
+import { WorkspaceTrigger } from "@bcr/react";
 import { currentTxtChapter } from "./txtChapters";
 import {
   ArrowUpRight,
@@ -38,6 +39,7 @@ import { readerSelectionLocator } from "./readingPosition";
 
 export function ReaderToolbar(props: {
   book: ReaderBook;
+  libraryControlsRef: (element: HTMLDivElement | null) => void;
   settings: ReaderSettings;
   onAddAnnotation: (locator?: ReaderLocator) => void;
   onOpenDocument: () => void;
@@ -79,11 +81,12 @@ export function ReaderToolbar(props: {
   return (
     <div className="reader-toolbar">
       <div className="reader-toolbar-title">
+        <WorkspaceTrigger />
         {props.book.source.format !== "pdf" && (
           <button
             type="button"
-            className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
             aria-label="切换漫画模式"
+            className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-comic-toggle"
             aria-pressed={
               props.settings.books?.[props.book.id]?.comic ??
               (props.book.source.format === "cbz" ||
@@ -245,6 +248,7 @@ export function ReaderToolbar(props: {
           <Settings2 className="reader-icon" />
         </button>
       </div>
+      <div className="reader-library-actions" ref={props.libraryControlsRef} />
       <ReaderSettingsSheet
         txt={props.book.source.format === "txt"}
         fixedLayout={props.book.source.format === "pdf"}

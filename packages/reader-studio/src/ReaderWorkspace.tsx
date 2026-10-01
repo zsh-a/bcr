@@ -1,3 +1,4 @@
+import { WorkspaceTrigger } from "@bcr/react";
 import {
   Check,
   ChevronRight,
@@ -10,7 +11,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import {
   readerAcceptAttribute,
   type ReaderBook,
@@ -32,6 +33,7 @@ import { useReaderMobile } from "./useReaderMobile";
 import { ReaderHistoryBar } from "./ReaderHistoryBar";
 import { ReaderProgressScrubber } from "./ReaderProgressScrubber";
 import { ReaderSelectionCapture } from "./ReaderSelectionCapture";
+import { ReaderSearchInput } from "./ReaderChrome";
 import { ReaderLibraryBookActions } from "./ReaderLibraryBookActions";
 
 const ReaderBackupPanel = lazy(() =>
@@ -40,6 +42,8 @@ const ReaderBackupPanel = lazy(() =>
 
 export function ReaderWorkspace(props: {
   workspaceCollections: boolean;
+  searchRef: RefObject<HTMLInputElement | null>;
+  onLibraryControlsMount: (element: HTMLDivElement | null) => void;
   runtime: ReaderRuntime;
   onImport: (files: ReadonlyArray<File>) => void;
   onOpenDocument: () => void;
@@ -101,18 +105,22 @@ export function ReaderWorkspace(props: {
       )}
       <main id="reader-content" ref={readerMainRef} className="reader-main" aria-label="阅读内容">
         {!readerUsesPagedText(active, settings) && (
-          <button
-            type="button"
-            className="reader-mobile-chrome-reveal"
-            onClick={props.onToggleMobileChrome}
-            aria-label="显示阅读工具栏"
-            title="显示阅读工具栏"
-          >
-            <Menu className="reader-icon" />
-          </button>
+          <>
+            <WorkspaceTrigger className="reader-quiet-workspace" />
+            <button
+              type="button"
+              className="reader-mobile-chrome-reveal"
+              onClick={props.onToggleMobileChrome}
+              aria-label="显示阅读工具栏"
+              title="显示阅读工具栏"
+            >
+              <Menu className="reader-icon" />
+            </button>
+          </>
         )}
-        {searchOpen && <SearchPanel hits={searchHits} />}
+        {searchOpen && <SearchPanel hits={searchHits} searchRef={props.searchRef} />}
         <ReaderToolbar
+          libraryControlsRef={props.onLibraryControlsMount}
           book={active}
           settings={active.source.format === "pdf" ? { ...settings, layout: "scroll" } : settings}
           onAddAnnotation={openAnnotationComposer}
@@ -583,7 +591,10 @@ function LibraryBookCard(props: {
   );
 }
 
-function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
+function SearchPanel(props: {
+  hits: ReadonlyArray<SearchHit>;
+  searchRef: RefObject<HTMLInputElement | null>;
+}) {
   const library = useReader((state) => state.library);
   const query = useReader((state) => state.query);
   const scope = useReader((state) => state.searchScope);
@@ -597,6 +608,7 @@ function SearchPanel(props: { hits: ReadonlyArray<SearchHit> }) {
   }, [searchActiveIndex]);
   return (
     <section className="reader-search-panel" aria-label="搜索结果">
+      <ReaderSearchInput searchRef={props.searchRef} />
       <div className="reader-search-panel-top">
         <div>
           <span className="ui-section-label">SEARCH</span>

@@ -228,8 +228,8 @@
     font-size: var(--text-lg);
   }
   .reader-search-panel {
-    top: calc(var(--h-toolbar) + var(--space-3));
-    max-height: calc(100dvh - var(--h-topbar) - var(--h-toolbar) - var(--h-control));
+    top: calc(var(--h-topbar) + env(safe-area-inset-top));
+    max-height: min(520px, calc(100% - var(--h-topbar) - var(--space-3)));
     z-index: 41;
   }
   .reader-toolbar,
@@ -534,6 +534,24 @@ p.reader-prose.reader-txt-measure {
   text-align: start;
   cursor: pointer;
 }
+.reader-quiet-workspace {
+  position: absolute;
+  z-index: 4;
+  top: env(safe-area-inset-top);
+  right: max(var(--space-3), env(safe-area-inset-right));
+  visibility: hidden;
+  opacity: 0;
+}
+.mobile-chrome-hidden .reader-quiet-workspace {
+  visibility: visible;
+  opacity: 1;
+}
+.reader-quiet-workspace ~ .reader-quiet-heading {
+  right: max(
+    calc(var(--h-control-lg) + 2 * var(--space-3)),
+    calc((100% - var(--read-context-width, 100%)) / 2)
+  );
+}
 .reader-quiet-heading span {
   display: block;
   overflow: hidden;
@@ -639,4 +657,71 @@ p.reader-prose.reader-txt-measure {
 .reader-reading-scroll:focus-visible {
   outline: 2px solid var(--read-accent);
   outline-offset: -2px;
+}
+
+/* One reading toolbar; library commands share its overflow menu. */
+.reader-header {
+  display: contents;
+}
+.reader-toolbar {
+  min-height: var(--h-topbar);
+  height: var(--h-topbar);
+}
+.reader-toolbar-title .ui-section-label {
+  display: none;
+}
+.reader-library-actions {
+  display: flex;
+  flex: none;
+}
+
+.reader-library-menu :is(.reader-mobile-exit, .reader-shortcut-button, .reader-install-button) {
+  display: flex;
+}
+
+.reader-main > .reader-quiet-workspace {
+  left: var(--space-3);
+  right: auto;
+}
+.reader-paged-session .reader-quiet-workspace ~ .reader-quiet-heading {
+  right: max(
+    calc(2 * var(--space-3) + var(--h-control-lg)),
+    calc((100% - var(--read-context-width, 100%)) / 2)
+  );
+}
+@media (max-width: 860px) {
+  .reader-toolbar-title > .reader-comic-toggle,
+  .reader-mobile-note-action {
+    display: none;
+  }
+}
+
+.reader-search-panel .reader-search {
+  display: flex;
+  position: static;
+  width: 100%;
+  min-width: 0;
+  margin-bottom: var(--space-3);
+}
+.reader-search-panel .reader-search input {
+  min-width: 0;
+  flex: 1;
+}
+.reader-search-panel .reader-search :is(kbd, .reader-mobile-search-close) {
+  display: none;
+}
+
+.reader-library-comic {
+  display: none;
+}
+@media (max-width: 860px) {
+  .reader-library-comic {
+    display: inline-flex;
+  }
+}
+
+@media (min-width: 861px) {
+  .reader-search-panel {
+    top: var(--h-topbar);
+  }
 }

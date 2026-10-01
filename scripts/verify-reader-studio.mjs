@@ -161,7 +161,8 @@ if ((await demoCard.count()) > 0) {
   });
 }
 const body = await page.locator("body").innerText();
-if (!body.includes("Reader Studio") || !body.includes("把时间还给阅读")) fail("阅读器主界面未渲染");
+if (!(await page.locator(".reader-toolbar").isVisible()) || !body.includes("把时间还给阅读"))
+  fail("阅读器主界面未渲染");
 if ((await page.locator(".reader-book-card").count()) < 1) fail("书库未加载");
 if ((await page.locator(".reader-section").count()) < 3) fail("演示出版物章节未加载");
 if (
@@ -395,6 +396,7 @@ await page
   .waitFor({ timeout: 5_000 });
 
 const search = page.getByLabel("在书库中搜索");
+await page.keyboard.press("Control+f");
 await search.fill("Locator");
 await page.locator(".reader-search-result").first().waitFor({ timeout: 10_000 });
 if (!(await page.locator(".reader-search-result").first().innerText()).includes("下一页"))
@@ -422,16 +424,19 @@ await scroll.evaluate((element) => {
   element.dispatchEvent(new Event("scroll"));
 });
 await page.waitForTimeout(500);
-const progress = await page.locator(".reader-progress-ring").innerText();
+const progress = await page.locator(".reader-progress-dock-meta output").innerText();
 if (progress === "0%") fail("阅读进度没有随滚动更新");
 const progressBeforeReload = progress;
 
+await page.keyboard.press("Control+f");
 await search.fill("Locator");
 await page.locator(".reader-search-result").first().waitFor({ timeout: 10_000 });
 
 await page.screenshot({ path: `${dir}/reader-studio.png`, fullPage: true });
 await page.waitForTimeout(900);
-if ((await page.locator(".reader-progress-ring").innerText()) !== progressBeforeReload) {
+if (
+  (await page.locator(".reader-progress-dock-meta output").innerText()) !== progressBeforeReload
+) {
   fail("打开搜索结果不应改写正文阅读进度");
 }
 // Keep this restore under CPU pressure even on fast developer machines: an
@@ -447,9 +452,11 @@ if (
 ) {
   fail("刷新后阅读主题未恢复");
 }
-if ((await page.locator(".reader-progress-ring").innerText()) !== progressBeforeReload) {
+if (
+  (await page.locator(".reader-progress-dock-meta output").innerText()) !== progressBeforeReload
+) {
   fail(
-    `刷新后阅读进度未恢复：刷新前 ${progressBeforeReload}，刷新后 ${await page.locator(".reader-progress-ring").innerText()}`,
+    `刷新后阅读进度未恢复：刷新前 ${progressBeforeReload}，刷新后 ${await page.locator(".reader-progress-dock-meta output").innerText()}`,
   );
   console.error(
     "Reader restore diagnostics:",
@@ -474,7 +481,9 @@ if ((await page.getByLabel("在书库中搜索").inputValue()) !== "Locator") {
 if ((await page.getByLabel("在书库中搜索").inputValue()) === "Locator") {
   await page.locator(".reader-search-result").first().waitFor({ timeout: 10_000 });
 }
-if ((await page.locator(".reader-progress-ring").innerText()) !== progressBeforeReload) {
+if (
+  (await page.locator(".reader-progress-dock-meta output").innerText()) !== progressBeforeReload
+) {
   fail("搜索结果恢复后改写了阅读进度");
 }
 await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpuSlowdown });
@@ -558,7 +567,7 @@ const epubLinkVisible = await page.locator("#linked-note").evaluate((target) => 
 if (!epubLinkVisible) {
   fail("EPUB 正文链接没有滚动到目标锚点");
 }
-await page.getByRole("button", { name: "第二章 · 继续" }).click();
+await page.locator("[data-reader-toc-section]", { hasText: "第二章 · 继续" }).click();
 if (!(await page.locator(".reader-toolbar-title").innerText()).includes("第二章")) {
   fail("EPUB 目录点击没有跳转到对应章节");
 }
@@ -579,7 +588,7 @@ if ((await page.locator(".reader-pdf-page").count()) !== 3) {
 if ((await page.locator(".reader-toc-item").count()) !== 2) {
   fail("PDF 原生书签没有恢复为目录");
 }
-await page.getByRole("button", { name: /Page three/ }).click();
+await page.locator("[data-reader-toc-section]", { hasText: "Page three" }).click();
 await page.waitForTimeout(700);
 const pdfNavigation = await page.locator(".reader-reading-scroll").evaluate((element) => {
   const target = element.querySelectorAll(".reader-pdf-page")[2];
@@ -599,7 +608,7 @@ await page.locator(".reader-reading-scroll").evaluate((element) => {
   element.dispatchEvent(new Event("scroll"));
 });
 await page.waitForTimeout(260);
-await page.getByRole("button", { name: /Page three/ }).click();
+await page.locator("[data-reader-toc-section]", { hasText: "Page three" }).click();
 await page.waitForTimeout(700);
 const repeatedPdfNavigation = await page.locator(".reader-reading-scroll").evaluate((element) => {
   const target = element.querySelectorAll(".reader-pdf-page")[2];

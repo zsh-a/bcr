@@ -88,6 +88,7 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
   const searchOpen = useReader((state) => state.searchOpen);
   const sidebarOpen = useReader((state) => state.sidebarOpen);
   const searchRef = useRef<HTMLInputElement>(null);
+  const [libraryControlsHost, setLibraryControlsHost] = useState<HTMLDivElement | null>(null);
   const importAbortRef = useRef<AbortController | null>(null);
   const importDismissRef = useRef<number | null>(null);
   const handoffRef = useRef<string | null>(null);
@@ -261,6 +262,7 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
       if (event.defaultPrevented || document.querySelector("dialog[open]") !== null) return;
       if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === "f") {
         event.preventDefault();
+        if (getReaderState().searchScope !== "library") reader.setSearchScope("library");
         reader.setSearchOpen(true);
         window.setTimeout(() => searchRef.current?.focus(), 0);
       }
@@ -558,8 +560,8 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
         跳到正文
       </a>
       <ReaderHeader
+        controlsHost={libraryControlsHost}
         book={active}
-        searchRef={searchRef}
         onExit={() => window.location.assign("/")}
         onImport={(files) => void importFiles(files)}
         notice={notice}
@@ -582,6 +584,8 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
         <ReaderRecoveryBanner recovery={recovery} />
       )}
       <ReaderWorkspace
+        onLibraryControlsMount={setLibraryControlsHost}
+        searchRef={searchRef}
         workspaceCollections={props.workspaceCollections ?? false}
         onInstall={() => void installReader()}
         showInstall={!pwaInstall.isInstalled}

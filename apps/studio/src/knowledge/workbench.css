@@ -840,3 +840,11 @@
 .knowledge-tag-chip:hover svg {
   opacity: 1;
 }
+
+/* Embedded navigation has a real slot alongside note tabs. */
+.knowledge-tabs-bar:has(> .ui-workspace-trigger) {
+  min-height: var(--h-topbar);
+  height: var(--h-topbar);
+  align-items: center;
+  gap: var(--space-1);
+}

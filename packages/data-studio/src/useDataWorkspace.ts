@@ -166,7 +166,7 @@ export function useDataWorkspace() {
       }
       setStatus("ready");
       setProgress(1);
-      setNotice(`${file.name} 已解析并写入本地 Artifact`);
+      setNotice(`${file.name} 已导入并保存到本地`);
     } catch (reason) {
       setStatus("error");
       setNotice(reason instanceof Error ? reason.message : String(reason));
@@ -176,7 +176,7 @@ export function useDataWorkspace() {
   const exportTable = (format: "csv" | "json"): void => {
     if (table === null) return;
     downloadDataTable(table, format);
-    setNotice(format === "json" ? "Canonical table JSON 已导出" : "CSV 预览已导出");
+    setNotice(format === "json" ? "表格 JSON 已导出" : "CSV 预览已导出");
   };
 
   const clear = async (): Promise<void> => {
@@ -188,7 +188,7 @@ export function useDataWorkspace() {
       setStatus("idle");
       setProgress(0);
       setQuery("");
-      setNotice("已清除当前 Data Studio 快照；原始 Artifact 仍保留在本地存储");
+      setNotice("已清除当前 Data Studio 快照；原始文件仍保留在本地存储");
       return;
     }
     const catalog = await removeDataAsset(services, currentId);
@@ -216,7 +216,7 @@ export function useDataWorkspace() {
     setSnapshot(null);
     setStatus("idle");
     setProgress(0);
-    setNotice("已从资产目录移除当前数据；原始 Artifact 仍保留在本地存储");
+    setNotice("已从资产目录移除当前数据；原始文件仍保留在本地存储");
   };
 
   const cleanupStorage = async (): Promise<void> => {

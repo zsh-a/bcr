@@ -1,3 +1,4 @@
+import { openActionMenu } from "./lib/app-controls.mjs";
 /* Subtitle Studio 走查：导入 → 生成（DAG 流水线）→ 字幕/波形/导出 → 刷新恢复。 */
 import { ensureShots, fail, launchVerifyBrowser } from "./lib/browser.mjs";
 
@@ -72,8 +73,11 @@ if (!text.includes("demo-speech.wav")) fail("导入后源文件未显示");
 await page.screenshot({ path: `${dir}/m1-imported.png` });
 
 // 生成字幕（演示引擎，避免外网模型依赖）
-await page.locator("select").nth(1).selectOption("demo");
+await openActionMenu(page, "字幕设置");
+await page.getByLabel("识别方式", { exact: true }).selectOption("demo");
+await page.keyboard.press("Escape");
 await page.getByRole("button", { name: "生成字幕" }).click();
+await page.locator(".media-pipeline-details summary").click();
 await page.waitForTimeout(4000);
 await page.screenshot({ path: `${dir}/m2-pipeline.png` });
 
@@ -87,6 +91,7 @@ console.log("cue inputs rendered:", cueCount);
 if (cueCount < 2) fail("字幕条目过少");
 
 // 导出 SRT：通过下载事件捕获内容
+await openActionMenu(page, "导出字幕");
 const [download] = await Promise.all([
   page.waitForEvent("download", { timeout: 5000 }),
   page.getByRole("button", { name: "SRT" }).click(),

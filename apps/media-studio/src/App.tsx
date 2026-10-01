@@ -1,3 +1,4 @@
+import { ActionMenu, WorkspaceTrigger } from "@bcr/react";
 import {
   Spinner,
   useLocationSnapshot,
@@ -8,6 +9,7 @@ import {
   useRuntimeSession,
 } from "@bcr/react";
 import { useEffect, useRef, useState } from "react";
+import { Download, Settings2 } from "lucide-react";
 import { mediaCitationTarget } from "./mediaSearchDocuments";
 import { useMediaSearch } from "./search";
 // 样式随模块加载：Shell 懒加载本组件时 CSS 一并注入（standalone main.tsx 的重复 import 幂等）。
@@ -164,80 +166,95 @@ function Studio() {
       )}
       {/* 顶栏 */}
       <header className="media-header">
-        <span className="media-brand font-mono text-lg font-semibold">
-          BCR / Media Studio <span className="text-[var(--color-faint)]">· subtitle</span>
-        </span>
-        <span className="media-settings ml-2 flex items-center gap-2 text-xs text-[var(--color-faint)]">
-          <select
-            value={settings.model}
-            onChange={(event) => studio.setSettings({ model: event.target.value })}
-            title="Whisper 模型（参与缓存键）"
-          >
-            <option value="Xenova/whisper-tiny">whisper-tiny</option>
-            <option value="Xenova/whisper-base">whisper-base</option>
-          </select>
-          <select
-            value={settings.engine}
-            onChange={(event) =>
-              studio.setSettings({ engine: event.target.value as typeof settings.engine })
-            }
-            title="识别引擎"
-          >
-            <option value="auto">引擎：自动回退</option>
-            <option value="whisper">引擎：仅 Whisper</option>
-            <option value="demo">引擎：演示</option>
-          </select>
-          <select
-            value={settings.language}
-            onChange={(event) => studio.setSettings({ language: event.target.value })}
-            title="音频语言（Whisper 不做自动检测，未指定按英语转写）"
-          >
-            <option value="auto">语言：未指定(en)</option>
-            <option value="zh">语言：中文</option>
-            <option value="en">语言：English</option>
-            <option value="ja">语言：日本語</option>
-            <option value="ko">语言：한국어</option>
-            <option value="de">语言：Deutsch</option>
-            <option value="fr">语言：Français</option>
-            <option value="es">语言：Español</option>
-            <option value="ru">语言：Русский</option>
-          </select>
-          <label className="flex items-center gap-1">
-            <input
-              type="checkbox"
-              checked={settings.translate}
-              onChange={(event) => studio.setSettings({ translate: event.target.checked })}
-            />
-            双语翻译
-          </label>
-          {settings.translate && (
-            <select
-              value={settings.direction}
-              onChange={(event) =>
-                studio.setSettings({
-                  direction: event.target.value as typeof settings.direction,
-                })
-              }
-              title="opus-mt 翻译方向"
-            >
-              <option value="en-zh">英→中</option>
-              <option value="zh-en">中→英</option>
-            </select>
-          )}
-        </span>
+        <WorkspaceTrigger />
+        <span className="media-brand">Media Studio</span>
         <span className="media-actions ml-auto flex items-center gap-2">
-          <UndoRedo />
+          <ActionMenu label="字幕设置" icon={<Settings2 size={18} />}>
+            <label>
+              识别模型
+              <select
+                value={settings.model}
+                onChange={(event) => studio.setSettings({ model: event.target.value })}
+                title="识别模型"
+                aria-label="识别模型"
+              >
+                <option value="Xenova/whisper-tiny">whisper-tiny</option>
+                <option value="Xenova/whisper-base">whisper-base</option>
+              </select>
+            </label>
+            <label>
+              识别方式
+              <select
+                value={settings.engine}
+                onChange={(event) =>
+                  studio.setSettings({ engine: event.target.value as typeof settings.engine })
+                }
+                title="识别引擎"
+                aria-label="识别方式"
+              >
+                <option value="auto">引擎：自动回退</option>
+                <option value="whisper">引擎：仅 Whisper</option>
+                <option value="demo">引擎：演示</option>
+              </select>
+            </label>
+            <label>
+              音频语言
+              <select
+                value={settings.language}
+                onChange={(event) => studio.setSettings({ language: event.target.value })}
+                title="音频语言（Whisper 不做自动检测，未指定按英语转写）"
+                aria-label="音频语言"
+              >
+                <option value="auto">语言：未指定(en)</option>
+                <option value="zh">语言：中文</option>
+                <option value="en">语言：English</option>
+                <option value="ja">语言：日本語</option>
+                <option value="ko">语言：한국어</option>
+                <option value="de">语言：Deutsch</option>
+                <option value="fr">语言：Français</option>
+                <option value="es">语言：Español</option>
+                <option value="ru">语言：Русский</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-1">
+              <input
+                type="checkbox"
+                checked={settings.translate}
+                onChange={(event) => studio.setSettings({ translate: event.target.checked })}
+              />
+              双语翻译
+            </label>
+            {settings.translate && (
+              <select
+                value={settings.direction}
+                onChange={(event) =>
+                  studio.setSettings({
+                    direction: event.target.value as typeof settings.direction,
+                  })
+                }
+                title="opus-mt 翻译方向"
+              >
+                <option value="en-zh">英→中</option>
+                <option value="zh-en">中→英</option>
+              </select>
+            )}
+          </ActionMenu>
+          <span className="media-history-actions">
+            <UndoRedo />
+          </span>
           {engineUsed !== null && <span className="ui-badge ml-2 flex-none">{engineUsed}</span>}
-          {(["srt", "vtt", "ass"] as const).map((format) => (
-            <button
-              key={format}
-              className="btn font-mono"
-              disabled={cues.length === 0}
-              onClick={() => download(format)}
-            >
-              {format.toUpperCase()}
-            </button>
-          ))}
+          <ActionMenu label="导出字幕" icon={<Download size={18} />}>
+            {(["srt", "vtt", "ass"] as const).map((format) => (
+              <button
+                key={format}
+                className="btn font-mono"
+                disabled={cues.length === 0}
+                onClick={() => download(format)}
+              >
+                {format.toUpperCase()}
+              </button>
+            ))}
+          </ActionMenu>
           {running ? (
             <button
               className="btn text-[var(--color-danger)]"
@@ -303,7 +320,8 @@ function Studio() {
             )}
           </section>
 
-          <section>
+          <details className="media-pipeline-details">
+            <summary>处理进度</summary>
             <div className="flex items-center">
               <div className="ui-section-label">PIPELINE · DAG</div>
               <button
@@ -315,10 +333,10 @@ function Studio() {
               </button>
             </div>
             <PipelinePanel />
-          </section>
+          </details>
 
-          <section>
-            <div className="ui-section-label">CONSOLE</div>
+          <details className="media-console-details">
+            <summary>运行日志</summary>
             <div className="h-48 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 font-mono text-xs leading-relaxed">
               {logs.map((entry, index) => (
                 <div
@@ -337,7 +355,7 @@ function Studio() {
                 </div>
               ))}
             </div>
-          </section>
+          </details>
         </aside>
 
         {/* 右侧：字幕 / 流水线 DAG 页签 */}

@@ -1,3 +1,4 @@
+import { openStudioPanel } from "./lib/app-controls.mjs";
 import { closeTopBar, openTopBar, openWorkspaceOptions } from "./lib/topbar.mjs";
 /* 响应式验证：三档语义断点 + 容器降级 + 矮窗/安全区 + reduced-motion + 浮标避让。
  *
@@ -482,8 +483,9 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
   // dock-panel < 420：面板按钮 icon-only（同一视口内宽/窄容器对照）
   await page.goto(`${origin}/studio`, { waitUntil: "networkidle" });
   await page.locator(".studio-dock-shell").waitFor({ timeout: 20_000 });
-  await page.getByRole("tab", { name: "存储" }).click();
-  await page.getByRole("tab", { name: "控制台" }).click();
+  await page.keyboard.press("Escape");
+  await openStudioPanel(page, "存储");
+  await openStudioPanel(page, "控制台");
   await settle(400);
   const dockProbe = () =>
     page.evaluate(() =>

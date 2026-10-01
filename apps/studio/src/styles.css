@@ -22,64 +22,8 @@
   animation: studio-navigation-in var(--duration-base) var(--ease-standard);
 }
 
-.studio-navigation-surface[hidden],
-.studio-navigation-reveal[hidden] {
+.studio-navigation-surface[hidden] {
   display: none;
-}
-
-.studio-navigation-reveal {
-  position: fixed;
-  top: env(safe-area-inset-top);
-  left: 50%;
-  transform: translateX(-50%);
-  display: grid;
-  place-items: start center;
-  width: calc(2 * var(--space-7));
-  height: var(--space-6);
-  padding-top: var(--space-1);
-  border: 0;
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-  background: transparent;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.studio-navigation-reveal > span {
-  width: var(--space-7);
-  height: var(--space-1);
-  border-radius: var(--radius-full);
-  background: var(--color-border-strong);
-  transition:
-    background var(--duration-fast) var(--ease-standard),
-    width var(--duration-fast) var(--ease-standard);
-}
-
-.studio-navigation-reveal:hover > span,
-.studio-navigation-reveal:focus-visible > span {
-  width: var(--space-8);
-  background: var(--color-muted);
-}
-
-.studio-navigation-reveal:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 0;
-  background: var(--color-surface);
-}
-
-/* In quiet reading, keep the workspace entry beside the chapter control. */
-.studio-shell-frame[data-app="reader"]:has(.reader-paged-session.mobile-chrome-hidden)
-  .studio-navigation-reveal {
-  left: auto;
-  right: env(safe-area-inset-right);
-  transform: none;
-}
-
-.studio-shell-frame[data-app="reader"]:has(.reader-paged-session.mobile-chrome-hidden)
-  .reader-quiet-heading {
-  right: max(
-    calc(2 * var(--space-7) + var(--space-3) + env(safe-area-inset-right)),
-    calc((100% - var(--read-context-width, 100%)) / 2)
-  );
 }
 
 @keyframes studio-navigation-in {
@@ -89,18 +33,9 @@
   }
 }
 
-@media (pointer: coarse) {
-  .studio-navigation-reveal {
-    min-height: var(--h-control-lg);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .studio-navigation[data-floating="true"] .studio-navigation-surface {
     animation: none;
-  }
-  .studio-navigation-reveal > span {
-    transition: none;
   }
 }
 
@@ -321,7 +256,6 @@
 }
 
 /* 移动端面板抽屉：桌面隐藏，窄屏媒体查询里以 data-open 进出场。 */
-.studio-mobile-panel-trigger,
 .studio-mobile-panel-backdrop,
 .studio-mobile-panel-surface {
   display: none;
@@ -346,7 +280,7 @@
   --dv-background-color: var(--color-bg);
   --dv-group-view-background-color: var(--color-surface);
   --dv-tabs-and-actions-container-background-color: var(--color-bg);
-  --dv-tabs-and-actions-container-height: var(--h-toolbar);
+  --dv-tabs-and-actions-container-height: var(--h-topbar);
   --dv-tabs-and-actions-container-font-size: var(--text-sm);
   --dv-activegroup-visiblepanel-tab-background-color: var(--color-surface);
   --dv-activegroup-hiddenpanel-tab-background-color: transparent;
@@ -474,29 +408,6 @@
     min-height: var(--h-control-lg);
   }
 
-  .studio-mobile-panel-trigger {
-    position: absolute;
-    top: var(--space-3);
-    left: max(var(--space-3), env(safe-area-inset-left));
-    z-index: 24;
-    display: inline-flex;
-    min-height: var(--h-control-lg);
-    align-items: center;
-    gap: var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-raised);
-    padding: 0 var(--space-3);
-    color: var(--color-muted);
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-  }
-
-  .studio-mobile-panel-trigger:hover {
-    border-color: var(--color-border-strong);
-    color: var(--color-text);
-  }
-
   /* 抽屉进出场：@starting-style + allow-discrete，位移与时长走令牌。 */
   .studio-mobile-panel-backdrop {
     position: absolute;
@@ -622,7 +533,7 @@
   .studio-dock
     .dv-split-view-container.dv-horizontal
     > .dv-view-container
-    > .dv-view:has(> .dv-groupview[aria-label="Inspector"]) {
+    > .dv-view:has(> .dv-groupview[aria-label="详情"]) {
     display: none;
   }
 
@@ -655,5 +566,23 @@
 
   html {
     scroll-behavior: auto;
+  }
+}
+
+.studio-workspace-controls {
+  height: var(--h-topbar);
+  display: flex;
+  align-items: center;
+  padding-inline: var(--space-1);
+}
+.studio-panel-toggle {
+  display: none;
+}
+@media (width <= theme(--bp-md)) {
+  .studio-panel-toggle {
+    display: inline-flex;
+  }
+  .studio-panel-menu {
+    display: none;
   }
 }
