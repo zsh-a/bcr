@@ -34,6 +34,14 @@ const page = await context.newPage(),
   errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 const runButton = () => page.getByRole("button", { name: "运行回测", exact: true });
+const settings = async () => {
+  await page.getByRole("button", { name: "运行设置", exact: true }).click();
+  await page.getByRole("tab", { name: "参数", exact: true }).click();
+};
+const closeSettings = async () => {
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog", { name: "运行设置", exact: true }).waitFor({ state: "hidden" });
+};
 const runId = async () => {
   const result = page.locator(".research-run-result");
   return (await result.count()) ? result.getAttribute("data-run-id") : null;
@@ -43,7 +51,7 @@ const run = async () => {
   await runButton().click();
   await page.waitForFunction(
     (id) =>
-      document.querySelector(".research-taskbar")?.textContent?.includes("回测完成") &&
+      document.querySelector(".research-status")?.textContent?.includes("回测完成") &&
       document.querySelector(".research-run-result")?.getAttribute("data-run-id") !== id &&
       document.querySelector(".jsg-workspace")?.getAttribute("data-busy") === "false",
     previous,
@@ -72,34 +80,40 @@ try {
   assert(first.result.metrics.filledOrders > 20);
   assert.equal(first.result.equity.length, 156);
   assert(first.result.orders.every((o) => o.quantity % 100 === 0));
+  await settings();
   await page.getByLabel("目标股票数", { exact: true }).fill("6");
   assert.equal(await runId(), firstId);
   assert.equal(await page.locator(".jsg-workspace").getAttribute("data-draft-changed"), "true");
+  await closeSettings();
   assert.equal((await downloadResult("jsg-preserved-draft.json")).config.stockCount, 10);
+  await settings();
   await page.getByLabel("目标股票数", { exact: true }).fill("21");
   assert(await runButton().isDisabled());
   assert.equal(await runId(), firstId);
   await page.getByLabel("目标股票数", { exact: true }).fill("6");
+  await closeSettings();
   await run();
   const changed = await downloadResult("jsg-six.json");
   assert.equal(changed.config.stockCount, 6);
   assert.notEqual(changed.result.metrics.finalEquity, first.result.metrics.finalEquity);
+  await page.getByRole("button", { name: "添加对照", exact: true }).click();
   await page.getByLabel("选择对照运行", { exact: true }).selectOption(firstId);
   await page.locator(".research-comparison").waitFor();
   await page.locator(".research-chart-legend .comparison").waitFor();
   await page.getByRole("tab", { name: "概览", exact: true }).focus();
   await page.keyboard.press("ArrowRight");
   assert.equal(
-    await page.getByRole("tab", { name: /^成交/ }).getAttribute("aria-selected"),
+    await page.getByRole("tab", { name: "分析", exact: true }).getAttribute("aria-selected"),
     "true",
   );
+  await page.getByRole("tab", { name: /^成交/ }).click();
   await page
     .getByRole("status")
     .filter({ hasText: /共 .* 笔/ })
     .waitFor();
   const orderCount = first.result.orders.length;
   assert(orderCount > 0);
-  assert((await page.locator(".research-table tbody tr").count()) <= 50);
+  assert((await page.locator(".research-orders .research-table tbody tr").count()) <= 50);
   await page.getByLabel("筛选证券", { exact: true }).fill(changed.result.orders[0].code);
   await page
     .getByRole("status")
@@ -107,7 +121,7 @@ try {
     .waitFor();
   await page.waitForFunction(
     (code) =>
-      [...document.querySelectorAll(".research-table tbody tr")].every((row) =>
+      [...document.querySelectorAll(".research-orders .research-table tbody tr")].every((row) =>
         row.textContent.includes(code),
       ),
     changed.result.orders[0].code,
@@ -131,31 +145,42 @@ try {
     (id) => document.querySelector(".research-run-result")?.getAttribute("data-run-id") === id,
     firstId,
   );
+  await settings();
   assert.equal(await page.getByLabel("目标股票数", { exact: true }).inputValue(), "6");
+  await closeSettings();
   assert.equal((await downloadResult("jsg-history-selected.json")).config.stockCount, 10);
   await run();
-  assert((await page.locator(".research-taskbar").innerText()).includes("复用已有结果"));
+  assert((await page.locator(".research-status").innerText()).includes("复用已有结果"));
   assert.deepEqual((await downloadResult("jsg-cached.json")).result, changed.result);
+  await settings();
+  await page.locator(".research-parameters .research-parameter-details > summary").first().click();
   await page.getByLabel("滑点 / bps", { exact: true }).fill("11");
+  await closeSettings();
   const beforeCancel = await runId();
   await runButton().click();
   await page.getByRole("button", { name: "取消研究任务", exact: true }).click();
   await page.getByRole("status").filter({ hasText: "已取消，已有结果保留" }).waitFor();
   assert.equal(await runId(), beforeCancel);
   assert.equal((await downloadResult("jsg-cancel-preserved.json")).config.slippageBps, 10);
+  await settings();
+  const costs = page.locator(".research-parameters .research-parameter-details").first();
+  if (!(await costs.evaluate((el) => el.open))) await costs.locator("summary").click();
   await page.getByLabel("滑点 / bps", { exact: true }).fill("10");
+  await closeSettings();
   await run();
   await page.waitForTimeout(500); // Debounced metadata acknowledgement before reload.
   await page.reload({ waitUntil: "networkidle" });
   await page.getByRole("status").filter({ hasText: "已恢复本地研究" }).waitFor();
+  await settings();
   assert.equal(await page.getByLabel("目标股票数", { exact: true }).inputValue(), "6");
+  await closeSettings();
   assert.deepEqual((await downloadResult("jsg-restored.json")).result, changed.result);
+  await page.locator(".research-chart-inspector > summary").click();
   await page.getByLabel("查看净值日期", { exact: true }).fill(changed.result.equity[10].date);
   await page.waitForFunction(() =>
     document.querySelector(".research-chart-bottom output")?.textContent?.includes("净值"),
   );
   await page.screenshot({ path: `${dir}/jsg-workbench.png`, fullPage: true });
-  await page.getByRole("button", { name: "策略参数", exact: true }).click();
   assert.equal(await page.locator(".research-parameter-rail").count(), 0);
   await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
   await page.screenshot({ path: `${dir}/jsg-light.png`, fullPage: true });
@@ -167,14 +192,15 @@ try {
       await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
       false,
     );
-    await page.getByRole("button", { name: "策略参数", exact: true }).click();
-    const sheet = page.getByRole("dialog", { name: "编辑策略参数", exact: true });
+    await page.getByRole("button", { name: "运行设置", exact: true }).click();
+    const sheet = page.getByRole("dialog", { name: "运行设置", exact: true });
     await sheet.waitFor();
+    await sheet.getByRole("tab", { name: "参数", exact: true }).click();
     await sheet.getByLabel("目标股票数", { exact: true }).fill("7");
-    await page.keyboard.press("Escape");
+    await closeSettings();
     assert(
       await page
-        .getByRole("button", { name: "策略参数", exact: true })
+        .getByRole("button", { name: "运行设置", exact: true })
         .evaluate((el) => el === document.activeElement),
     );
     assert.deepEqual(

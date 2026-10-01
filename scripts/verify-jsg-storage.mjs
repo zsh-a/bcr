@@ -20,7 +20,7 @@ const run = async () => {
   await page.getByRole("button", { name: "运行回测", exact: true }).click();
   await page.waitForFunction(
     (id) =>
-      document.querySelector(".research-taskbar")?.textContent?.includes("回测完成") &&
+      document.querySelector(".research-status")?.textContent?.includes("回测完成") &&
       document.querySelector(".research-run-result") !== null &&
       document.querySelector(".jsg-workspace")?.getAttribute("data-busy") === "false" &&
       document.querySelector(".research-run-result")?.getAttribute("data-run-id") !== id,
@@ -44,7 +44,11 @@ try {
   await page.goto(url.toString(), { waitUntil: "networkidle" });
   await page.waitForFunction(() => !document.querySelector(".research-run-button")?.disabled);
   await run();
+  await page.getByRole("button", { name: "运行设置", exact: true }).click();
+  await page.getByRole("tab", { name: "参数", exact: true }).click();
   await page.getByLabel("目标股票数", { exact: true }).fill("6");
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog", { name: "运行设置", exact: true }).waitFor({ state: "hidden" });
   await run();
   const captured = await download("jsg-storage-before");
   await page.getByRole("button", { name: "运行历史", exact: true }).click();

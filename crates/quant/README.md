@@ -250,10 +250,10 @@ preview, while full result artifacts retain every event.
 
 ## Connect from the browser
 
-Open Quant Lab's JSG tab and click the data source in the **下一次运行** bar. Select
-**ClickHouse**, enter an HTTP(S) endpoint, database, username and password, then click
-**测试连接** and **连接并使用**. Set dates separately with **设置回测区间** and click
-**运行回测**. The browser fetches data and starts the same Rust/WASM portfolio engine.
+Choose **JSG · 行业宽度轮动** in Quant Lab's strategy selector. Open **运行设置 → 数据与区间**,
+select **ClickHouse**, enter an HTTP(S) endpoint, database, username and password, then click
+**测试连接**. Set the dates in the same panel and click **使用设置运行**, or close it and click
+**运行回测** in the toolbar. The browser fetches data and starts the same Rust/WASM portfolio engine.
 No CLI export or application backend is required.
 
 The default source is `http://localhost:8123/`, database `stock_data`, user `default`, empty password.
@@ -281,8 +281,9 @@ partial boundary windows are loaded separately. Partition identities include the
 user, SQL, instrument/industry dictionaries, exact dates and a local source-generation marker.
 Check **重新获取数据** to start a new generation and query updated source data; previous generations
 remain available to retained runs. Old range caches are invalidated for future acquisition after a
-successful refresh. An acquisition timestamp, source coverage and reused-partition count are shown
-in the workbench; each run and its JSON export retain their own acquisition metadata.
+successful refresh. Acquisition metadata is retained with each run and its JSON export; the compact
+run summary exposes the acquisition timestamp and source coverage in its tooltip. Each snapshot
+captures the original requested dates separately from the aligned trading dates, including cache reuse.
 
 Generations govern local cache reuse. They do not freeze the database across multiple queries.
 The source should keep historical inputs stable during acquisition; refresh when source history is revised.
@@ -315,22 +316,33 @@ References: [ClickHouse HTTP interface](https://clickhouse.com/docs/interfaces/h
 ## JSG research interface
 
 The working draft, next dataset, active task and displayed result are separate states. Editing
-parameters or changing source/dates leaves the selected run visible with **待运行的修改**.
+parameters or changing source/dates leaves the selected run visible. The **运行设置** button shows
+the number of changed settings; its **修改** tab lists each captured and proposed value.
 Each completed run captures its own configuration and dataset references; cancellation, failed
 loads and failed backtests retain the last result. **导出结果** always exports the selected run's
 captured configuration and complete result, even while the next run's parameters differ.
 Invalid in-progress inputs do not overwrite the last valid saved draft or prevent completed runs
 from being recorded. The v1 saved research project migrates to a v2 session on restore.
 
-Desktop parameters can be collapsed; narrow workspaces show results first and use a parameter
-sheet. Connection credentials and date/range controls live in separate dialogs. Common settings,
-costs, optional risk limits and execution/industry settings are grouped with field-level validation.
-Arrow-key navigation applies to both strategy tabs and result tabs; Ctrl/Cmd+Enter starts the next
-run when no dialog is open. Native dialogs handle Escape, focus containment and focus restoration.
+A single compact toolbar contains the strategy selector, history, settings and run action. The selected
+run's summary and four core metrics precede the result tabs: **概览**, **分析**, **成交**, **持仓** and
+**调仓**. The net-value/drawdown chart belongs to the overview; other tabs show their own content
+without forcing a scroll past the chart. Parameter experiments expand into a focused experiment view;
+opening a combination's details returns to the selected result with the experiment collapsed.
+
+**运行设置** is a right-hand drawer on desktop and a full-width panel on small screens. Its **参数**,
+**数据与区间** and **修改** tabs share a fixed run action; costs, risk limits and advanced source options
+are folded. **恢复本次运行设置** restores the selected run's frozen parameters and source request.
+Passwords never participate in change detection. Original requested dates are captured separately
+from aligned trading dates, so holidays do not falsely mark a run as edited. The idle status bar is
+hidden; active tasks show progress under the toolbar. Arrow keys navigate result/settings tabs;
+Ctrl/Cmd+Enter starts the next run from the workspace or settings drawer. Native dialogs handle
+Escape, focus containment and focus restoration.
 
 Net value and drawdown use Lightweight Charts with resize handling, theme updates, pan/zoom
 and 3-month/1-year/full-range controls. Net values normalize each run by its own starting capital.
-A date control provides an accessible numeric reading of an exact trading day. Preview curves
+**查看交易日** expands a date control with an accessible numeric reading of an exact trading day.
+Chart range selection is retained when switching result tabs. Preview curves
 are refined from complete OPFS result chunks for the visible range, keeping at most 4,096 refined
 points per series and preserving equity and drawdown extrema. Comparison is available for runs
 with the same start/end dates; underlying datasets can differ, so compare source assumptions as
@@ -363,6 +375,7 @@ abandoned JSG transfer files, dangling partition indexes and export files older 
 
 ```sh
 bun run test:browser:jsg
+bun run test:browser:jsg:layout
 # Local source integration, when a browser and localhost listener are permitted:
 BASE_URL=http://localhost:5201/ bun run test:browser:jsg:clickhouse
 ```

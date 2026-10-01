@@ -93,7 +93,7 @@ try {
       ...manifest.partitions.map((p) => path.join(root, p.file)),
     ]);
   await page.waitForFunction(
-    () => document.querySelector(".research-taskbar")?.textContent?.startsWith("研究数据就绪"),
+    () => document.querySelector(".research-status")?.textContent?.startsWith("研究数据就绪"),
     undefined,
     { timeout: 180000 },
   );
@@ -102,7 +102,7 @@ try {
   const start = performance.now();
   await page.getByRole("button", { name: "运行回测", exact: true }).click();
   await page.waitForFunction(
-    () => document.querySelector(".research-taskbar")?.textContent?.includes("回测完成"),
+    () => document.querySelector(".research-status")?.textContent?.includes("回测完成"),
     undefined,
     { timeout: 180000 },
   );
@@ -167,13 +167,17 @@ try {
     (id) =>
       document.querySelector(".research-run-result")?.getAttribute("data-run-id") !== id &&
       document.querySelector(".jsg-workspace")?.getAttribute("data-busy") === "false" &&
-      document.querySelector(".research-taskbar")?.textContent?.includes("复用已有结果"),
+      document.querySelector(".research-status")?.textContent?.includes("复用已有结果"),
     previous,
   );
   const cacheMs = performance.now() - cachedStart;
   const beforeCancel = await page.locator(".research-run-result").getAttribute("data-run-id");
   await phase("cancel");
+  await page.getByRole("button", { name: "运行设置", exact: true }).click();
+  await page.getByRole("tab", { name: "参数", exact: true }).click();
   await page.getByLabel("目标股票数", { exact: true }).fill("11");
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog", { name: "运行设置", exact: true }).waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "运行回测", exact: true }).click();
   await page.getByRole("button", { name: "取消研究任务", exact: true }).waitFor();
   const cancelStart = performance.now();

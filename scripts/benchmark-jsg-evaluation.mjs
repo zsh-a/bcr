@@ -36,7 +36,7 @@ try {
       ...manifest.partitions.map((p) => path.join(root, p.file)),
     ]);
   await page.waitForFunction(
-    () => document.querySelector(".research-taskbar")?.textContent?.startsWith("研究数据就绪"),
+    () => document.querySelector(".research-status")?.textContent?.startsWith("研究数据就绪"),
     undefined,
     { timeout: 180000 },
   );

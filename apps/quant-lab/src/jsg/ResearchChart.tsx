@@ -46,12 +46,17 @@ export default function ResearchChart({
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState(selected.result.equity.at(-1));
   const [inspectDate, setInspectDate] = useState("");
+  const [range, setRange] = useState<number | null>(null);
   const [hover, setHover] = useState<{
     date: string;
     net?: number;
     drawdown?: number;
     baseline?: number;
   } | null>(null);
+  const result = selected.result,
+    capital = selected.run.config.initialCapital,
+    other = comparison?.result,
+    otherCapital = comparison?.run.config.initialCapital;
   const first = dateText(selected.run.startDate),
     last = dateText(selected.run.endDate);
   useEffect(() => {
@@ -88,7 +93,7 @@ export default function ResearchChart({
       lastValueVisible: false,
       priceLineVisible: false,
     });
-    const baseline = comparison
+    const baseline = other
       ? chart.addSeries(LineSeries, {
           title: "对照",
           lineWidth: 1,
@@ -157,17 +162,15 @@ export default function ResearchChart({
       attributeFilter: ["data-theme"],
     });
     const setPoints = (points: JsgResult["equity"]) => {
-      net.setData(
-        points.map((p) => ({ time: p.date, value: p.equity / selected.run.config.initialCapital })),
-      );
+      net.setData(points.map((p) => ({ time: p.date, value: p.equity / capital })));
       drawdown.setData(points.map((p) => ({ time: p.date, value: p.drawdown * 100 })));
     };
-    setPoints(selected.result.equity);
-    if (baseline && comparison)
+    setPoints(result.equity);
+    if (baseline && other)
       baseline.setData(
-        comparison.result.equity.map((p) => ({
+        other!.equity.map((p) => ({
           time: p.date,
-          value: p.equity / comparison.run.config.initialCapital,
+          value: p.equity / otherCapital!,
         })),
       );
     chart.timeScale().fitContent();
@@ -183,21 +186,19 @@ export default function ResearchChart({
         setLoading(true);
         setError(null);
         void Promise.all([
-          queryCurve(services, selected.result, from, to, request.signal),
-          comparison
-            ? queryCurve(services, comparison.result, from, to, request.signal)
-            : Promise.resolve([]),
+          queryCurve(services, result, from, to, request.signal),
+          other ? queryCurve(services, other!, from, to, request.signal) : Promise.resolve([]),
         ])
           .then(([points, comparisonPoints]) => {
             if (disposed || request.signal.aborted) return;
             const range = chart.timeScale().getVisibleRange();
             querying = true;
-            setPoints(mergePoints(selected.result.equity, points, from, to));
-            if (baseline && comparison)
+            setPoints(mergePoints(result.equity, points, from, to));
+            if (baseline && other)
               baseline.setData(
-                mergePoints(comparison.result.equity, comparisonPoints, from, to).map((p) => ({
+                mergePoints(other!.equity, comparisonPoints, from, to).map((p) => ({
                   time: p.date,
-                  value: p.equity / comparison.run.config.initialCapital,
+                  value: p.equity / otherCapital!,
                 })),
               );
             if (range) chart.timeScale().setVisibleRange(range);
@@ -249,7 +250,7 @@ export default function ResearchChart({
       chartRef.current = null;
       chart.remove();
     };
-  }, [services, selected, comparison, first, last]);
+  }, [services, result, capital, other, otherCapital, first, last]);
   useEffect(() => {
     if (!inspectDate) return;
     const abort = new AbortController();
@@ -264,6 +265,7 @@ export default function ResearchChart({
     return () => abort.abort();
   }, [services, selected.result, inspectDate]);
   const zoom = (months: number | null) => {
+    setRange(months);
     if (months === null) {
       chartRef.current?.timeScale().fitContent();
       return;
@@ -277,17 +279,21 @@ export default function ResearchChart({
     <section className="research-chart" aria-label="净值与回撤">
       <div className="research-chart-heading">
         <div>
-          <h2>组合净值</h2>
-          <span>初始净值 1.000 · 下方为回撤</span>
+          <h2 title="以初始本金归一化，初始净值为 1">净值与回撤</h2>
         </div>
         <div className="research-chart-ranges" role="group" aria-label="图表查看范围">
-          <Button variant="ghost" size="sm" onClick={() => zoom(3)}>
+          <Button variant="ghost" size="sm" aria-pressed={range === 3} onClick={() => zoom(3)}>
             3 月
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => zoom(12)}>
+          <Button variant="ghost" size="sm" aria-pressed={range === 12} onClick={() => zoom(12)}>
             1 年
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => zoom(null)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-pressed={range === null}
+            onClick={() => zoom(null)}
+          >
             全部
           </Button>
         </div>
@@ -330,24 +336,27 @@ export default function ResearchChart({
           图表读取失败：{error}
         </p>
       )}
-      <div className="research-chart-bottom">
-        <label>
-          查看交易日{" "}
-          <Input
-            type="date"
-            aria-label="查看净值日期"
-            value={inspectDate || cursor?.date || ""}
-            min={first}
-            max={last}
-            onChange={(event) => setInspectDate(event.currentTarget.value)}
-          />
-        </label>
-        <output aria-live="polite">
-          {cursor
-            ? `净值 ${(cursor.equity / selected.run.config.initialCapital).toFixed(3)} · 回撤 ${percent(cursor.drawdown)} · 现金 ¥${money(cursor.cash)}`
-            : "该日没有交易记录"}
-        </output>
-      </div>
+      <details className="research-chart-inspector">
+        <summary>查看交易日</summary>
+        <div className="research-chart-bottom">
+          <label>
+            交易日{" "}
+            <Input
+              type="date"
+              aria-label="查看净值日期"
+              value={inspectDate || cursor?.date || ""}
+              min={first}
+              max={last}
+              onChange={(event) => setInspectDate(event.currentTarget.value)}
+            />
+          </label>
+          <output aria-live="polite">
+            {cursor
+              ? `净值 ${(cursor.equity / selected.run.config.initialCapital).toFixed(3)} · 回撤 ${percent(cursor.drawdown)} · 现金 ¥${money(cursor.cash)}`
+              : "该日没有交易记录"}
+          </output>
+        </div>
+      </details>
       <div className="research-chart-credit">
         <span>拖动平移 · 滚轮或双指缩放</span>
         <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer">

@@ -203,7 +203,11 @@ try {
     (await exportEvaluation("evaluation-cancelled")).run.benchmark.ref.id,
     fetched.run.benchmark.ref.id,
   );
+  await page.getByRole("button", { name: "运行设置", exact: true }).click();
+  await page.getByRole("tab", { name: "参数", exact: true }).click();
   await page.getByLabel("目标股票数", { exact: true }).fill("6");
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog", { name: "运行设置", exact: true }).waitFor({ state: "hidden" });
   assert.equal((await exportEvaluation("evaluation-draft")).run.config.stockCount, 10);
   await page.locator(".research-evaluation-conventions summary").click();
   await page
@@ -216,7 +220,7 @@ try {
   const before = queries;
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForFunction(() =>
-    document.querySelector(".research-taskbar")?.textContent?.includes("已恢复本地研究"),
+    document.querySelector(".research-status")?.textContent?.includes("已恢复本地研究"),
   );
   await page.getByRole("tab", { name: "分析", exact: true }).click();
   await ready();

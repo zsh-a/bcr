@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type { RuntimeServices } from "@bcr/core";
 import { Button, Dialog, Input, Spinner } from "@bcr/react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
@@ -10,6 +10,8 @@ import { ResearchTabs } from "./ResearchTabs";
 import { EvaluationPanel } from "./EvaluationPanel";
 import type { ClickHouseConnection } from "./clickhouse-http";
 import type { BenchmarkBinding } from "./benchmark";
+
+const ResearchChart = lazy(() => import("./ResearchChart"));
 
 function Holdings({ result }: { result: JsgResult }) {
   const [page, setPage] = useState(0);
@@ -260,90 +262,103 @@ export function ResultExplorer({
         onChange={setTab}
         tabs={[
           { value: "overview", label: "概览" },
+          { value: "evaluation", label: "分析" },
           { value: "orders", label: "成交", count: metrics.filledOrders + metrics.rejectedOrders },
           { value: "holdings", label: "持仓", count: selected.result.holdings.length },
           { value: "decisions", label: "调仓" },
-          { value: "evaluation", label: "分析" },
         ]}
       >
-        {tab === "overview" && (
-          <>
-            <dl className="research-secondary-metrics">
-              {[
-                ["年化收益", percent(metrics.annualizedReturn)],
-                ["累计费用", `¥${money(metrics.fees)}`],
-                [
-                  "成交 / 拒单",
-                  `${metrics.filledOrders.toLocaleString()} / ${metrics.rejectedOrders.toLocaleString()}`,
-                ],
-                ["期末现金", `¥${money(cash)}`],
-                ["回放交易日", String(metrics.days)],
-                ["待成交订单", String(selected.result.pendingOrders)],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-            </dl>
-            {comparison && (
-              <div className="research-comparison">
-                <h3>与对照运行比较</h3>
-                <p>相同回测区间 · 净值按各自初始本金归一化</p>
-                <p>
-                  对照数据：{comparison.run.name}
-                  {datasetKey(selected.run.dataset) !== datasetKey(comparison.run.dataset) &&
-                    " · 数据快照不同，差值同时包含数据变化的影响"}
-                </p>
-                <table className="research-table">
-                  <thead>
-                    <tr>
-                      <th>指标</th>
-                      <th className="numeric">本次运行</th>
-                      <th className="numeric">对照运行</th>
-                      <th className="numeric">差值</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(
-                      [
-                        [
-                          "总收益",
-                          metrics.totalReturn,
-                          comparison.result.metrics.totalReturn,
-                          true,
-                        ],
-                        [
-                          "最大回撤",
-                          metrics.maxDrawdown,
-                          comparison.result.metrics.maxDrawdown,
-                          true,
-                        ],
-                        ["Sharpe", metrics.sharpe, comparison.result.metrics.sharpe, false],
-                      ] as const
-                    ).map(([label, value, other, ratio]) => (
-                      <tr key={label}>
-                        <td>{label}</td>
-                        <td className="numeric">{ratio ? percent(value) : value.toFixed(2)}</td>
-                        <td className="numeric">{ratio ? percent(other) : other.toFixed(2)}</td>
-                        <td className="numeric">
-                          {ratio
-                            ? `${((value - other) * 100).toFixed(2)} pp`
-                            : (value - other).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        <div className="research-overview" hidden={tab !== "overview"}>
+          <Suspense
+            fallback={
+              <div className="research-chart-loading">
+                <Spinner />
+                正在载入图表…
               </div>
-            )}
-          </>
+            }
+          >
+            <ResearchChart
+              key={selected.run.id}
+              services={services}
+              selected={selected}
+              comparison={comparison}
+            />
+          </Suspense>
+          <dl className="research-secondary-metrics">
+            {[
+              ["期末资产", `¥${money(metrics.finalEquity)}`],
+              ["累计费用", `¥${money(metrics.fees)}`],
+              [
+                "成交 / 拒单",
+                `${metrics.filledOrders.toLocaleString()} / ${metrics.rejectedOrders.toLocaleString()}`,
+              ],
+              ["期末现金", `¥${money(cash)}`],
+              ["回放交易日", String(metrics.days)],
+              ["待成交订单", String(selected.result.pendingOrders)],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+          {comparison && (
+            <div className="research-comparison">
+              <h3>与对照运行比较</h3>
+              <p>相同回测区间 · 净值按各自初始本金归一化</p>
+              <p>
+                对照数据：{comparison.run.name}
+                {datasetKey(selected.run.dataset) !== datasetKey(comparison.run.dataset) &&
+                  " · 数据快照不同，差值同时包含数据变化的影响"}
+              </p>
+              <table className="research-table">
+                <thead>
+                  <tr>
+                    <th>指标</th>
+                    <th className="numeric">本次运行</th>
+                    <th className="numeric">对照运行</th>
+                    <th className="numeric">差值</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(
+                    [
+                      ["总收益", metrics.totalReturn, comparison.result.metrics.totalReturn, true],
+                      [
+                        "最大回撤",
+                        metrics.maxDrawdown,
+                        comparison.result.metrics.maxDrawdown,
+                        true,
+                      ],
+                      ["Sharpe", metrics.sharpe, comparison.result.metrics.sharpe, false],
+                    ] as const
+                  ).map(([label, value, other, ratio]) => (
+                    <tr key={label}>
+                      <td>{label}</td>
+                      <td className="numeric">{ratio ? percent(value) : value.toFixed(2)}</td>
+                      <td className="numeric">{ratio ? percent(other) : other.toFixed(2)}</td>
+                      <td className="numeric">
+                        {ratio
+                          ? `${((value - other) * 100).toFixed(2)} pp`
+                          : (value - other).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        {tab === "orders" && (
+          <Orders key={selected.run.id} services={services} result={selected.result} />
         )}
-        {tab === "orders" && <Orders services={services} result={selected.result} />}
-        {tab === "holdings" && <Holdings result={selected.result} />}
-        {tab === "decisions" && <Decisions services={services} selected={selected} />}
+        {tab === "holdings" && <Holdings key={selected.run.id} result={selected.result} />}
+        {tab === "decisions" && (
+          <Decisions key={selected.run.id} services={services} selected={selected} />
+        )}
         {tab === "evaluation" && (
           <EvaluationPanel
+            key={selected.run.id}
             services={services}
             selected={selected}
             connection={connection}

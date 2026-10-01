@@ -194,7 +194,14 @@ export async function loadClickHouse(
   if (!range.refresh) {
     const existing = await cachedDataset(store, cacheKey, scope);
     signal.throwIfAborted();
-    if (existing !== undefined) return { dataset: existing, cached: true };
+    if (existing !== undefined)
+      return {
+        dataset: {
+          ...existing,
+          snapshot: { ...existing.snapshot!, request: publicProfile(c, range) },
+        },
+        cached: true,
+      };
   }
   await beforeNetwork?.();
   signal.throwIfAborted();
@@ -454,6 +461,7 @@ export async function loadClickHouse(
     timings.downloadedBytes = bytes;
     const createdAt = new Date().toISOString();
     const snapshot = {
+      request: publicProfile(c, range),
       createdAt,
       sourceLastDate: info.lastDate,
       timings,

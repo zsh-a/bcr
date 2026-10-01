@@ -120,6 +120,35 @@ function fixtureFetch(onArrow?: (index: number) => void) {
 }
 
 describe("ClickHouse browser snapshots", () => {
+  it("captures the requested weekend dates separately from trading dates, including cache reuse", async () => {
+    const requested = { ...range, start: "2024-01-06", end: "2024-01-13" };
+    const store = new MemoryStore(),
+      network = fixtureFetch();
+    const loaded = await loadClickHouse(
+      connection,
+      requested,
+      store,
+      new AbortController().signal,
+      () => {},
+      network.fetcher,
+    );
+    expect(loaded.dataset.manifest.startDate).toBe(20240108);
+    expect(loaded.dataset.manifest.endDate).toBe(20240112);
+    expect(loaded.dataset.snapshot?.request).toEqual(publicProfile(connection, requested));
+    const offline = fixtureFetch();
+    const cached = await loadClickHouse(
+      { ...connection, password: "another-session" },
+      requested,
+      store,
+      new AbortController().signal,
+      () => {},
+      offline.fetcher,
+    );
+    expect(cached.cached).toBe(true);
+    expect(offline.requests).toHaveLength(0);
+    expect(cached.dataset.snapshot?.request).toEqual(loaded.dataset.snapshot?.request);
+    expect(JSON.stringify(cached.dataset.snapshot)).not.toContain("password");
+  });
   it("reuses stable full-calendar partitions for overlapping ranges without mixing refreshed generations", async () => {
     const store = new MemoryStore();
     const fixture = fixtureFetch();

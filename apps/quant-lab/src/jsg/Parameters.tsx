@@ -104,17 +104,13 @@ export function Parameters({
   manifest,
   onChange,
   onReset,
-  onRun,
   busy,
-  ready,
 }: {
   config: JsgConfig;
   manifest?: ResearchManifest | undefined;
   onChange: (patch: Partial<JsgConfig>) => void;
   onReset: () => void;
-  onRun: () => void;
   busy: boolean;
-  ready: boolean;
 }) {
   const errors = configErrors(config);
   const [industryQuery, setIndustryQuery] = useState("");
@@ -122,10 +118,9 @@ export function Parameters({
   const updateFee = (index: number, patch: Partial<NonNullable<JsgConfig["fees"]>[number]>) =>
     onChange({ fees: config.fees!.map((fee, i) => (i === index ? { ...fee, ...patch } : fee)) });
   return (
-    <div className="research-parameters">
+    <fieldset className="research-parameters" disabled={busy}>
       <div className="research-panel-heading">
         <div>
-          <span className="research-eyebrow">下一次运行</span>
           <h2>策略参数</h2>
         </div>
         <Button
@@ -163,7 +158,7 @@ export function Parameters({
           error={errors["stockCount"]}
         />
       </div>
-      <details className="research-parameter-details" open>
+      <details className="research-parameter-details">
         <summary>
           交易成本
           <ChevronDown size={14} />
@@ -405,14 +400,6 @@ export function Parameters({
           {errors["advanced"]}
         </p>
       )}
-      <Button
-        variant="primary"
-        className="research-parameter-run"
-        disabled={!ready || busy || Object.keys(errors).length > 0}
-        onClick={onRun}
-      >
-        使用以上参数运行
-      </Button>
-    </div>
+    </fieldset>
   );
 }

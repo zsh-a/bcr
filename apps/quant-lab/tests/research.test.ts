@@ -20,6 +20,8 @@ import {
 import { EMPTY_ORDER_FILTER, queryCurve, queryDecision, queryOrders } from "../src/jsg/result-data";
 import { saveBenchmark, readBenchmark } from "../src/jsg/benchmark";
 import { replayVersions } from "../src/jsg/versions";
+import { draftChanges } from "../src/jsg/draft";
+import { DEFAULT_CONNECTION } from "../src/jsg/clickhouse-http";
 
 const ref = (id: string, type = "quant/jsg-result"): ArtifactRef => ({
   id,
@@ -85,6 +87,55 @@ function ready(snapshot = selected()): ResearchSession {
     runs: [snapshot.run],
   };
 }
+
+describe("research draft differences", () => {
+  it("compares captured calendar requests rather than aligned trading dates, and ignores passwords", () => {
+    const state = ready();
+    state.selected!.dataset.snapshot = {
+      createdAt: "2026-10-01T00:00:00Z",
+      request: {
+        url: DEFAULT_CONNECTION.url,
+        database: "stock_data",
+        user: "default",
+        start: "2024-01-01",
+        end: "2024-01-13",
+        strictPit: false,
+      },
+    };
+    state.selected!.run.startDate = 20240102;
+    state.selected!.run.endDate = 20240112;
+    const source = {
+      kind: "clickhouse" as const,
+      connection: { ...DEFAULT_CONNECTION, url: "http://localhost:8123", password: "session-only" },
+      range: { start: "2024-01-01", end: "2024-01-13", strictPit: false, refresh: false },
+    };
+    expect(draftChanges(state, source)).toEqual([]);
+    source.range.start = "2024-01-02";
+    source.range.strictPit = true;
+    expect(draftChanges(state, source).map((change) => change.label)).toEqual([
+      "开始日期",
+      "严格历史数据",
+    ]);
+  });
+  it("shows actual field differences and preserves invalid drafts", () => {
+    const state = ready();
+    state.draft.stockCount = 6;
+    state.draft.stopLoss = 0.1;
+    const source = {
+      kind: "local" as const,
+      connection: DEFAULT_CONNECTION,
+      range: { start: "", end: "", strictPit: false, refresh: false },
+    };
+    expect(draftChanges(state, source).map((change) => change.label)).toEqual([
+      "目标股票数",
+      "个股止损",
+    ]);
+    state.draft.stockCount = NaN;
+    expect(draftChanges(state, source)[0]!.after).toBe("无效值");
+    state.draft = copyConfig(state.selected!.run.config);
+    expect(draftChanges(state, source)).toEqual([]);
+  });
+});
 async function storage() {
   const store = new MemoryStore(),
     records = new Map<string, string>();

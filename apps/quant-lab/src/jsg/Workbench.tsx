@@ -1,9 +1,6 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Dialog, Select, Spinner, useRuntime } from "@bcr/react";
 import {
-  CalendarDays,
-  ChevronDown,
-  Database,
   Download,
   History,
   MoreHorizontal,
@@ -16,14 +13,15 @@ import {
   FlaskConical,
   X,
 } from "lucide-react";
-import { ConnectionSettings, DateRangeSettings } from "./DataSource";
-import { Parameters, configErrors } from "./Parameters";
+import { RunSettings } from "./RunSettings";
+import { draftChanges } from "./draft";
+import { configErrors } from "./Parameters";
 import { ResultExplorer } from "./ResultExplorer";
 import { Quality } from "./Quality";
 import { useResearch } from "./useResearch";
 import { useDataSource } from "./useDataSource";
 import { dateText, DEFAULT_CONFIG } from "./model";
-import { configKey, isDraftChanged, readRun, type SelectedRun } from "./session";
+import { readRun, type SelectedRun } from "./session";
 import { exportResearchResult } from "./data";
 import { demoResearch } from "./demo";
 import { disposeResultReader } from "./result-reader";
@@ -35,7 +33,6 @@ import { withResearchFiles } from "./file-lease";
 import { money, percent } from "./Orders";
 import "./styles.css";
 
-const ResearchChart = lazy(() => import("./ResearchChart"));
 const timeLabel = (value: string) =>
   new Date(value).toLocaleString("zh-CN", {
     month: "2-digit",
@@ -43,33 +40,39 @@ const timeLabel = (value: string) =>
     hour: "2-digit",
     minute: "2-digit",
   });
-const sourceUrl = (value: string) => {
-  try {
-    return new URL(value).toString();
-  } catch {
-    return value;
-  }
-};
-export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
+const compactMoney = (value: number) =>
+  value >= 10000 ? `${money(value / 10000)} 万元` : `${money(value)} 元`;
+export function JsgWorkbench({
+  onBusy,
+  strategyControl,
+}: {
+  onBusy?: (busy: boolean) => void;
+  strategyControl?: ReactNode;
+}) {
   const services = useRuntime();
   const research = useResearch(services);
   const { state } = research;
   const source = useDataSource(services, state.dataset);
   const root = useRef<HTMLDivElement>(null),
     input = useRef<HTMLInputElement>(null);
-  const [compact, setCompact] = useState(false),
-    [parametersOpen, setParametersOpen] = useState(true);
-  const [parametersSheet, setParametersSheet] = useState(false),
-    [connectionOpen, setConnectionOpen] = useState(false),
-    [rangeOpen, setRangeOpen] = useState(false),
+  const [settingsOpen, setSettingsOpen] = useState(false),
+    [settingsTab, setSettingsTab] = useState<"parameters" | "data" | "changes">("parameters"),
     [historyOpen, setHistoryOpen] = useState(false),
+    [comparisonOpen, setComparisonOpen] = useState(false),
     [storageOpen, setStorageOpen] = useState(false),
     [storageBusy, setStorageBusy] = useState(false);
+  const openSettings = (tab: "parameters" | "data" | "changes" = "parameters") => {
+    setSettingsTab(tab);
+    setSettingsOpen(true);
+  };
   const [gridOpen, setGridOpen] = useState(false),
     [gridExpanded, setGridExpanded] = useState(true);
   useEffect(() => {
     setGridExpanded(true);
   }, [state.grid?.run.id]);
+  useEffect(() => {
+    setGridExpanded(false);
+  }, [state.selected?.run.id]);
   const [exporting, setExporting] = useState(false),
     [comparison, setComparison] = useState<SelectedRun | null>(null),
     [comparing, setComparing] = useState(false);
@@ -104,34 +107,19 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
     };
   }, []);
   const [evaluationBusy, setEvaluationBusy] = useState(false);
-  const busy = state.operation !== null || storageBusy || evaluationBusy;
+  const busy = state.operation !== null || storageBusy || evaluationBusy || source.testing;
   const ready =
     state.ready &&
     source.restored &&
     (source.kind === "clickhouse" ? source.dateError() === null : state.dataset !== null);
   const invalid = Object.keys(configErrors(state.draft)).length > 0;
   const selected = state.selected;
-  const changed =
-    isDraftChanged(state) ||
-    (selected !== null &&
-      source.kind === "clickhouse" &&
-      (source.range.start !== dateText(selected.run.startDate) ||
-        source.range.end !== dateText(selected.run.endDate) ||
-        !selected.dataset.manifest.source.includes(
-          `ClickHouse ${sourceUrl(source.connection.url)} / ${source.connection.database}`,
-        )));
+  const changes = draftChanges(state, source);
+  const changed = changes.length > 0;
   useEffect(() => {
     onBusy?.(busy);
     return () => onBusy?.(false);
   }, [busy, onBusy]);
-  useEffect(() => {
-    if (!root.current) return;
-    const observer = new ResizeObserver((entries) =>
-      setCompact((entries[0]?.contentRect.width ?? 0) < 880),
-    );
-    observer.observe(root.current);
-    return () => observer.disconnect();
-  }, []);
   useEffect(() => {
     comparisonRequest.current++;
     setComparing(false);
@@ -147,7 +135,7 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
   }, [selected?.run.id]);
   const execute = async () => {
     if (!ready || busy || invalid) return;
-    setParametersSheet(false);
+    setSettingsOpen(false);
     if (source.kind === "clickhouse") {
       try {
         await source.persist();
@@ -176,11 +164,16 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
   executeRef.current = execute;
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
+      const dialog = document.querySelector("dialog[open]");
+      const allowed =
+        !dialog ||
+        (dialog.matches(".research-settings-drawer") &&
+          dialog.querySelector(".research-settings-footer button:not(:disabled)"));
       if (
         (event.ctrlKey || event.metaKey) &&
         event.key === "Enter" &&
         root.current?.getClientRects().length &&
-        !document.querySelector("dialog[open]")
+        allowed
       ) {
         event.preventDefault();
         void executeRef.current();
@@ -241,17 +234,36 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
       if (comparisonRequest.current === request) setComparing(false);
     }
   };
-  const parameterContent = (
-    <Parameters
-      config={state.draft}
-      manifest={state.dataset?.manifest}
-      onChange={research.change}
-      onReset={() => research.reset(DEFAULT_CONFIG)}
-      onRun={() => void execute()}
-      busy={busy}
-      ready={ready}
-    />
-  );
+  const closeSettings = () => {
+    source.cancelInspect();
+    setSettingsOpen(false);
+    if (source.dateError() === null)
+      void source.persist().catch((error) => research.notice(String(error)));
+  };
+  const restoreSettings = async () => {
+    if (!selected) return;
+    await research.useDataset(selected.dataset);
+    research.reset(selected.run.config);
+    const request = selected.dataset.snapshot?.request;
+    if (request) {
+      const sameServer =
+        source.connection.url === request.url && source.connection.user === request.user;
+      source.choose("clickhouse");
+      source.updateConnection({
+        url: request.url,
+        database: request.database,
+        user: request.user,
+        password: sameServer ? source.connection.password : "",
+      });
+      source.updateRange({
+        start: request.start,
+        end: request.end,
+        strictPit: request.strictPit,
+        refresh: false,
+      });
+      await source.persist();
+    } else await source.useLocal();
+  };
   const compatible = selected
     ? state.runs.filter(
         (run) =>
@@ -264,8 +276,8 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
     <div ref={root} className="jsg-workspace" data-busy={busy} data-draft-changed={changed}>
       <header className="research-header">
         <div className="research-brand">
-          <span className="research-eyebrow">策略研究 / JSG</span>
-          <h1>行业宽度轮动</h1>
+          <h1 className="sr-only">行业宽度轮动</h1>
+          {strategyControl ?? <span>行业宽度轮动</span>}
         </div>
         <div className="research-actions">
           <Button
@@ -280,20 +292,32 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
           </Button>
           <Button
             variant="ghost"
-            aria-label="策略参数"
-            aria-expanded={compact ? parametersSheet : parametersOpen}
-            onClick={() =>
-              compact ? setParametersSheet(true) : setParametersOpen((value) => !value)
-            }
+            className="research-settings-trigger"
+            aria-label="运行设置"
+            aria-expanded={settingsOpen}
+            onClick={() => openSettings()}
           >
             <SlidersHorizontal size={16} />
-            <span>参数</span>
+            <span>运行设置</span>
+            {changed && <small className="research-change-count">{changes.length}</small>}
           </Button>
           <details ref={actionMenu} className="research-action-menu">
             <summary aria-label="更多研究操作">
               <MoreHorizontal size={19} />
             </summary>
             <div>
+              <Button
+                className="research-menu-history"
+                variant="ghost"
+                disabled={!state.runs.length}
+                onClick={() => {
+                  if (actionMenu.current) actionMenu.current.open = false;
+                  setHistoryOpen(true);
+                }}
+              >
+                <History size={15} />
+                运行历史
+              </Button>
               <Button
                 variant="ghost"
                 disabled={!ready || busy || invalid}
@@ -336,70 +360,49 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
               </Button>
             </div>
           </details>
-          <Button
-            className="research-run-button"
-            variant="primary"
-            disabled={!ready || busy || invalid}
-            title="运行回测 · Ctrl / ⌘ Enter"
-            onClick={() => void execute()}
-          >
-            <Play size={15} />
-            运行回测
-          </Button>
+          {state.operation ? (
+            <Button
+              key="cancel"
+              className="research-run-button"
+              variant="default"
+              aria-label="取消研究任务"
+              onClick={research.cancel}
+            >
+              <Square size={14} />
+              <span>取消</span>
+            </Button>
+          ) : (
+            <Button
+              key="run"
+              className="research-run-button"
+              aria-label="运行回测"
+              variant="primary"
+              disabled={!ready || busy || invalid}
+              title="运行回测 · Ctrl / ⌘ Enter"
+              onClick={() => void execute()}
+            >
+              <Play size={14} />
+              <span>运行回测</span>
+            </Button>
+          )}
         </div>
       </header>
-      <div className="research-sourcebar">
-        <span className="research-eyebrow">下一次运行</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label="设置研究数据"
-          onClick={() => setConnectionOpen(true)}
-        >
-          <Database size={14} />
-          <span>
-            {source.kind === "clickhouse"
-              ? `ClickHouse · ${source.connection.database}`
-              : (state.dataset?.manifest.name ?? "选择数据源")}
-          </span>
-          <ChevronDown size={12} />
-        </Button>
-        {source.kind === "clickhouse" ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label="设置回测区间"
-            onClick={() => setRangeOpen(true)}
-          >
-            <CalendarDays size={14} />
-            <span>
-              {source.range.start && source.range.end
-                ? `${source.range.start} — ${source.range.end}`
-                : "选择回测区间"}
-            </span>
-            <ChevronDown size={12} />
-          </Button>
-        ) : (
-          <span className="research-local-range">
-            <CalendarDays size={14} />
-            {state.dataset
-              ? `${dateText(state.dataset.manifest.startDate)} — ${dateText(state.dataset.manifest.endDate)}`
-              : "尚无快照"}
-          </span>
-        )}
-        {source.kind === "clickhouse" && source.range.refresh && (
-          <span className="research-source-hint">重新获取</span>
-        )}
-        {state.dataset?.snapshot && (
-          <span
-            className="research-snapshot-time"
-            title={`源数据覆盖至 ${state.dataset.snapshot.sourceLastDate ?? dateText(state.dataset.manifest.endDate)}；这是本地冻结快照，刷新可获取修订。`}
-          >
-            快照 {timeLabel(state.dataset.snapshot.createdAt)}
-            {state.dataset.snapshot.reusedPartitions
-              ? ` · 复用 ${state.dataset.snapshot.reusedPartitions} 片`
-              : ""}
-          </span>
+      <div className="research-status" role="status" aria-live="polite" data-active={busy}>
+        <span className="research-task-dot" data-active={busy} />
+        <span>
+          {state.operation?.label ??
+            (source.testing
+              ? "正在测试数据连接…"
+              : storageBusy
+                ? "正在整理本地数据…"
+                : state.status)}
+        </span>
+        {state.operation && (
+          <progress
+            max={1}
+            value={state.operation.progress ?? undefined}
+            aria-label="研究任务进度"
+          />
         )}
       </div>
       <input
@@ -431,12 +434,7 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
           </Button>
         </div>
       )}
-      <div className="research-body" data-parameters={parametersOpen && !compact}>
-        {!compact && parametersOpen && (
-          <aside className="research-parameter-rail" aria-label="策略参数编辑">
-            {parameterContent}
-          </aside>
-        )}
+      <div className="research-body">
         <main className="research-results" aria-busy={research.selecting}>
           {state.grid && (
             <GridResults
@@ -457,24 +455,39 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
             />
           )}
           {selected ? (
-            <div className="research-run-result" data-run-id={selected.run.id}>
+            <div
+              className="research-run-result"
+              data-run-id={selected.run.id}
+              hidden={!!state.grid && gridExpanded}
+            >
               <div className="research-result-heading">
                 <div>
-                  <span className="research-eyebrow">
-                    所选运行 · {timeLabel(selected.run.createdAt)}
-                  </span>
-                  <h2>{selected.run.name}</h2>
+                  <button
+                    className="research-run-selector"
+                    aria-label="选择历史运行"
+                    onClick={() => setHistoryOpen(true)}
+                  >
+                    运行{" "}
+                    {String(state.runs.findIndex((run) => run.id === selected.run.id) + 1).padStart(
+                      2,
+                      "0",
+                    )}{" "}
+                    <History size={13} />
+                  </button>
                   <p>
                     {dateText(selected.run.startDate)} — {dateText(selected.run.endDate)}
                     <span>
-                      目标 {selected.run.config.stockCount} 只 · 本金 ¥
-                      {money(selected.run.config.initialCapital)}
+                      {selected.run.config.stockCount} 只 ·{" "}
+                      {compactMoney(selected.run.config.initialCapital)}
                     </span>
                     {selected.dataset.snapshot && (
                       <span
                         title={`获取于 ${selected.dataset.snapshot.createdAt}；源覆盖至 ${selected.dataset.snapshot.sourceLastDate ?? dateText(selected.run.endDate)}`}
                       >
-                        数据快照 {timeLabel(selected.dataset.snapshot.createdAt)}
+                        {timeLabel(selected.run.createdAt)} ·{" "}
+                        {selected.run.cached
+                          ? "缓存"
+                          : `${((selected.run.durationMs ?? 0) / 1000).toFixed(2)} 秒`}
                       </span>
                     )}
                   </p>
@@ -482,7 +495,14 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                 <div className="research-result-context">
                   <Quality manifest={selected.dataset.manifest} result={selected.result} />
                   {research.selecting && <Spinner size="sm" />}
-                  {changed && <span className="research-draft-badge">待运行的修改</span>}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="添加对照"
+                    onClick={() => setComparisonOpen(true)}
+                  >
+                    {comparison ? "对照已开启" : "添加对照"}
+                  </Button>
                 </div>
               </div>
               <dl className="research-metrics" aria-label="所选运行核心指标">
@@ -492,9 +512,9 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                     percent(selected.result.metrics.totalReturn),
                     selected.result.metrics.totalReturn >= 0 ? "positive" : "negative",
                   ],
+                  ["年化收益", percent(selected.result.metrics.annualizedReturn), "neutral"],
                   ["最大回撤", percent(selected.result.metrics.maxDrawdown), "neutral"],
                   ["Sharpe", selected.result.metrics.sharpe.toFixed(2), "neutral"],
-                  ["期末资产", `¥${money(selected.result.metrics.finalEquity)}`, "neutral"],
                 ].map(([label, value, tone]) => (
                   <div key={label} data-tone={tone}>
                     <dt>{label}</dt>
@@ -502,50 +522,7 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                   </div>
                 ))}
               </dl>
-              <div className="research-result-tools">
-                <label>
-                  对照
-                  <Select
-                    aria-label="选择对照运行"
-                    disabled={compatible.length === 0 || comparing}
-                    value={comparison?.run.id ?? ""}
-                    onChange={(event) => void compare(event.currentTarget.value)}
-                  >
-                    <option value="">
-                      {compatible.length ? "选择相同区间的运行" : "同区间再次运行后可比较"}
-                    </option>
-                    {compatible.toReversed().map((run) => (
-                      <option key={run.id} value={run.id}>
-                        {timeLabel(run.createdAt)} · 目标 {run.config.stockCount} 只 ·{" "}
-                        {percent(run.metrics.totalReturn)}
-                      </option>
-                    ))}
-                  </Select>
-                </label>
-                {comparing && <Spinner size="sm" />}
-                {configKey(state.draft) !== configKey(selected.run.config) && (
-                  <Button variant="ghost" size="sm" onClick={research.useRunConfig}>
-                    使用所选运行参数
-                  </Button>
-                )}
-              </div>
-              <Suspense
-                fallback={
-                  <div className="research-chart-loading">
-                    <Spinner />
-                    正在载入图表…
-                  </div>
-                }
-              >
-                <ResearchChart
-                  key={selected.run.id}
-                  services={services}
-                  selected={selected}
-                  comparison={comparison}
-                />
-              </Suspense>
               <ResultExplorer
-                key={selected.run.id}
                 services={services}
                 selected={selected}
                 comparison={comparison}
@@ -586,7 +563,7 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                   <Play size={15} />
                   运行首次回测
                 </Button>
-                <Button variant="ghost" onClick={() => setConnectionOpen(true)}>
+                <Button variant="ghost" onClick={() => openSettings("data")}>
                   选择数据源
                 </Button>
               </div>
@@ -595,44 +572,57 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
           )}
         </main>
       </div>
-      <footer className="research-taskbar">
-        <div>
-          <span className="research-task-dot" data-active={busy} />
-          <span role="status">
-            {state.operation?.label ?? (storageBusy ? "正在整理本地数据…" : state.status)}
-          </span>
-        </div>
-        {state.operation ? (
-          <div>
-            <progress
-              max={1}
-              value={state.operation?.progress ?? undefined}
-              aria-label="研究任务进度"
-            />
-            <Button variant="ghost" size="sm" aria-label="取消研究任务" onClick={research.cancel}>
-              <Square size={12} />
-              取消
-            </Button>
-          </div>
-        ) : (
-          <span>
-            {selected?.run.cached
-              ? "已复用结果"
-              : selected?.run.durationMs !== null && selected?.run.durationMs !== undefined
-                ? `${(selected.run.durationMs / 1000).toFixed(2)} 秒`
-                : "本地运行"}
-            <kbd>⌘ / Ctrl ↵</kbd>
-          </span>
-        )}
-      </footer>
-      <ConnectionSettings
+      <RunSettings
+        open={settingsOpen}
+        tab={settingsTab}
+        onTab={setSettingsTab}
+        onClose={closeSettings}
         source={source}
-        open={connectionOpen}
-        onClose={() => setConnectionOpen(false)}
-        onImport={() => input.current?.click()}
-        onDemo={() => void research.importFiles(demoResearch().files)}
+        state={state}
+        changes={changes}
+        busy={busy}
+        ready={!!ready && !invalid}
+        onChange={research.change}
+        onReset={() => research.reset(DEFAULT_CONFIG)}
+        onRestore={restoreSettings}
+        onRun={() => void execute()}
+        onImport={() => {
+          setSettingsOpen(false);
+          input.current?.click();
+        }}
+        onDemo={() => {
+          setSettingsOpen(false);
+          void source.useLocal().then(() => research.importFiles(demoResearch().files));
+        }}
       />
-      <DateRangeSettings source={source} open={rangeOpen} onClose={() => setRangeOpen(false)} />
+      <Dialog
+        open={comparisonOpen}
+        onClose={() => setComparisonOpen(false)}
+        title="对照运行"
+        className="research-comparison-dialog"
+      >
+        <p className="research-dialog-lead">选择相同回测区间的运行，对比参数调整前后的表现。</p>
+        <Select
+          aria-label="选择对照运行"
+          disabled={!compatible.length || comparing}
+          value={comparison?.run.id ?? ""}
+          onChange={(event) => {
+            void compare(event.currentTarget.value);
+            setComparisonOpen(false);
+          }}
+        >
+          <option value="">{compatible.length ? "不使用对照" : "此区间尚无其他运行"}</option>
+          {compatible.toReversed().map((run) => (
+            <option key={run.id} value={run.id}>
+              {timeLabel(run.createdAt)} · {run.config.stockCount} 只 ·{" "}
+              {percent(run.metrics.totalReturn)}
+            </option>
+          ))}
+        </Select>
+        {!compatible.length && (
+          <p className="research-help">调整参数并运行一次后，可在这里选择之前的结果。</p>
+        )}
+      </Dialog>
       <GridSettings
         open={gridOpen}
         base={state.draft}
@@ -658,15 +648,6 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
           setStorageOpen(false);
         }}
       />
-      <Dialog
-        open={parametersSheet && compact}
-        onClose={() => setParametersSheet(false)}
-        title="编辑策略参数"
-        placement="sheet"
-        className="research-parameter-sheet"
-      >
-        {compact && parameterContent}
-      </Dialog>
       <Dialog
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}

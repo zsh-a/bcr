@@ -24,7 +24,7 @@ const completed = (old) =>
   page.waitForFunction(
     (id) =>
       document.querySelector(".jsg-workspace")?.getAttribute("data-busy") === "false" &&
-      document.querySelector(".research-taskbar")?.textContent?.includes("参数实验完成") &&
+      document.querySelector(".research-status")?.textContent?.includes("参数实验完成") &&
       document.querySelector(".research-grid-results") !== null &&
       document.querySelector(".research-grid-results")?.getAttribute("data-grid-id") !== id,
     old,
@@ -80,6 +80,7 @@ try {
   await completed(null);
   const firstGridId = await gridId(),
     grid = await download("jsg-grid-first", true);
+  assert.equal(await page.locator(".research-run-result").isVisible(), false);
   assert.equal(grid.result.decodedRows, 64 * 180);
   assert.equal(grid.result.results.length, 4);
   assert.equal(await runId(), firstId);
@@ -97,9 +98,15 @@ try {
   );
   let detailedId = await runId();
   const detailed = await download("jsg-grid-detailed");
+  assert.equal(await page.locator(".research-run-result").isVisible(), true);
+  assert.equal(await page.locator(".research-grid-toggle").getAttribute("aria-expanded"), "false");
   assert.deepEqual(detailed.result.metrics, grid.result.results[0].metrics);
   assert.deepEqual(detailed.config, grid.result.results[0].config);
+  await page.getByRole("button", { name: "运行设置", exact: true }).click();
+  await page.getByRole("tab", { name: "参数", exact: true }).click();
   assert.equal(await page.getByLabel("目标股票数", { exact: true }).inputValue(), "10");
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog", { name: "运行设置", exact: true }).waitFor({ state: "hidden" });
   await page.locator(".research-grid-toggle").click();
   const beforeCachedDetail = await runId();
   await page.getByRole("button", { name: "查看组合 3 详情", exact: true }).click();
@@ -109,7 +116,7 @@ try {
       document.querySelector(".research-run-result")?.getAttribute("data-run-id") !== id,
     beforeCachedDetail,
   );
-  assert((await page.locator(".research-taskbar").innerText()).includes("复用已有结果"));
+  assert((await page.locator(".research-status").innerText()).includes("复用已有结果"));
   assert.deepEqual((await download("jsg-grid-reused-detail")).result, first.result);
   detailedId = await runId();
   await open();
@@ -125,8 +132,31 @@ try {
   await page.getByLabel("个股止损候选值", { exact: true }).fill("0,1,2,3,4,5,6,7");
   await page.getByRole("alert").filter({ hasText: "64" }).waitFor();
   await page.getByLabel("目标股票数候选值", { exact: true }).fill("1,2,3,4,5,6,7,8");
-  await page.getByRole("button", { name: "运行参数实验", exact: true }).click();
-  await page.getByRole("button", { name: "取消研究任务", exact: true }).click();
+  // Cancel when the action appears; the small demo may finish between automation hops.
+  await page.evaluate(
+    () =>
+      new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          observer.disconnect();
+          reject(new Error("Grid cancellation action did not appear"));
+        }, 10_000);
+        const observer = new MutationObserver(() => {
+          const cancel = document.querySelector('button[aria-label="取消研究任务"]');
+          if (!cancel) return;
+          observer.disconnect();
+          clearTimeout(timer);
+          cancel.click();
+          resolve();
+        });
+        observer.observe(document.querySelector(".jsg-workspace"), {
+          childList: true,
+          subtree: true,
+        });
+        [...document.querySelectorAll(".research-grid-dialog button")]
+          .find((button) => button.textContent.trim() === "运行参数实验")
+          .click();
+      }),
+  );
   await page.getByRole("status").filter({ hasText: "已取消，已有结果保留" }).waitFor();
   assert.equal(await gridId(), cachedId);
   assert.equal(await runId(), detailedId);
@@ -135,8 +165,14 @@ try {
   await page.locator(".research-grid-results").waitFor();
   assert.equal(await gridId(), cachedId);
   assert.deepEqual((await download("jsg-grid-restored", true)).result, grid.result);
+  if ((await page.locator(".research-grid-toggle").getAttribute("aria-expanded")) === "false")
+    await page.locator(".research-grid-toggle").click();
   await page.getByRole("button", { name: "使用组合 1 参数", exact: true }).click();
+  await page.getByRole("button", { name: "运行设置", exact: true }).click();
+  await page.getByRole("tab", { name: "参数", exact: true }).click();
   assert.equal(await page.getByLabel("目标股票数", { exact: true }).inputValue(), "6");
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog", { name: "运行设置", exact: true }).waitFor({ state: "hidden" });
   assert.equal(await runId(), detailedId);
   await storage();
   assert.deepEqual((await download("jsg-grid-after-cleanup", true)).result, grid.result);

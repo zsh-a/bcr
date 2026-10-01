@@ -48,12 +48,19 @@ await context.route(`${source}**`, async (route) => {
 });
 page.on("pageerror", (error) => errors.push(error.message));
 const open = async () => {
-  await page.getByRole("button", { name: "设置研究数据", exact: true }).click();
+  await page.getByRole("button", { name: "运行设置", exact: true }).click();
+  await page.getByRole("tab", { name: "数据与区间", exact: true }).click();
   await page.locator(".research-source-options > button").first().click();
+  await page.locator(".research-data-settings .research-parameter-details").evaluate((el) => {
+    el.open = true;
+  });
 };
-const close = () => page.getByRole("button", { name: "关闭数据连接", exact: true }).click();
-const dates = () => page.getByRole("button", { name: "设置回测区间", exact: true }).click();
-const applyDates = () => page.getByRole("button", { name: "应用区间", exact: true }).click();
+const close = async () => {
+  await page.getByRole("button", { name: "关闭运行设置", exact: true }).click();
+  await page.getByRole("dialog", { name: "运行设置", exact: true }).waitFor({ state: "hidden" });
+};
+const dates = open;
+const applyDates = close;
 let previousRun = null;
 const load = async () => {
   const result = page.locator(".research-run-result");
@@ -64,7 +71,7 @@ const done = () =>
   page.waitForFunction(
     (id) =>
       document.querySelector(".jsg-workspace")?.getAttribute("data-busy") === "false" &&
-      document.querySelector(".research-taskbar")?.textContent?.includes("回测完成") &&
+      document.querySelector(".research-status")?.textContent?.includes("回测完成") &&
       document.querySelector(".research-run-result") !== null &&
       document.querySelector(".research-run-result")?.getAttribute("data-run-id") !== id,
     previousRun,
@@ -105,7 +112,7 @@ try {
       document.querySelector(".research-connection-status")?.getAttribute("data-connected") ===
       "true",
   );
-  await page.getByRole("button", { name: "连接并使用", exact: true }).click();
+  await close();
   await dates();
   await page.getByLabel("回测开始日期", { exact: true }).fill(start);
   await page.getByLabel("回测结束日期", { exact: true }).fill(end);
@@ -122,6 +129,10 @@ try {
   assert(first.result.metrics.filledOrders > 0);
   assert(arrowQueries > 0);
   assert(Number.isFinite(Date.parse(first.snapshot.createdAt)));
+  assert.equal(first.snapshot.request.start, start);
+  assert.equal(first.snapshot.request.end, end);
+  assert(!Object.hasOwn(first.snapshot.request, "password"));
+  assert.equal(await page.locator(".jsg-workspace").getAttribute("data-draft-changed"), "false");
   assert(first.snapshot.timings.downloadedBytes > 0);
   await page.screenshot({ path: `${shots}/jsg-clickhouse-result.png`, fullPage: true });
   await page.getByRole("tab", { name: "分析", exact: true }).click();
@@ -156,7 +167,7 @@ try {
   await page.getByRole("button", { name: "运行参数实验", exact: true }).click();
   await page.waitForFunction(
     () =>
-      document.querySelector(".research-taskbar")?.textContent?.includes("参数实验完成") &&
+      document.querySelector(".research-status")?.textContent?.includes("参数实验完成") &&
       document.querySelector(".jsg-workspace")?.getAttribute("data-busy") === "false",
   );
   assert.equal(queries, beforeGridQueries, "parameter grid must reuse the acquired snapshot");
@@ -176,7 +187,7 @@ try {
     arrowQueries - firstArrowQueries < firstArrowQueries,
     "overlap must download fewer partitions",
   );
-  assert.match(await page.locator(".research-snapshot-time").innerText(), /复用\s*[1-9]\d*\s*片/u);
+  assert((await exportResult("jsg-clickhouse-overlap.json")).snapshot.reusedPartitions > 0);
   await dates();
   await page.getByLabel("回测开始日期", { exact: true }).fill(start);
   await applyDates();
@@ -194,11 +205,11 @@ try {
   await load();
   await done();
   assert.equal(queries, count);
-  assert((await page.locator(".research-taskbar").innerText()).includes("复用已有结果"));
+  assert((await page.locator(".research-status").innerText()).includes("复用已有结果"));
   assert.deepEqual((await exportResult("jsg-clickhouse-cached.json")).result, first.result);
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForFunction(() =>
-    document.querySelector(".research-taskbar")?.textContent?.includes("已恢复本地研究"),
+    document.querySelector(".research-status")?.textContent?.includes("已恢复本地研究"),
   );
   await open();
   assert.equal(await page.getByLabel("ClickHouse 密码", { exact: true }).inputValue(), "");
@@ -231,7 +242,7 @@ try {
   await open();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-  assert(await page.getByRole("button", { name: "连接并使用", exact: true }).isVisible());
+  assert(await page.getByRole("button", { name: "测试连接", exact: true }).isVisible());
   await page.screenshot({ path: `${shots}/jsg-clickhouse-mobile.png`, fullPage: true });
   assert.deepEqual(errors, []);
   console.log(

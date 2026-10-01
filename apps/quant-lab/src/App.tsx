@@ -67,61 +67,32 @@ function ResearchWorkbench() {
   const [tab, setTab] = useState<"sma" | "jsg">(initialJsg ? "jsg" : "sma");
   const [opened, setOpened] = useState(initialJsg);
   const [jsgBusy, setJsgBusy] = useState(false);
-  const strategyTabs = useRef<HTMLDivElement>(null);
   const smaRunning = useQuantLab((state) => state.running);
   usePublishRunningCount("quant", Number(smaRunning) + Number(jsgBusy));
-  return (
-    <div className="ql-research-shell">
-      <div
-        ref={strategyTabs}
-        className="ql-research-tabs"
-        role="tablist"
-        aria-label="策略类型"
-        onKeyDown={(event) => {
-          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-          event.preventDefault();
-          const next =
-            event.key === "Home"
-              ? "sma"
-              : event.key === "End"
-                ? "jsg"
-                : tab === "sma"
-                  ? "jsg"
-                  : "sma";
+  const strategyControl = (
+    <div className="research-strategy-control">
+      <span>QUANT</span>
+      <select
+        aria-label="选择策略"
+        value={tab}
+        onChange={(event) => {
           setOpened(true);
-          setTab(next);
-          strategyTabs.current?.querySelector<HTMLButtonElement>(`#${next}-tab`)?.focus();
+          setTab(event.currentTarget.value as "sma" | "jsg");
         }}
       >
-        <button
-          role="tab"
-          id="sma-tab"
-          aria-controls="sma-panel"
-          aria-selected={tab === "sma"}
-          tabIndex={tab === "sma" ? 0 : -1}
-          onClick={() => setTab("sma")}
-        >
-          SMA 单股票
-        </button>
-        <button
-          role="tab"
-          id="jsg-tab"
-          aria-controls="jsg-panel"
-          aria-selected={tab === "jsg"}
-          tabIndex={tab === "jsg" ? 0 : -1}
-          onClick={() => {
-            setOpened(true);
-            setTab("jsg");
-          }}
-        >
-          JSG 多股票
-        </button>
-      </div>
+        <option value="sma">SMA · 单股票</option>
+        <option value="jsg">JSG · 行业宽度轮动</option>
+      </select>
+    </div>
+  );
+  return (
+    <div className="ql-research-shell" data-strategy={tab}>
+      {tab === "sma" && <div className="ql-strategy-toolbar">{strategyControl}</div>}
       <div
         className="ql-research-view"
         id="sma-panel"
-        role="tabpanel"
-        aria-labelledby="sma-tab"
+        role="region"
+        aria-label="SMA 单股票研究"
         hidden={tab !== "sma"}
       >
         {tab === "sma" && <Workbench />}
@@ -129,11 +100,11 @@ function ResearchWorkbench() {
       <div
         className="ql-research-view"
         id="jsg-panel"
-        role="tabpanel"
-        aria-labelledby="jsg-tab"
+        role="region"
+        aria-label="JSG 行业宽度轮动研究"
         hidden={tab !== "jsg"}
       >
-        {opened && <JsgWorkbench onBusy={setJsgBusy} />}
+        {opened && <JsgWorkbench onBusy={setJsgBusy} strategyControl={strategyControl} />}
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import type { ArtifactRef } from "@bcr/core";
+import type { ClickHouseProfile } from "./clickhouse-http";
 
 export const MAX_PARTITION_BYTES = 32 * 1024 * 1024;
 export const MAX_MANIFEST_BYTES = 4 * 1024 * 1024;
@@ -73,6 +74,7 @@ export interface ResearchManifest {
 }
 export interface ResearchDataset {
   snapshot?: {
+    request?: ClickHouseProfile;
     createdAt: string;
     sourceLastDate?: string;
     timings?: Record<string, number>;

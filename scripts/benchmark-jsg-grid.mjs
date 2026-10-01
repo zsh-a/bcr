@@ -33,7 +33,7 @@ const completed = (old) =>
   page.waitForFunction(
     (id) =>
       document.querySelector(".jsg-workspace")?.getAttribute("data-busy") === "false" &&
-      document.querySelector(".research-taskbar")?.textContent?.includes("参数实验完成") &&
+      document.querySelector(".research-status")?.textContent?.includes("参数实验完成") &&
       document.querySelector(".research-grid-results") !== null &&
       document.querySelector(".research-grid-results")?.getAttribute("data-grid-id") !== id,
     old,
@@ -58,7 +58,7 @@ try {
       ...manifest.partitions.map((p) => path.join(root, p.file)),
     ]);
   await page.waitForFunction(
-    () => document.querySelector(".research-taskbar")?.textContent?.startsWith("研究数据就绪"),
+    () => document.querySelector(".research-status")?.textContent?.startsWith("研究数据就绪"),
     undefined,
     { timeout: 180_000 },
   );
