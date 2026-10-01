@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { MemoryStore } from "@bcr/storage-opfs";
+import { artifactPath } from "@bcr/core";
 import { Table, RecordBatchStreamWriter, tableFromIPC, vectorFromArray, Utf8 } from "apache-arrow";
 import { beforeAll, describe, expect, it } from "vitest";
 import initQuant, { ClickHouseNormalizer } from "../../../crates/quant/pkg/bcr_quant.js";
@@ -119,6 +120,87 @@ function fixtureFetch(onArrow?: (index: number) => void) {
 }
 
 describe("ClickHouse browser snapshots", () => {
+  it("reuses stable full-calendar partitions for overlapping ranges without mixing refreshed generations", async () => {
+    const store = new MemoryStore();
+    const fixture = fixtureFetch();
+    const signal = new AbortController().signal;
+    const load = (selected = range) =>
+      loadClickHouse(connection, selected, store, signal, () => undefined, fixture.fetcher);
+    const first = await load();
+    const extendedRange = { ...range, start: "2024-01-03", end: "2024-01-19" };
+    const extended = await load(extendedRange);
+    expect(extended.dataset.snapshot?.reusedPartitions).toBeGreaterThan(0);
+    expect(
+      extended.dataset.partitions.some((p) =>
+        first.dataset.partitions.some((old) => old.id === p.id),
+      ),
+    ).toBe(true);
+    expect(extended.dataset.snapshot?.timings?.["reusedBytes"]).toBeGreaterThan(0);
+    const refreshed = await load({ ...range, refresh: true });
+    expect(refreshed.dataset.snapshot?.reusedPartitions).toBe(0);
+    const reloaded = await load(extendedRange);
+    expect(reloaded.cached).toBe(false);
+    expect(
+      reloaded.dataset.partitions.every(
+        (p) => !extended.dataset.partitions.some((old) => old.id === p.id),
+      ),
+    ).toBe(true);
+    expect(
+      reloaded.dataset.partitions.some((p) =>
+        refreshed.dataset.partitions.some((fresh) => fresh.id === p.id),
+      ),
+    ).toBe(true);
+    for (const ref of first.dataset.partitions)
+      expect(await store.has(artifactPath(ref))).toBe(true);
+  });
+  it("rolls back snapshot and generation pointers if partition-index publication fails", async () => {
+    const store = new MemoryStore();
+    const fixture = fixtureFetch();
+    const signal = new AbortController().signal;
+    const first = await loadClickHouse(
+      connection,
+      range,
+      store,
+      signal,
+      () => undefined,
+      fixture.fetcher,
+    );
+    const before = new Map<string, Uint8Array>();
+    for (const path of await store.list("cache/")) before.set(path, (await store.get(path))!);
+    const put = store.put.bind(store);
+    let fail = true;
+    store.put = async (path, bytes) => {
+      if (fail && path.startsWith("cache/jsg-partitions/")) {
+        fail = false;
+        throw new Error("fixture disk failure");
+      }
+      await put(path, bytes);
+    };
+    await expect(
+      loadClickHouse(
+        connection,
+        { ...range, refresh: true },
+        store,
+        signal,
+        () => undefined,
+        fixture.fetcher,
+      ),
+    ).rejects.toThrow("fixture disk failure");
+    for (const [path, bytes] of before) expect(await store.get(path)).toEqual(bytes);
+    const restored = await loadClickHouse(
+      connection,
+      range,
+      store,
+      signal,
+      () => undefined,
+      async () => {
+        throw new Error("unexpected network");
+      },
+    );
+    expect(restored.cached).toBe(true);
+    expect(restored.dataset).toEqual(first.dataset);
+    expect(await store.list("temp/")).toEqual([]);
+  });
   it("reassembles complete days across raw IPC batches and rejects duplicate/missing daily rows", () => {
     const normalizer = new ClickHouseNormalizer('["sz.001001","sz.001002"]', '["tech"]');
     const source = rawArrow(["2024-01-02", "2024-01-03"]);
@@ -279,7 +361,13 @@ describe("ClickHouse browser snapshots", () => {
       fetcher,
     );
     expect(oversized).toBe(true);
-    expect(result.dataset.manifest.partitions).toHaveLength(4);
+    expect(result.dataset.manifest.partitions.every((p) => p.bytes <= 32 * 1024 * 1024)).toBe(true);
+    const actualDates: number[] = [];
+    for (const ref of result.dataset.partitions) {
+      const batches = tableFromIPC((await store.get(artifactPath(ref)))!).batches;
+      actualDates.push(...batches.map((b) => Number(b.getChild("date")!.get(0))));
+    }
+    expect(actualDates).toEqual(result.dataset.manifest.calendar.map((s) => s.date));
     expect(result.dataset.manifest.partitions.reduce((n, p) => n + p.rows, 0)).toBe(78);
     expect(result.dataset.manifest.calendar).toHaveLength(39);
     expect(await store.list("temp/")).toEqual([]);

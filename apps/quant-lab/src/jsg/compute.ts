@@ -72,11 +72,29 @@ export function jsgHandler(io: ArtifactIO, factory: Factory = createSession) {
         );
         timings.writeMs += performance.now() - writeStart;
         created.push(ref);
+        const codes = [...new Set(chunk.orders.map((o) => o.code))];
+        const orderStats = new Map<
+          string,
+          { side: string; status: string; filled: boolean; count: number }
+        >();
+        for (const order of chunk.orders) {
+          const key = JSON.stringify([order.side, order.status, order.quantity > 0]);
+          const cell = orderStats.get(key) ?? {
+            side: order.side,
+            status: order.status,
+            filled: order.quantity > 0,
+            count: 0,
+          };
+          cell.count++;
+          orderStats.set(key, cell);
+        }
         chunks.push({
           ref,
           start: chunk.equity[0]?.date ?? "",
           end: chunk.equity.at(-1)?.date ?? "",
           orders: chunk.orders.length,
+          ...(codes.length <= 256 ? { codes } : {}),
+          orderStats: [...orderStats.values()],
         });
         preview.equity.push(...chunk.equity);
         while (preview.equity.length > 2048)

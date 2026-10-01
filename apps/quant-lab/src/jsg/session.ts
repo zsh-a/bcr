@@ -13,8 +13,9 @@ import {
 
 export const MAX_RUNS = 20;
 type ResearchStorage = Pick<RuntimeServices, "artifacts" | "metadata">;
-export type DatasetRefs = Pick<ResearchDataset, "manifestRef" | "partitions">;
+export type DatasetRefs = Pick<ResearchDataset, "manifestRef" | "partitions" | "snapshot">;
 export interface ResearchRun {
+  snapshot?: ResearchDataset["snapshot"];
   id: string;
   createdAt: string;
   config: JsgConfig;
@@ -206,6 +207,7 @@ export function sessionReducer(state: ResearchSession, event: SessionEvent): Res
 
 const KEY = "jsg-session-v2";
 const refs = (dataset: ResearchDataset): DatasetRefs => ({
+  ...(dataset.snapshot ? { snapshot: dataset.snapshot } : {}),
   manifestRef: dataset.manifestRef,
   partitions: dataset.partitions,
 });
@@ -222,7 +224,11 @@ export async function saveSession(
       existing = datasetIds.get(key);
     if (existing !== undefined) return existing;
     const index = datasets.length;
-    datasets.push({ manifestRef: dataset.manifestRef, partitions: dataset.partitions });
+    datasets.push({
+      manifestRef: dataset.manifestRef,
+      partitions: dataset.partitions,
+      ...(dataset.snapshot ? { snapshot: dataset.snapshot } : {}),
+    });
     datasetIds.set(key, index);
     return index;
   };
@@ -254,7 +260,7 @@ export async function readRun(services: ResearchStorage, run: ResearchRun): Prom
     readDataset(services, run.dataset),
     readJson<JsgResult>(services, run.resultRef),
   ]);
-  return { run, dataset, result };
+  return { run, dataset: run.snapshot ? { ...dataset, snapshot: run.snapshot } : dataset, result };
 }
 export async function restoreSession(
   services: ResearchStorage,

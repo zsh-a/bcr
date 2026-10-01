@@ -13,6 +13,21 @@ const context = await chromium.launchPersistentContext(profile, {
   viewport: { width: 1440, height: 900 },
 });
 const page = context.pages()[0];
+await page.addInitScript(() => {
+  window.__jsgBenchmark = {
+    transitions: [{ phase: "startup", at: performance.now() }],
+    longTasks: [],
+  };
+  new PerformanceObserver((list) => {
+    for (const entry of list.getEntries())
+      if (window.__jsgBenchmark.longTasks.length < 1000)
+        window.__jsgBenchmark.longTasks.push({ at: entry.startTime, duration: entry.duration });
+  }).observe({ type: "longtask", buffered: true });
+});
+const phase = (name) =>
+  page.evaluate((phase) => {
+    window.__jsgBenchmark.transitions.push({ phase, at: performance.now() });
+  }, name);
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 let actualBrowserPid;
@@ -69,6 +84,7 @@ const monitor = setInterval(async () => {
   } catch {}
 }, 50);
 try {
+  await phase("import");
   const importStart = performance.now();
   await page
     .getByLabel("导入 JSG 研究数据", { exact: true })
@@ -82,6 +98,7 @@ try {
     { timeout: 180000 },
   );
   const importMs = performance.now() - importStart;
+  await phase("replay");
   const start = performance.now();
   await page.getByRole("button", { name: "运行回测", exact: true }).click();
   await page.waitForFunction(
@@ -90,12 +107,7 @@ try {
     { timeout: 180000 },
   );
   const replayMs = performance.now() - start;
-  const chartStart = performance.now();
-  await page
-    .getByLabel("查看净值日期", { exact: true })
-    .fill(String(manifest.startDate).replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3"));
-  await page.locator(".research-chart-bottom output").filter({ hasText: "现金" }).waitFor();
-  const chartMs = performance.now() - chartStart;
+  await phase("export");
   const exportStart = performance.now();
   await page.locator(".research-action-menu > summary").click();
   const event = page.waitForEvent("download");
@@ -104,6 +116,18 @@ try {
   const exportMs = performance.now() - exportStart;
   const result = JSON.parse(readFileSync(path.join(dir, "result.json"), "utf8")).result;
   assert(result.orders.length === result.metrics.filledOrders + result.metrics.rejectedOrders);
+  // Verify a fresh exact-date value, rather than accepting the previously rendered cursor.
+  await phase("chart");
+  const chartStart = performance.now();
+  const firstPoint = result.equity[0];
+  await page.getByLabel("查看净值日期", { exact: true }).fill(firstPoint.date);
+  const cash = new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(firstPoint.cash);
+  await page
+    .locator(".research-chart-bottom output")
+    .filter({ hasText: `现金 ¥${cash}` })
+    .waitFor();
+  const chartMs = performance.now() - chartStart;
+  await phase("orders");
   const ordersStart = performance.now();
   await page.getByRole("tab", { name: /^成交/ }).click();
   await page
@@ -112,6 +136,7 @@ try {
     .waitFor();
   assert((await page.locator(".research-table tbody tr").count()) <= 50);
   const ordersMs = performance.now() - ordersStart;
+  await phase("filter");
   const filterStart = performance.now();
   await page.getByLabel("筛选证券", { exact: true }).fill(result.orders[0]?.code ?? "sz");
   const matches = result.orders.filter((order) =>
@@ -122,6 +147,7 @@ try {
     .filter({ hasText: `共 ${matches.toLocaleString()} 笔` })
     .waitFor();
   const filterMs = performance.now() - filterStart;
+  await phase("pagination");
   await page.getByLabel("筛选证券", { exact: true }).fill("");
   await page
     .getByRole("status")
@@ -134,6 +160,7 @@ try {
   }
   const renderedOrderRows = await page.locator(".research-table tbody tr").count();
   const previous = await page.locator(".research-run-result").getAttribute("data-run-id");
+  await phase("cache");
   const cachedStart = performance.now();
   await page.getByRole("button", { name: "运行回测", exact: true }).click();
   await page.waitForFunction(
@@ -145,6 +172,7 @@ try {
   );
   const cacheMs = performance.now() - cachedStart;
   const beforeCancel = await page.locator(".research-run-result").getAttribute("data-run-id");
+  await phase("cancel");
   await page.getByLabel("目标股票数", { exact: true }).fill("11");
   await page.getByRole("button", { name: "运行回测", exact: true }).click();
   await page.getByRole("button", { name: "取消研究任务", exact: true }).waitFor();
@@ -159,6 +187,20 @@ try {
     beforeCancel,
   );
   assert.deepEqual(errors, []);
+  await phase("complete");
+  const mainThreadLongTasks = await page.evaluate(() => {
+    const { transitions, longTasks } = window.__jsgBenchmark;
+    const report = {};
+    for (const { phase } of transitions) report[phase] = { count: 0, totalMs: 0, maxMs: 0 };
+    for (const task of longTasks) {
+      const phase = transitions.findLast((entry) => entry.at <= task.at)?.phase ?? "startup";
+      const result = report[phase];
+      result.count++;
+      result.totalMs += task.duration;
+      result.maxMs = Math.max(result.maxMs, task.duration);
+    }
+    return report;
+  });
   const report = {
     rows: manifest.partitions.reduce((n, p) => n + p.rows, 0),
     bytes: manifest.partitions.reduce((n, p) => n + p.bytes, 0),
@@ -171,6 +213,7 @@ try {
     cacheMs,
     cancelMs,
     workerTimings: result.timings,
+    mainThreadLongTasks,
     manifestSha256: createHash("sha256")
       .update(readFileSync(path.join(root, "manifest.json")))
       .digest("hex"),

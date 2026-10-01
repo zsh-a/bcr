@@ -156,10 +156,15 @@ export function useResearch(services: RuntimeServices) {
       const result = await readJson<JsgResult>(services, ref);
       token.abort.signal.throwIfAborted();
       const run: ResearchRun = {
+        ...(dataset.snapshot ? { snapshot: structuredClone(dataset.snapshot) } : {}),
         id: token.id,
         createdAt: new Date().toISOString(),
         config: strategy,
-        dataset: { manifestRef: dataset.manifestRef, partitions: dataset.partitions },
+        dataset: {
+          manifestRef: dataset.manifestRef,
+          partitions: dataset.partitions,
+          ...(dataset.snapshot ? { snapshot: dataset.snapshot } : {}),
+        },
         name: dataset.manifest.name,
         startDate: dataset.manifest.startDate,
         endDate: dataset.manifest.endDate,

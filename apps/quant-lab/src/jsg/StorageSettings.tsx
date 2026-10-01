@@ -3,6 +3,7 @@ import { Button, Dialog, Spinner, formatBytes } from "@bcr/react";
 import { Database, HardDrive, Trash2, RefreshCw } from "lucide-react";
 import type { RuntimeServices } from "@bcr/core";
 import type { ResearchDataset } from "./model";
+import { clearResultCache } from "./result-reader";
 import { dateText } from "./model";
 import {
   planResearchCleanup,
@@ -177,6 +178,7 @@ export function StorageSettings({
                   void act(async () => {
                     await research.flush();
                     const result = await reclaimResearch(services, plan, research.getSession);
+                    clearResultCache();
                     setMessage(
                       `已释放 ${formatBytes(result.reclaimedBytes)} · ${result.deleted.length} 个文件`,
                     );

@@ -3,7 +3,8 @@ import type { RuntimeServices } from "@bcr/core";
 import { Button, Dialog, Input, Select, Spinner } from "@bcr/react";
 import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import type { JsgResult } from "./model";
-import { EMPTY_ORDER_FILTER, ORDER_PAGE_SIZE, queryOrders, type OrderFilter } from "./result-data";
+import { queryOrders } from "./result-reader";
+import { EMPTY_ORDER_FILTER, ORDER_PAGE_SIZE, type OrderFilter } from "./result-data";
 
 export const money = (value: number) =>
   new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(value);

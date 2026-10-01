@@ -1,8 +1,12 @@
-import type { RuntimeServices } from "@bcr/core";
+import type { ArtifactRef, RuntimeServices } from "@bcr/core";
 import { readJson } from "./data";
 import type { JsgResult } from "./model";
 
-type ResultStorage = Pick<RuntimeServices, "artifacts">;
+type ResultStorage = {
+  artifacts: Pick<RuntimeServices["artifacts"], "get">;
+  readChunk?: (ref: ArtifactRef, signal: AbortSignal) => Promise<ResultChunk>;
+};
+export type ResultSource = Pick<JsgResult, "chunks" | "equity" | "orders" | "decisions">;
 export const ORDER_PAGE_SIZE = 50;
 export interface OrderFilter {
   from: string;
@@ -12,10 +16,12 @@ export interface OrderFilter {
   status: string;
 }
 export const EMPTY_ORDER_FILTER: OrderFilter = { from: "", to: "", code: "", side: "", status: "" };
-type ResultChunk = Pick<JsgResult, "equity" | "orders" | "decisions">;
+export type ResultChunk = Pick<JsgResult, "equity" | "orders" | "decisions">;
+const chunkData = (services: ResultStorage, ref: ArtifactRef, signal: AbortSignal) =>
+  services.readChunk ? services.readChunk(ref, signal) : readJson<ResultChunk>(services, ref);
 export async function queryOrders(
   services: ResultStorage,
-  result: JsgResult,
+  result: ResultSource,
   filter: OrderFilter,
   offset: number,
   signal: AbortSignal,
@@ -49,21 +55,44 @@ export async function queryOrders(
       const chunk = result.chunks[i]!;
       if (
         chunk.orders === 0 ||
+        (filter.code &&
+          chunk.codes &&
+          !chunk.codes.some((code) => code.toLowerCase().includes(filter.code.toLowerCase()))) ||
         (filter.from && chunk.end < filter.from) ||
         (filter.to && chunk.start > filter.to)
       )
         continue;
       const entireChunk =
         !filter.code &&
-        !filter.side &&
-        !filter.status &&
         (!filter.from || filter.from <= chunk.start) &&
         (!filter.to || filter.to >= chunk.end);
-      if (entireChunk && (count + chunk.orders <= offset || rows.length >= ORDER_PAGE_SIZE)) {
-        count += chunk.orders;
+      const matching = !entireChunk
+        ? undefined
+        : !filter.side && !filter.status
+          ? chunk.orders
+          : chunk.orderStats?.reduce(
+              (n, cell) =>
+                n +
+                ((!filter.side || cell.side === filter.side) &&
+                (!filter.status ||
+                  (filter.status === "filled"
+                    ? cell.filled
+                    : filter.status === "rejected"
+                      ? !cell.filled
+                      : cell.status === filter.status))
+                  ? cell.count
+                  : 0),
+              0,
+            );
+      if (matching === 0) continue;
+      if (
+        matching !== undefined &&
+        (count + matching <= offset || rows.length >= ORDER_PAGE_SIZE)
+      ) {
+        count += matching;
         continue;
       }
-      const data = await readJson<ResultChunk>(services, chunk.ref);
+      const data = await chunkData(services, chunk.ref, signal);
       signal.throwIfAborted();
       consume(data.orders);
     }
@@ -71,7 +100,7 @@ export async function queryOrders(
 }
 export async function queryDecision(
   services: ResultStorage,
-  result: JsgResult,
+  result: ResultSource,
   date: string,
   signal: AbortSignal,
 ) {
@@ -79,7 +108,7 @@ export async function queryDecision(
   if (result.chunks === undefined) return result.decisions.find((d) => d.date === date);
   const chunk = result.chunks.find((c) => c.start <= date && c.end >= date);
   if (chunk === undefined) return undefined;
-  const data = await readJson<ResultChunk>(services, chunk.ref);
+  const data = await chunkData(services, chunk.ref, signal);
   signal.throwIfAborted();
   return data.decisions.find((d) => d.date === date);
 }
@@ -87,7 +116,7 @@ export async function queryDecision(
 /** Keep extrema in time buckets, retaining at most 4,096 points regardless of history length. */
 export async function queryCurve(
   services: ResultStorage,
-  result: JsgResult,
+  result: ResultSource,
   from: string,
   to: string,
   signal: AbortSignal,
@@ -130,7 +159,7 @@ export async function queryCurve(
     for (const chunk of result.chunks) {
       signal.throwIfAborted();
       if (chunk.end < from || chunk.start > to) continue;
-      const data = await readJson<ResultChunk>(services, chunk.ref);
+      const data = await chunkData(services, chunk.ref, signal);
       signal.throwIfAborted();
       consume(data.equity);
     }

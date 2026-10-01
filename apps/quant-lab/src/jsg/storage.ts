@@ -11,6 +11,7 @@ import type { ResearchSession, DatasetRefs } from "./session";
 import { datasetKey } from "./session";
 import { parseManifest, type JsgResult, type ResearchDataset } from "./model";
 import { withResearchFiles } from "./file-lease";
+import { readSmallRecord, type PartitionRecord } from "./partition-cache";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -87,7 +88,9 @@ export async function protectedResearchIds(
   const roots = new Set<string>();
   for (const d of datasets(state))
     for (const ref of [d.manifestRef, ...d.partitions]) roots.add(ref.id);
-  for (const run of state.runs) {
+  const retained = new Map(state.runs.map((run) => [run.id, run]));
+  if (state.selected) retained.set(state.selected.run.id, state.selected.run);
+  for (const run of retained.values()) {
     roots.add(run.resultRef.id);
     // Fail closed when a retained run is corrupt: never infer that its chunks are disposable.
     const result = await readJson<JsgResult>(services, run.resultRef);
@@ -174,6 +177,7 @@ export async function planResearchCleanup(
   ]) {
     const record = await readRecord(store, path);
     if (record && used.has(datasetKey(record.dataset))) continue;
+    if (((await store.size(path)) ?? Infinity) > 4 * 1024 * 1024) continue;
     const bytes = await store.get(path);
     if (bytes) indexes.push({ path, bytes });
   }
@@ -209,8 +213,9 @@ export async function reclaimResearch(
       ...(await Effect.runPromise(services.artifacts.planCleanup({ protectedIds: [...roots] }))),
     };
     const approved = new Map(plan.candidates.map((c) => [c.id, c.size]));
+    const stillDisposable = new Set(fresh.candidates.map((entry) => entry.id));
     actual.candidates = actual.candidates.filter(
-      (c) => approved.get(c.id) === c.size && fresh.candidates.some((e) => e.id === c.id),
+      (c) => approved.get(c.id) === c.size && stillDisposable.has(c.id),
     );
     const result = await Effect.runPromise(
       services.artifacts.reclaim(actual, { protectedIds: [...roots] }),
@@ -227,11 +232,34 @@ export async function reclaimResearch(
       )
         await store.delete(index.path);
     }
+    for (const path of await store.list("cache/jsg-partitions/")) {
+      const index = await readSmallRecord<PartitionRecord>(store, path);
+      if (!index?.ref || !(await store.has(`artifacts/${index.ref.id}`))) await store.delete(path);
+    }
     return result;
   });
 }
 /** Only call during project startup, before any file operation can start. */
 export async function recoverResearchFiles(store: BinaryStore = researchStore()) {
   for (const path of await store.list("temp/jsg/")) await store.delete(path);
+  for (const path of await store.list("cache/jsg-partitions/")) {
+    const index = await readSmallRecord<PartitionRecord>(store, path);
+    if (!index?.ref || !(await store.has(`artifacts/${index.ref.id}`))) await store.delete(path);
+  }
+  if (typeof navigator !== "undefined" && typeof navigator.storage?.getDirectory === "function")
+    await recoverResearchExports();
   return store.list("temp/jsg/");
+}
+
+/** Export downloads already use a 60-second grace period before their backing file is removed. */
+export async function recoverResearchExports(
+  store: BinaryStore = new OpfsStore("jsg-exports"),
+  now = Date.now(),
+) {
+  if (!store.getBlob) return;
+  for (const path of await store.list()) {
+    if (!/^result-[0-9a-f-]{36}\.json$/iu.test(path)) continue;
+    const file = await store.getBlob(path);
+    if (file instanceof File && now - file.lastModified >= 60_000) await store.delete(path);
+  }
 }

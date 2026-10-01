@@ -43,7 +43,7 @@ async function hashPartition(file: File, signal?: AbortSignal): Promise<string> 
 }
 
 export async function readJson<T>(
-  services: Pick<RuntimeServices, "artifacts">,
+  services: { artifacts: Pick<RuntimeServices["artifacts"], "get"> },
   ref: ArtifactRef,
 ): Promise<T> {
   const bytes = await Effect.runPromise(services.artifacts.get(ref));
@@ -163,6 +163,7 @@ export async function exportResearchResult(
   config: JsgConfig,
   manifest: ResearchManifest | undefined,
   result: JsgResult,
+  snapshot?: ResearchDataset["snapshot"],
 ): Promise<{ blob: Blob; cleanup: () => Promise<void> }> {
   const directory = await (
     await navigator.storage.getDirectory()
@@ -173,7 +174,7 @@ export async function exportResearchResult(
   const cleanup = () => directory.removeEntry(name);
   try {
     if (result.chunks === undefined) {
-      await writer.write(JSON.stringify({ config, manifest, result }));
+      await writer.write(JSON.stringify({ config, manifest, snapshot, result }));
     } else {
       const {
         chunks,
@@ -182,7 +183,7 @@ export async function exportResearchResult(
         decisions: _decisions,
         ...summary
       } = result;
-      const header = JSON.stringify({ config, manifest });
+      const header = JSON.stringify({ config, manifest, snapshot });
       await writer.write(header.slice(0, -1) + ',"result":' + JSON.stringify(summary).slice(0, -1));
       for (const field of ["equity", "orders", "decisions"] as const) {
         await writer.write(`,"${field}":[`);

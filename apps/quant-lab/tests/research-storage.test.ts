@@ -22,6 +22,7 @@ import {
   rememberSnapshot,
   researchUsage,
   recoverResearchFiles,
+  recoverResearchExports,
 } from "../src/jsg/storage";
 
 const ref = (id: string, type = "quant/jsg-daily"): ArtifactRef => ({
@@ -191,5 +192,23 @@ describe("research storage lifecycle", () => {
     expect(await recoverResearchFiles(s.store)).toEqual([]);
     expect(await s.store.has("temp/sma/retained")).toBe(true);
     expect(await s.store.has(artifactPath(s.dataset.manifestRef))).toBe(true);
+  });
+  it("recovers abandoned exports while protecting the download grace period and unrelated files", async () => {
+    const store = new MemoryStore();
+    const expired = "result-00000000-0000-4000-8000-000000000001.json";
+    const recent = "result-00000000-0000-4000-8000-000000000002.json";
+    const now = 100_000;
+    for (const path of [expired, recent, "retained.json"])
+      await store.put(path, new Uint8Array([1]));
+    store.getBlob = async (path: string) =>
+      new File([new Uint8Array([1])], path, {
+        lastModified: path === recent ? now - 59_999 : now - 60_000,
+      });
+    await recoverResearchExports(store, now);
+    expect(await store.has(expired)).toBe(false);
+    expect(await store.has(recent)).toBe(true);
+    expect(await store.has("retained.json")).toBe(true);
+    await recoverResearchExports(store, now + 1);
+    expect(await store.has(recent)).toBe(false);
   });
 });

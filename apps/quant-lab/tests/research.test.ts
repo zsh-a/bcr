@@ -223,10 +223,13 @@ describe("immutable research runs", () => {
     const services = await storage(),
       snapshot = selected();
     await putRun(services, snapshot);
+    snapshot.run.snapshot = { createdAt: "2024-03-01T00:00:00Z" };
+    snapshot.dataset.snapshot = snapshot.run.snapshot;
     const state = ready(snapshot);
     state.runs.push({
       ...snapshot.run,
       id: "second",
+      snapshot: { createdAt: "2024-03-02T00:00:00Z" },
       config: { ...snapshot.run.config, stockCount: 6 },
       dataset: { ...snapshot.run.dataset, partitions: [...snapshot.run.dataset.partitions] },
     });
@@ -237,6 +240,10 @@ describe("immutable research runs", () => {
     const restored = await restoreSession(services);
     expect(restored?.runs.map((run) => run.config.stockCount)).toEqual([10, 6]);
     expect(restored?.selected?.run.config.stockCount).toBe(10);
+    expect(restored?.selected?.dataset.snapshot?.createdAt).toBe("2024-03-01T00:00:00Z");
+    expect((await readRun(services, restored!.runs[1]!)).dataset.snapshot?.createdAt).toBe(
+      "2024-03-02T00:00:00Z",
+    );
   });
   it("restores direct-reference v2 sessions as well as the compact dataset catalog", async () => {
     const services = await storage(),
@@ -403,6 +410,88 @@ describe("bounded complete-result queries", () => {
         )
       ).count,
     ).toBe(1);
+  });
+  it("uses order summaries for filtered pagination and skips impossible code matches", async () => {
+    const services = await storage(),
+      summary = result();
+    const a = ref("indexed-old"),
+      b = ref("indexed-new");
+    const first = Array.from({ length: 60 }, (_, n) => ({
+      ...order(n, "2024-01-02", 50, "partial"),
+      side: "buy" as const,
+    }));
+    const second = Array.from({ length: 60 }, (_, n) => ({
+      ...order(n + 60, "2024-02-01", 50, "partial"),
+      side: "buy" as const,
+    }));
+    for (const [target, orders] of [
+      [a, first],
+      [b, second],
+    ] as const)
+      await putJson(services, target, { orders, equity: [], decisions: [] });
+    summary.chunks = [
+      {
+        ref: a,
+        start: "2024-01-02",
+        end: "2024-01-02",
+        orders: 60,
+        codes: first.map((o) => o.code),
+        orderStats: [{ side: "buy", status: "partial", filled: true, count: 60 }],
+      },
+      {
+        ref: b,
+        start: "2024-02-01",
+        end: "2024-02-01",
+        orders: 60,
+        codes: second.map((o) => o.code),
+        orderStats: [{ side: "buy", status: "partial", filled: true, count: 60 }],
+      },
+    ];
+    let reads = 0;
+    const counted = {
+      artifacts: {
+        get: (target: ArtifactRef) => {
+          reads++;
+          return services.artifacts.get(target);
+        },
+      },
+    };
+    const page = await queryOrders(
+      counted,
+      summary,
+      { ...EMPTY_ORDER_FILTER, side: "buy", status: "filled" },
+      60,
+      signal(),
+    );
+    expect(page.count).toBe(120);
+    expect(page.rows).toHaveLength(50);
+    expect(reads).toBe(1);
+    reads = 0;
+    expect(
+      (
+        await queryOrders(
+          counted,
+          summary,
+          { ...EMPTY_ORDER_FILTER, status: "rejected" },
+          0,
+          signal(),
+        )
+      ).count,
+    ).toBe(0);
+    expect(
+      (await queryOrders(counted, summary, { ...EMPTY_ORDER_FILTER, code: "missing" }, 0, signal()))
+        .count,
+    ).toBe(0);
+    expect(reads).toBe(0);
+    const partial = await queryOrders(
+      counted,
+      summary,
+      { ...EMPTY_ORDER_FILTER, from: "2024-02-01", to: "2024-02-01", status: "partial" },
+      0,
+      signal(),
+    );
+    expect(partial.count).toBe(60);
+    expect(partial.rows).toHaveLength(50);
   });
   it("reads an exact historical decision instead of falling back to the latest preview", async () => {
     const services = await storage(),

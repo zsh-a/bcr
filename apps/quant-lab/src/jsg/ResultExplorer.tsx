@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Orders, money, percent } from "./Orders";
 import { dateText, type JsgResult } from "./model";
 import { datasetKey, type SelectedRun } from "./session";
-import { queryDecision } from "./result-data";
+import { queryDecision } from "./result-reader";
 import { ResearchTabs } from "./ResearchTabs";
 
 function Holdings({ result }: { result: JsgResult }) {

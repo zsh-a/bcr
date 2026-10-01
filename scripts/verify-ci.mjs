@@ -134,6 +134,7 @@ await withServer({
     "scripts/verify-quant-lab.mjs",
     "scripts/verify-jsg.mjs",
     "scripts/verify-jsg-storage.mjs",
+    "scripts/verify-jsg-clickhouse-fixture.mjs",
     ...liveMarketChecks,
     "scripts/verify-manga-studio.mjs",
     "scripts/verify-document-studio.mjs",

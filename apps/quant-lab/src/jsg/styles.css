@@ -1300,6 +1300,11 @@
   gap: var(--space-3);
   justify-content: flex-end;
 }
+.research-snapshot-time {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
 @media (max-width: 22rem) {
   .research-storage-summary {
     grid-template-columns: 1fr;

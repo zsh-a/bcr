@@ -281,7 +281,9 @@ export function DateRangeSettings({
           />
           <span>重新获取数据</span>
         </label>
-        <p className="research-help">关闭时优先复用相同区间的本地快照。</p>
+        <p className="research-help">
+          关闭时复用本地快照和重叠区间分片。开启后重新获取当前区间，并更新此数据源的分片版本；保留的历史运行仍使用原快照。
+        </p>
         <label className="research-switch">
           <input
             type="checkbox"

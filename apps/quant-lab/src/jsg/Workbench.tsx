@@ -25,6 +25,7 @@ import { dateText, DEFAULT_CONFIG } from "./model";
 import { configKey, isDraftChanged, readRun, type SelectedRun } from "./session";
 import { exportResearchResult } from "./data";
 import { demoResearch } from "./demo";
+import { disposeResultReader } from "./result-reader";
 import { StorageSettings } from "./StorageSettings";
 import { withResearchFiles } from "./file-lease";
 import { money, percent } from "./Orders";
@@ -90,6 +91,7 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
       document.removeEventListener("click", outside);
       document.removeEventListener("keydown", escape);
       comparisonRequest.current++;
+      disposeResultReader();
     };
   }, []);
   const busy = state.operation !== null || storageBusy;
@@ -174,6 +176,7 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
           snapshot.run.config,
           snapshot.dataset.manifest,
           snapshot.result,
+          snapshot.dataset.snapshot,
         ),
       );
       const url = URL.createObjectURL(exported.blob);
@@ -350,6 +353,17 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
         {source.kind === "clickhouse" && source.range.refresh && (
           <span className="research-source-hint">重新获取</span>
         )}
+        {state.dataset?.snapshot && (
+          <span
+            className="research-snapshot-time"
+            title={`源数据覆盖至 ${state.dataset.snapshot.sourceLastDate ?? dateText(state.dataset.manifest.endDate)}；这是本地冻结快照，刷新可获取修订。`}
+          >
+            快照 {timeLabel(state.dataset.snapshot.createdAt)}
+            {state.dataset.snapshot.reusedPartitions
+              ? ` · 复用 ${state.dataset.snapshot.reusedPartitions} 片`
+              : ""}
+          </span>
+        )}
       </div>
       <input
         ref={input}
@@ -401,6 +415,13 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                       目标 {selected.run.config.stockCount} 只 · 本金 ¥
                       {money(selected.run.config.initialCapital)}
                     </span>
+                    {selected.dataset.snapshot && (
+                      <span
+                        title={`获取于 ${selected.dataset.snapshot.createdAt}；源覆盖至 ${selected.dataset.snapshot.sourceLastDate ?? dateText(selected.run.endDate)}`}
+                      >
+                        数据快照 {timeLabel(selected.dataset.snapshot.createdAt)}
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="research-result-context">
