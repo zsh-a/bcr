@@ -95,3 +95,47 @@ HTTP fixture 不启动数据库，也不解释 SQL，仅提供固定元数据和
 其他 Quant 应用文件仍可使用；启动会删除中断的 JSG 临时传输文件，并回收超过 60 秒
 下载缓冲期的导出文件。清理预览中的引用、
 大小和候选文件在执行时重新核对，当前查询和导出通过共享文件锁与清理互斥。
+
+## 浏览器参数网格
+
+同一 625 万行输入，使用目标股票数 `4, 6, 8, 10` × 个股止损 `0, 3, 5, 8%`，
+共 16 个独立账户。浏览器只读取/解码一次行情、共享市场特征，输出每组的配置和指标；
+完整净值、订单及调仓在查看某组详情时单独生成。浏览器使用一个 Worker 和一个 CPU 线程。
+
+```sh
+# 使用上文已生成的 input，在另一个终端启动 bun run quant。
+BASE_URL='http://localhost:5201/?strategy=jsg' node scripts/benchmark-jsg-grid.mjs \
+  /tmp/bcr-research-benchmarks/input /tmp/bcr-research-benchmarks/browser-grid
+python scripts/benchmark-jsg.py /tmp/bcr-research-benchmarks/input/manifest.json \
+  --binary crates/quant/target/release/jsg \
+  --configs /tmp/bcr-research-benchmarks/browser-grid/configs.json \
+  --output /tmp/bcr-research-benchmarks/native-grid
+node scripts/verify-jsg-grid-parity.mjs /tmp/bcr-research-benchmarks/native-grid/grid-1.jsonl \
+  /tmp/bcr-research-benchmarks/browser-grid/grid.json
+node scripts/verify-jsg-grid-parity.mjs /tmp/bcr-research-benchmarks/native-grid/grid-8.jsonl \
+  /tmp/bcr-research-benchmarks/browser-grid/grid.json
+```
+
+| 操作                                             |        2026-10-01 实测 |
+| ------------------------------------------------ | ---------------------: |
+| 浏览器 16 组实验（含提交、读取、计算及发布指标） |               4,952 ms |
+| Worker 总计 / 读取 / 计算                        | 4,601 / 635 / 3,874 ms |
+| 相同网格缓存复用                                 |                 390 ms |
+| 64 组任务点击取消至结束                          |                 170 ms |
+| 原生 16 组、1 线程，3 次中位数                   |               3,389 ms |
+| 原生 16 组、8 线程，3 次中位数                   |               1,544 ms |
+
+原生 1 线程峰值 RSS 19.07–19.20 MiB，8 线程 28.64–29.26 MiB；同轮单参数原生
+中位数 1,209 ms、RSS 18.55 MiB。原生网格包含快照 SHA-256 校验及指标 JSON 写出。
+1/8 线程的配置、行数和全部指标相同。浏览器与原生配置逐项一致，除 3 组年化收益
+最多相差 `2.220446049250313e-16` 外，其余所有指标相同。原生 `powf` 与 WASM
+幂运算的浮点舍入不同，对账脚本仅对年化收益允许 `1e-12 × max(1, |原生值|)` 误差。
+同一 WASM 内网格与独立单组回测的全部指标严格一致，包含 raw-v2 的部分成交、分期费用和公司行为。
+
+网格计算阶段未观测到 ≥50 ms 的主线程长任务。本轮没有测量浏览器内存；不能据此
+宣称浏览器峰值内存下降。浏览器是单次观测，OS 页缓存已预热，墙钟时间包含 UI/自动化等待。
+网格只生成指标，单参数基准还生成完整历史，因此不能把两者耗时直接当作性能倍率。
+
+机器可读摘要见 [browser-grid-2026-10-01.json](fixtures/benchmarks/browser-grid-2026-10-01.json)。
+完整报告位于 worktree 外的 `/home/zs/workspace/bcr-research-benchmarks/grid-16` 与
+`grid-16-native`；`grid.json` 为首轮实验，`configs.json` 为相同配置的原生对账输入。

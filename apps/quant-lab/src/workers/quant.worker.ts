@@ -6,6 +6,7 @@ import { decodeMarketArrow } from "../arrow";
 import { computeSmaSignals, runBacktest, validateMarketBars } from "../engine";
 import type { BacktestResult, MarketBar, SignalPoint, StrategyConfig } from "../model";
 import { jsgHandler } from "../jsg/compute";
+import { jsgGridHandler } from "../jsg/grid-compute";
 import { runWasmBacktest } from "../wasm-backtest";
 
 const opfs = new OpfsStore("quant");
@@ -177,6 +178,7 @@ async function backtestTask(
 
 defineWorker({
   "quant.backtest.jsg": jsgHandler(createArtifactIO(opfs, "opfs")),
+  "quant.grid.jsg": jsgGridHandler(createArtifactIO(opfs, "opfs")),
   "quant.signal.sma-cross": signalTask,
   "quant.backtest.long-only": backtestTask,
 });

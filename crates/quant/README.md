@@ -366,3 +366,42 @@ bun run test:browser:jsg
 # Local source integration, when a browser and localhost listener are permitted:
 BASE_URL=http://localhost:5201/ bun run test:browser:jsg:clickhouse
 ```
+
+## Browser parameter experiments
+
+Use **更多 → 参数实验** to vary 1–6 settings: stock count, pool size, stop loss,
+trailing stop, portfolio drawdown, slippage and commission. Enter comma-separated candidate
+values; risk limits use percentages (`5` means 5%, `0` disables the limit). Other settings use
+the current draft. Equivalent values are deduplicated, every combination is validated, and
+the Cartesian product is limited to 64 independent configurations.
+
+ClickHouse data is acquired once through the existing snapshot/partition cache. One browser
+Worker drives the Rust/WASM grid: each daily Arrow batch and market feature set is computed
+once, then shared by independent portfolios. The Worker yields between portfolio steps for
+progress and cancellation. It uses one CPU thread; browser WASM threads are not required.
+Only configuration and summary metrics are persisted for each combination, keeping one
+bounded input partition and shared market windows rather than 64 complete result histories.
+
+Results sort by return, drawdown, Sharpe or fees and display 20 rows per page. **查看详情**
+generates a complete single-run result using that combination's captured configuration and
+frozen local dataset, or reuses an existing full-result cache. Explicit default values give
+ordinary runs and grid details the same cache identity. Viewing details preserves the draft;
+**使用参数** explicitly changes it. Existing selected results and the previous experiment
+remain available during a new experiment, cancellation or failure.
+
+**导出参数实验** saves configurations, metrics, manifest and snapshot provenance as JSON.
+The latest experiment is restored after reload; its input and output references are protected
+from storage cleanup. Replacing it or choosing **移除参数实验** releases the metadata reference;
+use **数据与存储 → 清理未使用数据** to reclaim eligible artifacts and task/cache records.
+Complete detail runs remain in the normal 20-run history. Exports contain the experiment's
+captured source and range, even if the current draft or source has changed.
+
+```sh
+BASE_URL=http://localhost:5201/ bun run test:browser:jsg:grid
+BASE_URL='http://localhost:5201/?strategy=jsg' node scripts/benchmark-jsg-grid.mjs \
+  /tmp/bcr-research-benchmarks/input /tmp/bcr-research-benchmarks/browser-grid
+```
+
+The grid test covers independent-run metric parity, validation, sorting/pagination, cache,
+cancel/restore, detail generation, immutable exports, storage reclamation and 320 px layouts.
+See [BENCHMARKS.md](BENCHMARKS.md) for the large-data measurements and native comparison.

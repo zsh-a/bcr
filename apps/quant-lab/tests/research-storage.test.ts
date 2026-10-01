@@ -141,6 +141,36 @@ async function setup() {
   return { store, services: { artifacts, scheduler }, state, caches, journal, dataset, put, run };
 }
 describe("research storage lifecycle", () => {
+  it("protects a retained grid and releases its cache and task after it is removed", async () => {
+    const s = await setup();
+    const run = await s.run("grid", false);
+    const resultRef = { ...run.resultRef, type: "quant/jsg-grid-result" };
+    s.caches[0] = { ...s.caches[0]!, outputs: [resultRef], taskIds: ["jsg-grid-grid"] };
+    s.journal[0] = {
+      ...s.journal[0]!,
+      task: { ...s.journal[0]!.task, id: "jsg-grid-grid", operation: "quant.grid.jsg" },
+    };
+    await Effect.runPromise(s.services.artifacts.releaseTask("jsg-grid"));
+    await Effect.runPromise(s.services.artifacts.registerConsumption(s.journal[0]!.task));
+    await Effect.runPromise(s.services.artifacts.registerProduction("jsg-grid-grid", [resultRef]));
+    s.state.dataset = null;
+    s.state.grid = {
+      run: { ...run, resultRef, axes: [] },
+      dataset: s.dataset,
+      result: { decodedRows: 1, results: [{ config: DEFAULT_CONFIG, metrics: run.metrics }] },
+    };
+    const retained = await planResearchCleanup(s.services, s.state, s.store);
+    expect(retained.candidates.some((entry) => entry.id === resultRef.id)).toBe(false);
+    expect(retained.candidates.some((entry) => entry.id === s.dataset.partitions[0]!.id)).toBe(
+      false,
+    );
+    expect(retained.cache.candidates).toHaveLength(0);
+    expect(retained.journal.candidates).toHaveLength(0);
+    s.state.grid = null;
+    const released = await planResearchCleanup(s.services, s.state, s.store);
+    expect(released.cache.candidates).toHaveLength(1);
+    expect(released.journal.candidates[0]!.entry.task.operation).toBe("quant.grid.jsg");
+  });
   it("reclaims discarded results and lineage while retaining shared market data and other app files", async () => {
     const s = await setup();
     const old = await s.run("old", false);

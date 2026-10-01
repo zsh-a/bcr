@@ -124,6 +124,17 @@ try {
   assert(Number.isFinite(Date.parse(first.snapshot.createdAt)));
   assert(first.snapshot.timings.downloadedBytes > 0);
   await page.screenshot({ path: `${shots}/jsg-clickhouse-result.png`, fullPage: true });
+  const beforeGridQueries = queries;
+  await page.locator(".research-action-menu > summary").click();
+  await page.getByRole("button", { name: "参数实验", exact: true }).click();
+  await page.getByRole("button", { name: "运行参数实验", exact: true }).click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector(".research-taskbar")?.textContent?.includes("参数实验完成") &&
+      document.querySelector(".jsg-workspace")?.getAttribute("data-busy") === "false",
+  );
+  assert.equal(queries, beforeGridQueries, "parameter grid must reuse the acquired snapshot");
+  assert.equal(await page.locator(".research-grid-table tbody tr").count(), 4);
   const firstArrowQueries = arrowQueries;
   // Shift the start within the same source calendar: interior daily partitions remain reusable.
   const shiftedStart = new Date(`${start}T00:00:00Z`);
@@ -198,7 +209,7 @@ try {
   await page.screenshot({ path: `${shots}/jsg-clickhouse-mobile.png`, fullPage: true });
   assert.deepEqual(errors, []);
   console.log(
-    `ClickHouse browser verification PASSED: ${first.result.metrics.days} days; connect, Arrow load, overlap reuse, cache, password lifetime, failed refresh, cancel, restore, mobile`,
+    `ClickHouse browser verification PASSED: ${first.result.metrics.days} days; connect, Arrow load, parameter grid, overlap reuse, cache, password lifetime, failed refresh, cancel, restore, mobile`,
   );
 } catch (error) {
   await page

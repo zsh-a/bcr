@@ -1,0 +1,126 @@
+{
+  "measuredAt": "2026-10-01",
+  "environment": {
+    "cpu": "Intel Core i7-13700K",
+    "logicalCpusAvailable": 16,
+    "os": "Linux",
+    "bun": "1.3.14",
+    "node": "26.10.0",
+    "browser": "Playwright Chromium"
+  },
+  "input": {
+    "rows": 6250000,
+    "bytes": 501073424,
+    "partitions": 63,
+    "instruments": 5000,
+    "sessions": 1250,
+    "backtestDays": 1220,
+    "manifestSha256": "b3d43842b80dbf9858b5579946e0d3a28f154a532b485227becf8595cc05aac5"
+  },
+  "axes": {
+    "stockCount": [4, 6, 8, 10],
+    "stopLoss": [0, 0.03, 0.05, 0.08]
+  },
+  "browser": {
+    "rows": 6250000,
+    "combinations": 16,
+    "elapsedMs": 4951.535392999999,
+    "cacheMs": 390.03171399999883,
+    "cancelMs": 170.26372000000083,
+    "workerTimings": {
+      "totalMs": 4601.034999996424,
+      "readMs": 634.5299999415874,
+      "computeMs": 3873.7249993681908,
+      "partitions": 63
+    },
+    "mainThreadLongTasks": [],
+    "note": "One browser Worker; each daily Arrow batch and market feature set shared across independent portfolios; metrics only. OS cache warm; UI wall times include automation waits."
+  },
+  "native": {
+    "rows": 6250000,
+    "bytes": 501073424,
+    "note": "OS page cache not cleared; includes SHA-256 verification and JSONL serialization",
+    "measurements": {
+      "single": {
+        "runs": [
+          {
+            "wallMs": 1180.028800998116,
+            "peakRssMiB": 18.546875,
+            "cpuMs": 1165.482
+          },
+          {
+            "wallMs": 1220.887195027899,
+            "peakRssMiB": 18.546875,
+            "cpuMs": 1218.158
+          },
+          {
+            "wallMs": 1208.632931986358,
+            "peakRssMiB": 18.546875,
+            "cpuMs": 1206.0059999999999
+          }
+        ],
+        "medianMs": 1208.632931986358
+      },
+      "grid-1": {
+        "runs": [
+          {
+            "wallMs": 3288.1131139874924,
+            "peakRssMiB": 19.0703125,
+            "cpuMs": 3286.206
+          },
+          {
+            "wallMs": 3452.9621769906953,
+            "peakRssMiB": 19.203125,
+            "cpuMs": 3452.866
+          },
+          {
+            "wallMs": 3388.6492589954287,
+            "peakRssMiB": 19.16015625,
+            "cpuMs": 3386.784
+          }
+        ],
+        "medianMs": 3388.6492589954287
+      },
+      "grid-8": {
+        "runs": [
+          {
+            "wallMs": 1517.1359200030565,
+            "peakRssMiB": 28.63671875,
+            "cpuMs": 4735.151
+          },
+          {
+            "wallMs": 1544.0310700214468,
+            "peakRssMiB": 29.2578125,
+            "cpuMs": 4736.772
+          },
+          {
+            "wallMs": 1590.9793939790688,
+            "peakRssMiB": 28.74609375,
+            "cpuMs": 4933.293
+          }
+        ],
+        "medianMs": 1544.0310700214468
+      }
+    }
+  },
+  "parity": {
+    "combinations": 16,
+    "nativeOneAndEightThreadConfigsAndMetricsIdentical": true,
+    "browserConfigsIdentical": true,
+    "exactMetricFieldsExcept": ["annualizedReturn"],
+    "annualizedReturnDifferences": 3,
+    "maxAnnualizedReturnDifference": 2.220446049250313e-16,
+    "annualizedReturnRelativeTolerance": 1e-12,
+    "sameWasmGridVsIndependentMetricsIdentical": true,
+    "sameWasmAdjustedConfigsTested": 12,
+    "sameWasmRawConfigsTested": 4
+  },
+  "limitations": [
+    "Browser observations are individual runs, not statistical estimates",
+    "OS page cache was warm",
+    "Browser wall times include UI and automation waits",
+    "Grid produces summary metrics; full single-run histories are generated on demand",
+    "No browser memory sampling performed in this grid benchmark",
+    "Native libm powf and WASM exponentiation have tiny annualized-return rounding differences"
+  ]
+}

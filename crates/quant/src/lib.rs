@@ -171,3 +171,120 @@ impl JsgBacktest {
 
 #[cfg(test)]
 mod tests;
+
+/// Decode and prepare each day once; advance one independent portfolio per call so the host can yield.
+#[wasm_bindgen]
+pub struct JsgGrid {
+    engines: Option<Vec<Engine>>,
+    configs: Vec<Config>,
+    factors: features::FactorState,
+    reader: Option<StreamReader<Cursor<Vec<u8>>>>,
+    bars: Vec<model::Bar>,
+    prepared: Option<features::PreparedDay>,
+    next_engine: usize,
+    days: usize,
+    rows: usize,
+}
+
+#[wasm_bindgen]
+impl JsgGrid {
+    #[wasm_bindgen(constructor)]
+    pub fn new(manifest: &str, configs: &str) -> Result<JsgGrid, JsValue> {
+        let manifest: Manifest = serde_json::from_str(manifest).map_err(js_error)?;
+        let configs: Vec<Config> = serde_json::from_str(configs).map_err(js_error)?;
+        if configs.is_empty() || configs.len() > 64 {
+            return Err(js_error("browser grid requires 1–64 configs"));
+        }
+        let engines = configs
+            .iter()
+            .map(|config| Engine::new_shared(manifest.clone(), config.clone()))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(js_error)?;
+        Ok(Self {
+            engines: Some(engines),
+            configs,
+            factors: features::FactorState::new(manifest),
+            reader: None,
+            bars: vec![],
+            prepared: None,
+            next_engine: 0,
+            days: 0,
+            rows: 0,
+        })
+    }
+    pub fn load_partition(&mut self, bytes: Vec<u8>) -> Result<(), JsValue> {
+        if self.engines.is_none() {
+            return Err(js_error("grid finished"));
+        }
+        if bytes.is_empty() || bytes.len() > MAX_PARTITION_BYTES {
+            return Err(js_error("Arrow partition exceeds 32 MiB"));
+        }
+        if self.reader.is_some() || self.prepared.is_some() {
+            return Err(js_error("consume current partition before loading another"));
+        }
+        self.reader = Some(StreamReader::try_new(Cursor::new(bytes), None).map_err(js_error)?);
+        Ok(())
+    }
+    pub fn advance(&mut self) -> Result<bool, JsValue> {
+        let engines = self
+            .engines
+            .as_mut()
+            .ok_or_else(|| js_error("grid finished"))?;
+        if self.prepared.is_none() {
+            let reader = self
+                .reader
+                .as_mut()
+                .ok_or_else(|| js_error("no Arrow partition loaded"))?;
+            match reader.next() {
+                Some(batch) => {
+                    self.bars = reader::decode_day(&batch.map_err(js_error)?).map_err(js_error)?;
+                    self.prepared = Some(self.factors.advance(&self.bars).map_err(js_error)?);
+                    self.rows += self.bars.len();
+                }
+                None => {
+                    self.reader = None;
+                    return Ok(false);
+                }
+            }
+        }
+        let engine = &mut engines[self.next_engine];
+        engine
+            .day_with_features(self.bars.clone(), self.prepared.as_ref())
+            .map_err(js_error)?;
+        engine.drain_output();
+        self.next_engine += 1;
+        if self.next_engine == engines.len() {
+            self.next_engine = 0;
+            self.prepared = None;
+            self.bars.clear();
+            self.days += 1;
+        }
+        Ok(true)
+    }
+    pub fn processed_days(&self) -> usize {
+        self.days
+    }
+    pub fn processed_rows(&self) -> usize {
+        self.rows
+    }
+    pub fn finish(&mut self) -> Result<String, JsValue> {
+        if self.reader.is_some() || self.prepared.is_some() {
+            return Err(js_error("partition not exhausted"));
+        }
+        let engines = self
+            .engines
+            .take()
+            .ok_or_else(|| js_error("grid finished"))?;
+        let results = engines
+            .into_iter()
+            .zip(self.configs.iter())
+            .map(|(engine, config)| {
+                let result = engine.finish()?;
+                Ok(serde_json::json!({"config": config, "metrics": result.metrics}))
+            })
+            .collect::<Result<Vec<_>, String>>()
+            .map_err(js_error)?;
+        serde_json::to_string(&serde_json::json!({"decodedRows": self.rows, "results": results}))
+            .map_err(js_error)
+    }
+}

@@ -13,6 +13,7 @@ import {
   Upload,
   Trash2,
   HardDrive,
+  FlaskConical,
   X,
 } from "lucide-react";
 import { ConnectionSettings, DateRangeSettings } from "./DataSource";
@@ -27,6 +28,9 @@ import { exportResearchResult } from "./data";
 import { demoResearch } from "./demo";
 import { disposeResultReader } from "./result-reader";
 import { StorageSettings } from "./StorageSettings";
+import { GridSettings, GridResults } from "./GridExperiment";
+import type { GridAxis } from "./grid";
+import type { JsgConfig } from "./model";
 import { withResearchFiles } from "./file-lease";
 import { money, percent } from "./Orders";
 import "./styles.css";
@@ -61,6 +65,11 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
     [historyOpen, setHistoryOpen] = useState(false),
     [storageOpen, setStorageOpen] = useState(false),
     [storageBusy, setStorageBusy] = useState(false);
+  const [gridOpen, setGridOpen] = useState(false),
+    [gridExpanded, setGridExpanded] = useState(true);
+  useEffect(() => {
+    setGridExpanded(true);
+  }, [state.grid?.run.id]);
   const [exporting, setExporting] = useState(false),
     [comparison, setComparison] = useState<SelectedRun | null>(null),
     [comparing, setComparing] = useState(false);
@@ -148,6 +157,21 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
     } else await research.run();
   };
   const executeRef = useRef(execute);
+  const executeGrid = async (configs: JsgConfig[], axes: GridAxis[]) => {
+    if (!ready || busy) return;
+    setGridOpen(false);
+    try {
+      if (source.kind === "clickhouse") {
+        await source.persist();
+        await research.runGrid(configs, axes, {
+          connection: source.connection,
+          range: source.range,
+        });
+      } else await research.runGrid(configs, axes);
+    } catch (error) {
+      research.notice(error instanceof Error ? error.message : String(error));
+    }
+  };
   executeRef.current = execute;
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
@@ -268,6 +292,17 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
               <MoreHorizontal size={19} />
             </summary>
             <div>
+              <Button
+                variant="ghost"
+                disabled={!ready || busy || invalid}
+                onClick={() => {
+                  if (actionMenu.current) actionMenu.current.open = false;
+                  setGridOpen(true);
+                }}
+              >
+                <FlaskConical size={15} />
+                参数实验
+              </Button>
               <Button
                 variant="ghost"
                 disabled={busy || !state.ready}
@@ -401,6 +436,24 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
           </aside>
         )}
         <main className="research-results" aria-busy={research.selecting}>
+          {state.grid && (
+            <GridResults
+              key={state.grid.run.id}
+              grid={state.grid}
+              busy={busy}
+              expanded={gridExpanded}
+              onExpand={() => setGridExpanded((value) => !value)}
+              onForget={research.forgetGrid}
+              onUse={research.reset}
+              onView={(index) => {
+                void (async () => {
+                  const before = research.getSession().selected?.run.id;
+                  await research.viewGridResult(index);
+                  if (research.getSession().selected?.run.id !== before) setGridExpanded(false);
+                })();
+              }}
+            />
+          )}
           {selected ? (
             <div className="research-run-result" data-run-id={selected.run.id}>
               <div className="research-result-heading">
@@ -496,7 +549,7 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                 comparison={comparison}
               />
             </div>
-          ) : (
+          ) : state.grid ? null : (
             <div className="research-empty">
               <span className="research-eyebrow">从一次回测开始</span>
               <div className="research-empty-mark" aria-hidden="true">
@@ -574,6 +627,18 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
         onDemo={() => void research.importFiles(demoResearch().files)}
       />
       <DateRangeSettings source={source} open={rangeOpen} onClose={() => setRangeOpen(false)} />
+      <GridSettings
+        open={gridOpen}
+        base={state.draft}
+        busy={busy}
+        onClose={() => setGridOpen(false)}
+        source={
+          source.kind === "clickhouse"
+            ? `ClickHouse · ${source.connection.database} · ${source.range.start} — ${source.range.end}`
+            : (state.dataset?.manifest.name ?? "本地快照")
+        }
+        onRun={(configs, axes) => void executeGrid(configs, axes)}
+      />
       <StorageSettings
         services={services}
         research={research}

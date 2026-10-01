@@ -79,6 +79,7 @@ function datasets(state: ResearchSession): DatasetRefs[] {
     ...(state.dataset ? [state.dataset] : []),
     ...state.runs.map((r) => r.dataset),
     ...(state.selected ? [state.selected.dataset] : []),
+    ...(state.grid ? [state.grid.dataset] : []),
   ];
 }
 export async function protectedResearchIds(
@@ -86,6 +87,7 @@ export async function protectedResearchIds(
   state: ResearchSession,
 ): Promise<Set<string>> {
   const roots = new Set<string>();
+  if (state.grid) roots.add(state.grid.run.resultRef.id);
   for (const d of datasets(state))
     for (const ref of [d.manifestRef, ...d.partitions]) roots.add(ref.id);
   const retained = new Map(state.runs.map((run) => [run.id, run]));
@@ -151,13 +153,17 @@ export async function planResearchCleanup(
     ...(await Effect.runPromise(
       services.scheduler.planJournalPrune({
         maxEntries: 0,
-        protectedTaskIds: [...keptTasks, ...state.runs.map((r) => `jsg-${r.id}`)],
+        protectedTaskIds: [
+          ...keptTasks,
+          ...state.runs.map((r) => `jsg-${r.id}`),
+          ...(state.grid ? [`jsg-grid-${state.grid.run.id}`] : []),
+        ],
       }),
     )),
   };
   if (journal.activeEntries > 0) throw new Error("仍有计算任务运行，请结束后清理");
-  journal.candidates = journal.candidates.filter(
-    (c) => c.entry.task.operation === "quant.backtest.jsg",
+  journal.candidates = journal.candidates.filter((c) =>
+    ["quant.backtest.jsg", "quant.grid.jsg"].includes(c.entry.task.operation),
   );
   const releasing = new Set(journal.candidates.map((c) => c.entry.task.id));
   for (const c of cache.candidates) for (const id of c.taskIds) releasing.add(id);

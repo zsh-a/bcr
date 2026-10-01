@@ -78,9 +78,8 @@ export function StorageSettings({
   return (
     <Dialog
       open={open}
-      onClose={() => {
-        if (!working) onClose();
-      }}
+      onClose={onClose}
+      closable={!working}
       title="数据与存储"
       className="research-storage-dialog"
     >

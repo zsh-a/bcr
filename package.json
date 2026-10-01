@@ -33,6 +33,7 @@
     "build:wasm:quant": "wasm-pack build crates/quant --target web",
     "test:rust:quant": "cargo test --manifest-path crates/quant/Cargo.toml",
     "test:browser:jsg": "node scripts/verify-jsg.mjs",
+    "test:browser:jsg:grid": "node scripts/verify-jsg-grid.mjs",
     "test:browser:jsg:storage": "node scripts/verify-jsg-storage.mjs",
     "test:browser:jsg:fixture": "node scripts/verify-jsg-clickhouse-fixture.mjs",
     "test:browser:jsg:clickhouse": "node scripts/verify-jsg-clickhouse.mjs"

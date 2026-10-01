@@ -78,6 +78,7 @@ export function Dialog({
   placement = "center",
   className = "",
   closeLabel = "关闭",
+  closable = true,
   children,
 }: {
   open: boolean;
@@ -86,6 +87,7 @@ export function Dialog({
   placement?: "center" | "sheet";
   className?: string;
   closeLabel?: string;
+  closable?: boolean;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -104,8 +106,11 @@ export function Dialog({
       aria-labelledby={title !== undefined ? titleId : undefined}
       className={`ui-dialog ui-dialog-${placement} ${className}`.trim()}
       onClose={onClose}
+      onCancel={(event) => {
+        if (!closable) event.preventDefault();
+      }}
       onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (closable && event.target === event.currentTarget) onClose();
       }}
     >
       <div className="ui-dialog-frame">
@@ -116,6 +121,7 @@ export function Dialog({
             </h2>
             <IconButton
               label={closeLabel}
+              disabled={!closable}
               size="sm"
               onClick={onClose}
               className="ui-dialog-close"

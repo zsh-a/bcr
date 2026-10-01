@@ -58,13 +58,11 @@ pub(crate) fn candidates<'a>(
     });
     selected.into_iter().map(|b| b.id).collect()
 }
-#[cfg(not(target_arch = "wasm32"))]
 pub(crate) struct FactorState {
     manifest: Manifest,
     histories: Vec<VecDeque<f64>>,
     next: usize,
 }
-#[cfg(not(target_arch = "wasm32"))]
 impl FactorState {
     pub fn new(manifest: Manifest) -> Self {
         let count = manifest.instruments.len();
