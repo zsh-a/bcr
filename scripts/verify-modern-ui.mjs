@@ -9,6 +9,43 @@ async function visit(page, route, selector) {
   await page.goto(`${origin}/${route}`, { waitUntil: "domcontentloaded" });
   await page.locator(selector).first().waitFor({ timeout: 30_000 });
 }
+async function modalGeometry(modal) {
+  const geometry = await modal.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height,
+      viewportWidth: innerWidth,
+      viewportHeight: innerHeight,
+      drawer: element.classList.contains("ui-dialog-drawer"),
+      sheet:
+        innerHeight < 500 || (element.classList.contains("ui-dialog-sheet") && innerWidth <= 640),
+    };
+  });
+  const { x, y, width, height, viewportWidth, viewportHeight, drawer, sheet } = geometry;
+  const detail = JSON.stringify(geometry);
+  assert(x >= -1 && y >= -1, `modal stays inside viewport: ${detail}`);
+  assert(x + width <= viewportWidth + 1 && y + height <= viewportHeight + 1, detail);
+  if (drawer) {
+    assert(Math.abs(x + width - viewportWidth) < 2, `drawer aligns right: ${detail}`);
+    assert(Math.abs(y) < 2 && Math.abs(height - viewportHeight) < 2, detail);
+  } else {
+    assert(
+      Math.abs(x + width / 2 - viewportWidth / 2) < 2,
+      `modal centers horizontally: ${detail}`,
+    );
+    if (sheet) {
+      assert(Math.abs(y + height - viewportHeight) < 2, `sheet aligns bottom: ${detail}`);
+    } else {
+      assert(
+        Math.abs(y + height / 2 - viewportHeight / 2) < 2,
+        `modal centers vertically: ${detail}`,
+      );
+    }
+  }
+}
 async function modalContract(page, triggerLabel, dialogLabel) {
   const trigger =
     typeof triggerLabel === "string"
@@ -18,6 +55,7 @@ async function modalContract(page, triggerLabel, dialogLabel) {
   const modal = page.getByRole("dialog", { name: dialogLabel, exact: true });
   await modal.waitFor();
   await page.waitForTimeout(200);
+  await modalGeometry(modal);
   assert(await modal.evaluate((el) => el.matches(":modal")), `${dialogLabel}: native modality`);
   const controls =
     "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, a[href]";
@@ -58,6 +96,31 @@ async function modalContract(page, triggerLabel, dialogLabel) {
   );
 }
 try {
+  const layoutPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  layoutPage.on("pageerror", (error) => errors.push(error.message));
+  await visit(layoutPage, "studio", ".studio-dock-shell");
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+    { width: 320, height: 568 },
+    { width: 844, height: 390 },
+  ]) {
+    await layoutPage.setViewportSize(viewport);
+    for (const [shortcut, name] of [
+      ["Control+k", "命令面板"],
+      ["Control+Shift+f", "全局搜索"],
+    ]) {
+      await layoutPage.keyboard.press(shortcut);
+      const modal = layoutPage.getByRole("dialog", { name, exact: true });
+      await modal.waitFor();
+      await layoutPage.waitForTimeout(220);
+      await modalGeometry(modal);
+      await layoutPage.keyboard.press("Escape");
+      await modal.waitFor({ state: "hidden" });
+    }
+    console.log(`PASS: modal placement — ${viewport.width}×${viewport.height}`);
+  }
+  await layoutPage.close();
   for (const width of [390, 320]) {
     const context = await browser.newContext({ viewport: { width, height: 844 }, hasTouch: true });
     const page = await context.newPage();
@@ -85,6 +148,14 @@ try {
 
     await visit(page, "manga", ".manga-header");
     await modalContract(page, "工具", "翻译工具");
+    await page.getByRole("button", { name: "更多漫画操作", exact: true }).click();
+    await page.getByRole("button", { name: "运行详情", exact: true }).click();
+    const diagnostics = page.getByRole("dialog", { name: "运行详情", exact: true });
+    await diagnostics.waitFor();
+    await page.waitForTimeout(220);
+    await modalGeometry(diagnostics);
+    await page.keyboard.press("Escape");
+    await diagnostics.waitFor({ state: "hidden" });
     assert.equal(await page.getByRole("button", { name: "导入漫画", exact: true }).count(), 1);
     assert(!(await page.locator(".manga-footer").innerText()).includes("Worker"));
     await page.screenshot({ path: `${shots}/modern-manga-${width}.png` });
@@ -96,6 +167,16 @@ try {
       await create.evaluate((el) => parseFloat(getComputedStyle(el).fontSize) >= 12),
       "empty-state action keeps its label",
     );
+    await create.click();
+    await page.getByLabel("笔记标题", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "更多操作", exact: true }).click();
+    await page.getByRole("menuitem", { name: "同步设置", exact: true }).click();
+    const sync = page.getByRole("dialog", { name: "同步设置", exact: true });
+    await sync.waitFor();
+    await page.waitForTimeout(220);
+    await modalGeometry(sync);
+    await page.keyboard.press("Escape");
+    await sync.waitFor({ state: "hidden" });
 
     await visit(page, "data", ".data-header");
     await page.evaluate(() => {
@@ -137,6 +218,14 @@ try {
     const exported = page.waitForEvent("download");
     await page.getByRole("button", { name: "下载当前表格", exact: true }).click();
     assert((await exported).suggestedFilename().endsWith(".csv"));
+    await page.getByRole("button", { name: "更多数据操作", exact: true }).click();
+    await page.getByRole("button", { name: "存储管理", exact: true }).click();
+    const storage = page.getByRole("dialog", { name: "存储管理", exact: true });
+    await storage.waitFor();
+    await page.waitForTimeout(220);
+    await modalGeometry(storage);
+    await page.keyboard.press("Escape");
+    await storage.waitFor({ state: "hidden" });
 
     await visit(page, "documents", ".document-header");
     await page.getByLabel("导入文档或图片文件").setInputFiles({

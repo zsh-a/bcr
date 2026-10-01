@@ -191,6 +191,11 @@
 /* ---------- 对话框 / 浮层 ---------- */
 
 .ui-dialog {
+  /* Author resets remove the native dialog's auto margins; own viewport placement. */
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  box-sizing: border-box;
   /* 内部 inline-size 容器不参与固有宽度计算，外层必须明确宽度。 */
   width: 100%;
   max-width: min(560px, calc(100vw - 2 * var(--space-4)));
@@ -410,9 +415,9 @@
   }
 }
 
-/* 矮窗口（height < 500px）：对话框一律变全屏 sheet，把有限的纵向空间留给内容。 */
+/* 矮窗口（height < 500px）：普通对话框变全屏 sheet，侧栏保持靠右。 */
 @media (height < 500px) {
-  .ui-dialog,
+  .ui-dialog:not(.ui-dialog-drawer),
   .ui-dialog-sheet {
     --h-overlay-max: calc(100dvh - env(safe-area-inset-top) - var(--space-2));
     width: 100%;
