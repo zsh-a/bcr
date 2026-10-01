@@ -1,0 +1,20 @@
+{
+  "measuredAt": "2026-10-01",
+  "manifestSha256": "b3d43842b80dbf9858b5579946e0d3a28f154a532b485227becf8595cc05aac5",
+  "inputRows": 6250000,
+  "days": 1220,
+  "months": 57,
+  "curvePoints": 1040,
+  "elapsedMs": 738.6066099999998,
+  "mainThreadLongTasks": [],
+  "note": "Single warmed Chromium observation; timing includes UI automation; analysis reads complete result chunks, not market rows. No browser memory sampling.",
+  "nativeParity": {
+    "days": 1220,
+    "months": 57,
+    "years": 5,
+    "maxSummaryMetricDifference": 0,
+    "allPeriodDatesCountsAndReturnsMatch": true,
+    "metricRelativeTolerance": 1e-10,
+    "metricAbsoluteTolerance": 1e-12
+  }
+}

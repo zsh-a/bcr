@@ -1,0 +1,188 @@
+{
+  "measuredAt": "2026-10-01",
+  "environment": {
+    "cpu": "Intel Core i7-13700K",
+    "logicalCpusAvailable": 16,
+    "os": "Linux",
+    "bun": "1.3.14",
+    "node": "26.10.0"
+  },
+  "native": {
+    "rows": 6250000,
+    "bytes": 501073424,
+    "note": "OS page cache not cleared; includes SHA-256 verification and JSONL serialization",
+    "measurements": {
+      "single": {
+        "runs": [
+          {
+            "wallMs": 1518.4698869998101,
+            "peakRssMiB": 18.2578125,
+            "cpuMs": 1330.171
+          },
+          {
+            "wallMs": 1242.5994380027987,
+            "peakRssMiB": 18.2578125,
+            "cpuMs": 1241.081
+          },
+          {
+            "wallMs": 1180.2355829859152,
+            "peakRssMiB": 18.2578125,
+            "cpuMs": 1179.8549999999998
+          }
+        ],
+        "medianMs": 1242.5994380027987
+      }
+    }
+  },
+  "browserBeforeWorkerQuery": {
+    "rows": 6250000,
+    "bytes": 501073424,
+    "importMs": 3794.5896369999996,
+    "replayMs": 2282.9551949999995,
+    "exportMs": 1698.5859199999995,
+    "ordersMs": 347.8370589999995,
+    "filterMs": 820.1458519999996,
+    "chartMs": 809.236406,
+    "cacheMs": 346.74743600000147,
+    "cancelMs": 79.59862399999838,
+    "workerTimings": {
+      "totalMs": 2117.719999998808,
+      "readMs": 590.8799999058247,
+      "computeMs": 651.4350003004074,
+      "writeMs": 830.4449998438358,
+      "rows": 6250000,
+      "partitions": 63
+    },
+    "manifestSha256": "b3d43842b80dbf9858b5579946e0d3a28f154a532b485227becf8595cc05aac5",
+    "mainPageHeapAndBackingMiB": 216.12120246887207,
+    "browserBaselineRssMiB": 640.296875,
+    "sampledBrowserPeakRssMiB": 866.76953125,
+    "memoryScope": "CDP main-page JS heap/backing storage; RSS sampled at 50 ms across automation Chromium process tree; may include other automation contexts and counts shared pages in each process",
+    "resultRows": 2557,
+    "renderedOrderRows": 50,
+    "metrics": {
+      "engine": "rust-wasm/native",
+      "model": "jsg-adjusted-v1",
+      "finalEquity": 2468055.854520044,
+      "totalReturn": 1.4680558545200437,
+      "annualizedReturn": 0.20515752367192053,
+      "sharpe": 10.253077867722537,
+      "maxDrawdown": -0.03816144324038662,
+      "filledOrders": 2557,
+      "rejectedOrders": 0,
+      "fees": 28899.699892259996,
+      "days": 1220
+    }
+  },
+  "browserFinal": {
+    "rows": 6250000,
+    "bytes": 501073424,
+    "importMs": 2807.309666,
+    "replayMs": 2175.4400969999997,
+    "exportMs": 1709.1569789999994,
+    "ordersMs": 319.582214,
+    "filterMs": 819.8063989999991,
+    "chartMs": 18.204115999998976,
+    "cacheMs": 404.62687299999925,
+    "cancelMs": 72.62310700000126,
+    "workerTimings": {
+      "totalMs": 1998.1549999713898,
+      "readMs": 547.6250000298023,
+      "computeMs": 618.1549995839596,
+      "writeMs": 787.6800001859665,
+      "rows": 6250000,
+      "partitions": 63
+    },
+    "mainThreadLongTasks": {
+      "startup": {
+        "count": 1,
+        "totalMs": 128,
+        "maxMs": 128
+      },
+      "import": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "replay": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "export": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "chart": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "orders": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "filter": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "pagination": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cache": {
+        "count": 1,
+        "totalMs": 50,
+        "maxMs": 50
+      },
+      "cancel": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "complete": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      }
+    },
+    "manifestSha256": "b3d43842b80dbf9858b5579946e0d3a28f154a532b485227becf8595cc05aac5",
+    "mainPageHeapAndBackingMiB": 247.30525970458984,
+    "browserBaselineRssMiB": 642.0234375,
+    "sampledBrowserPeakRssMiB": 929.890625,
+    "memoryScope": "CDP main-page JS heap/backing storage; RSS sampled at 50 ms across automation Chromium process tree; may include other automation contexts and counts shared pages in each process",
+    "resultRows": 2557,
+    "renderedOrderRows": 50,
+    "metrics": {
+      "engine": "rust-wasm/native",
+      "model": "jsg-adjusted-v1",
+      "finalEquity": 2468055.854520044,
+      "totalReturn": 1.4680558545200437,
+      "annualizedReturn": 0.20515752367192053,
+      "sharpe": 10.253077867722537,
+      "maxDrawdown": -0.03816144324038662,
+      "filledOrders": 2557,
+      "rejectedOrders": 0,
+      "fees": 28899.699892259996,
+      "days": 1220
+    }
+  },
+  "parity": {
+    "equityPoints": 1220,
+    "orders": 2557,
+    "decisions": 244,
+    "allHistoryAndSummaryFieldsIdentical": true
+  },
+  "limitations": [
+    "OS page cache not cleared",
+    "Browser before/final are individual observations, not statistical estimates",
+    "Earlier chart date wait accepted stale output; earlier chartMs is not comparable",
+    "CDP main-page memory excludes complete Worker WASM memory; process-tree RSS repeats shared pages",
+    "Filter latency includes UI debounce and Playwright waits",
+    "Worker timings exclude final summary artifact write"
+  ]
+}

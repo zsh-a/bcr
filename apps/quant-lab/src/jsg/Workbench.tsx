@@ -11,6 +11,9 @@ import {
   SlidersHorizontal,
   Square,
   Upload,
+  Trash2,
+  HardDrive,
+  FlaskConical,
   X,
 } from "lucide-react";
 import { ConnectionSettings, DateRangeSettings } from "./DataSource";
@@ -23,6 +26,12 @@ import { dateText, DEFAULT_CONFIG } from "./model";
 import { configKey, isDraftChanged, readRun, type SelectedRun } from "./session";
 import { exportResearchResult } from "./data";
 import { demoResearch } from "./demo";
+import { disposeResultReader } from "./result-reader";
+import { StorageSettings } from "./StorageSettings";
+import { GridSettings, GridResults } from "./GridExperiment";
+import type { GridAxis } from "./grid";
+import type { JsgConfig } from "./model";
+import { withResearchFiles } from "./file-lease";
 import { money, percent } from "./Orders";
 import "./styles.css";
 
@@ -53,7 +62,14 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
   const [parametersSheet, setParametersSheet] = useState(false),
     [connectionOpen, setConnectionOpen] = useState(false),
     [rangeOpen, setRangeOpen] = useState(false),
-    [historyOpen, setHistoryOpen] = useState(false);
+    [historyOpen, setHistoryOpen] = useState(false),
+    [storageOpen, setStorageOpen] = useState(false),
+    [storageBusy, setStorageBusy] = useState(false);
+  const [gridOpen, setGridOpen] = useState(false),
+    [gridExpanded, setGridExpanded] = useState(true);
+  useEffect(() => {
+    setGridExpanded(true);
+  }, [state.grid?.run.id]);
   const [exporting, setExporting] = useState(false),
     [comparison, setComparison] = useState<SelectedRun | null>(null),
     [comparing, setComparing] = useState(false);
@@ -84,9 +100,11 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
       document.removeEventListener("click", outside);
       document.removeEventListener("keydown", escape);
       comparisonRequest.current++;
+      disposeResultReader();
     };
   }, []);
-  const busy = state.operation !== null;
+  const [evaluationBusy, setEvaluationBusy] = useState(false);
+  const busy = state.operation !== null || storageBusy || evaluationBusy;
   const ready =
     state.ready &&
     source.restored &&
@@ -140,6 +158,21 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
     } else await research.run();
   };
   const executeRef = useRef(execute);
+  const executeGrid = async (configs: JsgConfig[], axes: GridAxis[]) => {
+    if (!ready || busy) return;
+    setGridOpen(false);
+    try {
+      if (source.kind === "clickhouse") {
+        await source.persist();
+        await research.runGrid(configs, axes, {
+          connection: source.connection,
+          range: source.range,
+        });
+      } else await research.runGrid(configs, axes);
+    } catch (error) {
+      research.notice(error instanceof Error ? error.message : String(error));
+    }
+  };
   executeRef.current = execute;
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
@@ -162,11 +195,15 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
     if (actionMenu.current) actionMenu.current.open = false;
     setExporting(true);
     try {
-      const exported = await exportResearchResult(
-        services,
-        snapshot.run.config,
-        snapshot.dataset.manifest,
-        snapshot.result,
+      const exported = await withResearchFiles("shared", () =>
+        exportResearchResult(
+          services,
+          snapshot.run.config,
+          snapshot.dataset.manifest,
+          snapshot.result,
+          snapshot.dataset.snapshot,
+          snapshot.run,
+        ),
       );
       const url = URL.createObjectURL(exported.blob);
       const anchor = document.createElement("a");
@@ -259,6 +296,17 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
             <div>
               <Button
                 variant="ghost"
+                disabled={!ready || busy || invalid}
+                onClick={() => {
+                  if (actionMenu.current) actionMenu.current.open = false;
+                  setGridOpen(true);
+                }}
+              >
+                <FlaskConical size={15} />
+                参数实验
+              </Button>
+              <Button
+                variant="ghost"
                 disabled={busy || !state.ready}
                 onClick={() => {
                   if (actionMenu.current) actionMenu.current.open = false;
@@ -274,6 +322,17 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                 onClick={() => void exportResult()}
               >
                 {exporting ? <Spinner size="sm" /> : <Download size={15} />}导出结果
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={!state.ready || busy || exporting}
+                onClick={() => {
+                  if (actionMenu.current) actionMenu.current.open = false;
+                  setStorageOpen(true);
+                }}
+              >
+                <HardDrive size={15} />
+                数据与存储
               </Button>
             </div>
           </details>
@@ -331,6 +390,17 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
         {source.kind === "clickhouse" && source.range.refresh && (
           <span className="research-source-hint">重新获取</span>
         )}
+        {state.dataset?.snapshot && (
+          <span
+            className="research-snapshot-time"
+            title={`源数据覆盖至 ${state.dataset.snapshot.sourceLastDate ?? dateText(state.dataset.manifest.endDate)}；这是本地冻结快照，刷新可获取修订。`}
+          >
+            快照 {timeLabel(state.dataset.snapshot.createdAt)}
+            {state.dataset.snapshot.reusedPartitions
+              ? ` · 复用 ${state.dataset.snapshot.reusedPartitions} 片`
+              : ""}
+          </span>
+        )}
       </div>
       <input
         ref={input}
@@ -368,6 +438,24 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
           </aside>
         )}
         <main className="research-results" aria-busy={research.selecting}>
+          {state.grid && (
+            <GridResults
+              key={state.grid.run.id}
+              grid={state.grid}
+              busy={busy}
+              expanded={gridExpanded}
+              onExpand={() => setGridExpanded((value) => !value)}
+              onForget={research.forgetGrid}
+              onUse={research.reset}
+              onView={(index) => {
+                void (async () => {
+                  const before = research.getSession().selected?.run.id;
+                  await research.viewGridResult(index);
+                  if (research.getSession().selected?.run.id !== before) setGridExpanded(false);
+                })();
+              }}
+            />
+          )}
           {selected ? (
             <div className="research-run-result" data-run-id={selected.run.id}>
               <div className="research-result-heading">
@@ -382,6 +470,13 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                       目标 {selected.run.config.stockCount} 只 · 本金 ¥
                       {money(selected.run.config.initialCapital)}
                     </span>
+                    {selected.dataset.snapshot && (
+                      <span
+                        title={`获取于 ${selected.dataset.snapshot.createdAt}；源覆盖至 ${selected.dataset.snapshot.sourceLastDate ?? dateText(selected.run.endDate)}`}
+                      >
+                        数据快照 {timeLabel(selected.dataset.snapshot.createdAt)}
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="research-result-context">
@@ -454,9 +549,13 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                 services={services}
                 selected={selected}
                 comparison={comparison}
+                connection={source.connection}
+                busy={busy}
+                onBenchmark={research.attachBenchmark}
+                onWorking={setEvaluationBusy}
               />
             </div>
-          ) : (
+          ) : state.grid ? null : (
             <div className="research-empty">
               <span className="research-eyebrow">从一次回测开始</span>
               <div className="research-empty-mark" aria-hidden="true">
@@ -499,9 +598,11 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
       <footer className="research-taskbar">
         <div>
           <span className="research-task-dot" data-active={busy} />
-          <span role="status">{state.operation?.label ?? state.status}</span>
+          <span role="status">
+            {state.operation?.label ?? (storageBusy ? "正在整理本地数据…" : state.status)}
+          </span>
         </div>
-        {busy ? (
+        {state.operation ? (
           <div>
             <progress
               max={1}
@@ -532,6 +633,31 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
         onDemo={() => void research.importFiles(demoResearch().files)}
       />
       <DateRangeSettings source={source} open={rangeOpen} onClose={() => setRangeOpen(false)} />
+      <GridSettings
+        open={gridOpen}
+        base={state.draft}
+        busy={busy}
+        onClose={() => setGridOpen(false)}
+        source={
+          source.kind === "clickhouse"
+            ? `ClickHouse · ${source.connection.database} · ${source.range.start} — ${source.range.end}`
+            : (state.dataset?.manifest.name ?? "本地快照")
+        }
+        onRun={(configs, axes) => void executeGrid(configs, axes)}
+      />
+      <StorageSettings
+        services={services}
+        research={research}
+        open={storageOpen}
+        busy={state.operation !== null || exporting}
+        onClose={() => setStorageOpen(false)}
+        onWorking={setStorageBusy}
+        onUse={async (dataset) => {
+          await research.useDataset(dataset);
+          await source.useLocal();
+          setStorageOpen(false);
+        }}
+      />
       <Dialog
         open={parametersSheet && compact}
         onClose={() => setParametersSheet(false)}
@@ -553,31 +679,41 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
         </p>
         <div className="research-history-list">
           {state.runs.toReversed().map((run) => (
-            <button
-              type="button"
-              key={run.id}
-              aria-pressed={selected?.run.id === run.id}
-              onClick={() => {
-                setHistoryOpen(false);
-                void research.selectRun(run.id);
-              }}
-            >
-              <span>
-                <b>{timeLabel(run.createdAt)}</b>
-                <small>
-                  {dateText(run.startDate)} — {dateText(run.endDate)}
-                </small>
-                <small>
-                  目标 {run.config.stockCount} 只 · 佣金 {run.config.commissionBps / 100}% · 滑点{" "}
-                  {run.config.slippageBps} bps
-                </small>
-              </span>
-              <span>
-                <strong>{percent(run.metrics.totalReturn)}</strong>
-                <small>回撤 {percent(run.metrics.maxDrawdown)}</small>
-                {selected?.run.id === run.id && <small>当前查看</small>}
-              </span>
-            </button>
+            <div key={run.id} className="research-history-row">
+              <button
+                type="button"
+                aria-pressed={selected?.run.id === run.id}
+                onClick={() => {
+                  setHistoryOpen(false);
+                  void research.selectRun(run.id);
+                }}
+              >
+                <span>
+                  <b>{timeLabel(run.createdAt)}</b>
+                  <small>
+                    {dateText(run.startDate)} — {dateText(run.endDate)}
+                  </small>
+                  <small>
+                    目标 {run.config.stockCount} 只 · 佣金 {run.config.commissionBps / 100}% · 滑点{" "}
+                    {run.config.slippageBps} bps
+                  </small>
+                </span>
+                <span>
+                  <strong>{percent(run.metrics.totalReturn)}</strong>
+                  <small>回撤 {percent(run.metrics.maxDrawdown)}</small>
+                  {selected?.run.id === run.id && <small>当前查看</small>}
+                </span>
+              </button>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`移除运行 ${timeLabel(run.createdAt)}`}
+                disabled={busy || exporting}
+                onClick={() => research.forgetRun(run.id)}
+              >
+                <Trash2 size={14} />
+              </Button>
+            </div>
           ))}
         </div>
       </Dialog>

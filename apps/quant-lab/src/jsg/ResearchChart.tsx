@@ -13,7 +13,7 @@ import { Button, Input, Spinner } from "@bcr/react";
 import type { RuntimeServices } from "@bcr/core";
 import { dateText, type JsgResult } from "./model";
 import type { SelectedRun } from "./session";
-import { queryCurve } from "./result-data";
+import { queryCurve } from "./result-reader";
 import { money, percent } from "./Orders";
 
 function day(time: Time): string {

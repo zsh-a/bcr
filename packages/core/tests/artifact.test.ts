@@ -19,6 +19,31 @@ async function makeArtifacts(
 }
 
 describe("ArtifactStore inventory / usage", () => {
+  it("releases discarded task lineage while preserving other consumers and physical files", async () => {
+    const memory = new MemoryStore();
+    const artifacts = await makeArtifacts({ memory });
+    const source = ref("source/shared");
+    const output = ref("result/old");
+    await memory.put(artifactPath(source), new Uint8Array([1]));
+    await memory.put(artifactPath(output), new Uint8Array([2]));
+    for (const id of ["old", "retained"])
+      await Effect.runPromise(
+        artifacts.registerConsumption({
+          id,
+          runtime: "js",
+          operation: "test",
+          inputs: [source],
+          outputs: [],
+        }),
+      );
+    await Effect.runPromise(artifacts.registerProduction("old", [output]));
+    await Effect.runPromise(artifacts.releaseTask("old"));
+    expect(await Effect.runPromise(artifacts.outputsOf("old"))).toEqual([]);
+    expect(await Effect.runPromise(artifacts.consumersOf(source.id))).toEqual(["retained"]);
+    expect(await Effect.runPromise(artifacts.has(output))).toBe(true);
+    const plan = await Effect.runPromise(artifacts.planCleanup());
+    expect(plan.candidates.map((c) => c.id)).toEqual([output.id]);
+  });
   it("列出跨后端 Artifact，按 storage 与 id 稳定排序并保留字节数", async () => {
     const memory = new MemoryStore();
     const opfs = new MemoryStore();

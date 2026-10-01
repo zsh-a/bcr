@@ -10,6 +10,19 @@ import type { SqliteDb } from "./db";
  */
 export function sqliteLineageStore(db: SqliteDb): LineageStore {
   return {
+    releaseTask: (taskId) =>
+      Effect.promise(async () => {
+        try {
+          db.run("BEGIN");
+          db.run("DELETE FROM task_outputs WHERE task_id = ?", [taskId]);
+          db.run("DELETE FROM dependencies WHERE task_id = ?", [taskId]);
+          db.run("COMMIT");
+        } catch (error) {
+          db.run("ROLLBACK");
+          throw error;
+        }
+        await db.persist();
+      }),
     load: Effect.sync(() => {
       const outputs = new Map<string, string[]>();
       for (const row of db.all(

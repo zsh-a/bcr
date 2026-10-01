@@ -6,6 +6,8 @@ import {
   type ClickHouseRange,
 } from "./clickhouse-http";
 import type { ResearchDataset } from "./model";
+import type { ResearchManifest } from "./model";
+import type { BenchmarkSnapshot } from "./benchmark";
 
 export interface ClickHouseLoadResult {
   dataset: ResearchDataset;
@@ -14,6 +16,12 @@ export interface ClickHouseLoadResult {
 export type ClickHouseWorkerRequest =
   | { type: "inspect"; connection: ClickHouseConnection }
   | { type: "load"; connection: ClickHouseConnection; range: ClickHouseRange }
+  | {
+      type: "benchmark";
+      connection: ClickHouseConnection;
+      code: string;
+      manifest: ResearchManifest;
+    }
   | { type: "cancel" }
   | { type: "connected" }
   | { type: "connection-error"; message: string };
@@ -22,6 +30,7 @@ export type ClickHouseWorkerResponse =
   | { type: "progress"; value: ClickHouseProgress }
   | { type: "inspected"; value: ClickHouseInfo }
   | { type: "loaded"; value: ClickHouseLoadResult }
+  | { type: "benchmark-loaded"; value: BenchmarkSnapshot }
   | { type: "error"; message: string; cancelled: boolean };
 
 /** Credentials travel through ephemeral messages, outside the persisted scheduler/DAG. */
@@ -29,7 +38,7 @@ function dataWorker(
   request: Extract<ClickHouseWorkerRequest, { connection: ClickHouseConnection }>,
   signal: AbortSignal,
   progress: (value: ClickHouseProgress) => void,
-): Promise<ClickHouseInfo | ClickHouseLoadResult> {
+): Promise<ClickHouseInfo | ClickHouseLoadResult | BenchmarkSnapshot> {
   signal.throwIfAborted();
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL("../workers/clickhouse.worker.ts", import.meta.url), {
@@ -99,4 +108,16 @@ export function loadFromBrowser(
     signal,
     progress,
   ) as Promise<ClickHouseLoadResult>;
+}
+export function benchmarkFromBrowser(
+  connection: ClickHouseConnection,
+  code: string,
+  manifest: ResearchManifest,
+  signal: AbortSignal,
+): Promise<BenchmarkSnapshot> {
+  return dataWorker(
+    { type: "benchmark", connection, code, manifest },
+    signal,
+    () => undefined,
+  ) as Promise<BenchmarkSnapshot>;
 }

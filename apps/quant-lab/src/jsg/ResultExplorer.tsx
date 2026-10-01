@@ -5,8 +5,11 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Orders, money, percent } from "./Orders";
 import { dateText, type JsgResult } from "./model";
 import { datasetKey, type SelectedRun } from "./session";
-import { queryDecision } from "./result-data";
+import { queryDecision } from "./result-reader";
 import { ResearchTabs } from "./ResearchTabs";
+import { EvaluationPanel } from "./EvaluationPanel";
+import type { ClickHouseConnection } from "./clickhouse-http";
+import type { BenchmarkBinding } from "./benchmark";
 
 function Holdings({ result }: { result: JsgResult }) {
   const [page, setPage] = useState(0);
@@ -231,12 +234,22 @@ export function ResultExplorer({
   services,
   selected,
   comparison,
+  connection,
+  busy,
+  onBenchmark,
+  onWorking,
 }: {
   services: RuntimeServices;
   selected: SelectedRun;
   comparison: SelectedRun | null;
+  connection: ClickHouseConnection;
+  busy: boolean;
+  onBenchmark: (runId: string, benchmark?: BenchmarkBinding) => void;
+  onWorking: (value: boolean) => void;
 }) {
-  const [tab, setTab] = useState<"overview" | "orders" | "holdings" | "decisions">("overview");
+  const [tab, setTab] = useState<"overview" | "orders" | "holdings" | "decisions" | "evaluation">(
+    "overview",
+  );
   const metrics = selected.result.metrics;
   const cash = selected.result.equity.at(-1)?.cash ?? 0;
   return (
@@ -250,6 +263,7 @@ export function ResultExplorer({
           { value: "orders", label: "成交", count: metrics.filledOrders + metrics.rejectedOrders },
           { value: "holdings", label: "持仓", count: selected.result.holdings.length },
           { value: "decisions", label: "调仓" },
+          { value: "evaluation", label: "分析" },
         ]}
       >
         {tab === "overview" && (
@@ -328,6 +342,16 @@ export function ResultExplorer({
         {tab === "orders" && <Orders services={services} result={selected.result} />}
         {tab === "holdings" && <Holdings result={selected.result} />}
         {tab === "decisions" && <Decisions services={services} selected={selected} />}
+        {tab === "evaluation" && (
+          <EvaluationPanel
+            services={services}
+            selected={selected}
+            connection={connection}
+            busy={busy}
+            onBenchmark={onBenchmark}
+            onWorking={onWorking}
+          />
+        )}
       </ResearchTabs>
     </div>
   );

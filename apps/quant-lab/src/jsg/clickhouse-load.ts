@@ -7,6 +7,13 @@ import initQuant, {
 } from "../../../../crates/quant/pkg/bcr_quant.js";
 import initKernels, { StreamingBlake3 } from "../../../../crates/kernels/pkg/bcr_kernels.js";
 import {
+  cacheIdentity,
+  readSmallRecord,
+  readPartition,
+  calendarWindow,
+  type PartitionRecord,
+} from "./partition-cache";
+import {
   MAX_MANIFEST_BYTES,
   parseManifest,
   type ResearchDataset,
@@ -112,6 +119,7 @@ export async function inspectClickHouse(
 async function cachedDataset(
   store: BinaryStore,
   key: string,
+  expectedScope: string,
 ): Promise<ResearchDataset | undefined> {
   try {
     const size = await store.size(key);
@@ -121,8 +129,20 @@ async function cachedDataset(
     const record = JSON.parse(new TextDecoder().decode(bytes)) as {
       version: number;
       dataset: ResearchDataset;
+      scope?: string;
+      revision?: string;
     };
     if (record.version !== 1) return undefined;
+    if (record.scope) {
+      if (record.scope !== expectedScope) return undefined;
+      const epoch = await readSmallRecord<{ revision: string }>(
+        store,
+        `cache/jsg-partition-epochs/${record.scope}`,
+      );
+      if (!epoch || epoch.revision !== record.revision) return undefined;
+    } else if (await store.has(`cache/jsg-partition-epochs/${expectedScope}`)) {
+      return undefined;
+    }
     const dataset = record.dataset;
     dataset.manifest = parseManifest(dataset.manifest);
     if (
@@ -161,15 +181,35 @@ export async function loadClickHouse(
   ready ??= Promise.all([initQuant(), initKernels()]);
   await ready;
   const sql = clickhouse_sql(range.strictPit);
+  const params = { breadth: "000985", selection: "399101" };
+  const scope = cacheIdentity({
+    version: 1,
+    url: c.url,
+    database: c.database,
+    user: c.user,
+    sql,
+    params,
+  });
   const cacheKey = `cache/jsg-clickhouse/${contentHash(encoder.encode(JSON.stringify({ version: 1, ...publicProfile(c, range), sql })))}`;
   if (!range.refresh) {
-    const existing = await cachedDataset(store, cacheKey);
+    const existing = await cachedDataset(store, cacheKey, scope);
     signal.throwIfAborted();
     if (existing !== undefined) return { dataset: existing, cached: true };
   }
   await beforeNetwork?.();
   signal.throwIfAborted();
   const client = clickHouseClient(c, fetcher);
+  const began = performance.now();
+  const timings = {
+    prepareMs: 0,
+    transferMs: 0,
+    normalizeMs: 0,
+    persistMs: 0,
+    totalMs: 0,
+    downloadedBytes: 0,
+    reusedBytes: 0,
+  };
+  let reusedPartitions = 0;
   let total = 0,
     completed = 0,
     rows = 0,
@@ -183,7 +223,6 @@ export async function loadClickHouse(
   if (range.end > info.lastDate) throw new Error(`行情仅覆盖至 ${info.lastDate}，请调整结束日期`);
   if (range.strictPit && !info.strictPitReady)
     throw new Error("源库缺少历史成分、财报修订、公司行动、每日涨跌停或覆盖记录");
-  const params = { breadth: "000985", selection: "399101" };
   const [calendarRows, codeRows, sectorRows] = await Promise.all([
     client.json(
       "SELECT calendar_date AS date FROM trade_dates FINAL WHERE is_trading_day=1 ORDER BY date",
@@ -203,11 +242,8 @@ export async function loadClickHouse(
       signal,
     ),
   ]);
-  const calendar = prepareCalendar(
-    calendarRows.map((r) => string(r, "date")),
-    range.start,
-    range.end,
-  );
+  const allDates = calendarRows.map((r) => string(r, "date"));
+  const calendar = prepareCalendar(allDates, range.start, range.end);
   total = calendar.dates.length;
   const codes = codeRows.map((r) => string(r, "code"));
   const industries = [
@@ -254,19 +290,46 @@ export async function loadClickHouse(
       >[number]);
     }
   }
-  const normalizer = new ClickHouseNormalizer(JSON.stringify(codes), JSON.stringify(industries));
+  const epochPath = `cache/jsg-partition-epochs/${scope}`;
+  const previousEpoch = await store.get(epochPath);
+  const epoch = await readSmallRecord<{ revision: string }>(store, epochPath);
+  const revision = range.refresh ? crypto.randomUUID() : (epoch?.revision ?? "initial");
+  const dimensions = cacheIdentity({ codes, industries });
+  const partitionIndexes: { path: string; record: PartitionRecord }[] = [];
+  timings.prepareMs = performance.now() - began;
   const namespace = `jsg/ch-${crypto.randomUUID()}`;
   const temporary = `temp/${namespace}/response.arrow`;
   const owned: ArtifactRef[] = [];
   const partitions: ResearchDataset["partitions"] = [];
   const descriptors: ResearchManifest["partitions"] = [];
   let published = false;
+  const previousSnapshot = await store.get(cacheKey);
+  let snapshotWritten = false;
+  let epochWritten = false;
+  const normalizer = new ClickHouseNormalizer(JSON.stringify(codes), JSON.stringify(industries));
   try {
     let batchDays = 20;
     while (completed < total) {
-      const dates = calendar.dates.slice(completed, completed + batchDays);
+      const dates = calendarWindow(allDates, calendar.dates, completed, batchDays);
+      const partitionKey = `cache/jsg-partitions/${cacheIdentity({ scope, revision, dimensions, dates })}`;
+      const reused = range.refresh ? undefined : await readPartition(store, partitionKey, dates);
+      if (reused) {
+        partitions.push(reused.ref);
+        descriptors.push({
+          file: `part-${String(descriptors.length).padStart(4, "0")}.arrow`,
+          bytes: reused.bytes,
+          rows: reused.rows,
+        });
+        rows += reused.rows;
+        completed += dates.length;
+        reusedPartitions++;
+        timings.reusedBytes += reused.bytes;
+        report(`复用本地分片 · ${completed}/${total} 个交易日`);
+        continue;
+      }
       report(`加载 ${dates[0]} — ${dates.at(-1)} · ${completed}/${total} 个交易日`);
       try {
+        const transferStart = performance.now();
         const stream = await client.arrow(
           sql,
           { ...params, start: dates[0]!, end: dates.at(-1)! },
@@ -277,7 +340,9 @@ export async function loadClickHouse(
           },
         );
         await store.putStream(temporary, stream);
+        timings.transferMs += performance.now() - transferStart;
         signal.throwIfAborted();
+        const normalizeStart = performance.now();
         const raw = await store.get(temporary);
         if (raw === undefined) throw new Error("本地 Arrow 临时数据缺失");
         const normalized = normalizer.normalize(raw, JSON.stringify(dates.map(numericDate)));
@@ -292,6 +357,7 @@ export async function loadClickHouse(
         } finally {
           hasher.free();
         }
+        timings.normalizeMs += performance.now() - normalizeStart;
         const ref: ArtifactRef = {
           id: `${namespace}/part-${partitions.length}/${hash}`,
           hash,
@@ -300,10 +366,16 @@ export async function loadClickHouse(
           storage: "opfs",
         };
         owned.push(ref);
+        const persistStart = performance.now();
         await store.putStream(
           artifactPath(ref),
           new Blob([normalized.buffer as ArrayBuffer]).stream(),
         );
+        timings.persistMs += performance.now() - persistStart;
+        partitionIndexes.push({
+          path: partitionKey,
+          record: { version: 1, ref, bytes: normalized.byteLength, rows: normalizer.rows(), dates },
+        });
         descriptors.push({
           file: `part-${String(partitions.length).padStart(4, "0")}.arrow`,
           bytes: normalized.byteLength,
@@ -312,6 +384,9 @@ export async function loadClickHouse(
         partitions.push(ref);
         rows += normalizer.rows();
         completed += dates.length;
+        // Recover throughput after a small boundary window or an oversized retry.
+        const bytesPerDay = Math.max(raw.byteLength, normalized.byteLength) / dates.length;
+        batchDays = Math.min(20, Math.max(batchDays, Math.floor((16 * 1024 * 1024) / bytesPerDay)));
       } catch (error) {
         const tooLarge =
           error instanceof ResponseTooLarge ||
@@ -375,16 +450,57 @@ export async function loadClickHouse(
     };
     owned.push(manifestRef);
     await store.put(artifactPath(manifestRef), manifestBytes);
-    const dataset = { manifest, manifestRef, partitions };
+    timings.totalMs = performance.now() - began;
+    timings.downloadedBytes = bytes;
+    const createdAt = new Date().toISOString();
+    const snapshot = {
+      createdAt,
+      sourceLastDate: info.lastDate,
+      timings,
+      reusedPartitions,
+      downloadedPartitions: partitionIndexes.length,
+    };
+    const dataset = { manifest, manifestRef, partitions, snapshot };
     signal.throwIfAborted();
-    const record = encoder.encode(JSON.stringify({ version: 1, dataset }));
+    const record = encoder.encode(
+      JSON.stringify({
+        version: 1,
+        dataset,
+        scope,
+        revision,
+        createdAt,
+        sourceLastDate: info.lastDate,
+        timings,
+      }),
+    );
     if (record.byteLength > MAX_MANIFEST_BYTES) throw new Error("快照索引超过 4 MiB");
     await store.put(cacheKey, record);
+    snapshotWritten = true;
+    signal.throwIfAborted();
+    await store.put(epochPath, encoder.encode(JSON.stringify({ revision, createdAt })));
+    epochWritten = true;
+    for (const index of partitionIndexes)
+      await store.put(index.path, encoder.encode(JSON.stringify(index.record)));
+    signal.throwIfAborted();
     published = true;
     return { dataset, cached: false };
   } finally {
     normalizer.free();
     await store.delete(temporary).catch(() => undefined);
-    if (!published) await Promise.allSettled(owned.map((ref) => store.delete(artifactPath(ref))));
+    if (!published) {
+      if (snapshotWritten) {
+        if (previousSnapshot) await store.put(cacheKey, previousSnapshot);
+        else await store.delete(cacheKey);
+      }
+      if (epochWritten) {
+        if (previousEpoch) await store.put(epochPath, previousEpoch);
+        else await store.delete(epochPath);
+      }
+      await Promise.allSettled(owned.map((ref) => store.delete(artifactPath(ref))));
+      for (const index of partitionIndexes) {
+        const current = await readSmallRecord<PartitionRecord>(store, index.path);
+        if (current?.ref.id === index.record.ref.id) await store.delete(index.path);
+      }
+    }
   }
 }

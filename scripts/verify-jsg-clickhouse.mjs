@@ -10,6 +10,7 @@ const password = process.env.CLICKHOUSE_PASSWORD ?? "";
 const start = process.env.JSG_TEST_START ?? "2026-04-01";
 const end = process.env.JSG_TEST_END ?? "2026-06-30";
 const url = new URL(process.env.BASE_URL ?? "http://localhost:5201/");
+if (url.pathname.startsWith("/studio")) url.pathname = "/quant";
 url.searchParams.set("strategy", "jsg");
 const shots = ensureShots();
 const browser = await launchEphemeralBrowser({ headless: true });
@@ -64,6 +65,7 @@ const done = () =>
     (id) =>
       document.querySelector(".jsg-workspace")?.getAttribute("data-busy") === "false" &&
       document.querySelector(".research-taskbar")?.textContent?.includes("回测完成") &&
+      document.querySelector(".research-run-result") !== null &&
       document.querySelector(".research-run-result")?.getAttribute("data-run-id") !== id,
     previousRun,
     { timeout: 90_000 },
@@ -119,7 +121,71 @@ try {
   assert.equal(first.result.metrics.days, first.result.equity.length);
   assert(first.result.metrics.filledOrders > 0);
   assert(arrowQueries > 0);
+  assert(Number.isFinite(Date.parse(first.snapshot.createdAt)));
+  assert(first.snapshot.timings.downloadedBytes > 0);
   await page.screenshot({ path: `${shots}/jsg-clickhouse-result.png`, fullPage: true });
+  await page.getByRole("tab", { name: "分析", exact: true }).click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector(".research-evaluation")?.getAttribute("aria-busy") === "false" &&
+      document.querySelector(".research-period-table tbody tr"),
+  );
+  await page.getByRole("button", { name: "设置基准", exact: true }).click();
+  await page.getByRole("button", { name: "获取并绑定基准", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "设置研究基准", exact: true })
+    .waitFor({ state: "hidden" });
+  await page.waitForFunction(
+    () =>
+      document.querySelector(".research-evaluation")?.getAttribute("aria-busy") === "false" &&
+      document.querySelector(".research-evaluation-chart"),
+  );
+  const evaluationDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "导出研究评估", exact: true }).click();
+  await (await evaluationDownload).saveAs(`${shots}/jsg-clickhouse-evaluation.json`);
+  const evaluation = JSON.parse(readFileSync(`${shots}/jsg-clickhouse-evaluation.json`, "utf8"));
+  assert.equal(evaluation.benchmark.kind, "price");
+  assert.equal(evaluation.benchmark.points.length, first.result.metrics.days + 1);
+  assert(
+    Math.abs(evaluation.evaluation.strategy.totalReturn - first.result.metrics.totalReturn) < 1e-12,
+  );
+  assert(!JSON.stringify(evaluation).includes('"password"'));
+  const beforeGridQueries = queries;
+  await page.locator(".research-action-menu > summary").click();
+  await page.getByRole("button", { name: "参数实验", exact: true }).click();
+  await page.getByRole("button", { name: "运行参数实验", exact: true }).click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector(".research-taskbar")?.textContent?.includes("参数实验完成") &&
+      document.querySelector(".jsg-workspace")?.getAttribute("data-busy") === "false",
+  );
+  assert.equal(queries, beforeGridQueries, "parameter grid must reuse the acquired snapshot");
+  assert.equal(await page.locator(".research-grid-table tbody tr").count(), 4);
+  const firstArrowQueries = arrowQueries;
+  // Shift the start within the same source calendar: interior daily partitions remain reusable.
+  const shiftedStart = new Date(`${start}T00:00:00Z`);
+  shiftedStart.setUTCDate(shiftedStart.getUTCDate() + 7);
+  await dates();
+  await page
+    .getByLabel("回测开始日期", { exact: true })
+    .fill(shiftedStart.toISOString().slice(0, 10));
+  await applyDates();
+  await load();
+  await done();
+  assert(
+    arrowQueries - firstArrowQueries < firstArrowQueries,
+    "overlap must download fewer partitions",
+  );
+  assert.match(await page.locator(".research-snapshot-time").innerText(), /复用\s*[1-9]\d*\s*片/u);
+  await dates();
+  await page.getByLabel("回测开始日期", { exact: true }).fill(start);
+  await applyDates();
+  await load();
+  await done();
+  assert.deepEqual(
+    (await exportResult("jsg-clickhouse-overlap-restored.json")).result,
+    first.result,
+  );
   const count = queries;
   await open();
   // Cached snapshots are local data: they can be reused without sending a password.
@@ -169,7 +235,7 @@ try {
   await page.screenshot({ path: `${shots}/jsg-clickhouse-mobile.png`, fullPage: true });
   assert.deepEqual(errors, []);
   console.log(
-    `ClickHouse browser verification PASSED: ${first.result.metrics.days} days; connect, Arrow load, cache, password lifetime, failed refresh, cancel, restore, mobile`,
+    `ClickHouse browser verification PASSED: ${first.result.metrics.days} days; connect, Arrow load, benchmark evaluation, parameter grid, overlap reuse, cache, password lifetime, failed refresh, cancel, restore, mobile`,
   );
 } catch (error) {
   await page
@@ -177,7 +243,7 @@ try {
     .catch(() => undefined);
   console.error(
     await page
-      .locator(".research-source-dialog")
+      .locator(".jsg-workspace")
       .innerText()
       .catch(() => "dialog unavailable"),
   );

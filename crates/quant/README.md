@@ -16,7 +16,7 @@ bun run quant
 Open `http://localhost:5201/?strategy=jsg` for the JSG workbench. This entry skips
 SMA initialization and DuckDB data preparation. The existing SMA workbench remains
 available through its tab. A deterministic 64-stock demo is supplied; click
-“运行 JSG”. Import a `manifest.json` and **all** its `.arrow` files together to
+“运行回测”. Import a `manifest.json` and **all** its `.arrow` files together to
 use your own research snapshot. Results, parameters and source artifacts persist
 locally; repeated identical jobs use BCR's existing content-addressed task cache.
 
@@ -137,6 +137,9 @@ bun run test
 bun run check
 # Against the running standalone Quant Lab server:
 bun run test:browser:jsg
+bun run test:browser:jsg:storage
+# Self-contained read-only HTTP/Arrow fixture; no ClickHouse server required:
+bun run test:browser:jsg:fixture
 # Export boundary tests, after installing PyArrow:
 tmp/jsg-export/bin/python scripts/test_export_jsg.py
 ```
@@ -152,19 +155,13 @@ Protocol references: [Arrow Rust StreamReader](https://docs.rs/arrow-ipc/60.0.0/
 [ClickHouse ASOF JOIN](https://clickhouse.com/docs/reference/statements/select/join),
 [ClickHouse ArrowStream](https://clickhouse.com/docs/reference/formats/Arrow/ArrowStream).
 
-### Local data-volume check
+### Large-data baseline
 
-A synthetic input with 5,000 instruments × 1,250 sessions (6,250,000 rows,
-477.9 MiB of Arrow, 7.6 MiB maximum partition) was exercised end to end in this
-worktree. On this machine, with local files in the OS cache, native release replay
-including file reads/output took approximately **0.55 s**, with **12.4 MiB peak
-process RSS**. Browser file import took approximately **2.9 s** after switching
-streamed hashing to the existing Rust BLAKE3 kernel; browser Worker replay took
-approximately **1.1 s**. The browser/native final value and all orders agreed.
-The fixture had 1,220 trading sessions after warmup and only 10 fills, so this
-measures data throughput and memory behavior, not general strategy throughput.
-It excludes ClickHouse export time and is not a cold-storage or hardware-neutral
-benchmark. Browser peak memory was not measured.
+Use [BENCHMARKS.md](BENCHMARKS.md) for the deterministic 6,250,000-row workload,
+reproduction commands and measurement boundaries. It exercises 2,557 fills rather than
+only a handful of orders, compares complete native/browser outputs and records read,
+compute, artifact-write and browser-interaction timings. These measurements replace the
+earlier low-fill synthetic throughput sample; neither run is a cold-storage benchmark.
 
 ## Native ClickHouse and raw-price v2
 
@@ -279,7 +276,17 @@ Only small metadata uses JSON; market rows are never converted to JavaScript row
 
 A complete manifest and local snapshot index are published after all requested days validate. Loading
 an identical source/range reuses the local snapshot without network requests, including when offline.
-Check **重新获取数据** to query updated source data. Cancellation or a failed refresh removes the
+Overlapping ranges reuse validated daily partitions aligned to the source's full trading calendar;
+partial boundary windows are loaded separately. Partition identities include the endpoint, database,
+user, SQL, instrument/industry dictionaries, exact dates and a local source-generation marker.
+Check **重新获取数据** to start a new generation and query updated source data; previous generations
+remain available to retained runs. Old range caches are invalidated for future acquisition after a
+successful refresh. An acquisition timestamp, source coverage and reused-partition count are shown
+in the workbench; each run and its JSON export retain their own acquisition metadata.
+
+Generations govern local cache reuse. They do not freeze the database across multiple queries.
+The source should keep historical inputs stable during acquisition; refresh when source history is revised.
+Cancellation or a failed refresh removes the
 new attempt's temporary files/artifacts and retains the previous complete snapshot and research result.
 The browser's storage quota still limits how many full snapshots can be kept.
 
@@ -294,10 +301,12 @@ BASE_URL=http://localhost:5201/ CLICKHOUSE_TEST_URL=http://localhost:8123/ \
   bun run test:browser:jsg:clickhouse
 ```
 
-The browser script covers real Arrow loading, cached reloads with no network, password lifetime,
+The browser script covers real Arrow loading, overlapping-range partition reuse, cached reloads with no network, password lifetime,
 failed refresh, cancellation, retained results and mobile layout. It accepts `CLICKHOUSE_DATABASE`,
 `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `JSG_TEST_START` and `JSG_TEST_END`; defaults use
-2026-04-01 through 2026-06-30. Ordinary CI tests use synthetic read-only responses rather than a live DB.
+2026-04-01 through 2026-06-30. The CI HTTP fixture exercises the browser protocol and Arrow path
+with deterministic inputs, not ClickHouse SQL execution. The isolated native integration checks above
+remain responsible for SQL semantics; the optional browser integration uses an explicitly selected source.
 
 References: [ClickHouse HTTP interface](https://clickhouse.com/docs/interfaces/http),
 [Arrow output settings](https://clickhouse.com/docs/operations/settings/formats#output_format_arrow_compression_method),
@@ -330,17 +339,122 @@ well as parameters. See [third-party notices](../../THIRD_PARTY_NOTICES.md) for 
 **成交** filters the full history by security, dates, direction and fill status; partial fills count as
 executed orders and concrete engine rejection reasons remain visible. Pages render at most 50
 rows. Unfiltered pagination uses chunk counts to read only the necessary files; arbitrary filters
-scan one result chunk at a time. **持仓** is paginated and **调仓** reads the chosen day's chunk.
+scan one result chunk at a time. Querying and parsing happen in a dedicated Worker, which uses
+chunk date/security/side/status summaries to skip irrelevant files and caches at most 64 parsed chunks
+whose serialized source sizes total at most 8 MiB. This byte budget does not measure JavaScript heap
+size. Requests can be cancelled, and stale replies cannot overwrite a newer query. **持仓** is
+paginated and **调仓** reads the chosen day's chunk.
 Order and position details open in sheets. No full market dataset is assembled in JavaScript.
 
 **运行历史** retains metadata for the latest 20 runs. Selecting history changes the displayed
 result while preserving the current draft; **使用所选运行参数** explicitly applies that run's
 configuration. History deduplicates shared dataset references and stores small metrics, never copies of market rows,
-inline complete result arrays or connection passwords. The 20-run metadata limit does not clean
-up Runtime caches or old OPFS artifacts; browser storage quota still applies.
+inline complete result arrays or connection passwords.
+
+Use **更多 → 数据与存储** to inspect local snapshots, their ranges, byte sizes and references, choose
+a saved snapshot, and preview/reclaim unused data. Remove old runs with the history row's delete
+button, then use **清理未使用数据** and **确认清理** to reclaim their artifacts. Clearing history
+metadata alone does not delete files. Cleanup protects the current dataset, retained/selected runs,
+shared input partitions and active exports/queries; it prunes the associated completed task/cache
+records and releases their lineage before deleting approved artifacts. It checks references and file
+sizes again at execution time and leaves other Quant applications' files intact. Startup removes
+abandoned JSG transfer files, dangling partition indexes and export files older than the existing
+60-second download grace period. Browser storage quota still applies.
 
 ```sh
 bun run test:browser:jsg
 # Local source integration, when a browser and localhost listener are permitted:
 BASE_URL=http://localhost:5201/ bun run test:browser:jsg:clickhouse
 ```
+
+## Browser parameter experiments
+
+Use **更多 → 参数实验** to vary 1–6 settings: stock count, pool size, stop loss,
+trailing stop, portfolio drawdown, slippage and commission. Enter comma-separated candidate
+values; risk limits use percentages (`5` means 5%, `0` disables the limit). Other settings use
+the current draft. Equivalent values are deduplicated, every combination is validated, and
+the Cartesian product is limited to 64 independent configurations.
+
+ClickHouse data is acquired once through the existing snapshot/partition cache. One browser
+Worker drives the Rust/WASM grid: each daily Arrow batch and market feature set is computed
+once, then shared by independent portfolios. The Worker yields between portfolio steps for
+progress and cancellation. It uses one CPU thread; browser WASM threads are not required.
+Only configuration and summary metrics are persisted for each combination, keeping one
+bounded input partition and shared market windows rather than 64 complete result histories.
+
+Results sort by return, drawdown, Sharpe or fees and display 20 rows per page. **查看详情**
+generates a complete single-run result using that combination's captured configuration and
+frozen local dataset, or reuses an existing full-result cache. Explicit default values give
+ordinary runs and grid details the same cache identity. Viewing details preserves the draft;
+**使用参数** explicitly changes it. Existing selected results and the previous experiment
+remain available during a new experiment, cancellation or failure.
+
+**导出参数实验** saves configurations, metrics, manifest and snapshot provenance as JSON.
+The latest experiment is restored after reload; its input and output references are protected
+from storage cleanup. Replacing it or choosing **移除参数实验** releases the metadata reference;
+use **数据与存储 → 清理未使用数据** to reclaim eligible artifacts and task/cache records.
+Complete detail runs remain in the normal 20-run history. Exports contain the experiment's
+captured source and range, even if the current draft or source has changed.
+
+```sh
+BASE_URL=http://localhost:5201/ bun run test:browser:jsg:grid
+BASE_URL='http://localhost:5201/?strategy=jsg' node scripts/benchmark-jsg-grid.mjs \
+  /tmp/bcr-research-benchmarks/input /tmp/bcr-research-benchmarks/browser-grid
+```
+
+The grid test covers independent-run metric parity, validation, sorting/pagination, cache,
+cancel/restore, detail generation, immutable exports, storage reclamation and 320 px layouts.
+See [BENCHMARKS.md](BENCHMARKS.md) for the large-data measurements and native comparison.
+
+## Research evaluation and benchmarks
+
+Open **分析** on a selected full-result run to inspect monthly/yearly compound returns and
+annualized volatility. A dedicated result Worker scans the complete OPFS chunks once; the
+chart preview is never the source of statistics. Period tables show at most 24 rows per page.
+The first day's return uses the run's initial capital. Later periods start from the previous
+session's closing equity, so compound period returns reproduce the complete run's return.
+Partial first/last months and years display their actual dates and session counts.
+
+**设置基准** supports the current ClickHouse connection or a CSV file. ClickHouse fetches
+`stock_daily FINAL` close values for an explicit code (default `sh.000300`, CSI 300), using
+typed HTTP parameters in a temporary data Worker. This is a **price-return** comparison and
+excludes dividends. CSV files use `date,close` and `YYYY-MM-DD,positive-value` rows; users
+explicitly declare price or total return. Declaring total return does not reconstruct dividends.
+Inputs must be strictly ordered, unique, at most 20,000 rows and 2 MiB. Every backtest date,
+plus the exact preceding trading session from the frozen calendar, must be present. Missing
+dates are rejected without interpolation or forward-fill; extra dates do not affect the statistics.
+
+A successfully validated benchmark is stored as an immutable artifact and bound to that run.
+Changing the next source, dates or draft does not replace it. Failure/cancellation preserves
+the previous binding; reload reads the saved artifact without contacting ClickHouse. The
+binding is protected by storage cleanup while its run is retained. **移除所选运行基准**
+releases the reference; ordinary unused-data cleanup can then reclaim the file. Benchmarks
+are fetched by one bounded query, but are not a transaction snapshot shared with the earlier
+market download. Acquisition time and source are included in exports; passwords are not.
+
+**导出研究评估** saves the run references/configuration, manifest, frozen benchmark, exact
+statistics, periods and bounded chart curve. The ordinary full-result export also includes
+benchmark data and replay versions in a separate `research` header, leaving the existing
+engine result fields intact. New runs/grid experiments record engine, executor and metric
+versions; historical runs with no version metadata remain explicitly unrecorded. Version
+constants live in `src/jsg/versions.ts`; replay behavior changes require an engine/executor
+version bump, and metric formula changes require a metric/evaluation version bump.
+
+The contract uses 252 sessions per year, zero risk-free return, daily simple returns, sample
+variance and closing portfolio equity after fees. CAGR is `(last / initial)^(252 / days) - 1`;
+volatility is `sample_std(daily_returns) * sqrt(252)`; Sharpe is
+`mean(daily_returns) / sample_std(daily_returns) * sqrt(252)` (zero for constant returns).
+Drawdown includes the initial capital as the starting peak. Excess return is strategy minus
+benchmark return in **percentage points**, distinct from relative wealth return
+`(1 + strategy_return) / (1 + benchmark_return) - 1`. The exported conventions and
+**指标口径与版本** panel state these assumptions.
+
+```sh
+BASE_URL=http://localhost:5201/ bun run test:browser:jsg:evaluation
+BASE_URL='http://localhost:5201/?strategy=jsg' node scripts/benchmark-jsg-evaluation.mjs \
+  /tmp/bcr-research-benchmarks/input /tmp/bcr-research-benchmarks/evaluation
+```
+
+The deterministic browser test mocks only the benchmark HTTP response; the source fixture
+and optional real ClickHouse browser integration also fetch and validate a benchmark through
+the same application path. See [BENCHMARKS.md](BENCHMARKS.md) for measurement boundaries.

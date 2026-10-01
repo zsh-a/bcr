@@ -72,12 +72,34 @@ export interface ResearchManifest {
   partitions: { file: string; bytes: number; rows: number }[];
 }
 export interface ResearchDataset {
+  snapshot?: {
+    createdAt: string;
+    sourceLastDate?: string;
+    timings?: Record<string, number>;
+    reusedPartitions?: number;
+    downloadedPartitions?: number;
+  };
   manifest: ResearchManifest;
   manifestRef: ArtifactRef;
   partitions: ArtifactRef[];
 }
 export interface JsgResult {
-  chunks?: { ref: ArtifactRef; start: string; end: string; orders: number }[];
+  timings?: {
+    totalMs: number;
+    readMs: number;
+    computeMs: number;
+    writeMs: number;
+    rows: number;
+    partitions: number;
+  };
+  chunks?: {
+    ref: ArtifactRef;
+    start: string;
+    end: string;
+    orders: number;
+    codes?: string[];
+    orderStats?: { side: string; status: string; filled: boolean; count: number }[];
+  }[];
   receivables?: number;
   metrics: {
     engine: string;

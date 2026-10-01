@@ -118,4 +118,16 @@ class NativeIntegration(unittest.TestCase):
         self.assertEqual(relative.returncode,0,relative.stderr)
         self.assertTrue((self.root/'relative-snapshot'/'manifest.json').is_file())
 
+    def test_browser_benchmark_typed_date_query(self):
+        # Execute the application's actual query with Date-typed parameters: literal strings
+        # would hide ClickHouse alias substitution's String/Date comparison regression.
+        sql=subprocess.run(['bun','-e','import { BENCHMARK_SQL } from "./apps/quant-lab/src/jsg/benchmark.ts"; console.log(BENCHMARK_SQL);'],cwd=ROOT,capture_output=True,text=True,check=True).stdout.strip()
+        sql=sql.replace('FROM stock_daily FINAL','FROM stock_data.stock_daily FINAL')
+        for token,value,kind in [('code','sz.001001','String'),('start','2024-01-24','Date'),('end','2024-01-31','Date')]:
+            sql=sql.replace('{'+token+':'+kind+'}',f"CAST('{value}' AS {kind})")
+        rows=[json.loads(line) for line in self.db.query(sql,'JSONEachRow').bytes().decode().splitlines()]
+        self.assertEqual(len(rows),6)
+        self.assertEqual(rows[0]['date'],'2024-01-24');self.assertEqual(rows[-1]['date'],'2024-01-31')
+        self.assertTrue(all(isinstance(row['close'],float) and row['close']>0 for row in rows))
+
 if __name__=='__main__':unittest.main()

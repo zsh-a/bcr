@@ -538,7 +538,7 @@ pub fn grid(path: &Path, configs: Vec<Config>, threads: usize) -> Result<Value, 
     let manifest: Manifest = serde_json::from_reader(File::open(path)?)?;
     let mut engines: Vec<crate::engine::Engine> = configs
         .iter()
-        .map(|c| crate::engine::Engine::new(manifest.clone(), c.clone()))
+        .map(|c| crate::engine::Engine::new_shared(manifest.clone(), c.clone()))
         .collect::<Result<_, _>>()?;
     for e in &mut engines {
         e.enable_streaming();

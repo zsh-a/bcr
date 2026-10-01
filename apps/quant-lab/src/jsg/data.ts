@@ -1,5 +1,7 @@
 import { contentHash, type ArtifactRef, type RuntimeServices } from "@bcr/core";
 import { Effect } from "effect";
+import { readBenchmark } from "./benchmark";
+import type { ResearchRun } from "./session";
 import initKernels, { StreamingBlake3 } from "../../../../crates/kernels/pkg/bcr_kernels.js";
 import {
   MAX_MANIFEST_BYTES,
@@ -43,7 +45,7 @@ async function hashPartition(file: File, signal?: AbortSignal): Promise<string> 
 }
 
 export async function readJson<T>(
-  services: Pick<RuntimeServices, "artifacts">,
+  services: { artifacts: Pick<RuntimeServices["artifacts"], "get"> },
   ref: ArtifactRef,
 ): Promise<T> {
   const bytes = await Effect.runPromise(services.artifacts.get(ref));
@@ -163,6 +165,8 @@ export async function exportResearchResult(
   config: JsgConfig,
   manifest: ResearchManifest | undefined,
   result: JsgResult,
+  snapshot?: ResearchDataset["snapshot"],
+  run?: ResearchRun,
 ): Promise<{ blob: Blob; cleanup: () => Promise<void> }> {
   const directory = await (
     await navigator.storage.getDirectory()
@@ -172,8 +176,23 @@ export async function exportResearchResult(
   const writer = await file.createWritable();
   const cleanup = () => directory.removeEntry(name);
   try {
+    const research = run
+      ? {
+          runId: run.id,
+          createdAt: run.createdAt,
+          versions: run.versions ?? null,
+          ...(run.benchmark
+            ? {
+                benchmark: {
+                  binding: run.benchmark,
+                  snapshot: await readBenchmark(services, run.benchmark),
+                },
+              }
+            : {}),
+        }
+      : undefined;
     if (result.chunks === undefined) {
-      await writer.write(JSON.stringify({ config, manifest, result }));
+      await writer.write(JSON.stringify({ config, manifest, snapshot, research, result }));
     } else {
       const {
         chunks,
@@ -182,7 +201,7 @@ export async function exportResearchResult(
         decisions: _decisions,
         ...summary
       } = result;
-      const header = JSON.stringify({ config, manifest });
+      const header = JSON.stringify({ config, manifest, snapshot, research });
       await writer.write(header.slice(0, -1) + ',"result":' + JSON.stringify(summary).slice(0, -1));
       for (const field of ["equity", "orders", "decisions"] as const) {
         await writer.write(`,"${field}":[`);

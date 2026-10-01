@@ -51,6 +51,12 @@ pub struct Engine {
     total_fees: f64,
 }
 impl Engine {
+    pub(crate) fn new_shared(manifest: Manifest, config: Config) -> Result<Self, String> {
+        let mut engine = Self::new(manifest, config)?;
+        engine.histories = Vec::new();
+        engine.enable_streaming();
+        Ok(engine)
+    }
     pub fn new(manifest: Manifest, config: Config) -> Result<Self, String> {
         manifest.validate()?;
         config.validate()?;

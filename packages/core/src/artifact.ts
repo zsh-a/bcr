@@ -82,6 +82,8 @@ export interface ArtifactCleanupResult {
  * 血缘关系（谁生产、谁消费）支撑 cancel descendants / 下游失效。
  */
 export interface ArtifactStore {
+  /** Release discarded terminal task lineage, preserving other producers/consumers and files. */
+  readonly releaseTask: (taskId: string) => Effect.Effect<void>;
   readonly put: (ref: ArtifactRef, data: Uint8Array) => Effect.Effect<void>;
   readonly get: (ref: ArtifactRef) => Effect.Effect<Uint8Array, ArtifactNotFound>;
   readonly putStream: (ref: ArtifactRef, stream: ReadableStream<Uint8Array>) => Effect.Effect<void>;
@@ -435,6 +437,17 @@ export function artifactStore(
             yield* lineage.recordConsumption(task.id, inputIds);
           }),
 
+        releaseTask: (taskId) =>
+          Effect.gen(function* () {
+            yield* lineage.releaseTask(taskId);
+            for (const id of outputs.get(taskId) ?? [])
+              if (producedBy.get(id) === taskId) producedBy.delete(id);
+            outputs.delete(taskId);
+            for (const [id, tasks] of consumes) {
+              tasks.delete(taskId);
+              if (tasks.size === 0) consumes.delete(id);
+            }
+          }),
         registerProduction: (taskId, outs) =>
           Effect.gen(function* () {
             const previous = outputs.get(taskId) ?? [];

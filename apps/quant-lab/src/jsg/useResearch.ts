@@ -3,8 +3,13 @@ import { Effect } from "effect";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { importResearch, readJson } from "./data";
 import { demoResearch } from "./demo";
+import { withResearchFiles } from "./file-lease";
+import { rememberSnapshot, recoverResearchFiles, researchStore } from "./storage";
 import { loadFromBrowser } from "./clickhouse-browser";
 import type { ClickHouseConnection, ClickHouseRange } from "./clickhouse-http";
+import { validateGrid, type GridAxis, type GridResult } from "./grid";
+import { replayVersions } from "./versions";
+import type { BenchmarkBinding } from "./benchmark";
 import {
   DEFAULT_CONFIG,
   MODEL,
@@ -15,13 +20,16 @@ import {
 } from "./model";
 import {
   copyConfig,
+  canonicalConfig,
   initialSession,
   readRun,
+  readDataset,
   restoreSession,
   saveSession,
   sessionReducer,
   type ResearchRun,
   type SessionEvent,
+  type ResearchOperation,
 } from "./session";
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -49,11 +57,13 @@ export function useResearch(services: RuntimeServices) {
     let disposed = false;
     void (async () => {
       try {
+        await withResearchFiles("exclusive", () => recoverResearchFiles());
         const restored = await restoreSession(services);
         if (disposed) return;
         if (restored !== null) send({ type: "restored", value: restored });
         else {
           const dataset = await importResearch(services, demoResearch().files, () => undefined);
+          await rememberSnapshot(researchStore(), dataset);
           if (!disposed) send({ type: "ready", dataset });
         }
       } catch (error) {
@@ -86,8 +96,17 @@ export function useResearch(services: RuntimeServices) {
         });
     }, 300);
     return () => clearTimeout(timer);
-  }, [services, send, state.ready, state.dataset, state.draft, state.runs, state.selected]);
-  const start = (kind: "import" | "load" | "backtest", label: string): Active | null => {
+  }, [
+    services,
+    send,
+    state.ready,
+    state.dataset,
+    state.draft,
+    state.runs,
+    state.selected,
+    state.grid,
+  ]);
+  const start = (kind: ResearchOperation["kind"], label: string): Active | null => {
     if (active.current !== null || !current.current.ready) return null;
     const token = { id: crypto.randomUUID(), abort: new AbortController(), handle: null };
     active.current = token;
@@ -98,7 +117,7 @@ export function useResearch(services: RuntimeServices) {
     token: Active,
     label: string,
     value: number | null,
-    kind?: "load" | "backtest",
+    kind?: "load" | "backtest" | "grid",
   ) => {
     token.abort.signal.throwIfAborted();
     send({ type: "progress", id: token.id, label, progress: value, ...(kind ? { kind } : {}) });
@@ -113,7 +132,7 @@ export function useResearch(services: RuntimeServices) {
   };
   const replay = async (token: Active, dataset: ResearchDataset, config: JsgConfig) => {
     validateConfig(config);
-    const strategy = copyConfig(config);
+    const strategy = canonicalConfig(config);
     const began = performance.now();
     progress(token, "等待回测…", 0, "backtest");
     let unsubscribe: (() => void) | undefined;
@@ -151,10 +170,16 @@ export function useResearch(services: RuntimeServices) {
       const result = await readJson<JsgResult>(services, ref);
       token.abort.signal.throwIfAborted();
       const run: ResearchRun = {
+        versions: replayVersions(),
+        ...(dataset.snapshot ? { snapshot: structuredClone(dataset.snapshot) } : {}),
         id: token.id,
         createdAt: new Date().toISOString(),
         config: strategy,
-        dataset: { manifestRef: dataset.manifestRef, partitions: dataset.partitions },
+        dataset: {
+          manifestRef: dataset.manifestRef,
+          partitions: dataset.partitions,
+          ...(dataset.snapshot ? { snapshot: dataset.snapshot } : {}),
+        },
         name: dataset.manifest.name,
         startDate: dataset.manifest.startDate,
         endDate: dataset.manifest.endDate,
@@ -199,6 +224,7 @@ export function useResearch(services: RuntimeServices) {
         (text) => progress(token, text, null),
         token.abort.signal,
       );
+      await rememberSnapshot(researchStore(), dataset);
       token.abort.signal.throwIfAborted();
       let draft = current.current.draft;
       if (dataset.manifest.version === 1 && draft.executionModel === "jsg-raw-v2")
@@ -258,6 +284,150 @@ export function useResearch(services: RuntimeServices) {
         send({ type: "notice", error: message(error) });
       });
   };
+  const runGrid = async (
+    strategies: JsgConfig[],
+    axes: GridAxis[],
+    source?: { connection: ClickHouseConnection; range: ClickHouseRange },
+  ) => {
+    let configs = strategies.map(canonicalConfig);
+    const capturedAxes = structuredClone(axes);
+    try {
+      validateGrid(configs);
+    } catch (error) {
+      send({ type: "notice", error: message(error) });
+      return;
+    }
+    let dataset = current.current.dataset;
+    if (!source && !dataset) return;
+    const token = start(source ? "load" : "grid", "准备参数实验…");
+    if (!token) return;
+    const began = performance.now();
+    let unsubscribe: (() => void) | undefined;
+    try {
+      if (source) {
+        const loaded = await loadFromBrowser(
+          source.connection,
+          source.range,
+          token.abort.signal,
+          (value) => {
+            progress(token, value.text, value.total ? value.completed / value.total : null);
+          },
+        );
+        dataset = loaded.dataset;
+        if (dataset.manifest.version === 1)
+          configs = configs.map((config) =>
+            config.executionModel === "jsg-raw-v2"
+              ? { ...config, executionModel: MODEL, fees: [] }
+              : config,
+          );
+        const editing = current.current.draft;
+        send({
+          type: "dataset",
+          id: token.id,
+          dataset,
+          draft:
+            dataset.manifest.version === 1 && editing.executionModel === "jsg-raw-v2"
+              ? { ...editing, executionModel: MODEL, fees: [] }
+              : editing,
+        });
+      }
+      token.abort.signal.throwIfAborted();
+      const input = dataset!;
+      progress(token, `参数实验 · ${configs.length} 组 · 准备回放…`, 0, "grid");
+      const memoryMB =
+        256 +
+        Math.ceil(
+          (configs.length *
+            (input.manifest.instruments.length * 128 + JSON.stringify(input.manifest).length * 2)) /
+            1048576,
+        );
+      const handle = await Effect.runPromise(
+        services.scheduler.submit({
+          id: `jsg-grid-${token.id}`,
+          runtime: "wasm",
+          operation: "quant.grid.jsg",
+          inputs: [
+            { ...input.manifestRef, port: "manifest" },
+            ...input.partitions.map((ref, i) => ({ ...ref, port: `partition-${i}` })),
+          ],
+          outputs: [
+            { name: "result", type: "quant/jsg-grid-result", storage: "opfs", format: "json" },
+          ],
+          resources: { memoryMB, threads: 1 },
+          cache: { enabled: true },
+          config: { strategies: configs },
+        }),
+      );
+      token.handle = handle;
+      if (token.abort.signal.aborted) {
+        await Effect.runPromise(handle.cancel);
+        token.abort.signal.throwIfAborted();
+      }
+      const update = () => {
+        if (!token.abort.signal.aborted)
+          progress(
+            token,
+            `参数实验 · ${configs.length} 组 · 正在回放…`,
+            handle.state.getSnapshot().progress,
+          );
+      };
+      unsubscribe = handle.state.subscribe(update);
+      update();
+      const outputs = await Effect.runPromise(handle.await);
+      token.abort.signal.throwIfAborted();
+      const resultRef = outputs.find((ref) => ref.type === "quant/jsg-grid-result");
+      if (!resultRef) throw new Error("参数实验没有产生结果");
+      const result = await readJson<GridResult>(services, resultRef);
+      token.abort.signal.throwIfAborted();
+      send({
+        type: "grid-finished",
+        id: token.id,
+        grid: {
+          run: {
+            versions: replayVersions(true),
+            id: token.id,
+            createdAt: new Date().toISOString(),
+            axes: capturedAxes,
+            dataset: {
+              manifestRef: input.manifestRef,
+              partitions: input.partitions,
+              ...(input.snapshot ? { snapshot: input.snapshot } : {}),
+            },
+            ...(input.snapshot ? { snapshot: structuredClone(input.snapshot) } : {}),
+            name: input.manifest.name,
+            startDate: input.manifest.startDate,
+            endDate: input.manifest.endDate,
+            resultRef,
+            durationMs: performance.now() - began,
+            cached: handle.cached,
+          },
+          dataset: input,
+          result,
+        },
+      });
+    } catch (error) {
+      stop(token, error);
+    } finally {
+      unsubscribe?.();
+      if (active.current === token) active.current = null;
+    }
+  };
+  const viewGridResult = async (index: number) => {
+    const grid = current.current.grid;
+    const row = grid?.result.results[index];
+    if (!grid || !row) return;
+    const token = start("backtest", "生成完整结果…");
+    if (!token) return;
+    try {
+      const dataset = await readDataset(services, grid.dataset);
+      token.abort.signal.throwIfAborted();
+      await replay(token, dataset, row.config);
+    } catch (error) {
+      stop(token, error);
+    } finally {
+      if (active.current === token) active.current = null;
+    }
+  };
   const selectRun = async (id: string) => {
     const run = current.current.runs.find((item) => item.id === id);
     if (!run) return;
@@ -275,9 +445,31 @@ export function useResearch(services: RuntimeServices) {
   return {
     state,
     selecting,
-    run,
-    connectAndRun,
-    importFiles,
+    run: () => withResearchFiles("shared", run),
+    runGrid: (
+      configs: JsgConfig[],
+      axes: GridAxis[],
+      source?: { connection: ClickHouseConnection; range: ClickHouseRange },
+    ) => withResearchFiles("shared", () => runGrid(configs, axes, source)),
+    viewGridResult: (index: number) => withResearchFiles("shared", () => viewGridResult(index)),
+    forgetGrid: () => send({ type: "forget-grid" }),
+    attachBenchmark: (runId: string, benchmark?: BenchmarkBinding) =>
+      send({ type: "benchmark", runId, ...(benchmark ? { benchmark } : {}) }),
+    connectAndRun: (connection: ClickHouseConnection, range: ClickHouseRange) =>
+      withResearchFiles("shared", () => connectAndRun(connection, range)),
+    importFiles: (files: readonly File[]) => withResearchFiles("shared", () => importFiles(files)),
+    getSession: () => current.current,
+    flush: async () => {
+      await writes.current;
+      await saveSession(services, { ...current.current, draft: savedDraft.current });
+    },
+    useDataset: (dataset: ResearchDataset) =>
+      withResearchFiles("shared", async () => {
+        if (active.current) throw new Error("请等待当前任务结束");
+        const available = await readDataset(services, dataset);
+        send({ type: "choose-dataset", dataset: available });
+      }),
+    forgetRun: (id: string) => send({ type: "forgotten", id }),
     cancel,
     selectRun,
     change: (patch: Partial<JsgConfig>) => send({ type: "draft", patch }),
