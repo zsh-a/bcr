@@ -7,8 +7,7 @@ const shots = ensureShots();
 const browser = await launchEphemeralBrowser({ headless: true });
 const errors = [];
 const apps = [
-  ["quant?strategy=jsg", ".research-header"],
-  ["quant?strategy=sma", ".ql-strategy-toolbar"],
+  ["quant", ".research-header"],
   ["documents", ".document-header"],
   ["media", ".media-header"],
   ["data", ".data-header"],

@@ -76,9 +76,8 @@ bun run build:wasm
 bun run quant
 ```
 
-Open `http://localhost:5201/?strategy=jsg` for the JSG workbench. This entry skips
-SMA initialization and DuckDB data preparation. The existing SMA workbench remains
-available through its tab. A deterministic 64-stock demo is supplied; click
+Open `http://localhost:5201/` or Studio’s `/quant` for the unified JSG workbench.
+A deterministic 64-stock demo is supplied; click
 “运行回测”. Import a `manifest.json` and **all** its `.arrow` files together to
 use your own research snapshot. Results, parameters and source artifacts persist
 locally; repeated identical jobs use BCR's existing content-addressed task cache.
@@ -303,7 +302,7 @@ python scripts/test_reconcile_jsg.py
 python scripts/test_native_jsg.py
 python scripts/benchmark-jsg.py /tmp/jsg-q2/manifest.json \
   --binary crates/quant/target/release/jsg --configs configs.json --output /tmp/jsg-bench
-BASE_URL=http://localhost:5201/?strategy=jsg node scripts/benchmark-jsg.mjs /tmp/jsg-q2 /tmp/jsg-browser
+BASE_URL=http://localhost:5201/ node scripts/benchmark-jsg.mjs /tmp/jsg-q2 /tmp/jsg-browser
 ```
 
 WASM/network dependencies are separated by compilation target. In native mode, credentials remain outside the browser. The optional direct mode keeps the entered
@@ -474,7 +473,7 @@ captured source and range, even if the current draft or source has changed.
 
 ```sh
 BASE_URL=http://localhost:5201/ bun run test:browser:jsg:grid
-BASE_URL='http://localhost:5201/?strategy=jsg' node scripts/benchmark-jsg-grid.mjs \
+BASE_URL='http://localhost:5201/' node scripts/benchmark-jsg-grid.mjs \
   /tmp/bcr-research-benchmarks/input /tmp/bcr-research-benchmarks/browser-grid
 ```
 
@@ -527,7 +526,7 @@ benchmark return in **percentage points**, distinct from relative wealth return
 
 ```sh
 BASE_URL=http://localhost:5201/ bun run test:browser:jsg:evaluation
-BASE_URL='http://localhost:5201/?strategy=jsg' node scripts/benchmark-jsg-evaluation.mjs \
+BASE_URL='http://localhost:5201/' node scripts/benchmark-jsg-evaluation.mjs \
   /tmp/bcr-research-benchmarks/input /tmp/bcr-research-benchmarks/evaluation
 ```
 

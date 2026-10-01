@@ -13,7 +13,7 @@ const page = await context.newPage(),
 page.on("pageerror", (error) => errors.push(error.message));
 const url = new URL(process.env.BASE_URL ?? "http://localhost:5201/");
 if (url.pathname.startsWith("/studio")) url.pathname = "/quant";
-url.searchParams.set("strategy", "jsg");
+url.search = "";
 const gridId = () => page.locator(".research-grid-results").getAttribute("data-grid-id");
 const runId = () => page.locator(".research-run-result").getAttribute("data-run-id");
 const open = async () => {

@@ -1,5 +1,5 @@
 import { WorkspaceTrigger } from "@bcr/react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Button,
   Dialog,
@@ -56,13 +56,7 @@ const timeLabel = (value: string) =>
   });
 const compactMoney = (value: number) =>
   value >= 10000 ? `${money(value / 10000)} 万元` : `${money(value)} 元`;
-export function JsgWorkbench({
-  onBusy,
-  strategyControl,
-}: {
-  onBusy?: (busy: boolean) => void;
-  strategyControl?: ReactNode;
-}) {
+export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
   const services = useRuntime();
   const research = useResearch(services);
   const { state } = research;
@@ -80,7 +74,6 @@ export function JsgWorkbench({
     }
     if (
       !active ||
-      query.get("strategy") !== "jsg" ||
       !state.ready ||
       !source.restored ||
       !incomingSnapshot ||
@@ -100,7 +93,7 @@ export function JsgWorkbench({
         if (disposed) return;
         research.notice(null, "已载入 Market 冻结快照，可调整参数后运行回测");
         navigation.navigate(
-          `/quant?strategy=jsg${incomingDate && /^\d{4}-\d{2}-\d{2}$/u.test(incomingDate) ? `&date=${incomingDate}` : ""}`,
+          `/quant${incomingDate && /^\d{4}-\d{2}-\d{2}$/u.test(incomingDate) ? `?date=${incomingDate}` : ""}`,
           true,
         );
       })
@@ -354,8 +347,7 @@ export function JsgWorkbench({
       <header className="research-header">
         <WorkspaceTrigger />
         <div className="research-brand">
-          <h1 className="sr-only">行业宽度轮动</h1>
-          {strategyControl ?? <span>行业宽度轮动</span>}
+          <h1>行业宽度轮动</h1>
         </div>
         <div className="research-actions">
           <Button

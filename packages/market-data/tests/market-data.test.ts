@@ -7,7 +7,6 @@ import {
   createDemoSnapshot,
   createDemoHistory,
   instrumentsFor,
-  isQuantHandoff,
   quoteSparkline,
   ResilientDividendService,
   ResilientMarketService,
@@ -208,54 +207,6 @@ describe("Market data contracts", () => {
     expect(landscape.breadth.total).toBe(direct.breadth.total);
   });
 
-  it("校验多标的 Quant handoff，并拒绝空序列", () => {
-    const instrument = instrumentsFor("US")[0];
-    if (instrument === undefined) throw new Error("missing US fixture");
-    const bars = [
-      {
-        date: "2026-08-31",
-        timestamp: null,
-        open: 100,
-        high: 101,
-        low: 99,
-        close: 100.5,
-        volume: 1_000,
-        amount: null,
-      },
-    ];
-    expect(
-      isQuantHandoff({
-        version: 2,
-        createdAt: 1,
-        groupId: "core",
-        groupName: "Core",
-        range: "1Y",
-        source: "fixture",
-        series: [{ instrument, range: "1Y", bars, source: "fixture" }],
-      }),
-    ).toBe(true);
-    expect(
-      isQuantHandoff({
-        version: 2,
-        createdAt: 1,
-        groupId: "core",
-        groupName: "Core",
-        range: "1Y",
-        source: "fixture",
-        series: [],
-      }),
-    ).toBe(false);
-    expect(
-      isQuantHandoff({
-        version: 1,
-        createdAt: 1,
-        instrument,
-        range: "1Y",
-        bars,
-        source: "legacy fixture",
-      }),
-    ).toBe(true);
-  });
   it("空的在线行业层不混入演示热图，平盘市场不替换为虚构涨跌", async () => {
     const base = createDemoMarketLandscape();
     const live = {

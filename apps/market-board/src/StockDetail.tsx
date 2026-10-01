@@ -1,8 +1,8 @@
 import { marketInstrumentName } from "@bcr/market-data";
 import { useState } from "react";
 import { Button, Dialog, EmptyState, Spinner } from "@bcr/react";
-import { ArrowUpRight, Star } from "lucide-react";
-import type { HistoryRange, QuoteSnapshot, MarketHistorySeries } from "@bcr/market-data";
+import { Star } from "lucide-react";
+import type { HistoryRange, QuoteSnapshot } from "@bcr/market-data";
 import { CandlestickChart } from "./components/CandlestickChart";
 import { DataStamp } from "./MarketViews";
 import { useMarketHistory } from "./useMarketHistory";
@@ -17,8 +17,6 @@ export function StockDetail({
   onClose,
   watched,
   onWatch,
-  onQuant,
-  busy,
 }: {
   open: boolean;
   quote: QuoteSnapshot | undefined;
@@ -27,8 +25,6 @@ export function StockDetail({
   onClose: () => void;
   watched: boolean;
   onWatch: () => void;
-  onQuant: (series: MarketHistorySeries) => Promise<void>;
-  busy: boolean;
 }) {
   const [range, setRange] = useState<HistoryRange>("1Y"),
     [tab, setTab] = useState<"history" | "dividends">("history");
@@ -138,18 +134,6 @@ export function StockDetail({
                     at={series.receivedAt}
                   />
                 )}
-                <div className="ma-dialog-actions">
-                  <Button
-                    variant="primary"
-                    disabled={busy || history.loading || (series?.bars.length ?? 0) < 30}
-                    onClick={() => {
-                      if (series) void onQuant(series);
-                    }}
-                  >
-                    <ArrowUpRight size={16} />
-                    使用此行情研究 SMA
-                  </Button>
-                </div>
               </>
             ) : (
               <section data-dividend-ledger>

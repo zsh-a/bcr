@@ -59,7 +59,7 @@ const selectors = {
   studio: ".studio-dock-shell",
   reader: ".reader-workspace",
   knowledge: ".knowledge-app",
-  markets: ".ma-session-rail",
+  markets: ".market-atlas",
   media: ".media-studio",
   quant: ".quant-lab",
   manga: ".manga-studio",
@@ -119,6 +119,16 @@ try {
     monitor(page);
     await page.goto(`${origin}${app.startUrl}`);
     await page.locator(selectors[app.key]).first().waitFor({ timeout: 45_000 });
+    if (app.key === "quant") {
+      await page.locator(".research-run-button:not(:disabled)").waitFor({ timeout: 45_000 });
+      await page.getByRole("button", { name: "运行回测", exact: true }).click();
+      await page.waitForFunction(
+        () => document.querySelector(".research-status")?.textContent.includes("回测完成"),
+        null,
+        { timeout: 45_000 },
+      );
+      assert.equal(await page.locator(".research-run-result").count(), 1);
+    }
     assert.deepEqual(errors, [], `${app.key}: runtime errors`);
     await context.close();
     console.log(`PASS: ${app.key} identity, scoped worker and offline cold start`);

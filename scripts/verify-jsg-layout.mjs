@@ -14,7 +14,7 @@ execFileSync(
 const manifest = JSON.parse(readFileSync(`${shots}/layout-input/manifest.json`, "utf8"));
 const url = new URL(process.env.BASE_URL ?? "http://localhost:5201/");
 if (url.pathname.startsWith("/studio")) url.pathname = "/quant";
-url.search = "?strategy=jsg";
+url.search = "";
 const browser = await launchEphemeralBrowser({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1366, height: 768 } }),
   errors = [];
@@ -118,7 +118,7 @@ try {
   for (const width of [768, 390, 320]) {
     await page.setViewportSize({ width, height: 844 });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-    assert(await page.getByRole("combobox", { name: "选择策略", exact: true }).isVisible());
+    assert(await page.getByRole("heading", { name: "行业宽度轮动", exact: true }).isVisible());
     assert(await page.getByRole("button", { name: "运行回测", exact: true }).isVisible());
     await page.getByRole("tab", { name: "分析", exact: true }).click();
     assert.equal(await page.locator(".research-chart").isVisible(), false);
@@ -147,13 +147,12 @@ try {
         .waitFor({ state: "hidden" });
     }
   }
-  await page.getByRole("combobox", { name: "选择策略", exact: true }).selectOption("sma");
-  await page.locator(".ql-header").waitFor();
-  await page.getByRole("combobox", { name: "选择策略", exact: true }).selectOption("jsg");
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator(".research-run-result").waitFor();
   assert(await page.getByRole("tab", { name: "概览", exact: true }).isVisible());
   assert.deepEqual(errors, []);
   console.log(
-    "JSG layout verification PASSED: laptop first fold, drawer geometry, draft recovery, retained chart range, keyboard run, strategy switch, focus, light/dark, mobile history",
+    "JSG layout verification PASSED: laptop first fold, drawer geometry, draft recovery, retained chart range, keyboard run, default entry restoration, focus, light/dark, mobile history",
   );
 } catch (error) {
   await page

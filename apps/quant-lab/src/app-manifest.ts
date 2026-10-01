@@ -11,9 +11,6 @@ export const manifest = {
   section: "research",
   load: () => import("./App"),
   validateSearch: (search) => ({
-    dataset: typeof search["dataset"] === "string" ? search["dataset"] : undefined,
-    strategy:
-      search["strategy"] === "jsg" || search["strategy"] === "sma" ? search["strategy"] : undefined,
     snapshot:
       typeof search["snapshot"] === "string" && /^[a-f0-9]{64}$/u.test(search["snapshot"])
         ? search["snapshot"]

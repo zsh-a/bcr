@@ -186,9 +186,7 @@ export default function BreadthView({
     if (!dataset || busy) return;
     try {
       const id = await pinMarketSnapshot(dataset);
-      navigation.navigate(
-        `/quant?strategy=jsg&snapshot=${id}${selection ? `&date=${selection.date}` : ""}`,
-      );
+      navigation.navigate(`/quant?snapshot=${id}${selection ? `&date=${selection.date}` : ""}`);
     } catch (e) {
       setError(String(e));
     }

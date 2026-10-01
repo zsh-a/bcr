@@ -105,7 +105,7 @@ jobs:
         run: node_modules/.bin/vp -C apps/manga-studio build
 
       - name: Build BCR Studio
-        run: VITE_BCR_CLOUDFLARE=1 node_modules/.bin/vp -C apps/studio build
+        run: node_modules/.bin/vp -C apps/studio build
 
       - name: Validate Cloudflare Worker bundle
         run: bun run deploy:cloudflare -- --dry-run

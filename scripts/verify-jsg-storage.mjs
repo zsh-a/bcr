@@ -13,7 +13,7 @@ const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
 const url = new URL(process.env.BASE_URL ?? "http://localhost:5201/");
 if (url.pathname.startsWith("/studio")) url.pathname = "/quant";
-url.searchParams.set("strategy", "jsg");
+url.search = "";
 const run = async () => {
   const result = page.locator(".research-run-result");
   const before = (await result.count()) ? await result.getAttribute("data-run-id") : null;
@@ -73,7 +73,7 @@ try {
     };
     await put("temp/jsg/abandoned/response.arrow");
     await put("artifacts/jsg/input/orphan");
-    await put("artifacts/sma/retained");
+    await put("artifacts/custom/retained");
   });
   await page.waitForTimeout(500);
   await page.reload({ waitUntil: "networkidle" });
@@ -99,7 +99,7 @@ try {
   });
   assert(!paths.includes("temp/jsg/abandoned/response.arrow"));
   assert(!paths.includes("artifacts/jsg/input/orphan"));
-  assert(paths.includes("artifacts/sma/retained"));
+  assert(paths.includes("artifacts/custom/retained"));
   assert.equal(
     paths.filter((p) => p.startsWith("artifacts/jsg-") && p.includes("/result/")).length,
     1,

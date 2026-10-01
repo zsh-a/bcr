@@ -47,7 +47,7 @@ const exported = async () => {
   return JSON.parse(readFileSync(file, "utf8"));
 };
 try {
-  await page.goto(process.env.BASE_URL ?? "http://localhost:5201/?strategy=jsg", {
+  await page.goto(process.env.BASE_URL ?? "http://localhost:5201/", {
     waitUntil: "networkidle",
   });
   await page.waitForFunction(() => !document.querySelector(".research-run-button")?.disabled);

@@ -238,34 +238,3 @@ export interface MarketLandscapeProvider {
   readonly capabilities?: MarketProviderCapabilities;
   loadMarketLandscape(signal?: AbortSignal): Promise<MarketLandscapeSnapshot>;
 }
-
-export interface QuantMarketHandoff {
-  readonly version: 1;
-  readonly createdAt: number;
-  readonly instrument: MarketInstrument;
-  readonly range: HistoryRange;
-  readonly bars: ReadonlyArray<MarketHistoryBar>;
-  readonly source: string;
-}
-
-export interface QuantMarketSeriesHandoff {
-  readonly instrument: MarketInstrument;
-  readonly range: HistoryRange;
-  readonly bars: ReadonlyArray<MarketHistoryBar>;
-  readonly source: string;
-}
-
-/** A portfolio/watchlist handoff. Quant Lab backtests the first series while
- * retaining every series as an explicit intake summary for the next portfolio
- * engine milestone. */
-export interface QuantPortfolioHandoff {
-  readonly version: 2;
-  readonly createdAt: number;
-  readonly groupId: string;
-  readonly groupName: string;
-  readonly range: HistoryRange;
-  readonly series: ReadonlyArray<QuantMarketSeriesHandoff>;
-  readonly source: string;
-}
-
-export type QuantHandoff = QuantMarketHandoff | QuantPortfolioHandoff;

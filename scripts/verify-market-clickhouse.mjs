@@ -62,7 +62,7 @@ try {
     { timeout: 60000 },
   );
   assert.equal(new URL(page.url()).pathname, "/quant");
-  assert.equal(new URL(page.url()).searchParams.get("strategy"), "jsg");
+  assert.equal(await page.locator(".jsg-workspace").count(), 1);
   assert.equal(sourceRequests, count, "Quant intake must not download the dataset again");
   assert.deepEqual(errors, []);
   console.log(

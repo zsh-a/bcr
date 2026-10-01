@@ -24,7 +24,7 @@ const files = [
 ];
 const url = new URL(process.env.BASE_URL ?? "http://localhost:5201/");
 if (url.pathname.startsWith("/studio")) url.pathname = "/quant";
-url.search = "?strategy=jsg";
+url.search = "";
 const browser = await launchEphemeralBrowser({ headless: true });
 const context = await browser.newContext({
   viewport: { width: 1440, height: 1000 },

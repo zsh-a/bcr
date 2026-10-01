@@ -49,7 +49,6 @@ TanStack Router 的 input/output rewrite 在应用内部保留 `/markets` 等既
 - Worker 的 URL 在 `/assets/`，不属于文档 scope，因此增加 **仅用于资源** 的
   `/assets/sw.js` 注册。它不处理页面导航或安装身份；为 Worker 的嵌套 JS/WASM
   请求读取已缓存资源，并缓存运行时获取的不可变依赖。
-- Cloudflare 部署的 DuckDB 模块超过单文件上限，仍从既有固定版本 CDN 获取。
   资源 Worker 缓存首次成功下载的模块；首次下载引擎及远程模型需要网络，
   独立安装不意味着所有未下载功能或实时行情都可离线使用。
 - 应用外壳更新沿用用户确认、保存屏障与失败回滚；上一版本缓存保留给旧标签页。
@@ -71,7 +70,7 @@ TanStack Router 的 input/output rewrite 在应用内部保留 `/markets` 等既
 ```sh
 bun run check
 vp test run apps/studio/tests/pwa-routing.test.ts
-VITE_BCR_CLOUDFLARE=1 vp -C apps/studio build
+vp -C apps/studio build
 bun run test:pwa:apps
 bun run test:pwa
 bun run test:pwa:knowledge

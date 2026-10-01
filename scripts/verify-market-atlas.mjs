@@ -52,29 +52,15 @@ try {
   await page.locator(".ma-candle-chart").waitFor();
   const dialogBox = await page.locator(".ma-stock-detail").boundingBox();
   assert(dialogBox.x > 100 && dialogBox.y > 0, "Stock detail must use centered shared dialog");
-  await page.getByRole("button", { name: "使用此行情研究 SMA", exact: true }).click();
-  await page
-    .locator(".ql-handoff-block, .ql-boot-error")
-    .first()
-    .waitFor({ timeout: 60000, state: "attached" });
-  assert.equal(
-    await page.locator(".ql-boot-error").count(),
-    0,
-    await page.locator("body").innerText(),
-  );
-  assert.equal(new URL(page.url()).pathname, "/quant");
-  assert.equal(await page.locator(".ql-research-shell").getAttribute("data-strategy"), "sma");
-  assert.equal(
-    await page.evaluate(() => localStorage.getItem("bcr.market.quant-reference.v1")),
-    null,
-    "Reference acknowledged after import",
-  );
-  assert.equal(
-    await page.evaluate(() => localStorage.getItem("bcr.market-atlas.quant-handoff.v2")),
-    null,
-    "No bar arrays in localStorage handoff",
-  );
-  await page.getByLabel("选择策略", { exact: true }).selectOption("jsg");
+  assert.equal(await page.getByRole("button", { name: /SMA|Quant/ }).count(), 0);
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "自选", exact: true }).click();
+  assert.equal(await page.locator(".ma-watch-rows > div").count(), 1);
+  assert.equal(await page.getByRole("button", { name: /在 Quant 分析组合/ }).count(), 0);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator(".ma-watch-rows > div").waitFor();
+  assert.equal(await page.locator(".ma-watch-rows > div").count(), 1, "Watchlists still persist");
+  await page.goto(new URL("/quant", url).toString(), { waitUntil: "networkidle" });
   await page.locator(".research-run-button:not(:disabled)").waitFor({ timeout: 60000 });
   await page.getByRole("button", { name: "运行回测", exact: true }).click();
   await page.waitForFunction(
@@ -138,7 +124,7 @@ try {
   assert.equal(
     await page.locator(".ql-research-shell").getAttribute("data-strategy"),
     "jsg",
-    "Kept-alive app must respond to strategy query",
+    "Kept-alive app must accept a Market snapshot",
   );
   assert.equal(
     new URL(page.url()).searchParams.get("snapshot"),
@@ -147,7 +133,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "Market architecture browser verification passed: navigation, sectors, lazy details, OPFS handoff, Rust breadth, frozen round trip, reload and mobile.",
+    "Market architecture browser verification passed: navigation, sectors, lazy details, retained watchlists, Rust breadth, frozen round trip, reload and mobile.",
   );
 } catch (error) {
   console.error(

@@ -8,13 +8,7 @@ globalThis.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
   const localAsset = url.origin === location.origin && url.pathname.startsWith("/assets/");
-  // Cloudflare excludes these >25 MiB modules from static assets. Cache only
-  // the pinned, CORS-readable engine URLs already used by Quant Lab.
-  const columnarEngine =
-    url.origin === "https://cdn.jsdelivr.net" &&
-    /^\/npm\/@duckdb\/duckdb-wasm@1\.32\.0\/dist\/duckdb-(eh|mvp)\.wasm$/u.test(url.pathname);
-  if (request.method !== "GET" || (!localAsset && !columnarEngine) || request.mode === "navigate")
-    return;
+  if (request.method !== "GET" || !localAsset || request.mode === "navigate") return;
   event.respondWith(
     (async () => {
       const names = (await caches.keys()).filter(

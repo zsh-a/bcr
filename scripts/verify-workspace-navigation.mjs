@@ -32,7 +32,7 @@ try {
   await page.goto(origin, { waitUntil: "networkidle" });
   assert(await page.locator(".studio-topbar").isVisible());
   assert.equal(await entrance().count(), 0);
-  await page.goto(`${origin}/quant?strategy=jsg`, { waitUntil: "networkidle" });
+  await page.goto(`${origin}/quant`, { waitUntil: "networkidle" });
   await page.locator(".research-header").waitFor();
   await entrance().waitFor();
   assert.equal(await page.locator(".studio-topbar").isVisible(), false);
@@ -142,7 +142,7 @@ try {
   assert.deepEqual(await page.locator(".reader-main").boundingBox(), reading);
   await close();
   assert.deepEqual(await page.locator(".reader-main").boundingBox(), reading);
-  await page.goto(`${origin}/quant?strategy=jsg`, { waitUntil: "networkidle" });
+  await page.goto(`${origin}/quant`, { waitUntil: "networkidle" });
   await page.locator(".research-header").waitFor();
   await page.emulateMedia({ reducedMotion: "reduce" });
   for (const theme of ["light", "dark"]) {
@@ -176,7 +176,7 @@ try {
   });
   const mobile = await touch.newPage();
   mobile.on("pageerror", (error) => errors.push(error.message));
-  await mobile.goto(`${origin}/quant?strategy=jsg`, { waitUntil: "networkidle" });
+  await mobile.goto(`${origin}/quant`, { waitUntil: "networkidle" });
   const mobileEntrance = mobile.getByRole("button", { name: "展开工作区导航", exact: true });
   await mobileEntrance.waitFor();
   assert((await mobileEntrance.boundingBox()).height >= 44);

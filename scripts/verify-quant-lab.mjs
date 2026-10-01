@@ -1,88 +1,68 @@
-/* Quant Lab 主链路：列式行情 → Worker Pipeline → Parquet 往返 → 参数重跑。 */
-import { ensureShots, fail, launchVerifyBrowser } from "./lib/browser.mjs";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { ensureShots, launchEphemeralBrowser } from "./lib/browser.mjs";
 
-const base = new URL(process.env.BASE_URL ?? "http://localhost:5199/studio");
-base.pathname = "/quant";
-base.search = "";
-const dir = ensureShots();
-
-const browser = await launchVerifyBrowser("studio");
-const page = browser.pages()[0] ?? (await browser.newPage());
-page.on("pageerror", (error) => fail(`pageerror: ${error.message}`));
-
-await page.goto(base.toString(), { waitUntil: "networkidle" });
-await page.waitForFunction(
-  () => {
-    const metric = [...document.querySelectorAll(".ql-metric")].find((element) =>
-      element.textContent?.includes("TOTAL RETURN"),
-    );
-    return metric !== undefined && !metric.textContent?.includes("—");
-  },
-  undefined,
-  // 计算型等待（DuckDB/WASM 流水线出数）：家族连跑时 CPU 竞争会拖慢出数，
-  // 预算按「慢机器的最坏首算」给足，失败由断言而非超时兜底。
-  { timeout: 120_000 },
-);
-
-let body = await page.locator("body").innerText();
-if (!body.includes("BCR QUANT LAB")) fail("Quant Lab 未渲染");
-if (!body.includes("DAILY BARS")) fail("行情未加载或恢复");
-if (!body.includes("DuckDB") || !body.includes("ARROW") || !body.includes("PARQUET")) {
-  fail("列式数据层未上线");
-}
-if (!body.includes("YEAR PARTITIONS")) fail("年度分区清单未上线");
-if (Number(await page.locator(".ql-partition-index").getAttribute("data-partitions")) < 1) {
-  fail("年度分区未物化");
-}
-if ((await page.locator(".ql-trade").count()) === 0) fail("回测未产生成交");
-
-const parquetPath = `${dir}/quant-market.parquet`;
-const download = page.waitForEvent("download");
-await page.getByRole("button", { name: "PARQUET" }).click();
-await (await download).saveAs(parquetPath);
-await page.getByLabel("导入行情数据", { exact: true }).setInputFiles(parquetPath);
+const url = new URL(process.env.BASE_URL ?? "http://localhost:5201/");
+if (url.pathname.startsWith("/studio")) url.pathname = "/quant";
+url.search = "";
+const shots = ensureShots();
+const browser = await launchEphemeralBrowser({ headless: true });
+const page = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+const errors = [],
+  requests = [];
+page.on("pageerror", (error) => errors.push(error.message));
+page.on("request", (request) => requests.push(request.url()));
 try {
+  await page.goto(url.toString(), { waitUntil: "networkidle" });
+  await page.locator(".research-run-button:not(:disabled)").waitFor({ timeout: 60000 });
+  assert(await page.getByRole("heading", { name: "行业宽度轮动", exact: true }).isVisible());
+  assert.equal(await page.getByRole("combobox", { name: "选择策略", exact: true }).count(), 0);
+  assert.equal(
+    await page.locator(".research-run-result").count(),
+    0,
+    "Opening research must not run a strategy",
+  );
+  await page.getByRole("button", { name: "运行回测", exact: true }).click();
   await page.waitForFunction(
-    () => {
-      const imported = document
-        .querySelector(".ql-market-status")
-        ?.textContent?.includes("quant-market.parquet");
-      const metric = [...document.querySelectorAll(".ql-metric")].find((element) =>
-        element.textContent?.includes("TOTAL RETURN"),
-      );
-      return imported === true && metric !== undefined && !metric.textContent?.includes("—");
-    },
-    undefined,
-    { timeout: 45_000 },
+    () =>
+      document.querySelector(".research-status")?.textContent.includes("回测完成") &&
+      document.querySelector(".jsg-workspace")?.getAttribute("data-busy") === "false",
+    null,
+    { timeout: 60000 },
+  );
+  const result = page.locator(".research-run-result");
+  const runId = await result.getAttribute("data-run-id");
+  assert(runId);
+  await page.locator(".research-action-menu > summary").click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "导出结果", exact: true }).click();
+  const filename = `${shots}/quant-default-result.json`;
+  await (await download).saveAs(filename);
+  const exported = JSON.parse(readFileSync(filename, "utf8"));
+  assert.equal(exported.result.metrics.days, 156);
+  assert.equal(exported.result.metrics.model, "jsg-adjusted-v1");
+  assert(exported.result.metrics.filledOrders > 20);
+  await page.reload({ waitUntil: "networkidle" });
+  await result.waitFor({ timeout: 60000 });
+  assert.equal(
+    await result.getAttribute("data-run-id"),
+    runId,
+    "Default route must restore its frozen run",
+  );
+  await page.getByRole("button", { name: "运行设置", exact: true }).click();
+  await page.getByRole("tab", { name: "参数", exact: true }).click();
+  assert.equal(await page.getByLabel("目标股票数", { exact: true }).inputValue(), "10");
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog", { name: "运行设置", exact: true }).waitFor({ state: "hidden" });
+  assert.equal(requests.filter((request) => /duckdb/u.test(request)).length, 0);
+  assert.deepEqual(errors, []);
+  await page.screenshot({ path: `${shots}/quant-lab.png`, fullPage: true });
+  console.log(
+    "Quant default-entry verification passed: explicit run, Rust results, export and reload recovery without DuckDB.",
   );
 } catch (error) {
-  console.error(`Parquet import diagnostics:\n${await page.locator("body").innerText()}`);
+  console.error(page.url(), (await page.locator("body").innerText()).slice(-4000));
   throw error;
+} finally {
+  await browser.close();
 }
-const fastWindow = page.getByLabel("Fast window");
-const slowWindow = page.getByLabel("Slow window");
-await fastWindow.fill("16");
-await slowWindow.fill("64");
-await page.waitForFunction(
-  () =>
-    document.querySelector('input[aria-label="Fast window"]')?.value === "16" &&
-    document.querySelector('input[aria-label="Slow window"]')?.value === "64",
-);
-await page.getByRole("button", { name: "RUN BACKTEST" }).click();
-await page.waitForFunction(
-  () =>
-    document.body.innerText.includes("SMA(16, 64)") &&
-    document.body.innerText.includes("rust-wasm") &&
-    !document.body.innerText.includes("TS FALLBACK BT"),
-  undefined,
-  { timeout: 45_000 },
-);
-body = await page.locator("body").innerText();
-if (!body.includes("SMA(16, 64)")) fail("参数重跑未进入 Pipeline");
-if (!body.includes("rust-wasm") || body.includes("TS FALLBACK BT")) {
-  fail("Rust/WASM backtester 未成为实际执行引擎");
-}
-
-await page.screenshot({ path: `${dir}/quant-lab.png`, fullPage: true });
-await browser.close();
-console.log(process.exitCode ? "quant verification FAILED" : "quant verification PASSED");

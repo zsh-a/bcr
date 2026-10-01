@@ -13,7 +13,7 @@ const context = await browser.newContext({
 page.on("pageerror", (e) => errors.push(e.message));
 const url = new URL(process.env.BASE_URL ?? "http://localhost:5201/");
 url.pathname = url.pathname.startsWith("/studio") ? "/quant" : url.pathname;
-url.search = "?strategy=jsg";
+url.search = "";
 const menu = async (name) => {
   await page.locator(".research-action-menu > summary").click();
   await page.getByRole("button", { name, exact: true }).click();

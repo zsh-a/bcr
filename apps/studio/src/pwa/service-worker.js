@@ -1,3 +1,5 @@
+import quantWasmUrl from "../../../../crates/quant/pkg/bcr_quant_bg.wasm?url";
+
 // One script, separate registrations and caches; scope never comes from an untrusted URL.
 const app = globalThis.__BCR_PWA_APPS__.find(
   (item) => item.key === new URL(globalThis.location.href).searchParams.get("app"),
@@ -18,9 +20,8 @@ const APP_SHELL = [
 
 function isRequiredAppAsset(url) {
   // App 的 runtime 启动即加载 sqlite 及其 OPFS 代理，属于关键路径，必须随
-  // 外壳预缓存；只有阅读 / 媒体域的重资源（PDF worker、本地模型、duckdb）
+  // 外壳预缓存；只有阅读 / 媒体域的重资源（PDF worker、本地模型）
   // 不在知识库启动图里，留给运行时缓存。
-  if (/duckdb.*\.wasm$/u.test(url)) return app.key === "quant" && !globalThis.__BCR_CLOUDFLARE__;
   return !/pdf\.worker|onnxruntime|transformers|IBMPlexSansSC-|noto-serif-sc-/u.test(url);
 }
 
@@ -82,6 +83,15 @@ async function shellUrls() {
     for (const key of Object.keys(manifest)) {
       if (key.endsWith("/bcr_kernels_bg.wasm")) addManifestEntry(manifest, key, urls, visited);
     }
+  }
+  if (app.key === "quant" || app.key === "markets") {
+    // Analysis views are lazy; they must be ready for the first offline run.
+    const views = manifest[app.entry]?.dynamicImports;
+    if (Array.isArray(views)) {
+      for (const view of views) addManifestEntry(manifest, view, urls, visited);
+    }
+    // Worker imports are absent from the page's module graph.
+    urls.add(quantWasmUrl);
   }
   return [...urls];
 }

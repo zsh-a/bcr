@@ -777,13 +777,6 @@
   font-size: var(--text-sm);
   font-weight: 400;
 }
-.ma-dialog-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  margin-top: var(--space-5);
-}
 .ma-source-fields {
   display: grid;
   gap: var(--space-3);

@@ -11,7 +11,7 @@ const start = process.env.JSG_TEST_START ?? "2026-04-01";
 const end = process.env.JSG_TEST_END ?? "2026-06-30";
 const url = new URL(process.env.BASE_URL ?? "http://localhost:5201/");
 if (url.pathname.startsWith("/studio")) url.pathname = "/quant";
-url.searchParams.set("strategy", "jsg");
+url.search = "";
 const shots = ensureShots();
 const browser = await launchEphemeralBrowser({ headless: true });
 const context = await browser.newContext({

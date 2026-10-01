@@ -13,13 +13,7 @@ import {
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";
-import type {
-  MarketInstrument,
-  MarketRankingItem,
-  MarketSectorPulse,
-  MarketHistorySeries,
-} from "@bcr/market-data";
-import { publishQuantReference } from "@bcr/market-data";
+import type { MarketInstrument, MarketRankingItem, MarketSectorPulse } from "@bcr/market-data";
 import { ChevronRight, Info, Plus, RefreshCw } from "lucide-react";
 import { QuoteCard, Session } from "./MarketPanels";
 import {
@@ -33,7 +27,6 @@ import {
 } from "./MarketViews";
 import { MarketSearch } from "./MarketSearch";
 import { StockDetail } from "./StockDetail";
-import { historyService } from "./marketServices";
 import { useMarketAtlas } from "./useMarketAtlas";
 import { useQuoteTrends } from "./useQuoteTrends";
 import { useMarketLandscape } from "./useMarketLandscape";
@@ -103,8 +96,6 @@ export function App() {
   const [detailId, setDetailId] = useState<string | null>(null),
     [sector, setSector] = useState<MarketSectorPulse | null>(null),
     [sourceOpen, setSourceOpen] = useState(false);
-  const [handoffLoading, setHandoffLoading] = useState(false),
-    [handoffError, setHandoffError] = useState<string | null>(null);
   useEffect(() => {
     if (!active) {
       setDetailId(null);
@@ -121,7 +112,6 @@ export function App() {
   const openInstrument = async (instrument: MarketInstrument, ranking?: MarketRankingItem) => {
     setDetailId(instrument.id);
     setSector(null);
-    setHandoffError(null);
     navigation.navigate(`/markets?view=${view}&instrument=${encodeURIComponent(instrument.id)}`);
     const existing = allQuotes.find((q) => q.instrument.id === instrument.id);
     if (existing) {
@@ -166,78 +156,6 @@ export function App() {
     (quote) => region === "ALL" || quote.instrument.market === region,
   );
   const quoteTrends = useQuoteTrends(visibleQuotes, view === "overview");
-  const openQuant = async (series: MarketHistorySeries) => {
-    setHandoffLoading(true);
-    setHandoffError(null);
-    try {
-      await publishQuantReference({
-        version: 1,
-        createdAt: Date.now(),
-        instrument: series.instrument,
-        range: series.range,
-        bars: series.bars,
-        source: `${series.source} · ${series.quality}`,
-      });
-      setDetailId(null);
-      navigation.navigate("/quant?strategy=sma");
-    } catch (e) {
-      setHandoffError(String(e));
-    } finally {
-      setHandoffLoading(false);
-    }
-  };
-  const openWatchlistQuant = async () => {
-    if (handoffLoading || !watched.length) return;
-    setHandoffLoading(true);
-    setHandoffError(null);
-    try {
-      if (activeGroup.instrumentIds.length > 64)
-        throw new Error("组合交接最多 64 只证券，请拆分自选分组");
-      const series: {
-        instrument: MarketInstrument;
-        range: "1Y";
-        bars: MarketHistorySeries["bars"];
-        source: string;
-      }[] = [];
-      // Limit concurrent history downloads instead of launching the entire group at once.
-      for (let offset = 0; offset < watched.length; offset += 3) {
-        const loaded = await Promise.all(
-          watched.slice(offset, offset + 3).map((q) =>
-            historyService.load({
-              instrument: q.instrument,
-              range: "1Y",
-              referencePrice: q.price,
-            }),
-          ),
-        );
-        for (const item of loaded) {
-          if (item.bars.length < 30) throw new Error(`${item.instrument.name} 历史行情不足 30 条`);
-          series.push({
-            instrument: item.instrument,
-            range: "1Y",
-            bars: item.bars,
-            source: `${item.source} · ${item.quality}`,
-          });
-        }
-      }
-      if (watched.length !== activeGroup.instrumentIds.length)
-        throw new Error("部分自选证券尚无行情，请先搜索加载后再导入组合");
-      await publishQuantReference({
-        version: 2,
-        createdAt: Date.now(),
-        groupId: activeGroup.id,
-        groupName: activeGroup.name,
-        range: "1Y",
-        series,
-        source: `Market · ${activeGroup.name}`,
-      });
-      navigation.navigate("/quant?strategy=sma");
-    } catch (e) {
-      setHandoffError(String(e));
-    } finally {
-      setHandoffLoading(false);
-    }
-  };
   return (
     <div className="market-atlas" data-view={view}>
       <header className="ma-header">
@@ -378,13 +296,6 @@ export function App() {
                 <h1>我的自选</h1>
                 <p>按研究主题组织证券 · 点击名称查看详情</p>
               </div>
-              <Button
-                disabled={!watched.length || handoffLoading}
-                onClick={() => void openWatchlistQuant()}
-              >
-                {handoffLoading ? <Spinner size="sm" /> : <ChevronRight size={16} />}在 Quant
-                分析组合
-              </Button>
             </div>
             <div className="ma-watchlist-groups">
               <nav aria-label="自选分组">
@@ -445,11 +356,6 @@ export function App() {
                 只证券尚未取得行情，可通过顶部搜索加载。
               </p>
             )}
-            {handoffError && (
-              <p className="ma-error" role="alert">
-                {handoffError}
-              </p>
-            )}
             <DataStamp
               source={snapshot.provider}
               quality={snapshot.quality}
@@ -467,14 +373,12 @@ export function App() {
         open={active && stockOpen}
         quote={stockQuote}
         loading={searchingQuote !== null || (!stockQuote && !quoteError)}
-        error={quoteError ?? handoffError}
+        error={quoteError}
         onClose={closeStock}
         watched={stockQuote ? activeGroup.instrumentIds.includes(stockQuote.instrument.id) : false}
         onWatch={() => {
           if (stockQuote) toggleWatch(stockQuote.instrument.id);
         }}
-        onQuant={openQuant}
-        busy={handoffLoading}
       />
       <Dialog
         open={active && sourceOpen}

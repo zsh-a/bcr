@@ -44,10 +44,6 @@ function referencedAssets(manifest) {
   return [...urls];
 }
 
-// Cloudflare Workers Static Assets 单文件 25 MiB 上限：duckdb WASM（30MB+）
-// 特意不部署，量化在 Workers 构建下回退（见 PWA worker 的 __BCR_CLOUDFLARE__ 特判）。
-const PLATFORM_EXEMPT = /\/duckdb-[\w.-]*\.wasm$/u;
-
 async function checkOnce() {
   const problems = [];
   const index = await fetch(`${origin}/`, { redirect: "follow" });
@@ -64,7 +60,7 @@ async function checkOnce() {
   const manifest = await manifestResponse.json();
   const assets = referencedAssets(manifest);
   assert(assets.length > 0, "构建清单没有任何资产引用——清单形态变了，请更新本脚本");
-  const targets = assets.filter((path) => !PLATFORM_EXEMPT.test(path));
+  const targets = assets;
   for (let from = 0; from < targets.length; from += 24) {
     const batch = targets.slice(from, from + 24);
     const found = await Promise.all(

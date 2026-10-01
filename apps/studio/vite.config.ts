@@ -46,7 +46,6 @@ export default defineConfig({
   define: {
     "globalThis.__BCR_READER_BUILD_ID__": JSON.stringify(buildId),
     "globalThis.__BCR_PWA_APPS__": JSON.stringify(PWA_APPS),
-    "globalThis.__BCR_CLOUDFLARE__": JSON.stringify(process.env.VITE_BCR_CLOUDFLARE === "1"),
     "globalThis.__BCR_NOTES_BUILD_ID__": JSON.stringify(buildId),
   },
   build: {
@@ -85,7 +84,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     // emscripten / onnxruntime 类模块不做 esbuild 预打包；wasm 路径由 locateFile 注入
-    exclude: ["@duckdb/duckdb-wasm", "@sqlite.org/sqlite-wasm", "@huggingface/transformers"],
+    exclude: ["@sqlite.org/sqlite-wasm", "@huggingface/transformers"],
   },
   worker: {
     // transformers.js 在 worker 内动态 import 分包，需要 es 格式

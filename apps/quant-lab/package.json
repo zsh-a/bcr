@@ -5,8 +5,7 @@
   "type": "module",
   "exports": {
     "./app": "./src/App.tsx",
-    "./app-manifest": "./src/app-manifest.ts",
-    "./store": "./src/store.ts"
+    "./app-manifest": "./src/app-manifest.ts"
   },
   "dependencies": {
     "@bcr/core": "workspace:*",
@@ -17,7 +16,6 @@
     "@bcr/shell-contract": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",
     "@bcr/storage-sqlite": "workspace:*",
-    "@duckdb/duckdb-wasm": "1.32.0",
     "@fontsource/ibm-plex-mono": "catalog:",
     "@fontsource/ibm-plex-sans": "catalog:",
     "@sqlite.org/sqlite-wasm": "catalog:",

@@ -75,7 +75,7 @@ Studio 另提供[个人知识库与 Git 同步](docs/KNOWLEDGE-SYNC.md)：独立
 | §10.1 WebGPU 探测降级                 | `apps/media-studio`：ASR device=auto（GPU→WASM 静默降级）/显式选择；headless 走 WASM        |
 | §10.2 Whisper ASR                     | transformers.js ONNX（q8 / webgpu fp32+q4），失败回退演示引擎                               |
 | 文本翻译                              | opus-mt（英↔中方向可选）：逐条 cue 批量平移，1:1 对齐，无二次音频推理                       |
-| §14 Quant workload                    | DuckDB WASM + Arrow IPC + Parquet → SMA Signal → Backtest Pipeline                          |
+| §14 Quant workload                    | ClickHouse / Arrow → Rust/WASM 多股票回测与参数研究                                         |
 | Market Atlas                          | stock-sdk / ClickHouse → 行情 / 行业 / Rust 每日宽度 → OPFS 冻结快照与 Quant 引用交接       |
 | Document Studio                       | DocumentJob / Stage 状态机 → 本地导入 / 格式边界 / Reader·Manga handoff                     |
 | Data Studio                           | CSV / JSON / NDJSON → Worker 解析 → Canonical Table Artifact → Schema / 搜索 / 导出         |
@@ -208,29 +208,21 @@ decode ─┬─ wave（Rust peak kernel 波形）
 
 ## Quant Lab（apps/quant-lab）
 
-第二个上层应用用量化 batch workload 反向检验同一 Runtime 抽象：
+Quant Lab 统一使用 JSG 多股票研究工作台，直接打开 `/quant` 或独立应用即可使用。
 
 ```text
-CSV / Parquet → DuckDB WASM → Year Manifest → Arrow IPC shards → SMA Cross → Rust/WASM Backtest
-                                      └──────→ ZSTD Parquet shards └───────→ Equity / Trades / Metrics
+ClickHouse / 本地研究快照 → 分块 Arrow → Rust/WASM 逐日回放 → 净值 / 成交 / 持仓 / 选股解释
+                                      └────── OPFS 数据缓存 + SQLite 运行历史
 ```
 
-- 首次启动提供固定种子的 5,040 根日线基准行情，可导入标准 OHLCV CSV 或 Parquet
-- DuckDB WASM 对行情执行 schema 规范化、SQL profiling，并按年度物化 Arrow IPC / ZSTD Parquet 分区与内容寻址清单
-- Worker 并行读取年度 Arrow 分区；合并 Parquet 仍可直接下载并重新导入，旧单文件项目会自动迁移
-- 两节点 `submitPipeline` 在弹性 WorkerPool 中执行；行情内容、快慢周期、资金和费率均进入缓存键
-- Rust/WASM kernel 通过 Float64Array / Uint8Array 批次执行 long-only 回测，产出权益、交易与完整指标
-- Worker 会与 TypeScript 参考实现逐点校验；WASM 不可用或数值失配时显式标记降级
-- Market Atlas 的 Watchlist 分组可整组交接；Quant Lab 按共同交易日计算 Pearson 相关性，并生成等权组合基准、权益曲线、波动率和回撤指标
-- 行情、列式缓存、结果 Artifact、Cache、血缘、TaskJournal 与项目参数经 OPFS + SQLite 跨刷新恢复
-- UI 采用高密度策略终端：价格/双均线/买卖点、单标的权益曲线、组合相关性矩阵、等权权益曲线、Pipeline 状态和 Trade Blotter 同屏
+- 浏览器直连只读 ClickHouse，或导入 `manifest.json` 与全部 Arrow 分片；首次启动提供明确标记的演示数据，回测由用户发起
+- 单次回测与参数实验共用 Runtime、WorkerPool、内容寻址缓存及 Rust 计算引擎
+- 参数草稿与冻结运行快照分离，支持净值/回撤图、完整成交筛选、持仓/调仓明细、选股解释、参数网格与稳健性验证
+- 数据、草稿和历史跨刷新恢复；同区间运行可添加对照，移动端通过设置抽屉操作
+- Market 的行业宽度与 Quant 共用冻结研究快照，只传递内容引用和观察日期，无需重复下载
 
-JSG 多股票研究使用独立的结果工作台：浏览器直连 ClickHouse → 分块 Arrow → Rust/WASM
-逐日回放。参数编辑与运行快照分离，支持交互净值/回撤图、完整成交筛选、持仓/调仓明细和
-最近 20 次运行的同区间比较；移动端通过参数抽屉操作。详情见 [JSG 文档](crates/quant/README.md)。
-
-走查：`node scripts/verify-quant-lab.mjs`（由 `bun run test:browser` 自动执行）；
-JSG 使用 `bun run test:browser:jsg`，数据库集成使用 `bun run test:browser:jsg:clickhouse`。
+详情见 [JSG 文档](crates/quant/README.md)。走查：`node scripts/verify-quant-lab.mjs` 验证默认入口、回测与刷新恢复；
+`bun run test:browser:jsg` 验证完整研究流程，数据库集成使用 `bun run test:browser:jsg:clickhouse`。
 
 ## Market Atlas（apps/market-board）
 
@@ -243,7 +235,8 @@ stock-sdk (CN / HK / US / Global Futures)
              ↓
 live delayed / partial / cached / demo quality states
              ↓
-Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
+Market Atlas · 行情 / K 线 / 自选 / 行业宽度
+                                    └──── 冻结宽度快照 → Quant Lab
 ```
 
 - `stock-sdk@2.4.2` 只存在于数据适配层；UI 不直接依赖第三方返回类型，后续可组合欧洲、日本、FX 数据源
@@ -255,7 +248,7 @@ Market Atlas · pulse / candlesticks / watchlist → Quant Lab handoff
 - 标的焦点支持 1M / 3M / 6M / 1Y / 3Y 日线 K 线、成交量与指针读数；长周期只在显示层聚合，交接仍保留完整日线
 - 主要资产卡片独立加载最近最多 20 个交易日的真实收盘价，标注区间与缓存状态；优先读取腾讯近期日线，失败后切换 SDK 东方财富日线，按可见区域、最多 3 个并发加载，缓存一小时。报价刷新不重复下载历史；无真实缓存或少于 3 个有效价格时显示「暂无走势」，不生成模拟趋势
 - Income Ledger 默认聚焦贵州茅台这一有完整记录的 A 股个股，使用 `sdk.reference.dividendDetail()` 展示现金分红、股息率、除权日、登记日与实施进度；实时请求失败时按最后缓存 → 明确标注的演示参考降级，HK / US / 基金尚无同口径 provider 时仍显示覆盖边界
-- “Send to Quant” 将当前历史柱交给 Quant Lab，后者自动生成年度 Arrow / Parquet 分区并运行策略；Watchlist 的 “Send group” 会并行装载分组内历史序列，在 Quant Lab 显示完整 intake 摘要、相关性矩阵与等权组合基准，同时以首个序列运行当前策略
+- 行业宽度页可独立读取 ClickHouse 冻结快照，并将相同数据引用送入 Quant Lab 研究；个股行情与自选分组在 Market 内查看和管理
 - 确定性模拟曲线与 OHLCV 仅出现在明确标记的演示 fixture 中，不伪装成实时历史数据
 
 走查：`node scripts/verify-market-atlas.mjs`（由 `bun run test:browser` 自动执行），`node scripts/verify-market-trends.mjs` 验证真实日线、缓存、缺失数据与窄屏走势。
@@ -390,7 +383,6 @@ Canonical Table Package → Schema / search / sort / export
 - GitHub Actions：`main` 的 push 会先通过现有 validate + Chromium 回归，随后复用已验证的 `studio-dist` Artifact 部署；PR 不会触发生产部署。
 - 在仓库 Settings → Secrets and variables → Actions 中配置 `CLOUDFLARE_API_TOKEN`（仅 Workers 部署权限）和 `CLOUDFLARE_ACCOUNT_ID`。未配置时部署 job 会明确 warning 并跳过，不影响验证 job。
 - API Token 不写入仓库；Cloudflare 官方建议在非交互 CI 中使用 API Token + Account ID，并通过 `wrangler deploy` 发布 Worker。
-- Cloudflare 构建会将 Quant Lab 的 DuckDB WASM 指向固定版本的 jsDelivr CDN，并通过 `.assetsignore` 排除超过 Workers 单文件限制的本地副本；本地开发与其它 standalone 构建仍使用本地 WASM。
 
 相关文档：[Cloudflare GitHub Actions](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)、[Workers Static Assets SPA](https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/)。
 

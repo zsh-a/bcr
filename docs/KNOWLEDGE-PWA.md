@@ -41,7 +41,7 @@ basepath 使它与宿主的 `/knowledge` 在 URL 上互不相扰。样式基座�
 - 安装时按 `build-manifest.json` 的 `notes/knowledge/index.html` 条目递归预缓存
   入口模块图；**sqlite wasm 及其 OPFS 代理不排除**——Notes 的 runtime 启动即加载
   sqlite，属于关键路径（Reader 把它留给运行时缓存，因为阅读器启动不需要）。
-  仅 PDF worker、onnxruntime / transformers、duckdb 留给运行时。
+  仅 PDF worker、onnxruntime / transformers 留给运行时。
 - 导航请求优先命中版本化外壳，未命中回退 `/notes/knowledge/`，绝不把新部署的
   index 写进旧缓存；激活保留上一个时间戳版本供已打开的旧标签页取旧 chunk。
 - 更新走 `SKIP_WAITING` 用户确认协议，与 Reader 共用

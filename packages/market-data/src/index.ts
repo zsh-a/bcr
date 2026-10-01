@@ -2,14 +2,6 @@ export { createDemoDividendSeries } from "./dividend";
 export { ResilientDividendService } from "./dividend-service";
 export { createDemoMarketLandscape, createDemoSnapshot, fallbackSessions } from "./demo";
 export { listKnownInstruments, searchKnownInstruments, marketInstrumentName } from "./directory";
-export {
-  consumeQuantHandoff,
-  isQuantHandoff,
-  publishQuantHandoff,
-  publishQuantReference,
-  receiveQuantReference,
-  QUANT_HANDOFF_EVENT,
-} from "./handoff";
 export { createDemoHistory, historyMinimumBars } from "./history";
 export { ResilientHistoryService } from "./history-service";
 export { MarketTrendService, type MarketPriceTrend } from "./trend-service";
@@ -45,10 +37,6 @@ export type {
   MarketWatchlistState,
   ProviderFeed,
   QuoteSnapshot,
-  QuantHandoff,
-  QuantMarketHandoff,
-  QuantMarketSeriesHandoff,
-  QuantPortfolioHandoff,
   SessionState,
 } from "./model";
 export { ResilientMarketService } from "./service";

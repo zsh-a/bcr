@@ -171,9 +171,6 @@
   min-height: 0;
   min-width: 0;
 }
-.ql-research-view[hidden] {
-  display: none;
-}
 .jsg-workspace .sr-only {
   position: absolute;
   width: 1px;
@@ -1459,17 +1456,6 @@
 }
 
 /* Result-led research workspace. Settings are edited in a single drawer. */
-.ql-research-shell[data-strategy="sma"] {
-  grid-template-rows: auto minmax(0, 1fr);
-}
-.ql-strategy-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 56px;
-  padding: 0 12px;
-  border-bottom: 1px solid var(--color-border);
-}
 .jsg-workspace {
   height: 100%;
   display: flex;
@@ -1500,26 +1486,12 @@
   min-width: 0;
   flex: 1;
 }
-.research-strategy-control {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.research-strategy-control > span {
-  font: 10px var(--font-mono);
-  letter-spacing: 0.12em;
-  color: var(--color-faint);
-}
-.research-strategy-control select {
-  max-width: 260px;
-  min-width: 0;
-  border: 0;
-  padding: 8px 4px;
-  color: var(--color-text);
-  background: transparent;
-  font: 500 16px var(--font-sans);
-  cursor: pointer;
+.research-brand h1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(13px, 1.2vw, 16px);
+  font-weight: 500;
 }
 .research-actions {
   display: flex;
@@ -1947,18 +1919,6 @@
     padding: 0 8px;
     gap: 4px;
     flex-wrap: nowrap;
-  }
-  .research-strategy-control {
-    gap: 0;
-  }
-  .research-strategy-control > span {
-    display: none;
-  }
-  .research-strategy-control select {
-    font-size: 13px;
-    max-width: 180px;
-    width: 100%;
-    padding-inline: 0;
   }
   .research-actions > .ui-btn:first-child {
     display: none;

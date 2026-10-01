@@ -65,7 +65,7 @@ function browserRss() {
   return entries.filter((e) => pids.has(e.pid)).reduce((n, e) => n + e.rss, 0);
 }
 
-await page.goto(process.env.BASE_URL ?? "http://localhost:5202/?strategy=jsg", {
+await page.goto(process.env.BASE_URL ?? "http://localhost:5202/", {
   waitUntil: "networkidle",
 });
 await page.waitForFunction(() => !document.querySelector(".research-run-button")?.disabled);

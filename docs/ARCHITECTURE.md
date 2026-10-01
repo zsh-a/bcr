@@ -466,7 +466,7 @@ run_tool("statistics", input)
 | Rendering       | OffscreenCanvas（Worker 内渲染）                                              |
 | Media           | Mediabunny + WebCodecs                                                        |
 | Storage         | OPFS + SQLite WASM                                                            |
-| OLAP            | DuckDB WASM + Arrow + Parquet                                                 |
+| OLAP            | ClickHouse + Arrow + Rust/WASM                                                |
 | Test            | Vitest Browser Mode（stable）+ Playwright，直接测 OPFS/WASM/Worker/SAB/WebGPU |
 
 状态管理分层，不建巨型 global store：URL State → TanStack Router；Runtime State → Runtime Core；Persistent State → SQLite；组件内 → React；少量跨组件 UI state → tiny store（第一版可以不装 Zustand）。
@@ -524,16 +524,13 @@ Task Scheduler · Artifact · Worker Pool · OPFS · Cache · Cancellation
 ### Phase 2 — 加入 Quant workload（垂直切片已落地）
 
 ```text
-DuckDB WASM · Arrow · Rust Backtester · Parquet Cache
+ClickHouse / Arrow Manifest → Rust/WASM 逐日回放 → 研究结果
 ```
 
-当前 `OHLCV → SMA Signal → Long-only Backtest` 已跑通同一 Scheduler / WorkerPool /
-Artifact / Cache / SQLite 链路，并完成 DuckDB WASM schema 规范化与 SQL profiling、Arrow IPC
-批量计算输入、年度 Arrow / ZSTD Parquet 内容寻址分区、分区清单及 Parquet 导入/导出。
-旧 JSON 与单 Arrow 项目会在恢复时自动迁移为年度分区清单。
-Long-only Backtester 已下沉 Rust/WASM，以 f64 close + u8 position TypedArray 批次跨越 ABI，
-并在 Worker 内与 TypeScript reference 逐点校验后才接受结果。下一步扩展
-大数据集、组合优化以及 SIMD/多线程 kernel。
+Quant Lab 统一使用 JSG 多股票工作台。单次回测与参数网格共用 Scheduler / WorkerPool /
+Artifact / Cache / SQLite 链路，浏览器直接读取经过摘要校验的分块 Arrow 数据，Rust 引擎
+逐日计算选股、交易和持仓。参数草稿与冻结运行分离，支持历史比较、选股解释、账本和稳健性验证。
+默认入口 `/quant` 只恢复或准备数据，运行由用户发起；不再维护单股票 SMA 管线和 DuckDB 数据层。
 **Media + Quant + Markets 都能良好运行在同一 Runtime 上，即证明抽象成立。**
 
 ### Phase 2.5 — Market（行情分析与策略研究分工）
@@ -542,17 +539,17 @@ Long-only Backtester 已下沉 Rust/WASM，以 f64 close + u8 position TypedArra
 
 `@bcr/market-data` 隔离 `stock-sdk`，提供 instrument、quote、search、dividend、landscape、OHLCV、session 数据契约。在线响应的空行业或排行保持为空，不混入旧快照或演示数据；整体失败才返回明确标记的 cached/demo 快照。每个数据块展示来源、质量和时间，缓存保留原数据时间。东方财富行业当日涨跌热图与历史 MA20 宽度使用独立入口，行业分类随数据集显示，合成数据不标作真实申万行业。
 
-主要资产卡片的微型走势使用 `MarketTrendService` 独立读取近期日线，排序、去重并保留最近最多 20 个交易日的收盘价；颜色按区间首尾价格决定。价格适配器优先读取腾讯最多 40 根日线（美股使用独立的 `usfqkline` 端点），失败后切换到 SDK 东方财富一个月日线；该价格专用路径不用于 K 线详情、成交量或 Quant 交接。只加载可见市场区域，最多 3 个并发，与 60 秒报价轮询分离。紧凑价格缓存有效期一小时，上游失败后退避 5 分钟，并保留真实缓存原始日期；没有真实历史、少于 3 个有效价格或演示报价时显示空状态，不将「昨收 → 最新」连线或模拟曲线当作历史。区间和缓存状态显示在卡片中，日期与来源可通过提示及无障碍标签读取。
+主要资产卡片的微型走势使用 `MarketTrendService` 独立读取近期日线，排序、去重并保留最近最多 20 个交易日的收盘价；颜色按区间首尾价格决定。价格适配器优先读取腾讯最多 40 根日线（美股使用独立的 `usfqkline` 端点），失败后切换到 SDK 东方财富一个月日线；该价格专用路径不用于 K 线详情或成交量。只加载可见市场区域，最多 3 个并发，与 60 秒报价轮询分离。紧凑价格缓存有效期一小时，上游失败后退避 5 分钟，并保留真实缓存原始日期；没有真实历史、少于 3 个有效价格或演示报价时显示空状态，不将「昨收 → 最新」连线或模拟曲线当作历史。区间和缓存状态显示在卡片中，日期与来源可通过提示及无障碍标签读取。
 
 共享研究模块位于 `packages/market-data/src/research`，Quant 中的原路径仅作重导出。连接、密码隔离、名称字典、数据清单、ClickHouse Arrow 分片缓存与 Worker 加载器共用；公开连接配置不保存密码。Market 可直接检查只读 ClickHouse 连接并获取冻结快照，也可选择已有 Quant 快照，无需运行回测。初版复用完整 JSG 日线事实快照，以保证之后进入 Quant 时不会重复下载或改变研究输入；暂未引入专用的宽度聚合 SQL 或更轻量的价格专用数据契约。
 
 Rust `MarketBreadth` 复用 MA20 特征核，按日计算行业中复权收盘价高于 20 次观测均线的成员占比，不创建交易、持仓或策略参数。浏览器 Worker 每次只读取一个经过尺寸和摘要校验的 Arrow 分片（上限 32 MiB）；累计指标限制为 150,000 个单元格和 16 MiB，超出时要求缩小区间。派生宽度缓存在 OPFS，主线程只接收紧凑指标，使用与 Quant 共用的热图组件。
 
-Market ↔ Quant 的 JSG 跳转传递快照内容引用和观察日期：`/markets?view=breadth&snapshot=…&date=…`、`/quant?strategy=jsg&snapshot=…`。共享引用保存在 `quant/cache/market-pins`，清理保护其清单与 Arrow 文件；「宽度 → 数据源 → 解除共享保留」可释放引用。Quant 导入并持久化成功后确认跳转，只准备研究数据，不自动运行策略；策略的选股解释、交易、账本和冻结运行结果仍在 Quant。
+Market ↔ Quant 的 JSG 跳转传递快照内容引用和观察日期：`/markets?view=breadth&snapshot=…&date=…`、`/quant?snapshot=…`。共享引用保存在 `quant/cache/market-pins`，清理保护其清单与 Arrow 文件；「宽度 → 数据源 → 解除共享保留」可释放引用。Quant 导入并持久化成功后确认跳转，只准备研究数据，不自动运行策略；策略的选股解释、交易、账本和冻结运行结果仍在 Quant。
 
-证券与自选组合的 SMA 交接把柱数据写入 `market/handoffs` OPFS，localStorage 仅保存小引用。消费者在导入与保存成功后确认并删除交接；失败保留待处理引用。组内下载并发为 3，交接最多 64 只证券与 16 MiB，避免在主线程或 localStorage 承载无界数据。Quant 保留 intake 摘要，以首个序列运行 SMA，并按共同交易日计算相关性与等权组合分析。
+个股行情和自选分组留在 Market 内查看与管理；策略研究只通过行业宽度冻结快照进入 Quant。
 
-浏览器走查：`verify-market-atlas.mjs` 验证四视图、证券详情、自选、OPFS 交接、Rust 宽度、往返和窄屏；`verify-market-clickhouse.mjs` 使用只读 HTTP fixture 验证独立加载、中文名称、密码隔离、刷新复用和 Quant 引用导入。HTTP fixture 校验传输协议，真实 SQL 正确性仍由量化的独立原生测试覆盖。
+浏览器走查：`verify-market-atlas.mjs` 验证四视图、证券详情、自选持久化、Rust 宽度、往返和窄屏；`verify-market-clickhouse.mjs` 使用只读 HTTP fixture 验证独立加载、中文名称、密码隔离、刷新复用和 Quant 引用导入。HTTP fixture 校验传输协议，真实 SQL 正确性仍由量化的独立原生测试覆盖。
 
 ### Phase 2.75 — Document Studio（内容流水线入口已落地）
 

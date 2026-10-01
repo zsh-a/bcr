@@ -217,7 +217,7 @@ describe("research storage lifecycle", () => {
     const s = await setup();
     const old = await s.run("old", false);
     const retained = await s.run("retained", true);
-    await s.store.put("artifacts/sma/user-data", new Uint8Array([1, 2]));
+    await s.store.put("artifacts/custom/user-data", new Uint8Array([1, 2]));
     const plan = await planResearchCleanup(s.services, s.state, s.store);
     expect(plan.candidates.map((c) => c.id)).toContain(old.resultRef.id);
     const cleaned = await reclaimResearch(s.services, plan, () => s.state, s.store);
@@ -225,7 +225,7 @@ describe("research storage lifecycle", () => {
     expect(await s.store.has(artifactPath(old.resultRef))).toBe(false);
     expect(await s.store.has(artifactPath(retained.resultRef))).toBe(true);
     expect(await s.store.has(artifactPath(s.dataset.partitions[0]!))).toBe(true);
-    expect(await s.store.has("artifacts/sma/user-data")).toBe(true);
+    expect(await s.store.has("artifacts/custom/user-data")).toBe(true);
     expect(s.caches.map((c) => c.key)).toEqual(["retained"]);
   });
   it("rechecks retained references, file sizes and newly created files after a cleanup preview", async () => {
@@ -260,9 +260,9 @@ describe("research storage lifecycle", () => {
     expect(usage.snapshots).toHaveLength(2);
     expect(usage.snapshots.filter((v) => v.used)).toHaveLength(1);
     await s.store.put("temp/jsg/abandoned/response.arrow", new Uint8Array([1]));
-    await s.store.put("temp/sma/retained", new Uint8Array([2]));
+    await s.store.put("temp/custom/retained", new Uint8Array([2]));
     expect(await recoverResearchFiles(s.store)).toEqual([]);
-    expect(await s.store.has("temp/sma/retained")).toBe(true);
+    expect(await s.store.has("temp/custom/retained")).toBe(true);
     expect(await s.store.has(artifactPath(s.dataset.manifestRef))).toBe(true);
   });
   it("recovers abandoned exports while protecting the download grace period and unrelated files", async () => {

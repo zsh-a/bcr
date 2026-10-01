@@ -15,7 +15,7 @@ bun scripts/generate-jsg-fixture.ts /tmp/bcr-research-benchmarks/input 5000 1250
 python scripts/benchmark-jsg.py /tmp/bcr-research-benchmarks/input/manifest.json \
   --binary crates/quant/target/release/jsg --output /tmp/bcr-research-benchmarks/native
 # 在另一个终端启动 bun run quant，使用其实际端口。
-BASE_URL='http://localhost:5201/?strategy=jsg' node scripts/benchmark-jsg.mjs \
+BASE_URL='http://localhost:5201/' node scripts/benchmark-jsg.mjs \
   /tmp/bcr-research-benchmarks/input /tmp/bcr-research-benchmarks/browser
 node scripts/verify-jsg-parity.mjs /tmp/bcr-research-benchmarks/native/single.jsonl \
   /tmp/bcr-research-benchmarks/browser/result.json
@@ -104,7 +104,7 @@ HTTP fixture 不启动数据库，也不解释 SQL，仅提供固定元数据和
 
 ```sh
 # 使用上文已生成的 input，在另一个终端启动 bun run quant。
-BASE_URL='http://localhost:5201/?strategy=jsg' node scripts/benchmark-jsg-grid.mjs \
+BASE_URL='http://localhost:5201/' node scripts/benchmark-jsg-grid.mjs \
   /tmp/bcr-research-benchmarks/input /tmp/bcr-research-benchmarks/browser-grid
 python scripts/benchmark-jsg.py /tmp/bcr-research-benchmarks/input/manifest.json \
   --binary crates/quant/target/release/jsg \
@@ -143,7 +143,7 @@ node scripts/verify-jsg-grid-parity.mjs /tmp/bcr-research-benchmarks/native-grid
 ## 完整结果研究评估
 
 ```sh
-BASE_URL='http://localhost:5201/?strategy=jsg' node scripts/benchmark-jsg-evaluation.mjs \
+BASE_URL='http://localhost:5201/' node scripts/benchmark-jsg-evaluation.mjs \
   /tmp/bcr-research-benchmarks/input /tmp/bcr-research-benchmarks/evaluation
 ```
 

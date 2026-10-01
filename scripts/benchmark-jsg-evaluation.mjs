@@ -25,7 +25,7 @@ await page.addInitScript(() => {
   }).observe({ type: "longtask", buffered: true });
 });
 try {
-  await page.goto(process.env.BASE_URL ?? "http://localhost:5201/?strategy=jsg", {
+  await page.goto(process.env.BASE_URL ?? "http://localhost:5201/", {
     waitUntil: "networkidle",
   });
   await page.waitForFunction(() => !document.querySelector(".research-run-button")?.disabled);
