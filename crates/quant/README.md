@@ -15,6 +15,11 @@ and HTML reports use the same dictionaries. Existing browser snapshots can fetch
 names independently and keep one source-scoped local metadata record, without
 redownloading Arrow or replaying the engine; the original artifact hashes stay
 unchanged. Missing names keep their codes, and “更新名称” retries name-only reads.
+Browser name reads skip malformed optional source labels individually, so a corrupt
+ETF name (such as a serialized multiline Python object) cannot suppress valid stock
+or sector names. Strict validation of imported snapshot dictionaries and ambiguous
+duplicate source codes is retained. Refreshes preserve previously cached valid
+labels if the source omits them; neither enrichment nor refresh requires a replay.
 
 ## Research diagnostics and validation
 

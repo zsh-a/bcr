@@ -68,10 +68,14 @@ const server = createServer(async (request, response) => {
       })),
     ];
   else if (sql.includes("AS display_name FROM stock_daily_meta"))
-    rows = Object.entries(fixture.names.instruments).map(([code, display_name]) => ({
-      code,
-      display_name,
-    }));
+    rows = [
+      ...Object.entries(fixture.names.instruments).map(([code, display_name]) => ({
+        code,
+        display_name,
+      })),
+      // A malformed, unrelated ETF label must not poison the whole source dictionary.
+      { code: "510050", display_name: "code\n510050    上证50ETF\nName: name, dtype: object" },
+    ];
   else if (sql.includes("AS display_name FROM industry_info"))
     rows = Object.entries(fixture.names.industries).map(([code, display_name]) => ({
       code,

@@ -13,6 +13,33 @@ const hasControls = (value: string) => {
   }
   return false;
 };
+/** Invalid optional source labels must not suppress other instruments or industries. */
+export function normalizeDisplayName(code: unknown, name: unknown): string | undefined {
+  if (
+    typeof code !== "string" ||
+    !code ||
+    code.length > 2000 ||
+    typeof name !== "string" ||
+    !name.trim() ||
+    name.length > 200 ||
+    hasControls(name)
+  )
+    return undefined;
+  return name.trim();
+}
+
+/** Later dictionaries override known labels while keeping earlier labels absent from a refresh. */
+export function mergeDisplayNames(...sources: DisplayNames[]): DisplayNames {
+  return sources.reduce<DisplayNames>(
+    (names, source) => ({
+      ...names,
+      ...source,
+      instruments: { ...names.instruments, ...source.instruments },
+      industries: { ...names.industries, ...source.industries },
+    }),
+    { instruments: {}, industries: {} },
+  );
+}
 export function parseDisplayNames(value: unknown): DisplayNames {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("名称元数据无效");
@@ -23,15 +50,7 @@ export function parseDisplayNames(value: unknown): DisplayNames {
     const entries = Object.entries(value);
     if (entries.length > 20_000) throw new Error("名称数量超过 20,000");
     for (const [code, name] of entries)
-      if (
-        !code ||
-        code.length > 2000 ||
-        typeof name !== "string" ||
-        !name.trim() ||
-        name.length > 200 ||
-        hasControls(name)
-      )
-        throw new Error("名称字段无效");
+      if (normalizeDisplayName(code, name) === undefined) throw new Error("名称字段无效");
     return Object.fromEntries(entries.map(([code, name]) => [code, (name as string).trim()]));
   };
   const capturedAt = raw["capturedAt"];

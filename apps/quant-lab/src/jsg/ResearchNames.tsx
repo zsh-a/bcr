@@ -5,6 +5,7 @@ import { clickHouseClient, type ClickHouseConnection } from "./clickhouse-http";
 import { loadDisplayNames, namesCacheKey } from "./clickhouse-names";
 import {
   displayName,
+  mergeDisplayNames,
   EMPTY_DISPLAY_NAMES,
   parseDisplayNames,
   subsetNames,
@@ -80,26 +81,20 @@ export function useResearchNames(
     if (!dataset || !cacheKey) return () => abort.abort();
     void (async () => {
       let names = base;
+      let sourceNames = EMPTY_DISPLAY_NAMES;
       try {
         const raw = await services.metadata?.get(cacheKey);
         if (raw && raw.length <= 4 * 1024 * 1024) {
+          sourceNames = parseDisplayNames(JSON.parse(raw));
           const cached = subsetNames(
-            parseDisplayNames(JSON.parse(raw)),
+            sourceNames,
             dataset.manifest.instruments.map((i) => i.code),
             dataset.manifest.industries,
           );
           const cachedNewer =
             Date.parse(cached.capturedAt ?? "1970-01-01") >=
             Date.parse(base.capturedAt ?? "1970-01-01");
-          names = {
-            ...(cachedNewer ? cached : base),
-            instruments: cachedNewer
-              ? { ...base.instruments, ...cached.instruments }
-              : { ...cached.instruments, ...base.instruments },
-            industries: cachedNewer
-              ? { ...base.industries, ...cached.industries }
-              : { ...cached.industries, ...base.industries },
-          };
+          names = cachedNewer ? mergeDisplayNames(base, cached) : mergeDisplayNames(cached, base);
         }
       } catch {
         /* A damaged name cache does not affect immutable research data. */
@@ -112,17 +107,14 @@ export function useResearchNames(
         const signal = AbortSignal.any([abort.signal, AbortSignal.timeout(15_000)]);
         const loaded = await loadDisplayNames(clickHouseClient(connection), signal);
         signal.throwIfAborted();
+        const enriched = mergeDisplayNames(sourceNames, loaded);
         names = subsetNames(
-          {
-            ...loaded,
-            instruments: { ...base.instruments, ...loaded.instruments },
-            industries: { ...base.industries, ...loaded.industries },
-          },
+          mergeDisplayNames(names, enriched),
           dataset.manifest.instruments.map((i) => i.code),
           dataset.manifest.industries,
         );
         // Only the dictionary is saved; snapshots, Arrow partitions and result hashes stay immutable.
-        await services.metadata?.set(cacheKey, JSON.stringify(loaded));
+        await services.metadata?.set(cacheKey, JSON.stringify(enriched));
         publish(names, false, complete(names) ? "" : "源库中部分名称为空或尚未收录");
       } catch (error) {
         publish(names, false, error instanceof Error ? error.message : String(error));

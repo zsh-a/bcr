@@ -6,6 +6,7 @@ import {
   displayName,
   EMPTY_DISPLAY_NAMES,
   nameMatches,
+  mergeDisplayNames,
   parseDisplayNames,
   subsetNames,
 } from "../src/jsg/display-names";
@@ -54,7 +55,60 @@ describe("research display names", () => {
     expect(sql).toContain("coalesce(nullIf(");
     expect(sql).not.toContain("enter_date");
   });
-  it("rejects repeated or invalid response names instead of attaching ambiguous metadata", async () => {
+  it("skips malformed optional labels without losing valid stocks or any industry names", async () => {
+    const json = async (sql: string): Promise<MetadataRow[]> =>
+      sql.includes("system.columns")
+        ? [
+            ...columns("stock_daily_meta", ["code", "name"]),
+            ...columns("industry_info", ["industry_code", "industry_name"]),
+          ]
+        : sql.includes("FROM stock_daily_meta")
+          ? [
+              {
+                code: "510050",
+                display_name: "code\n510050    上证50ETF\nName: name, dtype: object",
+              },
+              { code: "sz.002316", display_name: " ST亚联 " },
+              { code: "empty", display_name: " " },
+              { code: "long", display_name: "名".repeat(201) },
+              { code: "control", display_name: "无效\u007f名称" },
+              { code: "invalid", display_name: null },
+              { code: "", display_name: "无代码" },
+            ]
+          : [
+              { code: "801790", display_name: "非银金融" },
+              { code: "801960", display_name: "石油石化" },
+            ];
+    const names = await loadDisplayNames(
+      { connection: DEFAULT_CONNECTION, json },
+      new AbortController().signal,
+    );
+    expect(names.instruments).toEqual({ "sz.002316": "ST亚联" });
+    expect(names.industries).toEqual({ "801790": "非银金融", "801960": "石油石化" });
+    expect(displayLabel(names, "instruments", "510050")).toBe("510050");
+    expect(() =>
+      parseDisplayNames({ instruments: { "510050": "code\n510050    上证50ETF" }, industries: {} }),
+    ).toThrow();
+  });
+  it("preserves cached valid labels when a refresh omits a malformed source record", () => {
+    const cached = {
+      instruments: { "510050": "上证50ETF", "sz.002316": "亚联发展" },
+      industries: { "801790": "非银金融" },
+      capturedAt: "2026-09-01T00:00:00Z",
+    };
+    const loaded = {
+      instruments: { "sz.002316": "ST亚联" },
+      industries: { "801960": "石油石化" },
+      capturedAt: "2026-10-01T00:00:00Z",
+    };
+    expect(mergeDisplayNames(cached, loaded)).toEqual({
+      instruments: { "510050": "上证50ETF", "sz.002316": "ST亚联" },
+      industries: { "801790": "非银金融", "801960": "石油石化" },
+      capturedAt: loaded.capturedAt,
+    });
+    expect(cached.instruments["sz.002316"]).toBe("亚联发展");
+  });
+  it("rejects ambiguous duplicate source names and invalid snapshot dictionaries", async () => {
     const json = async (sql: string): Promise<MetadataRow[]> =>
       sql.includes("system.columns")
         ? columns("stock_daily_meta", ["code", "name"])

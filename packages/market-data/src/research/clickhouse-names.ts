@@ -5,7 +5,7 @@ import {
   type ClickHouseConnection,
   type MetadataRow,
 } from "./clickhouse-http";
-import { parseDisplayNames, type DisplayNames } from "./display-names";
+import { normalizeDisplayName, parseDisplayNames, type DisplayNames } from "./display-names";
 
 export const NAME_COLUMNS_SQL =
   "SELECT table,name FROM system.columns WHERE database={db:String} AND table IN ('stock_daily_meta','industry_info') ORDER BY table,position";
@@ -52,10 +52,9 @@ export async function loadDisplayNames(
   signal.throwIfAborted();
   const dictionary = (rows: MetadataRow[]) => {
     if (rows.length > 20_000) throw new Error("源库名称数量超过 20,000");
-    const entries = rows.map((row) => {
-      if (typeof row["code"] !== "string" || typeof row["display_name"] !== "string")
-        throw new Error("ClickHouse 名称字段无效");
-      return [row["code"], row["display_name"]] as const;
+    const entries = rows.flatMap((row) => {
+      const name = normalizeDisplayName(row["code"], row["display_name"]);
+      return name === undefined ? [] : [[row["code"] as string, name] as const];
     });
     if (new Set(entries.map(([code]) => code)).size !== entries.length)
       throw new Error("ClickHouse 返回重复名称代码");
