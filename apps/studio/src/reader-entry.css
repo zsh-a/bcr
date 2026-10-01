@@ -1,4 +1,4 @@
-/* Reader 入口基座：令牌与控件原语由此进入，正文排版由阅读根的主题变量负责。 */
+/* Reader 入口基座：共享控件原语由此进入，阅读根统一正文与控件的主题色。 */
 @import "@bcr/react/tokens.css";
 @import "@bcr/react/global.css";
 @import "@bcr/react/ui.css";

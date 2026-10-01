@@ -572,8 +572,7 @@ p.reader-prose.reader-txt-measure {
   opacity: 1;
   visibility: visible;
 }
-/* 滚动版式由阅读框直接铺主题画布：移动端根部是 chrome 底色，
- * 正文衬底必须在阅读层，保证夜间等主题的实际对比度。 */
+/* 滚动版式由阅读框直接铺主题画布，正文与导航保持同一阅读主题。 */
 .reader-reading-frame {
   background: var(--read-bg);
 }

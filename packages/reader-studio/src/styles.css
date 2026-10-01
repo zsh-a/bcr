@@ -4,8 +4,8 @@
 @import "@bcr/react/ui.css";
 
 /*
- * 阅读主题——内容画布配色，以 data-read-theme 限定在阅读根；
- * chrome 只消费共享令牌，不引用 --read-*。
+ * 阅读主题限定在阅读根；正文与控件共用同一调色板，
+ * 共享控件仍消费 --color-*，由阅读根映射到 --read-*。
  */
 .reader-studio {
   --read-canvas: #20211f;
@@ -13,9 +13,34 @@
   --read-mark: #ffcb4280;
   --read-mark-current: #ef8a348f;
   --read-select: #327dd969;
+  --color-bg: var(--read-bg);
+  --color-surface: var(--read-surface);
+  --color-raised: var(--read-raised);
+  --color-overlay: var(--read-accent-soft);
+  --color-border: var(--read-border);
+  --color-border-strong: var(--read-border-strong);
+  --color-text: var(--read-text);
+  --color-muted: var(--read-muted);
+  --color-faint: var(--read-faint);
+  --color-accent: var(--read-accent);
+  --color-accent-dim: var(--read-accent-soft);
+  --color-primary: var(--read-accent);
+  --color-on-primary: #ffffff;
+  --color-selection: var(--read-accent-soft);
+  --color-focus: var(--read-accent);
+  --color-success: #286842;
+  --color-amber: #855008;
+  --color-danger: #b52f35;
+  --color-info: #305db4;
+  --color-scrim: #20242e66;
+  --surface-menu: color-mix(in srgb, var(--read-raised) 92%, transparent);
+  --shadow-menu: 0 1px 2px #25302d14, 0 12px 32px #25302d1f;
+  --shadow-floating: 0 20px 64px #25302d1a, 0 4px 16px #25302d12;
+  --shadow-dialog: 0 24px 100px #25302d26;
+  color-scheme: light;
 }
 
-[data-read-theme="paper"] {
+.reader-studio[data-read-theme="paper"] {
   --read-bg: #ede9e0;
   --read-surface: rgba(249, 247, 241, 0.88);
   --read-raised: #f7f4ed;
@@ -24,11 +49,11 @@
   --read-text: #25302d;
   --read-muted: #56635b;
   --read-faint: #56635b;
-  --read-accent: #147a73;
+  --read-accent: #126b64;
   --read-accent-soft: #d8eeea;
 }
 
-[data-read-theme="night"] {
+.reader-studio[data-read-theme="night"] {
   --read-bg: #111715;
   --read-surface: rgba(22, 30, 28, 0.92);
   --read-raised: #1b2421;
@@ -39,9 +64,19 @@
   --read-faint: #9daaa1;
   --read-accent: #76d7c9;
   --read-accent-soft: #1b4c45;
+  --color-on-primary: #102521;
+  --color-success: #89cca2;
+  --color-amber: #efbc69;
+  --color-danger: #ff766d;
+  --color-info: #82aef7;
+  --color-scrim: #08090cb3;
+  --shadow-menu: 0 1px 2px #0004, 0 12px 32px #0006;
+  --shadow-floating: 0 20px 64px #0005, 0 4px 16px #0003;
+  --shadow-dialog: 0 24px 100px #0007;
+  color-scheme: dark;
 }
 
-[data-read-theme="sage"] {
+.reader-studio[data-read-theme="sage"] {
   --read-bg: #dfe8e0;
   --read-surface: rgba(242, 247, 239, 0.9);
   --read-raised: #edf3eb;
@@ -50,7 +85,7 @@
   --read-text: #274035;
   --read-muted: #526457;
   --read-faint: #526457;
-  --read-accent: #2c8063;
+  --read-accent: #226e54;
   --read-accent-soft: #d0e8d8;
 }
 
@@ -60,8 +95,7 @@
 }
 
 /*
- * chrome 一律消费共享文字色;阅读主题色只作用于内容层,
- * 浅色应用 + 夜间阅读的组合下 chrome 仍保持可读。
+ * 工具栏、导航与浮层使用阅读根的语义色，切换阅读主题时同步更新。
  */
 .reader-boot,
 .reader-header,

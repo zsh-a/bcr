@@ -112,10 +112,12 @@ try {
   );
   await page.getByRole("button", { name: "应用技术资料排版" }).click();
   await page.getByText("字体已就绪", { exact: false }).waitFor();
-  assert(
-    await page.evaluate(() =>
-      document.fonts.check('400 20px "Atkinson Hyperlegible Next Variable"', "Il1 O0"),
-    ),
+  // 切换预设时旧字体的就绪提示可能短暂保留，等待目标字体实际加载完成。
+  await page.waitForFunction(
+    () =>
+      [...document.fonts].some(
+        (font) => font.family === "Atkinson Hyperlegible Next Variable" && font.status === "loaded",
+      ) && document.fonts.check('400 20px "Atkinson Hyperlegible Next Variable"', "Il1 O0"),
   );
   assert(!requests.some((url) => /fonts\.googleapis\.com|fonts\.gstatic\.com/.test(url)));
   await page.getByRole("button", { name: "恢复默认正文排版" }).click();
@@ -152,8 +154,7 @@ try {
           });
         return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
       };
-      // 正文的实际衬底是阅读画布：向上取第一个不透明背景。移动端根部使用
-      // 应用底色（保持 chrome 可读），阅读层另行铺主题底色，故不能固定取根节点。
+      // 正文的实际衬底是阅读画布：向上寻找背景，覆盖滚动与分页两种版式。
       let backdrop = element;
       while (backdrop) {
         const backdropColor = getComputedStyle(backdrop).backgroundColor;
