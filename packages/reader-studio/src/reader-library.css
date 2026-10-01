@@ -1,0 +1,197 @@
+/* Quick switching stays beside the book; collection tools get their own view. */
+.reader-library-panel {
+  position: relative;
+  min-width: 0;
+  padding: 12px;
+  gap: 8px;
+}
+.reader-library-panel .reader-sidebar-heading {
+  flex: 0 0 auto;
+  gap: 4px;
+  min-height: 36px;
+}
+.reader-library-panel .reader-sidebar-heading > div {
+  flex: 1;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.reader-library-count {
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+}
+.reader-library-panel .reader-library-filter {
+  margin: 0;
+  min-height: 40px;
+  flex: 0 0 auto;
+  font-size: var(--text-sm);
+}
+.reader-library-panel .reader-library-list {
+  margin-top: 0;
+  gap: 4px;
+  padding-top: 0;
+}
+.reader-library-panel .reader-sidebar-footer {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--color-border);
+}
+.reader-library-panel .reader-sidebar-footer button {
+  flex: 1;
+  gap: 6px;
+  font-size: var(--text-xs);
+  padding: 4px;
+  min-height: 36px;
+}
+.reader-library-panel .reader-sidebar-footer .reader-icon {
+  width: 16px;
+  height: 16px;
+}
+.reader-library-panel .reader-dropzone {
+  position: absolute;
+  inset: 8px;
+  z-index: 10;
+  margin: 0;
+  background: var(--color-surface);
+  pointer-events: none;
+}
+.reader-library-quick .reader-book-card {
+  min-height: 88px;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 48px 10px 8px;
+}
+.reader-library-quick .reader-book-cover {
+  width: 36px;
+  height: 52px;
+}
+.reader-library-quick .reader-book-card-copy {
+  gap: 4px;
+}
+.reader-library-quick .reader-book-card-copy > strong {
+  font-size: var(--text-sm);
+}
+.reader-library-quick .reader-book-card-copy > span {
+  font-size: var(--text-xs);
+}
+.reader-library-quick .reader-book-demo-hint,
+.reader-library-quick .reader-book-meta span:first-child,
+.reader-library-quick .reader-book-remove,
+.reader-library-quick .reader-book-active-icon {
+  display: none;
+}
+.reader-library-quick .reader-book-meta {
+  font-size: 11px;
+}
+.reader-library-quick .reader-book-meta span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reader-library-quick .reader-book-actions {
+  right: 0;
+  top: 24px;
+  width: 44px;
+}
+.reader-library-manager-layer {
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.reader-library-manager {
+  display: flex;
+  width: min(1040px, 100%);
+  height: min(82dvh, 800px);
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-dialog);
+}
+.reader-library-full {
+  flex: 1;
+  padding: 20px;
+  gap: 12px;
+}
+.reader-library-full .reader-sidebar-heading strong {
+  font-size: var(--text-lg);
+}
+.reader-library-full .reader-library-toolbar {
+  grid-template-columns: minmax(120px, 1fr) auto minmax(120px, 1fr);
+  gap: 12px;
+  margin: 0;
+}
+.reader-library-sort-label {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+.reader-library-full .reader-library-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  align-content: start;
+  gap: 12px;
+}
+.reader-library-full .reader-book-entry {
+  min-width: 0;
+}
+.reader-library-full .reader-book-card {
+  height: 100%;
+  min-height: 124px;
+  background: var(--color-raised);
+  border-color: var(--color-border);
+}
+.reader-library-full .reader-book-card.is-active {
+  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
+}
+.reader-library-full .reader-book-card.is-selected {
+  background: var(--color-accent-dim);
+}
+.reader-library-full .reader-library-management {
+  margin: 0;
+}
+.reader-library-full .reader-library-batch {
+  flex: 0 0 auto;
+  margin: 0;
+}
+@media (max-width: 860px) {
+  .reader-library-panel .reader-sidebar-heading .ui-icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .reader-library-panel .reader-library-filter {
+    min-height: 44px;
+  }
+  .reader-library-sheet {
+    height: min(78dvh, 700px);
+    border-radius: var(--radius-lg);
+  }
+  .reader-library-manager-layer {
+    padding: 8px;
+  }
+  .reader-library-manager {
+    height: calc(100dvh - 16px);
+    border-radius: var(--radius-lg);
+  }
+  .reader-library-full {
+    padding: 12px;
+  }
+  .reader-library-full .reader-library-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .reader-library-full .reader-library-toolbar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+  }
+  .reader-library-sort-label {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reader-toc-disclosure .reader-icon {
+    transition: none;
+  }
+}

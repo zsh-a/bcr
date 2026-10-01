@@ -23,6 +23,7 @@ export function normalizeReaderTypography(settings: ReaderSettings): ReaderSetti
     latinFontFamily: READER_LATIN_FONT_OPTIONS.some((font) => font.id === settings.latinFontFamily)
       ? settings.latinFontFamily
       : DEFAULT_READER_SETTINGS.latinFontFamily,
+    navigationWidth: bounded(settings.navigationWidth, 304, 260, 380),
     fontSize: bounded(settings.fontSize, 20, 12, 48),
     lineHeight: bounded(settings.lineHeight, DEFAULT_READER_SETTINGS.lineHeight, 1, 3),
     fontWeight: [350, 400, 500].includes(settings.fontWeight ?? 400)

@@ -16,6 +16,7 @@
   margin: 0;
   border: 0;
   color: var(--color-text);
+  background: transparent;
   overscroll-behavior: contain;
   opacity: 1;
   transform: none;
@@ -31,6 +32,7 @@
 }
 .reader-modal-layer:not([open]) {
   display: none;
+  pointer-events: none;
 }
 .reader-note-sheet {
   width: min(100%, 560px);
@@ -385,18 +387,12 @@
   .reader-page-content {
     --read-page-inset: clamp(12px, 2.5dvh, 24px);
   }
-  .reader-library-sheet .reader-dropzone {
-    display: none;
-  }
   .reader-library-sheet .reader-library-panel {
     height: 100%;
   }
   .reader-library-sheet .reader-library-list {
     flex: 1;
     min-height: 0;
-  }
-  .reader-library-sheet .reader-sidebar-footer {
-    display: none;
   }
   .reader-library-home {
     display: flex;

@@ -30,6 +30,7 @@ export interface ReaderSettings {
   readonly pageAnimation?: ReaderPageAnimation;
   readonly pageSpread?: boolean;
   readonly tocPinned?: boolean;
+  readonly navigationWidth?: number;
   readonly fontWeight?: number;
   readonly paragraphSpacing?: number;
   readonly lineLength?: number;
@@ -152,6 +153,7 @@ export interface ReaderHistoryEntry {
 }
 
 export const DEFAULT_READER_SETTINGS: ReaderSettings = {
+  navigationWidth: 304,
   theme: "paper",
   layout: "scroll",
   pageAnimation: "slide",

@@ -54,6 +54,8 @@ import "./reading-layout.css";
 import "./reader-tools.css";
 import "./reader-surface.css";
 import "./reader-progress.css";
+import "./reader-navigation.css";
+import "./reader-library.css";
 import { connectReaderBrowserHistory } from "./browserHistory";
 import { ReaderShortcutHelp } from "./ReaderShortcutHelp";
 

@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
 import {
   createLocator,
   locatorAtPercentage,
@@ -109,29 +109,17 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
   const [expanded, setExpanded] = useState(false);
   const draftRef = useRef(progress);
   const committedRef = useRef(progress);
-  const collapseTimerRef = useRef<number | null>(null);
-
-  const clearCollapseTimer = () => {
-    if (collapseTimerRef.current === null) return;
-    window.clearTimeout(collapseTimerRef.current);
-    collapseTimerRef.current = null;
-  };
-
-  const scheduleCollapse = () => {
-    if (!window.matchMedia("(max-width: 860px)").matches) return;
-    clearCollapseTimer();
-    collapseTimerRef.current = window.setTimeout(() => {
-      collapseTimerRef.current = null;
-      setExpanded(false);
-    }, 1_600);
-  };
-
-  useEffect(
-    () => () => {
-      if (collapseTimerRef.current !== null) window.clearTimeout(collapseTimerRef.current);
-    },
-    [],
-  );
+  const dockRef = useRef<HTMLElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!expanded) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !dockRef.current?.contains(event.target))
+        setExpanded(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, [expanded]);
 
   useEffect(() => {
     draftRef.current = draft;
@@ -148,7 +136,6 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
   const commit = () => {
     const next = clamp(draftRef.current, 0, 1);
     setDragging(false);
-    scheduleCollapse();
     if (Math.abs(next - committedRef.current) < 0.0005) return;
     committedRef.current = next;
     window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
@@ -167,22 +154,33 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
 
   return (
     <section
+      ref={dockRef}
+      onBlurCapture={(event) => {
+        if (
+          event.relatedTarget instanceof Node &&
+          !event.currentTarget.contains(event.relatedTarget)
+        )
+          setExpanded(false);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && expanded) {
+          event.preventDefault();
+          event.stopPropagation();
+          setExpanded(false);
+          toggleRef.current?.focus();
+        }
+      }}
       className={`reader-progress-dock ${dragging ? "is-dragging" : ""} ${expanded ? "is-expanded" : ""}`}
       style={style}
     >
-      <ReaderProgressPreview
-        book={props.book}
-        section={previewSection}
-        context={previewContext}
-        visible={dragging}
-      />
       <button
         type="button"
+        ref={toggleRef}
         className="reader-progress-toggle"
+        aria-label="调整阅读进度"
         aria-expanded={expanded}
         aria-controls="reader-progress-range"
         onClick={() => {
-          clearCollapseTimer();
           setExpanded((value) => !value);
         }}
       >
@@ -194,85 +192,104 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
           <ChevronUp className="reader-icon" aria-hidden="true" />
         )}
       </button>
-      <div className="reader-progress-dock-meta">
-        <span className="reader-progress-dock-label">阅读进度</span>
-        <strong title={dragging ? previewContext : context}>
-          {dragging ? previewContext : context}
-        </strong>
-        <output htmlFor="reader-progress-range">{percent(draft)}</output>
-      </div>
-      <div className="reader-progress-range">
-        <div className="reader-progress-markers" aria-hidden="true">
-          {markers.map((marker) => (
-            <span
-              key={marker.id}
-              className="reader-progress-marker"
-              style={{ left: `${marker.percentage * 100}%` }}
-              title={marker.label}
-            />
-          ))}
+      <div className="reader-progress-panel">
+        <ReaderProgressPreview
+          book={props.book}
+          section={previewSection}
+          context={previewContext}
+          visible={dragging}
+        />
+        <div className="reader-progress-dock-meta">
+          <span className="reader-progress-dock-label">阅读进度</span>
+          <strong title={dragging ? previewContext : context}>
+            {dragging ? previewContext : context}
+          </strong>
+          <output htmlFor="reader-progress-range">{percent(draft)}</output>
+          <button
+            type="button"
+            className="ui-btn ui-icon-btn ui-btn-ghost"
+            aria-label="收起进度调整"
+            onClick={() => {
+              setExpanded(false);
+              toggleRef.current?.focus();
+            }}
+          >
+            <X className="reader-icon" />
+          </button>
         </div>
-        <input
-          id="reader-progress-range"
-          type="range"
-          min="0"
-          max="100"
-          step="0.1"
-          value={draft * 100}
-          aria-label="调整进度"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(draft * 100)}
-          aria-valuetext={`${percent(draft)}，${dragging ? previewContext : context}`}
-          onPointerDown={(event) => {
-            event.currentTarget.setPointerCapture?.(event.pointerId);
-            window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
-            clearCollapseTimer();
-            setExpanded(true);
-            setDragging(true);
-          }}
-          onPointerUp={commit}
-          onPointerCancel={commit}
-          onChange={(event) => {
-            const next = clamp(Number(event.target.value) / 100, 0, 1);
-            draftRef.current = next;
-            setDraft(next);
-          }}
-          onKeyDown={(event) => {
-            if (
-              ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)
-            ) {
-              clearCollapseTimer();
+        <div className="reader-progress-range">
+          <div className="reader-progress-markers" aria-hidden="true">
+            {markers.map((marker) => (
+              <span
+                key={marker.id}
+                className="reader-progress-marker"
+                style={{ left: `${marker.percentage * 100}%` }}
+                title={marker.label}
+              />
+            ))}
+          </div>
+          <input
+            id="reader-progress-range"
+            type="range"
+            min="0"
+            max="100"
+            step="0.1"
+            value={draft * 100}
+            aria-label="调整进度"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(draft * 100)}
+            aria-valuetext={`${percent(draft)}，${dragging ? previewContext : context}`}
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture?.(event.pointerId);
+              window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
               setExpanded(true);
               setDragging(true);
-            }
-          }}
-          onFocus={() => setExpanded(true)}
-          onKeyUp={commit}
-          onBlur={commit}
-        />
+            }}
+            onPointerUp={commit}
+            onPointerCancel={commit}
+            onChange={(event) => {
+              const next = clamp(Number(event.target.value) / 100, 0, 1);
+              draftRef.current = next;
+              setDraft(next);
+            }}
+            onKeyDown={(event) => {
+              if (
+                ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(
+                  event.key,
+                )
+              ) {
+                setExpanded(true);
+                setDragging(true);
+              }
+            }}
+            onFocus={() => setExpanded(true)}
+            onKeyUp={commit}
+            onBlur={commit}
+          />
+        </div>
+        {markers.length > 0 && (
+          <nav className="reader-progress-chapters" aria-label="章节进度跳转">
+            {markers.map((marker, index) => (
+              <button
+                type="button"
+                key={marker.id}
+                aria-label={`从进度条前往 ${marker.label}`}
+                title={`${marker.label} · 全书 ${percent(marker.percentage)}`}
+                onClick={() => {
+                  window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
+                  openReaderTocItem(props.book, marker.item);
+                  setExpanded(false);
+                  toggleRef.current?.focus();
+                }}
+              >
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                {marker.label}
+              </button>
+            ))}
+          </nav>
+        )}
       </div>
-      {markers.length > 0 && (
-        <nav className="reader-progress-chapters" aria-label="章节进度跳转">
-          {markers.map((marker, index) => (
-            <button
-              type="button"
-              key={marker.id}
-              aria-label={`从进度条前往 ${marker.label}`}
-              title={`${marker.label} · 全书 ${percent(marker.percentage)}`}
-              onClick={() => {
-                clearCollapseTimer();
-                window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
-                openReaderTocItem(props.book, marker.item);
-                scheduleCollapse();
-              }}
-            >
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              {marker.label}
-            </button>
-          ))}
-        </nav>
-      )}
     </section>
   );
 }

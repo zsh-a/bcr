@@ -55,4 +55,18 @@ describe("reader typography", () => {
       expect(settings.fontWeight).toBe(400);
     }
   });
+  it("bounds restored navigation widths without accepting non-finite values", () => {
+    for (const [value, expected] of [
+      [NaN, 304],
+      [Infinity, 304],
+      [120, 260],
+      [800, 380],
+      [320, 320],
+    ] as const) {
+      expect(
+        normalizeReaderTypography({ ...DEFAULT_READER_SETTINGS, navigationWidth: value })
+          .navigationWidth,
+      ).toBe(expected);
+    }
+  });
 });

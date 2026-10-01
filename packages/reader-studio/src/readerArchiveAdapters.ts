@@ -97,8 +97,9 @@ function tocTarget(
   if (target === null || target.trim() === "") return {};
   const href = resolveArchivePath(base, target);
   const section = sectionsByHref.get(href);
+  const hash = target.indexOf("#");
   return {
-    href,
+    href: hash < 0 ? href : `${href}${target.slice(hash)}`,
     ...(section === undefined ? {} : { sectionId: section.id }),
   };
 }

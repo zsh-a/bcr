@@ -11,6 +11,7 @@ export function ReaderSheet(props: {
   onClose: () => void;
   labelId: string;
   className?: string;
+  fallbackFocus?: () => HTMLElement | null;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
@@ -27,8 +28,10 @@ export function ReaderSheet(props: {
     dialog.showModal();
     return () => {
       dialog.close();
-      const trigger = triggerRef.current;
-      if (trigger !== null && trigger.isConnected) trigger.focus({ preventScroll: true });
+      const trigger = triggerRef.current?.isConnected
+        ? triggerRef.current
+        : props.fallbackFocus?.();
+      trigger?.focus({ preventScroll: true });
     };
   }, [props.open]);
 
@@ -45,11 +48,13 @@ export function ReaderSheet(props: {
       ref={ref}
       className={`reader-modal-layer ${props.className ?? "reader-mobile-sheet-layer"}`}
       aria-labelledby={props.labelId}
+      aria-hidden={!props.open}
+      inert={!props.open}
       onTransitionEnd={(event) => {
         if (!props.open && event.target === event.currentTarget) setSettled(true);
       }}
       onKeyDown={(event) => {
-        if (event.key !== "Tab") return;
+        if (event.key !== "Tab" || event.defaultPrevented) return;
         const controls = [
           ...event.currentTarget.querySelectorAll<HTMLElement>(
             "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex='-1'])",

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ReaderBook, ReaderSection } from "@bcr/reader-core";
-import { resolveReaderInternalLink } from "../src/navigation";
+import {
+  currentReaderTocItem,
+  resolveReaderInternalLink,
+  resolveReaderTocTarget,
+} from "../src/navigation";
 
 const firstSection: ReaderSection = {
   id: "epub:OPS/text/chapter 1.xhtml",
@@ -65,5 +69,34 @@ describe("Reader publication links", () => {
       undefined,
     );
     expect(resolveReaderInternalLink(book, firstSection, "missing.xhtml#note")).toBe(undefined);
+  });
+  it("resolves indexed TOC targets by section id or encoded paths, retaining fragment anchors", () => {
+    expect(
+      resolveReaderTocTarget(book, {
+        id: "first",
+        label: "第一章",
+        href: "OPS/text/chapter%201.xhtml#idea%201",
+      }),
+    ).toEqual({ sectionId: firstSection.id, fragment: "idea 1" });
+    expect(
+      resolveReaderTocTarget(book, {
+        id: "second",
+        label: "注释",
+        sectionId: book.sections[1]!.id,
+      }),
+    ).toEqual({ sectionId: book.sections[1]!.id });
+    expect(
+      resolveReaderTocTarget(book, { id: "missing", label: "不可读", href: "missing.xhtml" }),
+    ).toBeUndefined();
+  });
+  it("rebuilds positions for a new publication snapshot while preserving TOC boundary semantics", () => {
+    const items = [
+      { id: "toc-one", label: "第一章", sectionId: firstSection.id },
+      { id: "toc-two", label: "注释", sectionId: book.sections[1]!.id },
+    ];
+    expect(currentReaderTocItem(book, items, book.sections[1]!.id)?.id).toBe("toc-two");
+    const reordered = { ...book, sections: [...book.sections].reverse() };
+    expect(currentReaderTocItem(reordered, items, firstSection.id)?.id).toBe("toc-one");
+    expect(currentReaderTocItem(book, items, "missing")).toBeUndefined();
   });
 });

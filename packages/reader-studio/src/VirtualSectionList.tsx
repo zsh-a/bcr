@@ -69,6 +69,7 @@ export function VirtualSectionList(props: {
                 data-reader-toc-section={section.id}
                 className={section.id === props.activeSectionId ? "is-active" : ""}
                 aria-current={section.id === props.activeSectionId ? "page" : undefined}
+                title={section.label}
                 onClick={() => props.onNavigate(section.id)}
                 onKeyDown={(event) => {
                   const targets: Record<string, number> = {

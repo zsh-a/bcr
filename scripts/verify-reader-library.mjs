@@ -55,15 +55,24 @@ try {
   await openLibrary(page);
   await page.getByLabel("筛选书名或作者", { exact: true }).waitFor();
   await attachStore(page);
-  await page.getByLabel("仅收藏", { exact: true }).check();
-  await page.waitForFunction(() => document.querySelectorAll(".reader-book-card").length === 1);
-  assert.match(await page.locator(".reader-book-card").innerText(), /第一册（已改名）/u);
-  await page.getByLabel("仅收藏", { exact: true }).uncheck();
-  await page.getByLabel("筛选书名或作者", { exact: true }).fill("已改名");
-  assert.equal(await page.locator(".reader-book-card").count(), 1);
-  await page.getByLabel("筛选书名或作者", { exact: true }).fill("");
-  await page.getByLabel("书库排序", { exact: true }).selectOption("favorite");
-  assert.match(await page.locator(".reader-book-card").first().innerText(), /第一册（已改名）/u);
+  await page.getByRole("button", { name: "管理书库", exact: true }).click();
+  const management = page.locator(".reader-library-full");
+  await management.getByLabel("仅收藏", { exact: true }).check();
+  await page.waitForFunction(
+    () => document.querySelectorAll(".reader-library-full .reader-book-card").length === 1,
+  );
+  assert.match(await management.locator(".reader-book-card").innerText(), /第一册（已改名）/u);
+  await management.getByLabel("仅收藏", { exact: true }).uncheck();
+  await management.getByLabel("筛选书名或作者", { exact: true }).fill("已改名");
+  assert.equal(await management.locator(".reader-book-card").count(), 1);
+  await management.getByLabel("筛选书名或作者", { exact: true }).fill("");
+  await management.getByLabel("书库排序", { exact: true }).selectOption("favorite");
+  assert.match(
+    await management.locator(".reader-book-card").first().innerText(),
+    /第一册（已改名）/u,
+  );
+
+  await page.getByRole("button", { name: "关闭书库管理", exact: true }).click();
 
   await page.keyboard.press("Control+f");
   await page.getByLabel("在书库中搜索", { exact: true }).fill("needle");
@@ -80,6 +89,7 @@ try {
     .waitFor();
   await page.getByRole("button", { name: "关闭搜索结果", exact: true }).click();
   await page.locator(".reader-book-card").filter({ hasText: "第一册（已改名）" }).click();
+  await page.getByRole("button", { name: "调整阅读进度", exact: true }).click();
   await page.getByRole("button", { name: "从进度条前往 第二章 结束", exact: true }).click();
   await page.waitForFunction(() => {
     const state = window.libraryAudit.getReaderState();
@@ -109,7 +119,9 @@ try {
     const state = window.libraryAudit.getReaderState();
     return { id: state.activeBookId, locator: state.progressByBook[state.activeBookId].locator };
   });
+  await openLibrary(page);
   await page.getByRole("button", { name: "管理书库", exact: true }).click();
+  await management.getByRole("button", { name: "批量管理", exact: true }).click();
   await page.getByRole("button", { name: "选择 Second", exact: true }).click();
   await page.getByRole("button", { name: "选择 Third", exact: true }).click();
   await page.getByRole("button", { name: "移除所选…", exact: true }).click();
@@ -118,7 +130,7 @@ try {
     /Second[\s\S]*Third/u,
   );
   await page.getByRole("button", { name: "取消", exact: true }).click();
-  assert.equal(await page.locator(".reader-book-card").count(), 4);
+  assert.equal(await management.locator(".reader-book-card").count(), 4);
   await page.getByRole("button", { name: "移除所选…", exact: true }).click();
   await page.getByRole("button", { name: "确认移除所选读物", exact: true }).click();
   await page.waitForFunction(() => window.libraryAudit.getReaderState().library.length === 2);

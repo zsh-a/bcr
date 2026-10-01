@@ -176,8 +176,8 @@ if (
 ) {
   fail("连续阅读没有启用原生 content-visibility 优化");
 }
-if (!(await page.locator(".reader-sidebar-footer").innerText()).includes("OPFS"))
-  fail("本地持久化状态未展示");
+if (!(await page.locator(".reader-sidebar-footer").innerText()).includes("备份与恢复"))
+  fail("书库缺少备份恢复入口");
 
 const workspace = page.locator(".reader-workspace");
 if (await workspace.evaluate((element) => element.classList.contains("sidebar-visible"))) {
@@ -358,16 +358,20 @@ const bookmarkButton = page.getByRole("button", { name: /标记当前位置|移�
 if ((await bookmarkButton.getAttribute("aria-label")) === "标记当前位置") {
   await bookmarkButton.click();
 }
-await page.locator(".reader-bookmark-list").waitFor({ timeout: 5_000 });
-if ((await page.locator(".reader-bookmark-item").count()) < 1) fail("书签没有写入当前阅读会话");
-if ((await page.locator(".reader-annotation-item").count()) === 0) {
+await page.getByRole("tab", { name: /书签/u }).click();
+await page.locator(".reader-chapter-rail .reader-mobile-saved-list").waitFor({ timeout: 5_000 });
+if ((await page.locator(".reader-chapter-rail .reader-mobile-saved-item").count()) < 1)
+  fail("书签没有写入当前阅读会话");
+await page.getByRole("tab", { name: /笔记/u }).click();
+if ((await page.locator(".reader-chapter-rail .reader-mobile-saved-item").count()) === 0) {
   await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
   await page.getByRole("button", { name: "添加阅读笔记" }).click();
   await page.getByLabel("笔记内容").fill("验证阅读会话恢复");
   await page.getByRole("button", { name: "保存笔记" }).click();
 }
-await page.locator(".reader-annotation-list").waitFor({ timeout: 5_000 });
-if ((await page.locator(".reader-annotation-item").count()) < 1) fail("阅读笔记没有写入当前会话");
+await page.locator(".reader-chapter-rail .reader-mobile-saved-list").waitFor({ timeout: 5_000 });
+if ((await page.locator(".reader-chapter-rail .reader-mobile-saved-item").count()) < 1)
+  fail("阅读笔记没有写入当前会话");
 await page
   .locator(".reader-prose")
   .first()
@@ -390,7 +394,7 @@ if (!(await page.locator(".reader-annotation-composer").innerText()).includes("�
 await page.getByLabel("笔记内容").fill("验证选区锚点");
 await page.getByRole("button", { name: "保存笔记" }).click();
 await page
-  .locator(".reader-annotation-list")
+  .locator(".reader-chapter-rail .reader-mobile-saved-list")
   .getByText("验证选区锚点")
   .first()
   .waitFor({ timeout: 5_000 });
@@ -472,7 +476,8 @@ if (
     }),
   );
 }
-if ((await page.locator(".reader-bookmark-item").count()) < 1) {
+await page.getByRole("tab", { name: /书签/u }).click();
+if ((await page.locator(".reader-chapter-rail .reader-mobile-saved-item").count()) < 1) {
   fail("刷新后阅读书签未恢复");
 }
 if ((await page.getByLabel("在书库中搜索").inputValue()) !== "Locator") {
@@ -490,7 +495,8 @@ await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpuSlowdown });
 if ((await page.locator(".reader-search-result").count()) < 1) {
   fail("刷新后搜索结果未恢复");
 }
-if ((await page.locator(".reader-annotation-item").count()) < 1) {
+await page.getByRole("tab", { name: /笔记/u }).click();
+if ((await page.locator(".reader-chapter-rail .reader-mobile-saved-item").count()) < 1) {
   fail("刷新后阅读笔记未恢复");
 }
 
@@ -519,9 +525,12 @@ await page.locator(".reader-reading-intro h1", { hasText: "EPUB 导航验证" })
   timeout: 20_000,
 });
 await page.locator(".reader-import-progress").waitFor({ state: "hidden", timeout: 20_000 });
-if ((await page.locator(".reader-toc-item").count()) < 3) {
+await page.getByRole("tab", { name: /目录/u }).click();
+if ((await page.locator(".reader-toc-row").count()) < 2) {
   fail("EPUB 出版物导航没有恢复层级目录");
 }
+const expandEpub = page.getByRole("button", { name: "展开 第一章 · 入口", exact: true });
+if (await expandEpub.isVisible()) await expandEpub.click();
 const tocText = await page.locator(".reader-chapter-rail").innerText();
 if (!tocText.includes("章内重点") || !tocText.includes("第二章 · 继续")) {
   fail("EPUB 导航标签没有渲染到目录栏");
@@ -585,7 +594,7 @@ await page.locator(".reader-pdf-page").first().waitFor({ timeout: 20_000 });
 if ((await page.locator(".reader-pdf-page").count()) !== 3) {
   fail("PDF 没有建立连续页面列表");
 }
-if ((await page.locator(".reader-toc-item").count()) !== 2) {
+if ((await page.locator(".reader-toc-row").count()) !== 2) {
   fail("PDF 原生书签没有恢复为目录");
 }
 await page.locator("[data-reader-toc-section]", { hasText: "Page three" }).click();

@@ -6,19 +6,43 @@ export interface ReaderInternalLinkTarget {
   readonly fragment?: string | undefined;
 }
 
+// Publications are immutable snapshots; reuse indexes while scrolling large TOCs.
+const publicationIndexes = new WeakMap<
+  ReaderBook,
+  {
+    byId: Map<string, ReaderSection>;
+    byHref: Map<string, ReaderSection>;
+    position: Map<string, number>;
+  }
+>();
+function indexPublication(book: ReaderBook) {
+  const existing = publicationIndexes.get(book);
+  if (existing) return existing;
+  const byId = new Map<string, ReaderSection>();
+  const byHref = new Map<string, ReaderSection>();
+  const position = new Map<string, number>();
+  book.sections.forEach((section, index) => {
+    byId.set(section.id, section);
+    position.set(section.id, index);
+    if (section.href !== undefined) {
+      const path = normalizePublicationPath(section.href);
+      if (!byHref.has(path)) byHref.set(path, section);
+    }
+  });
+  const result = { byId, byHref, position };
+  publicationIndexes.set(book, result);
+  return result;
+}
+
 export function resolveReaderTocTarget(
   book: ReaderBook,
   item: ReaderTocItem,
 ): ReaderInternalLinkTarget | undefined {
   const [path, fragment] = (item.href ?? "").split("#");
+  const index = indexPublication(book);
   const section =
-    book.sections.find((candidate) => candidate.id === item.sectionId) ??
-    book.sections.find(
-      (candidate) =>
-        candidate.href !== undefined &&
-        normalizePublicationPath(candidate.href) ===
-          normalizePublicationPath(decodeLinkPart(path ?? "")),
-    );
+    index.byId.get(item.sectionId ?? "") ??
+    index.byHref.get(normalizePublicationPath(decodeLinkPart(path ?? "")));
   return section
     ? { sectionId: section.id, ...(fragment ? { fragment: decodeLinkPart(fragment) } : {}) }
     : undefined;
@@ -30,12 +54,13 @@ export function currentReaderTocItem(
   items: ReadonlyArray<ReaderTocItem>,
   sectionId: string | null,
 ): ReaderTocItem | undefined {
-  const active = book.sections.findIndex((section) => section.id === sectionId);
+  const positions = indexPublication(book).position;
+  const active = positions.get(sectionId ?? "") ?? -1;
   let current: ReaderTocItem | undefined;
   let currentIndex = -1;
   for (const item of items) {
     const target = resolveReaderTocTarget(book, item);
-    const index = book.sections.findIndex((section) => section.id === target?.sectionId);
+    const index = positions.get(target?.sectionId ?? "") ?? -1;
     if (index >= 0 && index <= active && index > currentIndex) {
       current = item;
       currentIndex = index;

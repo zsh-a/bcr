@@ -89,12 +89,18 @@ function ContinuousReadingView(props: {
   const layoutCalibrationRef = useRef(false);
   const programmaticScrollTargetRef = useRef<ReaderScrollPosition | null>(null);
   const restoreCancelRef = useRef<(() => void) | null>(null);
-  const pendingInternalLinkRef = useRef<ReaderInternalLinkTarget | null>(null);
+  const pendingInternalLinkRef = useRef<(ReaderInternalLinkTarget & { sequence: number }) | null>(
+    null,
+  );
   useEffect(() => {
     const receive = (event: Event) => {
       const detail = (event as CustomEvent<{ bookId: string; target: ReaderInternalLinkTarget }>)
         .detail;
-      if (detail.bookId === props.book.id) pendingInternalLinkRef.current = detail.target;
+      if (detail.bookId === props.book.id)
+        pendingInternalLinkRef.current = {
+          ...detail.target,
+          sequence: getReaderState().navigationSequence + 1,
+        };
     };
     window.addEventListener("bcr-reader-internal-link", receive);
     return () => window.removeEventListener("bcr-reader-internal-link", receive);
@@ -186,12 +192,13 @@ function ContinuousReadingView(props: {
     if (activeSectionId === null || containerRef.current === null || !activeContent.ready) return;
     const explicitNavigation = navigationSequence !== handledNavigationSequenceRef.current;
     const pendingInternalLink =
-      explicitNavigation && pendingInternalLinkRef.current?.sectionId === activeSectionId
+      pendingInternalLinkRef.current?.sequence === navigationSequence &&
+      pendingInternalLinkRef.current.sectionId === activeSectionId
         ? pendingInternalLinkRef.current
         : null;
     if (explicitNavigation) {
       handledNavigationSequenceRef.current = navigationSequence;
-      pendingInternalLinkRef.current = null;
+      if (pendingInternalLink === null) pendingInternalLinkRef.current = null;
       userScrollRef.current = false;
     } else if (userScrollRef.current) {
       layoutCalibrationRef.current = false;
@@ -257,6 +264,19 @@ function ContinuousReadingView(props: {
     restoreCancelRef.current = settleReaderLayout(containerRef.current, attemptScroll, () => {
       programmaticScrollRef.current = false;
       programmaticScrollTargetRef.current = null;
+      // Closing a dialog and loading fonts can recalibrate layout before the
+      // jump settles. Retain its fragment until we capture the actual location.
+      if (pendingInternalLink !== null && pendingInternalLinkRef.current === pendingInternalLink) {
+        pendingInternalLinkRef.current = null;
+        if (pendingInternalLink.fragment !== undefined) {
+          const container = containerRef.current;
+          const mapped = container && readerLocatorAtScroll(props.book, container, activeSectionId);
+          // At the bottom of a short publication the viewport can still begin
+          // in the previous chapter. Keep the requested destination current.
+          if (mapped?.locator.sectionId === pendingInternalLink.sectionId)
+            reader.setLocator(mapped.locator, mapped.percentage);
+        }
+      }
       if (hasDeferredContent(props.book) && searchReveal) reader.clearSearchReveal(searchReveal.id);
     });
     return () => {
@@ -389,7 +409,10 @@ function ContinuousReadingView(props: {
                 : resolveReaderInternalLink(props.book, sourceSection, href);
             if (target !== undefined) {
               event.preventDefault();
-              pendingInternalLinkRef.current = target;
+              pendingInternalLinkRef.current = {
+                ...target,
+                sequence: getReaderState().navigationSequence + 1,
+              };
               reader.openBook(props.book.id, target.sectionId);
               return;
             }
