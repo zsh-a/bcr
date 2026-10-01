@@ -170,86 +170,98 @@ export function ReaderHeader(props: {
       (props.book.source.format === "cbz" || props.book.rendition?.layout === "pre-paginated"),
   );
   const controls = (
-    <ActionMenu label="更多阅读操作" className="reader-library-menu">
+    <>
       <button
         type="button"
-        className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-mobile-exit"
-        onClick={props.onExit}
-        aria-label="返回工作区主页"
-        title="返回工作区主页"
-      >
-        <ArrowLeft className="reader-icon" />
-      </button>
-      <button
-        type="button"
-        className="ui-btn ui-btn-ghost"
-        onClick={() => {
-          if (getReaderState().searchScope !== "library") reader.setSearchScope("library");
-          reader.setSearchOpen(true);
-        }}
-      >
-        <Search className="reader-icon" />
-        搜索书库
-      </button>
-      {props.book.source.format !== "pdf" && (
-        <button
-          type="button"
-          className="ui-btn ui-btn-ghost reader-library-comic"
-          aria-label="切换漫画模式"
-          aria-pressed={comic}
-          onClick={() => {
-            window.dispatchEvent(new Event("bcr-reader-capture-progress"));
-            const books = getReaderState().settings.books ?? {};
-            reader.setSettings({
-              books: { ...books, [props.book.id]: { ...books[props.book.id], comic: !comic } },
-            });
-          }}
-        >
-          阅读模式：{comic ? "漫画" : "正文"}
-        </button>
-      )}
-      <button
-        type="button"
-        className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-shortcut-button"
-        aria-label="阅读快捷键帮助"
-        title="快捷键 (?)"
-        onClick={props.onShortcuts}
-      >
-        ?
-      </button>
-      {props.showInstall && (
-        <button
-          type="button"
-          className="ui-btn ui-btn-lg ui-btn-default reader-install-button"
-          onClick={props.onInstall}
-          aria-label={props.installAvailable ? "安装 Reader 应用" : "查看 Reader 安装方式"}
-          title={props.installAvailable ? "安装 Reader 应用" : "查看 Reader 安装方式"}
-        >
-          <Download className="reader-icon" />
-          <span>安装</span>
-        </button>
-      )}
-      <input
-        ref={fileInput}
-        className="ui-sr-only"
-        type="file"
-        multiple
-        accept={readerAcceptAttribute()}
-        aria-label="导入阅读文件"
-        onChange={(event) => {
-          const files = [...(event.target.files ?? [])];
-          event.target.value = "";
-          props.onImport(files);
-        }}
-      />
-      <button
-        type="button"
-        className="ui-btn ui-btn-lg ui-btn-primary"
+        className="ui-btn ui-btn-ghost reader-import-button"
+        aria-label="导入读物"
+        title="导入读物"
         onClick={() => fileInput.current?.click()}
       >
-        <Upload className="reader-icon" /> <span>导入</span>
+        <Upload className="reader-icon" />
+        <span>导入</span>
       </button>
-    </ActionMenu>
+      <ActionMenu label="更多阅读操作" className="reader-library-menu">
+        <button
+          type="button"
+          className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-mobile-exit"
+          onClick={props.onExit}
+          aria-label="返回工作区主页"
+          title="返回工作区主页"
+        >
+          <ArrowLeft className="reader-icon" />
+        </button>
+        <button
+          type="button"
+          className="ui-btn ui-btn-ghost"
+          onClick={() => {
+            if (getReaderState().searchScope !== "library") reader.setSearchScope("library");
+            reader.setSearchOpen(true);
+          }}
+        >
+          <Search className="reader-icon" />
+          搜索书库
+        </button>
+        {props.book.source.format !== "pdf" && (
+          <button
+            type="button"
+            className="ui-btn ui-btn-ghost reader-library-comic"
+            aria-label="切换漫画模式"
+            aria-pressed={comic}
+            onClick={() => {
+              window.dispatchEvent(new Event("bcr-reader-capture-progress"));
+              const books = getReaderState().settings.books ?? {};
+              reader.setSettings({
+                books: { ...books, [props.book.id]: { ...books[props.book.id], comic: !comic } },
+              });
+            }}
+          >
+            阅读模式：{comic ? "漫画" : "正文"}
+          </button>
+        )}
+        <button
+          type="button"
+          className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-shortcut-button"
+          aria-label="阅读快捷键帮助"
+          title="快捷键 (?)"
+          onClick={props.onShortcuts}
+        >
+          ?
+        </button>
+        {props.showInstall && (
+          <button
+            type="button"
+            className="ui-btn ui-btn-lg ui-btn-default reader-install-button"
+            onClick={props.onInstall}
+            aria-label={props.installAvailable ? "安装 Reader 应用" : "查看 Reader 安装方式"}
+            title={props.installAvailable ? "安装 Reader 应用" : "查看 Reader 安装方式"}
+          >
+            <Download className="reader-icon" />
+            <span>安装</span>
+          </button>
+        )}
+        <input
+          ref={fileInput}
+          className="ui-sr-only"
+          type="file"
+          multiple
+          accept={readerAcceptAttribute()}
+          aria-label="导入阅读文件"
+          onChange={(event) => {
+            const files = [...(event.target.files ?? [])];
+            event.target.value = "";
+            props.onImport(files);
+          }}
+        />
+        <button
+          type="button"
+          className="ui-btn ui-btn-lg ui-btn-primary"
+          onClick={() => fileInput.current?.click()}
+        >
+          <Upload className="reader-icon" /> <span>导入</span>
+        </button>
+      </ActionMenu>
+    </>
   );
   return (
     <header className="reader-header">

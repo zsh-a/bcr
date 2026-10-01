@@ -48,7 +48,7 @@ await page.waitForFunction(
   undefined,
   { timeout: 20_000 },
 );
-if (!(await page.locator(".manga-footer").innerText()).includes("pipeline complete")) {
+if (!(await page.locator(".manga-footer").innerText()).includes("翻译已完成")) {
   fail("流水线未完成");
 }
 if ((await page.locator('[data-execution^="review.manual · REVIEW"]').count()) < 1) {

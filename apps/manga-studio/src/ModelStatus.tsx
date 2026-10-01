@@ -4,10 +4,10 @@ import type { MangaModelRecord, MangaModelStatus } from "./model-registry";
 import type { MangaAdapterExecution } from "./model";
 
 function modelStatusLabel(status: MangaModelStatus): string {
-  if (status === "ready") return "READY · 可复用";
-  if (status === "loading") return "LOADING · Worker";
-  if (status === "error") return "ERROR · 可重试";
-  return "NOT LOADED · 懒加载";
+  if (status === "ready") return "已准备好";
+  if (status === "loading") return "正在加载";
+  if (status === "error") return "加载失败，可重试";
+  return "首次使用时加载";
 }
 
 export function ModelStatusNote({
@@ -31,12 +31,12 @@ export function ModelStatusNote({
   const detail =
     record?.lastError ??
     (status === "ready"
-      ? `模型已成功加载${loadDuration}，后续任务可复用 Manga 专属缓存`
-      : "首次执行将在 Worker 中按需加载；可先预加载");
+      ? `模型已成功加载${loadDuration}，后续处理可直接复用`
+      : "首次使用会自动下载模型，也可以提前加载");
   const canPreload = execution.model !== undefined && execution.model.trim().length > 0;
   return (
     <div className="manga-model-status" data-model-status={status}>
-      <span>MODEL CACHE</span>
+      <span>模型状态</span>
       <strong>{modelStatusLabel(status)}</strong>
       <small>{detail}</small>
       <div className="manga-model-actions">

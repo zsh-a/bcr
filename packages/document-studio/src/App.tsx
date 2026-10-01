@@ -1,19 +1,6 @@
-import { WorkspaceTrigger } from "@bcr/react";
-import {
-  ArrowUpRight,
-  BookOpen,
-  CircleAlert,
-  Download,
-  Files,
-  FolderOpen,
-  ImagePlus,
-  Layers3,
-  Link2,
-  Sparkles,
-  Upload,
-  X,
-} from "lucide-react";
-import { useRef, useState } from "react";
+import { ActionMenu, Drawer, Toast, AppToolbar, useMediaQuery } from "@bcr/react";
+import { ArrowUpRight, BookOpen, Download, Files, ImagePlus, Sparkles, Upload } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { StatusDot, useRuntime, useLocationSearch } from "@bcr/react";
 import {
@@ -110,6 +97,14 @@ export function App() {
   const [savingOcrReview, setSavingOcrReview] = useState(false);
   const [ocrPreloading, setOcrPreloading] = useState(false);
   const [exportBusy, setExportBusy] = useState<DocumentExportFormat | null>(null);
+  const compact = useMediaQuery("(max-width: 720px)");
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const sourceAvailable =
+    active.sourceRef !== undefined || documents.sourceFile(active.id) !== undefined;
+  const feedback = useMemo(
+    () => (state.notice === null ? null : { message: state.notice, tone: state.noticeTone }),
+    [state.notice, state.noticeTone],
+  );
 
   const importFiles = async (files: ReadonlyArray<File>): Promise<void> => {
     for (const [index, file] of files.entries()) {
@@ -123,13 +118,14 @@ export function App() {
         } catch (reason) {
           documents.setNotice(
             `${file.name} 导入失败：${reason instanceof Error ? reason.message : String(reason)}`,
+            "error",
           );
         }
         continue;
       }
       const format = formatForName(file.name, file.type);
       if (format === "unknown") {
-        documents.setNotice(`${file.name}：暂不支持的格式`);
+        documents.setNotice(`${file.name}：暂不支持的格式`, "warning");
         continue;
       }
       let sourceTextPreview: string | undefined;
@@ -162,6 +158,7 @@ export function App() {
       } catch (reason) {
         documents.setNotice(
           `${file.name} 导入失败：${reason instanceof Error ? reason.message : String(reason)}`,
+          "error",
         );
       }
     }
@@ -191,6 +188,7 @@ export function App() {
       .catch((reason: unknown) => {
         documents.setNotice(
           `人工修订保存失败：${reason instanceof Error ? reason.message : String(reason)}`,
+          "error",
         );
       })
       .finally(() => setSavingReview(false));
@@ -203,6 +201,7 @@ export function App() {
       .catch((reason: unknown) => {
         documents.setNotice(
           `OCR 修订保存失败：${reason instanceof Error ? reason.message : String(reason)}`,
+          "error",
         );
       })
       .finally(() => setSavingOcrReview(false));
@@ -217,6 +216,7 @@ export function App() {
       .catch((reason: unknown) => {
         documents.setNotice(
           `OCR 模型预热失败：${reason instanceof Error ? reason.message : String(reason)}`,
+          "error",
         );
       })
       .finally(() => setOcrPreloading(false));
@@ -234,11 +234,12 @@ export function App() {
         anchor.download = fileName;
         anchor.click();
         window.setTimeout(() => URL.revokeObjectURL(url), 0);
-        documents.setNotice(`${fileName} 已导出；Artifact 已写入本地存储`);
+        documents.setNotice(`${fileName} 已导出并保存在本机`, "success");
       })
       .catch((reason: unknown) => {
         documents.setNotice(
           `${active.name} 导出失败：${reason instanceof Error ? reason.message : String(reason)}`,
+          "error",
         );
       })
       .finally(() => setExportBusy(null));
@@ -292,6 +293,79 @@ export function App() {
     void navigate({ to: "/manga", search: { document: handoffId } });
   };
 
+  const inspectorContent = (
+    <>
+      <div className="document-inspector-heading">
+        <span className="ui-section-label document-eyebrow">处理详情</span>
+        <strong>{selected?.label ?? "Stage"}</strong>
+      </div>
+      {selected !== undefined && (
+        <StageInspector
+          stage={selected}
+          job={active}
+          onRun={runSelectedStage}
+          onCancel={cancelSelectedStage}
+          canRunStage={canRunDocumentStage(active, selected.id)}
+          onOcrSettingsChange={(patch) => documents.updateOcrSettings(active.id, patch)}
+          onPreloadOcr={preloadOcr}
+          ocrPreloading={ocrPreloading}
+        />
+      )}
+      {contentPackage !== undefined && contentStats !== undefined && (
+        <ContentPackageCard content={contentPackage} stats={contentStats} />
+      )}
+      {contentPackage !== undefined && (
+        <DocumentBlockContextCard
+          jobId={active.id}
+          content={contentPackage}
+          translation={translationPackage}
+          focusBlockId={routeBlockId ?? undefined}
+        />
+      )}
+      {contentPackage !== undefined && active.format === "image" && (
+        <DocumentOcrReviewCard
+          content={contentPackage}
+          drafts={ocrReviewDrafts}
+          saving={savingOcrReview}
+          onChange={(id, value) => setOcrReviewDrafts((current) => ({ ...current, [id]: value }))}
+          onSave={saveOcrReview}
+        />
+      )}
+      {translationPackage !== undefined && translationStats !== undefined && (
+        <TranslationPackageCard package={translationPackage} stats={translationStats} />
+      )}
+      {translationPackage !== undefined && (
+        <TranslationReviewCard
+          package={translationPackage}
+          drafts={reviewDrafts}
+          saving={savingReview}
+          onChange={(id, value) => setReviewDrafts((current) => ({ ...current, [id]: value }))}
+          onSave={saveReview}
+        />
+      )}
+      <div className="document-preview-card">
+        <div className="document-preview-heading">
+          <span className="ui-section-label document-eyebrow">SOURCE PREVIEW</span>
+          <span>{formatLabel(active.format)}</span>
+        </div>
+        {active.sourceUrl !== undefined ? (
+          <img src={active.sourceUrl} alt={`${active.name} 预览`} />
+        ) : active.sourceTextPreview !== undefined ? (
+          <p>{active.sourceTextPreview}</p>
+        ) : (
+          <div className="document-preview-empty">
+            {sourceIcon(active.format)}
+            <span>源文件由目标工作台按需读取</span>
+          </div>
+        )}
+      </div>
+      <div className="document-inspector-footer">
+        <span>已保存到本机</span>
+        <span>元数据保存在本地浏览器</span>
+      </div>
+    </>
+  );
+
   return (
     <div className="document-studio">
       {citationParams.has("cite") &&
@@ -311,8 +385,7 @@ export function App() {
       <a className="document-skip-link" href="#document-canvas">
         跳到流水线
       </a>
-      <header className="document-header">
-        <WorkspaceTrigger />
+      <AppToolbar className="document-header">
         <div className="document-brand">
           <div className="document-brand-mark">
             <Files className="document-icon" />
@@ -321,19 +394,19 @@ export function App() {
             <div className="document-brand-title">
               Document <span>Studio</span>
             </div>
-            <div className="document-brand-subtitle">INGEST · NORMALIZE · HANDOFF</div>
+            <div className="document-brand-subtitle">整理、处理与阅读</div>
           </div>
         </div>
         <div className="document-header-divider" />
         <div className="document-header-context">
-          <span className="ui-section-label document-eyebrow">LOCAL DOCUMENT PIPELINE</span>
+          <span className="ui-section-label document-eyebrow">文档工作区</span>
           <strong>
             {state.jobs.length} 个本地任务 · {formatLabel(active.format)}
           </strong>
         </div>
         <div className="document-header-spacer" />
         <span className="document-runtime-chip">
-          <StatusDot status="running" /> LOCAL-FIRST
+          <StatusDot status="completed" /> 本地处理
         </span>
         <button
           type="button"
@@ -343,7 +416,7 @@ export function App() {
           <Upload className="document-icon" />
           <span>导入文件</span>
         </button>
-      </header>
+      </AppToolbar>
 
       <input
         ref={fileInputRef}
@@ -361,74 +434,79 @@ export function App() {
 
       <div className="document-workspace">
         <aside className="document-inbox" aria-label="文档队列">
-          <div className="document-panel-heading">
-            <div>
-              <span className="ui-section-label document-eyebrow">DOCUMENT INBOX</span>
-              <strong>{state.jobs.length} 个任务</strong>
-            </div>
-            <button
-              type="button"
-              className="ui-btn ui-btn-ghost ui-icon-btn"
-              aria-label="导入文件"
-              onClick={openImport}
-            >
-              <Upload className="document-icon" />
-            </button>
-          </div>
-          <button
-            type="button"
-            className={`document-dropzone ${dragging ? "is-dragging" : ""}`}
-            onClick={openImport}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setDragging(false);
-              void importFiles([...event.dataTransfer.files]);
-            }}
-          >
-            <span className="document-dropzone-symbol">
-              <Upload className="document-icon" />
-            </span>
-            <strong>拖入文档或图片</strong>
-            <span>TXT · EPUB · PDF · CBZ · IMAGE · EXPORT JSON</span>
-          </button>
-          <div className="document-queue-label">
-            <span>QUEUE</span>
-            <span>{state.jobs.length.toString().padStart(2, "0")}</span>
-          </div>
-          <div className="document-job-list">
-            {state.jobs.map((job) => (
-              <JobCard
-                key={job.id}
-                job={job}
-                active={job.id === active.id}
-                onSelect={() => documents.selectJob(job.id)}
-                onRemove={() => {
-                  if (job.sourceUrl !== undefined) URL.revokeObjectURL(job.sourceUrl);
-                  documents.removeJob(job.id);
+          <details className="document-inbox-disclosure" open={!compact}>
+            <summary>文档列表 · {state.jobs.length}</summary>
+            <div className="document-inbox-body">
+              <div className="document-panel-heading">
+                <div>
+                  <span className="ui-section-label document-eyebrow">文档列表</span>
+                  <strong>{state.jobs.length} 个任务</strong>
+                </div>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-ghost ui-icon-btn"
+                  aria-label="导入文件"
+                  onClick={openImport}
+                >
+                  <Upload className="document-icon" />
+                </button>
+              </div>
+              <button
+                type="button"
+                className={`document-dropzone ${dragging ? "is-dragging" : ""}`}
+                onClick={openImport}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setDragging(true);
                 }}
-              />
-            ))}
-          </div>
-          <div className="document-inbox-footer">
-            <span>
-              <StatusDot status="running" /> BROWSER STORAGE
-            </span>
-            <span>LOCAL / V1</span>
-          </div>
+                onDragLeave={() => setDragging(false)}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setDragging(false);
+                  void importFiles([...event.dataTransfer.files]);
+                }}
+              >
+                <span className="document-dropzone-symbol">
+                  <Upload className="document-icon" />
+                </span>
+                <strong>拖入文档或图片</strong>
+                <span>TXT · EPUB · PDF · CBZ · IMAGE · EXPORT JSON</span>
+              </button>
+              <div className="document-queue-label">
+                <span>队列</span>
+                <span>{state.jobs.length.toString().padStart(2, "0")}</span>
+              </div>
+              <div className="document-job-list">
+                {state.jobs.map((job) => (
+                  <JobCard
+                    key={job.id}
+                    job={job}
+                    active={job.id === active.id}
+                    onSelect={() => documents.selectJob(job.id)}
+                    onRemove={() => {
+                      if (job.sourceUrl !== undefined) URL.revokeObjectURL(job.sourceUrl);
+                      documents.removeJob(job.id);
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="document-inbox-footer">
+                <span>
+                  <StatusDot status="running" /> 保存在本机
+                </span>
+                <span>当前设备</span>
+              </div>
+            </div>
+          </details>
         </aside>
 
         <main id="document-canvas" className="document-canvas" aria-label="文档流水线">
           <div className="document-canvas-topline">
             <div>
               <span className="ui-section-label document-eyebrow">
-                PIPELINE MAP / {active.id.slice(-8)}
+                {sourceAvailable ? "当前文档" : "示例文档"}
               </span>
-              <h1>{active.name}</h1>
+              <h1 title={active.name}>{active.name}</h1>
               <p>
                 {formatBytes(active.size)} · {formatLabel(active.format)} ·{" "}
                 {new Date(active.updatedAt).toLocaleString("zh-CN", {
@@ -439,86 +517,82 @@ export function App() {
               </p>
             </div>
             <div className="document-canvas-actions">
-              <button
-                type="button"
-                className="ui-btn ui-btn-default"
-                onClick={refreshAvailableStages}
-              >
-                <Sparkles className="document-icon" /> 刷新就绪阶段
-              </button>
-              {contentPackage !== undefined && (
-                <>
+              <ActionMenu label="更多文档操作">
+                {compact && (
                   <button
                     type="button"
-                    className="ui-btn ui-btn-default"
-                    onClick={() => downloadExport("json")}
-                    disabled={exportBusy !== null}
+                    className="ui-btn ui-btn-ghost"
+                    onClick={() => setInspectorOpen(true)}
                   >
-                    <Download className="document-icon" />
-                    {exportBusy === "json" ? "导出中…" : "JSON"}
+                    处理详情
                   </button>
-                  <button
-                    type="button"
-                    className="ui-btn ui-btn-default"
-                    onClick={() => downloadExport("markdown")}
-                    disabled={exportBusy !== null}
-                  >
-                    <Download className="document-icon" />
-                    {exportBusy === "markdown" ? "导出中…" : "Markdown"}
-                  </button>
-                </>
-              )}
-              <button type="button" className="ui-btn ui-btn-primary" onClick={openImport}>
-                <FolderOpen className="document-icon" /> 添加到队列
-              </button>
+                )}
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-default"
+                  onClick={refreshAvailableStages}
+                >
+                  <Sparkles className="document-icon" /> 刷新就绪阶段
+                </button>
+                {contentPackage !== undefined && (
+                  <>
+                    <button
+                      type="button"
+                      className="ui-btn ui-btn-default"
+                      onClick={() => downloadExport("json")}
+                      disabled={exportBusy !== null}
+                    >
+                      <Download className="document-icon" />
+                      {exportBusy === "json" ? "导出中…" : "JSON"}
+                    </button>
+                    <button
+                      type="button"
+                      className="ui-btn ui-btn-default"
+                      onClick={() => downloadExport("markdown")}
+                      disabled={exportBusy !== null}
+                    >
+                      <Download className="document-icon" />
+                      {exportBusy === "markdown" ? "导出中…" : "Markdown"}
+                    </button>
+                  </>
+                )}
+              </ActionMenu>
             </div>
           </div>
 
-          {state.notice !== null && (
-            <div className="document-notice" role="status" aria-live="polite">
-              <CircleAlert className="document-icon" />
-              <span>{state.notice}</span>
-              <button
-                type="button"
-                className="ui-btn ui-btn-ghost ui-icon-btn ui-btn-sm"
-                aria-label="关闭提示"
-                onClick={() => documents.setNotice(null)}
-              >
-                <X className="document-icon" />
-              </button>
-            </div>
-          )}
-
-          <section className="document-pipeline" aria-label="处理阶段">
-            {active.stages.map((stage, index) => (
-              <StageCard
-                key={stage.id}
-                stage={stage}
-                index={index}
-                active={stage.id === selected?.id}
-                onSelect={() => documents.selectStage(stage.id)}
-              />
-            ))}
-          </section>
+          <Toast notice={feedback} onDismiss={() => documents.setNotice(null)} />
 
           <section className="document-handoff-strip">
             <div className="document-handoff-copy">
-              <span className="ui-section-label document-eyebrow">NEXT SAFE HANDOFF</span>
+              <span className="ui-section-label document-eyebrow">下一步</span>
               <strong>
-                {canOpenInReader(active.format)
-                  ? "把结构化内容交给 Reader Studio"
-                  : "把页面素材交给 Manga Studio"}
+                {!sourceAvailable
+                  ? "从一份文档开始"
+                  : canOpenInReader(active.format)
+                    ? "开始阅读这份文档"
+                    : "翻译与编辑这张图片"}
               </strong>
-              <span>源文件不在应用之间复制；每个工作台保持自己的领域状态。</span>
+              <span>
+                {sourceAvailable
+                  ? "内容和编辑进度保存在当前设备。"
+                  : "导入自己的文件，开始整理、处理和阅读。"}
+              </span>
             </div>
             <div className="document-handoff-actions">
-              {canOpenInReader(active.format) && (
+              {!sourceAvailable && (
+                <button type="button" className="ui-btn ui-btn-primary" onClick={openImport}>
+                  <Upload className="document-icon" />
+                  导入文档
+                </button>
+              )}
+
+              {sourceAvailable && canOpenInReader(active.format) && (
                 <button type="button" className="ui-btn ui-btn-primary" onClick={handoffReader}>
                   <BookOpen className="document-icon" /> 打开 Reader
                   <ArrowUpRight className="document-icon" />
                 </button>
               )}
-              {canOpenInManga(active.format) && (
+              {sourceAvailable && canOpenInManga(active.format) && (
                 <button type="button" className="ui-btn ui-btn-default" onClick={handoffManga}>
                   <ImagePlus className="document-icon" /> 打开 Manga
                   <ArrowUpRight className="document-icon" />
@@ -527,11 +601,43 @@ export function App() {
             </div>
           </section>
 
+          {compact && sourceAvailable && (active.sourceTextPreview || active.sourceUrl) && (
+            <section className="document-overview" aria-label="文档预览">
+              <span className="ui-section-label document-eyebrow">内容预览</span>
+              {active.sourceUrl ? (
+                <img src={active.sourceUrl} alt={active.name} />
+              ) : (
+                <p>{active.sourceTextPreview}</p>
+              )}
+            </section>
+          )}
+
+          <details className="document-process-disclosure" open={!compact}>
+            <summary>
+              处理阶段 · {active.stages.filter((stage) => stage.status === "done").length} /{" "}
+              {active.stages.length} 已完成
+            </summary>
+            <section className="document-pipeline" aria-label="处理阶段">
+              {active.stages.map((stage, index) => (
+                <StageCard
+                  key={stage.id}
+                  stage={stage}
+                  index={index}
+                  active={stage.id === selected?.id}
+                  onSelect={() => {
+                    documents.selectStage(stage.id);
+                    if (compact) setInspectorOpen(true);
+                  }}
+                />
+              ))}
+            </section>
+          </details>
+
           {handoffHistory.length > 0 && (
             <section className="document-handoff-history" aria-label="最近工作台交接">
               <div className="document-handoff-history-heading">
                 <div>
-                  <span className="ui-section-label document-eyebrow">HANDOFF HISTORY</span>
+                  <span className="ui-section-label document-eyebrow">最近使用</span>
                   <strong>最近的工作台交接</strong>
                 </div>
                 <span>仅保存状态，不保存文件内容</span>
@@ -560,92 +666,21 @@ export function App() {
               </div>
             </section>
           )}
-
-          <div className="document-principle-row">
-            <span>
-              <Link2 className="document-icon" /> Artifact boundary
-            </span>
-            <span>
-              <Layers3 className="document-icon" /> Re-runnable stages
-            </span>
-            <span>
-              <Files className="document-icon" /> No cloud upload
-            </span>
-          </div>
         </main>
 
-        <aside className="document-inspector" aria-label="阶段详情">
-          <div className="document-inspector-heading">
-            <span className="ui-section-label document-eyebrow">INSPECTOR</span>
-            <strong>{selected?.label ?? "Stage"}</strong>
-          </div>
-          {selected !== undefined && (
-            <StageInspector
-              stage={selected}
-              job={active}
-              onRun={runSelectedStage}
-              onCancel={cancelSelectedStage}
-              canRunStage={canRunDocumentStage(active, selected.id)}
-              onOcrSettingsChange={(patch) => documents.updateOcrSettings(active.id, patch)}
-              onPreloadOcr={preloadOcr}
-              ocrPreloading={ocrPreloading}
-            />
-          )}
-          {contentPackage !== undefined && contentStats !== undefined && (
-            <ContentPackageCard content={contentPackage} stats={contentStats} />
-          )}
-          {contentPackage !== undefined && (
-            <DocumentBlockContextCard
-              jobId={active.id}
-              content={contentPackage}
-              translation={translationPackage}
-              focusBlockId={routeBlockId ?? undefined}
-            />
-          )}
-          {contentPackage !== undefined && active.format === "image" && (
-            <DocumentOcrReviewCard
-              content={contentPackage}
-              drafts={ocrReviewDrafts}
-              saving={savingOcrReview}
-              onChange={(id, value) =>
-                setOcrReviewDrafts((current) => ({ ...current, [id]: value }))
-              }
-              onSave={saveOcrReview}
-            />
-          )}
-          {translationPackage !== undefined && translationStats !== undefined && (
-            <TranslationPackageCard package={translationPackage} stats={translationStats} />
-          )}
-          {translationPackage !== undefined && (
-            <TranslationReviewCard
-              package={translationPackage}
-              drafts={reviewDrafts}
-              saving={savingReview}
-              onChange={(id, value) => setReviewDrafts((current) => ({ ...current, [id]: value }))}
-              onSave={saveReview}
-            />
-          )}
-          <div className="document-preview-card">
-            <div className="document-preview-heading">
-              <span className="ui-section-label document-eyebrow">SOURCE PREVIEW</span>
-              <span>{formatLabel(active.format)}</span>
-            </div>
-            {active.sourceUrl !== undefined ? (
-              <img src={active.sourceUrl} alt={`${active.name} 预览`} />
-            ) : active.sourceTextPreview !== undefined ? (
-              <p>{active.sourceTextPreview}</p>
-            ) : (
-              <div className="document-preview-empty">
-                {sourceIcon(active.format)}
-                <span>源文件由目标工作台按需读取</span>
-              </div>
-            )}
-          </div>
-          <div className="document-inspector-footer">
-            <span>STATE IS DURABLE</span>
-            <span>元数据保存在本地浏览器</span>
-          </div>
-        </aside>
+        {!compact && (
+          <aside className="document-inspector" aria-label="阶段详情">
+            {inspectorContent}
+          </aside>
+        )}
+        <Drawer
+          open={compact && inspectorOpen}
+          onClose={() => setInspectorOpen(false)}
+          title="处理详情"
+          className="document-inspector-drawer"
+        >
+          {compact && inspectorContent}
+        </Drawer>
       </div>
     </div>
   );

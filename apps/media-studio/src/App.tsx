@@ -1,4 +1,4 @@
-import { ActionMenu, WorkspaceTrigger } from "@bcr/react";
+import { ActionMenu, AppToolbar, EmptyState } from "@bcr/react";
 import {
   Spinner,
   useLocationSnapshot,
@@ -9,7 +9,7 @@ import {
   useRuntimeSession,
 } from "@bcr/react";
 import { useEffect, useRef, useState } from "react";
-import { Download, Settings2 } from "lucide-react";
+import { AudioWaveform, Download, Settings2, Upload } from "lucide-react";
 import { mediaCitationTarget } from "./mediaSearchDocuments";
 import { useMediaSearch } from "./search";
 // 样式随模块加载：Shell 懒加载本组件时 CSS 一并注入（standalone main.tsx 的重复 import 幂等）。
@@ -28,13 +28,13 @@ export function App() {
   const { services, error } = useRuntimeSession(createRuntimeServices, restoreProject);
 
   if (error !== null) {
-    return <div className="p-8 text-[var(--color-danger)]">Runtime 启动失败：{error}</div>;
+    return <div className="p-8 text-[var(--color-danger)]">工作台启动失败：{error}</div>;
   }
   if (services === null) {
     return (
       <div className="flex h-full items-center justify-center gap-3 text-[var(--color-muted)]">
-        <Spinner label="正在组装 Compute Runtime" />
-        正在组装 Compute Runtime…
+        <Spinner label="正在打开字幕工作台" />
+        正在打开字幕工作台…
       </div>
     );
   }
@@ -165,11 +165,15 @@ function Studio() {
         </p>
       )}
       {/* 顶栏 */}
-      <header className="media-header">
-        <WorkspaceTrigger />
+      <AppToolbar className="media-header">
         <span className="media-brand">Media Studio</span>
         <span className="media-actions ml-auto flex items-center gap-2">
           <ActionMenu label="字幕设置" icon={<Settings2 size={18} />}>
+            {cues.length > 0 && (
+              <button className="btn" disabled={running || source === null} onClick={generate}>
+                重新生成字幕
+              </button>
+            )}
             <label>
               识别模型
               <select
@@ -262,20 +266,26 @@ function Studio() {
             >
               取消
             </button>
+          ) : cues.length > 0 ? (
+            <button className="btn btn-primary" onClick={() => download("srt")}>
+              <Download size={16} />
+              下载字幕
+            </button>
           ) : (
             <button className="btn btn-primary" disabled={source === null} onClick={generate}>
               生成字幕
             </button>
           )}
         </span>
-      </header>
+      </AppToolbar>
 
       <div className="media-layout flex min-h-0 flex-1">
         {/* 左栏 */}
         <aside className="media-sidebar flex w-[var(--w-sidebar)] shrink-0 flex-col gap-6 overflow-y-auto border-r border-[var(--color-border)] p-5">
           <section>
-            <div className="ui-section-label">SOURCE</div>
-            <div
+            <div className="ui-section-label">源文件</div>
+            <button
+              type="button"
               data-testid="dropzone"
               className="media-dropzone flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-strong)] px-5 py-6 text-center hover:border-[var(--color-accent)]"
               onClick={() => fileInputRef.current?.click()}
@@ -290,19 +300,19 @@ function Studio() {
                 <>
                   <div className="font-mono text-base">{source.name}</div>
                   <div className="text-xs text-[var(--color-faint)]">
-                    {(source.size / 1024 / 1024).toFixed(1)} MB · opfs
+                    {(source.size / 1024 / 1024).toFixed(1)} MB · 已保存在本机
                     {mediaInfo !== null && ` · ${mediaInfo.durationS.toFixed(1)}s · 16kHz mono`}
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="text-base">拖入 音频 / 视频文件</div>
+                  <div className="text-base">导入或拖入音频 / 视频</div>
                   <div className="text-xs text-[var(--color-faint)]">
                     wav / mp3 / m4a / mp4 / webm
                   </div>
                 </>
               )}
-            </div>
+            </button>
             <input
               ref={fileInputRef}
               type="file"
@@ -323,7 +333,7 @@ function Studio() {
           <details className="media-pipeline-details">
             <summary>处理进度</summary>
             <div className="flex items-center">
-              <div className="ui-section-label">PIPELINE · DAG</div>
+              <div className="ui-section-label">处理流程</div>
               <button
                 type="button"
                 className="mr-3 ml-auto text-xs text-[var(--color-faint)] hover:text-[var(--color-accent)]"
@@ -364,7 +374,7 @@ function Studio() {
             {(
               [
                 ["subtitles", "字幕"],
-                ["pipeline", "流水线 DAG"],
+                ["pipeline", "流程编辑"],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -395,12 +405,32 @@ function Studio() {
                   className="max-h-48 self-start rounded-sm border border-[var(--color-border)] bg-bg"
                 />
               )}
-              <Waveform videoRef={videoRef} onSeek={seek} />
-              <CueEditor
-                onSeek={seek}
-                getTime={() => videoRef.current?.currentTime ?? 0}
-                citation={citationSelection}
-              />
+              {source === null ? (
+                <EmptyState
+                  className="media-empty"
+                  icon={<AudioWaveform size={22} />}
+                  title="把声音变成字幕"
+                  description="导入音频或视频，在当前设备生成、编辑和下载字幕。"
+                  action={
+                    <button
+                      className="ui-btn ui-btn-primary ui-btn-lg"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload size={16} />
+                      导入文件
+                    </button>
+                  }
+                />
+              ) : (
+                <>
+                  <Waveform videoRef={videoRef} onSeek={seek} />
+                  <CueEditor
+                    onSeek={seek}
+                    getTime={() => videoRef.current?.currentTime ?? 0}
+                    citation={citationSelection}
+                  />
+                </>
+              )}
             </div>
           )}
         </main>

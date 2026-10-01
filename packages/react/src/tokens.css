@@ -58,9 +58,9 @@
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
   --font-display: "Newsreader Variable", Georgia, serif;
-  --text-xs: 11px;
+  --text-xs: 12px;
   --text-xs--line-height: 1.45;
-  --text-sm: 12px;
+  --text-sm: 13px;
   --text-sm--line-height: 1.5;
   --text-base: 14px;
   --text-base--line-height: 1.5;

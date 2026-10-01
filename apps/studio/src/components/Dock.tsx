@@ -1,4 +1,4 @@
-import { ActionMenu, WorkspaceTrigger } from "@bcr/react";
+import { ActionMenu, Drawer, Select, WorkspaceTrigger, useMediaQuery } from "@bcr/react";
 import {
   DockviewReact,
   themeAbyss,
@@ -7,7 +7,7 @@ import {
   type IDockviewPanelProps,
   type IDockviewHeaderActionsProps,
 } from "dockview-react";
-import { PanelLeft, X } from "lucide-react";
+import { PanelLeft } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useSelection } from "../router";
 import { useStudio } from "../store";
@@ -46,7 +46,7 @@ const components: Record<string, React.FunctionComponent<IDockviewPanelProps>> =
   console: () => <ConsolePanel />,
 };
 
-type MobilePanel = "project" | "inspector";
+type MobilePanel = "project" | "inspector" | "tasks" | "storage" | "console";
 
 function defaultLayout(api: DockviewApi): void {
   api.addPanel({
@@ -174,15 +174,7 @@ export function Dock() {
   const selection = useSelection();
   const taskCount = useStudio((state) => state.tasks.length);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel | null>(null);
-
-  useEffect(() => {
-    if (mobilePanel === null) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobilePanel(null);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [mobilePanel]);
+  const compact = useMediaQuery("(max-width: 720px)");
 
   const onReady = useCallback((event: DockviewReadyEvent) => {
     const { api } = event;
@@ -225,7 +217,7 @@ export function Dock() {
       removed.dispose();
     };
   }, [dockApi]);
-  const open = mobilePanel !== null;
+  const open = compact && mobilePanel !== null;
 
   return (
     <div className="studio-dock-shell">
@@ -239,60 +231,38 @@ export function Dock() {
         />
       </MobilePanelContext>
 
-      {/* 抽屉常驻挂载：进出场交给 display allow-discrete 过渡；关闭时仅卸载内容。 */}
-      <button
-        type="button"
-        className="studio-mobile-panel-backdrop"
-        data-open={open ? "" : undefined}
-        onClick={() => setMobilePanel(null)}
-        aria-label="关闭工作区面板"
-      />
-      <aside
-        id="studio-mobile-panels"
+      <Drawer
+        open={open}
+        title="工作区面板"
+        onClose={() => setMobilePanel(null)}
+        closeLabel="关闭工作区面板"
         className="studio-mobile-panel-surface"
-        data-open={open ? "" : undefined}
-        role="dialog"
-        aria-modal="true"
-        aria-hidden={open ? undefined : "true"}
-        aria-label="工作区面板"
       >
-        <div className="studio-mobile-panel-header">
-          <span className="ui-section-label">WORKSPACE PANELS</span>
-          <button
-            type="button"
-            className="studio-mobile-panel-close"
-            onClick={() => setMobilePanel(null)}
-            aria-label="关闭工作区面板"
+        <div className="studio-mobile-panel-selector">
+          <Select
+            aria-label="面板类型"
+            value={mobilePanel ?? "project"}
+            onChange={(event) => setMobilePanel(event.target.value as MobilePanel)}
           >
-            <X className="size-4" />
-          </button>
-        </div>
-        <div className="studio-mobile-panel-tabs" role="tablist" aria-label="工作区面板类型">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mobilePanel === "project"}
-            className={mobilePanel === "project" ? "is-active" : ""}
-            onClick={() => setMobilePanel("project")}
-          >
-            项目文件
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mobilePanel === "inspector"}
-            className={mobilePanel === "inspector" ? "is-active" : ""}
-            onClick={() => setMobilePanel("inspector")}
-          >
-            详情
-          </button>
+            {Object.entries(PANEL_TITLES)
+              .filter(([id]) => id !== "workspace")
+              .map(([id, title]) => (
+                <option value={id} key={id}>
+                  {title}
+                </option>
+              ))}
+          </Select>
         </div>
         {open && (
           <div className="studio-mobile-panel-content">
-            {mobilePanel === "project" ? <ProjectPanel /> : <InspectorPanel />}
+            {mobilePanel === "project" && <ProjectPanel />}
+            {mobilePanel === "inspector" && <InspectorPanel />}
+            {mobilePanel === "tasks" && <TasksPanel />}
+            {mobilePanel === "storage" && <StoragePanel />}
+            {mobilePanel === "console" && <ConsolePanel />}
           </div>
         )}
-      </aside>
+      </Drawer>
     </div>
   );
 }

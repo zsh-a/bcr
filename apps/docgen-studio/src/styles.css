@@ -76,40 +76,6 @@
   box-shadow: var(--shadow-floating);
 }
 
-/* 浮层提示：进出场用 @starting-style + allow-discrete（与 ui.css 同一套语言）。 */
-.docgen-toast {
-  position: fixed;
-  right: var(--space-6);
-  bottom: var(--space-6);
-  z-index: 100;
-  display: none;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-text);
-  box-shadow: var(--shadow-floating);
-  opacity: 0;
-  transform: translateY(4px);
-  transition:
-    opacity var(--duration-base) var(--ease-standard),
-    transform var(--duration-base) var(--ease-standard),
-    display var(--duration-base) allow-discrete;
-}
-
-.docgen-toast[data-open] {
-  display: block;
-  opacity: 1;
-  transform: none;
-}
-
-@starting-style {
-  .docgen-toast[data-open] {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-}
-
 /* One compact toolbar, with a responsive form/preview workspace. */
 
 .docgen-layout {
@@ -173,6 +139,12 @@
 .docgen-preview-actions {
   margin-left: auto;
 }
+.docgen-download {
+  margin-left: auto;
+}
+.docgen-download + .docgen-preview-actions {
+  margin-left: 0;
+}
 .docgen-workspace-tabs {
   display: none;
   margin-left: auto;
@@ -204,6 +176,16 @@
     min-height: var(--h-control-lg);
   }
   .docgen-preview-toolbar .docgen-tab {
+    padding-inline: var(--space-2);
+  }
+}
+
+@media (max-width: 400px) {
+  .docgen-preview-toolbar > .docgen-tab svg {
+    display: none;
+  }
+  .docgen-preview-toolbar {
+    gap: var(--space-1);
     padding-inline: var(--space-2);
   }
 }

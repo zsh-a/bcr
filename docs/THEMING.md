@@ -5,7 +5,7 @@
 - `tokens.css`：唯一事实来源。色彩、间距、圆角、字号、布局高度、动效时长与缓动、浮层层级。
 - `global.css`：全局基座（body、`:focus-visible`、滚动条、选区、减少动态效果兜底）。
 - `theme.css`：Tailwind 桥接（`@theme inline` 把令牌映射为 `bg-bg`、`rounded-md`、`text-sm` 等工具类），并引入上面两层。
-- `ui.css` / `ui.tsx`：全产品唯一的控件套件。`Button`、`IconButton`、`Input`、`Textarea`、`Select`、`Dialog`、`Badge`、`Kbd`、`SectionLabel`、`PanelEmpty`、`StatusDot`、`ProgressBar`、`Spinner`、`Skeleton` 及格式化函数。`.ui-*` 类名公开，原生元素可直接复用（如 `.ui-dialog`、`.ui-popover`、`.ui-btn`）。
+- `ui.css` / `ui.tsx`：全产品唯一的控件套件。`Button`、`IconButton`、`Input`、`Textarea`、`Select`、`Dialog`、`Drawer`、`Toast`、`EmptyState`、`Badge`、`Kbd`、`SectionLabel`、`PanelEmpty`、`StatusDot`、`ProgressBar`、`Spinner`、`Skeleton` 及格式化函数。`.ui-*` 类名公开，原生元素可直接复用（如 `.ui-dialog`、`.ui-popover`、`.ui-btn`）。
 
 Tailwind 界面引入 `@bcr/react/theme.css`；手写 CSS 的界面引入 `@bcr/react/tokens.css` + `@bcr/react/global.css`（需要控件类时再引 `ui.css`）。
 
@@ -15,7 +15,7 @@ Tailwind 界面引入 `@bcr/react/theme.css`；手写 CSS 的界面引入 `@bcr/
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 间距 | `--space-1..8`：4 / 8 / 12 / 16 / 20 / 24 / 32 / 40px                                                                                                                                                                                                                |
 | 圆角 | `--radius-sm` 8px（控件）/ `--radius-md` 12px（卡片）/ `--radius-lg` 16px（对话框、面板）/ `--radius-full`（胶囊）                                                                                                                                                   |
-| 字号 | `--text-xs` 11px / `--text-sm` 12px / `--text-base` 14px / `--text-lg` 16px / `--text-xl` 20px / `--text-2xl` 26px（含 `--text-*--line-height`）                                                                                                                     |
+| 字号 | `--text-xs` 12px / `--text-sm` 13px / `--text-base` 14px / `--text-lg` 16px / `--text-xl` 20px / `--text-2xl` 26px（含 `--text-*--line-height`）                                                                                                                     |
 | 字体 | `--font-sans`（IBM Plex Sans）/ `--font-mono` / `--font-display`（Newsreader Variable，仅标题与字标）                                                                                                                                                                |
 | 布局 | `--h-topbar` 56px / `--h-toolbar` 48px / `--h-control` 36px / `--h-control-lg` 44px / `--h-menu-row` 32px（桌面菜单行；触屏回 44）/ `--w-sidebar` 280px / `--content-max` 960px                                                                                      |
 | 动效 | `--duration-fast` 120ms（反馈、浮层出场）/ `--duration-base` 180ms（浮层入场、菜单）/ `--duration-slow` 260ms（面板、位移）/ `--ease-standard`；进出同源不同速，出场约为入场的 2/3                                                                                   |
@@ -67,7 +67,7 @@ Tailwind 界面引入 `@bcr/react/theme.css`；手写 CSS 的界面引入 `@bcr/
 | `dock-panel` | `.studio-dock .dv-content-container` | <420px | 面板按钮 icon-only                                      |
 | `ui-body`    | `.ui-dialog-body`                    | <400px | 表单 label 上置堆叠（单选/复选行除外）                  |
 
-icon-only 的实现约定：裸文本随 `font-size: 0` 归零，svg 与显式字号元素不受影响；浮层菜单保持可读。kb-main<640 时「编辑/阅读/源码」仅存在于 ⋯ 菜单，菜单内视图模式必须始终可达。
+icon-only 仅作用于操作栏中的辅助按钮；空态主按钮保留文字。裸文本随 `font-size: 0` 归零，svg 与显式字号元素不受影响；浮层菜单保持可读。kb-main<640 时「编辑/阅读/源码」仅存在于 ⋯ 菜单，菜单内视图模式必须始终可达。
 
 ### WCAG 320 基线
 
@@ -97,3 +97,5 @@ Studio 顶栏的「工作区选项 → 外观」提供「跟随系统 / 浅色 /
 - `scripts/verify-theme.mjs`：真实 Chromium 中验证系统跟随、刷新恢复、跨标签页、保存失败、知识库与助手、手机与横屏。
 - `scripts/verify-shell-architecture.mjs`：领域懒加载不覆盖宿主主题。
 - `scripts/verify-responsive.mjs`：响应式 7 组断言——320px reflow（含对话框/抽屉打开态）、400% 缩放等效、连续拉伸三态切换、容器降级（kb-side/kb-rail/kb-main/dock-panel/ui-body，含 ⋯ 内视图模式可达）、矮窗全屏 sheet 与安全区 max() 兜底、reduced-motion 直达终端、「继续对话」浮标避让（桌面内容列与移动端导航/FAB）。
+
+跨 App 的操作入口、反馈和模态约定见 [工作区交互约定](WORKSPACE-UI.md)。

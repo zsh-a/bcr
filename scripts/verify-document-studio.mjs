@@ -17,7 +17,7 @@ await page.locator(".document-studio").waitFor({ timeout: 20_000 });
 await page.locator(".document-stage-card").first().waitFor({ timeout: 20_000 });
 
 const initialText = await page.locator("body").innerText();
-if (!initialText.includes("Document Studio") || !initialText.includes("LOCAL-FIRST")) {
+if (!initialText.includes("Document Studio") || !initialText.includes("本地处理")) {
   fail("Document Studio 主界面未渲染");
 }
 if ((await page.locator(".document-stage-card").count()) !== 7) fail("文档阶段数量不完整");
@@ -76,6 +76,7 @@ if (!contentSummary.includes("结构化内容已就绪") || !contentSummary.incl
 // browser input. This protects the durable source-ref boundary instead of
 // only checking that a download button rendered.
 const exportDownloadPromise = page.waitForEvent("download");
+await openActionMenu(page, "更多文档操作");
 await page.getByRole("button", { name: "JSON", exact: true }).click();
 const exportDownload = await exportDownloadPromise;
 const exportStream = await exportDownload.createReadStream();
@@ -92,8 +93,7 @@ await input.setInputFiles({
 });
 await page.waitForFunction(
   () =>
-    document.querySelector(".document-notice")?.textContent?.includes("从 Export Bundle 恢复") ??
-    false,
+    document.querySelector(".ui-toast")?.textContent?.includes("从 Export Bundle 恢复") ?? false,
   undefined,
   { timeout: 10_000 },
 );
@@ -134,8 +134,7 @@ const reviewInput = page.locator(".document-translation-review-item textarea").f
 await reviewInput.fill("Field notes（人工修订）");
 await page.getByRole("button", { name: "保存人工修订" }).click();
 await page.waitForFunction(
-  () =>
-    document.querySelector(".document-notice")?.textContent?.includes("人工修订已保存") ?? false,
+  () => document.querySelector(".ui-toast")?.textContent?.includes("人工修订已保存") ?? false,
   undefined,
   { timeout: 10_000 },
 );

@@ -725,3 +725,19 @@ p.reader-prose.reader-txt-measure {
     top: var(--h-topbar);
   }
 }
+
+.reader-import-button {
+  min-width: var(--h-control-lg);
+  min-height: var(--h-control-lg);
+}
+@media (max-width: 860px) {
+  .reader-import-button {
+    width: var(--h-control-lg);
+    padding: 0;
+  }
+  .reader-import-button span,
+  .reader-toolbar[data-demo="false"] .reader-import-button,
+  .reader-toolbar[data-demo="true"] .reader-mobile-bookmark {
+    display: none;
+  }
+}

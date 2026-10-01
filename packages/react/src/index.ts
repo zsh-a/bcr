@@ -1,6 +1,13 @@
 export type { RuntimeHost, RuntimeMetadata, RuntimeServices, RuntimeSession } from "@bcr/core";
 export * from "./ui";
-export { WorkspaceTrigger, WorkspaceNavigationProvider, ActionMenu } from "./AppControls";
+export { Toast, EmptyState, type Notice, type NoticeTone } from "./Feedback";
+export { useMediaQuery } from "./useMediaQuery";
+export {
+  AppToolbar,
+  WorkspaceTrigger,
+  WorkspaceNavigationProvider,
+  ActionMenu,
+} from "./AppControls";
 export { usePublishRunningCount, useRunningApps } from "./application-status";
 export { AppUpdateProvider, useUpdateParticipant } from "./AppUpdate";
 

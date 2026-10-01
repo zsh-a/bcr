@@ -93,7 +93,7 @@ export function CueEditor(props: {
         className="flex flex-1 items-center justify-center text-[var(--color-faint)]"
         data-testid="cue-empty"
       >
-        提交流水线后字幕出现在这里
+        点击「生成字幕」开始处理，结果会出现在这里
       </div>
     );
   }
@@ -102,7 +102,7 @@ export function CueEditor(props: {
     <div className="flex min-h-0 flex-1 flex-col" data-testid="cue-editor">
       <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-faint)]">
         <span>{cues.length} 条</span>
-        {dirty && <span className="text-[var(--color-amber)]">未保存的编辑（自动持久化）</span>}
+        {dirty && <span className="text-[var(--color-amber)]">正在保存编辑…</span>}
         <span className="ml-auto">CPS 上限 {CPS_LIMIT}</span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto" ref={listRef}>

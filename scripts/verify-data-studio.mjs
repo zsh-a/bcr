@@ -31,7 +31,7 @@ await input.setInputFiles({
 await page.locator(".data-main-heading h1", { hasText: "signals.json" }).waitFor({
   timeout: 20_000,
 });
-if (!(await page.locator(".data-stat").allInnerTexts()).some((text) => text.includes("3"))) {
+if (!(await page.locator(".data-source-line").innerText()).includes("3 行")) {
   fail("JSON 数组没有解析为 3 行表格");
 }
 if (!(await page.locator(".data-schema-strip").textContent()).includes("NUMBER")) {
@@ -40,7 +40,7 @@ if (!(await page.locator(".data-schema-strip").textContent()).includes("NUMBER")
 await openActionMenu(page, "更多数据操作");
 await page.getByRole("button", { name: "存储管理", exact: true }).click();
 await page.locator("[aria-label='数据存储治理']").waitFor({ timeout: 10_000 });
-if (!(await page.locator("[aria-label='数据存储治理']").innerText()).includes("DATA STORE")) {
+if (!(await page.locator("[aria-label='数据存储治理']").innerText()).includes("数据占用")) {
   fail("Data Artifact 存储治理面板没有渲染");
 }
 

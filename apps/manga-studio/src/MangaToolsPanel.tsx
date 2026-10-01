@@ -35,7 +35,6 @@ interface MangaToolsPanelProps {
   readonly glossarySource: string;
   readonly glossaryTarget: string;
   readonly exporting: boolean;
-  readonly onClose: () => void;
   readonly onRefreshModelCache: () => void;
   readonly onClearModelCache: () => void;
   readonly onPreloadModel: (execution: MangaAdapterExecution) => void;
@@ -61,7 +60,6 @@ export function MangaToolsPanel({
   glossarySource,
   glossaryTarget,
   exporting,
-  onClose,
   onRefreshModelCache,
   onClearModelCache,
   onPreloadModel,
@@ -92,14 +90,6 @@ export function MangaToolsPanel({
         <div className="ui-section-label manga-section-heading">
           <span>TRANSLATION</span>
           <Languages className="size-4 text-accent" />
-          <button
-            type="button"
-            className="ui-btn ui-btn-ghost ui-icon-btn manga-mobile-tools-close"
-            onClick={onClose}
-            aria-label="关闭工具面板"
-          >
-            <X className="size-4" />
-          </button>
         </div>
         <ModelCacheSummary
           info={modelCacheInfo}

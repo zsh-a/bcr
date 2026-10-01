@@ -12,6 +12,22 @@ interface WorkspaceNavigation {
 const WorkspaceContext = createContext<WorkspaceNavigation | null>(null);
 export const WorkspaceNavigationProvider = WorkspaceContext.Provider;
 
+/** App chrome shares one height, navigation entry and responsive control contract. */
+export function AppToolbar({
+  className = "",
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <header className={`ui-app-toolbar ${className}`}>
+      <WorkspaceTrigger />
+      {children}
+    </header>
+  );
+}
+
 /** Hosts supply navigation; standalone apps keep their own chrome. */
 export function WorkspaceTrigger({ className = "" }: { className?: string }) {
   const navigation = useContext(WorkspaceContext);

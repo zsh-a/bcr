@@ -848,3 +848,10 @@
   align-items: center;
   gap: var(--space-1);
 }
+
+.knowledge-app-identity {
+  min-width: 0;
+  flex: 1;
+  font-size: var(--text-base);
+  font-weight: 600;
+}

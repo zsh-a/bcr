@@ -1,4 +1,4 @@
-import { ActionMenu, WorkspaceTrigger } from "@bcr/react";
+import { ActionMenu, AppToolbar } from "@bcr/react";
 import { ArrowUpRight, FileText, FileUp, ListChecks, PanelRight, Play, Square } from "lucide-react";
 import { StatusDot } from "@bcr/react";
 import type { RefObject } from "react";
@@ -17,6 +17,7 @@ interface MangaHeaderProps {
   readonly pendingPages: number;
   readonly resumableCurrentPage: boolean;
   readonly onOpenTools: () => void;
+  readonly onOpenDiagnostics: () => void;
   readonly onImportFiles: (files: ReadonlyArray<File>) => void;
   readonly onHandoffDocument: () => void;
   readonly onRunPage: () => void;
@@ -34,27 +35,25 @@ export function MangaHeader({
   pendingPages,
   resumableCurrentPage,
   onOpenTools,
+  onOpenDiagnostics,
   onImportFiles,
   onHandoffDocument,
   onRunPage,
   onRunQueue,
 }: MangaHeaderProps) {
   return (
-    <header className="manga-header">
-      <WorkspaceTrigger />
+    <AppToolbar className="manga-header">
       <div className="manga-brand-lockup">
         <div className="manga-brand-mark">M/01</div>
         <div>
-          <div className="manga-brand-title">
-            BCR <span>/</span> Manga Studio
-          </div>
+          <div className="manga-brand-title">Manga Studio</div>
           <div className="manga-brand-subtitle">local-first comic translation workbench</div>
         </div>
       </div>
 
       <div className="manga-header-status">
         <span className="ui-badge ui-badge-accent manga-chip">
-          <StatusDot status="running" /> LOCAL-FIRST
+          <StatusDot status={state.running ? "running" : "completed"} /> 本地处理
         </span>
         <span className="ui-badge manga-chip">{sourceLabel(state.source)}</span>
         <span className="manga-header-size">
@@ -101,6 +100,9 @@ export function MangaHeader({
           </button>
         )}
         <ActionMenu label="更多漫画操作">
+          <button type="button" className="ui-btn ui-btn-ghost" onClick={onOpenDiagnostics}>
+            运行详情
+          </button>
           <button
             type="button"
             className="ui-btn ui-btn-default"
@@ -148,6 +150,6 @@ export function MangaHeader({
           }}
         />
       </div>
-    </header>
+    </AppToolbar>
   );
 }

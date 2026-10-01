@@ -1499,7 +1499,7 @@
 @container kb-main (width < 640px) {
   /* 工具条按钮文字隐藏（icon-only）：裸文本随字号归零；
    * svg 与显式字号元素（span、SectionLabel）不受影响；浮层菜单保持可读。 */
-  .knowledge-main
+  :is(.knowledge-tabs-bar, .knowledge-editor-head, .knowledge-editor-meta)
     button:has(> svg):not(
       .knowledge-overflow-menu button,
       .knowledge-tools-menu button,

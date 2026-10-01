@@ -44,6 +44,7 @@ export function NoteTabs({
     <div className="knowledge-tabs-bar" data-empty={tabs.length === 0 ? "true" : undefined}>
       <WorkspaceTrigger />
       {leading}
+      {tabs.length === 0 && <strong className="knowledge-app-identity">Knowledge</strong>}
       <nav ref={strip} className="knowledge-tabs" aria-label="打开的笔记">
         {tabs.map((id) => {
           const name = notes[id]!.title || "未命名笔记";

@@ -28,20 +28,20 @@ export function receivedTime(value: number): string {
 
 export function sessionLabel(state: SessionState): string {
   return {
-    pre_market: "PRE-MARKET",
-    open: "OPEN",
-    lunch_break: "MIDDAY PAUSE",
-    after_hours: "AFTER HOURS",
-    closed: "CLOSED",
-    planned: "NEXT COVERAGE",
+    pre_market: "盘前",
+    open: "交易中",
+    lunch_break: "午间休市",
+    after_hours: "盘后",
+    closed: "休市",
+    planned: "待开盘",
   }[state];
 }
 
 export function qualityLabel(quality: DataQuality): string {
   return {
-    delayed: "DELAYED LIVE",
-    partial: "PARTIAL LIVE",
-    cached: "CACHED SNAPSHOT",
-    demo: "DEMO FIXTURE",
+    delayed: "延迟行情",
+    partial: "部分行情",
+    cached: "缓存行情",
+    demo: "示例行情",
   }[quality];
 }

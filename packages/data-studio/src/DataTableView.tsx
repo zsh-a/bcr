@@ -1,6 +1,6 @@
 import { type DataCell, type DataColumnType, type DataTablePackage } from "@bcr/data-core";
 import { ArrowDownAZ, ArrowUpAZ } from "lucide-react";
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 function formatCell(value: DataCell): string {
   if (value === null) return "—";
@@ -25,6 +25,19 @@ export function DataTableView(props: {
   readonly sortDirection: "asc" | "desc";
   readonly onSort: (column: number) => void;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [overflow, setOverflow] = useState(false);
+  useLayoutEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    const measure = () => setOverflow(element.scrollWidth > element.clientWidth + 1);
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    const table = element.querySelector("table");
+    if (table) observer.observe(table);
+    measure();
+    return () => observer.disconnect();
+  }, [props.table]);
   const filteredRows = useMemo(() => {
     const normalized = props.query.trim().toLocaleLowerCase();
     const rows = props.table.rows.filter((row) => {
@@ -48,10 +61,12 @@ export function DataTableView(props: {
   const visible = filteredRows.slice(0, 250);
   return (
     <div className="data-table-frame">
-      <div className="data-table-scroll-hint" aria-hidden="true">
-        左右滑动查看完整表格
-      </div>
-      <div className="data-table-scroll">
+      {overflow && (
+        <div className="data-table-scroll-hint" aria-hidden="true">
+          左右滑动查看完整表格
+        </div>
+      )}
+      <div className="data-table-scroll" ref={scrollRef}>
         <table className="data-table">
           <thead>
             <tr>
@@ -68,6 +83,7 @@ export function DataTableView(props: {
                     <button
                       type="button"
                       className="data-column-button"
+                      title="点击列名排序"
                       onClick={() => props.onSort(index)}
                     >
                       <span>
@@ -90,6 +106,13 @@ export function DataTableView(props: {
             </tr>
           </thead>
           <tbody>
+            {visible.length === 0 && (
+              <tr>
+                <td colSpan={props.table.columns.length + 1}>
+                  没有符合搜索条件的数据，请尝试其他关键词。
+                </td>
+              </tr>
+            )}
             {visible.map((row, rowIndex) => (
               <tr key={`${rowIndex}-${row.map((value) => String(value)).join("|")}`}>
                 <td className="data-row-number">{rowIndex + 1}</td>
@@ -105,9 +128,9 @@ export function DataTableView(props: {
       </div>
       <div className="data-table-footer">
         <span>
-          {filteredRows.length.toLocaleString("zh-CN")} matching rows · showing {visible.length}
+          {filteredRows.length.toLocaleString("zh-CN")} 行 · 当前显示 {visible.length} 行
         </span>
-        {filteredRows.length > visible.length && <span>Preview capped at 250 rows</span>}
+        {filteredRows.length > visible.length && <span>最多预览 250 行</span>}
       </div>
     </div>
   );

@@ -23,7 +23,7 @@ export function ProjectPanel() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border pr-2">
-        <span className="ui-section-label">{files.length} files</span>
+        <span className="ui-section-label">{files.length} 个文件</span>
         <button
           type="button"
           onClick={() => {
@@ -45,7 +45,7 @@ export function ProjectPanel() {
       </div>
 
       {files.length === 0 ? (
-        <PanelEmpty title="还没有文件" hint="导入的源文件会持久化到 OPFS" />
+        <PanelEmpty title="还没有文件" hint="导入后会自动保存在当前设备" />
       ) : (
         <div ref={parentRef} className="min-h-0 flex-1 overflow-auto">
           <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>

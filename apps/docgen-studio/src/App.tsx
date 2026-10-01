@@ -1,5 +1,20 @@
-import { ActionMenu, WorkspaceTrigger } from "@bcr/react";
-import { Camera, Download, FileBadge, History, Image as ImageIcon, Shuffle } from "lucide-react";
+import {
+  ActionMenu,
+  EmptyState,
+  Toast,
+  type Notice,
+  type NoticeTone,
+  AppToolbar,
+} from "@bcr/react";
+import {
+  Camera,
+  Download,
+  FileBadge,
+  History,
+  Image as ImageIcon,
+  Shuffle,
+  Settings2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   formatMoney,
@@ -17,7 +32,7 @@ import {
   type PhotoScene,
 } from "@bcr/docgen-core";
 import type { GeneratedBill } from "@bcr/docgen-core/dom";
-import { Skeleton, Spinner } from "@bcr/react";
+import { Spinner } from "@bcr/react";
 import "./styles.css";
 
 interface GeneratedEntry {
@@ -64,8 +79,7 @@ export function App() {
   const [activeId, setActiveId] = useState<number | null>(null);
   const [previewTab, setPreviewTab] = useState<"document" | "paper">("document");
   const [workspaceTab, setWorkspaceTab] = useState<"edit" | "preview">("edit");
-  const [toastText, setToastText] = useState("");
-  const [toastOpen, setToastOpen] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   const template = getTemplate(docType) ?? listTemplates(regionId)[0];
   const region = REGIONS.find((r) => r.id === regionId);
@@ -86,16 +100,8 @@ export function App() {
     };
   }, [active]);
 
-  // 浮层提示：常驻 DOM 以便退场过渡，展示 4200ms 后收起
-  const showToast = (text: string): void => {
-    setToastText(text);
-    setToastOpen(true);
-  };
-  useEffect(() => {
-    if (!toastOpen) return;
-    const timer = setTimeout(() => setToastOpen(false), 4200);
-    return () => clearTimeout(timer);
-  }, [toastText, toastOpen]);
+  const showToast = (message: string, tone: NoticeTone = "error"): void =>
+    setNotice({ message, tone });
 
   const selectRegion = (id: RegionId): void => {
     setRegionId(id);
@@ -118,10 +124,11 @@ export function App() {
     const validation = validateBillInput(template, input);
     setErrors(validation.errors);
     if (!validation.ok) {
-      showToast("表单校验未通过，请检查标红字段");
+      showToast("请填写标记的必填信息", "warning");
       return;
     }
     setGenerating(true);
+    setNotice(null);
     try {
       const generated = await runPipeline(input, active?.watermark ?? true, photoScene);
       const entry: GeneratedEntry = {
@@ -137,6 +144,7 @@ export function App() {
       setEntries((prev) => [entry, ...prev].slice(0, 12));
       setActiveId(entry.id);
       setWorkspaceTab("preview");
+      showToast("预览已生成，可直接下载", "success");
     } catch (error) {
       showToast(`生成失败：${error instanceof Error ? error.message : String(error)}`);
     } finally {
@@ -148,6 +156,7 @@ export function App() {
     if (active === null || generating) return;
     const watermark = !active.watermark;
     setGenerating(true);
+    setNotice(null);
     try {
       const generated = await runPipeline(active.input, watermark, active.photoScene);
       setEntries((prev) =>
@@ -193,8 +202,7 @@ export function App() {
 
   return (
     <div className="docgen-studio">
-      <header className="docgen-header">
-        <WorkspaceTrigger />
+      <AppToolbar className="docgen-header">
         <div className="flex shrink-0 items-center gap-2 whitespace-nowrap font-semibold">
           <FileBadge size={20} className="text-accent" />
           DocGen Lab
@@ -215,7 +223,7 @@ export function App() {
             预览
           </button>
         </nav>
-      </header>
+      </AppToolbar>
 
       <div className="docgen-layout" data-view={workspaceTab}>
         <aside className="docgen-form">
@@ -425,13 +433,34 @@ export function App() {
               <Camera size={15} />
               实拍 JPG
             </button>
-            <ActionMenu label="更多预览操作" className="docgen-preview-actions">
+            {active !== null && (
+              <button
+                type="button"
+                className="ui-btn ui-btn-primary docgen-download"
+                disabled={urls === null || generating}
+                onClick={() => {
+                  if (activeUrl && active)
+                    triggerDownload(
+                      activeUrl,
+                      `${active.vm.invoiceNumber}${previewTab === "paper" ? "-photo.jpg" : ".png"}`,
+                    );
+                }}
+              >
+                <Download size={16} />
+                下载
+              </button>
+            )}
+            <ActionMenu
+              label="更多预览操作"
+              icon={<Settings2 size={18} />}
+              className="docgen-preview-actions"
+            >
               <button
                 type="button"
                 className="docgen-tab"
                 disabled={active === null || generating}
                 onClick={() => void toggleWatermark()}
-                title="切换后重新栅格化"
+                title="切换水印并更新预览"
               >
                 水印：{(active?.watermark ?? true) ? "开" : "关"}
               </button>
@@ -469,8 +498,8 @@ export function App() {
             {generating && (
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-scrim">
                 <div className="flex items-center gap-2 text-muted">
-                  <Spinner label="正在栅格化与合成" />
-                  正在栅格化与合成…
+                  <Spinner label="正在生成预览" />
+                  正在生成预览…
                 </div>
               </div>
             )}
@@ -481,19 +510,25 @@ export function App() {
                 className="docgen-preview-image max-h-full max-w-full object-contain"
               />
             ) : (
-              <div className="flex flex-col items-center gap-4 text-center text-faint">
-                <div className="flex w-60 flex-col gap-3">
-                  <Skeleton style={{ height: 20, width: "60%" }} />
-                  <Skeleton style={{ height: 11, width: "85%" }} />
-                  <Skeleton style={{ height: 11, width: "70%" }} />
-                  <Skeleton style={{ height: 96 }} />
-                  <Skeleton style={{ height: 11, width: "45%", marginLeft: "auto" }} />
-                </div>
-                <div>
-                  填写信息后点击「生成预览」
-                  <div className="mt-1 text-xs">同一姓名 + 地址将生成完全一致的虚构账单</div>
-                </div>
-              </div>
+              <EmptyState
+                icon={<FileBadge size={20} />}
+                title="预览你的文档"
+                description="选择模板并填写信息，生成后即可查看和下载。"
+                action={
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn-default docgen-empty-action"
+                    onClick={() => {
+                      setWorkspaceTab("edit");
+                      requestAnimationFrame(() =>
+                        document.querySelector<HTMLInputElement>(".docgen-form input")?.focus(),
+                      );
+                    }}
+                  >
+                    填写信息
+                  </button>
+                }
+              />
             )}
           </div>
 
@@ -504,9 +539,7 @@ export function App() {
         </main>
       </div>
 
-      <div className="docgen-toast" data-open={toastOpen || undefined}>
-        {toastText}
-      </div>
+      <Toast notice={notice} onDismiss={() => setNotice(null)} />
     </div>
   );
 }

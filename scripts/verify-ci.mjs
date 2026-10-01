@@ -132,6 +132,7 @@ await withServer({
     "scripts/verify-shell-architecture.mjs",
     "scripts/verify-workspace-navigation.mjs",
     "scripts/verify-app-layout.mjs",
+    "scripts/verify-modern-ui.mjs",
     "scripts/verify-persistence.mjs",
     "scripts/verify-quant-lab.mjs",
     "scripts/verify-jsg.mjs",

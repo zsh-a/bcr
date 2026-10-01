@@ -109,8 +109,7 @@ export function MangaCanvas({ state }: { readonly state: MangaState }) {
         </div>
         <div className="manga-canvas-caption">
           <span>
-            <ScanText className="size-3.5" /> {state.regions.length} text regions · click a region
-            to review
+            <ScanText className="size-3.5" /> {state.regions.length} 个文字区域 · 点击编辑
           </span>
           <span className="manga-caption-right">
             {state.settings.sourceLanguage.toUpperCase()} → ZH

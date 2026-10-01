@@ -360,7 +360,7 @@ export async function runDocumentStage(
       completedAt,
       durationMs: completedAt - startedAt,
     });
-    documents.setNotice(`${prepared.name} ${stage.label} 失败：${message}`);
+    documents.setNotice(`${prepared.name} ${stage.label} 失败：${message}`, "error");
   } finally {
     const active = activeTasks.get(prepared.id);
     if (active?.stageId === stageId) activeTasks.delete(prepared.id);

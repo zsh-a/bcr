@@ -9,7 +9,7 @@
 
 .media-studio input,
 .media-studio select,
-.media-studio button,
+.media-studio button:not(.ui-btn):not(.btn),
 .media-studio textarea {
   color: inherit;
 }
@@ -199,4 +199,11 @@
   .media-tabs {
     padding-inline: var(--space-4);
   }
+}
+
+.media-empty {
+  flex: 1;
+}
+.media-dropzone {
+  width: 100%;
 }

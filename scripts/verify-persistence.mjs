@@ -34,7 +34,7 @@ await page.evaluate(
 );
 await page.waitForTimeout(1500);
 
-await page.locator("button", { hasText: "BLAKE3" }).first().click();
+await page.getByRole("button", { name: "计算校验值", exact: true }).click();
 await page.waitForTimeout(2500);
 await page.screenshot({ path: `${dir}/p1-computed.png` });
 
@@ -57,7 +57,7 @@ if (taskId !== undefined && !taskText2.includes(taskId)) {
 console.log("file list and task history restored after reload");
 
 // 同一文件重跑 → 缓存命中（cache_entries 持久化）
-await page.locator("button", { hasText: "BLAKE3" }).first().click();
+await page.getByRole("button", { name: "计算校验值", exact: true }).click();
 await page.waitForTimeout(1500);
 await page.screenshot({ path: `${dir}/p3-cachehit.png` });
 

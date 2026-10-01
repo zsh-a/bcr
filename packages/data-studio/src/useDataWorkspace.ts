@@ -1,6 +1,6 @@
 import type { SearchDocument } from "@bcr/core";
 import { dataTableStats, type DataTablePackage } from "@bcr/data-core";
-import { useLocationSearch, useOptionalRuntime } from "@bcr/react";
+import { type Notice, type NoticeTone, useLocationSearch, useOptionalRuntime } from "@bcr/react";
 import { useEffect, useState } from "react";
 import { downloadDataTable, formatBytes, tableSearchPreview } from "./dataFormat";
 import {
@@ -57,7 +57,10 @@ export function useDataWorkspace() {
   const [activeAssetId, setActiveAssetId] = useState<string | null>(null);
   const [status, setStatus] = useState<LoadState>("restoring");
   const [progress, setProgress] = useState(0);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, updateNotice] = useState<Notice | null>(null);
+  const setNotice = (message: string | null, tone: NoticeTone = "success") => {
+    updateNotice(message === null ? null : { message, tone });
+  };
   const [query, setQuery] = useState("");
   const [sortColumn, setSortColumn] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -79,7 +82,7 @@ export function useDataWorkspace() {
       setStatus(restored.active === undefined ? "idle" : "ready");
       setProgress(restored.active === undefined ? 0 : 1);
       if (restored.active === undefined && restored.catalog.assets.length > 0) {
-        setNotice("资产目录已恢复，但当前表格 Artifact 不可用；可重新导入或运行存储治理");
+        setNotice("数据集列表已恢复，但当前表格不可用，请重新导入。", "warning");
       }
     });
     return () => {
@@ -128,7 +131,7 @@ export function useDataWorkspace() {
     setNotice(null);
     try {
       const next = await activateDataAsset(services, asset.id);
-      if (next === undefined) throw new Error(`${asset.sourceName} 的 table Artifact 不可用`);
+      if (next === undefined) throw new Error(`${asset.sourceName} 的表格不可用`);
       const opened = next.asset ?? asset;
       setSnapshot(next);
       setAssets((current) => [
@@ -143,7 +146,7 @@ export function useDataWorkspace() {
       setNotice(`已切换到 ${opened.sourceName}`);
     } catch (reason) {
       setStatus("error");
-      setNotice(reason instanceof Error ? reason.message : String(reason));
+      setNotice(reason instanceof Error ? reason.message : String(reason), "error");
     }
   };
 
@@ -169,7 +172,7 @@ export function useDataWorkspace() {
       setNotice(`${file.name} 已导入并保存到本地`);
     } catch (reason) {
       setStatus("error");
-      setNotice(reason instanceof Error ? reason.message : String(reason));
+      setNotice(reason instanceof Error ? reason.message : String(reason), "error");
     }
   };
 
@@ -188,7 +191,7 @@ export function useDataWorkspace() {
       setStatus("idle");
       setProgress(0);
       setQuery("");
-      setNotice("已清除当前 Data Studio 快照；原始文件仍保留在本地存储");
+      setNotice("已清除当前表格；原始文件仍保留在本地存储");
       return;
     }
     const catalog = await removeDataAsset(services, currentId);
@@ -208,7 +211,7 @@ export function useDataWorkspace() {
           ]);
           setStatus("ready");
           setProgress(1);
-          setNotice(`已移除当前资产，切换到 ${nextAsset.sourceName}；Artifact 仍保留在本地存储`);
+          setNotice(`已移除当前资产，切换到 ${nextAsset.sourceName}；处理结果仍保留在本地存储`);
           return;
         }
       }
@@ -224,7 +227,7 @@ export function useDataWorkspace() {
     if (
       typeof window !== "undefined" &&
       !window.confirm(
-        `确认回收 ${storageReport.orphaned.length} 个未引用 Data Artifact（${formatBytes(
+        `确认回收 ${storageReport.orphaned.length} 个未引用的处理结果（${formatBytes(
           storageReport.orphaned.reduce((total, entry) => total + entry.size, 0),
         )}）？目录中的资产和其它工作台对象不会被删除。`,
       )
@@ -238,10 +241,13 @@ export function useDataWorkspace() {
       setNotice(
         result.deleted.length === 0
           ? `没有回收对象（${result.skipped.length} 个对象在计划执行前已变化或受保护）`
-          : `已回收 ${result.deleted.length} 个未引用 Data Artifact，释放 ${formatBytes(result.reclaimedBytes)}`,
+          : `已回收 ${result.deleted.length} 个未引用的处理结果，释放 ${formatBytes(result.reclaimedBytes)}`,
       );
     } catch (reason) {
-      setNotice(`存储治理失败：${reason instanceof Error ? reason.message : String(reason)}`);
+      setNotice(
+        `存储清理失败：${reason instanceof Error ? reason.message : String(reason)}`,
+        "error",
+      );
     } finally {
       setStorageBusy(false);
     }

@@ -1,7 +1,7 @@
 import {
   forwardRef,
-  useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   type ButtonHTMLAttributes,
   type CSSProperties,
@@ -84,7 +84,7 @@ export function Dialog({
   open: boolean;
   onClose: () => void;
   title?: ReactNode;
-  placement?: "center" | "sheet";
+  placement?: "center" | "sheet" | "drawer";
   className?: string;
   closeLabel?: string;
   closable?: boolean;
@@ -93,21 +93,49 @@ export function Dialog({
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = ref.current;
-    if (!el) return;
-    if (open && !el.open) el.showModal();
-    if (!open && el.open) el.close();
+    if (!el || !open) return;
+    const trigger = document.activeElement;
+    if (!el.open) el.showModal();
+    return () => {
+      if (el.open) el.close();
+      if (trigger instanceof HTMLElement && trigger.isConnected)
+        trigger.focus({ preventScroll: true });
+    };
   }, [open]);
 
   return (
     <dialog
       ref={ref}
+      tabIndex={-1}
       aria-labelledby={title !== undefined ? titleId : undefined}
       className={`ui-dialog ui-dialog-${placement} ${className}`.trim()}
       onClose={onClose}
       onCancel={(event) => {
-        if (!closable) event.preventDefault();
+        event.preventDefault();
+        event.stopPropagation();
+        if (closable) onClose();
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== "Tab") return;
+        const controls = [
+          ...event.currentTarget.querySelectorAll<HTMLElement>(
+            "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, a[href], [tabindex]:not([tabindex='-1'])",
+          ),
+        ].filter((element) => element.checkVisibility() && !element.closest("[inert]"));
+        const first = controls[0];
+        const last = controls.at(-1);
+        if (!first) {
+          event.preventDefault();
+          event.currentTarget.focus();
+        } else if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
       }}
       onClick={(event) => {
         if (closable && event.target === event.currentTarget) onClose();
@@ -122,9 +150,8 @@ export function Dialog({
             <IconButton
               label={closeLabel}
               disabled={!closable}
-              size="sm"
-              onClick={onClose}
               className="ui-dialog-close"
+              onClick={onClose}
               style={{ marginLeft: "auto" }}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
@@ -142,6 +169,18 @@ export function Dialog({
       </div>
     </dialog>
   );
+}
+
+/** One modal surface for app panels: native background isolation and shared motion. */
+export function Drawer(props: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  closeLabel?: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return <Dialog {...props} placement="drawer" />;
 }
 
 export type BadgeTone = "muted" | "accent" | "amber" | "danger" | "info" | "success";

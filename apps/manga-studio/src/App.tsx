@@ -7,7 +7,13 @@ import {
   publishDocumentHandoff,
 } from "@bcr/document-core";
 import {
+  Button,
+  Dialog,
+  Drawer,
+  Toast,
+  type Notice,
   StatusDot,
+  useMediaQuery,
   useLocationSearch,
   useOptionalRuntime,
   usePublishRunningCount,
@@ -119,6 +125,17 @@ export function App() {
   const [modelCacheInfo, setModelCacheInfo] = useState<MangaModelCacheInfo | null>(null);
   const [modelActionKey, setModelActionKey] = useState<string | null>(null);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const compactTools = useMediaQuery("(max-width: 960px)");
+
+  useEffect(() => {
+    if (state.logs.at(-1)?.level === "error")
+      setNotice({ message: "操作未完成，请在更多菜单的运行详情中查看原因并重试。", tone: "error" });
+  }, [state.logs]);
+  useEffect(() => {
+    if (state.running) setNotice(null);
+  }, [state.running]);
   const [online, setOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine,
   );
@@ -138,15 +155,6 @@ export function App() {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (!mobileToolsOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileToolsOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [mobileToolsOpen]);
 
   useEffect(() => {
     if (runtime === null) return;
@@ -571,7 +579,9 @@ export function App() {
 
   const exportPage = () => {
     setExporting(true);
+    setNotice(null);
     void exportCurrentPage()
+      .then(() => setNotice({ message: "图片已导出", tone: "success" }))
       .catch((reason: unknown) => {
         manga.log("error", `export · ${reason instanceof Error ? reason.message : String(reason)}`);
       })
@@ -628,15 +638,43 @@ export function App() {
       <div className="manga-boot">
         <span className="manga-brand-mark">M/01</span>
         <span>
-          <strong>ASSEMBLING MANGA RUNTIME</strong>
-          <small>OPFS · SQLite · Artifact store</small>
+          <strong>正在打开漫画工作台</strong>
+          <small>正在恢复本地项目</small>
         </span>
       </div>
     );
   }
 
+  const toolsPanel = (
+    <MangaToolsPanel
+      state={state}
+      selectedRegion={selectedRegion}
+      modelCacheInfo={modelCacheInfo}
+      modelRecords={modelRecords}
+      modelActionKey={modelActionKey}
+      online={online}
+      runtimeReady
+      translationResolution={translationResolution}
+      ocrResolution={ocrResolution}
+      cleanManifest={cleanManifest}
+      cleanFallback={cleanResolution.fallbackReason !== undefined}
+      glossarySource={glossarySource}
+      glossaryTarget={glossaryTarget}
+      exporting={exporting}
+      onRefreshModelCache={refreshModelCache}
+      onClearModelCache={clearModelCache}
+      onPreloadModel={startModelPreload}
+      onGlossarySourceChange={setGlossarySource}
+      onGlossaryTargetChange={setGlossaryTarget}
+      onAddGlossary={addGlossary}
+      onAddRegion={addRegion}
+      onExportPage={exportPage}
+    />
+  );
+
   return (
-    <div className={`manga-studio ${mobileToolsOpen ? "manga-mobile-tools-open" : ""}`}>
+    <div className="manga-studio">
+      <Toast notice={notice} onDismiss={() => setNotice(null)} />
       <MangaHeader
         state={state}
         fileInputRef={fileInputRef}
@@ -648,18 +686,11 @@ export function App() {
         pendingPages={pendingPages}
         resumableCurrentPage={resumableCurrentPage}
         onOpenTools={() => setMobileToolsOpen(true)}
+        onOpenDiagnostics={() => setDiagnosticsOpen(true)}
         onImportFiles={(files) => void importFiles(files)}
         onHandoffDocument={handoffDocument}
         onRunPage={run}
         onRunQueue={() => void runMangaQueue(hostServices ?? undefined)}
-      />
-
-      <button
-        type="button"
-        className="manga-mobile-tools-scrim"
-        onClick={() => setMobileToolsOpen(false)}
-        aria-label="关闭工具面板"
-        hidden={!mobileToolsOpen}
       />
 
       <div className="manga-workspace">
@@ -674,44 +705,48 @@ export function App() {
           onImportFiles={(files) => void importFiles(files)}
         />
         <MangaCanvas state={state} />
-        <MangaToolsPanel
-          state={state}
-          selectedRegion={selectedRegion}
-          modelCacheInfo={modelCacheInfo}
-          modelRecords={modelRecords}
-          modelActionKey={modelActionKey}
-          online={online}
-          runtimeReady
-          translationResolution={translationResolution}
-          ocrResolution={ocrResolution}
-          cleanManifest={cleanManifest}
-          cleanFallback={cleanResolution.fallbackReason !== undefined}
-          glossarySource={glossarySource}
-          glossaryTarget={glossaryTarget}
-          exporting={exporting}
-          onClose={() => setMobileToolsOpen(false)}
-          onRefreshModelCache={refreshModelCache}
-          onClearModelCache={clearModelCache}
-          onPreloadModel={startModelPreload}
-          onGlossarySourceChange={setGlossarySource}
-          onGlossaryTargetChange={setGlossaryTarget}
-          onAddGlossary={addGlossary}
-          onAddRegion={addRegion}
-          onExportPage={exportPage}
-        />
+        {!compactTools && toolsPanel}
       </div>
 
+      <Drawer
+        open={compactTools && mobileToolsOpen}
+        title="翻译工具"
+        closeLabel="关闭工具面板"
+        onClose={() => setMobileToolsOpen(false)}
+        className="manga-tools-drawer"
+      >
+        {compactTools && toolsPanel}
+      </Drawer>
+      <Dialog open={diagnosticsOpen} onClose={() => setDiagnosticsOpen(false)} title="运行详情">
+        <div className="manga-diagnostics">
+          <p>本地存储 · Worker / WASM</p>
+          {state.logs.map((entry, index) => (
+            <p key={index} data-level={entry.level}>
+              {entry.message}
+            </p>
+          ))}
+        </div>
+      </Dialog>
       <footer className="manga-footer">
-        <div className="manga-footer-log">
-          <StatusDot status="running" />
-          <span className="ui-section-label manga-footer-log-label">RUNTIME LOG</span>
-          <span className="manga-footer-message">{state.logs.at(-1)?.message ?? "ready"}</span>
-        </div>
-        <div className="manga-footer-meta">
-          <span>ARTIFACTS · {state.stages.filter((stage) => stage.status === "done").length}</span>
-          <span>OPFS READY</span>
-          <span>WORKER · WASM FALLBACK</span>
-        </div>
+        <span className="manga-footer-log">
+          <StatusDot status={state.running ? "running" : "completed"} />
+          {state.running
+            ? "正在翻译"
+            : state.stages.every((stage) => stage.status === "done")
+              ? "翻译已完成"
+              : state.source.kind === "fixture"
+                ? "示例漫画"
+                : "已准备好"}
+        </span>
+        {state.source.kind === "fixture" ? (
+          <Button variant="primary" onClick={() => fileInputRef.current?.click()}>
+            导入漫画
+          </Button>
+        ) : (
+          <Button variant="primary" disabled={state.running || exporting} onClick={exportPage}>
+            导出图片
+          </Button>
+        )}
       </footer>
     </div>
   );

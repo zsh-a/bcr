@@ -79,7 +79,7 @@ export function ReaderToolbar(props: {
     );
   };
   return (
-    <div className="reader-toolbar">
+    <div className="reader-toolbar" data-demo={props.book.id === "demo-reading-space"}>
       <div className="reader-toolbar-title">
         <WorkspaceTrigger />
         {props.book.source.format !== "pdf" && (
@@ -228,7 +228,7 @@ export function ReaderToolbar(props: {
         </button>
         <button
           type="button"
-          className={`reader-mobile-toolbar-button ${bookmarked ? "is-active" : ""}`}
+          className={`reader-mobile-toolbar-button reader-mobile-bookmark ${bookmarked ? "is-active" : ""}`}
           onClick={() => reader.toggleBookmark()}
           aria-pressed={bookmarked}
           aria-label={bookmarked ? "移除当前位置书签" : "标记当前位置"}

@@ -166,7 +166,11 @@ try {
   await page.locator(".data-table tbody tr").first().waitFor();
   const row = await page.locator(".data-table tbody tr").first().boundingBox();
   assert(row.y < 500, `Data: first row starts at ${row.y}`);
-  assert.equal(await page.locator(".data-asset-catalog").getAttribute("open"), null);
+  assert.equal(
+    await page.locator(".data-asset-catalog").count(),
+    0,
+    "one dataset needs no selector",
+  );
   assert.equal(await page.locator(".data-schema-strip").getAttribute("open"), null);
   await page.screenshot({ path: `${shots}/app-layout-data-mobile.png` });
   const dataMenu = await menuFits(page, "更多数据操作");

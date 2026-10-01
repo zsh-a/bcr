@@ -255,12 +255,6 @@
   min-height: 0;
 }
 
-/* 移动端面板抽屉：桌面隐藏，窄屏媒体查询里以 data-open 进出场。 */
-.studio-mobile-panel-backdrop,
-.studio-mobile-panel-surface {
-  display: none;
-}
-
 /* ---------- 浮层尺寸（ui-dialog 基座上的表面特化） ---------- */
 .studio-command-palette .ui-dialog-body,
 .studio-search-dialog .ui-dialog-body {
@@ -408,122 +402,6 @@
     min-height: var(--h-control-lg);
   }
 
-  /* 抽屉进出场：@starting-style + allow-discrete，位移与时长走令牌。 */
-  .studio-mobile-panel-backdrop {
-    position: absolute;
-    z-index: 25;
-    inset: 0;
-    border: 0;
-    background: var(--color-scrim);
-    opacity: 0;
-    transition:
-      opacity var(--duration-base) var(--ease-standard),
-      display var(--duration-base) allow-discrete;
-  }
-
-  .studio-mobile-panel-backdrop[data-open] {
-    display: block;
-    opacity: 1;
-  }
-
-  @starting-style {
-    .studio-mobile-panel-backdrop[data-open] {
-      opacity: 0;
-    }
-  }
-
-  .studio-mobile-panel-surface {
-    position: absolute;
-    z-index: 26;
-    inset: 0 auto 0 0;
-    flex-direction: column;
-    width: min(var(--w-sidebar), calc(100% - var(--space-4)));
-    min-width: 0;
-    border-right: 1px solid var(--color-border);
-    background: var(--color-surface);
-    padding-bottom: env(safe-area-inset-bottom);
-    box-shadow: var(--shadow-dialog);
-    opacity: 0;
-    transform: translateX(-100%);
-    transition:
-      opacity var(--duration-slow) var(--ease-standard),
-      transform var(--duration-slow) var(--ease-standard),
-      display var(--duration-slow) allow-discrete;
-  }
-
-  .studio-mobile-panel-surface[data-open] {
-    display: flex;
-    opacity: 1;
-    transform: none;
-  }
-
-  @starting-style {
-    .studio-mobile-panel-surface[data-open] {
-      opacity: 0;
-      transform: translateX(-100%);
-    }
-  }
-
-  .studio-mobile-panel-header,
-  .studio-mobile-panel-tabs {
-    display: flex;
-    align-items: center;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .studio-mobile-panel-header {
-    min-height: var(--h-toolbar);
-    justify-content: space-between;
-    padding: 0 var(--space-2) 0 var(--space-4);
-    color: var(--color-faint);
-  }
-
-  .studio-mobile-panel-header .ui-section-label {
-    padding: 0;
-  }
-
-  .studio-mobile-panel-close {
-    display: inline-grid;
-    width: var(--h-control-lg);
-    height: var(--h-control-lg);
-    place-items: center;
-    border: 0;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--color-muted);
-  }
-
-  .studio-mobile-panel-close:hover {
-    background: var(--color-raised);
-    color: var(--color-text);
-  }
-
-  .studio-mobile-panel-tabs {
-    gap: var(--space-1);
-    padding: var(--space-2);
-  }
-
-  .studio-mobile-panel-tabs button {
-    min-height: var(--h-control-lg);
-    flex: 1;
-    border: 1px solid transparent;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--color-muted);
-    font-size: var(--text-sm);
-  }
-
-  .studio-mobile-panel-tabs button.is-active {
-    border-color: var(--color-border);
-    background: var(--color-raised);
-    color: var(--color-text);
-  }
-
-  .studio-mobile-panel-content {
-    min-height: 0;
-    flex: 1;
-  }
-
   /* 窄屏只留 Workspace 列，两侧列移入抽屉。
    * dockview 会把 width/left 写成 inline 样式——用约束值中和，不做优先级硬提升。 */
   .studio-dock
@@ -559,11 +437,6 @@
     animation: none;
   }
 
-  .studio-mobile-panel-backdrop,
-  .studio-mobile-panel-surface {
-    transition: none;
-  }
-
   html {
     scroll-behavior: auto;
   }
@@ -585,4 +458,22 @@
   .studio-panel-menu {
     display: none;
   }
+}
+
+.studio-mobile-panel-surface .ui-dialog-body {
+  display: flex;
+  flex-direction: column;
+}
+.studio-mobile-panel-selector {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.studio-mobile-panel-selector select {
+  width: 100%;
+  min-height: var(--h-control-lg);
+}
+.studio-mobile-panel-content {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
 }

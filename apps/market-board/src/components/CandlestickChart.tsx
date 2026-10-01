@@ -1,4 +1,4 @@
-import { Spinner } from "@bcr/react";
+import { Button, EmptyState, Skeleton, Spinner } from "@bcr/react";
 import type { MarketHistoryBar } from "@bcr/market-data";
 import { useMemo, useState, type PointerEvent } from "react";
 
@@ -53,6 +53,7 @@ function value(value: number): string {
 export function CandlestickChart(props: {
   bars: ReadonlyArray<MarketHistoryBar>;
   loading: boolean;
+  onRetry?: () => void;
 }) {
   const bars = useMemo(() => displayBars(props.bars), [props.bars]);
   const [hovered, setHovered] = useState<number | null>(null);
@@ -78,15 +79,30 @@ export function CandlestickChart(props: {
 
   if (props.loading && bars.length === 0) {
     return (
-      <div className="ma-candle-loading" aria-label="Loading historical prices">
-        <Spinner size="sm" />
-        <span>ASSEMBLING DAILY BARS</span>
+      <div className="ma-candle-loading" aria-label="正在加载历史行情">
+        <div className="ma-chart-placeholder" aria-hidden="true">
+          {[35, 60, 45, 75, 50, 65, 40, 55].map((height, index) => (
+            <Skeleton key={index} style={{ height: `${height}%` }} />
+          ))}
+        </div>
+        <span className="ma-chart-loading-label">
+          <Spinner size="sm" />
+          正在加载历史行情
+        </span>
       </div>
     );
   }
 
   if (bars.length === 0 || active === undefined) {
-    return <div className="ma-candle-empty">HISTORY UNAVAILABLE</div>;
+    return (
+      <div className="ma-candle-empty">
+        <EmptyState
+          title="暂无历史行情"
+          description="尝试其他时间区间，或重新连接数据源。"
+          action={props.onRetry && <Button onClick={props.onRetry}>重新加载</Button>}
+        />
+      </div>
+    );
   }
 
   return (

@@ -179,7 +179,7 @@ await group("1. 320px reflow（WCAG 1.4.10，禁双向滚动）", async () => {
   await page.goto(`${origin}/studio`, { waitUntil: "networkidle" });
   await page.locator(".studio-dock-shell").waitFor({ timeout: 20_000 });
   await page.getByRole("button", { name: "打开工作区面板" }).click();
-  await page.locator("#studio-mobile-panels[data-open]").waitFor();
+  await page.getByRole("dialog", { name: "工作区面板", exact: true }).waitFor();
   await settle(300);
   await noHScroll("320×256 studio 面板抽屉打开");
   await page.keyboard.press("Escape");
@@ -425,7 +425,7 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
       const statusLine = document.querySelector(".knowledge-status-line");
       const iconButtons = [
         ...main.querySelectorAll(
-          "button:has(> svg):not(.knowledge-overflow-menu button, .knowledge-tools-menu button, .knowledge-tag-chip)",
+          ":is(.knowledge-tabs-bar, .knowledge-editor-head, .knowledge-editor-meta) button:has(> svg):not(.knowledge-overflow-menu button, .knowledge-tools-menu button, .knowledge-tag-chip)",
         ),
       ].map((button) => getComputedStyle(button).fontSize);
       return {
@@ -699,11 +699,9 @@ await group("6. reduced-motion：形态过渡 duration ≤ 0.01ms 且直达终�
 
   await page.goto(`${origin}/studio`, { waitUntil: "networkidle" });
   await page.locator(".studio-dock-shell").waitFor({ timeout: 20_000 });
-  const drawerDurations = await page.evaluate(() =>
-    [".studio-mobile-panel-surface", ".studio-mobile-panel-backdrop"].map(
-      (selector) => getComputedStyle(document.querySelector(selector)).transitionDuration,
-    ),
-  );
+  const drawerDurations = await page.evaluate(() => [
+    getComputedStyle(document.querySelector(".studio-mobile-panel-surface")).transitionDuration,
+  ]);
   for (const value of drawerDurations) {
     assert(parseDurationMs(value) <= 0.011, `工作区抽屉 reduced-motion 过渡应终止（${value}）`);
   }

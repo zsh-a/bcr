@@ -227,7 +227,7 @@ export function App() {
                   }
                 }
               }}
-              placeholder="Search stocks, indices or ETFs"
+              placeholder="搜索股票、指数或基金"
             />
             <kbd className="ui-kbd">/</kbd>
           </div>
@@ -238,15 +238,15 @@ export function App() {
             data-open={searchOpen && query.trim().length >= 2 ? "" : undefined}
           >
             <div className="ma-search-summary">
-              <span>GLOBAL DISCOVERY</span>
+              <span>搜索市场</span>
               <small>
                 {search.loading
                   ? search.results.length > 0
-                    ? "LOCAL READY · SEARCHING STOCK-SDK"
-                    : "SEARCHING STOCK-SDK"
+                    ? "正在补充在线结果"
+                    : "正在搜索"
                   : search.remoteAvailable === false
-                    ? `${search.results.length} LOCAL MATCHES · REMOTE DEGRADED`
-                    : `${search.results.length} QUOTEABLE MATCHES`}
+                    ? `${search.results.length} 个本地结果 · 在线搜索暂不可用`
+                    : `${search.results.length} 个结果`}
               </small>
             </div>
             {search.results.map((result, index) => (
@@ -274,7 +274,7 @@ export function App() {
             ))}
             {!search.loading && search.results.length === 0 && (
               <div className="ma-search-state">
-                {search.error ?? quoteError ?? "NO QUOTEABLE INSTRUMENTS FOUND"}
+                {search.error ?? quoteError ?? "没有找到相关标的，试试名称或代码"}
               </div>
             )}
             {quoteError !== null && search.results.length > 0 && (
@@ -310,8 +310,8 @@ export function App() {
 
       <main className="ma-content">
         <section className="ma-intro">
-          <h1>Market overview</h1>
-          <p>Stocks · Indices · Funds · Futures</p>
+          <h1>市场概览</h1>
+          <p>股票 · 指数 · 基金 · 期货</p>
         </section>
 
         {selected !== undefined && (
@@ -343,19 +343,19 @@ export function App() {
                   </em>
                   <dl>
                     <div>
-                      <dt>HIGH</dt>
+                      <dt>最高</dt>
                       <dd>{selected.high === null ? "—" : price(selected.high)}</dd>
                     </div>
                     <div>
-                      <dt>LOW</dt>
+                      <dt>最低</dt>
                       <dd>{selected.low === null ? "—" : price(selected.low)}</dd>
                     </div>
                     <div>
-                      <dt>VOLUME</dt>
+                      <dt>成交量</dt>
                       <dd>{compact(selected.volume)}</dd>
                     </div>
                     <div>
-                      <dt>CCY</dt>
+                      <dt>币种</dt>
                       <dd>{selected.instrument.currency}</dd>
                     </div>
                   </dl>
@@ -363,10 +363,10 @@ export function App() {
                 <div className="ma-focus-chart">
                   <div className="ma-history-toolbar">
                     <div className="ma-chart-meta">
-                      <span>{historyRange} · DAILY OHLCV</span>
+                      <span>{historyRange} · 日线</span>
                       <small>
                         {history.loading
-                          ? "LOADING HISTORY"
+                          ? "正在加载历史行情"
                           : `${currentHistory?.bars.length ?? 0} BARS · ${currentHistory?.quality.toUpperCase() ?? "—"}`}
                       </small>
                     </div>
@@ -383,10 +383,14 @@ export function App() {
                       ))}
                     </nav>
                   </div>
-                  <CandlestickChart bars={currentHistory?.bars ?? []} loading={history.loading} />
+                  <CandlestickChart
+                    bars={currentHistory?.bars ?? []}
+                    loading={history.loading}
+                    onRetry={() => void history.refresh()}
+                  />
                   <div className="ma-history-source">
-                    <span>{currentHistory?.source ?? "RESOLVING HISTORY PROVIDER"}</span>
-                    <small>QFQ · DAILY · INFORMATIONAL</small>
+                    <span>{currentHistory?.source ?? "正在连接数据源"}</span>
+                    <small>前复权 · 日线</small>
                   </div>
                 </div>
               </div>
@@ -396,14 +400,14 @@ export function App() {
                 onClick={openQuant}
                 disabled={history.loading || (currentHistory?.bars.length ?? 0) < 30}
               >
-                SEND {currentHistory?.bars.length ?? 0} BARS TO QUANT <ArrowUpRight />
+                在 Quant Lab 中回测 <ArrowUpRight />
               </button>
             </article>
 
             <aside className="ma-breadth-card">
               <div className="ma-section-label">
-                <span>MARKET BREADTH</span>
-                <small>A-SHARE UNIVERSE</small>
+                <span>市场宽度</span>
+                <small>A 股市场</small>
               </div>
               <div
                 className="ma-breadth-orbit"
@@ -417,7 +421,7 @@ export function App() {
                   <strong>
                     {Math.round((advancers / Math.max(1, landscape.breadth.total)) * 100)}%
                   </strong>
-                  <span>ADVANCING</span>
+                  <span>上涨占比</span>
                 </div>
               </div>
               <div className="ma-breadth-counts">

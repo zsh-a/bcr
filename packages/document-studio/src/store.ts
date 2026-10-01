@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { RuntimeMetadata } from "@bcr/react";
+import type { NoticeTone, RuntimeMetadata } from "@bcr/react";
 import {
   createDocumentJob,
   documentOcrSettings,
@@ -17,6 +17,7 @@ export interface DocumentState {
   readonly activeJobId: string;
   readonly selectedStageId: DocumentStageId;
   readonly notice: string | null;
+  readonly noticeTone: NoticeTone;
 }
 
 const STORAGE_KEY = "bcr.document-studio.v1";
@@ -122,6 +123,7 @@ function initialState(): DocumentState {
     activeJobId: active.id,
     selectedStageId: active.stages[0]?.id ?? "ingest",
     notice: null,
+    noticeTone: "info",
   };
 }
 
@@ -206,6 +208,7 @@ class DocumentStore {
         existing === undefined
           ? `${job.name} 已加入 Document Inbox`
           : `${job.name} 已与现有任务合并（源 Artifact 相同）`,
+      noticeTone: "success",
     });
     return resolved.id;
   }
@@ -268,8 +271,8 @@ class DocumentStore {
     });
   }
 
-  setNotice(notice: string | null): void {
-    this.set({ notice });
+  setNotice(notice: string | null, noticeTone: NoticeTone = "info"): void {
+    this.set({ notice, noticeTone });
   }
 
   sourceFile(jobId: string): File | undefined {

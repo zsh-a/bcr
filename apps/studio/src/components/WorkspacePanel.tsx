@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { importFile, runTask } from "../runtime";
 import { useSelection } from "../router";
 import { useStudio } from "../store";
-import { Badge, Button, formatBytes, PanelEmpty, useRuntime } from "@bcr/react";
+import { Badge, Button, EmptyState, formatBytes, useRuntime } from "@bcr/react";
 
 /**
  * Workspace 中央面板：文件操作 + 波形视口。
@@ -31,6 +31,7 @@ export function WorkspacePanel() {
   );
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const attachedRef = useRef(false);
 
@@ -100,10 +101,30 @@ export function WorkspacePanel() {
     return (
       <div className="h-full p-3" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
         <div className="flex h-full flex-col items-center justify-center gap-3 rounded-md border border-dashed border-border-strong">
-          <Upload className="size-5 text-faint" />
-          <PanelEmpty
-            title="拖入文件，或从左侧项目文件导入"
-            hint="文件持久化到 OPFS；计算在 Worker + WASM 中本地完成"
+          <input
+            ref={inputRef}
+            type="file"
+            className="ui-sr-only"
+            aria-label="导入工作区文件"
+            onChange={(event) => {
+              const imported = event.currentTarget.files?.[0];
+              event.currentTarget.value = "";
+              if (imported)
+                void importFile(services, imported).then((ref) =>
+                  selection.select({ file: ref.id }),
+                );
+            }}
+          />
+          <EmptyState
+            icon={<Upload className="size-5" />}
+            title="从一个文件开始"
+            description="导入或拖入文件，查看内容并运行处理任务。文件会保存在当前设备。"
+            action={
+              <Button variant="primary" size="lg" onClick={() => inputRef.current?.click()}>
+                <Upload className="size-4" />
+                导入文件
+              </Button>
+            }
           />
         </div>
       </div>
@@ -124,7 +145,7 @@ export function WorkspacePanel() {
           onClick={() => void runTask(services, file.ref, "hash.blake3", file.size)}
         >
           <Hash className="size-3" />
-          BLAKE3
+          计算校验值
         </Button>
         <Button onClick={() => void runTask(services, file.ref, "audio.waveform", file.size)}>
           <AudioWaveform className="size-3" />
@@ -137,20 +158,18 @@ export function WorkspacePanel() {
           <canvas ref={canvasRef} className="absolute inset-0 size-full" />
           {!waveformDone && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <p className="text-xs text-faint">
-                运行「提取波形」后在此渲染（Worker + OffscreenCanvas）
-              </p>
+              <p className="text-xs text-faint">点击「提取波形」查看音频波形</p>
             </div>
           )}
           {waveformDone && (
             <div className="absolute top-2 left-2">
-              <Badge tone="accent">waveform · 2048 buckets</Badge>
+              <Badge tone="accent">音频波形</Badge>
             </div>
           )}
         </div>
 
         <div className="shrink-0 rounded-md border border-border bg-surface px-3">
-          <div className="ui-section-label -mx-3">BLAKE3</div>
+          <div className="ui-section-label -mx-3">文件校验值 · BLAKE3</div>
           {hashTask?.outputs?.[0]?.hash !== undefined ? (
             <div className="flex items-center gap-2 pb-2">
               <code className="min-w-0 flex-1 truncate font-mono text-xs text-accent">
