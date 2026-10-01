@@ -77,6 +77,14 @@ export interface ResearchDataset {
   partitions: ArtifactRef[];
 }
 export interface JsgResult {
+  timings?: {
+    totalMs: number;
+    readMs: number;
+    computeMs: number;
+    writeMs: number;
+    rows: number;
+    partitions: number;
+  };
   chunks?: { ref: ArtifactRef; start: string; end: string; orders: number }[];
   receivables?: number;
   metrics: {

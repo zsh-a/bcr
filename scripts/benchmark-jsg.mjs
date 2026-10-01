@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, mkdtempSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { chromium } from "playwright";
 import path from "node:path";
 const root = path.resolve(process.argv[2]);
 const manifest = JSON.parse(readFileSync(path.join(root, "manifest.json"), "utf8"));
 const dir = path.resolve(process.argv[3] ?? "tmp/browser-benchmark");
 mkdirSync(dir, { recursive: true });
-const context = await chromium.launchPersistentContext(path.join(dir, "profile"), {
+const profile = mkdtempSync(path.join(dir, "profile-"));
+const context = await chromium.launchPersistentContext(profile, {
   headless: true,
   viewport: { width: 1440, height: 900 },
 });
@@ -17,7 +19,6 @@ let actualBrowserPid;
 let peakHeap = 0,
   peakBrowserRss = 0;
 function browserRss() {
-  const profile = path.join(dir, "profile");
   const entries = [];
   let rootPid = actualBrowserPid;
   for (const name of readdirSync("/proc")) {
@@ -89,36 +90,97 @@ try {
     { timeout: 180000 },
   );
   const replayMs = performance.now() - start;
+  const chartStart = performance.now();
+  await page
+    .getByLabel("查看净值日期", { exact: true })
+    .fill(String(manifest.startDate).replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3"));
+  await page.locator(".research-chart-bottom output").filter({ hasText: "现金" }).waitFor();
+  const chartMs = performance.now() - chartStart;
+  const exportStart = performance.now();
   await page.locator(".research-action-menu > summary").click();
   const event = page.waitForEvent("download");
   await page.getByRole("button", { name: "导出结果", exact: true }).click();
   await (await event).saveAs(path.join(dir, "result.json"));
+  const exportMs = performance.now() - exportStart;
   const result = JSON.parse(readFileSync(path.join(dir, "result.json"), "utf8")).result;
   assert(result.orders.length === result.metrics.filledOrders + result.metrics.rejectedOrders);
+  const ordersStart = performance.now();
   await page.getByRole("tab", { name: /^成交/ }).click();
   await page
     .getByRole("status")
     .filter({ hasText: /共 .* 笔/ })
     .waitFor();
   assert((await page.locator(".research-table tbody tr").count()) <= 50);
+  const ordersMs = performance.now() - ordersStart;
+  const filterStart = performance.now();
+  await page.getByLabel("筛选证券", { exact: true }).fill(result.orders[0]?.code ?? "sz");
+  const matches = result.orders.filter((order) =>
+    order.code.includes(result.orders[0]?.code ?? "sz"),
+  ).length;
+  await page
+    .getByRole("status")
+    .filter({ hasText: `共 ${matches.toLocaleString()} 笔` })
+    .waitFor();
+  const filterMs = performance.now() - filterStart;
+  await page.getByLabel("筛选证券", { exact: true }).fill("");
+  await page
+    .getByRole("status")
+    .filter({ hasText: `共 ${result.orders.length.toLocaleString()} 笔` })
+    .waitFor();
   if (result.orders.length > 50) {
     await page.getByRole("button", { name: "下一页订单", exact: true }).click();
     await page.getByRole("status").filter({ hasText: /51–/ }).waitFor();
     assert((await page.locator(".research-table tbody tr").count()) <= 50);
   }
+  const renderedOrderRows = await page.locator(".research-table tbody tr").count();
+  const previous = await page.locator(".research-run-result").getAttribute("data-run-id");
+  const cachedStart = performance.now();
+  await page.getByRole("button", { name: "运行回测", exact: true }).click();
+  await page.waitForFunction(
+    (id) =>
+      document.querySelector(".research-run-result")?.getAttribute("data-run-id") !== id &&
+      document.querySelector(".jsg-workspace")?.getAttribute("data-busy") === "false" &&
+      document.querySelector(".research-taskbar")?.textContent?.includes("复用已有结果"),
+    previous,
+  );
+  const cacheMs = performance.now() - cachedStart;
+  const beforeCancel = await page.locator(".research-run-result").getAttribute("data-run-id");
+  await page.getByLabel("目标股票数", { exact: true }).fill("11");
+  await page.getByRole("button", { name: "运行回测", exact: true }).click();
+  await page.getByRole("button", { name: "取消研究任务", exact: true }).waitFor();
+  const cancelStart = performance.now();
+  await page.getByRole("button", { name: "取消研究任务", exact: true }).click();
+  await page.waitForFunction(
+    () => document.querySelector(".jsg-workspace")?.getAttribute("data-busy") === "false",
+  );
+  const cancelMs = performance.now() - cancelStart;
+  assert.equal(
+    await page.locator(".research-run-result").getAttribute("data-run-id"),
+    beforeCancel,
+  );
   assert.deepEqual(errors, []);
   const report = {
     rows: manifest.partitions.reduce((n, p) => n + p.rows, 0),
     bytes: manifest.partitions.reduce((n, p) => n + p.bytes, 0),
     importMs,
     replayMs,
+    exportMs,
+    ordersMs,
+    filterMs,
+    chartMs,
+    cacheMs,
+    cancelMs,
+    workerTimings: result.timings,
+    manifestSha256: createHash("sha256")
+      .update(readFileSync(path.join(root, "manifest.json")))
+      .digest("hex"),
     mainPageHeapAndBackingMiB: peakHeap / 1048576,
     browserBaselineRssMiB: baselineRss > 0 ? baselineRss / 1048576 : null,
     sampledBrowserPeakRssMiB: peakBrowserRss > 0 ? peakBrowserRss / 1048576 : null,
     memoryScope:
       "CDP main-page JS heap/backing storage; RSS sampled at 50 ms across automation Chromium process tree; may include other automation contexts and counts shared pages in each process",
     resultRows: result.orders.length,
-    renderedOrderRows: await page.locator(".research-table tbody tr").count(),
+    renderedOrderRows,
     metrics: result.metrics,
   };
   writeFileSync(path.join(dir, "statistics.json"), JSON.stringify(report, null, 2));
