@@ -102,6 +102,7 @@ export function initialSession(): ResearchSession {
   };
 }
 export type SessionEvent =
+  | { type: "choose-dataset"; dataset: ResearchDataset }
   | { type: "restored"; value: Pick<ResearchSession, "dataset" | "draft" | "runs" | "selected"> }
   | { type: "ready"; dataset?: ResearchDataset; error?: string }
   | { type: "draft"; patch: Partial<JsgConfig> }
@@ -122,6 +123,16 @@ export type SessionEvent =
   | { type: "forgotten"; id: string };
 export function sessionReducer(state: ResearchSession, event: SessionEvent): ResearchSession {
   switch (event.type) {
+    case "choose-dataset":
+      return {
+        ...state,
+        dataset: event.dataset,
+        draft:
+          event.dataset.manifest.version === 1 && state.draft.executionModel === "jsg-raw-v2"
+            ? { ...state.draft, executionModel: MODEL, fees: [] }
+            : state.draft,
+        error: null,
+      };
     case "restored":
       return { ...state, ...event.value, ready: true, status: "已恢复本地研究" };
     case "ready":

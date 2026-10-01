@@ -190,6 +190,23 @@ describe("sqliteCacheStore (§7)", () => {
 });
 
 describe("sqliteLineageStore (§3/§8)", () => {
+  it("releases one task's persisted lineage without removing shared references", async () => {
+    const lineage = sqliteLineageStore(db);
+    await Effect.runPromise(lineage.recordProduction("discarded", ["result-old"]));
+    await Effect.runPromise(lineage.recordConsumption("discarded", ["shared"]));
+    await Effect.runPromise(lineage.recordConsumption("retained", ["shared"]));
+    await Effect.runPromise(lineage.releaseTask("discarded"));
+    await db.close();
+    const reopened = await openSqliteDb({
+      store,
+      path: "project/meta.db",
+      sqlite3: await initSqlite(),
+    });
+    const snapshot = await Effect.runPromise(sqliteLineageStore(reopened).load);
+    expect(snapshot.outputs.has("discarded")).toBe(false);
+    expect(snapshot.consumers.get("shared")).toEqual(["retained"]);
+    await reopened.close();
+  });
   it("产出/消费关系写穿并在重开后恢复", async () => {
     const lineage = sqliteLineageStore(db);
     await Effect.runPromise(lineage.recordProduction("tA", ["a1", "a2"]));

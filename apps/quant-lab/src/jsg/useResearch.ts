@@ -3,6 +3,8 @@ import { Effect } from "effect";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { importResearch, readJson } from "./data";
 import { demoResearch } from "./demo";
+import { withResearchFiles } from "./file-lease";
+import { rememberSnapshot, recoverResearchFiles, researchStore } from "./storage";
 import { loadFromBrowser } from "./clickhouse-browser";
 import type { ClickHouseConnection, ClickHouseRange } from "./clickhouse-http";
 import {
@@ -17,6 +19,7 @@ import {
   copyConfig,
   initialSession,
   readRun,
+  readDataset,
   restoreSession,
   saveSession,
   sessionReducer,
@@ -49,11 +52,13 @@ export function useResearch(services: RuntimeServices) {
     let disposed = false;
     void (async () => {
       try {
+        await withResearchFiles("exclusive", () => recoverResearchFiles());
         const restored = await restoreSession(services);
         if (disposed) return;
         if (restored !== null) send({ type: "restored", value: restored });
         else {
           const dataset = await importResearch(services, demoResearch().files, () => undefined);
+          await rememberSnapshot(researchStore(), dataset);
           if (!disposed) send({ type: "ready", dataset });
         }
       } catch (error) {
@@ -199,6 +204,7 @@ export function useResearch(services: RuntimeServices) {
         (text) => progress(token, text, null),
         token.abort.signal,
       );
+      await rememberSnapshot(researchStore(), dataset);
       token.abort.signal.throwIfAborted();
       let draft = current.current.draft;
       if (dataset.manifest.version === 1 && draft.executionModel === "jsg-raw-v2")
@@ -275,9 +281,22 @@ export function useResearch(services: RuntimeServices) {
   return {
     state,
     selecting,
-    run,
-    connectAndRun,
-    importFiles,
+    run: () => withResearchFiles("shared", run),
+    connectAndRun: (connection: ClickHouseConnection, range: ClickHouseRange) =>
+      withResearchFiles("shared", () => connectAndRun(connection, range)),
+    importFiles: (files: readonly File[]) => withResearchFiles("shared", () => importFiles(files)),
+    getSession: () => current.current,
+    flush: async () => {
+      await writes.current;
+      await saveSession(services, { ...current.current, draft: savedDraft.current });
+    },
+    useDataset: (dataset: ResearchDataset) =>
+      withResearchFiles("shared", async () => {
+        if (active.current) throw new Error("请等待当前任务结束");
+        const available = await readDataset(services, dataset);
+        send({ type: "choose-dataset", dataset: available });
+      }),
+    forgetRun: (id: string) => send({ type: "forgotten", id }),
     cancel,
     selectRun,
     change: (patch: Partial<JsgConfig>) => send({ type: "draft", patch }),

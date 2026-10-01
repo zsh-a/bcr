@@ -11,6 +11,8 @@ import {
   SlidersHorizontal,
   Square,
   Upload,
+  Trash2,
+  HardDrive,
   X,
 } from "lucide-react";
 import { ConnectionSettings, DateRangeSettings } from "./DataSource";
@@ -23,6 +25,8 @@ import { dateText, DEFAULT_CONFIG } from "./model";
 import { configKey, isDraftChanged, readRun, type SelectedRun } from "./session";
 import { exportResearchResult } from "./data";
 import { demoResearch } from "./demo";
+import { StorageSettings } from "./StorageSettings";
+import { withResearchFiles } from "./file-lease";
 import { money, percent } from "./Orders";
 import "./styles.css";
 
@@ -53,7 +57,9 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
   const [parametersSheet, setParametersSheet] = useState(false),
     [connectionOpen, setConnectionOpen] = useState(false),
     [rangeOpen, setRangeOpen] = useState(false),
-    [historyOpen, setHistoryOpen] = useState(false);
+    [historyOpen, setHistoryOpen] = useState(false),
+    [storageOpen, setStorageOpen] = useState(false),
+    [storageBusy, setStorageBusy] = useState(false);
   const [exporting, setExporting] = useState(false),
     [comparison, setComparison] = useState<SelectedRun | null>(null),
     [comparing, setComparing] = useState(false);
@@ -86,7 +92,7 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
       comparisonRequest.current++;
     };
   }, []);
-  const busy = state.operation !== null;
+  const busy = state.operation !== null || storageBusy;
   const ready =
     state.ready &&
     source.restored &&
@@ -162,11 +168,13 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
     if (actionMenu.current) actionMenu.current.open = false;
     setExporting(true);
     try {
-      const exported = await exportResearchResult(
-        services,
-        snapshot.run.config,
-        snapshot.dataset.manifest,
-        snapshot.result,
+      const exported = await withResearchFiles("shared", () =>
+        exportResearchResult(
+          services,
+          snapshot.run.config,
+          snapshot.dataset.manifest,
+          snapshot.result,
+        ),
       );
       const url = URL.createObjectURL(exported.blob);
       const anchor = document.createElement("a");
@@ -274,6 +282,17 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                 onClick={() => void exportResult()}
               >
                 {exporting ? <Spinner size="sm" /> : <Download size={15} />}导出结果
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={!state.ready || busy || exporting}
+                onClick={() => {
+                  if (actionMenu.current) actionMenu.current.open = false;
+                  setStorageOpen(true);
+                }}
+              >
+                <HardDrive size={15} />
+                数据与存储
               </Button>
             </div>
           </details>
@@ -499,9 +518,11 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
       <footer className="research-taskbar">
         <div>
           <span className="research-task-dot" data-active={busy} />
-          <span role="status">{state.operation?.label ?? state.status}</span>
+          <span role="status">
+            {state.operation?.label ?? (storageBusy ? "正在整理本地数据…" : state.status)}
+          </span>
         </div>
-        {busy ? (
+        {state.operation ? (
           <div>
             <progress
               max={1}
@@ -532,6 +553,19 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
         onDemo={() => void research.importFiles(demoResearch().files)}
       />
       <DateRangeSettings source={source} open={rangeOpen} onClose={() => setRangeOpen(false)} />
+      <StorageSettings
+        services={services}
+        research={research}
+        open={storageOpen}
+        busy={state.operation !== null || exporting}
+        onClose={() => setStorageOpen(false)}
+        onWorking={setStorageBusy}
+        onUse={async (dataset) => {
+          await research.useDataset(dataset);
+          await source.useLocal();
+          setStorageOpen(false);
+        }}
+      />
       <Dialog
         open={parametersSheet && compact}
         onClose={() => setParametersSheet(false)}
@@ -553,31 +587,41 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
         </p>
         <div className="research-history-list">
           {state.runs.toReversed().map((run) => (
-            <button
-              type="button"
-              key={run.id}
-              aria-pressed={selected?.run.id === run.id}
-              onClick={() => {
-                setHistoryOpen(false);
-                void research.selectRun(run.id);
-              }}
-            >
-              <span>
-                <b>{timeLabel(run.createdAt)}</b>
-                <small>
-                  {dateText(run.startDate)} — {dateText(run.endDate)}
-                </small>
-                <small>
-                  目标 {run.config.stockCount} 只 · 佣金 {run.config.commissionBps / 100}% · 滑点{" "}
-                  {run.config.slippageBps} bps
-                </small>
-              </span>
-              <span>
-                <strong>{percent(run.metrics.totalReturn)}</strong>
-                <small>回撤 {percent(run.metrics.maxDrawdown)}</small>
-                {selected?.run.id === run.id && <small>当前查看</small>}
-              </span>
-            </button>
+            <div key={run.id} className="research-history-row">
+              <button
+                type="button"
+                aria-pressed={selected?.run.id === run.id}
+                onClick={() => {
+                  setHistoryOpen(false);
+                  void research.selectRun(run.id);
+                }}
+              >
+                <span>
+                  <b>{timeLabel(run.createdAt)}</b>
+                  <small>
+                    {dateText(run.startDate)} — {dateText(run.endDate)}
+                  </small>
+                  <small>
+                    目标 {run.config.stockCount} 只 · 佣金 {run.config.commissionBps / 100}% · 滑点{" "}
+                    {run.config.slippageBps} bps
+                  </small>
+                </span>
+                <span>
+                  <strong>{percent(run.metrics.totalReturn)}</strong>
+                  <small>回撤 {percent(run.metrics.maxDrawdown)}</small>
+                  {selected?.run.id === run.id && <small>当前查看</small>}
+                </span>
+              </button>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`移除运行 ${timeLabel(run.createdAt)}`}
+                disabled={busy || exporting}
+                onClick={() => research.forgetRun(run.id)}
+              >
+                <Trash2 size={14} />
+              </Button>
+            </div>
           ))}
         </div>
       </Dialog>

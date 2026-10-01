@@ -126,7 +126,7 @@ try {
   await page.locator(".research-targets").waitFor();
   await page.getByRole("tab", { name: "概览", exact: true }).click();
   await page.getByRole("button", { name: "运行历史", exact: true }).click();
-  await page.locator(".research-history-list > button").last().click();
+  await page.locator(".research-history-row > button:first-child").last().click();
   await page.waitForFunction(
     (id) => document.querySelector(".research-run-result")?.getAttribute("data-run-id") === id,
     firstId,

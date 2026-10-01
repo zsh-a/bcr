@@ -133,6 +133,7 @@ await withServer({
     "scripts/verify-persistence.mjs",
     "scripts/verify-quant-lab.mjs",
     "scripts/verify-jsg.mjs",
+    "scripts/verify-jsg-storage.mjs",
     ...liveMarketChecks,
     "scripts/verify-manga-studio.mjs",
     "scripts/verify-document-studio.mjs",

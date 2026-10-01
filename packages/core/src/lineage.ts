@@ -15,6 +15,8 @@ export interface LineageSnapshot {
 }
 
 export interface LineageStore {
+  /** Explicitly release the lineage of a discarded terminal task. */
+  readonly releaseTask: (taskId: string) => Effect.Effect<void>;
   /** 启动时载入血缘快照（刷新恢复）。 */
   readonly load: Effect.Effect<LineageSnapshot>;
   /** 提交任务时登记消费关系。 */
@@ -32,6 +34,7 @@ export interface LineageStore {
 /** 无持久化的默认实现：load 返回空快照，写出为 no-op。 */
 export function noopLineageStore(): LineageStore {
   return {
+    releaseTask: () => Effect.void,
     load: Effect.sync(() => ({ outputs: new Map(), consumers: new Map() })),
     recordConsumption: () => Effect.void,
     recordProduction: () => Effect.void,
