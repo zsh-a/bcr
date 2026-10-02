@@ -5,23 +5,30 @@ import {
   CrosshairMode,
   LineSeries,
   createChart,
+  createSeriesMarkers,
   type IChartApi,
   type AutoscaleInfo,
   type Time,
+  type SeriesMarker,
 } from "lightweight-charts";
-import { Button, Input, Spinner } from "@bcr/react";
+import { Button, Input, Select, Spinner } from "@bcr/react";
+import {
+  eventVisible,
+  groupEvents,
+  anchorEventPoints,
+  type EventGroup,
+  type EventMode,
+} from "@bcr/quant-core";
 import type { RuntimeServices } from "@bcr/core";
 import { dateText, type JsgResult } from "./model";
 import type { SelectedRun } from "./session";
 import { queryCurve } from "./result-reader";
 import { COMPARISON_COLORS } from "./comparison";
-import { money, percent } from "./Orders";
+import { money, percent, orderReason } from "./Orders";
+import { useInspection } from "./ResearchInspection";
 
-function day(time: Time): string {
-  if (typeof time === "string") return time;
-  if (typeof time === "number") return new Date(time * 1000).toISOString().slice(0, 10);
-  return `${time.year}-${String(time.month).padStart(2, "0")}-${String(time.day).padStart(2, "0")}`;
-}
+import { chartDate as day } from "./chart-time";
+
 function mergePoints(
   preview: JsgResult["equity"],
   detail: JsgResult["equity"],
@@ -41,6 +48,22 @@ export default function ResearchChart({
   selected: SelectedRun;
   comparisons: SelectedRun[];
 }) {
+  const {
+    events,
+    inspect,
+    focus,
+    selectDate,
+    loading: eventsLoading,
+    error: eventsError,
+  } = useInspection();
+  const [eventMode, setEventMode] = useState<EventMode>("activity");
+  const [hoverEvent, setHoverEvent] = useState<EventGroup>();
+  const [eventDate, setEventDate] = useState("");
+  const selectedEventDate =
+    eventDate ||
+    events.filter((event) => eventVisible(event, eventMode)).at(-1)?.date ||
+    events.at(-1)?.date ||
+    "";
   const container = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const visibleRange =
@@ -48,7 +71,8 @@ export default function ResearchChart({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState(selected.result.equity.at(-1));
-  const [inspectDate, setInspectDate] = useState("");
+  const inspectDate = focus.date;
+  const setInspectDate = selectDate;
   const [range, setRange] = useState<number | null>(null);
   const [hover, setHover] = useState<{
     date: string;
@@ -95,6 +119,41 @@ export default function ResearchChart({
       lastValueVisible: false,
       priceLineVisible: false,
     });
+    const annotations = createSeriesMarkers(net, [], { autoScale: false });
+    let groups: EventGroup[] = [];
+    let curvePoints = result.equity;
+    const updateAnnotations = () => {
+      const range = chart.timeScale().getVisibleRange();
+      const from = range ? day(range.from) : first,
+        to = range ? day(range.to) : last;
+      groups = groupEvents(
+        events.filter(
+          (e) =>
+            e.date >= from && e.date <= to && e.equity !== undefined && eventVisible(e, eventMode),
+        ),
+      );
+      const css = getComputedStyle(container.current!);
+      const color = (key: string) => css.getPropertyValue(`--color-${key}`).trim();
+      const sorted = anchorEventPoints(curvePoints, groups);
+      net.setData(sorted.map((p) => ({ time: p.date, value: p.equity / capital })));
+      drawdown.setData(sorted.map((p) => ({ time: p.date, value: p.drawdown * 100 })));
+      const markers: SeriesMarker<Time>[] = groups.map((group) => {
+        const e = group.event;
+        return {
+          time: e.date,
+          position: "inBar",
+          shape: e.reasons.length || e.blocked ? "square" : "circle",
+          color: color(
+            e.reasons.length || e.blocked ? "amber" : e.buys + e.sells ? "accent" : "muted",
+          ),
+          size: 0.7,
+          id: e.date,
+          text: group.days > 1 ? String(group.days) : "",
+        };
+      });
+      annotations.setMarkers(markers);
+      container.current!.dataset["eventMarkerCount"] = String(markers.length);
+    };
     const baselines = comparisons.map((_, index) =>
       chart.addSeries(LineSeries, {
         title: `对照 ${index + 1}`,
@@ -158,6 +217,7 @@ export default function ResearchChart({
             ? "rgba(181,47,53,0.14)"
             : "rgba(255,118,109,0.14)",
       });
+      updateAnnotations();
     };
     applyTheme();
     const observer = new MutationObserver(applyTheme);
@@ -166,8 +226,8 @@ export default function ResearchChart({
       attributeFilter: ["data-theme"],
     });
     const setPoints = (points: JsgResult["equity"]) => {
-      net.setData(points.map((p) => ({ time: p.date, value: p.equity / capital })));
-      drawdown.setData(points.map((p) => ({ time: p.date, value: p.drawdown * 100 })));
+      curvePoints = points;
+      updateAnnotations();
     };
     setPoints(result.equity);
     baselines.forEach((series, index) =>
@@ -230,11 +290,18 @@ export default function ResearchChart({
     };
     chart.timeScale().subscribeVisibleTimeRangeChange((range) => {
       visibleRange.current = range;
-      if (range && !querying)
+      if (range && !querying) {
+        querying = true;
+        updateAnnotations();
+        querying = false;
         readRange(
           day(range.from) < first ? first : day(range.from),
           day(range.to) > last ? last : day(range.to),
         );
+      }
+    });
+    chart.subscribeClick((event) => {
+      if (event.time) inspect({ date: day(event.time) });
     });
     readRange(first, last);
     chart.subscribeCrosshairMove((event) => {
@@ -243,8 +310,10 @@ export default function ResearchChart({
         if (disposed) return;
         if (!event.time) {
           setHover(null);
+          setHoverEvent(undefined);
           return;
         }
+        setHoverEvent(groups.find((g) => g.to === event.hoveredObjectId));
         const n = event.seriesData.get(net),
           d = event.seriesData.get(drawdown);
         setHover({
@@ -267,9 +336,10 @@ export default function ResearchChart({
       cancelAnimationFrame(frame);
       observer.disconnect();
       chartRef.current = null;
+      annotations.detach();
       chart.remove();
     };
-  }, [services, result, capital, comparisons, first, last]);
+  }, [services, result, capital, comparisons, first, last, events, eventMode, inspect]);
   useEffect(() => {
     if (!inspectDate) return;
     const abort = new AbortController();
@@ -349,6 +419,69 @@ export default function ResearchChart({
         </span>
         {loading && <Spinner size="sm" />}
       </div>
+      <div className="research-event-strip">
+        <Select
+          aria-label="图表事件标记"
+          value={eventMode}
+          onChange={(e) => setEventMode(e.target.value as EventMode)}
+        >
+          <option value="activity">调仓与风控成交</option>
+          <option value="signals">决策与风控阻止</option>
+          <option value="all">全部事件（含拒单）</option>
+          <option value="none">隐藏标记</option>
+        </Select>
+        <Select
+          aria-label="图表事件日期"
+          value={selectedEventDate}
+          disabled={!events.length}
+          onChange={(e) => setEventDate(e.target.value)}
+        >
+          {!events.length && <option value="">{eventsLoading ? "读取事件…" : "没有事件"}</option>}
+          {events.map((e) => (
+            <option key={e.date} value={e.date}>
+              {e.date} ·{" "}
+              {e.buys + e.sells
+                ? `${e.buys + e.sells} 笔成交`
+                : e.blocked
+                  ? "风控阻止"
+                  : e.signal
+                    ? "收盘决策"
+                    : "拒单"}
+            </option>
+          ))}
+        </Select>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={!events.length}
+          onClick={() => inspect({ date: selectedEventDate })}
+        >
+          查看事件
+        </Button>
+      </div>
+      <div className="research-event-caption" role="status">
+        {hoverEvent ? (
+          <>
+            <span>
+              {hoverEvent.days > 1
+                ? `${hoverEvent.from} — ${hoverEvent.to} · ${hoverEvent.days} 个事件日`
+                : hoverEvent.to}
+            </span>
+            <span>
+              买 {hoverEvent.event.buys} · 卖 {hoverEvent.event.sells}
+            </span>
+            <span>费用 ¥{money(hoverEvent.event.fees)}</span>
+            <span>{hoverEvent.event.reasons.map(orderReason).join(" · ")}</span>
+          </>
+        ) : (
+          <span>圆点：成交 / 决策 · 方块：风控 · 数字：聚合事件日数 · 点击日期查看详情</span>
+        )}
+      </div>
+      {eventsError && (
+        <p role="alert" className="research-error">
+          事件读取失败：{eventsError}
+        </p>
+      )}
       <div
         ref={container}
         className="research-chart-canvas"

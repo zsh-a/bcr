@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import type { RuntimeServices } from "@bcr/core";
-import { Button, Dialog, Input, Select, Spinner } from "@bcr/react";
+import { Button, Input, Select, Spinner } from "@bcr/react";
 import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import type { JsgResult } from "./model";
 import { queryOrders } from "./result-reader";
 import { EMPTY_ORDER_FILTER, ORDER_PAGE_SIZE, type OrderFilter } from "./result-data";
 import { Identity, useNames } from "./ResearchNames";
 import { displayLabel, nameMatches } from "./display-names";
+import { useInspection } from "./ResearchInspection";
 
 export const money = (value: number) =>
   new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(value);
@@ -45,6 +46,7 @@ export const orderTiming = (value: string) =>
   value === "next-open" ? "次日开盘" : value === "close" ? "当日收盘" : value;
 export function Orders({ services, result }: { services: RuntimeServices; result: JsgResult }) {
   const names = useNames();
+  const { focus, inspect, linked } = useInspection();
   const [filter, setFilter] = useState<OrderFilter>({ ...EMPTY_ORDER_FILTER });
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState<{ rows: JsgResult["orders"]; count: number }>({
@@ -53,7 +55,11 @@ export function Orders({ services, result }: { services: RuntimeServices; result
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [detail, setDetail] = useState<JsgResult["orders"][number] | null>(null);
+  useEffect(() => {
+    if (!linked) return;
+    setFilter((value) => ({ ...value, from: focus.date, to: focus.date, code: focus.code ?? "" }));
+    setOffset(0);
+  }, [focus.date, focus.code, linked]);
   useEffect(() => {
     const abort = new AbortController();
     setLoading(true);
@@ -169,7 +175,7 @@ export function Orders({ services, result }: { services: RuntimeServices; result
                 <td>
                   <button
                     className="research-table-link"
-                    onClick={() => setDetail(order)}
+                    onClick={() => inspect({ date: order.date, code: order.code, order })}
                     aria-label={`查看订单 ${displayLabel(names, "instruments", order.code)} ${order.date} ${index + 1}`}
                   >
                     <Identity code={order.code} />
@@ -239,45 +245,6 @@ export function Orders({ services, result }: { services: RuntimeServices; result
           </Button>
         </div>
       </div>
-      <Dialog
-        open={detail !== null}
-        onClose={() => setDetail(null)}
-        title="订单详情"
-        placement="sheet"
-        className="research-detail-dialog"
-      >
-        {detail && (
-          <>
-            <div className="research-detail-title">
-              <b>
-                <Identity code={detail.code} />
-              </b>
-              <span className="research-side" data-side={detail.side}>
-                {detail.side === "buy" ? "买入" : "卖出"}
-              </span>
-            </div>
-            <dl className="research-facts">
-              {[
-                ["成交日期", detail.date],
-                ["信号日期", detail.signalDate],
-                ["撮合时点", orderTiming(detail.timing)],
-                ["触发原因", orderReason(detail.reason)],
-                ...(detail.riskReason ? [["仓位限制", orderReason(detail.riskReason)]] : []),
-                ["请求数量", detail.requested.toLocaleString()],
-                ["成交数量", detail.quantity.toLocaleString()],
-                ["成交价格", `¥${money(detail.price)}`],
-                ["成交费用", `¥${money(detail.fee)}`],
-                ["状态", orderStatus(detail.status)],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-            </dl>
-          </>
-        )}
-      </Dialog>
     </div>
   );
 }

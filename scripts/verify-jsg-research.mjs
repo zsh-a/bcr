@@ -80,8 +80,9 @@ try {
       .first()
       .evaluate((el) => getComputedStyle(el).backgroundColor)) !== "rgba(0, 0, 0, 0)",
   );
+  assert.equal(await page.getByLabel("解释日期", { exact: true }).inputValue(), "2024-02-12");
+  await page.getByLabel("解释日期", { exact: true }).selectOption({ index: 1 });
   await page.locator(".research-reason-summary").waitFor();
-  await page.getByLabel("解释日期", { exact: true }).selectOption({ index: 0 });
   await page.waitForFunction(() =>
     document.querySelector(".research-reason-summary")?.textContent.includes("目标证券"),
   );

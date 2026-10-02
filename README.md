@@ -220,11 +220,13 @@ ClickHouse / 本地研究快照 → 分块 Arrow → Rust/WASM 逐日回放 → 
 - 浏览器直连只读 ClickHouse，或导入 `manifest.json` 与全部 Arrow 分片；首次启动提供明确标记的演示数据，回测由用户发起
 - 单次回测与参数实验共用 Runtime、WorkerPool、内容寻址缓存及 Rust 计算引擎
 - 参数草稿与冻结运行快照分离，支持净值/回撤图、完整成交筛选、持仓/调仓明细、选股解释、参数网格与稳健性验证
+- 净值图按日标记调仓、风控、决策与拒单；点击事件或证券打开快照 K 线，买卖箭头与回测成交口径对齐，联动成交表、每日账本和信号日解释
 - 数据、草稿和历史跨刷新恢复；同区间运行可添加对照，移动端通过设置抽屉操作
 - Market 的行业宽度与 Quant 共用冻结研究快照，只传递内容引用和观察日期，无需重复下载
 
 详情见 [JSG 文档](crates/quant/README.md)。走查：`node scripts/verify-quant-lab.mjs` 验证默认入口、回测与刷新恢复；
 `bun run test:browser:jsg` 验证完整研究流程，数据库集成使用 `bun run test:browser:jsg:clickhouse`。
+`bun run test:browser:quant:charts` 验证事件标记、价格口径、面板联动、窄屏和离线快照读取。
 
 ## Market Atlas（apps/market-board）
 

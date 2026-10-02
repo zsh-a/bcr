@@ -128,7 +128,7 @@ try {
     changed.result.orders[0].code,
   );
   await page.locator(".research-table-link").first().click();
-  await page.getByRole("dialog", { name: "订单详情", exact: true }).waitFor();
+  await page.getByRole("dialog", { name: "成交与行情", exact: true }).waitFor();
   await page.keyboard.press("Escape");
   assert(
     await page

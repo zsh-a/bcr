@@ -1,7 +1,7 @@
 /** Bump the engine version when replay behavior changes; executor versions invalidate task caches. */
 import { STRATEGIES, strategySpec, type JsgConfig } from "./model";
 export const ENGINE_VERSION = "quant-strategies-5";
-export const SINGLE_EXECUTOR_VERSION = "quant-streamed-8";
+export const SINGLE_EXECUTOR_VERSION = "quant-streamed-9";
 export const GRID_EXECUTOR_VERSION = "quant-grid-shared-4";
 export const METRICS_VERSION = "jsg-daily-metrics-1";
 export const EVALUATION_VERSION = "jsg-evaluation-2";

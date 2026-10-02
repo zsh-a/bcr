@@ -1,5 +1,9 @@
 import type { ArtifactRef } from "@bcr/core";
-import { dateValue, type ResearchManifest } from "@bcr/market-data/research/model";
+import {
+  dateValue,
+  type ResearchManifest,
+  type SnapshotPartitionRange,
+} from "@bcr/market-data/research/model";
 import type { Diagnostics, ResearchDay } from "./research-model";
 import { strategySpec, validateStrategy, type StrategySpec } from "./strategy";
 export * from "./strategy";
@@ -117,6 +121,7 @@ export const DEFAULT_CONFIG: JsgConfig = {
   industryBlacklist: ["ads"],
 };
 export interface JsgResult {
+  inputRanges?: SnapshotPartitionRange[];
   diagnostics?: Diagnostics;
   research?: ResearchDay[];
   timings?: {

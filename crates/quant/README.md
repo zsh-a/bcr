@@ -52,6 +52,22 @@ Rebalance explanations retain every selection-universe observation, market-cap
 rank, filtering reason and tradability. Suspended securities remain candidates,
 as in the original engine; their orders are subject to execution restrictions.
 
+Quant Lab annotates closing equity with daily execution summaries and optional
+decision/rejection events. Signals retain their original dates; buy/sell arrows
+use actual fill dates and quantities, including partial fills. A linked inspector
+opens frozen-snapshot candles and the day's complete paginated order records.
+The Rust `snapshot_bars` export reads one instrument's raw OHLC, adjustment factor,
+optional volume and tradability from bounded Arrow partitions. It does not replay
+the portfolio or fetch current prices. Validated replay records input partition
+date bounds; the default candle window reads only intersecting partitions around
+the selected session. Year/all views expand on demand. Adjusted-v1 execution prices are already
+in snapshot-adjusted units; raw-v2 prices are raw. Axis switches transform candles
+and fill markers together while order details retain original execution prices.
+Same-day fills are grouped by direction at quantity-weighted prices. Large views
+group annotations, retain exact representative closing values and expand on zoom.
+Blocked rebalance annotations come from recorded `portfolio-stop` audit facts.
+Daily inputs do not provide intraday execution timestamps.
+
 Parameter experiments provide a two-axis sensitivity map; additional dimensions
 are fixed by explicit filters. Robustness validation works against the already
 frozen dataset. Holdout splits by chronological trading sessions; rolling tests

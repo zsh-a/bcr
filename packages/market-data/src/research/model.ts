@@ -51,6 +51,12 @@ export interface ResearchDataset {
   manifestRef: ArtifactRef;
   partitions: ArtifactRef[];
 }
+/** Derived by a validated replay, bound to the immutable input artifact. */
+export interface SnapshotPartitionRange {
+  ref: ArtifactRef;
+  from: number;
+  to: number;
+}
 function record(value: unknown): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value))
     throw new Error("研究清单必须是对象");

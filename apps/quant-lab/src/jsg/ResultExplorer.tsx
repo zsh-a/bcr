@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { RuntimeServices } from "@bcr/core";
-import { Button, Dialog, Input, Spinner } from "@bcr/react";
+import { Button, Input, Spinner } from "@bcr/react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Orders, money, percent } from "./Orders";
 import { dateText, type JsgResult } from "./model";
@@ -14,12 +14,14 @@ import type { BenchmarkBinding } from "./benchmark";
 import { LedgerPanel } from "./LedgerPanel";
 import { ExplanationPanel } from "./ExplanationPanel";
 import { Identity } from "./ResearchNames";
+import { ResearchInspection, useInspection } from "./ResearchInspection";
+import { EventInspector } from "./EventInspector";
 
 const ResearchChart = lazy(() => import("./ResearchChart"));
 
 function Holdings({ result }: { result: JsgResult }) {
+  const { focus, inspect } = useInspection();
   const [page, setPage] = useState(0);
-  const [detail, setDetail] = useState<JsgResult["holdings"][number] | null>(null);
   return (
     <>
       <div className="research-table-wrap">
@@ -38,7 +40,10 @@ function Holdings({ result }: { result: JsgResult }) {
             {result.holdings.slice(page * 50, (page + 1) * 50).map((holding) => (
               <tr key={holding.code}>
                 <td>
-                  <button className="research-table-link" onClick={() => setDetail(holding)}>
+                  <button
+                    className="research-table-link"
+                    onClick={() => inspect({ date: focus.date, code: holding.code })}
+                  >
                     <Identity code={holding.code} />
                   </button>
                 </td>
@@ -76,47 +81,13 @@ function Holdings({ result }: { result: JsgResult }) {
           </Button>
         </div>
       </div>
-      <Dialog
-        open={detail !== null}
-        onClose={() => setDetail(null)}
-        title="期末持仓"
-        placement="sheet"
-        className="research-detail-dialog"
-      >
-        {detail && (
-          <>
-            <div className="research-detail-title">
-              <b>
-                <Identity code={detail.code} />
-              </b>
-            </div>
-            <dl className="research-facts">
-              {[
-                ["持有数量", detail.quantity.toLocaleString()],
-                ["平均成本", money(detail.averageCost)],
-                ["期末价格", money(detail.price)],
-                ["期末市值", `¥${money(detail.value)}`],
-                ["仓位", percent(detail.value / result.metrics.finalEquity)],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-            </dl>
-          </>
-        )}
-      </Dialog>
     </>
   );
 }
 function Decisions({ services, selected }: { services: RuntimeServices; selected: SelectedRun }) {
-  const dates = selected.dataset.manifest.calendar
-    .filter((d) => d.rebalance && d.date >= selected.run.startDate)
-    .map((d) => dateText(d.date));
-  const [date, setDate] = useState(
-    selected.result.decisions.at(-1)?.date ?? dates.at(-1) ?? dateText(selected.run.endDate),
-  );
+  const { focus, selectDate: setDate, inspect, events } = useInspection();
+  const dates = events.filter((event) => event.signal).map((event) => event.date);
+  const date = focus.date;
   const [value, setValue] = useState<JsgResult["decisions"][number] | undefined>(
     selected.result.decisions.at(-1),
   );
@@ -213,9 +184,13 @@ function Decisions({ services, selected }: { services: RuntimeServices; selected
           </p>
           <div className="research-targets">
             {value.targets.slice(page * 50, (page + 1) * 50).map((code) => (
-              <span key={code}>
+              <button
+                key={code}
+                className="research-table-link"
+                onClick={() => inspect({ date, code })}
+              >
                 <Identity code={code} />
-              </span>
+              </button>
             ))}
           </div>
           {value.targets.length > 50 && (
@@ -242,7 +217,7 @@ function Decisions({ services, selected }: { services: RuntimeServices; selected
     </div>
   );
 }
-export function ResultExplorer({
+function Explorer({
   services,
   selected,
   comparisons,
@@ -346,6 +321,15 @@ export function ResultExplorer({
           />
         )}
       </ResearchTabs>
+      <EventInspector selected={selected} onNavigate={setTab} />
     </div>
+  );
+}
+
+export function ResultExplorer(props: Parameters<typeof Explorer>[0]) {
+  return (
+    <ResearchInspection key={props.selected.run.id} selected={props.selected}>
+      <Explorer {...props} />
+    </ResearchInspection>
   );
 }

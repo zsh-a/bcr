@@ -5,7 +5,38 @@ import type { BenchmarkBinding } from "./benchmark";
 import type { Evaluation } from "./evaluation";
 import type { ResearchSummary, ResearchDayPage } from "./research-analysis";
 import type { ResearchDay } from "./research-model";
+import type { DayEvent, IdentifiedOrder, FillMarker } from "@bcr/quant-core";
+import type { SnapshotBar } from "@bcr/market-data/research/snapshot-reader";
+import type { ResearchDataset } from "./model";
+import type { SnapshotPartitionRange } from "@bcr/market-data/research/model";
 export type ResultRequest =
+  | { id: number; type: "chart-events"; result: ResultSource; from: string; to: string }
+  | {
+      id: number;
+      type: "chart-orders";
+      result: ResultSource;
+      from: string;
+      to: string;
+      code: string;
+      offset: number;
+    }
+  | {
+      id: number;
+      type: "chart-fills";
+      result: ResultSource;
+      from: string;
+      to: string;
+      code: string;
+    }
+  | {
+      id: number;
+      type: "snapshot-bars";
+      ranges?: SnapshotPartitionRange[];
+      dataset: ResearchDataset;
+      code: string;
+      from: number;
+      to: number;
+    }
   | { id: number; type: "research-summary"; result: ResultSource; capital: number }
   | { id: number; type: "research-day"; result: ResultSource; date: string; offset: number }
   | { id: number; type: "breadth-history"; result: ResultSource; from: string; to: string }
@@ -169,6 +200,60 @@ export const queryEvaluation = (
       dates,
       baselineDate,
       ...(benchmark ? { benchmark } : {}),
+    },
+    signal,
+  );
+
+export const queryChartEvents = (
+  result: JsgResult,
+  from: string,
+  to: string,
+  signal: AbortSignal,
+) =>
+  request<DayEvent[]>(
+    { id: ++sequence, type: "chart-events", result: source(result), from, to },
+    signal,
+  );
+export const queryChartOrders = (
+  result: JsgResult,
+  from: string,
+  to: string,
+  code: string,
+  offset: number,
+  signal: AbortSignal,
+) =>
+  request<{ rows: IdentifiedOrder[]; count: number }>(
+    { id: ++sequence, type: "chart-orders", result: source(result), from, to, code, offset },
+    signal,
+  );
+export const queryChartFills = (
+  result: JsgResult,
+  from: string,
+  to: string,
+  code: string,
+  signal: AbortSignal,
+) =>
+  request<FillMarker[]>(
+    { id: ++sequence, type: "chart-fills", result: source(result), from, to, code },
+    signal,
+  );
+export const querySnapshotBars = (
+  dataset: ResearchDataset,
+  code: string,
+  from: number,
+  to: number,
+  signal: AbortSignal,
+  ranges?: SnapshotPartitionRange[],
+) =>
+  request<SnapshotBar[]>(
+    {
+      id: ++sequence,
+      type: "snapshot-bars",
+      dataset,
+      code,
+      from,
+      to,
+      ...(ranges ? { ranges } : {}),
     },
     signal,
   );

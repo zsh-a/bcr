@@ -1,3 +1,4 @@
+pub mod chart;
 pub mod engine;
 mod features;
 pub mod model;
@@ -23,6 +24,17 @@ pub struct JsgBacktest {
 }
 fn js_error(error: impl ToString) -> JsValue {
     JsValue::from_str(&error.to_string())
+}
+
+#[wasm_bindgen]
+pub fn snapshot_bars(
+    bytes: Vec<u8>,
+    instrument: u32,
+    from: u32,
+    to: u32,
+) -> Result<String, JsValue> {
+    let bars = chart::snapshot_bars(bytes, instrument, from, to).map_err(js_error)?;
+    serde_json::to_string(&bars).map_err(js_error)
 }
 
 /// Independent daily indicator: the same MA20 feature kernel, without portfolio state.

@@ -46,6 +46,7 @@ export function jsgHandler(io: ArtifactIO, factory: Factory = createSession) {
     const engine = await factory(JSON.stringify(manifest), JSON.stringify(config));
     const outputNamespace = `jsg-${crypto.randomUUID()}`;
     const created: ArtifactRef[] = [];
+    const inputRanges: NonNullable<JsgResult["inputRanges"]> = [];
     let published = false;
     try {
       if (schedule !== undefined) {
@@ -147,6 +148,7 @@ export function jsgHandler(io: ArtifactIO, factory: Factory = createSession) {
         engine.load_partition(bytes);
         timings.computeMs += performance.now() - decodeStart;
         const previousRows = engine.processed_rows();
+        const previousDays = engine.processed_days();
         for (;;) {
           const computeStart = performance.now();
           const advanced = engine.advance();
@@ -165,6 +167,10 @@ export function jsgHandler(io: ArtifactIO, factory: Factory = createSession) {
         }
         if (engine.processed_rows() - previousRows !== partition.rows)
           throw new Error(`Arrow row count mismatch: ${partition.file}`);
+        const first = manifest.calendar[previousDays],
+          last = manifest.calendar[engine.processed_days() - 1];
+        if (first && last && engine.processed_days() > previousDays)
+          inputRanges.push({ ref, from: first.date, to: last.date });
         timings.rows += partition.rows;
         timings.partitions++;
       }
@@ -175,6 +181,7 @@ export function jsgHandler(io: ArtifactIO, factory: Factory = createSession) {
       timings.computeMs += performance.now() - finishStart;
       timings.totalMs = performance.now() - began;
       result.timings = timings;
+      if (inputRanges.length === manifest.partitions.length) result.inputRanges = inputRanges;
       if (streamed) Object.assign(result, preview, { chunks });
       const ref = await io.writeTypedJsonArtifact(
         outputNamespace,

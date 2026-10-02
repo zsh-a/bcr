@@ -7,6 +7,8 @@ import { withResearchFiles } from "../jsg/file-lease";
 import { evaluateResult } from "../jsg/evaluation";
 import { readBenchmark } from "../jsg/benchmark";
 import { researchSummary, researchDay, breadthHistory } from "../jsg/research-analysis";
+import { chartEvents, chartOrders, chartFills } from "../jsg/chart-data";
+import { readSnapshotBars, type SnapshotBar } from "@bcr/market-data/research/snapshot-reader";
 
 const scope = globalThis as unknown as {
   postMessage: (value: ResultResponse) => void;
@@ -16,6 +18,47 @@ const store = marketResearchStore();
 const controllers = new Map<number, AbortController>();
 const cache = new Map<string, { bytes: number; value: ResultChunk }>();
 let cacheBytes = 0;
+const candleCache = new Map<string, SnapshotBar[]>();
+let candleBytes = 0;
+async function snapshotQuery(
+  message: Extract<ResultRequest, { type: "snapshot-bars" }>,
+  signal: AbortSignal,
+) {
+  const key = JSON.stringify([
+    message.dataset.manifestRef,
+    message.dataset.partitions,
+    message.code,
+    message.from,
+    message.to,
+    message.ranges,
+  ]);
+  const existing = candleCache.get(key);
+  if (existing) {
+    candleCache.delete(key);
+    candleCache.set(key, existing);
+    return existing;
+  }
+  const bars = await readSnapshotBars(
+    store,
+    message.dataset,
+    message.code,
+    message.from,
+    message.to,
+    signal,
+    message.ranges,
+  );
+  const size = bars.length * 112;
+  while (candleCache.size && (candleBytes + size > 8 * 1024 * 1024 || candleCache.size >= 8)) {
+    const oldest = candleCache.keys().next().value!;
+    candleBytes -= candleCache.get(oldest)!.length * 112;
+    candleCache.delete(oldest);
+  }
+  if (size <= 8 * 1024 * 1024) {
+    candleCache.set(key, bars);
+    candleBytes += size;
+  }
+  return bars;
+}
 let yieldedAt = 0;
 const services = {
   artifacts: {
@@ -72,6 +115,8 @@ scope.onmessage = (event) => {
   if (message.type === "clear") {
     cache.clear();
     cacheBytes = 0;
+    candleCache.clear();
+    candleBytes = 0;
     return;
   }
   const controller = new AbortController();
@@ -80,58 +125,92 @@ scope.onmessage = (event) => {
     try {
       controller.signal.throwIfAborted();
       const value =
-        message.type === "research-summary"
-          ? await researchSummary(services, message.result, message.capital, controller.signal)
-          : message.type === "research-day"
-            ? await researchDay(
+        message.type === "snapshot-bars"
+          ? await snapshotQuery(message, controller.signal)
+          : message.type === "chart-events"
+            ? await chartEvents(
                 services,
                 message.result,
-                message.date,
-                message.offset,
+                message.from,
+                message.to,
                 controller.signal,
               )
-            : message.type === "breadth-history"
-              ? await breadthHistory(
+            : message.type === "chart-orders"
+              ? await chartOrders(
                   services,
                   message.result,
                   message.from,
                   message.to,
+                  message.code,
+                  message.offset,
                   controller.signal,
                 )
-              : message.type === "evaluation"
-                ? await evaluateResult(
+              : message.type === "chart-fills"
+                ? await chartFills(
                     services,
                     message.result,
-                    message.capital,
-                    message.dates,
-                    message.baselineDate,
-                    message.benchmark
-                      ? await readBenchmark(services, message.benchmark)
-                      : undefined,
+                    message.from,
+                    message.to,
+                    message.code,
                     controller.signal,
                   )
-                : message.type === "orders"
-                  ? await queryOrders(
+                : message.type === "research-summary"
+                  ? await researchSummary(
                       services,
                       message.result,
-                      message.filter,
-                      message.offset,
+                      message.capital,
                       controller.signal,
                     )
-                  : message.type === "curve"
-                    ? await queryCurve(
-                        services,
-                        message.result,
-                        message.from,
-                        message.to,
-                        controller.signal,
-                      )
-                    : await queryDecision(
+                  : message.type === "research-day"
+                    ? await researchDay(
                         services,
                         message.result,
                         message.date,
+                        message.offset,
                         controller.signal,
-                      );
+                      )
+                    : message.type === "breadth-history"
+                      ? await breadthHistory(
+                          services,
+                          message.result,
+                          message.from,
+                          message.to,
+                          controller.signal,
+                        )
+                      : message.type === "evaluation"
+                        ? await evaluateResult(
+                            services,
+                            message.result,
+                            message.capital,
+                            message.dates,
+                            message.baselineDate,
+                            message.benchmark
+                              ? await readBenchmark(services, message.benchmark)
+                              : undefined,
+                            controller.signal,
+                          )
+                        : message.type === "orders"
+                          ? await queryOrders(
+                              services,
+                              message.result,
+                              message.filter,
+                              message.offset,
+                              controller.signal,
+                            )
+                          : message.type === "curve"
+                            ? await queryCurve(
+                                services,
+                                message.result,
+                                message.from,
+                                message.to,
+                                controller.signal,
+                              )
+                            : await queryDecision(
+                                services,
+                                message.result,
+                                message.date,
+                                controller.signal,
+                              );
       if (!controller.signal.aborted) scope.postMessage({ id: message.id, value });
     } catch (error) {
       scope.postMessage({

@@ -1,6 +1,6 @@
 import { breadthGrid } from "@bcr/market-data/research/breadth-grid";
 import { useEffect, useState } from "react";
-import { Heatmap, Button, Select, Spinner, useNavigation, useLocationSearch } from "@bcr/react";
+import { Heatmap, Button, Select, Spinner, useNavigation } from "@bcr/react";
 import { pinMarketSnapshot, saveMarketLabels } from "@bcr/market-data/research/catalog";
 import type { SelectedRun } from "./session";
 import { dateText, strategySpec, rebalanceSession } from "./model";
@@ -8,13 +8,13 @@ import { queryBreadthHistory, queryResearchDay } from "./result-reader";
 import type { ResearchDayPage } from "./research-analysis";
 import { CANDIDATE_REASONS, type ResearchDay } from "./research-model";
 import { money, percent } from "./Orders";
+import { useInspection } from "./ResearchInspection";
 import { Identity, useNames } from "./ResearchNames";
 
 export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
   const names = useNames();
   const spec = strategySpec(selected.run.config),
     momentum = spec.id === "momentum";
-  const requestedDate = new URLSearchParams(useLocationSearch()).get("date");
   const navigation = useNavigation();
   const [openingMarket, setOpeningMarket] = useState(false);
   const openMarket = async () => {
@@ -29,24 +29,24 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
       setOpeningMarket(false);
     }
   };
+  const { focus, selectDate: setDate, inspect, events, loading: eventsLoading } = useInspection();
   const sessions = selected.dataset.manifest.calendar.filter(
     (d) => d.date >= selected.run.startDate && d.date <= selected.run.endDate,
   );
   const dates = sessions.map((d) => dateText(d.date)),
-    rebalances = selected.dataset.manifest.calendar
-      .filter(
-        (d, i) =>
-          d.date >= selected.run.startDate &&
-          d.date <= selected.run.endDate &&
-          rebalanceSession(selected.dataset.manifest, i, spec),
-      )
-      .map((d) => dateText(d.date));
-  const [date, setDate] = useState(
-      requestedDate && dates.includes(requestedDate)
-        ? requestedDate
-        : (rebalances.at(-1) ?? dates.at(-1) ?? ""),
-    ),
-    [page, setPage] = useState(0),
+    rebalances = !eventsLoading
+      ? events.filter((e) => e.signal || e.blocked).map((e) => e.date)
+      : selected.dataset.manifest.calendar
+          .filter(
+            (d, i) =>
+              d.date >= selected.run.startDate &&
+              d.date <= selected.run.endDate &&
+              rebalanceSession(selected.dataset.manifest, i, spec),
+          )
+          .map((d) => dateText(d.date));
+
+  const date = focus.date;
+  const [page, setPage] = useState(0),
     [historyPage, setHistoryPage] = useState(Math.max(0, Math.ceil(dates.length / 63) - 1));
   const [day, setDay] = useState<ResearchDayPage | null>(),
     [history, setHistory] = useState<Pick<ResearchDay, "date" | "breadth">[]>(),
@@ -54,11 +54,10 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
   const start = dates[historyPage * 63] ?? "",
     end = dates[Math.min(dates.length - 1, (historyPage + 1) * 63 - 1)] ?? "";
   useEffect(() => {
-    if (!requestedDate || !dates.includes(requestedDate)) return;
-    setDate(requestedDate);
     setPage(0);
-    setHistoryPage(Math.floor(dates.indexOf(requestedDate) / 63));
-  }, [requestedDate, selected.run.id]);
+    const index = dates.indexOf(date);
+    if (index >= 0) setHistoryPage(Math.floor(index / 63));
+  }, [date, selected.run.id]);
   useEffect(() => {
     const abort = new AbortController();
     setDay(undefined);
@@ -200,7 +199,12 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
                       <tr key={c.code}>
                         <td className="numeric">{c.rank ?? "—"}</td>
                         <td>
-                          <Identity code={c.code} />
+                          <button
+                            className="research-table-link"
+                            onClick={() => inspect({ date, code: c.code })}
+                          >
+                            <Identity code={c.code} />
+                          </button>
                         </td>
                         <td>
                           <Identity code={c.industry} kind="industries" />

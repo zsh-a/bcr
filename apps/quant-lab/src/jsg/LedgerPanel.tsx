@@ -9,11 +9,13 @@ import { money, percent } from "./Orders";
 import { downloadText, ledgerCsv, researchReport } from "./report";
 import { Identity, useNames } from "./ResearchNames";
 import { displayLabel } from "./display-names";
+import { useInspection } from "./ResearchInspection";
 
 export function LedgerPanel({ selected }: { selected: SelectedRun }) {
   const names = useNames();
+  const { focus, selectDate: setDate, inspect } = useInspection();
+  const date = focus.date;
   const [mode, setMode] = useState("history"),
-    [date, setDate] = useState(dateText(selected.run.endDate)),
     [page, setPage] = useState(0);
   const [summary, setSummary] = useState<ResearchSummary>(),
     [day, setDay] = useState<ResearchDayPage | null>(),
@@ -28,6 +30,9 @@ export function LedgerPanel({ selected }: { selected: SelectedRun }) {
       });
     return () => abort.abort();
   }, [selected]);
+  useEffect(() => {
+    setPage(0);
+  }, [date]);
   useEffect(() => {
     if (mode !== "history") return;
     const abort = new AbortController();
@@ -181,7 +186,12 @@ export function LedgerPanel({ selected }: { selected: SelectedRun }) {
                   {rows.map((a) => (
                     <tr key={a.code}>
                       <td>
-                        <Identity code={a.code} />
+                        <button
+                          className="research-table-link"
+                          onClick={() => inspect({ date, code: a.code })}
+                        >
+                          <Identity code={a.code} />
+                        </button>
                         <small className="research-cell-note">
                           {displayLabel(names, "industries", a.industry)}
                         </small>

@@ -138,6 +138,7 @@ await withServer({
     "scripts/verify-persistence.mjs",
     "scripts/verify-quant-lab.mjs",
     "scripts/verify-jsg.mjs",
+    "scripts/verify-quant-chart-events.mjs",
     "scripts/verify-jsg-storage.mjs",
     "scripts/verify-jsg-grid.mjs",
     "scripts/verify-jsg-research.mjs",
