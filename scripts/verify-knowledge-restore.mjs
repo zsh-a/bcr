@@ -4,6 +4,10 @@ import { chromium } from "playwright";
 
 const origin = new URL(process.env.BASE_URL ?? "http://127.0.0.1:5199").origin;
 const browser = await chromium.launch({ args: ["--disable-dev-shm-usage"] });
+async function action(page, name) {
+  await page.getByRole("button", { name: "更多操作", exact: true }).click();
+  await page.getByRole("menuitem", { name, exact: true }).click();
+}
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   const errors = [];
@@ -21,14 +25,13 @@ try {
   await saved();
   const id = new URL(page.url()).searchParams.get("note");
   const downloading = page.waitForEvent("download");
-  await page.getByText("导入、导出与备份", { exact: true }).click();
-  await page.getByRole("button", { name: "导出知识库", exact: true }).click();
+  await action(page, "导出知识库");
   const download = await downloading;
   const path = await download.path();
   assert.ok(path);
   await body.fill("当前本机的新正文");
   await saved();
-  await page.getByRole("button", { name: "恢复 ZIP 备份", exact: true }).click();
+  await action(page, "恢复 ZIP 备份");
   const dialog = page.getByRole("dialog", { name: "恢复备份", exact: true });
   await dialog.waitFor();
   const panel = dialog.getByRole("region", { name: "恢复知识库备份", exact: true });
@@ -48,15 +51,14 @@ try {
   assert.equal(new URL(page.url()).searchParams.get("note"), id);
   await page.reload();
   await saved();
-  await page.getByText("导入、导出与备份", { exact: true }).click();
   assert.ok((await body.textContent()).includes("来自备份的正文"));
-  await page.getByRole("button", { name: "恢复 ZIP 备份", exact: true }).click();
+  await action(page, "恢复 ZIP 备份");
   await panel.getByLabel("选择知识库备份", { exact: true }).setInputFiles(path);
   await panel.getByText(/将新增 0 篇/).waitFor();
   await page.getByRole("button", { name: "关闭恢复备份", exact: true }).click();
   await body.fill("预览后的新修改");
   await saved();
-  await page.getByRole("button", { name: "恢复 ZIP 备份", exact: true }).click();
+  await action(page, "恢复 ZIP 备份");
   await panel.getByRole("button", { name: "确认恢复", exact: true }).click();
   await panel.getByRole("alert").filter({ hasText: "预览后知识库已变化" }).waitFor();
   assert.ok((await body.textContent()).includes("预览后的新修改"));

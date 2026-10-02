@@ -1,4 +1,4 @@
-import { openTopBar } from "./lib/topbar.mjs";
+import { openTopBar, runWorkspaceCommand } from "./lib/topbar.mjs";
 // Exercises the single global assistant, window controls and real domain tools with a mock model.
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
@@ -190,7 +190,7 @@ try {
   await approval.waitFor();
 
   // Switching workspaces preserves the window and history; knowledge remains callable.
-  await page.keyboard.press("Alt+Digit6");
+  await runWorkspaceCommand(page, "打开 Data Studio");
   await page.waitForURL(/\/data(?:\?|$)/);
   await panel.locator(".bcr-chat-target strong").filter({ hasText: "Data Studio" }).waitFor();
   assert.ok(

@@ -1,4 +1,5 @@
 import { openTopBar } from "./lib/topbar.mjs";
+import { openActionMenu } from "./lib/app-controls.mjs";
 /* Isolated browser: Reader/Document/Media evidence → collection → notes → export → restore. */
 import assert from "node:assert/strict";
 import { mkdir, readFile } from "node:fs/promises";
@@ -180,7 +181,9 @@ try {
   await page
     .locator('.media-studio input[type="file"]')
     .setInputFiles({ name: "research.wav", mimeType: "audio/wav", buffer: wav() });
-  await page.locator('.media-studio select[title="识别引擎"]').selectOption("demo");
+  await openActionMenu(page, "字幕设置");
+  await page.getByLabel("识别方式", { exact: true }).selectOption("demo");
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "生成字幕", exact: true }).click();
   const cue = page.locator('[data-testid="cue-editor"] input').nth(1);
   await cue.waitFor();

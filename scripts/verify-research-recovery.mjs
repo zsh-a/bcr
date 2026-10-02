@@ -109,7 +109,7 @@ async function open(context) {
   page.setDefaultTimeout(25000);
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(`${origin}/reader`, { waitUntil: "networkidle" });
-  await page.getByLabel("导入阅读文件").waitFor();
+  await page.getByLabel("导入阅读文件").waitFor({ state: "attached" });
   await page.evaluate(async () => {
     const url = performance
       .getEntriesByType("resource")

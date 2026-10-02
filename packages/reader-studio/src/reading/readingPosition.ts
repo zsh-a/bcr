@@ -175,7 +175,20 @@ export function readerSelectionLocator(book: ReaderBook): ReaderLocator | undefi
 }
 
 function readerProbeTopOffset(container: HTMLElement): number {
-  return Math.min(140, container.clientHeight * 0.32);
+  const bounds = container.getBoundingClientRect();
+  const chrome = container
+    .closest(".reader-studio")
+    ?.querySelectorAll(".reader-toolbar, .reader-import-progress");
+  // Mobile chrome overlays the scroll viewport. Import notices can extend
+  // below the usual probe; sampling them falls back to text halfway down the
+  // page and shifts the viewport when that anchor is restored.
+  let offset = Math.min(140, container.clientHeight * 0.32);
+  for (const element of chrome ?? []) {
+    const rect = element.getBoundingClientRect();
+    if (rect.height > 0 && rect.top < bounds.top + offset)
+      offset = Math.max(offset, rect.bottom - bounds.top + 16);
+  }
+  return Math.min(container.clientHeight * 0.45, offset);
 }
 
 function readerImages(section: Element): Element[] {

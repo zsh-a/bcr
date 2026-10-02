@@ -12,3 +12,5 @@
 @import "./workbench/canvas.css";
 @import "./models/styles.css";
 @import "./workbench/responsive.css";
+
+@source ".";

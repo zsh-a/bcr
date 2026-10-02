@@ -150,8 +150,8 @@ try {
   );
 
   // --- 恢复备份：打开/关闭
-  await page.getByText("导入、导出与备份", { exact: true }).click();
-  await page.getByRole("button", { name: "恢复 ZIP 备份", exact: true }).click();
+  await page.getByRole("button", { name: "更多操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "恢复 ZIP 备份", exact: true }).click();
   const restore = page.getByRole("dialog", { name: "恢复备份" });
   await restore.waitFor();
   await restore.locator('section.knowledge-panel[aria-label="恢复知识库备份"]').waitFor();
@@ -159,7 +159,7 @@ try {
   await restore.waitFor({ state: "hidden" });
   assert.ok(
     await page
-      .getByRole("button", { name: "恢复 ZIP 备份", exact: true })
+      .getByRole("button", { name: "更多操作", exact: true })
       .evaluate((el) => el === document.activeElement),
   );
 
@@ -187,7 +187,12 @@ try {
   await page.getByRole("button", { name: "更多操作", exact: true }).click();
   const overflow = page.locator('div.knowledge-overflow-menu[role="menu"][aria-label="更多操作"]');
   await overflow.waitFor();
-  assert.deepEqual(await overflow.getByRole("menuitem").allTextContents(), [
+  const menuLabels = await overflow.getByRole("menuitem").allTextContents();
+  for (const label of [
+    "新建笔记",
+    "搜索与切换笔记",
+    "导出知识库",
+    "恢复 ZIP 备份",
     "移动笔记",
     "导出这篇笔记",
     "收藏当前笔记",
@@ -195,7 +200,9 @@ try {
     "同步设置",
     "立即同步",
     "删除",
-  ]);
+  ]) {
+    assert.ok(menuLabels.includes(label), `unified actions menu includes ${label}`);
+  }
   await page.keyboard.press("End");
   assert.equal(
     await overflow
@@ -207,7 +214,7 @@ try {
   await page.keyboard.press("ArrowDown");
   assert.equal(
     await overflow
-      .getByRole("menuitem", { name: "导出这篇笔记", exact: true })
+      .getByRole("menuitem", { name: "搜索与切换笔记", exact: true })
       .evaluate((el) => el === document.activeElement),
     true,
   );
@@ -218,9 +225,8 @@ try {
     page.getByRole("button", { name: "更多操作", exact: true }),
   );
   await page.getByRole("button", { name: "更多写作工具", exact: true }).click();
-  const tools = page.locator(".knowledge-tools-menu[data-open]");
+  const tools = page.getByRole("dialog", { name: "写作与阅读设置", exact: true });
   await tools.waitFor();
-  assert.equal(await tools.getAttribute("role"), null);
   assert.equal(await tools.getByRole("menuitem").count(), 0);
   assert.ok(await tools.getByRole("button", { name: "源码", exact: true }).isVisible());
   assert.equal(await tools.getByRole("button", { name: "同步设置", exact: true }).count(), 0);

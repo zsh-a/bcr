@@ -168,14 +168,24 @@ try {
   }
   await page.setViewportSize({ width: 1280, height: 900 });
   const sidebarHeading = await page
-    .locator(".knowledge-sidebar-heading > span")
-    .evaluate((element) => ({
-      height: element.getBoundingClientRect().height,
-      leading: parseFloat(getComputedStyle(element).lineHeight),
-    }));
+    .getByRole("combobox", { name: "筛选笔记集合", exact: true })
+    .evaluate((element) => {
+      const style = getComputedStyle(element);
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+      context.font = style.font;
+      return {
+        width: element.clientWidth,
+        height: element.clientHeight,
+        scrollHeight: element.scrollHeight,
+        labelWidth: context.measureText(element.selectedOptions[0].textContent).width,
+        padding: parseFloat(style.paddingLeft) + parseFloat(style.paddingRight),
+      };
+    });
   assert.ok(
-    sidebarHeading.height <= sidebarHeading.leading + 1,
-    "Chinese sidebar title stays on one line",
+    sidebarHeading.scrollHeight <= sidebarHeading.height + 1 &&
+      sidebarHeading.labelWidth + sidebarHeading.padding + 16 <= sidebarHeading.width,
+    "Chinese collection title fits on one line with room for the select arrow",
   );
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });

@@ -95,8 +95,21 @@ try {
       ordinary.push(...(await measure()).bottoms);
     }
     assert(ordinary.length > 1, "fixture must include multiple complete pages");
-    const spread = Math.max(...ordinary) - Math.min(...ordinary);
-    assert(spread < 1, `ordinary pages must share their final baseline: ${JSON.stringify(result)}`);
+    const maximum = Math.max(...ordinary);
+    const spread = maximum - Math.min(...ordinary);
+    // Widow correction can carry one or two lines to the next page. Those
+    // pages still share a line grid, while their final occupied line differs.
+    assert(
+      ordinary.every((bottom) => {
+        const lines = (maximum - bottom) / result.lineHeight;
+        return Math.abs(lines - Math.round(lines)) * result.lineHeight < 1;
+      }),
+      `pages must share a line grid: ${JSON.stringify({ ...result, ordinary })}`,
+    );
+    assert(
+      spread <= result.lineHeight * 2 + 1,
+      `widow correction must leave at most two lines: ${JSON.stringify({ ...result, ordinary })}`,
+    );
     assert(
       result.bottoms.every((bottom) => bottom <= result.height + 1),
       "no clipped final line",
@@ -131,7 +144,7 @@ try {
   assert.equal(await page.getByLabel("TXT 分页段落", { exact: true }).inputValue(), "spaced");
   assert.deepEqual(errors, []);
   console.log(
-    "TXT page height PASSED: consistent text baselines, complete lines, mobile/desktop/spread/landscape, bounded content and persisted paragraph preference",
+    "TXT page height PASSED: consistent line grid, bounded widow correction, complete lines, mobile/desktop/spread/landscape, bounded content and persisted paragraph preference",
     results,
   );
 } finally {

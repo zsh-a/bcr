@@ -1,4 +1,4 @@
-import { openStudioPanel } from "./lib/app-controls.mjs";
+import { openActionMenu, openStudioPanel } from "./lib/app-controls.mjs";
 import { closeTopBar, openTopBar, openWorkspaceOptions } from "./lib/topbar.mjs";
 /* 响应式验证：三档语义断点 + 容器降级 + 矮窗/安全区 + reduced-motion + 浮标避让。
  *
@@ -169,7 +169,7 @@ await group("1. 320px reflow（WCAG 1.4.10，禁双向滚动）", async () => {
   await page.locator("dialog.knowledge-switcher").waitFor({ state: "hidden" });
 
   // 抽屉打开态（知识库侧栏 + 工作区面板）
-  await page.getByRole("button", { name: "打开笔记列表" }).click();
+  await page.getByRole("button", { name: "切换笔记列表", exact: true }).click();
   await page.locator(".knowledge-app.show-sidebar").waitFor();
   await settle(300);
   await noHScroll("320×256 knowledge 抽屉打开");
@@ -178,8 +178,7 @@ await group("1. 320px reflow（WCAG 1.4.10，禁双向滚动）", async () => {
 
   await page.goto(`${origin}/studio`, { waitUntil: "networkidle" });
   await page.locator(".studio-dock-shell").waitFor({ timeout: 20_000 });
-  await page.getByRole("button", { name: "打开工作区面板" }).click();
-  await page.getByRole("dialog", { name: "工作区面板", exact: true }).waitFor();
+  await openActionMenu(page, "工作区面板");
   await settle(300);
   await noHScroll("320×256 studio 面板抽屉打开");
   await page.keyboard.press("Escape");
@@ -197,12 +196,12 @@ await group("2. 400% 缩放等效（320px + root 64px 核心功能可达）", as
   });
   await settle(250);
 
-  // 新建笔记按钮（移动端 FAB）可点击：点击后进入新笔记
-  const fab = page.locator("button.knowledge-fab");
-  await fab.scrollIntoViewIfNeeded();
-  const fabBox = await fab.boundingBox();
-  assert(fabBox !== null && fabBox.x >= -1 && fabBox.x + fabBox.width <= 320 + 1, "FAB 不在视口内");
-  await fab.click();
+  // 新建统一从工具栏菜单进入，窄屏与放大字号下仍可操作。
+  const actions = await openActionMenu(page, "更多操作");
+  const create = actions.getByRole("menuitem", { name: "新建笔记", exact: true });
+  const createBox = await create.boundingBox();
+  assert(createBox !== null && createBox.x >= -1 && createBox.x + createBox.width <= 321);
+  await create.click();
   await page.waitForURL((url) => url.searchParams.get("note") !== noteId);
 
   // 搜索可点击：全局搜索对话框打开并可关闭
@@ -244,38 +243,42 @@ await group("2. 400% 缩放等效（320px + root 64px 核心功能可达）", as
 async function threeState(width) {
   const state = await page.evaluate(() => {
     const side = document.querySelector(".knowledge-sidebar");
-    const menuButton = document.querySelector(".knowledge-menu");
-    const inline = document.querySelector(".knowledge-context-inline");
+    const menuButton = document.querySelector('[aria-label="切换笔记列表"]');
     const rail = document.querySelector(".knowledge-document > .knowledge-context");
     return {
       sidebarPosition: getComputedStyle(side).position,
       sidebarOpacity: Number(getComputedStyle(side).opacity),
       menuDisplay: getComputedStyle(menuButton).display,
-      inlineDisplay: getComputedStyle(inline).display,
-      railDisplay: getComputedStyle(rail).display,
+      railDisplay: rail ? getComputedStyle(rail).display : "none",
+      inert: side.inert,
     };
   });
-  if (width < BP_MD) {
+  assert(state.menuDisplay !== "none", `${width}px: 统一侧栏入口应可见`);
+  assert.equal(state.railDisplay, "none", `${width}px: 上下文默认按需展开`);
+  if (width <= BP_MD) {
     assert.equal(state.sidebarPosition, "absolute", `${width}px: 侧栏应为抽屉（absolute）`);
-    assert(state.menuDisplay !== "none", `${width}px: 抽屉入口（打开笔记列表）应可见`);
     assert(
       state.sidebarOpacity < 0.1,
       `${width}px: 抽屉关闭时应离场（opacity=${state.sidebarOpacity}）`,
     );
-    assert(state.inlineDisplay !== "none", `${width}px: 右栏应切换为标题下折叠段`);
-    assert.equal(state.railDisplay, "none", `${width}px: 常驻右栏应收起`);
-  } else if (width < BP_LG) {
-    assert.notEqual(state.sidebarPosition, "absolute", `${width}px: 侧栏应常驻`);
-    assert(state.menuDisplay === "none", `${width}px: 抽屉入口应隐藏`);
-    assert(state.sidebarOpacity > 0.9, `${width}px: 侧栏应可见（opacity=${state.sidebarOpacity}）`);
-    assert(state.inlineDisplay !== "none", `${width}px: 右栏应为标题下折叠段`);
-    assert.equal(state.railDisplay, "none", `${width}px: 常驻右栏应隐藏`);
+    assert.equal(state.inert, true, `${width}px: 关闭的抽屉不参与键盘操作`);
   } else {
     assert.notEqual(state.sidebarPosition, "absolute", `${width}px: 侧栏应常驻`);
-    assert(state.menuDisplay === "none", `${width}px: 抽屉入口应隐藏`);
     assert(state.sidebarOpacity > 0.9, `${width}px: 侧栏应可见（opacity=${state.sidebarOpacity}）`);
-    assert(state.inlineDisplay === "none", `${width}px: 折叠段应隐藏`);
-    assert(state.railDisplay !== "none", `${width}px: 常驻右栏应显示`);
+    assert.equal(state.inert, false, `${width}px: 桌面侧栏允许键盘操作`);
+  }
+  await page.getByRole("button", { name: "展开上下文栏", exact: true }).click();
+  if (width < BP_LG) {
+    const info = page.getByRole("dialog", { name: "笔记信息", exact: true });
+    await info.waitFor();
+    assert(await info.evaluate((element) => element.matches(":modal")));
+    await noHScroll(`${width}px 笔记信息抽屉`);
+    await page.keyboard.press("Escape");
+    await info.waitFor({ state: "hidden" });
+  } else {
+    await page.locator(".knowledge-document > .knowledge-context").waitFor();
+    await page.getByRole("button", { name: "收起上下文栏", exact: true }).click();
+    await page.locator(".knowledge-document > .knowledge-context").waitFor({ state: "hidden" });
   }
 }
 
@@ -297,7 +300,7 @@ await group("3. 连续拉伸 320→1920→320（无溢出 + 三态正确切换�
   const mainWidth = () =>
     page.evaluate(() => document.querySelector(".knowledge-main").getBoundingClientRect().width);
   const closed = await mainWidth();
-  await page.getByRole("button", { name: "打开笔记列表" }).click();
+  await page.getByRole("button", { name: "切换笔记列表", exact: true }).click();
   await page.locator(".knowledge-app.show-sidebar").waitFor();
   await settle(320);
   const drawer = await page.evaluate(() => {
@@ -326,21 +329,23 @@ await group("3. 连续拉伸 320→1920→320（无溢出 + 三态正确切换�
 /* ---------- 4. 容器查询断言（真实布局宽度跨阈值） ---------- */
 
 await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body）", async () => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await openKnowledge();
 
-  // kb-side < 220：树行只留标题（行图标与尾随时间隐藏）
+  // 窄侧栏：标题单行截断，列表行不产生横向滚动。
   const sideProbe = () =>
     page.evaluate(() => {
       const side = document.querySelector(".knowledge-sidebar");
       const row = document.querySelector(".knowledge-file-note:not([data-empty])");
+      const title = row.querySelector("span");
+      const style = getComputedStyle(title);
       return {
         width: side.getBoundingClientRect().width,
-        preview: row?.querySelector("time")
-          ? getComputedStyle(row.querySelector("time")).display
-          : null,
-        chips: [...document.querySelectorAll(".knowledge-file-note > svg")].map(
-          (icon) => getComputedStyle(icon).display,
-        ),
+        rowWidth: row.clientWidth,
+        rowScrollWidth: row.scrollWidth,
+        titleHeight: title.getBoundingClientRect().height,
+        leading: parseFloat(style.lineHeight),
+        overflow: style.textOverflow,
       };
     });
   const setSideWidth = (width) =>
@@ -353,26 +358,30 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
   await settle(320);
   const sideWide = await sideProbe();
   assert(sideWide.width >= 220, `kb-side 基线宽度应 ≥220（${sideWide.width}）`);
-  assert(sideWide.preview !== "none", "kb-side 基线应显示行尾时间");
   await setSideWidth("200px");
   await settle(320);
   const sideNarrow = await sideProbe();
   assert(sideNarrow.width < 220, `kb-side 探针应跨过 220 阈值（${sideNarrow.width}）`);
-  assert.equal(sideNarrow.preview, "none", "kb-side<220 应隐藏行尾时间");
-  assert(
-    sideNarrow.chips.every((display) => display === "none"),
-    "kb-side<220 应隐藏行图标",
-  );
+  for (const probe of [sideWide, sideNarrow]) {
+    assert(probe.rowScrollWidth <= probe.rowWidth + 1, "列表行不应横向溢出");
+    assert(probe.titleHeight <= probe.leading + 1, "列表标题应保持单行");
+    assert.equal(probe.overflow, "ellipsis", "长标题应截断，保留行尾操作空间");
+  }
   await setSideWidth(null);
   await settle(320);
 
-  // kb-rail < 180：小节计数隐藏 + 大纲缩进减半
+  // 信息面板按需展开：窄容器隐藏视图计数，大纲缩进减半。
+  await page.getByRole("button", { name: "展开上下文栏", exact: true }).click();
+  await page
+    .getByRole("group", { name: "笔记信息视图", exact: true })
+    .getByRole("button", { name: /^大纲/u })
+    .click();
   const railProbe = () =>
     page.evaluate(() => {
       const rail = document.querySelector(".knowledge-document > .knowledge-context");
       return {
         width: rail.getBoundingClientRect().width,
-        counts: [...rail.querySelectorAll(".knowledge-context-heading span")].map(
+        counts: [...rail.querySelectorAll(".ui-resource-views > button > span")].map(
           (span) => getComputedStyle(span).display,
         ),
         indent: [...rail.querySelectorAll("button[data-depth]")].map((button) => [
@@ -391,10 +400,10 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
     }, width);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await settle(250);
-  await setRailWidth("240px");
+  await setRailWidth("300px");
   await settle(320);
   const railWide = await railProbe();
-  assert(railWide.width >= 180, `kb-rail 基线宽度应 ≥180（${railWide.width}）`);
+  assert(railWide.width >= 220, `kb-rail 基线宽度应 ≥220（${railWide.width}）`);
   assert(
     railWide.counts.length > 0 && railWide.counts.every((display) => display !== "none"),
     "kb-rail 基线应显示小节计数",
@@ -416,23 +425,21 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
   }
   await setRailWidth(null);
   await settle(320);
+  await page.getByRole("button", { name: "收起上下文栏", exact: true }).click();
+  await page.locator(".knowledge-document > .knowledge-context").waitFor({ state: "hidden" });
 
-  // kb-main < 640：工具条 icon-only + 分段收进 ⋯（视图模式仍可达）
+  // 工具栏独立于正文宽度：挤窄主区后保持紧凑、无溢出且视图切换可达。
   const mainProbe = () =>
     page.evaluate(() => {
       const main = document.querySelector(".knowledge-main");
       const segmented = document.querySelector(".knowledge-mode-controls .knowledge-segmented");
-      const statusLine = document.querySelector(".knowledge-status-line");
-      const iconButtons = [
-        ...main.querySelectorAll(
-          ":is(.knowledge-tabs-bar, .knowledge-editor-head, .knowledge-editor-meta) button:has(> svg):not(.knowledge-overflow-menu button, .knowledge-tools-menu button, .knowledge-tag-chip)",
-        ),
-      ].map((button) => getComputedStyle(button).fontSize);
+      const toolbar = document.querySelector(".knowledge-toolbar");
       return {
         width: main.getBoundingClientRect().width,
         segmented: segmented === null ? null : getComputedStyle(segmented).display,
-        statusLine: statusLine === null ? null : getComputedStyle(statusLine).display,
-        iconButtons,
+        toolbarHeight: toolbar.getBoundingClientRect().height,
+        toolbarWidth: toolbar.clientWidth,
+        toolbarScrollWidth: toolbar.scrollWidth,
       };
     });
   // kb-main 的窄态靠加宽侧栏挤压出来：直接写侧栏自身的 width/flex-basis。
@@ -454,29 +461,20 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
   const mainWide = await mainProbe();
   assert(mainWide.width >= 640, `kb-main 基线宽度应 ≥640（${mainWide.width}）`);
   assert.notEqual(mainWide.segmented, "none", "kb-main 基线应显示视图模式分段");
-  assert(
-    mainWide.iconButtons.length > 0 && mainWide.iconButtons.every((size) => size !== "0px"),
-    "kb-main 基线工具条按钮应显示文字",
-  );
   await setSidebarToken("900px");
   await settle(320);
   const mainNarrow = await mainProbe();
   assert(mainNarrow.width < 640, `kb-main 探针应跨过 640 阈值（${mainNarrow.width}）`);
-  assert.equal(mainNarrow.segmented, "none", "kb-main<640 分段控件应收进 ⋯");
-  assert.equal(mainNarrow.statusLine, "none", "kb-main<640 状态文案应隐藏（只留状态点）");
-  assert(
-    mainNarrow.iconButtons.length > 0 && mainNarrow.iconButtons.every((size) => size === "0px"),
-    "kb-main<640 工具条按钮应 icon-only（文字字号归零）",
-  );
-  // ⋯ 内视图模式可用：点击可达编辑 / 阅读
-  await page.getByRole("button", { name: "更多写作工具" }).click();
-  const menu = page.locator(".knowledge-tools-menu");
-  await menu.getByRole("button", { name: "阅读", exact: true }).click();
+  assert.notEqual(mainNarrow.segmented, "none", "宽屏工具栏独立于正文容器，保留视图模式");
+  for (const probe of [mainWide, mainNarrow]) {
+    assert(probe.toolbarHeight <= 57, "工具栏应保持单行");
+    assert(probe.toolbarScrollWidth <= probe.toolbarWidth + 1, "工具栏不应横向溢出");
+  }
+  await page.getByRole("button", { name: "阅读", exact: true }).click();
   await page.locator(".knowledge-prose").waitFor({ state: "visible" });
-  await menu.getByRole("button", { name: "编辑", exact: true }).click();
+  await page.getByRole("button", { name: "编辑", exact: true }).click();
   await page.getByLabel("笔记正文").waitFor({ state: "visible" });
   await page.locator(".knowledge-prose").waitFor({ state: "detached" });
-  await page.getByRole("button", { name: "更多写作工具" }).click(); // 收起菜单
   await setSidebarToken(null);
   await settle(320);
 
@@ -540,8 +538,8 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
 
   // ui-body < 400：表单 label 上置堆叠
   await openKnowledge();
-  await page.getByText("导入、导出与备份", { exact: true }).click();
-  await page.getByRole("button", { name: "恢复 ZIP 备份", exact: true }).click();
+  await page.getByRole("button", { name: "更多操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "恢复 ZIP 备份", exact: true }).click();
   await page.getByRole("dialog", { name: "恢复备份", exact: true }).waitFor();
   const bodyProbe = (width) =>
     page.evaluate(async (value) => {
@@ -574,8 +572,8 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
 
 await group("5. 矮窗（1440×480）全屏 sheet + 安全区 max() 兜底", async () => {
   await openKnowledge();
-  await page.getByText("导入、导出与备份", { exact: true }).click();
-  await page.getByRole("button", { name: "恢复 ZIP 备份", exact: true }).click();
+  await page.getByRole("button", { name: "更多操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "恢复 ZIP 备份", exact: true }).click();
   await page.getByRole("dialog", { name: "恢复备份", exact: true }).waitFor();
   await page.setViewportSize({ width: 1440, height: 480 });
   await settle(350);
@@ -624,28 +622,21 @@ await group("5. 矮窗（1440×480）全屏 sheet + 安全区 max() 兜底", asy
   await page.setViewportSize({ width: 320, height: 800 });
   await settle(350);
   const safe = await page.evaluate(() => {
-    const nav = document.querySelector(".knowledge-mobile-nav");
-    const titlebar = document.querySelector(".knowledge-tabs-bar");
+    const side = document.querySelector(".knowledge-sidebar");
+    const toolbar = document.querySelector(".knowledge-toolbar");
     const px = (value) => Number.parseFloat(value);
     return {
-      navTop: px(getComputedStyle(nav).paddingTop),
-      navBottom: px(getComputedStyle(nav).paddingBottom),
-      navLeft: px(getComputedStyle(nav).paddingLeft),
-      navRight: px(getComputedStyle(nav).paddingRight),
-      titlebarTop: px(getComputedStyle(titlebar).paddingTop),
-      titlebarRight: px(getComputedStyle(titlebar).paddingRight),
+      sideBottom: px(getComputedStyle(side).paddingBottom),
+      sideLeft: px(getComputedStyle(side).paddingLeft),
+      toolbarLeft: px(getComputedStyle(toolbar).paddingLeft),
+      toolbarRight: px(getComputedStyle(toolbar).paddingRight),
     };
   });
-  assert(safe.navTop >= 8, `底部导航 padding-top 应有 max() 下限（${safe.navTop}px）`);
-  assert(safe.navBottom >= 8, `底部导航 padding-bottom 应有安全区兜底（${safe.navBottom}px）`);
+  assert(safe.sideBottom >= 12, `侧栏 padding-bottom 应有安全区兜底（${safe.sideBottom}px）`);
+  assert(safe.sideLeft >= 16, `侧栏 padding-left 应有安全区兜底（${safe.sideLeft}px）`);
   assert(
-    safe.navLeft >= 12 && safe.navRight >= 12,
-    `底部导航左右应有安全区兜底（${safe.navLeft}/${safe.navRight}px）`,
-  );
-  assert(safe.titlebarTop >= 8, `移动端标题栏 padding-top 应有安全区兜底（${safe.titlebarTop}px）`);
-  assert(
-    safe.titlebarRight >= 12,
-    `移动端标题栏 padding-right 应有安全区兜底（${safe.titlebarRight}px）`,
+    safe.toolbarLeft >= 8 && safe.toolbarRight >= 8,
+    `单行工具栏左右应有间距兜底（${safe.toolbarLeft}/${safe.toolbarRight}px）`,
   );
   await noHScroll("320×800 安全区检查");
 });
@@ -655,13 +646,14 @@ await group("5. 矮窗（1440×480）全屏 sheet + 安全区 max() 兜底", asy
 await group("6. reduced-motion：形态过渡 duration ≤ 0.01ms 且直达终端", async () => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await openKnowledge();
+  await page.getByRole("button", { name: "展开上下文栏", exact: true }).click();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await settle(150);
   const durations = await page.evaluate(() => {
     const targets = {
       sidebar: document.querySelector(".knowledge-sidebar"),
       rail: document.querySelector(".knowledge-document > .knowledge-context"),
-      inline: document.querySelector(".knowledge-context-inline"),
+      toolbar: document.querySelector(".knowledge-toolbar"),
       toolsMenu: document.querySelector(".knowledge-tools-menu"),
     };
     return Object.fromEntries(
@@ -681,21 +673,23 @@ await group("6. reduced-motion：形态过渡 duration ≤ 0.01ms 且直达终�
   await page.setViewportSize({ width: 1024, height: 800 });
   await settle(60);
   let state = await page.evaluate(() => ({
-    rail: getComputedStyle(document.querySelector(".knowledge-document > .knowledge-context"))
-      .display,
-    inline: getComputedStyle(document.querySelector(".knowledge-context-inline")).display,
+    rail: document.querySelector(".knowledge-document > .knowledge-context")
+      ? getComputedStyle(document.querySelector(".knowledge-document > .knowledge-context")).display
+      : "none",
+    drawer: document.querySelector("dialog.knowledge-context-drawer").open,
   }));
   assert.equal(state.rail, "none", "reduced-motion 跨 bp-lg 应直达终端（右栏收起）");
-  assert.notEqual(state.inline, "none", "reduced-motion 跨 bp-lg 应直达终端（折叠段显示）");
+  assert.equal(state.drawer, true, "reduced-motion 跨 bp-lg 应直达终端（信息抽屉显示）");
   await page.setViewportSize({ width: 1440, height: 1000 });
   await settle(60);
   state = await page.evaluate(() => ({
     rail: getComputedStyle(document.querySelector(".knowledge-document > .knowledge-context"))
       .display,
-    inline: getComputedStyle(document.querySelector(".knowledge-context-inline")).display,
+    drawer: document.querySelector("dialog.knowledge-context-drawer")?.open ?? false,
   }));
   assert.notEqual(state.rail, "none", "reduced-motion 回跨 bp-lg 应直达终端（右栏显示）");
-  assert.equal(state.inline, "none", "reduced-motion 回跨 bp-lg 应直达终端（折叠段收起）");
+  assert.equal(state.drawer, false, "reduced-motion 回跨 bp-lg 应直达终端（信息抽屉收起）");
+  await page.getByRole("button", { name: "收起上下文栏", exact: true }).click();
 
   await page.goto(`${origin}/studio`, { waitUntil: "networkidle" });
   await page.locator(".studio-dock-shell").waitFor({ timeout: 20_000 });
@@ -713,7 +707,7 @@ await group("6. reduced-motion：形态过渡 duration ≤ 0.01ms 且直达终�
 const intersects = (a, b) =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
-await group("7. 「继续对话」浮标不遮挡知识库内容与移动端导航", async () => {
+await group("7. 「继续对话」浮标不遮挡知识库内容与工具栏", async () => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await openKnowledge();
   await openTopBar(page);
@@ -788,8 +782,7 @@ await group("7. 「继续对话」浮标不遮挡知识库内容与移动端导�
     await noHScroll(`${viewport.width}px 浮标检查`);
   }
 
-  // ≤bp-md：浮标抬升到移动导航之上（window.css：bottom = h-control-lg + space-7 + 安全区），
-  // 不得遮挡底部导航与新建按钮。
+  // 窄屏浮标位于视口内，不遮挡统一工具栏。
   await page.setViewportSize({ width: 320, height: 800 });
   await settle(350);
   await launcher.waitFor({ state: "visible" });
@@ -808,13 +801,15 @@ await group("7. 「继续对话」浮标不遮挡知识库内容与移动端导�
     const launcher = rect(".assistant-launcher");
     return {
       launcher,
-      nav: overlaps(launcher, rect(".knowledge-mobile-nav")),
-      fab: overlaps(launcher, rect(".knowledge-fab")),
+      toolbar: rect(".knowledge-toolbar"),
+      overlap: overlaps(launcher, rect(".knowledge-toolbar")),
     };
   });
   assert(mobile.launcher !== null, "320×800: 浮标应存在");
-  assert(!mobile.nav, `320×800: 浮标不得遮挡底部导航（rect=${JSON.stringify(mobile.launcher)}）`);
-  assert(!mobile.fab, `320×800: 浮标不得遮挡新建按钮（rect=${JSON.stringify(mobile.launcher)}）`);
+  assert(mobile.toolbar !== null, "320×800: 统一工具栏应存在");
+  assert(!mobile.overlap, `320×800: 浮标不得遮挡工具栏（rect=${JSON.stringify(mobile.launcher)}）`);
+  assert(mobile.launcher.x >= 0 && mobile.launcher.x + mobile.launcher.width <= 321);
+  assert(mobile.launcher.y >= 0 && mobile.launcher.y + mobile.launcher.height <= 801);
   await noHScroll("320×800 浮标检查");
 });
 

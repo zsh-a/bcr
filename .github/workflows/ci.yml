@@ -146,7 +146,8 @@ jobs:
   browser-e2e:
     needs: validate
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The 78 browser checks take about 20 minutes, plus PWA and setup checks.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
         with:

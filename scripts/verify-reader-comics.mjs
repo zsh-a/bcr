@@ -52,7 +52,7 @@ try {
         (img) => Number(img.getAttribute("width")) > 0,
       ),
     );
-    await page.waitForTimeout(2000);
+    await page.locator(".reader-import-progress").waitFor({ state: "hidden" });
     const scroll = page.locator(".reader-reading-scroll");
     await scroll.evaluate((container) => {
       const rect = container.querySelectorAll(".reader-prose img")[4].getBoundingClientRect();

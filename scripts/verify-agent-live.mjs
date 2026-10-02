@@ -1,4 +1,4 @@
-import { openTopBar, openWorkspaceOptions } from "./lib/topbar.mjs";
+import { openTopBar, openWorkspaceOptions, runWorkspaceCommand } from "./lib/topbar.mjs";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { writeFile, mkdtemp } from "node:fs/promises";
@@ -109,7 +109,7 @@ try {
     const line = document.querySelector('[data-testid="knowledge-status"] .knowledge-status-line');
     return /^(已保存|已同步)/u.test(line?.textContent ?? "");
   });
-  await page.keyboard.press("Alt+Digit6");
+  await runWorkspaceCommand(page, "打开 Data Studio");
   await page.waitForURL(/\/data(?:\?|$)/);
   await page.keyboard.press("Control+j");
   await panel.waitFor();
@@ -174,7 +174,7 @@ try {
       "请调用 apply_text_edit 在当前光标处插入 STALE_EDIT_271。只调用一次，如果失败请停止不要重试。",
     );
     await approval.waitFor();
-    await page.keyboard.press("Alt+Digit6");
+    await runWorkspaceCommand(page, "打开 Data Studio");
     await page.waitForURL(/\/data(?:\?|$)/);
     await approval.getByRole("button", { name: "应用修改" }).click();
     const text = await finish();

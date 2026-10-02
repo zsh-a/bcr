@@ -33,7 +33,7 @@ async function pageIn(context) {
   page.setDefaultTimeout(25000);
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(`${origin}/reader`, { waitUntil: "networkidle" });
-  await page.getByLabel("导入阅读文件").waitFor();
+  await page.getByLabel("导入阅读文件").waitFor({ state: "attached" });
   return page;
 }
 async function open(page) {
@@ -85,7 +85,6 @@ try {
   ]) {
     await page.getByLabel("导入阅读文件").setInputFiles({ name, mimeType, buffer });
     await page.getByText("导入完成", { exact: true }).waitFor();
-    await page.getByLabel("导入阅读文件").waitFor({ state: "visible" });
   }
   await open(page);
   await page.getByLabel("新集合名称").fill("跨浏览器资料");

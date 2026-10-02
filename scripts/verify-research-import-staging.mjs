@@ -1,21 +1,18 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
+import { trackModuleRequests } from "./lib/modules.mjs";
 const origin = new URL(process.env.BASE_URL ?? "http://localhost:5199").origin;
 const browser = await chromium.launch({ args: ["--disable-dev-shm-usage"] });
 const errors = [];
 try {
   const context = await browser.newContext();
   const page = await context.newPage();
-  await page.addInitScript(() => performance.setResourceTimingBufferSize(5000));
+  await trackModuleRequests(page);
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(`${origin}/reader`, { waitUntil: "networkidle" });
   const metrics = await page.evaluate(async () => {
-    const loaded = (suffix) =>
-      performance
-        .getEntriesByType("resource")
-        .map((e) => e.name)
-        .filter((url) => new URL(url).pathname.endsWith(suffix))
-        .at(-1);
+    const urls = await window.__bcrTestModuleUrls();
+    const loaded = (suffix) => urls.filter((url) => new URL(url).pathname.endsWith(suffix)).at(-1);
     const { createPackageStaging } = await import(loaded("/src/research/packageStaging.ts"));
     const { createContentHasher, hashReadableStream } = await import(
       loaded("/packages/core/src/index.ts")
@@ -120,7 +117,7 @@ try {
     // PDF object URLs must outlive temporary files and reuse of the same source.
     const transferUrl =
       loaded("/packages/reader-studio/src/researchTransfer.ts") ??
-      new URL("./researchTransfer.ts", loaded("/packages/reader-studio/src/state/store.ts")).href;
+      new URL("../researchTransfer.ts", loaded("/packages/reader-studio/src/state/store.ts")).href;
     const { decodeReaderBackup, restoreReaderTransfer, readerTransferState } = await import(
       transferUrl
     );
@@ -219,11 +216,10 @@ try {
   // Closing the page releases its Web Lock. A new session reclaims the orphan.
   await page.close();
   const reopened = await context.newPage();
+  await trackModuleRequests(reopened);
   await reopened.goto(`${origin}/reader`, { waitUntil: "networkidle" });
   await reopened.evaluate(async () => {
-    const url = performance
-      .getEntriesByType("resource")
-      .map((e) => e.name)
+    const url = (await window.__bcrTestModuleUrls())
       .filter((url) => new URL(url).pathname.endsWith("/src/research/packageStaging.ts"))
       .at(-1);
     const { createPackageStaging } = await import(url);

@@ -87,7 +87,10 @@ try {
   await page.locator(".research-insights .research-table-link").first().click();
   panel = page.getByRole("dialog", { name: "成交与行情", exact: true });
   await panel.getByRole("button", { name: "成交表", exact: true }).click();
-  assert.equal(await page.getByLabel("成交开始日期", { exact: true }).inputValue(), signalDate);
+  await page.waitForFunction(
+    (date) => document.querySelector('[aria-label="成交开始日期"]')?.value === date,
+    signalDate,
+  );
   await page.getByRole("button", { name: "清除筛选", exact: true }).click();
   await page.locator(".research-orders .research-table-link").first().waitFor();
   await page.locator(".research-orders .research-table-link").first().click();

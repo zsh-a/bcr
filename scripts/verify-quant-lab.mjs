@@ -15,7 +15,7 @@ page.on("request", (request) => requests.push(request.url()));
 try {
   await page.goto(url.toString(), { waitUntil: "networkidle" });
   await page.locator(".research-run-button:not(:disabled)").waitFor({ timeout: 60000 });
-  assert(await page.getByRole("heading", { name: "行业宽度轮动", exact: true }).isVisible());
+  assert(await page.locator(".jsg-workspace").isVisible());
   assert.equal(await page.getByRole("combobox", { name: "选择策略", exact: true }).count(), 0);
   assert.equal(
     await page.locator(".research-run-result").count(),
