@@ -183,6 +183,7 @@ await withServer({
     "scripts/verify-background.mjs",
     "scripts/verify-knowledge-restore.mjs",
     "scripts/verify-knowledge-attachments.mjs",
+    "scripts/verify-knowledge-editor-context.mjs",
     "scripts/verify-research.mjs",
     "scripts/verify-research-backup.mjs",
     "scripts/verify-research-search.mjs",

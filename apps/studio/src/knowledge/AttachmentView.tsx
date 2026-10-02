@@ -124,7 +124,7 @@ export function AttachmentInline({
         onMenu(box.left + 16, box.top + 16);
       }}
       onContextMenu={(event) => {
-        if (!onMenu) return;
+        if (!onMenu || event.shiftKey) return;
         event.preventDefault();
         event.stopPropagation();
         onMenu(event.clientX, event.clientY);

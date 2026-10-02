@@ -19,6 +19,7 @@
     "test:browser:ui": "node scripts/verify-modern-ui.mjs",
     "test:browser:resources": "node scripts/verify-resource-layout.mjs",
     "test:browser:knowledge:attachments": "node scripts/verify-knowledge-attachments.mjs",
+    "test:browser:knowledge:editor": "node scripts/verify-knowledge-editor-context.mjs",
     "test:browser:reader:menu": "node scripts/verify-reader-context-menu.mjs",
     "test:browser:reader:toolbar": "node scripts/verify-reader-toolbar.mjs",
     "test:browser:diagram": "node scripts/verify-diagram.mjs",

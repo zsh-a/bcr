@@ -14,6 +14,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.ui-context-menu-arrow {
+  margin-left: auto;
+  color: var(--color-muted);
+}
 .ui-context-menu > button:focus-visible {
   outline: none;
   background: color-mix(in srgb, var(--color-text) 8%, transparent);

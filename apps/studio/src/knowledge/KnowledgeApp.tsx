@@ -228,15 +228,17 @@ export function KnowledgeApp() {
   useEffect(() => {
     if (!active || !ready) return;
     const key = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing) return;
       const pressed = event.key.toLowerCase();
       const chord = (event.ctrlKey || event.metaKey) && (pressed === "k" || pressed === "o");
       if (!chord) {
-        // ⌘/Ctrl+B 切换侧栏展开↔收起（与 VS Code 一致）；停在 rail 需用侧栏按钮。
+        // 正文优先处理格式快捷键；其他区域的 ⌘/Ctrl+B 切换侧栏。
         if (
           (event.ctrlKey || event.metaKey) &&
           pressed === "b" &&
           !event.altKey &&
           !event.shiftKey &&
+          !(event.target instanceof Element && event.target.closest(".knowledge-body")) &&
           !document.querySelector("dialog[open]")
         ) {
           event.preventDefault();

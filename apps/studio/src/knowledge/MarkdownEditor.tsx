@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { Compartment, EditorState, Transaction } from "@codemirror/state";
 import { EditorView, placeholder as placeholderExtension } from "@codemirror/view";
 import { knowledgeEditorExtensions, typewriterMode } from "./markdownEditor";
@@ -9,6 +9,8 @@ import { livePreview } from "./livePreview";
 import { attachmentEditing } from "./attachmentEditing";
 import type { KnowledgeStore } from "./store";
 import type { AttachmentReference } from "./attachmentModel";
+import { editorContextMenu, type EditorTarget } from "./editorContext";
+import { EditorContextMenu } from "./EditorContextMenu";
 
 export interface MarkdownEditorHandle {
   reveal(offset: number): void;
@@ -49,6 +51,7 @@ export function MarkdownEditor({
   onOpenAttachment,
   onAttachmentMenu,
   onAttachmentStatus,
+  onAskAi,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -73,9 +76,11 @@ export function MarkdownEditor({
   onOpenAttachment?: (id: string) => void;
   onAttachmentMenu?: (ref: AttachmentReference, x: number, y: number) => void;
   onAttachmentStatus?: (message: string, busy: boolean, error?: boolean) => void;
+  onAskAi?: (() => void) | undefined;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
+  const [contextTarget, setContextTarget] = useState<EditorTarget | null>(null);
   // Read the latest callback without rebuilding the view on every render.
   const change = useRef(onChange);
   change.current = onChange;
@@ -188,6 +193,7 @@ export function MarkdownEditor({
           (next) => change.current(next),
           (ranges) => selection.current?.(ranges),
         ),
+        editorContextMenu(setContextTarget, () => setContextTarget(null)),
         ...noteEditing(
           () => latest.current.notes,
           (target) => latest.current.onOpenLink?.(target),
@@ -235,6 +241,7 @@ export function MarkdownEditor({
     });
     selection.current?.(created.state.selection.ranges.map(({ from, to }) => ({ from, to })));
     return () => {
+      setContextTarget(null);
       files?.destroy();
       attachments.current = null;
       sessions?.save(sessionId, created.state, created.scrollDOM.scrollTop);
@@ -282,5 +289,27 @@ export function MarkdownEditor({
     });
   }, [value]);
 
-  return <div className="knowledge-body" ref={host} />;
+  return (
+    <>
+      <div className="knowledge-body" ref={host} />
+      <EditorContextMenu
+        key={sessionId}
+        target={contextTarget}
+        readOnly={readOnly}
+        onClose={() => setContextTarget(null)}
+        onOpenLink={onOpenLink}
+        onAskAi={onAskAi}
+        onPick={
+          attachmentStore
+            ? (current, image) => attachments.current?.pick(current, image)
+            : undefined
+        }
+        onFiles={
+          attachmentStore
+            ? (current, files) => attachments.current?.insert(current, files)
+            : undefined
+        }
+      />
+    </>
+  );
 }

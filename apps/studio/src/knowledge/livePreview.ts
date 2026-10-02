@@ -268,6 +268,7 @@ class WikiLinkWidget extends WidgetType {
     private target: string,
     private tip: LinkTip,
     private open: (target: string) => void,
+    private from: number,
   ) {
     super();
   }
@@ -277,13 +278,15 @@ class WikiLinkWidget extends WidgetType {
       other.target === this.target &&
       other.tip.main === this.tip.main &&
       other.tip.detail === this.tip.detail &&
-      other.open === this.open
+      other.open === this.open &&
+      other.from === this.from
     );
   }
   toDOM() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "knowledge-inline-link";
+    button.dataset.editorFrom = String(this.from);
     button.textContent = this.label;
     button.setAttribute("aria-label", `打开关联笔记：${this.tip.main}`);
     button.addEventListener("click", () => this.open(this.target));
@@ -383,7 +386,13 @@ function toDecorations(
       case "chip":
         ranges.push(
           Decoration.replace({
-            widget: new WikiLinkWidget(mark.label, mark.target, tipOf(mark.target), open),
+            widget: new WikiLinkWidget(
+              mark.label,
+              mark.target,
+              tipOf(mark.target),
+              open,
+              mark.from,
+            ),
           }).range(mark.from, mark.to),
         );
         break;

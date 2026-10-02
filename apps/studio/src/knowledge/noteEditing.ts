@@ -14,8 +14,9 @@ import { EditorView } from "@codemirror/view";
 import { notePath } from "./paths";
 import type { KnowledgeNote } from "./model";
 import { analyzeMarkdown, noteWikiLink } from "./markdownAnalysis";
-import { fillTemplate, localDay } from "./format";
+import { fillTemplate } from "./format";
 import { editorAnalysis } from "./editorAnalysis";
+import { editorBlocks, editorFormattingKeys } from "./editorCommands";
 
 /** 当前笔记身份与标题；模板的 {{title}} 变量取实时标题。 */
 export interface SlashContext {
@@ -35,10 +36,10 @@ function inCode(context: CompletionContext) {
 }
 
 /** 应用插入：连同触发的 “/” 一起替换，光标停在插入内容之后。 */
-function inserting(text: string) {
+function inserting(text: string | (() => string)) {
   return (view: EditorView, completion: Completion, from: number, to: number) => {
     view.dispatch({
-      changes: { from: from - 1, to, insert: text },
+      changes: { from: from - 1, to, insert: typeof text === "string" ? text : text() },
       annotations: pickedCompletion.of(completion),
     });
     view.focus();
@@ -49,23 +50,14 @@ const blocksSection: CompletionSection = { name: "基础块" };
 const templatesSection: CompletionSection = { name: "模板" };
 
 /** / 插入面板的基础块：图标（type）+ 单行预览（detail）。 */
-const insertBlocks: Completion[] = [
-  { label: "标题 1", detail: "# 标题", type: "heading1", apply: inserting("# ") },
-  { label: "标题 2", detail: "## 标题", type: "heading2", apply: inserting("## ") },
-  { label: "标题 3", detail: "### 标题", type: "heading3", apply: inserting("### ") },
-  { label: "无序列表", detail: "- 项目", type: "list", apply: inserting("- ") },
-  { label: "任务列表", detail: "- [ ] 任务", type: "task", apply: inserting("- [ ] ") },
-  { label: "引用", detail: "> 引文", type: "quote", apply: inserting("> ") },
-  { label: "代码块", detail: "```语言", type: "code", apply: inserting("```\n\n```") },
-  { label: "分割线", detail: "---", type: "divider", apply: inserting("---\n") },
-  {
-    label: "表格",
-    detail: "| 项目 | 内容 |",
-    type: "table",
-    apply: inserting("| 项目 | 内容 |\n| --- | --- |\n|  |  |"),
-  },
-  { label: "日期", detail: localDay(), type: "date", apply: inserting(localDay()) },
-].map((item) => ({ ...item, boost: 2, section: blocksSection }));
+const insertBlocks: Completion[] = editorBlocks.map(({ label, detail, type, text }) => ({
+  label,
+  detail,
+  type,
+  apply: inserting(text),
+  boost: 2,
+  section: blocksSection,
+}));
 
 /** 模板条目跟随知识库现状；插入前用当前标题展开 {{title}}。 */
 function templateBlocks(notes: () => readonly KnowledgeNote[], currentNote: () => SlashContext) {
@@ -122,6 +114,7 @@ export function noteEditing(
   }
 
   return [
+    editorFormattingKeys,
     autocompletion({
       override: [
         (context: CompletionContext) => {

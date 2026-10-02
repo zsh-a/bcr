@@ -127,8 +127,16 @@ export function attachmentEditing({
           const before = from > 0 && view.state.sliceDoc(from - 1, from) !== "\n" ? "\n\n" : "";
           const after =
             to < view.state.doc.length && view.state.sliceDoc(to, to + 1) !== "\n" ? "\n\n" : "\n";
+          const atInsertion =
+            view.state.selection.main.from === from && view.state.selection.main.to === to;
           view.dispatch({
             changes: { from, to, insert: before + inline + after },
+            ...(atInsertion
+              ? {
+                  selection: { anchor: from + before.length + inline.length + after.length },
+                  scrollIntoView: true,
+                }
+              : {}),
             effects: removeAnchor.of(marker),
             userEvent: "input.paste",
           });

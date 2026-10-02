@@ -224,7 +224,13 @@ try {
   await dialog.getByText("Attachment PDF evidence", { exact: false }).waitFor();
   await a.page.keyboard.press("Escape");
   await animations(a.page);
-  const pixels = await a.page.locator('img[alt="趋势图.png"]').evaluate(async (img) => {
+  const trendImage = a.page.locator('.knowledge-prose img[alt="趋势图.png"]');
+  await trendImage.scrollIntoViewIfNeeded();
+  await a.page.waitForFunction(() => {
+    const img = document.querySelector('.knowledge-prose img[alt="趋势图.png"]');
+    return img?.complete && img.naturalWidth === 1440;
+  });
+  const pixels = await trendImage.evaluate(async (img) => {
     await img.decode();
     const canvas = document.createElement("canvas");
     canvas.width = canvas.height = 1;

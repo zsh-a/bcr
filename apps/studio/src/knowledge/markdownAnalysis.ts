@@ -23,6 +23,11 @@ export interface NoteHeading {
   depth: number;
   from: number;
 }
+/** Editor actions also need external URLs, which never enter the relationship index. */
+export interface EditorLink extends NoteLink {
+  url: string;
+  internal: boolean;
+}
 export interface NoteAnalysis {
   links: NoteLink[];
   headings: NoteHeading[];
@@ -116,6 +121,7 @@ function walk(
   result: NoteAnalysis,
   transform: boolean,
   definitions: ReadonlyMap<string, Definition>,
+  editable?: EditorLink[],
 ) {
   if (node.type === "heading") {
     const from = node.position?.start.offset ?? 0;
@@ -133,10 +139,10 @@ function walk(
       to = node.position?.end.offset;
     const labelEnd =
       node.children.at(-1)?.position?.end.offset ?? (from === undefined ? undefined : from + 1);
-    if (target !== null && definition && from !== undefined && to !== undefined) {
-      result.links.push({
+    if (definition && from !== undefined && to !== undefined) {
+      const link: NoteLink = {
         kind: "markdown",
-        target,
+        target: target ?? definition.url,
         label: textOf(node),
         from,
         to,
@@ -148,22 +154,26 @@ function walk(
                 title: definition.title ?? null,
               },
             }),
-      });
+      };
+      if (target !== null) result.links.push(link);
+      editable?.push({ ...link, url: definition.url, internal: target !== null });
     }
     return;
   }
   if (node.type === "link") {
     const target = internalTarget(node.url);
-    if (target !== null) {
+    if (target !== null || editable) {
       const destination = markdownDestination(node, source);
-      result.links.push({
+      const link: NoteLink = {
         kind: "markdown",
-        target,
+        target: target ?? node.url,
         label: textOf(node),
         from: node.position?.start.offset ?? 0,
         to: node.position?.end.offset ?? 0,
         ...(destination ? { destination } : {}),
-      });
+      };
+      if (target !== null) result.links.push(link);
+      editable?.push({ ...link, url: node.url, internal: target !== null });
     }
     return;
   }
@@ -172,11 +182,12 @@ function walk(
   for (let index = 0; index < children.length; index++) {
     const child = children[index]!;
     if (child.type !== "text") {
-      walk(child, source, result, transform, definitions);
+      walk(child, source, result, transform, definitions, editable);
       continue;
     }
     const links = wikiLinks(child, source);
     result.links.push(...links);
+    editable?.push(...links.map((link) => ({ ...link, url: link.target, internal: true })));
     if (!transform || !links.length) continue;
     const replacements: PhrasingContent[] = [];
     let cursor = 0;
@@ -206,6 +217,13 @@ export function analyzeMarkdown(source: string): NoteAnalysis {
   const tree = parser.parse(source);
   walk(tree, source, result, false, definitionsIn(tree));
   return result;
+}
+
+export function analyzeEditorLinks(source: string): EditorLink[] {
+  const links: EditorLink[] = [];
+  const tree = parser.parse(source);
+  walk(tree, source, { links: [], headings: [] }, false, definitionsIn(tree), links);
+  return links;
 }
 
 /** Shared semantics for reading mode and the relationship index. No raw HTML injection. */

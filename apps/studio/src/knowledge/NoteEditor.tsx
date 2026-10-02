@@ -40,6 +40,8 @@ import {
   Select,
   useMediaQuery,
   useNavigation,
+  useAgentHost,
+  useOpenAssistant,
   useUpdateParticipant,
 } from "@bcr/react";
 import {
@@ -102,6 +104,8 @@ export function NoteEditor({
   toolbarSlot: HTMLElement | null;
 }) {
   const navigation = useNavigation();
+  const agentHost = useAgentHost();
+  const openAssistant = useOpenAssistant();
   const narrow = useMediaQuery("(width < 68.75em)");
   const [contextView, setContextView] = useState<
     "outline" | "links" | "properties" | "attachments"
@@ -651,7 +655,8 @@ export function NoteEditor({
                 <details className="knowledge-tools-section">
                   <summary>快捷键</summary>
                   <p className="knowledge-hint">
-                    [[ 关联笔记 · / 插入 · Ctrl/⌘+F 查找 · Ctrl/⌘+B 侧栏 · Esc 退出专注模式
+                    [[ 关联笔记 · / 插入 · Ctrl/⌘+F 查找 · Ctrl/⌘+B 加粗 · Ctrl/⌘+I 斜体 · Shift+F10
+                    正文菜单 · Shift+右键 系统菜单 · Esc 退出专注模式
                   </p>
                 </details>
               </div>
@@ -733,6 +738,14 @@ export function NoteEditor({
             sessions={sessions}
             notes={notes}
             onOpenLink={onOpenLink}
+            onAskAi={
+              openAssistant
+                ? () => {
+                    agentHost.conversations.setOptions({ includeContext: true });
+                    openAssistant();
+                  }
+                : undefined
+            }
             editorRef={source}
             live={view !== "source"}
             typewriter={settings.typewriter}

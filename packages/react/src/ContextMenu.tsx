@@ -9,6 +9,9 @@ export interface ContextMenuAction {
   disabled?: boolean;
   danger?: boolean;
   separated?: boolean;
+  /** Navigate within this surface without dismissing it. */
+  submenu?: boolean;
+  keepOpen?: boolean;
   run: () => void;
 }
 
@@ -20,6 +23,8 @@ export function ContextMenu(props: {
   y: number;
   trigger: HTMLElement;
   actions: ReadonlyArray<ContextMenuAction>;
+  page?: string;
+  onBack?: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -35,23 +40,19 @@ export function ContextMenu(props: {
   useLayoutEffect(() => {
     const menu = ref.current;
     if (!menu) return;
-    const frame = requestAnimationFrame(() => {
-      menu.showPopover();
-      const position = contextMenuPosition(
-        { x: props.x, y: props.y },
-        { width: menu.offsetWidth, height: menu.offsetHeight },
-        { width: window.innerWidth, height: window.innerHeight },
-      );
-      Object.assign(menu.style, {
-        left: `${position.left}px`,
-        top: `${position.top}px`,
-        maxWidth: `${position.maxWidth}px`,
-        maxHeight: `${position.maxHeight}px`,
-      });
-      menu
-        .querySelector<HTMLButtonElement>("button:not(:disabled)")
-        ?.focus({ preventScroll: true });
+    menu.showPopover();
+    const position = contextMenuPosition(
+      { x: props.x, y: props.y },
+      { width: menu.offsetWidth, height: menu.offsetHeight },
+      { width: window.innerWidth, height: window.innerHeight },
+    );
+    Object.assign(menu.style, {
+      left: `${position.left}px`,
+      top: `${position.top}px`,
+      maxWidth: `${position.maxWidth}px`,
+      maxHeight: `${position.maxHeight}px`,
     });
+    menu.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
     const dismiss = () => {
       if (menu.matches(":popover-open")) menu.hidePopover();
       closeRef.current();
@@ -72,14 +73,13 @@ export function ContextMenu(props: {
     window.addEventListener("scroll", outside, true);
     window.addEventListener("resize", dismiss);
     return () => {
-      cancelAnimationFrame(frame);
       window.removeEventListener("keydown", escape, true);
       window.removeEventListener("pointerdown", outside, true);
       window.removeEventListener("scroll", outside, true);
       window.removeEventListener("resize", dismiss);
       if (menu.matches(":popover-open")) menu.hidePopover();
     };
-  }, [props.x, props.y, props.trigger]);
+  }, [props.x, props.y, props.trigger, props.page]);
 
   return (
     <div
@@ -101,6 +101,19 @@ export function ContextMenu(props: {
           ...event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"),
         ];
         const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+        if (event.key === "ArrowLeft" && props.onBack) {
+          event.preventDefault();
+          props.onBack();
+          return;
+        }
+        if (event.key === "ArrowRight") {
+          const action = props.actions.find((item) => item.id === buttons[index]?.dataset.action);
+          if (action?.submenu) {
+            event.preventDefault();
+            action.run();
+          }
+          return;
+        }
         const next =
           event.key === "ArrowDown"
             ? (index + 1) % buttons.length
@@ -128,16 +141,23 @@ export function ContextMenu(props: {
           <button
             type="button"
             role="menuitem"
+            data-action={action.id}
+            aria-haspopup={action.submenu ? "menu" : undefined}
             disabled={action.disabled}
             className={action.danger ? "is-danger" : undefined}
             onClick={() => {
-              close(true);
+              if (!action.submenu && !action.keepOpen) close(true);
               action.run();
             }}
           >
             {action.icon}
             <span>{action.label}</span>
             {action.shortcut && <kbd aria-hidden="true">{action.shortcut}</kbd>}
+            {action.submenu && (
+              <span className="ui-context-menu-arrow" aria-hidden="true">
+                ›
+              </span>
+            )}
           </button>
         </Fragment>
       ))}
