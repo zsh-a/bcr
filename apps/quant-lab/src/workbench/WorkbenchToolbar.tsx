@@ -14,6 +14,7 @@ import {
 import type { RefObject } from "react";
 import type { ResearchController } from "../session/service";
 import type { WorkbenchPanels } from "./useWorkbenchPanels";
+import { StrategyPicker } from "./StrategyPicker";
 
 export function WorkbenchToolbar({
   research,
@@ -81,9 +82,11 @@ export function WorkbenchToolbar({
         </button>
       </div>
       <div className="research-actions">
+        <StrategyPicker value="portfolio" disabled={busy} />
         <Button
           variant="ghost"
           aria-label="运行历史"
+          className="research-history-trigger"
           disabled={state.runs.length === 0}
           onClick={() => setHistoryOpen(true)}
         >

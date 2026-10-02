@@ -357,6 +357,7 @@
       "dependencies": {
         "@bcr/core": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
+        "@zip.js/zip.js": "catalog:",
         "effect": "catalog:",
         "stock-sdk": "2.4.2",
       },

@@ -8,6 +8,7 @@ pub mod reader;
 pub mod research;
 mod source;
 pub mod strategy;
+pub mod trend;
 
 use arrow_ipc::reader::StreamReader;
 use engine::Engine;

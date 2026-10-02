@@ -14,6 +14,7 @@ const coreChecks = new Set([
   "manga-studio",
   "market-trends",
   "jsg",
+  "binance-trend",
   "quant-chart-events",
   "jsg-clickhouse-fixture",
   "quant-experiments",
@@ -60,6 +61,7 @@ const groups = {
   quant: [
     "quant-lab",
     "jsg",
+    "binance-trend",
     "quant-chart-events",
     "jsg-storage",
     "jsg-grid",

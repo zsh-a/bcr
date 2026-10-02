@@ -5,11 +5,13 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./research/*": "./src/research/*.ts"
+    "./research/*": "./src/research/*.ts",
+    "./binance/*": "./src/binance/*.ts"
   },
   "dependencies": {
     "@bcr/core": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",
+    "@zip.js/zip.js": "catalog:",
     "effect": "catalog:",
     "stock-sdk": "2.4.2"
   }

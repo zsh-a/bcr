@@ -513,11 +513,11 @@
   font-size: 12px;
 }
 
-.research-actions > .ui-btn:first-child {
+.research-actions > .research-history-trigger {
   padding-inline: 8px;
 }
 
-.research-actions > .ui-btn:first-child > small {
+.research-actions > .research-history-trigger > small {
   display: none;
 }
 
@@ -676,7 +676,7 @@
     flex-wrap: nowrap;
   }
 
-  .research-actions > .ui-btn:first-child {
+  .research-actions > .research-history-trigger {
     display: none;
   }
 
@@ -730,4 +730,23 @@
 
 .research-action-menu > summary {
   min-width: calc(var(--space-8) + var(--space-1));
+}
+
+.research-strategy-picker {
+  max-width: 132px;
+  font-size: 12px;
+  min-height: 30px;
+}
+
+@media (max-width: 360px) {
+  .research-header .research-brand {
+    display: none;
+  }
+  .research-strategy-picker {
+    width: 90px;
+    padding-inline: 8px;
+  }
+  .research-run-button > span::after {
+    display: none;
+  }
 }

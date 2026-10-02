@@ -1,8 +1,15 @@
-import { RuntimeProvider, Spinner, usePublishRunningCount, useRuntimeSession } from "@bcr/react";
+import {
+  RuntimeProvider,
+  Spinner,
+  useLocationSearch,
+  usePublishRunningCount,
+  useRuntimeSession,
+} from "@bcr/react";
 import { useState } from "react";
 import { createRuntimeServices } from "./runtime";
 import "./styles.css";
 import { QuantWorkbench } from "./workbench/Workbench";
+import { TrendWorkbench } from "./trend/workbench/TrendWorkbench";
 
 export function App() {
   const { services, error } = useRuntimeSession(createRuntimeServices);
@@ -31,10 +38,11 @@ export function App() {
 function ResearchWorkbench() {
   const [busy, setBusy] = useState(false);
   usePublishRunningCount("quant", busy ? 1 : 0);
+  const trend = new URLSearchParams(useLocationSearch()).get("strategy") === "trend";
   return (
     <div className="quant-lab ql-research-shell" data-workbench="quant">
       <section className="ql-research-view" aria-label="量化策略研究">
-        <QuantWorkbench onBusy={setBusy} />
+        {trend ? <TrendWorkbench onBusy={setBusy} /> : <QuantWorkbench onBusy={setBusy} />}
       </section>
     </div>
   );

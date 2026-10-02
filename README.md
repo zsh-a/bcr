@@ -101,8 +101,8 @@ bun run docgen         # 启动 DocGen Lab（apps/docgen-studio）
 bun run build:cloudflare  # 构建 WASM + BCR Studio 静态产物
 bun run deploy:cloudflare # 部署 apps/studio/dist 到 Cloudflare Workers
 cargo test --manifest-path crates/kernels/Cargo.toml
-bun run test:browser   # 自动启停 dev server，3 组并行运行 25 个核心浏览器检查
-bun run test:browser:full # 运行全部 78 个浏览器检查
+bun run test:browser   # 自动启停 dev server，3 组并行运行 26 个核心浏览器检查
+bun run test:browser:full # 运行全部 79 个浏览器检查
 bun run test:ci        # 验证浏览器分组和命令行选择
 bun run test:pwa       # 使用已构建的 apps/studio/dist 验证生产版 Reader 离线与更新
 bun run test:pwa:knowledge # 使用已构建的 apps/studio/dist 验证生产版 Notes 独立 PWA（/notes/）
@@ -117,11 +117,11 @@ dev server。走查脚本位于 `scripts/`，共享的浏览器与路径 helper 
 `no-restricted-imports` 强制，不再需要单独的手写 AST 校验脚本。
 
 GitHub Actions 的 push / PR 流程保留全仓格式、类型、单元测试、Rust/WASM、ClickHouse 导出边界和
-Studio 生产构建。浏览器检查按 workspace / quant / reader 三组并行，覆盖 25 个核心流程，
+Studio 生产构建。浏览器检查按 workspace / quant / reader 三组并行，覆盖 26 个核心流程，
 包括回测、图表事件、实验与滚动验证、附件与恢复、Worker 和会话隔离；Reader 与 Notes 的生产
 PWA 离线检查也保留。每个检查记录耗时，失败时上传截图与日志。
 
-全部 78 个浏览器检查、各应用 PWA 安装矩阵、独立应用与 demo 构建、原生 ClickHouse 集成和
+全部 79 个浏览器检查、各应用 PWA 安装矩阵、独立应用与 demo 构建、原生 ClickHouse 集成和
 上游 Agent Runtime 全量测试移到手动完整检查：GitHub Actions → CI → Run workflow → 勾选 `full`，
 或执行 `gh workflow run ci.yml -f full=true`。重复的布局、分页和格式组合检查不再延长每次提交的反馈时间。
 本地可用 `bun run test:browser --group=quant` 只检查一个分组，`--list` 查看计划；
@@ -218,7 +218,9 @@ decode ─┬─ wave（Rust peak kernel 波形）
 
 ## Quant Lab（apps/quant-lab）
 
-Quant Lab 统一使用 JSG 多股票研究工作台，直接打开 `/quant` 或独立应用即可使用。
+Quant Lab 默认打开股票组合研究工作台，可在顶部切换「股票组合 / 永续趋势」。
+永续趋势入口为 `/quant?strategy=trend`：直接获取 Binance 官方 USDT 永续历史档案，在 Rust/WASM 中
+回放趋势回调突破或通道突破，包含费用、资金费、风控与 K 线买卖点，详情见 [策略与数据口径](docs/BINANCE-TREND.md)。
 
 ```text
 ClickHouse / 本地研究快照 → 分块 Arrow → Rust/WASM 逐日回放 → 净值 / 成交 / 持仓 / 选股解释

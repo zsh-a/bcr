@@ -45,6 +45,7 @@
     "test:rust:quant": "cargo test --manifest-path crates/quant/Cargo.toml",
     "test:browser:quant:experiments": "node scripts/verify-quant-experiments.mjs",
     "test:browser:quant:charts": "node scripts/verify-quant-chart-events.mjs",
+    "test:browser:quant:trend": "node scripts/verify-binance-trend.mjs",
     "test:browser:quant:walk-forward": "node scripts/verify-quant-walk-forward.mjs",
     "test:browser:jsg": "node scripts/verify-jsg.mjs",
     "test:browser:jsg:grid": "node scripts/verify-jsg-grid.mjs",
