@@ -1,4 +1,5 @@
 use super::{
+    config::Config,
     engine::Engine,
     indicators::{CandleBuilder, Indicators},
     model::*,
@@ -16,18 +17,19 @@ fn bar(i: usize, open: f64, close: f64) -> Bar {
     }
 }
 fn config() -> Config {
-    Config {
-        fast_ema: 2,
-        slow_ema: 4,
-        tick_size: 0.01,
-        quantity_step: 0.001,
-        min_notional: 1.0,
-        daily_loss_pct: 0.0,
-        flatten_minute: None,
-        break_even_r: 0.0,
-        trailing_start_r: 100.0,
-        ..Config::default()
-    }
+    let mut c = Config::default();
+    c.strategy.entry = "pullback".into();
+    c.strategy.break_even_atr = 0.0;
+    c.strategy.trailing_atr = 20.0;
+    c.execution.tick_size = 0.01;
+    c.execution.min_notional = 1.0;
+    c.risk.daily_loss_pct = 0.0;
+    c
+}
+fn period_config(minutes: usize) -> Config {
+    let mut c = config();
+    c.strategy.trade_minutes = minutes;
+    c
 }
 fn history(short: bool) -> Vec<Bar> {
     let mut bars = vec![];
@@ -100,22 +102,23 @@ fn pullback_continuation_is_symmetric_and_enters_after_signal_close() {
         let signal = out.events.iter().find(|e| e.kind == "signal").unwrap();
         assert_eq!(signal.time + 1, t.entry_time);
         assert_eq!(t.reason, "end-range");
-        assert!((m.final_equity - config().initial_capital - t.net_pnl).abs() < 1e-8);
+        assert!((m.final_equity - config().execution.initial_capital - t.net_pnl).abs() < 1e-8);
         assert!(t.net_pnl > 0.0);
     }
 }
 #[test]
-fn higher_period_ema_is_unchanged_until_candle_close() {
-    let c = config();
+fn optional_ema_is_unchanged_until_trading_candle_close() {
+    let mut c = period_config(5);
+    c.strategy.filter = "ema".into();
     let mut indicators = Indicators::default();
     for i in 0..4 {
-        assert!(!indicators.close(bar(i, 100.0, 101.0), &c).trend);
+        assert!(!indicators.close(bar(i, 100.0, 101.0), &c.strategy).trend);
         assert_eq!(indicators.fast, 0.0);
     }
-    assert!(indicators.close(bar(4, 100.0, 101.0), &c).trend);
+    assert!(indicators.close(bar(4, 100.0, 101.0), &c.strategy).trend);
     let fast = indicators.fast;
     for i in 5..9 {
-        assert!(!indicators.close(bar(i, 101.0, 1000.0), &c).trend);
+        assert!(!indicators.close(bar(i, 101.0, 1000.0), &c.strategy).trend);
         assert_eq!(indicators.fast, fast);
     }
 }
@@ -152,7 +155,7 @@ fn funding_applies_to_carried_positions_before_new_entries_and_reconciles() {
         assert_eq!(m.funding_events, 1);
         let expected = t.side.sign() * t.quantity * bars[67].open * rate;
         assert!((t.funding - expected).abs() < 1e-9);
-        assert!((m.final_equity - config().initial_capital - t.net_pnl).abs() < 1e-8);
+        assert!((m.final_equity - config().execution.initial_capital - t.net_pnl).abs() < 1e-8);
     }
 }
 #[test]
@@ -167,21 +170,22 @@ fn stop_gap_fill_and_risk_budget_include_rounding_and_costs() {
     assert_eq!(t.reason, "initial");
     assert_eq!(t.exit_time, bars[67].time);
     assert!(t.exit_price <= 100.0);
-    assert!(t.net_pnl < -config().initial_capital * config().risk_pct); // gap can exceed budget
-    let modelled_fill =
-        (t.initial_stop * (1.0 - config().slippage_bps / 10_000.0) / config().tick_size).floor()
-            * config().tick_size;
+    assert!(t.net_pnl < -config().execution.initial_capital * config().risk.risk_pct); // gap can exceed budget
+    let modelled_fill = (t.initial_stop * (1.0 - config().execution.slippage_bps / 10_000.0)
+        / config().execution.tick_size)
+        .floor()
+        * config().execution.tick_size;
     let risk = (t.entry_price - modelled_fill
-        + (t.entry_price + modelled_fill) * config().fee_bps / 10_000.0)
+        + (t.entry_price + modelled_fill) * config().execution.fee_bps / 10_000.0)
         * t.quantity;
-    assert!(risk <= config().initial_capital * config().risk_pct + 1e-8);
+    assert!(risk <= config().execution.initial_capital * config().risk.risk_pct + 1e-8);
     assert!((m.fees - t.fees).abs() < 1e-8);
 }
 #[test]
 fn stop_improvement_does_not_fill_retroactively_in_the_same_bar() {
     let mut bars = history(false);
     let mut c = config();
-    c.break_even_r = 0.1;
+    c.strategy.break_even_atr = 0.1;
     bars[66].high = 107.0; // old stop survives, intrabar low is below new breakeven
     bars[67] = bar(67, 104.6, 104.5);
     let (_, out) = replay(c, &bars, vec![], false);
@@ -193,7 +197,7 @@ fn stop_improvement_does_not_fill_retroactively_in_the_same_bar() {
 fn daily_flat_closes_and_blocks_orders_for_remaining_utc_day() {
     let bars = history(false);
     let mut c = config();
-    c.flatten_minute = Some(67);
+    c.risk.flatten_minute = Some(67);
     let (_, out) = replay(c, &bars, vec![], false);
     assert_eq!(out.trades.len(), 1);
     assert_eq!(out.trades[0].reason, "daily-close");
@@ -245,12 +249,11 @@ fn parser_rejects_microseconds_gaps_and_unaligned_marks() {
 #[test]
 fn cooldown_survives_utc_midnight_and_output_drains() {
     let mut c = config();
-    c.entry = "breakout".into();
-    c.breakout_bars = 2;
-    c.stop_atr = 0.25;
-    c.max_stop_atr = 20.0;
-    c.fee_bps = 0.0;
-    c.slippage_bps = 0.0;
+    c.strategy.entry = "breakout".into();
+    c.strategy.breakout_bars = 2;
+    c.strategy.stop_atr = 0.25;
+    c.execution.fee_bps = 0.0;
+    c.execution.slippage_bps = 0.0;
     let offset = DAY - 100 * MINUTE;
     let mut bars = history(false)[..60].to_vec();
     let mut previous = bars.last().unwrap().close;
@@ -296,7 +299,7 @@ fn cooldown_survives_utc_midnight_and_output_drains() {
 fn daily_loss_exits_at_next_open_and_locks_the_day() {
     let mut bars = history(false);
     let mut c = config();
-    c.daily_loss_pct = 0.0001;
+    c.risk.daily_loss_pct = 0.0001;
     // Mark-to-market loss without touching the initial stop; next open exits.
     bars[66] = bar(66, bars[66].open, bars[66].open - 0.25);
     bars[67] = bar(67, bars[66].close, bars[66].close + 0.5);
@@ -308,19 +311,19 @@ fn daily_loss_exits_at_next_open_and_locks_the_day() {
 
 #[test]
 fn trading_candles_and_atr_ignore_unclosed_or_partial_periods() {
-    let c = Config {
-        trade_minutes: 5,
-        ..config()
-    };
+    let c = period_config(5);
     let mut indicators = Indicators::default();
     for i in 0..4 {
         assert!(indicators
-            .close(bar(i, 100.0 + i as f64, 101.0 + i as f64), &c)
+            .close(bar(i, 100.0 + i as f64, 101.0 + i as f64), &c.strategy)
             .trade
             .is_none());
         assert_eq!(indicators.atr, 0.0);
     }
-    let candle = indicators.close(bar(4, 104.0, 105.0), &c).trade.unwrap();
+    let candle = indicators
+        .close(bar(4, 104.0, 105.0), &c.strategy)
+        .trade
+        .unwrap();
     assert_eq!(candle.time, BASE);
     assert_eq!(candle.open, 100.0);
     assert_eq!(candle.close, 105.0);
@@ -329,7 +332,7 @@ fn trading_candles_and_atr_ignore_unclosed_or_partial_periods() {
     assert!((indicators.atr - 5.1).abs() < 1e-9);
     let prior = indicators.atr;
     for i in 5..9 {
-        indicators.close(bar(i, 105.0, 1000.0), &c);
+        indicators.close(bar(i, 105.0, 1000.0), &c.strategy);
         assert_eq!(indicators.atr, prior);
     }
     let mut partial = CandleBuilder::default();
@@ -366,10 +369,7 @@ fn period_history(minutes: usize, short: bool) -> Vec<Bar> {
         .collect()
 }
 fn replay_five(bars: &[Bar], funding: Vec<Funding>, partition_rows: usize) -> (Metrics, Chunk) {
-    let c = Config {
-        trade_minutes: 5,
-        ..config()
-    };
+    let c = period_config(5);
     let mut engine = Engine::new(
         c,
         funding,
@@ -446,37 +446,21 @@ fn five_minute_strategy_stops_and_pays_funding_inside_an_unclosed_candle() {
 }
 #[test]
 fn daily_trading_supports_long_warmup_and_requires_overnight_positions() {
-    let c = Config {
-        trade_minutes: 1440,
-        trend_minutes: 1440,
-        flatten_minute: None,
-        ..Config::default()
-    };
+    let c = period_config(1440);
     assert!(Engine::new(c.clone(), vec![], BASE + 60 * DAY, BASE + 61 * DAY, BASE).is_ok());
-    assert!(Config {
-        flatten_minute: Some(1437),
-        ..c.clone()
-    }
-    .validate()
-    .is_err());
-    assert!(Config {
-        trade_minutes: 15,
-        trend_minutes: 5,
-        ..c
-    }
-    .validate()
-    .is_err());
+    let mut invalid = c.clone();
+    invalid.risk.flatten_minute = Some(1437);
+    assert!(invalid.validate().is_err());
+    invalid = c;
+    invalid.strategy.trade_minutes = 7;
+    assert!(invalid.validate().is_err());
 }
 
 #[test]
 fn daily_signals_enter_at_next_utc_midnight_and_positions_survive_new_days() {
     let bars = period_history(1440, false);
     let mut e = Engine::new(
-        Config {
-            trade_minutes: 1440,
-            trend_minutes: 1440,
-            ..config()
-        },
+        period_config(1440),
         vec![],
         BASE + 60 * DAY,
         BASE + 70 * DAY,
@@ -500,4 +484,168 @@ fn daily_signals_enter_at_next_utc_midnight_and_positions_survive_new_days() {
     assert_eq!(out.trades[0].reason, "end-range");
     assert_eq!(out.trades[0].exit_time, BASE + 70 * DAY - 1);
     assert!(out.trades[0].net_pnl > 0.0);
+}
+
+#[test]
+fn pure_channel_has_no_ema_gate_and_uses_exact_entry_atr_risk() {
+    for short in [false, true] {
+        let mut c = config();
+        c.strategy.entry = "breakout".into();
+        let original = history(short);
+        let mut bars = original[..20].to_vec();
+        bars.extend(original[60..].iter().copied());
+        for (i, b) in bars.iter_mut().enumerate() {
+            b.time = BASE + i as u64 * MINUTE;
+        }
+        let run = |config: Config| {
+            let mut engine = Engine::new(
+                config,
+                vec![],
+                BASE + 20 * MINUTE,
+                BASE + bars.len() as u64 * MINUTE,
+                BASE,
+            )
+            .unwrap();
+            for b in &bars {
+                engine.advance(*b, *b).unwrap();
+            }
+            engine.finish().unwrap();
+            engine.drain()
+        };
+        let out = run(c.clone());
+        let t = &out.trades[0];
+        assert_eq!(t.side, if short { Side::Short } else { Side::Long });
+        // Channel/ATR are ready before the optional slow EMA's 60 candles.
+        assert_eq!(t.entry_time, BASE + 21 * MINUTE);
+        assert!(out.indicators.is_empty());
+        let mut indicators = Indicators::default();
+        for b in bars.iter().take(21) {
+            indicators.close(*b, &c.strategy);
+        }
+        let distance = (t.entry_price - t.initial_stop).abs();
+        assert!(distance >= indicators.atr * c.strategy.stop_atr);
+        assert!(distance < indicators.atr * c.strategy.stop_atr + c.execution.tick_size + 1e-9);
+        c.strategy.filter = "ema".into();
+        assert!(run(c).trades.is_empty());
+    }
+}
+
+fn position(side: Side) -> super::position::Position {
+    super::position::Position {
+        id: 1,
+        side,
+        time: BASE,
+        entry: 100.0,
+        quantity: 1.0,
+        initial_stop: 100.0 - side.sign() * 6.0,
+        stop: 100.0 - side.sign() * 6.0,
+        distance: 6.0,
+        atr: 2.0,
+        entry_fee: 0.0,
+        funding: 0.0,
+        mfe: 0.0,
+        mae: 0.0,
+        stop_reason: "initial",
+    }
+}
+#[test]
+fn breakeven_trigger_uses_frozen_atr_not_initial_r_and_covers_costs() {
+    use super::position::update_protection;
+    for side in [Side::Long, Side::Short] {
+        let mut c = config();
+        c.strategy.break_even_atr = 1.0;
+        c.strategy.trailing_atr = 20.0;
+        let mut p = position(side);
+        p.entry_fee = p.entry * c.execution.fee();
+        p.funding = 0.02;
+        let mut b = bar(1, 100.0 + side.sign() * 2.5, 100.0 + side.sign() * 2.5);
+        b.high = b.open + 0.01;
+        b.low = b.open - 0.01;
+        assert!(p.distance > 2.51); // 1 R not reached; 1 ATR reached.
+        assert_eq!(
+            update_protection(&mut p, b, &c.strategy, &c.execution),
+            Some("breakeven")
+        );
+        let price = c.execution.fill(p.stop, side == Side::Short).unwrap();
+        let net =
+            side.sign() * (price - p.entry) - p.entry_fee - price * c.execution.fee() - p.funding;
+        assert!(net >= 0.0);
+    }
+}
+#[test]
+fn trailing_has_no_extra_activation_threshold_and_never_loosens() {
+    use super::position::update_protection;
+    for side in [Side::Long, Side::Short] {
+        let mut c = config();
+        c.strategy.trailing_atr = 2.0;
+        let mut p = position(side);
+        let b = bar(0, 100.0, 100.0 + side.sign() * 1.0);
+        assert_eq!(
+            update_protection(&mut p, b, &c.strategy, &c.execution),
+            Some("trailing")
+        );
+        let stop = p.stop;
+        assert!(side.sign() * (stop - p.initial_stop) > 0.0);
+        for i in 1..8 {
+            let b = bar(i, 100.0, 100.0);
+            update_protection(&mut p, b, &c.strategy, &c.execution);
+            assert_eq!(p.stop, stop);
+        }
+    }
+}
+#[test]
+fn prefix_decisions_do_not_depend_on_future_candles_for_any_variant() {
+    for entry in ["breakout", "pullback"] {
+        let mut c = config();
+        c.strategy.entry = entry.into();
+        let base = history(false);
+        let mut future = base.clone();
+        for b in future.iter_mut().skip(68) {
+            b.high += 1000.0;
+            b.close += 1000.0;
+        }
+        let (_, a) = replay(c.clone(), &base, vec![], false);
+        let (_, b) = replay(c, &future, vec![], false);
+        let prefix = |out: Chunk| {
+            out.events
+                .into_iter()
+                .filter(|e| e.time < BASE + 68 * MINUTE)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            serde_json::to_string(&prefix(a)).unwrap(),
+            serde_json::to_string(&prefix(b)).unwrap()
+        );
+    }
+}
+#[test]
+fn risk_cooldown_counts_net_losses_and_resets_on_flat_trade() {
+    let c = config();
+    let mut risk = super::risk::RiskState::default();
+    assert!(risk.record_trade(-1.0, BASE, &c.risk).is_none());
+    assert!(risk.record_trade(-1.0, BASE, &c.risk).is_none());
+    assert!(risk.record_trade(0.0, BASE, &c.risk).is_none());
+    assert!(risk.record_trade(-1.0, BASE, &c.risk).is_none());
+    assert!(risk.record_trade(-1.0, BASE, &c.risk).is_none());
+    assert_eq!(
+        risk.record_trade(-1.0, BASE, &c.risk),
+        Some(BASE + 60 * MINUTE)
+    );
+    risk.begin_day(BASE + DAY, 10000.0);
+    assert_eq!(risk.cooldown_until, BASE + 60 * MINUTE);
+}
+#[test]
+fn versioned_config_rejects_unknown_nested_settings_and_invalid_exit_policy() {
+    let mut json = serde_json::to_value(Config::default()).unwrap();
+    json["strategy"]["trailingStartR"] = serde_json::json!(2);
+    assert!(serde_json::from_value::<Config>(json).is_err());
+    let mut c = Config::default();
+    c.strategy.break_even_atr = f64::NAN;
+    assert!(c.validate().is_err());
+    c = Config::default();
+    c.risk.cooldown_minutes = 0;
+    assert!(c.validate().is_err());
+    c = Config::default();
+    c.version = 1;
+    assert!(c.validate().is_err());
 }

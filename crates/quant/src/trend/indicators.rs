@@ -1,4 +1,5 @@
-use super::model::{Bar, Config, MINUTE};
+use super::config::{Strategy, ATR_PERIOD, FAST_EMA, SLOW_EMA};
+use super::model::{Bar, MINUTE};
 use std::collections::VecDeque;
 
 #[derive(Default)]
@@ -47,7 +48,7 @@ pub struct Indicators {
 }
 impl Indicators {
     /// Signals and ATR use closed trading candles; EMA uses closed trend candles.
-    pub fn close(&mut self, bar: Bar, config: &Config) -> ClosedCandles {
+    pub fn close(&mut self, bar: Bar, config: &Strategy) -> ClosedCandles {
         let trade = self.trade.close(bar, config.trade_minutes);
         if let Some(candle) = trade {
             let tr = self.previous.map_or(candle.high - candle.low, |p| {
@@ -57,15 +58,20 @@ impl Indicators {
             });
             self.previous = Some(candle.close);
             self.atr_count += 1;
-            if self.atr_count <= config.atr_period {
+            if self.atr_count <= ATR_PERIOD {
                 self.atr_sum += tr;
                 self.atr = self.atr_sum / self.atr_count as f64;
             } else {
-                self.atr =
-                    (self.atr * (config.atr_period - 1) as f64 + tr) / config.atr_period as f64;
+                self.atr = (self.atr * (ATR_PERIOD - 1) as f64 + tr) / ATR_PERIOD as f64;
             }
         }
-        let Some(candle) = self.trend.close(bar, config.trend_minutes) else {
+        if config.filter == "none" {
+            return ClosedCandles {
+                trade,
+                trend: false,
+            };
+        }
+        let Some(candle) = self.trend.close(bar, config.trade_minutes) else {
             return ClosedCandles {
                 trade,
                 trend: false,
@@ -76,8 +82,8 @@ impl Indicators {
             self.fast = value;
             self.slow = value;
         } else {
-            self.fast += 2.0 / (config.fast_ema + 1) as f64 * (value - self.fast);
-            self.slow += 2.0 / (config.slow_ema + 1) as f64 * (value - self.slow);
+            self.fast += 2.0 / (FAST_EMA + 1) as f64 * (value - self.fast);
+            self.slow += 2.0 / (SLOW_EMA + 1) as f64 * (value - self.slow);
         }
         self.ema_count += 1;
         self.fast_history.push_back(self.fast);
@@ -86,9 +92,12 @@ impl Indicators {
         }
         ClosedCandles { trade, trend: true }
     }
-    pub fn direction(&self, config: &Config) -> i8 {
-        if self.ema_count < config.slow_ema
-            || self.atr_count < config.atr_period
+    pub fn ready(&self) -> bool {
+        self.atr_count >= ATR_PERIOD && self.atr > 0.0
+    }
+    pub fn direction(&self) -> i8 {
+        if self.ema_count < SLOW_EMA
+            || self.atr_count < ATR_PERIOD
             || self.fast_history.len() < 4
             || self.atr <= 0.0
         {

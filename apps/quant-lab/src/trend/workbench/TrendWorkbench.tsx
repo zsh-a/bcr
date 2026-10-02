@@ -1,6 +1,8 @@
 import { DAY, utcDate, validateBinanceRequest } from "@bcr/market-data/binance/model";
 import {
   TREND_PERIODS,
+  strategyLabel,
+  trendRunView,
   periodLabel,
   trendWarmupDays,
   withTradingPeriod,
@@ -137,7 +139,7 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
           交易周期
           <Select
             aria-label="回测交易周期"
-            value={research.config.tradeMinutes}
+            value={research.config.strategy.tradeMinutes}
             disabled={research.busy}
             onChange={(e) =>
               research.setConfig(withTradingPeriod(research.config, Number(e.target.value)))
@@ -194,32 +196,33 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
         ) : (
           <div className="trend-intro">
             <span className="trend-eyebrow">趋势延续研究</span>
-            <h2>强推进之后，等待回调再入场。</h2>
+            <h2>捕捉突破，让趋势延续。</h2>
             <p>
-              已收盘的趋势周期 EMA 确认方向；交易周期内的推进、回调与再突破触发交易。用 ATR
-              限制试错成本，用保本和移动止损跟随趋势。
+              已收盘的 K 线确认突破，下一分钟尝试入场。用 ATR
+              限制单次试错成本，保本和移动止损跟随趋势。
             </p>
             <ol>
               <li>
-                <strong>确认趋势</strong>
+                <strong>确认入场</strong>
                 <span>
-                  {periodLabel(research.config.trendMinutes)} EMA {research.config.fastEma} /{" "}
-                  {research.config.slowEma}
+                  {strategyLabel(research.config.strategy.entry)} ·{" "}
+                  {periodLabel(research.config.strategy.tradeMinutes)}
                 </span>
               </li>
               <li>
-                <strong>等待入场</strong>
+                <strong>保护持仓</strong>
                 <span>
-                  {research.config.entry === "pullback"
-                    ? "强推进 → 浅回调 → 再突破"
-                    : `${research.config.breakoutBars} 根 K 线通道突破`}
-                  {" · "}
-                  {periodLabel(research.config.tradeMinutes)}
+                  初始 {research.config.strategy.stopAtr} ATR · 保本{" "}
+                  {research.config.strategy.breakEvenAtr} ATR · 移动{" "}
+                  {research.config.strategy.trailingAtr} ATR
                 </span>
               </li>
               <li>
                 <strong>控制风险</strong>
-                <span>每笔 {research.config.riskPct * 100}% · 连亏暂停 · 可选每日平仓</span>
+                <span>
+                  每笔 {research.config.risk.riskPct * 100}% ·{" "}
+                  {research.config.risk.flattenMinute === null ? "允许跨日持仓" : "每日定时平仓"}
+                </span>
               </li>
             </ol>
             <p className="trend-help">
@@ -266,8 +269,8 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
           >
             <span>
               <strong>
-                {run.dataset.manifest.symbol} · {periodLabel(run.config.tradeMinutes)} ·{" "}
-                {run.config.entry === "pullback" ? "回调突破" : "通道突破"}
+                {run.dataset.manifest.symbol} · {periodLabel(trendRunView(run).tradeMinutes)} ·{" "}
+                {trendRunView(run).label}
               </strong>
               <small>
                 {utcDate(run.dataset.manifest.startTime)} —{" "}

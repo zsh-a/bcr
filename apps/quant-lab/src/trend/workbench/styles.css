@@ -392,3 +392,18 @@
     gap: 16px 8px;
   }
 }
+
+.trend-settings-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+.trend-primary-fields {
+  padding-block: 16px;
+}
+.trend-dialog-actions > div {
+  display: flex;
+  gap: 8px;
+}

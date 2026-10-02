@@ -1,12 +1,18 @@
+pub mod config;
 pub mod engine;
+pub mod execution;
 pub mod indicators;
 pub mod model;
+pub mod position;
 pub mod reader;
+pub mod risk;
+pub mod signals;
 #[cfg(test)]
 mod tests;
 
+use config::Config;
 use engine::Engine;
-use model::{Bar, Config, Funding};
+use model::{Bar, Funding};
 use wasm_bindgen::prelude::*;
 
 fn error(value: impl ToString) -> JsValue {

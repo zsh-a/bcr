@@ -1,38 +1,9 @@
+use super::config::Config;
 use super::indicators::Indicators;
 use super::model::*;
-use std::collections::VecDeque;
-
-#[derive(Clone)]
-struct Position {
-    id: usize,
-    side: Side,
-    time: u64,
-    entry: f64,
-    quantity: f64,
-    initial_stop: f64,
-    stop: f64,
-    distance: f64,
-    atr: f64,
-    entry_fee: f64,
-    funding: f64,
-    mfe: f64,
-    mae: f64,
-    stop_reason: &'static str,
-}
-#[derive(Clone)]
-struct Candidate {
-    side: Side,
-    anchor: f64,
-    atr: f64,
-}
-struct Setup {
-    side: Side,
-    start: f64,
-    extreme: f64,
-    retrace: f64,
-    bars: usize,
-    pulling: bool,
-}
+use super::position::{update_protection, Position};
+use super::risk::RiskState;
+use super::signals::{Candidate, Signals};
 
 /// Minute event ordering: carried-position funding, prior-close orders, old
 /// stops, close-only indicators/signals, then stop changes for the next minute.
@@ -43,22 +14,16 @@ pub struct Engine {
     expected: u64,
     finished: bool,
     indicators: Indicators,
-    history: VecDeque<Bar>,
+    signals: Signals,
     position: Option<Position>,
     pending: Option<Candidate>,
-    setup: Option<Setup>,
     funding: Vec<Funding>,
     funding_cursor: usize,
     cash: f64,
     peak: f64,
     max_drawdown: f64,
-    day: u64,
-    day_equity: f64,
-    daily_blocked: bool,
-    daily_exit: bool,
-    cooldown_until: u64,
     loss_streak: usize,
-    cooldown_streak: usize,
+    risk: RiskState,
     longest_loss_streak: usize,
     trades: usize,
     wins: usize,
@@ -110,7 +75,7 @@ impl Engine {
             }
             previous = f.time;
         }
-        let capital = config.initial_capital;
+        let capital = config.execution.initial_capital;
         Ok(Self {
             config,
             start,
@@ -118,22 +83,16 @@ impl Engine {
             expected: warmup,
             finished: false,
             indicators: Indicators::default(),
-            history: VecDeque::new(),
+            signals: Signals::default(),
             position: None,
             pending: None,
-            setup: None,
             funding,
             funding_cursor: 0,
             cash: capital,
             peak: capital,
             max_drawdown: 0.0,
-            day: u64::MAX,
-            day_equity: capital,
-            daily_blocked: false,
-            daily_exit: false,
-            cooldown_until: 0,
             loss_streak: 0,
-            cooldown_streak: 0,
+            risk: RiskState::default(),
             longest_loss_streak: 0,
             trades: 0,
             wins: 0,
@@ -156,29 +115,6 @@ impl Engine {
     }
     pub fn drain(&mut self) -> Chunk {
         std::mem::take(&mut self.output)
-    }
-    fn fee(&self) -> f64 {
-        self.config.fee_bps / 10_000.0
-    }
-    fn slip(&self) -> f64 {
-        self.config.slippage_bps / 10_000.0
-    }
-    fn floor(&self, price: f64) -> f64 {
-        (price / self.config.tick_size + 1e-9).floor() * self.config.tick_size
-    }
-    fn ceil(&self, price: f64) -> f64 {
-        (price / self.config.tick_size - 1e-9).ceil() * self.config.tick_size
-    }
-    fn fill(&self, raw: f64, buy: bool) -> Result<f64, String> {
-        let price = if buy {
-            self.ceil(raw * (1.0 + self.slip()))
-        } else {
-            self.floor(raw * (1.0 - self.slip()))
-        };
-        if !price.is_finite() || price <= 0.0 {
-            return Err("tick size produces an invalid fill price".into());
-        }
-        Ok(price)
     }
     fn event(
         &mut self,
@@ -225,8 +161,11 @@ impl Engine {
     }
     fn enter(&mut self, candidate: Candidate, bar: Bar) -> Result<Option<Position>, String> {
         let side = candidate.side;
-        let entry = self.fill(bar.open, side == Side::Long)?;
-        if side.sign() * (bar.open - candidate.anchor) <= 0.0 {
+        let entry = self.config.execution.fill(bar.open, side == Side::Long)?;
+        if candidate
+            .anchor
+            .is_some_and(|anchor| side.sign() * (bar.open - anchor) <= 0.0)
+        {
             self.rejected += 1;
             self.event(
                 bar.time,
@@ -239,39 +178,36 @@ impl Engine {
             );
             return Ok(None);
         }
-        let structural = side.sign() * (entry - candidate.anchor) + self.config.tick_size;
-        let distance = structural.max(candidate.atr * self.config.stop_atr);
-        let reject = if distance > candidate.atr * self.config.max_stop_atr {
-            "stop-distance"
-        } else {
-            "risk-budget"
-        };
+        let distance = candidate.atr * self.config.strategy.stop_atr;
         let stop = if side == Side::Long {
-            self.floor(entry - distance)
+            self.config.execution.floor(entry - distance)
         } else {
-            self.ceil(entry + distance)
+            self.config.execution.ceil(entry + distance)
         };
         let actual_distance = (entry - stop).abs();
         let stop_fill = if stop > 0.0 {
-            self.fill(stop, side == Side::Short)?
+            self.config.execution.fill(stop, side == Side::Short)?
         } else {
             0.0
         };
-        let unit_risk = side.sign() * (entry - stop_fill) + (entry + stop_fill) * self.fee();
-        let limit = (self.cash * self.config.risk_pct / unit_risk)
-            .min(self.cash * self.config.max_exposure_pct / (entry * (1.0 + self.fee())));
-        let quantity = (limit / self.config.quantity_step).floor() * self.config.quantity_step;
+        let unit_risk =
+            side.sign() * (entry - stop_fill) + (entry + stop_fill) * self.config.execution.fee();
+        let limit = (self.cash * self.config.risk.risk_pct / unit_risk).min(
+            self.cash * self.config.risk.max_exposure_pct
+                / (entry * (1.0 + self.config.execution.fee())),
+        );
+        let quantity = (limit / self.config.execution.quantity_step).floor()
+            * self.config.execution.quantity_step;
         if stop <= 0.0
-            || actual_distance > candidate.atr * self.config.max_stop_atr + 1e-9
             || !quantity.is_finite()
             || quantity <= 0.0
-            || quantity * entry < self.config.min_notional
+            || quantity * entry < self.config.execution.min_notional
         {
             self.rejected += 1;
-            self.event(bar.time, "rejected", side, entry, None, None, reject);
+            self.event(bar.time, "rejected", side, entry, None, None, "risk-budget");
             return Ok(None);
         }
-        let fee = entry * quantity * self.fee();
+        let fee = entry * quantity * self.config.execution.fee();
         self.cash -= fee;
         self.fees += fee;
         let id = self.next_id;
@@ -299,15 +235,15 @@ impl Engine {
             entry,
             Some(quantity),
             Some(id),
-            &self.config.entry.clone(),
+            &self.config.strategy.entry.clone(),
         );
         self.event(bar.time, "stop", side, stop, None, Some(id), "initial");
         Ok(Some(p))
     }
     fn close(&mut self, p: Position, raw: f64, time: u64, reason: &str) -> Result<(), String> {
-        let price = self.fill(raw, p.side == Side::Short)?;
+        let price = self.config.execution.fill(raw, p.side == Side::Short)?;
         let gross = p.side.sign() * (price - p.entry) * p.quantity;
-        let exit_fee = price * p.quantity * self.fee();
+        let exit_fee = price * p.quantity * self.config.execution.fee();
         self.cash += gross - exit_fee;
         self.fees += exit_fee;
         let fees = p.entry_fee + exit_fee;
@@ -320,13 +256,13 @@ impl Engine {
             self.wins += 1;
             self.profit_sum += net;
             self.loss_streak = 0;
-            self.cooldown_streak = 0;
         } else if net < 0.0 {
             self.losses += 1;
             self.loss_sum -= net;
             self.loss_streak += 1;
-            self.cooldown_streak += 1;
             self.longest_loss_streak = self.longest_loss_streak.max(self.loss_streak);
+        } else {
+            self.loss_streak = 0;
         }
         self.output.trades.push(Trade {
             id: p.id,
@@ -348,224 +284,21 @@ impl Engine {
             reason: reason.into(),
         });
         self.event(time, "exit", p.side, price, Some(net), Some(p.id), reason);
-        if self.config.cooldown_losses > 0 && self.cooldown_streak >= self.config.cooldown_losses {
-            self.cooldown_until = time + self.config.cooldown_minutes * MINUTE;
-            self.cooldown_streak = 0;
-            self.setup = None;
+        if let Some(until) = self.risk.record_trade(net, time, &self.config.risk) {
+            self.signals.reset();
             self.pending = None;
             self.event(
                 time,
                 "cooldown",
                 p.side,
                 price,
-                Some(self.cooldown_until as f64),
+                Some(until as f64),
                 Some(p.id),
                 "cooldown",
             );
         }
         self.observe_equity(time, self.cash, true);
         Ok(())
-    }
-    fn update_stop(&mut self, p: &mut Position, bar: Bar) {
-        let favourable = if p.side == Side::Long {
-            bar.high - p.entry
-        } else {
-            p.entry - bar.low
-        };
-        let adverse = if p.side == Side::Long {
-            p.entry - bar.low
-        } else {
-            bar.high - p.entry
-        };
-        p.mfe = p.mfe.max(favourable);
-        p.mae = p.mae.max(adverse);
-        let mut stop = p.stop;
-        let mut reason = p.stop_reason;
-        if self.config.break_even_r > 0.0 && p.mfe >= self.config.break_even_r * p.distance {
-            // Entry slippage is already in p.entry. Cover entry/exit fees,
-            // accumulated funding, estimated exit slippage and one rounding tick.
-            let cost = (p.entry_fee + p.funding) / p.quantity;
-            let target = if p.side == Side::Long {
-                self.ceil((p.entry + cost) / ((1.0 - self.fee()) * (1.0 - self.slip())))
-                    + self.config.tick_size
-            } else {
-                self.floor((p.entry - cost) / ((1.0 + self.fee()) * (1.0 + self.slip())))
-                    - self.config.tick_size
-            };
-            if p.side.sign() * (target - stop) > 0.0
-                && p.side.sign() * (bar.close - target) > self.config.tick_size
-            {
-                stop = target;
-                reason = "breakeven";
-            }
-        }
-        if p.mfe >= self.config.trailing_start_r * p.distance {
-            let target = p.entry + p.side.sign() * (p.mfe - self.config.trailing_atr * p.atr);
-            let rounded = if p.side == Side::Long {
-                self.floor(target)
-            } else {
-                self.ceil(target)
-            };
-            if p.side.sign() * (rounded - stop) > 0.0 {
-                stop = rounded;
-                reason = "trailing";
-            }
-        }
-        if p.side.sign() * (stop - p.stop) > self.config.tick_size * 0.5 {
-            p.stop = stop;
-            p.stop_reason = reason;
-            self.event(
-                bar.time + MINUTE - 1,
-                "stop",
-                p.side,
-                stop,
-                None,
-                Some(p.id),
-                reason,
-            );
-        }
-    }
-    fn signal(&mut self, bar: Bar) {
-        let direction = self.indicators.direction(&self.config);
-        if direction == 0 {
-            self.setup = None;
-            return;
-        }
-        let side = if direction > 0 {
-            Side::Long
-        } else {
-            Side::Short
-        };
-        if (side == Side::Long && self.config.direction == "short")
-            || (side == Side::Short && self.config.direction == "long")
-        {
-            self.setup = None;
-            return;
-        }
-        let atr = self.indicators.atr;
-        let mut candidate = None;
-        if self.config.entry == "breakout" {
-            if self.history.len() >= self.config.breakout_bars {
-                let prior = self.history.iter().rev().take(self.config.breakout_bars);
-                let extreme = if side == Side::Long {
-                    prior.map(|b| b.high).fold(f64::NEG_INFINITY, f64::max)
-                } else {
-                    prior.map(|b| b.low).fold(f64::INFINITY, f64::min)
-                };
-                if side.sign() * (bar.close - extreme) >= self.config.tick_size {
-                    candidate = Some(Candidate {
-                        side,
-                        anchor: bar.close - side.sign() * atr * self.config.stop_atr,
-                        atr,
-                    });
-                }
-            }
-        } else {
-            if let Some(mut setup) = self.setup.take() {
-                if setup.side == side {
-                    let previous = self.history.back().map_or(bar.open, |b| b.close);
-                    if !setup.pulling && side.sign() * (bar.close - previous) >= 0.0 {
-                        setup.extreme = if side == Side::Long {
-                            setup.extreme.max(bar.high)
-                        } else {
-                            setup.extreme.min(bar.low)
-                        };
-                        setup.retrace = setup.extreme;
-                        self.setup = Some(setup);
-                    } else {
-                        setup.pulling = true;
-                        setup.bars += 1;
-                        setup.retrace = if side == Side::Long {
-                            setup.retrace.min(bar.low)
-                        } else {
-                            setup.retrace.max(bar.high)
-                        };
-                        let leg = side.sign() * (setup.extreme - setup.start);
-                        let depth = side.sign() * (setup.extreme - setup.retrace) / leg;
-                        if setup.bars <= self.config.max_pullback_bars
-                            && depth <= self.config.max_retracement
-                        {
-                            if setup.bars >= self.config.min_pullback_bars
-                                && depth >= self.config.min_retracement
-                                && side.sign() * (bar.close - setup.extreme)
-                                    >= self.config.tick_size
-                            {
-                                candidate = Some(Candidate {
-                                    side,
-                                    anchor: setup.retrace,
-                                    atr,
-                                });
-                            } else {
-                                self.setup = Some(setup);
-                            }
-                        }
-                    }
-                }
-            }
-            if candidate.is_none()
-                && self.setup.is_none()
-                && self.history.len() >= self.config.impulse_bars
-            {
-                let start = self.history[self.history.len() - self.config.impulse_bars].close;
-                let displacement = side.sign() * (bar.close - start);
-                let mut previous = start;
-                let mut path = 0.0;
-                let mut extreme = if side == Side::Long {
-                    bar.high
-                } else {
-                    bar.low
-                };
-                for b in self
-                    .history
-                    .iter()
-                    .skip(self.history.len() - self.config.impulse_bars + 1)
-                    .chain(std::iter::once(&bar))
-                {
-                    path += (b.close - previous).abs();
-                    previous = b.close;
-                    extreme = if side == Side::Long {
-                        extreme.max(b.high)
-                    } else {
-                        extreme.min(b.low)
-                    };
-                }
-                if displacement >= self.config.impulse_atr * atr
-                    && path > 0.0
-                    && displacement / path >= self.config.min_efficiency
-                {
-                    self.setup = Some(Setup {
-                        side,
-                        start,
-                        extreme,
-                        retrace: extreme,
-                        bars: 0,
-                        pulling: false,
-                    });
-                    self.event(
-                        bar.time + self.config.trade_minutes as u64 * MINUTE - 1,
-                        "impulse",
-                        side,
-                        extreme,
-                        Some(displacement / atr),
-                        None,
-                        "impulse",
-                    );
-                }
-            }
-        }
-        if let Some(candidate) = candidate {
-            self.event(
-                bar.time + self.config.trade_minutes as u64 * MINUTE - 1,
-                "signal",
-                side,
-                bar.close,
-                Some(candidate.anchor),
-                None,
-                &self.config.entry.clone(),
-            );
-            self.pending = Some(candidate);
-            self.setup = None;
-        }
     }
     pub fn advance(&mut self, bar: Bar, mark: Bar) -> Result<(), String> {
         if self.finished
@@ -593,14 +326,11 @@ impl Engine {
         self.rows += 1;
         let mut position = self.position.take();
         if bar.time >= self.start {
-            let day = bar.time / DAY;
-            if self.day != day {
-                self.day = day;
-                self.day_equity = self.marked(&position, mark.open);
-                self.daily_blocked = false;
-                if self.rows == 1 || self.last.is_none_or(|(b, _)| b.time < self.start) {
-                    self.observe_equity(bar.time, self.day_equity, true);
-                }
+            let opening_equity = self.marked(&position, mark.open);
+            if self.risk.begin_day(bar.time, opening_equity)
+                && (self.rows == 1 || self.last.is_none_or(|(b, _)| b.time < self.start))
+            {
+                self.observe_equity(bar.time, self.risk.day_equity, true);
             }
             // Historical funding uses the opening mark for this minute and
             // applies to positions carried into it, before new orders.
@@ -629,30 +359,31 @@ impl Engine {
             }
             let cutoff = self
                 .config
+                .risk
                 .flatten_minute
                 .is_some_and(|m| (bar.time % DAY) / MINUTE >= m as u64);
-            if cutoff || self.daily_exit {
+            if cutoff || self.risk.daily_exit {
                 self.pending = None;
-                self.setup = None;
+                self.signals.reset();
                 if let Some(p) = position.take() {
                     self.close(
                         p,
                         bar.open,
                         bar.time,
-                        if self.daily_exit {
+                        if self.risk.daily_exit {
                             "daily-loss"
                         } else {
                             "daily-close"
                         },
                     )?;
                 }
-                self.daily_exit = false;
+                self.risk.daily_exit = false;
             }
             if let Some(candidate) = self.pending.take() {
                 if position.is_none()
                     && !cutoff
-                    && !self.daily_blocked
-                    && bar.time >= self.cooldown_until
+                    && !self.risk.daily_blocked
+                    && bar.time >= self.risk.cooldown_until
                     && self.cash > 0.0
                 {
                     position = self.enter(candidate, bar)?;
@@ -679,25 +410,38 @@ impl Engine {
                     };
                     self.close(p, raw, time, reason)?;
                 } else {
-                    self.update_stop(&mut p, bar);
+                    if let Some(reason) = update_protection(
+                        &mut p,
+                        bar,
+                        &self.config.strategy,
+                        &self.config.execution,
+                    ) {
+                        self.event(
+                            bar.time + MINUTE - 1,
+                            "stop",
+                            p.side,
+                            p.stop,
+                            None,
+                            Some(p.id),
+                            reason,
+                        );
+                    }
                     position = Some(p);
                 }
             }
             let equity = self.marked(&position, mark.close);
             let close_time = bar.time + MINUTE - 1;
             self.observe_equity(close_time, equity, (bar.time + MINUTE) % (60 * MINUTE) == 0);
-            if self.config.daily_loss_pct > 0.0
-                && equity <= self.day_equity * (1.0 - self.config.daily_loss_pct)
-            {
-                self.daily_blocked = true;
-                self.daily_exit = position.is_some();
+            self.risk
+                .observe(equity, position.is_some(), &self.config.risk);
+            if self.risk.daily_blocked {
                 self.pending = None;
-                self.setup = None;
+                self.signals.reset();
             }
         }
         self.position = position;
-        let closed = self.indicators.close(bar, &self.config);
-        if closed.trend && bar.time >= self.start {
+        let closed = self.indicators.close(bar, &self.config.strategy);
+        if closed.trend && self.config.strategy.filter == "ema" && bar.time >= self.start {
             self.output.indicators.push(Indicator {
                 time: bar.time + MINUTE - 1,
                 fast: self.indicators.fast,
@@ -706,25 +450,27 @@ impl Engine {
         }
         let cutoff = self
             .config
+            .risk
             .flatten_minute
             .is_some_and(|m| (bar.time % DAY) / MINUTE >= m as u64);
-        if self.position.is_some() || cutoff || self.daily_blocked {
-            self.setup = None;
+        if self.position.is_some() || cutoff || self.risk.daily_blocked {
+            self.signals.reset();
         }
         if let Some(candle) = closed.trade {
-            if candle.time >= self.start
+            let enabled = candle.time >= self.start
                 && self.position.is_none()
                 && !cutoff
-                && !self.daily_blocked
-                && bar.time + MINUTE >= self.cooldown_until
-                && self.cash > 0.0
-            {
-                self.signal(candle);
-            }
-            self.history.push_back(candle);
-            let capacity = self.config.breakout_bars.max(self.config.impulse_bars) + 1;
-            if self.history.len() > capacity {
-                self.history.pop_front();
+                && !self.risk.daily_blocked
+                && bar.time + MINUTE >= self.risk.cooldown_until
+                && self.cash > 0.0;
+            if let Some(candidate) = self.signals.close(
+                candle,
+                &self.indicators,
+                &self.config,
+                enabled,
+                &mut self.output.events,
+            ) {
+                self.pending = Some(candidate);
             }
         }
         self.last = Some((bar, mark));
@@ -743,7 +489,7 @@ impl Engine {
         self.finished = true;
         Ok(Metrics {
             final_equity: self.cash,
-            total_return: self.cash / self.config.initial_capital - 1.0,
+            total_return: self.cash / self.config.execution.initial_capital - 1.0,
             max_drawdown: self.max_drawdown,
             trades: self.trades,
             wins: self.wins,

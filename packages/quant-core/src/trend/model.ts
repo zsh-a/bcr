@@ -1,39 +1,38 @@
+import type { ArchivedTrendConfig } from "./archive";
 import type { ArtifactRef } from "@bcr/core";
 import type { BinanceDataset } from "@bcr/market-data/binance/model";
 
-export interface TrendConfig {
-  entry: "pullback" | "breakout";
+export interface TrendStrategy {
+  entry: "breakout" | "pullback";
+  filter: "none" | "ema";
   direction: "both" | "long" | "short";
+  tradeMinutes: number;
+  breakoutBars: number;
+  stopAtr: number;
+  breakEvenAtr: number;
+  trailingAtr: number;
+}
+export interface TrendExecution {
   initialCapital: number;
-  riskPct: number;
-  maxExposurePct: number;
   feeBps: number;
   slippageBps: number;
   tickSize: number;
   quantityStep: number;
   minNotional: number;
-  tradeMinutes: number;
-  trendMinutes: number;
-  fastEma: number;
-  slowEma: number;
-  atrPeriod: number;
-  impulseBars: number;
-  impulseAtr: number;
-  minEfficiency: number;
-  minPullbackBars: number;
-  maxPullbackBars: number;
-  minRetracement: number;
-  maxRetracement: number;
-  breakoutBars: number;
-  stopAtr: number;
-  maxStopAtr: number;
-  breakEvenR: number;
-  trailingStartR: number;
-  trailingAtr: number;
+}
+export interface TrendRisk {
+  riskPct: number;
+  maxExposurePct: number;
   cooldownLosses: number;
   cooldownMinutes: number;
   dailyLossPct: number;
   flattenMinute: number | null;
+}
+export interface TrendConfig {
+  version: 2;
+  strategy: TrendStrategy;
+  execution: TrendExecution;
+  risk: TrendRisk;
 }
 export interface TrendTrade {
   id: number;
@@ -99,7 +98,7 @@ export interface TrendMetrics {
 }
 export interface TrendResult {
   version: 1;
-  engine: "trend-continuation-1" | "trend-continuation-2";
+  engine: "trend-continuation-1" | "trend-continuation-2" | "trend-continuation-3";
   metrics: TrendMetrics;
   equity: TrendEquity[];
   trades: TrendTrade[];
@@ -108,7 +107,7 @@ export interface TrendResult {
 export interface TrendRun {
   id: string;
   createdAt: string;
-  config: TrendConfig;
+  config: TrendConfig | ArchivedTrendConfig;
   dataset: BinanceDataset;
   resultRef: ArtifactRef;
   metrics: TrendMetrics;

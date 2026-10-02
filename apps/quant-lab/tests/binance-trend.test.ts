@@ -70,7 +70,15 @@ describe("Binance worker pipeline", () => {
           inputs: initial.map((ref) =>
             ref.type === "market/binance-manifest" ? { ...ref, port: "manifest" } : ref,
           ),
-          config: { strategy: withTradingPeriod(DEFAULT_TREND_CONFIG, 60) },
+          config: {
+            strategy: withTradingPeriod(
+              {
+                ...DEFAULT_TREND_CONFIG,
+                strategy: { ...DEFAULT_TREND_CONFIG.strategy, filter: "ema" },
+              },
+              60,
+            ),
+          },
         },
         s.ctx,
       ),

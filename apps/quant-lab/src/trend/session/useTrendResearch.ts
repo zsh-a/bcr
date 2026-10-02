@@ -10,10 +10,10 @@ import {
   type BinanceRequest,
 } from "@bcr/market-data/binance/model";
 import {
-  DEFAULT_TREND_CONFIG,
-  normalizeTrendConfig,
+  createTrendConfig,
   trendWarmupDays,
   validateTrendConfig,
+  validateRecordedTrendConfig,
   type TrendConfig,
   type TrendResult,
   type TrendRun,
@@ -39,7 +39,7 @@ export function useTrendResearch() {
   const services = useRuntime();
   const [saved, setSaved] = useState<Saved>({
     request: defaultBinanceRequest(),
-    config: { ...DEFAULT_TREND_CONFIG },
+    config: createTrendConfig(),
     dataset: null,
     runs: [],
     selected: null,
@@ -65,12 +65,14 @@ export function useTrendResearch() {
         data.request = defaultBinanceRequest();
       }
       try {
-        data.config = normalizeTrendConfig(data.config);
+        validateTrendConfig(data.config);
       } catch {
-        data.config = { ...DEFAULT_TREND_CONFIG };
+        data.config = createTrendConfig();
+        if (live) setStatus("策略已升级 · 旧版历史保留原始规则");
       }
       if (!Array.isArray(data.runs)) throw new Error("本地趋势研究记录无效");
-      data.runs = data.runs.map((run) => ({ ...run, config: normalizeTrendConfig(run.config) }));
+      // Archived runs keep their original config and are never executed again.
+      for (const run of data.runs) validateRecordedTrendConfig(run.config);
       if (data.dataset) validateBinanceManifest(data.dataset.manifest);
       if (live) setSaved(data);
     })()

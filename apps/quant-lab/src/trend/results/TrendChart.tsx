@@ -5,7 +5,6 @@ import {
   type ChartFocus,
   type ChartRange,
   type TrendChartData,
-  type TrendConfig,
   type TrendEquity,
 } from "@bcr/quant-core/trend";
 import {
@@ -59,7 +58,7 @@ export function TrendChart({
 }: {
   data?: TrendChartData | null;
   equity?: TrendEquity[];
-  config: TrendConfig;
+  config: { tradeMinutes: number; initialCapital: number; tickSize: number };
   bounds?: ChartRange;
   focus?: ChartFocus;
   onVisible?: (range: ChartRange) => void;

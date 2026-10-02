@@ -1,6 +1,7 @@
 import { DAY, utcDate } from "@bcr/market-data/binance/model";
 import {
   TREND_REASONS,
+  trendRunView,
   periodLabel,
   type TrendResult as Result,
   type TrendRun,
@@ -8,7 +9,7 @@ import {
 } from "@bcr/quant-core/trend";
 import { Button, PanelEmpty, Spinner, useRuntime } from "@bcr/react";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TrendChart } from "./TrendChart";
 import { exportTrend, readTradePage } from "./read";
 import { useTrendChart } from "./useTrendChart";
@@ -21,6 +22,7 @@ const percent = (n: number | null) => (n === null ? "—" : `${number(n * 100)}%
 const timestamp = (time: number) => new Date(time).toISOString().slice(0, 16).replace("T", " ");
 export function TrendResult({ run, result }: { run: TrendRun; result: Result }) {
   const services = useRuntime();
+  const config = useMemo(() => trendRunView(run), [run]);
   const chartFrame = useRef<HTMLDivElement>(null);
   const m = result.metrics,
     manifest = run.dataset.manifest;
@@ -29,7 +31,7 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
     services,
     run.dataset,
     result,
-    run.config.tradeMinutes,
+    config.tradeMinutes,
     view === "candles",
   );
   const [page, setPage] = useState(0),
@@ -52,11 +54,11 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
       <div className="trend-result-heading">
         <div>
           <h2>
-            {manifest.symbol} · {periodLabel(run.config.tradeMinutes)} ·{" "}
-            {run.config.entry === "pullback" ? "强趋势回调突破" : "通道突破基线"}
+            {manifest.symbol} · {periodLabel(config.tradeMinutes)} · {config.label}
           </h2>
           <p>
-            {utcDate(manifest.startTime)} — {utcDate(manifest.endTime - 1)} · UTC ·{" "}
+            {utcDate(manifest.startTime)} — {utcDate(manifest.endTime - 1)} · UTC · {config.filter}{" "}
+            · {config.archived ? "原始旧版规则 · " : "规则 v3 · "}
             {number(run.durationMs / 1000, 1)} 秒{run.cached ? " · 缓存结果" : ""}
           </p>
         </div>
@@ -131,7 +133,7 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
         {view === "candles" ? (
           <div className="trend-chart-actions">
             <span className="trend-help">
-              {periodLabel(chart.data?.minutes ?? run.config.tradeMinutes)} K 线
+              {periodLabel(chart.data?.minutes ?? config.tradeMinutes)} K 线
             </span>
             <Button size="sm" variant="ghost" onClick={chart.all}>
               全区间
@@ -145,12 +147,12 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
         )}
       </div>
       {view === "equity" ? (
-        <TrendChart equity={result.equity} config={run.config} />
+        <TrendChart equity={result.equity} config={config} />
       ) : (
         <div ref={chartFrame} className="trend-chart-frame" aria-busy={chart.loading}>
           <TrendChart
             data={chart.data}
-            config={run.config}
+            config={config}
             bounds={chart.bounds}
             focus={chart.focus}
             onVisible={chart.visible}
@@ -167,8 +169,8 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
         <>
           <p className="trend-help">
             拖动浏览连续行情，滚轮或双指缩放；大区间自动合并显示 K 线，交易规则仍按{" "}
-            {periodLabel(run.config.tradeMinutes)} 执行。 箭头为多空入场，圆点为平仓，虚线为 K
-            线开盘时的止损；EMA 使用已收盘的 {periodLabel(run.config.trendMinutes)} K 线。
+            {periodLabel(config.tradeMinutes)} 执行。 箭头为多空入场，圆点为平仓，虚线为 K
+            线开盘时的止损。{config.filter}。
           </p>
           <details className="trend-event-list">
             <summary>
@@ -284,12 +286,15 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
           SHA-256；一分钟成交价、标记价格及历史资金费率均被冻结保存。资金费以结算所在分钟的开盘标记价格近似计算，先结算原持仓，再执行新订单。
         </p>
         <p>
+          {config.archived
+            ? "旧版保本与移动止盈按原始 R 阈值执行。"
+            : "止损、保本触发和移动距离使用信号收盘时冻结的 ATR；移动止盈无需单独启动阈值。"}
           初始止损在入场后立即生效；保本和移动止损在下一分钟生效。跳空按更不利的开盘价成交。当前按分钟
           OHLC 回放，未模拟逐笔撮合、市场冲击、强平或 ADL。
         </p>
         <p>
-          手续费 {run.config.feeBps} bps，滑点 {run.config.slippageBps} bps，价格步长{" "}
-          {run.config.tickSize}，数量步长 {run.config.quantityStep}
+          手续费 {config.execution.feeBps} bps，滑点 {config.execution.slippageBps} bps，价格步长{" "}
+          {config.execution.tickSize}，数量步长 {config.execution.quantityStep}
           ；这些为参数假设。资金费净支出为负表示收到资金费。
         </p>
         <p>

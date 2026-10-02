@@ -93,12 +93,22 @@ try {
   await page.goto(`${origin}/quant?strategy=trend`, { waitUntil: "networkidle" });
   await page.getByLabel("Binance 开始日期").fill("2024-01-01");
   await page.getByLabel("Binance 结束日期").fill(live ? "2024-01-01" : "2024-01-03");
-  if (!live) {
-    await page.getByRole("button", { name: "趋势参数设置" }).click();
-    await page.getByText("止损与退出", { exact: true }).click();
-    await page.getByLabel("最大止损距离 · ATR", { exact: true }).fill("8");
-    await page.getByRole("button", { name: "完成", exact: true }).click();
-  }
+  await page.getByRole("button", { name: "趋势参数设置" }).click();
+  const settings = page.getByRole("dialog", { name: "趋势研究设置" });
+  assert.equal(await settings.locator("input:visible, select:visible").count(), 6);
+  await page.getByLabel("初始止损 · ATR", { exact: true }).fill("2.5");
+  await settings.getByRole("button", { name: "取消", exact: true }).click();
+  await page.getByRole("button", { name: "趋势参数设置" }).click();
+  assert.equal(
+    await page.getByLabel("初始止损 · ATR", { exact: true }).inputValue(),
+    "1.5",
+    "cancel discards draft edits",
+  );
+  await page.getByLabel("初始止损 · ATR", { exact: true }).fill("0");
+  assert(await settings.getByRole("button", { name: "应用设置", exact: true }).isDisabled());
+  await page.getByLabel("初始止损 · ATR", { exact: true }).fill("1.5");
+  await page.screenshot({ path: `${shots}/binance-trend-settings.png` });
+  await settings.getByRole("button", { name: "应用设置", exact: true }).click();
   await runButton().click();
   await page.waitForFunction(
     () => document.querySelector(".trend-result") || document.querySelector(".trend-error"),
@@ -114,8 +124,16 @@ try {
   assert.equal(await page.locator(".trend-error").count(), 0);
   const result = await exportResult("binance-trend-result.json");
   assert.equal(result.manifest.provider, "binance-public-data");
-  assert.equal(result.config.tradeMinutes, 1);
-  assert.equal(result.engine, "trend-continuation-2");
+  assert.equal(result.config.strategy.tradeMinutes, 1);
+  assert.equal(result.engine, "trend-continuation-3");
+  assert.equal(result.config.version, 2);
+  assert.equal(result.config.strategy.entry, "breakout");
+  assert.equal(result.config.strategy.filter, "none");
+  assert.equal(result.config.risk.flattenMinute, null);
+  assert(
+    result.chunks.every((chunk) => chunk.indicators.length === 0),
+    "baseline omits unused EMA overlays",
+  );
   assert.equal(result.manifest.rows, (researchDays + 1) * 1440);
   assert.equal(result.metrics.rows, (researchDays + 1) * 1440);
   assert(result.chunks.length > 1);
@@ -125,7 +143,7 @@ try {
   assert(
     Math.abs(
       result.metrics.finalEquity -
-        result.config.initialCapital -
+        result.config.execution.initialCapital -
         trades.reduce((n, t) => n + t.netPnl, 0),
     ) < 1e-7,
   );
@@ -191,15 +209,22 @@ try {
   }
   await page.screenshot({ path: `${shots}/binance-trend.png`, fullPage: true });
   await page.getByRole("button", { name: "趋势参数设置" }).click();
-  await page.getByLabel("入场规则", { exact: true }).selectOption("breakout");
-  await page.getByRole("button", { name: "完成", exact: true }).click();
+  await page.getByText("研究变体", { exact: true }).click();
+  await page.getByLabel("入场规则", { exact: true }).selectOption("pullback");
+  assert.equal(await page.getByLabel("突破窗口 · 根 K 线", { exact: true }).count(), 0);
+  await page.getByRole("button", { name: "应用设置", exact: true }).click();
   await runButton().click();
   await page.waitForFunction(
-    () => document.querySelector(".trend-result-heading")?.textContent.includes("通道突破基线"),
+    () =>
+      document.querySelector(".trend-result-heading")?.textContent.includes("回调突破 · 固定规则"),
     null,
     { timeout: 60000 },
   );
   if (!live) assert.equal(requests, archiveRequests, "parameter edits reuse frozen archives");
+  await page.getByRole("button", { name: "趋势参数设置" }).click();
+  await page.getByText("研究变体", { exact: true }).click();
+  await page.getByLabel("入场规则", { exact: true }).selectOption("breakout");
+  await page.getByRole("button", { name: "应用设置", exact: true }).click();
   await page.getByLabel("回测交易周期", { exact: true }).selectOption("5");
   assert(
     (await page.locator(".trend-result-heading").textContent()).includes("1 分钟"),
@@ -212,8 +237,8 @@ try {
     { timeout: 60000 },
   );
   const five = await exportResult("binance-trend-five-minute.json");
-  assert.equal(five.config.tradeMinutes, 5);
-  assert.equal(five.config.trendMinutes, 5);
+  assert.equal(five.config.strategy.tradeMinutes, 5);
+  assert.equal(five.config.strategy.filter, "none");
   assert.equal(five.manifest.warmupStart, result.manifest.warmupStart);
   assert.equal(five.manifest.partitions[0].checksum, result.manifest.partitions[0].checksum);
   const signals = five.chunks.flatMap((chunk) => chunk.events).filter((e) => e.kind === "signal");
@@ -234,6 +259,10 @@ try {
     .first()
     .waitFor();
   if (!live) {
+    await page.getByRole("button", { name: "趋势参数设置" }).click();
+    await page.getByText("研究变体", { exact: true }).click();
+    await page.getByLabel("方向过滤", { exact: true }).selectOption("ema");
+    await page.getByRole("button", { name: "应用设置", exact: true }).click();
     await page.getByLabel("回测交易周期", { exact: true }).selectOption("60");
     await runButton().click();
     await page.waitForFunction(
@@ -242,8 +271,8 @@ try {
       { timeout: 60000 },
     );
     const hourly = await exportResult("binance-trend-hourly.json");
-    assert.equal(hourly.config.tradeMinutes, 60);
-    assert.equal(hourly.config.trendMinutes, 60);
+    assert.equal(hourly.config.strategy.tradeMinutes, 60);
+    assert.equal(hourly.config.strategy.filter, "ema");
     assert.equal(hourly.manifest.warmupStart, start - 3 * day);
     assert.equal(hourly.manifest.rows, (researchDays + 3) * 1440);
     assert.equal(
@@ -298,8 +327,15 @@ try {
     `Binance trend workflow passed (${live ? "official live archives" : "deterministic archive fixtures"}; ${trades.length} trades).`,
   );
 } catch (error) {
-  console.error(await page.locator(".trend-workspace").innerText());
-  await page.screenshot({ path: `${shots}/binance-trend-failure.png`, fullPage: true });
+  console.error(
+    await page
+      .locator(".trend-workspace")
+      .innerText({ timeout: 1000 })
+      .catch(() => `Page unavailable: ${page.url()} · ${errors.join("; ")}`),
+  );
+  await page
+    .screenshot({ path: `${shots}/binance-trend-failure.png`, fullPage: true })
+    .catch(() => undefined);
   throw error;
 } finally {
   await browser.close();
