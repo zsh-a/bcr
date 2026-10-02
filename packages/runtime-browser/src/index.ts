@@ -38,6 +38,8 @@ export interface BrowserRuntimeOptions {
   readonly openMetadata?: (store: BinaryStore) => Promise<SqliteDb>;
   readonly execution: (artifacts: ArtifactStore, store: BinaryStore) => ExecutionModule;
   readonly onMetadataUnavailable?: (error: unknown) => void;
+  /** Drain domain saves before shutting down compute and metadata. Called once on every exit. */
+  readonly beforeDispose?: () => void | Promise<void>;
 }
 
 /** Storage, scheduler, resources and execution share one lifetime. */
@@ -64,6 +66,7 @@ export async function createBrowserRuntime(
     (closing ??= (async () => {
       const errors: unknown[] = [];
       for (const close of [
+        () => options.beforeDispose?.(),
         () => (scheduler === undefined ? Promise.resolve() : Effect.runPromise(scheduler.shutdown)),
         () => execution?.dispose(),
         () => db?.close(),

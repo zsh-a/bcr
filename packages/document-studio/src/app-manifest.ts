@@ -1,10 +1,10 @@
+import { definition } from "./app-definition";
 import { FileStack } from "lucide-react";
 import type { AppManifest } from "@bcr/shell-contract";
 
 /** Document Studio — cross-workspace ingest/extract/translate pipeline. */
 /** Operations this app contributes to the host compute worker. */
 const DOCUMENT_COMPUTE = {
-  module: () => import("./compute"),
   backends: {
     wasm: ["document.ocr.onnx"],
     js: ["document.extract", "document.translate.fixture", "document.typeset.preview"],
@@ -12,12 +12,8 @@ const DOCUMENT_COMPUTE = {
 } as const;
 
 export const manifest = {
-  id: "documents",
-  title: "Document Studio",
-  path: "/documents",
+  ...definition,
   icon: FileStack,
-  description: "提取文档内容、识别图片文字与跨应用交接",
-  section: "experimental",
   load: () => import("./App"),
   validateSearch: (search) => ({
     cite: search["cite"],

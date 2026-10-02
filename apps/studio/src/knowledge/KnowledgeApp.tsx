@@ -87,7 +87,6 @@ import {
   toggleFavorite,
   togglePinned,
 } from "./workbench";
-import { KnowledgeStore } from "./store";
 import { NoteTabs } from "./NoteTabs";
 import { knowledgePaletteActions } from "./knowledgePalette";
 import { KnowledgeBootError, KnowledgeBootShell } from "./KnowledgeBoot";
@@ -116,15 +115,7 @@ export function KnowledgeApp() {
     mobile = useMediaQuery("(width <= 45em)"),
     openAssistant = useOpenAssistant(),
     navigate = useNavigate();
-  const [bootAttempt, setBootAttempt] = useState(0);
-  // 启动失败后重试会换一个全新的存储会话重新载入；首个会话仍走共享组合根。
-  const store = useMemo(
-    () =>
-      bootAttempt === 0
-        ? workspaceServices(services.metadata, services.binary, services).knowledge
-        : new KnowledgeStore(services.metadata, services.binary, services),
-    [services, bootAttempt],
-  );
+  const store = useMemo(() => workspaceServices(services).knowledge, [services]);
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [ready, setReady] = useState(false),
     [error, setError] = useState("");
@@ -496,7 +487,7 @@ export function KnowledgeApp() {
             },
           ];
   const actions = useMemo(
-    () => createKnowledgeActions(store, workspaceServices(services.metadata).research, flushEditor),
+    () => createKnowledgeActions(store, workspaceServices(services).research, flushEditor),
     [store, services.metadata, flushEditor],
   );
   const create = async (title = "") => {
@@ -588,7 +579,10 @@ export function KnowledgeApp() {
         onRetry={() => {
           setError("");
           setReady(false);
-          setBootAttempt((attempt) => attempt + 1);
+          void store.retryInitialization().then(
+            () => setReady(true),
+            (reason) => setError(String(reason)),
+          );
         }}
       />
     ) : (

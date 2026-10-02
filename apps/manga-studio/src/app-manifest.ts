@@ -1,3 +1,5 @@
+import { MANGA_COMPUTE as backends } from "./operations";
+import { definition } from "./app-definition";
 import { BookOpenText } from "lucide-react";
 import type { AppManifest } from "@bcr/shell-contract";
 
@@ -8,21 +10,11 @@ import type { AppManifest } from "@bcr/shell-contract";
  * preload, translation and clean preview.
  */
 /** Operations this app contributes to the host compute worker. */
-const MANGA_COMPUTE = {
-  module: () => import("./compute"),
-  backends: {
-    wasm: ["manga.ocr.onnx", "manga.model.preload", "manga.translate.onnx"],
-    js: ["manga.ocr.review", "manga.clean.preview"],
-  },
-} as const;
+const MANGA_COMPUTE = { backends } as const;
 
 export const manifest = {
-  id: "manga",
-  title: "Manga Studio",
-  path: "/manga",
+  ...definition,
   icon: BookOpenText,
-  description: "漫画文字识别、翻译与排版审校",
-  section: "experimental",
   load: () => import("./App"),
   validateSearch: (search) => ({
     document: typeof search["document"] === "string" ? search["document"] : undefined,

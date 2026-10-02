@@ -26,6 +26,8 @@ const context = await browser.newContext({
 });
 const page = await context.newPage(),
   errors = [];
+const url = new URL(process.env.BASE_URL ?? "http://127.0.0.1:5297/quant");
+if (url.pathname.startsWith("/studio")) url.pathname = "/quant";
 page.on("pageerror", (e) => errors.push(e.message));
 const ready = () =>
   page.waitForFunction(
@@ -45,7 +47,7 @@ const download = async (label, name) => {
   return JSON.parse(readFileSync(path, "utf8"));
 };
 try {
-  await page.goto(process.env.BASE_URL ?? "http://127.0.0.1:5297/quant", {
+  await page.goto(url.toString(), {
     waitUntil: "networkidle",
   });
   await ready();

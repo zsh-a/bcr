@@ -5,11 +5,13 @@
   "type": "module",
   "exports": {
     "./app": "./src/App.tsx",
-    "./app-manifest": "./src/app-manifest.ts"
+    "./app-manifest": "./src/app-manifest.ts",
+    "./app-definition": "./src/app-definition.ts"
   },
   "dependencies": {
     "@bcr/core": "workspace:*",
     "@bcr/market-data": "workspace:*",
+    "@bcr/quant-core": "workspace:*",
     "@bcr/react": "workspace:*",
     "@bcr/runtime-browser": "workspace:*",
     "@bcr/runtime-worker": "workspace:*",

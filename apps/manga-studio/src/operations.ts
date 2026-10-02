@@ -359,3 +359,9 @@ export function defaultGraph(settings: MangaSettings): Graph {
   graph = updateNodeConfig(graph, "clean", { mode: settings.cleanMode });
   return updateNodeConfig(graph, "typeset", { fontSize: settings.fontSize });
 }
+
+/** One operation table serves standalone and embedded executors. */
+export const MANGA_COMPUTE = {
+  wasm: ["manga.ocr.onnx", "manga.model.preload", "manga.translate.onnx"],
+  js: ["manga.ocr.review", "manga.clean.preview"],
+} as const;

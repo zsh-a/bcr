@@ -616,10 +616,13 @@ export function cancelMangaAdapterTasks(): void {
   const ocr = activeOcr;
   const translation = activeTranslation;
   const clean = activeClean;
+  const preload = activeModelPreload;
   activeOcr = undefined;
   activeTranslation = undefined;
   activeClean = undefined;
+  activeModelPreload = undefined;
   if (ocr !== undefined) void Effect.runPromise(ocr.handle.cancel);
   if (translation !== undefined) void Effect.runPromise(translation.handle.cancel);
   if (clean !== undefined) void Effect.runPromise(clean.handle.cancel);
+  if (preload !== undefined) void Effect.runPromise(preload.handle.cancel);
 }

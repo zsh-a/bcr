@@ -1,3 +1,4 @@
+import { definition } from "./app-definition";
 import { AudioWaveform } from "lucide-react";
 import type { AppManifest } from "@bcr/shell-contract";
 
@@ -9,17 +10,12 @@ import type { AppManifest } from "@bcr/shell-contract";
  */
 /** Operations this app contributes to the host compute worker. */
 const MEDIA_COMPUTE = {
-  module: () => import("./compute"),
   backends: { wasm: ["hash.blake3", "audio.waveform"], js: [] },
 } as const;
 
 export const manifest = {
-  id: "media",
-  title: "Media Studio",
-  path: "/media",
+  ...definition,
   icon: AudioWaveform,
-  description: "音视频转字幕，校对、翻译与导出",
-  section: "tools",
   load: () => import("./App"),
   validateSearch: (search) => ({
     cite: search["cite"],

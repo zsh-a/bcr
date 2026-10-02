@@ -25,14 +25,14 @@ try {
   await page.getByLabel("结束日期", { exact: true }).fill("2024-08-30");
   await page.getByRole("button", { name: "加载并分析", exact: true }).click();
   await page
-    .locator(".ma-breadth-view .ui-breadth-table button")
+    .locator(".ma-breadth-view .ui-heatmap-table button")
     .first()
     .waitFor({ timeout: 60000 });
   const reference = new URL(page.url()).searchParams.get("snapshot");
   assert(reference);
   assert((await page.locator(".ma-breadth-view").innerText()).includes("快照成员"));
   assert(
-    (await page.locator(".ui-breadth-table th").allTextContents()).some(
+    (await page.locator(".ui-heatmap-table th").allTextContents()).some(
       (t) => /[\u4e00-\u9fff]/u.test(t) && t !== "行业",
     ),
   );
@@ -46,7 +46,7 @@ try {
   const count = sourceRequests;
   await page.reload({ waitUntil: "networkidle" });
   await page
-    .locator(".ma-breadth-view .ui-breadth-table button")
+    .locator(".ma-breadth-view .ui-heatmap-table button")
     .first()
     .waitFor({ timeout: 60000 });
   assert.equal(

@@ -148,8 +148,8 @@ try {
     assert.equal(arrowQueries, beforeNames);
     assert.equal(await page.locator(".research-run-result").getAttribute("data-run-id"), runId);
     await page.getByRole("tab", { name: "选股解释", exact: true }).click();
-    await page.locator(".ui-breadth-scroll button").first().waitFor();
-    assert((await page.locator(".ui-breadth-scroll").innerText()).includes("科技"));
+    await page.locator(".ui-heatmap-scroll button").first().waitFor();
+    assert((await page.locator(".ui-heatmap-scroll").innerText()).includes("科技"));
     await page.waitForFunction(() =>
       document
         .querySelector(".research-insights .research-table")
@@ -262,7 +262,7 @@ try {
   if (expectNames) {
     await page.getByRole("tab", { name: "选股解释", exact: true }).click();
     await page.waitForFunction(() =>
-      document.querySelector(".ui-breadth-scroll")?.textContent.includes("科技"),
+      document.querySelector(".ui-heatmap-scroll")?.textContent.includes("科技"),
     );
   }
   await open();

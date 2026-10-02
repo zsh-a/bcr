@@ -8,8 +8,9 @@ import { draftStorageKey } from "./draft";
 export const knowledgePlugin: WorkspacePlugin = {
   id: "knowledge",
   agentRenderers: knowledgeResultRenderers,
-  activate({ runtime: { metadata, search, binary }, agent, reportError }) {
-    const store = workspaceServices(metadata, binary).knowledge;
+  activate({ runtime, agent, reportError }) {
+    const { search } = runtime;
+    const store = workspaceServices(runtime).knowledge;
     const unregister = agent.registerAgentCapability(
       knowledgeCapability(store, (id) => {
         // Includes recoverable drafts whose editor is not mounted. Fail closed if storage is unavailable.
@@ -18,20 +19,22 @@ export const knowledgePlugin: WorkspacePlugin = {
       }),
     );
     let disposed = false;
-    let ready = false;
     const publisher = search ? createKnowledgePublisher(search) : undefined;
     const publish = () => {
-      if (!disposed && ready) publisher?.publish(store.getSnapshot());
+      void Promise.all([store.ready, search?.ready]).then(
+        () => {
+          if (!disposed) {
+            publisher?.publish(store.getSnapshot());
+            reportError(undefined);
+          }
+        },
+        (error: unknown) => {
+          if (!disposed) reportError(error);
+        },
+      );
     };
     const unsubscribe = store.subscribe(publish);
-    void Promise.all([store.ready, search?.ready])
-      .then(() => {
-        ready = true;
-        publish();
-      })
-      .catch((error: unknown) => {
-        if (!disposed) reportError(error);
-      });
+    publish();
     return () => {
       if (disposed) return;
       disposed = true;

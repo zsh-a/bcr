@@ -6,7 +6,7 @@ import type { ResultRenderer } from "@bcr/agent-ui";
 export interface PluginContext {
   readonly runtime: RuntimeServices;
   readonly agent: AgentHost;
-  readonly reportError: (error: unknown) => void;
+  readonly reportError: (error: unknown, pluginId?: string) => void;
 }
 export interface WorkspacePlugin {
   readonly id: string;
@@ -43,8 +43,7 @@ export type AppSection = "research" | "reading" | "tools" | "experimental" | "de
 /**
  * Compute handlers the app contributes to the host's compute worker.
  *
- * `module` is the app's compute entry (its `./compute` export); `backends` maps
- * each operation ID to the executor backend that serves it, which is what the
+ * `backends` maps each operation ID to the executor backend that serves it, which is what the
  * scheduler filters operations on.
  *
  * The operation lists are constrained to a literal union so the host can derive
@@ -53,24 +52,29 @@ export type AppSection = "research" | "reading" | "tools" | "experimental" | "de
  * check, so `backends` is typed against the union the app itself narrows to.
  */
 export interface AppCompute<Operation extends string = string> {
-  readonly module: () => Promise<Record<string, unknown>>;
   readonly backends: {
     readonly wasm: ReadonlyArray<Operation>;
     readonly js: ReadonlyArray<Operation>;
   };
 }
 
-export interface AppManifest<Operation extends string = string> {
+export interface AppDefinition {
   readonly id: string;
-  /** Launch-pad card title. */
   readonly title: string;
-  /** Palette label, when the card title alone is ambiguous. */
-  readonly paletteTitle?: string;
-  /** Route path, e.g. `/reader`. */
   readonly path: `/${string}`;
-  readonly icon: AppIcon;
   readonly description: string;
   readonly section: AppSection;
+  readonly installation: {
+    readonly name: string;
+    readonly shortName: string;
+    readonly entry: string;
+    readonly boot: "workspace" | "independent" | "reader" | "knowledge";
+  };
+}
+export interface AppManifest<Operation extends string = string> extends AppDefinition {
+  /** Palette label, when the card title alone is ambiguous. */
+  readonly paletteTitle?: string;
+  readonly icon: AppIcon;
   /** Loads the app's entry component; the registry turns this into `lazy()`. */
   readonly load: () => Promise<{ readonly App: AppComponent }>;
   /** Parses the URL search params this route owns. */

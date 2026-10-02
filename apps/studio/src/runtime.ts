@@ -11,7 +11,7 @@ import {
 import type { RuntimeMetadata, RuntimeServices } from "@bcr/core";
 import { createBrowserRuntime } from "@bcr/runtime-browser";
 import { workerExecutor, WorkerPool } from "@bcr/runtime-worker";
-import type { BinaryStore } from "@bcr/storage-opfs";
+import { OpfsStore, MemoryStore, isOpfsSupported, type BinaryStore } from "@bcr/storage-opfs";
 import { openSqliteDb, type SqliteDb } from "@bcr/storage-sqlite";
 import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
@@ -37,10 +37,19 @@ async function openMetaDb(store: BinaryStore): Promise<SqliteDb> {
 
 /** 组装 Compute Runtime 并接入 Studio 状态投影。 */
 export async function createRuntimeServices(): Promise<RuntimeSession> {
+  let workspace: ReturnType<typeof workspaceServices> | undefined;
+  let search: ReturnType<typeof createSearchIndex> | undefined;
   const session = await createBrowserRuntime({
     namespace: "studio",
     openMetadata: openMetaDb,
     onMetadataUnavailable: (error) => studio.log("warn", "metadata unavailable · " + String(error)),
+    beforeDispose: async () => {
+      try {
+        await workspace?.close();
+      } finally {
+        await search?.close();
+      }
+    },
     execution: (artifacts) => {
       const pool = new WorkerPool(
         {
@@ -66,8 +75,8 @@ export async function createRuntimeServices(): Promise<RuntimeSession> {
     },
   });
   const metadata = session.metadata;
-  const workspace = workspaceServices(metadata, session.binary, session);
-  const search = createSearchIndex(
+  workspace = workspaceServices(session);
+  search = createSearchIndex(
     metadata === undefined
       ? undefined
       : {
@@ -82,27 +91,32 @@ export async function createRuntimeServices(): Promise<RuntimeSession> {
     return {
       ...session,
       search,
-      dispose: async () => {
-        try {
-          try {
-            await workspace.close();
-          } finally {
-            await search.close();
-          }
-        } finally {
-          await session.host.dispose();
-        }
-      },
+      dispose: () => session.host.dispose(),
     };
   } catch (error) {
-    try {
-      await workspace.close();
-      await search.close();
-    } finally {
-      await session.host.dispose();
-    }
+    await session.host.dispose();
     throw error;
   }
+}
+
+/** Focused apps borrow shared immutable handoff bytes, without opening Studio's mutable DB. */
+export async function createShellRuntime(): Promise<RuntimeSession> {
+  const search = createSearchIndex();
+  let workspace: ReturnType<typeof workspaceServices> | undefined;
+  const session = await createBrowserRuntime({
+    namespace: "shell",
+    store: isOpfsSupported() ? new OpfsStore("studio") : new MemoryStore(),
+    execution: () => ({ executors: [], dispose: () => {} }),
+    beforeDispose: async () => {
+      try {
+        await workspace?.close();
+      } finally {
+        await search.close();
+      }
+    },
+  });
+  workspace = workspaceServices(session);
+  return { ...session, search, dispose: () => session.host.dispose() };
 }
 
 /** 刷新恢复：文件列表从元数据库回放（artifact 数据本体一直在 OPFS）。 */

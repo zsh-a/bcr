@@ -1,6 +1,7 @@
 import { openTopBar, openWorkspaceOptions } from "./lib/topbar.mjs";
 /* 全局搜索走查：索引跨域投影、键盘呼出、结果筛选与深链导航。 */
 import { fail, launchVerifyBrowser } from "./lib/browser.mjs";
+import { definition as markets } from "../apps/market-board/src/app-definition.ts";
 
 const base = process.env.BASE_URL ?? "http://localhost:5199/studio";
 
@@ -15,9 +16,9 @@ await page.getByRole("button", { name: "打开全局搜索" }).waitFor();
 
 await page.getByRole("button", { name: "打开全局搜索" }).click();
 const input = page.getByRole("textbox", { name: "全局搜索" });
-await input.fill("Market Atlas");
-await page.getByRole("option", { name: /Market Atlas/u }).waitFor();
-await page.getByRole("option", { name: /Market Atlas/u }).click();
+await input.fill(markets.title);
+await page.getByRole("option", { name: new RegExp(markets.title) }).waitFor();
+await page.getByRole("option", { name: new RegExp(markets.title) }).click();
 await page.waitForURL(/\/markets/u);
 
 await page.goto(base, { waitUntil: "networkidle" });
@@ -30,6 +31,9 @@ await page.getByRole("tab", { name: /市场/u }).click();
 await page.getByRole("option", { name: /贵州茅台/u }).waitFor();
 await page.getByRole("option", { name: /贵州茅台/u }).click();
 await page.waitForURL(/\/markets\?instrument=/u);
+await page.locator(".ma-stock-detail[open]").waitFor();
+await page.keyboard.press("Escape");
+await page.locator(".ma-stock-detail[open]").waitFor({ state: "hidden" });
 
 // Visit Reader once so its hydrated publication projection is available to
 // the shared index, then verify a section result carries a deep-link locator.

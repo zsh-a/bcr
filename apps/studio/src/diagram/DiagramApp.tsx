@@ -59,7 +59,7 @@ export function DiagramApp() {
     active = useRuntimeActivity(),
     navigation = useNavigation(),
     search = useLocationSearch();
-  const store = useMemo(() => workspaceServices(runtime.metadata).diagrams, [runtime.metadata]);
+  const store = useMemo(() => workspaceServices(runtime).diagrams, [runtime]);
   const items = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [ready, setReady] = useState(false),
     [error, setError] = useState("");

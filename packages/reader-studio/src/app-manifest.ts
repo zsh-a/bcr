@@ -1,3 +1,4 @@
+import { definition } from "./app-definition";
 import { LibraryBig } from "lucide-react";
 import type { AppManifest } from "@bcr/shell-contract";
 
@@ -8,12 +9,8 @@ import type { AppManifest } from "@bcr/shell-contract";
  * only needs the route and the entry component.
  */
 export const manifest = {
-  id: "reader",
-  title: "Reader Studio",
-  path: "/reader",
+  ...definition,
   icon: LibraryBig,
-  description: "阅读书籍与文档，整理书签和笔记",
-  section: "reading",
   load: () => import("./App"),
   validateSearch: (search) => ({
     cite: search["cite"],

@@ -7,7 +7,7 @@ export const diagramPlugin: WorkspacePlugin = {
   id: "diagram",
   agentRenderers: diagramResultRenderers,
   activate({ runtime, agent, reportError }) {
-    const store = workspaceServices(runtime.metadata).diagrams;
+    const store = workspaceServices(runtime).diagrams;
     const unregister = agent.registerAgentCapability(diagramCapability(store));
     let disposed = false,
       ready = false;

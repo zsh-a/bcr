@@ -7,7 +7,8 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 1000
 const page = await context.newPage(),
   errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
-const url = process.env.BASE_URL ?? "http://127.0.0.1:5297/quant";
+const url = new URL(process.env.BASE_URL ?? "http://127.0.0.1:5297/quant");
+if (url.pathname.startsWith("/studio")) url.pathname = "/quant";
 const ready = () =>
   page.waitForFunction(
     () =>
@@ -36,7 +37,7 @@ const create = async (type, name) => {
   await page.getByRole("button", { name: "创建", exact: true }).click();
 };
 try {
-  await page.goto(url, { waitUntil: "networkidle" });
+  await page.goto(url.toString(), { waitUntil: "networkidle" });
   await ready();
   await run();
   const first = await runId();

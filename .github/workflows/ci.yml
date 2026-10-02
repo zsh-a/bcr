@@ -55,11 +55,8 @@ jobs:
           VERSION: 0.15.0
         run: curl -sSf https://raw.githubusercontent.com/wasm-bindgen/wasm-pack/v0.15.0/docs/_installer/init.sh | sh
 
-      - name: Build WASM kernels
+      - name: Build kernels, Quant and Agent WASM
         run: bun run build:wasm
-
-      - name: Build Agent Runtime WASM
-        run: bun run build:wasm:agent
 
       - name: Check TypeScript, formatting, and lint
         run: bun run check

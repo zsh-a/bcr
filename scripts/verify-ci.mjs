@@ -140,6 +140,9 @@ await withServer({
     "scripts/verify-jsg.mjs",
     "scripts/verify-jsg-storage.mjs",
     "scripts/verify-jsg-grid.mjs",
+    "scripts/verify-jsg-research.mjs",
+    "scripts/verify-quant-experiments.mjs",
+    "scripts/verify-quant-walk-forward.mjs",
     "scripts/verify-jsg-evaluation.mjs",
     "scripts/verify-jsg-features.mjs",
     "scripts/verify-jsg-layout.mjs",
@@ -197,6 +200,7 @@ await withServer({
     "scripts/verify-accessibility.mjs",
     "scripts/verify-responsive.mjs",
     "scripts/verify-runtime-lifecycle.mjs",
+    "scripts/verify-session-isolation.mjs",
   ],
 });
 

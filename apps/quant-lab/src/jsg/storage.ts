@@ -5,6 +5,7 @@ import {
   type TaskJournalPrunePlan,
 } from "@bcr/core";
 import { OpfsStore, type BinaryStore } from "@bcr/storage-opfs";
+import { marketResearchStore } from "@bcr/market-data/research/storage";
 import { Effect } from "effect";
 import { readJson } from "./data";
 import type { ResearchSession, DatasetRefs } from "./session";
@@ -49,7 +50,7 @@ export interface ResearchCleanupPlan {
   journal: TaskJournalPrunePlan;
   bytes: number;
 }
-export const researchStore = () => new OpfsStore("quant");
+export const researchStore = marketResearchStore;
 async function readRecord(store: BinaryStore, path: string): Promise<SnapshotRecord | undefined> {
   if (((await store.size(path)) ?? Infinity) > 4 * 1024 * 1024) return;
   try {

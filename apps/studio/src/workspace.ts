@@ -5,31 +5,51 @@ import { ResearchStore } from "./research/index";
 import { DiagramStore } from "./diagram/store";
 import { createDiagramStorage } from "./diagram/browserStorage";
 
-/** The composition root owns domain stores; plugins only attach projections/capabilities. */
+/** The session owns lazy domain services; views and plugins borrow the same instances. */
 export function createWorkspaceServices(
   metadata: RuntimeMetadata | undefined,
   binary?: BinaryStore,
   compute?: Pick<RuntimeServices, "scheduler" | "artifacts">,
 ) {
-  const knowledge = new KnowledgeStore(metadata, binary, compute);
-  const research = new ResearchStore(metadata);
-  const diagramStorage = typeof indexedDB === "undefined" ? undefined : createDiagramStorage();
-  const diagrams = new DiagramStore(diagramStorage ?? metadata);
+  let knowledge: KnowledgeStore | undefined;
+  let research: ResearchStore | undefined;
+  let diagrams: DiagramStore | undefined;
+  let diagramStorage: ReturnType<typeof createDiagramStorage> | undefined;
   let closing: Promise<void> | undefined;
+  const assertOpen = () => {
+    if (closing) throw new Error("工作区服务已关闭");
+  };
   return {
-    knowledge,
-    research,
-    diagrams,
+    get knowledge() {
+      if (knowledge) return knowledge;
+      assertOpen();
+      return (knowledge ??= new KnowledgeStore(metadata, binary, compute));
+    },
+    get research() {
+      if (research) return research;
+      assertOpen();
+      return (research ??= new ResearchStore(metadata));
+    },
+    get diagrams() {
+      if (diagrams) return diagrams;
+      assertOpen();
+      if (!diagrams) {
+        diagramStorage = typeof indexedDB === "undefined" ? undefined : createDiagramStorage();
+        diagrams = new DiagramStore(diagramStorage ?? metadata);
+      }
+      return diagrams;
+    },
     close() {
-      // Stop new sync/research work, drain accepted commits, then release persistence.
       return (closing ??= Promise.allSettled([
-        knowledge.close(),
-        research.close(),
-        diagrams.close(),
+        knowledge?.close(),
+        research?.close(),
+        diagrams?.close(),
       ])
         .then((results) => {
-          const failure = results.find((result) => result.status === "rejected");
-          if (failure?.status === "rejected") throw failure.reason;
+          const failures = results.flatMap((result) =>
+            result.status === "rejected" ? [result.reason] : [],
+          );
+          if (failures.length) throw new AggregateError(failures, "工作区服务关闭失败");
         })
         .finally(() => diagramStorage?.close())
         .then(() => undefined));
@@ -37,18 +57,22 @@ export function createWorkspaceServices(
   };
 }
 
-const workspaces = new WeakMap<RuntimeMetadata, ReturnType<typeof createWorkspaceServices>>();
-/** All consumers of a metadata session share one explicitly owned set of domain services. */
-export function workspaceServices(
-  metadata: RuntimeMetadata | undefined,
-  binary?: BinaryStore,
-  compute?: Pick<RuntimeServices, "scheduler" | "artifacts">,
-) {
-  if (!metadata) return createWorkspaceServices(undefined, binary, compute);
-  let workspace = workspaces.get(metadata);
+type WorkspaceOwner = Pick<RuntimeServices, "metadata" | "binary" | "host"> &
+  Partial<Pick<RuntimeServices, "scheduler" | "artifacts">>;
+const workspaces = new WeakMap<object, ReturnType<typeof createWorkspaceServices>>();
+/** Artifact identity survives view wrappers and distinguishes sessions sharing one host. */
+export function workspaceServices(runtime: WorkspaceOwner) {
+  const owner = runtime.artifacts ?? runtime.metadata ?? runtime.host ?? runtime;
+  let workspace = workspaces.get(owner);
   if (!workspace) {
-    workspace = createWorkspaceServices(metadata, binary, compute);
-    workspaces.set(metadata, workspace);
+    workspace = createWorkspaceServices(
+      runtime.metadata,
+      runtime.binary,
+      runtime.scheduler && runtime.artifacts
+        ? { scheduler: runtime.scheduler, artifacts: runtime.artifacts }
+        : undefined,
+    );
+    workspaces.set(owner, workspace);
   }
   return workspace;
 }

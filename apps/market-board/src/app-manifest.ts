@@ -1,3 +1,4 @@
+import { definition } from "./app-definition";
 import { Globe2 } from "lucide-react";
 import type { AppManifest } from "@bcr/shell-contract";
 
@@ -9,12 +10,8 @@ import type { AppManifest } from "@bcr/shell-contract";
  * purely on-device.
  */
 export const manifest = {
-  id: "markets",
-  title: "Market",
-  path: "/markets",
+  ...definition,
   icon: Globe2,
-  description: "行情、行业表现、历史宽度与自选研究",
-  section: "research",
   load: () => import("./App"),
   validateSearch: (search) => ({
     view:

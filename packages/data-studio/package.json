@@ -7,7 +7,8 @@
     "./app": "./src/App.tsx",
     "./app-manifest": "./src/app-manifest.ts",
     "./compute": "./src/compute.ts",
-    "./runtime": "./src/runtime.ts"
+    "./runtime": "./src/runtime.ts",
+    "./app-definition": "./src/app-definition.ts"
   },
   "dependencies": {
     "@bcr/core": "workspace:*",

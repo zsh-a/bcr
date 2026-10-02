@@ -24,6 +24,16 @@ import { defineConfig } from "vite-plus";
  */
 const boundaries: { dir: string; allow: string[]; message: string }[] = [
   {
+    dir: "packages/market-data",
+    allow: ["@bcr/core", "@bcr/storage-opfs"],
+    message: "Market data owns datasets and sources, independently of strategies and UI.",
+  },
+  {
+    dir: "packages/quant-core",
+    allow: ["@bcr/core", "@bcr/market-data", "@bcr/market-data/*"],
+    message: "Quant domain contracts depend on market data and core, never on React or apps.",
+  },
+  {
     dir: "packages/scene-renderer",
     allow: [],
     message: "@bcr/scene-renderer is a leaf renderer and must stay dependency-free.",

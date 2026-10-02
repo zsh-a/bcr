@@ -1,11 +1,11 @@
-.ui-breadth-scroll {
+.ui-heatmap-scroll {
   overflow: auto;
   max-width: 100%;
   isolation: isolate;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
 }
-.ui-breadth-table {
+.ui-heatmap-table {
   width: max-content;
   min-width: 100%;
   border-collapse: separate;
@@ -13,7 +13,7 @@
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }
-.ui-breadth-table caption {
+.ui-heatmap-table caption {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -21,13 +21,13 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.ui-breadth-table th {
+.ui-heatmap-table th {
   color: var(--color-muted);
   font-weight: 400;
   padding: var(--space-2);
   white-space: nowrap;
 }
-.ui-breadth-table th:first-child {
+.ui-heatmap-table th:first-child {
   position: sticky;
   left: 0;
   background: var(--color-surface);
@@ -35,23 +35,23 @@
   text-align: left;
   min-width: 112px;
 }
-.ui-breadth-table th b,
-.ui-breadth-table th small {
+.ui-heatmap-table th b,
+.ui-heatmap-table th small {
   display: block;
 }
-.ui-breadth-table th b {
+.ui-heatmap-table th b {
   color: var(--color-text);
   font-weight: 500;
 }
-.ui-breadth-table th small {
+.ui-heatmap-table th small {
   color: var(--color-faint);
   font-family: var(--font-mono);
 }
-.ui-breadth-table td {
+.ui-heatmap-table td {
   padding: 0;
   text-align: center;
 }
-.ui-breadth-table td button {
+.ui-heatmap-table td button {
   display: block;
   width: 44px;
   min-height: 32px;
@@ -62,17 +62,17 @@
   font-size: var(--text-xs);
   cursor: pointer;
 }
-.ui-breadth-table td button:hover {
+.ui-heatmap-table td button:hover {
   border-color: var(--color-accent);
 }
-.ui-breadth-table td[data-selected] button {
+.ui-heatmap-table td[data-selected] button {
   border-color: var(--color-accent);
 }
-.ui-breadth-table th[data-selected] {
+.ui-heatmap-table th[data-selected] {
   color: var(--color-accent);
 }
 @media (pointer: coarse) {
-  .ui-breadth-table td button {
+  .ui-heatmap-table td button {
     min-height: var(--h-control-lg);
   }
 }

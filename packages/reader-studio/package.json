@@ -11,7 +11,8 @@
     "./model": "./src/model.ts",
     "./research-transfer": "./src/researchTransfer.ts",
     "./runtime": "./src/runtime.ts",
-    "./store": "./src/store.ts"
+    "./store": "./src/store.ts",
+    "./app-definition": "./src/app-definition.ts"
   },
   "dependencies": {
     "@bcr/core": "workspace:*",

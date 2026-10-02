@@ -36,7 +36,7 @@ import {
 } from "./model";
 import type { MangaModelCacheInfo } from "./model-cache";
 import type { MangaModelRecord } from "./model-registry";
-import { preloadMangaModel, runMangaPipeline, runMangaQueue } from "./pipeline";
+import { cancelMangaQueue, preloadMangaModel, runMangaPipeline, runMangaQueue } from "./pipeline";
 import {
   createMangaRuntime,
   fileFromDocumentHandoff,
@@ -46,7 +46,6 @@ import {
   persistProject,
   prepareMangaDocumentHandoff,
   regionsFromDocumentHandoff,
-  restoreProject,
   type MangaRuntime,
 } from "./runtime";
 import { manga, useMangaStudio } from "./store";
@@ -109,7 +108,7 @@ export function App() {
   const navigation = useNavigation();
   const state = useMangaStudio((snapshot) => snapshot);
   usePublishRunningCount("manga", state.running ? 1 : 0);
-  const hostServices = useOptionalRuntime();
+  const parentServices = useOptionalRuntime();
   const routeParams = new URLSearchParams(useLocationSearch());
   const routePageId = routeParams.get("page");
   const routeRegionId = routeParams.get("region");
@@ -118,6 +117,8 @@ export function App() {
   const [exporting, setExporting] = useState(false);
   const [documentHandoffBusy, setDocumentHandoffBusy] = useState(false);
   const [runtime, setRuntime] = useState<MangaRuntime | null>(null);
+  const hostServices = runtime?.session ?? parentServices;
+  const lifetime = useRef<Promise<void>>(Promise.resolve());
   const [bootError, setBootError] = useState<string | null>(null);
   const [glossarySource, setGlossarySource] = useState("");
   const [glossaryTarget, setGlossaryTarget] = useState("");
@@ -143,18 +144,36 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
-    void createMangaRuntime()
-      .then(async (nextRuntime) => {
-        await restoreProject(nextRuntime);
-        if (!cancelled) setRuntime(nextRuntime);
-      })
-      .catch((reason: unknown) => {
+    let stop!: () => void;
+    const stopped = new Promise<void>((resolve) => {
+      stop = resolve;
+    });
+    const previous = lifetime.current;
+    lifetime.current = (async () => {
+      await previous;
+      if (cancelled) return;
+      let owned: MangaRuntime | undefined;
+      try {
+        owned = await createMangaRuntime(parentServices?.host);
+        if (cancelled) return;
+        if (!cancelled) {
+          setRuntime(owned);
+          await stopped;
+        }
+      } catch (reason) {
         if (!cancelled) setBootError(reason instanceof Error ? reason.message : String(reason));
-      });
+      } finally {
+        await owned?.session
+          ?.dispose()
+          .catch((error) => console.error("Manga cleanup failed", error));
+      }
+    })();
     return () => {
       cancelled = true;
+      cancelMangaQueue();
+      stop();
     };
-  }, []);
+  }, [parentServices?.host]);
 
   useEffect(() => {
     if (runtime === null) return;
@@ -173,7 +192,7 @@ export function App() {
             runtime,
             page,
             state.settings.sourceLanguage,
-            hostServices?.artifacts,
+            parentServices?.artifacts,
           );
           if (cancelled) return;
           const current = manga.getSnapshot().pages.find((candidate) => candidate.id === page.id);
@@ -199,10 +218,10 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [hostServices?.artifacts, runtime, state.pages, state.settings.sourceLanguage]);
+  }, [parentServices?.artifacts, runtime, state.pages, state.settings.sourceLanguage]);
 
   useEffect(() => {
-    const search = hostServices?.search;
+    const search = parentServices?.search;
     if (search === undefined || runtime === null) return;
     const records: SearchDocument[] = [];
     for (const [index, page] of state.pages.entries()) {
@@ -244,7 +263,7 @@ export function App() {
       }
     }
     search.replaceSource("manga", records);
-  }, [hostServices?.search, runtime, state.pages, state.settings.sourceLanguage]);
+  }, [parentServices?.search, runtime, state.pages, state.settings.sourceLanguage]);
 
   useEffect(() => {
     if (routePageId === null) return;
@@ -407,7 +426,7 @@ export function App() {
         image.onerror = () => reject(new Error("image decode failed"));
         image.src = objectUrl;
       });
-      const ref = await importImageArtifact(runtime, file, hostServices?.artifacts);
+      const ref = await importImageArtifact(runtime, file, parentServices?.artifacts);
       if (manga.getSnapshot().running) {
         URL.revokeObjectURL(objectUrl);
         manga.log("warn", "import · page pipeline started before import finished");
@@ -460,7 +479,7 @@ export function App() {
         /\.json$/iu.test(file.name) || file.type.toLocaleLowerCase().startsWith("application/json");
       if (isExportBundle) {
         try {
-          const replay = await importMangaExportBundle(runtime, file, hostServices?.artifacts);
+          const replay = await importMangaExportBundle(runtime, file, parentServices?.artifacts);
           await importImage(replay.file, replay.regions);
           manga.log("ok", `export bundle · ${replay.content.sourceName} · visual regions restored`);
         } catch (reason) {
@@ -512,7 +531,7 @@ export function App() {
     }
     void (async () => {
       try {
-        const file = await fileFromDocumentHandoff(runtime, handoff, hostServices?.artifacts);
+        const file = await fileFromDocumentHandoff(runtime, handoff, parentServices?.artifacts);
         if (formatForMangaFile(file) === "unknown") {
           manga.log(
             "warn",
@@ -525,7 +544,7 @@ export function App() {
           initialRegions = await regionsFromDocumentHandoff(
             runtime,
             handoff,
-            hostServices?.artifacts,
+            parentServices?.artifacts,
           );
         } catch (reason) {
           manga.log(
@@ -545,7 +564,7 @@ export function App() {
         );
       }
     })();
-  }, [fileFromDocumentHandoff, hostServices?.artifacts, importFiles, runtime]);
+  }, [fileFromDocumentHandoff, parentServices?.artifacts, importFiles, runtime]);
 
   const addRegion = (): void => {
     const index = state.regions.length + 1;
@@ -590,7 +609,7 @@ export function App() {
 
   const handoffDocument = () => {
     if (runtime === null || documentHandoffBusy || state.running || batchRunning) return;
-    const hostArtifacts = hostServices?.artifacts;
+    const hostArtifacts = parentServices?.artifacts;
     if (hostArtifacts === undefined) {
       manga.log("warn", "handoff · open Manga from Studio Shell to reach Document Studio");
       return;

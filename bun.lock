@@ -42,6 +42,7 @@
         "@bcr/document-core": "workspace:*",
         "@bcr/graph": "workspace:*",
         "@bcr/react": "workspace:*",
+        "@bcr/runtime-browser": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
         "@bcr/shell-contract": "workspace:*",
         "@bcr/storage-opfs": "workspace:*",
@@ -123,6 +124,7 @@
       "dependencies": {
         "@bcr/core": "workspace:*",
         "@bcr/market-data": "workspace:*",
+        "@bcr/quant-core": "workspace:*",
         "@bcr/react": "workspace:*",
         "@bcr/runtime-browser": "workspace:*",
         "@bcr/runtime-worker": "workspace:*",
@@ -359,6 +361,14 @@
         "stock-sdk": "2.4.2",
       },
     },
+    "packages/quant-core": {
+      "name": "@bcr/quant-core",
+      "version": "0.1.0",
+      "dependencies": {
+        "@bcr/core": "workspace:*",
+        "@bcr/market-data": "workspace:*",
+      },
+    },
     "packages/react": {
       "name": "@bcr/react",
       "version": "0.1.0",
@@ -571,6 +581,8 @@
     "@bcr/market-data": ["@bcr/market-data@workspace:packages/market-data"],
 
     "@bcr/media-studio": ["@bcr/media-studio@workspace:apps/media-studio"],
+
+    "@bcr/quant-core": ["@bcr/quant-core@workspace:packages/quant-core"],
 
     "@bcr/quant-lab": ["@bcr/quant-lab@workspace:apps/quant-lab"],
 

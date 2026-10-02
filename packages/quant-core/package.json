@@ -1,0 +1,14 @@
+{
+  "name": "@bcr/quant-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./research-model": "./src/research-model.ts"
+  },
+  "dependencies": {
+    "@bcr/core": "workspace:*",
+    "@bcr/market-data": "workspace:*"
+  }
+}

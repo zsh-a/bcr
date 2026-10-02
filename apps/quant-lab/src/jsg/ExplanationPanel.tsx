@@ -1,12 +1,6 @@
+import { breadthGrid } from "@bcr/market-data/research/breadth-grid";
 import { useEffect, useState } from "react";
-import {
-  BreadthHeatmap,
-  Button,
-  Select,
-  Spinner,
-  useNavigation,
-  useLocationSearch,
-} from "@bcr/react";
+import { Heatmap, Button, Select, Spinner, useNavigation, useLocationSearch } from "@bcr/react";
 import { pinMarketSnapshot, saveMarketLabels } from "@bcr/market-data/research/catalog";
 import type { SelectedRun } from "./session";
 import { dateText, strategySpec, rebalanceSession } from "./model";
@@ -132,10 +126,9 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
         </p>
       )}
       {history && (
-        <BreadthHeatmap
-          days={history}
-          labels={names.industries}
-          selectedDate={date}
+        <Heatmap
+          {...breadthGrid(history, names.industries)}
+          selectedColumn={date}
           onSelect={(_, next) => selectDate(next)}
         />
       )}

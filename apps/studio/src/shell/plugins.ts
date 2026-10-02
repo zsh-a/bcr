@@ -11,18 +11,24 @@ export function activatePlugins(
       throw new Error(`Duplicate or empty plugin id: ${plugin.id}`);
     ids.add(plugin.id);
   }
-  const cleanups: (() => void)[] = [];
+  const cleanups: { id: string; cleanup: () => void }[] = [];
   const dispose = () => {
-    for (const cleanup of cleanups.splice(0).reverse()) {
+    for (const { id, cleanup } of cleanups.splice(0).reverse()) {
       try {
         cleanup();
       } catch (error) {
-        context.reportError(error);
+        context.reportError(error, id);
       }
     }
   };
   try {
-    for (const plugin of plugins) cleanups.push(plugin.activate(context));
+    for (const plugin of plugins) {
+      const cleanup = plugin.activate({
+        ...context,
+        reportError: (error) => context.reportError(error, plugin.id),
+      });
+      cleanups.push({ id: plugin.id, cleanup });
+    }
   } catch (error) {
     dispose();
     throw error;

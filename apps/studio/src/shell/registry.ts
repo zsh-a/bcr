@@ -1,3 +1,4 @@
+import { APP_DEFINITIONS } from "./app-definitions";
 import { lazy, type ComponentType } from "react";
 import { workspaceSearchPlugin } from "../assistant/workspace-search-plugin";
 import type { AppManifest, AppSection, PanelManifest } from "@bcr/shell-contract";
@@ -28,19 +29,23 @@ import {
  * Within each section, declaration order determines the launch order. Routing,
  * plugins and compute contributions include every app, regardless of placement.
  */
-const declared: ReadonlyArray<AppManifest> = [
+const implementations = {
   markets,
   quant,
   reader,
-  KNOWLEDGE_MANIFEST,
-  DIAGRAM_MANIFEST,
+  knowledge: KNOWLEDGE_MANIFEST,
+  diagram: DIAGRAM_MANIFEST,
   media,
   data,
   manga,
   documents,
-  STUDIO_MANIFEST,
+  studio: STUDIO_MANIFEST,
   docgen,
-];
+} satisfies Record<(typeof APP_DEFINITIONS)[number]["id"], AppManifest>;
+
+const declared: ReadonlyArray<AppManifest> = APP_DEFINITIONS.map((definition) => {
+  return implementations[definition.id];
+});
 
 export const PLUGINS = [workspaceSearchPlugin, ...declared.flatMap((app) => app.plugins ?? [])];
 export const AGENT_RENDERERS = PLUGINS.flatMap((plugin) => plugin.agentRenderers ?? []);
@@ -57,7 +62,7 @@ export const MANIFESTS: ReadonlyArray<RegisteredApp> = declared.map((app) => ({
   component: lazy(() => app.load().then((m) => ({ default: m.App }))),
 }));
 
-export type ActiveView = "home" | string;
+export type ActiveView = string;
 
 export const PANELS: readonly PanelManifest[] = [ASSISTANT_PANEL];
 

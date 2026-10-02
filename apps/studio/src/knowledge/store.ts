@@ -229,7 +229,9 @@ export class KnowledgeStore {
   private syncTask: Promise<unknown> | null = null;
   private syncListeners = new Set<() => void>();
   private listeners = new Set<() => void>();
-  readonly ready: Promise<void>;
+  ready: Promise<void>;
+  private loaded = false;
+  private retrying: Promise<void> | undefined;
   private readonly persistence: KnowledgePersistence | undefined;
   get syncing() {
     return this.syncTask !== null;
@@ -283,7 +285,25 @@ export class KnowledgeStore {
   private async load() {
     if (!this.metadata) throw new Error("本地持久化不可用，笔记编辑已暂停");
     this.value = await this.persistence!.load();
+    this.loaded = true;
     this.emit();
+  }
+  /** Retry the owned service in place so search, Agent and views retain their subscriptions. */
+  retryInitialization(): Promise<void> {
+    if (this.stopping || this.closed) return Promise.reject(new Error("知识库已关闭"));
+    if (this.loaded) return Promise.resolve();
+    if (this.retrying) return this.retrying;
+    const previous = this.ready;
+    const pending = this.tail;
+    this.ready = this.retrying = previous
+      .catch(() => undefined)
+      .then(() => pending.catch(() => undefined))
+      .then(() => this.load())
+      .finally(() => {
+        this.retrying = undefined;
+      });
+    void this.ready.catch(() => undefined);
+    return this.ready;
   }
   getSnapshot = (): KnowledgeState => this.value;
   subscribe = (listener: () => void) => {
@@ -310,10 +330,11 @@ export class KnowledgeStore {
   }
   update(change: (state: KnowledgeState) => KnowledgeState): Promise<void> {
     if (this.closed) return Promise.reject(new Error("知识库已关闭，草稿已保留"));
+    const ready = this.ready;
     const operation = this.tail
       .catch(() => undefined)
       .then(async () => {
-        await this.ready;
+        await ready;
         if (this.reloadRequired) {
           await this.load();
           this.reloadRequired = false;

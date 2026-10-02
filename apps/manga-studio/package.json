@@ -14,13 +14,15 @@
     "./model-cache": "./src/model-cache.ts",
     "./model-registry": "./src/model-registry.ts",
     "./operations": "./src/operations.ts",
-    "./store": "./src/store.ts"
+    "./store": "./src/store.ts",
+    "./app-definition": "./src/app-definition.ts"
   },
   "dependencies": {
     "@bcr/core": "workspace:*",
     "@bcr/document-core": "workspace:*",
     "@bcr/graph": "workspace:*",
     "@bcr/react": "workspace:*",
+    "@bcr/runtime-browser": "workspace:*",
     "@bcr/runtime-worker": "workspace:*",
     "@bcr/shell-contract": "workspace:*",
     "@bcr/storage-opfs": "workspace:*",

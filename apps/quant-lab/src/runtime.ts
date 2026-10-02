@@ -5,6 +5,8 @@ import type { BinaryStore } from "@bcr/storage-opfs";
 import { openSqliteDb, type SqliteDb } from "@bcr/storage-sqlite";
 import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
+import { closeResearchService } from "./jsg/research-service";
+import { RESEARCH_NAMESPACE } from "@bcr/market-data/research/storage";
 import { SINGLE_EXECUTOR_VERSION, GRID_EXECUTOR_VERSION } from "./jsg/versions";
 
 type SqliteInit = (options?: {
@@ -18,12 +20,15 @@ async function openMetaDb(store: BinaryStore): Promise<SqliteDb> {
 }
 
 export async function createRuntimeServices(host?: RuntimeHost): Promise<RuntimeSession> {
+  let ownedArtifacts: RuntimeSession["artifacts"] | undefined;
   return createBrowserRuntime({
-    namespace: "quant",
+    namespace: RESEARCH_NAMESPACE,
     host,
     openMetadata: openMetaDb,
+    beforeDispose: () => closeResearchService(ownedArtifacts),
     onMetadataUnavailable: (error) => console.warn("[quant] metadata unavailable", error),
     execution: (artifacts) => {
+      ownedArtifacts = artifacts;
       const pool = new WorkerPool(
         {
           minSize: 1,

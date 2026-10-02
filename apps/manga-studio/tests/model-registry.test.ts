@@ -31,6 +31,17 @@ const ocrExecution: MangaAdapterExecution = {
 };
 
 describe("Manga model registry", () => {
+  it("drains accepted model facts and ignores callbacks after shutdown", async () => {
+    const storage = fakeDb();
+    const registry = new MangaModelRegistry(storage.db);
+    await registry.markReady(ocrExecution, 12);
+    await registry.close();
+    const saved = storage.read();
+    await registry.markError(ocrExecution, new Error("late callback"));
+    expect(await registry.clearCache()).toBe(false);
+    expect(storage.read()).toBe(saved);
+    expect(JSON.parse(saved!).records[0].status).toBe("ready");
+  });
   it("derives stable keys from manifests and persists lifecycle facts", async () => {
     const catalog = mangaModelCatalog();
     expect(catalog.some((entry) => entry.model === ocrExecution.model)).toBe(true);

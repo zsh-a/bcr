@@ -1,4 +1,5 @@
-import type { JsgConfig, ResearchManifest } from "./model";
+import type { JsgConfig } from "./model";
+import type { ResearchManifest } from "@bcr/market-data/research/model";
 
 export interface StrategySpec {
   id: "jsg" | "momentum";

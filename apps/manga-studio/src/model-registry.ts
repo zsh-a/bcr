@@ -113,6 +113,12 @@ export class MangaModelRegistry {
   private records = new Map<string, MangaModelRecord>();
   private readonly listeners = new Set<() => void>();
   private persistChain: Promise<void> = Promise.resolve();
+  private closed = false;
+  async close(): Promise<void> {
+    this.closed = true;
+    await this.persistChain;
+    this.listeners.clear();
+  }
 
   constructor(private readonly db: SqliteDb | undefined) {}
 
@@ -157,8 +163,9 @@ export class MangaModelRegistry {
    * environment may still be valid.
    */
   async reconcileCache(): Promise<void> {
+    if (this.closed) return;
     const info = await this.inspectCache();
-    if (!info.supported) return;
+    if (this.closed || !info.supported) return;
     const available = new Set(info.modelFiles.map((entry) => entry.model));
     let changed = false;
     for (const [key, record] of this.records) {
@@ -181,8 +188,9 @@ export class MangaModelRegistry {
 
   /** Clear the product-owned cache and invalidate readiness metadata together. */
   async clearCache(): Promise<boolean> {
+    if (this.closed) return false;
     const deleted = await clearMangaModelCache();
-    if (!deleted) return false;
+    if (this.closed || !deleted) return false;
     this.records = new Map(
       [...this.records.entries()].map(([key, record]) => [
         key,
@@ -261,7 +269,7 @@ export class MangaModelRegistry {
     error?: string,
     durationMs?: number,
   ): void {
-    if (execution.model === undefined || execution.model.trim().length === 0) return;
+    if (this.closed || execution.model === undefined || execution.model.trim().length === 0) return;
     const key = modelKey(execution.kind, execution.model);
     const catalog = mangaModelCatalog().find((entry) => entry.key === key);
     const entry: MangaModelCatalogEntry = catalog ?? {

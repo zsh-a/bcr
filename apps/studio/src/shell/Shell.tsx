@@ -18,11 +18,13 @@ import { Suspense, useCallback, useEffect, useLayoutEffect, useState } from "rea
 import { CommandPalette } from "../components/CommandPalette";
 import { SearchPanel } from "../components/SearchPanel";
 import { WorkspaceNavigation } from "../components/WorkspaceNavigation";
-import { createRuntimeServices } from "../runtime";
+import { createRuntimeServices, createShellRuntime } from "../runtime";
 import { SearchBridge } from "../search-bridge";
 import { appIdFromPath, LAUNCH_PAD_APPS, MANIFESTS } from "./registry";
 import { Home } from "./Home";
 import { ResearchCaptureBridge } from "../research/CaptureBridge";
+import { PLUGINS } from "./registry";
+import { workspaceSearchPlugin } from "../assistant/workspace-search-plugin";
 import { PluginHost } from "./PluginHost";
 import { AssistantWindow, type AssistantVisibility } from "../assistant/AssistantWindow";
 import { createAgentHost } from "@bcr/agent";
@@ -65,10 +67,19 @@ export function Shell() {
   );
 }
 
+const independent = currentPwa?.boot === "independent";
+const shellPlugins = independent
+  ? [workspaceSearchPlugin, ...(MANIFESTS.find((app) => app.id === currentPwa?.key)?.plugins ?? [])]
+  : PLUGINS;
 function ShellContent() {
   const { conversations } = useAgentHost();
   const navigation = useNavigation();
-  const { services, error } = useRuntimeSession(createRuntimeServices);
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const active = appIdFromPath(pathname);
+  const { services, error } = useRuntimeSession(
+    independent ? createShellRuntime : createRuntimeServices,
+  );
   useUpdateParticipant({
     blocked: () =>
       services === null
@@ -86,9 +97,6 @@ function ShellContent() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [assistantVisibility, setAssistantVisibility] = useState<AssistantVisibility>("closed");
-  const navigate = useNavigate();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const active = appIdFromPath(pathname);
   useLayoutEffect(() => {
     syncInstallMetadata(currentPwa ?? (active === "home" ? undefined : pwaForApp(active)));
   }, [active]);
@@ -173,9 +181,9 @@ function ShellContent() {
   return (
     <RuntimeProvider services={services}>
       <RuntimeUpdateGuard />
-      <ResearchCaptureBridge>
+      <ResearchCaptureBridge enabled={!independent}>
         <SearchBridge services={services} />
-        <PluginHost />
+        <PluginHost plugins={shellPlugins} />
         <WorkspaceNavigation
           active={active}
           onOpenPalette={() => setPaletteOpen(true)}

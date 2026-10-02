@@ -1,5 +1,5 @@
 import { artifactPath, type ArtifactRef } from "@bcr/core";
-import { OpfsStore } from "@bcr/storage-opfs";
+import { marketResearchStore } from "@bcr/market-data/research/storage";
 import { Effect } from "effect";
 import { queryOrders, queryCurve, queryDecision, type ResultChunk } from "../jsg/result-data";
 import type { ResultRequest, ResultResponse } from "../jsg/result-reader";
@@ -12,7 +12,7 @@ const scope = globalThis as unknown as {
   postMessage: (value: ResultResponse) => void;
   onmessage: (event: MessageEvent<ResultRequest>) => void;
 };
-const store = new OpfsStore("quant");
+const store = marketResearchStore();
 const controllers = new Map<number, AbortController>();
 const cache = new Map<string, { bytes: number; value: ResultChunk }>();
 let cacheBytes = 0;

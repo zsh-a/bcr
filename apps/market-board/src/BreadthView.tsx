@@ -1,6 +1,7 @@
+import { breadthGrid } from "@bcr/market-data/research/breadth-grid";
 import { useEffect, useRef, useState } from "react";
 import {
-  BreadthHeatmap,
+  Heatmap,
   Button,
   Dialog,
   EmptyState,
@@ -315,10 +316,9 @@ export default function BreadthView({
               </Button>
             </div>
           </div>
-          <BreadthHeatmap
-            days={current}
-            labels={names}
-            selectedDate={selection?.date ?? requestedDate ?? undefined}
+          <Heatmap
+            {...breadthGrid(current, names)}
+            selectedColumn={selection?.date ?? requestedDate ?? undefined}
             onSelect={(industry, date) => {
               setSelection({ industry, date });
               navigation.navigate(

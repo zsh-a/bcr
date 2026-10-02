@@ -8,20 +8,27 @@ import {
 import { saveResearchCapture } from "./capture";
 import { workspaceServices } from "../workspace";
 
-export function ResearchCaptureBridge(props: { children: ReactNode }) {
-  const { metadata } = useRuntime();
-  const store = useMemo(() => workspaceServices(metadata).research, [metadata]);
+export function ResearchCaptureBridge(props: { children: ReactNode; enabled?: boolean }) {
+  return props.enabled === false ? (
+    props.children
+  ) : (
+    <CaptureProvider>{props.children}</CaptureProvider>
+  );
+}
+function CaptureProvider(props: { children: ReactNode }) {
+  const runtime = useRuntime();
+  const store = useMemo(() => workspaceServices(runtime).research, [runtime]);
   const library = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [state, setState] = useState({ ready: false, error: null as string | null });
   useUpdateParticipant({
     blocked: () =>
       !state.ready
         ? "资料库尚未就绪，请稍后更新。"
-        : workspaceServices(metadata).knowledge.syncing
+        : workspaceServices(runtime).knowledge.syncing
           ? "知识库正在同步，请完成后再更新。"
           : null,
     save: async () => {
-      await workspaceServices(metadata).knowledge.flush();
+      await workspaceServices(runtime).knowledge.flush();
       await store.flush();
     },
   });

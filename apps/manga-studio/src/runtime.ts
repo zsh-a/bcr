@@ -1,17 +1,20 @@
 import {
   artifactPath,
-  artifactStore,
-  ArtifactStoreTag,
   contentHash,
   hashReadableStream,
   type ArtifactRef,
   type ArtifactStore,
 } from "@bcr/core";
-import { isOpfsSupported, MemoryStore, OpfsStore, type BinaryStore } from "@bcr/storage-opfs";
-import { openSqliteDb, sqliteLineageStore, type SqliteDb } from "@bcr/storage-sqlite";
+import { MemoryStore, type BinaryStore } from "@bcr/storage-opfs";
+import { openSqliteDb, type SqliteDb } from "@bcr/storage-sqlite";
 import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
-import { Context, Effect, Layer } from "effect";
+import { Effect } from "effect";
+import type { RuntimeHost, RuntimeSession } from "@bcr/core";
+import { createBrowserRuntime } from "@bcr/runtime-browser";
+import { WorkerPool, workerExecutor } from "@bcr/runtime-worker";
+import { MANGA_COMPUTE } from "./operations";
+import { cancelMangaQueue } from "./pipeline";
 import { decodeGraph, encodeGraph } from "@bcr/graph";
 import type {
   DocumentContentPackage,
@@ -58,6 +61,7 @@ export interface MangaExportReplayPayload {
 }
 
 export interface MangaRuntime {
+  readonly session?: RuntimeSession;
   readonly artifacts: ArtifactStore;
   readonly binary: BinaryStore;
   readonly meta: SqliteDb | undefined;
@@ -107,43 +111,63 @@ interface PersistedProject {
 
 let currentRuntime: MangaRuntime | undefined;
 
-async function openMetaDb(store: OpfsStore | MemoryStore): Promise<SqliteDb> {
+async function openMetaDb(store: BinaryStore): Promise<SqliteDb> {
   const init = initSqlite as unknown as SqliteInit;
   const sqlite3 = await init({ locateFile: () => wasmUrl });
   return openSqliteDb({ store, path: "project/meta.db", sqlite3 });
 }
 
-/** Build the storage plane independently from the eventual OCR/GPU executors. */
-export async function createMangaRuntime(): Promise<MangaRuntime> {
-  const opfs = isOpfsSupported() ? new OpfsStore("manga") : new MemoryStore();
-  const memory = new MemoryStore();
+/** Storage and standalone compute participate in the host's budget and writer lifetime. */
+export async function createMangaRuntime(host?: RuntimeHost): Promise<MangaRuntime> {
   let meta: SqliteDb | undefined;
+  let runtime: MangaRuntime | undefined;
+  let initialized = false;
+  const session = await createBrowserRuntime({
+    namespace: "manga",
+    host,
+    openMetadata: async (store) => (meta = await openMetaDb(store)),
+    onMetadataUnavailable: (error) => manga.log("warn", `metadata unavailable · ${String(error)}`),
+    beforeDispose: async () => {
+      if (runtime) {
+        cancelMangaQueue();
+        await Effect.runPromise(runtime.session!.scheduler.shutdown);
+        try {
+          if (initialized) await persistProject(runtime);
+        } finally {
+          try {
+            await runtime.models.close();
+          } finally {
+            if (currentRuntime === runtime) currentRuntime = undefined;
+          }
+        }
+      }
+    },
+    execution: (artifacts) => {
+      const pool = new WorkerPool(
+        { minSize: 0, maxSize: 1, idleTimeoutMs: 30_000 },
+        () => new Worker(new URL("./workers/manga.worker.ts", import.meta.url), { type: "module" }),
+      );
+      return {
+        executors: (["wasm", "js"] as const).map((backend) =>
+          workerExecutor(pool, backend, "manga-operations-1", artifacts, MANGA_COMPUTE[backend]),
+        ),
+        dispose: () => pool.shutdown(),
+      };
+    },
+  });
   try {
-    meta = await openMetaDb(opfs);
-    manga.log("ok", "sqlite · manga project metadata online");
-  } catch (error) {
-    manga.log("warn", `sqlite unavailable · using memory metadata · ${String(error)}`);
-  }
-
-  const context = await Effect.runPromise(
-    Effect.scoped(Layer.build(artifactStore({ memory, opfs }, meta && sqliteLineageStore(meta)))),
-  );
-  const artifacts = Context.get(context, ArtifactStoreTag);
-  const models = new MangaModelRegistry(meta);
-  try {
+    const models = new MangaModelRegistry(meta);
+    runtime = { artifacts: session.artifacts, binary: session.binary!, meta, models, session };
     await models.restore();
     await models.reconcileCache();
+    await restoreProject(runtime);
+    initialized = true;
+    currentRuntime = runtime;
+    return runtime;
   } catch (error) {
-    manga.log("warn", `model registry restore failed · ${String(error)}`);
+    await session.dispose();
+    throw error;
   }
-  const runtime: MangaRuntime = {
-    artifacts,
-    binary: opfs,
-    meta,
-    models,
-  };
-  currentRuntime = runtime;
-  return runtime;
 }
 
 export function mangaRuntime(): MangaRuntime | undefined {
@@ -451,8 +475,7 @@ export async function restoreProject(runtime: MangaRuntime): Promise<boolean> {
     if (raw === undefined) return false;
     const project = JSON.parse(raw) as PersistedProject;
     if (project.version !== 1 || !Array.isArray(project.pages) || project.pages.length === 0) {
-      manga.log("warn", "restore · unsupported manga project version");
-      return false;
+      throw new Error("无法读取 Manga 项目版本，请先检查或恢复项目数据");
     }
 
     const pages: MangaPage[] = [];
@@ -496,6 +519,6 @@ export async function restoreProject(runtime: MangaRuntime): Promise<boolean> {
     return true;
   } catch (error) {
     manga.log("warn", `restore project failed · ${String(error)}`);
-    return false;
+    throw error;
   }
 }

@@ -137,21 +137,21 @@ try {
     { timeout: 60000 },
   );
   await page.getByRole("tab", { name: "选股解释", exact: true }).click();
-  await page.locator(".ui-breadth-table button").first().waitFor();
+  await page.locator(".ui-heatmap-table button").first().waitFor();
   await page.getByRole("button", { name: "在 Market 查看", exact: true }).click();
   await page
-    .locator(".ma-breadth-view .ui-breadth-table button")
+    .locator(".ma-breadth-view .ui-heatmap-table button")
     .first()
     .waitFor({ timeout: 60000 });
   assert(new URL(page.url()).searchParams.get("snapshot"));
   assert((await page.locator(".ma-breadth-view").innerText()).includes("科技"));
-  await page.locator(".ma-breadth-view .ui-breadth-table button").first().click();
+  await page.locator(".ma-breadth-view .ui-heatmap-table button").first().click();
   assert((await page.locator(".ma-breadth-inspector").innerText()).includes("高于 MA20"));
   await page.screenshot({ path: `${shots}/market-breadth.png`, fullPage: true });
   const reference = new URL(page.url()).searchParams.get("snapshot");
   await page.reload({ waitUntil: "networkidle" });
   await page
-    .locator(".ma-breadth-view .ui-breadth-table button")
+    .locator(".ma-breadth-view .ui-heatmap-table button")
     .first()
     .waitFor({ timeout: 60000 });
   assert.equal(new URL(page.url()).searchParams.get("snapshot"), reference);
@@ -179,7 +179,7 @@ try {
   await page.getByRole("button", { name: "宽度", exact: true }).click();
   await page.getByLabel("选择冻结数据快照", { exact: true }).selectOption(reference);
   await page
-    .locator(".ma-breadth-view .ui-breadth-table button")
+    .locator(".ma-breadth-view .ui-heatmap-table button")
     .first()
     .waitFor({ timeout: 60000 });
   await page.getByRole("button", { name: "在 Quant 研究", exact: true }).click();

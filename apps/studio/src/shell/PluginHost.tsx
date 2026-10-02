@@ -1,20 +1,27 @@
 import { useAgentHost, useRuntime } from "@bcr/react";
 import { useEffect, useState } from "react";
+import type { WorkspacePlugin } from "@bcr/shell-contract";
 import { PLUGINS } from "./registry";
 import { activatePlugins } from "./plugins";
 
-export function PluginHost() {
+export function PluginHost({ plugins = PLUGINS }: { plugins?: readonly WorkspacePlugin[] }) {
   const runtime = useRuntime();
   const agent = useAgentHost();
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   useEffect(() => {
-    setError(null);
+    setErrors({});
     let active = true;
-    const reportError = (value: unknown) => {
-      if (active) setError(String(value));
+    const reportError = (value: unknown, id = "host") => {
+      if (active)
+        setErrors((previous) => {
+          const next = { ...previous };
+          if (value === undefined) delete next[id];
+          else next[id] = String(value);
+          return next;
+        });
     };
     try {
-      const dispose = activatePlugins(PLUGINS, { runtime, agent, reportError });
+      const dispose = activatePlugins(plugins, { runtime, agent, reportError });
       return () => {
         active = false;
         dispose();
@@ -25,6 +32,7 @@ export function PluginHost() {
         active = false;
       };
     }
-  }, [runtime, agent]);
+  }, [runtime, agent, plugins]);
+  const error = Object.values(errors).join("；");
   return error ? <div role="alert">领域能力初始化失败：{error}</div> : null;
 }

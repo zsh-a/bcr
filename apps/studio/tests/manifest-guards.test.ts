@@ -12,8 +12,8 @@ vi.mock("../src/router", () => ({
 }));
 
 /**
- * 清单守卫：pwa/apps.ts 的 PWA 安装清单与 shell/registry.ts 的 app 清单是同一套
- * 应用的两份平行事实，目前只靠人工小心保持一致。这里把机器可查的对齐钉死：
+ * 清单守卫：PWA 安装信息与 UI manifest 从同一份 app-definition 派生。
+ * 检查域身份、路由、生成文件和安装产物的一致性。
  *
  * 1. path 一一对应——守卫只对 path 不对 id/key：PWA key 与 manifest id 是两套
  *    历史命名（首页在三层分别是 key "workspace" / id "studio" / 路由 "/"，见
@@ -26,6 +26,13 @@ vi.mock("../src/router", () => ({
 const studioRoot = fileURLToPath(new URL("../", import.meta.url));
 
 describe("PWA 安装清单与壳层 app 清单", () => {
+  it("derives routes and installation identity from each application's definition", () => {
+    for (const manifest of MANIFESTS) {
+      const installed = PWA_APPS.find((app) => app.key === manifest.id);
+      expect(installed).toMatchObject({ path: manifest.path, ...manifest.installation });
+    }
+    expect(new Set(PWA_APPS.map((app) => app.key)).size).toBe(PWA_APPS.length);
+  });
   it("每个 PWA path 都能在壳层 MANIFESTS 找到同 path 的 manifest", () => {
     const manifestPaths = MANIFESTS.map((app) => app.path);
     for (const app of PWA_APPS) {

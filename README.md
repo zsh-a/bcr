@@ -87,7 +87,7 @@ Studio 另提供[个人知识库与 Git 同步](docs/KNOWLEDGE-SYNC.md)：独立
 
 ```bash
 bun install            # 安装依赖（版本统一由根 package.json 的 catalog 提供）
-bun run build:wasm     # 构建 WASM kernel（首次或 kernel 变更后）
+bun run build:wasm     # 构建 kernels、Quant 与 Agent WASM（首次或 Rust 变更后）
 bun run test           # vp test：全部单元测试
 bun run check          # vp check（format + lint）+ tsc 全仓类型检查
 bun run typecheck      # 仅类型检查（单一 tsconfig.json 覆盖所有 workspace）

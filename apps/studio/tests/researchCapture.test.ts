@@ -13,6 +13,7 @@ function setup() {
       data.set(key, value);
     },
   };
+  const runtime = { metadata };
   const text = "A selected sentence. Another sentence.";
   const citation = createTextCitation(
     text,
@@ -32,9 +33,9 @@ function setup() {
     note: "My note",
   };
   return {
-    metadata,
+    runtime,
     capture,
-    store: workspaceServices(metadata).research,
+    store: workspaceServices(runtime).research,
     fail: (value: boolean) => {
       fail = value;
     },
@@ -43,8 +44,8 @@ function setup() {
 
 describe("direct research capture", () => {
   it("shares the workspace queue and atomically creates a collection with a cited note", async () => {
-    const { metadata, store, capture } = setup();
-    expect(workspaceServices(metadata).research).toBe(store);
+    const { runtime, store, capture } = setup();
+    expect(workspaceServices(runtime).research).toBe(store);
     await saveResearchCapture(store, { id: "new", name: "Reading" }, capture);
     const excerpt = store.getSnapshot().collections[0]!.excerpts[0]!;
     expect(excerpt).toMatchObject({ note: "My note", citation: capture.citation, owner: "reader" });

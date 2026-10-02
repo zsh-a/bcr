@@ -1,1 +1,1 @@
-export * from "@bcr/market-data/research/research-model";
+export * from "@bcr/quant-core/research-model";

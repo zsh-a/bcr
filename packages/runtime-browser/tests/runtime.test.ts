@@ -27,6 +27,71 @@ const executor: RuntimeExecutor = {
 };
 
 describe("browser runtime ownership", () => {
+  it("drains domain writes before metadata closes even when the host initiates shutdown", async () => {
+    const pending = Promise.withResolvers<void>();
+    const events: string[] = [];
+    const db: SqliteDb = {
+      run: () => undefined,
+      all: () => [],
+      value: () => undefined,
+      persist: async () => {},
+      kvGet: async () => undefined,
+      kvSet: async () => {},
+      close: async () => {
+        events.push("metadata");
+      },
+    };
+    const beforeDispose = vi.fn(async () => {
+      await pending.promise;
+      events.push("domain");
+    });
+    const session = await createBrowserRuntime({
+      namespace: "domain",
+      store: new MemoryStore(),
+      openMetadata: async () => db,
+      beforeDispose,
+      execution: () => ({
+        executors: [],
+        dispose: () => {
+          events.push("execution");
+        },
+      }),
+    });
+    const closing = session.host.dispose();
+    await Promise.resolve();
+    expect(events).toEqual([]);
+    pending.resolve();
+    await closing;
+    await session.dispose();
+    expect(beforeDispose).toHaveBeenCalledTimes(1);
+    expect(events).toEqual(["domain", "execution", "metadata"]);
+  });
+
+  it("releases execution and metadata after a failed domain shutdown", async () => {
+    const stopped = vi.fn(),
+      closed = vi.fn(async () => {});
+    const session = await createBrowserRuntime({
+      namespace: "domain-failure",
+      store: new MemoryStore(),
+      openMetadata: async () => ({
+        run: () => {},
+        all: () => [],
+        value: () => undefined,
+        persist: async () => {},
+        kvGet: async () => undefined,
+        kvSet: async () => {},
+        close: closed,
+      }),
+      beforeDispose: () => {
+        throw new Error("domain failed");
+      },
+      execution: () => ({ executors: [], dispose: stopped }),
+    });
+    await expect(session.dispose()).rejects.toThrow("shutdown failed");
+    expect(stopped).toHaveBeenCalledTimes(1);
+    expect(closed).toHaveBeenCalledTimes(1);
+    expect(session.host.sessions()).toEqual([]);
+  });
   it("shares one budget across isolated sessions and releases it on disposal", async () => {
     const context = await Effect.runPromise(
       Effect.scoped(Layer.build(resourceManagerLive({ memoryMB: 1024, threads: 1, gpuSlots: 1 }))),

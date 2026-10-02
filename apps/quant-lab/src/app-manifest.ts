@@ -1,14 +1,11 @@
+import { definition } from "./app-definition";
 import { ChartCandlestick } from "lucide-react";
 import type { AppManifest } from "@bcr/shell-contract";
 
 /** Quant Lab — local strategy research over columnar market data. */
 export const manifest = {
-  id: "quant",
-  title: "Quant Lab",
-  path: "/quant",
+  ...definition,
   icon: ChartCandlestick,
-  description: "策略回测、参数比较与成交分析",
-  section: "research",
   load: () => import("./App"),
   validateSearch: (search) => ({
     snapshot:

@@ -1,4 +1,4 @@
-import { OpfsStore } from "@bcr/storage-opfs";
+import { marketResearchStore } from "../research/storage";
 import { clickHouseClient } from "../research/clickhouse-http";
 import { inspectClickHouse, loadClickHouse } from "../research/clickhouse-load";
 import { fetchBenchmark } from "../research/benchmark";
@@ -66,7 +66,7 @@ scope.onmessage = (event) => {
         const value = await loadClickHouse(
           request.connection,
           request.range,
-          new OpfsStore("quant"),
+          marketResearchStore(),
           controller.signal,
           (progress) => {
             const now = performance.now();

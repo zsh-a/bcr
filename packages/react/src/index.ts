@@ -2,7 +2,7 @@ export type { RuntimeHost, RuntimeMetadata, RuntimeServices, RuntimeSession } fr
 export * from "./ui";
 export { ResourceHeader, ResourceSearch, ResourceViews } from "./ResourceControls";
 export { ContextMenu, type ContextMenuAction } from "./ContextMenu";
-export { BreadthHeatmap, type BreadthHeatmapDay } from "./BreadthHeatmap";
+export { Heatmap, type HeatmapProps, type HeatmapAxis, type HeatmapCell } from "./Heatmap";
 export { Toast, EmptyState, type Notice, type NoticeTone } from "./Feedback";
 export { useMediaQuery } from "./useMediaQuery";
 export {

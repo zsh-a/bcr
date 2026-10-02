@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { createSearchIndex } from "@bcr/core";
+import { createAgentHost } from "@bcr/agent";
+import { createBrowserRuntime } from "@bcr/runtime-browser";
+import { MemoryStore } from "@bcr/storage-opfs";
+import { knowledgePlugin } from "../src/knowledge/plugin";
+import { workspaceServices } from "../src/workspace";
 import { createKnowledgePublisher } from "../src/knowledge/search";
 import { newNote, type KnowledgeContent } from "../src/knowledge/model";
 
@@ -8,6 +13,58 @@ const b = { ...newNote("Beta"), id: "b", body: "beta text", updatedAt: 1 };
 const initial: KnowledgeContent = { notes: { a, b }, collections: {}, folders: [] };
 
 describe("incremental knowledge projections", () => {
+  it("recovers existing search and Agent subscriptions after knowledge initialization fails", async () => {
+    let fail = true;
+    const records = new Map<string, string>();
+    const session = await createBrowserRuntime({
+      namespace: "knowledge-retry",
+      store: new MemoryStore(),
+      openMetadata: async () => ({
+        run: () => {},
+        all: () => [],
+        value: () => undefined,
+        persist: async () => {},
+        close: async () => {},
+        kvGet: async (key) => {
+          if (fail) throw new Error("temporary database failure");
+          return records.get(key);
+        },
+        kvSet: async (key, value) => {
+          records.set(key, value);
+        },
+      }),
+      execution: () => ({ executors: [], dispose: () => {} }),
+    });
+    const search = createSearchIndex(),
+      agent = createAgentHost(),
+      reportError = vi.fn();
+    const runtime = { ...session, search };
+    const store = workspaceServices(runtime).knowledge;
+    const dispose = knowledgePlugin.activate({ runtime, agent, reportError });
+    const capability = agent.agentCapabilities()[0]!;
+    const find = capability.tools.find((tool) => tool.spec.name === "knowledge_find_notes")!;
+    try {
+      await expect(store.ready).rejects.toThrow("temporary");
+      await vi.waitFor(() => expect(reportError).toHaveBeenCalledWith(expect.any(Error)));
+      fail = false;
+      await store.retryInitialization();
+      await store.saveNote({ ...newNote("原地恢复"), body: "共享实例保持一致" }, null);
+      await vi.waitFor(() =>
+        expect(search.documents().some((doc) => doc.title === "原地恢复")).toBe(true),
+      );
+      expect(agent.agentCapabilities()[0]).toBe(capability);
+      expect(JSON.parse(await find.call(JSON.stringify({ query: "共享实例" }))).notes).toHaveLength(
+        1,
+      );
+      expect(reportError).toHaveBeenLastCalledWith(undefined);
+    } finally {
+      dispose();
+      await workspaceServices(runtime).close();
+      await search.close();
+      await session.dispose();
+      agent.conversations.dispose();
+    }
+  });
   it("rebuilds stale persisted projections once, then preserves untouched document identity", async () => {
     const search = createSearchIndex();
     await search.ready;

@@ -1,5 +1,7 @@
 import { artifactPath, contentHash } from "@bcr/core";
-import { OpfsStore, type BinaryStore } from "@bcr/storage-opfs";
+import type { BinaryStore } from "@bcr/storage-opfs";
+import { marketResearchStore } from "./storage";
+export { marketResearchStore } from "./storage";
 import { parseManifest, MAX_MANIFEST_BYTES, type ResearchDataset } from "./model";
 import {
   publicProfile,
@@ -11,7 +13,6 @@ import { parseDisplayNames, subsetNames, type DisplayNames } from "./display-nam
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
-export const marketResearchStore = () => new OpfsStore("quant");
 export function snapshotId(dataset: ResearchDataset) {
   return contentHash(
     encoder.encode(

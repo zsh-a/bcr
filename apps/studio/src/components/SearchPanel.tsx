@@ -24,6 +24,10 @@ import { citationRoute, excerptFromResult, resultDocument, sameExcerpt } from ".
 import { ResearchPanel } from "../research/components/ResearchPanel";
 import { Button, Dialog, Kbd, Select, useRuntime } from "@bcr/react";
 import { workspaceServices } from "../workspace";
+import { EMPTY_RESEARCH } from "../research/model";
+
+const emptyLibrary = () => EMPTY_RESEARCH;
+const noSubscription = () => () => {};
 
 type SearchFilterId =
   | "knowledge"
@@ -116,10 +120,13 @@ export function SearchPanel(props: {
   const [revision, setRevision] = useState(0);
   const [view, setView] = useState<"search" | "research">("search");
   const research = useMemo(
-    () => workspaceServices(services.metadata).research,
-    [services.metadata],
+    () => (services.metadata ? workspaceServices(services).research : undefined),
+    [services],
   );
-  const library = useSyncExternalStore(research.subscribe, research.getSnapshot);
+  const library = useSyncExternalStore(
+    research?.subscribe ?? noSubscription,
+    research?.getSnapshot ?? emptyLibrary,
+  );
   const [scope, setScope] = useState("");
   const [focus, setFocus] = useState<{
     excerpt: string;
@@ -135,6 +142,7 @@ export function SearchPanel(props: {
   useEffect(() => {
     let live = true;
     setResearchReady(false);
+    if (!research) return;
     void research.ready.then(
       () => {
         if (live) setResearchReady(true);
@@ -289,24 +297,26 @@ export function SearchPanel(props: {
         >
           工作区搜索
         </button>
-        <button
-          type="button"
-          aria-pressed={view === "research"}
-          onClick={() => {
-            setFocus(undefined);
-            setView("research");
-          }}
-          className="rounded-sm px-3 py-2 text-sm text-muted aria-pressed:bg-overlay aria-pressed:text-accent"
-        >
-          资料集合 · {library.collections.length}
-        </button>
+        {research && (
+          <button
+            type="button"
+            aria-pressed={view === "research"}
+            onClick={() => {
+              setFocus(undefined);
+              setView("research");
+            }}
+            className="rounded-sm px-3 py-2 text-sm text-muted aria-pressed:bg-overlay aria-pressed:text-accent"
+          >
+            资料集合 · {library.collections.length}
+          </button>
+        )}
       </div>
       {message && (
         <p role="status" className="px-4 py-2 text-xs text-muted">
           {message}
         </p>
       )}
-      {view === "research" ? (
+      {view === "research" && research ? (
         <ResearchPanel
           library={library}
           search={search}
@@ -354,7 +364,9 @@ export function SearchPanel(props: {
             role="tablist"
             aria-label="搜索范围"
           >
-            {FILTERS.map((item) => {
+            {FILTERS.filter(
+              (item) => services.metadata || !["knowledge", "research"].includes(item.id),
+            ).map((item) => {
               const count =
                 search === undefined
                   ? 0
@@ -497,50 +509,52 @@ export function SearchPanel(props: {
               ))
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
-            <span className="text-xs text-faint">保存正文到</span>
-            <Select
-              aria-label="摘录目标集合"
-              value={selectedCollection?.id ?? ""}
-              onChange={(event) => setCollectionId(event.target.value)}
-              className="min-w-0 flex-1"
-            >
-              {!selectedCollection && <option value="">请先创建资料集合</option>}
-              {library.collections.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </Select>
-            <Button
-              variant="primary"
-              disabled={
-                busy ||
-                !researchReady ||
-                !selectedCollection ||
-                !results[active]?.document.body?.trim() ||
-                !citationRoute(results[active]?.document.route)
-              }
-              onClick={() => {
-                const result = results[active];
-                if (!result || !selectedCollection) return;
-                const excerpt = excerptFromResult(result, Date.now());
-                run(() =>
-                  research.update((current) => ({
-                    ...current,
-                    collections: current.collections.map((item) =>
-                      item.id !== selectedCollection.id ||
-                      item.excerpts.some((saved) => sameExcerpt(saved, excerpt))
-                        ? item
-                        : { ...item, excerpts: [...item.excerpts, excerpt] },
-                    ),
-                  })),
-                );
-              }}
-            >
-              保存当前结果
-            </Button>
-          </div>
+          {research && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
+              <span className="text-xs text-faint">保存正文到</span>
+              <Select
+                aria-label="摘录目标集合"
+                value={selectedCollection?.id ?? ""}
+                onChange={(event) => setCollectionId(event.target.value)}
+                className="min-w-0 flex-1"
+              >
+                {!selectedCollection && <option value="">请先创建资料集合</option>}
+                {library.collections.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                variant="primary"
+                disabled={
+                  busy ||
+                  !researchReady ||
+                  !selectedCollection ||
+                  !results[active]?.document.body?.trim() ||
+                  !citationRoute(results[active]?.document.route)
+                }
+                onClick={() => {
+                  const result = results[active];
+                  if (!result || !selectedCollection) return;
+                  const excerpt = excerptFromResult(result, Date.now());
+                  run(() =>
+                    research.update((current) => ({
+                      ...current,
+                      collections: current.collections.map((item) =>
+                        item.id !== selectedCollection.id ||
+                        item.excerpts.some((saved) => sameExcerpt(saved, excerpt))
+                          ? item
+                          : { ...item, excerpts: [...item.excerpts, excerpt] },
+                      ),
+                    })),
+                  );
+                }}
+              >
+                保存当前结果
+              </Button>
+            </div>
+          )}
         </>
       )}
     </Dialog>

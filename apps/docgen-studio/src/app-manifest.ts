@@ -1,3 +1,4 @@
+import { definition } from "./app-definition";
 import { FileBadge } from "lucide-react";
 import type { AppManifest } from "@bcr/shell-contract";
 
@@ -9,11 +10,7 @@ import type { AppManifest } from "@bcr/shell-contract";
  * the primary launch pad.
  */
 export const manifest = {
-  id: "docgen",
-  title: "DocGen Lab",
-  path: "/docgen",
+  ...definition,
   icon: FileBadge,
-  description: "生成虚构账单，用于识别与阅读流程验证",
-  section: "developer",
   load: () => import("./App"),
 } as const satisfies AppManifest;
