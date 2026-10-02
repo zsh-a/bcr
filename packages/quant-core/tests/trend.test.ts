@@ -11,13 +11,17 @@ import {
   validateRecordedTrendConfig,
   type TrendRun,
   type ArchivedTrendConfig,
+  type RecordedTrendConfigV2,
+  backgroundMinutes,
+  restoreTrendDraft,
 } from "../src/trend";
 
 describe("trend research configuration", () => {
-  it("defaults to an unfiltered channel with consistent ATR exits and continuous holding", () => {
+  it("defaults to causal background filtering with consistent ATR exits and continuous holding", () => {
     validateTrendConfig(DEFAULT_TREND_CONFIG);
     expect(DEFAULT_TREND_CONFIG.strategy.entry).toBe("breakout");
-    expect(DEFAULT_TREND_CONFIG.strategy.filter).toBe("none");
+    expect(DEFAULT_TREND_CONFIG.strategy.filter).toBe("background");
+    expect(DEFAULT_TREND_CONFIG.version).toBe(3);
     expect(DEFAULT_TREND_CONFIG.risk.flattenMinute).toBeNull();
     const copy = createTrendConfig();
     copy.strategy.stopAtr = 2;
@@ -30,6 +34,7 @@ describe("trend research configuration", () => {
       null,
       [],
       { ...DEFAULT_TREND_CONFIG, version: 1 },
+      { ...DEFAULT_TREND_CONFIG, version: 2 },
       { ...DEFAULT_TREND_CONFIG, trailingStartR: 2 },
     ];
     for (const [group, key, value] of [
@@ -56,10 +61,14 @@ describe("trend research configuration", () => {
       validateTrendConfig(withTradingPeriod(DEFAULT_TREND_CONFIG, period));
     const hourly = withTradingPeriod(DEFAULT_TREND_CONFIG, 60);
     expect(hourly.strategy.breakoutBars).toBe(20);
+    expect(trendWarmupDays(hourly)).toBe(4);
+    hourly.strategy.filter = "none";
     expect(trendWarmupDays(hourly)).toBe(1);
     hourly.strategy.filter = "ema";
     expect(trendWarmupDays(hourly)).toBe(3);
     const daily = withTradingPeriod(DEFAULT_TREND_CONFIG, 1440);
+    expect(trendWarmupDays(daily)).toBe(154);
+    daily.strategy.filter = "none";
     expect(trendWarmupDays(daily)).toBe(20);
     daily.strategy.breakoutBars = 250;
     expect(trendWarmupDays(daily)).toBe(250);
@@ -70,6 +79,38 @@ describe("trend research configuration", () => {
     daily.risk.flattenMinute = 1437;
     expect(() => validateTrendConfig(daily)).toThrow();
     expect(withTradingPeriod(daily, 1440).risk.flattenMinute).toBeNull();
+  });
+  it("maps every trading period to a larger context without exceeding the warmup limit", () => {
+    expect(TREND_PERIODS.map(backgroundMinutes)).toEqual([
+      5, 15, 30, 60, 120, 240, 720, 1440, 10080,
+    ]);
+    for (const period of TREND_PERIODS) {
+      expect(backgroundMinutes(period)).toBeGreaterThan(period);
+      expect(trendWarmupDays(withTradingPeriod(DEFAULT_TREND_CONFIG, period))).toBeLessThanOrEqual(
+        250,
+      );
+    }
+    expect(() => backgroundMinutes(7)).toThrow();
+  });
+  it("upgrades only v2 drafts and keeps recorded runs and their rule labels immutable", () => {
+    const old = {
+      ...createTrendConfig(),
+      version: 2,
+      strategy: { ...DEFAULT_TREND_CONFIG.strategy, filter: "none" },
+    } as RecordedTrendConfigV2;
+    const original = JSON.stringify(old);
+    validateRecordedTrendConfig(old);
+    expect(() => validateTrendConfig(old)).toThrow();
+    expect(trendRunView({ config: old } as TrendRun).ruleVersion).toBe(3);
+    const draft = restoreTrendDraft(old);
+    validateTrendConfig(draft);
+    expect(draft.strategy.filter).toBe("none");
+    draft.execution.feeBps = 1;
+    expect(JSON.stringify(old)).toBe(original);
+    expect(trendRunView({ config: createTrendConfig() } as TrendRun).ruleVersion).toBe(4);
+    expect(() =>
+      validateRecordedTrendConfig({ ...old, strategy: { ...old.strategy, filter: "background" } }),
+    ).toThrow();
   });
   it("displays archived results without rewriting their original settings", () => {
     const config = {

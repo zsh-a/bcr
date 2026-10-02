@@ -7,6 +7,7 @@ import {
   trendWarmupDays,
   withTradingPeriod,
   validateTrendConfig,
+  filterLabel,
 } from "@bcr/quant-core/trend";
 import {
   Button,
@@ -196,12 +197,22 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
         ) : (
           <div className="trend-intro">
             <span className="trend-eyebrow">趋势延续研究</span>
-            <h2>捕捉突破，让趋势延续。</h2>
+            <h2>
+              {research.config.strategy.filter === "background"
+                ? "先看背景，再捕捉突破。"
+                : "捕捉突破，让趋势延续。"}
+            </h2>
             <p>
-              已收盘的 K 线确认突破，下一分钟尝试入场。用 ATR
-              限制单次试错成本，保本和移动止损跟随趋势。
+              {research.config.strategy.filter === "background"
+                ? "较大周期判断方向与结构，交易周期确认突破，下一分钟尝试入场。"
+                : "已收盘的交易周期 K 线确认突破，下一分钟尝试入场。"}{" "}
+              用 ATR 限制试错成本，保本和移动止损跟随趋势。
             </p>
             <ol>
+              <li>
+                <strong>入场环境</strong>
+                <span>{filterLabel(research.config.strategy)}</span>
+              </li>
               <li>
                 <strong>确认入场</strong>
                 <span>
@@ -275,7 +286,7 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
               <small>
                 {utcDate(run.dataset.manifest.startTime)} —{" "}
                 {utcDate(run.dataset.manifest.endTime - 1)} ·{" "}
-                {new Date(run.createdAt).toLocaleString()}
+                {new Date(run.createdAt).toLocaleString()} · {trendRunView(run).filter}
               </small>
             </span>
             <span>{(run.metrics.totalReturn * 100).toFixed(2)}%</span>

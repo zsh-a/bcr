@@ -2,6 +2,8 @@ import {
   createTrendConfig,
   TREND_PERIODS,
   TREND_RULES,
+  TREND_BACKGROUND_RULES,
+  backgroundMinutes,
   periodLabel,
   trendWarmupDays,
   withTradingPeriod,
@@ -85,6 +87,43 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
           <p className="trend-help">
             收盘确认突破，下一分钟开盘尝试入场。用固定 ATR 14 控制风险，止损只向盈利方向移动。
           </p>
+          <label className="trend-context-setting">
+            入场环境
+            <Select
+              aria-label="入场环境"
+              value={s.filter}
+              onChange={(event) => strategy({ filter: event.target.value as typeof s.filter })}
+            >
+              <option value="background">趋势背景 · 自动较大周期</option>
+              <option value="none">无过滤基线</option>
+              <option value="ema">同周期 EMA 20 / 60</option>
+            </Select>
+          </label>
+          {s.filter === "background" && (
+            <div className="trend-context-description">
+              <strong>
+                {periodLabel(backgroundMinutes(s.tradeMinutes))}背景 → {periodLabel(s.tradeMinutes)}
+                入场
+              </strong>
+              <p>
+                已收盘的背景 K 线确认方向和回调结构，过滤整理、逆势、结构失效与高成本信号。
+                每次判断随结果保存，可查看放行和拒绝原因。
+              </p>
+              <details>
+                <summary>固定背景规则</summary>
+                <p>
+                  EMA {TREND_BACKGROUND_RULES.emaPeriod} 与 {TREND_BACKGROUND_RULES.slopeBars}{" "}
+                  根斜率；
+                  {TREND_BACKGROUND_RULES.window} 根方向效率 ≥{" "}
+                  {TREND_BACKGROUND_RULES.minEfficiency * 100}%； 摆动点在后续{" "}
+                  {TREND_BACKGROUND_RULES.pivotRadius} 根收盘后确认。 估算往返成本 ≤{" "}
+                  {TREND_BACKGROUND_RULES.maxCostAtr} 个交易 ATR。
+                  均线偏离只作诊断，不拦截持续推进。
+                  这些是待验证的研究规则，适合趋势延续，可能错过启动行情。
+                </p>
+              </details>
+            </div>
+          )}
           <div className="trend-fields trend-primary-fields">
             <label>
               交易周期
@@ -148,17 +187,6 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
                 </Select>
               </label>
               <label>
-                方向过滤
-                <Select
-                  aria-label="方向过滤"
-                  value={s.filter}
-                  onChange={(event) => strategy({ filter: event.target.value as typeof s.filter })}
-                >
-                  <option value="none">无过滤</option>
-                  <option value="ema">EMA 20 / 60 与快线斜率</option>
-                </Select>
-              </label>
-              <label>
                 交易方向
                 <Select
                   aria-label="交易方向"
@@ -174,7 +202,8 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
               </label>
             </div>
             <p className="trend-help">
-              EMA 只使用已收盘的交易周期 K 线。变体共享相同成交与风控设置，便于逐项比较。
+              同周期 EMA 使用 20 / 60 排列与快线三根斜率。背景只约束新开仓，
+              持仓保护持续执行。变体共享成交与风控设置，便于逐项比较。
             </p>
             {s.entry === "pullback" && (
               <p className="trend-help">
@@ -186,7 +215,7 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
             )}
           </details>
           <p className="trend-help">
-            预热 {trendWarmupDays(draft)} 天 · 规则版本 3 · 信号、止损与仓位由确定规则执行。
+            预热 {trendWarmupDays(draft)} 天 · 规则版本 4 · 信号、背景、止损与仓位由确定规则执行。
           </p>
         </section>
       )}

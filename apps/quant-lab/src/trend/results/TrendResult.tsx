@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { TrendChart } from "./TrendChart";
 import { exportTrend, readTradePage } from "./read";
 import { useTrendChart } from "./useTrendChart";
+import { TrendContextPanel } from "./TrendContextPanel";
 
 const number = (n: number | null, digits = 2) =>
   n === null
@@ -26,7 +27,7 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
   const chartFrame = useRef<HTMLDivElement>(null);
   const m = result.metrics,
     manifest = run.dataset.manifest;
-  const [view, setView] = useState<"equity" | "candles">("equity");
+  const [view, setView] = useState<"equity" | "candles" | "context">("equity");
   const chart = useTrendChart(
     services,
     run.dataset,
@@ -58,7 +59,7 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
           </h2>
           <p>
             {utcDate(manifest.startTime)} — {utcDate(manifest.endTime - 1)} · UTC · {config.filter}{" "}
-            · {config.archived ? "原始旧版规则 · " : "规则 v3 · "}
+            · {config.archived ? "原始旧版规则 · " : `规则 v${config.ruleVersion} · `}
             {number(run.durationMs / 1000, 1)} 秒{run.cached ? " · 缓存结果" : ""}
           </p>
         </div>
@@ -129,6 +130,16 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
           >
             K 线与买卖点
           </Button>
+          {config.backgroundMinutes !== null && (
+            <Button
+              size="sm"
+              variant={view === "context" ? "default" : "ghost"}
+              aria-pressed={view === "context"}
+              onClick={() => setView("context")}
+            >
+              入场背景
+            </Button>
+          )}
         </div>
         {view === "candles" ? (
           <div className="trend-chart-actions">
@@ -142,11 +153,20 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
               最新
             </Button>
           </div>
-        ) : (
+        ) : view === "equity" ? (
           <span className="trend-help">初始净值 1.000 · 标记价格估值</span>
-        )}
+        ) : null}
       </div>
-      {view === "equity" ? (
+      {view === "context" && config.backgroundMinutes !== null ? (
+        <TrendContextPanel
+          result={result}
+          minutes={config.backgroundMinutes}
+          onLocate={(time) => {
+            chart.locate(time);
+            setView("candles");
+          }}
+        />
+      ) : view === "equity" ? (
         <TrendChart equity={result.equity} config={config} />
       ) : (
         <div ref={chartFrame} className="trend-chart-frame" aria-busy={chart.loading}>
@@ -202,7 +222,11 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
       {!m.trades ? (
         <PanelEmpty
           title="区间内没有成交"
-          hint="可查看 K 线中的强推进信号，或切换到通道突破基线对照。"
+          hint={
+            config.backgroundMinutes !== null
+              ? "可查看入场背景的拒绝原因，或选择无过滤基线对照。"
+              : "可查看 K 线中的信号，或切换入场规则对照。"
+          }
         />
       ) : (
         <>
@@ -281,6 +305,14 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
       )}
       <details className="trend-provenance">
         <summary>数据来源与执行口径</summary>
+        {config.backgroundMinutes !== null && (
+          <p>
+            <>
+              背景使用已收盘的{periodLabel(config.backgroundMinutes)} K 线，摆动点延后两根确认。
+              只约束新开仓，逐信号的背景快照和判断均随完整结果导出。
+            </>
+          </p>
+        )}
         <p>
           Binance 官方 USDT 永续历史档案，逐个 ZIP 验证
           SHA-256；一分钟成交价、标记价格及历史资金费率均被冻结保存。资金费以结算所在分钟的开盘标记价格近似计算，先结算原持仓，再执行新订单。

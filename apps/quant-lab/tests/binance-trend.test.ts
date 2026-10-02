@@ -55,6 +55,45 @@ function setup(abort = new AbortController()) {
   return { store, io, task, ctx, download, urls };
 }
 describe("Binance worker pipeline", () => {
+  it("skips prior result artifacts indexed as having no price overlays", async () => {
+    const s = setup();
+    const refs = await binanceHistoryHandler(s.io, s.download)(s.task, s.ctx);
+    const missing = {
+      id: "unused-old-contexts",
+      hash: "a".repeat(64),
+      type: "quant/trend-chunk",
+      storage: "opfs",
+      format: "json",
+    } as const;
+    const task = {
+      ...s.task,
+      inputs: [
+        ...refs.map((r) => (r.type === "market/binance-manifest" ? { ...r, port: "manifest" } : r)),
+        missing,
+      ],
+      config: {
+        from: start + 60 * MINUTE,
+        to: start + 120 * MINUTE,
+        minutes: 1,
+        hasTrades: false,
+        chunks: [
+          {
+            ref: missing,
+            from: start,
+            to: start + 30 * MINUTE,
+            trades: 0,
+            indicators: 0,
+            positionEvents: 0,
+            contexts: 10,
+          },
+        ],
+      },
+    };
+    const output = await trendChartHandler(s.io)(task, s.ctx);
+    const chart = await s.io.readJsonArtifact<TrendChartData>(output[0]!, s.ctx);
+    expect(chart.bars).toHaveLength(60);
+    expect(chart.indicators).toEqual([]);
+  });
   it("adds only missing warmup archives and rejects insufficient history before creating Rust state", async () => {
     const s = setup();
     const handler = binanceHistoryHandler(s.io, s.download);

@@ -1,3 +1,4 @@
+use super::background::Background;
 use super::config::Config;
 use super::indicators::Indicators;
 use super::model::*;
@@ -15,6 +16,8 @@ pub struct Engine {
     finished: bool,
     indicators: Indicators,
     signals: Signals,
+    background: Background,
+    context_metrics: ContextMetrics,
     position: Option<Position>,
     pending: Option<Candidate>,
     funding: Vec<Funding>,
@@ -84,6 +87,8 @@ impl Engine {
             finished: false,
             indicators: Indicators::default(),
             signals: Signals::default(),
+            background: Background::default(),
+            context_metrics: ContextMetrics::default(),
             position: None,
             pending: None,
             funding,
@@ -440,6 +445,11 @@ impl Engine {
             }
         }
         self.position = position;
+        if self.config.strategy.filter == "background" {
+            // Update even while holding a position, but gate only new entries.
+            self.background
+                .close(bar, self.config.strategy.trade_minutes);
+        }
         let closed = self.indicators.close(bar, &self.config.strategy);
         if closed.trend && self.config.strategy.filter == "ema" && bar.time >= self.start {
             self.output.indicators.push(Indicator {
@@ -463,14 +473,56 @@ impl Engine {
                 && !self.risk.daily_blocked
                 && bar.time + MINUTE >= self.risk.cooldown_until
                 && self.cash > 0.0;
-            if let Some(candidate) = self.signals.close(
+            if let Some(mut candidate) = self.signals.close(
                 candle,
                 &self.indicators,
                 &self.config,
                 enabled,
                 &mut self.output.events,
             ) {
-                self.pending = Some(candidate);
+                let allowed = if self.config.strategy.filter == "background" {
+                    let decision = self.background.decide(
+                        bar.time + MINUTE - 1,
+                        candle.close,
+                        candidate.side,
+                        candidate.atr,
+                        &self.config.execution,
+                        self.config.strategy.trade_minutes,
+                    );
+                    self.context_metrics.observe(&decision);
+                    if decision.allowed {
+                        // Freeze the known structural boundary for next-open
+                        // execution too. A gap cannot silently bypass the gate.
+                        candidate.anchor = match (candidate.anchor, decision.anchor) {
+                            (Some(a), Some(b)) => Some(if candidate.side == Side::Long {
+                                a.max(b)
+                            } else {
+                                a.min(b)
+                            }),
+                            (a, b) => a.or(b),
+                        };
+                    }
+                    if !decision.allowed {
+                        self.rejected += 1;
+                        self.event(
+                            decision.time,
+                            "rejected",
+                            candidate.side,
+                            candle.close,
+                            decision.cost_atr,
+                            None,
+                            decision.reason,
+                        );
+                    }
+                    let allowed = decision.allowed;
+                    self.output.contexts.push(decision);
+                    allowed
+                } else {
+                    true
+                };
+                if allowed {
+                    self.pending = Some(candidate);
+                }
             }
         }
         self.last = Some((bar, mark));
@@ -503,6 +555,7 @@ impl Engine {
             rejected_signals: self.rejected,
             funding_events: self.funding_events,
             rows: self.rows,
+            context: self.context_metrics.clone(),
         })
     }
 }

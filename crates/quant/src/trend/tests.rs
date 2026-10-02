@@ -18,6 +18,7 @@ fn bar(i: usize, open: f64, close: f64) -> Bar {
 }
 fn config() -> Config {
     let mut c = Config::default();
+    c.strategy.filter = "none".into();
     c.strategy.entry = "pullback".into();
     c.strategy.break_even_atr = 0.0;
     c.strategy.trailing_atr = 20.0;
@@ -74,6 +75,7 @@ fn replay(config: Config, bars: &[Bar], funding: Vec<Funding>, drain: bool) -> (
             output.events.extend(chunk.events);
             output.equity.extend(chunk.equity);
             output.indicators.extend(chunk.indicators);
+            output.contexts.extend(chunk.contexts);
         }
     }
     let metrics = engine.finish().unwrap();
@@ -82,6 +84,7 @@ fn replay(config: Config, bars: &[Bar], funding: Vec<Funding>, drain: bool) -> (
     output.events.extend(tail.events);
     output.equity.extend(tail.equity);
     output.indicators.extend(tail.indicators);
+    output.contexts.extend(tail.contexts);
     assert!(engine.finish().is_err());
     (metrics, output)
 }
@@ -388,6 +391,7 @@ fn replay_five(bars: &[Bar], funding: Vec<Funding>, partition_rows: usize) -> (M
         out.events.extend(chunk.events);
         out.equity.extend(chunk.equity);
         out.indicators.extend(chunk.indicators);
+        out.contexts.extend(chunk.contexts);
     }
     let metrics = engine.finish().unwrap();
     let chunk = engine.drain();
@@ -395,6 +399,7 @@ fn replay_five(bars: &[Bar], funding: Vec<Funding>, partition_rows: usize) -> (M
     out.events.extend(chunk.events);
     out.equity.extend(chunk.equity);
     out.indicators.extend(chunk.indicators);
+    out.contexts.extend(chunk.contexts);
     (metrics, out)
 }
 #[test]
@@ -648,4 +653,141 @@ fn versioned_config_rejects_unknown_nested_settings_and_invalid_exit_policy() {
     c = Config::default();
     c.version = 1;
     assert!(c.validate().is_err());
+}
+
+fn background_history(short: bool) -> Vec<Bar> {
+    let mut bars = vec![];
+    let mut previous = 100.0;
+    for i in 0..210 {
+        let close = previous + if i == 150 { 1.0 } else { 0.05 };
+        let mut b = bar(i, previous, close);
+        b.high = b.open.max(b.close) + 0.5;
+        b.low = b.open.min(b.close) - 0.5;
+        if short {
+            b = Bar {
+                open: 200.0 - b.open,
+                close: 200.0 - b.close,
+                high: 200.0 - b.low,
+                low: 200.0 - b.high,
+                ..b
+            };
+        }
+        bars.push(b);
+        previous = close;
+    }
+    bars
+}
+fn replay_background(bars: &[Bar], partition: usize) -> (Metrics, Chunk) {
+    let mut c = config();
+    c.strategy.entry = "breakout".into();
+    c.strategy.filter = "background".into();
+    c.execution.fee_bps = 0.0;
+    c.execution.slippage_bps = 0.0;
+    let mut engine = Engine::new(
+        c,
+        vec![],
+        BASE + 150 * MINUTE,
+        BASE + bars.len() as u64 * MINUTE,
+        BASE,
+    )
+    .unwrap();
+    let mut out = Chunk::default();
+    for part in bars.chunks(partition) {
+        for b in part {
+            engine.advance(*b, *b).unwrap();
+        }
+        let chunk = engine.drain();
+        out.trades.extend(chunk.trades);
+        out.events.extend(chunk.events);
+        out.equity.extend(chunk.equity);
+        out.indicators.extend(chunk.indicators);
+        out.contexts.extend(chunk.contexts);
+    }
+    let metrics = engine.finish().unwrap();
+    let chunk = engine.drain();
+    out.trades.extend(chunk.trades);
+    out.events.extend(chunk.events);
+    out.equity.extend(chunk.equity);
+    out.indicators.extend(chunk.indicators);
+    out.contexts.extend(chunk.contexts);
+    (metrics, out)
+}
+#[test]
+fn background_decisions_are_causal_symmetric_and_invariant_to_output_partitions() {
+    for short in [false, true] {
+        let bars = background_history(short);
+        let (metrics, out) = replay_background(&bars, bars.len());
+        let (split_metrics, split) = replay_background(&bars, 7);
+        assert_eq!(
+            serde_json::to_string(&metrics).unwrap(),
+            serde_json::to_string(&split_metrics).unwrap()
+        );
+        assert_eq!(
+            serde_json::to_string(&out).unwrap(),
+            serde_json::to_string(&split).unwrap()
+        );
+        assert_eq!(
+            out.trades.len(),
+            1,
+            "{}",
+            serde_json::to_string(&out.contexts).unwrap()
+        );
+        assert!(out.contexts[0].allowed);
+        assert_eq!(out.contexts[0].time + 1, out.trades[0].entry_time);
+        assert!(out
+            .contexts
+            .iter()
+            .all(|d| d.as_of.is_none_or(|t| t <= d.time)));
+        assert_eq!(metrics.context.evaluated, out.contexts.len());
+        assert_eq!(
+            metrics.context.evaluated,
+            metrics.context.allowed + metrics.context.rejected
+        );
+        assert!(out.indicators.is_empty());
+        let mut changed = bars.clone();
+        for b in changed.iter_mut().skip(180) {
+            b.high += 1000.0;
+            b.close += 1000.0;
+        }
+        let (_, future) = replay_background(&changed, 7);
+        let prefix = |chunk: Chunk| {
+            chunk
+                .contexts
+                .into_iter()
+                .filter(|d| d.time < BASE + 180 * MINUTE)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            serde_json::to_string(&prefix(out)).unwrap(),
+            serde_json::to_string(&prefix(future)).unwrap()
+        );
+    }
+}
+#[test]
+fn opening_gap_cannot_bypass_the_frozen_background_structure() {
+    let mut bars = background_history(false);
+    bars[151] = bar(151, 80.0, 80.0);
+    let (_, out) = replay_background(&bars, 7);
+    assert!(out.contexts[0].allowed);
+    assert!(!out
+        .events
+        .iter()
+        .any(|e| e.kind == "entry" && e.time == bars[151].time));
+    assert!(out
+        .events
+        .iter()
+        .any(|e| e.reason == "structure-invalid" && e.time == bars[151].time));
+}
+#[test]
+fn background_has_its_own_warmup_and_never_treats_missing_context_as_permission() {
+    let mut c = config();
+    c.strategy.entry = "breakout".into();
+    c.strategy.filter = "background".into();
+    let (metrics, out) = replay(c, &history(false), vec![], true);
+    assert_eq!(metrics.trades, 0);
+    assert!(metrics.context.rejected > 0);
+    assert!(out
+        .contexts
+        .iter()
+        .all(|d| d.reason == "context-warmup" && !d.allowed));
 }

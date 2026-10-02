@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 pub const MINUTE: u64 = 60_000;
 pub const DAY: u64 = 86_400_000;
@@ -81,12 +82,49 @@ pub struct Indicator {
     pub fast: f64,
     pub slow: f64,
 }
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContextDecision {
+    pub time: u64,
+    pub price: f64,
+    pub side: Side,
+    pub minutes: usize,
+    pub as_of: Option<u64>,
+    pub phase: &'static str,
+    pub direction: Option<Side>,
+    pub reference: Option<f64>,
+    pub anchor: Option<f64>,
+    pub efficiency: Option<f64>,
+    pub extension_atr: Option<f64>,
+    pub cost_atr: Option<f64>,
+    pub allowed: bool,
+    pub reason: &'static str,
+}
+#[derive(Clone, Default, Serialize)]
+pub struct ContextMetrics {
+    pub evaluated: usize,
+    pub allowed: usize,
+    pub rejected: usize,
+    pub reasons: BTreeMap<&'static str, usize>,
+}
+impl ContextMetrics {
+    pub fn observe(&mut self, decision: &ContextDecision) {
+        self.evaluated += 1;
+        if decision.allowed {
+            self.allowed += 1;
+        } else {
+            self.rejected += 1;
+            *self.reasons.entry(decision.reason).or_default() += 1;
+        }
+    }
+}
 #[derive(Default, Serialize)]
 pub struct Chunk {
     pub trades: Vec<Trade>,
     pub events: Vec<Event>,
     pub equity: Vec<Equity>,
     pub indicators: Vec<Indicator>,
+    pub contexts: Vec<ContextDecision>,
 }
 #[derive(Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -106,4 +144,5 @@ pub struct Metrics {
     pub rejected_signals: usize,
     pub funding_events: usize,
     pub rows: usize,
+    pub context: ContextMetrics,
 }

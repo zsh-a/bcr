@@ -95,7 +95,8 @@ try {
   await page.getByLabel("Binance 结束日期").fill(live ? "2024-01-01" : "2024-01-03");
   await page.getByRole("button", { name: "趋势参数设置" }).click();
   const settings = page.getByRole("dialog", { name: "趋势研究设置" });
-  assert.equal(await settings.locator("input:visible, select:visible").count(), 6);
+  assert.equal(await settings.locator("input:visible, select:visible").count(), 7);
+  assert.equal(await page.getByLabel("入场环境", { exact: true }).inputValue(), "background");
   await page.getByLabel("初始止损 · ATR", { exact: true }).fill("2.5");
   await settings.getByRole("button", { name: "取消", exact: true }).click();
   await page.getByRole("button", { name: "趋势参数设置" }).click();
@@ -107,6 +108,7 @@ try {
   await page.getByLabel("初始止损 · ATR", { exact: true }).fill("0");
   assert(await settings.getByRole("button", { name: "应用设置", exact: true }).isDisabled());
   await page.getByLabel("初始止损 · ATR", { exact: true }).fill("1.5");
+  await page.getByLabel("入场环境", { exact: true }).selectOption("none");
   await page.screenshot({ path: `${shots}/binance-trend-settings.png` });
   await settings.getByRole("button", { name: "应用设置", exact: true }).click();
   await runButton().click();
@@ -125,8 +127,8 @@ try {
   const result = await exportResult("binance-trend-result.json");
   assert.equal(result.manifest.provider, "binance-public-data");
   assert.equal(result.config.strategy.tradeMinutes, 1);
-  assert.equal(result.engine, "trend-continuation-3");
-  assert.equal(result.config.version, 2);
+  assert.equal(result.engine, "trend-continuation-4");
+  assert.equal(result.config.version, 3);
   assert.equal(result.config.strategy.entry, "breakout");
   assert.equal(result.config.strategy.filter, "none");
   assert.equal(result.config.risk.flattenMinute, null);
@@ -260,8 +262,68 @@ try {
     .waitFor();
   if (!live) {
     await page.getByRole("button", { name: "趋势参数设置" }).click();
-    await page.getByText("研究变体", { exact: true }).click();
-    await page.getByLabel("方向过滤", { exact: true }).selectOption("ema");
+    await page.getByLabel("入场环境", { exact: true }).selectOption("background");
+    assert((await settings.textContent()).includes("30 分钟背景"));
+    await page.getByRole("button", { name: "应用设置", exact: true }).click();
+    await runButton().click();
+    await page.waitForFunction(
+      () => document.querySelector(".trend-result-heading")?.textContent.includes("趋势背景"),
+      null,
+      { timeout: 60000 },
+    );
+    const background = await exportResult("binance-trend-background.json");
+    const decisions = background.chunks.flatMap((chunk) => chunk.contexts ?? []);
+    assert.equal(background.config.strategy.filter, "background");
+    assert.equal(background.metrics.trades, 0);
+    assert(background.metrics.context.reasons["context-cost"] > 0);
+    assert(decisions.length > 20);
+    assert.equal(background.metrics.context.evaluated, decisions.length);
+    assert.equal(background.metrics.context.allowed, decisions.filter((d) => d.allowed).length);
+    assert.equal(background.metrics.context.rejected, decisions.filter((d) => !d.allowed).length);
+    assert(
+      decisions.every(
+        (d) => d.minutes === 30 && d.asOf <= d.time && (d.asOf + 1) % (30 * minute) === 0,
+      ),
+    );
+    assert.equal(requests, archiveRequests, "background rules reuse minute archives");
+    await page.getByRole("button", { name: "入场背景", exact: true }).click();
+    await page.getByRole("button", { name: "查看背景信号 1", exact: true }).waitFor();
+    assert.equal(await page.locator(".trend-context-panel tbody tr").count(), 20);
+    await page.getByRole("button", { name: "下一页背景", exact: true }).click();
+    await page.getByRole("button", { name: "查看背景信号 21", exact: true }).waitFor();
+    await page.screenshot({ path: `${shots}/binance-trend-background.png`, fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await page.screenshot({ path: `${shots}/binance-trend-background-mobile.png`, fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.getByRole("button", { name: "查看背景信号 21", exact: true }).click();
+    await page.waitForFunction((time) => {
+      const el = document.querySelector(".trend-chart");
+      return Number(el?.dataset.visibleFrom) <= time && Number(el?.dataset.visibleTo) > time;
+    }, decisions[20].time);
+    // A separate zero-fee fixture case proves that eligible background signals
+    // still enter, including sustained trends far from their lagging EMA.
+    await page.getByRole("button", { name: "趋势参数设置" }).click();
+    await page.getByRole("button", { name: "成交", exact: true }).click();
+    await page.getByLabel("单边手续费 · bps", { exact: true }).fill("0");
+    await page.getByLabel("单边滑点 · bps", { exact: true }).fill("0");
+    await page.getByLabel("最小价格步长", { exact: true }).fill("0.01");
+    await page.getByRole("button", { name: "应用设置", exact: true }).click();
+    await runButton().click();
+    await page.waitForFunction(
+      () =>
+        /^[1-9]\d* 笔交易/u.test(document.querySelector(".trend-accounting")?.textContent ?? ""),
+      null,
+      { timeout: 60000 },
+    );
+    const allowed = await exportResult("binance-trend-background-allowed.json");
+    assert(allowed.metrics.context.allowed > 0 && allowed.metrics.trades > 0);
+    assert(
+      allowed.chunks.flatMap((c) => c.contexts ?? []).some((d) => d.allowed && d.extensionAtr > 3),
+    );
+    assert.equal(requests, archiveRequests, "changing cost assumptions reuses frozen data");
+    await page.getByRole("button", { name: "趋势参数设置" }).click();
+    await page.getByLabel("入场环境", { exact: true }).selectOption("ema");
     await page.getByRole("button", { name: "应用设置", exact: true }).click();
     await page.getByLabel("回测交易周期", { exact: true }).selectOption("60");
     await runButton().click();

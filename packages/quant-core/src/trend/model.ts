@@ -1,10 +1,10 @@
-import type { ArchivedTrendConfig } from "./archive";
+import type { ArchivedTrendConfig, RecordedTrendConfigV2 } from "./archive";
 import type { ArtifactRef } from "@bcr/core";
 import type { BinanceDataset } from "@bcr/market-data/binance/model";
 
 export interface TrendStrategy {
   entry: "breakout" | "pullback";
-  filter: "none" | "ema";
+  filter: "none" | "ema" | "background";
   direction: "both" | "long" | "short";
   tradeMinutes: number;
   breakoutBars: number;
@@ -29,7 +29,7 @@ export interface TrendRisk {
   flattenMinute: number | null;
 }
 export interface TrendConfig {
-  version: 2;
+  version: 3;
   strategy: TrendStrategy;
   execution: TrendExecution;
   risk: TrendRisk;
@@ -73,11 +73,35 @@ export interface TrendIndicator {
   fast: number;
   slow: number;
 }
+/** An as-of decision for an otherwise eligible entry signal, never a future label. */
+export interface TrendContextDecision {
+  time: number;
+  price: number;
+  side: "long" | "short";
+  minutes: number;
+  asOf: number | null;
+  phase: "warming" | "range" | "uptrend" | "downtrend" | "conflict";
+  direction: "long" | "short" | null;
+  reference: number | null;
+  anchor: number | null;
+  efficiency: number | null;
+  extensionAtr: number | null;
+  costAtr: number | null;
+  allowed: boolean;
+  reason: string;
+}
+export interface TrendContextMetrics {
+  evaluated: number;
+  allowed: number;
+  rejected: number;
+  reasons: Record<string, number>;
+}
 export interface TrendChunk {
   trades: TrendTrade[];
   events: TrendEvent[];
   equity: TrendEquity[];
   indicators: TrendIndicator[];
+  contexts?: TrendContextDecision[];
 }
 export interface TrendMetrics {
   finalEquity: number;
@@ -95,19 +119,32 @@ export interface TrendMetrics {
   rejectedSignals: number;
   fundingEvents: number;
   rows: number;
+  context?: TrendContextMetrics;
 }
 export interface TrendResult {
   version: 1;
-  engine: "trend-continuation-1" | "trend-continuation-2" | "trend-continuation-3";
+  engine:
+    | "trend-continuation-1"
+    | "trend-continuation-2"
+    | "trend-continuation-3"
+    | "trend-continuation-4";
   metrics: TrendMetrics;
   equity: TrendEquity[];
   trades: TrendTrade[];
-  chunks: { ref: ArtifactRef; from: number; to: number; trades: number }[];
+  chunks: {
+    ref: ArtifactRef;
+    from: number;
+    to: number;
+    trades: number;
+    contexts?: number;
+    indicators?: number;
+    positionEvents?: number;
+  }[];
 }
 export interface TrendRun {
   id: string;
   createdAt: string;
-  config: TrendConfig | ArchivedTrendConfig;
+  config: TrendConfig | RecordedTrendConfigV2 | ArchivedTrendConfig;
   dataset: BinanceDataset;
   resultRef: ArtifactRef;
   metrics: TrendMetrics;
@@ -124,9 +161,23 @@ export const TREND_REASONS: Record<string, string> = {
   "risk-budget": "风险预算不足",
   "stop-distance": "止损距离过大",
   cooldown: "连续亏损冷却",
-  "structure-invalid": "开盘跳空破坏回调结构",
+  "structure-invalid": "开盘跳空破坏入场结构",
   pullback: "强趋势回调突破",
   breakout: "通道突破",
   impulse: "强推进确认",
   funding: "资金费结算",
+  "context-ready": "背景允许入场",
+  "context-warmup": "背景尚未预热完成",
+  "context-range": "较大周期缺少方向推进",
+  "context-conflict": "较大周期方向与结构冲突",
+  "context-direction": "信号与背景方向相反",
+  "context-structure": "信号已破坏背景回调结构",
+  "context-cost": "往返成本相对波动过高",
+};
+export const TREND_PHASES: Record<TrendContextDecision["phase"], string> = {
+  warming: "预热中",
+  range: "整理",
+  uptrend: "上行延续",
+  downtrend: "下行延续",
+  conflict: "方向冲突",
 };

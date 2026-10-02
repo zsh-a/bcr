@@ -10,6 +10,26 @@ pub const MIN_PULLBACK_BARS: usize = 2;
 pub const MAX_PULLBACK_BARS: usize = 8;
 pub const MIN_RETRACEMENT: f64 = 0.2;
 pub const MAX_RETRACEMENT: f64 = 0.5;
+pub const BACKGROUND_WINDOW: usize = 20;
+pub const BACKGROUND_EMA: usize = 20;
+pub const BACKGROUND_SLOPE: usize = 3;
+pub const BACKGROUND_MIN_EFFICIENCY: f64 = 0.3;
+pub const BACKGROUND_MAX_COST_ATR: f64 = 0.5;
+
+pub fn background_minutes(trade_minutes: usize) -> usize {
+    match trade_minutes {
+        1 => 5,
+        3 => 15,
+        5 => 30,
+        15 => 60,
+        30 => 120,
+        60 => 240,
+        120 => 720,
+        240 => 1440,
+        1440 => 10080,
+        _ => unreachable!("validated trading period"),
+    }
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -54,10 +74,10 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            version: 2,
+            version: 3,
             strategy: Strategy {
                 entry: "breakout".into(),
-                filter: "none".into(),
+                filter: "background".into(),
                 direction: "both".into(),
                 trade_minutes: 1,
                 breakout_bars: 20,
@@ -103,10 +123,10 @@ impl Config {
             s.break_even_atr,
             s.trailing_atr,
         ];
-        if self.version != 2
+        if self.version != 3
             || values.iter().any(|v| !v.is_finite())
             || !["pullback", "breakout"].contains(&s.entry.as_str())
-            || !["none", "ema"].contains(&s.filter.as_str())
+            || !["none", "ema", "background"].contains(&s.filter.as_str())
             || !["both", "long", "short"].contains(&s.direction.as_str())
             || ![1, 3, 5, 15, 30, 60, 120, 240, 1440].contains(&s.trade_minutes)
             || !(2..=250).contains(&s.breakout_bars)

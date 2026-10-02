@@ -22,7 +22,12 @@ export function trendChartHandler(io: ArtifactIO) {
       throw new Error("图表结果分片与冻结输入不一致");
     let stop: number | undefined, previous: TrendIndicator | undefined;
     let foundStop = task.config?.["hasTrades"] === false;
+    let foundIndicator = chunks.every((c) => c.indicators === 0);
     for (const c of [...chunks].reverse().filter((c) => c.from < from)) {
+      if (foundStop && foundIndicator) break;
+      const needsStop = !foundStop && c.positionEvents !== 0;
+      const needsIndicator = !foundIndicator && c.indicators !== 0;
+      if (!needsStop && !needsIndicator) continue;
       throwIfAborted(ctx);
       const chunk = await io.readJsonArtifact<TrendChunk>(c.ref, ctx);
       if (!foundStop) {
@@ -35,7 +40,8 @@ export function trendChartHandler(io: ArtifactIO) {
         }
       }
       previous ??= [...chunk.indicators].reverse().find((p) => p.time < from);
-      if (foundStop && previous) break;
+      foundIndicator ||= !!previous;
+      if (foundStop && foundIndicator) break;
     }
     const projection = new TrendChartProjection({ from, to, minutes }, bars, stop, previous);
     for (const c of chunks.filter((c) => c.to > from && c.from < to)) {

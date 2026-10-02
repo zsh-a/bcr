@@ -6,6 +6,7 @@ import type {
   TrendChartData,
   TrendResult,
   TrendTrade,
+  TrendContextDecision,
 } from "@bcr/quant-core/trend";
 import { Effect } from "effect";
 import { readJson } from "../../data/io";
@@ -83,6 +84,35 @@ export async function readTradePage(
   }
   signal.throwIfAborted();
   return trades;
+}
+
+/** Skip untouched artifacts by their index; load only one page of decisions. */
+export async function readContextPage(
+  services: { artifacts: Pick<RuntimeServices["artifacts"], "get"> },
+  result: TrendResult,
+  page: number,
+  size: number,
+  signal: AbortSignal,
+): Promise<TrendContextDecision[]> {
+  let skipped = 0;
+  const start = page * size,
+    decisions: TrendContextDecision[] = [];
+  for (const c of result.chunks) {
+    signal.throwIfAborted();
+    const count = c.contexts ?? 0;
+    if (skipped + count <= start) {
+      skipped += count;
+      continue;
+    }
+    const chunk = await readJson<TrendChunk>(services, c.ref);
+    decisions.push(
+      ...(chunk.contexts ?? []).slice(Math.max(0, start - skipped), start + size - skipped),
+    );
+    skipped += count;
+    if (decisions.length >= size) break;
+  }
+  signal.throwIfAborted();
+  return decisions;
 }
 /** Write all records through OPFS; export never substitutes the bounded preview. */
 export async function exportTrend(

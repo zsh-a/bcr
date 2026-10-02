@@ -14,6 +14,7 @@ import {
   trendWarmupDays,
   validateTrendConfig,
   validateRecordedTrendConfig,
+  restoreTrendDraft,
   type TrendConfig,
   type TrendResult,
   type TrendRun,
@@ -65,7 +66,10 @@ export function useTrendResearch() {
         data.request = defaultBinanceRequest();
       }
       try {
-        validateTrendConfig(data.config);
+        const previousVersion = data.config?.version;
+        data.config = restoreTrendDraft(data.config);
+        if (previousVersion !== data.config.version && live)
+          setStatus("参数已升级 · 可在设置中选择趋势背景；历史规则保持原样");
       } catch {
         data.config = createTrendConfig();
         if (live) setStatus("策略已升级 · 旧版历史保留原始规则");

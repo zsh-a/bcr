@@ -1,5 +1,5 @@
 use super::config::{Strategy, ATR_PERIOD, FAST_EMA, SLOW_EMA};
-use super::model::{Bar, MINUTE};
+use super::model::{Bar, DAY, MINUTE};
 use std::collections::VecDeque;
 
 #[derive(Default)]
@@ -11,7 +11,9 @@ impl CandleBuilder {
     /// UTC aligned, complete candles only. The builder survives data partitions.
     pub fn close(&mut self, bar: Bar, minutes: usize) -> Option<Bar> {
         let interval = minutes as u64 * MINUTE;
-        let start = bar.time / interval * interval;
+        // Weekly context candles start Monday 00:00 UTC, not Unix-epoch Thursday.
+        let offset = if minutes == 10080 { 4 * DAY } else { 0 };
+        let start = (bar.time - offset) / interval * interval + offset;
         if self.bucket.is_none_or(|b| b.time != start) {
             self.bucket = Some(Bar { time: start, ..bar });
             self.rows = 1;
@@ -65,7 +67,7 @@ impl Indicators {
                 self.atr = (self.atr * (ATR_PERIOD - 1) as f64 + tr) / ATR_PERIOD as f64;
             }
         }
-        if config.filter == "none" {
+        if config.filter != "ema" {
             return ClosedCandles {
                 trade,
                 trend: false,

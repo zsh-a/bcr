@@ -73,7 +73,8 @@ export function trendHandler(io: ArtifactIO, factory: Factory = create) {
         !chunk.equity.length &&
         !chunk.trades.length &&
         !chunk.events.length &&
-        !chunk.indicators.length
+        !chunk.indicators.length &&
+        !chunk.contexts?.length
       )
         return;
       throwIfAborted(ctx);
@@ -82,6 +83,7 @@ export function trendHandler(io: ArtifactIO, factory: Factory = create) {
         ...chunk.trades.map((t) => t.exitTime),
         ...chunk.events.map((e) => e.time),
         ...chunk.indicators.map((p) => p.time),
+        ...(chunk.contexts ?? []).map((p) => p.time),
       ];
       const to = Math.max(chunkFrom, ...times) + 1;
       const ref = await io.writeTypedJsonArtifact(
@@ -91,7 +93,15 @@ export function trendHandler(io: ArtifactIO, factory: Factory = create) {
         chunk,
       );
       created.push(ref);
-      chunks.push({ ref, from: chunkFrom, to, trades: chunk.trades.length });
+      chunks.push({
+        ref,
+        from: chunkFrom,
+        to,
+        trades: chunk.trades.length,
+        contexts: chunk.contexts?.length ?? 0,
+        indicators: chunk.indicators.length,
+        positionEvents: chunk.events.filter((e) => e.kind === "stop" || e.kind === "exit").length,
+      });
       chunkFrom = to - 1;
       equity.push(...chunk.equity);
       if (equity.length > 3000) {

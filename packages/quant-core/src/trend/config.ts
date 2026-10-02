@@ -15,11 +15,44 @@ export const TREND_RULES = {
   maxRetracement: 0.5,
 } as const;
 
+/** Fixed hypotheses for the background preset, not fitted optimization fields. */
+export const TREND_BACKGROUND_RULES = {
+  window: 20,
+  emaPeriod: 20,
+  slopeBars: 3,
+  pivotRadius: 2,
+  minEfficiency: 0.3,
+  maxCostAtr: 0.5,
+} as const;
+export function backgroundMinutes(tradeMinutes: number): number {
+  const periods: Record<number, number> = {
+    1: 5,
+    3: 15,
+    5: 30,
+    15: 60,
+    30: 120,
+    60: 240,
+    120: 720,
+    240: 1440,
+    1440: 10080,
+  };
+  const minutes = periods[tradeMinutes];
+  if (!minutes) throw new Error("交易周期无效");
+  return minutes;
+}
+export function filterLabel(strategy: TrendConfig["strategy"]): string {
+  return strategy.filter === "background"
+    ? `趋势背景 · ${periodLabel(backgroundMinutes(strategy.tradeMinutes))}`
+    : strategy.filter === "ema"
+      ? `EMA 20 / 60 · ${periodLabel(strategy.tradeMinutes)}`
+      : "无过滤基线";
+}
+
 export const DEFAULT_TREND_CONFIG: TrendConfig = {
-  version: 2,
+  version: 3,
   strategy: {
     entry: "breakout",
-    filter: "none",
+    filter: "background",
     direction: "both",
     tradeMinutes: 1,
     breakoutBars: 20,
@@ -47,7 +80,13 @@ export const DEFAULT_TREND_CONFIG: TrendConfig = {
 };
 export const createTrendConfig = (): TrendConfig => structuredClone(DEFAULT_TREND_CONFIG);
 export function periodLabel(minutes: number): string {
-  return minutes === 1440 ? "1 天" : minutes >= 60 ? `${minutes / 60} 小时` : `${minutes} 分钟`;
+  return minutes === 10080
+    ? "1 周"
+    : minutes === 1440
+      ? "1 天"
+      : minutes >= 60
+        ? `${minutes / 60} 小时`
+        : `${minutes} 分钟`;
 }
 export function withTradingPeriod(config: TrendConfig, tradeMinutes: number): TrendConfig {
   return {
@@ -62,9 +101,19 @@ export function withTradingPeriod(config: TrendConfig, tradeMinutes: number): Tr
 export function trendWarmupDays({ strategy: s }: TrendConfig): number {
   const entryBars = s.entry === "breakout" ? s.breakoutBars : TREND_RULES.impulseBars;
   const filterBars = s.filter === "ema" ? TREND_RULES.slowEma : 0;
+  // One extra full background period covers an unaligned first candle.
+  const contextMinutes =
+    s.filter === "background"
+      ? (TREND_BACKGROUND_RULES.window + 2) * backgroundMinutes(s.tradeMinutes)
+      : 0;
   return Math.max(
     1,
-    Math.ceil((Math.max(TREND_RULES.atrPeriod, entryBars, filterBars) * s.tradeMinutes) / 1440),
+    Math.ceil(
+      Math.max(
+        Math.max(TREND_RULES.atrPeriod, entryBars, filterBars) * s.tradeMinutes,
+        contextMinutes,
+      ) / 1440,
+    ),
   );
 }
 export function strategyLabel(entry: TrendConfig["strategy"]["entry"]): string {
@@ -82,7 +131,7 @@ export function validateTrendConfig(value: unknown): asserts value is TrendConfi
     return object;
   };
   const config = shape(value, DEFAULT_TREND_CONFIG, "趋势配置");
-  if (config.version !== 2) throw new Error("趋势配置版本无效");
+  if (config.version !== 3) throw new Error("趋势配置版本无效");
   const s = shape(config.strategy, DEFAULT_TREND_CONFIG.strategy, "策略参数");
   const e = shape(config.execution, DEFAULT_TREND_CONFIG.execution, "成交设置");
   const r = shape(config.risk, DEFAULT_TREND_CONFIG.risk, "风控规则");
@@ -104,7 +153,7 @@ export function validateTrendConfig(value: unknown): asserts value is TrendConfi
     Number.isInteger(n) && n >= min && n <= max;
   if (
     !["breakout", "pullback"].includes(strategy.entry) ||
-    !["none", "ema"].includes(strategy.filter) ||
+    !["none", "ema", "background"].includes(strategy.filter) ||
     !["both", "long", "short"].includes(strategy.direction) ||
     !TREND_PERIODS.includes(strategy.tradeMinutes as (typeof TREND_PERIODS)[number]) ||
     !integer(strategy.breakoutBars, 2, 250) ||
