@@ -105,7 +105,13 @@ Agent 的 `session.ts` 只编排单次任务和会话快照，`toolExecution.ts`
 
 Research 实现统一位于 `apps/studio/src/research/`，其中 `model.ts` 是类型与规则、`store.ts` 是持久化、`components/` 是领域界面。`@bcr/react` 的入口只导出 API，Runtime、任务和产物 hooks 分别在 `runtime.ts`、`tasks.ts`、`artifacts.ts`；旧 `useServices` 别名已移除，调用方统一使用 `useRuntime`。
 
-Quant 的 `research-service.ts` 是框架无关的研究会话服务，统一恢复、导入、执行、实验／项目切换和保存；`useResearch` 只通过 `useSyncExternalStore` 订阅。视图取消订阅不取消计算，Runtime 关闭时取消任务、排空操作并保存最后有效草稿。任务 ID 使用稳定的阶段代码，显示文案可以独立变化。
+Quant 的 `session/service.ts` 是框架无关的研究会话服务，统一恢复、导入、执行、实验／项目切换和保存；`useResearch` 只通过 `useSyncExternalStore` 订阅。视图取消订阅不取消计算，Runtime 关闭时取消任务、排空操作并保存最后有效草稿。任务 ID 使用稳定的阶段代码，显示文案可以独立变化。
+
+Quant App 按研究功能组织源码，通用研究工作台不再归入单个策略目录：`workbench/` 组合页面、设置与弹窗；`session/` 分开模型、配置身份、reducer、持久化和服务；`data/` 适配来源、导入导出、名称与存储管理；`execution/` 负责执行适配和回测／参数实验操作；`experiments/` 包含实验目录和稳健性验证；`results/` 包含查询、分析、报告、图表和统一检查面板；`workers/` 保留消息处理入口。各功能的样式由 App 样式入口统一载入，避免面板首次打开时改变公共样式的加载顺序。测试用的大规模行情生成器位于 `test-support/`，首屏使用的演示数据仍属于 `data/`。
+
+操作模块通过 `OperationContext` 借用服务拥有的任务 token 和状态回调，不创建第二个会话、保存队列或关闭流程。结果 Worker 和客户端共同依赖 `results/protocol.ts`；格式化及订单文案位于 `results/format.ts`，报告和分析逻辑不导入 React 组件。共享领域契约直接从 `quant-core`、`market-data` 的公开入口导入，应用不再通过转导出文件混合这两个包。架构回归检查禁止非视图模块依赖 React 组件，并检查应用内的运行时导入循环。目录调整保留现有任务 operation、存储键、产物类型和快照格式。
+
+完整回测和连续样本外曲线都通过 `results/inspection/RunInspection.tsx` 建立运行级选择与名称上下文，复用同一个事件详情与冻结行情界面。跨结果标签的导航由完整结果浏览器提供；单独的验证曲线只展示自身可用的事件检查操作。
 
 `@bcr/market-data` 负责行情来源、数据集、冻结快照和宽度数据；共享档案的物理命名空间由单一 `RESEARCH_NAMESPACE` 定义，保留现有 OPFS 文件。`@bcr/quant-core` 负责策略参数、执行模型、交易成本、回测结果与诊断类型。`@bcr/react` 只提供通用 `Heatmap`；MA20、行业名称和单元格说明由 Market 的 `breadthGrid` 数据适配器生成。行情数据与策略包的依赖方向由 lint 强制检查。
 

@@ -1,10 +1,10 @@
+import { DEFAULT_CONFIG, validateConfig } from "@bcr/quant-core";
 import { describe, expect, it } from "vitest";
-import { compatibleRun, MAX_COMPARISONS, parameterDifferences } from "../src/jsg/comparison";
-import { DEFAULT_CONFIG, validateConfig } from "../src/jsg/model";
-import { canonicalConfig, configKey } from "../src/jsg/session";
-import { configErrors } from "../src/jsg/Parameters";
-import { gridConfigs } from "../src/jsg/grid";
-import type { ResearchRun } from "../src/jsg/session";
+import { gridConfigs } from "../src/experiments/grid";
+import { compatibleRun, MAX_COMPARISONS, parameterDifferences } from "../src/results/comparison";
+import { canonicalConfig, configKey } from "../src/session/config";
+import type { ResearchRun } from "../src/session/model";
+import { configErrors } from "../src/workbench/parameter-errors";
 
 const run = (id: string, patch: Partial<ResearchRun> = {}) =>
   ({

@@ -1,19 +1,23 @@
-import { readFileSync } from "node:fs";
-import { beforeAll, expect, it } from "vitest";
-import initQuant, { JsgBacktest, JsgGrid } from "../../../crates/quant/pkg/bcr_quant.js";
-import { demoResearch } from "../src/jsg/demo";
+import {
+  DEFAULT_CONNECTION,
+  prepareCalendar,
+  publicProfile,
+} from "@bcr/market-data/research/clickhouse-http";
+import { parseManifest } from "@bcr/market-data/research/model";
 import {
   DEFAULT_CONFIG,
   DEFAULT_STRATEGY,
-  parseManifest,
-  strategySpec,
   rebalanceSession,
+  strategySpec,
   type JsgConfig,
-} from "../src/jsg/model";
-import { gridConfigs } from "../src/jsg/grid";
-import { configKey } from "../src/jsg/session";
-import { researchContext, snapshotDifference } from "../src/jsg/context";
-import { prepareCalendar, publicProfile, DEFAULT_CONNECTION } from "../src/jsg/clickhouse-http";
+} from "@bcr/quant-core";
+import { readFileSync } from "node:fs";
+import { beforeAll, expect, it } from "vitest";
+import initQuant, { JsgBacktest, JsgGrid } from "../../../crates/quant/pkg/bcr_quant.js";
+import { demoResearch } from "../src/data/demo";
+import { gridConfigs } from "../src/experiments/grid";
+import { configKey } from "../src/session/config";
+import { researchContext, snapshotDifference } from "../src/workbench/context";
 beforeAll(async () => {
   await initQuant({
     module_or_path: readFileSync(

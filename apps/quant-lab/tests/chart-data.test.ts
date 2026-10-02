@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-import { Effect } from "effect";
 import {
   anchorEventPoints,
   emptyDayEvent,
@@ -9,8 +7,10 @@ import {
   priceFactor,
   type IdentifiedOrder,
 } from "@bcr/quant-core";
-import { chartEvents, chartFills, chartOrders } from "../src/jsg/chart-data";
-import type { ResultSource, ResultStorage } from "../src/jsg/result-data";
+import { Effect } from "effect";
+import { describe, expect, it } from "vitest";
+import { chartEvents, chartFills, chartOrders } from "../src/results/chart-data";
+import type { ResultSource, ResultStorage } from "../src/results/result-data";
 
 const order = (patch: Partial<IdentifiedOrder> = {}): IdentifiedOrder => ({
   id: "buy",

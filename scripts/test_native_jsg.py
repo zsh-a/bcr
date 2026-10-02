@@ -139,7 +139,7 @@ class NativeIntegration(unittest.TestCase):
     def test_browser_benchmark_typed_date_query(self):
         # Execute the application's actual query with Date-typed parameters: literal strings
         # would hide ClickHouse alias substitution's String/Date comparison regression.
-        sql=subprocess.run(['bun','-e','import { BENCHMARK_SQL } from "./apps/quant-lab/src/jsg/benchmark.ts"; console.log(BENCHMARK_SQL);'],cwd=ROOT,capture_output=True,text=True,check=True).stdout.strip()
+        sql=subprocess.run(['bun','-e','import { BENCHMARK_SQL } from "@bcr/market-data/research/benchmark"; console.log(BENCHMARK_SQL);'],cwd=ROOT/'apps'/'quant-lab',capture_output=True,text=True,check=True).stdout.strip()
         sql=sql.replace('FROM stock_daily FINAL','FROM stock_data.stock_daily FINAL')
         for token,value,kind in [('code','sz.001001','String'),('start','2024-01-24','Date'),('end','2024-01-31','Date')]:
             sql=sql.replace('{'+token+':'+kind+'}',f"CAST('{value}' AS {kind})")

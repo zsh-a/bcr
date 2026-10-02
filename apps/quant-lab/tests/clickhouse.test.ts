@@ -1,11 +1,4 @@
-import { readFileSync } from "node:fs";
-import { MemoryStore } from "@bcr/storage-opfs";
 import { artifactPath } from "@bcr/core";
-import { Table, RecordBatchStreamWriter, tableFromIPC, vectorFromArray, Utf8 } from "apache-arrow";
-import { beforeAll, describe, expect, it } from "vitest";
-import initQuant, { ClickHouseNormalizer } from "../../../crates/quant/pkg/bcr_quant.js";
-import initKernels from "../../../crates/kernels/pkg/bcr_kernels.js";
-import { loadClickHouse } from "../src/jsg/clickhouse-load";
 import {
   clickHouseClient,
   normalizeConnection,
@@ -13,7 +6,14 @@ import {
   publicProfile,
   ResponseTooLarge,
   type ClickHouseConnection,
-} from "../src/jsg/clickhouse-http";
+} from "@bcr/market-data/research/clickhouse-http";
+import { loadClickHouse } from "@bcr/market-data/research/clickhouse-load";
+import { MemoryStore } from "@bcr/storage-opfs";
+import { RecordBatchStreamWriter, Table, tableFromIPC, Utf8, vectorFromArray } from "apache-arrow";
+import { readFileSync } from "node:fs";
+import { beforeAll, describe, expect, it } from "vitest";
+import initKernels from "../../../crates/kernels/pkg/bcr_kernels.js";
+import initQuant, { ClickHouseNormalizer } from "../../../crates/quant/pkg/bcr_quant.js";
 
 beforeAll(async () => {
   await initQuant({

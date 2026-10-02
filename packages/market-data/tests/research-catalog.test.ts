@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MemoryStore } from "@bcr/storage-opfs";
 import { artifactPath, contentHash, type ArtifactRef } from "@bcr/core";
-import { demoResearch } from "../../../apps/quant-lab/src/jsg/demo";
+import { demoResearch } from "../../../apps/quant-lab/src/data/demo";
 import {
   listMarketSnapshots,
   pinMarketSnapshot,

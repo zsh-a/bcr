@@ -1,14 +1,14 @@
 import { artifactPath, type ArtifactRef } from "@bcr/core";
+import { readBenchmark } from "@bcr/market-data/research/benchmark";
+import { withResearchFiles } from "@bcr/market-data/research/file-lease";
+import { readSnapshotBars, type SnapshotBar } from "@bcr/market-data/research/snapshot-reader";
 import { marketResearchStore } from "@bcr/market-data/research/storage";
 import { Effect } from "effect";
-import { queryOrders, queryCurve, queryDecision, type ResultChunk } from "../jsg/result-data";
-import type { ResultRequest, ResultResponse } from "../jsg/result-reader";
-import { withResearchFiles } from "../jsg/file-lease";
-import { evaluateResult } from "../jsg/evaluation";
-import { readBenchmark } from "../jsg/benchmark";
-import { researchSummary, researchDay, breadthHistory } from "../jsg/research-analysis";
-import { chartEvents, chartOrders, chartFills } from "../jsg/chart-data";
-import { readSnapshotBars, type SnapshotBar } from "@bcr/market-data/research/snapshot-reader";
+import { chartEvents, chartFills, chartOrders } from "../results/chart-data";
+import { evaluateResult } from "../results/evaluation";
+import type { ResultRequest, ResultResponse } from "../results/protocol";
+import { breadthHistory, researchDay, researchSummary } from "../results/research-analysis";
+import { queryCurve, queryDecision, queryOrders, type ResultChunk } from "../results/result-data";
 
 const scope = globalThis as unknown as {
   postMessage: (value: ResultResponse) => void;

@@ -1,5 +1,5 @@
 import { Table, tableFromIPC, vectorFromArray, Utf8, RecordBatchStreamWriter } from "apache-arrow";
-import { demoResearch } from "../src/jsg/demo";
+import { demoResearch } from "../src/data/demo";
 
 /** HTTP protocol fixture, not a ClickHouse SQL implementation. Native CI covers SQL execution. */
 export async function clickHouseHttpFixture() {

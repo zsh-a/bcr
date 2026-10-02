@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { MemoryStore } from "@bcr/storage-opfs";
 import {
   artifactPath,
   artifactStore,
@@ -7,22 +5,19 @@ import {
   contentHash,
   type ComputeTask,
 } from "@bcr/core";
+import { MAX_PARTITION_BYTES, parseManifest } from "@bcr/market-data/research/model";
+import { DEFAULT_CONFIG, validateConfig, type JsgResult } from "@bcr/quant-core";
 import { createArtifactIO } from "@bcr/runtime-worker";
+import { MemoryStore } from "@bcr/storage-opfs";
 import { RecordBatchStreamWriter, Table, tableFromArrays, tableFromIPC } from "apache-arrow";
 import { Context, Effect, Layer } from "effect";
+import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import initKernels from "../../../crates/kernels/pkg/bcr_kernels.js";
 import initQuant, { JsgBacktest } from "../../../crates/quant/pkg/bcr_quant.js";
-import { jsgHandler, type BacktestSession } from "../src/jsg/compute";
-import { importResearch } from "../src/jsg/data";
-import { demoResearch } from "../src/jsg/demo";
-import {
-  DEFAULT_CONFIG,
-  MAX_PARTITION_BYTES,
-  parseManifest,
-  validateConfig,
-  type JsgResult,
-} from "../src/jsg/model";
+import { demoResearch } from "../src/data/demo";
+import { importResearch } from "../src/data/io";
+import { jsgHandler, type BacktestSession } from "../src/execution/compute";
 
 beforeAll(async () => {
   await initKernels({

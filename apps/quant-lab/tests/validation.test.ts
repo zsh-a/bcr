@@ -1,16 +1,16 @@
+import { DEFAULT_CONFIG, type JsgConfig, type JsgResult } from "@bcr/quant-core";
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import initQuant, { JsgBacktest, JsgGrid } from "../../../crates/quant/pkg/bcr_quant.js";
-import { demoResearch } from "../src/jsg/demo";
-import { DEFAULT_CONFIG, type JsgConfig, type JsgResult } from "../src/jsg/model";
+import { demoResearch } from "../src/data/demo";
+import type { GridResult } from "../src/experiments/grid";
 import {
-  validationPlan,
-  selectValidationTests,
   costStress,
+  selectValidationTests,
+  validationPlan,
   type ValidationRequest,
-} from "../src/jsg/validation";
-import type { GridResult } from "../src/jsg/grid";
-import { canonicalConfig, configKey } from "../src/jsg/session";
+} from "../src/experiments/validation";
+import { canonicalConfig, configKey } from "../src/session/config";
 
 beforeAll(async () => {
   await initQuant({

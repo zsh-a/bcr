@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
+import type { Diagnostics, LedgerRow, ResearchDay } from "@bcr/quant-core/research-model";
 import { Effect } from "effect";
-import { researchSummary, researchDay, breadthHistory } from "../src/jsg/research-analysis";
-import type { ResultSource, ResultStorage } from "../src/jsg/result-data";
-import type { Diagnostics, LedgerRow, ResearchDay } from "../src/jsg/research-model";
-import { csvCell, escapeHtml, ledgerCsv } from "../src/jsg/report";
+import { describe, expect, it } from "vitest";
+import { csvCell, escapeHtml, ledgerCsv } from "../src/results/report";
+import { breadthHistory, researchDay, researchSummary } from "../src/results/research-analysis";
+import type { ResultSource, ResultStorage } from "../src/results/result-data";
 
 const signal = () => new AbortController().signal;
 const diagnostics: Diagnostics = {

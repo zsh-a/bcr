@@ -1,6 +1,14 @@
 @import "@bcr/react/tokens.css";
 @import "@bcr/react/global.css";
 @import "@bcr/react/ui.css";
+@import "./workbench/styles.css";
+@import "./experiments/library.css";
+@import "./workbench/settings.css";
+@import "./experiments/styles.css";
+@import "./results/styles.css";
+@import "./data/styles.css";
+@import "./results/charts/styles.css";
+@import "./results/inspection/styles.css";
 
 .quant-lab,
 .ql-boot,

@@ -8,7 +8,7 @@ execFileSync(
   "bun",
   [
     "-e",
-    `import {writeFileSync,mkdirSync} from "node:fs";import {demoResearch} from "./apps/quant-lab/src/jsg/demo.ts";mkdirSync("scripts/shots/features-input",{recursive:true});for(const file of demoResearch().files)writeFileSync("scripts/shots/features-input/"+file.name,new Uint8Array(await file.arrayBuffer()));`,
+    `import {writeFileSync,mkdirSync} from "node:fs";import {demoResearch} from "./apps/quant-lab/src/data/demo.ts";mkdirSync("scripts/shots/features-input",{recursive:true});for(const file of demoResearch().files)writeFileSync("scripts/shots/features-input/"+file.name,new Uint8Array(await file.arrayBuffer()));`,
   ],
   { cwd: repoRoot },
 );

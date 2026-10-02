@@ -1,29 +1,31 @@
-import { describe, expect, it } from "vitest";
-import { Context, Effect, Layer } from "effect";
-import { MemoryStore } from "@bcr/storage-opfs";
 import {
+  artifactPath,
   artifactStore,
   ArtifactStoreTag,
-  artifactPath,
   planCachePrune,
-  reclaimCachePrune,
   planTaskJournalPrune,
+  reclaimCachePrune,
   reclaimTaskJournalPrune,
+  type ArtifactRef,
   type CacheEntry,
   type TaskJournalEntry,
-  type ArtifactRef,
 } from "@bcr/core";
-import { demoResearch } from "../src/jsg/demo";
-import { DEFAULT_CONFIG, type JsgResult, type ResearchDataset } from "../src/jsg/model";
-import { initialSession, type ResearchSession, type ResearchRun } from "../src/jsg/session";
+import { type ResearchDataset } from "@bcr/market-data/research/model";
+import { DEFAULT_CONFIG, type JsgResult } from "@bcr/quant-core";
+import { MemoryStore } from "@bcr/storage-opfs";
+import { Context, Effect, Layer } from "effect";
+import { describe, expect, it } from "vitest";
+import { demoResearch } from "../src/data/demo";
 import {
   planResearchCleanup,
   reclaimResearch,
+  recoverResearchExports,
+  recoverResearchFiles,
   rememberSnapshot,
   researchUsage,
-  recoverResearchFiles,
-  recoverResearchExports,
-} from "../src/jsg/storage";
+} from "../src/data/storage";
+import { type ResearchRun, type ResearchSession } from "../src/session/model";
+import { initialSession } from "../src/session/reducer";
 
 const ref = (id: string, type = "quant/jsg-daily"): ArtifactRef => ({
   id,

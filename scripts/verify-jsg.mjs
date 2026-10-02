@@ -10,7 +10,7 @@ execFileSync(
     "-e",
     `
 import { writeFileSync, mkdirSync } from "node:fs";
-import { demoResearch } from "./apps/quant-lab/src/jsg/demo.ts";
+import { demoResearch } from "./apps/quant-lab/src/data/demo.ts";
 mkdirSync("scripts/shots/jsg-input", { recursive: true });
 for (const file of demoResearch().files) writeFileSync("scripts/shots/jsg-input/" + file.name, new Uint8Array(await file.arrayBuffer()));
 `,

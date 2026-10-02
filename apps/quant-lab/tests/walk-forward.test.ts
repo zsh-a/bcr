@@ -1,8 +1,3 @@
-import { readFileSync } from "node:fs";
-import { beforeAll, expect, it } from "vitest";
-import { Effect } from "effect";
-import initQuant, { JsgBacktest, JsgGrid } from "../../../crates/quant/pkg/bcr_quant.js";
-import { demoResearch } from "../src/jsg/demo";
 import {
   DEFAULT_CONFIG,
   strategySpec,
@@ -10,18 +5,23 @@ import {
   type JsgConfig,
   type JsgResult,
   type ParameterStep,
-} from "../src/jsg/model";
+} from "@bcr/quant-core";
+import { Effect } from "effect";
+import { readFileSync } from "node:fs";
+import { beforeAll, expect, it } from "vitest";
+import initQuant, { JsgBacktest, JsgGrid } from "../../../crates/quant/pkg/bcr_quant.js";
+import { demoResearch } from "../src/data/demo";
+import type { GridResult } from "../src/experiments/grid";
 import {
-  validationPlan,
   selectValidationTests,
+  validationPlan,
   type ValidationRequest,
-} from "../src/jsg/validation";
+} from "../src/experiments/validation";
 import {
-  walkForwardSchedule,
   analyzeWalkForward,
   parameterStability,
-} from "../src/jsg/walk-forward";
-import type { GridResult } from "../src/jsg/grid";
+  walkForwardSchedule,
+} from "../src/experiments/walk-forward";
 
 const request: ValidationRequest = {
   mode: "walk-forward",

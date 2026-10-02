@@ -1,27 +1,25 @@
 import { artifactStore, ArtifactStoreTag, type ArtifactRef } from "@bcr/core";
+import { readBenchmark, saveBenchmark } from "@bcr/market-data/research/benchmark";
+import { DEFAULT_CONNECTION } from "@bcr/market-data/research/clickhouse-http";
+import { type ResearchDataset } from "@bcr/market-data/research/model";
+import { DEFAULT_CONFIG, type JsgResult } from "@bcr/quant-core";
 import { MemoryStore } from "@bcr/storage-opfs";
 import { Context, Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
-import { demoResearch } from "../src/jsg/demo";
-import { DEFAULT_CONFIG, type JsgResult, type ResearchDataset } from "../src/jsg/model";
+import { demoResearch } from "../src/data/demo";
+import { replayVersions } from "../src/execution/versions";
+import type { ValidationResult } from "../src/experiments/validation";
 import {
-  copyConfig,
-  datasetKey,
-  initialSession,
-  isDraftChanged,
-  readRun,
-  restoreSession,
-  saveSession,
-  sessionReducer,
-  type ResearchSession,
-  type SelectedRun,
-} from "../src/jsg/session";
-import { EMPTY_ORDER_FILTER, queryCurve, queryDecision, queryOrders } from "../src/jsg/result-data";
-import { saveBenchmark, readBenchmark } from "../src/jsg/benchmark";
-import { replayVersions } from "../src/jsg/versions";
-import { draftChanges } from "../src/jsg/draft";
-import { DEFAULT_CONNECTION } from "../src/jsg/clickhouse-http";
-import type { ValidationResult } from "../src/jsg/validation";
+  EMPTY_ORDER_FILTER,
+  queryCurve,
+  queryDecision,
+  queryOrders,
+} from "../src/results/result-data";
+import { copyConfig, datasetKey, isDraftChanged } from "../src/session/config";
+import { type ResearchSession, type SelectedRun } from "../src/session/model";
+import { readRun, restoreSession, saveSession } from "../src/session/persistence";
+import { initialSession, sessionReducer } from "../src/session/reducer";
+import { draftChanges } from "../src/workbench/draft";
 
 const ref = (id: string, type = "quant/jsg-result"): ArtifactRef => ({
   id,

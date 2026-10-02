@@ -1,13 +1,13 @@
 import type { RuntimeHost, RuntimeSession } from "@bcr/core";
+import { RESEARCH_NAMESPACE } from "@bcr/market-data/research/storage";
 import { createBrowserRuntime } from "@bcr/runtime-browser";
 import { workerExecutor, WorkerPool } from "@bcr/runtime-worker";
 import type { BinaryStore } from "@bcr/storage-opfs";
 import { openSqliteDb, type SqliteDb } from "@bcr/storage-sqlite";
 import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
-import { closeResearchService } from "./jsg/research-service";
-import { RESEARCH_NAMESPACE } from "@bcr/market-data/research/storage";
-import { SINGLE_EXECUTOR_VERSION, GRID_EXECUTOR_VERSION } from "./jsg/versions";
+import { GRID_EXECUTOR_VERSION, SINGLE_EXECUTOR_VERSION } from "./execution/versions";
+import { closeResearchService } from "./session/service";
 
 type SqliteInit = (options?: {
   locateFile?: (file: string) => string;

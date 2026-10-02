@@ -1,30 +1,25 @@
-import { readFileSync } from "node:fs";
-import { Context, Effect, Layer } from "effect";
-import { beforeAll, describe, expect, it } from "vitest";
-import { MemoryStore } from "@bcr/storage-opfs";
-import { RecordBatchStreamWriter, Table, tableFromArrays, tableFromIPC } from "apache-arrow";
 import {
   artifactPath,
-  contentHash,
   artifactStore,
   ArtifactStoreTag,
+  contentHash,
   type ArtifactRef,
 } from "@bcr/core";
+import { DEFAULT_CONFIG, type JsgResult } from "@bcr/quant-core";
 import { createArtifactIO } from "@bcr/runtime-worker";
+import { MemoryStore } from "@bcr/storage-opfs";
+import { RecordBatchStreamWriter, Table, tableFromArrays, tableFromIPC } from "apache-arrow";
+import { Context, Effect, Layer } from "effect";
+import { readFileSync } from "node:fs";
+import { beforeAll, describe, expect, it } from "vitest";
 import initQuant, { JsgBacktest, JsgGrid } from "../../../crates/quant/pkg/bcr_quant.js";
-import { gridConfigs, rankGrid, type GridResult } from "../src/jsg/grid";
-import { jsgGridHandler } from "../src/jsg/grid-compute";
-import { demoResearch } from "../src/jsg/demo";
-import { DEFAULT_CONFIG, type JsgResult } from "../src/jsg/model";
-import {
-  initialSession,
-  canonicalConfig,
-  restoreSession,
-  saveSession,
-  sessionReducer,
-  type SelectedGrid,
-  type ResearchSession,
-} from "../src/jsg/session";
+import { demoResearch } from "../src/data/demo";
+import { jsgGridHandler } from "../src/execution/grid-compute";
+import { gridConfigs, rankGrid, type GridResult } from "../src/experiments/grid";
+import { canonicalConfig } from "../src/session/config";
+import { type ResearchSession, type SelectedGrid } from "../src/session/model";
+import { restoreSession, saveSession } from "../src/session/persistence";
+import { initialSession, sessionReducer } from "../src/session/reducer";
 
 beforeAll(async () => {
   await initQuant({

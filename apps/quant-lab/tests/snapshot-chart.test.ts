@@ -1,12 +1,12 @@
+import { artifactPath, type ArtifactRef } from "@bcr/core";
+import type { ResearchDataset, SnapshotPartitionRange } from "@bcr/market-data/research/model";
+import { readSnapshotBars } from "@bcr/market-data/research/snapshot-reader";
+import { MemoryStore } from "@bcr/storage-opfs";
 import { readFileSync } from "node:fs";
 import { beforeAll, expect, it, vi } from "vitest";
-import { MemoryStore } from "@bcr/storage-opfs";
-import { artifactPath, type ArtifactRef } from "@bcr/core";
 import initQuant from "../../../crates/quant/pkg/bcr_quant.js";
-import { readSnapshotBars } from "@bcr/market-data/research/snapshot-reader";
-import type { ResearchDataset, SnapshotPartitionRange } from "@bcr/market-data/research/model";
-import { demoResearch } from "../src/jsg/demo";
-import { candleWindow } from "../src/jsg/chart-window";
+import { demoResearch } from "../src/data/demo";
+import { candleWindow } from "../src/results/charts/chart-window";
 
 beforeAll(async () => {
   await initQuant({

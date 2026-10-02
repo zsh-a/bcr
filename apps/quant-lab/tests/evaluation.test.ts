@@ -1,19 +1,20 @@
-import { readFileSync } from "node:fs";
-import { beforeAll, describe, it, expect } from "vitest";
-import { Effect } from "effect";
 import type { ArtifactRef } from "@bcr/core";
-import initQuant, { JsgBacktest } from "../../../crates/quant/pkg/bcr_quant.js";
-import { evaluateResult } from "../src/jsg/evaluation";
 import {
+  benchmarkBaseline,
+  fetchBenchmark,
   parseBenchmarkCsv,
   validateBenchmark,
-  fetchBenchmark,
-  benchmarkBaseline,
   validateBenchmarkCoverage,
   type BenchmarkSnapshot,
-} from "../src/jsg/benchmark";
-import { demoResearch } from "../src/jsg/demo";
-import { DEFAULT_CONFIG, dateText } from "../src/jsg/model";
+} from "@bcr/market-data/research/benchmark";
+import { dateText } from "@bcr/market-data/research/model";
+import { DEFAULT_CONFIG } from "@bcr/quant-core";
+import { Effect } from "effect";
+import { readFileSync } from "node:fs";
+import { beforeAll, describe, expect, it } from "vitest";
+import initQuant, { JsgBacktest } from "../../../crates/quant/pkg/bcr_quant.js";
+import { demoResearch } from "../src/data/demo";
+import { evaluateResult } from "../src/results/evaluation";
 const dates = ["2024-12-30", "2024-12-31", "2025-01-02", "2025-02-03"],
   baseline = "2024-12-27";
 const signal = () => new AbortController().signal;

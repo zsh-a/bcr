@@ -1,8 +1,8 @@
 import { RuntimeProvider, Spinner, usePublishRunningCount, useRuntimeSession } from "@bcr/react";
 import { useState } from "react";
-import { QuantWorkbench } from "./jsg/Workbench";
 import { createRuntimeServices } from "./runtime";
 import "./styles.css";
+import { QuantWorkbench } from "./workbench/Workbench";
 
 export function App() {
   const { services, error } = useRuntimeSession(createRuntimeServices);

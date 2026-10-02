@@ -1,7 +1,7 @@
-import { createArtifactIO, defineWorker } from "@bcr/runtime-worker";
 import { marketResearchStore } from "@bcr/market-data/research/storage";
-import { jsgHandler } from "../jsg/compute";
-import { jsgGridHandler } from "../jsg/grid-compute";
+import { createArtifactIO, defineWorker } from "@bcr/runtime-worker";
+import { jsgHandler } from "../execution/compute";
+import { jsgGridHandler } from "../execution/grid-compute";
 
 const artifacts = createArtifactIO(marketResearchStore(), "opfs");
 

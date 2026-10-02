@@ -1,7 +1,7 @@
 import { mkdir, writeFile, rename, rm } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { generateFixture } from "../apps/quant-lab/src/jsg/fixture";
+import { generateFixture } from "../apps/quant-lab/test-support/generate-fixture";
 
 const [destination, instruments = "5000", sessions = "1250", batchDays = "20"] =
   process.argv.slice(2);

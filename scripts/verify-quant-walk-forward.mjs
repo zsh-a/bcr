@@ -10,7 +10,7 @@ execFileSync(
     "-e",
     `
 import { mkdirSync, writeFileSync } from "node:fs";
-import { demoResearch } from "./apps/quant-lab/src/jsg/demo.ts";
+import { demoResearch } from "./apps/quant-lab/src/data/demo.ts";
 mkdirSync("scripts/shots/walk-forward-input", { recursive: true });
 for (const file of demoResearch().files) writeFileSync("scripts/shots/walk-forward-input/" + file.name, new Uint8Array(await file.arrayBuffer()));
 `,
@@ -76,6 +76,13 @@ try {
     .waitFor({ timeout: 90_000 });
   await ready();
   const id = await page.locator("[data-study-id]").getAttribute("data-study-id");
+  await page.getByRole("button", { name: "查看事件", exact: true }).click();
+  let inspector = page.getByRole("dialog", { name: "组合事件", exact: true });
+  await inspector.locator(".research-event-order").first().click();
+  inspector = page.getByRole("dialog", { name: "成交与行情", exact: true });
+  await inspector.locator(".research-trade-canvas canvas").first().waitFor();
+  await page.keyboard.press("Escape");
+  await inspector.waitFor({ state: "hidden" });
   const full = await download("导出连续回测完整结果", "quant-walk-forward-full");
   assert.equal(full.research.parameterSchedule.length, 5);
   assert.equal(full.result.metrics.days, 96);

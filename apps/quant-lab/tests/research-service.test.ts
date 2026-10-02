@@ -1,13 +1,13 @@
-import { Effect, Stream } from "effect";
-import { describe, expect, it, vi } from "vitest";
+import { artifactPath, type ArtifactRef } from "@bcr/core";
+import { DEFAULT_CONFIG } from "@bcr/quant-core";
 import { createBrowserRuntime } from "@bcr/runtime-browser";
 import { MemoryStore } from "@bcr/storage-opfs";
 import type { SqliteDb } from "@bcr/storage-sqlite";
-import { artifactPath, type ArtifactRef } from "@bcr/core";
-import { demoResearch } from "../src/jsg/demo";
-import { DEFAULT_CONFIG } from "../src/jsg/model";
-import { researchService, closeResearchService } from "../src/jsg/research-service";
-import { restoreSession } from "../src/jsg/session";
+import { Effect, Stream } from "effect";
+import { describe, expect, it, vi } from "vitest";
+import { demoResearch } from "../src/data/demo";
+import { restoreSession } from "../src/session/persistence";
+import { closeResearchService, researchService } from "../src/session/service";
 
 async function setup() {
   const binary = new MemoryStore(),

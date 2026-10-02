@@ -1,17 +1,25 @@
-import { describe, expect, it } from "vitest";
-import { clickHouseClient, DEFAULT_CONNECTION, type MetadataRow } from "../src/jsg/clickhouse-http";
-import { loadDisplayNames, nameQueries, namesCacheKey } from "../src/jsg/clickhouse-names";
+import {
+  clickHouseClient,
+  DEFAULT_CONNECTION,
+  type MetadataRow,
+} from "@bcr/market-data/research/clickhouse-http";
+import {
+  loadDisplayNames,
+  nameQueries,
+  namesCacheKey,
+} from "@bcr/market-data/research/clickhouse-names";
 import {
   displayLabel,
   displayName,
   EMPTY_DISPLAY_NAMES,
-  nameMatches,
   mergeDisplayNames,
+  nameMatches,
   parseDisplayNames,
   subsetNames,
-} from "../src/jsg/display-names";
-import { demoResearch } from "../src/jsg/demo";
-import { parseManifest } from "../src/jsg/model";
+} from "@bcr/market-data/research/display-names";
+import { parseManifest } from "@bcr/market-data/research/model";
+import { describe, expect, it } from "vitest";
+import { demoResearch } from "../src/data/demo";
 
 const columns = (table: string, names: string[]) => names.map((name) => ({ table, name }));
 describe("research display names", () => {
