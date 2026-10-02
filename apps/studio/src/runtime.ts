@@ -66,7 +66,7 @@ export async function createRuntimeServices(): Promise<RuntimeSession> {
     },
   });
   const metadata = session.metadata;
-  const workspace = workspaceServices(metadata);
+  const workspace = workspaceServices(metadata, session.binary, session);
   const search = createSearchIndex(
     metadata === undefined
       ? undefined

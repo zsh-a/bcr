@@ -38,7 +38,7 @@ export function KnowledgeRestorePanel({
     setError("");
     setSource(null);
     try {
-      const incoming = await readKnowledgeBackup(file);
+      const incoming = await readKnowledgeBackup(file, store.attachments);
       await flush();
       setSource({ filename: file.name, base: contentOf(store.getSnapshot()), incoming });
     } catch (reason) {
@@ -70,7 +70,7 @@ export function KnowledgeRestorePanel({
       </header>
       <p>
         选择本应用导出的
-        ZIP，先检查笔记、集合和引用，再确认写入。不会删除备份之外的本机笔记，也不会恢复密钥或同步连接。
+        ZIP，先校验笔记、引用和附件原文件，再确认恢复。不会删除备份之外的本机笔记，也不会恢复密钥或同步连接。
       </p>
       <label>
         知识库 ZIP 文件
@@ -93,6 +93,8 @@ export function KnowledgeRestorePanel({
           <p>
             {source.filename} · {Object.keys(source.incoming.notes).length} 篇笔记 ·{" "}
             {Object.keys(source.incoming.collections).length} 个集合
+            {source.incoming.attachments &&
+              ` · ${Object.keys(source.incoming.attachments).length} 个附件`}
           </p>
           <fieldset disabled={busy} className="knowledge-restore-options">
             <legend>同一 ID 的内容已存在时</legend>

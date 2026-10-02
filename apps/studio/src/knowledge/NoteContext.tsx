@@ -16,6 +16,8 @@ export function NoteContext({
   view,
   onViewChange,
   properties,
+  attachments,
+  attachmentCount = 0,
   onClose,
 }: {
   note: KnowledgeNote;
@@ -26,9 +28,11 @@ export function NoteContext({
   onOpen: (target: string) => void;
   /** Additional styles for a host panel. */
   className?: string;
-  view: "outline" | "links" | "properties";
-  onViewChange: (view: "outline" | "links" | "properties") => void;
+  view: "outline" | "links" | "properties" | "attachments";
+  onViewChange: (view: "outline" | "links" | "properties" | "attachments") => void;
   properties: ReactNode;
+  attachments?: ReactNode;
+  attachmentCount?: number;
   onClose: () => void;
 }) {
   const host = useRef<HTMLElement>(null);
@@ -96,6 +100,7 @@ export function NoteContext({
             { id: "outline", label: "大纲", count: headings.length },
             { id: "links", label: "链接", count: backlinks.length + analysis.links.length },
             { id: "properties", label: "属性" },
+            { id: "attachments", label: "附件", count: attachmentCount },
           ]}
           value={view}
           onValueChange={onViewChange}
@@ -111,7 +116,15 @@ export function NoteContext({
       </div>
       <div
         className="knowledge-context-panel"
-        aria-label={view === "outline" ? "笔记大纲" : view === "links" ? "笔记链接" : "笔记属性"}
+        aria-label={
+          view === "outline"
+            ? "笔记大纲"
+            : view === "links"
+              ? "笔记链接"
+              : view === "attachments"
+                ? "笔记附件"
+                : "笔记属性"
+        }
       >
         {view === "outline" && (
           <section className="knowledge-context-section">
@@ -189,6 +202,7 @@ export function NoteContext({
           </>
         )}
         {view === "properties" && properties}
+        {view === "attachments" && attachments}
       </div>
     </aside>
   );

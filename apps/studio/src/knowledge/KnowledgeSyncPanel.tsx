@@ -100,7 +100,13 @@ export function KnowledgeSyncPanel({
         onSubmit={(e) => {
           e.preventDefault();
           void action(async () => {
-            const remote = await GitHubKnowledge.connect(address, draftToken, branch);
+            const remote = await GitHubKnowledge.connect(
+              address,
+              draftToken,
+              branch,
+              undefined,
+              store.attachments,
+            );
             const target = remote.target;
             const previousId = knowledgeCredentialId(state.sync.target),
               nextId = knowledgeCredentialId(target);
@@ -170,6 +176,9 @@ export function KnowledgeSyncPanel({
           </label>
           <details className="knowledge-sync-advanced">
             <summary>高级</summary>
+            <p className="knowledge-sync-quiet">
+              附件同步单文件上限 16 MiB；较大文件可通过完整 ZIP 备份迁移。
+            </p>
             <label>
               分支
               <Input

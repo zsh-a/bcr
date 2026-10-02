@@ -89,6 +89,7 @@ export function noteEditing(
   notes: () => readonly KnowledgeNote[],
   open: (target: string) => void,
   currentNote: () => SlashContext = () => ({ id: "", title: "" }),
+  attach?: (view: EditorView, image: boolean) => void,
 ) {
   /** 最近一次补全查询的替换区间；pending 落定窗口里库不给应用时按它落地。 */
   let recent: { from: number; to: number } | null = null;
@@ -164,7 +165,22 @@ export function noteEditing(
           recent = { from, to: context.pos };
           return {
             from,
-            options: [...insertBlocks, ...templateBlocks(notes, currentNote)],
+            options: [
+              ...insertBlocks,
+              ...templateBlocks(notes, currentNote),
+              ...(attach
+                ? [false, true].map((image) => ({
+                    label: image ? "图片" : "附件",
+                    detail: image ? "选择图片，插入正文" : "选择 PDF、音视频或其他文件",
+                    type: image ? "image" : "file",
+                    section: blocksSection,
+                    apply(view: EditorView, _completion: Completion, start: number, end: number) {
+                      view.dispatch({ changes: { from: start - 1, to: end, insert: "" } });
+                      attach(view, image);
+                    },
+                  }))
+                : []),
+            ],
           };
         },
       ],

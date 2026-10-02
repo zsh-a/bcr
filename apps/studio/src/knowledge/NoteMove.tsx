@@ -207,7 +207,8 @@ export function NoteMove({
             </Button>
           </form>
           <p className="knowledge-small">
-            已解析的笔记链接会保持原目标。图片、附件及未解析链接暂不自动调整；集合与稳定 ID 不变。
+            已解析的笔记链接会保持原目标，本地附件引用不受移动影响。外部相对路径和未解析链接需自行检查；集合与稳定
+            ID 不变。
           </p>
           {unchanged && <p className="knowledge-small">目标与当前位置相同，无需移动。</p>}
           {intoSelf && <p className="knowledge-small">不能将文件夹移动到自身或子目录。</p>}

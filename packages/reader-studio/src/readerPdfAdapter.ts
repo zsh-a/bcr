@@ -139,7 +139,10 @@ export function unregisterReaderPdfDocument(book: ReaderBook, document: PDFDocum
     sharedDocuments.delete(section);
 }
 
-export async function openPdf(input: ReaderOpenInput): Promise<ReaderBook> {
+export async function openPdf(
+  input: ReaderOpenInput,
+  options: { retainDocument?: boolean } = {},
+): Promise<ReaderBook> {
   const pdfjs = await import("pdfjs-dist");
   pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     "pdfjs-dist/build/pdf.worker.mjs",
@@ -163,7 +166,8 @@ export async function openPdf(input: ReaderOpenInput): Promise<ReaderBook> {
       // Some malformed PDFs expose a broken outline while their pages remain
       // readable. Keep the page reader available and fall back to page list.
     }
-    const deferred = document.numPages > 32 || input.file.size >= 256 * 1024;
+    const deferred =
+      options.retainDocument || document.numPages > 32 || input.file.size >= 256 * 1024;
     const sections: ReaderSection[] = [];
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       if (input.signal?.aborted) throw new DOMException("Aborted", "AbortError");

@@ -40,6 +40,13 @@ function partition(state: KnowledgeState, previous?: ReadonlyMap<string, RecordM
         put(`${prefix}collections`, collection.id, collection),
       ),
       folders: [...value.folders],
+      ...(value.attachments
+        ? {
+            attachments: Object.values(value.attachments).map((asset) =>
+              put(`${prefix}attachments`, asset.id, asset),
+            ),
+          }
+        : {}),
     };
   }
   const manifest = JSON.stringify({
@@ -138,6 +145,12 @@ export class KnowledgePersistence {
           if (entity.id !== id) throw new Error("知识库记录身份不一致");
           result[field][id] = entity;
         }
+      }
+      if (c.attachments !== undefined) {
+        const attachments: Record<string, unknown> = {};
+        for (const id of ids(c.attachments, true))
+          attachments[id] = await read(`${prefix}attachments`, id);
+        Object.assign(result, { attachments });
       }
       return result;
     };

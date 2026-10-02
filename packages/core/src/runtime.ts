@@ -3,6 +3,7 @@ import type { ArtifactStore, ArtifactUsage } from "./artifact";
 import type { ResourceManager } from "./resource-manager";
 import type { Scheduler } from "./scheduler";
 import type { SearchIndex } from "./search";
+import type { BinaryStore } from "@bcr/storage-opfs";
 
 export interface RuntimeMetadata {
   readonly get: (key: string) => Promise<string | undefined>;
@@ -18,6 +19,8 @@ export interface RuntimeMetadata {
 export interface RuntimeServices {
   readonly scheduler: Scheduler;
   readonly artifacts: ArtifactStore;
+  /** Session-owned binary storage for persistent application resources. */
+  readonly binary?: BinaryStore | undefined;
   readonly metadata?: RuntimeMetadata | undefined;
   readonly search?: SearchIndex | undefined;
   readonly host?: RuntimeHost | undefined;

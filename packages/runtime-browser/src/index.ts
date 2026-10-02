@@ -114,6 +114,7 @@ export async function createBrowserRuntime(
     const session: RuntimeSession = {
       scheduler,
       artifacts,
+      binary: store,
       host,
       dispose,
       ...(db === undefined

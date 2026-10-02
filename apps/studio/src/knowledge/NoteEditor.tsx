@@ -9,9 +9,9 @@ import {
   type CSSProperties,
   type Ref,
 } from "react";
-import Markdown from "react-markdown";
+import Markdown, { defaultUrlTransform } from "react-markdown";
 import { createPortal } from "react-dom";
-import { SlidersHorizontal, X } from "lucide-react";
+import { Download, Eye, Paperclip, Replace, SlidersHorizontal, Trash2, X } from "lucide-react";
 import remarkGfm from "remark-gfm";
 import { type KnowledgeNote, type KnowledgeCollection } from "./model";
 import { MarkdownEditor, type MarkdownEditorHandle } from "./MarkdownEditor";
@@ -34,12 +34,28 @@ import {
 } from "./readingSettings";
 import {
   Button,
+  ContextMenu,
+  IconButton,
   Dialog,
   Select,
   useMediaQuery,
   useNavigation,
   useUpdateParticipant,
 } from "@bcr/react";
+import {
+  attachmentId,
+  attachmentPath,
+  attachmentReferences,
+  type AttachmentReference,
+} from "./attachmentModel";
+import {
+  AttachmentDialog,
+  AttachmentInline,
+  downloadAttachment,
+  RemoteImage,
+} from "./AttachmentView";
+import { publishDocumentHandoff } from "@bcr/document-core";
+import { canReadAttachmentText, readAttachmentText } from "./attachmentText";
 
 export interface EditorHandle {
   flush(): Promise<void>;
@@ -87,7 +103,9 @@ export function NoteEditor({
 }) {
   const navigation = useNavigation();
   const narrow = useMediaQuery("(width < 68.75em)");
-  const [contextView, setContextView] = useState<"outline" | "links" | "properties">("outline");
+  const [contextView, setContextView] = useState<
+    "outline" | "links" | "properties" | "attachments"
+  >("outline");
   const snapshot = useNoteDraft(note, store, locked);
   const { controller, note: draft, error } = snapshot;
   const { flush, change, initialError } = controller;
@@ -110,12 +128,112 @@ export function NoteEditor({
   const rename = useRef<LiveRename>(null);
   const body = useDeferredValue(draft.body);
   const analysis = useMemo(() => analyzeMarkdown(body), [body]);
+  const refs = useMemo(() => attachmentReferences(body), [body]);
+  const [attachmentStatus, setAttachmentStatus] = useState({
+    message: "",
+    busy: false,
+    error: false,
+  });
+  const [openedAttachment, setOpenedAttachment] = useState<string | null>(null);
+  const [attachmentMenu, setAttachmentMenu] = useState<{
+    ref: AttachmentReference;
+    expected: string;
+    x: number;
+    y: number;
+    trigger: HTMLElement;
+  } | null>(null);
+  const openedAsset = openedAttachment
+    ? store.getSnapshot().attachments?.[openedAttachment]
+    : undefined;
+  const [attachmentText, setAttachmentText] = useState({
+    body: "",
+    busy: false,
+    status: "",
+    error: "",
+  });
+  const [textPage, setTextPage] = useState<Awaited<ReturnType<typeof readAttachmentText>> | null>(
+    null,
+  );
+  const textController = useRef<AbortController | null>(null);
+  const [ocrLanguage, setOcrLanguage] = useState<"en" | "ja">("en");
+  useEffect(() => {
+    setAttachmentText({ body: "", busy: false, status: "", error: "" });
+    setTextPage(null);
+    return () => textController.current?.abort();
+  }, [openedAttachment, ocrLanguage]);
+  async function extractAttachmentText(next = false) {
+    if (!openedAsset || attachmentText.busy) return;
+    textController.current?.abort();
+    const controller = new AbortController();
+    textController.current = controller;
+    const page = next
+      ? textPage?.nextOffset !== null
+        ? (textPage?.page ?? 1)
+        : (textPage?.nextPage ?? 1)
+      : 1;
+    const offset = next ? (textPage?.nextOffset ?? 0) : 0;
+    setAttachmentText((previous) => ({
+      ...previous,
+      busy: true,
+      error: "",
+      status: openedAsset.mime.startsWith("image/")
+        ? "正在运行本地 OCR，首次使用会加载识别模型…"
+        : "正在读取附件文本…",
+    }));
+    try {
+      const result = await readAttachmentText(store, openedAsset, {
+        page,
+        offset,
+        ocr: true,
+        language: ocrLanguage,
+        signal: controller.signal,
+      });
+      controller.signal.throwIfAborted();
+      setTextPage(result);
+      setAttachmentText((previous) => ({
+        body: next && offset ? previous.body + result.text : result.text,
+        busy: false,
+        error: "",
+        status: `${result.label} · ${result.page} / ${result.totalPages}`,
+      }));
+    } catch (reason) {
+      if (!controller.signal.aborted)
+        setAttachmentText((previous) => ({
+          ...previous,
+          busy: false,
+          error: reason instanceof Error ? reason.message : String(reason),
+        }));
+    }
+  }
+  const openAttachment = (id: string) => {
+    if (!store.getSnapshot().attachments?.[id]) {
+      setAttachmentStatus({ message: "附件记录缺失，请同步或恢复备份", busy: false, error: true });
+      return;
+    }
+    setOpenedAttachment(id);
+  };
+  function menuAttachment(ref: AttachmentReference, x: number, y: number) {
+    const target =
+      document.elementFromPoint(x, y)?.closest<HTMLElement>("button") ?? document.activeElement;
+    if (!(target instanceof HTMLElement)) return;
+    setAttachmentMenu({
+      ref,
+      x,
+      y,
+      trigger: target,
+      expected: controller.getSnapshot().note.body.slice(ref.from, ref.to),
+    });
+  }
 
   async function flushForNavigation() {
+    await source.current?.flushAttachments();
     await rename.current?.settle();
     await controller.flushForNavigation();
   }
-  useUpdateParticipant({ blocked: () => null, save: flushForNavigation });
+  useUpdateParticipant({
+    blocked: () => (attachmentStatus.busy ? "附件正在保存，请完成后再更新。" : null),
+    save: flushForNavigation,
+  });
   useImperativeHandle(editorRef, () => ({ flush: flushForNavigation }), [controller]);
 
   function reveal(offset: number) {
@@ -302,6 +420,36 @@ export function NoteEditor({
       view={contextView}
       onViewChange={setContextView}
       properties={properties}
+      attachmentCount={new Set(refs.map((ref) => ref.id)).size}
+      attachments={
+        <div className="knowledge-attachments-list">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={locked || !!initialError}
+            onClick={() => {
+              setView("edit");
+              source.current?.pickAttachment();
+            }}
+          >
+            <Paperclip size={15} />
+            添加附件
+          </Button>
+          {[...new Map(refs.map((ref) => [ref.id, ref])).values()].map((ref) => (
+            <AttachmentInline
+              key={ref.id}
+              asset={store.getSnapshot().attachments?.[ref.id]}
+              storage={store.attachments}
+              label={ref.label}
+              onOpen={() => openAttachment(ref.id)}
+              onMenu={(x, y) => menuAttachment(ref, x, y)}
+            />
+          ))}
+          {!refs.length && (
+            <p className="knowledge-context-empty">粘贴截图或拖入文件，附件会随笔记保存。</p>
+          )}
+        </div>
+      }
       onClose={() => onContextOpenChange(false)}
     />
   );
@@ -352,6 +500,17 @@ export function NoteEditor({
               </button>
             </div>
             <div className="knowledge-tools">
+              <IconButton
+                label="插入附件"
+                size="sm"
+                disabled={locked || !!initialError}
+                onClick={() => {
+                  setView("edit");
+                  source.current?.pickAttachment();
+                }}
+              >
+                <Paperclip size={16} />
+              </IconButton>
               <button
                 ref={toolsTrigger}
                 type="button"
@@ -548,6 +707,25 @@ export function NoteEditor({
             {navigationError}
           </p>
         )}
+        {attachmentStatus.message && (
+          <div
+            className="knowledge-attachment-status"
+            data-error={attachmentStatus.error || undefined}
+            role={attachmentStatus.error ? "alert" : "status"}
+          >
+            <Paperclip size={14} />
+            {attachmentStatus.message}
+            {attachmentStatus.error && (
+              <IconButton
+                label="关闭附件提示"
+                size="sm"
+                onClick={() => setAttachmentStatus({ message: "", busy: false, error: false })}
+              >
+                <X size={14} />
+              </IconButton>
+            )}
+          </div>
+        )}
         {/* 阅读态用 hidden 收起；类名用于把它接进编辑区的 flex 纵列。 */}
         <div className="knowledge-editor-source" hidden={view === "read"}>
           <MarkdownEditor
@@ -559,6 +737,12 @@ export function NoteEditor({
             live={view !== "source"}
             typewriter={settings.typewriter}
             slashContext={() => ({ id: note.id, title: draft.title })}
+            attachmentStore={store}
+            onOpenAttachment={openAttachment}
+            onAttachmentMenu={menuAttachment}
+            onAttachmentStatus={(message, busy, error = false) =>
+              setAttachmentStatus({ message, busy, error })
+            }
             label="笔记正文"
             placeholder={"从这里开始写。\n\n支持 Markdown，也可以把资料摘录带进来慢慢整理。"}
             value={draft.body}
@@ -573,9 +757,60 @@ export function NoteEditor({
             {body ? (
               <Markdown
                 remarkPlugins={[remarkGfm, remarkKnowledgeLinks]}
+                urlTransform={(url) => (attachmentId(url) ? url : defaultUrlTransform(url))}
                 components={{
-                  img: ({ alt }) => <span>[图片：{alt || "附件"} · 首期不自动加载外部资源]</span>,
-                  a: ({ children, href }) => {
+                  img: ({ alt, src, node: imageNode }) => {
+                    const id = attachmentId(typeof src === "string" ? src : "");
+                    const ref = refs.find(
+                      (item) => item.id === id && item.from === imageNode?.position?.start.offset,
+                    );
+                    return id ? (
+                      <AttachmentInline
+                        asset={store.getSnapshot().attachments?.[id]}
+                        storage={store.attachments}
+                        label={alt || ""}
+                        image
+                        onOpen={() => openAttachment(id)}
+                        onMenu={ref ? (x, y) => menuAttachment(ref, x, y) : undefined}
+                      />
+                    ) : (
+                      <RemoteImage
+                        src={typeof src === "string" ? src : ""}
+                        alt={alt || "外部图片"}
+                        onSave={
+                          locked
+                            ? undefined
+                            : async (file) => {
+                                const start = imageNode?.position?.start.offset,
+                                  end = imageNode?.position?.end.offset;
+                                if (start === undefined || end === undefined) return;
+                                setView("edit");
+                                source.current?.insertFiles([file], {
+                                  from: start,
+                                  to: end,
+                                  expected: body.slice(start, end),
+                                });
+                              }
+                        }
+                      />
+                    );
+                  },
+                  a: ({ children, href, node: linkNode }) => {
+                    const id = attachmentId(href ?? "");
+                    if (id) {
+                      const ref = refs.find(
+                        (item) => item.id === id && item.from === linkNode?.position?.start.offset,
+                      );
+                      return (
+                        <AttachmentInline
+                          asset={store.getSnapshot().attachments?.[id]}
+                          storage={store.attachments}
+                          label={ref?.label || ""}
+                          onOpen={() => openAttachment(id)}
+                          onMenu={ref ? (x, y) => menuAttachment(ref, x, y) : undefined}
+                        />
+                      );
+                    }
                     const prefix = "#knowledge-link=";
                     const target = href?.startsWith(prefix)
                       ? decodeURIComponent(href.slice(prefix.length))
@@ -632,6 +867,127 @@ export function NoteEditor({
         }
         onCommit={onContextWidthChange}
       />
+      {openedAsset && (
+        <AttachmentDialog
+          key={openedAsset.id}
+          asset={openedAsset}
+          storage={store.attachments}
+          onClose={() => setOpenedAttachment(null)}
+          text={attachmentText}
+          ocrLanguage={ocrLanguage}
+          onOcrLanguageChange={setOcrLanguage}
+          onReadText={
+            canReadAttachmentText(openedAsset) ? () => void extractAttachmentText() : undefined
+          }
+          onNextText={
+            textPage && (textPage.nextOffset !== null || textPage.nextPage !== null)
+              ? () => void extractAttachmentText(true)
+              : undefined
+          }
+          onReader={
+            openedAsset.mime === "application/pdf" ||
+            /\.(?:epub|docx|txt|md|markdown|html|fb2)$/iu.test(openedAsset.name)
+              ? () =>
+                  void (async () => {
+                    await flushForNavigation();
+                    const blob = await store.attachments.require(openedAsset);
+                    const format = (await import("@bcr/document-core")).formatForName(
+                      openedAsset.name,
+                      openedAsset.mime,
+                    );
+                    const id = publishDocumentHandoff({
+                      jobId: `knowledge-${openedAsset.id}`,
+                      target: "reader",
+                      name: openedAsset.name,
+                      format,
+                      size: openedAsset.size,
+                      file: new File([blob], openedAsset.name, { type: openedAsset.mime }),
+                      sourceRef: {
+                        id: attachmentPath(openedAsset.hash),
+                        hash: openedAsset.hash,
+                        storage: "opfs",
+                        type: "file/document",
+                        format: openedAsset.mime,
+                      },
+                    });
+                    navigation.navigate(`/reader?document=${encodeURIComponent(id)}`);
+                  })().catch((reason) =>
+                    setAttachmentStatus({ message: String(reason), busy: false, error: true }),
+                  )
+              : undefined
+          }
+        />
+      )}
+      {attachmentMenu && (
+        <ContextMenu
+          label="附件操作"
+          title={store.getSnapshot().attachments?.[attachmentMenu.ref.id]?.name ?? "附件"}
+          x={attachmentMenu.x}
+          y={attachmentMenu.y}
+          trigger={attachmentMenu.trigger}
+          onClose={() => setAttachmentMenu(null)}
+          actions={[
+            {
+              id: "open",
+              label: "查看附件",
+              icon: <Eye size={15} />,
+              run: () => openAttachment(attachmentMenu.ref.id),
+            },
+            {
+              id: "download",
+              label: "下载原文件",
+              icon: <Download size={15} />,
+              run: () => {
+                const asset = store.getSnapshot().attachments?.[attachmentMenu.ref.id];
+                if (asset)
+                  void store.attachments
+                    .require(asset)
+                    .then((blob) => downloadAttachment(blob, asset.name))
+                    .catch((reason) =>
+                      setAttachmentStatus({ message: String(reason), busy: false, error: true }),
+                    );
+              },
+            },
+            {
+              id: "replace",
+              label: "替换附件",
+              icon: <Replace size={15} />,
+              disabled: locked || !!initialError,
+              separated: true,
+              run: () => {
+                setView("edit");
+                source.current?.pickAttachment(attachmentMenu.ref.image, {
+                  from: attachmentMenu.ref.from,
+                  to: attachmentMenu.ref.to,
+                  expected: attachmentMenu.expected,
+                });
+              },
+            },
+            {
+              id: "remove",
+              label: "移除当前引用",
+              icon: <Trash2 size={15} />,
+              disabled: locked || !!initialError,
+              danger: true,
+              run: () => {
+                if (
+                  !source.current?.replaceRange(
+                    attachmentMenu.ref.from,
+                    attachmentMenu.ref.to,
+                    "",
+                    attachmentMenu.expected,
+                  )
+                )
+                  setAttachmentStatus({
+                    message: "正文已变化，请重新选择附件",
+                    busy: false,
+                    error: true,
+                  });
+              },
+            },
+          ]}
+        />
+      )}
     </div>
   );
 }

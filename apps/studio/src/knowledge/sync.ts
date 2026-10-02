@@ -10,6 +10,7 @@ export async function syncKnowledge(
   beforeSync?: () => Promise<void>,
 ): Promise<"synced" | "conflicts"> {
   return store.runSync(async () => {
+    remote.useAttachments?.(store.attachments);
     await beforeSync?.();
     await store.flush();
     if (!same(remote.target, store.getSnapshot().sync.target))

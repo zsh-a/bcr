@@ -443,6 +443,9 @@ try {
   await mkdir("scripts/shots", { recursive: true });
   await a.page.screenshot({ path: "scripts/shots/knowledge-desktop.png", fullPage: true });
   await a.page.setViewportSize({ width: 390, height: 844 });
+  await a.page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
   const contextDrawer = a.page.getByRole("dialog", { name: "笔记信息", exact: true });
   if (await contextDrawer.isVisible()) {
     await a.page.keyboard.press("Escape");
@@ -481,8 +484,8 @@ try {
   await b.page.getByRole("button", { name: "保存当前结果", exact: true }).click();
   await b.page.getByRole("status").filter({ hasText: "已保存到本地" }).waitFor();
   await b.page.goto(`${origin}/knowledge`);
-  await b.page.getByText("导入、导出与备份", { exact: true }).click();
-  await b.page.getByRole("button", { name: "从资料集合导入", exact: true }).click();
+  await b.page.getByRole("button", { name: "更多操作", exact: true }).click();
+  await b.page.getByRole("menuitem", { name: "从资料集合导入", exact: true }).click();
   await b.page.locator(".knowledge-file-note").filter({ hasText: "知识来源" }).click();
   await b.page.locator(".knowledge-citations").waitFor();
   // Read the editor's rendered lines, not a textarea `.value` (source mode: raw text).
@@ -490,7 +493,8 @@ try {
   assert(importedBody.includes("> 独特引用证据"));
   await body(b.page, "独特引用证据的手写整理，不应被重复导入覆盖。");
   const importedCount = await b.page.locator(".knowledge-file-note").count();
-  await b.page.getByRole("button", { name: "从资料集合导入", exact: true }).click();
+  await b.page.getByRole("button", { name: "更多操作", exact: true }).click();
+  await b.page.getByRole("menuitem", { name: "从资料集合导入", exact: true }).click();
   await b.page.getByText(/已有条目保留原笔记/u).waitFor();
   assert.equal(await b.page.locator(".knowledge-file-note").count(), importedCount);
   await matchesBody(b.page, "独特引用证据的手写整理，不应被重复导入覆盖。");

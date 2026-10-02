@@ -1,5 +1,6 @@
 import { diffArrays } from "diff";
 import { same, type KnowledgeContent, type KnowledgeConflict, type KnowledgeNote } from "./model";
+import { mergeAttachments } from "./attachmentModel";
 
 interface Edit {
   start: number;
@@ -138,5 +139,7 @@ export function mergeContent(
   }
   // 目录名是集合语义：两端并集、双方都删除才消失，不产生逐条冲突。
   content.folders = [...new Set([...local.folders, ...remote.folders])].sort();
+  const attachments = mergeAttachments(base.attachments, local.attachments, remote.attachments);
+  if (attachments) content.attachments = attachments;
   return { content, conflicts };
 }

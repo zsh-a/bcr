@@ -57,6 +57,8 @@ import { KNOWLEDGE_PATH } from "../shell/host-manifests";
 import { assessExcerpt } from "../research/index";
 import { pendingCount } from "./model";
 import { noteMarkdown } from "./files";
+import { writeMarkdownArchive } from "./backup";
+import { attachmentReferences } from "./attachmentModel";
 import { createKnowledgeActions } from "./actions";
 import { useKnowledgeSync } from "./useKnowledgeSync";
 import { useAutoSync } from "./useAutoSync";
@@ -119,9 +121,9 @@ export function KnowledgeApp() {
   const store = useMemo(
     () =>
       bootAttempt === 0
-        ? workspaceServices(services.metadata).knowledge
-        : new KnowledgeStore(services.metadata),
-    [services.metadata, bootAttempt],
+        ? workspaceServices(services.metadata, services.binary, services).knowledge
+        : new KnowledgeStore(services.metadata, services.binary, services),
+    [services, bootAttempt],
   );
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [ready, setReady] = useState(false),
@@ -551,11 +553,31 @@ export function KnowledgeApp() {
   async function exportNote() {
     await flushEditor();
     const saved = note ? store.getSnapshot().notes[note.id] : undefined;
-    if (saved)
+    if (saved && attachmentReferences(saved.body).length) {
+      download(
+        await writeMarkdownArchive(
+          {
+            notes: { [saved.id]: saved },
+            collections: state.collections,
+            folders: [],
+            attachments: store.getSnapshot().attachments,
+          },
+          store.attachments,
+        ),
+        `${saved.title || "未命名笔记"}.zip`,
+      );
+    } else if (saved)
       download(
         new Blob([noteMarkdown(saved)], { type: "text/markdown;charset=utf-8" }),
         `${saved.title || "未命名笔记"}.md`,
       );
+  }
+  async function exportMarkdown() {
+    await flushEditor();
+    download(
+      await writeMarkdownArchive(store.getSnapshot(), store.attachments),
+      "bcr-knowledge-markdown.zip",
+    );
   }
   if (!ready)
     return error ? (
@@ -773,6 +795,12 @@ export function KnowledgeApp() {
               icon: <Upload size={15} />,
               disabled: busy || syncing,
               run: () => setPanel("restore"),
+            },
+            {
+              label: "导出 Markdown 附件包",
+              icon: <Download size={15} />,
+              disabled: busy,
+              run: () => void run(exportMarkdown),
             },
             {
               label: focusMode ? "退出专注模式" : "专注模式",

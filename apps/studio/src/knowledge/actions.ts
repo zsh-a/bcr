@@ -74,7 +74,7 @@ export function createKnowledgeActions(
     },
     async exportBackup() {
       await flush();
-      return writeKnowledgeBackup(contentOf(store.getSnapshot()));
+      return writeKnowledgeBackup(contentOf(store.getSnapshot()), store.attachments);
     },
   };
 }

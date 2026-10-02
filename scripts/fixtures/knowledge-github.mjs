@@ -56,7 +56,7 @@ export function createKnowledgeGitHub() {
     state.head = commit(next, state.head);
     return state.head;
   }
-  async function handle(url, method = "GET", body) {
+  async function handle(url, method = "GET", body, accept = "") {
     const request = new URL(url),
       path = decodeURIComponent(request.pathname.replace(/^\/repos\/[^/]+\/[^/]+/u, ""));
     requests.push({ method, path, body });
@@ -81,7 +81,7 @@ export function createKnowledgeGitHub() {
       const next = { ...trees.get(body.base_tree) };
       for (const change of body.tree) {
         if (change.sha === null) delete next[change.path];
-        else next[change.path] = change.content;
+        else next[change.path] = change.sha ? blobs.get(change.sha) : change.content;
       }
       return ok({ sha: tree(next) });
     }
@@ -111,8 +111,16 @@ export function createKnowledgeGitHub() {
         }),
       });
     }
+    if (path === "/git/blobs" && method === "POST") {
+      const value = body.encoding === "base64" ? Buffer.from(body.content, "base64") : body.content;
+      const sha = blobId(value);
+      blobs.set(sha, value);
+      return ok({ sha });
+    }
     if (path.startsWith("/git/blobs/")) {
       const text = blobs.get(path.split("/").at(-1));
+      if (text !== undefined && accept.includes("github.raw"))
+        return { status: 200, raw: Buffer.from(text) };
       return text === undefined
         ? { status: 404, json: {} }
         : ok({
@@ -153,10 +161,15 @@ export function createKnowledgeGitHub() {
     throw new Error(`Unexpected fixture request: ${method} ${path}`);
   }
   const fetcher = async (url, init = {}) => {
-    const result = await handle(url, init.method, init.body ? JSON.parse(init.body) : undefined);
-    return new Response(JSON.stringify(result.json), {
+    const result = await handle(
+      url,
+      init.method,
+      init.body ? JSON.parse(init.body) : undefined,
+      new Headers(init.headers).get("Accept") ?? "",
+    );
+    return new Response(result.raw ?? JSON.stringify(result.json), {
       status: result.status,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": result.raw ? "application/octet-stream" : "application/json" },
     });
   };
   return { state, initial, files, advance, handle, fetch: fetcher };

@@ -1,5 +1,6 @@
 import { decodeResearch, type ResearchExcerpt } from "../research/index";
 import { normalizeFolderPath, normalizeNotePath, assertUniquePaths } from "./paths";
+import { decodeAttachments, type AttachmentRecords } from "./attachmentModel";
 
 /** 领域字段上限：decode 校验与副本命名共用，副本后缀的长度要算进上限（copyName）。 */
 export const NOTE_TITLE_MAX = 500;
@@ -31,6 +32,8 @@ export interface KnowledgeContent {
   collections: Record<string, KnowledgeCollection>;
   /** 显式目录（含空目录）；其余目录仍由笔记路径推导。 */
   folders: string[];
+  /** Small immutable records only; file bytes live in the binary store. */
+  attachments?: AttachmentRecords | undefined;
 }
 export interface GitTarget {
   owner: string;
@@ -74,6 +77,7 @@ export const contentOf = (value: KnowledgeContent): KnowledgeContent => ({
   notes: value.notes,
   collections: value.collections,
   folders: [...value.folders],
+  ...(value.attachments ? { attachments: value.attachments } : {}),
 });
 export const validId = (value: unknown): value is string =>
   typeof value === "string" &&
@@ -153,7 +157,8 @@ export function decodeContent(value: unknown): KnowledgeContent {
     throw new Error("知识库目录清单无效");
   const folders = [...new Set(rawFolders.map((folder) => normalizeFolderPath(folder)))];
   assertUniquePaths(notes, folders);
-  return { notes, collections, folders };
+  const attachments = decodeAttachments(v.attachments);
+  return { notes, collections, folders, ...(attachments ? { attachments } : {}) };
 }
 export function decodeTarget(value: unknown): GitTarget {
   const t = object(value);
@@ -319,7 +324,11 @@ function decodeContentChanges(
   if (next.folders.length > 2_000) throw new Error("知识库目录清单无效");
   const folders = [...new Set(next.folders.map((folder) => normalizeFolderPath(folder)))];
   assertUniquePaths(notes, folders);
-  return { notes, collections, folders };
+  const attachments =
+    next.attachments === previous?.attachments
+      ? next.attachments
+      : decodeAttachments(next.attachments);
+  return { notes, collections, folders, ...(attachments ? { attachments } : {}) };
 }
 export function newNote(title = "未命名笔记", collectionId: string | null = null): KnowledgeNote {
   const now = Date.now();

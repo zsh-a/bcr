@@ -91,7 +91,7 @@ try {
   await dialog.getByText("已解析的笔记链接会保持原目标", { exact: false }).waitFor();
   assert.ok(
     (await dialog.innerText()).includes(
-      "已解析的笔记链接会保持原目标。图片、附件及未解析链接暂不自动调整；集合与稳定 ID 不变。",
+      "已解析的笔记链接会保持原目标，本地附件引用不受移动影响。外部相对路径和未解析链接需自行检查；集合与稳定 ID 不变。",
     ),
     "write-safety note is shown",
   );

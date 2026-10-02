@@ -6,12 +6,19 @@ import { EditorSessions } from "./editorSessions";
 import { noteEditing, type SlashContext } from "./noteEditing";
 import type { KnowledgeNote } from "./model";
 import { livePreview } from "./livePreview";
+import { attachmentEditing } from "./attachmentEditing";
+import type { KnowledgeStore } from "./store";
+import type { AttachmentReference } from "./attachmentModel";
 
 export interface MarkdownEditorHandle {
   reveal(offset: number): void;
   insert(text: string): void;
   /** 聚焦编辑器但不移动光标（模式切换回到编辑时用）。 */
   focus(): void;
+  pickAttachment(image?: boolean, range?: { from: number; to: number; expected: string }): void;
+  insertFiles(files: File[], range?: { from: number; to: number; expected: string }): void;
+  flushAttachments(): Promise<void>;
+  replaceRange(from: number, to: number, text: string, expected: string): boolean;
 }
 
 /**
@@ -38,6 +45,10 @@ export function MarkdownEditor({
   live = false,
   typewriter = false,
   slashContext,
+  attachmentStore,
+  onOpenAttachment,
+  onAttachmentMenu,
+  onAttachmentStatus,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -58,6 +69,10 @@ export function MarkdownEditor({
   typewriter?: boolean;
   /** / 插入面板展开模板变量所需的当前笔记信息。 */
   slashContext?: () => SlashContext;
+  attachmentStore?: KnowledgeStore;
+  onOpenAttachment?: (id: string) => void;
+  onAttachmentMenu?: (ref: AttachmentReference, x: number, y: number) => void;
+  onAttachmentStatus?: (message: string, busy: boolean, error?: boolean) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -66,8 +81,27 @@ export function MarkdownEditor({
   change.current = onChange;
   const selection = useRef(onSelectionChange);
   selection.current = onSelectionChange;
-  const latest = useRef({ notes, onOpenLink, slashContext, typewriter });
-  latest.current = { notes, onOpenLink, slashContext, typewriter };
+  const latest = useRef({
+    notes,
+    onOpenLink,
+    slashContext,
+    typewriter,
+    live,
+    onOpenAttachment,
+    onAttachmentMenu,
+    onAttachmentStatus,
+  });
+  latest.current = {
+    notes,
+    onOpenLink,
+    slashContext,
+    typewriter,
+    live,
+    onOpenAttachment,
+    onAttachmentMenu,
+    onAttachmentStatus,
+  };
+  const attachments = useRef<ReturnType<typeof attachmentEditing> | null>(null);
   const editability = useRef(new Compartment());
   const presentation = useRef(new Compartment());
   useImperativeHandle(
@@ -94,6 +128,41 @@ export function MarkdownEditor({
       focus() {
         view.current?.focus();
       },
+      pickAttachment(image = false, range) {
+        const current = view.current;
+        if (!current) return;
+        if (range) {
+          if (current.state.sliceDoc(range.from, range.to) !== range.expected) return;
+          current.dispatch({ selection: { anchor: range.from, head: range.to } });
+        }
+        attachments.current?.pick(current, image);
+      },
+      insertFiles(files, range) {
+        const current = view.current;
+        if (!current || current.state.readOnly) return;
+        if (range) {
+          if (current.state.sliceDoc(range.from, range.to) !== range.expected) return;
+          current.dispatch({ selection: { anchor: range.from, head: range.to } });
+        }
+        attachments.current?.insert(current, files);
+      },
+      flushAttachments() {
+        return attachments.current?.flush() ?? Promise.resolve();
+      },
+      replaceRange(from, to, text, expected) {
+        const current = view.current;
+        if (
+          !current ||
+          current.state.readOnly ||
+          from < 0 ||
+          to > current.state.doc.length ||
+          current.state.sliceDoc(from, to) !== expected
+        )
+          return false;
+        current.dispatch({ changes: { from, to, insert: text }, userEvent: "input" });
+        current.focus();
+        return true;
+      },
     }),
     [],
   );
@@ -101,6 +170,17 @@ export function MarkdownEditor({
   useEffect(() => {
     const parent = host.current;
     if (parent === null) return;
+    const files = attachmentStore
+      ? attachmentEditing({
+          store: attachmentStore,
+          open: (id) => latest.current.onOpenAttachment?.(id),
+          menu: (ref, x, y) => latest.current.onAttachmentMenu?.(ref, x, y),
+          status: (message, busy, error) =>
+            latest.current.onAttachmentStatus?.(message, busy, error),
+          live: () => latest.current.live,
+        })
+      : null;
+    attachments.current = files;
     const config = {
       doc: value,
       extensions: [
@@ -112,7 +192,9 @@ export function MarkdownEditor({
           () => latest.current.notes,
           (target) => latest.current.onOpenLink?.(target),
           () => latest.current.slashContext?.() ?? { id: "", title: "" },
+          (current, image) => files?.pick(current, image),
         ),
+        ...(files?.extension ?? []),
         typewriterMode(() => latest.current.typewriter),
         presentation.current.of(
           live
@@ -153,6 +235,8 @@ export function MarkdownEditor({
     });
     selection.current?.(created.state.selection.ranges.map(({ from, to }) => ({ from, to })));
     return () => {
+      files?.destroy();
+      attachments.current = null;
       sessions?.save(sessionId, created.state, created.scrollDOM.scrollTop);
       created.destroy();
       view.current = null;
@@ -160,7 +244,7 @@ export function MarkdownEditor({
     // Seeding from `value` is intentional: external updates are handled below,
     // and rebuilding on every keystroke would destroy the user's undo history.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see comment above.
-  }, [label, placeholder, maxLength, sessionId, sessions]);
+  }, [label, placeholder, maxLength, sessionId, sessions, attachmentStore]);
 
   useEffect(() => {
     view.current?.dispatch({
@@ -182,6 +266,7 @@ export function MarkdownEditor({
           : [],
       ),
     });
+    if (view.current) attachments.current?.refresh(view.current);
   }, [live]);
 
   useEffect(() => {

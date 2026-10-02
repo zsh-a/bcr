@@ -10,10 +10,12 @@ import {
   type KnowledgeContent,
   type KnowledgeNote,
 } from "./model";
+import { decodeAttachments } from "./attachmentModel";
 
 export const PREFIX = "knowledge/";
 export const MANIFEST = `${PREFIX}manifest.json`;
 export const FOLDERS = `${PREFIX}folders.json`;
+export const ATTACHMENTS = `${PREFIX}attachments.json`;
 export const FILE_LIMIT = 2 * 1024 * 1024;
 export const TRANSFER_LIMIT = 16 * 1024 * 1024;
 export function noteMarkdown(note: KnowledgeNote): string {
@@ -39,16 +41,19 @@ export function importMarkdown(raw: string, filename: string): KnowledgeNote {
   return decodeNote({ ...note, body: raw });
 }
 export function contentFiles(content: KnowledgeContent): Record<string, string> {
-  const version = content.folders.length
-    ? 3
-    : Object.values(content.notes).some((note) => note.path !== undefined)
-      ? 2
-      : 1;
+  const version = content.attachments
+    ? 4
+    : content.folders.length
+      ? 3
+      : Object.values(content.notes).some((note) => note.path !== undefined)
+        ? 2
+        : 1;
   const files: Record<string, string> = {
     [MANIFEST]: JSON.stringify({ format: "bcr-knowledge", version }) + "\n",
   };
   if (content.folders.length)
     files[FOLDERS] = JSON.stringify([...content.folders].sort(), null, 2) + "\n";
+  if (content.attachments) files[ATTACHMENTS] = JSON.stringify(content.attachments, null, 2) + "\n";
   for (const note of Object.values(content.notes).sort((a, b) => a.id.localeCompare(b.id))) {
     files[`${PREFIX}notes/${note.id}.md`] = noteMarkdown(note);
     files[`${PREFIX}citations/${note.id}.json`] = JSON.stringify(note.citations, null, 2) + "\n";
@@ -63,6 +68,7 @@ export function contentFiles(content: KnowledgeContent): Record<string, string> 
 export const isManagedPath = (path: string): boolean =>
   path === MANIFEST ||
   path === FOLDERS ||
+  path === ATTACHMENTS ||
   /^knowledge\/(notes\/[^/]+\.md|citations\/[^/]+\.json|collections\/[^/]+\.json)$/u.test(path);
 export function filesContent(files: Record<string, string>): KnowledgeContent {
   if (files[MANIFEST] === undefined) {
@@ -73,15 +79,22 @@ export function filesContent(files: Record<string, string>): KnowledgeContent {
   const manifest = object(JSON.parse(files[MANIFEST]));
   if (
     manifest.format !== "bcr-knowledge" ||
-    (manifest.version !== 1 && manifest.version !== 2 && manifest.version !== 3)
+    (manifest.version !== 1 &&
+      manifest.version !== 2 &&
+      manifest.version !== 3 &&
+      manifest.version !== 4)
   )
     throw new Error("远端知识库格式不支持");
   const result = emptyContent();
-  if (manifest.version === 3) {
+  if (manifest.version === 3 || manifest.version === 4) {
     const raw = files[FOLDERS];
-    if (raw === undefined) throw new Error("远端知识库缺少目录清单");
-    result.folders = JSON.parse(raw);
+    if (raw === undefined && manifest.version === 3) throw new Error("远端知识库缺少目录清单");
+    result.folders = raw === undefined ? [] : JSON.parse(raw);
   } else if (files[FOLDERS] !== undefined) throw new Error("远端知识库格式不支持");
+  if (manifest.version === 4) {
+    if (files[ATTACHMENTS] === undefined) throw new Error("知识库缺少附件清单");
+    result.attachments = decodeAttachments(JSON.parse(files[ATTACHMENTS]));
+  } else if (files[ATTACHMENTS] !== undefined) throw new Error("远端附件格式不支持");
   for (const [path, raw] of Object.entries(files)) {
     if (new TextEncoder().encode(raw).length > FILE_LIMIT)
       throw new Error("远端笔记超过 2 MiB 限制");

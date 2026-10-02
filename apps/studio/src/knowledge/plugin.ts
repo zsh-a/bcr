@@ -8,8 +8,8 @@ import { draftStorageKey } from "./draft";
 export const knowledgePlugin: WorkspacePlugin = {
   id: "knowledge",
   agentRenderers: knowledgeResultRenderers,
-  activate({ runtime: { metadata, search }, agent, reportError }) {
-    const store = workspaceServices(metadata).knowledge;
+  activate({ runtime: { metadata, search, binary }, agent, reportError }) {
+    const store = workspaceServices(metadata, binary).knowledge;
     const unregister = agent.registerAgentCapability(
       knowledgeCapability(store, (id) => {
         // Includes recoverable drafts whose editor is not mounted. Fail closed if storage is unavailable.

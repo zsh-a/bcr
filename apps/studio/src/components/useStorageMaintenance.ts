@@ -61,7 +61,12 @@ export function useStorageMaintenance(): StorageMaintenanceController {
   const startCleanup = useCallback(() => {
     setCleanup({ status: "loading" });
     const protectedIds = studio.getSnapshot().files.map(({ ref }) => ref.id);
-    void Effect.runPromise(services.artifacts.planCleanup({ protectedIds })).then(
+    void Effect.runPromise(
+      services.artifacts.planCleanup({
+        protectedIds,
+        protectedPrefixes: ["knowledge/attachments"],
+      }),
+    ).then(
       (plan) => {
         studio.log(
           "info",
@@ -78,7 +83,12 @@ export function useStorageMaintenance(): StorageMaintenanceController {
     const plan = cleanup.plan;
     setCleanup({ status: "running", plan });
     const protectedIds = studio.getSnapshot().files.map(({ ref }) => ref.id);
-    void Effect.runPromise(services.artifacts.reclaim(plan, { protectedIds })).then(
+    void Effect.runPromise(
+      services.artifacts.reclaim(plan, {
+        protectedIds,
+        protectedPrefixes: ["knowledge/attachments"],
+      }),
+    ).then(
       (result) => {
         studio.log(
           "ok",

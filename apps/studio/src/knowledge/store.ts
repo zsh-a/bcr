@@ -1,4 +1,7 @@
-import type { RuntimeMetadata } from "@bcr/core";
+import type { RuntimeMetadata, RuntimeServices } from "@bcr/core";
+import type { BinaryStore } from "@bcr/storage-opfs";
+import { KnowledgeAttachments } from "./attachments";
+import { mergeAttachments } from "./attachmentModel";
 import { mergeContent } from "./merge";
 import { noteRevision } from "./noteRevision";
 import { preserveRenamedLinks } from "./renameLinks";
@@ -251,7 +254,28 @@ export class KnowledgeStore {
       for (const listener of this.syncListeners) listener();
     }
   }
-  constructor(private metadata: RuntimeMetadata | undefined) {
+  readonly attachments: KnowledgeAttachments;
+  async importAttachment(file: File, signal?: AbortSignal) {
+    await this.ready;
+    const incoming = await this.attachments.import(file, signal);
+    let record = incoming;
+    await this.update((state) => {
+      signal?.throwIfAborted();
+      record =
+        Object.values(state.attachments ?? {}).find(
+          (asset) => asset.hash === incoming.hash && asset.mime === incoming.mime,
+        ) ?? incoming;
+      if (state.attachments?.[record.id]) return state;
+      return { ...state, attachments: { ...state.attachments, [record.id]: record } };
+    });
+    return record;
+  }
+  constructor(
+    private metadata: RuntimeMetadata | undefined,
+    readonly binary?: BinaryStore,
+    readonly compute?: Pick<RuntimeServices, "scheduler" | "artifacts">,
+  ) {
+    this.attachments = new KnowledgeAttachments(binary);
     this.persistence = metadata ? new KnowledgePersistence(metadata) : undefined;
     this.ready = this.load();
     void this.ready.catch(() => undefined);
@@ -420,6 +444,7 @@ export class KnowledgeStore {
         notes,
         collections,
         folders: [...new Set([...state.folders, ...content.folders])].sort(),
+        attachments: mergeAttachments(state.attachments, content.attachments),
       };
     });
   }

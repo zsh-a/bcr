@@ -47,7 +47,7 @@ try {
   await create("needle", "# Exact title\n\nTitle matches outrank body matches.");
   await create("Zeta", "# Last visited\n\nA recent note.");
   assert.equal(await page.locator("aside.knowledge-context:visible").count(), 0);
-  const resize = page.getByRole("separator", { name: "调整侧栏宽度", exact: true });
+  const resize = page.getByRole("separator", { name: "调整侧边栏宽度", exact: true });
   for (let i = 0; i < 3; i++) await resize.press("ArrowLeft");
   await page.waitForTimeout(220);
   const sidebar = await page.locator(".knowledge-sidebar").boundingBox();
@@ -92,6 +92,9 @@ try {
   await page.getByLabel("新知识集合名称", { exact: true }).fill("Research");
   await page.getByRole("button", { name: "创建集合", exact: true }).click();
   const collection = page.getByLabel("筛选笔记集合", { exact: true });
+  await page.waitForFunction(
+    () => !!document.querySelector('select[aria-label="筛选笔记集合"]')?.value,
+  );
   const collectionId = await collection.inputValue();
   assert(collectionId, "new collection becomes the current scope");
   await search().fill("missing");

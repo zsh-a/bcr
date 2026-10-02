@@ -9,8 +9,9 @@ import type { DocumentContentPackage, DocumentTranslationPackage } from "@bcr/do
 import { openCbz, openDocx, openEpub } from "./readerArchiveAdapters";
 import { formatForFile, makeBook } from "./readerAdapterShared";
 import { safeUrl, sanitizeHtml } from "./readerMarkup";
-import { openPdf } from "./readerPdfAdapter";
+import { openPdf, readerPdfDocument } from "./readerPdfAdapter";
 import { openText } from "./readerTextAdapters";
+import { readSectionContent, releaseBookResources } from "./readerContent";
 
 export { displayFormat, formatForFile, readerAcceptAttribute } from "./readerAdapterShared";
 export { safeUrl, sanitizeInlineStyle } from "./readerMarkup";
@@ -138,4 +139,88 @@ export async function openReaderFile(
   const adapter = readerAdapters.find((candidate) => candidate.formats.includes(format));
   if (adapter === undefined) throw new Error(`不支持的文件格式：${file.name}`);
   return adapter.open({ file, id, format, signal });
+}
+
+/** Shared page/section extraction for attachment readers; no library mutation. */
+export async function readReaderFileTextPage(
+  file: File,
+  id: string,
+  page: number,
+  signal?: AbortSignal,
+) {
+  const book = await openReaderFile(file, id, signal);
+  try {
+    signal?.throwIfAborted();
+    if (!Number.isSafeInteger(page) || page < 1 || page > book.sections.length)
+      throw new Error("附件页码超出范围");
+    const section = book.sections[page - 1]!;
+    const content = await readSectionContent(section, signal);
+    return {
+      page,
+      pages: book.sections.length,
+      label: section.label,
+      text: content.text,
+      engine: "reader-adapters-v1",
+    };
+  } finally {
+    releaseBookResources(book);
+  }
+}
+
+/** A bounded, reusable PDF preview session, independent of native browser PDF viewers. */
+export async function createReaderPdfPreview(file: File, id: string, signal?: AbortSignal) {
+  const book = await openPdf({ file, id, format: "pdf", signal }, { retainDocument: true });
+  const pdf = readerPdfDocument(book);
+  if (!pdf || signal?.aborted) {
+    releaseBookResources(book);
+    signal?.throwIfAborted();
+    throw new Error("无法打开 PDF 预览");
+  }
+  let closed = false;
+  return {
+    pages: pdf.numPages,
+    close() {
+      if (!closed) releaseBookResources(book);
+      closed = true;
+    },
+    async render(pageNumber: number, signal?: AbortSignal) {
+      signal?.throwIfAborted();
+      if (
+        closed ||
+        !Number.isSafeInteger(pageNumber) ||
+        pageNumber < 1 ||
+        pageNumber > pdf.numPages
+      )
+        throw new Error("PDF 页码无效");
+      const page = await pdf.getPage(pageNumber);
+      signal?.throwIfAborted();
+      const original = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({
+        scale: Math.min(2, 1440 / original.width, 1440 / original.height),
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.ceil(viewport.width));
+      canvas.height = Math.max(1, Math.ceil(viewport.height));
+      const task = page.render({ canvas, viewport });
+      const cancel = () => task.cancel();
+      signal?.addEventListener("abort", cancel, { once: true });
+      try {
+        if (signal?.aborted) cancel();
+        await task.promise;
+        signal?.throwIfAborted();
+        const blob = await new Promise<Blob>((resolve, reject) =>
+          canvas.toBlob(
+            (value) => (value ? resolve(value) : reject(new Error("PDF 预览生成失败"))),
+            "image/png",
+          ),
+        );
+        signal?.throwIfAborted();
+        return blob;
+      } finally {
+        signal?.removeEventListener("abort", cancel);
+        canvas.width = canvas.height = 0;
+        page.cleanup();
+      }
+    },
+  };
 }

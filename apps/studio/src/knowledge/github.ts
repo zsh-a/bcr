@@ -1,12 +1,19 @@
 import { contentFiles, FILE_LIMIT, filesContent, isManagedPath, TRANSFER_LIMIT } from "./files";
 import { decodeTarget, object, type GitTarget, type KnowledgeContent } from "./model";
 import { parseRepository } from "./repository";
+import {
+  attachmentArchivePath,
+  ATTACHMENT_TRANSFER_LIMIT,
+  type KnowledgeAttachment,
+} from "./attachmentModel";
+import type { KnowledgeAttachments } from "./attachments";
 
 export interface RemoteKnowledge {
   head: string;
   tree: string;
   content: KnowledgeContent;
   files: Record<string, string>;
+  binaryFiles?: Record<string, { sha: string; size: number }>;
 }
 export interface KnowledgeRemote {
   readonly target: GitTarget;
@@ -14,6 +21,7 @@ export interface KnowledgeRemote {
   isAncestor(base: string, head: string): Promise<boolean>;
   prepare(remote: RemoteKnowledge, content: KnowledgeContent): Promise<string>;
   publish(expected: string, commit: string): Promise<void>;
+  useAttachments?(storage: KnowledgeAttachments): void;
 }
 export class GitHubError extends Error {
   constructor(readonly status: number) {
@@ -36,7 +44,13 @@ function sha(value: unknown): string {
   return value;
 }
 export class GitHubKnowledge implements KnowledgeRemote {
-  static async connect(address: string, token: string, branch = "", fetcher?: typeof fetch) {
+  static async connect(
+    address: string,
+    token: string,
+    branch = "",
+    fetcher?: typeof fetch,
+    attachments?: KnowledgeAttachments,
+  ) {
     const identity = parseRepository(address);
     const probe = new GitHubKnowledge({ ...identity, branch: "main" }, token, fetcher);
     const repository = object(await probe.request(""));
@@ -48,12 +62,17 @@ export class GitHubKnowledge implements KnowledgeRemote {
       branch: branch.trim() || repository.default_branch,
     });
     const remote = new GitHubKnowledge(target, token, fetcher);
+    if (attachments) remote.useAttachments(attachments);
     // Validate the branch and remote content before replacing a working connection.
     await remote.read();
     return remote;
   }
   readonly target: GitTarget;
   private root: string;
+  private attachments: KnowledgeAttachments | undefined;
+  useAttachments(storage: KnowledgeAttachments) {
+    this.attachments = storage;
+  }
   constructor(
     target: GitTarget,
     private token: string,
@@ -140,7 +159,7 @@ export class GitHubKnowledge implements KnowledgeRemote {
     const managed = entries.filter(
       (entry) => typeof entry.path === "string" && isManagedPath(entry.path),
     );
-    if (managed.length > 11_000) throw new Error("远端知识库文件数量超过限制");
+    if (managed.length > 11_010) throw new Error("远端知识库文件数量超过限制");
     let bytes = 0;
     for (const entry of managed) {
       if (
@@ -168,7 +187,48 @@ export class GitHubKnowledge implements KnowledgeRemote {
         }),
       );
     }
-    return { head, tree, files, content: filesContent(files) };
+    const content = filesContent(files);
+    const binaryFiles: Record<string, { sha: string; size: number }> = {};
+    let assetBytes = 0;
+    const seen = new Set<string>();
+    for (const asset of Object.values(content.attachments ?? {})) {
+      if (seen.has(asset.hash)) continue;
+      seen.add(asset.hash);
+      assetBytes += asset.size;
+      if (assetBytes > ATTACHMENT_TRANSFER_LIMIT)
+        throw new Error("远端附件超过 512 MiB 同步容量限制");
+      const path = attachmentArchivePath(asset.hash),
+        entry = entries.find((item) => item.path === path);
+      if (!entry || entry.type !== "blob" || entry.mode !== "100644" || entry.size !== asset.size)
+        throw new Error(`远端缺少附件或大小不符：${asset.name}`);
+      binaryFiles[path] = { sha: sha(entry.sha), size: asset.size };
+      if (!this.attachments) throw new Error("当前运行环境未连接附件存储");
+      if (await this.attachments.get(asset)) await this.attachments.verify(asset);
+      else await this.readAttachment(asset, sha(entry.sha));
+    }
+    return {
+      head,
+      tree,
+      files,
+      content,
+      ...(Object.keys(binaryFiles).length ? { binaryFiles } : {}),
+    };
+  }
+  private async readAttachment(asset: KnowledgeAttachment, id: string) {
+    const response = await this.fetcher(`${this.root}/git/blobs/${sha(id)}`, {
+      headers: {
+        Accept: "application/vnd.github.raw+json",
+        Authorization: `Bearer ${this.token.trim()}`,
+        "X-GitHub-Api-Version": "2026-03-10",
+      },
+      signal: AbortSignal.timeout(120_000),
+      credentials: "omit",
+      redirect: "error",
+      cache: "no-store",
+    });
+    if (!response.ok) throw new GitHubError(response.status);
+    if (!response.body) throw new Error("GitHub 附件响应为空");
+    await this.attachments!.extract(asset, (sink) => response.body!.pipeTo(sink));
   }
   async isAncestor(base: string, head: string): Promise<boolean> {
     if (base === head) return true;
@@ -182,7 +242,13 @@ export class GitHubKnowledge implements KnowledgeRemote {
       throw new Error("笔记或引用快照超过单文件 2 MiB 限制");
     if (sizes.reduce((sum, size) => sum + size, 0) > TRANSFER_LIMIT)
       throw new Error("知识库同步内容超过 16 MiB");
-    const changes = [...new Set([...Object.keys(remote.files), ...Object.keys(files)])]
+    const changes: {
+      path: string;
+      mode: string;
+      type: string;
+      sha?: string | null;
+      content?: string;
+    }[] = [...new Set([...Object.keys(remote.files), ...Object.keys(files)])]
       .filter((path) => remote.files[path] !== files[path])
       .map((path) => ({
         path,
@@ -190,6 +256,31 @@ export class GitHubKnowledge implements KnowledgeRemote {
         type: "blob",
         ...(files[path] === undefined ? { sha: null } : { content: files[path] }),
       }));
+    let assetBytes = 0;
+    const uploads = new Set<string>();
+    for (const asset of Object.values(content.attachments ?? {})) {
+      if (uploads.has(asset.hash)) continue;
+      uploads.add(asset.hash);
+      assetBytes += asset.size;
+      if (assetBytes > ATTACHMENT_TRANSFER_LIMIT) throw new Error("附件超过 512 MiB 同步容量限制");
+      const path = attachmentArchivePath(asset.hash);
+      if (remote.binaryFiles?.[path]?.size === asset.size) continue;
+      if (!this.attachments) throw new Error("同步需要附件存储，未上传不完整笔记");
+      // Upload sequentially and encode only one bounded file at a time.
+      if (asset.size > 16 * 1024 * 1024)
+        throw new Error(
+          `「${asset.name}」超过 GitHub 附件同步单文件 16 MiB 上限，请使用完整 ZIP 备份迁移`,
+        );
+      const blob = await this.attachments.verify(asset);
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      let encoded = "";
+      for (let offset = 0; offset < bytes.length; offset += 32768)
+        encoded += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
+      const uploaded = object(
+        await this.request("/git/blobs", "POST", { content: btoa(encoded), encoding: "base64" }),
+      );
+      changes.push({ path, mode: "100644", type: "blob", sha: sha(uploaded.sha) });
+    }
     if (!changes.length) return remote.head;
     const tree = object(
       await this.request("/git/trees", "POST", { base_tree: remote.tree, tree: changes }),
