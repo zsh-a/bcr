@@ -101,7 +101,9 @@ bun run docgen         # 启动 DocGen Lab（apps/docgen-studio）
 bun run build:cloudflare  # 构建 WASM + BCR Studio 静态产物
 bun run deploy:cloudflare # 部署 apps/studio/dist 到 Cloudflare Workers
 cargo test --manifest-path crates/kernels/Cargo.toml
-bun run test:browser   # 自动启停 dev server，运行离线 Playwright 主链路
+bun run test:browser   # 自动启停 dev server，3 组并行运行 25 个核心浏览器检查
+bun run test:browser:full # 运行全部 78 个浏览器检查
+bun run test:ci        # 验证浏览器分组和命令行选择
 bun run test:pwa       # 使用已构建的 apps/studio/dist 验证生产版 Reader 离线与更新
 bun run test:pwa:knowledge # 使用已构建的 apps/studio/dist 验证生产版 Notes 独立 PWA（/notes/）
 ```
@@ -114,11 +116,17 @@ dev server。走查脚本位于 `scripts/`，共享的浏览器与路径 helper 
 跨包不得直接 import 另一个包的 `src/`）由根 `vite.config.ts` 的 `lint.overrides` 中
 `no-restricted-imports` 强制，不再需要单独的手写 AST 校验脚本。
 
-GitHub Actions 会执行格式/类型/单测、Rust/WASM、核心应用生产构建，并在真实 Chromium 中验证
-Media Studio 短音频、150 秒分窗、Studio 刷新缓存/任务历史、Quant Lab 回测参数重跑以及
-Market Atlas 数据质量与交互，以及 Manga Studio 单页翻译、Reader Studio 多格式阅读、Data Studio
-多格式表格解析与刷新恢复；
-失败时保留截图与 server 日志。
+GitHub Actions 的 push / PR 流程保留全仓格式、类型、单元测试、Rust/WASM、ClickHouse 导出边界和
+Studio 生产构建。浏览器检查按 workspace / quant / reader 三组并行，覆盖 25 个核心流程，
+包括回测、图表事件、实验与滚动验证、附件与恢复、Worker 和会话隔离；Reader 与 Notes 的生产
+PWA 离线检查也保留。每个检查记录耗时，失败时上传截图与日志。
+
+全部 78 个浏览器检查、各应用 PWA 安装矩阵、独立应用与 demo 构建、原生 ClickHouse 集成和
+上游 Agent Runtime 全量测试移到手动完整检查：GitHub Actions → CI → Run workflow → 勾选 `full`，
+或执行 `gh workflow run ci.yml -f full=true`。重复的布局、分页和格式组合检查不再延长每次提交的反馈时间。
+本地可用 `bun run test:browser --group=quant` 只检查一个分组，`--list` 查看计划；
+已有开发服务时，设置 `BCR_VERIFY_STUDIO_PORT=5317 BCR_VERIFY_MEDIA_PORT=5320` 使用独立端口，
+三个 Studio 分组依次使用 5317、5318、5319。浏览器档案按本次运行隔离，只清理本次创建的目录。
 
 ## BCR Studio（apps/studio）
 
@@ -255,7 +263,8 @@ Market Atlas · 行情 / K 线 / 自选 / 行业宽度
 - 行业宽度页可独立读取 ClickHouse 冻结快照，并将相同数据引用送入 Quant Lab 研究；个股行情与自选分组在 Market 内查看和管理
 - 确定性模拟曲线与 OHLCV 仅出现在明确标记的演示 fixture 中，不伪装成实时历史数据
 
-走查：`node scripts/verify-market-atlas.mjs`（由 `bun run test:browser` 自动执行），`node scripts/verify-market-trends.mjs` 验证真实日线、缓存、缺失数据与窄屏走势。
+走查：`node scripts/verify-market-atlas.mjs` 需要实时网络，也可通过 `BCR_VERIFY_LIVE_MARKETS=1 bun run test:browser` 启用。
+默认 CI 使用 `verify-market-trends.mjs` 的确定性数据验证日线、缓存、缺失数据与窄屏走势。
 
 ## Manga Studio（apps/manga-studio）
 

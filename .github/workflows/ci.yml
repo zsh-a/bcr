@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      full:
+        description: Run all browser variants, native integration and standalone builds
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -62,7 +68,9 @@ jobs:
         run: bun run check
 
       - name: Run TypeScript tests
-        run: bun run test
+        run: |
+          bun run test
+          bun run test:ci
 
       - name: Run Rust tests
         run: cargo test --manifest-path crates/kernels/Cargo.toml
@@ -81,25 +89,31 @@ jobs:
           python -m pip install -r scripts/requirements-jsg.txt
           python scripts/test_export_jsg.py
           python scripts/test_reconcile_jsg.py
+
+      # Native CLI integration and the upstream submodule's entire workspace
+      # are outside the browser deployment path. Keep them on demand.
+      - name: Verify native ClickHouse integration
+        if: github.event_name == 'workflow_dispatch' && inputs.full
+        env:
+          JSG_BINARY: ${{ github.workspace }}/crates/quant/target/debug/jsg
+        run: |
           python -m pip install chdb==4.4.0
-          cargo build --release --manifest-path crates/quant/Cargo.toml --bin jsg
+          cargo build --manifest-path crates/quant/Cargo.toml --bin jsg
           python scripts/test_native_jsg.py
 
       - name: Run Agent Runtime Rust tests
+        if: github.event_name == 'workflow_dispatch' && inputs.full
         working-directory: crates/agent-runtime
         run: cargo test
 
-      - name: Build Media Studio
-        run: node_modules/.bin/vp -C apps/media-studio build
-
-      - name: Build Quant Lab
-        run: node_modules/.bin/vp -C apps/quant-lab build
-
-      - name: Build Market Atlas
-        run: node_modules/.bin/vp -C apps/market-board build
-
-      - name: Build Manga Studio
-        run: node_modules/.bin/vp -C apps/manga-studio build
+      - name: Build standalone apps and demo
+        if: github.event_name == 'workflow_dispatch' && inputs.full
+        run: |
+          node_modules/.bin/vp -C apps/media-studio build
+          node_modules/.bin/vp -C apps/quant-lab build
+          node_modules/.bin/vp -C apps/market-board build
+          node_modules/.bin/vp -C apps/manga-studio build
+          node_modules/.bin/vp -C examples/demo build
 
       - name: Build BCR Studio
         run: node_modules/.bin/vp -C apps/studio build
@@ -116,38 +130,28 @@ jobs:
           include-hidden-files: true
           retention-days: 1
 
-      - name: Build demo
-        run: node_modules/.bin/vp -C examples/demo build
-
-      - name: Upload WASM package
+      - name: Upload WASM packages
         uses: actions/upload-artifact@v4
         with:
-          name: wasm-package
-          path: crates/kernels/pkg
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Upload Quant WASM package
-        uses: actions/upload-artifact@v4
-        with:
-          name: quant-wasm-package
-          path: crates/quant/pkg
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Upload Agent Runtime WASM package
-        uses: actions/upload-artifact@v4
-        with:
-          name: agent-wasm-package
-          path: crates/agent-wasm/pkg
+          name: wasm-packages
+          # Artifact paths are relative to their common ancestor: crates/.
+          path: |
+            crates/kernels/pkg
+            crates/quant/pkg
+            crates/agent-wasm/pkg
           if-no-files-found: error
           retention-days: 1
 
   browser-e2e:
     needs: validate
     runs-on: ubuntu-latest
-    # The 78 browser checks take about 20 minutes, plus PWA and setup checks.
-    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [workspace, quant, reader]
+    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && inputs.full && 30 || 15 }}
+    env:
+      BCR_BROWSER_SUITE: ${{ github.event_name == 'workflow_dispatch' && inputs.full && 'full' || 'core' }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -160,53 +164,46 @@ jobs:
       - name: Install dependencies
         run: bun ci
 
-      - name: Download WASM package
+      - name: Download WASM packages
         uses: actions/download-artifact@v4
         with:
-          name: wasm-package
-          path: crates/kernels/pkg
-
-      - name: Download Quant WASM package
-        uses: actions/download-artifact@v4
-        with:
-          name: quant-wasm-package
-          path: crates/quant/pkg
-
-      - name: Download Agent Runtime WASM package
-        uses: actions/download-artifact@v4
-        with:
-          name: agent-wasm-package
-          path: crates/agent-wasm/pkg
+          name: wasm-packages
+          path: crates
 
       - name: Install Chromium
         run: node_modules/.bin/playwright install --with-deps chromium
 
       - name: Download production Studio bundle
+        if: matrix.group == 'reader'
         uses: actions/download-artifact@v4
         with:
           name: studio-dist
           path: apps/studio/dist
 
       - name: Verify production Reader PWA
+        if: matrix.group == 'reader'
         run: bun run test:pwa
 
       - name: Verify independent PWA installation and offline starts
+        if: matrix.group == 'reader' && github.event_name == 'workflow_dispatch' && inputs.full
         run: bun run test:pwa:apps
 
       - name: Verify production Notes PWA
+        if: matrix.group == 'reader'
         run: bun run test:pwa:knowledge
 
       - name: Verify production knowledge offline and sync
+        if: matrix.group == 'reader'
         run: BCR_KNOWLEDGE_PRODUCTION=1 node scripts/verify-knowledge.mjs
 
       - name: Run browser verification
-        run: bun run test:browser
+        run: node scripts/verify-ci.mjs --suite="$BCR_BROWSER_SUITE" --group="${{ matrix.group }}"
 
       - name: Upload browser diagnostics
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: browser-diagnostics
+          name: browser-diagnostics-${{ matrix.group }}
           path: scripts/shots
           if-no-files-found: warn
           retention-days: 7

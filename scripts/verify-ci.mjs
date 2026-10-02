@@ -1,35 +1,89 @@
-import { closeSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  appendFileSync,
+  closeSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import { once } from "node:events";
+import {
+  browserGroupNames,
+  parseBrowserOptions,
+  selectBrowserGroups,
+} from "./lib/browser-suites.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const shots = path.join(root, "scripts", "shots");
 const vp = path.join(root, "node_modules", ".bin", "vp");
-const liveServers = new Set();
-const liveMarketChecks =
-  process.env.BCR_VERIFY_LIVE_MARKETS === "1" ? ["scripts/verify-market-atlas.mjs"] : [];
-mkdirSync(shots, { recursive: true });
+const liveProcesses = new Set();
+const options = parseBrowserOptions(process.argv.slice(2));
+const groups = selectBrowserGroups({
+  ...options,
+  liveMarkets: process.env.BCR_VERIFY_LIVE_MARKETS === "1",
+});
 
-// CI 任务每次都是全新浏览器档案；本地重放必须一致，否则自适应脚本会
-// 随历史状态漂移（继续/翻译按钮、批处理计数、恢复断言）。
-for (const entry of readdirSync(path.join(root, "scripts"))) {
-  if (entry.startsWith(".pw-profile-")) {
-    rmSync(path.join(root, "scripts", entry), { recursive: true, force: true });
+if (options.list) {
+  console.log(JSON.stringify(groups, null, 2));
+} else {
+  await verify();
+}
+
+function signalProcess(child, signal) {
+  if (!child.pid || child.exitCode !== null || child.signalCode !== null) return;
+  // Terminate the process group, including dev-server/browser descendants.
+  try {
+    process.kill(-child.pid, signal);
+  } catch {
+    child.kill(signal);
   }
 }
 
-function run(command, args, options = {}) {
+async function stopProcess(child) {
+  signalProcess(child, "SIGTERM");
+  if (child.exitCode === null && child.signalCode === null) {
+    let timer;
+    await Promise.race([
+      new Promise((resolve) => child.once("exit", resolve)),
+      new Promise((resolve) => {
+        timer = setTimeout(resolve, 5_000);
+      }),
+    ]);
+    clearTimeout(timer);
+    signalProcess(child, "SIGKILL");
+  }
+  liveProcesses.delete(child);
+}
+
+function runCheck(check, env, group, timings) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
+    const name = path.basename(check, ".mjs");
+    const logPath = path.join(shots, `${group}-${name}.log`);
+    const log = openSync(logPath, "w");
+    const started = Date.now();
+    const child = spawn(process.execPath, [path.join(root, check)], {
       cwd: root,
-      env: { ...process.env, ...options.env },
-      stdio: options.stdio ?? "inherit",
+      env: { ...process.env, ...env },
+      stdio: ["ignore", log, log],
+      detached: true,
     });
+    liveProcesses.add(child);
     child.once("error", reject);
-    child.once("exit", (code, signal) => {
+    child.once("close", (code, signal) => {
+      liveProcesses.delete(child);
+      closeSync(log);
+      const seconds = (Date.now() - started) / 1_000;
+      timings.push({ check: name, seconds, passed: code === 0 });
+      console.log(`[${group}] ${code === 0 ? "PASS" : "FAIL"} ${name} (${seconds.toFixed(1)}s)`);
       if (code === 0) resolve();
-      else reject(new Error(`${command} ${args.join(" ")} exited with ${code ?? signal}`));
+      else {
+        console.error(readFileSync(logPath, "utf8").split("\n").slice(-60).join("\n"));
+        reject(new Error(`${check} exited with ${code ?? signal}. Log: ${logPath}`));
+      }
     });
   });
 }
@@ -41,11 +95,9 @@ async function waitForServer(url, child, logPath) {
     if (child.exitCode !== null || child.signalCode !== null) {
       throw new Error(`dev server exited before becoming ready: ${url}`);
     }
-    // A leftover listener on the fixed port would answer fetch() while our own
-    // child dies on the bind conflict. Never trust a response that is not
-    // backed by a stably running child.
+    // A different listener must never satisfy this server's readiness check.
     if (readFileSync(logPath, "utf8").includes("is already in use")) {
-      throw new Error(`dev server port already in use (stale listener?): ${url}`);
+      throw new Error(`dev server port already in use: ${url}`);
     }
     let ok = false;
     try {
@@ -60,149 +112,93 @@ async function waitForServer(url, child, logPath) {
   throw new Error(`dev server did not become ready: ${url}`);
 }
 
-async function stopServer(child) {
-  liveServers.delete(child);
-  if (child.exitCode !== null || child.signalCode !== null) return;
-  // vp 可能留下子进程；按进程组终止，防止孤儿继续占用固定端口。
-  const signal = (name) => {
-    try {
-      process.kill(-child.pid, name);
-    } catch {
-      child.kill(name);
-    }
-  };
-  signal("SIGTERM");
-  await Promise.race([
-    new Promise((resolve) => child.once("exit", resolve)),
-    new Promise((resolve) => setTimeout(resolve, 5_000)),
-  ]);
-  if (child.exitCode === null && child.signalCode === null) {
-    signal("SIGKILL");
-    await Promise.race([
-      new Promise((resolve) => child.once("exit", resolve)),
-      new Promise((resolve) => setTimeout(resolve, 2_000)),
-    ]);
-  }
-}
-
-async function withServer({ name, app, url, checks }) {
-  const logPath = path.join(shots, `${name}-server.log`);
+async function withServer({ group, app, port, checks, timings }) {
+  const url = `http://127.0.0.1:${port}${app === "studio" ? "/studio" : ""}`;
+  const logPath = path.join(shots, `${group}-${app}-server.log`);
   const log = openSync(logPath, "w");
-  const child = spawn(vp, ["-C", app, "dev", "--host", "127.0.0.1"], {
-    cwd: root,
-    env: process.env,
-    stdio: ["ignore", log, log],
-    detached: true,
-  });
-  liveServers.add(child);
+  // Each group owns its profile. Never clear unrelated local or parallel runs.
+  const profile = mkdtempSync(path.join(root, "scripts", `.pw-profile-ci-${group}-${app}-`));
+  const profileName = path.basename(profile).slice(".pw-profile-".length);
+  const child = spawn(
+    vp,
+    [
+      "-C",
+      `apps/${app === "studio" ? "studio" : "media-studio"}`,
+      "dev",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      String(port),
+    ],
+    {
+      cwd: root,
+      env: process.env,
+      stdio: ["ignore", log, log],
+      detached: true,
+    },
+  );
+  liveProcesses.add(child);
   try {
+    await once(child, "spawn");
     await waitForServer(url, child, logPath);
-    for (const check of checks) {
-      await run(process.execPath, [path.join(root, check)], { env: { BASE_URL: url } });
+    for (const { script } of checks) {
+      await runCheck(script, { BASE_URL: url, BCR_VERIFY_PROFILE: profileName }, group, timings);
     }
   } finally {
-    await stopServer(child);
+    await stopProcess(child);
     closeSync(log);
+    rmSync(profile, { recursive: true, force: true });
   }
 }
 
-for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.once(signal, () => {
-    for (const child of liveServers) child.kill("SIGTERM");
-    process.exitCode = 1;
-  });
+async function verify() {
+  mkdirSync(shots, { recursive: true });
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.once(signal, () => {
+      for (const child of liveProcesses) signalProcess(child, "SIGTERM");
+      process.exitCode = 1;
+    });
+  }
+  const started = Date.now();
+  console.log(
+    `Browser suite: ${options.suite}; ${groups.length} parallel groups; ${groups.reduce((count, group) => count + group.checks.length, 0)} checks`,
+  );
+  const results = await Promise.allSettled(
+    groups.map(async ({ name, checks }) => {
+      const timings = [];
+      try {
+        for (const app of ["media", "studio"]) {
+          const appChecks = checks.filter((check) => check.app === app);
+          if (!appChecks.length) continue;
+          const port =
+            app === "media"
+              ? Number(process.env.BCR_VERIFY_MEDIA_PORT ?? 5180)
+              : Number(process.env.BCR_VERIFY_STUDIO_PORT ?? 5199) +
+                browserGroupNames.indexOf(name);
+          await withServer({ group: name, app, port, checks: appChecks, timings });
+        }
+      } finally {
+        const summary = [
+          `### Browser ${options.suite}: ${name}`,
+          "",
+          "| Check | Seconds | Result |",
+          "| --- | ---: | --- |",
+          ...timings.map(
+            ({ check, seconds, passed }) =>
+              `| ${check} | ${seconds.toFixed(1)} | ${passed ? "PASS" : "FAIL"} |`,
+          ),
+          "",
+        ].join("\n");
+        appendFileSync(path.join(shots, `${name}-timings.md`), summary);
+        if (process.env.GITHUB_STEP_SUMMARY)
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+      }
+    }),
+  );
+  const failures = results.filter((result) => result.status === "rejected");
+  for (const failure of failures) console.error(failure.reason);
+  console.log(
+    `Browser verification ${failures.length ? "FAILED" : "PASSED"} (${((Date.now() - started) / 1_000).toFixed(1)}s)`,
+  );
+  if (failures.length) process.exitCode = 1;
 }
-
-await withServer({
-  name: "media",
-  app: "apps/media-studio",
-  url: "http://127.0.0.1:5180",
-  checks: ["scripts/verify-media-studio.mjs", "scripts/verify-windowed-asr.mjs"],
-});
-
-await withServer({
-  name: "studio",
-  app: "apps/studio",
-  url: "http://127.0.0.1:5199/studio",
-  checks: [
-    "scripts/verify-general-agent-chat.mjs",
-    "scripts/verify-knowledge-agent-writes.mjs",
-    "scripts/verify-diagram.mjs",
-    "scripts/verify-agent-conversations.mjs",
-    "scripts/verify-credentials.mjs",
-    "scripts/verify-shell-architecture.mjs",
-    "scripts/verify-home-organization.mjs",
-    "scripts/verify-workspace-navigation.mjs",
-    "scripts/verify-app-layout.mjs",
-    "scripts/verify-modern-ui.mjs",
-    "scripts/verify-persistence.mjs",
-    "scripts/verify-quant-lab.mjs",
-    "scripts/verify-jsg.mjs",
-    "scripts/verify-quant-chart-events.mjs",
-    "scripts/verify-jsg-storage.mjs",
-    "scripts/verify-jsg-grid.mjs",
-    "scripts/verify-jsg-research.mjs",
-    "scripts/verify-quant-experiments.mjs",
-    "scripts/verify-quant-walk-forward.mjs",
-    "scripts/verify-jsg-evaluation.mjs",
-    "scripts/verify-jsg-features.mjs",
-    "scripts/verify-jsg-layout.mjs",
-    "scripts/verify-jsg-clickhouse-fixture.mjs",
-    "scripts/verify-market-trends.mjs",
-    ...liveMarketChecks,
-    "scripts/verify-manga-studio.mjs",
-    "scripts/verify-document-studio.mjs",
-    "scripts/verify-data-studio.mjs",
-    "scripts/verify-reader-studio.mjs",
-    "scripts/verify-reader-capture.mjs",
-    "scripts/verify-reader-large-txt.mjs",
-    "scripts/verify-reader-content.mjs",
-    "scripts/verify-reader-mobile.mjs",
-    "scripts/verify-reader-alignment.mjs",
-    "scripts/verify-reader-typography.mjs",
-    "scripts/verify-reader-pagination.mjs",
-    "scripts/verify-reader-txt-pagination.mjs",
-    "scripts/verify-reader-txt-flow.mjs",
-    "scripts/verify-reader-focus.mjs",
-    "scripts/verify-reader-audit.mjs",
-    "scripts/verify-reader-library.mjs",
-    "scripts/verify-reader-context-menu.mjs",
-    "scripts/verify-reader-toolbar.mjs",
-    "scripts/verify-reader-navigation-ui.mjs",
-    "scripts/verify-reader-restore-records.mjs",
-    "scripts/verify-reader-page-height.mjs",
-    "scripts/verify-reader-page-turn.mjs",
-    "scripts/verify-reader-tools.mjs",
-    "scripts/verify-reader-comics.mjs",
-    "scripts/verify-storage-cleanup.mjs",
-    "scripts/verify-global-search.mjs",
-    "scripts/verify-knowledge.mjs",
-    "scripts/verify-knowledge-workbench.mjs",
-    "scripts/verify-resource-layout.mjs",
-    "scripts/verify-knowledge-typography.mjs",
-    "scripts/verify-knowledge-change-plan.mjs",
-    "scripts/verify-knowledge-paths.mjs",
-    "scripts/verify-knowledge-dialogs.mjs",
-    "scripts/verify-theme.mjs",
-    "scripts/verify-background.mjs",
-    "scripts/verify-knowledge-restore.mjs",
-    "scripts/verify-knowledge-attachments.mjs",
-    "scripts/verify-knowledge-editor-context.mjs",
-    "scripts/verify-research.mjs",
-    "scripts/verify-research-backup.mjs",
-    "scripts/verify-research-search.mjs",
-    "scripts/verify-research-package.mjs",
-    "scripts/verify-research-recovery.mjs",
-    "scripts/verify-research-import-staging.mjs",
-    "scripts/verify-research-volumes.mjs",
-    "scripts/verify-research-stream.mjs",
-    "scripts/verify-research-task.mjs",
-    "scripts/verify-research-package-cancel.mjs",
-    "scripts/verify-accessibility.mjs",
-    "scripts/verify-responsive.mjs",
-    "scripts/verify-runtime-lifecycle.mjs",
-    "scripts/verify-session-isolation.mjs",
-  ],
-});
-
-console.log("browser CI verification PASSED");
