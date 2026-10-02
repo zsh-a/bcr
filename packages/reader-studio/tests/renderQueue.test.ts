@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { createRenderQueue } from "../src/renderQueue";
+import { createRenderQueue } from "../src/reading/renderQueue";
 
 it("bounds render work and removes cancelled waiters", async () => {
   const queue = createRenderQueue(1);

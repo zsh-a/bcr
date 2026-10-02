@@ -8,8 +8,11 @@ try {
   // Resource Timing is bounded; preserve actual module URLs, including Vite versions.
   page.on("request", (request) => {
     const url = request.url();
-    for (const name of ["store", "readingPosition"]) {
-      if (new URL(url).pathname.endsWith(`/packages/reader-studio/src/${name}.ts`))
+    for (const [name, file] of Object.entries({
+      store: "state/store.ts",
+      readingPosition: "reading/readingPosition.ts",
+    })) {
+      if (new URL(url).pathname.endsWith(`/packages/reader-studio/src/${file}`))
         modules.set(name, url);
     }
   });

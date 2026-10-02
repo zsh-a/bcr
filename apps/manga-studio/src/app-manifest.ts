@@ -1,4 +1,4 @@
-import { MANGA_COMPUTE as backends } from "./operations";
+import { MANGA_COMPUTE as backends } from "./execution/operations";
 import { definition } from "./app-definition";
 import { BookOpenText } from "lucide-react";
 import type { AppManifest } from "@bcr/shell-contract";

@@ -12,12 +12,13 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { LAUNCH_PAD_APPS, MANIFESTS, PANELS, launchShortcut } from "../shell/registry";
-import { resetLayout } from "./Dock";
-import { StorageMaintenanceDialogs } from "./StorageMaintenanceDialogs";
-import { useStorageMaintenance } from "./useStorageMaintenance";
+import { resetLayout } from "../workbench/Dock";
+import { StorageMaintenanceDialogs } from "../workbench/StorageMaintenanceDialogs";
+import { useStorageMaintenance } from "../workbench/useStorageMaintenance";
 import { importFile, runTask } from "../runtime";
-import { useSelection } from "../router";
-import { studio, useStudio } from "../store";
+import { useSelection } from "../workbench/useSelection";
+import { studio } from "../store";
+import { useStudio } from "../useStudio";
 
 interface Command {
   readonly id: string;

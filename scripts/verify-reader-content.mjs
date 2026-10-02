@@ -64,22 +64,25 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(new URL("/reader", process.env.BASE_URL ?? "http://localhost:5199").toString());
-  await page.getByLabel("导入阅读文件").waitFor();
+  await page.getByLabel("导入阅读文件").waitFor({ state: "attached" });
   // Use the live module URLs so this exercises the same provider registry as the UI.
   async function run(name, buffer, query) {
     return page.evaluate(
       async ({ name, bytes, query, storeModule, modulePrefix }) => {
         const urls = await window.__bcrTestModuleUrls();
         const base = urls.filter((url) => new URL(url).pathname.endsWith(storeModule)).at(-1);
+        const sourceRoot = new URL(base).pathname.slice(0, -storeModule.length) + modulePrefix;
         const load = (file) =>
           import(
             urls.filter((url) => new URL(url).pathname.endsWith(modulePrefix + file)).at(-1) ??
-              new URL(file, base).toString()
+              new URL(sourceRoot + file, base).toString()
           );
-        const { importReaderFile } = await load("readerImports.ts");
-        const { readerRuntime, createReaderRuntime } = await load("readerRuntimeCore.ts");
-        const content = await load("readerContent.ts");
-        const { persistBook, persistReader, restoreReader } = await load("readerPersistence.ts");
+        const { importReaderFile } = await load("library/readerImports.ts");
+        const { readerRuntime, createReaderRuntime } = await load("runtime/readerRuntimeCore.ts");
+        const content = await load("content/readerContent.ts");
+        const { persistBook } = await load("persistence/codec.ts");
+        const { persistReader } = await load("persistence/readerPersistence.ts");
+        const { restoreReader } = await load("persistence/restore.ts");
         const runtime = readerRuntime() ?? (await createReaderRuntime());
         const book = await importReaderFile(runtime, new File([new Uint8Array(bytes)], name));
         const cold = book.sections.every(
@@ -114,7 +117,7 @@ try {
         await content.loadSectionContent(last);
         const reloaded = content.sectionContentReady(last);
         repin();
-        const { reader, getReaderState } = await load("store.ts");
+        const { reader, getReaderState } = await load("state/store.ts");
         const state = { ...getReaderState(), library: [book], activeBookId: book.id };
         await persistReader(runtime, state);
         const projection = await restoreReader(runtime, { deferBinary: true });
@@ -122,8 +125,9 @@ try {
         const coldHits = await content.searchReaderContent(coldBook, query);
         const coldRestoreSearch = coldHits.some((hit) => hit.sectionId === last.id);
         content.releaseBookResources(coldBook);
-        const { createReaderBackup, inspectReaderBackup, prepareReaderRestore } =
-          await load("readerBackup.ts");
+        const { createReaderBackup, inspectReaderBackup, prepareReaderRestore } = await load(
+          "persistence/readerBackup.ts",
+        );
         const backup = await inspectReaderBackup(await createReaderBackup(runtime, state));
         // Derived block caches must be rebuildable using only the portable source.
         for (const path of await runtime.binary.list("reader/content-v1/"))
@@ -153,7 +157,7 @@ try {
         name,
         bytes: [...buffer],
         query,
-        storeModule: "/packages/reader-studio/src/store.ts",
+        storeModule: "/packages/reader-studio/src/state/store.ts",
         modulePrefix: READER_MODULE_PREFIX,
       },
     );

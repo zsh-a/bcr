@@ -10,7 +10,9 @@ async function attachStore(page) {
   await page.evaluate(async () => {
     const urls = await window.__bcrTestModuleUrls();
     window.libraryAudit = await import(
-      urls.find((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
+      urls.find((url) =>
+        new URL(url).pathname.endsWith("/packages/reader-studio/src/state/store.ts"),
+      )
     );
   });
 }

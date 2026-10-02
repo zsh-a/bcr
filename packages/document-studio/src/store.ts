@@ -1,4 +1,3 @@
-import { useSyncExternalStore } from "react";
 import type { NoticeTone, RuntimeMetadata } from "@bcr/react";
 import {
   createDocumentJob,
@@ -285,14 +284,6 @@ class DocumentStore {
 }
 
 export const documents = new DocumentStore();
-
-export function useDocumentStudio<T>(selector: (state: DocumentState) => T): T {
-  return useSyncExternalStore(
-    documents.subscribe,
-    () => selector(documents.getSnapshot()),
-    () => selector(documents.getSnapshot()),
-  );
-}
 
 export function activeDocument(state: DocumentState): DocumentJob {
   return state.jobs.find((job) => job.id === state.activeJobId) ?? state.jobs[0]!;

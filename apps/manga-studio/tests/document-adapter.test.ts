@@ -6,8 +6,8 @@ import {
   mangaOcrToDocumentContentPackage,
   mangaPageToDocumentPackages,
   mangaTranslationToDocumentTranslationPackage,
-} from "../src/document-adapter";
-import type { MangaOcrArtifact, MangaTranslationArtifact, TextRegion } from "../src/model";
+} from "../src/documents/document-adapter";
+import type { MangaOcrArtifact, MangaTranslationArtifact, TextRegion } from "../src/project/model";
 
 const sourceRef: ArtifactRef = {
   id: "source/page-01",

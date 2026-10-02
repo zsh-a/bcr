@@ -1,5 +1,5 @@
-import { importReaderFile } from "../src/readerImports";
-import { loadSectionContent } from "../src/readerContent";
+import { importReaderFile } from "../src/library/readerImports";
+import { loadSectionContent } from "../src/content/readerContent";
 import { describe, expect, it } from "vitest";
 import { Context, Effect, Layer } from "effect";
 import { artifactStore, ArtifactStoreTag, contentHash } from "@bcr/core";
@@ -13,11 +13,12 @@ import {
   inspectReaderBackup,
   prepareReaderRestore,
   planReaderBackup,
-} from "../src/readerBackup";
-import { createDemoBook, DEFAULT_READER_SETTINGS, type ReaderSettings } from "../src/model";
-import { getReaderState } from "../src/store";
+} from "../src/persistence/readerBackup";
+import { createDemoBook, DEFAULT_READER_SETTINGS, type ReaderSettings } from "../src/state/model";
+import { getReaderState } from "../src/state/store";
 import type { ReaderRuntime } from "../src/runtime";
-import { persistReader, restoreNavigationHistory } from "../src/readerPersistence";
+import { persistReader } from "../src/persistence/readerPersistence";
+import { restoreNavigationHistory } from "../src/persistence/codec";
 
 const book = {
   ...createDemoBook(),

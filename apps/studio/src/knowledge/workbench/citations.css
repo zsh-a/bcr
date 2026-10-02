@@ -1,0 +1,83 @@
+/* ---------- 引用 ---------- */
+
+.knowledge-citations {
+  max-width: var(--content-max);
+  margin: var(--space-5) auto;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.knowledge-citations h2 {
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+}
+
+.knowledge-citations h2 span {
+  color: var(--color-accent);
+  margin-left: var(--space-2);
+}
+
+.knowledge-citations p {
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+  margin: var(--space-2) 0 0;
+}
+
+.knowledge-citations details {
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.knowledge-citations summary {
+  cursor: pointer;
+}
+
+.knowledge-citations summary span {
+  color: var(--color-faint);
+  margin-left: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.knowledge-citations blockquote {
+  white-space: pre-wrap;
+  color: var(--color-muted);
+  margin: var(--space-4) 0;
+}
+
+.knowledge-citations a {
+  color: var(--color-accent);
+}
+
+/* ---------- 空状态 ---------- */
+
+.knowledge-empty {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: clamp(calc(1.5 * var(--space-8)), 10vh, calc(3 * var(--space-8))) var(--space-8);
+}
+
+.knowledge-empty h2 {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xl);
+  line-height: var(--text-2xl--line-height);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  margin: var(--space-6) 0;
+}
+
+.knowledge-empty p {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-base--line-height);
+  margin-bottom: var(--space-7);
+}
+
+.knowledge-empty-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}

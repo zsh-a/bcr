@@ -1,0 +1,75 @@
+.ma-breadth-toolbar {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.ma-breadth-toolbar .ui-select {
+  flex: 1;
+  min-width: 0;
+  max-width: 600px;
+}
+
+.ma-breadth-inspector {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-4);
+  background: var(--color-surface);
+}
+
+.ma-breadth-inspector h2 {
+  font-size: var(--text-lg);
+}
+
+.ma-breadth-inspector p,
+.ma-breadth-inspector > span {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.ma-breadth-inspector strong {
+  color: var(--color-accent);
+  font: 500 var(--text-xl) var(--font-mono);
+}
+
+.ma-breadth-inspector > button {
+  margin-left: auto;
+}
+
+.ma-source-dialog {
+  width: min(540px, calc(100vw - var(--space-7)));
+}
+
+.ma-source-fields {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.ma-source-fields label,
+.ma-source-dates label {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.ma-source-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.ma-checkbox {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-sm);
+  margin: var(--space-3) 0;
+}

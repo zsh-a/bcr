@@ -1,7 +1,11 @@
 import type { SqliteDb } from "@bcr/storage-sqlite";
 import { describe, expect, it } from "vitest";
-import { MangaModelRegistry, mangaModelCatalog, modelKeyForExecution } from "../src/model-registry";
-import type { MangaAdapterExecution } from "../src/model";
+import {
+  MangaModelRegistry,
+  mangaModelCatalog,
+  modelKeyForExecution,
+} from "../src/models/model-registry";
+import type { MangaAdapterExecution } from "../src/project/model";
 
 function fakeDb(initial?: string): { db: SqliteDb; read: () => string | undefined } {
   let value = initial;

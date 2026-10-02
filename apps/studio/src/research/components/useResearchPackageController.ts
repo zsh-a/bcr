@@ -4,7 +4,7 @@ import { writeResearchPackage } from "../packageStream";
 import { verifyRecoveryPackage } from "../packageRecovery";
 import { useResearchPackageRecovery } from "./useResearchPackageRecovery";
 import { useEffect, useRef, useState } from "react";
-import type { ResearchLibrary, ResearchStore } from "../index";
+import type { ResearchLibrary, ResearchStore } from "..";
 import {
   PACKAGE_LIMIT,
   researchVolumeStatus,

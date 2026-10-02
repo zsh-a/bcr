@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createDemoBook } from "../src/model";
-import { normalizeReaderProgress } from "../src/session-contract";
+import { createDemoBook } from "../src/state/model";
+import { normalizeReaderProgress } from "../src/state/session-contract";
 
 describe("reader session contract", () => {
   it("preserves image-relative positions and rejects malformed image anchors", () => {

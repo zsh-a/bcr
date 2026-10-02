@@ -11,9 +11,9 @@ import {
   resolveNoteLink,
   remarkKnowledgeLinks,
   internalTarget,
-} from "../src/knowledge/markdownAnalysis";
-import { newNote } from "../src/knowledge/model";
-import { EditorSessions } from "../src/knowledge/editorSessions";
+} from "../src/knowledge/notes/markdownAnalysis";
+import { newNote } from "../src/knowledge/session/model";
+import { EditorSessions } from "../src/knowledge/editor/editorSessions";
 import {
   decodeWorkbench,
   emptyWorkbench,
@@ -27,11 +27,11 @@ import {
   setContextWidth,
   setSidebar,
   setSidebarWidth,
-} from "../src/knowledge/workbench";
-import { fillTemplate, localDay } from "../src/knowledge/format";
+} from "../src/knowledge/workbench/workbench";
+import { fillTemplate, localDay } from "../src/knowledge/editor/format";
 import { createWorkspaceServices } from "../src/workspace";
-import { createKnowledgeActions } from "../src/knowledge/actions";
-import { editorAnalysis } from "../src/knowledge/editorAnalysis";
+import { createKnowledgeActions } from "../src/knowledge/notes/actions";
+import { editorAnalysis } from "../src/knowledge/editor/editorAnalysis";
 
 describe("knowledge Markdown relationships", () => {
   it("shares parser semantics across editor consumers and caches immutable documents", () => {

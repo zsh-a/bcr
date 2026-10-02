@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { ResearchLibrary, ResearchStore } from "../index";
+import type { ResearchLibrary, ResearchStore } from "..";
 import {
   createResearchBackup,
   decodeResearchBackup,

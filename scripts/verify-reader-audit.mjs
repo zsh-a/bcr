@@ -10,11 +10,11 @@ async function attachAudit(page) {
   await page.evaluate(async () => {
     const urls = await window.__bcrTestModuleUrls();
     const source = (name) =>
-      urls.find((url) => new URL(url).pathname.endsWith(`/packages/reader-studio/src/${name}.ts`));
-    window.readerAudit = await import(source("store"));
-    window.readerAuditContent = await import(source("readerContent"));
-    window.readerAuditPosition = await import(source("readingPosition"));
-    window.readerAuditCapture = await import(source("readerCapture"));
+      urls.find((url) => new URL(url).pathname.endsWith(`/packages/reader-studio/src/${name}`));
+    window.readerAudit = await import(source("state/store.ts"));
+    window.readerAuditContent = await import(source("content/readerContent.ts"));
+    window.readerAuditPosition = await import(source("reading/readingPosition.ts"));
+    window.readerAuditCapture = await import(source("navigation/readerCapture.ts"));
   });
 }
 try {

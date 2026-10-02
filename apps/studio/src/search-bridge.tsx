@@ -3,7 +3,8 @@ import { listKnownInstruments } from "@bcr/market-data";
 import type { RuntimeServices } from "@bcr/react";
 import { useEffect } from "react";
 import { MANIFESTS as APPS } from "./shell/registry";
-import { useStudio, type FileRecord, type TaskRecord } from "./store";
+import { type FileRecord, type TaskRecord } from "./store";
+import { useStudio } from "./useStudio";
 
 function appDocuments(): ReadonlyArray<SearchDocument> {
   return APPS.map((app) => ({

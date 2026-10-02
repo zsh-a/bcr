@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { history, undo, undoDepth } from "@codemirror/commands";
-import { knowledgeMarkdownLanguage } from "../src/knowledge/markdownEditor";
+import { knowledgeMarkdownLanguage } from "../src/knowledge/editor/markdownEditor";
 import {
   editorBlocks,
   inlineFormat,
   insertBlock,
   lineFormat,
   proseContext,
-} from "../src/knowledge/editorCommands";
+} from "../src/knowledge/editor/editorCommands";
 import {
   editorLinkAt,
   editorLinkMarkdown,
@@ -17,9 +17,9 @@ import {
   safeEditorLink,
   targetValid,
   type EditorTarget,
-} from "../src/knowledge/editorContext";
-import { analyzeEditorLinks, analyzeMarkdown } from "../src/knowledge/markdownAnalysis";
-import { localDay } from "../src/knowledge/format";
+} from "../src/knowledge/editor/editorContext";
+import { analyzeEditorLinks, analyzeMarkdown } from "../src/knowledge/notes/markdownAnalysis";
+import { localDay } from "../src/knowledge/editor/format";
 
 function state(doc: string, from = 0, to = from) {
   return EditorState.create({

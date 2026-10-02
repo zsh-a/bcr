@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { findGlossaryMatches, translateWithGlossary } from "../src/glossary";
-import type { MangaGlossaryEntry } from "../src/model";
+import { findGlossaryMatches, translateWithGlossary } from "../src/project/glossary";
+import type { MangaGlossaryEntry } from "../src/project/model";
 
 const glossary: ReadonlyArray<MangaGlossaryEntry> = [
   { id: "short", source: "勇", target: "勇者", note: "", enabled: true },

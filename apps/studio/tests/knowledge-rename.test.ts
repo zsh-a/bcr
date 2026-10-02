@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { newNote, type KnowledgeNote } from "../src/knowledge/model";
-import { KnowledgeStore } from "../src/knowledge/store";
-import { applyRenamedLinks, preserveRenamedLinks } from "../src/knowledge/renameLinks";
-import { noteRevision } from "../src/knowledge/noteRevision";
+import { newNote, type KnowledgeNote } from "../src/knowledge/session/model";
+import { KnowledgeStore } from "../src/knowledge/session/store";
+import { applyRenamedLinks, preserveRenamedLinks } from "../src/knowledge/notes/renameLinks";
+import { noteRevision } from "../src/knowledge/notes/noteRevision";
 
 const target = { ...newNote("旧标题"), id: "target", body: "[[旧标题]]" };
 const source = {

@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { percentageForLocator, createLocator } from "@bcr/reader-core";
-import { scanTxt, readTxtRange, searchTxt, TXT_CHUNK_BYTES, validTxtRanges } from "../src/txtIndex";
-import { attachTxtSections } from "../src/lazyTxt";
-import { loadSectionContent, subscribeSectionContent } from "../src/readerContent";
-import { textSections } from "../src/readerMarkup";
-import { createDemoBook } from "../src/model";
-import { persistBook } from "../src/readerPersistence";
+import {
+  scanTxt,
+  readTxtRange,
+  searchTxt,
+  TXT_CHUNK_BYTES,
+  validTxtRanges,
+} from "../src/content/txtIndex";
+import { attachTxtSections } from "../src/content/lazyTxt";
+import { loadSectionContent, subscribeSectionContent } from "../src/content/readerContent";
+import { textSections } from "../src/adapters/readerMarkup";
+import { createDemoBook } from "../src/state/model";
+import { persistBook } from "../src/persistence/codec";
 
 describe("demand-loaded TXT", () => {
   it("evicts by byte budget as well as paragraph count", async () => {

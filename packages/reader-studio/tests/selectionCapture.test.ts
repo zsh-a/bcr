@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createTextLocator } from "@bcr/reader-core";
-import { createDemoBook } from "../src/model";
-import { captureReaderSelection } from "../src/readerCapture";
+import { createDemoBook } from "../src/state/model";
+import { captureReaderSelection } from "../src/navigation/readerCapture";
 import { resolveReaderCitation } from "../src/researchDocuments";
 import { withTextCitation } from "@bcr/core";
 

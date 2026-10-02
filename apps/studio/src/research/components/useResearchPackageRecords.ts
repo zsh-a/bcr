@@ -3,7 +3,7 @@ import { textVersion } from "@bcr/core";
 import { decodeVolumeCatalog } from "../volumes";
 import { decodePackageTask, type ResearchPackageTask } from "../packageTask";
 import type { VolumeTaskStates } from "../packageState";
-import type { ResearchStore } from "../index";
+import type { ResearchStore } from "..";
 import type { ResearchPackagePlan, PreparedResearchPackage } from "../package";
 export function useResearchPackageRecords(
   store: ResearchStore,

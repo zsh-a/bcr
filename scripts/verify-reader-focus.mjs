@@ -28,7 +28,7 @@ try {
   await page.getByText("导入完成", { exact: true }).waitFor();
   await page.evaluate(async () => {
     const url = (await window.__bcrTestModuleUrls())
-      .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
+      .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/state/store.ts"))
       .at(-1);
     const { reader } = await import(url);
     reader.setSettings({

@@ -120,7 +120,7 @@ try {
     // PDF object URLs must outlive temporary files and reuse of the same source.
     const transferUrl =
       loaded("/packages/reader-studio/src/researchTransfer.ts") ??
-      new URL("./researchTransfer.ts", loaded("/packages/reader-studio/src/store.ts")).href;
+      new URL("./researchTransfer.ts", loaded("/packages/reader-studio/src/state/store.ts")).href;
     const { decodeReaderBackup, restoreReaderTransfer, readerTransferState } = await import(
       transferUrl
     );

@@ -1,4 +1,4 @@
-import { scanTxtIndex, searchTxt, type TxtRange } from "../txtIndex";
+import { scanTxtIndex, searchTxt, type TxtRange } from "../content/txtIndex";
 
 self.onmessage = async (
   event: MessageEvent<{ file: Blob; ranges?: TxtRange[]; bookId: string; query: string }>,

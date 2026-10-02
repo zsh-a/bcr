@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { inlineTxtToc, txtHeading, currentTxtChapter } from "../src/txtChapters";
-import { scanTxtIndex, TXT_CHUNK_BYTES } from "../src/txtIndex";
-import { textSections } from "../src/readerMarkup";
-import { createDemoBook } from "../src/model";
+import { inlineTxtToc, txtHeading, currentTxtChapter } from "../src/content/txtChapters";
+import { scanTxtIndex, TXT_CHUNK_BYTES } from "../src/content/txtIndex";
+import { textSections } from "../src/adapters/readerMarkup";
+import { createDemoBook } from "../src/state/model";
 
 describe("TXT chapter recognition", () => {
   it("recognizes conventional complete title lines without treating sentences/lists as chapters", () => {

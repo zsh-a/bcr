@@ -20,7 +20,7 @@ import {
   TerminalSquare,
   WandSparkles,
 } from "lucide-react";
-import { citationRoute, excerptFromResult, resultDocument, sameExcerpt } from "../research/index";
+import { citationRoute, excerptFromResult, resultDocument, sameExcerpt } from "../research";
 import { ResearchPanel } from "../research/components/ResearchPanel";
 import { Button, Dialog, Kbd, Select, useRuntime } from "@bcr/react";
 import { workspaceServices } from "../workspace";

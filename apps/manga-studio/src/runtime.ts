@@ -1,11 +1,4 @@
-import {
-  artifactPath,
-  contentHash,
-  hashReadableStream,
-  type ArtifactRef,
-  type ArtifactStore,
-} from "@bcr/core";
-import { MemoryStore, type BinaryStore } from "@bcr/storage-opfs";
+import { type BinaryStore } from "@bcr/storage-opfs";
 import { openSqliteDb, type SqliteDb } from "@bcr/storage-sqlite";
 import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
@@ -13,100 +6,22 @@ import { Effect } from "effect";
 import type { RuntimeHost, RuntimeSession } from "@bcr/core";
 import { createBrowserRuntime } from "@bcr/runtime-browser";
 import { WorkerPool, workerExecutor } from "@bcr/runtime-worker";
-import { MANGA_COMPUTE } from "./operations";
-import { cancelMangaQueue } from "./pipeline";
-import { decodeGraph, encodeGraph } from "@bcr/graph";
-import type {
-  DocumentContentPackage,
-  DocumentHandoff,
-  DocumentTranslationPackage,
-} from "@bcr/document-core";
-import {
-  decodeDocumentContentPackage,
-  decodeDocumentExportBundle,
-  decodeDocumentTranslationPackage,
-} from "@bcr/document-core";
-import { documentContentToMangaRegions, mangaPageToDocumentPackages } from "./document-adapter";
-import { FIXTURE_PAGE_URL } from "./fixture";
-import { MangaModelRegistry } from "./model-registry";
-import { manga } from "./store";
-import type {
-  MangaBatchJob,
-  MangaGlossaryEntry,
-  MangaPage,
-  MangaSettings,
-  MangaSource,
-  TextRegion,
-} from "./model";
+import { MANGA_COMPUTE } from "./execution/operations";
+import { createMangaPipeline } from "./execution/pipeline";
+import { MangaModelRegistry } from "./models/model-registry";
+import { manga } from "./project/store";
+import { type MangaStorageContext } from "./project/context";
+import { persistProject, restoreProject } from "./project/persistence";
 
-export interface MangaDocumentArtifactRefs {
-  readonly content: ArtifactRef;
-  readonly translation: ArtifactRef;
-}
-
-export interface MangaDocumentHandoffPayload {
-  readonly file: File;
-  readonly sourceRef: ArtifactRef;
-  readonly content: DocumentContentPackage;
-  readonly translation: DocumentTranslationPackage;
-  readonly contentRef: ArtifactRef;
-  readonly translationRef: ArtifactRef;
-}
-
-export interface MangaExportReplayPayload {
-  readonly file: File;
-  readonly content: DocumentContentPackage;
-  readonly translation?: DocumentTranslationPackage | undefined;
-  readonly regions: ReadonlyArray<TextRegion>;
-}
-
-export interface MangaRuntime {
+export interface MangaRuntime extends MangaStorageContext {
   readonly session?: RuntimeSession;
-  readonly artifacts: ArtifactStore;
-  readonly binary: BinaryStore;
-  readonly meta: SqliteDb | undefined;
-  readonly models: MangaModelRegistry;
+  readonly pipeline: ReturnType<typeof createMangaPipeline>;
 }
 
 interface SqliteInit {
   (options?: {
     locateFile?: (file: string) => string;
   }): Promise<Parameters<typeof openSqliteDb>[0]["sqlite3"]>;
-}
-
-interface PersistedSource {
-  readonly id: string;
-  readonly kind: MangaSource["kind"];
-  readonly name: string;
-  readonly size: number;
-  readonly width: number;
-  readonly height: number;
-  readonly pageCount: number;
-  readonly ref?: ArtifactRef | undefined;
-}
-
-interface PersistedPage {
-  readonly id: string;
-  readonly source: PersistedSource;
-  readonly createdAt?: number | undefined;
-  readonly stages: MangaPage["stages"];
-  readonly regions: MangaPage["regions"];
-  readonly activeRegionId: MangaPage["activeRegionId"];
-  readonly outputMode: MangaPage["outputMode"];
-  readonly outputReady: boolean;
-  readonly dirty: boolean;
-  readonly documentContentRef?: ArtifactRef | undefined;
-  readonly documentTranslationRef?: ArtifactRef | undefined;
-}
-
-interface PersistedProject {
-  readonly version: 1;
-  readonly activePageId: string;
-  readonly pages: ReadonlyArray<PersistedPage>;
-  readonly settings: MangaSettings;
-  readonly glossary?: ReadonlyArray<MangaGlossaryEntry> | undefined;
-  readonly graph: string;
-  readonly batch?: MangaBatchJob | undefined;
 }
 
 let currentRuntime: MangaRuntime | undefined;
@@ -129,7 +44,7 @@ export async function createMangaRuntime(host?: RuntimeHost): Promise<MangaRunti
     onMetadataUnavailable: (error) => manga.log("warn", `metadata unavailable · ${String(error)}`),
     beforeDispose: async () => {
       if (runtime) {
-        cancelMangaQueue();
+        runtime.pipeline.cancelMangaQueue();
         await Effect.runPromise(runtime.session!.scheduler.shutdown);
         try {
           if (initialized) await persistProject(runtime);
@@ -157,7 +72,14 @@ export async function createMangaRuntime(host?: RuntimeHost): Promise<MangaRunti
   });
   try {
     const models = new MangaModelRegistry(meta);
-    runtime = { artifacts: session.artifacts, binary: session.binary!, meta, models, session };
+    runtime = {
+      artifacts: session.artifacts,
+      binary: session.binary!,
+      meta,
+      models,
+      session,
+      pipeline: createMangaPipeline({ artifacts: session.artifacts, models, store: manga }),
+    };
     await models.restore();
     await models.reconcileCache();
     await restoreProject(runtime);
@@ -172,353 +94,4 @@ export async function createMangaRuntime(host?: RuntimeHost): Promise<MangaRunti
 
 export function mangaRuntime(): MangaRuntime | undefined {
   return currentRuntime;
-}
-
-function mimeForDocumentFormat(format: DocumentHandoff["format"]): string {
-  switch (format) {
-    case "pdf":
-      return "application/pdf";
-    case "cbz":
-      return "application/zip";
-    case "image":
-      return "image/*";
-    default:
-      return "application/octet-stream";
-  }
-}
-
-/** Resolve a Document handoff from the host ArtifactStore after a refresh. */
-export async function fileFromDocumentHandoff(
-  runtime: MangaRuntime,
-  handoff: DocumentHandoff,
-  upstreamArtifacts?: ArtifactStore,
-): Promise<File> {
-  if (handoff.file !== undefined) return handoff.file;
-  if (handoff.sourceRef === undefined) {
-    throw new Error("Document handoff 缺少可恢复的 source Artifact");
-  }
-  const artifacts = upstreamArtifacts ?? runtime.artifacts;
-  const blob = await Effect.runPromise(artifacts.getBlob(handoff.sourceRef));
-  return new File([blob], handoff.name, {
-    type: handoff.sourceRef.format ?? mimeForDocumentFormat(handoff.format),
-  });
-}
-
-/** Resolve optional visual content from a Document handoff for region replay. */
-export async function regionsFromDocumentHandoff(
-  runtime: MangaRuntime,
-  handoff: DocumentHandoff,
-  upstreamArtifacts?: ArtifactStore,
-): Promise<ReadonlyArray<TextRegion>> {
-  const artifacts = upstreamArtifacts ?? runtime.artifacts;
-  const content =
-    handoff.content ??
-    (handoff.contentRef === undefined
-      ? undefined
-      : decodeDocumentContentPackage(
-          JSON.parse(
-            new TextDecoder().decode(await Effect.runPromise(artifacts.get(handoff.contentRef))),
-          ),
-        ));
-  if (content === undefined || content.format !== "image") return [];
-  const translation =
-    handoff.translation ??
-    (handoff.translationRef === undefined
-      ? undefined
-      : decodeDocumentTranslationPackage(
-          JSON.parse(
-            new TextDecoder().decode(
-              await Effect.runPromise(artifacts.get(handoff.translationRef)),
-            ),
-          ),
-        ));
-  return documentContentToMangaRegions(content, translation);
-}
-
-/** Rehydrate a visual Export Bundle by resolving its immutable source image. */
-export async function importMangaExportBundle(
-  runtime: MangaRuntime,
-  file: File,
-  upstreamArtifacts?: ArtifactStore,
-): Promise<MangaExportReplayPayload> {
-  let value: unknown;
-  try {
-    value = JSON.parse(await file.text()) as unknown;
-  } catch {
-    throw new Error(`${file.name} 不是有效的 Document Export Bundle`);
-  }
-  const bundle = decodeDocumentExportBundle(value);
-  if (bundle === undefined) throw new Error(`${file.name} 的 Export Bundle 契约校验失败`);
-  if (bundle.content.format !== "image") {
-    throw new Error("文本 Export Bundle 请交给 Reader Studio；Manga 只接收视觉内容");
-  }
-  const sourceRef = bundle.content.sourceRef;
-  if (sourceRef === undefined) {
-    throw new Error("视觉 Export Bundle 缺少 source Artifact，无法恢复原始页面");
-  }
-  const artifacts = upstreamArtifacts ?? runtime.artifacts;
-  let blob: Blob;
-  try {
-    blob = await Effect.runPromise(artifacts.getBlob(sourceRef));
-  } catch {
-    throw new Error(`视觉 Export Bundle 的 source Artifact 不可用：${sourceRef.id}`);
-  }
-  const imageFile = new File([blob], bundle.content.sourceName, {
-    type: sourceRef.format ?? "image/png",
-  });
-  return {
-    file: imageFile,
-    content: bundle.content,
-    ...(bundle.translation === undefined ? {} : { translation: bundle.translation }),
-    regions: documentContentToMangaRegions(bundle.content, bundle.translation),
-  };
-}
-
-/** Stream a user file into the same Artifact namespace used by future OCR tasks. */
-export async function importImageArtifact(
-  runtime: MangaRuntime,
-  file: File,
-  sharedArtifacts?: ArtifactStore,
-): Promise<ArtifactRef> {
-  const hash = await hashReadableStream(file.stream());
-  const storage: ArtifactRef["storage"] = runtime.binary instanceof MemoryStore ? "memory" : "opfs";
-  const ref: ArtifactRef = {
-    id: `source/${hash}`,
-    type: "file/image",
-    storage,
-    format: file.type || "image/*",
-    hash,
-  };
-  await Effect.runPromise(runtime.artifacts.putStream(ref, file.stream()));
-  // Manga owns its project metadata namespace, while the Studio Shell owns
-  // the shared Scheduler/WorkerPool namespace. Keep one immutable source ref
-  // in both planes so the review OCR task can consume it without coupling the
-  // local persistence model to the host shell.
-  if (sharedArtifacts !== undefined && sharedArtifacts !== runtime.artifacts) {
-    try {
-      await Effect.runPromise(sharedArtifacts.putStream(ref, file.stream()));
-    } catch (error) {
-      manga.log("warn", `artifact bridge · worker source unavailable · ${String(error)}`);
-    }
-  }
-  return ref;
-}
-
-function persistSource(source: MangaSource): PersistedSource {
-  return {
-    id: source.id,
-    kind: source.kind,
-    name: source.name,
-    size: source.size,
-    width: source.width,
-    height: source.height,
-    pageCount: source.pageCount,
-    ...(source.ref === undefined ? {} : { ref: source.ref }),
-  };
-}
-
-function persistPage(page: MangaPage): PersistedPage {
-  return {
-    id: page.id,
-    source: persistSource(page.source),
-    ...(page.createdAt === undefined ? {} : { createdAt: page.createdAt }),
-    stages: page.stages,
-    regions: page.regions,
-    activeRegionId: page.activeRegionId,
-    outputMode: page.outputMode,
-    outputReady: page.outputReady,
-    dirty: page.dirty,
-    ...(page.documentContentRef === undefined
-      ? {}
-      : { documentContentRef: page.documentContentRef }),
-    ...(page.documentTranslationRef === undefined
-      ? {}
-      : { documentTranslationRef: page.documentTranslationRef }),
-  };
-}
-
-function documentArtifactRef(
-  runtime: MangaRuntime,
-  kind: "content" | "translation",
-  bytes: Uint8Array,
-): ArtifactRef {
-  const hash = contentHash(bytes);
-  const storage: ArtifactRef["storage"] = runtime.binary instanceof MemoryStore ? "memory" : "opfs";
-  return {
-    id: `document/manga/${kind}/${hash}`,
-    type: kind === "content" ? "document/content-package" : "document/translation-package",
-    storage,
-    format: "json",
-    hash,
-  };
-}
-
-async function putDocumentArtifact(
-  runtime: MangaRuntime,
-  sharedArtifacts: ArtifactStore | undefined,
-  ref: ArtifactRef,
-  bytes: Uint8Array,
-): Promise<void> {
-  await Effect.runPromise(runtime.artifacts.put(ref, bytes));
-  if (sharedArtifacts === undefined || sharedArtifacts === runtime.artifacts) return;
-  try {
-    await Effect.runPromise(sharedArtifacts.put(ref, bytes));
-  } catch (error) {
-    manga.log("warn", `document bridge · host mirror unavailable · ${String(error)}`);
-  }
-}
-
-/** Persist the current page as canonical Document packages in both storage planes. */
-export async function persistMangaDocumentPackages(
-  runtime: MangaRuntime,
-  page: MangaPage,
-  sourceLanguage: MangaSettings["sourceLanguage"],
-  sharedArtifacts?: ArtifactStore,
-): Promise<MangaDocumentArtifactRefs> {
-  const packages = mangaPageToDocumentPackages(page, sourceLanguage, {
-    createdAt: page.createdAt ?? 0,
-  });
-  const encoder = new TextEncoder();
-  const contentBytes = encoder.encode(JSON.stringify(packages.content));
-  const translationBytes = encoder.encode(JSON.stringify(packages.translation));
-  const content = documentArtifactRef(runtime, "content", contentBytes);
-  const translation = documentArtifactRef(runtime, "translation", translationBytes);
-  await putDocumentArtifact(runtime, sharedArtifacts, content, contentBytes);
-  await putDocumentArtifact(runtime, sharedArtifacts, translation, translationBytes);
-  return { content, translation };
-}
-
-/** Materialize the active page and canonical OCR/translation packages for Document Studio. */
-export async function prepareMangaDocumentHandoff(
-  runtime: MangaRuntime,
-  hostArtifacts: ArtifactStore,
-  page: MangaPage,
-  sourceLanguage: MangaSettings["sourceLanguage"],
-): Promise<MangaDocumentHandoffPayload> {
-  const sourceRef = page.source.ref;
-  if (sourceRef === undefined) {
-    throw new Error("示例页面没有可交接的源 Artifact，请先导入原始图片");
-  }
-  const blob = await Effect.runPromise(runtime.artifacts.getBlob(sourceRef));
-  const file = new File([blob], page.source.name, {
-    type: sourceRef.format ?? "image/*",
-  });
-  await Effect.runPromise(hostArtifacts.putStream(sourceRef, blob.stream()));
-  const packages = mangaPageToDocumentPackages(page, sourceLanguage, {
-    createdAt: page.createdAt ?? 0,
-  });
-  const refs = await persistMangaDocumentPackages(runtime, page, sourceLanguage, hostArtifacts);
-  return {
-    file,
-    sourceRef,
-    content: packages.content,
-    translation: packages.translation,
-    contentRef: refs.content,
-    translationRef: refs.translation,
-  };
-}
-
-export async function persistProject(runtime: MangaRuntime): Promise<void> {
-  if (runtime.meta === undefined) return;
-  const state = manga.getSnapshot();
-  const project: PersistedProject = {
-    version: 1,
-    activePageId: state.activePageId,
-    pages: state.pages.map(persistPage),
-    settings: state.settings,
-    glossary: state.glossary,
-    graph: encodeGraph(state.graph),
-    ...(state.batch === undefined ? {} : { batch: state.batch }),
-  };
-  try {
-    await runtime.meta.kvSet("manga-project", JSON.stringify(project));
-  } catch (error) {
-    manga.log("warn", `persist project failed · ${String(error)}`);
-  }
-}
-
-async function restoreSource(
-  runtime: MangaRuntime,
-  source: PersistedSource,
-): Promise<MangaSource | null> {
-  if (source.kind === "fixture") {
-    return { ...source, objectUrl: FIXTURE_PAGE_URL };
-  }
-  if (source.ref === undefined) return null;
-  try {
-    const blob =
-      source.ref.storage === "opfs" && runtime.binary.getBlob !== undefined
-        ? await runtime.binary.getBlob(artifactPath(source.ref))
-        : undefined;
-    const bytes =
-      blob === undefined ? await Effect.runPromise(runtime.artifacts.get(source.ref)) : undefined;
-    const objectUrl = URL.createObjectURL(
-      blob ??
-        new Blob([
-          (bytes as Uint8Array).buffer.slice(
-            (bytes as Uint8Array).byteOffset,
-            (bytes as Uint8Array).byteOffset + (bytes as Uint8Array).byteLength,
-          ) as BlobPart,
-        ]),
-    );
-    return { ...source, objectUrl, ref: source.ref };
-  } catch (error) {
-    manga.log("warn", `restore · ${source.name} artifact missing · ${String(error)}`);
-    return null;
-  }
-}
-
-export async function restoreProject(runtime: MangaRuntime): Promise<boolean> {
-  if (runtime.meta === undefined) return false;
-  try {
-    const raw = await runtime.meta.kvGet("manga-project");
-    if (raw === undefined) return false;
-    const project = JSON.parse(raw) as PersistedProject;
-    if (project.version !== 1 || !Array.isArray(project.pages) || project.pages.length === 0) {
-      throw new Error("无法读取 Manga 项目版本，请先检查或恢复项目数据");
-    }
-
-    const pages: MangaPage[] = [];
-    const persistedPages = project.pages as ReadonlyArray<PersistedPage>;
-    for (const persisted of persistedPages) {
-      const source = await restoreSource(runtime, persisted.source);
-      if (source === null) continue;
-      pages.push({
-        id: persisted.id,
-        source,
-        ...(persisted.createdAt === undefined ? {} : { createdAt: persisted.createdAt }),
-        // A tab can be closed while a stage is running. Restore that stage as
-        // idle so the UI reflects the paused checkpoint and the next queue run
-        // retries it instead of presenting a stale RUNNING state.
-        stages: persisted.stages.map((stage) =>
-          stage.status === "running"
-            ? { ...stage, status: "idle", progress: 0, error: undefined }
-            : stage,
-        ),
-        regions: persisted.regions,
-        activeRegionId: persisted.activeRegionId,
-        outputMode: persisted.outputMode,
-        outputReady: persisted.outputReady,
-        dirty: persisted.dirty,
-        ...(persisted.documentContentRef === undefined
-          ? {}
-          : { documentContentRef: persisted.documentContentRef }),
-        ...(persisted.documentTranslationRef === undefined
-          ? {}
-          : { documentTranslationRef: persisted.documentTranslationRef }),
-      });
-    }
-    if (pages.length === 0) return false;
-
-    const graph = decodeGraph(project.graph);
-    manga.restoreConfig(project.settings, graph ?? manga.getSnapshot().graph);
-    manga.restoreGlossary(project.glossary);
-    manga.setPages(pages, project.activePageId);
-    manga.restoreBatch(project.batch);
-    manga.log("ok", `restore · ${pages.length} page(s) · ${manga.getSnapshot().source.name}`);
-    return true;
-  } catch (error) {
-    manga.log("warn", `restore project failed · ${String(error)}`);
-    throw error;
-  }
 }

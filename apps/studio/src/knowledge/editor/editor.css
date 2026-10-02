@@ -1,0 +1,522 @@
+/* ---------- 编辑区 ---------- */
+
+.knowledge-editor {
+  /* 文档列吃宽度：至少内容列宽（--content-max），随 kb-doc 容器向 60% 生长；
+     正文行长（--prose-measure）不动，闲置宽度归标题/工具行与破格的表格/代码。 */
+  max-width: min(100%, max(var(--content-max), 60cqi));
+  margin: 0 auto;
+  padding: var(--space-7) var(--space-8) 0;
+  /* 纵列：正文/阅读面 flex:1 吃掉剩余高度，页脚贴底，底部不再留死白。 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 标题行：只有标题，占满整行；视图与工具退到下方文档工具行，长标题不再被控件压成半截。 */
+.knowledge-editor-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.knowledge-editor-head .knowledge-title {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.knowledge-title {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--prose-title);
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.knowledge-title::placeholder {
+  color: var(--color-faint);
+}
+
+.knowledge-mode-controls {
+  order: 4;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  position: relative;
+}
+
+.knowledge-editor-head .knowledge-rename-progress {
+  order: 3;
+  flex-basis: 100%;
+}
+
+.knowledge-segmented {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.knowledge-segmented button {
+  min-height: 26px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-right: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.knowledge-segmented button:last-child {
+  border-right: 0;
+}
+
+.knowledge-segmented button:hover {
+  color: var(--color-text);
+}
+
+.knowledge-segmented button[aria-pressed="true"] {
+  background: var(--color-raised);
+  color: var(--color-text);
+}
+
+/* quiet 文字开关（源码 / ⋯）：无边框无底色，hover 仅变色。 */
+.knowledge-quiet-toggle {
+  min-height: 26px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.knowledge-quiet-toggle:hover {
+  color: var(--color-text);
+}
+
+.knowledge-quiet-toggle[aria-pressed="true"],
+.knowledge-quiet-toggle[aria-expanded="true"] {
+  color: var(--color-accent);
+}
+
+/* 文档工具行：左列标签 chips / 集合 / 字符数，右列视图分段、写作工具与笔记操作。 */
+.knowledge-editor-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  margin: var(--space-3) 0 var(--space-5);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+}
+
+/* 字符数是文档元信息，跟标签/集合同列；等宽数字随打字不跳宽。 */
+.knowledge-editor-count {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.knowledge-collection-select {
+  max-width: 200px;
+  height: 26px;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+}
+
+.knowledge-collection-select:hover {
+  border-color: transparent;
+  color: var(--color-text);
+}
+
+.knowledge-collection-select option {
+  background: var(--color-surface);
+}
+
+/* 标签：安静的 11px 弱化行，去掉等宽与强调色；无标签时只有「+ 标签」。 */
+.knowledge-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+
+.knowledge-tag-add {
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.knowledge-tag-add:hover,
+.knowledge-tag-add:focus-visible {
+  color: var(--color-text);
+}
+
+.knowledge-tag-chip {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.knowledge-tag-chip:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.knowledge-tag-input {
+  flex: 1 1 10em;
+  min-width: var(--space-8);
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+}
+
+.knowledge-tag-input::placeholder {
+  color: var(--color-faint);
+}
+
+/* 正文书写排版由 CSS 持有，CodeMirror 主题继承；小屏放大便于触控输入。
+   阅读字体/行高由 .knowledge-editor 的 data 属性切换，源码模式保持等宽与密排。 */
+.knowledge-editor {
+  --prose-h1: min(calc(var(--prose-font-size) * 1.5), calc(var(--prose-title) - 2px));
+  --prose-h2: calc(var(--prose-font-size) * 1.25);
+  --prose-h3: var(--prose-font-size);
+}
+
+.knowledge-editor[data-reading-font="sans"] {
+  --reading-font: var(--font-sans);
+}
+
+.knowledge-editor[data-reading-font="serif"] {
+  --reading-font: var(--font-reading);
+  --reading-standard: 1.9;
+}
+
+.knowledge-editor[data-reading-size="small"] {
+  --prose-font-size: 16px;
+}
+
+.knowledge-editor[data-reading-size="large"] {
+  --prose-font-size: 20px;
+}
+
+.knowledge-editor[data-reading-line="compact"] {
+  --reading-leading: var(--reading-compact);
+}
+
+.knowledge-editor[data-reading-line="standard"] {
+  --reading-leading: var(--reading-standard);
+}
+
+.knowledge-editor[data-reading-line="loose"] {
+  --reading-leading: var(--reading-loose);
+}
+
+.knowledge-body {
+  display: block;
+  width: 100%;
+  /* 吃满编辑区剩余高度：CodeMirror 内部滚动，页面不再为正文另起一屏。
+     min-height:0 让矮窗口也能收缩到可用高度，正文始终滚动可达。 */
+  /* flex-basis 字面量 0，理由同 .knowledge-editor-source。 */
+  flex: 1 1 0;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--reading-font, var(--font-sans));
+  font-size: var(--prose-font-size);
+  line-height: var(--reading-leading, var(--text-base--line-height));
+  tab-size: 2;
+}
+
+/* 源码编辑器的宿主层：接进 .knowledge-editor 纵列；显式还原 hidden，
+   免得下面的 display 覆盖 UA 的 [hidden]{display:none}。 */
+.knowledge-editor-source {
+  display: flex;
+  flex-direction: column;
+  /* flex-basis 必须是字面量 0：外层 .knowledge-editor 高度由内容决定，
+     百分比基准（flex:1 展开成 0%）在高度不定的容器里会回退成内容尺寸，
+     正文就一路撑高、页面跟着滚，内部滚动条永不出现。 */
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.knowledge-editor-source[hidden] {
+  display: none;
+}
+
+.knowledge-editor[data-source="on"] .knowledge-body {
+  font-family: var(--font-mono);
+  line-height: var(--text-base--line-height);
+}
+
+/* CodeMirror 负责内部滚动，宿主本身不滚动。
+   去框化写作面：默认边框/背景全部归零，聚焦不画框（焦点由全局 :focus-visible
+   承担键盘导航，文本输入聚焦本身不加框），编辑区与页面底色融为一体。 */
+.knowledge-body .cm-editor {
+  height: 100%;
+  /* 与阅读态同一条行长不变量：写作面居中锁 --prose-measure，表格等宽内容
+     在编辑态是文本行、不破格；列变宽只让两侧余白变多，打字手感不变。 */
+  max-width: var(--prose-measure);
+  margin-inline: auto;
+  border: 0;
+  background: transparent;
+}
+
+.knowledge-body .cm-editor.cm-focused,
+.knowledge-body .cm-content:focus-visible {
+  outline: none;
+}
+
+/* 实时预览：引用与代码块贴合正文渲染器的样式（行类由 livePreview 注入）。 */
+.knowledge-body .cm-line.knowledge-live-quote {
+  border-left: 2px solid var(--color-accent);
+  padding-left: var(--space-4);
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.knowledge-body .cm-line.knowledge-live-code {
+  background: var(--color-surface);
+  padding-inline: var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.knowledge-body .cm-line.knowledge-live-code-start {
+  border-top: 1px solid var(--color-border);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  padding-top: var(--space-2);
+}
+
+.knowledge-body .cm-line.knowledge-live-code-end {
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  padding-bottom: var(--space-2);
+}
+
+.knowledge-body .cm-line.knowledge-live-code-start.knowledge-live-code-end {
+  border-radius: var(--radius-md);
+}
+
+/* 实时预览装饰：列表圆点/序号/任务复选框（widget 由 livePreview 注入）。
+   hover 只做颜色/边框变化，不位移、不发光、不缩放。 */
+.knowledge-list-bullet {
+  color: var(--color-muted);
+  padding-right: var(--space-1);
+}
+
+.knowledge-list-bullet[data-depth="1"],
+.knowledge-list-bullet[data-depth="2"] {
+  color: var(--color-faint);
+}
+
+.knowledge-list-ordinal {
+  color: var(--color-faint);
+}
+
+.knowledge-task-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-3);
+  height: var(--space-3);
+  margin-right: var(--space-1);
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.knowledge-task-box:hover {
+  border-color: var(--color-accent);
+}
+
+.knowledge-task-box[aria-checked="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-dim);
+}
+
+/* 行内代码的安静底色；链接 chip 见 workbench.css 的 .knowledge-inline-link/.knowledge-inline-chip。 */
+.knowledge-inline-code {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+}
+
+/* 链接 hover 小浮层：解析后的目标标题/路径 + 原始目标（找不到时只显示原文）。 */
+.knowledge-link-popover {
+  position: fixed;
+  z-index: var(--layer-tip);
+  max-width: 280px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-overlay);
+  box-shadow: var(--shadow-floating);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+  pointer-events: none;
+}
+
+.knowledge-link-popover-detail {
+  margin-top: var(--space-1);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+/* 安静的行内提示：空状态与非操作性状态用它，不占用整行横幅。 */
+.knowledge-hint {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+/* Focus mode keeps the app toolbar reachable and removes the resource panel. */
+.knowledge-app[data-focus-mode="on"] .knowledge-sidebar {
+  display: none;
+}
+
+/* ---------- 正文预览 ---------- */
+
+.knowledge-prose {
+  /* 短文吃满剩余高度，长文随内容撑开（min-height:auto 兜底），
+     仍由 .knowledge-content 负责滚动，阅读进度恢复与大纲高亮不受影响。
+     flex-basis 用字面量 0，理由同 .knowledge-editor-source。 */
+  flex: 1 1 0;
+  color: var(--color-text);
+  font-family: var(--reading-font, var(--font-sans));
+  font-size: var(--prose-font-size);
+  line-height: var(--reading-leading, var(--text-base--line-height));
+  overflow-wrap: anywhere;
+}
+
+/* 行长不变量：正文块居中锁在 --prose-measure（约 37 汉字），
+   宽内容破格吃满文档列——宽度利用率交给真正需要它的元素，段落可读性不动。 */
+.knowledge-prose > * {
+  max-width: var(--prose-measure);
+  margin-inline: auto;
+}
+
+.knowledge-prose > :is(table, pre, hr) {
+  max-width: none;
+}
+
+.knowledge-prose p {
+  text-wrap: pretty;
+}
+
+/* 锚点落点（大纲跳转/搜索高亮/Tab 聚焦）不被粘性条与浮标遮挡。 */
+.knowledge-prose :is(h1, h2, h3, [id^="note-heading-"]) {
+  scroll-margin-top: var(--space-6);
+}
+
+.knowledge-prose :is(h1, h2, h3, h4, h5, h6) {
+  color: var(--color-text);
+  margin: var(--space-6) 0 var(--space-3);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* 文内标题随正文字号缩放；三级标题靠字重区分，不再小于正文。 */
+.knowledge-prose h1 {
+  font-size: var(--prose-h1);
+}
+
+.knowledge-prose h2 {
+  font-size: var(--prose-h2);
+}
+
+.knowledge-prose :is(h3, h4, h5, h6) {
+  font-size: var(--prose-h3);
+}
+
+.knowledge-prose strong {
+  font-weight: 600;
+}
+
+.knowledge-prose p {
+  margin: var(--space-3) 0;
+}
+
+.knowledge-prose ul,
+.knowledge-prose ol {
+  margin: var(--space-3) 0;
+  padding-left: var(--space-6);
+}
+
+.knowledge-prose ul {
+  list-style: disc;
+}
+
+.knowledge-prose ol {
+  list-style: decimal;
+}
+
+.knowledge-prose pre {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+.knowledge-prose code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.knowledge-prose a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.knowledge-prose blockquote {
+  margin: var(--space-4) 0;
+  border-left: 2px solid var(--color-accent);
+  padding-left: var(--space-5);
+}

@@ -1,0 +1,204 @@
+/* ---------- 面板（历史 / 同步 / 恢复） ---------- */
+
+.knowledge-panel {
+  margin: var(--space-5) var(--space-6);
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.knowledge-panel > header {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  color: var(--color-accent);
+}
+
+.knowledge-panel h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.knowledge-panel p {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  margin: var(--space-3) 0;
+  line-height: var(--text-base--line-height);
+}
+
+.knowledge-panel .knowledge-small {
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  color: var(--color-faint);
+}
+
+.knowledge-panel label {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+
+.knowledge-panel label .ui-input {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.knowledge-panel input.ui-input[type="file"] {
+  height: auto;
+  min-height: var(--h-control);
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-sans);
+}
+
+.knowledge-panel-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.knowledge-sync fieldset {
+  display: grid;
+  gap: var(--space-4);
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.knowledge-sync .knowledge-small {
+  margin: 0;
+}
+
+.knowledge-sync .bcr-connection-manage > label {
+  display: block;
+  margin-top: var(--space-3);
+}
+
+.knowledge-sync .knowledge-panel-actions {
+  flex-wrap: wrap;
+}
+
+.knowledge-restore-options {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.knowledge-restore-options label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--h-control-lg);
+}
+
+.knowledge-restore-options input[type="radio"] {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--color-accent);
+}
+
+.knowledge-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--h-control-lg);
+}
+
+.knowledge-checkbox input {
+  accent-color: var(--color-accent);
+}
+
+/* ---------- 冲突与历史 ---------- */
+
+.knowledge-conflict {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-5);
+  margin-top: var(--space-5);
+}
+
+.knowledge-conflict h3 {
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+  color: var(--color-amber);
+}
+
+.knowledge-conflict-versions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.knowledge-conflict h4 {
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+  margin-bottom: var(--space-2);
+}
+
+.knowledge-conflict pre,
+.knowledge-history-preview pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 240px;
+  overflow: auto;
+  background: var(--color-bg);
+  padding: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--text-base--line-height);
+}
+
+.knowledge-history-list {
+  max-height: 240px;
+  overflow: auto;
+  margin-top: var(--space-4);
+}
+
+.knowledge-history-list button {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: left;
+  width: 100%;
+  padding: var(--space-3) 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.knowledge-history-list button:hover {
+  background: var(--color-raised);
+}
+
+.knowledge-history-list small {
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+}
+
+.knowledge-history-preview {
+  margin-top: var(--space-5);
+}
+
+.knowledge-history-preview h3 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+}
+
+.knowledge-history-preview > button {
+  margin-top: var(--space-3);
+}

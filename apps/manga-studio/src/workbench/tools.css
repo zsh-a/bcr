@@ -1,0 +1,295 @@
+/* ---------- 流水线 ---------- */
+
+.manga-pipeline-section {
+  padding-bottom: var(--space-4);
+}
+
+.manga-stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+}
+
+.manga-stage-row {
+  position: relative;
+  display: grid;
+  min-height: 41px;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-2);
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.manga-stage-row:hover {
+  background: var(--color-raised);
+}
+
+.manga-stage-icon {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  color: var(--color-faint);
+}
+
+.manga-stage-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.manga-stage-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  letter-spacing: 0.08em;
+}
+
+.manga-stage-detail {
+  overflow: hidden;
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manga-stage-execution {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manga-stage-status {
+  align-self: start;
+  padding-top: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  letter-spacing: 0.08em;
+}
+
+.manga-stage-done .manga-stage-icon,
+.manga-stage-done .manga-stage-status {
+  color: var(--color-success);
+}
+
+.manga-stage-running {
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.manga-stage-running .manga-stage-icon,
+.manga-stage-running .manga-stage-status {
+  color: var(--color-accent);
+}
+
+.manga-stage-error .manga-stage-icon,
+.manga-stage-error .manga-stage-status {
+  color: var(--color-danger);
+}
+
+.manga-stage-idle-text {
+  color: var(--color-faint);
+}
+
+.manga-stage-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--color-accent);
+  transition: width var(--duration-slow) var(--ease-standard);
+}
+
+.manga-config-grid,
+.manga-inspector-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.manga-config-section label,
+.manga-inspector-fields label,
+.manga-glossary-form label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+}
+
+/* ---------- 术语表 ---------- */
+
+.manga-glossary-section {
+  padding-bottom: var(--space-4);
+}
+
+.manga-glossary-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.manga-glossary-add {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.manga-glossary-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.manga-glossary-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.manga-glossary-entry input {
+  width: 100%;
+  min-width: 0;
+}
+
+.manga-glossary-arrow {
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.manga-glossary-remove {
+  flex: none;
+}
+
+.manga-glossary-empty {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+}
+
+.manga-empty-regions,
+.manga-inspector-empty {
+  display: flex;
+  min-height: 104px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--color-faint);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.manga-inspector-section {
+  padding-bottom: var(--space-4);
+}
+
+.manga-inspector-fields {
+  margin-top: var(--space-3);
+}
+
+.manga-inspector-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.manga-inspector-id {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  letter-spacing: 0.08em;
+}
+
+.manga-inspector-fields > label + label {
+  margin-top: var(--space-3);
+}
+
+.manga-glossary-hit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+}
+
+.manga-glossary-hit-active {
+  color: var(--color-accent);
+}
+
+.manga-glossary-hit-active .manga-glossary-dot {
+  background: var(--color-accent);
+}
+
+.manga-glossary-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: var(--radius-full);
+  background: var(--color-faint);
+}
+
+/* ---------- 导出 ---------- */
+
+.manga-export-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-bottom: 0;
+}
+
+.manga-export-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+}
+
+.manga-export-note svg {
+  flex: none;
+  color: var(--color-muted);
+}
+
+.manga-export-button {
+  width: 100%;
+}
+
+.manga-tools-drawer .manga-sidebar-right {
+  display: flex;
+  width: 100%;
+  height: auto;
+  border: 0;
+  overflow: visible;
+}
+
+.manga-tools-drawer .manga-sidebar-section {
+  padding: var(--space-5);
+}
+
+.manga-tools-drawer .manga-sidebar-section:first-child > .manga-section-heading {
+  display: none;
+}

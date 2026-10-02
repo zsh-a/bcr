@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { NoteDraft, type DraftStorage } from "../src/knowledge/draft";
-import { KnowledgeStore } from "../src/knowledge/store";
-import { newNote } from "../src/knowledge/model";
-import { createNoteAgent } from "../src/knowledge/editorAgent";
+import { NoteDraft, type DraftStorage } from "../src/knowledge/editor/draft";
+import { KnowledgeStore } from "../src/knowledge/session/store";
+import { newNote } from "../src/knowledge/session/model";
+import { createNoteAgent } from "../src/knowledge/agent/editorAgent";
 
 async function setup() {
   const data = new Map<string, string>(),

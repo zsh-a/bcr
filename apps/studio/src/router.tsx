@@ -1,15 +1,6 @@
 import { currentPwa, pwaRewrite } from "./pwa/routing";
-import {
-  createRootRoute,
-  redirect,
-  createRoute,
-  createRouter,
-  useNavigate,
-  useRouterState,
-} from "@tanstack/react-router";
-import { useCallback } from "react";
+import { createRootRoute, redirect, createRoute, createRouter } from "@tanstack/react-router";
 import { Shell } from "./shell/Shell";
-import { STUDIO_MANIFEST } from "./shell/host-manifests";
 import { MANIFESTS } from "./shell/registry";
 
 /**
@@ -20,11 +11,6 @@ import { MANIFESTS } from "./shell/registry";
  * `validateSearch` 都由 app 自己声明，新增 app 不再需要改本文件。
  * App 组件不由 Outlet 渲染，而由 Shell 的 keep-alive 容器常驻挂载（切走仅隐藏）。
  */
-export interface StudioSearch {
-  file?: string | undefined;
-  task?: string | undefined;
-}
-
 const rootRoute = createRootRoute({
   component: Shell,
   beforeLoad: ({ location }) => {
@@ -72,23 +58,4 @@ declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
   }
-}
-
-export function useSelection() {
-  // 宽松读取 location.search：命令面板在任何路由下都可用，未匹配 /studio 时无选中项
-  const search = useRouterState({ select: (s) => s.location.search }) as StudioSearch;
-  const navigate = useNavigate();
-
-  const select = useCallback(
-    (patch: { file?: string | undefined; task?: string | undefined }) => {
-      void navigate({
-        to: STUDIO_MANIFEST.path,
-        search: (prev: StudioSearch) => ({ ...prev, ...patch }),
-        replace: true,
-      });
-    },
-    [navigate],
-  );
-
-  return { file: search.file, task: search.task, select };
 }

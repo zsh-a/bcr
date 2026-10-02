@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { EditorState } from "@codemirror/state";
-import { knowledgeMarkdownLanguage } from "../src/knowledge/markdownEditor";
-import { linkTip, listDepth, planLiveMarks, type LiveMark } from "../src/knowledge/livePreview";
-import { newNote } from "../src/knowledge/model";
+import { knowledgeMarkdownLanguage } from "../src/knowledge/editor/markdownEditor";
+import {
+  linkTip,
+  listDepth,
+  planLiveMarks,
+  type LiveMark,
+} from "../src/knowledge/editor/livePreview";
+import { newNote } from "../src/knowledge/session/model";
 
 function plan(text: string, focusAt?: { from: number; to?: number }) {
   const state = EditorState.create({

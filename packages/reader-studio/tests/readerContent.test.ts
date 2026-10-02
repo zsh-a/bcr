@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ReaderSection } from "@bcr/reader-core";
-import { createDemoBook } from "../src/model";
-import { persistBook, restoreSectionSnapshots } from "../src/readerPersistence";
+import { createDemoBook } from "../src/state/model";
+import { persistBook } from "../src/persistence/codec";
+import { restoreSectionSnapshots } from "../src/persistence/restore";
 import {
   attachReaderContent,
   attachDeferredSource,
@@ -12,7 +13,7 @@ import {
   searchReaderContent,
   sectionContentReady,
   type SectionContent,
-} from "../src/readerContent";
+} from "../src/content/readerContent";
 
 const metadata = (count = 3): ReaderSection[] =>
   Array.from({ length: count }, (_, order) => ({

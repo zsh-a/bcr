@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expandMangaArchive, formatForMangaFile } from "../src/archive";
+import { expandMangaArchive, formatForMangaFile } from "../src/project/archive";
 
 describe("manga archive import", () => {
   it("recognizes image, CBZ/ZIP and PDF sources without relying on MIME", () => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useStudio } from "../store";
+import { useStudio } from "../useStudio";
 
 /** 波形画布：2048 桶峰值包络 + 播放光标 + 点击定位。 */
 export function Waveform(props: {

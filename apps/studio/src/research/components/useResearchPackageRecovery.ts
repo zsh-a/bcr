@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ResearchStore } from "../index";
+import type { ResearchStore } from "..";
 import type { PreparedResearchPackage } from "../package";
 import {
   clearResearchRecovery,

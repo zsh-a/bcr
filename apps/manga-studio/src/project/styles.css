@@ -1,0 +1,136 @@
+.manga-project-section {
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-5);
+}
+
+.manga-project-name {
+  margin-top: var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 500;
+  line-height: var(--text-2xl--line-height);
+}
+
+.manga-project-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+}
+
+/* ---------- 页面队列 ---------- */
+
+.manga-page-queue {
+  display: flex;
+  max-height: 300px;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  overflow-y: auto;
+  padding-right: var(--space-1);
+}
+
+.manga-page-card {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-raised);
+  padding: var(--space-2);
+  text-align: left;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+}
+
+.manga-page-card:hover,
+.manga-page-card-active {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-raised));
+}
+
+.manga-page-thumb {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 56px;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+}
+
+.manga-page-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 页码浮标：内容上方的 chrome，用共享遮罩色。 */
+.manga-page-thumb-overlay {
+  position: absolute;
+  right: var(--space-1);
+  bottom: var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-scrim);
+  padding: 0 var(--space-1);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.manga-page-card-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.manga-page-card-name,
+.manga-page-card-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manga-page-card-name {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.manga-page-card-detail {
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+}
+
+.manga-page-card-detail span {
+  margin: 0 var(--space-1);
+  color: var(--color-border-strong);
+}
+
+.manga-page-card-chevron {
+  flex: none;
+  color: var(--color-faint);
+  transform: rotate(-90deg);
+}
+
+.manga-project-disclosure,
+.manga-project-content {
+  display: contents;
+}
+
+.manga-project-disclosure > summary {
+  display: none;
+}

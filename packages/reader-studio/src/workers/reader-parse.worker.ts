@@ -1,4 +1,4 @@
-import { openReaderFile } from "../adapters";
+import { openReaderFile } from "../adapters/adapters";
 
 interface ParseRequest {
   readonly type: "parse";

@@ -16,10 +16,10 @@ import {
   prepareMangaDocumentHandoff,
   persistMangaDocumentPackages,
   regionsFromDocumentHandoff,
-  type MangaRuntime,
-} from "../src/runtime";
-import type { MangaPage } from "../src/model";
-import { MangaModelRegistry } from "../src/model-registry";
+} from "../src/documents/handoff";
+import { type MangaStorageContext } from "../src/project/context";
+import type { MangaPage } from "../src/project/model";
+import { MangaModelRegistry } from "../src/models/model-registry";
 
 async function makeArtifacts(store: MemoryStore): Promise<ArtifactStore> {
   const context = await Effect.runPromise(
@@ -41,7 +41,7 @@ describe("manga durable Document handoff", () => {
     };
     await Effect.runPromise(upstream.put(sourceRef, new Uint8Array([137, 80, 78, 71, 1, 2, 3])));
 
-    const runtime: MangaRuntime = {
+    const runtime: MangaStorageContext = {
       artifacts: upstream,
       binary: upstreamStore,
       meta: undefined,
@@ -114,7 +114,7 @@ describe("manga durable Document handoff", () => {
       outputReady: true,
       dirty: false,
     };
-    const runtime: MangaRuntime = {
+    const runtime: MangaStorageContext = {
       artifacts: local,
       binary: localStore,
       meta: undefined,
@@ -262,7 +262,7 @@ describe("manga durable Document handoff", () => {
     await Effect.runPromise(
       artifacts.put(contentRef, new TextEncoder().encode(JSON.stringify(content))),
     );
-    const runtime: MangaRuntime = {
+    const runtime: MangaStorageContext = {
       artifacts,
       binary: store,
       meta: undefined,

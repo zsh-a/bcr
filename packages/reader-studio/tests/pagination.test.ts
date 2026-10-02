@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { pageAtOffset, pageCount, paginationGeometry, pageTextHeight } from "../src/pagination";
+import {
+  pageAtOffset,
+  pageCount,
+  paginationGeometry,
+  pageTextHeight,
+} from "../src/pagination/pagination";
 
 describe("viewport pagination", () => {
   it("fits whole text lines within the available height without stretching them", () => {

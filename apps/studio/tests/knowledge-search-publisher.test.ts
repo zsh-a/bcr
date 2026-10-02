@@ -5,8 +5,8 @@ import { createBrowserRuntime } from "@bcr/runtime-browser";
 import { MemoryStore } from "@bcr/storage-opfs";
 import { knowledgePlugin } from "../src/knowledge/plugin";
 import { workspaceServices } from "../src/workspace";
-import { createKnowledgePublisher } from "../src/knowledge/search";
-import { newNote, type KnowledgeContent } from "../src/knowledge/model";
+import { createKnowledgePublisher } from "../src/knowledge/search/search";
+import { newNote, type KnowledgeContent } from "../src/knowledge/session/model";
 
 const a = { ...newNote("Alpha"), id: "a", body: "alpha text", updatedAt: 1 };
 const b = { ...newNote("Beta"), id: "b", body: "beta text", updatedAt: 1 };

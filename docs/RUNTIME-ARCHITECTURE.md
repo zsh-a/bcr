@@ -99,11 +99,21 @@ Studio 的 `workspace.ts` 按会话的 ArtifactStore 身份共享 KnowledgeStore
 
 知识库同步的唯一运行状态由 `KnowledgeStore.runSync` 维护，并通过独立快照订阅发布。同步开始前的编辑器保存也在同一个同步互斥区内。关闭时先停止接受新同步，允许已经开始的同步提交远端发布回执，然后关闭并排空本地写入队列。ResearchStore 同时排空资料写入队列和资料包记录队列。
 
-知识库职责分为：`actions.ts` 编排创建、导入、导出并经过草稿保存屏障；`useKnowledgeSync.ts` 负责浏览器自动同步调度；`draft.ts` 负责单篇草稿、恢复副本和保存状态；`useNoteDraft.ts` 负责自动保存与卸载监听；`editorAgent.ts` 和 `useNoteAgent.ts` 适配编辑目标与工具；`search.ts` 发布搜索投影。页面保留导航与提示，编辑器保留输入和预览。标题、选区变化更新目标摘要，但不重新注册工具实例；切换笔记仍创建新的草稿与目标身份。
+知识库按功能组织于 `knowledge/`：`workbench/` 分开组合入口、控制 Hook、工具栏、侧栏和工作台偏好；`editor/` 负责输入、预览、草稿和编辑会话；`notes/` 维护路径、引用及变更计划；`attachments/` 负责附件存储、预览和文本提取；`sync/` 负责 GitHub 同步与冲突界面；`session/` 持有状态与服务，`storage/` 负责持久化及备份；`agent/` 适配编辑目标与工具，`search/` 发布搜索投影。附件提取状态与菜单由独立 Hook 持有，编辑器经过统一保存屏障再导航。标题、选区变化更新目标摘要，但不重新注册工具实例；切换笔记仍创建新的草稿与目标身份。
 
 Agent 的 `session.ts` 只编排单次任务和会话快照，`toolExecution.ts` 统一授权、审批、权限复核、执行及结果转换，`surfaceEdit.ts` 维护编辑建议与真实保存回执。模型配置由 AgentHost 的 `settings` 实例持有；默认无存储的 Host 仍相互隔离。Studio 注入独立的连接配置与凭据存储适配器：地址、模型自动保存，凭据默认内存，用户可选择标签页或设备记忆。凭据服务不使用会话或工作区数据库，不进入业务导出。浏览器共享存储的隔离边界是 origin，而不是 React Host。
 
 Research 实现统一位于 `apps/studio/src/research/`，其中 `model.ts` 是类型与规则、`store.ts` 是持久化、`components/` 是领域界面。`@bcr/react` 的入口只导出 API，Runtime、任务和产物 hooks 分别在 `runtime.ts`、`tasks.ts`、`artifacts.ts`；旧 `useServices` 别名已移除，调用方统一使用 `useRuntime`。
+
+Studio 的路由组装只负责路由表；`workbench/useSelection.ts` 适配 URL 中的文件与任务选择，Dock 和工作台面板均依赖此 Hook，不反向引用路由组装。Shell 的公共组件与 Studio 工作台面板分别维护。
+
+Reader 按 `library/`、`reading/`、`pagination/`、`content/`、`adapters/`、`navigation/`、`search/`、`persistence/`、`runtime/`、`state/`、`typography/` 和 `workbench/` 组织。`state/store.ts` 是唯一状态发布入口，借给书库、导航、搜索和批注操作状态读取及更新回调；`state/useReader.ts` 独立适配 React 订阅。持久化的模型、校验／编码、写入、恢复和底层存取分开维护。包的公开入口指向实际实现；`./formats` 提供独立格式识别，`./hooks` 提供视图订阅。
+
+Manga 按 `project/`、`models/`、`execution/`、`documents/` 和 `workbench/` 组织，根 Runtime 只负责会话组装与关闭。项目保存、源文件读取和 Document 交接独立于执行；模型清单、设备选择、产物解码与注册服务分开维护。每个 Runtime 创建自己的 Pipeline 和 Adapter 工厂，任务句柄、执行版本和取消状态由工厂实例持有。执行上下文显式借用状态、模型服务与 ArtifactStore，不读取 Runtime 全局指针；关闭会话先取消自身队列再排空调度并保存项目。
+
+Market 按 `overview/`、`sectors/`、`breadth/`、`watchlists/`、`instrument/`、`search/` 和 `data/` 组织。行业地图、行业详情、榜单、自选行与资产卡片独立维护；跨视图的图表和数据来源提示位于 `components/`。这些 App 的样式由入口集中载入，具体规则跟随功能目录，响应式规则集中维护。
+
+所有领域 Store 与 React 订阅 Hook 分开维护；工作区架构检查覆盖公开导出目标、包含包入口的静态运行时循环以及已整理领域的 React 依赖边界。
 
 Quant 的 `session/service.ts` 是框架无关的研究会话服务，统一恢复、导入、执行、实验／项目切换和保存；`useResearch` 只通过 `useSyncExternalStore` 订阅。视图取消订阅不取消计算，Runtime 关闭时取消任务、排空操作并保存最后有效草稿。任务 ID 使用稳定的阶段代码，显示文案可以独立变化。
 

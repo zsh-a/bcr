@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createReaderRuntime } from "../src/readerRuntimeCore";
-import { closeReaderRuntime, persistReaderSnapshot } from "../src/readerPersistenceQueue";
-import { reader } from "../src/store";
-import { createDemoBook, DEFAULT_READER_SETTINGS } from "../src/model";
+import { createReaderRuntime } from "../src/runtime/readerRuntimeCore";
+import {
+  closeReaderRuntime,
+  persistReaderSnapshot,
+} from "../src/persistence/readerPersistenceQueue";
+import { reader } from "../src/state/store";
+import { createDemoBook, DEFAULT_READER_SETTINGS } from "../src/state/model";
 
 afterEach(() => vi.unstubAllGlobals());
 

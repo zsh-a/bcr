@@ -3,7 +3,7 @@ import { artifactStore, ArtifactStoreTag } from "@bcr/core";
 import { MemoryStore } from "@bcr/storage-opfs";
 import { Context, Effect, Layer } from "effect";
 import { createWorkspaceServices, workspaceServices } from "../src/workspace";
-import { newNote } from "../src/knowledge/model";
+import { newNote } from "../src/knowledge/session/model";
 
 describe("workspace service ownership", () => {
   it("retains one unavailable service through wrappers and isolates sibling sessions", async () => {

@@ -1,4 +1,3 @@
-import { useSyncExternalStore } from "react";
 import type { ArtifactRef } from "@bcr/core";
 
 /**
@@ -101,7 +100,3 @@ class StudioStore {
 }
 
 export const studio = new StudioStore();
-
-export function useStudio<T>(selector: (state: StudioState) => T): T {
-  return useSyncExternalStore(studio.subscribe, () => selector(studio.getSnapshot()));
-}

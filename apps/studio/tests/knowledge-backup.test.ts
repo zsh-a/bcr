@@ -4,9 +4,9 @@ import {
   planKnowledgeRestore,
   readKnowledgeBackup,
   writeKnowledgeBackup,
-} from "../src/knowledge/backup";
-import { contentOf, newNote } from "../src/knowledge/model";
-import { KnowledgeStore } from "../src/knowledge/store";
+} from "../src/knowledge/storage/backup";
+import { contentOf, newNote } from "../src/knowledge/session/model";
+import { KnowledgeStore } from "../src/knowledge/session/store";
 
 const note = { ...newNote("Backup"), id: "note", body: "original", collectionId: "collection" };
 const original = {

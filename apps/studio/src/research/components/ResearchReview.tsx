@@ -1,11 +1,6 @@
 import { useState } from "react";
 import type { SearchDocument, SearchIndex, TextRange } from "@bcr/core";
-import {
-  boundReaderExcerpt,
-  citationRoute,
-  type ResearchExcerpt,
-  type ResearchStore,
-} from "../index";
+import { boundReaderExcerpt, citationRoute, type ResearchExcerpt, type ResearchStore } from "..";
 import { SectionLabel } from "@bcr/react";
 import { linkPreview, relinkExcerpt } from "../review";
 const button = "ui-btn ui-btn-default ui-btn-sm";

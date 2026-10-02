@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { diffSpans, excerptSpans } from "../src/knowledge/diffView";
-import { mergeConflictNote } from "../src/knowledge/conflicts";
-import { countRewrittenLinks } from "../src/knowledge/moveSummary";
-import { newNote, type KnowledgeNote } from "../src/knowledge/model";
-import { planNoteMove } from "../src/knowledge/changePlan";
-import { KnowledgeStore } from "../src/knowledge/store";
+import { diffSpans, excerptSpans } from "../src/knowledge/editor/diffView";
+import { mergeConflictNote } from "../src/knowledge/sync/conflicts";
+import { countRewrittenLinks } from "../src/knowledge/notes/moveSummary";
+import { newNote, type KnowledgeNote } from "../src/knowledge/session/model";
+import { planNoteMove } from "../src/knowledge/notes/changePlan";
+import { KnowledgeStore } from "../src/knowledge/session/store";
 
 const note = (id: string, body: string, extra: Partial<KnowledgeNote> = {}): KnowledgeNote => ({
   ...newNote("标题"),

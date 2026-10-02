@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAgentHost, createAgentSession } from "@bcr/agent";
-import { knowledgeCapability } from "../src/knowledge/agent";
-import { KnowledgeStore } from "../src/knowledge/store";
-import { newNote } from "../src/knowledge/model";
-import { noteRevision } from "../src/knowledge/noteRevision";
+import { knowledgeCapability } from "../src/knowledge/agent/agent";
+import { KnowledgeStore } from "../src/knowledge/session/store";
+import { newNote } from "../src/knowledge/session/model";
+import { noteRevision } from "../src/knowledge/notes/noteRevision";
 
 async function setup() {
   const data = new Map<string, string>();

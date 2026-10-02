@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ResearchStore, type ResearchLibrary, type ResearchExcerpt } from "../src/research/index";
+import { ResearchStore, type ResearchLibrary, type ResearchExcerpt } from "../src/research";
 import {
   renameCollection,
   deleteCollection,

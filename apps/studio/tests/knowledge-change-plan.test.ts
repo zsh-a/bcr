@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { KnowledgeStore } from "../src/knowledge/store";
-import { newNote } from "../src/knowledge/model";
-import { NoteDraft } from "../src/knowledge/draft";
-import { revertChangePlan } from "../src/knowledge/liveRename";
+import { KnowledgeStore } from "../src/knowledge/session/store";
+import { newNote } from "../src/knowledge/session/model";
+import { NoteDraft } from "../src/knowledge/editor/draft";
+import { revertChangePlan } from "../src/knowledge/editor/liveRename";
 
 async function fixture() {
   let writes = 0;

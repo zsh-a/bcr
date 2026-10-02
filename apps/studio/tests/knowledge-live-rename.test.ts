@@ -3,9 +3,9 @@ import {
   createLiveRename,
   type LiveRename,
   type LiveRenamePort,
-} from "../src/knowledge/liveRename";
-import { planNoteRename, type NoteChangePlan } from "../src/knowledge/changePlan";
-import { newNote, type KnowledgeNote } from "../src/knowledge/model";
+} from "../src/knowledge/editor/liveRename";
+import { planNoteRename, type NoteChangePlan } from "../src/knowledge/notes/changePlan";
+import { newNote, type KnowledgeNote } from "../src/knowledge/session/model";
 
 const target = { ...newNote("旧标题"), id: "target", body: "[[旧标题]]" };
 const source = { ...newNote("引用"), id: "source", body: "[[旧标题]] 与 [[target|稳定]]" };

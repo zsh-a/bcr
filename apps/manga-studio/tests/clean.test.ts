@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CLEAN_MODEL_MANIFESTS, resolveMangaCleanMode } from "../src/model";
+import { CLEAN_MODEL_MANIFESTS } from "../src/models/catalog";
+import { resolveMangaCleanMode } from "../src/models/resolution";
 
 describe("manga clean capability", () => {
   it("keeps fill as the effective mode", () => {

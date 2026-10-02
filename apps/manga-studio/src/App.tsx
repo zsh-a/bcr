@@ -20,35 +20,33 @@ import {
 } from "@bcr/react";
 import { CircleAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { expandMangaArchive, formatForMangaFile } from "./archive";
-import { mangaPageToDocumentPackages } from "./document-adapter";
-import { MangaCanvas } from "./MangaCanvas";
-import { MangaHeader } from "./MangaHeader";
-import { MangaProjectPanel } from "./MangaProjectPanel";
-import { MangaToolsPanel } from "./MangaToolsPanel";
+import { expandMangaArchive, formatForMangaFile } from "./project/archive";
+import { mangaPageToDocumentPackages } from "./documents/document-adapter";
+import { MangaCanvas } from "./workbench/MangaCanvas";
+import { MangaHeader } from "./workbench/MangaHeader";
+import { MangaProjectPanel } from "./workbench/MangaProjectPanel";
+import { MangaToolsPanel } from "./workbench/MangaToolsPanel";
+import { CLEAN_MODEL_MANIFESTS } from "./models/catalog";
 import {
-  CLEAN_MODEL_MANIFESTS,
   resolveMangaCleanMode,
   resolveMangaOcrAdapter,
   resolveMangaTranslationAdapter,
-  type MangaAdapterExecution,
-  type TextRegion,
-} from "./model";
-import type { MangaModelCacheInfo } from "./model-cache";
-import type { MangaModelRecord } from "./model-registry";
-import { cancelMangaQueue, preloadMangaModel, runMangaPipeline, runMangaQueue } from "./pipeline";
+} from "./models/resolution";
+import { type MangaAdapterExecution, type TextRegion } from "./project/model";
+import type { MangaModelCacheInfo } from "./models/model-cache";
+import type { MangaModelRecord } from "./models/model-registry";
+import { createMangaRuntime, type MangaRuntime } from "./runtime";
 import {
-  createMangaRuntime,
   fileFromDocumentHandoff,
-  importImageArtifact,
   importMangaExportBundle,
   persistMangaDocumentPackages,
-  persistProject,
   prepareMangaDocumentHandoff,
   regionsFromDocumentHandoff,
-  type MangaRuntime,
-} from "./runtime";
-import { manga, useMangaStudio } from "./store";
+} from "./documents/handoff";
+import { importImageArtifact } from "./project/source";
+import { persistProject } from "./project/persistence";
+import { manga } from "./project/store";
+import { useMangaStudio } from "./project/useMangaStudio";
 import "./styles.css";
 
 function downloadBlob(blob: Blob, name: string): void {
@@ -170,7 +168,6 @@ export function App() {
     })();
     return () => {
       cancelled = true;
-      cancelMangaQueue();
       stop();
     };
   }, [parentServices?.host]);
@@ -366,7 +363,8 @@ export function App() {
     const actionId = modelActionId(execution);
     if (modelActionKey !== null) return;
     setModelActionKey(actionId);
-    void preloadMangaModel(hostServices ?? undefined, execution)
+    void runtime.pipeline
+      .preloadMangaModel(hostServices ?? undefined, execution)
       .catch(() => undefined)
       .finally(() => {
         setModelActionKey((current) => (current === actionId ? null : current));
@@ -593,7 +591,9 @@ export function App() {
   };
 
   const run = () => {
-    void runMangaPipeline(hostServices ?? undefined, { resume: resumableCurrentPage });
+    void runtime?.pipeline.runMangaPipeline(hostServices ?? undefined, {
+      resume: resumableCurrentPage,
+    });
   };
 
   const exportPage = () => {
@@ -708,8 +708,10 @@ export function App() {
         onOpenDiagnostics={() => setDiagnosticsOpen(true)}
         onImportFiles={(files) => void importFiles(files)}
         onHandoffDocument={handoffDocument}
+        onCancelPage={() => runtime?.pipeline.cancelMangaPipeline()}
+        onCancelQueue={() => runtime?.pipeline.cancelMangaQueue()}
         onRunPage={run}
-        onRunQueue={() => void runMangaQueue(hostServices ?? undefined)}
+        onRunQueue={() => void runtime?.pipeline.runMangaQueue(hostServices ?? undefined)}
       />
 
       <div className="manga-workspace">

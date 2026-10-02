@@ -1,4 +1,4 @@
-import { loadSectionContent } from "../src/readerContent";
+import { loadSectionContent } from "../src/content/readerContent";
 import { artifactStore, ArtifactStoreTag, type ArtifactRef, type ArtifactStore } from "@bcr/core";
 import { progressForLocator } from "@bcr/reader-core";
 import {
@@ -19,7 +19,7 @@ import {
   restoreReaderBooks,
   type ReaderRuntime,
 } from "../src/runtime";
-import { createDemoBook, DEFAULT_READER_SETTINGS, type ReaderState } from "../src/model";
+import { createDemoBook, DEFAULT_READER_SETTINGS, type ReaderState } from "../src/state/model";
 
 async function makeArtifacts(store: MemoryStore): Promise<ArtifactStore> {
   const context = await Effect.runPromise(

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { highlightText } from "../src/searchHighlight";
+import { highlightText } from "../src/search/searchHighlight";
 
 describe("source-relative page highlighting", () => {
   it("keeps both halves of a match spanning a page boundary", () => {

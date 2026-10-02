@@ -1,7 +1,7 @@
 import { Kbd, StatusDot, useRunningApps } from "@bcr/react";
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, ChevronDown, Shapes } from "lucide-react";
-import { useStudio } from "../store";
+import { useStudio } from "../useStudio";
 import {
   HOME_SECTIONS,
   LAUNCH_PAD_APPS,

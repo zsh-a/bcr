@@ -26,7 +26,8 @@ import {
   TranslationReviewCard,
   sourceIcon,
 } from "./DocumentCards";
-import { activeDocument, documents, useDocumentStudio } from "./store";
+import { activeDocument, documents } from "./store";
+import { useDocumentStudio } from "./useDocumentStudio";
 import { useDocumentArtifacts } from "./useDocumentArtifacts";
 import { useDocumentIntegration } from "./useDocumentIntegration";
 import {

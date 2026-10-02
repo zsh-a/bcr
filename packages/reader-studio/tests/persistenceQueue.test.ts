@@ -1,13 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { contentHash } from "@bcr/core";
 import type { ReaderBook } from "@bcr/reader-core";
-import { createReaderRuntime, type ReaderRuntime } from "../src/readerRuntimeCore";
-import { createDemoBook, DEFAULT_READER_SETTINGS } from "../src/model";
-import { reader, getReaderState } from "../src/store";
-import { persistReaderSnapshot, restoreReaderSnapshot } from "../src/readerPersistenceQueue";
-import { restoreReader } from "../src/readerPersistence";
+import { createReaderRuntime, type ReaderRuntime } from "../src/runtime/readerRuntimeCore";
+import { createDemoBook, DEFAULT_READER_SETTINGS } from "../src/state/model";
+import { reader, getReaderState } from "../src/state/store";
+import {
+  persistReaderSnapshot,
+  restoreReaderSnapshot,
+} from "../src/persistence/readerPersistenceQueue";
+import { restoreReader } from "../src/persistence/restore";
 import { restoreReaderTransfer } from "../src/researchTransfer";
-import type { PreparedReaderBackup } from "../src/readerBackup";
+import type { PreparedReaderBackup } from "../src/persistence/readerBackup";
 
 function deferred() {
   let resolve!: () => void;

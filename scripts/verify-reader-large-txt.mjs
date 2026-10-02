@@ -24,7 +24,9 @@ try {
     await page.evaluate(
       async ({ index, settings }) => {
         const url = (await window.__bcrTestModuleUrls())
-          .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
+          .filter((url) =>
+            new URL(url).pathname.endsWith("/packages/reader-studio/src/state/store.ts"),
+          )
           .at(-1);
         const { reader, getReaderState } = await import(url);
         const book = getReaderState().library.find(
@@ -66,7 +68,9 @@ try {
   async function assertLazyState() {
     const stats = await page.evaluate(async () => {
       const url = (await window.__bcrTestModuleUrls())
-        .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
+        .filter((url) =>
+          new URL(url).pathname.endsWith("/packages/reader-studio/src/state/store.ts"),
+        )
         .at(-1);
       const { getReaderState } = await import(url);
       const book = getReaderState().library.find((book) => book.source.name === "large-window.txt");
@@ -109,7 +113,7 @@ try {
   await page.waitForTimeout(1000);
   const scrolledIndex = await page.evaluate(async () => {
     const url = (await window.__bcrTestModuleUrls())
-      .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
+      .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/state/store.ts"))
       .at(-1);
     const { getReaderState } = await import(url);
     return Number(getReaderState().activeSectionId.split("-").at(-1));

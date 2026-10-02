@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createLocator, createTextLocator, type ReaderBook } from "@bcr/reader-core";
-import { createDemoBook, DEFAULT_READER_SETTINGS } from "../src/model";
-import { getReaderState, reader } from "../src/store";
+import { createDemoBook, DEFAULT_READER_SETTINGS } from "../src/state/model";
+import { getReaderState, reader } from "../src/state/store";
 
 describe("Reader annotation anchors", () => {
   const book = createDemoBook();

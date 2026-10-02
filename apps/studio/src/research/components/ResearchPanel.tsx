@@ -15,8 +15,8 @@ import { SectionLabel } from "@bcr/react";
 import { ResearchPackagePanel } from "./ResearchPackagePanel";
 import { ResearchReview } from "./ResearchReview";
 import { ResearchBackupPanel } from "./ResearchBackupPanel";
-import type { ResearchCollection, ResearchExcerpt, ResearchLibrary, ResearchStore } from "../index";
-import { exportResearch, assessExcerpt, type ExcerptStatus } from "../index";
+import type { ResearchCollection, ResearchExcerpt, ResearchLibrary, ResearchStore } from "..";
+import { exportResearch, assessExcerpt, type ExcerptStatus } from "..";
 
 const button = "ui-btn ui-btn-default ui-btn-sm";
 export function ResearchPanel(props: {

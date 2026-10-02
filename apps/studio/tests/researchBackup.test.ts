@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createSearchIndex } from "@bcr/core";
-import { assessExcerpt, ResearchStore, type ResearchLibrary } from "../src/research/index";
+import { assessExcerpt, ResearchStore, type ResearchLibrary } from "../src/research";
 import {
   createResearchBackup,
   decodeResearchBackup,

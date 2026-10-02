@@ -1,7 +1,7 @@
 import { mediaDocuments } from "./mediaSearchDocuments";
 import { useRuntime } from "@bcr/react";
 import { useEffect } from "react";
-import { useStudio } from "./store";
+import { useStudio } from "./useStudio";
 
 export function useMediaSearch(): void {
   const { search } = useRuntime();

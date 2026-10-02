@@ -3,13 +3,13 @@ import { Context, Effect, Layer } from "effect";
 import { artifactStore, ArtifactStoreTag, contentHash } from "@bcr/core";
 import { createLocator, makeSearchSnippet } from "@bcr/reader-core";
 import { MemoryStore } from "@bcr/storage-opfs";
-import { createDemoBook, DEFAULT_READER_SETTINGS, readingStatus } from "../src/model";
-import { readerBookmarksDocument } from "../src/bookmarkExport";
-import { getReaderState, reader } from "../src/store";
-import { attachReaderContent } from "../src/readerContent";
-import { importReaderFile } from "../src/readerImports";
-import { searchReaderDetailed } from "../src/readerSearch";
-import { openSearchHit } from "../src/readerSearchNavigation";
+import { createDemoBook, DEFAULT_READER_SETTINGS, readingStatus } from "../src/state/model";
+import { readerBookmarksDocument } from "../src/navigation/bookmarkExport";
+import { getReaderState, reader } from "../src/state/store";
+import { attachReaderContent } from "../src/content/readerContent";
+import { importReaderFile } from "../src/library/readerImports";
+import { searchReaderDetailed } from "../src/search/readerSearch";
+import { openSearchHit } from "../src/search/readerSearchNavigation";
 import {
   decodeReaderBackup,
   backupSkippedBooks,
@@ -17,8 +17,8 @@ import {
   createReaderBackup,
   inspectReaderBackup,
   prepareReaderRestore,
-} from "../src/readerBackup";
-import { resolveReaderTocTarget, currentReaderTocItem } from "../src/navigation";
+} from "../src/persistence/readerBackup";
+import { resolveReaderTocTarget, currentReaderTocItem } from "../src/navigation/navigation";
 import type { ReaderRuntime } from "../src/runtime";
 
 async function runtime(): Promise<ReaderRuntime> {

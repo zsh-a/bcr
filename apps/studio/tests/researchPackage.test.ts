@@ -20,7 +20,7 @@ import {
   planResearchPackage,
   createResearchPackage,
 } from "../src/research/package";
-import { boundReaderExcerpt, decodeResearch, type ResearchLibrary } from "../src/research/index";
+import { boundReaderExcerpt, decodeResearch, type ResearchLibrary } from "../src/research";
 import { createResearchBackup, planResearchImport } from "../src/research/backup";
 import { createReaderRuntime } from "@bcr/reader-studio/runtime";
 import { reader, getReaderState } from "@bcr/reader-studio/store";

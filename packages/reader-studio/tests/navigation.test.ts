@@ -4,7 +4,7 @@ import {
   currentReaderTocItem,
   resolveReaderInternalLink,
   resolveReaderTocTarget,
-} from "../src/navigation";
+} from "../src/navigation/navigation";
 
 const firstSection: ReaderSection = {
   id: "epub:OPS/text/chapter 1.xhtml",

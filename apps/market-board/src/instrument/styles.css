@@ -1,0 +1,139 @@
+.ma-stock-detail {
+  width: min(960px, calc(100vw - var(--space-7)));
+}
+
+.ma-stock-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.ma-stock-heading p {
+  margin: 0 0 var(--space-2);
+}
+
+.ma-stock-heading strong {
+  font: 500 var(--text-2xl) var(--font-mono);
+  margin-right: var(--space-3);
+}
+
+.ma-stock-heading em {
+  font: 400 var(--text-sm) var(--font-mono);
+}
+
+.ma-candle-wrap {
+  width: 100%;
+}
+
+.ma-candle-readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font: var(--text-xs) var(--font-mono);
+  color: var(--color-muted);
+  padding: var(--space-2) 0;
+}
+
+.ma-candle-readout b {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.ma-candle-chart {
+  width: 100%;
+  height: clamp(200px, 30vh, 320px);
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+.ma-candle-chart .grid {
+  stroke: var(--color-border);
+  stroke-width: 0.5;
+}
+
+.ma-candle-chart .wick {
+  stroke: currentColor;
+  stroke-width: 1;
+}
+
+.ma-candle-chart .body {
+  fill: currentColor;
+}
+
+.ma-candle-chart .volume {
+  fill: currentColor;
+  opacity: 0.3;
+}
+
+.ma-candle-chart .up {
+  color: var(--color-success);
+}
+
+.ma-candle-chart .down {
+  color: var(--color-danger);
+}
+
+.ma-candle-chart .crosshair {
+  stroke: var(--color-faint);
+  stroke-width: 0.5;
+  stroke-dasharray: 4 4;
+}
+
+.ma-candle-loading,
+.ma-candle-empty {
+  position: relative;
+  min-height: 240px;
+}
+
+.ma-chart-placeholder {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+  height: 220px;
+  padding: var(--space-5);
+  opacity: 0.5;
+}
+
+.ma-chart-placeholder .ui-skeleton {
+  flex: 1;
+}
+
+.ma-chart-loading-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.ma-dividend-timeline article {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ma-dividend-timeline b,
+.ma-dividend-timeline small {
+  display: block;
+}
+
+.ma-dividend-timeline b {
+  font-weight: 500;
+}
+
+.ma-dividend-timeline small {
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+}
+
+.ma-dividend-timeline strong {
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  font-weight: 400;
+}

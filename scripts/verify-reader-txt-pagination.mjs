@@ -30,7 +30,9 @@ try {
   async function state(action) {
     return page.evaluate(async (action) => {
       const url = (await window.__bcrTestModuleUrls())
-        .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
+        .filter((url) =>
+          new URL(url).pathname.endsWith("/packages/reader-studio/src/state/store.ts"),
+        )
         .at(-1);
       const { reader, getReaderState } = await import(url);
       const book = getReaderState().library.find((book) => book.source.name === "txt-chapters.txt");

@@ -20,7 +20,7 @@ describe("browser verification module tracking", () => {
         frame: () => frame,
       });
     const urls = () => bindings.get("__bcrTestModuleUrls")!();
-    const module = "http://localhost/packages/reader-studio/src/store.ts?t=123";
+    const module = "http://localhost/packages/reader-studio/src/state/store.ts?t=123";
     request("http://localhost/reader", true);
     request(module);
     for (let index = 0; index < 500; index++) request(`http://localhost/font-${index}.woff2`);

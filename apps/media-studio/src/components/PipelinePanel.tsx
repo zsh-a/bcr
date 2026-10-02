@@ -1,7 +1,7 @@
 import { findOperation, type NodeRunState } from "@bcr/graph";
 import { ProgressBar } from "@bcr/react";
 import { OPERATIONS } from "../operations";
-import { useStudio } from "../store";
+import { useStudio } from "../useStudio";
 
 const STATUS_STYLE: Record<NodeRunState["status"], { dot: string; text: string; label: string }> = {
   pending: { dot: "bg-[var(--color-faint)]", text: "text-[var(--color-faint)]", label: "待执行" },

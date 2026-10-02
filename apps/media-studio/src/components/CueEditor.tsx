@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { studio, useStudio } from "../store";
+import { studio } from "../store";
+import { useStudio } from "../useStudio";
 import { cueCps, CPS_LIMIT, type SubtitleCue } from "../subtitles";
 
 export function formatClock(seconds: number): string {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ArtifactRef } from "@bcr/core";
-import { createDemoBook } from "../src/model";
+import { createDemoBook } from "../src/state/model";
 import { documentFormatForReader, readerBookToDocumentContent } from "../src/document-adapter";
 
 describe("Reader → Document adapter", () => {

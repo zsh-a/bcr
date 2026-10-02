@@ -5,24 +5,28 @@ import {
   normalizeNotePath,
   notePath,
   relativeNotePath,
-} from "../src/knowledge/paths";
+} from "../src/knowledge/notes/paths";
 import {
   newNote,
   decodeContent,
   decodeState,
   emptyKnowledge,
   type KnowledgeNote,
-} from "../src/knowledge/model";
-import { folderMoves, planNoteMove } from "../src/knowledge/changePlan";
-import { createNoteResolver, KnowledgeLinkIndex } from "../src/knowledge/markdownAnalysis";
-import { contentFiles, filesContent, MANIFEST } from "../src/knowledge/files";
-import { KnowledgeStore, KNOWLEDGE_KEY, KNOWLEDGE_PATH_BACKUP_KEY } from "../src/knowledge/store";
-import { mergeContent } from "../src/knowledge/merge";
+} from "../src/knowledge/session/model";
+import { folderMoves, planNoteMove } from "../src/knowledge/notes/changePlan";
+import { createNoteResolver, KnowledgeLinkIndex } from "../src/knowledge/notes/markdownAnalysis";
+import { contentFiles, filesContent, MANIFEST } from "../src/knowledge/storage/files";
+import {
+  KnowledgeStore,
+  KNOWLEDGE_KEY,
+  KNOWLEDGE_PATH_BACKUP_KEY,
+} from "../src/knowledge/session/store";
+import { mergeContent } from "../src/knowledge/sync/merge";
 import {
   planKnowledgeRestore,
   readKnowledgeBackup,
   writeKnowledgeBackup,
-} from "../src/knowledge/backup";
+} from "../src/knowledge/storage/backup";
 
 const note = (id: string, path?: string, body = ""): KnowledgeNote => ({
   ...newNote(id),

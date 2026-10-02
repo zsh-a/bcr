@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createDemoBook } from "../src/model";
-import { TxtPageLayout, compareTxtCursor, type TxtPageCursor } from "../src/txtPageLayout";
+import { createDemoBook } from "../src/state/model";
+import {
+  TxtPageLayout,
+  compareTxtCursor,
+  type TxtPageCursor,
+} from "../src/pagination/txtPageLayout";
 
 function fixture(gap = 0) {
   const book = {

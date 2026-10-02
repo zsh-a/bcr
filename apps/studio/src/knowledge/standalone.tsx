@@ -8,7 +8,6 @@ import "@fontsource/ibm-plex-sans/600.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "./knowledge-entry.css";
-
 import {
   AppUpdateProvider,
   AgentProvider,
@@ -31,7 +30,7 @@ import { createRoot } from "react-dom/client";
 import { useEffect, useState, type ReactNode } from "react";
 import { createRuntimeServices } from "../runtime";
 import { KNOWLEDGE_PATH } from "../shell/host-manifests";
-import { KnowledgeApp } from "./KnowledgeApp";
+import { KnowledgeApp } from "./workbench/KnowledgeApp";
 
 /**
  * 个人知识库的独立 PWA 入口（/notes/，scope /notes/）。

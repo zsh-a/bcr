@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { noteWhen } from "../src/knowledge/format";
+import { noteWhen } from "../src/knowledge/editor/format";
 
 const day = 86_400_000;
 // 固定“现在”为周三 2026-09-30 12:00 本地时间，只测日界语义。

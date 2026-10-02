@@ -1,6 +1,6 @@
 # Reader 阅读界面
 
-Reader 的渲染与导航按内容模型分离，不再让所有格式共用多栏布局。
+Reader 的渲染与导航按内容模型分离，不再让所有格式共用多栏布局。源码职责和目录划分见 [Runtime 架构](./RUNTIME-ARCHITECTURE.md#领域服务与代码职责)。
 
 - `ReadingView` 选择连续阅读或 `PagedReadingView`。PDF 固定采用连续页面。
 - `PagedReadingView` 为 EPUB 等结构化格式保留章节内 CSS 多栏分页。TXT 使用 `TxtPageLayout` 按浏览器实测行断点分配正文页；读取段落与分页解耦，前后翻页均以原文 UTF-16 位置衔接，仅真实章节边界可产生自然尾页。

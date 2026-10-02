@@ -11,8 +11,8 @@ import {
   ZipReader,
   ZipWriter,
 } from "@zip.js/zip.js";
-import { KnowledgeStore } from "../src/knowledge/store";
-import { contentOf, decodeState, newNote } from "../src/knowledge/model";
+import { KnowledgeStore } from "../src/knowledge/session/store";
+import { contentOf, decodeState, newNote } from "../src/knowledge/session/model";
 import {
   attachmentArchivePath,
   attachmentPath,
@@ -21,19 +21,19 @@ import {
   decodeAttachments,
   mergeAttachments,
   rewriteAttachmentUrls,
-} from "../src/knowledge/attachmentModel";
+} from "../src/knowledge/attachments/attachmentModel";
 import {
   planKnowledgeRestore,
   readKnowledgeBackup,
   writeKnowledgeBackup,
   writeMarkdownArchive,
-} from "../src/knowledge/backup";
-import { contentFiles } from "../src/knowledge/files";
-import { GitHubKnowledge } from "../src/knowledge/github";
-import { syncKnowledge } from "../src/knowledge/sync";
+} from "../src/knowledge/storage/backup";
+import { contentFiles } from "../src/knowledge/storage/files";
+import { GitHubKnowledge } from "../src/knowledge/sync/github";
+import { syncKnowledge } from "../src/knowledge/sync/sync";
 import { createKnowledgeGitHub } from "../../../scripts/fixtures/knowledge-github.mjs";
-import { knowledgeCapability } from "../src/knowledge/agent";
-import { readAttachmentText } from "../src/knowledge/attachmentText";
+import { knowledgeCapability } from "../src/knowledge/agent/agent";
+import { readAttachmentText } from "../src/knowledge/attachments/attachmentText";
 
 function device() {
   const records = new Map<string, string>(),

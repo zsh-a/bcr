@@ -4,7 +4,7 @@ import {
   configureMangaTransformersCache,
   inspectMangaModelCache,
   MANGA_MODEL_CACHE_NAME,
-} from "../src/model-cache";
+} from "../src/models/model-cache";
 
 const originalCaches = (globalThis as typeof globalThis & { caches?: CacheStorage }).caches;
 

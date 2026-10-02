@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReaderTocItem } from "@bcr/reader-core";
-import { tocAncestors, tocBranches, visibleTocRows } from "../src/tocTree";
+import { tocAncestors, tocBranches, visibleTocRows } from "../src/navigation/tocTree";
 
 const tree: readonly ReaderTocItem[] = [
   {

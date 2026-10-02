@@ -1,7 +1,7 @@
-import { createMangaCompute } from "../compute";
+import { createMangaCompute } from "../execution/compute";
 import { createArtifactIO, defineWorker, type OperationHandler } from "@bcr/runtime-worker";
 import { OpfsStore } from "@bcr/storage-opfs";
-import { MANGA_COMPUTE } from "../operations";
+import { MANGA_COMPUTE } from "../execution/operations";
 const handlers = createMangaCompute(createArtifactIO(new OpfsStore("manga"), "opfs"));
 defineWorker({
   "manga.ocr.onnx": handlers.mangaOcrOnnx,

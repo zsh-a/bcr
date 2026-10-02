@@ -3,11 +3,11 @@ import { MemoryStore } from "@bcr/storage-opfs";
 import { artifactStore, ArtifactStoreTag } from "@bcr/core";
 import { Context, Effect, Layer } from "effect";
 import { createLocator, percentageForLocator } from "@bcr/reader-core";
-import { createDemoBook } from "../src/model";
-import { storeStructuredContent, restoreStructuredContent } from "../src/structuredContent";
-import { loadSectionContent, releaseReaderContent } from "../src/readerContent";
-import { persistBook } from "../src/readerPersistence";
-import type { ReaderRuntime } from "../src/readerRuntimeCore";
+import { createDemoBook } from "../src/state/model";
+import { storeStructuredContent, restoreStructuredContent } from "../src/content/structuredContent";
+import { loadSectionContent, releaseReaderContent } from "../src/content/readerContent";
+import { persistBook } from "../src/persistence/codec";
+import type { ReaderRuntime } from "../src/runtime/readerRuntimeCore";
 
 async function runtime(): Promise<ReaderRuntime> {
   const binary = new MemoryStore();

@@ -10,7 +10,7 @@ export {
   ensureReaderMetadata,
   readerRuntime,
   type ReaderRuntime,
-} from "./readerRuntimeCore";
+} from "./runtime/readerRuntimeCore";
 export {
   importReaderContentPackage,
   importReaderDocumentHandoff,
@@ -18,21 +18,22 @@ export {
   importReaderFile,
   prepareReaderDocumentHandoff,
   type ReaderDocumentHandoffPayload,
-} from "./readerImports";
+} from "./library/readerImports";
 export {
   mirrorReaderLibrary,
   mirrorReaderSession,
   persistReader,
-  restoreReader,
-  restoreReaderBooks,
+} from "./persistence/readerPersistence";
+export { restoreReader, restoreReaderBooks } from "./persistence/restore";
+export {
   type PersistReaderOptions,
   type ReaderBookRestoreBatch,
   type ReaderRestoreDiagnostics,
   type ReaderRestoreIssue,
-} from "./readerPersistence";
+} from "./persistence/model";
 export {
   indexBook,
   searchIndexed,
   searchIndexedDetailed,
   type ReaderSearchResult,
-} from "./readerSearch";
+} from "./search/readerSearch";

@@ -1,0 +1,152 @@
+/* eyebrow 已并入 ui-section-label：行内/栏内语境去掉面板内边距。 */
+.reader-header .ui-section-label,
+.reader-recovery-banner .ui-section-label,
+.reader-install-card .ui-section-label,
+.reader-toolbar .ui-section-label,
+.reader-sidebar .ui-section-label,
+.reader-library-toolbar .ui-section-label,
+.reader-search-panel .ui-section-label,
+.reader-mobile-sheet .ui-section-label,
+.reader-annotation-composer .ui-section-label {
+  padding: 0;
+}
+
+.reader-library-panel {
+  display: flex;
+  height: 100%;
+  min-width: var(--w-sidebar);
+  flex-direction: column;
+  padding: var(--space-5) var(--space-4) var(--space-3);
+}
+
+.reader-library-add {
+  width: 100%;
+}
+
+.reader-library-list {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow: auto;
+  margin-top: var(--space-5);
+  padding: var(--space-1) 0 var(--space-3);
+  scrollbar-width: thin;
+}
+
+.reader-library-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.reader-library-toolbar select {
+  max-width: 150px;
+}
+
+.reader-library-filter {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  padding-inline: var(--space-3);
+  color: var(--color-text);
+}
+
+.reader-library-management,
+.reader-library-batch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block: var(--space-2);
+}
+
+.reader-library-management {
+  justify-content: space-between;
+}
+
+.reader-library-management label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+}
+
+.reader-library-management input {
+  accent-color: var(--color-accent);
+}
+
+.reader-library-management button,
+.reader-library-batch button,
+.reader-bookmark-export {
+  min-height: 44px;
+}
+
+.reader-book-card.is-managing {
+  grid-template-columns: 20px 45px minmax(0, 1fr);
+  padding-right: var(--space-2);
+}
+
+.reader-book-card.is-selected {
+  border-color: var(--color-accent);
+}
+
+.reader-book-card {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 104px;
+  grid-template-columns: 45px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: var(--space-2);
+  text-align: left;
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.reader-book-card:hover {
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-raised) 75%, transparent);
+}
+
+.reader-book-card.is-active {
+  border-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent-dim) 68%, var(--color-raised));
+}
+
+.reader-book-card-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.reader-book-card-copy strong,
+.reader-book-card-copy > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-book-card-copy strong {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.reader-book-card-copy > span {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}

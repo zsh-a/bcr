@@ -5,7 +5,7 @@ import {
   openReaderContentPackage,
   safeUrl,
   sanitizeInlineStyle,
-} from "../src/adapters";
+} from "../src/adapters/adapters";
 import { createDocumentContentPackage, createDocumentTranslationPackage } from "@bcr/document-core";
 import {
   READER_FORMAT_CATALOG,

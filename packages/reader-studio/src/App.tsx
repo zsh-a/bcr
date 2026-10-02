@@ -1,11 +1,11 @@
 import { useNavigation } from "@bcr/react";
-import { readerUsesPagedText } from "./model";
+import { readerUsesPagedText } from "./state/model";
 import {
   hasDeferredContent,
   searchReaderContent,
   loadSectionContent,
   subscribeSectionContent,
-} from "./readerContent";
+} from "./content/readerContent";
 import { createTextLocator } from "@bcr/reader-core";
 import {
   readerResearchDocuments,
@@ -35,12 +35,13 @@ import {
   ReaderRecoveryBanner,
   type ImportFailure,
   type ImportJob,
-} from "./ReaderChrome";
-import { ReaderWorkspace } from "./ReaderWorkspace";
-import { activeBook } from "./model";
-import { formatBadge, readerImportErrorMessage } from "./readerPresentation";
-import { getReaderState, reader, useReader } from "./store";
-import { useReaderPwaInstall } from "./useReaderPlatform";
+} from "./workbench/ReaderChrome";
+import { ReaderWorkspace } from "./workbench/ReaderWorkspace";
+import { activeBook } from "./state/model";
+import { formatBadge, readerImportErrorMessage } from "./reading/readerPresentation";
+import { getReaderState, reader } from "./state/store";
+import { useReader } from "./state/useReader";
+import { useReaderPwaInstall } from "./workbench/useReaderPlatform";
 import {
   isAbortError,
   persistReaderSnapshot,
@@ -48,16 +49,16 @@ import {
   useReaderBoot,
   useReaderPwaUpdate,
   useReaderSearch,
-} from "./useReaderRuntime";
+} from "./workbench/useReaderRuntime";
 import "./styles.css";
-import "./reading-layout.css";
-import "./reader-tools.css";
-import "./reader-surface.css";
-import "./reader-progress.css";
-import "./reader-navigation.css";
-import "./reader-library.css";
-import { connectReaderBrowserHistory } from "./browserHistory";
-import { ReaderShortcutHelp } from "./ReaderShortcutHelp";
+import "./reading/reading-layout.css";
+import "./workbench/reader-tools.css";
+import "./reading/reader-surface.css";
+import "./navigation/reader-progress.css";
+import "./navigation/reader-navigation.css";
+import "./library/reader-library.css";
+import { connectReaderBrowserHistory } from "./navigation/browserHistory";
+import { ReaderShortcutHelp } from "./workbench/ReaderShortcutHelp";
 
 interface ReaderRouteSearch {
   readonly book?: string;

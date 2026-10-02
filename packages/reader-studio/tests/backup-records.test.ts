@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createLocator, progressForLocator, type ReaderBook } from "@bcr/reader-core";
-import { classifyBackupBooks, type ReaderBackup } from "../src/readerBackup";
-import { planReaderRestoreRecords } from "../src/readerRestoreRecords";
-import { createDemoBook, DEFAULT_READER_SETTINGS } from "../src/model";
-import { getReaderState, reader } from "../src/store";
+import { classifyBackupBooks, type ReaderBackup } from "../src/persistence/readerBackup";
+import { planReaderRestoreRecords } from "../src/persistence/readerRestoreRecords";
+import { createDemoBook, DEFAULT_READER_SETTINGS } from "../src/state/model";
+import { getReaderState, reader } from "../src/state/store";
 
 const hash = "a".repeat(64);
 function publication(id: string): ReaderBook {

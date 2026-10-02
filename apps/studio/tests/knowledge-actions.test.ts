@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createWorkspaceServices } from "../src/workspace";
-import { createKnowledgeActions, researchToKnowledge } from "../src/knowledge/actions";
+import { createKnowledgeActions, researchToKnowledge } from "../src/knowledge/notes/actions";
 import type { ResearchLibrary } from "../src/research/model";
 
 describe("knowledge application operations", () => {

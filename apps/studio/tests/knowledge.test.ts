@@ -13,7 +13,7 @@ import {
   newNote,
   pendingCount,
   type KnowledgeNote,
-} from "../src/knowledge/model";
+} from "../src/knowledge/session/model";
 import {
   contentFiles,
   filesContent,
@@ -21,12 +21,12 @@ import {
   MANIFEST,
   noteMarkdown,
   parseNoteMarkdown,
-} from "../src/knowledge/files";
-import { mergeContent, mergeText } from "../src/knowledge/merge";
-import { KnowledgeStore } from "../src/knowledge/store";
-import { publishKnowledge } from "../src/knowledge/search";
-import { GitHubKnowledge } from "../src/knowledge/github";
-import { syncKnowledge } from "../src/knowledge/sync";
+} from "../src/knowledge/storage/files";
+import { mergeContent, mergeText } from "../src/knowledge/sync/merge";
+import { KnowledgeStore } from "../src/knowledge/session/store";
+import { publishKnowledge } from "../src/knowledge/search/search";
+import { GitHubKnowledge } from "../src/knowledge/sync/github";
+import { syncKnowledge } from "../src/knowledge/sync/sync";
 
 const target = { owner: "alice", repo: "notes", branch: "main" };
 const note = (body = "first\nmiddle\nlast\n"): KnowledgeNote => ({

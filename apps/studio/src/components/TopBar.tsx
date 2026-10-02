@@ -13,7 +13,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Bot, ChevronUp, Command, House, RefreshCw, Search, Settings2 } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { MANIFESTS, type ActiveView } from "../shell/registry";
-import { useStudio } from "../store";
+import { useStudio } from "../useStudio";
 import { ThemePicker } from "../theme/ThemePicker";
 
 /** 全局导航：搜索、助手及归入工作区选项的命令、外观和运行状态。 */

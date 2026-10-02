@@ -1,0 +1,369 @@
+.reader-header-progress {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+}
+
+.reader-progress-ring {
+  display: grid;
+  width: var(--h-control);
+  height: var(--h-control);
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-raised);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.reader-import-progress {
+  position: absolute;
+  top: 61px;
+  right: var(--space-6);
+  z-index: 49;
+  display: grid;
+  min-width: min(310px, 72vw);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-raised) 97%, transparent);
+  box-shadow: var(--shadow-floating);
+  padding: var(--space-3);
+  backdrop-filter: blur(20px);
+}
+
+.reader-import-progress-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.reader-import-progress-copy strong {
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.reader-import-progress-copy span {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-import-progress progress {
+  width: 100%;
+  height: 5px;
+  grid-column: 1 / -1;
+  accent-color: var(--color-accent);
+}
+
+.reader-workspace.sidebar-hidden {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.reader-sidebar {
+  min-width: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  transition:
+    width var(--duration-slow) var(--ease-standard),
+    opacity var(--duration-slow) var(--ease-standard);
+}
+
+.sidebar-hidden .reader-sidebar {
+  width: 0;
+  border-right: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.reader-sidebar-heading,
+.reader-search-panel-top,
+.reader-toolbar,
+.reader-pdf-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reader-sidebar-heading > div,
+.reader-search-panel-top > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.reader-sidebar-heading strong {
+  font-size: var(--text-base);
+  font-weight: 650;
+}
+
+.reader-mobile-toolbar-actions,
+.reader-mobile-nav,
+.reader-mobile-chrome-reveal {
+  display: none;
+}
+
+.reader-book-progress {
+  height: 3px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-border-strong) 55%, transparent);
+}
+
+.reader-book-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent);
+  transition: width var(--duration-slow) var(--ease-standard);
+}
+
+.reader-sidebar-scrim {
+  display: none;
+}
+
+.reader-mobile-progress {
+  display: none;
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 3px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-border-strong) 42%, transparent);
+  pointer-events: none;
+}
+
+.reader-mobile-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  background: var(--color-accent);
+  transition: width var(--duration-slow) var(--ease-standard);
+}
+
+.reader-sidebar-toggle {
+  display: none;
+}
+
+.reader-workspace.sidebar-hidden .reader-sidebar-toggle {
+  display: inline-grid;
+}
+
+.reader-mobile-toc-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0 var(--space-2);
+}
+
+.reader-mobile-toc-search label {
+  display: flex;
+  min-height: var(--h-control-lg);
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 74%, transparent);
+  padding: 0 var(--space-3);
+  color: var(--color-muted);
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.reader-mobile-toc-search label:focus-within {
+  border-color: var(--color-accent);
+}
+
+.reader-mobile-toc-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-lg);
+}
+
+.reader-mobile-toc-search > button {
+  display: inline-grid;
+  width: var(--h-control-lg);
+  height: var(--h-control-lg);
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+}
+
+.reader-mobile-toc-context {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 24%, var(--color-border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-accent-dim) 48%, var(--color-raised));
+  padding: var(--space-2) var(--space-3);
+}
+
+.reader-mobile-toc-context > span:first-child {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.reader-mobile-toc-context strong {
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-mobile-toc-context > span:last-child {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+/* 工具栏开关——视觉归 ui-btn，只留状态。 */
+.reader-bookmark-toggle:hover,
+.reader-bookmark-toggle.is-active,
+.reader-document-handoff:hover:not(:disabled),
+.reader-annotation-toggle:hover,
+.reader-fullscreen-toggle:hover:not(:disabled),
+.reader-fullscreen-toggle.is-active {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent);
+}
+
+.reader-toc-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.reader-toc-item > button {
+  width: 100%;
+}
+
+.reader-toc-item > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.reader-annotation-heading {
+  color: var(--color-amber);
+}
+
+.reader-annotation-composer {
+  position: relative;
+  z-index: 24;
+  display: flex;
+  gap: var(--space-3);
+  margin: 0 var(--space-6);
+  flex-direction: column;
+  border: 1px solid color-mix(in srgb, var(--color-amber) 38%, var(--color-border));
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 97%, transparent);
+  padding: var(--space-4) var(--space-5) var(--space-4);
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(24px);
+}
+
+.reader-annotation-composer-heading,
+.reader-annotation-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.reader-annotation-composer-heading > div {
+  display: flex;
+  gap: var(--space-1);
+  flex-direction: column;
+}
+
+.reader-annotation-composer-heading strong {
+  font-size: var(--text-base);
+  font-weight: 650;
+}
+
+.reader-annotation-composer textarea {
+  width: 100%;
+  min-height: 74px;
+}
+
+.reader-annotation-composer-footer > span {
+  color: var(--color-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.reader-annotation-composer-footer .ui-btn {
+  min-height: 32px;
+  font-size: var(--text-xs);
+}
+
+.reader-virtual-toc {
+  height: min(60vh, 640px);
+  min-height: 160px;
+  flex-shrink: 0;
+  overflow: auto;
+  overflow-anchor: none;
+}
+
+.reader-virtual-toc button {
+  display: grid;
+  grid-template-columns: var(--space-8) minmax(0, 1fr);
+  gap: var(--space-2);
+  width: 100%;
+  height: var(--h-control-lg);
+  padding: var(--space-2);
+  text-align: left;
+}
+
+.reader-virtual-toc strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-navigation-sheet .reader-virtual-toc button {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: var(--text-base);
+}
+
+.reader-navigation-sheet .reader-virtual-toc button:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 24%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.reader-navigation-sheet .reader-virtual-toc button.is-active {
+  border-color: color-mix(in srgb, var(--color-accent) 24%, var(--color-border));
+  background: var(--color-accent-dim);
+}
+
+.reader-navigation-sheet .reader-virtual-toc button > span {
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+  text-align: center;
+}

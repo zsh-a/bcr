@@ -1,9 +1,9 @@
 import type { WorkspacePlugin } from "@bcr/shell-contract";
-import { createKnowledgePublisher } from "./search";
+import { createKnowledgePublisher } from "./search/search";
 import { workspaceServices } from "../workspace";
-import { knowledgeCapability } from "./agent";
-import { knowledgeResultRenderers } from "./agentRenderers";
-import { draftStorageKey } from "./draft";
+import { knowledgeCapability } from "./agent/agent";
+import { knowledgeResultRenderers } from "./agent/agentRenderers";
+import { draftStorageKey } from "./editor/draft";
 
 export const knowledgePlugin: WorkspacePlugin = {
   id: "knowledge",

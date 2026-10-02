@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { createKnowledgeGitHub } from "../../../scripts/fixtures/knowledge-github.mjs";
-import { parseRepository } from "../src/knowledge/repository";
-import { GitHubKnowledge } from "../src/knowledge/github";
-import { KnowledgeStore } from "../src/knowledge/store";
-import { emptyContent } from "../src/knowledge/model";
+import { parseRepository } from "../src/knowledge/sync/repository";
+import { GitHubKnowledge } from "../src/knowledge/sync/github";
+import { KnowledgeStore } from "../src/knowledge/session/store";
+import { emptyContent } from "../src/knowledge/session/model";
 
 describe("simplified GitHub connection", () => {
   it.each(["Alice/Notes", "https://github.com/Alice/Notes", "https://github.com/Alice/Notes.git/"])(

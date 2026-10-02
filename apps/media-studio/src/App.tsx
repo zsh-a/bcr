@@ -12,7 +12,6 @@ import { useEffect, useRef, useState } from "react";
 import { AudioWaveform, Download, Settings2, Upload } from "lucide-react";
 import { mediaCitationTarget } from "./mediaSearchDocuments";
 import { useMediaSearch } from "./search";
-// 样式随模块加载：Shell 懒加载本组件时 CSS 一并注入（standalone main.tsx 的重复 import 幂等）。
 import { CueEditor, UndoRedo } from "./components/CueEditor";
 import { PipelineEditor } from "./components/PipelineEditor";
 import { PipelinePanel } from "./components/PipelinePanel";
@@ -21,7 +20,8 @@ import { exportSubtitles, FORMAT_MIME, type SubtitleFormat } from "./exporters";
 import { cancelGeneration, generateSubtitles, persistProject, restoreProject } from "./pipeline";
 import { createRuntimeServices } from "./runtime";
 import { clearProject, importSource } from "./source";
-import { studio, useStudio } from "./store";
+import { studio } from "./store";
+import { useStudio } from "./useStudio";
 import "./styles.css";
 
 export function App() {

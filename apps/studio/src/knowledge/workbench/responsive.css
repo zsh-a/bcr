@@ -1,0 +1,142 @@
+/* ---------- 小屏：列表抽屉 ---------- */
+
+@media (width <= theme(--bp-md)) {
+  /* 抽屉覆盖正文（overlay，不挤开内容）；进出场按 ui.css 语言：位移 + 淡入淡出。
+     宽度/flex-basis 保持形态过渡，跨断点拉伸不跳变。 */
+  .knowledge-sidebar {
+    position: absolute;
+    z-index: var(--layer-drawer);
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(var(--w-sidebar-override, var(--w-sidebar)), 85vw);
+    padding: var(--space-4) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom))
+      max(var(--space-4), env(safe-area-inset-left));
+    gap: var(--space-3);
+    opacity: 0;
+    transform: translateX(-105%);
+    transition:
+      transform var(--duration-slow) var(--ease-standard),
+      opacity var(--duration-slow) var(--ease-standard),
+      width var(--duration-slow) var(--ease-standard),
+      flex-basis var(--duration-slow) var(--ease-standard);
+  }
+  .knowledge-app.show-sidebar .knowledge-sidebar {
+    opacity: 1;
+    transform: none;
+  }
+  .knowledge-app.show-sidebar .knowledge-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: var(--layer-scrim);
+    border: 0;
+    padding: 0;
+    background: var(--color-scrim);
+    /* 压暗层随抽屉一起淡入（元素随开关挂载，退场即卸载，不做退场过渡）。 */
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+  @starting-style {
+    .knowledge-app.show-sidebar .knowledge-backdrop {
+      opacity: 0;
+    }
+  }
+  .knowledge-mobile-close {
+    display: inline-flex;
+    margin-left: auto;
+    min-width: var(--h-control-lg);
+    min-height: var(--h-control-lg);
+  }
+  /* 抽屉只留筛选、范围分段与目录树；树行抬到触控高度。 */
+  .knowledge-file-note,
+  .knowledge-file-folder > summary {
+    min-height: var(--h-control-lg);
+  }
+  .knowledge-editor {
+    padding: var(--space-6) var(--space-5) 0;
+  }
+  .knowledge-editor-meta {
+    margin-bottom: var(--space-6);
+  }
+  .knowledge-collection-select {
+    max-width: 110px;
+  }
+  .knowledge-body {
+    font-size: var(--text-lg);
+  }
+  .knowledge-citations {
+    margin: var(--space-5);
+  }
+  .knowledge-panel {
+    margin: var(--space-3);
+    padding: var(--space-5);
+  }
+  .knowledge-conflict-versions {
+    grid-template-columns: 1fr;
+  }
+  .knowledge-conflict pre {
+    max-height: 160px;
+  }
+  .knowledge-empty {
+    padding: var(--space-8) var(--space-6);
+  }
+  .knowledge-note-card {
+    min-height: var(--h-control-lg);
+    padding: var(--space-4);
+  }
+}
+
+/* ---------- 容器降级：主区 < 640px（随容器而非视口） ---------- */
+
+@container kb-main (width < 640px) {
+  /* 工具条按钮文字隐藏（icon-only）：裸文本随字号归零；
+   * svg 与显式字号元素（span、SectionLabel）不受影响；浮层菜单保持可读。 */
+  :is(.knowledge-editor-head, .knowledge-editor-meta)
+    button:has(> svg):not(
+      .knowledge-overflow-menu button,
+      .knowledge-tools-menu button,
+      .knowledge-tag-chip
+    ) {
+    font-size: 0;
+  }
+
+  /* 状态插槽同理：只留状态点。 */
+  .knowledge-status-line {
+    display: none;
+  }
+
+  /* 视图分段收起：收进写作工具菜单（菜单内已有同一组视图开关）。 */
+  .knowledge-mode-controls .knowledge-segmented {
+    display: none;
+  }
+
+  /* 标签 chips 横滚单行，不再折行占高。 */
+  .knowledge-tags {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .knowledge-tags > * {
+    flex: 0 0 auto;
+  }
+
+  /* 路径栏收紧水平内边距（原视口 640px 组件级规则迁入；该组件当前无渲染方）。 */
+  .knowledge-pathbar {
+    padding: var(--space-2) var(--space-4);
+  }
+}
+
+/* ---------- 背景主题联动（自定义背景） ---------- */
+
+/* 自定义背景铺满 .knowledge-app 画布时，这组面板保持 --color-bg 不透明面，
+   只让外围露出背景图。规则原在背景主题层 theme/background.css（同选择器同行为），
+   知识域类的声明点归本文件，主题层不再反向伸手进知识域。 */
+:root[data-background] .knowledge-editor,
+:root[data-background] .knowledge-empty,
+:root[data-background] .knowledge-context,
+:root[data-background] .knowledge-citations,
+:root[data-background] .knowledge-toolbar,
+:root[data-background] .knowledge-pathbar {
+  background: var(--color-bg);
+}

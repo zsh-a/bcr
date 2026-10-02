@@ -1,7 +1,7 @@
 import type { RuntimeMetadata, RuntimeServices } from "@bcr/core";
 import type { BinaryStore } from "@bcr/storage-opfs";
-import { KnowledgeStore } from "./knowledge/store";
-import { ResearchStore } from "./research/index";
+import { KnowledgeStore } from "./knowledge/session/store";
+import { ResearchStore } from "./research";
 import { DiagramStore } from "./diagram/store";
 import { createDiagramStorage } from "./diagram/browserStorage";
 

@@ -13,14 +13,14 @@ export const STUDIO_MANIFEST = {
   // Dock 必须走 load 惰性加载：静态 import 会把 Dock→面板→router 的模块图
   // 拉进 host-manifests，与 registry 形成环——打包后模块初始化交错，
   // registry 顶层会读到尚未初始化的 STUDIO_MANIFEST（启动即崩）。
-  load: async () => ({ App: (await import("../components/Dock")).Dock }),
+  load: async () => ({ App: (await import("../workbench/Dock")).Dock }),
 } as const satisfies AppManifest;
 
 export const KNOWLEDGE_MANIFEST = {
   ...hostDefinitions.knowledge,
   plugins: [knowledgePlugin],
   icon: NotebookPen,
-  load: async () => ({ App: (await import("../knowledge/KnowledgeApp")).KnowledgeApp }),
+  load: async () => ({ App: (await import("../knowledge/workbench/KnowledgeApp")).KnowledgeApp }),
 } as const satisfies AppManifest;
 
 export const ASSISTANT_PANEL = {

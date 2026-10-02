@@ -5,7 +5,7 @@ import {
   searchIndexedDocuments,
   searchTextRanges,
   type ReaderBook,
-} from "../src/index";
+} from "../src";
 
 describe("Reader occurrence search", () => {
   it("maps every normalized match to the original UTF-16 range", () => {

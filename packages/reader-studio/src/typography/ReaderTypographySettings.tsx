@@ -1,0 +1,251 @@
+import type { CSSProperties } from "react";
+import type { ReaderPageAnimation, ReaderSettings } from "../state/model";
+import { DEFAULT_READER_SETTINGS } from "../state/model";
+import { reader } from "../state/store";
+import { readerTypographyStyle, READER_TYPOGRAPHY_PRESETS } from "./readerTypography";
+import { useReaderFonts } from "./useReaderFonts";
+import "./reader-typography.css";
+import notoLicense from "@fontsource-variable/noto-serif-sc/LICENSE?raw";
+import notoSansLicense from "@fontsource-variable/noto-sans-sc/LICENSE?raw";
+import literataLicense from "@fontsource-variable/literata/LICENSE?raw";
+import atkinsonLicense from "@fontsource-variable/atkinson-hyperlegible-next/LICENSE?raw";
+import wenkaiLicense from "lxgw-wenkai-webfont/OFL.txt?raw";
+import wenkaiWebLicense from "lxgw-wenkai-webfont/LICENSE?raw";
+
+export function ReaderTypographySettings({
+  settings,
+  fixedLayout,
+  txtPaged,
+}: {
+  settings: ReaderSettings;
+  fixedLayout: boolean;
+  txtPaged: boolean;
+}) {
+  const fonts = useReaderFonts(settings, !fixedLayout);
+  if (fixedLayout)
+    return (
+      <p className="reader-typography-note">
+        PDF 与漫画图片保留原版字形；以下正文排版设置用于可重排的书籍和文章。
+      </p>
+    );
+  return (
+    <section className="reader-mobile-setting-group" aria-label="正文排版方案">
+      <span className="reader-mobile-setting-label">选择适合自己的阅读方式</span>
+      <div className="reader-typography-presets">
+        {READER_TYPOGRAPHY_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            aria-label={`应用${preset.label}排版`}
+            aria-pressed={Object.entries(preset.settings).every(
+              ([key, value]) => settings[key as keyof ReaderSettings] === value,
+            )}
+            onClick={() =>
+              reader.setSettings({
+                ...preset.settings,
+                fontSize:
+                  "fontSize" in preset.settings
+                    ? preset.settings.fontSize
+                    : window.matchMedia("(max-width: 860px)").matches
+                      ? 21
+                      : 20,
+                contentWidth: "narrow",
+                textAlign: DEFAULT_READER_SETTINGS.textAlign ?? "start",
+              })
+            }
+          >
+            <strong>{preset.label}</strong>
+            <small>{preset.description}</small>
+          </button>
+        ))}
+      </div>
+      <div
+        className="reader-typography-preview"
+        style={readerTypographyStyle(settings) as CSSProperties}
+        aria-label="中英混排预览"
+      >
+        <span className="ui-section-label">LIVE PREVIEW</span>
+        <div className="reader-typography-sample">
+          <p>春山可望，文字有自己的呼吸。读到这里，不必着急翻向下一页。</p>
+          <p>一段文字，一页时光。合上书，再打开，仍能从熟悉的地方继续。</p>
+          <p lang="en">Reading is a quiet conversation. Il1 · O0 · 2026.</p>
+        </div>
+      </div>
+      <p className="reader-typography-note" role="status">
+        {fonts.status === "loading"
+          ? "正在加载所选字体，正文暂用系统字体显示…"
+          : fonts.status === "error"
+            ? "字体暂时无法加载，已回退到系统字体。"
+            : "字体已就绪 · 本站按需加载。离线时，未缓存的字形使用系统字体。"}
+        {fonts.status === "error" && (
+          <button type="button" onClick={fonts.retry}>
+            重试加载字体
+          </button>
+        )}
+      </p>
+      <details className="reader-advanced-typography">
+        <summary>高级排版</summary>
+        <div className="reader-advanced-typography-body">
+          <div className="reader-typography-fields">
+            <label>
+              TXT 分页段落
+              <select
+                aria-label="TXT 分页段落"
+                value={settings.txtParagraphStyle ?? "indent"}
+                onChange={(event) =>
+                  reader.setSettings({
+                    txtParagraphStyle: event.target.value === "spaced" ? "spaced" : "indent",
+                  })
+                }
+              >
+                <option value="indent">首行缩进 · 整行排版</option>
+                <option value="spaced">段间留白 · 使用段间距</option>
+              </select>
+              <small>首行缩进两字，段落间不加空白，让普通正文页的行数更一致。</small>
+            </label>
+            <label>
+              翻页动画
+              <select
+                aria-label="翻页动画"
+                value={settings.pageAnimation ?? "slide"}
+                onChange={(event) =>
+                  reader.setSettings({ pageAnimation: event.target.value as ReaderPageAnimation })
+                }
+              >
+                <option value="slide">平滑滑动</option>
+                <option value="fade">淡出淡入</option>
+                <option value="paper">仿真翻页</option>
+                <option value="none">无动画</option>
+              </select>
+              <small>用于分页模式的点击、按钮和键盘翻页；跟随系统减少动态效果设置。</small>
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={settings.pageSpread ?? false}
+                onChange={(event) => reader.setSettings({ pageSpread: event.target.checked })}
+              />
+              大屏双页（空间不足时自动单页）
+            </label>
+            <label>
+              正文字重
+              <select
+                aria-label="正文字重"
+                value={settings.fontFamily === "kai" ? 400 : (settings.fontWeight ?? 400)}
+                disabled={settings.fontFamily === "kai"}
+                onChange={(event) => reader.setSettings({ fontWeight: Number(event.target.value) })}
+              >
+                <option value={350}>350 · 轻一些</option>
+                <option value={400}>400 · 标准</option>
+                <option value={500}>500 · 厚一些</option>
+              </select>
+            </label>
+            <label>
+              正文对齐
+              <select
+                aria-label="正文对齐"
+                value={settings.textAlign ?? "start"}
+                onChange={(event) =>
+                  reader.setSettings({
+                    textAlign: event.target.value === "justify" ? "justify" : "start",
+                  })
+                }
+              >
+                <option value="start">自然对齐</option>
+                <option value="justify">两端对齐</option>
+              </select>
+            </label>
+            <label>
+              行高 <output>{settings.lineHeight.toFixed(2)}</output>
+              <input
+                aria-label="正文行高"
+                type="range"
+                min={1}
+                max={3}
+                step={0.05}
+                value={settings.lineHeight}
+                onChange={(event) => reader.setSettings({ lineHeight: Number(event.target.value) })}
+              />
+            </label>
+            <label>
+              段间距 <output>{(settings.paragraphSpacing ?? 0.65).toFixed(2)} em</output>
+              <input
+                aria-label="正文段间距"
+                disabled={txtPaged && settings.txtParagraphStyle !== "spaced"}
+                type="range"
+                min={0.3}
+                max={1.2}
+                step={0.05}
+                value={settings.paragraphSpacing ?? 0.65}
+                onChange={(event) =>
+                  reader.setSettings({ paragraphSpacing: Number(event.target.value) })
+                }
+              />
+              {txtPaged && settings.txtParagraphStyle !== "spaced" && (
+                <small>TXT 首行缩进模式不使用段间距；选择段间留白后可调整。</small>
+              )}
+            </label>
+            <label>
+              正文行宽{" "}
+              <output>
+                约 {settings.lineLength ?? DEFAULT_READER_SETTINGS.lineLength} 个中文字
+              </output>
+              <input
+                aria-label="正文行宽"
+                type="range"
+                min={28}
+                max={44}
+                step={1}
+                value={settings.lineLength ?? DEFAULT_READER_SETTINGS.lineLength}
+                onChange={(event) =>
+                  reader.setSettings({
+                    lineLength: Number(event.target.value),
+                    contentWidth: "narrow",
+                  })
+                }
+              />
+            </label>
+          </div>
+          <p className="reader-typography-note">
+            小屏幕按可用宽度排版；文楷正文使用 Regular 400。预设只是起点，可以继续微调。
+          </p>
+          <button
+            type="button"
+            className="ui-btn ui-btn-lg ui-btn-default"
+            onClick={() =>
+              reader.setSettings({
+                fontFamily: DEFAULT_READER_SETTINGS.fontFamily,
+                latinFontFamily: DEFAULT_READER_SETTINGS.latinFontFamily,
+                fontSize: DEFAULT_READER_SETTINGS.fontSize,
+                fontWeight: 400,
+                lineHeight: DEFAULT_READER_SETTINGS.lineHeight,
+                paragraphSpacing: 0.65,
+                lineLength: DEFAULT_READER_SETTINGS.lineLength!,
+                contentWidth: "narrow",
+                textAlign: DEFAULT_READER_SETTINGS.textAlign ?? "start",
+              })
+            }
+          >
+            恢复默认正文排版
+          </button>
+          <details className="reader-font-licenses">
+            <summary>字体来源与开源许可</summary>
+            {[
+              ["Noto Serif SC", notoLicense],
+              ["Noto Sans SC", notoSansLicense],
+              ["Literata", literataLicense],
+              ["Atkinson Hyperlegible Next", atkinsonLicense],
+              ["LXGW WenKai", wenkaiLicense],
+              ["LXGW WenKai Webfont", wenkaiWebLicense],
+            ].map(([name, license]) => (
+              <details key={name}>
+                <summary>{name}</summary>
+                <pre>{license}</pre>
+              </details>
+            ))}
+          </details>
+        </div>
+      </details>
+    </section>
+  );
+}

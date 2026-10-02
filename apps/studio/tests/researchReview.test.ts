@@ -6,7 +6,7 @@ import {
   exportResearch,
   ResearchStore,
   type ResearchLibrary,
-} from "../src/research/index";
+} from "../src/research";
 import { createResearchBackup, decodeResearchBackup } from "../src/research/backup";
 import { linkPreview, relinkExcerpt } from "../src/research/review";
 const originalText = "最初的证据。",

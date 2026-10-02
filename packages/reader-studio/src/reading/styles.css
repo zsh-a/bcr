@@ -1,0 +1,499 @@
+.reader-studio .reader-reading-scroll {
+  --color-bg: var(--read-bg);
+  --color-surface: var(--read-surface);
+  --color-raised: var(--read-raised);
+  --color-overlay: var(--read-accent-soft);
+  --color-border: var(--read-border);
+  --color-border-strong: var(--read-border-strong);
+  --color-text: var(--read-text);
+  --color-muted: var(--read-muted);
+  --color-faint: var(--read-faint);
+  --color-accent: var(--read-accent);
+  --color-accent-dim: var(--read-accent-soft);
+  --color-primary: var(--read-accent);
+  --color-on-primary: #ffffff;
+  --color-selection: var(--read-accent-soft);
+  --color-focus: var(--read-accent);
+  --color-success: #286842;
+  --color-amber: #855008;
+  --color-danger: #b52f35;
+  --color-info: #305db4;
+  --color-scrim: #20242e66;
+  --surface-menu: color-mix(in srgb, var(--read-raised) 92%, transparent);
+  --shadow-menu: 0 1px 2px #25302d14, 0 12px 32px #25302d1f;
+  --shadow-floating: 0 20px 64px #25302d1a, 0 4px 16px #25302d12;
+  --shadow-dialog: 0 24px 100px #25302d26;
+  color-scheme: light;
+  background: var(--read-bg);
+  color: var(--read-text);
+}
+
+.reader-studio[data-read-theme="paper"] {
+  --read-bg: #ede9e0;
+  --read-surface: rgba(249, 247, 241, 0.88);
+  --read-raised: #f7f4ed;
+  --read-border: rgba(49, 61, 57, 0.15);
+  --read-border-strong: rgba(49, 61, 57, 0.29);
+  --read-text: #25302d;
+  --read-muted: #56635b;
+  --read-faint: #56635b;
+  --read-accent: #126b64;
+  --read-accent-soft: #d8eeea;
+}
+
+.reader-studio[data-read-theme="night"] {
+  --read-bg: #111715;
+  --read-surface: rgba(22, 30, 28, 0.92);
+  --read-raised: #1b2421;
+  --read-border: rgba(221, 236, 226, 0.13);
+  --read-border-strong: rgba(221, 236, 226, 0.26);
+  --read-text: #e8eee5;
+  --read-muted: #a1b0a7;
+  --read-faint: #9daaa1;
+  --read-accent: #76d7c9;
+  --read-accent-soft: #1b4c45;
+}
+
+.reader-studio[data-read-theme="night"] .reader-reading-scroll {
+  --color-on-primary: #102521;
+  --color-success: #89cca2;
+  --color-amber: #efbc69;
+  --color-danger: #ff766d;
+  --color-info: #82aef7;
+  --color-scrim: #08090cb3;
+  --shadow-menu: 0 1px 2px #0004, 0 12px 32px #0006;
+  --shadow-floating: 0 20px 64px #0005, 0 4px 16px #0003;
+  --shadow-dialog: 0 24px 100px #0007;
+  color-scheme: dark;
+}
+
+.reader-studio[data-read-theme="sage"] {
+  --read-bg: #dfe8e0;
+  --read-surface: rgba(242, 247, 239, 0.9);
+  --read-raised: #edf3eb;
+  --read-border: rgba(37, 75, 54, 0.16);
+  --read-border-strong: rgba(37, 75, 54, 0.3);
+  --read-text: #274035;
+  --read-muted: #526457;
+  --read-faint: #526457;
+  --read-accent: #226e54;
+  --read-accent-soft: #d0e8d8;
+}
+
+.reader-now-reading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.reader-now-reading strong {
+  max-width: min(30vw, 360px);
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: var(--text-base);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-book-selection {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+}
+
+.reader-document-handoff {
+  color: var(--color-accent);
+}
+
+.reader-document-handoff:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.reader-reading-frame {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) 228px;
+}
+
+.reader-reading-scroll {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-color: color-mix(in srgb, var(--read-accent) 42%, transparent) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.reader-reading-column {
+  width: min(100% - 68px, var(--read-line-length, 720px));
+  margin: 0 auto;
+  padding: 64px 0 max(90px, calc(90px + env(safe-area-inset-bottom)));
+}
+
+.reader-width-wide .reader-reading-column {
+  width: min(100% - 68px, 970px);
+}
+
+.reader-reading-intro {
+  margin-bottom: var(--space-8);
+  text-align: center;
+}
+
+.reader-reading-intro h1 {
+  margin: var(--space-4) auto var(--space-2);
+  color: var(--read-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+
+.reader-section {
+  display: grid;
+  grid-template-columns: var(--space-8) minmax(0, 1fr);
+  gap: var(--space-5);
+  margin-bottom: var(--space-8);
+  scroll-margin-top: var(--space-8);
+}
+
+.reader-section-index {
+  padding-top: var(--space-1);
+  color: var(--read-accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+}
+
+.reader-section-body {
+  min-width: 0;
+}
+
+.reader-section-label {
+  margin-bottom: var(--space-2);
+  color: var(--read-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.reader-section-image {
+  display: block;
+  width: min(100%, 820px);
+  height: auto;
+  margin: 0 auto;
+  border: 1px solid var(--read-border);
+  border-radius: var(--radius-sm);
+  background: var(--read-raised);
+}
+
+.reader-reading-end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--read-border);
+  padding-top: var(--space-6);
+  color: var(--read-muted);
+  text-align: center;
+}
+
+.reader-reading-end .reader-icon {
+  color: var(--read-accent);
+}
+
+.reader-reading-end strong {
+  color: var(--read-text);
+  font-size: var(--text-base);
+}
+
+.reader-reading-end span {
+  color: var(--read-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.reader-pdf-view {
+  margin: 0 0 72px;
+  scroll-margin-top: var(--space-8);
+}
+
+.reader-pdf-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-4) 60px;
+  color: var(--read-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+}
+
+.reader-pdf-pages {
+  display: grid;
+  gap: 42px;
+}
+
+.reader-pdf-page {
+  scroll-margin-top: var(--space-7);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition: border-color var(--duration-base) var(--ease-standard);
+}
+
+.reader-pdf-page.is-active {
+  border-color: color-mix(in srgb, var(--read-accent) 42%, transparent);
+}
+
+.reader-pdf-page-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 22px;
+  margin: 0 0 var(--space-2) 60px;
+  color: var(--read-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+}
+
+.reader-pdf-page-meta strong {
+  border: 1px solid color-mix(in srgb, var(--read-accent) 30%, var(--read-border));
+  border-radius: var(--radius-full);
+  background: var(--read-accent-soft);
+  padding: var(--space-1);
+  color: var(--read-accent);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.reader-pdf-canvas-shell {
+  position: relative;
+  display: grid;
+  min-height: 420px;
+  place-items: center;
+  border: 1px solid var(--read-border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--read-raised) 88%, var(--read-surface));
+  box-shadow: var(--shadow-floating);
+  overflow: hidden;
+}
+
+.reader-pdf-canvas-shell.is-ready {
+  min-height: 0;
+  background: var(--read-paper);
+}
+
+.reader-pdf-placeholder {
+  color: var(--read-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.reader-pdf-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  background: var(--read-paper);
+}
+
+.reader-media-loading,
+.reader-media-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 80px;
+  color: var(--read-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.reader-media-error {
+  color: var(--color-danger);
+}
+
+.reader-media-retry {
+  min-height: var(--h-control-lg);
+  border: 1px solid color-mix(in srgb, currentColor 32%, var(--color-border));
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: 0 var(--space-2);
+  color: inherit;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.reader-media-retry:hover {
+  border-color: currentColor;
+}
+
+.reader-layout-scroll .reader-virtual-text .reader-section {
+  content-visibility: visible;
+  contain-intrinsic-size: none;
+}
+
+.reader-prose,
+.reader-typography-sample {
+  color: var(--read-text);
+  font-family: var(--read-font-family, var(--font-sans));
+  font-size: var(--read-font-size, 20px);
+  line-height: var(--read-line-height, 1.7);
+  font-weight: var(--read-font-weight, 400);
+  font-optical-sizing: auto;
+}
+
+/* 阅读偏好优先于出版物内嵌排版；标题/小字/上标保持语义比例，
+ * 正文统一跟随用户选定的基准字号与字体。 */
+:is(.reader-prose, .reader-typography-sample)
+  :where(
+    article,
+    section,
+    div,
+    p,
+    span,
+    font,
+    strong,
+    em,
+    b,
+    i,
+    u,
+    s,
+    mark,
+    ul,
+    ol,
+    li,
+    a,
+    blockquote,
+    figure,
+    figcaption,
+    table,
+    thead,
+    tbody,
+    tfoot,
+    tr,
+    td,
+    th,
+    dl,
+    dt,
+    dd
+  ) {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+:is(.reader-prose, .reader-typography-sample) :where(h1, h2, h3, h4, h5, h6) {
+  font-family: inherit;
+}
+
+.reader-prose mark[data-reader-search-match] {
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--read-accent) 28%, transparent);
+  color: inherit;
+  padding: 0 0.08em;
+}
+
+.reader-prose p {
+  margin: 0 0 var(--read-paragraph-spacing, 0.65em);
+  line-height: inherit;
+}
+
+.reader-prose h1,
+.reader-prose h2,
+.reader-prose h3,
+.reader-prose h4 {
+  margin: 1.4em 0 0.7em;
+  color: var(--read-text);
+  font-size: 1.3em;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.45;
+}
+
+.reader-prose > :first-child {
+  margin-top: 0;
+}
+
+.reader-prose > :last-child {
+  margin-bottom: 0;
+}
+
+.reader-prose h3,
+.reader-prose h4 {
+  font-size: 1.15em;
+}
+
+.reader-prose h5,
+.reader-prose h6 {
+  font-size: 1.08em;
+}
+
+.reader-prose ul,
+.reader-prose ol {
+  margin: 0 0 1.2em;
+  padding-left: 1.4em;
+}
+
+.reader-prose li {
+  margin: 0.3em 0;
+}
+
+.reader-prose a {
+  color: var(--read-accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--read-accent) 38%, transparent);
+  text-underline-offset: 3px;
+}
+
+.reader-prose code {
+  border: 1px solid var(--read-border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--read-raised) 75%, transparent);
+  padding: 0.08em 0.32em;
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+}
+
+.reader-prose pre {
+  overflow: auto;
+  border: 1px solid var(--read-border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--read-raised) 84%, transparent);
+  padding: 16px;
+  font-size: 0.78em;
+  line-height: 1.6;
+}
+
+.reader-prose pre code {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.reader-prose blockquote {
+  margin: 1em 0;
+  border-left: var(--space-1) solid var(--read-accent);
+  background: color-mix(in srgb, var(--read-accent-soft) 50%, transparent);
+  padding: 14px 17px;
+  color: var(--read-text);
+  font-style: normal;
+}
+
+.reader-prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.8em auto;
+  border-radius: var(--radius-sm);
+}

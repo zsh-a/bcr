@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { settleReaderLayout } from "../src/readingRestore";
+import { settleReaderLayout } from "../src/reading/readingRestore";
 
 afterEach(() => vi.unstubAllGlobals());
 function environment() {

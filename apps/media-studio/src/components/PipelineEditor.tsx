@@ -1,7 +1,8 @@
 import { addNode, autoWire, removeNode, updateNodeConfig, type OperationDef } from "@bcr/graph";
 import { ConfigForm, GraphCanvas, OperationPalette } from "@bcr/graph/react";
 import { OPERATIONS } from "../operations";
-import { studio, useStudio } from "../store";
+import { studio } from "../store";
+import { useStudio } from "../useStudio";
 
 /**
  * Pipeline DAG 编辑器：palette 添加节点（autoWire 自动接线）+ 画布编排 + 节点配置。

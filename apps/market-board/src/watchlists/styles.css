@@ -1,0 +1,74 @@
+.ma-market-ranking b,
+.ma-member-list b,
+.ma-watch-rows b {
+  display: block;
+  font-weight: 500;
+}
+
+.ma-market-ranking small,
+.ma-member-list small,
+.ma-watch-rows small {
+  display: block;
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+}
+
+.ma-watch-rows small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ma-watchlist-groups {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.ma-watchlist-groups nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.ma-watchlist-groups small {
+  opacity: 0.7;
+}
+
+.ma-watch-rows > div {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ma-watch-rows > div > button:first-child {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: var(--space-4) 0;
+  color: var(--color-text);
+}
+
+.ma-watch-rows span {
+  flex: 1;
+  min-width: 0;
+}
+
+.ma-watch-rows strong,
+.ma-watch-rows em {
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-style: normal;
+}
+
+.ma-watch-rows .ui-btn[aria-pressed="true"] {
+  color: var(--color-accent);
+}

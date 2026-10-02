@@ -1,0 +1,657 @@
+import {
+  createLocator,
+  percentageForLocator,
+  createTextAnchor,
+  createTextLocator,
+  normalizeSearchQuery,
+  searchTextRange,
+  searchTextRangeNear,
+  type ReaderBook,
+  type ReaderLocator,
+  type ReaderSection,
+} from "@bcr/reader-core";
+import type { ReaderSettings } from "../state/model";
+import type { ReaderInternalLinkTarget } from "../navigation/navigation";
+import { loadSectionContent, subscribeSectionContent } from "../content/readerContent";
+
+export interface ReaderScrollPosition {
+  readonly top: number;
+  readonly left: number;
+}
+
+interface ReaderRenderedTextNode {
+  readonly node: Text;
+  readonly start: number;
+  readonly end: number;
+}
+
+interface ReaderRenderedText {
+  readonly value: string;
+  readonly nodes: ReadonlyArray<ReaderRenderedTextNode>;
+}
+
+interface ReaderCaretPoint {
+  readonly node: Node;
+  readonly offset: number;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function elementForNode(node: Node): Element | null {
+  return node instanceof Element ? node : node.parentElement;
+}
+
+/** Pin deferred text while validating a selection. A changed selection cancels the result. */
+export async function loadReaderSelection<T>(
+  book: ReaderBook,
+  project: (locator: ReaderLocator) => T,
+): Promise<{ value?: T; error?: string }> {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed || !selection.rangeCount) return {};
+  const range = selection.getRangeAt(0).cloneRange();
+  const start = elementForNode(range.startContainer)?.closest<HTMLElement>("[data-reader-section]");
+  const end = elementForNode(range.endContainer)?.closest<HTMLElement>("[data-reader-section]");
+  if (!start && !end) return {};
+  if (!start || !end || start.dataset.readerSection !== end.dataset.readerSection)
+    return { error: "暂不支持跨章节选段，请在同一段正文中重新选择。" };
+  const text = selection.toString();
+  if (text.length > 512) return { error: "选段过长，请选择不超过 512 个字符" };
+  const section = book.sections.find((item) => item.id === start.dataset.readerSection);
+  if (!section) return { error: "选段所属正文已变化，请重新选择。" };
+  const release = subscribeSectionContent(section, () => {});
+  const unchanged = () => {
+    const current = window.getSelection();
+    if (!current || current.isCollapsed || !current.rangeCount || current.toString() !== text)
+      return false;
+    const next = current.getRangeAt(0);
+    return (
+      next.startContainer === range.startContainer &&
+      next.startOffset === range.startOffset &&
+      next.endContainer === range.endContainer &&
+      next.endOffset === range.endOffset
+    );
+  };
+  try {
+    try {
+      await loadSectionContent(section);
+    } catch {
+      return unchanged() ? { error: "选段正文尚未加载成功，请重试加载正文后重新选择。" } : {};
+    }
+    if (!unchanged()) return {};
+    const locator = readerSelectionLocator(book);
+    if (!locator) return { error: "选段与原文无法对齐，请重新选择正文。" };
+    return { value: project(locator) };
+  } catch (reason) {
+    return { error: reason instanceof Error ? reason.message : "选段采集失败，请重新选择正文。" };
+  } finally {
+    release();
+  }
+}
+
+/** Capture a same-section text selection as a reflow-safe Reader locator. */
+export function readerSelectionLocator(book: ReaderBook): ReaderLocator | undefined {
+  if (typeof window === "undefined") return undefined;
+  const selection = window.getSelection();
+  if (selection === null || selection.isCollapsed || selection.rangeCount === 0) return undefined;
+  const range = selection.getRangeAt(0);
+  const startSection = elementForNode(range.startContainer)?.closest<HTMLElement>(
+    "[data-reader-section]",
+  );
+  const endSection = elementForNode(range.endContainer)?.closest<HTMLElement>(
+    "[data-reader-section]",
+  );
+  if (
+    startSection === null ||
+    startSection === undefined ||
+    endSection === null ||
+    endSection === undefined ||
+    startSection.dataset.readerSection !== endSection.dataset.readerSection
+  ) {
+    return undefined;
+  }
+  const sectionId = startSection.dataset.readerSection;
+  if (sectionId === undefined) return undefined;
+  const section = book.sections.find((candidate) => candidate.id === sectionId);
+  if (section === undefined) return undefined;
+  const startProse = elementForNode(range.startContainer)?.closest<HTMLElement>(
+    ".reader-prose[data-reader-text-start]",
+  );
+  const endProse = elementForNode(range.endContainer)?.closest<HTMLElement>(
+    ".reader-prose[data-reader-text-start]",
+  );
+  if (startProse && endProse) {
+    const start = readerTextNodeOffset(
+      readerRenderedText(startProse),
+      range.startContainer,
+      range.startOffset,
+    );
+    const end = readerTextNodeOffset(
+      readerRenderedText(endProse),
+      range.endContainer,
+      range.endOffset,
+    );
+    if (start !== undefined && end !== undefined) {
+      return createTextLocator(
+        section,
+        Number(startProse.dataset.readerTextStart) + start,
+        Number(endProse.dataset.readerTextStart) + end,
+      );
+    }
+  }
+  const selected = selection.toString().replace(/\r\n?/gu, "\n").trim();
+  if (selected.length === 0) return undefined;
+  // DOM paragraph separators and PDF item spacing differ from canonical text.
+  // Align the entire visible unit, not the first occurrence of a repeated quote.
+  const prose = startSection.querySelector(".reader-prose, .reader-pdf-text-layer");
+  if (prose) {
+    const rendered = readerRenderedText(prose);
+    const start = readerTextNodeOffset(rendered, range.startContainer, range.startOffset);
+    const end = readerTextNodeOffset(rendered, range.endContainer, range.endOffset);
+    const offsets: number[] = [];
+    let compact = "";
+    for (let i = 0; i < section.text.length; i++) {
+      if (!/\s/u.test(section.text[i]!)) {
+        compact += section.text[i];
+        offsets.push(i);
+      }
+    }
+    if (
+      start !== undefined &&
+      end !== undefined &&
+      compact === rendered.value.replace(/\s/gu, "")
+    ) {
+      const from = rendered.value.slice(0, start).replace(/\s/gu, "").length;
+      const to = rendered.value.slice(0, end).replace(/\s/gu, "").length;
+      if (to > from && offsets[from] !== undefined && offsets[to - 1] !== undefined)
+        return createTextLocator(section, offsets[from]!, offsets[to - 1]! + 1);
+    }
+  }
+  const match = searchTextRange(section.text, selected);
+  if (match === undefined || match.length === 0) return undefined;
+  if (searchTextRange(section.text.slice(match.start + match.length), selected)) return undefined;
+  return createTextLocator(section, match.start, match.start + match.length);
+}
+
+function readerProbeTopOffset(container: HTMLElement): number {
+  return Math.min(140, container.clientHeight * 0.32);
+}
+
+function readerImages(section: Element): Element[] {
+  // SVG wrappers are common in fixed-layout EPUBs. Treat the whole wrapper
+  // as one image, not its individual SVG image/path children.
+  return [
+    ...section.querySelectorAll(".reader-prose img, .reader-prose svg, .reader-section-image"),
+  ];
+}
+
+function readerImageLocatorAtPoint(
+  book: ReaderBook,
+  container: HTMLElement,
+  x: number,
+  y: number,
+): ReaderLocator | undefined {
+  const hit = document.elementFromPoint(x, y);
+  const sectionElement = hit?.closest<HTMLElement>("[data-reader-section]");
+  if (!sectionElement || !container.contains(sectionElement)) return undefined;
+  const section = book.sections.find((item) => item.id === sectionElement.dataset.readerSection);
+  if (!section) return undefined;
+  const images = readerImages(sectionElement);
+  const index = images.findIndex(
+    (element) => element === hit || (hit !== null && element.contains(hit)),
+  );
+  const image = images[index];
+  if (!image) return undefined;
+  const rect = image.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return undefined;
+  const sectionRect = sectionElement.getBoundingClientRect();
+  return {
+    ...createLocator(section, clamp((y - sectionRect.top) / Math.max(1, sectionRect.height), 0, 1)),
+    imageAnchor: {
+      index,
+      x: clamp((x - rect.left) / rect.width, 0, 1),
+      y: clamp((y - rect.top) / rect.height, 0, 1),
+    },
+  };
+}
+
+function readerRenderedText(root: Element): ReaderRenderedText {
+  const walker = document.createTreeWalker(root, 4);
+  const nodes: ReaderRenderedTextNode[] = [];
+  let value = "";
+  let current = walker.nextNode();
+  while (current !== null) {
+    const textNode = current as Text;
+    const start = value.length;
+    value += textNode.data;
+    if (textNode.data.length > 0) {
+      nodes.push({ node: textNode, start, end: value.length });
+    }
+    current = walker.nextNode();
+  }
+  return { value, nodes };
+}
+
+function readerCaretFromPoint(x: number, y: number): ReaderCaretPoint | undefined {
+  const caretDocument = document as Document & {
+    caretPositionFromPoint?: (
+      x: number,
+      y: number,
+    ) => { readonly offsetNode: Node; readonly offset: number } | null;
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+  };
+  const position = caretDocument.caretPositionFromPoint?.(x, y);
+  if (position !== null && position !== undefined) {
+    return { node: position.offsetNode, offset: position.offset };
+  }
+  const range = caretDocument.caretRangeFromPoint?.(x, y);
+  return range === null || range === undefined
+    ? undefined
+    : { node: range.startContainer, offset: range.startOffset };
+}
+
+function readerTextNodeOffset(
+  rendered: ReaderRenderedText,
+  node: Node,
+  offset: number,
+): number | undefined {
+  if (!(node instanceof Text)) return undefined;
+  const entry = rendered.nodes.find((candidate) => candidate.node === node);
+  return entry === undefined
+    ? undefined
+    : entry.start + Math.min(node.data.length, Math.max(0, offset));
+}
+
+function readerDomPointAtOffset(
+  rendered: ReaderRenderedText,
+  offset: number,
+): { readonly node: Text; readonly offset: number } | undefined {
+  if (rendered.nodes.length === 0) return undefined;
+  const safeOffset = Math.min(rendered.value.length, Math.max(0, offset));
+  const entry =
+    rendered.nodes.find((candidate) => safeOffset <= candidate.end) ??
+    rendered.nodes[rendered.nodes.length - 1];
+  return entry === undefined
+    ? undefined
+    : { node: entry.node, offset: Math.min(entry.node.data.length, safeOffset - entry.start) };
+}
+
+function readerTextLocatorAtPoint(
+  book: ReaderBook,
+  container: HTMLElement,
+  x: number,
+  y: number,
+): { readonly locator: ReaderLocator; readonly sectionIndex: number } | undefined {
+  const caret = readerCaretFromPoint(x, y);
+  if (caret === undefined || !container.contains(caret.node)) return undefined;
+  const sectionElement = elementForNode(caret.node)?.closest<HTMLElement>("[data-reader-section]");
+  const prose = elementForNode(caret.node)?.closest<HTMLElement>(".reader-prose");
+  if (
+    sectionElement === null ||
+    sectionElement === undefined ||
+    prose === null ||
+    prose === undefined ||
+    !container.contains(sectionElement)
+  ) {
+    return undefined;
+  }
+  const sectionId = sectionElement.dataset.readerSection;
+  const sectionIndex = sectionId === undefined ? -1 : (sectionIndexMap(book).get(sectionId) ?? -1);
+  const section = book.sections[sectionIndex];
+  if (section === undefined || section.kind !== "text" || section.text.length === 0) {
+    return undefined;
+  }
+  const rendered = readerRenderedText(prose);
+  const offset = readerTextNodeOffset(rendered, caret.node, caret.offset);
+  if (offset === undefined || rendered.value.length === 0) return undefined;
+  if (prose.dataset.readerTextStart !== undefined) {
+    const sourceOffset = Number(prose.dataset.readerTextStart) + offset;
+    const total = Number(prose.dataset.readerTextLength);
+    const exact = rendered.value.slice(offset, offset + 96);
+    if (exact)
+      return {
+        locator: createLocator(section, sourceOffset / Math.max(1, total), undefined, {
+          exact,
+          start: sourceOffset,
+          end: sourceOffset + exact.length,
+        }),
+        sectionIndex,
+      };
+  }
+  const progressionHint = offset / rendered.value.length;
+  const afterStart = (() => {
+    let start = offset;
+    while (start < rendered.value.length && /\s/u.test(rendered.value[start] ?? "")) start += 1;
+    return start;
+  })();
+  const beforeEnd = (() => {
+    let end = offset;
+    while (end > 0 && /\s/u.test(rendered.value[end - 1] ?? "")) end -= 1;
+    return end;
+  })();
+  const lengths = [96, 64, 40, 24, 16, 8, 4] as const;
+  const candidates = [
+    ...lengths.map((length) => rendered.value.slice(afterStart, afterStart + length)),
+    ...lengths.map((length) => rendered.value.slice(Math.max(0, beforeEnd - length), beforeEnd)),
+  ];
+  for (const candidate of candidates) {
+    if (normalizeSearchQuery(candidate).length === 0) continue;
+    const match = searchTextRangeNear(section.text, candidate, progressionHint);
+    if (match === undefined || match.length === 0) continue;
+    return {
+      locator: createTextLocator(section, match.start, match.start + match.length),
+      sectionIndex,
+    };
+  }
+  const anchorStart = afterStart < rendered.value.length ? afterStart : Math.max(0, beforeEnd - 40);
+  const textAnchor = createTextAnchor(
+    rendered.value,
+    anchorStart,
+    Math.min(rendered.value.length, anchorStart + 96),
+  );
+  return textAnchor === undefined
+    ? undefined
+    : {
+        locator: createLocator(section, progressionHint, undefined, textAnchor),
+        sectionIndex,
+      };
+}
+
+function readerTextAnchorRange(
+  sectionElement: HTMLElement,
+  locator: ReaderLocator,
+): Range | undefined {
+  const exact = locator.textAnchor?.exact;
+  const prose = sectionElement.querySelector<HTMLElement>(".reader-prose, .reader-pdf-text-layer");
+  if (exact === undefined || exact.length === 0 || prose === null) return undefined;
+  const rendered = readerRenderedText(prose);
+  const match = searchTextRangeNear(rendered.value, exact, locator.progression);
+  if (match === undefined) return undefined;
+  const start = readerDomPointAtOffset(rendered, match.start);
+  const end = readerDomPointAtOffset(rendered, match.start + match.length);
+  if (start === undefined || end === undefined) return undefined;
+  const range = document.createRange();
+  range.setStart(start.node, start.offset);
+  range.setEnd(end.node, end.offset);
+  return range;
+}
+
+function readerRangeScrollPosition(
+  container: HTMLElement,
+  range: Range,
+  horizontal = false,
+): ReaderScrollPosition | undefined {
+  const rangeRect = [...range.getClientRects()].find((rect) => rect.width > 0 || rect.height > 0);
+  if (rangeRect === undefined) return undefined;
+  const containerRect = container.getBoundingClientRect();
+  const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+  const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+  return {
+    top: Math.min(
+      maxTop,
+      Math.max(
+        0,
+        container.scrollTop + rangeRect.top - containerRect.top - readerProbeTopOffset(container),
+      ),
+    ),
+    left: Math.min(
+      maxLeft,
+      Math.max(
+        0,
+        container.scrollLeft +
+          rangeRect.left -
+          containerRect.left -
+          (horizontal ? 0 : container.clientWidth * 0.32),
+      ),
+    ),
+  };
+}
+
+function readerElementScrollPosition(
+  container: HTMLElement,
+  target: Element,
+): ReaderScrollPosition {
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+  const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+  return {
+    top: Math.min(
+      maxTop,
+      Math.max(0, container.scrollTop + targetRect.top - containerRect.top - 28),
+    ),
+    left: Math.min(
+      maxLeft,
+      Math.max(0, container.scrollLeft + targetRect.left - containerRect.left - 28),
+    ),
+  };
+}
+
+export function readerSectionScrollPosition(
+  container: HTMLElement,
+  sectionId: string,
+): ReaderScrollPosition | undefined {
+  const target = container.querySelector<HTMLElement>(
+    `[data-reader-section="${CSS.escape(sectionId)}"]`,
+  );
+  return target === null ? undefined : readerElementScrollPosition(container, target);
+}
+
+export function readerLocatorScrollPosition(
+  container: HTMLElement,
+  section: ReaderSection,
+  locator: ReaderLocator,
+  horizontal: boolean,
+): ReaderScrollPosition | undefined {
+  const target = container.querySelector<HTMLElement>(
+    `[data-reader-section="${CSS.escape(section.id)}"]`,
+  );
+  if (target === null) return undefined;
+  const imageAnchor = locator.imageAnchor;
+  const image = imageAnchor === undefined ? undefined : readerImages(target)[imageAnchor.index];
+  if (image !== undefined && imageAnchor !== undefined) {
+    const rect = image.getBoundingClientRect();
+    const bounds = container.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0)
+      return {
+        top: horizontal
+          ? 0
+          : clamp(
+              container.scrollTop +
+                rect.top -
+                bounds.top +
+                rect.height * imageAnchor.y -
+                readerProbeTopOffset(container),
+              0,
+              Math.max(0, container.scrollHeight - container.clientHeight),
+            ),
+        left: horizontal
+          ? clamp(
+              container.scrollLeft +
+                rect.left -
+                bounds.left +
+                rect.width * imageAnchor.x -
+                bounds.width * 0.5,
+              0,
+              Math.max(0, container.scrollWidth - container.clientWidth),
+            )
+          : 0,
+      };
+  }
+  const anchorRange = readerTextAnchorRange(target, locator);
+  if (anchorRange !== undefined) {
+    const position = readerRangeScrollPosition(container, anchorRange, horizontal);
+    if (position !== undefined) return position;
+  }
+  if (locator.progression <= 0) return readerElementScrollPosition(container, target);
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+  const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+  return {
+    top: horizontal
+      ? 0
+      : Math.min(
+          maxTop,
+          Math.max(
+            0,
+            container.scrollTop +
+              targetRect.top -
+              containerRect.top +
+              targetRect.height * locator.progression -
+              readerProbeTopOffset(container),
+          ),
+        ),
+    left: horizontal
+      ? Math.min(
+          maxLeft,
+          Math.max(
+            0,
+            container.scrollLeft +
+              targetRect.left -
+              containerRect.left +
+              targetRect.width * locator.progression -
+              container.clientWidth * 0.32,
+          ),
+        )
+      : 0,
+  };
+}
+
+export function readerInternalLinkScrollPosition(
+  container: HTMLElement,
+  target: ReaderInternalLinkTarget,
+): ReaderScrollPosition | undefined {
+  const section = container.querySelector<HTMLElement>(
+    `[data-reader-section="${CSS.escape(target.sectionId)}"]`,
+  );
+  if (section === null) return undefined;
+  if (target.fragment === undefined) return readerElementScrollPosition(container, section);
+  const fragmentTarget = [...section.querySelectorAll<HTMLElement>("[id], a[name]")].find(
+    (element) => element.id === target.fragment || element.getAttribute("name") === target.fragment,
+  );
+  return readerElementScrollPosition(container, fragmentTarget ?? section);
+}
+
+export function readerUsesHorizontalPaging(
+  container: HTMLElement,
+  layout: ReaderSettings["layout"],
+): boolean {
+  if (layout !== "paged") return false;
+  const horizontalMax = Math.max(0, container.scrollWidth - container.clientWidth);
+  const verticalMax = Math.max(0, container.scrollHeight - container.clientHeight);
+  return horizontalMax > verticalMax;
+}
+
+export function readerScrollPercentage(
+  container: HTMLElement,
+  layout: ReaderSettings["layout"],
+): number {
+  const horizontal = readerUsesHorizontalPaging(container, layout);
+  const offset = horizontal ? container.scrollLeft : container.scrollTop;
+  const max = horizontal
+    ? Math.max(1, container.scrollWidth - container.clientWidth)
+    : Math.max(1, container.scrollHeight - container.clientHeight);
+  return clamp(offset / max, 0, 1);
+}
+
+export function scrollToReaderSection(
+  sectionId: string,
+  behavior: ScrollBehavior = "smooth",
+): void {
+  const container = document.querySelector<HTMLElement>(".reader-reading-scroll");
+  if (container === null) return;
+  const position = readerSectionScrollPosition(container, sectionId);
+  if (position === undefined) return;
+  container.scrollTo({ ...position, behavior });
+}
+
+export function scrollToReaderMatch(
+  sectionId: string,
+  behavior: ScrollBehavior = "smooth",
+): boolean {
+  const container = document.querySelector<HTMLElement>(".reader-reading-scroll");
+  const section = container?.querySelector<HTMLElement>(
+    `[data-reader-section="${CSS.escape(sectionId)}"]`,
+  );
+  const target = section?.querySelector<HTMLElement>('[data-reader-search-match="true"]');
+  if (container === null || container === undefined || target === null || target === undefined) {
+    return false;
+  }
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+  const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+  const top =
+    container.scrollTop + targetRect.top - containerRect.top - container.clientHeight * 0.34;
+  const left =
+    container.scrollLeft + targetRect.left - containerRect.left - container.clientWidth * 0.34;
+  container.scrollTo({
+    top: Math.min(maxTop, Math.max(0, top)),
+    left: Math.min(maxLeft, Math.max(0, left)),
+    behavior,
+  });
+  return true;
+}
+
+const readerSectionIndexes = new WeakMap<ReaderBook, ReadonlyMap<string, number>>();
+
+function sectionIndexMap(book: ReaderBook): ReadonlyMap<string, number> {
+  const cached = readerSectionIndexes.get(book);
+  if (cached !== undefined) return cached;
+  const created = new Map(book.sections.map((section, index) => [section.id, index] as const));
+  readerSectionIndexes.set(book, created);
+  return created;
+}
+
+export function readerLocatorAtScroll(
+  book: ReaderBook,
+  container: HTMLElement,
+  fallbackSectionId?: string | null,
+): { locator: ReaderLocator; percentage: number } | undefined {
+  if (book.sections.length === 0) return undefined;
+  const containerRect = container.getBoundingClientRect();
+  const probeTop = containerRect.top + readerProbeTopOffset(container);
+  const probeX = containerRect.left + containerRect.width * 0.5;
+  // A caret query over an image can resolve to an unrelated caption. Image
+  // geometry must win before any text probe, including in mixed chapters.
+  const imageLocator = readerImageLocatorAtPoint(book, container, probeX, probeTop);
+  if (imageLocator !== undefined)
+    return {
+      locator: imageLocator,
+      percentage: percentageForLocator(book, imageLocator),
+    };
+  const probePoints = [
+    [probeX, probeTop],
+    [containerRect.left + containerRect.width * 0.35, probeTop],
+    [containerRect.left + containerRect.width * 0.65, probeTop],
+    [probeX, containerRect.top + container.clientHeight * 0.45],
+  ] as const;
+  for (const [x, y] of probePoints) {
+    const textPosition = readerTextLocatorAtPoint(book, container, x, y);
+    if (textPosition === undefined) continue;
+    return {
+      locator: textPosition.locator,
+      percentage: percentageForLocator(book, textPosition.locator),
+    };
+  }
+  const hit = document
+    .elementFromPoint(probeX, probeTop)
+    ?.closest<HTMLElement>("[data-reader-section]");
+  const selectedId = hit?.dataset.readerSection ?? fallbackSectionId ?? undefined;
+  const selectedIndex = selectedId === undefined ? 0 : (sectionIndexMap(book).get(selectedId) ?? 0);
+  const selectedElement =
+    hit ??
+    container.querySelector<HTMLElement>(
+      `[data-reader-section="${CSS.escape(book.sections[selectedIndex]?.id ?? "")}"]`,
+    );
+  const selectedRect = selectedElement?.getBoundingClientRect();
+  const section = book.sections[selectedIndex];
+  if (section === undefined || selectedRect === undefined) return undefined;
+  const progression = clamp((probeTop - selectedRect.top) / Math.max(1, selectedRect.height), 0, 1);
+  return {
+    locator: createLocator(section, progression),
+    percentage: percentageForLocator(book, createLocator(section, progression)),
+  };
+}

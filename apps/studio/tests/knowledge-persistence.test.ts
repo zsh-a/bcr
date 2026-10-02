@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import initSqlite from "@sqlite.org/sqlite-wasm";
 import { openSqliteDb } from "@bcr/storage-sqlite";
 import { MemoryStore } from "@bcr/storage-opfs";
-import { KnowledgeStore } from "../src/knowledge/store";
+import { KnowledgeStore } from "../src/knowledge/session/store";
 import {
   KnowledgePersistence,
   KNOWLEDGE_KEY,
   KNOWLEDGE_RECORD_BACKUP_KEY,
-} from "../src/knowledge/persistence";
-import { contentOf, decodeState, emptyKnowledge, newNote } from "../src/knowledge/model";
+} from "../src/knowledge/storage/persistence";
+import { contentOf, decodeState, emptyKnowledge, newNote } from "../src/knowledge/session/model";
 
 function fixture() {
   const data = new Map<string, string>();

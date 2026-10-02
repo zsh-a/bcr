@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { analyzeMarkdown, KnowledgeLinkIndex } from "../src/knowledge/markdownAnalysis";
-import { preserveRenamedLinks } from "../src/knowledge/renameLinks";
-import { newNote } from "../src/knowledge/model";
+import { analyzeMarkdown, KnowledgeLinkIndex } from "../src/knowledge/notes/markdownAnalysis";
+import { preserveRenamedLinks } from "../src/knowledge/notes/renameLinks";
+import { newNote } from "../src/knowledge/session/model";
 
 const target = { ...newNote("旧标题"), id: "target" };
 function rename(body: string) {

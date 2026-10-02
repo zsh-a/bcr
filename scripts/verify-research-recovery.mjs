@@ -169,7 +169,9 @@ try {
             .getEntriesByType("resource")
             .map((e) => e.name)
             .filter((url) =>
-              new URL(url).pathname.endsWith("/packages/reader-studio/src/readerRuntimeCore.ts"),
+              new URL(url).pathname.endsWith(
+                "/packages/reader-studio/src/runtime/readerRuntimeCore.ts",
+              ),
             )
             .at(-1);
           const { readerRuntime, ensureReaderMetadata } = await import(runtimeUrl);
@@ -211,7 +213,9 @@ try {
         const url = performance
           .getEntriesByType("resource")
           .map((e) => e.name)
-          .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
+          .filter((url) =>
+            new URL(url).pathname.endsWith("/packages/reader-studio/src/state/store.ts"),
+          )
           .at(-1);
         const { getReaderState } = await import(url);
         const book = getReaderState().library.find((b) => b.id.startsWith("research-"));
@@ -277,7 +281,9 @@ try {
         const url = performance
           .getEntriesByType("resource")
           .map((e) => e.name)
-          .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
+          .filter((url) =>
+            new URL(url).pathname.endsWith("/packages/reader-studio/src/state/store.ts"),
+          )
           .at(-1);
         const { reader, getReaderState } = await import(url);
         for (const book of getReaderState().library.filter((b) => b.id.startsWith("research-")))
@@ -297,7 +303,9 @@ try {
       const url = performance
         .getEntriesByType("resource")
         .map((e) => e.name)
-        .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
+        .filter((url) =>
+          new URL(url).pathname.endsWith("/packages/reader-studio/src/state/store.ts"),
+        )
         .at(-1);
       const { getReaderState } = await import(url);
       return getReaderState().library.filter((b) => b.id.startsWith("research-")).length;

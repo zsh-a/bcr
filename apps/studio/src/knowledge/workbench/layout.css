@@ -1,0 +1,345 @@
+/*
+ * 知识工作台——外壳、侧栏、编辑区与面板。
+ * 视觉令牌来自 tokens.css，控件原语来自 ui.css；圆角、间距、字号、动效只用令牌。
+ */
+
+/* 断点桥接：@media 条件里的 theme(--bp-*) 需要本文件编译域内有 @theme。 */
+@import "@bcr/react/tokens.css";
+
+/* ---------- 外壳与侧栏 ---------- */
+
+/* 知识库使用完整的中西文 Plex 字体；排版设置只作用于文档正文。 */
+.knowledge-app {
+  --font-sans: "IBM Plex Sans", "IBM Plex Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-reading: "Noto Serif SC Variable", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+  --prose-title: clamp(28px, 2.2vw, 32px);
+  --prose-row: var(--text-base);
+  /* 写作/阅读行长是不变量：正文块度量恒为文档列减内边距（约 37 汉字/行），
+     落在中文 25–40 字的舒适行宽内，不随窗口漂移。文档列本身随容器生长
+     （见 .knowledge-editor），闲置宽度归标题/工具行与破格的宽内容。 */
+  --prose-font-size: 18px;
+  --prose-width: 720px;
+  --prose-measure: calc(var(--prose-width) - 2 * var(--space-8));
+  --reading-compact: 1.6;
+  --reading-standard: 1.8;
+  --reading-loose: 2.05;
+  /* 侧栏收起后的图标栏宽度：容得下 --h-control-lg 触控区。 */
+  --w-sidebar-rail: 56px;
+}
+
+.knowledge-app {
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  background: var(--color-bg);
+  font-family: var(--font-sans);
+}
+
+/* 侧栏是具名容器（kb-side）：卡片随容器而非视口降级。
+   形态过渡：clamp 流体宽度以 --duration-slow 连续跟随，断点之间不跳变。
+   宽度优先取用户拖出来的 --w-sidebar-override（SidebarResizer 写入），
+   否则回到 --w-sidebar 流体默认；50% 封顶保住正文写作面。 */
+.knowledge-sidebar {
+  position: relative;
+  container: kb-side / inline-size;
+  width: min(var(--w-sidebar-override, var(--w-sidebar)), 50%);
+  flex: 0 0 min(var(--w-sidebar-override, var(--w-sidebar)), 50%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+  min-height: 0;
+  transition:
+    width var(--duration-slow) var(--ease-standard),
+    flex-basis var(--duration-slow) var(--ease-standard),
+    padding var(--duration-slow) var(--ease-standard);
+}
+
+/* 拖拽宽度时关掉形态过渡：宽度要跟手，不做补间。 */
+.knowledge-sidebar[data-resizing] {
+  transition: none;
+}
+
+/* 面板宽度手柄：8px 抓取区压在面板边缘发丝线上，hover/拖动时强调线亮起；
+   贴边位置由各面板的规则决定（侧栏右缘、上下文栏左缘），拖拽/键盘细节见 PanelResizer。 */
+.knowledge-panel-resize {
+  display: none;
+  position: absolute;
+  inset-block: 0;
+  width: var(--space-2);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.knowledge-panel-resize::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  width: 1px;
+  background: transparent;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.knowledge-panel-resize:hover::after,
+.knowledge-panel-resize:focus-visible::after,
+.knowledge-panel-resize[data-resizing]::after {
+  background: var(--color-accent);
+}
+
+/* 侧栏手柄贴右缘：8px 区一半压在发丝线上。 */
+.knowledge-sidebar > .knowledge-panel-resize {
+  inset-inline-end: calc(-1 * var(--space-1));
+}
+
+/* ---------- 桌面侧栏形态：expanded / rail / hidden ----------
+   形态只在 >bp-md 生效，小屏仍走抽屉（show-sidebar），两套状态正交互不干扰。
+   rail 只留图标栏，其余子元素整体隐藏，不做逐个适配。 */
+.knowledge-sidebar-rail {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* 视图组与隐藏按钮压到底部，顶部留展开/搜索/新建。 */
+.knowledge-sidebar-rail-views {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: auto;
+}
+
+.knowledge-sidebar-collapse {
+  display: none;
+}
+
+@media (width > theme(--bp-md)) {
+  .knowledge-sidebar-collapse {
+    display: inline-flex;
+  }
+
+  .knowledge-app[data-sidebar="expanded"] .knowledge-sidebar > .knowledge-panel-resize {
+    display: block;
+  }
+
+  .knowledge-app[data-sidebar="rail"] .knowledge-sidebar {
+    width: var(--w-sidebar-rail);
+    flex-basis: var(--w-sidebar-rail);
+    padding-inline: var(--space-1);
+    gap: var(--space-2);
+  }
+
+  .knowledge-app[data-sidebar="rail"] .knowledge-sidebar > :not(.knowledge-sidebar-rail) {
+    display: none;
+  }
+
+  .knowledge-app[data-sidebar="rail"] .knowledge-sidebar-rail {
+    display: flex;
+  }
+
+  .knowledge-app[data-sidebar="hidden"] .knowledge-sidebar {
+    width: 0;
+    flex-basis: 0;
+    padding: 0;
+    border-right-width: 0;
+    overflow: hidden;
+  }
+}
+
+/* 眉标统一走 .ui-section-label；行内场景仅中和列表内边距。 */
+.ui-section-label.knowledge-eyebrow {
+  padding: 0;
+}
+
+/* 统一 disclosure 标记：手绘 chevron 置于小节头行首，收起转向右侧；
+   默认三角与「▸/▾」字形全部退役，折叠语言只此一种。 */
+:is(.knowledge-context-section, .knowledge-tools-section, .knowledge-file-folder) > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+:is(.knowledge-context-section, .knowledge-tools-section, .knowledge-file-folder)
+  > summary::-webkit-details-marker {
+  display: none;
+}
+
+:is(.knowledge-context-section, .knowledge-tools-section, .knowledge-file-folder)
+  > summary::before {
+  content: "";
+  flex: 0 0 5px;
+  width: 5px;
+  height: 5px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+:is(.knowledge-context-section, .knowledge-tools-section, .knowledge-file-folder):not([open])
+  > summary::before {
+  transform: rotate(-45deg);
+}
+
+.knowledge-app button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.knowledge-add-collection input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.knowledge-sidebar-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--h-control);
+}
+
+.knowledge-sidebar-heading > span {
+  min-width: 0;
+  margin-right: auto;
+  font-size: var(--text-base);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.knowledge-create {
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+}
+
+.knowledge-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+.knowledge-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.knowledge-add-collection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-1);
+  color: var(--color-faint);
+}
+
+.knowledge-note-list {
+  flex: 1;
+  min-height: 50px;
+  overflow-y: auto;
+  margin: 0 calc(-1 * var(--space-2));
+}
+
+/* 笔记列表行（目录树）的样式在 paths.css，与移动表单的文件夹选择器共用。 */
+
+.knowledge-list-empty {
+  padding: var(--space-6) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-faint);
+}
+
+.knowledge-list-empty p {
+  margin: 0 0 var(--space-3);
+}
+
+.knowledge-list-empty-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ---------- 主区与工具栏 ---------- */
+
+/* 主区是具名容器（kb-main）：工具条、分段与标签行随容器而非视口降级。 */
+.knowledge-main {
+  container: kb-main / inline-size;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 同步与保存状态的唯一插槽；Wave 2b 在此挂弹出层触发器。 */
+.knowledge-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+/* 右键/更多操作菜单：只留定位与宽度，材质和行语言统一走 ui-popover + ui-menu。 */
+.knowledge-overflow-menu {
+  position: fixed;
+  width: min(240px, calc(100vw - 2 * var(--space-3)));
+}
+
+.knowledge-overflow-menu:popover-open {
+  display: grid;
+}
+
+/* 同步状态点沿用 StatusDot，这里只补知识语义色。 */
+.knowledge-app .ui-dot-synced {
+  background: var(--color-accent);
+}
+
+.knowledge-app .ui-dot-pending {
+  background: var(--color-amber);
+}
+
+.knowledge-content {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  /* 右下「继续对话 ⌘J」浮标安全区：必须盖住浮标从内容底部起的完整占位，
+     即底部内缩 --space-5 加浮标本体高度（--h-control-lg 量级），再留 --space-2 余量。
+     只留 64px 会差约 2px，页脚贴到文档底时正好钻进浮标左下角。 */
+  padding-bottom: calc(var(--space-5) + var(--h-control-lg) + var(--space-2));
+  /* 粘性条/浮标不遮挡落点（WCAG Focus Not Obscured）：大纲跳转、Tab 聚焦、
+     搜索高亮落点统一带上下间隙。 */
+  scroll-padding-block: var(--space-6) 64px;
+}
+
+.knowledge-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  background: var(--color-accent-dim);
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+}
+
+.knowledge-notice.is-error {
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-bg));
+  color: var(--color-danger);
+}
+
+.knowledge-notice button {
+  flex-shrink: 0;
+}

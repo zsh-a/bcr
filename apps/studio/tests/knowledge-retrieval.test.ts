@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { newNote } from "../src/knowledge/model";
-import { noteSearchHit, searchKnowledge } from "../src/knowledge/retrieval";
-import { knowledgeCapability } from "../src/knowledge/agent";
-import { KnowledgeStore } from "../src/knowledge/store";
+import { newNote } from "../src/knowledge/session/model";
+import { noteSearchHit, searchKnowledge } from "../src/knowledge/search/retrieval";
+import { knowledgeCapability } from "../src/knowledge/agent/agent";
+import { KnowledgeStore } from "../src/knowledge/session/store";
 
 describe("knowledge retrieval", () => {
   it("ranks titles over recent body hits and normalizes Unicode", () => {

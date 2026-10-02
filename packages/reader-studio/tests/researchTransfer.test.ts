@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createReaderRuntime } from "../src/readerRuntimeCore";
-import { reader, getReaderState } from "../src/store";
-import { createDemoBook, DEFAULT_READER_SETTINGS } from "../src/model";
+import { createReaderRuntime } from "../src/runtime/readerRuntimeCore";
+import { reader, getReaderState } from "../src/state/store";
+import { createDemoBook, DEFAULT_READER_SETTINGS } from "../src/state/model";
 import {
   restoreReaderTransfer,
   checkReaderTransfer,
@@ -9,7 +9,7 @@ import {
 } from "../src/researchTransfer";
 import { Effect } from "effect";
 import { hashReadableStream } from "@bcr/core";
-import type { PreparedReaderBackup } from "../src/readerBackup";
+import type { PreparedReaderBackup } from "../src/persistence/readerBackup";
 async function setup() {
   await createReaderRuntime();
   reader.hydrate([createDemoBook()], {}, DEFAULT_READER_SETTINGS);

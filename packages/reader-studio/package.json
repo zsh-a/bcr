@@ -4,15 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./adapters": "./src/adapters.ts",
+    "./adapters": "./src/adapters/adapters.ts",
     "./app": "./src/App.tsx",
     "./app-manifest": "./src/app-manifest.ts",
-    "./formats": "./src/formats.ts",
-    "./model": "./src/model.ts",
+    "./formats": "./src/adapters/formats.ts",
+    "./model": "./src/state/model.ts",
     "./research-transfer": "./src/researchTransfer.ts",
     "./runtime": "./src/runtime.ts",
-    "./store": "./src/store.ts",
-    "./app-definition": "./src/app-definition.ts"
+    "./store": "./src/state/store.ts",
+    "./app-definition": "./src/app-definition.ts",
+    "./hooks": "./src/state/useReader.ts"
   },
   "dependencies": {
     "@bcr/core": "workspace:*",

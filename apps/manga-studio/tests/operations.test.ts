@@ -1,15 +1,13 @@
 import type { ArtifactRef } from "@bcr/core";
 import { compile } from "@bcr/graph";
 import { describe, expect, it } from "vitest";
+import { OCR_MODEL_MANIFESTS, TRANSLATION_MODEL_MANIFESTS } from "../src/models/catalog";
+import { decodeMangaOcrArtifact, decodeMangaTranslationArtifact } from "../src/models/protocol";
 import {
-  OCR_MODEL_MANIFESTS,
-  TRANSLATION_MODEL_MANIFESTS,
-  decodeMangaOcrArtifact,
-  decodeMangaTranslationArtifact,
   resolveMangaDevice,
   resolveMangaOcrAdapter,
   resolveMangaTranslationAdapter,
-} from "../src/model";
+} from "../src/models/resolution";
 import {
   CLEAN_PREVIEW_OPERATION,
   LOCAL_OCR_OPERATION,
@@ -17,9 +15,9 @@ import {
   OPERATIONS,
   REVIEW_OCR_OPERATION,
   defaultGraph,
-} from "../src/operations";
-import { mergeOcrLinesIntoRegions } from "../src/pipeline";
-import { DEFAULT_SETTINGS } from "../src/store";
+} from "../src/execution/operations";
+import { mergeOcrLinesIntoRegions } from "../src/execution/pipeline";
+import { DEFAULT_SETTINGS } from "../src/project/store";
 
 describe("Manga Studio operation graph", () => {
   it("compiles the full page pipeline with named fan-in bindings", () => {

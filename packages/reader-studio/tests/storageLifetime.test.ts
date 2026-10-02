@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MemoryStore } from "@bcr/storage-opfs";
-import { readerStorageLifetime } from "../src/readerStorage";
+import { readerStorageLifetime } from "../src/runtime/readerStorage";
 
 describe("Reader storage lifetime", () => {
   it("drains accepted streams and rejects late writes before releasing ownership", async () => {

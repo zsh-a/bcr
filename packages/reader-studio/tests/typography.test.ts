@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_READER_SETTINGS } from "../src/model";
+import { DEFAULT_READER_SETTINGS } from "../src/state/model";
 import {
   normalizeReaderTypography,
   readerFontStack,
   readerTypographyStyle,
   READER_TYPOGRAPHY_PRESETS,
-} from "../src/readerTypography";
+} from "../src/typography/readerTypography";
 
 describe("reader typography", () => {
   it("uses an explicit Latin face before the Chinese face and system fallback", () => {

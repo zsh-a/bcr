@@ -1,6 +1,6 @@
 import { MemoryStore } from "@bcr/storage-opfs";
-import { sanitizeHtml } from "./readerMarkup";
-import { DEFAULT_READER_SETTINGS } from "./model";
+import { sanitizeHtml } from "./adapters/readerMarkup";
+import { DEFAULT_READER_SETTINGS } from "./state/model";
 import { Effect } from "effect";
 import { textVersion, hashReadableStream } from "@bcr/core";
 import {
@@ -11,14 +11,15 @@ import {
   planReaderBackup,
   prepareReaderRestore,
   type PreparedReaderBackup,
-} from "./readerBackup";
-import { readerRuntime } from "./readerRuntimeCore";
-import { getReaderState, releaseBookResources } from "./store";
-import { persistBook, restoreSectionSnapshots } from "./readerPersistence";
-import { commitReaderBooks, persistReaderSnapshot } from "./readerPersistenceQueue";
-import { indexBook } from "./readerSearch";
-export { inspectReaderBackup, decodeReaderBackup } from "./readerBackup";
-export type { PreparedReaderBackup } from "./readerBackup";
+} from "./persistence/readerBackup";
+import { readerRuntime } from "./runtime/readerRuntimeCore";
+import { getReaderState, releaseBookResources } from "./state/store";
+import { persistBook } from "./persistence/codec";
+import { restoreSectionSnapshots } from "./persistence/restore";
+import { commitReaderBooks, persistReaderSnapshot } from "./persistence/readerPersistenceQueue";
+import { indexBook } from "./search/readerSearch";
+export { inspectReaderBackup, decodeReaderBackup } from "./persistence/readerBackup";
+export type { PreparedReaderBackup } from "./persistence/readerBackup";
 
 export function readerTransferState() {
   const runtime = readerRuntime();

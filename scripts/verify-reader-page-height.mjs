@@ -23,7 +23,9 @@ try {
   const settings = async (patch) =>
     page.evaluate(async (patch) => {
       const url = (await window.__bcrTestModuleUrls())
-        .filter((url) => new URL(url).pathname.endsWith("/packages/reader-studio/src/store.ts"))
+        .filter((url) =>
+          new URL(url).pathname.endsWith("/packages/reader-studio/src/state/store.ts"),
+        )
         .at(-1);
       const { reader } = await import(url);
       reader.setSettings(patch);

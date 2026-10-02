@@ -15,26 +15,25 @@ import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";
 import type { MarketInstrument, MarketRankingItem, MarketSectorPulse } from "@bcr/market-data";
 import { ChevronRight, Info, Plus, RefreshCw } from "lucide-react";
-import { QuoteCard, Session } from "./MarketPanels";
-import {
-  BreadthSummary,
-  DataStamp,
-  RankingList,
-  SectorDetail,
-  SectorMap,
-  SectorView,
-  WatchRows,
-} from "./MarketViews";
-import { MarketSearch } from "./MarketSearch";
-import { StockDetail } from "./StockDetail";
-import { useMarketAtlas } from "./useMarketAtlas";
-import { useQuoteTrends } from "./useQuoteTrends";
-import { useMarketLandscape } from "./useMarketLandscape";
-import { useMarketDiscovery } from "./useMarketDiscovery";
-import { useMarketWatchlists } from "./useMarketWatchlists";
+import { QuoteCard } from "./overview/QuoteCard";
+import { Session } from "./overview/Session";
+import { BreadthSummary } from "./overview/BreadthSummary";
+import { DataStamp } from "./components/DataStamp";
+import { RankingList } from "./overview/RankingList";
+import { SectorDetail } from "./sectors/SectorDetail";
+import { SectorMap } from "./sectors/SectorMap";
+import { SectorView } from "./sectors/SectorView";
+import { WatchRows } from "./watchlists/WatchRows";
+import { MarketSearch } from "./search/MarketSearch";
+import { StockDetail } from "./instrument/StockDetail";
+import { useMarketAtlas } from "./overview/useMarketAtlas";
+import { useQuoteTrends } from "./overview/useQuoteTrends";
+import { useMarketLandscape } from "./sectors/useMarketLandscape";
+import { useMarketDiscovery } from "./search/useMarketDiscovery";
+import { useMarketWatchlists } from "./watchlists/useMarketWatchlists";
 import "./styles.css";
 
-const BreadthView = lazy(() => import("./BreadthView"));
+const BreadthView = lazy(() => import("./breadth/BreadthView"));
 const VIEWS = [
   { id: "overview", label: "概览" },
   { id: "sectors", label: "行业" },

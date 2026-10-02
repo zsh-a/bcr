@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MangaStore } from "../src/store";
+import { MangaStore } from "../src/project/store";
 
 describe("manga batch checkpoints", () => {
   it("retries a failed queue while preserving completed pages", () => {

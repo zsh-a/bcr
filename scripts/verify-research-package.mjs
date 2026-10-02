@@ -6,10 +6,11 @@ import { packageDir, requireFrom } from "./lib/paths.mjs";
 const require = requireFrom("reader");
 const { ZipWriter, BlobWriter, TextReader } = require("@zip.js/zip.js");
 const readerModules = Object.fromEntries(
-  ["readerRuntimeCore", "readerPersistenceQueue", "store"].map((name) => [
-    name,
-    "/@fs" + packageDir("reader") + `src/${name}.ts`,
-  ]),
+  Object.entries({
+    readerRuntimeCore: "runtime/readerRuntimeCore.ts",
+    readerPersistenceQueue: "persistence/readerPersistenceQueue.ts",
+    store: "state/store.ts",
+  }).map(([name, file]) => [name, "/@fs" + packageDir("reader") + `src/${file}`]),
 );
 const origin = new URL(process.env.BASE_URL ?? "http://localhost:5199").origin;
 const browser = await chromium.launch({ args: ["--disable-dev-shm-usage"] });
