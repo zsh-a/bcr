@@ -1,5 +1,6 @@
 import { canonicalConfig, datasetKey, type ResearchSession } from "./session";
 import type { DataSourceController } from "./useDataSource";
+import { STRATEGIES, strategySpec } from "./model";
 
 export interface DraftChange {
   label: string;
@@ -7,6 +8,7 @@ export interface DraftChange {
   after: string;
 }
 export const CONFIG_LABELS: Record<string, string> = {
+  strategy: "策略规则",
   initialCapital: "初始本金",
   poolSize: "候选池大小",
   stockCount: "目标股票数",
@@ -39,6 +41,10 @@ export const formatConfigValue = (
   key: keyof typeof config,
 ): string => {
   if (config[key] === null) return "无效值";
+  if (key === "strategy") {
+    const spec = strategySpec(config);
+    return `${STRATEGIES[spec.id]?.title ?? spec.id} · ${spec.lookback} 次行情 · ${{ weekly: "每周", monthly: "每月", daily: "每日" }[spec.rebalance]} · ${spec.allocation === "equal" ? "等权" : "波动率倒数"} · ${spec.investment * 100}%`;
+  }
   if (key === "executionModel") return config[key] === "jsg-raw-v2" ? "原始价格" : "复权研究";
   if (
     [

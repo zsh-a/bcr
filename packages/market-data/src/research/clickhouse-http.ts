@@ -7,13 +7,14 @@ export interface ClickHouseConnection {
   password: string;
 }
 export interface ClickHouseRange {
+  warmupSessions?: number;
   start: string;
   end: string;
   strictPit: boolean;
   refresh: boolean;
 }
 export type ClickHouseProfile = Omit<ClickHouseConnection, "password"> &
-  Pick<ClickHouseRange, "start" | "end" | "strictPit">;
+  Pick<ClickHouseRange, "start" | "end" | "strictPit" | "warmupSessions">;
 export interface ClickHouseInfo {
   version: string;
   firstDate: string;
@@ -67,7 +68,24 @@ export function publicProfile(
   range: ClickHouseRange,
 ): ClickHouseProfile {
   const { url, database, user } = normalizeConnection(connection);
-  return { url, database, user, start: range.start, end: range.end, strictPit: range.strictPit };
+  if (
+    range.warmupSessions !== undefined &&
+    (!Number.isSafeInteger(range.warmupSessions) ||
+      range.warmupSessions < 30 ||
+      range.warmupSessions > 251)
+  )
+    throw new Error("预热会话数应为 30–251");
+  return {
+    url,
+    database,
+    user,
+    start: range.start,
+    end: range.end,
+    strictPit: range.strictPit,
+    ...(range.warmupSessions && range.warmupSessions !== 30
+      ? { warmupSessions: range.warmupSessions }
+      : {}),
+  };
 }
 export function numericDate(text: string): number {
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(text)) throw new Error("日期格式应为 YYYY-MM-DD");
@@ -81,7 +99,9 @@ export function numericDate(text: string): number {
     throw new Error("日期无效");
   return Number(text.replaceAll("-", ""));
 }
-export function prepareCalendar(all: string[], start: string, end: string) {
+export function prepareCalendar(all: string[], start: string, end: string, warmup = 30) {
+  if (!Number.isSafeInteger(warmup) || warmup < 30 || warmup > 251)
+    throw new Error("预热会话数应为 30–251");
   numericDate(start);
   numericDate(end);
   if (start > end) throw new Error("开始日期应早于结束日期");
@@ -99,15 +119,16 @@ export function prepareCalendar(all: string[], start: string, end: string) {
     last = selected.at(-1);
   if (first === undefined || last === undefined) throw new Error("所选区间没有交易日");
   const before = all.filter((date) => date < first);
-  if (before.length < 30 || !all.some((date) => date > last))
-    throw new Error("交易日历需要 30 个预热交易日及区间之后的交易日，请调整日期");
+  if (before.length < warmup || !all.some((date) => date > last))
+    throw new Error(`交易日历需要 ${warmup} 个预热交易日及区间之后的交易日，请调整日期`);
   const week = (date: string) => {
     const d = new Date(`${date}T00:00:00Z`);
     d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
     return d.toISOString().slice(0, 10);
   };
   const lastInWeek = new Map(all.map((date) => [week(date), date]));
-  const dates = [...before.slice(-30), ...selected];
+  const lastInMonth = new Map(all.map((date) => [date.slice(0, 7), date]));
+  const dates = [...before.slice(-warmup), ...selected];
   return {
     first,
     last,
@@ -115,6 +136,7 @@ export function prepareCalendar(all: string[], start: string, end: string) {
     sessions: dates.map((date) => ({
       date: numericDate(date),
       rebalance: lastInWeek.get(week(date)) === date,
+      monthEnd: lastInMonth.get(date.slice(0, 7)) === date,
     })),
   };
 }

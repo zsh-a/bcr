@@ -31,6 +31,7 @@ export interface LedgerRow {
   unrealized: number;
 }
 export interface Candidate {
+  score?: number | null;
   code: string;
   industry: string;
   marketCap: number;
@@ -50,11 +51,12 @@ export interface ResearchDay {
 export const CANDIDATE_REASONS: Record<string, string> = {
   target: "目标证券",
   pool: "候选池 · 超出目标数量",
-  "outside-pool": "市值排名超出候选池",
+  "outside-pool": "排名超出候选池",
   st: "ST 股票",
   "non-positive-profit": "无正利润观测",
   "zero-shares": "股本不可用",
   "industry-blacklist": "最宽行业在排除名单",
-  "insufficient-history": "MA20 历史不足",
+  "insufficient-history": "观察历史不足",
+  "non-positive-momentum": "动量不为正",
   "portfolio-stop": "组合回撤风控阻止调仓",
 };

@@ -6,6 +6,7 @@ pub mod native;
 pub mod reader;
 pub mod research;
 mod source;
+pub mod strategy;
 
 use arrow_ipc::reader::StreamReader;
 use engine::Engine;
@@ -275,8 +276,8 @@ impl JsgGrid {
             .map_err(js_error)?;
         Ok(Self {
             engines: Some(engines),
+            factors: features::FactorState::with_configs(manifest, &configs),
             configs,
-            factors: features::FactorState::new(manifest),
             reader: None,
             bars: vec![],
             prepared: None,

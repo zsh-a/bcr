@@ -9,7 +9,6 @@ import {
   datasetKey,
   initialSession,
   isDraftChanged,
-  MAX_RUNS,
   readRun,
   restoreSession,
   saveSession,
@@ -299,7 +298,7 @@ describe("immutable research runs", () => {
       ).toBe(stopped);
     }
   });
-  it("limits history and selecting a previous run keeps the current editing draft", () => {
+  it("retains more than twenty runs and selecting history keeps the editing draft", () => {
     let state = ready();
     for (let i = 0; i < 25; i++) {
       const snapshot = selected(`run-${i}`);
@@ -309,8 +308,8 @@ describe("immutable research runs", () => {
       });
       state = sessionReducer(state, { type: "finished", id: snapshot.run.id, selected: snapshot });
     }
-    expect(state.runs).toHaveLength(MAX_RUNS);
-    expect(state.runs[0]?.id).toBe("run-5");
+    expect(state.runs).toHaveLength(26);
+    expect(state.runs[0]?.id).toBe("first");
     state = sessionReducer(state, { type: "draft", patch: { stockCount: 6 } });
     state = sessionReducer(state, { type: "selected", selected: selected("previous") });
     expect(state.draft.stockCount).toBe(6);
@@ -698,4 +697,119 @@ describe("bounded complete-result queries", () => {
     summary.chunks = [{ ref: ref("missing"), start: "2024-01-02", end: "2024-01-02", orders: 1 }];
     await expect(queryOrders(services, summary, EMPTY_ORDER_FILTER, 0, signal())).rejects.toThrow();
   });
+});
+
+it("archives multiple grids and studies and restores the selected one without discarding older experiments", async () => {
+  const services = await storage(),
+    snapshot = selected();
+  await putRun(services, snapshot);
+  let state = ready(snapshot);
+  const second = {
+    ...state.experiments[0]!,
+    id: "second-experiment",
+    name: "动量研究",
+    notes: "比较稳定性",
+    tags: ["动量"],
+    favorite: true,
+  };
+  state = sessionReducer(state, { type: "experiment-created", experiment: second });
+  for (const id of ["grid-one", "grid-two"]) {
+    const run = {
+      ...snapshot.run,
+      id,
+      experimentId: second.id,
+      resultRef: ref(id, "quant/jsg-grid-result"),
+      axes: [{ field: "stockCount" as const, values: "5,10" }],
+    };
+    const result = {
+      decodedRows: 10,
+      results: [{ config: copyConfig(DEFAULT_CONFIG), metrics: snapshot.result.metrics }],
+    };
+    await putJson(services, run.resultRef, result);
+    state = sessionReducer(state, {
+      type: "started",
+      operation: { id, kind: "grid", label: "grid", progress: 0 },
+    });
+    state = sessionReducer(state, {
+      type: "grid-finished",
+      id,
+      grid: { run, dataset: snapshot.dataset, result },
+    });
+  }
+  for (const id of ["study-one", "study-two"]) {
+    const run = {
+      ...snapshot.run,
+      id,
+      experimentId: second.id,
+      resultRef: ref(id, "quant/jsg-study-result"),
+    };
+    const result: ValidationResult = {
+      version: 1,
+      request: {
+        mode: "cost",
+        objective: "sharpe",
+        axes: [],
+        trainPercent: 70,
+        trainDays: 60,
+        testDays: 20,
+      },
+      training: [],
+      folds: [],
+      costs: [],
+      costBase: copyConfig(DEFAULT_CONFIG),
+    };
+    await putJson(services, run.resultRef, result);
+    state = sessionReducer(state, {
+      type: "started",
+      operation: { id, kind: "grid", label: "study", progress: 0 },
+    });
+    state = sessionReducer(state, {
+      type: "study-finished",
+      id,
+      study: { run, dataset: snapshot.dataset, result },
+    });
+  }
+  await saveSession(services, state);
+  const restored = (await restoreSession(services))!;
+  expect(restored.experiments[1]).toEqual(second);
+  expect(restored.grids.map((r) => r.id)).toEqual(["grid-one", "grid-two"]);
+  expect(restored.studies.map((r) => r.id)).toEqual(["study-one", "study-two"]);
+  expect(restored.grid!.run.id).toBe("grid-two");
+  expect(restored.study!.run.id).toBe("study-two");
+  expect(restored.view).toBe("study");
+  const removed = sessionReducer(
+    { ...state, ...restored },
+    { type: "entry-forgotten", kind: "grid", id: "grid-one" },
+  );
+  expect(removed.grids.map((r) => r.id)).toEqual(["grid-two"]);
+  expect(removed.studies).toHaveLength(2);
+  const hidden = sessionReducer(removed, {
+    type: "entry-forgotten",
+    kind: "study",
+    id: "study-two",
+  });
+  expect(hidden.view).toBe("run");
+  expect(hidden.studies.map((r) => r.id)).toEqual(["study-one"]);
+});
+it("restricts baseline to its experiment and clears it when its run is removed", () => {
+  const snapshot = selected();
+  let state = ready(snapshot);
+  const primary = state.experiments[0]!;
+  state = sessionReducer(state, {
+    type: "experiment-updated",
+    id: primary.id,
+    patch: { baselineId: snapshot.run.id },
+  });
+  expect(state.experiments[0]!.baselineId).toBe(snapshot.run.id);
+  const other = { ...primary, id: "other", baselineId: null };
+  state = sessionReducer(state, { type: "experiment-created", experiment: other });
+  expect(() =>
+    sessionReducer(state, {
+      type: "experiment-updated",
+      id: other.id,
+      patch: { baselineId: snapshot.run.id },
+    }),
+  ).toThrow("同一实验");
+  state = sessionReducer(state, { type: "forgotten", id: snapshot.run.id });
+  expect(state.experiments[0]!.baselineId).toBeNull();
 });

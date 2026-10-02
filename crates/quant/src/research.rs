@@ -58,6 +58,8 @@ pub struct LedgerRow {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Candidate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub score: Option<f64>,
     pub code: String,
     pub industry: String,
     pub market_cap: f64,

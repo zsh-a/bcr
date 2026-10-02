@@ -10,6 +10,7 @@ import type { JsgConfig } from "./model";
 import type { DraftChange } from "./draft";
 import { NamesProvider } from "./ResearchNames";
 import type { DisplayNames } from "./display-names";
+import { ResearchContext } from "./ResearchContext";
 
 export function RunSettings({
   open,
@@ -80,12 +81,15 @@ export function RunSettings({
           </NamesProvider>
         )}
         {tab === "data" && (
-          <DataSettings
-            source={source}
-            disabled={busy || restoring}
-            onImport={onImport}
-            onDemo={onDemo}
-          />
+          <>
+            <DataSettings
+              source={source}
+              disabled={busy || restoring}
+              onImport={onImport}
+              onDemo={onDemo}
+            />
+            {state.dataset && <ResearchContext dataset={state.dataset} config={state.draft} />}
+          </>
         )}
         {tab === "changes" && (
           <div className="research-draft-changes">

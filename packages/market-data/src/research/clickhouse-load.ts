@@ -252,7 +252,7 @@ export async function loadClickHouse(
     ),
   ]);
   const allDates = calendarRows.map((r) => string(r, "date"));
-  const calendar = prepareCalendar(allDates, range.start, range.end);
+  const calendar = prepareCalendar(allDates, range.start, range.end, range.warmupSessions ?? 30);
   total = calendar.dates.length;
   const codes = codeRows.map((r) => string(r, "code"));
   const industries = [

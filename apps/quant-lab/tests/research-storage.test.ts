@@ -284,3 +284,26 @@ describe("research storage lifecycle", () => {
     expect(await store.has(recent)).toBe(false);
   });
 });
+
+it("protects archived experiments even when their grids and studies are not selected", async () => {
+  const s = await setup(),
+    run = await s.run("archived-source", false);
+  const gridRef = ref("jsg/grid/archive", "quant/jsg-grid-result"),
+    studyRef = ref("jsg/study/archive", "quant/jsg-study-result");
+  await s.put(gridRef, { results: [] });
+  await s.put(studyRef, { version: 1 });
+  s.state.grids.push({ ...run, id: "old-grid", resultRef: gridRef, axes: [] });
+  s.state.studies.push({ ...run, id: "old-study", resultRef: studyRef });
+  const plan = await planResearchCleanup(s.services, s.state, s.store);
+  expect(
+    plan.candidates.some(
+      (c) => c.id === gridRef.id || c.id === studyRef.id || c.id === s.dataset.manifestRef.id,
+    ),
+  ).toBe(false);
+  s.state.grids = [];
+  s.state.studies = [];
+  const released = await planResearchCleanup(s.services, s.state, s.store);
+  expect(released.candidates.map((c) => c.id)).toEqual(
+    expect.arrayContaining([gridRef.id, studyRef.id]),
+  );
+});

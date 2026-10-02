@@ -1,6 +1,6 @@
 import { RuntimeProvider, Spinner, usePublishRunningCount, useRuntimeSession } from "@bcr/react";
 import { useState } from "react";
-import { JsgWorkbench } from "./jsg/Workbench";
+import { QuantWorkbench } from "./jsg/Workbench";
 import { createRuntimeServices } from "./runtime";
 import "./styles.css";
 
@@ -32,9 +32,9 @@ function ResearchWorkbench() {
   const [busy, setBusy] = useState(false);
   usePublishRunningCount("quant", busy ? 1 : 0);
   return (
-    <div className="quant-lab ql-research-shell" data-strategy="jsg">
-      <section className="ql-research-view" aria-label="行业宽度轮动研究">
-        <JsgWorkbench onBusy={setBusy} />
+    <div className="quant-lab ql-research-shell" data-workbench="quant">
+      <section className="ql-research-view" aria-label="量化策略研究">
+        <QuantWorkbench onBusy={setBusy} />
       </section>
     </div>
   );

@@ -1,26 +1,35 @@
 //! Market-only features can be shared by independent parameter portfolios.
 use crate::model::{Bar, Breadth, Manifest};
+use crate::strategy::{Signal, StrategySpec};
 use std::collections::{BTreeMap, VecDeque};
 
 pub(crate) struct PreparedDay {
     pub date: u32,
     pub breadth: Vec<Breadth>,
-    pub candidates: Vec<usize>,
+    pub signals: BTreeMap<String, Signal>,
 }
 pub(crate) fn breadth<'a>(
     manifest: &Manifest,
     bars: impl Iterator<Item = &'a Bar>,
     histories: &[VecDeque<f64>],
 ) -> Vec<Breadth> {
+    breadth_period(manifest, bars, histories, 20)
+}
+pub(crate) fn breadth_period<'a>(
+    manifest: &Manifest,
+    bars: impl Iterator<Item = &'a Bar>,
+    histories: &[VecDeque<f64>],
+    period: usize,
+) -> Vec<Breadth> {
     let mut counts: BTreeMap<usize, (usize, usize)> = BTreeMap::new();
     for b in bars.filter(|b| b.breadth_member && manifest.industries[b.industry] != "unknown") {
         let h = &histories[b.id];
-        if h.len() != 20 {
+        if h.len() < period {
             continue;
         }
         let c = counts.entry(b.industry).or_default();
         c.1 += 1;
-        if b.close * b.adjfactor > h.iter().sum::<f64>() / 20.0 {
+        if b.close * b.adjfactor > h.iter().skip(h.len() - period).sum::<f64>() / period as f64 {
             c.0 += 1;
         }
     }
@@ -62,14 +71,28 @@ pub(crate) struct FactorState {
     manifest: Manifest,
     histories: Vec<VecDeque<f64>>,
     next: usize,
+    specs: Vec<StrategySpec>,
+    history_len: usize,
 }
 impl FactorState {
     pub fn new(manifest: Manifest) -> Self {
+        Self::with_configs(manifest, &[crate::model::Config::default()])
+    }
+    pub fn with_configs(manifest: Manifest, configs: &[crate::model::Config]) -> Self {
         let count = manifest.instruments.len();
+        let specs: Vec<_> = configs.iter().map(|c| c.strategy_spec()).collect();
+        let history_len = specs
+            .iter()
+            .map(StrategySpec::history_len)
+            .max()
+            .unwrap_or(20)
+            .max(20);
         Self {
             manifest,
-            histories: vec![VecDeque::with_capacity(20); count],
+            histories: vec![VecDeque::with_capacity(history_len); count],
             next: 0,
+            specs,
+            history_len,
         }
     }
     pub fn advance(&mut self, bars: &[Bar]) -> Result<PreparedDay, String> {
@@ -108,10 +131,20 @@ impl FactorState {
                 .histories
                 .get_mut(b.id)
                 .ok_or("invalid factor instrument")?;
-            if h.len() == 20 {
+            if h.len() == self.history_len {
                 h.pop_front();
             }
             h.push_back(b.close * b.adjfactor);
+        }
+        let mut signals = BTreeMap::new();
+        if !daily {
+            for spec in &self.specs {
+                if spec.rebalance_at(&self.manifest, self.next) {
+                    signals.entry(spec.feature_key()).or_insert_with(|| {
+                        crate::strategy::generate(&self.manifest, bars, &self.histories, spec)
+                    });
+                }
+            }
         }
         self.next += 1;
         Ok(PreparedDay {
@@ -121,11 +154,7 @@ impl FactorState {
             } else {
                 vec![]
             },
-            candidates: if !daily && session.rebalance {
-                candidates(&self.manifest, bars.iter())
-            } else {
-                vec![]
-            },
+            signals,
         })
     }
 }

@@ -136,7 +136,8 @@ try {
   );
   const full = await exportFull(),
     originalId = await page.locator(".research-run-result").getAttribute("data-run-id");
-  assert.equal(full.research.versions.engine, "jsg-engine-3");
+  assert.equal(full.research.versions.engine, "quant-strategies-4");
+  assert.equal(full.research.versions.strategy, "jsg-2");
   await page.getByRole("tab", { name: "分析", exact: true }).click();
   await ready();
   const first = await exportEvaluation("evaluation-strategy");

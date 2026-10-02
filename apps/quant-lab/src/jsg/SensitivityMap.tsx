@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Select } from "@bcr/react";
 import type { SelectedGrid } from "./session";
-import { GRID_FIELDS, type GridMetric } from "./grid";
+import { gridValue, GRID_FIELDS, type GridMetric } from "./grid";
 import { percent } from "./Orders";
 
 export function SensitivityMap({
@@ -20,14 +20,14 @@ export function SensitivityMap({
   const x = axes[0]!.field,
     y = axes[1]!.field;
   const values = (field: typeof x) =>
-    [...new Set(grid.result.results.map((r) => r.config[field] ?? 0))].sort((a, b) => a - b);
+    [...new Set(grid.result.results.map((r) => gridValue(r.config, field)))].sort((a, b) => a - b);
   const xs = values(x),
     ys = values(y),
     rest = axes.slice(2);
   const rows = grid.result.results
     .map((r, index) => ({ ...r, index }))
     .filter((r) =>
-      rest.every((a) => (r.config[a.field] ?? 0) === (filters[a.field] ?? values(a.field)[0])),
+      rest.every((a) => gridValue(r.config, a.field) === (filters[a.field] ?? values(a.field)[0])),
     );
   const scale = Math.max(1e-9, ...rows.map((r) => Math.abs(r.metrics[metric])));
   const label = (field: typeof x, value: number) =>
@@ -83,7 +83,7 @@ export function SensitivityMap({
                 <th>{label(y, v)}</th>
                 {xs.map((u) => {
                   const row = rows.find(
-                      (r) => (r.config[x] ?? 0) === u && (r.config[y] ?? 0) === v,
+                      (r) => gridValue(r.config, x) === u && gridValue(r.config, y) === v,
                     ),
                     value = row?.metrics[metric];
                   return (

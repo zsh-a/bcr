@@ -9,15 +9,17 @@ import {
 } from "@bcr/react";
 import { pinMarketSnapshot, saveMarketLabels } from "@bcr/market-data/research/catalog";
 import type { SelectedRun } from "./session";
-import { dateText } from "./model";
+import { dateText, strategySpec, rebalanceSession } from "./model";
 import { queryBreadthHistory, queryResearchDay } from "./result-reader";
 import type { ResearchDayPage } from "./research-analysis";
 import { CANDIDATE_REASONS, type ResearchDay } from "./research-model";
-import { money } from "./Orders";
+import { money, percent } from "./Orders";
 import { Identity, useNames } from "./ResearchNames";
 
 export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
   const names = useNames();
+  const spec = strategySpec(selected.run.config),
+    momentum = spec.id === "momentum";
   const requestedDate = new URLSearchParams(useLocationSearch()).get("date");
   const navigation = useNavigation();
   const [openingMarket, setOpeningMarket] = useState(false);
@@ -37,7 +39,14 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
     (d) => d.date >= selected.run.startDate && d.date <= selected.run.endDate,
   );
   const dates = sessions.map((d) => dateText(d.date)),
-    rebalances = sessions.filter((d) => d.rebalance).map((d) => dateText(d.date));
+    rebalances = selected.dataset.manifest.calendar
+      .filter(
+        (d, i) =>
+          d.date >= selected.run.startDate &&
+          d.date <= selected.run.endDate &&
+          rebalanceSession(selected.dataset.manifest, i, spec),
+      )
+      .map((d) => dateText(d.date));
   const [date, setDate] = useState(
       requestedDate && dates.includes(requestedDate)
         ? requestedDate
@@ -84,9 +93,9 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
     if (index >= 0) setHistoryPage(Math.floor(index / 63));
   };
   return (
-    <section className="research-insights" aria-label="JSG 选股解释">
+    <section className="research-insights" aria-label="策略选股解释">
       <div className="research-insights-tools">
-        <h3>行业宽度 · MA20</h3>
+        <h3>行业宽度 · MA{spec.lookback}</h3>
         <span className="research-help">
           {start} — {end}
         </span>
@@ -131,7 +140,7 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
         />
       )}
       <p className="research-help">
-        色深代表宽度，并非涨幅。每页最多 63 日；缺少 20
+        色深代表宽度，并非涨幅。每页最多 63 日；缺少 {spec.lookback}
         次行情观测的成员不计入宽度，缺少可计算成员显示空白。点击日期查看当日候选。
       </p>
       <div className="research-insights-tools">
@@ -189,7 +198,7 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
                       <th className="numeric">排名</th>
                       <th>证券</th>
                       <th>行业</th>
-                      <th className="numeric">原始市值</th>
+                      <th className="numeric">{momentum ? "区间动量" : "原始市值"}</th>
                       <th>原因</th>
                     </tr>
                   </thead>
@@ -203,7 +212,13 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
                         <td>
                           <Identity code={c.industry} kind="industries" />
                         </td>
-                        <td className="numeric">{money(c.marketCap)}</td>
+                        <td className="numeric">
+                          {momentum
+                            ? c.score == null
+                              ? "—"
+                              : percent(c.score)
+                            : money(c.marketCap)}
+                        </td>
                         <td>
                           {CANDIDATE_REASONS[c.reason] ?? c.reason}
                           {!c.tradable && (
@@ -216,7 +231,9 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
                 </table>
               </div>
               <div className="research-pagination">
-                <span>{day.candidateCount} 只 · 市值升序</span>
+                <span>
+                  {day.candidateCount} 只 · {momentum ? "动量降序" : "市值升序"}
+                </span>
                 <div>
                   <Button size="sm" disabled={!page} onClick={() => setPage((p) => p - 1)}>
                     上一页
@@ -250,7 +267,10 @@ export function ExplanationPanel({ selected }: { selected: SelectedRun }) {
         )
       )}
       <p className="research-help">
-        最宽行业用于决定是否空仓，证券候选来自整个选择宇宙。排名并列按证券代码排序。目标是收盘信号，实际持仓由次日成交和风控决定。
+        {momentum
+          ? "按复权收益降序选择正动量证券，不使用盈利或市值筛选；行业宽度仅作为市场背景。"
+          : "最宽行业用于决定是否空仓，证券候选来自整个选择宇宙。"}
+        排名并列按证券代码排序。目标是收盘信号，实际持仓由次日成交和风控决定。
       </p>
     </section>
   );

@@ -425,7 +425,7 @@ size. Requests can be cancelled, and stale replies cannot overwrite a newer quer
 paginated and **调仓** reads the chosen day's chunk.
 Order and position details open in sheets. No full market dataset is assembled in JavaScript.
 
-**运行历史** retains metadata for the latest 20 runs. Selecting history changes the displayed
+**运行历史** retains completed runs without automatically evicting the oldest twenty. Selecting history changes the displayed
 result while preserving the current draft; **使用所选运行参数** explicitly applies that run's
 configuration. History deduplicates shared dataset references and stores small metrics, never copies of market rows,
 inline complete result arrays or connection passwords.
@@ -471,10 +471,10 @@ ordinary runs and grid details the same cache identity. Viewing details preserve
 remain available during a new experiment, cancellation or failure.
 
 **导出参数实验** saves configurations, metrics, manifest and snapshot provenance as JSON.
-The latest experiment is restored after reload; its input and output references are protected
+The selected experiment is restored after reload; all archived experiments' input and output references are protected
 from storage cleanup. Replacing it or choosing **移除参数实验** releases the metadata reference;
 use **数据与存储 → 清理未使用数据** to reclaim eligible artifacts and task/cache records.
-Complete detail runs remain in the normal 20-run history. Exports contain the experiment's
+Complete detail runs remain in the persistent research library. Exports contain the experiment's
 captured source and range, even if the current draft or source has changed.
 
 ```sh
@@ -598,3 +598,78 @@ BASE_URL='http://localhost:5201/' node scripts/benchmark-jsg-evaluation.mjs \
 The deterministic browser test mocks only the benchmark HTTP response; the source fixture
 and optional real ClickHouse browser integration also fetch and validate a benchmark through
 the same application path. See [BENCHMARKS.md](BENCHMARKS.md) for measurement boundaries.
+
+## Research projects and shared strategies
+
+Quant Lab now organizes work as **project → experiment → immutable runs**. The collapsible
+research directory supports project creation/renaming, experiment creation/renaming, tags,
+notes, favorites and a baseline run. Backtests, parameter grids and validation studies are
+archived independently; selecting an older grid/study loads its result on demand. Selecting
+history preserves the next-run draft. Baselines must belong to the same experiment, and
+removing that run clears the baseline. Compatible intervals can be compared from the result
+header. The selected result kind is saved, so reload restores the same research view.
+
+The compact metadata catalog lives in the existing SQLite metadata store; Arrow input and
+full result chunks remain in OPFS. V2 sessions are imported into a default project/experiment
+without replaying completed results. There is no automatic retention eviction: safety limits
+are 100 projects, 1,000 experiments, 1,000 entries of each result kind and a 16 MiB metadata
+record. New tasks stop at the entry limit and request manual removal. Storage cleanup protects
+all archived input/output references, result chunks and benchmark bindings until their records
+are explicitly removed; clearing a selected result does not implicitly clear the archive.
+
+The frozen **数据与执行** disclosure shows historical-data declarations, strategy-specific
+financial requirements, warmup coverage, execution price model, T+1, volume participation,
+fees, slippage and replay versions. A different next-run snapshot shows added/removed dates,
+securities and changed partition fingerprints. Fingerprint differences can come from partition
+boundaries; they do not prove which historical rows were revised. Source historical declarations
+are displayed as declarations, not independently certified quality scores.
+
+Strategy metadata/parameter contracts are in `packages/market-data/src/research/strategy.ts`;
+Rust signal generators and portfolio construction are in `src/strategy.rs`. Account marking,
+corporate actions, fills, fees and portfolio risk remain shared in `Engine`. `ResearchConfig`
+retains the existing daily transport/execution fields and adds an optional `strategy` object:
+
+```json
+{
+  "id": "momentum",
+  "lookback": 20,
+  "rebalance": "daily",
+  "allocation": "equal",
+  "investment": 0.95
+}
+```
+
+Omitting this object preserves JSG's MA20, weekly calendar rebalances and 95% equal allocation.
+JSG generates the original breadth gate and ascending-market-cap ranks, including its
+limit-up-opened exit. Momentum ranks positive adjusted-price returns descending and excludes
+ST/non-selection members, without using profit/share count or JSG-specific exits. Both support
+5–250 observations, daily/weekly/monthly schedules and equal/inverse-volatility weights.
+Price history counts valid observations per instrument; newly listed or sparsely observed
+members can remain ineligible despite sufficient calendar warmup. Shared daily Arrow inputs
+still use the existing typed daily transport columns; the momentum strategy ignores financial
+columns rather than changing the file schema.
+
+Monthly scheduling uses the optional frozen calendar `monthEnd` flag, generated from the full
+source trading calendar. Imported snapshots without this flag identify a month end from the
+following covered session; the final covered session is not assumed to be month end. Grid
+accounts share decoded market observations and features keyed by strategy, period and weight
+method. Independent/WASM-grid/native results are reconciled in strategy tests. Observation
+period is also available as a grid axis; complete combination details use the same single-run
+engine and cache identity.
+
+Browser ClickHouse acquisition requests at least 30 warmup sessions, increasing this to the
+largest strategy requirement in a grid (up to 251). The public snapshot request records longer
+warmup without passwords. Local imports keep their original coverage, which is visible in the
+context disclosure. Market's independent MA20 breadth indicator continues to use the same
+shared data without portfolio state.
+
+```sh
+bun run build:wasm:quant
+bun run test:rust:quant
+bun run test apps/quant-lab/tests
+# Start Studio, then use its actual /quant URL.
+BASE_URL=http://localhost:5297/quant bun run test:browser:quant:experiments
+```
+
+The browser check covers projects/favorites/notes, multiple grid/study archives, momentum
+explanations, baseline comparison, reload, cleanup and the mobile research directory.

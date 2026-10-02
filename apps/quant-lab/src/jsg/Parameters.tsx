@@ -3,7 +3,16 @@ import { Button, Input, Select } from "@bcr/react";
 import { useId, useState } from "react";
 import { useNames } from "./ResearchNames";
 import { displayLabel } from "./display-names";
-import { dateText, MODEL, validateConfig, type JsgConfig, type ResearchManifest } from "./model";
+import {
+  dateText,
+  MODEL,
+  validateConfig,
+  STRATEGIES,
+  strategySpec,
+  type StrategySpec,
+  type JsgConfig,
+  type ResearchManifest,
+} from "./model";
 import { numericDate } from "./clickhouse-http";
 
 export function configErrors(config: JsgConfig): Record<string, string> {
@@ -125,6 +134,10 @@ export function Parameters({
   const industryLabel = (code: string) => displayLabel(names, "industries", code);
   const [industryQuery, setIndustryQuery] = useState("");
   const raw = config.executionModel === "jsg-raw-v2";
+  const spec = strategySpec(config);
+  const strategy = STRATEGIES[spec.id];
+  const updateStrategy = (patch: Partial<StrategySpec>) =>
+    onChange({ strategy: { ...spec, ...patch } });
   const updateFee = (index: number, patch: Partial<NonNullable<JsgConfig["fees"]>[number]>) =>
     onChange({ fees: config.fees!.map((fee, i) => (i === index ? { ...fee, ...patch } : fee)) });
   return (
@@ -142,6 +155,69 @@ export function Parameters({
         >
           <RotateCcw size={15} />
         </Button>
+      </div>
+      <div className="research-strategy-fields">
+        <label className="research-field">
+          <span>研究策略</span>
+          <Select
+            aria-label="研究策略"
+            value={spec.id}
+            onChange={(e) => {
+              const id = e.target.value as StrategySpec["id"];
+              updateStrategy({ id, rebalance: STRATEGIES[id].defaultRebalance });
+            }}
+          >
+            {Object.entries(STRATEGIES).map(([id, meta]) => (
+              <option key={id} value={id}>
+                {meta.title}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <p className="research-help">{strategy.description}</p>
+        <NumberField
+          label={strategy.periodLabel}
+          value={spec.lookback}
+          onChange={(lookback) => updateStrategy({ lookback })}
+          unit="次"
+        />
+        <label className="research-field">
+          <span>调仓频率</span>
+          <Select
+            aria-label="调仓频率"
+            value={spec.rebalance}
+            onChange={(e) =>
+              updateStrategy({ rebalance: e.target.value as StrategySpec["rebalance"] })
+            }
+          >
+            <option value="weekly">每周 · 数据日历标记</option>
+            <option value="monthly">每月最后交易日</option>
+            <option value="daily">每日</option>
+          </Select>
+        </label>
+        <label className="research-field">
+          <span>仓位分配</span>
+          <Select
+            aria-label="仓位分配"
+            value={spec.allocation}
+            onChange={(e) =>
+              updateStrategy({ allocation: e.target.value as StrategySpec["allocation"] })
+            }
+          >
+            <option value="equal">等权</option>
+            <option value="inverse-volatility">波动率倒数</option>
+          </Select>
+        </label>
+        <NumberField
+          label="目标投资比例"
+          value={spec.investment * 100}
+          onChange={(value) => updateStrategy({ investment: value / 100 })}
+          unit="%"
+        />
+        <p className="research-help">
+          所需数据：{strategy.fields}
+          。观察周期按每只证券有效行情计数；信号在收盘产生，次日开盘执行。
+        </p>
       </div>
       <div className="research-parameter-group">
         <NumberField
@@ -362,58 +438,62 @@ export function Parameters({
             </Button>
           </>
         )}
-        <div className="research-field">
-          <span>行业黑名单</span>
-          <Input
-            type="search"
-            aria-label="搜索行业"
-            placeholder="搜索行业名称或代码"
-            value={industryQuery}
-            onChange={(event) => setIndustryQuery(event.currentTarget.value)}
-          />
-        </div>
-        <div className="research-chips">
-          {config.industryBlacklist.map((code) => (
-            <button
-              key={code}
-              type="button"
-              onClick={() =>
-                onChange({
-                  industryBlacklist: config.industryBlacklist.filter((item) => item !== code),
-                })
-              }
-              aria-label={`移除黑名单 ${industryLabel(code)}`}
-            >
-              {industryLabel(code)}
-              <X size={11} />
-            </button>
-          ))}
-        </div>
-        <div className="research-industry-list">
-          {(manifest?.industries ?? [])
-            .filter((code) =>
-              industryLabel(code)
-                .toLocaleLowerCase()
-                .includes(industryQuery.trim().toLocaleLowerCase()),
-            )
-            .slice(0, 100)
-            .map((code) => (
-              <label key={code}>
-                <input
-                  type="checkbox"
-                  checked={config.industryBlacklist.includes(code)}
-                  onChange={(event) =>
+        {spec.id === "jsg" && (
+          <>
+            <div className="research-field">
+              <span>行业黑名单</span>
+              <Input
+                type="search"
+                aria-label="搜索行业"
+                placeholder="搜索行业名称或代码"
+                value={industryQuery}
+                onChange={(event) => setIndustryQuery(event.currentTarget.value)}
+              />
+            </div>
+            <div className="research-chips">
+              {config.industryBlacklist.map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() =>
                     onChange({
-                      industryBlacklist: event.currentTarget.checked
-                        ? [...config.industryBlacklist, code]
-                        : config.industryBlacklist.filter((item) => item !== code),
+                      industryBlacklist: config.industryBlacklist.filter((item) => item !== code),
                     })
                   }
-                />
-                <span>{industryLabel(code)}</span>
-              </label>
-            ))}
-        </div>
+                  aria-label={`移除黑名单 ${industryLabel(code)}`}
+                >
+                  {industryLabel(code)}
+                  <X size={11} />
+                </button>
+              ))}
+            </div>
+            <div className="research-industry-list">
+              {(manifest?.industries ?? [])
+                .filter((code) =>
+                  industryLabel(code)
+                    .toLocaleLowerCase()
+                    .includes(industryQuery.trim().toLocaleLowerCase()),
+                )
+                .slice(0, 100)
+                .map((code) => (
+                  <label key={code}>
+                    <input
+                      type="checkbox"
+                      checked={config.industryBlacklist.includes(code)}
+                      onChange={(event) =>
+                        onChange({
+                          industryBlacklist: event.currentTarget.checked
+                            ? [...config.industryBlacklist, code]
+                            : config.industryBlacklist.filter((item) => item !== code),
+                        })
+                      }
+                    />
+                    <span>{industryLabel(code)}</span>
+                  </label>
+                ))}
+            </div>
+          </>
+        )}
       </details>
       {errors["advanced"] && (
         <p className="research-field-error" role="alert">

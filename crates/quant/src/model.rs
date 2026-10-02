@@ -9,6 +9,8 @@ pub const MAX_ORDERS: usize = 200_000;
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Config {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub strategy: Option<crate::strategy::StrategySpec>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub research_window: Option<ResearchWindow>,
     #[serde(default = "research_model")]
     pub execution_model: String,
@@ -38,6 +40,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            strategy: None,
             research_window: None,
             execution_model: research_model(),
             fees: vec![],
@@ -61,6 +64,7 @@ impl Default for Config {
 }
 impl Config {
     pub fn validate(&self) -> Result<(), String> {
+        self.strategy_spec().validate()?;
         if self
             .research_window
             .as_ref()
@@ -127,6 +131,9 @@ impl Config {
         }
         Ok(())
     }
+    pub fn strategy_spec(&self) -> crate::strategy::StrategySpec {
+        self.strategy.clone().unwrap_or_default()
+    }
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -183,6 +190,8 @@ pub struct Instrument {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Session {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub month_end: Option<bool>,
     pub date: u32,
     pub rebalance: bool,
 }

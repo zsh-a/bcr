@@ -24,6 +24,8 @@ import {
   type JsgConfig,
   type JsgResult,
   type ResearchDataset,
+  strategySpec,
+  warmupSessions,
 } from "./model";
 import {
   copyConfig,
@@ -32,16 +34,21 @@ import {
   initialSession,
   readRun,
   readDataset,
+  readGrid,
+  readStudy,
+  MAX_RUNS,
   restoreSession,
   saveSession,
   sessionReducer,
   type ResearchRun,
-  type SessionEvent,
+  type ResearchEvent,
   type ResearchOperation,
 } from "./session";
+import { DEFAULT_EXPERIMENT_ID, validateLibrary, type ResearchExperiment } from "./experiments";
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 interface Active {
+  experimentId: string;
   id: string;
   abort: AbortController;
   handle: TaskHandle | null;
@@ -55,7 +62,7 @@ export function useResearch(services: RuntimeServices) {
   const writes = useRef(Promise.resolve());
   const savedDraft = useRef(copyConfig(DEFAULT_CONFIG));
   const mounted = useRef(true);
-  const send = useCallback((event: SessionEvent) => {
+  const send = useCallback((event: ResearchEvent) => {
     if (!mounted.current) return;
     current.current = sessionReducer(current.current, event);
     reduce(event);
@@ -114,10 +121,31 @@ export function useResearch(services: RuntimeServices) {
     state.selected,
     state.grid,
     state.study,
+    state.projects,
+    state.experiments,
+    state.experimentId,
+    state.grids,
+    state.studies,
+    state.view,
   ]);
   const start = (kind: ResearchOperation["kind"], label: string): Active | null => {
     if (active.current !== null || !current.current.ready) return null;
-    const token = { id: crypto.randomUUID(), abort: new AbortController(), handle: null };
+    if (
+      Math.max(
+        current.current.runs.length,
+        current.current.grids.length,
+        current.current.studies.length,
+      ) >= MAX_RUNS
+    ) {
+      send({ type: "notice", error: "研究目录已满，请手动移除不需要的记录" });
+      return null;
+    }
+    const token = {
+      id: crypto.randomUUID(),
+      experimentId: current.current.experimentId,
+      abort: new AbortController(),
+      handle: null,
+    };
     active.current = token;
     send({ type: "started", operation: { id: token.id, kind, label, progress: null } });
     return token;
@@ -179,7 +207,8 @@ export function useResearch(services: RuntimeServices) {
       const result = await readJson<JsgResult>(services, ref);
       token.abort.signal.throwIfAborted();
       const run: ResearchRun = {
-        versions: replayVersions(),
+        experimentId: token.experimentId,
+        versions: replayVersions(false, strategy),
         ...(dataset.snapshot ? { snapshot: structuredClone(dataset.snapshot) } : {}),
         id: token.id,
         createdAt: new Date().toISOString(),
@@ -258,9 +287,14 @@ export function useResearch(services: RuntimeServices) {
     const token = start("load", "准备研究数据…");
     if (token === null) return;
     try {
-      const loaded = await loadFromBrowser(connection, range, token.abort.signal, (value) => {
-        progress(token, value.text, value.total ? value.completed / value.total : null);
-      });
+      const loaded = await loadFromBrowser(
+        connection,
+        { ...range, warmupSessions: Math.max(30, warmupSessions(strategySpec(snapshot.draft))) },
+        token.abort.signal,
+        (value) => {
+          progress(token, value.text, value.total ? value.completed / value.total : null);
+        },
+      );
       token.abort.signal.throwIfAborted();
       const draft: JsgConfig =
         loaded.dataset.manifest.version === 1 && snapshot.draft.executionModel === "jsg-raw-v2"
@@ -316,7 +350,10 @@ export function useResearch(services: RuntimeServices) {
       if (source) {
         const loaded = await loadFromBrowser(
           source.connection,
-          source.range,
+          {
+            ...source.range,
+            warmupSessions: Math.max(30, ...configs.map((c) => warmupSessions(strategySpec(c)))),
+          },
           token.abort.signal,
           (value) => {
             progress(token, value.text, value.total ? value.completed / value.total : null);
@@ -393,7 +430,8 @@ export function useResearch(services: RuntimeServices) {
         id: token.id,
         grid: {
           run: {
-            versions: replayVersions(true),
+            experimentId: token.experimentId,
+            versions: replayVersions(true, configs[0]),
             id: token.id,
             createdAt: new Date().toISOString(),
             axes: capturedAxes,
@@ -427,6 +465,7 @@ export function useResearch(services: RuntimeServices) {
     if (!grid || !row) return;
     const token = start("backtest", "生成完整结果…");
     if (!token) return;
+    token.experimentId = grid.run.experimentId ?? DEFAULT_EXPERIMENT_ID;
     try {
       const dataset = await readDataset(services, grid.dataset);
       token.abort.signal.throwIfAborted();
@@ -550,7 +589,8 @@ export function useResearch(services: RuntimeServices) {
           dataset,
           result,
           run: {
-            versions: replayVersions(true),
+            experimentId: token.experimentId,
+            versions: replayVersions(true, base),
             id: token.id,
             createdAt: new Date().toISOString(),
             dataset: {
@@ -580,16 +620,87 @@ export function useResearch(services: RuntimeServices) {
     const request = ++selection.current;
     setSelecting(true);
     try {
-      const selected = await readRun(services, run);
-      if (selection.current === request) send({ type: "selected", selected });
+      const selected = await withResearchFiles("shared", () => readRun(services, run));
+      if (selection.current === request && current.current.runs.some((r) => r.id === id))
+        send({ type: "selected", selected });
     } catch (error) {
       if (selection.current === request) send({ type: "notice", error: message(error) });
     } finally {
       if (selection.current === request && mounted.current) setSelecting(false);
     }
   };
+  const selectEntry = async (kind: "run" | "grid" | "study", id: string) => {
+    if (active.current) return;
+    if (kind === "run") return selectRun(id);
+    const run =
+      kind === "grid"
+        ? current.current.grids.find((r) => r.id === id)
+        : current.current.studies.find((r) => r.id === id);
+    if (!run) return;
+    const request = ++selection.current;
+    setSelecting(true);
+    try {
+      await withResearchFiles("shared", async () => {
+        if (kind === "grid") {
+          const grid = await readGrid(services, run as import("./session").ResearchGrid);
+          if (request === selection.current && current.current.grids.some((r) => r.id === id))
+            send({ type: "grid-selected", grid });
+        } else {
+          const study = await readStudy(services, run);
+          if (request === selection.current && current.current.studies.some((r) => r.id === id))
+            send({ type: "study-selected", study });
+        }
+      });
+    } catch (error) {
+      if (request === selection.current) send({ type: "notice", error: message(error) });
+    } finally {
+      if (request === selection.current && mounted.current) setSelecting(false);
+    }
+  };
+  const selectExperiment = async (id: string) => {
+    if (active.current || !current.current.experiments.some((e) => e.id === id)) return;
+    selection.current++;
+    setSelecting(false);
+    send({ type: "experiment-selected", id });
+    const entries = [
+      ...current.current.runs.map((r) => ({ ...r, kind: "run" as const })),
+      ...current.current.grids.map((r) => ({ ...r, kind: "grid" as const })),
+      ...current.current.studies.map((r) => ({ ...r, kind: "study" as const })),
+    ]
+      .filter((r) => (r.experimentId ?? DEFAULT_EXPERIMENT_ID) === id)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    if (entries[0]) await selectEntry(entries[0].kind, entries[0].id);
+  };
+  const createExperiment = (name: string, projectId?: string) => {
+    if (active.current) return;
+    const experiment: ResearchExperiment = {
+      id: crypto.randomUUID(),
+      projectId:
+        projectId ??
+        current.current.experiments.find((e) => e.id === current.current.experimentId)!.projectId,
+      name: name.trim(),
+      notes: "",
+      tags: [],
+      favorite: false,
+      baselineId: null,
+      createdAt: new Date().toISOString(),
+    };
+    try {
+      validateLibrary(
+        current.current.projects,
+        [...current.current.experiments, experiment],
+        experiment.id,
+      );
+      selection.current++;
+      setSelecting(false);
+      send({ type: "experiment-created", experiment });
+    } catch (error) {
+      send({ type: "notice", error: message(error) });
+    }
+  };
   return {
     state,
+    setView: (view: import("./session").ResearchSession["view"]) => send({ type: "view", view }),
     selecting,
     run: () => withResearchFiles("shared", run),
     runGrid: (
@@ -598,10 +709,70 @@ export function useResearch(services: RuntimeServices) {
       source?: { connection: ClickHouseConnection; range: ClickHouseRange },
     ) => withResearchFiles("shared", () => runGrid(configs, axes, source)),
     viewGridResult: (index: number) => withResearchFiles("shared", () => viewGridResult(index)),
-    forgetGrid: () => send({ type: "forget-grid" }),
+    forgetGrid: () => {
+      if (current.current.grid)
+        send({ type: "entry-forgotten", kind: "grid", id: current.current.grid.run.id });
+    },
     runValidation: (request: ValidationRequest) =>
       withResearchFiles("shared", () => runValidation(request)),
-    forgetStudy: () => send({ type: "forget-study" }),
+    forgetStudy: () => {
+      if (current.current.study)
+        send({ type: "entry-forgotten", kind: "study", id: current.current.study.run.id });
+    },
+    createExperiment,
+    createProject: (name: string) => {
+      if (active.current) return;
+      const project = {
+        id: crypto.randomUUID(),
+        name: name.trim(),
+        createdAt: new Date().toISOString(),
+      };
+      const experiment = {
+        id: crypto.randomUUID(),
+        projectId: project.id,
+        name: "策略探索",
+        notes: "",
+        tags: [],
+        favorite: false,
+        baselineId: null,
+        createdAt: project.createdAt,
+      };
+      try {
+        validateLibrary(
+          [...current.current.projects, project],
+          [...current.current.experiments, experiment],
+          experiment.id,
+        );
+        selection.current++;
+        setSelecting(false);
+        send({ type: "project-created", project, experiment });
+      } catch (error) {
+        send({ type: "notice", error: message(error) });
+      }
+    },
+    updateExperiment: (
+      id: string,
+      patch: Partial<
+        Pick<ResearchExperiment, "name" | "notes" | "tags" | "favorite" | "baselineId">
+      >,
+    ) => {
+      try {
+        send({ type: "experiment-updated", id, patch });
+      } catch (error) {
+        send({ type: "notice", error: message(error) });
+      }
+    },
+    renameProject: (id: string, name: string) => {
+      try {
+        send({ type: "project-renamed", id, name: name.trim() });
+      } catch (error) {
+        send({ type: "notice", error: message(error) });
+      }
+    },
+    selectExperiment,
+    selectEntry,
+    forgetEntry: (kind: "run" | "grid" | "study", id: string) =>
+      send(kind === "run" ? { type: "forgotten", id } : { type: "entry-forgotten", kind, id }),
     attachBenchmark: (runId: string, benchmark?: BenchmarkBinding) =>
       send({ type: "benchmark", runId, ...(benchmark ? { benchmark } : {}) }),
     connectAndRun: (connection: ClickHouseConnection, range: ClickHouseRange) =>

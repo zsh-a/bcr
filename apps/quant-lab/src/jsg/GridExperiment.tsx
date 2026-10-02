@@ -5,6 +5,7 @@ import { dateText, type JsgConfig } from "./model";
 import type { SelectedGrid } from "./session";
 import {
   GRID_FIELDS,
+  gridValue,
   MAX_GRID_CONFIGS,
   gridConfigs,
   rankGrid,
@@ -125,7 +126,7 @@ export function GridSettings({
                   {
                     field,
                     values: String(
-                      Number(((base[field] ?? 0) * GRID_FIELDS[field].scale).toFixed(8)),
+                      Number((gridValue(base, field) * GRID_FIELDS[field].scale).toFixed(8)),
                     ),
                   },
                 ]);
@@ -291,7 +292,8 @@ export function GridResults({
                       <td key={axis.field}>
                         {Number(
                           (
-                            (row.config[axis.field] ?? 0) * (GRID_FIELDS[axis.field]?.scale ?? 1)
+                            gridValue(row.config, axis.field) *
+                            (GRID_FIELDS[axis.field]?.scale ?? 1)
                           ).toFixed(8),
                         )}
                         <small>{GRID_FIELDS[axis.field]?.unit}</small>

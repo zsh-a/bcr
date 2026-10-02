@@ -2,6 +2,16 @@ import type { ArtifactRef } from "@bcr/core";
 import type { ClickHouseProfile } from "./clickhouse-http";
 import type { Diagnostics, ResearchDay } from "./research-model";
 import { parseDisplayNames, type DisplayNames } from "./display-names";
+import { strategySpec, validateStrategy, type StrategySpec } from "./strategy";
+export {
+  DEFAULT_STRATEGY,
+  STRATEGIES,
+  strategySpec,
+  validateStrategy,
+  warmupSessions,
+  rebalanceSession,
+} from "./strategy";
+export type { StrategySpec } from "./strategy";
 
 export const MAX_PARTITION_BYTES = 32 * 1024 * 1024;
 export const MAX_MANIFEST_BYTES = 4 * 1024 * 1024;
@@ -31,7 +41,8 @@ export interface DataQuality {
   corporateActions: "complete" | "missing";
   priceLimits: "daily" | "static";
 }
-export interface JsgConfig {
+export interface ResearchConfig {
+  strategy?: StrategySpec;
   researchWindow?: { start: number; end: number };
   executionModel?: "jsg-adjusted-v1" | "jsg-raw-v2";
   fees?: FeeSchedule[];
@@ -51,6 +62,7 @@ export interface JsgConfig {
   tPlusOne: boolean;
   industryBlacklist: string[];
 }
+export type JsgConfig = ResearchConfig;
 export const DEFAULT_CONFIG: JsgConfig = {
   initialCapital: 1_000_000,
   poolSize: 20,
@@ -81,7 +93,7 @@ export interface ResearchManifest {
   endDate: number;
   instruments: { code: string; limitRatio: number }[];
   industries: string[];
-  calendar: { date: number; rebalance: boolean }[];
+  calendar: { date: number; rebalance: boolean; monthEnd?: boolean }[];
   partitions: { file: string; bytes: number; rows: number }[];
 }
 export interface ResearchDataset {
@@ -219,7 +231,13 @@ export function parseManifest(value: unknown): ResearchManifest {
     if (date <= previous || typeof s["rebalance"] !== "boolean")
       throw new Error("交易日历必须递增且包含调仓标记");
     previous = date;
-    return { date, rebalance: s["rebalance"] };
+    if (s["monthEnd"] !== undefined && typeof s["monthEnd"] !== "boolean")
+      throw new Error("月末标记必须为布尔值");
+    return {
+      date,
+      rebalance: s["rebalance"],
+      ...(s["monthEnd"] !== undefined ? { monthEnd: s["monthEnd"] as boolean } : {}),
+    };
   });
   const startDate = dateValue(m["startDate"]);
   const endDate = dateValue(m["endDate"]);
@@ -342,6 +360,7 @@ function subsetManifestNames(
   return names;
 }
 export function validateConfig(config: JsgConfig): void {
+  validateStrategy(strategySpec(config));
   if (config.researchWindow) {
     dateValue(config.researchWindow.start);
     dateValue(config.researchWindow.end);

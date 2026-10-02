@@ -22,6 +22,7 @@ import {
   HardDrive,
   FlaskConical,
   X,
+  PanelLeft,
 } from "lucide-react";
 import { RunSettings } from "./RunSettings";
 import { draftChanges } from "./draft";
@@ -31,7 +32,9 @@ import { ResultExplorer } from "./ResultExplorer";
 import { Quality } from "./Quality";
 import { useResearch } from "./useResearch";
 import { useDataSource } from "./useDataSource";
-import { dateText, DEFAULT_CONFIG } from "./model";
+import { dateText, DEFAULT_CONFIG, STRATEGIES, strategySpec } from "./model";
+import { ResearchLibrary } from "./ResearchLibrary";
+import { ResearchContext } from "./ResearchContext";
 import { readRun, type SelectedRun } from "./session";
 import { exportResearchResult } from "./data";
 import { demoResearch } from "./demo";
@@ -56,7 +59,7 @@ const timeLabel = (value: string) =>
   });
 const compactMoney = (value: number) =>
   value >= 10000 ? `${money(value / 10000)} 万元` : `${money(value)} 元`;
-export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
+export function QuantWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
   const services = useRuntime();
   const research = useResearch(services);
   const { state } = research;
@@ -107,32 +110,44 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
   const root = useRef<HTMLDivElement>(null),
     input = useRef<HTMLInputElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false),
+    [libraryOpen, setLibraryOpen] = useState(
+      () => typeof window !== "undefined" && window.matchMedia("(min-width: 1200px)").matches,
+    ),
     [settingsTab, setSettingsTab] = useState<"parameters" | "data" | "changes">("parameters"),
     [historyOpen, setHistoryOpen] = useState(false),
     [comparisonOpen, setComparisonOpen] = useState(false),
     [storageOpen, setStorageOpen] = useState(false),
     [storageBusy, setStorageBusy] = useState(false);
+  useEffect(() => {
+    const compact = window.matchMedia("(max-width: 1100px)");
+    const resize = () => {
+      if (compact.matches) setLibraryOpen(false);
+    };
+    compact.addEventListener("change", resize);
+    return () => compact.removeEventListener("change", resize);
+  }, []);
+  useEffect(() => {
+    if (!libraryOpen) return;
+    const dismiss = (event: KeyboardEvent) => {
+      if (
+        event.key === "Escape" &&
+        window.matchMedia("(max-width: 1100px)").matches &&
+        !document.querySelector("dialog[open]") &&
+        root.current?.getClientRects().length
+      )
+        setLibraryOpen(false);
+    };
+    window.addEventListener("keydown", dismiss);
+    return () => window.removeEventListener("keydown", dismiss);
+  }, [libraryOpen]);
   const openSettings = (tab: "parameters" | "data" | "changes" = "parameters") => {
     setSettingsTab(tab);
     setSettingsOpen(true);
   };
-  const [gridOpen, setGridOpen] = useState(false),
-    [gridExpanded, setGridExpanded] = useState(true);
-  const [studyOpen, setStudyOpen] = useState(false),
-    [studyExpanded, setStudyExpanded] = useState(false);
-  useEffect(() => {
-    if (state.study) {
-      setStudyExpanded(true);
-      setGridExpanded(false);
-    }
-  }, [state.study?.run.id]);
-  useEffect(() => {
-    setGridExpanded(true);
-  }, [state.grid?.run.id]);
-  useEffect(() => {
-    setGridExpanded(false);
-    setStudyExpanded(false);
-  }, [state.selected?.run.id]);
+  const [gridOpen, setGridOpen] = useState(false);
+  const [studyOpen, setStudyOpen] = useState(false);
+  const gridExpanded = state.view === "grid",
+    studyExpanded = state.view === "study";
   const [exporting, setExporting] = useState(false),
     [comparisons, setComparisons] = useState<SelectedRun[]>([]),
     [pendingComparison, setPendingComparison] = useState<string | null>(null);
@@ -175,6 +190,9 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
     (source.kind === "clickhouse" ? source.dateError() === null : state.dataset !== null);
   const invalid = Object.keys(configErrors(state.draft)).length > 0;
   const selected = state.selected;
+  const experiment = state.experiments.find((e) => e.id === state.experimentId)!;
+  const project = state.projects.find((p) => p.id === experiment.projectId)!;
+  const baselineId = experiment.baselineId;
   const namedDataset = selected?.dataset ?? state.dataset;
   const names = useResearchNames(
     services,
@@ -349,11 +367,36 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
       )
     : [];
   return (
-    <div ref={root} className="jsg-workspace" data-busy={busy} data-draft-changed={changed}>
+    <div
+      ref={root}
+      className="jsg-workspace"
+      data-busy={busy}
+      data-draft-changed={changed}
+      data-library-open={libraryOpen}
+    >
       <header className="research-header">
         <WorkspaceTrigger />
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label="研究目录"
+          aria-expanded={libraryOpen}
+          onClick={() => setLibraryOpen((value) => !value)}
+        >
+          <PanelLeft size={16} />
+        </Button>
         <div className="research-brand">
-          <h1>行业宽度轮动</h1>
+          <h1>Quant Lab</h1>
+          <button
+            type="button"
+            className="research-experiment-location"
+            title={`${project.name} / ${experiment.name}`}
+            onClick={() => setLibraryOpen(true)}
+          >
+            {project.name}
+            <span>/</span>
+            {experiment.name}
+          </button>
         </div>
         <div className="research-actions">
           <Button
@@ -378,7 +421,12 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
             {changed && <small className="research-change-count">{changes.length}</small>}
           </Button>
           <details ref={actionMenu} className="research-action-menu">
-            <summary aria-label="更多研究操作">
+            <summary
+              aria-label="更多研究操作"
+              onClick={() => {
+                if (window.matchMedia("(max-width: 1100px)").matches) setLibraryOpen(false);
+              }}
+            >
               <MoreHorizontal size={19} />
             </summary>
             <div>
@@ -522,16 +570,30 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
         </div>
       )}
       <div className="research-body">
+        {libraryOpen && (
+          <button
+            type="button"
+            className="research-library-backdrop"
+            aria-label="关闭研究目录"
+            onClick={() => setLibraryOpen(false)}
+          />
+        )}
+        {libraryOpen && (
+          <ResearchLibrary
+            research={research}
+            busy={busy || exporting}
+            onClose={() => setLibraryOpen(false)}
+          />
+        )}
         <main className="research-results" aria-busy={research.selecting}>
-          {state.grid && (
+          {state.grid && state.view === "grid" && (
             <GridResults
               key={state.grid.run.id}
               grid={state.grid}
               busy={busy}
               expanded={gridExpanded}
               onExpand={() => {
-                setGridExpanded((value) => !value);
-                setStudyExpanded(false);
+                research.setView(gridExpanded ? "run" : "grid");
               }}
               onForget={research.forgetGrid}
               onUse={research.reset}
@@ -539,20 +601,19 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                 void (async () => {
                   const before = research.getSession().selected?.run.id;
                   await research.viewGridResult(index);
-                  if (research.getSession().selected?.run.id !== before) setGridExpanded(false);
+                  if (research.getSession().selected?.run.id !== before) research.setView("run");
                 })();
               }}
             />
           )}
-          {state.study && (
+          {state.study && state.view === "study" && (
             <ValidationResults
               key={state.study.run.id}
               study={state.study}
               busy={busy}
               expanded={studyExpanded}
               onExpand={() => {
-                setStudyExpanded((v) => !v);
-                setGridExpanded(false);
+                research.setView(studyExpanded ? "run" : "study");
               }}
               onForget={research.forgetStudy}
             />
@@ -561,7 +622,7 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
             <div
               className="research-run-result"
               data-run-id={selected.run.id}
-              hidden={(!!state.grid && gridExpanded) || (!!state.study && studyExpanded)}
+              hidden={state.view !== "run"}
             >
               <div className="research-result-heading">
                 <div>
@@ -578,6 +639,7 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                     <History size={13} />
                   </button>
                   <p>
+                    <span>{STRATEGIES[strategySpec(selected.run.config).id].title}</span>
                     {dateText(selected.run.startDate)} — {dateText(selected.run.endDate)}
                     <span>
                       {selected.run.config.stockCount} 只 ·{" "}
@@ -602,6 +664,24 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                     snapshot={selected.dataset.snapshot}
                   />
                   {research.selecting && <Spinner size="sm" />}
+                  {baselineId &&
+                    baselineId !== selected.run.id &&
+                    state.runs.some(
+                      (r) => r.id === baselineId && compatibleRun(selected.run, r),
+                    ) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={comparing}
+                        onClick={() => {
+                          if (!comparisons.some((r) => r.run.id === baselineId))
+                            void compare(baselineId);
+                          else setComparisonOpen(true);
+                        }}
+                      >
+                        对比基线
+                      </Button>
+                    )}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -614,6 +694,13 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
                   </Button>
                 </div>
               </div>
+              <ResearchContext
+                recorded
+                dataset={selected.dataset}
+                config={selected.run.config}
+                versions={selected.run.versions}
+                nextDataset={state.dataset}
+              />
               <dl className="research-metrics" aria-label="所选运行核心指标">
                 {[
                   [
@@ -644,7 +731,7 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
               </NamesProvider>
               <NamesStatus metadata={names} onSettings={() => openSettings("data")} />
             </div>
-          ) : state.grid || state.study ? null : (
+          ) : state.view !== "run" ? null : (
             <div className="research-empty">
               <span className="research-eyebrow">从一次回测开始</span>
               <div className="research-empty-mark" aria-hidden="true">
@@ -801,7 +888,7 @@ export function JsgWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void }) {
         className="research-history-dialog"
       >
         <p className="research-dialog-lead">
-          保留最近 20 次运行。选择历史只切换结果，下一次运行的参数保持当前编辑值。
+          所有运行持续保存，可在研究目录中组织实验。选择历史只切换结果，下一次运行的参数保持当前编辑值。
         </p>
         <div className="research-history-list">
           {state.runs.toReversed().map((run) => (

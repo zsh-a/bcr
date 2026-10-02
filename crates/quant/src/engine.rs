@@ -83,6 +83,7 @@ impl Engine {
         }
         let count = manifest.instruments.len();
         let capital = config.initial_capital;
+        let history_len = config.strategy_spec().history_len().max(20);
         if config.execution_model == "jsg-raw-v2" {
             let q = manifest
                 .data_quality
@@ -104,7 +105,7 @@ impl Engine {
         Ok(Self {
             manifest,
             config,
-            histories: vec![VecDeque::with_capacity(20); count],
+            histories: vec![VecDeque::with_capacity(history_len); count],
             positions: vec![Position::default(); count],
             cash: capital,
             pending: vec![],
@@ -191,6 +192,8 @@ impl Engine {
         let mut book = vec![None; self.positions.len()];
         let mut last_id = None;
         let raw_model = self.raw_model();
+        let spec = self.config.strategy_spec();
+        let rebalance = spec.rebalance_at(&self.manifest, self.next_session);
         for bar in bars {
             if raw_model
                 && (bar.volume.is_none() || bar.limit_up.is_none() || bar.limit_down.is_none())
@@ -291,7 +294,7 @@ impl Engine {
                 }
                 if features.is_none() {
                     let history = &mut self.histories[id];
-                    if history.len() == 20 {
+                    if history.len() == spec.history_len().max(20) {
                         history.pop_front();
                     }
                     history.push_back(adjusted);
@@ -305,17 +308,16 @@ impl Engine {
         }
         if trading {
             let opening_equity = self.account_equity();
-            let broken: Vec<usize> = self
-                .previous_limit_up
-                .difference(&limit_up)
-                .copied()
-                .filter(|id| book[*id].is_some() && self.positions[*id].quantity > 0)
-                .collect();
+            let broken: Vec<usize> =
+                crate::strategy::exit_signals(&spec, &self.previous_limit_up, &limit_up)
+                    .into_iter()
+                    .filter(|id| book[*id].is_some() && self.positions[*id].quantity > 0)
+                    .collect();
             for id in broken {
                 self.close_position(id, session.date, "limit-up-opened", &book)?;
             }
             let stopped = self.risk(session.date, &book)?;
-            if session.rebalance {
+            if rebalance {
                 if self.drawdown_triggered && !stopped {
                     self.drawdown_triggered = false;
                     self.risk_peak = self.account_equity();
@@ -353,7 +355,7 @@ impl Engine {
                 holdings: self.positions.iter().filter(|p| p.quantity > 0).count(),
             });
             if self.research_enabled {
-                self.observe(session.date, session.rebalance, &book, first_decision)?;
+                self.observe(session.date, rebalance, &book, first_decision)?;
             }
         }
         if trading && self.audit_enabled {
@@ -851,34 +853,27 @@ impl Engine {
         book: &[Option<Bar>],
         features: Option<&crate::features::PreparedDay>,
     ) -> Result<(), String> {
-        let ranked = features.map_or_else(|| self.breadth(book), |f| f.breadth.clone());
-        let top = ranked.first().map(|b| {
-            (
-                self.manifest
-                    .industries
-                    .iter()
-                    .position(|i| i == &b.industry)
-                    .unwrap(),
-                b.ratio,
-            )
-        });
-        let allowed = top.is_some_and(|(id, _)| {
-            !self
-                .config
-                .industry_blacklist
-                .contains(&self.manifest.industries[id])
-        });
-        let ids = if allowed {
-            features.map_or_else(
-                || crate::features::candidates(&self.manifest, book.iter().flatten()),
-                |f| f.candidates.clone(),
-            )
+        let spec = self.config.strategy_spec();
+        let signal = if let Some(features) = features {
+            features
+                .signals
+                .get(&spec.feature_key())
+                .ok_or("strategy features missing")?
+                .clone()
         } else {
-            vec![]
+            crate::strategy::generate(
+                &self.manifest,
+                &book.iter().flatten().cloned().collect::<Vec<_>>(),
+                &self.histories,
+                &spec,
+            )
         };
-        let mut selected: Vec<&Bar> = ids.iter().filter_map(|id| book[*id].as_ref()).collect();
-        selected.truncate(self.config.pool_size.min(self.config.stock_count));
-        let targets: BTreeSet<usize> = selected.iter().map(|b| b.id).collect();
+        let top = signal
+            .breadth
+            .first()
+            .map(|b| (b.industry.clone(), b.ratio));
+        let selected = crate::strategy::portfolio(&self.config, &signal);
+        let targets: BTreeSet<usize> = selected.iter().map(|(id, _)| *id).collect();
         for id in 0..self.positions.len() {
             let quantity = self.positions[id].quantity;
             if quantity > 0 && !targets.contains(&id) {
@@ -891,8 +886,13 @@ impl Engine {
                 });
             }
         }
-        let allocation = equity * 0.95 / selected.len().max(1) as f64;
-        for bar in &selected {
+        for (id, weight) in &selected {
+            let bar = book[*id].as_ref().ok_or("target has no current price")?;
+            let allocation = if spec.allocation == "equal" {
+                equity * spec.investment / selected.len().max(1) as f64
+            } else {
+                equity * weight
+            };
             if self.risk_exited.contains(&bar.id) {
                 continue;
             }
@@ -917,17 +917,22 @@ impl Engine {
         }
         self.decisions.push(Decision {
             date: date_text(date),
-            top_industry: top.map(|(id, _)| self.manifest.industries[id].clone()),
+            top_industry: top.as_ref().map(|(industry, _)| industry.clone()),
             breadth: top.map_or(0.0, |(_, ratio)| ratio),
             targets: selected
                 .iter()
-                .map(|b| self.manifest.instruments[b.id].code.clone())
+                .map(|(id, _)| self.manifest.instruments[*id].code.clone())
                 .collect(),
         });
         Ok(())
     }
     fn breadth(&self, book: &[Option<Bar>]) -> Vec<Breadth> {
-        crate::features::breadth(&self.manifest, book.iter().flatten(), &self.histories)
+        crate::features::breadth_period(
+            &self.manifest,
+            book.iter().flatten(),
+            &self.histories,
+            self.config.strategy_spec().lookback,
+        )
     }
     fn observe(
         &mut self,
@@ -954,7 +959,14 @@ impl Engine {
         }
         let breadth = self.breadth(book);
         let candidates = if rebalance {
-            let ids = crate::features::candidates(&self.manifest, book.iter().flatten());
+            let spec = self.config.strategy_spec();
+            let signal = crate::strategy::generate(
+                &self.manifest,
+                &book.iter().flatten().cloned().collect::<Vec<_>>(),
+                &self.histories,
+                &spec,
+            );
+            let ids = &signal.ranked;
             let mut ranks = vec![None; book.len()];
             for (i, id) in ids.iter().enumerate() {
                 ranks[*id] = Some(i + 1);
@@ -962,7 +974,9 @@ impl Engine {
             let decision = self.decisions.get(first_decision);
             let blocked = match decision {
                 None => Some("portfolio-stop"),
-                Some(d) if d.top_industry.is_none() => Some("insufficient-history"),
+                Some(d) if spec.id == "jsg" && d.top_industry.is_none() => {
+                    Some("insufficient-history")
+                }
                 Some(d)
                     if d.top_industry
                         .as_ref()
@@ -979,10 +993,19 @@ impl Engine {
                 .map(|b| {
                     let reason = if b.is_st {
                         "st"
-                    } else if b.profit <= 0.0 {
+                    } else if spec.id == "jsg" && b.profit <= 0.0 {
                         "non-positive-profit"
-                    } else if b.shares <= 0.0 {
+                    } else if spec.id == "jsg" && b.shares <= 0.0 {
                         "zero-shares"
+                    } else if spec.id == "momentum" && signal.scores[b.id].is_none() {
+                        "insufficient-history"
+                    } else if spec.id == "momentum" && signal.scores[b.id].is_some_and(|s| s <= 0.0)
+                    {
+                        "non-positive-momentum"
+                    } else if spec.allocation == "inverse-volatility"
+                        && signal.volatilities[b.id].is_none()
+                    {
+                        "insufficient-history"
                     } else if let Some(reason) = blocked {
                         reason
                     } else if ranks[b.id]
@@ -995,6 +1018,7 @@ impl Engine {
                         "outside-pool"
                     };
                     Candidate {
+                        score: signal.scores.get(b.id).copied().flatten(),
                         code: self.manifest.instruments[b.id].code.clone(),
                         industry: self.manifest.industries[b.industry].clone(),
                         market_cap: b.close * b.shares,

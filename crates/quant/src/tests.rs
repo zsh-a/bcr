@@ -26,6 +26,7 @@ fn manifest(days: usize) -> Manifest {
         industries: vec!["tech".into(), "ads".into()],
         calendar: (1..=days)
             .map(|i| Session {
+                month_end: None,
                 date: 20240100 + i as u32,
                 rebalance: i == 21,
             })
@@ -90,7 +91,7 @@ fn daily_market_breadth_matches_rebalance_and_excludes_warmup_or_non_members() {
         }
         let weekly = portfolio.advance(&input).unwrap();
         let daily = indicator.advance_daily(&input).unwrap();
-        assert!(daily.candidates.is_empty());
+        assert!(daily.signals.is_empty());
         if day < 20 {
             assert!(daily.breadth.is_empty());
         }
@@ -922,4 +923,177 @@ fn shared_factors_match_independent_portfolios_with_different_risk_parameters() 
             &serde_json::to_value(engine.finish().unwrap().metrics).unwrap(),
         );
     }
+}
+
+#[test]
+fn explicit_default_strategy_preserves_legacy_replay() {
+    let mut legacy = Engine::new(manifest(23), config()).unwrap();
+    let mut explicit = Engine::new(
+        manifest(23),
+        Config {
+            strategy: Some(crate::strategy::StrategySpec::default()),
+            ..config()
+        },
+    )
+    .unwrap();
+    for day in 1..=23 {
+        legacy.day(bars(day)).unwrap();
+        explicit.day(bars(day)).unwrap();
+    }
+    assert_eq!(
+        serde_json::to_value(legacy.finish().unwrap()).unwrap(),
+        serde_json::to_value(explicit.finish().unwrap()).unwrap()
+    );
+}
+#[test]
+fn momentum_uses_only_known_prices_and_executes_next_open_without_financial_filters() {
+    let c = Config {
+        strategy: Some(crate::strategy::StrategySpec {
+            id: "momentum".into(),
+            lookback: 5,
+            rebalance: "daily".into(),
+            ..Default::default()
+        }),
+        ..config()
+    };
+    let mut engine = Engine::new(manifest(23), c).unwrap();
+    for day in 1..=23 {
+        let mut day_bars = bars(day);
+        day_bars[1].profit = 0.0;
+        day_bars[1].shares = 0.0;
+        let p = 10.0 + day as f64 * 0.04;
+        day_bars[1].open = p;
+        day_bars[1].high = p;
+        day_bars[1].low = p;
+        day_bars[1].close = p;
+        day_bars[1].preclose = 10.0 + (day - 1) as f64 * 0.04;
+        engine.day(day_bars).unwrap();
+    }
+    let result = engine.finish().unwrap();
+    assert_eq!(result.decisions[0].targets, vec!["sz.001002"]);
+    assert_eq!(result.orders[0].date, "2024-01-22");
+    assert_eq!(result.orders[0].signal_date, "2024-01-21");
+    let ranked = result.research[0].candidates.as_ref().unwrap();
+    assert_eq!(ranked[0].reason, "target");
+    assert!(ranked[0].score.unwrap() > ranked[1].score.unwrap());
+}
+#[test]
+fn mixed_strategies_and_lookbacks_share_features_without_changing_results() {
+    let configs = vec![
+        config(),
+        Config {
+            strategy: Some(crate::strategy::StrategySpec {
+                lookback: 5,
+                allocation: "inverse-volatility".into(),
+                rebalance: "daily".into(),
+                ..Default::default()
+            }),
+            ..config()
+        },
+        Config {
+            strategy: Some(crate::strategy::StrategySpec {
+                id: "momentum".into(),
+                lookback: 10,
+                rebalance: "daily".into(),
+                ..Default::default()
+            }),
+            ..config()
+        },
+    ];
+    let mut separate: Vec<_> = configs
+        .iter()
+        .map(|c| Engine::new(manifest(23), c.clone()).unwrap())
+        .collect();
+    let mut shared: Vec<_> = configs
+        .iter()
+        .map(|c| Engine::new_shared(manifest(23), c.clone()).unwrap())
+        .collect();
+    let mut factors = crate::features::FactorState::with_configs(manifest(23), &configs);
+    for day in 1..=23 {
+        let data = bars(day);
+        let prepared = factors.advance(&data).unwrap();
+        for engine in &mut separate {
+            engine.day(data.clone()).unwrap();
+        }
+        for engine in &mut shared {
+            engine
+                .day_with_features(data.clone(), Some(&prepared))
+                .unwrap();
+        }
+    }
+    for (a, b) in separate.into_iter().zip(shared) {
+        assert_eq!(
+            serde_json::to_value(a.finish().unwrap().metrics).unwrap(),
+            serde_json::to_value(b.finish().unwrap().metrics).unwrap()
+        );
+    }
+}
+#[test]
+fn portfolio_weights_normalize_volatility_and_month_end_uses_full_calendar_marks() {
+    let c = Config {
+        stock_count: 2,
+        strategy: Some(crate::strategy::StrategySpec {
+            allocation: "inverse-volatility".into(),
+            investment: 0.8,
+            ..Default::default()
+        }),
+        ..config()
+    };
+    let signal = crate::strategy::Signal {
+        breadth: vec![Breadth {
+            industry: "tech".into(),
+            ratio: 80.0,
+            above: 4,
+            total: 5,
+        }],
+        ranked: vec![0, 1],
+        volatilities: vec![Some(0.01), Some(0.03)],
+        ..Default::default()
+    };
+    let weights = crate::strategy::portfolio(&c, &signal);
+    assert!((weights[0].1 - 0.6).abs() < 1e-12);
+    assert!((weights[1].1 - 0.2).abs() < 1e-12);
+    let spec = crate::strategy::StrategySpec {
+        rebalance: "monthly".into(),
+        ..Default::default()
+    };
+    let mut m = manifest(23);
+    assert!(!spec.rebalance_at(&m, 22));
+    m.calendar[22].month_end = Some(true);
+    assert!(spec.rebalance_at(&m, 22));
+}
+
+#[test]
+fn momentum_does_not_inherit_jsg_limit_opened_exit() {
+    let spec = crate::strategy::StrategySpec {
+        id: "momentum".into(),
+        rebalance: "daily".into(),
+        lookback: 5,
+        ..Default::default()
+    };
+    let mut engine = Engine::new(
+        manifest(23),
+        Config {
+            strategy: Some(spec),
+            ..config()
+        },
+    )
+    .unwrap();
+    for day in 1..=23 {
+        let mut data = bars(day);
+        if day == 21 {
+            let p = data[0].preclose * 1.1;
+            data[0].open = p;
+            data[0].high = p;
+            data[0].low = p;
+            data[0].close = p;
+        }
+        engine.day(data).unwrap();
+    }
+    let result = engine.finish().unwrap();
+    assert!(result
+        .holdings
+        .iter()
+        .any(|h| h.code == "sz.001001" && h.quantity > 0));
+    assert!(result.orders.iter().all(|o| o.reason != "limit-up-opened"));
 }

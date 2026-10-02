@@ -1,8 +1,9 @@
-import { validateConfig, type JsgConfig, type JsgResult } from "./model";
+import { validateConfig, strategySpec, type JsgConfig, type JsgResult } from "./model";
 import { configKey, copyConfig } from "./session";
 
 export const MAX_GRID_CONFIGS = 64;
 export const GRID_FIELDS = {
+  strategyLookback: { label: "观察周期", unit: "次", scale: 1 },
   stockCount: { label: "目标股票数", unit: "只", scale: 1 },
   poolSize: { label: "候选池大小", unit: "只", scale: 1 },
   stopLoss: { label: "个股止损", unit: "%", scale: 100 },
@@ -16,6 +17,8 @@ export const GRID_FIELDS = {
   commissionBps: { label: "佣金", unit: "bps", scale: 1 },
 } as const;
 export type GridField = keyof typeof GRID_FIELDS;
+export const gridValue = (config: JsgConfig, field: GridField) =>
+  field === "strategyLookback" ? strategySpec(config).lookback : (config[field] ?? 0);
 export interface GridAxis {
   field: GridField;
   values: string;
@@ -52,7 +55,11 @@ export function gridConfigs(base: JsgConfig, axes: readonly GridAxis[]): JsgConf
     if (configs.length * values.length > MAX_GRID_CONFIGS)
       throw new Error(`组合数量超过 ${MAX_GRID_CONFIGS} 组，请减少参数值`);
     configs = configs.flatMap((config) =>
-      values.map((value) => ({ ...copyConfig(config), [axis.field]: value })),
+      values.map((value) =>
+        axis.field === "strategyLookback"
+          ? { ...copyConfig(config), strategy: { ...strategySpec(config), lookback: value } }
+          : { ...copyConfig(config), [axis.field]: value },
+      ),
     );
   }
   for (const config of configs) validateConfig(config);

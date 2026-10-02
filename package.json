@@ -41,6 +41,7 @@
     "generate:pwa": "bun scripts/generate-pwa-entries.mjs && node scripts/generate-pwa-icons.mjs",
     "build:wasm:quant": "wasm-pack build crates/quant --target web",
     "test:rust:quant": "cargo test --manifest-path crates/quant/Cargo.toml",
+    "test:browser:quant:experiments": "node scripts/verify-quant-experiments.mjs",
     "test:browser:jsg": "node scripts/verify-jsg.mjs",
     "test:browser:jsg:grid": "node scripts/verify-jsg-grid.mjs",
     "test:browser:jsg:evaluation": "node scripts/verify-jsg-evaluation.mjs",

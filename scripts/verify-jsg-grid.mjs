@@ -99,7 +99,11 @@ try {
   let detailedId = await runId();
   const detailed = await download("jsg-grid-detailed");
   assert.equal(await page.locator(".research-run-result").isVisible(), true);
-  assert.equal(await page.locator(".research-grid-toggle").getAttribute("aria-expanded"), "false");
+  assert.equal(await page.locator(".research-grid-results").count(), 0);
+  assert.equal(
+    await page.locator(`[data-entry-id="${firstGridId}"][data-entry-kind="grid"]`).count(),
+    1,
+  );
   assert.deepEqual(detailed.result.metrics, grid.result.results[0].metrics);
   assert.deepEqual(detailed.config, grid.result.results[0].config);
   await page.getByRole("button", { name: "运行设置", exact: true }).click();
@@ -107,7 +111,7 @@ try {
   assert.equal(await page.getByLabel("目标股票数", { exact: true }).inputValue(), "10");
   await page.keyboard.press("Escape");
   await page.getByRole("dialog", { name: "运行设置", exact: true }).waitFor({ state: "hidden" });
-  await page.locator(".research-grid-toggle").click();
+  await page.locator(`[data-entry-id="${firstGridId}"][data-entry-kind="grid"]`).click();
   const beforeCachedDetail = await runId();
   await page.getByRole("button", { name: "查看组合 3 详情", exact: true }).click();
   await page.waitForFunction(

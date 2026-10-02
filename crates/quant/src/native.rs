@@ -379,13 +379,16 @@ pub fn export_snapshot(
         return Err("calendar lacks warmup or future weekly session".into());
     }
     let mut week_last = BTreeMap::new();
+    let mut month_last = BTreeMap::new();
     for date in &calendar {
         week_last.insert((date.iso_week().year(), date.iso_week().week()), *date);
+        month_last.insert((date.year(), date.month()), *date);
     }
     let sessions: Vec<Session> = before[before.len() - 30..]
         .iter()
         .chain(&selected)
         .map(|d| Session {
+            month_end: Some(month_last[&(d.year(), d.month())] == *d),
             date: d.format("%Y%m%d").to_string().parse().unwrap(),
             rebalance: week_last[&(d.iso_week().year(), d.iso_week().week())] == *d,
         })
@@ -639,7 +642,7 @@ pub fn grid(path: &Path, configs: Vec<Config>, threads: usize) -> Result<Value, 
     for e in &mut engines {
         e.enable_streaming();
     }
-    let mut factors = crate::features::FactorState::new(manifest);
+    let mut factors = crate::features::FactorState::with_configs(manifest, &configs);
     let pool = rayon::ThreadPoolBuilder::new()
         .num_threads(threads.min(configs.len()))
         .build()?;
