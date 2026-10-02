@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Dialog, Input, Select } from "@bcr/react";
 import { FlaskConical, ChevronDown, ChevronUp, Download, Trash2 } from "lucide-react";
 import { dateText, type JsgConfig, type ResearchDataset } from "./model";
@@ -6,6 +6,9 @@ import type { SelectedStudy } from "./session";
 import { costStress, validationPlan, type ValidationRequest } from "./validation";
 import { money, percent } from "./Orders";
 import { downloadText } from "./report";
+import type { RuntimeServices } from "@bcr/core";
+import { strategySpec } from "./model";
+import { WalkForwardPanel } from "./WalkForwardPanel";
 
 export function ValidationSettings({
   open,
@@ -22,13 +25,21 @@ export function ValidationSettings({
   busy: boolean;
   onRun: (request: ValidationRequest) => void;
 }) {
-  const [mode, setMode] = useState<ValidationRequest["mode"]>("holdout"),
+  const [mode, setMode] = useState<ValidationRequest["mode"]>("walk-forward"),
     [objective, setObjective] = useState<ValidationRequest["objective"]>("sharpe");
   const [stocks, setStocks] = useState(`${Math.max(1, base.stockCount - 4)}, ${base.stockCount}`),
-    [stops, setStops] = useState("0, 5");
+    [stops, setStops] = useState("0, 5"),
+    [lookbacks, setLookbacks] = useState(String(strategySpec(base).lookback));
   const [trainPercent, setTrainPercent] = useState(70),
     [trainDays, setTrainDays] = useState(60),
     [testDays, setTestDays] = useState(20);
+  const defaultPeriod = String(strategySpec(base).lookback);
+  const previousPeriod = useRef(defaultPeriod);
+  useEffect(() => {
+    const previous = previousPeriod.current;
+    setLookbacks((value) => (value === previous ? defaultPeriod : value));
+    previousPeriod.current = defaultPeriod;
+  }, [defaultPeriod]);
   const request: ValidationRequest = {
     mode,
     objective,
@@ -38,6 +49,7 @@ export function ValidationSettings({
     axes: [
       { field: "stockCount", values: stocks },
       { field: "stopLoss", values: stops },
+      { field: "strategyLookback", values: lookbacks },
     ],
   };
   let error = "",
@@ -74,6 +86,7 @@ export function ValidationSettings({
               value={mode}
               onChange={(e) => setMode(e.target.value as ValidationRequest["mode"])}
             >
+              <option value="walk-forward">连续样本外 · 滚动选参</option>
               <option value="holdout">时间顺序 · 样本外验证</option>
               <option value="rolling">滚动训练与验证</option>
               <option value="cost">仅成本压力</option>
@@ -110,6 +123,15 @@ export function ValidationSettings({
                   maxLength={400}
                 />
               </label>
+              <label>
+                观察周期候选
+                <Input
+                  aria-label="验证观察周期候选"
+                  value={lookbacks}
+                  onChange={(e) => setLookbacks(e.target.value)}
+                  maxLength={400}
+                />
+              </label>
             </>
           )}
           {mode === "holdout" && (
@@ -125,7 +147,7 @@ export function ValidationSettings({
               />
             </label>
           )}
-          {mode === "rolling" && (
+          {(mode === "rolling" || mode === "walk-forward") && (
             <>
               <label>
                 训练窗口（交易日）
@@ -151,7 +173,9 @@ export function ValidationSettings({
           )}
         </div>
         <p className="research-help">
-          只用训练窗口选参数，再回放紧随其后的测试窗口。每个窗口从相同本金空仓开始，价格预热沿用之前的历史；滚动测试窗口不重叠，仅保留完整窗口。
+          {mode === "walk-forward"
+            ? "仅用此前训练数据选参，在训练末日收盘生成订单，下一交易日执行。测试期间延续账户、持仓和风控状态，包含最后一个不足完整长度的窗口。"
+            : "只用训练窗口选参数，再回放紧随其后的测试窗口。各窗口从相同本金空仓开始，价格预热沿用此前历史；滚动测试仅保留完整窗口。"}
         </p>
         <p className="research-help">
           同时对当前草稿的佣金、滑点及分期最低佣金、过户费、卖出税测试 0.5 / 1 / 2 / 3 倍成本。
@@ -175,12 +199,16 @@ export function ValidationSettings({
   );
 }
 export function ValidationResults({
+  services,
+  onWorking,
   study,
   expanded,
   onExpand,
   onForget,
   busy,
 }: {
+  services: RuntimeServices;
+  onWorking: (value: boolean) => void;
   study: SelectedStudy;
   expanded: boolean;
   onExpand: () => void;
@@ -200,11 +228,13 @@ export function ValidationResults({
           <FlaskConical size={17} />
           <span>
             稳健性验证 ·{" "}
-            {result.request.mode === "rolling"
-              ? "滚动"
-              : result.request.mode === "holdout"
-                ? "样本外"
-                : "成本压力"}
+            {result.request.mode === "walk-forward"
+              ? "连续样本外"
+              : result.request.mode === "rolling"
+                ? "滚动"
+                : result.request.mode === "holdout"
+                  ? "样本外"
+                  : "成本压力"}
           </span>
           {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
         </Button>
@@ -239,7 +269,10 @@ export function ValidationResults({
       </p>
       {expanded && (
         <div className="research-insights">
-          {result.folds.length > 0 && (
+          {result.continuous && (
+            <WalkForwardPanel services={services} study={study} busy={busy} onWorking={onWorking} />
+          )}
+          {result.folds.length > 0 && !result.continuous && (
             <>
               <h3>
                 样本外表现 · 训练按 {result.request.objective === "sharpe" ? "Sharpe" : "总收益"}{" "}
@@ -285,36 +318,38 @@ export function ValidationResults({
               </p>
             </>
           )}
-          <h3>成本压力 · 当前草稿固定参数</h3>
-          <div className="research-insights-scroll">
-            <table className="research-table">
-              <thead>
-                <tr>
-                  <th>成本倍数</th>
-                  <th className="numeric">收益</th>
-                  <th className="numeric">Sharpe</th>
-                  <th className="numeric">回撤</th>
-                  <th className="numeric">实际费用</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.costs.map((c) => (
-                  <tr key={c.multiplier}>
-                    <td>
-                      {c.multiplier} ×{c.multiplier === 1 ? " · 基准" : ""}
-                    </td>
-                    <td className="numeric">{percent(c.metrics.totalReturn)}</td>
-                    <td className="numeric">{c.metrics.sharpe.toFixed(2)}</td>
-                    <td className="numeric">{percent(c.metrics.maxDrawdown)}</td>
-                    <td className="numeric">¥{money(c.metrics.fees)}</td>
+          <details className="research-study-costs" open={!result.continuous}>
+            <summary>成本压力 · 验证提交时的固定参数</summary>
+            <div className="research-insights-scroll">
+              <table className="research-table">
+                <thead>
+                  <tr>
+                    <th>成本倍数</th>
+                    <th className="numeric">收益</th>
+                    <th className="numeric">Sharpe</th>
+                    <th className="numeric">回撤</th>
+                    <th className="numeric">实际费用</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="research-help">
-            成本改变可能影响可买数量和后续订单，收益差值包含这些路径变化。完整训练候选、费用表、选择口径和源快照引用随验证结果导出。
-          </p>
+                </thead>
+                <tbody>
+                  {result.costs.map((c) => (
+                    <tr key={c.multiplier}>
+                      <td>
+                        {c.multiplier} ×{c.multiplier === 1 ? " · 基准" : ""}
+                      </td>
+                      <td className="numeric">{percent(c.metrics.totalReturn)}</td>
+                      <td className="numeric">{c.metrics.sharpe.toFixed(2)}</td>
+                      <td className="numeric">{percent(c.metrics.maxDrawdown)}</td>
+                      <td className="numeric">¥{money(c.metrics.fees)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="research-help">
+              成本改变可能影响可买数量和后续订单，收益差值包含这些路径变化。完整训练候选、费用表、选择口径和源快照引用随验证结果导出。
+            </p>
+          </details>
         </div>
       )}
     </section>

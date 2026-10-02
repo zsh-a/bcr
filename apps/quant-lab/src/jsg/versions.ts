@@ -1,7 +1,7 @@
 /** Bump the engine version when replay behavior changes; executor versions invalidate task caches. */
 import { STRATEGIES, strategySpec, type JsgConfig } from "./model";
-export const ENGINE_VERSION = "quant-strategies-4";
-export const SINGLE_EXECUTOR_VERSION = "quant-streamed-7";
+export const ENGINE_VERSION = "quant-strategies-5";
+export const SINGLE_EXECUTOR_VERSION = "quant-streamed-8";
 export const GRID_EXECUTOR_VERSION = "quant-grid-shared-4";
 export const METRICS_VERSION = "jsg-daily-metrics-1";
 export const EVALUATION_VERSION = "jsg-evaluation-2";
@@ -28,4 +28,11 @@ export function replayVersions(grid = false, config?: JsgConfig) {
     ...(config ? { strategy: STRATEGIES[strategySpec(config).id].version } : {}),
   };
 }
-export type ReplayVersions = ReturnType<typeof replayVersions>;
+export interface ReplayVersions {
+  engine: string;
+  executor: string;
+  metrics: string;
+  strategy?: string;
+  validation?: string;
+  continuousExecutor?: string;
+}

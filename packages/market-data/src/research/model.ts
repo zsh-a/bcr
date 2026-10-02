@@ -63,6 +63,73 @@ export interface ResearchConfig {
   industryBlacklist: string[];
 }
 export type JsgConfig = ResearchConfig;
+export interface ParameterStep {
+  from: number;
+  selectedAt: number;
+  config: ResearchConfig;
+}
+/** Selection closes must immediately precede deployment; execution assumptions stay fixed. */
+export function validateParameterSchedule(
+  manifest: ResearchManifest,
+  base: ResearchConfig,
+  steps: ParameterStep[],
+) {
+  validateConfig(base);
+  const window = base.researchWindow;
+  if (
+    window &&
+    (window.start < manifest.startDate ||
+      window.end > manifest.endDate ||
+      !manifest.calendar.some((d) => d.date === window.end))
+  )
+    throw new Error("连续回放区间必须使用快照覆盖的交易日");
+  if (
+    !window ||
+    !Array.isArray(steps) ||
+    !steps.length ||
+    steps.length > 64 ||
+    steps[0]!.from !== window.start
+  )
+    throw new Error("连续回放需要覆盖样本外起点的 1–64 段参数");
+  const executionKey = (c: ResearchConfig) =>
+    JSON.stringify([
+      c.initialCapital,
+      c.executionModel ?? MODEL,
+      c.tPlusOne,
+      c.participation ?? 0.1,
+      c.commissionBps,
+      c.slippageBps,
+      (c.fees ?? []).map((f) => [
+        f.from,
+        f.commissionBps ?? null,
+        f.minimumCommission,
+        f.transferBps,
+        f.sellTaxBps,
+      ]),
+      strategySpec(c).id,
+    ]);
+  let previous = 0;
+  for (const step of steps) {
+    validateConfig(step.config);
+    const index = manifest.calendar.findIndex((d) => d.date === step.from);
+    if (
+      step.from <= previous ||
+      step.from > window.end ||
+      index < 1 ||
+      manifest.calendar[index - 1]!.date !== step.selectedAt
+    )
+      throw new Error("参数必须由部署前一个交易日的训练结果选出");
+    const w = step.config.researchWindow;
+    if (
+      !w ||
+      w.start !== window.start ||
+      w.end !== window.end ||
+      executionKey(step.config) !== executionKey(base)
+    )
+      throw new Error("连续回放不可更改本金、成交规则或策略类型");
+    previous = step.from;
+  }
+}
 export const DEFAULT_CONFIG: JsgConfig = {
   initialCapital: 1_000_000,
   poolSize: 20,

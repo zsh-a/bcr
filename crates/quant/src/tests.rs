@@ -1097,3 +1097,138 @@ fn momentum_does_not_inherit_jsg_limit_opened_exit() {
         .any(|h| h.code == "sz.001001" && h.quantity > 0));
     assert!(result.orders.iter().all(|o| o.reason != "limit-up-opened"));
 }
+
+#[test]
+fn walk_forward_selects_at_prior_close_and_carries_account_across_steps() {
+    use crate::strategy::ParameterStep;
+    let base = Config {
+        research_window: Some(ResearchWindow {
+            start: 20240121,
+            end: 20240130,
+        }),
+        ..config()
+    };
+    let second = Config {
+        stock_count: 2,
+        ..base.clone()
+    };
+    let mut engine = Engine::new(manifest(30), base.clone()).unwrap();
+    engine
+        .set_schedule(vec![
+            ParameterStep {
+                from: 20240121,
+                selected_at: 20240120,
+                config: base.clone(),
+            },
+            ParameterStep {
+                from: 20240125,
+                selected_at: 20240124,
+                config: second,
+            },
+        ])
+        .unwrap();
+    for day in 1..=30 {
+        engine.day(bars(day)).unwrap();
+    }
+    let result = engine.finish().unwrap();
+    assert_eq!(result.metrics.days, 10);
+    assert_eq!(result.equity[0].holdings, 1);
+    assert_eq!(result.orders[0].date, "2024-01-21");
+    assert_eq!(result.orders[0].signal_date, "2024-01-20");
+    let boundary = &result.equity[4];
+    assert_eq!(boundary.date, "2024-01-25");
+    assert_eq!(boundary.holdings, 2);
+    assert!(boundary.equity > base.initial_capital);
+    assert!(result
+        .equity
+        .windows(2)
+        .all(|p| (p[1].equity / p[0].equity - 1.0).abs() < 0.01));
+    assert!(result
+        .orders
+        .iter()
+        .filter(|o| o.signal_date == "2024-01-24")
+        .all(|o| o.date == "2024-01-25"));
+}
+
+#[test]
+fn walk_forward_rejects_future_selection_execution_changes_and_late_installation() {
+    use crate::strategy::ParameterStep;
+    let base = Config {
+        research_window: Some(ResearchWindow {
+            start: 20240121,
+            end: 20240123,
+        }),
+        ..config()
+    };
+    let step = ParameterStep {
+        from: 20240121,
+        selected_at: 20240120,
+        config: base.clone(),
+    };
+    let mut engine = Engine::new(manifest(23), base.clone()).unwrap();
+    let mut future = step.clone();
+    future.selected_at = 20240121;
+    assert!(engine.set_schedule(vec![future]).is_err());
+    let mut reset = step.clone();
+    reset.config.initial_capital *= 2.0;
+    assert!(engine.set_schedule(vec![reset]).is_err());
+    let mut fees = step.clone();
+    fees.config.slippage_bps = 1.0;
+    assert!(engine.set_schedule(vec![fees]).is_err());
+    assert!(engine
+        .set_schedule(vec![step.clone(), step.clone()])
+        .is_err());
+    engine.day(bars(1)).unwrap();
+    assert!(engine.set_schedule(vec![step]).is_err());
+}
+
+#[test]
+fn walk_forward_retains_longer_price_history_before_a_later_period_change() {
+    use crate::strategy::{ParameterStep, StrategySpec};
+    let base = Config {
+        strategy: Some(StrategySpec {
+            id: "momentum".into(),
+            lookback: 5,
+            rebalance: "daily".into(),
+            ..Default::default()
+        }),
+        research_window: Some(ResearchWindow {
+            start: 20240121,
+            end: 20240130,
+        }),
+        ..config()
+    };
+    let long = Config {
+        strategy: Some(StrategySpec {
+            lookback: 25,
+            ..base.strategy_spec()
+        }),
+        ..base.clone()
+    };
+    let mut engine = Engine::new(manifest(30), base.clone()).unwrap();
+    engine
+        .set_schedule(vec![
+            ParameterStep {
+                from: 20240121,
+                selected_at: 20240120,
+                config: base,
+            },
+            ParameterStep {
+                from: 20240127,
+                selected_at: 20240126,
+                config: long,
+            },
+        ])
+        .unwrap();
+    for day in 1..=30 {
+        engine.day(bars(day)).unwrap();
+    }
+    let result = engine.finish().unwrap();
+    let decision = result
+        .decisions
+        .iter()
+        .find(|d| d.date == "2024-01-26")
+        .unwrap();
+    assert_eq!(decision.targets.len(), 1);
+    assert!(result.equity[6].holdings > 0);
+}

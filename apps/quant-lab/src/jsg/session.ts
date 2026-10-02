@@ -14,6 +14,8 @@ import {
   type JsgResult,
   type ResearchDataset,
   strategySpec,
+  validateParameterSchedule,
+  type ParameterStep,
 } from "./model";
 import {
   DEFAULT_EXPERIMENT_ID,
@@ -28,6 +30,7 @@ const MAX_SESSION_BYTES = 16 * 1024 * 1024;
 type ResearchStorage = Pick<RuntimeServices, "artifacts" | "metadata">;
 export type DatasetRefs = Pick<ResearchDataset, "manifestRef" | "partitions" | "snapshot">;
 export interface ResearchRun {
+  parameterSchedule?: ParameterStep[];
   experimentId?: string;
   versions?: ReplayVersions;
   benchmark?: BenchmarkBinding;
@@ -56,7 +59,9 @@ export interface SelectedGrid {
   result: GridResult;
 }
 export interface SelectedStudy {
-  run: Omit<ResearchRun, "config" | "metrics">;
+  run: Omit<ResearchRun, "config" | "metrics"> & {
+    validationMode?: import("./validation").ValidationRequest["mode"];
+  };
   dataset: ResearchDataset;
   result: ValidationResult;
 }
@@ -535,7 +540,7 @@ export async function readStudy(
     readJson<ValidationResult>(services, run.resultRef),
   ]);
   if (
-    result.version !== 1 ||
+    ![1, 2].includes(result.version) ||
     !Array.isArray(result.folds) ||
     result.folds.length > 64 ||
     !Array.isArray(result.training) ||
@@ -545,6 +550,21 @@ export async function readStudy(
     throw new Error("本地验证结果格式无效");
   validateConfig(result.costBase);
   for (const fold of result.folds) validateConfig(fold.config);
+  if (result.continuous) {
+    const c = result.continuous;
+    validateParameterSchedule(dataset.manifest, c.config, c.schedule);
+    if (
+      c.schedule.length !== result.folds.length ||
+      !Array.isArray(c.deployed) ||
+      c.deployed.length !== result.folds.length ||
+      !c.result?.metrics ||
+      !c.evaluation?.strategy
+    )
+      throw new Error("本地连续验证结果无效");
+    for (const ref of [c.resultRef, ...(c.result.chunks ?? []).map((chunk) => chunk.ref)])
+      if (!(await Effect.runPromise(services.artifacts.has(ref))))
+        throw new Error("连续回放结果文件已被移除");
+  }
   return { run, dataset: run.snapshot ? { ...dataset, snapshot: run.snapshot } : dataset, result };
 }
 export async function restoreSession(services: ResearchStorage): Promise<RestoredSession | null> {

@@ -95,6 +95,15 @@ export async function protectedResearchIds(
   if (state.grid) roots.add(state.grid.run.resultRef.id);
   if (state.study) roots.add(state.study.run.resultRef.id);
   for (const run of [...state.grids, ...state.studies]) roots.add(run.resultRef.id);
+  const studies = new Map(state.studies.map((run) => [run.id, run]));
+  if (state.study) studies.set(state.study.run.id, state.study.run);
+  for (const run of studies.values()) {
+    const study = await readJson<import("./validation").ValidationResult>(services, run.resultRef);
+    if (study.continuous) {
+      roots.add(study.continuous.resultRef.id);
+      for (const chunk of study.continuous.result.chunks ?? []) roots.add(chunk.ref.id);
+    }
+  }
   for (const d of datasets(state))
     for (const ref of [d.manifestRef, ...d.partitions]) roots.add(ref.id);
   const retained = new Map(state.runs.map((run) => [run.id, run]));

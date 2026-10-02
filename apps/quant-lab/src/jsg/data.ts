@@ -181,6 +181,7 @@ export async function exportResearchResult(
           runId: run.id,
           createdAt: run.createdAt,
           versions: run.versions ?? null,
+          ...(run.parameterSchedule ? { parameterSchedule: run.parameterSchedule } : {}),
           ...(run.benchmark
             ? {
                 benchmark: {

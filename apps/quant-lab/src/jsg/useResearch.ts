@@ -8,7 +8,7 @@ import { rememberSnapshot, recoverResearchFiles, researchStore } from "./storage
 import { loadFromBrowser } from "./clickhouse-browser";
 import type { ClickHouseConnection, ClickHouseRange } from "./clickhouse-http";
 import { validateGrid, type GridAxis, type GridResult } from "./grid";
-import { replayVersions } from "./versions";
+import { replayVersions, SINGLE_EXECUTOR_VERSION } from "./versions";
 import type { BenchmarkBinding } from "./benchmark";
 import {
   validationPlan,
@@ -45,6 +45,12 @@ import {
   type ResearchOperation,
 } from "./session";
 import { DEFAULT_EXPERIMENT_ID, validateLibrary, type ResearchExperiment } from "./experiments";
+import {
+  walkForwardSchedule,
+  analyzeWalkForward,
+  parameterStability,
+  type WalkForwardResult,
+} from "./walk-forward";
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 interface Active {
@@ -555,8 +561,71 @@ export function useResearch(services: RuntimeServices) {
         : { results: [], decodedRows: 0 };
       const costResult = await batch(costs.configs, "成本压力 · 0.5 / 1 / 2 / 3 倍");
       token.abort.signal.throwIfAborted();
+      let continuous: WalkForwardResult | undefined;
+      if (request.mode === "walk-forward") {
+        const { config, schedule } = walkForwardSchedule(
+          dataset.manifest,
+          choices.map((c) => c.config),
+          plan.folds,
+        );
+        progress(token, "连续样本外 · 延续账户回放", 0, "grid");
+        const handle = await Effect.runPromise(
+          services.scheduler.submit({
+            id: `jsg-study-${token.id}-continuous`,
+            runtime: "wasm",
+            operation: "quant.backtest.jsg",
+            inputs: [
+              { ...dataset.manifestRef, port: "manifest" },
+              ...dataset.partitions.map((r, i) => ({ ...r, port: `partition-${i}` })),
+            ],
+            outputs: [
+              { name: "result", type: "quant/jsg-result", storage: "opfs", format: "json" },
+            ],
+            resources: { memoryMB: 256, threads: 1 },
+            cache: { enabled: true },
+            config: { strategy: config, schedule },
+          }),
+        );
+        token.handle = handle;
+        if (token.abort.signal.aborted) {
+          await Effect.runPromise(handle.cancel);
+          token.abort.signal.throwIfAborted();
+        }
+        const unsubscribe = handle.state.subscribe(() => {
+          if (!token.abort.signal.aborted)
+            progress(token, "连续样本外 · 延续账户回放", handle.state.getSnapshot().progress);
+        });
+        try {
+          const outputs = await Effect.runPromise(handle.await);
+          token.abort.signal.throwIfAborted();
+          const resultRef = outputs.find((r) => r.type === "quant/jsg-result");
+          if (!resultRef) throw new Error("连续回放没有产生结果");
+          const replay = await readJson<JsgResult>(services, resultRef);
+          progress(token, "分析连续样本外表现…", null, "grid");
+          const analysis = await analyzeWalkForward(
+            services,
+            dataset.manifest,
+            replay,
+            config,
+            plan.folds,
+            token.abort.signal,
+          );
+          continuous = {
+            config,
+            schedule,
+            resultRef,
+            result: replay,
+            ...analysis,
+            stability: parameterStability(schedule, request.axes),
+          };
+        } finally {
+          unsubscribe();
+          token.handle = null;
+        }
+      }
+      token.abort.signal.throwIfAborted();
       const result: ValidationResult = {
-        version: 1,
+        version: 2,
         request: structuredClone(request),
         training: training.results,
         costBase: base,
@@ -571,6 +640,7 @@ export function useResearch(services: RuntimeServices) {
           metrics: costResult.results.find((c) => configKey(c.config) === configKey(r.config))!
             .metrics,
         })),
+        ...(continuous ? { continuous } : {}),
       };
       const bytes = new TextEncoder().encode(JSON.stringify(result));
       const resultRef: ArtifactRef = {
@@ -590,7 +660,12 @@ export function useResearch(services: RuntimeServices) {
           result,
           run: {
             experimentId: token.experimentId,
-            versions: replayVersions(true, base),
+            versions: {
+              ...replayVersions(true, base),
+              validation: "quant-validation-2",
+              ...(continuous ? { continuousExecutor: SINGLE_EXECUTOR_VERSION } : {}),
+            },
+            validationMode: request.mode,
             id: token.id,
             createdAt: new Date().toISOString(),
             dataset: {

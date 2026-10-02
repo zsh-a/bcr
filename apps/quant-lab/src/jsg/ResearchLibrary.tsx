@@ -47,8 +47,8 @@ export function ResearchLibrary({
     ...state.studies.map((run) => ({
       run,
       kind: "study" as const,
-      label: "稳健性验证",
-      metric: "训练 / 测试 / 成本",
+      label: run.validationMode === "walk-forward" ? "连续样本外" : "稳健性验证",
+      metric: run.validationMode === "cost" ? "成本压力" : "训练 / 测试 / 成本",
     })),
   ]
     .filter((e) => (e.run.experimentId ?? DEFAULT_EXPERIMENT_ID) === current.id)

@@ -67,6 +67,12 @@ fn run() -> Result<(), bcr_quant::native::Error> {
     let jsonl = args.iter().any(|a| a == "--jsonl");
     let mut output = BufWriter::new(std::io::stdout().lock());
     let mut engine = Engine::new(manifest, config)?;
+    if let Some(i) = args.iter().position(|a| a == "--schedule") {
+        let steps = serde_json::from_reader(File::open(
+            args.get(i + 1).ok_or("--schedule requires a path")?,
+        )?)?;
+        engine.set_schedule(steps)?;
+    }
     if jsonl {
         engine.enable_streaming();
     }

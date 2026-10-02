@@ -673,3 +673,52 @@ BASE_URL=http://localhost:5297/quant bun run test:browser:quant:experiments
 
 The browser check covers projects/favorites/notes, multiple grid/study archives, momentum
 explanations, baseline comparison, reload, cleanup and the mobile research directory.
+
+## Continuous out-of-sample research
+
+Open **更多研究操作 → 稳健性验证 → 连续样本外 · 滚动选参**. Specify candidate stock counts,
+stop losses and observation periods, a training window (at least 20 sessions), a test window
+(at least 5 sessions) and a training objective. Training candidates × windows is limited to 64.
+The final shorter test window is retained, so deployment covers every session after training.
+
+Candidates run independently on the preceding training range. Only their training metrics select
+each winning configuration; ties use candidate order. The selected parameters are installed at
+the training range's final close and generate orders for the next session's open. One Rust `Engine`
+replays all deployment windows with continuous cash, holdings, corporate actions, risk high-water
+marks and pending risk exits. A parameter boundary forces a rebalance; the normal selected
+schedule applies between boundaries. Risk rules in the new profile start with the following
+session. Execution model, capital, fees, slippage, participation and T+1 assumptions stay fixed.
+
+`ParameterStep` records `from`, `selectedAt` and the complete configuration. Rust and the shared
+TypeScript contract reject future or non-adjacent selections, unordered dates and changes to
+execution assumptions. Price history retains the largest scheduled lookback, but signal generation
+uses only observations already processed. The schedule describes frozen training decisions;
+native replay does not rerun training or independently certify how those decisions were made.
+
+The result view exposes continuous equity/drawdown, compounded monthly/yearly returns, actual
+deployment-window returns alongside independent empty-account tests, and selected-parameter
+frequencies/switch counts. Global metrics are computed from actual daily equity; individual reset
+window metrics are never compounded into the displayed curve. Segment returns use the previous
+segment's closing equity; segment drawdown restarts its local peak for that diagnostic only.
+
+Studies now use result schema v2 while existing v1 independent studies remain readable. Study
+artifacts retain the continuous summary, full-result reference, chunk references and calculated
+analysis. Cleanup protects those references even when the study is archived and not selected.
+**导出稳健性验证** exports frozen decisions, training/test/cost summaries and analysis;
+**完整结果** expands every result chunk into a portable JSON export with the parameter schedule,
+all daily equity, orders, decisions and research observations. Charts use bounded previews.
+
+The existing native executable accepts the same schedule:
+
+```sh
+jsg manifest.json config.json --schedule schedule.json --jsonl
+```
+
+Use the complete export's `config` as `config.json` and `research.parameterSchedule` as
+`schedule.json`, together with the original frozen Arrow snapshot. No database connection is
+needed for replay. The browser test checks full native/WASM equity, order and metric parity,
+the shorter final window, reload, cleanup, cancellation and narrow layouts:
+
+```sh
+BASE_URL=http://localhost:5297/quant bun run test:browser:quant:walk-forward
+```

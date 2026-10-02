@@ -3,6 +3,15 @@ use crate::model::{Bar, Breadth, Config, Manifest};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, VecDeque};
 
+/// Parameters selected at the previous close, used for orders at `from` and later.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ParameterStep {
+    pub from: u32,
+    pub selected_at: u32,
+    pub config: Config,
+}
+
 pub(crate) fn exit_signals(
     spec: &StrategySpec,
     previous_limits: &BTreeSet<usize>,

@@ -307,3 +307,21 @@ it("protects archived experiments even when their grids and studies are not sele
     expect.arrayContaining([gridRef.id, studyRef.id]),
   );
 });
+
+it("protects all continuous result chunks through the archived study root", async () => {
+  const s = await setup(),
+    run = await s.run("continuous", false);
+  const source = JSON.parse(
+    new TextDecoder().decode(await s.store.get(artifactPath(run.resultRef))),
+  );
+  const studyRef = ref("jsg/study/continuous", "quant/jsg-study-result");
+  await s.put(studyRef, { version: 2, continuous: { resultRef: run.resultRef, result: source } });
+  s.state.studies = [{ ...run, id: "study", resultRef: studyRef }];
+  const kept = await planResearchCleanup(s.services, s.state, s.store);
+  const ids = [studyRef.id, run.resultRef.id, source.chunks[0].ref.id];
+  expect(kept.candidates.some((c) => ids.includes(c.id))).toBe(false);
+  expect(kept.cache.candidates).toHaveLength(0);
+  s.state.studies = [];
+  const released = await planResearchCleanup(s.services, s.state, s.store);
+  expect(released.candidates.map((c) => c.id)).toEqual(expect.arrayContaining(ids));
+});

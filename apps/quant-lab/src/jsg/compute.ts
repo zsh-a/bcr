@@ -5,6 +5,8 @@ import {
   MAX_PARTITION_BYTES,
   parseManifest,
   validateConfig,
+  validateParameterSchedule,
+  type ParameterStep,
   type JsgConfig,
   type JsgResult,
 } from "./model";
@@ -17,6 +19,7 @@ export interface BacktestSession {
   finish(): string;
   enable_streaming?(): void;
   drain_output?(): string;
+  set_schedule?(json: string): void;
   free(): void;
 }
 type Factory = (manifest: string, config: string) => Promise<BacktestSession>;
@@ -37,12 +40,18 @@ export function jsgHandler(io: ArtifactIO, factory: Factory = createSession) {
     const config = task.config?.["strategy"] as JsgConfig;
     if (config === undefined) throw new Error("JSG strategy config missing");
     validateConfig(config);
+    const schedule = task.config?.["schedule"] as ParameterStep[] | undefined;
+    if (schedule !== undefined) validateParameterSchedule(manifest, config, schedule);
     throwIfAborted(ctx);
     const engine = await factory(JSON.stringify(manifest), JSON.stringify(config));
     const outputNamespace = `jsg-${crypto.randomUUID()}`;
     const created: ArtifactRef[] = [];
     let published = false;
     try {
+      if (schedule !== undefined) {
+        if (!engine.set_schedule) throw new Error("回测引擎不支持连续参数回放");
+        engine.set_schedule(JSON.stringify(schedule));
+      }
       const streamed = engine.enable_streaming !== undefined && engine.drain_output !== undefined;
       if (streamed) engine.enable_streaming!();
       const chunks: NonNullable<JsgResult["chunks"]> = [];

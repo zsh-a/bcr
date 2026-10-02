@@ -1,9 +1,10 @@
 import { validateConfig, type JsgConfig, type ResearchManifest } from "./model";
 import { configKey, canonicalConfig } from "./session";
 import { gridConfigs, MAX_GRID_CONFIGS, type GridAxis, type GridResult } from "./grid";
+import type { WalkForwardResult } from "./walk-forward";
 
 export interface ValidationRequest {
-  mode: "cost" | "holdout" | "rolling";
+  mode: "cost" | "holdout" | "rolling" | "walk-forward";
   objective: "sharpe" | "totalReturn";
   axes: GridAxis[];
   trainPercent: number;
@@ -20,7 +21,7 @@ export interface ValidationPlan {
   training: JsgConfig[];
 }
 export interface ValidationResult {
-  version: 1;
+  version: 1 | 2;
   request: ValidationRequest;
   training: GridResult["results"];
   folds: (ValidationFold & {
@@ -30,12 +31,18 @@ export interface ValidationResult {
   })[];
   costs: { multiplier: number; metrics: GridResult["results"][number]["metrics"] }[];
   costBase: JsgConfig;
+  continuous?: WalkForwardResult;
 }
 export function validationPlan(
   manifest: ResearchManifest,
   base: JsgConfig,
   request: ValidationRequest,
 ): ValidationPlan {
+  if (
+    !["cost", "holdout", "rolling", "walk-forward"].includes(request.mode) ||
+    !["sharpe", "totalReturn"].includes(request.objective)
+  )
+    throw new Error("验证方式或选择指标无效");
   const { researchWindow: _window, ...whole } = canonicalConfig(base);
   const strategies = request.mode === "cost" ? [whole] : gridConfigs(whole, request.axes);
   const dates = manifest.calendar
@@ -56,7 +63,7 @@ export function validationPlan(
       train: { start: dates[0]!, end: dates[split - 1]! },
       test: { start: dates[split]!, end: dates.at(-1)! },
     });
-  } else if (request.mode === "rolling") {
+  } else if (request.mode === "rolling" || request.mode === "walk-forward") {
     if (
       !Number.isSafeInteger(request.trainDays) ||
       request.trainDays < 20 ||
@@ -66,12 +73,17 @@ export function validationPlan(
       throw new Error("滚动窗口至少需要 20 个训练日和 5 个测试日");
     for (
       let split = request.trainDays;
-      split + request.testDays <= dates.length;
+      request.mode === "walk-forward"
+        ? split < dates.length
+        : split + request.testDays <= dates.length;
       split += request.testDays
     ) {
       folds.push({
         train: { start: dates[split - request.trainDays]!, end: dates[split - 1]! },
-        test: { start: dates[split]!, end: dates[split + request.testDays - 1]! },
+        test: {
+          start: dates[split]!,
+          end: dates[Math.min(dates.length, split + request.testDays) - 1]!,
+        },
       });
       if (folds.length * strategies.length > MAX_GRID_CONFIGS)
         throw new Error("训练组合 × 滚动窗口超过 64，请减少参数值或增加测试窗口");

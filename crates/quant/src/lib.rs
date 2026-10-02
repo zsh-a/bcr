@@ -177,6 +177,14 @@ impl JsgBacktest {
             .enable_streaming();
         Ok(())
     }
+    pub fn set_schedule(&mut self, json: &str) -> Result<(), JsValue> {
+        let steps = serde_json::from_str(json).map_err(js_error)?;
+        self.engine
+            .as_mut()
+            .ok_or_else(|| js_error("backtest finished"))?
+            .set_schedule(steps)
+            .map_err(js_error)
+    }
     pub fn drain_output(&mut self) -> Result<String, JsValue> {
         let chunk = self
             .engine

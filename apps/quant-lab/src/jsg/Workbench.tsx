@@ -608,6 +608,8 @@ export function QuantWorkbench({ onBusy }: { onBusy?: (busy: boolean) => void })
           )}
           {state.study && state.view === "study" && (
             <ValidationResults
+              services={services}
+              onWorking={setEvaluationBusy}
               key={state.study.run.id}
               study={state.study}
               busy={busy}

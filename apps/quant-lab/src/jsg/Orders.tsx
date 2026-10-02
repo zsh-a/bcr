@@ -12,7 +12,7 @@ export const money = (value: number) =>
   new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(value);
 export const percent = (value: number) => `${(value * 100).toFixed(2)}%`;
 const reasons: Record<string, string> = {
-  rebalance: "周调仓",
+  rebalance: "调仓",
   "stop-loss": "个股止损",
   "trailing-stop": "移动止盈",
   "max-drawdown": "组合回撤",

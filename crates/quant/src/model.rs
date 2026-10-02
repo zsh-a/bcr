@@ -147,7 +147,7 @@ fn research_model() -> String {
 fn default_participation() -> f64 {
     0.1
 }
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct FeeSchedule {
     #[serde(default)]

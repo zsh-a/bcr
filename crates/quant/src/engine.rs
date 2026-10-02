@@ -24,6 +24,9 @@ pub struct Engine {
     pub manifest: Manifest,
     pub config: Config,
     histories: Vec<VecDeque<f64>>,
+    history_len: usize,
+    schedule: Vec<crate::strategy::ParameterStep>,
+    next_step: usize,
     positions: Vec<Position>,
     cash: f64,
     pending: Vec<Pending>,
@@ -106,6 +109,9 @@ impl Engine {
             manifest,
             config,
             histories: vec![VecDeque::with_capacity(history_len); count],
+            history_len,
+            schedule: vec![],
+            next_step: 0,
             positions: vec![Position::default(); count],
             cash: capital,
             pending: vec![],
@@ -147,6 +153,79 @@ impl Engine {
     }
     pub fn enable_streaming(&mut self) {
         self.streamed = true;
+    }
+    pub fn set_schedule(
+        &mut self,
+        steps: Vec<crate::strategy::ParameterStep>,
+    ) -> Result<(), String> {
+        if self.next_session != 0 || !self.schedule.is_empty() || self.histories.is_empty() {
+            return Err("parameter schedule must be set before replay".into());
+        }
+        let window = self
+            .config
+            .research_window
+            .as_ref()
+            .ok_or("schedule requires a research window")?;
+        if steps.is_empty() || steps.len() > 64 || steps[0].from != window.start {
+            return Err("schedule must start at the research window with 1–64 steps".into());
+        }
+        let mut previous = 0;
+        let mut history_len = self.history_len;
+        for step in &steps {
+            step.config.validate()?;
+            let index = self
+                .manifest
+                .calendar
+                .iter()
+                .position(|d| d.date == step.from)
+                .ok_or("schedule date is not a covered session")?;
+            if step.from <= previous
+                || step.from > window.end
+                || index == 0
+                || self.manifest.calendar[index - 1].date != step.selected_at
+            {
+                return Err(
+                    "parameters must be selected at the immediately preceding session".into(),
+                );
+            }
+            let config = &step.config;
+            if config
+                .research_window
+                .as_ref()
+                .is_none_or(|w| w.start != window.start || w.end != window.end)
+                || config.initial_capital != self.config.initial_capital
+                || config.execution_model != self.config.execution_model
+                || config.t_plus_one != self.config.t_plus_one
+                || config.participation != self.config.participation
+                || config.commission_bps != self.config.commission_bps
+                || config.slippage_bps != self.config.slippage_bps
+                || config.fees != self.config.fees
+                || config.strategy_spec().id != self.config.strategy_spec().id
+            {
+                return Err(
+                    "schedule cannot change the account, execution assumptions or strategy type"
+                        .into(),
+                );
+            }
+            history_len = history_len.max(config.strategy_spec().history_len());
+            previous = step.from;
+        }
+        self.history_len = history_len;
+        self.schedule = steps;
+        Ok(())
+    }
+    fn activate_schedule(&mut self, date: u32) -> bool {
+        if let Some(step) = self
+            .schedule
+            .get(self.next_step)
+            .filter(|s| s.selected_at == date)
+        {
+            self.config = step.config.clone();
+            self.next_step += 1;
+            true
+        } else {
+            false
+        }
     }
     pub fn drain_output(&mut self) -> OutputChunk {
         self.research_cells = 0;
@@ -193,7 +272,7 @@ impl Engine {
         let mut last_id = None;
         let raw_model = self.raw_model();
         let spec = self.config.strategy_spec();
-        let rebalance = spec.rebalance_at(&self.manifest, self.next_session);
+        let mut rebalance = spec.rebalance_at(&self.manifest, self.next_session);
         for bar in bars {
             if raw_model
                 && (bar.volume.is_none() || bar.limit_up.is_none() || bar.limit_down.is_none())
@@ -294,7 +373,7 @@ impl Engine {
                 }
                 if features.is_none() {
                     let history = &mut self.histories[id];
-                    if history.len() == spec.history_len().max(20) {
+                    if history.len() == self.history_len {
                         history.pop_front();
                     }
                     history.push_back(adjusted);
@@ -317,6 +396,7 @@ impl Engine {
                 self.close_position(id, session.date, "limit-up-opened", &book)?;
             }
             let stopped = self.risk(session.date, &book)?;
+            rebalance |= self.activate_schedule(session.date);
             if rebalance {
                 if self.drawdown_triggered && !stopped {
                     self.drawdown_triggered = false;
@@ -357,6 +437,9 @@ impl Engine {
             if self.research_enabled {
                 self.observe(session.date, rebalance, &book, first_decision)?;
             }
+        } else if self.activate_schedule(session.date) {
+            // First selection occurs at the training close: no account reset or warmup fill.
+            self.rebalance(session.date, self.account_equity(), &book, None)?;
         }
         if trading && self.audit_enabled {
             self.audit = Some(AuditDay {
