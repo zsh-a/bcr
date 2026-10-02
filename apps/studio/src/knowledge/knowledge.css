@@ -150,13 +150,6 @@
     border-right-width: 0;
     overflow: hidden;
   }
-
-  /* 全隐藏后标签栏左侧出现展开按钮；rail 态图标栏内已有展开，不重复。 */
-  .knowledge-app[data-sidebar="hidden"] .knowledge-menu {
-    display: inline-flex;
-    min-width: var(--h-control-lg);
-    min-height: var(--h-control-lg);
-  }
 }
 
 /* 眉标统一走 .ui-section-label；行内场景仅中和列表内边距。 */
@@ -166,38 +159,19 @@
 
 /* 统一 disclosure 标记：手绘 chevron 置于小节头行首，收起转向右侧；
    默认三角与「▸/▾」字形全部退役，折叠语言只此一种。 */
-:is(
-    .knowledge-sidebar-bottom,
-    .knowledge-context-section,
-    .knowledge-context-inline,
-    .knowledge-tools-section,
-    .knowledge-file-folder
-  )
-  > summary {
+:is(.knowledge-context-section, .knowledge-tools-section, .knowledge-file-folder) > summary {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   list-style: none;
 }
 
-:is(
-    .knowledge-sidebar-bottom,
-    .knowledge-context-section,
-    .knowledge-context-inline,
-    .knowledge-tools-section,
-    .knowledge-file-folder
-  )
+:is(.knowledge-context-section, .knowledge-tools-section, .knowledge-file-folder)
   > summary::-webkit-details-marker {
   display: none;
 }
 
-:is(
-    .knowledge-sidebar-bottom,
-    .knowledge-context-section,
-    .knowledge-context-inline,
-    .knowledge-tools-section,
-    .knowledge-file-folder
-  )
+:is(.knowledge-context-section, .knowledge-tools-section, .knowledge-file-folder)
   > summary::before {
   content: "";
   flex: 0 0 5px;
@@ -209,13 +183,7 @@
   transition: transform var(--duration-fast) var(--ease-standard);
 }
 
-:is(
-    .knowledge-sidebar-bottom,
-    .knowledge-context-section,
-    .knowledge-context-inline,
-    .knowledge-tools-section,
-    .knowledge-file-folder
-  ):not([open])
+:is(.knowledge-context-section, .knowledge-tools-section, .knowledge-file-folder):not([open])
   > summary::before {
   transform: rotate(-45deg);
 }
@@ -225,17 +193,6 @@
   opacity: 0.45;
 }
 
-.knowledge-search {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-faint);
-}
-
-.knowledge-search input,
 .knowledge-add-collection input {
   min-width: 0;
   width: 100%;
@@ -268,24 +225,6 @@
   font-size: var(--text-sm);
 }
 
-.knowledge-search-clear {
-  display: grid;
-  place-items: center;
-  flex: 0 0 var(--space-6);
-  height: var(--space-6);
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-muted);
-  cursor: pointer;
-}
-
-.knowledge-search-clear:hover {
-  background: var(--color-raised);
-  color: var(--color-text);
-}
-
 .knowledge-dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -296,12 +235,6 @@
 .knowledge-select {
   flex: 1;
   min-width: 0;
-}
-
-.knowledge-collection-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .knowledge-add-collection {
@@ -336,30 +269,6 @@
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
-}
-
-.knowledge-sidebar-bottom {
-  border-top: 1px solid var(--color-border);
-  padding-top: var(--space-3);
-}
-
-@container kb-side (width < 260px) {
-  .knowledge-create {
-    width: var(--h-control);
-    padding-inline: 0;
-  }
-
-  .knowledge-create > span {
-    display: none;
-  }
-}
-
-@container kb-side (width < 220px) {
-  /* 树行只留标题：行图标与尾随时间隐藏。 */
-  .knowledge-file-note > svg,
-  .knowledge-file-note > time {
-    display: none;
-  }
 }
 
 /* ---------- 主区与工具栏 ---------- */
@@ -849,18 +758,8 @@
   line-height: var(--text-sm--line-height);
 }
 
-/* ---------- 专注模式（data-focus-mode 契约） ----------
- * NoteEditor 的「专注模式」开关在最近的 .knowledge-app 根节点写入
- * data-focus-mode="on"（退出时移除）。开启后收起侧栏、标签栏（含状态簇）、
- * 文档工具行的元信息与视图分段，只留写作工具按钮与它的菜单作为退出入口；
- * 正文与标题保持原位。 */
-.knowledge-app[data-focus-mode="on"] .knowledge-sidebar,
-.knowledge-app[data-focus-mode="on"] .knowledge-tabs-bar,
-.knowledge-app[data-focus-mode="on"] .knowledge-editor-meta > *:not(.knowledge-mode-controls),
-.knowledge-app[data-focus-mode="on"] .knowledge-context-inline,
-.knowledge-app[data-focus-mode="on"]
-  .knowledge-mode-controls
-  > *:not(.knowledge-tools):not(.knowledge-tools-menu) {
+/* Focus mode keeps the app toolbar reachable and removes the resource panel. */
+.knowledge-app[data-focus-mode="on"] .knowledge-sidebar {
   display: none;
 }
 
@@ -1374,14 +1273,12 @@
   gap: var(--space-3);
 }
 
-.knowledge-menu,
 .knowledge-mobile-close,
-.knowledge-backdrop,
-.knowledge-mobile-nav {
+.knowledge-backdrop {
   display: none;
 }
 
-/* ---------- 小屏：抽屉 + 顶行 + 底部视图导航 ---------- */
+/* ---------- 小屏：列表抽屉 ---------- */
 
 @media (width <= theme(--bp-md)) {
   /* 抽屉覆盖正文（overlay，不挤开内容）；进出场按 ui.css 语言：位移 + 淡入淡出。
@@ -1431,30 +1328,9 @@
     min-height: var(--h-control-lg);
   }
   /* 抽屉只留筛选、范围分段与目录树；树行抬到触控高度。 */
-  .knowledge-create,
-  .knowledge-collection-row,
-  .knowledge-add-collection,
-  .knowledge-sidebar-bottom {
-    display: none;
-  }
   .knowledge-file-note,
   .knowledge-file-folder > summary {
     min-height: var(--h-control-lg);
-  }
-  .knowledge-menu {
-    display: inline-flex;
-    min-width: var(--h-control-lg);
-    min-height: var(--h-control-lg);
-  }
-  /* 导航、标签与笔记操作共用一条栏，留出更多正文空间。 */
-  .knowledge-tabs-bar {
-    padding: max(var(--space-2), env(safe-area-inset-top))
-      max(var(--space-3), env(safe-area-inset-right)) var(--space-2)
-      max(var(--space-3), env(safe-area-inset-left));
-    background: var(--color-surface);
-  }
-  .knowledge-content {
-    padding-bottom: 64px;
   }
   .knowledge-editor {
     padding: var(--space-6) var(--space-5) 0;
@@ -1488,40 +1364,6 @@
     min-height: var(--h-control-lg);
     padding: var(--space-4);
   }
-  /* 底部导航：视图胶囊 + 新建；底部/侧边让开安全区（与 reader 对齐）。 */
-  .knowledge-mobile-nav {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) max(var(--space-3), env(safe-area-inset-right))
-      max(var(--space-2), env(safe-area-inset-bottom))
-      max(var(--space-3), env(safe-area-inset-left));
-    border-top: 1px solid var(--color-border);
-    background: var(--color-surface);
-  }
-  .knowledge-mobile-nav > button {
-    flex: 1;
-    min-height: var(--h-control-lg);
-    border: 0;
-    border-radius: var(--radius-full);
-    background: transparent;
-    color: var(--color-muted);
-    font-size: var(--text-sm);
-  }
-  .knowledge-mobile-nav > button[aria-pressed="true"] {
-    background: var(--color-raised);
-    color: var(--color-text);
-  }
-  .knowledge-fab {
-    flex: 0 0 var(--h-control-lg);
-    min-width: var(--h-control-lg);
-    min-height: var(--h-control-lg);
-    border-radius: var(--radius-full);
-    background: var(--color-primary);
-    color: var(--color-on-primary);
-    display: grid;
-    place-items: center;
-  }
 }
 
 /* ---------- 容器降级：主区 < 640px（随容器而非视口） ---------- */
@@ -1529,7 +1371,7 @@
 @container kb-main (width < 640px) {
   /* 工具条按钮文字隐藏（icon-only）：裸文本随字号归零；
    * svg 与显式字号元素（span、SectionLabel）不受影响；浮层菜单保持可读。 */
-  :is(.knowledge-tabs-bar, .knowledge-editor-head, .knowledge-editor-meta)
+  :is(.knowledge-editor-head, .knowledge-editor-meta)
     button:has(> svg):not(
       .knowledge-overflow-menu button,
       .knowledge-tools-menu button,
@@ -1574,7 +1416,7 @@
 :root[data-background] .knowledge-empty,
 :root[data-background] .knowledge-context,
 :root[data-background] .knowledge-citations,
-:root[data-background] .knowledge-tabs-bar,
+:root[data-background] .knowledge-toolbar,
 :root[data-background] .knowledge-pathbar {
   background: var(--color-bg);
 }

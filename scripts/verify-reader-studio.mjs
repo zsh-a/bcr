@@ -152,8 +152,8 @@ page.on("pageerror", (error) => fail(`pageerror: ${error.message}`));
 await page.goto(base.toString(), { waitUntil: "domcontentloaded" });
 await page.locator(".reader-studio").waitFor({ timeout: 20_000 });
 await page.getByRole("button", { name: "打开书库", exact: true }).click();
-await page.locator(".reader-book-card").first().waitFor({ timeout: 20_000 });
-const demoCard = page.locator(".reader-book-card", { hasText: "把时间还给阅读" });
+await page.locator(".reader-book-row").first().waitFor({ timeout: 20_000 });
+const demoCard = page.locator(".reader-book-row", { hasText: "把时间还给阅读" });
 if ((await demoCard.count()) > 0) {
   await demoCard.first().click();
   await page.locator(".reader-reading-intro h1", { hasText: "把时间还给阅读" }).waitFor({
@@ -163,7 +163,7 @@ if ((await demoCard.count()) > 0) {
 const body = await page.locator("body").innerText();
 if (!(await page.locator(".reader-toolbar").isVisible()) || !body.includes("把时间还给阅读"))
   fail("阅读器主界面未渲染");
-if ((await page.locator(".reader-book-card").count()) < 1) fail("书库未加载");
+if ((await page.locator(".reader-book-row").count()) < 1) fail("书库未加载");
 if ((await page.locator(".reader-section").count()) < 3) fail("演示出版物章节未加载");
 if (
   await page
@@ -176,8 +176,10 @@ if (
 ) {
   fail("连续阅读没有启用原生 content-visibility 优化");
 }
-if (!(await page.locator(".reader-sidebar-footer").innerText()).includes("备份与恢复"))
+await page.getByRole("button", { name: "书库操作", exact: true }).click();
+if (!(await page.getByRole("menuitem", { name: "备份与恢复", exact: true }).isVisible()))
   fail("书库缺少备份恢复入口");
+await page.keyboard.press("Escape");
 
 const workspace = page.locator(".reader-workspace");
 if (await workspace.evaluate((element) => element.classList.contains("sidebar-visible"))) {
@@ -338,7 +340,7 @@ await page.reload({ waitUntil: "domcontentloaded" });
 await page.locator(".reader-studio").waitFor({ timeout: 20_000 });
 await page.getByRole("button", { name: "打开书库", exact: true }).click();
 await page
-  .locator(".reader-book-card", { hasText: "Reader Export Bundle 验证" })
+  .locator(".reader-book-row", { hasText: "Reader Export Bundle 验证" })
   .waitFor({ timeout: 20_000 });
 await page
   .locator(".reader-reading-intro h1", { hasText: "Reader Export Bundle 验证" })
@@ -346,7 +348,7 @@ await page
 if (!(await page.locator(".reader-reading-column").innerText()).includes("直接恢复为可搜索章节")) {
   fail("Reader 新增图书后立即重启没有恢复章节内容");
 }
-await page.locator(".reader-book-card", { hasText: "把时间还给阅读" }).first().click();
+await page.locator(".reader-book-row", { hasText: "把时间还给阅读" }).first().click();
 await page.locator(".reader-reading-intro h1", { hasText: "把时间还给阅读" }).waitFor({
   timeout: 10_000,
 });

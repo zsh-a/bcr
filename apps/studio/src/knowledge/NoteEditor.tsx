@@ -7,11 +7,11 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type ReactNode,
   type Ref,
 } from "react";
 import Markdown from "react-markdown";
-import { PanelRightClose, PanelRightOpen, SlidersHorizontal, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { SlidersHorizontal, X } from "lucide-react";
 import remarkGfm from "remark-gfm";
 import { type KnowledgeNote, type KnowledgeCollection } from "./model";
 import { MarkdownEditor, type MarkdownEditorHandle } from "./MarkdownEditor";
@@ -32,7 +32,14 @@ import {
   READING_SETTINGS_KEY,
   type ReadingSettings,
 } from "./readingSettings";
-import { Button, Select, useNavigation, useUpdateParticipant } from "@bcr/react";
+import {
+  Button,
+  Dialog,
+  Select,
+  useMediaQuery,
+  useNavigation,
+  useUpdateParticipant,
+} from "@bcr/react";
 
 export interface EditorHandle {
   flush(): Promise<void>;
@@ -52,12 +59,11 @@ export function NoteEditor({
   onOpenLink,
   target,
   focusMode,
-  onFocusModeChange,
   contextOpen,
   onContextOpenChange,
   contextWidth,
   onContextWidthChange,
-  documentActions,
+  toolbarSlot,
 }: {
   note: KnowledgeNote;
   store: KnowledgeStore;
@@ -71,16 +77,17 @@ export function NoteEditor({
   target: { id: string; heading?: string; offset?: number; sequence: number } | null;
   /** 专注模式由外壳持有，以便命令面板与 Esc 也能开关。 */
   focusMode: boolean;
-  onFocusModeChange: (next: boolean) => void;
   /** 上下文栏形态与宽度由外壳（工作台偏好）持有，刷新后保持。 */
   contextOpen: boolean;
   onContextOpenChange: (open: boolean) => void;
   contextWidth: number | null;
   onContextWidthChange: (width: number | null) => void;
-  /** 笔记操作溢出菜单（移动/导出/收藏/历史/删除）由外壳提供，挂在文档工具行右端。 */
-  documentActions?: ReactNode;
+  /** 编辑/阅读切换与写作设置挂到应用工具栏，正文区不再重复一条工具栏。 */
+  toolbarSlot: HTMLElement | null;
 }) {
   const navigation = useNavigation();
+  const narrow = useMediaQuery("(width < 68.75em)");
+  const [contextView, setContextView] = useState<"outline" | "links" | "properties">("outline");
   const snapshot = useNoteDraft(note, store, locked);
   const { controller, note: draft, error } = snapshot;
   const { flush, change, initialError } = controller;
@@ -181,14 +188,121 @@ export function NoteEditor({
   const templates = notes.filter(
     (item) => item.id !== note.id && item.tags.some((tag) => tag === "模板" || tag === "template"),
   );
+  const properties = (
+    <div className="knowledge-property-controls">
+      <div className="knowledge-tags">
+        {draft.tags.map((tag) => (
+          <button
+            type="button"
+            key={tag}
+            className="knowledge-tag-chip"
+            aria-label={`移除标签 ${tag}`}
+            disabled={locked || !!initialError}
+            onClick={() => change({ tags: draft.tags.filter((item) => item !== tag) })}
+          >
+            {tag}
+            <X size={12} aria-hidden="true" />
+          </button>
+        ))}
+        {tagEditing ? (
+          <input
+            ref={tagInput}
+            className="knowledge-tag-input"
+            aria-label="笔记标签"
+            placeholder="用逗号或回车分隔"
+            value={tagDraft}
+            disabled={locked || !!initialError}
+            onChange={(event) => {
+              const parts = event.target.value.split(/[,，]/u);
+              const additions = parts.map((item) => item.trim()).filter(Boolean);
+              if (parts.length > 1) {
+                if (additions.length)
+                  change({ tags: [...new Set([...draft.tags, ...additions])].slice(0, 100) });
+                setTagDraft("");
+              } else setTagDraft(event.target.value);
+            }}
+            onKeyDown={(event) => {
+              if (event.nativeEvent.isComposing) return;
+              if (event.key === "Enter") {
+                event.preventDefault();
+                const addition = tagDraft.trim();
+                if (addition)
+                  change({ tags: [...new Set([...draft.tags, addition])].slice(0, 100) });
+                setTagDraft("");
+              } else if (event.key === "Escape") {
+                event.preventDefault();
+                setTagDraft("");
+                setTagEditing(false);
+              } else if (event.key === "Backspace" && !tagDraft && draft.tags.length) {
+                change({ tags: draft.tags.slice(0, -1) });
+              }
+            }}
+            onBlur={() => {
+              const addition = tagDraft.trim();
+              if (addition && !locked && !initialError)
+                change({
+                  tags: [...new Set([...controller.getSnapshot().note.tags, addition])].slice(
+                    0,
+                    100,
+                  ),
+                });
+              setTagDraft("");
+              setTagEditing(false);
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            className="knowledge-tag-add"
+            aria-label="添加标签"
+            disabled={locked || !!initialError}
+            onClick={() => setTagEditing(true)}
+          >
+            + 标签
+          </button>
+        )}
+      </div>
+      <Select
+        aria-label="笔记所属集合"
+        className="knowledge-collection-select"
+        value={draft.collectionId ?? ""}
+        disabled={locked || !!initialError}
+        onChange={(e) => change({ collectionId: e.target.value || null })}
+      >
+        <option value="">未归类</option>
+        {draft.collectionId && !collections.some((c) => c.id === draft.collectionId) && (
+          <option value={draft.collectionId}>集合未同步</option>
+        )}
+        {collections.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </Select>
+      <span className="knowledge-editor-count">{draft.body.length.toLocaleString()} 字符</span>
+    </div>
+  );
   const context = (
     <NoteContext
       note={draft}
       notes={notes}
       analysis={analysis}
       backlinks={backlinks}
-      onReveal={reveal}
-      onOpen={onOpenLink}
+      onReveal={(offset) => {
+        if (narrow) {
+          onContextOpenChange(false);
+          // Reveal after the drawer restores its trigger focus.
+          requestAnimationFrame(() => reveal(offset));
+        } else reveal(offset);
+      }}
+      onOpen={(target) => {
+        if (narrow) onContextOpenChange(false);
+        onOpenLink(target);
+      }}
+      view={contextView}
+      onViewChange={setContextView}
+      properties={properties}
+      onClose={() => onContextOpenChange(false)}
     />
   );
 
@@ -212,24 +326,8 @@ export function NoteEditor({
         } as CSSProperties
       }
     >
-      <section
-        className="knowledge-editor"
-        aria-label="笔记编辑器"
-        data-reading-font={settings.font}
-        data-reading-size={settings.fontSize}
-        data-reading-line={settings.lineHeight}
-        data-source={view === "source" ? "on" : undefined}
-      >
-        <div className="knowledge-editor-head">
-          <NoteRename
-            controller={controller}
-            snapshot={snapshot}
-            store={store}
-            renameRef={rename}
-          />
-        </div>
-        {/* 文档工具行：左列标签/集合/字符数，右列视图分段、写作工具与笔记操作。 */}
-        <div className="knowledge-editor-meta">
+      {toolbarSlot &&
+        createPortal(
           <div className="knowledge-mode-controls">
             <div className="knowledge-segmented" role="group" aria-label="视图模式">
               <button
@@ -335,13 +433,6 @@ export function NoteEditor({
                 </div>
                 <button
                   type="button"
-                  aria-pressed={focusMode}
-                  onClick={() => onFocusModeChange(!focusMode)}
-                >
-                  专注模式
-                </button>
-                <button
-                  type="button"
                   aria-pressed={settings.typewriter}
                   onClick={() => updateSettings({ typewriter: !settings.typewriter })}
                 >
@@ -406,111 +497,41 @@ export function NoteEditor({
                 </details>
               </div>
             </div>
-            {documentActions && <div className="knowledge-doc-actions">{documentActions}</div>}
-            {/* 上下文栏开关：只在右栏存在的宽屏（≥bp-lg）出现，窄屏用标题下的折叠段。 */}
-            <button
-              type="button"
-              className="knowledge-quiet-toggle knowledge-context-collapse"
-              aria-label={contextOpen ? "收起上下文栏" : "展开上下文栏"}
-              onClick={() => onContextOpenChange(!contextOpen)}
-            >
-              {contextOpen ? (
-                <PanelRightClose size={15} aria-hidden="true" />
-              ) : (
-                <PanelRightOpen size={15} aria-hidden="true" />
-              )}
-            </button>
-          </div>
-          <div className="knowledge-tags">
-            {draft.tags.map((tag) => (
-              <button
-                type="button"
-                key={tag}
-                className="knowledge-tag-chip"
-                aria-label={`移除标签 ${tag}`}
-                disabled={locked || !!initialError}
-                onClick={() => change({ tags: draft.tags.filter((item) => item !== tag) })}
-              >
-                {tag}
-                <X size={12} aria-hidden="true" />
-              </button>
-            ))}
-            {tagEditing ? (
-              <input
-                ref={tagInput}
-                className="knowledge-tag-input"
-                aria-label="笔记标签"
-                placeholder="用逗号或回车分隔"
-                value={tagDraft}
-                disabled={locked || !!initialError}
-                onChange={(event) => {
-                  const parts = event.target.value.split(/[,，]/u);
-                  const additions = parts.map((item) => item.trim()).filter(Boolean);
-                  if (parts.length > 1) {
-                    if (additions.length)
-                      change({ tags: [...new Set([...draft.tags, ...additions])].slice(0, 100) });
-                    setTagDraft("");
-                  } else setTagDraft(event.target.value);
-                }}
-                onKeyDown={(event) => {
-                  if (event.nativeEvent.isComposing) return;
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    const addition = tagDraft.trim();
-                    if (addition)
-                      change({ tags: [...new Set([...draft.tags, addition])].slice(0, 100) });
-                    setTagDraft("");
-                  } else if (event.key === "Escape") {
-                    event.preventDefault();
-                    setTagDraft("");
-                    setTagEditing(false);
-                  } else if (event.key === "Backspace" && !tagDraft && draft.tags.length) {
-                    change({ tags: draft.tags.slice(0, -1) });
-                  }
-                }}
-                onBlur={() => {
-                  const addition = tagDraft.trim();
-                  if (addition && !locked && !initialError)
-                    change({
-                      tags: [...new Set([...controller.getSnapshot().note.tags, addition])].slice(
-                        0,
-                        100,
-                      ),
-                    });
-                  setTagDraft("");
-                  setTagEditing(false);
-                }}
-              />
-            ) : (
-              <button
-                type="button"
-                className="knowledge-tag-add"
-                aria-label="添加标签"
-                disabled={locked || !!initialError}
-                onClick={() => setTagEditing(true)}
-              >
-                + 标签
-              </button>
-            )}
-          </div>
-          <Select
-            aria-label="笔记所属集合"
-            className="knowledge-collection-select"
-            value={draft.collectionId ?? ""}
-            disabled={locked || !!initialError}
-            onChange={(e) => change({ collectionId: e.target.value || null })}
+          </div>,
+          toolbarSlot,
+        )}
+      <section
+        className="knowledge-editor"
+        aria-label="笔记编辑器"
+        data-reading-font={settings.font}
+        data-reading-size={settings.fontSize}
+        data-reading-line={settings.lineHeight}
+        data-source={view === "source" ? "on" : undefined}
+      >
+        <div className="knowledge-editor-head">
+          <NoteRename
+            controller={controller}
+            snapshot={snapshot}
+            store={store}
+            renameRef={rename}
+          />
+        </div>
+        <div className="knowledge-editor-meta">
+          <button
+            type="button"
+            className="knowledge-metadata-summary"
+            aria-label="编辑笔记属性"
+            onClick={() => {
+              setContextView("properties");
+              onContextOpenChange(true);
+            }}
           >
-            <option value="">未归类</option>
-            {draft.collectionId && !collections.some((c) => c.id === draft.collectionId) && (
-              <option value={draft.collectionId}>集合未同步</option>
-            )}
-            {collections.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
-          <span className="knowledge-editor-count">{draft.body.length.toLocaleString()} 字符</span>
+            <span>
+              {collections.find((item) => item.id === draft.collectionId)?.name || "未归类"}
+            </span>
+            <span>{draft.tags.length ? draft.tags.slice(0, 3).join(" · ") : "添加标签"}</span>
+            <span>{draft.body.length.toLocaleString()} 字符</span>
+          </button>
         </div>
         {error && (
           <div role="alert" className="knowledge-alert">
@@ -527,11 +548,6 @@ export function NoteEditor({
             {navigationError}
           </p>
         )}
-        {/* 小屏（<1100px）：上下文收在标题下方的折叠段；宽屏用右侧持久栏。 */}
-        <details className="knowledge-context-inline">
-          <summary>大纲与链接</summary>
-          {context}
-        </details>
         {/* 阅读态用 hidden 收起；类名用于把它接进编辑区的 flex 纵列。 */}
         <div className="knowledge-editor-source" hidden={view === "read"}>
           <MarkdownEditor
@@ -590,7 +606,19 @@ export function NoteEditor({
           </article>
         )}
       </section>
-      {context}
+      {narrow ? (
+        <Dialog
+          open={contextOpen && !focusMode}
+          onClose={() => onContextOpenChange(false)}
+          title="笔记信息"
+          placement="drawer"
+          className="knowledge-context-drawer"
+        >
+          {context}
+        </Dialog>
+      ) : (
+        context
+      )}
       {/* 右栏宽度手柄：贴在上下文栏左缘，宽度变量随拖拽写在本容器上。 */}
       <PanelResizer
         edge="left"

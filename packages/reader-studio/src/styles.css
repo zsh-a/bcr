@@ -4,8 +4,8 @@
 @import "@bcr/react/ui.css";
 
 /*
- * 阅读主题限定在阅读根；正文与控件共用同一调色板，
- * 共享控件仍消费 --color-*，由阅读根映射到 --read-*。
+ * 阅读纸色限定在正文视口；工具栏、书库和浮层沿用工作区主题。
+ * 正文内的链接、选区和标记消费阅读主题对应的语义色。
  */
 .reader-studio {
   --read-canvas: #20211f;
@@ -13,6 +13,9 @@
   --read-mark: #ffcb4280;
   --read-mark-current: #ef8a348f;
   --read-select: #327dd969;
+}
+
+.reader-studio .reader-reading-scroll {
   --color-bg: var(--read-bg);
   --color-surface: var(--read-surface);
   --color-raised: var(--read-raised);
@@ -38,6 +41,8 @@
   --shadow-floating: 0 20px 64px #25302d1a, 0 4px 16px #25302d12;
   --shadow-dialog: 0 24px 100px #25302d26;
   color-scheme: light;
+  background: var(--read-bg);
+  color: var(--read-text);
 }
 
 .reader-studio[data-read-theme="paper"] {
@@ -64,6 +69,9 @@
   --read-faint: #9daaa1;
   --read-accent: #76d7c9;
   --read-accent-soft: #1b4c45;
+}
+
+.reader-studio[data-read-theme="night"] .reader-reading-scroll {
   --color-on-primary: #102521;
   --color-success: #89cca2;
   --color-amber: #efbc69;
@@ -95,7 +103,7 @@
 }
 
 /*
- * 工具栏、导航与浮层使用阅读根的语义色，切换阅读主题时同步更新。
+ * 工具栏、导航与浮层使用工作区语义色；阅读主题仅作用于正文视口。
  */
 .reader-boot,
 .reader-header,
@@ -119,8 +127,8 @@
   flex-direction: column;
   overflow: hidden;
   overscroll-behavior: none;
-  background: var(--read-bg);
-  color: var(--read-text);
+  background: var(--color-bg);
+  color: var(--color-text);
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: var(--text-base--line-height);
@@ -591,7 +599,6 @@
 .reader-sidebar-heading,
 .reader-search-panel-top,
 .reader-toolbar,
-.reader-sidebar-footer,
 .reader-pdf-meta {
   display: flex;
   align-items: center;
@@ -610,7 +617,6 @@
   font-weight: 650;
 }
 
-.reader-mobile-exit,
 .reader-mobile-toolbar-actions,
 .reader-mobile-nav,
 .reader-mobile-chrome-reveal {
@@ -746,19 +752,6 @@
   color: var(--color-accent);
   vertical-align: -2px;
 }
-.reader-book-actions {
-  position: absolute;
-  top: 55px;
-  right: 4px;
-  display: inline-grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-raised);
-  color: var(--color-muted);
-}
 .reader-book-card.is-managing {
   grid-template-columns: 20px 45px minmax(0, 1fr);
   padding-right: var(--space-2);
@@ -789,70 +782,10 @@
   border-radius: var(--radius-sm);
   background: transparent;
   padding: var(--space-2);
-  padding-right: 56px;
   text-align: left;
   transition:
     background var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard);
-}
-
-.reader-book-remove {
-  position: absolute;
-  top: 7px;
-  right: 4px;
-  display: inline-grid;
-  width: var(--h-control-lg);
-  height: var(--h-control-lg);
-  place-items: center;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  background: var(--color-raised);
-  color: var(--color-faint);
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    opacity var(--duration-fast) var(--ease-standard),
-    background var(--duration-fast) var(--ease-standard),
-    color var(--duration-fast) var(--ease-standard);
-}
-
-.reader-book-entry:hover .reader-book-remove,
-.reader-book-entry:focus-within .reader-book-remove {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.reader-book-entry:hover .reader-book-active-icon,
-.reader-book-entry:focus-within .reader-book-active-icon {
-  visibility: hidden;
-}
-
-.reader-book-remove:hover {
-  border-color: color-mix(in srgb, var(--color-danger) 55%, var(--color-border));
-  background: color-mix(in srgb, var(--color-danger) 12%, var(--color-raised));
-  color: var(--color-danger);
-}
-
-.reader-book-confirm {
-  position: absolute;
-  inset: 5px;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  border: 1px solid color-mix(in srgb, var(--color-danger) 35%, var(--color-border));
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-raised) 96%, transparent);
-  padding: var(--space-2);
-  color: var(--color-text);
-  font-size: var(--text-xs);
-  box-shadow: var(--shadow-floating);
-}
-
-.reader-book-confirm > div {
-  display: flex;
-  gap: var(--space-1);
 }
 
 .reader-import-retry {
@@ -957,29 +890,6 @@
   border-radius: inherit;
   background: var(--color-accent);
   transition: width var(--duration-slow) var(--ease-standard);
-}
-
-.reader-book-active-icon {
-  position: absolute;
-  top: 31px;
-  right: 4px;
-  width: var(--space-4);
-  color: var(--color-accent);
-}
-
-.reader-sidebar-footer {
-  border-top: 1px solid var(--color-border);
-  padding-top: var(--space-3);
-  color: var(--color-faint);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.04em;
-}
-
-.reader-sidebar-footer span:first-child {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .reader-main {
@@ -1676,11 +1586,6 @@
   color: var(--color-accent);
 }
 
-.reader-bookmark-toggle.is-active,
-.reader-fullscreen-toggle.is-active {
-  border-color: color-mix(in srgb, var(--color-accent) 50%, var(--color-border));
-}
-
 .reader-document-handoff {
   color: var(--color-accent);
 }
@@ -1688,20 +1593,6 @@
 .reader-document-handoff:disabled {
   cursor: wait;
   opacity: 0.62;
-}
-
-.reader-fullscreen-toggle {
-  width: auto;
-  border-color: var(--color-border);
-}
-
-.reader-fullscreen-toggle:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--color-accent) 50%, var(--color-border));
-}
-
-.reader-fullscreen-toggle:disabled {
-  cursor: not-allowed;
-  opacity: 0.48;
 }
 
 .reader-segmented {
@@ -2448,7 +2339,6 @@
 
 @container reader-main (max-width: 1180px) {
   .reader-toolbar-actions-desktop .reader-annotation-toggle span,
-  .reader-toolbar-actions-desktop .reader-bookmark-toggle span,
   .reader-toolbar-actions-desktop .reader-document-handoff span,
   .reader-toolbar-actions-desktop .reader-document-handoff > .reader-icon:last-child,
   .reader-toolbar-actions-desktop .reader-control-label {
@@ -2743,11 +2633,6 @@
 }
 
 @media (max-width: 860px) {
-  .reader-mobile-exit {
-    display: inline-grid;
-    flex: 0 0 var(--h-control-lg);
-  }
-
   .reader-header {
     gap: var(--space-2);
   }
@@ -2803,15 +2688,7 @@
     font-size: var(--text-lg);
   }
 
-  .reader-install-button {
-    width: var(--h-control-lg);
-    flex: 0 0 var(--h-control-lg);
-    padding: 0;
-  }
-
-  .reader-install-button span,
   .reader-annotation-toggle span,
-  .reader-bookmark-toggle span,
   .reader-document-handoff span,
   .reader-document-handoff > .reader-icon:last-child,
   .reader-fullscreen-toggle .reader-control-label {
@@ -2956,16 +2833,4 @@
   color: var(--color-faint);
   font-size: var(--text-xs);
   text-align: center;
-}
-
-@media (hover: none), (pointer: coarse) {
-  .reader-book-remove {
-    opacity: 1;
-    pointer-events: auto;
-    width: 44px;
-    height: 44px;
-  }
-  .reader-book-active-icon {
-    visibility: hidden;
-  }
 }

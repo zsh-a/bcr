@@ -10,7 +10,7 @@ import {
   Dialog,
   Drawer,
   IconButton,
-  Input,
+  ResourceSearch,
   Textarea,
   useRuntime,
   useRuntimeActivity,
@@ -28,7 +28,6 @@ import {
   LayoutTemplate,
   Link,
   Plus,
-  Search,
   Shapes,
   Sparkles,
   Trash2,
@@ -69,6 +68,7 @@ export function DiagramApp() {
   const [library, setLibrary] = useState(false),
     [query, setQuery] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
   const id = new URLSearchParams(search).get("diagram");
   const select = useCallback(
     (id: string) => {
@@ -201,22 +201,21 @@ export function DiagramApp() {
         closeLabel="关闭图表列表"
         className="diagram-library"
       >
-        <div className="diagram-library-search">
-          <Search size={15} />
-          <Input
-            aria-label="搜索图表"
-            placeholder="搜索图表…"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </div>
+        <ResourceSearch
+          ref={searchInput}
+          className="diagram-library-resource-search"
+          aria-label="搜索图表"
+          placeholder="搜索图表…"
+          value={query}
+          onValueChange={setQuery}
+        />
         <Button variant="ghost" onClick={() => void create()} disabled={!ready || busy}>
           <Plus size={16} />
           新建图表
         </Button>
         <nav>
           {items
-            .filter((item) => item.title.toLowerCase().includes(query.toLowerCase()))
+            .filter((item) => item.title.toLowerCase().includes(query.trim().toLowerCase()))
             .map((item) => (
               <button
                 key={item.id}
@@ -231,7 +230,27 @@ export function DiagramApp() {
               </button>
             ))}
         </nav>
-        {!items.length && <p className="diagram-library-empty">新建的图表会保存在这里。</p>}
+        {!items.some((item) => item.title.toLowerCase().includes(query.trim().toLowerCase())) && (
+          <div className="diagram-library-empty" role="status">
+            <p>
+              {query.trim()
+                ? `未找到与「${query.trim().slice(0, 30)}」匹配的图表`
+                : "新建的图表会保存在这里。"}
+            </p>
+            {query && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setQuery("");
+                  searchInput.current?.focus();
+                }}
+              >
+                清除搜索
+              </Button>
+            )}
+          </div>
+        )}
       </Drawer>
       {error && (
         <div role="alert" className="diagram-alert">

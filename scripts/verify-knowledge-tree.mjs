@@ -48,9 +48,13 @@ async function create(name, content) {
   await saved();
   return new URL(page.url()).searchParams.get("note");
 }
+async function newRootFolder() {
+  await page.getByRole("button", { name: "更多操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "新建目录", exact: true }).click();
+}
 async function createFolder(value, viaMenu = false) {
   if (viaMenu) await menu().getByRole("menuitem", { name: "新建子目录", exact: true }).click();
-  else await page.getByRole("button", { name: "新建目录", exact: true }).click();
+  else await newRootFolder();
   await nameInput().fill(value);
   await nameInput().press("Enter");
   await page.waitForTimeout(300);
@@ -67,7 +71,7 @@ try {
   // 行内新建目录：多级路径一次成型；Esc 放弃不留痕。
   await createFolder("工作/项目");
   assert.deepEqual(await summaries(), ["工作", "项目"]);
-  await page.getByRole("button", { name: "新建目录", exact: true }).click();
+  await newRootFolder();
   await nameInput().fill("放弃我");
   await nameInput().press("Escape");
   assert.deepEqual(await summaries(), ["工作", "项目"]);

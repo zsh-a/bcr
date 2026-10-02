@@ -6,6 +6,8 @@
 
 /* 断点桥接：@media 条件里的 theme(--bp-*) 需要本文件编译域内有 @theme。 */
 @import "./tokens.css";
+@import "./resource-controls.css";
+@import "./context-menu.css";
 
 /* ---------- 按钮 ---------- */
 .ui-app-toolbar {
@@ -23,7 +25,13 @@
 .ui-app-toolbar > .ui-workspace-trigger {
   flex: none;
 }
-.ui-icon-btn.ui-workspace-trigger,
+.ui-icon-btn.ui-workspace-trigger {
+  flex: 0 0 var(--h-hit-target);
+  width: var(--h-hit-target);
+  min-width: var(--h-hit-target);
+  height: var(--h-hit-target);
+  min-height: var(--h-hit-target);
+}
 .ui-action-menu > .ui-icon-btn {
   flex: 0 0 calc(var(--space-8) + var(--space-1));
   width: calc(var(--space-8) + var(--space-1));
@@ -61,10 +69,20 @@
   display: flex;
   align-items: center;
 }
-.ui-action-menu-panel :is(select, input:not([type="checkbox"]), button) {
+.ui-action-menu-panel:not(.ui-action-menu-commands)
+  :is(select, input:not([type="checkbox"]), button) {
   min-width: 0;
   width: 100%;
   min-height: var(--h-control-lg);
+}
+
+/* Command menus use the shared menu density; settings panels keep form controls. */
+.ui-popover.ui-action-menu-panel.ui-action-menu-commands {
+  --app-menu-width: min(240px, calc(100vw - 2 * var(--space-3)));
+  padding: var(--space-2);
+}
+.ui-action-menu-panel.ui-action-menu-commands:popover-open {
+  display: block;
 }
 
 .ui-btn {
@@ -535,13 +553,21 @@
   color: color-mix(in srgb, currentColor 70%, transparent);
 }
 
+@media (pointer: coarse) {
+  .ui-menu > button {
+    min-height: var(--h-hit-target);
+  }
+}
+
 .ui-menu > button[aria-pressed="true"],
+.ui-menu > button[aria-checked="true"],
 .ui-menu > button[aria-current] {
   color: var(--color-accent);
 }
 
 /* 勾选与折叠标记同一套手绘几何，不再用文本字形。 */
-.ui-menu > button[aria-pressed="true"]::after {
+.ui-menu > button[aria-pressed="true"]::after,
+.ui-menu > button[aria-checked="true"]::after {
   content: "";
   width: 10px;
   height: 5px;
@@ -549,6 +575,12 @@
   border-left: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
   transform: rotate(-45deg) translateY(-1px);
+}
+
+.ui-menu > button:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: -1px;
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
 }
 
 .ui-menu > button.is-danger {

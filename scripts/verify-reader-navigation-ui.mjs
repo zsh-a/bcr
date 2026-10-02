@@ -1,3 +1,4 @@
+import { libraryTool } from "./lib/reader-library.mjs";
 import assert from "node:assert/strict";
 import { launchEphemeralBrowser, collectPageErrors, ensureShots } from "./lib/browser.mjs";
 import { requireFrom } from "./lib/paths.mjs";
@@ -62,13 +63,13 @@ try {
   assert.equal(await page.locator(".reader-progress-panel").isVisible(), false);
   await page.getByRole("button", { name: "打开书库", exact: true }).click();
   const quick = page.locator(".reader-library-quick");
-  await quick.locator(".reader-book-card").first().waitFor();
-  const card = await quick.locator(".reader-book-card").first().boundingBox();
+  await quick.locator(".reader-book-row").first().waitFor();
+  const card = await quick.locator(".reader-book-row").first().boundingBox();
   assert(card.y < 160, "books should be available directly below the compact header and search");
   assert.equal(await quick.locator(".reader-dropzone").count(), 0);
   assert.doesNotMatch(await quick.innerText(), /OPFS|FTS5|PARSER|LOCAL ONLY/u);
   await page.screenshot({ path: `${shots}/reader-quick-library.png` });
-  await quick.getByRole("button", { name: "管理书库", exact: true }).click();
+  await libraryTool(page, "管理书库");
   const full = page.locator(".reader-library-full");
   await full.getByLabel("阅读状态筛选", { exact: true }).selectOption("unread");
   await full.getByLabel("书库排序", { exact: true }).selectOption("title");
@@ -205,9 +206,9 @@ try {
     assert.equal(await panel.isVisible(), false);
     await page.getByRole("button", { name: "打开书库", exact: true }).click();
     const library = page.locator(".reader-library-sheet");
-    await library.getByRole("button", { name: "管理书库", exact: true }).waitFor();
+    await library.getByRole("button", { name: "书库操作", exact: true }).waitFor();
     await page.waitForTimeout(450);
-    const actions = await library.locator(".reader-book-actions").first().boundingBox();
+    const actions = await library.locator(".reader-book-row").first().boundingBox();
     assert(actions.width >= 44 && actions.height >= 44);
     await page.screenshot({ path: `${shots}/reader-mobile-library-${viewport.width}.png` });
     await library.getByRole("button", { name: "收起书库", exact: true }).click();

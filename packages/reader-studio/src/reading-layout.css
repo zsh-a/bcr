@@ -668,10 +668,15 @@ p.reader-prose.reader-txt-measure {
 .reader-library-actions {
   display: flex;
   flex: none;
+  align-items: center;
+  gap: var(--space-1);
 }
 
-.reader-library-menu :is(.reader-mobile-exit, .reader-shortcut-button, .reader-install-button) {
-  display: flex;
+.reader-library-actions > .ui-action-menu > .ui-icon-btn {
+  width: var(--h-control-lg);
+  min-width: var(--h-control-lg);
+  height: var(--h-control-lg);
+  min-height: var(--h-control-lg);
 }
 
 .reader-main > .reader-quiet-workspace {
@@ -685,7 +690,6 @@ p.reader-prose.reader-txt-measure {
   );
 }
 @media (max-width: 860px) {
-  .reader-toolbar-title > .reader-comic-toggle,
   .reader-mobile-note-action {
     display: none;
   }
@@ -706,15 +710,6 @@ p.reader-prose.reader-txt-measure {
   display: none;
 }
 
-.reader-library-comic {
-  display: none;
-}
-@media (max-width: 860px) {
-  .reader-library-comic {
-    display: inline-flex;
-  }
-}
-
 @media (min-width: 861px) {
   .reader-search-panel {
     top: var(--h-topbar);
@@ -731,7 +726,6 @@ p.reader-prose.reader-txt-measure {
     padding: 0;
   }
   .reader-import-button span,
-  .reader-toolbar[data-demo="false"] .reader-import-button,
   .reader-toolbar[data-demo="true"] .reader-mobile-bookmark {
     display: none;
   }

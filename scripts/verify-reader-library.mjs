@@ -1,3 +1,4 @@
+import { libraryTool, openBookMenu } from "./lib/reader-library.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium, devices } from "playwright";
@@ -45,17 +46,25 @@ try {
   await page.getByText("导入完成", { exact: true }).waitFor();
   await attachStore(page);
   await openLibrary(page);
-  await page.getByRole("button", { name: "管理 First", exact: true }).click();
-  await page.getByRole("button", { name: "收藏读物", exact: true }).click();
+  await (
+    await openBookMenu(page, "First")
+  )
+    .getByRole("menuitem", { name: "收藏读物", exact: true })
+    .click();
+  await (
+    await openBookMenu(page, "First")
+  )
+    .getByRole("menuitem", { name: "重命名…", exact: true })
+    .click();
   await page.getByLabel("读物名称", { exact: true }).fill("第一册（已改名）");
   await page.getByRole("button", { name: "保存名称", exact: true }).click();
-  await page.getByRole("button", { name: "管理 第一册（已改名）", exact: true }).waitFor();
+  await page.getByRole("button", { name: "第一册（已改名）", exact: true }).waitFor();
   await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
   await page.reload();
   await openLibrary(page);
   await page.getByLabel("筛选书名或作者", { exact: true }).waitFor();
   await attachStore(page);
-  await page.getByRole("button", { name: "管理书库", exact: true }).click();
+  await libraryTool(page, "管理书库");
   const management = page.locator(".reader-library-full");
   await management.getByLabel("仅收藏", { exact: true }).check();
   await page.waitForFunction(
@@ -88,7 +97,7 @@ try {
     .getByText("显示 80 次出现，已按读物分配结果；请缩小范围或细化关键词。", { exact: true })
     .waitFor();
   await page.getByRole("button", { name: "关闭搜索结果", exact: true }).click();
-  await page.locator(".reader-book-card").filter({ hasText: "第一册（已改名）" }).click();
+  await page.locator(".reader-book-row").filter({ hasText: "第一册（已改名）" }).click();
   await page.getByRole("button", { name: "调整阅读进度", exact: true }).click();
   await page.getByRole("button", { name: "从进度条前往 第二章 结束", exact: true }).click();
   await page.waitForFunction(() => {
@@ -120,7 +129,7 @@ try {
     return { id: state.activeBookId, locator: state.progressByBook[state.activeBookId].locator };
   });
   await openLibrary(page);
-  await page.getByRole("button", { name: "管理书库", exact: true }).click();
+  await libraryTool(page, "管理书库");
   await management.getByRole("button", { name: "批量管理", exact: true }).click();
   await page.getByRole("button", { name: "选择 Second", exact: true }).click();
   await page.getByRole("button", { name: "选择 Third", exact: true }).click();
@@ -148,8 +157,8 @@ try {
   await page.reload();
   await openLibrary(page);
   await page.getByLabel("筛选书名或作者", { exact: true }).waitFor();
-  assert.equal(await page.locator(".reader-book-card").count(), 2);
-  assert.equal(await page.getByRole("button", { name: "管理 Second", exact: true }).count(), 0);
+  assert.equal(await page.locator(".reader-book-row").count(), 2);
+  assert.equal(await page.getByRole("button", { name: "Second", exact: true }).count(), 0);
   assert.deepEqual(errors, []);
   await context.close();
 
@@ -165,14 +174,22 @@ try {
   await phone.getByText("导入完成", { exact: true }).waitFor();
   const libraryButton = phone.getByRole("button", { name: "打开书库", exact: true });
   if (await libraryButton.isVisible()) await libraryButton.click();
-  const action = phone.getByRole("button", { name: "管理 First", exact: true });
+  const action = phone.getByRole("button", { name: "First", exact: true });
   const target = await action.boundingBox();
   assert(target.width >= 44 && target.height >= 44);
-  await action.click();
-  await phone.getByRole("button", { name: "收藏读物", exact: true }).click();
+  await (
+    await openBookMenu(phone, "First", { touch: true })
+  )
+    .getByRole("menuitem", { name: "收藏读物", exact: true })
+    .click();
+  await (
+    await openBookMenu(phone, "First", { touch: true })
+  )
+    .getByRole("menuitem", { name: "重命名…", exact: true })
+    .click();
   await phone.getByLabel("读物名称", { exact: true }).fill("手机中的书");
   await phone.getByRole("button", { name: "保存名称", exact: true }).click();
-  await phone.getByRole("button", { name: "管理 手机中的书", exact: true }).waitFor();
+  await phone.getByRole("button", { name: "手机中的书", exact: true }).waitFor();
   assert.deepEqual(errors, []);
   await mobile.close();
   console.log(

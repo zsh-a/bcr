@@ -473,11 +473,6 @@
 .reader-shortcut-list dd {
   margin: 0;
 }
-@media (max-width: 860px) {
-  .reader-shortcut-button {
-    display: none;
-  }
-}
 
 .reader-mobile-saved-row,
 .reader-bookmark-row,

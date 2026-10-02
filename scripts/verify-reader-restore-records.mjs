@@ -1,3 +1,4 @@
+import { libraryTool } from "./lib/reader-library.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -34,7 +35,7 @@ async function attachStore(page) {
 async function openBackup(page) {
   const library = page.getByRole("button", { name: "打开书库", exact: true });
   if (await library.isVisible()) await library.click();
-  await page.getByRole("button", { name: "备份与恢复", exact: true }).click();
+  await libraryTool(page, "备份与恢复");
 }
 async function start(context) {
   const page = await context.newPage();

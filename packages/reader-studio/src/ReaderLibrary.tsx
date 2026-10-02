@@ -1,24 +1,26 @@
 import {
   Archive,
-  Check,
-  ChevronRight,
+  BookOpen,
+  Info,
   LibraryBig,
   PanelLeftClose,
   Plus,
+  Pencil,
   Star,
   Trash2,
   Upload,
   X,
 } from "lucide-react";
 import { lazy, Suspense, useRef, useState } from "react";
+import { ActionMenu, ContextMenu, ResourceSearch, type ContextMenuAction } from "@bcr/react";
 import { readerAcceptAttribute, type ReaderBook } from "@bcr/reader-core";
 import { readingStatus, type ReaderReadingStatus } from "./model";
-import { formatBadge, formatBytes, percent, sourceIcon } from "./readerPresentation";
 import type { ReaderRuntime } from "./runtime";
 import { reader, useReader } from "./store";
 import { persistReaderSnapshot } from "./useReaderRuntime";
 import { ReaderSheet } from "./ReaderSheet";
-import { ReaderLibraryBookActions } from "./ReaderLibraryBookActions";
+import { ReaderLibraryBook } from "./ReaderLibraryBook";
+import { ReaderLibraryBookDialog, type BookDialogMode } from "./ReaderLibraryBookDialog";
 const ReaderBackupPanel = lazy(() =>
   import("./ReaderBackupPanel").then((module) => ({ default: module.ReaderBackupPanel })),
 );
@@ -31,8 +33,12 @@ export function LibraryPanel(props: {
 }) {
   const library = useReader((state) => state.library);
   const activeBookId = useReader((state) => state.activeBookId);
+  const sidebarOpen = useReader((state) => state.sidebarOpen);
   const progressByBook = useReader((state) => state.progressByBook);
   const fileInput = useRef<HTMLInputElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const dialogSequence = useRef(0);
   const full = props.mode === "manage";
   const [managerOpen, setManagerOpen] = useState(false);
   const dragDepth = useRef(0);
@@ -45,8 +51,66 @@ export function LibraryPanel(props: {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [batchConfirm, setBatchConfirm] = useState(false);
   const sourceErrors = useReader((state) => state.sourceErrorsByBook);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [context, setContext] = useState<{
+    id: string;
+    x: number;
+    y: number;
+    trigger: HTMLElement;
+  } | null>(null);
+  const [bookDialog, setBookDialog] = useState<{
+    id: string;
+    mode: BookDialogMode;
+    sequence: number;
+  } | null>(null);
   const [backupOpen, setBackupOpen] = useState(false);
+  const menuBook = library.find((book) => book.id === context?.id);
+  const dialogBook = library.find((book) => book.id === bookDialog?.id) ?? null;
+  const missingSource = (book: ReaderBook) =>
+    Boolean(sourceErrors[book.id]) ||
+    (book.source.format === "pdf" && !book.source.ref && !book.source.objectUrl);
+  const openBook = (id: string) => {
+    reader.openBook(id);
+    props.onClose?.();
+    if (sidebarOpen && window.matchMedia("(max-width: 860px)").matches) reader.toggleSidebar();
+  };
+  const showBookDialog = (id: string, mode: BookDialogMode, trigger?: HTMLElement) => {
+    trigger?.focus({ preventScroll: true });
+    setContext(null);
+    setBookDialog({ id, mode, sequence: ++dialogSequence.current });
+  };
+  const menuActions: ContextMenuAction[] = menuBook
+    ? [
+        { id: "open", label: "打开读物", icon: <BookOpen />, run: () => openBook(menuBook.id) },
+        {
+          id: "favorite",
+          label: menuBook.favorite ? "取消收藏" : "收藏读物",
+          icon: <Star />,
+          separated: true,
+          run: () => reader.toggleFavorite(menuBook.id),
+        },
+        {
+          id: "rename",
+          label: "重命名…",
+          icon: <Pencil />,
+          shortcut: "F2",
+          run: () => showBookDialog(menuBook.id, "rename"),
+        },
+        {
+          id: "details",
+          label: "读物详情",
+          icon: <Info />,
+          run: () => showBookDialog(menuBook.id, "details"),
+        },
+        {
+          id: "remove",
+          label: "移除读物…",
+          icon: <Trash2 />,
+          danger: true,
+          separated: true,
+          run: () => showBookDialog(menuBook.id, "remove"),
+        },
+      ]
+    : [];
   const sortedLibrary = library
     .filter(
       (book) =>
@@ -83,6 +147,7 @@ export function LibraryPanel(props: {
     });
   return (
     <div
+      ref={panelRef}
       className={`reader-library-panel ${full ? "reader-library-full" : "reader-library-quick"}`}
       onDragEnter={(event) => {
         if (!event.dataTransfer.types.includes("Files")) return;
@@ -120,6 +185,41 @@ export function LibraryPanel(props: {
         >
           <Plus className="reader-icon" />
         </button>
+        <ActionMenu label="书库操作" variant="menu">
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!activeBookId}
+            onClick={() => {
+              if (!activeBookId) return;
+              const trigger =
+                panelRef.current?.querySelector<HTMLElement>(
+                  `.reader-book-entry[data-book-id="${CSS.escape(activeBookId)}"] > button`,
+                ) ?? panelRef.current?.querySelector<HTMLElement>('[aria-label="书库操作"]');
+              if (!trigger) return;
+              const box = trigger.getBoundingClientRect();
+              setContext({
+                id: activeBookId,
+                trigger,
+                x: box.left + 16,
+                y: box.top + Math.min(box.height, 44),
+              });
+            }}
+          >
+            <Info />
+            管理当前读物
+          </button>
+          {!full && (
+            <button type="button" role="menuitem" onClick={() => setManagerOpen(true)}>
+              <LibraryBig />
+              管理书库
+            </button>
+          )}
+          <button type="button" role="menuitem" onClick={() => setBackupOpen(true)}>
+            <Archive />
+            备份与恢复
+          </button>
+        </ActionMenu>
         <button
           type="button"
           className="ui-btn ui-icon-btn ui-btn-ghost"
@@ -129,13 +229,13 @@ export function LibraryPanel(props: {
           {full ? <X className="reader-icon" /> : <PanelLeftClose className="reader-icon" />}
         </button>
       </div>
-      <input
-        className="reader-library-filter"
-        type="search"
+      <ResourceSearch
+        ref={searchInput}
+        className="reader-library-resource-search"
         aria-label="筛选书名或作者"
-        placeholder="筛选书名或作者…"
+        placeholder="搜索书库…"
         value={titleFilter}
-        onChange={(event) => setTitleFilter(event.target.value)}
+        onValueChange={setTitleFilter}
       />
       {full && (
         <>
@@ -179,7 +279,7 @@ export function LibraryPanel(props: {
               onClick={() => {
                 setManaging(!managing);
                 setSelected(new Set());
-                setConfirmingId(null);
+                setContext(null);
               }}
             >
               {managing ? "完成选择" : "批量管理"}
@@ -196,7 +296,8 @@ export function LibraryPanel(props: {
       )}
       <input
         ref={fileInput}
-        className="ui-sr-only"
+        hidden
+        tabIndex={-1}
         type="file"
         multiple
         accept={readerAcceptAttribute()}
@@ -297,47 +398,70 @@ export function LibraryPanel(props: {
       </ReaderSheet>
       <div className="reader-library-list">
         {sortedLibrary.map((book) => (
-          <LibraryBookCard
+          <ReaderLibraryBook
             key={book.id}
             book={book}
             active={book.id === activeBookId}
             progress={progressByBook[book.id]?.percentage ?? 0}
-            favorite={book.favorite ?? false}
+            full={full}
             managing={managing}
             selected={selected.has(book.id)}
             onSelect={() => toggleSelection(book.id)}
-            onOpen={() => props.onClose?.()}
-            missingSource={
-              Boolean(sourceErrors[book.id]) ||
-              (book.source.format === "pdf" && !book.source.ref && !book.source.objectUrl)
-            }
-            confirming={confirmingId === book.id}
-            onRemove={() => setConfirmingId(book.id)}
-            onConfirmRemove={() => {
-              props.runtime.indexSession?.removeBook(book.id);
-              reader.removeBook(book.id);
-              void persistReaderSnapshot(props.runtime, { durableLibrary: true });
-              setConfirmingId(null);
-            }}
-            onCancelRemove={() => setConfirmingId(null)}
+            onOpen={() => openBook(book.id)}
+            missingSource={missingSource(book)}
+            menuOpen={context?.id === book.id}
+            onMenu={(trigger, x, y) => setContext({ id: book.id, trigger, x, y })}
+            onRename={(trigger) => showBookDialog(book.id, "rename", trigger)}
           />
         ))}
-        {sortedLibrary.length === 0 && <p role="status">此分类还没有读物。</p>}
-      </div>
-      <div className="reader-sidebar-footer">
-        {!full && (
-          <button
-            type="button"
-            className="ui-btn ui-btn-ghost"
-            onClick={() => setManagerOpen(true)}
-          >
-            <LibraryBig className="reader-icon" /> 管理书库
-          </button>
+        {sortedLibrary.length === 0 && (
+          <div className="reader-library-empty" role="status">
+            <strong>
+              {titleFilter.trim()
+                ? `未找到与「${titleFilter.trim().slice(0, 30)}」匹配的读物`
+                : "此分类还没有读物。"}
+            </strong>
+            {titleFilter && (
+              <button
+                type="button"
+                className="ui-btn ui-btn-ghost ui-btn-sm"
+                onClick={() => {
+                  setTitleFilter("");
+                  searchInput.current?.focus();
+                }}
+              >
+                清除搜索
+              </button>
+            )}
+          </div>
         )}
-        <button type="button" className="ui-btn ui-btn-ghost" onClick={() => setBackupOpen(true)}>
-          <Archive className="reader-icon" /> 备份与恢复
-        </button>
       </div>
+      {context && menuBook && (
+        <ContextMenu
+          key={context.id}
+          label="读物操作"
+          title={menuBook.title}
+          x={context.x}
+          y={context.y}
+          trigger={context.trigger}
+          actions={menuActions}
+          onClose={() => setContext(null)}
+        />
+      )}
+      <ReaderLibraryBookDialog
+        book={dialogBook}
+        requestId={bookDialog?.sequence ?? 0}
+        mode={bookDialog?.mode ?? "details"}
+        progress={dialogBook ? (progressByBook[dialogBook.id]?.percentage ?? 0) : 0}
+        missingSource={dialogBook ? missingSource(dialogBook) : false}
+        onClose={() => setBookDialog(null)}
+        fallbackFocus={() => searchInput.current}
+        onRemove={(id) => {
+          props.runtime.indexSession?.removeBook(id);
+          reader.removeBook(id);
+          void persistReaderSnapshot(props.runtime, { durableLibrary: true });
+        }}
+      />
       {!full && (
         <ReaderSheet
           open={managerOpen}
@@ -360,114 +484,3 @@ export function LibraryPanel(props: {
 }
 
 type LibrarySortMode = "recent" | "title" | "progress" | "imported" | "favorite";
-
-function LibraryBookCard(props: {
-  book: ReaderBook;
-  active: boolean;
-  progress: number;
-  favorite: boolean;
-  managing: boolean;
-  selected: boolean;
-  onSelect: () => void;
-  onOpen: () => void;
-  missingSource: boolean;
-  confirming: boolean;
-  onRemove: () => void;
-  onConfirmRemove: () => void;
-  onCancelRemove: () => void;
-}) {
-  return (
-    <div className="reader-book-entry">
-      <button
-        type="button"
-        className={`reader-book-card ${props.active ? "is-active" : ""} ${props.managing ? "is-managing" : ""} ${props.selected ? "is-selected" : ""}`}
-        onClick={() => {
-          if (props.managing) {
-            props.onSelect();
-            return;
-          }
-          reader.openBook(props.book.id);
-          props.onOpen();
-          if (window.matchMedia("(max-width: 860px)").matches) reader.toggleSidebar();
-        }}
-        aria-current={props.active ? "page" : undefined}
-        aria-pressed={props.managing ? props.selected : undefined}
-        aria-label={props.managing ? `选择 ${props.book.title}` : undefined}
-      >
-        {props.managing && (
-          <span className="reader-book-selection" aria-hidden="true">
-            {props.selected && <Check className="reader-icon" />}
-          </span>
-        )}
-        <div className={`reader-book-cover reader-cover-${props.book.source.format}`}>
-          {props.book.coverUrl ? (
-            <img src={props.book.coverUrl} alt="" />
-          ) : (
-            <>
-              {sourceIcon(props.book.source.format)}
-              <span>{formatBadge(props.book.source.format)}</span>
-            </>
-          )}
-        </div>
-        <div className="reader-book-card-copy">
-          <strong>
-            {props.favorite && (
-              <Star className="reader-book-favorite" fill="currentColor" aria-label="已收藏" />
-            )}
-            {props.book.title}
-          </strong>
-          {props.book.tags.includes("DEMO") && (
-            <small className="reader-book-demo-hint">示例读物</small>
-          )}
-          {props.missingSource && <small role="status">缺少源文件 · 请重新导入</small>}
-          <span>{props.book.author ?? "本地文档"}</span>
-          <div className="reader-book-meta">
-            <span>{formatBadge(props.book.source.format)}</span>
-            <span>
-              {formatBytes(props.book.source.size)} ·{" "}
-              {readingStatus(props.progress) === "finished"
-                ? "100% · 已读完"
-                : props.progress > 0
-                  ? `${percent(props.progress)} · 在读`
-                  : "未读"}
-            </span>
-          </div>
-          <div className="reader-book-progress">
-            <span style={{ width: `${Math.round(props.progress * 100)}%` }} />
-          </div>
-        </div>
-        {props.active && <ChevronRight className="reader-book-active-icon" />}
-      </button>
-      {!props.managing && (
-        <>
-          <button
-            type="button"
-            className="reader-book-remove"
-            aria-label={`移除 ${props.book.title}`}
-            onClick={props.onRemove}
-          >
-            <Trash2 className="reader-icon" />
-          </button>
-          <ReaderLibraryBookActions
-            book={props.book}
-            favorite={props.favorite}
-            onRemove={props.onRemove}
-          />
-        </>
-      )}
-      {props.confirming && (
-        <div className="reader-book-confirm" role="alert">
-          <span>从本地书库移除？</span>
-          <div>
-            <button type="button" onClick={props.onConfirmRemove}>
-              确认
-            </button>
-            <button type="button" onClick={props.onCancelRemove}>
-              取消
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}

@@ -1,3 +1,4 @@
+import { libraryTool } from "./lib/reader-library.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -171,7 +172,7 @@ try {
   await page.waitForTimeout(500);
   assert.equal(await page.getByRole("spinbutton", { name: "PDF 页码" }).inputValue(), "8");
   await page.getByRole("button", { name: "打开书库", exact: true }).click();
-  await page.getByRole("button", { name: "备份与恢复", exact: true }).click();
+  await libraryTool(page, "备份与恢复");
   await page.getByRole("button", { name: "生成完整备份", exact: true }).click();
   const link = page.locator(".reader-data-download");
   await link.waitFor();
@@ -196,7 +197,7 @@ try {
   await restored.goto(base);
   await restored.locator(".reader-reading-scroll").waitFor();
   await restored.getByRole("button", { name: "打开书库", exact: true }).click();
-  await restored.getByRole("button", { name: "备份与恢复", exact: true }).click();
+  await libraryTool(restored, "备份与恢复");
   await restored.getByLabel("选择 Reader 备份", { exact: true }).setInputFiles(archive);
   await restored
     .getByRole("heading", { name: "新增 2 本 · 合并 0 本 · 保留 1 本", exact: true })
@@ -204,7 +205,7 @@ try {
   await restored.getByRole("button", { name: "确认合并恢复", exact: true }).click();
   await restored.getByText(/^恢复完成，已新增 2 本读物，合并 0 本已有读物/u).waitFor();
   await restored.getByRole("button", { name: "关闭备份与恢复", exact: true }).click();
-  await restored.locator(".reader-book-card").filter({ hasText: "selectable" }).click();
+  await restored.locator(".reader-book-row").filter({ hasText: "selectable" }).click();
   await restored.locator(".reader-pdf-canvas-shell.is-ready").first().waitFor();
   await restored.reload();
   await restored.locator(".reader-pdf-canvas-shell.is-ready").first().waitFor();

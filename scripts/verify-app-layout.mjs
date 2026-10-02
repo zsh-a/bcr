@@ -15,7 +15,7 @@ const apps = [
   ["reader", ".reader-toolbar"],
   ["docgen", ".docgen-header"],
   ["markets", ".ma-header"],
-  ["knowledge", ".knowledge-tabs-bar"],
+  ["knowledge", ".knowledge-toolbar"],
   ["studio", ".studio-workspace-controls"],
 ];
 async function visit(page, route, selector) {

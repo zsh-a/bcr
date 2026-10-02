@@ -1,4 +1,4 @@
-import { Button, Skeleton } from "@bcr/react";
+import { AppToolbar, Button, Skeleton } from "@bcr/react";
 import { RefreshCw } from "lucide-react";
 
 /** 启动失败卡：错误文案与重试时机由外壳持有，这里只负责呈现。 */
@@ -23,18 +23,23 @@ export function KnowledgeBootShell() {
       role="status"
       aria-label="正在打开本地知识库"
     >
-      <aside className="knowledge-sidebar">
+      <AppToolbar className="knowledge-toolbar">
         <Skeleton className="knowledge-skeleton-sm" />
-        <Skeleton />
-        <Skeleton />
-        <Skeleton />
-        <Skeleton className="knowledge-skeleton-fill" />
-      </aside>
-      <main className="knowledge-main">
-        <Skeleton className="knowledge-skeleton-sm" />
-        <Skeleton />
-        <Skeleton className="knowledge-skeleton-fill" />
-      </main>
+      </AppToolbar>
+      <div className="knowledge-layout">
+        <aside className="knowledge-sidebar">
+          <Skeleton className="knowledge-skeleton-sm" />
+          <Skeleton />
+          <Skeleton />
+          <Skeleton />
+          <Skeleton className="knowledge-skeleton-fill" />
+        </aside>
+        <main className="knowledge-main">
+          <Skeleton className="knowledge-skeleton-sm" />
+          <Skeleton />
+          <Skeleton className="knowledge-skeleton-fill" />
+        </main>
+      </div>
     </div>
   );
 }

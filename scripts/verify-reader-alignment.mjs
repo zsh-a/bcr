@@ -12,7 +12,7 @@ try {
     await page.goto(base);
     await page.getByLabel("阅读内容").waitFor();
     await page.getByRole("button", { name: "打开书库", exact: true }).click();
-    const card = page.locator(".reader-book-card").first();
+    const card = page.locator(".reader-book-row").first();
     await card.waitFor();
     await card.hover();
     const bounds = await card.evaluate((element) => {
@@ -21,13 +21,14 @@ try {
       return {
         card: rect(element),
         entry: rect(entry),
-        copy: rect(element.querySelector(".reader-book-card-copy")),
-        remove: rect(entry.querySelector(".reader-book-remove")),
+        copy: rect(element.querySelector(".reader-book-row-copy")),
+        title: rect(element.querySelector("strong")),
       };
     });
     assert(Math.abs(bounds.card.width - bounds.entry.width) < 1, `${width}: card must fill row`);
-    assert(bounds.remove.right <= bounds.card.right, `${width}: remove button outside card`);
-    assert(bounds.copy.right <= bounds.remove.left, `${width}: remove overlaps book text`);
+    assert(bounds.copy.right <= bounds.card.right, `${width}: text outside row`);
+    assert(bounds.title.width >= 120, `${width}: title loses width to actions`);
+    assert(bounds.card.height >= 44, `${width}: row too small for touch`);
     await page.screenshot({ path: `scripts/shots/reader-library-alignment-${width}.png` });
     await page.getByRole("button", { name: "收起书库", exact: true }).first().click();
     for (const mode of ["连续滚动", "分页阅读"]) {

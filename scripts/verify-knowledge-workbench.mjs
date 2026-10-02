@@ -136,19 +136,21 @@ try {
   );
   await saved();
   // 收藏入口在「更多操作」菜单里，标签栏不再有独立星标按钮；
-  // 收藏态以下面「收藏」筛选命中的目录树行数为准。
+  // 收藏态以下面「收藏」视图的结果行数为准。
   await page.getByRole("button", { name: "更多操作", exact: true }).click();
   await page.getByRole("menuitem", { name: "收藏当前笔记", exact: true }).click();
   await page
     .getByRole("group", { name: "笔记范围" })
     .getByRole("button", { name: "收藏", exact: true })
     .click();
-  assert.equal(await page.locator(".knowledge-file-note").count(), 1);
+  assert.equal(await page.locator(".knowledge-result").count(), 1);
   await page
     .getByRole("group", { name: "笔记范围" })
     .getByRole("button", { name: "全部", exact: true })
     .click();
-  // 上下文栏（常驻）：大纲跳转 + 反向链接/出站链接导航。
+  // 上下文栏默认收起，展开后按大纲与链接分别导航。
+  assert.equal(await rail().count(), 0);
+  await page.getByRole("button", { name: "展开上下文栏", exact: true }).click();
   await rail().getByRole("button", { name: "First", exact: true }).click();
   await page.waitForTimeout(250);
   assert.equal(await title().inputValue(), "Alpha");
@@ -160,6 +162,10 @@ try {
     /First/,
     "outline click reveals the heading in the editor",
   );
+  await rail()
+    .getByRole("group", { name: "笔记信息视图" })
+    .getByRole("button", { name: /^链接/u })
+    .click();
   await rail().getByRole("button", { name: "Beta", exact: true }).click();
   await page.waitForFunction(
     () => document.querySelector('[aria-label="笔记标题"]')?.value === "Beta",
@@ -175,6 +181,10 @@ try {
     () => document.querySelector('[aria-label="笔记标题"]')?.value === "Alpha",
   );
   await tab("Beta");
+  await rail()
+    .getByRole("group", { name: "笔记信息视图" })
+    .getByRole("button", { name: /^链接/u })
+    .click();
   await rail().getByRole("button", { name: "Go to Alpha", exact: true }).click();
   await page.waitForFunction(
     () => document.querySelector('[aria-label="笔记标题"]')?.value === "Alpha",
@@ -199,6 +209,7 @@ try {
   assert.equal(await title().inputValue(), "New from switcher");
   // 模板：给笔记打上「模板」标签后，通过 / 插入面板与编辑器溢出菜单插入。
   await create("My template", "# {{title}}\n\nDate: {{date}}\n\n## Notes\n");
+  await page.getByRole("button", { name: "编辑笔记属性", exact: true }).click();
   // 标签入口是安静的「+ 标签」，点击后才出现输入框（提示在 placeholder 里）。
   await page.getByRole("button", { name: "添加标签", exact: true }).click();
   await page.getByLabel("笔记标签", { exact: true }).fill("模板");
@@ -249,7 +260,7 @@ try {
   await page.getByRole("button", { name: "更多写作工具" }).click();
   const tools = page.locator(".knowledge-tools-menu");
   await tools.waitFor({ state: "visible" });
-  await tools.getByRole("button", { name: "专注模式", exact: true }).waitFor();
+  assert.equal(await tools.getByRole("button", { name: "专注模式", exact: true }).count(), 0);
   await tools.getByRole("button", { name: "打字机模式", exact: true }).waitFor();
   await tools.getByText("阅读字体", { exact: true }).waitFor();
   await tools.getByText("行高", { exact: true }).waitFor();
@@ -286,7 +297,7 @@ try {
     .getByRole("group", { name: "笔记范围" })
     .getByRole("button", { name: "收藏", exact: true })
     .click();
-  assert.equal(await page.locator(".knowledge-file-note").count(), 1);
+  assert.equal(await page.locator(".knowledge-result").count(), 1);
   await page
     .getByRole("group", { name: "笔记范围" })
     .getByRole("button", { name: "全部", exact: true })
@@ -387,19 +398,22 @@ try {
     assert.ok(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
     );
-    // 小屏：上下文收进标题下的「大纲与链接」折叠段。
-    const inline = page.locator("details.knowledge-context-inline");
-    await inline.getByText("大纲与链接", { exact: true }).waitFor();
+    // 小屏：上下文通过原生模态抽屉展开，不占正文空间。
+    const drawer = page.getByRole("dialog", { name: "笔记信息", exact: true });
+    if (!(await drawer.isVisible()))
+      await page.getByRole("button", { name: "展开上下文栏", exact: true }).click();
+    await drawer.waitFor();
+    assert(await drawer.evaluate((element) => element.matches(":modal")));
+    await drawer.getByRole("button", { name: "关联阅读", exact: true }).waitFor();
+    await page.keyboard.press("Escape");
+    await drawer.waitFor({ state: "hidden" });
     if (viewport.width === 375) {
-      await inline.getByText("大纲与链接", { exact: true }).click();
-      await rail().getByRole("button", { name: "关联阅读", exact: true }).waitFor();
-      await inline.getByText("大纲与链接", { exact: true }).click();
       await page.keyboard.press("Control+o");
       const mobilePicker = palette();
       await mobilePicker.getByLabel("搜索笔记或操作").fill("Alpha");
       await mobilePicker.getByLabel("搜索笔记或操作").press("Escape");
       await mobilePicker.waitFor({ state: "hidden" });
-      await page.getByRole("button", { name: "打开笔记列表", exact: true }).click();
+      await page.getByRole("button", { name: "切换笔记列表", exact: true }).click();
       await page.getByRole("button", { name: "收起列表", exact: true }).click();
       // 窄容器（主区 < 640px）：文档工具行的分段收起，菜单接管视图模式与源码，
       // 保证这三个开关在任何宽度下都有且只有一个入口。

@@ -32,6 +32,15 @@ export function ReaderSheet(props: {
         ? triggerRef.current
         : props.fallbackFocus?.();
       trigger?.focus({ preventScroll: true });
+      // A removed book can still be connected during layout-effect cleanup.
+      // Recheck after the DOM commit, without moving focus out of a new modal.
+      queueMicrotask(() => {
+        if (dialog.open || triggerRef.current?.isConnected) return;
+        const fallback = props.fallbackFocus?.();
+        const activeDialog = document.activeElement?.closest("dialog[open]");
+        if (fallback?.isConnected && (!activeDialog || activeDialog.contains(fallback)))
+          fallback.focus({ preventScroll: true });
+      });
     };
   }, [props.open]);
 

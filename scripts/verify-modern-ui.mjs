@@ -160,7 +160,7 @@ try {
     assert(!(await page.locator(".manga-footer").innerText()).includes("Worker"));
     await page.screenshot({ path: `${shots}/modern-manga-${width}.png` });
 
-    await visit(page, "knowledge", ".knowledge-tabs-bar");
+    await visit(page, "knowledge", ".knowledge-toolbar");
     const create = page.getByRole("button", { name: "写第一篇笔记", exact: true });
     await create.waitFor();
     assert(

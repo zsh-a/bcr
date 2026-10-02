@@ -109,9 +109,10 @@ export function PanelResizer({
           KEY_STEP *
           (event.key === "ArrowRight" ? 1 : -1) *
           (edge === "right" ? 1 : -1);
-        const width = bounded(panel.getBoundingClientRect().width + step);
-        apply(width);
-        onCommit(width);
+        // Repeated keys build on the committed width while the CSS transition is in flight.
+        const nextWidth = bounded((width ?? panel.getBoundingClientRect().width) + step);
+        apply(nextWidth);
+        onCommit(nextWidth);
       }}
     />
   );

@@ -73,11 +73,11 @@ const diffForms = (dialog) =>
     }
     return { before, after };
   });
-// 路径条已删除：用路径筛选验证笔记当前所在路径（目录树行按标题匹配）。
+// 路径条已删除：通过搜索结果验证当前路径。
 async function atPath(query, name) {
   const search = page.getByLabel("筛选笔记列表", { exact: true });
   await search.fill(query);
-  const rows = page.getByRole("navigation", { name: "笔记列表" }).locator(".knowledge-file-note");
+  const rows = page.getByRole("navigation", { name: "笔记列表" }).locator(".knowledge-result");
   await rows.filter({ hasText: name }).waitFor();
   const matched = await rows.count();
   await search.fill("");
@@ -331,8 +331,8 @@ try {
   // Sidebar path search finds the note at its new path; it survives reload.
   await page.getByLabel("筛选笔记列表", { exact: true }).fill("archive/项目");
   const list = page.getByRole("navigation", { name: "笔记列表" });
-  await list.locator(".knowledge-file-note").filter({ hasText: "Alpha" }).waitFor();
-  assert.equal(await list.locator(".knowledge-file-note").count(), 1);
+  await list.locator(".knowledge-result").filter({ hasText: "Alpha" }).waitFor();
+  assert.equal(await list.locator(".knowledge-result").count(), 1);
   await page.getByLabel("筛选笔记列表", { exact: true }).fill("");
   assert.equal(
     await atPath(`archive/项目/new/${a}.md`, "Alpha"),

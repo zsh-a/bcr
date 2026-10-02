@@ -43,7 +43,7 @@ await page.getByLabel("阅读内容").waitFor();
 // collapsed in focused mode. Verify the indexed fixture in the library.
 const openLibrary = page.getByRole("button", { name: "打开书库", exact: true });
 if (await openLibrary.isVisible()) await openLibrary.click();
-await page.locator(".reader-book-card", { hasText: "把时间还给阅读" }).waitFor();
+await page.locator(".reader-book-row", { hasText: "把时间还给阅读" }).waitFor();
 await page.waitForTimeout(1_200);
 await openWorkspaceOptions(page);
 await page.getByRole("button", { name: "打开命令面板" }).click();

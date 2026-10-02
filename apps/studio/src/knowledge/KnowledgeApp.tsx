@@ -1,5 +1,11 @@
 import {
+  AppToolbar,
   Button,
+  ResourceHeader,
+  ResourceSearch,
+  ResourceViews,
+  useMediaQuery,
+  useOpenAssistant,
   IconButton,
   Select,
   useRuntime,
@@ -18,7 +24,11 @@ import {
   Folder,
   FolderPlus,
   History,
-  Menu,
+  Maximize2,
+  Minimize2,
+  PanelRightClose,
+  PanelRightOpen,
+  Sparkles,
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
@@ -83,12 +93,14 @@ import { PanelResizer } from "./PanelResizer";
 import { NoteActionsMenu } from "./NoteActionsMenu";
 import { NoteSwitcher } from "./NoteSwitcher";
 import { KnowledgeDialog } from "./KnowledgeDialog";
+import { NoteResults } from "./NoteResults";
 import { NoteFileTree, type TreeDrag, type TreeTarget } from "./NoteFileTree";
 import { TreeMenu, type TreeMenuItem } from "./TreeMenu";
 import { normalizeFolderPath, notePath, parentPath, pathKey } from "./paths";
 import { showUndoToast } from "./undoToast";
 import { NoteMove, type MoveTarget } from "./NoteMove";
 import "./paths.css";
+import "./resource-layout.css";
 
 const VIEW_DEFS = [
   ["all", "全部"],
@@ -99,6 +111,8 @@ const VIEW_DEFS = [
 export function KnowledgeApp() {
   const services = useRuntime(),
     active = useRuntimeActivity(),
+    mobile = useMediaQuery("(width <= 45em)"),
+    openAssistant = useOpenAssistant(),
     navigate = useNavigate();
   const [bootAttempt, setBootAttempt] = useState(0);
   // 启动失败后重试会换一个全新的存储会话重新载入；首个会话仍走共享组合根。
@@ -125,6 +139,7 @@ export function KnowledgeApp() {
   // 移动端抽屉覆盖层（show-sidebar）与桌面侧栏形态（workbench.sidebar）正交：
   // 抽屉只在 ≤bp-md 生效，形态只在 >bp-md 生效，互不干扰。
   const [drawer, setDrawer] = useState(false);
+  const sidebarToggle = useRef<HTMLButtonElement>(null);
   // 专注模式：外壳持有，命令面板与 Esc 才能开关；渲染成 data-focus-mode 供样式收起 chrome。
   const [focusMode, setFocusMode] = useState(false);
   const credential = useCredential(knowledgeCredentialId(state.sync.target));
@@ -158,6 +173,7 @@ export function KnowledgeApp() {
   const editor = useRef<EditorHandle>(null),
     input = useRef<HTMLInputElement>(null),
     search = useRef<HTMLInputElement>(null);
+  const [toolbarSlot, setToolbarSlot] = useState<HTMLDivElement | null>(null);
   const sidebarElement = useRef<HTMLElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const scrollPositions = useRef(new Map<string, number>());
@@ -166,8 +182,12 @@ export function KnowledgeApp() {
   });
   // 关闭最后一个标签后显式回到空状态；直达 /knowledge（无 ?note）仍显示最近笔记。
   const [closedAll, setClosedAll] = useState(false);
-  const notes = Object.values(state.notes).sort(
-    (a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id),
+  const notes = useMemo(
+    () =>
+      Object.values(state.notes).sort(
+        (a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id),
+      ),
+    [state.notes],
   );
   const note =
     selectedId && Object.hasOwn(state.notes, selectedId)
@@ -178,6 +198,10 @@ export function KnowledgeApp() {
   const workbench = useWorkbench(ready ? note?.id : undefined);
   // 侧栏形态随 workbench 持久化，刷新后保持；rail/hidden 都是桌面收起态。
   const sidebar = workbench.state.sidebar;
+  useLayoutEffect(() => {
+    if (focusMode) setDrawer(false);
+    else if (mobile && drawer) search.current?.focus();
+  }, [focusMode, mobile, drawer]);
   useLayoutEffect(() => {
     if (note && content.current)
       content.current.scrollTop = scrollPositions.current.get(note.id) ?? 0;
@@ -210,13 +234,37 @@ export function KnowledgeApp() {
           (event.ctrlKey || event.metaKey) &&
           pressed === "b" &&
           !event.altKey &&
-          !event.shiftKey
+          !event.shiftKey &&
+          !document.querySelector("dialog[open]")
         ) {
           event.preventDefault();
           event.stopPropagation();
-          workbench.setState((current) =>
-            setSidebar(current, current.sidebar === "expanded" ? "hidden" : "expanded"),
-          );
+          setFocusMode(false);
+          if (mobile) setDrawer((open) => !open);
+          else
+            workbench.setState((current) =>
+              setSidebar(current, current.sidebar === "expanded" ? "hidden" : "expanded"),
+            );
+          return;
+        }
+        if (
+          event.key === "Escape" &&
+          mobile &&
+          drawer &&
+          !treeEdit &&
+          !treeMenu &&
+          !document.querySelector("dialog[open], [popover]:popover-open")
+        ) {
+          if (
+            event.target instanceof HTMLInputElement &&
+            event.target.type === "search" &&
+            event.target.value
+          )
+            return;
+          event.preventDefault();
+          event.stopPropagation();
+          setDrawer(false);
+          sidebarToggle.current?.focus();
           return;
         }
         // Esc 退出专注模式；浮层/对话框/⋯ 菜单在前时让它们先收（本监听在捕获阶段）。
@@ -251,7 +299,7 @@ export function KnowledgeApp() {
     };
     window.addEventListener("keydown", key, { capture: true });
     return () => window.removeEventListener("keydown", key, { capture: true });
-  }, [active, ready, focusMode]);
+  }, [active, ready, focusMode, mobile, drawer, treeEdit, treeMenu]);
   const backlinks = useMemo(() => {
     const all = Object.values(state.notes);
     linkIndex.update(all);
@@ -447,9 +495,22 @@ export function KnowledgeApp() {
     () => createKnowledgeActions(store, workspaceServices(services.metadata).research, flushEditor),
     [store, services.metadata, flushEditor],
   );
-  const create = async () => {
-    await select(await actions.create(collection || null), true);
+  const create = async (title = "") => {
+    await select(await actions.create(collection || null, title), true);
+    setQuery("");
+    setView("all");
   };
+  const openResult = (id: string, open = false) =>
+    go(async () => {
+      await select(id, open);
+      const latest = store.getSnapshot().notes[id];
+      if (query.trim() && latest)
+        setTarget((old) => ({
+          id,
+          offset: noteSearchHit(latest, query).match?.start ?? 0,
+          sequence: (old?.sequence ?? 0) + 1,
+        }));
+    });
   async function openLink(value: string) {
     await flushEditor();
     const matches = resolveNoteLink(Object.values(store.getSnapshot().notes), value, note?.id);
@@ -553,446 +614,36 @@ export function KnowledgeApp() {
         } as CSSProperties
       }
     >
-      <NoteSwitcher
-        open={switcher !== null}
-        notes={notes}
-        initialQuery={switcher?.query ?? ""}
-        onClose={() => setSwitcher(null)}
-        onSelect={async (id) => {
-          await select(id, true);
-          const hit = noteSearchHit(store.getSnapshot().notes[id]!, switcher?.query ?? "");
-          setTarget((old) => ({
-            id,
-            heading: switcher?.heading ?? "",
-            offset: hit.match?.start ?? 0,
-            sequence: (old?.sequence ?? 0) + 1,
-          }));
-        }}
-        onCreate={async (title) => {
-          await select(await actions.create(collection || null, title), true);
-        }}
-        actions={paletteActions}
-      />
-      {drawer && (
-        <button
-          type="button"
-          className="knowledge-backdrop"
-          aria-label="关闭笔记列表"
-          onClick={() => setDrawer(false)}
-        />
-      )}
-      <aside ref={sidebarElement} className="knowledge-sidebar" aria-label="知识库导航">
-        {/* 图标栏：桌面收起后的窄形态（>bp-md 才显示）；rail 态下其余子元素整体隐藏。 */}
-        <nav className="knowledge-sidebar-rail" aria-label="知识库快捷栏">
-          <IconButton
-            label="展开侧栏"
-            onClick={() => workbench.setState((current) => setSidebar(current, "expanded"))}
-          >
-            <PanelLeftOpen size={18} />
-          </IconButton>
-          <IconButton
-            label="筛选笔记"
-            onClick={() => {
-              workbench.setState((current) => setSidebar(current, "expanded"));
-              requestAnimationFrame(() => search.current?.focus());
-            }}
-          >
-            <Search size={18} />
-          </IconButton>
-          <IconButton label="新建笔记" disabled={busy} onClick={() => void run(create)}>
-            <Plus size={18} />
-          </IconButton>
-          <div className="knowledge-sidebar-rail-views" role="group" aria-label="笔记范围">
-            <IconButton
-              label="全部笔记"
-              aria-pressed={view === "all"}
-              onClick={() => setView("all")}
-            >
-              <Files size={18} />
-            </IconButton>
-            <IconButton
-              label="收藏笔记"
-              aria-pressed={view === "favorites"}
-              onClick={() => setView("favorites")}
-            >
-              <Star size={18} />
-            </IconButton>
-            <IconButton
-              label="最近笔记"
-              aria-pressed={view === "recent"}
-              onClick={() => setView("recent")}
-            >
-              <Clock size={18} />
-            </IconButton>
-          </div>
-          <IconButton
-            label="隐藏侧栏"
-            onClick={() => workbench.setState((current) => setSidebar(current, "hidden"))}
-          >
-            <PanelLeftClose size={18} />
-          </IconButton>
-        </nav>
-        <div className="knowledge-sidebar-heading">
-          <span>我的笔记</span>
-          <IconButton
-            label="新建目录"
-            onClick={() => setTreeEdit({ kind: "create", parent: "", path: "" })}
-          >
-            <FolderPlus size={18} />
-          </IconButton>
-          <IconButton
-            label="收起侧栏"
-            className="knowledge-sidebar-collapse"
-            onClick={() => workbench.setState((current) => setSidebar(current, "rail"))}
-          >
-            <PanelLeftClose size={18} />
-          </IconButton>
-          <IconButton
-            label="收起列表"
-            className="knowledge-mobile-close"
-            onClick={() => setDrawer(false)}
-          >
-            <X size={18} />
-          </IconButton>
-          <Button
-            className="knowledge-create"
-            aria-label="新建笔记"
-            title="新建笔记"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => void run(create)}
-          >
-            <Plus size={16} />
-            <span>新建笔记</span>
-          </Button>
-        </div>
-        <div className="knowledge-search-row">
-          <label className="knowledge-search">
-            <Search size={15} />
-            <input
-              ref={search}
-              aria-label="筛选笔记列表"
-              placeholder="筛选笔记…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Escape" && query) {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setQuery("");
-                }
-              }}
-            />
-            {query && (
-              <button
-                type="button"
-                className="knowledge-search-clear"
-                aria-label="清除筛选"
-                onClick={(event) => {
-                  setQuery("");
-                  event.currentTarget.closest("label")?.querySelector("input")?.focus();
-                }}
-              >
-                <X size={14} />
-              </button>
-            )}
-          </label>
-          <div className="knowledge-collection-row">
-            <Select
-              aria-label="筛选笔记集合"
-              className="knowledge-select"
-              value={collection}
-              onChange={(e) => setCollection(e.target.value)}
-            >
-              <option value="">全部笔记</option>
-              {Object.values(state.collections).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-            <IconButton
-              label="新建集合"
-              size="sm"
-              aria-expanded={addingCollection}
-              onClick={() => setAddingCollection((open) => !open)}
-            >
-              <Plus size={15} />
-            </IconButton>
-          </div>
-        </div>
-        {/* 筛选行：范围细分段，两个筛选维度（文本/集合在上一行，范围在此行）。 */}
-        <div className="knowledge-filter-row">
-          <div className="knowledge-segmented" role="group" aria-label="笔记范围">
-            {VIEW_DEFS.map(([id, label]) => (
-              <button type="button" key={id} aria-pressed={view === id} onClick={() => setView(id)}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        {addingCollection && (
-          <form
-            className="knowledge-add-collection"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (collectionName.trim())
-                void run(async () => {
-                  const id = crypto.randomUUID();
-                  await store.saveCollection(id, collectionName);
-                  setCollectionName("");
-                  setAddingCollection(false);
-                  setCollection(id);
-                });
-            }}
-          >
-            <input
-              aria-label="新知识集合名称"
-              placeholder="新集合名称"
-              maxLength={200}
-              value={collectionName}
-              onChange={(e) => setCollectionName(e.target.value)}
-            />
-            <IconButton
-              type="submit"
-              label="创建知识集合"
-              size="sm"
-              disabled={busy || !collectionName.trim()}
-            >
-              <Plus size={15} />
-            </IconButton>
-          </form>
-        )}
-        <nav className="knowledge-note-list" aria-label="笔记列表">
-          {filtered.length ? (
-            <NoteFileTree
-              notes={filtered}
-              activeId={note?.id}
-              folders={state.folders}
-              editing={treeEdit}
-              onSelect={(id) =>
-                go(async () => {
-                  await select(id);
-                  if (query.trim())
-                    setTarget((old) => ({
-                      id,
-                      offset: noteSearchHit(state.notes[id]!, query).match?.start ?? 0,
-                      sequence: (old?.sequence ?? 0) + 1,
-                    }));
-                })
-              }
-              onOpen={(id) => go(() => select(id, true))}
-              onMoveFolder={(folder) => setMoveTarget({ folder })}
-              onEditCommit={(value) => void commitTreeEdit(value)}
-              onEditCancel={() => setTreeEdit(null)}
-              onMenu={(event, target) => {
-                event.preventDefault();
-                setTreeMenu({ x: event.clientX, y: event.clientY, target });
-              }}
-              onDropMove={(payload, destination) => void dropMove(payload, destination)}
-            />
-          ) : (
-            <div className="knowledge-list-empty">
-              {notes.length ? (
-                <>
-                  <p>没有匹配的笔记。</p>
-                  <div className="knowledge-list-empty-actions">
-                    <Button size="sm" onClick={clearFilters}>
-                      清除筛选
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={busy}
-                      onClick={() =>
-                        void run(async () => {
-                          await select(
-                            await actions.create(collection || null, query.trim()),
-                            true,
-                          );
-                        })
-                      }
-                    >
-                      {query.trim() ? `创建「${query.trim().slice(0, 10)}」` : "写第一篇笔记"}
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <p>留一个地方，给新的想法。</p>
-              )}
-            </div>
-          )}
-        </nav>
-        <details className="knowledge-sidebar-bottom">
-          <summary>导入、导出与备份</summary>
-          <button type="button" onClick={() => input.current?.click()}>
-            <Upload size={15} />
-            导入 Markdown
-          </button>
-          <button type="button" disabled={busy} onClick={() => void run(importResearch)}>
-            <BookOpenText size={15} />
-            从资料集合导入
-          </button>
-          <button type="button" disabled={busy} onClick={() => void run(exportAll)}>
-            <Download size={15} />
-            导出知识库
-          </button>
-          <button
-            type="button"
-            disabled={busy || syncing}
-            onClick={() => {
-              setPanel("restore");
-              setDrawer(false);
-            }}
-          >
-            <Upload size={15} />
-            恢复 ZIP 备份
-          </button>
-        </details>
-        <input
-          ref={input}
-          type="file"
-          accept=".md,.markdown,.txt"
-          aria-label="导入 Markdown 笔记"
-          hidden
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = "";
-            if (file)
-              void run(async () => {
-                await select(await actions.importMarkdown(file), true);
-              });
+      <AppToolbar className="knowledge-toolbar">
+        <IconButton
+          ref={sidebarToggle}
+          label="切换笔记列表"
+          title="笔记列表 · Ctrl/⌘+B"
+          aria-expanded={!focusMode && (mobile ? drawer : sidebar === "expanded")}
+          onClick={() => {
+            setFocusMode(false);
+            if (mobile) setDrawer((open) => focusMode || !open);
+            else
+              workbench.setState((current) =>
+                setSidebar(
+                  current,
+                  !focusMode && current.sidebar === "expanded" ? "rail" : "expanded",
+                ),
+              );
           }}
-        />
-        <PanelResizer
-          edge="right"
-          variable="--w-sidebar-override"
-          label="调整侧边栏宽度"
-          width={workbench.state.sidebarWidth}
-          min={SIDEBAR_MIN_WIDTH}
-          max={SIDEBAR_MAX_WIDTH}
-          getPanel={() => sidebarElement.current}
-          onCommit={(width) => workbench.setState((current) => setSidebarWidth(current, width))}
-        />
-      </aside>
-      <main className="knowledge-main">
-        <NoteMove
-          open={moveTarget !== null}
-          target={moveTarget}
-          store={store}
-          flush={flushEditor}
-          onClose={() => setMoveTarget(null)}
-        />
-        <KnowledgeDialog
-          open={confirmDelete !== null}
-          title="删除笔记"
-          onClose={() => setConfirmDelete(null)}
-          error={error}
         >
-          <p>
-            删除「{state.notes[confirmDelete ?? ""]?.title || "未命名笔记"}
-            」？之后仍可从版本历史恢复。
-          </p>
-          <div className="knowledge-dialog-actions">
-            <Button variant="ghost" onClick={() => setConfirmDelete(null)}>
-              取消
-            </Button>
-            <Button
-              variant="danger"
-              disabled={busy || locked}
-              onClick={() =>
-                void run(async () => {
-                  const id = confirmDelete;
-                  if (!id) return;
-                  await flushEditor();
-                  await store.deleteNote(id);
-                  await navigate({ to: KNOWLEDGE_PATH, search: {} });
-                  setConfirmDelete(null);
-                })
-              }
-            >
-              确认删除笔记
-            </Button>
-          </div>
-        </KnowledgeDialog>
-        <KnowledgeDialog
-          open={folderDelete !== null}
-          title="删除目录"
-          onClose={() => setFolderDelete(null)}
-          error={error}
-        >
-          <p>
-            删除「{folderDelete ?? ""}」？其中的{" "}
-            {
-              notes.filter((item) =>
-                pathKey(notePath(item)).startsWith(`${pathKey(folderDelete ?? "\u0000")}/`),
-              ).length
-            }{" "}
-            篇笔记将移到库根并改写引用，子目录一并删除。
-          </p>
-          <div className="knowledge-dialog-actions">
-            <Button variant="ghost" onClick={() => setFolderDelete(null)}>
-              取消
-            </Button>
-            <Button
-              variant="danger"
-              disabled={busy}
-              onClick={() => {
-                const path = folderDelete;
-                setFolderDelete(null);
-                if (path) void removeFolder(path);
-              }}
-            >
-              确认删除目录
-            </Button>
-          </div>
-        </KnowledgeDialog>
-        {treeMenu && (
-          <TreeMenu
-            x={treeMenu.x}
-            y={treeMenu.y}
-            items={treeItems(treeMenu.target)}
-            onClose={() => setTreeMenu(null)}
-          />
-        )}
+          {!focusMode && (mobile ? drawer : sidebar === "expanded") ? (
+            <PanelLeftClose size={18} />
+          ) : (
+            <PanelLeftOpen size={18} />
+          )}
+        </IconButton>
+        <strong className="knowledge-app-identity">知识库</strong>
         <NoteTabs
-          leading={
-            <IconButton
-              label="打开笔记列表"
-              className="knowledge-menu"
-              onClick={() => {
-                // 移动端开抽屉，桌面端把侧栏展开（两个状态各管各的断点）。
-                setDrawer(true);
-                workbench.setState((current) => setSidebar(current, "expanded"));
-              }}
-            >
-              <Menu size={18} />
-            </IconButton>
-          }
           notes={state.notes}
           ids={workbench.state.tabs}
           pinned={workbench.state.pinned}
           activeId={note?.id}
-          actions={
-            /* 同步/保存状态是应用级事实（无打开笔记时也要可见），安静地留在标签条右端。 */
-            <div className="knowledge-status" data-testid="knowledge-status">
-              <SyncStatus
-                facts={{
-                  error,
-                  conflicts: state.conflicts.length,
-                  hasTarget: !!state.sync.target,
-                  pending,
-                  lastSyncedAt: state.sync.lastSyncedAt,
-                  syncing,
-                }}
-                auto={auto}
-                onToggleAuto={setAuto}
-                onSync={() => void sync()}
-                onOpenSettings={() => setPanel("sync")}
-                onViewConflicts={() => setPanel("conflicts")}
-              />
-            </div>
-          }
           onSelect={(id) => go(() => select(id))}
           onClose={(id) =>
             void run(async () => {
@@ -1013,279 +664,790 @@ export function KnowledgeApp() {
           }
           onTogglePin={(id) => workbench.setState((current) => togglePinned(current, id))}
         />
-        {workbench.error && (
-          <p role="status" className="knowledge-alert">
-            {workbench.error}
-          </p>
-        )}
-        {(message || error) && (
-          <div
-            role={error ? "alert" : "status"}
-            className={`knowledge-notice ${error ? "is-error" : ""}`}
-          >
-            <span>{error || message}</span>
-            <IconButton
-              label="关闭提示"
-              size="sm"
-              onClick={() => {
-                setError("");
-                setMessage("");
-              }}
-            >
-              <X size={15} />
-            </IconButton>
-          </div>
-        )}
-        <div
-          className="knowledge-content"
-          ref={content}
-          onScroll={(event) => {
-            if (!note) return;
-            scrollPositions.current.set(note.id, event.currentTarget.scrollTop);
-            if (scrollPositions.current.size > 100)
-              scrollPositions.current.delete(scrollPositions.current.keys().next().value!);
+
+        <div ref={setToolbarSlot} className="knowledge-document-toolbar" />
+        <div className="knowledge-status" data-testid="knowledge-status">
+          <SyncStatus
+            facts={{
+              error,
+              conflicts: state.conflicts.length,
+              hasTarget: !!state.sync.target,
+              pending,
+              lastSyncedAt: state.sync.lastSyncedAt,
+              syncing,
+            }}
+            auto={auto}
+            onToggleAuto={setAuto}
+            onSync={() => void sync()}
+            onOpenSettings={() => setPanel("sync")}
+            onViewConflicts={() => setPanel("conflicts")}
+          />
+        </div>
+        <IconButton
+          label={
+            !focusMode && workbench.state.context === "expanded" ? "收起上下文栏" : "展开上下文栏"
+          }
+          title="笔记信息 · 大纲、链接与属性"
+          disabled={!note}
+          aria-pressed={!focusMode && workbench.state.context === "expanded"}
+          onClick={() => {
+            setFocusMode(false);
+            workbench.setState((current) =>
+              setContext(
+                current,
+                !focusMode && current.context === "expanded" ? "hidden" : "expanded",
+              ),
+            );
           }}
         >
-          <KnowledgeDialog
-            open={active && panel === "sync"}
-            title="同步设置"
-            onClose={() => setPanel(null)}
-            error={error}
-          >
-            <KnowledgeSyncPanel
-              state={state}
-              store={store}
-              token={token}
-              auto={auto}
-              setAuto={setAuto}
-              syncing={syncing}
-              onError={setError}
-              flush={flushEditor}
-              onViewConflicts={() => setPanel("conflicts")}
-            />
-          </KnowledgeDialog>
-          <KnowledgeDialog
-            open={active && panel === "conflicts"}
-            title="处理冲突"
-            onClose={() => setPanel(null)}
-            error={error}
-          >
-            <ConflictList
-              conflicts={state.conflicts}
-              busy={busy || syncing}
-              onResolve={(conflict, choice: ConflictChoice, merged) =>
+          {!focusMode && workbench.state.context === "expanded" ? (
+            <PanelRightClose size={17} />
+          ) : (
+            <PanelRightOpen size={17} />
+          )}
+        </IconButton>
+        <IconButton
+          className="knowledge-focus-action"
+          label={focusMode ? "退出专注模式" : "进入专注模式"}
+          title="专注模式"
+          aria-pressed={focusMode}
+          onClick={() => setFocusMode(!focusMode)}
+        >
+          {focusMode ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+        </IconButton>
+        <IconButton
+          className="knowledge-ai-action"
+          label="AI 助手"
+          title="AI 助手 · Ctrl/⌘+J"
+          disabled={!openAssistant}
+          onClick={openAssistant}
+        >
+          <Sparkles size={17} />
+        </IconButton>
+        <NoteActionsMenu
+          actions={[
+            {
+              label: "新建笔记",
+              icon: <Plus size={15} />,
+              disabled: busy,
+              run: () => void run(create),
+            },
+            {
+              label: "搜索与切换笔记",
+              icon: <Search size={15} />,
+              run: () => setSwitcher({ query: "" }),
+            },
+            {
+              label: "新建目录",
+              icon: <FolderPlus size={15} />,
+              run: () => {
+                setFocusMode(false);
+                setQuery("");
+                setView("all");
+                setDrawer(true);
+                workbench.setState((current) => setSidebar(current, "expanded"));
+                setTreeEdit({ kind: "create", parent: "", path: "" });
+              },
+            },
+            { label: "新建集合", icon: <Plus size={15} />, run: () => setAddingCollection(true) },
+            {
+              label: "导入 Markdown",
+              icon: <Upload size={15} />,
+              separator: true,
+              run: () => input.current?.click(),
+            },
+            {
+              label: "从资料集合导入",
+              icon: <BookOpenText size={15} />,
+              disabled: busy,
+              run: () => void run(importResearch),
+            },
+            {
+              label: "导出知识库",
+              icon: <Download size={15} />,
+              disabled: busy,
+              run: () => void run(exportAll),
+            },
+            {
+              label: "恢复 ZIP 备份",
+              icon: <Upload size={15} />,
+              disabled: busy || syncing,
+              run: () => setPanel("restore"),
+            },
+            {
+              label: focusMode ? "退出专注模式" : "专注模式",
+              icon: <Maximize2 size={15} />,
+              separator: true,
+              run: () => setFocusMode(!focusMode),
+            },
+            {
+              label: "AI 助手",
+              icon: <Sparkles size={15} />,
+              disabled: !openAssistant,
+              run: () => openAssistant?.(),
+            },
+
+            {
+              label: "移动笔记",
+              icon: <Folder size={15} />,
+              disabled: !note || locked,
+              run: () => note && setMoveTarget({ noteId: note.id }),
+            },
+            {
+              label: "导出这篇笔记",
+              icon: <Download size={15} />,
+              disabled: !note || busy,
+              run: () => void run(exportNote),
+            },
+            {
+              label: favorite ? "取消收藏" : "收藏当前笔记",
+              icon: <Star size={15} />,
+              disabled: !note,
+              run: () => note && workbench.setState((current) => toggleFavorite(current, note.id)),
+            },
+            {
+              label: "版本历史",
+              icon: <History size={15} />,
+              run: () => setPanel("history"),
+            },
+            {
+              label: "同步设置",
+              icon: <Settings2 size={15} />,
+              separator: true,
+              run: () => setPanel("sync"),
+            },
+            {
+              label: "立即同步",
+              icon: <RefreshCw size={15} />,
+              disabled: syncing || busy,
+              run: () => void sync(),
+            },
+            {
+              label: "删除",
+              icon: <Trash2 size={15} />,
+              separator: true,
+              danger: true,
+              disabled: !note || locked,
+              run: () => note && setConfirmDelete(note.id),
+            },
+          ]}
+        />
+      </AppToolbar>
+      <div className="knowledge-layout">
+        <NoteSwitcher
+          open={switcher !== null}
+          notes={notes}
+          initialQuery={switcher?.query ?? ""}
+          onClose={() => setSwitcher(null)}
+          onSelect={async (id) => {
+            await select(id, true);
+            const hit = noteSearchHit(store.getSnapshot().notes[id]!, switcher?.query ?? "");
+            setTarget((old) => ({
+              id,
+              heading: switcher?.heading ?? "",
+              offset: hit.match?.start ?? 0,
+              sequence: (old?.sequence ?? 0) + 1,
+            }));
+          }}
+          onCreate={create}
+          actions={paletteActions}
+        />
+        <KnowledgeDialog
+          open={addingCollection}
+          title="新建集合"
+          onClose={() => setAddingCollection(false)}
+        >
+          <form
+            className="knowledge-add-collection"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (collectionName.trim())
                 void run(async () => {
-                  if (choice === "merge" && merged) {
-                    // 「合并」是两步组合：正文取合并结果（restore 走历史可回滚），
-                    // 标题与路径必须保留本机（改名/移动要走修改计划），故先 resolve 本机。
-                    await store.resolve(conflict, "local");
-                    await store.restore(merged);
-                    setMessage("已合并双方正文改动；标题与路径保留本机，远端版本已存入历史");
-                  } else {
-                    await store.resolve(conflict, choice === "remote" ? "remote" : "local");
-                    setMessage(
-                      choice === "remote"
-                        ? "已采用远端版本；本机版本已存入历史"
-                        : "已采用本机版本；远端版本已存入历史",
-                    );
-                  }
-                })
-              }
-            />
-          </KnowledgeDialog>
-          <KnowledgeDialog
-            open={active && panel === "restore"}
-            title="恢复备份"
-            onClose={() => setPanel(null)}
+                  const id = crypto.randomUUID();
+                  await store.saveCollection(id, collectionName);
+                  setCollectionName("");
+                  setAddingCollection(false);
+                  setCollection(id);
+                });
+            }}
           >
-            <KnowledgeRestorePanel
-              store={store}
-              flush={async () => {
-                await editor.current?.flush();
-              }}
-              onClose={() => setPanel(null)}
-              onRestored={() => {
-                setPanel(null);
-                setMessage("备份已恢复到本机，未修改同步连接");
-              }}
+            <input
+              autoFocus
+              aria-label="新知识集合名称"
+              placeholder="集合名称"
+              maxLength={200}
+              value={collectionName}
+              onChange={(event) => setCollectionName(event.target.value)}
             />
-          </KnowledgeDialog>
+            <Button type="submit" disabled={busy || !collectionName.trim()}>
+              创建集合
+            </Button>
+          </form>
+        </KnowledgeDialog>
+        {drawer && (
+          <button
+            type="button"
+            className="knowledge-backdrop"
+            aria-label="关闭笔记列表"
+            onClick={() => setDrawer(false)}
+          />
+        )}
+        <aside
+          ref={sidebarElement}
+          className="knowledge-sidebar"
+          aria-label="知识库导航"
+          inert={focusMode || (mobile ? !drawer : sidebar === "hidden")}
+        >
+          {/* 图标栏：桌面收起后的窄形态（>bp-md 才显示）；rail 态下其余子元素整体隐藏。 */}
+          <nav className="knowledge-sidebar-rail" aria-label="知识库快捷栏">
+            <IconButton
+              label="展开侧栏"
+              onClick={() => workbench.setState((current) => setSidebar(current, "expanded"))}
+            >
+              <PanelLeftOpen size={18} />
+            </IconButton>
+            <IconButton
+              label="筛选笔记"
+              onClick={() => {
+                workbench.setState((current) => setSidebar(current, "expanded"));
+                requestAnimationFrame(() => search.current?.focus());
+              }}
+            >
+              <Search size={18} />
+            </IconButton>
+            <IconButton label="新建笔记" disabled={busy} onClick={() => void run(create)}>
+              <Plus size={18} />
+            </IconButton>
+            <div className="knowledge-sidebar-rail-views" role="group" aria-label="笔记范围">
+              <IconButton
+                label="全部笔记"
+                aria-pressed={view === "all"}
+                onClick={() => setView("all")}
+              >
+                <Files size={18} />
+              </IconButton>
+              <IconButton
+                label="收藏笔记"
+                aria-pressed={view === "favorites"}
+                onClick={() => setView("favorites")}
+              >
+                <Star size={18} />
+              </IconButton>
+              <IconButton
+                label="最近笔记"
+                aria-pressed={view === "recent"}
+                onClick={() => setView("recent")}
+              >
+                <Clock size={18} />
+              </IconButton>
+            </div>
+            <IconButton
+              label="隐藏侧栏"
+              onClick={() => workbench.setState((current) => setSidebar(current, "hidden"))}
+            >
+              <PanelLeftClose size={18} />
+            </IconButton>
+          </nav>
+          <ResourceHeader
+            className="knowledge-sidebar-heading"
+            title={
+              <Select
+                aria-label="筛选笔记集合"
+                className="knowledge-select knowledge-scope-select"
+                value={collection}
+                onChange={(event) => setCollection(event.target.value)}
+              >
+                <option value="">全部集合</option>
+                {Object.values(state.collections).map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </Select>
+            }
+            actions={
+              <>
+                <Button
+                  className="knowledge-create"
+                  aria-label="新建笔记"
+                  title="新建笔记"
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void run(create)}
+                >
+                  <Plus size={16} />
+                  <span>新建</span>
+                </Button>
+                <IconButton
+                  label="收起列表"
+                  className="knowledge-mobile-close"
+                  onClick={() => setDrawer(false)}
+                >
+                  <X size={18} />
+                </IconButton>
+              </>
+            }
+          />
+          <ResourceSearch
+            ref={search}
+            className="knowledge-search"
+            aria-label="筛选笔记列表"
+            placeholder="搜索笔记…"
+            value={query}
+            onValueChange={setQuery}
+            onKeyDown={(event) => {
+              if (
+                event.key !== "Enter" ||
+                event.nativeEvent.isComposing ||
+                !query.trim() ||
+                !filtered[0]
+              )
+                return;
+              event.preventDefault();
+              const first = filtered[0];
+              go(async () => {
+                await select(first.id, true);
+                setTarget((old) => ({
+                  id: first.id,
+                  offset: noteSearchHit(first, query).match?.start ?? 0,
+                  sequence: (old?.sequence ?? 0) + 1,
+                }));
+              });
+            }}
+          />
+          <ResourceViews
+            className="knowledge-filter-row"
+            label="笔记范围"
+            views={VIEW_DEFS.map(([id, label]) => ({ id, label }))}
+            value={view}
+            onValueChange={setView}
+          />
+          {query.trim() && (
+            <div className="knowledge-result-count" role="status">
+              {filtered.length} 篇匹配 ·{" "}
+              {collection ? state.collections[collection]?.name : "全部集合"}
+            </div>
+          )}
+          <nav className="knowledge-note-list" aria-label="笔记列表">
+            {query.trim() || view !== "all" ? (
+              filtered.length ? (
+                <NoteResults
+                  notes={filtered}
+                  activeId={note?.id}
+                  query={query}
+                  onSelect={(id) => openResult(id)}
+                  onOpen={(id) => openResult(id, true)}
+                />
+              ) : null
+            ) : filtered.length || state.folders.length || treeEdit ? (
+              <NoteFileTree
+                notes={filtered}
+                activeId={note?.id}
+                folders={state.folders}
+                editing={treeEdit}
+                onSelect={(id) =>
+                  go(async () => {
+                    await select(id);
+                    if (query.trim())
+                      setTarget((old) => ({
+                        id,
+                        offset: noteSearchHit(state.notes[id]!, query).match?.start ?? 0,
+                        sequence: (old?.sequence ?? 0) + 1,
+                      }));
+                  })
+                }
+                onOpen={(id) => go(() => select(id, true))}
+                onMoveFolder={(folder) => setMoveTarget({ folder })}
+                onEditCommit={(value) => void commitTreeEdit(value)}
+                onEditCancel={() => setTreeEdit(null)}
+                onMenu={(event, target) => {
+                  event.preventDefault();
+                  setTreeMenu({ x: event.clientX, y: event.clientY, target });
+                }}
+                onDropMove={(payload, destination) => void dropMove(payload, destination)}
+              />
+            ) : null}
+            {!filtered.length && !treeEdit && (
+              <div className="knowledge-list-empty" role="status">
+                <FileText size={25} aria-hidden="true" />
+                <strong>
+                  {query.trim()
+                    ? `未找到与「${query.trim().slice(0, 30)}」匹配的笔记`
+                    : view === "favorites"
+                      ? "还没有收藏笔记"
+                      : view === "recent"
+                        ? "还没有最近记录"
+                        : collection
+                          ? "这个集合还没有笔记"
+                          : "从一篇笔记开始"}
+                </strong>
+                <p>
+                  {query.trim()
+                    ? "试试其他关键词，或调整搜索范围。"
+                    : view === "favorites"
+                      ? "收藏常用笔记，之后可以在这里快速找到。"
+                      : view === "recent"
+                        ? "打开过的笔记会出现在这里。"
+                        : "写下想法，也可以导入已有的 Markdown。"}
+                </p>
+                <div className="knowledge-list-empty-actions">
+                  {query && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setQuery("");
+                        search.current?.focus();
+                      }}
+                    >
+                      清除搜索
+                    </Button>
+                  )}
+                  {(collection || view !== "all") && (
+                    <Button size="sm" variant="ghost" onClick={clearFilters}>
+                      重置全部筛选
+                    </Button>
+                  )}
+                  {(query.trim() || view === "all") && (
+                    <Button
+                      size="sm"
+                      variant={query.trim() ? "ghost" : "default"}
+                      disabled={busy}
+                      onClick={() =>
+                        void run(async () => {
+                          await select(
+                            await actions.create(collection || null, query.trim()),
+                            true,
+                          );
+                          setQuery("");
+                          setView("all");
+                        })
+                      }
+                    >
+                      {query.trim() ? `以「${query.trim().slice(0, 10)}」新建` : "开始写作"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </nav>
+          <input
+            ref={input}
+            type="file"
+            accept=".md,.markdown,.txt"
+            aria-label="导入 Markdown 笔记"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file)
+                void run(async () => {
+                  await select(await actions.importMarkdown(file), true);
+                });
+            }}
+          />
+          <PanelResizer
+            edge="right"
+            variable="--w-sidebar-override"
+            label="调整侧边栏宽度"
+            width={workbench.state.sidebarWidth}
+            min={SIDEBAR_MIN_WIDTH}
+            max={SIDEBAR_MAX_WIDTH}
+            getPanel={() => sidebarElement.current}
+            onCommit={(width) => workbench.setState((current) => setSidebarWidth(current, width))}
+          />
+        </aside>
+        <main className="knowledge-main">
+          <NoteMove
+            open={moveTarget !== null}
+            target={moveTarget}
+            store={store}
+            flush={flushEditor}
+            onClose={() => setMoveTarget(null)}
+          />
           <KnowledgeDialog
-            open={active && panel === "history"}
-            title="版本历史"
-            onClose={() => setPanel(null)}
+            open={confirmDelete !== null}
+            title="删除笔记"
+            onClose={() => setConfirmDelete(null)}
             error={error}
           >
-            <KnowledgeHistory
-              key={note?.id ?? "all"}
-              state={state}
-              note={note ?? null}
-              token={token}
-              onRestore={(n) =>
-                run(async () => {
-                  await editor.current?.flush();
-                  await store.restore(n);
-                  await select(n.id, true);
-                  setMessage("已恢复为当前笔记，旧版本仍保留在历史中");
-                })
-              }
-              onError={setError}
-            />
+            <p>
+              删除「{state.notes[confirmDelete ?? ""]?.title || "未命名笔记"}
+              」？之后仍可从版本历史恢复。
+            </p>
+            <div className="knowledge-dialog-actions">
+              <Button variant="ghost" onClick={() => setConfirmDelete(null)}>
+                取消
+              </Button>
+              <Button
+                variant="danger"
+                disabled={busy || locked}
+                onClick={() =>
+                  void run(async () => {
+                    const id = confirmDelete;
+                    if (!id) return;
+                    await flushEditor();
+                    await store.deleteNote(id);
+                    await navigate({ to: KNOWLEDGE_PATH, search: {} });
+                    setConfirmDelete(null);
+                  })
+                }
+              >
+                确认删除笔记
+              </Button>
+            </div>
           </KnowledgeDialog>
-          {note ? (
-            <>
-              {locked && (
-                <div role="alert" className="knowledge-alert">
-                  这篇笔记存在同步冲突，双方内容已保留。
-                  <Button variant="ghost" size="sm" onClick={() => setPanel("conflicts")}>
-                    处理冲突
-                  </Button>
-                </div>
-              )}
-              <NoteEditor
-                key={note.id}
-                note={note}
+          <KnowledgeDialog
+            open={folderDelete !== null}
+            title="删除目录"
+            onClose={() => setFolderDelete(null)}
+            error={error}
+          >
+            <p>
+              删除「{folderDelete ?? ""}」？其中的{" "}
+              {
+                notes.filter((item) =>
+                  pathKey(notePath(item)).startsWith(`${pathKey(folderDelete ?? "\u0000")}/`),
+                ).length
+              }{" "}
+              篇笔记将移到库根并改写引用，子目录一并删除。
+            </p>
+            <div className="knowledge-dialog-actions">
+              <Button variant="ghost" onClick={() => setFolderDelete(null)}>
+                取消
+              </Button>
+              <Button
+                variant="danger"
+                disabled={busy}
+                onClick={() => {
+                  const path = folderDelete;
+                  setFolderDelete(null);
+                  if (path) void removeFolder(path);
+                }}
+              >
+                确认删除目录
+              </Button>
+            </div>
+          </KnowledgeDialog>
+          {treeMenu && (
+            <TreeMenu
+              x={treeMenu.x}
+              y={treeMenu.y}
+              items={treeItems(treeMenu.target)}
+              onClose={() => setTreeMenu(null)}
+            />
+          )}
+          {workbench.error && (
+            <p role="status" className="knowledge-alert">
+              {workbench.error}
+            </p>
+          )}
+          {(message || error) && (
+            <div
+              role={error ? "alert" : "status"}
+              className={`knowledge-notice ${error ? "is-error" : ""}`}
+            >
+              <span>{error || message}</span>
+              <IconButton
+                label="关闭提示"
+                size="sm"
+                onClick={() => {
+                  setError("");
+                  setMessage("");
+                }}
+              >
+                <X size={15} />
+              </IconButton>
+            </div>
+          )}
+          <div
+            className="knowledge-content"
+            ref={content}
+            onScroll={(event) => {
+              if (!note) return;
+              scrollPositions.current.set(note.id, event.currentTarget.scrollTop);
+              if (scrollPositions.current.size > 100)
+                scrollPositions.current.delete(scrollPositions.current.keys().next().value!);
+            }}
+          >
+            <KnowledgeDialog
+              open={active && panel === "sync"}
+              title="同步设置"
+              onClose={() => setPanel(null)}
+              error={error}
+            >
+              <KnowledgeSyncPanel
+                state={state}
                 store={store}
-                collections={Object.values(state.collections)}
-                locked={locked}
-                editorRef={editor}
-                sessions={sessions}
-                notes={notes}
-                backlinks={backlinks}
-                onOpenLink={(value) => void run(() => openLink(value))}
-                target={target}
-                focusMode={focusMode}
-                onFocusModeChange={setFocusMode}
-                contextOpen={workbench.state.context === "expanded"}
-                onContextOpenChange={(open) =>
-                  workbench.setState((current) => setContext(current, open ? "expanded" : "hidden"))
-                }
-                contextWidth={workbench.state.contextWidth}
-                onContextWidthChange={(width) =>
-                  workbench.setState((current) => setContextWidth(current, width))
-                }
-                documentActions={
-                  /* 收藏与版本历史也在这条 ⋯ 菜单里；菜单跟随文档工具行，标签栏不再各留按钮。 */
-                  <NoteActionsMenu
-                    actions={[
-                      {
-                        label: "移动笔记",
-                        icon: <Folder size={15} />,
-                        disabled: !note || locked,
-                        run: () => note && setMoveTarget({ noteId: note.id }),
-                      },
-                      {
-                        label: "导出这篇笔记",
-                        icon: <Download size={15} />,
-                        disabled: !note || busy,
-                        run: () => void run(exportNote),
-                      },
-                      {
-                        label: favorite ? "取消收藏" : "收藏当前笔记",
-                        icon: <Star size={15} />,
-                        disabled: !note,
-                        run: () =>
-                          note && workbench.setState((current) => toggleFavorite(current, note.id)),
-                      },
-                      {
-                        label: "版本历史",
-                        icon: <History size={15} />,
-                        run: () => setPanel("history"),
-                      },
-                      {
-                        label: "同步设置",
-                        icon: <Settings2 size={15} />,
-                        separator: true,
-                        run: () => setPanel("sync"),
-                      },
-                      {
-                        label: "立即同步",
-                        icon: <RefreshCw size={15} />,
-                        disabled: syncing || busy,
-                        run: () => void sync(),
-                      },
-                      {
-                        label: "删除",
-                        icon: <Trash2 size={15} />,
-                        separator: true,
-                        danger: true,
-                        disabled: !note || locked,
-                        run: () => note && setConfirmDelete(note.id),
-                      },
-                    ]}
-                  />
+                token={token}
+                auto={auto}
+                setAuto={setAuto}
+                syncing={syncing}
+                onError={setError}
+                flush={flushEditor}
+                onViewConflicts={() => setPanel("conflicts")}
+              />
+            </KnowledgeDialog>
+            <KnowledgeDialog
+              open={active && panel === "conflicts"}
+              title="处理冲突"
+              onClose={() => setPanel(null)}
+              error={error}
+            >
+              <ConflictList
+                conflicts={state.conflicts}
+                busy={busy || syncing}
+                onResolve={(conflict, choice: ConflictChoice, merged) =>
+                  void run(async () => {
+                    if (choice === "merge" && merged) {
+                      // 「合并」是两步组合：正文取合并结果（restore 走历史可回滚），
+                      // 标题与路径必须保留本机（改名/移动要走修改计划），故先 resolve 本机。
+                      await store.resolve(conflict, "local");
+                      await store.restore(merged);
+                      setMessage("已合并双方正文改动；标题与路径保留本机，远端版本已存入历史");
+                    } else {
+                      await store.resolve(conflict, choice === "remote" ? "remote" : "local");
+                      setMessage(
+                        choice === "remote"
+                          ? "已采用远端版本；本机版本已存入历史"
+                          : "已采用本机版本；远端版本已存入历史",
+                      );
+                    }
+                  })
                 }
               />
-              {note.citations.length > 0 && (
-                <section className="knowledge-citations">
-                  <h2>
-                    来源与引用 <span>{note.citations.length}</span>
-                  </h2>
-                  <p>引用快照随笔记同步。回到原文需要当前设备已有对应资料。</p>
-                  {note.citations.map((citation, index) => {
-                    const status = assessExcerpt(citation, services.search);
-                    return (
-                      <details key={`${citation.id}:${index}`}>
-                        <summary>
-                          {citation.title} <span>{status.label}</span>
-                        </summary>
-                        <blockquote>{citation.text}</blockquote>
-                        <a href={status.route}>回到原文 ↗</a>
-                      </details>
-                    );
-                  })}
-                </section>
-              )}
-            </>
-          ) : (
-            <section className="knowledge-empty">
-              {notes.length ? (
-                <>
-                  <h2>没有打开的笔记。</h2>
-                  <p>在左侧列表选择一篇开始，或按 ⌘/Ctrl K 搜索、新建。</p>
-                  <Button variant="ghost" onClick={() => setSwitcher({ query: "" })}>
-                    <Search size={15} />
-                    打开命令面板
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <h2>
-                    把想法写下来，
-                    <br />
-                    让知识慢慢生长。
-                  </h2>
-                  <p>内容保存在本机，连接私有仓库后在设备间同步。</p>
-                  <div className="knowledge-empty-actions">
-                    <Button variant="primary" disabled={busy} onClick={() => void run(create)}>
-                      <Plus size={16} />
-                      写第一篇笔记
-                    </Button>
-                    <Button variant="ghost" onClick={() => input.current?.click()}>
-                      导入 Markdown
+            </KnowledgeDialog>
+            <KnowledgeDialog
+              open={active && panel === "restore"}
+              title="恢复备份"
+              onClose={() => setPanel(null)}
+            >
+              <KnowledgeRestorePanel
+                store={store}
+                flush={async () => {
+                  await editor.current?.flush();
+                }}
+                onClose={() => setPanel(null)}
+                onRestored={() => {
+                  setPanel(null);
+                  setMessage("备份已恢复到本机，未修改同步连接");
+                }}
+              />
+            </KnowledgeDialog>
+            <KnowledgeDialog
+              open={active && panel === "history"}
+              title="版本历史"
+              onClose={() => setPanel(null)}
+              error={error}
+            >
+              <KnowledgeHistory
+                key={note?.id ?? "all"}
+                state={state}
+                note={note ?? null}
+                token={token}
+                onRestore={(n) =>
+                  run(async () => {
+                    await editor.current?.flush();
+                    await store.restore(n);
+                    await select(n.id, true);
+                    setMessage("已恢复为当前笔记，旧版本仍保留在历史中");
+                  })
+                }
+                onError={setError}
+              />
+            </KnowledgeDialog>
+            {note ? (
+              <>
+                {locked && (
+                  <div role="alert" className="knowledge-alert">
+                    这篇笔记存在同步冲突，双方内容已保留。
+                    <Button variant="ghost" size="sm" onClick={() => setPanel("conflicts")}>
+                      处理冲突
                     </Button>
                   </div>
-                </>
-              )}
-            </section>
-          )}
-        </div>
-        <nav className="knowledge-mobile-nav" aria-label="笔记视图">
-          {VIEW_DEFS.map(([id, label]) => (
-            <button type="button" key={id} aria-pressed={view === id} onClick={() => setView(id)}>
-              {label}
-            </button>
-          ))}
-          <IconButton
-            label="新建笔记"
-            className="knowledge-fab"
-            disabled={busy}
-            onClick={() => void run(create)}
-          >
-            <Plus size={20} />
-          </IconButton>
-        </nav>
-      </main>
+                )}
+                <NoteEditor
+                  key={note.id}
+                  note={note}
+                  store={store}
+                  collections={Object.values(state.collections)}
+                  locked={locked}
+                  editorRef={editor}
+                  sessions={sessions}
+                  notes={notes}
+                  backlinks={backlinks}
+                  onOpenLink={(value) => void run(() => openLink(value))}
+                  target={target}
+                  focusMode={focusMode}
+                  contextOpen={workbench.state.context === "expanded"}
+                  onContextOpenChange={(open) =>
+                    workbench.setState((current) =>
+                      setContext(current, open ? "expanded" : "hidden"),
+                    )
+                  }
+                  contextWidth={workbench.state.contextWidth}
+                  onContextWidthChange={(width) =>
+                    workbench.setState((current) => setContextWidth(current, width))
+                  }
+                  toolbarSlot={toolbarSlot}
+                />
+                {note.citations.length > 0 && (
+                  <section className="knowledge-citations">
+                    <h2>
+                      来源与引用 <span>{note.citations.length}</span>
+                    </h2>
+                    <p>引用快照随笔记同步。回到原文需要当前设备已有对应资料。</p>
+                    {note.citations.map((citation, index) => {
+                      const status = assessExcerpt(citation, services.search);
+                      return (
+                        <details key={`${citation.id}:${index}`}>
+                          <summary>
+                            {citation.title} <span>{status.label}</span>
+                          </summary>
+                          <blockquote>{citation.text}</blockquote>
+                          <a href={status.route}>回到原文 ↗</a>
+                        </details>
+                      );
+                    })}
+                  </section>
+                )}
+              </>
+            ) : (
+              <section className="knowledge-empty">
+                {notes.length ? (
+                  <>
+                    <h2>没有打开的笔记。</h2>
+                    <p>在左侧列表选择一篇开始，或按 ⌘/Ctrl K 搜索、新建。</p>
+                    <Button variant="ghost" onClick={() => setSwitcher({ query: "" })}>
+                      <Search size={15} />
+                      打开命令面板
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <h2>
+                      把想法写下来，
+                      <br />
+                      让知识慢慢生长。
+                    </h2>
+                    <p>内容保存在本机，连接私有仓库后在设备间同步。</p>
+                    <div className="knowledge-empty-actions">
+                      <Button variant="primary" disabled={busy} onClick={() => void run(create)}>
+                        <Plus size={16} />
+                        写第一篇笔记
+                      </Button>
+                      <Button variant="ghost" onClick={() => input.current?.click()}>
+                        导入 Markdown
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </section>
+            )}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

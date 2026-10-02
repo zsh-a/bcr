@@ -297,6 +297,7 @@ try {
   await a.page.goto(`${origin}/knowledge?note=__proto__`);
   await a.page.getByRole("button", { name: "新建笔记", exact: true }).click();
   await a.page.getByLabel("笔记标题", { exact: true }).fill("AI Native 知识系统");
+  await a.page.getByRole("button", { name: "编辑笔记属性", exact: true }).click();
   // 标签入口是安静的「+ 标签」，点击后才出现输入框（提示在 placeholder 里）。
   await a.page.getByRole("button", { name: "添加标签", exact: true }).click();
   await a.page.getByLabel("笔记标签", { exact: true }).pressSequentially("local, markdown");
@@ -305,6 +306,7 @@ try {
   await body(a.page, "# 独立手写知识\n\n第一段\n\n第三段\n");
   await a.page.reload();
   await saved(a.page);
+  await a.page.getByRole("button", { name: "编辑笔记属性", exact: true }).click();
   // 标签在新 UI 里是 chip（移除标签 X 按钮），不再回填输入框文本。
   for (const tag of ["local", "markdown"])
     await a.page.getByRole("button", { name: `移除标签 ${tag}`, exact: true }).waitFor();
@@ -441,7 +443,12 @@ try {
   await mkdir("scripts/shots", { recursive: true });
   await a.page.screenshot({ path: "scripts/shots/knowledge-desktop.png", fullPage: true });
   await a.page.setViewportSize({ width: 390, height: 844 });
-  await a.page.getByRole("button", { name: "打开笔记列表", exact: true }).click();
+  const contextDrawer = a.page.getByRole("dialog", { name: "笔记信息", exact: true });
+  if (await contextDrawer.isVisible()) {
+    await a.page.keyboard.press("Escape");
+    await contextDrawer.waitFor({ state: "hidden" });
+  }
+  await a.page.getByRole("button", { name: "切换笔记列表", exact: true }).click();
   await a.page.getByRole("button", { name: "新建笔记", exact: true }).waitFor();
   await a.page.getByRole("button", { name: "收起列表", exact: true }).click();
   await a.page.screenshot({ path: "scripts/shots/knowledge-mobile.png", fullPage: true });

@@ -1,3 +1,4 @@
+import { openBookMenu } from "./lib/reader-library.mjs";
 import assert from "node:assert/strict";
 import { chromium, devices } from "playwright";
 import { trackModuleRequests } from "./lib/modules.mjs";
@@ -218,12 +219,13 @@ try {
     JSON.stringify(sizes),
   );
   await mobile.getByRole("button", { name: "打开书库", exact: true }).click();
-  await mobile.getByRole("button", { name: "移除 touch-delete", exact: true }).click();
-  await mobile.getByRole("button", { name: "确认", exact: true }).click();
-  assert.equal(
-    await mobile.getByRole("button", { name: "移除 touch-delete", exact: true }).count(),
-    0,
-  );
+  await (
+    await openBookMenu(mobile, "touch-delete", { touch: true })
+  )
+    .getByRole("menuitem", { name: "移除读物…", exact: true })
+    .click();
+  await mobile.getByRole("button", { name: "确认移除读物", exact: true }).click();
+  assert.equal(await mobile.getByRole("button", { name: "touch-delete", exact: true }).count(), 0);
   assert.deepEqual(errors, []);
   console.log(
     "Reader audit PASSED: PWA browser history, keyboard scrolling, layered Escape, search summaries, deferred/cross-section selections, note/bookmark editing, missing PDF recovery, global file drop and iPhone 13 touch targets/delete",

@@ -32,32 +32,6 @@
 
 /* ---------- 视图切换与集合筛选 ---------- */
 
-/* 搜索行：筛选输入吃满余宽，列表/文件夹切换靠右；筛选行：范围细分段 + 集合选择。 */
-.knowledge-search-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.knowledge-search-row .knowledge-search {
-  flex: 1;
-  min-width: 0;
-}
-
-.knowledge-filter-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.knowledge-search-row .knowledge-collection-row {
-  flex: 0 0 auto;
-}
-
-.knowledge-search-row .knowledge-select {
-  min-width: 7em;
-}
-
 .knowledge-chip-group {
   display: flex;
   gap: var(--space-1);
@@ -88,47 +62,7 @@
   color: var(--color-text);
 }
 
-.knowledge-sidebar-bottom summary {
-  min-height: var(--h-control);
-  padding: var(--space-2) var(--space-1);
-  cursor: pointer;
-  font-size: var(--text-sm);
-  color: var(--color-muted);
-}
-
-.knowledge-sidebar-bottom button {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  min-height: var(--h-control-lg);
-  padding: 0 var(--space-2);
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  text-align: left;
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-.knowledge-sidebar-bottom button:hover {
-  color: var(--color-accent);
-}
-
-.knowledge-add-collection {
-  padding: var(--space-1) 0;
-}
-
 /* ---------- 标签页（显式打开，文本 tab，安静底色） ---------- */
-
-.knowledge-tabs-bar {
-  display: flex;
-  flex-shrink: 0;
-  min-width: 0;
-  min-height: calc(var(--h-toolbar) - var(--space-1));
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg);
-}
 
 .knowledge-tabs {
   display: flex;
@@ -136,32 +70,6 @@
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: thin;
-}
-
-/* 无标签时这条栏只剩空占位：收掉空条与分隔线，栏高退回普通控件高度。
-   栏本身保留——侧栏入口、同步状态与笔记操作都在这里，隐藏会让它们失去入口。 */
-.knowledge-tabs-bar[data-empty="true"] {
-  min-height: var(--h-control);
-}
-
-.knowledge-tabs-bar[data-empty="true"] .knowledge-tabs {
-  display: none;
-}
-
-.knowledge-tabs-bar[data-empty="true"] .knowledge-tabs-actions {
-  border-left: 0;
-}
-
-/* tab 条右端：只剩保存/同步状态簇，一行安静提示，不随标签滚动。 */
-.knowledge-tabs-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  flex-shrink: 0;
-  margin-left: auto;
-  padding: 0 var(--space-3);
-  border-left: 1px solid var(--color-border);
-  color: var(--color-faint);
 }
 
 /* 文本 tab：无卡片描边；活动 tab 以底部 accent hairline 标识。 */
@@ -347,14 +255,6 @@
   padding: var(--space-1) var(--space-2) var(--space-2);
 }
 
-/* 与文档工具行 .knowledge-mode-controls 重复的视图开关：外层可见时不重复出现。
-   窄容器下外层已收起，这里保留同一组开关作为唯一入口。 */
-@container kb-main (width >= 640px) {
-  .knowledge-tools-modes {
-    display: none;
-  }
-}
-
 /* ---------- 上下文栏 ---------- */
 
 /* 上下文栏是具名容器（kb-rail）：小节计数与大纲缩进随容器而非视口降级。 */
@@ -478,37 +378,8 @@
   margin-top: var(--space-4);
 }
 
-/* 窄屏折叠段：上下文直接挂在标题下，去掉常驻栏外观。 */
-.knowledge-context-inline {
-  margin: 0 0 var(--space-5);
-  border-top: 1px solid var(--color-border);
-  padding-top: var(--space-2);
-}
-
-.knowledge-context-inline > summary {
-  display: flex;
-  align-items: center;
-  min-height: var(--h-control);
-  cursor: pointer;
-  color: var(--color-muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.knowledge-context-inline .knowledge-context {
-  position: static;
-  flex: none;
-  width: 100%;
-  max-height: none;
-  overflow: visible;
-  padding: var(--space-2) 0 var(--space-3);
-  border-left: 0;
-}
-
 /* 右栏宽度手柄：贴在右栏左缘（--context-width 链条见 .knowledge-document）。
-   折叠态（data-context="hidden"）连手柄一起收起；窄屏标题下折叠段不受形态影响。 */
+   折叠态（data-context="hidden"）连手柄一起收起；窄屏由模态抽屉承载。 */
 .knowledge-document > .knowledge-panel-resize {
   inset-inline-end: calc(var(--context-width) - var(--space-1));
 }
@@ -516,11 +387,6 @@
 .knowledge-app[data-context="hidden"] .knowledge-document > .knowledge-context {
   display: none;
   opacity: 0;
-}
-
-/* 上下文栏开关只在右栏存在的宽屏出现（可见性在响应式段随 bp-lg 放开）。 */
-.knowledge-context-collapse {
-  display: none;
 }
 
 /* ---------- 预览中的表格与任务列表 ---------- */
@@ -709,23 +575,21 @@
 
 /* ---------- 响应式 ---------- */
 
-/* 上下文栏与标题下折叠段的形态切换：120ms 淡入淡出，display swap 走 allow-discrete，
+/* 上下文栏的形态切换：120ms 淡入淡出，display swap 走 allow-discrete，
  * 跨 bp-lg 不再是瞬时跳变。 */
-.knowledge-document > .knowledge-context,
-.knowledge-context-inline {
+.knowledge-document > .knowledge-context {
   transition:
     opacity var(--duration-fast) var(--ease-standard),
     display var(--duration-fast) allow-discrete;
 }
 
 @starting-style {
-  .knowledge-document > .knowledge-context,
-  .knowledge-context-inline {
+  .knowledge-document > .knowledge-context {
     opacity: 0;
   }
 }
 
-/* 上下文栏 ≥--bp-lg 常驻右侧；窄屏改用标题下的折叠段（DOM 顺序即视觉顺序）。 */
+/* 上下文栏 ≥--bp-lg 可在右侧展开；窄屏通过共享 Dialog 打开。 */
 @media (width < theme(--bp-lg)) {
   .knowledge-document > .knowledge-context {
     display: none;
@@ -734,15 +598,6 @@
 }
 
 @media (width >= theme(--bp-lg)) {
-  .knowledge-context-inline {
-    display: none;
-    opacity: 0;
-  }
-
-  .knowledge-context-collapse {
-    display: inline-flex;
-  }
-
   .knowledge-app[data-context="expanded"] .knowledge-document > .knowledge-panel-resize {
     display: block;
   }
@@ -808,29 +663,6 @@
   }
 }
 
-/* 侧栏控件弱化容器边线，标题与选中项承担层级。 */
-.knowledge-filter-row .knowledge-segmented {
-  border-color: transparent;
-  background: var(--color-raised);
-  padding: var(--space-1);
-  gap: var(--space-1);
-}
-
-.knowledge-filter-row .knowledge-segmented button {
-  border: 0;
-  border-radius: var(--radius-sm);
-  min-height: var(--space-6);
-}
-
-.knowledge-filter-row .knowledge-segmented button[aria-pressed="true"] {
-  background: var(--color-surface);
-}
-
-.knowledge-tabs-bar > .knowledge-menu {
-  flex-shrink: 0;
-  align-self: center;
-}
-
 .knowledge-tag-chip {
   display: inline-flex;
   align-items: center;
@@ -844,14 +676,6 @@
 
 .knowledge-tag-chip:hover svg {
   opacity: 1;
-}
-
-/* Embedded navigation has a real slot alongside note tabs. */
-.knowledge-tabs-bar:has(> .ui-workspace-trigger) {
-  min-height: var(--h-topbar);
-  height: var(--h-topbar);
-  align-items: center;
-  gap: var(--space-1);
 }
 
 .knowledge-app-identity {

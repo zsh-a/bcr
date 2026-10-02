@@ -176,7 +176,7 @@ await page
 const openLibrary = page.getByRole("button", { name: "打开书库", exact: true });
 if (await openLibrary.isVisible()) await openLibrary.click();
 await page
-  .locator(".reader-book-card", { hasText: /field[- ]notes/iu })
+  .locator(".reader-book-row", { hasText: /field[- ]notes/iu })
   .first()
   .waitFor({ timeout: 20_000 });
 

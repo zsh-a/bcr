@@ -131,7 +131,8 @@ try {
       );
     });
     assert(Math.abs(loadDelta) < 3, `late image load drift: ${loadDelta}px`);
-    await page.getByRole("button", { name: "切换漫画模式", exact: true }).click();
+    await page.getByRole("button", { name: "更多阅读操作", exact: true }).click();
+    await page.getByRole("menuitemcheckbox", { name: "漫画模式", exact: true }).click();
     await page.locator(".reader-comic-viewport img").waitFor();
     assert.equal(await page.locator(".reader-comic-viewport img").count(), 1);
     await page.getByLabel("漫画阅读方向", { exact: true }).selectOption("rtl");

@@ -123,6 +123,11 @@ export function useReaderFullscreen(
       setIsFullscreen(document.fullscreenElement === targetRef.current);
     };
     const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        document.querySelector("dialog[open], [popover]:popover-open") !== null
+      )
+        return;
       if (event.key !== "Escape" || document.fullscreenElement !== targetRef.current) return;
       event.preventDefault();
       if (typeof document.exitFullscreen === "function") {

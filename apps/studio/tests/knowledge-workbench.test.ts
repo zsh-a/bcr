@@ -164,7 +164,7 @@ describe("personal workspace", () => {
       favorites: ["b"],
       sidebar: "expanded",
       sidebarWidth: null,
-      context: "expanded",
+      context: "hidden",
       contextWidth: null,
     });
     // 侧栏形态：三种合法值原样回读，缺失/非法一律回落到展开。
@@ -203,7 +203,7 @@ describe("personal workspace", () => {
       "hidden",
     );
     expect(decodeWorkbench(JSON.stringify({ version: 1, context: "bogus" })).context).toBe(
-      "expanded",
+      "hidden",
     );
     expect(decodeWorkbench(JSON.stringify({ version: 1, contextWidth: 300 })).contextWidth).toBe(
       300,
@@ -217,8 +217,10 @@ describe("personal workspace", () => {
     expect(decodeWorkbench(JSON.stringify({ version: 1, contextWidth: true })).contextWidth).toBe(
       null,
     );
-    expect(setContext(expanded, "expanded")).toBe(expanded);
-    expect(setContext(expanded, "hidden").context).toBe("hidden");
+    const withContext = setContext(expanded, "expanded");
+    expect(setContext(withContext, "expanded")).toBe(withContext);
+    expect(setContext(expanded, "hidden")).toBe(expanded);
+    expect(setContext(expanded, "expanded").context).toBe("expanded");
     expect(setContextWidth(expanded, null)).toBe(expanded);
     expect(setContextWidth(expanded, 300.7).contextWidth).toBe(301);
     expect(setContextWidth(expanded, 9000).contextWidth).toBe(480);

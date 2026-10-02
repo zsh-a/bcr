@@ -1,14 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { IconButton, ResourceViews } from "@bcr/react";
+import { X } from "lucide-react";
 import type { KnowledgeNote } from "./model";
 import { resolveNoteLink, type NoteAnalysis } from "./markdownAnalysis";
 
-/**
- * 上下文栏：大纲 / 反向链接 / 出站链接。
- * 小节标题是 11px 大写等宽眉标（.ui-section-label 语言）且可折叠（默认展开）；
- * 计数为 0 时收敛成一行静默文案，说明文字退到 tooltip/aria-description；
- * 大纲带 h1/h2/h3 层级缩进，长条目单行截断（全文在 title 提示），滚动时高亮当前标题。桌面为右侧常驻栏，
- * 小屏由 NoteEditor 包进标题下的折叠段。
- */
+/** One optional context panel with outline, links, and editable properties. */
 export function NoteContext({
   note,
   notes,
@@ -17,6 +13,10 @@ export function NoteContext({
   onReveal,
   onOpen,
   className = "",
+  view,
+  onViewChange,
+  properties,
+  onClose,
 }: {
   note: KnowledgeNote;
   notes: readonly KnowledgeNote[];
@@ -24,8 +24,12 @@ export function NoteContext({
   backlinks: readonly KnowledgeNote[];
   onReveal: (offset: number) => void;
   onOpen: (target: string) => void;
-  /** 嵌入折叠段时传入附加类名（清除常驻栏样式）。 */
+  /** Additional styles for a host panel. */
   className?: string;
+  view: "outline" | "links" | "properties";
+  onViewChange: (view: "outline" | "links" | "properties") => void;
+  properties: ReactNode;
+  onClose: () => void;
 }) {
   const host = useRef<HTMLElement>(null);
   const [current, setCurrent] = useState<number | null>(null);
@@ -85,75 +89,107 @@ export function NoteContext({
 
   return (
     <aside ref={host} className={`knowledge-context ${className}`.trim()} aria-label="笔记上下文">
-      <details className="knowledge-context-section" open>
-        <summary className="ui-section-label knowledge-context-heading">
-          大纲 <span>{headings.length}</span>
-        </summary>
-        {headings.length ? (
-          headings.map((heading) => (
-            <button
-              type="button"
-              key={heading.from}
-              data-depth={heading.depth}
-              title={heading.text}
-              className={current === heading.from ? "is-current" : undefined}
-              aria-current={current === heading.from ? "location" : undefined}
-              onClick={() => onReveal(heading.from)}
-            >
-              {heading.text}
-            </button>
-          ))
-        ) : (
-          <p className="knowledge-context-empty" title="添加 Markdown 标题，整理文章结构。">
-            无大纲标题
-          </p>
+      <div className="knowledge-context-top">
+        <ResourceViews
+          label="笔记信息视图"
+          views={[
+            { id: "outline", label: "大纲", count: headings.length },
+            { id: "links", label: "链接", count: backlinks.length + analysis.links.length },
+            { id: "properties", label: "属性" },
+          ]}
+          value={view}
+          onValueChange={onViewChange}
+        />
+        <IconButton
+          label="关闭笔记信息"
+          className="knowledge-context-close"
+          size="sm"
+          onClick={onClose}
+        >
+          <X size={15} />
+        </IconButton>
+      </div>
+      <div
+        className="knowledge-context-panel"
+        aria-label={view === "outline" ? "笔记大纲" : view === "links" ? "笔记链接" : "笔记属性"}
+      >
+        {view === "outline" && (
+          <section className="knowledge-context-section">
+            {headings.length ? (
+              headings.map((heading) => (
+                <button
+                  type="button"
+                  key={heading.from}
+                  data-depth={heading.depth}
+                  title={heading.text}
+                  className={current === heading.from ? "is-current" : undefined}
+                  aria-current={current === heading.from ? "location" : undefined}
+                  onClick={() => onReveal(heading.from)}
+                >
+                  {heading.text}
+                </button>
+              ))
+            ) : (
+              <p className="knowledge-context-empty" title="添加 Markdown 标题，整理文章结构。">
+                无大纲标题
+              </p>
+            )}
+          </section>
         )}
-      </details>
-      {backlinks.length ? (
-        <details className="knowledge-context-section" open>
-          <summary className="ui-section-label knowledge-context-heading">
-            反向链接 <span>{backlinks.length}</span>
-          </summary>
-          {backlinks.map((source) => (
-            <button
-              type="button"
-              key={source.id}
-              title={source.title || "未命名笔记"}
-              onClick={() => onOpen(source.id)}
-            >
-              {source.title || "未命名笔记"}
-            </button>
-          ))}
-        </details>
-      ) : null}
-      {analysis.links.length ? (
-        <details className="knowledge-context-section" open>
-          <summary className="ui-section-label knowledge-context-heading">
-            出站链接 <span>{analysis.links.length}</span>
-          </summary>
-          {analysis.links.slice(0, 100).map((link) => {
-            const matches = resolveNoteLink(notes, link.target, note.id);
-            return (
-              <button
-                type="button"
-                key={`${link.from}:${link.to}`}
-                title={link.label}
-                onClick={() => onOpen(link.target)}
+        {view === "links" && (
+          <>
+            {backlinks.length ? (
+              <details className="knowledge-context-section" open>
+                <summary className="ui-section-label knowledge-context-heading">
+                  反向链接 <span>{backlinks.length}</span>
+                </summary>
+                {backlinks.map((source) => (
+                  <button
+                    type="button"
+                    key={source.id}
+                    title={source.title || "未命名笔记"}
+                    onClick={() => onOpen(source.id)}
+                  >
+                    {source.title || "未命名笔记"}
+                  </button>
+                ))}
+              </details>
+            ) : null}
+            {analysis.links.length ? (
+              <details className="knowledge-context-section" open>
+                <summary className="ui-section-label knowledge-context-heading">
+                  出站链接 <span>{analysis.links.length}</span>
+                </summary>
+                {analysis.links.slice(0, 100).map((link) => {
+                  const matches = resolveNoteLink(notes, link.target, note.id);
+                  return (
+                    <button
+                      type="button"
+                      key={`${link.from}:${link.to}`}
+                      title={link.label}
+                      onClick={() => onOpen(link.target)}
+                    >
+                      {link.label}
+                      <small>
+                        {matches.length > 1 ? "同名 · 请选择" : matches.length ? "" : "未创建"}
+                      </small>
+                    </button>
+                  );
+                })}
+              </details>
+            ) : null}
+            {!backlinks.length && !analysis.links.length && (
+              <p
+                className="knowledge-context-empty"
+                title="输入 [[ 关联笔记，或 ⌘/Ctrl+点击链接打开。"
               >
-                {link.label}
-                <small>
-                  {matches.length > 1 ? "同名 · 请选择" : matches.length ? "" : "未创建"}
-                </small>
-              </button>
-            );
-          })}
-        </details>
-      ) : null}
-      {!backlinks.length && !analysis.links.length && (
-        <p className="knowledge-context-empty" title="输入 [[ 关联笔记，或 ⌘/Ctrl+点击链接打开。">
-          输入 [[，连接相关笔记
-        </p>
-      )}
+                输入 [[，连接相关笔记
+              </p>
+            )}
+          </>
+        )}
+        {view === "properties" && properties}
+      </div>
     </aside>
   );
 }

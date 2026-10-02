@@ -2,7 +2,7 @@ import { validId } from "./model";
 
 /** 侧栏形态：展开（完整面板）/ 图标栏（56px）/ 全隐藏。 */
 export type SidebarForm = "expanded" | "rail" | "hidden";
-/** 上下文栏形态：展开（右侧常驻栏）/ 全隐藏；窄屏的标题下折叠段不受它影响。 */
+/** 笔记信息面板：宽屏在右侧展开，窄屏通过模态抽屉展开。 */
 export type ContextForm = "expanded" | "hidden";
 export interface WorkbenchState {
   tabs: string[];
@@ -30,7 +30,7 @@ export const emptyWorkbench = (): WorkbenchState => ({
   favorites: [],
   sidebar: "expanded",
   sidebarWidth: null,
-  context: "expanded",
+  context: "hidden",
   contextWidth: null,
 });
 export const WORKBENCH_KEY = "bcr/knowledge-workbench/v1";
@@ -53,7 +53,7 @@ export function decodeWorkbench(raw: string | null): WorkbenchState {
       sidebar: form === "rail" || form === "hidden" ? form : "expanded",
       sidebarWidth:
         typeof width === "number" && Number.isFinite(width) ? clampSidebarWidth(width) : null,
-      context: contextForm === "hidden" ? "hidden" : "expanded",
+      context: contextForm === "expanded" ? "expanded" : "hidden",
       contextWidth:
         typeof contextWidth === "number" && Number.isFinite(contextWidth)
           ? clampContextWidth(contextWidth)

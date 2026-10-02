@@ -77,7 +77,9 @@
   --h-toolbar: 48px;
   --h-control: 36px;
   --h-control-lg: 44px;
-  /* 桌面菜单行高；触屏媒体下回到 --h-control-lg。 */
+  /* Touch and workspace navigation targets stay reachable even in dense apps. */
+  --h-hit-target: 44px;
+  /* 桌面菜单行高；触屏媒体下使用独立的 --h-hit-target。 */
   --h-menu-row: 32px;
   /* 浮层高度预算：dvh 计量并扣安全区，弹层/对话框的最大高度一律取它。 */
   --h-overlay-max: calc(

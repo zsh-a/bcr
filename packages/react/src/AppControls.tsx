@@ -1,4 +1,4 @@
-import { createContext, useContext, useId, useState, type ReactNode } from "react";
+import { createContext, useContext, useId, useRef, useState, type ReactNode } from "react";
 import { IconButton } from "./ui";
 
 interface WorkspaceNavigation {
@@ -81,24 +81,46 @@ export function ActionMenu({
   children,
   className = "",
   icon,
+  variant = "panel",
 }: {
   label: string;
   children: ReactNode;
   className?: string;
   icon?: ReactNode;
+  variant?: "panel" | "menu";
 }) {
   const id = useId();
   const anchor = `--app-menu-${id.replaceAll(/[^a-zA-Z0-9]/g, "")}`;
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menu = variant === "menu";
+  const controls = () =>
+    [
+      ...(menuRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? []),
+    ].filter((element) => element.checkVisibility());
+  const close = () => {
+    if (menuRef.current?.matches(":popover-open")) menuRef.current.hidePopover();
+    triggerRef.current?.focus({ preventScroll: true });
+  };
   return (
     <span className={`ui-action-menu ${className}`}>
       <IconButton
+        ref={triggerRef}
         label={label}
         title={label}
         popoverTarget={id}
-        aria-haspopup="dialog"
+        aria-haspopup={menu ? "menu" : "dialog"}
         aria-expanded={open}
         style={{ anchorName: anchor }}
+        onKeyDown={(event) => {
+          if (!menu || !["ArrowDown", "ArrowUp"].includes(event.key)) return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (!menuRef.current?.matches(":popover-open")) menuRef.current?.showPopover();
+          const items = controls();
+          (event.key === "ArrowUp" ? items.at(-1) : items[0])?.focus({ preventScroll: true });
+        }}
       >
         {icon ?? (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -109,18 +131,53 @@ export function ActionMenu({
         )}
       </IconButton>
       <div
+        ref={menuRef}
         id={id}
         popover="auto"
-        role="dialog"
+        role={menu ? "menu" : "dialog"}
         aria-label={label}
-        className="ui-popover ui-action-menu-panel"
+        className={`ui-popover ui-action-menu-panel ${menu ? "ui-menu ui-action-menu-commands" : ""}`}
         style={{ positionAnchor: anchor }}
         onToggle={(event) => {
-          if (event.target === event.currentTarget) setOpen(event.newState === "open");
+          if (event.target !== event.currentTarget) return;
+          setOpen(event.newState === "open");
+          if (
+            menu &&
+            event.newState === "open" &&
+            !event.currentTarget.contains(document.activeElement)
+          )
+            controls()[0]?.focus({ preventScroll: true });
+        }}
+        onKeyDown={(event) => {
+          if (!menu) return;
+          event.stopPropagation();
+          if (event.key === "Escape" || event.key === "Tab") {
+            event.preventDefault();
+            close();
+            return;
+          }
+          const items = controls();
+          const index = items.indexOf(document.activeElement as HTMLButtonElement);
+          const next =
+            event.key === "ArrowDown"
+              ? (index + 1) % items.length
+              : event.key === "ArrowUp"
+                ? (index - 1 + items.length) % items.length
+                : event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? items.length - 1
+                    : null;
+          if (next !== null) {
+            event.preventDefault();
+            items[next]?.focus({ preventScroll: true });
+          }
         }}
         onClick={(event) => {
-          if (event.target instanceof Element && event.target.closest("button"))
-            event.currentTarget.hidePopover();
+          if (event.target instanceof Element && event.target.closest("button")) {
+            if (menu) close();
+            else event.currentTarget.hidePopover();
+          }
         }}
       >
         {children}

@@ -261,7 +261,11 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || document.querySelector("dialog[open]") !== null) return;
+      if (
+        event.defaultPrevented ||
+        document.querySelector("dialog[open], [popover]:popover-open") !== null
+      )
+        return;
       if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === "f") {
         event.preventDefault();
         if (getReaderState().searchScope !== "library") reader.setSearchScope("library");

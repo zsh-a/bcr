@@ -79,34 +79,9 @@ export function ReaderToolbar(props: {
     );
   };
   return (
-    <div className="reader-toolbar" data-demo={props.book.id === "demo-reading-space"}>
+    <div className="reader-toolbar" data-demo={props.book.tags.includes("DEMO")}>
       <div className="reader-toolbar-title">
         <WorkspaceTrigger />
-        {props.book.source.format !== "pdf" && (
-          <button
-            type="button"
-            aria-label="切换漫画模式"
-            className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-comic-toggle"
-            aria-pressed={
-              props.settings.books?.[props.book.id]?.comic ??
-              (props.book.source.format === "cbz" ||
-                props.book.rendition?.layout === "pre-paginated")
-            }
-            onClick={() => {
-              window.dispatchEvent(new Event("bcr-reader-capture-progress"));
-              const books = props.settings.books ?? {};
-              const current =
-                books[props.book.id]?.comic ??
-                (props.book.source.format === "cbz" ||
-                  props.book.rendition?.layout === "pre-paginated");
-              reader.setSettings({
-                books: { ...books, [props.book.id]: { ...books[props.book.id], comic: !current } },
-              });
-            }}
-          >
-            <Columns2 className="reader-icon" />
-          </button>
-        )}
         <button
           type="button"
           className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-sidebar-toggle"
@@ -163,14 +138,13 @@ export function ReaderToolbar(props: {
         </button>
         <button
           type="button"
-          className={`reader-bookmark-toggle ${bookmarked ? "is-active" : ""}`}
+          className={`ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg reader-bookmark-toggle ${bookmarked ? "is-active" : ""}`}
           onClick={() => reader.toggleBookmark()}
           aria-pressed={bookmarked}
           aria-label={bookmarked ? "移除当前位置书签" : "标记当前位置"}
           title={bookmarked ? "移除当前位置书签" : "标记当前位置"}
         >
-          <Bookmark className="reader-icon" />
-          <span>{bookmarked ? "已标记" : "书签"}</span>
+          <Bookmark className="reader-icon" fill={bookmarked ? "currentColor" : "none"} />
         </button>
         <button
           type="button"
@@ -203,9 +177,6 @@ export function ReaderToolbar(props: {
           ) : (
             <Maximize2 className="reader-icon" />
           )}
-          <span className="reader-control-label">
-            {props.fullscreen.isFullscreen ? "退出全屏" : "全屏"}
-          </span>
         </button>
       </div>
       <div className="reader-mobile-toolbar-actions" aria-label="常用阅读操作">
