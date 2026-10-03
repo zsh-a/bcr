@@ -62,17 +62,6 @@ class AccountStatisticsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "calendar"):
             account_window(plan, batches, "selected", window)
 
-    def test_legacy_transfer_entry_points_retain_omission_diagnostics(self):
-        plan = plan_fixture()
-        window = plan["windows"][1]
-        batches = batch_fixture(plan, window)
-        compact, daily = account_window(plan, batches, "selected", window)
-        legacy_compact, legacy_daily, omitted = transfer_evaluation.account_window(plan, batches, "selected", window)
-        self.assertEqual((legacy_compact, legacy_daily), (compact, daily))
-        self.assertEqual(set(omitted), set(plan["symbols"]))
-        for value in omitted.values():
-            self.assertAlmostEqual(value, .002)
-
     def test_each_evaluator_fingerprint_binds_shared_statistics_source(self):
         modules = (transfer_evaluation, mechanism_evaluation, search_evaluation)
         with patch("artifacts.sha", return_value="original"):

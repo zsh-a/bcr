@@ -6,14 +6,14 @@ import statistics
 
 from artifacts import (audit_window, ensure_writable, evaluation_identity, load_evidence, read, resolve_selection_source,
                        sha, source_fingerprint, write_once)
-from account_statistics import account_window as summarize_window
-from account_statistics import circular_indices, paired_bootstrap, require
+from account_statistics import account_window, paired_bootstrap, require
 from evaluation import account_series, current_returns, evaluation_contract, fixed_qualification
 from protocol import DAY, development_window, is_development, timestamp
 
 VERSION = "trend-transfer-evaluation-1"
 INHERITED_VERSION = "trend-transfer-evaluation-2"
 SERIES = ("selectedBase", "baselineBase", "selectedStress", "baselineStress")
+PAIRS = {"base": ("selectedBase", "baselineBase"), "stress": ("selectedStress", "baselineStress")}
 SOURCES = ("transfer_evaluation.py", "account_statistics.py", "evaluation.py",
            "artifacts.py", "daily.py", "protocol.py", "warmup.py")
 
@@ -56,15 +56,8 @@ def settings_for(plan):
     return settings
 
 
-def pooled_bootstrap(windows, samples, block, seed):
-    """Compatibility adapter for the transfer evaluator's four named series."""
-    pairs = {"base": ("selectedBase", "baselineBase"), "stress": ("selectedStress", "baselineStress")}
-    return paired_bootstrap(windows, SERIES, pairs, samples, block, seed)
-
-
-def account_window(plan, batches, candidate, window):
-    """Transfer diagnostics retain the original fixed-sleeve omission analysis."""
-    compact, daily = summarize_window(plan, batches, candidate, window)
+def leave_one_symbol_out(plan, batches, candidate):
+    """Describe each original fixed-sleeve omission without reallocating capital."""
     selected, portfolio, initial, curves = account_series(plan, batches, candidate)
     # Remove a fixed sleeve with its original allocation. Do not redistribute
     # capital, re-execute trades, or rank/select the remaining coins.
@@ -77,7 +70,7 @@ def account_window(plan, batches, candidate, window):
             values = current_returns(curve, initial - sleeve_initial)
             omitted[symbol] = (statistics.mean(values)
                                if all(value is not None and math.isfinite(value) for value in values) else None)
-    return compact, daily, omitted
+    return omitted
 
 
 def acceptance(settings, windows, pooled, intervals, development_qualified):
@@ -162,7 +155,8 @@ def evaluate(plan, selection, batches_by_window, development_summary=None, *, se
                 f"missing or duplicated selected/baseline cost result: {window_id}")
         accounts, returns, leave_out, times = {}, {}, {}, None
         for key, candidate in candidates.items():
-            accounts[key], series, leave_out[key] = account_window(plan, batches, candidate, window)
+            accounts[key], series = account_window(plan, batches, candidate, window)
+            leave_out[key] = leave_one_symbol_out(plan, batches, candidate)
             require(times is None or times == series["times"], "candidate/cost dates differ")
             times, returns[key] = series["times"], series["returns"]
         windows.append({"id": window_id, "role": window.get("role"), "start": window["start"],
@@ -182,7 +176,7 @@ def evaluate(plan, selection, batches_by_window, development_summary=None, *, se
         n = value["trades"]
         value["netExpectancy"] = value["netPnl"] / n if n else None
         value["meanNetR"] = value.pop("sumNetR") / n if n else None
-    intervals = [pooled_bootstrap(sampled, settings["samples"], block, settings["seed"])
+    intervals = [paired_bootstrap(sampled, SERIES, PAIRS, settings["samples"], block, settings["seed"])
                  for block in settings["blockDays"]]
     leave_out = {key: {symbol: None if any(row["meanDailyReturn"][key].get(symbol) is None for row in omitted_rows)
                       else sum(row["meanDailyReturn"][key][symbol] * row["days"] for row in omitted_rows) / pooled["days"]

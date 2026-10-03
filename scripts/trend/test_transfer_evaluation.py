@@ -8,10 +8,11 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
+from account_statistics import account_window, circular_indices, paired_bootstrap
 from evaluation import RUST_CONVENTIONS, fixed_qualification
 from protocol import DAY, timestamp
-from transfer_evaluation import (SERIES, acceptance, account_window, circular_indices,
-                                 evaluate, pooled_bootstrap, run, settings_for)
+from transfer_evaluation import (PAIRS, SERIES, acceptance, evaluate, leave_one_symbol_out,
+                                 run, settings_for)
 
 
 def plan_fixture():
@@ -108,7 +109,7 @@ class TransferEvaluationTests(unittest.TestCase):
     def test_pool_uses_day_weights_not_equal_window_weights_or_cross_gap_blocks(self):
         windows = [{"times": list(range(n)), "returns": {key: [value] * n for key in SERIES}}
                    for n, value in [(2, .01), (8, .03)]]
-        result = pooled_bootstrap(windows, 80, 7, 20261003)
+        result = paired_bootstrap(windows, SERIES, PAIRS, 80, 7, 20261003)
         self.assertEqual(result["days"], 10)
         for key in SERIES:
             self.assertAlmostEqual(result["absolute"][key]["meanDailyReturn"], .026)
@@ -119,7 +120,7 @@ class TransferEvaluationTests(unittest.TestCase):
         x = [-.03, .005, .04, -.01, .02, -.008, .015]
         series = {"baselineBase": x, "selectedBase": [v + .004 for v in x],
                   "baselineStress": [2 * v for v in x], "selectedStress": [2 * v + .003 for v in x]}
-        result = pooled_bootstrap([{"times": list(range(len(x))), "returns": series}], 100, 3, 2)
+        result = paired_bootstrap([{"times": list(range(len(x))), "returns": series}], SERIES, PAIRS, 100, 3, 2)
         for key, expected in [("base", .004), ("stress", .003)]:
             for value in result["paired"][key]["meanDailyReturn95CI"]:
                 self.assertAlmostEqual(value, expected)
@@ -133,9 +134,9 @@ class TransferEvaluationTests(unittest.TestCase):
         for interval in result["bootstrap"]:
             self.assertAlmostEqual(interval["absolute"]["selectedBase"]["meanDailyReturn"], .002)
         window = self.plan["windows"][2]
-        _, first, _ = account_window(self.plan, self.batches["second"], "selected", window)
+        _, first = account_window(self.plan, self.batches["second"], "selected", window)
         larger = {**self.plan, "initialCapital": 20000}
-        compact, second, _ = account_window(larger, batch_fixture(larger, window), "selected", window)
+        compact, second = account_window(larger, batch_fixture(larger, window), "selected", window)
         self.assertEqual(compact["initialCapital"], 20000)
         for a, b in zip(first["returns"], second["returns"]):
             self.assertAlmostEqual(a, b)
@@ -152,7 +153,8 @@ class TransferEvaluationTests(unittest.TestCase):
             row_b["trades"][0].update(netPnl=net, rMultiple=net / 10)
             row_b["metrics"].update(finalEquity=row_b["daily"][-1]["equity"], totalReturn=net / 100, meanR=net / 10)
             row_b["metrics"]["evaluation"]["costs"].update(grossBeforeCosts=net, netPnl=net)
-        compact, series, leave_out = account_window(self.plan, batches, "selected", window)
+        compact, series = account_window(self.plan, batches, "selected", window)
+        leave_out = leave_one_symbol_out(self.plan, batches, "selected")
         self.assertEqual(compact["return"], 0)
         self.assertEqual(series["returns"], [0] * 31)
         self.assertLess(leave_out["A"], 0)
@@ -203,7 +205,7 @@ class TransferEvaluationTests(unittest.TestCase):
     def test_undefined_daily_return_is_not_dropped(self):
         window = {"times": [1, 2], "returns": {key: [0, None] for key in SERIES}}
         with self.assertRaisesRegex(ValueError, "undefined"):
-            pooled_bootstrap([window], 20, 7, 1)
+            paired_bootstrap([window], SERIES, PAIRS, 20, 7, 1)
 
     def test_selected_equal_to_baseline_has_exactly_zero_paired_intervals(self):
         selection = {"id": "baseline", "developmentQualified": True}

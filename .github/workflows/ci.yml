@@ -87,7 +87,7 @@ jobs:
       - name: Validate trend research contracts and frozen evidence
         run: |
           bun run research:trend:test
-          bun run research:trend:audit --frozen
+          bun run research:trend audit --frozen
 
       - name: Validate ClickHouse research export boundary
         run: |

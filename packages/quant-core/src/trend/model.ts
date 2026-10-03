@@ -13,7 +13,6 @@ import type { ArtifactRef } from "@bcr/core";
 import type { BinanceDataset } from "@bcr/market-data/binance/model";
 import type { TrendEvaluation } from "./evaluation";
 import type { StructuredPullbackPolicy } from "./structured-policy";
-export type { TrendEvaluation } from "./evaluation";
 
 export interface TrendStrategy {
   entry: "breakout" | "pullback" | "kdj" | "price-action" | "structured-pullback";

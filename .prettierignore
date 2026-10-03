@@ -1,4 +1,4 @@
-# Frozen historical evidence; audit with bun run research:trend:audit --frozen.
+# Frozen historical evidence; audit with bun run research:trend audit --frozen.
 research/trend/plan.json
 research/trend/slow-plan.json
 research/trend/methods-plan.json

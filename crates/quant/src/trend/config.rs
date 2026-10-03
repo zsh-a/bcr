@@ -81,13 +81,13 @@ pub struct Strategy {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "staged_policy"
+        deserialize_with = "present_policy"
     )]
     pub staged: Option<Staged>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "price_action_policy"
+        deserialize_with = "present_policy"
     )]
     pub price_action: Option<PriceAction>,
     #[serde(
@@ -109,6 +109,7 @@ impl Strategy {
 fn present_policy<'de, T: Deserialize<'de>, D: serde::Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<T>, D::Error> {
+    // Omitted fields use serde's default; an explicit null is not a policy.
     T::deserialize(deserializer).map(Some)
 }
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -172,22 +173,11 @@ pub struct PriceAction {
     pub key_level: bool,
     pub two_legs: bool,
 }
-fn price_action_policy<'de, D: serde::Deserializer<'de>>(
-    deserializer: D,
-) -> Result<Option<PriceAction>, D::Error> {
-    PriceAction::deserialize(deserializer).map(Some)
-}
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Staged {
     pub break_even_r: f64,
     pub trailing_start_r: f64,
-}
-fn staged_policy<'de, D: serde::Deserializer<'de>>(
-    deserializer: D,
-) -> Result<Option<Staged>, D::Error> {
-    // Omitted is allowed for legacy management; an explicit null is not a policy.
-    Staged::deserialize(deserializer).map(Some)
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

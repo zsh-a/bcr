@@ -105,22 +105,22 @@ v10 的 `structuredPullback` 增加两个必填字段，旧 v9 不接受这两�
 
 ## 运行与复核
 
-以下命令复现首轮 v9。第二轮 v10 的输入与完整结果见 [优化验证](../research/trend/structured-v2/ANALYSIS.md)；两轮均已封存，新运行须选择新的输出路径。
+以下命令复核已封存的首轮配置 v9 和第二轮配置 v10，须使用对应的原二进制及新的输出路径。新实验的构建、运行与评价入口见[研究架构](TREND-RESEARCH-ARCHITECTURE.md#统一研究入口)，两轮结果见[研究总索引](../research/trend/README.md)。
 
 ```sh
-python3 scripts/trend/study.py preflight --catalog research/trend/structured/catalog.json --experiment research/trend/structured/experiment.json
-python3 scripts/trend/study.py compile --catalog research/trend/structured/catalog.json --experiment research/trend/structured/experiment.json --cell development --output tmp/structured-development-input
-python3 scripts/trend/research.py --plan tmp/structured-development-input/plan.json --manifest tmp/structured-development-input/manifest.json --binary tmp/quant-structured-target/release/trend --output tmp/structured-development-run --workers 3
-python3 scripts/trend/study.py seal --compilation tmp/structured-development-input/compilation.json --run tmp/structured-development-run --output tmp/structured-development-seal.json
+bun run research:trend study preflight --catalog research/trend/structured/catalog.json --experiment research/trend/structured/experiment.json
+bun run research:trend study compile --catalog research/trend/structured/catalog.json --experiment research/trend/structured/experiment.json --cell development --output tmp/structured-development-input
+bun run research:trend run --plan tmp/structured-development-input/plan.json --manifest tmp/structured-development-input/manifest.json --binary tmp/quant-structured-target/release/trend --output tmp/structured-development-run --workers 3
+bun run research:trend study seal --compilation tmp/structured-development-input/compilation.json --run tmp/structured-development-run --output tmp/structured-development-seal.json
 ```
 
 第二轮复核使用对应的 v10 二进制与已冻结输入：
 
 ```sh
-python3 scripts/trend/research.py --plan research/trend/structured-v2/development-input/plan.json --manifest research/trend/structured-v2/development-input/manifest.json --binary tmp/quant-structured-v2-target/release/trend --output tmp/structured-v2-replay-check --workers 3
-python3 scripts/trend/opportunity_diagnostics.py --plan research/trend/structured-v2/development-input/plan.json --manifest research/trend/structured-v2/development-input/manifest.json --input tmp/structured-v2-replay-check --opportunity-plan research/trend/structured-v2/opportunity-plan.json --output tmp/structured-v2-opportunity-check.json
+bun run research:trend run --plan research/trend/structured-v2/development-input/plan.json --manifest research/trend/structured-v2/development-input/manifest.json --binary tmp/quant-structured-v2-target/release/trend --output tmp/structured-v2-replay-check --workers 3
+bun run research:trend diagnose opportunities --plan research/trend/structured-v2/development-input/plan.json --manifest research/trend/structured-v2/development-input/manifest.json --input tmp/structured-v2-replay-check --opportunity-plan research/trend/structured-v2/opportunity-plan.json --output tmp/structured-v2-opportunity-check.json
 ```
 
-后续编译需要传入所有前置阶段凭证，验证阶段还要执行 `transfer_evaluation.py` 再封存；不能用通用报告中的盈利数字手工解锁。数据目录 `extend` 命令只接纳原冻结实验声明的未来数据，不改旧数据或标的。它不启动自动采集、计划任务或交易。
+后续编译需要传入所有前置阶段凭证，验证阶段还要执行 `bun run research:trend evaluate transfer` 再封存；不能用通用报告中的盈利数字手工解锁。数据目录 `extend` 命令只接纳原冻结实验声明的未来数据，不改旧数据或标的。它不启动自动采集、计划任务或交易。
 
 `setup_diagnostics.py` 汇总实际账户路径的推进、回调、首次突破、拒绝原因及准入计数，并核对已成交快照的因果时间；`trade_diagnostics.py` 单独评价完整交易与成本。形态通过之后仍可能被成交约束、仓位或风控拒绝，不能把不同账户的交易数差直接当作同一批机会的预测准确率。独立 `opportunity_diagnostics.py` 负责共同市场机会与完整前向期限；三者分工，不互相替代。
