@@ -1,4 +1,4 @@
-use super::config::{Strategy, ATR_PERIOD, FAST_EMA, SLOW_EMA};
+use super::config::{Strategy, ATR_PERIOD, FAST_EMA, KDJ_WINDOW, SLOW_EMA};
 use super::model::{Bar, TradingClose, DAY, MINUTE};
 use std::collections::VecDeque;
 
@@ -34,23 +34,37 @@ impl CandleBuilder {
 pub struct ClosedCandles {
     pub trade: Option<TradingClose>,
     pub ema_updated: bool,
+    pub kdj_updated: bool,
+}
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Kdj {
+    pub k: f64,
+    pub d: f64,
+    pub j: f64,
 }
 #[derive(Default)]
 pub struct Indicators {
     pub atr: f64,
     pub fast: f64,
     pub slow: f64,
+    pub kdj: Option<Kdj>,
+    pub previous_kdj: Option<Kdj>,
+    pub slow_previous: Option<f64>,
     previous: Option<f64>,
     atr_count: usize,
     atr_sum: f64,
     ema_count: usize,
     fast_history: VecDeque<f64>,
+    slow_history: VecDeque<f64>,
+    kdj_history: VecDeque<Bar>,
+    slow_only: bool,
     trade: CandleBuilder,
 }
 impl Indicators {
     /// Signals, ATR and optional EMA share exactly the same closed trading candle.
     pub fn close(&mut self, bar: Bar, config: &Strategy) -> ClosedCandles {
         let trade = self.trade.close(bar, config.trade_minutes);
+        let mut kdj_updated = false;
         if let Some(candle) = trade {
             let tr = self.previous.map_or(candle.high - candle.low, |p| {
                 (candle.high - candle.low)
@@ -65,30 +79,72 @@ impl Indicators {
             } else {
                 self.atr = (self.atr * (ATR_PERIOD - 1) as f64 + tr) / ATR_PERIOD as f64;
             }
+            if config.entry == "kdj" {
+                self.kdj_history.push_back(candle);
+                if self.kdj_history.len() > KDJ_WINDOW {
+                    self.kdj_history.pop_front();
+                }
+                if self.kdj_history.len() == KDJ_WINDOW {
+                    let high = self
+                        .kdj_history
+                        .iter()
+                        .map(|b| b.high)
+                        .fold(f64::NEG_INFINITY, f64::max);
+                    let low = self
+                        .kdj_history
+                        .iter()
+                        .map(|b| b.low)
+                        .fold(f64::INFINITY, f64::min);
+                    let rsv = if high > low {
+                        100.0 * (candle.close - low) / (high - low)
+                    } else {
+                        50.0
+                    };
+                    let prior = self.kdj.unwrap_or(Kdj {
+                        k: 50.0,
+                        d: 50.0,
+                        j: 50.0,
+                    });
+                    self.previous_kdj = self.kdj;
+                    let k = (2.0 * prior.k + rsv) / 3.0;
+                    let d = (2.0 * prior.d + k) / 3.0;
+                    self.kdj = Some(Kdj {
+                        k,
+                        d,
+                        j: 3.0 * k - 2.0 * d,
+                    });
+                    kdj_updated = true;
+                }
+            }
         }
         let trade = trade.map(|bar| TradingClose {
             time: bar.time + config.trade_minutes as u64 * MINUTE - 1,
             bar,
             atr: self.atr,
         });
-        if config.filter != "ema" {
+        if config.filter != "ema" && config.filter != "slow-ema" {
             return ClosedCandles {
                 trade,
                 ema_updated: false,
+                kdj_updated,
             };
         }
         let Some(candle) = trade else {
             return ClosedCandles {
                 trade,
                 ema_updated: false,
+                kdj_updated,
             };
         };
         let value = candle.bar.close;
+        self.slow_only = config.filter == "slow-ema";
         if self.ema_count == 0 {
             self.fast = value;
             self.slow = value;
         } else {
-            self.fast += 2.0 / (FAST_EMA + 1) as f64 * (value - self.fast);
+            if !self.slow_only {
+                self.fast += 2.0 / (FAST_EMA + 1) as f64 * (value - self.fast);
+            }
             self.slow += 2.0 / (SLOW_EMA + 1) as f64 * (value - self.slow);
         }
         self.ema_count += 1;
@@ -96,15 +152,37 @@ impl Indicators {
         if self.fast_history.len() > 4 {
             self.fast_history.pop_front();
         }
+        self.slow_history.push_back(self.slow);
+        if self.slow_history.len() > 4 {
+            self.slow_history.pop_front();
+        }
+        self.slow_previous = (self.slow_history.len() == 4).then(|| self.slow_history[0]);
         ClosedCandles {
             trade,
             ema_updated: true,
+            kdj_updated,
         }
     }
     pub fn ready(&self) -> bool {
         self.atr_count >= ATR_PERIOD && self.atr > 0.0
     }
     pub fn direction(&self) -> i8 {
+        if self.slow_only {
+            if self.ema_count < SLOW_EMA + 3 {
+                return 0;
+            }
+            let Some(previous) = self.slow_previous else {
+                return 0;
+            };
+            let close = self.previous.expect("EMA needs a completed candle");
+            return if close > self.slow && self.slow > previous {
+                1
+            } else if close < self.slow && self.slow < previous {
+                -1
+            } else {
+                0
+            };
+        }
         if self.ema_count < SLOW_EMA
             || self.atr_count < ATR_PERIOD
             || self.fast_history.len() < 4

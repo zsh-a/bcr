@@ -1,0 +1,306 @@
+{
+  "scope": "Daily ledger/selection/receipt/stratified max-test audit, no price-source or minute execution audit",
+  "inputs": {
+    "plan": "f6db2c3a71c08fbed0a7a6c2b6f7f1538fbf40d29180aafab216e766f2b62594",
+    "manifest": "608bf05449a5644ebcc4587a1892d07ca9f67e82c659de24a8a1f88d7fef302e",
+    "selection": "d48ac1c7cac700650f00936e606d049546b0168e52c7c686c8d4411a98a75994",
+    "developmentSummary": "1d56ce09f1e8d860785c73bf584bf383e1241c76523255f62cec32b075c495b2",
+    "searchEvaluation": "c55373a5f1493c44ad80b6bc4dd20269ef2e9cdfc841698de9ca383b93866a93",
+    "rawResults": [
+      [
+        "tmp/trend-search-v8/development/BTCUSDT.json",
+        "9534d87065fec79107ef103847e7e6e882ed104eaa2fa9094995687f4d896098"
+      ],
+      [
+        "tmp/trend-search-v8/development/ETHUSDT.json",
+        "5fa772a2a9fe3fbb63e7d63fc5a67704b15e4fd0253972641310ac7fcf686525"
+      ],
+      [
+        "tmp/trend-search-v8/development/BNBUSDT.json",
+        "5726fcb2e1bd78d54deb6d4fc7d49c2edd5eebdf178d2eb609d85e29758f6ca9"
+      ],
+      [
+        "tmp/trend-search-v8/development/SOLUSDT.json",
+        "c9ba6352a676973378707d496599e7281ad586db5c8bd61e43441bec111e53cf"
+      ],
+      [
+        "tmp/trend-search-v8/development/XRPUSDT.json",
+        "2c7428d54fbd627116064dfa5df8cf08b2cb6276b7e9421e4db7ffd2b3c497cf"
+      ],
+      [
+        "tmp/trend-search-v8/development/DOGEUSDT.json",
+        "0bc8f2e86e1e95ce0b5f23307df2c0c2067612dd34d2ea25154860b00ad25be5"
+      ],
+      [
+        "tmp/trend-search-v8/validation-2024-early/BTCUSDT.json",
+        "3d5f00724db98db2bbd8a3ff8db62012be5800276153fe4c0788b60c4e157d52"
+      ],
+      [
+        "tmp/trend-search-v8/validation-2024-early/ETHUSDT.json",
+        "39ba9cde2a809dc013f549a66990285cab4a3aadc04b83b63a62c40c62b281b3"
+      ],
+      [
+        "tmp/trend-search-v8/validation-2024-early/BNBUSDT.json",
+        "50affd73f446ad30c42d1abfd65fc0cff3133e69ff6df185b0932b4400cde05f"
+      ],
+      [
+        "tmp/trend-search-v8/validation-2024-early/SOLUSDT.json",
+        "126e837df80cd92c1508455c7372e3fc8b38702f3c824b12debdad4e9a17cd30"
+      ],
+      [
+        "tmp/trend-search-v8/validation-2024-early/XRPUSDT.json",
+        "26c65085a6b9b958d03a1359cf5cc7c5e79160193fb2888ce96f36567add73ca"
+      ],
+      [
+        "tmp/trend-search-v8/validation-2024-early/DOGEUSDT.json",
+        "e1ff4a7f2166162577b3eb2c77dfe3c22b83a90348c3ea7a7af0db6d053a7588"
+      ],
+      [
+        "tmp/trend-search-v8/validation-continuous/BTCUSDT.json",
+        "9118259c8592153fbe665d480389b31052bd1253e059f8c6e956b7614202f82a"
+      ],
+      [
+        "tmp/trend-search-v8/validation-continuous/ETHUSDT.json",
+        "8b2428ddde0dc0c79e2b6da094cc3fc7b21e14beb133f0c80133fbf1a06304a3"
+      ],
+      [
+        "tmp/trend-search-v8/validation-continuous/BNBUSDT.json",
+        "ecd0f7317dee6be714daee6c1d3389ac7669298ced5f192274b08224dd268fd3"
+      ],
+      [
+        "tmp/trend-search-v8/validation-continuous/SOLUSDT.json",
+        "e5504e84a760a3820e0cdaba7465a33eeb986eee94ccd0d6b3ffa66b48408a01"
+      ],
+      [
+        "tmp/trend-search-v8/validation-continuous/XRPUSDT.json",
+        "e8aa893842b708d46ad5d42b7fd803f4a67198e1586687560f1d62d448a1c16f"
+      ],
+      [
+        "tmp/trend-search-v8/validation-continuous/DOGEUSDT.json",
+        "60842eec5cd4c20b524a55eab14e39d29a7a70b4909aba9e2496bd3ce4c07758"
+      ],
+      [
+        "tmp/trend-search-v8/historical-2021/BTCUSDT.json",
+        "a6676357cc3a1280378628c278b07a5001ba763ef1a033651e62be3ca4a13d48"
+      ],
+      [
+        "tmp/trend-search-v8/historical-2021/ETHUSDT.json",
+        "bdeca2625d32203f8faa39d4bb8200b0f336bbdc1489f475246e6b58d9d7b5b0"
+      ],
+      [
+        "tmp/trend-search-v8/historical-2021/BNBUSDT.json",
+        "1d4de51803ea8c3ca21eca31490aecfef3da929692fac0e8c3d0e80d7426c311"
+      ],
+      [
+        "tmp/trend-search-v8/historical-2021/SOLUSDT.json",
+        "564e9ec251ad17646bfd38c58be1f082182f1a260b84ff83875fcbd6377b92e9"
+      ],
+      [
+        "tmp/trend-search-v8/historical-2021/XRPUSDT.json",
+        "cd2f2c9cb592664abee1aa857f295e83ae457fa874760def8fc68b6cbd0bcbd1"
+      ],
+      [
+        "tmp/trend-search-v8/historical-2021/DOGEUSDT.json",
+        "365feee2ff3ad679c69de8dc3895f0ae0881a8f3a6cc17fe8bbdbb2740eead5d"
+      ],
+      [
+        "tmp/trend-search-v8/historical-stress/BTCUSDT.json",
+        "4001ca36d0e27218fe7cf6e3a95353a8a92a53bd860152fb14d35f8e198bf431"
+      ],
+      [
+        "tmp/trend-search-v8/historical-stress/ETHUSDT.json",
+        "5442c72823bf1cf70303e95483473b8a187a86a8b449361bedfdf702122fb063"
+      ],
+      [
+        "tmp/trend-search-v8/historical-stress/BNBUSDT.json",
+        "751b0aff0d297a73f01e4be1143ba6d989a1f474c0317807571f21c219236378"
+      ],
+      [
+        "tmp/trend-search-v8/historical-stress/SOLUSDT.json",
+        "2443bc0240a918681aead98152ecb71a93bb538b047975b0cb3a507ebe3eb8f8"
+      ],
+      [
+        "tmp/trend-search-v8/historical-stress/XRPUSDT.json",
+        "fe152e103bdc3d0555483068a6d22f7d41d0f2c01494fecb9d4bdb370486302e"
+      ],
+      [
+        "tmp/trend-search-v8/historical-stress/DOGEUSDT.json",
+        "79d280a054e1464727e2b12e1d453d5d72934884003345daf11b383ecb2cab9d"
+      ],
+      [
+        "tmp/trend-search-v8/completion-2022-aug/BTCUSDT.json",
+        "631622361772581b8a19e4fdd438c5b5c5c1d7522d11ed2d607a0993dc8efd6f"
+      ],
+      [
+        "tmp/trend-search-v8/completion-2022-aug/ETHUSDT.json",
+        "8b52603a5c213980a6a7db194645c275e11096acf3f926141ab7203f299600d4"
+      ],
+      [
+        "tmp/trend-search-v8/completion-2022-aug/BNBUSDT.json",
+        "229c8d3c7001a12d7410996cacdc5cdbd16b1064dea6b32f41d04acef8635bf8"
+      ],
+      [
+        "tmp/trend-search-v8/completion-2022-aug/SOLUSDT.json",
+        "32619c76c1f956958ab83fbc1630d02980c4d82d1165555813a7e3bb0c3b9bc6"
+      ],
+      [
+        "tmp/trend-search-v8/completion-2022-aug/XRPUSDT.json",
+        "3701a98592dd1d71bf0bc1467007cde990a7c75ea88ae33289e05089fa170c7d"
+      ],
+      [
+        "tmp/trend-search-v8/completion-2022-aug/DOGEUSDT.json",
+        "698c691a56fd5614a82759211b5c1f28864817489be691f1b6abf92a90a42373"
+      ]
+    ],
+    "script": "f94b4f938a34c995ad6de66a04217ac2d02d09db8b7d31f2fbec459250f470be"
+  },
+  "counts": {
+    "batches": 36,
+    "rows": 2112,
+    "shards": 132,
+    "trades": 140024,
+    "validationDays": 973,
+    "eligibles": 26,
+    "acceptanceChecks": 32
+  },
+  "selected": "m30-n320-no-day-guard",
+  "developmentSharpe": 1.733348536366471,
+  "maxDevelopmentSharpeError": 4.440892098500626e-16,
+  "maxMeanOrCIError": 1.0842021724855044e-18,
+  "pValueMismatches": [],
+  "checks": {
+    "development-qualified": true,
+    "minimum-validation-days": true,
+    "base:minimum-trades": true,
+    "base:minimum-trades:BTCUSDT": true,
+    "base:minimum-trades:ETHUSDT": true,
+    "base:minimum-trades:BNBUSDT": true,
+    "base:minimum-trades:SOLUSDT": true,
+    "base:minimum-trades:XRPUSDT": true,
+    "base:minimum-trades:DOGEUSDT": true,
+    "base:validation-2024-early:positive-return": true,
+    "base:validation-2024-early:daily-drawdown": true,
+    "base:validation-continuous:positive-return": true,
+    "base:validation-continuous:daily-drawdown": true,
+    "base:block7:absolute-lower-bound": true,
+    "base:block7:selected-cash-adjusted-p": false,
+    "base:block28:absolute-lower-bound": true,
+    "base:block28:selected-cash-adjusted-p": false,
+    "stress:minimum-trades": true,
+    "stress:minimum-trades:BTCUSDT": true,
+    "stress:minimum-trades:ETHUSDT": true,
+    "stress:minimum-trades:BNBUSDT": true,
+    "stress:minimum-trades:SOLUSDT": true,
+    "stress:minimum-trades:XRPUSDT": true,
+    "stress:minimum-trades:DOGEUSDT": true,
+    "stress:validation-2024-early:positive-return": true,
+    "stress:validation-2024-early:daily-drawdown": true,
+    "stress:validation-continuous:positive-return": true,
+    "stress:validation-continuous:daily-drawdown": true,
+    "stress:block7:absolute-lower-bound": true,
+    "stress:block7:selected-cash-adjusted-p": false,
+    "stress:block28:absolute-lower-bound": false,
+    "stress:block28:selected-cash-adjusted-p": false
+  },
+  "status": "not-established",
+  "bootstrap": [
+    {
+      "blockDays": 7,
+      "cashGlobalP": 0.0559720139930035,
+      "incrementGlobalP": 0.6021989005497251,
+      "selected": {
+        "base": {
+          "absolute": {
+            "meanDailyReturn": 0.0004699457639421728,
+            "meanDailyReturn95CI": [
+              7.071370036708758e-05,
+              0.0009802756244945924
+            ],
+            "statistic": 0.014658993740326046,
+            "adjustedPValue": 0.0559720139930035
+          },
+          "relativeToBaseline": {
+            "meanDailyReturn": 0.00013888980091141418,
+            "meanDailyReturn95CI": [
+              -3.279653237113318e-05,
+              0.00035656626845663756
+            ],
+            "statistic": 0.004332382326582862,
+            "adjustedPValue": 0.6021989005497251,
+            "includedInFamily": true
+          }
+        },
+        "stress": {
+          "absolute": {
+            "meanDailyReturn": 0.00038895520193188286,
+            "meanDailyReturn95CI": [
+              2.2743205709290316e-05,
+              0.0008554462807200601
+            ],
+            "statistic": 0.01213265935744943,
+            "adjustedPValue": 0.09245377311344327
+          },
+          "relativeToBaseline": {
+            "meanDailyReturn": 0.00013782152252751236,
+            "meanDailyReturn95CI": [
+              -2.4210615064342164e-05,
+              0.00033536809808144624
+            ],
+            "statistic": 0.00429905957458872,
+            "adjustedPValue": 0.6091954022988506,
+            "includedInFamily": true
+          }
+        }
+      }
+    },
+    {
+      "blockDays": 28,
+      "cashGlobalP": 0.0544727636181909,
+      "incrementGlobalP": 0.6266866566716641,
+      "selected": {
+        "base": {
+          "absolute": {
+            "meanDailyReturn": 0.0004699457639421728,
+            "meanDailyReturn95CI": [
+              3.53636121110378e-05,
+              0.0009918578862457138
+            ],
+            "statistic": 0.014658993740326046,
+            "adjustedPValue": 0.0544727636181909
+          },
+          "relativeToBaseline": {
+            "meanDailyReturn": 0.00013888980091141418,
+            "meanDailyReturn95CI": [
+              -3.173759198971083e-05,
+              0.0004130752392054748
+            ],
+            "statistic": 0.004332382326582862,
+            "adjustedPValue": 0.6266866566716641,
+            "includedInFamily": true
+          }
+        },
+        "stress": {
+          "absolute": {
+            "meanDailyReturn": 0.00038895520193188286,
+            "meanDailyReturn95CI": [
+              -6.627891860596337e-06,
+              0.0008627706998244929
+            ],
+            "statistic": 0.01213265935744943,
+            "adjustedPValue": 0.10444777611194403
+          },
+          "relativeToBaseline": {
+            "meanDailyReturn": 0.00013782152252751236,
+            "meanDailyReturn95CI": [
+              -2.0191044374259032e-05,
+              0.0003898931877982354
+            ],
+            "statistic": 0.00429905957458872,
+            "adjustedPValue": 0.631184407796102,
+            "includedInFamily": true
+          }
+        }
+      }
+    }
+  ]
+}

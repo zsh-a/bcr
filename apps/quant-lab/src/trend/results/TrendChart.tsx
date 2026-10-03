@@ -5,6 +5,7 @@ import {
   type ChartFocus,
   type ChartRange,
   type TrendChartData,
+  type TrendStrategy,
 } from "@bcr/quant-core/trend";
 import {
   CandlestickSeries,
@@ -29,6 +30,7 @@ interface CandleChart {
   candles: ISeriesApi<"Candlestick">;
   fast: ISeriesApi<"Line">;
   slow: ISeriesApi<"Line">;
+  kdj?: Record<"k" | "d" | "j", ISeriesApi<"Line">>;
   stops: ISeriesApi<"Line">[];
   channels: Record<"upper" | "lower" | "exitUpper" | "exitLower", ISeriesApi<"Line">>;
   markers: ISeriesMarkersPluginApi<Time>;
@@ -80,6 +82,7 @@ export function TrendChart({
     initialCapital: number;
     tickSize: number;
     tradeDirection?: "long" | "short" | "both";
+    entry?: TrendStrategy["entry"];
   };
   bounds?: ChartRange;
   focus?: ChartFocus;
@@ -141,19 +144,26 @@ export function TrendChart({
       wickUpColor: accent,
       wickDownColor: danger,
     });
-    const line = (color: string) =>
-      chart.addSeries(LineSeries, {
-        color,
-        lineWidth: 1,
-        lastValueVisible: false,
-        priceLineVisible: false,
-      });
+    const line = (color: string, pane = 0) =>
+      chart.addSeries(
+        LineSeries,
+        {
+          color,
+          lineWidth: 1,
+          lastValueVisible: false,
+          priceLineVisible: false,
+        },
+        pane,
+      );
     const model: CandleChart = {
       kind: "candles",
       chart,
       candles,
       fast: line(accent),
       slow: line(muted),
+      ...(config.entry === "kdj"
+        ? { kdj: { k: line(accent, 1), d: line("#ab803b", 1), j: line(muted, 1) } }
+        : {}),
       stops: [],
       channels: {
         upper: line("#6383ad"),
@@ -167,6 +177,19 @@ export function TrendChart({
       applying: false,
       changed: () => undefined,
     };
+    if (model.kdj) {
+      for (const price of [20, 80])
+        model.kdj.k.createPriceLine({
+          price,
+          color: muted,
+          lineWidth: 1,
+          lineStyle: 2,
+          axisLabelVisible: true,
+          title: "",
+        });
+      chart.panes()[0]?.setStretchFactor(3);
+      chart.panes()[1]?.setStretchFactor(1);
+    }
     for (const series of Object.values(model.channels))
       series.applyOptions({ lineType: LineType.WithSteps, crosshairMarkerVisible: false });
     model.changed = (range) => {
@@ -217,7 +240,18 @@ export function TrendChart({
     model.applying = true;
     model.candles.setData(data.bars.map((b) => ({ ...b, time: time(b.time) })));
     for (const key of ["fast", "slow"] as const)
-      model[key].setData(data.indicators.map((p) => ({ time: time(p.time), value: p[key] })));
+      model[key].setData(
+        data.indicators.flatMap((p) =>
+          p[key] === undefined ? [] : [{ time: time(p.time), value: p[key]! }],
+        ),
+      );
+    if (model.kdj)
+      for (const key of ["k", "d", "j"] as const)
+        model.kdj[key].setData(
+          data.indicators.flatMap((p) =>
+            p[key] === undefined ? [] : [{ time: time(p.time), value: p[key]! }],
+          ),
+        );
     syncTrendStopSeries(model.chart, model.stops, data.stops, danger);
     for (const key of ["upper", "lower", "exitUpper", "exitLower"] as const) {
       const relevant =

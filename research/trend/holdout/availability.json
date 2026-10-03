@@ -1,0 +1,3789 @@
+{
+  "createdAt": "2026-10-03T08:58:33.261687+00:00",
+  "scope": "CHECKSUM metadata only; no ZIP or price/return data read. Existence does not prove minute completeness.",
+  "candidateUniverse": [
+    "ADAUSDT",
+    "BCHUSDT",
+    "ETCUSDT",
+    "LINKUSDT",
+    "LTCUSDT",
+    "TRXUSDT"
+  ],
+  "activeWindow": {
+    "start": "2024-09-01",
+    "endExclusive": "2026-10-01",
+    "days": 760
+  },
+  "priceWarmupArchiveMonth": "2024-08",
+  "frozenStrategyWarmupDays": 7,
+  "checks": [
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2024-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2024-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d809ee15e508a7d764052cd97595d14717e01dad9e9b946f4b394b5d3bd7c42f"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a206d457fffb9d6574c3bdef41d19ae9f579880b2bb59868eadcde0c83d7a8ab"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "55b3b8bb3e8eae40e805b9e3f9bfee63ee104aa72f823426c6b2241a62fbf2fb"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "8f5820e2a0edbad4eec23bda98731db1ae65497d99824150c9952a069620f64f"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a86adac0baec7760c07306886599d5464e549405557e84634dbe355e5187b6c0"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "cc67ac9c2fc7c05a97fed57c90c071e8dcf2c5def6859a946ebbaf6bbf2cac2c"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "15df15731326945897977f6ddf0414a13533d8d7dd167e7a59cdc2fcda3b8d85"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "aa98ac5adb06a3be6ed65340f2223597244d13c282b9600d4d6df1e5dd3feecc"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "423f30b85f71463002fe00f65310e63196e48555f2a7d3c68c0888d83ace6fee"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "84a5802110fd625b21754b87a00c462d3af9b6e07bd8d22c90feed6f921cf03d"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "3a178ab37a2e232d3009e270832a50dfbb29d9f2ddfba8695391af74dd3de57d"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e017c9d37daa1f2fe3a254dbe5409f31ae1056037f969476ee6cf9eb7a908b01"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "86c99b5d9c086b61db1f971b0b996ec35919169f7bf511ed852c4437cafd06f4"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "49c661705b3edd784bd377b6d246708621593e441d2f31623f259542c3242b39"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ed34570f78990bb424befefd3fc4d4b3cabb515419b9b6788c7db908a5a381a1"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "70859a6e2bac16816dc57897ed8803950211d7602b1d62e647076fd1dc8d1501"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d00dc838513bf910a0d80ae913e4bedc2b9aa5e116503c6acf0ec4ffd7107dfe"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "6ed895f7c4889a7c98198b88366d61d40bb7ce5e90aea97d70ce790b44c45d63"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f9f638e2364572fa21597ec822bd7e0c67942ebed737456f0069672b40eb128f"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "10e3ce90b30d31c0fa0a926374ad6891c057eba9e45058d240f7582dbbf29ff2"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "fb7d637f6544dc642d325d017c1a9247d62046b5c3b0e8275a04031b29d5b0a7"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c57b6888032fa70f474b601ea0e58dd619037853af65240ba1d56f45afc563c1"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1d8406368d6cd42f717ce98d2ef138e55144b6ce84f56973cb5628fbc93b026b"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f14086dffdaa52559c6ca84df70f6442ef1ccf7a0fc3806104fd8d9f546aeaf8"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "639520f80d6ffcf52a0e77657685c3c0541bd878095ddf24ac77edaee17710ea"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "klines",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ADAUSDT/1m/ADAUSDT-1m-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c7abc5d20f7a9583673b445dc8c495d85065b86d31ab3c9930df6b4217e5656f"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2024-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "df3f30efbae7050ef74832bfbe14d653306637f78e12b6afd5776772c60ccb0e"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "49d8954b855cb5a3d6e1025eeba973e0090267deecd42f358b4a0cd94153e28b"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c7b072d251d15e6a3db591798fa56e912460b06ef3fa6707625ef6fb9a473e9c"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "cdd36c39d9d82d2b8d1951a6763af0069ebd40725bd09405bcfe8423dc6c8c99"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "82d93ad99e86a9196a841ec3bf4bbaf4c1c9183357fe5fceeac28161640aaaa1"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "551f2e70eae5387a515da5139538f6c50a49dfda487e160a96fe6cfcb1771f02"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a30f0d7dbe55c614a4db02c53fb48fb750b5d32eab9d2e8a8fe7f0fe29d95c02"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "622505a3416c636534ea1e7745b615df7b562c4e6638a439b5920eefb9a33d7e"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ee633ab030ea7944165cc9f07bfa6501211cf858c1ffab0b93aaa42846f2c6a2"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b144f857e147cc49525a7ac1d7be559b7b70f9ff58373ed90f80fa2fbdce55b2"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "097d4d31147931e46416225a92fb21cec3ac35dbbdcc6d807e3b5b7cf0a228a4"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "775528262fa28c964cced1d43d8922cc59429b01697ebf3bee64dd10636583bb"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c4eb0dd9d0314475fbc0c26acc4da7f1575bbb2414899567d48b307a955cd05a"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "976f71d5ed81993bca45587697360483a071f90a9e5f7f8ac5e6d31d5844d9d0"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "50ec1e360551ce9bc21b9e1baae5bd80137ad29a10e4e11e3845503e3f33f355"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b2eb7a638d1a9c9b67a81c8dcc5dcdcdf6c85fe9709cd9a750fb69fa33a129a1"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b6fb10285bdb245297f32bf2cd6d9910e314275126db499f92a6a1b680688875"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "4d88ae6ae97e401325d32db1df09a614a496caffa377de80ead3d35e03eebc5b"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0952b7e26afc658060b190dcd2438a604e10e55ceca207f31151d68142603f89"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "24b191b3ba9ba868533aa4ae3e524bf4604b0c6e685ea2f0f266a56f3c47a63a"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "bc2e16a5db382ae45801026d35f1c551c8e71c3d613a3c2ba41af954ba07f5ad"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "15eb5cb7583ef7d84c5911880a04ddce5aa3f398f4e37e7ad983b4732e613298"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "09a5e001e36d9d2311878d461bffd39a64ada8c64a7c57928f5eb1c49ece4660"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c826af41085c2f1c632c0faff71de6b72f1b6a90e83a685a7843c91879b46854"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "54b9f8be74e9b5741d8d41a436931aa051cfcdf1624fc01dfa81cd9ae7275003"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ADAUSDT/1m/ADAUSDT-1m-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b0f839ce111e894857c4d1e3b12d7d56ec053ae20877d6587c822b1896c8d3de"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "387bb17d1ea7995270ce2769ec2c888bc8fa3d2110d5843888807254c40381d4"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a95896349b3447f08bb67b3167223cae41abcfebd1b106826bb89989c1dd2e18"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "8ac7afd8541ae2fac72093d8b3713acb64f64bf0d859bf72be4c3a6f83a09dd2"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b15893bcb18cc762d191f337c0a44e7ea4acd1730067cdec9788ad9fbfc4b262"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ef6a5a286fc3d91fcdb479226500693ce9bc16ee39399ef09076a40349d2e399"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "4bc50dceb5108bef8e51c417b13108595c64460d738080a619b60ce341718ed0"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "3d0e98df673dad946ea8a6318d7b3f7189323127362f3aa80734a78d42aa5594"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0db8f973876decb78f7ef39c4114216c769c92e10ed5bbdae1ca148178b2104d"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2c2596eb60963e0970ccd887e4e7da52d6eed2ea2c33523407803fb7a28ff951"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c5cc8021595af02e572658ebbc6ee76210d0226e0d474bb354106b55b12edea9"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "17222cc957c27ecb23eb4ab528fe954bf8da05256a38ffc9b04d06ffe1f26811"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f89ac9f7c6feb4a4ce110a7c40571cb1bdf0ac9ff273ee708216a2eb94ce5355"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2ea59a1d407e7c2888128227a070f68d4bd9bf25dc89066b92a217b7fe2eab45"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "5b127fad9e89c53cece939b1ebafa4921f20ba47f10a7069e5eeb19ab2de63fb"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a70b35260554e81dc79aa1ed0448e2cafddbf1952bbac0120251184c09b548fa"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "14d01f1b4dba807e178f3e21154c2b70e0d6a7921322dd082da59d7356e63879"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "261376bf6f7d275b4dce115e8d2802e4a18a05504b8fb6717db4d3834aad7d3e"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b9934577dcac9d5a9d3a63a66261738d7f9c128bd986b4fd90393e15c131e182"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "5a9a9b2e3b41521ab2cc28ece3ece06d8611f0f033cabaa1ac1f7e678ce23c0e"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b2769eeed3ad6e22d871c995632110cc568c6a40d1d61be7158cad1fc4d60cf8"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "6e32d7bbdfaa3a2542fe39f918c1b79fccb01be6ee725775095a93c253778862"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e41b9ac1f3d6651ff94562de9b3a0297016c6dc2d2def42f6561d963cfdb0fc1"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b5f0642d725a80e55a4f6588ad2c55529ac22ea21e08022fde0056d39ee7a59c"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ede6e08abb0784007fe2d768644069ede9012a1a2e271b534d75a97fcd8edd34"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "kind": "fundingRate",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ADAUSDT/ADAUSDT-fundingRate-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "987dea07f28d553b81153d542b0c476686773af011b4b31c3aed1a335f5c6518"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2024-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2024-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "6ada0e1710093985604b6373d4fdb78981c854720f492941e1b10d50ad3e1c64"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "4ba348e11f5c622ba32ccaf5fff4a7469577534cc89b5a2dc820a430a6c7ae4c"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "be1d1666142bdcb5112b245b81e2686dba1dcb4a6f67eb3b2b404a40e1da1441"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "908f9b0822b473a83483d27b9213c94b34ab815ec9393695634f7eea8582f3b7"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "dfee91adc8cae91371c96b30c50ab04497fde92c671458a844df34d71ec64d3f"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "86265eda29cd718f964f5f191aaf0a448594473ba93ff46854e40829c14d0f20"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "055fb7f8a3fa26a08e4315034d75d99d2089a44373aaf1869c75732de0339c6a"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "bc27c4f47c7087950ae9184ac928ad65edc09a4701025f99e6914852459c04a2"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "409f9708d6ff5586c723f71ef9d174b12f71fca5073be06c246e6a3bf30c01f7"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "980780ca52ec9f1198761964fa973d4fdd2e606dfe6435250ec5ba6867e115db"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d408d92f9c14ce7185f638e2391405b532521cf2463f906fd8a7a1fbf151446c"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "6244b94154d444fcddd97e58cde24c5d8aef6707c61ce7d129422bfaa499121d"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7883c9f840b266d247d8f30faa68d6160ca421571f52875a49ad1a9f5ea6cb03"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "70a1cb1bfc9a649c6ef419f7ed1bdab4b5a2859c91ad290d45ff37b90a02e905"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "aa02a1b0079f80a9971e25e2b2bea16a47844e216ff093f9c749ac9077f58f97"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "861573b576ac214bbb75dc3daccff81ac59428a2ae7cee42908a2001b418a12c"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e112246d133a756469c89127a655129328b4f2ded8ddd066426496289412b3f6"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c190a5a305f2eb60ff5d42d430370e3a59dca252ddcd369ca37824036156faa8"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0329ff5c81dcbc5018ef0b373e8c5de54e4b65c80d6859749a2c3f989e39e806"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "dfcfcf1c70e4d96c438b8af19b2815b53da39be88882798832176a22d7bddc8e"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "da914f6fca05a6ebbc4593a129a1de9d4b504a85d699d415a03c860fd23ca892"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c941a3d8fc4ee452285ed51c5fa9ce3ea463e1545912a8a61992f20695c3d67a"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d33ccbb6b5e59bbea7776ca6f48196aa7d5aebf001bfaf70af328e4042fb8083"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "5482812fa34f3a13854fa5ac386a03567a19f2e1699873dd6bc10c9ae0108735"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e503fcbbf8511cc68cd73ece20ab1f4d9c748eaed2153b12bef371b47c31599a"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "klines",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BCHUSDT/1m/BCHUSDT-1m-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d400737c260101fcbdf2fa789cfbbc9860113af3ce258b011c50eb3ac82b6fbd"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2024-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "fb91dde58a5d42f337cc285c750191b15c43cbe9dbe9a8a62ee4d47606e31679"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "496959f363550aee65c045ef9bd29539a2c4808427648e218bb5d7eefe7df198"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f7811f7698bd6e3e2713df694a9a3034327261f7b8fbc68fd1983b2bbedd781b"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "215b8bca21cafb1c87e7b7902904a291a9bfe80c5dc9a896eb486d66ed07c05f"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "eaadf5a143f61750e847ad6006f6bf6fee29fd1e85e833193b35c54a30f04fb7"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a24640bee65505233b973f42b4bedaa13da60afdb2736e55ccf9c0931877e853"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "77d09203dfebff3d6f45377e6ce70836dbd8df09899e5fcd1a810e2b5cb2bb91"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a8197547e5203c1470167038c11993ab32facc031841fae60626b0ab01c4de17"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "414a452ec07b2f3259d2a9b40575e9791544ff3db8db7098f775aa814a49c54f"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2339b4e268563d456dd9ded031d992479caecdaf4797be6d811f4fb11d561913"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ee6323e5a40b7137a0be5f048236084d237a229d0956440027996930383a3faf"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "29c6ca8ad8829e0ebdac376cb40aaf8974be8c3fa3204a82708d8ab2fc163db5"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ba6cb1950637f8dee829d9f5cf009c0453fc49fa67cd1840a68157ab3999c634"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "fb07c309e251ce26283de0c5e16ecc6e38f96aecb01ccc582d33cbde457b4726"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "8cf94cebaaef648fb36ff2b9c21215d5941a95683c5c084fb304dfac85e5095d"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "21b74bc4669d3a1149caa595959c6f2bca7b5e9993b197551c1da75429d9c3d6"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f223c07060ed289e83e4fc1a877f452ad3fd4c4118ea4c35fc5d3056cc32def6"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d2e5bf32d88b2171735d05942d6027cf1f1ccd175b54fee251da17447a69b389"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "768864b485dc85ba107c55b1c1526633622e641e6372562d18e60273149803cc"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7dee5987d810a9ae0220f7626f7eb8fd937ae4ce4b8364310dad63031b0099b6"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "955a1c39767b388c72dee55b40484064f4ef00f4fe03a4b65bbf34cbd7d565e0"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "422677d47854735de60d6412252303a2e73851d8acbdedcd0a0b341498fb54b4"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d7e902d55f0db6bd1948d2d1c014579d52087f2628f2c7de5534352d810de843"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "417bbb3b40a5ca65490ff0fd1aa3df9d176e5b6b4e33731c5d6921ff07721075"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b6850fdf4b9336b75d6977285442f0f8e590ed791e8cbb6db83a329eccc21b8e"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BCHUSDT/1m/BCHUSDT-1m-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ae7b2a3ef0207d1ea7539216e8df10d69add9d340a26aff64741ead572067f32"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d8460f06b0a159975ce94f29ed3b52249a087a820ed1f99716cd7ccdd5544b3e"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "02f1faeb203f48d7e5d090b323147854de39d6f08db55f714608d7e044f7d6ef"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "bae19270e37c0b2c9fe434a3241601b1a918558ac4695f0307466e03b8bf4193"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "14bedc63fc1681175c07c7384abfbbc2d6a762f18a53ca1eae1a66ba3a05ea01"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1ae200badebfa97d82362744c32c7f1bdca722fa05f40b18972f3d70b4565257"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b29150f3e0fdb376cf571e225d8e58697f5bffbc72f043928e0584087a3bed26"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1b6e383ac4483b4f08a9afbb5d4071cca62409de2a03147eb71d6fffd7aa5f17"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b1ebf99d1bdbc174267a3171f7ac804d6e90edb3fd3e761501aaa90bbbd0760f"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f35507b1515132a5a945697bde5890e9afbf9968c1ec7c6c0ddfa6d00a2e41d6"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "40ca1ed6f44666cd788296c5b4adde8746bc9e5d34609607e09879ff53f8d91d"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e740fa1cdb0f2b41a9ac3987d1f9fb027887c959939b08ca402e396d8bb3909d"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "96548a1d2a79a14b7c8d4992cf247a363181a981c043078aed58f3f1277f1b8f"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "3e897d2c6ea26b07a95493144b2ffd9ecdc8d6b9a4c97f66269ca044c39751b7"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "6c2d85a99d57951a971dcb59c6dd9e0a18c682abca2e68d7e7dbaefe24d06ecd"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "49d9318a14581930bb07ec778b7db151f5bb9b4d11ec3c718158d035eac49494"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e2ea986e4b19c2c7c33f7b80fa60b603493b1acdcac3024c5f1813ec1b216762"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "4caf80570a6731de2658832400d88cbc95a37f95f069cf785167ced0665d5b3b"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "52b2d25667daf76137549e9ff869819529920e8bccc7f30695a38caaedcb0743"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "4e46c779871ad9d9c2fc426045c711ab3b193d75d62be1434ff1dae58881d9d1"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f164a6e3793148ba4f757d4686bae9a88b01922db871eecfb9c714914e9d0889"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1b28b065205295c9e99db427295c55dd1f36859380c99fffeea2f9bc264ffe14"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "757649d4bc022a89c4d67d7c2004981132126a2e62973cf01744bf55e6423190"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0f0a2c9132e7b9147d54829f94dbaf46c5c38bcac8546c857c88080b9d0e2121"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0b59eb552977db2fc0b5fcd8696ec8425fcac7d45fe8649df0e496ed5da5ff78"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "kind": "fundingRate",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BCHUSDT/BCHUSDT-fundingRate-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "4557b97addfacf95304da0cbfda3250c33f846c5146332b600d469cdb3c63ce7"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2024-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2024-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "95265b9002c81384fcbbdd05a5a7b47a09b7bf044920a0990884228bf4d3c1de"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "8246cd43ab762582ce1bdf5918d4bd0d7b917adaa2e8650e033db8314efad4cc"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2c05ebaee4b97d190ab2e93ddb8946a773a6d2e3027f3211281a5f177bd10779"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f021e3b05a364cc89d9b98e0d908021e03c16304a127a83c9896ef6f2aa44473"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d250475da415a2399d63a5b7e1bd65844dee27af3f3876c27d79433950a00981"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ded738e96de765c963c9a1b2d236f0d1b5960aa870a89bd786891e5b4bc76d1a"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1266bb29786f6eeb5e0352961861fb37bb692e5a21846b584dd3e0bf13367699"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1923171ebd65a63ce21339a68f841a27ff829f2ff23a0fe5bb5b20d3ed023eb5"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "41d10e7cf2d1e88312825209ea11c2f52e4a65c77c0454f6f2f480b56d0041df"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f586a20a413bcb5ea2b638b175d67736cfc764bc3f42f52c1d0050d75297d743"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "41282d1dff8de6fb949a2e088a4e47046168f4a79080e7ed6842cca4326d16ed"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "86328e2ae04337007a3877b54c0ef2fd5ca54ffd002c38a0364c1921479add88"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "16351801220bf9db8cf66b74f2db4f658d68e2967fd829dcaff0cbc4dc4af8f1"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d417eedeac78c412406350265ac09a447af1d11f36664e46a643ddd8d3f1102d"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "21d3edaa6253e957b070ed3ad46827cc6f2cab6293afab071c0a13b8db62223e"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "3e2acefe00a0b3e4fdb035077e8222a9d11adf785d669c495da867ea0102c7b5"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "777545696f9fee342293abeb6d4cb49c6cbbc6e865fce589efd587359a8b7843"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0d7e279e948ca6752a3dfb23cbf1ed5f2af164c44d5eb27d40b4fdafce94e92d"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "075cc1da8452dd9124179e1d6b480d31e528d00d08f60ff0b75300fe10bbf752"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "6faba0532f823e63a649e82016f030945ba0720179653cc6ee38092dcf35dda9"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "421d15b8ece63d212b6b5453e5de468bac18d8a7787f42b68a2dfed8001aef49"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "368651631cd2221fdfac5850238843938f64d071926f9b1478986ea1bd979018"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "151746d519ffe7a314b3e4a6fd70999d9e37647be00db646dce192eb3b3abd6c"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a50856f78cab03d55284972ca1459ecb1da05b835cac3c672eefdcef537a3202"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "8fe721607835cb25a9071716a72cf32791251021da611fd031887368319e095b"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "klines",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETCUSDT/1m/ETCUSDT-1m-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0c3b29f7930b0cf3b5c6ec7329424c5a3308366f3c1b917b1e2507a516802935"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2024-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "44c6bd4efff9eae8d3de8bad003b005e80d78ede20113e7456139c90325612d9"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c98f6ca177ce3dd15f4a38bb39a76f953de37a45c7b161d8a706e89974fd8b45"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d0dbbc4b3855d4f000bc915a20b56b631f7f536772831d3740ccaa137116d07a"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "927f6a29482f16b00af9ffb76649382e10afc786c26a687f39a221410602b789"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "22f514b24243a563fbab86cdbf033ac84284e40026ccfcb002c58c5e70e17697"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d9ffa091769aca644bb2e36d37ff635c14609c9b342c6673cb26f4bb74b29744"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "67b9a14b093c1a6ba0a18e98751bd377145ca683f8cece5458df61d5f3e985c7"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d3e8db41106e6c7e13de65768eda65fd74912ff23137a2685b2e7304908755b3"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2a3858e3fef573bae0ca289884655f6b10e044da5ed5ca5241ba0f5ae74cff68"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "03d7708f11b4069bbdfab13d718c71711465e5983165132db26185e51102402f"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "bc7929d0a0842822320278970ef9b499569b960ab0b819d8d653376fa335303d"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "95d7ca317c07f584569d7b8b1a37e9df85e3dab5cae547d8a07600fadef6cefd"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f0b72799277c1ee1610f31e770194ed095d97877435056808d394222b78ff8fd"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "205d428e8e2c396d09c5cfe6aee685e826200d255f00eb74b5bd6b245401cc30"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "bea712b8301d424824e64181b4d1729b446e2e3d733cde34f026f1e67abcc8e0"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a7ee533e2cc82ba982243794c58ca0a00069f3ae8f24261be7c965ee35f0954c"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ddc57917c91fcba011748750d543809cf719aaeec5c8f8cad60fbbf61aa154e7"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "4e06b488db877310c13d761583124440de6007f33e195fadaf8e22a976f0d9b4"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "6e154ff916c8f9d40a844233755ae05c5a8ce5ed0a2d52be88104814a0fcb8d9"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "51554659a9dbec426fdf002a94cc66a9cf2cfe25740010012f9972cfe4baa5c8"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a3f171318adb249bb5f4d7bb3757caedc0444356ea7427c497ceb23f3b04dc64"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2a27526320fb98d1d00f9c7e18e4936ad8120f7b0fa3aeda2370a84538979da6"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d5a4bead247380193cf9c1e5fa1077e6871b60c2f633697820684d17ea8da6b7"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "54afa75da443e72bc0426914c924dd6fcbedd5d733ad2230eedbac9ef766e7ea"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "65e97460fb7850f2ab136d48d70314184d8313e253d18fd8637d81e1a6199117"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/ETCUSDT/1m/ETCUSDT-1m-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "692a899eaf1e098754220b1d05531757699752721ce7d8f9de38bdd0849316bc"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "61218303964be7872897b4fab05e09b8b1e6e7f27166ec6482a6bb801189f57e"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "52928c213e858773d79125dfadae123cb004513eadb2522123f9cc6ea823ebb5"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "fd173d6effcb2a46d7e4e8adf7a18cf8cedfd6c954ae531a8130bcd662ea38ff"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "75fd8e32325e1f8d5a27ead26f622953de23c2f9cc0098b546b14b733f39c51a"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0485303ef50063be5da0cf5a42f4df357cf37b16a3a9fb5d766240bcac6afca5"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7fbc38320c731c9342efeebf1094311567f40baec0de62d409e288288fe91732"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "39da7395a9aa5c68ace4d7fe77b06b87ac10ed1df57a5d58111bc766045b6728"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "43dd4c2ad784e4098a132657359f07ddb8ce6f7c9c2e02f30bd76942ced7a401"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e964e80a9ca8517578da0ef9bcdc46e25190b8178ce1cc9c33e2d6da099ef3dd"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "23b37f8375284ba3ac235c4d518dbdb9b8c600d7abd3db09ea763984c8a1fc24"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ef06d744cb1fbef12b090a890ab2f05f12fe382fb09d5160b826133be0a75a48"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "470c2e1b9779ce308d5870c70e448c83738efe9d0f1916a89968adffda728a70"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "781cb8875604e8a0e39068ba5c9a37e28fa81e7445481fe2a5ae5c4dba4c92fc"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "9a8aac37566ff6a2555cdbf9f9b9933c15e14949649fc0b66634bceb8f00144a"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "72382169668bd86677d96690de45d8f54bb129318c46efe07df0dbea9d5a2328"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ae1b906d8bccd1493c8c7614f07988d7d95cd69292a4ae5d2d38e02f6a52d41a"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7ec5dbb3f4a3c59d1809edbff489bbed4b382c137ca4de29a6ddd58d89ae455a"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "520a4983e272a2f4a9cb77063d042cff6cc2c87c7e12114e4c9d1257ef6d5ae8"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "83da9cd07269e0da9ae12f19790380a8eb1e514fdc74cfe1eaddf755705abd18"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b31c558da58ce310e2e9d893affe725b33be765d78990f452777ddd3ceb1675a"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "76a83a44ccbe71e99d41213b195f6a0a6cdb42fc5b4512669a5bb0c6da384948"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "421651793d7d3203319cf182582a803e3d209156051057741e50cb0ebf71d7e7"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2ac162766749ebd85677379e982bcfb0aef1eeab01a1995398cafad365c9e3fe"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "8ed33d0801a3f0e4b605c30b16928d5a2b3c6d6cb9d410344440c645a486c6fe"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETCUSDT/ETCUSDT-fundingRate-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d82890b1784c8a174974c045e379f53cc80ee05fa9ddf957f57f5abab312878c"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2024-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2024-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "321d1a4fd137fe5c6460c021f8123bbff7f62ba970d61d162686636b6a6c774a"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c326e8aa8783c7b88f9c318ed5991a9b01fdd91626b6f0f297d66bee26ff2c54"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "286c2e5b30b664f02681d0381834c60b1b569bb99becdca420297cac34b7e368"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0e10d534cc08d408811d0d020639dee1b1f846201b05968a08c6eb06448ca7c7"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7b7d011009f47d56af6afb15c5b3bb2e63a5396281f7baed8b45730be5d3739d"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "10796bbad1ecc89fb64b232da6b7a6882fbb8055f91bf37c0e7880ed59577571"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1b2e338ed1df75847bde8c73a45c8b6ca3fc2df064a4f02e9fe0988e7d1b9835"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "19e81806ec7923a3c2a38c662972125c2ed042feadc9720737fbc291b5315e7c"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "beba724c35e809724bb9b9dab20f0a3ebcf36931b5c5107df15966bff13f0d22"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0dd8666165ccf7f4ae3745738c62a9d7c065a108b7065f0e324df0682c668c88"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "3623f1b63d531a2aac99791a022f43a93e87e7427a6b012ce34fa122959b5ca9"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a85e8972762b3a1f0e4fcb6e4fecbc332182d57a239e9979b94e0af094216c51"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a63f03b15c9b6443d268e5b46ffbc4a43e7cb302f9af097146b5ac7969fff49f"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "841dc2449e7c95ec598c20d22941b583462f7f7176432b7ec3fb71a01f840dde"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "073db49356b1fbad4f93e04abffc39e0223c4f2cd92d04c60ce6849e35a85d52"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "bdd3893a3b0314d709f46fa6b7eacc23c6687bbdedfd423398f4ccf4950ee8cf"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b852eb39ab43e7e4bb5bde406aeac0c5e09b880bdd6aa1d95c826c36b8b9365d"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "785dc3544ce8b6fe1ae713c0a0f5652cce9ef130d7d00765ef555c500adabfab"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2461d9ec3becbe353132b5bc526a7d5e676cc0a2eea2d2489418782746a0b794"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e68d3945de67afa2ecd3634be703c04efea1e5dd5d9b9638bd01bccba1bd316d"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2b110cc1ce0b88a55b4b45411bd28744a9b262112f5cf33fd1f6840ac40c92fc"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "99ab01ac27a28b678fa6a75d2ba91db9bd0dad95e64823a67fe1d62b69d43c8b"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "3baf697f30a004763eb63709e6f9fabed4ad0343552719b2dc41f0fef172451e"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "cd9c05d5b0e45a0a35e9003189f29023415c970fee7c92698bb86783ec094eb7"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "da20c8e69171095a89b8b7ab9c1b21394d2ab55d44009ef71189e9d9b9cf0282"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "klines",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LINKUSDT/1m/LINKUSDT-1m-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "baa3af34a6c4beb0cab198e27bdcff27a1f138a6038316b0ce71f0caa27c92e8"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2024-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1502fea6b36c0ab2bf02833d3321e5f3d9b03b4f34f7cc25e02a340d150c6d31"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "92441c106885ea59e2703ce3ec923b96b1da16f8f0c93c8f3b845ef999b19ae7"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a6f2b840d1a8afdfaca4a591ef192ace4fb1924525db4f696a341e5c78458801"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "412f6a7044efe98886333a4916aac136dd422a5a0053f2004fad15c2f6b01c13"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b6d0ad2a12f5671ae52b3bdc76eafe67ce965d22c8819d305a2162c4cebc32fc"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ed4b95432464eb2d07a399f2bb0d00efcef8fdd4518c16f93e718087c0afe26c"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "17621a1d5a7d7c8e7704abc19c7aad455a79a92dec5b17e38756031eef1bbecc"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b1581b263ee6ca57679bba2b83df2b940470ce63f752aaad4296a9530e97580d"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0d02d468503cbd7c69d17712a3415180ee38ce445c368e0977f791484f23b040"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "3eaaf00dcd45a510f1327a31b2e1414d43cec23e4158a456bbb4f028d0ead14a"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7ae69511740b13e6bccc0a83437d3526fbf33a1bf2061858bcb387c7631e4817"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "29dd59ee8e05f32082991c2f617b0761753569cb63edf07b01f7819b4529414c"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "072f31fc973b2d49ee397ae01c88cb582ecd7b35a40ef2e57df8a90b76bfc315"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b37205f4a250ce52985908fed9638439e22b5a75b0d6b67e9bbdd6e59d6f3cf3"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ca112506fcb2a2f703e078d528ff36c90aaf8bae825e51292f4abce59b6c72ae"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1ed6f19594dd89205799c599d447962a5efd21c7df2f60010a0d92fabc3f7377"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "3664874f2a318491a6181b4c82d9169fc97d844f9542f570ec10b79b55b9339b"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "989b1e719a2037ccc51095c08c77562c071c14c45257d2b2f815b2b9e6ad2b2e"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "166ebb99c85fbe91de2eb25677d3e51ebab0610c53887220ec2771e6d8b11175"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "cd8904ce29fbaf370f41cdb03acad6747e5e663bc26cc3732941cff7ff9e0f0b"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "3c6cc28c63c8a3e07aa2ae6336e96279c988c4e428af25a5f5b7f4448ceb4269"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ef7c6babd245a7e1836e1c4f21aa181fd1aac5cd08799e6bcf9a03aa48038638"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "90d81eb38d7a269c1e70ef572c3755aa79d8f3d7522a630506131e340e7ac468"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a24bc5e1a77a22d754bb3df9bf2373c9dc261f2a953adbdb7e0ac3ecf49b2f6b"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "fa9c454e2506813d549305857f0c68daeed3bcfded83b70f80d3c6b994ad6374"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LINKUSDT/1m/LINKUSDT-1m-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ef1e747831070a06f212eefcb45af60e59814f84f1db014711078eb8dd1fc062"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "82f0d865cf2d02ab345c4254fe59ffeb3e5b6bae39bcb1a0d06dc67ff55a718a"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a79184eb05334084cc4a294881ee74f03556ee1a48115443bd29d77d97a598c1"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2d9fc1ace268513a0330a170216be245b9fbcc37ec405ba57cc11841bb8c438f"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "db162585658485f1107d4d135a8a37714b7e8b33ce99f251ab537fa7c6cf0c61"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "13713b66ca784964b080a68c8a944d758202e8ab454fba9bd8b42fc1c8fdb804"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "92d748c5583035811fa307d7f0f039d2fdcaabf59c78095ba61f24426328e77c"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "bb73dc71a95ee0127f66248f1912b605f8bccaaa52b318be42397b4263c42be7"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "17f6f5f71e62fb2478167db581286c36f298d266b5b73a18d954bfca1a61c874"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7d3b60afb85860117409e2137884e2a01e45a22eb2e4d1353514244f83796002"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "cbdf6273e84d457b4915139e41a278629cbdfc02855e290b6d9ff34218eb36a5"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "56651da01247f19d5e63e6c40f8835934735e60915587068e325f2859101b7e4"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "3fd351cfdd3aa11d1e280740f56a0a244112862fb3a583d7600d658339060f53"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "5b90724992ead316299b755ec6ff59e70adb6a61dbfa93b58942470a7cf091df"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b13c0df55c83c64e2a8416bd059140f2fbbea0b3b73da9461abbded358c81160"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a964d712cdfecb1efeadaab133468d8658be24c420f3b91b91a51d183281fb19"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "728b6a16940b6189bb1aa97f636160e9b66b4289a8cc1296cefc802e0d0ed098"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "01e4199765b3954d6a110f498ba4dfc015b0e7f92e4b6985cbec9a56b752d66e"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1db75bdf9189111e79c0c4e9df854bb716c14c9609462c054c8046d1e03542f0"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f9f7bf447ea91651ae9a5f28feb1275c97445d912a958cb8f999847996411262"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ff4c11fa47f8a0268f4194e51712a3bc4bb5672d3b1f54860e5d929114a4bf20"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "06536cdd66211e1a25629a54d489493aaab6b3613b9d2207a65af44a3826da1b"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "33654b89221e8e9c544632cdee76e38c3eedf40aa2c1536ead56e849781e8d07"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "42f06dfc2f6ab34dda1a7ae739d978b11b05384e098be9d556abf9015414ba9f"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "45134ee1041a243a361107c70d558b553c0919ee4f524c87364f4529f6971667"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "kind": "fundingRate",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LINKUSDT/LINKUSDT-fundingRate-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "9b171146a071a8223ccd8082927af5b8076b70deab0b95a80a249c0941cc5eb5"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2024-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2024-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1da7bfa13d1606f8fba9ed3f7ff7022cb973ddc2064efe6d67b9fbff009d7fbd"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7656985a682784ea7e7b77b6c2d65a8507b9310b18ddaddf70c0ec7aafdc95e7"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a0d6f42a9f9ddaee42ce21045e09eefa11ddff90f7dcce12e5b6c216ec7a5a64"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "156a13880cfc806e5b8d144e995bc77d5dc57033d4168c793efaec0a35a52907"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "25fe72ad5dc034cad52bfd61ff327ba9a31c5751bac96dab3a401baae778b447"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "76d5b0adeef0231ff1958d74922a1f7a5afa7231e6fcd90dd51e85bf46fe55ac"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "af564e6b44407ea040f6f42de26fe7edcfc805bb738cc4f5ae3af86a3912e6f7"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "5cb0d10631ac1cc2b30b86e5ff14d444f0ca790105896d05c8941581c316e423"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f2a392e8e3c089fe0ce6c5976773a400bdb7728fd857008d1a20421683fbd1c3"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "36e76b7c25579bd8046ebb3c20c638c0cda6c232c952cb2e6b1c28798b9ec550"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a5bfb5356a6f81141265384b193ed82fa857b5796290d5440c2a516d26728c85"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "9c06f296eb815c7d02ddc74557036519d732f4f94e4d14c98287a051874180b0"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "4ec8b4e70f1e6c0ca610a23afd8ee3110b712880f6819e4053ff85e56e50b5e1"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7aa78f67abeef02c25b7a1c08ee8fa08058a1d4d4f5d8c189c6c5c37192a6da1"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0d7fb9b5e4092a799f613c840785df094fa6609bb2d893c35de473978acae9f5"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "36fd90b699c147763c4916e0af9efc155c486c4f7e44e301f27c807b55a47235"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1af29e4f9fc3b045f02dc07ea0d091fee6395e2db2fdfe46052464794dfb2d52"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e4ed8cb601ec1db7a00be4d367e7dc2008c1a4057c1f757d351daeae3b3f51be"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "926ad045cbd7fb7e093381aa5fb3ec61b61c4d34aa6dfb999bfe5301fa799dbe"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e5b4b05b099bc5f464ff664a97f5563c551fecc83d38d966e36e4f2ac57fdcd5"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "3b76fd6dd55599737bcc571690009388ec2bfb8572dd54b0c1374ef1f4a96649"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "65ec20b1051a5bf6d1ccc83515096489a5801cbdd4dbe98632ada35b6f51af7f"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b11720dca3eac99a8248ed1676343bb357eac198c12941ef62a7d9467a696fcc"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "360b5b9809f37bcde142357f2b86f50408f3f9507530a61dcb9d29bdd1fa3769"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0a6f509a4861093d2d82d2f37fb3bfe758d3a7c4569a8f21e7b9961947b5958f"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "klines",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/LTCUSDT/1m/LTCUSDT-1m-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7a07728bb90fd7b050d5940ba20804ae4056733bfb3ff28e1308de0e7ace0427"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2024-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2f1f79e7ac4e45833b8e0c57f3a685cfe116ab2d8cef6f63b489c4fece07771d"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b289d17aa79e3a078f0b07ec736440e248d8a99f605bbef7e4805642c4879a04"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a95baee0f35bea3cbde4b6fc5bca97d2cb90472da7c9b3548e7f7b0b2702d096"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a5cec7f4b1f5ef4dc913f6657e292943987a26ef85c21d06007ead438bb25860"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1fd92e731cd118966333e871e5e38a3b9a4d37e8a8ad2d5c65b37b57d90adef7"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a012bad8d9e50d14a81e0c04e6bd98dc22f4cdf4f0cccca8225a718f0066ad30"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c355235ada05aeda13eaa388be2ed1bc153638ec8675c1df080440273b90a202"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "9af5b9d73cd9d9a3ba313a1481ef46b8efd88eadc81c6dad213537896fecf5a1"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "5ab58264996d3f4c1485a95214a70d2fcbd84f2ef6b488718d821d4ea6560f0a"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7d77380240d01a432ab8d983fe1fc56376cfa61efd5060a5d5d29287843d7b0a"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "9d9a0f7334aaa45543c7638995d56ae7b3acf0bf9d2033b5b7b5274f18037048"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "07de9ab19152b60a3863a75a8a3cbc6fe84629ad69bb6488d2856c94e4e23e8c"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "da94416652f34d75cf80e567e1756a98e2a811692b38ade27cdf87fca5c7bd93"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "edd3cfda8098b31a482d42d1c566ddbb7977e97d9943c6e9d3b3c594003419d2"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b7ca07e0c8b8f381e1902e31e4d121b67454b075346bb5078cc19d76ab749244"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7dff4f05a725bb3bb7b2bf67813c6b2c6cff3de646bf0a6efc6ff9a4a43b72e1"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "976caf8622907095a44d1263999b64419b91fe2cf283e7163bd87bf4ba79beef"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "cc0f0b03a87e2de9f809b4ee23988edf10be07be8f3ffee3363a06d8fc0423c6"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "5378466fe0aa1c90d9a0ead2617e5a473133af22a271d3afddc9e58f0c6cc9b7"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "16339fe9713c4131df1d9294d97c68429ecbc932f978c8e493042d2175188046"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "285b1ab674ae10d5590352c12ed6d215124b61821449bfb396bc801b43fa77b9"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "460c39504d4c264e4b5ea25a05b62a2c1ed81819bcf31a8abc590286d4f1bef5"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "34c754f2086d4c54f1859174f529d8f3fa426bcf0a857888e12493b0b47af597"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "21f61acda8229ce0a0e97bbf583aabee2ffe2935f682d894252cb06054113060"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "12fc1ab4b69c573924c257f5d0ece3a0da3ea27fd052acd507809828a436fdc7"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/LTCUSDT/1m/LTCUSDT-1m-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "55e3c22c85d61579b6f75a074dd4ab4fa255ad747bead01483723446a345e0bb"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "31042156b111a01cbc07aa0760a1fc8abcba1104fd581c6e6c60f7d768adc96d"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "59cfe0decf8b9b1e1a8904c847302e0d86e8b56cef938ac47514a1c232f889dd"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "436568f53dc359d271647f03ae9de8eadf66e3610472dc0c4858466bd77779ee"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2f3a1b448ee44168eff55ce2f1c613822726084dc625347f5fde5d45f7d08dc2"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0ba4ae7a317bf2d4d708cdcfabfca13332c9e87ca2875b89e968ab6368234cfb"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "8c30729e7412ed01cb0dc5237432f47e6316fbe50465d4a6d95360db04e6c8f6"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d4b7be682d103815845bd1e6d8d3f7b420577ed55b91a0471ae70581cd7317b6"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e84071807012cee4af78727a72862e87bfa8afe7993c478a531674358fe15aec"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ade502ee0d0be2a666ec94f8361525808b7b911fa9e576a27bce326e06b4edf6"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "9159d2d6e16e41b82f77f51f0005038d6d718a3b6222604a5209a2ce92e0ad1c"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "942cd83f944849728142ce40a74581a59f0652d68d5606a5d073c8c82c552abd"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "442ef6b2ac4fd75879f1d9e0dbf7b8c73223778d79049fe557e57b5e3ec3d599"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d894fe4b8535b1abd3726a19affb4bc51bcd5414a427c371a88bdd3140d47939"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a350099f02341e7feda8bf5c1b89e704234883656147a7643dd1e0d61e72b250"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "39c5faa4155fd1685fa7cce6889a25b243ac84b4d6851224f41902a4e93d0eb5"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "19b12c1ea4d4e179a99eecdff14bafa61197d2c8aee20928735ea95fa385e919"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "838f7df6e943284f32d15d8831fd1d752e61e93aefe9d05ca942d690dbe2808c"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2519014547b6375a5e6ddccec4b1754a33bfa59a2d3427b19a394b7f7a4b82fe"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "974389f7a8ad54876da69b018199314aced19f467b2801064ad4c3e664ccd1ee"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f8bc5ca888bcd55ab26648c32dc98a3f71a31321255899f632dfa8234623280e"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ee5e2aae6af731b54c2153b9354e53f7a1c6c4702c14caac2de2aa2edae43d5b"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0831db478f5045e685514f9362219db7d68aa18ce25305f4acb3838919d6ce9e"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "de0d5d38c94456f30b0cf88dab4fd752c4ce411aa7d23513016ebd811871727c"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "75069c1f8cfc296a56c4a376859d746ea24ec54998f1654346212a2f08e72bae"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "kind": "fundingRate",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/LTCUSDT/LTCUSDT-fundingRate-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b48b211712afaf6b1914011b04eabc6b2c1364d389c488417005408ccc54ed10"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2024-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2024-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "84301a2d23a48ef3d110180b8b14342307c61e747c9a081d5ca103bd22607846"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "6b55537f784f4dd0f463920989205632cb4d1ecfee99c2571d5577aaa756f6e2"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d84fa3c9327c6c16a8e4c664f0eba0c2265362ced3aa2a958d36fe55b7a12c50"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "508ad69171d3d01c9cb76ba5471331c5144e2b6508d6ef73e9b38edc91a299f2"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "51dd433df539a8b55da8604c7c19df9e770b7ec586afc3f673a93909ac6b53d4"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1eb49d8382b6f9716d13ff205e3f676d182a6625f691373f1d466896babd0c59"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "6ebb45817751dae6163f409f2c2a6469419c9373b894e6e70be87ef443c012ab"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "8c8ccaa25773efe0a6b7b1911285469ed371b27b1d512547de23de223de56fbd"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "83ee8d919ed323b61995dbdd94e483d2c7a362799f1e2ee1b004fa0d982ff12b"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e8b23aee8fb800f46c6423a512459ad53d79d7bc7f8f1e2d86d51035dc63a349"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "134b9b5546a1e2d774b231e2a43855c3b936c342dffaf8494a13feee89dec5b0"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d88c9f67bf1700e4f6a07ddf149962d8e9fff1f4fff886bff3517614fd4ec2b2"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b798348b476d5e0d9cf829a157252e3d5c5b7e85f35755da2427c3e9a0090e5b"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e4c41fbacf8fe70b720d95f079384d1ab0fdbc7b15c8c83d9469bcfda6bad396"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "6e823ee97cad3ba2dc73f4260ab8f880585fef7c700b73d3ec4420448eb8cf4d"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e7a0f53d4521e378e680504c3171b91262841e40e6573431bbc189fce6e721a8"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c3066dd9b2b94ff9239907a280c7bb1f42539201a7e085cc4f6378efb019302c"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "376f6deb82773d6ddd754f8fe4ec1d967120af34211e0eacdf73137a7aed388a"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "37ad3848b0497dfa0d1283d432ff9be8602408beb1443057d7b5406389c59947"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7e0027c87d8f955458692cc277d532e7020c7649e2b429f80cf717da407242ab"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b44781c6e24c5aad44168b62a0a2232c8903523053793796c50aa54c564e0d56"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "06e00dda918f0fa9200617ed5a27beac4a292925c3cc74623c756ddd6adff8ed"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a773f127c61bec2ad4e73148038bfcc1b060ad459df654c177a6b260f119e0fd"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "81c5c17db1c7c11af9455b2b3318ffa6ed14604cede31d1d28d6ce5b7adb8ca1"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ad52431714decc073223602ca80134c4bc53c6a74b5e8809af3b8a10ce4e57d3"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "klines",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/TRXUSDT/1m/TRXUSDT-1m-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "ce2cec2c13e9a09e96715ff6f8490f67923f34010d01aedd9214191935584dd4"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2024-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "969052fec56b2813d7890b99d9901915b773fa7dc2f8fb26ef7212b16d4025fe"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2da29fdd882317697fcb94d07d4acb88aef3632fd6081b157cd507e9a8b52e71"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "afda19df66210a3ec44a9ab9444a3f5371341e1b8ca05078370ea8bfb5f683cf"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "9fb3219f77ff49e0be1f720eec506a4c320ec1be0891680b30abab109f0ab657"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c010839c7689a7619264ea1c36dfd9fddfebb43e63840033881391a4a37f8796"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "159a2caeae52eb9b4ca47e1375592ae477c52f15db8af8b5f6b89dcd6229db22"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "30958cc013a4b04f6c30f1fa72dfe0f50739227926b04f3d593ee9780cec8bfa"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c11ceba963d8cdcbdb488bc84491663f0a0f87df415aff50618fec9797d28370"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "49ae850c49463ec03a9982e1319591e66d6f7891f674a2131938e64e4fc7e04a"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "bbfa9b335ff203e862cd3a3f3ab4c577ef83a9ccbcc85b5c4566797cdcef55ae"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "9e372a9a954d51678a682cc36dd6314558b228329a1ed6db7b20a5f9838f3a00"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "3d8334c4711db5304ab0fff6435723dcd374164ef51ef8e99c2afb9ddb847200"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "17e48d799cf3e70efc4a9760aa81a7a43b7eb6e08eb47c772f0b486596403bf8"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "0db523682d34208e767b79384c0c3f05a70bc18c629c5269cd021c2a6d3e9df0"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7c3f50db4383aa0f59f63b84addc0502b3af26c581473168e082c5c9f44c174f"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f272c24a2102298f94701bc6a7bb2d4fcf1ea659323262378a8a698c8c449f5e"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "916940211cd4f5234fbed480d256c37460e0a0c7f4a824a03bc51a746d73f624"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "3898199992e6126eceedbc5d79132d3cc829d28d7513f38be74ae6fed64af500"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e1e7c6c6b1acfcc655d2f15babbe6d05ed0633b52fe625859b6396531e5598bf"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "4e3f4624f0dcb7003b0b163fca84fdfd166740cb801c27a7193d8a0a9d4fb26c"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f2c6fc79c196b70b1aa46dd5afa4599eff0fa673c56973cbe9f24c9d66473502"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "bb6f5dd3120b295aae460da7fe325ee97968f1d5f59572e30c6ba2ac23e62058"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "090c35bf5ccdf3b7fd51f56e523253898088f0c99d71418a866bcc7e06f6a4d4"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "023bafc7afc3c5af9790bfa6833901e17756f65d5d21820432cea0d6dcd3905a"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "3386d8f8e71f46b1c9ee6ca8eab6c3d0ef4bb27b8f96503fa17fc94fd753ab88"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "markPriceKlines",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/TRXUSDT/1m/TRXUSDT-1m-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "52345e608d93bfc8be2acc4df24ecb660ca30ef7fa6bd94ffa92f4ac93b5a815"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2024-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2024-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "24a4450561c8e4ba1b9efe2550a8e2f9d0ace94a2afcef5d925961f229907093"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2024-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2024-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "8b188036cd5a2a676700fd15738ef73ea0b8ee08246a2e677db2a33f2bcdfda4"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2024-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2024-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "cdd3ead1d4001c46164bba34613ed1498caf70cecce75e41f0f1fd92161e4331"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2024-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2024-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "47783220b7c56656c5f77d8883e8936b6023ed9447cf7f6797f8ab82e7a8be5c"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2025-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2025-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "b514da4b1458c570e6e0db224d50b4cee46ff464f9506c189bf9f299ccb9eec7"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2025-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2025-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "930652d9641e7b406a1036d4f9af02105fdac70d4601e60026c9a19a0494646d"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2025-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2025-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "2f7346f053aa57c024aab4ff0d234f6b29ce8a208830381df9ccb2b43148a4a7"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2025-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2025-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "df29da163f261c5eddb5356ff5f4903df50d27e6815724abe36e972f4cbdfde3"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2025-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2025-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "f33bbf9d968946fb77e1f58fd66916e3339d9ec472431c0e1dfb913e86caecbb"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2025-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2025-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "1446a97f655ea32a2b3cbe3842c116bc525c07827deac8a4a53b644cddb2a535"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2025-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2025-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c13a04d4262f2f0f4cfffdfea8fe922264f77cf9e72d3b1163758a7493389ea3"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2025-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2025-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d283b6ae57098196172592b522082d2bd010a6b91621bd88fd91dea1a500d72c"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2025-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2025-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "e2534c3e0ea355c5bf48a0017fb7837f2541c4c2e1a6dd8f4f5f23cfe54332d4"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2025-10",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2025-10.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "7d8dea0c4770eb7b23c1d409e112c9a38743e1dfcd3e6da7b376d39d7ac6684a"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2025-11",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2025-11.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "069fbfb1a0a080cf975d32d6bba31374d10edfe439d23a492594e333ce29eed8"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2025-12",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2025-12.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "337d807c1ed32a9320086f0de124dffd1be1b469c741e73ebff2c59e430ab4dd"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2026-01",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2026-01.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "d96981457c29f6d6ffaa2ac6dd0631cb133dbca0ac3d0b38f13cb6d8498dbe05"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2026-02",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2026-02.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "52ff68ae401eb4ef0b8ae0dc1a3bfd3f97eaf0e9c27a2579603875b7fee1f68d"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2026-03",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2026-03.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "c5dbea20b1909f6e57d6d88ec00d548aeabcf8314511b00aad1cb174fbb63a6c"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2026-04",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2026-04.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "745d26e023503814c71a0002b8ac214e4d540cae68672597eb2f282b0464d994"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2026-05",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2026-05.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "70bf4134407b5935662b8730458fd3382f2fdba8a9d0c0ed282a4dc325630deb"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2026-06",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2026-06.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "fa289ec24c20fb6dca65cbdd7ccb2ad6589f42693cf7774e1c8793f9bed2e5cc"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2026-07",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2026-07.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "4cccd5efaae2911fdcf6a01c192b4193706650b3d97282beb354d264216aa395"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2026-08",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2026-08.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "cfbc1ae96c1c7dc2b07742787d74010280ce587f2fa1bc49c292fa0cd509d764"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "kind": "fundingRate",
+      "month": "2026-09",
+      "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/TRXUSDT/TRXUSDT-fundingRate-2026-09.zip.CHECKSUM",
+      "status": 200,
+      "zipSha256": "a53c79bd4e69df1233a6969ad3e89b4f269ea4caa3eeac430016b1fc105ef019"
+    }
+  ],
+  "statusCounts": {
+    "200": 462
+  },
+  "bySymbolAndKind": {
+    "ADAUSDT": {
+      "klines": {
+        "200": 26
+      },
+      "markPriceKlines": {
+        "200": 26
+      },
+      "fundingRate": {
+        "200": 25
+      }
+    },
+    "BCHUSDT": {
+      "klines": {
+        "200": 26
+      },
+      "markPriceKlines": {
+        "200": 26
+      },
+      "fundingRate": {
+        "200": 25
+      }
+    },
+    "ETCUSDT": {
+      "klines": {
+        "200": 26
+      },
+      "markPriceKlines": {
+        "200": 26
+      },
+      "fundingRate": {
+        "200": 25
+      }
+    },
+    "LINKUSDT": {
+      "klines": {
+        "200": 26
+      },
+      "markPriceKlines": {
+        "200": 26
+      },
+      "fundingRate": {
+        "200": 25
+      }
+    },
+    "LTCUSDT": {
+      "klines": {
+        "200": 26
+      },
+      "markPriceKlines": {
+        "200": 26
+      },
+      "fundingRate": {
+        "200": 25
+      }
+    },
+    "TRXUSDT": {
+      "klines": {
+        "200": 26
+      },
+      "markPriceKlines": {
+        "200": 26
+      },
+      "fundingRate": {
+        "200": 25
+      }
+    }
+  },
+  "scriptSha256": "94f84034df5b2a3dcc2037cd85afcea8a10e14e9f8d02d343f0dd167bbbffee4"
+}

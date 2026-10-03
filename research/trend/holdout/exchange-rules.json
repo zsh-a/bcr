@@ -1,0 +1,192 @@
+{
+  "version": 1,
+  "source": {
+    "path": "research/trend/holdout/exchange-info.json",
+    "url": "https://www.binance.com/fapi/v1/exchangeInfo",
+    "status": 200,
+    "retrievedAt": "2026-10-03T09:03:53.468224+00:00",
+    "sha256": "e100331ec1aa78bd6d3bffcb22dd0526d4501de6c0b4fbf7c75e33963b07c29c",
+    "contentType": "application/json",
+    "symbolCount": 920,
+    "serverTime": 1790941589244,
+    "serverTimeUtc": "2026-10-02T11:46:29.244000+00:00"
+  },
+  "scope": "Current official exchange metadata only, with no market prices. Fixed rule snapshot for this study; not a reconstruction of historical rules.",
+  "rules": [
+    {
+      "symbol": "LTCUSDT",
+      "status": "TRADING",
+      "contractType": "PERPETUAL",
+      "onboardDate": 1578557100000,
+      "onboardDateUtc": "2020-01-09T08:05:00+00:00",
+      "tickSize": "0.01",
+      "quantityStep": "0.001",
+      "minNotional": "20",
+      "priceFilter": {
+        "tickSize": "0.01",
+        "filterType": "PRICE_FILTER",
+        "maxPrice": "100000",
+        "minPrice": "0.01"
+      },
+      "lotSize": {
+        "stepSize": "0.001",
+        "minQty": "0.001",
+        "maxQty": "170000",
+        "filterType": "LOT_SIZE"
+      },
+      "marketLotSize": {
+        "maxQty": "100000",
+        "filterType": "MARKET_LOT_SIZE",
+        "minQty": "0.001",
+        "stepSize": "0.001"
+      }
+    },
+    {
+      "symbol": "LINKUSDT",
+      "status": "TRADING",
+      "contractType": "PERPETUAL",
+      "onboardDate": 1579248000000,
+      "onboardDateUtc": "2020-01-17T08:00:00+00:00",
+      "tickSize": "0.001",
+      "quantityStep": "0.01",
+      "minNotional": "20",
+      "priceFilter": {
+        "tickSize": "0.001",
+        "minPrice": "0.001",
+        "maxPrice": "100000",
+        "filterType": "PRICE_FILTER"
+      },
+      "lotSize": {
+        "minQty": "0.01",
+        "filterType": "LOT_SIZE",
+        "stepSize": "0.01",
+        "maxQty": "700000"
+      },
+      "marketLotSize": {
+        "filterType": "MARKET_LOT_SIZE",
+        "minQty": "0.01",
+        "maxQty": "50000",
+        "stepSize": "0.01"
+      }
+    },
+    {
+      "symbol": "ADAUSDT",
+      "status": "TRADING",
+      "contractType": "PERPETUAL",
+      "onboardDate": 1580457600000,
+      "onboardDateUtc": "2020-01-31T08:00:00+00:00",
+      "tickSize": "0.00010",
+      "quantityStep": "1",
+      "minNotional": "5",
+      "priceFilter": {
+        "minPrice": "0.00010",
+        "tickSize": "0.00010",
+        "filterType": "PRICE_FILTER",
+        "maxPrice": "20000"
+      },
+      "lotSize": {
+        "filterType": "LOT_SIZE",
+        "maxQty": "30000000",
+        "minQty": "1",
+        "stepSize": "1"
+      },
+      "marketLotSize": {
+        "minQty": "1",
+        "stepSize": "1",
+        "maxQty": "3000000",
+        "filterType": "MARKET_LOT_SIZE"
+      }
+    },
+    {
+      "symbol": "BCHUSDT",
+      "status": "TRADING",
+      "contractType": "PERPETUAL",
+      "onboardDate": 1576745700000,
+      "onboardDateUtc": "2019-12-19T08:55:00+00:00",
+      "tickSize": "0.01",
+      "quantityStep": "0.001",
+      "minNotional": "20",
+      "priceFilter": {
+        "tickSize": "0.01",
+        "minPrice": "4",
+        "maxPrice": "100000",
+        "filterType": "PRICE_FILTER"
+      },
+      "lotSize": {
+        "minQty": "0.001",
+        "maxQty": "20000",
+        "filterType": "LOT_SIZE",
+        "stepSize": "0.001"
+      },
+      "marketLotSize": {
+        "minQty": "0.001",
+        "filterType": "MARKET_LOT_SIZE",
+        "maxQty": "2000",
+        "stepSize": "0.001"
+      }
+    },
+    {
+      "symbol": "ETCUSDT",
+      "status": "TRADING",
+      "contractType": "PERPETUAL",
+      "onboardDate": 1579161600000,
+      "onboardDateUtc": "2020-01-16T08:00:00+00:00",
+      "tickSize": "0.001",
+      "quantityStep": "0.01",
+      "minNotional": "20",
+      "priceFilter": {
+        "minPrice": "0.001",
+        "tickSize": "0.001",
+        "filterType": "PRICE_FILTER",
+        "maxPrice": "100000"
+      },
+      "lotSize": {
+        "minQty": "0.01",
+        "maxQty": "400000",
+        "filterType": "LOT_SIZE",
+        "stepSize": "0.01"
+      },
+      "marketLotSize": {
+        "stepSize": "0.01",
+        "filterType": "MARKET_LOT_SIZE",
+        "minQty": "0.01",
+        "maxQty": "40000"
+      }
+    },
+    {
+      "symbol": "TRXUSDT",
+      "status": "TRADING",
+      "contractType": "PERPETUAL",
+      "onboardDate": 1579075500000,
+      "onboardDateUtc": "2020-01-15T08:05:00+00:00",
+      "tickSize": "0.00001",
+      "quantityStep": "1",
+      "minNotional": "5",
+      "priceFilter": {
+        "maxPrice": "20000",
+        "tickSize": "0.00001",
+        "minPrice": "0.00132",
+        "filterType": "PRICE_FILTER"
+      },
+      "lotSize": {
+        "filterType": "LOT_SIZE",
+        "stepSize": "1",
+        "minQty": "1",
+        "maxQty": "20000000"
+      },
+      "marketLotSize": {
+        "filterType": "MARKET_LOT_SIZE",
+        "maxQty": "5000000",
+        "minQty": "1",
+        "stepSize": "1"
+      }
+    }
+  ],
+  "limitations": [
+    "PRICE_FILTER.tickSize and LOT_SIZE.stepSize are used explicitly; pricePrecision and quantityPrecision are not substituted for increments.",
+    "Current minNotional, quantity increments, price increments and order limits may differ from historical rules between 2024-09 and 2026-09.",
+    "The current research engine models tick size, quantity step and min notional; the snapshot also preserves min/max quantity and price filter limits for audit, but they are not claimed to be a complete historical exchange-execution simulation.",
+    "The endpoint serverTime is retained separately from the local retrieval timestamp; this response may be cached."
+  ],
+  "documentation": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Exchange-Information"
+}

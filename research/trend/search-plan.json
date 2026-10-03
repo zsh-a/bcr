@@ -1,0 +1,920 @@
+{
+  "version": 1,
+  "capitalMode": "total-account-equal-sleeves",
+  "initialCapital": 60000,
+  "symbols": {
+    "BTCUSDT": {
+      "tickSize": 0.1,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "ETHUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "BNBUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.01,
+      "minNotional": 100
+    },
+    "SOLUSDT": {
+      "tickSize": 0.001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "XRPUSDT": {
+      "tickSize": 0.0001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "DOGEUSDT": {
+      "tickSize": 1e-05,
+      "quantityStep": 1,
+      "minNotional": 100
+    }
+  },
+  "costs": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "stressFeeBps": 10,
+    "stressSlippageBps": 4
+  },
+  "risk": {
+    "riskPct": 0.005,
+    "maxExposurePct": 0.95,
+    "cooldownLosses": 3,
+    "cooldownMinutes": 60,
+    "dailyLossPct": 0.03,
+    "flattenMinute": null
+  },
+  "bootstrap": {
+    "seed": 20261003,
+    "samples": 2000,
+    "blockDays": 7
+  },
+  "configVersion": 8,
+  "title": "30 分钟多家族策略搜索：入场、过滤、退出与连续持仓验证",
+  "frozenAt": "2026-10-03T08:13:04.882985+00:00",
+  "purpose": "A finite predeclared search of32 executable strategy hypotheses, not a Cartesian parameter sweep. All prices/periods were inspected by prior research. Select once on development base-cost portfolio Sharpe with the existing activity gate, then evaluate every declared candidate without replacement, including failed and inactive families.",
+  "sourceStudy": {
+    "plan": "research/trend/robustness-plan.json",
+    "sha256": "fddd5800b6d38e9f5a6ba09441be3b245a4ff82a3fde56944b0969e21459d78d"
+  },
+  "windows": [
+    {
+      "id": "development",
+      "start": "2022-09-01",
+      "end": "2024-01-01",
+      "role": "development",
+      "label": "开发487天 · 已知历史"
+    },
+    {
+      "id": "validation-2024-early",
+      "start": "2024-01-01",
+      "end": "2024-08-01",
+      "role": "diagnostic-validation-known",
+      "label": "2024年1—7月 · 已知后续历史"
+    },
+    {
+      "id": "validation-continuous",
+      "start": "2024-09-01",
+      "end": "2026-10-01",
+      "role": "diagnostic-validation-known",
+      "label": "2024年9月—2026年9月 · 连续760天已知历史"
+    },
+    {
+      "id": "historical-2021",
+      "start": "2021-01-01",
+      "end": "2022-01-01",
+      "role": "diagnostic-stress-known",
+      "label": "2021全年 · 已知历史压力"
+    },
+    {
+      "id": "historical-stress",
+      "start": "2022-01-01",
+      "end": "2022-07-01",
+      "role": "diagnostic-stress-known",
+      "label": "2022上半年 · 已知历史压力"
+    },
+    {
+      "id": "completion-2022-aug",
+      "start": "2022-08-01",
+      "end": "2022-09-01",
+      "role": "diagnostic-stress-known",
+      "label": "2022年8月 · 已知亏损月份"
+    }
+  ],
+  "candidates": [
+    {
+      "id": "m30-n320-x160",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n80-x40",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 80,
+      "channelExitBars": 40,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n160-x80",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 160,
+      "channelExitBars": 80,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n640-x320",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 640,
+      "channelExitBars": 320,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-episode",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "episode",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-ema",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "ema",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-slow-ema",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "slow-ema",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-background",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "background",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-both",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "both",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-short",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "short",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-x20",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 20,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-fixed-atr3",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "atr",
+      "direction": "long",
+      "breakoutBars": 320,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-dynamic-atr3",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "staged",
+      "direction": "long",
+      "breakoutBars": 320,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 0,
+        "trailingStartR": 0
+      }
+    },
+    {
+      "id": "m30-n320-dynamic-atr6",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "staged",
+      "direction": "long",
+      "breakoutBars": 320,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 6,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 0,
+        "trailingStartR": 0
+      }
+    },
+    {
+      "id": "m30-n320-dynamic-be1",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "staged",
+      "direction": "long",
+      "breakoutBars": 320,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 1,
+        "trailingStartR": 0
+      }
+    },
+    {
+      "id": "m30-n320-dynamic-be2",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "staged",
+      "direction": "long",
+      "breakoutBars": 320,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 2,
+        "trailingStartR": 0
+      }
+    },
+    {
+      "id": "m30-n320-staged",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "staged",
+      "direction": "long",
+      "breakoutBars": 320,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 1,
+        "trailingStartR": 2
+      }
+    },
+    {
+      "id": "m30-n320-stop3",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 3,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-no-day-guard",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "riskOverrides": {
+        "dailyLossPct": 0
+      }
+    },
+    {
+      "id": "m30-n80-dynamic-atr3",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "staged",
+      "direction": "long",
+      "breakoutBars": 80,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 0,
+        "trailingStartR": 0
+      }
+    },
+    {
+      "id": "m30-pullback-unfiltered",
+      "entry": "pullback",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 0,
+        "trailingStartR": 0
+      }
+    },
+    {
+      "id": "m30-pullback-trend",
+      "entry": "pullback",
+      "tradeMinutes": 30,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 0,
+        "trailingStartR": 0
+      }
+    },
+    {
+      "id": "m30-pullback-long",
+      "entry": "pullback",
+      "tradeMinutes": 30,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "long",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 0,
+        "trailingStartR": 0
+      }
+    },
+    {
+      "id": "m30-pullback-staged",
+      "entry": "pullback",
+      "tradeMinutes": 30,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 1,
+        "trailingStartR": 2
+      }
+    },
+    {
+      "id": "m30-kdj-unfiltered",
+      "entry": "kdj",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 0,
+        "trailingStartR": 0
+      }
+    },
+    {
+      "id": "m30-kdj-trend",
+      "entry": "kdj",
+      "tradeMinutes": 30,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 0,
+        "trailingStartR": 0
+      }
+    },
+    {
+      "id": "m30-kdj-long",
+      "entry": "kdj",
+      "tradeMinutes": 30,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "long",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 0,
+        "trailingStartR": 0
+      }
+    },
+    {
+      "id": "m30-kdj-staged",
+      "entry": "kdj",
+      "tradeMinutes": 30,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 1,
+        "trailingStartR": 2
+      }
+    },
+    {
+      "id": "m30-pa-base",
+      "entry": "price-action",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 0,
+        "trailingStartR": 0
+      },
+      "priceAction": {
+        "keyLevel": false,
+        "twoLegs": false
+      }
+    },
+    {
+      "id": "m30-pa-key",
+      "entry": "price-action",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 0,
+        "trailingStartR": 0
+      },
+      "priceAction": {
+        "keyLevel": true,
+        "twoLegs": false
+      }
+    },
+    {
+      "id": "m30-pa-legs",
+      "entry": "price-action",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 0,
+        "trailingStartR": 0
+      },
+      "priceAction": {
+        "keyLevel": false,
+        "twoLegs": true
+      }
+    },
+    {
+      "id": "m30-pa-key-legs",
+      "entry": "price-action",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 0,
+        "trailingStartR": 0
+      },
+      "priceAction": {
+        "keyLevel": true,
+        "twoLegs": true
+      }
+    }
+  ],
+  "families": {
+    "breakout": [
+      "m30-n320-x160",
+      "m30-n80-x40",
+      "m30-n160-x80",
+      "m30-n640-x320",
+      "m30-n320-episode",
+      "m30-n320-ema",
+      "m30-n320-slow-ema",
+      "m30-n320-background",
+      "m30-n320-both",
+      "m30-n320-short",
+      "m30-n320-x20",
+      "m30-n320-fixed-atr3",
+      "m30-n320-dynamic-atr3",
+      "m30-n320-dynamic-atr6",
+      "m30-n320-dynamic-be1",
+      "m30-n320-dynamic-be2",
+      "m30-n320-staged",
+      "m30-n320-stop3",
+      "m30-n320-no-day-guard",
+      "m30-n80-dynamic-atr3"
+    ],
+    "impulse-pullback": [
+      "m30-pullback-unfiltered",
+      "m30-pullback-trend",
+      "m30-pullback-long",
+      "m30-pullback-staged"
+    ],
+    "kdj-reversal": [
+      "m30-kdj-unfiltered",
+      "m30-kdj-trend",
+      "m30-kdj-long",
+      "m30-kdj-staged"
+    ],
+    "price-action": [
+      "m30-pa-base",
+      "m30-pa-key",
+      "m30-pa-legs",
+      "m30-pa-key-legs"
+    ]
+  },
+  "hypotheses": {
+    "m30-n320-x160": "Frozen prior primary; control for all cross-study comparisons.",
+    "m30-n80-x40": "Shorter calendar horizon at the same half-window exit ratio.",
+    "m30-n160-x80": "Half the reference entry/exit horizons; retain previous failure evidence.",
+    "m30-n640-x320": "Double reference entry/exit horizons.",
+    "m30-n320-episode": "One consumed first qualifying close per frozen breakout episode.",
+    "m30-n320-ema": "EMA20/60 alignment and EMA20 slope, not MA-cross entry.",
+    "m30-n320-slow-ema": "Price versus EMA60 and its three-close slope.",
+    "m30-n320-background": "Existing compound2h trend/efficiency/confirmed-structure filter.",
+    "m30-n320-both": "Long and short in one single-position account.",
+    "m30-n320-short": "Separate short-only account; no synthetic subtraction from both.",
+    "m30-n320-x20": "Faster channel exit with the identical entry horizon.",
+    "m30-n320-fixed-atr3": "Minute MFE trailing with frozen entry-signal ATR; no BE.",
+    "m30-n320-dynamic-atr3": "Completed-close current ATR trailing; first nonnegative close-R arms tracking.",
+    "m30-n320-dynamic-atr6": "Fixed doubled dynamic trailing distance; not a searched multiplier.",
+    "m30-n320-dynamic-be1": "Same dynamic3 exit plus cost-covering BE at completed close1R.",
+    "m30-n320-dynamic-be2": "Same dynamic3 exit plus cost-covering BE at completed close2R.",
+    "m30-n320-staged": "BE at1R, dynamic3 tracking delayed until close2R; thresholds latch.",
+    "m30-n320-stop3": "Wider initial stop with the same money-risk budget reduces position size.",
+    "m30-n320-no-day-guard": "Remove the complete daily protection+entry-lockout module.",
+    "m30-n80-dynamic-atr3": "Shorter breakout horizon with the same dynamic exit as N320.",
+    "m30-pullback-unfiltered": "Unfiltered both-direction family control; for KDJ this is a reversal hypothesis.",
+    "m30-pullback-trend": "Both directions, EMA60 price/slope filter plus dynamic3 exit.",
+    "m30-pullback-long": "Long-only counterpart under the same EMA60 filter.",
+    "m30-pullback-staged": "Both-direction trend version with BE1R and delayed tracking2R.",
+    "m30-kdj-unfiltered": "Unfiltered both-direction family control; for KDJ this is a reversal hypothesis.",
+    "m30-kdj-trend": "Both directions, EMA60 price/slope filter plus dynamic3 exit.",
+    "m30-kdj-long": "Long-only counterpart under the same EMA60 filter.",
+    "m30-kdj-staged": "Both-direction trend version with BE1R and delayed tracking2R.",
+    "m30-pa-base": "Whole-advance extreme rebreak after causal impulse/pullback; predeclared2x2key-level/two-leg mechanism.",
+    "m30-pa-key": "Whole-advance extreme rebreak after causal impulse/pullback; predeclared2x2key-level/two-leg mechanism.",
+    "m30-pa-legs": "Whole-advance extreme rebreak after causal impulse/pullback; predeclared2x2key-level/two-leg mechanism.",
+    "m30-pa-key-legs": "Whole-advance extreme rebreak after causal impulse/pullback; predeclared2x2key-level/two-leg mechanism."
+  },
+  "baseline": "m30-n320-x160",
+  "selectionMode": "ranked",
+  "selectionObjective": "dailySharpe",
+  "selectionMinTrades": 30,
+  "selectionMinProfitableSymbols": 4,
+  "sensitivity": [],
+  "stressCandidates": [
+    "m30-n320-x160",
+    "m30-n80-x40",
+    "m30-n160-x80",
+    "m30-n640-x320",
+    "m30-n320-episode",
+    "m30-n320-ema",
+    "m30-n320-slow-ema",
+    "m30-n320-background",
+    "m30-n320-both",
+    "m30-n320-short",
+    "m30-n320-x20",
+    "m30-n320-fixed-atr3",
+    "m30-n320-dynamic-atr3",
+    "m30-n320-dynamic-atr6",
+    "m30-n320-dynamic-be1",
+    "m30-n320-dynamic-be2",
+    "m30-n320-staged",
+    "m30-n320-stop3",
+    "m30-n320-no-day-guard",
+    "m30-n80-dynamic-atr3",
+    "m30-pullback-unfiltered",
+    "m30-pullback-trend",
+    "m30-pullback-long",
+    "m30-pullback-staged",
+    "m30-kdj-unfiltered",
+    "m30-kdj-trend",
+    "m30-kdj-long",
+    "m30-kdj-staged",
+    "m30-pa-base",
+    "m30-pa-key",
+    "m30-pa-legs",
+    "m30-pa-key-legs"
+  ],
+  "selection": "Exactly once: highest development BASE-cost daily portfolio Sharpe among all32declared candidates with finite Sharpe and>=30closed trades in EACH of six symbols. Ties follow declared order. Separate >=4profitable symbols and positive median-symbol-meanR qualification does not trigger reselection on failure. Stress is not available on development and cannot influence this selection. No later-window choice or fallback winner; if no eligible candidate stop without inspecting validation. Every candidate is reported thereafter, including ineligible and losing families.",
+  "comparisons": [
+    {
+      "id": "m30-n320-ema-contrast",
+      "candidate": "m30-n320-ema",
+      "reference": "m30-n320-x160"
+    },
+    {
+      "id": "m30-n320-slow-ema-contrast",
+      "candidate": "m30-n320-slow-ema",
+      "reference": "m30-n320-x160"
+    },
+    {
+      "id": "m30-n320-background-contrast",
+      "candidate": "m30-n320-background",
+      "reference": "m30-n320-x160"
+    },
+    {
+      "id": "m30-n320-both-contrast",
+      "candidate": "m30-n320-both",
+      "reference": "m30-n320-x160"
+    },
+    {
+      "id": "m30-n320-fixed-atr3-contrast",
+      "candidate": "m30-n320-fixed-atr3",
+      "reference": "m30-n320-x160"
+    },
+    {
+      "id": "m30-n320-dynamic-atr3-contrast",
+      "candidate": "m30-n320-dynamic-atr3",
+      "reference": "m30-n320-x160"
+    },
+    {
+      "id": "m30-n320-dynamic-atr6-contrast",
+      "candidate": "m30-n320-dynamic-atr6",
+      "reference": "m30-n320-dynamic-atr3"
+    },
+    {
+      "id": "m30-n320-dynamic-be1-contrast",
+      "candidate": "m30-n320-dynamic-be1",
+      "reference": "m30-n320-dynamic-atr3"
+    },
+    {
+      "id": "m30-n320-dynamic-be2-contrast",
+      "candidate": "m30-n320-dynamic-be2",
+      "reference": "m30-n320-dynamic-atr3"
+    },
+    {
+      "id": "m30-n320-staged-contrast",
+      "candidate": "m30-n320-staged",
+      "reference": "m30-n320-dynamic-be1"
+    },
+    {
+      "id": "m30-n80-dynamic-atr3-contrast",
+      "candidate": "m30-n80-dynamic-atr3",
+      "reference": "m30-n320-dynamic-atr3"
+    },
+    {
+      "id": "m30-pullback-trend-contrast",
+      "candidate": "m30-pullback-trend",
+      "reference": "m30-pullback-unfiltered"
+    },
+    {
+      "id": "m30-pullback-long-contrast",
+      "candidate": "m30-pullback-long",
+      "reference": "m30-pullback-trend"
+    },
+    {
+      "id": "m30-pullback-staged-contrast",
+      "candidate": "m30-pullback-staged",
+      "reference": "m30-pullback-trend"
+    },
+    {
+      "id": "m30-kdj-trend-contrast",
+      "candidate": "m30-kdj-trend",
+      "reference": "m30-kdj-unfiltered"
+    },
+    {
+      "id": "m30-kdj-long-contrast",
+      "candidate": "m30-kdj-long",
+      "reference": "m30-kdj-trend"
+    },
+    {
+      "id": "m30-kdj-staged-contrast",
+      "candidate": "m30-kdj-staged",
+      "reference": "m30-kdj-trend"
+    },
+    {
+      "id": "m30-pa-key-contrast",
+      "candidate": "m30-pa-key",
+      "reference": "m30-pa-base"
+    },
+    {
+      "id": "m30-pa-legs-contrast",
+      "candidate": "m30-pa-legs",
+      "reference": "m30-pa-base"
+    },
+    {
+      "id": "m30-pa-key-legs-contrast",
+      "candidate": "m30-pa-key-legs",
+      "reference": "m30-pa-base"
+    }
+  ],
+  "dataPolicy": "Reuse official checksum-verified Binance UM trade/mark minute data and actual funding. All2037evaluation days are already known; this is adaptive exploratory research and pseudo-out-of-development diagnosis, never untouchedOOS. Fixed six modern surviving symbols and static precision. Same60000initial split into six10000sleeves for every candidate/window; never sum competing full-capital accounts. No interpolation, date shortening or asset substitution for missing data. July2022/Aug2024 remain missing. Each independent window resets; validation-continuous alone carries positions/cash/funding/risk uninterrupted across760days, with one final end-range settlement. Annual/monthly slices of that account use previous daily equity, not artificial forced closes.",
+  "fixedRules": {
+    "signalPeriod": "All32candidates use30-minute completed UTC candles and next executable minute open. Minute data still monitors existing hard stops, costs/funding/guard. No live quote or same-close execution claim.",
+    "breakout": "Prior N high/low excluding signal candle, at least one tick. Channel exit closes cross prior independent M reverse boundary. Episode first-close state updates even while entry unavailable; returning inside frozen boundary rearms only a later close.",
+    "pullback": "Existing3bar1.5ATR directional impulse and efficiency>=.6;20%-50%retracement for2..8bars; rebreak whole impulse high/low. Existing implementation uses impulse-confirmation ATR and does not share PA extension deadline/key-level eligibility.",
+    "kdj": "Existing9/3/3 stochasticKDJ. One K<=20 or K>=80 episode arms, later distinct candle K/D cross triggers; position/risk/filter invalidation consumes eligibility. Unfiltered version is a separate reversal hypothesis, not a claim that oscillators identify trend.",
+    "priceAction": "Existing forward-only impulse/extension/retracement state machine and whole-advance extreme entry. Four predefined combinations of keyLevel and twoLegs; all preserve background-data warmup even if flags off. No chart pattern inference/lookahead pivots.",
+    "filters": "none; EMA20/60 alignment+fast3bar slope; price vsEMA60+slow3bar slope; compound2hbackground. These are filter policies, not newMAcrossover-entry implementations.",
+    "initialRisk": "ATR14Wilder, actual-fill stop2ATR frozen except declared stop3; shared risk.5%,exposure95%,cooldown3losses60min. dailyLoss3% exceptsingle0. ATRrisk and fees/rounding determine actual quantities.",
+    "exits": "channel; frozen-signal-ATR minute-MFE trailing3; staged completed-close dynamicATR3 or6; BE0/1R/2R; staged BE1R+trailing-start2R. Dynamic start0 means first closeR>=0 then latched, not unconditional sinceentry. Completed-close proposals apply later; already-crossed proposal requests next-open exit. No fixed takeprofit implemented or inferred.",
+    "riskGuard": "Each sleeve UTC day-first mark.open equity beforefunding/orders anchor; minute mark.close at<=97%queues nextopen exit and blocks entriesrestofUTCday. dailyLoss0removes both effects, not separately identifying them. BEcost price includesaccruedfunding but not futurefunding/gaps.",
+    "warmup": "active-windows-v1 peractualcandidate; allperiod30m, max14days. Native16candidate chunks may differ in maximum preload but eachcandidate has itsownsame initialization. No cross-shard state, parameter or selection mixing.",
+    "searchScope": "32whole-account hypotheses:20breakout variants including controls alreadyseen,4impulsepullback,4KDJ,4price-action. No post-result extension, unseen-constructor labels, Cartesian threshold grid or retrospective coin weights. Shared exit changes do not claim identical-entry causal matching."
+  },
+  "searchEvaluation": {
+    "windows": [
+      "validation-2024-early",
+      "validation-continuous"
+    ],
+    "samples": 2000,
+    "seed": 20261003,
+    "blockDays": [
+      7,
+      28
+    ],
+    "minimumDays": 180,
+    "minimumTrades": 100,
+    "minimumTradesPerSymbol": 10,
+    "maxDailyDrawdown": 0.1,
+    "alpha": 0.05,
+    "requireEachWindowPositive": true,
+    "requireDevelopmentQualified": true,
+    "method": "All32candidate x base/stress64daily account returnseries share circular calendar blocks sampled separately within eachwindow, preserving original213/760daycounts. N=973, dailymeansweightedbydays. Pointwise95%percentile intervals (floorB*.025/floorB*.975) are notsimultaneous. White-inspired least-favorable centered circular-block max-mean diagnostic: cash family x_j=r_j all64; incremental family x_j=r_j-r_baseline_samecost excludesbaseline self (62). mu_j mean; T_j=sqrtN*max(0,mu_j), T_family=maxT_j; Z_b=max(0,max_j sqrtN*(mu*_bj-mu_j)); p=(1+count[Z_b>=T])/(B+1), nonpositive mean p1. No studentization or dropping weak rules. Bothglobal and eachcandidate adjustedp reported, both7/28block lengths fixed. Centring all means atzero isleastfavorable and conservative; windows treatedfixedstrata. NotSPA,DSRorproject-wide correction.",
+    "acceptance": "Historical criteria only, no live/prospective certification. Frozen selected must be developmentqualified; >=180validationdays, >=100closedtrades total and>=10eachsymbol underbothcosts; bothwindows netpositive anddailydrawdown>=-10%underbothcosts; selected absolutelower95CI>0 for7/28blocksandbothcosts; selected cash-family adjustedp<=.05for7/28blocksandbothcosts. Global significance ofanother candidate cannot qualifyselected. Incrementalrelativebaselinep reportedbutnotrequired. Failure=>not-established,no replacement. Passing=>historical-criteria-passedwithknown/adaptivelimits."
+  },
+  "limitations": [
+    "All history and some controls previously inspected;32declaredtrials addto accumulated search. This maxdiagnostic onlyadjusts current32x2family, not priorstagesorhuman hypothesis selection.",
+    "Only32 prespecified module recipes, not allpossible strategies. MAfilters are not MAentry; KDJunfiltered isnot failure-breakout. No vol-breakout/MAcrossover/neworder-types/live/paperdeployment claim.",
+    "Choosing32rules on one knowntrainperiod canoverfit; trainingqualification cannotbe inferredfrombettervalidationcandidate. Cashfallback wouldrequire separate tradingpolicy; thisstudydoesnot invent cash-selecteddeployments.",
+    "MinuteOHLClimits gap/queue/liquidity/partialfill/liquidation realism. Costs arefixed5+2or10+4bpsper-side; actualfundingstillconsumed. Historicalfees/precisionmaydiffer.",
+    "Shared sixcoin correlation andlongbiasedcrypto market are not independentcross-asset evidence. PortfolioMDDdailyclose excludesintradaypeak/trough.",
+    "Independentwindow capitalstatescannotbechained; onlythe760day accountiscontinuous. Calendar slicesreconcile tosingleNAV andcannotbe usedtochoosefavorableenddates.",
+    "No ensemble constructedby averagingfull60000accounts. Anyfuturecombinedpolicy requiresactualallocatedcapitalreplay andnewfrozenprotocol.",
+    "Blockbootstrapstationarity assumptions andfixedstrata arelimitations; per-rowpointwiseCIarenotselection-adjusted andcurrentfamilymaxpdoesnotprovefutureedge."
+  ],
+  "references": [
+    "https://backoffice.biblio.ugent.be/download/01HY3C3S169G1N6QNYR55NZMFB/01HY60XZGZYHNQ6188MSVJT0SG",
+    "https://www.aqr.com/Insights/Research/Journal-Article/Time-Series-Momentum",
+    "https://onlinelibrary.wiley.com/doi/10.1111/1468-0262.00152",
+    "https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf"
+  ]
+}

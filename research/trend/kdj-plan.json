@@ -1,0 +1,233 @@
+{
+  "version": 1,
+  "configVersion": 6,
+  "title": "KDJ\u3001\u6162\u5747\u7ebf\u4e0e\u5206\u9636\u6bb5\u9000\u51fa\uff1a\u6709\u9650\u5386\u53f2\u8bca\u65ad\u7814\u7a76",
+  "frozenAt": "2026-10-03; protocol fixed before any result from this KDJ study was generated or inspected. Every historical window was already used in earlier research.",
+  "purpose": "Compare three predeclared 5-minute KDJ breakeven thresholds using EMA60 and staged exits. Restrict development selection to those three candidates; all other candidates are fixed comparators. All windows are previously inspected historical diagnostics, including the final historical holdout. No untouched out-of-sample, prospective or live-trading claim.",
+  "capitalMode": "total-account-equal-sleeves",
+  "initialCapital": 60000,
+  "symbols": {
+    "BTCUSDT": {
+      "tickSize": 0.1,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "ETHUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "BNBUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.01,
+      "minNotional": 100
+    },
+    "SOLUSDT": {
+      "tickSize": 0.001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "XRPUSDT": {
+      "tickSize": 0.0001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "DOGEUSDT": {
+      "tickSize": 1e-5,
+      "quantityStep": 1,
+      "minNotional": 100
+    }
+  },
+  "windows": [
+    {
+      "id": "development-2025",
+      "role": "development",
+      "label": "\u5f00\u53d1\u671f \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+      "start": "2025-01-01",
+      "end": "2026-01-01"
+    },
+    {
+      "id": "validation-2026-h1",
+      "role": "diagnostic-validation",
+      "label": "\u9a8c\u8bc1\u671f \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+      "start": "2026-01-01",
+      "end": "2026-07-01"
+    },
+    {
+      "id": "historical-holdout-2026-q3",
+      "role": "diagnostic-holdout",
+      "label": "\u6700\u7ec8\u5386\u53f2\u7559\u51fa \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+      "start": "2026-07-01",
+      "end": "2026-10-01"
+    }
+  ],
+  "dataPolicy": "Binance USDT perpetual official checksum-verified traded-price/mark-price minute archives and actual historical funding. Reuse immutable verified archive cache; generate a new manifest bound to this plan. Missing official minutes or funding reject the window, never interpolate or substitute zero costs. No outcomes are used to choose data availability or alter these dates.",
+  "candidates": [
+    {
+      "id": "kdj-5m-be0",
+      "entry": "kdj",
+      "tradeMinutes": 5,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 0,
+        "trailingStartR": 2
+      }
+    },
+    {
+      "id": "kdj-5m-be1",
+      "entry": "kdj",
+      "tradeMinutes": 5,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 1,
+        "trailingStartR": 2
+      }
+    },
+    {
+      "id": "kdj-5m-be2",
+      "entry": "kdj",
+      "tradeMinutes": 5,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 2,
+        "trailingStartR": 2
+      }
+    },
+    {
+      "id": "breakout20-5m-be1",
+      "entry": "breakout",
+      "tradeMinutes": 5,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 1,
+        "trailingStartR": 2
+      }
+    },
+    {
+      "id": "kdj-15m-be1",
+      "entry": "kdj",
+      "tradeMinutes": 15,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 1,
+        "trailingStartR": 2
+      }
+    },
+    {
+      "id": "default-4h-background-long-channel",
+      "entry": "breakout",
+      "tradeMinutes": 240,
+      "filter": "background",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2,
+      "maxCostAtr": 0
+    }
+  ],
+  "baseline": "breakout20-5m-be1",
+  "hypotheses": [
+    "KDJ entry is a trend-direction pullback episode, not every K/D crossover: arm long at K<=20 or short at K>=80 only when slow EMA permits that direction, then require a crossover on a later completed candle. No band-threshold search.",
+    "The only selected variation is KDJ 5-minute breakeven activation at disabled / 1R / 2R, with trailing activation fixed at 2R and distance fixed at 3 dynamic ATR.",
+    "The breakout20 5-minute comparator holds slow-EMA filtering, staged management, risk budget and costs constant; compare its entries with KDJ at BE1.",
+    "KDJ 15-minute BE1 is a predeclared timeframe comparator, not eligible for selection.",
+    "The current 4-hour background-filtered long channel strategy is a product reference with different direction, horizon and management; differences are not attributed to KDJ alone."
+  ],
+  "fixedRules": {
+    "kdj": {
+      "periods": [9, 3, 3],
+      "initialK": 50,
+      "initialD": 50,
+      "window": "RSV uses the high/low of nine completed trading candles including the current one. Do not update K/D before nine candles are available. Flat-window RSV is 50.",
+      "recursion": "K=(2*previousK+RSV)/3; D=(2*previousD+K)/3; J=3*K-2*D. J is display-only.",
+      "arming": "Within the direction allowed by slow EMA, K<=20 arms a long pullback; K>=80 arms a short pullback. A signal requires a later completed candle, never the arming candle.",
+      "crossing": "Long: previous K<=previous D and current K>current D. Short: previous K>=previous D and current K<current D. A signal consumes the armed episode once.",
+      "reset": "Invalid slow-EMA direction, an existing position, or a risk prohibition clears episode eligibility. A new episode requires leaving the corresponding extreme zone and then returning; a residual crossover alone cannot re-enter."
+    },
+    "slowEma": "EMA60 on the same completed trading candles, direction confirmed against its value three candles earlier; 63 completed candles of prehistory.",
+    "staged": "Completed trading-candle close activates protection by frozen initial price risk R. BE0 disables breakeven. Trailing activates at 2R and uses 3 times the latest completed-candle ATR. Initial stop is 2 signal ATR; old breakEvenAtr is zero.",
+    "execution": "The shared Rust minute engine controls signal timing, next-open execution, costs, protection ordering and price/quantity rounding. No separate Python indicator or fill implementation."
+  },
+  "selectionObjective": "dailySharpe",
+  "selectionCandidates": ["kdj-5m-be0", "kdj-5m-be1", "kdj-5m-be2"],
+  "selectionMinTrades": 10,
+  "selectionMinProfitableSymbols": 4,
+  "selection": "Development-2025 only: among the three selectionCandidates with at least ten completed trades in every symbol and a defined finite aggregate daily Sharpe, select the highest Sharpe; ties follow declaration order. Keep qualification separate: at least four profitable symbols and positive median symbol mean net R. If none satisfies the sample gate, stop without substituting a comparator. Freeze the choice before later windows; later failure never causes reselection.",
+  "sensitivity": [
+    {
+      "id": "stop-lower",
+      "stopAtr": 1.5
+    },
+    {
+      "id": "stop-higher",
+      "stopAtr": 2.5
+    }
+  ],
+  "costs": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "stressFeeBps": 10,
+    "stressSlippageBps": 4
+  },
+  "risk": {
+    "riskPct": 0.005,
+    "maxExposurePct": 0.95,
+    "cooldownLosses": 3,
+    "cooldownMinutes": 60,
+    "dailyLossPct": 0.03,
+    "flattenMinute": null
+  },
+  "bootstrap": {
+    "seed": 20261003,
+    "samples": 2000,
+    "blockDays": 7
+  },
+  "acceptance": "No strategy is established by this reused historical sample. Report development qualification; both later diagnostic windows must have positive selected net returns and positive doubled-cost selected returns before describing historical robustness. Report net-return and daily-drawdown differences against the same-risk breakout baseline and paired daily-return uncertainty regardless of sign. Report the 15-minute and product-reference comparators without reselection. Failure is recorded; no parameter expansion or date changes after results.",
+  "limitations": [
+    "Every date range was inspected in earlier research. The final historical holdout is only a frozen split for this comparison, not untouched OOS or prospective evidence.",
+    "Selection among three thresholds remains another disclosed research trial; block-bootstrap intervals do not correct selection bias or prior research reuse.",
+    "Six surviving liquid USDT perpetuals are not a point-in-time universe and are not six independent asset classes.",
+    "The 15-minute comparator changes sampling frequency; the 4-hour product reference also changes direction and management, so comparisons do not isolate one causal mechanism.",
+    "Fixed precision and fee/slippage assumptions are not historical exchange filters or an order-book execution model.",
+    "Minute OHLC cannot establish intraminute high/low ordering, queue priority, partial fills, liquidation or real live-stop execution.",
+    "Six fixed 10000-USDT sleeves sum to 60000 USDT; no shared margin, netting or capital transfers.",
+    "Per-sleeve Calmar uses minute/fill drawdown; aggregate account Calmar uses daily-close drawdown. Costs already embedded in equity are never deducted again."
+  ]
+}

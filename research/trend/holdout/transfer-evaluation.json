@@ -1,0 +1,872 @@
+{
+  "version": "trend-transfer-evaluation-2",
+  "protocol": {
+    "windows": [
+      "heldout-symbols"
+    ],
+    "samples": 2000,
+    "seed": 20261003,
+    "blockDays": [
+      7,
+      28
+    ],
+    "minimumDays": 180,
+    "minimumTrades": 100,
+    "minimumTradesPerSymbol": 10,
+    "maxDailyDrawdown": 0.1,
+    "requireEachWindowPositive": true,
+    "requireDevelopmentQualified": true,
+    "method": "Aggregate the six fixed sleeves in dollars then compute continuous UTC daily account returns. Share circular date blocks across all four candidate/cost series;2000replicates,seed20261003,7and28days. Report percentile95bounds floor(B*.025)/floor(B*.975) of absolute and paired means. No resampling individual trades as independent observations.",
+    "acceptance": "The inherited primary alone must retain verified source-domain qualification; at least180complete target days,100closed trades and10per declared target symbol undereachcost; target account positive net return anddailyDD>=-10% underbothcosts; absolute mean daily return lower95CI>0 forboth7/28dayblocks andbothcosts. Every condition must pass. Baseline superiority is diagnostic only and cannot replace absolute profitability. No replacement on failure. Passing is cross-symbol historical evidence only, not independent-time or prospective certification; original known-history search conclusion remains unchanged."
+  },
+  "selected": "m30-n320-no-day-guard",
+  "baseline": "m30-n320-x160",
+  "selectionRecomputed": false,
+  "developmentQualified": true,
+  "developmentQualification": {
+    "status": "passed",
+    "reasons": [],
+    "completeDays": 487,
+    "minimumTradesPerSymbol": 30,
+    "tradesBySymbol": {
+      "BTCUSDT": 34,
+      "ETHUSDT": 34,
+      "BNBUSDT": 45,
+      "SOLUSDT": 38,
+      "XRPUSDT": 43,
+      "DOGEUSDT": 49
+    }
+  },
+  "windows": [
+    {
+      "id": "heldout-symbols",
+      "role": "cross-symbol-holdout-known-time",
+      "start": "2024-09-01",
+      "end": "2026-10-01",
+      "accounts": {
+        "selectedBase": {
+          "candidate": "m30-n320-no-day-guard",
+          "days": 760,
+          "initialCapital": 60000.0,
+          "return": 0.062485063813441766,
+          "dailyMaxDrawdown": -0.08772910530536426,
+          "trades": 483,
+          "tradesBySymbol": {
+            "LTCUSDT": 96,
+            "LINKUSDT": 74,
+            "ADAUSDT": 64,
+            "BCHUSDT": 71,
+            "ETCUSDT": 76,
+            "TRXUSDT": 102
+          },
+          "netPnl": 3749.10382880651,
+          "netExpectancy": 7.762119728377909,
+          "meanNetR": 0.19374997698871163,
+          "profitFactor": 1.1806933271072568,
+          "meanDailyReturn": 8.954532057612655e-05
+        },
+        "baselineBase": {
+          "candidate": "m30-n320-x160",
+          "days": 760,
+          "initialCapital": 60000.0,
+          "return": 0.01827363001455229,
+          "dailyMaxDrawdown": -0.09224611552766293,
+          "trades": 490,
+          "tradesBySymbol": {
+            "LTCUSDT": 96,
+            "LINKUSDT": 77,
+            "ADAUSDT": 65,
+            "BCHUSDT": 73,
+            "ETCUSDT": 77,
+            "TRXUSDT": 102
+          },
+          "netPnl": 1096.4178008731324,
+          "netExpectancy": 2.237587348720738,
+          "meanNetR": 0.07816455703474177,
+          "profitFactor": 1.0533217317050916,
+          "meanDailyReturn": 3.219016715948559e-05
+        },
+        "selectedStress": {
+          "candidate": "m30-n320-no-day-guard-stress",
+          "days": 760,
+          "initialCapital": 60000.0,
+          "return": 0.01917780044354811,
+          "dailyMaxDrawdown": -0.11020618498472157,
+          "trades": 485,
+          "tradesBySymbol": {
+            "LTCUSDT": 96,
+            "LINKUSDT": 74,
+            "ADAUSDT": 64,
+            "BCHUSDT": 71,
+            "ETCUSDT": 76,
+            "TRXUSDT": 104
+          },
+          "netPnl": 1150.6680266128897,
+          "netExpectancy": 2.3725113950781282,
+          "meanNetR": 0.06037692029055712,
+          "profitFactor": 1.055644964391915,
+          "meanDailyReturn": 3.353415524778288e-05
+        },
+        "baselineStress": {
+          "candidate": "m30-n320-x160-stress",
+          "days": 760,
+          "initialCapital": 60000.0,
+          "return": -0.021456372661871614,
+          "dailyMaxDrawdown": -0.1070778987776928,
+          "trades": 492,
+          "tradesBySymbol": {
+            "LTCUSDT": 96,
+            "LINKUSDT": 77,
+            "ADAUSDT": 65,
+            "BCHUSDT": 73,
+            "ETCUSDT": 77,
+            "TRXUSDT": 104
+          },
+          "netPnl": -1287.3823597122973,
+          "netExpectancy": -2.6166308124234714,
+          "meanNetR": -0.052082983076519714,
+          "profitFactor": 0.9374401171434421,
+          "meanDailyReturn": -2.1307880505861146e-05
+        }
+      }
+    }
+  ],
+  "pooled": {
+    "days": 760,
+    "base": {
+      "trades": 483,
+      "netPnl": 3749.10382880651,
+      "tradesBySymbol": {
+        "LTCUSDT": 96,
+        "LINKUSDT": 74,
+        "ADAUSDT": 64,
+        "BCHUSDT": 71,
+        "ETCUSDT": 76,
+        "TRXUSDT": 102
+      },
+      "netExpectancy": 7.762119728377868,
+      "meanNetR": 0.19374997698871163
+    },
+    "stress": {
+      "trades": 485,
+      "netPnl": 1150.6680266128897,
+      "tradesBySymbol": {
+        "LTCUSDT": 96,
+        "LINKUSDT": 74,
+        "ADAUSDT": 64,
+        "BCHUSDT": 71,
+        "ETCUSDT": 76,
+        "TRXUSDT": 104
+      },
+      "netExpectancy": 2.372511395078123,
+      "meanNetR": 0.06037692029055712
+    }
+  },
+  "bootstrap": [
+    {
+      "blockDays": 7,
+      "samples": 2000,
+      "seed": 20261003,
+      "days": 760,
+      "absolute": {
+        "selectedBase": {
+          "meanDailyReturn": 8.954532057612655e-05,
+          "meanDailyReturn95CI": [
+            -0.00021118902673775594,
+            0.0004158361374228744
+          ]
+        },
+        "baselineBase": {
+          "meanDailyReturn": 3.219016715948559e-05,
+          "meanDailyReturn95CI": [
+            -0.0002444030643097776,
+            0.0003377046084500375
+          ]
+        },
+        "selectedStress": {
+          "meanDailyReturn": 3.353415524778288e-05,
+          "meanDailyReturn95CI": [
+            -0.0002478272261569803,
+            0.00033607327664299935
+          ]
+        },
+        "baselineStress": {
+          "meanDailyReturn": -2.1307880505861146e-05,
+          "meanDailyReturn95CI": [
+            -0.0002861203768482388,
+            0.0002675226585868418
+          ]
+        }
+      },
+      "paired": {
+        "base": {
+          "meanDailyReturn": 5.7355153416640966e-05,
+          "meanDailyReturn95CI": [
+            -5.294962575886221e-05,
+            0.00020924882687140266
+          ]
+        },
+        "stress": {
+          "meanDailyReturn": 5.4842035753644024e-05,
+          "meanDailyReturn95CI": [
+            -4.9319680337420325e-05,
+            0.00019311525498894573
+          ]
+        }
+      }
+    },
+    {
+      "blockDays": 28,
+      "samples": 2000,
+      "seed": 20261003,
+      "days": 760,
+      "absolute": {
+        "selectedBase": {
+          "meanDailyReturn": 8.954532057612655e-05,
+          "meanDailyReturn95CI": [
+            -0.00017819705564414115,
+            0.0004103273658487296
+          ]
+        },
+        "baselineBase": {
+          "meanDailyReturn": 3.219016715948559e-05,
+          "meanDailyReturn95CI": [
+            -0.00019876430040672883,
+            0.0002929616956642802
+          ]
+        },
+        "selectedStress": {
+          "meanDailyReturn": 3.353415524778288e-05,
+          "meanDailyReturn95CI": [
+            -0.00021530661604923245,
+            0.0003240629633481296
+          ]
+        },
+        "baselineStress": {
+          "meanDailyReturn": -2.1307880505861146e-05,
+          "meanDailyReturn95CI": [
+            -0.00023351476391524862,
+            0.00021706725938001764
+          ]
+        }
+      },
+      "paired": {
+        "base": {
+          "meanDailyReturn": 5.7355153416640966e-05,
+          "meanDailyReturn95CI": [
+            -4.006905256245296e-05,
+            0.00020310349728712868
+          ]
+        },
+        "stress": {
+          "meanDailyReturn": 5.4842035753644024e-05,
+          "meanDailyReturn95CI": [
+            -3.776499527639412e-05,
+            0.0001908652492054316
+          ]
+        }
+      }
+    }
+  ],
+  "leaveOneSymbolOut": {
+    "windows": [
+      {
+        "window": "heldout-symbols",
+        "days": 760,
+        "meanDailyReturn": {
+          "selectedBase": {
+            "LTCUSDT": 0.00015960028422882874,
+            "LINKUSDT": 5.233231943276441e-05,
+            "ADAUSDT": -4.7208151791944846e-06,
+            "BCHUSDT": 0.00011650760796890188,
+            "ETCUSDT": 0.000109472861406629,
+            "TRXUSDT": 0.00010257105115462979
+          },
+          "baselineBase": {
+            "LTCUSDT": 9.05729199075649e-05,
+            "LINKUSDT": -2.994174224884104e-06,
+            "ADAUSDT": -1.678508042227835e-05,
+            "BCHUSDT": 5.916975043355579e-05,
+            "ETCUSDT": 4.974767533156288e-05,
+            "TRXUSDT": 1.3946577906760227e-05
+          },
+          "selectedStress": {
+            "LTCUSDT": 9.939633916953308e-05,
+            "LINKUSDT": -4.8012712971019265e-06,
+            "ADAUSDT": -6.193156980346407e-05,
+            "BCHUSDT": 5.529518302177429e-05,
+            "ETCUSDT": 5.0025043883809926e-05,
+            "TRXUSDT": 6.115057393597639e-05
+          },
+          "baselineStress": {
+            "LTCUSDT": 3.5227721011654725e-05,
+            "LINKUSDT": -5.7385995146745275e-05,
+            "ADAUSDT": -7.30632133950272e-05,
+            "BCHUSDT": 4.321911219477179e-07,
+            "ETCUSDT": -7.309212810405197e-06,
+            "TRXUSDT": -2.5525841953147918e-05
+          }
+        }
+      }
+    ],
+    "pooledMeanDailyReturn": {
+      "selectedBase": {
+        "LTCUSDT": 0.00015960028422882874,
+        "LINKUSDT": 5.233231943276441e-05,
+        "ADAUSDT": -4.7208151791944846e-06,
+        "BCHUSDT": 0.00011650760796890188,
+        "ETCUSDT": 0.000109472861406629,
+        "TRXUSDT": 0.00010257105115462979
+      },
+      "baselineBase": {
+        "LTCUSDT": 9.05729199075649e-05,
+        "LINKUSDT": -2.994174224884104e-06,
+        "ADAUSDT": -1.678508042227835e-05,
+        "BCHUSDT": 5.916975043355579e-05,
+        "ETCUSDT": 4.974767533156288e-05,
+        "TRXUSDT": 1.3946577906760227e-05
+      },
+      "selectedStress": {
+        "LTCUSDT": 9.939633916953308e-05,
+        "LINKUSDT": -4.8012712971019265e-06,
+        "ADAUSDT": -6.193156980346407e-05,
+        "BCHUSDT": 5.529518302177429e-05,
+        "ETCUSDT": 5.0025043883809926e-05,
+        "TRXUSDT": 6.115057393597639e-05
+      },
+      "baselineStress": {
+        "LTCUSDT": 3.5227721011654725e-05,
+        "LINKUSDT": -5.7385995146745275e-05,
+        "ADAUSDT": -7.30632133950272e-05,
+        "BCHUSDT": 4.321911219477179e-07,
+        "ETCUSDT": -7.309212810405197e-06,
+        "TRXUSDT": -2.5525841953147918e-05
+      }
+    },
+    "scope": "Descriptive account daily means after omitting one original fixed sleeve; no capital redistribution, rerun, selection, or acceptance criterion."
+  },
+  "acceptance": {
+    "status": "not-established",
+    "checks": [
+      {
+        "criterion": "development-qualified",
+        "passed": true,
+        "actual": true,
+        "threshold": true
+      },
+      {
+        "criterion": "minimum-transfer-days",
+        "passed": true,
+        "actual": 760,
+        "threshold": 180
+      },
+      {
+        "criterion": "base:minimum-trades",
+        "passed": true,
+        "actual": 483,
+        "threshold": 100
+      },
+      {
+        "criterion": "base:minimum-trades:LTCUSDT",
+        "passed": true,
+        "actual": 96,
+        "threshold": 10
+      },
+      {
+        "criterion": "base:minimum-trades:LINKUSDT",
+        "passed": true,
+        "actual": 74,
+        "threshold": 10
+      },
+      {
+        "criterion": "base:minimum-trades:ADAUSDT",
+        "passed": true,
+        "actual": 64,
+        "threshold": 10
+      },
+      {
+        "criterion": "base:minimum-trades:BCHUSDT",
+        "passed": true,
+        "actual": 71,
+        "threshold": 10
+      },
+      {
+        "criterion": "base:minimum-trades:ETCUSDT",
+        "passed": true,
+        "actual": 76,
+        "threshold": 10
+      },
+      {
+        "criterion": "base:minimum-trades:TRXUSDT",
+        "passed": true,
+        "actual": 102,
+        "threshold": 10
+      },
+      {
+        "criterion": "base:heldout-symbols:positive-return",
+        "passed": true,
+        "actual": 0.062485063813441766,
+        "threshold": ">0"
+      },
+      {
+        "criterion": "base:heldout-symbols:daily-drawdown",
+        "passed": true,
+        "actual": -0.08772910530536426,
+        "threshold": -0.1
+      },
+      {
+        "criterion": "base:block7:absolute-lower-bound",
+        "passed": false,
+        "actual": -0.00021118902673775594,
+        "threshold": ">0"
+      },
+      {
+        "criterion": "base:block28:absolute-lower-bound",
+        "passed": false,
+        "actual": -0.00017819705564414115,
+        "threshold": ">0"
+      },
+      {
+        "criterion": "stress:minimum-trades",
+        "passed": true,
+        "actual": 485,
+        "threshold": 100
+      },
+      {
+        "criterion": "stress:minimum-trades:LTCUSDT",
+        "passed": true,
+        "actual": 96,
+        "threshold": 10
+      },
+      {
+        "criterion": "stress:minimum-trades:LINKUSDT",
+        "passed": true,
+        "actual": 74,
+        "threshold": 10
+      },
+      {
+        "criterion": "stress:minimum-trades:ADAUSDT",
+        "passed": true,
+        "actual": 64,
+        "threshold": 10
+      },
+      {
+        "criterion": "stress:minimum-trades:BCHUSDT",
+        "passed": true,
+        "actual": 71,
+        "threshold": 10
+      },
+      {
+        "criterion": "stress:minimum-trades:ETCUSDT",
+        "passed": true,
+        "actual": 76,
+        "threshold": 10
+      },
+      {
+        "criterion": "stress:minimum-trades:TRXUSDT",
+        "passed": true,
+        "actual": 104,
+        "threshold": 10
+      },
+      {
+        "criterion": "stress:heldout-symbols:positive-return",
+        "passed": true,
+        "actual": 0.01917780044354811,
+        "threshold": ">0"
+      },
+      {
+        "criterion": "stress:heldout-symbols:daily-drawdown",
+        "passed": false,
+        "actual": -0.11020618498472157,
+        "threshold": -0.1
+      },
+      {
+        "criterion": "stress:block7:absolute-lower-bound",
+        "passed": false,
+        "actual": -0.0002478272261569803,
+        "threshold": ">0"
+      },
+      {
+        "criterion": "stress:block28:absolute-lower-bound",
+        "passed": false,
+        "actual": -0.00021530661604923245,
+        "threshold": ">0"
+      }
+    ],
+    "failedCriteria": [
+      "base:block7:absolute-lower-bound",
+      "base:block28:absolute-lower-bound",
+      "stress:heldout-symbols:daily-drawdown",
+      "stress:block7:absolute-lower-bound",
+      "stress:block28:absolute-lower-bound"
+    ],
+    "meaning": "Historical transfer evidence only; no guarantee of future profitability, reselection, or automatic deployment."
+  },
+  "conventions": {
+    "returnUnit": "fraction",
+    "calendar": "UTC",
+    "poolWeight": "observation-days",
+    "drawdownSampling": "daily-close",
+    "windowCapital": "independent-reset",
+    "bootstrapPairing": "same within-window date indices for all sleeves, candidates and costs",
+    "interval": "95% percentile, sorted ranks floor(samples*.025) and floor(samples*.975)",
+    "singleSleeveEvaluationVersion": 2
+  },
+  "limitations": [
+    "Retrospective historical transfer, not prospective or live evidence.",
+    "No cross-window blocks, gap filling or chained NAV. Longer windows receive proportionally more weight.",
+    "Intervals describe the frozen choice; they do not correct all earlier adaptive research trials or prove stationarity.",
+    "Trade net-R and dollar expectancy are ledger descriptions, not independent-trade inference. Paired improvement cannot replace absolute profitability.",
+    "Development qualification belongs only to the recorded source universe and dates; no development ranking or qualification is fitted to the target symbols.",
+    "Disjoint, previously untested symbols provide a cross-symbol historical holdout, not independent-time, prospective or live validation. They share already-known calendar regimes and crypto market dependence.",
+    "Passing this transfer criterion does not revise the source study's recorded conclusion or correct its prior search multiplicity. No target result can replace the frozen selected rule."
+  ],
+  "qualificationScope": "source-domain",
+  "selectionSource": {
+    "plan": "research/trend/search-plan.json",
+    "manifest": "tmp/trend-search-v8/manifest.json",
+    "run": "tmp/trend-search-v8",
+    "planSha256": "f6db2c3a71c08fbed0a7a6c2b6f7f1538fbf40d29180aafab216e766f2b62594",
+    "manifestSha256": "608bf05449a5644ebcc4587a1892d07ca9f67e82c659de24a8a1f88d7fef302e",
+    "runSha256": "a1568548d54eeb5605620f3f89f36ce1f1b24d889490a44b21505d8efe9852c5",
+    "selectionSha256": "d48ac1c7cac700650f00936e606d049546b0168e52c7c686c8d4411a98a75994",
+    "developmentSha256": "1d56ce09f1e8d860785c73bf584bf383e1241c76523255f62cec32b075c495b2",
+    "selected": "m30-n320-no-day-guard",
+    "baseline": "m30-n320-x160",
+    "sourceSymbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "BNBUSDT",
+      "SOLUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "sourceDevelopmentWindow": {
+      "id": "development",
+      "start": "2022-09-01",
+      "end": "2024-01-01",
+      "role": "development",
+      "label": "\u5f00\u53d1487\u5929 \u00b7 \u5df2\u77e5\u5386\u53f2"
+    },
+    "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+    "replayVersion": "trend-native-replay-4",
+    "developmentReceipts": [
+      {
+        "symbol": "BTCUSDT",
+        "sha256": "041f11850b9545e60aafde9123778a419ba60c00442df26ff203ad0efd9abb2a"
+      },
+      {
+        "symbol": "ETHUSDT",
+        "sha256": "6a21132b11f842397b865518233ae81a4f6e09fe484a3e4569cf62515c60f765"
+      },
+      {
+        "symbol": "BNBUSDT",
+        "sha256": "0dae0b4c3ca932ff9c2cbeb7afbf06ff3a783151df7aeafdb6b96122bf89dff9"
+      },
+      {
+        "symbol": "SOLUSDT",
+        "sha256": "2e4a1a0c285f131cecacdc6fd35776785104811a92375f8b7aa84465c4d45251"
+      },
+      {
+        "symbol": "XRPUSDT",
+        "sha256": "87316cc295afe5e9cc30a8d6a0f43bea4f6561a546ae697aa26e5c673a807997"
+      },
+      {
+        "symbol": "DOGEUSDT",
+        "sha256": "378c76ee87d4dd9b40c0dad74d026d461e4e319e04602f507107043da6afd506"
+      }
+    ]
+  },
+  "targetDomain": {
+    "symbols": [
+      "LTCUSDT",
+      "LINKUSDT",
+      "ADAUSDT",
+      "BCHUSDT",
+      "ETCUSDT",
+      "TRXUSDT"
+    ],
+    "sourceSymbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "BNBUSDT",
+      "SOLUSDT",
+      "XRPUSDT",
+      "DOGEUSDT"
+    ],
+    "disjointSymbols": true,
+    "timeIndependenceClaim": false,
+    "prospective": false
+  },
+  "evaluationIdentity": {
+    "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+    "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+    "selectionSha256": "982ddf7bc6f9c62e5811d7fef62e69d8fa3bedb53c903c9f9df87af0f9605fb1",
+    "rawResultsSha256": "fddc4e43e43a3b1b3b4dae15695bf2b9635fe398e4d74c0d193be914d7cceaeb",
+    "evaluationVersion": "trend-account-evaluation-2",
+    "evaluationSha256": "5ebe1df30ea7a46b1ac76cfa7c0ce1af47ddae4480c348a0dc254c92e9579466"
+  },
+  "engine": "trend-continuation-14",
+  "selection": {
+    "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+    "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+    "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+    "replayVersion": "trend-native-replay-5",
+    "id": "m30-n320-no-day-guard",
+    "selectionMode": "inherited",
+    "objective": "inherited",
+    "developmentQualified": true,
+    "developmentQualification": {
+      "status": "passed",
+      "reasons": [],
+      "completeDays": 487,
+      "minimumTradesPerSymbol": 30,
+      "tradesBySymbol": {
+        "BTCUSDT": 34,
+        "ETHUSDT": 34,
+        "BNBUSDT": 45,
+        "SOLUSDT": 38,
+        "XRPUSDT": 43,
+        "DOGEUSDT": 49
+      }
+    },
+    "qualificationScope": "source-domain",
+    "selectionSource": {
+      "plan": "research/trend/search-plan.json",
+      "manifest": "tmp/trend-search-v8/manifest.json",
+      "run": "tmp/trend-search-v8",
+      "planSha256": "f6db2c3a71c08fbed0a7a6c2b6f7f1538fbf40d29180aafab216e766f2b62594",
+      "manifestSha256": "608bf05449a5644ebcc4587a1892d07ca9f67e82c659de24a8a1f88d7fef302e",
+      "runSha256": "a1568548d54eeb5605620f3f89f36ce1f1b24d889490a44b21505d8efe9852c5",
+      "selectionSha256": "d48ac1c7cac700650f00936e606d049546b0168e52c7c686c8d4411a98a75994",
+      "developmentSha256": "1d56ce09f1e8d860785c73bf584bf383e1241c76523255f62cec32b075c495b2",
+      "selected": "m30-n320-no-day-guard",
+      "baseline": "m30-n320-x160",
+      "sourceSymbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "sourceDevelopmentWindow": {
+        "id": "development",
+        "start": "2022-09-01",
+        "end": "2024-01-01",
+        "role": "development",
+        "label": "\u5f00\u53d1487\u5929 \u00b7 \u5df2\u77e5\u5386\u53f2"
+      },
+      "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+      "replayVersion": "trend-native-replay-4",
+      "developmentReceipts": [
+        {
+          "symbol": "BTCUSDT",
+          "sha256": "041f11850b9545e60aafde9123778a419ba60c00442df26ff203ad0efd9abb2a"
+        },
+        {
+          "symbol": "ETHUSDT",
+          "sha256": "6a21132b11f842397b865518233ae81a4f6e09fe484a3e4569cf62515c60f765"
+        },
+        {
+          "symbol": "BNBUSDT",
+          "sha256": "0dae0b4c3ca932ff9c2cbeb7afbf06ff3a783151df7aeafdb6b96122bf89dff9"
+        },
+        {
+          "symbol": "SOLUSDT",
+          "sha256": "2e4a1a0c285f131cecacdc6fd35776785104811a92375f8b7aa84465c4d45251"
+        },
+        {
+          "symbol": "XRPUSDT",
+          "sha256": "87316cc295afe5e9cc30a8d6a0f43bea4f6561a546ae697aa26e5c673a807997"
+        },
+        {
+          "symbol": "DOGEUSDT",
+          "sha256": "378c76ee87d4dd9b40c0dad74d026d461e4e319e04602f507107043da6afd506"
+        }
+      ]
+    },
+    "evaluationVersion": "trend-account-evaluation-2",
+    "evaluationSha256": "5ebe1df30ea7a46b1ac76cfa7c0ce1af47ddae4480c348a0dc254c92e9579466",
+    "criterion": "Inherit the original source choice m30-n320-no-day-guard and its source-domain qualification exactly. No target development window, ranking, qualification fit, coin selection, threshold adjustment or fallback winner. Baseline m30-n320-x160 is diagnostic only. The target result cannot revise the frozen source study."
+  },
+  "generatorSha256": "2c9ce35f0e6386896bfdd6854bf009442dcaf44a5b2e4f2e4a1e969e57fd4f8e",
+  "transferSourceSha256": "6cd9275eac1e38d48ce8bafc3ab6de015325b69f33bf6e0d5ef9f60c0d0df574",
+  "provenance": [
+    {
+      "window": "heldout-symbols",
+      "symbol": "LTCUSDT",
+      "receipt": {
+        "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "f3feea0cf385ee89f3b0dcdf460beca3bf6335bc5ab8d63c6f07280e56746f2e",
+        "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+        "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "heldout-symbols",
+          "start": "2024-09-01",
+          "end": "2026-10-01",
+          "role": "cross-symbol-holdout-known-time",
+          "label": "\u65b0\u516d\u5e01\u7559\u51fa \u00b7 \u8fde\u7eed760\u5929 \u00b7 \u540c\u671f\u5e02\u573a\u5df2\u77e5"
+        },
+        "executionSourceSha256": "9e20e5ba744bbc7b4f33e10018471e4180457fce83c4de4d74eb3a617b9c6c10",
+        "resultSha256": "1af0df7455a3e9db9d2258be7bf09523189563ab92688726394f060e6f6ed3dd"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "f552419eea4117140756bf5c9e6554c14fc1ca08c6c82832f0a950d52ec738e7",
+      "warmup": {
+        "m30-n320-no-day-guard": 1724544000000,
+        "m30-n320-x160": 1724544000000,
+        "m30-n320-no-day-guard-stress": 1724544000000,
+        "m30-n320-x160-stress": 1724544000000
+      }
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LINKUSDT",
+      "receipt": {
+        "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "fc08bb6bbd9199fff74567fba9baa36f5b8abd88bb135330a6aa21be1a6e953e",
+        "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+        "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "heldout-symbols",
+          "start": "2024-09-01",
+          "end": "2026-10-01",
+          "role": "cross-symbol-holdout-known-time",
+          "label": "\u65b0\u516d\u5e01\u7559\u51fa \u00b7 \u8fde\u7eed760\u5929 \u00b7 \u540c\u671f\u5e02\u573a\u5df2\u77e5"
+        },
+        "executionSourceSha256": "9e20e5ba744bbc7b4f33e10018471e4180457fce83c4de4d74eb3a617b9c6c10",
+        "resultSha256": "ac0e1332b346cbdce16a1013349617a756c75a97e5f8938f67fadcec632c5a01"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "daff641f3173623f9fe1debeb00cf38dfd5aa75eac77dbdcdd0d9c208f99f932",
+      "warmup": {
+        "m30-n320-no-day-guard": 1724544000000,
+        "m30-n320-x160": 1724544000000,
+        "m30-n320-no-day-guard-stress": 1724544000000,
+        "m30-n320-x160-stress": 1724544000000
+      }
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ADAUSDT",
+      "receipt": {
+        "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "356b932332298d38e5feaaab433d0fa0915005326c30653c8f95eddf85e65987",
+        "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+        "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "heldout-symbols",
+          "start": "2024-09-01",
+          "end": "2026-10-01",
+          "role": "cross-symbol-holdout-known-time",
+          "label": "\u65b0\u516d\u5e01\u7559\u51fa \u00b7 \u8fde\u7eed760\u5929 \u00b7 \u540c\u671f\u5e02\u573a\u5df2\u77e5"
+        },
+        "executionSourceSha256": "9e20e5ba744bbc7b4f33e10018471e4180457fce83c4de4d74eb3a617b9c6c10",
+        "resultSha256": "c5dc950bfb4f5d85ca18eca2dc0687b1b8d240b8485484fb19406fed666a7a6b"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "4ec1806e21af2b6bc849a252d9ae3a264a55a6ecc51bc1300737447ceaa95c5f",
+      "warmup": {
+        "m30-n320-no-day-guard": 1724544000000,
+        "m30-n320-x160": 1724544000000,
+        "m30-n320-no-day-guard-stress": 1724544000000,
+        "m30-n320-x160-stress": 1724544000000
+      }
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "BCHUSDT",
+      "receipt": {
+        "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "f3feea0cf385ee89f3b0dcdf460beca3bf6335bc5ab8d63c6f07280e56746f2e",
+        "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+        "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "heldout-symbols",
+          "start": "2024-09-01",
+          "end": "2026-10-01",
+          "role": "cross-symbol-holdout-known-time",
+          "label": "\u65b0\u516d\u5e01\u7559\u51fa \u00b7 \u8fde\u7eed760\u5929 \u00b7 \u540c\u671f\u5e02\u573a\u5df2\u77e5"
+        },
+        "executionSourceSha256": "9e20e5ba744bbc7b4f33e10018471e4180457fce83c4de4d74eb3a617b9c6c10",
+        "resultSha256": "dc8d384f852a0ab81a837281bcea68ff6620b54cde22b91557c15fb2719995ca"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "5943bbef3159593e5ee6996fd8d88799a0d5952379d6b9d3f263beb5cdeda9df",
+      "warmup": {
+        "m30-n320-no-day-guard": 1724544000000,
+        "m30-n320-x160": 1724544000000,
+        "m30-n320-no-day-guard-stress": 1724544000000,
+        "m30-n320-x160-stress": 1724544000000
+      }
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ETCUSDT",
+      "receipt": {
+        "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "fc08bb6bbd9199fff74567fba9baa36f5b8abd88bb135330a6aa21be1a6e953e",
+        "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+        "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "heldout-symbols",
+          "start": "2024-09-01",
+          "end": "2026-10-01",
+          "role": "cross-symbol-holdout-known-time",
+          "label": "\u65b0\u516d\u5e01\u7559\u51fa \u00b7 \u8fde\u7eed760\u5929 \u00b7 \u540c\u671f\u5e02\u573a\u5df2\u77e5"
+        },
+        "executionSourceSha256": "9e20e5ba744bbc7b4f33e10018471e4180457fce83c4de4d74eb3a617b9c6c10",
+        "resultSha256": "ff3cd0e64a69f6f0b609c24843e233c7a93afde73f50fc6d087c4ebb3aeda056"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "3ba52cde0da12013b07189a89f42bc5a0f9280ff703212fd660878651139adec",
+      "warmup": {
+        "m30-n320-no-day-guard": 1724544000000,
+        "m30-n320-x160": 1724544000000,
+        "m30-n320-no-day-guard-stress": 1724544000000,
+        "m30-n320-x160-stress": 1724544000000
+      }
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "TRXUSDT",
+      "receipt": {
+        "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "0b05061ff0adce31543e13f55f48e8a70c56971f4976a1e95ca891c363474d47",
+        "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+        "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "heldout-symbols",
+          "start": "2024-09-01",
+          "end": "2026-10-01",
+          "role": "cross-symbol-holdout-known-time",
+          "label": "\u65b0\u516d\u5e01\u7559\u51fa \u00b7 \u8fde\u7eed760\u5929 \u00b7 \u540c\u671f\u5e02\u573a\u5df2\u77e5"
+        },
+        "executionSourceSha256": "9e20e5ba744bbc7b4f33e10018471e4180457fce83c4de4d74eb3a617b9c6c10",
+        "resultSha256": "f41d5ec8848679c6a6cb84861e1f7967061595090a98649e1cb396984597ac94"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "78c511162ebb6b7693d3d4f752f31cb322f3e670174258db6ad26ed00ddcfffe",
+      "warmup": {
+        "m30-n320-no-day-guard": 1724544000000,
+        "m30-n320-x160": 1724544000000,
+        "m30-n320-no-day-guard-stress": 1724544000000,
+        "m30-n320-x160-stress": 1724544000000
+      }
+    }
+  ],
+  "auditScope": "Recorded receipts/configurations, complete canonical daily calendars and cash ledgers; no new price reads or source CSV rehash."
+}

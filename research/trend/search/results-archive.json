@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "format": "gzip-preserved-report-bytes",
+  "source": {
+    "path": "research/trend/search/results.json",
+    "generatedPath": "/home/zs/workspace/bcr/research/trend/search/results.json",
+    "bytes": 270668947,
+    "sha256": "b4faa0bb2a061f532fb64138a1d6e9e401248e9c5888a5067d5032870138aaa9"
+  },
+  "archive": {
+    "file": "results.json.gz",
+    "bytes": 19438909,
+    "sha256": "f14a8fb3e2f92b7e0f95843b1d78b79b1b9e37d9d89d6191d104b5b7ffd64291"
+  },
+  "compression": {
+    "algorithm": "gzip",
+    "level": 9,
+    "mtime": 0,
+    "filename": ""
+  },
+  "packer": {
+    "file": "report-archive.py",
+    "sha256": "249ebc11674fd89f1c854da60b06fc34b43041cc758fe1c6c47c00bb753f7c85"
+  },
+  "meaning": "Complete results.json bytes emitted by the unchanged report generator; no fields, whitespace, numeric spellings or evaluation identities were changed.",
+  "restore": "The generated JSON may be absent from a checkout. Run this attachment's extract command with this manifest and a new output path, then pass the restored ordinary JSON to existing --results readers. The restored bytes must match source.sha256 exactly."
+}

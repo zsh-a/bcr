@@ -21,8 +21,10 @@ export function validateTrendChannelConfig(value: TrendChannelConfig, displayMin
     displayMinutes % value.tradeMinutes !== 0 ||
     !Number.isInteger(value.entryBars) ||
     value.entryBars < 2 ||
-    value.entryBars > 250 ||
-    (value.exitBars !== null && value.exitBars !== Math.max(1, Math.floor(value.entryBars / 2)))
+    value.entryBars > 1000 ||
+    (value.exitBars !== null &&
+      (!Number.isInteger(value.exitBars) || value.exitBars < 1 || value.exitBars > 1000)) ||
+    Math.max(value.entryBars, value.exitBars ?? 0) * value.tradeMinutes > 250 * 1440
   )
     throw new Error("通道图层与冻结策略周期不一致");
 }
@@ -45,13 +47,17 @@ export class TrendChannelProjection {
       if (
         bar.time >= this.from &&
         bar.time % (this.displayMinutes * MINUTE) === 0 &&
-        this.history.length === this.config.entryBars
+        this.history.length >= this.config.entryBars
       ) {
-        const exit = this.config.exitBars === null ? [] : this.history.slice(-this.config.exitBars);
+        const entry = this.history.slice(-this.config.entryBars);
+        const exit =
+          this.config.exitBars === null || this.history.length < this.config.exitBars
+            ? []
+            : this.history.slice(-this.config.exitBars);
         this.points.push({
           time: bar.time,
-          upper: Math.max(...this.history.map((b) => b.high)),
-          lower: Math.min(...this.history.map((b) => b.low)),
+          upper: Math.max(...entry.map((b) => b.high)),
+          lower: Math.min(...entry.map((b) => b.low)),
           ...(exit.length
             ? {
                 exitUpper: Math.max(...exit.map((b) => b.high)),
@@ -61,7 +67,8 @@ export class TrendChannelProjection {
         });
       }
       this.history.push(bar);
-      if (this.history.length > this.config.entryBars) this.history.shift();
+      if (this.history.length > Math.max(this.config.entryBars, this.config.exitBars ?? 0))
+        this.history.shift();
     }
   }
 }

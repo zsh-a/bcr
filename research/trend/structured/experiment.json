@@ -1,0 +1,319 @@
+{
+  "version": 1,
+  "id": "structured-pullback-v1",
+  "frozenAt": "2026-10-03T09:46:21.265106+00:00",
+  "protocol": {
+    "version": 1,
+    "title": "30分钟结构回调研究",
+    "purpose": "Fixed mechanical hypothesis with module ablations. Development and historical validation are known/reused, not fresh temporal evidence. Asset/time reserved future cells are unavailable until their complete calendar and upstream gates pass.",
+    "configVersion": 9,
+    "capitalMode": "total-account-equal-sleeves",
+    "initialCapital": 30000,
+    "costs": {
+      "feeBps": 5,
+      "slippageBps": 2,
+      "stressFeeBps": 10,
+      "stressSlippageBps": 4
+    },
+    "risk": {
+      "riskPct": 0.005,
+      "maxExposurePct": 0.95,
+      "cooldownLosses": 3,
+      "cooldownMinutes": 60,
+      "dailyLossPct": 0,
+      "flattenMinute": null
+    },
+    "bootstrap": {
+      "seed": 20261003,
+      "samples": 2000,
+      "blockDays": 7
+    },
+    "selectionMode": "fixed",
+    "fixedCandidate": "sp-primary",
+    "baseline": "sp-base",
+    "selection": "Predeclared sp-primary; ablations diagnose mechanisms and can never replace the primary.",
+    "candidates": [
+      {
+        "id": "sp-primary",
+        "entry": "structured-pullback",
+        "tradeMinutes": 30,
+        "filter": "ema",
+        "management": "chandelier",
+        "direction": "both",
+        "breakoutBars": 20,
+        "stopAtr": 2,
+        "breakEvenAtr": 0,
+        "trailingAtr": 3,
+        "maxCostAtr": 0,
+        "structuredPullback": {
+          "keyLevel": "either",
+          "shape": "any",
+          "candle": "none"
+        }
+      },
+      {
+        "id": "sp-no-key",
+        "entry": "structured-pullback",
+        "tradeMinutes": 30,
+        "filter": "ema",
+        "management": "chandelier",
+        "direction": "both",
+        "breakoutBars": 20,
+        "stopAtr": 2,
+        "breakEvenAtr": 0,
+        "trailingAtr": 3,
+        "maxCostAtr": 0,
+        "structuredPullback": {
+          "keyLevel": "none",
+          "shape": "any",
+          "candle": "none"
+        }
+      },
+      {
+        "id": "sp-no-shape",
+        "entry": "structured-pullback",
+        "tradeMinutes": 30,
+        "filter": "ema",
+        "management": "chandelier",
+        "direction": "both",
+        "breakoutBars": 20,
+        "stopAtr": 2,
+        "breakEvenAtr": 0,
+        "trailingAtr": 3,
+        "maxCostAtr": 0,
+        "structuredPullback": {
+          "keyLevel": "either",
+          "shape": "none",
+          "candle": "none"
+        }
+      },
+      {
+        "id": "sp-no-ema",
+        "entry": "structured-pullback",
+        "tradeMinutes": 30,
+        "filter": "none",
+        "management": "chandelier",
+        "direction": "both",
+        "breakoutBars": 20,
+        "stopAtr": 2,
+        "breakEvenAtr": 0,
+        "trailingAtr": 3,
+        "maxCostAtr": 0,
+        "structuredPullback": {
+          "keyLevel": "either",
+          "shape": "any",
+          "candle": "none"
+        }
+      },
+      {
+        "id": "sp-reversal",
+        "entry": "structured-pullback",
+        "tradeMinutes": 30,
+        "filter": "ema",
+        "management": "chandelier",
+        "direction": "both",
+        "breakoutBars": 20,
+        "stopAtr": 2,
+        "breakEvenAtr": 0,
+        "trailingAtr": 3,
+        "maxCostAtr": 0,
+        "structuredPullback": {
+          "keyLevel": "either",
+          "shape": "any",
+          "candle": "reversal"
+        }
+      },
+      {
+        "id": "sp-base",
+        "entry": "structured-pullback",
+        "tradeMinutes": 30,
+        "filter": "ema",
+        "management": "chandelier",
+        "direction": "both",
+        "breakoutBars": 20,
+        "stopAtr": 2,
+        "breakEvenAtr": 0,
+        "trailingAtr": 3,
+        "maxCostAtr": 0,
+        "structuredPullback": {
+          "keyLevel": "none",
+          "shape": "none",
+          "candle": "none"
+        }
+      }
+    ],
+    "stressCandidates": [
+      "sp-primary",
+      "sp-base"
+    ],
+    "sensitivity": [],
+    "comparisons": [
+      {
+        "id": "sp-no-key",
+        "candidate": "sp-primary",
+        "reference": "sp-no-key"
+      },
+      {
+        "id": "sp-no-shape",
+        "candidate": "sp-primary",
+        "reference": "sp-no-shape"
+      },
+      {
+        "id": "sp-no-ema",
+        "candidate": "sp-primary",
+        "reference": "sp-no-ema"
+      },
+      {
+        "id": "candle-reversal",
+        "candidate": "sp-reversal",
+        "reference": "sp-primary"
+      }
+    ],
+    "transferEvaluation": {
+      "windows": [
+        "validation"
+      ],
+      "samples": 2000,
+      "seed": 20261003,
+      "blockDays": [
+        7,
+        28
+      ],
+      "minimumDays": 180,
+      "minimumTrades": 100,
+      "minimumTradesPerSymbol": 20,
+      "maxDailyDrawdown": 0.1,
+      "requireEachWindowPositive": true,
+      "requireDevelopmentQualified": true,
+      "method": "Fixed primary only; daily dollar portfolio returns; shared circular date blocks across both rules/costs. No independent-trade resampling or target ranking.",
+      "acceptance": "Development requires source-domain activity qualification, positive base-cost account return and daily drawdown at most10%; only then unlock validation. Validation and holdout require all sample gates, positive net return and daily drawdown at most10% under base/stress, with both 7/28day absolute mean-return 95% lower bounds above zero. No fallback candidate or universe replacement."
+    },
+    "limitations": [
+      "Current static execution filters; not point-in-time historical rules.",
+      "Three surviving contracts per group are purposive, correlated market samples; no cross-asset-class independence.",
+      "Minute OHLC uses fixed bps fills; no order book, queue, partial fills or live outage simulation.",
+      "The fixed 3bar impulse and pivot-based pattern definitions are research hypotheses, not a full reconstruction of discretionary Brooks price action.",
+      "No volume-profile ownership/cost-basis inference from OHLCV. H2/H3 discretionary setup counting is not interchangeable with confirmed pivot legs."
+    ],
+    "selectionMinTrades": 20,
+    "selectionMinProfitableSymbols": 2
+  },
+  "universes": [
+    {
+      "id": "development-assets",
+      "role": "development",
+      "symbols": {
+        "BTCUSDT": {
+          "tickSize": 0.1,
+          "quantityStep": 0.001,
+          "minNotional": 100
+        },
+        "ETHUSDT": {
+          "tickSize": 0.01,
+          "quantityStep": 0.001,
+          "minNotional": 100
+        },
+        "BNBUSDT": {
+          "tickSize": 0.01,
+          "quantityStep": 0.01,
+          "minNotional": 100
+        }
+      }
+    },
+    {
+      "id": "validation-assets",
+      "role": "validation",
+      "symbols": {
+        "SOLUSDT": {
+          "tickSize": 0.001,
+          "quantityStep": 1,
+          "minNotional": 100
+        },
+        "XRPUSDT": {
+          "tickSize": 0.0001,
+          "quantityStep": 1,
+          "minNotional": 100
+        },
+        "DOGEUSDT": {
+          "tickSize": 1e-05,
+          "quantityStep": 1,
+          "minNotional": 100
+        }
+      }
+    },
+    {
+      "id": "reserved-assets",
+      "role": "holdout",
+      "symbols": {
+        "AVAXUSDT": {
+          "tickSize": 0.001,
+          "quantityStep": 1.0,
+          "minNotional": 5.0
+        },
+        "ATOMUSDT": {
+          "tickSize": 0.001,
+          "quantityStep": 0.01,
+          "minNotional": 5.0
+        },
+        "NEARUSDT": {
+          "tickSize": 0.001,
+          "quantityStep": 1.0,
+          "minNotional": 5.0
+        }
+      }
+    }
+  ],
+  "windows": [
+    {
+      "id": "development-time",
+      "role": "development",
+      "start": "2022-09-01",
+      "end": "2024-01-01"
+    },
+    {
+      "id": "validation-time",
+      "role": "validation",
+      "start": "2024-09-01",
+      "end": "2026-10-01"
+    },
+    {
+      "id": "future-time",
+      "role": "holdout",
+      "start": "2026-10-08",
+      "end": "2027-10-08"
+    }
+  ],
+  "cells": [
+    {
+      "id": "development",
+      "universe": "development-assets",
+      "window": "development-time",
+      "dataset": "legacy-six",
+      "claim": "known-reused"
+    },
+    {
+      "id": "validation",
+      "universe": "validation-assets",
+      "window": "validation-time",
+      "dataset": "legacy-six",
+      "claim": "known-reused"
+    },
+    {
+      "id": "future-holdout",
+      "universe": "reserved-assets",
+      "window": "future-time",
+      "dataset": "future-reserved",
+      "claim": "future-time"
+    }
+  ],
+  "separation": {
+    "purgeDays": 0,
+    "gapDays": 7
+  },
+  "instrumentRules": {
+    "legacySource": "research/trend/search-plan.json",
+    "futureSource": "research/trend/holdout/exchange-info.json",
+    "futureSourceSha256": "e100331ec1aa78bd6d3bffcb22dd0526d4501de6c0b4fbf7c75e33963b07c29c",
+    "interpretation": "Existing source constraints for historical develop/validation, official cached current snapshot for reserved future instruments. No future price observations; a material exchange rule change requires an explicitly recorded protocol revision, never a silent symbol replacement."
+  }
+}

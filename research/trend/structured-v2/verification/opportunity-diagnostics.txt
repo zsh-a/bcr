@@ -1,0 +1,4 @@
+labeled BTCUSDT 405 first breaks
+labeled ETHUSDT 420 first breaks
+labeled BNBUSDT 590 first breaks
+{'output': 'research/trend/structured-v2/opportunity-diagnostics.json', 'sha256': 'ed12b7a4684be4babf6f95f8200c39b08c311d08a225099ff5cdea4393aa2f69', 'events': 1415}

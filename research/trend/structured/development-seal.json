@@ -1,0 +1,79 @@
+{
+  "kind": "study-stage-seal-v1",
+  "compilation": {
+    "path": "/home/zs/workspace/bcr/research/trend/structured/development-input/compilation.json",
+    "sha256": "5e46b5f15e80a8eb5e7ac6f247c572c32bc5bece2a451b518d59052ac44e7193"
+  },
+  "catalog": {
+    "path": "/home/zs/workspace/bcr/research/trend/structured/catalog.json",
+    "sha256": "75000a025cbeed78fc8e2ac8deaffa7f717bd66f8c8e0575a8c4d95e64311d41"
+  },
+  "experiment": {
+    "path": "/home/zs/workspace/bcr/research/trend/structured/experiment.json",
+    "sha256": "57a068e41f4679795284a69de0486bea4a0353969b707477b1eb90fde0bbbb8c"
+  },
+  "cell": "development",
+  "stage": "development",
+  "run": "/home/zs/workspace/bcr/tmp/trend-structured-v9",
+  "runIdentity": {
+    "path": "/home/zs/workspace/bcr/tmp/trend-structured-v9/run.json",
+    "sha256": "a86d8609b4e9ae5f32f7e11a821dffbf8c03de5b35d815bc9caca418cb9fbad3"
+  },
+  "selection": {
+    "path": "/home/zs/workspace/bcr/tmp/trend-structured-v9/selection.json",
+    "sha256": "6369b9ca88edbd7e0f8280ee44cbb2eccf4fd218f4a5d6957bc6866ba0cec2ba"
+  },
+  "selected": "sp-primary",
+  "rawIdentity": {
+    "planSha256": "c47028848fc203b3a894609b3e7e4584387fa9369f5c852355fe95ab986c2cfa",
+    "manifestSha256": "f902862c0ff7a3e8cd0597a42437d9d243c414b07b7ec0deab33ae47d47a408d",
+    "selectionSha256": "6369b9ca88edbd7e0f8280ee44cbb2eccf4fd218f4a5d6957bc6866ba0cec2ba",
+    "rawResultsSha256": "38e043aa7c85234d99681434456719d5f95fff4ab6668e1bdc7a14509a79ba75",
+    "evaluationVersion": "trend-account-evaluation-2"
+  },
+  "auditorSha256": "c183f37098575d489f3e0b99d350131d1d66989b195ace630f48ba44cc76b82c",
+  "passed": false,
+  "checks": {
+    "sourceQualification": false,
+    "basePositiveReturn": false,
+    "baseDailyDrawdown": true
+  },
+  "qualification": {
+    "status": "insufficient-sample",
+    "reasons": [
+      "too-few-trades:BTCUSDT",
+      "too-few-trades:ETHUSDT",
+      "too-few-trades:BNBUSDT"
+    ],
+    "completeDays": 487,
+    "minimumTradesPerSymbol": 20,
+    "tradesBySymbol": {
+      "BTCUSDT": 0,
+      "ETHUSDT": 0,
+      "BNBUSDT": 1
+    }
+  },
+  "baseReturn": -0.0016877332303173453,
+  "baseDailyDrawdown": -0.0016877332303173453,
+  "costScope": "development-base-only",
+  "source": {
+    "plan": {
+      "path": "/home/zs/workspace/bcr/research/trend/structured/development-input/plan.json",
+      "sha256": "c47028848fc203b3a894609b3e7e4584387fa9369f5c852355fe95ab986c2cfa"
+    },
+    "selection": {
+      "path": "/home/zs/workspace/bcr/tmp/trend-structured-v9/selection.json",
+      "sha256": "6369b9ca88edbd7e0f8280ee44cbb2eccf4fd218f4a5d6957bc6866ba0cec2ba"
+    },
+    "selectionSource": {
+      "plan": "/home/zs/workspace/bcr/research/trend/structured/development-input/plan.json",
+      "manifest": "/home/zs/workspace/bcr/research/trend/structured/development-input/manifest.json",
+      "run": "/home/zs/workspace/bcr/tmp/trend-structured-v9",
+      "planSha256": "c47028848fc203b3a894609b3e7e4584387fa9369f5c852355fe95ab986c2cfa",
+      "manifestSha256": "f902862c0ff7a3e8cd0597a42437d9d243c414b07b7ec0deab33ae47d47a408d",
+      "runSha256": "a86d8609b4e9ae5f32f7e11a821dffbf8c03de5b35d815bc9caca418cb9fbad3",
+      "selectionSha256": "6369b9ca88edbd7e0f8280ee44cbb2eccf4fd218f4a5d6957bc6866ba0cec2ba",
+      "developmentSha256": "cc98ae7df4bc6f21a1aef759101738497b03bd679b566f31bae07e52f778e65d"
+    }
+  }
+}

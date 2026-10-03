@@ -4,7 +4,7 @@ import math
 import random
 import statistics
 
-from protocol import DAY, sleeve_capital
+from protocol import DAY, development_window, sleeve_capital, timestamp
 from daily import daily_equity
 
 EVALUATION_VERSION = "trend-account-evaluation-2"
@@ -236,13 +236,47 @@ def summarize(plan, batches, candidate_id, bootstrap=True):
     return summary
 
 
+def fixed_qualification(plan, summary):
+    """Describe evidence for a predeclared rule; this never changes its identity."""
+    minimum = plan.get("selectionMinTrades", 30)
+    window = development_window(plan)
+    days = (timestamp(window["end"]) - timestamp(window["start"])) // DAY
+    counts = {row["symbol"]: row["metrics"]["trades"] for row in summary["symbols"]}
+    if set(counts) != set(plan["symbols"]) or len(counts) != len(summary["symbols"]):
+        raise ValueError("fixed qualification requires every declared symbol exactly once")
+    reasons = [f"too-few-trades:{symbol}" for symbol, count in counts.items() if count < minimum]
+    if days < RUST_CONVENTIONS["minDailyObservations"]:
+        reasons.append("too-few-complete-days")
+    if reasons:
+        status = "insufficient-sample"
+    else:
+        if summary.get("dailySharpe") is None or not math.isfinite(summary["dailySharpe"]):
+            reasons.append("daily-sharpe-undefined")
+        if summary["profitableSymbols"] < plan.get("selectionMinProfitableSymbols", 4):
+            reasons.append("too-few-profitable-symbols")
+        mean_r = summary.get("medianSymbolMeanR")
+        if mean_r is None or not math.isfinite(mean_r) or mean_r <= 0:
+            reasons.append("median-symbol-mean-r-nonpositive")
+        status = "failed" if reasons else "passed"
+    return {"status": status, "reasons": reasons, "completeDays": days,
+            "minimumTradesPerSymbol": minimum, "tradesBySymbol": counts}
+
+
 def select_development(plan, summaries):
     """A frozen objective is chosen on development only, never on later windows."""
+    if plan.get("selectionMode") == "fixed":
+        selected = [row for row in summaries if row["id"] == plan["fixedCandidate"]]
+        if len(selected) != 1:
+            raise ValueError("fixed candidate must have exactly one development summary")
+        qualification = fixed_qualification(plan, selected[0])
+        return selected[0], "fixed", qualification["status"] == "passed"
     objective = plan.get("selectionObjective", "medianSymbolMeanR")
     if objective not in ["medianSymbolMeanR", "dailySharpe"]:
         raise ValueError("selectionObjective must be medianSymbolMeanR or dailySharpe")
+    allowed = plan.get("selectionCandidates")
     eligible = [s for s in summaries
-                if all(r["metrics"]["trades"] >= plan.get("selectionMinTrades", 30) for r in s["symbols"])
+                if (allowed is None or s["id"] in allowed)
+                and all(r["metrics"]["trades"] >= plan.get("selectionMinTrades", 30) for r in s["symbols"])
                 and s.get(objective) is not None and math.isfinite(s[objective])]
     if not eligible:
         raise ValueError("no candidate meets the declared minimum sample size; do not inspect holdout")

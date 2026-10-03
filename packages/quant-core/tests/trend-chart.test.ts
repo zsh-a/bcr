@@ -36,6 +36,39 @@ const bars = (count: number, minutes = 1) =>
     volume: 1,
   }));
 describe("continuous trend chart", () => {
+  it("carries optional KDJ and slow EMA across chunks without inventing fast EMA or changing a stop on stage events", () => {
+    const projection = new TrendChartProjection(
+      { from: base, to: base + 3 * MINUTE, minutes: 1 },
+      bars(3),
+      { tradeId: 1, value: 95 },
+      { time: base - 1, slow: 99, k: 18, d: 20, j: 14 },
+    );
+    projection.append({
+      ...empty(),
+      events: [
+        {
+          ...event(base + MINUTE, "stage", 102),
+          reason: "trailing-armed",
+          value: 2,
+        },
+      ],
+    });
+    projection.append({
+      ...empty(),
+      indicators: [{ time: base + MINUTE, slow: 100, k: 24, d: 22, j: 28 }],
+    });
+    const data = projection.finish();
+    expect(data.indicators).toEqual([
+      { time: base, slow: 99, k: 18, d: 20, j: 14 },
+      { time: base + MINUTE, slow: 100, k: 24, d: 22, j: 28 },
+      { time: base + 2 * MINUTE, slow: 100, k: 24, d: 22, j: 28 },
+    ]);
+    expect(data.stops).toEqual([
+      { tradeId: 1, points: bars(3).map((bar) => ({ time: bar.time, value: 95 })) },
+    ]);
+    expect(data.events[0]).toMatchObject({ kind: "stage", value: 2, reason: "trailing-armed" });
+    expect(data.markers).toEqual([]);
+  });
   it("keeps initial views near the latest candle and expands across day boundaries", () => {
     const bounds = { from: base, to: base + 3 * DAY };
     const initial = initialChartRange(bounds, 1);

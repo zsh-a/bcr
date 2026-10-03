@@ -17,11 +17,19 @@ def warmup_days(strategy):
     minutes = strategy.get("tradeMinutes", 1)
     if minutes not in BACKGROUND_MINUTES:
         raise ValueError("invalid trading period for warmup")
-    entry_bars = strategy.get("breakoutBars", 20) if strategy.get("entry", "breakout") == "breakout" else 3
+    entry = strategy.get("entry", "breakout")
+    entry_bars = (strategy.get("breakoutBars", 20) if entry == "breakout" else
+                  17 if entry in ("price-action", "structured-pullback") else 9 if entry == "kdj" else 3)
     filter_kind = strategy.get("filter", "background")
-    filter_bars = 60 if filter_kind == "ema" else 0
-    background = 22 * BACKGROUND_MINUTES[minutes] if filter_kind == "background" else 0
-    days = max(1, math.ceil(max(max(14, entry_bars, filter_bars) * minutes, background) / 1440))
+    filter_bars = 63 if filter_kind == "slow-ema" else 60 if filter_kind == "ema" else 0
+    exit_bars = (strategy.get("channelExitBars", max(1, strategy.get("breakoutBars", 20) // 2))
+                 if strategy.get("management") == "channel" else 0)
+    background = 22 * BACKGROUND_MINUTES[minutes] if filter_kind == "background" or entry == "price-action" else 0
+    if entry == "structured-pullback":
+        # Every ablation observes the same confirmed higher-timeframe pivots and
+        # previously validated EMA levels, even when its entry gate is disabled.
+        background = 42 * BACKGROUND_MINUTES[minutes]
+    days = max(1, math.ceil(max(max(14, entry_bars, exit_bars, filter_bars) * minutes, background) / 1440))
     if days > 250:
         raise ValueError("warmup exceeds 250 days")
     return days

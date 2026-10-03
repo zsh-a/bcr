@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "scope": "Exact legacy result rows; outer engine metadata excluded",
+  "engineVersion": 16,
+  "binarySha256": "2822c162ef4cb3ed65f2b5115c6b585af9817f46cf4404e0678dccd9ea4dc7c4",
+  "cases": [
+    {
+      "configVersion": 9,
+      "symbol": "BTCUSDT",
+      "accounts": 6,
+      "ids": [
+        "sp-primary",
+        "sp-no-key",
+        "sp-no-shape",
+        "sp-no-ema",
+        "sp-reversal",
+        "sp-base"
+      ],
+      "old": "tmp/trend-structured-v9/development/BTCUSDT.json",
+      "oldSha256": "34a794183e72c587e6495e52e2f7a19d368be1158691c7d2bda4f73459448801",
+      "new": "tmp/structured-v2-legacy-v9-BTCUSDT.json",
+      "newSha256": "5565f6ff858d518f3e3b7437e1fa960b96343184251d59ab37b3a84ce8744d01",
+      "equal": true
+    },
+    {
+      "configVersion": 8,
+      "symbol": "BTCUSDT",
+      "accounts": 9,
+      "ids": [
+        "m30-n320-x160",
+        "m30-n320-episode",
+        "m30-n320-fixed-atr3",
+        "m30-n320-dynamic-atr3",
+        "m30-n320-dynamic-be1",
+        "m30-n320-staged",
+        "m30-pullback-trend",
+        "m30-kdj-trend",
+        "m30-pa-key-legs"
+      ],
+      "old": "tmp/trend-search-v8/development/BTCUSDT.json",
+      "oldSha256": "9534d87065fec79107ef103847e7e6e882ed104eaa2fa9094995687f4d896098",
+      "new": "tmp/structured-v2-legacy-v8-BTCUSDT.json",
+      "newSha256": "84d770f54131b6336e12ccfc304a8cde17c151a3f87356e7731ad961618f901d",
+      "equal": true
+    }
+  ]
+}

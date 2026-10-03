@@ -172,8 +172,8 @@ try {
   const result = await exportResult("binance-trend-result.json");
   assert.equal(result.manifest.provider, "binance-public-data");
   assert.equal(result.config.strategy.tradeMinutes, 1);
-  assert.equal(result.engine, "trend-continuation-11");
-  assert.equal(result.config.version, 5);
+  assert.equal(result.engine, "trend-continuation-16");
+  assert.equal(result.config.version, 10);
   assert.equal(result.config.strategy.maxCostAtr, 0);
   assert.equal(result.config.strategy.entry, "breakout");
   assert.equal(result.config.strategy.filter, "none");

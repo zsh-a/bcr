@@ -1,0 +1,2607 @@
+{
+  "version": "independent-statistics-audit-1",
+  "status": "passed",
+  "scope": "Six declared mechanism windows; raw canonical daily equity and trade-ledger reconciliation. No new replay, price reads, selection, or production statistics imports.",
+  "method": "NumPy portfolio-dollar aggregation and return reconstruction; independent random.Random circular index matrices, sample/window/block order; same draws for all eight series; window lengths preserved; percentile ranks 50/1950; comparator minus primary.",
+  "limitations": "Checks numerical reproduction, not independence, multiplicity correction, market validity, execution correctness or future profitability. All negative observations are retained.",
+  "identity": {
+    "planSha256": "fddd5800b6d38e9f5a6ba09441be3b245a4ff82a3fde56944b0969e21459d78d",
+    "manifestSha256": "71dbdaee57409a6dc94f1672ded420d34763bfebf47887aa1717334dda8d95c8",
+    "selectionSha256": "9fb19e26528e33d23b8a77610d2d3c547b5aea053e2012261d26f3e250c25f24",
+    "evaluationSha256": "c1924850da53f8e31872f334001d7b044ef96a1559fd4ae1d89c5aa94d63e2cc",
+    "scriptSha256": "909792ae515aee26193b5b95ead705634cbb3f57aef6f4131e72666b41067b76",
+    "numpyVersion": "2.5.3"
+  },
+  "checks": {
+    "rawBatches": 36,
+    "candidateCostWindowAccounts": 48,
+    "canonicalSleeveCalendars": 288,
+    "portfolioDailyObservations": 5840,
+    "absoluteIntervalComparisons": 48,
+    "pairedIntervalComparisons": 24,
+    "fieldsCompared": 1426,
+    "numericFieldsCompared": 1034,
+    "maxAbsoluteNumericDifference": 7.275957614183426e-12
+  },
+  "differences": [],
+  "groups": [
+    {
+      "id": "historical-gap-completion",
+      "days": 92,
+      "windowDays": {
+        "completion-2022-aug": 31,
+        "completion-2024-sep": 30,
+        "completion-2024-dec": 31
+      },
+      "pointMeans": {
+        "m30-n320-x160": {
+          "base": -0.00018568155296276047,
+          "stress": -0.00020870539223170832
+        },
+        "m30-n320-x160-no-day-guard": {
+          "base": -0.00020736618979644417,
+          "stress": -0.00022944981291118878
+        },
+        "m30-n160-x80": {
+          "base": -0.0004892055013495427,
+          "stress": -0.000513128701126166
+        },
+        "m30-n640-x320": {
+          "base": -0.00013569035506403725,
+          "stress": -0.00015098172836726316
+        }
+      },
+      "comparisons": [
+        {
+          "id": "m30-n320-x160-no-day-guard",
+          "candidate": "m30-n320-x160-no-day-guard",
+          "reference": "m30-n320-x160",
+          "bootstrap": [
+            {
+              "blockDays": 7,
+              "samples": 2000,
+              "seed": 20261003,
+              "days": 92,
+              "absolute": {
+                "primary": {
+                  "base": {
+                    "meanDailyReturn": -0.00018568155296276047,
+                    "meanDailyReturn95CI": [
+                      -0.0005765762101830558,
+                      0.0002452690535684573
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": -0.00020870539223170832,
+                    "meanDailyReturn95CI": [
+                      -0.000577399523996402,
+                      0.00020046822352779003
+                    ]
+                  }
+                },
+                "comparator": {
+                  "base": {
+                    "meanDailyReturn": -0.00020736618979644417,
+                    "meanDailyReturn95CI": [
+                      -0.0006408894283198936,
+                      0.0002487550721547631
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": -0.00022944981291118878,
+                    "meanDailyReturn95CI": [
+                      -0.0006397265255988084,
+                      0.00020419964248873885
+                    ]
+                  }
+                }
+              },
+              "paired": {
+                "base": {
+                  "meanDailyReturn": -2.1684636833683692e-05,
+                  "meanDailyReturn95CI": [
+                    -0.000119626835395279,
+                    6.955727211803611e-05
+                  ]
+                },
+                "stress": {
+                  "meanDailyReturn": -2.0744420679480458e-05,
+                  "meanDailyReturn95CI": [
+                    -0.00011523005195004449,
+                    6.732891488163597e-05
+                  ]
+                }
+              }
+            },
+            {
+              "blockDays": 28,
+              "samples": 2000,
+              "seed": 20261003,
+              "days": 92,
+              "absolute": {
+                "primary": {
+                  "base": {
+                    "meanDailyReturn": -0.00018568155296276047,
+                    "meanDailyReturn95CI": [
+                      -0.00038760914657787437,
+                      3.6477644991020473e-06
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": -0.00020870539223170832,
+                    "meanDailyReturn95CI": [
+                      -0.00039812729699432217,
+                      -3.013394014627949e-05
+                    ]
+                  }
+                },
+                "comparator": {
+                  "base": {
+                    "meanDailyReturn": -0.00020736618979644417,
+                    "meanDailyReturn95CI": [
+                      -0.0004359659870316552,
+                      5.5338414597613674e-06
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": -0.00022944981291118878,
+                    "meanDailyReturn95CI": [
+                      -0.00044472567302496755,
+                      -2.8087667621218282e-05
+                    ]
+                  }
+                }
+              },
+              "paired": {
+                "base": {
+                  "meanDailyReturn": -2.1684636833683692e-05,
+                  "meanDailyReturn95CI": [
+                    -8.312018361063568e-05,
+                    3.976811086131571e-05
+                  ]
+                },
+                "stress": {
+                  "meanDailyReturn": -2.0744420679480458e-05,
+                  "meanDailyReturn95CI": [
+                    -7.976311791590127e-05,
+                    3.8290768563513546e-05
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "m30-n160-x80",
+          "candidate": "m30-n160-x80",
+          "reference": "m30-n320-x160",
+          "bootstrap": [
+            {
+              "blockDays": 7,
+              "samples": 2000,
+              "seed": 20261003,
+              "days": 92,
+              "absolute": {
+                "primary": {
+                  "base": {
+                    "meanDailyReturn": -0.00018568155296276047,
+                    "meanDailyReturn95CI": [
+                      -0.0005765762101830558,
+                      0.0002452690535684573
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": -0.00020870539223170832,
+                    "meanDailyReturn95CI": [
+                      -0.000577399523996402,
+                      0.00020046822352779003
+                    ]
+                  }
+                },
+                "comparator": {
+                  "base": {
+                    "meanDailyReturn": -0.0004892055013495427,
+                    "meanDailyReturn95CI": [
+                      -0.0008104424273658172,
+                      -0.00014124087782809905
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": -0.000513128701126166,
+                    "meanDailyReturn95CI": [
+                      -0.000818706260775073,
+                      -0.00018426738355001545
+                    ]
+                  }
+                }
+              },
+              "paired": {
+                "base": {
+                  "meanDailyReturn": -0.0003035239483867822,
+                  "meanDailyReturn95CI": [
+                    -0.0006603307439182254,
+                    -4.541255253539818e-06
+                  ]
+                },
+                "stress": {
+                  "meanDailyReturn": -0.00030442330889445766,
+                  "meanDailyReturn95CI": [
+                    -0.000645618487559605,
+                    -1.686160543690673e-05
+                  ]
+                }
+              }
+            },
+            {
+              "blockDays": 28,
+              "samples": 2000,
+              "seed": 20261003,
+              "days": 92,
+              "absolute": {
+                "primary": {
+                  "base": {
+                    "meanDailyReturn": -0.00018568155296276047,
+                    "meanDailyReturn95CI": [
+                      -0.00038760914657787437,
+                      3.6477644991020473e-06
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": -0.00020870539223170832,
+                    "meanDailyReturn95CI": [
+                      -0.00039812729699432217,
+                      -3.013394014627949e-05
+                    ]
+                  }
+                },
+                "comparator": {
+                  "base": {
+                    "meanDailyReturn": -0.0004892055013495427,
+                    "meanDailyReturn95CI": [
+                      -0.0006436223743501796,
+                      -0.0003350159124744005
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": -0.000513128701126166,
+                    "meanDailyReturn95CI": [
+                      -0.0006604289655978846,
+                      -0.0003656880021792693
+                    ]
+                  }
+                }
+              },
+              "paired": {
+                "base": {
+                  "meanDailyReturn": -0.0003035239483867822,
+                  "meanDailyReturn95CI": [
+                    -0.00044490185447164073,
+                    -0.0001419230100465014
+                  ]
+                },
+                "stress": {
+                  "meanDailyReturn": -0.00030442330889445766,
+                  "meanDailyReturn95CI": [
+                    -0.00043809430742631263,
+                    -0.0001519615406567476
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "m30-n640-x320",
+          "candidate": "m30-n640-x320",
+          "reference": "m30-n320-x160",
+          "bootstrap": [
+            {
+              "blockDays": 7,
+              "samples": 2000,
+              "seed": 20261003,
+              "days": 92,
+              "absolute": {
+                "primary": {
+                  "base": {
+                    "meanDailyReturn": -0.00018568155296276047,
+                    "meanDailyReturn95CI": [
+                      -0.0005765762101830558,
+                      0.0002452690535684573
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": -0.00020870539223170832,
+                    "meanDailyReturn95CI": [
+                      -0.000577399523996402,
+                      0.00020046822352779003
+                    ]
+                  }
+                },
+                "comparator": {
+                  "base": {
+                    "meanDailyReturn": -0.00013569035506403725,
+                    "meanDailyReturn95CI": [
+                      -0.00058635265552473,
+                      0.0003246142920819935
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": -0.00015098172836726316,
+                    "meanDailyReturn95CI": [
+                      -0.0005748229409809853,
+                      0.00028044351539855577
+                    ]
+                  }
+                }
+              },
+              "paired": {
+                "base": {
+                  "meanDailyReturn": 4.999119789872322e-05,
+                  "meanDailyReturn95CI": [
+                    -0.00011140534417134642,
+                    0.00021023307537703116
+                  ]
+                },
+                "stress": {
+                  "meanDailyReturn": 5.772366386444516e-05,
+                  "meanDailyReturn95CI": [
+                    -9.501513654602836e-05,
+                    0.00021186886921295558
+                  ]
+                }
+              }
+            },
+            {
+              "blockDays": 28,
+              "samples": 2000,
+              "seed": 20261003,
+              "days": 92,
+              "absolute": {
+                "primary": {
+                  "base": {
+                    "meanDailyReturn": -0.00018568155296276047,
+                    "meanDailyReturn95CI": [
+                      -0.00038760914657787437,
+                      3.6477644991020473e-06
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": -0.00020870539223170832,
+                    "meanDailyReturn95CI": [
+                      -0.00039812729699432217,
+                      -3.013394014627949e-05
+                    ]
+                  }
+                },
+                "comparator": {
+                  "base": {
+                    "meanDailyReturn": -0.00013569035506403725,
+                    "meanDailyReturn95CI": [
+                      -0.0003447396410460131,
+                      7.666463943162283e-05
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": -0.00015098172836726316,
+                    "meanDailyReturn95CI": [
+                      -0.0003489706421275218,
+                      4.9484706502113454e-05
+                    ]
+                  }
+                }
+              },
+              "paired": {
+                "base": {
+                  "meanDailyReturn": 4.999119789872322e-05,
+                  "meanDailyReturn95CI": [
+                    -2.5185819327693877e-05,
+                    0.00012835162485944077
+                  ]
+                },
+                "stress": {
+                  "meanDailyReturn": 5.772366386444516e-05,
+                  "meanDailyReturn95CI": [
+                    -1.3801683473734618e-05,
+                    0.00013177533371645848
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "recent-known",
+      "days": 638,
+      "windowDays": {
+        "known-2025": 365,
+        "known-2026": 243,
+        "fresh-september": 30
+      },
+      "pointMeans": {
+        "m30-n320-x160": {
+          "base": 0.0002841606212416033,
+          "stress": 0.00020141386655718284
+        },
+        "m30-n320-x160-no-day-guard": {
+          "base": 0.00026220927104846005,
+          "stress": 0.00018975423056228697
+        },
+        "m30-n160-x80": {
+          "base": 0.0003322936859653786,
+          "stress": 0.0001983079010805595
+        },
+        "m30-n640-x320": {
+          "base": 0.00018404806483897333,
+          "stress": 0.00012159195250374285
+        }
+      },
+      "comparisons": [
+        {
+          "id": "m30-n320-x160-no-day-guard",
+          "candidate": "m30-n320-x160-no-day-guard",
+          "reference": "m30-n320-x160",
+          "bootstrap": [
+            {
+              "blockDays": 7,
+              "samples": 2000,
+              "seed": 20261003,
+              "days": 638,
+              "absolute": {
+                "primary": {
+                  "base": {
+                    "meanDailyReturn": 0.0002841606212416033,
+                    "meanDailyReturn95CI": [
+                      -0.00012759451946925927,
+                      0.0007938632114811996
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": 0.00020141386655718284,
+                    "meanDailyReturn95CI": [
+                      -0.00016820002015283578,
+                      0.0006492528429132187
+                    ]
+                  }
+                },
+                "comparator": {
+                  "base": {
+                    "meanDailyReturn": 0.00026220927104846005,
+                    "meanDailyReturn95CI": [
+                      -0.00016744203250668028,
+                      0.0007887652689344841
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": 0.00018975423056228697,
+                    "meanDailyReturn95CI": [
+                      -0.00019398672836774426,
+                      0.0006572498270219899
+                    ]
+                  }
+                }
+              },
+              "paired": {
+                "base": {
+                  "meanDailyReturn": -2.1951350193143235e-05,
+                  "meanDailyReturn95CI": [
+                    -6.165624633188853e-05,
+                    1.8014176679704674e-05
+                  ]
+                },
+                "stress": {
+                  "meanDailyReturn": -1.1659635994895872e-05,
+                  "meanDailyReturn95CI": [
+                    -4.6626791916042125e-05,
+                    2.81994009075672e-05
+                  ]
+                }
+              }
+            },
+            {
+              "blockDays": 28,
+              "samples": 2000,
+              "seed": 20261003,
+              "days": 638,
+              "absolute": {
+                "primary": {
+                  "base": {
+                    "meanDailyReturn": 0.0002841606212416033,
+                    "meanDailyReturn95CI": [
+                      -0.00012592625160530693,
+                      0.0008344859790112584
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": 0.00020141386655718284,
+                    "meanDailyReturn95CI": [
+                      -0.00016137936982174776,
+                      0.0006825338826522985
+                    ]
+                  }
+                },
+                "comparator": {
+                  "base": {
+                    "meanDailyReturn": 0.00026220927104846005,
+                    "meanDailyReturn95CI": [
+                      -0.00014875620529236286,
+                      0.0008127129060428701
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": 0.00018975423056228697,
+                    "meanDailyReturn95CI": [
+                      -0.00017570382046463168,
+                      0.0006812149332063833
+                    ]
+                  }
+                }
+              },
+              "paired": {
+                "base": {
+                  "meanDailyReturn": -2.1951350193143235e-05,
+                  "meanDailyReturn95CI": [
+                    -5.048325190765265e-05,
+                    4.032161552930774e-06
+                  ]
+                },
+                "stress": {
+                  "meanDailyReturn": -1.1659635994895872e-05,
+                  "meanDailyReturn95CI": [
+                    -3.4445064343382754e-05,
+                    1.2931991743563563e-05
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "m30-n160-x80",
+          "candidate": "m30-n160-x80",
+          "reference": "m30-n320-x160",
+          "bootstrap": [
+            {
+              "blockDays": 7,
+              "samples": 2000,
+              "seed": 20261003,
+              "days": 638,
+              "absolute": {
+                "primary": {
+                  "base": {
+                    "meanDailyReturn": 0.0002841606212416033,
+                    "meanDailyReturn95CI": [
+                      -0.00012759451946925927,
+                      0.0007938632114811996
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": 0.00020141386655718284,
+                    "meanDailyReturn95CI": [
+                      -0.00016820002015283578,
+                      0.0006492528429132187
+                    ]
+                  }
+                },
+                "comparator": {
+                  "base": {
+                    "meanDailyReturn": 0.0003322936859653786,
+                    "meanDailyReturn95CI": [
+                      -0.00018210514961491413,
+                      0.0009677972693389003
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": 0.0001983079010805595,
+                    "meanDailyReturn95CI": [
+                      -0.0002552896567535069,
+                      0.0007533179183832052
+                    ]
+                  }
+                }
+              },
+              "paired": {
+                "base": {
+                  "meanDailyReturn": 4.8133064723775284e-05,
+                  "meanDailyReturn95CI": [
+                    -0.00011467243128144742,
+                    0.00022300565760273027
+                  ]
+                },
+                "stress": {
+                  "meanDailyReturn": -3.1059654766233367e-06,
+                  "meanDailyReturn95CI": [
+                    -0.00014924088019189967,
+                    0.0001552444122687245
+                  ]
+                }
+              }
+            },
+            {
+              "blockDays": 28,
+              "samples": 2000,
+              "seed": 20261003,
+              "days": 638,
+              "absolute": {
+                "primary": {
+                  "base": {
+                    "meanDailyReturn": 0.0002841606212416033,
+                    "meanDailyReturn95CI": [
+                      -0.00012592625160530693,
+                      0.0008344859790112584
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": 0.00020141386655718284,
+                    "meanDailyReturn95CI": [
+                      -0.00016137936982174776,
+                      0.0006825338826522985
+                    ]
+                  }
+                },
+                "comparator": {
+                  "base": {
+                    "meanDailyReturn": 0.0003322936859653786,
+                    "meanDailyReturn95CI": [
+                      -0.00019859823253600475,
+                      0.0010072406764065687
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": 0.0001983079010805595,
+                    "meanDailyReturn95CI": [
+                      -0.0002618287165683489,
+                      0.0007886696795857568
+                    ]
+                  }
+                }
+              },
+              "paired": {
+                "base": {
+                  "meanDailyReturn": 4.8133064723775284e-05,
+                  "meanDailyReturn95CI": [
+                    -0.00011329998529722922,
+                    0.00024365305728530858
+                  ]
+                },
+                "stress": {
+                  "meanDailyReturn": -3.1059654766233367e-06,
+                  "meanDailyReturn95CI": [
+                    -0.00014642697110945366,
+                    0.00016862649248090746
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "m30-n640-x320",
+          "candidate": "m30-n640-x320",
+          "reference": "m30-n320-x160",
+          "bootstrap": [
+            {
+              "blockDays": 7,
+              "samples": 2000,
+              "seed": 20261003,
+              "days": 638,
+              "absolute": {
+                "primary": {
+                  "base": {
+                    "meanDailyReturn": 0.0002841606212416033,
+                    "meanDailyReturn95CI": [
+                      -0.00012759451946925927,
+                      0.0007938632114811996
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": 0.00020141386655718284,
+                    "meanDailyReturn95CI": [
+                      -0.00016820002015283578,
+                      0.0006492528429132187
+                    ]
+                  }
+                },
+                "comparator": {
+                  "base": {
+                    "meanDailyReturn": 0.00018404806483897333,
+                    "meanDailyReturn95CI": [
+                      -0.00016729552912977212,
+                      0.0006085491857032017
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": 0.00012159195250374285,
+                    "meanDailyReturn95CI": [
+                      -0.000199201626726311,
+                      0.0005052007198166914
+                    ]
+                  }
+                }
+              },
+              "paired": {
+                "base": {
+                  "meanDailyReturn": -0.00010011255640262996,
+                  "meanDailyReturn95CI": [
+                    -0.00028804139912259126,
+                    5.8940374490497316e-05
+                  ]
+                },
+                "stress": {
+                  "meanDailyReturn": -7.982191405343999e-05,
+                  "meanDailyReturn95CI": [
+                    -0.00024119317033631597,
+                    6.0669487929497016e-05
+                  ]
+                }
+              }
+            },
+            {
+              "blockDays": 28,
+              "samples": 2000,
+              "seed": 20261003,
+              "days": 638,
+              "absolute": {
+                "primary": {
+                  "base": {
+                    "meanDailyReturn": 0.0002841606212416033,
+                    "meanDailyReturn95CI": [
+                      -0.00012592625160530693,
+                      0.0008344859790112584
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": 0.00020141386655718284,
+                    "meanDailyReturn95CI": [
+                      -0.00016137936982174776,
+                      0.0006825338826522985
+                    ]
+                  }
+                },
+                "comparator": {
+                  "base": {
+                    "meanDailyReturn": 0.00018404806483897333,
+                    "meanDailyReturn95CI": [
+                      -0.00016905105070716243,
+                      0.0006452852004278408
+                    ]
+                  },
+                  "stress": {
+                    "meanDailyReturn": 0.00012159195250374285,
+                    "meanDailyReturn95CI": [
+                      -0.00018785547910519395,
+                      0.0005281916558354731
+                    ]
+                  }
+                }
+              },
+              "paired": {
+                "base": {
+                  "meanDailyReturn": -0.00010011255640262996,
+                  "meanDailyReturn95CI": [
+                    -0.0002835611105050914,
+                    5.355773482848487e-05
+                  ]
+                },
+                "stress": {
+                  "meanDailyReturn": -7.982191405343999e-05,
+                  "meanDailyReturn95CI": [
+                    -0.00024320120434884185,
+                    5.9995559864671426e-05
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "windowAccounts": {
+    "completion-2022-aug": {
+      "m30-n320-x160": {
+        "base": {
+          "candidate": "m30-n320-x160",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.01151696003631475,
+          "dailyMaxDrawdown": -0.01151696003631475,
+          "trades": 17,
+          "tradesBySymbol": {
+            "BTCUSDT": 2,
+            "ETHUSDT": 2,
+            "BNBUSDT": 3,
+            "SOLUSDT": 3,
+            "XRPUSDT": 2,
+            "DOGEUSDT": 5
+          },
+          "netPnl": -691.0176021788866,
+          "netExpectancy": -40.648094245816495,
+          "meanNetR": -0.8810894415449599,
+          "profitFactor": 0.07808710536729027,
+          "meanDailyReturn": -0.00037291260306093754
+        },
+        "stress": {
+          "candidate": "m30-n320-x160-stress",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.011654036361490872,
+          "dailyMaxDrawdown": -0.011654036361490872,
+          "trades": 17,
+          "tradesBySymbol": {
+            "BTCUSDT": 2,
+            "ETHUSDT": 2,
+            "BNBUSDT": 3,
+            "SOLUSDT": 3,
+            "XRPUSDT": 2,
+            "DOGEUSDT": 5
+          },
+          "netPnl": -699.2421816894494,
+          "netExpectancy": -41.131893040556406,
+          "meanNetR": -0.9521546986338209,
+          "profitFactor": 0.06675410945055693,
+          "meanDailyReturn": -0.0003774266653106629
+        }
+      },
+      "m30-n320-x160-no-day-guard": {
+        "base": {
+          "candidate": "m30-n320-x160-no-day-guard",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.01151696003631475,
+          "dailyMaxDrawdown": -0.01151696003631475,
+          "trades": 17,
+          "tradesBySymbol": {
+            "BTCUSDT": 2,
+            "ETHUSDT": 2,
+            "BNBUSDT": 3,
+            "SOLUSDT": 3,
+            "XRPUSDT": 2,
+            "DOGEUSDT": 5
+          },
+          "netPnl": -691.0176021788866,
+          "netExpectancy": -40.648094245816495,
+          "meanNetR": -0.8810894415449599,
+          "profitFactor": 0.07808710536729027,
+          "meanDailyReturn": -0.00037291260306093754
+        },
+        "stress": {
+          "candidate": "m30-n320-x160-no-day-guard-stress",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.011654036361490872,
+          "dailyMaxDrawdown": -0.011654036361490872,
+          "trades": 17,
+          "tradesBySymbol": {
+            "BTCUSDT": 2,
+            "ETHUSDT": 2,
+            "BNBUSDT": 3,
+            "SOLUSDT": 3,
+            "XRPUSDT": 2,
+            "DOGEUSDT": 5
+          },
+          "netPnl": -699.2421816894494,
+          "netExpectancy": -41.131893040556406,
+          "meanNetR": -0.9521546986338209,
+          "profitFactor": 0.06675410945055693,
+          "meanDailyReturn": -0.0003774266653106629
+        }
+      },
+      "m30-n160-x80": {
+        "base": {
+          "candidate": "m30-n160-x80",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.018281996553406565,
+          "dailyMaxDrawdown": -0.02028935834335588,
+          "trades": 29,
+          "tradesBySymbol": {
+            "BTCUSDT": 2,
+            "ETHUSDT": 8,
+            "BNBUSDT": 3,
+            "SOLUSDT": 4,
+            "XRPUSDT": 4,
+            "DOGEUSDT": 8
+          },
+          "netPnl": -1096.9197932043971,
+          "netExpectancy": -37.82482045532392,
+          "meanNetR": -0.8289594467560484,
+          "profitFactor": 0.1696064768629003,
+          "meanDailyReturn": -0.0005941382432980971
+        },
+        "stress": {
+          "candidate": "m30-n160-x80-stress",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.01859377023040054,
+          "dailyMaxDrawdown": -0.02044903982365065,
+          "trades": 29,
+          "tradesBySymbol": {
+            "BTCUSDT": 2,
+            "ETHUSDT": 8,
+            "BNBUSDT": 3,
+            "SOLUSDT": 4,
+            "XRPUSDT": 4,
+            "DOGEUSDT": 8
+          },
+          "netPnl": -1115.6262138240345,
+          "netExpectancy": -38.46986944220822,
+          "meanNetR": -0.9060464553995932,
+          "profitFactor": 0.15576289696397916,
+          "meanDailyReturn": -0.0006044347507971104
+        }
+      },
+      "m30-n640-x320": {
+        "base": {
+          "candidate": "m30-n640-x320",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.005727412371594465,
+          "dailyMaxDrawdown": -0.0069774149171961675,
+          "trades": 9,
+          "tradesBySymbol": {
+            "BTCUSDT": 1,
+            "ETHUSDT": 2,
+            "BNBUSDT": 3,
+            "SOLUSDT": 1,
+            "XRPUSDT": 0,
+            "DOGEUSDT": 2
+          },
+          "netPnl": -343.64474229566986,
+          "netExpectancy": -38.18274914396406,
+          "meanNetR": -0.8173212718688504,
+          "profitFactor": 0.022899375274673,
+          "meanDailyReturn": -0.00018483701868584004
+        },
+        "stress": {
+          "candidate": "m30-n640-x320-stress",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.005846102353658789,
+          "dailyMaxDrawdown": -0.006828385328262687,
+          "trades": 9,
+          "tradesBySymbol": {
+            "BTCUSDT": 1,
+            "ETHUSDT": 2,
+            "BNBUSDT": 3,
+            "SOLUSDT": 1,
+            "XRPUSDT": 0,
+            "DOGEUSDT": 2
+          },
+          "netPnl": -350.76614121953025,
+          "netExpectancy": -38.974015691059016,
+          "meanNetR": -0.8803933433861544,
+          "profitFactor": 0.013909517549391267,
+          "meanDailyReturn": -0.00018871866406839694
+        }
+      }
+    },
+    "completion-2024-sep": {
+      "m30-n320-x160": {
+        "base": {
+          "candidate": "m30-n320-x160",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": -0.000334288397112692,
+          "dailyMaxDrawdown": -0.010609235343384649,
+          "trades": 23,
+          "tradesBySymbol": {
+            "BTCUSDT": 3,
+            "ETHUSDT": 3,
+            "BNBUSDT": 4,
+            "SOLUSDT": 3,
+            "XRPUSDT": 5,
+            "DOGEUSDT": 5
+          },
+          "netPnl": -20.0573038267612,
+          "netExpectancy": -0.8720566881202366,
+          "meanNetR": -0.015004379984227637,
+          "profitFactor": 0.9762611216366247,
+          "meanDailyReturn": -4.976641779027198e-06
+        },
+        "stress": {
+          "candidate": "m30-n320-x160-stress",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": -0.0018446712564282874,
+          "dailyMaxDrawdown": -0.010087425308662357,
+          "trades": 23,
+          "tradesBySymbol": {
+            "BTCUSDT": 3,
+            "ETHUSDT": 3,
+            "BNBUSDT": 4,
+            "SOLUSDT": 3,
+            "XRPUSDT": 5,
+            "DOGEUSDT": 5
+          },
+          "netPnl": -110.68027538569731,
+          "netExpectancy": -4.812185886335266,
+          "meanNetR": -0.10747985006614884,
+          "profitFactor": 0.8687880147545902,
+          "meanDailyReturn": -5.629677976743593e-05
+        }
+      },
+      "m30-n320-x160-no-day-guard": {
+        "base": {
+          "candidate": "m30-n320-x160-no-day-guard",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": -0.000334288397112692,
+          "dailyMaxDrawdown": -0.010609235343384649,
+          "trades": 23,
+          "tradesBySymbol": {
+            "BTCUSDT": 3,
+            "ETHUSDT": 3,
+            "BNBUSDT": 4,
+            "SOLUSDT": 3,
+            "XRPUSDT": 5,
+            "DOGEUSDT": 5
+          },
+          "netPnl": -20.0573038267612,
+          "netExpectancy": -0.8720566881202366,
+          "meanNetR": -0.015004379984227637,
+          "profitFactor": 0.9762611216366247,
+          "meanDailyReturn": -4.976641779027198e-06
+        },
+        "stress": {
+          "candidate": "m30-n320-x160-no-day-guard-stress",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": -0.0018446712564282874,
+          "dailyMaxDrawdown": -0.010087425308662357,
+          "trades": 23,
+          "tradesBySymbol": {
+            "BTCUSDT": 3,
+            "ETHUSDT": 3,
+            "BNBUSDT": 4,
+            "SOLUSDT": 3,
+            "XRPUSDT": 5,
+            "DOGEUSDT": 5
+          },
+          "netPnl": -110.68027538569731,
+          "netExpectancy": -4.812185886335266,
+          "meanNetR": -0.10747985006614884,
+          "profitFactor": 0.8687880147545902,
+          "meanDailyReturn": -5.629677976743593e-05
+        }
+      },
+      "m30-n160-x80": {
+        "base": {
+          "candidate": "m30-n160-x80",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": -0.011334092311482746,
+          "dailyMaxDrawdown": -0.011632937345237404,
+          "trades": 36,
+          "tradesBySymbol": {
+            "BTCUSDT": 7,
+            "ETHUSDT": 4,
+            "BNBUSDT": 7,
+            "SOLUSDT": 6,
+            "XRPUSDT": 6,
+            "DOGEUSDT": 6
+          },
+          "netPnl": -680.0455386889662,
+          "netExpectancy": -18.890153852471602,
+          "meanNetR": -0.4178287937033599,
+          "profitFactor": 0.5268947646433072,
+          "meanDailyReturn": -0.00037707605601854745
+        },
+        "stress": {
+          "candidate": "m30-n160-x80-stress",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": -0.012694083122486322,
+          "dailyMaxDrawdown": -0.012694083122486322,
+          "trades": 36,
+          "tradesBySymbol": {
+            "BTCUSDT": 7,
+            "ETHUSDT": 4,
+            "BNBUSDT": 7,
+            "SOLUSDT": 6,
+            "XRPUSDT": 6,
+            "DOGEUSDT": 6
+          },
+          "netPnl": -761.6449873491802,
+          "netExpectancy": -21.156805204143918,
+          "meanNetR": -0.5115518410449178,
+          "profitFactor": 0.468980264940884,
+          "meanDailyReturn": -0.0004233777633380879
+        }
+      },
+      "m30-n640-x320": {
+        "base": {
+          "candidate": "m30-n640-x320",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": -0.005585360807765838,
+          "dailyMaxDrawdown": -0.01612897217972642,
+          "trades": 21,
+          "tradesBySymbol": {
+            "BTCUSDT": 3,
+            "ETHUSDT": 2,
+            "BNBUSDT": 5,
+            "SOLUSDT": 2,
+            "XRPUSDT": 5,
+            "DOGEUSDT": 4
+          },
+          "netPnl": -335.1216484659526,
+          "netExpectancy": -15.958173736473608,
+          "meanNetR": -0.35450117977405504,
+          "profitFactor": 0.5840868071519091,
+          "meanDailyReturn": -0.00017921115000547235
+        },
+        "stress": {
+          "candidate": "m30-n640-x320-stress",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": -0.0065412922638662385,
+          "dailyMaxDrawdown": -0.01516846202905453,
+          "trades": 21,
+          "tradesBySymbol": {
+            "BTCUSDT": 3,
+            "ETHUSDT": 2,
+            "BNBUSDT": 5,
+            "SOLUSDT": 2,
+            "XRPUSDT": 5,
+            "DOGEUSDT": 4
+          },
+          "netPnl": -392.4775358319748,
+          "netExpectancy": -18.689406468189784,
+          "meanNetR": -0.44871450749802505,
+          "profitFactor": 0.5153518718401747,
+          "meanDailyReturn": -0.00021231794719012525
+        }
+      }
+    },
+    "completion-2024-dec": {
+      "m30-n320-x160": {
+        "base": {
+          "candidate": "m30-n320-x160",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.005417178532551636,
+          "dailyMaxDrawdown": -0.016460776654228404,
+          "trades": 17,
+          "tradesBySymbol": {
+            "BTCUSDT": 5,
+            "ETHUSDT": 4,
+            "BNBUSDT": 4,
+            "SOLUSDT": 0,
+            "XRPUSDT": 2,
+            "DOGEUSDT": 2
+          },
+          "netPnl": -325.03071195309894,
+          "netExpectancy": -19.119453644300183,
+          "meanNetR": -0.4455106732379894,
+          "profitFactor": 0.5710146340181721,
+          "meanDailyReturn": -0.00017332622336497041
+        },
+        "stress": {
+          "candidate": "m30-n320-x160-stress",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.005849013577256645,
+          "dailyMaxDrawdown": -0.016345801768623658,
+          "trades": 17,
+          "tradesBySymbol": {
+            "BTCUSDT": 5,
+            "ETHUSDT": 4,
+            "BNBUSDT": 4,
+            "SOLUSDT": 0,
+            "XRPUSDT": 2,
+            "DOGEUSDT": 2
+          },
+          "netPnl": -350.94081463539624,
+          "netExpectancy": -20.643577331493823,
+          "meanNetR": -0.530532291695544,
+          "profitFactor": 0.537301483378074,
+          "meanDailyReturn": -0.00018747632476333992
+        }
+      },
+      "m30-n320-x160-no-day-guard": {
+        "base": {
+          "candidate": "m30-n320-x160-no-day-guard",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.007452302422799817,
+          "dailyMaxDrawdown": -0.018473303039385325,
+          "trades": 17,
+          "tradesBySymbol": {
+            "BTCUSDT": 5,
+            "ETHUSDT": 4,
+            "BNBUSDT": 4,
+            "SOLUSDT": 0,
+            "XRPUSDT": 2,
+            "DOGEUSDT": 2
+          },
+          "netPnl": -447.138145367986,
+          "netExpectancy": -26.302243845175745,
+          "meanNetR": -0.5967772286832616,
+          "profitFactor": 0.4093763110199251,
+          "meanDailyReturn": -0.0002376806294520317
+        },
+        "stress": {
+          "candidate": "m30-n320-x160-no-day-guard-stress",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.007793113928252882,
+          "dailyMaxDrawdown": -0.01826937524806238,
+          "trades": 17,
+          "tradesBySymbol": {
+            "BTCUSDT": 5,
+            "ETHUSDT": 4,
+            "BNBUSDT": 4,
+            "SOLUSDT": 0,
+            "XRPUSDT": 2,
+            "DOGEUSDT": 2
+          },
+          "netPnl": -467.586835695176,
+          "netExpectancy": -27.505107982069184,
+          "meanNetR": -0.6817304185523422,
+          "profitFactor": 0.3830463427691479,
+          "meanDailyReturn": -0.00024904041194115286
+        }
+      },
+      "m30-n160-x80": {
+        "base": {
+          "candidate": "m30-n160-x80",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.015229199300111795,
+          "dailyMaxDrawdown": -0.026163847204894064,
+          "trades": 31,
+          "tradesBySymbol": {
+            "BTCUSDT": 6,
+            "ETHUSDT": 5,
+            "BNBUSDT": 7,
+            "SOLUSDT": 5,
+            "XRPUSDT": 6,
+            "DOGEUSDT": 2
+          },
+          "netPnl": -913.7519580067092,
+          "netExpectancy": -29.475869613119748,
+          "meanNetR": -0.6590739139287582,
+          "profitFactor": 0.36150538747108535,
+          "meanDailyReturn": -0.0004927851258503383
+        },
+        "stress": {
+          "candidate": "m30-n160-x80-stress",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.015709860598053016,
+          "dailyMaxDrawdown": -0.026102532589790006,
+          "trades": 31,
+          "tradesBySymbol": {
+            "BTCUSDT": 6,
+            "ETHUSDT": 5,
+            "BNBUSDT": 7,
+            "SOLUSDT": 5,
+            "XRPUSDT": 6,
+            "DOGEUSDT": 2
+          },
+          "netPnl": -942.5916358831819,
+          "netExpectancy": -30.406181802683108,
+          "meanNetR": -0.7386215116493677,
+          "profitFactor": 0.341185410619873,
+          "meanDailyReturn": -0.0005086783977017486
+        }
+      },
+      "m30-n640-x320": {
+        "base": {
+          "candidate": "m30-n640-x320",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.0014388794276178896,
+          "dailyMaxDrawdown": -0.013355813023847474,
+          "trades": 10,
+          "tradesBySymbol": {
+            "BTCUSDT": 4,
+            "ETHUSDT": 2,
+            "BNBUSDT": 1,
+            "SOLUSDT": 0,
+            "XRPUSDT": 2,
+            "DOGEUSDT": 1
+          },
+          "netPnl": -86.33276565707638,
+          "netExpectancy": -8.633276565707096,
+          "meanNetR": -0.2133207875713985,
+          "profitFactor": 0.8167110764652357,
+          "meanDailyReturn": -4.442679311181342e-05
+        },
+        "stress": {
+          "candidate": "m30-n640-x320-stress",
+          "days": 31,
+          "initialCapital": 60000,
+          "return": -0.0017266272359375279,
+          "dailyMaxDrawdown": -0.013096089961775026,
+          "trades": 10,
+          "tradesBySymbol": {
+            "BTCUSDT": 4,
+            "ETHUSDT": 2,
+            "BNBUSDT": 1,
+            "SOLUSDT": 0,
+            "XRPUSDT": 2,
+            "DOGEUSDT": 1
+          },
+          "netPnl": -103.59763415624911,
+          "netExpectancy": -10.359763415625014,
+          "meanNetR": -0.28953410438577637,
+          "profitFactor": 0.7788045015336852,
+          "meanDailyReturn": -5.388716154723056e-05
+        }
+      }
+    },
+    "known-2025": {
+      "m30-n320-x160": {
+        "base": {
+          "candidate": "m30-n320-x160",
+          "days": 365,
+          "initialCapital": 60000,
+          "return": 0.11293640397594773,
+          "dailyMaxDrawdown": -0.049980392435966414,
+          "trades": 173,
+          "tradesBySymbol": {
+            "BTCUSDT": 35,
+            "ETHUSDT": 30,
+            "BNBUSDT": 30,
+            "SOLUSDT": 24,
+            "XRPUSDT": 27,
+            "DOGEUSDT": 27
+          },
+          "netPnl": 6776.18423855686,
+          "netExpectancy": 39.16869502055985,
+          "meanNetR": 0.9029000828081443,
+          "profitFactor": 1.9847984295762677,
+          "meanDailyReturn": 0.0003027517269085048
+        },
+        "stress": {
+          "candidate": "m30-n320-x160-stress",
+          "days": 365,
+          "initialCapital": 60000,
+          "return": 0.08110158304933446,
+          "dailyMaxDrawdown": -0.04889387393761324,
+          "trades": 175,
+          "tradesBySymbol": {
+            "BTCUSDT": 35,
+            "ETHUSDT": 31,
+            "BNBUSDT": 30,
+            "SOLUSDT": 25,
+            "XRPUSDT": 27,
+            "DOGEUSDT": 27
+          },
+          "netPnl": 4866.094982960072,
+          "netExpectancy": 27.806257045486227,
+          "meanNetR": 0.732256233170288,
+          "profitFactor": 1.7039693092739594,
+          "meanDailyReturn": 0.00022173896777657375
+        }
+      },
+      "m30-n320-x160-no-day-guard": {
+        "base": {
+          "candidate": "m30-n320-x160-no-day-guard",
+          "days": 365,
+          "initialCapital": 60000,
+          "return": 0.09722846607498359,
+          "dailyMaxDrawdown": -0.05345006715762923,
+          "trades": 173,
+          "tradesBySymbol": {
+            "BTCUSDT": 35,
+            "ETHUSDT": 30,
+            "BNBUSDT": 30,
+            "SOLUSDT": 24,
+            "XRPUSDT": 27,
+            "DOGEUSDT": 27
+          },
+          "netPnl": 5833.707964499015,
+          "netExpectancy": 33.72085528612142,
+          "meanNetR": 0.7832577421309688,
+          "profitFactor": 1.8524505129464255,
+          "meanDailyReturn": 0.00026402992289168196
+        },
+        "stress": {
+          "candidate": "m30-n320-x160-no-day-guard-stress",
+          "days": 365,
+          "initialCapital": 60000,
+          "return": 0.07097029107039643,
+          "dailyMaxDrawdown": -0.05201124217123254,
+          "trades": 175,
+          "tradesBySymbol": {
+            "BTCUSDT": 35,
+            "ETHUSDT": 31,
+            "BNBUSDT": 30,
+            "SOLUSDT": 25,
+            "XRPUSDT": 27,
+            "DOGEUSDT": 27
+          },
+          "netPnl": 4258.217464223781,
+          "netExpectancy": 24.332671224135844,
+          "meanNetR": 0.6491332995023035,
+          "profitFactor": 1.6181686793985026,
+          "meanDailyReturn": 0.0001960264601923083
+        }
+      },
+      "m30-n160-x80": {
+        "base": {
+          "candidate": "m30-n160-x80",
+          "days": 365,
+          "initialCapital": 60000,
+          "return": 0.10194425733780954,
+          "dailyMaxDrawdown": -0.06320353055010564,
+          "trades": 338,
+          "tradesBySymbol": {
+            "BTCUSDT": 57,
+            "ETHUSDT": 56,
+            "BNBUSDT": 55,
+            "SOLUSDT": 58,
+            "XRPUSDT": 54,
+            "DOGEUSDT": 58
+          },
+          "netPnl": 6116.655440268572,
+          "netExpectancy": 18.096613728605266,
+          "meanNetR": 0.44340063964539084,
+          "profitFactor": 1.4398865469564452,
+          "meanDailyReturn": 0.0002781758064928235
+        },
+        "stress": {
+          "candidate": "m30-n160-x80-stress",
+          "days": 365,
+          "initialCapital": 60000,
+          "return": 0.0598155996856935,
+          "dailyMaxDrawdown": -0.06390650084230465,
+          "trades": 338,
+          "tradesBySymbol": {
+            "BTCUSDT": 57,
+            "ETHUSDT": 56,
+            "BNBUSDT": 55,
+            "SOLUSDT": 58,
+            "XRPUSDT": 54,
+            "DOGEUSDT": 58
+          },
+          "netPnl": 3588.9359811416143,
+          "netExpectancy": 10.618153790359836,
+          "meanNetR": 0.31989968475042324,
+          "profitFactor": 1.2614346416884994,
+          "meanDailyReturn": 0.00016940264791587826
+        }
+      },
+      "m30-n640-x320": {
+        "base": {
+          "candidate": "m30-n640-x320",
+          "days": 365,
+          "initialCapital": 60000,
+          "return": 0.08628367083218569,
+          "dailyMaxDrawdown": -0.041332351453573946,
+          "trades": 112,
+          "tradesBySymbol": {
+            "BTCUSDT": 16,
+            "ETHUSDT": 20,
+            "BNBUSDT": 23,
+            "SOLUSDT": 23,
+            "XRPUSDT": 18,
+            "DOGEUSDT": 12
+          },
+          "netPnl": 5177.020249931142,
+          "netExpectancy": 46.223395088671,
+          "meanNetR": 1.132997875936414,
+          "profitFactor": 2.066461349735221,
+          "meanDailyReturn": 0.0002333447326950605
+        },
+        "stress": {
+          "candidate": "m30-n640-x320-stress",
+          "days": 365,
+          "initialCapital": 60000,
+          "return": 0.06134471109708639,
+          "dailyMaxDrawdown": -0.04151886062680055,
+          "trades": 113,
+          "tradesBySymbol": {
+            "BTCUSDT": 16,
+            "ETHUSDT": 20,
+            "BNBUSDT": 23,
+            "SOLUSDT": 24,
+            "XRPUSDT": 18,
+            "DOGEUSDT": 12
+          },
+          "netPnl": 3680.682665825181,
+          "netExpectancy": 32.57241297190416,
+          "meanNetR": 0.9455539305488865,
+          "profitFactor": 1.7587345723192547,
+          "meanDailyReturn": 0.00016871659319520995
+        }
+      }
+    },
+    "known-2026": {
+      "m30-n320-x160": {
+        "base": {
+          "candidate": "m30-n320-x160",
+          "days": 243,
+          "initialCapital": 60000,
+          "return": 0.07187488863244873,
+          "dailyMaxDrawdown": -0.08218769278243498,
+          "trades": 125,
+          "tradesBySymbol": {
+            "BTCUSDT": 20,
+            "ETHUSDT": 19,
+            "BNBUSDT": 30,
+            "SOLUSDT": 19,
+            "XRPUSDT": 19,
+            "DOGEUSDT": 18
+          },
+          "netPnl": 4312.49331794693,
+          "netExpectancy": 34.499946543575376,
+          "meanNetR": 0.8849309233979361,
+          "profitFactor": 1.8306244036452644,
+          "meanDailyReturn": 0.00030315303931436726
+        },
+        "stress": {
+          "candidate": "m30-n320-x160-stress",
+          "days": 243,
+          "initialCapital": 60000,
+          "return": 0.04956569857930937,
+          "dailyMaxDrawdown": -0.0828619746842012,
+          "trades": 125,
+          "tradesBySymbol": {
+            "BTCUSDT": 20,
+            "ETHUSDT": 19,
+            "BNBUSDT": 30,
+            "SOLUSDT": 19,
+            "XRPUSDT": 19,
+            "DOGEUSDT": 18
+          },
+          "netPnl": 2973.9419147585577,
+          "netExpectancy": 23.791535318068725,
+          "meanNetR": 0.7400849679623948,
+          "profitFactor": 1.5742682385390683,
+          "meanDailyReturn": 0.00021293093738256578
+        }
+      },
+      "m30-n320-x160-no-day-guard": {
+        "base": {
+          "candidate": "m30-n320-x160-no-day-guard",
+          "days": 243,
+          "initialCapital": 60000,
+          "return": 0.07187764764552673,
+          "dailyMaxDrawdown": -0.08425591032474644,
+          "trades": 124,
+          "tradesBySymbol": {
+            "BTCUSDT": 20,
+            "ETHUSDT": 18,
+            "BNBUSDT": 30,
+            "SOLUSDT": 19,
+            "XRPUSDT": 19,
+            "DOGEUSDT": 18
+          },
+          "netPnl": 4312.6588587316,
+          "netExpectancy": 34.779506925254736,
+          "meanNetR": 0.8965809961550366,
+          "profitFactor": 1.8326635811824643,
+          "meanDailyReturn": 0.0003036818337296551
+        },
+        "stress": {
+          "candidate": "m30-n320-x160-no-day-guard-stress",
+          "days": 243,
+          "initialCapital": 60000,
+          "return": 0.051530165553778096,
+          "dailyMaxDrawdown": -0.08436729355667083,
+          "trades": 124,
+          "tradesBySymbol": {
+            "BTCUSDT": 20,
+            "ETHUSDT": 18,
+            "BNBUSDT": 30,
+            "SOLUSDT": 19,
+            "XRPUSDT": 19,
+            "DOGEUSDT": 18
+          },
+          "netPnl": 3091.8099332266866,
+          "netExpectancy": 24.933951074409055,
+          "meanNetR": 0.7778895634970501,
+          "profitFactor": 1.5979873052008764,
+          "meanDailyReturn": 0.00022094006291142716
+        }
+      },
+      "m30-n160-x80": {
+        "base": {
+          "candidate": "m30-n160-x80",
+          "days": 243,
+          "initialCapital": 60000,
+          "return": 0.08674402252955837,
+          "dailyMaxDrawdown": -0.11093107156951854,
+          "trades": 222,
+          "tradesBySymbol": {
+            "BTCUSDT": 43,
+            "ETHUSDT": 40,
+            "BNBUSDT": 41,
+            "SOLUSDT": 37,
+            "XRPUSDT": 29,
+            "DOGEUSDT": 32
+          },
+          "netPnl": 5204.641351773505,
+          "netExpectancy": 23.44433041339414,
+          "meanNetR": 0.6766002999992548,
+          "profitFactor": 1.5924175649924541,
+          "meanDailyReturn": 0.0003649247704493569
+        },
+        "stress": {
+          "candidate": "m30-n160-x80-stress",
+          "days": 243,
+          "initialCapital": 60000,
+          "return": 0.04364481267846254,
+          "dailyMaxDrawdown": -0.1208092454736358,
+          "trades": 227,
+          "tradesBySymbol": {
+            "BTCUSDT": 47,
+            "ETHUSDT": 40,
+            "BNBUSDT": 42,
+            "SOLUSDT": 37,
+            "XRPUSDT": 29,
+            "DOGEUSDT": 32
+          },
+          "netPnl": 2618.688760707759,
+          "netExpectancy": 11.536073835716909,
+          "meanNetR": 0.4899718683634341,
+          "profitFactor": 1.2892672921778814,
+          "meanDailyReturn": 0.00019296146038633326
+        }
+      },
+      "m30-n640-x320": {
+        "base": {
+          "candidate": "m30-n640-x320",
+          "days": 243,
+          "initialCapital": 60000,
+          "return": 0.03469506417978607,
+          "dailyMaxDrawdown": -0.07782302777123151,
+          "trades": 83,
+          "tradesBySymbol": {
+            "BTCUSDT": 15,
+            "ETHUSDT": 12,
+            "BNBUSDT": 22,
+            "SOLUSDT": 11,
+            "XRPUSDT": 11,
+            "DOGEUSDT": 12
+          },
+          "netPnl": 2081.7038507871694,
+          "netExpectancy": 25.080769286592375,
+          "meanNetR": 0.6460905708334869,
+          "profitFactor": 1.5880017418055807,
+          "meanDailyReturn": 0.00015057767441566705
+        },
+        "stress": {
+          "candidate": "m30-n640-x320-stress",
+          "days": 243,
+          "initialCapital": 60000,
+          "return": 0.019289332648980473,
+          "dailyMaxDrawdown": -0.07928986780776004,
+          "trades": 86,
+          "tradesBySymbol": {
+            "BTCUSDT": 18,
+            "ETHUSDT": 12,
+            "BNBUSDT": 22,
+            "SOLUSDT": 11,
+            "XRPUSDT": 11,
+            "DOGEUSDT": 12
+          },
+          "netPnl": 1157.3599589388323,
+          "netExpectancy": 13.45767394114929,
+          "meanNetR": 0.4353571114031135,
+          "profitFactor": 1.3113791889078443,
+          "meanDailyReturn": 8.693572013313937e-05
+        }
+      }
+    },
+    "fresh-september": {
+      "m30-n320-x160": {
+        "base": {
+          "candidate": "m30-n320-x160",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": -0.0031290222584052785,
+          "dailyMaxDrawdown": -0.017250805651543022,
+          "trades": 21,
+          "tradesBySymbol": {
+            "BTCUSDT": 3,
+            "ETHUSDT": 4,
+            "BNBUSDT": 3,
+            "SOLUSDT": 1,
+            "XRPUSDT": 6,
+            "DOGEUSDT": 4
+          },
+          "netPnl": -187.74133550431725,
+          "netExpectancy": -8.940063595443512,
+          "meanNetR": -0.17856204495613182,
+          "profitFactor": 0.7794591126107131,
+          "meanDailyReturn": -9.586975076175304e-05
+        },
+        "stress": {
+          "candidate": "m30-n320-x160-stress",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": -0.0043816025366890665,
+          "dailyMaxDrawdown": -0.016304366475004994,
+          "trades": 21,
+          "tradesBySymbol": {
+            "BTCUSDT": 3,
+            "ETHUSDT": 4,
+            "BNBUSDT": 3,
+            "SOLUSDT": 1,
+            "XRPUSDT": 6,
+            "DOGEUSDT": 4
+          },
+          "netPnl": -262.89615220134147,
+          "netExpectancy": -12.518864390539884,
+          "meanNetR": -0.26782377063623375,
+          "profitFactor": 0.690849328391421,
+          "meanDailyReturn": -0.00013916313863100808
+        }
+      },
+      "m30-n320-x160-no-day-guard": {
+        "base": {
+          "candidate": "m30-n320-x160-no-day-guard",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": -0.0031290222584052785,
+          "dailyMaxDrawdown": -0.017250805651543022,
+          "trades": 21,
+          "tradesBySymbol": {
+            "BTCUSDT": 3,
+            "ETHUSDT": 4,
+            "BNBUSDT": 3,
+            "SOLUSDT": 1,
+            "XRPUSDT": 6,
+            "DOGEUSDT": 4
+          },
+          "netPnl": -187.74133550431725,
+          "netExpectancy": -8.940063595443512,
+          "meanNetR": -0.17856204495613182,
+          "profitFactor": 0.7794591126107131,
+          "meanDailyReturn": -9.586975076175304e-05
+        },
+        "stress": {
+          "candidate": "m30-n320-x160-no-day-guard-stress",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": -0.0043816025366890665,
+          "dailyMaxDrawdown": -0.016304366475004994,
+          "trades": 21,
+          "tradesBySymbol": {
+            "BTCUSDT": 3,
+            "ETHUSDT": 4,
+            "BNBUSDT": 3,
+            "SOLUSDT": 1,
+            "XRPUSDT": 6,
+            "DOGEUSDT": 4
+          },
+          "netPnl": -262.89615220134147,
+          "netExpectancy": -12.518864390539884,
+          "meanNetR": -0.26782377063623375,
+          "profitFactor": 0.690849328391421,
+          "meanDailyReturn": -0.00013916313863100808
+        }
+      },
+      "m30-n160-x80": {
+        "base": {
+          "candidate": "m30-n160-x80",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": 0.021316078628896173,
+          "dailyMaxDrawdown": -0.020779195238941228,
+          "trades": 19,
+          "tradesBySymbol": {
+            "BTCUSDT": 3,
+            "ETHUSDT": 4,
+            "BNBUSDT": 2,
+            "SOLUSDT": 4,
+            "XRPUSDT": 4,
+            "DOGEUSDT": 2
+          },
+          "netPnl": 1278.9647177337756,
+          "netExpectancy": 67.3139325123047,
+          "meanNetR": 1.5519249771002912,
+          "profitFactor": 3.2256461928539055,
+          "meanDailyReturn": 0.0007264161018945744
+        },
+        "stress": {
+          "candidate": "m30-n160-x80-stress",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": 0.017370753145885542,
+          "dailyMaxDrawdown": -0.01954005171699391,
+          "trades": 19,
+          "tradesBySymbol": {
+            "BTCUSDT": 3,
+            "ETHUSDT": 4,
+            "BNBUSDT": 2,
+            "SOLUSDT": 4,
+            "XRPUSDT": 4,
+            "DOGEUSDT": 2
+          },
+          "netPnl": 1042.2451887531279,
+          "netExpectancy": 54.855009934375424,
+          "meanNetR": 1.4377222420713978,
+          "profitFactor": 2.8070298552796333,
+          "meanDailyReturn": 0.0005932946508740803
+        }
+      },
+      "m30-n640-x320": {
+        "base": {
+          "candidate": "m30-n640-x320",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": -0.004485852239538457,
+          "dailyMaxDrawdown": -0.013530063000345316,
+          "trades": 17,
+          "tradesBySymbol": {
+            "BTCUSDT": 2,
+            "ETHUSDT": 3,
+            "BNBUSDT": 5,
+            "SOLUSDT": 1,
+            "XRPUSDT": 5,
+            "DOGEUSDT": 1
+          },
+          "netPnl": -269.1511343723105,
+          "netExpectancy": -15.83241966895885,
+          "meanNetR": -0.34436484578606946,
+          "profitFactor": 0.6157402350198676,
+          "meanDailyReturn": -0.00014461789831463992
+        },
+        "stress": {
+          "candidate": "m30-n640-x320-stress",
+          "days": 30,
+          "initialCapital": 60000,
+          "return": -0.0052507459266173395,
+          "dailyMaxDrawdown": -0.012829450455510871,
+          "trades": 17,
+          "tradesBySymbol": {
+            "BTCUSDT": 2,
+            "ETHUSDT": 3,
+            "BNBUSDT": 5,
+            "SOLUSDT": 1,
+            "XRPUSDT": 5,
+            "DOGEUSDT": 1
+          },
+          "netPnl": -315.0447555970386,
+          "netExpectancy": -18.53204444688558,
+          "meanNetR": -0.4322423746492429,
+          "profitFactor": 0.5496054124039407,
+          "meanDailyReturn": -0.00017104236037388532
+        }
+      }
+    }
+  },
+  "calendarAndFirstDayEvidence": {
+    "completion-2022-aug": {
+      "m30-n320-x160": {
+        "base": {
+          "days": 31,
+          "start": "2022-08-01",
+          "endExclusive": "2022-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59308.98239782111,
+          "calendarSha256": "71aa6c7814690b959d0caa2fa601900cd3295fbb4e4bc66a8bf15cc576ec7de8",
+          "dailyReturnsFloat64LEsha256": "a4a9656090edd88f639d40d37e7d94fa54ad18dddb9210506f93f932cd63d31a"
+        },
+        "stress": {
+          "days": 31,
+          "start": "2022-08-01",
+          "endExclusive": "2022-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59300.75781831055,
+          "calendarSha256": "71aa6c7814690b959d0caa2fa601900cd3295fbb4e4bc66a8bf15cc576ec7de8",
+          "dailyReturnsFloat64LEsha256": "42b5d15803559debbd46b17a9c743ce7b8be98cece9b9624bf4173493d332e0b"
+        }
+      },
+      "m30-n320-x160-no-day-guard": {
+        "base": {
+          "days": 31,
+          "start": "2022-08-01",
+          "endExclusive": "2022-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59308.98239782111,
+          "calendarSha256": "71aa6c7814690b959d0caa2fa601900cd3295fbb4e4bc66a8bf15cc576ec7de8",
+          "dailyReturnsFloat64LEsha256": "a4a9656090edd88f639d40d37e7d94fa54ad18dddb9210506f93f932cd63d31a"
+        },
+        "stress": {
+          "days": 31,
+          "start": "2022-08-01",
+          "endExclusive": "2022-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59300.75781831055,
+          "calendarSha256": "71aa6c7814690b959d0caa2fa601900cd3295fbb4e4bc66a8bf15cc576ec7de8",
+          "dailyReturnsFloat64LEsha256": "42b5d15803559debbd46b17a9c743ce7b8be98cece9b9624bf4173493d332e0b"
+        }
+      },
+      "m30-n160-x80": {
+        "base": {
+          "days": 31,
+          "start": "2022-08-01",
+          "endExclusive": "2022-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 58903.0802067956,
+          "calendarSha256": "71aa6c7814690b959d0caa2fa601900cd3295fbb4e4bc66a8bf15cc576ec7de8",
+          "dailyReturnsFloat64LEsha256": "261c6dc545b56d1f2b14328395e62090a7ca4ae92840cf585f3f11581d434fdc"
+        },
+        "stress": {
+          "days": 31,
+          "start": "2022-08-01",
+          "endExclusive": "2022-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 58884.373786175966,
+          "calendarSha256": "71aa6c7814690b959d0caa2fa601900cd3295fbb4e4bc66a8bf15cc576ec7de8",
+          "dailyReturnsFloat64LEsha256": "d5369083819f98aa5d66a8641e58ab615bb05231667a024cb4fa700e6e9d59fd"
+        }
+      },
+      "m30-n640-x320": {
+        "base": {
+          "days": 31,
+          "start": "2022-08-01",
+          "endExclusive": "2022-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59656.35525770433,
+          "calendarSha256": "71aa6c7814690b959d0caa2fa601900cd3295fbb4e4bc66a8bf15cc576ec7de8",
+          "dailyReturnsFloat64LEsha256": "dff71a9a6fafde9a96b61d07051b282a0ddd5f258053ea24be75b314ff2d4b60"
+        },
+        "stress": {
+          "days": 31,
+          "start": "2022-08-01",
+          "endExclusive": "2022-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59649.23385878047,
+          "calendarSha256": "71aa6c7814690b959d0caa2fa601900cd3295fbb4e4bc66a8bf15cc576ec7de8",
+          "dailyReturnsFloat64LEsha256": "1a279e2127b2984d6a4576627d47191ce7aa167c303c494a420383603ef33217"
+        }
+      }
+    },
+    "completion-2024-sep": {
+      "m30-n320-x160": {
+        "base": {
+          "days": 30,
+          "start": "2024-09-01",
+          "endExclusive": "2024-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59979.94269617324,
+          "calendarSha256": "7b8dc7887015f50d187b69bd15c1b8bc9018bf49dc126dbc4a39c66c304e44df",
+          "dailyReturnsFloat64LEsha256": "2083f4736888e9fbaf2eb471aef71bc2895a35ff3629d4d81521219589312e75"
+        },
+        "stress": {
+          "days": 30,
+          "start": "2024-09-01",
+          "endExclusive": "2024-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59889.3197246143,
+          "calendarSha256": "7b8dc7887015f50d187b69bd15c1b8bc9018bf49dc126dbc4a39c66c304e44df",
+          "dailyReturnsFloat64LEsha256": "bba9081ba3361b085d00d63b994e757f2e16a1be18f6d0ee7db988ec276bb87b"
+        }
+      },
+      "m30-n320-x160-no-day-guard": {
+        "base": {
+          "days": 30,
+          "start": "2024-09-01",
+          "endExclusive": "2024-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59979.94269617324,
+          "calendarSha256": "7b8dc7887015f50d187b69bd15c1b8bc9018bf49dc126dbc4a39c66c304e44df",
+          "dailyReturnsFloat64LEsha256": "2083f4736888e9fbaf2eb471aef71bc2895a35ff3629d4d81521219589312e75"
+        },
+        "stress": {
+          "days": 30,
+          "start": "2024-09-01",
+          "endExclusive": "2024-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59889.3197246143,
+          "calendarSha256": "7b8dc7887015f50d187b69bd15c1b8bc9018bf49dc126dbc4a39c66c304e44df",
+          "dailyReturnsFloat64LEsha256": "bba9081ba3361b085d00d63b994e757f2e16a1be18f6d0ee7db988ec276bb87b"
+        }
+      },
+      "m30-n160-x80": {
+        "base": {
+          "days": 30,
+          "start": "2024-09-01",
+          "endExclusive": "2024-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59319.954461311034,
+          "calendarSha256": "7b8dc7887015f50d187b69bd15c1b8bc9018bf49dc126dbc4a39c66c304e44df",
+          "dailyReturnsFloat64LEsha256": "e6ae5a050c277613770608ebe2e7dda0a9c86e5996f2ed97753bfe76e0525bdd"
+        },
+        "stress": {
+          "days": 30,
+          "start": "2024-09-01",
+          "endExclusive": "2024-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59238.35501265082,
+          "calendarSha256": "7b8dc7887015f50d187b69bd15c1b8bc9018bf49dc126dbc4a39c66c304e44df",
+          "dailyReturnsFloat64LEsha256": "e267d7a8cc8f9fcb6c153fcc4f29c36f80b0474a5e7e82b6c4efdbca0f3f8da4"
+        }
+      },
+      "m30-n640-x320": {
+        "base": {
+          "days": 30,
+          "start": "2024-09-01",
+          "endExclusive": "2024-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59664.87835153405,
+          "calendarSha256": "7b8dc7887015f50d187b69bd15c1b8bc9018bf49dc126dbc4a39c66c304e44df",
+          "dailyReturnsFloat64LEsha256": "13ffd518ef04412095f33607799238d8cbf76c08886819480e70cc9e8b0392de"
+        },
+        "stress": {
+          "days": 30,
+          "start": "2024-09-01",
+          "endExclusive": "2024-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59607.522464168025,
+          "calendarSha256": "7b8dc7887015f50d187b69bd15c1b8bc9018bf49dc126dbc4a39c66c304e44df",
+          "dailyReturnsFloat64LEsha256": "eadc9d865d60c9f32f7c09658c01b32ae20976612f4ab3d5b44b5c902cb82395"
+        }
+      }
+    },
+    "completion-2024-dec": {
+      "m30-n320-x160": {
+        "base": {
+          "days": 31,
+          "start": "2024-12-01",
+          "endExclusive": "2025-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60276.397512380005,
+          "firstDailyReturn": 0.004606625206333481,
+          "lastDailyEquity": 59674.9692880469,
+          "calendarSha256": "12fbbebadb2574b874951afa74965ce5e94440395bd8a67021735c9b03c328cc",
+          "dailyReturnsFloat64LEsha256": "562ee553c81a39f4dbf2330fc6db5793a3c47e881c7c5779509af661a580fd8c"
+        },
+        "stress": {
+          "days": 31,
+          "start": "2024-12-01",
+          "endExclusive": "2025-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60261.502437949996,
+          "firstDailyReturn": 0.004358373965833273,
+          "lastDailyEquity": 59649.059185364604,
+          "calendarSha256": "12fbbebadb2574b874951afa74965ce5e94440395bd8a67021735c9b03c328cc",
+          "dailyReturnsFloat64LEsha256": "8cee86c90847fadcb0dce86123d5cc25bcaf8562f0d491ddda4b4d735fe8a7f5"
+        }
+      },
+      "m30-n320-x160-no-day-guard": {
+        "base": {
+          "days": 31,
+          "start": "2024-12-01",
+          "endExclusive": "2025-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60276.397512380005,
+          "firstDailyReturn": 0.004606625206333481,
+          "lastDailyEquity": 59552.861854632014,
+          "calendarSha256": "12fbbebadb2574b874951afa74965ce5e94440395bd8a67021735c9b03c328cc",
+          "dailyReturnsFloat64LEsha256": "5f67a11c56620ddfdf951e7e0d57b0666957d44968199463b620f14e3fdf8eed"
+        },
+        "stress": {
+          "days": 31,
+          "start": "2024-12-01",
+          "endExclusive": "2025-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60261.502437949996,
+          "firstDailyReturn": 0.004358373965833273,
+          "lastDailyEquity": 59532.413164304824,
+          "calendarSha256": "12fbbebadb2574b874951afa74965ce5e94440395bd8a67021735c9b03c328cc",
+          "dailyReturnsFloat64LEsha256": "eafb20b31bf9bdbd6438a8a866fc27ea37c5675ddb06b3aab2541fd22ca0cc63"
+        }
+      },
+      "m30-n160-x80": {
+        "base": {
+          "days": 31,
+          "start": "2024-12-01",
+          "endExclusive": "2025-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60276.397512380005,
+          "firstDailyReturn": 0.004606625206333481,
+          "lastDailyEquity": 59086.24804199329,
+          "calendarSha256": "12fbbebadb2574b874951afa74965ce5e94440395bd8a67021735c9b03c328cc",
+          "dailyReturnsFloat64LEsha256": "813fad5ab65feacf5ccacdfcb4b83c0be858863c5bebff64c7daf6b3ed6fa1f9"
+        },
+        "stress": {
+          "days": 31,
+          "start": "2024-12-01",
+          "endExclusive": "2025-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60261.502437949996,
+          "firstDailyReturn": 0.004358373965833273,
+          "lastDailyEquity": 59057.40836411682,
+          "calendarSha256": "12fbbebadb2574b874951afa74965ce5e94440395bd8a67021735c9b03c328cc",
+          "dailyReturnsFloat64LEsha256": "c5d4242fc438fa61bec319be6574e3f15994d7df1b73e5b5d34b1ec91f925149"
+        }
+      },
+      "m30-n640-x320": {
+        "base": {
+          "days": 31,
+          "start": "2024-12-01",
+          "endExclusive": "2025-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60314.015328,
+          "firstDailyReturn": 0.005233588800000133,
+          "lastDailyEquity": 59913.66723434292,
+          "calendarSha256": "12fbbebadb2574b874951afa74965ce5e94440395bd8a67021735c9b03c328cc",
+          "dailyReturnsFloat64LEsha256": "aef73b64be158292d006b3839f6cae548830b465b1db4304d454173b8c8bcb59"
+        },
+        "stress": {
+          "days": 31,
+          "start": "2024-12-01",
+          "endExclusive": "2025-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60298.78346375,
+          "firstDailyReturn": 0.004979724395833385,
+          "lastDailyEquity": 59896.40236584375,
+          "calendarSha256": "12fbbebadb2574b874951afa74965ce5e94440395bd8a67021735c9b03c328cc",
+          "dailyReturnsFloat64LEsha256": "25b95fbabed8327d879a159a21bfab85915e586521d4569a6bef278b33f146e0"
+        }
+      }
+    },
+    "known-2025": {
+      "m30-n320-x160": {
+        "base": {
+          "days": 365,
+          "start": "2025-01-01",
+          "endExclusive": "2026-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60007.7923862,
+          "firstDailyReturn": 0.00012987310333345548,
+          "lastDailyEquity": 66776.18423855686,
+          "calendarSha256": "4dbc26df7013a77f271bc67a1370aa6130545a3104159ea8cd2b575a84182f8f",
+          "dailyReturnsFloat64LEsha256": "cb10485e954cb86d30f9e111ab9a65c2a0f365746d7a63cae925d832c77cab15"
+        },
+        "stress": {
+          "days": 365,
+          "start": "2025-01-01",
+          "endExclusive": "2026-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60006.20126388,
+          "firstDailyReturn": 0.00010335439800002177,
+          "lastDailyEquity": 64866.09498296007,
+          "calendarSha256": "4dbc26df7013a77f271bc67a1370aa6130545a3104159ea8cd2b575a84182f8f",
+          "dailyReturnsFloat64LEsha256": "7f5c78b356ad9e48893d1bd2a961d429209c748032042348e422bf2a397f41bf"
+        }
+      },
+      "m30-n320-x160-no-day-guard": {
+        "base": {
+          "days": 365,
+          "start": "2025-01-01",
+          "endExclusive": "2026-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60007.7923862,
+          "firstDailyReturn": 0.00012987310333345548,
+          "lastDailyEquity": 65833.70796449902,
+          "calendarSha256": "4dbc26df7013a77f271bc67a1370aa6130545a3104159ea8cd2b575a84182f8f",
+          "dailyReturnsFloat64LEsha256": "1047cb9b2f3aad6bb2f08ca9929bf37658b9d57fc43182929336ce993a4a8ca6"
+        },
+        "stress": {
+          "days": 365,
+          "start": "2025-01-01",
+          "endExclusive": "2026-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60006.20126388,
+          "firstDailyReturn": 0.00010335439800002177,
+          "lastDailyEquity": 64258.21746422378,
+          "calendarSha256": "4dbc26df7013a77f271bc67a1370aa6130545a3104159ea8cd2b575a84182f8f",
+          "dailyReturnsFloat64LEsha256": "8d02f56c5b013b3e95866e1e79e70c6d11be3c7cf88bea65b8eb36127176fc5a"
+        }
+      },
+      "m30-n160-x80": {
+        "base": {
+          "days": 365,
+          "start": "2025-01-01",
+          "endExclusive": "2026-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60110.42707376,
+          "firstDailyReturn": 0.0018404512293332953,
+          "lastDailyEquity": 66116.65544026857,
+          "calendarSha256": "4dbc26df7013a77f271bc67a1370aa6130545a3104159ea8cd2b575a84182f8f",
+          "dailyReturnsFloat64LEsha256": "4c8f52f04608fe26ac037cf699200305fd384d49c84b257597e5fdc484fdc3fe"
+        },
+        "stress": {
+          "days": 365,
+          "start": "2025-01-01",
+          "endExclusive": "2026-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60103.11986488,
+          "firstDailyReturn": 0.0017186644146667263,
+          "lastDailyEquity": 63588.935981141614,
+          "calendarSha256": "4dbc26df7013a77f271bc67a1370aa6130545a3104159ea8cd2b575a84182f8f",
+          "dailyReturnsFloat64LEsha256": "93408005685f530e443d4c33665cb7d63b37844a7a8e5bc953ceb970d27543e8"
+        }
+      },
+      "m30-n640-x320": {
+        "base": {
+          "days": 365,
+          "start": "2025-01-01",
+          "endExclusive": "2026-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 65177.02024993114,
+          "calendarSha256": "4dbc26df7013a77f271bc67a1370aa6130545a3104159ea8cd2b575a84182f8f",
+          "dailyReturnsFloat64LEsha256": "5bad84bcdacdf5770a7b9767d8214a4e956f472cf2ee2cac2d3078f9f366bef9"
+        },
+        "stress": {
+          "days": 365,
+          "start": "2025-01-01",
+          "endExclusive": "2026-01-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 63680.68266582518,
+          "calendarSha256": "4dbc26df7013a77f271bc67a1370aa6130545a3104159ea8cd2b575a84182f8f",
+          "dailyReturnsFloat64LEsha256": "20b3841c4b10185d42625e7e02ea3c550be15e07411732a3ff7e6d272cc9fc5e"
+        }
+      }
+    },
+    "known-2026": {
+      "m30-n320-x160": {
+        "base": {
+          "days": 243,
+          "start": "2026-01-01",
+          "endExclusive": "2026-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 64312.49331794693,
+          "calendarSha256": "914ab69f56646c56122e39360390d360ec1d9eec1e943a653efab122968642ba",
+          "dailyReturnsFloat64LEsha256": "62048f42b835ac5737a44b992f27e473840b31efcfde738b87c194492b9ea0e7"
+        },
+        "stress": {
+          "days": 243,
+          "start": "2026-01-01",
+          "endExclusive": "2026-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 62973.94191475856,
+          "calendarSha256": "914ab69f56646c56122e39360390d360ec1d9eec1e943a653efab122968642ba",
+          "dailyReturnsFloat64LEsha256": "7066bf4b8363365d859c5b67cb0c55e3f744cb701478dc6c6aed3d21dabaa7f1"
+        }
+      },
+      "m30-n320-x160-no-day-guard": {
+        "base": {
+          "days": 243,
+          "start": "2026-01-01",
+          "endExclusive": "2026-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 64312.6588587316,
+          "calendarSha256": "914ab69f56646c56122e39360390d360ec1d9eec1e943a653efab122968642ba",
+          "dailyReturnsFloat64LEsha256": "0e13bb0777094993a149ab82b3a6f8a73297e503e3fa1370f86df2417991c407"
+        },
+        "stress": {
+          "days": 243,
+          "start": "2026-01-01",
+          "endExclusive": "2026-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 63091.80993322669,
+          "calendarSha256": "914ab69f56646c56122e39360390d360ec1d9eec1e943a653efab122968642ba",
+          "dailyReturnsFloat64LEsha256": "c97d8d866a52d80e3a13ac9270e455a7c284641e1975e596756243364aa3d57b"
+        }
+      },
+      "m30-n160-x80": {
+        "base": {
+          "days": 243,
+          "start": "2026-01-01",
+          "endExclusive": "2026-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 65204.641351773505,
+          "calendarSha256": "914ab69f56646c56122e39360390d360ec1d9eec1e943a653efab122968642ba",
+          "dailyReturnsFloat64LEsha256": "44439e5455ded98e283018df465e0cf2108896b02d96baa19c2c8d2a5f13514d"
+        },
+        "stress": {
+          "days": 243,
+          "start": "2026-01-01",
+          "endExclusive": "2026-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 62618.68876070776,
+          "calendarSha256": "914ab69f56646c56122e39360390d360ec1d9eec1e943a653efab122968642ba",
+          "dailyReturnsFloat64LEsha256": "45158df6e2d5501da5aab1355f000f03c4cd4ddc8755ab1dbb04700c44bfc022"
+        }
+      },
+      "m30-n640-x320": {
+        "base": {
+          "days": 243,
+          "start": "2026-01-01",
+          "endExclusive": "2026-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 62081.70385078717,
+          "calendarSha256": "914ab69f56646c56122e39360390d360ec1d9eec1e943a653efab122968642ba",
+          "dailyReturnsFloat64LEsha256": "c3c08e48c262f3003da1420550bf4754206ca105097576fb8f6916787c41f00f"
+        },
+        "stress": {
+          "days": 243,
+          "start": "2026-01-01",
+          "endExclusive": "2026-09-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 61157.35995893883,
+          "calendarSha256": "914ab69f56646c56122e39360390d360ec1d9eec1e943a653efab122968642ba",
+          "dailyReturnsFloat64LEsha256": "ab02e2111fe8399f45ebd4523803531519f0dcfc9724066b797565971340014e"
+        }
+      }
+    },
+    "fresh-september": {
+      "m30-n320-x160": {
+        "base": {
+          "days": 30,
+          "start": "2026-09-01",
+          "endExclusive": "2026-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59812.25866449568,
+          "calendarSha256": "41acf965a5ccf87e29bc766706c2e7825874e8e1cff668838639ba4dcba5c671",
+          "dailyReturnsFloat64LEsha256": "bfba29581a987f017625f2b6da27bdc1823bd951f0cdc88435bc528f9ddc98a8"
+        },
+        "stress": {
+          "days": 30,
+          "start": "2026-09-01",
+          "endExclusive": "2026-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59737.10384779866,
+          "calendarSha256": "41acf965a5ccf87e29bc766706c2e7825874e8e1cff668838639ba4dcba5c671",
+          "dailyReturnsFloat64LEsha256": "b9e56313ffa671e6879e790909e43ac2ae28cfe041db0a235751351e35c75b9e"
+        }
+      },
+      "m30-n320-x160-no-day-guard": {
+        "base": {
+          "days": 30,
+          "start": "2026-09-01",
+          "endExclusive": "2026-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59812.25866449568,
+          "calendarSha256": "41acf965a5ccf87e29bc766706c2e7825874e8e1cff668838639ba4dcba5c671",
+          "dailyReturnsFloat64LEsha256": "bfba29581a987f017625f2b6da27bdc1823bd951f0cdc88435bc528f9ddc98a8"
+        },
+        "stress": {
+          "days": 30,
+          "start": "2026-09-01",
+          "endExclusive": "2026-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59737.10384779866,
+          "calendarSha256": "41acf965a5ccf87e29bc766706c2e7825874e8e1cff668838639ba4dcba5c671",
+          "dailyReturnsFloat64LEsha256": "b9e56313ffa671e6879e790909e43ac2ae28cfe041db0a235751351e35c75b9e"
+        }
+      },
+      "m30-n160-x80": {
+        "base": {
+          "days": 30,
+          "start": "2026-09-01",
+          "endExclusive": "2026-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 61278.964717733776,
+          "calendarSha256": "41acf965a5ccf87e29bc766706c2e7825874e8e1cff668838639ba4dcba5c671",
+          "dailyReturnsFloat64LEsha256": "34d161088ed016499bb9f4ab775f815a5798b6115f6a8c1a60d852154228c7c4"
+        },
+        "stress": {
+          "days": 30,
+          "start": "2026-09-01",
+          "endExclusive": "2026-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 61042.24518875313,
+          "calendarSha256": "41acf965a5ccf87e29bc766706c2e7825874e8e1cff668838639ba4dcba5c671",
+          "dailyReturnsFloat64LEsha256": "e304e145c6201df96653c28f7667f1f988093347726045ecc3782cd23dd9a523"
+        }
+      },
+      "m30-n640-x320": {
+        "base": {
+          "days": 30,
+          "start": "2026-09-01",
+          "endExclusive": "2026-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59730.84886562769,
+          "calendarSha256": "41acf965a5ccf87e29bc766706c2e7825874e8e1cff668838639ba4dcba5c671",
+          "dailyReturnsFloat64LEsha256": "660c2ece7b2677b013ebbb3bbb41e0a92110de356448a29ded82b4386dd6d9db"
+        },
+        "stress": {
+          "days": 30,
+          "start": "2026-09-01",
+          "endExclusive": "2026-10-01",
+          "firstPreviousEquity": 60000,
+          "firstDailyEquity": 60000.0,
+          "firstDailyReturn": 0.0,
+          "lastDailyEquity": 59684.95524440296,
+          "calendarSha256": "41acf965a5ccf87e29bc766706c2e7825874e8e1cff668838639ba4dcba5c671",
+          "dailyReturnsFloat64LEsha256": "acaf60165bd1fccb4b950b7180867a16dccdcdfc28622c1d52f4d50890d76228"
+        }
+      }
+    }
+  },
+  "rawInputs": [
+    {
+      "path": "tmp/trend-robustness-v8/completion-2022-aug/BTCUSDT.json",
+      "sha256": "9909656d247364cd8d5a9e7132253323a95900dad415e8222097ef2d8d05a3df"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2022-aug/ETHUSDT.json",
+      "sha256": "9fcda69d56bcc896c7c23f344b3a4031e2377ac1d0106eb3e1066ac7710b3f65"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2022-aug/BNBUSDT.json",
+      "sha256": "415c874604e8d7e6bede0a438104bb6eb6aa6b91ce6202df8b5ec9cd460d641f"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2022-aug/SOLUSDT.json",
+      "sha256": "330734b1cf69d454a391ce48bebb3f2d7ad02e2b8a328b3cba625ee303b74b59"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2022-aug/XRPUSDT.json",
+      "sha256": "3ae0b26960ff136db5388c538fc2deb9e5c417f4c0e68cd0c00eeed10d80e7af"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2022-aug/DOGEUSDT.json",
+      "sha256": "1e391080c461bc6007523caa3c2a4b6625352919c3846fc9c6e415d42a77e03c"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2024-sep/BTCUSDT.json",
+      "sha256": "21f9764b09a2fc3b777b78cd9068e99af71baff1b1026ad03b93a3514e28b5c9"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2024-sep/ETHUSDT.json",
+      "sha256": "abd100b653904f16e1004b848a47f3abf8889cf5b2b77e752d4952a50934d8f8"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2024-sep/BNBUSDT.json",
+      "sha256": "fb7f7f9e8cb23f09e66a896b1b10b789a34dcde15190216db8f7f88a1d41b252"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2024-sep/SOLUSDT.json",
+      "sha256": "d84ec865caed2a9c993af7789abae80729327d8938fa34d333cfa22a5086bb14"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2024-sep/XRPUSDT.json",
+      "sha256": "b72b0659dcd56f91ba517c3002a9627338fbfb9020872d7beabe5306a00b99a2"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2024-sep/DOGEUSDT.json",
+      "sha256": "c16b9a327c90cad6e0ad3066823d58071cf0f1f1fac3bea79bc4bef1dd2e52bd"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2024-dec/BTCUSDT.json",
+      "sha256": "eee147fe71fce6e9049f0ea18343b42c39c4bf1b28ab3f742de7589e177d64ed"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2024-dec/ETHUSDT.json",
+      "sha256": "584f821eb74fe75466a0664651462b86a03d59664aa1489ade22d98238058bca"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2024-dec/BNBUSDT.json",
+      "sha256": "e370c4d161967dc32c141e097473ec14b2a0889e4b580dd1a4ae1f40b2e7e0bb"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2024-dec/SOLUSDT.json",
+      "sha256": "496b8605fdfd8e7f85c92c2c1094bb60e903ea0eb7c4a03b4433a010be50728a"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2024-dec/XRPUSDT.json",
+      "sha256": "c199141fc2a59bc80fa46149cb26c74cb44391a256a040e7d2727840d1410c45"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/completion-2024-dec/DOGEUSDT.json",
+      "sha256": "f4d8ddd8089eafc490ac2df25aecd219f2cc1f386842ee76ba9367c31f8720fe"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/known-2025/BTCUSDT.json",
+      "sha256": "a4e24d3f3b72df3e8c2532bbb4c271de820f7c1f91ff7e4080530fd24419c401"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/known-2025/ETHUSDT.json",
+      "sha256": "fcda2b5c07013021a33c8c2b418873c585dc86028a6747d9b2e68e5f7d5ba88e"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/known-2025/BNBUSDT.json",
+      "sha256": "1bf042e265b42d0121199b165fda6f0785186fc638fdca76a755bddb1b15d997"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/known-2025/SOLUSDT.json",
+      "sha256": "0c27fb97dd8241033b9e31176f16afea3b84951ff2ef9ba2fe8a39c5b94c23e1"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/known-2025/XRPUSDT.json",
+      "sha256": "256831cfc89b272e75819de032100266293d75e6e30e0f410d65f74fa655e33d"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/known-2025/DOGEUSDT.json",
+      "sha256": "bdec31957ee28d682f8610ec0fbf539a5fba0782dc3c22dd67aa5b519e3340ea"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/known-2026/BTCUSDT.json",
+      "sha256": "8897d936f1b35ecf364a5637a79839cfa185b360785ae0832eabe4a5a7211e1c"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/known-2026/ETHUSDT.json",
+      "sha256": "f5df7de26481521c110ad19ddd3cb785d0cdaf486820c8c026d70affe6390b09"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/known-2026/BNBUSDT.json",
+      "sha256": "5137831afcf9278c0c39e5fc6fb36840536c59868d01d4da6edf9cabe1d0a949"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/known-2026/SOLUSDT.json",
+      "sha256": "4d6f5eb1d5ca1166cbd93b9e648742ffd3c25c753cf531c806708deded79b606"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/known-2026/XRPUSDT.json",
+      "sha256": "3dc63eb3379b73da2eb41287eb9737caa661cc62a0dbe6b4729f10467b5a8f1d"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/known-2026/DOGEUSDT.json",
+      "sha256": "20f9a9b355f04a66468857c72dc52062ce1971553aa8663cff13ae468fa262ea"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/fresh-september/BTCUSDT.json",
+      "sha256": "ad5e5125cab161d247a045fa4237fc484c786521d44d3f566c3a908a667ac75c"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/fresh-september/ETHUSDT.json",
+      "sha256": "bda1e9eca3676af383229bdf0935049378b91602791c0423132bf7aa5db5f199"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/fresh-september/BNBUSDT.json",
+      "sha256": "44055d3dd2cdd0d6b16e7d9729f044b219d5538e19ab57e10856196bc458a14b"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/fresh-september/SOLUSDT.json",
+      "sha256": "4e24e9824afd583eb7c1ed9633d5d9905b0c28f557136459f0673255ddd32d4b"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/fresh-september/XRPUSDT.json",
+      "sha256": "ae76baf8fe1a4d2ac0df447d34bfe89c5abbe6afde57b1d29a48778ab2ea21a7"
+    },
+    {
+      "path": "tmp/trend-robustness-v8/fresh-september/DOGEUSDT.json",
+      "sha256": "cfa64560bbc6ba554f884e5399f5aaf641f3ff3579943e52d1342abbc193c706"
+    }
+  ]
+}

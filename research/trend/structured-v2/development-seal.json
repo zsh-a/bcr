@@ -1,0 +1,77 @@
+{
+  "kind": "study-stage-seal-v1",
+  "compilation": {
+    "path": "/home/zs/workspace/bcr/research/trend/structured-v2/development-input/compilation.json",
+    "sha256": "602ce1fbd4c46cb48e4bcdfbd55609edf82d376301f732ad8972ab890fb354f8"
+  },
+  "catalog": {
+    "path": "/home/zs/workspace/bcr/research/trend/structured/catalog.json",
+    "sha256": "75000a025cbeed78fc8e2ac8deaffa7f717bd66f8c8e0575a8c4d95e64311d41"
+  },
+  "experiment": {
+    "path": "/home/zs/workspace/bcr/research/trend/structured-v2/experiment.json",
+    "sha256": "1c3f29638db809d2b58b44b3811a243303ea58ac35c8a333dd55d517b070b52d"
+  },
+  "cell": "development",
+  "stage": "development",
+  "run": "/home/zs/workspace/bcr/tmp/trend-structured-v10",
+  "runIdentity": {
+    "path": "/home/zs/workspace/bcr/tmp/trend-structured-v10/run.json",
+    "sha256": "407ff8573e2f51a559847760392e841e4fdf05e5d1a9cd96651028f9a6b1814a"
+  },
+  "selection": {
+    "path": "/home/zs/workspace/bcr/tmp/trend-structured-v10/selection.json",
+    "sha256": "503fd12bf67052ae330ba7379a34543c10d79f873752f5c1109f77770dd2cccb"
+  },
+  "selected": "sp-context",
+  "rawIdentity": {
+    "planSha256": "e3db8c415084f558e3244bfdfc4c29f65edb82026af6b248fd12260a6fc9301c",
+    "manifestSha256": "18ebe88782d9b9f487ddd1bf88b0fe751ba9d9f8bd0f6bd663989cada3281786",
+    "selectionSha256": "503fd12bf67052ae330ba7379a34543c10d79f873752f5c1109f77770dd2cccb",
+    "rawResultsSha256": "b0ff0f091f06e2937c1abc11f3e7dd003257573bb5406800b6218ff402e8d6cd",
+    "evaluationVersion": "trend-account-evaluation-2"
+  },
+  "auditorSha256": "120a8a0a49703716bea0cfcb058e63ff62138170d0ec86873751a51fcb4dea42",
+  "passed": false,
+  "checks": {
+    "sourceQualification": false,
+    "basePositiveReturn": false,
+    "baseDailyDrawdown": true
+  },
+  "qualification": {
+    "status": "failed",
+    "reasons": [
+      "too-few-profitable-symbols"
+    ],
+    "completeDays": 487,
+    "minimumTradesPerSymbol": 20,
+    "tradesBySymbol": {
+      "BTCUSDT": 56,
+      "ETHUSDT": 52,
+      "BNBUSDT": 68
+    }
+  },
+  "baseReturn": -0.005509686843463979,
+  "baseDailyDrawdown": -0.020914620370104386,
+  "costScope": "development-base-only",
+  "source": {
+    "plan": {
+      "path": "/home/zs/workspace/bcr/research/trend/structured-v2/development-input/plan.json",
+      "sha256": "e3db8c415084f558e3244bfdfc4c29f65edb82026af6b248fd12260a6fc9301c"
+    },
+    "selection": {
+      "path": "/home/zs/workspace/bcr/tmp/trend-structured-v10/selection.json",
+      "sha256": "503fd12bf67052ae330ba7379a34543c10d79f873752f5c1109f77770dd2cccb"
+    },
+    "selectionSource": {
+      "plan": "/home/zs/workspace/bcr/research/trend/structured-v2/development-input/plan.json",
+      "manifest": "/home/zs/workspace/bcr/research/trend/structured-v2/development-input/manifest.json",
+      "run": "/home/zs/workspace/bcr/tmp/trend-structured-v10",
+      "planSha256": "e3db8c415084f558e3244bfdfc4c29f65edb82026af6b248fd12260a6fc9301c",
+      "manifestSha256": "18ebe88782d9b9f487ddd1bf88b0fe751ba9d9f8bd0f6bd663989cada3281786",
+      "runSha256": "407ff8573e2f51a559847760392e841e4fdf05e5d1a9cd96651028f9a6b1814a",
+      "selectionSha256": "503fd12bf67052ae330ba7379a34543c10d79f873752f5c1109f77770dd2cccb",
+      "developmentSha256": "efe22cb71035b102c5cc61829a529d30e1800fa9cd83ef1baac767cd5684d6ca"
+    }
+  }
+}

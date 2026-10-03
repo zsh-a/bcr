@@ -1,0 +1,294 @@
+{
+  "version": 1,
+  "capitalMode": "total-account-equal-sleeves",
+  "initialCapital": 60000,
+  "symbols": {
+    "BTCUSDT": {
+      "tickSize": 0.1,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "ETHUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "BNBUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.01,
+      "minNotional": 100
+    },
+    "SOLUSDT": {
+      "tickSize": 0.001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "XRPUSDT": {
+      "tickSize": 0.0001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "DOGEUSDT": {
+      "tickSize": 1e-05,
+      "quantityStep": 1,
+      "minNotional": 100
+    }
+  },
+  "costs": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "stressFeeBps": 10,
+    "stressSlippageBps": 4
+  },
+  "risk": {
+    "riskPct": 0.005,
+    "maxExposurePct": 0.95,
+    "cooldownLosses": 3,
+    "cooldownMinutes": 60,
+    "dailyLossPct": 0.03,
+    "flattenMinute": null
+  },
+  "bootstrap": {
+    "seed": 20261003,
+    "samples": 2000,
+    "blockDays": 7
+  },
+  "configVersion": 8,
+  "title": "30 分钟趋势策略：固定风控消融、尺度稳定性与历史缺口补全",
+  "frozenAt": "2026-10-03T07:45:00Z; declared before new candidate replay or completion-window price/return inspection; archive availability and timestamp completeness inspected only.",
+  "purpose": "Retain the previous fixed primary. Four complete-account contrasts only; no ranking, grid search, combination, symbol replacement or live deployment.",
+  "sourceStudy": {
+    "plan": "research/trend/details-plan.json",
+    "sha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38"
+  },
+  "dataPolicy": "Official checksum-verified Binance UM trade/mark minute data and actual funding. All windows independently reset six 10000 USDT sleeves. Never concatenate window NAVs. Do not interpolate missing minutes, shorten unavailable windows or substitute assets. July2022 and August2024 remain incomplete. Three additional complete months chosen by archive availability only; some boundary prices were previously used as warmup and familiar historical regimes are not prospective evidence.",
+  "windows": [
+    {
+      "id": "development",
+      "start": "2022-09-01",
+      "end": "2024-01-01",
+      "role": "development",
+      "label": "开发资格复核 · 已查看历史"
+    },
+    {
+      "id": "known-2024",
+      "start": "2024-01-01",
+      "end": "2024-08-01",
+      "role": "diagnostic-known",
+      "label": "2024 年 1—7 月 · 已查看历史"
+    },
+    {
+      "id": "known-2025",
+      "start": "2025-01-01",
+      "end": "2026-01-01",
+      "role": "diagnostic-known",
+      "label": "2025 全年 · 已查看历史"
+    },
+    {
+      "id": "known-2026",
+      "start": "2026-01-01",
+      "end": "2026-09-01",
+      "role": "diagnostic-known",
+      "label": "2026 年 1—8 月 · 已查看历史"
+    },
+    {
+      "id": "historical-stress",
+      "start": "2022-01-01",
+      "end": "2022-07-01",
+      "role": "diagnostic-stress",
+      "label": "2022 年上半年压力 · 已查看历史"
+    },
+    {
+      "id": "fresh-september",
+      "start": "2026-09-01",
+      "end": "2026-10-01",
+      "role": "diagnostic-check",
+      "label": "2026 年 9 月复核 · 已查看历史"
+    },
+    {
+      "id": "transfer-2021",
+      "start": "2021-01-01",
+      "end": "2022-01-01",
+      "role": "diagnostic-known",
+      "label": "2021 全年 · 已查看历史"
+    },
+    {
+      "id": "transfer-2024-oct-nov",
+      "start": "2024-10-01",
+      "end": "2024-12-01",
+      "role": "diagnostic-known",
+      "label": "2024 年 10—11 月 · 已查看历史"
+    },
+    {
+      "id": "completion-2022-aug",
+      "start": "2022-08-01",
+      "end": "2022-09-01",
+      "role": "historical-completion",
+      "label": "2022 年 8 月 · 历史补全"
+    },
+    {
+      "id": "completion-2024-sep",
+      "start": "2024-09-01",
+      "end": "2024-10-01",
+      "role": "historical-completion",
+      "label": "2024 年 9 月 · 历史补全"
+    },
+    {
+      "id": "completion-2024-dec",
+      "start": "2024-12-01",
+      "end": "2025-01-01",
+      "role": "historical-completion",
+      "label": "2024 年 12 月 · 历史补全"
+    }
+  ],
+  "candidates": [
+    {
+      "id": "m30-n320-x160",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-x160-no-day-guard",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "riskOverrides": {
+        "dailyLossPct": 0
+      }
+    },
+    {
+      "id": "m30-n160-x80",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 160,
+      "channelExitBars": 80,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n640-x320",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 640,
+      "channelExitBars": 320,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    }
+  ],
+  "baseline": "m30-n320-x160",
+  "selectionMode": "fixed",
+  "fixedCandidate": "m30-n320-x160",
+  "selectionMinTrades": 30,
+  "selectionMinProfitableSymbols": 4,
+  "selection": "Primary remains m30-n320-x160 from the prior frozen study regardless of these results. Development qualification is descriptive; never reselect after failure. Other candidates isolate removal of the full daily guard and fixed half/double entry/exit lookbacks. No candidate is promoted by ranking.",
+  "sensitivity": [],
+  "stressCandidates": [
+    "m30-n320-x160",
+    "m30-n320-x160-no-day-guard",
+    "m30-n160-x80",
+    "m30-n640-x320"
+  ],
+  "comparisons": [
+    {
+      "id": "m30-n320-x160-no-day-guard",
+      "candidate": "m30-n320-x160-no-day-guard",
+      "reference": "m30-n320-x160"
+    },
+    {
+      "id": "m30-n160-x80",
+      "candidate": "m30-n160-x80",
+      "reference": "m30-n320-x160"
+    },
+    {
+      "id": "m30-n640-x320",
+      "candidate": "m30-n640-x320",
+      "reference": "m30-n320-x160"
+    }
+  ],
+  "fixedRules": {
+    "entry": "Completed UTC 30m close >= prior N completed highs + one tick; exclude current candle. Long only, next minute open with adverse slippage and grid rounding. every-close reentry, no EMA/ADX/volume filter.",
+    "exit": "Continuous minute initial stop at 2 times frozen signal Wilder ATR14. Completed close < prior M completed lows queues next-minute open exit. No ATR trailing, breakeven, fixed takeprofit or daily flatten. Cost, cooldown and per-sleeve daily guard can alter exits and entry eligibility.",
+    "dailyGuard": "Each sleeve anchors equity at UTC day first mark.open before funding/orders; tests minute mark.close equity against 97% of anchor; after breach queue next minute open exit and block entry for remainder of UTC day. This is neither trade 3% nor intraday high-water drawdown nor portfolio guard. dailyLossPct=0 disables BOTH exit and daily entry lockout; cannot isolate these effects or UTC anchor sensitivity.",
+    "scales": "160/80,320/160,640/320 halve/double BOTH entry and exit horizons; all retain 30m Wilder14 stop ATR. Independently initialized 4/7/14 UTC-day warmups include a disclosed ATR seed difference; no ensemble capital/netting claim.",
+    "risk": "Fixed 0.5% initial sleeve risk including stop fees/fill, exposure95%, 3 losses/60m cooldown, dailyLoss3% except single override0. Total60000 across six independent10000 sleeves, not shared cross-margin.",
+    "costs": "Each side base5bps fee+2bps slippage; stress10+4. Actual funding. Four base candidates on development, four base plus four stress on every other window.",
+    "attribution": "Each contrast replays the entire account, including alternative entry availability, risk state, quantity, fees and funding; no identical-entry or exit-classification causal claim."
+  },
+  "mechanismEvaluation": {
+    "primary": "m30-n320-x160",
+    "groups": [
+      {
+        "id": "historical-gap-completion",
+        "windows": [
+          "completion-2022-aug",
+          "completion-2024-sep",
+          "completion-2024-dec"
+        ]
+      },
+      {
+        "id": "recent-known",
+        "windows": [
+          "known-2025",
+          "known-2026",
+          "fresh-september"
+        ]
+      }
+    ],
+    "samples": 2000,
+    "seed": 20261003,
+    "blockDays": [
+      7,
+      28
+    ],
+    "method": "Descriptive only. Paired circular calendar blocks sampled separately within each original window, preserving its length and sharing indices across candidate/primary/base/stress; percentile95% intervals for absolute and candidate-minus-primary daily means. Pool by day count, never chain NAV. Both block sizes always reported. No selection or multiplicity-adjusted significance claim; recent group remains already-known history."
+  },
+  "acceptance": "No new statistical promotion this round. Historical-completion comprises92days, below the prior180day evidence minimum even before trade counts/intervals; report evidence insufficient without weakening that gate. Fixed primary unchanged. Report every loss and both-cost result for all four accounts. Guard improvement is uncertain if either7/28day paired interval crosses0; do not replace the primary from point estimates. Neighboring horizons are stability diagnostics, not a search for a new winner. A positive historical expectation is distinct from effective prospective trading.",
+  "limitations": [
+    "Repeated adaptive research on familiar surviving crypto markets; no untouched chronological OOS claim. Three completion months may overlap previously seen warmup observations.",
+    "Static modern lot/minNotional constraints and constant fee/slippage cannot reconstruct historical microstructure; no liquidation/order-book model.",
+    "Separated windows reset capital/risk/position; boundary forced exits may materially affect short windows. Daily portfolio drawdown excludes within-day peak/trough.",
+    "Nonstationarity, strongly correlated symbols, return concentration and project-wide multiple trials are not removed by block bootstrap. 28day blocks on30/31day windows provide limited information.",
+    "No ensemble unless actual per-scale capital replays account for min lot/notional; no UTC anchor-hour optimization, grid or later rescoring this round.",
+    "No live or prospective data collection is running; any future observation protocol must use data unavailable when frozen and retain signal/order receive timestamps and execution assumptions."
+  ],
+  "references": [
+    "https://www.aqr.com/-/media/AQR/Documents/Insights/Journal-Article/AQR-JPM-Fall-2017.pdf",
+    "https://dspace.mit.edu/entities/publication/bb69ca4b-0cdc-487f-831d-63b2e84fafee",
+    "https://www.davidhbailey.com/dhbpapers/backtest-prob.pdf"
+  ],
+  "availability": {
+    "path": "tmp/trend-next-availability.json",
+    "sha256": "fd42a08e38f742ca9513ea9b150cb4107e4b93b292d66d342cfc197e9e52d2de"
+  }
+}

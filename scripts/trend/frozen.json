@@ -1,7 +1,24 @@
 {
   "version": 1,
   "description": "Frozen historical evidence. New evaluations and replays must use other output locations.",
-  "runs": ["tmp/trend-research", "tmp/trend-slow", "tmp/trend-methods"],
+  "runs": [
+    "tmp/trend-research",
+    "tmp/trend-slow",
+    "tmp/trend-methods",
+    "tmp/trend-kdj-v6",
+    "tmp/trend-price-action-v7",
+    "tmp/trend-channel-recheck-v7",
+    "tmp/trend-thirty-minute-v7",
+    "tmp/trend-thirty-minute-events",
+    "tmp/trend-literature-v8",
+    "tmp/trend-details-v8",
+    "tmp/trend-robustness-v8",
+    "tmp/trend-search-v8",
+    "tmp/trend-engine14-expansion-parity",
+    "tmp/trend-holdout-v8",
+    "tmp/trend-structured-v9",
+    "tmp/trend-structured-v10"
+  ],
   "artifacts": [
     {
       "path": "research/trend/REPORT.md",
@@ -46,7 +63,708 @@
     {
       "path": "research/trend/slow-plan.json",
       "sha256": "1c3e9bb95e5d60a03b0a1f66c7d044638c9a506d854832a24037dd94bb2bf923"
+    },
+    {
+      "path": "research/trend/kdj-plan.json",
+      "sha256": "4ee928922f190142814bbc863898a20ed6a3ca2db56b01f245ee3160d806513c"
+    },
+    {
+      "path": "research/trend/kdj/REPORT.md",
+      "sha256": "2ae2f67aac1698529df319ea2b24f91a18fbfac2115d080447bfe99b74370df1"
+    },
+    {
+      "path": "research/trend/kdj/ANALYSIS.md",
+      "sha256": "5d53320d5cf1561b678fb6711f0d056c6dacd03b7665f4d0f76f532b2290925e"
+    },
+    {
+      "path": "research/trend/kdj/results.json",
+      "sha256": "ea9660975e05e162a019aea9038e68a5099d49236bcf3ded69b9c439e5ed6be1"
+    },
+    {
+      "path": "research/trend/kdj/curves.json",
+      "sha256": "690034dc34458ea649737b9ca2c8494c6bbf0f699decaf8d44ac7a645d53aaf3"
+    },
+    {
+      "path": "research/trend/kdj/equity.svg",
+      "sha256": "7138512bafae0accc4ec2ee73d1571f8a1702a9ca5a61f7b9d5241ead0ba44f7"
+    },
+    {
+      "path": "research/trend/kdj/equity.png",
+      "sha256": "ff5dc561f95f2c1c434d459e341dc82a659f9c8c65a519aa12ceb7f49378602e"
+    },
+    {
+      "path": "research/trend/price-action-plan.json",
+      "sha256": "2954e3c02fe0199bf07fec10193063a6b2f05dc6f2ca1419d7780739c87ebd8e"
+    },
+    {
+      "path": "research/trend/price-action/REPORT.md",
+      "sha256": "6e0254cfc4180a1256086da0ebb6053ff684cac54bc5a602cb6a94e2c35ae15e"
+    },
+    {
+      "path": "research/trend/price-action/ANALYSIS.md",
+      "sha256": "4a31931c53a219c31eefffd2a4d907e5f3b98e0465e0e596d6621878ff303256"
+    },
+    {
+      "path": "research/trend/price-action/results.json",
+      "sha256": "4bf2215eb0de89770e8cc3266412eb22acb021643a0b6af5bbbb1b10772e8e50"
+    },
+    {
+      "path": "research/trend/price-action/curves.json",
+      "sha256": "c2c493ebc1ee9579bad309b89aa9dec6555f0b136175342f81d6fd1929defdc5"
+    },
+    {
+      "path": "research/trend/price-action/equity.svg",
+      "sha256": "4e4abb7235352067f0e89deeeb145f63981745ed060ce707684caaff72ef0363"
+    },
+    {
+      "path": "research/trend/price-action/equity.png",
+      "sha256": "270dd76bde68a13b3df48114302ce8c0042708e0dc28b734dfc2c4382ac9d94a"
+    },
+    {
+      "path": "research/trend/channel-recheck-plan.json",
+      "sha256": "bac6961b16f63adeac1af32e65e88105e8a46e9c355991ca3fbfa2ad0cc6599f"
+    },
+    {
+      "path": "research/trend/channel-recheck/REPORT.md",
+      "sha256": "0029f30ecc11732d676cef40fe8c9aa97e99509ccc2f1018836fb93407b054cb"
+    },
+    {
+      "path": "research/trend/channel-recheck/ANALYSIS.md",
+      "sha256": "24687083ccba2252d1582af9b3ce663d465b233414d110cfa4c1794fac3c3481"
+    },
+    {
+      "path": "research/trend/channel-recheck/results.json",
+      "sha256": "74cac82f362c61b4c998b823eb96bc37db3b7fa476859c73b6d6488321593f3a"
+    },
+    {
+      "path": "research/trend/channel-recheck/curves.json",
+      "sha256": "14f613cf26f69f67756f0dffcc8b8acbd7c2ba30caac268294809beddd4660f8"
+    },
+    {
+      "path": "research/trend/channel-recheck/equity.svg",
+      "sha256": "bb88c2dcce80df34bb806d5fc0248668f9ca9da16f316f396c0e737102302203"
+    },
+    {
+      "path": "research/trend/channel-recheck/equity.png",
+      "sha256": "b75aee15bc1b6116ca36aa96e7233302ab9f7af6267667218a71f0ee6c59312a"
+    },
+    {
+      "path": "research/trend/channel-recheck/diagnostics.json",
+      "sha256": "c03f44fc0f4435d99a7c2d7fecc733652c48e11d42badf1b69ba685b4a545cb0"
+    },
+    {
+      "path": "research/trend/channel-recheck/market-reference.json",
+      "sha256": "9b110741be53d147432daf8fdd7d547696a4921f5e7162bc01e5980e79040028"
+    },
+    {
+      "path": "research/trend/thirty-minute-plan.json",
+      "sha256": "b3e2ad3f442df8641422b7b59d4b83bff4b4b62aa0e6ee83ddfada8ee5d23a70"
+    },
+    {
+      "path": "research/trend/thirty-minute/ANALYSIS.md",
+      "sha256": "b340500c5ca32644475c495a8e7c5716e0bde6eb7f2b16b03aa56af81fb06a63"
+    },
+    {
+      "path": "research/trend/thirty-minute/REPORT.md",
+      "sha256": "860298848b686ce0230e62be8c974251934645ca0240d9b6c1dd081a663dbdf9"
+    },
+    {
+      "path": "research/trend/thirty-minute/curves.json",
+      "sha256": "8c9c4a9505e493c622d5792aa3136e45613290679e9b2ff340c1d015586ff0bf"
+    },
+    {
+      "path": "research/trend/thirty-minute/diagnostics.json",
+      "sha256": "9920f4a350cfb8f862c1ee8cbc720c1a9175fab1b165bae7ef0b2d1c5d4f9438"
+    },
+    {
+      "path": "research/trend/thirty-minute/equity.png",
+      "sha256": "9a66457babac1d7f4519e939640aa9af9dedae40f0e3d987511481e33a84f42c"
+    },
+    {
+      "path": "research/trend/thirty-minute/equity.svg",
+      "sha256": "d4ec3c7b183052f27245e01a4e2b86c31195a974114205c011cb227f8e624504"
+    },
+    {
+      "path": "research/trend/thirty-minute/events.jsonl.gz",
+      "sha256": "320f919fbb3e7a9e1b710dfe4c4d45fa19c8d9e08b6c7b8390dc883a2b9e8e7c"
+    },
+    {
+      "path": "research/trend/thirty-minute/execution-audit.json",
+      "sha256": "899375842f370679162569a7f45fc2023ab62843ca5e0325e74163d99158a539"
+    },
+    {
+      "path": "research/trend/thirty-minute/mechanisms.png",
+      "sha256": "22d5fe61ff818e86437aea16e12b699d298be7607c77b38f087de3063e341acc"
+    },
+    {
+      "path": "research/trend/thirty-minute/mechanisms.svg",
+      "sha256": "19b63b619cfdb6f3bbd7e2b6e8d4f621cd4089e7aa45d01593936de8dea0ab4a"
+    },
+    {
+      "path": "research/trend/thirty-minute/results.json",
+      "sha256": "c48de000d6f5720a62a98cfd9501ff699305c411b0db834a6f7ca4e932bc3c04"
+    },
+    {
+      "path": "research/trend/thirty-minute/signals.json",
+      "sha256": "c59c4bc2a206289c39ea534e6220c0d63c4c85152e5ec34c88ba06c5876b97c9"
+    },
+    {
+      "path": "research/trend/literature-plan.json",
+      "sha256": "693a71c9bced151ce2cd6d66098015752b81445c92ed12dad02d59358f9b4db9"
+    },
+    {
+      "path": "research/trend/literature/ANALYSIS.md",
+      "sha256": "dc747d1ccce93156ed05a967d716f35e4578050978770dddc3026ab35bfc61db"
+    },
+    {
+      "path": "research/trend/literature/REPORT.md",
+      "sha256": "90df2877b2c78ad1cf38dcd0fe9ca17fdf282c582d9028193960819368324d15"
+    },
+    {
+      "path": "research/trend/literature/curves.json",
+      "sha256": "3f21e2029017f0a4d522e48d5cf9740a7e635c5d3fef3c33d4dbb9a072f223b9"
+    },
+    {
+      "path": "research/trend/literature/diagnostics.json",
+      "sha256": "78d2ca377756451ba074431257338f3878fc70fbb83d84a2cc65c5839273e810"
+    },
+    {
+      "path": "research/trend/literature/equity.png",
+      "sha256": "6417800e8864c54e69fa85214336d20c1d80fd3560c23837387270aff3e3ae9b"
+    },
+    {
+      "path": "research/trend/literature/equity.svg",
+      "sha256": "2dc798a5a0836f74126c1e47fdfe4a9e23eb67047e653d8c1e39c8a012961758"
+    },
+    {
+      "path": "research/trend/literature/execution-audit.json",
+      "sha256": "982c3bc42b6ac51b54e0b002424fe4b4bdb5aa133164c7bad075d34ecbf51372"
+    },
+    {
+      "path": "research/trend/literature/qualification.json",
+      "sha256": "fc68b0cb231039eeeec934b6d5af2a051980703c01928b9d9f8a02dd6c2c45dc"
+    },
+    {
+      "path": "research/trend/literature/results.json",
+      "sha256": "b570c51d002e25095c6b3b561945775e190aeac153ddac72deb6287597c29243"
+    },
+    {
+      "path": "research/trend/details-plan.json",
+      "sha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38"
+    },
+    {
+      "path": "research/trend/details/ANALYSIS.md",
+      "sha256": "a07a7dd89cbe11390cce8c76b3d5d6543fcaae4d669ee676921821d9dbf7d888"
+    },
+    {
+      "path": "research/trend/details/REPORT.md",
+      "sha256": "b05498d621c1e9f0868b7823e12caa41bfb35588927009b4aac5edd883d3bd5f"
+    },
+    {
+      "path": "research/trend/details/availability.json",
+      "sha256": "99cf33da0a1caf843306eff0004211ad773b2b56c1faf552e142673484c8db23"
+    },
+    {
+      "path": "research/trend/details/curves.json",
+      "sha256": "15f520e233b40ba2a1f9027dc8769d19dc5f34c8118a261e28f99d3c6a92e36b"
+    },
+    {
+      "path": "research/trend/details/data-quality.json",
+      "sha256": "94dd987e1d9d879003b632b547d40cbd4499f18eceab166c47409ab88028926f"
+    },
+    {
+      "path": "research/trend/details/diagnostics.json",
+      "sha256": "4fdd76898b6da6f2af7ddbc38b0e6cc985e9302a1ee658e69b14a4aa8a4d150a"
+    },
+    {
+      "path": "research/trend/details/equity.png",
+      "sha256": "fa1ea103dacc539e5ef2f31b8b4f0bc4d631bc45906e5280ab9dfd54c460ed25"
+    },
+    {
+      "path": "research/trend/details/equity.svg",
+      "sha256": "f3193e2aa64a542a768f3de7cdba5c270eb6823176dc4bd69a8c9e1c7cca10f9"
+    },
+    {
+      "path": "research/trend/details/execution-audit.json",
+      "sha256": "45054358bf637e99a4fff7d1f09c664443bfcc29e3fa36cd87647790ea558f9e"
+    },
+    {
+      "path": "research/trend/details/independent-evaluation-audit.json",
+      "sha256": "b39525a4a739e9825d4344b0ee09da0635e130a84202ab64aaa17c0795e285a9"
+    },
+    {
+      "path": "research/trend/details/protocol-notes.json",
+      "sha256": "de5df6cafbc683a013bdfd9677a9b992ccdd3679a90c12e62a11c0bf3fca5dbc"
+    },
+    {
+      "path": "research/trend/details/results.json",
+      "sha256": "d32726b5a572366245f3f8b3d18d5608bcb58d1a96422fcc16523d41437741cf"
+    },
+    {
+      "path": "research/trend/details/risk-trigger-audit.json",
+      "sha256": "810b2f94eed660fb55f2b7ff84bd6c2496fcf2eae97dcaf9bbd0df5a2ef2741a"
+    },
+    {
+      "path": "research/trend/details/risk-trigger-audit.py",
+      "sha256": "fa9fbd89226711486f79e4b48d936aa9f7b2596bd6364056ac9bd082a15f1dbd"
+    },
+    {
+      "path": "research/trend/details/transfer-evaluation.json",
+      "sha256": "3aa75c7171092c1f904ea0b0380668d02472f5e9719f6d5aee62ccad27cb1e92"
+    },
+    {
+      "path": "research/trend/robustness-plan.json",
+      "sha256": "fddd5800b6d38e9f5a6ba09441be3b245a4ff82a3fde56944b0969e21459d78d"
+    },
+    {
+      "path": "research/trend/robustness/ANALYSIS.md",
+      "sha256": "3757cd10b480738c376e7869448ea5730dfc1dee435313cc2cea3b6fe2c76c15"
+    },
+    {
+      "path": "research/trend/robustness/REPORT.md",
+      "sha256": "3d9ef5ac8274c96554d8bca8a5d55d56ae9c51e6deac1552c064b1989ac24dc1"
+    },
+    {
+      "path": "research/trend/robustness/availability.json",
+      "sha256": "fd42a08e38f742ca9513ea9b150cb4107e4b93b292d66d342cfc197e9e52d2de"
+    },
+    {
+      "path": "research/trend/robustness/curves.json",
+      "sha256": "d17f2093a0d98f8e75655c10c2b5b9600a2b03716d65231a88a9ea3cbe8d2c63"
+    },
+    {
+      "path": "research/trend/robustness/data-quality-audit.py",
+      "sha256": "f0ba277284521029ceaf621ec02182d179fb1c64f29e57d6a2e5c0125b523c3f"
+    },
+    {
+      "path": "research/trend/robustness/data-quality.json",
+      "sha256": "8e2f974091d1a35fc2d2b4ef134ecadb1e2dbbfdccd1431506ea52aa00bd8e9a"
+    },
+    {
+      "path": "research/trend/robustness/diagnostics.json",
+      "sha256": "25adafcb0af6aaf2fef0f2b989366613105143235dddc0746f341b7659e22026"
+    },
+    {
+      "path": "research/trend/robustness/equity.png",
+      "sha256": "22cb712ffdd9df43664a71424592f6d0ebed450c0913a7f6f530a17d0df41a02"
+    },
+    {
+      "path": "research/trend/robustness/equity.svg",
+      "sha256": "cab78b1e60e06803e6e52765805cfcd6dd760a18f5969c63cad9516a852226ab"
+    },
+    {
+      "path": "research/trend/robustness/execution-audit.json",
+      "sha256": "750bf64fdfb33281e44944ae7429400ebb835e62070017ae07382a88bbc23d7d"
+    },
+    {
+      "path": "research/trend/robustness/execution-audit.py",
+      "sha256": "70467604a0603880061c28df3c2680cb751db86e9b05664b9b05b94c958ab757"
+    },
+    {
+      "path": "research/trend/robustness/independent-statistics-audit.json",
+      "sha256": "f2aeff5c8f692a59ffcef129e29e66f7e2315314b7636358eb8aa2fe014ced95"
+    },
+    {
+      "path": "research/trend/robustness/independent-statistics-audit.py",
+      "sha256": "909792ae515aee26193b5b95ead705634cbb3f57aef6f4131e72666b41067b76"
+    },
+    {
+      "path": "research/trend/robustness/mechanism-evaluation.json",
+      "sha256": "c1924850da53f8e31872f334001d7b044ef96a1559fd4ae1d89c5aa94d63e2cc"
+    },
+    {
+      "path": "research/trend/robustness/primary-configs.json",
+      "sha256": "8d45fabb678a623b16e2cd75a17157cc18b8e20c890a324f000f7ebad2448d0a"
+    },
+    {
+      "path": "research/trend/robustness/results.json",
+      "sha256": "bb6388518353aa9c153c0c3d1e823c5092b5a1c878c7fc6919c9b433e6acebf5"
+    },
+    {
+      "path": "research/trend/search-plan.json",
+      "sha256": "f6db2c3a71c08fbed0a7a6c2b6f7f1538fbf40d29180aafab216e766f2b62594"
+    },
+    {
+      "path": "research/trend/search/ANALYSIS.md",
+      "sha256": "111dad57bea968bcf4b3e7371f5f9e944faf1022fd0edbf25722f6f9d72cbeb7"
+    },
+    {
+      "path": "research/trend/search/REPORT.md",
+      "sha256": "65fa15bbef7002d4cf1b6c8eaf777b875aef37fb46f4d061396225ac48a0cf45"
+    },
+    {
+      "path": "research/trend/search/account-audit.json",
+      "sha256": "7a95e4cef362f109ed9bf7a4ed4d499efda32803ea26231f0a13b5f5024dcf4f"
+    },
+    {
+      "path": "research/trend/search/account-audit.py",
+      "sha256": "d8858645cc3c277bcdf6010b75d9f7d921254a29f2c355493fe8b8aea1a2a4eb"
+    },
+    {
+      "path": "research/trend/search/candidate-map.png",
+      "sha256": "a8ad6f2dafbebe7b3017c16c6076728f8590fecab79c9ae01a51bc03b93bf1d6"
+    },
+    {
+      "path": "research/trend/search/candidate-map.svg",
+      "sha256": "b8f3c46fb955bc50341915bfdd121ae6d1c2b566547c0ade52716f498af59a1c"
+    },
+    {
+      "path": "research/trend/search/continuous-attribution.json",
+      "sha256": "354ce03e08313619938d85f5fcbe4a471430fe84d8b9001ddee5b3e775a2203e"
+    },
+    {
+      "path": "research/trend/search/curves.json",
+      "sha256": "3e98ed68daeee56ad9bdc7162f07c34a897348b3ad260680ef4eec305f247e01"
+    },
+    {
+      "path": "research/trend/search/data-quality-audit.py",
+      "sha256": "c8e81634def6f82d9515487535ba709be634d2021e3d54d58aa1e4e19f8f69cd"
+    },
+    {
+      "path": "research/trend/search/data-quality.json",
+      "sha256": "c8a6d1f30c81ef3d5bad1412a97d20a194d4e89ee58d1f7610cb11173a812d04"
+    },
+    {
+      "path": "research/trend/search/diagnostics.json",
+      "sha256": "ed9731ea22c53a1bdba8b3144418bf80fdbd344f6ee2205555d0a6694d89b267"
+    },
+    {
+      "path": "research/trend/search/equity.png",
+      "sha256": "490a82e3d410d09ca1c56383caa8fc28c7c7b8abdf55fad9294b6c1f807f7408"
+    },
+    {
+      "path": "research/trend/search/equity.svg",
+      "sha256": "bea68ded32c1d6f673fdc2403dda5f3d046c4b18a6d9aa5db42838ea9d1c6fd0"
+    },
+    {
+      "path": "research/trend/search/independent-statistics-audit.json",
+      "sha256": "0c574fc3c35ae495be045b2cbec0ac4c4d921ddf51488225464d9da777d04cc6"
+    },
+    {
+      "path": "research/trend/search/independent-statistics-audit.py",
+      "sha256": "f94b4f938a34c995ad6de66a04217ac2d02d09db8b7d31f2fbec459250f470be"
+    },
+    {
+      "path": "research/trend/search/native-parity-audit.py",
+      "sha256": "28c9ee8491f09f176bf1ed177e45641bd35340fc941765ad6ef625e53493b8ba"
+    },
+    {
+      "path": "research/trend/search/new-native-parity.json",
+      "sha256": "3d6be07ba08ff91db617cac6de40d586b4e682b0e1f9f04c92f400c4a7566151"
+    },
+    {
+      "path": "research/trend/search/overview.py",
+      "sha256": "750168cfbb9c44bbcfe08d8633ad91b4e2f67ab1b6bc55a8148b9dc3ffba45bc"
+    },
+    {
+      "path": "research/trend/search/report-archive.py",
+      "sha256": "249ebc11674fd89f1c854da60b06fc34b43041cc758fe1c6c47c00bb753f7c85"
+    },
+    {
+      "path": "research/trend/search/results-archive.json",
+      "sha256": "ae8f7aa3a46b34f115a616614d974e407a2c7d9b8616d91032a60f1a96051099"
+    },
+    {
+      "path": "research/trend/search/results.json.gz",
+      "sha256": "f14a8fb3e2f92b7e0f95843b1d78b79b1b9e37d9d89d6191d104b5b7ffd64291"
+    },
+    {
+      "path": "research/trend/search/search-evaluation.json",
+      "sha256": "c55373a5f1493c44ad80b6bc4dd20269ef2e9cdfc841698de9ca383b93866a93"
+    },
+    {
+      "path": "research/trend/search/selected-configs.json",
+      "sha256": "7a74742bc475b5f49605dd0adb6f0f04af92e20bb1c477a55f28b4dead28e477"
+    },
+    {
+      "path": "research/trend/forward-protocol.json",
+      "sha256": "28de75967b948c0baa8c965ddde0425dfde822c53e3c308c273cdb25f8b4ea86"
+    },
+    {
+      "path": "research/trend/holdout-plan.json",
+      "sha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e"
+    },
+    {
+      "path": "research/trend/holdout/ANALYSIS.md",
+      "sha256": "b8652cf554acaec6caa58e83277604866e0fc44ba0e80e0f0b78d34b3a33d16e"
+    },
+    {
+      "path": "research/trend/holdout/REPORT.md",
+      "sha256": "0316b2c0e0f5675b820b5122e0150be8c1a5da16748dc9c25291a72b1b250598"
+    },
+    {
+      "path": "research/trend/holdout/account-audit.json",
+      "sha256": "872e34cafe4da30c637ec15ce2a10b5d0f937824a0c68c3dab1db0c75ad91a08"
+    },
+    {
+      "path": "research/trend/holdout/account-audit.py",
+      "sha256": "35ef415ef009180278391d73795128849d667145c58fd3598c8a93446e95158c"
+    },
+    {
+      "path": "research/trend/holdout/availability-audit.py",
+      "sha256": "94f84034df5b2a3dcc2037cd85afcea8a10e14e9f8d02d343f0dd167bbbffee4"
+    },
+    {
+      "path": "research/trend/holdout/availability.json",
+      "sha256": "d96a204bf9e833c80cf29fce85531541b6d3ca27ccc4650bc8002e50337cb166"
+    },
+    {
+      "path": "research/trend/holdout/curves.json",
+      "sha256": "ce65c83a1253d4182deec76d35c0beb241e0f693f0d6bfc180b09d81ca137d4c"
+    },
+    {
+      "path": "research/trend/holdout/data-quality-audit.py",
+      "sha256": "3383efde52ad39aee9c1716fc564c56612a3c62b080fba8645e391deb15e00a6"
+    },
+    {
+      "path": "research/trend/holdout/data-quality.json",
+      "sha256": "0e1d18b9ca2ae607cb5452332d5cf5aeaa26954872489fc6c45a93e9634ecca4"
+    },
+    {
+      "path": "research/trend/holdout/diagnostics.json",
+      "sha256": "70b5c29568fb95a6565ba8b15e08aeffaf8ba770f5cdbd08213017a0538235e6"
+    },
+    {
+      "path": "research/trend/holdout/equity.png",
+      "sha256": "b9eaad11ff48f00d66b4647a08ab75a6d594fdcd10da09974ed91b7521bf828f"
+    },
+    {
+      "path": "research/trend/holdout/equity.svg",
+      "sha256": "b51e8e8f8ee91b04b621d4457d744251ec71affa832edbd8a6432de52fdc63a2"
+    },
+    {
+      "path": "research/trend/holdout/exchange-info-receipt.json",
+      "sha256": "09b389bf7b5c1a0f7068891885e8bd42f94ff2cb19c2c88d6ab3c0e65270f91a"
+    },
+    {
+      "path": "research/trend/holdout/exchange-info.json",
+      "sha256": "e100331ec1aa78bd6d3bffcb22dd0526d4501de6c0b4fbf7c75e33963b07c29c"
+    },
+    {
+      "path": "research/trend/holdout/exchange-rules.json",
+      "sha256": "a1100dd7a4b191b7e7eb47488edc21c93143d7b732467a2846ba8eb8dba15560"
+    },
+    {
+      "path": "research/trend/holdout/exposure.json",
+      "sha256": "3be79a27089c859be03327fb8a5e744e98ef202db7dbaf7bb6d75be6b39ba7ff"
+    },
+    {
+      "path": "research/trend/holdout/independent-statistics-audit.json",
+      "sha256": "a3857d047ee1070d6dd8ff97eecc15306e6c7437c65866dc9a46966f802e026f"
+    },
+    {
+      "path": "research/trend/holdout/independent-statistics-audit.py",
+      "sha256": "17d7a1b9517f6781439211daeb32b9d4ca32e1a5f0c8945efe25cf6b1e1b45d9"
+    },
+    {
+      "path": "research/trend/holdout/results.json",
+      "sha256": "617d9c86313e8842d44da3c3df83c4902e5255189bf01b207b67dfd223f66000"
+    },
+    {
+      "path": "research/trend/holdout/transfer-evaluation.json",
+      "sha256": "96e119d373da0fc163995da1f48c094c0f829eb23357139e031b1d8720e7e419"
+    },
+    {
+      "path": "research/trend/structured/experiment.json",
+      "sha256": "57a068e41f4679795284a69de0486bea4a0353969b707477b1eb90fde0bbbb8c"
+    },
+    {
+      "path": "research/trend/structured/catalog.json",
+      "sha256": "75000a025cbeed78fc8e2ac8deaffa7f717bd66f8c8e0575a8c4d95e64311d41"
+    },
+    {
+      "path": "research/trend/structured/development-input/compilation.json",
+      "sha256": "5e46b5f15e80a8eb5e7ac6f247c572c32bc5bece2a451b518d59052ac44e7193"
+    },
+    {
+      "path": "research/trend/structured/development-input/manifest.json",
+      "sha256": "f902862c0ff7a3e8cd0597a42437d9d243c414b07b7ec0deab33ae47d47a408d"
+    },
+    {
+      "path": "research/trend/structured/development-input/plan.json",
+      "sha256": "c47028848fc203b3a894609b3e7e4584387fa9369f5c852355fe95ab986c2cfa"
+    },
+    {
+      "path": "research/trend/structured/ANALYSIS.md",
+      "sha256": "d829ae038aef5045e3c80a3794f1496d14b05fa5ea58b7cba8a6ccaf5064e212"
+    },
+    {
+      "path": "research/trend/structured/completed-setup-attribution.json",
+      "sha256": "c6050200b042a37189a4c3466ec40e91178427ee8de3c97c374217618358c145"
+    },
+    {
+      "path": "research/trend/structured/development/REPORT.md",
+      "sha256": "b99c972d96009685182121cdcaf6425a40fda03e5e9e11f4bbf4a3504b24fce3"
+    },
+    {
+      "path": "research/trend/structured/development/charts/equity.png",
+      "sha256": "34685a482bee3a41ee9868b0b23980c6c40f93aa10f6c27caf6979a262570b81"
+    },
+    {
+      "path": "research/trend/structured/development/charts/equity.svg",
+      "sha256": "4dbda2836d2813cd656d74a1688e9742f8ad67c64b778df441e6b001d76347d8"
+    },
+    {
+      "path": "research/trend/structured/development/curves.json",
+      "sha256": "7c92e0c7f7419c60dfc08fb9fdf04a5d9f5ef54333d5a9a41bbdd8636310a410"
+    },
+    {
+      "path": "research/trend/structured/development/results.json",
+      "sha256": "e5ca0af8c2a2f40ccae0c95089c4229d036ee339f02fae631eae17667d902087"
+    },
+    {
+      "path": "research/trend/structured/development-seal.json",
+      "sha256": "e95e71f687c1bac8d95962c0dd42533bb20958f5d739566fad6df9d8c2c38c32"
+    },
+    {
+      "path": "research/trend/structured/execution-audit.json",
+      "sha256": "168384e8efabbf42cc7251c75bc8f182925d8d0b8cd5879a0a03fe38e56a9c62"
+    },
+    {
+      "path": "research/trend/structured/execution-audit.py",
+      "sha256": "778db8b1865cbd2bbe1f3b6d682b1a272d35b17b827444a52e6713c251d96944"
+    },
+    {
+      "path": "research/trend/structured/gate-check.json",
+      "sha256": "f26e7948c659ee47184d68193d29b2c72e8395071b2238d34abbd916b820a5e6"
+    },
+    {
+      "path": "research/trend/structured/legacy-parity.json",
+      "sha256": "36bdf167ea0b96f75ab713acf7d7b5cf1c34a204c9b8276ea1add305f5e0fe36"
+    },
+    {
+      "path": "research/trend/structured/preflight.json",
+      "sha256": "f66897e9f9ea55c86d7e693a4732787c0ac0a1c1eaaa78be1efd018dc9aca5c0"
+    },
+    {
+      "path": "research/trend/structured/setup-diagnostics.json",
+      "sha256": "ff407a726c4034b7835aa909f5493c174da4978b7d410a79def38e294c5a81d0"
+    },
+    {
+      "path": "research/trend/structured/trade-diagnostics.json",
+      "sha256": "b582480141b482dd5648b4ec18ac3c9bff3c689a22ef41a161c4c1e24a6c9012"
+    },
+    {
+      "path": "research/trend/structured-v2/experiment.json",
+      "sha256": "1c3f29638db809d2b58b44b3811a243303ea58ac35c8a333dd55d517b070b52d"
+    },
+    {
+      "path": "research/trend/structured-v2/opportunity-plan.json",
+      "sha256": "197c9c8444dc1d26b49d7d647458187b0e281607706d2b62efbee988994e02e2"
+    },
+    {
+      "path": "research/trend/structured-v2/development-input/plan.json",
+      "sha256": "e3db8c415084f558e3244bfdfc4c29f65edb82026af6b248fd12260a6fc9301c"
+    },
+    {
+      "path": "research/trend/structured-v2/development-input/manifest.json",
+      "sha256": "18ebe88782d9b9f487ddd1bf88b0fe751ba9d9f8bd0f6bd663989cada3281786"
+    },
+    {
+      "path": "research/trend/structured-v2/development-input/compilation.json",
+      "sha256": "602ce1fbd4c46cb48e4bcdfbd55609edf82d376301f732ad8972ab890fb354f8"
+    },
+    {
+      "path": "research/trend/structured-v2/ANALYSIS.md",
+      "sha256": "f0482597132b6c634be3a42da57cfe2629992d0cdb299e272bd05dafe52c0468"
+    },
+    {
+      "path": "research/trend/structured-v2/development/REPORT.md",
+      "sha256": "64cc8c0142c4df6025162c709fedaf2b684845fddad2bde8a4eca88e7bd435bb"
+    },
+    {
+      "path": "research/trend/structured-v2/development/charts/equity.png",
+      "sha256": "9c9dedb31ee301292018f5a967213e3174430ce08db86d26056e81835be31928"
+    },
+    {
+      "path": "research/trend/structured-v2/development/charts/equity.svg",
+      "sha256": "f34e1d07db45d6fa9bd4f0bc2640e298ecc9be2d8b4d1ff55905c42e8501f736"
+    },
+    {
+      "path": "research/trend/structured-v2/development/curves.json",
+      "sha256": "2b3b5c6149f91b3454f3b9e013bd01b942e60024e19fe852a90bc7b33df4cb37"
+    },
+    {
+      "path": "research/trend/structured-v2/development/results.json",
+      "sha256": "6cef6c73d123f042c333a0baf9a0b6e8ba5b6e1665b9ba88e7dc296349bab9e8"
+    },
+    {
+      "path": "research/trend/structured-v2/development-seal.json",
+      "sha256": "cc301f7a49a4e8438fd4074b5cf6e009bfb6540b7d1798ba3129bc2c23b133a1"
+    },
+    {
+      "path": "research/trend/structured-v2/execution-audit.json",
+      "sha256": "017500928277c4593e367ca66100aa1896f4b7eb43323d7803d32adaa0e48302"
+    },
+    {
+      "path": "research/trend/structured-v2/execution-audit.py",
+      "sha256": "64e1d992f48b63a7665a9ddca3a969e92d647d9c9e20de1af085b49561e48f86"
+    },
+    {
+      "path": "research/trend/structured-v2/gate-check.json",
+      "sha256": "15396578b909961ccba0b6e1533d42e50f9761e3af6ddbbdb6f7c03763df9a62"
+    },
+    {
+      "path": "research/trend/structured-v2/legacy-parity.json",
+      "sha256": "efdd39d883549db2845e379f3ef9244d555e328bff672b05b17428612cb8bd75"
+    },
+    {
+      "path": "research/trend/structured-v2/opportunity-diagnostics.events.jsonl.gz",
+      "sha256": "d69d440d4a698b43b6776254ef33662cc18c09cd58b40774205514c93efaa6f8"
+    },
+    {
+      "path": "research/trend/structured-v2/opportunity-diagnostics.json",
+      "sha256": "ed12b7a4684be4babf6f95f8200c39b08c311d08a225099ff5cdea4393aa2f69"
+    },
+    {
+      "path": "research/trend/structured-v2/preflight.json",
+      "sha256": "f66897e9f9ea55c86d7e693a4732787c0ac0a1c1eaaa78be1efd018dc9aca5c0"
+    },
+    {
+      "path": "research/trend/structured-v2/setup-diagnostics.json",
+      "sha256": "34412a53f9b7815c5498890cb37045bc56613f71f06b606a71d7e0bb112c598f"
+    },
+    {
+      "path": "research/trend/structured-v2/strict-control-parity.json",
+      "sha256": "3b571e255a2733957a4565a1ab29068cf30f748c387379c18210fbd4c5b78e67"
+    },
+    {
+      "path": "research/trend/structured-v2/trade-diagnostics.json",
+      "sha256": "39fa8ddab97df79a1534d8dba1287475e64ae089738e2b4573123b0b2c25f877"
+    },
+    {
+      "path": "research/trend/structured-v2/verification/execution-audit.txt",
+      "sha256": "944d34ffe0afb465a50b0eac30a948892f66007106de75d4dd4cf806fb5b7eb9"
+    },
+    {
+      "path": "research/trend/structured-v2/verification/opportunity-diagnostics.txt",
+      "sha256": "b832b62fbcd0c4603f52289450ac0fc5a7c8c69398c2c6a80b0f6d3e0fa60bd0"
+    },
+    {
+      "path": "research/trend/structured-v2/verification/python-tests.txt",
+      "sha256": "e7db4a835c3d571fbba5ee782ac6fc44a240278ef7a668d575288e4721b1c288"
+    },
+    {
+      "path": "research/trend/structured-v2/verification/rust-tests.txt",
+      "sha256": "6f5df2acd6b618cc7934d8e79b7b80631a4bd34c91f4a87fab4e2ddbc18d0383"
+    },
+    {
+      "path": "research/trend/structured-v2/verification.json",
+      "sha256": "2448d426e536d13b450c947d3e058a64c6cdce6fa0f616542406958e35ed80d6"
     }
   ],
-  "directories": ["research/trend/methods"]
+  "directories": [
+    "research/trend/methods",
+    "research/trend/kdj",
+    "research/trend/price-action",
+    "research/trend/channel-recheck",
+    "research/trend/thirty-minute",
+    "research/trend/literature",
+    "research/trend/details",
+    "research/trend/robustness",
+    "research/trend/search",
+    "research/trend/holdout",
+    "research/trend/structured",
+    "research/trend/structured-v2"
+  ]
 }

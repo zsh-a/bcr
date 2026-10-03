@@ -6,11 +6,15 @@ pub mod execution;
 pub mod indicators;
 pub mod management;
 pub mod model;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod opportunity;
 pub mod position;
+mod price_action;
 pub mod reader;
 mod replay;
 pub mod risk;
 pub mod signals;
+mod structured_pullback;
 #[cfg(test)]
 mod tests;
 
@@ -19,7 +23,7 @@ use model::Funding;
 use replay::Replay;
 use wasm_bindgen::prelude::*;
 
-pub const ENGINE_VERSION: &str = "trend-continuation-11";
+pub const ENGINE_VERSION: &str = "trend-continuation-16";
 
 fn error(value: impl ToString) -> JsValue {
     JsValue::from_str(&value.to_string())

@@ -2,9 +2,11 @@ use super::background::Background;
 use super::config::{Config, CostPolicy};
 use super::evaluation::Evaluator;
 use super::indicators::Indicators;
-use super::management::{protection_decision, ChannelExit, StopUpdate};
+use super::management::{
+    chandelier_decision, protection_decision, staged_decision, ChannelExit, StopUpdate,
+};
 use super::model::*;
-use super::position::Position;
+use super::position::{Position, Stages};
 use super::risk::RiskState;
 use super::signals::{Candidate, Signals};
 
@@ -47,13 +49,37 @@ impl Engine {
         end: u64,
         warmup: u64,
     ) -> Result<Self, String> {
+        Self::with_window_limit(config, funding, start, end, warmup, 730)
+    }
+
+    /// Offline research can retain positions and account state across longer
+    /// continuous histories. This entry point is unavailable in browser WASM.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn new_research(
+        config: Config,
+        funding: Vec<Funding>,
+        start: u64,
+        end: u64,
+        warmup: u64,
+    ) -> Result<Self, String> {
+        Self::with_window_limit(config, funding, start, end, warmup, 1096)
+    }
+
+    fn with_window_limit(
+        config: Config,
+        funding: Vec<Funding>,
+        start: u64,
+        end: u64,
+        warmup: u64,
+        maximum_days: u64,
+    ) -> Result<Self, String> {
         let cost_policy = config.cost_policy()?;
         if start % MINUTE != 0
             || end % MINUTE != 0
             || warmup % MINUTE != 0
             || warmup > start
             || start >= end
-            || end - start > 730 * DAY
+            || end - start > maximum_days * DAY
             || start - warmup > MAX_WARMUP_DAYS * DAY
             || start < 1_000_000_000_000
         {
@@ -152,7 +178,7 @@ impl Engine {
         }
     }
     fn request_exit(&mut self, intent: ExitIntent) {
-        // Preserve the existing daily-loss > daily-close > channel precedence.
+        // Risk exits outrank confirmed protection crossings, then channel exits.
         if self
             .pending_exit
             .is_none_or(|old| intent.reason.priority() > old.reason.priority())
@@ -266,6 +292,7 @@ impl Engine {
             mfe: 0.0,
             mae: 0.0,
             stop_reason: "initial",
+            stages: Stages::default(),
         };
         self.event(
             bar.time,
@@ -354,6 +381,9 @@ impl Engine {
         }
         self.expected += MINUTE;
         self.rows += 1;
+        if bar.time == self.start {
+            self.signals.begin_replay(self.start);
+        }
         let mut position = self.position.take();
         let mut exposed = position.is_some();
         if bar.time >= self.start {
@@ -466,12 +496,17 @@ impl Engine {
             self.background
                 .close(bar, self.config.strategy.trade_minutes);
         }
+        self.signals.observe_minute(bar, &self.config.strategy);
         let closed = self.indicators.close(bar, &self.config.strategy);
-        if closed.ema_updated && bar.time >= self.start {
+        if (closed.ema_updated || closed.kdj_updated) && bar.time >= self.start {
             self.output.indicators.push(Indicator {
                 time: bar.time + MINUTE - 1,
-                fast: self.indicators.fast,
-                slow: self.indicators.slow,
+                fast: (closed.ema_updated && self.config.strategy.filter == "ema")
+                    .then_some(self.indicators.fast),
+                slow: closed.ema_updated.then_some(self.indicators.slow),
+                k: closed.kdj_updated.then(|| self.indicators.kdj.unwrap().k),
+                d: closed.kdj_updated.then(|| self.indicators.kdj.unwrap().d),
+                j: closed.kdj_updated.then(|| self.indicators.kdj.unwrap().j),
             });
         }
         let cutoff = RiskState::at_cutoff(bar.time, &self.config.risk);
@@ -480,11 +515,61 @@ impl Engine {
         }
         if let Some(close) = closed.trade {
             let candle = close.bar;
+            if matches!(
+                self.config.strategy.management.as_str(),
+                "staged" | "chandelier"
+            ) {
+                if let Some(mut position) = self.position.take() {
+                    let decide = if self.config.strategy.management == "chandelier" {
+                        chandelier_decision
+                    } else {
+                        staged_decision
+                    };
+                    let decision = decide(
+                        &position,
+                        close,
+                        &self.config.strategy,
+                        &self.config.execution,
+                    );
+                    for (was_active, active, reason) in [
+                        (
+                            position.stages.break_even,
+                            decision.stages.break_even,
+                            "breakeven-armed",
+                        ),
+                        (
+                            position.stages.trailing,
+                            decision.stages.trailing,
+                            "trailing-armed",
+                        ),
+                    ] {
+                        if !was_active && active {
+                            self.event(
+                                close.time,
+                                "stage",
+                                position.side,
+                                candle.close,
+                                Some(decision.close_r),
+                                Some(position.id),
+                                reason,
+                            );
+                        }
+                    }
+                    position.stages = decision.stages;
+                    if let Some(update) = decision.stop {
+                        self.commit_protection(&mut position, MinuteClose(bar), update);
+                    }
+                    if let Some(intent) = decision.exit {
+                        self.request_exit(intent);
+                    }
+                    self.position = Some(position);
+                }
+            }
             if self.config.strategy.management == "channel" {
                 if let Some(intent) = self.channel_exit.close(
                     close,
                     self.position.as_ref().map(|p| (p.id, p.side)),
-                    self.config.strategy.breakout_bars,
+                    self.config.strategy.channel_exit_bars(),
                 ) {
                     self.request_exit(intent);
                 }
@@ -495,12 +580,35 @@ impl Engine {
                 && !self.risk.daily_blocked
                 && bar.time + MINUTE >= self.risk.cooldown_until
                 && self.cash > 0.0;
+            // KDJ arms only inside the currently allowed trend. Legacy entry
+            // filters retain their candidate-only diagnostics and behaviour.
+            let background_directions = if matches!(
+                self.config.strategy.entry.as_str(),
+                "kdj" | "price-action" | "structured-pullback"
+            ) && self.config.strategy.filter == "background"
+            {
+                [Side::Long, Side::Short].map(|side| {
+                    self.background
+                        .decide(
+                            close.time,
+                            candle.close,
+                            side,
+                            close.atr,
+                            &self.config.execution,
+                            self.config.strategy.trade_minutes,
+                        )
+                        .allowed
+                })
+            } else {
+                [true, true]
+            };
             if let Some(mut candidate) = self.signals.close(
                 close,
                 &self.indicators,
                 &self.config,
                 enabled,
                 &mut self.output.events,
+                background_directions,
             ) {
                 let allowed = if self.config.strategy.filter == "background" {
                     let mut decision = self.background.decide(
@@ -613,6 +721,56 @@ mod tests {
     use super::*;
     const START: u64 = 1_704_067_200_000;
 
+    #[test]
+    fn browser_constructor_retains_730_day_limit() {
+        for days in [730, 731, 760, 1096, 1097] {
+            let result = Engine::new(Config::default(), vec![], START, START + days * DAY, START);
+            assert_eq!(result.is_ok(), days == 730, "{days} day browser window");
+        }
+    }
+
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn offline_constructor_supports_continuous_histories_up_to_1096_days() {
+        for days in [730, 731, 760, 1096, 1097] {
+            let result =
+                Engine::new_research(Config::default(), vec![], START, START + days * DAY, START);
+            assert_eq!(result.is_ok(), days <= 1096, "{days} day research window");
+        }
+    }
+
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn offline_constructor_preserves_warmup_funding_and_completeness_checks() {
+        let end = START + 760 * DAY;
+        assert!(Engine::new_research(
+            Config::default(),
+            vec![],
+            START,
+            end,
+            START - (MAX_WARMUP_DAYS + 1) * DAY,
+        )
+        .is_err());
+        assert!(Engine::new_research(
+            Config::default(),
+            vec![Funding {
+                time: end,
+                rate: 0.0001,
+                interval_hours: 8.0,
+            }],
+            START,
+            end,
+            START,
+        )
+        .is_err());
+        let mut incomplete =
+            Engine::new_research(Config::default(), vec![], START, end, START).unwrap();
+        assert_eq!(
+            incomplete.finish().err().as_deref(),
+            Some("backtest window or funding history is incomplete")
+        );
+    }
+
     fn opened() -> (Engine, Option<Position>, Bar) {
         let mut engine =
             Engine::new(Config::default(), vec![], START, START + 3 * MINUTE, START).unwrap();
@@ -633,9 +791,10 @@ mod tests {
                     entry_signal: EntrySignal {
                         time: START - 1,
                         price: 100.0,
-                        boundary: 99.0,
+                        boundary: Some(99.0),
                         atr: 2.0,
                         lookback_bars: Some(20),
+                        trigger: None,
                     },
                 },
                 bar,

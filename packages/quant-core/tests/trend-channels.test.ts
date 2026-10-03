@@ -66,7 +66,7 @@ describe("causal trend channel overlays", () => {
     expect(split.points).toEqual(all.points);
     expect(
       () =>
-        new TrendChannelProjection({ tradeMinutes: 5, entryBars: 2, exitBars: 2 }, 0, MINUTE, 5),
+        new TrendChannelProjection({ tradeMinutes: 5, entryBars: 2, exitBars: 0 }, 0, MINUTE, 5),
     ).toThrow();
   });
   it("does not invent thresholds without the full lookback", () => {
@@ -78,6 +78,35 @@ describe("causal trend channel overlays", () => {
     );
     projection.append([candle(0, 100), candle(MINUTE, 101)]);
     expect(projection.points).toEqual([]);
+  });
+  it("keeps an independent longer exit window across chunks without extending the entry channel", () => {
+    const make = () =>
+      new TrendChannelProjection(
+        { tradeMinutes: 1, entryBars: 2, exitBars: 4 },
+        2 * MINUTE,
+        6 * MINUTE,
+        1,
+      );
+    const bars = [
+      candle(0, 900, 1),
+      candle(MINUTE, 100),
+      candle(2 * MINUTE, 101),
+      candle(3 * MINUTE, 102),
+      candle(4 * MINUTE, 103),
+      candle(5 * MINUTE, 104),
+    ];
+    const whole = make(),
+      split = make();
+    whole.append(bars);
+    split.append(bars.slice(0, 3));
+    split.append(bars.slice(3));
+    expect(split.points).toEqual(whole.points);
+    expect(whole.points).toEqual([
+      { time: 2 * MINUTE, upper: 900, lower: 1 },
+      { time: 3 * MINUTE, upper: 101, lower: 98 },
+      { time: 4 * MINUTE, upper: 102, lower: 99, exitUpper: 900, exitLower: 1 },
+      { time: 5 * MINUTE, upper: 103, lower: 100, exitUpper: 103, exitLower: 98 },
+    ]);
   });
 });
 

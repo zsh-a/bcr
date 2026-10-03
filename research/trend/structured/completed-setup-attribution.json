@@ -1,0 +1,169 @@
+{
+  "kind": "completed-setup-attribution-v1",
+  "sources": [
+    {
+      "path": "tmp/trend-structured-v9/development/BNBUSDT.json",
+      "sha256": "34c975bdeee9c15dd4ac9d833f14e96e1de565ce605708edce4b36493922386c"
+    },
+    {
+      "path": "tmp/trend-structured-v9/development/BTCUSDT.json",
+      "sha256": "34a794183e72c587e6495e52e2f7a19d368be1158691c7d2bda4f73459448801"
+    },
+    {
+      "path": "tmp/trend-structured-v9/development/ETHUSDT.json",
+      "sha256": "031a18412b581652499ce0359143b03f496051a114a4a3cd7341cda7dc63daaa"
+    }
+  ],
+  "scope": "Descriptive grouping of completed trade entrySignal.trigger snapshots only; no new price outcomes. Different configurations follow different account paths. Bound valid keys need not have been retested. Not a census of all market setups.",
+  "method": "Group completed trades by candidate; median/min/max of trigger.pullbackBars; count optional pivot/ema presence, valid flags and retestTime presence; group trade.reason; median of recorded mfeR.",
+  "candidates": {
+    "sp-primary": {
+      "trades": 1,
+      "pullbackBars": {
+        "median": 13,
+        "min": 13,
+        "max": 13
+      },
+      "keySnapshots": {
+        "pivot": {
+          "bound": 1,
+          "valid": 1,
+          "retested": 1
+        },
+        "ema": {
+          "bound": 0,
+          "valid": 0,
+          "retested": 0
+        }
+      },
+      "exitReasons": {
+        "initial": 1
+      },
+      "medianMfeR": 0.0
+    },
+    "sp-no-key": {
+      "trades": 15,
+      "pullbackBars": {
+        "median": 17,
+        "min": 10,
+        "max": 24
+      },
+      "keySnapshots": {
+        "pivot": {
+          "bound": 10,
+          "valid": 10,
+          "retested": 1
+        },
+        "ema": {
+          "bound": 3,
+          "valid": 3,
+          "retested": 0
+        }
+      },
+      "exitReasons": {
+        "trailing": 2,
+        "initial": 12,
+        "protection-crossed": 1
+      },
+      "medianMfeR": 0.13065610859728152
+    },
+    "sp-no-shape": {
+      "trades": 27,
+      "pullbackBars": {
+        "median": 4,
+        "min": 2,
+        "max": 13
+      },
+      "keySnapshots": {
+        "pivot": {
+          "bound": 27,
+          "valid": 27,
+          "retested": 27
+        },
+        "ema": {
+          "bound": 7,
+          "valid": 7,
+          "retested": 0
+        }
+      },
+      "exitReasons": {
+        "initial": 6,
+        "trailing": 19,
+        "protection-crossed": 2
+      },
+      "medianMfeR": 1.1144708423326277
+    },
+    "sp-no-ema": {
+      "trades": 1,
+      "pullbackBars": {
+        "median": 13,
+        "min": 13,
+        "max": 13
+      },
+      "keySnapshots": {
+        "pivot": {
+          "bound": 1,
+          "valid": 1,
+          "retested": 1
+        },
+        "ema": {
+          "bound": 0,
+          "valid": 0,
+          "retested": 0
+        }
+      },
+      "exitReasons": {
+        "initial": 1
+      },
+      "medianMfeR": 0.0
+    },
+    "sp-reversal": {
+      "trades": 0,
+      "pullbackBars": {
+        "median": null,
+        "min": null,
+        "max": null
+      },
+      "keySnapshots": {
+        "pivot": {
+          "bound": 0,
+          "valid": 0,
+          "retested": 0
+        },
+        "ema": {
+          "bound": 0,
+          "valid": 0,
+          "retested": 0
+        }
+      },
+      "exitReasons": {},
+      "medianMfeR": null
+    },
+    "sp-base": {
+      "trades": 249,
+      "pullbackBars": {
+        "median": 4,
+        "min": 2,
+        "max": 24
+      },
+      "keySnapshots": {
+        "pivot": {
+          "bound": 206,
+          "valid": 149,
+          "retested": 27
+        },
+        "ema": {
+          "bound": 75,
+          "valid": 75,
+          "retested": 0
+        }
+      },
+      "exitReasons": {
+        "trailing": 157,
+        "initial": 81,
+        "protection-crossed": 11
+      },
+      "medianMfeR": 0.7953020134228059
+    }
+  }
+}

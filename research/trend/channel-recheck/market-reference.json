@@ -1,0 +1,1219 @@
+{
+  "purpose": "Previously inspected market price context only; not buy-and-hold execution, cost-adjusted benchmark, risk-matched comparison or alpha attribution.",
+  "priceConvention": "Official traded-price first-minute open to last-minute close, UTC window start inclusive/end exclusive. No interpolation.",
+  "omitted": [
+    "fees",
+    "slippage",
+    "funding",
+    "quantity/tick execution rounding",
+    "margin/liquidation",
+    "risk controls",
+    "strategy exposure timing"
+  ],
+  "manifest": {
+    "path": "tmp/trend-methods/manifest.json",
+    "sha256": "a8907894c57e7b4ec4c00eea9ce54ba2a15bd0aa6ad05bd8b5514b631c4be812"
+  },
+  "plan": {
+    "path": "research/trend/methods-plan.json",
+    "sha256": "fb2744a59e7935dba4721122813c477c17c73092ad5cc127f5f2820a34103147"
+  },
+  "windows": {
+    "development": {
+      "startTime": 1661990400000,
+      "endTime": 1704067200000,
+      "symbols": {
+        "BTCUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2022-09.csv",
+            "sha256": "5d8adb1a9f3698c2da64b1f990d9a8dc98f2aa5ad5ced0c7e53c49237a1757a6",
+            "barOpenTime": 1661990400000,
+            "barCloseTime": 1661990459999,
+            "priceField": "open",
+            "price": 20041.4
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2023-12.csv",
+            "sha256": "8171a92a94ac6dd554eccdc20fc445bff8da97cad4ed77405987542374e16898",
+            "barOpenTime": 1704067140000,
+            "barCloseTime": 1704067199999,
+            "priceField": "close",
+            "price": 42314.0
+          },
+          "priceReturn": 1.1113295478359793
+        },
+        "ETHUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2022-09.csv",
+            "sha256": "4cff20c56525823ea6b22a36852813ba33fe0ded413eda5e38087e8a7fbe353c",
+            "barOpenTime": 1661990400000,
+            "barCloseTime": 1661990459999,
+            "priceField": "open",
+            "price": 1553.04
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2023-12.csv",
+            "sha256": "1aabd0424bdd525f1502435c0981812a99c2304ec83cf5d30e5d0c6d3b1bb5f3",
+            "barOpenTime": 1704067140000,
+            "barCloseTime": 1704067199999,
+            "priceField": "close",
+            "price": 2283.85
+          },
+          "priceReturn": 0.4705674032864575
+        },
+        "BNBUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2022-09.csv",
+            "sha256": "cd577e2d62926cfac86863403255c8e0a45da11e29d16973a286235e1c039e27",
+            "barOpenTime": 1661990400000,
+            "barCloseTime": 1661990459999,
+            "priceField": "open",
+            "price": 278.99
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2023-12.csv",
+            "sha256": "4d8613cf6b248440e38cc4e5d488c38bbc86e41c53f485da74e92ed9fac85a24",
+            "barOpenTime": 1704067140000,
+            "barCloseTime": 1704067199999,
+            "priceField": "close",
+            "price": 311.33
+          },
+          "priceReturn": 0.1159181332664252
+        },
+        "SOLUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2022-09.csv",
+            "sha256": "959ee83b38da3467276206a5a1d33cc133a6c4e78bf86723a52881a5b92b2c20",
+            "barOpenTime": 1661990400000,
+            "barCloseTime": 1661990459999,
+            "priceField": "open",
+            "price": 31.47
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2023-12.csv",
+            "sha256": "5785e3fbb49e09b6eaa5e102c6870f728b5645e3d16fc83ba15e575e4495cf08",
+            "barOpenTime": 1704067140000,
+            "barCloseTime": 1704067199999,
+            "priceField": "close",
+            "price": 101.778
+          },
+          "priceReturn": 2.234127740705434
+        },
+        "XRPUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2022-09.csv",
+            "sha256": "5586b705c56c33ea9af8fbc6b46a4f1e225f9bdcf7ace9033d39b7da32489425",
+            "barOpenTime": 1661990400000,
+            "barCloseTime": 1661990459999,
+            "priceField": "open",
+            "price": 0.3273
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2023-12.csv",
+            "sha256": "9c5883886bf30224aa8fa04d97fd6384aa5a4cd6e09e07f3168b52d05e1c5681",
+            "barOpenTime": 1704067140000,
+            "barCloseTime": 1704067199999,
+            "priceField": "close",
+            "price": 0.6157
+          },
+          "priceReturn": 0.8811487931561262
+        },
+        "DOGEUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2022-09.csv",
+            "sha256": "2378db6cb0540caf44ac2539b6c7ce5064294df43d5916d7b0b9f78383cf4049",
+            "barOpenTime": 1661990400000,
+            "barCloseTime": 1661990459999,
+            "priceField": "open",
+            "price": 0.06129
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2023-12.csv",
+            "sha256": "26f023628fafecfb4695c36b08b968c0192497f74f048211f61b8d789247f452",
+            "barOpenTime": 1704067140000,
+            "barCloseTime": 1704067199999,
+            "priceField": "close",
+            "price": 0.08957
+          },
+          "priceReturn": 0.4614129548050252
+        }
+      },
+      "equalWeightMeanPriceReturn": 0.8790840955092412,
+      "aggregationNote": "Arithmetic mean of six endpoint price returns, representing equal initial price-index weights only; no rebalancing or execution simulation."
+    },
+    "known-2024": {
+      "startTime": 1704067200000,
+      "endTime": 1722470400000,
+      "symbols": {
+        "BTCUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2024-01.csv",
+            "sha256": "ab25f0fee86faa93df62f800adf92b742abdc60982e023159d0ca9faf3a4ba14",
+            "barOpenTime": 1704067200000,
+            "barCloseTime": 1704067259999,
+            "priceField": "open",
+            "price": 42314.0
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2024-07.csv",
+            "sha256": "45468446143f0c1d2b15f3bf3f205e0f17abb70c81f61c4b675e1cc110ee9cb2",
+            "barOpenTime": 1722470340000,
+            "barCloseTime": 1722470399999,
+            "priceField": "close",
+            "price": 64601.8
+          },
+          "priceReturn": 0.526724015692206
+        },
+        "ETHUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2024-01.csv",
+            "sha256": "9f58b0a42b71694457852cbcdc7f84c7b3478d37b9f3f1056609fba8b874a03b",
+            "barOpenTime": 1704067200000,
+            "barCloseTime": 1704067259999,
+            "priceField": "open",
+            "price": 2283.84
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2024-07.csv",
+            "sha256": "9351a57e956fe5f31ce37014dba645e49fd609be3a62555565db62e817d9888b",
+            "barOpenTime": 1722470340000,
+            "barCloseTime": 1722470399999,
+            "priceField": "close",
+            "price": 3231.48
+          },
+          "priceReturn": 0.4149327448507776
+        },
+        "BNBUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2024-01.csv",
+            "sha256": "234dc4ea24f0c623e1116dfffb64a30b8ad4ceb37066540e871a66b5124e2672",
+            "barOpenTime": 1704067200000,
+            "barCloseTime": 1704067259999,
+            "priceField": "open",
+            "price": 311.33
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2024-07.csv",
+            "sha256": "ce4e8f9675464797208ead9ddab1bbc5cd6399f33b9771f306775a197293e110",
+            "barOpenTime": 1722470340000,
+            "barCloseTime": 1722470399999,
+            "priceField": "close",
+            "price": 576.79
+          },
+          "priceReturn": 0.8526643754215784
+        },
+        "SOLUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2024-01.csv",
+            "sha256": "67dbaf2cbc41826f2e4dd6cc9b0502cd849426c74ff98323d060651258ba5781",
+            "barOpenTime": 1704067200000,
+            "barCloseTime": 1704067259999,
+            "priceField": "open",
+            "price": 101.775
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2024-07.csv",
+            "sha256": "7e18df04662581fea74b208f6248b59b441e893582a30c350ac1a788897ac980",
+            "barOpenTime": 1722470340000,
+            "barCloseTime": 1722470399999,
+            "priceField": "close",
+            "price": 171.632
+          },
+          "priceReturn": 0.6863866371898797
+        },
+        "XRPUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2024-01.csv",
+            "sha256": "6fd4340eccace78a095c50fc12522548e89b33990d82883fcb75fa86d50f3034",
+            "barOpenTime": 1704067200000,
+            "barCloseTime": 1704067259999,
+            "priceField": "open",
+            "price": 0.6157
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2024-07.csv",
+            "sha256": "3e8766a153f000c87daa16423a65fbd9611115dfe4da3ac2b6d47ab03560756f",
+            "barOpenTime": 1722470340000,
+            "barCloseTime": 1722470399999,
+            "priceField": "close",
+            "price": 0.623
+          },
+          "priceReturn": 0.011856423582913722
+        },
+        "DOGEUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2024-01.csv",
+            "sha256": "a9525ba78b94756400022cb85cd4e155ddd6565c341f21731439017488b72aca",
+            "barOpenTime": 1704067200000,
+            "barCloseTime": 1704067259999,
+            "priceField": "open",
+            "price": 0.08958
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2024-07.csv",
+            "sha256": "a28e1434c887df48ef9861274685492dccb3552eadd3798689c742bd61185a61",
+            "barOpenTime": 1722470340000,
+            "barCloseTime": 1722470399999,
+            "priceField": "close",
+            "price": 0.12187
+          },
+          "priceReturn": 0.36045992409019867
+        }
+      },
+      "equalWeightMeanPriceReturn": 0.47550402013792564,
+      "aggregationNote": "Arithmetic mean of six endpoint price returns, representing equal initial price-index weights only; no rebalancing or execution simulation."
+    },
+    "known-2025": {
+      "startTime": 1735689600000,
+      "endTime": 1767225600000,
+      "symbols": {
+        "BTCUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2025-01.csv",
+            "sha256": "6ac299b71bee1248ea8a95e9b4bc2a92c4154ff7340034806d1f3144d5e44e95",
+            "barOpenTime": 1735689600000,
+            "barCloseTime": 1735689659999,
+            "priceField": "open",
+            "price": 93548.8
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2025-12.csv",
+            "sha256": "046cb390deabcfe29d6021e9de42fdf95392af0a2f6914b954139ebcd4e46222",
+            "barOpenTime": 1767225540000,
+            "barCloseTime": 1767225599999,
+            "priceField": "close",
+            "price": 87608.2
+          },
+          "priceReturn": -0.06350268522952729
+        },
+        "ETHUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2025-01.csv",
+            "sha256": "1d5b1d83106dec536e87cacece13cd8eea98afdcfc45a962af9d1cf6a63c4683",
+            "barOpenTime": 1735689600000,
+            "barCloseTime": 1735689659999,
+            "priceField": "open",
+            "price": 3336.58
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2025-12.csv",
+            "sha256": "45f11d570386658ed780cf150ba574ff2e665b08e8f4df13487ce07a13f828a0",
+            "barOpenTime": 1767225540000,
+            "barCloseTime": 1767225599999,
+            "priceField": "close",
+            "price": 2970.4
+          },
+          "priceReturn": -0.10974710631844575
+        },
+        "BNBUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2025-01.csv",
+            "sha256": "87f05c93ca440529d7e50d6523eb2968d38139e37de93854923bab7ed4d0a2f4",
+            "barOpenTime": 1735689600000,
+            "barCloseTime": 1735689659999,
+            "priceField": "open",
+            "price": 702.13
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2025-12.csv",
+            "sha256": "800adda95951d8e0bc00dee032fc855c7cd94c62584f61d436d727ed67e178c4",
+            "barOpenTime": 1767225540000,
+            "barCloseTime": 1767225599999,
+            "priceField": "close",
+            "price": 864.71
+          },
+          "priceReturn": 0.23155256149146175
+        },
+        "SOLUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2025-01.csv",
+            "sha256": "b7451c1dc0744463711c90187be035bbd4d093c1db23845512ba27256f22d9e1",
+            "barOpenTime": 1735689600000,
+            "barCloseTime": 1735689659999,
+            "priceField": "open",
+            "price": 189.22
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2025-12.csv",
+            "sha256": "29e07d7347c4232c391b886e7390096ad4b0b58898579922fcf79d50d02ba99b",
+            "barOpenTime": 1767225540000,
+            "barCloseTime": 1767225599999,
+            "priceField": "close",
+            "price": 124.59
+          },
+          "priceReturn": -0.34156008878554067
+        },
+        "XRPUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2025-01.csv",
+            "sha256": "49867690d62e606761194548322792c471c55e318a96093024d1dd889bffc0bd",
+            "barOpenTime": 1735689600000,
+            "barCloseTime": 1735689659999,
+            "priceField": "open",
+            "price": 2.0835
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2025-12.csv",
+            "sha256": "e1f441a639e2968d7cf2505c2cf9f0bd46c313dd6053ca054b0abd893c56734c",
+            "barOpenTime": 1767225540000,
+            "barCloseTime": 1767225599999,
+            "priceField": "close",
+            "price": 1.8411
+          },
+          "priceReturn": -0.11634269258459318
+        },
+        "DOGEUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2025-01.csv",
+            "sha256": "7049ef3708f838dbaa23e15819c8d20fa4e9510de49fcba1a64c4ae9bc0499d7",
+            "barOpenTime": 1735689600000,
+            "barCloseTime": 1735689659999,
+            "priceField": "open",
+            "price": 0.31582
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2025-12.csv",
+            "sha256": "0020f349d65afcda7d0c6475cc00c1db2f9c22821eec1a78783a7e62d9470fe5",
+            "barOpenTime": 1767225540000,
+            "barCloseTime": 1767225599999,
+            "priceField": "close",
+            "price": 0.11741
+          },
+          "priceReturn": -0.6282376036983092
+        }
+      },
+      "equalWeightMeanPriceReturn": -0.1713062691874924,
+      "aggregationNote": "Arithmetic mean of six endpoint price returns, representing equal initial price-index weights only; no rebalancing or execution simulation."
+    },
+    "known-2026": {
+      "startTime": 1767225600000,
+      "endTime": 1788220800000,
+      "symbols": {
+        "BTCUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2026-01.csv",
+            "sha256": "3e1799541217121f07320e3b08771cf5b889cf8d29e1137c7cd51fb48ab08781",
+            "barOpenTime": 1767225600000,
+            "barCloseTime": 1767225659999,
+            "priceField": "open",
+            "price": 87608.3
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2026-08.csv",
+            "sha256": "675f1a0c9f3a265cafbc69e7821eb891ff432cfa12aba45c77754a06190fd80e",
+            "barOpenTime": 1788220740000,
+            "barCloseTime": 1788220799999,
+            "priceField": "close",
+            "price": 78549.6
+          },
+          "priceReturn": -0.10340002031770956
+        },
+        "ETHUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2026-01.csv",
+            "sha256": "8666681d99d73d54abdb2d8077443ab582f5ddd8219295779efe21924557029a",
+            "barOpenTime": 1767225600000,
+            "barCloseTime": 1767225659999,
+            "priceField": "open",
+            "price": 2970.4
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2026-08.csv",
+            "sha256": "f24c82daaf4eeed656444e05c5abec93d5286024036427739ce90a6baf3ad263",
+            "barOpenTime": 1788220740000,
+            "barCloseTime": 1788220799999,
+            "priceField": "close",
+            "price": 2466.53
+          },
+          "priceReturn": -0.16963035281443573
+        },
+        "BNBUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2026-01.csv",
+            "sha256": "bb38360df5c845a141e2afd2799def624b3419c05c1ba11d36deaf68866d3a1f",
+            "barOpenTime": 1767225600000,
+            "barCloseTime": 1767225659999,
+            "priceField": "open",
+            "price": 864.71
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2026-08.csv",
+            "sha256": "adce25b8d9d4bd34294b92b47e4cac6f5f4fdee216768158dc3009763e13e3e7",
+            "barOpenTime": 1788220740000,
+            "barCloseTime": 1788220799999,
+            "priceField": "close",
+            "price": 691.67
+          },
+          "priceReturn": -0.2001133327936534
+        },
+        "SOLUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2026-01.csv",
+            "sha256": "00414593d49780cf1de634fba15b6b48d083292cc80cde15b09181d71660d1b7",
+            "barOpenTime": 1767225600000,
+            "barCloseTime": 1767225659999,
+            "priceField": "open",
+            "price": 124.58
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2026-08.csv",
+            "sha256": "e92720960cd364d199db5c19b179ef350a545d1e53315e614875873b638015df",
+            "barOpenTime": 1788220740000,
+            "barCloseTime": 1788220799999,
+            "priceField": "close",
+            "price": 103.0
+          },
+          "priceReturn": -0.1732220260073848
+        },
+        "XRPUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2026-01.csv",
+            "sha256": "c02f490f2d615bf443d9ad819f58884641fc3281d8fe769604de30c71828aea5",
+            "barOpenTime": 1767225600000,
+            "barCloseTime": 1767225659999,
+            "priceField": "open",
+            "price": 1.8411
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2026-08.csv",
+            "sha256": "a9c9ab9a9443fb7d983589e741519a3736950a30508c1d6a53d36b120720136b",
+            "barOpenTime": 1788220740000,
+            "barCloseTime": 1788220799999,
+            "priceField": "close",
+            "price": 1.3792
+          },
+          "priceReturn": -0.2508826245179512
+        },
+        "DOGEUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2026-01.csv",
+            "sha256": "22e52e47d1e6df9a47e3ccdd80e7bf4832f36618193b216fb080aefd65002196",
+            "barOpenTime": 1767225600000,
+            "barCloseTime": 1767225659999,
+            "priceField": "open",
+            "price": 0.11741
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2026-08.csv",
+            "sha256": "88b54f1a090621f6a890471a908b85f07083cdd3bf44a4d205fffce8f08a3bf1",
+            "barOpenTime": 1788220740000,
+            "barCloseTime": 1788220799999,
+            "priceField": "close",
+            "price": 0.08281
+          },
+          "priceReturn": -0.2946938080231667
+        }
+      },
+      "equalWeightMeanPriceReturn": -0.19865702741238356,
+      "aggregationNote": "Arithmetic mean of six endpoint price returns, representing equal initial price-index weights only; no rebalancing or execution simulation."
+    },
+    "historical-stress": {
+      "startTime": 1640995200000,
+      "endTime": 1656633600000,
+      "symbols": {
+        "BTCUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2022-01.csv",
+            "sha256": "4943153a1821c9b1004c619ef54837baefbf78a69f30c334051af05814b7ce39",
+            "barOpenTime": 1640995200000,
+            "barCloseTime": 1640995259999,
+            "priceField": "open",
+            "price": 46210.57
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2022-06.csv",
+            "sha256": "08e33417fc64107cafc9b930ca5e5daae49a5ce929b9ee1a6ccd0845ebf79aa3",
+            "barOpenTime": 1656633540000,
+            "barCloseTime": 1656633599999,
+            "priceField": "close",
+            "price": 19923.5
+          },
+          "priceReturn": -0.5688540522222514
+        },
+        "ETHUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2022-01.csv",
+            "sha256": "c8d06fe0e983888f91c3485769d77d6c911251ca75d4948d5952261d3b4f2314",
+            "barOpenTime": 1640995200000,
+            "barCloseTime": 1640995259999,
+            "priceField": "open",
+            "price": 3676.01
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2022-06.csv",
+            "sha256": "99205ac83bc944f167048a933027b56623cd5ad8546ee331c3a0159bd9018ac9",
+            "barOpenTime": 1656633540000,
+            "barCloseTime": 1656633599999,
+            "priceField": "close",
+            "price": 1070.85
+          },
+          "priceReturn": -0.7086923049719669
+        },
+        "BNBUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2022-01.csv",
+            "sha256": "d35c939ca2edc632a1d188895c3e5cebe7dfcf37da28b4b27ea91dbae873430b",
+            "barOpenTime": 1640995200000,
+            "barCloseTime": 1640995259999,
+            "priceField": "open",
+            "price": 511.55
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2022-06.csv",
+            "sha256": "f4369fead7300e6ce5f6be1f1c551c075ec959caec2701f8efeb04bc2514b02c",
+            "barOpenTime": 1656633540000,
+            "barCloseTime": 1656633599999,
+            "priceField": "close",
+            "price": 219.42
+          },
+          "priceReturn": -0.5710683217671781
+        },
+        "SOLUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2022-01.csv",
+            "sha256": "6bcdb33222d0405323f65759b2962beda9269c70a932c6022add0012d8f3d0d0",
+            "barOpenTime": 1640995200000,
+            "barCloseTime": 1640995259999,
+            "priceField": "open",
+            "price": 170.01
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2022-06.csv",
+            "sha256": "10875784cbc52227ecc64421933e259f302251bd5e9f1ebb786df0fd8adeeb47",
+            "barOpenTime": 1656633540000,
+            "barCloseTime": 1656633599999,
+            "priceField": "close",
+            "price": 33.73
+          },
+          "priceReturn": -0.801599905887889
+        },
+        "XRPUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2022-01.csv",
+            "sha256": "9d2515a0f0dc107956d6986c87e1d69f4cbe18010457252be9f728d3b4f9819e",
+            "barOpenTime": 1640995200000,
+            "barCloseTime": 1640995259999,
+            "priceField": "open",
+            "price": 0.8294
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2022-06.csv",
+            "sha256": "7127b954116276e99a1565a673c6a5e3dfd1bb4e0bbda02becff14654506f4dc",
+            "barOpenTime": 1656633540000,
+            "barCloseTime": 1656633599999,
+            "priceField": "close",
+            "price": 0.3318
+          },
+          "priceReturn": -0.5999517723655655
+        },
+        "DOGEUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2022-01.csv",
+            "sha256": "839a46f0ca1e1baa37fecf7882728710f0a52f98ab79a404b7c67d2806a9f54c",
+            "barOpenTime": 1640995200000,
+            "barCloseTime": 1640995259999,
+            "priceField": "open",
+            "price": 0.17028
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2022-06.csv",
+            "sha256": "83fdc4e2462f3c9319c857529c3ddd4778cb8fae873e195ae26fff7467d75d3c",
+            "barOpenTime": 1656633540000,
+            "barCloseTime": 1656633599999,
+            "priceField": "close",
+            "price": 0.06636
+          },
+          "priceReturn": -0.6102889358703312
+        }
+      },
+      "equalWeightMeanPriceReturn": -0.6434092155141969,
+      "aggregationNote": "Arithmetic mean of six endpoint price returns, representing equal initial price-index weights only; no rebalancing or execution simulation."
+    },
+    "fresh-september": {
+      "startTime": 1788220800000,
+      "endTime": 1790812800000,
+      "symbols": {
+        "BTCUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2026-09.csv",
+            "sha256": "6b482fc0d05691cda897515d6cdb81d878b8fd3d40c3d46a2e2a88e5fc99284a",
+            "barOpenTime": 1788220800000,
+            "barCloseTime": 1788220859999,
+            "priceField": "open",
+            "price": 78549.6
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2026-09.csv",
+            "sha256": "6b482fc0d05691cda897515d6cdb81d878b8fd3d40c3d46a2e2a88e5fc99284a",
+            "barOpenTime": 1790812740000,
+            "barCloseTime": 1790812799999,
+            "priceField": "close",
+            "price": 83576.9
+          },
+          "priceReturn": 0.06400159898968272
+        },
+        "ETHUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2026-09.csv",
+            "sha256": "27cdf52632eaf8b59a8553c49a278b57e2686bd2c2923da62bb2165c85e8ca95",
+            "barOpenTime": 1788220800000,
+            "barCloseTime": 1788220859999,
+            "priceField": "open",
+            "price": 2466.52
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2026-09.csv",
+            "sha256": "27cdf52632eaf8b59a8553c49a278b57e2686bd2c2923da62bb2165c85e8ca95",
+            "barOpenTime": 1790812740000,
+            "barCloseTime": 1790812799999,
+            "priceField": "close",
+            "price": 2684.68
+          },
+          "priceReturn": 0.08844850234338253
+        },
+        "BNBUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2026-09.csv",
+            "sha256": "7524970e8aeec4c837909b32e5272e9616134027cad260abaca3501841be2717",
+            "barOpenTime": 1788220800000,
+            "barCloseTime": 1788220859999,
+            "priceField": "open",
+            "price": 691.67
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2026-09.csv",
+            "sha256": "7524970e8aeec4c837909b32e5272e9616134027cad260abaca3501841be2717",
+            "barOpenTime": 1790812740000,
+            "barCloseTime": 1790812799999,
+            "priceField": "close",
+            "price": 769.73
+          },
+          "priceReturn": 0.11285728743475953
+        },
+        "SOLUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2026-09.csv",
+            "sha256": "a8d631a85ae60b1247992c2eceb2631bfdfcc22eeb4db50df0f3caeed73c2009",
+            "barOpenTime": 1788220800000,
+            "barCloseTime": 1788220859999,
+            "priceField": "open",
+            "price": 102.99
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2026-09.csv",
+            "sha256": "a8d631a85ae60b1247992c2eceb2631bfdfcc22eeb4db50df0f3caeed73c2009",
+            "barOpenTime": 1790812740000,
+            "barCloseTime": 1790812799999,
+            "priceField": "close",
+            "price": 118.05
+          },
+          "priceReturn": 0.14622778910573841
+        },
+        "XRPUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2026-09.csv",
+            "sha256": "817be79d5bc08a140cfe8abd922d9e7c703a71348b5f899677568b72bb46934b",
+            "barOpenTime": 1788220800000,
+            "barCloseTime": 1788220859999,
+            "priceField": "open",
+            "price": 1.3791
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2026-09.csv",
+            "sha256": "817be79d5bc08a140cfe8abd922d9e7c703a71348b5f899677568b72bb46934b",
+            "barOpenTime": 1790812740000,
+            "barCloseTime": 1790812799999,
+            "priceField": "close",
+            "price": 1.4892
+          },
+          "priceReturn": 0.07983467478790529
+        },
+        "DOGEUSDT": {
+          "first": {
+            "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2026-09.csv",
+            "sha256": "54c310745d6a3c4d0bfdedbf968d6b06f9e729ec01c4e1b6ea2bcd96aac1c980",
+            "barOpenTime": 1788220800000,
+            "barCloseTime": 1788220859999,
+            "priceField": "open",
+            "price": 0.08281
+          },
+          "last": {
+            "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2026-09.csv",
+            "sha256": "54c310745d6a3c4d0bfdedbf968d6b06f9e729ec01c4e1b6ea2bcd96aac1c980",
+            "barOpenTime": 1790812740000,
+            "barCloseTime": 1790812799999,
+            "priceField": "close",
+            "price": 0.0945
+          },
+          "priceReturn": 0.14116652578191058
+        }
+      },
+      "equalWeightMeanPriceReturn": 0.10542272974056317,
+      "aggregationNote": "Arithmetic mean of six endpoint price returns, representing equal initial price-index weights only; no rebalancing or execution simulation."
+    }
+  },
+  "checkedSources": [
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2022-09.csv",
+      "sha256": "5d8adb1a9f3698c2da64b1f990d9a8dc98f2aa5ad5ced0c7e53c49237a1757a6",
+      "bytes": 4956389,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2022-09.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2023-12.csv",
+      "sha256": "8171a92a94ac6dd554eccdc20fc445bff8da97cad4ed77405987542374e16898",
+      "bytes": 5005311,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2023-12.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2022-09.csv",
+      "sha256": "4cff20c56525823ea6b22a36852813ba33fe0ded413eda5e38087e8a7fbe353c",
+      "bytes": 4872509,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1m/ETHUSDT-1m-2022-09.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2023-12.csv",
+      "sha256": "1aabd0424bdd525f1502435c0981812a99c2304ec83cf5d30e5d0c6d3b1bb5f3",
+      "bytes": 4943693,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1m/ETHUSDT-1m-2023-12.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2022-09.csv",
+      "sha256": "cd577e2d62926cfac86863403255c8e0a45da11e29d16973a286235e1c039e27",
+      "bytes": 4552108,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BNBUSDT/1m/BNBUSDT-1m-2022-09.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2023-12.csv",
+      "sha256": "4d8613cf6b248440e38cc4e5d488c38bbc86e41c53f485da74e92ed9fac85a24",
+      "bytes": 4717129,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BNBUSDT/1m/BNBUSDT-1m-2023-12.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2022-09.csv",
+      "sha256": "959ee83b38da3467276206a5a1d33cc133a6c4e78bf86723a52881a5b92b2c20",
+      "bytes": 4332530,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/SOLUSDT/1m/SOLUSDT-1m-2022-09.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2023-12.csv",
+      "sha256": "5785e3fbb49e09b6eaa5e102c6870f728b5645e3d16fc83ba15e575e4495cf08",
+      "bytes": 4635306,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/SOLUSDT/1m/SOLUSDT-1m-2023-12.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2022-09.csv",
+      "sha256": "5586b705c56c33ea9af8fbc6b46a4f1e225f9bdcf7ace9033d39b7da32489425",
+      "bytes": 4599385,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/XRPUSDT/1m/XRPUSDT-1m-2022-09.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2023-12.csv",
+      "sha256": "9c5883886bf30224aa8fa04d97fd6384aa5a4cd6e09e07f3168b52d05e1c5681",
+      "bytes": 4697866,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/XRPUSDT/1m/XRPUSDT-1m-2023-12.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2022-09.csv",
+      "sha256": "2378db6cb0540caf44ac2539b6c7ce5064294df43d5916d7b0b9f78383cf4049",
+      "bytes": 4796428,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DOGEUSDT/1m/DOGEUSDT-1m-2022-09.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2023-12.csv",
+      "sha256": "26f023628fafecfb4695c36b08b968c0192497f74f048211f61b8d789247f452",
+      "bytes": 5053955,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DOGEUSDT/1m/DOGEUSDT-1m-2023-12.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2024-01.csv",
+      "sha256": "ab25f0fee86faa93df62f800adf92b742abdc60982e023159d0ca9faf3a4ba14",
+      "bytes": 5073074,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2024-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2024-07.csv",
+      "sha256": "45468446143f0c1d2b15f3bf3f205e0f17abb70c81f61c4b675e1cc110ee9cb2",
+      "bytes": 5074952,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2024-07.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2024-01.csv",
+      "sha256": "9f58b0a42b71694457852cbcdc7f84c7b3478d37b9f3f1056609fba8b874a03b",
+      "bytes": 4953333,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1m/ETHUSDT-1m-2024-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2024-07.csv",
+      "sha256": "9351a57e956fe5f31ce37014dba645e49fd609be3a62555565db62e817d9888b",
+      "bytes": 4955069,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1m/ETHUSDT-1m-2024-07.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2024-01.csv",
+      "sha256": "234dc4ea24f0c623e1116dfffb64a30b8ad4ceb37066540e871a66b5124e2672",
+      "bytes": 4698856,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BNBUSDT/1m/BNBUSDT-1m-2024-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2024-07.csv",
+      "sha256": "ce4e8f9675464797208ead9ddab1bbc5cd6399f33b9771f306775a197293e110",
+      "bytes": 4660371,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BNBUSDT/1m/BNBUSDT-1m-2024-07.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2024-01.csv",
+      "sha256": "67dbaf2cbc41826f2e4dd6cc9b0502cd849426c74ff98323d060651258ba5781",
+      "bytes": 4625386,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/SOLUSDT/1m/SOLUSDT-1m-2024-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2024-07.csv",
+      "sha256": "7e18df04662581fea74b208f6248b59b441e893582a30c350ac1a788897ac980",
+      "bytes": 4713702,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/SOLUSDT/1m/SOLUSDT-1m-2024-07.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2024-01.csv",
+      "sha256": "6fd4340eccace78a095c50fc12522548e89b33990d82883fcb75fa86d50f3034",
+      "bytes": 4688078,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/XRPUSDT/1m/XRPUSDT-1m-2024-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2024-07.csv",
+      "sha256": "3e8766a153f000c87daa16423a65fbd9611115dfe4da3ac2b6d47ab03560756f",
+      "bytes": 4726038,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/XRPUSDT/1m/XRPUSDT-1m-2024-07.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2024-01.csv",
+      "sha256": "a9525ba78b94756400022cb85cd4e155ddd6565c341f21731439017488b72aca",
+      "bytes": 5015432,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DOGEUSDT/1m/DOGEUSDT-1m-2024-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2024-07.csv",
+      "sha256": "a28e1434c887df48ef9861274685492dccb3552eadd3798689c742bd61185a61",
+      "bytes": 5016912,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DOGEUSDT/1m/DOGEUSDT-1m-2024-07.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2025-01.csv",
+      "sha256": "6ac299b71bee1248ea8a95e9b4bc2a92c4154ff7340034806d1f3144d5e44e95",
+      "bytes": 5160410,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2025-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2025-12.csv",
+      "sha256": "046cb390deabcfe29d6021e9de42fdf95392af0a2f6914b954139ebcd4e46222",
+      "bytes": 5024449,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2025-12.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2025-01.csv",
+      "sha256": "1d5b1d83106dec536e87cacece13cd8eea98afdcfc45a962af9d1cf6a63c4683",
+      "bytes": 4984089,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1m/ETHUSDT-1m-2025-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2025-12.csv",
+      "sha256": "45f11d570386658ed780cf150ba574ff2e665b08e8f4df13487ce07a13f828a0",
+      "bytes": 4985257,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1m/ETHUSDT-1m-2025-12.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2025-01.csv",
+      "sha256": "87f05c93ca440529d7e50d6523eb2968d38139e37de93854923bab7ed4d0a2f4",
+      "bytes": 4683028,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BNBUSDT/1m/BNBUSDT-1m-2025-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2025-12.csv",
+      "sha256": "800adda95951d8e0bc00dee032fc855c7cd94c62584f61d436d727ed67e178c4",
+      "bytes": 4668543,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BNBUSDT/1m/BNBUSDT-1m-2025-12.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2025-01.csv",
+      "sha256": "b7451c1dc0744463711c90187be035bbd4d093c1db23845512ba27256f22d9e1",
+      "bytes": 4743372,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/SOLUSDT/1m/SOLUSDT-1m-2025-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2025-12.csv",
+      "sha256": "29e07d7347c4232c391b886e7390096ad4b0b58898579922fcf79d50d02ba99b",
+      "bytes": 5169285,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/SOLUSDT/1m/SOLUSDT-1m-2025-12.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2025-01.csv",
+      "sha256": "49867690d62e606761194548322792c471c55e318a96093024d1dd889bffc0bd",
+      "bytes": 4818293,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/XRPUSDT/1m/XRPUSDT-1m-2025-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2025-12.csv",
+      "sha256": "e1f441a639e2968d7cf2505c2cf9f0bd46c313dd6053ca054b0abd893c56734c",
+      "bytes": 4699749,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/XRPUSDT/1m/XRPUSDT-1m-2025-12.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2025-01.csv",
+      "sha256": "7049ef3708f838dbaa23e15819c8d20fa4e9510de49fcba1a64c4ae9bc0499d7",
+      "bytes": 5134444,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DOGEUSDT/1m/DOGEUSDT-1m-2025-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2025-12.csv",
+      "sha256": "0020f349d65afcda7d0c6475cc00c1db2f9c22821eec1a78783a7e62d9470fe5",
+      "bytes": 5022689,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DOGEUSDT/1m/DOGEUSDT-1m-2025-12.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2026-01.csv",
+      "sha256": "3e1799541217121f07320e3b08771cf5b889cf8d29e1137c7cd51fb48ab08781",
+      "bytes": 5018109,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2026-08.csv",
+      "sha256": "675f1a0c9f3a265cafbc69e7821eb891ff432cfa12aba45c77754a06190fd80e",
+      "bytes": 5004926,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-08.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2026-01.csv",
+      "sha256": "8666681d99d73d54abdb2d8077443ab582f5ddd8219295779efe21924557029a",
+      "bytes": 4975566,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1m/ETHUSDT-1m-2026-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2026-08.csv",
+      "sha256": "f24c82daaf4eeed656444e05c5abec93d5286024036427739ce90a6baf3ad263",
+      "bytes": 4947296,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1m/ETHUSDT-1m-2026-08.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2026-01.csv",
+      "sha256": "bb38360df5c845a141e2afd2799def624b3419c05c1ba11d36deaf68866d3a1f",
+      "bytes": 4666312,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BNBUSDT/1m/BNBUSDT-1m-2026-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2026-08.csv",
+      "sha256": "adce25b8d9d4bd34294b92b47e4cac6f5f4fdee216768158dc3009763e13e3e7",
+      "bytes": 4634527,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BNBUSDT/1m/BNBUSDT-1m-2026-08.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2026-01.csv",
+      "sha256": "00414593d49780cf1de634fba15b6b48d083292cc80cde15b09181d71660d1b7",
+      "bytes": 5161194,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/SOLUSDT/1m/SOLUSDT-1m-2026-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2026-08.csv",
+      "sha256": "e92720960cd364d199db5c19b179ef350a545d1e53315e614875873b638015df",
+      "bytes": 4975839,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/SOLUSDT/1m/SOLUSDT-1m-2026-08.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2026-01.csv",
+      "sha256": "c02f490f2d615bf443d9ad819f58884641fc3281d8fe769604de30c71828aea5",
+      "bytes": 4717629,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/XRPUSDT/1m/XRPUSDT-1m-2026-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2026-08.csv",
+      "sha256": "a9c9ab9a9443fb7d983589e741519a3736950a30508c1d6a53d36b120720136b",
+      "bytes": 4699163,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/XRPUSDT/1m/XRPUSDT-1m-2026-08.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2026-01.csv",
+      "sha256": "22e52e47d1e6df9a47e3ccdd80e7bf4832f36618193b216fb080aefd65002196",
+      "bytes": 5039289,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DOGEUSDT/1m/DOGEUSDT-1m-2026-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2026-08.csv",
+      "sha256": "88b54f1a090621f6a890471a908b85f07083cdd3bf44a4d205fffce8f08a3bf1",
+      "bytes": 4990503,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DOGEUSDT/1m/DOGEUSDT-1m-2026-08.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2022-01.csv",
+      "sha256": "4943153a1821c9b1004c619ef54837baefbf78a69f30c334051af05814b7ce39",
+      "bytes": 5089557,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2022-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2022-06.csv",
+      "sha256": "08e33417fc64107cafc9b930ca5e5daae49a5ce929b9ee1a6ccd0845ebf79aa3",
+      "bytes": 4962653,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2022-06.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2022-01.csv",
+      "sha256": "c8d06fe0e983888f91c3485769d77d6c911251ca75d4948d5952261d3b4f2314",
+      "bytes": 4929624,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1m/ETHUSDT-1m-2022-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2022-06.csv",
+      "sha256": "99205ac83bc944f167048a933027b56623cd5ad8546ee331c3a0159bd9018ac9",
+      "bytes": 4834911,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1m/ETHUSDT-1m-2022-06.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2022-01.csv",
+      "sha256": "d35c939ca2edc632a1d188895c3e5cebe7dfcf37da28b4b27ea91dbae873430b",
+      "bytes": 4721311,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BNBUSDT/1m/BNBUSDT-1m-2022-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2022-06.csv",
+      "sha256": "f4369fead7300e6ce5f6be1f1c551c075ec959caec2701f8efeb04bc2514b02c",
+      "bytes": 4592189,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BNBUSDT/1m/BNBUSDT-1m-2022-06.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2022-01.csv",
+      "sha256": "6bcdb33222d0405323f65759b2962beda9269c70a932c6022add0012d8f3d0d0",
+      "bytes": 4574421,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/SOLUSDT/1m/SOLUSDT-1m-2022-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2022-06.csv",
+      "sha256": "10875784cbc52227ecc64421933e259f302251bd5e9f1ebb786df0fd8adeeb47",
+      "bytes": 4409470,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/SOLUSDT/1m/SOLUSDT-1m-2022-06.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2022-01.csv",
+      "sha256": "9d2515a0f0dc107956d6986c87e1d69f4cbe18010457252be9f728d3b4f9819e",
+      "bytes": 4668534,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/XRPUSDT/1m/XRPUSDT-1m-2022-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2022-06.csv",
+      "sha256": "7127b954116276e99a1565a673c6a5e3dfd1bb4e0bbda02becff14654506f4dc",
+      "bytes": 4527322,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/XRPUSDT/1m/XRPUSDT-1m-2022-06.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2022-01.csv",
+      "sha256": "839a46f0ca1e1baa37fecf7882728710f0a52f98ab79a404b7c67d2806a9f54c",
+      "bytes": 5015114,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DOGEUSDT/1m/DOGEUSDT-1m-2022-01.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2022-06.csv",
+      "sha256": "83fdc4e2462f3c9319c857529c3ddd4778cb8fae873e195ae26fff7467d75d3c",
+      "bytes": 4824265,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DOGEUSDT/1m/DOGEUSDT-1m-2022-06.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2026-09.csv",
+      "sha256": "6b482fc0d05691cda897515d6cdb81d878b8fd3d40c3d46a2e2a88e5fc99284a",
+      "bytes": 4862487,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-09.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2026-09.csv",
+      "sha256": "27cdf52632eaf8b59a8553c49a278b57e2686bd2c2923da62bb2165c85e8ca95",
+      "bytes": 4814731,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1m/ETHUSDT-1m-2026-09.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2026-09.csv",
+      "sha256": "7524970e8aeec4c837909b32e5272e9616134027cad260abaca3501841be2717",
+      "bytes": 4519797,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/BNBUSDT/1m/BNBUSDT-1m-2026-09.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/SOLUSDT/klines/SOLUSDT-1m-2026-09.csv",
+      "sha256": "a8d631a85ae60b1247992c2eceb2631bfdfcc22eeb4db50df0f3caeed73c2009",
+      "bytes": 4968895,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/SOLUSDT/1m/SOLUSDT-1m-2026-09.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/XRPUSDT/klines/XRPUSDT-1m-2026-09.csv",
+      "sha256": "817be79d5bc08a140cfe8abd922d9e7c703a71348b5f899677568b72bb46934b",
+      "bytes": 4602671,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/XRPUSDT/1m/XRPUSDT-1m-2026-09.zip",
+      "sources": null
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/DOGEUSDT/klines/DOGEUSDT-1m-2026-09.csv",
+      "sha256": "54c310745d6a3c4d0bfdedbf968d6b06f9e729ec01c4e1b6ea2bcd96aac1c980",
+      "bytes": 4887102,
+      "url": "https://data.binance.vision/data/futures/um/monthly/klines/DOGEUSDT/1m/DOGEUSDT-1m-2026-09.zip",
+      "sources": null
+    }
+  ]
+}

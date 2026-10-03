@@ -1,0 +1,17 @@
+..............................restored BTCUSDT/klines/2024-01: 1 days from official daily ZIPs
+.............................................................................................{'output': '/tmp/tmpzx6msnez/output.json', 'primary': 'baseline', 'status': 'descriptive-only'}
+replayed development BTCUSDT: 1 declared variants
+replayed development BTCUSDT: 1 declared variants
+replayed development BTCUSDT: 1 declared variants
+replayed development BTCUSDT: 1 declared variants
+replayed development BTCUSDT: 1 declared variants
+replayed development BTCUSDT: 1 declared variants
+..............................................................................
+----------------------------------------------------------------------
+Ran 201 tests in 3.730s
+
+OK
+{'output': '/tmp/tmp4nnrxllb/result.json', 'selected': 'selected', 'status': 'historical-criteria-passed', 'failedCriteria': []}
+{'output': '/tmp/tmpdjutbyie/evaluation.json', 'selected': 'selected', 'status': 'not-established', 'failedCriteria': ['base:val:positive-return', 'base:block7:absolute-lower-bound', 'base:block28:absolute-lower-bound', 'stress:val:positive-return', 'stress:block7:absolute-lower-bound', 'stress:block28:absolute-lower-bound']}
+{'output': '/tmp/tmp7v1fdk2q/evaluation.json', 'selected': 'selected', 'status': 'passed-for-forward-observation', 'failedCriteria': []}
+{'output': '/tmp/tmpoq9nci_d/transfer.json', 'selected': 'selected', 'status': 'passed-for-forward-observation', 'failedCriteria': []}

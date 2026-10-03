@@ -221,7 +221,7 @@ decode ─┬─ wave（Rust peak kernel 波形）
 Quant Lab 默认打开股票组合研究工作台，可在顶部切换「股票组合 / 永续趋势」。
 永续趋势入口为 `/quant?strategy=trend`：直接获取 Binance 官方 USDT 永续历史档案，在 Rust/WASM 中逐分钟回放。
 新回测默认「4 小时 / 仅做多 / 日线背景过滤」，使用 20 根突破与 10 根反向通道退出；保留无过滤基线，两种方案均保留当前成本门槛、成交费用和风控。背景过滤不能排除所有震荡，可能错过启动行情，也不保证收益提升。旧的未标记无过滤突破草稿只迁移一次，历史运行保持原样；之后明确选择无过滤会在刷新后保留。
-结果包含费用、资金费、冻结入场信号、此前 N 根通道及按持仓分段的止损线。回测执行器 v9 统一输出评价 v2：收益与风险、交易质量、成本拆分、日终净值与回撤、月度收益；不足样本和旧结果缺失字段明确留空，单次回测不视为样本外验证。图表 `trend-chart-2` 使用独立缓存版本。详情见 [策略与数据口径](docs/BINANCE-TREND.md)及[研究架构](docs/TREND-RESEARCH-ARCHITECTURE.md)；现有十候选比较见[方法研究](research/trend/methods/REPORT.md)，早期失败假设见[历史研究](research/trend/REPORT.md)。旧证据保留，新研究使用显式计划和独立输出目录。
+结果包含冻结入场依据、分段止损、收益风险、交易质量及完整成本评价。配置、回放、评价与图表分别版本化；旧结果按原契约读取，单次回测不视为样本外验证。已有通道、KDJ、价格行为与结构回调实验的结论和证据身份见[研究总索引](research/trend/README.md)，当前尚未建立充分的可迁移正期望证据。[策略与数据口径](docs/BINANCE-TREND.md)说明交易定义，[研究架构](docs/TREND-RESEARCH-ARCHITECTURE.md)说明模块职责与统一入口 `bun run research:trend --help`。新回放显式选择二进制和输出目录，历史证据保持只读。
 
 ```text
 ClickHouse / 本地研究快照 → 分块 Arrow → Rust/WASM 逐日回放 → 净值 / 成交 / 持仓 / 选股解释

@@ -1,0 +1,70 @@
+{
+  "status": "passed",
+  "comparison": "exact-byte-equality-old-new-and-frozen-results",
+  "window": "known-2025",
+  "start": "2025-01-01",
+  "endExclusive": "2026-01-01",
+  "planSha256": "fddd5800b6d38e9f5a6ba09441be3b245a4ff82a3fde56944b0969e21459d78d",
+  "manifestSha256": "71dbdaee57409a6dc94f1672ded420d34763bfebf47887aa1717334dda8d95c8",
+  "binaries": {
+    "old": {
+      "path": "tmp/trend-engine14-before-expansion",
+      "sha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af"
+    },
+    "new": {
+      "path": "crates/quant/target/release/trend",
+      "sha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb"
+    }
+  },
+  "scriptSha256": "28c9ee8491f09f176bf1ed177e45641bd35340fc941765ad6ef625e53493b8ba",
+  "records": [
+    {
+      "symbol": "BTCUSDT",
+      "bytes": 861984,
+      "sha256": "a4e24d3f3b72df3e8c2532bbb4c271de820f7c1f91ff7e4080530fd24419c401",
+      "candidateCostRows": 8,
+      "trades": 286,
+      "configsSha256": "2472a13f861cdc3b94f48097a80566cf6fc52729ac9dad6907d0ed9ae61f4be4"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "bytes": 853851,
+      "sha256": "fcda2b5c07013021a33c8c2b418873c585dc86028a6747d9b2e68e5f7d5ba88e",
+      "candidateCostRows": 8,
+      "trades": 274,
+      "configsSha256": "0ed2881792386ff2097bcc6365a16c81ee3fd39055627a344ec5c1882c4a16c5"
+    },
+    {
+      "symbol": "BNBUSDT",
+      "bytes": 851768,
+      "sha256": "1bf042e265b42d0121199b165fda6f0785186fc638fdca76a755bddb1b15d997",
+      "candidateCostRows": 8,
+      "trades": 276,
+      "configsSha256": "63bc229382485dfe145b364b811d03bf4b3b3e46e8d382caef7c808416869e18"
+    },
+    {
+      "symbol": "SOLUSDT",
+      "bytes": 846843,
+      "sha256": "0c27fb97dd8241033b9e31176f16afea3b84951ff2ef9ba2fe8a39c5b94c23e1",
+      "candidateCostRows": 8,
+      "trades": 261,
+      "configsSha256": "057b7157eca17c4f42331f56e5ade94dfd4c2cbb64ae5c912572b839f68c95cd"
+    },
+    {
+      "symbol": "XRPUSDT",
+      "bytes": 840988,
+      "sha256": "256831cfc89b272e75819de032100266293d75e6e30e0f410d65f74fa655e33d",
+      "candidateCostRows": 8,
+      "trades": 252,
+      "configsSha256": "317ee5ffb9158cd2bfe2a643fdc8ea45fbd7d8a465c5f0585015ad72e03dd501"
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "bytes": 845518,
+      "sha256": "bdec31957ee28d682f8610ec0fbf539a5fba0782dc3c22dd67aa5b519e3340ea",
+      "candidateCostRows": 8,
+      "trades": 248,
+      "configsSha256": "8fd1be1e5c7b48c27a29dd4614f6a5916428b404df459ca4706b754ae3fc9d59"
+    }
+  ]
+}

@@ -3,21 +3,36 @@ import type {
   RecordedTrendConfigV2,
   RecordedTrendConfigV3,
   RecordedTrendConfigV4,
+  RecordedTrendConfigV5,
+  RecordedTrendConfigV6,
+  RecordedTrendConfigV7,
+  RecordedTrendConfigV8,
+  RecordedTrendConfigV9,
 } from "./recorded";
 import type { ArtifactRef } from "@bcr/core";
 import type { BinanceDataset } from "@bcr/market-data/binance/model";
 import type { TrendEvaluation } from "./evaluation";
+import type { StructuredPullbackPolicy } from "./structured-policy";
 export type { TrendEvaluation } from "./evaluation";
 
 export interface TrendStrategy {
-  entry: "breakout" | "pullback";
-  filter: "none" | "ema" | "background";
+  entry: "breakout" | "pullback" | "kdj" | "price-action" | "structured-pullback";
+  filter: "none" | "ema" | "background" | "slow-ema";
   /** Maximum estimated round-trip cost in signal ATR units; zero disables the gate. */
   maxCostAtr: number;
-  management: "atr" | "channel";
+  management: "atr" | "channel" | "staged" | "chandelier";
+  /** Complete trading-candle close thresholds in frozen initial R; staged mode only. */
+  staged?: { breakEvenR: number; trailingStartR: number };
+  /** Fixed mechanism ablations, only present for the price-action entry. */
+  priceAction?: { keyLevel: boolean; twoLegs: boolean };
+  structuredPullback?: StructuredPullbackPolicy;
   direction: "both" | "long" | "short";
   tradeMinutes: number;
   breakoutBars: number;
+  /** Channel management only; omitted means floor(breakoutBars / 2), at least one. */
+  channelExitBars?: number;
+  /** Breakout entry only; omission preserves entry eligibility on every close. */
+  breakoutReentry?: "every-close" | "episode";
   stopAtr: number;
   breakEvenAtr: number;
   trailingAtr: number;
@@ -39,11 +54,98 @@ export interface TrendRisk {
   flattenMinute: number | null;
 }
 export interface TrendConfig {
-  version: 5;
+  version: 10;
   strategy: TrendStrategy;
   execution: TrendExecution;
   risk: TrendRisk;
 }
+export type TrendEntryTrigger =
+  | {
+      kind: "kdj-cross";
+      armedAt: number;
+      armedK: number;
+      previousK: number;
+      previousD: number;
+      k: number;
+      d: number;
+      j: number;
+      slowEma?: number;
+      slowEma3Ago?: number;
+    }
+  | {
+      kind: "price-action";
+      setupId: number;
+      impulseStartTime: number;
+      impulseConfirmedAt: number;
+      pullbackStartedAt: number;
+      impulseStartPrice: number;
+      impulseExtreme: number;
+      referenceAtr: number;
+      strengthAtr: number;
+      efficiency: number;
+      pullbackBars: number;
+      retracement: number;
+      /** Two means at least two legs, not two candles. */
+      legCount: 1 | 2;
+      keyLevel?: {
+        minutes: number;
+        price: number;
+        pivotTime: number;
+        confirmedAt: number;
+        retestTime?: number;
+        valid: boolean;
+      };
+    }
+  | {
+      kind: "structured-pullback";
+      setupId: number;
+      impulseStartTime: number;
+      impulseConfirmedAt: number;
+      impulseEndTime: number;
+      pullbackStartedAt?: number;
+      impulseStartPrice: number;
+      impulseExtreme: number;
+      referenceAtr: number;
+      strengthAtr: number;
+      efficiency: number;
+      pullbackBars: number;
+      retracement: number;
+      /** Version 10 evidence; omitted in frozen version 9 snapshots. */
+      confirmation?: "before-breakout" | "signal-close";
+      keyRole?: "pullback-retest" | "impulse-context";
+      gates?: { retracement: boolean; key: boolean; shape: boolean; candle: boolean };
+      contextEligible?: { pivot: boolean; ema: boolean };
+      /** Non-exclusive causal shape labels; the configured gate selects eligibility. */
+      shapes: { twoLegs: boolean; wedge: boolean; channel: boolean; doubleTest: boolean };
+      candles: {
+        doubleDoji: boolean;
+        narrowRange: boolean;
+        engulfing: boolean;
+        doji: boolean;
+        insideBar: boolean;
+        outsideBar: boolean;
+        reversal: boolean;
+      };
+      turns: { kind: "high" | "low"; time: number; confirmedAt: number; price: number }[];
+      pivot?: {
+        minutes: number;
+        price: number;
+        pivotTime: number;
+        confirmedAt: number;
+        retestTime?: number;
+        valid: boolean;
+      };
+      ema?: {
+        minutes: number;
+        period: 20;
+        value: number;
+        observedAt: number;
+        validatedAt: number;
+        touches: 2;
+        retestTime?: number;
+        valid: boolean;
+      };
+    };
 /** Frozen when the completed trading candle triggers an entry, before next-open execution. */
 export interface TrendEntrySignal {
   /** Signal candle close timestamp in milliseconds. */
@@ -51,10 +153,11 @@ export interface TrendEntrySignal {
   /** Signal candle close price, without execution costs. */
   price: number;
   /** Previous channel high/low, or the impulse extreme for a pullback. */
-  boundary: number;
+  boundary?: number;
   atr: number;
   /** Prior channel candles, excluding the signal candle; absent for pullbacks. */
   lookbackBars?: number;
+  trigger?: TrendEntryTrigger;
 }
 export interface TrendTrade {
   id: number;
@@ -81,7 +184,17 @@ export interface TrendTrade {
 }
 export interface TrendEvent {
   time: number;
-  kind: "impulse" | "signal" | "entry" | "stop" | "exit" | "funding" | "cooldown" | "rejected";
+  kind:
+    | "impulse"
+    | "signal"
+    | "entry"
+    | "stop"
+    | "exit"
+    | "funding"
+    | "cooldown"
+    | "rejected"
+    | "stage"
+    | "setup";
   side: "long" | "short";
   price: number;
   value: number | null;
@@ -98,8 +211,11 @@ export interface TrendEquity {
 }
 export interface TrendIndicator {
   time: number;
-  fast: number;
-  slow: number;
+  fast?: number;
+  slow?: number;
+  k?: number;
+  d?: number;
+  j?: number;
 }
 /** An as-of decision for an otherwise eligible entry signal, never a future label. */
 export interface TrendContextDecision {
@@ -163,7 +279,12 @@ export interface TrendResult {
     | "trend-continuation-8"
     | "trend-continuation-9"
     | "trend-continuation-10"
-    | "trend-continuation-11";
+    | "trend-continuation-11"
+    | "trend-continuation-12"
+    | "trend-continuation-13"
+    | "trend-continuation-14"
+    | "trend-continuation-15"
+    | "trend-continuation-16";
   /** Actual replay bounds, which may use less prehistory than the cached manifest. */
   window?: { startTime: number; endTime: number; warmupStart: number };
   metrics: TrendMetrics;
@@ -187,6 +308,11 @@ export interface TrendRun {
     | RecordedTrendConfigV2
     | RecordedTrendConfigV3
     | RecordedTrendConfigV4
+    | RecordedTrendConfigV5
+    | RecordedTrendConfigV6
+    | RecordedTrendConfigV7
+    | RecordedTrendConfigV8
+    | RecordedTrendConfigV9
     | ArchivedTrendConfig;
   dataset: BinanceDataset;
   resultRef: ArtifactRef;
@@ -200,6 +326,9 @@ export const TREND_REASONS: Record<string, string> = {
   breakeven: "成本保本",
   trailing: "移动止盈",
   "channel-exit": "反向通道退出",
+  "protection-crossed": "保护线越过收盘",
+  "breakeven-armed": "收盘 R 达标 · 保本已启用",
+  "trailing-armed": "收盘 R 达标 · 跟踪已启用",
   "daily-close": "UTC 每日平仓",
   "daily-loss": "单日亏损限制",
   "end-range": "区间结束",
@@ -209,6 +338,31 @@ export const TREND_REASONS: Record<string, string> = {
   "structure-invalid": "开盘跳空破坏入场结构",
   pullback: "强趋势回调突破",
   breakout: "通道突破",
+  kdj: "KDJ 回调交叉",
+  "price-action": "价格行为 · 推进极值突破",
+  "structured-pullback": "结构化回调 · 整段推进极值突破",
+  "sp-pullback-start": "结构化回调开始 · 整段推进极值已冻结",
+  "sp-disabled": "结构结束 · 持仓或风控禁止入场",
+  "sp-direction-invalid": "结构结束 · 方向失效",
+  "sp-expired": "结构结束 · 超过有效根数",
+  "sp-structure-invalid": "结构结束 · 推进或回调失效",
+  "sp-first-break": "结构首次突破 · 本次机会已消费",
+  "sp-retracement-invalid": "首次突破未通过 · 回调根数或深度不符",
+  "sp-key-level-missing": "首次突破未通过 · 关键位未满足",
+  "sp-shape-missing": "首次突破未通过 · 回调结构未满足",
+  "sp-candle-missing": "首次突破未通过 · K 线确认未满足",
+  "sp-accepted": "入场结构已通过 · 仍需成交与风控检查",
+  "pa-key-level-missing": "形态消费 · 关键位回踩未满足",
+  "pa-two-legs-missing": "形态消费 · 两腿回调未满足",
+  "pa-expired": "形态结束 · 超过有效根数",
+  "pa-structure-invalid": "形态结束 · 结构失效",
+  "pa-direction-invalid": "形态结束 · 方向失效",
+  "pa-disabled": "形态结束 · 持仓或风控禁止入场",
+  "breakout-episode-start": "突破阶段开始 · 首次入场机会",
+  "breakout-episode-unavailable": "突破阶段已消费 · 持仓或风控禁止入场",
+  "breakout-episode-filter": "突破阶段已消费 · 方向过滤未通过",
+  "breakout-episode-reset": "突破阶段重置 · 收盘回到冻结边界",
+  "pa-retracement-invalid": "形态消费 · 回调根数或深度不符",
   impulse: "强推进确认",
   funding: "资金费结算",
   "context-ready": "背景允许入场",

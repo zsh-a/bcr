@@ -1,0 +1,242 @@
+{
+  "version": 1,
+  "capitalMode": "total-account-equal-sleeves",
+  "initialCapital": 60000,
+  "symbols": {
+    "BTCUSDT": {
+      "tickSize": 0.1,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "ETHUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "BNBUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.01,
+      "minNotional": 100
+    },
+    "SOLUSDT": {
+      "tickSize": 0.001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "XRPUSDT": {
+      "tickSize": 0.0001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "DOGEUSDT": {
+      "tickSize": 1e-05,
+      "quantityStep": 1,
+      "minNotional": 100
+    }
+  },
+  "windows": [
+    {
+      "id": "development",
+      "start": "2022-09-01",
+      "end": "2024-01-01",
+      "role": "development",
+      "label": "开发资格复核 · 已查看历史"
+    },
+    {
+      "id": "known-2024",
+      "start": "2024-01-01",
+      "end": "2024-08-01",
+      "role": "diagnostic-known",
+      "label": "2024 年 1—7 月 · 已查看历史"
+    },
+    {
+      "id": "known-2025",
+      "start": "2025-01-01",
+      "end": "2026-01-01",
+      "role": "diagnostic-known",
+      "label": "2025 全年 · 已查看历史"
+    },
+    {
+      "id": "known-2026",
+      "start": "2026-01-01",
+      "end": "2026-09-01",
+      "role": "diagnostic-known",
+      "label": "2026 年 1—8 月 · 已查看历史"
+    },
+    {
+      "id": "historical-stress",
+      "start": "2022-01-01",
+      "end": "2022-07-01",
+      "role": "diagnostic-stress",
+      "label": "2022 年上半年压力 · 已查看历史"
+    },
+    {
+      "id": "fresh-september",
+      "start": "2026-09-01",
+      "end": "2026-10-01",
+      "role": "diagnostic-check",
+      "label": "2026 年 9 月复核 · 已查看历史"
+    }
+  ],
+  "windowCoverage": {
+    "inheritedGaps": "The source research reported unresolved official mark-price gaps in July 2022 and August 2024. Its development therefore started on 2022-09-01 and its 2024 diagnostic ended on 2024-08-01. The later January-June 2022 stress window deliberately stopped before the known July gap.",
+    "excludedIntervals": [
+      "2022-07-01/2022-09-01",
+      "2024-08-01/2025-01-01"
+    ],
+    "scope": "These larger excluded ranges are inherited research-window choices, not a claim that every excluded day is missing. This recheck does not reassess archive availability, fill those ranges, or choose replacement periods. The retained windows are not exhaustive market coverage.",
+    "september": "The legacy id fresh-september is preserved only for alignment with prior artifacts. Its role is diagnostic-check and its prices/results are already known; it is neither fresh, untouched OOS, prospective nor live evidence."
+  },
+  "costs": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "stressFeeBps": 10,
+    "stressSlippageBps": 4
+  },
+  "risk": {
+    "riskPct": 0.005,
+    "maxExposurePct": 0.95,
+    "cooldownLosses": 3,
+    "cooldownMinutes": 60,
+    "dailyLossPct": 0.03,
+    "flattenMinute": null
+  },
+  "bootstrap": {
+    "seed": 20261003,
+    "samples": 2000,
+    "blockDays": 7
+  },
+  "configVersion": 8,
+  "title": "30 分钟趋势策略的文献启发实验",
+  "frozenAt": "2026-10-03; four contrasts declared before any v8 research outcome was inspected. All market windows are previously viewed historical diagnostics.",
+  "purpose": "Three independent hypotheses from literature: longer physical entry horizon, one signal per frozen breakout episode, and slower channel exit. No combinations, search, winner replacement, or UI-default change.",
+  "sourceStudy": {
+    "plan": "research/trend/thirty-minute-plan.json",
+    "sha256": "b3e2ad3f442df8641422b7b59d4b83bff4b4b62aa0e6ee83ddfada8ee5d23a70"
+  },
+  "dataPolicy": "Reuse immutable checksum-verified official Binance USDT perpetual traded-price and mark-price minute archives plus actual historical funding. Publish a new manifest bound to this plan. Retain the six exact non-overlapping source-study windows. Missing required prices or funding reject the affected window; do not interpolate, substitute zero costs or choose intervals by returns. Each window has independent warmup, initial 60000-USDT capital and risk state; charts must not concatenate them into a continuous investment record.",
+  "candidates": [
+    {
+      "id": "m30-n40-x20",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 40,
+      "channelExitBars": 20,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-x20",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 20,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n40-x20-episode",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 40,
+      "channelExitBars": 20,
+      "breakoutReentry": "episode",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n40-x40",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 40,
+      "channelExitBars": 40,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    }
+  ],
+  "baseline": "m30-n40-x20",
+  "selectionMode": "fixed",
+  "fixedCandidate": "m30-n40-x20",
+  "selectionMinTrades": 30,
+  "selectionMinProfitableSymbols": 4,
+  "selection": "The existing 30m N40/exit20 rule is the fixed reference, never a newly selected winner. Development only checks the existing descriptive sample/return qualification. Keep all four variants through all six windows regardless of qualification or results. No rule or parameter is selected for deployment.",
+  "sensitivity": [],
+  "stressCandidates": [
+    "m30-n40-x20",
+    "m30-n320-x20",
+    "m30-n40-x20-episode",
+    "m30-n40-x40"
+  ],
+  "comparisons": [
+    {
+      "id": "longer-entry",
+      "candidate": "m30-n320-x20",
+      "reference": "m30-n40-x20"
+    },
+    {
+      "id": "one-entry-per-episode",
+      "candidate": "m30-n40-x20-episode",
+      "reference": "m30-n40-x20"
+    },
+    {
+      "id": "slower-exit",
+      "candidate": "m30-n40-x40",
+      "reference": "m30-n40-x20"
+    }
+  ],
+  "fixedRules": {
+    "entry": "Completed UTC 30-minute close >= prior N highs + one tick; exclude current candle. N40=20 hours; N320=160 hours anchors the previous four-hour 40-bar horizon. Only entry N changes in the longer-entry contrast; 30m ATR14 and exit20 stay fixed. Minute execution uses the existing next-open adverse fill rules.",
+    "exit": "Initial 2 ATR hard stop always active. Channel exit uses its own prior completed candle low window, excludes current bar: close strictly below it queues next-minute market exit. Baseline and longer-entry and episode use 20 bars; slower-exit uses 40. No ATR trailing, BE, fixed profit target or daily flatten.",
+    "episode": "Per direction freeze the prior-N boundary on the first eligible raw completed-bar breakout, independently of positions, cooldowns, filters, cost/risk gates or rejected orders. Consume that first signal whether it can execute or not. Subsequent closes cannot generate another same-side signal until a later close returns to or inside the frozen boundary; this rearming bar cannot open a new episode. Warmup only fills indicators/history; episode state starts empty at the requested trading start, and position/risk resets must not clear it.",
+    "warmup": "Each candidate receives its own active-window warmup, independently: baseline/episode/slow-exit one UTC day, N320 seven UTC days. N320 consequently has a different Wilder initialization history; this numerical seed effect is disclosed and is not a new chosen parameter.",
+    "risk": "Wilder ATR14 uses completed signal candle; initial 2 ATR stop with shared engine adverse tick rounding and next-open position sizing. R=actual entry-to-initial-stop distance, frozen. Historical funding, minute hard stop, account risk/cooldown retained. Overnight holding permitted; no time-of-day flatten.",
+    "costs": "Same fee/slippage/funding model as the source study; all four candidates rerun with doubled fees and slippage in all five non-development windows. Development remains base cost to preserve existing protocol. Costs are replayed, not post-hoc ledger deductions."
+  },
+  "audit": {
+    "legacy": "Compare every baseline trade and daily equity against prior m30-n40-channel for all six base and five stress windows; ignore only config/schema/engine metadata. New v8 explicit exit20/every-close must preserve v7 numerical behavior.",
+    "execution": "Rehash source archives and independently aggregate candles; verify every trade entry boundary/ATR/next-open fill and episode eligibility, prior exit windows, and existing hard-stop precedence. Cash and complete calendars use the generic audited report pipeline.",
+    "attribution": "Report full-account comparisons. Changed exits affect subsequent entries and risk state, so trade-set differences are not paired same-entry causal exit estimates. No claim of same-entry paired exit replay is made in this round."
+  },
+  "acceptance": "No deployment or established positive expectation claim. A candidate only merits further forward validation if its development qualification passes and its net returns remain positive at both base and stressed costs in all five diagnostic windows; report every failure. Also publish paired daily-return means and seven-day block intervals for all three comparisons, trade count/cost reduction, net expectancy, payoff, tail contribution and daily drawdown. Relative improvement alone is not evidence of absolute positive expectation. September is only 30 known days. Do not change parameters after seeing outcomes.",
+  "limitations": [
+    "All six windows and previous strategy outcomes influenced the research proposal; these are new declared mechanisms on previously seen prices, not untouched OOS.",
+    "Three proposed contrasts are additional research trials; seven-day block intervals are descriptive and not corrected for all project-wide attempts.",
+    "Long-entry fixes the 30m ATR and 20-bar exit while changing entry horizon; it is not a complete reproduction of the prior 4h strategy. Its warmup starts six days earlier and Wilder ATR seeding can differ initially.",
+    "Episode raw signal consumption while held or risk-disabled can miss profitable re-entry; lower turnover does not imply better net performance.",
+    "The slower-exit full-account contrast changes subsequent entry opportunities as well as exit timing; it does not isolate direct exit effects on identical entries.",
+    "The inherited dates omit July-August 2022 and August-December 2024. Some underlying data gaps caused the original boundaries, but entire omitted ranges have not been established as unavailable. No continuous full-history claim is permitted.",
+    "The fresh-september id is an old alignment identifier only. September 2026 is now previously viewed historical data.",
+    "Long-only surviving crypto assets, fixed separate capital sleeves, static precision and simulated minute fills have the same market and execution limits as the source study.",
+    "Each window starts with independent capital/warmup; inherited omitted date ranges remain. Never concatenate returns or interpret daily portfolio drawdown as minute portfolio drawdown."
+  ],
+  "references": [
+    "https://www.aqr.com/Insights/Research/Journal-Article/Which-Trend-Is-Your-Friend",
+    "https://www.sciencedirect.com/science/article/pii/S1042443122000816",
+    "https://arxiv.org/abs/1203.5957",
+    "https://dspace.mit.edu/entities/publication/bb69ca4b-0cdc-487f-831d-63b2e84fafee",
+    "https://www.sciencedirect.com/science/article/abs/pii/S1059056024003010"
+  ]
+}

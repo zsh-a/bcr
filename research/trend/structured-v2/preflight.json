@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "cells": [
+    {
+      "id": "development",
+      "universe": "development-assets",
+      "window": "development-time",
+      "dataset": "legacy-six",
+      "claim": "known-reused",
+      "stage": "development",
+      "symbolRole": "development",
+      "timeRole": "development",
+      "symbols": [
+        "BNBUSDT",
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "start": "2022-09-01",
+      "end": "2024-01-01",
+      "warmupDays": 4,
+      "warmupStart": "2022-08-28",
+      "status": "ready",
+      "missing": [],
+      "contextOnly": true,
+      "knownExposure": true
+    },
+    {
+      "id": "validation",
+      "universe": "validation-assets",
+      "window": "validation-time",
+      "dataset": "legacy-six",
+      "claim": "known-reused",
+      "stage": "validation",
+      "symbolRole": "validation",
+      "timeRole": "validation",
+      "symbols": [
+        "DOGEUSDT",
+        "SOLUSDT",
+        "XRPUSDT"
+      ],
+      "start": "2024-09-01",
+      "end": "2026-10-01",
+      "warmupDays": 4,
+      "warmupStart": "2024-08-28",
+      "status": "ready",
+      "missing": [],
+      "contextOnly": true,
+      "knownExposure": true
+    },
+    {
+      "id": "future-holdout",
+      "universe": "reserved-assets",
+      "window": "future-time",
+      "dataset": "future-reserved",
+      "claim": "future-time",
+      "stage": "holdout",
+      "symbolRole": "holdout",
+      "timeRole": "holdout",
+      "symbols": [
+        "ATOMUSDT",
+        "AVAXUSDT",
+        "NEARUSDT"
+      ],
+      "start": "2026-10-08",
+      "end": "2027-10-08",
+      "warmupDays": 4,
+      "warmupStart": "2026-10-04",
+      "status": "not-yet-available",
+      "missing": [
+        "reserved-dataset",
+        "symbol-sources",
+        "price-context-coverage",
+        "active-funding-coverage",
+        "unfinished-calendar"
+      ],
+      "contextOnly": true,
+      "knownExposure": false
+    }
+  ],
+  "scope": "Metadata coverage only; readiness does not verify source bytes or authorize skipping stage gates. Warmup never expands account or scoring dates.",
+  "limits": "Exposure/frozenAt are auditable local declarations, not a trusted timestamp or an access-control proof of human ignorance. Import explicitly marks historical source observations known; a registered plan alone is not evidence of consumed observations."
+}

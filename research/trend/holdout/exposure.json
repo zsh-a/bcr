@@ -1,0 +1,1997 @@
+{
+  "scope": "Metadata only: study plans, manifest symbols/windows/partitions and cached receipt filenames; no new strategy outputs or prices inspected.",
+  "symbols": [
+    "BNBUSDT",
+    "BTCUSDT",
+    "DOGEUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "XRPUSDT"
+  ],
+  "plans": [
+    {
+      "path": "research/trend/thirty-minute-plan.json",
+      "sha256": "b3e2ad3f442df8641422b7b59d4b83bff4b4b62aa0e6ee83ddfada8ee5d23a70",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "windows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01"
+        },
+        {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01"
+        },
+        {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01"
+        },
+        {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01"
+        },
+        {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01"
+        }
+      ]
+    },
+    {
+      "path": "research/trend/price-action-plan.json",
+      "sha256": "2954e3c02fe0199bf07fec10193063a6b2f05dc6f2ca1419d7780739c87ebd8e",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "windows": [
+        {
+          "id": "development-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01"
+        },
+        {
+          "id": "validation-2026-h1",
+          "start": "2026-01-01",
+          "end": "2026-07-01"
+        },
+        {
+          "id": "historical-holdout-2026-q3",
+          "start": "2026-07-01",
+          "end": "2026-10-01"
+        }
+      ]
+    },
+    {
+      "path": "research/trend/slow-plan.json",
+      "sha256": "1c3e9bb95e5d60a03b0a1f66c7d044638c9a506d854832a24037dd94bb2bf923",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "windows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        {
+          "id": "diagnostic",
+          "start": "2024-01-01",
+          "end": "2024-08-01"
+        },
+        {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01"
+        },
+        {
+          "id": "holdout",
+          "start": "2026-01-01",
+          "end": "2026-09-01"
+        }
+      ]
+    },
+    {
+      "path": "research/trend/plan.json",
+      "sha256": "2e44bf32be0cb5012eb5bdf7ce9537549a3fdc4cba2da639a7b04d5b12853923",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "windows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        {
+          "id": "validation",
+          "start": "2024-01-01",
+          "end": "2024-08-01"
+        },
+        {
+          "id": "holdout",
+          "start": "2025-01-01",
+          "end": "2026-01-01"
+        }
+      ]
+    },
+    {
+      "path": "research/trend/channel-recheck-plan.json",
+      "sha256": "bac6961b16f63adeac1af32e65e88105e8a46e9c355991ca3fbfa2ad0cc6599f",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "windows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01"
+        },
+        {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01"
+        },
+        {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01"
+        },
+        {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01"
+        },
+        {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01"
+        }
+      ]
+    },
+    {
+      "path": "research/trend/details-plan.json",
+      "sha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "windows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01"
+        },
+        {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01"
+        },
+        {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01"
+        },
+        {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01"
+        },
+        {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01"
+        },
+        {
+          "id": "transfer-2021",
+          "start": "2021-01-01",
+          "end": "2022-01-01"
+        },
+        {
+          "id": "transfer-2024-oct-nov",
+          "start": "2024-10-01",
+          "end": "2024-12-01"
+        }
+      ]
+    },
+    {
+      "path": "research/trend/kdj-plan.json",
+      "sha256": "4ee928922f190142814bbc863898a20ed6a3ca2db56b01f245ee3160d806513c",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "windows": [
+        {
+          "id": "development-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01"
+        },
+        {
+          "id": "validation-2026-h1",
+          "start": "2026-01-01",
+          "end": "2026-07-01"
+        },
+        {
+          "id": "historical-holdout-2026-q3",
+          "start": "2026-07-01",
+          "end": "2026-10-01"
+        }
+      ]
+    },
+    {
+      "path": "research/trend/methods-plan.json",
+      "sha256": "fb2744a59e7935dba4721122813c477c17c73092ad5cc127f5f2820a34103147",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "windows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01"
+        },
+        {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01"
+        },
+        {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01"
+        },
+        {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01"
+        },
+        {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01"
+        }
+      ]
+    },
+    {
+      "path": "research/trend/literature-plan.json",
+      "sha256": "693a71c9bced151ce2cd6d66098015752b81445c92ed12dad02d59358f9b4db9",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "windows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01"
+        },
+        {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01"
+        },
+        {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01"
+        },
+        {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01"
+        },
+        {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01"
+        }
+      ]
+    },
+    {
+      "path": "research/trend/search-plan.json",
+      "sha256": "f6db2c3a71c08fbed0a7a6c2b6f7f1538fbf40d29180aafab216e766f2b62594",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "windows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        {
+          "id": "validation-2024-early",
+          "start": "2024-01-01",
+          "end": "2024-08-01"
+        },
+        {
+          "id": "validation-continuous",
+          "start": "2024-09-01",
+          "end": "2026-10-01"
+        },
+        {
+          "id": "historical-2021",
+          "start": "2021-01-01",
+          "end": "2022-01-01"
+        },
+        {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01"
+        },
+        {
+          "id": "completion-2022-aug",
+          "start": "2022-08-01",
+          "end": "2022-09-01"
+        }
+      ]
+    },
+    {
+      "path": "research/trend/robustness-plan.json",
+      "sha256": "fddd5800b6d38e9f5a6ba09441be3b245a4ff82a3fde56944b0969e21459d78d",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "windows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01"
+        },
+        {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01"
+        },
+        {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01"
+        },
+        {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01"
+        },
+        {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01"
+        },
+        {
+          "id": "transfer-2021",
+          "start": "2021-01-01",
+          "end": "2022-01-01"
+        },
+        {
+          "id": "transfer-2024-oct-nov",
+          "start": "2024-10-01",
+          "end": "2024-12-01"
+        },
+        {
+          "id": "completion-2022-aug",
+          "start": "2022-08-01",
+          "end": "2022-09-01"
+        },
+        {
+          "id": "completion-2024-sep",
+          "start": "2024-09-01",
+          "end": "2024-10-01"
+        },
+        {
+          "id": "completion-2024-dec",
+          "start": "2024-12-01",
+          "end": "2025-01-01"
+        }
+      ]
+    },
+    {
+      "path": "tmp/trend-kdj/plan.json",
+      "sha256": "dab2d52516f07f65c2cc4f308689bef974b4763fcf30776b7d4de12fb661bee0",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "windows": [
+        {
+          "id": "development-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01"
+        },
+        {
+          "id": "validation-2026-h1",
+          "start": "2026-01-01",
+          "end": "2026-07-01"
+        },
+        {
+          "id": "historical-holdout-2026-q3",
+          "start": "2026-07-01",
+          "end": "2026-10-01"
+        }
+      ]
+    }
+  ],
+  "manifests": [
+    {
+      "path": "tmp/trend-details-v8/manifest.json",
+      "sha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "warmupWindows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01",
+          "role": "development",
+          "label": "\u5f00\u53d1\u8d44\u683c\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2022-08-18"
+        },
+        {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01",
+          "role": "diagnostic-known",
+          "label": "2024 \u5e74 1\u20147 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2023-12-18"
+        },
+        {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "role": "diagnostic-known",
+          "label": "2025 \u5168\u5e74 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2024-12-18"
+        },
+        {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01",
+          "role": "diagnostic-known",
+          "label": "2026 \u5e74 1\u20148 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2025-12-18"
+        },
+        {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01",
+          "role": "diagnostic-stress",
+          "label": "2022 \u5e74\u4e0a\u534a\u5e74\u538b\u529b \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2021-12-18"
+        },
+        {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01",
+          "role": "diagnostic-check",
+          "label": "2026 \u5e74 9 \u6708\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2026-08-18"
+        },
+        {
+          "id": "transfer-2021",
+          "start": "2021-01-01",
+          "end": "2022-01-01",
+          "role": "historical-transfer",
+          "candidateScope": "selected-and-baseline",
+          "label": "2021 \u5168\u5e74 \u00b7 \u65b0\u5386\u53f2\u53cd\u5411\u8f6c\u79fb",
+          "warmupDays": 14,
+          "warmupStart": "2020-12-18"
+        },
+        {
+          "id": "transfer-2024-oct-nov",
+          "start": "2024-10-01",
+          "end": "2024-12-01",
+          "role": "historical-transfer",
+          "candidateScope": "selected-and-baseline",
+          "label": "2024 \u5e74 10\u201411 \u6708 \u00b7 \u65b0\u5386\u53f2\u8f6c\u79fb",
+          "warmupDays": 14,
+          "warmupStart": "2024-09-17"
+        }
+      ],
+      "windows": null
+    },
+    {
+      "path": "tmp/trend-robustness-v8/manifest.json",
+      "sha256": "71dbdaee57409a6dc94f1672ded420d34763bfebf47887aa1717334dda8d95c8",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "warmupWindows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01",
+          "role": "development",
+          "label": "\u5f00\u53d1\u8d44\u683c\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2022-08-18"
+        },
+        {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01",
+          "role": "diagnostic-known",
+          "label": "2024 \u5e74 1\u20147 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2023-12-18"
+        },
+        {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "role": "diagnostic-known",
+          "label": "2025 \u5168\u5e74 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2024-12-18"
+        },
+        {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01",
+          "role": "diagnostic-known",
+          "label": "2026 \u5e74 1\u20148 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2025-12-18"
+        },
+        {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01",
+          "role": "diagnostic-stress",
+          "label": "2022 \u5e74\u4e0a\u534a\u5e74\u538b\u529b \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2021-12-18"
+        },
+        {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01",
+          "role": "diagnostic-check",
+          "label": "2026 \u5e74 9 \u6708\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2026-08-18"
+        },
+        {
+          "id": "transfer-2021",
+          "start": "2021-01-01",
+          "end": "2022-01-01",
+          "role": "diagnostic-known",
+          "label": "2021 \u5168\u5e74 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2020-12-18"
+        },
+        {
+          "id": "transfer-2024-oct-nov",
+          "start": "2024-10-01",
+          "end": "2024-12-01",
+          "role": "diagnostic-known",
+          "label": "2024 \u5e74 10\u201411 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2024-09-17"
+        },
+        {
+          "id": "completion-2022-aug",
+          "start": "2022-08-01",
+          "end": "2022-09-01",
+          "role": "historical-completion",
+          "label": "2022 \u5e74 8 \u6708 \u00b7 \u5386\u53f2\u8865\u5168",
+          "warmupDays": 14,
+          "warmupStart": "2022-07-18"
+        },
+        {
+          "id": "completion-2024-sep",
+          "start": "2024-09-01",
+          "end": "2024-10-01",
+          "role": "historical-completion",
+          "label": "2024 \u5e74 9 \u6708 \u00b7 \u5386\u53f2\u8865\u5168",
+          "warmupDays": 14,
+          "warmupStart": "2024-08-18"
+        },
+        {
+          "id": "completion-2024-dec",
+          "start": "2024-12-01",
+          "end": "2025-01-01",
+          "role": "historical-completion",
+          "label": "2024 \u5e74 12 \u6708 \u00b7 \u5386\u53f2\u8865\u5168",
+          "warmupDays": 14,
+          "warmupStart": "2024-11-17"
+        }
+      ],
+      "windows": null
+    },
+    {
+      "path": "tmp/trend-kdj/manifest.json",
+      "sha256": "77317e1a62c4a2b3491d56f42f435ac91e189250c84759d39280178e9c7751dc",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "warmupWindows": [
+        {
+          "id": "development-2025",
+          "role": "development",
+          "label": "\u5f00\u53d1\u671f \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "warmupDays": 22,
+          "warmupStart": "2024-12-10"
+        },
+        {
+          "id": "validation-2026-h1",
+          "role": "diagnostic-validation",
+          "label": "\u9a8c\u8bc1\u671f \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "start": "2026-01-01",
+          "end": "2026-07-01",
+          "warmupDays": 22,
+          "warmupStart": "2025-12-10"
+        },
+        {
+          "id": "historical-holdout-2026-q3",
+          "role": "diagnostic-holdout",
+          "label": "\u6700\u7ec8\u5386\u53f2\u7559\u51fa \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "start": "2026-07-01",
+          "end": "2026-10-01",
+          "warmupDays": 22,
+          "warmupStart": "2026-06-09"
+        }
+      ],
+      "windows": null
+    },
+    {
+      "path": "tmp/trend-search-v8/manifest.json",
+      "sha256": "608bf05449a5644ebcc4587a1892d07ca9f67e82c659de24a8a1f88d7fef302e",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "warmupWindows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01",
+          "role": "development",
+          "label": "\u5f00\u53d1487\u5929 \u00b7 \u5df2\u77e5\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2022-08-18"
+        },
+        {
+          "id": "validation-2024-early",
+          "start": "2024-01-01",
+          "end": "2024-08-01",
+          "role": "diagnostic-validation-known",
+          "label": "2024\u5e741\u20147\u6708 \u00b7 \u5df2\u77e5\u540e\u7eed\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2023-12-18"
+        },
+        {
+          "id": "validation-continuous",
+          "start": "2024-09-01",
+          "end": "2026-10-01",
+          "role": "diagnostic-validation-known",
+          "label": "2024\u5e749\u6708\u20142026\u5e749\u6708 \u00b7 \u8fde\u7eed760\u5929\u5df2\u77e5\u5386\u53f2",
+          "warmupDays": 14,
+          "warmupStart": "2024-08-18"
+        },
+        {
+          "id": "historical-2021",
+          "start": "2021-01-01",
+          "end": "2022-01-01",
+          "role": "diagnostic-stress-known",
+          "label": "2021\u5168\u5e74 \u00b7 \u5df2\u77e5\u5386\u53f2\u538b\u529b",
+          "warmupDays": 14,
+          "warmupStart": "2020-12-18"
+        },
+        {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01",
+          "role": "diagnostic-stress-known",
+          "label": "2022\u4e0a\u534a\u5e74 \u00b7 \u5df2\u77e5\u5386\u53f2\u538b\u529b",
+          "warmupDays": 14,
+          "warmupStart": "2021-12-18"
+        },
+        {
+          "id": "completion-2022-aug",
+          "start": "2022-08-01",
+          "end": "2022-09-01",
+          "role": "diagnostic-stress-known",
+          "label": "2022\u5e748\u6708 \u00b7 \u5df2\u77e5\u4e8f\u635f\u6708\u4efd",
+          "warmupDays": 14,
+          "warmupStart": "2022-07-18"
+        }
+      ],
+      "windows": null
+    },
+    {
+      "path": "tmp/trend-slow/manifest.json",
+      "sha256": "64748216a930ce481dbbbe0d175d1c0c23a3a334df0e02e0c68c40b3953e3102",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "warmupWindows": null,
+      "windows": null
+    },
+    {
+      "path": "tmp/trend-kdj-v6/manifest.json",
+      "sha256": "611a5a22743936dcf2a9d1ff90d18663c5900fb4802a5cde7ddad8ea5c696ede",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "warmupWindows": [
+        {
+          "id": "development-2025",
+          "role": "development",
+          "label": "\u5f00\u53d1\u671f \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "warmupDays": 22,
+          "warmupStart": "2024-12-10"
+        },
+        {
+          "id": "validation-2026-h1",
+          "role": "diagnostic-validation",
+          "label": "\u9a8c\u8bc1\u671f \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "start": "2026-01-01",
+          "end": "2026-07-01",
+          "warmupDays": 22,
+          "warmupStart": "2025-12-10"
+        },
+        {
+          "id": "historical-holdout-2026-q3",
+          "role": "diagnostic-holdout",
+          "label": "\u6700\u7ec8\u5386\u53f2\u7559\u51fa \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "start": "2026-07-01",
+          "end": "2026-10-01",
+          "warmupDays": 22,
+          "warmupStart": "2026-06-09"
+        }
+      ],
+      "windows": null
+    },
+    {
+      "path": "tmp/trend-thirty-minute-v7/manifest.json",
+      "sha256": "5b17ed79680d6f42506c60fe68a21c413d167feaaee867c2e34789c7ba13dcc4",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "warmupWindows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01",
+          "role": "development",
+          "label": "\u5f00\u53d1\u8d44\u683c\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 1,
+          "warmupStart": "2022-08-31"
+        },
+        {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01",
+          "role": "diagnostic-known",
+          "label": "2024 \u5e74 1\u20147 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 1,
+          "warmupStart": "2023-12-31"
+        },
+        {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "role": "diagnostic-known",
+          "label": "2025 \u5168\u5e74 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 1,
+          "warmupStart": "2024-12-31"
+        },
+        {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01",
+          "role": "diagnostic-known",
+          "label": "2026 \u5e74 1\u20148 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 1,
+          "warmupStart": "2025-12-31"
+        },
+        {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01",
+          "role": "diagnostic-stress",
+          "label": "2022 \u5e74\u4e0a\u534a\u5e74\u538b\u529b \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 1,
+          "warmupStart": "2021-12-31"
+        },
+        {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01",
+          "role": "diagnostic-check",
+          "label": "2026 \u5e74 9 \u6708\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 1,
+          "warmupStart": "2026-08-31"
+        }
+      ],
+      "windows": null
+    },
+    {
+      "path": "tmp/trend-channel-recheck-v7/manifest.json",
+      "sha256": "6382a6db52e930a34835d5c8ebed2833f7041966257892b4cdecc18fc8562bb4",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "warmupWindows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01",
+          "role": "development",
+          "label": "\u5f00\u53d1\u8d44\u683c\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 7,
+          "warmupStart": "2022-08-25"
+        },
+        {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01",
+          "role": "diagnostic-known",
+          "label": "2024 \u5e74 1\u20147 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 7,
+          "warmupStart": "2023-12-25"
+        },
+        {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "role": "diagnostic-known",
+          "label": "2025 \u5168\u5e74 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 7,
+          "warmupStart": "2024-12-25"
+        },
+        {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01",
+          "role": "diagnostic-known",
+          "label": "2026 \u5e74 1\u20148 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 7,
+          "warmupStart": "2025-12-25"
+        },
+        {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01",
+          "role": "diagnostic-stress",
+          "label": "2022 \u5e74\u4e0a\u534a\u5e74\u538b\u529b \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 7,
+          "warmupStart": "2021-12-25"
+        },
+        {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01",
+          "role": "diagnostic-check",
+          "label": "2026 \u5e74 9 \u6708\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 7,
+          "warmupStart": "2026-08-25"
+        }
+      ],
+      "windows": null
+    },
+    {
+      "path": "tmp/trend-methods/manifest.json",
+      "sha256": "a8907894c57e7b4ec4c00eea9ce54ba2a15bd0aa6ad05bd8b5514b631c4be812",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "warmupWindows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01",
+          "warmupDays": 22,
+          "warmupStart": "2022-08-10"
+        },
+        {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01",
+          "warmupDays": 22,
+          "warmupStart": "2023-12-10"
+        },
+        {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "warmupDays": 22,
+          "warmupStart": "2024-12-10"
+        },
+        {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01",
+          "warmupDays": 22,
+          "warmupStart": "2025-12-10"
+        },
+        {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01",
+          "warmupDays": 22,
+          "warmupStart": "2021-12-10"
+        },
+        {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01",
+          "warmupDays": 22,
+          "warmupStart": "2026-08-10"
+        }
+      ],
+      "windows": null
+    },
+    {
+      "path": "tmp/trend-research/manifest.json",
+      "sha256": "bad1fee1a7bff43676b6ab97ee012a39e12f45cdbd406b241c556823fdd8bec0",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "warmupWindows": null,
+      "windows": null
+    },
+    {
+      "path": "tmp/trend-literature-v8/manifest.json",
+      "sha256": "0acfa207fc244cf05e688858cbc03ed880352db6e1e896516d7d645ea0275fac",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "warmupWindows": [
+        {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01",
+          "role": "development",
+          "label": "\u5f00\u53d1\u8d44\u683c\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 7,
+          "warmupStart": "2022-08-25"
+        },
+        {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01",
+          "role": "diagnostic-known",
+          "label": "2024 \u5e74 1\u20147 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 7,
+          "warmupStart": "2023-12-25"
+        },
+        {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "role": "diagnostic-known",
+          "label": "2025 \u5168\u5e74 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 7,
+          "warmupStart": "2024-12-25"
+        },
+        {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01",
+          "role": "diagnostic-known",
+          "label": "2026 \u5e74 1\u20148 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 7,
+          "warmupStart": "2025-12-25"
+        },
+        {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01",
+          "role": "diagnostic-stress",
+          "label": "2022 \u5e74\u4e0a\u534a\u5e74\u538b\u529b \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 7,
+          "warmupStart": "2021-12-25"
+        },
+        {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01",
+          "role": "diagnostic-check",
+          "label": "2026 \u5e74 9 \u6708\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "warmupDays": 7,
+          "warmupStart": "2026-08-25"
+        }
+      ],
+      "windows": null
+    },
+    {
+      "path": "tmp/trend-price-action-v7/manifest.json",
+      "sha256": "77250a053a9f41dfafbd2ece6b744ff5aab2625aad887d0a76f2eb4c606d0c9c",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOGEUSDT"
+      ],
+      "warmupWindows": [
+        {
+          "id": "development-2025",
+          "role": "development",
+          "label": "\u5f00\u53d1\u671f \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "warmupDays": 1,
+          "warmupStart": "2024-12-31"
+        },
+        {
+          "id": "validation-2026-h1",
+          "role": "diagnostic-validation",
+          "label": "\u9a8c\u8bc1\u671f \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "start": "2026-01-01",
+          "end": "2026-07-01",
+          "warmupDays": 1,
+          "warmupStart": "2025-12-31"
+        },
+        {
+          "id": "historical-holdout-2026-q3",
+          "role": "diagnostic-holdout",
+          "label": "\u6700\u7ec8\u5386\u53f2\u7559\u51fa \u00b7 \u5df2\u67e5\u770b\u5386\u53f2",
+          "start": "2026-07-01",
+          "end": "2026-10-01",
+          "warmupDays": 1,
+          "warmupStart": "2026-06-30"
+        }
+      ],
+      "windows": null
+    }
+  ],
+  "declaredWindows": [
+    [
+      "2021-01-01",
+      "2022-01-01"
+    ],
+    [
+      "2022-01-01",
+      "2022-07-01"
+    ],
+    [
+      "2022-08-01",
+      "2022-09-01"
+    ],
+    [
+      "2022-09-01",
+      "2024-01-01"
+    ],
+    [
+      "2024-01-01",
+      "2024-08-01"
+    ],
+    [
+      "2024-09-01",
+      "2024-10-01"
+    ],
+    [
+      "2024-09-01",
+      "2026-10-01"
+    ],
+    [
+      "2024-10-01",
+      "2024-12-01"
+    ],
+    [
+      "2024-12-01",
+      "2025-01-01"
+    ],
+    [
+      "2025-01-01",
+      "2026-01-01"
+    ],
+    [
+      "2026-01-01",
+      "2026-07-01"
+    ],
+    [
+      "2026-01-01",
+      "2026-09-01"
+    ],
+    [
+      "2026-07-01",
+      "2026-10-01"
+    ],
+    [
+      "2026-09-01",
+      "2026-10-01"
+    ]
+  ],
+  "manifestArchiveMonths": {
+    "BTCUSDT": [
+      "2020-12",
+      "2021-01",
+      "2021-02",
+      "2021-03",
+      "2021-04",
+      "2021-05",
+      "2021-06",
+      "2021-07",
+      "2021-08",
+      "2021-09",
+      "2021-10",
+      "2021-11",
+      "2021-12",
+      "2022-01",
+      "2022-02",
+      "2022-03",
+      "2022-04",
+      "2022-05",
+      "2022-06",
+      "2022-07",
+      "2022-08",
+      "2022-09",
+      "2022-10",
+      "2022-11",
+      "2022-12",
+      "2023-01",
+      "2023-02",
+      "2023-03",
+      "2023-04",
+      "2023-05",
+      "2023-06",
+      "2023-07",
+      "2023-08",
+      "2023-09",
+      "2023-10",
+      "2023-11",
+      "2023-12",
+      "2024-01",
+      "2024-02",
+      "2024-03",
+      "2024-04",
+      "2024-05",
+      "2024-06",
+      "2024-07",
+      "2024-08",
+      "2024-09",
+      "2024-10",
+      "2024-11",
+      "2024-12",
+      "2025-01",
+      "2025-02",
+      "2025-03",
+      "2025-04",
+      "2025-05",
+      "2025-06",
+      "2025-07",
+      "2025-08",
+      "2025-09",
+      "2025-10",
+      "2025-11",
+      "2025-12",
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09"
+    ],
+    "ETHUSDT": [
+      "2020-12",
+      "2021-01",
+      "2021-02",
+      "2021-03",
+      "2021-04",
+      "2021-05",
+      "2021-06",
+      "2021-07",
+      "2021-08",
+      "2021-09",
+      "2021-10",
+      "2021-11",
+      "2021-12",
+      "2022-01",
+      "2022-02",
+      "2022-03",
+      "2022-04",
+      "2022-05",
+      "2022-06",
+      "2022-07",
+      "2022-08",
+      "2022-09",
+      "2022-10",
+      "2022-11",
+      "2022-12",
+      "2023-01",
+      "2023-02",
+      "2023-03",
+      "2023-04",
+      "2023-05",
+      "2023-06",
+      "2023-07",
+      "2023-08",
+      "2023-09",
+      "2023-10",
+      "2023-11",
+      "2023-12",
+      "2024-01",
+      "2024-02",
+      "2024-03",
+      "2024-04",
+      "2024-05",
+      "2024-06",
+      "2024-07",
+      "2024-08",
+      "2024-09",
+      "2024-10",
+      "2024-11",
+      "2024-12",
+      "2025-01",
+      "2025-02",
+      "2025-03",
+      "2025-04",
+      "2025-05",
+      "2025-06",
+      "2025-07",
+      "2025-08",
+      "2025-09",
+      "2025-10",
+      "2025-11",
+      "2025-12",
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09"
+    ],
+    "BNBUSDT": [
+      "2020-12",
+      "2021-01",
+      "2021-02",
+      "2021-03",
+      "2021-04",
+      "2021-05",
+      "2021-06",
+      "2021-07",
+      "2021-08",
+      "2021-09",
+      "2021-10",
+      "2021-11",
+      "2021-12",
+      "2022-01",
+      "2022-02",
+      "2022-03",
+      "2022-04",
+      "2022-05",
+      "2022-06",
+      "2022-07",
+      "2022-08",
+      "2022-09",
+      "2022-10",
+      "2022-11",
+      "2022-12",
+      "2023-01",
+      "2023-02",
+      "2023-03",
+      "2023-04",
+      "2023-05",
+      "2023-06",
+      "2023-07",
+      "2023-08",
+      "2023-09",
+      "2023-10",
+      "2023-11",
+      "2023-12",
+      "2024-01",
+      "2024-02",
+      "2024-03",
+      "2024-04",
+      "2024-05",
+      "2024-06",
+      "2024-07",
+      "2024-08",
+      "2024-09",
+      "2024-10",
+      "2024-11",
+      "2024-12",
+      "2025-01",
+      "2025-02",
+      "2025-03",
+      "2025-04",
+      "2025-05",
+      "2025-06",
+      "2025-07",
+      "2025-08",
+      "2025-09",
+      "2025-10",
+      "2025-11",
+      "2025-12",
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09"
+    ],
+    "SOLUSDT": [
+      "2020-12",
+      "2021-01",
+      "2021-02",
+      "2021-03",
+      "2021-04",
+      "2021-05",
+      "2021-06",
+      "2021-07",
+      "2021-08",
+      "2021-09",
+      "2021-10",
+      "2021-11",
+      "2021-12",
+      "2022-01",
+      "2022-02",
+      "2022-03",
+      "2022-04",
+      "2022-05",
+      "2022-06",
+      "2022-07",
+      "2022-08",
+      "2022-09",
+      "2022-10",
+      "2022-11",
+      "2022-12",
+      "2023-01",
+      "2023-02",
+      "2023-03",
+      "2023-04",
+      "2023-05",
+      "2023-06",
+      "2023-07",
+      "2023-08",
+      "2023-09",
+      "2023-10",
+      "2023-11",
+      "2023-12",
+      "2024-01",
+      "2024-02",
+      "2024-03",
+      "2024-04",
+      "2024-05",
+      "2024-06",
+      "2024-07",
+      "2024-08",
+      "2024-09",
+      "2024-10",
+      "2024-11",
+      "2024-12",
+      "2025-01",
+      "2025-02",
+      "2025-03",
+      "2025-04",
+      "2025-05",
+      "2025-06",
+      "2025-07",
+      "2025-08",
+      "2025-09",
+      "2025-10",
+      "2025-11",
+      "2025-12",
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09"
+    ],
+    "XRPUSDT": [
+      "2020-12",
+      "2021-01",
+      "2021-02",
+      "2021-03",
+      "2021-04",
+      "2021-05",
+      "2021-06",
+      "2021-07",
+      "2021-08",
+      "2021-09",
+      "2021-10",
+      "2021-11",
+      "2021-12",
+      "2022-01",
+      "2022-02",
+      "2022-03",
+      "2022-04",
+      "2022-05",
+      "2022-06",
+      "2022-07",
+      "2022-08",
+      "2022-09",
+      "2022-10",
+      "2022-11",
+      "2022-12",
+      "2023-01",
+      "2023-02",
+      "2023-03",
+      "2023-04",
+      "2023-05",
+      "2023-06",
+      "2023-07",
+      "2023-08",
+      "2023-09",
+      "2023-10",
+      "2023-11",
+      "2023-12",
+      "2024-01",
+      "2024-02",
+      "2024-03",
+      "2024-04",
+      "2024-05",
+      "2024-06",
+      "2024-07",
+      "2024-08",
+      "2024-09",
+      "2024-10",
+      "2024-11",
+      "2024-12",
+      "2025-01",
+      "2025-02",
+      "2025-03",
+      "2025-04",
+      "2025-05",
+      "2025-06",
+      "2025-07",
+      "2025-08",
+      "2025-09",
+      "2025-10",
+      "2025-11",
+      "2025-12",
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09"
+    ],
+    "DOGEUSDT": [
+      "2020-12",
+      "2021-01",
+      "2021-02",
+      "2021-03",
+      "2021-04",
+      "2021-05",
+      "2021-06",
+      "2021-07",
+      "2021-08",
+      "2021-09",
+      "2021-10",
+      "2021-11",
+      "2021-12",
+      "2022-01",
+      "2022-02",
+      "2022-03",
+      "2022-04",
+      "2022-05",
+      "2022-06",
+      "2022-07",
+      "2022-08",
+      "2022-09",
+      "2022-10",
+      "2022-11",
+      "2022-12",
+      "2023-01",
+      "2023-02",
+      "2023-03",
+      "2023-04",
+      "2023-05",
+      "2023-06",
+      "2023-07",
+      "2023-08",
+      "2023-09",
+      "2023-10",
+      "2023-11",
+      "2023-12",
+      "2024-01",
+      "2024-02",
+      "2024-03",
+      "2024-04",
+      "2024-05",
+      "2024-06",
+      "2024-07",
+      "2024-08",
+      "2024-09",
+      "2024-10",
+      "2024-11",
+      "2024-12",
+      "2025-01",
+      "2025-02",
+      "2025-03",
+      "2025-04",
+      "2025-05",
+      "2025-06",
+      "2025-07",
+      "2025-08",
+      "2025-09",
+      "2025-10",
+      "2025-11",
+      "2025-12",
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09"
+    ]
+  },
+  "cacheReceiptCoverage": [
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "SOLUSDT",
+      "type": "klines",
+      "receipts": 72,
+      "first": "SOLUSDT-1m-2020-12",
+      "last": "SOLUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "SOLUSDT",
+      "type": "markPriceKlines",
+      "receipts": 73,
+      "first": "SOLUSDT-1m-2020-12",
+      "last": "SOLUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "SOLUSDT",
+      "type": "fundingRate",
+      "receipts": 69,
+      "first": "SOLUSDT-fundingRate-2021-01",
+      "last": "SOLUSDT-fundingRate-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "DOGEUSDT",
+      "type": "klines",
+      "receipts": 70,
+      "first": "DOGEUSDT-1m-2020-12",
+      "last": "DOGEUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "DOGEUSDT",
+      "type": "markPriceKlines",
+      "receipts": 73,
+      "first": "DOGEUSDT-1m-2020-12",
+      "last": "DOGEUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "DOGEUSDT",
+      "type": "fundingRate",
+      "receipts": 69,
+      "first": "DOGEUSDT-fundingRate-2021-01",
+      "last": "DOGEUSDT-fundingRate-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "ETHUSDT",
+      "type": "klines",
+      "receipts": 70,
+      "first": "ETHUSDT-1m-2020-12",
+      "last": "ETHUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "ETHUSDT",
+      "type": "markPriceKlines",
+      "receipts": 73,
+      "first": "ETHUSDT-1m-2020-12",
+      "last": "ETHUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "ETHUSDT",
+      "type": "fundingRate",
+      "receipts": 69,
+      "first": "ETHUSDT-fundingRate-2021-01",
+      "last": "ETHUSDT-fundingRate-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "XRPUSDT",
+      "type": "klines",
+      "receipts": 72,
+      "first": "XRPUSDT-1m-2020-12",
+      "last": "XRPUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "XRPUSDT",
+      "type": "markPriceKlines",
+      "receipts": 73,
+      "first": "XRPUSDT-1m-2020-12",
+      "last": "XRPUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "XRPUSDT",
+      "type": "fundingRate",
+      "receipts": 69,
+      "first": "XRPUSDT-fundingRate-2021-01",
+      "last": "XRPUSDT-fundingRate-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "BNBUSDT",
+      "type": "klines",
+      "receipts": 70,
+      "first": "BNBUSDT-1m-2020-12",
+      "last": "BNBUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "BNBUSDT",
+      "type": "markPriceKlines",
+      "receipts": 73,
+      "first": "BNBUSDT-1m-2020-12",
+      "last": "BNBUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "BNBUSDT",
+      "type": "fundingRate",
+      "receipts": 69,
+      "first": "BNBUSDT-fundingRate-2021-01",
+      "last": "BNBUSDT-fundingRate-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "BTCUSDT",
+      "type": "klines",
+      "receipts": 70,
+      "first": "BTCUSDT-1m-2020-12",
+      "last": "BTCUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "BTCUSDT",
+      "type": "markPriceKlines",
+      "receipts": 74,
+      "first": "BTCUSDT-1m-2020-12",
+      "last": "BTCUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-details-20261003",
+      "symbol": "BTCUSDT",
+      "type": "fundingRate",
+      "receipts": 69,
+      "first": "BTCUSDT-fundingRate-2021-01",
+      "last": "BTCUSDT-fundingRate-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "SOLUSDT",
+      "type": "klines",
+      "receipts": 72,
+      "first": "SOLUSDT-1m-2020-12",
+      "last": "SOLUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "SOLUSDT",
+      "type": "markPriceKlines",
+      "receipts": 73,
+      "first": "SOLUSDT-1m-2020-12",
+      "last": "SOLUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "SOLUSDT",
+      "type": "fundingRate",
+      "receipts": 69,
+      "first": "SOLUSDT-fundingRate-2021-01",
+      "last": "SOLUSDT-fundingRate-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "DOGEUSDT",
+      "type": "klines",
+      "receipts": 70,
+      "first": "DOGEUSDT-1m-2020-12",
+      "last": "DOGEUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "DOGEUSDT",
+      "type": "markPriceKlines",
+      "receipts": 73,
+      "first": "DOGEUSDT-1m-2020-12",
+      "last": "DOGEUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "DOGEUSDT",
+      "type": "fundingRate",
+      "receipts": 69,
+      "first": "DOGEUSDT-fundingRate-2021-01",
+      "last": "DOGEUSDT-fundingRate-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "ETHUSDT",
+      "type": "klines",
+      "receipts": 70,
+      "first": "ETHUSDT-1m-2020-12",
+      "last": "ETHUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "ETHUSDT",
+      "type": "markPriceKlines",
+      "receipts": 73,
+      "first": "ETHUSDT-1m-2020-12",
+      "last": "ETHUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "ETHUSDT",
+      "type": "fundingRate",
+      "receipts": 69,
+      "first": "ETHUSDT-fundingRate-2021-01",
+      "last": "ETHUSDT-fundingRate-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "XRPUSDT",
+      "type": "klines",
+      "receipts": 72,
+      "first": "XRPUSDT-1m-2020-12",
+      "last": "XRPUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "XRPUSDT",
+      "type": "markPriceKlines",
+      "receipts": 73,
+      "first": "XRPUSDT-1m-2020-12",
+      "last": "XRPUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "XRPUSDT",
+      "type": "fundingRate",
+      "receipts": 69,
+      "first": "XRPUSDT-fundingRate-2021-01",
+      "last": "XRPUSDT-fundingRate-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "BNBUSDT",
+      "type": "klines",
+      "receipts": 70,
+      "first": "BNBUSDT-1m-2020-12",
+      "last": "BNBUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "BNBUSDT",
+      "type": "markPriceKlines",
+      "receipts": 73,
+      "first": "BNBUSDT-1m-2020-12",
+      "last": "BNBUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "BNBUSDT",
+      "type": "fundingRate",
+      "receipts": 69,
+      "first": "BNBUSDT-fundingRate-2021-01",
+      "last": "BNBUSDT-fundingRate-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "BTCUSDT",
+      "type": "klines",
+      "receipts": 70,
+      "first": "BTCUSDT-1m-2020-12",
+      "last": "BTCUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "BTCUSDT",
+      "type": "markPriceKlines",
+      "receipts": 74,
+      "first": "BTCUSDT-1m-2020-12",
+      "last": "BTCUSDT-1m-2026-09"
+    },
+    {
+      "cache": "/home/zs/.cache/bcr-trend-research",
+      "symbol": "BTCUSDT",
+      "type": "fundingRate",
+      "receipts": 69,
+      "first": "BTCUSDT-fundingRate-2021-01",
+      "last": "BTCUSDT-fundingRate-2026-09"
+    }
+  ],
+  "createdAt": "2026-10-03T09:05:16.303239+00:00",
+  "candidateUniverse": [
+    "LTCUSDT",
+    "LINKUSDT",
+    "ADAUSDT",
+    "BCHUSDT",
+    "ETCUSDT",
+    "TRXUSDT"
+  ],
+  "priorProjectConsumptionFound": false,
+  "selectionBasis": "Purposeful sample of six earlier-listed USDT perpetual contracts not present in the visible project plans, manifests or cache receipts. Selected for an intended common long data window; not selected by observed returns, formal market-cap/liquidity ranking, or an exhaustive exchange-universe sampling rule.",
+  "limitations": [
+    "Negative evidence is limited to the listed workspace plans, manifests and two cache receipt trees; it cannot establish absence of outside human knowledge or unrecorded work.",
+    "This is an asset holdout within a previously studied market period, not a chronological future holdout. Crypto assets share market regimes and correlated risks.",
+    "The purposeful current-survivor universe retains availability and survivorship bias; it is not representative of all originally listed futures.",
+    "No new-symbol ZIP/CSV prices or strategy returns were inspected for this preflight. Official CHECKSUM availability alone does not establish minute completeness."
+  ]
+}

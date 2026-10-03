@@ -1,0 +1,2464 @@
+{
+  "version": "trend-heldout-account-audit-1",
+  "status": "passed",
+  "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+  "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+  "runSha256": "45116a56be54b0b0823369adff36eb2a1e1ce15d1a64ba6705157de97f664376",
+  "selectionSha256": "982ddf7bc6f9c62e5811d7fef62e69d8fa3bedb53c903c9f9df87af0f9605fb1",
+  "scriptSha256": "35ef415ef009180278391d73795128849d667145c58fd3598c8a93446e95158c",
+  "dependenciesSha256": "12a89cec0a96d2ee121ec04067003ec55296d8bbfd9be51c5bc6678200420e8a",
+  "riskAuditor": {
+    "path": "research/trend/details/risk-trigger-audit.py",
+    "sha256": "fa9fbd89226711486f79e4b48d936aa9f7b2596bd6364056ac9bd082a15f1dbd"
+  },
+  "counts": {
+    "trades": 1950,
+    "side:long": 1950,
+    "exit:initial": 1642,
+    "exit:channel-exit": 280,
+    "recordedTrades": 1950,
+    "minutes": 26265600,
+    "accounts": 24,
+    "exit:daily-loss": 24,
+    "dailyLossExits": 24,
+    "profitableDailyLossExits": 24,
+    "batches": 6,
+    "exit:end-range": 4
+  },
+  "accounts": [
+    {
+      "window": "heldout-symbols",
+      "symbol": "LTCUSDT",
+      "candidate": "m30-n320-no-day-guard",
+      "ledgerCounts": {
+        "trades": 96,
+        "side:long": 96,
+        "exit:initial": 86,
+        "exit:channel-exit": 10
+      },
+      "equityCounts": {
+        "recordedTrades": 96,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LTCUSDT",
+      "candidate": "m30-n320-x160",
+      "ledgerCounts": {
+        "trades": 96,
+        "side:long": 96,
+        "exit:initial": 86,
+        "exit:channel-exit": 8,
+        "exit:daily-loss": 2
+      },
+      "equityCounts": {
+        "dailyLossExits": 2,
+        "profitableDailyLossExits": 2,
+        "recordedTrades": 96,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LTCUSDT",
+      "candidate": "m30-n320-no-day-guard-stress",
+      "ledgerCounts": {
+        "trades": 96,
+        "side:long": 96,
+        "exit:initial": 86,
+        "exit:channel-exit": 10
+      },
+      "equityCounts": {
+        "recordedTrades": 96,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LTCUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "ledgerCounts": {
+        "trades": 96,
+        "side:long": 96,
+        "exit:initial": 86,
+        "exit:channel-exit": 9,
+        "exit:daily-loss": 1
+      },
+      "equityCounts": {
+        "dailyLossExits": 1,
+        "profitableDailyLossExits": 1,
+        "recordedTrades": 96,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LINKUSDT",
+      "candidate": "m30-n320-no-day-guard",
+      "ledgerCounts": {
+        "trades": 74,
+        "side:long": 74,
+        "exit:initial": 62,
+        "exit:channel-exit": 11,
+        "exit:end-range": 1
+      },
+      "equityCounts": {
+        "recordedTrades": 74,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LINKUSDT",
+      "candidate": "m30-n320-x160",
+      "ledgerCounts": {
+        "trades": 77,
+        "side:long": 77,
+        "exit:initial": 65,
+        "exit:channel-exit": 7,
+        "exit:daily-loss": 4,
+        "exit:end-range": 1
+      },
+      "equityCounts": {
+        "dailyLossExits": 4,
+        "profitableDailyLossExits": 4,
+        "recordedTrades": 77,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LINKUSDT",
+      "candidate": "m30-n320-no-day-guard-stress",
+      "ledgerCounts": {
+        "trades": 74,
+        "side:long": 74,
+        "exit:initial": 62,
+        "exit:channel-exit": 11,
+        "exit:end-range": 1
+      },
+      "equityCounts": {
+        "recordedTrades": 74,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LINKUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "ledgerCounts": {
+        "trades": 77,
+        "side:long": 77,
+        "exit:initial": 65,
+        "exit:channel-exit": 7,
+        "exit:daily-loss": 4,
+        "exit:end-range": 1
+      },
+      "equityCounts": {
+        "dailyLossExits": 4,
+        "profitableDailyLossExits": 4,
+        "recordedTrades": 77,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ADAUSDT",
+      "candidate": "m30-n320-no-day-guard",
+      "ledgerCounts": {
+        "trades": 64,
+        "side:long": 64,
+        "exit:initial": 48,
+        "exit:channel-exit": 16
+      },
+      "equityCounts": {
+        "recordedTrades": 64,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ADAUSDT",
+      "candidate": "m30-n320-x160",
+      "ledgerCounts": {
+        "trades": 65,
+        "side:long": 65,
+        "exit:initial": 48,
+        "exit:channel-exit": 15,
+        "exit:daily-loss": 2
+      },
+      "equityCounts": {
+        "dailyLossExits": 2,
+        "profitableDailyLossExits": 2,
+        "recordedTrades": 65,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ADAUSDT",
+      "candidate": "m30-n320-no-day-guard-stress",
+      "ledgerCounts": {
+        "trades": 64,
+        "side:long": 64,
+        "exit:initial": 48,
+        "exit:channel-exit": 16
+      },
+      "equityCounts": {
+        "recordedTrades": 64,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ADAUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "ledgerCounts": {
+        "trades": 65,
+        "side:long": 65,
+        "exit:initial": 48,
+        "exit:channel-exit": 15,
+        "exit:daily-loss": 2
+      },
+      "equityCounts": {
+        "dailyLossExits": 2,
+        "profitableDailyLossExits": 2,
+        "recordedTrades": 65,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "BCHUSDT",
+      "candidate": "m30-n320-no-day-guard",
+      "ledgerCounts": {
+        "trades": 71,
+        "side:long": 71,
+        "exit:initial": 57,
+        "exit:channel-exit": 14
+      },
+      "equityCounts": {
+        "recordedTrades": 71,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "BCHUSDT",
+      "candidate": "m30-n320-x160",
+      "ledgerCounts": {
+        "trades": 73,
+        "side:long": 73,
+        "exit:initial": 59,
+        "exit:channel-exit": 13,
+        "exit:daily-loss": 1
+      },
+      "equityCounts": {
+        "dailyLossExits": 1,
+        "profitableDailyLossExits": 1,
+        "recordedTrades": 73,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "BCHUSDT",
+      "candidate": "m30-n320-no-day-guard-stress",
+      "ledgerCounts": {
+        "trades": 71,
+        "side:long": 71,
+        "exit:initial": 57,
+        "exit:channel-exit": 14
+      },
+      "equityCounts": {
+        "recordedTrades": 71,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "BCHUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "ledgerCounts": {
+        "trades": 73,
+        "side:long": 73,
+        "exit:initial": 59,
+        "exit:channel-exit": 13,
+        "exit:daily-loss": 1
+      },
+      "equityCounts": {
+        "dailyLossExits": 1,
+        "profitableDailyLossExits": 1,
+        "recordedTrades": 73,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ETCUSDT",
+      "candidate": "m30-n320-no-day-guard",
+      "ledgerCounts": {
+        "trades": 76,
+        "side:long": 76,
+        "exit:initial": 66,
+        "exit:channel-exit": 10
+      },
+      "equityCounts": {
+        "recordedTrades": 76,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ETCUSDT",
+      "candidate": "m30-n320-x160",
+      "ledgerCounts": {
+        "trades": 77,
+        "side:long": 77,
+        "exit:initial": 66,
+        "exit:channel-exit": 9,
+        "exit:daily-loss": 2
+      },
+      "equityCounts": {
+        "dailyLossExits": 2,
+        "profitableDailyLossExits": 2,
+        "recordedTrades": 77,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ETCUSDT",
+      "candidate": "m30-n320-no-day-guard-stress",
+      "ledgerCounts": {
+        "trades": 76,
+        "side:long": 76,
+        "exit:initial": 66,
+        "exit:channel-exit": 10
+      },
+      "equityCounts": {
+        "recordedTrades": 76,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ETCUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "ledgerCounts": {
+        "trades": 77,
+        "side:long": 77,
+        "exit:initial": 66,
+        "exit:channel-exit": 9,
+        "exit:daily-loss": 2
+      },
+      "equityCounts": {
+        "dailyLossExits": 2,
+        "profitableDailyLossExits": 2,
+        "recordedTrades": 77,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "TRXUSDT",
+      "candidate": "m30-n320-no-day-guard",
+      "ledgerCounts": {
+        "trades": 102,
+        "side:long": 102,
+        "exit:initial": 88,
+        "exit:channel-exit": 14
+      },
+      "equityCounts": {
+        "recordedTrades": 102,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "TRXUSDT",
+      "candidate": "m30-n320-x160",
+      "ledgerCounts": {
+        "trades": 102,
+        "side:long": 102,
+        "exit:initial": 88,
+        "exit:channel-exit": 12,
+        "exit:daily-loss": 2
+      },
+      "equityCounts": {
+        "dailyLossExits": 2,
+        "profitableDailyLossExits": 2,
+        "recordedTrades": 102,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "TRXUSDT",
+      "candidate": "m30-n320-no-day-guard-stress",
+      "ledgerCounts": {
+        "trades": 104,
+        "side:long": 104,
+        "exit:initial": 90,
+        "exit:channel-exit": 14
+      },
+      "equityCounts": {
+        "recordedTrades": 104,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "TRXUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "ledgerCounts": {
+        "trades": 104,
+        "side:long": 104,
+        "exit:initial": 90,
+        "exit:channel-exit": 13,
+        "exit:daily-loss": 1
+      },
+      "equityCounts": {
+        "dailyLossExits": 1,
+        "profitableDailyLossExits": 1,
+        "recordedTrades": 104,
+        "minutes": 1094400
+      },
+      "status": "passed"
+    }
+  ],
+  "dailyLossTriggers": [
+    {
+      "window": "heldout-symbols",
+      "symbol": "LTCUSDT",
+      "candidate": "m30-n320-x160",
+      "tradeId": 55,
+      "side": "long",
+      "entryTime": 1754290800000,
+      "triggerTime": 1755191519999,
+      "exitTime": 1755191520000,
+      "dayStartTime": 1755129600000,
+      "dayStartCashBeforeFunding": 7902.202188738665,
+      "dayStartUnrealizedAtMarkOpen": 451.9327800000001,
+      "dayStartEquity": 8354.134968738665,
+      "lossThreshold": 8103.510919676504,
+      "triggerEquityAtMarkClose": 8103.445247784558,
+      "dayReturnAtTrigger": -0.030007861004423875,
+      "netPnl": 190.21827465846746,
+      "funding": 8.219146746532603
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LTCUSDT",
+      "candidate": "m30-n320-x160",
+      "tradeId": 92,
+      "side": "long",
+      "entryTime": 1787151600000,
+      "triggerTime": 1787375519999,
+      "exitTime": 1787375520000,
+      "dayStartTime": 1787356800000,
+      "dayStartCashBeforeFunding": 6950.415787920003,
+      "dayStartUnrealizedAtMarkOpen": 731.0631286962898,
+      "dayStartEquity": 7681.478916616293,
+      "lossThreshold": 7451.034549117804,
+      "triggerEquityAtMarkClose": 7437.540609720133,
+      "dayReturnAtTrigger": -0.03175668507902574,
+      "netPnl": 483.79438429701355,
+      "funding": 3.087333882986847
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LTCUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "tradeId": 55,
+      "side": "long",
+      "entryTime": 1754290800000,
+      "triggerTime": 1755207419999,
+      "exitTime": 1755207420000,
+      "dayStartTime": 1755129600000,
+      "dayStartCashBeforeFunding": 7887.9521452708,
+      "dayStartUnrealizedAtMarkOpen": 417.6888000000002,
+      "dayStartEquity": 8305.640945270801,
+      "lossThreshold": 8056.471716912677,
+      "triggerEquityAtMarkClose": 8053.875154265846,
+      "dayReturnAtTrigger": -0.030312626402217657,
+      "netPnl": 153.18356145263058,
+      "funding": 7.60437624736942
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LINKUSDT",
+      "candidate": "m30-n320-x160",
+      "tradeId": 14,
+      "side": "long",
+      "entryTime": 1732318200000,
+      "triggerTime": 1733777399999,
+      "exitTime": 1733777400000,
+      "dayStartTime": 1733702400000,
+      "dayStartCashBeforeFunding": 9642.32251577951,
+      "dayStartUnrealizedAtMarkOpen": 881.5518365705998,
+      "dayStartEquity": 10523.874352350109,
+      "lossThreshold": 10208.158121779605,
+      "triggerEquityAtMarkClose": 10184.984146875173,
+      "dayReturnAtTrigger": -0.03220203834904756,
+      "netPnl": 509.5870467386261,
+      "funding": 29.90229308137384
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LINKUSDT",
+      "candidate": "m30-n320-x160",
+      "tradeId": 36,
+      "side": "long",
+      "entryTime": 1752091200000,
+      "triggerTime": 1753278239999,
+      "exitTime": 1753278240000,
+      "dayStartTime": 1753228800000,
+      "dayStartCashBeforeFunding": 9687.607617539845,
+      "dayStartUnrealizedAtMarkOpen": 1179.6643,
+      "dayStartEquity": 10867.271917539845,
+      "lossThreshold": 10541.25376001365,
+      "triggerEquityAtMarkClose": 10530.045170166179,
+      "dayReturnAtTrigger": -0.031031407876100037,
+      "netPnl": 820.4745463631099,
+      "funding": 15.204206236890165
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LINKUSDT",
+      "candidate": "m30-n320-x160",
+      "tradeId": 37,
+      "side": "long",
+      "entryTime": 1754571600000,
+      "triggerTime": 1755174899999,
+      "exitTime": 1755174900000,
+      "dayStartTime": 1755129600000,
+      "dayStartCashBeforeFunding": 10514.628678427187,
+      "dayStartUnrealizedAtMarkOpen": 1248.7447499999998,
+      "dayStartEquity": 11763.373428427187,
+      "lossThreshold": 11410.47222557437,
+      "triggerEquityAtMarkClose": 11339.520125394532,
+      "dayReturnAtTrigger": -0.0360316116470788,
+      "netPnl": 810.4239433066539,
+      "funding": 8.56979251334595
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LINKUSDT",
+      "candidate": "m30-n320-x160",
+      "tradeId": 72,
+      "side": "long",
+      "entryTime": 1786411800000,
+      "triggerTime": 1787375519999,
+      "exitTime": 1787375520000,
+      "dayStartTime": 1787356800000,
+      "dayStartCashBeforeFunding": 9867.060576917804,
+      "dayStartUnrealizedAtMarkOpen": 1686.347462202,
+      "dayStartEquity": 11553.408039119804,
+      "lossThreshold": 11206.80579794621,
+      "triggerEquityAtMarkClose": 11176.629636367185,
+      "dayReturnAtTrigger": -0.03261188399793802,
+      "netPnl": 1291.2649812022955,
+      "funding": 11.180941157704558
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LINKUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "tradeId": 14,
+      "side": "long",
+      "entryTime": 1732318200000,
+      "triggerTime": 1733777399999,
+      "exitTime": 1733777400000,
+      "dayStartTime": 1733702400000,
+      "dayStartCashBeforeFunding": 9623.984659501302,
+      "dayStartUnrealizedAtMarkOpen": 849.8732408891999,
+      "dayStartEquity": 10473.857900390502,
+      "lossThreshold": 10159.642163378787,
+      "triggerEquityAtMarkClose": 10147.046498473179,
+      "dayReturnAtTrigger": -0.031202581228941262,
+      "netPnl": 489.16412792639557,
+      "funding": 28.83650859360463
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LINKUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "tradeId": 36,
+      "side": "long",
+      "entryTime": 1752091200000,
+      "triggerTime": 1753278539999,
+      "exitTime": 1753278540000,
+      "dayStartTime": 1753228800000,
+      "dayStartCashBeforeFunding": 9620.987804923676,
+      "dayStartUnrealizedAtMarkOpen": 1086.44875,
+      "dayStartEquity": 10707.436554923675,
+      "lossThreshold": 10386.213458275965,
+      "triggerEquityAtMarkClose": 10382.798997382966,
+      "dayReturnAtTrigger": -0.03031888686666362,
+      "netPnl": 739.4596937603987,
+      "funding": 14.010604999601592
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LINKUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "tradeId": 37,
+      "side": "long",
+      "entryTime": 1754571600000,
+      "triggerTime": 1755174899999,
+      "exitTime": 1755174900000,
+      "dayStartTime": 1755129600000,
+      "dayStartCashBeforeFunding": 10366.385951828497,
+      "dayStartUnrealizedAtMarkOpen": 1142.5207499999997,
+      "dayStartEquity": 11508.906701828497,
+      "lossThreshold": 11163.639500773641,
+      "triggerEquityAtMarkClose": 11120.862916572192,
+      "dayReturnAtTrigger": -0.03371682430918077,
+      "netPnl": 736.9432828959264,
+      "funding": 7.845768104073751
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LINKUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "tradeId": 72,
+      "side": "long",
+      "entryTime": 1786411800000,
+      "triggerTime": 1787375519999,
+      "exitTime": 1787375520000,
+      "dayStartTime": 1787356800000,
+      "dayStartCashBeforeFunding": 9646.5047243532,
+      "dayStartUnrealizedAtMarkOpen": 1498.7475600964997,
+      "dayStartEquity": 11145.2522844497,
+      "lossThreshold": 10810.894715916209,
+      "triggerEquityAtMarkClose": 10810.201030898892,
+      "dayReturnAtTrigger": -0.03006224040511718,
+      "netPnl": 1142.4489303924447,
+      "funding": 9.94268334755475
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ADAUSDT",
+      "candidate": "m30-n320-x160",
+      "tradeId": 9,
+      "side": "long",
+      "entryTime": 1730943000000,
+      "triggerTime": 1731408659999,
+      "exitTime": 1731408660000,
+      "dayStartTime": 1731369600000,
+      "dayStartCashBeforeFunding": 9846.353202175835,
+      "dayStartUnrealizedAtMarkOpen": 1775.5863073199996,
+      "dayStartEquity": 11621.939509495834,
+      "lossThreshold": 11273.281324210959,
+      "triggerEquityAtMarkClose": 11260.63419523865,
+      "dayReturnAtTrigger": -0.0310882115641693,
+      "netPnl": 1401.6659836164301,
+      "funding": 9.632453433570099
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ADAUSDT",
+      "candidate": "m30-n320-x160",
+      "tradeId": 31,
+      "side": "long",
+      "entryTime": 1752091200000,
+      "triggerTime": 1753278119999,
+      "exitTime": 1753278120000,
+      "dayStartTime": 1753228800000,
+      "dayStartCashBeforeFunding": 11118.725771337988,
+      "dayStartUnrealizedAtMarkOpen": 1338.62807712,
+      "dayStartEquity": 12457.353848457988,
+      "lossThreshold": 12083.633233004248,
+      "triggerEquityAtMarkClose": 12073.479117708457,
+      "dayReturnAtTrigger": -0.03081511012846827,
+      "netPnl": 934.5118827937458,
+      "funding": 15.107069906254244
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ADAUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "tradeId": 9,
+      "side": "long",
+      "entryTime": 1730943000000,
+      "triggerTime": 1731419279999,
+      "exitTime": 1731419280000,
+      "dayStartTime": 1731369600000,
+      "dayStartCashBeforeFunding": 9826.995924960438,
+      "dayStartUnrealizedAtMarkOpen": 1657.1193645599997,
+      "dayStartEquity": 11484.115289520438,
+      "lossThreshold": 11139.591830834825,
+      "triggerEquityAtMarkClose": 11138.30392201091,
+      "dayReturnAtTrigger": -0.030112146977929632,
+      "netPnl": 1297.3584808307091,
+      "funding": 8.993464969291244
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ADAUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "tradeId": 31,
+      "side": "long",
+      "entryTime": 1752091200000,
+      "triggerTime": 1753278239999,
+      "exitTime": 1753278240000,
+      "dayStartTime": 1753228800000,
+      "dayStartCashBeforeFunding": 10952.451785848749,
+      "dayStartUnrealizedAtMarkOpen": 1242.3895563199999,
+      "dayStartEquity": 12194.84134216875,
+      "lossThreshold": 11828.996101903685,
+      "triggerEquityAtMarkClose": 11814.058138980097,
+      "dayReturnAtTrigger": -0.031224941145559293,
+      "netPnl": 837.1267860511288,
+      "funding": 14.025949348871286
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "BCHUSDT",
+      "candidate": "m30-n320-x160",
+      "tradeId": 9,
+      "side": "long",
+      "entryTime": 1731191400000,
+      "triggerTime": 1731408599999,
+      "exitTime": 1731408600000,
+      "dayStartTime": 1731369600000,
+      "dayStartCashBeforeFunding": 9896.043314186061,
+      "dayStartUnrealizedAtMarkOpen": 623.5959999999998,
+      "dayStartEquity": 10519.63931418606,
+      "lossThreshold": 10204.050134760479,
+      "triggerEquityAtMarkClose": 10180.097979211409,
+      "dayReturnAtTrigger": -0.03227689893481145,
+      "netPnl": 277.19552145375263,
+      "funding": 2.282685321247265
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "BCHUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "tradeId": 9,
+      "side": "long",
+      "entryTime": 1731191400000,
+      "triggerTime": 1731408599999,
+      "exitTime": 1731408600000,
+      "dayStartTime": 1731369600000,
+      "dayStartCashBeforeFunding": 9870.341320860134,
+      "dayStartUnrealizedAtMarkOpen": 581.7070399999999,
+      "dayStartEquity": 10452.048360860133,
+      "lossThreshold": 10138.48691003433,
+      "triggerEquityAtMarkClose": 10135.018826131569,
+      "dayReturnAtTrigger": -0.03033180901800525,
+      "netPnl": 254.89610420558373,
+      "funding": 2.1313418744164583
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ETCUSDT",
+      "candidate": "m30-n320-x160",
+      "tradeId": 12,
+      "side": "long",
+      "entryTime": 1730934000000,
+      "triggerTime": 1731408599999,
+      "exitTime": 1731408600000,
+      "dayStartTime": 1731369600000,
+      "dayStartCashBeforeFunding": 9503.994009444259,
+      "dayStartUnrealizedAtMarkOpen": 755.0673245265997,
+      "dayStartEquity": 10259.061333970858,
+      "lossThreshold": 9951.289493951732,
+      "triggerEquityAtMarkClose": 9903.134350434055,
+      "dayReturnAtTrigger": -0.034693913209995264,
+      "netPnl": 384.7296943145956,
+      "funding": 9.494276055403988
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ETCUSDT",
+      "candidate": "m30-n320-x160",
+      "tradeId": 70,
+      "side": "long",
+      "entryTime": 1787173200000,
+      "triggerTime": 1787375519999,
+      "exitTime": 1787375520000,
+      "dayStartTime": 1787356800000,
+      "dayStartCashBeforeFunding": 9005.540220378554,
+      "dayStartUnrealizedAtMarkOpen": 721.4427419920004,
+      "dayStartEquity": 9726.982962370555,
+      "lossThreshold": 9435.173473499439,
+      "triggerEquityAtMarkClose": 9349.697623836355,
+      "dayReturnAtTrigger": -0.0387874986513036,
+      "netPnl": 423.4161085385993,
+      "funding": 1.6021424614008382
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ETCUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "tradeId": 12,
+      "side": "long",
+      "entryTime": 1730934000000,
+      "triggerTime": 1731408599999,
+      "exitTime": 1731408600000,
+      "dayStartTime": 1731369600000,
+      "dayStartCashBeforeFunding": 9498.768480176444,
+      "dayStartUnrealizedAtMarkOpen": 698.9864168637,
+      "dayStartEquity": 10197.754897040144,
+      "lossThreshold": 9891.82225012894,
+      "triggerEquityAtMarkClose": 9867.985218494026,
+      "dayReturnAtTrigger": -0.03233747838377954,
+      "netPnl": 352.1899643829983,
+      "funding": 8.79653554700195
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ETCUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "tradeId": 70,
+      "side": "long",
+      "entryTime": 1787173200000,
+      "triggerTime": 1787375519999,
+      "exitTime": 1787375520000,
+      "dayStartTime": 1787356800000,
+      "dayStartCashBeforeFunding": 8830.364124955457,
+      "dayStartUnrealizedAtMarkOpen": 665.0999901226002,
+      "dayStartEquity": 9495.464115078057,
+      "lossThreshold": 9210.600191625716,
+      "triggerEquityAtMarkClose": 9147.458715355544,
+      "dayReturnAtTrigger": -0.03664964613682309,
+      "netPnl": 387.00842799981893,
+      "funding": 1.4778051801810703
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "TRXUSDT",
+      "candidate": "m30-n320-x160",
+      "tradeId": 17,
+      "side": "long",
+      "entryTime": 1733171400000,
+      "triggerTime": 1733273579999,
+      "exitTime": 1733273580000,
+      "dayStartTime": 1733270400000,
+      "dayStartCashBeforeFunding": 9621.282044128131,
+      "dayStartUnrealizedAtMarkOpen": 2239.49228734,
+      "dayStartEquity": 11860.774331468132,
+      "lossThreshold": 11504.951101524088,
+      "triggerEquityAtMarkClose": 11482.004766840571,
+      "dayReturnAtTrigger": -0.031934640525335456,
+      "netPnl": 1862.360326378143,
+      "funding": 4.713553061857024
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "TRXUSDT",
+      "candidate": "m30-n320-x160",
+      "tradeId": 34,
+      "side": "long",
+      "entryTime": 1746678600000,
+      "triggerTime": 1747115519999,
+      "exitTime": 1747115520000,
+      "dayStartTime": 1747094400000,
+      "dayStartCashBeforeFunding": 10717.038180906242,
+      "dayStartUnrealizedAtMarkOpen": 660.4050047399991,
+      "dayStartEquity": 11377.443185646242,
+      "lossThreshold": 11036.119890076854,
+      "triggerEquityAtMarkClose": 11033.732100311769,
+      "dayReturnAtTrigger": -0.030209870506591296,
+      "netPnl": 295.03677415927007,
+      "funding": 12.32810535073
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "TRXUSDT",
+      "candidate": "m30-n320-x160-stress",
+      "tradeId": 17,
+      "side": "long",
+      "entryTime": 1733171400000,
+      "triggerTime": 1733273579999,
+      "exitTime": 1733273580000,
+      "dayStartTime": 1733270400000,
+      "dayStartCashBeforeFunding": 9557.565629968662,
+      "dayStartUnrealizedAtMarkOpen": 2109.5263107299998,
+      "dayStartEquity": 11667.091940698661,
+      "lossThreshold": 11317.0791824777,
+      "triggerEquityAtMarkClose": 11310.238002169439,
+      "dayReturnAtTrigger": -0.03058636550933469,
+      "netPnl": 1750.454363555853,
+      "funding": 4.440826644147328
+    }
+  ],
+  "provenance": [
+    {
+      "window": "heldout-symbols",
+      "symbol": "LTCUSDT",
+      "receipt": {
+        "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "f3feea0cf385ee89f3b0dcdf460beca3bf6335bc5ab8d63c6f07280e56746f2e",
+        "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+        "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "heldout-symbols",
+          "start": "2024-09-01",
+          "end": "2026-10-01",
+          "role": "cross-symbol-holdout-known-time",
+          "label": "\u65b0\u516d\u5e01\u7559\u51fa \u00b7 \u8fde\u7eed760\u5929 \u00b7 \u540c\u671f\u5e02\u573a\u5df2\u77e5"
+        },
+        "executionSourceSha256": "9e20e5ba744bbc7b4f33e10018471e4180457fce83c4de4d74eb3a617b9c6c10",
+        "resultSha256": "1af0df7455a3e9db9d2258be7bf09523189563ab92688726394f060e6f6ed3dd"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "f552419eea4117140756bf5c9e6554c14fc1ca08c6c82832f0a950d52ec738e7",
+      "warmup": {
+        "m30-n320-no-day-guard": 1724544000000,
+        "m30-n320-x160": 1724544000000,
+        "m30-n320-no-day-guard-stress": 1724544000000,
+        "m30-n320-x160-stress": 1724544000000
+      }
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "LINKUSDT",
+      "receipt": {
+        "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "fc08bb6bbd9199fff74567fba9baa36f5b8abd88bb135330a6aa21be1a6e953e",
+        "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+        "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "heldout-symbols",
+          "start": "2024-09-01",
+          "end": "2026-10-01",
+          "role": "cross-symbol-holdout-known-time",
+          "label": "\u65b0\u516d\u5e01\u7559\u51fa \u00b7 \u8fde\u7eed760\u5929 \u00b7 \u540c\u671f\u5e02\u573a\u5df2\u77e5"
+        },
+        "executionSourceSha256": "9e20e5ba744bbc7b4f33e10018471e4180457fce83c4de4d74eb3a617b9c6c10",
+        "resultSha256": "ac0e1332b346cbdce16a1013349617a756c75a97e5f8938f67fadcec632c5a01"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "daff641f3173623f9fe1debeb00cf38dfd5aa75eac77dbdcdd0d9c208f99f932",
+      "warmup": {
+        "m30-n320-no-day-guard": 1724544000000,
+        "m30-n320-x160": 1724544000000,
+        "m30-n320-no-day-guard-stress": 1724544000000,
+        "m30-n320-x160-stress": 1724544000000
+      }
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ADAUSDT",
+      "receipt": {
+        "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "356b932332298d38e5feaaab433d0fa0915005326c30653c8f95eddf85e65987",
+        "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+        "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "heldout-symbols",
+          "start": "2024-09-01",
+          "end": "2026-10-01",
+          "role": "cross-symbol-holdout-known-time",
+          "label": "\u65b0\u516d\u5e01\u7559\u51fa \u00b7 \u8fde\u7eed760\u5929 \u00b7 \u540c\u671f\u5e02\u573a\u5df2\u77e5"
+        },
+        "executionSourceSha256": "9e20e5ba744bbc7b4f33e10018471e4180457fce83c4de4d74eb3a617b9c6c10",
+        "resultSha256": "c5dc950bfb4f5d85ca18eca2dc0687b1b8d240b8485484fb19406fed666a7a6b"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "4ec1806e21af2b6bc849a252d9ae3a264a55a6ecc51bc1300737447ceaa95c5f",
+      "warmup": {
+        "m30-n320-no-day-guard": 1724544000000,
+        "m30-n320-x160": 1724544000000,
+        "m30-n320-no-day-guard-stress": 1724544000000,
+        "m30-n320-x160-stress": 1724544000000
+      }
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "BCHUSDT",
+      "receipt": {
+        "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "f3feea0cf385ee89f3b0dcdf460beca3bf6335bc5ab8d63c6f07280e56746f2e",
+        "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+        "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "heldout-symbols",
+          "start": "2024-09-01",
+          "end": "2026-10-01",
+          "role": "cross-symbol-holdout-known-time",
+          "label": "\u65b0\u516d\u5e01\u7559\u51fa \u00b7 \u8fde\u7eed760\u5929 \u00b7 \u540c\u671f\u5e02\u573a\u5df2\u77e5"
+        },
+        "executionSourceSha256": "9e20e5ba744bbc7b4f33e10018471e4180457fce83c4de4d74eb3a617b9c6c10",
+        "resultSha256": "dc8d384f852a0ab81a837281bcea68ff6620b54cde22b91557c15fb2719995ca"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "5943bbef3159593e5ee6996fd8d88799a0d5952379d6b9d3f263beb5cdeda9df",
+      "warmup": {
+        "m30-n320-no-day-guard": 1724544000000,
+        "m30-n320-x160": 1724544000000,
+        "m30-n320-no-day-guard-stress": 1724544000000,
+        "m30-n320-x160-stress": 1724544000000
+      }
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "ETCUSDT",
+      "receipt": {
+        "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "fc08bb6bbd9199fff74567fba9baa36f5b8abd88bb135330a6aa21be1a6e953e",
+        "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+        "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "heldout-symbols",
+          "start": "2024-09-01",
+          "end": "2026-10-01",
+          "role": "cross-symbol-holdout-known-time",
+          "label": "\u65b0\u516d\u5e01\u7559\u51fa \u00b7 \u8fde\u7eed760\u5929 \u00b7 \u540c\u671f\u5e02\u573a\u5df2\u77e5"
+        },
+        "executionSourceSha256": "9e20e5ba744bbc7b4f33e10018471e4180457fce83c4de4d74eb3a617b9c6c10",
+        "resultSha256": "ff3cd0e64a69f6f0b609c24843e233c7a93afde73f50fc6d087c4ebb3aeda056"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "3ba52cde0da12013b07189a89f42bc5a0f9280ff703212fd660878651139adec",
+      "warmup": {
+        "m30-n320-no-day-guard": 1724544000000,
+        "m30-n320-x160": 1724544000000,
+        "m30-n320-no-day-guard-stress": 1724544000000,
+        "m30-n320-x160-stress": 1724544000000
+      }
+    },
+    {
+      "window": "heldout-symbols",
+      "symbol": "TRXUSDT",
+      "receipt": {
+        "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "0b05061ff0adce31543e13f55f48e8a70c56971f4976a1e95ca891c363474d47",
+        "manifestSha256": "10382b599c95398a78e246d6f2bff84c79a4a67a0ecd83869f434a8ada38631d",
+        "planSha256": "8255384163aa20d51f9743b15dc74567194d762fdaf359ec9533269779059a8e",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "heldout-symbols",
+          "start": "2024-09-01",
+          "end": "2026-10-01",
+          "role": "cross-symbol-holdout-known-time",
+          "label": "\u65b0\u516d\u5e01\u7559\u51fa \u00b7 \u8fde\u7eed760\u5929 \u00b7 \u540c\u671f\u5e02\u573a\u5df2\u77e5"
+        },
+        "executionSourceSha256": "9e20e5ba744bbc7b4f33e10018471e4180457fce83c4de4d74eb3a617b9c6c10",
+        "resultSha256": "f41d5ec8848679c6a6cb84861e1f7967061595090a98649e1cb396984597ac94"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "78c511162ebb6b7693d3d4f752f31cb322f3e670174258db6ad26ed00ddcfffe",
+      "warmup": {
+        "m30-n320-no-day-guard": 1724544000000,
+        "m30-n320-x160": 1724544000000,
+        "m30-n320-no-day-guard-stress": 1724544000000,
+        "m30-n320-x160-stress": 1724544000000
+      }
+    }
+  ],
+  "sourceHashes": [
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2024-08.csv",
+      "sha256": "a479a1f34d560ee0a48ff38468cd840d6b1da5464e71ffdefdc3b0c72b097b04"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2024-09.csv",
+      "sha256": "e435fc97b9cadbb6a7632485bc994a83b95671681da3e634f6d866ded656cc51"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2024-10.csv",
+      "sha256": "04ffbafdcfc06fa236e08af8a37d9d35fa0da9849dac2d11212cfdd9eabe295c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2024-11.csv",
+      "sha256": "b48ff5e29b0d694d86988ef68860b269418f07dccfd2c6a0eeef989bfb30a697"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2024-12.csv",
+      "sha256": "ea779dd18556b539cbc734232fd4a68b95581953aabca9f85fec17f27f006cb0"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2025-01.csv",
+      "sha256": "7021602460f764f3fa8cd46aaac2303de6bedca0d031eb7b587fbb65efc88b4b"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2025-02.csv",
+      "sha256": "145e9c33bb5b147728dda64d6a9653aa915003a9bbce1ab8214f164bb2d903fb"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2025-03.csv",
+      "sha256": "25518ebce5f134ac322360c970f4034b3e3f6a2c4b0e93e7b962782e8a4cbe4d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2025-04.csv",
+      "sha256": "f1f8fffdf3948f22e9e1891a60e9ddb37052fe80490c9ebb40b4263336834c0d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2025-05.csv",
+      "sha256": "74e38c6ad19cb6246494697486ee9cefb35440c67892ba00ab13f1a8d2cee4ae"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2025-06.csv",
+      "sha256": "e118e052c91cca09641762c066b07cc8ef1cb7b361095db3330b4eab38c7d3b9"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2025-07.csv",
+      "sha256": "5df385e82ae97c8259f2f5388daf6c694a574429fedfe4c04ff2273e55782023"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2025-08.csv",
+      "sha256": "3dfc169f83bc20326163d4d7974696a0bb478ca20d1db4ef45d1df3c7e6ee35a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2025-09.csv",
+      "sha256": "1cb514492884e25330b6af04969a39cc9f34835f6a57cb2abef76116ca8997b6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2025-10.csv",
+      "sha256": "1368b34be461c12ad95024875442ee9a8ef006a0a95803bbd8f5847acac2684d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2025-11.csv",
+      "sha256": "2d2ea72bb3e80e2cf78fc1a857a9c95d971dc70357009c0ed986ddb6ed4e0656"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2025-12.csv",
+      "sha256": "dc5e33ed7a72a6e73193066ee4d921764ae2d624982e6dc5ed367f79a0334608"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2026-01.csv",
+      "sha256": "b912c19ec558b5272b18e28d9ae1607d31d95a73132011fe0a51da185844d8c0"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2026-02.csv",
+      "sha256": "b87450785dd4b3a235ffcb276ba60195dd8dfb1825dc163ad47288942a5422a5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2026-03.csv",
+      "sha256": "1265dc6b677e503dc96fde6c7601a473ad6c7df473460cd135489b8a65486942"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2026-04.csv",
+      "sha256": "9f125ef5b426a241c0dc9844064b303f46022fd4c2f3a5977fca6d1547095526"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2026-05.csv",
+      "sha256": "4eebb6f21d3160eddca5ad0d5fa67c90beaf5d07fb416873be549d5e47e0dbdd"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2026-06.csv",
+      "sha256": "df053f4b703f14b616e47cd6cff0b954cd8c626b304921e0038b1dbe1d75aa05"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2026-07.csv",
+      "sha256": "f2f7f0c14c62d9070ec1bb9bcada36a99a87cf57a269bf8140a2accb2ae6c2ba"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2026-08.csv",
+      "sha256": "c91c9c46c17b3855f5ba5050e44d0d20856014bdf5a7baaa8c14a249c0364979"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/ADAUSDT-1m-2026-09.csv",
+      "sha256": "b80bd43068d3fa0f42a51a0d66447ff1a239be8df63d673dba8d28f96b9dde66"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/klines/replay/ae3e6b2c8939c4af4fd03af32d3b46bfe83d6d071f2edf50bffc66826696e446.csv",
+      "sha256": "ae3e6b2c8939c4af4fd03af32d3b46bfe83d6d071f2edf50bffc66826696e446"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2024-08.csv",
+      "sha256": "66cb8dc748c65aa995ff218952993b30c76f334881aa86050fc0f0d30aa2c3f2"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2024-09.csv",
+      "sha256": "59aa724845ff6ff149b4ed640f289718f65be485acaf502fbd5a3ae30febe60b"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2024-10.csv",
+      "sha256": "028a7a61eb4141bc3d4e62021a62f657b0c49f89ec86db4b2618cb66156383a6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2024-11.csv",
+      "sha256": "754ce2088e4ed771effea44c4da6e0734664152b87835c447118e76cc073f9db"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2024-12.csv",
+      "sha256": "7b9b6f08e4e96dd168c1089b2d052708e1fda27264d9e1f0e5a81dd37ab25473"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2025-01.csv",
+      "sha256": "5aea296ab1376b761d4f1c6858b0d7cff50d7751ca95c092820775fa20212230"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2025-02.csv",
+      "sha256": "4a12201d94e4c632d572f53514aec1d697896f308c7bd9a5fce39f16c90cbb51"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2025-03.csv",
+      "sha256": "00d937821bf5f2861fdd3c00a78d8ad8c651e2455da4fbaf78aa279d4c633246"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2025-04.csv",
+      "sha256": "f707019edf36e2536130a177db2d11cc38aff8092052fa42eba1451274d044d0"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2025-05.csv",
+      "sha256": "6788174f8f55a9f7ffc5c34f474e3b469420a9dc1c402b23f74a5a0c85173a68"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2025-06.csv",
+      "sha256": "06e8de39b55650ba4f10cae7551ba23cb7fcf24cff56536c8857ded5ccc9abb9"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2025-07.csv",
+      "sha256": "e38038c996dd3986336f785fa8a829418082c6d643a4697e5c08a503b6b6ffe0"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2025-08.csv",
+      "sha256": "8de10d5960457b3132a54686a9b9e879031eadb3e32f6581becf5dd1c8576d2b"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2025-09.csv",
+      "sha256": "4ebf63f69f94bd45427c1fe6e61826aa796e145fb3a96e8ce7572596f367c011"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2025-10.csv",
+      "sha256": "d17d97a45e8fcf5becdbdc512f4b237480a06e050a775ae95bab7b8380d214d6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2025-11.csv",
+      "sha256": "fe00933763f47e4db3eddf7cf16660e525ffcefa29f8d9997ac737121b748f75"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2025-12.csv",
+      "sha256": "a2be0b7b0c3b016e78ab7410375000fbe55ad8d783a0746f3760a205d1669d9c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2026-01.csv",
+      "sha256": "1520232ee6e31785680713ce7abb4b3c09a37a5d8979eac79b51bd51446f148a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2026-02.csv",
+      "sha256": "41505262c068c1abdf4f49f0bc7939ac6e21279d10b968693a079a101fd71bae"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2026-03.csv",
+      "sha256": "7499e68c7dddfbccb2164586f28f8e060254a5228ac524a000cb16ab0153fddd"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2026-04.csv",
+      "sha256": "c4e52382d10e00ae2bba1b18613ad21a22f78216316de49db7d9f5eee65d8a6d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2026-05.csv",
+      "sha256": "c23efe95630aba76ca692ad8de22338b895d17467871fec03181bcf0bbaf774c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2026-06.csv",
+      "sha256": "c72e63029400442c9976773db84689d53c73d7f088ca9528cfd68a9bfa997ed3"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2026-07.csv",
+      "sha256": "6c94914fd530e364bdc6efebcc6942427c00be0554b837a855ff6a138beb63c1"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2026-08.csv",
+      "sha256": "101b591ca9d93537830cf3d0f6a779db32ad650556944ada4645b331b817d0eb"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/ADAUSDT-1m-2026-09.csv",
+      "sha256": "ddc26b5e1ad52bf6ce14a609858604bbac7d9289a6405e45283fa25ce6d62fd5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/daily/ADAUSDT-1m-2026-06-29.csv",
+      "sha256": "c41cf5e1ee7bbc73c5a148d2240e96a33a6f3eed399334644b8133230274d258"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/derived/f5f3829c0939f3d54c5a1832dff118fa748443aa975bc8ce5b5beb658ed23c0f.csv",
+      "sha256": "f5f3829c0939f3d54c5a1832dff118fa748443aa975bc8ce5b5beb658ed23c0f"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ADAUSDT/markPriceKlines/replay/9c0e89161dc663f2a28e5694af6895691b589370955a019f145fbf7d46ca235f.csv",
+      "sha256": "9c0e89161dc663f2a28e5694af6895691b589370955a019f145fbf7d46ca235f"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2024-08.csv",
+      "sha256": "8f7559d030495bc736f2a747d62d8131afdebf1000119b0e33b522a937352b04"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2024-09.csv",
+      "sha256": "521fd98b641cebecd472213eb1b975837c96f148b227d5ed47a979d6f2c34def"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2024-10.csv",
+      "sha256": "ee679ae3e6f2c577448c3381bcf6e51aae5b3a299033c64482a495c5a3226b85"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2024-11.csv",
+      "sha256": "5af7600fbc79a6cd51e847db013bb1cc6cf057a84df6a4caa7508b087ffaee6f"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2024-12.csv",
+      "sha256": "05bccb9bcc85b5f25db2541d5090a7b8512736183c6df5911dcd36b96c1d4dc2"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2025-01.csv",
+      "sha256": "2255c64e609371f3f10c702543eedd8a75d8b6e1e85394a4f26530ad53b149dd"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2025-02.csv",
+      "sha256": "4fcda6e742c39ee47ae8fb3c0abff117c871d534bf8e7549a365786058be25ae"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2025-03.csv",
+      "sha256": "5e3ec6fd262b96d9ec6a4f41af358ba33cdb93d26fcdcd10e50e1b24ab1005bf"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2025-04.csv",
+      "sha256": "1f48be5e5105105cc6df5d04023f636935daf6ccbf1dad5d8682fd7aaa4236ee"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2025-05.csv",
+      "sha256": "0851a122c73a0827b078154ff2345b5e50a45c0e9a941a65bf669c44982df517"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2025-06.csv",
+      "sha256": "e7de2be02e18151fdcdda1aaa637cc87e75c3100710c99669f41e34fd7f75e92"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2025-07.csv",
+      "sha256": "9eb8d4adf687e5ee43b9a51b66107653d511ad9f7e4a8e3b3f13d7847c88d4c1"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2025-08.csv",
+      "sha256": "c43d85ff262db1ad56af3ba53cbcdacb8090bd372671c58947ed3e9b49ac1692"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2025-09.csv",
+      "sha256": "e603682d64c5c47cb2ca50eedc55f8fe77fa48195ddcc6ea99bb641c000e9874"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2025-10.csv",
+      "sha256": "ad07b4fdcb23ca0205e28e7f99da8b9360b812dbcbde4d7850754e9f73433eb1"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2025-11.csv",
+      "sha256": "3958902585d3e4ee08c26935cadb0fa9b732da90b68382e7d215b003ca11d48a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2025-12.csv",
+      "sha256": "9517e9ef11b2aa6fc453f6dae60349286e315a8e7e3ba3b5a9e7aa9f267edd13"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2026-01.csv",
+      "sha256": "e4e7a93f84411696f62f86cd31b7309b44d833f934695fbd149938ca95b3a6ab"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2026-02.csv",
+      "sha256": "f10fedf68c0b67b6f6eed12d58ed226b9070666e939a7adbd6498604dd5f9297"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2026-03.csv",
+      "sha256": "b09bc1ee08a8fba6a5ad5fec84d88e2b2bd6f8c31500d074e404f69f24ece03d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2026-04.csv",
+      "sha256": "90b55bb2407a255d27556146d5b5c257c011190ef045bcc2126b1097a4801520"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2026-05.csv",
+      "sha256": "b620e7d9ececca492512c4002109630fe5079b2929630f070bfe77feeb8009d0"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2026-06.csv",
+      "sha256": "f392805e5973e2e86effa525eabf202c5a19bd71aa899715c8dfc5675f3a6437"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2026-07.csv",
+      "sha256": "09ecee253590a57f05da2aa324c2c4cf937f09c3558340b00368320fcb606c40"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2026-08.csv",
+      "sha256": "ac91937a2eefde494e8a18631866d92af7f3628579f8e718dcb13cb33523b9c8"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/BCHUSDT-1m-2026-09.csv",
+      "sha256": "0c67a73bac415fe632a13f73041c6b9c5a83a536c69980a74256e45a8b675949"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/klines/replay/2a99c265823d531dce056605cd94aa5ebc1b1f3ad53339416e8acaca8d6392ea.csv",
+      "sha256": "2a99c265823d531dce056605cd94aa5ebc1b1f3ad53339416e8acaca8d6392ea"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2024-08.csv",
+      "sha256": "11a129e9efc9898ce4408b0390ff3d31439c3581121bcf9deaf9b164fc328a25"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2024-09.csv",
+      "sha256": "77982b2ad2c99331e3b07e07cccc4d4598e40fb18e2c7a32237b4888274f6342"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2024-10.csv",
+      "sha256": "71ada9ff1f28673a620a4b772cb163873db96406ec316aa9db0244e2c777ed0d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2024-11.csv",
+      "sha256": "9480bc6a816061382ba3255c07c20f3377d6333e741a1cfe2d35b460502bfa2a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2024-12.csv",
+      "sha256": "6c714fb2a999341da23689e5b430cb43fed9a8fa5d3f978cce2cd9d249ab5c31"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2025-01.csv",
+      "sha256": "dbdb6587d947235e92be7edf41b816261fd8125d1e520fcd8cf6415e85b30926"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2025-02.csv",
+      "sha256": "133b9c802e5e75ccbe950f26e1f05bce7920df63685afdada1c52bec2f53b34d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2025-03.csv",
+      "sha256": "b8f2364a9f7b72db463fd1cde8ee2b0de975bff90dfd218d6cf1b6c7784ce80d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2025-04.csv",
+      "sha256": "fbed87459906ccb1b6b174254bff97e532727955447972d5bddbb22eac152c39"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2025-05.csv",
+      "sha256": "2b2a47486f2987106dc71d9af9e6cc8bb229e5e01cda712a675abb39dc4d772c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2025-06.csv",
+      "sha256": "88ae520471f4f697405b1d97ed9171f9be528e3d118ca5269d2309797950881e"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2025-07.csv",
+      "sha256": "7ee53ebfe38755733d73034858670be5201a1d5f85acdc67b12cb7cd1a1fdf49"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2025-08.csv",
+      "sha256": "8cd3ec9d09e4cba781b36926914fe89b7ee8079dc7a75a1882da0ef25c6de8e1"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2025-09.csv",
+      "sha256": "9cf29693701212e949a7ed1298ad289ba35ab531495add97c7f98910a46096f6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2025-10.csv",
+      "sha256": "a1d12c55c1e0a73506bdb57055c52d557dc823d2aa5bd5b73892b8f86bc62018"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2025-11.csv",
+      "sha256": "37cbf4186f33507a5296596716efd1b0d2636196da512cc7b3d4c9d367d2c8e2"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2025-12.csv",
+      "sha256": "a74fe4763bfc42bd23e63c598c1d976eb059a520e44cf84706afe8bedf7fd614"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2026-01.csv",
+      "sha256": "744eb4a6d0461bc6141a0ea61535aec29c99f014eff64e288e7a7598f3eb35fd"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2026-02.csv",
+      "sha256": "339376ddb48c1cfc0fc7db37b520151c998f71b6befcb366e5d8b1b60a834705"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2026-03.csv",
+      "sha256": "ea6d1bd45b2bcdb2a6240083ce7dbd6919317ef18e2a651bc987c1e9993df1c7"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2026-04.csv",
+      "sha256": "1ac74c5c35b1c942b841f3d01f1ce5a737d7011775ae82e1a23e1e520e01771f"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2026-05.csv",
+      "sha256": "66eca66f81b7ba513b37377e6e831a0ed8914c24fb3372a6d0973b5d9a20366c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2026-06.csv",
+      "sha256": "0716b10a88549bbe10ac583cc69c80dbb91227d1756700edea6f4d82357973dc"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2026-07.csv",
+      "sha256": "f6f7745f2d13d14b49b9752fe9bba052775d0aabd502a5b62f34f9771cb89da0"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2026-08.csv",
+      "sha256": "b908b866cbc5f5335b2410ca92a1c54a83ce100dfd46351981ea4555f44b89b3"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/BCHUSDT-1m-2026-09.csv",
+      "sha256": "cb9d60f4e30816df733fea4ebcc75575294be545e5517b2a7c41dba4d3ba28fc"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/daily/BCHUSDT-1m-2026-06-29.csv",
+      "sha256": "9d7510383a97db0c3398df184d2447920eac21148468901d35e2fa5d415024b9"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/derived/7fd0483fb10ea432f64a7184caf9b6fe82afaf7b0fc0de05ce6676b7a1fa2663.csv",
+      "sha256": "7fd0483fb10ea432f64a7184caf9b6fe82afaf7b0fc0de05ce6676b7a1fa2663"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/BCHUSDT/markPriceKlines/replay/9f55f99d75621bf7d8757af0956b387b917106c66487a19c896b668a7540c086.csv",
+      "sha256": "9f55f99d75621bf7d8757af0956b387b917106c66487a19c896b668a7540c086"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2024-08.csv",
+      "sha256": "1498eef460057ac7d3415844daa6d7ac59f1e887a8d4457fa630f7de082f976c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2024-09.csv",
+      "sha256": "6147689cd5cf7bab42b4c4e3a53839480dbcfbd578a4b8be631c87202221cb6e"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2024-10.csv",
+      "sha256": "2210bcc22cdbd3e671eae8ee3fc95d6c207b57d3a3d4e9fd72a867146e36fdc2"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2024-11.csv",
+      "sha256": "9cc321c12ba7c31e97274a440d2ff6d60fb899ae15e839d8d006937436a0b0de"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2024-12.csv",
+      "sha256": "cc03ac95949aeb3713a198839595f6061b7122d047968f4822721946453fb824"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2025-01.csv",
+      "sha256": "2311210df66bb6397f313fab9fd274257b6f730ad85155fc6471f934e8279df0"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2025-02.csv",
+      "sha256": "ecfbeec5aecba3c6206ba0da366476605eb0a86a60024716c9a8ee2186324b38"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2025-03.csv",
+      "sha256": "2875f8c4781584f543252f922502652c662820768292e12fe72237c21da0a834"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2025-04.csv",
+      "sha256": "c23627c27c39d4efdc9da0a9720e520ef97b885b30ef34ea334922934e8f7377"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2025-05.csv",
+      "sha256": "a3640e70e2c3db1f72abf17090c136f035c9d1c6178f50345885568fbae6f7ad"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2025-06.csv",
+      "sha256": "5c918cc30bc90ececc9257e3d1de3af5bc53206f077ddfb4f370a5205607c1ee"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2025-07.csv",
+      "sha256": "246eac66da9a07d091784d7059720423f5fb215176a322ad556e95a8eb899a6c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2025-08.csv",
+      "sha256": "84664a0e1cc14fed4b4966b647311173085a04e3757534c639d5e52631510843"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2025-09.csv",
+      "sha256": "24fa1e7e1a76d140224e256037d4347c4d7539619a8e510d975850f2012ef52d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2025-10.csv",
+      "sha256": "58592c20dfb3f2ca136bfc4f5e2bc3ec78ea24172a3cbe580536349474f53e37"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2025-11.csv",
+      "sha256": "c0ba63119680b7e4068d5718cb7521eeea60600eb3b9dfe96412d42f56252ec8"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2025-12.csv",
+      "sha256": "a00baa53fc0df2415bd4b5d1b2d8cfb9f5d4d4465ed3a405cc3052eec76765e5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2026-01.csv",
+      "sha256": "8177834bc5f4c078ab8e317436558253eb36bf2f8c7a38ff818001c50cb9726e"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2026-02.csv",
+      "sha256": "3380153c2dc1c126347ae2e1590c509048f0decb734ec3170977bf41a8494816"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2026-03.csv",
+      "sha256": "2f86e3eba1b5fefcf47f2f6db1ec5714cda263e6af8551d7ed5a5ebfd481e57c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2026-04.csv",
+      "sha256": "d481af4526ed8240ea0a45ce37df7851965fb0b55eb6939dcabe5e5676baac19"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2026-05.csv",
+      "sha256": "3a1e1bc22bb66c2c5c00085ddd47e2f98cfc58879da57f0b56437c8f976ec9c6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2026-06.csv",
+      "sha256": "dd8b4e6919a39e834428064d2f216e12e6c9fbc745830f002f3e5b4f0a8a5ac5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2026-07.csv",
+      "sha256": "556de2f7947cf92735bfbdd73e40a6bc8b057843c10292f43e22e3a2c4982498"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2026-08.csv",
+      "sha256": "f15bd8d842a5e3a9889731d123407a6217cc965a1423114225292eff2bdec2d6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/ETCUSDT-1m-2026-09.csv",
+      "sha256": "c50b97274b18d536ea09ac2bff57f7c56ac72bbffc37b51673fcda090594f456"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/klines/replay/81baca816e579bb915718cd4dfde84f3491752934155c5de4f36d2bd8667be11.csv",
+      "sha256": "81baca816e579bb915718cd4dfde84f3491752934155c5de4f36d2bd8667be11"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2024-08.csv",
+      "sha256": "2f291f455ae6ec5e5352a6ae62cf6545fa596e3040c974b22c121a03a7a22f30"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2024-09.csv",
+      "sha256": "5b01e5284e5b39eea1c9d876bde6a4438c133bf75609c607de93ee517317a649"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2024-10.csv",
+      "sha256": "1f66f386d6661866c4d0e57e09fb4444006e55eb3cd08eb373445504752facce"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2024-11.csv",
+      "sha256": "846be69a07b95d53f1807fdef8615289539c1189a64cddf4846e0f4cc087ab78"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2024-12.csv",
+      "sha256": "7b98a348ffc9a7b730d4923ded7898f2f45d2b7be20c4c56a36acc353ebbca12"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2025-01.csv",
+      "sha256": "11bc662803cbd72b24bc41f51918706f8eb5b2c831eb13adbaba0120133c89f5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2025-02.csv",
+      "sha256": "0f771d0eb96e6bebda02a99a01cc09662e0e9fae36109de7e9c3c34d6dc41b2a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2025-03.csv",
+      "sha256": "026f176602003a1f8d2cc49ff9970ee9e0e5a480e29735a8c660a8e6ad1a8df8"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2025-04.csv",
+      "sha256": "314f38042d8ae96fa581d8121f5bf5c2f013385e9e65a280566741b74973d7d8"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2025-05.csv",
+      "sha256": "294d7cd6a5d566a9e09544c12b83362cb1c044e3ad3b4472446642fdf387a7d2"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2025-06.csv",
+      "sha256": "0f628d22f5cc33563b4bb4171ca9b74a9514c3879d715b518c66449bc467d330"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2025-07.csv",
+      "sha256": "9778d03670121ef37d9dae6df1ff9dbe07afca99f3a7aa8f16ff2d5cdb9af706"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2025-08.csv",
+      "sha256": "0ca50e799dda0b5906b986c255ee1a2a3e81e79db8b525bb5383465c2c74b18d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2025-09.csv",
+      "sha256": "539955a411e9c8d5ad899db6815a6abed7f690160603fefedd3c908fbb27877d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2025-10.csv",
+      "sha256": "8106ab5cf6a26c4d739822b990c386b192c2cb3915e172295b616a675de13fa2"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2025-11.csv",
+      "sha256": "7a456a8d3d8b40c9636c2d1328c5aa63b7309724306f508015a4f9da21e9e543"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2025-12.csv",
+      "sha256": "942b93aff3313a81779173d9bf00b4417f73f81e59db871504fb545f2d084ad3"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2026-01.csv",
+      "sha256": "a3e58f9d5e779c7f1979fe253924969e39d8fc9e72258f48a24366d964cf4828"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2026-02.csv",
+      "sha256": "e21e6f6653127ed6d6d6f9a5e75619933ed6604abb90c170c8fd7f2b918421fa"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2026-03.csv",
+      "sha256": "001352d9acf02ffaff5b522ed0891b3fe7fd0aeba1d9487b8457c916468bbfaf"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2026-04.csv",
+      "sha256": "4736e079d3d77512137b86e7ba3a317f0f07463b0684712c66e46ce2e2063fd1"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2026-05.csv",
+      "sha256": "4590f89ea3b8dccb70d03ac9a273e6e036f96022f9d5db8f4c567b952f4d34dd"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2026-06.csv",
+      "sha256": "a3e43282fca925e22f9b7831812d3e66f28f4715a5cae5a055c94486b4149ebf"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2026-07.csv",
+      "sha256": "892c0036810c1a8fd1b4e596b80360633a414d5f7b0c44290c0f0fdc0c37a37c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2026-08.csv",
+      "sha256": "8c8b57e99bc2ea3dfe19505dc9dd73eee1637776bf3e4f1b2c050c5d18f03ee7"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/ETCUSDT-1m-2026-09.csv",
+      "sha256": "463a2e6ba84b58332eba173753fa176cbc6e7284cb49a9e56f72857b69568e21"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/daily/ETCUSDT-1m-2026-06-29.csv",
+      "sha256": "2dbf9a2ab5035c3c6bd21182a3758f815c7bcb3dd6cf9dbb6295cd60cd903d58"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/derived/ced04789ae767e6bae72126cfd80043b5bc9f0f25c0ae131fe390680ffecb654.csv",
+      "sha256": "ced04789ae767e6bae72126cfd80043b5bc9f0f25c0ae131fe390680ffecb654"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/ETCUSDT/markPriceKlines/replay/540ad206f941f8ec6aa25800c0545bc1245fe97cff3494b9729e957a577683dc.csv",
+      "sha256": "540ad206f941f8ec6aa25800c0545bc1245fe97cff3494b9729e957a577683dc"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2024-08.csv",
+      "sha256": "ec98d0fcd31310a1baef2d38356cb87bb0827917441319ca5bf1ffdf80960aa2"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2024-09.csv",
+      "sha256": "fa4ec2feba3d4b989a4e62e1da7908e93484c55d31432b6bd50172d0d998d1a3"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2024-10.csv",
+      "sha256": "ddae0fab0b3a15881b1e05a7b7942f2242988be5232bc8227441b7baeef529d5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2024-11.csv",
+      "sha256": "0cce6415e1cd905e219da4e83b817ec1bcda1c01750a3bc28b4b8fdca6b3635c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2024-12.csv",
+      "sha256": "9a6a409da198343856a96baa86ac499d8b598c81132e96ccb1ba921c15caec32"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2025-01.csv",
+      "sha256": "5d29a16c51403887199c9b11874de9217d40ad7c7b30471b6ac4e526d5182fca"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2025-02.csv",
+      "sha256": "6797d852a85ed2308ee66925926022370cf6e522c05a06942735c21c0c213722"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2025-03.csv",
+      "sha256": "21c09ff17b8d8f138edbbc436e3485ce141d278b4a58f0b34f915c036d98ee41"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2025-04.csv",
+      "sha256": "bc191d4a63ea1742f0d90418527161b787fb7851f4355bfbd9e06c6f768baa93"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2025-05.csv",
+      "sha256": "2b1acce65fe694f21732a9002358c7a3b52fdad9cf0b6ca45b91f62ae6195dcb"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2025-06.csv",
+      "sha256": "0a53dab988a08d1d510e4276a59511b5f78b89b115f6e51e71bdec96c78b263c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2025-07.csv",
+      "sha256": "e2f5e2db8bbcd5aeab9518e2316f8bfd71b9987af3a2d956e11256a8c9a65fb3"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2025-08.csv",
+      "sha256": "4b0ddf82015c51a5d3d081abd6bb8af6d5ba30c1a76849df4e355e1e9bc42ccf"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2025-09.csv",
+      "sha256": "a0254944a413762c02ca4c69ec953df9d9d1bcda03ee56057495add834e60628"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2025-10.csv",
+      "sha256": "557a0325efa41178a4217e5ac537c1b1e3ace18130d285dfa83f97eef94c8dbc"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2025-11.csv",
+      "sha256": "8c0362b62391d26276ec1e223e56e36000844235a3bc89b59ef5ea9bbd579d5d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2025-12.csv",
+      "sha256": "94d28a47570bd2f28ff7ef11d919086a69b5eb55288c4690a0102eb4c84407ef"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2026-01.csv",
+      "sha256": "83b0f0936050d392f1e94b7d768567aa7630fdc56beafb2cfb75deae42f8d28a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2026-02.csv",
+      "sha256": "9db46853e84cb9aeb3c6e18ca6e332f02dff9a04b63d7c70b23447f78b05daf4"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2026-03.csv",
+      "sha256": "c02e2bb29d77ae158f89c30b26260baa90d224812721b63afd1fe6caa8fe984a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2026-04.csv",
+      "sha256": "9bed44304f221b2d40384f7f0cf37aa3b86c79d40969f8e08093fd97a6dfc83a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2026-05.csv",
+      "sha256": "a27492d6eaf095371e3a6a7db16464186e0d1d409170df9d545bc02440a76ebb"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2026-06.csv",
+      "sha256": "ab2ef20a7c884e8e3f5fa98a3f46305921033a52f58215f14ced25cdbf185226"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2026-07.csv",
+      "sha256": "d61af78ca186e488599656f993daa79cf473b3792ca85630ed65a2c1bf9e9f3d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2026-08.csv",
+      "sha256": "5d3a79cee2c44daeb5697d4e4f26d8e186de19fb3e9af7888b9b1de340a49cf5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/LINKUSDT-1m-2026-09.csv",
+      "sha256": "e204211619694c6e6fb0da663a938e6f6163cf80842dd4e8a9d41047a4e20e8b"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/klines/replay/31b73e78daf6b22b86b203ddba7d213f232c16b8346973f1ca04bdc19d1cbe09.csv",
+      "sha256": "31b73e78daf6b22b86b203ddba7d213f232c16b8346973f1ca04bdc19d1cbe09"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2024-08.csv",
+      "sha256": "3ef76b21146ab6db5eba3b1a318e5e3fff8d05dc446ba68d1354201146ffc9c5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2024-09.csv",
+      "sha256": "116ce6c8169c9515e10941cd1d06f6c81429a209e7b5077463c61745c1943963"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2024-10.csv",
+      "sha256": "ee1867f4304b6f45628afceeedda37392d5b886efe1d9fff8a4cf3466e6953c9"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2024-11.csv",
+      "sha256": "2a1cd4f72d28edb33345574991c725f9a0d1206cb76e7bcaadf30a789d304e2e"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2024-12.csv",
+      "sha256": "536201ca91bdb9b1f354bda1d83b4de1f359c718922b2e4adbcda1df46dd20f7"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2025-01.csv",
+      "sha256": "99578f0ad6bae81f789ecf51dbc0ed766bf177ecba73d310ee16bdf82a68ac16"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2025-02.csv",
+      "sha256": "df3de1aaad22576c777c3796f047647b60230d5f1bfa18913a6c4668f852459d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2025-03.csv",
+      "sha256": "aeaee8d4b12bf3bfeaec5387d4297e574c64ea657be903b9a429bb7ea7f515ff"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2025-04.csv",
+      "sha256": "31542eaca8a4bbea88a3ac3890c44bd78181ed4869c4c713432e4632e0f30af1"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2025-05.csv",
+      "sha256": "b88b59fc390817e59ece9827a096074da85189ce9de1d6c7a4307621aa4cf37d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2025-06.csv",
+      "sha256": "13330dc657539300fe943a0ec015f2f75e5c52c8efa90a8c70bb8e10184483d7"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2025-07.csv",
+      "sha256": "dcb13fdff3a421a749d93874004a45140b4090e0fe301a078dbb274ff80859e6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2025-08.csv",
+      "sha256": "628d895f56c68032671d4a37a1a75fedd3f669cbc400ddace944a89b4ea12be5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2025-09.csv",
+      "sha256": "994ef6e51df2424347c03990931fe24a973dca4ae7cf5a4901b36b29a14b365a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2025-10.csv",
+      "sha256": "605a3e2c8d5c087af80eec2f9bceee7eba502786a857c73fddcb1415920944c2"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2025-11.csv",
+      "sha256": "4fcaf91d11556b5f3fb238a3fc3229b832c52244ca708ff06c1f8c437b83822f"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2025-12.csv",
+      "sha256": "ebc24ba93b490aed72b6078d9c490d0631f76359fc1601f9c59c81113268d184"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2026-01.csv",
+      "sha256": "8cb2019af7af64ed4b9ac756bde15b4c70c4a7d1c6ff610b1e4bf041ac99b81b"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2026-02.csv",
+      "sha256": "f6400cc8251c55d99f2f574f54d41d421743a3ba8b24c11dacaeab8dcf895ef9"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2026-03.csv",
+      "sha256": "da0781632f397962d72558c572d023d3983f29333a31243a60022bc0360a9c36"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2026-04.csv",
+      "sha256": "f7f19bf17eb464706f2bcae7cb43b1cf033c8a70fef37fba4228396e65eb64a6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2026-05.csv",
+      "sha256": "95eb5f95aa20a0bd82b882cc5b425183d721c5883766e552e6e5890a864284fc"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2026-06.csv",
+      "sha256": "7ac532fbbc02d1fcc01bda0952e4101bd6177ec08c4a285ed8d433991977a46f"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2026-07.csv",
+      "sha256": "5ef78357ce409b3a7fcb27af70cf6f4649bb7dff2b836d23b53b42e035be9153"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2026-08.csv",
+      "sha256": "de2dc5728aae5645b2bd632f7a17c5755ef952a0e8c2ec697d7b1f450be8511a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/LINKUSDT-1m-2026-09.csv",
+      "sha256": "7b9a3426671715def446c14c2fe7c11b2469c9bf4647e8e2e70bcf8efde06608"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/daily/LINKUSDT-1m-2026-06-29.csv",
+      "sha256": "b26c1c70e19613ffeca73fcdd7efd169d22212a453abea2aa16947cceed5a671"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/derived/8fdcd8a4440146774b1b5ff7a37fe0b87107ddb6ee540d53553dac9994b34d7d.csv",
+      "sha256": "8fdcd8a4440146774b1b5ff7a37fe0b87107ddb6ee540d53553dac9994b34d7d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LINKUSDT/markPriceKlines/replay/2eecc89af3dc1553056c6542892e959f5c03f96b1d56a9d942d65d21f73bc6b2.csv",
+      "sha256": "2eecc89af3dc1553056c6542892e959f5c03f96b1d56a9d942d65d21f73bc6b2"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2024-08.csv",
+      "sha256": "59133eabdc01173ce912984fcd171fb5b9615197772f865c8ab85cbe2bee6aa6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2024-09.csv",
+      "sha256": "8c161697ecbdf9a71a3cf7675336fff5b2889029355f4ad09e87931e08f8c751"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2024-10.csv",
+      "sha256": "4a6549b46340431133a7cf5617e09ce7530cfb8da7431cc18781b35967293f2a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2024-11.csv",
+      "sha256": "423fc75299374856418393344bf3c347c039244c5148f4b713a7e403baf2d4c9"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2024-12.csv",
+      "sha256": "26988bfc31c668f71848198bca6cb3cd27e135c67f72bd1ea5c2ee2b3f7ced02"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2025-01.csv",
+      "sha256": "5e9a57198d094cdb8e4051c4aa12d9821163605871855de489616677b7b4addb"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2025-02.csv",
+      "sha256": "5e57e9dbb396a8735dab7b1914cc3275fe6cdef8d016c631aba8269e1e0629fc"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2025-03.csv",
+      "sha256": "d27c2fd87eebbee5a76e3ea4f2afd0c809d5e8fbc96253cb5743ec2b74b42848"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2025-04.csv",
+      "sha256": "d60999d51af2bb73a9a87b894430f20e25e1718fcdad32e75db5d2e9662d2797"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2025-05.csv",
+      "sha256": "a5fd64daa4c1e46fc015c0789630cabfd6c38a4c97ba3e09b9ce9a8130ebdd6e"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2025-06.csv",
+      "sha256": "36320b46be7628bab7f21c6266273eb8cc48c0676eb7f20ad75ad9f71e503622"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2025-07.csv",
+      "sha256": "1f821af4ced318414eeef7f4e45ef76d1a36dbb9d306b91f88eddaa46953668f"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2025-08.csv",
+      "sha256": "2746bfaaa8bf2b1988affb742c22caebd66873204d742ecf9d507c57ad093182"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2025-09.csv",
+      "sha256": "72ced6dcb66ee0930563f4c968a5e378cc006c9b4a56dfab3de9e93709904369"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2025-10.csv",
+      "sha256": "fc118eca1914ddd07c0172f1f4663a22d63c897f15dde053295a295f1df94d2d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2025-11.csv",
+      "sha256": "bee830cf2433befe64e1ffc20756c55a36c7694c4649ab02a450e0b0952673e3"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2025-12.csv",
+      "sha256": "45df14ad503a2b72d9a7ffd4dadc79b79adc5392526dd7a18accfa751a1d8216"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2026-01.csv",
+      "sha256": "030f6fd3dcfda0c4a4cc115658f6100510fe53ea8f4ef96688e95d8b8170a615"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2026-02.csv",
+      "sha256": "c6c9f3ed232a71aa784c0eae3f246387a13fe839e5f7d1581c7a1671b69d1705"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2026-03.csv",
+      "sha256": "229d12b797fff3539a803c4056e977bad3a3aff2d767ba33715e4b3fc841c570"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2026-04.csv",
+      "sha256": "5bc928770276d647a0d76c43c2aaa3acfa58a6d474393def86360569329d9567"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2026-05.csv",
+      "sha256": "6dc1ba91f25141f117f3d4d730b4ec5bb75065a86873bce6e719a0c304d004a4"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2026-06.csv",
+      "sha256": "7b9b3ab7d8b4c310a747c226e0d3547fb7715e350aee112a230ec9a04d0ca087"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2026-07.csv",
+      "sha256": "7d5bd0101c4bfc1c598cee5f9f398520b3c6a61d0c6180406dae63aee49a0b86"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2026-08.csv",
+      "sha256": "4c906233c0e2ef3a268aa00c0ae4660110bbe12aa58617280fd80ed567ad812f"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/LTCUSDT-1m-2026-09.csv",
+      "sha256": "2379340411738bd7b41718559383c6101ebf162c48588d2084f6120af11d7bbc"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/klines/replay/cd065f4e4c6164873af1377836975ca9d7264b4ba6d948888d1cfebefa0903dd.csv",
+      "sha256": "cd065f4e4c6164873af1377836975ca9d7264b4ba6d948888d1cfebefa0903dd"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2024-08.csv",
+      "sha256": "6116b2b815d89663e8925ec2a5e0b2850f959c3abfdb277875a1147ca489ce96"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2024-09.csv",
+      "sha256": "3a6f8ed44c198588b5a0e82949ff3caa9cb277f7491dd206fe33021182dcd9f5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2024-10.csv",
+      "sha256": "ba1a940d961c5806ee21d0ded6118f88c7c7b4156fd7295458f632f0d23109b9"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2024-11.csv",
+      "sha256": "fd5641f0f49b8b737aebaf63173f53160d41243af3a56a552e06b92b40057a22"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2024-12.csv",
+      "sha256": "2e52ce2fb7b486d366eb9c92e762bbd4c4b5c439a36664d2bbdfbf275f212147"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2025-01.csv",
+      "sha256": "2079d3d14be70bd7ccf2d2db2dbcedf0babdae03868c707542c92a85582aadb8"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2025-02.csv",
+      "sha256": "6ed88563cb5696e859c657655379f15a6feface2f57025c4388701272d380da6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2025-03.csv",
+      "sha256": "a61c3a47a032b5cf1ea14fad1a9be661558f6de2dfd731911ccac01db1b2c246"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2025-04.csv",
+      "sha256": "6b5d1f1432867f7f83f3cbacc8e2a9a75ca85276eeacae63be4daff29cdc4c31"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2025-05.csv",
+      "sha256": "54239eed71447880586020ff33f10a5190f0597d9252753adab98a40bc60787d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2025-06.csv",
+      "sha256": "5269ec56e5f78dc9454595eae53470ccb53351ce9135f2f5158d7dbdbc1f49bf"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2025-07.csv",
+      "sha256": "13faca5765bafa8a1c5aafb5e622df123e53f5ce471e9df7fd570d93387a5f82"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2025-08.csv",
+      "sha256": "ad9ec4891dfd7d07d784ddd54302a40792da40d583e11f56cb4fc93c10653723"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2025-09.csv",
+      "sha256": "79998c38d055a4e4bb2833dd607263685b50fe143d0649a4f78ec42c7f7851fe"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2025-10.csv",
+      "sha256": "048f4cb3c1577c22be9dd79160acb3787c8ad3df4ebd5c4938d394c5e98f01e6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2025-11.csv",
+      "sha256": "ce8002c91e5d88ee6d883bba2ee0d8dd8df511f09e1b4c5a37e4b98df68f8194"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2025-12.csv",
+      "sha256": "13fb2fe8b408777c4bb48c29ee8560b804e1d5d832a60e4a71f3e3c1c6846982"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2026-01.csv",
+      "sha256": "dad6ccb39a7d7801534f7d4337bb3b40d981312fd9af7c3bbecaaa21c922e902"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2026-02.csv",
+      "sha256": "6564b6aa6316d2c288eb064bd430499d9f814352b9639d70e6ee57a0349c72e4"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2026-03.csv",
+      "sha256": "b5a5a961257dc03f09f23cd9b9c99a042d9ade8f4fd9796b4f148284df558ec5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2026-04.csv",
+      "sha256": "9cc1069226b2af5825d7bfd104b56e508221d4a7d76257a172d92229829cccff"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2026-05.csv",
+      "sha256": "8cf289e22c151ef5b77ec3d44e5245a4892b35365db053fc2f9f15a27205691b"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2026-06.csv",
+      "sha256": "549c932bf04e11bba3fbe4eaa9d33b97979ac37989be05a97a76b94781904953"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2026-07.csv",
+      "sha256": "7cb483c0405fa299eab34d1840a287c6bb9bb9b13c1a01fea565d189b79a0959"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2026-08.csv",
+      "sha256": "37a2804df31b7741f8966d57a13475c6da67a5636a447061a18b90c7bbb05995"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/LTCUSDT-1m-2026-09.csv",
+      "sha256": "4b9fcc938c40a0f74fb27a14d7eb705e54b952aae15bec8fff2ae93eac1b04e0"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/daily/LTCUSDT-1m-2026-06-29.csv",
+      "sha256": "4e056e3b88eb3aca99e7f7154c8494dd75a488722c9970e6f8a5c265de9ea4cd"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/derived/cbfab710e2da0a01da7966c174c032eec015b0f87635b662f09fbed1fb78be13.csv",
+      "sha256": "cbfab710e2da0a01da7966c174c032eec015b0f87635b662f09fbed1fb78be13"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/LTCUSDT/markPriceKlines/replay/013535f6494ba09cc313f8f6ca5920faed5ea1a3b5d3d0d158c0ac5d7d11e939.csv",
+      "sha256": "013535f6494ba09cc313f8f6ca5920faed5ea1a3b5d3d0d158c0ac5d7d11e939"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2024-08.csv",
+      "sha256": "ac447be4a782c06dc5e75664373eda58c76e1f0b7d4d44f87f94367d6c134185"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2024-09.csv",
+      "sha256": "f9ddd437533247ea08b4b49658da8456a3eff1d8e3c39c6f156f0c9df52c0faf"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2024-10.csv",
+      "sha256": "d32444309f9f341ed763902a4d82c4d37f11f5a8ccd371f745c263efc4413209"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2024-11.csv",
+      "sha256": "a5a6f78b893fc20cea958b7d5e8d8097e7271e00ff0fbeb4408d9517af974167"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2024-12.csv",
+      "sha256": "f88e641c3f5b974728f9ff4d0e393551510590d7bc4a711f74ba2bc62c930a24"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2025-01.csv",
+      "sha256": "f7d875723f768b52642edf268b30e2fcc97c373e2d13dffd80891545df284d07"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2025-02.csv",
+      "sha256": "22e4cf92aecbf216b3b402fc5145cf101aef023d07d7984419db6e204d759c03"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2025-03.csv",
+      "sha256": "5e59ded53634d8b88276298ce049ee664aa2c70ac8280424ac867fc98a4071e9"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2025-04.csv",
+      "sha256": "ff3989e37db3636d866a3c14e4811614e10f19788054d1d0af905b1dcdd846fb"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2025-05.csv",
+      "sha256": "8c40b897fa2cee1cdbfadf646a1df037fe02a5e03569fe86ee41625dc846c08b"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2025-06.csv",
+      "sha256": "a6744a7a07354d5a831d5964eec54b1d7a981c89b494f7518b1da05de9c3374a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2025-07.csv",
+      "sha256": "81bbf40823ca43c7e9c6c762b682d17f47ad90095c7f1dfd230310c4734cb486"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2025-08.csv",
+      "sha256": "33e9e283bf7a5b79ab0befefff029ab1715b22b19f64c08910e951fb42bb6935"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2025-09.csv",
+      "sha256": "0a6436cfc5c19cf38ddd7fdb7dc558f6be6556468def7b31ea8b768d6665ddb2"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2025-10.csv",
+      "sha256": "aabbf3ed34f8e4b25f0492441f2ae3a74d95ee70592335d3627a3cbd1e9f17c4"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2025-11.csv",
+      "sha256": "c4e7d0260796fa758b6974ed889b676a40f60aa0491ea440098ede4ae819d8a5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2025-12.csv",
+      "sha256": "53116b91e17e61b0445f21db1a21af66a85ff61cb4e9b095b58190edcf0f42a7"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2026-01.csv",
+      "sha256": "b6f56e515ed4cb3d4b02e3d02c857a22013712c818f72843235ed9d6208da98b"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2026-02.csv",
+      "sha256": "305169927465fbe34e7f03c1d08b25160b6ed921096114a99bea76b5a2140781"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2026-03.csv",
+      "sha256": "4aea2ddebf1f9ac4bb6e04d5c2ffc555c12d0d17332510d619ebc6e2d04eaea5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2026-04.csv",
+      "sha256": "1d6b214c90423099dbd203352f79668caa5101bf8b3874f661f3d810720581f5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2026-05.csv",
+      "sha256": "25f3cc2c326300bf35aeb57f6fdc7cee2988e5b3219a4289fdb8f4f9907e86f8"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2026-06.csv",
+      "sha256": "210387ddb34c2c607d9b73060aca62b244cdb1f0159699fe949504b59deff13a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2026-07.csv",
+      "sha256": "f5e4dc3471d247aa8d69d2869de2a7aada549996a84d26eb06feef86d9b396b5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2026-08.csv",
+      "sha256": "f302134a6e747f8feada9f21fbbe7ea4966b196bf29cbfa3f010d75c5d5246d0"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/TRXUSDT-1m-2026-09.csv",
+      "sha256": "c88d2ccb75f58be15d3d83cc611037f5e50420a87498e7a6a6cf12985d174f9c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/klines/replay/3f7c6e72fd15f2026cca28b1d25922f5b6d8b2cb82aec92dc8d3c172f5a24b64.csv",
+      "sha256": "3f7c6e72fd15f2026cca28b1d25922f5b6d8b2cb82aec92dc8d3c172f5a24b64"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2024-08.csv",
+      "sha256": "de5c2e866d093c1f568bf3982f34e6fd41e48cc5c8083c3863466011f1df4c1f"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2024-09.csv",
+      "sha256": "d5cff92bb6a46997eccf6cf12d8f1d84de363d9fa0ec226549d6b2ce6098179c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2024-10.csv",
+      "sha256": "df6bbff1fb91cc4eea56b8d3167cbbdaa3c99fed8086363a04489124554151b9"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2024-11.csv",
+      "sha256": "06eb061a9a45f84937ef5c92df287aad368338ae41c2d992bad97dba8123786b"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2024-12.csv",
+      "sha256": "e5453a10faf38994256b070adb1b99b7f98ce68b922cc6010bc763179a465c62"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2025-01.csv",
+      "sha256": "ca87b23d3883a9b209789576df0143305a3191f66b1afaae188d75dcca772cb6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2025-02.csv",
+      "sha256": "183668ff3f2a2baa22f0b9de8d542ba50e5f53e6f0f5fffc0b776273f0525e28"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2025-03.csv",
+      "sha256": "43af56b787245a0394d2dd2bbaa392cd26160d471b58474ffdb314e964d69217"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2025-04.csv",
+      "sha256": "49b829e3fbf3ccec471402ba32fb11408aa0390a77e456504580b474fabe403d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2025-05.csv",
+      "sha256": "c3891438340bcc7bda018e87bc04a6f647ffda09b4d8843bd51820db58051480"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2025-06.csv",
+      "sha256": "9aad4e539d1100ac0f041fb60695e2c1f53ec9abe6b38c2d33cd84d1e46c9260"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2025-07.csv",
+      "sha256": "dfe231f91d058ee37d3085247ca75cd5a1953085973dd597fbc3526bf1b33699"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2025-08.csv",
+      "sha256": "5b047eaeedf3db0084597c2fb315ca4c517823acd2307309aaabbf7a1dc43c96"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2025-09.csv",
+      "sha256": "d4fa06a4977a45023b9d04c9c1a3e709a33c51011f4674f8df14dd8259e5eb04"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2025-10.csv",
+      "sha256": "e8d9033e190aa700c595b9ec9845cd56c4b7b9df9c4ec5e23953e6ee0a40f215"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2025-11.csv",
+      "sha256": "14ad186c781c9d65422a8f82bd7c259485f6f4fc3136f5e720c430c6d3f07898"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2025-12.csv",
+      "sha256": "9e3235a6b4c2a90bb9fe5b6cc4565dbb36d2b8ee30e2122da85fad4c96c493c1"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2026-01.csv",
+      "sha256": "a5909710fd440cbc174f745ccc7dad8b7e04e9e53391f8450d68ced464604116"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2026-02.csv",
+      "sha256": "502f66d21018e88a38fe1c26fdd9e11099c8638eac38c7a4b1b374d8b47248e1"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2026-03.csv",
+      "sha256": "243cb679dd79652f48d951a7933aadeb2458262e88c607cb2296fba6cfb7ec42"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2026-04.csv",
+      "sha256": "2e22f4880477c8c32bc864b1a06df85082bc20c4218e72af1e046997735d9226"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2026-05.csv",
+      "sha256": "e01744a3d85562cfe99f09e30d51df94b2fc3b341163f4ee1c7dbe4ac6a762a2"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2026-06.csv",
+      "sha256": "7c7235bc98431790250a81e5ae91313e2657cb53f2b321ce951c0657302746e2"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2026-07.csv",
+      "sha256": "61aa2be8749070b0f76d8012f6715d2093b17ea71b8386b089026ce0e8329245"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2026-08.csv",
+      "sha256": "df0231f53ab2a4f35b1ba47c403d3095849218dad48831aa1b6ce16c0bcce83a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/TRXUSDT-1m-2026-09.csv",
+      "sha256": "dc575f7b835adc0619789629d3d1356a7f4c5d043fb9e570fae7bf106630c433"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/daily/TRXUSDT-1m-2026-06-29.csv",
+      "sha256": "f5b1ab6ab52593695101341ea0fe5baa941ed1e4ae3f5eb8d43f965e5859e425"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/derived/8fa020b4562a3efce8aa15dadb97bd1dd4c4896069a261d002f511dc021fabae.csv",
+      "sha256": "8fa020b4562a3efce8aa15dadb97bd1dd4c4896069a261d002f511dc021fabae"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-holdout-20261003/TRXUSDT/markPriceKlines/replay/dc2cae3b22663b3765b4a1642adf39a7b8a8c06940a6bd3f86c0fe6404b713e9.csv",
+      "sha256": "dc2cae3b22663b3765b4a1642adf39a7b8a8c06940a6bd3f86c0fe6404b713e9"
+    },
+    {
+      "path": "/home/zs/workspace/bcr/tmp/trend-holdout-v8/artifacts/funding/3ba52cde0da12013b07189a89f42bc5a0f9280ff703212fd660878651139adec.json",
+      "sha256": "3ba52cde0da12013b07189a89f42bc5a0f9280ff703212fd660878651139adec"
+    },
+    {
+      "path": "/home/zs/workspace/bcr/tmp/trend-holdout-v8/artifacts/funding/4ec1806e21af2b6bc849a252d9ae3a264a55a6ecc51bc1300737447ceaa95c5f.json",
+      "sha256": "4ec1806e21af2b6bc849a252d9ae3a264a55a6ecc51bc1300737447ceaa95c5f"
+    },
+    {
+      "path": "/home/zs/workspace/bcr/tmp/trend-holdout-v8/artifacts/funding/5943bbef3159593e5ee6996fd8d88799a0d5952379d6b9d3f263beb5cdeda9df.json",
+      "sha256": "5943bbef3159593e5ee6996fd8d88799a0d5952379d6b9d3f263beb5cdeda9df"
+    },
+    {
+      "path": "/home/zs/workspace/bcr/tmp/trend-holdout-v8/artifacts/funding/78c511162ebb6b7693d3d4f752f31cb322f3e670174258db6ad26ed00ddcfffe.json",
+      "sha256": "78c511162ebb6b7693d3d4f752f31cb322f3e670174258db6ad26ed00ddcfffe"
+    },
+    {
+      "path": "/home/zs/workspace/bcr/tmp/trend-holdout-v8/artifacts/funding/daff641f3173623f9fe1debeb00cf38dfd5aa75eac77dbdcdd0d9c208f99f932.json",
+      "sha256": "daff641f3173623f9fe1debeb00cf38dfd5aa75eac77dbdcdd0d9c208f99f932"
+    },
+    {
+      "path": "/home/zs/workspace/bcr/tmp/trend-holdout-v8/artifacts/funding/f552419eea4117140756bf5c9e6554c14fc1ca08c6c82832f0a950d52ec738e7.json",
+      "sha256": "f552419eea4117140756bf5c9e6554c14fc1ca08c6c82832f0a950d52ec738e7"
+    }
+  ],
+  "scope": "Every recorded long holdout trade: source calendars, prior-N one-tick close breakout, signal Wilder ATR, next-minute entry, quantity/risk/precision, initial stop, earliest hard stop versus prior-M channel exit, adverse fills, fees, carried-position funding, net PnL and R. Independently reconstruct each minute marked equity, canonical daily close and first daily-loss trigger followed by next-open exit.",
+  "limits": [
+    "Recorded trade entries remain inputs; unused entry opportunities, cooldown and daily-entry locks are not independently replayed.",
+    "Minute OHLC execution does not establish order-book liquidity, queue position, actual latency or live fill prices.",
+    "The audit checks execution/accounting, not statistical independence of held-out assets or future profitability."
+  ]
+}

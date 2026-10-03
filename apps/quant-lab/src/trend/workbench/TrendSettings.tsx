@@ -1,8 +1,10 @@
 import {
   createTrendConfig,
   TREND_PERIODS,
+  STRUCTURED_PULLBACK_OPTIONS,
   TREND_RULES,
   TREND_BACKGROUND_RULES,
+  TREND_PRICE_ACTION_RULES,
   backgroundMinutes,
   periodLabel,
   trendWarmupDays,
@@ -10,6 +12,11 @@ import {
   validateTrendConfig,
   defaultTrendPreset,
   simpleChannelConfig,
+  kdjResearchConfig,
+  priceActionResearchConfig,
+  structuredPullbackResearchConfig,
+  withTrendEntry,
+  withTrendManagement,
   managementLabel,
   type TrendConfig,
 } from "@bcr/quant-core/trend";
@@ -88,7 +95,7 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
       {section === "strategy" && (
         <section aria-label="策略设置">
           <p className="trend-help">
-            收盘确认突破，下一分钟开盘尝试入场。ATR 14 在信号收盘时冻结；
+            完整交易 K 线收盘确认信号，下一分钟开盘尝试入场。初始止损使用信号 ATR 14；
             {s.management === "channel"
               ? "初始硬止损在持仓期间保持固定。"
               : "保本与跟踪止损只向收紧风险的方向调整。"}
@@ -100,10 +107,28 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
             <Button variant="ghost" size="sm" onClick={() => setDraft(simpleChannelConfig(draft))}>
               使用无过滤基线 · 4 小时 / 仅做多
             </Button>
+            <Button variant="ghost" size="sm" onClick={() => setDraft(kdjResearchConfig(draft))}>
+              KDJ 回调研究 · 5 分钟 / 双向
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDraft(priceActionResearchConfig(draft))}
+            >
+              价格行为回调研究 · 5 分钟 / 双向
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDraft(structuredPullbackResearchConfig(draft))}
+            >
+              结构化回调研究 · 30 分钟 / 双向
+            </Button>
           </div>
           <p className="trend-help">
-            两个方案均为 20 根突破、仅做多与反向通道退出，只在趋势背景过滤上不同。
-            保留当前资金、成交成本、成本门槛和风控，点击“应用设置”后生效。背景过滤不保证收益改善。
+            前两个方案使用 20 根突破、仅做多与反向通道退出，只在背景过滤上不同。
+            预设保留当前资金、成交成本和成本门槛；结构化回调预设关闭 UTC
+            日亏损保护，其余风控保留。点击“应用设置”后生效。
           </p>
           <label className="trend-context-setting">
             入场环境
@@ -115,8 +140,234 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
               <option value="background">趋势背景 · 自动较大周期</option>
               <option value="none">无过滤基线</option>
               <option value="ema">同周期 EMA 20 / 60</option>
+              <option value="slow-ema">同周期 EMA 60 方向与斜率</option>
             </Select>
           </label>
+          {s.filter === "slow-ema" && (
+            <div className="trend-context-description">
+              <strong>EMA 60 · 收盘位置与三根斜率</strong>
+              <p>
+                收盘在 EMA 60 上方且均线高于三根前时允许做多；下方且均线下降时允许做空。
+                仅使用已完成的交易 K 线，至少预热 63 根。
+              </p>
+            </div>
+          )}
+          {s.entry === "kdj" && (
+            <div className="trend-context-description">
+              <strong>KDJ 回调研究 · 截图推测方案</strong>
+              <p>
+                固定 KDJ 9,3,3，K / D 初值 50，价格平窗时 RSV 为 50。 K 进入 20
+                以下后等待金叉做多，进入 80 以上后等待死叉做空；
+                每次进入区域只准备一次，后续另一根完整 K 线交叉才可入场；持仓、趋势或风控打断后，
+                须先离区再回来，且方向有效。J 只作观察。
+              </p>
+              <p>
+                这是根据截图提出的可检验假设，并非博主规则的精确复现，尚未证明具有扣费后的正期望。
+              </p>
+            </div>
+          )}
+          {s.entry === "structured-pullback" && s.structuredPullback && (
+            <div className="trend-context-description">
+              <strong>趋势能量 → 较大周期关键位 → 回调结构 → 整段极值突破</strong>
+              <p>
+                推进强度使用推进前 ATR
+                归一化，均线辅助判断方向。关键位与结构只使用当时已确认的信息，
+                形态可同时命中；收盘越过冻结的整段推进高点或低点后，下一分钟尝试成交。
+                这些是可复现的研究假设，尚未证明扣费后具有正期望。
+              </p>
+              <div className="trend-fields">
+                <label>
+                  关键位要求
+                  <Select
+                    aria-label="关键位要求"
+                    value={s.structuredPullback.keyLevel}
+                    onChange={(event) =>
+                      strategy({
+                        structuredPullback: {
+                          ...s.structuredPullback!,
+                          keyLevel: event.target.value as NonNullable<
+                            typeof s.structuredPullback
+                          >["keyLevel"],
+                        },
+                      })
+                    }
+                  >
+                    {STRUCTURED_PULLBACK_OPTIONS.keyLevel.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label>
+                  回调结构要求
+                  <Select
+                    aria-label="回调结构要求"
+                    value={s.structuredPullback.shape}
+                    onChange={(event) =>
+                      strategy({
+                        structuredPullback: {
+                          ...s.structuredPullback!,
+                          shape: event.target.value as NonNullable<
+                            typeof s.structuredPullback
+                          >["shape"],
+                        },
+                      })
+                    }
+                  >
+                    {STRUCTURED_PULLBACK_OPTIONS.shape.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label>
+                  结构确认时点
+                  <Select
+                    aria-label="结构确认时点"
+                    value={s.structuredPullback.confirmation}
+                    onChange={(event) =>
+                      strategy({
+                        structuredPullback: {
+                          ...s.structuredPullback!,
+                          confirmation: event.target.value as NonNullable<
+                            typeof s.structuredPullback
+                          >["confirmation"],
+                        },
+                      })
+                    }
+                  >
+                    {STRUCTURED_PULLBACK_OPTIONS.confirmation.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label>
+                  关键位用途
+                  <Select
+                    aria-label="关键位用途"
+                    value={s.structuredPullback.keyRole}
+                    onChange={(event) =>
+                      strategy({
+                        structuredPullback: {
+                          ...s.structuredPullback!,
+                          keyRole: event.target.value as NonNullable<
+                            typeof s.structuredPullback
+                          >["keyRole"],
+                        },
+                      })
+                    }
+                  >
+                    {STRUCTURED_PULLBACK_OPTIONS.keyRole.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label>
+                  K 线确认
+                  <Select
+                    aria-label="K 线确认"
+                    value={s.structuredPullback.candle}
+                    onChange={(event) =>
+                      strategy({
+                        structuredPullback: {
+                          ...s.structuredPullback!,
+                          candle: event.target.value as NonNullable<
+                            typeof s.structuredPullback
+                          >["candle"],
+                        },
+                      })
+                    }
+                  >
+                    {STRUCTURED_PULLBACK_OPTIONS.candle.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+              </div>
+              <p>
+                较大周期为{periodLabel(backgroundMinutes(s.tradeMinutes))}，摆动点在右侧完整 K
+                线确认后才可使用。 “任一结构”要求至少一种形态；“不设结构门槛”仅供机制对照。 外包 K
+                线与实体吞没分别记录，十字星本身不等于方向反转。
+              </p>
+              <p>
+                “突破收盘确认”允许该根完成结构确认，成交仍在下一分钟。
+                “推进背景”使用推进起点已知的摆动点及后续推进突破，或起点前已两次验证、起点收盘在顺侧的
+                EMA；
+                无需本次回踩，但关键位被反向收盘越过容差后仍会失效。预设保留突破前确认与回调重测。
+              </p>
+            </div>
+          )}
+          {s.entry === "price-action" && s.priceAction && (
+            <div className="trend-context-description">
+              <strong>强推进 → 回调 → 突破整段推进极值</strong>
+              <p>
+                以价格结构定义入场，信号收盘确认后下一分钟尝试成交。两个开关只用于比较机制的作用，
+                不是寻找最优参数；本方案尚未证明扣费后具有正期望，也不代表作者原规则。
+              </p>
+              <div className="trend-fields">
+                <label className="trend-mechanism-toggle">
+                  <input
+                    type="checkbox"
+                    checked={s.priceAction.keyLevel}
+                    onChange={(event) =>
+                      strategy({
+                        priceAction: { ...s.priceAction!, keyLevel: event.target.checked },
+                      })
+                    }
+                  />
+                  要求较大周期关键位回踩
+                </label>
+                <label className="trend-mechanism-toggle">
+                  <input
+                    type="checkbox"
+                    checked={s.priceAction.twoLegs}
+                    onChange={(event) =>
+                      strategy({
+                        priceAction: { ...s.priceAction!, twoLegs: event.target.checked },
+                      })
+                    }
+                  />
+                  要求至少两腿回调
+                </label>
+              </div>
+              <details>
+                <summary>固定价格行为规则</summary>
+                <p>
+                  推进前 ATR 14 冻结为基准；{TREND_PRICE_ACTION_RULES.impulseBars} 根净位移 ≥{" "}
+                  {TREND_PRICE_ACTION_RULES.impulseAtr} 倍基准 ATR，方向效率 ≥{" "}
+                  {TREND_PRICE_ACTION_RULES.minEfficiency * 100}%。确认后最多再延伸{" "}
+                  {TREND_PRICE_ACTION_RULES.maxExtensionBars}{" "}
+                  根，首次逆向收盘冻结整段极值，包含该根高低价。 回调{" "}
+                  {TREND_PRICE_ACTION_RULES.minPullbackBars}–
+                  {TREND_PRICE_ACTION_RULES.maxPullbackBars} 根、 深度{" "}
+                  {TREND_PRICE_ACTION_RULES.minRetracement * 100}–
+                  {TREND_PRICE_ACTION_RULES.maxRetracement * 100}%，
+                  收盘越过整段极值至少一跳才触发，不使用回调内部局部高点。
+                </p>
+                <p>
+                  关键位取推进起点前已确认的最近{periodLabel(backgroundMinutes(s.tradeMinutes))}
+                  摆动点， 左右各 {TREND_PRICE_ACTION_RULES.pivotRadius} 根确认。最初 3
+                  根确认时须已突破该关键位，延伸阶段才突破不纳入。多头回调低点须进入前高 ±{" "}
+                  {TREND_PRICE_ACTION_RULES.keyLevelToleranceAtr} 倍基准 ATR
+                  区域且收盘回到上方；空头反向。收盘越过容差区逆向边界后关键位失效，不再恢复。
+                </p>
+                <p>
+                  多头从逆向收盘开始第一腿，之后新 K 收盘越过前根高点一跳转为反弹， 再由后续新 K
+                  收盘跌破前根低点一跳确认第二腿；空头反向，每根最多转换一次。 两腿不是两根 K
+                  线。首次突破即消费形态，机制不满足也不会等待第二次突破。 初始止损仍使用信号当时
+                  ATR，与推进前冻结基准分别记录。
+                </p>
+              </details>
+            </div>
+          )}
           {s.filter === "none" && s.entry === "breakout" && (
             <div className="trend-context-description">
               <strong>
@@ -124,7 +375,9 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
               </strong>
               <p>
                 突破只比较此前这个窗口的最高价或最低价，不会排除更大范围的震荡。
-                离场后，只要再次满足突破和风控条件，就可能重新入场。
+                {s.breakoutReentry === "episode"
+                  ? "同一突破阶段仅取首次机会；后续收盘回到冻结边界后才重新允许触发。"
+                  : "离场后，只要再次满足突破和风控条件，就可能重新入场。"}
               </p>
             </div>
           )}
@@ -159,14 +412,15 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
                 aria-label="持仓管理"
                 value={s.management}
                 onChange={(event) =>
-                  strategy({
-                    management: event.target.value as typeof s.management,
-                    ...(event.target.value === "channel" ? { entry: "breakout" as const } : {}),
-                  })
+                  setDraft(withTrendManagement(draft, event.target.value as typeof s.management))
                 }
               >
                 <option value="atr">保本与 ATR 移动止盈</option>
-                <option value="channel">反向通道退出 · 自动窗口</option>
+                <option value="channel">
+                  {s.channelExitBars === undefined ? "反向通道退出 · 自动窗口" : managementLabel(s)}
+                </option>
+                <option value="staged">收盘 R 分段保护 · 动态 ATR</option>
+                <option value="chandelier">连续动态 ATR 跟踪 · 无保本门槛</option>
               </Select>
             </label>
             <label>
@@ -196,6 +450,20 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
               value={s.stopAtr}
               onChange={(n) => strategy({ stopAtr: n })}
             />
+            {s.management === "staged" && s.staged && (
+              <>
+                <NumberField
+                  label="保本触发 · 收盘 R（0 关闭）"
+                  value={s.staged.breakEvenR}
+                  onChange={(n) => strategy({ staged: { ...s.staged!, breakEvenR: n } })}
+                />
+                <NumberField
+                  label="跟踪启动 · 收盘 R（0 不亏时启动）"
+                  value={s.staged.trailingStartR}
+                  onChange={(n) => strategy({ staged: { ...s.staged!, trailingStartR: n } })}
+                />
+              </>
+            )}
             {s.management === "atr" && (
               <NumberField
                 label="保本触发 · ATR（0 关闭）"
@@ -203,7 +471,7 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
                 onChange={(n) => strategy({ breakEvenAtr: n })}
               />
             )}
-            {s.management === "atr" && (
+            {s.management !== "channel" && (
               <NumberField
                 label="移动止盈距离 · ATR"
                 value={s.trailingAtr}
@@ -228,7 +496,11 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
           <p className="trend-help">
             {s.management === "channel"
               ? `ATR 硬止损在入场时冻结；${managementLabel(s)}，只用此前完整 K 线，收盘确认后下一分钟开盘退出。不设主动保本与移动距离参数。`
-              : "ATR 在信号收盘时冻结；保本覆盖费用、滑点和已结算资金费。移动止盈跟随持仓最高 / 最低价，不另设启动阈值。"}
+              : s.management === "chandelier"
+                ? "初始止损按信号 ATR 冻结；从入场后的第一根完整交易 K 线开始，以持仓以来极值和当前 ATR 14 计算保护线，只收紧、不放宽。没有盈利启动阈值或主动保本；保护线越过收盘时，锁定下一分钟开盘退出。"
+                : s.management === "staged"
+                  ? "R 使用成交价到初始止损的固定距离。完整交易 K 线收盘达到阈值后锁定保本或跟踪状态；跟踪采用当前 ATR 14 与入场以来极值，止损只收紧。新保护线越过收盘时锁定退出意图，下分钟开盘成交。保本覆盖已知成本，跳空与后续资金费仍可能亏损。"
+                  : "ATR 在信号收盘时冻结；保本覆盖费用、滑点和已结算资金费。移动止盈跟随持仓最高 / 最低价，不另设启动阈值。"}
           </p>
           <details className="trend-variants">
             <summary>研究变体</summary>
@@ -239,10 +511,15 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
                   aria-label="入场规则"
                   value={s.entry}
                   disabled={s.management === "channel"}
-                  onChange={(event) => strategy({ entry: event.target.value as typeof s.entry })}
+                  onChange={(event) =>
+                    setDraft(withTrendEntry(draft, event.target.value as typeof s.entry))
+                  }
                 >
                   <option value="breakout">通道突破基线</option>
                   <option value="pullback">回调突破 · 固定规则</option>
+                  <option value="kdj">KDJ 回调研究</option>
+                  <option value="price-action">价格行为回调研究</option>
+                  <option value="structured-pullback">结构化回调研究</option>
                 </Select>
               </label>
               <label>
@@ -274,7 +551,7 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
             )}
           </details>
           <p className="trend-help">
-            预热 {trendWarmupDays(draft)} 天 · 规则版本 6 · 信号、背景、止损与仓位由确定规则执行。
+            预热 {trendWarmupDays(draft)} 天 · 规则版本 11 · 信号、背景、止损与仓位由确定规则执行。
           </p>
         </section>
       )}

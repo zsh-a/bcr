@@ -676,3 +676,11 @@
 .trend-context-verdict[data-allowed="true"] {
   color: var(--color-accent);
 }
+.trend-fields label.trend-mechanism-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.trend-mechanism-toggle input {
+  accent-color: var(--color-accent);
+}

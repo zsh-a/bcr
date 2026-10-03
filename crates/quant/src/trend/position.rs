@@ -1,5 +1,11 @@
 use super::model::*;
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Stages {
+    pub break_even: bool,
+    pub trailing: bool,
+}
+
 #[derive(Clone)]
 pub struct Position {
     pub id: usize,
@@ -19,6 +25,7 @@ pub struct Position {
     pub mfe: f64,
     pub mae: f64,
     pub stop_reason: &'static str,
+    pub stages: Stages,
 }
 impl Position {
     /// Observe only minutes in which the position survived its active stop.

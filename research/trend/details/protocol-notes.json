@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+  "planBytesUnchanged": true,
+  "notes": [
+    {
+      "field": "windowCoverage.excludedIntervals / scope",
+      "correction": "Inherited descriptions refer to the PRIOR study. This study explicitly adds Oct-Nov2024 in windows/newTransfer; Aug-Sep2024 and Dec2024 still have no trading evaluation. Explicit windows determine replay dates. No candidate, date, selection or acceptance rule changed.",
+      "phase": "before any new strategy results"
+    },
+    {
+      "field": "archive completeness",
+      "correction": "The downloader originally required all minutes of an included month, incorrectly blocking warmup on the unneeded 2020-12-17 BTC mark gap (earliest declared warmup is 2020-12-18). Required warmup/trading intervals must remain fully aligned and complete. Original monthly/daily bytes are preserved.",
+      "phase": "before any new strategy results"
+    }
+  ]
+}

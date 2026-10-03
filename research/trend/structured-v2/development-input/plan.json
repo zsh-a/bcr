@@ -1,0 +1,219 @@
+{
+  "version": 1,
+  "title": "30\u5206\u949f\u7ed3\u6784\u56de\u8c03\uff1a\u786e\u8ba4\u65f6\u5e8f\u4e0e\u5173\u952e\u4f4d\u804c\u8d23\u5bf9\u7167",
+  "purpose": "Two finite single-factor contrasts on already-exposed development data. Immutable v9 controls are reproduced as v10 explicit legacy semantics. Independent opportunity observations retain market/EMA lifecycle and ignore only account holding/cooldown. No parameter search, target ranking or same-round combined variant.",
+  "configVersion": 10,
+  "capitalMode": "total-account-equal-sleeves",
+  "initialCapital": 30000,
+  "costs": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "stressFeeBps": 10,
+    "stressSlippageBps": 4
+  },
+  "risk": {
+    "riskPct": 0.005,
+    "maxExposurePct": 0.95,
+    "cooldownLosses": 3,
+    "cooldownMinutes": 60,
+    "dailyLossPct": 0,
+    "flattenMinute": null
+  },
+  "bootstrap": {
+    "seed": 20261003,
+    "samples": 2000,
+    "blockDays": 7
+  },
+  "selectionMode": "fixed",
+  "fixedCandidate": "sp-context",
+  "baseline": "sp-base",
+  "selection": "Predeclared sp-context only; sp-confirm-close is a separate mechanism diagnostic, never a fallback winner.",
+  "candidates": [
+    {
+      "entry": "structured-pullback",
+      "tradeMinutes": 30,
+      "filter": "ema",
+      "management": "chandelier",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "structuredPullback": {
+        "keyLevel": "either",
+        "shape": "any",
+        "candle": "none",
+        "confirmation": "before-breakout",
+        "keyRole": "pullback-retest"
+      },
+      "id": "sp-strict"
+    },
+    {
+      "entry": "structured-pullback",
+      "tradeMinutes": 30,
+      "filter": "ema",
+      "management": "chandelier",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "structuredPullback": {
+        "keyLevel": "either",
+        "shape": "any",
+        "candle": "none",
+        "confirmation": "signal-close",
+        "keyRole": "pullback-retest"
+      },
+      "id": "sp-confirm-close"
+    },
+    {
+      "entry": "structured-pullback",
+      "tradeMinutes": 30,
+      "filter": "ema",
+      "management": "chandelier",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "structuredPullback": {
+        "keyLevel": "either",
+        "shape": "none",
+        "candle": "none",
+        "confirmation": "before-breakout",
+        "keyRole": "pullback-retest"
+      },
+      "id": "sp-retest"
+    },
+    {
+      "entry": "structured-pullback",
+      "tradeMinutes": 30,
+      "filter": "ema",
+      "management": "chandelier",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "structuredPullback": {
+        "keyLevel": "either",
+        "shape": "none",
+        "candle": "none",
+        "confirmation": "before-breakout",
+        "keyRole": "impulse-context"
+      },
+      "id": "sp-context"
+    },
+    {
+      "entry": "structured-pullback",
+      "tradeMinutes": 30,
+      "filter": "ema",
+      "management": "chandelier",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "structuredPullback": {
+        "keyLevel": "none",
+        "shape": "none",
+        "candle": "none",
+        "confirmation": "before-breakout",
+        "keyRole": "pullback-retest"
+      },
+      "id": "sp-base"
+    }
+  ],
+  "stressCandidates": [
+    "sp-context",
+    "sp-base"
+  ],
+  "sensitivity": [],
+  "comparisons": [
+    {
+      "id": "same-close-confirmation",
+      "candidate": "sp-confirm-close",
+      "reference": "sp-strict"
+    },
+    {
+      "id": "context-vs-retest",
+      "candidate": "sp-context",
+      "reference": "sp-retest"
+    },
+    {
+      "id": "context-vs-simple",
+      "candidate": "sp-context",
+      "reference": "sp-base"
+    }
+  ],
+  "transferEvaluation": {
+    "windows": [
+      "development"
+    ],
+    "samples": 2000,
+    "seed": 20261003,
+    "blockDays": [
+      7,
+      28
+    ],
+    "minimumDays": 180,
+    "minimumTrades": 100,
+    "minimumTradesPerSymbol": 20,
+    "maxDailyDrawdown": 0.1,
+    "requireEachWindowPositive": true,
+    "requireDevelopmentQualified": true,
+    "method": "Fixed primary only; daily dollar portfolio returns; shared circular date blocks across both rules/costs. No independent-trade resampling or target ranking.",
+    "acceptance": "Development requires source-domain activity qualification, positive base-cost account return and daily drawdown at most10%; only then unlock validation. Validation and holdout require all sample gates, positive net return and daily drawdown at most10% under base/stress, with both 7/28day absolute mean-return 95% lower bounds above zero. No fallback candidate or universe replacement."
+  },
+  "limitations": [
+    "Current static execution filters; not point-in-time historical rules.",
+    "Three surviving contracts per group are purposive, correlated market samples; no cross-asset-class independence.",
+    "Minute OHLC uses fixed bps fills; no order book, queue, partial fills or live outage simulation.",
+    "The fixed 3bar impulse and pivot-based pattern definitions are research hypotheses, not a full reconstruction of discretionary Brooks price action.",
+    "No volume-profile ownership/cost-basis inference from OHLCV. H2/H3 discretionary setup counting is not interchangeable with confirmed pivot legs.",
+    "This is the second adaptive development round on these observations. Prior failed strategies and six v1 rules remain evidence; new registration does not reset total multiple-testing exposure.",
+    "Independent opportunity records use the shared detector and original EMA cancellation rules, but do not inherit portfolio holdings, cooldown or risk rejections. They are not executed account returns.",
+    "Impulse context qualifies a previously known pivot crossed during the impulse or a pre-validated EMA on the correct side at the origin. Neither qualification requires another pullback retest; subsequent invalidation and signal-side requirements remain.",
+    "Timing variant only confirms an older pivot using the completed signal candle; it does not confirm the signal candle as a pivot, backfill old signals or change fills."
+  ],
+  "selectionMinTrades": 20,
+  "selectionMinProfitableSymbols": 2,
+  "symbols": {
+    "BTCUSDT": {
+      "tickSize": 0.1,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "ETHUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "BNBUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.01,
+      "minNotional": 100
+    }
+  },
+  "windows": [
+    {
+      "id": "development",
+      "role": "development",
+      "start": "2022-09-01",
+      "end": "2024-01-01"
+    }
+  ],
+  "studyCell": {
+    "id": "development",
+    "stage": "development",
+    "symbolRole": "development",
+    "timeRole": "development",
+    "claim": "known-reused"
+  }
+}

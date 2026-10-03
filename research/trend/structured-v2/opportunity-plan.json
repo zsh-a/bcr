@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "scope": "account-independent-current-detector",
+  "tradeMinutes": 30,
+  "horizonsBars": [
+    12,
+    48
+  ],
+  "targetsR": [
+    1,
+    2
+  ],
+  "adverseR": 1,
+  "ambiguity": "same-minute-unknown",
+  "incomplete": "exclude",
+  "entry": "next-minute-open-adverse-grid",
+  "risk": "two-signal-atr-adverse-grid",
+  "costPolicy": "same-as-account",
+  "contrasts": [
+    {
+      "id": "confirmation-timing",
+      "reference": "sp-strict",
+      "candidate": "sp-confirm-close"
+    },
+    {
+      "id": "key-role",
+      "reference": "sp-retest",
+      "candidate": "sp-context"
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "status": "passed",
+  "scope": "Implementation, reproducibility and recorded evidence checks; not strategy profitability",
+  "logs": {
+    "rust-tests": {
+      "path": "research/trend/structured-v2/verification/rust-tests.txt",
+      "sha256": "6f5df2acd6b618cc7934d8e79b7b80631a4bd34c91f4a87fab4e2ddbc18d0383"
+    },
+    "python-tests": {
+      "path": "research/trend/structured-v2/verification/python-tests.txt",
+      "sha256": "e7db4a835c3d571fbba5ee782ac6fc44a240278ef7a668d575288e4721b1c288"
+    },
+    "execution-audit": {
+      "path": "research/trend/structured-v2/verification/execution-audit.txt",
+      "sha256": "944d34ffe0afb465a50b0eac30a948892f66007106de75d4dd4cf806fb5b7eb9"
+    },
+    "opportunity-diagnostics": {
+      "path": "research/trend/structured-v2/verification/opportunity-diagnostics.txt",
+      "sha256": "b832b62fbcd0c4603f52289450ac0fc5a7c8c69398c2c6a80b0f6d3e0fa60bd0"
+    }
+  },
+  "tests": {
+    "rustLibrary": 172,
+    "rustCli": 1,
+    "python": 201,
+    "typescript": 154,
+    "browserFlows": 4
+  },
+  "toolOutputEvidence": [
+    {
+      "name": "TypeScript",
+      "command": "bunx vp test run packages/quant-core/tests/trend*.test.ts apps/quant-lab/tests/trend*.test.ts apps/quant-lab/tests/binance-trend.test.ts",
+      "passedTests": 154,
+      "exitCode": 0,
+      "evidence": "tool-output only; original stdout was not written to a file",
+      "toolSession": "19118",
+      "toolChunk": "e64ef2"
+    },
+    {
+      "name": "Typecheck",
+      "command": "bun run typecheck",
+      "passedTests": null,
+      "exitCode": 0,
+      "evidence": "tool-output only; original stdout was not written to a file",
+      "toolSession": "81213",
+      "toolChunk": "8633b7"
+    },
+    {
+      "name": "Structured browser",
+      "command": "BASE_URL=http://localhost:5199 node scripts/verify-binance-structured-pullback.mjs",
+      "passedTests": null,
+      "exitCode": 0,
+      "evidence": "tool-output only; original stdout was not written to a file",
+      "toolSession": "56800",
+      "toolChunk": "8beeb0"
+    },
+    {
+      "name": "Price action browser",
+      "command": "BASE_URL=http://localhost:5199 node scripts/verify-binance-price-action.mjs",
+      "passedTests": null,
+      "exitCode": 0,
+      "evidence": "tool-output only; original stdout was not written to a file",
+      "toolSession": "94129",
+      "toolChunk": "5d4d80"
+    },
+    {
+      "name": "KDJ browser",
+      "command": "BASE_URL=http://localhost:5199 node scripts/verify-binance-kdj.mjs",
+      "passedTests": null,
+      "exitCode": 0,
+      "evidence": "tool-output only; original stdout was not written to a file",
+      "toolSession": "25915",
+      "toolChunk": "bc7528"
+    },
+    {
+      "name": "Trend browser",
+      "command": "BASE_URL=http://localhost:5199 node scripts/verify-binance-trend.mjs",
+      "passedTests": null,
+      "exitCode": 0,
+      "evidence": "tool-output only; original stdout was not written to a file",
+      "toolSession": "87715",
+      "toolChunk": "120db4"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "crates/quant/pkg/bcr_quant_bg.wasm",
+      "sha256": "d66f062e8394a9ae9affdda655545649ec4497faddac0b4ae7f92b298f042091"
+    },
+    {
+      "path": "tmp/quant-structured-v2-target/release/trend",
+      "sha256": "2822c162ef4cb3ed65f2b5115c6b585af9817f46cf4404e0678dccd9ea4dc7c4"
+    },
+    {
+      "path": "tmp/quant-structured-target/release/trend",
+      "sha256": "41cf7a8573a4684d4046a4e1ca15528d2c25a86d3d5248e7ca89c9c12d38d006"
+    },
+    {
+      "path": "crates/quant/target/release/trend",
+      "sha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb"
+    },
+    {
+      "path": "scripts/shots/binance-structured-result.json",
+      "sha256": "a12930f5a4cd8f0b9998a864d7f98d924b421e0ac0d66d0e9e08d22d8cd98f55"
+    },
+    {
+      "path": "scripts/shots/binance-structured-restored.json",
+      "sha256": "a12930f5a4cd8f0b9998a864d7f98d924b421e0ac0d66d0e9e08d22d8cd98f55"
+    },
+    {
+      "path": "scripts/shots/binance-price-action-result.json",
+      "sha256": "8edd272e4a4ae883b44aa3acea83efdcd178b6d553a94b2da3c18ca2b44778e5"
+    },
+    {
+      "path": "scripts/shots/binance-price-action-restored.json",
+      "sha256": "8edd272e4a4ae883b44aa3acea83efdcd178b6d553a94b2da3c18ca2b44778e5"
+    },
+    {
+      "path": "scripts/shots/binance-kdj-result.json",
+      "sha256": "5ac3101d7bfe1f02fcf4f744b211f642d0244933a6d54ac89dde5a4ee3e5ed12"
+    },
+    {
+      "path": "scripts/shots/binance-kdj-restored.json",
+      "sha256": "5ac3101d7bfe1f02fcf4f744b211f642d0244933a6d54ac89dde5a4ee3e5ed12"
+    },
+    {
+      "path": "scripts/shots/binance-trend-result.json",
+      "sha256": "c406cb07de23df02e09b65fad358298ea88c9d5e63992ca1a14552545ee016f7"
+    },
+    {
+      "path": "scripts/shots/binance-structured-evidence.png",
+      "sha256": "dabc8f86860a2a6ea614283190992a5d50c1d313490f04c3768b837f6ad2e6b4"
+    },
+    {
+      "path": "scripts/shots/binance-structured-mobile.png",
+      "sha256": "e05aa8cd730789dcbdbc959d07dcf58dce88e1b5f684007887a4029a3b44ce05"
+    },
+    {
+      "path": "scripts/shots/binance-structured-settings-mobile.png",
+      "sha256": "2c459c14a30e9aa080a7baf5e186b8c1d35348732e3d9262c5b3c04f233a2065"
+    }
+  ],
+  "frozenArtifactsVerifiedBeforeFinalSeal": 161,
+  "limits": [
+    "Browser paths are synthetic functional fixtures, not historical profitability evidence.",
+    "Generated WASM and screenshots remain local build artifacts; their identities are recorded here.",
+    "TypeScript and browser stdout references are tool receipts, not reconstructed local logs."
+  ]
+}

@@ -1,0 +1,1305 @@
+{
+  "version": 1,
+  "evaluationIdentity": {
+    "planSha256": "f6db2c3a71c08fbed0a7a6c2b6f7f1538fbf40d29180aafab216e766f2b62594",
+    "manifestSha256": "608bf05449a5644ebcc4587a1892d07ca9f67e82c659de24a8a1f88d7fef302e",
+    "selectionSha256": "d48ac1c7cac700650f00936e606d049546b0168e52c7c686c8d4411a98a75994",
+    "rawResultsSha256": "6433bce23b6907ac4632bf66f29b451e57bc7b2113571db5022b0c767030e7c2",
+    "evaluationVersion": "trend-account-evaluation-2",
+    "evaluationSha256": "0a2fd14d934a6d3305fb4b08cfa83864c1f6f4ce20d6ba0db4a7cd4f5a2da768"
+  },
+  "sources": {
+    "results": {
+      "path": "research/trend/search/results.json",
+      "sha256": "b4faa0bb2a061f532fb64138a1d6e9e401248e9c5888a5067d5032870138aaa9"
+    },
+    "generator": {
+      "path": "research/trend/search/overview.py",
+      "sha256": "750168cfbb9c44bbcfe08d8633ad91b4e2f67ab1b6bc55a8148b9dc3ffba45bc"
+    }
+  },
+  "window": {
+    "id": "validation-continuous",
+    "start": "2024-09-01",
+    "end": "2026-10-01",
+    "role": "diagnostic-validation-known",
+    "label": "2024\u5e749\u6708\u20142026\u5e749\u6708 \u00b7 \u8fde\u7eed760\u5929\u5df2\u77e5\u5386\u53f2"
+  },
+  "selected": "m30-n320-no-day-guard",
+  "baseline": "m30-n320-x160",
+  "conventions": "Calendar attribution of the same continuous 760-day marked account. Each subperiod starts at the preceding close; no annual or monthly re-entry, liquidation, rebalance or reset. Subperiod daily drawdowns start at the boundary equity and are not the full-path drawdown. All dates UTC. Trading finalization at the overall window end is retained.",
+  "accounts": {
+    "m30-n320-x160": {
+      "initialEquity": 60000.0,
+      "finalEquity": 76452.64789544558,
+      "return": 0.27421079825742645,
+      "dailyMaxDrawdown": -0.08280111353243536,
+      "yearly": [
+        {
+          "period": "2024",
+          "days": 122,
+          "fromEquity": 60000.0,
+          "startDate": "2024-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.018737820776204894,
+          "endDateInclusive": "2024-12-31",
+          "toEquity": 64312.221405491895,
+          "markedPnl": 4312.221405491895,
+          "return": 0.0718703567581982
+        },
+        {
+          "period": "2025",
+          "days": 365,
+          "fromEquity": 64312.221405491895,
+          "startDate": "2025-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.04972396383831246,
+          "endDateInclusive": "2025-12-31",
+          "toEquity": 71529.82609582948,
+          "markedPnl": 7217.60469033759,
+          "return": 0.11222757560853358
+        },
+        {
+          "period": "2026",
+          "days": 273,
+          "fromEquity": 71529.82609582948,
+          "startDate": "2026-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.08280111353243536,
+          "endDateInclusive": "2026-09-30",
+          "toEquity": 76452.64789544558,
+          "markedPnl": 4922.8217996160965,
+          "return": 0.06882194558981491
+        }
+      ],
+      "monthly": [
+        {
+          "period": "2024-09",
+          "days": 30,
+          "fromEquity": 60000.0,
+          "startDate": "2024-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.010609235343384649,
+          "endDateInclusive": "2024-09-30",
+          "toEquity": 59979.94269617324,
+          "markedPnl": -20.0573038267612,
+          "return": -0.000334288397112692
+        },
+        {
+          "period": "2024-10",
+          "days": 31,
+          "fromEquity": 59979.94269617324,
+          "startDate": "2024-10-01",
+          "dailyMaxDrawdownWithinPeriod": -0.011871089598990192,
+          "endDateInclusive": "2024-10-31",
+          "toEquity": 59872.378673850515,
+          "markedPnl": -107.56402232272376,
+          "return": -0.001793333195858282
+        },
+        {
+          "period": "2024-11",
+          "days": 30,
+          "fromEquity": 59872.378673850515,
+          "startDate": "2024-11-01",
+          "dailyMaxDrawdownWithinPeriod": -0.010973109565508787,
+          "endDateInclusive": "2024-11-30",
+          "toEquity": 64582.004509767714,
+          "markedPnl": 4709.625835917199,
+          "return": 0.07866107778300346
+        },
+        {
+          "period": "2024-12",
+          "days": 31,
+          "fromEquity": 64582.004509767714,
+          "startDate": "2024-12-01",
+          "dailyMaxDrawdownWithinPeriod": -0.018737820776204894,
+          "endDateInclusive": "2024-12-31",
+          "toEquity": 64312.221405491895,
+          "markedPnl": -269.7831042758189,
+          "return": -0.004177372726717032
+        },
+        {
+          "period": "2025-01",
+          "days": 31,
+          "fromEquity": 64312.221405491895,
+          "startDate": "2025-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.017580877124401373,
+          "endDateInclusive": "2025-01-31",
+          "toEquity": 64954.694671840945,
+          "markedPnl": 642.4732663490504,
+          "return": 0.009989909418588239
+        },
+        {
+          "period": "2025-02",
+          "days": 28,
+          "fromEquity": 64954.694671840945,
+          "startDate": "2025-02-01",
+          "dailyMaxDrawdownWithinPeriod": -0.008341895886919137,
+          "endDateInclusive": "2025-02-28",
+          "toEquity": 64431.37145786302,
+          "markedPnl": -523.3232139779284,
+          "return": -0.008056741958711755
+        },
+        {
+          "period": "2025-03",
+          "days": 31,
+          "fromEquity": 64431.37145786302,
+          "startDate": "2025-03-01",
+          "dailyMaxDrawdownWithinPeriod": -0.013179754692408285,
+          "endDateInclusive": "2025-03-31",
+          "toEquity": 63715.0256337189,
+          "markedPnl": -716.3458241441185,
+          "return": -0.01111796641815388
+        },
+        {
+          "period": "2025-04",
+          "days": 30,
+          "fromEquity": 63715.0256337189,
+          "startDate": "2025-04-01",
+          "dailyMaxDrawdownWithinPeriod": -0.010222578666683968,
+          "endDateInclusive": "2025-04-30",
+          "toEquity": 64077.879189849235,
+          "markedPnl": 362.8535561303361,
+          "return": 0.005694944834775395
+        },
+        {
+          "period": "2025-05",
+          "days": 31,
+          "fromEquity": 64077.879189849235,
+          "startDate": "2025-05-01",
+          "dailyMaxDrawdownWithinPeriod": -0.029657060881209563,
+          "endDateInclusive": "2025-05-31",
+          "toEquity": 65684.5422534427,
+          "markedPnl": 1606.6630635934707,
+          "return": 0.025073599249957557
+        },
+        {
+          "period": "2025-06",
+          "days": 30,
+          "fromEquity": 65684.5422534427,
+          "startDate": "2025-06-01",
+          "dailyMaxDrawdownWithinPeriod": -0.013857920630287457,
+          "endDateInclusive": "2025-06-30",
+          "toEquity": 65095.36920696958,
+          "markedPnl": -589.1730464731227,
+          "return": -0.008969736657367666
+        },
+        {
+          "period": "2025-07",
+          "days": 31,
+          "fromEquity": 65095.36920696958,
+          "startDate": "2025-07-01",
+          "dailyMaxDrawdownWithinPeriod": -0.019580029607739524,
+          "endDateInclusive": "2025-07-31",
+          "toEquity": 69544.10860815838,
+          "markedPnl": 4448.7394011887955,
+          "return": 0.06834187216980214
+        },
+        {
+          "period": "2025-08",
+          "days": 31,
+          "fromEquity": 69544.10860815838,
+          "startDate": "2025-08-01",
+          "dailyMaxDrawdownWithinPeriod": -0.02866869200492017,
+          "endDateInclusive": "2025-08-31",
+          "toEquity": 69902.07638699998,
+          "markedPnl": 357.9677788416011,
+          "return": 0.0051473487259510176
+        },
+        {
+          "period": "2025-09",
+          "days": 30,
+          "fromEquity": 69902.07638699998,
+          "startDate": "2025-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.016607399107815057,
+          "endDateInclusive": "2025-09-30",
+          "toEquity": 71489.95729977606,
+          "markedPnl": 1587.880912776076,
+          "return": 0.022715790357715093
+        },
+        {
+          "period": "2025-10",
+          "days": 31,
+          "fromEquity": 71489.95729977606,
+          "startDate": "2025-10-01",
+          "dailyMaxDrawdownWithinPeriod": -0.02085745741791767,
+          "endDateInclusive": "2025-10-31",
+          "toEquity": 72298.69452644161,
+          "markedPnl": 808.7372266655584,
+          "return": 0.011312599100798293
+        },
+        {
+          "period": "2025-11",
+          "days": 30,
+          "fromEquity": 72298.69452644161,
+          "startDate": "2025-11-01",
+          "dailyMaxDrawdownWithinPeriod": -0.006712491544802246,
+          "endDateInclusive": "2025-11-30",
+          "toEquity": 71871.94389068952,
+          "markedPnl": -426.7506357520906,
+          "return": -0.00590260499926476
+        },
+        {
+          "period": "2025-12",
+          "days": 31,
+          "fromEquity": 71871.94389068952,
+          "startDate": "2025-12-01",
+          "dailyMaxDrawdownWithinPeriod": -0.004760102153078871,
+          "endDateInclusive": "2025-12-31",
+          "toEquity": 71529.82609582948,
+          "markedPnl": -342.117794860038,
+          "return": -0.004760102153078871
+        },
+        {
+          "period": "2026-01",
+          "days": 31,
+          "fromEquity": 71529.82609582948,
+          "startDate": "2026-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.026533186750731685,
+          "endDateInclusive": "2026-01-31",
+          "toEquity": 72083.08224904178,
+          "markedPnl": 553.2561532122927,
+          "return": 0.007734621813159315
+        },
+        {
+          "period": "2026-02",
+          "days": 28,
+          "fromEquity": 72083.08224904178,
+          "startDate": "2026-02-01",
+          "dailyMaxDrawdownWithinPeriod": -0.013524435268170043,
+          "endDateInclusive": "2026-02-28",
+          "toEquity": 71692.54056732215,
+          "markedPnl": -390.54168171962374,
+          "return": -0.00541793815600633
+        },
+        {
+          "period": "2026-03",
+          "days": 31,
+          "fromEquity": 71692.54056732215,
+          "startDate": "2026-03-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01695111224289969,
+          "endDateInclusive": "2026-03-31",
+          "toEquity": 70477.27226518684,
+          "markedPnl": -1215.268302135315,
+          "return": -0.01695111224289969
+        },
+        {
+          "period": "2026-04",
+          "days": 30,
+          "fromEquity": 70477.27226518684,
+          "startDate": "2026-04-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01290781042126432,
+          "endDateInclusive": "2026-04-30",
+          "toEquity": 69847.19440383076,
+          "markedPnl": -630.0778613560833,
+          "return": -0.008940156749899009
+        },
+        {
+          "period": "2026-05",
+          "days": 31,
+          "fromEquity": 69847.19440383076,
+          "startDate": "2026-05-01",
+          "dailyMaxDrawdownWithinPeriod": -0.0123099818513982,
+          "endDateInclusive": "2026-05-31",
+          "toEquity": 69290.76773658748,
+          "markedPnl": -556.4266672432714,
+          "return": -0.007966342413500804
+        },
+        {
+          "period": "2026-06",
+          "days": 30,
+          "fromEquity": 69290.76773658748,
+          "startDate": "2026-06-01",
+          "dailyMaxDrawdownWithinPeriod": -0.015697657651382313,
+          "endDateInclusive": "2026-06-30",
+          "toEquity": 68528.77926893666,
+          "markedPnl": -761.9884676508227,
+          "return": -0.010996969618630281
+        },
+        {
+          "period": "2026-07",
+          "days": 31,
+          "fromEquity": 68528.77926893666,
+          "startDate": "2026-07-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01747440520282395,
+          "endDateInclusive": "2026-07-31",
+          "toEquity": 68537.58250000128,
+          "markedPnl": 8.803231064623105,
+          "return": 0.00012846035138136536
+        },
+        {
+          "period": "2026-08",
+          "days": 31,
+          "fromEquity": 68537.58250000128,
+          "startDate": "2026-08-01",
+          "dailyMaxDrawdownWithinPeriod": -0.013332489670874748,
+          "endDateInclusive": "2026-08-31",
+          "toEquity": 76786.413792913,
+          "markedPnl": 8248.83129291171,
+          "return": 0.12035486213584434
+        },
+        {
+          "period": "2026-09",
+          "days": 30,
+          "fromEquity": 76786.413792913,
+          "startDate": "2026-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01683964450782771,
+          "endDateInclusive": "2026-09-30",
+          "toEquity": 76452.64789544558,
+          "markedPnl": -333.7658974674123,
+          "return": -0.004346679067048886
+        }
+      ]
+    },
+    "m30-n320-x160-stress": {
+      "initialEquity": 60000.0,
+      "finalEquity": 72160.23997927888,
+      "return": 0.2026706663213147,
+      "dailyMaxDrawdown": -0.08318045210533032,
+      "yearly": [
+        {
+          "period": "2024",
+          "days": 122,
+          "fromEquity": 60000.0,
+          "startDate": "2024-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.018656026441666862,
+          "endDateInclusive": "2024-12-31",
+          "toEquity": 63844.4129282841,
+          "markedPnl": 3844.4129282841022,
+          "return": 0.06407354880473504
+        },
+        {
+          "period": "2025",
+          "days": 365,
+          "fromEquity": 63844.4129282841,
+          "startDate": "2025-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.0487246376034941,
+          "endDateInclusive": "2025-12-31",
+          "toEquity": 68977.79387598674,
+          "markedPnl": 5133.380947702637,
+          "return": 0.08040454461487379
+        },
+        {
+          "period": "2026",
+          "days": 273,
+          "fromEquity": 68977.79387598674,
+          "startDate": "2026-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.08318045210533032,
+          "endDateInclusive": "2026-09-30",
+          "toEquity": 72160.23997927888,
+          "markedPnl": 3182.446103292139,
+          "return": 0.04613725554942749
+        }
+      ],
+      "monthly": [
+        {
+          "period": "2024-09",
+          "days": 30,
+          "fromEquity": 60000.0,
+          "startDate": "2024-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.010087425308662357,
+          "endDateInclusive": "2024-09-30",
+          "toEquity": 59889.3197246143,
+          "markedPnl": -110.68027538569731,
+          "return": -0.0018446712564282874
+        },
+        {
+          "period": "2024-10",
+          "days": 31,
+          "fromEquity": 59889.3197246143,
+          "startDate": "2024-10-01",
+          "dailyMaxDrawdownWithinPeriod": -0.011497805576828668,
+          "endDateInclusive": "2024-10-31",
+          "toEquity": 59710.73193898203,
+          "markedPnl": -178.58778563226952,
+          "return": -0.002981963836848678
+        },
+        {
+          "period": "2024-11",
+          "days": 30,
+          "fromEquity": 59710.73193898203,
+          "startDate": "2024-11-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01053466093917288,
+          "endDateInclusive": "2024-11-30",
+          "toEquity": 64127.66522660562,
+          "markedPnl": 4416.933287623586,
+          "return": 0.07397218463403221
+        },
+        {
+          "period": "2024-12",
+          "days": 31,
+          "fromEquity": 64127.66522660562,
+          "startDate": "2024-12-01",
+          "dailyMaxDrawdownWithinPeriod": -0.018656026441666862,
+          "endDateInclusive": "2024-12-31",
+          "toEquity": 63844.4129282841,
+          "markedPnl": -283.2522983215167,
+          "return": -0.004417006253394695
+        },
+        {
+          "period": "2025-01",
+          "days": 31,
+          "fromEquity": 63844.4129282841,
+          "startDate": "2025-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.017075970416530417,
+          "endDateInclusive": "2025-01-31",
+          "toEquity": 64353.3486672179,
+          "markedPnl": 508.93573893379653,
+          "return": 0.007971500019985811
+        },
+        {
+          "period": "2025-02",
+          "days": 28,
+          "fromEquity": 64353.3486672179,
+          "startDate": "2025-02-01",
+          "dailyMaxDrawdownWithinPeriod": -0.008265073328296402,
+          "endDateInclusive": "2025-02-28",
+          "toEquity": 63833.759071513356,
+          "markedPnl": -519.5895957045432,
+          "return": -0.00807401023358445
+        },
+        {
+          "period": "2025-03",
+          "days": 31,
+          "fromEquity": 63833.759071513356,
+          "startDate": "2025-03-01",
+          "dailyMaxDrawdownWithinPeriod": -0.013195605174217695,
+          "endDateInclusive": "2025-03-31",
+          "toEquity": 63118.092847170425,
+          "markedPnl": -715.666224342931,
+          "return": -0.011211406546513536
+        },
+        {
+          "period": "2025-04",
+          "days": 30,
+          "fromEquity": 63118.092847170425,
+          "startDate": "2025-04-01",
+          "dailyMaxDrawdownWithinPeriod": -0.009393849965869006,
+          "endDateInclusive": "2025-04-30",
+          "toEquity": 63388.76596991823,
+          "markedPnl": 270.6731227478085,
+          "return": 0.004288360286854642
+        },
+        {
+          "period": "2025-05",
+          "days": 31,
+          "fromEquity": 63388.76596991823,
+          "startDate": "2025-05-01",
+          "dailyMaxDrawdownWithinPeriod": -0.028577393019959874,
+          "endDateInclusive": "2025-05-31",
+          "toEquity": 64757.0476694822,
+          "markedPnl": 1368.281699563966,
+          "return": 0.021585555084213226
+        },
+        {
+          "period": "2025-06",
+          "days": 30,
+          "fromEquity": 64757.0476694822,
+          "startDate": "2025-06-01",
+          "dailyMaxDrawdownWithinPeriod": -0.013278508445387804,
+          "endDateInclusive": "2025-06-30",
+          "toEquity": 64146.15383358142,
+          "markedPnl": -610.8938359007807,
+          "return": -0.009433627039619918
+        },
+        {
+          "period": "2025-07",
+          "days": 31,
+          "fromEquity": 64146.15383358142,
+          "startDate": "2025-07-01",
+          "dailyMaxDrawdownWithinPeriod": -0.02020557489595698,
+          "endDateInclusive": "2025-07-31",
+          "toEquity": 67831.1613437845,
+          "markedPnl": 3685.007510203075,
+          "return": 0.05744705317427656
+        },
+        {
+          "period": "2025-08",
+          "days": 31,
+          "fromEquity": 67831.1613437845,
+          "startDate": "2025-08-01",
+          "dailyMaxDrawdownWithinPeriod": -0.027092988231275372,
+          "endDateInclusive": "2025-08-31",
+          "toEquity": 68039.59419661913,
+          "markedPnl": 208.43285283463774,
+          "return": 0.003072818579328951
+        },
+        {
+          "period": "2025-09",
+          "days": 30,
+          "fromEquity": 68039.59419661913,
+          "startDate": "2025-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.015030132836350574,
+          "endDateInclusive": "2025-09-30",
+          "toEquity": 69144.49987515289,
+          "markedPnl": 1104.9056785337598,
+          "return": 0.016239157384461134
+        },
+        {
+          "period": "2025-10",
+          "days": 31,
+          "fromEquity": 69144.49987515289,
+          "startDate": "2025-10-01",
+          "dailyMaxDrawdownWithinPeriod": -0.019128794743388466,
+          "endDateInclusive": "2025-10-31",
+          "toEquity": 69718.23247539057,
+          "markedPnl": 573.7326002376794,
+          "return": 0.008297588402166545
+        },
+        {
+          "period": "2025-11",
+          "days": 30,
+          "fromEquity": 69718.23247539057,
+          "startDate": "2025-11-01",
+          "dailyMaxDrawdownWithinPeriod": -0.006572532367535078,
+          "endDateInclusive": "2025-11-30",
+          "toEquity": 69306.1090393405,
+          "markedPnl": -412.12343605006754,
+          "return": -0.005911272007584789
+        },
+        {
+          "period": "2025-12",
+          "days": 31,
+          "fromEquity": 69306.1090393405,
+          "startDate": "2025-12-01",
+          "dailyMaxDrawdownWithinPeriod": -0.004737174946113365,
+          "endDateInclusive": "2025-12-31",
+          "toEquity": 68977.79387598674,
+          "markedPnl": -328.31516335376364,
+          "return": -0.004737174946113365
+        },
+        {
+          "period": "2026-01",
+          "days": 31,
+          "fromEquity": 68977.79387598674,
+          "startDate": "2026-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.02456457929589473,
+          "endDateInclusive": "2026-01-31",
+          "toEquity": 69409.7670783206,
+          "markedPnl": 431.97320233385835,
+          "return": 0.006262496639287907
+        },
+        {
+          "period": "2026-02",
+          "days": 28,
+          "fromEquity": 69409.7670783206,
+          "startDate": "2026-02-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01350588398343211,
+          "endDateInclusive": "2026-02-28",
+          "toEquity": 68990.50414545894,
+          "markedPnl": -419.2629328616604,
+          "return": -0.006040402532810241
+        },
+        {
+          "period": "2026-03",
+          "days": 31,
+          "fromEquity": 68990.50414545894,
+          "startDate": "2026-03-01",
+          "dailyMaxDrawdownWithinPeriod": -0.016935550577683034,
+          "endDateInclusive": "2026-03-31",
+          "toEquity": 67822.11197312367,
+          "markedPnl": -1168.3921723352687,
+          "return": -0.016935550577683034
+        },
+        {
+          "period": "2026-04",
+          "days": 30,
+          "fromEquity": 67822.11197312367,
+          "startDate": "2026-04-01",
+          "dailyMaxDrawdownWithinPeriod": -0.013074380836902488,
+          "endDateInclusive": "2026-04-30",
+          "toEquity": 67172.57840751807,
+          "markedPnl": -649.5335656055977,
+          "return": -0.009577017682123934
+        },
+        {
+          "period": "2026-05",
+          "days": 31,
+          "fromEquity": 67172.57840751807,
+          "startDate": "2026-05-01",
+          "dailyMaxDrawdownWithinPeriod": -0.012327850852369981,
+          "endDateInclusive": "2026-05-31",
+          "toEquity": 66579.96033169131,
+          "markedPnl": -592.6180758267583,
+          "return": -0.008822321397751076
+        },
+        {
+          "period": "2026-06",
+          "days": 30,
+          "fromEquity": 66579.96033169131,
+          "startDate": "2026-06-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01453101639308818,
+          "endDateInclusive": "2026-06-30",
+          "toEquity": 65867.53383727912,
+          "markedPnl": -712.4264944121969,
+          "return": -0.01070031419158246
+        },
+        {
+          "period": "2026-07",
+          "days": 31,
+          "fromEquity": 65867.53383727912,
+          "startDate": "2026-07-01",
+          "dailyMaxDrawdownWithinPeriod": -0.016358611808069745,
+          "endDateInclusive": "2026-07-31",
+          "toEquity": 65814.35774512526,
+          "markedPnl": -53.17609215385164,
+          "return": -0.0008073187055283038
+        },
+        {
+          "period": "2026-08",
+          "days": 31,
+          "fromEquity": 65814.35774512526,
+          "startDate": "2026-08-01",
+          "dailyMaxDrawdownWithinPeriod": -0.013611697042199333,
+          "endDateInclusive": "2026-08-31",
+          "toEquity": 72559.7521908634,
+          "markedPnl": 6745.394445738129,
+          "return": 0.1024912295256386
+        },
+        {
+          "period": "2026-09",
+          "days": 30,
+          "fromEquity": 72559.7521908634,
+          "startDate": "2026-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01599394986108904,
+          "endDateInclusive": "2026-09-30",
+          "toEquity": 72160.23997927888,
+          "markedPnl": -399.51221158451517,
+          "return": -0.005505975413664932
+        }
+      ]
+    },
+    "m30-n320-no-day-guard": {
+      "initialEquity": 60000.0,
+      "finalEquity": 84528.79968896601,
+      "return": 0.4088133281494335,
+      "dailyMaxDrawdown": -0.08652210253512216,
+      "yearly": [
+        {
+          "period": "2024",
+          "days": 122,
+          "fromEquity": 60000.0,
+          "startDate": "2024-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.05065506444342038,
+          "endDateInclusive": "2024-12-31",
+          "toEquity": 72026.76061692939,
+          "markedPnl": 12026.760616929387,
+          "return": 0.20044601028215636
+        },
+        {
+          "period": "2025",
+          "days": 365,
+          "fromEquity": 72026.76061692939,
+          "startDate": "2025-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.05219237674177213,
+          "endDateInclusive": "2025-12-31",
+          "toEquity": 79289.70765884174,
+          "markedPnl": 7262.947041912354,
+          "return": 0.10083678593488288
+        },
+        {
+          "period": "2026",
+          "days": 273,
+          "fromEquity": 79289.70765884174,
+          "startDate": "2026-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.08652210253512227,
+          "endDateInclusive": "2026-09-30",
+          "toEquity": 84528.79968896601,
+          "markedPnl": 5239.092030124273,
+          "return": 0.06607531021133806
+        }
+      ],
+      "monthly": [
+        {
+          "period": "2024-09",
+          "days": 30,
+          "fromEquity": 60000.0,
+          "startDate": "2024-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.010609235343384649,
+          "endDateInclusive": "2024-09-30",
+          "toEquity": 59979.94269617324,
+          "markedPnl": -20.0573038267612,
+          "return": -0.000334288397112692
+        },
+        {
+          "period": "2024-10",
+          "days": 31,
+          "fromEquity": 59979.94269617324,
+          "startDate": "2024-10-01",
+          "dailyMaxDrawdownWithinPeriod": -0.011871089598990192,
+          "endDateInclusive": "2024-10-31",
+          "toEquity": 59872.378673850515,
+          "markedPnl": -107.56402232272376,
+          "return": -0.001793333195858282
+        },
+        {
+          "period": "2024-11",
+          "days": 30,
+          "fromEquity": 59872.378673850515,
+          "startDate": "2024-11-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01585298430352189,
+          "endDateInclusive": "2024-11-30",
+          "toEquity": 71110.1913697272,
+          "markedPnl": 11237.81269587668,
+          "return": 0.18769611204347947
+        },
+        {
+          "period": "2024-12",
+          "days": 31,
+          "fromEquity": 71110.1913697272,
+          "startDate": "2024-12-01",
+          "dailyMaxDrawdownWithinPeriod": -0.05065506444342038,
+          "endDateInclusive": "2024-12-31",
+          "toEquity": 72026.76061692939,
+          "markedPnl": 916.569247202191,
+          "return": 0.01288942174879848
+        },
+        {
+          "period": "2025-01",
+          "days": 31,
+          "fromEquity": 72026.76061692939,
+          "startDate": "2025-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.020118158533663943,
+          "endDateInclusive": "2025-01-31",
+          "toEquity": 72754.29961772817,
+          "markedPnl": 727.539000798788,
+          "return": 0.010100954069948598
+        },
+        {
+          "period": "2025-02",
+          "days": 28,
+          "fromEquity": 72754.29961772817,
+          "startDate": "2025-02-01",
+          "dailyMaxDrawdownWithinPeriod": -0.008522452454058804,
+          "endDateInclusive": "2025-02-28",
+          "toEquity": 72152.77327233224,
+          "markedPnl": -601.5263453959342,
+          "return": -0.008267914728841141
+        },
+        {
+          "period": "2025-03",
+          "days": 31,
+          "fromEquity": 72152.77327233224,
+          "startDate": "2025-03-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01403030047830589,
+          "endDateInclusive": "2025-03-31",
+          "toEquity": 71321.26761411948,
+          "markedPnl": -831.5056582127581,
+          "return": -0.011524236983578406
+        },
+        {
+          "period": "2025-04",
+          "days": 30,
+          "fromEquity": 71321.26761411948,
+          "startDate": "2025-04-01",
+          "dailyMaxDrawdownWithinPeriod": -0.011218375683964443,
+          "endDateInclusive": "2025-04-30",
+          "toEquity": 71568.86791096178,
+          "markedPnl": 247.60029684229812,
+          "return": 0.0034716194078592277
+        },
+        {
+          "period": "2025-05",
+          "days": 31,
+          "fromEquity": 71568.86791096178,
+          "startDate": "2025-05-01",
+          "dailyMaxDrawdownWithinPeriod": -0.031782397869542844,
+          "endDateInclusive": "2025-05-31",
+          "toEquity": 73020.60009284827,
+          "markedPnl": 1451.7321818864875,
+          "return": 0.02028440890936789
+        },
+        {
+          "period": "2025-06",
+          "days": 30,
+          "fromEquity": 73020.60009284827,
+          "startDate": "2025-06-01",
+          "dailyMaxDrawdownWithinPeriod": -0.014241508221267574,
+          "endDateInclusive": "2025-06-30",
+          "toEquity": 72319.83415076727,
+          "markedPnl": -700.7659420809941,
+          "return": -0.009596825295737688
+        },
+        {
+          "period": "2025-07",
+          "days": 31,
+          "fromEquity": 72319.83415076727,
+          "startDate": "2025-07-01",
+          "dailyMaxDrawdownWithinPeriod": -0.024393102682154888,
+          "endDateInclusive": "2025-07-31",
+          "toEquity": 77915.19546539836,
+          "markedPnl": 5595.361314631082,
+          "return": 0.07736966463399608
+        },
+        {
+          "period": "2025-08",
+          "days": 31,
+          "fromEquity": 77915.19546539836,
+          "startDate": "2025-08-01",
+          "dailyMaxDrawdownWithinPeriod": -0.026097451165958074,
+          "endDateInclusive": "2025-08-31",
+          "toEquity": 78229.61149932355,
+          "markedPnl": 314.41603392519755,
+          "return": 0.004035362191510128
+        },
+        {
+          "period": "2025-09",
+          "days": 30,
+          "fromEquity": 78229.61149932355,
+          "startDate": "2025-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01711265386698657,
+          "endDateInclusive": "2025-09-30",
+          "toEquity": 79485.35473817009,
+          "markedPnl": 1255.7432388465386,
+          "return": 0.016052019366827652
+        },
+        {
+          "period": "2025-10",
+          "days": 31,
+          "fromEquity": 79485.35473817009,
+          "startDate": "2025-10-01",
+          "dailyMaxDrawdownWithinPeriod": -0.02049971708568632,
+          "endDateInclusive": "2025-10-31",
+          "toEquity": 80138.6914243207,
+          "markedPnl": 653.3366861506074,
+          "return": 0.008219585712396116
+        },
+        {
+          "period": "2025-11",
+          "days": 30,
+          "fromEquity": 80138.6914243207,
+          "startDate": "2025-11-01",
+          "dailyMaxDrawdownWithinPeriod": -0.008048852507020587,
+          "endDateInclusive": "2025-11-30",
+          "toEquity": 79625.0084251335,
+          "markedPnl": -513.6829991871928,
+          "return": -0.00640992496954218
+        },
+        {
+          "period": "2025-12",
+          "days": 31,
+          "fromEquity": 79625.0084251335,
+          "startDate": "2025-12-01",
+          "dailyMaxDrawdownWithinPeriod": -0.0042109981891811366,
+          "endDateInclusive": "2025-12-31",
+          "toEquity": 79289.70765884174,
+          "markedPnl": -335.3007662917662,
+          "return": -0.0042109981891811366
+        },
+        {
+          "period": "2026-01",
+          "days": 31,
+          "fromEquity": 79289.70765884174,
+          "startDate": "2026-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.027424423622532612,
+          "endDateInclusive": "2026-01-31",
+          "toEquity": 80060.92354927678,
+          "markedPnl": 771.2158904350363,
+          "return": 0.00972655737051431
+        },
+        {
+          "period": "2026-02",
+          "days": 28,
+          "fromEquity": 80060.92354927678,
+          "startDate": "2026-02-01",
+          "dailyMaxDrawdownWithinPeriod": -0.015757951552023974,
+          "endDateInclusive": "2026-02-28",
+          "toEquity": 79427.24879585108,
+          "markedPnl": -633.674753425701,
+          "return": -0.00791490686509111
+        },
+        {
+          "period": "2026-03",
+          "days": 31,
+          "fromEquity": 79427.24879585108,
+          "startDate": "2026-03-01",
+          "dailyMaxDrawdownWithinPeriod": -0.016166264206441183,
+          "endDateInclusive": "2026-03-31",
+          "toEquity": 78143.20690662661,
+          "markedPnl": -1284.0418892244634,
+          "return": -0.016166264206441183
+        },
+        {
+          "period": "2026-04",
+          "days": 30,
+          "fromEquity": 78143.20690662661,
+          "startDate": "2026-04-01",
+          "dailyMaxDrawdownWithinPeriod": -0.013675711520276246,
+          "endDateInclusive": "2026-04-30",
+          "toEquity": 77349.80056895028,
+          "markedPnl": -793.406337676337,
+          "return": -0.010153234927053556
+        },
+        {
+          "period": "2026-05",
+          "days": 31,
+          "fromEquity": 77349.80056895028,
+          "startDate": "2026-05-01",
+          "dailyMaxDrawdownWithinPeriod": -0.012810774574702477,
+          "endDateInclusive": "2026-05-31",
+          "toEquity": 76624.85617796057,
+          "markedPnl": -724.9443909897091,
+          "return": -0.009372285198634533
+        },
+        {
+          "period": "2026-06",
+          "days": 30,
+          "fromEquity": 76624.85617796057,
+          "startDate": "2026-06-01",
+          "dailyMaxDrawdownWithinPeriod": -0.015862926353287676,
+          "endDateInclusive": "2026-06-30",
+          "toEquity": 75836.27899995644,
+          "markedPnl": -788.577178004125,
+          "return": -0.010291401737481443
+        },
+        {
+          "period": "2026-07",
+          "days": 31,
+          "fromEquity": 75836.27899995644,
+          "startDate": "2026-07-01",
+          "dailyMaxDrawdownWithinPeriod": -0.019088469293081167,
+          "endDateInclusive": "2026-07-31",
+          "toEquity": 75802.07475133962,
+          "markedPnl": -34.20424861682113,
+          "return": -0.00045102751701253663
+        },
+        {
+          "period": "2026-08",
+          "days": 31,
+          "fromEquity": 75802.07475133962,
+          "startDate": "2026-08-01",
+          "dailyMaxDrawdownWithinPeriod": -0.0230667485019046,
+          "endDateInclusive": "2026-08-31",
+          "toEquity": 85373.96665228941,
+          "markedPnl": 9571.891900949791,
+          "return": 0.1262748009516801
+        },
+        {
+          "period": "2026-09",
+          "days": 30,
+          "fromEquity": 85373.96665228941,
+          "startDate": "2026-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.017396962317907327,
+          "endDateInclusive": "2026-09-30",
+          "toEquity": 84528.79968896601,
+          "markedPnl": -845.1669633233978,
+          "return": -0.009899586448473108
+        }
+      ]
+    },
+    "m30-n320-no-day-guard-stress": {
+      "initialEquity": 60000.0,
+      "finalEquity": 79664.57562949919,
+      "return": 0.3277429271583199,
+      "dailyMaxDrawdown": -0.08614634664629262,
+      "yearly": [
+        {
+          "period": "2024",
+          "days": 122,
+          "fromEquity": 60000.0,
+          "startDate": "2024-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.0485436247176847,
+          "endDateInclusive": "2024-12-31",
+          "toEquity": 70883.30287097975,
+          "markedPnl": 10883.30287097975,
+          "return": 0.18138838118299594
+        },
+        {
+          "period": "2025",
+          "days": 365,
+          "fromEquity": 70883.30287097975,
+          "startDate": "2025-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.05097438065486437,
+          "endDateInclusive": "2025-12-31",
+          "toEquity": 76181.8599856889,
+          "markedPnl": 5298.557114709154,
+          "return": 0.07475042640653284
+        },
+        {
+          "period": "2026",
+          "days": 273,
+          "fromEquity": 76181.8599856889,
+          "startDate": "2026-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.08614634664629284,
+          "endDateInclusive": "2026-09-30",
+          "toEquity": 79664.57562949919,
+          "markedPnl": 3482.715643810283,
+          "return": 0.045715812720567905
+        }
+      ],
+      "monthly": [
+        {
+          "period": "2024-09",
+          "days": 30,
+          "fromEquity": 60000.0,
+          "startDate": "2024-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.010087425308662357,
+          "endDateInclusive": "2024-09-30",
+          "toEquity": 59889.3197246143,
+          "markedPnl": -110.68027538569731,
+          "return": -0.0018446712564282874
+        },
+        {
+          "period": "2024-10",
+          "days": 31,
+          "fromEquity": 59889.3197246143,
+          "startDate": "2024-10-01",
+          "dailyMaxDrawdownWithinPeriod": -0.011497805576828668,
+          "endDateInclusive": "2024-10-31",
+          "toEquity": 59710.73193898203,
+          "markedPnl": -178.58778563226952,
+          "return": -0.002981963836848678
+        },
+        {
+          "period": "2024-11",
+          "days": 30,
+          "fromEquity": 59710.73193898203,
+          "startDate": "2024-11-01",
+          "dailyMaxDrawdownWithinPeriod": -0.015053468969452699,
+          "endDateInclusive": "2024-11-30",
+          "toEquity": 70105.53728530732,
+          "markedPnl": 10394.805346325287,
+          "return": 0.1740860479979991
+        },
+        {
+          "period": "2024-12",
+          "days": 31,
+          "fromEquity": 70105.53728530732,
+          "startDate": "2024-12-01",
+          "dailyMaxDrawdownWithinPeriod": -0.0485436247176847,
+          "endDateInclusive": "2024-12-31",
+          "toEquity": 70883.30287097975,
+          "markedPnl": 777.7655856724305,
+          "return": 0.011094210468813204
+        },
+        {
+          "period": "2025-01",
+          "days": 31,
+          "fromEquity": 70883.30287097975,
+          "startDate": "2025-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.019053424107178807,
+          "endDateInclusive": "2025-01-31",
+          "toEquity": 71477.22927211926,
+          "markedPnl": 593.9264011395135,
+          "return": 0.008378932373122705
+        },
+        {
+          "period": "2025-02",
+          "days": 28,
+          "fromEquity": 71477.22927211926,
+          "startDate": "2025-02-01",
+          "dailyMaxDrawdownWithinPeriod": -0.008440566917149894,
+          "endDateInclusive": "2025-02-28",
+          "toEquity": 70886.2143095738,
+          "markedPnl": -591.0149625454651,
+          "return": -0.008268576839981057
+        },
+        {
+          "period": "2025-03",
+          "days": 31,
+          "fromEquity": 70886.2143095738,
+          "startDate": "2025-03-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01396390789981894,
+          "endDateInclusive": "2025-03-31",
+          "toEquity": 70065.36136796317,
+          "markedPnl": -820.8529416106321,
+          "return": -0.011579867109644315
+        },
+        {
+          "period": "2025-04",
+          "days": 30,
+          "fromEquity": 70065.36136796317,
+          "startDate": "2025-04-01",
+          "dailyMaxDrawdownWithinPeriod": -0.010313744967935579,
+          "endDateInclusive": "2025-04-30",
+          "toEquity": 70230.81133699224,
+          "markedPnl": 165.4499690290686,
+          "return": 0.002361366098722728
+        },
+        {
+          "period": "2025-05",
+          "days": 31,
+          "fromEquity": 70230.81133699224,
+          "startDate": "2025-05-01",
+          "dailyMaxDrawdownWithinPeriod": -0.030511551975682227,
+          "endDateInclusive": "2025-05-31",
+          "toEquity": 71452.69391620607,
+          "markedPnl": 1221.8825792138377,
+          "return": 0.01739809858312502
+        },
+        {
+          "period": "2025-06",
+          "days": 30,
+          "fromEquity": 71452.69391620607,
+          "startDate": "2025-06-01",
+          "dailyMaxDrawdownWithinPeriod": -0.013645437675827043,
+          "endDateInclusive": "2025-06-30",
+          "toEquity": 70738.48856441524,
+          "markedPnl": -714.2053517908353,
+          "return": -0.009995499296757027
+        },
+        {
+          "period": "2025-07",
+          "days": 31,
+          "fromEquity": 70738.48856441524,
+          "startDate": "2025-07-01",
+          "dailyMaxDrawdownWithinPeriod": -0.023459982211015085,
+          "endDateInclusive": "2025-07-31",
+          "toEquity": 75432.31966962061,
+          "markedPnl": 4693.831105205376,
+          "return": 0.06635469884165146
+        },
+        {
+          "period": "2025-08",
+          "days": 31,
+          "fromEquity": 75432.31966962061,
+          "startDate": "2025-08-01",
+          "dailyMaxDrawdownWithinPeriod": -0.024947022323585144,
+          "endDateInclusive": "2025-08-31",
+          "toEquity": 75611.84256458141,
+          "markedPnl": 179.52289496079902,
+          "return": 0.0023799201157683747
+        },
+        {
+          "period": "2025-09",
+          "days": 30,
+          "fromEquity": 75611.84256458141,
+          "startDate": "2025-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.016125462064848994,
+          "endDateInclusive": "2025-09-30",
+          "toEquity": 76516.52225530993,
+          "markedPnl": 904.679690728517,
+          "return": 0.011964788319446251
+        },
+        {
+          "period": "2025-10",
+          "days": 31,
+          "fromEquity": 76516.52225530993,
+          "startDate": "2025-10-01",
+          "dailyMaxDrawdownWithinPeriod": -0.017723080281370596,
+          "endDateInclusive": "2025-10-31",
+          "toEquity": 76998.68351629647,
+          "markedPnl": 482.1612609865406,
+          "return": 0.0063014006227011254
+        },
+        {
+          "period": "2025-11",
+          "days": 30,
+          "fromEquity": 76998.68351629647,
+          "startDate": "2025-11-01",
+          "dailyMaxDrawdownWithinPeriod": -0.007761697534906853,
+          "endDateInclusive": "2025-11-30",
+          "toEquity": 76508.09230167425,
+          "markedPnl": -490.5912146222254,
+          "return": -0.006371423409055943
+        },
+        {
+          "period": "2025-12",
+          "days": 31,
+          "fromEquity": 76508.09230167425,
+          "startDate": "2025-12-01",
+          "dailyMaxDrawdownWithinPeriod": -0.0042640236630001604,
+          "endDateInclusive": "2025-12-31",
+          "toEquity": 76181.8599856889,
+          "markedPnl": -326.2323159853404,
+          "return": -0.0042640236630001604
+        },
+        {
+          "period": "2026-01",
+          "days": 31,
+          "fromEquity": 76181.8599856889,
+          "startDate": "2026-01-01",
+          "dailyMaxDrawdownWithinPeriod": -0.02538003861278504,
+          "endDateInclusive": "2026-01-31",
+          "toEquity": 76789.38354662874,
+          "markedPnl": 607.5235609398369,
+          "return": 0.007974648571903664
+        },
+        {
+          "period": "2026-02",
+          "days": 28,
+          "fromEquity": 76789.38354662874,
+          "startDate": "2026-02-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01511120600850202,
+          "endDateInclusive": "2026-02-28",
+          "toEquity": 76183.00666026241,
+          "markedPnl": -606.3768863663281,
+          "return": -0.00789662396492763
+        },
+        {
+          "period": "2026-03",
+          "days": 31,
+          "fromEquity": 76183.00666026241,
+          "startDate": "2026-03-01",
+          "dailyMaxDrawdownWithinPeriod": -0.016210659681344386,
+          "endDateInclusive": "2026-03-31",
+          "toEquity": 74948.02986579131,
+          "markedPnl": -1234.9767944711057,
+          "return": -0.016210659681344386
+        },
+        {
+          "period": "2026-04",
+          "days": 30,
+          "fromEquity": 74948.02986579131,
+          "startDate": "2026-04-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01378951202108536,
+          "endDateInclusive": "2026-04-30",
+          "toEquity": 74148.37576114756,
+          "markedPnl": -799.6541046437487,
+          "return": -0.01066944796381819
+        },
+        {
+          "period": "2026-05",
+          "days": 31,
+          "fromEquity": 74148.37576114756,
+          "startDate": "2026-05-01",
+          "dailyMaxDrawdownWithinPeriod": -0.013118557782863083,
+          "endDateInclusive": "2026-05-31",
+          "toEquity": 73405.71081261613,
+          "markedPnl": -742.6649485314265,
+          "return": -0.010015930098371317
+        },
+        {
+          "period": "2026-06",
+          "days": 30,
+          "fromEquity": 73405.71081261613,
+          "startDate": "2026-06-01",
+          "dailyMaxDrawdownWithinPeriod": -0.014685247033895843,
+          "endDateInclusive": "2026-06-30",
+          "toEquity": 72665.3226438225,
+          "markedPnl": -740.3881687936373,
+          "return": -0.010086247522125835
+        },
+        {
+          "period": "2026-07",
+          "days": 31,
+          "fromEquity": 72665.3226438225,
+          "startDate": "2026-07-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01785392355656279,
+          "endDateInclusive": "2026-07-31",
+          "toEquity": 72568.88852982415,
+          "markedPnl": -96.4341139983444,
+          "return": -0.0013270995089504911
+        },
+        {
+          "period": "2026-08",
+          "days": 31,
+          "fromEquity": 72568.88852982415,
+          "startDate": "2026-08-01",
+          "dailyMaxDrawdownWithinPeriod": -0.02101509049006789,
+          "endDateInclusive": "2026-08-31",
+          "toEquity": 80505.28662274338,
+          "markedPnl": 7936.398092919233,
+          "return": 0.1093636440312511
+        },
+        {
+          "period": "2026-09",
+          "days": 30,
+          "fromEquity": 80505.28662274338,
+          "startDate": "2026-09-01",
+          "dailyMaxDrawdownWithinPeriod": -0.01656615140324147,
+          "endDateInclusive": "2026-09-30",
+          "toEquity": 79664.57562949919,
+          "markedPnl": -840.7109932441963,
+          "return": -0.010442929011405977
+        }
+      ]
+    }
+  }
+}

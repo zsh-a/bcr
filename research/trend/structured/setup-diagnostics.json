@@ -1,0 +1,694 @@
+{
+  "version": 1,
+  "status": "passed",
+  "sources": {
+    "plan": {
+      "path": "research/trend/structured/development-input/plan.json",
+      "sha256": "c47028848fc203b3a894609b3e7e4584387fa9369f5c852355fe95ab986c2cfa"
+    },
+    "manifest": {
+      "path": "research/trend/structured/development-input/manifest.json",
+      "sha256": "f902862c0ff7a3e8cd0597a42437d9d243c414b07b7ec0deab33ae47d47a408d"
+    },
+    "generator": {
+      "path": "/home/zs/workspace/bcr/scripts/trend/setup_diagnostics.py",
+      "sha256": "eed55ab3ebaa6da2f83ab279f1bddc6b331bcbe696e24c00c212966359afc7d9"
+    }
+  },
+  "scope": "Recorded event counts and causal snapshot constraints only; no independent price-pattern recomputation.",
+  "limitations": [
+    "Ablations may take different trades and change later positions or cooldown; counts are account-path observations.",
+    "Pattern labels can overlap. Sum of shape counts is not a number of unique signals.",
+    "Completed-trade win rate depends on exit policy and is not standalone breakout accuracy."
+  ],
+  "windows": {
+    "development": {
+      "accounts": [
+        {
+          "symbol": "BTCUSDT",
+          "candidate": "sp-primary",
+          "acceptedShapeCounts": {},
+          "completedTrades": 0,
+          "eventCounts": {
+            "impulse:structured-pullback": 549,
+            "setup:sp-direction-invalid": 10,
+            "setup:sp-expired": 11,
+            "setup:sp-first-break": 81,
+            "setup:sp-key-level-missing": 72,
+            "setup:sp-pullback-start": 548,
+            "setup:sp-retracement-invalid": 1,
+            "setup:sp-shape-missing": 8,
+            "setup:sp-structure-invalid": 447
+          }
+        },
+        {
+          "symbol": "BTCUSDT",
+          "candidate": "sp-no-key",
+          "acceptedShapeCounts": {
+            "twoLegs": 3
+          },
+          "completedTrades": 3,
+          "eventCounts": {
+            "cooldown:cooldown": 1,
+            "entry:structured-pullback": 3,
+            "exit:initial": 3,
+            "funding:funding": 2,
+            "impulse:structured-pullback": 549,
+            "setup:sp-accepted": 3,
+            "setup:sp-direction-invalid": 10,
+            "setup:sp-expired": 11,
+            "setup:sp-first-break": 81,
+            "setup:sp-pullback-start": 548,
+            "setup:sp-retracement-invalid": 1,
+            "setup:sp-shape-missing": 77,
+            "setup:sp-structure-invalid": 447,
+            "signal:structured-pullback": 3,
+            "stage:trailing-armed": 2,
+            "stop:initial": 3
+          }
+        },
+        {
+          "symbol": "BTCUSDT",
+          "candidate": "sp-no-shape",
+          "acceptedShapeCounts": {},
+          "completedTrades": 8,
+          "eventCounts": {
+            "cooldown:cooldown": 1,
+            "entry:structured-pullback": 8,
+            "exit:trailing": 8,
+            "funding:funding": 6,
+            "impulse:structured-pullback": 547,
+            "setup:sp-accepted": 8,
+            "setup:sp-direction-invalid": 10,
+            "setup:sp-expired": 11,
+            "setup:sp-first-break": 81,
+            "setup:sp-key-level-missing": 72,
+            "setup:sp-pullback-start": 546,
+            "setup:sp-retracement-invalid": 1,
+            "setup:sp-structure-invalid": 445,
+            "signal:structured-pullback": 8,
+            "stage:trailing-armed": 8,
+            "stop:initial": 8,
+            "stop:trailing": 50
+          }
+        },
+        {
+          "symbol": "BTCUSDT",
+          "candidate": "sp-no-ema",
+          "acceptedShapeCounts": {},
+          "completedTrades": 0,
+          "eventCounts": {
+            "impulse:structured-pullback": 1191,
+            "setup:sp-expired": 20,
+            "setup:sp-first-break": 208,
+            "setup:sp-key-level-missing": 178,
+            "setup:sp-pullback-start": 1191,
+            "setup:sp-retracement-invalid": 12,
+            "setup:sp-shape-missing": 18,
+            "setup:sp-structure-invalid": 962
+          }
+        },
+        {
+          "symbol": "BTCUSDT",
+          "candidate": "sp-reversal",
+          "acceptedShapeCounts": {},
+          "completedTrades": 0,
+          "eventCounts": {
+            "impulse:structured-pullback": 549,
+            "setup:sp-direction-invalid": 10,
+            "setup:sp-expired": 11,
+            "setup:sp-first-break": 81,
+            "setup:sp-key-level-missing": 72,
+            "setup:sp-pullback-start": 548,
+            "setup:sp-retracement-invalid": 1,
+            "setup:sp-shape-missing": 8,
+            "setup:sp-structure-invalid": 447
+          }
+        },
+        {
+          "symbol": "BTCUSDT",
+          "candidate": "sp-base",
+          "acceptedShapeCounts": {
+            "twoLegs": 2
+          },
+          "completedTrades": 73,
+          "eventCounts": {
+            "cooldown:cooldown": 12,
+            "entry:structured-pullback": 73,
+            "exit:initial": 22,
+            "exit:protection-crossed": 4,
+            "exit:trailing": 47,
+            "funding:funding": 51,
+            "impulse:structured-pullback": 520,
+            "setup:sp-accepted": 73,
+            "setup:sp-direction-invalid": 10,
+            "setup:sp-expired": 9,
+            "setup:sp-first-break": 74,
+            "setup:sp-pullback-start": 519,
+            "setup:sp-retracement-invalid": 1,
+            "setup:sp-structure-invalid": 427,
+            "signal:structured-pullback": 73,
+            "stage:trailing-armed": 72,
+            "stop:initial": 73,
+            "stop:trailing": 451
+          }
+        },
+        {
+          "symbol": "ETHUSDT",
+          "candidate": "sp-primary",
+          "acceptedShapeCounts": {},
+          "completedTrades": 0,
+          "eventCounts": {
+            "impulse:structured-pullback": 548,
+            "setup:sp-direction-invalid": 5,
+            "setup:sp-expired": 12,
+            "setup:sp-first-break": 84,
+            "setup:sp-key-level-missing": 77,
+            "setup:sp-pullback-start": 547,
+            "setup:sp-retracement-invalid": 3,
+            "setup:sp-shape-missing": 4,
+            "setup:sp-structure-invalid": 447
+          }
+        },
+        {
+          "symbol": "ETHUSDT",
+          "candidate": "sp-no-key",
+          "acceptedShapeCounts": {
+            "doubleTest": 1,
+            "twoLegs": 7
+          },
+          "completedTrades": 7,
+          "eventCounts": {
+            "cooldown:cooldown": 2,
+            "entry:structured-pullback": 7,
+            "exit:initial": 5,
+            "exit:protection-crossed": 1,
+            "exit:trailing": 1,
+            "funding:funding": 4,
+            "impulse:structured-pullback": 548,
+            "setup:sp-accepted": 7,
+            "setup:sp-direction-invalid": 5,
+            "setup:sp-expired": 12,
+            "setup:sp-first-break": 84,
+            "setup:sp-pullback-start": 547,
+            "setup:sp-retracement-invalid": 3,
+            "setup:sp-shape-missing": 74,
+            "setup:sp-structure-invalid": 447,
+            "signal:structured-pullback": 7,
+            "stage:trailing-armed": 7,
+            "stop:initial": 7,
+            "stop:trailing": 17
+          }
+        },
+        {
+          "symbol": "ETHUSDT",
+          "candidate": "sp-no-shape",
+          "acceptedShapeCounts": {},
+          "completedTrades": 4,
+          "eventCounts": {
+            "entry:structured-pullback": 4,
+            "exit:initial": 2,
+            "exit:trailing": 2,
+            "funding:funding": 3,
+            "impulse:structured-pullback": 547,
+            "setup:sp-accepted": 4,
+            "setup:sp-direction-invalid": 5,
+            "setup:sp-expired": 12,
+            "setup:sp-first-break": 84,
+            "setup:sp-key-level-missing": 77,
+            "setup:sp-pullback-start": 546,
+            "setup:sp-retracement-invalid": 3,
+            "setup:sp-structure-invalid": 446,
+            "signal:structured-pullback": 4,
+            "stage:trailing-armed": 4,
+            "stop:initial": 4,
+            "stop:trailing": 23
+          }
+        },
+        {
+          "symbol": "ETHUSDT",
+          "candidate": "sp-no-ema",
+          "acceptedShapeCounts": {},
+          "completedTrades": 0,
+          "eventCounts": {
+            "impulse:structured-pullback": 1164,
+            "setup:sp-expired": 19,
+            "setup:sp-first-break": 206,
+            "setup:sp-key-level-missing": 181,
+            "setup:sp-pullback-start": 1164,
+            "setup:sp-retracement-invalid": 11,
+            "setup:sp-shape-missing": 14,
+            "setup:sp-structure-invalid": 939
+          }
+        },
+        {
+          "symbol": "ETHUSDT",
+          "candidate": "sp-reversal",
+          "acceptedShapeCounts": {},
+          "completedTrades": 0,
+          "eventCounts": {
+            "impulse:structured-pullback": 548,
+            "setup:sp-direction-invalid": 5,
+            "setup:sp-expired": 12,
+            "setup:sp-first-break": 84,
+            "setup:sp-key-level-missing": 77,
+            "setup:sp-pullback-start": 547,
+            "setup:sp-retracement-invalid": 3,
+            "setup:sp-shape-missing": 4,
+            "setup:sp-structure-invalid": 447
+          }
+        },
+        {
+          "symbol": "ETHUSDT",
+          "candidate": "sp-base",
+          "acceptedShapeCounts": {
+            "doubleTest": 1,
+            "twoLegs": 7
+          },
+          "completedTrades": 77,
+          "eventCounts": {
+            "cooldown:cooldown": 12,
+            "entry:structured-pullback": 77,
+            "exit:initial": 24,
+            "exit:protection-crossed": 4,
+            "exit:trailing": 49,
+            "funding:funding": 63,
+            "impulse:structured-pullback": 513,
+            "setup:sp-accepted": 77,
+            "setup:sp-direction-invalid": 3,
+            "setup:sp-expired": 12,
+            "setup:sp-first-break": 80,
+            "setup:sp-pullback-start": 512,
+            "setup:sp-retracement-invalid": 3,
+            "setup:sp-structure-invalid": 418,
+            "signal:structured-pullback": 77,
+            "stage:trailing-armed": 76,
+            "stop:initial": 77,
+            "stop:trailing": 566
+          }
+        },
+        {
+          "symbol": "BNBUSDT",
+          "candidate": "sp-primary",
+          "acceptedShapeCounts": {
+            "twoLegs": 1
+          },
+          "completedTrades": 1,
+          "eventCounts": {
+            "entry:structured-pullback": 1,
+            "exit:initial": 1,
+            "funding:funding": 1,
+            "impulse:structured-pullback": 586,
+            "setup:sp-accepted": 1,
+            "setup:sp-direction-invalid": 8,
+            "setup:sp-expired": 7,
+            "setup:sp-first-break": 118,
+            "setup:sp-key-level-missing": 92,
+            "setup:sp-pullback-start": 585,
+            "setup:sp-retracement-invalid": 11,
+            "setup:sp-shape-missing": 14,
+            "setup:sp-structure-invalid": 453,
+            "signal:structured-pullback": 1,
+            "stage:trailing-armed": 1,
+            "stop:initial": 1
+          }
+        },
+        {
+          "symbol": "BNBUSDT",
+          "candidate": "sp-no-key",
+          "acceptedShapeCounts": {
+            "doubleTest": 1,
+            "twoLegs": 5
+          },
+          "completedTrades": 5,
+          "eventCounts": {
+            "cooldown:cooldown": 1,
+            "entry:structured-pullback": 5,
+            "exit:initial": 4,
+            "exit:trailing": 1,
+            "funding:funding": 2,
+            "impulse:structured-pullback": 586,
+            "setup:sp-accepted": 5,
+            "setup:sp-direction-invalid": 8,
+            "setup:sp-expired": 7,
+            "setup:sp-first-break": 118,
+            "setup:sp-pullback-start": 585,
+            "setup:sp-retracement-invalid": 11,
+            "setup:sp-shape-missing": 102,
+            "setup:sp-structure-invalid": 453,
+            "signal:structured-pullback": 5,
+            "stage:trailing-armed": 5,
+            "stop:initial": 5,
+            "stop:trailing": 3
+          }
+        },
+        {
+          "symbol": "BNBUSDT",
+          "candidate": "sp-no-shape",
+          "acceptedShapeCounts": {
+            "twoLegs": 1
+          },
+          "completedTrades": 15,
+          "eventCounts": {
+            "cooldown:cooldown": 2,
+            "entry:structured-pullback": 15,
+            "exit:initial": 4,
+            "exit:protection-crossed": 2,
+            "exit:trailing": 9,
+            "funding:funding": 10,
+            "impulse:structured-pullback": 578,
+            "setup:sp-accepted": 15,
+            "setup:sp-direction-invalid": 8,
+            "setup:sp-expired": 7,
+            "setup:sp-first-break": 117,
+            "setup:sp-key-level-missing": 91,
+            "setup:sp-pullback-start": 577,
+            "setup:sp-retracement-invalid": 11,
+            "setup:sp-structure-invalid": 446,
+            "signal:structured-pullback": 15,
+            "stage:trailing-armed": 15,
+            "stop:initial": 15,
+            "stop:trailing": 73
+          }
+        },
+        {
+          "symbol": "BNBUSDT",
+          "candidate": "sp-no-ema",
+          "acceptedShapeCounts": {
+            "twoLegs": 1
+          },
+          "completedTrades": 1,
+          "eventCounts": {
+            "entry:structured-pullback": 1,
+            "exit:initial": 1,
+            "funding:funding": 1,
+            "impulse:structured-pullback": 1280,
+            "setup:sp-accepted": 1,
+            "setup:sp-expired": 12,
+            "setup:sp-first-break": 297,
+            "setup:sp-key-level-missing": 250,
+            "setup:sp-pullback-start": 1278,
+            "setup:sp-retracement-invalid": 21,
+            "setup:sp-shape-missing": 25,
+            "setup:sp-structure-invalid": 971,
+            "signal:structured-pullback": 1,
+            "stage:trailing-armed": 1,
+            "stop:initial": 1
+          }
+        },
+        {
+          "symbol": "BNBUSDT",
+          "candidate": "sp-reversal",
+          "acceptedShapeCounts": {},
+          "completedTrades": 0,
+          "eventCounts": {
+            "impulse:structured-pullback": 586,
+            "setup:sp-candle-missing": 1,
+            "setup:sp-direction-invalid": 8,
+            "setup:sp-expired": 7,
+            "setup:sp-first-break": 118,
+            "setup:sp-key-level-missing": 92,
+            "setup:sp-pullback-start": 585,
+            "setup:sp-retracement-invalid": 11,
+            "setup:sp-shape-missing": 14,
+            "setup:sp-structure-invalid": 453
+          }
+        },
+        {
+          "symbol": "BNBUSDT",
+          "candidate": "sp-base",
+          "acceptedShapeCounts": {
+            "doubleTest": 1,
+            "twoLegs": 5
+          },
+          "completedTrades": 99,
+          "eventCounts": {
+            "cooldown:cooldown": 20,
+            "entry:structured-pullback": 99,
+            "exit:initial": 35,
+            "exit:protection-crossed": 3,
+            "exit:trailing": 61,
+            "funding:funding": 80,
+            "impulse:structured-pullback": 535,
+            "setup:sp-accepted": 99,
+            "setup:sp-direction-invalid": 8,
+            "setup:sp-expired": 6,
+            "setup:sp-first-break": 110,
+            "setup:sp-pullback-start": 534,
+            "setup:sp-retracement-invalid": 11,
+            "setup:sp-structure-invalid": 411,
+            "signal:structured-pullback": 99,
+            "stage:trailing-armed": 99,
+            "stop:initial": 99,
+            "stop:trailing": 556
+          }
+        }
+      ],
+      "candidates": {
+        "sp-primary": {
+          "eventCounts": {
+            "impulse:structured-pullback": 1683,
+            "setup:sp-direction-invalid": 23,
+            "setup:sp-expired": 30,
+            "setup:sp-first-break": 283,
+            "setup:sp-key-level-missing": 241,
+            "setup:sp-pullback-start": 1680,
+            "setup:sp-retracement-invalid": 15,
+            "setup:sp-shape-missing": 26,
+            "setup:sp-structure-invalid": 1347,
+            "entry:structured-pullback": 1,
+            "exit:initial": 1,
+            "funding:funding": 1,
+            "setup:sp-accepted": 1,
+            "signal:structured-pullback": 1,
+            "stage:trailing-armed": 1,
+            "stop:initial": 1
+          },
+          "acceptedShapeCounts": {
+            "twoLegs": 1
+          },
+          "completedTrades": 1,
+          "accounts": 3
+        },
+        "sp-no-key": {
+          "eventCounts": {
+            "cooldown:cooldown": 4,
+            "entry:structured-pullback": 15,
+            "exit:initial": 12,
+            "funding:funding": 8,
+            "impulse:structured-pullback": 1683,
+            "setup:sp-accepted": 15,
+            "setup:sp-direction-invalid": 23,
+            "setup:sp-expired": 30,
+            "setup:sp-first-break": 283,
+            "setup:sp-pullback-start": 1680,
+            "setup:sp-retracement-invalid": 15,
+            "setup:sp-shape-missing": 253,
+            "setup:sp-structure-invalid": 1347,
+            "signal:structured-pullback": 15,
+            "stage:trailing-armed": 14,
+            "stop:initial": 15,
+            "exit:protection-crossed": 1,
+            "exit:trailing": 2,
+            "stop:trailing": 20
+          },
+          "acceptedShapeCounts": {
+            "twoLegs": 15,
+            "doubleTest": 2
+          },
+          "completedTrades": 15,
+          "accounts": 3
+        },
+        "sp-no-shape": {
+          "eventCounts": {
+            "cooldown:cooldown": 3,
+            "entry:structured-pullback": 27,
+            "exit:trailing": 19,
+            "funding:funding": 19,
+            "impulse:structured-pullback": 1672,
+            "setup:sp-accepted": 27,
+            "setup:sp-direction-invalid": 23,
+            "setup:sp-expired": 30,
+            "setup:sp-first-break": 282,
+            "setup:sp-key-level-missing": 240,
+            "setup:sp-pullback-start": 1669,
+            "setup:sp-retracement-invalid": 15,
+            "setup:sp-structure-invalid": 1337,
+            "signal:structured-pullback": 27,
+            "stage:trailing-armed": 27,
+            "stop:initial": 27,
+            "stop:trailing": 146,
+            "exit:initial": 6,
+            "exit:protection-crossed": 2
+          },
+          "acceptedShapeCounts": {
+            "twoLegs": 1
+          },
+          "completedTrades": 27,
+          "accounts": 3
+        },
+        "sp-no-ema": {
+          "eventCounts": {
+            "impulse:structured-pullback": 3635,
+            "setup:sp-expired": 51,
+            "setup:sp-first-break": 711,
+            "setup:sp-key-level-missing": 609,
+            "setup:sp-pullback-start": 3633,
+            "setup:sp-retracement-invalid": 44,
+            "setup:sp-shape-missing": 57,
+            "setup:sp-structure-invalid": 2872,
+            "entry:structured-pullback": 1,
+            "exit:initial": 1,
+            "funding:funding": 1,
+            "setup:sp-accepted": 1,
+            "signal:structured-pullback": 1,
+            "stage:trailing-armed": 1,
+            "stop:initial": 1
+          },
+          "acceptedShapeCounts": {
+            "twoLegs": 1
+          },
+          "completedTrades": 1,
+          "accounts": 3
+        },
+        "sp-reversal": {
+          "eventCounts": {
+            "impulse:structured-pullback": 1683,
+            "setup:sp-direction-invalid": 23,
+            "setup:sp-expired": 30,
+            "setup:sp-first-break": 283,
+            "setup:sp-key-level-missing": 241,
+            "setup:sp-pullback-start": 1680,
+            "setup:sp-retracement-invalid": 15,
+            "setup:sp-shape-missing": 26,
+            "setup:sp-structure-invalid": 1347,
+            "setup:sp-candle-missing": 1
+          },
+          "acceptedShapeCounts": {},
+          "completedTrades": 0,
+          "accounts": 3
+        },
+        "sp-base": {
+          "eventCounts": {
+            "cooldown:cooldown": 44,
+            "entry:structured-pullback": 249,
+            "exit:initial": 81,
+            "exit:protection-crossed": 11,
+            "exit:trailing": 157,
+            "funding:funding": 194,
+            "impulse:structured-pullback": 1568,
+            "setup:sp-accepted": 249,
+            "setup:sp-direction-invalid": 21,
+            "setup:sp-expired": 27,
+            "setup:sp-first-break": 264,
+            "setup:sp-pullback-start": 1565,
+            "setup:sp-retracement-invalid": 15,
+            "setup:sp-structure-invalid": 1256,
+            "signal:structured-pullback": 249,
+            "stage:trailing-armed": 247,
+            "stop:initial": 249,
+            "stop:trailing": 1573
+          },
+          "acceptedShapeCounts": {
+            "twoLegs": 14,
+            "doubleTest": 2
+          },
+          "completedTrades": 249,
+          "accounts": 3
+        }
+      }
+    }
+  },
+  "receipts": [
+    {
+      "window": "development",
+      "symbol": "BTCUSDT",
+      "receipt": {
+        "binarySha256": "41cf7a8573a4684d4046a4e1ca15528d2c25a86d3d5248e7ca89c9c12d38d006",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "bc3007b6f80eb649ceb26e89d369d070d718735addb2ac8f79f15fc7e50de800",
+        "manifestSha256": "f902862c0ff7a3e8cd0597a42437d9d243c414b07b7ec0deab33ae47d47a408d",
+        "planSha256": "c47028848fc203b3a894609b3e7e4584387fa9369f5c852355fe95ab986c2cfa",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "development",
+          "role": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        "executionSourceSha256": "aad0b8f6a0e7b728d27a05b89f361987f9ab126669b39e05287194d022a249d3",
+        "resultSha256": "34a794183e72c587e6495e52e2f7a19d368be1158691c7d2bda4f73459448801"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "dae7835287551957a7b653a29122a645c240bd7a09a763557c04d46e270f4de3",
+      "warmup": {
+        "sp-primary": 1661644800000,
+        "sp-no-key": 1661644800000,
+        "sp-no-shape": 1661644800000,
+        "sp-no-ema": 1661644800000,
+        "sp-reversal": 1661644800000,
+        "sp-base": 1661644800000
+      }
+    },
+    {
+      "window": "development",
+      "symbol": "ETHUSDT",
+      "receipt": {
+        "binarySha256": "41cf7a8573a4684d4046a4e1ca15528d2c25a86d3d5248e7ca89c9c12d38d006",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "59edc7868a1d33566bd641a4f53f8b45ad50ff9d0399de779b7c77b082731343",
+        "manifestSha256": "f902862c0ff7a3e8cd0597a42437d9d243c414b07b7ec0deab33ae47d47a408d",
+        "planSha256": "c47028848fc203b3a894609b3e7e4584387fa9369f5c852355fe95ab986c2cfa",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "development",
+          "role": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        "executionSourceSha256": "aad0b8f6a0e7b728d27a05b89f361987f9ab126669b39e05287194d022a249d3",
+        "resultSha256": "031a18412b581652499ce0359143b03f496051a114a4a3cd7341cda7dc63daaa"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "8c18a137e5530976d41f8f7adbe0a1e29b227b17033db0edbc4005aa0c629eba",
+      "warmup": {
+        "sp-primary": 1661644800000,
+        "sp-no-key": 1661644800000,
+        "sp-no-shape": 1661644800000,
+        "sp-no-ema": 1661644800000,
+        "sp-reversal": 1661644800000,
+        "sp-base": 1661644800000
+      }
+    },
+    {
+      "window": "development",
+      "symbol": "BNBUSDT",
+      "receipt": {
+        "binarySha256": "41cf7a8573a4684d4046a4e1ca15528d2c25a86d3d5248e7ca89c9c12d38d006",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "8023f4d448a1f03e0a0ecfc824a6d4cf70299b9a39eba984f8af131e288b0977",
+        "manifestSha256": "f902862c0ff7a3e8cd0597a42437d9d243c414b07b7ec0deab33ae47d47a408d",
+        "planSha256": "c47028848fc203b3a894609b3e7e4584387fa9369f5c852355fe95ab986c2cfa",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "development",
+          "role": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        "executionSourceSha256": "aad0b8f6a0e7b728d27a05b89f361987f9ab126669b39e05287194d022a249d3",
+        "resultSha256": "34c975bdeee9c15dd4ac9d833f14e96e1de565ce605708edce4b36493922386c"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "95eb5c624f8cc93e164ca2fe90dca7f85cc21e8e8f12a3c8bc696e65782dc6c0",
+      "warmup": {
+        "sp-primary": 1661644800000,
+        "sp-no-key": 1661644800000,
+        "sp-no-shape": 1661644800000,
+        "sp-no-ema": 1661644800000,
+        "sp-reversal": 1661644800000,
+        "sp-base": 1661644800000
+      }
+    }
+  ]
+}

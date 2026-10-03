@@ -11,3 +11,63 @@ research/trend/methods/results.json
 research/trend/methods/curves.json
 research/trend/methods/equity.svg
 research/trend/methods/REPORT.md
+# Frozen KDJ study; formatting must precede manifest and artifact hash publication.
+research/trend/kdj-plan.json
+research/trend/kdj/results.json
+research/trend/kdj/curves.json
+research/trend/kdj/equity.svg
+research/trend/kdj/equity.png
+research/trend/kdj/REPORT.md
+research/trend/kdj/ANALYSIS.md
+# Fixed price-action experiment; preserve bytes after manifest publication.
+research/trend/price-action-plan.json
+research/trend/price-action/results.json
+research/trend/price-action/curves.json
+research/trend/price-action/equity.svg
+research/trend/price-action/equity.png
+research/trend/price-action/REPORT.md
+research/trend/price-action/ANALYSIS.md
+research/trend/channel-recheck-plan.json
+research/trend/channel-recheck/REPORT.md
+research/trend/channel-recheck/ANALYSIS.md
+research/trend/channel-recheck/results.json
+research/trend/channel-recheck/curves.json
+research/trend/channel-recheck/equity.svg
+research/trend/channel-recheck/equity.png
+research/trend/channel-recheck/diagnostics.json
+research/trend/channel-recheck/market-reference.json
+research/trend/thirty-minute-plan.json
+research/trend/thirty-minute/ANALYSIS.md
+research/trend/thirty-minute/REPORT.md
+research/trend/thirty-minute/curves.json
+research/trend/thirty-minute/diagnostics.json
+research/trend/thirty-minute/equity.png
+research/trend/thirty-minute/equity.svg
+research/trend/thirty-minute/events.jsonl.gz
+research/trend/thirty-minute/execution-audit.json
+research/trend/thirty-minute/mechanisms.png
+research/trend/thirty-minute/mechanisms.svg
+research/trend/thirty-minute/results.json
+research/trend/thirty-minute/signals.json
+
+# Literature contrasts are frozen before replay.
+research/trend/literature-plan.json
+research/trend/literature/
+
+# Detail mechanisms and historical transfer, frozen before replay.
+research/trend/details-plan.json
+research/trend/details/
+
+# Fixed risk/scale diagnostics; plan frozen before replay.
+research/trend/robustness-plan.json
+research/trend/robustness/
+
+# Expanded strategy search, frozen before replay.
+research/trend/search-plan.json
+research/trend/search/
+research/trend/holdout-plan.json
+research/trend/holdout/
+research/trend/forward-protocol.json
+# Structured study inputs and published evidence are hashed independently of code formatting.
+research/trend/structured/
+research/trend/structured-v2/

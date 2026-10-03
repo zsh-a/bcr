@@ -3,6 +3,12 @@ import { DAY, type BinanceDataset } from "@bcr/market-data/binance/model";
 import type { TrendConfig, TrendRun } from "@bcr/quant-core/trend";
 import { describe, expect, it, vi } from "vitest";
 import {
+  RECORDED_V6,
+  RECORDED_V7,
+  RECORDED_V8,
+  RECORDED_V9,
+} from "../../../packages/quant-core/tests/fixtures/trend-recorded";
+import {
   createTrendSessionState,
   createTrendSessionStore,
   decodeTrendSession,
@@ -87,6 +93,118 @@ function fixture() {
 }
 
 describe("trend session persistence", () => {
+  it("migrates a v9 structured draft without changing frozen runs and preserves explicit v10 choices", () => {
+    const state = fixture();
+    const old = structuredClone(RECORDED_V9);
+    const raw = JSON.stringify({
+      ...state,
+      config: old,
+      runs: [{ ...state.runs[0], config: old }],
+    });
+    const restored = decodeTrendSession(raw);
+    expect(restored.state.config.strategy.structuredPullback).toEqual({
+      ...old.strategy.structuredPullback,
+      confirmation: "before-breakout",
+      keyRole: "pullback-retest",
+    });
+    expect(restored.state.config.version).toBe(10);
+    expect(restored.state.runs).toEqual(JSON.parse(raw).runs);
+    restored.state.config.strategy.structuredPullback!.confirmation = "signal-close";
+    restored.state.config.strategy.structuredPullback!.keyRole = "impulse-context";
+    const next = decodeTrendSession(JSON.stringify(restored.state));
+    expect(next.state.config).toEqual(restored.state.config);
+    expect(next.state.runs).toEqual(restored.state.runs);
+  });
+  it("upgrades a v8 policy draft while preserving its exact historical run and source", () => {
+    const state = fixture();
+    const old = structuredClone(RECORDED_V8);
+    const raw = JSON.stringify({
+      ...state,
+      config: old,
+      runs: [{ ...state.runs[0], config: old }],
+    });
+    const restored = decodeTrendSession(raw);
+    expect(restored.state.config).toEqual({ ...old, version: 10 });
+    expect(restored.state.runs).toEqual(JSON.parse(raw).runs);
+    expect(restored.state.dataset).toEqual(state.dataset);
+    expect(restored.state.selected).toBe(state.selected);
+    expect(restored.notice).toContain("参数已升级");
+    expect(restored.state.config.strategy.filter).toBe("none");
+  });
+  it("migrates only the v7 draft and round-trips v8 policies without changing historical runs", async () => {
+    const state = fixture();
+    const old = structuredClone(RECORDED_V7);
+    let raw = JSON.stringify({ ...state, config: old, runs: [{ ...state.runs[0], config: old }] });
+    const metadata = {
+      get: vi.fn(async () => raw),
+      set: vi.fn(async (_key: string, value: string) => {
+        raw = value;
+      }),
+    } as unknown as RuntimeMetadata;
+    const store = createTrendSessionStore(metadata);
+    const restored = await store.restore();
+    expect(restored.state.config).toEqual({ ...old, version: 10 });
+    expect(restored.state.runs[0]!.config).toEqual(old);
+    const next = {
+      ...restored.state,
+      config: {
+        ...state.config,
+        strategy: {
+          ...state.config.strategy,
+          channelExitBars: 40,
+          breakoutReentry: "episode" as const,
+        },
+      },
+    };
+    await store.save(next);
+    const reloaded = await createTrendSessionStore(metadata).restore();
+    expect(reloaded.state.config).toEqual(next.config);
+    expect(reloaded.state.runs).toEqual(restored.state.runs);
+    expect(reloaded.state.dataset).toEqual(state.dataset);
+    expect(reloaded.state.selected).toBe(state.selected);
+  });
+  it("migrates a v6 KDJ draft without changing its historical run, source or staged parameters", () => {
+    const state = fixture();
+    const old = structuredClone(RECORDED_V6);
+    const raw = JSON.stringify({
+      ...state,
+      config: old,
+      runs: [{ ...state.runs[0], config: old }],
+    });
+    const restored = decodeTrendSession(raw);
+    expect(restored.state.config).toEqual({ ...old, version: 10 });
+    expect(restored.state.runs).toEqual(JSON.parse(raw).runs);
+    expect(restored.state.dataset).toEqual(state.dataset);
+    expect(restored.state.selected).toBe(state.selected);
+    expect(restored.notice).toContain("参数已升级");
+  });
+  it("migrates only the v5 editable draft and keeps its selected run and parameters frozen", () => {
+    const state = fixture();
+    const old = {
+      ...state.config,
+      version: 5,
+      strategy: {
+        ...state.config.strategy,
+        filter: "ema",
+        management: "atr",
+        tradeMinutes: 1,
+        maxCostAtr: 0.7,
+      },
+      risk: { ...state.config.risk, riskPct: 0.002 },
+    };
+    const raw = JSON.stringify({
+      ...state,
+      config: old,
+      runs: [{ ...state.runs[0]!, config: old }],
+    });
+    const restored = decodeTrendSession(raw);
+    expect(restored.state.config).toEqual({ ...old, version: 10 });
+    expect(restored.state.runs).toEqual(JSON.parse(raw).runs);
+    expect(restored.state.selected).toBe(state.selected);
+    expect(restored.state.dataset).toEqual(state.dataset);
+    expect(restored.notice).toContain("参数已升级");
+    expect(restored.state.config.strategy.staged).toBeUndefined();
+  });
   it("rejects damaged run envelopes and references before opening the persistence gate", async () => {
     const corruptions: ((state: ReturnType<typeof fixture>) => void)[] = [
       (state) => Reflect.deleteProperty(state.runs[0]!, "metrics"),
@@ -133,13 +251,13 @@ describe("trend session persistence", () => {
   });
 
   it("keeps old configs and absent optional fields byte-for-byte in historical records", () => {
-    for (const version of [2, 3, 4]) {
+    for (const version of [2, 3, 4, 5]) {
       const state = fixture();
       const run = state.runs[0]!;
       const config = structuredClone(state.config);
       Object.assign(config, { version });
       Object.assign(config.strategy, { filter: "none" });
-      Reflect.deleteProperty(config.strategy, "maxCostAtr");
+      if (version < 5) Reflect.deleteProperty(config.strategy, "maxCostAtr");
       if (version < 4) Reflect.deleteProperty(config.strategy, "management");
       Object.assign(run, { config });
       for (const ref of [run.resultRef, run.dataset.manifestRef, run.dataset.manifest.funding]) {
@@ -230,7 +348,7 @@ describe("trend session persistence", () => {
     expect(restored.state.runs).toEqual(original.runs);
     expect(restored.state.selected).toBe(original.selected);
     expect(restored.state.dataset).toEqual(original.dataset);
-    expect(restored.state.config.version).toBe(5);
+    expect(restored.state.config.version).toBe(10);
     expect(restored.notice).toContain("历史记录保持原样");
     expect(JSON.parse(raw).config.version).toBe(999);
   });

@@ -94,45 +94,51 @@ function monthlySetup(abort = new AbortController()) {
   return { ...s, task, download };
 }
 describe("Binance worker pipeline", () => {
-  it("loads pre-window frozen candles for causal channels and rejects missing history inputs", async () => {
-    const s = setup();
-    const refs = await binanceHistoryHandler(s.io, s.download)(s.task, s.ctx);
-    const inputs = refs.map((ref) =>
-      ref.type === "market/binance-manifest" ? { ...ref, port: "manifest" } : ref,
-    );
-    const task = {
-      ...s.task,
-      inputs,
-      config: {
-        from: start,
-        to: start + DAY,
-        minutes: 5,
-        chunks: [],
-        hasTrades: false,
-        channel: { tradeMinutes: 1, entryBars: 20, exitBars: 10 },
-      },
-    };
-    const output = await trendChartHandler(s.io)(task, s.ctx);
-    const chart = await s.io.readJsonArtifact<TrendChartData>(output[0]!, s.ctx);
-    expect(chart.channels).toHaveLength(288);
-    expect(chart.channels![0]).toEqual({
-      time: start,
-      upper: 101,
-      lower: 99,
-      exitUpper: 101,
-      exitLower: 99,
-    });
-    const manifest = await s.io.readJsonArtifact<BinanceManifest>(
-      inputs.find((r) => r.port === "manifest")!,
-      s.ctx,
-    );
-    await expect(
-      trendChartHandler(s.io)(
-        { ...task, inputs: inputs.filter((ref) => ref.id !== manifest.partitions[0]!.candles.id) },
+  it.each([10, 320])(
+    "loads the full entry/exit history (exit %i) for causal channels and rejects missing inputs",
+    async (exitBars) => {
+      const s = setup();
+      const refs = await binanceHistoryHandler(s.io, s.download)(s.task, s.ctx);
+      const inputs = refs.map((ref) =>
+        ref.type === "market/binance-manifest" ? { ...ref, port: "manifest" } : ref,
+      );
+      const task = {
+        ...s.task,
+        inputs,
+        config: {
+          from: start,
+          to: start + DAY,
+          minutes: 5,
+          chunks: [],
+          hasTrades: false,
+          channel: { tradeMinutes: 1, entryBars: 20, exitBars },
+        },
+      };
+      const output = await trendChartHandler(s.io)(task, s.ctx);
+      const chart = await s.io.readJsonArtifact<TrendChartData>(output[0]!, s.ctx);
+      expect(chart.channels).toHaveLength(288);
+      expect(chart.channels![0]).toEqual({
+        time: start,
+        upper: 101,
+        lower: 99,
+        exitUpper: 101,
+        exitLower: 99,
+      });
+      const manifest = await s.io.readJsonArtifact<BinanceManifest>(
+        inputs.find((r) => r.port === "manifest")!,
         s.ctx,
-      ),
-    ).rejects.toThrow("输入不一致");
-  });
+      );
+      await expect(
+        trendChartHandler(s.io)(
+          {
+            ...task,
+            inputs: inputs.filter((ref) => ref.id !== manifest.partitions[0]!.candles.id),
+          },
+          s.ctx,
+        ),
+      ).rejects.toThrow("输入不一致");
+    },
+  );
   it("keeps browser cache identity in sync with the shared engine contract", () => {
     expect(TREND_EXECUTOR_VERSION).toBe(contract.executor);
   });

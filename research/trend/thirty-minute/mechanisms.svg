@@ -1,0 +1,794 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1224pt" height="554.4pt" viewBox="0 0 1224 554.4" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 554.4 
+L 1224 554.4 
+L 1224 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 220.32 410.256 
+L 685.908517 410.256 
+L 685.908517 121.968 
+L 220.32 121.968 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g clip-path="url(#pf7c46dda8d)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAocAAAGRCAYAAAAXcxn5AAAHxklEQVR4nO3Yv4oUVhiH4Z3dwTuQDbGwEdIYEKyUdAE7K2/EIpVlbkLwFiwtgoWKpRAsU0XS+gcsRTYzO+neek71ZeF5ruDXnMPLt9n/9fvhhCtjc/Pn6QksOLx7Mz2BI23u/To9gQWHty+nJ7Dg/Z3z6QksOJ0eAADA/4c4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDb6QEs2l9ML2DFxW56Acc69R1eKduz6QUsuDw5TE9ggcshAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABkOz2ARWfXphew4pondmVc7qYXsGK3n17AgtOTzfQEFrgcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCAJDtpycvpjew4Ien16cnsGD/9+fpCRzp7OTV9AQW7D58mZ7Aghu/3J2ewAKXQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAyOby4o/D9AgWXO6mF7Dg4+7z9ASO9ONvz6YnsODf+7emJ7Dg66MH0xNY4HIIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAAARhwAARBwCABBxCABAxCEAABGHAABEHAIAEHEIAEDEIQAAEYcAAEQcAgAQcQgAQMQhAADZHv58Pb2BBZufbk9PYMH5Px+mJ3Ck/eOH0xNYcPH83fQEFnzff5uewAKXQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAiDgEACDiEACAiEMAACIOAQCIOAQAIOIQAICIQwAAIg4BAIg4BAAg4hAAgIhDAAAiDgEAyH/9AjlI/sYI6QAAAABJRU5ErkJggg==" id="image4f5f9ba762" transform="scale(1 -1) translate(0 -288.72)" x="220.32" y="-121.68" width="465.84" height="288.72"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 221.095981 170.49648 
+L 685.132536 170.49648 
+L 685.132536 217.58352 
+L 221.095981 217.58352 
+L 221.095981 170.49648 
+z
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #243448; stroke-width: 1.7; stroke-linejoin: miter"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1"/>
+     <g id="text_1">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(249.119043 427.697602)">开发</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(220.717481 439.699555)">2022.09—2023</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2"/>
+     <g id="text_2">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(323.992129 426.854633)">2024</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(320.354629 439.129242)">1—7月</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3"/>
+     <g id="text_3">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(401.590215 426.854633)">2025</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(404.315215 439.768305)">全年</text>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_4"/>
+     <g id="text_4">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(479.188301 426.854633)">2026</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(475.550801 439.129242)">1—8月</text>
+     </g>
+    </g>
+    <g id="xtick_5">
+     <g id="line2d_5"/>
+     <g id="text_5">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(556.786388 426.854633)">2022</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(544.511388 439.699555)">上半年压力</text>
+     </g>
+    </g>
+    <g id="xtick_6">
+     <g id="line2d_6"/>
+     <g id="text_6">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(634.384474 426.854633)">2026</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(638.928224 439.129242)">9月</text>
+     </g>
+    </g>
+    <g id="xtick_7">
+     <g id="line2d_7">
+      <path d="M 220.32 410.256 
+L 220.32 121.968 
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_8"/>
+    </g>
+    <g id="xtick_8">
+     <g id="line2d_9">
+      <path d="M 297.918086 410.256 
+L 297.918086 121.968 
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_10"/>
+    </g>
+    <g id="xtick_9">
+     <g id="line2d_11">
+      <path d="M 375.516172 410.256 
+L 375.516172 121.968 
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_12"/>
+    </g>
+    <g id="xtick_10">
+     <g id="line2d_13">
+      <path d="M 453.114258 410.256 
+L 453.114258 121.968 
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_14"/>
+    </g>
+    <g id="xtick_11">
+     <g id="line2d_15">
+      <path d="M 530.712344 410.256 
+L 530.712344 121.968 
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_16"/>
+    </g>
+    <g id="xtick_12">
+     <g id="line2d_17">
+      <path d="M 608.310431 410.256 
+L 608.310431 121.968 
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_18"/>
+    </g>
+    <g id="xtick_13">
+     <g id="line2d_19">
+      <path d="M 685.908517 410.256 
+L 685.908517 121.968 
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_20"/>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_21"/>
+     <g id="text_7">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: end" x="212.32" y="150.634344" transform="rotate(-0 212.32 150.634344)">N20 · 通道</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_22"/>
+     <g id="text_8">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: end" x="212.32" y="198.747656" transform="rotate(-0 212.32 198.747656)">N40 · 通道（固定主方案）</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_23"/>
+     <g id="text_9">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: end" x="212.32" y="246.266711" transform="rotate(-0 212.32 246.266711)">N20 · ATR3</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_24"/>
+     <g id="text_10">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: end" x="212.32" y="294.314711" transform="rotate(-0 212.32 294.314711)">N40 · ATR3</text>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="line2d_25"/>
+     <g id="text_11">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: end" x="212.32" y="342.362711" transform="rotate(-0 212.32 342.362711)">N40 · ATR3 + BE1</text>
+     </g>
+    </g>
+    <g id="ytick_6">
+     <g id="line2d_26"/>
+     <g id="text_12">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: end" x="212.32" y="390.410711" transform="rotate(-0 212.32 390.410711)">N40 · ATR3 + BE2</text>
+     </g>
+    </g>
+    <g id="ytick_7">
+     <g id="line2d_27">
+      <path d="M 220.32 121.968 
+L 685.908517 121.968 
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_28"/>
+    </g>
+    <g id="ytick_8">
+     <g id="line2d_29">
+      <path d="M 220.32 170.016 
+L 685.908517 170.016 
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_30"/>
+    </g>
+    <g id="ytick_9">
+     <g id="line2d_31">
+      <path d="M 220.32 218.064 
+L 685.908517 218.064 
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_32"/>
+    </g>
+    <g id="ytick_10">
+     <g id="line2d_33">
+      <path d="M 220.32 266.112 
+L 685.908517 266.112 
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_34"/>
+    </g>
+    <g id="ytick_11">
+     <g id="line2d_35">
+      <path d="M 220.32 314.16 
+L 685.908517 314.16 
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_36"/>
+    </g>
+    <g id="ytick_12">
+     <g id="line2d_37">
+      <path d="M 220.32 362.208 
+L 685.908517 362.208 
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_38"/>
+    </g>
+    <g id="ytick_13">
+     <g id="line2d_39">
+      <path d="M 220.32 410.256 
+L 685.908517 410.256 
+" clip-path="url(#pf7c46dda8d)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_40"/>
+    </g>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="259.119043" y="148.849422" transform="rotate(-0 259.119043 148.849422)">-6.27%</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="336.717129" y="148.849422" transform="rotate(-0 336.717129 148.849422)">-2.37%</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="414.315215" y="148.849422" transform="rotate(-0 414.315215 148.849422)">-5.77%</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="491.913301" y="148.849422" transform="rotate(-0 491.913301 148.849422)">-4.89%</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="569.511388" y="148.849422" transform="rotate(-0 569.511388 148.849422)">-11.06%</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="647.109474" y="148.849422" transform="rotate(-0 647.109474 148.849422)">+1.75%</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="259.119043" y="196.897422" transform="rotate(-0 259.119043 196.897422)">-0.57%</text>
+   </g>
+   <g id="text_20">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="336.717129" y="196.897422" transform="rotate(-0 336.717129 196.897422)">-0.93%</text>
+   </g>
+   <g id="text_21">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="414.315215" y="196.897422" transform="rotate(-0 414.315215 196.897422)">+1.44%</text>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #ffffff" x="491.913301" y="196.897422" transform="rotate(-0 491.913301 196.897422)">+11.23%</text>
+   </g>
+   <g id="text_23">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="569.511388" y="196.897422" transform="rotate(-0 569.511388 196.897422)">-9.13%</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="647.109474" y="196.897422" transform="rotate(-0 647.109474 196.897422)">+1.31%</text>
+   </g>
+   <g id="text_25">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="259.119043" y="244.945422" transform="rotate(-0 259.119043 244.945422)">-14.55%</text>
+   </g>
+   <g id="text_26">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="336.717129" y="244.945422" transform="rotate(-0 336.717129 244.945422)">-3.27%</text>
+   </g>
+   <g id="text_27">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="414.315215" y="244.945422" transform="rotate(-0 414.315215 244.945422)">-9.61%</text>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="491.913301" y="244.945422" transform="rotate(-0 491.913301 244.945422)">-6.94%</text>
+   </g>
+   <g id="text_29">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="569.511388" y="244.945422" transform="rotate(-0 569.511388 244.945422)">-9.90%</text>
+   </g>
+   <g id="text_30">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="647.109474" y="244.945422" transform="rotate(-0 647.109474 244.945422)">+1.43%</text>
+   </g>
+   <g id="text_31">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="259.119043" y="292.993422" transform="rotate(-0 259.119043 292.993422)">-4.95%</text>
+   </g>
+   <g id="text_32">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="336.717129" y="292.993422" transform="rotate(-0 336.717129 292.993422)">-1.25%</text>
+   </g>
+   <g id="text_33">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="414.315215" y="292.993422" transform="rotate(-0 414.315215 292.993422)">-7.01%</text>
+   </g>
+   <g id="text_34">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="491.913301" y="292.993422" transform="rotate(-0 491.913301 292.993422)">-1.07%</text>
+   </g>
+   <g id="text_35">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="569.511388" y="292.993422" transform="rotate(-0 569.511388 292.993422)">-7.41%</text>
+   </g>
+   <g id="text_36">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="647.109474" y="292.993422" transform="rotate(-0 647.109474 292.993422)">+2.81%</text>
+   </g>
+   <g id="text_37">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="259.119043" y="341.041422" transform="rotate(-0 259.119043 341.041422)">-5.01%</text>
+   </g>
+   <g id="text_38">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="336.717129" y="341.041422" transform="rotate(-0 336.717129 341.041422)">-1.72%</text>
+   </g>
+   <g id="text_39">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="414.315215" y="341.041422" transform="rotate(-0 414.315215 341.041422)">-7.39%</text>
+   </g>
+   <g id="text_40">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="491.913301" y="341.041422" transform="rotate(-0 491.913301 341.041422)">-0.75%</text>
+   </g>
+   <g id="text_41">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="569.511388" y="341.041422" transform="rotate(-0 569.511388 341.041422)">-7.16%</text>
+   </g>
+   <g id="text_42">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="647.109474" y="341.041422" transform="rotate(-0 647.109474 341.041422)">+2.93%</text>
+   </g>
+   <g id="text_43">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="259.119043" y="389.089422" transform="rotate(-0 259.119043 389.089422)">-4.95%</text>
+   </g>
+   <g id="text_44">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="336.717129" y="389.089422" transform="rotate(-0 336.717129 389.089422)">-1.24%</text>
+   </g>
+   <g id="text_45">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="414.315215" y="389.089422" transform="rotate(-0 414.315215 389.089422)">-7.01%</text>
+   </g>
+   <g id="text_46">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="491.913301" y="389.089422" transform="rotate(-0 491.913301 389.089422)">-1.07%</text>
+   </g>
+   <g id="text_47">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="569.511388" y="389.089422" transform="rotate(-0 569.511388 389.089422)">-7.41%</text>
+   </g>
+   <g id="text_48">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="647.109474" y="389.089422" transform="rotate(-0 647.109474 389.089422)">+2.81%</text>
+   </g>
+   <g id="text_49">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #25354a" x="453.114258" y="103.968" transform="rotate(-0 453.114258 103.968)">正常成本：单边手续费 5 bps / 滑点 2 bps</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g id="patch_4">
+    <path d="M 727.811483 410.256 
+L 1193.4 410.256 
+L 1193.4 121.968 
+L 727.811483 121.968 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g clip-path="url(#p2b778b634c)">
+    <image xlink:href="data:image/png;base64,
+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" id="image31551dc1dd" transform="scale(1 -1) translate(0 -288.72)" x="727.92" y="-121.68" width="465.84" height="288.72"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 728.587464 170.49648 
+L 1192.624019 170.49648 
+L 1192.624019 217.58352 
+L 728.587464 217.58352 
+L 728.587464 170.49648 
+z
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #243448; stroke-width: 1.7; stroke-linejoin: miter"/>
+   </g>
+   <g id="matplotlib.axis_3">
+    <g id="xtick_14">
+     <g id="line2d_41"/>
+     <g id="text_50">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(756.610526 427.697602)">开发</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(728.208964 439.699555)">2022.09—2023</text>
+     </g>
+    </g>
+    <g id="xtick_15">
+     <g id="line2d_42"/>
+     <g id="text_51">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(831.483612 426.854633)">2024</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(827.846112 439.129242)">1—7月</text>
+     </g>
+    </g>
+    <g id="xtick_16">
+     <g id="line2d_43"/>
+     <g id="text_52">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(909.081699 426.854633)">2025</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(911.806699 439.768305)">全年</text>
+     </g>
+    </g>
+    <g id="xtick_17">
+     <g id="line2d_44"/>
+     <g id="text_53">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(986.679785 426.854633)">2026</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(983.042285 439.129242)">1—8月</text>
+     </g>
+    </g>
+    <g id="xtick_18">
+     <g id="line2d_45"/>
+     <g id="text_54">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(1064.277871 426.854633)">2022</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(1052.002871 439.699555)">上半年压力</text>
+     </g>
+    </g>
+    <g id="xtick_19">
+     <g id="line2d_46"/>
+     <g id="text_55">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(1141.875957 426.854633)">2026</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'" transform="translate(1146.419707 439.129242)">9月</text>
+     </g>
+    </g>
+    <g id="xtick_20">
+     <g id="line2d_47">
+      <path d="M 727.811483 410.256 
+L 727.811483 121.968 
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_48"/>
+    </g>
+    <g id="xtick_21">
+     <g id="line2d_49">
+      <path d="M 805.409569 410.256 
+L 805.409569 121.968 
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_50"/>
+    </g>
+    <g id="xtick_22">
+     <g id="line2d_51">
+      <path d="M 883.007656 410.256 
+L 883.007656 121.968 
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_52"/>
+    </g>
+    <g id="xtick_23">
+     <g id="line2d_53">
+      <path d="M 960.605742 410.256 
+L 960.605742 121.968 
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_54"/>
+    </g>
+    <g id="xtick_24">
+     <g id="line2d_55">
+      <path d="M 1038.203828 410.256 
+L 1038.203828 121.968 
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_56"/>
+    </g>
+    <g id="xtick_25">
+     <g id="line2d_57">
+      <path d="M 1115.801914 410.256 
+L 1115.801914 121.968 
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_58"/>
+    </g>
+    <g id="xtick_26">
+     <g id="line2d_59">
+      <path d="M 1193.4 410.256 
+L 1193.4 121.968 
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_60"/>
+    </g>
+   </g>
+   <g id="matplotlib.axis_4">
+    <g id="ytick_14">
+     <g id="line2d_61"/>
+    </g>
+    <g id="ytick_15">
+     <g id="line2d_62"/>
+    </g>
+    <g id="ytick_16">
+     <g id="line2d_63"/>
+    </g>
+    <g id="ytick_17">
+     <g id="line2d_64"/>
+    </g>
+    <g id="ytick_18">
+     <g id="line2d_65"/>
+    </g>
+    <g id="ytick_19">
+     <g id="line2d_66"/>
+    </g>
+    <g id="ytick_20">
+     <g id="line2d_67">
+      <path d="M 727.811483 121.968 
+L 1193.4 121.968 
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_68"/>
+    </g>
+    <g id="ytick_21">
+     <g id="line2d_69">
+      <path d="M 727.811483 170.016 
+L 1193.4 170.016 
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_70"/>
+    </g>
+    <g id="ytick_22">
+     <g id="line2d_71">
+      <path d="M 727.811483 218.064 
+L 1193.4 218.064 
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_72"/>
+    </g>
+    <g id="ytick_23">
+     <g id="line2d_73">
+      <path d="M 727.811483 266.112 
+L 1193.4 266.112 
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_74"/>
+    </g>
+    <g id="ytick_24">
+     <g id="line2d_75">
+      <path d="M 727.811483 314.16 
+L 1193.4 314.16 
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_76"/>
+    </g>
+    <g id="ytick_25">
+     <g id="line2d_77">
+      <path d="M 727.811483 362.208 
+L 1193.4 362.208 
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_78"/>
+    </g>
+    <g id="ytick_26">
+     <g id="line2d_79">
+      <path d="M 727.811483 410.256 
+L 1193.4 410.256 
+" clip-path="url(#p2b778b634c)" style="fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_80"/>
+    </g>
+   </g>
+   <g id="text_56">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="766.610526" y="149.285555" transform="rotate(-0 766.610526 149.285555)">未测试</text>
+   </g>
+   <g id="text_57">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="844.208612" y="148.849422" transform="rotate(-0 844.208612 148.849422)">-9.70%</text>
+   </g>
+   <g id="text_58">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #ffffff" x="921.806699" y="148.849422" transform="rotate(-0 921.806699 148.849422)">-17.27%</text>
+   </g>
+   <g id="text_59">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="999.404785" y="148.849422" transform="rotate(-0 999.404785 148.849422)">-14.15%</text>
+   </g>
+   <g id="text_60">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="1077.002871" y="148.849422" transform="rotate(-0 1077.002871 148.849422)">-14.15%</text>
+   </g>
+   <g id="text_61">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="1154.600957" y="148.849422" transform="rotate(-0 1154.600957 148.849422)">+0.30%</text>
+   </g>
+   <g id="text_62">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="766.610526" y="197.333555" transform="rotate(-0 766.610526 197.333555)">未测试</text>
+   </g>
+   <g id="text_63">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="844.208612" y="196.897422" transform="rotate(-0 844.208612 196.897422)">-5.25%</text>
+   </g>
+   <g id="text_64">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="921.806699" y="196.897422" transform="rotate(-0 921.806699 196.897422)">-6.33%</text>
+   </g>
+   <g id="text_65">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="999.404785" y="196.897422" transform="rotate(-0 999.404785 196.897422)">+2.77%</text>
+   </g>
+   <g id="text_66">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="1077.002871" y="196.897422" transform="rotate(-0 1077.002871 196.897422)">-11.12%</text>
+   </g>
+   <g id="text_67">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="1154.600957" y="196.897422" transform="rotate(-0 1154.600957 196.897422)">+0.18%</text>
+   </g>
+   <g id="text_68">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="766.610526" y="245.381555" transform="rotate(-0 766.610526 245.381555)">未测试</text>
+   </g>
+   <g id="text_69">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="844.208612" y="244.945422" transform="rotate(-0 844.208612 244.945422)">-11.04%</text>
+   </g>
+   <g id="text_70">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #ffffff" x="921.806699" y="244.945422" transform="rotate(-0 921.806699 244.945422)">-21.02%</text>
+   </g>
+   <g id="text_71">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #ffffff" x="999.404785" y="244.945422" transform="rotate(-0 999.404785 244.945422)">-16.21%</text>
+   </g>
+   <g id="text_72">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="1077.002871" y="244.945422" transform="rotate(-0 1077.002871 244.945422)">-13.71%</text>
+   </g>
+   <g id="text_73">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="1154.600957" y="244.945422" transform="rotate(-0 1154.600957 244.945422)">-0.21%</text>
+   </g>
+   <g id="text_74">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="766.610526" y="293.429555" transform="rotate(-0 766.610526 293.429555)">未测试</text>
+   </g>
+   <g id="text_75">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="844.208612" y="292.993422" transform="rotate(-0 844.208612 292.993422)">-6.48%</text>
+   </g>
+   <g id="text_76">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="921.806699" y="292.993422" transform="rotate(-0 921.806699 292.993422)">-15.05%</text>
+   </g>
+   <g id="text_77">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="999.404785" y="292.993422" transform="rotate(-0 999.404785 292.993422)">-7.96%</text>
+   </g>
+   <g id="text_78">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="1077.002871" y="292.993422" transform="rotate(-0 1077.002871 292.993422)">-9.94%</text>
+   </g>
+   <g id="text_79">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="1154.600957" y="292.993422" transform="rotate(-0 1154.600957 292.993422)">+1.49%</text>
+   </g>
+   <g id="text_80">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="766.610526" y="341.477555" transform="rotate(-0 766.610526 341.477555)">未测试</text>
+   </g>
+   <g id="text_81">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="844.208612" y="341.041422" transform="rotate(-0 844.208612 341.041422)">-7.02%</text>
+   </g>
+   <g id="text_82">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="921.806699" y="341.041422" transform="rotate(-0 921.806699 341.041422)">-15.35%</text>
+   </g>
+   <g id="text_83">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="999.404785" y="341.041422" transform="rotate(-0 999.404785 341.041422)">-8.06%</text>
+   </g>
+   <g id="text_84">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="1077.002871" y="341.041422" transform="rotate(-0 1077.002871 341.041422)">-9.74%</text>
+   </g>
+   <g id="text_85">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="1154.600957" y="341.041422" transform="rotate(-0 1154.600957 341.041422)">+1.42%</text>
+   </g>
+   <g id="text_86">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="766.610526" y="389.525555" transform="rotate(-0 766.610526 389.525555)">未测试</text>
+   </g>
+   <g id="text_87">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="844.208612" y="389.089422" transform="rotate(-0 844.208612 389.089422)">-6.48%</text>
+   </g>
+   <g id="text_88">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="921.806699" y="389.089422" transform="rotate(-0 921.806699 389.089422)">-15.05%</text>
+   </g>
+   <g id="text_89">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="999.404785" y="389.089422" transform="rotate(-0 999.404785 389.089422)">-7.94%</text>
+   </g>
+   <g id="text_90">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="1077.002871" y="389.089422" transform="rotate(-0 1077.002871 389.089422)">-9.94%</text>
+   </g>
+   <g id="text_91">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #1b2838" x="1154.600957" y="389.089422" transform="rotate(-0 1154.600957 389.089422)">+1.49%</text>
+   </g>
+   <g id="text_92">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle; fill: #25354a" x="960.605742" y="103.968" transform="rotate(-0 960.605742 103.968)">压力成本：单边手续费 10 bps / 滑点 4 bps</text>
+   </g>
+  </g>
+  <g id="axes_3">
+   <g id="patch_6">
+    <path d="M 379.44 476.784 
+L 991.44 476.784 
+L 991.44 462.924 
+L 379.44 462.924 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAA1IAAAATCAYAAACayjxTAAABvklEQVR4nO3XQZbbIAwAUHDu0pv3mIZZtO8VbCDIk7ab/1fGyJKIM5mn/DP9qOm340iddj27TimlI2/G7eab7OWch/c/kXsZNznfOl/u4vLrzzof4+tl3KuPOyY5rnG5aepJD7M6kV67Hpq44xY3znGtm2Z7r/kXs+vpYb5+b3K9ipu8i1tPy7Mfm3Hj897rPvmi/5+49u//2Q/S6uwfjsuT60hcntRdxW3Wzfn1b3q4vpvdXpt1bT7mWksXVpp1TWV4f7V3y5fGe9v50jl/ps03qXPP9zfPVPu4yV5J17j69plQXHof9zh3d47dXse513F9vrNZtntnH5ZKsz67fH1cn2/8TEopldLujZ9Z1Zr1ve6hz13K+LzrM80/o7bXs4zv/9qrw72zf4WXvfEzq1rruu/72X1mVffpmdrvR23i6qVut1c343bzfbPux3uo3893+e8FAADAOwYpAACAIIMUAABAkEEKAAAgyCAFAAAQZJACAAAIMkgBAAAEGaQAAACCDFIAAABBBikAAIAggxQAAECQQQoAACDIIAUAABBkkAIAAAgySAEAAAQZpAAAAIIMUgAAAEEGKQAAgKAvEoFa01W6Xp0AAAAASUVORK5CYII=" id="imageeca46b4436" transform="scale(1 -1) translate(0 -13.68)" x="379.44" y="-462.96" width="612" height="13.68"/>
+   <g id="matplotlib.axis_5">
+    <g id="xtick_27">
+     <g id="line2d_81">
+      <defs>
+       <path id="m89c0dff271" d="M 0 0 
+L 0 3.5 
+" style="stroke: #000000; stroke-width: 0.8"/>
+      </defs>
+      <g>
+       <use xlink:href="#m89c0dff271" x="394.352025" y="476.784" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_93">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle" x="394.352025" y="492.141422" transform="rotate(-0 394.352025 492.141422)">−20</text>
+     </g>
+    </g>
+    <g id="xtick_28">
+     <g id="line2d_82">
+      <g>
+       <use xlink:href="#m89c0dff271" x="467.124019" y="476.784" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_94">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle" x="467.124019" y="492.141422" transform="rotate(-0 467.124019 492.141422)">−15</text>
+     </g>
+    </g>
+    <g id="xtick_29">
+     <g id="line2d_83">
+      <g>
+       <use xlink:href="#m89c0dff271" x="539.896013" y="476.784" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_95">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle" x="539.896013" y="492.141422" transform="rotate(-0 539.896013 492.141422)">−10</text>
+     </g>
+    </g>
+    <g id="xtick_30">
+     <g id="line2d_84">
+      <g>
+       <use xlink:href="#m89c0dff271" x="612.668006" y="476.784" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_96">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle" x="612.668006" y="492.141422" transform="rotate(-0 612.668006 492.141422)">−5</text>
+     </g>
+    </g>
+    <g id="xtick_31">
+     <g id="line2d_85">
+      <g>
+       <use xlink:href="#m89c0dff271" x="685.44" y="476.784" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_97">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle" x="685.44" y="492.141422" transform="rotate(-0 685.44 492.141422)">0</text>
+     </g>
+    </g>
+    <g id="xtick_32">
+     <g id="line2d_86">
+      <g>
+       <use xlink:href="#m89c0dff271" x="821.670701" y="476.784" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_98">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle" x="821.670701" y="492.141422" transform="rotate(-0 821.670701 492.141422)">5</text>
+     </g>
+    </g>
+    <g id="xtick_33">
+     <g id="line2d_87">
+      <g>
+       <use xlink:href="#m89c0dff271" x="957.901402" y="476.784" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_99">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle" x="957.901402" y="492.141422" transform="rotate(-0 957.901402 492.141422)">10</text>
+     </g>
+    </g>
+    <g id="text_100">
+     <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: middle" x="685.44" y="507.343375" transform="rotate(-0 685.44 507.343375)">账户净收益（%）</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_6"/>
+   <g id="LineCollection_1"/>
+   <g id="patch_7">
+    <path d="M 379.44 476.784 
+L 379.44 469.854 
+L 379.44 462.924 
+L 991.44 462.924 
+L 991.44 469.854 
+L 991.44 476.784 
+L 379.44 476.784 
+z
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+  </g>
+  <g id="text_101">
+   <text style="font-weight: 700; font-size: 20px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: start; fill: #25354a" x="36.72" y="36.58525" transform="rotate(-0 36.72 36.58525)">30 分钟突破与退出：全部预声明账户结果</text>
+  </g>
+  <g id="text_102">
+   <text style="font-size: 12px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: start; fill: #25354a" x="36.72" y="51.0048" transform="rotate(-0 36.72 51.0048)">每格为该窗净收益；六币合计 60,000 USDT，正常与压力使用同一颜色刻度。</text>
+  </g>
+  <g id="text_103">
+   <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: start; fill: #25354a" x="36.72" y="522.2448" transform="rotate(-0 36.72 522.2448)">全部区间此前已查看，每窗独立重置，不能串成实盘曲线。开发期未计划成本压力；灰格不代表零收益。</text>
+  </g>
+  <g id="text_104">
+   <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Source Han Sans CN'; text-anchor: start; fill: #25354a" x="36.72" y="542.7576" transform="rotate(-0 36.72 542.7576)">压力完整重放，历史资金费不倍增；本图不展示 ATR 缓冲／两次收盘的事件命中率，也不代表固定目标止盈回放。</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pf7c46dda8d">
+   <rect x="220.32" y="121.968" width="465.588517" height="288.288"/>
+  </clipPath>
+  <clipPath id="p2b778b634c">
+   <rect x="727.811483" y="121.968" width="465.588517" height="288.288"/>
+  </clipPath>
+ </defs>
+</svg>

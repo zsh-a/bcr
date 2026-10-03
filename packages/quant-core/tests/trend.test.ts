@@ -16,9 +16,18 @@ import {
   restoreTrendDraft,
   defaultTrendPreset,
   simpleChannelConfig,
+  kdjResearchConfig,
+  withTrendManagement,
   type RecordedTrendConfigV4,
 } from "../src/trend";
-import { RECORDED_V2, RECORDED_V3, RECORDED_V4 } from "./fixtures/trend-recorded";
+import {
+  RECORDED_V2,
+  RECORDED_V3,
+  RECORDED_V4,
+  RECORDED_V5,
+  RECORDED_V6,
+  RECORDED_V7,
+} from "./fixtures/trend-recorded";
 
 describe("trend research configuration", () => {
   it("defaults to daily background filtering on the slow long-only candidate with an independent disabled cost gate", () => {
@@ -34,7 +43,7 @@ describe("trend research configuration", () => {
       stopAtr: 2,
       breakEvenAtr: 0,
     });
-    expect(DEFAULT_TREND_CONFIG.version).toBe(5);
+    expect(DEFAULT_TREND_CONFIG.version).toBe(10);
     expect(DEFAULT_TREND_CONFIG.risk.flattenMinute).toBeNull();
     expect(trendWarmupDays(DEFAULT_TREND_CONFIG)).toBe(22);
     const copy = createTrendConfig();
@@ -93,6 +102,7 @@ describe("trend research configuration", () => {
     daily.strategy.breakoutBars = 250;
     expect(trendWarmupDays(daily)).toBe(250);
     daily.strategy.entry = "pullback";
+    daily.strategy.management = "atr";
     expect(trendWarmupDays(daily)).toBe(TREND_RULES.atrPeriod);
     daily.strategy.filter = "ema";
     expect(trendWarmupDays(daily)).toBe(TREND_RULES.slowEma);
@@ -123,7 +133,7 @@ describe("trend research configuration", () => {
     expect(draft.strategy.filter).toBe("none");
     draft.execution.feeBps = 1;
     expect(JSON.stringify(old)).toBe(original);
-    expect(trendRunView({ config: createTrendConfig() } as TrendRun).ruleVersion).toBe(6);
+    expect(trendRunView({ config: createTrendConfig() } as TrendRun).ruleVersion).toBe(11);
     expect(() =>
       validateRecordedTrendConfig({ ...old, strategy: { ...old.strategy, filter: "background" } }),
     ).toThrow();
@@ -160,7 +170,7 @@ describe("trend research configuration", () => {
       expect(trendRunView({ config: old } as TrendRun).channel).toBe(filter === "none");
       const draft = restoreTrendDraft(old);
       validateTrendConfig(draft);
-      expect(draft.version).toBe(5);
+      expect(draft.version).toBe(10);
       expect(draft.strategy).toEqual({
         ...old.strategy,
         maxCostAtr: filter === "background" ? 0.5 : 0,
@@ -202,7 +212,14 @@ describe("trend research configuration", () => {
       throw new Error("future executable rule");
     });
     try {
-      for (const fixture of [RECORDED_V2, RECORDED_V3, RECORDED_V4])
+      for (const fixture of [
+        RECORDED_V2,
+        RECORDED_V3,
+        RECORDED_V4,
+        RECORDED_V5,
+        RECORDED_V6,
+        RECORDED_V7,
+      ])
         expect(() => validateRecordedTrendConfig(fixture)).not.toThrow();
       expect(validator).not.toHaveBeenCalled();
       expect(() => validateRecordedTrendConfig(createTrendConfig())).toThrow(
@@ -212,7 +229,7 @@ describe("trend research configuration", () => {
       validator.mockRestore();
     }
   });
-  it("keeps the explicit cost gate independent of filtering and preserves v5 drafts", () => {
+  it("keeps the explicit cost gate independent of filtering and preserves current drafts", () => {
     for (const filter of ["none", "ema", "background"] as const) {
       for (const maxCostAtr of [0, 0.5, 20]) {
         const config = createTrendConfig();
@@ -224,6 +241,97 @@ describe("trend research configuration", () => {
         );
       }
     }
+  });
+  it("upgrades v5 drafts without changing their frozen strategy, costs or history", () => {
+    const old = structuredClone(RECORDED_V5);
+    const before = JSON.stringify(old);
+    validateRecordedTrendConfig(old);
+    expect(() => validateTrendConfig(old)).toThrow();
+    const current = restoreTrendDraft(old);
+    expect(current).toEqual({ ...old, version: 10 });
+    expect(trendRunView({ config: old } as TrendRun).ruleVersion).toBe(6);
+    current.strategy.stopAtr = 9;
+    expect(JSON.stringify(old)).toBe(before);
+    for (const patch of [
+      { entry: "kdj" },
+      { filter: "slow-ema" },
+      { management: "staged", staged: { breakEvenR: 1, trailingStartR: 2 } },
+      { maxCostAtr: 21 },
+    ])
+      expect(() =>
+        validateRecordedTrendConfig({ ...old, strategy: { ...old.strategy, ...patch } }),
+      ).toThrow();
+  });
+  it("builds the screenshot hypothesis while preserving execution, capital, risk and cost policy", () => {
+    const original = createTrendConfig();
+    original.execution.feeBps = 9;
+    original.execution.initialCapital = 23000;
+    original.risk.dailyLossPct = 0.02;
+    original.strategy.maxCostAtr = 0.6;
+    const research = kdjResearchConfig(original);
+    validateTrendConfig(research);
+    expect(research.strategy).toMatchObject({
+      entry: "kdj",
+      filter: "slow-ema",
+      management: "staged",
+      direction: "both",
+      tradeMinutes: 5,
+      stopAtr: 2,
+      trailingAtr: 3,
+      maxCostAtr: 0.6,
+      staged: { breakEvenR: 1, trailingStartR: 2 },
+    });
+    expect(research.execution).toEqual(original.execution);
+    expect(research.risk).toEqual(original.risk);
+    expect(trendRunView({ config: research } as TrendRun)).toMatchObject({
+      label: "KDJ 回调研究",
+      channelConfig: undefined,
+      staged: true,
+      slowEma: true,
+    });
+    research.execution.feeBps = 1;
+    expect(original.execution.feeBps).toBe(9);
+    expect(original.strategy.staged).toBeUndefined();
+    expect(trendWarmupDays(withTradingPeriod(research, 1440))).toBe(63);
+    expect(trendWarmupDays(withTradingPeriod(research, 240))).toBe(11);
+    expect(trendWarmupDays(withTradingPeriod(research, 60))).toBe(3);
+    research.strategy.filter = "none";
+    expect(trendWarmupDays(withTradingPeriod(research, 1440))).toBe(14);
+  });
+  it("validates staged thresholds independently and removes them when changing management", () => {
+    const research = kdjResearchConfig(createTrendConfig());
+    for (const staged of [
+      { breakEvenR: 0, trailingStartR: 0 },
+      { breakEvenR: 20, trailingStartR: 1 },
+    ])
+      validateTrendConfig({ ...research, strategy: { ...research.strategy, staged } });
+    for (const staged of [
+      undefined,
+      null,
+      {},
+      { breakEvenR: 1 },
+      { breakEvenR: 1, trailingStartR: 2, other: 3 },
+      { breakEvenR: NaN, trailingStartR: 2 },
+      { breakEvenR: -1, trailingStartR: 2 },
+      { breakEvenR: 1, trailingStartR: 21 },
+    ])
+      expect(() =>
+        validateTrendConfig({ ...research, strategy: { ...research.strategy, staged } }),
+      ).toThrow();
+    expect(() =>
+      validateTrendConfig({ ...research, strategy: { ...research.strategy, management: "atr" } }),
+    ).toThrow();
+    const atr = withTrendManagement(research, "atr");
+    validateTrendConfig(atr);
+    expect("staged" in atr.strategy).toBe(false);
+    expect(atr.strategy.entry).toBe("kdj");
+    const channel = withTrendManagement(research, "channel");
+    validateTrendConfig(channel);
+    expect(channel.strategy.entry).toBe("breakout");
+    expect("staged" in channel.strategy).toBe(false);
+    for (const entry of ["breakout", "pullback", "kdj"] as const)
+      for (const filter of ["none", "ema", "background", "slow-ema"] as const)
+        validateTrendConfig({ ...research, strategy: { ...research.strategy, entry, filter } });
   });
   it("uses an independent simple channel preset without changing costs or risk", () => {
     const config = createTrendConfig();

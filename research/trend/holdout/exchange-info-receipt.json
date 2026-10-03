@@ -1,0 +1,8 @@
+{
+  "url": "https://www.binance.com/fapi/v1/exchangeInfo",
+  "status": 200,
+  "retrievedAt": "2026-10-03T09:03:53.468224+00:00",
+  "sha256": "e100331ec1aa78bd6d3bffcb22dd0526d4501de6c0b4fbf7c75e33963b07c29c",
+  "contentType": "application/json",
+  "symbolCount": 920
+}

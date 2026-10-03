@@ -1,0 +1,184 @@
+{
+  "version": 1,
+  "configVersion": 7,
+  "title": "既有四小时只做多通道策略：固定 40 根与 20 根基线复核",
+  "frozenAt": "2026-10-03; fixed for this recheck before any new replay result is generated. All historical windows and both candidates were inspected in prior research; this is not a new untouched test.",
+  "purpose": "Recheck the previously selected slow-40-long and baseline-20-long with the current shared execution and evaluation contracts. Preserve both original strategy definitions exactly. Do not rank, search, add filters, add breakeven, add shape rules, select another winner, or change dates after results. The primary was already selected in earlier ten-candidate research; fixing it now does not erase that selection history.",
+  "sourceStudy": {
+    "plan": "research/trend/methods-plan.json",
+    "sha256": "fb2744a59e7935dba4721122813c477c17c73092ad5cc127f5f2820a34103147",
+    "report": "research/trend/methods/REPORT.md",
+    "selectedCandidate": "slow-40-long"
+  },
+  "capitalMode": "total-account-equal-sleeves",
+  "initialCapital": 60000,
+  "symbols": {
+    "BTCUSDT": {
+      "tickSize": 0.1,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "ETHUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "BNBUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.01,
+      "minNotional": 100
+    },
+    "SOLUSDT": {
+      "tickSize": 0.001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "XRPUSDT": {
+      "tickSize": 0.0001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "DOGEUSDT": {
+      "tickSize": 1e-5,
+      "quantityStep": 1,
+      "minNotional": 100
+    }
+  },
+  "windows": [
+    {
+      "id": "development",
+      "start": "2022-09-01",
+      "end": "2024-01-01",
+      "role": "development",
+      "label": "开发资格复核 · 已查看历史"
+    },
+    {
+      "id": "known-2024",
+      "start": "2024-01-01",
+      "end": "2024-08-01",
+      "role": "diagnostic-known",
+      "label": "2024 年 1—7 月 · 已查看历史"
+    },
+    {
+      "id": "known-2025",
+      "start": "2025-01-01",
+      "end": "2026-01-01",
+      "role": "diagnostic-known",
+      "label": "2025 全年 · 已查看历史"
+    },
+    {
+      "id": "known-2026",
+      "start": "2026-01-01",
+      "end": "2026-09-01",
+      "role": "diagnostic-known",
+      "label": "2026 年 1—8 月 · 已查看历史"
+    },
+    {
+      "id": "historical-stress",
+      "start": "2022-01-01",
+      "end": "2022-07-01",
+      "role": "diagnostic-stress",
+      "label": "2022 年上半年压力 · 已查看历史"
+    },
+    {
+      "id": "fresh-september",
+      "start": "2026-09-01",
+      "end": "2026-10-01",
+      "role": "diagnostic-check",
+      "label": "2026 年 9 月复核 · 已查看历史"
+    }
+  ],
+  "dataPolicy": "Reuse immutable checksum-verified official Binance USDT perpetual traded-price and mark-price minute archives plus actual historical funding. Publish a new manifest bound to this plan. Retain the six exact non-overlapping source-study windows. Missing required prices or funding reject the affected window; do not interpolate, substitute zero costs or choose intervals by returns. Each window has independent warmup, initial 60000-USDT capital and risk state; charts must not concatenate them into a continuous investment record.",
+  "windowCoverage": {
+    "inheritedGaps": "The source research reported unresolved official mark-price gaps in July 2022 and August 2024. Its development therefore started on 2022-09-01 and its 2024 diagnostic ended on 2024-08-01. The later January-June 2022 stress window deliberately stopped before the known July gap.",
+    "excludedIntervals": ["2022-07-01/2022-09-01", "2024-08-01/2025-01-01"],
+    "scope": "These larger excluded ranges are inherited research-window choices, not a claim that every excluded day is missing. This recheck does not reassess archive availability, fill those ranges, or choose replacement periods. The retained windows are not exhaustive market coverage.",
+    "september": "The legacy id fresh-september is preserved only for alignment with prior artifacts. Its role is diagnostic-check and its prices/results are already known; it is neither fresh, untouched OOS, prospective nor live evidence."
+  },
+  "candidates": [
+    {
+      "id": "baseline-20-long",
+      "entry": "breakout",
+      "tradeMinutes": 240,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "slow-40-long",
+      "entry": "breakout",
+      "tradeMinutes": 240,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 40,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2,
+      "maxCostAtr": 0
+    }
+  ],
+  "baseline": "baseline-20-long",
+  "hypotheses": [
+    "A fixed 40-bar channel changes the entry horizon and the half-window exit horizon relative to a fixed 20-bar channel. Compare the complete account effect, not a single isolated entry mechanism.",
+    "A slower channel may reduce turnover and cost relative to initial risk, while reacting later and changing market exposure. Reduced turnover alone does not establish positive net expectancy.",
+    "Both candidates are long-only and have no directional filter. Performance may reflect participation in rising crypto markets; six surviving crypto perpetuals do not establish cross-asset diversification or market-independent alpha.",
+    "This is a current-engine recheck of previously examined rules and windows, not another optimization round or an independent confirmation of the earlier selected winner."
+  ],
+  "fixedRules": {
+    "entry": "Both strategies use completed four-hour candles and long-only breakout entry. The signal close must be at least the highest high of the preceding N completed candles plus one tick, excluding the signal candle; N is exactly 20 for baseline and 40 for primary. Execute on the next minute open through the shared engine. No EMA/background/cost gate or discretionary shape is added.",
+    "exit": "ATR uses Wilder smoothing over 14 completed trading-candle true ranges. Freeze the signal-candle ATR for the initial 2-ATR stop and entry sizing. Channel exit requires the completed trading-candle close to be strictly below the lowest low of the preceding half-window (10 for baseline, 20 for primary), excluding the current candle, then exits on the next minute open. The existing hard stop is checked first. No breakeven or staged management is added. Keep all shared engine rounding, position sizing, funding and event-ordering rules.",
+    "identity": "The candidate objects, six symbol precision assumptions, capital allocation, normal/stress costs, risk settings and bootstrap settings are copied from methods-plan.json. ConfigVersion changes from 5 to 7 and the native binary is current engine13. The strategy objects themselves do not change.",
+    "execution": "Use only the shared Rust minute engine. Record binary, plan, manifest and replay/evaluation provenance. Differences from frozen historical output may reflect intervening execution fixes or evaluation conventions; never silently replace old evidence."
+  },
+  "selectionMode": "fixed",
+  "fixedCandidate": "slow-40-long",
+  "selectionMinTrades": 10,
+  "selectionMinProfitableSymbols": 4,
+  "selection": "Always keep slow-40-long as the primary. Development qualification is insufficient-sample if any symbol has fewer than ten completed trades or there are fewer than thirty complete UTC days. Otherwise require defined finite aggregate daily Sharpe, at least four profitable symbols and positive finite median symbol mean net R; failure is descriptive and never changes the primary. Do not compare candidate scores to choose a winner. Run all remaining declared diagnostics regardless of qualification.",
+  "sensitivity": [],
+  "costs": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "stressFeeBps": 10,
+    "stressSlippageBps": 4
+  },
+  "risk": {
+    "riskPct": 0.005,
+    "maxExposurePct": 0.95,
+    "cooldownLosses": 3,
+    "cooldownMinutes": 60,
+    "dailyLossPct": 0.03,
+    "flattenMinute": null
+  },
+  "bootstrap": {
+    "seed": 20261003,
+    "samples": 2000,
+    "blockDays": 7
+  },
+  "acceptance": "Report the fixed primary qualification and both full account outcomes in all six windows. In every non-development window also report both primary and baseline with doubled fees/slippage (actual funding unchanged). Retain the source-study checks as descriptive historical checks: positive primary normal and stress returns in known-2024, known-2025 and known-2026, higher primary daily Sharpe than baseline in at least two of those three windows, and no worse daily drawdown in at least two. Disclose 2022 stress and September results separately, including any failure. Report net profit factor, dollar expectancy, mean net R, account return/drawdown, sample size, costs and paired daily-return uncertainty. No check can establish a positive future expectation from these reused observations, and no failure permits reselection or additional parameter search.",
+  "limitations": [
+    "Both candidate definitions and all six historical windows were examined before this plan. Fixing an earlier winner for recheck is conditional on prior selection and does not reset multiple-testing risk.",
+    "The inherited dates omit July-August 2022 and August-December 2024. Some underlying data gaps caused the original boundaries, but entire omitted ranges have not been established as unavailable. No continuous full-history claim is permitted.",
+    "The fresh-september id is an old alignment identifier only. September 2026 is now previously viewed historical data.",
+    "Only two fixed candidates are included. No alternative horizon, direction, filter, breakeven, stop sensitivity, shape condition or post-result fallback is tested.",
+    "Channel length changes both entry and exit horizons and all subsequent positions/risk state. Paired complete-account differences cannot isolate entry timing, transaction costs or an individual trade-level causal effect.",
+    "Both rules are long-only. No buy-and-hold or market-neutral benchmark is simulated in this run; market exposure diagnostics do not establish causal alpha.",
+    "Six surviving liquid crypto perpetuals are not a point-in-time universe and are not six independent asset classes.",
+    "Each of six fixed 10000-USDT sleeves has independent positions/risk state. No shared collateral, netting, cross-margin, rebalancing or dynamic capital transfers.",
+    "Static conservative precision and 5/2 bps per-side fee/slippage assumptions are not historical order-book fills. One-minute OHLC does not model queue priority, liquidation or market impact.",
+    "Costs embedded in equity are never deducted again. Gross-before-cost values are executed-ledger attribution, not a rerun with zero costs; changed costs alter future trading paths.",
+    "The shared v2 evaluation uses minute/fill drawdown per sleeve and daily-close drawdown for the aggregate account. Undefined metrics remain null, and thirty complete days is a display gate rather than proof of sufficient economic evidence.",
+    "All windows start with independent capital and warmup. The six curves must not be joined into one live-equity history. This replay does not validate crude-oil market calendars, contract rollover or live-order execution."
+  ],
+  "references": [
+    "https://www.aqr.com/Insights/Research/Journal-Article/Which-Trend-Is-Your-Friend",
+    "https://www.aqr.com/insights/research/journal-article/a-century-of-evidence-on-trend-following-investing",
+    "https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf"
+  ]
+}

@@ -9,6 +9,7 @@ import {
   filterLabel,
   directionLabel,
   costFilterLabel,
+  managementLabel,
 } from "@bcr/quant-core/trend";
 import {
   Button,
@@ -217,17 +218,33 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
           <div className="trend-intro">
             <span className="trend-eyebrow">趋势延续研究</span>
             <h2>
-              {research.config.strategy.filter === "background"
-                ? "先看背景，再捕捉突破。"
-                : "捕捉突破，让趋势延续。"}
+              {research.config.strategy.entry === "structured-pullback"
+                ? "先确认趋势，再等结构化回调。"
+                : research.config.strategy.entry === "price-action"
+                  ? "先有强推进，再等回调突破。"
+                  : research.config.strategy.entry === "kdj"
+                    ? "等回调，再看 KDJ 交叉。"
+                    : research.config.strategy.filter === "background"
+                      ? "先看背景，再捕捉突破。"
+                      : "捕捉突破，让趋势延续。"}
             </h2>
             <p>
-              {research.config.strategy.filter === "background"
-                ? "较大周期判断方向与结构，交易周期确认突破，下一分钟尝试入场。"
-                : "已收盘的交易周期 K 线确认突破，下一分钟尝试入场。"}{" "}
+              {research.config.strategy.entry === "structured-pullback"
+                ? "记录推进能量、已确认关键位与回调结构；收盘越过整段推进极值后，下一分钟尝试入场。"
+                : research.config.strategy.entry === "price-action"
+                  ? "冻结推进前波动与完整推进极值，记录关键位和回调腿结构；首次收盘突破后下一分钟尝试入场。"
+                  : research.config.strategy.entry === "kdj"
+                    ? "K 进入低位或高位区域后，等待后续完整 K 线确认交叉，下一分钟尝试入场。"
+                    : research.config.strategy.filter === "background"
+                      ? "较大周期判断方向与结构，交易周期确认突破，下一分钟尝试入场。"
+                      : "已收盘的交易周期 K 线确认突破，下一分钟尝试入场。"}{" "}
               {research.config.strategy.management === "channel"
                 ? "用 ATR 限制试错成本，反向通道退出，让盈利趋势有继续延伸的空间。"
-                : "用 ATR 限制试错成本，保本和移动止损跟随趋势。"}
+                : research.config.strategy.management === "chandelier"
+                  ? "从第一根完整交易 K 线开始动态 ATR 跟踪，无主动保本或盈利启动阈值。"
+                  : research.config.strategy.management === "staged"
+                    ? "收盘初始 R 达标后锁定保本与动态 ATR 跟踪，保护线越过收盘则锁定次开盘退出。"
+                    : "用 ATR 限制试错成本，保本和移动止损跟随趋势。"}
             </p>
             <ol>
               <li>
@@ -251,7 +268,11 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
                 <span>
                   初始 {research.config.strategy.stopAtr} ATR ·{" "}
                   {research.config.strategy.management === "channel" ? (
-                    `反向 ${Math.max(1, Math.floor(research.config.strategy.breakoutBars / 2))} 根通道退出`
+                    managementLabel(research.config.strategy)
+                  ) : research.config.strategy.management === "chandelier" ? (
+                    "从第一根完整交易 K 线开始动态 ATR 跟踪，无主动保本或盈利启动阈值。"
+                  ) : research.config.strategy.management === "staged" ? (
+                    `保本 ${research.config.strategy.staged?.breakEvenR} R · 跟踪启动 ${research.config.strategy.staged?.trailingStartR} R · 动态 ${research.config.strategy.trailingAtr} ATR`
                   ) : (
                     <>
                       保本 {research.config.strategy.breakEvenAtr} ATR · 移动{" "}
@@ -273,7 +294,9 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
               中完成；再次调整参数可复用本地行情。
             </p>
             <p className="trend-help">
-              背景过滤可减少缺少趋势支持的入场，也可能错过趋势启动；研究候选尚未通过全部统计门槛。
+              {research.config.strategy.entry === "kdj"
+                ? "KDJ 回调研究来自截图推测，不是博主规则的精确复现；研究假设尚未通过统计与样本外验证。"
+                : "背景过滤可减少缺少趋势支持的入场，也可能错过趋势启动；研究候选尚未通过全部统计门槛。"}
             </p>
             <Button variant="ghost" onClick={() => setSettings(true)}>
               查看规则与参数

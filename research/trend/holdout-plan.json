@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "capitalMode": "total-account-equal-sleeves",
+  "initialCapital": 60000,
+  "costs": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "stressFeeBps": 10,
+    "stressSlippageBps": 4
+  },
+  "risk": {
+    "riskPct": 0.005,
+    "maxExposurePct": 0.95,
+    "cooldownLosses": 3,
+    "cooldownMinutes": 60,
+    "dailyLossPct": 0.03,
+    "flattenMinute": null
+  },
+  "configVersion": 8,
+  "bootstrap": {
+    "seed": 20261003,
+    "samples": 2000,
+    "blockDays": 7
+  },
+  "title": "30\u5206\u949f\u51bb\u7ed3\u901a\u9053\u7b56\u7565\uff1a\u672a\u56de\u6d4b\u54c1\u79cd\u7684\u5386\u53f2\u7559\u51fa\u9a8c\u8bc1",
+  "frozenAt": "2026-10-03T09:06:12.739175+00:00",
+  "purpose": "One externally selected rule transferred unchanged to six previously untested symbols. Every target observation is held out from this project selection. This is a retrospective cross-symbol holdout in known calendar regimes, not temporal or prospective out-of-sample evidence.",
+  "symbols": {
+    "LTCUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.001,
+      "minNotional": 20
+    },
+    "LINKUSDT": {
+      "tickSize": 0.001,
+      "quantityStep": 0.01,
+      "minNotional": 20
+    },
+    "ADAUSDT": {
+      "tickSize": 0.0001,
+      "quantityStep": 1,
+      "minNotional": 5
+    },
+    "BCHUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.001,
+      "minNotional": 20
+    },
+    "ETCUSDT": {
+      "tickSize": 0.001,
+      "quantityStep": 0.01,
+      "minNotional": 20
+    },
+    "TRXUSDT": {
+      "tickSize": 1e-05,
+      "quantityStep": 1,
+      "minNotional": 5
+    }
+  },
+  "windows": [
+    {
+      "id": "heldout-symbols",
+      "start": "2024-09-01",
+      "end": "2026-10-01",
+      "role": "cross-symbol-holdout-known-time",
+      "label": "\u65b0\u516d\u5e01\u7559\u51fa \u00b7 \u8fde\u7eed760\u5929 \u00b7 \u540c\u671f\u5e02\u573a\u5df2\u77e5"
+    }
+  ],
+  "selectionMode": "inherited",
+  "fixedCandidate": "m30-n320-no-day-guard",
+  "selectionSource": {
+    "plan": "research/trend/search-plan.json",
+    "manifest": "tmp/trend-search-v8/manifest.json",
+    "run": "tmp/trend-search-v8",
+    "planSha256": "f6db2c3a71c08fbed0a7a6c2b6f7f1538fbf40d29180aafab216e766f2b62594",
+    "manifestSha256": "608bf05449a5644ebcc4587a1892d07ca9f67e82c659de24a8a1f88d7fef302e",
+    "runSha256": "a1568548d54eeb5605620f3f89f36ce1f1b24d889490a44b21505d8efe9852c5",
+    "selectionSha256": "d48ac1c7cac700650f00936e606d049546b0168e52c7c686c8d4411a98a75994",
+    "developmentSha256": "1d56ce09f1e8d860785c73bf584bf383e1241c76523255f62cec32b075c495b2"
+  },
+  "baseline": "m30-n320-x160",
+  "candidates": [
+    {
+      "id": "m30-n320-no-day-guard",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "riskOverrides": {
+        "dailyLossPct": 0
+      }
+    },
+    {
+      "id": "m30-n320-x160",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    }
+  ],
+  "selection": "Inherit the original source choice m30-n320-no-day-guard and its source-domain qualification exactly. No target development window, ranking, qualification fit, coin selection, threshold adjustment or fallback winner. Baseline m30-n320-x160 is diagnostic only. The target result cannot revise the frozen source study.",
+  "stressCandidates": [
+    "m30-n320-no-day-guard",
+    "m30-n320-x160"
+  ],
+  "sensitivity": [],
+  "comparisons": [
+    {
+      "id": "inherited-primary-versus-source-baseline",
+      "candidate": "m30-n320-no-day-guard",
+      "reference": "m30-n320-x160"
+    }
+  ],
+  "instrumentRules": {
+    "sourceUrl": "https://www.binance.com/fapi/v1/exchangeInfo",
+    "retrievedAt": "2026-10-03T09:03:53+00:00",
+    "responseSha256": "e100331ec1aa78bd6d3bffcb22dd0526d4501de6c0b4fbf7c75e33963b07c29c",
+    "interpretation": "Current official PRICE_FILTER.tickSize, LOT_SIZE.stepSize and MIN_NOTIONAL.notional, with MARKET_LOT_SIZE min/step checked equal to LOT_SIZE for these symbols. Static research approximation across the entire historical window; not point-in-time historical contract rules. Other exchange order filters and market impact are not modeled."
+  },
+  "holdoutDesign": {
+    "universe": [
+      "LTCUSDT",
+      "LINKUSDT",
+      "ADAUSDT",
+      "BCHUSDT",
+      "ETCUSDT",
+      "TRXUSDT"
+    ],
+    "selectionBasis": "Purposive list of earlier-listed established USDT perpetual contracts absent from project study plans, raw manifests and inspected trend caches. Chosen before target-price/replay outcomes; not selected by backtest return, a market-cap ranking or representative sampling. Current surviving instruments introduce survivorship and availability bias.",
+    "exposureBoundary": "Source six coins BTC/ETH/BNB/SOL/XRP/DOGE use the same dates. Target symbols have not been used in the audited project research artifacts, but shared crypto regimes and common trends mean domains are correlated. No claim of global human ignorance of these prices.",
+    "data": "Official checksum-verified 1m trade and mark OHLC with actual funding. The precheck reads CHECKSUM/availability and instrument metadata only, not target price values or outcomes.7days indicator warmup; account starts flat.",
+    "unavailableData": "No symbol replacement, date shortening, interpolation or dropping a failed coin after outcomes. If required official minutes/funding are not available, the full declared evaluation cannot pass.",
+    "execution": "Use the same source Rust native binary and exactly the same strategy/effective risk/costs/capital per sleeve; only symbol price/quantity/notional constraints and target data change. Fee/slippage stress must fully replay both rules.",
+    "verification": "Check source selection and source development receipts/SHAs, native inputs/daily ledgers, independent channel/initial stop execution and minute marked equity. Archive all results including losses and sparse symbols."
+  },
+  "transferEvaluation": {
+    "windows": [
+      "heldout-symbols"
+    ],
+    "samples": 2000,
+    "seed": 20261003,
+    "blockDays": [
+      7,
+      28
+    ],
+    "minimumDays": 180,
+    "minimumTrades": 100,
+    "minimumTradesPerSymbol": 10,
+    "maxDailyDrawdown": 0.1,
+    "requireEachWindowPositive": true,
+    "requireDevelopmentQualified": true,
+    "method": "Aggregate the six fixed sleeves in dollars then compute continuous UTC daily account returns. Share circular date blocks across all four candidate/cost series;2000replicates,seed20261003,7and28days. Report percentile95bounds floor(B*.025)/floor(B*.975) of absolute and paired means. No resampling individual trades as independent observations.",
+    "acceptance": "The inherited primary alone must retain verified source-domain qualification; at least180complete target days,100closed trades and10per declared target symbol undereachcost; target account positive net return anddailyDD>=-10% underbothcosts; absolute mean daily return lower95CI>0 forboth7/28dayblocks andbothcosts. Every condition must pass. Baseline superiority is diagnostic only and cannot replace absolute profitability. No replacement on failure. Passing is cross-symbol historical evidence only, not independent-time or prospective certification; original known-history search conclusion remains unchanged."
+  },
+  "references": [
+    "https://github.com/binance/binance-public-data",
+    "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Exchange-Information"
+  ],
+  "limitations": [
+    "The same historical crypto market periods informed earlier research; held-out symbols are correlated with the development universe.",
+    "Purposive surviving-symbol sample, not a point-in-time reconstruction of all listed or delisted contracts.",
+    "Current static tick/lot/notional constraints differ from historical point-in-time rules and from previously studied symbols.",
+    "The fixed bps minute execution model omits depth, queue position, latency, outages and liquidation mechanics; exposure is capped below equity.",
+    "Evaluation is a one-shot fixed-rule transfer, not another search for the best target coin or parameter.",
+    "True future-time protocol is separately frozen at research/trend/forward-protocol.json; no future returns or automatic monitoring are implied here."
+  ]
+}

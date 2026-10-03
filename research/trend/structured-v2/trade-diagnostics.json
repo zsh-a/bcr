@@ -1,0 +1,3266 @@
+{
+  "version": 1,
+  "purpose": "Completed-account-trade attribution for every frozen normal and stress candidate. No rerun, candidate selection or event-label statistics.",
+  "sources": {
+    "plan": {
+      "path": "research/trend/structured-v2/development-input/plan.json",
+      "sha256": "e3db8c415084f558e3244bfdfc4c29f65edb82026af6b248fd12260a6fc9301c"
+    },
+    "manifest": {
+      "path": "research/trend/structured-v2/development-input/manifest.json",
+      "sha256": "18ebe88782d9b9f487ddd1bf88b0fe751ba9d9f8bd0f6bd663989cada3281786"
+    },
+    "results": {
+      "path": "research/trend/structured-v2/development/results.json",
+      "sha256": "6cef6c73d123f042c333a0baf9a0b6e8ba5b6e1665b9ba88e7dc296349bab9e8"
+    },
+    "generator": {
+      "path": "scripts/trend/trade_diagnostics.py",
+      "sha256": "71bcd5b67bd7841b4660dc64040ae20757dac62a91ab8ddbc621182c0faf0051"
+    }
+  },
+  "definitions": {
+    "R": "Actual entry-to-initial-stop distance times quantity. Arithmetic R means weight completed trades equally; dollar averages use netPnl.",
+    "netWinRate": "Strictly positive netPnl trades divided by all completed trades, including exact zero outcomes. Depends on the full exit policy; not independent breakout accuracy.",
+    "sides": "Long/short attribution of the same executed account path; not independently replayed directional accounts.",
+    "averageLoss": "Mean netPnl over strictly negative trades, kept negative. PF=sum positive netPnl / abs(sum negative netPnl); undefined ratios remain null.",
+    "grossBeforeCosts": "grossPnl plus recorded adverse slippageAndRounding. Costs=fees+funding+slippageAndRounding. Attribution of actual path, not zero-cost replay.",
+    "timeExposure": "Equal mean of per-sleeve native position-minute fractions. Not notional exposure, beta or shared-margin leverage.",
+    "tails": "Most profitable five / ceil(5% of all completed trades) positive trades. Removing profits is descriptive ledger arithmetic, not an executable replay or qualification test.",
+    "mfeMae": "Native completed-trade excursions stop at actual exit. They are exit-censored and must not replace fixed-horizon event observations."
+  },
+  "inputBatches": [
+    {
+      "path": "tmp/trend-structured-v10/development/BTCUSDT.json",
+      "sha256": "7744b71aabc46b781594ac6a8784aa63294d614c4b59a3143e17f462cf5145c2"
+    },
+    {
+      "path": "tmp/trend-structured-v10/development/ETHUSDT.json",
+      "sha256": "a0d965597901585a57b259965b433174aa197e01eccf6a78d54ada1d71864567"
+    },
+    {
+      "path": "tmp/trend-structured-v10/development/BNBUSDT.json",
+      "sha256": "4d113d5027a7c5841a102dfea27dcf78d7da50ea0d09932878be8ad7becffa5d"
+    }
+  ],
+  "windows": {
+    "development": {
+      "sp-strict": {
+        "trades": 1,
+        "wins": 0,
+        "losses": 1,
+        "flat": 0,
+        "netWinRate": 0.0,
+        "averageWin": null,
+        "averageLoss": -50.63199690952004,
+        "profitFactor": 0.0,
+        "netPnl": -50.63199690952004,
+        "netExpectancy": -50.63199690952004,
+        "grossBeforeCosts": -43.787999999999634,
+        "costs": 6.8439969095204045,
+        "meanGrossBeforeCostsR": -0.9800796812748958,
+        "meanCostR": 0.15318494358566698,
+        "medianCostR": 0.15318494358566698,
+        "p90CostR": 0.15318494358566698,
+        "meanNetR": -1.1332646248605627,
+        "meanHoldHours": 2.8166663888888888,
+        "medianHoldHours": 2.8166663888888888,
+        "medianCompletedTradeMfeR": 0.0,
+        "medianCompletedTradeMaeR": 1.0,
+        "tails": {
+          "topFive": {
+            "requestedTrades": 5,
+            "positiveTrades": 0,
+            "netPnl": 0,
+            "shareOfPositiveNetPnl": null,
+            "ledgerNetWithoutTheseTrades": -50.63199690952004,
+            "trades": []
+          },
+          "topFivePct": {
+            "requestedTrades": 1,
+            "positiveTrades": 0,
+            "netPnl": 0,
+            "shareOfPositiveNetPnl": null,
+            "ledgerNetWithoutTheseTrades": -50.63199690952004,
+            "trades": []
+          }
+        },
+        "exitReasons": {
+          "initial": {
+            "trades": 1,
+            "netPnl": -50.63199690952004,
+            "wins": 0,
+            "meanNetR": -1.1332646248605627
+          }
+        },
+        "fees": 4.4144000000000005,
+        "meanFeesR": 0.09880478087649439,
+        "funding": 0.64959690952,
+        "meanFundingR": 0.014539525258964197,
+        "slippageAndRounding": 1.7800000000004048,
+        "meanSlippageAndRoundingR": 0.0398406374502084,
+        "costScenario": "base",
+        "strategy": {
+          "entry": "structured-pullback",
+          "tradeMinutes": 30,
+          "filter": "ema",
+          "management": "chandelier",
+          "direction": "both",
+          "breakoutBars": 20,
+          "stopAtr": 2,
+          "breakEvenAtr": 0,
+          "trailingAtr": 3,
+          "maxCostAtr": 0,
+          "structuredPullback": {
+            "keyLevel": "either",
+            "shape": "any",
+            "candle": "none",
+            "confirmation": "before-breakout",
+            "keyRole": "pullback-retest"
+          }
+        },
+        "meanSleeveTimeExposure": 8.03293026085634e-05,
+        "sides": {
+          "long": {
+            "trades": 1,
+            "wins": 0,
+            "losses": 1,
+            "flat": 0,
+            "netWinRate": 0.0,
+            "averageWin": null,
+            "averageLoss": -50.63199690952004,
+            "profitFactor": 0.0,
+            "netPnl": -50.63199690952004,
+            "netExpectancy": -50.63199690952004,
+            "grossBeforeCosts": -43.787999999999634,
+            "costs": 6.8439969095204045,
+            "meanGrossBeforeCostsR": -0.9800796812748958,
+            "meanCostR": 0.15318494358566698,
+            "medianCostR": 0.15318494358566698,
+            "p90CostR": 0.15318494358566698,
+            "meanNetR": -1.1332646248605627,
+            "meanHoldHours": 2.8166663888888888,
+            "medianHoldHours": 2.8166663888888888,
+            "medianCompletedTradeMfeR": 0.0,
+            "medianCompletedTradeMaeR": 1.0,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": -50.63199690952004,
+                "trades": []
+              },
+              "topFivePct": {
+                "requestedTrades": 1,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": -50.63199690952004,
+                "trades": []
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 1,
+                "netPnl": -50.63199690952004,
+                "wins": 0,
+                "meanNetR": -1.1332646248605627
+              }
+            },
+            "fees": 4.4144000000000005,
+            "meanFeesR": 0.09880478087649439,
+            "funding": 0.64959690952,
+            "meanFundingR": 0.014539525258964197,
+            "slippageAndRounding": 1.7800000000004048,
+            "meanSlippageAndRoundingR": 0.0398406374502084
+          },
+          "short": {
+            "trades": 0,
+            "wins": 0,
+            "losses": 0,
+            "flat": 0,
+            "netWinRate": null,
+            "averageWin": null,
+            "averageLoss": null,
+            "profitFactor": null,
+            "netPnl": 0,
+            "netExpectancy": null,
+            "grossBeforeCosts": 0,
+            "costs": 0,
+            "meanGrossBeforeCostsR": null,
+            "meanCostR": null,
+            "medianCostR": null,
+            "p90CostR": null,
+            "meanNetR": null,
+            "meanHoldHours": null,
+            "medianHoldHours": null,
+            "medianCompletedTradeMfeR": null,
+            "medianCompletedTradeMaeR": null,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": 0,
+                "trades": []
+              },
+              "topFivePct": {
+                "requestedTrades": 0,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": 0,
+                "trades": []
+              }
+            },
+            "exitReasons": {},
+            "fees": 0,
+            "meanFeesR": null,
+            "funding": 0,
+            "meanFundingR": null,
+            "slippageAndRounding": 0,
+            "meanSlippageAndRoundingR": null
+          }
+        },
+        "symbols": {
+          "BTCUSDT": {
+            "trades": 0,
+            "wins": 0,
+            "losses": 0,
+            "flat": 0,
+            "netWinRate": null,
+            "averageWin": null,
+            "averageLoss": null,
+            "profitFactor": null,
+            "netPnl": 0,
+            "netExpectancy": null,
+            "grossBeforeCosts": 0,
+            "costs": 0,
+            "meanGrossBeforeCostsR": null,
+            "meanCostR": null,
+            "medianCostR": null,
+            "p90CostR": null,
+            "meanNetR": null,
+            "meanHoldHours": null,
+            "medianHoldHours": null,
+            "medianCompletedTradeMfeR": null,
+            "medianCompletedTradeMaeR": null,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": 0,
+                "trades": []
+              },
+              "topFivePct": {
+                "requestedTrades": 0,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": 0,
+                "trades": []
+              }
+            },
+            "exitReasons": {},
+            "fees": 0,
+            "meanFeesR": null,
+            "funding": 0,
+            "meanFundingR": null,
+            "slippageAndRounding": 0,
+            "meanSlippageAndRoundingR": null
+          },
+          "ETHUSDT": {
+            "trades": 0,
+            "wins": 0,
+            "losses": 0,
+            "flat": 0,
+            "netWinRate": null,
+            "averageWin": null,
+            "averageLoss": null,
+            "profitFactor": null,
+            "netPnl": 0,
+            "netExpectancy": null,
+            "grossBeforeCosts": 0,
+            "costs": 0,
+            "meanGrossBeforeCostsR": null,
+            "meanCostR": null,
+            "medianCostR": null,
+            "p90CostR": null,
+            "meanNetR": null,
+            "meanHoldHours": null,
+            "medianHoldHours": null,
+            "medianCompletedTradeMfeR": null,
+            "medianCompletedTradeMaeR": null,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": 0,
+                "trades": []
+              },
+              "topFivePct": {
+                "requestedTrades": 0,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": 0,
+                "trades": []
+              }
+            },
+            "exitReasons": {},
+            "fees": 0,
+            "meanFeesR": null,
+            "funding": 0,
+            "meanFundingR": null,
+            "slippageAndRounding": 0,
+            "meanSlippageAndRoundingR": null
+          },
+          "BNBUSDT": {
+            "trades": 1,
+            "wins": 0,
+            "losses": 1,
+            "flat": 0,
+            "netWinRate": 0.0,
+            "averageWin": null,
+            "averageLoss": -50.63199690952004,
+            "profitFactor": 0.0,
+            "netPnl": -50.63199690952004,
+            "netExpectancy": -50.63199690952004,
+            "grossBeforeCosts": -43.787999999999634,
+            "costs": 6.8439969095204045,
+            "meanGrossBeforeCostsR": -0.9800796812748958,
+            "meanCostR": 0.15318494358566698,
+            "medianCostR": 0.15318494358566698,
+            "p90CostR": 0.15318494358566698,
+            "meanNetR": -1.1332646248605627,
+            "meanHoldHours": 2.8166663888888888,
+            "medianHoldHours": 2.8166663888888888,
+            "medianCompletedTradeMfeR": 0.0,
+            "medianCompletedTradeMaeR": 1.0,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": -50.63199690952004,
+                "trades": []
+              },
+              "topFivePct": {
+                "requestedTrades": 1,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": -50.63199690952004,
+                "trades": []
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 1,
+                "netPnl": -50.63199690952004,
+                "wins": 0,
+                "meanNetR": -1.1332646248605627
+              }
+            },
+            "fees": 4.4144000000000005,
+            "meanFeesR": 0.09880478087649439,
+            "funding": 0.64959690952,
+            "meanFundingR": 0.014539525258964197,
+            "slippageAndRounding": 1.7800000000004048,
+            "meanSlippageAndRoundingR": 0.0398406374502084
+          }
+        }
+      },
+      "sp-confirm-close": {
+        "trades": 1,
+        "wins": 0,
+        "losses": 1,
+        "flat": 0,
+        "netWinRate": 0.0,
+        "averageWin": null,
+        "averageLoss": -50.63199690952004,
+        "profitFactor": 0.0,
+        "netPnl": -50.63199690952004,
+        "netExpectancy": -50.63199690952004,
+        "grossBeforeCosts": -43.787999999999634,
+        "costs": 6.8439969095204045,
+        "meanGrossBeforeCostsR": -0.9800796812748958,
+        "meanCostR": 0.15318494358566698,
+        "medianCostR": 0.15318494358566698,
+        "p90CostR": 0.15318494358566698,
+        "meanNetR": -1.1332646248605627,
+        "meanHoldHours": 2.8166663888888888,
+        "medianHoldHours": 2.8166663888888888,
+        "medianCompletedTradeMfeR": 0.0,
+        "medianCompletedTradeMaeR": 1.0,
+        "tails": {
+          "topFive": {
+            "requestedTrades": 5,
+            "positiveTrades": 0,
+            "netPnl": 0,
+            "shareOfPositiveNetPnl": null,
+            "ledgerNetWithoutTheseTrades": -50.63199690952004,
+            "trades": []
+          },
+          "topFivePct": {
+            "requestedTrades": 1,
+            "positiveTrades": 0,
+            "netPnl": 0,
+            "shareOfPositiveNetPnl": null,
+            "ledgerNetWithoutTheseTrades": -50.63199690952004,
+            "trades": []
+          }
+        },
+        "exitReasons": {
+          "initial": {
+            "trades": 1,
+            "netPnl": -50.63199690952004,
+            "wins": 0,
+            "meanNetR": -1.1332646248605627
+          }
+        },
+        "fees": 4.4144000000000005,
+        "meanFeesR": 0.09880478087649439,
+        "funding": 0.64959690952,
+        "meanFundingR": 0.014539525258964197,
+        "slippageAndRounding": 1.7800000000004048,
+        "meanSlippageAndRoundingR": 0.0398406374502084,
+        "costScenario": "base",
+        "strategy": {
+          "entry": "structured-pullback",
+          "tradeMinutes": 30,
+          "filter": "ema",
+          "management": "chandelier",
+          "direction": "both",
+          "breakoutBars": 20,
+          "stopAtr": 2,
+          "breakEvenAtr": 0,
+          "trailingAtr": 3,
+          "maxCostAtr": 0,
+          "structuredPullback": {
+            "keyLevel": "either",
+            "shape": "any",
+            "candle": "none",
+            "confirmation": "signal-close",
+            "keyRole": "pullback-retest"
+          }
+        },
+        "meanSleeveTimeExposure": 8.03293026085634e-05,
+        "sides": {
+          "long": {
+            "trades": 1,
+            "wins": 0,
+            "losses": 1,
+            "flat": 0,
+            "netWinRate": 0.0,
+            "averageWin": null,
+            "averageLoss": -50.63199690952004,
+            "profitFactor": 0.0,
+            "netPnl": -50.63199690952004,
+            "netExpectancy": -50.63199690952004,
+            "grossBeforeCosts": -43.787999999999634,
+            "costs": 6.8439969095204045,
+            "meanGrossBeforeCostsR": -0.9800796812748958,
+            "meanCostR": 0.15318494358566698,
+            "medianCostR": 0.15318494358566698,
+            "p90CostR": 0.15318494358566698,
+            "meanNetR": -1.1332646248605627,
+            "meanHoldHours": 2.8166663888888888,
+            "medianHoldHours": 2.8166663888888888,
+            "medianCompletedTradeMfeR": 0.0,
+            "medianCompletedTradeMaeR": 1.0,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": -50.63199690952004,
+                "trades": []
+              },
+              "topFivePct": {
+                "requestedTrades": 1,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": -50.63199690952004,
+                "trades": []
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 1,
+                "netPnl": -50.63199690952004,
+                "wins": 0,
+                "meanNetR": -1.1332646248605627
+              }
+            },
+            "fees": 4.4144000000000005,
+            "meanFeesR": 0.09880478087649439,
+            "funding": 0.64959690952,
+            "meanFundingR": 0.014539525258964197,
+            "slippageAndRounding": 1.7800000000004048,
+            "meanSlippageAndRoundingR": 0.0398406374502084
+          },
+          "short": {
+            "trades": 0,
+            "wins": 0,
+            "losses": 0,
+            "flat": 0,
+            "netWinRate": null,
+            "averageWin": null,
+            "averageLoss": null,
+            "profitFactor": null,
+            "netPnl": 0,
+            "netExpectancy": null,
+            "grossBeforeCosts": 0,
+            "costs": 0,
+            "meanGrossBeforeCostsR": null,
+            "meanCostR": null,
+            "medianCostR": null,
+            "p90CostR": null,
+            "meanNetR": null,
+            "meanHoldHours": null,
+            "medianHoldHours": null,
+            "medianCompletedTradeMfeR": null,
+            "medianCompletedTradeMaeR": null,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": 0,
+                "trades": []
+              },
+              "topFivePct": {
+                "requestedTrades": 0,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": 0,
+                "trades": []
+              }
+            },
+            "exitReasons": {},
+            "fees": 0,
+            "meanFeesR": null,
+            "funding": 0,
+            "meanFundingR": null,
+            "slippageAndRounding": 0,
+            "meanSlippageAndRoundingR": null
+          }
+        },
+        "symbols": {
+          "BTCUSDT": {
+            "trades": 0,
+            "wins": 0,
+            "losses": 0,
+            "flat": 0,
+            "netWinRate": null,
+            "averageWin": null,
+            "averageLoss": null,
+            "profitFactor": null,
+            "netPnl": 0,
+            "netExpectancy": null,
+            "grossBeforeCosts": 0,
+            "costs": 0,
+            "meanGrossBeforeCostsR": null,
+            "meanCostR": null,
+            "medianCostR": null,
+            "p90CostR": null,
+            "meanNetR": null,
+            "meanHoldHours": null,
+            "medianHoldHours": null,
+            "medianCompletedTradeMfeR": null,
+            "medianCompletedTradeMaeR": null,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": 0,
+                "trades": []
+              },
+              "topFivePct": {
+                "requestedTrades": 0,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": 0,
+                "trades": []
+              }
+            },
+            "exitReasons": {},
+            "fees": 0,
+            "meanFeesR": null,
+            "funding": 0,
+            "meanFundingR": null,
+            "slippageAndRounding": 0,
+            "meanSlippageAndRoundingR": null
+          },
+          "ETHUSDT": {
+            "trades": 0,
+            "wins": 0,
+            "losses": 0,
+            "flat": 0,
+            "netWinRate": null,
+            "averageWin": null,
+            "averageLoss": null,
+            "profitFactor": null,
+            "netPnl": 0,
+            "netExpectancy": null,
+            "grossBeforeCosts": 0,
+            "costs": 0,
+            "meanGrossBeforeCostsR": null,
+            "meanCostR": null,
+            "medianCostR": null,
+            "p90CostR": null,
+            "meanNetR": null,
+            "meanHoldHours": null,
+            "medianHoldHours": null,
+            "medianCompletedTradeMfeR": null,
+            "medianCompletedTradeMaeR": null,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": 0,
+                "trades": []
+              },
+              "topFivePct": {
+                "requestedTrades": 0,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": 0,
+                "trades": []
+              }
+            },
+            "exitReasons": {},
+            "fees": 0,
+            "meanFeesR": null,
+            "funding": 0,
+            "meanFundingR": null,
+            "slippageAndRounding": 0,
+            "meanSlippageAndRoundingR": null
+          },
+          "BNBUSDT": {
+            "trades": 1,
+            "wins": 0,
+            "losses": 1,
+            "flat": 0,
+            "netWinRate": 0.0,
+            "averageWin": null,
+            "averageLoss": -50.63199690952004,
+            "profitFactor": 0.0,
+            "netPnl": -50.63199690952004,
+            "netExpectancy": -50.63199690952004,
+            "grossBeforeCosts": -43.787999999999634,
+            "costs": 6.8439969095204045,
+            "meanGrossBeforeCostsR": -0.9800796812748958,
+            "meanCostR": 0.15318494358566698,
+            "medianCostR": 0.15318494358566698,
+            "p90CostR": 0.15318494358566698,
+            "meanNetR": -1.1332646248605627,
+            "meanHoldHours": 2.8166663888888888,
+            "medianHoldHours": 2.8166663888888888,
+            "medianCompletedTradeMfeR": 0.0,
+            "medianCompletedTradeMaeR": 1.0,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": -50.63199690952004,
+                "trades": []
+              },
+              "topFivePct": {
+                "requestedTrades": 1,
+                "positiveTrades": 0,
+                "netPnl": 0,
+                "shareOfPositiveNetPnl": null,
+                "ledgerNetWithoutTheseTrades": -50.63199690952004,
+                "trades": []
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 1,
+                "netPnl": -50.63199690952004,
+                "wins": 0,
+                "meanNetR": -1.1332646248605627
+              }
+            },
+            "fees": 4.4144000000000005,
+            "meanFeesR": 0.09880478087649439,
+            "funding": 0.64959690952,
+            "meanFundingR": 0.014539525258964197,
+            "slippageAndRounding": 1.7800000000004048,
+            "meanSlippageAndRoundingR": 0.0398406374502084
+          }
+        }
+      },
+      "sp-retest": {
+        "trades": 27,
+        "wins": 8,
+        "losses": 19,
+        "flat": 0,
+        "netWinRate": 0.2962962962962963,
+        "averageWin": 30.28031549219564,
+        "averageLoss": -35.310166157526446,
+        "profitFactor": 0.36107466801914595,
+        "netPnl": -428.6506330554373,
+        "netExpectancy": -15.875949372423603,
+        "grossBeforeCosts": -241.1310000000006,
+        "costs": 187.5196330554367,
+        "meanGrossBeforeCostsR": -0.1831697984501236,
+        "meanCostR": 0.16219128769806448,
+        "medianCostR": 0.14333753162835972,
+        "p90CostR": 0.3004354455445595,
+        "meanNetR": -0.3453610861481881,
+        "meanHoldHours": 5.961728137860082,
+        "medianHoldHours": 5.349999722222222,
+        "medianCompletedTradeMfeR": 1.1144708423326277,
+        "medianCompletedTradeMaeR": 0.6761904761904765,
+        "tails": {
+          "topFive": {
+            "requestedTrades": 5,
+            "positiveTrades": 5,
+            "netPnl": 194.7697296013393,
+            "shareOfPositiveNetPnl": 0.8040278248237649,
+            "ledgerNetWithoutTheseTrades": -623.4203626567767,
+            "trades": [
+              {
+                "symbol": "BNBUSDT",
+                "id": 4,
+                "entryTime": 1673478000000,
+                "exitTime": 1673510939999,
+                "netPnl": 54.7933629085236,
+                "rMultiple": 1.2582060334274008
+              },
+              {
+                "symbol": "BNBUSDT",
+                "id": 10,
+                "entryTime": 1689530400000,
+                "exitTime": 1689557759999,
+                "netPnl": 41.11759754281605,
+                "rMultiple": 0.9539249051776667
+              },
+              {
+                "symbol": "BNBUSDT",
+                "id": 7,
+                "entryTime": 1685507400000,
+                "exitTime": 1685515739999,
+                "netPnl": 40.836857750000476,
+                "rMultiple": 1.0631054687499877
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 2,
+                "entryTime": 1671476400000,
+                "exitTime": 1671490979999,
+                "netPnl": 29.190154949999204,
+                "rMultiple": 0.6878840889649
+              },
+              {
+                "symbol": "BNBUSDT",
+                "id": 12,
+                "entryTime": 1695587400000,
+                "exitTime": 1695598799999,
+                "netPnl": 28.831756449999958,
+                "rMultiple": 0.7250809523809435
+              }
+            ]
+          },
+          "topFivePct": {
+            "requestedTrades": 2,
+            "positiveTrades": 2,
+            "netPnl": 95.91096045133965,
+            "shareOfPositiveNetPnl": 0.39592949616087825,
+            "ledgerNetWithoutTheseTrades": -524.561593506777,
+            "trades": [
+              {
+                "symbol": "BNBUSDT",
+                "id": 4,
+                "entryTime": 1673478000000,
+                "exitTime": 1673510939999,
+                "netPnl": 54.7933629085236,
+                "rMultiple": 1.2582060334274008
+              },
+              {
+                "symbol": "BNBUSDT",
+                "id": 10,
+                "entryTime": 1689530400000,
+                "exitTime": 1689557759999,
+                "netPnl": 41.11759754281605,
+                "rMultiple": 0.9539249051776667
+              }
+            ]
+          }
+        },
+        "exitReasons": {
+          "initial": {
+            "trades": 6,
+            "netPnl": -299.8799749052589,
+            "wins": 0,
+            "meanNetR": -1.085049005931622
+          },
+          "protection-crossed": {
+            "trades": 2,
+            "netPnl": -16.027293600000778,
+            "wins": 1,
+            "meanNetR": -0.24802319575332687
+          },
+          "trailing": {
+            "trades": 19,
+            "netPnl": -112.7433645501776,
+            "wins": 7,
+            "meanNetR": -0.1220215209949838
+          }
+        },
+        "fees": 123.89588693,
+        "meanFeesR": 0.10723838352500953,
+        "funding": 10.820506125436289,
+        "meanFundingR": 0.009167825069521476,
+        "slippageAndRounding": 52.80324000000042,
+        "meanSlippageAndRoundingR": 0.045785079103533466,
+        "costScenario": "base",
+        "strategy": {
+          "entry": "structured-pullback",
+          "tradeMinutes": 30,
+          "filter": "ema",
+          "management": "chandelier",
+          "direction": "both",
+          "breakoutBars": 20,
+          "stopAtr": 2,
+          "breakEvenAtr": 0,
+          "trailingAtr": 3,
+          "maxCostAtr": 0,
+          "structuredPullback": {
+            "keyLevel": "either",
+            "shape": "none",
+            "candle": "none",
+            "confirmation": "before-breakout",
+            "keyRole": "pullback-retest"
+          }
+        },
+        "meanSleeveTimeExposure": 0.004591603924252795,
+        "sides": {
+          "long": {
+            "trades": 11,
+            "wins": 2,
+            "losses": 9,
+            "flat": 0,
+            "netWinRate": 0.18181818181818182,
+            "averageWin": 40.37560905426167,
+            "averageLoss": -31.058388191964916,
+            "profitFactor": 0.28888677390975925,
+            "netPnl": -198.7742756191609,
+            "netExpectancy": -18.07038869265099,
+            "grossBeforeCosts": -128.2981999999988,
+            "costs": 70.4760756191621,
+            "meanGrossBeforeCostsR": -0.26583707816208596,
+            "meanCostR": 0.14667148702799568,
+            "medianCostR": 0.153184943585667,
+            "p90CostR": 0.21228971962616322,
+            "meanNetR": -0.41250856519008167,
+            "meanHoldHours": 5.786363383838384,
+            "medianHoldHours": 5.349999722222222,
+            "medianCompletedTradeMfeR": 1.0776235906331377,
+            "medianCompletedTradeMaeR": 0.5724197745013045,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 2,
+                "netPnl": 80.75121810852335,
+                "shareOfPositiveNetPnl": 1.0,
+                "ledgerNetWithoutTheseTrades": -279.52549372768425,
+                "trades": [
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 4,
+                    "entryTime": 1673478000000,
+                    "exitTime": 1673510939999,
+                    "netPnl": 54.7933629085236,
+                    "rMultiple": 1.2582060334274008
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 5,
+                    "entryTime": 1673656200000,
+                    "exitTime": 1673658000000,
+                    "netPnl": 25.957855199999752,
+                    "rMultiple": 0.566567469879508
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 1,
+                "positiveTrades": 1,
+                "netPnl": 54.7933629085236,
+                "shareOfPositiveNetPnl": 0.6785453420019694,
+                "ledgerNetWithoutTheseTrades": -253.5676385276845,
+                "trades": [
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 4,
+                    "entryTime": 1673478000000,
+                    "exitTime": 1673510939999,
+                    "netPnl": 54.7933629085236,
+                    "rMultiple": 1.2582060334274008
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 2,
+                "netPnl": -100.6868598936884,
+                "wins": 0,
+                "meanNetR": -1.1130869144203297
+              },
+              "protection-crossed": {
+                "trades": 1,
+                "netPnl": 25.957855199999752,
+                "wins": 1,
+                "meanNetR": 0.566567469879508
+              },
+              "trailing": {
+                "trades": 8,
+                "netPnl": -124.04527092547224,
+                "wins": 1,
+                "meanNetR": -0.35974848226621836
+              }
+            },
+            "fees": 49.39921575,
+            "meanFeesR": 0.10279234509415767,
+            "funding": 0.37595986916086266,
+            "meanFundingR": 0.000827468493830006,
+            "slippageAndRounding": 20.700900000001234,
+            "meanSlippageAndRoundingR": 0.04305167344000799
+          },
+          "short": {
+            "trades": 16,
+            "wins": 6,
+            "losses": 10,
+            "flat": 0,
+            "netWinRate": 0.375,
+            "averageWin": 26.915217638173626,
+            "averageLoss": -39.13676632653182,
+            "profitFactor": 0.4126332372012111,
+            "netPnl": -229.8763574362764,
+            "netExpectancy": -14.367272339767275,
+            "grossBeforeCosts": -112.83280000000181,
+            "costs": 117.04355743627461,
+            "meanGrossBeforeCostsR": -0.1263360436481495,
+            "meanCostR": 0.17286115065873678,
+            "medianCostR": 0.14242691044261005,
+            "p90CostR": 0.33054782255569637,
+            "meanNetR": -0.29919719430688624,
+            "meanHoldHours": 6.0822914062499995,
+            "medianHoldHours": 5.441666388888889,
+            "medianCompletedTradeMfeR": 1.1661463122554232,
+            "medianCompletedTradeMaeR": 0.7581472251141629,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 154.09925140700977,
+                "shareOfPositiveNetPnl": 0.9542263010130256,
+                "ledgerNetWithoutTheseTrades": -383.9756088432862,
+                "trades": [
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 10,
+                    "entryTime": 1689530400000,
+                    "exitTime": 1689557759999,
+                    "netPnl": 41.11759754281605,
+                    "rMultiple": 0.9539249051776667
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 7,
+                    "entryTime": 1685507400000,
+                    "exitTime": 1685515739999,
+                    "netPnl": 40.836857750000476,
+                    "rMultiple": 1.0631054687499877
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 2,
+                    "entryTime": 1671476400000,
+                    "exitTime": 1671490979999,
+                    "netPnl": 29.190154949999204,
+                    "rMultiple": 0.6878840889649
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 12,
+                    "entryTime": 1695587400000,
+                    "exitTime": 1695598799999,
+                    "netPnl": 28.831756449999958,
+                    "rMultiple": 0.7250809523809435
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 6,
+                    "entryTime": 1686371400000,
+                    "exitTime": 1686416939999,
+                    "netPnl": 14.122884714194093,
+                    "rMultiple": 0.32349497251756987
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 1,
+                "positiveTrades": 1,
+                "netPnl": 41.11759754281605,
+                "shareOfPositiveNetPnl": 0.2546118339419711,
+                "ledgerNetWithoutTheseTrades": -270.99395497909245,
+                "trades": [
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 10,
+                    "entryTime": 1689530400000,
+                    "exitTime": 1689557759999,
+                    "netPnl": 41.11759754281605,
+                    "rMultiple": 0.9539249051776667
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 4,
+                "netPnl": -199.1931150115705,
+                "wins": 0,
+                "meanNetR": -1.0710300516872682
+              },
+              "protection-crossed": {
+                "trades": 1,
+                "netPnl": -41.98514880000053,
+                "wins": 0,
+                "meanNetR": -1.0626138613861618
+              },
+              "trailing": {
+                "trades": 11,
+                "netPnl": 11.301906375294639,
+                "wins": 6,
+                "meanNetR": 0.05087081447500496
+              }
+            },
+            "fees": 74.49667118,
+            "meanFeesR": 0.1102950349462202,
+            "funding": 10.444546256275425,
+            "meanFundingR": 0.01490182021530936,
+            "slippageAndRounding": 32.10233999999919,
+            "meanSlippageAndRoundingR": 0.04766429549720722
+          }
+        },
+        "symbols": {
+          "BTCUSDT": {
+            "trades": 8,
+            "wins": 2,
+            "losses": 6,
+            "flat": 0,
+            "netWinRate": 0.25,
+            "averageWin": 21.65651983209665,
+            "averageLoss": -32.40958204724286,
+            "profitFactor": 0.22273782900098635,
+            "netPnl": -151.14445261926383,
+            "netExpectancy": -18.89305657740798,
+            "grossBeforeCosts": -89.84900000000036,
+            "costs": 61.295452619263486,
+            "meanGrossBeforeCostsR": -0.26322264143466656,
+            "meanCostR": 0.17978580174863273,
+            "medianCostR": 0.17486933095887758,
+            "p90CostR": 0.23394602286064456,
+            "meanNetR": -0.4430084431832993,
+            "meanHoldHours": 6.402083055555555,
+            "medianHoldHours": 7.449999722222222,
+            "medianCompletedTradeMfeR": 1.063405873635583,
+            "medianCompletedTradeMaeR": 0.6986979483776775,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 2,
+                "netPnl": 43.3130396641933,
+                "shareOfPositiveNetPnl": 1.0,
+                "ledgerNetWithoutTheseTrades": -194.45749228345713,
+                "trades": [
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 2,
+                    "entryTime": 1671476400000,
+                    "exitTime": 1671490979999,
+                    "netPnl": 29.190154949999204,
+                    "rMultiple": 0.6878840889649
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 6,
+                    "entryTime": 1686371400000,
+                    "exitTime": 1686416939999,
+                    "netPnl": 14.122884714194093,
+                    "rMultiple": 0.32349497251756987
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 1,
+                "positiveTrades": 1,
+                "netPnl": 29.190154949999204,
+                "shareOfPositiveNetPnl": 0.6739345743524572,
+                "ledgerNetWithoutTheseTrades": -180.33460756926303,
+                "trades": [
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 2,
+                    "entryTime": 1671476400000,
+                    "exitTime": 1671490979999,
+                    "netPnl": 29.190154949999204,
+                    "rMultiple": 0.6878840889649
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "trailing": {
+                "trades": 8,
+                "netPnl": -151.14445261926383,
+                "wins": 2,
+                "meanNetR": -0.4430084431832993
+              }
+            },
+            "fees": 44.461825700000006,
+            "meanFeesR": 0.13039518067838346,
+            "funding": -1.1501730807361084,
+            "meanFundingR": -0.00335165487224271,
+            "slippageAndRounding": 17.983799999999587,
+            "meanSlippageAndRoundingR": 0.052742275942492
+          },
+          "ETHUSDT": {
+            "trades": 4,
+            "wins": 1,
+            "losses": 3,
+            "flat": 0,
+            "netWinRate": 0.25,
+            "averageWin": 7.392054422031979,
+            "averageLoss": -38.64975122751349,
+            "profitFactor": 0.06375249677993458,
+            "netPnl": -108.5571992605085,
+            "netExpectancy": -27.139299815127124,
+            "grossBeforeCosts": -97.15260000000028,
+            "costs": 11.404599260508213,
+            "meanGrossBeforeCostsR": -0.5025531131302161,
+            "meanCostR": 0.060514368673588184,
+            "medianCostR": 0.06233124806874305,
+            "p90CostR": 0.08215844884076987,
+            "meanNetR": -0.5630674818038044,
+            "meanHoldHours": 6.599999722222222,
+            "medianHoldHours": 6.758333055555556,
+            "medianCompletedTradeMfeR": 0.7203210146851577,
+            "medianCompletedTradeMaeR": 0.807787087235092,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 1,
+                "netPnl": 7.392054422031979,
+                "shareOfPositiveNetPnl": 1.0,
+                "ledgerNetWithoutTheseTrades": -115.94925368254047,
+                "trades": [
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 2,
+                    "entryTime": 1668600000000,
+                    "exitTime": 1668639599999,
+                    "netPnl": 7.392054422031979,
+                    "rMultiple": 0.15950966722523394
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 1,
+                "positiveTrades": 1,
+                "netPnl": 7.392054422031979,
+                "shareOfPositiveNetPnl": 1.0,
+                "ledgerNetWithoutTheseTrades": -115.94925368254047,
+                "trades": [
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 2,
+                    "entryTime": 1668600000000,
+                    "exitTime": 1668639599999,
+                    "netPnl": 7.392054422031979,
+                    "rMultiple": 0.15950966722523394
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 2,
+                "netPnl": -100.08592921157077,
+                "wins": 0,
+                "meanNetR": -1.037028092468608
+              },
+              "trailing": {
+                "trades": 2,
+                "netPnl": -8.471270048937726,
+                "wins": 1,
+                "meanNetR": -0.08910687113900075
+              }
+            },
+            "fees": 7.668190430000001,
+            "meanFeesR": 0.04074473904881985,
+            "funding": 0.6073688305085,
+            "meanFundingR": 0.00314331333523233,
+            "slippageAndRounding": 3.1290399999997125,
+            "meanSlippageAndRoundingR": 0.016626316289535998
+          },
+          "BNBUSDT": {
+            "trades": 15,
+            "wins": 5,
+            "losses": 10,
+            "flat": 0,
+            "netWinRate": 0.3333333333333333,
+            "averageWin": 38.30748597026796,
+            "averageLoss": -36.04864110270048,
+            "profitFactor": 0.5313305134184139,
+            "netPnl": -168.94898117566498,
+            "netExpectancy": -11.263265411710998,
+            "grossBeforeCosts": -54.129399999999976,
+            "costs": 114.81958117566502,
+            "meanGrossBeforeCostsR": -0.05530606494367603,
+            "meanCostR": 0.1799213919442884,
+            "medianCostR": 0.1485374449339194,
+            "p90CostR": 0.3346296642945533,
+            "meanNetR": -0.23522745688796445,
+            "meanHoldHours": 5.5566664259259255,
+            "medianHoldHours": 4.6999997222222225,
+            "medianCompletedTradeMfeR": 1.149532710280398,
+            "medianCompletedTradeMaeR": 0.6761904761904765,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 191.53742985133982,
+                "shareOfPositiveNetPnl": 1.0,
+                "ledgerNetWithoutTheseTrades": -360.4864110270048,
+                "trades": [
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 4,
+                    "entryTime": 1673478000000,
+                    "exitTime": 1673510939999,
+                    "netPnl": 54.7933629085236,
+                    "rMultiple": 1.2582060334274008
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 10,
+                    "entryTime": 1689530400000,
+                    "exitTime": 1689557759999,
+                    "netPnl": 41.11759754281605,
+                    "rMultiple": 0.9539249051776667
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 7,
+                    "entryTime": 1685507400000,
+                    "exitTime": 1685515739999,
+                    "netPnl": 40.836857750000476,
+                    "rMultiple": 1.0631054687499877
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 12,
+                    "entryTime": 1695587400000,
+                    "exitTime": 1695598799999,
+                    "netPnl": 28.831756449999958,
+                    "rMultiple": 0.7250809523809435
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 5,
+                    "entryTime": 1673656200000,
+                    "exitTime": 1673658000000,
+                    "netPnl": 25.957855199999752,
+                    "rMultiple": 0.566567469879508
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 1,
+                "positiveTrades": 1,
+                "netPnl": 54.7933629085236,
+                "shareOfPositiveNetPnl": 0.2860713070601971,
+                "ledgerNetWithoutTheseTrades": -223.74234408418857,
+                "trades": [
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 4,
+                    "entryTime": 1673478000000,
+                    "exitTime": 1673510939999,
+                    "netPnl": 54.7933629085236,
+                    "rMultiple": 1.2582060334274008
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 4,
+                "netPnl": -199.79404569368816,
+                "wins": 0,
+                "meanNetR": -1.1090594626631292
+              },
+              "protection-crossed": {
+                "trades": 2,
+                "netPnl": -16.027293600000778,
+                "wins": 1,
+                "meanNetR": -0.24802319575332687
+              },
+              "trailing": {
+                "trades": 9,
+                "netPnl": 46.87235811802395,
+                "wins": 4,
+                "meanNetR": 0.15598582098218927
+              }
+            },
+            "fees": 71.7658708,
+            "meanFeesR": 0.11261973023686071,
+            "funding": 11.363310375663897,
+            "meanFundingR": 0.01745141750093948,
+            "slippageAndRounding": 31.69040000000112,
+            "meanSlippageAndRoundingR": 0.04985024420648823
+          }
+        }
+      },
+      "sp-context": {
+        "trades": 176,
+        "wins": 54,
+        "losses": 122,
+        "flat": 0,
+        "netWinRate": 0.3068181818181818,
+        "averageWin": 80.59263440306606,
+        "averageLoss": -37.026990680897406,
+        "profitFactor": 0.9634093670004823,
+        "netPnl": -165.2906053039158,
+        "netExpectancy": -0.9391511664995217,
+        "grossBeforeCosts": 972.3550300000041,
+        "costs": 1137.6456353039198,
+        "meanGrossBeforeCostsR": 0.1270406232657343,
+        "meanCostR": 0.1518772000249873,
+        "medianCostR": 0.13524629340309036,
+        "p90CostR": 0.25182836029198874,
+        "meanNetR": -0.024836576759253045,
+        "meanHoldHours": 7.0190338304924245,
+        "medianHoldHours": 5.458333055555555,
+        "medianCompletedTradeMfeR": 0.8993436342831245,
+        "medianCompletedTradeMaeR": 0.7194460890160699,
+        "tails": {
+          "topFive": {
+            "requestedTrades": 5,
+            "positiveTrades": 5,
+            "netPnl": 1408.542391195683,
+            "shareOfPositiveNetPnl": 0.32365387418683594,
+            "ledgerNetWithoutTheseTrades": -1573.8329964995987,
+            "trades": [
+              {
+                "symbol": "BTCUSDT",
+                "id": 42,
+                "entryTime": 1692234000000,
+                "exitTime": 1692309600000,
+                "netPnl": 429.34415071213476,
+                "rMultiple": 9.32521634345192
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 24,
+                "entryTime": 1676487600000,
+                "exitTime": 1676531159999,
+                "netPnl": 272.58599934000017,
+                "rMultiple": 6.185801411960155
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 20,
+                "entryTime": 1674244800000,
+                "exitTime": 1674296819999,
+                "netPnl": 257.5825206288926,
+                "rMultiple": 6.009269288331371
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 37,
+                "entryTime": 1685961000000,
+                "exitTime": 1686007739999,
+                "netPnl": 243.0466091146556,
+                "rMultiple": 5.87503345745054
+              },
+              {
+                "symbol": "ETHUSDT",
+                "id": 39,
+                "entryTime": 1692306000000,
+                "exitTime": 1692309600000,
+                "netPnl": 205.98311139999984,
+                "rMultiple": 4.631165157292652
+              }
+            ]
+          },
+          "topFivePct": {
+            "requestedTrades": 9,
+            "positiveTrades": 9,
+            "netPnl": 2198.1769173759467,
+            "shareOfPositiveNetPnl": 0.5050955369918738,
+            "ledgerNetWithoutTheseTrades": -2363.4675226798627,
+            "trades": [
+              {
+                "symbol": "BTCUSDT",
+                "id": 42,
+                "entryTime": 1692234000000,
+                "exitTime": 1692309600000,
+                "netPnl": 429.34415071213476,
+                "rMultiple": 9.32521634345192
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 24,
+                "entryTime": 1676487600000,
+                "exitTime": 1676531159999,
+                "netPnl": 272.58599934000017,
+                "rMultiple": 6.185801411960155
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 20,
+                "entryTime": 1674244800000,
+                "exitTime": 1674296819999,
+                "netPnl": 257.5825206288926,
+                "rMultiple": 6.009269288331371
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 37,
+                "entryTime": 1685961000000,
+                "exitTime": 1686007739999,
+                "netPnl": 243.0466091146556,
+                "rMultiple": 5.87503345745054
+              },
+              {
+                "symbol": "ETHUSDT",
+                "id": 39,
+                "entryTime": 1692306000000,
+                "exitTime": 1692309600000,
+                "netPnl": 205.98311139999984,
+                "rMultiple": 4.631165157292652
+              },
+              {
+                "symbol": "ETHUSDT",
+                "id": 33,
+                "entryTime": 1687309200000,
+                "exitTime": 1687426439999,
+                "netPnl": 205.59145026089845,
+                "rMultiple": 4.591924850580872
+              },
+              {
+                "symbol": "BNBUSDT",
+                "id": 8,
+                "entryTime": 1669190400000,
+                "exitTime": 1669222799999,
+                "netPnl": 202.5417625063796,
+                "rMultiple": 4.485974806342848
+              },
+              {
+                "symbol": "ETHUSDT",
+                "id": 6,
+                "entryTime": 1666711800000,
+                "exitTime": 1666719000000,
+                "netPnl": 191.9454931562184,
+                "rMultiple": 4.257427786855662
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 40,
+                "entryTime": 1687294800000,
+                "exitTime": 1687367519999,
+                "netPnl": 189.55582025676725,
+                "rMultiple": 3.938347591495818
+              }
+            ]
+          }
+        },
+        "exitReasons": {
+          "initial": {
+            "trades": 53,
+            "netPnl": -2631.5925400211577,
+            "wins": 0,
+            "meanNetR": -1.13177232840976
+          },
+          "protection-crossed": {
+            "trades": 10,
+            "netPnl": 849.4034344634309,
+            "wins": 5,
+            "meanNetR": 1.7970420161390686
+          },
+          "trailing": {
+            "trades": 113,
+            "netPnl": 1616.8985002538107,
+            "wins": 49,
+            "meanNetR": 0.333117484377859
+          }
+        },
+        "fees": 783.189992015,
+        "meanFeesR": 0.10448430608816993,
+        "funding": 25.978003288912326,
+        "meanFundingR": 0.00350828478570742,
+        "slippageAndRounding": 328.47764000000734,
+        "meanSlippageAndRoundingR": 0.04388460915110995,
+        "costScenario": "base",
+        "strategy": {
+          "entry": "structured-pullback",
+          "tradeMinutes": 30,
+          "filter": "ema",
+          "management": "chandelier",
+          "direction": "both",
+          "breakoutBars": 20,
+          "stopAtr": 2,
+          "breakEvenAtr": 0,
+          "trailingAtr": 3,
+          "maxCostAtr": 0,
+          "structuredPullback": {
+            "keyLevel": "either",
+            "shape": "none",
+            "candle": "none",
+            "confirmation": "before-breakout",
+            "keyRole": "impulse-context"
+          }
+        },
+        "meanSleeveTimeExposure": 0.03523651988744391,
+        "sides": {
+          "long": {
+            "trades": 94,
+            "wins": 34,
+            "losses": 60,
+            "flat": 0,
+            "netWinRate": 0.3617021276595745,
+            "averageWin": 81.69235796589378,
+            "averageLoss": -35.53288042490434,
+            "profitFactor": 1.3028028019993474,
+            "netPnl": 645.5673453461275,
+            "netExpectancy": 6.867737716448165,
+            "grossBeforeCosts": 1229.6210900000153,
+            "costs": 584.0537446538879,
+            "meanGrossBeforeCostsR": 0.2940127785764582,
+            "meanCostR": 0.14322716331849064,
+            "medianCostR": 0.13452363039672788,
+            "p90CostR": 0.23344476907511508,
+            "meanNetR": 0.15078561525796752,
+            "meanHoldHours": 7.71081533392435,
+            "medianHoldHours": 6.266666388888889,
+            "medianCompletedTradeMfeR": 1.0860931191936345,
+            "medianCompletedTradeMaeR": 0.5707500046674818,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 1130.2472258923892,
+                "shareOfPositiveNetPnl": 0.4069238089724604,
+                "ledgerNetWithoutTheseTrades": -484.67988054626176,
+                "trades": [
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 24,
+                    "entryTime": 1676487600000,
+                    "exitTime": 1676531159999,
+                    "netPnl": 272.58599934000017,
+                    "rMultiple": 6.185801411960155
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 20,
+                    "entryTime": 1674244800000,
+                    "exitTime": 1674296819999,
+                    "netPnl": 257.5825206288926,
+                    "rMultiple": 6.009269288331371
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 33,
+                    "entryTime": 1687309200000,
+                    "exitTime": 1687426439999,
+                    "netPnl": 205.59145026089845,
+                    "rMultiple": 4.591924850580872
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 8,
+                    "entryTime": 1669190400000,
+                    "exitTime": 1669222799999,
+                    "netPnl": 202.5417625063796,
+                    "rMultiple": 4.485974806342848
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 6,
+                    "entryTime": 1666711800000,
+                    "exitTime": 1666719000000,
+                    "netPnl": 191.9454931562184,
+                    "rMultiple": 4.257427786855662
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 1130.2472258923892,
+                "shareOfPositiveNetPnl": 0.4069238089724604,
+                "ledgerNetWithoutTheseTrades": -484.67988054626176,
+                "trades": [
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 24,
+                    "entryTime": 1676487600000,
+                    "exitTime": 1676531159999,
+                    "netPnl": 272.58599934000017,
+                    "rMultiple": 6.185801411960155
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 20,
+                    "entryTime": 1674244800000,
+                    "exitTime": 1674296819999,
+                    "netPnl": 257.5825206288926,
+                    "rMultiple": 6.009269288331371
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 33,
+                    "entryTime": 1687309200000,
+                    "exitTime": 1687426439999,
+                    "netPnl": 205.59145026089845,
+                    "rMultiple": 4.591924850580872
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 8,
+                    "entryTime": 1669190400000,
+                    "exitTime": 1669222799999,
+                    "netPnl": 202.5417625063796,
+                    "rMultiple": 4.485974806342848
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 6,
+                    "entryTime": 1666711800000,
+                    "exitTime": 1666719000000,
+                    "netPnl": 191.9454931562184,
+                    "rMultiple": 4.257427786855662
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 24,
+                "netPnl": -1197.0696695801375,
+                "wins": 0,
+                "meanNetR": -1.1242128256275319
+              },
+              "protection-crossed": {
+                "trades": 3,
+                "netPnl": 315.2024938562179,
+                "wins": 3,
+                "meanNetR": 2.2413826517869055
+              },
+              "trailing": {
+                "trades": 67,
+                "netPnl": 1527.434521070047,
+                "wins": 31,
+                "meanNetR": 0.5138926521484926
+              }
+            },
+            "fees": 404.65588878000005,
+            "meanFeesR": 0.09918693761770361,
+            "funding": 10.292985873871181,
+            "meanFundingR": 0.0025204504038354447,
+            "slippageAndRounding": 169.10487000001663,
+            "meanSlippageAndRoundingR": 0.04151977529695156
+          },
+          "short": {
+            "trades": 82,
+            "wins": 20,
+            "losses": 62,
+            "flat": 0,
+            "netWinRate": 0.24390243902439024,
+            "averageWin": 78.72310434625895,
+            "averageLoss": -38.472903831858424,
+            "profitFactor": 0.6600632460731289,
+            "netPnl": -810.8579506500432,
+            "netExpectancy": -9.88851159329321,
+            "grossBeforeCosts": -257.2660600000113,
+            "costs": 553.5918906500319,
+            "meanGrossBeforeCostsR": -0.06436648160265653,
+            "meanCostR": 0.161793095761703,
+            "medianCostR": 0.13561803421231977,
+            "p90CostR": 0.28662511825108017,
+            "meanNetR": -0.22615957736435957,
+            "meanHoldHours": 6.226016009485095,
+            "medianHoldHours": 4.874999861111111,
+            "medianCompletedTradeMfeR": 0.5611481948797259,
+            "medianCompletedTradeMaeR": 0.8219719156909726,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 1180.4226044226266,
+                "shareOfPositiveNetPnl": 0.7497307265924164,
+                "ledgerNetWithoutTheseTrades": -1991.2805550726698,
+                "trades": [
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 42,
+                    "entryTime": 1692234000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 429.34415071213476,
+                    "rMultiple": 9.32521634345192
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 37,
+                    "entryTime": 1685961000000,
+                    "exitTime": 1686007739999,
+                    "netPnl": 243.0466091146556,
+                    "rMultiple": 5.87503345745054
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 39,
+                    "entryTime": 1692306000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 205.98311139999984,
+                    "rMultiple": 4.631165157292652
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 44,
+                    "entryTime": 1696842000000,
+                    "exitTime": 1696872719999,
+                    "netPnl": 176.83761371171448,
+                    "rMultiple": 4.38686210127458
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 11,
+                    "entryTime": 1671206400000,
+                    "exitTime": 1671235859999,
+                    "netPnl": 125.21111948412191,
+                    "rMultiple": 2.6565150865650304
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 1180.4226044226266,
+                "shareOfPositiveNetPnl": 0.7497307265924164,
+                "ledgerNetWithoutTheseTrades": -1991.2805550726698,
+                "trades": [
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 42,
+                    "entryTime": 1692234000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 429.34415071213476,
+                    "rMultiple": 9.32521634345192
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 37,
+                    "entryTime": 1685961000000,
+                    "exitTime": 1686007739999,
+                    "netPnl": 243.0466091146556,
+                    "rMultiple": 5.87503345745054
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 39,
+                    "entryTime": 1692306000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 205.98311139999984,
+                    "rMultiple": 4.631165157292652
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 44,
+                    "entryTime": 1696842000000,
+                    "exitTime": 1696872719999,
+                    "netPnl": 176.83761371171448,
+                    "rMultiple": 4.38686210127458
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 11,
+                    "entryTime": 1671206400000,
+                    "exitTime": 1671235859999,
+                    "netPnl": 125.21111948412191,
+                    "rMultiple": 2.6565150865650304
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 29,
+                "netPnl": -1434.5228704410201,
+                "wins": 0,
+                "meanNetR": -1.1380284686433284
+              },
+              "protection-crossed": {
+                "trades": 7,
+                "netPnl": 534.200940607213,
+                "wins": 2,
+                "meanNetR": 1.6066103151471383
+              },
+              "trailing": {
+                "trades": 46,
+                "netPnl": 89.46397918376375,
+                "wins": 18,
+                "meanNetR": 0.06981452262497978
+              }
+            },
+            "fees": 378.53410323500003,
+            "meanFeesR": 0.1105568992128508,
+            "funding": 15.685017415041145,
+            "meanFundingR": 0.0046406802966338315,
+            "slippageAndRounding": 159.3727699999907,
+            "meanSlippageAndRoundingR": 0.04659551625221833
+          }
+        },
+        "symbols": {
+          "BTCUSDT": {
+            "trades": 56,
+            "wins": 18,
+            "losses": 38,
+            "flat": 0,
+            "netWinRate": 0.32142857142857145,
+            "averageWin": 113.86072603756783,
+            "averageLoss": -36.15931654906656,
+            "profitFactor": 1.49156658007826,
+            "netPnl": 675.4390398116917,
+            "netExpectancy": 12.06141142520878,
+            "grossBeforeCosts": 1061.8992000000042,
+            "costs": 386.46016018831256,
+            "meanGrossBeforeCostsR": 0.4331478891702715,
+            "meanCostR": 0.1616124732217386,
+            "medianCostR": 0.1407167250417176,
+            "p90CostR": 0.24417934840793543,
+            "meanNetR": 0.27153541594853287,
+            "meanHoldHours": 6.723511646825396,
+            "medianHoldHours": 5.974999722222222,
+            "medianCompletedTradeMfeR": 1.0603333915635726,
+            "medianCompletedTradeMaeR": 0.6667194724290297,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 1392.1151000524503,
+                "shareOfPositiveNetPnl": 0.6792485036075898,
+                "ledgerNetWithoutTheseTrades": -716.6760602407586,
+                "trades": [
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 42,
+                    "entryTime": 1692234000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 429.34415071213476,
+                    "rMultiple": 9.32521634345192
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 24,
+                    "entryTime": 1676487600000,
+                    "exitTime": 1676531159999,
+                    "netPnl": 272.58599934000017,
+                    "rMultiple": 6.185801411960155
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 20,
+                    "entryTime": 1674244800000,
+                    "exitTime": 1674296819999,
+                    "netPnl": 257.5825206288926,
+                    "rMultiple": 6.009269288331371
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 37,
+                    "entryTime": 1685961000000,
+                    "exitTime": 1686007739999,
+                    "netPnl": 243.0466091146556,
+                    "rMultiple": 5.87503345745054
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 40,
+                    "entryTime": 1687294800000,
+                    "exitTime": 1687367519999,
+                    "netPnl": 189.55582025676725,
+                    "rMultiple": 3.938347591495818
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 3,
+                "positiveTrades": 3,
+                "netPnl": 959.5126706810275,
+                "shareOfPositiveNetPnl": 0.4681707322390615,
+                "ledgerNetWithoutTheseTrades": -284.07363086933583,
+                "trades": [
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 42,
+                    "entryTime": 1692234000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 429.34415071213476,
+                    "rMultiple": 9.32521634345192
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 24,
+                    "entryTime": 1676487600000,
+                    "exitTime": 1676531159999,
+                    "netPnl": 272.58599934000017,
+                    "rMultiple": 6.185801411960155
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 20,
+                    "entryTime": 1674244800000,
+                    "exitTime": 1674296819999,
+                    "netPnl": 257.5825206288926,
+                    "rMultiple": 6.009269288331371
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 14,
+                "netPnl": -715.3480720486614,
+                "wins": 0,
+                "meanNetR": -1.1154057318796442
+              },
+              "protection-crossed": {
+                "trades": 4,
+                "netPnl": 506.37420190921335,
+                "wins": 2,
+                "meanNetR": 2.6417017074694273
+              },
+              "trailing": {
+                "trades": 38,
+                "netPnl": 884.4129099511397,
+                "wins": 16,
+                "meanNetR": 0.5330225449882935
+              }
+            },
+            "fees": 274.31495835000004,
+            "meanFeesR": 0.11474076273881584,
+            "funding": 1.2747018383093736,
+            "meanFundingR": 0.0004946831773936379,
+            "slippageAndRounding": 110.87050000000315,
+            "meanSlippageAndRoundingR": 0.046377027305529124
+          },
+          "ETHUSDT": {
+            "trades": 52,
+            "wins": 18,
+            "losses": 34,
+            "flat": 0,
+            "netWinRate": 0.34615384615384615,
+            "averageWin": 74.56650140049072,
+            "averageLoss": -39.92218354758318,
+            "profitFactor": 0.988833264776853,
+            "netPnl": -15.157215408995183,
+            "netExpectancy": -0.29148491171144586,
+            "grossBeforeCosts": 250.3575300000003,
+            "costs": 265.5147454089954,
+            "meanGrossBeforeCostsR": 0.12574233218328945,
+            "meanCostR": 0.11453876785378224,
+            "medianCostR": 0.11228718130683546,
+            "p90CostR": 0.17396213115782314,
+            "meanNetR": 0.011203564329507183,
+            "meanHoldHours": 8.306730507478632,
+            "medianHoldHours": 7.858333055555556,
+            "medianCompletedTradeMfeR": 0.5555162530523201,
+            "medianCompletedTradeMaeR": 0.7322859603557244,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 935.4804745802107,
+                "shareOfPositiveNetPnl": 0.6969770138140926,
+                "ledgerNetWithoutTheseTrades": -950.6376899892059,
+                "trades": [
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 39,
+                    "entryTime": 1692306000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 205.98311139999984,
+                    "rMultiple": 4.631165157292652
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 33,
+                    "entryTime": 1687309200000,
+                    "exitTime": 1687426439999,
+                    "netPnl": 205.59145026089845,
+                    "rMultiple": 4.591924850580872
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 6,
+                    "entryTime": 1666711800000,
+                    "exitTime": 1666719000000,
+                    "netPnl": 191.9454931562184,
+                    "rMultiple": 4.257427786855662
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 44,
+                    "entryTime": 1696842000000,
+                    "exitTime": 1696872719999,
+                    "netPnl": 176.83761371171448,
+                    "rMultiple": 4.38686210127458
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 30,
+                    "entryTime": 1681390800000,
+                    "exitTime": 1681476419999,
+                    "netPnl": 155.1228060513795,
+                    "rMultiple": 3.450525845363091
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 3,
+                "positiveTrades": 3,
+                "netPnl": 603.5200548171167,
+                "shareOfPositiveNetPnl": 0.4496508660665634,
+                "ledgerNetWithoutTheseTrades": -618.6772702261119,
+                "trades": [
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 39,
+                    "entryTime": 1692306000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 205.98311139999984,
+                    "rMultiple": 4.631165157292652
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 33,
+                    "entryTime": 1687309200000,
+                    "exitTime": 1687426439999,
+                    "netPnl": 205.59145026089845,
+                    "rMultiple": 4.591924850580872
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 6,
+                    "entryTime": 1666711800000,
+                    "exitTime": 1666719000000,
+                    "netPnl": 191.9454931562184,
+                    "rMultiple": 4.257427786855662
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 16,
+                "netPnl": -794.6230150472554,
+                "wins": 0,
+                "meanNetR": -1.0996619774271215
+              },
+              "protection-crossed": {
+                "trades": 3,
+                "netPnl": 365.86454455421836,
+                "wins": 2,
+                "meanNetR": 2.717097619704768
+              },
+              "trailing": {
+                "trades": 33,
+                "netPnl": 413.6012550840419,
+                "wins": 16,
+                "meanNetR": 0.30381467045012167
+              }
+            },
+            "fees": 184.09442581500002,
+            "meanFeesR": 0.07945672741661748,
+            "funding": 6.666179593994074,
+            "meanFundingR": 0.0028154085061933955,
+            "slippageAndRounding": 74.75414000000131,
+            "meanSlippageAndRoundingR": 0.03226663193097137
+          },
+          "BNBUSDT": {
+            "trades": 68,
+            "wins": 18,
+            "losses": 50,
+            "flat": 0,
+            "netWinRate": 0.2647058823529412,
+            "averageWin": 53.35067577113962,
+            "averageLoss": -35.71769187174251,
+            "profitFactor": 0.5377235277849793,
+            "netPnl": -825.5724297066123,
+            "netExpectancy": -12.140771025097239,
+            "grossBeforeCosts": -339.90170000000046,
+            "costs": 485.6707297066118,
+            "meanGrossBeforeCostsR": -0.12405490253377974,
+            "meanCostR": 0.17241283493505477,
+            "medianCostR": 0.16436661992621357,
+            "p90CostR": 0.29693483974359103,
+            "meanNetR": -0.2964677374688346,
+            "meanHoldHours": 6.2776958169934645,
+            "medianHoldHours": 4.674999722222222,
+            "medianCompletedTradeMfeR": 0.885128040599659,
+            "medianCompletedTradeMaeR": 0.7101594071737682,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 568.0865304875664,
+                "shareOfPositiveNetPnl": 0.591564443161891,
+                "ledgerNetWithoutTheseTrades": -1393.6589601941787,
+                "trades": [
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 8,
+                    "entryTime": 1669190400000,
+                    "exitTime": 1669222799999,
+                    "netPnl": 202.5417625063796,
+                    "rMultiple": 4.485974806342848
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 11,
+                    "entryTime": 1671206400000,
+                    "exitTime": 1671235859999,
+                    "netPnl": 125.21111948412191,
+                    "rMultiple": 2.6565150865650304
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 14,
+                    "entryTime": 1673218800000,
+                    "exitTime": 1673290379999,
+                    "netPnl": 86.9671154340787,
+                    "rMultiple": 1.899803512996259
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 68,
+                    "entryTime": 1703678400000,
+                    "exitTime": 1703774699999,
+                    "netPnl": 80.72128556298607,
+                    "rMultiple": 1.867800292081781
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 13,
+                    "entryTime": 1673188200000,
+                    "exitTime": 1673194379999,
+                    "netPnl": 72.64524750000008,
+                    "rMultiple": 1.8603136363636
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 4,
+                "positiveTrades": 4,
+                "netPnl": 495.4412829875663,
+                "shareOfPositiveNetPnl": 0.5159169087117922,
+                "ledgerNetWithoutTheseTrades": -1321.0137126941786,
+                "trades": [
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 8,
+                    "entryTime": 1669190400000,
+                    "exitTime": 1669222799999,
+                    "netPnl": 202.5417625063796,
+                    "rMultiple": 4.485974806342848
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 11,
+                    "entryTime": 1671206400000,
+                    "exitTime": 1671235859999,
+                    "netPnl": 125.21111948412191,
+                    "rMultiple": 2.6565150865650304
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 14,
+                    "entryTime": 1673218800000,
+                    "exitTime": 1673290379999,
+                    "netPnl": 86.9671154340787,
+                    "rMultiple": 1.899803512996259
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 68,
+                    "entryTime": 1703678400000,
+                    "exitTime": 1703774699999,
+                    "netPnl": 80.72128556298607,
+                    "rMultiple": 1.867800292081781
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 23,
+                "netPnl": -1121.6214529252406,
+                "wins": 0,
+                "meanNetR": -1.1640722400247099
+              },
+              "protection-crossed": {
+                "trades": 3,
+                "netPnl": -22.83531200000073,
+                "wins": 1,
+                "meanNetR": -0.24922650920044265
+              },
+              "trailing": {
+                "trades": 42,
+                "netPnl": 318.8843352186291,
+                "wins": 17,
+                "meanNetR": 0.17527464048306915
+              }
+            },
+            "fees": 324.78060785,
+            "meanFeesR": 0.11517654900706047,
+            "funding": 18.03712185660888,
+            "meanFundingR": 0.006519920912182437,
+            "slippageAndRounding": 142.85300000000288,
+            "meanSlippageAndRoundingR": 0.05071636501581188
+          }
+        }
+      },
+      "sp-base": {
+        "trades": 249,
+        "wins": 68,
+        "losses": 181,
+        "flat": 0,
+        "netWinRate": 0.27309236947791166,
+        "averageWin": 74.35287507122996,
+        "averageLoss": -36.7366607215877,
+        "profitFactor": 0.760376045989552,
+        "netPnl": -1593.3400857637364,
+        "netExpectancy": -6.398956167725849,
+        "grossBeforeCosts": -19.393529999993227,
+        "costs": 1573.9465557637434,
+        "meanGrossBeforeCostsR": -0.0030843741819577865,
+        "meanCostR": 0.15319086088967546,
+        "medianCostR": 0.134531581606883,
+        "p90CostR": 0.2552625120359117,
+        "meanNetR": -0.15627523507163324,
+        "meanHoldHours": 6.6414321318607765,
+        "medianHoldHours": 5.166666388888889,
+        "medianCompletedTradeMfeR": 0.7953020134228059,
+        "medianCompletedTradeMaeR": 0.7627906976743735,
+        "tails": {
+          "topFive": {
+            "requestedTrades": 5,
+            "positiveTrades": 5,
+            "netPnl": 1396.8533352734653,
+            "shareOfPositiveNetPnl": 0.2762766173220055,
+            "ledgerNetWithoutTheseTrades": -2990.193421037202,
+            "trades": [
+              {
+                "symbol": "BTCUSDT",
+                "id": 50,
+                "entryTime": 1692234000000,
+                "exitTime": 1692309600000,
+                "netPnl": 422.4929142646007,
+                "rMultiple": 9.325216343451922
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 28,
+                "entryTime": 1676487600000,
+                "exitTime": 1676531159999,
+                "netPnl": 272.58599934000017,
+                "rMultiple": 6.185801411960155
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 24,
+                "entryTime": 1674244800000,
+                "exitTime": 1674296819999,
+                "netPnl": 257.5825206288926,
+                "rMultiple": 6.009269288331371
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 43,
+                "entryTime": 1685961000000,
+                "exitTime": 1686007739999,
+                "netPnl": 240.4610068900316,
+                "rMultiple": 5.875033457450541
+              },
+              {
+                "symbol": "ETHUSDT",
+                "id": 42,
+                "entryTime": 1687309200000,
+                "exitTime": 1687426439999,
+                "netPnl": 203.73089414994013,
+                "rMultiple": 4.591924850580872
+              }
+            ]
+          },
+          "topFivePct": {
+            "requestedTrades": 13,
+            "positiveTrades": 13,
+            "netPnl": 2852.453008707945,
+            "shareOfPositiveNetPnl": 0.5641723783130936,
+            "ledgerNetWithoutTheseTrades": -4445.793094471682,
+            "trades": [
+              {
+                "symbol": "BTCUSDT",
+                "id": 50,
+                "entryTime": 1692234000000,
+                "exitTime": 1692309600000,
+                "netPnl": 422.4929142646007,
+                "rMultiple": 9.325216343451922
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 28,
+                "entryTime": 1676487600000,
+                "exitTime": 1676531159999,
+                "netPnl": 272.58599934000017,
+                "rMultiple": 6.185801411960155
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 24,
+                "entryTime": 1674244800000,
+                "exitTime": 1674296819999,
+                "netPnl": 257.5825206288926,
+                "rMultiple": 6.009269288331371
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 43,
+                "entryTime": 1685961000000,
+                "exitTime": 1686007739999,
+                "netPnl": 240.4610068900316,
+                "rMultiple": 5.875033457450541
+              },
+              {
+                "symbol": "ETHUSDT",
+                "id": 42,
+                "entryTime": 1687309200000,
+                "exitTime": 1687426439999,
+                "netPnl": 203.73089414994013,
+                "rMultiple": 4.591924850580872
+              },
+              {
+                "symbol": "ETHUSDT",
+                "id": 50,
+                "entryTime": 1692306000000,
+                "exitTime": 1692309600000,
+                "netPnl": 202.29096128999984,
+                "rMultiple": 4.631165157292652
+              },
+              {
+                "symbol": "BNBUSDT",
+                "id": 15,
+                "entryTime": 1669190400000,
+                "exitTime": 1669222799999,
+                "netPnl": 199.71559837838365,
+                "rMultiple": 4.485974806342849
+              },
+              {
+                "symbol": "ETHUSDT",
+                "id": 8,
+                "entryTime": 1666711800000,
+                "exitTime": 1666719000000,
+                "netPnl": 191.14420267245427,
+                "rMultiple": 4.257427786855661
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 46,
+                "entryTime": 1687294800000,
+                "exitTime": 1687367519999,
+                "netPnl": 186.2302795505082,
+                "rMultiple": 3.938347591495818
+              },
+              {
+                "symbol": "ETHUSDT",
+                "id": 61,
+                "entryTime": 1698091200000,
+                "exitTime": 1698160799999,
+                "netPnl": 175.95047594857346,
+                "rMultiple": 3.8952708716566007
+              },
+              {
+                "symbol": "ETHUSDT",
+                "id": 58,
+                "entryTime": 1696842000000,
+                "exitTime": 1696872719999,
+                "netPnl": 172.55958965917245,
+                "rMultiple": 4.386862101274579
+              },
+              {
+                "symbol": "ETHUSDT",
+                "id": 40,
+                "entryTime": 1685962800000,
+                "exitTime": 1685982600000,
+                "netPnl": 166.68351688423627,
+                "rMultiple": 4.1710921705897235
+              },
+              {
+                "symbol": "BTCUSDT",
+                "id": 22,
+                "entryTime": 1673479800000,
+                "exitTime": 1673502539999,
+                "netPnl": 161.02504905115165,
+                "rMultiple": 4.038387530876283
+              }
+            ]
+          }
+        },
+        "exitReasons": {
+          "initial": {
+            "trades": 81,
+            "netPnl": -3914.8840087803455,
+            "wins": 0,
+            "meanNetR": -1.1384317485765512
+          },
+          "protection-crossed": {
+            "trades": 11,
+            "netPnl": 1006.030552964786,
+            "wins": 6,
+            "meanNetR": 2.0128647574527645
+          },
+          "trailing": {
+            "trades": 157,
+            "netPnl": 1315.513370051823,
+            "wins": 62,
+            "meanNetR": 0.19846449534957675
+          }
+        },
+        "fees": 1099.332163295,
+        "meanFeesR": 0.10690511323299134,
+        "funding": 14.52923246873389,
+        "meanFundingR": 0.001472915547275754,
+        "slippageAndRounding": 460.0851600000094,
+        "meanSlippageAndRoundingR": 0.04481283210940837,
+        "costScenario": "base",
+        "strategy": {
+          "entry": "structured-pullback",
+          "tradeMinutes": 30,
+          "filter": "ema",
+          "management": "chandelier",
+          "direction": "both",
+          "breakoutBars": 20,
+          "stopAtr": 2,
+          "breakEvenAtr": 0,
+          "trailingAtr": 3,
+          "maxCostAtr": 0,
+          "structuredPullback": {
+            "keyLevel": "none",
+            "shape": "none",
+            "candle": "none",
+            "confirmation": "before-breakout",
+            "keyRole": "pullback-retest"
+          }
+        },
+        "meanSleeveTimeExposure": 0.04716851091337745,
+        "sides": {
+          "long": {
+            "trades": 141,
+            "wins": 42,
+            "losses": 99,
+            "flat": 0,
+            "netWinRate": 0.2978723404255319,
+            "averageWin": 78.48769621192064,
+            "averageLoss": -35.78174591965225,
+            "profitFactor": 0.9305809333317114,
+            "netPnl": -245.90960514490564,
+            "netExpectancy": -1.7440397528007492,
+            "grossBeforeCosts": 623.15815000002,
+            "costs": 869.0677551449257,
+            "meanGrossBeforeCostsR": 0.09317282340583175,
+            "meanCostR": 0.1467101098572983,
+            "medianCostR": 0.13308625559415804,
+            "p90CostR": 0.2371756481088017,
+            "meanNetR": -0.05353728645146654,
+            "meanHoldHours": 7.0783685224586295,
+            "medianHoldHours": 5.349999722222222,
+            "medianCompletedTradeMfeR": 0.9573275862068903,
+            "medianCompletedTradeMaeR": 0.6447856008470194,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 1124.7592151696708,
+                "shareOfPositiveNetPnl": 0.34119973710600865,
+                "ledgerNetWithoutTheseTrades": -1370.6688203145764,
+                "trades": [
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 28,
+                    "entryTime": 1676487600000,
+                    "exitTime": 1676531159999,
+                    "netPnl": 272.58599934000017,
+                    "rMultiple": 6.185801411960155
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 24,
+                    "entryTime": 1674244800000,
+                    "exitTime": 1674296819999,
+                    "netPnl": 257.5825206288926,
+                    "rMultiple": 6.009269288331371
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 42,
+                    "entryTime": 1687309200000,
+                    "exitTime": 1687426439999,
+                    "netPnl": 203.73089414994013,
+                    "rMultiple": 4.591924850580872
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 15,
+                    "entryTime": 1669190400000,
+                    "exitTime": 1669222799999,
+                    "netPnl": 199.71559837838365,
+                    "rMultiple": 4.485974806342849
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 8,
+                    "entryTime": 1666711800000,
+                    "exitTime": 1666719000000,
+                    "netPnl": 191.14420267245427,
+                    "rMultiple": 4.257427786855661
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 8,
+                "positiveTrades": 8,
+                "netPnl": 1647.9650197199041,
+                "shareOfPositiveNetPnl": 0.4999160921775675,
+                "ledgerNetWithoutTheseTrades": -1893.87462486481,
+                "trades": [
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 28,
+                    "entryTime": 1676487600000,
+                    "exitTime": 1676531159999,
+                    "netPnl": 272.58599934000017,
+                    "rMultiple": 6.185801411960155
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 24,
+                    "entryTime": 1674244800000,
+                    "exitTime": 1674296819999,
+                    "netPnl": 257.5825206288926,
+                    "rMultiple": 6.009269288331371
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 42,
+                    "entryTime": 1687309200000,
+                    "exitTime": 1687426439999,
+                    "netPnl": 203.73089414994013,
+                    "rMultiple": 4.591924850580872
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 15,
+                    "entryTime": 1669190400000,
+                    "exitTime": 1669222799999,
+                    "netPnl": 199.71559837838365,
+                    "rMultiple": 4.485974806342849
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 8,
+                    "entryTime": 1666711800000,
+                    "exitTime": 1666719000000,
+                    "netPnl": 191.14420267245427,
+                    "rMultiple": 4.257427786855661
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 46,
+                    "entryTime": 1687294800000,
+                    "exitTime": 1687367519999,
+                    "netPnl": 186.2302795505082,
+                    "rMultiple": 3.938347591495818
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 61,
+                    "entryTime": 1698091200000,
+                    "exitTime": 1698160799999,
+                    "netPnl": 175.95047594857346,
+                    "rMultiple": 3.8952708716566007
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 22,
+                    "entryTime": 1673479800000,
+                    "exitTime": 1673502539999,
+                    "netPnl": 161.02504905115165,
+                    "rMultiple": 4.038387530876283
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 43,
+                "netPnl": -2072.039869298837,
+                "wins": 0,
+                "meanNetR": -1.1438476098548074
+              },
+              "protection-crossed": {
+                "trades": 3,
+                "netPnl": 311.71071527245385,
+                "wins": 3,
+                "meanNetR": 2.241382651786905
+              },
+              "trailing": {
+                "trades": 95,
+                "netPnl": 1514.4195488814773,
+                "wins": 39,
+                "meanNetR": 0.3675004408288339
+              }
+            },
+            "fees": 613.7324599750001,
+            "meanFeesR": 0.10358963731443693,
+            "funding": 0.2634751699051735,
+            "meanFundingR": -2.82157787135183e-06,
+            "slippageAndRounding": 255.0718200000205,
+            "meanSlippageAndRoundingR": 0.043123294120732715
+          },
+          "short": {
+            "trades": 108,
+            "wins": 26,
+            "losses": 82,
+            "flat": 0,
+            "netWinRate": 0.24074074074074073,
+            "averageWin": 67.67354861319114,
+            "averageLoss": -37.889545665387814,
+            "profitFactor": 0.5663162821467214,
+            "netPnl": -1347.4304806188309,
+            "netExpectancy": -12.476208153878064,
+            "grossBeforeCosts": -642.5516800000132,
+            "costs": 704.8788006188176,
+            "meanGrossBeforeCostsR": -0.12875349325490523,
+            "meanCostR": 0.16165184140416786,
+            "medianCostR": 0.13561803421231977,
+            "p90CostR": 0.28187705027607324,
+            "meanNetR": -0.2904053346590731,
+            "meanHoldHours": 6.070987399691358,
+            "medianHoldHours": 4.983333194444445,
+            "medianCompletedTradeMfeR": 0.5559345052016734,
+            "medianCompletedTradeMaeR": 0.8219719156909726,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 1204.4879889880408,
+                "shareOfPositiveNetPnl": 0.6845578821308411,
+                "ledgerNetWithoutTheseTrades": -2551.9184696068714,
+                "trades": [
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 50,
+                    "entryTime": 1692234000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 422.4929142646007,
+                    "rMultiple": 9.325216343451922
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 43,
+                    "entryTime": 1685961000000,
+                    "exitTime": 1686007739999,
+                    "netPnl": 240.4610068900316,
+                    "rMultiple": 5.875033457450541
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 50,
+                    "entryTime": 1692306000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 202.29096128999984,
+                    "rMultiple": 4.631165157292652
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 58,
+                    "entryTime": 1696842000000,
+                    "exitTime": 1696872719999,
+                    "netPnl": 172.55958965917245,
+                    "rMultiple": 4.386862101274579
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 40,
+                    "entryTime": 1685962800000,
+                    "exitTime": 1685982600000,
+                    "netPnl": 166.68351688423627,
+                    "rMultiple": 4.1710921705897235
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 6,
+                "positiveTrades": 6,
+                "netPnl": 1327.6078997960187,
+                "shareOfPositiveNetPnl": 0.7545317682645319,
+                "ledgerNetWithoutTheseTrades": -2675.0383804148496,
+                "trades": [
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 50,
+                    "entryTime": 1692234000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 422.4929142646007,
+                    "rMultiple": 9.325216343451922
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 43,
+                    "entryTime": 1685961000000,
+                    "exitTime": 1686007739999,
+                    "netPnl": 240.4610068900316,
+                    "rMultiple": 5.875033457450541
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 50,
+                    "entryTime": 1692306000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 202.29096128999984,
+                    "rMultiple": 4.631165157292652
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 58,
+                    "entryTime": 1696842000000,
+                    "exitTime": 1696872719999,
+                    "netPnl": 172.55958965917245,
+                    "rMultiple": 4.386862101274579
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 40,
+                    "entryTime": 1685962800000,
+                    "exitTime": 1685982600000,
+                    "netPnl": 166.68351688423627,
+                    "rMultiple": 4.1710921705897235
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 20,
+                    "entryTime": 1671206400000,
+                    "exitTime": 1671235859999,
+                    "netPnl": 123.1199108079779,
+                    "rMultiple": 2.65651508656503
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 38,
+                "netPnl": -1842.8441394815086,
+                "wins": 0,
+                "meanNetR": -1.1323032739722083
+              },
+              "protection-crossed": {
+                "trades": 8,
+                "netPnl": 694.3198376923323,
+                "wins": 3,
+                "meanNetR": 1.9271705470774616
+              },
+              "trailing": {
+                "trades": 62,
+                "netPnl": -198.90617882965444,
+                "wins": 23,
+                "meanNetR": -0.06054219530412369
+              }
+            },
+            "fees": 485.59970332000006,
+            "meanFeesR": 0.11123365123777071,
+            "funding": 14.265757298828715,
+            "meanFundingR": 0.0033995723495511424,
+            "slippageAndRounding": 205.01333999998891,
+            "meanSlippageAndRoundingR": 0.04701861781684601
+          }
+        },
+        "symbols": {
+          "BTCUSDT": {
+            "trades": 73,
+            "wins": 21,
+            "losses": 52,
+            "flat": 0,
+            "netWinRate": 0.2876712328767123,
+            "averageWin": 101.65054185902355,
+            "averageLoss": -36.703551067870755,
+            "profitFactor": 1.1184525521858608,
+            "netPnl": 226.0767235102149,
+            "netExpectancy": 3.096941417948149,
+            "grossBeforeCosts": 732.3082000000054,
+            "costs": 506.2314764897906,
+            "meanGrossBeforeCostsR": 0.22928152479211317,
+            "meanCostR": 0.16551474175110614,
+            "medianCostR": 0.140909435392196,
+            "p90CostR": 0.2510917200339427,
+            "meanNetR": 0.06376678304100707,
+            "meanHoldHours": 6.026027134703196,
+            "medianHoldHours": 5.0,
+            "medianCompletedTradeMfeR": 0.9573275862068903,
+            "medianCompletedTradeMaeR": 0.7562028047464724,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 1379.3527206740332,
+                "shareOfPositiveNetPnl": 0.646169333561786,
+                "ledgerNetWithoutTheseTrades": -1153.2759971638184,
+                "trades": [
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 50,
+                    "entryTime": 1692234000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 422.4929142646007,
+                    "rMultiple": 9.325216343451922
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 28,
+                    "entryTime": 1676487600000,
+                    "exitTime": 1676531159999,
+                    "netPnl": 272.58599934000017,
+                    "rMultiple": 6.185801411960155
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 24,
+                    "entryTime": 1674244800000,
+                    "exitTime": 1674296819999,
+                    "netPnl": 257.5825206288926,
+                    "rMultiple": 6.009269288331371
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 43,
+                    "entryTime": 1685961000000,
+                    "exitTime": 1686007739999,
+                    "netPnl": 240.4610068900316,
+                    "rMultiple": 5.875033457450541
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 46,
+                    "entryTime": 1687294800000,
+                    "exitTime": 1687367519999,
+                    "netPnl": 186.2302795505082,
+                    "rMultiple": 3.938347591495818
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 4,
+                "positiveTrades": 4,
+                "netPnl": 1193.122441123525,
+                "shareOfPositiveNetPnl": 0.5589281994975609,
+                "ledgerNetWithoutTheseTrades": -967.0457176133102,
+                "trades": [
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 50,
+                    "entryTime": 1692234000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 422.4929142646007,
+                    "rMultiple": 9.325216343451922
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 28,
+                    "entryTime": 1676487600000,
+                    "exitTime": 1676531159999,
+                    "netPnl": 272.58599934000017,
+                    "rMultiple": 6.185801411960155
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 24,
+                    "entryTime": 1674244800000,
+                    "exitTime": 1674296819999,
+                    "netPnl": 257.5825206288926,
+                    "rMultiple": 6.009269288331371
+                  },
+                  {
+                    "symbol": "BTCUSDT",
+                    "id": 43,
+                    "entryTime": 1685961000000,
+                    "exitTime": 1686007739999,
+                    "netPnl": 240.4610068900316,
+                    "rMultiple": 5.875033457450541
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 22,
+                "netPnl": -1100.7448474587381,
+                "wins": 0,
+                "meanNetR": -1.1361231137860444
+              },
+              "protection-crossed": {
+                "trades": 4,
+                "netPnl": 497.4916726640963,
+                "wins": 2,
+                "meanNetR": 2.641701707469428
+              },
+              "trailing": {
+                "trades": 47,
+                "netPnl": 829.3298983048568,
+                "wins": 19,
+                "meanNetR": 0.40601865607252724
+              }
+            },
+            "fees": 358.82680115000005,
+            "meanFeesR": 0.11739176957297472,
+            "funding": 2.4397753397847888,
+            "meanFundingR": 0.0006800091068771334,
+            "slippageAndRounding": 144.9649000000058,
+            "meanSlippageAndRoundingR": 0.047442963071254285
+          },
+          "ETHUSDT": {
+            "trades": 77,
+            "wins": 23,
+            "losses": 54,
+            "flat": 0,
+            "netWinRate": 0.2987012987012987,
+            "averageWin": 74.21078316496717,
+            "averageLoss": -38.81138431460099,
+            "profitFactor": 0.8144078623172323,
+            "netPnl": -388.9667401942087,
+            "netExpectancy": -5.051516106418295,
+            "grossBeforeCosts": 19.337170000001304,
+            "costs": 408.30391019421,
+            "meanGrossBeforeCostsR": 0.025547288424717915,
+            "meanCostR": 0.1241504313624244,
+            "medianCostR": 0.11507135024448542,
+            "p90CostR": 0.19163558264516162,
+            "meanNetR": -0.09860314293770649,
+            "meanHoldHours": 7.389393676046176,
+            "medianHoldHours": 5.549999722222222,
+            "medianCompletedTradeMfeR": 0.683030046550986,
+            "medianCompletedTradeMaeR": 0.7529527559055128,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 945.6761237201401,
+                "shareOfPositiveNetPnl": 0.55404823196413,
+                "ledgerNetWithoutTheseTrades": -1334.6428639143487,
+                "trades": [
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 42,
+                    "entryTime": 1687309200000,
+                    "exitTime": 1687426439999,
+                    "netPnl": 203.73089414994013,
+                    "rMultiple": 4.591924850580872
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 50,
+                    "entryTime": 1692306000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 202.29096128999984,
+                    "rMultiple": 4.631165157292652
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 8,
+                    "entryTime": 1666711800000,
+                    "exitTime": 1666719000000,
+                    "netPnl": 191.14420267245427,
+                    "rMultiple": 4.257427786855661
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 61,
+                    "entryTime": 1698091200000,
+                    "exitTime": 1698160799999,
+                    "netPnl": 175.95047594857346,
+                    "rMultiple": 3.8952708716566007
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 58,
+                    "entryTime": 1696842000000,
+                    "exitTime": 1696872719999,
+                    "netPnl": 172.55958965917245,
+                    "rMultiple": 4.386862101274579
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 4,
+                "positiveTrades": 4,
+                "netPnl": 773.1165340609678,
+                "shareOfPositiveNetPnl": 0.45294983986026677,
+                "ledgerNetWithoutTheseTrades": -1162.0832742551765,
+                "trades": [
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 42,
+                    "entryTime": 1687309200000,
+                    "exitTime": 1687426439999,
+                    "netPnl": 203.73089414994013,
+                    "rMultiple": 4.591924850580872
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 50,
+                    "entryTime": 1692306000000,
+                    "exitTime": 1692309600000,
+                    "netPnl": 202.29096128999984,
+                    "rMultiple": 4.631165157292652
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 8,
+                    "entryTime": 1666711800000,
+                    "exitTime": 1666719000000,
+                    "netPnl": 191.14420267245427,
+                    "rMultiple": 4.257427786855661
+                  },
+                  {
+                    "symbol": "ETHUSDT",
+                    "id": 61,
+                    "entryTime": 1698091200000,
+                    "exitTime": 1698160799999,
+                    "netPnl": 175.95047594857346,
+                    "rMultiple": 3.8952708716566007
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 24,
+                "netPnl": -1175.645026613341,
+                "wins": 0,
+                "meanNetR": -1.1052163301896911
+              },
+              "protection-crossed": {
+                "trades": 4,
+                "netPnl": 528.4361294006904,
+                "wins": 3,
+                "meanNetR": 3.080596257426006
+              },
+              "trailing": {
+                "trades": 49,
+                "netPnl": 258.24215701844184,
+                "wins": 20,
+                "meanNetR": 0.13490540589071762
+              }
+            },
+            "fees": 285.757609245,
+            "meanFeesR": 0.08697460964716791,
+            "funding": 6.545540949207542,
+            "meanFundingR": 0.0018703862824656246,
+            "slippageAndRounding": 116.00076000000247,
+            "meanSlippageAndRoundingR": 0.03530543543279087
+          },
+          "BNBUSDT": {
+            "trades": 99,
+            "wins": 24,
+            "losses": 75,
+            "flat": 0,
+            "netWinRate": 0.24242424242424243,
+            "averageWin": 50.60358804207906,
+            "averageLoss": -35.2658157611952,
+            "profitFactor": 0.45917407052535725,
+            "netPnl": -1430.4500690797427,
+            "netExpectancy": -14.448990596765077,
+            "grossBeforeCosts": -771.0388999999999,
+            "costs": 659.4111690797428,
+            "meanGrossBeforeCostsR": -0.1966939564629801,
+            "meanCostR": 0.16669055554335113,
+            "medianCostR": 0.14962008733624257,
+            "p90CostR": 0.2892000560223848,
+            "meanNetR": -0.3633845120063312,
+            "meanHoldHours": 6.51346774691358,
+            "medianHoldHours": 4.733333055555556,
+            "medianCompletedTradeMfeR": 0.7953020134228059,
+            "medianCompletedTradeMaeR": 0.7911392405063229,
+            "tails": {
+              "topFive": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 590.5381569715391,
+                "shareOfPositiveNetPnl": 0.4862452939111758,
+                "ledgerNetWithoutTheseTrades": -2020.9882260512818,
+                "trades": [
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 15,
+                    "entryTime": 1669190400000,
+                    "exitTime": 1669222799999,
+                    "netPnl": 199.71559837838365,
+                    "rMultiple": 4.485974806342849
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 20,
+                    "entryTime": 1671206400000,
+                    "exitTime": 1671235859999,
+                    "netPnl": 123.1199108079779,
+                    "rMultiple": 2.65651508656503
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 87,
+                    "entryTime": 1699093800000,
+                    "exitTime": 1699175039999,
+                    "netPnl": 91.82786414112192,
+                    "rMultiple": 2.4143561735684975
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 97,
+                    "entryTime": 1702983600000,
+                    "exitTime": 1703102819999,
+                    "netPnl": 90.27096721090304,
+                    "rMultiple": 2.359291284826509
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 23,
+                    "entryTime": 1673218800000,
+                    "exitTime": 1673290379999,
+                    "netPnl": 85.60381643315259,
+                    "rMultiple": 1.899803512996259
+                  }
+                ]
+              },
+              "topFivePct": {
+                "requestedTrades": 5,
+                "positiveTrades": 5,
+                "netPnl": 590.5381569715391,
+                "shareOfPositiveNetPnl": 0.4862452939111758,
+                "ledgerNetWithoutTheseTrades": -2020.9882260512818,
+                "trades": [
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 15,
+                    "entryTime": 1669190400000,
+                    "exitTime": 1669222799999,
+                    "netPnl": 199.71559837838365,
+                    "rMultiple": 4.485974806342849
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 20,
+                    "entryTime": 1671206400000,
+                    "exitTime": 1671235859999,
+                    "netPnl": 123.1199108079779,
+                    "rMultiple": 2.65651508656503
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 87,
+                    "entryTime": 1699093800000,
+                    "exitTime": 1699175039999,
+                    "netPnl": 91.82786414112192,
+                    "rMultiple": 2.4143561735684975
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 97,
+                    "entryTime": 1702983600000,
+                    "exitTime": 1703102819999,
+                    "netPnl": 90.27096721090304,
+                    "rMultiple": 2.359291284826509
+                  },
+                  {
+                    "symbol": "BNBUSDT",
+                    "id": 23,
+                    "entryTime": 1673218800000,
+                    "exitTime": 1673290379999,
+                    "netPnl": 85.60381643315259,
+                    "rMultiple": 1.899803512996259
+                  }
+                ]
+              }
+            },
+            "exitReasons": {
+              "initial": {
+                "trades": 35,
+                "netPnl": -1638.4941347082663,
+                "wins": 0,
+                "meanNetR": -1.1626591773387163
+              },
+              "protection-crossed": {
+                "trades": 3,
+                "netPnl": -19.897249100000707,
+                "wins": 1,
+                "meanNetR": -0.24922650920044268
+              },
+              "trailing": {
+                "trades": 61,
+                "netPnl": 227.94131472852428,
+                "wins": 23,
+                "meanNetR": 0.08960137780048533
+              }
+            },
+            "fees": 454.7477529,
+            "meanFeesR": 0.11467403104399758,
+            "funding": 5.543916179741559,
+            "meanFundingR": 0.0017484400274725145,
+            "slippageAndRounding": 199.11950000000115,
+            "meanSlippageAndRoundingR": 0.05026808447188103
+          }
+        }
+      }
+    }
+  },
+  "checkedCompletedTrades": 454
+}

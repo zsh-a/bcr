@@ -1,0 +1,2485 @@
+{
+  "version": "trend-transfer-evaluation-1",
+  "protocol": {
+    "windows": [
+      "transfer-2021",
+      "transfer-2024-oct-nov"
+    ],
+    "samples": 2000,
+    "seed": 20261003,
+    "blockDays": [
+      7,
+      28
+    ],
+    "minimumDays": 180,
+    "minimumTrades": 100,
+    "minimumTradesPerSymbol": 10,
+    "maxDailyDrawdown": 0.1,
+    "requireEachWindowPositive": true,
+    "requireDevelopmentQualified": true,
+    "method": "Circular calendar blocks sampled independently WITHIN each transfer window; preserve each window original day count, keep all sleeves/candidate/cost scenarios paired on the same day. Pool daily means weighted by observation days; no NAV chaining or gap filling. Percentile95% intervals for selected absolute base/stress means and paired selected-minus-baseline differences. Both7 and28day intervals reported, never chosen after results. Completed-trade netR and dollar expectation descriptive, not iid confidence. Leave-one-symbol-out summaries diagnostic only, never a symbol selector.",
+    "acceptance": "Historical positive-expectancy candidate for forward observation only if development qualification passes; >=180 transfer days, >=100 trades and>=10 per symbol under each cost scenario; both transfer windows have positive net returns at base and stress, each daily portfolio drawdown >=-10%; absolute selected daily-mean lower95%bound >0 for BOTH7/28day blocks under base and stress. Paired improvement reported separately and does not substitute for absolute profitability. If points positive but intervals crosszero, status remains not-established. A failed criterion forbids promotion/reselection this round. Passing still does not establish future profitability or warrant automatic live deployment."
+  },
+  "selected": "m30-n320-x160",
+  "baseline": "m30-n320-x20",
+  "selectionRecomputed": false,
+  "developmentQualified": true,
+  "developmentQualification": {
+    "status": "passed",
+    "reasons": [],
+    "completeDays": 487,
+    "minimumTradesPerSymbol": 30,
+    "tradesBySymbol": {
+      "BTCUSDT": 35,
+      "ETHUSDT": 34,
+      "BNBUSDT": 44,
+      "SOLUSDT": 40,
+      "XRPUSDT": 43,
+      "DOGEUSDT": 51
+    }
+  },
+  "windows": [
+    {
+      "id": "transfer-2021",
+      "role": "historical-transfer",
+      "start": "2021-01-01",
+      "end": "2022-01-01",
+      "accounts": {
+        "selectedBase": {
+          "candidate": "m30-n320-x160",
+          "days": 365,
+          "initialCapital": 60000.0,
+          "return": 0.3694141209134991,
+          "dailyMaxDrawdown": -0.033262630161995266,
+          "trades": 237,
+          "tradesBySymbol": {
+            "BTCUSDT": 35,
+            "ETHUSDT": 44,
+            "BNBUSDT": 41,
+            "SOLUSDT": 56,
+            "XRPUSDT": 36,
+            "DOGEUSDT": 25
+          },
+          "netPnl": 22164.847254809953,
+          "netExpectancy": 93.52256225658199,
+          "meanNetR": 1.6861937904169948,
+          "profitFactor": 2.8569826964414626,
+          "meanDailyReturn": 0.0008808044052155969
+        },
+        "baselineBase": {
+          "candidate": "m30-n320-x20",
+          "days": 365,
+          "initialCapital": 60000.0,
+          "return": 0.12949728969453056,
+          "dailyMaxDrawdown": -0.03747736929492318,
+          "trades": 363,
+          "tradesBySymbol": {
+            "BTCUSDT": 53,
+            "ETHUSDT": 67,
+            "BNBUSDT": 63,
+            "SOLUSDT": 87,
+            "XRPUSDT": 56,
+            "DOGEUSDT": 37
+          },
+          "netPnl": 7769.837381671838,
+          "netExpectancy": 21.404510693310876,
+          "meanNetR": 0.4178533552277028,
+          "profitFactor": 1.6141158357797063,
+          "meanDailyReturn": 0.00034190712873436265
+        },
+        "selectedStress": {
+          "candidate": "m30-n320-x160-stress",
+          "days": 365,
+          "initialCapital": 60000.0,
+          "return": 0.35460266485395153,
+          "dailyMaxDrawdown": -0.03294654260888985,
+          "trades": 236,
+          "tradesBySymbol": {
+            "BTCUSDT": 35,
+            "ETHUSDT": 44,
+            "BNBUSDT": 41,
+            "SOLUSDT": 55,
+            "XRPUSDT": 36,
+            "DOGEUSDT": 25
+          },
+          "netPnl": 21276.159891237097,
+          "netExpectancy": 90.15321987812344,
+          "meanNetR": 1.7000722248657583,
+          "profitFactor": 2.791262606834618,
+          "meanDailyReturn": 0.0008498190848919978
+        },
+        "baselineStress": {
+          "candidate": "m30-n320-x20-stress",
+          "days": 365,
+          "initialCapital": 60000.0,
+          "return": 0.1080412372339179,
+          "dailyMaxDrawdown": -0.04633426698848786,
+          "trades": 363,
+          "tradesBySymbol": {
+            "BTCUSDT": 53,
+            "ETHUSDT": 67,
+            "BNBUSDT": 63,
+            "SOLUSDT": 87,
+            "XRPUSDT": 56,
+            "DOGEUSDT": 37
+          },
+          "netPnl": 6482.474234035079,
+          "netExpectancy": 17.85805574114348,
+          "meanNetR": 0.35965024287307856,
+          "profitFactor": 1.5152203276659129,
+          "meanDailyReturn": 0.0002888555363956952
+        }
+      }
+    },
+    {
+      "id": "transfer-2024-oct-nov",
+      "role": "historical-transfer",
+      "start": "2024-10-01",
+      "end": "2024-12-01",
+      "accounts": {
+        "selectedBase": {
+          "candidate": "m30-n320-x160",
+          "days": 61,
+          "initialCapital": 60000.0,
+          "return": 0.07692106121378739,
+          "dailyMaxDrawdown": -0.014417198831014333,
+          "trades": 38,
+          "tradesBySymbol": {
+            "BTCUSDT": 5,
+            "ETHUSDT": 7,
+            "BNBUSDT": 12,
+            "SOLUSDT": 5,
+            "XRPUSDT": 4,
+            "DOGEUSDT": 5
+          },
+          "netPnl": 4615.263672827248,
+          "netExpectancy": 121.45430717966421,
+          "meanNetR": 2.4887649597345507,
+          "profitFactor": 4.612142335487866,
+          "meanDailyReturn": 0.0012257251951774324
+        },
+        "baselineBase": {
+          "candidate": "m30-n320-x20",
+          "days": 61,
+          "initialCapital": 60000.0,
+          "return": 0.02730526220010354,
+          "dailyMaxDrawdown": -0.011603298346239965,
+          "trades": 73,
+          "tradesBySymbol": {
+            "BTCUSDT": 16,
+            "ETHUSDT": 15,
+            "BNBUSDT": 12,
+            "SOLUSDT": 12,
+            "XRPUSDT": 10,
+            "DOGEUSDT": 8
+          },
+          "netPnl": 1638.3157320062091,
+          "netExpectancy": 22.442681260359084,
+          "meanNetR": 0.43850479018043403,
+          "profitFactor": 1.7548942488858994,
+          "meanDailyReturn": 0.0004459922740124446
+        },
+        "selectedStress": {
+          "candidate": "m30-n320-x160-stress",
+          "days": 61,
+          "initialCapital": 60000.0,
+          "return": 0.07166805040139579,
+          "dailyMaxDrawdown": -0.013937562553088756,
+          "trades": 38,
+          "tradesBySymbol": {
+            "BTCUSDT": 5,
+            "ETHUSDT": 7,
+            "BNBUSDT": 12,
+            "SOLUSDT": 5,
+            "XRPUSDT": 4,
+            "DOGEUSDT": 5
+          },
+          "netPnl": 4300.083024083746,
+          "netExpectancy": 113.16007958115055,
+          "meanNetR": 2.381021197211623,
+          "profitFactor": 4.3680696495569045,
+          "meanDailyReturn": 0.0011445713618419367
+        },
+        "baselineStress": {
+          "candidate": "m30-n320-x20-stress",
+          "days": 61,
+          "initialCapital": 60000.0,
+          "return": 0.021976300186022035,
+          "dailyMaxDrawdown": -0.01185043931134766,
+          "trades": 73,
+          "tradesBySymbol": {
+            "BTCUSDT": 16,
+            "ETHUSDT": 15,
+            "BNBUSDT": 12,
+            "SOLUSDT": 12,
+            "XRPUSDT": 10,
+            "DOGEUSDT": 8
+          },
+          "netPnl": 1318.5780111613276,
+          "netExpectancy": 18.062712481662114,
+          "meanNetR": 0.3466691976277178,
+          "profitFactor": 1.6011653252302487,
+          "meanDailyReturn": 0.0003602282775393483
+        }
+      }
+    }
+  ],
+  "pooled": {
+    "days": 426,
+    "base": {
+      "trades": 275,
+      "netPnl": 26780.1109276372,
+      "tradesBySymbol": {
+        "BTCUSDT": 40,
+        "ETHUSDT": 51,
+        "BNBUSDT": 53,
+        "SOLUSDT": 61,
+        "XRPUSDT": 40,
+        "DOGEUSDT": 30
+      },
+      "netExpectancy": 97.38222155504437,
+      "meanNetR": 1.7970945338136024
+    },
+    "stress": {
+      "trades": 274,
+      "netPnl": 25576.242915320843,
+      "tradesBySymbol": {
+        "BTCUSDT": 40,
+        "ETHUSDT": 51,
+        "BNBUSDT": 53,
+        "SOLUSDT": 60,
+        "XRPUSDT": 40,
+        "DOGEUSDT": 30
+      },
+      "netExpectancy": 93.34395224569651,
+      "meanNetR": 1.7945104035122652
+    }
+  },
+  "bootstrap": [
+    {
+      "blockDays": 7,
+      "samples": 2000,
+      "seed": 20261003,
+      "days": 426,
+      "absolute": {
+        "selectedBase": {
+          "meanDailyReturn": 0.0009301944713838409,
+          "meanDailyReturn95CI": [
+            0.00039648351393080676,
+            0.00156448485206589
+          ]
+        },
+        "baselineBase": {
+          "meanDailyReturn": 0.00035681133967793775,
+          "meanDailyReturn95CI": [
+            4.65356313300309e-05,
+            0.0007456880363751829
+          ]
+        },
+        "selectedStress": {
+          "meanDailyReturn": 0.0008920253968496181,
+          "meanDailyReturn95CI": [
+            0.0003759950897707635,
+            0.0015144371634071283
+          ]
+        },
+        "baselineStress": {
+          "meanDailyReturn": 0.00029907557679419947,
+          "meanDailyReturn95CI": [
+            -3.975316235088283e-08,
+            0.0006692250765410728
+          ]
+        }
+      },
+      "paired": {
+        "base": {
+          "meanDailyReturn": 0.0005733831317059031,
+          "meanDailyReturn95CI": [
+            0.00021929415490982756,
+            0.000995319948961048
+          ]
+        },
+        "stress": {
+          "meanDailyReturn": 0.0005929498200554187,
+          "meanDailyReturn95CI": [
+            0.00024726955132292145,
+            0.0010035207431795456
+          ]
+        }
+      }
+    },
+    {
+      "blockDays": 28,
+      "samples": 2000,
+      "seed": 20261003,
+      "days": 426,
+      "absolute": {
+        "selectedBase": {
+          "meanDailyReturn": 0.0009301944713838409,
+          "meanDailyReturn95CI": [
+            0.00033350544879331653,
+            0.0016326728290096348
+          ]
+        },
+        "baselineBase": {
+          "meanDailyReturn": 0.00035681133967793775,
+          "meanDailyReturn95CI": [
+            1.8301339436623475e-05,
+            0.0007580709120554738
+          ]
+        },
+        "selectedStress": {
+          "meanDailyReturn": 0.0008920253968496181,
+          "meanDailyReturn95CI": [
+            0.00030965581151714845,
+            0.0015636945915066662
+          ]
+        },
+        "baselineStress": {
+          "meanDailyReturn": 0.00029907557679419947,
+          "meanDailyReturn95CI": [
+            -2.670128415470146e-05,
+            0.0006879789289465374
+          ]
+        }
+      },
+      "paired": {
+        "base": {
+          "meanDailyReturn": 0.0005733831317059031,
+          "meanDailyReturn95CI": [
+            0.00016611640785124305,
+            0.0010706595621988132
+          ]
+        },
+        "stress": {
+          "meanDailyReturn": 0.0005929498200554187,
+          "meanDailyReturn95CI": [
+            0.00019277674846897733,
+            0.0010733826906780338
+          ]
+        }
+      }
+    }
+  ],
+  "leaveOneSymbolOut": {
+    "windows": [
+      {
+        "window": "transfer-2021",
+        "days": 365,
+        "meanDailyReturn": {
+          "selectedBase": {
+            "BTCUSDT": 0.00101930379890871,
+            "ETHUSDT": 0.0009520821381307268,
+            "BNBUSDT": 0.0007987299413922906,
+            "SOLUSDT": 0.0009775689690670949,
+            "XRPUSDT": 0.0010027885664520464,
+            "DOGEUSDT": 0.0005219256720234982
+          },
+          "baselineBase": {
+            "BTCUSDT": 0.0003847601900429103,
+            "ETHUSDT": 0.000358188656492437,
+            "BNBUSDT": 0.00028454926350692845,
+            "SOLUSDT": 0.0004302858411145101,
+            "XRPUSDT": 0.0004322659463046169,
+            "DOGEUSDT": 0.00016045499616263183
+          },
+          "selectedStress": {
+            "BTCUSDT": 0.0009937966148809662,
+            "ETHUSDT": 0.0009279535962481085,
+            "BNBUSDT": 0.0007645696368565237,
+            "SOLUSDT": 0.0009266683969415865,
+            "XRPUSDT": 0.0009709432142062747,
+            "DOGEUSDT": 0.0005031425823440422
+          },
+          "baselineStress": {
+            "BTCUSDT": 0.00033340796639301436,
+            "ETHUSDT": 0.0003081194191813517,
+            "BNBUSDT": 0.00023773914515093356,
+            "SOLUSDT": 0.0003750941518858344,
+            "XRPUSDT": 0.00037406923893194746,
+            "DOGEUSDT": 0.00010336904574478076
+          }
+        }
+      },
+      {
+        "window": "transfer-2024-oct-nov",
+        "days": 61,
+        "meanDailyReturn": {
+          "selectedBase": {
+            "BTCUSDT": 0.0012277344136095477,
+            "ETHUSDT": 0.0013259924027321309,
+            "BNBUSDT": 0.0016381601726285786,
+            "SOLUSDT": 0.0013459288408268178,
+            "XRPUSDT": 0.0007370210959333794,
+            "DOGEUSDT": 0.0010708000126115787
+          },
+          "baselineBase": {
+            "BTCUSDT": 0.0004944323421128699,
+            "ETHUSDT": 0.0005327814827386836,
+            "BNBUSDT": 0.0006783818520984257,
+            "SOLUSDT": 0.000526417445356689,
+            "XRPUSDT": 0.0003310607349930214,
+            "DOGEUSDT": 0.00010945890976624993
+          },
+          "selectedStress": {
+            "BTCUSDT": 0.0011509558093865187,
+            "ETHUSDT": 0.0012459803932198246,
+            "BNBUSDT": 0.0015428585440074951,
+            "SOLUSDT": 0.001251435056407794,
+            "XRPUSDT": 0.0006789269883601474,
+            "DOGEUSDT": 0.000989246938199762
+          },
+          "baselineStress": {
+            "BTCUSDT": 0.00042118730089255816,
+            "ETHUSDT": 0.0004477691162607583,
+            "BNBUSDT": 0.000581948163139508,
+            "SOLUSDT": 0.00043863006516051904,
+            "XRPUSDT": 0.00024107474028741384,
+            "DOGEUSDT": 2.731398931066584e-05
+          }
+        }
+      }
+    ],
+    "pooledMeanDailyReturn": {
+      "selectedBase": {
+        "BTCUSDT": 0.0010491494972578912,
+        "ETHUSDT": 0.0010056232793060453,
+        "BNBUSDT": 0.0009189300449261253,
+        "SOLUSDT": 0.0010303153356805762,
+        "XRPUSDT": 0.0009647326610491388,
+        "DOGEUSDT": 0.0006005203545959698
+      },
+      "baselineBase": {
+        "BTCUSDT": 0.00040046441839095616,
+        "ETHUSDT": 0.00038318903771549114,
+        "BNBUSDT": 0.0003409431318263682,
+        "SOLUSDT": 0.0004440511647266531,
+        "XRPUSDT": 0.0004177741202717358,
+        "DOGEUSDT": 0.0001531527396598635
+      },
+      "selectedStress": {
+        "BTCUSDT": 0.001016300630995611,
+        "ETHUSDT": 0.000973492644640772,
+        "BNBUSDT": 0.0008760147620588928,
+        "SOLUSDT": 0.0009731725430153861,
+        "XRPUSDT": 0.0009291286842142236,
+        "DOGEUSDT": 0.0005727490746144622
+      },
+      "baselineStress": {
+        "BTCUSDT": 0.0003459773077180664,
+        "ETHUSDT": 0.0003281162067913137,
+        "BNBUSDT": 0.0002870272909192506,
+        "SOLUSDT": 0.000384192017401693,
+        "XRPUSDT": 0.0003550254257457584,
+        "DOGEUSDT": 9.247853296900373e-05
+      }
+    },
+    "scope": "Descriptive account daily means after omitting one original fixed sleeve; no capital redistribution, rerun, selection, or acceptance criterion."
+  },
+  "acceptance": {
+    "status": "passed-for-forward-observation",
+    "checks": [
+      {
+        "criterion": "development-qualified",
+        "passed": true,
+        "actual": true,
+        "threshold": true
+      },
+      {
+        "criterion": "minimum-transfer-days",
+        "passed": true,
+        "actual": 426,
+        "threshold": 180
+      },
+      {
+        "criterion": "base:minimum-trades",
+        "passed": true,
+        "actual": 275,
+        "threshold": 100
+      },
+      {
+        "criterion": "base:minimum-trades:BTCUSDT",
+        "passed": true,
+        "actual": 40,
+        "threshold": 10
+      },
+      {
+        "criterion": "base:minimum-trades:ETHUSDT",
+        "passed": true,
+        "actual": 51,
+        "threshold": 10
+      },
+      {
+        "criterion": "base:minimum-trades:BNBUSDT",
+        "passed": true,
+        "actual": 53,
+        "threshold": 10
+      },
+      {
+        "criterion": "base:minimum-trades:SOLUSDT",
+        "passed": true,
+        "actual": 61,
+        "threshold": 10
+      },
+      {
+        "criterion": "base:minimum-trades:XRPUSDT",
+        "passed": true,
+        "actual": 40,
+        "threshold": 10
+      },
+      {
+        "criterion": "base:minimum-trades:DOGEUSDT",
+        "passed": true,
+        "actual": 30,
+        "threshold": 10
+      },
+      {
+        "criterion": "base:transfer-2021:positive-return",
+        "passed": true,
+        "actual": 0.3694141209134991,
+        "threshold": ">0"
+      },
+      {
+        "criterion": "base:transfer-2021:daily-drawdown",
+        "passed": true,
+        "actual": -0.033262630161995266,
+        "threshold": -0.1
+      },
+      {
+        "criterion": "base:transfer-2024-oct-nov:positive-return",
+        "passed": true,
+        "actual": 0.07692106121378739,
+        "threshold": ">0"
+      },
+      {
+        "criterion": "base:transfer-2024-oct-nov:daily-drawdown",
+        "passed": true,
+        "actual": -0.014417198831014333,
+        "threshold": -0.1
+      },
+      {
+        "criterion": "base:block7:absolute-lower-bound",
+        "passed": true,
+        "actual": 0.00039648351393080676,
+        "threshold": ">0"
+      },
+      {
+        "criterion": "base:block28:absolute-lower-bound",
+        "passed": true,
+        "actual": 0.00033350544879331653,
+        "threshold": ">0"
+      },
+      {
+        "criterion": "stress:minimum-trades",
+        "passed": true,
+        "actual": 274,
+        "threshold": 100
+      },
+      {
+        "criterion": "stress:minimum-trades:BTCUSDT",
+        "passed": true,
+        "actual": 40,
+        "threshold": 10
+      },
+      {
+        "criterion": "stress:minimum-trades:ETHUSDT",
+        "passed": true,
+        "actual": 51,
+        "threshold": 10
+      },
+      {
+        "criterion": "stress:minimum-trades:BNBUSDT",
+        "passed": true,
+        "actual": 53,
+        "threshold": 10
+      },
+      {
+        "criterion": "stress:minimum-trades:SOLUSDT",
+        "passed": true,
+        "actual": 60,
+        "threshold": 10
+      },
+      {
+        "criterion": "stress:minimum-trades:XRPUSDT",
+        "passed": true,
+        "actual": 40,
+        "threshold": 10
+      },
+      {
+        "criterion": "stress:minimum-trades:DOGEUSDT",
+        "passed": true,
+        "actual": 30,
+        "threshold": 10
+      },
+      {
+        "criterion": "stress:transfer-2021:positive-return",
+        "passed": true,
+        "actual": 0.35460266485395153,
+        "threshold": ">0"
+      },
+      {
+        "criterion": "stress:transfer-2021:daily-drawdown",
+        "passed": true,
+        "actual": -0.03294654260888985,
+        "threshold": -0.1
+      },
+      {
+        "criterion": "stress:transfer-2024-oct-nov:positive-return",
+        "passed": true,
+        "actual": 0.07166805040139579,
+        "threshold": ">0"
+      },
+      {
+        "criterion": "stress:transfer-2024-oct-nov:daily-drawdown",
+        "passed": true,
+        "actual": -0.013937562553088756,
+        "threshold": -0.1
+      },
+      {
+        "criterion": "stress:block7:absolute-lower-bound",
+        "passed": true,
+        "actual": 0.0003759950897707635,
+        "threshold": ">0"
+      },
+      {
+        "criterion": "stress:block28:absolute-lower-bound",
+        "passed": true,
+        "actual": 0.00030965581151714845,
+        "threshold": ">0"
+      }
+    ],
+    "failedCriteria": [],
+    "meaning": "Historical transfer evidence only; no guarantee of future profitability, reselection, or automatic deployment."
+  },
+  "conventions": {
+    "returnUnit": "fraction",
+    "calendar": "UTC",
+    "poolWeight": "observation-days",
+    "drawdownSampling": "daily-close",
+    "windowCapital": "independent-reset",
+    "bootstrapPairing": "same within-window date indices for all sleeves, candidates and costs",
+    "interval": "95% percentile, sorted ranks floor(samples*.025) and floor(samples*.975)",
+    "singleSleeveEvaluationVersion": 2
+  },
+  "limitations": [
+    "Retrospective historical transfer, not prospective or live evidence.",
+    "No cross-window blocks, gap filling or chained NAV. Longer windows receive proportionally more weight.",
+    "Intervals describe the frozen choice; they do not correct all earlier adaptive research trials or prove stationarity.",
+    "Trade net-R and dollar expectancy are ledger descriptions, not independent-trade inference. Paired improvement cannot replace absolute profitability."
+  ],
+  "evaluationIdentity": {
+    "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+    "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+    "selectionSha256": "8d10b3d2d091849a7e392c5cf11a4c59757c99334dc1217c6a02f4184177be0b",
+    "rawResultsSha256": "7855350d7a14582f712820e38e3505231fc768641aea2ccc34d04231576a0ef2",
+    "evaluationVersion": "trend-account-evaluation-2",
+    "evaluationSha256": "8b3585a603720ee2b5217d2666112e972cd20c23618edfb419fa2b381d8a7fea"
+  },
+  "engine": "trend-continuation-14",
+  "selection": {
+    "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+    "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+    "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+    "replayVersion": "trend-native-replay-3",
+    "id": "m30-n320-x160",
+    "developmentQualified": true,
+    "evaluationVersion": "trend-account-evaluation-2",
+    "evaluationSha256": "8b3585a603720ee2b5217d2666112e972cd20c23618edfb419fa2b381d8a7fea",
+    "developmentSha256": "87fb9fc074ad6b1aae114645e1a33eeaa0641e6923115108c2a6b3dd7426f20e",
+    "criterion": "Select exactly once on development base-cost daily portfolio Sharpe from the declared six-candidate pool, subject to >=30 completed trades per symbol and finite Sharpe. Ties follow candidate declaration order (baseline first). Stop without inspecting transfer outcomes if none qualify. Do not re-rank after the separate >=4 profitable symbols and positive median-symbol-mean-R qualification; still test the frozen choice, report any qualification failure. N160/N640 are diagnostic only and permanently excluded from selection.",
+    "objective": "dailySharpe"
+  },
+  "generatorSha256": "aa09add45b320cd9e6d9b9a90dfd3dfa25aa7d6e0376f1712dd0cd0d7341e208",
+  "transferSourceSha256": "b7dd5fc2850b763727cf491711ea376f46e39d8e784a2e18aba407cab9598622",
+  "provenance": [
+    {
+      "window": "development",
+      "symbol": "BTCUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "60439005cc3babf56ac540ed53549df4d07227aebfa32fdf11f27903466cbbc7",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01",
+          "role": "development",
+          "label": "\u5f00\u53d1\u8d44\u683c\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "dd2743f38969f908beb4a8538033ffa997c5ee1a95bb39c54187da9e82a2fc04"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54a07f4e85fc7852d5a24f8c6eeac1c3e86cccd6dd1bd8127babbba2327cf142",
+      "warmup": {
+        "m30-n320-x20": 1661385600000,
+        "m30-n160-x20": 1661644800000,
+        "m30-n640-x20": 1660780800000,
+        "m30-n320-both": 1661385600000,
+        "m30-n320-stop3": 1661385600000,
+        "m30-n320-x160": 1661385600000,
+        "m30-n320-background": 1661385600000,
+        "m30-n320-cost02": 1661385600000
+      }
+    },
+    {
+      "window": "development",
+      "symbol": "ETHUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "0b0405a57e1818d36e93e07528aa5a1457b6e576a4e016a6cf937a10718e7de2",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01",
+          "role": "development",
+          "label": "\u5f00\u53d1\u8d44\u683c\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "62a888af5b58052c0ef960c3f4e724589056fb1ea9cafeb6045d98a9eb7036f6"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "2c5b85a041d5ca1bf54dc27aca804db62d6380afb520eeb284da708549c1a226",
+      "warmup": {
+        "m30-n320-x20": 1661385600000,
+        "m30-n160-x20": 1661644800000,
+        "m30-n640-x20": 1660780800000,
+        "m30-n320-both": 1661385600000,
+        "m30-n320-stop3": 1661385600000,
+        "m30-n320-x160": 1661385600000,
+        "m30-n320-background": 1661385600000,
+        "m30-n320-cost02": 1661385600000
+      }
+    },
+    {
+      "window": "development",
+      "symbol": "BNBUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "5c1ea82b8d5c0c684e01331dd0f27a2a93920ac6749ae51acf9d978cb3080f6d",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01",
+          "role": "development",
+          "label": "\u5f00\u53d1\u8d44\u683c\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "785942e85a7207ef46eafab6cbb2cf2e84e47fda3e024ab8f86c918147ac601a"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "26f644e783b4582752149aa346e896fcc2bce13c50fc52980c747fff9b823ba6",
+      "warmup": {
+        "m30-n320-x20": 1661385600000,
+        "m30-n160-x20": 1661644800000,
+        "m30-n640-x20": 1660780800000,
+        "m30-n320-both": 1661385600000,
+        "m30-n320-stop3": 1661385600000,
+        "m30-n320-x160": 1661385600000,
+        "m30-n320-background": 1661385600000,
+        "m30-n320-cost02": 1661385600000
+      }
+    },
+    {
+      "window": "development",
+      "symbol": "SOLUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "7a6ba062a099fbafceb1450c9e3a6e8bd68743daccf7d62ed479852acb7e77ad",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01",
+          "role": "development",
+          "label": "\u5f00\u53d1\u8d44\u683c\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "e5ad1a9435acb2ff832b7684f82a4607d67c7e73c042d4c178bdd5eb16ff198a"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "12d202471ba0714e9e32c0e3d4d82849456ff9cd2043f1e66612021e81d8a3ef",
+      "warmup": {
+        "m30-n320-x20": 1661385600000,
+        "m30-n160-x20": 1661644800000,
+        "m30-n640-x20": 1660780800000,
+        "m30-n320-both": 1661385600000,
+        "m30-n320-stop3": 1661385600000,
+        "m30-n320-x160": 1661385600000,
+        "m30-n320-background": 1661385600000,
+        "m30-n320-cost02": 1661385600000
+      }
+    },
+    {
+      "window": "development",
+      "symbol": "XRPUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "817410c14cc98fcf13749c1abcb040c15f2339c9edae82dbff63de8b9a09842c",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01",
+          "role": "development",
+          "label": "\u5f00\u53d1\u8d44\u683c\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "eb977579fa53d73469560b132ae42efdfc995b575297ac56423ceac9885471a0"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "ea3b965b21fc951843476c90c89236d80b79e18c89172eb1cdf547d584200959",
+      "warmup": {
+        "m30-n320-x20": 1661385600000,
+        "m30-n160-x20": 1661644800000,
+        "m30-n640-x20": 1660780800000,
+        "m30-n320-both": 1661385600000,
+        "m30-n320-stop3": 1661385600000,
+        "m30-n320-x160": 1661385600000,
+        "m30-n320-background": 1661385600000,
+        "m30-n320-cost02": 1661385600000
+      }
+    },
+    {
+      "window": "development",
+      "symbol": "DOGEUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "c1bd99c13bedf39f16c7dc70035ae14011cade32fc67f80d37b1f156e69f0ee5",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01",
+          "role": "development",
+          "label": "\u5f00\u53d1\u8d44\u683c\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "2d8d6a5a20c97d23fbd157a71ff2d738eecdf3695661ecf072626a7b352d07d5"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54f8dbbf30e52dc8654ec460be69afaf9abe6f98ade5e348ebc9834f2a4232f6",
+      "warmup": {
+        "m30-n320-x20": 1661385600000,
+        "m30-n160-x20": 1661644800000,
+        "m30-n640-x20": 1660780800000,
+        "m30-n320-both": 1661385600000,
+        "m30-n320-stop3": 1661385600000,
+        "m30-n320-x160": 1661385600000,
+        "m30-n320-background": 1661385600000,
+        "m30-n320-cost02": 1661385600000
+      }
+    },
+    {
+      "window": "known-2024",
+      "symbol": "BTCUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "d23ca80f0f411cd00e219a5938fda644be4a67cb95cff9118dabd8bc12b550fb",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01",
+          "role": "diagnostic-known",
+          "label": "2024 \u5e74 1\u20147 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "5d1c1991ccb97b75b3eb2459ad528d1afc48c603c8528d53549be20de23a3784"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54a07f4e85fc7852d5a24f8c6eeac1c3e86cccd6dd1bd8127babbba2327cf142",
+      "warmup": {
+        "m30-n320-x20": 1703462400000,
+        "m30-n160-x20": 1703721600000,
+        "m30-n640-x20": 1702857600000,
+        "m30-n320-both": 1703462400000,
+        "m30-n320-stop3": 1703462400000,
+        "m30-n320-x160": 1703462400000,
+        "m30-n320-background": 1703462400000,
+        "m30-n320-cost02": 1703462400000,
+        "m30-n320-x20-stress": 1703462400000,
+        "m30-n160-x20-stress": 1703721600000,
+        "m30-n640-x20-stress": 1702857600000,
+        "m30-n320-both-stress": 1703462400000,
+        "m30-n320-stop3-stress": 1703462400000,
+        "m30-n320-x160-stress": 1703462400000,
+        "m30-n320-background-stress": 1703462400000,
+        "m30-n320-cost02-stress": 1703462400000
+      }
+    },
+    {
+      "window": "known-2024",
+      "symbol": "ETHUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "6cc0bf0922c6323a73d4d8ddc0ac6b5c9635467932128ba64637baf20cd186b4",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01",
+          "role": "diagnostic-known",
+          "label": "2024 \u5e74 1\u20147 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "4aa69d6ddac5483bf85c4d38828e093c1a4820d8545358d821a8e4dc18fa6d84"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "2c5b85a041d5ca1bf54dc27aca804db62d6380afb520eeb284da708549c1a226",
+      "warmup": {
+        "m30-n320-x20": 1703462400000,
+        "m30-n160-x20": 1703721600000,
+        "m30-n640-x20": 1702857600000,
+        "m30-n320-both": 1703462400000,
+        "m30-n320-stop3": 1703462400000,
+        "m30-n320-x160": 1703462400000,
+        "m30-n320-background": 1703462400000,
+        "m30-n320-cost02": 1703462400000,
+        "m30-n320-x20-stress": 1703462400000,
+        "m30-n160-x20-stress": 1703721600000,
+        "m30-n640-x20-stress": 1702857600000,
+        "m30-n320-both-stress": 1703462400000,
+        "m30-n320-stop3-stress": 1703462400000,
+        "m30-n320-x160-stress": 1703462400000,
+        "m30-n320-background-stress": 1703462400000,
+        "m30-n320-cost02-stress": 1703462400000
+      }
+    },
+    {
+      "window": "known-2024",
+      "symbol": "BNBUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "849b08a3bbfba9f220e61766cbff756c9525c074e1ab5fc38ebdfbfda6f330a4",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01",
+          "role": "diagnostic-known",
+          "label": "2024 \u5e74 1\u20147 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "3a122284884309a879e39b1796c20a24894b1e19facd39b632cd08aa3f63eccf"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "26f644e783b4582752149aa346e896fcc2bce13c50fc52980c747fff9b823ba6",
+      "warmup": {
+        "m30-n320-x20": 1703462400000,
+        "m30-n160-x20": 1703721600000,
+        "m30-n640-x20": 1702857600000,
+        "m30-n320-both": 1703462400000,
+        "m30-n320-stop3": 1703462400000,
+        "m30-n320-x160": 1703462400000,
+        "m30-n320-background": 1703462400000,
+        "m30-n320-cost02": 1703462400000,
+        "m30-n320-x20-stress": 1703462400000,
+        "m30-n160-x20-stress": 1703721600000,
+        "m30-n640-x20-stress": 1702857600000,
+        "m30-n320-both-stress": 1703462400000,
+        "m30-n320-stop3-stress": 1703462400000,
+        "m30-n320-x160-stress": 1703462400000,
+        "m30-n320-background-stress": 1703462400000,
+        "m30-n320-cost02-stress": 1703462400000
+      }
+    },
+    {
+      "window": "known-2024",
+      "symbol": "SOLUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "3fb8ac6501b2ede68c0a543898629ae194f2f884dd5e5328348313cb69a61bb6",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01",
+          "role": "diagnostic-known",
+          "label": "2024 \u5e74 1\u20147 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "42629bc6298105dc847e9d8a3ca050dc932a81618b96d6803d7b4dd20b604c99"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "12d202471ba0714e9e32c0e3d4d82849456ff9cd2043f1e66612021e81d8a3ef",
+      "warmup": {
+        "m30-n320-x20": 1703462400000,
+        "m30-n160-x20": 1703721600000,
+        "m30-n640-x20": 1702857600000,
+        "m30-n320-both": 1703462400000,
+        "m30-n320-stop3": 1703462400000,
+        "m30-n320-x160": 1703462400000,
+        "m30-n320-background": 1703462400000,
+        "m30-n320-cost02": 1703462400000,
+        "m30-n320-x20-stress": 1703462400000,
+        "m30-n160-x20-stress": 1703721600000,
+        "m30-n640-x20-stress": 1702857600000,
+        "m30-n320-both-stress": 1703462400000,
+        "m30-n320-stop3-stress": 1703462400000,
+        "m30-n320-x160-stress": 1703462400000,
+        "m30-n320-background-stress": 1703462400000,
+        "m30-n320-cost02-stress": 1703462400000
+      }
+    },
+    {
+      "window": "known-2024",
+      "symbol": "XRPUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "02ea81fe4d71d9592087bf4a5fdff934d6e2fc3383c059b9008c734ce98883a1",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01",
+          "role": "diagnostic-known",
+          "label": "2024 \u5e74 1\u20147 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "203653d72e0f7ca7a471d07b6013c59b22380d0c22ef6dd2116798c7cceacdae"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "ea3b965b21fc951843476c90c89236d80b79e18c89172eb1cdf547d584200959",
+      "warmup": {
+        "m30-n320-x20": 1703462400000,
+        "m30-n160-x20": 1703721600000,
+        "m30-n640-x20": 1702857600000,
+        "m30-n320-both": 1703462400000,
+        "m30-n320-stop3": 1703462400000,
+        "m30-n320-x160": 1703462400000,
+        "m30-n320-background": 1703462400000,
+        "m30-n320-cost02": 1703462400000,
+        "m30-n320-x20-stress": 1703462400000,
+        "m30-n160-x20-stress": 1703721600000,
+        "m30-n640-x20-stress": 1702857600000,
+        "m30-n320-both-stress": 1703462400000,
+        "m30-n320-stop3-stress": 1703462400000,
+        "m30-n320-x160-stress": 1703462400000,
+        "m30-n320-background-stress": 1703462400000,
+        "m30-n320-cost02-stress": 1703462400000
+      }
+    },
+    {
+      "window": "known-2024",
+      "symbol": "DOGEUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "d61e41e818a8162f8654aeffda21c5843a34c718f0eb8b80291055a9c6cb36e7",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2024",
+          "start": "2024-01-01",
+          "end": "2024-08-01",
+          "role": "diagnostic-known",
+          "label": "2024 \u5e74 1\u20147 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "4f14f1cbced4fa56cf51d440cfacab2cccda420cfd1676a940f95e37f7083602"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54f8dbbf30e52dc8654ec460be69afaf9abe6f98ade5e348ebc9834f2a4232f6",
+      "warmup": {
+        "m30-n320-x20": 1703462400000,
+        "m30-n160-x20": 1703721600000,
+        "m30-n640-x20": 1702857600000,
+        "m30-n320-both": 1703462400000,
+        "m30-n320-stop3": 1703462400000,
+        "m30-n320-x160": 1703462400000,
+        "m30-n320-background": 1703462400000,
+        "m30-n320-cost02": 1703462400000,
+        "m30-n320-x20-stress": 1703462400000,
+        "m30-n160-x20-stress": 1703721600000,
+        "m30-n640-x20-stress": 1702857600000,
+        "m30-n320-both-stress": 1703462400000,
+        "m30-n320-stop3-stress": 1703462400000,
+        "m30-n320-x160-stress": 1703462400000,
+        "m30-n320-background-stress": 1703462400000,
+        "m30-n320-cost02-stress": 1703462400000
+      }
+    },
+    {
+      "window": "known-2025",
+      "symbol": "BTCUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "d23ca80f0f411cd00e219a5938fda644be4a67cb95cff9118dabd8bc12b550fb",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "role": "diagnostic-known",
+          "label": "2025 \u5168\u5e74 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "6db086c40484c7d5ef9610dbfbc3f7ebed5a2b59c5ddc1b0adc59b94610a4859"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54a07f4e85fc7852d5a24f8c6eeac1c3e86cccd6dd1bd8127babbba2327cf142",
+      "warmup": {
+        "m30-n320-x20": 1735084800000,
+        "m30-n160-x20": 1735344000000,
+        "m30-n640-x20": 1734480000000,
+        "m30-n320-both": 1735084800000,
+        "m30-n320-stop3": 1735084800000,
+        "m30-n320-x160": 1735084800000,
+        "m30-n320-background": 1735084800000,
+        "m30-n320-cost02": 1735084800000,
+        "m30-n320-x20-stress": 1735084800000,
+        "m30-n160-x20-stress": 1735344000000,
+        "m30-n640-x20-stress": 1734480000000,
+        "m30-n320-both-stress": 1735084800000,
+        "m30-n320-stop3-stress": 1735084800000,
+        "m30-n320-x160-stress": 1735084800000,
+        "m30-n320-background-stress": 1735084800000,
+        "m30-n320-cost02-stress": 1735084800000
+      }
+    },
+    {
+      "window": "known-2025",
+      "symbol": "ETHUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "6cc0bf0922c6323a73d4d8ddc0ac6b5c9635467932128ba64637baf20cd186b4",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "role": "diagnostic-known",
+          "label": "2025 \u5168\u5e74 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "7c3e8a92ddad7b1cca04577b543e079b71bb206195f26abb6e5ad57e695b5221"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "2c5b85a041d5ca1bf54dc27aca804db62d6380afb520eeb284da708549c1a226",
+      "warmup": {
+        "m30-n320-x20": 1735084800000,
+        "m30-n160-x20": 1735344000000,
+        "m30-n640-x20": 1734480000000,
+        "m30-n320-both": 1735084800000,
+        "m30-n320-stop3": 1735084800000,
+        "m30-n320-x160": 1735084800000,
+        "m30-n320-background": 1735084800000,
+        "m30-n320-cost02": 1735084800000,
+        "m30-n320-x20-stress": 1735084800000,
+        "m30-n160-x20-stress": 1735344000000,
+        "m30-n640-x20-stress": 1734480000000,
+        "m30-n320-both-stress": 1735084800000,
+        "m30-n320-stop3-stress": 1735084800000,
+        "m30-n320-x160-stress": 1735084800000,
+        "m30-n320-background-stress": 1735084800000,
+        "m30-n320-cost02-stress": 1735084800000
+      }
+    },
+    {
+      "window": "known-2025",
+      "symbol": "BNBUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "849b08a3bbfba9f220e61766cbff756c9525c074e1ab5fc38ebdfbfda6f330a4",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "role": "diagnostic-known",
+          "label": "2025 \u5168\u5e74 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "65e36ae013522e10674401f37d94a23edee9a7f4823fbd16dcdcb9ea3c12e156"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "26f644e783b4582752149aa346e896fcc2bce13c50fc52980c747fff9b823ba6",
+      "warmup": {
+        "m30-n320-x20": 1735084800000,
+        "m30-n160-x20": 1735344000000,
+        "m30-n640-x20": 1734480000000,
+        "m30-n320-both": 1735084800000,
+        "m30-n320-stop3": 1735084800000,
+        "m30-n320-x160": 1735084800000,
+        "m30-n320-background": 1735084800000,
+        "m30-n320-cost02": 1735084800000,
+        "m30-n320-x20-stress": 1735084800000,
+        "m30-n160-x20-stress": 1735344000000,
+        "m30-n640-x20-stress": 1734480000000,
+        "m30-n320-both-stress": 1735084800000,
+        "m30-n320-stop3-stress": 1735084800000,
+        "m30-n320-x160-stress": 1735084800000,
+        "m30-n320-background-stress": 1735084800000,
+        "m30-n320-cost02-stress": 1735084800000
+      }
+    },
+    {
+      "window": "known-2025",
+      "symbol": "SOLUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "3fb8ac6501b2ede68c0a543898629ae194f2f884dd5e5328348313cb69a61bb6",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "role": "diagnostic-known",
+          "label": "2025 \u5168\u5e74 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "33b5b85d0cb9943287100f04439f976361af2f9fa098cc5b9a06ff4ee7fcf865"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "12d202471ba0714e9e32c0e3d4d82849456ff9cd2043f1e66612021e81d8a3ef",
+      "warmup": {
+        "m30-n320-x20": 1735084800000,
+        "m30-n160-x20": 1735344000000,
+        "m30-n640-x20": 1734480000000,
+        "m30-n320-both": 1735084800000,
+        "m30-n320-stop3": 1735084800000,
+        "m30-n320-x160": 1735084800000,
+        "m30-n320-background": 1735084800000,
+        "m30-n320-cost02": 1735084800000,
+        "m30-n320-x20-stress": 1735084800000,
+        "m30-n160-x20-stress": 1735344000000,
+        "m30-n640-x20-stress": 1734480000000,
+        "m30-n320-both-stress": 1735084800000,
+        "m30-n320-stop3-stress": 1735084800000,
+        "m30-n320-x160-stress": 1735084800000,
+        "m30-n320-background-stress": 1735084800000,
+        "m30-n320-cost02-stress": 1735084800000
+      }
+    },
+    {
+      "window": "known-2025",
+      "symbol": "XRPUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "02ea81fe4d71d9592087bf4a5fdff934d6e2fc3383c059b9008c734ce98883a1",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "role": "diagnostic-known",
+          "label": "2025 \u5168\u5e74 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "5f116d614cd970a83054c2ece5a5c6d5e7896b3520d25b4bcef9ccf65240788d"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "ea3b965b21fc951843476c90c89236d80b79e18c89172eb1cdf547d584200959",
+      "warmup": {
+        "m30-n320-x20": 1735084800000,
+        "m30-n160-x20": 1735344000000,
+        "m30-n640-x20": 1734480000000,
+        "m30-n320-both": 1735084800000,
+        "m30-n320-stop3": 1735084800000,
+        "m30-n320-x160": 1735084800000,
+        "m30-n320-background": 1735084800000,
+        "m30-n320-cost02": 1735084800000,
+        "m30-n320-x20-stress": 1735084800000,
+        "m30-n160-x20-stress": 1735344000000,
+        "m30-n640-x20-stress": 1734480000000,
+        "m30-n320-both-stress": 1735084800000,
+        "m30-n320-stop3-stress": 1735084800000,
+        "m30-n320-x160-stress": 1735084800000,
+        "m30-n320-background-stress": 1735084800000,
+        "m30-n320-cost02-stress": 1735084800000
+      }
+    },
+    {
+      "window": "known-2025",
+      "symbol": "DOGEUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "d61e41e818a8162f8654aeffda21c5843a34c718f0eb8b80291055a9c6cb36e7",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2025",
+          "start": "2025-01-01",
+          "end": "2026-01-01",
+          "role": "diagnostic-known",
+          "label": "2025 \u5168\u5e74 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "b923e2af0e8d80bcababb6f8d53d241d16a781061f3a09a6efc8222bb0952990"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54f8dbbf30e52dc8654ec460be69afaf9abe6f98ade5e348ebc9834f2a4232f6",
+      "warmup": {
+        "m30-n320-x20": 1735084800000,
+        "m30-n160-x20": 1735344000000,
+        "m30-n640-x20": 1734480000000,
+        "m30-n320-both": 1735084800000,
+        "m30-n320-stop3": 1735084800000,
+        "m30-n320-x160": 1735084800000,
+        "m30-n320-background": 1735084800000,
+        "m30-n320-cost02": 1735084800000,
+        "m30-n320-x20-stress": 1735084800000,
+        "m30-n160-x20-stress": 1735344000000,
+        "m30-n640-x20-stress": 1734480000000,
+        "m30-n320-both-stress": 1735084800000,
+        "m30-n320-stop3-stress": 1735084800000,
+        "m30-n320-x160-stress": 1735084800000,
+        "m30-n320-background-stress": 1735084800000,
+        "m30-n320-cost02-stress": 1735084800000
+      }
+    },
+    {
+      "window": "known-2026",
+      "symbol": "BTCUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "d23ca80f0f411cd00e219a5938fda644be4a67cb95cff9118dabd8bc12b550fb",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01",
+          "role": "diagnostic-known",
+          "label": "2026 \u5e74 1\u20148 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "b8925a50afd2fcf65dd53c7be91b61b398c22d8b8789ac0944d740a86a9adf3c"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54a07f4e85fc7852d5a24f8c6eeac1c3e86cccd6dd1bd8127babbba2327cf142",
+      "warmup": {
+        "m30-n320-x20": 1766620800000,
+        "m30-n160-x20": 1766880000000,
+        "m30-n640-x20": 1766016000000,
+        "m30-n320-both": 1766620800000,
+        "m30-n320-stop3": 1766620800000,
+        "m30-n320-x160": 1766620800000,
+        "m30-n320-background": 1766620800000,
+        "m30-n320-cost02": 1766620800000,
+        "m30-n320-x20-stress": 1766620800000,
+        "m30-n160-x20-stress": 1766880000000,
+        "m30-n640-x20-stress": 1766016000000,
+        "m30-n320-both-stress": 1766620800000,
+        "m30-n320-stop3-stress": 1766620800000,
+        "m30-n320-x160-stress": 1766620800000,
+        "m30-n320-background-stress": 1766620800000,
+        "m30-n320-cost02-stress": 1766620800000
+      }
+    },
+    {
+      "window": "known-2026",
+      "symbol": "ETHUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "6cc0bf0922c6323a73d4d8ddc0ac6b5c9635467932128ba64637baf20cd186b4",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01",
+          "role": "diagnostic-known",
+          "label": "2026 \u5e74 1\u20148 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "2b4e36078524f7e6a8e9109759724445ba9ba13bfdb448d30e1cb852443a0c1f"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "2c5b85a041d5ca1bf54dc27aca804db62d6380afb520eeb284da708549c1a226",
+      "warmup": {
+        "m30-n320-x20": 1766620800000,
+        "m30-n160-x20": 1766880000000,
+        "m30-n640-x20": 1766016000000,
+        "m30-n320-both": 1766620800000,
+        "m30-n320-stop3": 1766620800000,
+        "m30-n320-x160": 1766620800000,
+        "m30-n320-background": 1766620800000,
+        "m30-n320-cost02": 1766620800000,
+        "m30-n320-x20-stress": 1766620800000,
+        "m30-n160-x20-stress": 1766880000000,
+        "m30-n640-x20-stress": 1766016000000,
+        "m30-n320-both-stress": 1766620800000,
+        "m30-n320-stop3-stress": 1766620800000,
+        "m30-n320-x160-stress": 1766620800000,
+        "m30-n320-background-stress": 1766620800000,
+        "m30-n320-cost02-stress": 1766620800000
+      }
+    },
+    {
+      "window": "known-2026",
+      "symbol": "BNBUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "849b08a3bbfba9f220e61766cbff756c9525c074e1ab5fc38ebdfbfda6f330a4",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01",
+          "role": "diagnostic-known",
+          "label": "2026 \u5e74 1\u20148 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "5e4735659a88d2d8d902ae339d8a62f502a9258918d467cec1021746ad63af0b"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "26f644e783b4582752149aa346e896fcc2bce13c50fc52980c747fff9b823ba6",
+      "warmup": {
+        "m30-n320-x20": 1766620800000,
+        "m30-n160-x20": 1766880000000,
+        "m30-n640-x20": 1766016000000,
+        "m30-n320-both": 1766620800000,
+        "m30-n320-stop3": 1766620800000,
+        "m30-n320-x160": 1766620800000,
+        "m30-n320-background": 1766620800000,
+        "m30-n320-cost02": 1766620800000,
+        "m30-n320-x20-stress": 1766620800000,
+        "m30-n160-x20-stress": 1766880000000,
+        "m30-n640-x20-stress": 1766016000000,
+        "m30-n320-both-stress": 1766620800000,
+        "m30-n320-stop3-stress": 1766620800000,
+        "m30-n320-x160-stress": 1766620800000,
+        "m30-n320-background-stress": 1766620800000,
+        "m30-n320-cost02-stress": 1766620800000
+      }
+    },
+    {
+      "window": "known-2026",
+      "symbol": "SOLUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "3fb8ac6501b2ede68c0a543898629ae194f2f884dd5e5328348313cb69a61bb6",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01",
+          "role": "diagnostic-known",
+          "label": "2026 \u5e74 1\u20148 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "f473e354b2231859a36fd5e2daf4399abfcf0aa3e81d4d0a0f7f5dae6942ac18"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "12d202471ba0714e9e32c0e3d4d82849456ff9cd2043f1e66612021e81d8a3ef",
+      "warmup": {
+        "m30-n320-x20": 1766620800000,
+        "m30-n160-x20": 1766880000000,
+        "m30-n640-x20": 1766016000000,
+        "m30-n320-both": 1766620800000,
+        "m30-n320-stop3": 1766620800000,
+        "m30-n320-x160": 1766620800000,
+        "m30-n320-background": 1766620800000,
+        "m30-n320-cost02": 1766620800000,
+        "m30-n320-x20-stress": 1766620800000,
+        "m30-n160-x20-stress": 1766880000000,
+        "m30-n640-x20-stress": 1766016000000,
+        "m30-n320-both-stress": 1766620800000,
+        "m30-n320-stop3-stress": 1766620800000,
+        "m30-n320-x160-stress": 1766620800000,
+        "m30-n320-background-stress": 1766620800000,
+        "m30-n320-cost02-stress": 1766620800000
+      }
+    },
+    {
+      "window": "known-2026",
+      "symbol": "XRPUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "02ea81fe4d71d9592087bf4a5fdff934d6e2fc3383c059b9008c734ce98883a1",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01",
+          "role": "diagnostic-known",
+          "label": "2026 \u5e74 1\u20148 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "3b68a013af80eb318faa1d9cedf899deb0a3352bcad2d69e6275495e5a3644c8"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "ea3b965b21fc951843476c90c89236d80b79e18c89172eb1cdf547d584200959",
+      "warmup": {
+        "m30-n320-x20": 1766620800000,
+        "m30-n160-x20": 1766880000000,
+        "m30-n640-x20": 1766016000000,
+        "m30-n320-both": 1766620800000,
+        "m30-n320-stop3": 1766620800000,
+        "m30-n320-x160": 1766620800000,
+        "m30-n320-background": 1766620800000,
+        "m30-n320-cost02": 1766620800000,
+        "m30-n320-x20-stress": 1766620800000,
+        "m30-n160-x20-stress": 1766880000000,
+        "m30-n640-x20-stress": 1766016000000,
+        "m30-n320-both-stress": 1766620800000,
+        "m30-n320-stop3-stress": 1766620800000,
+        "m30-n320-x160-stress": 1766620800000,
+        "m30-n320-background-stress": 1766620800000,
+        "m30-n320-cost02-stress": 1766620800000
+      }
+    },
+    {
+      "window": "known-2026",
+      "symbol": "DOGEUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "d61e41e818a8162f8654aeffda21c5843a34c718f0eb8b80291055a9c6cb36e7",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "known-2026",
+          "start": "2026-01-01",
+          "end": "2026-09-01",
+          "role": "diagnostic-known",
+          "label": "2026 \u5e74 1\u20148 \u6708 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "2e68fe3df3b32d18bebc988c1f4d46cb71bec23b1577ef6af332c10011e2a752"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54f8dbbf30e52dc8654ec460be69afaf9abe6f98ade5e348ebc9834f2a4232f6",
+      "warmup": {
+        "m30-n320-x20": 1766620800000,
+        "m30-n160-x20": 1766880000000,
+        "m30-n640-x20": 1766016000000,
+        "m30-n320-both": 1766620800000,
+        "m30-n320-stop3": 1766620800000,
+        "m30-n320-x160": 1766620800000,
+        "m30-n320-background": 1766620800000,
+        "m30-n320-cost02": 1766620800000,
+        "m30-n320-x20-stress": 1766620800000,
+        "m30-n160-x20-stress": 1766880000000,
+        "m30-n640-x20-stress": 1766016000000,
+        "m30-n320-both-stress": 1766620800000,
+        "m30-n320-stop3-stress": 1766620800000,
+        "m30-n320-x160-stress": 1766620800000,
+        "m30-n320-background-stress": 1766620800000,
+        "m30-n320-cost02-stress": 1766620800000
+      }
+    },
+    {
+      "window": "historical-stress",
+      "symbol": "BTCUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "d23ca80f0f411cd00e219a5938fda644be4a67cb95cff9118dabd8bc12b550fb",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01",
+          "role": "diagnostic-stress",
+          "label": "2022 \u5e74\u4e0a\u534a\u5e74\u538b\u529b \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "d6b90e95a720cfa946d8c5f2e87d28d5a09234f7d4549aece61444d3a9d6ef7f"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54a07f4e85fc7852d5a24f8c6eeac1c3e86cccd6dd1bd8127babbba2327cf142",
+      "warmup": {
+        "m30-n320-x20": 1640390400000,
+        "m30-n160-x20": 1640649600000,
+        "m30-n640-x20": 1639785600000,
+        "m30-n320-both": 1640390400000,
+        "m30-n320-stop3": 1640390400000,
+        "m30-n320-x160": 1640390400000,
+        "m30-n320-background": 1640390400000,
+        "m30-n320-cost02": 1640390400000,
+        "m30-n320-x20-stress": 1640390400000,
+        "m30-n160-x20-stress": 1640649600000,
+        "m30-n640-x20-stress": 1639785600000,
+        "m30-n320-both-stress": 1640390400000,
+        "m30-n320-stop3-stress": 1640390400000,
+        "m30-n320-x160-stress": 1640390400000,
+        "m30-n320-background-stress": 1640390400000,
+        "m30-n320-cost02-stress": 1640390400000
+      }
+    },
+    {
+      "window": "historical-stress",
+      "symbol": "ETHUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "6cc0bf0922c6323a73d4d8ddc0ac6b5c9635467932128ba64637baf20cd186b4",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01",
+          "role": "diagnostic-stress",
+          "label": "2022 \u5e74\u4e0a\u534a\u5e74\u538b\u529b \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "4f34cde90e9f1dbaa6b35bf1674a4f76fb2b46f54b08c26f73c6706f4ca5ccab"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "2c5b85a041d5ca1bf54dc27aca804db62d6380afb520eeb284da708549c1a226",
+      "warmup": {
+        "m30-n320-x20": 1640390400000,
+        "m30-n160-x20": 1640649600000,
+        "m30-n640-x20": 1639785600000,
+        "m30-n320-both": 1640390400000,
+        "m30-n320-stop3": 1640390400000,
+        "m30-n320-x160": 1640390400000,
+        "m30-n320-background": 1640390400000,
+        "m30-n320-cost02": 1640390400000,
+        "m30-n320-x20-stress": 1640390400000,
+        "m30-n160-x20-stress": 1640649600000,
+        "m30-n640-x20-stress": 1639785600000,
+        "m30-n320-both-stress": 1640390400000,
+        "m30-n320-stop3-stress": 1640390400000,
+        "m30-n320-x160-stress": 1640390400000,
+        "m30-n320-background-stress": 1640390400000,
+        "m30-n320-cost02-stress": 1640390400000
+      }
+    },
+    {
+      "window": "historical-stress",
+      "symbol": "BNBUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "849b08a3bbfba9f220e61766cbff756c9525c074e1ab5fc38ebdfbfda6f330a4",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01",
+          "role": "diagnostic-stress",
+          "label": "2022 \u5e74\u4e0a\u534a\u5e74\u538b\u529b \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "96f2abf6796a646651df23fed2733f5758405a183c18271d2ca2a3eef14e4582"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "26f644e783b4582752149aa346e896fcc2bce13c50fc52980c747fff9b823ba6",
+      "warmup": {
+        "m30-n320-x20": 1640390400000,
+        "m30-n160-x20": 1640649600000,
+        "m30-n640-x20": 1639785600000,
+        "m30-n320-both": 1640390400000,
+        "m30-n320-stop3": 1640390400000,
+        "m30-n320-x160": 1640390400000,
+        "m30-n320-background": 1640390400000,
+        "m30-n320-cost02": 1640390400000,
+        "m30-n320-x20-stress": 1640390400000,
+        "m30-n160-x20-stress": 1640649600000,
+        "m30-n640-x20-stress": 1639785600000,
+        "m30-n320-both-stress": 1640390400000,
+        "m30-n320-stop3-stress": 1640390400000,
+        "m30-n320-x160-stress": 1640390400000,
+        "m30-n320-background-stress": 1640390400000,
+        "m30-n320-cost02-stress": 1640390400000
+      }
+    },
+    {
+      "window": "historical-stress",
+      "symbol": "SOLUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "3fb8ac6501b2ede68c0a543898629ae194f2f884dd5e5328348313cb69a61bb6",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01",
+          "role": "diagnostic-stress",
+          "label": "2022 \u5e74\u4e0a\u534a\u5e74\u538b\u529b \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "cf4e64852c2e5d86da641a9403bd8999c1852e69cfa999b469482ebdb0140327"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "12d202471ba0714e9e32c0e3d4d82849456ff9cd2043f1e66612021e81d8a3ef",
+      "warmup": {
+        "m30-n320-x20": 1640390400000,
+        "m30-n160-x20": 1640649600000,
+        "m30-n640-x20": 1639785600000,
+        "m30-n320-both": 1640390400000,
+        "m30-n320-stop3": 1640390400000,
+        "m30-n320-x160": 1640390400000,
+        "m30-n320-background": 1640390400000,
+        "m30-n320-cost02": 1640390400000,
+        "m30-n320-x20-stress": 1640390400000,
+        "m30-n160-x20-stress": 1640649600000,
+        "m30-n640-x20-stress": 1639785600000,
+        "m30-n320-both-stress": 1640390400000,
+        "m30-n320-stop3-stress": 1640390400000,
+        "m30-n320-x160-stress": 1640390400000,
+        "m30-n320-background-stress": 1640390400000,
+        "m30-n320-cost02-stress": 1640390400000
+      }
+    },
+    {
+      "window": "historical-stress",
+      "symbol": "XRPUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "02ea81fe4d71d9592087bf4a5fdff934d6e2fc3383c059b9008c734ce98883a1",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01",
+          "role": "diagnostic-stress",
+          "label": "2022 \u5e74\u4e0a\u534a\u5e74\u538b\u529b \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "59b3331337dbd63a86327963ff271b7e4f482ccdd8724c799232184827a3ad15"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "ea3b965b21fc951843476c90c89236d80b79e18c89172eb1cdf547d584200959",
+      "warmup": {
+        "m30-n320-x20": 1640390400000,
+        "m30-n160-x20": 1640649600000,
+        "m30-n640-x20": 1639785600000,
+        "m30-n320-both": 1640390400000,
+        "m30-n320-stop3": 1640390400000,
+        "m30-n320-x160": 1640390400000,
+        "m30-n320-background": 1640390400000,
+        "m30-n320-cost02": 1640390400000,
+        "m30-n320-x20-stress": 1640390400000,
+        "m30-n160-x20-stress": 1640649600000,
+        "m30-n640-x20-stress": 1639785600000,
+        "m30-n320-both-stress": 1640390400000,
+        "m30-n320-stop3-stress": 1640390400000,
+        "m30-n320-x160-stress": 1640390400000,
+        "m30-n320-background-stress": 1640390400000,
+        "m30-n320-cost02-stress": 1640390400000
+      }
+    },
+    {
+      "window": "historical-stress",
+      "symbol": "DOGEUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "d61e41e818a8162f8654aeffda21c5843a34c718f0eb8b80291055a9c6cb36e7",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "historical-stress",
+          "start": "2022-01-01",
+          "end": "2022-07-01",
+          "role": "diagnostic-stress",
+          "label": "2022 \u5e74\u4e0a\u534a\u5e74\u538b\u529b \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "ce7a30ba274972b6a404a0d192898408af41f46596dfc1d1f817943699a61868"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54f8dbbf30e52dc8654ec460be69afaf9abe6f98ade5e348ebc9834f2a4232f6",
+      "warmup": {
+        "m30-n320-x20": 1640390400000,
+        "m30-n160-x20": 1640649600000,
+        "m30-n640-x20": 1639785600000,
+        "m30-n320-both": 1640390400000,
+        "m30-n320-stop3": 1640390400000,
+        "m30-n320-x160": 1640390400000,
+        "m30-n320-background": 1640390400000,
+        "m30-n320-cost02": 1640390400000,
+        "m30-n320-x20-stress": 1640390400000,
+        "m30-n160-x20-stress": 1640649600000,
+        "m30-n640-x20-stress": 1639785600000,
+        "m30-n320-both-stress": 1640390400000,
+        "m30-n320-stop3-stress": 1640390400000,
+        "m30-n320-x160-stress": 1640390400000,
+        "m30-n320-background-stress": 1640390400000,
+        "m30-n320-cost02-stress": 1640390400000
+      }
+    },
+    {
+      "window": "fresh-september",
+      "symbol": "BTCUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "d23ca80f0f411cd00e219a5938fda644be4a67cb95cff9118dabd8bc12b550fb",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01",
+          "role": "diagnostic-check",
+          "label": "2026 \u5e74 9 \u6708\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "05a5d86e01c0490928452b3131dc0fc9ac106cc9140f158abff4c781d6aae9a8"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54a07f4e85fc7852d5a24f8c6eeac1c3e86cccd6dd1bd8127babbba2327cf142",
+      "warmup": {
+        "m30-n320-x20": 1787616000000,
+        "m30-n160-x20": 1787875200000,
+        "m30-n640-x20": 1787011200000,
+        "m30-n320-both": 1787616000000,
+        "m30-n320-stop3": 1787616000000,
+        "m30-n320-x160": 1787616000000,
+        "m30-n320-background": 1787616000000,
+        "m30-n320-cost02": 1787616000000,
+        "m30-n320-x20-stress": 1787616000000,
+        "m30-n160-x20-stress": 1787875200000,
+        "m30-n640-x20-stress": 1787011200000,
+        "m30-n320-both-stress": 1787616000000,
+        "m30-n320-stop3-stress": 1787616000000,
+        "m30-n320-x160-stress": 1787616000000,
+        "m30-n320-background-stress": 1787616000000,
+        "m30-n320-cost02-stress": 1787616000000
+      }
+    },
+    {
+      "window": "fresh-september",
+      "symbol": "ETHUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "6cc0bf0922c6323a73d4d8ddc0ac6b5c9635467932128ba64637baf20cd186b4",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01",
+          "role": "diagnostic-check",
+          "label": "2026 \u5e74 9 \u6708\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "54538930bc4b005859944b702cf442ddeef2f0506710059c9ceab168dc1a02fa"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "2c5b85a041d5ca1bf54dc27aca804db62d6380afb520eeb284da708549c1a226",
+      "warmup": {
+        "m30-n320-x20": 1787616000000,
+        "m30-n160-x20": 1787875200000,
+        "m30-n640-x20": 1787011200000,
+        "m30-n320-both": 1787616000000,
+        "m30-n320-stop3": 1787616000000,
+        "m30-n320-x160": 1787616000000,
+        "m30-n320-background": 1787616000000,
+        "m30-n320-cost02": 1787616000000,
+        "m30-n320-x20-stress": 1787616000000,
+        "m30-n160-x20-stress": 1787875200000,
+        "m30-n640-x20-stress": 1787011200000,
+        "m30-n320-both-stress": 1787616000000,
+        "m30-n320-stop3-stress": 1787616000000,
+        "m30-n320-x160-stress": 1787616000000,
+        "m30-n320-background-stress": 1787616000000,
+        "m30-n320-cost02-stress": 1787616000000
+      }
+    },
+    {
+      "window": "fresh-september",
+      "symbol": "BNBUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "849b08a3bbfba9f220e61766cbff756c9525c074e1ab5fc38ebdfbfda6f330a4",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01",
+          "role": "diagnostic-check",
+          "label": "2026 \u5e74 9 \u6708\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "a9eaf186fb40e5bf1a25d7052f055ce779a181859a5bb6e516df61d7a6f1ad47"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "26f644e783b4582752149aa346e896fcc2bce13c50fc52980c747fff9b823ba6",
+      "warmup": {
+        "m30-n320-x20": 1787616000000,
+        "m30-n160-x20": 1787875200000,
+        "m30-n640-x20": 1787011200000,
+        "m30-n320-both": 1787616000000,
+        "m30-n320-stop3": 1787616000000,
+        "m30-n320-x160": 1787616000000,
+        "m30-n320-background": 1787616000000,
+        "m30-n320-cost02": 1787616000000,
+        "m30-n320-x20-stress": 1787616000000,
+        "m30-n160-x20-stress": 1787875200000,
+        "m30-n640-x20-stress": 1787011200000,
+        "m30-n320-both-stress": 1787616000000,
+        "m30-n320-stop3-stress": 1787616000000,
+        "m30-n320-x160-stress": 1787616000000,
+        "m30-n320-background-stress": 1787616000000,
+        "m30-n320-cost02-stress": 1787616000000
+      }
+    },
+    {
+      "window": "fresh-september",
+      "symbol": "SOLUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "3fb8ac6501b2ede68c0a543898629ae194f2f884dd5e5328348313cb69a61bb6",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01",
+          "role": "diagnostic-check",
+          "label": "2026 \u5e74 9 \u6708\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "dd659d8ff0895a94ec5bd490f6b15de90fd9e140d26660fc2d67886ca3207482"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "12d202471ba0714e9e32c0e3d4d82849456ff9cd2043f1e66612021e81d8a3ef",
+      "warmup": {
+        "m30-n320-x20": 1787616000000,
+        "m30-n160-x20": 1787875200000,
+        "m30-n640-x20": 1787011200000,
+        "m30-n320-both": 1787616000000,
+        "m30-n320-stop3": 1787616000000,
+        "m30-n320-x160": 1787616000000,
+        "m30-n320-background": 1787616000000,
+        "m30-n320-cost02": 1787616000000,
+        "m30-n320-x20-stress": 1787616000000,
+        "m30-n160-x20-stress": 1787875200000,
+        "m30-n640-x20-stress": 1787011200000,
+        "m30-n320-both-stress": 1787616000000,
+        "m30-n320-stop3-stress": 1787616000000,
+        "m30-n320-x160-stress": 1787616000000,
+        "m30-n320-background-stress": 1787616000000,
+        "m30-n320-cost02-stress": 1787616000000
+      }
+    },
+    {
+      "window": "fresh-september",
+      "symbol": "XRPUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "02ea81fe4d71d9592087bf4a5fdff934d6e2fc3383c059b9008c734ce98883a1",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01",
+          "role": "diagnostic-check",
+          "label": "2026 \u5e74 9 \u6708\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "e6c5c3e73c9ced110b50ff248611f6bd0263a5888944721a98dd3cfcb4575fc2"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "ea3b965b21fc951843476c90c89236d80b79e18c89172eb1cdf547d584200959",
+      "warmup": {
+        "m30-n320-x20": 1787616000000,
+        "m30-n160-x20": 1787875200000,
+        "m30-n640-x20": 1787011200000,
+        "m30-n320-both": 1787616000000,
+        "m30-n320-stop3": 1787616000000,
+        "m30-n320-x160": 1787616000000,
+        "m30-n320-background": 1787616000000,
+        "m30-n320-cost02": 1787616000000,
+        "m30-n320-x20-stress": 1787616000000,
+        "m30-n160-x20-stress": 1787875200000,
+        "m30-n640-x20-stress": 1787011200000,
+        "m30-n320-both-stress": 1787616000000,
+        "m30-n320-stop3-stress": 1787616000000,
+        "m30-n320-x160-stress": 1787616000000,
+        "m30-n320-background-stress": 1787616000000,
+        "m30-n320-cost02-stress": 1787616000000
+      }
+    },
+    {
+      "window": "fresh-september",
+      "symbol": "DOGEUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "d61e41e818a8162f8654aeffda21c5843a34c718f0eb8b80291055a9c6cb36e7",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "fresh-september",
+          "start": "2026-09-01",
+          "end": "2026-10-01",
+          "role": "diagnostic-check",
+          "label": "2026 \u5e74 9 \u6708\u590d\u6838 \u00b7 \u5df2\u67e5\u770b\u5386\u53f2"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "14b28083a0c7d9ff498309e51e03b7ddedd8c6aede3bc047c3672d473a3fa8c1"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54f8dbbf30e52dc8654ec460be69afaf9abe6f98ade5e348ebc9834f2a4232f6",
+      "warmup": {
+        "m30-n320-x20": 1787616000000,
+        "m30-n160-x20": 1787875200000,
+        "m30-n640-x20": 1787011200000,
+        "m30-n320-both": 1787616000000,
+        "m30-n320-stop3": 1787616000000,
+        "m30-n320-x160": 1787616000000,
+        "m30-n320-background": 1787616000000,
+        "m30-n320-cost02": 1787616000000,
+        "m30-n320-x20-stress": 1787616000000,
+        "m30-n160-x20-stress": 1787875200000,
+        "m30-n640-x20-stress": 1787011200000,
+        "m30-n320-both-stress": 1787616000000,
+        "m30-n320-stop3-stress": 1787616000000,
+        "m30-n320-x160-stress": 1787616000000,
+        "m30-n320-background-stress": 1787616000000,
+        "m30-n320-cost02-stress": 1787616000000
+      }
+    },
+    {
+      "window": "transfer-2021",
+      "symbol": "BTCUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "80d85f6241eb058caf903b4ea7c0a7c5814b55f8d871b608269cfdf0f1a5dd41",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "transfer-2021",
+          "start": "2021-01-01",
+          "end": "2022-01-01",
+          "role": "historical-transfer",
+          "candidateScope": "selected-and-baseline",
+          "label": "2021 \u5168\u5e74 \u00b7 \u65b0\u5386\u53f2\u53cd\u5411\u8f6c\u79fb"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "7432e6c8c9ec831e0519b81e08256068a100ce005eace5fe97b0c479625fa7b4"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54a07f4e85fc7852d5a24f8c6eeac1c3e86cccd6dd1bd8127babbba2327cf142",
+      "warmup": {
+        "m30-n320-x20": 1608854400000,
+        "m30-n320-x160": 1608854400000,
+        "m30-n320-x20-stress": 1608854400000,
+        "m30-n320-x160-stress": 1608854400000
+      }
+    },
+    {
+      "window": "transfer-2021",
+      "symbol": "ETHUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "62a701054523bce57f4412117412092a78fbdb8cacc67bf318a95f620f8e1563",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "transfer-2021",
+          "start": "2021-01-01",
+          "end": "2022-01-01",
+          "role": "historical-transfer",
+          "candidateScope": "selected-and-baseline",
+          "label": "2021 \u5168\u5e74 \u00b7 \u65b0\u5386\u53f2\u53cd\u5411\u8f6c\u79fb"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "b8acb4fe5c725f74f65dcffa28120a4b4e65835da9be715c42de2bb0340a9890"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "2c5b85a041d5ca1bf54dc27aca804db62d6380afb520eeb284da708549c1a226",
+      "warmup": {
+        "m30-n320-x20": 1608854400000,
+        "m30-n320-x160": 1608854400000,
+        "m30-n320-x20-stress": 1608854400000,
+        "m30-n320-x160-stress": 1608854400000
+      }
+    },
+    {
+      "window": "transfer-2021",
+      "symbol": "BNBUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "28dc236b22ca2752cc7dd0de999ef1c967e615ab173698aa46942a94da64e2a7",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "transfer-2021",
+          "start": "2021-01-01",
+          "end": "2022-01-01",
+          "role": "historical-transfer",
+          "candidateScope": "selected-and-baseline",
+          "label": "2021 \u5168\u5e74 \u00b7 \u65b0\u5386\u53f2\u53cd\u5411\u8f6c\u79fb"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "e40baa32b558a887d4ac8220242e0e465b28efc57f503aba2c6d0206a95ddd3e"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "26f644e783b4582752149aa346e896fcc2bce13c50fc52980c747fff9b823ba6",
+      "warmup": {
+        "m30-n320-x20": 1608854400000,
+        "m30-n320-x160": 1608854400000,
+        "m30-n320-x20-stress": 1608854400000,
+        "m30-n320-x160-stress": 1608854400000
+      }
+    },
+    {
+      "window": "transfer-2021",
+      "symbol": "SOLUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "2260a7652f224d2066f3cdc3346dac693072482e9602a06285819fd65ed327bf",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "transfer-2021",
+          "start": "2021-01-01",
+          "end": "2022-01-01",
+          "role": "historical-transfer",
+          "candidateScope": "selected-and-baseline",
+          "label": "2021 \u5168\u5e74 \u00b7 \u65b0\u5386\u53f2\u53cd\u5411\u8f6c\u79fb"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "bf9fdbdfb6ee27d43e3af32e037046df043efd7031ca0d368d1357d377b929c7"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "12d202471ba0714e9e32c0e3d4d82849456ff9cd2043f1e66612021e81d8a3ef",
+      "warmup": {
+        "m30-n320-x20": 1608854400000,
+        "m30-n320-x160": 1608854400000,
+        "m30-n320-x20-stress": 1608854400000,
+        "m30-n320-x160-stress": 1608854400000
+      }
+    },
+    {
+      "window": "transfer-2021",
+      "symbol": "XRPUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "5a048b3ede0960d395088fe11b4ac1910451e84c13eff7988d9d759fdf49f021",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "transfer-2021",
+          "start": "2021-01-01",
+          "end": "2022-01-01",
+          "role": "historical-transfer",
+          "candidateScope": "selected-and-baseline",
+          "label": "2021 \u5168\u5e74 \u00b7 \u65b0\u5386\u53f2\u53cd\u5411\u8f6c\u79fb"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "838167b5df4c8e870f407288f223faced775887d191d8ea14e5fe559ba0c10fa"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "ea3b965b21fc951843476c90c89236d80b79e18c89172eb1cdf547d584200959",
+      "warmup": {
+        "m30-n320-x20": 1608854400000,
+        "m30-n320-x160": 1608854400000,
+        "m30-n320-x20-stress": 1608854400000,
+        "m30-n320-x160-stress": 1608854400000
+      }
+    },
+    {
+      "window": "transfer-2021",
+      "symbol": "DOGEUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "9a720eb88f9f46f3bba039ac64dd2400efb1b89bca256983d1a589abb14c1bce",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "transfer-2021",
+          "start": "2021-01-01",
+          "end": "2022-01-01",
+          "role": "historical-transfer",
+          "candidateScope": "selected-and-baseline",
+          "label": "2021 \u5168\u5e74 \u00b7 \u65b0\u5386\u53f2\u53cd\u5411\u8f6c\u79fb"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "95743a8b467efebcbc9b664f0b92fa83274afdf74985ddc58ac842916525b6c0"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54f8dbbf30e52dc8654ec460be69afaf9abe6f98ade5e348ebc9834f2a4232f6",
+      "warmup": {
+        "m30-n320-x20": 1608854400000,
+        "m30-n320-x160": 1608854400000,
+        "m30-n320-x20-stress": 1608854400000,
+        "m30-n320-x160-stress": 1608854400000
+      }
+    },
+    {
+      "window": "transfer-2024-oct-nov",
+      "symbol": "BTCUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "80d85f6241eb058caf903b4ea7c0a7c5814b55f8d871b608269cfdf0f1a5dd41",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "transfer-2024-oct-nov",
+          "start": "2024-10-01",
+          "end": "2024-12-01",
+          "role": "historical-transfer",
+          "candidateScope": "selected-and-baseline",
+          "label": "2024 \u5e74 10\u201411 \u6708 \u00b7 \u65b0\u5386\u53f2\u8f6c\u79fb"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "c6402f7db2f8b6bbd25f7708ba31dd0c7cee013d3dd6e5d716d0c2bc7d3d152a"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54a07f4e85fc7852d5a24f8c6eeac1c3e86cccd6dd1bd8127babbba2327cf142",
+      "warmup": {
+        "m30-n320-x20": 1727136000000,
+        "m30-n320-x160": 1727136000000,
+        "m30-n320-x20-stress": 1727136000000,
+        "m30-n320-x160-stress": 1727136000000
+      }
+    },
+    {
+      "window": "transfer-2024-oct-nov",
+      "symbol": "ETHUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "62a701054523bce57f4412117412092a78fbdb8cacc67bf318a95f620f8e1563",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "transfer-2024-oct-nov",
+          "start": "2024-10-01",
+          "end": "2024-12-01",
+          "role": "historical-transfer",
+          "candidateScope": "selected-and-baseline",
+          "label": "2024 \u5e74 10\u201411 \u6708 \u00b7 \u65b0\u5386\u53f2\u8f6c\u79fb"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "0b68db778b1b694a74dec6b8b2360e5e0d5b71d85174b46912cb1db703c7766e"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "2c5b85a041d5ca1bf54dc27aca804db62d6380afb520eeb284da708549c1a226",
+      "warmup": {
+        "m30-n320-x20": 1727136000000,
+        "m30-n320-x160": 1727136000000,
+        "m30-n320-x20-stress": 1727136000000,
+        "m30-n320-x160-stress": 1727136000000
+      }
+    },
+    {
+      "window": "transfer-2024-oct-nov",
+      "symbol": "BNBUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "28dc236b22ca2752cc7dd0de999ef1c967e615ab173698aa46942a94da64e2a7",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "transfer-2024-oct-nov",
+          "start": "2024-10-01",
+          "end": "2024-12-01",
+          "role": "historical-transfer",
+          "candidateScope": "selected-and-baseline",
+          "label": "2024 \u5e74 10\u201411 \u6708 \u00b7 \u65b0\u5386\u53f2\u8f6c\u79fb"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "959a0dee152975db32b2189f650a1c461dd5a54d73851b69815cb225f74ce099"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "26f644e783b4582752149aa346e896fcc2bce13c50fc52980c747fff9b823ba6",
+      "warmup": {
+        "m30-n320-x20": 1727136000000,
+        "m30-n320-x160": 1727136000000,
+        "m30-n320-x20-stress": 1727136000000,
+        "m30-n320-x160-stress": 1727136000000
+      }
+    },
+    {
+      "window": "transfer-2024-oct-nov",
+      "symbol": "SOLUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "2260a7652f224d2066f3cdc3346dac693072482e9602a06285819fd65ed327bf",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "transfer-2024-oct-nov",
+          "start": "2024-10-01",
+          "end": "2024-12-01",
+          "role": "historical-transfer",
+          "candidateScope": "selected-and-baseline",
+          "label": "2024 \u5e74 10\u201411 \u6708 \u00b7 \u65b0\u5386\u53f2\u8f6c\u79fb"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "9436d2abb15c2c48120ec4977c5ef069322fe312fd6a5b1797663bfc8f276f04"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "12d202471ba0714e9e32c0e3d4d82849456ff9cd2043f1e66612021e81d8a3ef",
+      "warmup": {
+        "m30-n320-x20": 1727136000000,
+        "m30-n320-x160": 1727136000000,
+        "m30-n320-x20-stress": 1727136000000,
+        "m30-n320-x160-stress": 1727136000000
+      }
+    },
+    {
+      "window": "transfer-2024-oct-nov",
+      "symbol": "XRPUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "5a048b3ede0960d395088fe11b4ac1910451e84c13eff7988d9d759fdf49f021",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "transfer-2024-oct-nov",
+          "start": "2024-10-01",
+          "end": "2024-12-01",
+          "role": "historical-transfer",
+          "candidateScope": "selected-and-baseline",
+          "label": "2024 \u5e74 10\u201411 \u6708 \u00b7 \u65b0\u5386\u53f2\u8f6c\u79fb"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "88ccc6ce91e6be5c392e365b94ff0501146346e2c1e7d2c940b6ef3248392673"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "ea3b965b21fc951843476c90c89236d80b79e18c89172eb1cdf547d584200959",
+      "warmup": {
+        "m30-n320-x20": 1727136000000,
+        "m30-n320-x160": 1727136000000,
+        "m30-n320-x20-stress": 1727136000000,
+        "m30-n320-x160-stress": 1727136000000
+      }
+    },
+    {
+      "window": "transfer-2024-oct-nov",
+      "symbol": "DOGEUSDT",
+      "receipt": {
+        "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+        "replayVersion": "trend-native-replay-3",
+        "configsSha256": "9a720eb88f9f46f3bba039ac64dd2400efb1b89bca256983d1a589abb14c1bce",
+        "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+        "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "transfer-2024-oct-nov",
+          "start": "2024-10-01",
+          "end": "2024-12-01",
+          "role": "historical-transfer",
+          "candidateScope": "selected-and-baseline",
+          "label": "2024 \u5e74 10\u201411 \u6708 \u00b7 \u65b0\u5386\u53f2\u8f6c\u79fb"
+        },
+        "executionSourceSha256": "acc41c995d8eb72d729ac5d8729aef6a604c9267619d08a671722e12452dddc5",
+        "resultSha256": "0126c36682d0ca01373bded6dea9ac8c6be3828a198f1591ac6935410834a05b"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "54f8dbbf30e52dc8654ec460be69afaf9abe6f98ade5e348ebc9834f2a4232f6",
+      "warmup": {
+        "m30-n320-x20": 1727136000000,
+        "m30-n320-x160": 1727136000000,
+        "m30-n320-x20-stress": 1727136000000,
+        "m30-n320-x160-stress": 1727136000000
+      }
+    }
+  ],
+  "auditScope": "Recorded receipts/configurations, complete canonical daily calendars and cash ledgers; no new price reads or source CSV rehash."
+}

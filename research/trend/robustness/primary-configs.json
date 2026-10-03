@@ -1,0 +1,206 @@
+{
+  "description": "Frozen primary for native replay/research; six independent sleeves, no live deployment.",
+  "planSha256": "fddd5800b6d38e9f5a6ba09441be3b245a4ff82a3fde56944b0969e21459d78d",
+  "engine": "trend-continuation-14",
+  "binarySha256": "7fe0fa3233cade7bb9a5a09fb23bdb9e3d52816c26080b40a9fa493a52deb2af",
+  "symbols": {
+    "BTCUSDT": {
+      "version": 8,
+      "strategy": {
+        "entry": "breakout",
+        "direction": "long",
+        "breakoutBars": 320,
+        "maxCostAtr": 0,
+        "tradeMinutes": 30,
+        "filter": "none",
+        "management": "channel",
+        "channelExitBars": 160,
+        "breakoutReentry": "every-close",
+        "stopAtr": 2,
+        "breakEvenAtr": 0,
+        "trailingAtr": 3
+      },
+      "execution": {
+        "tickSize": 0.1,
+        "quantityStep": 0.001,
+        "minNotional": 100,
+        "initialCapital": 10000.0,
+        "feeBps": 5,
+        "slippageBps": 2
+      },
+      "risk": {
+        "riskPct": 0.005,
+        "maxExposurePct": 0.95,
+        "cooldownLosses": 3,
+        "cooldownMinutes": 60,
+        "dailyLossPct": 0.03,
+        "flattenMinute": null
+      }
+    },
+    "ETHUSDT": {
+      "version": 8,
+      "strategy": {
+        "entry": "breakout",
+        "direction": "long",
+        "breakoutBars": 320,
+        "maxCostAtr": 0,
+        "tradeMinutes": 30,
+        "filter": "none",
+        "management": "channel",
+        "channelExitBars": 160,
+        "breakoutReentry": "every-close",
+        "stopAtr": 2,
+        "breakEvenAtr": 0,
+        "trailingAtr": 3
+      },
+      "execution": {
+        "tickSize": 0.01,
+        "quantityStep": 0.001,
+        "minNotional": 100,
+        "initialCapital": 10000.0,
+        "feeBps": 5,
+        "slippageBps": 2
+      },
+      "risk": {
+        "riskPct": 0.005,
+        "maxExposurePct": 0.95,
+        "cooldownLosses": 3,
+        "cooldownMinutes": 60,
+        "dailyLossPct": 0.03,
+        "flattenMinute": null
+      }
+    },
+    "BNBUSDT": {
+      "version": 8,
+      "strategy": {
+        "entry": "breakout",
+        "direction": "long",
+        "breakoutBars": 320,
+        "maxCostAtr": 0,
+        "tradeMinutes": 30,
+        "filter": "none",
+        "management": "channel",
+        "channelExitBars": 160,
+        "breakoutReentry": "every-close",
+        "stopAtr": 2,
+        "breakEvenAtr": 0,
+        "trailingAtr": 3
+      },
+      "execution": {
+        "tickSize": 0.01,
+        "quantityStep": 0.01,
+        "minNotional": 100,
+        "initialCapital": 10000.0,
+        "feeBps": 5,
+        "slippageBps": 2
+      },
+      "risk": {
+        "riskPct": 0.005,
+        "maxExposurePct": 0.95,
+        "cooldownLosses": 3,
+        "cooldownMinutes": 60,
+        "dailyLossPct": 0.03,
+        "flattenMinute": null
+      }
+    },
+    "SOLUSDT": {
+      "version": 8,
+      "strategy": {
+        "entry": "breakout",
+        "direction": "long",
+        "breakoutBars": 320,
+        "maxCostAtr": 0,
+        "tradeMinutes": 30,
+        "filter": "none",
+        "management": "channel",
+        "channelExitBars": 160,
+        "breakoutReentry": "every-close",
+        "stopAtr": 2,
+        "breakEvenAtr": 0,
+        "trailingAtr": 3
+      },
+      "execution": {
+        "tickSize": 0.001,
+        "quantityStep": 1,
+        "minNotional": 100,
+        "initialCapital": 10000.0,
+        "feeBps": 5,
+        "slippageBps": 2
+      },
+      "risk": {
+        "riskPct": 0.005,
+        "maxExposurePct": 0.95,
+        "cooldownLosses": 3,
+        "cooldownMinutes": 60,
+        "dailyLossPct": 0.03,
+        "flattenMinute": null
+      }
+    },
+    "XRPUSDT": {
+      "version": 8,
+      "strategy": {
+        "entry": "breakout",
+        "direction": "long",
+        "breakoutBars": 320,
+        "maxCostAtr": 0,
+        "tradeMinutes": 30,
+        "filter": "none",
+        "management": "channel",
+        "channelExitBars": 160,
+        "breakoutReentry": "every-close",
+        "stopAtr": 2,
+        "breakEvenAtr": 0,
+        "trailingAtr": 3
+      },
+      "execution": {
+        "tickSize": 0.0001,
+        "quantityStep": 1,
+        "minNotional": 100,
+        "initialCapital": 10000.0,
+        "feeBps": 5,
+        "slippageBps": 2
+      },
+      "risk": {
+        "riskPct": 0.005,
+        "maxExposurePct": 0.95,
+        "cooldownLosses": 3,
+        "cooldownMinutes": 60,
+        "dailyLossPct": 0.03,
+        "flattenMinute": null
+      }
+    },
+    "DOGEUSDT": {
+      "version": 8,
+      "strategy": {
+        "entry": "breakout",
+        "direction": "long",
+        "breakoutBars": 320,
+        "maxCostAtr": 0,
+        "tradeMinutes": 30,
+        "filter": "none",
+        "management": "channel",
+        "channelExitBars": 160,
+        "breakoutReentry": "every-close",
+        "stopAtr": 2,
+        "breakEvenAtr": 0,
+        "trailingAtr": 3
+      },
+      "execution": {
+        "tickSize": 1e-05,
+        "quantityStep": 1,
+        "minNotional": 100,
+        "initialCapital": 10000.0,
+        "feeBps": 5,
+        "slippageBps": 2
+      },
+      "risk": {
+        "riskPct": 0.005,
+        "maxExposurePct": 0.95,
+        "cooldownLosses": 3,
+        "cooldownMinutes": 60,
+        "dailyLossPct": 0.03,
+        "flattenMinute": null
+      }
+    }
+  }
+}

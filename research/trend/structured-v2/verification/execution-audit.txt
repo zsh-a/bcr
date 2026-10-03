@@ -1,0 +1,4 @@
+audited BTCUSDT 5 accounts
+audited ETHUSDT 5 accounts
+audited BNBUSDT 5 accounts
+passed {'recordedTrades': 454, 'minutes': 10519200, 'accounts': 15, 'signalGeometry': 454, 'confirmedTurns': 232, 'trades': 454, 'side:long': 248, 'exit:trailing': 289, 'protectionUpdates': 2949, 'side:short': 206, 'exit:initial': 142, 'exit:protection-crossed': 23} sha256 017500928277c4593e367ca66100aa1896f4b7eb43323d7803d32adaa0e48302

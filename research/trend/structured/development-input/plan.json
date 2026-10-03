@@ -1,0 +1,228 @@
+{
+  "version": 1,
+  "title": "30\u5206\u949f\u7ed3\u6784\u56de\u8c03\u7814\u7a76",
+  "purpose": "Fixed mechanical hypothesis with module ablations. Development and historical validation are known/reused, not fresh temporal evidence. Asset/time reserved future cells are unavailable until their complete calendar and upstream gates pass.",
+  "configVersion": 9,
+  "capitalMode": "total-account-equal-sleeves",
+  "initialCapital": 30000,
+  "costs": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "stressFeeBps": 10,
+    "stressSlippageBps": 4
+  },
+  "risk": {
+    "riskPct": 0.005,
+    "maxExposurePct": 0.95,
+    "cooldownLosses": 3,
+    "cooldownMinutes": 60,
+    "dailyLossPct": 0,
+    "flattenMinute": null
+  },
+  "bootstrap": {
+    "seed": 20261003,
+    "samples": 2000,
+    "blockDays": 7
+  },
+  "selectionMode": "fixed",
+  "fixedCandidate": "sp-primary",
+  "baseline": "sp-base",
+  "selection": "Predeclared sp-primary; ablations diagnose mechanisms and can never replace the primary.",
+  "candidates": [
+    {
+      "id": "sp-primary",
+      "entry": "structured-pullback",
+      "tradeMinutes": 30,
+      "filter": "ema",
+      "management": "chandelier",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "structuredPullback": {
+        "keyLevel": "either",
+        "shape": "any",
+        "candle": "none"
+      }
+    },
+    {
+      "id": "sp-no-key",
+      "entry": "structured-pullback",
+      "tradeMinutes": 30,
+      "filter": "ema",
+      "management": "chandelier",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "structuredPullback": {
+        "keyLevel": "none",
+        "shape": "any",
+        "candle": "none"
+      }
+    },
+    {
+      "id": "sp-no-shape",
+      "entry": "structured-pullback",
+      "tradeMinutes": 30,
+      "filter": "ema",
+      "management": "chandelier",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "structuredPullback": {
+        "keyLevel": "either",
+        "shape": "none",
+        "candle": "none"
+      }
+    },
+    {
+      "id": "sp-no-ema",
+      "entry": "structured-pullback",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "chandelier",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "structuredPullback": {
+        "keyLevel": "either",
+        "shape": "any",
+        "candle": "none"
+      }
+    },
+    {
+      "id": "sp-reversal",
+      "entry": "structured-pullback",
+      "tradeMinutes": 30,
+      "filter": "ema",
+      "management": "chandelier",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "structuredPullback": {
+        "keyLevel": "either",
+        "shape": "any",
+        "candle": "reversal"
+      }
+    },
+    {
+      "id": "sp-base",
+      "entry": "structured-pullback",
+      "tradeMinutes": 30,
+      "filter": "ema",
+      "management": "chandelier",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "structuredPullback": {
+        "keyLevel": "none",
+        "shape": "none",
+        "candle": "none"
+      }
+    }
+  ],
+  "stressCandidates": [
+    "sp-primary",
+    "sp-base"
+  ],
+  "sensitivity": [],
+  "comparisons": [
+    {
+      "id": "sp-no-key",
+      "candidate": "sp-primary",
+      "reference": "sp-no-key"
+    },
+    {
+      "id": "sp-no-shape",
+      "candidate": "sp-primary",
+      "reference": "sp-no-shape"
+    },
+    {
+      "id": "sp-no-ema",
+      "candidate": "sp-primary",
+      "reference": "sp-no-ema"
+    },
+    {
+      "id": "candle-reversal",
+      "candidate": "sp-reversal",
+      "reference": "sp-primary"
+    }
+  ],
+  "transferEvaluation": {
+    "windows": [
+      "development"
+    ],
+    "samples": 2000,
+    "seed": 20261003,
+    "blockDays": [
+      7,
+      28
+    ],
+    "minimumDays": 180,
+    "minimumTrades": 100,
+    "minimumTradesPerSymbol": 20,
+    "maxDailyDrawdown": 0.1,
+    "requireEachWindowPositive": true,
+    "requireDevelopmentQualified": true,
+    "method": "Fixed primary only; daily dollar portfolio returns; shared circular date blocks across both rules/costs. No independent-trade resampling or target ranking.",
+    "acceptance": "Development requires source-domain activity qualification, positive base-cost account return and daily drawdown at most10%; only then unlock validation. Validation and holdout require all sample gates, positive net return and daily drawdown at most10% under base/stress, with both 7/28day absolute mean-return 95% lower bounds above zero. No fallback candidate or universe replacement."
+  },
+  "limitations": [
+    "Current static execution filters; not point-in-time historical rules.",
+    "Three surviving contracts per group are purposive, correlated market samples; no cross-asset-class independence.",
+    "Minute OHLC uses fixed bps fills; no order book, queue, partial fills or live outage simulation.",
+    "The fixed 3bar impulse and pivot-based pattern definitions are research hypotheses, not a full reconstruction of discretionary Brooks price action.",
+    "No volume-profile ownership/cost-basis inference from OHLCV. H2/H3 discretionary setup counting is not interchangeable with confirmed pivot legs."
+  ],
+  "selectionMinTrades": 20,
+  "selectionMinProfitableSymbols": 2,
+  "symbols": {
+    "BTCUSDT": {
+      "tickSize": 0.1,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "ETHUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "BNBUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.01,
+      "minNotional": 100
+    }
+  },
+  "windows": [
+    {
+      "id": "development",
+      "role": "development",
+      "start": "2022-09-01",
+      "end": "2024-01-01"
+    }
+  ],
+  "studyCell": {
+    "id": "development",
+    "stage": "development",
+    "symbolRole": "development",
+    "timeRole": "development",
+    "claim": "known-reused"
+  }
+}

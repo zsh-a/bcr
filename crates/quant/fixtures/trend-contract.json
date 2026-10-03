@@ -1,8 +1,8 @@
 {
-  "executor": "trend-continuation-11",
+  "executor": "trend-continuation-16",
   "warmupPolicy": "active-windows-v1",
   "defaultConfig": {
-    "version": 5,
+    "version": 10,
     "strategy": {
       "entry": "breakout",
       "filter": "background",
@@ -33,35 +33,172 @@
     }
   },
   "periods": [
-    { "minutes": 1, "backgroundMinutes": 5 },
-    { "minutes": 3, "backgroundMinutes": 15 },
-    { "minutes": 5, "backgroundMinutes": 30 },
-    { "minutes": 15, "backgroundMinutes": 60 },
-    { "minutes": 30, "backgroundMinutes": 120 },
-    { "minutes": 60, "backgroundMinutes": 240 },
-    { "minutes": 120, "backgroundMinutes": 720 },
-    { "minutes": 240, "backgroundMinutes": 1440 },
-    { "minutes": 1440, "backgroundMinutes": 10080 }
+    {
+      "minutes": 1,
+      "backgroundMinutes": 5
+    },
+    {
+      "minutes": 3,
+      "backgroundMinutes": 15
+    },
+    {
+      "minutes": 5,
+      "backgroundMinutes": 30
+    },
+    {
+      "minutes": 15,
+      "backgroundMinutes": 60
+    },
+    {
+      "minutes": 30,
+      "backgroundMinutes": 120
+    },
+    {
+      "minutes": 60,
+      "backgroundMinutes": 240
+    },
+    {
+      "minutes": 120,
+      "backgroundMinutes": 720
+    },
+    {
+      "minutes": 240,
+      "backgroundMinutes": 1440
+    },
+    {
+      "minutes": 1440,
+      "backgroundMinutes": 10080
+    }
   ],
   "warmupCases": [
-    { "strategy": { "tradeMinutes": 1, "filter": "background" }, "days": 1 },
-    { "strategy": { "tradeMinutes": 3, "filter": "background" }, "days": 1 },
-    { "strategy": { "tradeMinutes": 5, "filter": "background" }, "days": 1 },
-    { "strategy": { "tradeMinutes": 15, "filter": "background" }, "days": 1 },
-    { "strategy": { "tradeMinutes": 30, "filter": "background" }, "days": 2 },
-    { "strategy": { "tradeMinutes": 60, "filter": "background" }, "days": 4 },
-    { "strategy": { "tradeMinutes": 120, "filter": "background" }, "days": 11 },
-    { "strategy": { "tradeMinutes": 240, "filter": "background" }, "days": 22 },
-    { "strategy": { "tradeMinutes": 1440, "filter": "background" }, "days": 154 },
-    { "strategy": { "tradeMinutes": 1, "filter": "none" }, "days": 1 },
-    { "strategy": { "tradeMinutes": 60, "filter": "none" }, "days": 1 },
-    { "strategy": { "tradeMinutes": 60, "filter": "ema" }, "days": 3 },
-    { "strategy": { "tradeMinutes": 240, "filter": "none" }, "days": 4 },
-    { "strategy": { "tradeMinutes": 240, "filter": "ema" }, "days": 10 },
-    { "strategy": { "tradeMinutes": 240, "filter": "none", "breakoutBars": 80 }, "days": 14 },
-    { "strategy": { "tradeMinutes": 1440, "filter": "none" }, "days": 20 },
-    { "strategy": { "tradeMinutes": 1440, "filter": "ema" }, "days": 60 },
-    { "strategy": { "tradeMinutes": 1440, "filter": "none", "breakoutBars": 250 }, "days": 250 },
+    {
+      "strategy": {
+        "tradeMinutes": 1,
+        "filter": "background"
+      },
+      "days": 1
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 3,
+        "filter": "background"
+      },
+      "days": 1
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 5,
+        "filter": "background"
+      },
+      "days": 1
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 15,
+        "filter": "background"
+      },
+      "days": 1
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 30,
+        "filter": "background"
+      },
+      "days": 2
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 60,
+        "filter": "background"
+      },
+      "days": 4
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 120,
+        "filter": "background"
+      },
+      "days": 11
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 240,
+        "filter": "background"
+      },
+      "days": 22
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 1440,
+        "filter": "background"
+      },
+      "days": 154
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 1,
+        "filter": "none"
+      },
+      "days": 1
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 60,
+        "filter": "none"
+      },
+      "days": 1
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 60,
+        "filter": "ema"
+      },
+      "days": 3
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 240,
+        "filter": "none"
+      },
+      "days": 4
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 240,
+        "filter": "ema"
+      },
+      "days": 10
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 240,
+        "filter": "none",
+        "breakoutBars": 80
+      },
+      "days": 14
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 1440,
+        "filter": "none"
+      },
+      "days": 20
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 1440,
+        "filter": "ema"
+      },
+      "days": 60
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 1440,
+        "filter": "none",
+        "breakoutBars": 250
+      },
+      "days": 250
+    },
     {
       "strategy": {
         "tradeMinutes": 1440,
@@ -71,6 +208,279 @@
         "breakoutBars": 250
       },
       "days": 14
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 60,
+        "entry": "kdj",
+        "filter": "slow-ema",
+        "management": "atr"
+      },
+      "days": 3
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 240,
+        "entry": "kdj",
+        "filter": "slow-ema",
+        "management": "atr"
+      },
+      "days": 11
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 1440,
+        "entry": "kdj",
+        "filter": "slow-ema",
+        "management": "atr"
+      },
+      "days": 63
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 1440,
+        "entry": "kdj",
+        "filter": "none",
+        "management": "atr",
+        "breakoutBars": 250
+      },
+      "days": 14
+    },
+    {
+      "strategy": {
+        "entry": "price-action",
+        "filter": "none",
+        "management": "atr",
+        "tradeMinutes": 1,
+        "priceAction": {
+          "keyLevel": false,
+          "twoLegs": false
+        }
+      },
+      "days": 1
+    },
+    {
+      "strategy": {
+        "entry": "price-action",
+        "filter": "none",
+        "management": "atr",
+        "tradeMinutes": 1,
+        "priceAction": {
+          "keyLevel": true,
+          "twoLegs": true
+        }
+      },
+      "days": 1
+    },
+    {
+      "strategy": {
+        "entry": "price-action",
+        "filter": "none",
+        "management": "atr",
+        "tradeMinutes": 5,
+        "priceAction": {
+          "keyLevel": false,
+          "twoLegs": false
+        }
+      },
+      "days": 1
+    },
+    {
+      "strategy": {
+        "entry": "price-action",
+        "filter": "none",
+        "management": "atr",
+        "tradeMinutes": 5,
+        "priceAction": {
+          "keyLevel": true,
+          "twoLegs": true
+        }
+      },
+      "days": 1
+    },
+    {
+      "strategy": {
+        "entry": "price-action",
+        "filter": "none",
+        "management": "atr",
+        "tradeMinutes": 30,
+        "priceAction": {
+          "keyLevel": false,
+          "twoLegs": false
+        }
+      },
+      "days": 2
+    },
+    {
+      "strategy": {
+        "entry": "price-action",
+        "filter": "none",
+        "management": "atr",
+        "tradeMinutes": 30,
+        "priceAction": {
+          "keyLevel": true,
+          "twoLegs": true
+        }
+      },
+      "days": 2
+    },
+    {
+      "strategy": {
+        "entry": "price-action",
+        "filter": "none",
+        "management": "atr",
+        "tradeMinutes": 60,
+        "priceAction": {
+          "keyLevel": false,
+          "twoLegs": false
+        }
+      },
+      "days": 4
+    },
+    {
+      "strategy": {
+        "entry": "price-action",
+        "filter": "none",
+        "management": "atr",
+        "tradeMinutes": 60,
+        "priceAction": {
+          "keyLevel": true,
+          "twoLegs": true
+        }
+      },
+      "days": 4
+    },
+    {
+      "strategy": {
+        "entry": "price-action",
+        "filter": "none",
+        "management": "atr",
+        "tradeMinutes": 240,
+        "priceAction": {
+          "keyLevel": false,
+          "twoLegs": false
+        }
+      },
+      "days": 22
+    },
+    {
+      "strategy": {
+        "entry": "price-action",
+        "filter": "none",
+        "management": "atr",
+        "tradeMinutes": 240,
+        "priceAction": {
+          "keyLevel": true,
+          "twoLegs": true
+        }
+      },
+      "days": 22
+    },
+    {
+      "strategy": {
+        "entry": "price-action",
+        "filter": "none",
+        "management": "atr",
+        "tradeMinutes": 1440,
+        "priceAction": {
+          "keyLevel": false,
+          "twoLegs": false
+        }
+      },
+      "days": 154
+    },
+    {
+      "strategy": {
+        "entry": "price-action",
+        "filter": "none",
+        "management": "atr",
+        "tradeMinutes": 1440,
+        "priceAction": {
+          "keyLevel": true,
+          "twoLegs": true
+        }
+      },
+      "days": 154
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 30,
+        "filter": "none",
+        "breakoutBars": 320,
+        "channelExitBars": 20
+      },
+      "days": 7
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 30,
+        "filter": "none",
+        "breakoutBars": 40,
+        "channelExitBars": 320
+      },
+      "days": 7
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 30,
+        "filter": "none",
+        "breakoutBars": 40,
+        "channelExitBars": 40,
+        "breakoutReentry": "episode"
+      },
+      "days": 1
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 1440,
+        "filter": "none",
+        "breakoutBars": 250,
+        "channelExitBars": 250
+      },
+      "days": 250
+    },
+    {
+      "strategy": {
+        "tradeMinutes": 240,
+        "filter": "none",
+        "breakoutBars": 1000,
+        "channelExitBars": 20
+      },
+      "days": 167
+    },
+    {
+      "name": "structured-30m-all-labels",
+      "strategy": {
+        "entry": "structured-pullback",
+        "filter": "ema",
+        "management": "chandelier",
+        "tradeMinutes": 30,
+        "structuredPullback": {
+          "keyLevel": "either",
+          "shape": "any",
+          "candle": "none",
+          "confirmation": "before-breakout",
+          "keyRole": "pullback-retest"
+        }
+      },
+      "days": 4
+    },
+    {
+      "name": "structured-30m-gates-off",
+      "strategy": {
+        "entry": "structured-pullback",
+        "filter": "ema",
+        "management": "chandelier",
+        "tradeMinutes": 30,
+        "structuredPullback": {
+          "keyLevel": "none",
+          "shape": "none",
+          "candle": "none",
+          "confirmation": "before-breakout",
+          "keyRole": "pullback-retest"
+        }
+      },
+      "days": 4
     }
   ]
 }

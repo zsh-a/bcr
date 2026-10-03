@@ -185,6 +185,39 @@ class ResearchTests(unittest.TestCase):
             with self.subTest(strategy=strategy):
                 self.assertEqual(warmup.warmup_days(strategy), case["days"])
 
+    def test_v6_staged_config_is_explicit_and_does_not_leak_into_legacy_versions(self):
+        plan = json.loads((protocol.ROOT / "research/trend/methods-plan.json").read_text())
+        plan["configVersion"] = 6
+        candidate = {**plan["candidates"][0], "entry": "kdj", "filter": "slow-ema", "management": "staged",
+                     "tradeMinutes": 5, "breakEvenAtr": 0, "trailingAtr": 3,
+                     "staged": {"breakEvenR": 1, "trailingStartR": 2}}
+        expanded = protocol.Candidate.from_definition(candidate)
+        configured = protocol.config(plan, "BTCUSDT", expanded)
+        self.assertEqual(configured["version"], 6)
+        self.assertEqual(configured["strategy"]["staged"], {"breakEvenR": 1, "trailingStartR": 2})
+        self.assertEqual(configured["strategy"]["maxCostAtr"], 0)
+        self.assertEqual(configured["execution"]["initialCapital"], 10000)
+        for version in [4, 5]:
+            older = {**plan, "configVersion": version}
+            strategy = {key: value for key, value in candidate.items() if key != "maxCostAtr"}
+            with self.assertRaisesRegex(ValueError, "configVersion 6"):
+                protocol.config(older, "BTCUSDT", protocol.Candidate.from_definition(strategy))
+        for staged in [None, {}, {"breakEvenR": 1}, {"breakEvenR": -1, "trailingStartR": 2},
+                       {"breakEvenR": 1, "trailingStartR": float("inf")},
+                       {"breakEvenR": True, "trailingStartR": 2}]:
+            with self.subTest(staged=staged), self.assertRaisesRegex(ValueError, "staged"):
+                protocol.config(plan, "BTCUSDT", protocol.Candidate.from_definition({**candidate, "staged": staged}))
+        with self.assertRaisesRegex(ValueError, "omit staged"):
+            protocol.config(plan, "BTCUSDT", protocol.Candidate.from_definition({**candidate, "management": "atr"}))
+        reference = protocol.config(plan, "BTCUSDT", protocol.Candidate.from_definition(plan["candidates"][0]))
+        self.assertNotIn("staged", reference["strategy"])
+
+    def test_kdj_slow_ema_warmup_uses_enabled_windows(self):
+        strategy = {"entry": "kdj", "filter": "slow-ema", "breakoutBars": 250}
+        for minutes, days in [(5, 1), (15, 1), (60, 3), (240, 11), (1440, 63)]:
+            self.assertEqual(warmup.warmup_days({**strategy, "tradeMinutes": minutes}), days)
+        self.assertEqual(warmup.warmup_days({**strategy, "filter": "none", "tradeMinutes": 1440}), 14)
+
     def test_archive_windows_include_sensitivity_warmup_but_not_unused_calendar(self):
         plan = {"candidates": [{"id": "daily", "tradeMinutes": 1440, "filter": "none"}],
                 "sensitivity": [{"id": "longer", "breakoutBars": 60}],
@@ -218,6 +251,66 @@ class ResearchTests(unittest.TestCase):
         self.assertEqual(sum(r.id == "baseline-stress" for r in rows), 1)
         self.assertEqual(len(protocol.window_candidates(plan, {"id": "development"})), 2)
 
+    def test_explicit_stress_candidates_expand_all_six_without_changing_strategies(self):
+        plan = json.loads((protocol.ROOT / "research/trend/methods-plan.json").read_text())
+        plan["candidates"] = plan["candidates"][:6]
+        plan["sensitivity"] = []
+        plan["stressCandidates"] = [candidate["id"] for candidate in plan["candidates"]]
+        original = copy.deepcopy(plan)
+        protocol.validate_plan(plan)
+        self.assertEqual(len(protocol.window_candidates(plan, plan["windows"][0])), 6)
+        for primary in [plan["candidates"][0]["id"], plan["candidates"][1]["id"]]:
+            rows = protocol.window_candidates(plan, plan["windows"][1], {"id": primary})
+            self.assertEqual([row.id for row in rows], plan["stressCandidates"]
+                             + [name + "-stress" for name in plan["stressCandidates"]])
+            configured = {row["id"]: row["config"] for row in protocol.native_requests(plan, "BTCUSDT", rows)}
+            for name in plan["stressCandidates"]:
+                base, stress = configured[name], configured[name + "-stress"]
+                self.assertEqual(stress["strategy"], base["strategy"])
+                self.assertEqual(stress["risk"], base["risk"])
+                expected = {**base["execution"], "feeBps": plan["costs"]["stressFeeBps"],
+                            "slippageBps": plan["costs"]["stressSlippageBps"]}
+                self.assertEqual(stress["execution"], expected)
+        self.assertEqual(plan, original)
+
+    def test_explicit_stress_subset_replaces_implicit_primary_and_baseline(self):
+        plan = {"candidates": [{"id": name} for name in ["baseline", "primary", "diagnostic"]],
+                "baseline": "baseline", "stressCandidates": ["diagnostic"]}
+        rows = protocol.window_candidates(plan, {"id": "later"}, {"id": "primary"})
+        self.assertEqual([row.id for row in rows], ["baseline", "primary", "diagnostic", "diagnostic-stress"])
+        self.assertEqual([row.cost_scenario for row in rows], ["base", "base", "base", "stress"])
+
+    def test_explicit_stress_list_rejects_ambiguous_values_before_replay(self):
+        plan = json.loads((protocol.ROOT / "research/trend/methods-plan.json").read_text())
+        name = plan["candidates"][0]["id"]
+        for value in [None, {}, name, [], [name, name], ["unknown"], [0], [True], [[name]], [{"id": name}]]:
+            changed = {**plan, "stressCandidates": value}
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "stressCandidates"):
+                    protocol.validate_plan(changed)
+                with self.assertRaisesRegex(ValueError, "stressCandidates"):
+                    protocol.window_candidates(changed, plan["windows"][0])
+
+    def test_explicit_stress_expansion_respects_research_capacity_and_id_collisions(self):
+        plan = json.loads((protocol.ROOT / "research/trend/methods-plan.json").read_text())
+        plan["candidates"] = plan["candidates"][:8]
+        plan["sensitivity"] = []
+        plan["stressCandidates"] = [candidate["id"] for candidate in plan["candidates"]]
+        protocol.validate_plan(plan)
+        selected = {"id": plan["candidates"][0]["id"]}
+        self.assertEqual(len(protocol.window_candidates(plan, plan["windows"][1], selected)), 16)
+        plan["sensitivity"] = [{"id": "stop-lower", "stopAtr": 1.5}]
+        protocol.validate_plan(plan)
+        self.assertEqual(len(protocol.window_candidates(plan, plan["windows"][1], selected)), 17)
+        plan["sensitivity"] = [{"id": f"extra-{i}", "stopAtr": 1.5} for i in range(113)]
+        with self.assertRaisesRegex(ValueError, "exceeds 128"):
+            protocol.validate_plan(plan)
+        with self.assertRaisesRegex(ValueError, "exceeds 128"):
+            protocol.window_candidates(plan, plan["windows"][1], selected)
+        collision = {"candidates": [{"id": "base"}, {"id": "base-stress"}], "stressCandidates": ["base"]}
+        with self.assertRaisesRegex(ValueError, "collide"):
+            protocol.window_candidates(collision, {"id": "later"}, {"id": "base"})
+
     def test_candidate_names_never_choose_current_cost_scenarios(self):
         plan = json.loads((protocol.ROOT / "research/trend/methods-plan.json").read_text())
         selected = plan["candidates"][0]["id"]
@@ -249,7 +342,7 @@ class ResearchTests(unittest.TestCase):
         window = {"id": "check", "start": "2024-01-01", "end": "2024-01-03"}
         batch.update(planSha256="plan", window="check", engine="test-engine",
                      startTime=protocol.timestamp(window["start"]), endTime=protocol.timestamp(window["end"]))
-        row["config"] = {"execution": {"initialCapital": 10000}}
+        row["config"] = {"version": 9, "execution": {"initialCapital": 10000}}
         requests = [{"id": "c", "config": row["config"]}]
         original = copy.deepcopy(row)
         self.assertEqual(daily_equity(row), curve)
@@ -290,6 +383,109 @@ class ResearchTests(unittest.TestCase):
         plan["selectionObjective"] = "holdoutReturn"
         with self.assertRaisesRegex(ValueError, "selectionObjective"):
             evaluation.select_development(plan, summaries)
+
+    def test_selection_pool_excludes_comparators_without_falling_back_to_them(self):
+        def summary(candidate_id, sharpe, trades=12):
+            return {"id": candidate_id, "dailySharpe": sharpe, "medianSymbolMeanR": .1,
+                    "profitableSymbols": 4, "symbols": [{"metrics": {"trades": trades}}]}
+        summaries = [summary("baseline", 10), summary("be0", .3), summary("be1", .5), summary("be2", .2)]
+        plan = {"selectionObjective": "dailySharpe", "selectionMinTrades": 10,
+                "selectionCandidates": ["be0", "be1", "be2"]}
+        self.assertEqual(evaluation.select_development(plan, summaries)[0]["id"], "be1")
+        self.assertEqual(evaluation.select_development({k: v for k, v in plan.items() if k != "selectionCandidates"}, summaries)[0]["id"], "baseline")
+        with self.assertRaisesRegex(ValueError, "no candidate"):
+            evaluation.select_development(plan, [summaries[0], summary("be0", .3, 0)])
+        declared = json.loads((protocol.ROOT / "research/trend/methods-plan.json").read_text())
+        for allowed in [[], ["not-declared"], [declared["baseline"], declared["baseline"]], declared["baseline"]]:
+            with self.subTest(allowed=allowed), self.assertRaisesRegex(ValueError, "selectionCandidates"):
+                protocol.validate_plan({**declared, "selectionCandidates": allowed})
+
+    def test_fixed_candidate_is_retained_when_bad_or_undersampled(self):
+        plan = {"selectionMode": "fixed", "fixedCandidate": "primary", "selectionMinTrades": 10,
+                "selectionMinProfitableSymbols": 1, "symbols": {"A": {}},
+                "windows": [{"id": "development", "start": "2025-01-01", "end": "2026-01-01"}]}
+        primary = {"id": "primary", "dailySharpe": -2, "medianSymbolMeanR": -.2,
+                   "profitableSymbols": 0, "symbols": [{"symbol": "A", "metrics": {"trades": 12}}]}
+        comparator = {**primary, "id": "better-comparator", "dailySharpe": 3,
+                      "medianSymbolMeanR": .5, "profitableSymbols": 1}
+        chosen, objective, qualified = evaluation.select_development(plan, [comparator, primary])
+        self.assertIs(chosen, primary)
+        self.assertEqual(objective, "fixed")
+        self.assertFalse(qualified)
+        self.assertEqual(evaluation.fixed_qualification(plan, primary)["status"], "failed")
+        primary.update(dailySharpe=None, medianSymbolMeanR=None)
+        primary["symbols"][0]["metrics"]["trades"] = 0
+        chosen, _, qualified = evaluation.select_development(plan, [comparator, primary])
+        self.assertIs(chosen, primary)
+        self.assertFalse(qualified)
+        qualification = evaluation.fixed_qualification(plan, primary)
+        self.assertEqual(qualification["status"], "insufficient-sample")
+        self.assertEqual(qualification["reasons"], ["too-few-trades:A"])
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            evaluation.select_development(plan, [comparator])
+
+    def test_fixed_qualification_distinguishes_short_sample_and_undefined_metric(self):
+        plan = {"selectionMinTrades": 10, "selectionMinProfitableSymbols": 1, "symbols": {"A": {}},
+                "windows": [{"id": "development", "start": "2025-01-01", "end": "2025-01-31"}]}
+        row = {"dailySharpe": 1, "medianSymbolMeanR": .1, "profitableSymbols": 1,
+               "symbols": [{"symbol": "A", "metrics": {"trades": 10}}]}
+        self.assertEqual(evaluation.fixed_qualification(plan, row)["status"], "passed")
+        row["dailySharpe"] = None  # Zero variance is not a small sample.
+        status = evaluation.fixed_qualification(plan, row)
+        self.assertEqual(status["status"], "failed")
+        self.assertEqual(status["reasons"], ["daily-sharpe-undefined"])
+        plan["windows"][0]["end"] = "2025-01-03"
+        status = evaluation.fixed_qualification(plan, row)
+        self.assertEqual(status["status"], "insufficient-sample")
+        self.assertEqual(status["reasons"], ["too-few-complete-days"])
+        row["symbols"] = []
+        with self.assertRaisesRegex(ValueError, "every declared symbol"):
+            evaluation.fixed_qualification(plan, row)
+
+    def test_fixed_plan_and_recorded_selection_cannot_hide_a_reselection(self):
+        plan = json.loads((protocol.ROOT / "research/trend/methods-plan.json").read_text())
+        plan.pop("selectionObjective")
+        plan.update(selectionMode="fixed", fixedCandidate=plan["baseline"])
+        protocol.validate_plan(plan)
+        for change in [{"fixedCandidate": "unknown"}, {"selectionObjective": "dailySharpe"},
+                       {"selectionCandidates": [plan["baseline"]]}, {"selectionMode": "unknown"},
+                       {"selectionMode": "ranked"}, {"selectionMinTrades": 0}]:
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                protocol.validate_plan({**plan, **change})
+        selection = {"id": plan["fixedCandidate"], "selectionMode": "fixed", "objective": "fixed",
+                     "developmentQualified": False,
+                     "developmentQualification": {"status": "insufficient-sample", "reasons": ["too-few-trades:A"]}}
+        protocol.validate_selection(plan, selection)
+        # Later predeclared diagnostics still include the fixed rule's stress case.
+        self.assertIn(plan["fixedCandidate"] + "-stress",
+                      [candidate.id for candidate in protocol.window_candidates(plan, plan["windows"][1], selection)])
+        other = next(c["id"] for c in plan["candidates"] if c["id"] != plan["fixedCandidate"])
+        for change in [{"id": other}, {"objective": "dailySharpe"}, {"developmentQualified": True},
+                       {"developmentQualification": {"status": "passed", "reasons": []}}]:
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                protocol.validate_selection(plan, {**selection, **change})
+
+    def test_v7_price_action_flags_and_warmup_are_explicit(self):
+        plan = json.loads((protocol.ROOT / "research/trend/kdj-plan.json").read_text())
+        plan["configVersion"] = 7
+        candidate = {**plan["candidates"][0], "entry": "price-action",
+                     "priceAction": {"keyLevel": True, "twoLegs": True}}
+        symbol = next(iter(plan["symbols"]))
+        configured = protocol.config(plan, symbol, protocol.Candidate.from_definition(candidate))
+        self.assertEqual(configured["strategy"]["priceAction"], candidate["priceAction"])
+        with self.assertRaisesRegex(ValueError, "configVersion 7"):
+            protocol.config({**plan, "configVersion": 6}, symbol, protocol.Candidate.from_definition(candidate))
+        for value in [None, {}, {"keyLevel": True, "twoLegs": 1},
+                      {"keyLevel": True, "twoLegs": True, "extra": False}]:
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "boolean"):
+                protocol.config(plan, symbol, protocol.Candidate.from_definition({**candidate, "priceAction": value}))
+        with self.assertRaisesRegex(ValueError, "omit priceAction"):
+            protocol.config(plan, symbol, protocol.Candidate.from_definition({**candidate, "entry": "pullback"}))
+        for key in [False, True]:
+            for two in [False, True]:
+                strategy = {**candidate, "filter": "none", "tradeMinutes": 240,
+                            "priceAction": {"keyLevel": key, "twoLegs": two}}
+                self.assertEqual(warmup.warmup_days(strategy), 22)
 
     def test_total_account_cash_reconciles_without_multiplying_returns(self):
         plan = {"initialCapital": 2000, "capitalMode": "total-account-equal-sleeves",
@@ -349,13 +545,16 @@ class ResearchTests(unittest.TestCase):
 
     def test_frozen_evidence_and_run_destinations_cannot_be_written(self):
         for path in ["tmp/trend-methods", "tmp/trend-slow/development/BTCUSDT.json",
-                     "research/trend/results.json", "research/trend/methods/REPORT.md"]:
+                     "research/trend/results.json", "research/trend/methods/REPORT.md",
+                     "tmp/trend-kdj-v6", "research/trend/kdj-plan.json", "research/trend/kdj/ANALYSIS.md"]:
             with self.subTest(path=path), self.assertRaisesRegex(ValueError, "read-only"):
                 artifacts.ensure_writable(protocol.ROOT / path)
         with self.assertRaisesRegex(ValueError, "read-only"):
             artifacts.ensure_writable(protocol.ROOT / "research/trend", directory=True)
         artifacts.ensure_writable(protocol.ROOT / "tmp/new-independent-study", directory=True)
-        self.assertEqual(artifacts.verify_frozen(), 11)
+        registry = artifacts.read(artifacts.REGISTRY)
+        self.assertGreaterEqual(len(registry["artifacts"]), 11)
+        self.assertEqual(artifacts.verify_frozen(), len(registry["artifacts"]))
 
     def test_content_addressed_artifacts_are_reused_and_tampering_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -404,19 +603,24 @@ class ResearchTests(unittest.TestCase):
                     download.archive(cache, "BTCUSDT", "klines", "2024-01")
             self.assertEqual(source.read_bytes(), b"frozen source bytes")
 
-    def make_evidence(self, folder, *, sensitivity=None, replay_version=None):
+    def make_evidence(self, folder, *, sensitivity=None, replay_version=None, fixed=False):
         plan = json.loads((protocol.ROOT / "research/trend/methods-plan.json").read_text())
         plan.update(initialCapital=2400, symbols={"AAAUSDT": plan["symbols"]["BTCUSDT"], "BBBUSDT": plan["symbols"]["ETHUSDT"]},
                     candidates=[plan["candidates"][0]], sensitivity=sensitivity or [],
                     bootstrap={"samples": 50, "blockDays": 2, "seed": 13},
                     windows=[{"id": "training", "role": "development", "start": "2024-01-01", "end": "2024-01-03"},
                              {"id": "later-custom-window", "role": "diagnostic", "start": "2025-06-01", "end": "2025-06-04"}])
+        if fixed:
+            plan.pop("selectionObjective")
+            plan.update(selectionMode="fixed", fixedCandidate="predeclared-primary",
+                        comparisons=[{"id": "primary-vs-base", "candidate": "predeclared-primary", "reference": plan["baseline"]}])
+            plan["candidates"].append({**plan["candidates"][0], "id": plan["fixedCandidate"]})
         plan_path, manifest_path, run = folder / "plan.json", folder / "manifest.json", folder / "run"
         artifacts.write(plan_path, plan)
         plan_hash = artifacts.sha(plan_path)
         artifacts.write(manifest_path, {"planSha256": plan_hash, "warmupPolicy": warmup.WARMUP_POLICY,
                                       "symbols": {symbol: {"archives": [], "fundingSha256": "funding-identity"} for symbol in plan["symbols"]}})
-        selection = {"id": plan["baseline"], "binarySha256": "historical-binary", "runnerSha256": "historical-source", "developmentQualified": True,
+        selection = {"id": plan["fixedCandidate"] if fixed else plan["baseline"], "binarySha256": "historical-binary", "runnerSha256": "historical-source", "developmentQualified": True,
                      "planSha256": plan_hash, "manifestSha256": artifacts.sha(manifest_path)}
         if replay_version is not None:
             selection["replayVersion"] = replay_version
@@ -446,10 +650,35 @@ class ResearchTests(unittest.TestCase):
                     **({"replayVersion": replay_version} if replay_version is not None else {})})
                 batches.append(batch)
             if protocol.is_development(window):
-                artifacts.write(run / "training-summary.json", [evaluation.summarize(plan, batches, plan["baseline"])])
+                summaries = [evaluation.summarize(plan, batches, candidate["id"]) for candidate in plan["candidates"]]
+                artifacts.write(run / "training-summary.json", summaries)
                 selection["developmentSha256"] = artifacts.sha(run / "training-summary.json")
+                if fixed:
+                    chosen, objective, qualified = evaluation.select_development(plan, summaries)
+                    selection.update(selectionMode="fixed", objective=objective, developmentQualified=qualified,
+                                     developmentQualification=evaluation.fixed_qualification(plan, chosen))
         artifacts.write(run / "selection.json", selection)
         return plan_path, manifest_path, run
+
+    def test_fixed_report_preserves_insufficient_primary_and_all_declared_comparisons(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = self.make_evidence(Path(tmp), replay_version=protocol.REPLAY_VERSION, fixed=True)
+            evidence = artifacts.load_evidence(*paths)
+            self.assertEqual(evidence["selection"]["developmentQualification"]["status"], "insufficient-sample")
+            bundle, _ = report.build_bundle(evidence)
+            self.assertEqual(bundle["selection"]["id"], "predeclared-primary")
+            self.assertEqual(set(bundle["declaredComparisons"]), {window["id"] for window in evidence["plan"]["windows"]})
+            for comparisons in bundle["declaredComparisons"].values():
+                self.assertEqual(comparisons["primary-vs-base"]["meanDailyDifference95CI"], [0, 0])
+            rendered = report.render_report(bundle)
+            self.assertIn("事前固定主候选", rendered)
+            self.assertIn("开发期资格：样本不足", rendered)
+            self.assertIn("predeclared-primary −", rendered)
+            selection = artifacts.read(paths[2] / "selection.json")
+            selection["id"] = evidence["plan"]["baseline"]
+            artifacts.write(paths[2] / "selection.json", selection)
+            with self.assertRaisesRegex(ValueError, "predeclared fixed"):
+                artifacts.load_evidence(*paths)
 
     def test_recorded_cost_protocol_survives_new_candidate_expansion(self):
         for version in [None, "trend-native-replay-2", protocol.REPLAY_VERSION]:
@@ -542,7 +771,7 @@ class ResearchTests(unittest.TestCase):
             identity = report.prepare_destination(evidence, output)
             artifacts.write(output / "results.json", {"evaluationIdentity": identity, "reportSourceSha256": "old-layout"})
             self.assertEqual(report.prepare_destination(evidence, output), identity)
-            with patch.object(report, "evaluation_fingerprint", return_value="new-statistics"):
+            with patch("artifacts.evaluation_fingerprint", return_value="new-statistics"):
                 with self.assertRaisesRegex(ValueError, "different study or evaluation"):
                     report.prepare_destination(evidence, output)
             with self.assertRaisesRegex(ValueError, "outside"):

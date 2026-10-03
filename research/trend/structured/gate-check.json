@@ -1,0 +1,9 @@
+{
+  "kind": "failed-development-gate-check-v1",
+  "status": "passed",
+  "requestedCell": "validation",
+  "developmentSealSha256": "e95e71f687c1bac8d95962c0dd42533bb20958f5d739566fad6df9d8c2c38c32",
+  "denied": true,
+  "reason": "a failed stage cannot unlock later observations",
+  "outputCreated": false
+}

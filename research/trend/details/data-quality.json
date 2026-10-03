@@ -1,0 +1,373 @@
+{
+  "version": 1,
+  "manifestSha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831",
+  "planSha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38",
+  "generatorSha256": "c182fab91204931b555d467d8496818b2112ef6a2a95debb08892972a63a95a3",
+  "priceValidation": {
+    "policy": "required-utc-days-v1",
+    "intervals": [
+      {
+        "start": 1608249600000,
+        "end": 1656633600000
+      },
+      {
+        "start": 1660780800000,
+        "end": 1722470400000
+      },
+      {
+        "start": 1726531200000,
+        "end": 1733011200000
+      },
+      {
+        "start": 1734480000000,
+        "end": 1790812800000
+      }
+    ]
+  },
+  "warmupWindows": [
+    {
+      "id": "development",
+      "start": "2022-09-01",
+      "end": "2024-01-01",
+      "role": "development",
+      "label": "开发资格复核 · 已查看历史",
+      "warmupDays": 14,
+      "warmupStart": "2022-08-18"
+    },
+    {
+      "id": "known-2024",
+      "start": "2024-01-01",
+      "end": "2024-08-01",
+      "role": "diagnostic-known",
+      "label": "2024 年 1—7 月 · 已查看历史",
+      "warmupDays": 14,
+      "warmupStart": "2023-12-18"
+    },
+    {
+      "id": "known-2025",
+      "start": "2025-01-01",
+      "end": "2026-01-01",
+      "role": "diagnostic-known",
+      "label": "2025 全年 · 已查看历史",
+      "warmupDays": 14,
+      "warmupStart": "2024-12-18"
+    },
+    {
+      "id": "known-2026",
+      "start": "2026-01-01",
+      "end": "2026-09-01",
+      "role": "diagnostic-known",
+      "label": "2026 年 1—8 月 · 已查看历史",
+      "warmupDays": 14,
+      "warmupStart": "2025-12-18"
+    },
+    {
+      "id": "historical-stress",
+      "start": "2022-01-01",
+      "end": "2022-07-01",
+      "role": "diagnostic-stress",
+      "label": "2022 年上半年压力 · 已查看历史",
+      "warmupDays": 14,
+      "warmupStart": "2021-12-18"
+    },
+    {
+      "id": "fresh-september",
+      "start": "2026-09-01",
+      "end": "2026-10-01",
+      "role": "diagnostic-check",
+      "label": "2026 年 9 月复核 · 已查看历史",
+      "warmupDays": 14,
+      "warmupStart": "2026-08-18"
+    },
+    {
+      "id": "transfer-2021",
+      "start": "2021-01-01",
+      "end": "2022-01-01",
+      "role": "historical-transfer",
+      "candidateScope": "selected-and-baseline",
+      "label": "2021 全年 · 新历史反向转移",
+      "warmupDays": 14,
+      "warmupStart": "2020-12-18"
+    },
+    {
+      "id": "transfer-2024-oct-nov",
+      "start": "2024-10-01",
+      "end": "2024-12-01",
+      "role": "historical-transfer",
+      "candidateScope": "selected-and-baseline",
+      "label": "2024 年 10—11 月 · 新历史转移",
+      "warmupDays": 14,
+      "warmupStart": "2024-09-17"
+    }
+  ],
+  "symbols": {
+    "BTCUSDT": {
+      "archives": 202,
+      "partitions": 68,
+      "scopedPartitions": [
+        {
+          "month": "2020-12",
+          "from": 1608249600000,
+          "to": 1609459200000,
+          "candles": "/home/zs/.cache/bcr-trend-details-20261003/BTCUSDT/klines/replay/cf691b7df2aca695460c86ccf068dd6881ec5bdd194dc4d8644742dca697ab47.csv",
+          "marks": "/home/zs/.cache/bcr-trend-details-20261003/BTCUSDT/markPriceKlines/replay/089a1ecbd55160a8a3af03c234cbb6d7946a517fcbaa3a47549b65ea552a712c.csv"
+        }
+      ],
+      "restoredDays": [
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/BTCUSDT/markPriceKlines/derived/3eace3ffc9d28f270a718e03f9e632036481f08bdc7dbe7f901d744e157dc4cf.csv",
+          "days": [
+            "2021-07-01",
+            "2021-07-24",
+            "2021-07-25",
+            "2021-07-26",
+            "2021-07-27"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/BTCUSDT/markPriceKlines/derived/da90b7ebaad621e469523a0e6b25abe97cd20c92829258afb022a63b4491481a.csv",
+          "days": [
+            "2022-10-02"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/BTCUSDT/markPriceKlines/derived/d31b5e5448c034aeba10cd0713516e672c492333e159c23ea79a289206ae51dd.csv",
+          "days": [
+            "2023-02-24"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/BTCUSDT/markPriceKlines/derived/16d8d46348af753373ae8ed9479b10d898e2a599cfb35c9f4a047898ed5898b0.csv",
+          "days": [
+            "2026-06-29"
+          ]
+        }
+      ]
+    },
+    "ETHUSDT": {
+      "archives": 202,
+      "partitions": 68,
+      "scopedPartitions": [
+        {
+          "month": "2020-12",
+          "from": 1608249600000,
+          "to": 1609459200000,
+          "candles": "/home/zs/.cache/bcr-trend-details-20261003/ETHUSDT/klines/replay/d817034dca010eab453ea397d6feadae4e8a46ff770d08a6939858c1362cfdd9.csv",
+          "marks": "/home/zs/.cache/bcr-trend-details-20261003/ETHUSDT/markPriceKlines/replay/be390712ea9fc2d3d5d67f4283178040926ffa7c53cb89ebf02ed54ce1c10b97.csv"
+        }
+      ],
+      "restoredDays": [
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/ETHUSDT/markPriceKlines/derived/b36d698b81bfbdcc448c03c504e9b4178470fe5325da5aa8c7f492c1f5c43685.csv",
+          "days": [
+            "2022-10-02"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/ETHUSDT/markPriceKlines/derived/638bb9535474a9d7660d9c72d1d701ef741fa62dc4740fc2f17304435ccc1be6.csv",
+          "days": [
+            "2023-02-24"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/ETHUSDT/markPriceKlines/derived/f07c92f24e09564045fe61647d08f99a0f902f39aa86a65276d061c598b3c899.csv",
+          "days": [
+            "2026-06-29"
+          ]
+        }
+      ]
+    },
+    "BNBUSDT": {
+      "archives": 202,
+      "partitions": 68,
+      "scopedPartitions": [
+        {
+          "month": "2020-12",
+          "from": 1608249600000,
+          "to": 1609459200000,
+          "candles": "/home/zs/.cache/bcr-trend-details-20261003/BNBUSDT/klines/replay/0eed3c945a98875c8b6d333ad87d1484cce36ea482031be5462e7035d8d97ffb.csv",
+          "marks": "/home/zs/.cache/bcr-trend-details-20261003/BNBUSDT/markPriceKlines/replay/8ab68a38c01a131280399b0a800e6691fd189cb0f3a888a666c7ca040b8ffdd9.csv"
+        }
+      ],
+      "restoredDays": [
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/BNBUSDT/markPriceKlines/derived/4efc344519918759858a88e3d2372744c6d69423d02ed879d15af5c41a41bb73.csv",
+          "days": [
+            "2021-07-01",
+            "2021-07-24",
+            "2021-07-25",
+            "2021-07-26",
+            "2021-07-27"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/BNBUSDT/markPriceKlines/derived/bb6c2b1041c6d0b08c14f4bd1267ababc3e7eaa7bd5b76d79a85bfccde037049.csv",
+          "days": [
+            "2022-10-02"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/BNBUSDT/markPriceKlines/derived/0e49f64669fe06e6bd4ec9bcc3faaa6781fa9f0e1e4c979bdf912b859800d88d.csv",
+          "days": [
+            "2023-02-24"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/BNBUSDT/markPriceKlines/derived/737964785558e34a163439c1026215626c238d93d84f003a85ebe35272348cd3.csv",
+          "days": [
+            "2026-06-29"
+          ]
+        }
+      ]
+    },
+    "SOLUSDT": {
+      "archives": 202,
+      "partitions": 68,
+      "scopedPartitions": [
+        {
+          "month": "2020-12",
+          "from": 1608249600000,
+          "to": 1609459200000,
+          "candles": "/home/zs/.cache/bcr-trend-details-20261003/SOLUSDT/klines/replay/51a1eb013e85b2ea98e596b39e9e72e5e405c4644ed3a17d29ad6f430ad748ab.csv",
+          "marks": "/home/zs/.cache/bcr-trend-details-20261003/SOLUSDT/markPriceKlines/replay/c948e8c728fe67c5f335847cb8525bc529c496b06d3b1a5d67c344b2bdf00983.csv"
+        }
+      ],
+      "restoredDays": [
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/SOLUSDT/klines/derived/5636a180ae68b5098d32f997747c0e17e37da19c2e1ea0991d62c53190a7f222.csv",
+          "days": [
+            "2022-02-26",
+            "2022-02-27",
+            "2022-02-28"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/SOLUSDT/klines/derived/97ed3b8f683881cfdfeeef9d4af3ddce60edef97cc1864bcaff5fdacb5fe878b.csv",
+          "days": [
+            "2022-04-01",
+            "2022-04-02"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/SOLUSDT/markPriceKlines/derived/04cd78a48276f5f5c0f98771d930da6bd53146023f8e0e921ef6ddf1ea186132.csv",
+          "days": [
+            "2021-07-01",
+            "2021-07-24",
+            "2021-07-25",
+            "2021-07-26",
+            "2021-07-27"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/SOLUSDT/markPriceKlines/derived/00711dcaca39dbbf1eb76e04e169196b88bcc9f26c3948683eb19d049ee801c3.csv",
+          "days": [
+            "2022-10-02"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/SOLUSDT/markPriceKlines/derived/7d6ddc30d9ca8c1129e328efe61dd08fa075ff686ea1aeeb89434118754b3773.csv",
+          "days": [
+            "2023-02-24"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/SOLUSDT/markPriceKlines/derived/a3aaebe3cbf8dbd2bd837a5a1aedb2c4dd3858b5e4725b3d7a7c963f959b5486.csv",
+          "days": [
+            "2026-06-29"
+          ]
+        }
+      ]
+    },
+    "XRPUSDT": {
+      "archives": 202,
+      "partitions": 68,
+      "scopedPartitions": [
+        {
+          "month": "2020-12",
+          "from": 1608249600000,
+          "to": 1609459200000,
+          "candles": "/home/zs/.cache/bcr-trend-details-20261003/XRPUSDT/klines/replay/1f547f7865079301213fbcdbfdc515d76e3c25aabe1591a5461877d81cdd2eb3.csv",
+          "marks": "/home/zs/.cache/bcr-trend-details-20261003/XRPUSDT/markPriceKlines/replay/7ebae35f5fe7d19d3e0db00199db1f869b614c1f8a4eccb294190a9b7175a13e.csv"
+        }
+      ],
+      "restoredDays": [
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/XRPUSDT/klines/derived/d274baaad3366d28455bca98020d33c2b3a0ba7e78d03e8b52b89312358e9257.csv",
+          "days": [
+            "2022-02-26",
+            "2022-02-27",
+            "2022-02-28"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/XRPUSDT/klines/derived/1d747203a700e242dd565b1a38c017c38be0f00f5d14fbfcf55ffa4e76ad7c9e.csv",
+          "days": [
+            "2022-04-01",
+            "2022-04-02"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/XRPUSDT/markPriceKlines/derived/51c383cfba2b8ee3d90d4cea11f28e41bcb225be6fe5fea1cea1ad88033e8a72.csv",
+          "days": [
+            "2021-07-01",
+            "2021-07-24",
+            "2021-07-25",
+            "2021-07-26",
+            "2021-07-27"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/XRPUSDT/markPriceKlines/derived/e2ef105be7ed05e3cbbce238c45348bbac5bff76c60734a6ffb3c41728dc9eaf.csv",
+          "days": [
+            "2022-10-02"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/XRPUSDT/markPriceKlines/derived/f1fa8d7573c1e75166fd0daa8e865b8b639b9b08bf59211e3f38d170874cccbc.csv",
+          "days": [
+            "2023-02-24"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/XRPUSDT/markPriceKlines/derived/e589e2c815d8203c63c7e3ea7e1db0f22755636a6030c23278b6b0c0fe7aaff6.csv",
+          "days": [
+            "2026-06-29"
+          ]
+        }
+      ]
+    },
+    "DOGEUSDT": {
+      "archives": 202,
+      "partitions": 68,
+      "scopedPartitions": [
+        {
+          "month": "2020-12",
+          "from": 1608249600000,
+          "to": 1609459200000,
+          "candles": "/home/zs/.cache/bcr-trend-details-20261003/DOGEUSDT/klines/replay/cb4b1fac1f6c03936c36db5bcbbf8b0f2477af90c7523b1ca8fceb9c1fe2051b.csv",
+          "marks": "/home/zs/.cache/bcr-trend-details-20261003/DOGEUSDT/markPriceKlines/replay/925f3fd453069089af7d45014fe8686998204bb040adbd9b71458f9679859b7b.csv"
+        }
+      ],
+      "restoredDays": [
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/DOGEUSDT/markPriceKlines/derived/59305662cca6294e716a34502ef61b774e09b738983214091d66a7fb64f3c6cc.csv",
+          "days": [
+            "2022-10-02"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/DOGEUSDT/markPriceKlines/derived/8750f0cfa6914bdb8ca90d386e0d7d71ebbfaee5db7c3f2c1e2cde083fad31b8.csv",
+          "days": [
+            "2023-02-24"
+          ]
+        },
+        {
+          "path": "/home/zs/.cache/bcr-trend-details-20261003/DOGEUSDT/markPriceKlines/derived/5ab22527db9fdfdf8b0edabbb173d98f9367a1c396da3922f66b03469e81e4f2.csv",
+          "days": [
+            "2026-06-29"
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -52,6 +52,7 @@ pub struct TradingClose {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ExitReason {
     Channel,
+    ProtectionCrossed,
     DailyClose,
     DailyLoss,
 }
@@ -59,6 +60,7 @@ impl ExitReason {
     pub fn label(self) -> &'static str {
         match self {
             Self::Channel => "channel-exit",
+            Self::ProtectionCrossed => "protection-crossed",
             Self::DailyClose => "daily-close",
             Self::DailyLoss => "daily-loss",
         }
@@ -66,8 +68,9 @@ impl ExitReason {
     pub fn priority(self) -> u8 {
         match self {
             Self::Channel => 0,
-            Self::DailyClose => 1,
-            Self::DailyLoss => 2,
+            Self::ProtectionCrossed => 1,
+            Self::DailyClose => 2,
+            Self::DailyLoss => 3,
         }
     }
 }
@@ -95,11 +98,171 @@ pub struct EntrySignal {
     pub time: u64,
     pub price: f64,
     /// Prior channel boundary, or the impulse extreme for a pullback entry.
-    pub boundary: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub boundary: Option<f64>,
     pub atr: f64,
     /// Channel bars preceding the signal candle; absent for structural pullbacks.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lookback_bars: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trigger: Option<EntryTrigger>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(untagged)]
+pub enum EntryTrigger {
+    Kdj(KdjTrigger),
+    PriceAction(PriceActionTrigger),
+    StructuredPullback(StructuredPullbackTrigger),
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShapeLabels {
+    pub two_legs: bool,
+    pub wedge: bool,
+    pub channel: bool,
+    pub double_test: bool,
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CandleLabels {
+    pub engulfing: bool,
+    pub doji: bool,
+    pub inside_bar: bool,
+    pub outside_bar: bool,
+    pub reversal: bool,
+    pub double_doji: bool,
+    pub narrow_range: bool,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfirmedTurn {
+    pub kind: &'static str,
+    pub time: u64,
+    pub confirmed_at: u64,
+    pub price: f64,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatedEmaSnapshot {
+    pub minutes: usize,
+    pub period: usize,
+    pub value: f64,
+    pub observed_at: u64,
+    pub validated_at: u64,
+    pub touches: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub retest_time: Option<u64>,
+    pub valid: bool,
+}
+fn serialize_turns<S: serde::Serializer>(
+    turns: &[Option<ConfirmedTurn>; 6],
+    s: S,
+) -> Result<S::Ok, S::Error> {
+    use serde::ser::SerializeSeq;
+    let mut seq = s.serialize_seq(Some(turns.iter().flatten().count()))?;
+    for turn in turns.iter().flatten() {
+        seq.serialize_element(turn)?;
+    }
+    seq.end()
+}
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EntryGates {
+    pub retracement: bool,
+    pub key: bool,
+    pub shape: bool,
+    pub candle: bool,
+}
+impl EntryGates {
+    pub fn passed(self) -> bool {
+        self.retracement && self.key && self.shape && self.candle
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContextEligibility {
+    pub pivot: bool,
+    pub ema: bool,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StructuredPullbackTrigger {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confirmation: Option<super::config::ConfirmationPolicy>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key_role: Option<super::config::KeyRole>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gates: Option<EntryGates>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_eligible: Option<ContextEligibility>,
+    pub kind: &'static str,
+    pub setup_id: u64,
+    pub impulse_start_time: u64,
+    pub impulse_confirmed_at: u64,
+    pub impulse_end_time: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pullback_started_at: Option<u64>,
+    pub impulse_start_price: f64,
+    pub impulse_extreme: f64,
+    pub reference_atr: f64,
+    pub strength_atr: f64,
+    pub efficiency: f64,
+    pub pullback_bars: usize,
+    pub retracement: f64,
+    pub shapes: ShapeLabels,
+    pub candles: CandleLabels,
+    #[serde(serialize_with = "serialize_turns")]
+    pub turns: [Option<ConfirmedTurn>; 6],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pivot: Option<KeyLevelSnapshot>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ema: Option<ValidatedEmaSnapshot>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PriceActionTrigger {
+    pub kind: &'static str,
+    pub setup_id: u64,
+    pub impulse_start_time: u64,
+    pub impulse_confirmed_at: u64,
+    pub pullback_started_at: u64,
+    pub impulse_start_price: f64,
+    pub impulse_extreme: f64,
+    pub reference_atr: f64,
+    pub strength_atr: f64,
+    pub efficiency: f64,
+    pub pullback_bars: usize,
+    pub retracement: f64,
+    pub leg_count: u8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key_level: Option<KeyLevelSnapshot>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KeyLevelSnapshot {
+    pub minutes: usize,
+    pub price: f64,
+    pub pivot_time: u64,
+    pub confirmed_at: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub retest_time: Option<u64>,
+    pub valid: bool,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KdjTrigger {
+    pub kind: &'static str,
+    pub armed_at: u64,
+    pub armed_k: f64,
+    pub previous_k: f64,
+    pub previous_d: f64,
+    pub k: f64,
+    pub d: f64,
+    pub j: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slow_ema: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slow_ema3_ago: Option<f64>,
 }
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -150,8 +313,16 @@ pub struct Equity {
 #[derive(Clone, Debug, Serialize)]
 pub struct Indicator {
     pub time: u64,
-    pub fast: f64,
-    pub slow: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fast: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slow: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub k: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub d: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub j: Option<f64>,
 }
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

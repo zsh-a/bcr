@@ -7,7 +7,10 @@ use super::{
 };
 const BASE: u64 = 1_704_067_200_000;
 mod architecture_contract;
+mod breakout_policy_contract;
 mod execution_contract;
+mod kdj_contract;
+mod price_action_contract;
 mod protection_contract;
 
 fn bar(i: usize, open: f64, close: f64) -> Bar {
@@ -148,20 +151,21 @@ fn breakout_snapshot_uses_only_the_previous_n_candles() {
         for b in &bars[..25] {
             let close = indicators.close(*b, &c.strategy).trade.unwrap();
             assert!(signals
-                .close(close, &indicators, &c, false, &mut events)
+                .close(close, &indicators, &c, false, &mut events, [true, true])
                 .is_none());
         }
         let b = bars[25];
         let close = indicators.close(b, &c.strategy).trade.unwrap();
         let candidate = signals
-            .close(close, &indicators, &c, true, &mut events)
+            .close(close, &indicators, &c, true, &mut events, [true, true])
             .unwrap();
         let expected = EntrySignal {
             time: b.time + MINUTE - 1,
             price: b.close,
-            boundary: if short { 95.0 } else { 105.0 },
+            boundary: Some(if short { 95.0 } else { 105.0 }),
             atr: indicators.atr,
             lookback_bars: Some(3),
+            trigger: None,
         };
         assert_eq!(candidate.side, if short { Side::Short } else { Side::Long });
         assert_eq!(candidate.entry_signal, expected);
@@ -196,9 +200,10 @@ fn next_open_gap_preserves_the_pullback_signal_snapshot() {
         let expected = EntrySignal {
             time: bars[65].time + MINUTE - 1,
             price: bars[65].close,
-            boundary: if short { bars[62].low } else { bars[62].high },
+            boundary: Some(if short { bars[62].low } else { bars[62].high }),
             atr: indicators.atr,
             lookback_bars: None,
+            trigger: None,
         };
         assert_eq!(trade.entry_signal, expected);
         assert_eq!(event.entry_signal, Some(expected));
@@ -210,7 +215,10 @@ fn next_open_gap_preserves_the_pullback_signal_snapshot() {
         assert!((trade.entry_price - expected.price).abs() > 1.0);
         assert!(event.value.is_some()); // Pullback value remains its structural anchor.
         let serialized = serde_json::to_value(trade).unwrap();
-        assert_eq!(serialized["entrySignal"]["boundary"], expected.boundary);
+        assert_eq!(
+            serialized["entrySignal"]["boundary"],
+            expected.boundary.unwrap()
+        );
         assert!(serialized["entrySignal"].get("lookbackBars").is_none());
         assert!(out
             .events
@@ -773,9 +781,10 @@ fn position(side: Side) -> super::position::Position {
         entry_signal: EntrySignal {
             time: BASE - 1,
             price: 100.0,
-            boundary: 100.0 - side.sign(),
+            boundary: Some(100.0 - side.sign()),
             atr: 2.0,
             lookback_bars: Some(20),
+            trigger: None,
         },
         quantity: 1.0,
         initial_stop: 100.0 - side.sign() * 6.0,
@@ -788,6 +797,7 @@ fn position(side: Side) -> super::position::Position {
         mfe: 0.0,
         mae: 0.0,
         stop_reason: "initial",
+        stages: super::position::Stages::default(),
     }
 }
 #[test]
@@ -1184,9 +1194,9 @@ fn tick_breaks_accept_exact_decimal_ticks_but_not_subtick_moves() {
 }
 
 #[test]
-fn config_v5_requires_independent_cost_policy_and_v4_retains_legacy_shape() {
+fn current_config_requires_independent_cost_policy_and_v4_retains_legacy_shape() {
     let mut c = Config::default();
-    assert_eq!(c.version, 5);
+    assert_eq!(c.version, 10);
     assert_eq!(c.strategy.max_cost_atr, Some(0.0));
     assert_eq!(c.strategy.trade_minutes, 240);
     assert_eq!(c.strategy.management, "channel");

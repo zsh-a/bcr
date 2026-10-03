@@ -1,0 +1,160 @@
+{
+  "resultsSha256": "b570c51d002e25095c6b3b561945775e190aeac153ddac72deb6287597c29243",
+  "policy": "No deployment or established positive expectation claim. A candidate only merits further forward validation if its development qualification passes and its net returns remain positive at both base and stressed costs in all five diagnostic windows; report every failure. Also publish paired daily-return means and seven-day block intervals for all three comparisons, trade count/cost reduction, net expectancy, payoff, tail contribution and daily drawdown. Relative improvement alone is not evidence of absolute positive expectation. September is only 30 known days. Do not change parameters after seeing outcomes.",
+  "candidates": [
+    {
+      "id": "m30-n40-x20",
+      "development": {
+        "status": "failed",
+        "reasons": [
+          "too-few-profitable-symbols"
+        ],
+        "completeDays": 487,
+        "minimumTradesPerSymbol": 30,
+        "tradesBySymbol": {
+          "BTCUSDT": 187,
+          "ETHUSDT": 205,
+          "BNBUSDT": 214,
+          "SOLUSDT": 209,
+          "XRPUSDT": 188,
+          "DOGEUSDT": 216
+        }
+      },
+      "failedPositiveCostWindows": [
+        {
+          "window": "known-2024",
+          "baseReturn": -0.009308788704308957,
+          "stressReturn": -0.05253463012964654
+        },
+        {
+          "window": "known-2025",
+          "baseReturn": 0.014400586615115785,
+          "stressReturn": -0.06333392923836645
+        },
+        {
+          "window": "historical-stress",
+          "baseReturn": -0.09130250767263137,
+          "stressReturn": -0.11123943861652863
+        }
+      ],
+      "meetsDeclaredGate": false
+    },
+    {
+      "id": "m30-n320-x20",
+      "development": {
+        "status": "failed",
+        "reasons": [
+          "too-few-profitable-symbols"
+        ],
+        "completeDays": 487,
+        "minimumTradesPerSymbol": 30,
+        "tradesBySymbol": {
+          "BTCUSDT": 52,
+          "ETHUSDT": 49,
+          "BNBUSDT": 61,
+          "SOLUSDT": 61,
+          "XRPUSDT": 55,
+          "DOGEUSDT": 65
+        }
+      },
+      "failedPositiveCostWindows": [
+        {
+          "window": "known-2024",
+          "baseReturn": 0.009439273110832813,
+          "stressReturn": -0.005999587039725696
+        },
+        {
+          "window": "historical-stress",
+          "baseReturn": -0.017224123390206514,
+          "stressReturn": -0.021379867765333627
+        },
+        {
+          "window": "fresh-september",
+          "baseReturn": 0.00027532032624577596,
+          "stressReturn": -0.0020121219367454923
+        }
+      ],
+      "meetsDeclaredGate": false
+    },
+    {
+      "id": "m30-n40-x20-episode",
+      "development": {
+        "status": "insufficient-sample",
+        "reasons": [
+          "too-few-trades:ETHUSDT",
+          "too-few-trades:XRPUSDT"
+        ],
+        "completeDays": 487,
+        "minimumTradesPerSymbol": 30,
+        "tradesBySymbol": {
+          "BTCUSDT": 30,
+          "ETHUSDT": 23,
+          "BNBUSDT": 62,
+          "SOLUSDT": 31,
+          "XRPUSDT": 25,
+          "DOGEUSDT": 62
+        }
+      },
+      "failedPositiveCostWindows": [
+        {
+          "window": "known-2024",
+          "baseReturn": -0.013173489224411195,
+          "stressReturn": -0.019320828139836266
+        },
+        {
+          "window": "known-2025",
+          "baseReturn": -0.004679481350758463,
+          "stressReturn": -0.018326431589069103
+        },
+        {
+          "window": "historical-stress",
+          "baseReturn": -0.0475999511862607,
+          "stressReturn": -0.06118209710366629
+        }
+      ],
+      "meetsDeclaredGate": false
+    },
+    {
+      "id": "m30-n40-x40",
+      "development": {
+        "status": "failed",
+        "reasons": [
+          "too-few-profitable-symbols"
+        ],
+        "completeDays": 487,
+        "minimumTradesPerSymbol": 30,
+        "tradesBySymbol": {
+          "BTCUSDT": 159,
+          "ETHUSDT": 184,
+          "BNBUSDT": 187,
+          "SOLUSDT": 181,
+          "XRPUSDT": 161,
+          "DOGEUSDT": 185
+        }
+      },
+      "failedPositiveCostWindows": [
+        {
+          "window": "known-2024",
+          "baseReturn": 0.033342403012831534,
+          "stressReturn": -0.006935972023838999
+        },
+        {
+          "window": "known-2025",
+          "baseReturn": 0.037529734578614526,
+          "stressReturn": -0.02961869410393203
+        },
+        {
+          "window": "historical-stress",
+          "baseReturn": -0.10413773901298995,
+          "stressReturn": -0.11942866100794913
+        },
+        {
+          "window": "fresh-september",
+          "baseReturn": 0.006539775711165152,
+          "stressReturn": -0.003874993064526322
+        }
+      ],
+      "meetsDeclaredGate": false
+    }
+  ]
+}

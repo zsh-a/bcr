@@ -15,3 +15,5 @@ tmp/
 # Python export adapter bytecode.
 __pycache__/
 *.pyc
+# Exact-byte gzip archive is versioned; keep the expanded research report local.
+/research/trend/search/results.json

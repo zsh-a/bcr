@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "method": "Exact complete result-row equality after mapping candidate id and config version; remove only confirmation/keyRole from new structuredPullback config and confirmation/keyRole/gates/contextEligible from new trade entrySignal.trigger. No numerical tolerance, row skipping or outcome normalization.",
+  "cases": [
+    {
+      "symbol": "BTCUSDT",
+      "newCandidate": "sp-strict",
+      "oldCandidate": "sp-primary",
+      "oldPath": "tmp/trend-structured-v9/development/BTCUSDT.json",
+      "oldSha256": "34a794183e72c587e6495e52e2f7a19d368be1158691c7d2bda4f73459448801",
+      "newPath": "tmp/trend-structured-v10/development/BTCUSDT.json",
+      "newSha256": "7744b71aabc46b781594ac6a8784aa63294d614c4b59a3143e17f462cf5145c2",
+      "equal": true,
+      "trades": 0
+    },
+    {
+      "symbol": "BTCUSDT",
+      "newCandidate": "sp-retest",
+      "oldCandidate": "sp-no-shape",
+      "oldPath": "tmp/trend-structured-v9/development/BTCUSDT.json",
+      "oldSha256": "34a794183e72c587e6495e52e2f7a19d368be1158691c7d2bda4f73459448801",
+      "newPath": "tmp/trend-structured-v10/development/BTCUSDT.json",
+      "newSha256": "7744b71aabc46b781594ac6a8784aa63294d614c4b59a3143e17f462cf5145c2",
+      "equal": true,
+      "trades": 8
+    },
+    {
+      "symbol": "BTCUSDT",
+      "newCandidate": "sp-base",
+      "oldCandidate": "sp-base",
+      "oldPath": "tmp/trend-structured-v9/development/BTCUSDT.json",
+      "oldSha256": "34a794183e72c587e6495e52e2f7a19d368be1158691c7d2bda4f73459448801",
+      "newPath": "tmp/trend-structured-v10/development/BTCUSDT.json",
+      "newSha256": "7744b71aabc46b781594ac6a8784aa63294d614c4b59a3143e17f462cf5145c2",
+      "equal": true,
+      "trades": 73
+    },
+    {
+      "symbol": "ETHUSDT",
+      "newCandidate": "sp-strict",
+      "oldCandidate": "sp-primary",
+      "oldPath": "tmp/trend-structured-v9/development/ETHUSDT.json",
+      "oldSha256": "031a18412b581652499ce0359143b03f496051a114a4a3cd7341cda7dc63daaa",
+      "newPath": "tmp/trend-structured-v10/development/ETHUSDT.json",
+      "newSha256": "a0d965597901585a57b259965b433174aa197e01eccf6a78d54ada1d71864567",
+      "equal": true,
+      "trades": 0
+    },
+    {
+      "symbol": "ETHUSDT",
+      "newCandidate": "sp-retest",
+      "oldCandidate": "sp-no-shape",
+      "oldPath": "tmp/trend-structured-v9/development/ETHUSDT.json",
+      "oldSha256": "031a18412b581652499ce0359143b03f496051a114a4a3cd7341cda7dc63daaa",
+      "newPath": "tmp/trend-structured-v10/development/ETHUSDT.json",
+      "newSha256": "a0d965597901585a57b259965b433174aa197e01eccf6a78d54ada1d71864567",
+      "equal": true,
+      "trades": 4
+    },
+    {
+      "symbol": "ETHUSDT",
+      "newCandidate": "sp-base",
+      "oldCandidate": "sp-base",
+      "oldPath": "tmp/trend-structured-v9/development/ETHUSDT.json",
+      "oldSha256": "031a18412b581652499ce0359143b03f496051a114a4a3cd7341cda7dc63daaa",
+      "newPath": "tmp/trend-structured-v10/development/ETHUSDT.json",
+      "newSha256": "a0d965597901585a57b259965b433174aa197e01eccf6a78d54ada1d71864567",
+      "equal": true,
+      "trades": 77
+    },
+    {
+      "symbol": "BNBUSDT",
+      "newCandidate": "sp-strict",
+      "oldCandidate": "sp-primary",
+      "oldPath": "tmp/trend-structured-v9/development/BNBUSDT.json",
+      "oldSha256": "34c975bdeee9c15dd4ac9d833f14e96e1de565ce605708edce4b36493922386c",
+      "newPath": "tmp/trend-structured-v10/development/BNBUSDT.json",
+      "newSha256": "4d113d5027a7c5841a102dfea27dcf78d7da50ea0d09932878be8ad7becffa5d",
+      "equal": true,
+      "trades": 1
+    },
+    {
+      "symbol": "BNBUSDT",
+      "newCandidate": "sp-retest",
+      "oldCandidate": "sp-no-shape",
+      "oldPath": "tmp/trend-structured-v9/development/BNBUSDT.json",
+      "oldSha256": "34c975bdeee9c15dd4ac9d833f14e96e1de565ce605708edce4b36493922386c",
+      "newPath": "tmp/trend-structured-v10/development/BNBUSDT.json",
+      "newSha256": "4d113d5027a7c5841a102dfea27dcf78d7da50ea0d09932878be8ad7becffa5d",
+      "equal": true,
+      "trades": 15
+    },
+    {
+      "symbol": "BNBUSDT",
+      "newCandidate": "sp-base",
+      "oldCandidate": "sp-base",
+      "oldPath": "tmp/trend-structured-v9/development/BNBUSDT.json",
+      "oldSha256": "34c975bdeee9c15dd4ac9d833f14e96e1de565ce605708edce4b36493922386c",
+      "newPath": "tmp/trend-structured-v10/development/BNBUSDT.json",
+      "newSha256": "4d113d5027a7c5841a102dfea27dcf78d7da50ea0d09932878be8ad7becffa5d",
+      "equal": true,
+      "trades": 99
+    }
+  ]
+}

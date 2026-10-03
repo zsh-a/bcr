@@ -1,0 +1,22 @@
+{
+  "kind": "study-compilation-v1",
+  "catalog": {
+    "path": "/home/zs/workspace/bcr/research/trend/structured/catalog.json",
+    "sha256": "75000a025cbeed78fc8e2ac8deaffa7f717bd66f8c8e0575a8c4d95e64311d41"
+  },
+  "experiment": {
+    "path": "/home/zs/workspace/bcr/research/trend/structured/experiment.json",
+    "sha256": "57a068e41f4679795284a69de0486bea4a0353969b707477b1eb90fde0bbbb8c"
+  },
+  "cell": "development",
+  "stage": "development",
+  "plan": {
+    "path": "/home/zs/workspace/bcr/research/trend/structured/development-input/plan.json",
+    "sha256": "c47028848fc203b3a894609b3e7e4584387fa9369f5c852355fe95ab986c2cfa"
+  },
+  "manifest": {
+    "path": "/home/zs/workspace/bcr/research/trend/structured/development-input/manifest.json",
+    "sha256": "f902862c0ff7a3e8cd0597a42437d9d243c414b07b7ec0deab33ae47d47a408d"
+  },
+  "receipts": []
+}

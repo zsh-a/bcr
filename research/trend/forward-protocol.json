@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "title": "冻结候选的未来时间验证协议",
+  "frozenAt": "2026-10-03T09:03:18.561673+00:00",
+  "status": "protocol-only-not-started",
+  "execution": "No scheduler, automatic collector, paper account or live orders has been started. This file preregisters a later full-window evaluation; it is not a completed result.",
+  "market": "Binance USDT perpetual",
+  "timeEvidence": "Only observations generated after this protocol freeze qualify as prospective. Historic held-out-symbol returns must never be merged into this forward result.",
+  "window": {
+    "id": "forward-365",
+    "start": "2026-10-04",
+    "end": "2027-10-04",
+    "timezone": "UTC",
+    "endExclusive": true,
+    "expectedDays": 365
+  },
+  "source": {
+    "plan": "research/trend/search-plan.json",
+    "planSha256": "f6db2c3a71c08fbed0a7a6c2b6f7f1538fbf40d29180aafab216e766f2b62594",
+    "selection": "tmp/trend-search-v8/selection.json",
+    "selectionSha256": "d48ac1c7cac700650f00936e606d049546b0168e52c7c686c8d4411a98a75994",
+    "binary": "crates/quant/target/release/trend",
+    "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+    "engine": "trend-continuation-14"
+  },
+  "primary": "m30-n320-no-day-guard",
+  "baseline": "m30-n320-x160",
+  "configVersion": 8,
+  "capitalMode": "total-account-equal-sleeves",
+  "initialCapital": 60000,
+  "symbols": {
+    "BTCUSDT": {
+      "tickSize": 0.1,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "ETHUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "BNBUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.01,
+      "minNotional": 100
+    },
+    "SOLUSDT": {
+      "tickSize": 0.001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "XRPUSDT": {
+      "tickSize": 0.0001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "DOGEUSDT": {
+      "tickSize": 1e-05,
+      "quantityStep": 1,
+      "minNotional": 100
+    }
+  },
+  "costs": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "stressFeeBps": 10,
+    "stressSlippageBps": 4
+  },
+  "risk": {
+    "riskPct": 0.005,
+    "maxExposurePct": 0.95,
+    "cooldownLosses": 3,
+    "cooldownMinutes": 60,
+    "dailyLossPct": 0.03,
+    "flattenMinute": null
+  },
+  "candidates": [
+    {
+      "id": "m30-n320-no-day-guard",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "riskOverrides": {
+        "dailyLossPct": 0
+      }
+    },
+    {
+      "id": "m30-n320-x160",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    }
+  ],
+  "warmup": {
+    "days": 7,
+    "start": "2026-09-27",
+    "policy": "Indicators only before 2026-10-04; start flat at the declared start, no inherited historical positions."
+  },
+  "selection": "Both candidate identities and all strategy/risk parameters are fixed by the source study. No forward-data ranking, fallback winner, parameter update, coin exclusion or outcome-based end-date changes. Historic cross-asset test results cannot retroactively modify this protocol.",
+  "evaluation": {
+    "formalEvaluations": 1,
+    "formalEvaluationAfter": "2027-10-04T00:00:00Z plus official archive publication/completeness",
+    "interim": "Any interim accounting or risk observation is descriptive; no early efficacy declaration. No automatic monitoring is implied.",
+    "minimumDays": 180,
+    "minimumTrades": 100,
+    "minimumTradesPerSymbol": 10,
+    "maxDailyDrawdown": 0.1,
+    "samples": 2000,
+    "seed": 20261003,
+    "blockDays": [
+      7,
+      28
+    ],
+    "costs": [
+      "base",
+      "stress"
+    ],
+    "acceptance": "Only primary evaluated for acceptance. Full 365-day complete UTC calendar required; positive net return, at least100 closed trades and10each original symbol, daily portfolio drawdown>=-10%, and strictly positive lower95percentile bound of mean daily account return for both7/28circularblocks under each cost. Previous source-domain qualification remains provenance, not forward evidence. Failure or insufficient data=>not-established; baseline does not replace the primary. Passing is evidence under this model, not a profit guarantee.",
+    "interval": "Aggregate fixed sleeves in dollars before returns. Every candidate/cost shares date draws. Within one continuous account no annual resets. Pointwise percentile indices floor(B*.025)/floor(B*.975), not independent-trade confidence.",
+    "counterfactuals": "Baseline paired daily differences and coin/profit concentration are diagnostics only; no new optimizer."
+  },
+  "dataPolicy": "Use checksum-verified official trade1m, mark1m, and actual funding. No interpolation, invented funding, shortening end date, dropping missing symbols or selective removal of failed trades. If a contract ceases or archives cannot support the declared rules, report evidence unavailable and separately document lifecycle limitations instead of manufacturing a full-year account.",
+  "limitations": [
+    "This protocol has no future observations or performance numbers yet.",
+    "Source strategies were adaptively selected on known historical data.",
+    "The declared static instrument rules and bps execution assumptions remain limitations; changes require a new protocol version and cannot silently rewrite this one.",
+    "Minute backtest replay is not live shadow execution and does not capture order-book depth, queue position, network latency or operational recovery."
+  ]
+}

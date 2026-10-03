@@ -6,6 +6,7 @@ import {
   managementLabel,
   directionLabel,
   costFilterLabel,
+  channelExitBars,
 } from "./config";
 import type { TrendConfig, TrendRun } from "./model";
 import { validateHistoricalTrendConfig, type HistoricalTrendConfig } from "./recorded";
@@ -14,34 +15,59 @@ export type {
   RecordedTrendConfigV2,
   RecordedTrendConfigV3,
   RecordedTrendConfigV4,
+  RecordedTrendConfigV5,
+  RecordedTrendConfigV6,
+  RecordedTrendConfigV7,
+  RecordedTrendConfigV8,
+  RecordedTrendConfigV9,
 } from "./recorded";
 
-const RULE_VERSION: Record<2 | 3 | 4 | 5, number> = { 2: 3, 3: 4, 4: 5, 5: 6 };
+const RULE_VERSION: Record<2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, number> = {
+  2: 3,
+  3: 4,
+  4: 5,
+  5: 6,
+  6: 7,
+  7: 8,
+  8: 9,
+  9: 10,
+  10: 11,
+};
+/** Display a validated config by its available fields; validity remains version-specific. */
 export function trendRunView(run: TrendRun) {
   const config = run.config;
   if ("version" in config)
     return {
       tradeMinutes: config.strategy.tradeMinutes,
+      entry: config.strategy.entry,
+      slowEma: config.strategy.filter === "slow-ema",
+      staged: "management" in config.strategy && config.strategy.management === "staged",
+      priceAction: "priceAction" in config.strategy ? config.strategy.priceAction : undefined,
+      structuredPullback:
+        "structuredPullback" in config.strategy ? config.strategy.structuredPullback : undefined,
       tradeDirection: config.strategy.direction,
       initialCapital: config.execution.initialCapital,
       tickSize: config.execution.tickSize,
       execution: config.execution,
-      label: strategyLabel(config.strategy.entry, config.strategy.filter),
+      label:
+        strategyLabel(config.strategy.entry, config.strategy.filter) +
+        ("breakoutReentry" in config.strategy && config.strategy.breakoutReentry === "episode"
+          ? " · 每个突破阶段仅首次机会"
+          : ""),
       channelConfig:
         config.strategy.entry === "breakout"
           ? {
               tradeMinutes: config.strategy.tradeMinutes,
               entryBars: config.strategy.breakoutBars,
               exitBars:
-                (config.version === 4 || config.version === 5) &&
-                config.strategy.management === "channel"
-                  ? Math.max(1, Math.floor(config.strategy.breakoutBars / 2))
+                "management" in config.strategy && config.strategy.management === "channel"
+                  ? channelExitBars(config.strategy)
                   : null,
             }
           : undefined,
       filter: filterLabel(config.strategy),
       costFilter: costFilterLabel(
-        config.version === 5
+        "maxCostAtr" in config.strategy
           ? config.strategy.maxCostAtr
           : config.strategy.filter === "background"
             ? 0.5
@@ -53,16 +79,18 @@ export function trendRunView(run: TrendRun) {
           ? backgroundMinutes(config.strategy.tradeMinutes)
           : null,
       management:
-        config.version === 4 || config.version === 5
-          ? managementLabel(config.strategy)
-          : "保本与 ATR 移动止盈",
-      channel:
-        (config.version === 4 || config.version === 5) && config.strategy.management === "channel",
+        "management" in config.strategy ? managementLabel(config.strategy) : "保本与 ATR 移动止盈",
+      channel: "management" in config.strategy && config.strategy.management === "channel",
       ruleVersion: RULE_VERSION[config.version],
       archived: false,
     };
   return {
     tradeMinutes: config.tradeMinutes ?? 1,
+    entry: config.entry,
+    slowEma: false,
+    staged: false,
+    priceAction: undefined,
+    structuredPullback: undefined,
     tradeDirection: config.direction ?? "both",
     initialCapital: config.initialCapital,
     tickSize: config.tickSize,
@@ -90,7 +118,7 @@ export function trendRunView(run: TrendRun) {
 export function validateRecordedTrendConfig(
   value: unknown,
 ): asserts value is TrendConfig | HistoricalTrendConfig {
-  if (value && typeof value === "object" && "version" in value && value.version === 5)
+  if (value && typeof value === "object" && "version" in value && value.version === 10)
     validateTrendConfig(value);
   else validateHistoricalTrendConfig(value);
 }
@@ -99,11 +127,23 @@ export function validateRecordedTrendConfig(
 export function restoreTrendDraft(value: unknown): TrendConfig {
   validateRecordedTrendConfig(value);
   if (!("version" in value)) throw new Error("旧版扁平参数不能执行");
-  const draft: TrendConfig = structuredClone({
+  const draft = structuredClone({
     ...value,
-    version: 5,
+    version: 10,
     strategy: {
       ...value.strategy,
+      ...((value.version === 9 || value.version === 10) &&
+      value.strategy.entry === "structured-pullback"
+        ? {
+            structuredPullback: {
+              ...value.strategy.structuredPullback!,
+              // Migration semantics are frozen; never borrow current preset defaults here.
+              ...(value.version === 9
+                ? { confirmation: "before-breakout" as const, keyRole: "pullback-retest" as const }
+                : {}),
+            },
+          }
+        : {}),
       management: "management" in value.strategy ? value.strategy.management : "atr",
       maxCostAtr:
         "maxCostAtr" in value.strategy

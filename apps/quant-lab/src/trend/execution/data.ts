@@ -280,7 +280,10 @@ export async function readBinanceChartBars(io: ArtifactIO, task: ComputeTask, ct
   const historyFrom = channelConfig
     ? Math.max(
         manifest.warmupStart,
-        from - channelConfig.entryBars * channelConfig.tradeMinutes * MINUTE,
+        from -
+          Math.max(channelConfig.entryBars, channelConfig.exitBars ?? 0) *
+            channelConfig.tradeMinutes *
+            MINUTE,
       )
     : from;
   const channels = channelConfig

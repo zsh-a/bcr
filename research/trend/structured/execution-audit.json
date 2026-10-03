@@ -1,0 +1,874 @@
+{
+  "version": "structured-recorded-execution-audit-1",
+  "status": "passed",
+  "planSha256": "c47028848fc203b3a894609b3e7e4584387fa9369f5c852355fe95ab986c2cfa",
+  "manifestSha256": "f902862c0ff7a3e8cd0597a42437d9d243c414b07b7ec0deab33ae47d47a408d",
+  "runSha256": "a86d8609b4e9ae5f32f7e11a821dffbf8c03de5b35d815bc9caca418cb9fbad3",
+  "selectionSha256": "6369b9ca88edbd7e0f8280ee44cbb2eccf4fd218f4a5d6957bc6866ba0cec2ba",
+  "scriptSha256": "778db8b1865cbd2bbe1f3b6d682b1a272d35b17b827444a52e6713c251d96944",
+  "dependenciesSha256": "b0fa1a8aa648a73c43f56f88f51a7166db84a4d4dce8d2f5587e6df3c821299f",
+  "riskAuditorSha256": "fa9fbd89226711486f79e4b48d936aa9f7b2596bd6364056ac9bd082a15f1dbd",
+  "counts": {
+    "recordedTrades": 293,
+    "minutes": 12623040,
+    "accounts": 18,
+    "signalGeometry": 293,
+    "confirmedTurns": 192,
+    "trades": 293,
+    "side:short": 133,
+    "exit:initial": 101,
+    "protectionUpdates": 1739,
+    "side:long": 160,
+    "exit:trailing": 178,
+    "exit:protection-crossed": 14
+  },
+  "accounts": [
+    {
+      "symbol": "BTCUSDT",
+      "candidate": "sp-primary",
+      "ledger": {},
+      "equity": {
+        "recordedTrades": 0,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "candidate": "sp-no-key",
+      "ledger": {
+        "signalGeometry": 3,
+        "confirmedTurns": 12,
+        "trades": 3,
+        "side:short": 2,
+        "exit:initial": 3,
+        "protectionUpdates": 0,
+        "side:long": 1
+      },
+      "equity": {
+        "recordedTrades": 3,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "candidate": "sp-no-shape",
+      "ledger": {
+        "signalGeometry": 8,
+        "confirmedTurns": 0,
+        "trades": 8,
+        "side:long": 4,
+        "exit:trailing": 8,
+        "protectionUpdates": 50,
+        "side:short": 4
+      },
+      "equity": {
+        "recordedTrades": 8,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "candidate": "sp-no-ema",
+      "ledger": {},
+      "equity": {
+        "recordedTrades": 0,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "candidate": "sp-reversal",
+      "ledger": {},
+      "equity": {
+        "recordedTrades": 0,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "candidate": "sp-base",
+      "ledger": {
+        "signalGeometry": 73,
+        "confirmedTurns": 28,
+        "trades": 73,
+        "side:short": 30,
+        "exit:trailing": 47,
+        "protectionUpdates": 451,
+        "side:long": 43,
+        "exit:initial": 22,
+        "exit:protection-crossed": 4
+      },
+      "equity": {
+        "recordedTrades": 73,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "candidate": "sp-primary",
+      "ledger": {},
+      "equity": {
+        "recordedTrades": 0,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "candidate": "sp-no-key",
+      "ledger": {
+        "signalGeometry": 7,
+        "confirmedTurns": 28,
+        "trades": 7,
+        "side:short": 4,
+        "exit:initial": 5,
+        "protectionUpdates": 17,
+        "exit:protection-crossed": 1,
+        "side:long": 3,
+        "exit:trailing": 1
+      },
+      "equity": {
+        "recordedTrades": 7,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "candidate": "sp-no-shape",
+      "ledger": {
+        "signalGeometry": 4,
+        "confirmedTurns": 1,
+        "trades": 4,
+        "side:short": 4,
+        "exit:initial": 2,
+        "protectionUpdates": 23,
+        "exit:trailing": 2
+      },
+      "equity": {
+        "recordedTrades": 4,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "candidate": "sp-no-ema",
+      "ledger": {},
+      "equity": {
+        "recordedTrades": 0,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "candidate": "sp-reversal",
+      "ledger": {},
+      "equity": {
+        "recordedTrades": 0,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "candidate": "sp-base",
+      "ledger": {
+        "signalGeometry": 77,
+        "confirmedTurns": 56,
+        "trades": 77,
+        "side:short": 29,
+        "exit:trailing": 49,
+        "protectionUpdates": 566,
+        "side:long": 48,
+        "exit:initial": 24,
+        "exit:protection-crossed": 4
+      },
+      "equity": {
+        "recordedTrades": 77,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "BNBUSDT",
+      "candidate": "sp-primary",
+      "ledger": {
+        "signalGeometry": 1,
+        "confirmedTurns": 3,
+        "trades": 1,
+        "side:long": 1,
+        "exit:initial": 1,
+        "protectionUpdates": 0
+      },
+      "equity": {
+        "recordedTrades": 1,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "BNBUSDT",
+      "candidate": "sp-no-key",
+      "ledger": {
+        "signalGeometry": 5,
+        "confirmedTurns": 19,
+        "trades": 5,
+        "side:short": 3,
+        "exit:trailing": 1,
+        "protectionUpdates": 3,
+        "exit:initial": 4,
+        "side:long": 2
+      },
+      "equity": {
+        "recordedTrades": 5,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "BNBUSDT",
+      "candidate": "sp-no-shape",
+      "ledger": {
+        "signalGeometry": 15,
+        "confirmedTurns": 5,
+        "trades": 15,
+        "side:long": 7,
+        "exit:initial": 4,
+        "protectionUpdates": 73,
+        "exit:trailing": 9,
+        "side:short": 8,
+        "exit:protection-crossed": 2
+      },
+      "equity": {
+        "recordedTrades": 15,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "BNBUSDT",
+      "candidate": "sp-no-ema",
+      "ledger": {
+        "signalGeometry": 1,
+        "confirmedTurns": 3,
+        "trades": 1,
+        "side:long": 1,
+        "exit:initial": 1,
+        "protectionUpdates": 0
+      },
+      "equity": {
+        "recordedTrades": 1,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "BNBUSDT",
+      "candidate": "sp-reversal",
+      "ledger": {},
+      "equity": {
+        "recordedTrades": 0,
+        "minutes": 701280
+      },
+      "status": "passed"
+    },
+    {
+      "symbol": "BNBUSDT",
+      "candidate": "sp-base",
+      "ledger": {
+        "signalGeometry": 99,
+        "confirmedTurns": 37,
+        "trades": 99,
+        "side:long": 50,
+        "exit:trailing": 61,
+        "protectionUpdates": 556,
+        "side:short": 49,
+        "exit:initial": 35,
+        "exit:protection-crossed": 3
+      },
+      "equity": {
+        "recordedTrades": 99,
+        "minutes": 701280
+      },
+      "status": "passed"
+    }
+  ],
+  "provenance": [
+    {
+      "window": "development",
+      "symbol": "BTCUSDT",
+      "receipt": {
+        "binarySha256": "41cf7a8573a4684d4046a4e1ca15528d2c25a86d3d5248e7ca89c9c12d38d006",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "bc3007b6f80eb649ceb26e89d369d070d718735addb2ac8f79f15fc7e50de800",
+        "manifestSha256": "f902862c0ff7a3e8cd0597a42437d9d243c414b07b7ec0deab33ae47d47a408d",
+        "planSha256": "c47028848fc203b3a894609b3e7e4584387fa9369f5c852355fe95ab986c2cfa",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "development",
+          "role": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        "executionSourceSha256": "aad0b8f6a0e7b728d27a05b89f361987f9ab126669b39e05287194d022a249d3",
+        "resultSha256": "34a794183e72c587e6495e52e2f7a19d368be1158691c7d2bda4f73459448801"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "dae7835287551957a7b653a29122a645c240bd7a09a763557c04d46e270f4de3",
+      "warmup": {
+        "sp-primary": 1661644800000,
+        "sp-no-key": 1661644800000,
+        "sp-no-shape": 1661644800000,
+        "sp-no-ema": 1661644800000,
+        "sp-reversal": 1661644800000,
+        "sp-base": 1661644800000
+      }
+    },
+    {
+      "window": "development",
+      "symbol": "ETHUSDT",
+      "receipt": {
+        "binarySha256": "41cf7a8573a4684d4046a4e1ca15528d2c25a86d3d5248e7ca89c9c12d38d006",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "59edc7868a1d33566bd641a4f53f8b45ad50ff9d0399de779b7c77b082731343",
+        "manifestSha256": "f902862c0ff7a3e8cd0597a42437d9d243c414b07b7ec0deab33ae47d47a408d",
+        "planSha256": "c47028848fc203b3a894609b3e7e4584387fa9369f5c852355fe95ab986c2cfa",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "development",
+          "role": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        "executionSourceSha256": "aad0b8f6a0e7b728d27a05b89f361987f9ab126669b39e05287194d022a249d3",
+        "resultSha256": "031a18412b581652499ce0359143b03f496051a114a4a3cd7341cda7dc63daaa"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "8c18a137e5530976d41f8f7adbe0a1e29b227b17033db0edbc4005aa0c629eba",
+      "warmup": {
+        "sp-primary": 1661644800000,
+        "sp-no-key": 1661644800000,
+        "sp-no-shape": 1661644800000,
+        "sp-no-ema": 1661644800000,
+        "sp-reversal": 1661644800000,
+        "sp-base": 1661644800000
+      }
+    },
+    {
+      "window": "development",
+      "symbol": "BNBUSDT",
+      "receipt": {
+        "binarySha256": "41cf7a8573a4684d4046a4e1ca15528d2c25a86d3d5248e7ca89c9c12d38d006",
+        "replayVersion": "trend-native-replay-5",
+        "configsSha256": "8023f4d448a1f03e0a0ecfc824a6d4cf70299b9a39eba984f8af131e288b0977",
+        "manifestSha256": "f902862c0ff7a3e8cd0597a42437d9d243c414b07b7ec0deab33ae47d47a408d",
+        "planSha256": "c47028848fc203b3a894609b3e7e4584387fa9369f5c852355fe95ab986c2cfa",
+        "warmupPolicy": "active-windows-v1",
+        "window": {
+          "id": "development",
+          "role": "development",
+          "start": "2022-09-01",
+          "end": "2024-01-01"
+        },
+        "executionSourceSha256": "aad0b8f6a0e7b728d27a05b89f361987f9ab126669b39e05287194d022a249d3",
+        "resultSha256": "34c975bdeee9c15dd4ac9d833f14e96e1de565ce605708edce4b36493922386c"
+      },
+      "warmupValidation": "active-window-recomputed",
+      "fundingSha256": "95eb5c624f8cc93e164ca2fe90dca7f85cc21e8e8f12a3c8bc696e65782dc6c0",
+      "warmup": {
+        "sp-primary": 1661644800000,
+        "sp-no-key": 1661644800000,
+        "sp-no-shape": 1661644800000,
+        "sp-no-ema": 1661644800000,
+        "sp-reversal": 1661644800000,
+        "sp-base": 1661644800000
+      }
+    }
+  ],
+  "sourceHashes": [
+    {
+      "path": "/home/zs/.cache/bcr-trend-details-20261003/BNBUSDT/markPriceKlines/derived/0e49f64669fe06e6bd4ec9bcc3faaa6781fa9f0e1e4c979bdf912b859800d88d.csv",
+      "sha256": "0e49f64669fe06e6bd4ec9bcc3faaa6781fa9f0e1e4c979bdf912b859800d88d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-details-20261003/BNBUSDT/markPriceKlines/derived/bb6c2b1041c6d0b08c14f4bd1267ababc3e7eaa7bd5b76d79a85bfccde037049.csv",
+      "sha256": "bb6c2b1041c6d0b08c14f4bd1267ababc3e7eaa7bd5b76d79a85bfccde037049"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-details-20261003/BTCUSDT/markPriceKlines/derived/d31b5e5448c034aeba10cd0713516e672c492333e159c23ea79a289206ae51dd.csv",
+      "sha256": "d31b5e5448c034aeba10cd0713516e672c492333e159c23ea79a289206ae51dd"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-details-20261003/BTCUSDT/markPriceKlines/derived/da90b7ebaad621e469523a0e6b25abe97cd20c92829258afb022a63b4491481a.csv",
+      "sha256": "da90b7ebaad621e469523a0e6b25abe97cd20c92829258afb022a63b4491481a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-details-20261003/ETHUSDT/markPriceKlines/derived/638bb9535474a9d7660d9c72d1d701ef741fa62dc4740fc2f17304435ccc1be6.csv",
+      "sha256": "638bb9535474a9d7660d9c72d1d701ef741fa62dc4740fc2f17304435ccc1be6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-details-20261003/ETHUSDT/markPriceKlines/derived/b36d698b81bfbdcc448c03c504e9b4178470fe5325da5aa8c7f492c1f5c43685.csv",
+      "sha256": "b36d698b81bfbdcc448c03c504e9b4178470fe5325da5aa8c7f492c1f5c43685"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2022-08.csv",
+      "sha256": "b1fd539e165b81179c77edbfe866d278805032b18b3f2ca717789a3fd40c550f"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2022-09.csv",
+      "sha256": "cd577e2d62926cfac86863403255c8e0a45da11e29d16973a286235e1c039e27"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2022-10.csv",
+      "sha256": "98315d6426a5df99792007a8cd399f0d9b8b1580eecec2f332ab90b79312c590"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2022-11.csv",
+      "sha256": "415f05148b3f2e0c8b704d948ec819bb839b9e0900843267721b6db6c4c0abf2"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2022-12.csv",
+      "sha256": "56b08568db5873d7a39c99082bf9bad4476abfd5aad38e924c166efe4b2d8e6e"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2023-01.csv",
+      "sha256": "c164c0d6accd32ff493b2adf0d44b10c31d7afe7db77575c68790663ed215cda"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2023-02.csv",
+      "sha256": "289b51a7bc48f0f464daad97ab32fe67d8e21e37f1cb2e832b15dab30caeb857"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2023-03.csv",
+      "sha256": "84bfb7455aaec5f1106f8be2961d60e88de694547eef370150ee36dede02dc60"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2023-04.csv",
+      "sha256": "4fdd7e992e2d3caea8e99103646a2f198e22d2cdfe218a5b1dfa4ff509c2ffeb"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2023-05.csv",
+      "sha256": "54d40056e684918697969c6cb8c208d2e06ee356def9fc0b993ff3db3e078911"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2023-06.csv",
+      "sha256": "aa994598ce05c2184634312dce6f81ae93d1f3d8054a61fe19bdc83d4dea2340"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2023-07.csv",
+      "sha256": "c2fa7c463ba9ee135db81e81cbbf1e3e16da06fa8beffb0e318257f669cd4af8"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2023-08.csv",
+      "sha256": "beb2e2cf6ee3f6474d084ab5e73af420153d26bcd13cfde7d1c9c718e8707a34"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2023-09.csv",
+      "sha256": "bdaa1d5d5d85e504034470e56b8d194774d9972515f043459d363cbed144e39f"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2023-10.csv",
+      "sha256": "fcad2a28dae2e9d669588f9f37fcf095fc6393be5a8c55e84d43d3fd20b77054"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2023-11.csv",
+      "sha256": "30b90a446ff4249bc4ca788ac5c9063f05ff8e81b9f8a4d1ac882c006fb9a24e"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/klines/BNBUSDT-1m-2023-12.csv",
+      "sha256": "4d8613cf6b248440e38cc4e5d488c38bbc86e41c53f485da74e92ed9fac85a24"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2022-08.csv",
+      "sha256": "3ca1b3499a2b587a0910979d56d29a8b4fdeabb63d1aae9c688455fbe5a88aa1"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2022-09.csv",
+      "sha256": "a8be8e5bf88b3e2092a21c220f3acf17acf48e07219167d00669d9e691ac779e"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2022-10.csv",
+      "sha256": "aeb06ea514a728ff71f7ef2d5f9082289e199b4e9504f39bf1f39539d8b495b5"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2022-11.csv",
+      "sha256": "74412156933e675c94825afe7407c2e3c8a687e30e8292822c7b0e96f7d2ab98"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2022-12.csv",
+      "sha256": "14288e1996722d5ee19e68a66c24494035360f5e510d8d11afd97b9cfe0a6a9e"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2023-01.csv",
+      "sha256": "4ef4e736ebb39737eb900d784b114135fd843fea76a4ac7ff2e1338ffad76ad3"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2023-02.csv",
+      "sha256": "313d4d626d516a56e6b58fa03ada0eb63bf1d473b0e17bbcc3239633c28504ab"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2023-03.csv",
+      "sha256": "eb55305c6d8f4efb0ecddaa16e6374210ec7f09583e60098ff352cf99a7993a8"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2023-04.csv",
+      "sha256": "881f6587285f293f5f33ad30a0fb26cc568658b4ddf86b77d6565c54cb4ebfca"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2023-05.csv",
+      "sha256": "621270947b0e81383560545626c2cadc81bb526fdbc544d2730f77e036a095e0"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2023-06.csv",
+      "sha256": "e94f2b15e4934d531059f1329f10fd3e6123480fdfac0b2b5adf78a788b52a4d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2023-07.csv",
+      "sha256": "1378412de96f53a4880d11869e2fe3da369f3ddc3466c88a4041dfd0d766fa34"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2023-08.csv",
+      "sha256": "f8ab60d64526e42cd51f56abbdbdb614648f06cff0a36d5d6bc07259f13c199e"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2023-09.csv",
+      "sha256": "43919bbb3960eeaf958dbfb4ea437d423821dbff2bc8dc62cece7c5ceadc72d1"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2023-10.csv",
+      "sha256": "78ecb23f9526d3d40168ec42249f78dbe767103dd0949187a1c28b065a639fec"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2023-11.csv",
+      "sha256": "60d538916cb5cda2dc240468ca2a1004df695734ca74b7a22ab7fb49033617ee"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/BNBUSDT-1m-2023-12.csv",
+      "sha256": "edcd3afe3b7ed145e7331c4b6c6d6bb72c55ce44f755344fcbdaa73c9a1ec151"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/daily/BNBUSDT-1m-2022-10-02.csv",
+      "sha256": "e712b7964f768d3b624a4b17e43342376083b6caf60bf76b877f01a2760500c9"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BNBUSDT/markPriceKlines/daily/BNBUSDT-1m-2023-02-24.csv",
+      "sha256": "5f73e3d99bb516a2829f8b6b3f55cc17bd1956ba3a0dbe519538bd6dfbdcee4b"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2022-08.csv",
+      "sha256": "be63b5c718611ebe90333c78cc35b5bf660fc9da8c2c50585513fee5640a7ee9"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2022-09.csv",
+      "sha256": "5d8adb1a9f3698c2da64b1f990d9a8dc98f2aa5ad5ced0c7e53c49237a1757a6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2022-10.csv",
+      "sha256": "18bdebb2c3c2731b8ef9a45716fe3a6abd9ab6e212093e3b72662d5e58ce37c4"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2022-11.csv",
+      "sha256": "8763e1bc3d1a8e85c553249ec1f021e7e7c6a88dd44f6b0c491f7908f5093eec"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2022-12.csv",
+      "sha256": "bfc30590b4b4a235c1cd3ee4d8f5b5858992feac0086d0d2512c07c071a2618b"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2023-01.csv",
+      "sha256": "696430e1dc97a913e33cd47de5e775e43656cd366f36e364ad6aea60dd4851d3"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2023-02.csv",
+      "sha256": "fdedd0f51342917459a96c5d49582bff729346196a06e14d429f29f65d7894b9"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2023-03.csv",
+      "sha256": "278dd8fab5f7a5a80fd504c5b2e4c9b94f972106bc8cec1823f5578dce1f7386"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2023-04.csv",
+      "sha256": "95cc2eeff6b9f8ee4b355724ceb406b94250dcbe0a2d0dbc6de298657723672e"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2023-05.csv",
+      "sha256": "e4241efffd84d8dbcb8149fa453394ba14658be5700a9543a1b5031bcfc06357"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2023-06.csv",
+      "sha256": "5c40c5d56e27b113f2fafe7e29bdc17e6c7b2d68f8ab641bafade921ead48207"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2023-07.csv",
+      "sha256": "738805c6073f5ac74d0d713d5ca24b724afb7c0d83757c8f3a4dec4ebda621f7"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2023-08.csv",
+      "sha256": "e28570a7ef96012ba6983b2309241e356161d117b4590ea6e9ba93ecaf8171d8"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2023-09.csv",
+      "sha256": "c7145964a4124d8a96a99d8c97c9cc336d45bcf980f6de27db2a30b94a1393dd"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2023-10.csv",
+      "sha256": "8eb3bc9a557ab7daf9c75700209e50e2d8dc3e8e91d41ea0644f32ff3c967048"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2023-11.csv",
+      "sha256": "6823419707e45fd198edb266037f9d077cb7da9ee586480bea0be3f2149eaceb"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/klines/BTCUSDT-1m-2023-12.csv",
+      "sha256": "8171a92a94ac6dd554eccdc20fc445bff8da97cad4ed77405987542374e16898"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2022-08.csv",
+      "sha256": "8877c54146285c82f88d1c75477e9938010c1d1bdf673bd4403b32533c351fed"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2022-09.csv",
+      "sha256": "b5c46a124ee773eb548c9cedbd988758dd6424b4370b98de26d621075265ea0a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2022-10.csv",
+      "sha256": "76e61665e467b0a25c31fad05c9e80d8479c099b708cc01c4dd31c799b3d4c0d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2022-11.csv",
+      "sha256": "02c9a414613ec9bd2046d081a28812f5bc6dac16312472f16ed50ed6b4cdd1a1"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2022-12.csv",
+      "sha256": "fb71eb8f798938f33c3999f9dd28f4643c062131c1090fd485db0cb0029b7948"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2023-01.csv",
+      "sha256": "69c8f484a3e5b1f283d74727e950ca07e4c99a1a93b5dddf3dff641502f7198d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2023-02.csv",
+      "sha256": "0ff0b27c1d339b787eedb952fd42ee05bcae2ea188e38b79b463d177601b99d7"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2023-03.csv",
+      "sha256": "a4db2e27288a22077f5c54a87fa8df96a2ed2584e43325493ccb5045b0b847b4"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2023-04.csv",
+      "sha256": "483cb1f411aaf4c04fe61e56ca47425c278ace6057a15de7a8d34a4fc266ab5c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2023-05.csv",
+      "sha256": "d54b0a143ff00bd6e6494708c1de429f5817a8f26b264ced3e73339225839970"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2023-06.csv",
+      "sha256": "1275ead698224b8046f477b057c2ef59559354b9df6bd4e9f10ba6e0a5ad07cb"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2023-07.csv",
+      "sha256": "90c244d976a826bf6bd6d7d0ce8cb94ed471e9cad13119d213656327a3c9050f"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2023-08.csv",
+      "sha256": "d50fc91146a86a373e654d4f0a4a19b2f75815c0f219e05a778e0edba273c61c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2023-09.csv",
+      "sha256": "f7b6810c254a13e28c4f15f22d89596d34bb6abedb40227f57de0e937940cfa4"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2023-10.csv",
+      "sha256": "b8d4717383fb96c611f8032bc2c10e4fc4c1f0fa9792ac7b96d85d9d01d77a57"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2023-11.csv",
+      "sha256": "e00a4f35c11242ff1f253fe97b6645ee02d45d265729e12e03bca0f556638e2a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/BTCUSDT-1m-2023-12.csv",
+      "sha256": "7aec49cdba2f4bde5b0f3e48138e396e96978619aa2fa6fb0dee0910d3339a5e"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/daily/BTCUSDT-1m-2022-10-02.csv",
+      "sha256": "5b740327324cd2e131c4ad698aaa82c733fb81c88d6ba9072b3497d914b1cc44"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/BTCUSDT/markPriceKlines/daily/BTCUSDT-1m-2023-02-24.csv",
+      "sha256": "76a4c8600a601ad8ed5c76d5d27356398d10ccab06166a29f89dd36ac6f0ccd9"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2022-08.csv",
+      "sha256": "e49901182442650d3fb547a3620925ac9f08fc284462e7e8d2c7b5e7c6a3e278"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2022-09.csv",
+      "sha256": "4cff20c56525823ea6b22a36852813ba33fe0ded413eda5e38087e8a7fbe353c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2022-10.csv",
+      "sha256": "1701d171d2109e0f72430499bc67b79ebf361a541d14de55b81a8e2e721431ed"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2022-11.csv",
+      "sha256": "da90c59df7a73c3442c80fd34bfb16924fc3e4b830e99e80f3f487c527c3f70f"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2022-12.csv",
+      "sha256": "33ea7c9948c9188b40a90002a95da8cfe00e0bc89386057c5f13b9835117e2f6"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2023-01.csv",
+      "sha256": "7e80e40cc64510bfce2424e6ee826d5656cb467b0ff47fcb1634c80d6bc9047d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2023-02.csv",
+      "sha256": "a3afa48123329abe0549aa4e7a7742767c3c3e301c0dd566ec94c81a6a424161"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2023-03.csv",
+      "sha256": "2e650715fe312520950d3fa6d68584df17327a6e841996267b37f98661e212aa"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2023-04.csv",
+      "sha256": "1c40521fa711292ea188e58158da356cad3148b631fb906754b1a1b049b9b07d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2023-05.csv",
+      "sha256": "a436fdc584e63ae15af59075afc2cefa502407213bd2db05574afa6dc3ac4b4e"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2023-06.csv",
+      "sha256": "fc882630f329c1da208f0718c91d5c50e555325918d211aafc45c07f0c795f8b"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2023-07.csv",
+      "sha256": "785dcde4e8f09cef1cdec11b9443e999288e27a765411edefee40909cbe5088a"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2023-08.csv",
+      "sha256": "b3bd533e8a76381fde8e95fd216ce33ec52f226416e46b789e78b2b7758b0862"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2023-09.csv",
+      "sha256": "711dbe9e74b8d148c032741a090c836ba025a3d1d59fda4a45a562cc5ccd7dc9"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2023-10.csv",
+      "sha256": "4522d57196586f70ad1241de115a6e75d08ec26cb5e6ce64c2f718ccb0a005da"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2023-11.csv",
+      "sha256": "9e7933030ee63c34e4fe9ac922308096d8eec1677c007f857080ad9b7747ee27"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/klines/ETHUSDT-1m-2023-12.csv",
+      "sha256": "1aabd0424bdd525f1502435c0981812a99c2304ec83cf5d30e5d0c6d3b1bb5f3"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2022-08.csv",
+      "sha256": "54f135561c08f5cd94ac98b785c1cc416e661267864041a534e1bfc44db585d0"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2022-09.csv",
+      "sha256": "bc68cf85e170b992e3cf00490f095d1ad5e363a03dd10c99694458c3e847bc05"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2022-10.csv",
+      "sha256": "a6007ed6be957a85aec5ad33b4276ad0f94a682b174ecd16af48534c0b84be2c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2022-11.csv",
+      "sha256": "7d79f6b9a7716ed5b0a407e0ee947c3a2d37b4cdc569b1cc2985c314d257fc8d"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2022-12.csv",
+      "sha256": "c3a6eaaa99f8f2aade64c100c49f97a71f727a491b59b5cedf0defa611b918c7"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2023-01.csv",
+      "sha256": "f20e975d9ba4acee7ca3f69847d3810f8068de9654207659c45caee803999fe4"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2023-02.csv",
+      "sha256": "eee35167de4237fe1f3eac0e60549b33ac34f0156e3545e00eefc352ae100a49"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2023-03.csv",
+      "sha256": "22dde0533195e3d23145861274e5c66797a28c9179a042e386d0c4722bc7d4e1"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2023-04.csv",
+      "sha256": "7c15b2813e8c9f06e0e4a9f6670a5ba0e1107097f3f5586d22cce2ec835226fa"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2023-05.csv",
+      "sha256": "aa4ed7f1a53d5fdbde6facec11121365c07604c372d0f80d9e1ff9771daa2a1c"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2023-06.csv",
+      "sha256": "9e66a98b3a5c25caddaf5a7b47b9568e363b280dd97a5a418f9acdd66c826895"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2023-07.csv",
+      "sha256": "3528dc252b0c6ba94072765c6a60c3e7df165e7aa64d1a348f5dc30b271117bc"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2023-08.csv",
+      "sha256": "a6d6f8760b72a70110c1b12c57c7f46e1f5c9a872c8e959fbb612e58e150b645"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2023-09.csv",
+      "sha256": "c6d3d663679f1b50ca0d1c8b72893a9449b21cd31107839053e4b3c7be38e1b0"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2023-10.csv",
+      "sha256": "58aa532aa2272dde7c6b96be98b1523d974d335c8f341d7f9db73a1647be4689"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2023-11.csv",
+      "sha256": "c2083eaa6d8fbbb1f6913e7750f3a835954fad0ee8fae98db4a30beb3d837356"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/ETHUSDT-1m-2023-12.csv",
+      "sha256": "7beff6f0ba4804aa1c93fe173fff7b2f101b1ffbb278224743ad3876dc47f0a0"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/daily/ETHUSDT-1m-2022-10-02.csv",
+      "sha256": "76e556357d9bccce7d484591ecef782b43cf612953a4f87c669c5aabf58da7d7"
+    },
+    {
+      "path": "/home/zs/.cache/bcr-trend-research/ETHUSDT/markPriceKlines/daily/ETHUSDT-1m-2023-02-24.csv",
+      "sha256": "75832aad1f720ee233362bb1855210e027b07b9ded28bc5eec0fad8fc7658f9e"
+    },
+    {
+      "path": "/home/zs/workspace/bcr/tmp/trend-search-v8/artifacts/funding/8c18a137e5530976d41f8f7adbe0a1e29b227b17033db0edbc4005aa0c629eba.json",
+      "sha256": "8c18a137e5530976d41f8f7adbe0a1e29b227b17033db0edbc4005aa0c629eba"
+    },
+    {
+      "path": "/home/zs/workspace/bcr/tmp/trend-search-v8/artifacts/funding/95eb5c624f8cc93e164ca2fe90dca7f85cc21e8e8f12a3c8bc696e65782dc6c0.json",
+      "sha256": "95eb5c624f8cc93e164ca2fe90dca7f85cc21e8e8f12a3c8bc696e65782dc6c0"
+    },
+    {
+      "path": "/home/zs/workspace/bcr/tmp/trend-search-v8/artifacts/funding/dae7835287551957a7b653a29122a645c240bd7a09a763557c04d46e270f4de3.json",
+      "sha256": "dae7835287551957a7b653a29122a645c240bd7a09a763557c04d46e270f4de3"
+    }
+  ],
+  "scope": "Every recorded development trade: independent complete-candle ATR, three-bar impulse A0/efficiency, frozen pre-pullback extreme and first whole-impulse rebreak, recorded confirmed-turn geometry/causality, next-minute fills, cost-aware quantity, initial risk, first minute stop versus close-updated monotone dynamic-ATR Chandelier/next-open protection crossing, fees/funding/slippage/R/MFE/MAE. Reconstruct each minute cash/mark equity and canonical daily close from recorded positions.",
+  "limits": [
+    "Entries remain recorded inputs. No exhaustive setup discovery, first eligible impulse choice, missing/rejected entries, full EMA filter or cooldown/disabled-state replay.",
+    "Recorded pivot-turn geometry and key-snapshot chronology are checked, but complete shape-label classification and historical validated-EMA/key-level selection are not independently reconstructed.",
+    "The audit shares frozen numerical/source/account utilities; it is not a second strategy engine or an independent source of market data. No target validation or future holdout prices/results are read.",
+    "MFE/MAE follow the production survived-minute path and exclude unordered favorable extremes on the stop-hit minute; they are not unbiased forward-event opportunity statistics.",
+    "Minute OHLC with fixed bps/tick fills does not establish real liquidity, latency, partial fills, liquidation behavior or future profitability."
+  ]
+}

@@ -1,0 +1,251 @@
+{
+  "version": 1,
+  "configVersion": 7,
+  "title": "价格行为回调：关键位与两腿条件的固定机制消融",
+  "frozenAt": "2026-10-03; this protocol is fixed before any result from this price-action study is generated or inspected. Every historical window was already used in earlier research.",
+  "purpose": "Test one explicitly mechanical subset of the user's price-action idea, using whole-advance extreme breakouts. Predeclare pa-key-two-legs as the primary rule; never select the most profitable candidate. The other three price-action flag combinations are mechanism ablations and legacy-pullback is an overall reference. All windows are previously inspected historical diagnostics, not untouched out-of-sample, prospective or live evidence.",
+  "capitalMode": "total-account-equal-sleeves",
+  "initialCapital": 60000,
+  "symbols": {
+    "BTCUSDT": {
+      "tickSize": 0.1,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "ETHUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "BNBUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.01,
+      "minNotional": 100
+    },
+    "SOLUSDT": {
+      "tickSize": 0.001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "XRPUSDT": {
+      "tickSize": 0.0001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "DOGEUSDT": {
+      "tickSize": 1e-5,
+      "quantityStep": 1,
+      "minNotional": 100
+    }
+  },
+  "windows": [
+    {
+      "id": "development-2025",
+      "role": "development",
+      "label": "开发期 · 已查看历史",
+      "start": "2025-01-01",
+      "end": "2026-01-01"
+    },
+    {
+      "id": "validation-2026-h1",
+      "role": "diagnostic-validation",
+      "label": "验证期 · 已查看历史",
+      "start": "2026-01-01",
+      "end": "2026-07-01"
+    },
+    {
+      "id": "historical-holdout-2026-q3",
+      "role": "diagnostic-holdout",
+      "label": "最终历史留出 · 已查看历史",
+      "start": "2026-07-01",
+      "end": "2026-10-01"
+    }
+  ],
+  "dataPolicy": "Binance USDT perpetual official checksum-verified traded-price/mark-price minute archives and actual historical funding. Reuse immutable verified archive cache; generate a new manifest bound to this plan. Missing official minutes or funding reject the window, never interpolate or substitute zero costs. No outcomes are used to choose data availability or alter these dates.",
+  "candidates": [
+    {
+      "id": "legacy-pullback",
+      "entry": "pullback",
+      "tradeMinutes": 5,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 1,
+        "trailingStartR": 2
+      }
+    },
+    {
+      "id": "pa-base",
+      "entry": "price-action",
+      "tradeMinutes": 5,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 1,
+        "trailingStartR": 2
+      },
+      "priceAction": {
+        "keyLevel": false,
+        "twoLegs": false
+      }
+    },
+    {
+      "id": "pa-key",
+      "entry": "price-action",
+      "tradeMinutes": 5,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 1,
+        "trailingStartR": 2
+      },
+      "priceAction": {
+        "keyLevel": true,
+        "twoLegs": false
+      }
+    },
+    {
+      "id": "pa-two-legs",
+      "entry": "price-action",
+      "tradeMinutes": 5,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 1,
+        "trailingStartR": 2
+      },
+      "priceAction": {
+        "keyLevel": false,
+        "twoLegs": true
+      }
+    },
+    {
+      "id": "pa-key-two-legs",
+      "entry": "price-action",
+      "tradeMinutes": 5,
+      "filter": "slow-ema",
+      "management": "staged",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0,
+      "staged": {
+        "breakEvenR": 1,
+        "trailingStartR": 2
+      },
+      "priceAction": {
+        "keyLevel": true,
+        "twoLegs": true
+      }
+    }
+  ],
+  "baseline": "pa-base",
+  "hypotheses": [
+    "The fixed primary rule combines a previously confirmed higher-timeframe key level with a two-leg pullback. No indicator-length, tolerance, threshold, date, stop, or holding-period search is permitted.",
+    "pa-key minus pa-base and pa-two-legs minus pa-base isolate each required entry condition within the same price-action detector. pa-key-two-legs minus pa-key and minus pa-two-legs test the other condition conditional on the first. Comparisons concern complete replayed rule sets; changed entries also change positions and subsequent risk state.",
+    "The primary rule versus pa-base changes two conditions at once, so its difference cannot be attributed to a single mechanism.",
+    "legacy-pullback is an overall reference: the new detector also changes ATR anchoring, setup lifetime, whole-advance breakout, invalidation and consumption rules. Legacy versus pa-base does not isolate key-level or two-leg effects.",
+    "This experiment implements a frozen mechanical subset, not all Brooks H1/H2/wedge patterns or the full discretion-based price-action method."
+  ],
+  "fixedRules": {
+    "completedBars": "All setup transitions use completed trading candles only. Each bar causes at most one two-leg state transition. Signal information cannot be used before its confirmation time; all entries, stops and fills use the shared Rust minute engine.",
+    "impulse": "The initial three-bar advance runs from the close C_(t-3) to C_t. Freeze A0 as the completed 14-TR ATR at C_(t-3). Directional displacement must be at least 1.5*A0 and efficiency abs(C_t-C_(t-3))/sum(abs(C_i-C_(i-1)), i=t-2..t) must be at least 0.6. After those three qualification candles, allow at most eight additional trading candles extending the advance. The first close against the advance starts the pullback and freezes the whole-advance extreme, including the high/low of that first counter-close candle. That candle cannot trigger a breakout of itself.",
+    "pullback": "Count the first counter-close candle and the trigger candle in a two-to-eight-candle pullback. Long depth=(frozen advance high - lowest pullback low)/(frozen advance high - startClose); short depth=(highest pullback high - frozen advance low)/(startClose - frozen advance low). Include all pullback wicks, including those of the first and trigger candles. Depth must be in [0.20,0.50]. The first completed close at least one tick beyond the frozen whole-advance extreme consumes the setup, including a break at depth below 0.20 or with another gate missing. Never wait for a second more favorable breakout of that setup.",
+    "invalidation": "Invalid slow-EMA direction, an existing position, risk prohibition, timeout or depth beyond 0.50 clears the setup. After invalidation require a fresh three-bar advance using new bars after the invalidation; do not reuse a previous qualifying window.",
+    "twoLegs": "The first counter-close starts leg 1. For a long setup, a later candle closing at or above previousHigh+tick changes leg 1 to bounce; a still later candle closing at or below previousLow-tick changes bounce to leg 2. Short is the mirror image. The twoLegs gate requires reaching at least leg 2. A single candle cannot perform two transitions. This is the project's mechanical two-leg proxy, not a count of the second candle or every Brooks H2 variant.",
+    "keyLevel": "Use confirmed pivots on the mapped higher timeframe BACKGROUND_MINUTES (5-minute trading candles map to 30-minute background candles). A pivot high is strictly above both left neighbors and at or above both right neighbors; a pivot low is strictly below both left neighbors and at or below both right neighbors. Confirmation occurs only after the two right candles close. Retain the latest two confirmed pivots in each direction and use the most recent relevant high/low with confirmedAt<=impulseStartTime, where impulseStartTime is the close of C_(t-3). Equality is causal because the three advance candles begin afterward.",
+    "keyBreakAndRetest": "For a long, startClose must be below or equal to the chosen pivot high and the initial three-bar confirmation close must be at least level+tick. During the pullback, a candle low inside [level-0.25*A0,level+0.25*A0] with its close on the trend side validates the touch. Any pullback close more than 0.25*A0 beyond the level against the trend permanently invalidates key qualification; the breakout-trigger close must still be on the trend side. Short uses the pivot low and mirrored inequalities/highs. A0 is frozen for this tolerance.",
+    "commonObservation": "All four price-action flag combinations observe the same detector, key-level facts, two-leg states and first-break consumption rules; flags only decide the final entry gate. A missing key or two-leg gate is a setup event rather than a rejected order. When both are missing, key-level is the first reported reason.",
+    "slowEma": "EMA60 on the same completed trading candles, direction confirmed against its value three candles earlier; 63 completed candles of prehistory.",
+    "staged": "Completed trading-candle closes latch breakeven at 1R and trailing at 2R. R is the frozen initial price risk from actual entry to the rounded initial stop. The initial 2-ATR stop and position sizing use the latest signal-candle ATR, not A0. Trailing distance is 3 times the latest completed-candle ATR, using since-entry extrema and tightening only. A0 is used for initial impulse qualification and key-level tolerance, not as a replacement for entry risk.",
+    "warmup": "For every price-action flag combination, require at least 17 trading candles and unconditionally 22 mapped higher-timeframe candles, combined with the chosen filter requirement. This gives every ablation the same prehistory. Other entry types keep their existing warmup. warmupPolicy remains active-windows-v1.",
+    "execution": "The shared Rust minute engine controls signal timing, next-open execution, costs, protection ordering and price/quantity rounding. No separate Python indicator or fill implementation."
+  },
+  "selectionMode": "fixed",
+  "fixedCandidate": "pa-key-two-legs",
+  "selectionMinTrades": 10,
+  "selectionMinProfitableSymbols": 4,
+  "selection": "The primary candidate pa-key-two-legs is fixed in this plan before all results. Never rank or substitute candidates. Development qualification is insufficient-sample if any symbol has fewer than ten completed trades or the window has fewer than thirty complete UTC days. With sufficient observations, require defined finite aggregate daily Sharpe, at least four profitable symbols, and positive finite median symbol mean net R; otherwise status is failed. Preserve developmentQualified=false for both insufficient-sample and failed. Run every later predeclared diagnostic regardless of this status; sample adequacy is descriptive and is not a statistical-significance claim.",
+  "comparisons": [
+    {
+      "id": "key-vs-base",
+      "candidate": "pa-key",
+      "reference": "pa-base"
+    },
+    {
+      "id": "two-legs-vs-base",
+      "candidate": "pa-two-legs",
+      "reference": "pa-base"
+    },
+    {
+      "id": "primary-vs-key",
+      "candidate": "pa-key-two-legs",
+      "reference": "pa-key"
+    },
+    {
+      "id": "primary-vs-two-legs",
+      "candidate": "pa-key-two-legs",
+      "reference": "pa-two-legs"
+    }
+  ],
+  "sensitivity": [],
+  "costs": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "stressFeeBps": 10,
+    "stressSlippageBps": 4
+  },
+  "risk": {
+    "riskPct": 0.005,
+    "maxExposurePct": 0.95,
+    "cooldownLosses": 3,
+    "cooldownMinutes": 60,
+    "dailyLossPct": 0.03,
+    "flattenMinute": null
+  },
+  "bootstrap": {
+    "seed": 20261003,
+    "samples": 2000,
+    "blockDays": 7
+  },
+  "acceptance": "Always report the fixed primary's development qualification, every candidate and every declared comparison. Both later diagnostic windows must have positive primary net returns and positive primary returns after doubling fees and slippage before describing robustness within this reused historical sample. Report returns, daily drawdown, completed trades, net profit factor, net trade expectancy and cost attribution, plus all four paired daily-return block-bootstrap comparisons regardless of sign. Primary-versus-base changes two mechanisms. Keep legacy-pullback as an overall reference. Failure or insufficient observations never changes the primary, candidates, thresholds or dates and never triggers additional searching. No strategy is established by these reused historical observations.",
+  "limitations": [
+    "Every date range was inspected in earlier research. The final historical holdout is only a frozen split for this comparison, not untouched OOS or prospective evidence.",
+    "The primary is specified before this experiment, but this is another disclosed research trial after prior studies. Neither preregistration nor block-bootstrap intervals remove historical reuse or multiple-comparison effects.",
+    "Only five fixed candidates are tested. No stop sensitivity, period search, threshold optimization or post-result fallback is permitted. Later cost stress applies only to the predeclared primary and pa-base.",
+    "Two-leg and key-level recognition are causal mechanical proxies with fixed tolerance and lifetime; results do not validate or invalidate all discretionary Brooks price-action methods.",
+    "The old pullback reference differs in multiple detector and lifecycle rules. Four mechanism comparisons share risk and exit settings but can still produce different future position and risk states.",
+    "Six surviving liquid USDT perpetuals are not a point-in-time universe and are not six independent asset classes.",
+    "Fixed precision and fee/slippage assumptions are not historical exchange filters or an order-book execution model.",
+    "Minute OHLC cannot establish intraminute high/low ordering, queue priority, partial fills, liquidation or real live-stop execution.",
+    "Six fixed 10000-USDT sleeves sum to 60000 USDT; no shared margin, netting or capital transfers.",
+    "Per-sleeve Calmar uses minute/fill drawdown; aggregate account Calmar uses daily-close drawdown. Costs already embedded in equity are never deducted again.",
+    "Binance USDT perpetual minute data and funding do not validate crude-oil contract multipliers, session calendars, expiration/roll, margin/liquidation or live order execution. Those markets require their own data and execution rules."
+  ]
+}

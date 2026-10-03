@@ -24,5 +24,6 @@ export function trendEntryEvidence(
     boundary: trade.side === "long" ? point.upper : point.lower,
     lookbackBars: channel.entryBars,
     atr: undefined,
+    trigger: undefined,
   };
 }

@@ -1,0 +1,32 @@
+{
+  "kind": "legacy-native-parity-v1",
+  "status": "passed",
+  "source": {
+    "path": "tmp/trend-search-v8/development/BTCUSDT.json",
+    "sha256": "9534d87065fec79107ef103847e7e6e882ed104eaa2fa9094995687f4d896098"
+  },
+  "replay": {
+    "path": "tmp/structured-legacy-parity-result.json",
+    "sha256": "d204f8c9f57b4b45563fa5259821a6068783b60526a18652d06ef449e1759ebf"
+  },
+  "binary": {
+    "path": "tmp/quant-structured-target/release/trend",
+    "sha256": "41cf7a8573a4684d4046a4e1ca15528d2c25a86d3d5248e7ca89c9c12d38d006"
+  },
+  "scope": "Exact result-row equality, including config, metrics, daily observations and all completed trades; engine envelope intentionally changes. One BTC development window; not exhaustive legacy coverage.",
+  "oldEngine": "trend-continuation-14",
+  "newEngine": "trend-continuation-15",
+  "startTime": 1661990400000,
+  "endTime": 1704067200000,
+  "candidates": [
+    "m30-n320-x160",
+    "m30-n320-episode",
+    "m30-n320-fixed-atr3",
+    "m30-n320-dynamic-atr3",
+    "m30-n320-dynamic-be1",
+    "m30-n320-staged",
+    "m30-pullback-trend",
+    "m30-kdj-trend",
+    "m30-pa-key-legs"
+  ]
+}

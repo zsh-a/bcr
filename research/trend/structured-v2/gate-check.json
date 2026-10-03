@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "developmentSealSha256": "cc301f7a49a4e8438fd4074b5cf6e009bfb6540b7d1798ba3129bc2c23b133a1",
+  "validation": {
+    "attempt": "compile from failed development seal",
+    "status": "blocked",
+    "reason": "a failed stage cannot unlock later observations",
+    "outputCreated": false,
+    "replayRun": false
+  },
+  "futureHoldout": {
+    "status": "not-yet-available",
+    "start": "2026-10-08",
+    "endExclusive": "2027-10-08",
+    "replayRun": false
+  },
+  "fallbackCandidateSelected": false
+}

@@ -19,6 +19,8 @@ from warmup import WARMUP_POLICY, window_warmup_days
 
 BASE = "https://data.binance.vision/data/futures/um"
 UTC = dt.timezone.utc
+MINUTE = 60000
+DAY = 86400000
 
 
 def timestamp(date):
@@ -86,50 +88,121 @@ def archive(cache, symbol, kind, month, cadence="monthly"):
             time.sleep(attempt + 1)
 
 
-def complete_partition(cache, symbol, kind, month, monthly):
-    """Replace incomplete calendar DAYS using verified official daily archives.
+def merge_intervals(intervals):
+    """Canonical half-open minute ranges; overlapping/adjacent windows share input."""
+    ordered = []
+    for start, end in intervals:
+        if (type(start) is not int or type(end) is not int or start >= end
+                or start % MINUTE or end % MINUTE):
+            raise ValueError("required intervals must be positive, minute-aligned ranges")
+        ordered.append((start, end))
+    merged = []
+    for start, end in sorted(ordered):
+        if merged and start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(end, merged[-1][1]))
+        else:
+            merged.append((start, end))
+    return merged
 
-    The original monthly archive remains immutable. Never interpolate a bar.
-    """
+
+def month_intervals(month, required_intervals=None):
     first = dt.date.fromisoformat(month + "-01")
     next_month = (first.replace(day=28) + dt.timedelta(days=4)).replace(day=1)
     start, end = timestamp(str(first)), timestamp(str(next_month))
+    if required_intervals is None:
+        return [(start, end)]
+    return [(max(start, a), min(end, b)) for a, b in merge_intervals(required_intervals)
+            if a < end and b > start]
 
-    def rows(path):
-        values = {}
-        with Path(path).open() as f:
-            for line in f:
-                if line.startswith("open_time"):
-                    continue
-                t = int(line.split(",", 1)[0])
-                if t in values or t % 60000:
-                    raise ValueError(f"duplicate or invalid minute: {path}")
-                values[t] = line.rstrip("\r\n")
-        return values
 
-    values = rows(monthly["path"])
+def minute_rows(path):
+    values = {}
+    with Path(path).open() as f:
+        for line in f:
+            if line.startswith("open_time"):
+                continue
+            t = int(line.split(",", 1)[0])
+            if t in values or t % MINUTE:
+                raise ValueError(f"duplicate or invalid minute: {path}")
+            values[t] = line.rstrip("\r\n")
+    return values
+
+
+def validation_scope(policy, intervals):
+    return {"policy": policy, "intervals": [{"start": a, "end": b} for a, b in intervals]}
+
+
+def complete_partition(cache, symbol, kind, month, monthly, required_intervals=None):
+    """Replace incomplete calendar DAYS using verified official daily archives.
+
+    The original monthly archive remains immutable. Never interpolate a bar.
+    With an explicit scope, require full UTC days touched by that scope only.
+    Keep all other original rows, even if their days are incomplete.
+    """
+    start, end = month_intervals(month)[0]
+    intervals = month_intervals(month, required_intervals)
+    days = sorted({t // DAY * DAY for a, b in intervals
+                   for t in range(a // DAY * DAY, b, DAY)})
+    scope = validation_scope("required-utc-days-v1", merge_intervals((d, d + DAY) for d in days))
+    values = minute_rows(monthly["path"])
     if any(t < start or t >= end for t in values):
         raise ValueError(f"monthly timestamp outside calendar: {monthly['path']}")
-    missing_days = sorted({t // 86400000 * 86400000 for t in range(start, end, 60000) if t not in values})
+    missing_days = [day for day in days if any(t not in values for t in range(day, day + DAY, MINUTE))]
     if not missing_days:
-        return monthly
+        return monthly if required_intervals is None else {**monthly, "validation": scope}
     sources = [monthly]
     for day in missing_days:
         date = dt.datetime.fromtimestamp(day / 1000, UTC).date().isoformat()
         daily = archive(cache, symbol, kind, date, "daily")
-        replacement = rows(daily["path"])
-        if set(replacement) != set(range(day, day + 86400000, 60000)):
+        replacement = minute_rows(daily["path"])
+        if set(replacement) != set(range(day, day + DAY, MINUTE)):
             raise ValueError(f"official daily archive still incomplete: {daily['url']}")
         values.update(replacement)
         sources.append(daily)
-    payload = ("\n".join(values[t] for t in range(start, end, 60000)) + "\n").encode()
+    payload = ("\n".join(values[t] for t in sorted(values)) + "\n").encode()
     output = content_addressed(cache / symbol / kind / "derived", payload, ".csv")
     metadata = {"path": str(output.resolve()), "csvSha256": digest(output), "sources": sources,
                 "replacedDays": [dt.datetime.fromtimestamp(day / 1000, UTC).date().isoformat() for day in missing_days]}
+    if required_intervals is not None:
+        metadata["validation"] = scope
     if not output.with_suffix(".json").exists():
         write_once(output.with_suffix(".json"), metadata)
     print(f"restored {symbol}/{kind}/{month}: {len(missing_days)} days from official daily ZIPs", flush=True)
     return metadata
+
+
+def replay_partitions(cache, symbol, month, candles, marks, required_intervals):
+    """Adapt scoped archives to the frozen CLI's contiguous, aligned CSV contract.
+
+    Full aligned months retain their existing paths/bytes. Otherwise publish one
+    pair per required continuous range; raw sources and repaired rows stay intact.
+    Separate ranges are separate partitions, never bridged with invented bars.
+    """
+    intervals = month_intervals(month, required_intervals)
+    if not intervals:
+        return [], []
+    sources = (candles, marks)
+    values = [minute_rows(source["path"]) for source in sources]
+    start, end = month_intervals(month)[0]
+    full = set(range(start, end, MINUTE))
+    if all(set(rows) == full for rows in values):
+        return [{"month": month, "candles": candles["path"], "marks": marks["path"]}], []
+    partitions, receipts = [], []
+    for start, end in intervals:
+        part = {"month": month, "from": start, "to": end}
+        for key, kind, source, rows in zip(("candles", "marks"), ("klines", "markPriceKlines"), sources, values):
+            if any(t not in rows for t in range(start, end, MINUTE)):
+                raise ValueError(f"missing required replay minute: {symbol}/{kind}/{month}")
+            payload = ("\n".join(rows[t] for t in range(start, end, MINUTE)) + "\n").encode()
+            output = content_addressed(cache / symbol / kind / "replay", payload, ".csv")
+            metadata = {"path": str(output.resolve()), "csvSha256": digest(output), "sources": [source],
+                        "validation": validation_scope("continuous-replay-interval-v1", [(start, end)])}
+            if not output.with_suffix(".json").exists():
+                write_once(output.with_suffix(".json"), metadata)
+            receipts.append(metadata)
+            part[key] = metadata["path"]
+        partitions.append(part)
+    return partitions, receipts
 
 
 def validate_funding(funding, start, end):
@@ -188,6 +261,7 @@ def main():
         return
     args.output.mkdir(parents=True, exist_ok=True)
     dates, funding_dates, warmup_windows = required_months(plan)
+    required = merge_intervals((timestamp(w["warmupStart"]), timestamp(w["end"])) for w in warmup_windows)
     jobs = [(symbol, kind, month) for symbol in plan["symbols"]
             for kind in ["klines", "markPriceKlines", "fundingRate"]
             for month in (funding_dates if kind == "fundingRate" else dates)]
@@ -201,16 +275,23 @@ def main():
                 print(f"verified {index}/{len(jobs)} archives", flush=True)
     repair_jobs = [(symbol, kind, month) for symbol in plan["symbols"] for kind in ["klines", "markPriceKlines"] for month in dates]
     def complete(job):
-        return job, complete_partition(args.cache, *job, receipts[job])
+        return job, complete_partition(args.cache, *job, receipts[job], required_intervals=required)
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
         for job, result in pool.map(complete, repair_jobs):
             receipts[job] = result
     manifest = {"version": 2, "planSha256": digest(args.plan), "warmupPolicy": WARMUP_POLICY,
                 "warmupWindows": warmup_windows, "generatorSha256": digest(Path(__file__)),
+                "priceValidation": validation_scope("required-utc-days-v1", required),
                 "warmupSourceSha256": digest(Path(__file__).with_name("warmup.py")), "symbols": {}}
     for symbol in plan["symbols"]:
         archives = [receipts[symbol, kind, month] for kind in ["klines", "markPriceKlines", "fundingRate"]
                     for month in (funding_dates if kind == "fundingRate" else dates)]
+        partitions = []
+        for month in dates:
+            parts, derived = replay_partitions(args.cache, symbol, month, receipts[symbol, "klines", month],
+                                               receipts[symbol, "markPriceKlines", month], required)
+            partitions.extend(parts)
+            archives.extend(derived)
         funding = []
         for month in funding_dates:
             with Path(receipts[symbol, "fundingRate", month]["path"]).open() as f:
@@ -221,8 +302,7 @@ def main():
             validate_funding(funding, timestamp(window["start"]), timestamp(window["end"]))
         funding_path = content_addressed(args.output / "artifacts" / "funding", json.dumps(funding, allow_nan=False).encode(), ".json")
         manifest["symbols"][symbol] = {"archives": archives, "funding": str(funding_path.resolve()), "fundingSha256": digest(funding_path),
-            "partitions": [{"month": month, "candles": receipts[symbol, "klines", month]["path"],
-                            "marks": receipts[symbol, "markPriceKlines", month]["path"]} for month in dates]}
+            "partitions": partitions}
     write_once(manifest_path, manifest)
     print(f"manifest: {args.output / 'manifest.json'}", flush=True)
 

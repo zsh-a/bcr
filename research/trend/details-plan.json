@@ -1,0 +1,369 @@
+{
+  "version": 1,
+  "capitalMode": "total-account-equal-sleeves",
+  "initialCapital": 60000,
+  "symbols": {
+    "BTCUSDT": {
+      "tickSize": 0.1,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "ETHUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "BNBUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.01,
+      "minNotional": 100
+    },
+    "SOLUSDT": {
+      "tickSize": 0.001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "XRPUSDT": {
+      "tickSize": 0.0001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "DOGEUSDT": {
+      "tickSize": 1e-05,
+      "quantityStep": 1,
+      "minNotional": 100
+    }
+  },
+  "windows": [
+    {
+      "id": "development",
+      "start": "2022-09-01",
+      "end": "2024-01-01",
+      "role": "development",
+      "label": "开发资格复核 · 已查看历史"
+    },
+    {
+      "id": "known-2024",
+      "start": "2024-01-01",
+      "end": "2024-08-01",
+      "role": "diagnostic-known",
+      "label": "2024 年 1—7 月 · 已查看历史"
+    },
+    {
+      "id": "known-2025",
+      "start": "2025-01-01",
+      "end": "2026-01-01",
+      "role": "diagnostic-known",
+      "label": "2025 全年 · 已查看历史"
+    },
+    {
+      "id": "known-2026",
+      "start": "2026-01-01",
+      "end": "2026-09-01",
+      "role": "diagnostic-known",
+      "label": "2026 年 1—8 月 · 已查看历史"
+    },
+    {
+      "id": "historical-stress",
+      "start": "2022-01-01",
+      "end": "2022-07-01",
+      "role": "diagnostic-stress",
+      "label": "2022 年上半年压力 · 已查看历史"
+    },
+    {
+      "id": "fresh-september",
+      "start": "2026-09-01",
+      "end": "2026-10-01",
+      "role": "diagnostic-check",
+      "label": "2026 年 9 月复核 · 已查看历史"
+    },
+    {
+      "id": "transfer-2021",
+      "start": "2021-01-01",
+      "end": "2022-01-01",
+      "role": "historical-transfer",
+      "candidateScope": "selected-and-baseline",
+      "label": "2021 全年 · 新历史反向转移"
+    },
+    {
+      "id": "transfer-2024-oct-nov",
+      "start": "2024-10-01",
+      "end": "2024-12-01",
+      "role": "historical-transfer",
+      "candidateScope": "selected-and-baseline",
+      "label": "2024 年 10—11 月 · 新历史转移"
+    }
+  ],
+  "windowCoverage": {
+    "inheritedGaps": "The source research reported unresolved official mark-price gaps in July 2022 and August 2024. Its development therefore started on 2022-09-01 and its 2024 diagnostic ended on 2024-08-01. The later January-June 2022 stress window deliberately stopped before the known July gap.",
+    "excludedIntervals": [
+      "2022-07-01/2022-09-01",
+      "2024-08-01/2025-01-01"
+    ],
+    "scope": "These larger excluded ranges are inherited research-window choices, not a claim that every excluded day is missing. This recheck does not reassess archive availability, fill those ranges, or choose replacement periods. The retained windows are not exhaustive market coverage.",
+    "september": "The legacy id fresh-september is preserved only for alignment with prior artifacts. Its role is diagnostic-check and its prices/results are already known; it is neither fresh, untouched OOS, prospective nor live evidence.",
+    "newTransfer": "2021 chosen as the prior complete calendar year; Oct-Nov2024 chosen as two complete months after known Aug2024 gap and Sep warmup, before Dec2024 already used for 2025 warmup. Availability preflight only: 210 official CHECKSUM responses and 66 cache metadata records. No price/return-based date selection. 2021 predates development and is reverse historical transfer, not chronological OOS. If archive completeness fails, report unavailability; do not interpolate, silently shorten dates, replace symbols or select alternative dates after outcomes."
+  },
+  "costs": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "stressFeeBps": 10,
+    "stressSlippageBps": 4
+  },
+  "risk": {
+    "riskPct": 0.005,
+    "maxExposurePct": 0.95,
+    "cooldownLosses": 3,
+    "cooldownMinutes": 60,
+    "dailyLossPct": 0.03,
+    "flattenMinute": null
+  },
+  "bootstrap": {
+    "seed": 20261003,
+    "samples": 2000,
+    "blockDays": 7
+  },
+  "configVersion": 8,
+  "title": "30 分钟趋势策略：机制拆分与冻结选择的历史转移验证",
+  "frozenAt": "2026-10-03; declared after inspecting prior literature study, before running any new candidate or reading any new transfer-window prices/results. Archive availability checked only via CHECKSUM text and cache metadata.",
+  "purpose": "Check entry-horizon stability plus five independent mechanisms around the previous N320/exit20 long baseline. One frozen development selection, two new historical transfer windows, no combinations, grid search, replacement selection, deployment or UI-default change.",
+  "sourceStudy": {
+    "plan": "research/trend/literature-plan.json",
+    "sha256": "693a71c9bced151ce2cd6d66098015752b81445c92ed12dad02d59358f9b4db9"
+  },
+  "dataPolicy": "Official checksum-verified Binance UM traded/mark minute data and actual funding; reject missing prices/funding. Each window independently starts with 60000 USDT split into six 10000 sleeves and independent risk state. Preserve the six known windows plus two predeclared transfer windows. Transfer runs only the frozen selection and baseline, both cost scenarios. Do not inspect other candidate returns in transfer. Never concatenate separate equity curves or claim a continuous investment record.",
+  "candidates": [
+    {
+      "id": "m30-n320-x20",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 20,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n160-x20",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 160,
+      "channelExitBars": 20,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n640-x20",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 640,
+      "channelExitBars": 20,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-both",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "both",
+      "breakoutBars": 320,
+      "channelExitBars": 20,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-stop3",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 20,
+      "breakoutReentry": "every-close",
+      "stopAtr": 3,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-x160",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 160,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-background",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "background",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 20,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "m30-n320-cost02",
+      "entry": "breakout",
+      "tradeMinutes": 30,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 320,
+      "channelExitBars": 20,
+      "breakoutReentry": "every-close",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 3,
+      "maxCostAtr": 0.2
+    }
+  ],
+  "baseline": "m30-n320-x20",
+  "selectionMode": "ranked",
+  "selectionMinTrades": 30,
+  "selectionMinProfitableSymbols": 4,
+  "selection": "Select exactly once on development base-cost daily portfolio Sharpe from the declared six-candidate pool, subject to >=30 completed trades per symbol and finite Sharpe. Ties follow candidate declaration order (baseline first). Stop without inspecting transfer outcomes if none qualify. Do not re-rank after the separate >=4 profitable symbols and positive median-symbol-mean-R qualification; still test the frozen choice, report any qualification failure. N160/N640 are diagnostic only and permanently excluded from selection.",
+  "sensitivity": [],
+  "stressCandidates": [
+    "m30-n320-x20",
+    "m30-n160-x20",
+    "m30-n640-x20",
+    "m30-n320-both",
+    "m30-n320-stop3",
+    "m30-n320-x160",
+    "m30-n320-background",
+    "m30-n320-cost02"
+  ],
+  "comparisons": [
+    {
+      "id": "m30-n160-x20",
+      "candidate": "m30-n160-x20",
+      "reference": "m30-n320-x20"
+    },
+    {
+      "id": "m30-n640-x20",
+      "candidate": "m30-n640-x20",
+      "reference": "m30-n320-x20"
+    },
+    {
+      "id": "m30-n320-both",
+      "candidate": "m30-n320-both",
+      "reference": "m30-n320-x20"
+    },
+    {
+      "id": "m30-n320-stop3",
+      "candidate": "m30-n320-stop3",
+      "reference": "m30-n320-x20"
+    },
+    {
+      "id": "m30-n320-x160",
+      "candidate": "m30-n320-x160",
+      "reference": "m30-n320-x20"
+    },
+    {
+      "id": "m30-n320-background",
+      "candidate": "m30-n320-background",
+      "reference": "m30-n320-x20"
+    },
+    {
+      "id": "m30-n320-cost02",
+      "candidate": "m30-n320-cost02",
+      "reference": "m30-n320-x20"
+    }
+  ],
+  "fixedRules": {
+    "entry": "Completed UTC 30m close >= prior N highs + one tick; exclude current candle. Shorts mirror close <= prior N lows - one tick. Execute next minute open with adverse rounding/slippage. N320=160h. N160/N640 halve/double entry horizon only and are never selectable.",
+    "exit": "Initial hard stop continuously checked on minute data. Prior independent M-bar channel close crossing queues next-minute market exit; excludes current candle. Default M20 (10h), slow exit M160 (80h, half entry window). No ATR trail, breakeven, profit target or daily flatten. Stop3 is a fixed 50% wider initial 30m-ATR stop, not a higher-timeframe ATR.",
+    "risk": "ATR14 Wilder at completed signal close; entry initial risk distance frozen. Fixed risk0.5% sizing includes stop execution/fees. stop3 reduces quantity under the same budget. Background existing 2h EMA20 slope3 + efficiency20>=.3 + confirmed swing structure; compound filter, not an isolated EMA contrast. Both directions share the same single position and risk/cooldown state.",
+    "costGate": "maxCostAtr=.2: expected unchanged-price roundtrip (2*signalPrice*(fee+slippage)+2*tick)/signalATR <=.2. Excludes future funding. At doubled costs the gate changes entries; stress always replays the whole rule. This threshold is a declared cost-budget contrast, not a paper-estimated optimum.",
+    "warmup": "active-windows-v1, each candidate independently initialized. N160/320/640 have4/7/14 UTC days; all use30m ATR14. Horizon contrasts include this disclosed ATR seeding difference. Downloader conservatively loads maximum candidate warmup even for selected-only transfer.",
+    "costs": "Base5bps fee+2bps slippage per side; stress10+4 per side; actual funding. Eight base variants on development; eight base+stress on five known diagnostics. Selected+baseline only, base+stress, on each transfer."
+  },
+  "audit": {
+    "execution": "Rehash source archives; independent trade-level signal, ATR, adverse fills, hard stop/channel priority and ledger reconciliation. Explicitly disclose any non-reconstructed filter or rejected-signal state. Generic canonical daily/evaluation contracts remain mandatory.",
+    "legacy": "Compare all shared baseline trades, canonical daily equity and metrics against N320 in prior study for all six base and five stress known windows.",
+    "attribution": "Full-account contrasts change position availability, sizing and future entries. Do not describe different trade sets as paired identical-entry causal effects."
+  },
+  "acceptance": "Apply transferEvaluation as frozen. All eight known-history contrasts and seven base paired comparisons remain descriptive and multiplicity-unadjusted. Preserve the prior study acceptance and failed verdict unchanged. The new test does not retroactively pass the old study. If transfer archive completeness is unavailable, report blocked evidence and do not claim acceptance.",
+  "limitations": [
+    "This is another adaptive research round informed by all previous project outcomes. Development data and six diagnostic windows are already known. Sharpe ranking among six mechanisms is model selection, not removal of historical selection bias.",
+    "Eight variants are additional trials; diagnostic comparisons and percentile intervals do not correct the project-wide number of attempts. No DSR claim without complete research-trial accounting.",
+    "The two transfer windows were not used for strategy evaluation in this project before this freeze; they remain retrospectively chosen historical periods, not newly arriving prospective/live data. 2021 is earlier than training. Fixed modern surviving symbols/static lot rules introduce survivorship and historical-execution limitations.",
+    "Only61days in the later transfer; pooled calendar mean weights the365day earlier year more heavily and cannot be presented as a uniformly positive-regime forecast.7/28day blocks are assumptions about dependence, not a guarantee of stationarity.",
+    "Do not chain independent window capital states. Portfolio drawdown is daily; worst-sleeve minute drawdown is different. Simulated minute stop fills cannot model order-book liquidity or guaranteed stop prices.",
+    "Comparisons alter complete account paths and possibly funding; lower turnover, higher winrate or lower costR alone does not prove greater net expectancy. R denominator changes with stop width.",
+    "Predeclared complete-data failure cannot be repaired by outcome-based date/asset exclusion. Report unavailable periods explicitly and preserve all errors."
+  ],
+  "references": [
+    "https://open.icm.edu.pl/server/api/core/bitstreams/745c4481-39b0-43b6-bac6-cc28a745d332/content",
+    "https://www.sciencedirect.com/science/article/pii/S1386418117300472",
+    "https://arxiv.org/abs/1203.5957",
+    "https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf",
+    "https://www.binance.com/en/support/faq/detail/360033525031"
+  ],
+  "selectionCandidates": [
+    "m30-n320-x20",
+    "m30-n320-both",
+    "m30-n320-stop3",
+    "m30-n320-x160",
+    "m30-n320-background",
+    "m30-n320-cost02"
+  ],
+  "selectionObjective": "dailySharpe",
+  "transferEvaluation": {
+    "windows": [
+      "transfer-2021",
+      "transfer-2024-oct-nov"
+    ],
+    "samples": 2000,
+    "seed": 20261003,
+    "blockDays": [
+      7,
+      28
+    ],
+    "minimumDays": 180,
+    "minimumTrades": 100,
+    "minimumTradesPerSymbol": 10,
+    "maxDailyDrawdown": 0.1,
+    "requireEachWindowPositive": true,
+    "requireDevelopmentQualified": true,
+    "method": "Circular calendar blocks sampled independently WITHIN each transfer window; preserve each window original day count, keep all sleeves/candidate/cost scenarios paired on the same day. Pool daily means weighted by observation days; no NAV chaining or gap filling. Percentile95% intervals for selected absolute base/stress means and paired selected-minus-baseline differences. Both7 and28day intervals reported, never chosen after results. Completed-trade netR and dollar expectation descriptive, not iid confidence. Leave-one-symbol-out summaries diagnostic only, never a symbol selector.",
+    "acceptance": "Historical positive-expectancy candidate for forward observation only if development qualification passes; >=180 transfer days, >=100 trades and>=10 per symbol under each cost scenario; both transfer windows have positive net returns at base and stress, each daily portfolio drawdown >=-10%; absolute selected daily-mean lower95%bound >0 for BOTH7/28day blocks under base and stress. Paired improvement reported separately and does not substitute for absolute profitability. If points positive but intervals crosszero, status remains not-established. A failed criterion forbids promotion/reselection this round. Passing still does not establish future profitability or warrant automatic live deployment."
+  }
+}

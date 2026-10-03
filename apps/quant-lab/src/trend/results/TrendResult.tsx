@@ -15,7 +15,7 @@ import { TrendChart } from "./TrendChart";
 import { exportTrend, readTradePage } from "./read";
 import { useTrendChart } from "./useTrendChart";
 import { TrendContextPanel } from "./TrendContextPanel";
-import { priceDigits } from "./format";
+import { trendEntryFields } from "./entry";
 import { number, timestamp } from "./evaluation";
 import { TrendEvaluationPanel, TrendMonthlyReturns } from "./TrendEvaluationPanel";
 import { TrendPerformanceChart } from "./TrendPerformanceChart";
@@ -40,7 +40,6 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
   const evidence = focusedTrade
     ? trendEntryEvidence(focusedTrade, config.channelConfig, chart.data)
     : undefined;
-  const price = (value: number) => number(value, priceDigits(config.tickSize));
   const [page, setPage] = useState(0),
     [trades, setTrades] = useState<TrendTrade[] | null>(null);
   const [error, setError] = useState<string | null>(null),
@@ -87,6 +86,11 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
           导出完整结果
         </Button>
       </div>
+      {config.entry === "kdj" && (
+        <p className="trend-help">
+          KDJ 回调研究 · 截图推测方案，不是博主规则的精确复现；当前结果仅代表这组明确规则的回放。
+        </p>
+      )}
       <TrendEvaluationPanel metrics={m} window={evaluationWindow} />
       {(error || chart.error) && (
         <p role="alert" className="trend-error">
@@ -185,6 +189,8 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
       {view === "candles" && (
         <>
           <div className="trend-chart-legend" aria-label="图表图例">
+            {config.slowEma && <span>EMA 60 · 交易 K 线收盘值</span>}
+            {config.entry === "kdj" && <span>K / D / J · 9,3,3 · 下方面板</span>}
             {config.channelConfig && (
               <span className="trend-legend-entry">
                 此前 {config.channelConfig.entryBars} 根入场通道
@@ -217,45 +223,30 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
                 <>
                   <p>
                     {evidence.source === "recorded"
-                      ? "信号时冻结的记录"
+                      ? evidence.trigger?.kind === "kdj-cross"
+                        ? "KDJ 交叉 · 信号时冻结的记录"
+                        : evidence.trigger?.kind === "structured-pullback"
+                          ? "结构化回调 · 整段推进极值突破 · 信号时冻结的记录"
+                          : evidence.trigger?.kind === "price-action"
+                            ? "价格行为 · 整段推进极值突破 · 信号时冻结的记录"
+                            : "信号时冻结的记录"
                       : "根据冻结行情计算的历史通道参考"}{" "}
                     · {timestamp(evidence.time)} UTC
                   </p>
                   <dl>
-                    <div>
-                      <dt>信号收盘</dt>
-                      <dd>{price(evidence.price)}</dd>
-                    </div>
-                    <div>
-                      <dt>
-                        {evidence.lookbackBars
-                          ? `此前 ${evidence.lookbackBars} 根${focusedTrade.side === "long" ? "最高" : "最低"}价`
-                          : "推进极值"}
-                      </dt>
-                      <dd>{price(evidence.boundary)}</dd>
-                    </div>
-                    <div>
-                      <dt>突破幅度</dt>
-                      <dd>
-                        {price(
-                          (evidence.price - evidence.boundary) *
-                            (focusedTrade.side === "long" ? 1 : -1),
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>下一分钟成交</dt>
-                      <dd>{price(focusedTrade.entryPrice)}</dd>
-                    </div>
-                    {evidence.atr !== undefined && (
-                      <div>
-                        <dt>信号 ATR 14</dt>
-                        <dd>{price(evidence.atr)}</dd>
+                    {trendEntryFields(evidence, focusedTrade, config.tickSize).map((field) => (
+                      <div key={field.label}>
+                        <dt>{field.label}</dt>
+                        <dd>{field.value}</dd>
                       </div>
-                    )}
+                    ))}
                   </dl>
                   <p className="trend-help">
                     {config.filter} · {config.costFilter}。
+                    {config.priceAction &&
+                      `关键位回踩${config.priceAction.keyLevel ? "必需" : "不设门槛"}，两腿回调${config.priceAction.twoLegs ? "必需" : "不设门槛"}；依据仅取本次冻结快照。`}
+                    {config.structuredPullback &&
+                      "关键位、各结构标签与转折确认时刻仅取本次冻结快照；未记录的形态不从后续行情补画。"}
                     {evidence.source === "derived" &&
                       "该旧记录未保存原始信号 ATR，此处仅核对通道和收盘价。"}
                   </p>
@@ -284,6 +275,7 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
                   <span>{TREND_REASONS[e.reason] ?? e.reason}</span>
                   <span>
                     {e.side === "long" ? "多" : "空"} · {number(e.price)}
+                    {e.kind === "stage" && e.value !== null ? ` · 收盘 ${number(e.value)} R` : ""}
                   </span>
                 </p>
               ))
@@ -403,7 +395,9 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
             ? "旧版保本与移动止盈按原始 R 阈值执行。"
             : config.channel
               ? "ATR 硬止损在入场时冻结；此前反向通道在完整交易 K 线收盘后确认退出，下分钟开盘成交。不启用保本或 ATR 移动止盈。"
-              : "止损、保本触发和移动距离使用信号收盘时冻结的 ATR；移动止盈无需单独启动阈值。"}
+              : config.staged
+                ? "初始止损使用信号 ATR，初始 R 距离固定。完整交易 K 线收盘达到阈值后锁定保本与跟踪状态；跟踪使用当前 ATR 14 和入场以来极值。保护线只收紧，若越过收盘则锁定下一分钟开盘退出。"
+                : "止损、保本触发和移动距离使用信号收盘时冻结的 ATR；移动止盈无需单独启动阈值。"}
           初始止损在入场后立即生效；收盘决策在下一分钟生效。跳空按更不利的开盘价成交。当前按分钟
           OHLC 回放，未模拟逐笔撮合、市场冲击、强平或 ADL。
         </p>

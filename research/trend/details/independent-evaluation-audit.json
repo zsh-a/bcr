@@ -1,0 +1,1150 @@
+{
+  "version": "trend-details-independent-evaluation-audit-1",
+  "status": "passed",
+  "createdAt": "2026-10-03T07:26:37.239846+00:00",
+  "scope": "Independent recomputation from recorded native daily account equities and completed trade ledgers; no market CSV read, no execution-engine rerun and no new selection.",
+  "inputs": {
+    "plan": {
+      "path": "research/trend/details-plan.json",
+      "sha256": "c7c302e8d4acaed4b1e7222e98b8b5fd8471207105ea30b25552fb3a7e21fa38"
+    },
+    "manifest": {
+      "path": "tmp/trend-details-v8/manifest.json",
+      "sha256": "4efe75e37477839aefd2341220fed14ee3f8cb1a412e5329a65f010dca922831"
+    },
+    "selection": {
+      "path": "tmp/trend-details-v8/selection.json",
+      "sha256": "8d10b3d2d091849a7e392c5cf11a4c59757c99334dc1217c6a02f4184177be0b"
+    },
+    "developmentSummary": {
+      "path": "tmp/trend-details-v8/development-summary.json",
+      "sha256": "87fb9fc074ad6b1aae114645e1a33eeaa0641e6923115108c2a6b3dd7426f20e"
+    },
+    "transferEvaluation": {
+      "path": "research/trend/details/transfer-evaluation.json",
+      "sha256": "3aa75c7171092c1f904ea0b0380668d02472f5e9719f6d5aee62ccad27cb1e92"
+    }
+  },
+  "rawResults": {
+    "count": 48,
+    "aggregateSha256": "7855350d7a14582f712820e38e3505231fc768641aea2ccc34d04231576a0ef2",
+    "aggregation": "SHA256 of json.dumps([{window,symbol,sha256}], sort_keys=True) in plan window/symbol order",
+    "files": [
+      {
+        "window": "development",
+        "symbol": "BTCUSDT",
+        "path": "tmp/trend-details-v8/development/BTCUSDT.json",
+        "sha256": "dd2743f38969f908beb4a8538033ffa997c5ee1a95bb39c54187da9e82a2fc04"
+      },
+      {
+        "window": "development",
+        "symbol": "ETHUSDT",
+        "path": "tmp/trend-details-v8/development/ETHUSDT.json",
+        "sha256": "62a888af5b58052c0ef960c3f4e724589056fb1ea9cafeb6045d98a9eb7036f6"
+      },
+      {
+        "window": "development",
+        "symbol": "BNBUSDT",
+        "path": "tmp/trend-details-v8/development/BNBUSDT.json",
+        "sha256": "785942e85a7207ef46eafab6cbb2cf2e84e47fda3e024ab8f86c918147ac601a"
+      },
+      {
+        "window": "development",
+        "symbol": "SOLUSDT",
+        "path": "tmp/trend-details-v8/development/SOLUSDT.json",
+        "sha256": "e5ad1a9435acb2ff832b7684f82a4607d67c7e73c042d4c178bdd5eb16ff198a"
+      },
+      {
+        "window": "development",
+        "symbol": "XRPUSDT",
+        "path": "tmp/trend-details-v8/development/XRPUSDT.json",
+        "sha256": "eb977579fa53d73469560b132ae42efdfc995b575297ac56423ceac9885471a0"
+      },
+      {
+        "window": "development",
+        "symbol": "DOGEUSDT",
+        "path": "tmp/trend-details-v8/development/DOGEUSDT.json",
+        "sha256": "2d8d6a5a20c97d23fbd157a71ff2d738eecdf3695661ecf072626a7b352d07d5"
+      },
+      {
+        "window": "known-2024",
+        "symbol": "BTCUSDT",
+        "path": "tmp/trend-details-v8/known-2024/BTCUSDT.json",
+        "sha256": "5d1c1991ccb97b75b3eb2459ad528d1afc48c603c8528d53549be20de23a3784"
+      },
+      {
+        "window": "known-2024",
+        "symbol": "ETHUSDT",
+        "path": "tmp/trend-details-v8/known-2024/ETHUSDT.json",
+        "sha256": "4aa69d6ddac5483bf85c4d38828e093c1a4820d8545358d821a8e4dc18fa6d84"
+      },
+      {
+        "window": "known-2024",
+        "symbol": "BNBUSDT",
+        "path": "tmp/trend-details-v8/known-2024/BNBUSDT.json",
+        "sha256": "3a122284884309a879e39b1796c20a24894b1e19facd39b632cd08aa3f63eccf"
+      },
+      {
+        "window": "known-2024",
+        "symbol": "SOLUSDT",
+        "path": "tmp/trend-details-v8/known-2024/SOLUSDT.json",
+        "sha256": "42629bc6298105dc847e9d8a3ca050dc932a81618b96d6803d7b4dd20b604c99"
+      },
+      {
+        "window": "known-2024",
+        "symbol": "XRPUSDT",
+        "path": "tmp/trend-details-v8/known-2024/XRPUSDT.json",
+        "sha256": "203653d72e0f7ca7a471d07b6013c59b22380d0c22ef6dd2116798c7cceacdae"
+      },
+      {
+        "window": "known-2024",
+        "symbol": "DOGEUSDT",
+        "path": "tmp/trend-details-v8/known-2024/DOGEUSDT.json",
+        "sha256": "4f14f1cbced4fa56cf51d440cfacab2cccda420cfd1676a940f95e37f7083602"
+      },
+      {
+        "window": "known-2025",
+        "symbol": "BTCUSDT",
+        "path": "tmp/trend-details-v8/known-2025/BTCUSDT.json",
+        "sha256": "6db086c40484c7d5ef9610dbfbc3f7ebed5a2b59c5ddc1b0adc59b94610a4859"
+      },
+      {
+        "window": "known-2025",
+        "symbol": "ETHUSDT",
+        "path": "tmp/trend-details-v8/known-2025/ETHUSDT.json",
+        "sha256": "7c3e8a92ddad7b1cca04577b543e079b71bb206195f26abb6e5ad57e695b5221"
+      },
+      {
+        "window": "known-2025",
+        "symbol": "BNBUSDT",
+        "path": "tmp/trend-details-v8/known-2025/BNBUSDT.json",
+        "sha256": "65e36ae013522e10674401f37d94a23edee9a7f4823fbd16dcdcb9ea3c12e156"
+      },
+      {
+        "window": "known-2025",
+        "symbol": "SOLUSDT",
+        "path": "tmp/trend-details-v8/known-2025/SOLUSDT.json",
+        "sha256": "33b5b85d0cb9943287100f04439f976361af2f9fa098cc5b9a06ff4ee7fcf865"
+      },
+      {
+        "window": "known-2025",
+        "symbol": "XRPUSDT",
+        "path": "tmp/trend-details-v8/known-2025/XRPUSDT.json",
+        "sha256": "5f116d614cd970a83054c2ece5a5c6d5e7896b3520d25b4bcef9ccf65240788d"
+      },
+      {
+        "window": "known-2025",
+        "symbol": "DOGEUSDT",
+        "path": "tmp/trend-details-v8/known-2025/DOGEUSDT.json",
+        "sha256": "b923e2af0e8d80bcababb6f8d53d241d16a781061f3a09a6efc8222bb0952990"
+      },
+      {
+        "window": "known-2026",
+        "symbol": "BTCUSDT",
+        "path": "tmp/trend-details-v8/known-2026/BTCUSDT.json",
+        "sha256": "b8925a50afd2fcf65dd53c7be91b61b398c22d8b8789ac0944d740a86a9adf3c"
+      },
+      {
+        "window": "known-2026",
+        "symbol": "ETHUSDT",
+        "path": "tmp/trend-details-v8/known-2026/ETHUSDT.json",
+        "sha256": "2b4e36078524f7e6a8e9109759724445ba9ba13bfdb448d30e1cb852443a0c1f"
+      },
+      {
+        "window": "known-2026",
+        "symbol": "BNBUSDT",
+        "path": "tmp/trend-details-v8/known-2026/BNBUSDT.json",
+        "sha256": "5e4735659a88d2d8d902ae339d8a62f502a9258918d467cec1021746ad63af0b"
+      },
+      {
+        "window": "known-2026",
+        "symbol": "SOLUSDT",
+        "path": "tmp/trend-details-v8/known-2026/SOLUSDT.json",
+        "sha256": "f473e354b2231859a36fd5e2daf4399abfcf0aa3e81d4d0a0f7f5dae6942ac18"
+      },
+      {
+        "window": "known-2026",
+        "symbol": "XRPUSDT",
+        "path": "tmp/trend-details-v8/known-2026/XRPUSDT.json",
+        "sha256": "3b68a013af80eb318faa1d9cedf899deb0a3352bcad2d69e6275495e5a3644c8"
+      },
+      {
+        "window": "known-2026",
+        "symbol": "DOGEUSDT",
+        "path": "tmp/trend-details-v8/known-2026/DOGEUSDT.json",
+        "sha256": "2e68fe3df3b32d18bebc988c1f4d46cb71bec23b1577ef6af332c10011e2a752"
+      },
+      {
+        "window": "historical-stress",
+        "symbol": "BTCUSDT",
+        "path": "tmp/trend-details-v8/historical-stress/BTCUSDT.json",
+        "sha256": "d6b90e95a720cfa946d8c5f2e87d28d5a09234f7d4549aece61444d3a9d6ef7f"
+      },
+      {
+        "window": "historical-stress",
+        "symbol": "ETHUSDT",
+        "path": "tmp/trend-details-v8/historical-stress/ETHUSDT.json",
+        "sha256": "4f34cde90e9f1dbaa6b35bf1674a4f76fb2b46f54b08c26f73c6706f4ca5ccab"
+      },
+      {
+        "window": "historical-stress",
+        "symbol": "BNBUSDT",
+        "path": "tmp/trend-details-v8/historical-stress/BNBUSDT.json",
+        "sha256": "96f2abf6796a646651df23fed2733f5758405a183c18271d2ca2a3eef14e4582"
+      },
+      {
+        "window": "historical-stress",
+        "symbol": "SOLUSDT",
+        "path": "tmp/trend-details-v8/historical-stress/SOLUSDT.json",
+        "sha256": "cf4e64852c2e5d86da641a9403bd8999c1852e69cfa999b469482ebdb0140327"
+      },
+      {
+        "window": "historical-stress",
+        "symbol": "XRPUSDT",
+        "path": "tmp/trend-details-v8/historical-stress/XRPUSDT.json",
+        "sha256": "59b3331337dbd63a86327963ff271b7e4f482ccdd8724c799232184827a3ad15"
+      },
+      {
+        "window": "historical-stress",
+        "symbol": "DOGEUSDT",
+        "path": "tmp/trend-details-v8/historical-stress/DOGEUSDT.json",
+        "sha256": "ce7a30ba274972b6a404a0d192898408af41f46596dfc1d1f817943699a61868"
+      },
+      {
+        "window": "fresh-september",
+        "symbol": "BTCUSDT",
+        "path": "tmp/trend-details-v8/fresh-september/BTCUSDT.json",
+        "sha256": "05a5d86e01c0490928452b3131dc0fc9ac106cc9140f158abff4c781d6aae9a8"
+      },
+      {
+        "window": "fresh-september",
+        "symbol": "ETHUSDT",
+        "path": "tmp/trend-details-v8/fresh-september/ETHUSDT.json",
+        "sha256": "54538930bc4b005859944b702cf442ddeef2f0506710059c9ceab168dc1a02fa"
+      },
+      {
+        "window": "fresh-september",
+        "symbol": "BNBUSDT",
+        "path": "tmp/trend-details-v8/fresh-september/BNBUSDT.json",
+        "sha256": "a9eaf186fb40e5bf1a25d7052f055ce779a181859a5bb6e516df61d7a6f1ad47"
+      },
+      {
+        "window": "fresh-september",
+        "symbol": "SOLUSDT",
+        "path": "tmp/trend-details-v8/fresh-september/SOLUSDT.json",
+        "sha256": "dd659d8ff0895a94ec5bd490f6b15de90fd9e140d26660fc2d67886ca3207482"
+      },
+      {
+        "window": "fresh-september",
+        "symbol": "XRPUSDT",
+        "path": "tmp/trend-details-v8/fresh-september/XRPUSDT.json",
+        "sha256": "e6c5c3e73c9ced110b50ff248611f6bd0263a5888944721a98dd3cfcb4575fc2"
+      },
+      {
+        "window": "fresh-september",
+        "symbol": "DOGEUSDT",
+        "path": "tmp/trend-details-v8/fresh-september/DOGEUSDT.json",
+        "sha256": "14b28083a0c7d9ff498309e51e03b7ddedd8c6aede3bc047c3672d473a3fa8c1"
+      },
+      {
+        "window": "transfer-2021",
+        "symbol": "BTCUSDT",
+        "path": "tmp/trend-details-v8/transfer-2021/BTCUSDT.json",
+        "sha256": "7432e6c8c9ec831e0519b81e08256068a100ce005eace5fe97b0c479625fa7b4"
+      },
+      {
+        "window": "transfer-2021",
+        "symbol": "ETHUSDT",
+        "path": "tmp/trend-details-v8/transfer-2021/ETHUSDT.json",
+        "sha256": "b8acb4fe5c725f74f65dcffa28120a4b4e65835da9be715c42de2bb0340a9890"
+      },
+      {
+        "window": "transfer-2021",
+        "symbol": "BNBUSDT",
+        "path": "tmp/trend-details-v8/transfer-2021/BNBUSDT.json",
+        "sha256": "e40baa32b558a887d4ac8220242e0e465b28efc57f503aba2c6d0206a95ddd3e"
+      },
+      {
+        "window": "transfer-2021",
+        "symbol": "SOLUSDT",
+        "path": "tmp/trend-details-v8/transfer-2021/SOLUSDT.json",
+        "sha256": "bf9fdbdfb6ee27d43e3af32e037046df043efd7031ca0d368d1357d377b929c7"
+      },
+      {
+        "window": "transfer-2021",
+        "symbol": "XRPUSDT",
+        "path": "tmp/trend-details-v8/transfer-2021/XRPUSDT.json",
+        "sha256": "838167b5df4c8e870f407288f223faced775887d191d8ea14e5fe559ba0c10fa"
+      },
+      {
+        "window": "transfer-2021",
+        "symbol": "DOGEUSDT",
+        "path": "tmp/trend-details-v8/transfer-2021/DOGEUSDT.json",
+        "sha256": "95743a8b467efebcbc9b664f0b92fa83274afdf74985ddc58ac842916525b6c0"
+      },
+      {
+        "window": "transfer-2024-oct-nov",
+        "symbol": "BTCUSDT",
+        "path": "tmp/trend-details-v8/transfer-2024-oct-nov/BTCUSDT.json",
+        "sha256": "c6402f7db2f8b6bbd25f7708ba31dd0c7cee013d3dd6e5d716d0c2bc7d3d152a"
+      },
+      {
+        "window": "transfer-2024-oct-nov",
+        "symbol": "ETHUSDT",
+        "path": "tmp/trend-details-v8/transfer-2024-oct-nov/ETHUSDT.json",
+        "sha256": "0b68db778b1b694a74dec6b8b2360e5e0d5b71d85174b46912cb1db703c7766e"
+      },
+      {
+        "window": "transfer-2024-oct-nov",
+        "symbol": "BNBUSDT",
+        "path": "tmp/trend-details-v8/transfer-2024-oct-nov/BNBUSDT.json",
+        "sha256": "959a0dee152975db32b2189f650a1c461dd5a54d73851b69815cb225f74ce099"
+      },
+      {
+        "window": "transfer-2024-oct-nov",
+        "symbol": "SOLUSDT",
+        "path": "tmp/trend-details-v8/transfer-2024-oct-nov/SOLUSDT.json",
+        "sha256": "9436d2abb15c2c48120ec4977c5ef069322fe312fd6a5b1797663bfc8f276f04"
+      },
+      {
+        "window": "transfer-2024-oct-nov",
+        "symbol": "XRPUSDT",
+        "path": "tmp/trend-details-v8/transfer-2024-oct-nov/XRPUSDT.json",
+        "sha256": "88ccc6ce91e6be5c392e365b94ff0501146346e2c1e7d2c940b6ef3248392673"
+      },
+      {
+        "window": "transfer-2024-oct-nov",
+        "symbol": "DOGEUSDT",
+        "path": "tmp/trend-details-v8/transfer-2024-oct-nov/DOGEUSDT.json",
+        "sha256": "0126c36682d0ca01373bded6dea9ac8c6be3828a198f1591ac6935410834a05b"
+      }
+    ]
+  },
+  "recomputation": {
+    "scriptPath": "/tmp/trend-details-independent-audit.py",
+    "scriptSha256": "a77ae6f66090abd4792c8ca781bf2ecf8c91f3068d4fc641daa9f3f6c91b6097",
+    "pythonVersion": "3.14.7 (main, Aug 10 2026, 07:46:56) [GCC 16.1.1 20260728]",
+    "numpyVersion": "2.5.3",
+    "importsProductionEvaluationCode": false,
+    "method": "Sum six fixed-sleeve daily equities, recompute daily percentage changes and sample-standard-deviation Sharpe using sqrt(365), count actual completed trades, compute running daily-close peaks and drawdowns, sum recorded trade PnL/R; implement bootstrap independently with NumPy index arrays and Random(seed), per-window circular blocks and shared indices, preserving 365/61 day weights and original percentile rank convention."
+  },
+  "selection": {
+    "recorded": "m30-n320-x160",
+    "recomputed": "m30-n320-x160",
+    "declaredPool": [
+      "m30-n320-x20",
+      "m30-n320-both",
+      "m30-n320-stop3",
+      "m30-n320-x160",
+      "m30-n320-background",
+      "m30-n320-cost02"
+    ],
+    "diagnosticOnlyExcluded": [
+      "m30-n160-x20",
+      "m30-n640-x20"
+    ],
+    "developmentCandidates": [
+      {
+        "candidate": "m30-n320-x20",
+        "inSelectionPool": true,
+        "tradesBySymbol": {
+          "BTCUSDT": 52,
+          "ETHUSDT": 49,
+          "BNBUSDT": 61,
+          "SOLUSDT": 61,
+          "XRPUSDT": 55,
+          "DOGEUSDT": 65
+        },
+        "minimumTradeRequirementMet": true,
+        "eligible": true,
+        "dailySharpe": 0.5817284755976161
+      },
+      {
+        "candidate": "m30-n160-x20",
+        "inSelectionPool": false,
+        "tradesBySymbol": {
+          "BTCUSDT": 72,
+          "ETHUSDT": 77,
+          "BNBUSDT": 88,
+          "SOLUSDT": 82,
+          "XRPUSDT": 94,
+          "DOGEUSDT": 98
+        },
+        "minimumTradeRequirementMet": true,
+        "eligible": false,
+        "dailySharpe": 0.27489290179490566
+      },
+      {
+        "candidate": "m30-n640-x20",
+        "inSelectionPool": false,
+        "tradesBySymbol": {
+          "BTCUSDT": 38,
+          "ETHUSDT": 41,
+          "BNBUSDT": 43,
+          "SOLUSDT": 45,
+          "XRPUSDT": 37,
+          "DOGEUSDT": 37
+        },
+        "minimumTradeRequirementMet": true,
+        "eligible": false,
+        "dailySharpe": 0.7053452233282566
+      },
+      {
+        "candidate": "m30-n320-both",
+        "inSelectionPool": true,
+        "tradesBySymbol": {
+          "BTCUSDT": 88,
+          "ETHUSDT": 87,
+          "BNBUSDT": 115,
+          "SOLUSDT": 108,
+          "XRPUSDT": 93,
+          "DOGEUSDT": 98
+        },
+        "minimumTradeRequirementMet": true,
+        "eligible": true,
+        "dailySharpe": 0.16511997379370397
+      },
+      {
+        "candidate": "m30-n320-stop3",
+        "inSelectionPool": true,
+        "tradesBySymbol": {
+          "BTCUSDT": 47,
+          "ETHUSDT": 45,
+          "BNBUSDT": 57,
+          "SOLUSDT": 56,
+          "XRPUSDT": 51,
+          "DOGEUSDT": 56
+        },
+        "minimumTradeRequirementMet": true,
+        "eligible": true,
+        "dailySharpe": 0.5814541912443946
+      },
+      {
+        "candidate": "m30-n320-x160",
+        "inSelectionPool": true,
+        "tradesBySymbol": {
+          "BTCUSDT": 35,
+          "ETHUSDT": 34,
+          "BNBUSDT": 44,
+          "SOLUSDT": 40,
+          "XRPUSDT": 43,
+          "DOGEUSDT": 51
+        },
+        "minimumTradeRequirementMet": true,
+        "eligible": true,
+        "dailySharpe": 1.3666929127373275
+      },
+      {
+        "candidate": "m30-n320-background",
+        "inSelectionPool": true,
+        "tradesBySymbol": {
+          "BTCUSDT": 32,
+          "ETHUSDT": 26,
+          "BNBUSDT": 35,
+          "SOLUSDT": 36,
+          "XRPUSDT": 25,
+          "DOGEUSDT": 35
+        },
+        "minimumTradeRequirementMet": false,
+        "eligible": false,
+        "dailySharpe": 0.253367339907968
+      },
+      {
+        "candidate": "m30-n320-cost02",
+        "inSelectionPool": true,
+        "tradesBySymbol": {
+          "BTCUSDT": 21,
+          "ETHUSDT": 32,
+          "BNBUSDT": 26,
+          "SOLUSDT": 56,
+          "XRPUSDT": 25,
+          "DOGEUSDT": 48
+        },
+        "minimumTradeRequirementMet": false,
+        "eligible": false,
+        "dailySharpe": -0.30004696581990814
+      }
+    ],
+    "developmentQualified": true,
+    "profitableSymbols": 5,
+    "medianSymbolMeanR": 0.8037757249829118
+  },
+  "transfer": {
+    "windows": [
+      {
+        "id": "transfer-2021",
+        "days": 365,
+        "accounts": {
+          "selectedBase": {
+            "return": 0.3694141209134991,
+            "dailyMaxDrawdown": -0.033262630161995266,
+            "trades": 237,
+            "netPnl": 22164.84725480993,
+            "meanNetR": 1.6861937904169948,
+            "meanDailyReturn": 0.0008808044052155969,
+            "tradesBySymbol": {
+              "BTCUSDT": 35,
+              "ETHUSDT": 44,
+              "BNBUSDT": 41,
+              "SOLUSDT": 56,
+              "XRPUSDT": 36,
+              "DOGEUSDT": 25
+            }
+          },
+          "baselineBase": {
+            "return": 0.12949728969453056,
+            "dailyMaxDrawdown": -0.03747736929492318,
+            "trades": 363,
+            "netPnl": 7769.837381671848,
+            "meanNetR": 0.4178533552277028,
+            "meanDailyReturn": 0.00034190712873436265,
+            "tradesBySymbol": {
+              "BTCUSDT": 53,
+              "ETHUSDT": 67,
+              "BNBUSDT": 63,
+              "SOLUSDT": 87,
+              "XRPUSDT": 56,
+              "DOGEUSDT": 37
+            }
+          },
+          "selectedStress": {
+            "return": 0.35460266485395153,
+            "dailyMaxDrawdown": -0.03294654260888985,
+            "trades": 236,
+            "netPnl": 21276.15989123713,
+            "meanNetR": 1.7000722248657583,
+            "meanDailyReturn": 0.0008498190848919978,
+            "tradesBySymbol": {
+              "BTCUSDT": 35,
+              "ETHUSDT": 44,
+              "BNBUSDT": 41,
+              "SOLUSDT": 55,
+              "XRPUSDT": 36,
+              "DOGEUSDT": 25
+            }
+          },
+          "baselineStress": {
+            "return": 0.1080412372339179,
+            "dailyMaxDrawdown": -0.04633426698848786,
+            "trades": 363,
+            "netPnl": 6482.474234035084,
+            "meanNetR": 0.35965024287307856,
+            "meanDailyReturn": 0.0002888555363956952,
+            "tradesBySymbol": {
+              "BTCUSDT": 53,
+              "ETHUSDT": 67,
+              "BNBUSDT": 63,
+              "SOLUSDT": 87,
+              "XRPUSDT": 56,
+              "DOGEUSDT": 37
+            }
+          }
+        }
+      },
+      {
+        "id": "transfer-2024-oct-nov",
+        "days": 61,
+        "accounts": {
+          "selectedBase": {
+            "return": 0.07692106121378739,
+            "dailyMaxDrawdown": -0.014417198831014333,
+            "trades": 38,
+            "netPnl": 4615.26367282724,
+            "meanNetR": 2.4887649597345507,
+            "meanDailyReturn": 0.0012257251951774324,
+            "tradesBySymbol": {
+              "BTCUSDT": 5,
+              "ETHUSDT": 7,
+              "BNBUSDT": 12,
+              "SOLUSDT": 5,
+              "XRPUSDT": 4,
+              "DOGEUSDT": 5
+            }
+          },
+          "baselineBase": {
+            "return": 0.02730526220010354,
+            "dailyMaxDrawdown": -0.011603298346239965,
+            "trades": 73,
+            "netPnl": 1638.315732006213,
+            "meanNetR": 0.43850479018043403,
+            "meanDailyReturn": 0.0004459922740124446,
+            "tradesBySymbol": {
+              "BTCUSDT": 16,
+              "ETHUSDT": 15,
+              "BNBUSDT": 12,
+              "SOLUSDT": 12,
+              "XRPUSDT": 10,
+              "DOGEUSDT": 8
+            }
+          },
+          "selectedStress": {
+            "return": 0.07166805040139579,
+            "dailyMaxDrawdown": -0.013937562553088756,
+            "trades": 38,
+            "netPnl": 4300.083024083721,
+            "meanNetR": 2.381021197211623,
+            "meanDailyReturn": 0.0011445713618419367,
+            "tradesBySymbol": {
+              "BTCUSDT": 5,
+              "ETHUSDT": 7,
+              "BNBUSDT": 12,
+              "SOLUSDT": 5,
+              "XRPUSDT": 4,
+              "DOGEUSDT": 5
+            }
+          },
+          "baselineStress": {
+            "return": 0.021976300186022035,
+            "dailyMaxDrawdown": -0.01185043931134766,
+            "trades": 73,
+            "netPnl": 1318.5780111613344,
+            "meanNetR": 0.3466691976277178,
+            "meanDailyReturn": 0.0003602282775393483,
+            "tradesBySymbol": {
+              "BTCUSDT": 16,
+              "ETHUSDT": 15,
+              "BNBUSDT": 12,
+              "SOLUSDT": 12,
+              "XRPUSDT": 10,
+              "DOGEUSDT": 8
+            }
+          }
+        }
+      }
+    ],
+    "pooled": {
+      "days": 426,
+      "base": {
+        "trades": 275,
+        "tradesBySymbol": {
+          "BTCUSDT": 40,
+          "ETHUSDT": 51,
+          "BNBUSDT": 53,
+          "SOLUSDT": 61,
+          "XRPUSDT": 40,
+          "DOGEUSDT": 30
+        },
+        "netPnl": 26780.110927637168,
+        "meanNetR": 1.7970945338136026,
+        "netExpectancy": 97.38222155504425
+      },
+      "stress": {
+        "trades": 274,
+        "tradesBySymbol": {
+          "BTCUSDT": 40,
+          "ETHUSDT": 51,
+          "BNBUSDT": 53,
+          "SOLUSDT": 60,
+          "XRPUSDT": 40,
+          "DOGEUSDT": 30
+        },
+        "netPnl": 25576.24291532085,
+        "meanNetR": 1.794510403512265,
+        "netExpectancy": 93.34395224569653
+      }
+    },
+    "bootstrap": [
+      {
+        "blockDays": 7,
+        "samples": 2000,
+        "seed": 20261003,
+        "absolute": {
+          "selectedBase": {
+            "meanDailyReturn": 0.0009301944713838409,
+            "meanDailyReturn95CI": [
+              0.00039648351393080676,
+              0.00156448485206589
+            ]
+          },
+          "baselineBase": {
+            "meanDailyReturn": 0.00035681133967793775,
+            "meanDailyReturn95CI": [
+              4.65356313300309e-05,
+              0.0007456880363751829
+            ]
+          },
+          "selectedStress": {
+            "meanDailyReturn": 0.0008920253968496181,
+            "meanDailyReturn95CI": [
+              0.0003759950897707635,
+              0.0015144371634071283
+            ]
+          },
+          "baselineStress": {
+            "meanDailyReturn": 0.00029907557679419947,
+            "meanDailyReturn95CI": [
+              -3.975316235088283e-08,
+              0.0006692250765410728
+            ]
+          }
+        },
+        "paired": {
+          "base": {
+            "meanDailyReturn": 0.0005733831317059031,
+            "meanDailyReturn95CI": [
+              0.0002192941549098275,
+              0.000995319948961048
+            ]
+          },
+          "stress": {
+            "meanDailyReturn": 0.0005929498200554187,
+            "meanDailyReturn95CI": [
+              0.00024726955132292145,
+              0.0010035207431795456
+            ]
+          }
+        }
+      },
+      {
+        "blockDays": 28,
+        "samples": 2000,
+        "seed": 20261003,
+        "absolute": {
+          "selectedBase": {
+            "meanDailyReturn": 0.0009301944713838409,
+            "meanDailyReturn95CI": [
+              0.00033350544879331653,
+              0.0016326728290096348
+            ]
+          },
+          "baselineBase": {
+            "meanDailyReturn": 0.00035681133967793775,
+            "meanDailyReturn95CI": [
+              1.8301339436623475e-05,
+              0.0007580709120554738
+            ]
+          },
+          "selectedStress": {
+            "meanDailyReturn": 0.0008920253968496181,
+            "meanDailyReturn95CI": [
+              0.00030965581151714845,
+              0.0015636945915066662
+            ]
+          },
+          "baselineStress": {
+            "meanDailyReturn": 0.00029907557679419947,
+            "meanDailyReturn95CI": [
+              -2.670128415470146e-05,
+              0.0006879789289465374
+            ]
+          }
+        },
+        "paired": {
+          "base": {
+            "meanDailyReturn": 0.0005733831317059031,
+            "meanDailyReturn95CI": [
+              0.00016611640785124307,
+              0.0010706595621988134
+            ]
+          },
+          "stress": {
+            "meanDailyReturn": 0.0005929498200554187,
+            "meanDailyReturn95CI": [
+              0.0001927767484689773,
+              0.0010733826906780338
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "acceptance": {
+    "status": "passed-for-forward-observation",
+    "independentlyRecomputedConditions": 28,
+    "allPassed": true,
+    "checks": [
+      {
+        "criterion": "development-qualified",
+        "actual": true,
+        "threshold": true,
+        "passed": true
+      },
+      {
+        "criterion": "minimum-transfer-days",
+        "actual": 426,
+        "threshold": 180,
+        "passed": true
+      },
+      {
+        "criterion": "base:minimum-trades",
+        "actual": 275,
+        "threshold": 100,
+        "passed": true
+      },
+      {
+        "criterion": "base:minimum-trades:BTCUSDT",
+        "actual": 40,
+        "threshold": 10,
+        "passed": true
+      },
+      {
+        "criterion": "base:minimum-trades:ETHUSDT",
+        "actual": 51,
+        "threshold": 10,
+        "passed": true
+      },
+      {
+        "criterion": "base:minimum-trades:BNBUSDT",
+        "actual": 53,
+        "threshold": 10,
+        "passed": true
+      },
+      {
+        "criterion": "base:minimum-trades:SOLUSDT",
+        "actual": 61,
+        "threshold": 10,
+        "passed": true
+      },
+      {
+        "criterion": "base:minimum-trades:XRPUSDT",
+        "actual": 40,
+        "threshold": 10,
+        "passed": true
+      },
+      {
+        "criterion": "base:minimum-trades:DOGEUSDT",
+        "actual": 30,
+        "threshold": 10,
+        "passed": true
+      },
+      {
+        "criterion": "base:transfer-2021:positive-return",
+        "actual": 0.3694141209134991,
+        "threshold": ">0",
+        "passed": true
+      },
+      {
+        "criterion": "base:transfer-2021:daily-drawdown",
+        "actual": -0.033262630161995266,
+        "threshold": -0.1,
+        "passed": true
+      },
+      {
+        "criterion": "base:transfer-2024-oct-nov:positive-return",
+        "actual": 0.07692106121378739,
+        "threshold": ">0",
+        "passed": true
+      },
+      {
+        "criterion": "base:transfer-2024-oct-nov:daily-drawdown",
+        "actual": -0.014417198831014333,
+        "threshold": -0.1,
+        "passed": true
+      },
+      {
+        "criterion": "base:block7:absolute-lower-bound",
+        "actual": 0.00039648351393080676,
+        "threshold": ">0",
+        "passed": true
+      },
+      {
+        "criterion": "base:block28:absolute-lower-bound",
+        "actual": 0.00033350544879331653,
+        "threshold": ">0",
+        "passed": true
+      },
+      {
+        "criterion": "stress:minimum-trades",
+        "actual": 274,
+        "threshold": 100,
+        "passed": true
+      },
+      {
+        "criterion": "stress:minimum-trades:BTCUSDT",
+        "actual": 40,
+        "threshold": 10,
+        "passed": true
+      },
+      {
+        "criterion": "stress:minimum-trades:ETHUSDT",
+        "actual": 51,
+        "threshold": 10,
+        "passed": true
+      },
+      {
+        "criterion": "stress:minimum-trades:BNBUSDT",
+        "actual": 53,
+        "threshold": 10,
+        "passed": true
+      },
+      {
+        "criterion": "stress:minimum-trades:SOLUSDT",
+        "actual": 60,
+        "threshold": 10,
+        "passed": true
+      },
+      {
+        "criterion": "stress:minimum-trades:XRPUSDT",
+        "actual": 40,
+        "threshold": 10,
+        "passed": true
+      },
+      {
+        "criterion": "stress:minimum-trades:DOGEUSDT",
+        "actual": 30,
+        "threshold": 10,
+        "passed": true
+      },
+      {
+        "criterion": "stress:transfer-2021:positive-return",
+        "actual": 0.35460266485395153,
+        "threshold": ">0",
+        "passed": true
+      },
+      {
+        "criterion": "stress:transfer-2021:daily-drawdown",
+        "actual": -0.03294654260888985,
+        "threshold": -0.1,
+        "passed": true
+      },
+      {
+        "criterion": "stress:transfer-2024-oct-nov:positive-return",
+        "actual": 0.07166805040139579,
+        "threshold": ">0",
+        "passed": true
+      },
+      {
+        "criterion": "stress:transfer-2024-oct-nov:daily-drawdown",
+        "actual": -0.013937562553088756,
+        "threshold": -0.1,
+        "passed": true
+      },
+      {
+        "criterion": "stress:block7:absolute-lower-bound",
+        "actual": 0.0003759950897707635,
+        "threshold": ">0",
+        "passed": true
+      },
+      {
+        "criterion": "stress:block28:absolute-lower-bound",
+        "actual": 0.00030965581151714845,
+        "threshold": ">0",
+        "passed": true
+      }
+    ],
+    "absoluteVersusPaired": "Acceptance uses selected absolute base/stress lower bounds for both 7/28-day blocks. Paired improvement is reported separately and never substitutes for absolute profitability."
+  },
+  "maximumAbsoluteRecomputationErrors": {
+    "developmentSharpe": 2.220446049250313e-16,
+    "accountStatistics": 3.2741809263825417e-11,
+    "pooledStatistics": 3.2741809263825417e-11,
+    "bootstrapIntervals": 2.168404344971009e-19
+  },
+  "knownWindowSelectedAccountDiagnostics": [
+    {
+      "window": "development",
+      "accounts": {
+        "m30-n320-x160": {
+          "return": 0.16289263610945315,
+          "dailyMaxDrawdown": -0.06717773609514588,
+          "trades": 247,
+          "netPnl": 9773.558166567142,
+          "meanNetR": 0.8954793629939886,
+          "meanDailyReturn": 0.0003198481829599134,
+          "tradesBySymbol": {
+            "BTCUSDT": 35,
+            "ETHUSDT": 34,
+            "BNBUSDT": 44,
+            "SOLUSDT": 40,
+            "XRPUSDT": 43,
+            "DOGEUSDT": 51
+          }
+        }
+      }
+    },
+    {
+      "window": "known-2024",
+      "accounts": {
+        "m30-n320-x160": {
+          "return": 0.07078565466624265,
+          "dailyMaxDrawdown": -0.047099731716934934,
+          "trades": 138,
+          "netPnl": 4247.139279974565,
+          "meanNetR": 0.7200019256868366,
+          "meanDailyReturn": 0.000332135950081301,
+          "tradesBySymbol": {
+            "BTCUSDT": 21,
+            "ETHUSDT": 19,
+            "BNBUSDT": 19,
+            "SOLUSDT": 34,
+            "XRPUSDT": 23,
+            "DOGEUSDT": 22
+          }
+        },
+        "m30-n320-x160-stress": {
+          "return": 0.05161746439849901,
+          "dailyMaxDrawdown": -0.04743935020439294,
+          "trades": 138,
+          "netPnl": 3097.0478639099047,
+          "meanNetR": 0.6023217470188985,
+          "meanDailyReturn": 0.0002456618061086522,
+          "tradesBySymbol": {
+            "BTCUSDT": 21,
+            "ETHUSDT": 19,
+            "BNBUSDT": 19,
+            "SOLUSDT": 34,
+            "XRPUSDT": 23,
+            "DOGEUSDT": 22
+          }
+        }
+      }
+    },
+    {
+      "window": "known-2025",
+      "accounts": {
+        "m30-n320-x160": {
+          "return": 0.11293640397594773,
+          "dailyMaxDrawdown": -0.049980392435966525,
+          "trades": 173,
+          "netPnl": 6776.184238556854,
+          "meanNetR": 0.9029000828081443,
+          "meanDailyReturn": 0.0003027517269085045,
+          "tradesBySymbol": {
+            "BTCUSDT": 35,
+            "ETHUSDT": 30,
+            "BNBUSDT": 30,
+            "SOLUSDT": 24,
+            "XRPUSDT": 27,
+            "DOGEUSDT": 27
+          }
+        },
+        "m30-n320-x160-stress": {
+          "return": 0.08110158304933446,
+          "dailyMaxDrawdown": -0.04889387393761335,
+          "trades": 175,
+          "netPnl": 4866.0949829600895,
+          "meanNetR": 0.732256233170288,
+          "meanDailyReturn": 0.00022173896777657586,
+          "tradesBySymbol": {
+            "BTCUSDT": 35,
+            "ETHUSDT": 31,
+            "BNBUSDT": 30,
+            "SOLUSDT": 25,
+            "XRPUSDT": 27,
+            "DOGEUSDT": 27
+          }
+        }
+      }
+    },
+    {
+      "window": "known-2026",
+      "accounts": {
+        "m30-n320-x160": {
+          "return": 0.07187488863244873,
+          "dailyMaxDrawdown": -0.0821876927824351,
+          "trades": 125,
+          "netPnl": 4312.493317946922,
+          "meanNetR": 0.8849309233979361,
+          "meanDailyReturn": 0.00030315303931436726,
+          "tradesBySymbol": {
+            "BTCUSDT": 20,
+            "ETHUSDT": 19,
+            "BNBUSDT": 30,
+            "SOLUSDT": 19,
+            "XRPUSDT": 19,
+            "DOGEUSDT": 18
+          }
+        },
+        "m30-n320-x160-stress": {
+          "return": 0.04956569857930937,
+          "dailyMaxDrawdown": -0.0828619746842012,
+          "trades": 125,
+          "netPnl": 2973.9419147585904,
+          "meanNetR": 0.7400849679623948,
+          "meanDailyReturn": 0.00021293093738256212,
+          "tradesBySymbol": {
+            "BTCUSDT": 20,
+            "ETHUSDT": 19,
+            "BNBUSDT": 30,
+            "SOLUSDT": 19,
+            "XRPUSDT": 19,
+            "DOGEUSDT": 18
+          }
+        }
+      }
+    },
+    {
+      "window": "historical-stress",
+      "accounts": {
+        "m30-n320-x160": {
+          "return": -0.016616969977936158,
+          "dailyMaxDrawdown": -0.030075161696669572,
+          "trades": 77,
+          "netPnl": -997.0181986761708,
+          "meanNetR": -0.27555078719620485,
+          "meanDailyReturn": -9.051020773083382e-05,
+          "tradesBySymbol": {
+            "BTCUSDT": 8,
+            "ETHUSDT": 10,
+            "BNBUSDT": 16,
+            "SOLUSDT": 16,
+            "XRPUSDT": 12,
+            "DOGEUSDT": 15
+          }
+        },
+        "m30-n320-x160-stress": {
+          "return": -0.019229027485561545,
+          "dailyMaxDrawdown": -0.031214633105683176,
+          "trades": 77,
+          "netPnl": -1153.7416491336678,
+          "meanNetR": -0.34618496208346666,
+          "meanDailyReturn": -0.00010540714505078074,
+          "tradesBySymbol": {
+            "BTCUSDT": 8,
+            "ETHUSDT": 10,
+            "BNBUSDT": 16,
+            "SOLUSDT": 16,
+            "XRPUSDT": 12,
+            "DOGEUSDT": 15
+          }
+        }
+      }
+    },
+    {
+      "window": "fresh-september",
+      "accounts": {
+        "m30-n320-x160": {
+          "return": -0.0031290222584051675,
+          "dailyMaxDrawdown": -0.01725080565154291,
+          "trades": 21,
+          "netPnl": -187.74133550431375,
+          "meanNetR": -0.17856204495613182,
+          "meanDailyReturn": -9.586975076173825e-05,
+          "tradesBySymbol": {
+            "BTCUSDT": 3,
+            "ETHUSDT": 4,
+            "BNBUSDT": 3,
+            "SOLUSDT": 1,
+            "XRPUSDT": 6,
+            "DOGEUSDT": 4
+          }
+        },
+        "m30-n320-x160-stress": {
+          "return": -0.0043816025366890665,
+          "dailyMaxDrawdown": -0.016304366475004994,
+          "trades": 21,
+          "netPnl": -262.89615220133754,
+          "meanNetR": -0.2678237706362338,
+          "meanDailyReturn": -0.0001391631386310044,
+          "tradesBySymbol": {
+            "BTCUSDT": 3,
+            "ETHUSDT": 4,
+            "BNBUSDT": 3,
+            "SOLUSDT": 1,
+            "XRPUSDT": 6,
+            "DOGEUSDT": 4
+          }
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "This artifact does not independently validate market archives, source completeness, signals, intraminute execution, trade fills or full marked-equity paths. Those are the separate execution audit scope.",
+    "Historical retrospective transfer is not forward live evidence; 2021 precedes development and both transfer windows are trend-friendly samples from six selected surviving assets.",
+    "2021 contributes 365 of 426 observation days; the 61-day second window has 38 selected completed trades. Per-symbol minimum-trade acceptance is pooled across both windows, not separately required in each window.",
+    "Circular-block intervals describe the fixed choice under within-window dependence assumptions; they do not correct the project-wide adaptive search or establish stationary future expectations.",
+    "Known 2022 first-half and 2026 September selected returns remain negative at base and stress; this pass does not retroactively pass the prior all-window-positive rule.",
+    "Each transfer window resets capital independently. Pooled net PnL is a sum across reset accounts, not a compounded continuous return. Long-only returns and improvement against a channel baseline are not proof of alpha against a risk-matched market benchmark.",
+    "The review reads stored raw results and their identities; hashes establish the reviewed bytes, not the truth of their market execution assumptions."
+  ]
+}

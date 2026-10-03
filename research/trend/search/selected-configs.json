@@ -1,0 +1,264 @@
+{
+  "version": 1,
+  "purpose": "Exact research configuration selected on development; historical acceptance not established, not deployed.",
+  "selected": "m30-n320-no-day-guard",
+  "selection": {
+    "planSha256": "f6db2c3a71c08fbed0a7a6c2b6f7f1538fbf40d29180aafab216e766f2b62594",
+    "manifestSha256": "608bf05449a5644ebcc4587a1892d07ca9f67e82c659de24a8a1f88d7fef302e",
+    "binarySha256": "c5e2c5bab6df6c274a01ec3e63f85242ebf3c754c38fdcea535441348aecbfbb",
+    "replayVersion": "trend-native-replay-4",
+    "id": "m30-n320-no-day-guard",
+    "developmentQualified": true,
+    "evaluationVersion": "trend-account-evaluation-2",
+    "evaluationSha256": "0a2fd14d934a6d3305fb4b08cfa83864c1f6f4ce20d6ba0db4a7cd4f5a2da768",
+    "developmentSha256": "1d56ce09f1e8d860785c73bf584bf383e1241c76523255f62cec32b075c495b2",
+    "criterion": "Exactly once: highest development BASE-cost daily portfolio Sharpe among all32declared candidates with finite Sharpe and>=30closed trades in EACH of six symbols. Ties follow declared order. Separate >=4profitable symbols and positive median-symbol-meanR qualification does not trigger reselection on failure. Stress is not available on development and cannot influence this selection. No later-window choice or fallback winner; if no eligible candidate stop without inspecting validation. Every candidate is reported thereafter, including ineligible and losing families.",
+    "objective": "dailySharpe"
+  },
+  "evaluationIdentity": {
+    "planSha256": "f6db2c3a71c08fbed0a7a6c2b6f7f1538fbf40d29180aafab216e766f2b62594",
+    "manifestSha256": "608bf05449a5644ebcc4587a1892d07ca9f67e82c659de24a8a1f88d7fef302e",
+    "selectionSha256": "d48ac1c7cac700650f00936e606d049546b0168e52c7c686c8d4411a98a75994",
+    "rawResultsSha256": "6433bce23b6907ac4632bf66f29b451e57bc7b2113571db5022b0c767030e7c2",
+    "evaluationVersion": "trend-account-evaluation-2",
+    "evaluationSha256": "0a2fd14d934a6d3305fb4b08cfa83864c1f6f4ce20d6ba0db4a7cd4f5a2da768"
+  },
+  "sources": {
+    "results": {
+      "path": "research/trend/search/results.json",
+      "sha256": "b4faa0bb2a061f532fb64138a1d6e9e401248e9c5888a5067d5032870138aaa9"
+    },
+    "generator": {
+      "path": "research/trend/search/overview.py",
+      "sha256": "750168cfbb9c44bbcfe08d8633ad91b4e2f67ab1b6bc55a8148b9dc3ffba45bc"
+    }
+  },
+  "rawInputs": [
+    {
+      "path": "tmp/trend-search-v8/validation-continuous/BTCUSDT.json",
+      "sha256": "9118259c8592153fbe665d480389b31052bd1253e059f8c6e956b7614202f82a"
+    },
+    {
+      "path": "tmp/trend-search-v8/validation-continuous/ETHUSDT.json",
+      "sha256": "8b2428ddde0dc0c79e2b6da094cc3fc7b21e14beb133f0c80133fbf1a06304a3"
+    },
+    {
+      "path": "tmp/trend-search-v8/validation-continuous/BNBUSDT.json",
+      "sha256": "ecd0f7317dee6be714daee6c1d3389ac7669298ced5f192274b08224dd268fd3"
+    },
+    {
+      "path": "tmp/trend-search-v8/validation-continuous/SOLUSDT.json",
+      "sha256": "e5504e84a760a3820e0cdaba7465a33eeb986eee94ccd0d6b3ffa66b48408a01"
+    },
+    {
+      "path": "tmp/trend-search-v8/validation-continuous/XRPUSDT.json",
+      "sha256": "e8aa893842b708d46ad5d42b7fd803f4a67198e1586687560f1d62d448a1c16f"
+    },
+    {
+      "path": "tmp/trend-search-v8/validation-continuous/DOGEUSDT.json",
+      "sha256": "60842eec5cd4c20b524a55eab14e39d29a7a70b4909aba9e2496bd3ce4c07758"
+    }
+  ],
+  "sleeveInitialCapital": 10000.0,
+  "capitalMode": "total-account-equal-sleeves",
+  "configs": {
+    "BTCUSDT": {
+      "execution": {
+        "feeBps": 5.0,
+        "initialCapital": 10000.0,
+        "minNotional": 100.0,
+        "quantityStep": 0.001,
+        "slippageBps": 2.0,
+        "tickSize": 0.1
+      },
+      "risk": {
+        "cooldownLosses": 3,
+        "cooldownMinutes": 60,
+        "dailyLossPct": 0.0,
+        "flattenMinute": null,
+        "maxExposurePct": 0.95,
+        "riskPct": 0.005
+      },
+      "strategy": {
+        "breakEvenAtr": 0.0,
+        "breakoutBars": 320,
+        "breakoutReentry": "every-close",
+        "channelExitBars": 160,
+        "direction": "long",
+        "entry": "breakout",
+        "filter": "none",
+        "management": "channel",
+        "maxCostAtr": 0.0,
+        "stopAtr": 2.0,
+        "tradeMinutes": 30,
+        "trailingAtr": 3.0
+      },
+      "version": 8
+    },
+    "ETHUSDT": {
+      "execution": {
+        "feeBps": 5.0,
+        "initialCapital": 10000.0,
+        "minNotional": 100.0,
+        "quantityStep": 0.001,
+        "slippageBps": 2.0,
+        "tickSize": 0.01
+      },
+      "risk": {
+        "cooldownLosses": 3,
+        "cooldownMinutes": 60,
+        "dailyLossPct": 0.0,
+        "flattenMinute": null,
+        "maxExposurePct": 0.95,
+        "riskPct": 0.005
+      },
+      "strategy": {
+        "breakEvenAtr": 0.0,
+        "breakoutBars": 320,
+        "breakoutReentry": "every-close",
+        "channelExitBars": 160,
+        "direction": "long",
+        "entry": "breakout",
+        "filter": "none",
+        "management": "channel",
+        "maxCostAtr": 0.0,
+        "stopAtr": 2.0,
+        "tradeMinutes": 30,
+        "trailingAtr": 3.0
+      },
+      "version": 8
+    },
+    "BNBUSDT": {
+      "execution": {
+        "feeBps": 5.0,
+        "initialCapital": 10000.0,
+        "minNotional": 100.0,
+        "quantityStep": 0.01,
+        "slippageBps": 2.0,
+        "tickSize": 0.01
+      },
+      "risk": {
+        "cooldownLosses": 3,
+        "cooldownMinutes": 60,
+        "dailyLossPct": 0.0,
+        "flattenMinute": null,
+        "maxExposurePct": 0.95,
+        "riskPct": 0.005
+      },
+      "strategy": {
+        "breakEvenAtr": 0.0,
+        "breakoutBars": 320,
+        "breakoutReentry": "every-close",
+        "channelExitBars": 160,
+        "direction": "long",
+        "entry": "breakout",
+        "filter": "none",
+        "management": "channel",
+        "maxCostAtr": 0.0,
+        "stopAtr": 2.0,
+        "tradeMinutes": 30,
+        "trailingAtr": 3.0
+      },
+      "version": 8
+    },
+    "SOLUSDT": {
+      "execution": {
+        "feeBps": 5.0,
+        "initialCapital": 10000.0,
+        "minNotional": 100.0,
+        "quantityStep": 1.0,
+        "slippageBps": 2.0,
+        "tickSize": 0.001
+      },
+      "risk": {
+        "cooldownLosses": 3,
+        "cooldownMinutes": 60,
+        "dailyLossPct": 0.0,
+        "flattenMinute": null,
+        "maxExposurePct": 0.95,
+        "riskPct": 0.005
+      },
+      "strategy": {
+        "breakEvenAtr": 0.0,
+        "breakoutBars": 320,
+        "breakoutReentry": "every-close",
+        "channelExitBars": 160,
+        "direction": "long",
+        "entry": "breakout",
+        "filter": "none",
+        "management": "channel",
+        "maxCostAtr": 0.0,
+        "stopAtr": 2.0,
+        "tradeMinutes": 30,
+        "trailingAtr": 3.0
+      },
+      "version": 8
+    },
+    "XRPUSDT": {
+      "execution": {
+        "feeBps": 5.0,
+        "initialCapital": 10000.0,
+        "minNotional": 100.0,
+        "quantityStep": 1.0,
+        "slippageBps": 2.0,
+        "tickSize": 0.0001
+      },
+      "risk": {
+        "cooldownLosses": 3,
+        "cooldownMinutes": 60,
+        "dailyLossPct": 0.0,
+        "flattenMinute": null,
+        "maxExposurePct": 0.95,
+        "riskPct": 0.005
+      },
+      "strategy": {
+        "breakEvenAtr": 0.0,
+        "breakoutBars": 320,
+        "breakoutReentry": "every-close",
+        "channelExitBars": 160,
+        "direction": "long",
+        "entry": "breakout",
+        "filter": "none",
+        "management": "channel",
+        "maxCostAtr": 0.0,
+        "stopAtr": 2.0,
+        "tradeMinutes": 30,
+        "trailingAtr": 3.0
+      },
+      "version": 8
+    },
+    "DOGEUSDT": {
+      "execution": {
+        "feeBps": 5.0,
+        "initialCapital": 10000.0,
+        "minNotional": 100.0,
+        "quantityStep": 1.0,
+        "slippageBps": 2.0,
+        "tickSize": 1e-05
+      },
+      "risk": {
+        "cooldownLosses": 3,
+        "cooldownMinutes": 60,
+        "dailyLossPct": 0.0,
+        "flattenMinute": null,
+        "maxExposurePct": 0.95,
+        "riskPct": 0.005
+      },
+      "strategy": {
+        "breakEvenAtr": 0.0,
+        "breakoutBars": 320,
+        "breakoutReentry": "every-close",
+        "channelExitBars": 160,
+        "direction": "long",
+        "entry": "breakout",
+        "filter": "none",
+        "management": "channel",
+        "maxCostAtr": 0.0,
+        "stopAtr": 2.0,
+        "tradeMinutes": 30,
+        "trailingAtr": 3.0
+      },
+      "version": 8
+    }
+  }
+}
