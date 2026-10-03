@@ -22,8 +22,8 @@ void test("core retains critical workflows and full retains every browser varian
       ["reader", 7],
     ],
   );
-  assert.equal(scripts(full).length, 82);
-  assert.equal(new Set(scripts(full)).size, 82);
+  assert.equal(scripts(full).length, 83);
+  assert.equal(new Set(scripts(full)).size, 83);
   for (const script of scripts(core)) assert.ok(scripts(full).includes(script), script);
   for (const script of scripts(full)) assert.ok(existsSync(new URL(script, root)), script);
   for (const critical of [

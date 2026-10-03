@@ -38,7 +38,7 @@ const orphanCreated = await page.evaluate(async () => {
 await openWorkspaceOptions(page);
 await page.getByRole("button", { name: "打开命令面板" }).click();
 await page.getByPlaceholder("输入命令…").fill("清理未追踪 Artifact");
-await page.getByRole("button", { name: /清理未追踪 Artifact/u }).click();
+await page.getByRole("button", { name: /清理未使用的本地文件/u }).click();
 await page.getByText("Artifact 存储清理").waitFor();
 await page.getByText(/仅清理没有血缘记录/u).waitFor();
 if (orphanCreated) {

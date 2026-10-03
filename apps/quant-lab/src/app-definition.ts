@@ -4,6 +4,7 @@ import type { AppDefinition } from "@bcr/shell-contract";
 export const definition = {
   id: "quant",
   title: "Quant Lab",
+  displayTitle: "策略回测",
   path: "/quant",
   description: "策略回测、参数比较与成交分析",
   section: "research",

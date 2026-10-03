@@ -112,7 +112,18 @@ export function ReaderWorkspace(props: {
               </button>
             </>
           )}
-          {searchOpen && <SearchPanel hits={searchHits} searchRef={props.searchRef} />}
+          {mobile ? (
+            <ReaderSheet
+              open={searchOpen}
+              labelId="reader-search-title"
+              onClose={() => reader.setSearchOpen(false)}
+              className="reader-mobile-sheet-layer reader-search-layer"
+            >
+              <SearchPanel hits={searchHits} searchRef={props.searchRef} />
+            </ReaderSheet>
+          ) : (
+            searchOpen && <SearchPanel hits={searchHits} searchRef={props.searchRef} />
+          )}
           <ReaderToolbar
             libraryControlsRef={props.onLibraryControlsMount}
             book={active}
@@ -202,10 +213,20 @@ function SearchPanel(props: {
   }, [searchActiveIndex]);
   return (
     <section className="reader-search-panel" aria-label="搜索结果">
+      <div className="reader-search-panel-heading">
+        <strong id="reader-search-title">搜索原文</strong>
+        <button
+          type="button"
+          className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
+          onClick={() => reader.setSearchOpen(false)}
+          aria-label="关闭搜索结果"
+        >
+          <X className="reader-icon" />
+        </button>
+      </div>
       <ReaderSearchInput searchRef={props.searchRef} />
       <div className="reader-search-panel-top">
         <div>
-          <span className="ui-section-label">SEARCH</span>
           <strong>
             {searchBusy
               ? "正在搜索…"
@@ -215,14 +236,6 @@ function SearchPanel(props: {
           </strong>
         </div>
         <span className="reader-search-query">{query ? `“${query}”` : "输入关键词查找原文"}</span>
-        <button
-          type="button"
-          className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
-          onClick={() => reader.setSearchOpen(false)}
-          aria-label="关闭搜索结果"
-        >
-          <X className="reader-icon" />
-        </button>
       </div>
       <div className="reader-search-scope" role="group" aria-label="搜索范围">
         <button

@@ -26,7 +26,7 @@ const command = async (name) => {
   await page.keyboard.press("Control+k");
   const dialog = page.getByRole("dialog", { name: "命令面板", exact: true });
   await dialog.getByPlaceholder("输入命令…").fill(name);
-  await dialog.getByRole("button", { name: new RegExp(`^打开 ${name}(?:\\s|$)`) }).click();
+  await dialog.locator(".studio-command-row").filter({ hasText: name }).click();
 };
 try {
   await page.goto(origin, { waitUntil: "networkidle" });

@@ -40,7 +40,7 @@ await page.locator(".ma-stock-detail[open]").waitFor({ state: "hidden" });
 await openWorkspaceOptions(page);
 await page.getByRole("button", { name: "打开命令面板" }).click();
 await page.getByPlaceholder("输入命令…").fill("打开 Reader Studio");
-await page.getByRole("button", { name: /打开 Reader Studio/u }).click();
+await page.getByRole("button", { name: /打开 阅读器/u }).click();
 await page.waitForURL(/\/reader(?:\?|$)/u);
 await page.getByLabel("阅读内容").waitFor();
 // The last active book can come from a previous check, and the library is
@@ -52,7 +52,7 @@ await page.waitForTimeout(1_200);
 await openWorkspaceOptions(page);
 await page.getByRole("button", { name: "打开命令面板" }).click();
 await page.getByPlaceholder("输入命令…").fill("打开 Studio 工作台");
-await page.getByRole("button", { name: /打开 Studio 工作台/u }).click();
+await page.getByRole("button", { name: /打开 计算工作台/u }).click();
 await page.waitForURL(/\/studio(?:\?|$)/u);
 await openTopBar(page);
 await page.getByRole("button", { name: "打开全局搜索" }).click();
@@ -60,7 +60,7 @@ await input.fill("轻量的内核");
 await page.getByRole("option", { name: /轻量的内核/u }).waitFor();
 await page.getByRole("option", { name: /轻量的内核/u }).click();
 await page.waitForURL(/\/reader\?book=.*section=/u);
-await page.getByText("第一章 · 轻量的内核").first().waitFor();
+await page.locator(".reader-studio").getByText("第一章 · 轻量的内核").first().waitFor();
 
 await browser.close();
 console.log(

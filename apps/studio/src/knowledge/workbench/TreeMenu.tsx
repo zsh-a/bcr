@@ -28,6 +28,7 @@ export function TreeMenu({
   useLayoutEffect(() => {
     const element = menu.current;
     if (!element) return;
+    const trigger = document.activeElement;
     // 先按指针预置落点与生长角（避免首帧居中闪现），下一帧再入顶层：
     // 与 display/overlay 的离散过渡同帧 showPopover 会被 Chromium 误判为关闭。
     element.style.left = `${Math.max(8, Math.min(x, window.innerWidth - 8))}px`;
@@ -42,7 +43,15 @@ export function TreeMenu({
       element.style.top = `${Math.max(8, Math.min(y, window.innerHeight - rect.height - 8))}px`;
       element.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
     });
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (
+        trigger instanceof HTMLElement &&
+        trigger.isConnected &&
+        (element.contains(document.activeElement) || document.activeElement === document.body)
+      )
+        trigger.focus({ preventScroll: true });
+    };
   }, [x, y]);
   useEffect(() => {
     const element = menu.current;
@@ -70,6 +79,12 @@ export function TreeMenu({
       aria-label="目录树操作"
       className="ui-popover ui-menu knowledge-overflow-menu knowledge-tree-menu"
       onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          onClose();
+          return;
+        }
         const enabled = [
           ...(menu.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? []),
         ];

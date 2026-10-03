@@ -11,7 +11,7 @@ import {
 } from "react";
 import Markdown, { defaultUrlTransform } from "react-markdown";
 import { createPortal } from "react-dom";
-import { Paperclip, SlidersHorizontal, X } from "lucide-react";
+import { ChevronRight, Info, Paperclip, SlidersHorizontal, X } from "lucide-react";
 import remarkGfm from "remark-gfm";
 import { type KnowledgeNote, type KnowledgeCollection } from "../session/model";
 import { MarkdownEditor, type MarkdownEditorHandle } from "./MarkdownEditor";
@@ -101,6 +101,7 @@ export function NoteEditor({
   const agentHost = useAgentHost();
   const openAssistant = useOpenAssistant();
   const narrow = useMediaQuery("(width < 68.75em)");
+  const mobile = useMediaQuery("(width <= 45em)");
   const [contextView, setContextView] = useState<
     "outline" | "links" | "properties" | "attachments"
   >("outline");
@@ -404,6 +405,16 @@ export function NoteEditor({
               </button>
             </div>
             <div className="knowledge-tools">
+              {mobile && (
+                <IconButton
+                  label="展开上下文栏"
+                  title="大纲、链接与属性"
+                  aria-expanded={contextOpen && !focusMode}
+                  onClick={() => onContextOpenChange(true)}
+                >
+                  <Info size={18} />
+                </IconButton>
+              )}
               <IconButton
                 label="插入附件"
                 size="sm"
@@ -595,6 +606,7 @@ export function NoteEditor({
             </span>
             <span>{draft.tags.length ? draft.tags.slice(0, 3).join(" · ") : "添加标签"}</span>
             <span>{draft.body.length.toLocaleString()} 字符</span>
+            <ChevronRight size={14} aria-hidden="true" />
           </button>
         </div>
         {error && (
@@ -759,7 +771,7 @@ export function NoteEditor({
           open={contextOpen && !focusMode}
           onClose={() => onContextOpenChange(false)}
           title="笔记信息"
-          placement="drawer"
+          placement={mobile ? "sheet" : "drawer"}
           className="knowledge-context-drawer"
         >
           {context}

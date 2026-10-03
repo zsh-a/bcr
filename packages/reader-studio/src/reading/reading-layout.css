@@ -698,9 +698,9 @@ p.reader-prose.reader-txt-measure {
 .reader-search-panel .reader-search {
   display: flex;
   position: static;
-  width: 100%;
+  width: calc(100% - 32px);
   min-width: 0;
-  margin-bottom: var(--space-3);
+  margin: 0 16px var(--space-3);
 }
 .reader-search-panel .reader-search input {
   min-width: 0;

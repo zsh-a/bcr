@@ -287,15 +287,16 @@ export async function importFile(services: RuntimeServices, file: File): Promise
     size: file.size,
     addedAt: Date.now(),
   });
-  persistFiles(services.metadata);
+  // Complete the durable catalog write before callers select the file or navigate away.
+  await persistFiles(services.metadata);
   studio.log("info", `import · ${file.name} · ${file.size} bytes → opfs`);
   return ref;
 }
 
-function persistFiles(metadata: RuntimeMetadata | undefined): void {
+async function persistFiles(metadata: RuntimeMetadata | undefined): Promise<void> {
   if (metadata === undefined) return;
   const files = studio.getSnapshot().files;
-  void metadata.set("files", JSON.stringify(files)).catch((error) => {
+  await metadata.set("files", JSON.stringify(files)).catch((error) => {
     studio.log("warn", `persist files failed · ${String(error)}`);
   });
 }

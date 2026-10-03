@@ -57,7 +57,7 @@ export function TopBar(props: {
           <span className="studio-topbar-product">
             BCR <span aria-hidden="true">/</span>{" "}
           </span>
-          {activeApp?.title ?? "工作区"}
+          {activeApp?.displayTitle ?? activeApp?.title ?? "工作区"}
         </span>
       </div>
 
@@ -71,7 +71,7 @@ export function TopBar(props: {
         aria-keyshortcuts="Control+Shift+F Meta+Shift+F"
       >
         <Search className="size-4" />
-        <span className="studio-topbar-button-label">搜索工作区</span>
+        <span className="studio-topbar-button-label">搜索工作区与内容</span>
         <kbd className="studio-topbar-search-key">{modifier}⇧F</kbd>
       </Button>
 

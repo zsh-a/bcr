@@ -79,7 +79,7 @@ function section(id: WorkspaceSection["id"], title: string): WorkspaceSection {
 /** Product navigation, expressed as tasks rather than runtime capabilities. */
 export const HOME_SECTIONS = [
   section("research", "市场与策略"),
-  section("reading", "阅读与知识"),
+  section("reading", "阅读与创作"),
   section("tools", "数据与媒体"),
 ];
 export const MORE_TOOL_SECTIONS = [

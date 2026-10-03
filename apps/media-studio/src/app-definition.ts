@@ -4,6 +4,7 @@ import type { AppDefinition } from "@bcr/shell-contract";
 export const definition = {
   id: "media",
   title: "Media Studio",
+  displayTitle: "媒体字幕",
   path: "/media",
   description: "音视频转字幕，校对、翻译与导出",
   section: "tools",

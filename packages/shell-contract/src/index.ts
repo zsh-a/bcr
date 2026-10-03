@@ -62,6 +62,8 @@ export interface AppDefinition {
   readonly id: string;
   readonly title: string;
   readonly path: `/${string}`;
+  /** Localized task name for the launcher and search; title retains the app's identity. */
+  readonly displayTitle?: string;
   readonly description: string;
   readonly section: AppSection;
   readonly installation: {

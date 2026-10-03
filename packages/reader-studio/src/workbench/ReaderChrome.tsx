@@ -18,6 +18,7 @@ import { openSearchHit } from "../search/readerSearchNavigation";
 import { getReaderState, reader } from "../state/store";
 import { useReader } from "../state/useReader";
 import { ReaderSheet } from "./ReaderSheet";
+import { useReaderMobile } from "./useReaderMobile";
 
 export function ReaderRecoveryBanner(props: { recovery: ReaderRestoreDiagnostics }) {
   const { recovery } = props;
@@ -91,6 +92,7 @@ export function ReaderSearchInput(props: { searchRef: RefObject<HTMLInputElement
   const searchOpen = useReader((state) => state.searchOpen);
   const searchHits = useReader((state) => state.searchHits);
   const searchActiveIndex = useReader((state) => state.searchActiveIndex);
+  const scope = useReader((state) => state.searchScope);
   const onSearch = (value: string) => {
     reader.setSearchOpen(true);
     // The query is kept in the external store so the search panel and header
@@ -111,6 +113,7 @@ export function ReaderSearchInput(props: { searchRef: RefObject<HTMLInputElement
           reader.setSearchOpen(true);
         }}
         onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing) return;
           if (event.key === "ArrowDown") {
             event.preventDefault();
             reader.moveSearch(1);
@@ -125,7 +128,7 @@ export function ReaderSearchInput(props: { searchRef: RefObject<HTMLInputElement
             }
           }
         }}
-        placeholder="搜索书库全文…"
+        placeholder={scope === "book" ? "搜索当前读物…" : "搜索整个书库…"}
         aria-label="在书库中搜索"
         role="combobox"
         aria-expanded={searchOpen}
@@ -175,6 +178,7 @@ export function ReaderHeader(props: {
   onShortcuts: () => void;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
+  const mobile = useReaderMobile();
   const comic = useReader(
     (state) =>
       state.settings.books?.[props.book.id]?.comic ??
@@ -183,7 +187,7 @@ export function ReaderHeader(props: {
   const demo = props.book.tags.includes("DEMO");
   const controls = (
     <>
-      {demo && (
+      {demo && !mobile && (
         <button
           type="button"
           className="ui-btn ui-btn-ghost reader-import-button"
@@ -210,7 +214,7 @@ export function ReaderHeader(props: {
             {/Mac|iPhone|iPad/u.test(navigator.platform) ? "⌘F" : "Ctrl+F"}
           </kbd>
         </button>
-        {!demo && (
+        {(!demo || mobile) && (
           <button type="button" role="menuitem" onClick={() => fileInput.current?.click()}>
             <Upload className="reader-icon" />
             <span>导入读物</span>

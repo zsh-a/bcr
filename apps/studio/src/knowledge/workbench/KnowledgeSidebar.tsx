@@ -15,7 +15,6 @@ import {
   Plus,
   Search,
   Star,
-  X,
 } from "lucide-react";
 import { noteSearchHit } from "../search/retrieval";
 import { setSidebar, setSidebarWidth, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH } from "./workbench";
@@ -39,7 +38,6 @@ export function KnowledgeSidebar({ controller }: { controller: KnowledgeWorkbenc
     collection,
     setCollection,
     drawer,
-    setDrawer,
     focusMode,
     setTreeMenu,
     treeEdit,
@@ -149,13 +147,6 @@ export function KnowledgeSidebar({ controller }: { controller: KnowledgeWorkbenc
               <Plus size={16} />
               <span>新建</span>
             </Button>
-            <IconButton
-              label="收起列表"
-              className="knowledge-mobile-close"
-              onClick={() => setDrawer(false)}
-            >
-              <X size={18} />
-            </IconButton>
           </>
         }
       />

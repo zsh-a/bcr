@@ -5,7 +5,15 @@ import {
   researchTarget,
 } from "../research/search";
 import type { SearchDocument, SearchDocumentKind, SearchResult } from "@bcr/core";
-import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   Activity,
   AudioWaveform,
@@ -25,6 +33,8 @@ import { ResearchPanel } from "../research/components/ResearchPanel";
 import { Button, Dialog, Kbd, Select, useRuntime } from "@bcr/react";
 import { workspaceServices } from "../workspace";
 import { EMPTY_RESEARCH } from "../research/model";
+import { MANIFESTS, LAUNCH_PAD_APPS } from "../shell/registry";
+import { recentWorkspaceDocument, type RecentWorkspace } from "../shell/recent-workspaces";
 
 const emptyLibrary = () => EMPTY_RESEARCH;
 const noSubscription = () => () => {};
@@ -33,6 +43,7 @@ type SearchFilterId =
   | "knowledge"
   | "research"
   | "all"
+  | "app"
   | "file"
   | "task"
   | "reader"
@@ -50,6 +61,7 @@ interface SearchFilter {
 
 const FILTERS: ReadonlyArray<SearchFilter> = [
   { id: "all", label: "全部" },
+  { id: "app", label: "工作区", kinds: ["app"] },
   { id: "knowledge", label: "个人笔记", kinds: ["knowledge-note"] },
   { id: "research", label: "资料集合", kinds: ["research-note", "research-excerpt"] },
   { id: "file", label: "文件", kinds: ["file"] },
@@ -85,7 +97,7 @@ function kindLabel(kind: SearchDocumentKind): string {
   if (kind === "knowledge-note") return "个人笔记";
   if (kind === "research-note") return "笔记";
   if (kind === "research-excerpt") return "摘录";
-  if (kind === "app") return "APP";
+  if (kind === "app") return "工作区";
   if (kind === "file") return "FILE";
   if (kind === "task") return "TASK";
   if (kind === "reader-book" || kind === "reader-section") return "READER";
@@ -111,6 +123,7 @@ export function SearchPanel(props: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
   readonly onNavigate: (document: SearchDocument) => void;
+  readonly recent: readonly RecentWorkspace[];
 }) {
   const services = useRuntime();
   const search = services.search;
@@ -118,6 +131,11 @@ export function SearchPanel(props: {
   const [filter, setFilter] = useState<SearchFilterId>("all");
   const [active, setActive] = useState(0);
   const [revision, setRevision] = useState(0);
+  const input = useRef<HTMLInputElement>(null);
+  const resultsList = useRef<HTMLDivElement>(null);
+  const keyboardSelection = useRef(false);
+  const resultsId = useId();
+  const [showAllFilters, setShowAllFilters] = useState(false);
   const [view, setView] = useState<"search" | "research">("search");
   const research = useMemo(
     () => (services.metadata ? workspaceServices(services).research : undefined),
@@ -198,6 +216,7 @@ export function SearchPanel(props: {
     setScope("");
     setFocus(undefined);
     setActive(0);
+    setShowAllFilters(false);
   }, [props.open]);
 
   const documents = useMemo(() => search?.documents() ?? [], [search, revision]);
@@ -210,6 +229,34 @@ export function SearchPanel(props: {
       ...(filter === "research" && scope ? { sources: [researchSource(scope)] } : {}),
     };
     const trimmed = query.trim();
+    if (trimmed.length === 0 && filter === "all") {
+      const recent = props.recent.flatMap((entry) => {
+        const app = MANIFESTS.find((item) => item.id === entry.appId);
+        return app ? [recentWorkspaceDocument(entry, app, documents)] : [];
+      });
+      const updated = documents
+        .filter(
+          (document) =>
+            document.kind !== "app" &&
+            document.kind !== "market-instrument" &&
+            document.updatedAt > 0 &&
+            (!isResearchResult(document) || researchReady),
+        )
+        .slice(0, 4);
+      const apps = [
+        ...LAUNCH_PAD_APPS,
+        ...MANIFESTS.filter((app) => !LAUNCH_PAD_APPS.includes(app)),
+      ].flatMap((app) => documents.filter((document) => document.id === `app:${app.id}`));
+      const routes = new Set<string>();
+      return [...recent, ...updated, ...apps]
+        .filter((document) => {
+          const key = document.route ?? document.id;
+          if (routes.has(key)) return false;
+          routes.add(key);
+          return true;
+        })
+        .map(recentResult);
+    }
     return trimmed.length === 0
       ? documents
           .filter((document) =>
@@ -227,7 +274,38 @@ export function SearchPanel(props: {
       : search
           .search(trimmed, { ...options, limit: 60 })
           .filter((result) => !isResearchResult(result.document) || researchReady);
-  }, [query, search, selectedFilter, documents, filter, scope, researchReady]);
+  }, [query, search, selectedFilter, documents, filter, scope, researchReady, props.recent]);
+
+  const availableFilters = FILTERS.filter(
+    (item) => services.metadata || !["knowledge", "research"].includes(item.id),
+  );
+  const filterCount = (item: SearchFilter) =>
+    documents.filter((document) => item.kinds === undefined || item.kinds.includes(document.kind))
+      .length;
+  const visibleFilters = availableFilters.filter(
+    (item) =>
+      showAllFilters ||
+      item.id === "all" ||
+      item.id === "app" ||
+      item.id === filter ||
+      filterCount(item) > 0,
+  );
+
+  useLayoutEffect(() => {
+    if (props.open && view === "search") input.current?.focus({ preventScroll: true });
+  }, [props.open, view]);
+
+  useLayoutEffect(() => {
+    if (!props.open || !keyboardSelection.current) return;
+    resultsList.current
+      ?.querySelector<HTMLElement>(`[data-result-index="${active}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+    keyboardSelection.current = false;
+  }, [active, props.open]);
+
+  useLayoutEffect(() => {
+    if (resultsList.current) resultsList.current.scrollTop = 0;
+  }, [query, filter, props.open]);
 
   useEffect(() => {
     setActive((value) => Math.min(Math.max(0, results.length - 1), value));
@@ -266,14 +344,17 @@ export function SearchPanel(props: {
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     if (event.key === "Escape") {
       event.preventDefault();
       props.onOpenChange(false);
     } else if (event.key === "ArrowDown") {
       event.preventDefault();
+      keyboardSelection.current = true;
       setActive((value) => Math.min(Math.max(0, results.length - 1), value + 1));
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
+      keyboardSelection.current = true;
       setActive((value) => Math.max(0, value - 1));
     } else if (event.key === "Enter") {
       event.preventDefault();
@@ -287,6 +368,7 @@ export function SearchPanel(props: {
       onClose={() => props.onOpenChange(false)}
       title="全局搜索"
       className="studio-search-dialog"
+      initialFocusRef={input}
     >
       <div className="flex gap-2 border-b border-border px-4 py-2">
         <button
@@ -346,54 +428,83 @@ export function SearchPanel(props: {
           <div className="flex items-center gap-3 border-b border-border px-4 py-3">
             <Search className="size-4 shrink-0 text-accent" />
             <input
-              autoFocus
+              ref={input}
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value);
                 setActive(0);
               }}
               onKeyDown={onKeyDown}
-              placeholder="搜索工作区、文档、阅读内容或市场标的…"
+              placeholder="搜索工具、笔记、文件…"
               aria-label="全局搜索"
+              aria-controls={resultsId}
+              aria-autocomplete="list"
+              aria-activedescendant={results[active] ? `${resultsId}-${active}` : undefined}
               className="min-w-0 flex-1 bg-transparent text-lg text-text placeholder:text-faint"
             />
             <Kbd>esc</Kbd>
           </div>
-          <div
-            className="flex gap-1 overflow-x-auto border-b border-border px-3 py-2"
-            role="tablist"
-            aria-label="搜索范围"
-          >
-            {FILTERS.filter(
-              (item) => services.metadata || !["knowledge", "research"].includes(item.id),
-            ).map((item) => {
-              const count =
-                search === undefined
-                  ? 0
-                  : documents.filter((document) =>
-                      item.kinds === undefined ? true : item.kinds.includes(document.kind),
-                    ).length;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={filter === item.id}
-                  onClick={() => {
-                    setFilter(item.id);
-                    setActive(0);
-                  }}
-                  className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-sm px-2.5 text-xs transition-colors ${
-                    filter === item.id
-                      ? "bg-accent-dim/55 text-accent"
-                      : "text-faint hover:bg-overlay hover:text-text"
-                  }`}
-                >
-                  {item.label}
-                  <span className="font-mono text-xs opacity-60">{count}</span>
-                </button>
-              );
-            })}
+          <div className="studio-search-filter-bar">
+            <div
+              className="studio-search-filters"
+              role="tablist"
+              aria-label="搜索范围"
+              onKeyDown={(event) => {
+                const tabs = [
+                  ...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+                ];
+                const index = tabs.indexOf(document.activeElement as HTMLButtonElement);
+                const next =
+                  event.key === "ArrowRight"
+                    ? (index + 1) % tabs.length
+                    : event.key === "ArrowLeft"
+                      ? (index - 1 + tabs.length) % tabs.length
+                      : event.key === "Home"
+                        ? 0
+                        : event.key === "End"
+                          ? tabs.length - 1
+                          : null;
+                if (next === null) return;
+                event.preventDefault();
+                tabs[next]?.focus();
+                tabs[next]?.click();
+              }}
+            >
+              {visibleFilters.map((item) => {
+                const count = filterCount(item);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={filter === item.id}
+                    tabIndex={filter === item.id ? 0 : -1}
+                    onClick={() => {
+                      setFilter(item.id);
+                      setActive(0);
+                    }}
+                    className={`studio-search-filter inline-flex shrink-0 items-center gap-1.5 rounded-sm px-2.5 text-sm transition-colors ${
+                      filter === item.id
+                        ? "bg-accent-dim/55 text-accent"
+                        : "text-faint hover:bg-overlay hover:text-text"
+                    }`}
+                  >
+                    {item.label}
+                    {count > 0 && (
+                      <span className="studio-search-filter-count font-mono text-xs">{count}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              className="studio-search-filter-toggle"
+              aria-expanded={showAllFilters}
+              onClick={() => setShowAllFilters((value) => !value)}
+            >
+              {showAllFilters ? "收起" : "筛选"}
+            </button>
           </div>
           {filter === "research" && (
             <label className="flex items-center gap-2 px-4 py-2 text-xs text-muted">
@@ -419,13 +530,17 @@ export function SearchPanel(props: {
           <div className="flex items-center justify-between px-4 py-2 font-mono text-xs text-faint">
             <span aria-live="polite">
               {query.trim().length === 0
-                ? "最近更新"
+                ? filter === "all"
+                  ? "工作区与最近访问"
+                  : `${selectedFilter.label} · ${results.length} 项`
                 : `${results.length} 个结果 · ${selectedFilter.label}`}
             </span>
-            <span className="hidden sm:inline">↑↓ 选择 · Enter 打开 · ⌘⇧F 呼出</span>
+            <span className="hidden sm:inline">↑↓ 选择 · Enter 打开</span>
           </div>
           <div
             className="studio-search-results overflow-auto px-2 pb-2"
+            ref={resultsList}
+            id={resultsId}
             role="listbox"
             aria-label="搜索结果"
           >
@@ -447,6 +562,8 @@ export function SearchPanel(props: {
                 <button
                   key={`${result.document.id}:${result.match?.start ?? "meta"}:${result.match?.end ?? ""}`}
                   type="button"
+                  id={`${resultsId}-${index}`}
+                  data-result-index={index}
                   role="option"
                   aria-selected={index === active}
                   onMouseEnter={() => setActive(index)}
@@ -498,9 +615,11 @@ export function SearchPanel(props: {
                         · 位置 {result.document.citation.offset + result.match.start + 1}
                       </span>
                     )}
-                    <span className="mt-1 block line-clamp-2 text-sm text-faint">
-                      {result.snippet}
-                    </span>
+                    {result.document.kind !== "app" && (
+                      <span className="mt-1 block line-clamp-2 text-sm text-faint">
+                        {result.snippet}
+                      </span>
+                    )}
                   </span>
                   <span className="mt-2 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                     →
@@ -509,52 +628,55 @@ export function SearchPanel(props: {
               ))
             )}
           </div>
-          {research && (
-            <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
-              <span className="text-xs text-faint">保存正文到</span>
-              <Select
-                aria-label="摘录目标集合"
-                value={selectedCollection?.id ?? ""}
-                onChange={(event) => setCollectionId(event.target.value)}
-                className="min-w-0 flex-1"
-              >
-                {!selectedCollection && <option value="">请先创建资料集合</option>}
-                {library.collections.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </Select>
-              <Button
-                variant="primary"
-                disabled={
-                  busy ||
-                  !researchReady ||
-                  !selectedCollection ||
-                  !results[active]?.document.body?.trim() ||
-                  !citationRoute(results[active]?.document.route)
-                }
-                onClick={() => {
-                  const result = results[active];
-                  if (!result || !selectedCollection) return;
-                  const excerpt = excerptFromResult(result, Date.now());
-                  run(() =>
-                    research.update((current) => ({
-                      ...current,
-                      collections: current.collections.map((item) =>
-                        item.id !== selectedCollection.id ||
-                        item.excerpts.some((saved) => sameExcerpt(saved, excerpt))
-                          ? item
-                          : { ...item, excerpts: [...item.excerpts, excerpt] },
-                      ),
-                    })),
-                  );
-                }}
-              >
-                保存当前结果
-              </Button>
-            </div>
-          )}
+          {research &&
+            results[active]?.document.kind !== "app" &&
+            results[active]?.document.body?.trim() &&
+            citationRoute(results[active]?.document.route) && (
+              <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
+                <span className="text-xs text-faint">保存正文到</span>
+                <Select
+                  aria-label="摘录目标集合"
+                  value={selectedCollection?.id ?? ""}
+                  onChange={(event) => setCollectionId(event.target.value)}
+                  className="min-w-0 flex-1"
+                >
+                  {!selectedCollection && <option value="">请先创建资料集合</option>}
+                  {library.collections.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </Select>
+                <Button
+                  variant="primary"
+                  disabled={
+                    busy ||
+                    !researchReady ||
+                    !selectedCollection ||
+                    !results[active]?.document.body?.trim() ||
+                    !citationRoute(results[active]?.document.route)
+                  }
+                  onClick={() => {
+                    const result = results[active];
+                    if (!result || !selectedCollection) return;
+                    const excerpt = excerptFromResult(result, Date.now());
+                    run(() =>
+                      research.update((current) => ({
+                        ...current,
+                        collections: current.collections.map((item) =>
+                          item.id !== selectedCollection.id ||
+                          item.excerpts.some((saved) => sameExcerpt(saved, excerpt))
+                            ? item
+                            : { ...item, excerpts: [...item.excerpts, excerpt] },
+                        ),
+                      })),
+                    );
+                  }}
+                >
+                  保存当前结果
+                </Button>
+              </div>
+            )}
         </>
       )}
     </Dialog>

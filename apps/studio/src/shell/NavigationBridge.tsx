@@ -51,7 +51,12 @@ export function NavigationBridge({ children }: { children: ReactNode }) {
           if (typeof value === "string" && value.trim() && Number.isFinite(Number(value)))
             search[key] = Number(value);
         }
-        void router.navigate({ to: target.pathname as never, search: search as never, replace });
+        void router.navigate({
+          to: target.pathname as never,
+          search: search as never,
+          hash: target.hash.slice(1),
+          replace,
+        });
       },
     };
   }, [router]);

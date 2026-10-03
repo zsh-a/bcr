@@ -1,6 +1,7 @@
 import { AppToolbar, IconButton } from "@bcr/react";
 import {
   BookOpenText,
+  ChevronDown,
   Download,
   Folder,
   FolderPlus,
@@ -97,7 +98,19 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
           <PanelLeftOpen size={18} />
         )}
       </IconButton>
-      <strong className="knowledge-app-identity">知识库</strong>
+      {mobile ? (
+        <button
+          type="button"
+          className="knowledge-mobile-title"
+          aria-label="搜索与切换笔记"
+          onClick={() => setSwitcher({ query: "" })}
+        >
+          <span>{note?.title || (note ? "未命名笔记" : "知识库")}</span>
+          <ChevronDown size={14} aria-hidden="true" />
+        </button>
+      ) : (
+        <strong className="knowledge-app-identity">知识库</strong>
+      )}
       <NoteTabs
         notes={state.notes}
         ids={workbench.state.tabs}
@@ -143,6 +156,7 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
         />
       </div>
       <IconButton
+        className="knowledge-context-action"
         label={
           !focusMode && workbench.state.context === "expanded" ? "收起上下文栏" : "展开上下文栏"
         }

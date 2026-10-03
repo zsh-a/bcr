@@ -531,7 +531,7 @@ function NavigationContent(props: { book: ReaderBook; pinned: boolean }) {
               <MobileNavigationEmpty
                 icon={<Bookmark className="reader-icon" />}
                 message="还没有书签"
-                hint="在阅读页顶部点书签，随时回来。"
+                hint="在阅读设置的「工具」中标记当前位置，随时回来。"
               />
             )}
           </div>

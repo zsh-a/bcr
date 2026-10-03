@@ -17,6 +17,7 @@ export const hostDefinitions = {
   studio: {
     id: "studio",
     title: "Studio",
+    displayTitle: "计算工作台",
     path: "/studio",
     description: "查看文件、计算任务、缓存与本地存储",
     section: "developer",

@@ -4,6 +4,7 @@ import type { AppDefinition } from "@bcr/shell-contract";
 export const definition = {
   id: "docgen",
   title: "DocGen Lab",
+  displayTitle: "票据生成",
   path: "/docgen",
   description: "生成虚构账单，用于识别与阅读流程验证",
   section: "developer",

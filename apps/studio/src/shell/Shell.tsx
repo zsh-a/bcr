@@ -30,6 +30,11 @@ import { AssistantWindow, type AssistantVisibility } from "../assistant/Assistan
 import { createAgentHost } from "@bcr/agent";
 import { createAgentStorage, createBrowserCredentials, browserSettingsStorage } from "@bcr/react";
 import { studio } from "../store";
+import {
+  readRecentWorkspaces,
+  rememberWorkspace,
+  RECENT_WORKSPACES_KEY,
+} from "./recent-workspaces";
 
 /**
  * OS 式 Shell 根布局（§12：URL 即状态）：
@@ -75,8 +80,28 @@ function ShellContent() {
   const { conversations } = useAgentHost();
   const navigation = useNavigation();
   const navigate = useNavigate();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const location = useRouterState({ select: (s) => s.location });
+  const pathname = location.pathname;
   const active = appIdFromPath(pathname);
+  const href = `${pathname}${location.searchStr}${location.hash ? `#${location.hash}` : ""}`;
+  const [recent, setRecent] = useState(() => {
+    try {
+      return readRecentWorkspaces(localStorage.getItem(RECENT_WORKSPACES_KEY), MANIFESTS);
+    } catch {
+      return [];
+    }
+  });
+  useEffect(() => {
+    if (active === "home") return;
+    setRecent((items) => rememberWorkspace(items, { appId: active, href, visitedAt: Date.now() }));
+  }, [active, href]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(RECENT_WORKSPACES_KEY, JSON.stringify(recent));
+    } catch {
+      // Recent navigation remains available for this session when storage is unavailable.
+    }
+  }, [recent]);
   const { services, error } = useRuntimeSession(
     independent ? createShellRuntime : createRuntimeServices,
   );
@@ -126,12 +151,13 @@ function ShellContent() {
   // ⌘K 命令面板；Alt+0 主页 / Alt+数字 切 App（⌘+数字被浏览器标签页占用）
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing) return;
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "j") {
         event.preventDefault();
         setAssistantVisibility((value) => (value === "open" ? "minimized" : "open"));
         return;
       }
-      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setPaletteOpen((open) => !open);
         return;
@@ -190,7 +216,9 @@ function ShellContent() {
           onOpenSearch={() => setSearchOpen(true)}
           onOpenAgent={() => openPanel("assistant")}
         >
-          {active === "home" && <Home />}
+          <div className={active === "home" ? "h-full min-h-0" : "hidden"}>
+            <Home active={active === "home"} recent={recent} />
+          </div>
           {MANIFESTS.filter((app) => visited.includes(app.id)).map((app) => (
             <div
               key={app.id}
@@ -216,6 +244,7 @@ function ShellContent() {
         />
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onOpenPanel={openPanel} />
         <SearchPanel
+          recent={recent}
           open={searchOpen}
           onOpenChange={setSearchOpen}
           onNavigate={openSearchDocument}

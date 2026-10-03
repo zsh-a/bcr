@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { launchEphemeralBrowser, ensureShots } from "./lib/browser.mjs";
 import { openWorkspaceOptions } from "./lib/topbar.mjs";
+import { verifyHomeInteractions } from "./lib/home-interactions.mjs";
 
 const origin = new URL(process.env.BASE_URL ?? "http://127.0.0.1:5199").origin;
 const shots = ensureShots();
@@ -57,7 +58,7 @@ try {
   );
   assert.deepEqual(await page.locator(".home-section h2").allTextContents(), [
     "市场与策略",
-    "阅读与知识",
+    "阅读与创作",
     "数据与媒体",
   ]);
   assert.equal(
@@ -71,6 +72,7 @@ try {
   assert((await cards.last().boundingBox()).y + (await cards.last().boundingBox()).height <= 768);
   await fits(page, ".home-app-card");
   await page.screenshot({ path: `${shots}/home-organized-desktop.png` });
+  await verifyHomeInteractions(page);
 
   // Every displayed shortcut must navigate to the app its card advertises.
   for (let index = 0; index < primary.length; index++) {
@@ -83,7 +85,7 @@ try {
   }
 
   // Native links support keyboard activation and ordinary browser link actions.
-  await page.getByRole("link", { name: "打开 Data Studio", exact: true }).focus();
+  await page.getByRole("link", { name: "打开 数据表格", exact: true }).focus();
   await page.keyboard.press("Enter");
   await page.locator(".data-header").waitFor();
   await home(page);
@@ -94,17 +96,12 @@ try {
   await page.keyboard.press("Enter");
   await page.locator(".home-tool-link").first().waitFor();
   assert.equal(await page.locator(".home-tool-link:visible").count(), 4);
-  await page.waitForFunction(() => {
-    return [...document.querySelectorAll(".home-tool-link")].every(
-      (tool) => tool.getBoundingClientRect().bottom <= innerHeight + 1,
-    );
-  });
   await page.screenshot({ path: `${shots}/home-organized-tools.png` });
   await page.keyboard.press("Space");
   assert.equal(await page.locator(".home-tool-link:visible").count(), 0);
 
   for (const [id, , selector] of auxiliary) {
-    await summary.click();
+    if (!(await page.locator(".home-more-tools").evaluate((el) => el.open))) await summary.click();
     await page.locator(`.home-tool-link[data-app-id="${id}"]`).click();
     await page.waitForURL((url) => url.pathname === `/${id}`);
     await page.locator(selector).waitFor();
@@ -117,7 +114,7 @@ try {
     const palette = page.getByRole("dialog", { name: "命令面板", exact: true });
     await palette.waitFor();
     await palette.getByPlaceholder("输入命令…").fill(`打开 ${title}`);
-    const command = palette.getByRole("button", { name: `打开 ${title}`, exact: true });
+    const command = palette.locator(`[data-command-id="go-${id}"]`);
     assert.equal(await command.locator("kbd").count(), 0);
     await command.click();
     await page.waitForURL((url) => url.pathname === `/${id}`);
@@ -128,6 +125,8 @@ try {
   await page.getByRole("dialog", { name: "AI 助手", exact: true }).waitFor();
   assert.equal(new URL(page.url()).pathname, "/");
   await page.getByRole("button", { name: "关闭 AI 助手", exact: true }).click();
+
+  if (await page.locator(".home-more-tools").evaluate((el) => el.open)) await summary.click();
 
   for (const theme of ["light", "dark"]) {
     await page.setViewportSize({ width: 1366, height: 768 });

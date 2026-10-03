@@ -34,7 +34,7 @@ try {
       );
       const box = await menu.boundingBox();
       assert(
-        box.width <= 240 && box.height <= (touch ? 300 : 225),
+        box.width <= 240 && box.height <= (touch ? 360 : 225),
         "Reader overflow uses command density instead of large form buttons",
       );
       assert(
@@ -62,8 +62,8 @@ try {
       );
       assert.equal(
         await menu.getByRole("menuitem", { name: "导入读物", exact: true }).count(),
-        0,
-        "demo has one import shortcut in the toolbar",
+        touch ? 1 : 0,
+        "mobile import lives in the menu; desktop demo keeps its toolbar shortcut",
       );
       await page.keyboard.press("End");
       assert.equal(

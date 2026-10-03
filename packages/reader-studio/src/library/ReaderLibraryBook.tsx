@@ -1,4 +1,4 @@
-import { Check, Star } from "lucide-react";
+import { Check, Ellipsis, Star } from "lucide-react";
 import { useEffect, useRef, type MouseEvent } from "react";
 import type { ReaderBook } from "@bcr/reader-core";
 import { readingStatus } from "../state/model";
@@ -164,6 +164,18 @@ export function ReaderLibraryBook(props: {
           </>
         )}
       </button>
+      {!props.managing && (
+        <button
+          type="button"
+          className="reader-book-actions ui-btn ui-icon-btn ui-btn-ghost"
+          aria-label={`读物操作：${props.book.title}`}
+          aria-haspopup="menu"
+          aria-expanded={props.menuOpen}
+          onClick={(event) => openMenu(event.currentTarget)}
+        >
+          <Ellipsis className="reader-icon" />
+        </button>
+      )}
     </div>
   );
 }

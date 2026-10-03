@@ -4,6 +4,7 @@ import type { AppDefinition } from "@bcr/shell-contract";
 export const definition = {
   id: "manga",
   title: "Manga Studio",
+  displayTitle: "漫画翻译",
   path: "/manga",
   description: "漫画文字识别、翻译与排版审校",
   section: "experimental",

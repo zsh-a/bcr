@@ -175,6 +175,10 @@
   background: var(--color-surface);
   pointer-events: none;
 }
+.reader-book-actions {
+  display: none;
+}
+
 .reader-library-manager-layer {
   align-items: center;
   justify-content: center;

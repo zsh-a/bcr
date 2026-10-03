@@ -1,4 +1,4 @@
-import { Button, IconButton } from "@bcr/react";
+import { Button, Dialog, IconButton } from "@bcr/react";
 import { Plus, Search, X } from "lucide-react";
 import { type CSSProperties } from "react";
 import { KNOWLEDGE_PATH } from "../../shell/host-manifests";
@@ -21,6 +21,7 @@ import { notePath, pathKey } from "../notes/paths";
 import { NoteMove } from "./NoteMove";
 import "./paths.css";
 import "./resource-layout.css";
+import "./mobile.css";
 import { useKnowledgeWorkbench } from "./useKnowledgeWorkbench";
 import { KnowledgeToolbar } from "./KnowledgeToolbar";
 import { KnowledgeSidebar } from "./KnowledgeSidebar";
@@ -28,6 +29,7 @@ export function KnowledgeApp() {
   const controller = useKnowledgeWorkbench();
   const {
     services,
+    mobile,
     active,
     navigate,
     store,
@@ -45,6 +47,7 @@ export function KnowledgeApp() {
     drawer,
     setDrawer,
     focusMode,
+    setFocusMode,
     token,
     auto,
     setAuto,
@@ -167,15 +170,28 @@ export function KnowledgeApp() {
             </Button>
           </form>
         </KnowledgeDialog>
-        {drawer && (
-          <button
-            type="button"
-            className="knowledge-backdrop"
-            aria-label="关闭笔记列表"
-            onClick={() => setDrawer(false)}
-          />
+        {mobile ? (
+          <Dialog
+            open={drawer && !focusMode}
+            onClose={() => setDrawer(false)}
+            title="笔记库"
+            closeLabel="收起列表"
+            placement="sheet"
+            className="knowledge-library-sheet"
+          >
+            <KnowledgeSidebar controller={controller} />
+            {treeMenu && (
+              <TreeMenu
+                x={treeMenu.x}
+                y={treeMenu.y}
+                items={treeItems(treeMenu.target)}
+                onClose={() => setTreeMenu(null)}
+              />
+            )}
+          </Dialog>
+        ) : (
+          <KnowledgeSidebar controller={controller} />
         )}
-        <KnowledgeSidebar controller={controller} />
         <main className="knowledge-main">
           <NoteMove
             open={moveTarget !== null}
@@ -248,7 +264,7 @@ export function KnowledgeApp() {
               </Button>
             </div>
           </KnowledgeDialog>
-          {treeMenu && (
+          {treeMenu && !mobile && (
             <TreeMenu
               x={treeMenu.x}
               y={treeMenu.y}
@@ -399,11 +415,12 @@ export function KnowledgeApp() {
                   target={target}
                   focusMode={focusMode}
                   contextOpen={workbench.state.context === "expanded"}
-                  onContextOpenChange={(open) =>
+                  onContextOpenChange={(open) => {
+                    if (open) setFocusMode(false);
                     workbench.setState((current) =>
                       setContext(current, open ? "expanded" : "hidden"),
-                    )
-                  }
+                    );
+                  }}
                   contextWidth={workbench.state.contextWidth}
                   onContextWidthChange={(width) =>
                     workbench.setState((current) => setContextWidth(current, width))
@@ -436,7 +453,11 @@ export function KnowledgeApp() {
                 {notes.length ? (
                   <>
                     <h2>没有打开的笔记。</h2>
-                    <p>在左侧列表选择一篇开始，或按 ⌘/Ctrl K 搜索、新建。</p>
+                    <p>
+                      {mobile
+                        ? "从笔记库选择一篇继续，也可以搜索或新建笔记。"
+                        : "在左侧列表选择一篇开始，或按 ⌘/Ctrl K 搜索、新建。"}
+                    </p>
                     <Button variant="ghost" onClick={() => setSwitcher({ query: "" })}>
                       <Search size={15} />
                       打开命令面板

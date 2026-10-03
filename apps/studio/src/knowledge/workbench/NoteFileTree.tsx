@@ -1,4 +1,4 @@
-import { FileText, Folder, FolderInput } from "lucide-react";
+import { Ellipsis, FileText, Folder, FolderInput } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { IconButton } from "@bcr/react";
 import { noteWhen } from "../editor/format";
@@ -217,7 +217,7 @@ export function NoteFileTree({
             const title = note.title || "未命名笔记";
             const key = `note:${note.id}`;
             return (
-              <li key={note.id}>
+              <li key={note.id} className="knowledge-file-entry">
                 <button
                   type="button"
                   className="knowledge-file-note"
@@ -241,6 +241,16 @@ export function NoteFileTree({
                     {noteWhen(note.updatedAt)}
                   </time>
                 </button>
+                {onMenu && (
+                  <IconButton
+                    className="knowledge-file-actions"
+                    label={`笔记操作：${title}`}
+                    aria-haspopup="menu"
+                    onClick={(event) => onMenu(event, { kind: "note", id: note.id })}
+                  >
+                    <Ellipsis size={18} />
+                  </IconButton>
+                )}
               </li>
             );
           })}

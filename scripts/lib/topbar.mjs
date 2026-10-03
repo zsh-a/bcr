@@ -37,10 +37,7 @@ export async function runWorkspaceCommand(page, title) {
     await options.getByRole("button", { name: "打开命令面板", exact: true }).click();
   }
   await palette.getByRole("textbox", { name: "搜索命令", exact: true }).fill(title);
-  await palette
-    .getByRole("button")
-    .filter({ has: page.getByText(title, { exact: true }) })
-    .click();
+  await palette.locator("[data-command-id]").click();
   await palette.waitFor({ state: "hidden" });
   await closeTopBar(page);
 }

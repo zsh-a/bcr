@@ -3,7 +3,6 @@ import {
   BookOpen,
   Info,
   LibraryBig,
-  PanelLeftClose,
   Plus,
   Pencil,
   Star,
@@ -229,7 +228,7 @@ export function LibraryPanel(props: {
           onClick={() => (full ? props.onClose?.() : reader.toggleSidebar())}
           aria-label={full ? "关闭书库管理" : "收起书库"}
         >
-          {full ? <X className="reader-icon" /> : <PanelLeftClose className="reader-icon" />}
+          <X className="reader-icon" />
         </button>
       </div>
       <ResourceSearch

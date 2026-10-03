@@ -415,12 +415,13 @@ try {
       await mobilePicker.waitFor({ state: "hidden" });
       await page.getByRole("button", { name: "切换笔记列表", exact: true }).click();
       await page.getByRole("button", { name: "收起列表", exact: true }).click();
-      // 窄容器（主区 < 640px）：文档工具行的分段收起，菜单接管视图模式与源码，
-      // 保证这三个开关在任何宽度下都有且只有一个入口。
+      // Mobile exposes view modes directly, with no duplicate menu entry.
+      const modes = page.getByRole("group", { name: "视图模式", exact: true });
+      await modes.getByRole("button", { name: "源码", exact: true }).waitFor();
+      await modes.getByRole("button", { name: "阅读", exact: true }).waitFor();
       await page.getByRole("button", { name: "更多写作工具" }).click();
       const mobileTools = page.locator(".knowledge-tools-menu");
-      await mobileTools.getByRole("button", { name: "源码", exact: true }).waitFor();
-      await mobileTools.getByRole("button", { name: "阅读", exact: true }).waitFor();
+      assert.equal(await mobileTools.getByRole("button", { name: "源码", exact: true }).count(), 0);
       await page.keyboard.press("Escape");
       await mobileTools.waitFor({ state: "hidden" });
     }

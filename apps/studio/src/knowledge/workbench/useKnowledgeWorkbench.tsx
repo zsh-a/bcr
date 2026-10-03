@@ -132,8 +132,7 @@ export function useKnowledgeWorkbench() {
   const sidebar = workbench.state.sidebar;
   useLayoutEffect(() => {
     if (focusMode) setDrawer(false);
-    else if (mobile && drawer) search.current?.focus();
-  }, [focusMode, mobile, drawer]);
+  }, [focusMode]);
   useLayoutEffect(() => {
     if (note && content.current)
       content.current.scrollTop = scrollPositions.current.get(note.id) ?? 0;
@@ -532,7 +531,7 @@ export function useKnowledgeWorkbench() {
     run,
     select,
     create,
-    daily: actions.daily,
+    daily: () => actions.daily(),
     flushEditor,
     exportNote,
     importResearch,

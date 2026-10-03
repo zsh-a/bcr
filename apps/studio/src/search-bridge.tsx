@@ -11,10 +11,10 @@ function appDocuments(): ReadonlyArray<SearchDocument> {
     id: `app:${app.id}`,
     source: "workspace",
     kind: "app",
-    title: app.title,
-    subtitle: app.description,
+    title: app.displayTitle ?? app.title,
+    subtitle: app.displayTitle ? `${app.title} · ${app.description}` : app.description,
     body: `${app.title} ${app.description}`,
-    tags: [app.id, "workspace"],
+    tags: [app.id, app.title, app.displayTitle ?? app.title, "workspace"],
     route: app.path,
     updatedAt: 0,
   }));

@@ -11,6 +11,7 @@ import {
   type TextareaHTMLAttributes,
 } from "react";
 import "./ui.css";
+import { useModalViewport } from "./useModalViewport";
 
 /**
  * 统一控件原语——全产品唯一的控件套件。
@@ -79,6 +80,7 @@ export function Dialog({
   className = "",
   closeLabel = "关闭",
   closable = true,
+  initialFocusRef,
   children,
 }: {
   open: boolean;
@@ -88,22 +90,25 @@ export function Dialog({
   className?: string;
   closeLabel?: string;
   closable?: boolean;
+  initialFocusRef?: { readonly current: HTMLElement | null };
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  useModalViewport(ref, open);
 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || !open) return;
     const trigger = document.activeElement;
     if (!el.open) el.showModal();
+    initialFocusRef?.current?.focus({ preventScroll: true });
     return () => {
       if (el.open) el.close();
       if (trigger instanceof HTMLElement && trigger.isConnected)
         trigger.focus({ preventScroll: true });
     };
-  }, [open]);
+  }, [open, initialFocusRef]);
 
   return (
     <dialog

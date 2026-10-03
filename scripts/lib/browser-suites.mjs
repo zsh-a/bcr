@@ -96,6 +96,7 @@ const groups = {
     "reader-large-txt",
     "reader-content",
     "reader-mobile",
+    "mobile-knowledge-reader",
     "reader-alignment",
     "reader-typography",
     "reader-pagination",

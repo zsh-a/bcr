@@ -105,6 +105,10 @@
   font-size: var(--text-sm);
 }
 
+.knowledge-file-actions {
+  display: none;
+}
+
 .knowledge-file-note > span {
   flex: 1;
   min-width: 0;

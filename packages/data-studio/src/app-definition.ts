@@ -4,6 +4,7 @@ import type { AppDefinition } from "@bcr/shell-contract";
 export const definition = {
   id: "data",
   title: "Data Studio",
+  displayTitle: "数据表格",
   path: "/data",
   description: "导入表格，浏览、搜索与导出数据",
   section: "tools",

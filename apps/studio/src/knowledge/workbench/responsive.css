@@ -1,52 +1,6 @@
 /* ---------- 小屏：列表抽屉 ---------- */
 
 @media (width <= theme(--bp-md)) {
-  /* 抽屉覆盖正文（overlay，不挤开内容）；进出场按 ui.css 语言：位移 + 淡入淡出。
-     宽度/flex-basis 保持形态过渡，跨断点拉伸不跳变。 */
-  .knowledge-sidebar {
-    position: absolute;
-    z-index: var(--layer-drawer);
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: min(var(--w-sidebar-override, var(--w-sidebar)), 85vw);
-    padding: var(--space-4) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom))
-      max(var(--space-4), env(safe-area-inset-left));
-    gap: var(--space-3);
-    opacity: 0;
-    transform: translateX(-105%);
-    transition:
-      transform var(--duration-slow) var(--ease-standard),
-      opacity var(--duration-slow) var(--ease-standard),
-      width var(--duration-slow) var(--ease-standard),
-      flex-basis var(--duration-slow) var(--ease-standard);
-  }
-  .knowledge-app.show-sidebar .knowledge-sidebar {
-    opacity: 1;
-    transform: none;
-  }
-  .knowledge-app.show-sidebar .knowledge-backdrop {
-    display: block;
-    position: absolute;
-    inset: 0;
-    z-index: var(--layer-scrim);
-    border: 0;
-    padding: 0;
-    background: var(--color-scrim);
-    /* 压暗层随抽屉一起淡入（元素随开关挂载，退场即卸载，不做退场过渡）。 */
-    transition: opacity var(--duration-base) var(--ease-standard);
-  }
-  @starting-style {
-    .knowledge-app.show-sidebar .knowledge-backdrop {
-      opacity: 0;
-    }
-  }
-  .knowledge-mobile-close {
-    display: inline-flex;
-    margin-left: auto;
-    min-width: var(--h-control-lg);
-    min-height: var(--h-control-lg);
-  }
   /* 抽屉只留筛选、范围分段与目录树；树行抬到触控高度。 */
   .knowledge-file-note,
   .knowledge-file-folder > summary {
@@ -95,6 +49,7 @@
     button:has(> svg):not(
       .knowledge-overflow-menu button,
       .knowledge-tools-menu button,
+      .knowledge-metadata-summary,
       .knowledge-tag-chip
     ) {
     font-size: 0;

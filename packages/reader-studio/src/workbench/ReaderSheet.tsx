@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useModalViewport } from "@bcr/react";
 
 /**
  * Native top-layer modality: inert background, focus containment and restoration.
@@ -14,6 +15,7 @@ export function ReaderSheet(props: {
   fallbackFocus?: () => HTMLElement | null;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  useModalViewport(ref, props.open);
   const triggerRef = useRef<HTMLElement | null>(null);
   const frozenRef = useRef<ReactNode>(null);
   const [settled, setSettled] = useState(true);
@@ -66,7 +68,7 @@ export function ReaderSheet(props: {
         if (event.key !== "Tab" || event.defaultPrevented) return;
         const controls = [
           ...event.currentTarget.querySelectorAll<HTMLElement>(
-            "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex='-1'])",
+            "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, a[href], [tabindex]:not([tabindex='-1'])",
           ),
         ].filter(
           (element) =>

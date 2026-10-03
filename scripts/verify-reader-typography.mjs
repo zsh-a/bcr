@@ -91,6 +91,7 @@ try {
   const closeLibrary = page.getByRole("button", { name: "收起书库", exact: true }).first();
   if (await closeLibrary.isVisible()) await closeLibrary.click();
   await page.getByRole("button", { name: "打开阅读设置", exact: true }).click();
+  await page.getByRole("button", { name: "排版", exact: true }).click();
   await page.getByRole("button", { name: "应用小说文学排版" }).click();
   await page.getByText("字体已就绪", { exact: false }).waitFor();
   await openAdvancedTypography();

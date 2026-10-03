@@ -55,6 +55,15 @@
   padding: var(--space-4) var(--space-5) var(--space-3);
 }
 
+.reader-search-panel-heading {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+}
+
 .reader-search-panel-top strong {
   font-size: var(--text-base);
   font-weight: 650;

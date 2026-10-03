@@ -5,6 +5,7 @@ export { ContextMenu, type ContextMenuAction } from "./ContextMenu";
 export { Heatmap, type HeatmapProps, type HeatmapAxis, type HeatmapCell } from "./Heatmap";
 export { Toast, EmptyState, type Notice, type NoticeTone } from "./Feedback";
 export { useMediaQuery } from "./useMediaQuery";
+export { useModalViewport } from "./useModalViewport";
 export {
   AppToolbar,
   WorkspaceTrigger,
