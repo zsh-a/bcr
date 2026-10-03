@@ -14,6 +14,7 @@ TOOLS = {
     "study": ("study", "Catalog, preflight, compile and seal isolated study cells"),
     "run": ("research", "Replay a plan with an explicitly selected native binary"),
     "report": ("report", "Render audited account results without reselection"),
+    "review": ("review", "Export audited findings and measured candidates for the research UI"),
     "plot": ("plot", "Plot a published result and its recorded curves"),
     "audit": ("audit", "Check immutable snapshots or native-run receipts"),
 }

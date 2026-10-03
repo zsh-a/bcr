@@ -6,23 +6,25 @@
 
 ## 模块职责
 
-| 层             | 主要位置                                                             | 输入与输出                                                     |
-| -------------- | -------------------------------------------------------------------- | -------------------------------------------------------------- |
-| 配置与历史契约 | `packages/quant-core/src/trend/`                                     | 当前规则取值、类型、默认值与校验；历史结构与草稿迁移           |
-| 行情来源       | `packages/market-data/src/binance/`、Python `download.py`            | 官方档案、校验、完整分钟、资金费与不可变来源清单               |
-| 指标与信号     | Rust `indicators.rs`、`signals.rs`、各形态状态机                     | 完整 K 线与市场方向，产生冻结时间依据的入场候选                |
-| 账户执行       | Rust `engine.rs`、`execution.rs`、`position.rs`                      | 订单时序、实际数量、成交、现金与持仓；每笔只有一条账本路径     |
-| 保护与风控     | Rust `management.rs`、`risk.rs`                                      | 返回止损提案、开仓许可和退出意图，由账户统一执行               |
-| 机会观察       | Rust `opportunity.rs`                                                | 同一指标和识别算法的独立状态，输出候选机会、并行门槛与失效原因 |
-| 回放输入校验   | Rust `input.rs`                                                      | 共用窗口、连续分钟与 OHLC 检查；校验失败不推进账户或观察状态   |
-| 原生适配       | Rust `replay.rs`、`bin/trend.rs`                                     | CSV 分片、候选各自预热、账户及观察结果；每候选状态集中持有     |
-| 浏览器适配     | `apps/quant-lab/src/trend/execution/`、`session/`                    | 固定输入、Worker、取消、产物发布、历史恢复与串行持久化         |
-| 设置展示       | 浏览器 `workbench/`                                                  | 应用层标签与显式表单；父组件管理草稿、跨字段转换和应用         |
-| 实验声明       | Python `protocol.py`、`study.py`、`warmup.py`                        | 规则、标的、日期与来源编译为回放单元，验收凭证控制下一阶段     |
-| 证据与回放     | Python `artifacts.py`、`research.py`                                 | 原子写入、SHA、只读边界、缓存、分片校验和原生进程              |
-| 账户统计       | Rust `evaluation.rs`；Python `daily.py`、`evaluation.py`、`account_statistics.py` | 逐币及合计账户评价、完整日历和配对分块抽样             |
-| 实验验收       | Python `transfer_evaluation.py`、`mechanism_evaluation.py`、`search_evaluation.py` | 各实验的预声明比较、接受标准及多重检验                 |
-| 报告与图表     | Python `report.py`、`plot.py`；浏览器 `results/`                     | 消费已经确定的选择、账本和评价，不反向决定规则或阶段资格       |
+| 层             | 主要位置                                                                                   | 输入与输出                                                     |
+| -------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| 配置与历史契约 | `packages/quant-core/src/trend/`                                                           | 当前规则取值、类型、默认值与校验；历史结构与草稿迁移           |
+| 行情来源       | `packages/market-data/src/binance/`、Python `download.py`                                  | 官方档案、校验、完整分钟、资金费与不可变来源清单               |
+| 指标与信号     | Rust `indicators.rs`、`signals.rs`、各形态状态机                                           | 完整 K 线与市场方向，产生冻结时间依据的入场候选                |
+| 账户执行       | Rust `engine.rs`、`execution.rs`、`position.rs`                                            | 订单时序、实际数量、成交、现金与持仓；每笔只有一条账本路径     |
+| 保护与风控     | Rust `management.rs`、`risk.rs`                                                            | 返回止损提案、开仓许可和退出意图，由账户统一执行               |
+| 机会观察       | Rust `opportunity.rs`                                                                      | 同一指标和识别算法的独立状态，输出候选机会、并行门槛与失效原因 |
+| 回放输入校验   | Rust `input.rs`                                                                            | 共用窗口、连续分钟与 OHLC 检查；校验失败不推进账户或观察状态   |
+| 原生适配       | Rust `replay.rs`、`bin/trend.rs`                                                           | CSV 分片、候选各自预热、账户及观察结果；每候选状态集中持有     |
+| 浏览器适配     | `apps/quant-lab/src/trend/execution/`、`session/`                                          | 固定输入、Worker、取消、产物发布、历史恢复与串行持久化         |
+| 设置展示       | 浏览器 `workbench/`                                                                        | 应用层标签与显式表单；父组件管理草稿、跨字段转换和应用         |
+| 实验声明       | Python `protocol.py`、`study.py`、`warmup.py`                                              | 规则、标的、日期与来源编译为回放单元，验收凭证控制下一阶段     |
+| 证据与回放     | Python `artifacts.py`、`research.py`                                                       | 原子写入、SHA、只读边界、缓存、分片校验和原生进程              |
+| 账户统计       | Rust `evaluation.rs`；Python `daily.py`、`evaluation.py`、`account_statistics.py`          | 逐币及合计账户评价、完整日历和配对分块抽样                     |
+| 实验验收       | Python `transfer_evaluation.py`、`mechanism_evaluation.py`、`search_evaluation.py`         | 各实验的预声明比较、接受标准及多重检验                         |
+| 报告与图表     | Python `report.py`、`plot.py`；浏览器 `results/`                                           | 消费已经确定的选择、账本和评价，不反向决定规则或阶段资格       |
+| 研究复核展示   | Python `review.py`；领域 `replay.ts`、`research-review.ts`；浏览器 `results/`、`research/` | 账本逐步复盘、阶段结论和实测参数对照；纯投影不改变策略与验收   |
+| 时点标的元数据 | Python `universe.py`，由 `study.py` 绑定快照                                               | 观测与可用时间、入选资格及覆盖声明；独立于价格和策略参数       |
 
 ## 必须保持的边界
 
@@ -55,6 +57,7 @@
 | `evaluate transfer / mechanism / search`               | 分别执行冻结转移验收、描述性机制比较、有界候选族检验 |
 | `diagnose trades / setups / opportunities / breakouts` | 各自定义下的交易或机会诊断                           |
 | `report / plot`                                        | 汇总已审计账户及生成图表                             |
+| `review`                                               | 复核已有账本与可选阶段凭证，导出浏览器研究文件       |
 
 所有写入命令使用新目录。`run` 必须给出 `--binary`，不再隐式构建或默认使用某个历史构建。研究者为新构建选择独立 target；继承旧研究选择时必须使用来源凭证要求的原二进制。
 
@@ -75,6 +78,24 @@ bun run research:trend study seal --compilation tmp/trend-next/input/compilation
 ```
 
 此示例假定新实验文件已经创建、所需来源已经可用。后续单元通过 `--receipt` 提供前置凭证；开发失败仍保存失败凭证，停止后续阶段。事件诊断需要 NumPy，绘图需要 Matplotlib，可在独立 Python 环境中运行同一个 CLI。统计命令保留各自明确的接受标准，不用统一命令名抹平差异。
+
+## 研究证据界面
+
+Quant Lab 趋势工作台顶部的“研究证据”打开独立面板。先导出精简文件，再通过“导入研究文件”读取：
+
+```sh
+bun run research:trend review --plan research/trend/structured-v2/development-input/plan.json --manifest research/trend/structured-v2/development-input/manifest.json --input tmp/trend-structured-v10 --receipt research/trend/structured-v2/development-seal.json --output tmp/trend-review/structured-v2.json
+```
+
+命令要求原始运行仍在本地可用，输出必须是新文件。它复用 `load_evidence`、`build_bundle` 和 `audit_stage_receipt`，不重新成交、不重新选择、不发布新的阶段凭证。`--receipt` 可省略；未绑定凭证时，开发资格只显示为记录，不能被展示为正式验收。已绑定结论须与同一原始运行、选择及阶段匹配，并从原账本重新核对；开发基础成本门槛与验证／留出基础加压力成本门槛分开呈现。
+
+`trend-research-review` v1 只包含输入哈希、冻结选择、窗口身份、有限候选、实测指标和带实际值／门槛／证据位置的条目。浏览器限制文件为 4 MB，校验结构、引用、重复行及结论一致性，并显示导入文件 SHA；浏览器不访问导出机的文件系统或重新审计账本，因此导入本身不是第三方认证。导入暂存于当前工作台，刷新后重新打开文件。
+
+候选矩阵保留原顺序，区分未运行、零交易和零收益。参数切片以用户选中的候选为参照，要求其他策略与风险参数、研究窗口及成本相同；只展示实际测点，不插值、不按验证结果排名、不推断未测组合。少于两个不同实测值会提示证据不足；即使两个点相近，也不构成统计稳定性证明。合计账户回撤为日终采样，与单次回测分钟回撤分开标注。
+
+单笔“决策复盘”使用交易冻结快照及精确 `tradeId` 事件，按完整账本与同刻原始顺序逐步推进。读取仅涉及持仓区间的分片，不受图表最近 200 事件限制；图表只负责定位。旧账本缺少事件时仅显示明确标注的成交端点，缺少信号不反推。独立机会观察、未成交 setup 和背景拒绝仍保持各自身份，不按相近时间拼接进已成交交易。
+
+界面走查：`bun run test:browser:quant:trend-review`。默认使用合成行情和展示夹具；可用 `TREND_REVIEW_FILE=已导出的文件.json` 检查真实研究展示。截图与导出写入 `tmp/trend-review-browser/`，不覆盖冻结证据。
 
 ## 怎样扩展
 

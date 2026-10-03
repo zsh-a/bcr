@@ -7,3 +7,5 @@ export * from "./entry";
 export * from "./evaluation";
 export * from "./recorded-run";
 export * from "./structured-policy";
+export * from "./replay";
+export * from "./research-review";

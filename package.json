@@ -48,6 +48,7 @@
     "test:browser:quant:experiments": "node scripts/verify-quant-experiments.mjs",
     "test:browser:quant:charts": "node scripts/verify-quant-chart-events.mjs",
     "test:browser:quant:trend": "node scripts/verify-binance-trend.mjs",
+    "test:browser:quant:trend-review": "node scripts/verify-binance-trend-review.mjs",
     "test:browser:quant:kdj": "node scripts/verify-binance-kdj.mjs",
     "test:browser:quant:price-action": "node scripts/verify-binance-price-action.mjs",
     "test:browser:quant:structured-pullback": "node scripts/verify-binance-structured-pullback.mjs",

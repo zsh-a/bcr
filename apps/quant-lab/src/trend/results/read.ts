@@ -8,9 +8,29 @@ import type {
   TrendTrade,
   TrendContextDecision,
   TrendChannelConfig,
+  TrendEvent,
 } from "@bcr/quant-core/trend";
 import { Effect } from "effect";
 import { readJson } from "../../data/io";
+
+/** Full account events for one trade, independent of the chart's bounded preview. */
+export async function readTradeEvents(
+  services: { artifacts: Pick<RuntimeServices["artifacts"], "get"> },
+  result: TrendResult,
+  trade: TrendTrade,
+  signal: AbortSignal,
+): Promise<TrendEvent[]> {
+  const events: TrendEvent[] = [];
+  for (const chunk of result.chunks) {
+    signal.throwIfAborted();
+    if (chunk.to <= trade.entryTime || chunk.from > trade.exitTime) continue;
+    const data = await readJson<TrendChunk>(services, chunk.ref);
+    signal.throwIfAborted();
+    events.push(...data.events.filter((event) => event.tradeId === trade.id));
+  }
+  signal.throwIfAborted();
+  return events;
+}
 
 export async function readChartWindow(
   services: RuntimeServices,

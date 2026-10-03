@@ -93,6 +93,28 @@ v10 的 `structuredPullback` 增加两个必填字段，旧 v9 不接受这两�
 
 目录导入会把已使用历史登记为曝光；不能通过删掉一条曝光记录、改来源路径或把 `known-reused` 改个名字变成样本外。冻结时间和曝光仍是可核对的本地声明，不是第三方可信时间戳，也不能证明研究者从未在其他地方看过数据。
 
+新实验可在各 `universes[]` 添加 `snapshot: {path, sha256}`，绑定独立的时点标的快照。`universe.py` 校验的 v1 格式为：
+
+```json
+{
+  "kind": "trend-universe-snapshot",
+  "version": 1,
+  "venue": "binance-usdt-perpetual",
+  "observedAt": "2026-10-01T00:00:00Z",
+  "availableAt": "2026-10-01T00:01:00Z",
+  "source": { "uri": "来源档案位置", "sha256": "来源文件的64位SHA-256" },
+  "coverage": { "complete": true, "missingSymbols": [] },
+  "members": [
+    { "symbol": "BTCUSDT", "eligible": true, "reason": "当时正常交易" },
+    { "symbol": "EXCLUDED", "eligible": false, "reason": "当时不满足预声明资格" }
+  ]
+}
+```
+
+该片段仅展示字段，来源及哈希须替换为实际证据。快照的 `observedAt ≤ availableAt`，且可用时间不得晚于实验冻结时间或该标的组最早交易窗口的开始；否则不能据此选标的。快照哈希不符、重复标的、覆盖不完整、所选标的不在合格集合内均拒绝预检和编译。排除标的保留原因；快照不含策略参数和分钟价格。
+
+这是固定标的组的可选来源契约，不会回填旧实验、自动采集交易所全市场、动态轮换标的或替换历史 tick／数量步长。完整性和源可用时间仍依赖生产者的真实归档，URI 与来源 SHA 是来源声明，预检不下载 URI 验证内容；不能仅靠一个手写快照消除幸存者偏差。
+
 ## 阶段门禁和有限对照
 
 首轮主方案固定为 `sp-primary`，有五个对照；第二轮固定为 `sp-context`，有四个对照。每轮都没有参数网格，没有按结果替换主方案。

@@ -16,6 +16,24 @@ import transfer_evaluation
 
 
 class StudyTests(unittest.TestCase):
+    def test_optional_universe_snapshot_is_pinned_and_available_before_freeze_and_cell_start(self):
+        snapshot = {"kind": "trend-universe-snapshot", "version": 1, "venue": "fixture",
+                    "observedAt": "2018-01-01T00:00:00Z", "availableAt": "2018-01-01T00:01:00Z",
+                    "source": {"uri": "archive://fixture", "sha256": "a" * 64},
+                    "coverage": {"complete": True, "missingSymbols": []},
+                    "members": [{"symbol": "A", "eligible": True, "reason": "trading"}]}
+        path = self.folder / "universe.json"
+        artifacts.write(path, snapshot)
+        self.experiment["universes"][0]["snapshot"] = study.reference(path)
+        study.preflight(self.catalog, self.experiment)
+        snapshot["availableAt"] = "2021-01-01T00:00:00Z"
+        artifacts.write(path, snapshot)
+        with self.assertRaisesRegex(ValueError, "SHA mismatch"):
+            study.preflight(self.catalog, self.experiment)
+        self.experiment["universes"][0]["snapshot"] = study.reference(path)
+        with self.assertRaisesRegex(ValueError, "not available"):
+            study.preflight(self.catalog, self.experiment)
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

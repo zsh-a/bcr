@@ -1,10 +1,46 @@
 import type { ArtifactRef } from "@bcr/core";
-import type { TrendContextDecision, TrendResult } from "@bcr/quant-core/trend";
+import type { TrendContextDecision, TrendResult, TrendTrade } from "@bcr/quant-core/trend";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
-import { readContextPage } from "../src/trend/results/read";
+import { readContextPage, readTradeEvents } from "../src/trend/results/read";
 
 describe("trend background artifacts", () => {
+  it("reads complete trade events across overlapping chunk boundaries, without linking by time", async () => {
+    const reads: string[] = [];
+    const result = {
+      chunks: [
+        { ref: { id: "before" }, from: 0, to: 10 },
+        { ref: { id: "entry" }, from: 9, to: 21 },
+        { ref: { id: "exit" }, from: 20, to: 31 },
+        { ref: { id: "after" }, from: 31, to: 40 },
+      ],
+    } as TrendResult;
+    const services = {
+      artifacts: {
+        get: (ref: ArtifactRef) =>
+          Effect.sync(() => {
+            reads.push(ref.id);
+            return new TextEncoder().encode(
+              JSON.stringify({
+                events: [
+                  { time: 20, tradeId: 4, kind: ref.id === "entry" ? "entry" : "exit" },
+                  { time: 20, tradeId: null, kind: "signal" },
+                  { time: 20, tradeId: 5, kind: "entry" },
+                ],
+              }),
+            );
+          }),
+      },
+    };
+    const trade = { id: 4, entryTime: 10, exitTime: 30 } as TrendTrade;
+    const rows = await readTradeEvents(services, result, trade, new AbortController().signal);
+    expect(reads).toEqual(["entry", "exit"]);
+    expect(rows.map((row) => row.kind)).toEqual(["entry", "exit"]);
+    const abort = new AbortController();
+    abort.abort();
+    await expect(readTradeEvents(services, result, trade, abort.signal)).rejects.toThrow();
+    expect(reads).toHaveLength(2);
+  });
   it("reads only the indexed chunks needed for one page, retaining decision order", async () => {
     const reads: string[] = [];
     const ref = (id: string): ArtifactRef => ({

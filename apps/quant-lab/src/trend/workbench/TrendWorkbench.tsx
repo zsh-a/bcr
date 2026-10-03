@@ -28,10 +28,12 @@ import { TrendResult } from "../results/TrendResult";
 import { canReuseTrendDataset } from "../execution/window";
 import { useTrendResearch } from "../session/useTrendResearch";
 import { TrendSettings } from "./TrendSettings";
+import { TrendResearchPanel } from "../research/TrendResearchPanel";
 import "./styles.css";
 
 export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) {
   const research = useTrendResearch();
+  const [review, setReview] = useState(false);
   const [settings, setSettings] = useState(false),
     [history, setHistory] = useState(false);
   useEffect(() => {
@@ -63,106 +65,121 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
           <StrategyPicker value="trend" disabled={research.busy} />
           <Button
             variant="ghost"
-            aria-label="趋势运行历史"
-            disabled={!research.runs.length || research.busy}
-            onClick={() => setHistory(true)}
-          >
-            <History size={16} />
-            <span>历史</span>
-          </Button>
-          <Button
-            variant="ghost"
-            aria-label="趋势参数设置"
+            aria-label="研究证据面板"
+            aria-pressed={review}
             disabled={research.busy}
-            onClick={() => setSettings(true)}
+            onClick={() => setReview(!review)}
           >
-            <SlidersHorizontal size={16} />
-            <span>参数</span>
+            {review ? "返回回测" : "研究证据"}
           </Button>
-          {research.busy ? (
-            <Button onClick={research.cancel}>
-              <Square size={14} />
-              取消
-            </Button>
-          ) : (
-            <Button
-              variant="primary"
-              className="research-run-button"
-              disabled={!research.ready || !!invalid}
-              title={invalid || undefined}
-              onClick={() => void research.run()}
-            >
-              <Play size={15} />
-              <span>{datasetMatches ? "运行回测" : "获取并回测"}</span>
-            </Button>
+          {!review && (
+            <>
+              <Button
+                variant="ghost"
+                aria-label="趋势运行历史"
+                disabled={!research.runs.length || research.busy}
+                onClick={() => setHistory(true)}
+              >
+                <History size={16} />
+                <span>历史</span>
+              </Button>
+              <Button
+                variant="ghost"
+                aria-label="趋势参数设置"
+                disabled={research.busy}
+                onClick={() => setSettings(true)}
+              >
+                <SlidersHorizontal size={16} />
+                <span>参数</span>
+              </Button>
+              {research.busy ? (
+                <Button onClick={research.cancel}>
+                  <Square size={14} />
+                  取消
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  className="research-run-button"
+                  disabled={!research.ready || !!invalid}
+                  title={invalid || undefined}
+                  onClick={() => void research.run()}
+                >
+                  <Play size={15} />
+                  <span>{datasetMatches ? "运行回测" : "获取并回测"}</span>
+                </Button>
+              )}
+            </>
           )}
         </div>
       </header>
-      <div className="trend-source">
-        <span className="trend-provider">Binance · USDT 永续</span>
-        <label>
-          交易对
-          <Input
-            aria-label="Binance 交易对"
-            value={research.request.symbol}
-            disabled={research.busy}
-            onChange={(e) =>
-              research.setRequest({
-                ...research.request,
-                symbol: e.target.value.toUpperCase().trim(),
-              })
-            }
-          />
-        </label>
-        <label>
-          开始
-          <Input
-            aria-label="Binance 开始日期"
-            type="date"
-            value={research.request.start}
-            disabled={research.busy}
-            onChange={(e) => research.setRequest({ ...research.request, start: e.target.value })}
-          />
-        </label>
-        <label>
-          结束
-          <Input
-            aria-label="Binance 结束日期"
-            type="date"
-            value={research.request.end}
-            disabled={research.busy}
-            onChange={(e) => research.setRequest({ ...research.request, end: e.target.value })}
-          />
-        </label>
-        <label>
-          交易周期
-          <Select
-            aria-label="回测交易周期"
-            value={research.config.strategy.tradeMinutes}
-            disabled={research.busy}
-            onChange={(e) =>
-              research.setConfig(withTradingPeriod(research.config, Number(e.target.value)))
-            }
-          >
-            {TREND_PERIODS.map((m) => (
-              <option key={m} value={m}>
-                {periodLabel(m)}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <span className="trend-source-note">UTC · 1 分钟执行</span>
-        {datasetMatches && (
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={research.busy || !!invalid}
-            onClick={() => void research.run(true)}
-          >
-            更新档案
-          </Button>
-        )}
-      </div>
+      {!review && (
+        <div className="trend-source">
+          <span className="trend-provider">Binance · USDT 永续</span>
+          <label>
+            交易对
+            <Input
+              aria-label="Binance 交易对"
+              value={research.request.symbol}
+              disabled={research.busy}
+              onChange={(e) =>
+                research.setRequest({
+                  ...research.request,
+                  symbol: e.target.value.toUpperCase().trim(),
+                })
+              }
+            />
+          </label>
+          <label>
+            开始
+            <Input
+              aria-label="Binance 开始日期"
+              type="date"
+              value={research.request.start}
+              disabled={research.busy}
+              onChange={(e) => research.setRequest({ ...research.request, start: e.target.value })}
+            />
+          </label>
+          <label>
+            结束
+            <Input
+              aria-label="Binance 结束日期"
+              type="date"
+              value={research.request.end}
+              disabled={research.busy}
+              onChange={(e) => research.setRequest({ ...research.request, end: e.target.value })}
+            />
+          </label>
+          <label>
+            交易周期
+            <Select
+              aria-label="回测交易周期"
+              value={research.config.strategy.tradeMinutes}
+              disabled={research.busy}
+              onChange={(e) =>
+                research.setConfig(withTradingPeriod(research.config, Number(e.target.value)))
+              }
+            >
+              {TREND_PERIODS.map((m) => (
+                <option key={m} value={m}>
+                  {periodLabel(m)}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <span className="trend-source-note">UTC · 1 分钟执行</span>
+          {datasetMatches && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={research.busy || !!invalid}
+              onClick={() => void research.run(true)}
+            >
+              更新档案
+            </Button>
+          )}
+        </div>
+      )}
       {research.busy && (
         <div className="trend-progress" role="status">
           <Spinner size="sm" />
@@ -199,7 +216,10 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
         </p>
       )}
       <main className="trend-content">
-        {research.selected && research.result ? (
+        <div hidden={!review}>
+          <TrendResearchPanel />
+        </div>
+        {review ? null : research.selected && research.result ? (
           <TrendResult
             key={research.selected.id}
             run={research.selected}
@@ -306,13 +326,17 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
       </main>
       <footer className="trend-footer">
         <span>
-          {research.busy
-            ? research.status
-            : changed
-              ? "参数或区间已修改 · 下次运行生效"
-              : research.status || "本地研究 · 历史回放"}
+          {review
+            ? "本地导入 · 冻结研究证据"
+            : research.busy
+              ? research.status
+              : changed
+                ? "参数或区间已修改 · 下次运行生效"
+                : research.status || "本地研究 · 历史回放"}
         </span>
-        <span>资金费：历史费率 × 分钟开盘标记价格</span>
+        <span>
+          {review ? "账户统计 · 以文件声明的窗口与成本为准" : "资金费：历史费率 × 分钟开盘标记价格"}
+        </span>
       </footer>
       <TrendSettings
         open={settings}

@@ -42,6 +42,7 @@ export function trendRunView(run: TrendRun) {
       entry: config.strategy.entry,
       slowEma: config.strategy.filter === "slow-ema",
       staged: "management" in config.strategy && config.strategy.management === "staged",
+      chandelier: "management" in config.strategy && config.strategy.management === "chandelier",
       priceAction: "priceAction" in config.strategy ? config.strategy.priceAction : undefined,
       structuredPullback:
         "structuredPullback" in config.strategy ? config.strategy.structuredPullback : undefined,
@@ -89,6 +90,7 @@ export function trendRunView(run: TrendRun) {
     entry: config.entry,
     slowEma: false,
     staged: false,
+    chandelier: false,
     priceAction: undefined,
     structuredPullback: undefined,
     tradeDirection: config.direction ?? "both",

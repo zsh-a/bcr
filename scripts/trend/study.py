@@ -19,6 +19,7 @@ from evaluation import EVALUATION_VERSION, fixed_qualification, summarize
 from protocol import DAY, sleeve_capital, timestamp, validate_plan
 from transfer_evaluation import evaluate
 from warmup import WARMUP_POLICY, warmup_days
+from universe import validate_universe_snapshot
 
 ROLES = ("development", "validation", "holdout")
 CLAIMS = ("known-reused", "asset-holdout-known-time", "future-time")
@@ -210,6 +211,9 @@ def preflight(catalog, experiment, *, today=None):
         require(universe["role"] in ROLES and isinstance(universe["symbols"], dict) and universe["symbols"], "invalid symbol role/universe")
         require(not assigned & set(universe["symbols"]), "each symbol has one universe role; reuse that universe across time cells")
         assigned.update(universe["symbols"])
+        if "snapshot" in universe:
+            starts = [interval(windows[c["window"]])[0] for c in cells.values() if c["universe"] == universe["id"]]
+            validate_universe_snapshot(verified(universe["snapshot"]), universe["symbols"], min([frozen_ms, *starts]))
     for window in windows.values():
         require(window["role"] in ROLES, "invalid time role")
         interval(window)
@@ -379,10 +383,7 @@ def _gates(catalog, experiment, cell, refs, catalog_ref, experiment_ref):
         require(receipt.get("experiment") == experiment_ref
                 and _catalog_descends(catalog_ref, receipt.get("catalog")), "receipt belongs to another experiment/catalog lineage")
         require(receipt.get("passed") is True, "a failed stage cannot unlock later observations")
-        compilation = receipt["compilation"]
-        verified(compilation)
-        actual = _seal_value(compilation["path"], receipt["run"], receipt.get("evaluation", {}).get("path"))
-        require(semantic_identity(actual) == semantic_identity(receipt), "stage receipt was not produced by audited evidence")
+        audit_stage_receipt(ref["path"])
         seen.add(receipt["cell"])
         if receipt["stage"] == "development":
             source = receipt["source"]
@@ -414,6 +415,17 @@ def seal_stage(compilation, run, output, evaluation=None):
     result = _seal_value(compilation, run, evaluation)
     write_once(output, result)
     return result
+
+
+def audit_stage_receipt(path):
+    """Read a recorded verdict only after replay receipts and gates have been re-audited."""
+    receipt = read(path)
+    verified(receipt["compilation"])
+    if "evaluation" in receipt:
+        verified(receipt["evaluation"])
+    actual = _seal_value(receipt["compilation"]["path"], receipt["run"], receipt.get("evaluation", {}).get("path"))
+    require(semantic_identity(actual) == semantic_identity(receipt), "stage receipt was not produced by audited evidence")
+    return receipt
 
 
 def main():

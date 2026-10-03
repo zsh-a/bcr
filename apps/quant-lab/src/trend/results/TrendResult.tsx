@@ -19,6 +19,7 @@ import { trendEntryFields } from "./entry";
 import { number, timestamp } from "./evaluation";
 import { TrendEvaluationPanel, TrendMonthlyReturns } from "./TrendEvaluationPanel";
 import { TrendPerformanceChart } from "./TrendPerformanceChart";
+import { TrendDecisionReplay } from "./TrendDecisionReplay";
 
 export function TrendResult({ run, result }: { run: TrendRun; result: Result }) {
   const services = useRuntime();
@@ -261,6 +262,13 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
                       : "可结合信号事件和入场背景核对。"}
                 </p>
               )}
+              <TrendDecisionReplay
+                key={focusedTrade.id}
+                result={result}
+                trade={focusedTrade}
+                tickSize={config.tickSize}
+                onLocate={chart.locate}
+              />
             </section>
           )}
           <details className="trend-event-list">
@@ -397,7 +405,9 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
               ? "ATR 硬止损在入场时冻结；此前反向通道在完整交易 K 线收盘后确认退出，下分钟开盘成交。不启用保本或 ATR 移动止盈。"
               : config.staged
                 ? "初始止损使用信号 ATR，初始 R 距离固定。完整交易 K 线收盘达到阈值后锁定保本与跟踪状态；跟踪使用当前 ATR 14 和入场以来极值。保护线只收紧，若越过收盘则锁定下一分钟开盘退出。"
-                : "止损、保本触发和移动距离使用信号收盘时冻结的 ATR；移动止盈无需单独启动阈值。"}
+                : config.chandelier
+                  ? "初始止损使用信号 ATR；从入场后第一根完整交易 K 线开始，按入场以来极值与最近完成 K 线的动态 ATR 14 跟踪。保护线只收紧，无独立保本或盈利启动阈值；越过收盘时锁定下一分钟开盘退出。"
+                  : "止损、保本触发和移动距离使用信号收盘时冻结的 ATR；移动止盈无需单独启动阈值。"}
           初始止损在入场后立即生效；收盘决策在下一分钟生效。跳空按更不利的开盘价成交。当前按分钟
           OHLC 回放，未模拟逐笔撮合、市场冲击、强平或 ADL。
         </p>
