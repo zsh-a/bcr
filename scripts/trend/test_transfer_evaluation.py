@@ -221,7 +221,7 @@ class TransferEvaluationTests(unittest.TestCase):
             row = next(r for r in batch["results"] if r["id"] == "selected")
             row["daily"][0]["equity"] = 0
             row["metrics"]["evaluation"]["daily"][0]["equity"] = 0
-        with self.assertRaisesRegex(ValueError, "undefined transfer daily return"):
+        with self.assertRaisesRegex(ValueError, "undefined account daily return"):
             account_window(self.plan, batches, "selected", window)
 
     def test_output_cannot_overwrite_evidence_or_existing_evaluation(self):

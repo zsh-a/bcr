@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from search_evaluation import acceptance, bootstrap, evaluate, max_mean_family, run, settings_for
 from test_transfer_evaluation import batch_fixture, development_fixture, plan_fixture
-from transfer_evaluation import circular_indices
+from account_statistics import circular_indices
 
 
 def search_plan():

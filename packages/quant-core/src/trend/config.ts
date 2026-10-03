@@ -1,7 +1,7 @@
 import type { TrendConfig } from "./model";
 import {
   DEFAULT_STRUCTURED_PULLBACK_POLICY,
-  STRUCTURED_PULLBACK_OPTIONS,
+  STRUCTURED_PULLBACK_VALUES,
 } from "./structured-policy";
 
 export const TREND_PERIODS = [1, 3, 5, 15, 30, 60, 120, 240, 1440] as const;
@@ -381,11 +381,11 @@ export function validateTrendConfig(value: unknown): asserts value is TrendConfi
   if (hasStructuredPullback) {
     const structured = shape(
       strategy.structuredPullback,
-      STRUCTURED_PULLBACK_OPTIONS,
+      STRUCTURED_PULLBACK_VALUES,
       "结构化回调机制",
     );
-    for (const [field, options] of Object.entries(STRUCTURED_PULLBACK_OPTIONS))
-      if (!options.some((option) => option.value === structured[field]))
+    for (const [field, options] of Object.entries(STRUCTURED_PULLBACK_VALUES))
+      if (!options.some((value) => value === structured[field]))
         throw new Error("结构化回调机制选项无效");
   }
   if (hasStaged) {

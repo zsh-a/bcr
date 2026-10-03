@@ -1,23 +1,15 @@
 """Describe frozen mechanism contrasts with paired blocks; never rank or select."""
 import argparse
 from pathlib import Path
-import re
 
 from artifacts import audit_window, ensure_writable, evaluation_identity, load_evidence, sha, source_fingerprint, write_once
 from evaluation import evaluation_contract
 from protocol import DAY, development_window, is_development, timestamp
-from transfer_evaluation import account_window, pooled_bootstrap, require
+from account_statistics import account_window, identifiers, paired_bootstrap, require
 
 VERSION = "trend-mechanism-evaluation-1"
-SOURCES = ("mechanism_evaluation.py", "transfer_evaluation.py", "evaluation.py",
+SOURCES = ("mechanism_evaluation.py", "account_statistics.py", "evaluation.py",
            "artifacts.py", "daily.py", "protocol.py", "warmup.py")
-
-
-def identifiers(values, label):
-    require(isinstance(values, list) and values
-            and all(isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", value)
-                    for value in values) and len(values) == len(set(values)),
-            f"{label} must contain nonempty unique identifiers")
 
 
 def settings_for(plan):
@@ -73,18 +65,18 @@ def settings_for(plan):
 
 
 def contrast_bootstrap(windows, candidate, primary, samples, block, seed):
-    # Reuse the transfer sampler's four-series contract. Comparator maps to
-    # selected, so paired always means comparator minus primary. Reusing the
-    # same seed and window order gives every contrast identical date draws.
-    mapping = {"selectedBase": (candidate, "base"), "baselineBase": (primary, "base"),
-               "selectedStress": (candidate, "stress"), "baselineStress": (primary, "stress")}
+    # Paired means comparator minus primary. The same seed and window order
+    # give every contrast identical date draws; labels stay local to this study.
+    mapping = {"comparatorBase": (candidate, "base"), "primaryBase": (primary, "base"),
+               "comparatorStress": (candidate, "stress"), "primaryStress": (primary, "stress")}
     sampled = [{"times": window["times"],
                 "returns": {key: window["returns"][name][cost] for key, (name, cost) in mapping.items()}}
                for window in windows]
-    result = pooled_bootstrap(sampled, samples, block, seed)
+    pairs = {"base": ("comparatorBase", "primaryBase"), "stress": ("comparatorStress", "primaryStress")}
+    result = paired_bootstrap(sampled, tuple(mapping), pairs, samples, block, seed)
     result["absolute"] = {
-        "primary": {"base": result["absolute"]["baselineBase"], "stress": result["absolute"]["baselineStress"]},
-        "comparator": {"base": result["absolute"]["selectedBase"], "stress": result["absolute"]["selectedStress"]}}
+        "primary": {"base": result["absolute"]["primaryBase"], "stress": result["absolute"]["primaryStress"]},
+        "comparator": {"base": result["absolute"]["comparatorBase"], "stress": result["absolute"]["comparatorStress"]}}
     return result
 
 
@@ -112,7 +104,7 @@ def evaluate(plan, batches_by_window):
         for candidate in candidates:
             accounts[candidate], returns[candidate] = {}, {}
             for cost, suffix in (("base", ""), ("stress", "-stress")):
-                account, daily, _ = account_window(plan, batches, candidate + suffix, window)
+                account, daily = account_window(plan, batches, candidate + suffix, window)
                 require(times is None or times == daily["times"], "mechanism candidate/cost calendars differ")
                 times = daily["times"]
                 accounts[candidate][cost] = account

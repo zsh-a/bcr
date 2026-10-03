@@ -4,6 +4,7 @@ pub mod engine;
 pub mod evaluation;
 pub mod execution;
 pub mod indicators;
+mod input;
 pub mod management;
 pub mod model;
 #[cfg(not(target_arch = "wasm32"))]

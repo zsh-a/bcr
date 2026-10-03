@@ -11,29 +11,34 @@ from artifacts import (atomic_bytes, audit_replay_shards, ensure_writable, evalu
                        execution_fingerprint, merge_replay_batches, read, resolve_selection_source,
                        sha, validate_batch, write)
 from evaluation import EVALUATION_VERSION, fixed_qualification, select_development, summarize
-from protocol import (REPLAY_VERSION, NATIVE_BATCH_SIZE, development_window, is_development,
+from protocol import (REPLAY_VERSION, development_window, is_development,
                       native_requests, request_batches, timestamp, validate_plan, validate_selection, window_candidates)
 from warmup import WARMUP_POLICY
 
 
-def run_sharded(args, window, symbol, requests, fingerprint, out, configs):
-    """Publish one account batch only after every bounded native call validates."""
+def replay_requests(args, window, symbol, requests, fingerprint, out, configs):
+    """One execution/publication lifecycle, regardless of native batch count."""
+    chunks = request_batches(requests)
+    sharded = len(chunks) > 1
     payload = (json.dumps(requests, indent=2, allow_nan=False) + "\n").encode()
     signature = {"binarySha256": fingerprint, "replayVersion": REPLAY_VERSION,
                  "configsSha256": hashlib.sha256(payload).hexdigest(), "manifestSha256": sha(args.manifest),
                  "planSha256": sha(args.plan), "warmupPolicy": WARMUP_POLICY, "window": window}
     manifest = read(args.manifest)
     if manifest.get("planSha256") != signature["planSha256"] or sha(args.binary) != fingerprint:
-        raise ValueError("sharded replay inputs differ from the frozen execution identity")
+        raise ValueError("replay inputs differ from the frozen execution identity")
     receipt = out.with_suffix(".receipt.json")
     recorded = read(receipt) if receipt.exists() else {}
     cached = out.exists() and all(recorded.get(key) == value for key, value in
                                   {**signature, "resultSha256": sha(out)}.items())
     if cached:
-        if sha(configs) != signature["configsSha256"]:
-            raise ValueError("merged replay configuration checksum mismatch")
+        if not configs.exists() or sha(configs) != signature["configsSha256"]:
+            raise ValueError("replay configuration checksum mismatch")
         result = read(out)
+        validate_batch(result, requests, window, symbol, signature["planSha256"], WARMUP_POLICY)
         audit_replay_shards(recorded, result, requests, window, symbol, signature["planSha256"], manifest, out.parent)
+        if not sharded:
+            merge_replay_batches([result], requests, window, symbol, signature["planSha256"], manifest)
     else:
         source_hash = execution_fingerprint()
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -42,7 +47,6 @@ def run_sharded(args, window, symbol, requests, fingerprint, out, configs):
         with tempfile.TemporaryDirectory(dir=out.parent, prefix=".replay-") as temporary:
             temporary = Path(temporary)
             batches, pending_files, shards = [], [], []
-            chunks = request_batches(requests)
             for index, chunk in enumerate(chunks):
                 shard_configs = temporary / f"{index:03d}-configs.json"
                 shard_result = temporary / f"{index:03d}-result.json"
@@ -53,18 +57,19 @@ def run_sharded(args, window, symbol, requests, fingerprint, out, configs):
                 batch = read(shard_result)
                 validate_batch(batch, chunk, window, symbol, signature["planSha256"], WARMUP_POLICY)
                 batches.append(batch)
-                record = {"index": index, "candidateIds": [row["id"] for row in chunk]}
-                for name, path in [("configs", shard_configs), ("result", shard_result)]:
-                    target = destination / path.name
-                    record[name + "Path"] = str(target.relative_to(out.parent))
-                    record[name + "Sha256"] = sha(path)
-                    pending_files.append((path, target, record[name + "Sha256"]))
-                shards.append(record)
-                print(f"validated {window['id']} {symbol}: native shard {index + 1}/{len(chunks)} ({len(chunk)} candidates)", flush=True)
+                if sharded:
+                    record = {"index": index, "candidateIds": [row["id"] for row in chunk]}
+                    for name, path in [("configs", shard_configs), ("result", shard_result)]:
+                        target = destination / path.name
+                        record[name + "Path"] = str(target.relative_to(out.parent))
+                        record[name + "Sha256"] = sha(path)
+                        pending_files.append((path, target, record[name + "Sha256"]))
+                    shards.append(record)
+                    print(f"validated {window['id']} {symbol}: native shard {index + 1}/{len(chunks)} ({len(chunk)} candidates)", flush=True)
             result = merge_replay_batches(batches, requests, window, symbol, signature["planSha256"], manifest)
             if (sha(args.plan) != signature["planSha256"] or sha(args.manifest) != signature["manifestSha256"]
                     or sha(args.binary) != fingerprint or execution_fingerprint() != source_hash):
-                raise ValueError("sharded replay inputs or execution sources changed during execution")
+                raise ValueError("replay inputs or execution sources changed during execution")
             # Shards are immutable evidence, published only once the entire
             # native batch has passed. A receipt is the final commit marker.
             for pending, target, expected in pending_files:
@@ -73,10 +78,18 @@ def run_sharded(args, window, symbol, requests, fingerprint, out, configs):
                         raise ValueError("existing native shard evidence differs; use a new output directory")
                 else:
                     atomic_bytes(target, pending.read_bytes(), replace=False)
-            final_receipt = {**signature, "executionSourceSha256": source_hash, "shards": shards}
+            final_receipt = {**signature, "executionSourceSha256": source_hash}
+            if sharded:
+                final_receipt["shards"] = shards
             audit_replay_shards(final_receipt, result, requests, window, symbol, signature["planSha256"], manifest, out.parent)
             atomic_bytes(configs, payload)
-            write(out, result)
+            if sharded:
+                write(out, result)
+            else:
+                # Keep the native serialization and historical single-call
+                # receipt shape; batching is only an execution detail.
+                result = batches[0]
+                atomic_bytes(out, shard_result.read_bytes())
             write(receipt, {**final_receipt, "resultSha256": sha(out)})
     print(f"replayed {window['id']} {symbol}: {len(requests)} declared variants", flush=True)
     return result
@@ -87,31 +100,8 @@ def run_symbol(args, plan, window, symbol, candidates, fingerprint):
     out = args.output / window["id"] / f"{symbol}.json"
     configs = args.output / window["id"] / f"{symbol}-configs.json"
     requests = native_requests(plan, symbol, candidates)
-    request_batches(requests)
-    if len(requests) > NATIVE_BATCH_SIZE:
-        return run_sharded(args, window, symbol, requests, fingerprint, out, configs)
-    write(configs, requests)
-    receipt = out.with_suffix(".receipt.json")
-    signature = {"binarySha256": fingerprint, "replayVersion": REPLAY_VERSION,
-                 "configsSha256": sha(configs), "manifestSha256": sha(args.manifest),
-                 "planSha256": sha(args.plan), "warmupPolicy": WARMUP_POLICY, "window": window}
-    recorded = read(receipt) if receipt.exists() else {}
-    cached = out.exists() and all(recorded.get(key) == value for key, value in {**signature, "resultSha256": sha(out)}.items())
-    if not cached:
-        out.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=out.parent, prefix=".replay-") as temporary:
-            pending = Path(temporary) / "result.json"
-            subprocess.run([str(args.binary), str(args.manifest), symbol, str(configs), str(timestamp(window["start"])),
-                            str(timestamp(window["end"])), str(pending), window["id"]], check=True)
-            result = read(pending)
-            validate_batch(result, requests, window, symbol, signature["planSha256"], WARMUP_POLICY)
-            atomic_bytes(out, pending.read_bytes())
-        write(receipt, {**signature, "executionSourceSha256": execution_fingerprint(), "resultSha256": sha(out)})
-    else:
-        result = read(out)
-        validate_batch(result, requests, window, symbol, signature["planSha256"], WARMUP_POLICY)
-    print(f"replayed {window['id']} {symbol}: {len(candidates)} declared variants", flush=True)
-    return result
+    return replay_requests(args, window, symbol, requests, fingerprint, out, configs)
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

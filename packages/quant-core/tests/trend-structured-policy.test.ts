@@ -4,7 +4,7 @@ import {
   structuredPullbackResearchConfig,
   withTrendEntry,
   validateTrendConfig,
-  STRUCTURED_PULLBACK_OPTIONS,
+  STRUCTURED_PULLBACK_VALUES,
   DEFAULT_STRUCTURED_PULLBACK_POLICY,
 } from "../src/trend";
 import { RECORDED_V9 } from "./fixtures/trend-recorded";
@@ -12,10 +12,9 @@ import { RECORDED_V9 } from "./fixtures/trend-recorded";
 describe("current structured policy choices", () => {
   it("accepts each selectable value and rejects missing, unknown or mistyped values", () => {
     const config = structuredPullbackResearchConfig(createTrendConfig());
-    for (const [field, options] of Object.entries(STRUCTURED_PULLBACK_OPTIONS)) {
-      expect(new Set(options.map((option) => option.value)).size).toBe(options.length);
-      for (const { value, label } of options) {
-        expect(label.trim().length).toBeGreaterThan(0);
+    for (const [field, options] of Object.entries(STRUCTURED_PULLBACK_VALUES)) {
+      expect(new Set(options).size).toBe(options.length);
+      for (const value of options) {
         const next = structuredClone(config);
         Object.assign(next.strategy.structuredPullback!, { [field]: value });
         validateTrendConfig(next);

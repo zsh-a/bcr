@@ -2,6 +2,9 @@ use super::background::Background;
 use super::config::{Config, CostPolicy};
 use super::evaluation::Evaluator;
 use super::indicators::Indicators;
+#[cfg(not(target_arch = "wasm32"))]
+use super::input::RESEARCH_MAX_DAYS;
+use super::input::{validate_minute, validate_ohlc, validate_window, BROWSER_MAX_DAYS};
 use super::management::{
     chandelier_decision, protection_decision, staged_decision, ChannelExit, StopUpdate,
 };
@@ -49,7 +52,7 @@ impl Engine {
         end: u64,
         warmup: u64,
     ) -> Result<Self, String> {
-        Self::with_window_limit(config, funding, start, end, warmup, 730)
+        Self::with_window_limit(config, funding, start, end, warmup, BROWSER_MAX_DAYS)
     }
 
     /// Offline research can retain positions and account state across longer
@@ -62,7 +65,7 @@ impl Engine {
         end: u64,
         warmup: u64,
     ) -> Result<Self, String> {
-        Self::with_window_limit(config, funding, start, end, warmup, 1096)
+        Self::with_window_limit(config, funding, start, end, warmup, RESEARCH_MAX_DAYS)
     }
 
     fn with_window_limit(
@@ -74,17 +77,7 @@ impl Engine {
         maximum_days: u64,
     ) -> Result<Self, String> {
         let cost_policy = config.cost_policy()?;
-        if start % MINUTE != 0
-            || end % MINUTE != 0
-            || warmup % MINUTE != 0
-            || warmup > start
-            || start >= end
-            || end - start > maximum_days * DAY
-            || start - warmup > MAX_WARMUP_DAYS * DAY
-            || start < 1_000_000_000_000
-        {
-            return Err("invalid minute backtest window".into());
-        }
+        validate_window(start, end, warmup, maximum_days)?;
         let mut previous = 0;
         for f in &funding {
             if f.time < start
@@ -358,27 +351,13 @@ impl Engine {
         Ok(())
     }
     pub fn advance(&mut self, bar: Bar, mark: Bar) -> Result<(), String> {
-        if self.finished
-            || bar.time != self.expected
-            || mark.time != bar.time
-            || bar.time >= self.end
-        {
+        if self.finished || mark.time != bar.time {
             return Err(
                 "minute input must be complete, chronological and aligned with the window".into(),
             );
         }
-        if [
-            bar.open, bar.high, bar.low, bar.close, mark.open, mark.high, mark.low, mark.close,
-        ]
-        .iter()
-        .any(|p| !p.is_finite() || *p <= 0.0)
-            || bar.high < bar.open.max(bar.close)
-            || bar.low > bar.open.min(bar.close)
-            || mark.high < mark.open.max(mark.close)
-            || mark.low > mark.open.min(mark.close)
-        {
-            return Err("invalid traded or mark candle".into());
-        }
+        validate_minute(bar, self.expected, self.end)?;
+        validate_ohlc(mark)?;
         self.expected += MINUTE;
         self.rows += 1;
         if bar.time == self.start {

@@ -3,6 +3,7 @@
 use super::background::Background;
 use super::config::Config;
 use super::indicators::Indicators;
+use super::input::{validate_minute, validate_window, RESEARCH_MAX_DAYS};
 use super::model::*;
 use super::signals::entry_directions;
 use super::structured_pullback::StructuredPullback;
@@ -56,15 +57,10 @@ pub struct Observer {
 impl Observer {
     pub fn new(config: Config, start: u64, end: u64, warmup: u64) -> Result<Self, String> {
         config.validate()?;
-        if config.version < 10
-            || config.strategy.entry != "structured-pullback"
-            || warmup > start
-            || start >= end
-        {
-            return Err(
-                "opportunity observer requires a v10 structured strategy and valid window".into(),
-            );
+        if config.version < 10 || config.strategy.entry != "structured-pullback" {
+            return Err("opportunity observer requires a v10 structured strategy".into());
         }
+        validate_window(start, end, warmup, RESEARCH_MAX_DAYS)?;
         Ok(Self {
             config,
             indicators: Indicators::default(),
@@ -77,9 +73,7 @@ impl Observer {
         })
     }
     pub fn advance(&mut self, bar: Bar) -> Result<(), String> {
-        if bar.time != self.expected || bar.time >= self.end {
-            return Err("opportunity input must be continuous and inside its window".into());
-        }
+        validate_minute(bar, self.expected, self.end)?;
         self.expected += MINUTE;
         let strategy = &self.config.strategy;
         if strategy.filter == "background" {
@@ -270,6 +264,110 @@ mod tests {
         append(&mut result, observer.drain());
         result
     }
+    #[test]
+    fn observer_and_research_engine_share_window_boundaries() {
+        for (start, end, warmup, valid) in [
+            (BASE, BASE + DAY, BASE, true),
+            (BASE, BASE + 1096 * DAY, BASE - 250 * DAY, true),
+            (BASE, BASE + 1096 * DAY + MINUTE, BASE, false),
+            (BASE, BASE + DAY, BASE - 250 * DAY - MINUTE, false),
+            (BASE + 1, BASE + DAY, BASE, false),
+            (BASE, BASE + DAY + 1, BASE, false),
+            (BASE, BASE + DAY, BASE - 1, false),
+            (BASE, BASE + DAY, BASE + MINUTE, false),
+            (BASE, BASE, BASE, false),
+            (BASE, BASE - MINUTE, BASE, false),
+            (0, DAY, 0, false),
+        ] {
+            let observed = Observer::new(config(), start, end, warmup);
+            let account = Engine::new_research(config(), vec![], start, end, warmup);
+            assert_eq!(observed.is_ok(), valid, "observer {start}/{end}/{warmup}");
+            assert_eq!(account.is_ok(), valid, "account {start}/{end}/{warmup}");
+        }
+    }
+
+    #[test]
+    fn invalid_minutes_do_not_advance_observer_or_account_state() {
+        let bars = rows(false);
+        let start = BASE + 50 * 30 * MINUTE;
+        let end = BASE + bars.len() as u64 * MINUTE;
+        let mut observer = Observer::new(config(), start, end, BASE).unwrap();
+        let mut account = Engine::new_research(config(), vec![], start, end, BASE).unwrap();
+        let mut clean = Engine::new_research(config(), vec![], start, end, BASE).unwrap();
+        for (index, &bar) in bars.iter().enumerate() {
+            if index == 62 * 30 - 1 {
+                let mut invalid = vec![];
+                for price in [0.0, -1.0, f64::NAN, f64::INFINITY] {
+                    for field in 0..4 {
+                        let mut b = bar;
+                        match field {
+                            0 => b.open = price,
+                            1 => b.high = price,
+                            2 => b.low = price,
+                            _ => b.close = price,
+                        }
+                        invalid.push(b);
+                    }
+                }
+                invalid.extend([
+                    Bar {
+                        high: bar.open.min(bar.close) - 1.0,
+                        ..bar
+                    },
+                    Bar {
+                        low: bar.open.max(bar.close) + 1.0,
+                        ..bar
+                    },
+                    Bar {
+                        time: bar.time - MINUTE,
+                        ..bar
+                    },
+                    Bar {
+                        time: bar.time + MINUTE,
+                        ..bar
+                    },
+                    Bar { time: end, ..bar },
+                ]);
+                let diagnostics = serde_json::to_value(&observer.diagnostics).unwrap();
+                for b in invalid {
+                    assert!(observer.advance(b).is_err());
+                    assert_eq!(observer.expected, bar.time);
+                    assert_eq!(
+                        serde_json::to_value(&observer.diagnostics).unwrap(),
+                        diagnostics
+                    );
+                    assert!(account.advance(b, b).is_err());
+                    assert!(account.advance(bar, b).is_err());
+                    assert_eq!(account.rows(), index);
+                }
+            }
+            observer.advance(bar).unwrap();
+            account.advance(bar, bar).unwrap();
+            clean.advance(bar, bar).unwrap();
+        }
+        observer.finish().unwrap();
+        assert_eq!(
+            serde_json::to_value(observer.drain()).unwrap(),
+            serde_json::to_value(run(config(), &bars, 13)).unwrap()
+        );
+        assert_eq!(
+            serde_json::to_value(account.finish().unwrap()).unwrap(),
+            serde_json::to_value(clean.finish().unwrap()).unwrap()
+        );
+        assert_eq!(
+            serde_json::to_value(account.drain()).unwrap(),
+            serde_json::to_value(clean.drain()).unwrap()
+        );
+        assert!(observer
+            .advance(Bar {
+                time: end,
+                ..bars[0]
+            })
+            .is_err());
+        assert_eq!(observer.expected, end);
+        assert!(account.advance(bars[0], bars[0]).is_err());
+    }
+
     #[test]
     fn observer_keeps_market_opportunities_while_the_real_account_is_holding_mirrored() {
         for short in [false, true] {

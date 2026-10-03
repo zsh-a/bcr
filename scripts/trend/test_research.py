@@ -514,33 +514,40 @@ class ResearchTests(unittest.TestCase):
             folder = Path(tmp)
             plan = json.loads((protocol.ROOT / "research/trend/slow-plan.json").read_text())
             args = SimpleNamespace(output=folder, manifest=folder / "manifest.json", plan=folder / "plan.json", binary=folder / "trend")
-            artifacts.write(args.manifest, {"version": 1})
             artifacts.write(args.plan, plan)
+            manifest = {"version": 1, "planSha256": artifacts.sha(args.plan), "symbols": {
+                "BTCUSDT": {"partitions": [{"month": "2023-12"}, {"month": "2024-01"}]}}}
+            artifacts.write(args.manifest, manifest)
+            args.binary.write_bytes(b"binary-a")
+            fingerprint = artifacts.sha(args.binary)
             window = {"id": "development", "start": "2024-01-01", "end": "2024-01-03"}
             candidate = plan["candidates"][0]
             def replay(command, check):
                 start, end = int(command[4]), int(command[5])
-                artifacts.write(Path(command[6]), {"symbol": "BTCUSDT", "window": window["id"],
+                warmup_start = start - warmup.warmup_days(candidate) * protocol.DAY
+                artifacts.write(Path(command[6]), {"version": 1, "symbol": "BTCUSDT", "window": window["id"],
+                    "warmupStart": warmup_start, "partitions": artifacts.replay_partitions(manifest, "BTCUSDT", warmup_start, end),
                     "startTime": start, "endTime": end, "engine": "test-engine", "planSha256": artifacts.sha(args.plan),
                     "results": [{"id": candidate["id"], "config": protocol.config(plan, "BTCUSDT", protocol.Candidate.from_definition(candidate)),
                     "metrics": {"finalEquity": 10000}, "trades": [],
                     "warmupStart": start - warmup.warmup_days(candidate) * protocol.DAY,
                     "daily": [{"time": t, "equity": 10000} for t in range(start + protocol.DAY - 1, end, protocol.DAY)]}]})
             with patch.object(research.subprocess, "run", side_effect=replay) as call:
-                research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], "binary-a")
-                research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], "binary-a")
+                research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], fingerprint)
+                research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], fingerprint)
                 self.assertEqual(call.call_count, 1)
                 with patch.object(research, "evaluation_fingerprint", return_value="changed-accounting"):
-                    research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], "binary-a")
+                    research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], fingerprint)
                 self.assertEqual(call.call_count, 1)
                 with patch.object(research, "REPLAY_VERSION", "changed-execution-protocol"):
-                    research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], "binary-a")
+                    research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], fingerprint)
                 self.assertEqual(call.call_count, 2)
-                artifacts.write(args.manifest, {"version": 2})
-                research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], "binary-a")
+                artifacts.write(args.manifest, {**manifest, "version": 2})
+                research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], fingerprint)
                 self.assertEqual(call.call_count, 3)
                 artifacts.write(args.plan, {**plan, "description": "new frozen protocol"})
-                research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], "binary-a")
+                artifacts.write(args.manifest, {**manifest, "planSha256": artifacts.sha(args.plan)})
+                research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], fingerprint)
                 self.assertEqual(call.call_count, 4)
 
     def test_frozen_evidence_and_run_destinations_cannot_be_written(self):
@@ -786,15 +793,17 @@ class ResearchTests(unittest.TestCase):
             plan_path, manifest_path, historical = self.make_evidence(folder)
             plan = artifacts.read(plan_path)
             args = SimpleNamespace(plan=plan_path, manifest=manifest_path, output=folder / "new-run", binary=folder / "binary")
+            args.binary.write_bytes(b"new-binary")
             source = artifacts.read(historical / "training" / "AAAUSDT.json")
             source["symbol"] = "WRONGUSDT"
             def replay(command, check):
                 artifacts.write(Path(command[6]), source)
             with patch.object(research.subprocess, "run", side_effect=replay):
                 with self.assertRaisesRegex(ValueError, "identity mismatch"):
-                    research.run_symbol(args, plan, plan["windows"][0], "AAAUSDT", protocol.window_candidates(plan, plan["windows"][0]), "new-binary")
+                    research.run_symbol(args, plan, plan["windows"][0], "AAAUSDT", protocol.window_candidates(plan, plan["windows"][0]), artifacts.sha(args.binary))
             self.assertFalse((args.output / "training" / "AAAUSDT.json").exists())
             self.assertFalse((args.output / "training" / "AAAUSDT.receipt.json").exists())
+            self.assertFalse((args.output / "training" / "AAAUSDT-configs.json").exists())
 
     def test_active_clis_require_explicit_study_and_destinations(self):
         for name in ["download.py", "research.py", "report.py"]:

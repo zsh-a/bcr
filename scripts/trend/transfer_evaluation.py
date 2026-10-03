@@ -2,22 +2,20 @@
 import argparse
 import math
 from pathlib import Path
-import random
 import statistics
 
 from artifacts import (audit_window, ensure_writable, evaluation_identity, load_evidence, read, resolve_selection_source,
                        sha, source_fingerprint, write_once)
-from evaluation import account_series, current_returns, evaluation_contract, fixed_qualification, summarize
+from account_statistics import account_window as summarize_window
+from account_statistics import circular_indices, paired_bootstrap, require
+from evaluation import account_series, current_returns, evaluation_contract, fixed_qualification
 from protocol import DAY, development_window, is_development, timestamp
 
 VERSION = "trend-transfer-evaluation-1"
 INHERITED_VERSION = "trend-transfer-evaluation-2"
 SERIES = ("selectedBase", "baselineBase", "selectedStress", "baselineStress")
-
-
-def require(condition, message):
-    if not condition:
-        raise ValueError(message)
+SOURCES = ("transfer_evaluation.py", "account_statistics.py", "evaluation.py",
+           "artifacts.py", "daily.py", "protocol.py", "warmup.py")
 
 
 def settings_for(plan):
@@ -58,72 +56,16 @@ def settings_for(plan):
     return settings
 
 
-def circular_indices(length, block, rng):
-    """Exactly one window's original length; wrapping never enters another window."""
-    require(length > 0 and block > 0, "circular blocks require positive lengths")
-    chosen = []
-    while len(chosen) < length:
-        start = rng.randrange(length)
-        chosen.extend((start + offset) % length for offset in range(min(block, length - len(chosen))))
-    return chosen
-
-
 def pooled_bootstrap(windows, samples, block, seed):
-    """One date resample per window/replicate shared by all account/cost series."""
-    require(windows and type(samples) is int and samples > 0, "bootstrap requires windows and positive samples")
-    for window in windows:
-        require(set(window["returns"]) == set(SERIES), "bootstrap needs all candidate/cost series")
-        length = len(window["times"])
-        require(length > 0 and all(len(window["returns"][key]) == length for key in SERIES),
-                "bootstrap candidate/cost calendars differ")
-        require(all(type(value) in (int, float) and math.isfinite(value)
-                    for values in window["returns"].values() for value in values),
-                "bootstrap cannot omit undefined daily returns")
-    days = sum(len(window["times"]) for window in windows)
-    means = {key: sum(sum(w["returns"][key]) for w in windows) / days for key in SERIES}
-    estimates = {key: [] for key in (*SERIES, "pairedBase", "pairedStress")}
-    rng = random.Random(seed)
-    for _ in range(samples):
-        totals = {key: 0.0 for key in SERIES}
-        for window in windows:
-            chosen = circular_indices(len(window["times"]), block, rng)
-            for key in SERIES:
-                totals[key] += sum(window["returns"][key][index] for index in chosen)
-        for key in SERIES:
-            estimates[key].append(totals[key] / days)
-        estimates["pairedBase"].append((totals["selectedBase"] - totals["baselineBase"]) / days)
-        estimates["pairedStress"].append((totals["selectedStress"] - totals["baselineStress"]) / days)
-    means["pairedBase"] = means["selectedBase"] - means["baselineBase"]
-    means["pairedStress"] = means["selectedStress"] - means["baselineStress"]
-    result = {}
-    for key, values in estimates.items():
-        ordered = sorted(values)
-        result[key] = {"meanDailyReturn": means[key],
-                       "meanDailyReturn95CI": [ordered[int(samples * .025)], ordered[min(samples - 1, int(samples * .975))]]}
-    return {"blockDays": block, "samples": samples, "seed": seed, "days": days,
-            "absolute": {key: result[key] for key in SERIES},
-            "paired": {"base": result["pairedBase"], "stress": result["pairedStress"]}}
+    """Compatibility adapter for the transfer evaluator's four named series."""
+    pairs = {"base": ("selectedBase", "baselineBase"), "stress": ("selectedStress", "baselineStress")}
+    return paired_bootstrap(windows, SERIES, pairs, samples, block, seed)
 
 
 def account_window(plan, batches, candidate, window):
+    """Transfer diagnostics retain the original fixed-sleeve omission analysis."""
+    compact, daily = summarize_window(plan, batches, candidate, window)
     selected, portfolio, initial, curves = account_series(plan, batches, candidate)
-    start, end = timestamp(window["start"]), timestamp(window["end"])
-    expected = list(range(start + DAY - 1, end, DAY))
-    require([point["time"] for point in portfolio] == expected, f"incomplete transfer calendar: {window['id']}/{candidate}")
-    daily = current_returns(portfolio, initial)
-    require(all(value is not None and math.isfinite(value) for value in daily),
-            f"undefined transfer daily return: {window['id']}/{candidate}; observations cannot be dropped")
-    summary = summarize(plan, batches, candidate, bootstrap=False)
-    trades = [trade for _, row in selected for trade in row["trades"]]
-    require(all(math.isfinite(t["netPnl"]) and math.isfinite(t["rMultiple"]) for t in trades),
-            "non-finite transfer trade ledger")
-    counts = {symbol: len(row["trades"]) for symbol, row in selected}
-    compact = {"candidate": candidate, "days": len(expected), "initialCapital": initial,
-               "return": summary["equalSleeveReturn"], "dailyMaxDrawdown": summary["dailyPortfolioDrawdown"],
-               "trades": len(trades), "tradesBySymbol": counts,
-               "netPnl": summary["accountNetPnl"], "netExpectancy": summary["netExpectancy"],
-               "meanNetR": summary["meanNetR"], "profitFactor": summary["profitFactor"],
-               "meanDailyReturn": statistics.mean(daily)}
     # Remove a fixed sleeve with its original allocation. Do not redistribute
     # capital, re-execute trades, or rank/select the remaining coins.
     omitted = {}
@@ -135,7 +77,7 @@ def account_window(plan, batches, candidate, window):
             values = current_returns(curve, initial - sleeve_initial)
             omitted[symbol] = (statistics.mean(values)
                                if all(value is not None and math.isfinite(value) for value in values) else None)
-    return compact, {"times": expected, "returns": daily}, omitted
+    return compact, daily, omitted
 
 
 def acceptance(settings, windows, pooled, intervals, development_qualified):
@@ -306,7 +248,7 @@ def run(args):
         require(len(chosen) == 1, "development summary must contain the frozen choice exactly once")
         result = evaluate(evidence["plan"], evidence["selection"], transfer, chosen[0])
     result.update(evaluationIdentity=identity, engine=evidence["engine"], selection=evidence["selection"],
-                  generatorSha256=source_fingerprint("transfer_evaluation.py", "evaluation.py", "artifacts.py", "daily.py", "protocol.py", "warmup.py"),
+                  generatorSha256=source_fingerprint(*SOURCES),
                   transferSourceSha256=sha(__file__), provenance=provenance,
                   auditScope="Recorded receipts/configurations, complete canonical daily calendars and cash ledgers; no new price reads or source CSV rehash.")
     require(evaluation_identity(evidence) == identity and sha(args.plan) == evidence["planSha256"]

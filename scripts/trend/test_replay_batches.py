@@ -120,6 +120,24 @@ class ReplayBatchTests(unittest.TestCase):
         self.assertEqual(output.read_bytes(), (json.dumps(small, indent=2, allow_nan=False) + "\n").encode())
         self.assertNotIn("shards", artifacts.read(receipt))
 
+    def test_single_call_preserves_native_bytes_and_reuses_valid_cache(self):
+        self.configure(1)
+        payloads = []
+        def replay(command, check):
+            payload = json.dumps(self.native(artifacts.read(command[3])), separators=(",", ":")).encode() + b"\n\n"
+            payloads.append(payload)
+            Path(command[6]).write_bytes(payload)
+        with patch.object(research.subprocess, "run", side_effect=replay), contextlib.redirect_stdout(io.StringIO()):
+            candidates = protocol.window_candidates(self.plan, self.window)
+            result = research.run_symbol(self.args, self.plan, self.window, "BTCUSDT", candidates, self.fingerprint)
+            originals = {path: path.read_bytes() for path in self.paths()}
+            cached = research.run_symbol(self.args, self.plan, self.window, "BTCUSDT", candidates, self.fingerprint)
+        self.assertEqual(len(payloads), 1)
+        self.assertEqual(self.paths()[0].read_bytes(), payloads[0])
+        self.assertEqual(cached, result)
+        self.assertEqual({path: path.read_bytes() for path in self.paths()}, originals)
+        self.assertEqual(self.audit()[0], [result])
+
     def structured_observer(self):
         self.plan["configVersion"] = 10
         self.plan["candidates"] = [{"id": f"c{i:02d}", "entry": "structured-pullback", "filter": "ema",
@@ -178,6 +196,55 @@ class ReplayBatchTests(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             self.invoke(fail_at=3)
         self.assertEqual({path: path.read_bytes() for path in self.paths()}, originals)
+
+    def test_first_failure_never_publishes_configuration_for_any_batch_size(self):
+        for count in (1, 33):
+            with self.subTest(count=count):
+                self.configure(count)
+                self.calls.clear()
+                with self.assertRaises(subprocess.CalledProcessError):
+                    self.invoke(fail_at=1)
+                for path in self.paths():
+                    self.assertFalse(path.exists(), path)
+
+    def test_failed_new_configuration_preserves_previous_complete_evidence(self):
+        for count in (1, 33):
+            with self.subTest(count=count):
+                self.configure(count)
+                args = SimpleNamespace(**{**vars(self.args), "output": self.folder / f"replacement-{count}"})
+                self.invoke(args=args)
+                originals = {path: path.read_bytes() for path in self.paths(args)}
+                self.plan["candidates"][0]["breakoutBars"] += 1
+                artifacts.write(self.args.plan, self.plan)
+                self.manifest["planSha256"] = artifacts.sha(self.args.plan)
+                artifacts.write(self.args.manifest, self.manifest)
+                self.calls.clear()
+                with self.assertRaises(subprocess.CalledProcessError):
+                    self.invoke(args=args, fail_at=1)
+                self.assertEqual({path: path.read_bytes() for path in self.paths(args)}, originals)
+
+    def test_cached_configuration_is_checked_without_silently_repairing_evidence(self):
+        for count in (1, 33):
+            for missing in (False, True):
+                with self.subTest(count=count, missing=missing):
+                    self.configure(count)
+                    args = SimpleNamespace(**{**vars(self.args), "output": self.folder / f"cache-{count}-{missing}"})
+                    self.invoke(args=args)
+                    output, receipt, configs = self.paths(args)
+                    originals = {path: path.read_bytes() for path in (output, receipt)}
+                    if missing:
+                        configs.unlink()
+                    else:
+                        configs.write_bytes(b"tampered configuration")
+                    self.calls.clear()
+                    with self.assertRaisesRegex(ValueError, "configuration checksum"):
+                        self.invoke(args=args)
+                    self.assertEqual(self.calls, [])
+                    self.assertEqual({path: path.read_bytes() for path in (output, receipt)}, originals)
+                    if missing:
+                        self.assertFalse(configs.exists())
+                    else:
+                        self.assertEqual(configs.read_bytes(), b"tampered configuration")
 
     def test_invalid_last_shard_cannot_publish(self):
         def wrong_cash(result, index):
@@ -240,6 +307,43 @@ class ReplayBatchTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "changed during execution"):
             self.invoke(mutate=mutation)
         self.assertFalse(self.paths()[0].exists())
+
+    def test_input_and_source_drift_is_rejected_before_publication_at_any_batch_size(self):
+        for count in (1, 33):
+            for changed in ("plan", "manifest", "binary", "source"):
+                with self.subTest(count=count, changed=changed):
+                    self.configure(count)
+                    self.calls.clear()
+                    source = ["original-source"]
+                    originals = {path: path.read_bytes() for path in (self.args.plan, self.args.manifest, self.args.binary)}
+                    def mutation(result, index):
+                        if index == (count + 15) // 16:
+                            if changed == "source":
+                                source[0] = "changed-source"
+                            else:
+                                path = getattr(self.args, changed)
+                                path.write_bytes(path.read_bytes() + b" ")
+                    try:
+                        with patch.object(research, "execution_fingerprint", side_effect=lambda: source[0]):
+                            with self.assertRaisesRegex(ValueError, "changed during execution"):
+                                self.invoke(mutate=mutation)
+                        for path in self.paths():
+                            self.assertFalse(path.exists(), path)
+                        self.assertFalse(list(self.args.output.rglob("*-shards")))
+                    finally:
+                        for path, data in originals.items():
+                            path.write_bytes(data)
+
+    def test_wrong_execution_identity_is_rejected_before_calling_native(self):
+        for count in (1, 33):
+            with self.subTest(count=count):
+                self.configure(count)
+                self.args.binary.write_bytes(b"unexpected native build")
+                with self.assertRaisesRegex(ValueError, "frozen execution identity"):
+                    self.invoke()
+                self.assertEqual(self.calls, [])
+                for path in self.paths():
+                    self.assertFalse(path.exists(), path)
 
     def test_base_and_expanded_caps_do_not_change_development_stress_rules(self):
         self.configure(64)

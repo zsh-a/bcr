@@ -6,12 +6,11 @@ import random
 
 from artifacts import audit_window, ensure_writable, evaluation_identity, load_evidence, read, sha, source_fingerprint, write_once
 from evaluation import evaluation_contract, fixed_qualification
-from mechanism_evaluation import identifiers
 from protocol import DAY, development_window, is_development, timestamp
-from transfer_evaluation import account_window, circular_indices, require
+from account_statistics import account_window, circular_indices, identifiers, require
 
 VERSION = "trend-search-evaluation-1"
-SOURCES = ("search_evaluation.py", "mechanism_evaluation.py", "transfer_evaluation.py",
+SOURCES = ("search_evaluation.py", "account_statistics.py",
            "evaluation.py", "artifacts.py", "daily.py", "protocol.py", "warmup.py")
 REFERENCE = "https://doi.org/10.1111/1468-0262.00152"
 COSTS = ("base", "stress")
@@ -215,7 +214,7 @@ def evaluate(plan, selection, batches_by_window, development_summary):
         for candidate in candidates:
             accounts[candidate], returns[candidate] = {}, {}
             for cost, suffix in (("base", ""), ("stress", "-stress")):
-                account, daily, _ = account_window(plan, batches, candidate + suffix, window)
+                account, daily = account_window(plan, batches, candidate + suffix, window)
                 require(times is None or times == daily["times"], "search candidate/cost calendars differ")
                 times = daily["times"]
                 accounts[candidate][cost], returns[candidate][cost] = account, daily["returns"]
