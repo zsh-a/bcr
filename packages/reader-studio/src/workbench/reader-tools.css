@@ -216,6 +216,9 @@
   white-space: nowrap;
   padding: 0 var(--space-1);
 }
+.reader-pdf-control-label {
+  display: none;
+}
 .reader-pdf-pages {
   max-width: none;
   margin-inline: auto;
@@ -339,21 +342,37 @@
   }
   .reader-pdf-tools {
     top: var(--read-overlay-top);
-    justify-content: center;
-    gap: 0;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 8px;
+    min-height: 54px;
+    border-radius: var(--radius-md);
+    box-shadow: none;
+    background: var(--read-raised);
   }
-  .reader-pdf-tools button {
-    padding: var(--space-1);
+  .reader-pdf-tools :is(.reader-pdf-page-step, .reader-pdf-zoom-step) {
+    display: none;
   }
-  .reader-pdf-tools form,
-  .reader-pdf-tools > div {
-    gap: 0;
+  .reader-pdf-tools :is(form, .reader-pdf-zoom, label) {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+  .reader-pdf-tools .reader-pdf-control-label {
+    display: inline;
+    flex: none;
+    color: var(--read-muted);
+    font-size: 12px;
+    white-space: nowrap;
   }
   .reader-pdf-tools select {
-    width: 64px;
+    width: 88px;
+    font-size: 16px;
   }
   .reader-pdf-tools input {
     width: 44px;
+    font-size: 16px;
   }
   .reader-search-scope {
     padding: var(--space-2) var(--space-4);

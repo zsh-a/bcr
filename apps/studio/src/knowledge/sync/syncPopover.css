@@ -108,3 +108,14 @@
 .knowledge-sync-popover .knowledge-checkbox {
   justify-content: flex-start;
 }
+
+@media (pointer: coarse) {
+  .knowledge-sync-popover > :is(button, .knowledge-checkbox) {
+    min-height: 44px;
+    flex: none;
+  }
+  .knowledge-sync-popover .knowledge-checkbox input {
+    width: 20px;
+    height: 20px;
+  }
+}

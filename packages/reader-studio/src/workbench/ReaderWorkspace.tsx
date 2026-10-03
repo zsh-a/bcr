@@ -160,13 +160,14 @@ export function ReaderWorkspace(props: {
             onToggleMobileChrome={props.onToggleMobileChrome}
             onImport={props.onImport}
           />
-          {(settings.books?.[active.id]?.comic ??
-            (active.source.format === "cbz" || active.rendition?.layout === "pre-paginated")) && (
-            <div className="reader-comic-footer">
-              <ReaderProgressScrubber book={active} />
-              <ReaderHistoryBar />
-            </div>
-          )}
+          {!mobile &&
+            (settings.books?.[active.id]?.comic ??
+              (active.source.format === "cbz" || active.rendition?.layout === "pre-paginated")) && (
+              <div className="reader-comic-footer">
+                <ReaderProgressScrubber book={active} />
+                <ReaderHistoryBar />
+              </div>
+            )}
         </main>
       </div>
     </ReaderNavigationProvider>

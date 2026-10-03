@@ -11,7 +11,14 @@
     --read-overlay-bottom: calc(60px + env(safe-area-inset-bottom));
   }
 
-  .reader-studio :is(.reader-mobile-nav, .reader-progress-layer, .reader-comic-footer) {
+  .reader-studio
+    :is(
+      .reader-mobile-nav,
+      .reader-progress-layer,
+      .reader-comic-footer,
+      .reader-comic,
+      .reader-toolbar
+    ) {
     --color-surface: var(--read-bg);
     --color-raised: var(--read-raised);
     --color-border: var(--read-border);
@@ -25,12 +32,18 @@
     color-scheme: light;
   }
   .reader-studio[data-read-theme="night"]
-    :is(.reader-mobile-nav, .reader-progress-layer, .reader-comic-footer) {
+    :is(
+      .reader-mobile-nav,
+      .reader-progress-layer,
+      .reader-comic-footer,
+      .reader-comic,
+      .reader-toolbar
+    ) {
     --shadow-floating: 0 8px 32px #0005;
     color-scheme: dark;
   }
 
-  .reader-studio .reader-reading-frame > .reader-mobile-nav {
+  .reader-studio :is(.reader-reading-frame, .reader-comic) > .reader-mobile-nav {
     position: absolute;
     grid-template-columns: 44px 44px minmax(0, 1fr) 44px;
     grid-template-rows: 48px;
@@ -42,7 +55,7 @@
     background: var(--read-raised);
     border-top: 1px solid var(--read-border);
   }
-  .reader-studio .reader-reading-frame > .reader-mobile-nav.is-search {
+  .reader-studio :is(.reader-reading-frame, .reader-comic) > .reader-mobile-nav.is-search {
     grid-template-columns: 44px minmax(0, 1fr) 44px 44px;
   }
   .reader-mobile-nav :is(.reader-mobile-nav-toc, .reader-mobile-nav-step) {

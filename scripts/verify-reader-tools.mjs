@@ -11,7 +11,7 @@ const directory = await mkdtemp(join(tmpdir(), "bcr-reader-backup-test-"));
 const errors = [];
 try {
   const context = await browser.newContext({
-    viewport: { width: 375, height: 812 },
+    viewport: { width: 320, height: 812 },
     isMobile: true,
     hasTouch: true,
   });
@@ -69,7 +69,16 @@ try {
     .getByLabel("导入阅读文件", { exact: true })
     .setInputFiles({ name: "selectable.pdf", mimeType: "application/pdf", buffer: pdfFixture(12) });
   await page.locator(".reader-pdf-canvas-shell.is-ready").first().waitFor();
+  const pdfControls = page.locator(".reader-pdf-tools");
+  const pdfControlsBounds = await pdfControls.boundingBox();
+  assert(pdfControlsBounds.height <= 56, "mobile PDF controls wrap into multiple rows");
+  assert.equal(
+    await page.getByRole("button", { name: "PDF 下一页", exact: true }).count(),
+    0,
+    "PDF repeats the reading footer's navigation",
+  );
   const first = page.locator(".reader-pdf-page").first();
+  await first.locator(".reader-pdf-text-layer").getByText("Readable page 1", { exact: true }).waitFor();
   assert.match(await first.locator(".reader-pdf-text-layer").innerText(), /Readable page 1/);
   const selected = await first.locator(".reader-pdf-text-layer").evaluate((element) => {
     const selection = window.getSelection();
@@ -85,6 +94,11 @@ try {
   await page.getByRole("spinbutton", { name: "PDF 页码" }).press("Enter");
   await page.waitForTimeout(500);
   await page.locator(".reader-pdf-page").nth(7).locator(".is-ready").waitFor();
+  await page.waitForFunction(() => {
+    const page = document.querySelectorAll(".reader-pdf-page")[7];
+    const controls = document.querySelector(".reader-pdf-tools");
+    return page.getBoundingClientRect().top >= controls.getBoundingClientRect().bottom;
+  });
   const widthBefore = await page
     .locator(".reader-pdf-page")
     .nth(7)

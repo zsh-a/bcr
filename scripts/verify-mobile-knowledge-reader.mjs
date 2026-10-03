@@ -85,6 +85,21 @@ try {
   await modes.getByRole("button", { name: "源码", exact: true }).click();
   assert.match(await page.getByLabel("笔记正文", { exact: true }).innerText(), /# 灵感/);
 
+  await page.locator(".knowledge-status-trigger").click();
+  const sync = page.locator(".knowledge-sync-popover");
+  await sync.waitFor();
+  await sync.getByRole("button", { name: "立即同步", exact: true }).click({ trial: true });
+  for (const control of await sync.locator("button, .knowledge-checkbox").all())
+    await touchTarget(control);
+  await keyboardViewport(220);
+  await page.waitForFunction(() => {
+    const box = document.querySelector(".knowledge-sync-popover").getBoundingClientRect();
+    return box.top >= 0 && box.bottom <= visualViewport.height;
+  });
+  await page.keyboard.press("Escape");
+  await sync.waitFor({ state: "hidden" });
+  await keyboardViewport(page.viewportSize().height);
+
   await button("切换笔记列表").click();
   const library = page.getByRole("dialog", { name: "笔记库", exact: true });
   await modalFocus(library);

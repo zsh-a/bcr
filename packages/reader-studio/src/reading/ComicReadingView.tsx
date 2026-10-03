@@ -6,15 +6,23 @@ import {
 } from "../content/readerContent";
 import type { ReaderSection } from "@bcr/reader-core";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Minus, Plus, Images } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, Plus, Images, SlidersHorizontal, X } from "lucide-react";
 import { createLocator, type ReaderBook } from "@bcr/reader-core";
 import { getReaderState, reader } from "../state/store";
 import { useReader } from "../state/useReader";
 import { ReaderSheet } from "../workbench/ReaderSheet";
 import { settleReaderLayout } from "./readingRestore";
+import { useReaderMobile } from "../workbench/useReaderMobile";
+import { ReaderProgressScrubber } from "../navigation/ReaderProgressScrubber";
+import { ReaderSearchBar } from "../navigation/ReaderSearchBar";
+import { ReaderJumpBack } from "../navigation/ReaderJumpBack";
 import "./comic-reading.css";
 
 export function ComicReadingView({ book }: { book: ReaderBook }) {
+  const mobile = useReaderMobile();
+  const query = useReader((state) => state.query);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [pageInput, setPageInput] = useState("1");
   const preferences = useReader((state) => state.settings.books?.[book.id]);
   const progress = useReader((state) => state.progressByBook[book.id]);
   const navigation = useReader((state) => state.navigationSequence);
@@ -86,13 +94,15 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
     const books = getReaderState().settings.books ?? {};
     reader.setSettings({ books: { ...books, [book.id]: { ...books[book.id], ...value } } });
   };
-  const go = (index: number) => {
+  const go = (index: number, remember = false) => {
     const target = pages[Math.max(0, Math.min(pages.length - 1, index))];
     if (!target) return;
-    reader.setLocator({
+    const locator = {
       ...createLocator(target.section, target.index / target.count),
       imageAnchor: { index: target.index, x: 0.5, y: 0 },
-    });
+    };
+    if (remember) reader.seekLocator(locator, undefined, true);
+    else reader.setLocator(locator);
     setZoom(1);
   };
   const restore = () => {
@@ -164,57 +174,112 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
     window.addEventListener("bcr-reader-capture-progress", save);
     return () => window.removeEventListener("bcr-reader-capture-progress", save);
   }, [save]);
+  const openThumbnails = () => {
+    setPageInput(String(current + 1));
+    setThumbnails(true);
+  };
+  const controls = (
+    <div className="reader-comic-controls reader-comic-preferences">
+      <label>
+        阅读方向
+        <select
+          aria-label="漫画阅读方向"
+          value={direction}
+          onChange={(event) => patch({ direction: event.target.value as "ltr" | "rtl" })}
+        >
+          <option value="ltr">从左向右</option>
+          <option value="rtl">从右向左</option>
+        </select>
+      </label>
+      <label>
+        画面
+        <select
+          aria-label="漫画画面适配"
+          value={fit}
+          onChange={(event) => patch({ fit: event.target.value as "page" | "width" })}
+        >
+          <option value="page">适合整页</option>
+          <option value="width">适合宽度</option>
+        </select>
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={preferences?.spread ?? book.rendition?.spread === "both"}
+          onChange={(event) => patch({ spread: event.target.checked })}
+        />
+        横屏双页
+      </label>
+      <button
+        type="button"
+        aria-label="缩小漫画"
+        disabled={zoom <= 1}
+        onClick={() => setZoom(Math.max(1, zoom - 0.5))}
+      >
+        <Minus size={18} />
+      </button>
+      <output aria-label="漫画缩放比例">{zoom * 100}%</output>
+      <button
+        type="button"
+        aria-label="放大漫画"
+        disabled={zoom >= 3}
+        onClick={() => setZoom(Math.min(3, zoom + 0.5))}
+      >
+        <Plus size={18} />
+      </button>
+    </div>
+  );
   return (
     <section className="reader-comic" aria-label="漫画阅读器">
-      <div className="reader-comic-controls">
-        <label>
-          阅读方向
-          <select
-            aria-label="漫画阅读方向"
-            value={direction}
-            onChange={(event) => patch({ direction: event.target.value as "ltr" | "rtl" })}
-          >
-            <option value="ltr">从左向右</option>
-            <option value="rtl">从右向左</option>
-          </select>
-        </label>
-        <label>
-          画面
-          <select
-            aria-label="漫画画面适配"
-            value={fit}
-            onChange={(event) => patch({ fit: event.target.value as "page" | "width" })}
-          >
-            <option value="page">适合整页</option>
-            <option value="width">适合宽度</option>
-          </select>
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={preferences?.spread ?? book.rendition?.spread === "both"}
-            onChange={(event) => patch({ spread: event.target.checked })}
-          />
-          横屏双页
-        </label>
-        <button
-          type="button"
-          aria-label="缩小漫画"
-          disabled={zoom <= 1}
-          onClick={() => setZoom(Math.max(1, zoom - 0.5))}
-        >
-          <Minus size={18} />
-        </button>
-        <output aria-label="漫画缩放比例">{zoom * 100}%</output>
-        <button
-          type="button"
-          aria-label="放大漫画"
-          disabled={zoom >= 3}
-          onClick={() => setZoom(Math.min(3, zoom + 0.5))}
-        >
-          <Plus size={18} />
-        </button>
-      </div>
+      {mobile ? (
+        <div className="reader-comic-mobile-tools">
+          <span>
+            {direction === "rtl" ? "从右向左" : "从左向右"} ·{" "}
+            {fit === "page" ? "适合整页" : "适合宽度"}
+          </span>
+          <button type="button" aria-label="打开漫画画面设置" onClick={() => setSettingsOpen(true)}>
+            <SlidersHorizontal className="reader-icon" />
+            画面设置
+          </button>
+        </div>
+      ) : (
+        controls
+      )}
+      <ReaderSheet
+        open={mobile && settingsOpen}
+        labelId="reader-comic-settings-title"
+        onClose={() => setSettingsOpen(false)}
+      >
+        <section className="reader-mobile-sheet reader-comic-settings-sheet">
+          <header className="reader-comic-sheet-heading">
+            <h2 id="reader-comic-settings-title">漫画画面</h2>
+            <button
+              type="button"
+              className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
+              aria-label="关闭漫画画面设置"
+              onClick={() => setSettingsOpen(false)}
+            >
+              <X className="reader-icon" />
+            </button>
+          </header>
+          {controls}
+          {page && current === pages.length - 1 && (
+            <button
+              type="button"
+              className="reader-comic-complete"
+              onClick={() => {
+                reader.setLocator({
+                  ...createLocator(page.section, 1),
+                  imageAnchor: { index: page.index, x: 0.5, y: 1 },
+                });
+                setSettingsOpen(false);
+              }}
+            >
+              标记为已读完
+            </button>
+          )}
+        </section>
+      </ReaderSheet>
       {page ? (
         <div
           ref={viewport}
@@ -313,29 +378,79 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
           </button>
         </p>
       )}
-      <nav className="reader-comic-controls" aria-label="漫画翻页">
-        <button
-          type="button"
-          disabled={current === 0}
-          onClick={() => go(current - (spread ? 2 : 1))}
+      {mobile ? (
+        <nav
+          className={`reader-mobile-nav ${query.trim() ? "is-search" : ""}`}
+          aria-label={query.trim() ? "搜索结果导航" : "漫画翻页"}
         >
-          <ChevronLeft size={18} />
-          上一页
-        </button>
-        <button type="button" onClick={() => setThumbnails(true)}>
-          <Images size={18} />
-          {current + 1} / {pages.length} 页
-        </button>
-        <button
-          type="button"
-          disabled={current >= pages.length - 1}
-          onClick={() => go(current + (spread ? 2 : 1))}
-        >
-          下一页
-          <ChevronRight size={18} />
-        </button>
-      </nav>
-      {page && current === pages.length - 1 && (
+          {query.trim() ? (
+            <ReaderSearchBar />
+          ) : (
+            <>
+              <button
+                type="button"
+                className="reader-mobile-nav-toc"
+                aria-label="浏览漫画页"
+                onClick={openThumbnails}
+              >
+                <Images className="reader-icon" />
+                <span>页面</span>
+              </button>
+              <button
+                type="button"
+                className="reader-mobile-nav-step"
+                aria-label="上一页"
+                disabled={current === 0}
+                onClick={() => go(current - (spread ? 2 : 1))}
+              >
+                <ChevronLeft className="reader-icon" />
+                <span>上页</span>
+              </button>
+              <div className="reader-mobile-nav-current">
+                <ReaderProgressScrubber
+                  book={book}
+                  detail={`${current + 1} / ${pages.length} 页`}
+                />
+              </div>
+              <button
+                type="button"
+                className="reader-mobile-nav-step"
+                aria-label="下一页"
+                disabled={current >= pages.length - 1}
+                onClick={() => go(current + (spread ? 2 : 1))}
+              >
+                <ChevronRight className="reader-icon" />
+                <span>下页</span>
+              </button>
+            </>
+          )}
+          <ReaderJumpBack />
+        </nav>
+      ) : (
+        <nav className="reader-comic-controls" aria-label="漫画翻页">
+          <button
+            type="button"
+            disabled={current === 0}
+            onClick={() => go(current - (spread ? 2 : 1))}
+          >
+            <ChevronLeft size={18} />
+            上一页
+          </button>
+          <button type="button" onClick={openThumbnails}>
+            <Images size={18} />
+            {current + 1} / {pages.length} 页
+          </button>
+          <button
+            type="button"
+            disabled={current >= pages.length - 1}
+            onClick={() => go(current + (spread ? 2 : 1))}
+          >
+            下一页
+            <ChevronRight size={18} />
+          </button>
+        </nav>
+      )}
+      {!mobile && page && current === pages.length - 1 && (
         <button
           type="button"
           onClick={() =>
@@ -353,21 +468,46 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
         labelId="reader-comic-pages-title"
         onClose={() => setThumbnails(false)}
       >
-        <section className="reader-mobile-sheet">
-          <h2 id="reader-comic-pages-title">浏览漫画页</h2>
-          <label>
-            跳到页码
-            <input
-              type="number"
-              min={1}
-              max={pages.length}
-              defaultValue={current + 1}
-              onChange={(event) => {
-                const value = Number(event.target.value);
-                if (Number.isInteger(value) && value >= 1 && value <= pages.length) go(value - 1);
-              }}
-            />
-          </label>
+        <section className="reader-mobile-sheet reader-comic-pages-sheet">
+          <header className="reader-comic-sheet-heading">
+            <h2 id="reader-comic-pages-title">浏览漫画页</h2>
+            <button
+              type="button"
+              className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
+              aria-label="关闭漫画页面"
+              onClick={() => setThumbnails(false)}
+            >
+              <X className="reader-icon" />
+            </button>
+          </header>
+          <form
+            className="reader-comic-page-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const value = Number(pageInput);
+              if (!Number.isInteger(value) || value < 1 || value > pages.length) return;
+              go(value - 1, true);
+              setThumbnails(false);
+            }}
+          >
+            <label>
+              跳到页码
+              <input
+                type="number"
+                inputMode="numeric"
+                enterKeyHint="go"
+                min={1}
+                max={pages.length}
+                required
+                value={pageInput}
+                onChange={(event) => setPageInput(event.target.value)}
+              />
+            </label>
+            <span>/ {pages.length}</span>
+            <button type="submit" className="ui-btn ui-btn-primary ui-btn-lg">
+              跳转
+            </button>
+          </form>
           <div className="reader-comic-thumbnails">
             {pages.slice(Math.max(0, current - 8), current + 9).map((item, offset) => {
               const index = Math.max(0, current - 8) + offset;
@@ -378,7 +518,7 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
                   aria-label={`前往漫画第 ${index + 1} 页`}
                   aria-current={index === current ? "page" : undefined}
                   onClick={() => {
-                    go(index);
+                    go(index, true);
                     setThumbnails(false);
                   }}
                 >
@@ -393,9 +533,6 @@ export function ComicReadingView({ book }: { book: ReaderBook }) {
               );
             })}
           </div>
-          <button type="button" onClick={() => setThumbnails(false)}>
-            返回阅读
-          </button>
         </section>
       </ReaderSheet>
     </section>

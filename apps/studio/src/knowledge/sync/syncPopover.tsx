@@ -69,12 +69,23 @@ export function SyncStatus({
     const element = pop.current;
     if (!element) return;
     const place = () => {
+      if (!element.matches(":popover-open")) return;
       const anchor = trigger.current?.getBoundingClientRect();
       if (!anchor) return;
+      const viewport = window.visualViewport;
+      const visual = viewport?.scale === 1 ? viewport : null;
+      const top = visual?.offsetTop ?? 0;
+      const left = visual?.offsetLeft ?? 0;
+      const height = visual?.height ?? window.innerHeight;
+      const availableWidth = visual?.width ?? window.innerWidth;
+      element.style.maxHeight = `${Math.max(0, height - 16)}px`;
       const width = element.offsetWidth || 280;
       setAt({
-        top: anchor.bottom + 8,
-        left: Math.max(8, Math.min(anchor.right - width, window.innerWidth - width - 8)),
+        top: Math.max(
+          top + 8,
+          Math.min(anchor.bottom + 8, top + height - element.offsetHeight - 8),
+        ),
+        left: Math.max(left + 8, Math.min(anchor.right - width, left + availableWidth - width - 8)),
       });
     };
     const toggle = () => {
@@ -85,9 +96,18 @@ export function SyncStatus({
     };
     element.addEventListener("toggle", toggle);
     window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    window.visualViewport?.addEventListener("resize", place);
+    window.visualViewport?.addEventListener("scroll", place);
+    const observer = new ResizeObserver(place);
+    observer.observe(element);
     return () => {
       element.removeEventListener("toggle", toggle);
       window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+      window.visualViewport?.removeEventListener("resize", place);
+      window.visualViewport?.removeEventListener("scroll", place);
+      observer.disconnect();
     };
   }, []);
   return (

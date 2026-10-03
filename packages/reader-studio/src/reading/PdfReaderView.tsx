@@ -172,6 +172,7 @@ export function PdfReaderView(props: {
         >
           <button
             type="button"
+            className="reader-pdf-page-step"
             aria-label="PDF 上一页"
             disabled={currentPage <= 1}
             onClick={() => goPage(currentPage - 1)}
@@ -179,6 +180,9 @@ export function PdfReaderView(props: {
             <ChevronLeft className="reader-icon" />
           </button>
           <label>
+            <span className="reader-pdf-control-label" aria-hidden="true">
+              页码
+            </span>
             <span className="ui-sr-only">PDF 页码</span>
             <input
               aria-label="PDF 页码"
@@ -204,6 +208,7 @@ export function PdfReaderView(props: {
           </button>
           <button
             type="button"
+            className="reader-pdf-page-step"
             aria-label="PDF 下一页"
             disabled={currentPage >= props.book.sections.length}
             onClick={() => goPage(currentPage + 1)}
@@ -211,9 +216,13 @@ export function PdfReaderView(props: {
             <ChevronRight className="reader-icon" />
           </button>
         </form>
-        <div>
+        <div className="reader-pdf-zoom">
+          <span className="reader-pdf-control-label" aria-hidden="true">
+            缩放
+          </span>
           <button
             type="button"
+            className="reader-pdf-zoom-step"
             aria-label="缩小 PDF"
             disabled={zoom <= 0.4}
             onClick={() => changeZoom(zoom - 0.25)}
@@ -238,7 +247,7 @@ export function PdfReaderView(props: {
             <option value={String(zoom)}>{Math.round(zoom * 100)}%</option>
             {zoom !== 1 && <option value="1">适合宽度</option>}
             <option value="page">适合整页</option>
-            {[1.5, 2, 3]
+            {[0.5, 0.75, 1.25, 1.5, 2, 3]
               .filter((value) => value !== zoom)
               .map((value) => (
                 <option key={value} value={String(value)}>
@@ -248,6 +257,7 @@ export function PdfReaderView(props: {
           </select>
           <button
             type="button"
+            className="reader-pdf-zoom-step"
             aria-label="放大 PDF"
             disabled={zoom >= 3}
             onClick={() => changeZoom(zoom + 0.25)}

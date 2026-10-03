@@ -429,10 +429,19 @@ function readerElementScrollPosition(
   const targetRect = target.getBoundingClientRect();
   const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
   const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+  const pdfTools = target.closest(".reader-pdf-page")
+    ? container.querySelector<HTMLElement>(".reader-pdf-tools")
+    : null;
+  // Page jumps must clear the sticky PDF controls as well as the reading header.
+  const topInset = pdfTools
+    ? Math.max(0, Number.parseFloat(getComputedStyle(pdfTools).top) || 0) +
+      pdfTools.offsetHeight +
+      12
+    : 28;
   return {
     top: Math.min(
       maxTop,
-      Math.max(0, container.scrollTop + targetRect.top - containerRect.top - 28),
+      Math.max(0, container.scrollTop + targetRect.top - containerRect.top - topInset),
     ),
     left: Math.min(
       maxLeft,

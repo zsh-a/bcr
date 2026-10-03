@@ -135,23 +135,71 @@ try {
     await page.getByRole("menuitemcheckbox", { name: "漫画模式", exact: true }).click();
     await page.locator(".reader-comic-viewport img").waitFor();
     assert.equal(await page.locator(".reader-comic-viewport img").count(), 1);
+    const openSettings = async () => {
+      if (page.viewportSize().width <= 860)
+        await page.getByRole("button", { name: "打开漫画画面设置", exact: true }).click();
+    };
+    const closeSettings = async () => {
+      if (page.viewportSize().width <= 860)
+        await page.getByRole("button", { name: "关闭漫画画面设置", exact: true }).click();
+    };
+    if (width === 375) {
+      await page.setViewportSize({ width: 320, height: 740 });
+      const footer = await page.locator(".reader-mobile-nav").boundingBox();
+      assert.equal(footer.height, 60);
+      assert.equal(
+        await page.locator(".reader-comic-footer").count(),
+        0,
+        "comic still has two footers",
+      );
+      assert((await page.locator(".reader-comic-viewport").boundingBox()).height >= 570);
+      await page.setViewportSize({ width: 600, height: 900 });
+    }
+    await openSettings();
     await page.getByLabel("漫画阅读方向", { exact: true }).selectOption("rtl");
     await page.getByLabel("漫画画面适配", { exact: true }).selectOption("width");
+    await closeSettings();
     await page.getByRole("button", { name: "下一页", exact: true }).click();
     assert.match(await page.locator(".reader-comic-viewport img").getAttribute("alt"), /第 6 页/);
+    await openSettings();
     await page.getByRole("button", { name: "放大漫画", exact: true }).click();
     assert.equal(await page.getByLabel("漫画缩放比例", { exact: true }).textContent(), "150%");
+    await closeSettings();
     await page.waitForTimeout(1100);
     await page.reload();
     await page.locator(".reader-comic-viewport img").waitFor();
     assert.match(await page.locator(".reader-comic-viewport img").getAttribute("alt"), /第 6 页/);
+    await openSettings();
     assert.equal(await page.getByLabel("漫画阅读方向", { exact: true }).inputValue(), "rtl");
     assert.equal(await page.getByLabel("漫画画面适配", { exact: true }).inputValue(), "width");
-    await page.getByRole("button", { name: "6 / 8 页", exact: true }).click();
+    await closeSettings();
+    const pagesButton = page.getByRole("button", {
+      name: width === 375 ? "浏览漫画页" : "6 / 8 页",
+      exact: true,
+    });
+    await pagesButton.click();
+    assert(
+      await page.evaluate(() => !document.activeElement.matches("input")),
+      "opening comic pages summons the keyboard",
+    );
+    await page.getByRole("spinbutton", { name: "跳到页码", exact: true }).fill("2");
+    assert.match(
+      await page.locator(".reader-comic-viewport img").getAttribute("alt"),
+      /第 6 页/,
+      "typing a page number navigated without confirmation",
+    );
+    await page.keyboard.press("Escape");
+    await page
+      .getByRole("dialog", { name: "浏览漫画页", exact: true })
+      .waitFor({ state: "hidden" });
+    assert(await pagesButton.evaluate((el) => document.activeElement === el));
+    await pagesButton.click();
     await page.getByRole("button", { name: "前往漫画第 2 页", exact: true }).click();
     assert.match(await page.locator(".reader-comic-viewport img").getAttribute("alt"), /第 2 页/);
     if (width === 375) {
+      await openSettings();
       await page.getByLabel("漫画画面适配", { exact: true }).selectOption("page");
+      await closeSettings();
       await page.setViewportSize({ width: 844, height: 390 });
       await page.waitForFunction(() => {
         const root = document.querySelector(".reader-comic-viewport");
