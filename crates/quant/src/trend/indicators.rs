@@ -33,7 +33,7 @@ impl CandleBuilder {
 }
 pub struct ClosedCandles {
     pub trade: Option<Bar>,
-    pub trend: bool,
+    pub ema_updated: bool,
 }
 #[derive(Default)]
 pub struct Indicators {
@@ -46,10 +46,9 @@ pub struct Indicators {
     ema_count: usize,
     fast_history: VecDeque<f64>,
     trade: CandleBuilder,
-    trend: CandleBuilder,
 }
 impl Indicators {
-    /// Signals and ATR use closed trading candles; EMA uses closed trend candles.
+    /// Signals, ATR and optional EMA share exactly the same closed trading candle.
     pub fn close(&mut self, bar: Bar, config: &Strategy) -> ClosedCandles {
         let trade = self.trade.close(bar, config.trade_minutes);
         if let Some(candle) = trade {
@@ -70,13 +69,13 @@ impl Indicators {
         if config.filter != "ema" {
             return ClosedCandles {
                 trade,
-                trend: false,
+                ema_updated: false,
             };
         }
-        let Some(candle) = self.trend.close(bar, config.trade_minutes) else {
+        let Some(candle) = trade else {
             return ClosedCandles {
                 trade,
-                trend: false,
+                ema_updated: false,
             };
         };
         let value = candle.close;
@@ -92,7 +91,10 @@ impl Indicators {
         if self.fast_history.len() > 4 {
             self.fast_history.pop_front();
         }
-        ClosedCandles { trade, trend: true }
+        ClosedCandles {
+            trade,
+            ema_updated: true,
+        }
     }
     pub fn ready(&self) -> bool {
         self.atr_count >= ATR_PERIOD && self.atr > 0.0

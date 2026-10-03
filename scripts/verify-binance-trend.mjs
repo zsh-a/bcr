@@ -96,18 +96,48 @@ try {
   await page.getByRole("button", { name: "趋势参数设置" }).click();
   const settings = page.getByRole("dialog", { name: "趋势研究设置" });
   assert.equal(await settings.locator("input:visible, select:visible").count(), 7);
-  assert.equal(await page.getByLabel("入场环境", { exact: true }).inputValue(), "background");
+  assert.equal(await page.getByLabel("入场环境", { exact: true }).inputValue(), "none");
+  assert.equal(await page.getByLabel("交易周期", { exact: true }).inputValue(), "240");
+  assert.equal(await page.getByLabel("持仓管理", { exact: true }).inputValue(), "channel");
+  assert.equal(
+    await page.getByLabel("往返成本上限 · ATR（0 关闭）", { exact: true }).inputValue(),
+    "0",
+  );
+  assert((await settings.textContent()).includes("尚未通过全部验证门槛"));
+  await page.getByLabel("持仓管理", { exact: true }).selectOption("atr");
+  await page.getByLabel("交易周期", { exact: true }).selectOption("1");
+  await page.getByLabel("往返成本上限 · ATR（0 关闭）", { exact: true }).fill("0.5");
+  assert.equal(await settings.locator("input:visible, select:visible").count(), 9);
+  await settings.getByRole("button", { name: "使用简洁通道方案 · 4 小时 / 仅做多" }).click();
+  assert.equal(await page.getByLabel("交易周期", { exact: true }).inputValue(), "240");
+  assert.equal(await page.getByLabel("持仓管理", { exact: true }).inputValue(), "channel");
+  assert.equal(await settings.locator("input:visible, select:visible").count(), 7);
+  assert.equal(
+    await page.getByLabel("往返成本上限 · ATR（0 关闭）", { exact: true }).inputValue(),
+    "0",
+  );
+  assert.equal(await page.getByLabel("保本触发 · ATR（0 关闭）", { exact: true }).count(), 0);
+  await settings.getByRole("button", { name: "取消", exact: true }).click();
+  await page.getByRole("button", { name: "趋势参数设置" }).click();
+  assert.equal(await page.getByLabel("持仓管理", { exact: true }).inputValue(), "channel");
+  assert.equal(await page.getByLabel("交易周期", { exact: true }).inputValue(), "240");
   await page.getByLabel("初始止损 · ATR", { exact: true }).fill("2.5");
   await settings.getByRole("button", { name: "取消", exact: true }).click();
   await page.getByRole("button", { name: "趋势参数设置" }).click();
   assert.equal(
     await page.getByLabel("初始止损 · ATR", { exact: true }).inputValue(),
-    "1.5",
+    "2",
     "cancel discards draft edits",
   );
   await page.getByLabel("初始止损 · ATR", { exact: true }).fill("0");
   assert(await settings.getByRole("button", { name: "应用设置", exact: true }).isDisabled());
   await page.getByLabel("初始止损 · ATR", { exact: true }).fill("1.5");
+  await page.getByLabel("持仓管理", { exact: true }).selectOption("atr");
+  await page.getByLabel("交易周期", { exact: true }).selectOption("1");
+  await page.getByLabel("保本触发 · ATR（0 关闭）", { exact: true }).fill("1.5");
+  await page.getByText("研究变体", { exact: true }).click();
+  await page.getByLabel("交易方向", { exact: true }).selectOption("both");
+  await page.getByText("研究变体", { exact: true }).click();
   await page.getByLabel("入场环境", { exact: true }).selectOption("none");
   await page.screenshot({ path: `${shots}/binance-trend-settings.png` });
   await settings.getByRole("button", { name: "应用设置", exact: true }).click();
@@ -127,8 +157,9 @@ try {
   const result = await exportResult("binance-trend-result.json");
   assert.equal(result.manifest.provider, "binance-public-data");
   assert.equal(result.config.strategy.tradeMinutes, 1);
-  assert.equal(result.engine, "trend-continuation-4");
-  assert.equal(result.config.version, 3);
+  assert.equal(result.engine, "trend-continuation-7");
+  assert.equal(result.config.version, 5);
+  assert.equal(result.config.strategy.maxCostAtr, 0);
   assert.equal(result.config.strategy.entry, "breakout");
   assert.equal(result.config.strategy.filter, "none");
   assert.equal(result.config.risk.flattenMinute, null);
@@ -142,6 +173,16 @@ try {
   const trades = result.chunks.flatMap((chunk) => chunk.trades);
   assert.equal(trades.length, result.metrics.trades);
   assert(Number.isFinite(result.metrics.finalEquity));
+  assert.equal(result.metrics.evaluation.totalDays, researchDays);
+  assert.equal(result.metrics.evaluation.dailySharpe, null);
+  assert(
+    Math.abs(
+      (result.metrics.evaluation.netExpectancy ?? 0) * trades.length -
+        trades.reduce((sum, t) => sum + t.netPnl, 0),
+    ) < 1e-7,
+  );
+  await page.getByText("收益质量与交易管理", { exact: true }).click();
+  assert(await page.getByText("单笔净期望 · USDT", { exact: true }).isVisible());
   assert(
     Math.abs(
       result.metrics.finalEquity -
@@ -262,6 +303,53 @@ try {
     .waitFor();
   if (!live) {
     await page.getByRole("button", { name: "趋势参数设置" }).click();
+    await page.getByLabel("持仓管理", { exact: true }).selectOption("channel");
+    await page.getByRole("button", { name: "应用设置", exact: true }).click();
+    await runButton().click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".trend-result-heading")?.textContent.includes("反向 10 根通道退出"),
+      null,
+      { timeout: 60000 },
+    );
+    const channel = await exportResult("binance-trend-channel.json");
+    assert.equal(channel.config.strategy.management, "channel");
+    assert.equal(channel.config.strategy.tradeMinutes, 5);
+    assert(
+      channel.chunks
+        .flatMap((chunk) => chunk.events)
+        .filter((e) => e.kind === "stop")
+        .every((e) => e.reason === "initial"),
+    );
+    assert.equal(requests, archiveRequests, "channel management reuses frozen minute archives");
+    await page.getByText("收益质量与交易管理", { exact: true }).click();
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await page.screenshot({ path: `${shots}/binance-trend-evaluation-mobile.png`, fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.getByRole("button", { name: "趋势参数设置" }).click();
+    await page.getByLabel("往返成本上限 · ATR（0 关闭）", { exact: true }).fill("0.5");
+    await page.getByRole("button", { name: "应用设置", exact: true }).click();
+    await runButton().click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".trend-result-heading")?.textContent.includes("往返成本 ≤ 0.5 ATR"),
+      null,
+      { timeout: 60000 },
+    );
+    const costOnly = await exportResult("binance-trend-cost-only.json");
+    assert.equal(costOnly.config.strategy.filter, "none");
+    assert.equal(costOnly.config.strategy.maxCostAtr, 0.5);
+    assert.equal(costOnly.metrics.trades, 0);
+    assert(costOnly.chunks.flatMap((c) => c.events).some((e) => e.reason === "entry-cost"));
+    assert(costOnly.chunks.every((c) => (c.contexts ?? []).length === 0));
+    assert.equal(
+      requests,
+      archiveRequests,
+      "independent cost filtering reuses frozen minute archives",
+    );
+    await page.getByRole("button", { name: "趋势参数设置" }).click();
+    await page.getByLabel("持仓管理", { exact: true }).selectOption("atr");
     await page.getByLabel("入场环境", { exact: true }).selectOption("background");
     assert((await settings.textContent()).includes("30 分钟背景"));
     await page.getByRole("button", { name: "应用设置", exact: true }).click();
@@ -275,7 +363,12 @@ try {
     const decisions = background.chunks.flatMap((chunk) => chunk.contexts ?? []);
     assert.equal(background.config.strategy.filter, "background");
     assert.equal(background.metrics.trades, 0);
-    assert(background.metrics.context.reasons["context-cost"] > 0);
+    assert(background.chunks.flatMap((c) => c.events).some((e) => e.reason === "entry-cost"));
+    assert.equal(background.metrics.context.reasons["context-cost"], undefined);
+    assert(
+      background.metrics.context.allowed > 0,
+      "background allowance does not imply cost allowance",
+    );
     assert(decisions.length > 20);
     assert.equal(background.metrics.context.evaluated, decisions.length);
     assert.equal(background.metrics.context.allowed, decisions.filter((d) => d.allowed).length);
@@ -348,6 +441,41 @@ try {
       .locator("canvas")
       .first()
       .waitFor();
+    // Switching back to a short rule must not inherit the longer cache's ATR seed.
+    await page.getByRole("button", { name: "趋势参数设置" }).click();
+    await page.getByLabel("入场环境", { exact: true }).selectOption("none");
+    await page.getByLabel("交易周期", { exact: true }).selectOption("5");
+    await page.getByLabel("往返成本上限 · ATR（0 关闭）", { exact: true }).fill("0");
+    await page.getByRole("button", { name: "成交", exact: true }).click();
+    await page
+      .getByLabel("单边手续费 · bps", { exact: true })
+      .fill(String(five.config.execution.feeBps));
+    await page
+      .getByLabel("单边滑点 · bps", { exact: true })
+      .fill(String(five.config.execution.slippageBps));
+    await page
+      .getByLabel("最小价格步长", { exact: true })
+      .fill(String(five.config.execution.tickSize));
+    await page.getByRole("button", { name: "应用设置", exact: true }).click();
+    await runButton().click();
+    await page.waitForFunction(
+      () => document.querySelector(".trend-result-heading")?.textContent.includes("5 分钟"),
+      null,
+      { timeout: 60000 },
+    );
+    const reused = await exportResult("binance-trend-reused-warmup.json");
+    assert.deepEqual(reused.config, five.config);
+    assert.equal(reused.manifest.warmupStart, hourly.manifest.warmupStart);
+    assert.equal(reused.window.warmupStart, five.window.warmupStart);
+    assert.deepEqual(reused.metrics, five.metrics);
+    for (const field of ["equity", "trades", "events", "indicators", "contexts"])
+      assert.deepEqual(
+        reused.chunks.flatMap((c) => c[field] ?? []),
+        five.chunks.flatMap((c) => c[field] ?? []),
+      );
+    assert.equal(requests, archiveRequests + 4, "short replay reuses wider frozen coverage");
+    // Keep an unapplied next-run period while restoring the selected result below.
+    await page.getByLabel("回测交易周期", { exact: true }).selectOption("60");
   }
   await page.reload({ waitUntil: "networkidle" });
   await page.locator(".trend-result").waitFor();

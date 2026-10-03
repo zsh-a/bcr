@@ -33,6 +33,12 @@ export interface BinancePartition {
   checksum: string;
   markSource: string;
   markChecksum: string;
+  repairs?: BinanceRepair[];
+}
+export interface BinanceRepair {
+  kind: "candles" | "marks";
+  original: ArtifactRef;
+  days: { date: string; url: string; checksum: string; ref: ArtifactRef }[];
 }
 export interface BinanceManifest {
   version: 1;
@@ -126,6 +132,55 @@ export function validateBinanceManifest(m: BinanceManifest): void {
       !source(p.markSource, p.markChecksum)
     )
       throw new Error("Binance 行情分片缺失或不连续");
+    if (p.repairs !== undefined) {
+      const kinds = new Set<string>();
+      const month = new Date(p.from);
+      if (
+        !Array.isArray(p.repairs) ||
+        !p.repairs.length ||
+        p.from % DAY ||
+        month.getUTCDate() !== 1 ||
+        p.to !== Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 1)
+      )
+        throw new Error("Binance 月档案恢复记录无效");
+      for (const repair of p.repairs) {
+        const marks = repair.kind === "marks";
+        const kind = marks ? "markPriceKlines" : "klines";
+        const originalUrl = marks ? p.markSource : p.source;
+        const originalSha = marks ? p.markChecksum : p.checksum;
+        const derived = marks ? p.marks : p.candles;
+        if (
+          !["candles", "marks"].includes(repair.kind) ||
+          kinds.has(repair.kind) ||
+          repair.original?.id !== `binance/archive/${originalSha}` ||
+          !/^[a-f0-9]{64}$/u.test(repair.original.hash ?? "") ||
+          originalUrl !==
+            `https://data.binance.vision/data/futures/um/monthly/${kind}/${m.symbol}/1m/${m.symbol}-1m-${utcDate(p.from).slice(0, 7)}.zip` ||
+          !/^[a-f0-9]{64}$/u.test(derived.hash ?? "") ||
+          derived.id !== `binance/complete/${derived.hash}` ||
+          !Array.isArray(repair.days) ||
+          !repair.days.length
+        )
+          throw new Error("Binance 月档案恢复来源无效");
+        kinds.add(repair.kind);
+        let previous = p.from - DAY;
+        for (const day of repair.days) {
+          const time = dateTime(day.date);
+          if (
+            time <= previous ||
+            time < p.from ||
+            time >= p.to ||
+            !source(day.url, day.checksum) ||
+            day.url !==
+              `https://data.binance.vision/data/futures/um/daily/${kind}/${m.symbol}/1m/${m.symbol}-1m-${day.date}.zip` ||
+            day.ref?.id !== `binance/archive/${day.checksum}` ||
+            !/^[a-f0-9]{64}$/u.test(day.ref.hash ?? "")
+          )
+            throw new Error("Binance 日档案恢复来源无效");
+          previous = time;
+        }
+      }
+    }
     expected = p.to;
   }
   if (expected !== m.endTime || m.fundingSources.some((s) => !source(s.url, s.checksum)))

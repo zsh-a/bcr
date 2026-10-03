@@ -1,0 +1,13 @@
+# Frozen historical evidence; audit with bun run research:trend:audit --frozen.
+research/trend/plan.json
+research/trend/slow-plan.json
+research/trend/methods-plan.json
+research/trend/results.json
+research/trend/curves.json
+research/trend/equity.svg
+research/trend/REPORT.md
+# Published method comparison; preserve original bytes and generator identity.
+research/trend/methods/results.json
+research/trend/methods/curves.json
+research/trend/methods/equity.svg
+research/trend/methods/REPORT.md

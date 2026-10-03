@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "frozenAt": "2026-10-02; after study 1, before reading 2026 outcomes",
+  "purpose": "Second and final declared study: slower horizon and crypto directional asymmetry. Keep study 1 failures. 2024/2025 are already observed diagnostics, only 2026 is a fresh holdout. No subsequent tuning.",
+  "symbols": {
+    "BTCUSDT": {
+      "tickSize": 0.1,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "ETHUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "BNBUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.01,
+      "minNotional": 100
+    },
+    "SOLUSDT": {
+      "tickSize": 0.001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "XRPUSDT": {
+      "tickSize": 0.0001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "DOGEUSDT": {
+      "tickSize": 1e-5,
+      "quantityStep": 1,
+      "minNotional": 100
+    }
+  },
+  "windows": [
+    {
+      "id": "development",
+      "start": "2022-09-01",
+      "end": "2024-01-01"
+    },
+    {
+      "id": "diagnostic",
+      "start": "2024-01-01",
+      "end": "2024-08-01"
+    },
+    {
+      "id": "known-2025",
+      "start": "2025-01-01",
+      "end": "2026-01-01"
+    },
+    {
+      "id": "holdout",
+      "start": "2026-01-01",
+      "end": "2026-09-01"
+    }
+  ],
+  "dataAmendment": "Keep study 1 data completeness policy and calendar cuts. Add complete official January\u2013August 2026 archives for the sole fresh holdout. Do not infer missing minutes.",
+  "candidates": [
+    {
+      "id": "channel-4h-both",
+      "tradeMinutes": 240,
+      "filter": "none",
+      "management": "channel",
+      "direction": "both",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2
+    },
+    {
+      "id": "channel-4h-long",
+      "tradeMinutes": 240,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2
+    },
+    {
+      "id": "channel-1d-both",
+      "tradeMinutes": 1440,
+      "filter": "none",
+      "management": "channel",
+      "direction": "both",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2
+    },
+    {
+      "id": "channel-1d-long",
+      "tradeMinutes": 1440,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2
+    }
+  ],
+  "selection": "Development only: highest median per-symbol mean net R among candidates with at least 5 trades per symbol. The low minimum allows slow rules to be examined, never establishes statistical confidence. Need at least 4/6 profitable development symbols. Already-observed 2024 and 2025 are diagnostics, not fresh validation. Only 2026 is a new holdout.",
+  "sensitivity": [
+    {
+      "id": "window-half",
+      "breakoutBars": 10
+    },
+    {
+      "id": "window-double",
+      "breakoutBars": 40
+    },
+    {
+      "id": "stop-lower",
+      "stopAtr": 1.5
+    },
+    {
+      "id": "stop-higher",
+      "stopAtr": 2.5
+    }
+  ],
+  "costs": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "stressFeeBps": 10,
+    "stressSlippageBps": 4
+  },
+  "risk": {
+    "riskPct": 0.005,
+    "maxExposurePct": 0.95,
+    "cooldownLosses": 3,
+    "cooldownMinutes": 60,
+    "dailyLossPct": 0.03,
+    "flattenMinute": null
+  },
+  "initialCapital": 10000,
+  "bootstrap": {
+    "seed": 20261002,
+    "samples": 2000,
+    "blockDays": 7
+  },
+  "acceptance": "Development-selected candidate only: >=4/6 profitable symbols, positive equal-sleeve return and mean net R, positive 95% seven-day block-bootstrap lower bound in fresh 2026 holdout; positive aggregate stress return. Require >=30 completed trades per symbol in fresh holdout to call the strategy sufficiently sampled. No tuning or further study if rejected. Two study-level selections are disclosed; each lower 2.5% tail is a conservative two-trial familywise protocol, not a deflated Sharpe calculation.",
+  "limitations": [
+    "Six surviving liquid crypto perpetuals, not a point-in-time universe or six independent asset classes",
+    "Static conservative precision assumptions, not historical exchange filters",
+    "One-minute OHLC execution, no historical order book, liquidation or market impact",
+    "Independent equal-capital sleeves, no cross-margin portfolio simulator",
+    "Historical holdout is a research split, not prospective live evidence"
+  ],
+  "selectionMinTrades": 5
+}

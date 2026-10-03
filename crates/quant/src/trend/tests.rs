@@ -20,6 +20,10 @@ fn config() -> Config {
     let mut c = Config::default();
     c.strategy.filter = "none".into();
     c.strategy.entry = "pullback".into();
+    c.strategy.management = "atr".into();
+    c.strategy.direction = "both".into();
+    c.strategy.trade_minutes = 1;
+    c.strategy.stop_atr = 1.5;
     c.strategy.break_even_atr = 0.0;
     c.strategy.trailing_atr = 20.0;
     c.execution.tick_size = 0.01;
@@ -115,13 +119,25 @@ fn optional_ema_is_unchanged_until_trading_candle_close() {
     c.strategy.filter = "ema".into();
     let mut indicators = Indicators::default();
     for i in 0..4 {
-        assert!(!indicators.close(bar(i, 100.0, 101.0), &c.strategy).trend);
+        assert!(
+            !indicators
+                .close(bar(i, 100.0, 101.0), &c.strategy)
+                .ema_updated
+        );
         assert_eq!(indicators.fast, 0.0);
     }
-    assert!(indicators.close(bar(4, 100.0, 101.0), &c.strategy).trend);
+    assert!(
+        indicators
+            .close(bar(4, 100.0, 101.0), &c.strategy)
+            .ema_updated
+    );
     let fast = indicators.fast;
     for i in 5..9 {
-        assert!(!indicators.close(bar(i, 101.0, 1000.0), &c.strategy).trend);
+        assert!(
+            !indicators
+                .close(bar(i, 101.0, 1000.0), &c.strategy)
+                .ema_updated
+        );
         assert_eq!(indicators.fast, fast);
     }
 }
@@ -790,4 +806,319 @@ fn background_has_its_own_warmup_and_never_treats_missing_context_as_permission(
         .contexts
         .iter()
         .all(|d| d.reason == "context-warmup" && !d.allowed));
+}
+
+#[test]
+fn channel_management_ignores_minute_noise_and_fills_confirmed_exit_at_next_open() {
+    for short in [false, true] {
+        let side = if short { Side::Short } else { Side::Long };
+        let mut bars = period_history(5, false);
+        let mut last = bars.last().unwrap().close;
+        for _ in 0..150 {
+            bars.push(bar(bars.len(), last, last + 0.03));
+            last += 0.03;
+        }
+        let reversal_start = bars.len();
+        for _ in 0..5 {
+            bars.push(bar(bars.len(), last, last - 0.5));
+            last -= 0.5;
+        }
+        let fill_index = bars.len();
+        for _ in 0..5 {
+            // Gap at the first next-minute open; do not use signal close.
+            bars.push(bar(bars.len(), last - 0.3, last - 0.3));
+            last -= 0.3;
+        }
+        if short {
+            for b in &mut bars {
+                *b = Bar {
+                    open: 200.0 - b.open,
+                    close: 200.0 - b.close,
+                    high: 200.0 - b.low,
+                    low: 200.0 - b.high,
+                    ..*b
+                };
+            }
+        }
+        let mut c = period_config(5);
+        c.strategy.entry = "breakout".into();
+        c.strategy.management = "channel".into();
+        c.strategy.stop_atr = 20.0;
+        c.strategy.break_even_atr = 0.1;
+        c.strategy.trailing_atr = 0.1;
+        let run = |step| {
+            let mut e = Engine::new(
+                c.clone(),
+                vec![],
+                BASE + 300 * MINUTE,
+                BASE + bars.len() as u64 * MINUTE,
+                BASE,
+            )
+            .unwrap();
+            let mut out = Chunk::default();
+            for (i, b) in bars.iter().enumerate() {
+                e.advance(*b, *b).unwrap();
+                if i % step == 0 {
+                    let chunk = e.drain();
+                    out.trades.extend(chunk.trades);
+                    out.events.extend(chunk.events);
+                }
+            }
+            let metrics = e.finish().unwrap();
+            let chunk = e.drain();
+            out.trades.extend(chunk.trades);
+            out.events.extend(chunk.events);
+            (metrics, out)
+        };
+        let (metrics, out) = run(bars.len());
+        let (split_metrics, split) = run(7);
+        assert_eq!(
+            serde_json::to_string(&metrics).unwrap(),
+            serde_json::to_string(&split_metrics).unwrap()
+        );
+        assert_eq!(
+            serde_json::to_string(&out.trades).unwrap(),
+            serde_json::to_string(&split.trades).unwrap()
+        );
+        let t = out
+            .trades
+            .iter()
+            .find(|t| t.reason == "channel-exit")
+            .expect("confirmed channel exit");
+        assert_eq!(t.side, side);
+        assert_eq!(t.exit_time, bars[fill_index].time);
+        assert!(t.exit_time > bars[reversal_start].time);
+        assert_eq!(
+            t.exit_price,
+            c.execution
+                .fill(bars[fill_index].open, side == Side::Short)
+                .unwrap()
+        );
+        assert!(!out
+            .events
+            .iter()
+            .any(|e| e.kind == "stop" && e.reason != "initial"));
+        assert_eq!(metrics.evaluation.total_days, 0);
+        assert!(
+            (metrics.evaluation.net_expectancy.unwrap() * metrics.trades as f64
+                - out.trades.iter().map(|t| t.net_pnl).sum::<f64>())
+            .abs()
+                < 1e-8
+        );
+    }
+}
+
+#[test]
+fn channel_hard_stop_remains_active_within_an_unclosed_trading_candle() {
+    let mut bars = period_history(5, false);
+    let mut c = period_config(5);
+    c.strategy.entry = "breakout".into();
+    c.strategy.management = "channel".into();
+    c.strategy.breakout_bars = 20;
+    c.strategy.stop_atr = 2.0;
+    let replay = |bars: &[Bar]| {
+        let mut e = Engine::new(
+            c.clone(),
+            vec![],
+            BASE + 300 * MINUTE,
+            BASE + bars.len() as u64 * MINUTE,
+            BASE,
+        )
+        .unwrap();
+        for b in bars {
+            e.advance(*b, *b).unwrap();
+        }
+        e.finish().unwrap();
+        e.drain()
+    };
+    let baseline = replay(&bars);
+    let entry = baseline.trades[0].entry_time;
+    let index = ((entry - BASE) / MINUTE) as usize + 1;
+    bars[index].low = baseline.trades[0].initial_stop - 0.5;
+    let out = replay(&bars);
+    assert_eq!(out.trades[0].reason, "initial");
+    assert_eq!(out.trades[0].exit_time, bars[index].time + MINUTE - 1);
+}
+
+#[test]
+fn tick_breaks_accept_exact_decimal_ticks_but_not_subtick_moves() {
+    let mut execution = config().execution;
+    for tick in [0.01, 0.1] {
+        execution.tick_size = tick;
+        for boundary in [99.8, 100.1, 100.2, 50_000.2] {
+            for direction in [-1.0, 1.0] {
+                assert!(execution.breaks_by_tick(boundary + direction * tick, boundary, direction));
+                assert!(!execution.breaks_by_tick(
+                    boundary + direction * tick * 0.9999,
+                    boundary,
+                    direction,
+                ));
+                assert!(!execution.breaks_by_tick(boundary, boundary, direction));
+                assert!(!execution.breaks_by_tick(
+                    boundary - direction * tick,
+                    boundary,
+                    direction
+                ));
+            }
+        }
+    }
+}
+
+#[test]
+fn config_v5_requires_independent_cost_policy_and_v4_retains_legacy_shape() {
+    let mut c = Config::default();
+    assert_eq!(c.version, 5);
+    assert_eq!(c.strategy.max_cost_atr, Some(0.0));
+    assert_eq!(c.strategy.trade_minutes, 240);
+    assert_eq!(c.strategy.management, "channel");
+    assert_eq!(c.strategy.direction, "long");
+    assert!(c.validate().is_ok());
+    for invalid in [None, Some(-0.1), Some(20.1), Some(f64::NAN)] {
+        c.strategy.max_cost_atr = invalid;
+        assert!(c.validate().is_err());
+    }
+    c.version = 4;
+    c.strategy.max_cost_atr = None;
+    assert!(c.validate().is_ok());
+    let json = serde_json::to_value(&c).unwrap();
+    assert!(json["strategy"].get("maxCostAtr").is_none());
+    let legacy: Config = serde_json::from_value(json).unwrap();
+    assert!(legacy.validate().is_ok());
+    assert_eq!(
+        legacy.cost_policy().unwrap(),
+        super::config::CostPolicy::Disabled
+    );
+    c.strategy.filter = "background".into();
+    assert_eq!(
+        c.cost_policy().unwrap(),
+        super::config::CostPolicy::LegacyBackground { max_atr: 0.5 }
+    );
+    c.strategy.max_cost_atr = Some(0.0);
+    assert!(
+        c.validate().is_err(),
+        "v4 must not silently ignore a new policy"
+    );
+}
+
+#[test]
+fn warmup_days_cover_channel_ema_and_weekly_background_horizons() {
+    let mut c = Config::default();
+    assert_eq!(c.warmup_days(), 4);
+    c.strategy.filter = "background".into();
+    assert_eq!(c.warmup_days(), 22);
+    c.strategy.trade_minutes = 1440;
+    assert_eq!(c.warmup_days(), 154);
+    c.strategy.filter = "ema".into();
+    assert_eq!(c.warmup_days(), 60);
+    c.strategy.filter = "none".into();
+    c.strategy.breakout_bars = 250;
+    assert_eq!(c.warmup_days(), 250);
+    c.strategy.trade_minutes = 1;
+    assert_eq!(c.warmup_days(), 1);
+}
+
+#[test]
+fn shared_contract_matches_executor_defaults_periods_and_warmup() {
+    let contract: serde_json::Value =
+        serde_json::from_str(include_str!("../../fixtures/trend-contract.json")).unwrap();
+    assert_eq!(contract["executor"], super::ENGINE_VERSION);
+    let defaults: Config = serde_json::from_value(contract["defaultConfig"].clone()).unwrap();
+    defaults.validate().unwrap();
+    assert_eq!(
+        serde_json::to_value(defaults).unwrap(),
+        serde_json::to_value(Config::default()).unwrap()
+    );
+    for period in contract["periods"].as_array().unwrap() {
+        let minutes = period["minutes"].as_u64().unwrap() as usize;
+        let mut config = Config::default();
+        config.strategy.trade_minutes = minutes;
+        config.validate().unwrap();
+        assert_eq!(
+            super::config::background_minutes(minutes),
+            period["backgroundMinutes"].as_u64().unwrap() as usize,
+            "trading period {minutes}"
+        );
+    }
+    for case in contract["warmupCases"].as_array().unwrap() {
+        let mut value = contract["defaultConfig"].clone();
+        value["strategy"]
+            .as_object_mut()
+            .unwrap()
+            .extend(case["strategy"].as_object().unwrap().clone());
+        let config: Config = serde_json::from_value(value).unwrap();
+        config.validate().unwrap();
+        assert_eq!(
+            config.warmup_days(),
+            case["days"].as_u64().unwrap(),
+            "shared warmup case: {case}"
+        );
+    }
+}
+
+#[test]
+fn cost_policy_is_independent_of_filter_and_legacy_cost_rejections_stay_compatible() {
+    let bars = background_history(false);
+    let run = |c: Config| {
+        let mut engine = Engine::new(
+            c,
+            vec![],
+            BASE + 150 * MINUTE,
+            BASE + bars.len() as u64 * MINUTE,
+            BASE,
+        )
+        .unwrap();
+        for b in &bars {
+            engine.advance(*b, *b).unwrap();
+        }
+        let metrics = engine.finish().unwrap();
+        (metrics, engine.drain())
+    };
+    for filter in ["none", "ema", "background"] {
+        let mut c = config();
+        c.strategy.entry = "breakout".into();
+        c.strategy.filter = filter.into();
+        c.execution.fee_bps = 100.0;
+        c.execution.slippage_bps = 100.0;
+        c.strategy.max_cost_atr = Some(0.5);
+        let (restricted, output) = run(c.clone());
+        assert_eq!(restricted.trades, 0, "{filter}");
+        assert!(
+            output.events.iter().any(|e| e.reason == "entry-cost"),
+            "{filter}"
+        );
+        assert!(!output.events.iter().any(|e| e.reason == "context-cost"));
+        if filter == "background" {
+            assert!(output.contexts.iter().all(|d| d.allowed));
+            assert_eq!(restricted.context.rejected, 0);
+        }
+
+        c.strategy.max_cost_atr = Some(0.0);
+        let (unrestricted, new_output) = run(c.clone());
+        assert!(
+            unrestricted.trades > 0,
+            "disabled cost policy must allow {filter}"
+        );
+
+        c.version = 4;
+        c.strategy.max_cost_atr = None;
+        let (legacy, old_output) = run(c);
+        if filter == "background" {
+            assert_eq!(legacy.trades, 0);
+            assert!(old_output.events.iter().any(|e| e.reason == "context-cost"));
+            assert!(old_output
+                .contexts
+                .iter()
+                .all(|d| !d.allowed && d.reason == "context-cost"));
+            assert_eq!(legacy.rejected_signals, restricted.rejected_signals);
+        } else {
+            assert_eq!(
+                serde_json::to_value(legacy).unwrap(),
+                serde_json::to_value(unrestricted).unwrap()
+            );
+            assert_eq!(
+                serde_json::to_value(old_output).unwrap(),
+                serde_json::to_value(new_output).unwrap()
+            );
+        }
+    }
 }

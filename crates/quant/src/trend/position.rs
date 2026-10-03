@@ -36,6 +36,11 @@ pub fn update_protection(
     };
     p.mfe = p.mfe.max(favourable);
     p.mae = p.mae.max(adverse);
+    // Channel management keeps the hard initial stop. Only completed trading
+    // candles can request a channel exit; minute noise cannot tighten it.
+    if strategy.management == "channel" {
+        return None;
+    }
     let mut stop = p.stop;
     let mut reason = p.stop_reason;
     if strategy.break_even_atr > 0.0 && p.mfe >= strategy.break_even_atr * p.atr {

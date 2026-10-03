@@ -145,10 +145,7 @@ impl Background {
         };
         // A conservative unchanged-price round trip: fees, slippage and up to
         // two rounding ticks. Future funding and unknown book impact are excluded.
-        let cost_atr = (signal_atr > 0.0).then(|| {
-            (2.0 * price * (execution.fee() + execution.slip()) + 2.0 * execution.tick_size)
-                / signal_atr
-        });
+        let cost_atr = execution.round_trip_cost_atr(price, signal_atr);
         let extension_atr = ready.then(|| side.sign() * (price - self.ema) / self.atr);
         let reason = if !ready {
             "context-warmup"
@@ -160,8 +157,6 @@ impl Background {
             "context-direction"
         } else if side.sign() * (price - anchor.unwrap()) <= 0.0 {
             "context-structure"
-        } else if cost_atr.is_none_or(|v| v > BACKGROUND_MAX_COST_ATR) {
-            "context-cost"
         } else {
             "context-ready"
         };

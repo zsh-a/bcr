@@ -1,6 +1,8 @@
 use super::background::Background;
-use super::config::Config;
+use super::config::{Config, CostPolicy};
+use super::evaluation::Evaluator;
 use super::indicators::Indicators;
+use super::management::ChannelExit;
 use super::model::*;
 use super::position::{update_protection, Position};
 use super::risk::RiskState;
@@ -9,7 +11,8 @@ use super::signals::{Candidate, Signals};
 /// Minute event ordering: carried-position funding, prior-close orders, old
 /// stops, close-only indicators/signals, then stop changes for the next minute.
 pub struct Engine {
-    pub config: Config,
+    config: Config,
+    cost_policy: CostPolicy,
     start: u64,
     end: u64,
     expected: u64,
@@ -20,6 +23,9 @@ pub struct Engine {
     context_metrics: ContextMetrics,
     position: Option<Position>,
     pending: Option<Candidate>,
+    pending_exit: bool,
+    channel_exit: ChannelExit,
+    evaluation: Evaluator,
     funding: Vec<Funding>,
     funding_cursor: usize,
     cash: f64,
@@ -51,7 +57,7 @@ impl Engine {
         end: u64,
         warmup: u64,
     ) -> Result<Self, String> {
-        config.validate()?;
+        let cost_policy = config.cost_policy()?;
         if start % MINUTE != 0
             || end % MINUTE != 0
             || warmup % MINUTE != 0
@@ -81,6 +87,7 @@ impl Engine {
         let capital = config.execution.initial_capital;
         Ok(Self {
             config,
+            cost_policy,
             start,
             end,
             expected: warmup,
@@ -91,6 +98,9 @@ impl Engine {
             context_metrics: ContextMetrics::default(),
             position: None,
             pending: None,
+            pending_exit: false,
+            channel_exit: ChannelExit::default(),
+            evaluation: Evaluator::default(),
             funding,
             funding_cursor: 0,
             cash: capital,
@@ -214,6 +224,7 @@ impl Engine {
         }
         let fee = entry * quantity * self.config.execution.fee();
         self.cash -= fee;
+        self.evaluation.entry(entry * quantity);
         self.fees += fee;
         let id = self.next_id;
         self.next_id += 1;
@@ -256,6 +267,7 @@ impl Engine {
         let risk = p.distance * p.quantity;
         let r = net / risk;
         self.trades += 1;
+        self.pending_exit = false;
         self.r_sum += r;
         if net > 0.0 {
             self.wins += 1;
@@ -269,7 +281,7 @@ impl Engine {
         } else {
             self.loss_streak = 0;
         }
-        self.output.trades.push(Trade {
+        let trade = Trade {
             id: p.id,
             side: p.side,
             entry_time: p.time,
@@ -287,7 +299,9 @@ impl Engine {
             mfe_r: p.mfe / p.distance,
             mae_r: p.mae / p.distance,
             reason: reason.into(),
-        });
+        };
+        self.evaluation.trade(&trade);
+        self.output.trades.push(trade);
         self.event(time, "exit", p.side, price, Some(net), Some(p.id), reason);
         if let Some(until) = self.risk.record_trade(net, time, &self.config.risk) {
             self.signals.reset();
@@ -330,6 +344,7 @@ impl Engine {
         self.expected += MINUTE;
         self.rows += 1;
         let mut position = self.position.take();
+        let mut exposed = position.is_some();
         if bar.time >= self.start {
             let opening_equity = self.marked(&position, mark.open);
             if self.risk.begin_day(bar.time, opening_equity)
@@ -384,6 +399,15 @@ impl Engine {
                 }
                 self.risk.daily_exit = false;
             }
+            if self.pending_exit {
+                self.pending_exit = false;
+                self.pending = None;
+                if let Some(p) = position.take() {
+                    // A known channel-close exit is a market order. A worse
+                    // opening gap therefore still fills at that opening price.
+                    self.close(p, bar.open, bar.time, "channel-exit")?;
+                }
+            }
             if let Some(candidate) = self.pending.take() {
                 if position.is_none()
                     && !cutoff
@@ -392,6 +416,7 @@ impl Engine {
                     && self.cash > 0.0
                 {
                     position = self.enter(candidate, bar)?;
+                    exposed |= position.is_some();
                 }
             }
             if let Some(mut p) = position.take() {
@@ -436,6 +461,7 @@ impl Engine {
             }
             let equity = self.marked(&position, mark.close);
             let close_time = bar.time + MINUTE - 1;
+            self.evaluation.minute(close_time, equity, exposed);
             self.observe_equity(close_time, equity, (bar.time + MINUTE) % (60 * MINUTE) == 0);
             self.risk
                 .observe(equity, position.is_some(), &self.config.risk);
@@ -451,7 +477,7 @@ impl Engine {
                 .close(bar, self.config.strategy.trade_minutes);
         }
         let closed = self.indicators.close(bar, &self.config.strategy);
-        if closed.trend && self.config.strategy.filter == "ema" && bar.time >= self.start {
+        if closed.ema_updated && bar.time >= self.start {
             self.output.indicators.push(Indicator {
                 time: bar.time + MINUTE - 1,
                 fast: self.indicators.fast,
@@ -467,6 +493,13 @@ impl Engine {
             self.signals.reset();
         }
         if let Some(candle) = closed.trade {
+            if self.config.strategy.management == "channel" {
+                self.pending_exit = self.channel_exit.close(
+                    candle,
+                    self.position.as_ref().map(|p| p.side),
+                    self.config.strategy.breakout_bars,
+                );
+            }
             let enabled = candle.time >= self.start
                 && self.position.is_none()
                 && !cutoff
@@ -481,7 +514,7 @@ impl Engine {
                 &mut self.output.events,
             ) {
                 let allowed = if self.config.strategy.filter == "background" {
-                    let decision = self.background.decide(
+                    let mut decision = self.background.decide(
                         bar.time + MINUTE - 1,
                         candle.close,
                         candidate.side,
@@ -489,6 +522,12 @@ impl Engine {
                         &self.config.execution,
                         self.config.strategy.trade_minutes,
                     );
+                    // Preserve v4's bundled context-cost decision and diagnostics.
+                    // New configurations keep this entry policy separate from trend state.
+                    if decision.allowed && self.cost_policy.rejects_background(decision.cost_atr) {
+                        decision.allowed = false;
+                        decision.reason = "context-cost";
+                    }
                     self.context_metrics.observe(&decision);
                     if decision.allowed {
                         // Freeze the known structural boundary for next-open
@@ -521,7 +560,24 @@ impl Engine {
                     true
                 };
                 if allowed {
-                    self.pending = Some(candidate);
+                    let cost_atr = self
+                        .config
+                        .execution
+                        .round_trip_cost_atr(candle.close, candidate.atr);
+                    if self.cost_policy.rejects_entry(cost_atr) {
+                        self.rejected += 1;
+                        self.event(
+                            bar.time + MINUTE - 1,
+                            "rejected",
+                            candidate.side,
+                            candle.close,
+                            cost_atr,
+                            None,
+                            "entry-cost",
+                        );
+                    } else {
+                        self.pending = Some(candidate);
+                    }
                 }
             }
         }
@@ -538,8 +594,16 @@ impl Engine {
             self.close(p, last.close, self.end - 1, "end-range")?;
         }
         self.observe_equity(self.end - 1, self.cash, true);
+        self.evaluation.point(self.end - 1, self.cash);
         self.finished = true;
         Ok(Metrics {
+            evaluation: self.evaluation.finish(
+                self.config.execution.initial_capital,
+                self.start,
+                self.end,
+                self.cash,
+                self.max_drawdown,
+            ),
             final_equity: self.cash,
             total_return: self.cash / self.config.execution.initial_capital - 1.0,
             max_drawdown: self.max_drawdown,

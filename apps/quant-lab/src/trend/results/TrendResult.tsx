@@ -60,7 +60,9 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
           <p>
             {utcDate(manifest.startTime)} — {utcDate(manifest.endTime - 1)} · UTC · {config.filter}{" "}
             · {config.archived ? "原始旧版规则 · " : `规则 v${config.ruleVersion} · `}
-            {number(run.durationMs / 1000, 1)} 秒{run.cached ? " · 缓存结果" : ""}
+            {config.direction} · {config.management} · {number(run.durationMs / 1000, 1)} 秒{" · "}
+            {config.costFilter}
+            {run.cached ? " · 缓存结果" : ""}
           </p>
         </div>
         <Button
@@ -102,6 +104,44 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
         <span>最长连亏 {m.longestLossStreak}</span>
         <span>被拒绝信号 {m.rejectedSignals}</span>
       </div>
+      {m.evaluation && (
+        <details className="trend-evaluation">
+          <summary>收益质量与交易管理</summary>
+          <div className="trend-metrics">
+            {[
+              ["单笔净期望 · USDT", number(m.evaluation.netExpectancy)],
+              ["平均盈亏比", number(m.evaluation.payoffRatio)],
+              ["日收益 Sharpe", number(m.evaluation.dailySharpe)],
+              ["Sortino", number(m.evaluation.sortino)],
+              ["平均持仓 · 小时", number(m.evaluation.meanHoldHours)],
+              ["持仓时间占比", percent(m.evaluation.exposurePct)],
+              ["多头净贡献 · USDT", number(m.evaluation.longNetPnl)],
+              ["空头净贡献 · USDT", number(m.evaluation.shortNetPnl)],
+              ["去掉最大盈利 · USDT", number(m.evaluation.withoutBestTrade)],
+              ["最大盈利占总盈利", percent(m.evaluation.bestTradeShare)],
+              ["累计换手 / 初始资金", `${number(m.evaluation.turnover)}×`],
+              ["完整 UTC 日", String(m.evaluation.totalDays)],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
+          </div>
+          <p className="trend-help">
+            净期望按完整交易账本扣除费用与资金费；Sharpe / Sortino 使用完整 UTC 日收益、365
+            日年化，少于 30 日不显示。
+            盈利集中是趋势策略的常见特征，应结合多个标的、样本外表现与成本压力检验；单次回测不能证明长期正期望。
+          </p>
+          <div className="trend-accounting">
+            {Object.entries(m.evaluation.exitReasons).map(([reason, count]) => (
+              <span key={reason}>
+                {TREND_REASONS[reason] ?? reason} {count}
+              </span>
+            ))}
+          </div>
+        </details>
+      )}
       {(error || chart.error) && (
         <p role="alert" className="trend-error">
           {error || chart.error}
@@ -320,8 +360,10 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
         <p>
           {config.archived
             ? "旧版保本与移动止盈按原始 R 阈值执行。"
-            : "止损、保本触发和移动距离使用信号收盘时冻结的 ATR；移动止盈无需单独启动阈值。"}
-          初始止损在入场后立即生效；保本和移动止损在下一分钟生效。跳空按更不利的开盘价成交。当前按分钟
+            : config.channel
+              ? "ATR 硬止损在入场时冻结；此前反向通道在完整交易 K 线收盘后确认退出，下分钟开盘成交。不启用保本或 ATR 移动止盈。"
+              : "止损、保本触发和移动距离使用信号收盘时冻结的 ATR；移动止盈无需单独启动阈值。"}
+          初始止损在入场后立即生效；收盘决策在下一分钟生效。跳空按更不利的开盘价成交。当前按分钟
           OHLC 回放，未模拟逐笔撮合、市场冲击、强平或 ADL。
         </p>
         <p>
@@ -330,8 +372,9 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
           ；这些为参数假设。资金费净支出为负表示收到资金费。
         </p>
         <p>
-          {manifest.rows.toLocaleString()} 分钟 · 含{" "}
-          {(manifest.startTime - manifest.warmupStart) / DAY} 天预热 · {manifest.partitions.length}{" "}
+          实际预热{" "}
+          {((result.window ?? manifest).startTime - (result.window ?? manifest).warmupStart) / DAY}{" "}
+          天 · 缓存覆盖 {manifest.rows.toLocaleString()} 分钟 · {manifest.partitions.length}{" "}
           行情分片
         </p>
         {manifest.partitions.map((p) => (

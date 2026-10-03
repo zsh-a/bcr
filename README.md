@@ -220,8 +220,8 @@ decode ─┬─ wave（Rust peak kernel 波形）
 
 Quant Lab 默认打开股票组合研究工作台，可在顶部切换「股票组合 / 永续趋势」。
 永续趋势入口为 `/quant?strategy=trend`：直接获取 Binance 官方 USDT 永续历史档案，在 Rust/WASM 中
-默认用较大周期的趋势背景过滤通道突破，保留无过滤基线、同周期 EMA 和固定回调变体作对照。六项常用参数与入场环境选择集中展示，策略、成交与风控分开管理；
-包含费用、资金费与连续 K 线买卖点，详情见 [策略与数据口径](docs/BINANCE-TREND.md)。
+新建研究采用「4 小时 / 仅做多」简洁通道候选，退出窗口自动推导；独立成本门槛与趋势背景分别设置，旧草稿保留原交易规则。策略、成交与风控分开管理，结果展示净期望与交易质量，候选尚未通过全部统计门槛。
+包含费用、资金费与连续 K 线买卖点，详情见 [策略与数据口径](docs/BINANCE-TREND.md)及[研究架构](docs/TREND-RESEARCH-ARCHITECTURE.md)；现有十候选比较见[方法研究](research/trend/methods/REPORT.md)，早期失败假设见[历史研究](research/trend/REPORT.md)。旧证据保留，新研究使用显式计划和独立输出目录。
 
 ```text
 ClickHouse / 本地研究快照 → 分块 Arrow → Rust/WASM 逐日回放 → 净值 / 成交 / 持仓 / 选股解释

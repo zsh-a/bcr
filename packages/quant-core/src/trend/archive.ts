@@ -3,50 +3,20 @@ import {
   filterLabel,
   backgroundMinutes,
   validateTrendConfig,
-  TREND_PERIODS,
+  managementLabel,
+  directionLabel,
+  costFilterLabel,
 } from "./config";
 import type { TrendConfig, TrendRun } from "./model";
+import { validateHistoricalTrendConfig, type HistoricalTrendConfig } from "./recorded";
+export type {
+  ArchivedTrendConfig,
+  RecordedTrendConfigV2,
+  RecordedTrendConfigV3,
+  RecordedTrendConfigV4,
+} from "./recorded";
 
-export type RecordedTrendConfigV2 = Omit<TrendConfig, "version" | "strategy"> & {
-  version: 2;
-  strategy: Omit<TrendConfig["strategy"], "filter"> & { filter: "none" | "ema" };
-};
-
-/** Immutable pre-refactor settings, used only to display/export recorded results. */
-export interface ArchivedTrendConfig {
-  entry: "pullback" | "breakout";
-  direction: "both" | "long" | "short";
-  initialCapital: number;
-  riskPct: number;
-  maxExposurePct: number;
-  feeBps: number;
-  slippageBps: number;
-  tickSize: number;
-  quantityStep: number;
-  minNotional: number;
-  tradeMinutes?: number;
-  trendMinutes: number;
-  fastEma: number;
-  slowEma: number;
-  atrPeriod: number;
-  impulseBars: number;
-  impulseAtr: number;
-  minEfficiency: number;
-  minPullbackBars: number;
-  maxPullbackBars: number;
-  minRetracement: number;
-  maxRetracement: number;
-  breakoutBars: number;
-  stopAtr: number;
-  maxStopAtr: number;
-  breakEvenR: number;
-  trailingStartR: number;
-  trailingAtr: number;
-  cooldownLosses: number;
-  cooldownMinutes: number;
-  dailyLossPct: number;
-  flattenMinute: number | null;
-}
+const RULE_VERSION: Record<2 | 3 | 4 | 5, number> = { 2: 3, 3: 4, 4: 5, 5: 6 };
 export function trendRunView(run: TrendRun) {
   const config = run.config;
   if ("version" in config)
@@ -57,11 +27,25 @@ export function trendRunView(run: TrendRun) {
       execution: config.execution,
       label: strategyLabel(config.strategy.entry),
       filter: filterLabel(config.strategy),
+      costFilter: costFilterLabel(
+        config.version === 5
+          ? config.strategy.maxCostAtr
+          : config.strategy.filter === "background"
+            ? 0.5
+            : 0,
+      ),
+      direction: directionLabel(config.strategy.direction),
       backgroundMinutes:
         config.strategy.filter === "background"
           ? backgroundMinutes(config.strategy.tradeMinutes)
           : null,
-      ruleVersion: config.version === 3 ? 4 : 3,
+      management:
+        config.version === 4 || config.version === 5
+          ? managementLabel(config.strategy)
+          : "保本与 ATR 移动止盈",
+      channel:
+        (config.version === 4 || config.version === 5) && config.strategy.management === "channel",
+      ruleVersion: RULE_VERSION[config.version],
       archived: false,
     };
   return {
@@ -71,8 +55,12 @@ export function trendRunView(run: TrendRun) {
     execution: config,
     label: config.entry === "pullback" ? "强趋势回调突破 · 旧版" : "通道突破 · 旧版",
     filter: `EMA ${config.fastEma} / ${config.slowEma} · ${config.trendMinutes} 分钟`,
+    costFilter: "原始旧版成本规则",
+    direction: directionLabel(config.direction ?? "both"),
     backgroundMinutes: null,
     ruleVersion: null,
+    management: "原始旧版持仓规则",
+    channel: false,
     archived: true,
   };
 }
@@ -80,32 +68,30 @@ export function trendRunView(run: TrendRun) {
 /** Validate fields needed to read historical records, without executing old rules. */
 export function validateRecordedTrendConfig(
   value: unknown,
-): asserts value is TrendConfig | RecordedTrendConfigV2 | ArchivedTrendConfig {
-  if (!value || typeof value !== "object") throw new Error("运行配置无效");
-  if ("version" in value) {
-    if (value.version === 2) {
-      const c = value as RecordedTrendConfigV2;
-      if (!["none", "ema"].includes(c.strategy?.filter)) throw new Error("旧版方向过滤无效");
-      validateTrendConfig({ ...c, version: 3 });
-    } else validateTrendConfig(value);
-    return;
-  }
-  const c = value as ArchivedTrendConfig;
-  if (
-    !["breakout", "pullback"].includes(c.entry) ||
-    !TREND_PERIODS.includes((c.tradeMinutes ?? 1) as (typeof TREND_PERIODS)[number]) ||
-    !TREND_PERIODS.includes(c.trendMinutes as (typeof TREND_PERIODS)[number]) ||
-    [c.initialCapital, c.tickSize, c.quantityStep, c.fastEma, c.slowEma].some(
-      (n) => !Number.isFinite(n) || n <= 0,
-    ) ||
-    [c.feeBps, c.slippageBps].some((n) => !Number.isFinite(n) || n < 0)
-  )
-    throw new Error("旧版运行配置无效");
+): asserts value is TrendConfig | HistoricalTrendConfig {
+  if (value && typeof value === "object" && "version" in value && value.version === 5)
+    validateTrendConfig(value);
+  else validateHistoricalTrendConfig(value);
 }
 
 /** Upgrade only the editable draft. Frozen runs are never rewritten. */
 export function restoreTrendDraft(value: unknown): TrendConfig {
   validateRecordedTrendConfig(value);
   if (!("version" in value)) throw new Error("旧版扁平参数不能执行");
-  return structuredClone({ ...value, version: 3 });
+  const draft: TrendConfig = structuredClone({
+    ...value,
+    version: 5,
+    strategy: {
+      ...value.strategy,
+      management: "management" in value.strategy ? value.strategy.management : "atr",
+      maxCostAtr:
+        "maxCostAtr" in value.strategy
+          ? value.strategy.maxCostAtr
+          : value.strategy.filter === "background"
+            ? 0.5
+            : 0,
+    },
+  });
+  validateTrendConfig(draft);
+  return draft;
 }

@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "description": "Frozen historical evidence. New evaluations and replays must use other output locations.",
+  "runs": ["tmp/trend-research", "tmp/trend-slow", "tmp/trend-methods"],
+  "artifacts": [
+    {
+      "path": "research/trend/REPORT.md",
+      "sha256": "a49d2a906a1f53eec88027c51f53227c5d680ab38c3f83e23e0b3c95c95c5384"
+    },
+    {
+      "path": "research/trend/curves.json",
+      "sha256": "c146b0cace7540fbdcb8aee46fdcaf9ece346e93ae7d95de7989dd1cb404eb60"
+    },
+    {
+      "path": "research/trend/equity.svg",
+      "sha256": "a55802c6ac248bc5f042ea4d72c5d82406f77c9aebe0366be44bc7d9e3444a94"
+    },
+    {
+      "path": "research/trend/methods/REPORT.md",
+      "sha256": "38a3bf560d7d0a4a11e0070872801cb2782da409bdc67bf1d9751f445062e903"
+    },
+    {
+      "path": "research/trend/methods/curves.json",
+      "sha256": "14f613cf26f69f67756f0dffcc8b8acbd7c2ba30caac268294809beddd4660f8"
+    },
+    {
+      "path": "research/trend/methods/equity.svg",
+      "sha256": "ad8836e8e5be156e27be5dc776ff9d0ad7d8b80782ff20bf7c653501a2daf13c"
+    },
+    {
+      "path": "research/trend/methods/results.json",
+      "sha256": "3409eaa0d81bc94a0deb8b7f068fcc9500c9521fdcca1741b253192e5863efab"
+    },
+    {
+      "path": "research/trend/methods-plan.json",
+      "sha256": "fb2744a59e7935dba4721122813c477c17c73092ad5cc127f5f2820a34103147"
+    },
+    {
+      "path": "research/trend/plan.json",
+      "sha256": "2e44bf32be0cb5012eb5bdf7ce9537549a3fdc4cba2da639a7b04d5b12853923"
+    },
+    {
+      "path": "research/trend/results.json",
+      "sha256": "b5298812e72651fc0d7b39f4e920e789096b53ba13b4a8d4520a601261e0d547"
+    },
+    {
+      "path": "research/trend/slow-plan.json",
+      "sha256": "1c3e9bb95e5d60a03b0a1f66c7d044638c9a506d854832a24037dd94bb2bf923"
+    }
+  ],
+  "directories": ["research/trend/methods"]
+}

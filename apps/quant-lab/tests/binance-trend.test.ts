@@ -10,6 +10,7 @@ import {
   withTradingPeriod,
   type TrendChartData,
   type TrendChunk,
+  type TrendResult,
 } from "@bcr/quant-core/trend";
 import { createArtifactIO } from "@bcr/runtime-worker";
 import { MemoryStore } from "@bcr/storage-opfs";
@@ -17,6 +18,9 @@ import { describe, expect, it } from "vitest";
 import { binanceHistoryHandler } from "../src/trend/execution/data";
 import { trendChartHandler } from "../src/trend/execution/chart";
 import { trendHandler, type TrendEngine } from "../src/trend/execution/compute";
+import { TREND_EXECUTOR_VERSION } from "../src/trend/execution/versions";
+import { canReuseTrendDataset } from "../src/trend/execution/window";
+import contract from "../../../crates/quant/fixtures/trend-contract.json";
 
 const start = Date.UTC(2024, 0, 1);
 function csv(from: number, to: number) {
@@ -54,7 +58,207 @@ function setup(abort = new AbortController()) {
   };
   return { store, io, task, ctx, download, urls };
 }
+function monthlySetup(abort = new AbortController()) {
+  const s = setup(abort);
+  const task = {
+    ...s.task,
+    config: { request: { symbol: "BTCUSDT", start: "2024-02-01", end: "2024-02-29" } },
+  };
+  const download = async (url: string) => {
+    s.urls.push(url);
+    const date = url.match(/(\d{4}-\d{2}(?:-\d{2})?)\.zip$/u)![1]!;
+    const from = Date.parse(`${date.length === 7 ? date + "-01" : date}T00:00:00Z`);
+    const to = date.length === 7 ? Date.UTC(2024, 2, 1) : from + DAY;
+    let data: string;
+    if (url.includes("fundingRate")) {
+      data = Array.from(
+        { length: (to - from) / (8 * 60 * MINUTE) },
+        (_, i) => `${from + i * 8 * 60 * MINUTE + 1},8,.0001`,
+      ).join("\n");
+    } else {
+      data = csv(from, to);
+      if (date.length === 7 && url.includes("markPriceKlines"))
+        data = data
+          .split("\n")
+          .filter((line) => Number(line.split(",")[0]) !== from + 14 * DAY + 10 * MINUTE)
+          .join("\n");
+    }
+    const checksum = [
+      ...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(data))),
+    ]
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    return { url, csv: data, checksum };
+  };
+  return { ...s, task, download };
+}
 describe("Binance worker pipeline", () => {
+  it("keeps browser cache identity in sync with the shared engine contract", () => {
+    expect(TREND_EXECUTOR_VERSION).toBe(contract.executor);
+  });
+  it("separates cached coverage from the config's replay window and progress", async () => {
+    const s = setup();
+    const request = { symbol: "BTCUSDT", start: "2024-01-01", end: "2024-01-01" };
+    const refs = await binanceHistoryHandler(s.io, s.download)(
+      { ...s.task, config: { request: { ...request, warmupDays: 3 } } },
+      s.ctx,
+    );
+    const manifestRef = refs.find((ref) => ref.type === "market/binance-manifest")!;
+    const manifest = await s.io.readJsonArtifact<BinanceManifest>(manifestRef, s.ctx);
+    const original = JSON.stringify(manifest);
+    const config = withTradingPeriod(DEFAULT_TREND_CONFIG, 1);
+    expect(canReuseTrendDataset({ manifest, manifestRef }, request, config)).toBe(true);
+    const processed: number[] = [],
+      progress: number[] = [];
+    let window: { startTime: number; endTime: number; warmupStart: number };
+    const handler = trendHandler(s.io, async (_config, _funding, value) => {
+      window = JSON.parse(value);
+      return {
+        load_partition: (candles) => {
+          processed.push(
+            ...candles
+              .split("\n")
+              .filter(Boolean)
+              .map((line) => Number(line.split(",")[0])),
+          );
+        },
+        advance: () => true,
+        processed_rows: () => processed.length,
+        drain_output: () => JSON.stringify({ equity: [], trades: [], events: [], indicators: [] }),
+        finish: () => JSON.stringify({ rows: processed.length }),
+        free: () => undefined,
+      };
+    });
+    const output = await handler(
+      {
+        ...s.task,
+        inputs: refs.map((ref) => (ref.id === manifestRef.id ? { ...ref, port: "manifest" } : ref)),
+        config: { strategy: config },
+      },
+      { ...s.ctx, progress: (value) => progress.push(value) },
+    );
+    const result = await s.io.readJsonArtifact<TrendResult>(output[0]!, s.ctx);
+    expect(window!).toEqual({ startTime: start, endTime: start + DAY, warmupStart: start - DAY });
+    expect(result.window).toEqual(window!);
+    expect(processed[0]).toBe(start - DAY);
+    expect(processed).toHaveLength(2880);
+    expect(progress.at(-1)).toBe(1);
+    expect(JSON.stringify(manifest)).toBe(original);
+  });
+  it("recovers an incomplete monthly mark archive, freezes source receipts and reuses the daily repair cache", async () => {
+    const s = monthlySetup(),
+      handler = binanceHistoryHandler(s.io, s.download);
+    const refs = await handler(s.task, s.ctx);
+    const manifest = await s.io.readJsonArtifact<BinanceManifest>(
+      refs.find((r) => r.type === "market/binance-manifest")!,
+      s.ctx,
+    );
+    validateBinanceManifest(manifest);
+    const partition = manifest.partitions[1]!;
+    const repair = partition.repairs![0]!;
+    expect(repair.kind).toBe("marks");
+    expect(repair.days.map((day) => day.date)).toEqual(["2024-02-15"]);
+    expect(partition.marks.id).toBe(`binance/complete/${partition.marks.hash}`);
+    expect(repair.original.id).toBe(`binance/archive/${partition.markChecksum}`);
+    expect(refs).toContainEqual(repair.original);
+    expect(refs).toContainEqual(repair.days[0]!.ref);
+    expect(
+      s.urls.filter((url) => url.includes("daily/markPriceKlines") && url.includes("2024-02-15")),
+    ).toHaveLength(1);
+    expect(s.urls.some((url) => url.includes("daily/klines") && url.includes("2024-02-15"))).toBe(
+      false,
+    );
+    const frozen = JSON.stringify(manifest);
+    await handler(s.task, s.ctx);
+    expect(s.urls).toHaveLength(6);
+    await handler({ ...s.task, config: { ...s.task.config, refresh: true } }, s.ctx);
+    expect(s.urls).toHaveLength(12);
+    expect(JSON.stringify(manifest)).toBe(frozen);
+    const task = {
+      ...s.task,
+      inputs: refs.map((r) =>
+        r.type === "market/binance-manifest" ? { ...r, port: "manifest" } : r,
+      ),
+      config: {
+        from: Date.UTC(2024, 1, 15),
+        to: Date.UTC(2024, 1, 16),
+        minutes: 5,
+        hasTrades: false,
+        chunks: [],
+      },
+    };
+    const output = await trendChartHandler(s.io)(task, s.ctx);
+    expect((await s.io.readJsonArtifact<TrendChartData>(output[0]!, s.ctx)).bars).toHaveLength(288);
+    for (const alter of [
+      (m: BinanceManifest) => {
+        m.partitions[1]!.repairs![0]!.days[0]!.date = "2024-03-01";
+      },
+      (m: BinanceManifest) => {
+        m.partitions[1]!.repairs![0]!.days[0]!.checksum = "invalid";
+      },
+      (m: BinanceManifest) => {
+        const repair = m.partitions[1]!.repairs![0]!;
+        repair.original = { ...repair.original, id: "unverified" };
+      },
+    ]) {
+      const invalid = structuredClone(manifest);
+      alter(invalid);
+      expect(() => validateBinanceManifest(invalid)).toThrow("来源无效");
+    }
+  });
+  it("never publishes a dataset if the official recovery day also has a gap", async () => {
+    const s = monthlySetup();
+    let incomplete = true;
+    const handler = binanceHistoryHandler(s.io, async (url) => {
+      const result = await s.download(url);
+      return incomplete && url.includes("2024-02-15.zip")
+        ? { ...result, csv: result.csv.split("\n").slice(1).join("\n") }
+        : result;
+    });
+    await expect(handler(s.task, s.ctx)).rejects.toThrow("官方日档案仍缺少分钟");
+    expect((await s.store.list()).some((key) => key.includes("manifest"))).toBe(false);
+    incomplete = false;
+    const retry = await handler(s.task, s.ctx);
+    expect(retry.some((ref) => ref.type === "market/binance-manifest")).toBe(true);
+    expect(s.urls.filter((url) => url.includes("2024-02-15.zip"))).toHaveLength(2);
+    expect(s.urls.filter((url) => url.includes("monthly/markPriceKlines"))).toHaveLength(1);
+  });
+  it("recovers candle and mark-price gaps independently and preserves receipts for both", async () => {
+    const s = monthlySetup();
+    const handler = binanceHistoryHandler(s.io, async (url) => {
+      const result = await s.download(url);
+      if (!url.includes("monthly/klines")) return result;
+      const data = result.csv.split("\n").slice(1).join("\n");
+      const checksum = [
+        ...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(data))),
+      ]
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      return { ...result, csv: data, checksum };
+    });
+    const refs = await handler(s.task, s.ctx);
+    const manifest = await s.io.readJsonArtifact<BinanceManifest>(
+      refs.find((r) => r.type === "market/binance-manifest")!,
+      s.ctx,
+    );
+    validateBinanceManifest(manifest);
+    expect(manifest.partitions[1]!.repairs!.map((r) => [r.kind, r.days[0]!.date])).toEqual([
+      ["candles", "2024-02-01"],
+      ["marks", "2024-02-15"],
+    ]);
+  });
+  it("preserves verified month cache but stops publishing when cancellation interrupts the daily repair", async () => {
+    const abort = new AbortController(),
+      s = monthlySetup(abort);
+    const handler = binanceHistoryHandler(s.io, async (url) => {
+      const result = await s.download(url);
+      if (url.includes("2024-02-15.zip")) abort.abort();
+      return result;
+    });
+    await expect(handler(s.task, s.ctx)).rejects.toThrow();
+    expect((await s.store.list()).some((key) => key.includes("cache/binance"))).toBe(true);
+    expect((await s.store.list()).some((key) => key.includes("manifest"))).toBe(false);
+  });
   it("skips prior result artifacts indexed as having no price overlays", async () => {
     const s = setup();
     const refs = await binanceHistoryHandler(s.io, s.download)(s.task, s.ctx);
@@ -289,7 +493,7 @@ describe("Binance worker pipeline", () => {
           inputs: refs.map((ref) =>
             ref.id === manifestRef.id ? { ...ref, port: "manifest" } : ref,
           ),
-          config: { strategy: DEFAULT_TREND_CONFIG },
+          config: { strategy: withTradingPeriod(DEFAULT_TREND_CONFIG, 1) },
         },
         { ...s.ctx, progress: () => abort.abort() },
       ),

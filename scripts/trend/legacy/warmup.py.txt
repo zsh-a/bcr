@@ -1,0 +1,37 @@
+"""Active-window prehistory, matching quant-core's trendWarmupDays exactly."""
+import math
+
+
+BACKGROUND_MINUTES = {
+    1: 5, 3: 15, 5: 30, 15: 60, 30: 120,
+    60: 240, 120: 720, 240: 1440, 1440: 10080,
+}
+WARMUP_POLICY = "active-windows-v1"
+
+
+def warmup_days(strategy):
+    minutes = strategy.get("tradeMinutes", 1)
+    if minutes not in BACKGROUND_MINUTES:
+        raise ValueError("invalid trading period for warmup")
+    entry_bars = strategy.get("breakoutBars", 20) if strategy.get("entry", "breakout") == "breakout" else 3
+    filter_kind = strategy.get("filter", "background")
+    filter_bars = 60 if filter_kind == "ema" else 0
+    background = 22 * BACKGROUND_MINUTES[minutes] if filter_kind == "background" else 0
+    days = max(1, math.ceil(max(max(14, entry_bars, filter_bars) * minutes, background) / 1440))
+    if days > 250:
+        raise ValueError("warmup exceeds 250 days")
+    return days
+
+
+def window_warmup_days(plan, window):
+    """Download enough for every possible frozen choice and its sensitivities.
+
+    Selection is not read during download. Stress costs do not change prehistory.
+    """
+    candidates = list(plan["candidates"])
+    if window["id"] != "development":
+        candidates += [dict(candidate, **{k: v for k, v in sensitivity.items() if k != "id"})
+                       for candidate in plan["candidates"] for sensitivity in plan.get("sensitivity", [])]
+    if not candidates:
+        raise ValueError("research requires declared candidates")
+    return max(warmup_days(candidate) for candidate in candidates)

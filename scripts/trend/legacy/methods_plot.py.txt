@@ -1,0 +1,153 @@
+"""Standalone six-window figure for the frozen methods study.
+
+Run: uv run --no-project --with matplotlib python scripts/trend/methods_plot.py
+"""
+import argparse
+import datetime as dt
+import json
+import math
+from pathlib import Path
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+from matplotlib.ticker import MaxNLocator, StrMethodFormatter
+
+
+ROOT = Path(__file__).resolve().parents[2]
+PANELS = [
+    ("development", "Development | selection only"),
+    ("known-2024", "2024 | known diagnostic"),
+    ("known-2025", "2025 | known diagnostic"),
+    ("known-2026", "Jan-Aug 2026 | known diagnostic"),
+    ("historical-stress", "Jan-Jun 2022 | retrospective stress"),
+    ("fresh-september", "Sep 2026 | new historical check"),
+]
+BASELINE_COLOR = "#697991"
+SELECTION_COLOR = "#097e76"
+
+
+def load_curves(path, baseline, selected=None):
+    curves = json.loads(path.read_text())
+    choices = {row["candidate"] for row in curves}
+    if baseline not in choices:
+        raise ValueError("baseline is absent from the curves")
+    alternatives = choices - {baseline}
+    if selected is None:
+        if len(alternatives) > 1:
+            raise ValueError("curves contain multiple alternatives; supply the frozen --selected id")
+        selected = next(iter(alternatives), baseline)
+    if selected not in choices or choices - {baseline, selected}:
+        raise ValueError("curves must contain only the baseline and frozen selection")
+    indexed = {}
+    expected_windows = {window for window, _ in PANELS}
+    for row in curves:
+        key = row["window"], row["candidate"]
+        if key in indexed or row["window"] not in expected_windows:
+            raise ValueError("duplicate or unexpected study curve")
+        points = row["points"]
+        if not points:
+            raise ValueError(f"empty curve: {key}")
+        previous = None
+        for point in points:
+            if (not math.isfinite(point["nav"])
+                    or not math.isfinite(point["time"])
+                    or (previous is not None and point["time"] <= previous)):
+                raise ValueError(f"invalid or unordered curve: {key}")
+            previous = point["time"]
+        indexed[key] = points
+    for window in expected_windows:
+        for candidate in {baseline, selected}:
+            if (window, candidate) not in indexed:
+                raise ValueError(f"missing study curve: {window}/{candidate}")
+        if [point["time"] for point in indexed[window, baseline]] != [
+                point["time"] for point in indexed[window, selected]]:
+            raise ValueError(f"baseline and selection calendars differ: {window}")
+    return indexed, selected
+
+
+def draw(curves, baseline, selected, svg, png):
+    theme = {
+        "font.family": "DejaVu Sans", "font.size": 10,
+        "axes.spines.top": False, "axes.spines.right": False,
+        "axes.edgecolor": "#c3ccd4", "axes.labelcolor": "#445365",
+        "axes.titleweight": "semibold", "axes.titlesize": 11,
+        "xtick.color": "#526174", "ytick.color": "#526174",
+        "grid.color": "#dce3e8", "grid.alpha": .8,
+        "text.color": "#243246", "savefig.facecolor": "white",
+        "svg.fonttype": "none",
+    }
+    with plt.rc_context(theme):
+        fig, axes = plt.subplots(3, 2, figsize=(14, 11.5))
+        fig.subplots_adjust(left=.07, right=.975, top=.875, bottom=.14, hspace=.45, wspace=.23)
+        fig.suptitle("Trend methods | baseline and frozen development choice", x=.07, y=.975,
+                     ha="left", fontsize=18, fontweight="semibold")
+        fig.text(.07, .942, "Binance USDT perpetuals  /  BTC, ETH, BNB, SOL, XRP, DOGE", fontsize=11,
+                 color="#596a7e")
+        if baseline == selected:
+            labels = [(baseline, "Baseline = frozen selection", SELECTION_COLOR, "-")]
+        else:
+            labels = [(baseline, "Baseline", BASELINE_COLOR, "--"),
+                      (selected, "Frozen selection", SELECTION_COLOR, "-")]
+        handles = [Line2D([0], [0], color=color, linestyle=style, linewidth=2,
+                          label=f"{label}: {candidate}")
+                   for candidate, label, color, style in labels]
+        fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(.065, .922),
+                   ncol=2, frameon=False, fontsize=10, handlelength=3)
+        for axis, (window, title) in zip(axes.flat, PANELS):
+            for candidate, label, color, style in labels:
+                points = curves[window, candidate]
+                dates = [dt.datetime.fromtimestamp(point["time"] / 1000, dt.timezone.utc)
+                         for point in points]
+                # Daily closing NAVs follow a new account's opening NAV of 1.
+                initial_time = dates[0].replace(hour=0, minute=0, second=0, microsecond=0)
+                axis.plot([initial_time, *dates], [1, *[point["nav"] for point in points]],
+                          color=color, linestyle=style, linewidth=1.65,
+                          label=f"{label}: {points[-1]['nav'] - 1:+.2%}")
+            axis.axhline(1, color="#9ca9b5", linewidth=.7, linestyle=":", zorder=0)
+            axis.set_title(title, loc="left", pad=11)
+            axis.set_ylabel("Account NAV")
+            locator = mdates.AutoDateLocator(minticks=3, maxticks=5)
+            axis.xaxis.set_major_locator(locator)
+            axis.xaxis.set_major_formatter(mdates.DateFormatter("%b %d" if window == "fresh-september" else "%Y-%m"))
+            axis.yaxis.set_major_locator(MaxNLocator(nbins=5))
+            axis.yaxis.set_major_formatter(StrMethodFormatter("{x:.3f}"))
+            axis.grid(axis="y", linewidth=.65)
+            axis.tick_params(axis="both", labelsize=9, length=3)
+            axis.margins(x=.015, y=.12)
+            axis.legend(loc="best", frameon=False, fontsize=8.5)
+        fig.text(.07, .086,
+                 "Each window restarts at NAV 1.00. Separate panels are not a continuous live track record.",
+                 fontsize=10)
+        fig.text(.07, .059,
+                 "Net of fees, modeled slippage and funding. Total initial capital: USDT 60,000; six fixed USDT 10,000 sleeves.",
+                 fontsize=9.5, color="#596a7e")
+        fig.text(.07, .035,
+                 "No shared collateral or transfers. Known diagnostics informed earlier research; the new September check is only one month.",
+                 fontsize=9.5, color="#596a7e")
+        svg.parent.mkdir(parents=True, exist_ok=True)
+        png.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(svg, metadata={"Date": None})
+        fig.savefig(png, dpi=160)
+        plt.close(fig)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input", type=Path, default=ROOT / "research/trend/methods/curves.json")
+    parser.add_argument("--svg", type=Path, default=ROOT / "research/trend/methods/equity.svg")
+    parser.add_argument("--png", type=Path, default=ROOT / "tmp/trend-methods-equity.png")
+    parser.add_argument("--baseline", default="baseline-20-long")
+    parser.add_argument("--selected", help="Frozen candidate id; inferred if curves contain one alternative")
+    args = parser.parse_args()
+    curves, selected = load_curves(args.input, args.baseline, args.selected)
+    draw(curves, args.baseline, selected, args.svg, args.png)
+    print(args.svg)
+    print(args.png)
+
+
+if __name__ == "__main__":
+    main()

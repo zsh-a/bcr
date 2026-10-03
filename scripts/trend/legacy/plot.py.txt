@@ -1,0 +1,35 @@
+"""Standalone research figure. Run with: uv run --no-project --with matplotlib ..."""
+import datetime as dt
+import json
+from pathlib import Path
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+
+root = Path(__file__).resolve().parents[2]
+curves = json.loads((root / "research/trend/curves.json").read_text())
+panels = [(1, "development"), (1, "holdout"), (2, "known-2025"), (2, "holdout")]
+names = ["Study 1: development (selection)", "Study 1: 2025 holdout (rejected)",
+         "Study 2: 2025 (already observed)", "Study 2: 2026 fresh holdout (uncertain)"]
+palette = ["#197b70", "#a35543", "#727f94"]
+with plt.rc_context({"font.family": "DejaVu Sans", "axes.spines.top": False, "axes.spines.right": False,
+                     "axes.edgecolor": "#b8c3c6", "grid.color": "#d9e1e2", "grid.alpha": .6,
+                     "axes.labelcolor": "#334346", "text.color": "#243639"}):
+    fig, axes = plt.subplots(2, 2, figsize=(13, 8), layout="constrained")
+    for axis, (study, window), title in zip(axes.flat, panels, names):
+        for color, series in zip(palette, [c for c in curves if c["study"] == study and c["window"] == window]):
+            points = series["points"]
+            axis.plot([dt.datetime.fromtimestamp(p["time"] / 1000, dt.timezone.utc) for p in points],
+                      [p["nav"] for p in points], color=color, linewidth=1.6, label=series["candidate"])
+        axis.axhline(1, color="#96a2a5", linewidth=.8, linestyle="--")
+        axis.set_title(title, loc="left", fontsize=11, pad=12)
+        axis.set_ylabel("Equal-capital sleeve NAV")
+        axis.xaxis.set_major_locator(mdates.AutoDateLocator(minticks=3, maxticks=5))
+        axis.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+        axis.grid(axis="y")
+        axis.legend(frameon=False, fontsize=8, loc="best")
+    fig.suptitle("Simple trend research — real Binance perpetual data, costs and funding included", fontsize=14)
+    fig.savefig(root / "research/trend/equity.svg", metadata={"Date": None})
+    fig.savefig(root / "tmp/trend-research-equity.png", dpi=150)
+print("research/trend/equity.svg")

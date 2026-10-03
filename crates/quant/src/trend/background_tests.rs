@@ -68,14 +68,15 @@ fn large_oscillations_do_not_become_a_trend_just_because_atr_is_high() {
     assert!(!d.allowed);
 }
 #[test]
-fn cost_gate_does_not_confuse_ema_lag_with_invalid_trend_context() {
+fn costs_and_ema_extension_are_diagnostics_not_trend_state() {
     let background = trending(false);
     let mut e = execution();
     e.fee_bps = 100.0;
     e.slippage_bps = 100.0;
     let d = decision(&background, 102.9, Side::Long, &e);
-    assert_eq!(d.reason, "context-cost");
-    assert!(d.cost_atr.unwrap() > BACKGROUND_MAX_COST_ATR);
+    assert_eq!(d.reason, "context-ready");
+    assert!(d.allowed);
+    assert!(d.cost_atr.unwrap() > 0.5);
     let d = decision(
         &background,
         background.ema + 4.0 * background.atr,

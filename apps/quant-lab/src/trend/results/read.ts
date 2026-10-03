@@ -130,6 +130,7 @@ export async function exportTrend(
     const header = JSON.stringify({
       version: 1,
       engine: result.engine,
+      window: result.window,
       config: run.config,
       manifest: run.dataset.manifest,
       metrics: result.metrics,

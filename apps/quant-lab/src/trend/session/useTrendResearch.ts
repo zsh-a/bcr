@@ -1,90 +1,56 @@
 import type { ArtifactRef, ComputeTask, TaskHandle } from "@bcr/core";
 import {
-  DAY,
-  defaultBinanceRequest,
-  utcDate,
   validateBinanceManifest,
   validateBinanceRequest,
-  type BinanceDataset,
   type BinanceManifest,
   type BinanceRequest,
 } from "@bcr/market-data/binance/model";
 import {
-  createTrendConfig,
   trendWarmupDays,
   validateTrendConfig,
-  validateRecordedTrendConfig,
-  restoreTrendDraft,
   type TrendConfig,
   type TrendResult,
   type TrendRun,
 } from "@bcr/quant-core/trend";
 import { useRuntime } from "@bcr/react";
-import { Effect } from "effect";
-import { useEffect, useRef, useState } from "react";
+import { Effect, Either } from "effect";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { readJson } from "../../data/io";
-
-interface Saved {
-  request: BinanceRequest;
-  config: TrendConfig;
-  dataset: BinanceDataset | null;
-  runs: TrendRun[];
-  selected: string | null;
-}
-const KEY = "trend-research-v1";
+import { canReuseTrendDataset } from "../execution/window";
+import { createTrendSessionState, createTrendSessionStore, type TrendSessionStore } from "./store";
 interface Operation {
   abort: AbortController;
   handle?: TaskHandle;
 }
 export function useTrendResearch() {
   const services = useRuntime();
-  const [saved, setSaved] = useState<Saved>({
-    request: defaultBinanceRequest(),
-    config: createTrendConfig(),
-    dataset: null,
-    runs: [],
-    selected: null,
-  });
-  const [ready, setReady] = useState(false),
-    [busy, setBusy] = useState(false);
+  const store = useMemo(() => createTrendSessionStore(services.metadata), [services.metadata]);
+  const [saved, setSaved] = useState(createTrendSessionState);
+  const [restoredStore, setRestoredStore] = useState<TrendSessionStore | null>(null);
+  const ready = restoredStore === store;
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null),
     [status, setStatus] = useState(""),
     [progress, setProgress] = useState(0);
   const [result, setResult] = useState<TrendResult | null>(null);
   const operation = useRef<Operation | null>(null);
-  const saveQueue = useRef(Promise.resolve());
   useEffect(() => {
     let live = true;
-    void (async () => {
-      const raw = await services.metadata?.get(KEY);
-      if (!raw) return;
-      const data = JSON.parse(raw) as Saved;
-      // Invalid draft inputs must not prevent restoration of valid history.
-      try {
-        validateBinanceRequest(data.request);
-      } catch {
-        data.request = defaultBinanceRequest();
-      }
-      try {
-        const previousVersion = data.config?.version;
-        data.config = restoreTrendDraft(data.config);
-        if (previousVersion !== data.config.version && live)
-          setStatus("参数已升级 · 可在设置中选择趋势背景；历史规则保持原样");
-      } catch {
-        data.config = createTrendConfig();
-        if (live) setStatus("策略已升级 · 旧版历史保留原始规则");
-      }
-      if (!Array.isArray(data.runs)) throw new Error("本地趋势研究记录无效");
-      // Archived runs keep their original config and are never executed again.
-      for (const run of data.runs) validateRecordedTrendConfig(run.config);
-      if (data.dataset) validateBinanceManifest(data.dataset.manifest);
-      if (live) setSaved(data);
-    })()
-      .catch((e) => {
-        if (live) setError(`恢复研究失败：${String(e)}`);
+    void store
+      .restore()
+      .then(({ state, notice }) => {
+        if (!live) return;
+        setSaved(state);
+        setError(null);
+        setStatus(notice);
+        setRestoredStore(store);
       })
-      .finally(() => {
-        if (live) setReady(true);
+      .catch((e) => {
+        if (!live) return;
+        setError(
+          `恢复研究失败：${e instanceof Error ? e.message : String(e)}。原始记录已保留，回测已停用；请重新加载后重试。`,
+        );
+        setStatus("恢复研究失败 · 已阻止覆盖本地记录");
       });
     return () => {
       live = false;
@@ -92,17 +58,11 @@ export function useTrendResearch() {
       token?.abort.abort();
       if (token?.handle) void Effect.runPromise(token.handle.cancel);
     };
-  }, [services]);
+  }, [store]);
   useEffect(() => {
     if (!ready) return;
-    const text = JSON.stringify(saved);
-    saveQueue.current = saveQueue.current
-      .catch(() => undefined)
-      .then(async () => {
-        await services.metadata?.set(KEY, text);
-      });
-    void saveQueue.current.catch((e) => setError(`研究保存失败：${String(e)}`));
-  }, [ready, saved, services]);
+    void store.save(saved).catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, [ready, saved, store]);
   const selected = saved.runs.find((run) => run.id === saved.selected) ?? null;
   useEffect(() => {
     let live = true;
@@ -153,7 +113,9 @@ export function useTrendResearch() {
       const unsubscribe = handle.state.subscribe(update);
       update();
       try {
-        const refs = await Effect.runPromise(handle.await);
+        const outcome = await Effect.runPromise(Effect.either(handle.await));
+        if (Either.isLeft(outcome)) throw new Error(outcome.left.message);
+        const refs = outcome.right;
         token.abort.signal.throwIfAborted();
         return { refs, cached: handle.cached };
       } finally {
@@ -162,15 +124,7 @@ export function useTrendResearch() {
     };
     try {
       let dataset = saved.dataset;
-      if (
-        refresh ||
-        !dataset ||
-        dataset.manifest.symbol !== saved.request.symbol ||
-        utcDate(dataset.manifest.startTime) !== saved.request.start ||
-        utcDate(dataset.manifest.endTime - 1) !== saved.request.end ||
-        dataset.manifest.startTime - dataset.manifest.warmupStart <
-          trendWarmupDays(saved.config) * DAY
-      ) {
+      if (refresh || !canReuseTrendDataset(dataset ?? undefined, saved.request, saved.config)) {
         const { refs } = await submit(
           {
             id: `binance-${crypto.randomUUID()}`,
@@ -202,6 +156,7 @@ export function useTrendResearch() {
         token.abort.signal.throwIfAborted();
         setSaved((value) => ({ ...value, dataset }));
       }
+      if (!dataset) throw new Error("趋势回测缺少行情数据");
       const { refs, cached } = await submit(
         {
           id: `trend-${crypto.randomUUID()}`,
@@ -241,20 +196,14 @@ export function useTrendResearch() {
       };
       const next = { ...saved, dataset, runs: [history, ...saved.runs], selected: history.id };
       // Publish only after the selected run is durable, including on immediate reload.
-      saveQueue.current = saveQueue.current
-        .catch(() => undefined)
-        .then(async () => {
-          token.abort.signal.throwIfAborted();
-          await services.metadata?.set(KEY, JSON.stringify(next));
-        });
-      await saveQueue.current;
+      await store.save(next, token.abort.signal);
       token.abort.signal.throwIfAborted();
       setSaved(next);
       setStatus(cached ? "已复用相同数据与参数的结果" : "回测完成");
     } catch (e) {
       if (token.abort.signal.aborted) setStatus("已取消；已校验的档案可在下次复用");
       else {
-        setError(String(e));
+        setError(e instanceof Error ? e.message : String(e));
         setStatus("回测失败");
       }
     } finally {

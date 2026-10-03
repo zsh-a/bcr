@@ -1,12 +1,11 @@
 import { artifactPath, type ArtifactRef, type ComputeTask } from "@bcr/core";
 import {
-  DAY,
+  MINUTE,
   validateBinanceManifest,
   type BinanceManifest,
   type FundingRate,
 } from "@bcr/market-data/binance/model";
 import {
-  trendWarmupDays,
   validateTrendConfig,
   type TrendChunk,
   type TrendConfig,
@@ -16,6 +15,7 @@ import {
 import { throwIfAborted, type ArtifactIO, type WorkerContext } from "@bcr/runtime-worker";
 import initQuant, { TrendBacktest } from "../../../../../crates/quant/pkg/bcr_quant.js";
 import { TREND_EXECUTOR_VERSION } from "./versions";
+import { trendReplayWindow } from "./window";
 
 export interface TrendEngine {
   load_partition(candles: string, marks: string): void;
@@ -40,8 +40,8 @@ export function trendHandler(io: ArtifactIO, factory: Factory = create) {
     validateBinanceManifest(manifest);
     const config = task.config?.["strategy"] as TrendConfig;
     validateTrendConfig(config);
-    if (manifest.startTime - manifest.warmupStart < trendWarmupDays(config) * DAY)
-      throw new Error("行情预热不足，请按当前交易周期重新获取数据");
+    const window = trendReplayWindow(manifest, config);
+    const rows = (window.endTime - window.warmupStart) / MINUTE;
     const inputs = new Set(task.inputs.map((ref) => ref.id));
     if (
       manifest.version !== 1 ||
@@ -55,11 +55,7 @@ export function trendHandler(io: ArtifactIO, factory: Factory = create) {
     const engine = await factory(
       JSON.stringify(config),
       JSON.stringify(funding),
-      JSON.stringify({
-        startTime: manifest.startTime,
-        endTime: manifest.endTime,
-        warmupStart: manifest.warmupStart,
-      }),
+      JSON.stringify(window),
     );
     const namespace = `trend/result-${crypto.randomUUID()}`;
     const created: ArtifactRef[] = [];
@@ -115,6 +111,7 @@ export function trendHandler(io: ArtifactIO, factory: Factory = create) {
     try {
       for (const p of manifest.partitions) {
         throwIfAborted(ctx);
+        if (p.to <= window.warmupStart || p.from >= window.endTime) continue;
         const candles = await (await io.getBlob(p.candles)).text();
         const marks = await (await io.getBlob(p.marks)).text();
         throwIfAborted(ctx);
@@ -124,7 +121,7 @@ export function trendHandler(io: ArtifactIO, factory: Factory = create) {
           throwIfAborted(ctx);
           done = engine.advance(512);
           await drain();
-          ctx.progress(engine.processed_rows() / manifest.rows);
+          ctx.progress(engine.processed_rows() / rows);
           await new Promise<void>((resolve) => setTimeout(resolve, 0));
         }
       }
@@ -134,6 +131,7 @@ export function trendHandler(io: ArtifactIO, factory: Factory = create) {
       const result: TrendResult = {
         version: 1,
         engine: TREND_EXECUTOR_VERSION,
+        window,
         metrics,
         equity,
         trades,

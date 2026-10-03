@@ -129,6 +129,7 @@ pub struct Chunk {
 #[derive(Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Metrics {
+    pub evaluation: super::evaluation::Evaluation,
     pub final_equity: f64,
     pub total_return: f64,
     pub max_drawdown: f64,

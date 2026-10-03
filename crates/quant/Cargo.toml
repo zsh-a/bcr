@@ -2,7 +2,7 @@
 name = "bcr-quant"
 version = "0.1.0"
 edition = "2021"
-description = "Deterministic daily multi-asset JSG research engine for native Rust and WASM"
+description = "Deterministic daily portfolio and minute trend research engines for native Rust and WASM"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

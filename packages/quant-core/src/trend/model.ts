@@ -1,10 +1,18 @@
-import type { ArchivedTrendConfig, RecordedTrendConfigV2 } from "./archive";
+import type {
+  ArchivedTrendConfig,
+  RecordedTrendConfigV2,
+  RecordedTrendConfigV3,
+  RecordedTrendConfigV4,
+} from "./recorded";
 import type { ArtifactRef } from "@bcr/core";
 import type { BinanceDataset } from "@bcr/market-data/binance/model";
 
 export interface TrendStrategy {
   entry: "breakout" | "pullback";
   filter: "none" | "ema" | "background";
+  /** Maximum estimated round-trip cost in signal ATR units; zero disables the gate. */
+  maxCostAtr: number;
+  management: "atr" | "channel";
   direction: "both" | "long" | "short";
   tradeMinutes: number;
   breakoutBars: number;
@@ -29,7 +37,7 @@ export interface TrendRisk {
   flattenMinute: number | null;
 }
 export interface TrendConfig {
-  version: 3;
+  version: 5;
   strategy: TrendStrategy;
   execution: TrendExecution;
   risk: TrendRisk;
@@ -104,6 +112,7 @@ export interface TrendChunk {
   contexts?: TrendContextDecision[];
 }
 export interface TrendMetrics {
+  evaluation?: TrendEvaluation;
   finalEquity: number;
   totalReturn: number;
   maxDrawdown: number;
@@ -121,13 +130,38 @@ export interface TrendMetrics {
   rows: number;
   context?: TrendContextMetrics;
 }
+export interface TrendEvaluation {
+  netExpectancy: number | null;
+  averageWin: number | null;
+  averageLoss: number | null;
+  payoffRatio: number | null;
+  grossPnl: number;
+  meanHoldHours: number | null;
+  exposurePct: number;
+  turnover: number;
+  dailySharpe: number | null;
+  sortino: number | null;
+  calmar: number | null;
+  positiveDays: number;
+  totalDays: number;
+  bestTradeShare: number | null;
+  withoutBestTrade: number;
+  longNetPnl: number;
+  shortNetPnl: number;
+  exitReasons: Record<string, number>;
+}
 export interface TrendResult {
   version: 1;
   engine:
     | "trend-continuation-1"
     | "trend-continuation-2"
     | "trend-continuation-3"
-    | "trend-continuation-4";
+    | "trend-continuation-4"
+    | "trend-continuation-5"
+    | "trend-continuation-6"
+    | "trend-continuation-7";
+  /** Actual replay bounds, which may use less prehistory than the cached manifest. */
+  window?: { startTime: number; endTime: number; warmupStart: number };
   metrics: TrendMetrics;
   equity: TrendEquity[];
   trades: TrendTrade[];
@@ -144,7 +178,12 @@ export interface TrendResult {
 export interface TrendRun {
   id: string;
   createdAt: string;
-  config: TrendConfig | RecordedTrendConfigV2 | ArchivedTrendConfig;
+  config:
+    | TrendConfig
+    | RecordedTrendConfigV2
+    | RecordedTrendConfigV3
+    | RecordedTrendConfigV4
+    | ArchivedTrendConfig;
   dataset: BinanceDataset;
   resultRef: ArtifactRef;
   metrics: TrendMetrics;
@@ -155,6 +194,7 @@ export const TREND_REASONS: Record<string, string> = {
   initial: "初始止损",
   breakeven: "成本保本",
   trailing: "移动止盈",
+  "channel-exit": "反向通道退出",
   "daily-close": "UTC 每日平仓",
   "daily-loss": "单日亏损限制",
   "end-range": "区间结束",
@@ -173,6 +213,7 @@ export const TREND_REASONS: Record<string, string> = {
   "context-direction": "信号与背景方向相反",
   "context-structure": "信号已破坏背景回调结构",
   "context-cost": "往返成本相对波动过高",
+  "entry-cost": "独立成本门槛拒绝入场",
 };
 export const TREND_PHASES: Record<TrendContextDecision["phase"], string> = {
   warming: "预热中",

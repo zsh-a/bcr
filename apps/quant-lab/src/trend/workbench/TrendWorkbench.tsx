@@ -1,13 +1,14 @@
-import { DAY, utcDate, validateBinanceRequest } from "@bcr/market-data/binance/model";
+import { utcDate, validateBinanceRequest } from "@bcr/market-data/binance/model";
 import {
   TREND_PERIODS,
   strategyLabel,
   trendRunView,
   periodLabel,
-  trendWarmupDays,
   withTradingPeriod,
   validateTrendConfig,
   filterLabel,
+  directionLabel,
+  costFilterLabel,
 } from "@bcr/quant-core/trend";
 import {
   Button,
@@ -23,6 +24,7 @@ import { History, Play, SlidersHorizontal, Square, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { StrategyPicker } from "../../workbench/StrategyPicker";
 import { TrendResult } from "../results/TrendResult";
+import { canReuseTrendDataset } from "../execution/window";
 import { useTrendResearch } from "../session/useTrendResearch";
 import { TrendSettings } from "./TrendSettings";
 import "./styles.css";
@@ -42,12 +44,7 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
   } catch (e) {
     invalid = String(e);
   }
-  const datasetMatches =
-    research.dataset?.manifest.symbol === research.request.symbol &&
-    utcDate(research.dataset.manifest.startTime) === research.request.start &&
-    utcDate(research.dataset.manifest.endTime - 1) === research.request.end &&
-    research.dataset.manifest.startTime - research.dataset.manifest.warmupStart >=
-      trendWarmupDays(research.config) * DAY;
+  const datasetMatches = canReuseTrendDataset(research.dataset, research.request, research.config);
   const changed =
     research.selected &&
     (JSON.stringify(research.selected.config) !== JSON.stringify(research.config) ||
@@ -175,9 +172,11 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
       {research.error && (
         <div className="trend-error" role="alert">
           <span>{research.error}</span>
-          <Button variant="ghost" size="sm" aria-label="关闭错误" onClick={research.dismissError}>
-            <X size={14} />
-          </Button>
+          {research.ready && (
+            <Button variant="ghost" size="sm" aria-label="关闭错误" onClick={research.dismissError}>
+              <X size={14} />
+            </Button>
+          )}
         </div>
       )}
       {invalid && (
@@ -206,26 +205,39 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
               {research.config.strategy.filter === "background"
                 ? "较大周期判断方向与结构，交易周期确认突破，下一分钟尝试入场。"
                 : "已收盘的交易周期 K 线确认突破，下一分钟尝试入场。"}{" "}
-              用 ATR 限制试错成本，保本和移动止损跟随趋势。
+              {research.config.strategy.management === "channel"
+                ? "用 ATR 限制试错成本，反向通道退出，让盈利趋势有继续延伸的空间。"
+                : "用 ATR 限制试错成本，保本和移动止损跟随趋势。"}
             </p>
             <ol>
               <li>
                 <strong>入场环境</strong>
-                <span>{filterLabel(research.config.strategy)}</span>
+                <span>
+                  {filterLabel(research.config.strategy)} ·{" "}
+                  {costFilterLabel(research.config.strategy.maxCostAtr)}
+                </span>
               </li>
               <li>
                 <strong>确认入场</strong>
                 <span>
                   {strategyLabel(research.config.strategy.entry)} ·{" "}
                   {periodLabel(research.config.strategy.tradeMinutes)}
+                  {" · "}
+                  {directionLabel(research.config.strategy.direction)}
                 </span>
               </li>
               <li>
                 <strong>保护持仓</strong>
                 <span>
-                  初始 {research.config.strategy.stopAtr} ATR · 保本{" "}
-                  {research.config.strategy.breakEvenAtr} ATR · 移动{" "}
-                  {research.config.strategy.trailingAtr} ATR
+                  初始 {research.config.strategy.stopAtr} ATR ·{" "}
+                  {research.config.strategy.management === "channel" ? (
+                    `反向 ${Math.max(1, Math.floor(research.config.strategy.breakoutBars / 2))} 根通道退出`
+                  ) : (
+                    <>
+                      保本 {research.config.strategy.breakEvenAtr} ATR · 移动{" "}
+                      {research.config.strategy.trailingAtr} ATR
+                    </>
+                  )}
                 </span>
               </li>
               <li>
@@ -240,6 +252,7 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
               直接获取官方历史档案，无需 API Key。选择已发布的历史月份，数据校验与回放在 Worker
               中完成；再次调整参数可复用本地行情。
             </p>
+            <p className="trend-help">简洁通道默认方案是待验证的研究候选，尚未通过全部统计门槛。</p>
             <Button variant="ghost" onClick={() => setSettings(true)}>
               查看规则与参数
             </Button>
@@ -268,30 +281,33 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
         title="趋势运行历史"
         className="trend-history"
       >
-        {research.runs.map((run) => (
-          <Button
-            key={run.id}
-            variant="ghost"
-            aria-pressed={run.id === research.selected?.id}
-            onClick={() => {
-              research.select(run.id);
-              setHistory(false);
-            }}
-          >
-            <span>
-              <strong>
-                {run.dataset.manifest.symbol} · {periodLabel(trendRunView(run).tradeMinutes)} ·{" "}
-                {trendRunView(run).label}
-              </strong>
-              <small>
-                {utcDate(run.dataset.manifest.startTime)} —{" "}
-                {utcDate(run.dataset.manifest.endTime - 1)} ·{" "}
-                {new Date(run.createdAt).toLocaleString()} · {trendRunView(run).filter}
-              </small>
-            </span>
-            <span>{(run.metrics.totalReturn * 100).toFixed(2)}%</span>
-          </Button>
-        ))}
+        {research.runs.map((run) => {
+          const view = trendRunView(run);
+          return (
+            <Button
+              key={run.id}
+              variant="ghost"
+              aria-pressed={run.id === research.selected?.id}
+              onClick={() => {
+                research.select(run.id);
+                setHistory(false);
+              }}
+            >
+              <span>
+                <strong>
+                  {run.dataset.manifest.symbol} · {periodLabel(view.tradeMinutes)} ·{" "}
+                  {view.direction} · {view.label}
+                </strong>
+                <small>
+                  {utcDate(run.dataset.manifest.startTime)} —{" "}
+                  {utcDate(run.dataset.manifest.endTime - 1)} ·{" "}
+                  {new Date(run.createdAt).toLocaleString()} · {view.filter} · {view.management}
+                </small>
+              </span>
+              <span>{(run.metrics.totalReturn * 100).toFixed(2)}%</span>
+            </Button>
+          );
+        })}
       </Dialog>
     </div>
   );

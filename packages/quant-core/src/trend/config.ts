@@ -22,7 +22,6 @@ export const TREND_BACKGROUND_RULES = {
   slopeBars: 3,
   pivotRadius: 2,
   minEfficiency: 0.3,
-  maxCostAtr: 0.5,
 } as const;
 export function backgroundMinutes(tradeMinutes: number): number {
   const periods: Record<number, number> = {
@@ -40,7 +39,9 @@ export function backgroundMinutes(tradeMinutes: number): number {
   if (!minutes) throw new Error("交易周期无效");
   return minutes;
 }
-export function filterLabel(strategy: TrendConfig["strategy"]): string {
+export function filterLabel(
+  strategy: Pick<TrendConfig["strategy"], "filter" | "tradeMinutes">,
+): string {
   return strategy.filter === "background"
     ? `趋势背景 · ${periodLabel(backgroundMinutes(strategy.tradeMinutes))}`
     : strategy.filter === "ema"
@@ -49,15 +50,17 @@ export function filterLabel(strategy: TrendConfig["strategy"]): string {
 }
 
 export const DEFAULT_TREND_CONFIG: TrendConfig = {
-  version: 3,
+  version: 5,
   strategy: {
     entry: "breakout",
-    filter: "background",
-    direction: "both",
-    tradeMinutes: 1,
+    filter: "none",
+    maxCostAtr: 0,
+    management: "channel",
+    direction: "long",
+    tradeMinutes: 240,
     breakoutBars: 20,
-    stopAtr: 1.5,
-    breakEvenAtr: 1.5,
+    stopAtr: 2,
+    breakEvenAtr: 0,
     trailingAtr: 2,
   },
   execution: {
@@ -79,6 +82,34 @@ export const DEFAULT_TREND_CONFIG: TrendConfig = {
   },
 };
 export const createTrendConfig = (): TrendConfig => structuredClone(DEFAULT_TREND_CONFIG);
+/** A mechanical research preset, never presented as a proven profitable rule. */
+export function simpleChannelConfig(config: TrendConfig): TrendConfig {
+  const copy = withTradingPeriod(structuredClone(config), 240);
+  Object.assign(copy.strategy, {
+    entry: "breakout",
+    filter: "none",
+    maxCostAtr: 0,
+    management: "channel",
+    direction: "long",
+    breakoutBars: 20,
+    stopAtr: 2,
+    breakEvenAtr: 0,
+  });
+  return copy;
+}
+export function managementLabel(
+  strategy: Pick<TrendConfig["strategy"], "management" | "breakoutBars">,
+): string {
+  return strategy.management === "channel"
+    ? `反向 ${Math.max(1, Math.floor(strategy.breakoutBars / 2))} 根通道退出`
+    : "保本与 ATR 移动止盈";
+}
+export function directionLabel(direction: TrendConfig["strategy"]["direction"]): string {
+  return direction === "long" ? "仅做多" : direction === "short" ? "仅做空" : "双向";
+}
+export function costFilterLabel(maxCostAtr: number): string {
+  return maxCostAtr > 0 ? `往返成本 ≤ ${maxCostAtr} ATR` : "成本门槛关闭";
+}
 export function periodLabel(minutes: number): string {
   return minutes === 10080
     ? "1 周"
@@ -131,14 +162,14 @@ export function validateTrendConfig(value: unknown): asserts value is TrendConfi
     return object;
   };
   const config = shape(value, DEFAULT_TREND_CONFIG, "趋势配置");
-  if (config.version !== 3) throw new Error("趋势配置版本无效");
+  if (config.version !== 5) throw new Error("趋势配置版本无效");
   const s = shape(config.strategy, DEFAULT_TREND_CONFIG.strategy, "策略参数");
   const e = shape(config.execution, DEFAULT_TREND_CONFIG.execution, "成交设置");
   const r = shape(config.risk, DEFAULT_TREND_CONFIG.risk, "风控规则");
   for (const group of [s, e, r])
     for (const [key, field] of Object.entries(group)) {
       if (
-        ["entry", "filter", "direction"].includes(key) ||
+        ["entry", "filter", "direction", "management"].includes(key) ||
         (key === "flattenMinute" && field === null)
       )
         continue;
@@ -154,6 +185,10 @@ export function validateTrendConfig(value: unknown): asserts value is TrendConfi
   if (
     !["breakout", "pullback"].includes(strategy.entry) ||
     !["none", "ema", "background"].includes(strategy.filter) ||
+    strategy.maxCostAtr < 0 ||
+    strategy.maxCostAtr > 20 ||
+    !["atr", "channel"].includes(strategy.management) ||
+    (strategy.management === "channel" && strategy.entry !== "breakout") ||
     !["both", "long", "short"].includes(strategy.direction) ||
     !TREND_PERIODS.includes(strategy.tradeMinutes as (typeof TREND_PERIODS)[number]) ||
     !integer(strategy.breakoutBars, 2, 250) ||

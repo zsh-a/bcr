@@ -49,7 +49,7 @@ export function TrendContextPanel({
       <div className="trend-context-heading">
         <div>
           <h3>{periodLabel(minutes)}背景 · 入场判断</h3>
-          <p>在可开仓时评估候选信号，保留判断时的背景。通过表示允许尝试入场。</p>
+          <p>在可开仓时评估候选信号，保留判断时的背景。背景通过后，仍需满足后续入场与成交条件。</p>
         </div>
         <div className="trend-context-counts">
           <span>

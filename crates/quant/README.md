@@ -1,7 +1,12 @@
-# JSG research prototype
+# Quant research engines
 
-`bcr-quant` is a standalone Rust portfolio engine shared by the native `jsg` CLI
-and Quant Lab's WASM Worker. It migrates the daily JSG workflow from quent:
+`bcr-quant` contains the daily JSG portfolio engine and the minute-based Binance
+perpetual trend engine. Native CLIs (`jsg`, `trend`) and Quant Lab's WASM Worker
+share their domain implementations. The trend engine's data, execution and research
+contracts are documented in [Binance trend research](../../docs/BINANCE-TREND.md)
+and [research architecture](../../docs/TREND-RESEARCH-ARCHITECTURE.md).
+
+The following sections describe the daily JSG workflow migrated from quent:
 20-bar industry breadth, profitability/ST filters, smallest market-cap targets,
 weekly rebalance, limit-up opening exits, and optional portfolio/position stops.
 
@@ -209,8 +214,9 @@ claim of byte-for-byte parity with quent or a complete exchange simulator.
   **snapshot** membership and warns of survivorship bias. Financial tables use
   ReplacingMergeTree keys that may overwrite old revisions; a temporal join cannot
   restore revisions already lost from the source.
-- Only daily JSG is ported. General Python strategy loading, minute/tick simulation,
-  and live trading are out of scope. Browser ClickHouse access is described below.
+- The quent migration covers daily JSG. Binance perpetual research has a separate
+  minute OHLC engine; arbitrary Python strategy loading, tick simulation and live
+  trading remain outside these engines. Browser ClickHouse access is described below.
 
 ## Validation
 

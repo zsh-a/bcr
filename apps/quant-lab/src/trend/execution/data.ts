@@ -1,20 +1,23 @@
 import { artifactPath, contentHash, type ArtifactRef, type ComputeTask } from "@bcr/core";
 import { downloadArchive, type VerifiedArchive } from "@bcr/market-data/binance/archive";
+import { completeMinuteArchive } from "@bcr/market-data/binance/complete";
 import {
   MINUTE,
   validateBinanceRequest,
   validateBinanceManifest,
   type BinanceManifest,
   type BinanceRequest,
+  type BinanceRepair,
   type FundingRate,
 } from "@bcr/market-data/binance/model";
-import { parseFundingCsv, parseMinuteCsv } from "@bcr/market-data/binance/parse";
+import { inspectMinuteCsv, parseFundingCsv, parseMinuteCsv } from "@bcr/market-data/binance/parse";
 import { aggregateMinuteBars } from "@bcr/market-data/binance/timeframe";
 import {
   candleArchive,
   candleWindows,
   fundingArchive,
   fundingMonths,
+  type ArchiveWindow,
 } from "@bcr/market-data/binance/plan";
 import { MAX_TREND_CHART_BARS } from "@bcr/quant-core/trend";
 import { throwIfAborted, type ArtifactIO, type WorkerContext } from "@bcr/runtime-worker";
@@ -33,8 +36,27 @@ export function binanceHistoryHandler(io: ArtifactIO, download: Downloader = dow
     async function archive(
       url: string,
       funding = false,
+      window?: ArchiveWindow,
     ): Promise<VerifiedArchive & { ref: ArtifactRef }> {
       const cachePath = `cache/binance/archives/${contentHash(encoder.encode(url))}.json`;
+      const validate = (csv: string) => {
+        if (funding) {
+          parseFundingCsv(csv);
+          return;
+        }
+        const bars = inspectMinuteCsv(csv).bars;
+        if (window) {
+          if (bars[0]!.time < window.from || bars.at(-1)!.time >= window.to)
+            throw new Error("行情包含档案日期之外的分钟");
+          if (
+            window.period === "daily" &&
+            (bars.length !== (window.to - window.from) / MINUTE ||
+              bars[0]!.time !== window.from ||
+              bars.at(-1)!.time + MINUTE !== window.to)
+          )
+            throw new Error(`官方日档案仍缺少分钟（${window.date} UTC）`);
+        }
+      };
       if (!refresh) {
         const raw = await io.store.get(cachePath);
         if (raw) {
@@ -52,13 +74,26 @@ export function binanceHistoryHandler(io: ArtifactIO, download: Downloader = dow
           ) {
             const csv = await (await io.getBlob(cached.ref)).text();
             throwIfAborted(ctx);
-            if (contentHash(encoder.encode(csv)) === cached.ref.hash) return { ...cached, csv };
+            if (contentHash(encoder.encode(csv)) === cached.ref.hash) {
+              try {
+                validate(csv);
+                return { ...cached, csv };
+              } catch {
+                /* Do not let an old incomplete daily archive poison retries. */
+              }
+            }
           }
         }
       }
       const fetched = await download(url, ctx.signal);
-      if (funding) parseFundingCsv(fetched.csv);
-      else parseMinuteCsv(fetched.csv);
+      try {
+        validate(fetched.csv);
+      } catch (error) {
+        throw new Error(
+          `${url.split("/").at(-1)}：${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
+        );
+      }
       throwIfAborted(ctx);
       const bytes = encoder.encode(fetched.csv);
       const ref: ArtifactRef = {
@@ -73,6 +108,35 @@ export function binanceHistoryHandler(io: ArtifactIO, download: Downloader = dow
       await io.store.put(cachePath, encoder.encode(JSON.stringify(cached)));
       return { ...fetched, ref };
     }
+    async function candles(window: ArchiveWindow, marks = false) {
+      const original = await archive(candleArchive(request.symbol, window, marks), false, window);
+      const complete = await completeMinuteArchive(original, window, async (day) => {
+        throwIfAborted(ctx);
+        return archive(candleArchive(request.symbol, day, marks), false, day);
+      });
+      throwIfAborted(ctx);
+      outputs.push(original.ref);
+      if (!complete.replacements.length) return { ...original, repair: undefined };
+      const bytes = encoder.encode(complete.csv);
+      const hash = contentHash(bytes);
+      const ref: ArtifactRef = {
+        id: `binance/complete/${hash}`,
+        hash,
+        type: "market/binance-csv",
+        format: "csv",
+        storage: "opfs",
+      };
+      if (!(await io.store.has(artifactPath(ref)))) await io.store.put(artifactPath(ref), bytes);
+      const repair: BinanceRepair = {
+        kind: marks ? "marks" : "candles",
+        original: original.ref,
+        days: complete.replacements.map(({ date, archive: daily }) => {
+          outputs.push(daily.ref);
+          return { date, url: daily.url, checksum: daily.checksum, ref: daily.ref };
+        }),
+      };
+      return { ...original, csv: complete.csv, ref, repair };
+    }
     const windows = candleWindows(request),
       months = fundingMonths(request);
     const total = windows.length + months.length;
@@ -80,9 +144,9 @@ export function binanceHistoryHandler(io: ArtifactIO, download: Downloader = dow
     const partitions: BinanceManifest["partitions"] = [];
     for (const window of windows) {
       throwIfAborted(ctx);
-      const candles = await archive(candleArchive(request.symbol, window));
-      const marks = await archive(candleArchive(request.symbol, window, true));
-      const bars = parseMinuteCsv(candles.csv),
+      const prices = await candles(window);
+      const marks = await candles(window, true);
+      const bars = parseMinuteCsv(prices.csv),
         markBars = parseMinuteCsv(marks.csv);
       const count = (window.to - window.from) / MINUTE;
       if (
@@ -97,14 +161,19 @@ export function binanceHistoryHandler(io: ArtifactIO, download: Downloader = dow
         from: window.from,
         to: window.to,
         rows: count,
-        candles: candles.ref,
+        candles: prices.ref,
         marks: marks.ref,
-        source: candles.url,
-        checksum: candles.checksum,
+        source: prices.url,
+        checksum: prices.checksum,
         markSource: marks.url,
         markChecksum: marks.checksum,
+        ...([prices.repair, marks.repair].some(Boolean)
+          ? {
+              repairs: [prices.repair, marks.repair].filter((r): r is BinanceRepair => !!r),
+            }
+          : {}),
       });
-      outputs.push(candles.ref, marks.ref);
+      outputs.push(prices.ref, marks.ref);
       ctx.progress(++completed / total);
     }
     const funding: FundingRate[] = [],
@@ -155,6 +224,7 @@ export function binanceHistoryHandler(io: ArtifactIO, download: Downloader = dow
         partitions,
         createdAt: new Date().toISOString(),
       };
+      validateBinanceManifest(manifest);
       const manifestRef = await io.writeTypedJsonArtifact(
         namespace,
         "manifest",

@@ -8,6 +8,8 @@ import {
   trendWarmupDays,
   withTradingPeriod,
   validateTrendConfig,
+  simpleChannelConfig,
+  managementLabel,
   type TrendConfig,
 } from "@bcr/quant-core/trend";
 import { Button, Dialog, Input, Select } from "@bcr/react";
@@ -87,6 +89,12 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
           <p className="trend-help">
             收盘确认突破，下一分钟开盘尝试入场。用固定 ATR 14 控制风险，止损只向盈利方向移动。
           </p>
+          <Button variant="ghost" size="sm" onClick={() => setDraft(simpleChannelConfig(draft))}>
+            使用简洁通道方案 · 4 小时 / 仅做多
+          </Button>
+          <p className="trend-help">
+            简洁通道是研究候选，尚未通过全部验证门槛。应用方案保留当前资金、成交成本与风控设置。
+          </p>
           <label className="trend-context-setting">
             入场环境
             <Select
@@ -106,7 +114,7 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
                 入场
               </strong>
               <p>
-                已收盘的背景 K 线确认方向和回调结构，过滤整理、逆势、结构失效与高成本信号。
+                已收盘的背景 K 线确认方向和回调结构，过滤整理、逆势与结构失效信号。
                 每次判断随结果保存，可查看放行和拒绝原因。
               </p>
               <details>
@@ -116,8 +124,7 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
                   根斜率；
                   {TREND_BACKGROUND_RULES.window} 根方向效率 ≥{" "}
                   {TREND_BACKGROUND_RULES.minEfficiency * 100}%； 摆动点在后续{" "}
-                  {TREND_BACKGROUND_RULES.pivotRadius} 根收盘后确认。 估算往返成本 ≤{" "}
-                  {TREND_BACKGROUND_RULES.maxCostAtr} 个交易 ATR。
+                  {TREND_BACKGROUND_RULES.pivotRadius} 根收盘后确认。
                   均线偏离只作诊断，不拦截持续推进。
                   这些是待验证的研究规则，适合趋势延续，可能错过启动行情。
                 </p>
@@ -125,6 +132,22 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
             </div>
           )}
           <div className="trend-fields trend-primary-fields">
+            <label>
+              持仓管理
+              <Select
+                aria-label="持仓管理"
+                value={s.management}
+                onChange={(event) =>
+                  strategy({
+                    management: event.target.value as typeof s.management,
+                    ...(event.target.value === "channel" ? { entry: "breakout" as const } : {}),
+                  })
+                }
+              >
+                <option value="atr">保本与 ATR 移动止盈</option>
+                <option value="channel">反向通道退出 · 自动窗口</option>
+              </Select>
+            </label>
             <label>
               交易周期
               <Select
@@ -152,15 +175,24 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
               value={s.stopAtr}
               onChange={(n) => strategy({ stopAtr: n })}
             />
+            {s.management === "atr" && (
+              <NumberField
+                label="保本触发 · ATR（0 关闭）"
+                value={s.breakEvenAtr}
+                onChange={(n) => strategy({ breakEvenAtr: n })}
+              />
+            )}
+            {s.management === "atr" && (
+              <NumberField
+                label="移动止盈距离 · ATR"
+                value={s.trailingAtr}
+                onChange={(n) => strategy({ trailingAtr: n })}
+              />
+            )}
             <NumberField
-              label="保本触发 · ATR（0 关闭）"
-              value={s.breakEvenAtr}
-              onChange={(n) => strategy({ breakEvenAtr: n })}
-            />
-            <NumberField
-              label="移动止盈距离 · ATR"
-              value={s.trailingAtr}
-              onChange={(n) => strategy({ trailingAtr: n })}
+              label="往返成本上限 · ATR（0 关闭）"
+              value={s.maxCostAtr}
+              onChange={(n) => strategy({ maxCostAtr: n })}
             />
             <NumberField
               label="每笔风险 · %"
@@ -169,8 +201,13 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
             />
           </div>
           <p className="trend-help">
-            ATR 在信号收盘时冻结；保本覆盖费用、滑点和已结算资金费。移动止盈跟随持仓最高 /
-            最低价，不另设启动阈值。
+            成本门槛独立于入场环境，适用于所有过滤模式。估算双边手续费、滑点与价格取整，占信号 ATR
+            的比例超过上限时拒绝入场；不预测未来资金费。设为 0 仅关闭门槛，回测仍扣除成本。
+          </p>
+          <p className="trend-help">
+            {s.management === "channel"
+              ? `ATR 硬止损在入场时冻结；${managementLabel(s)}，只用此前完整 K 线，收盘确认后下一分钟开盘退出。不设主动保本与移动距离参数。`
+              : "ATR 在信号收盘时冻结；保本覆盖费用、滑点和已结算资金费。移动止盈跟随持仓最高 / 最低价，不另设启动阈值。"}
           </p>
           <details className="trend-variants">
             <summary>研究变体</summary>
@@ -180,6 +217,7 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
                 <Select
                   aria-label="入场规则"
                   value={s.entry}
+                  disabled={s.management === "channel"}
                   onChange={(event) => strategy({ entry: event.target.value as typeof s.entry })}
                 >
                   <option value="breakout">通道突破基线</option>
@@ -215,7 +253,7 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
             )}
           </details>
           <p className="trend-help">
-            预热 {trendWarmupDays(draft)} 天 · 规则版本 4 · 信号、背景、止损与仓位由确定规则执行。
+            预热 {trendWarmupDays(draft)} 天 · 规则版本 6 · 信号、背景、止损与仓位由确定规则执行。
           </p>
         </section>
       )}

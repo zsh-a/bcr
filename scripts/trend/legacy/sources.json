@@ -1,0 +1,33 @@
+{
+  "purpose": "Read-only source snapshots of historical study generators. These are audit text, not active entrypoints; use ../audit.py or ../report.py with explicit paths. Original output paths and old source hashes must not be rewritten.",
+  "sources": [
+    {
+      "path": "download.py.txt",
+      "sha256": "e03f3738ba77a49775bc44510ecf86ccde40f447a66976961fc206417d27d44e"
+    },
+    {
+      "path": "methods_plot.py.txt",
+      "sha256": "0662097d8f7f4f3f0b6e5a1e1c94b051f55b51cac3af9c58bc9ea70a2a1d3fb3"
+    },
+    {
+      "path": "methods_report.py.txt",
+      "sha256": "ef0b63ac2775871ddfa77f73bf6598ca97aa0bb33d52fab2088006cc3a1db464"
+    },
+    {
+      "path": "plot.py.txt",
+      "sha256": "384984b47b0966b9a6d3f3d678dc717ece1724ce6097c3b904167cbdd34760f8"
+    },
+    {
+      "path": "report.py.txt",
+      "sha256": "2c735b6710f66c2f7d818929066d3a3b35ddae736a671082094cf0fa889b7674"
+    },
+    {
+      "path": "research.py.txt",
+      "sha256": "c716acb29c11678d27c1408a27b7f01ccb271f2ae87d5b51da76701680d37a2b"
+    },
+    {
+      "path": "warmup.py.txt",
+      "sha256": "c62bf86c5cc550d79c5fbe45fae716180d04bdd28559ed588dfaa767a841c88b"
+    }
+  ]
+}

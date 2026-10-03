@@ -93,7 +93,9 @@ impl Signals {
                     .fold(f64::INFINITY, f64::min);
                 for (side, extreme) in [(Side::Long, high), (Side::Short, low)] {
                     if allowed(side)
-                        && side.sign() * (bar.close - extreme) >= config.execution.tick_size
+                        && config
+                            .execution
+                            .breaks_by_tick(bar.close, extreme, side.sign())
                     {
                         candidate = Some(Candidate {
                             side,
@@ -148,8 +150,11 @@ impl Signals {
                         if setup.bars <= MAX_PULLBACK_BARS && depth <= MAX_RETRACEMENT {
                             if setup.bars >= MIN_PULLBACK_BARS
                                 && depth >= MIN_RETRACEMENT
-                                && side.sign() * (bar.close - setup.extreme)
-                                    >= config.execution.tick_size
+                                && config.execution.breaks_by_tick(
+                                    bar.close,
+                                    setup.extreme,
+                                    side.sign(),
+                                )
                             {
                                 candidate = Some(Candidate {
                                     side,

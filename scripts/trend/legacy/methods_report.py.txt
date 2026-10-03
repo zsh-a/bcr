@@ -1,0 +1,180 @@
+"""Audit and publish the frozen repaired-engine method comparison.
+
+Uses complete native ledgers. Existing study reports and selections stay intact.
+"""
+import argparse
+import json
+from pathlib import Path
+import statistics
+
+import research
+
+
+def pct(value):
+    return "—" if value is None else f"{value * 100:.2f}%"
+
+
+def number(value):
+    return "—" if value is None else f"{value:.3f}"
+
+
+def portfolio(plan, batches, candidate):
+    rows = [next(r for r in batch["results"] if r["id"] == candidate) for batch in batches]
+    dates = [p["time"] for p in rows[0]["daily"]]
+    if any([p["time"] for p in row["daily"]] != dates for row in rows):
+        raise ValueError("portfolio daily calendars differ")
+    return [{"time": time, "equity": sum(row["daily"][i]["equity"] for row in rows)}
+            for i, time in enumerate(dates)]
+
+
+def paired_comparison(plan, batches, selected, baseline):
+    a = portfolio(plan, batches, selected)
+    b = portfolio(plan, batches, baseline)
+    ar = research.returns(a, plan["initialCapital"])
+    br = research.returns(b, plan["initialCapital"])
+    difference = [x - y for x, y in zip(ar, br)]
+    settings = plan["bootstrap"]
+    return {"meanDailyDifference": statistics.mean(difference),
+            "meanDailyDifference95CI": research.confidence(
+                difference, settings["samples"], settings["blockDays"], settings["seed"]),
+            "days": len(difference)}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--plan", type=Path, default=research.ROOT / "research/trend/methods-plan.json")
+    parser.add_argument("--input", type=Path, default=research.ROOT / "tmp/trend-methods")
+    parser.add_argument("--output", type=Path, default=research.ROOT / "research/trend/methods")
+    args = parser.parse_args()
+    plan = json.loads(args.plan.read_text())
+    if plan.get("capitalMode") != "total-account-equal-sleeves":
+        raise ValueError("method report requires actual fixed total capital sleeves")
+    selection = json.loads((args.input / "selection.json").read_text())
+    manifest_path = args.input / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    plan_hash = research.sha(args.plan)
+    manifest_hash = research.sha(manifest_path)
+    runner_hash = research.runner_fingerprint()
+    if plan_hash != selection["planSha256"] or plan_hash != manifest["planSha256"]:
+        raise ValueError("plan differs from frozen selection or input manifest")
+    if selection.get("manifestSha256") != manifest_hash or selection.get("runnerSha256") != runner_hash:
+        raise ValueError("input manifest or research accounting differs from frozen selection")
+    if research.sha(args.input / "development-summary.json") != selection["developmentSha256"]:
+        raise ValueError("development summary differs from frozen selection")
+    chosen, baseline = selection["id"], plan["baseline"]
+    summaries, comparisons, provenance, curves = {}, {}, [], []
+    for window in plan["windows"]:
+        batches = []
+        for symbol in plan["symbols"]:
+            path = args.input / window["id"] / f"{symbol}.json"
+            receipt = json.loads(path.with_suffix(".receipt.json").read_text())
+            batch = json.loads(path.read_text())
+            if (receipt["resultSha256"] != research.sha(path)
+                    or receipt["binarySha256"] != selection["binarySha256"]
+                    or receipt["manifestSha256"] != manifest_hash
+                    or receipt.get("runnerSha256") != runner_hash
+                    or receipt.get("planSha256") != plan_hash
+                    or receipt.get("window") != window
+                    or receipt["configsSha256"] != research.sha(path.with_name(f"{symbol}-configs.json"))
+                    or batch["planSha256"] != plan_hash):
+                raise ValueError(f"raw result provenance mismatch: {path}")
+            if (batch.get("engine") != "trend-continuation-6" or batch.get("window") != window["id"]
+                    or batch.get("symbol") != symbol
+                    or batch.get("startTime") != research.timestamp(window["start"])
+                    or batch.get("endTime") != research.timestamp(window["end"])):
+                raise ValueError(f"raw result execution/window identity mismatch: {path}")
+            for row in batch["results"]:
+                if row["config"]["version"] != plan["configVersion"]:
+                    raise ValueError("result configuration version differs from plan")
+                expected = plan["initialCapital"] / len(plan["symbols"])
+                if row["config"]["execution"]["initialCapital"] != expected:
+                    raise ValueError("sleeve initial capital mismatch")
+                if abs(sum(t["netPnl"] for t in row["trades"]) + expected
+                       - row["metrics"]["finalEquity"]) > 1e-6:
+                    raise ValueError("trade ledger does not reconcile")
+            batches.append(batch)
+            provenance.append({"window": window["id"], "symbol": symbol,
+                               "receipt": receipt, "fundingSha256": manifest["symbols"][symbol]["fundingSha256"],
+                               "warmup": {r["id"]: r["warmupStart"] for r in batch["results"]}})
+        ids = [r["id"] for r in batches[0]["results"]]
+        summaries[window["id"]] = [research.summarize(plan, batches, candidate) for candidate in ids]
+        comparisons[window["id"]] = paired_comparison(plan, batches, chosen, baseline)
+        for candidate in dict.fromkeys([baseline, chosen]):
+            curves.append({"window": window["id"], "candidate": candidate,
+                           "points": [{"time": p["time"], "nav": p["equity"] / plan["initialCapital"]}
+                                      for p in portfolio(plan, batches, candidate)]})
+    def result(window, candidate):
+        return next(row for row in summaries[window] if row["id"] == candidate)
+    diagnostics = ["known-2024", "known-2025", "known-2026"]
+    checks = {
+        "positiveKnownReturns": all(result(w, chosen)["equalSleeveReturn"] > 0 for w in diagnostics),
+        "positiveKnownStress": all(result(w, chosen + "-stress")["equalSleeveReturn"] > 0 for w in diagnostics),
+        "higherSharpeInTwoKnownWindows": sum((result(w, chosen)["dailySharpe"] or 0)
+            > (result(w, baseline)["dailySharpe"] or 0) for w in diagnostics) >= 2,
+        "noWorseDrawdownInTwoKnownWindows": sum(result(w, chosen)["dailyPortfolioDrawdown"]
+            >= result(w, baseline)["dailyPortfolioDrawdown"] for w in diagnostics) >= 2,
+    }
+    output = {"version": 1, "engine": "trend-continuation-6", "planSha256": plan_hash,
+              "selection": selection, "checks": checks, "historicalImprovement": all(checks.values()),
+              "establishedEdge": False, "summaries": summaries, "pairedComparisons": comparisons,
+              "provenance": provenance, "archives": {s: v["archives"] for s, v in manifest["symbols"].items()}}
+    args.output.mkdir(parents=True, exist_ok=True)
+    research.write(args.output / "results.json", output)
+    research.write(args.output / "curves.json", curves)
+    held = result("fresh-september", chosen)
+    paired = comparisons["fresh-september"]
+    lo, hi = (v * 10000 for v in paired["meanDailyDifference95CI"])
+    labels = {"development": "开发期 2022年9月至2023年末", "known-2024": "已查看 2024年1至7月",
+              "known-2025": "已查看 2025年", "known-2026": "已查看 2026年1至8月",
+              "historical-stress": "额外历史压力 2022年上半年", "fresh-september": "新增历史检验 2026年9月"}
+    conclusion = ("冻结选择达到了预先声明的历史改善条件，值得继续前向模拟。" if all(checks.values())
+                  else "冻结选择未达到全部历史改善条件；本轮没有证实优于原候选的替代策略。")
+    baseline_trades = sum(result(w, baseline)["trades"] for w in diagnostics)
+    chosen_trades = sum(result(w, chosen)["trades"] for w in diagnostics)
+    baseline_fees = sum(result(w, baseline)["fees"] for w in diagnostics)
+    chosen_fees = sum(result(w, chosen)["fees"] for w in diagnostics)
+    lines = ["# 趋势策略修复后的方法比较", "", "研究日期：2026-10-03。使用 Binance 官方分钟成交价、标记价与真实资金费。", "",
+             f"{conclusion} 开发期选中 `{chosen}`，基线为 `{baseline}`。2026 年 9 月仅有 30 个日收益样本，不能据此确认长期正期望。", "",
+             "![各区间基线与冻结选择净值](equity.svg)", "",
+             "## 固定方法与资金口径", "",
+             "在运行本轮结果前固定十个候选：4 小时 20／40／80 根通道分别只做多或双向；另在 20 根只做多基线上分别增加同周期 EMA、背景、独立成本门槛，或改成 ATR 保本跟踪退出。后三个过滤实验保持初始止损与退出一致；ATR 对照是整套退出政策的比较。", "",
+             "所有账户总初始资金 60,000 USDT，六个币各 10,000 USDT，按实际数量步长和最小订单回放，再合计账户净值。固定分仓，无共享保证金、动态调拨或跨币净额撮合。每笔风险为所属子账户权益的 0.5%，初始约 50 USDT，即总初始资金的 0.0833%；95% 名义敞口与 3% 日损限制也分别作用于各子账户。初始止损 2 ATR，通道退出窗口为入场窗口的一半。手续费与滑点单边为 5／2 bps，压力情形为 10／4 bps，均扣真实资金费。", "",
+             "每段独立开始资金和持仓，不拼接实盘净值。开发期按账户日收益 Sharpe 选择，要求每币至少十笔交易；其余区间只能否定或诊断，不能改选。固定种子、2,000 次七日循环块重采样；置信区间未校正本次十候选选择，不将其称为 DSR。", "",
+             "2024 至 2026 年 8 月已被之前研究查看，全部明确标为诊断。2022 年上半年是额外历史压力区间，因已知 7 月数据缺口而在 6 月末结束，并非前向检验。9 月档案可用性在计划冻结前确认，9 月收益仅在开发期选择冻结后计算，未用于选参。", "",
+             "## 全部预先声明候选", "",
+             "| 规则 | 开发期收益 | 2024诊断 | 2025诊断 | 2026诊断 | 2022压力 | 9月新增检验 |",
+             "|---|---:|---:|---:|---:|---:|---:|"]
+    windows = [w["id"] for w in plan["windows"]]
+    for candidate in plan["candidates"]:
+        lines.append("| " + candidate["id"] + " | " + " | ".join(pct(result(w, candidate["id"])["equalSleeveReturn"]) for w in windows) + " |")
+    lines += ["", "## 冻结选择与基线", "",
+              "| 区间 | 基线收益 | 选择收益 | 基线Sharpe | 选择Sharpe | 基线日回撤 | 选择日回撤 | 选择双倍成本收益 |",
+              "|---|---:|---:|---:|---:|---:|---:|---:|"]
+    for w in windows:
+        b, s = result(w, baseline), result(w, chosen)
+        stress = None if w == "development" else result(w, chosen + "-stress")["equalSleeveReturn"]
+        values = [labels[w], pct(b["equalSleeveReturn"]), pct(s["equalSleeveReturn"]), number(b["dailySharpe"]),
+                  number(s["dailySharpe"]), pct(b["dailyPortfolioDrawdown"]), pct(s["dailyPortfolioDrawdown"]), pct(stress)]
+        lines.append("| " + " | ".join(values) + " |")
+    lines += ["", f"新增 9 月检验：冻结选择完成 {held['trades']} 笔交易，盈利币种 {held['profitableSymbols']}/6。相对基线的日均收益差 95% 配对块 bootstrap 区间为 [{lo:.3f}, {hi:.3f}] bps。配对在同一天六币合计账户收益上进行，保留共同市场冲击，不把每币或每笔交易当独立样本。", "",
+              f"三个已查看诊断区间合计，基线 {baseline_trades} 笔、冻结选择 {chosen_trades} 笔；手续费分别为 {baseline_fees:.2f} 与 {chosen_fees:.2f} USDT。各段独立起始，以上仅加总交易和费用，不表示连续实盘净值。这支持其减少换手的特征，不能将全部收益变化归因于手续费。", "",
+              "历史改善条件：" + "；".join(f"`{k}`={'通过' if v else '未通过'}" for k, v in checks.items()) + "。开发期资格独立记录为" + ("通过" if selection["developmentQualified"] else "未通过") + "，不改变冻结计划的历史改善口径。", "",
+              "所有未选中候选和邻近止损结果均完整保存，不能用 9 月表现最好的规则替换开发期选择。窗口变化同时改变持仓长度和退出窗口，不能把差异全部解释为单一入场优势。每种配置按自身指标窗口预热，递归 ATR 的初期种子也可能随预热长度变化，因此过滤对照也不构成完全隔离的因果估计。", "",
+              "## 修复与可复现性", "",
+              "配置升级为 v5，成本门槛与背景过滤独立；新建研究采用已有 4 小时简洁通道候选，旧草稿保留方向、周期、成本与风控。原生与浏览器使用同一预热算法，批量原生回放对每个配置单独预热；修复恰好一个价格步长突破的浮点边界。执行器为 trend-continuation-6。", "",
+              "本报告重新回放修复后的引擎，与旧报告的引擎、预热和边界不同；旧结果保留，不覆盖。本次原始账本、配置、数据清单及收据在 tmp/trend-methods，结果哈希、每候选预热起点、输入档案来源及选择过程保存在 results.json。", "",
+              "```bash", "python3 scripts/trend/download.py --plan research/trend/methods-plan.json --output tmp/trend-methods",
+              "cargo build --release --manifest-path crates/quant/Cargo.toml --bin trend",
+              "python3 scripts/trend/research.py --plan research/trend/methods-plan.json --manifest tmp/trend-methods/manifest.json --output tmp/trend-methods",
+              "python3 scripts/trend/methods_report.py", "```", "",
+              "## 证据边界与后续研究", "",
+              "六种存活加密资产存在相关性和选择偏差。固定滑点、分钟 OHLC、资金费分钟标记价近似不代表实盘成交质量；未模拟强平、市场冲击或断线。总资金分仓是可记账的独立子账户组合，不是交易所共享保证金账户。", "",
+              "下一步固定规则做前向模拟，记录实际成交滑点、持仓和资金费。若比较多周期组合，应按实际拆分资本分别回放数量限制，再合并账户；不能把全额资金运行的多条收益曲线当作无成本可交易组合。", "",
+              "[Which Trend Is Your Friend?](https://www.aqr.com/Insights/Research/Journal-Article/Which-Trend-Is-Your-Friend)支持将成本、仓位与分散作为趋势实现的核心决策；[长期趋势研究](https://www.aqr.com/insights/research/journal-article/a-century-of-evidence-on-trend-following-investing)不能直接证明加密货币 4 小时规则有效；[Deflated Sharpe Ratio](https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf)解释重复试验与非正态收益带来的选择偏差。", ""]
+    (args.output / "REPORT.md").write_text("\n".join(lines))
+    print(json.dumps({"selected": chosen, "historicalImprovement": all(checks.values()), "checks": checks,
+                      "septemberReturn": held["equalSleeveReturn"], "septemberPairedCI": [lo, hi]}, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

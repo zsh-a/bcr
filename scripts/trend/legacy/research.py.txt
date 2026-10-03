@@ -1,0 +1,272 @@
+"""Run a frozen, small cross-symbol protocol through the shared Rust engine."""
+import argparse
+import concurrent.futures
+import datetime as dt
+import hashlib
+import json
+import math
+from pathlib import Path
+import random
+import statistics
+import subprocess
+
+from warmup import WARMUP_POLICY, warmup_days
+
+DAY = 86400000
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def sha(path):
+    with path.open("rb") as f:
+        return hashlib.file_digest(f, "sha256").hexdigest()
+
+
+def timestamp(date):
+    return int(dt.datetime.fromisoformat(date).replace(tzinfo=dt.timezone.utc).timestamp() * 1000)
+
+
+def write(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, indent=2, allow_nan=False) + "\n")
+
+
+def runner_fingerprint():
+    """Invalidate cached selection when Python accounting or prehistory changes."""
+    sources = [Path(__file__), Path(__file__).with_name("warmup.py")]
+    return hashlib.sha256("\n".join(sha(path) for path in sources).encode()).hexdigest()
+
+
+def sleeve_capital(plan):
+    mode = plan.get("capitalMode", "independent-equal-sleeves")
+    if mode not in ["independent-equal-sleeves", "total-account-equal-sleeves"]:
+        raise ValueError("unknown capital allocation mode")
+    if not plan["symbols"] or plan["initialCapital"] <= 0:
+        raise ValueError("positive capital and at least one sleeve are required")
+    return plan["initialCapital"] / len(plan["symbols"]) if mode == "total-account-equal-sleeves" else plan["initialCapital"]
+
+
+def config(plan, symbol, candidate, stress=False):
+    version = plan.get("configVersion", 4)
+    if version not in [4, 5]:
+        raise ValueError("research configVersion must be 4 or 5")
+    if version == 4 and "maxCostAtr" in candidate:
+        raise ValueError("independent maxCostAtr requires configVersion 5")
+    return {"version": version, "strategy": {"entry": "breakout", "direction": "both", "breakoutBars": 20,
+            **({"maxCostAtr": 0} if version == 5 else {}),
+            **{k: v for k, v in candidate.items() if k != "id"}},
+            "execution": {**plan["symbols"][symbol], "initialCapital": sleeve_capital(plan),
+                "feeBps": plan["costs"]["stressFeeBps" if stress else "feeBps"],
+                "slippageBps": plan["costs"]["stressSlippageBps" if stress else "slippageBps"]},
+            "risk": plan["risk"]}
+
+
+def run_symbol(args, plan, window, symbol, candidates, fingerprint):
+    out = args.output / window["id"] / f"{symbol}.json"
+    configs = args.output / window["id"] / f"{symbol}-configs.json"
+    write(configs, [{"id": c["id"], "config": config(plan, symbol, c, c["id"].endswith("-stress"))} for c in candidates])
+    receipt = out.with_suffix(".receipt.json")
+    signature = {"binarySha256": fingerprint, "runnerSha256": runner_fingerprint(),
+                 "configsSha256": sha(configs), "manifestSha256": sha(args.manifest),
+                 "planSha256": sha(args.plan), "warmupPolicy": WARMUP_POLICY, "window": window}
+    cached = out.exists() and receipt.exists() and json.loads(receipt.read_text()) == {**signature, "resultSha256": sha(out)}
+    if not cached:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run([str(args.binary), str(args.manifest), symbol, str(configs), str(timestamp(window["start"])),
+                        str(timestamp(window["end"])), str(out), window["id"]], check=True)
+    result = json.loads(out.read_text())
+    expected_days = (timestamp(window["end"]) - timestamp(window["start"])) // DAY
+    expected_ids = {c["id"] for c in candidates}
+    if len(result["results"]) != len(candidates) or {r["id"] for r in result["results"]} != expected_ids:
+        raise ValueError("replay did not return each declared candidate exactly once")
+    for row in result["results"]:
+        if (len(row["daily"]) != expected_days or [p["time"] for p in row["daily"]]
+                != list(range(timestamp(window["start"]) + DAY - 1, timestamp(window["end"]), DAY))):
+            raise ValueError(f"incomplete daily equity: {symbol}/{row['id']}")
+        strategy = next(c for c in candidates if c["id"] == row["id"])
+        expected_warmup = timestamp(window["start"]) - warmup_days(strategy) * DAY
+        if row.get("warmupStart") != expected_warmup:
+            raise ValueError(f"replay warmup differs from active windows: {symbol}/{row['id']}; rebuild the CLI")
+    if not cached:
+        write(receipt, {**signature, "resultSha256": sha(out)})
+    print(f"replayed {window['id']} {symbol}: {len(candidates)} declared variants", flush=True)
+    return result
+
+
+def returns(curve, initial):
+    result, last = [], initial
+    for point in curve:
+        result.append(point["equity"] / last - 1)
+        last = point["equity"]
+    return result
+
+
+def confidence(values, samples, block, seed):
+    """Circular calendar block bootstrap; preserves adjacent-day dependence."""
+    if not values or samples < 1 or block < 1:
+        raise ValueError("bootstrap requires observations, positive samples and positive block size")
+    rng = random.Random(seed)
+    estimates = []
+    for _ in range(samples):
+        chosen = []
+        while len(chosen) < len(values):
+            start = rng.randrange(len(values))
+            chosen.extend(values[(start + i) % len(values)] for i in range(block))
+        estimates.append(statistics.mean(chosen[:len(values)]))
+    estimates.sort()
+    return [estimates[int(samples * .025)], estimates[min(samples - 1, int(samples * .975))]]
+
+
+def correlation(a, b):
+    ma, mb = statistics.mean(a), statistics.mean(b)
+    va = sum((x - ma) ** 2 for x in a)
+    vb = sum((x - mb) ** 2 for x in b)
+    return sum((x - ma) * (y - mb) for x, y in zip(a, b)) / math.sqrt(va * vb) if va * vb else None
+
+
+def summarize(plan, batches, candidate_id, bootstrap=True):
+    selected = [(b["symbol"], next(r for r in b["results"] if r["id"] == candidate_id)) for b in batches]
+    if len(selected) != len(plan["symbols"]) or {symbol for symbol, _ in selected} != set(plan["symbols"]):
+        raise ValueError("portfolio must contain each declared sleeve exactly once")
+    per_sleeve = sleeve_capital(plan)
+    initial = per_sleeve * len(selected)
+    curves = [r["daily"] for _, r in selected]
+    if any(not c for c in curves):
+        raise ValueError("daily equity cannot be empty")
+    if any([p["time"] for p in c] != [p["time"] for p in curves[0]] for c in curves):
+        raise ValueError("calendar mismatch across sleeves")
+    portfolio = [{"time": p["time"], "equity": sum(c[i]["equity"] for c in curves)} for i, p in enumerate(curves[0])]
+    daily_returns = returns(portfolio, initial)
+    peak, drawdown = initial, 0
+    for point in portfolio:
+        peak = max(peak, point["equity"])
+        drawdown = min(drawdown, point["equity"] / peak - 1)
+    all_trades = [t for _, r in selected for t in r["trades"]]
+    net = sum(t["netPnl"] for t in all_trades)
+    account_pnl = portfolio[-1]["equity"] - initial
+    if not math.isclose(account_pnl, net, rel_tol=1e-8, abs_tol=1e-6):
+        raise ValueError("portfolio daily cash does not reconcile with the trade ledger")
+    profits = sorted([t["netPnl"] for t in all_trades if t["netPnl"] > 0], reverse=True)
+    remove_n = max(1, math.ceil(len(all_trades) * .05)) if all_trades else 0
+    ci = confidence(daily_returns, plan["bootstrap"]["samples"], plan["bootstrap"]["blockDays"], plan["bootstrap"]["seed"]) if bootstrap else None
+    profit = sum(profits)
+    loss = -sum(t["netPnl"] for t in all_trades if t["netPnl"] < 0)
+    months = {}
+    last = initial
+    for i, point in enumerate(portfolio):
+        day = dt.datetime.fromtimestamp(point["time"] / 1000, dt.timezone.utc)
+        next_day = day + dt.timedelta(days=1)
+        if day.month != next_day.month or i == len(portfolio) - 1:
+            months[day.strftime("%Y-%m")] = point["equity"] / last - 1
+            last = point["equity"]
+    sigma = statistics.stdev(daily_returns) if len(daily_returns) > 1 else 0
+    sleeve_returns = [returns(c, per_sleeve) for c in curves]
+    correlations = [correlation(sleeve_returns[i], sleeve_returns[j]) for i in range(len(curves)) for j in range(i + 1, len(curves))]
+    return {"id": candidate_id, "symbols": [{"symbol": symbol, "metrics": r["metrics"]} for symbol, r in selected],
+            "capitalMode": plan.get("capitalMode", "independent-equal-sleeves"),
+            "accountInitialCapital": initial, "sleeveInitialCapital": per_sleeve,
+            "accountFinalEquity": portfolio[-1]["equity"], "accountNetPnl": account_pnl,
+            "profitableSymbols": sum(r["metrics"]["totalReturn"] > 0 for _, r in selected),
+            "sleeveCount": len(selected), "equalSleeveReturn": portfolio[-1]["equity"] / initial - 1,
+            "dailyPortfolioDrawdown": drawdown, "worstSleeveDrawdown": min(r["metrics"]["maxDrawdown"] for _, r in selected),
+            "dailySharpe": statistics.mean(daily_returns) / sigma * math.sqrt(365) if sigma else None,
+            "meanDailyReturn": statistics.mean(daily_returns), "dailyMean95CI": ci,
+            "netExpectancy": net / len(all_trades) if all_trades else None,
+            "meanNetR": statistics.mean(t["rMultiple"] for t in all_trades) if all_trades else None,
+            "medianSymbolMeanR": statistics.median(r["metrics"]["meanR"] or 0 for _, r in selected),
+            "trades": len(all_trades), "profitFactor": profit / loss if loss else None,
+            "withoutBestFivePctPnl": net - sum(profits[:remove_n]),
+            "bestFivePctProfitShare": sum(profits[:remove_n]) / profit if profit else None,
+            "fees": sum(r["metrics"]["fees"] for _, r in selected), "funding": sum(r["metrics"]["funding"] for _, r in selected),
+            "feesToInitialCapital": sum(r["metrics"]["fees"] for _, r in selected) / initial,
+            "fundingToInitialCapital": sum(r["metrics"]["funding"] for _, r in selected) / initial,
+            "longNetPnl": sum(t["netPnl"] for t in all_trades if t["side"] == "long"),
+            "shortNetPnl": sum(t["netPnl"] for t in all_trades if t["side"] == "short"),
+            "meanPairCorrelation": statistics.mean(c for c in correlations if c is not None) if any(c is not None for c in correlations) else None,
+            "monthlyReturns": months, "positiveMonths": sum(x > 0 for x in months.values())}
+
+
+def select_development(plan, summaries):
+    """A frozen objective is chosen on development only, never on later windows."""
+    objective = plan.get("selectionObjective", "medianSymbolMeanR")
+    if objective not in ["medianSymbolMeanR", "dailySharpe"]:
+        raise ValueError("selectionObjective must be medianSymbolMeanR or dailySharpe")
+    eligible = [s for s in summaries
+                if all(r["metrics"]["trades"] >= plan.get("selectionMinTrades", 30) for r in s["symbols"])
+                and s.get(objective) is not None and math.isfinite(s[objective])]
+    if not eligible:
+        raise ValueError("no candidate meets the declared minimum sample size; do not inspect holdout")
+    best = max(eligible, key=lambda s: s[objective])
+    qualified = best["profitableSymbols"] >= plan.get("selectionMinProfitableSymbols", 4) and best["medianSymbolMeanR"] > 0
+    return best, objective, qualified
+
+
+def window_candidates(plan, window, selection=None):
+    candidates = list(plan["candidates"])
+    if len({c["id"] for c in candidates}) != len(candidates):
+        raise ValueError("candidate ids must be unique")
+    if window["id"] == "development":
+        return candidates
+    if selection is None:
+        raise ValueError("non-development windows require a frozen selection")
+    selected = next(c for c in candidates if c["id"] == selection["id"])
+    candidates += [{**selected, "id": selected["id"] + "-stress"}]
+    baseline = plan.get("baseline")
+    if baseline and baseline != selected["id"]:
+        baseline_config = next(c for c in plan["candidates"] if c["id"] == baseline)
+        candidates += [{**baseline_config, "id": baseline + "-stress"}]
+    candidates += [{**selected, **{k: v for k, v in sensitivity.items() if k != "id"},
+                    "id": selected["id"] + "-" + sensitivity["id"]}
+                   for sensitivity in plan.get("sensitivity", [])]
+    if len({c["id"] for c in candidates}) != len(candidates):
+        raise ValueError("generated stress/sensitivity ids collide with declared candidates")
+    return candidates
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--plan", type=Path, default=ROOT / "research/trend/plan.json")
+    parser.add_argument("--manifest", type=Path, default=ROOT / "tmp/trend-research/manifest.json")
+    parser.add_argument("--output", type=Path, default=ROOT / "tmp/trend-research")
+    parser.add_argument("--binary", type=Path, default=ROOT / "crates/quant/target/release/trend")
+    parser.add_argument("--stage", default="all", help="all or a window id from the plan")
+    parser.add_argument("--workers", type=int, default=3)
+    args = parser.parse_args()
+    plan = json.loads(args.plan.read_text())
+    if args.stage != "all" and args.stage not in {w["id"] for w in plan["windows"]}:
+        raise ValueError("unknown study window")
+    manifest = json.loads(args.manifest.read_text())
+    if manifest["planSha256"] != sha(args.plan):
+        raise ValueError("plan changed after archive download; regenerate manifest")
+    fingerprint = sha(args.binary)
+    selection_path = args.output / "selection.json"
+    selection = None
+    for window in plan["windows"]:
+        if args.stage != "all" and window["id"] != args.stage:
+            continue
+        if window["id"] != "development":
+            selection = json.loads(selection_path.read_text())
+            if (selection["planSha256"] != sha(args.plan) or selection["binarySha256"] != fingerprint
+                    or selection.get("runnerSha256") != runner_fingerprint()
+                    or selection.get("manifestSha256") != sha(args.manifest)
+                    or selection["developmentSha256"] != sha(args.output / "development-summary.json")):
+                raise ValueError("development selection is stale; rerun development first")
+        candidates = window_candidates(plan, window, selection)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
+            batches = list(pool.map(lambda symbol: run_symbol(args, plan, window, symbol, candidates, fingerprint), plan["symbols"]))
+        summaries = [summarize(plan, batches, c["id"]) for c in candidates]
+        write(args.output / f"{window['id']}-summary.json", summaries)
+        if window["id"] == "development":
+            best, objective, qualified = select_development(plan, summaries)
+            selection = {"id": best["id"], "developmentQualified": qualified,
+                         "planSha256": sha(args.plan), "binarySha256": fingerprint,
+                         "runnerSha256": runner_fingerprint(), "manifestSha256": sha(args.manifest),
+                         "developmentSha256": sha(args.output / "development-summary.json"),
+                         "criterion": plan["selection"], "objective": objective}
+            write(selection_path, selection)
+            print(f"frozen development choice: {selection['id']}; development qualified: {selection['developmentQualified']}", flush=True)
+        for s in summaries:
+            print(f"{window['id']} {s['id']}: return={s['equalSleeveReturn']:.2%}, mean R={s['meanNetR']}, positive symbols={s['profitableSymbols']}/{s['sleeveCount']}", flush=True)
+
+
+if __name__ == "__main__":
+    main()

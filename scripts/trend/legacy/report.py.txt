@@ -1,0 +1,167 @@
+"""Publish the complete small-study matrix, including rejected hypotheses."""
+import argparse
+import csv
+import datetime as dt
+import hashlib
+import json
+from pathlib import Path
+import statistics
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def read(path):
+    return json.loads(path.read_text())
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def pct(value):
+    return f"{value * 100:.2f}%" if value is not None else "—"
+
+
+def num(value):
+    return f"{value:.3f}" if value is not None else "—"
+
+
+def verdict(study):
+    choice = study["selection"]["id"]
+    held = next(s for s in study["summaries"]["holdout"] if s["id"] == choice)
+    stress = next(s for s in study["summaries"]["holdout"] if s["id"] == choice + "-stress")
+    checks = {
+        "developmentQualified": study["selection"]["developmentQualified"],
+        "holdoutProfitableSymbols": held["profitableSymbols"] >= 4,
+        "holdoutNetReturn": held["equalSleeveReturn"] > 0,
+        "holdoutMeanNetR": (held["meanNetR"] or 0) > 0,
+        "holdoutConfidence": held["dailyMean95CI"][0] > 0,
+        "holdoutStress": stress["equalSleeveReturn"] > 0,
+    }
+    if "validation" in study["summaries"]:
+        validation = next(s for s in study["summaries"]["validation"] if s["id"] == choice)
+        checks["validation"] = validation["profitableSymbols"] >= 4 and validation["equalSleeveReturn"] > 0 and (validation["meanNetR"] or 0) > 0
+    else:
+        checks["holdoutSampleSize"] = all(s["metrics"]["trades"] >= 30 for s in held["symbols"])
+    return {"accepted": all(checks.values()), "checks": checks}
+
+
+def price_return(manifest, symbol, window):
+    """Underlying price context only, deliberately not called a costed benchmark."""
+    stamps = [int(dt.datetime.fromisoformat(window[k]).replace(tzinfo=dt.timezone.utc).timestamp() * 1000) for k in ["start", "end"]]
+    prices = []
+    for t, col in [(stamps[0], 1), (stamps[1] - 60000, 4)]:
+        month = dt.datetime.fromtimestamp(t / 1000, dt.timezone.utc).strftime("%Y-%m")
+        partition = next(p for p in manifest["symbols"][symbol]["partitions"] if p["month"] == month)
+        with open(partition["candles"]) as f:
+            row = next(r for r in csv.reader(f) if r[0] == str(t))
+        prices.append(float(row[col]))
+    return prices[1] / prices[0] - 1
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--first", type=Path, default=ROOT / "tmp/trend-research")
+    parser.add_argument("--second", type=Path, default=ROOT / "tmp/trend-slow")
+    parser.add_argument("--output", type=Path, default=ROOT / "research/trend")
+    args = parser.parse_args()
+    args.output.mkdir(parents=True, exist_ok=True)
+    studies = []
+    curves = []
+    archives = {}
+    def archive_ref(a):
+        record = {k: v for k, v in a.items() if k not in ["path", "sources"]} | {"name": Path(a["path"]).name}
+        if "sources" in a:
+            record["sources"] = [archive_ref(source) for source in a["sources"]]
+        key = hashlib.sha256(json.dumps(record, sort_keys=True).encode()).hexdigest()
+        archives[key] = record
+        return key
+    for index, (directory, plan_path) in enumerate([(args.first, ROOT / "research/trend/plan.json"), (args.second, ROOT / "research/trend/slow-plan.json")], 1):
+        plan = read(plan_path)
+        selection = read(directory / "selection.json")
+        manifest = read(directory / "manifest.json")
+        if sha(plan_path) != selection["planSha256"] or sha(plan_path) != manifest["planSha256"]:
+            raise ValueError("plan hash mismatch; do not publish stale results")
+        if selection["developmentSha256"] != sha(directory / "development-summary.json"):
+            raise ValueError("development summary differs from the frozen choice")
+        summaries = {w["id"]: read(directory / f"{w['id']}-summary.json") for w in plan["windows"]}
+        study = {"id": index, "plan": str(plan_path.relative_to(ROOT)), "selection": selection,
+                 "summaries": summaries, "provenance": [], "priceContext": {}}
+        for window in plan["windows"]:
+            raw = [read(directory / window["id"] / f"{symbol}.json") for symbol in plan["symbols"]]
+            for result in raw:
+                receipt = read((directory / window["id"] / f"{result['symbol']}.receipt.json"))
+                if receipt["resultSha256"] != sha(directory / window["id"] / f"{result['symbol']}.json") or result["planSha256"] != selection["planSha256"] or receipt["binarySha256"] != selection["binarySha256"]:
+                    raise ValueError("raw outcome is not linked to the frozen selection")
+            plot_candidates = [selection["id"]] + (["current-1m", "current-1h"] if index == 1 else ["channel-4h-both", "channel-1d-both"])
+            for candidate in plot_candidates:
+                candidate_rows = [next(r for r in b["results"] if r["id"] == candidate) for b in raw]
+                curve = [{"time": p["time"], "nav": statistics.mean(r["daily"][i]["equity"] for r in candidate_rows) / plan["initialCapital"]} for i, p in enumerate(candidate_rows[0]["daily"])]
+                curves.append({"study": index, "window": window["id"], "candidate": candidate, "points": curve})
+            study["priceContext"][window["id"]] = {symbol: price_return(manifest, symbol, window) for symbol in plan["symbols"]}
+            for b in raw:
+                records = manifest["symbols"][b["symbol"]]["archives"]
+                study["provenance"].append({"symbol": b["symbol"], "window": window["id"],
+                    "resultSha256": sha(directory / window["id"] / f"{b['symbol']}.json"),
+                    "fundingSha256": manifest["symbols"][b["symbol"]]["fundingSha256"],
+                    "archives": [archive_ref(a) for a in records if any(month in Path(a["path"]).name for month in b["partitions"])]})
+        study["verdict"] = verdict(study)
+        studies.append(study)
+    (args.output / "results.json").write_text(json.dumps({"version": 1, "engine": "trend-continuation-5", "studies": studies, "archives": archives}, indent=2) + "\n")
+    (args.output / "curves.json").write_text(json.dumps(curves, separators=(",", ":")) + "\n")
+    lines = ["# 简洁趋势策略：跨品种研究结果", "", "研究日期：2026-10-02。使用真实 Binance USDT 永续档案，非合成行情。", "",
+        "![分阶段净值对照](equity.svg)", "",
+        "结论：4 小时只做多通道方案值得继续模拟验证，观察到扣成本后的正期望；两轮研究均未满足预先声明的全部通过条件，不能称为已证实的长期正期望策略。", "",
+        "实现候选：收盘突破此前 20 根高点，下一分钟开盘做多；入场冻结 ATR14，2 ATR 硬止损；收盘跌破此前 10 根低点，下分钟开盘退出。不开主动保本、不做分钟级追踪、不补仓，不预测行情。保留每笔 0.5% 风险、95% 名义敞口上限、连亏三次冷却与单日 3% 限制。", "",
+        "## 研究方法", "",
+        "- 品种：BTC、ETH、BNB、SOL、XRP、DOGE。每个独立账户初始 10,000 USDT；等额分仓收益是六账户期末资金的平均，无跨账户保证金或动态再平衡。", 
+        "- 收盘信号、次分钟开盘市价成交；分钟旧止损先检查。单边手续费 5 bps、滑点 2 bps、保守价格取整，扣除真实资金费；压力情形费用和滑点均翻倍。", 
+        "- 窗口及资金费按 UTC；每段重新开始账户并使用 30 天预热，区间末尾带成本平仓。阶段之间不连接持仓；曲线也不拼接成连续实盘记录。", 
+        "- 第一轮六个规则先冻结，按开发期各品种平均净 R 的中位数选出 4 小时双向通道；验证期和 2025 保留期可否定它，不可调优它。", 
+        "- 第一轮未通过后，第二轮仅比较 4 小时／日线 × 双向／只做多，仍只按开发样本选择。此前已查看的 2024／2025 明确降为诊断；2026 年 1–8 月是唯一新的保留期。第二轮之后不继续搜索。", 
+        "- 单笔 R 与净美元期望同时报告。置信区间使用等额分仓日收益的 7 天循环块 bootstrap（2,000 次、固定随机种子），保留日间依赖；它不是收益保证，也不是 DSR。", 
+        "- 两个研究级选择完整披露；仅检验冻结选择的下方 2.5% 尾，不从保留期挑最高收益。所有原始候选与邻近测试均保留在 results.json。", "",
+        "## 第一轮：当前策略与通道管理", "", "| 规则 | 开发期收益 | 2024 验证收益 | 2025 保留收益 |", "|---|---:|---:|---:|"]
+    first = studies[0]
+    for c in read(ROOT / "research/trend/plan.json")["candidates"]:
+        values = [next(s for s in first["summaries"][w] if s["id"] == c["id"])["equalSleeveReturn"] for w in ["development", "validation", "holdout"]]
+        lines.append(f"| {c['id']} | {' | '.join(pct(v) for v in values)} |")
+    lines += ["", "选中的 4 小时双向通道在 2025 年近乎持平，双倍成本后亏损；盈利品种仅 3/6。它未通过，不将邻近参数偶然盈利改称为成功。", "", "## 第二轮：4 小时只做多候选", "", "| 样本 | 等额分仓净收益 | 平均净 R | 单笔净期望 USDT | 利润因子 | 盈利品种 | 交易笔数 |", "|---|---:|---:|---:|---:|---:|---:|"]
+    second = studies[1]
+    for window in read(ROOT / "research/trend/slow-plan.json")["windows"]:
+        row = next(s for s in second["summaries"][window["id"]] if s["id"] == second["selection"]["id"])
+        lines.append(f"| {window['start']} 至 {window['end']}（右端不含） | {pct(row['equalSleeveReturn'])} | {num(row['meanNetR'])} | {num(row['netExpectancy'])} | {num(row['profitFactor'])} | {row['profitableSymbols']}/6 | {row['trades']} |")
+    held = next(s for s in second["summaries"]["holdout"] if s["id"] == second["selection"]["id"])
+    stress = next(s for s in second["summaries"]["holdout"] if s["id"] == second["selection"]["id"] + "-stress")
+    lines += ["", f"新保留期双倍成本收益 **{pct(stress['equalSleeveReturn'])}**。标准成本日收益 Sharpe **{num(held['dailySharpe'])}**；等额分仓日收盘最大回撤 **{pct(held['dailyPortfolioDrawdown'])}**，最差单品种分钟回撤 **{pct(held['worstSleeveDrawdown'])}**。两者频率和账户口径不同。", "",
+        "| 品种 | 新保留期净收益 | 平均净 R | 分钟最大回撤 | 笔数 | 标的价格涨幅（未扣成本） |", "|---|---:|---:|---:|---:|---:|"]
+    for s in held["symbols"]:
+        m = s["metrics"]
+        lines.append(f"| {s['symbol']} | {pct(m['totalReturn'])} | {num(m['meanR'])} | {pct(m['maxDrawdown'])} | {m['trades']} | {pct(second['priceContext']['holdout'][s['symbol']])} |")
+    lines += ["", "标的价格涨幅仅解释行情背景，不是扣成本或风险匹配的可交易基准；正收益不能直接解释为超额收益。", "", "### 稳定性与未通过原因", "",
+        f"- 新保留期日平均收益的 95% 块 bootstrap 区间为 **[{num(held['dailyMean95CI'][0] * 10000)}, {num(held['dailyMean95CI'][1] * 10000)}] bps / 日**，跨过零，无法排除不存在优势的情况。", 
+        f"- 新保留期共 {held['trades']} 笔，每品种 19–27 笔，未达到冻结的每品种 30 笔门槛。六种加密资产相关，不能把它们当作六个独立市场。", 
+        f"- 盈利最大的 5% 交易贡献 **{pct(held['bestFivePctProfitShare'])}** 的总正利润；删去这些交易后净盈亏为 **{held['withoutBestFivePctPnl']:.2f} USDT**。这是尾部依赖诊断，不证明策略必然无效；过早止盈可能损害这种分布。", 
+        "- 相邻参数只检验是否陡峭失效，不重新挑最优点。增加参数、事后挑币或改变亏损日期均不用于修饰结果。", "",
+        "| 新保留期邻近测试 | 净收益 | 平均净 R | 盈利品种 |", "|---|---:|---:|---:|"]
+    for s in second["summaries"]["holdout"]:
+        if s["id"].startswith(second["selection"]["id"]):
+            lines.append(f"| {s['id']} | {pct(s['equalSleeveReturn'])} | {num(s['meanNetR'])} | {s['profitableSymbols']}/6 |")
+    lines += ["", "## 数据质量与局限", "",
+        "部分月档案缺失整日，可用校验后的官方日 ZIP 完整替换相应日期，原始月档案不改写。2022-07 与 2024-08 的少量标记价格在日档案中也缺失，因此在任何成功收益计算前按数据完整性缩短窗口：开发期从 2022-09-01 开始，验证期截至 2024-08-01。资金费不补零、行情不插值。2026-06 缺失标记价格整日也从官方日档案恢复。", "",
+        "冻结 plan、输入 SHA-256、合并来源、原始结果哈希及完整候选矩阵保存在 [results.json](results.json)。原始 CSV 缓存在 ~/.cache/bcr-trend-research；完整账本、分阶段冻结选择和回放输入保存在 tmp/trend-research 与 tmp/trend-slow。", "",
+        "这些是存活且较流动的加密永续品种，存在生存者选择；不是股票、商品、债券之间的分散。静态精度是保守假设，未重建历次交易所过滤器。分钟 OHLC 不包含历史盘口、冲击、强平、ADL或断线成交；没有实盘可靠性证据。历史隔离不等于前瞻交易。", "",
+        "## 使用与下一步", "",
+        "Quant Lab → 永续趋势 → 参数 →「使用简洁通道方案 · 4 小时 / 仅做多」→ 应用。预设保留当前资金、成本和风控设置；更换交易对需核对合约精度。结果中展开「收益质量与交易管理」，可查看净期望、盈亏比、风险调整收益、持仓／换手、多空贡献、最大交易依赖和退出分布。旧配置只升级可编辑草稿，历史结果保持原样。", "",
+        "优先继续前向模拟，固定这四个核心选择（4 小时、20 根、2 ATR、只做多），累积更多交易；记录真实滑点与资金费，再检验同一门槛。若失败就否定假设，不在同一保留期继续搜索。实盘账户状态持久化、重启对账、独立心跳与退出执行是另一个工程阶段，本次只实现历史研究与确定性管理，不声称已具备实盘交易系统。", "",
+        "## 参考", "",
+        "[AQR 长期趋势研究](https://www.aqr.com/insights/research/journal-article/a-century-of-evidence-on-trend-following-investing)支持从多市场、多时期与成本口径研究趋势；不能直接外推成加密短线策略有效。", "",
+        "[Bailey 与 López de Prado：Deflated Sharpe Ratio](https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf)讨论重复试验的选择偏差。这里完整披露两轮、拒绝失败假设，并保留新的测试区间；未把短样本 Sharpe 当作策略获利的证明。", "",
+        "[Binance 官方历史档案说明](https://github.com/binance/binance-public-data)提供月／日 ZIP 与 CHECKSUM；实际研究额外验证分钟连续性。", ""]
+    (args.output / "REPORT.md").write_text("\n".join(lines))
+    print(f"report: {args.output / 'REPORT.md'}")
+    print("study verdicts:", [s["verdict"] for s in studies])
+
+
+if __name__ == "__main__":
+    main()

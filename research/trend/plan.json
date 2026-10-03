@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "frozenAt": "2026-10-02",
+  "purpose": "Compare a small, predeclared set of trend rules, not search a parameter grid. Never select using the final holdout.",
+  "symbols": {
+    "BTCUSDT": { "tickSize": 0.1, "quantityStep": 0.001, "minNotional": 100 },
+    "ETHUSDT": { "tickSize": 0.01, "quantityStep": 0.001, "minNotional": 100 },
+    "BNBUSDT": { "tickSize": 0.01, "quantityStep": 0.01, "minNotional": 100 },
+    "SOLUSDT": { "tickSize": 0.001, "quantityStep": 1, "minNotional": 100 },
+    "XRPUSDT": { "tickSize": 0.0001, "quantityStep": 1, "minNotional": 100 },
+    "DOGEUSDT": { "tickSize": 0.00001, "quantityStep": 1, "minNotional": 100 }
+  },
+  "windows": [
+    { "id": "development", "start": "2022-09-01", "end": "2024-01-01" },
+    { "id": "validation", "start": "2024-01-01", "end": "2024-08-01" },
+    { "id": "holdout", "start": "2025-01-01", "end": "2026-01-01" }
+  ],
+  "dataAmendment": "Before any successful performance run: 2022-07 minute mark gaps and 2024-08-12 gaps are also missing in official daily archives. Shift development from Jan 2022 to Sep 2022 (30-day warmup avoids July), and validation end from Jan 2025 to Aug 2024. Keep the full 2025 holdout. This calendar change is based solely on data completeness, never PnL. Recover other missing whole days from checksum-verified daily ZIPs; do not interpolate.",
+  "candidates": [
+    {
+      "id": "current-1m",
+      "tradeMinutes": 1,
+      "filter": "background",
+      "management": "atr",
+      "stopAtr": 1.5,
+      "breakEvenAtr": 1.5,
+      "trailingAtr": 2
+    },
+    {
+      "id": "current-15m",
+      "tradeMinutes": 15,
+      "filter": "background",
+      "management": "atr",
+      "stopAtr": 1.5,
+      "breakEvenAtr": 1.5,
+      "trailingAtr": 2
+    },
+    {
+      "id": "current-1h",
+      "tradeMinutes": 60,
+      "filter": "background",
+      "management": "atr",
+      "stopAtr": 1.5,
+      "breakEvenAtr": 1.5,
+      "trailingAtr": 2
+    },
+    {
+      "id": "channel-1h",
+      "tradeMinutes": 60,
+      "filter": "none",
+      "management": "channel",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2
+    },
+    {
+      "id": "channel-background-1h",
+      "tradeMinutes": 60,
+      "filter": "background",
+      "management": "channel",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2
+    },
+    {
+      "id": "channel-4h",
+      "tradeMinutes": 240,
+      "filter": "none",
+      "management": "channel",
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2
+    }
+  ],
+  "selection": "Development only: highest median per-symbol mean net R among candidates with at least 30 trades per symbol. No candidate is called established unless at least 4/6 development symbols are profitable. Validation and holdout may reject, never retune this choice.",
+  "sensitivity": [
+    { "id": "window-half", "breakoutBars": 10 },
+    { "id": "window-double", "breakoutBars": 40 },
+    { "id": "stop-lower", "stopAtr": 1.5 },
+    { "id": "stop-higher", "stopAtr": 2.5 }
+  ],
+  "costs": { "feeBps": 5, "slippageBps": 2, "stressFeeBps": 10, "stressSlippageBps": 4 },
+  "risk": {
+    "riskPct": 0.005,
+    "maxExposurePct": 0.95,
+    "cooldownLosses": 3,
+    "cooldownMinutes": 60,
+    "dailyLossPct": 0.03,
+    "flattenMinute": null
+  },
+  "initialCapital": 10000,
+  "bootstrap": { "seed": 20261002, "samples": 2000, "blockDays": 7 },
+  "acceptance": "The development-selected candidate needs >=4/6 profitable symbols in each unseen window, positive equal-sleeve mean return and mean net R in both, positive 95% seven-day block-bootstrap lower bound of aggregate holdout daily returns, and positive aggregate stress return. Otherwise report evidence insufficient, without further holdout tuning.",
+  "limitations": [
+    "Six surviving liquid crypto perpetuals, not a point-in-time universe or six independent asset classes",
+    "Static conservative precision assumptions, not historical exchange filters",
+    "One-minute OHLC execution, no historical order book, liquidation or market impact",
+    "Independent equal-capital sleeves, no cross-margin portfolio simulator",
+    "Historical holdout is a research split, not prospective live evidence"
+  ]
+}

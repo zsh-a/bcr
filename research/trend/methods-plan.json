@@ -1,0 +1,261 @@
+{
+  "version": 1,
+  "configVersion": 5,
+  "frozenAt": "2026-10-03; before any repaired-engine study results or September prices were inspected",
+  "purpose": "A finite method comparison after correctness fixes. Ten declared candidates; no further search after viewing results. Existing 2024-2026 August data are known diagnostics. September is a new historical one-month check, never sufficient prospective evidence.",
+  "capitalMode": "total-account-equal-sleeves",
+  "initialCapital": 60000,
+  "symbols": {
+    "BTCUSDT": {
+      "tickSize": 0.1,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "ETHUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.001,
+      "minNotional": 100
+    },
+    "BNBUSDT": {
+      "tickSize": 0.01,
+      "quantityStep": 0.01,
+      "minNotional": 100
+    },
+    "SOLUSDT": {
+      "tickSize": 0.001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "XRPUSDT": {
+      "tickSize": 0.0001,
+      "quantityStep": 1,
+      "minNotional": 100
+    },
+    "DOGEUSDT": {
+      "tickSize": 1e-5,
+      "quantityStep": 1,
+      "minNotional": 100
+    }
+  },
+  "windows": [
+    {
+      "id": "development",
+      "start": "2022-09-01",
+      "end": "2024-01-01"
+    },
+    {
+      "id": "known-2024",
+      "start": "2024-01-01",
+      "end": "2024-08-01"
+    },
+    {
+      "id": "known-2025",
+      "start": "2025-01-01",
+      "end": "2026-01-01"
+    },
+    {
+      "id": "known-2026",
+      "start": "2026-01-01",
+      "end": "2026-09-01"
+    },
+    {
+      "id": "historical-stress",
+      "start": "2022-01-01",
+      "end": "2022-07-01"
+    },
+    {
+      "id": "fresh-september",
+      "start": "2026-09-01",
+      "end": "2026-10-01"
+    }
+  ],
+  "dataPolicy": "Complete checksum-verified official trade/mark minutes and actual funding; never interpolate or substitute missing costs. Historical stress January-June 2022 ends before known July gaps; its returns were not reported by the prior successful studies, but it is explicitly retrospective. September funding CHECKSUM availability checked before freeze without inspecting prices/results. A missing required month rejects that window and is reported, never chosen by PnL.",
+  "candidates": [
+    {
+      "id": "baseline-20-long",
+      "entry": "breakout",
+      "tradeMinutes": 240,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "slow-40-long",
+      "entry": "breakout",
+      "tradeMinutes": 240,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 40,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "slow-80-long",
+      "entry": "breakout",
+      "tradeMinutes": 240,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 80,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "channel-20-both",
+      "entry": "breakout",
+      "tradeMinutes": 240,
+      "filter": "none",
+      "management": "channel",
+      "direction": "both",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "channel-40-both",
+      "entry": "breakout",
+      "tradeMinutes": 240,
+      "filter": "none",
+      "management": "channel",
+      "direction": "both",
+      "breakoutBars": 40,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "channel-80-both",
+      "entry": "breakout",
+      "tradeMinutes": 240,
+      "filter": "none",
+      "management": "channel",
+      "direction": "both",
+      "breakoutBars": 80,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "ema-20-long",
+      "entry": "breakout",
+      "tradeMinutes": 240,
+      "filter": "ema",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "background-20-long",
+      "entry": "breakout",
+      "tradeMinutes": 240,
+      "filter": "background",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2,
+      "maxCostAtr": 0
+    },
+    {
+      "id": "cost-20-long",
+      "entry": "breakout",
+      "tradeMinutes": 240,
+      "filter": "none",
+      "management": "channel",
+      "direction": "long",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 0,
+      "trailingAtr": 2,
+      "maxCostAtr": 0.5
+    },
+    {
+      "id": "atr-20-long",
+      "entry": "breakout",
+      "tradeMinutes": 240,
+      "filter": "none",
+      "management": "atr",
+      "direction": "long",
+      "breakoutBars": 20,
+      "stopAtr": 2,
+      "breakEvenAtr": 1.5,
+      "trailingAtr": 2,
+      "maxCostAtr": 0
+    }
+  ],
+  "baseline": "baseline-20-long",
+  "hypotheses": [
+    "Longer channel horizons reduce turnover at the cost of response delay.",
+    "Long/short permission changes direction exposure; it is tested independently at each horizon.",
+    "EMA, background, and cost-only gates are separately compared at the same horizon, direction, stop and budget.",
+    "Minute ATR/breakeven management is one bundled exit-policy comparator, not separate attribution of its two components."
+  ],
+  "selectionObjective": "dailySharpe",
+  "selectionMinTrades": 10,
+  "selection": "Development only: among candidates with at least ten completed trades per symbol, select the highest daily equal-sleeve account Sharpe, ties resolved by candidate declaration order. Keep development qualification separate (>=4 profitable symbols and positive median symbol mean net R). Compare the frozen choice against baseline in all later windows. A later failure rejects the choice; do not switch to a diagnostic winner.",
+  "sensitivity": [
+    {
+      "id": "stop-lower",
+      "stopAtr": 1.5
+    },
+    {
+      "id": "stop-higher",
+      "stopAtr": 2.5
+    }
+  ],
+  "costs": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "stressFeeBps": 10,
+    "stressSlippageBps": 4
+  },
+  "risk": {
+    "riskPct": 0.005,
+    "maxExposurePct": 0.95,
+    "cooldownLosses": 3,
+    "cooldownMinutes": 60,
+    "dailyLossPct": 0.03,
+    "flattenMinute": null
+  },
+  "bootstrap": {
+    "seed": 20261003,
+    "samples": 2000,
+    "blockDays": 7
+  },
+  "acceptance": "No candidate is called established in this run. Historical improvement requires positive selected net return and positive stress return in all known diagnostic windows, higher Sharpe than baseline in at least two of three known windows, and no worse drawdown in at least two. The September check reports baseline-paired daily return uncertainty and actual sample size without reselection. Thirty days alone cannot establish an edge. Historical-stress outcomes are disclosed separately.",
+  "limitations": [
+    "Six surviving liquid crypto perpetuals, not a point-in-time universe or six independent asset classes",
+    "Static conservative precision assumptions, not historical exchange filters",
+    "One-minute OHLC execution, no historical order book, liquidation or market impact",
+    "Independent equal-capital sleeves, no cross-margin portfolio simulator",
+    "Historical holdout is a research split, not prospective live evidence",
+    "All known 2024-2026 August windows have already influenced earlier research; no claim of untouched OOS there.",
+    "Development selection across ten candidates is another disclosed research trial.",
+    "Equal fixed capital sleeves use actual per-sleeve fills and quantities, no shared collateral, netting or dynamic transfers.",
+    "The 2022 historical stress interval is not prospective and was chosen after the earlier audit."
+  ],
+  "references": [
+    "https://www.aqr.com/Insights/Research/Journal-Article/Which-Trend-Is-Your-Friend",
+    "https://www.aqr.com/insights/research/journal-article/a-century-of-evidence-on-trend-following-investing",
+    "https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf"
+  ]
+}
