@@ -1,4 +1,6 @@
-use super::model::{Bar, Side};
+use super::config::{Execution, Strategy};
+use super::model::*;
+use super::position::Position;
 use std::collections::VecDeque;
 
 /// One exit window derived from the entry horizon; no extra tuning parameter.
@@ -9,10 +11,16 @@ pub struct ChannelExit {
 impl ChannelExit {
     /// Compare this close with PREVIOUS completed candles before appending it.
     /// Returns an exit intent, filled at the following minute open by Engine.
-    pub fn close(&mut self, bar: Bar, side: Option<Side>, entry_bars: usize) -> bool {
+    pub fn close(
+        &mut self,
+        close: TradingClose,
+        position: Option<(usize, Side)>,
+        entry_bars: usize,
+    ) -> Option<ExitIntent> {
+        let bar = close.bar;
         let window = (entry_bars / 2).max(1);
         let exit = if self.history.len() >= window {
-            side.is_some_and(|side| {
+            position.is_some_and(|(_, side)| {
                 let extreme = self
                     .history
                     .iter()
@@ -42,21 +50,30 @@ impl ChannelExit {
         while self.history.len() > window {
             self.history.pop_front();
         }
-        exit
+        exit.then(|| ExitIntent {
+            position_id: position.expect("exit requires a position").0,
+            triggered_at: close.time,
+            execute_at: close.time + 1,
+            reason: ExitReason::Channel,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn bar(close: f64) -> Bar {
-        Bar {
-            time: 0,
-            open: close,
-            high: close + 1.0,
-            low: close - 1.0,
-            close,
-            volume: 0.0,
+    fn bar(close: f64) -> TradingClose {
+        TradingClose {
+            time: MINUTE - 1,
+            atr: 1.0,
+            bar: Bar {
+                time: 0,
+                open: close,
+                high: close + 1.0,
+                low: close - 1.0,
+                close,
+                volume: 0.0,
+            },
         }
     }
     #[test]
@@ -64,19 +81,84 @@ mod tests {
         for side in [Side::Long, Side::Short] {
             let mut channel = ChannelExit::default();
             for _ in 0..10 {
-                assert!(!channel.close(bar(100.0), Some(side), 20));
+                assert!(channel.close(bar(100.0), Some((1, side)), 20).is_none());
             }
-            assert!(!channel.close(bar(100.0), Some(side), 20));
-            assert!(channel.close(bar(100.0 - side.sign() * 2.0), Some(side), 20));
+            assert!(channel.close(bar(100.0), Some((1, side)), 20).is_none());
+            assert!(channel
+                .close(bar(100.0 - side.sign() * 2.0), Some((1, side)), 20)
+                .is_some());
         }
     }
     #[test]
     fn history_updates_while_flat_and_equality_is_not_a_break() {
         let mut channel = ChannelExit::default();
         for _ in 0..10 {
-            assert!(!channel.close(bar(100.0), None, 20));
+            assert!(channel.close(bar(100.0), None, 20).is_none());
         }
-        assert!(!channel.close(bar(99.0), Some(Side::Long), 20));
+        assert!(channel
+            .close(bar(99.0), Some((1, Side::Long)), 20)
+            .is_none());
         assert_eq!(channel.history.len(), 10);
     }
+}
+
+/// A pure proposal. Only Engine commits it after checking the old stop.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StopUpdate {
+    pub price: f64,
+    pub reason: &'static str,
+}
+pub fn protection_decision(
+    p: &Position,
+    close: MinuteClose,
+    strategy: &Strategy,
+    execution: &Execution,
+) -> Option<StopUpdate> {
+    // Channel management keeps the hard initial stop. Only completed trading
+    // candles can request a channel exit; minute noise cannot tighten it.
+    if strategy.management == "channel" {
+        return None;
+    }
+    let mut stop = p.stop;
+    let mut reason = p.stop_reason;
+    if strategy.break_even_atr > 0.0 && p.mfe >= strategy.break_even_atr * p.signal_atr {
+        // Entry slippage is already in p.entry. Cover entry/exit fees,
+        // accumulated funding, estimated exit slippage and one rounding tick.
+        let cost = (p.entry_fee + p.funding) / p.quantity;
+        // The required *fill* must lie on the price grid before inverting
+        // slippage. Rounding only the raw stop can leave a net loss when the
+        // eventual sell fill is rounded down a second time.
+        let target = if p.side == Side::Long {
+            let required_fill = execution.ceil((p.entry + cost) / (1.0 - execution.fee()));
+            execution.ceil(required_fill / (1.0 - execution.slip())) + execution.tick_size
+        } else {
+            let required_fill = execution.floor((p.entry - cost) / (1.0 + execution.fee()));
+            execution.floor(required_fill / (1.0 + execution.slip())) - execution.tick_size
+        };
+        if p.side.sign() * (target - stop) > 0.0
+            && p.side.sign() * (close.0.close - target) > execution.tick_size
+        {
+            stop = target;
+            reason = "breakeven";
+        }
+    }
+    {
+        let target = p.entry + p.side.sign() * (p.mfe - strategy.trailing_atr * p.signal_atr);
+        let rounded = if p.side == Side::Long {
+            execution.floor(target)
+        } else {
+            execution.ceil(target)
+        };
+        if p.side.sign() * (rounded - stop) > 0.0 {
+            stop = rounded;
+            reason = "trailing";
+        }
+    }
+    if p.side.sign() * (stop - p.stop) > execution.tick_size * 0.5 {
+        return Some(StopUpdate {
+            price: stop,
+            reason,
+        });
+    }
+    None
 }

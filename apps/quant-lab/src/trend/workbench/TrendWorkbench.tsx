@@ -204,6 +204,13 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
             run={research.selected}
             result={research.result}
           />
+        ) : research.resultState.status === "error" ? (
+          <div className="trend-error" role="alert">
+            <span>{research.resultState.error}</span>
+            <Button variant="ghost" size="sm" onClick={research.retryResult}>
+              重试读取结果
+            </Button>
+          </div>
         ) : research.selected ? (
           <PanelEmpty title="正在读取回测结果" />
         ) : (

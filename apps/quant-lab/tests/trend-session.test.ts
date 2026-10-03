@@ -12,16 +12,16 @@ import {
 function fixture() {
   const state = createTrendSessionState();
   const start = Date.UTC(2024, 0, 1);
-  const ref = (id: string): ArtifactRef => ({
+  const ref = (id: string, type = "test"): ArtifactRef => ({
     id,
     hash: "a".repeat(64),
-    type: "test",
+    type,
     format: "json",
     storage: "opfs",
   });
   const source = "https://data.binance.vision/data/futures/um/history.zip";
   const dataset: BinanceDataset = {
-    manifestRef: ref("manifest"),
+    manifestRef: ref("manifest", "market/binance-manifest"),
     manifest: {
       version: 1,
       provider: "binance-public-data",
@@ -56,7 +56,7 @@ function fixture() {
     createdAt: "2024-02-01T00:00:00Z",
     config: structuredClone(state.config),
     dataset,
-    resultRef: ref("result"),
+    resultRef: ref("result", "quant/trend-result"),
     durationMs: 10,
     cached: false,
     metrics: {
@@ -87,6 +87,91 @@ function fixture() {
 }
 
 describe("trend session persistence", () => {
+  it("rejects damaged run envelopes and references before opening the persistence gate", async () => {
+    const corruptions: ((state: ReturnType<typeof fixture>) => void)[] = [
+      (state) => Reflect.deleteProperty(state.runs[0]!, "metrics"),
+      (state) => Object.assign(state.runs[0]!.metrics, { totalReturn: "12%" }),
+      (state) => Object.assign(state.runs[0]!.metrics, { finalEquity: null }),
+      (state) => Reflect.deleteProperty(state.runs[0]!.metrics, "profitFactor"),
+      (state) => Object.assign(state.runs[0]!.metrics, { trades: -1 }),
+      (state) =>
+        Object.assign(state.runs[0]!.metrics, {
+          context: { evaluated: 1, allowed: 0, rejected: 1, reasons: { range: "1" } },
+        }),
+      (state) => Reflect.deleteProperty(state.runs[0]!, "resultRef"),
+      (state) => Object.assign(state.runs[0]!.resultRef, { id: "" }),
+      (state) => Object.assign(state.runs[0]!.resultRef, { storage: "unknown" }),
+      (state) => Object.assign(state.runs[0]!.resultRef, { hash: "broken" }),
+      (state) => Object.assign(state.runs[0]!.resultRef, { type: "quant/jsg-result" }),
+      (state) => Object.assign(state.runs[0]!.resultRef, { format: "csv" }),
+      (state) => Reflect.deleteProperty(state.runs[0]!.dataset, "manifestRef"),
+      (state) => Object.assign(state.runs[0]!.dataset.manifestRef, { id: "" }),
+      (state) => Object.assign(state.dataset.manifest.funding, { storage: null }),
+      (state) => Object.assign(state.dataset.manifest.partitions[0]!.candles, { type: "" }),
+      (state) => Reflect.deleteProperty(state.runs[0]!, "durationMs"),
+      (state) => Object.assign(state.runs[0]!, { createdAt: "invalid", cached: "true" }),
+      (state) => state.runs.push(structuredClone(state.runs[0]!)),
+      (state) => Object.assign(state, { selected: "missing-run" }),
+    ];
+    for (const corrupt of corruptions) {
+      const state = fixture();
+      corrupt(state);
+      const raw = JSON.stringify(state);
+      let stored = raw;
+      const metadata = {
+        get: async () => stored,
+        set: vi.fn(async (_key: string, value: string) => {
+          stored = value;
+        }),
+      };
+      const store = createTrendSessionStore(metadata);
+      await expect(store.restore()).rejects.toThrow();
+      await expect(store.save(createTrendSessionState())).rejects.toThrow("阻止覆盖");
+      expect(metadata.set).not.toHaveBeenCalled();
+      expect(stored).toBe(raw);
+    }
+  });
+
+  it("keeps old configs and absent optional fields byte-for-byte in historical records", () => {
+    for (const version of [2, 3, 4]) {
+      const state = fixture();
+      const run = state.runs[0]!;
+      const config = structuredClone(state.config);
+      Object.assign(config, { version });
+      Object.assign(config.strategy, { filter: "none" });
+      Reflect.deleteProperty(config.strategy, "maxCostAtr");
+      if (version < 4) Reflect.deleteProperty(config.strategy, "management");
+      Object.assign(run, { config });
+      for (const ref of [run.resultRef, run.dataset.manifestRef, run.dataset.manifest.funding]) {
+        Reflect.deleteProperty(ref, "hash");
+        Reflect.deleteProperty(ref, "format");
+      }
+      // Older session indexes may still contain their evaluation payload. Preserve it unchanged.
+      Object.assign(run.metrics, { evaluation: { version: 1, note: "legacy payload" } });
+      const before = JSON.stringify(run);
+      const decoded = decodeTrendSession(JSON.stringify(state));
+      expect(JSON.stringify(decoded.state.runs[0])).toBe(before);
+      expect(decoded.state.runs[0]!.metrics.context).toBeUndefined();
+    }
+    const state = fixture();
+    Object.assign(state.runs[0]!, {
+      config: {
+        entry: "breakout",
+        direction: "long",
+        initialCapital: 10000,
+        tickSize: 0.1,
+        quantityStep: 0.001,
+        feeBps: 5,
+        slippageBps: 2,
+        trendMinutes: 5,
+        fastEma: 20,
+        slowEma: 60,
+      },
+    });
+    const before = JSON.stringify(state.runs);
+    expect(JSON.stringify(decodeTrendSession(JSON.stringify(state)).state.runs)).toBe(before);
+  });
+
   it("blocks writes before successful restoration and preserves malformed stored history", async () => {
     const invalid = [
       "{broken",

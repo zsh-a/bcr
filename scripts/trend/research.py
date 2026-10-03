@@ -5,17 +5,17 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-from artifacts import REPLAY_VERSION, atomic_bytes, ensure_writable, evaluation_fingerprint, execution_fingerprint, read, sha, validate_batch, write
-from evaluation import EVALUATION_VERSION, confidence, returns, select_development, summarize
-from protocol import DAY, ROOT, config, development_window, is_development, sleeve_capital, timestamp, validate_plan, window_candidates
-from warmup import WARMUP_POLICY, warmup_days
+from artifacts import atomic_bytes, ensure_writable, evaluation_fingerprint, execution_fingerprint, read, sha, validate_batch, write
+from evaluation import EVALUATION_VERSION, select_development, summarize
+from protocol import ROOT, REPLAY_VERSION, development_window, is_development, native_requests, timestamp, validate_plan, window_candidates
+from warmup import WARMUP_POLICY
 
 
 def run_symbol(args, plan, window, symbol, candidates, fingerprint):
     ensure_writable(args.output, directory=True)
     out = args.output / window["id"] / f"{symbol}.json"
     configs = args.output / window["id"] / f"{symbol}-configs.json"
-    requests = [{"id": c["id"], "config": config(plan, symbol, c, c["id"].endswith("-stress"))} for c in candidates]
+    requests = native_requests(plan, symbol, candidates)
     write(configs, requests)
     receipt = out.with_suffix(".receipt.json")
     signature = {"binarySha256": fingerprint, "replayVersion": REPLAY_VERSION,
@@ -84,7 +84,7 @@ def main():
         candidates = window_candidates(plan, window, selection)
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
             batches = list(pool.map(lambda symbol: run_symbol(args, plan, window, symbol, candidates, fingerprint), plan["symbols"]))
-        summaries = [summarize(plan, batches, candidate["id"]) for candidate in candidates]
+        summaries = [summarize(plan, batches, candidate.id) for candidate in candidates]
         write(args.output / f"{window['id']}-summary.json", summaries)
         if is_development(window):
             best, objective, qualified = select_development(plan, summaries)

@@ -29,19 +29,19 @@ impl Signals {
     }
     pub fn close(
         &mut self,
-        bar: Bar,
+        close: TradingClose,
         indicators: &Indicators,
         config: &Config,
         enabled: bool,
         events: &mut Vec<Event>,
     ) -> Option<Candidate> {
         let result = if enabled {
-            self.evaluate(bar, indicators, config, events)
+            self.evaluate(close, indicators, config, events)
         } else {
             self.reset();
             None
         };
-        self.history.push_back(bar);
+        self.history.push_back(close.bar);
         let capacity = if config.strategy.entry == "breakout" {
             config.strategy.breakout_bars
         } else {
@@ -54,11 +54,12 @@ impl Signals {
     }
     fn evaluate(
         &mut self,
-        bar: Bar,
+        close: TradingClose,
         indicators: &Indicators,
         config: &Config,
         events: &mut Vec<Event>,
     ) -> Option<Candidate> {
+        let bar = close.bar;
         if !indicators.ready() {
             self.setup = None;
             return None;
@@ -74,7 +75,7 @@ impl Signals {
                 && filter
                     .is_none_or(|direction| direction == if side == Side::Long { 1 } else { -1 })
         };
-        let atr = indicators.atr;
+        let atr = close.atr;
         let mut candidate = None;
         if config.strategy.entry == "breakout" {
             if self.history.len() >= config.strategy.breakout_bars {
@@ -103,7 +104,7 @@ impl Signals {
                             anchor: None,
                             atr,
                             entry_signal: EntrySignal {
-                                time: bar.time + config.strategy.trade_minutes as u64 * MINUTE - 1,
+                                time: close.time,
                                 price: bar.close,
                                 boundary: extreme,
                                 atr,
@@ -169,9 +170,7 @@ impl Signals {
                                     anchor: Some(setup.retrace),
                                     atr,
                                     entry_signal: EntrySignal {
-                                        time: bar.time
-                                            + config.strategy.trade_minutes as u64 * MINUTE
-                                            - 1,
+                                        time: close.time,
                                         price: bar.close,
                                         boundary: setup.extreme,
                                         atr,
@@ -222,7 +221,7 @@ impl Signals {
                         pulling: false,
                     });
                     events.push(Event {
-                        time: bar.time + config.strategy.trade_minutes as u64 * MINUTE - 1,
+                        time: close.time,
                         kind: "impulse",
                         side,
                         price: extreme,
@@ -236,7 +235,7 @@ impl Signals {
         }
         if let Some(candidate) = &candidate {
             events.push(Event {
-                time: bar.time + config.strategy.trade_minutes as u64 * MINUTE - 1,
+                time: close.time,
                 kind: "signal",
                 side: candidate.side,
                 price: bar.close,

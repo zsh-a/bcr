@@ -18,6 +18,12 @@ impl Execution {
     pub fn round_trip_cost_atr(&self, price: f64, atr: f64) -> Option<f64> {
         (atr > 0.0).then(|| (2.0 * price * (self.fee() + self.slip()) + 2.0 * self.tick_size) / atr)
     }
+    /// Preserve exact decimal steps without promoting a genuine budget shortfall.
+    pub fn floor_quantity(&self, limit: f64) -> f64 {
+        let steps = limit / self.quantity_step;
+        let tolerance = (8.0 * f64::EPSILON * steps.abs()).min(1e-6);
+        (steps + tolerance).floor() * self.quantity_step
+    }
     pub fn floor(&self, price: f64) -> f64 {
         (price / self.tick_size + 1e-9).floor() * self.tick_size
     }

@@ -6,11 +6,11 @@ import os
 from pathlib import Path
 import tempfile
 
-from protocol import DAY, ROOT, config, development_window, sleeve_capital, timestamp, validate_plan, window_candidates
+from daily import daily_equity
+from protocol import DAY, ROOT, development_window, native_requests, recorded_candidates, timestamp, validate_plan, window_candidates
 from warmup import WARMUP_POLICY, warmup_days
 
 REGISTRY = Path(__file__).with_name("frozen.json")
-REPLAY_VERSION = "trend-native-replay-2"
 
 
 def sha(path):
@@ -82,11 +82,11 @@ def source_fingerprint(*names):
 
 
 def evaluation_fingerprint():
-    return source_fingerprint("evaluation.py", "protocol.py", "warmup.py")
+    return source_fingerprint("evaluation.py", "daily.py", "protocol.py", "warmup.py")
 
 
 def execution_fingerprint():
-    return source_fingerprint("research.py", "artifacts.py", "protocol.py", "warmup.py")
+    return source_fingerprint("research.py", "artifacts.py", "daily.py", "protocol.py", "warmup.py")
 
 
 def verify_frozen():
@@ -134,7 +134,8 @@ def validate_batch(batch, requests, window, symbol, plan_hash, warmup_policy=Non
     for row in batch["results"]:
         if row["config"] != expected[row["id"]]:
             raise ValueError("result configuration differs from the recorded request")
-        if [point["time"] for point in row["daily"]] != calendar:
+        daily = daily_equity(row)
+        if [point["time"] for point in daily] != calendar:
             raise ValueError("daily account calendar is incomplete")
         if warmup_policy == WARMUP_POLICY and row.get("warmupStart") != start - warmup_days(row["config"]["strategy"]) * DAY:
             raise ValueError("replay warmup differs from the recorded active-window policy")
@@ -142,9 +143,9 @@ def validate_batch(batch, requests, window, symbol, plan_hash, warmup_policy=Non
         final = row["metrics"]["finalEquity"]
         net = sum(trade["netPnl"] for trade in row["trades"])
         if (any(not math.isfinite(value) for value in [initial, final, net])
-                or any(not math.isfinite(point["equity"]) for point in row["daily"])
+                or any(not math.isfinite(point["equity"]) for point in daily)
                 or not math.isclose(initial + net, final, rel_tol=1e-8, abs_tol=1e-6)
-                or not math.isclose(row["daily"][-1]["equity"], final, rel_tol=1e-8, abs_tol=1e-6)):
+                or not math.isclose(daily[-1]["equity"], final, rel_tol=1e-8, abs_tol=1e-6)):
             raise ValueError("trade ledger, daily account and final cash do not reconcile")
 
 
@@ -157,8 +158,8 @@ def audit_window(evidence, window):
         receipt = read(path.with_suffix(".receipt.json"))
         configs_path = path.with_name(f"{symbol}-configs.json")
         requested = read(configs_path)
-        expected = [{"id": candidate["id"], "config": config(plan, symbol, candidate, candidate["id"].endswith("-stress"))}
-                    for candidate in candidates]
+        recorded = recorded_candidates(candidates, receipt.get("replayVersion"))
+        expected = native_requests(plan, symbol, recorded)
         if requested != expected:
             raise ValueError(f"stored configurations differ from frozen plan: {path}")
         if (receipt["resultSha256"] != sha(path)

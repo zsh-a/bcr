@@ -7,7 +7,7 @@ from pathlib import Path
 from artifacts import (atomic_bytes, audit_window, ensure_writable, evaluation_fingerprint,
                        load_evidence, sha, source_fingerprint, write)
 from evaluation import EVALUATION_VERSION, account_series, evaluation_contract, paired_comparison, summarize
-from protocol import DAY, is_development, sleeve_capital, timestamp
+from protocol import DAY, is_development, recorded_candidates, sleeve_capital, timestamp, window_candidates
 
 
 def pct(value):
@@ -56,8 +56,10 @@ def build_bundle(evidence):
         if contract is not None and contract != current:
             raise ValueError("mixed Rust evaluation versions across study windows")
         contract = current
-        candidates = [row["id"] for row in batches[0]["results"]]
-        summaries[window["id"]] = [summarize(plan, batches, candidate) for candidate in candidates]
+        candidates = recorded_candidates(window_candidates(plan, window, selection), selection.get("replayVersion"))
+        summaries[window["id"]] = [{**summarize(plan, batches, candidate.id),
+                                    "costScenario": candidate.cost_scenario, "strategy": candidate.strategy}
+                                   for candidate in candidates]
         provenance.extend(receipts)
         if baseline is not None:
             comparisons[window["id"]] = paired_comparison(plan, batches, chosen, baseline)
@@ -73,7 +75,7 @@ def build_bundle(evidence):
                              "selectionRecomputed": False, "singleSleeveEvaluationVersion": contract,
                              "accountDrawdownSampling": "daily-close"},
               "reportSourceSha256": source_fingerprint("report.py"),
-              "auditSourceSha256": source_fingerprint("artifacts.py", "protocol.py", "warmup.py"),
+              "auditSourceSha256": source_fingerprint("artifacts.py", "daily.py", "protocol.py", "warmup.py"),
               "auditScope": "Recorded receipt/configuration identities, UTC daily calendars and cash/trade reconciliation; source CSV files are not rehashed.",
               "summaries": summaries, "pairedComparisons": comparisons, "provenance": provenance,
               "archives": {symbol: row["archives"] for symbol, row in evidence["manifest"]["symbols"].items()}}
@@ -159,7 +161,9 @@ def render_report(bundle):
                   "|---|---:|---:|---:|---| "]
         for window in windows:
             key = window["id"]
-            stress = next((value for value in bundle["summaries"][key] if value["id"] == chosen + "-stress"), None)
+            selected = row(key, chosen)
+            stress = next((value for value in bundle["summaries"][key]
+                           if value["costScenario"] == "stress" and value["strategy"] == selected["strategy"]), None)
             interval = bundle["pairedComparisons"][key]["meanDailyDifference95CI"]
             lines.append("| " + " | ".join([text(key), pct(row(key, baseline)["equalSleeveReturn"]),
                          pct(row(key, chosen)["equalSleeveReturn"]), pct(stress["equalSleeveReturn"] if stress else None),

@@ -149,6 +149,18 @@ struct DayClose {
     min_drawdown: f64,
 }
 
+pub struct TradeStatistics {
+    pub trades: usize,
+    pub wins: usize,
+    pub losses: usize,
+    pub win_rate: Option<f64>,
+    pub profit_factor: Option<f64>,
+    pub mean_r: Option<f64>,
+    pub fees: f64,
+    pub funding: f64,
+    pub longest_loss_streak: usize,
+}
+
 /// One pending point lets a fill replace a same-timestamp mark without leaving
 /// a false peak, trough, recovery or daily record. Storage remains O(days).
 pub struct Evaluator {
@@ -166,6 +178,9 @@ pub struct Evaluator {
     losses: usize,
     profit: f64,
     loss: f64,
+    loss_streak: usize,
+    longest_loss_streak: usize,
+    r_sum: f64,
     net: f64,
     gross: f64,
     fees: f64,
@@ -194,6 +209,9 @@ impl Evaluator {
             losses: 0,
             profit: 0.0,
             loss: 0.0,
+            loss_streak: 0,
+            longest_loss_streak: 0,
+            r_sum: 0.0,
             net: 0.0,
             gross: 0.0,
             fees: 0.0,
@@ -255,6 +273,7 @@ impl Evaluator {
     }
     pub fn trade(&mut self, trade: &Trade) {
         self.trades += 1;
+        self.r_sum += trade.r_multiple;
         self.turnover += trade.exit_price * trade.quantity;
         self.net += trade.net_pnl;
         self.gross += trade.gross_pnl;
@@ -270,6 +289,10 @@ impl Evaluator {
         if trade.net_pnl < 0.0 {
             self.losses += 1;
             self.loss -= trade.net_pnl;
+            self.loss_streak += 1;
+            self.longest_loss_streak = self.longest_loss_streak.max(self.loss_streak);
+        } else {
+            self.loss_streak = 0;
         }
         if trade.side == Side::Long {
             self.long_net += trade.net_pnl;
@@ -277,6 +300,20 @@ impl Evaluator {
             self.short_net += trade.net_pnl;
         }
         *self.reasons.entry(trade.reason.clone()).or_default() += 1;
+    }
+    /// Compatibility Metrics and Evaluation read the same trade ledger totals.
+    pub fn statistics(&self) -> TradeStatistics {
+        TradeStatistics {
+            trades: self.trades,
+            wins: self.wins,
+            losses: self.losses,
+            win_rate: (self.trades > 0).then(|| self.wins as f64 / self.trades as f64),
+            profit_factor: (self.loss > 0.0).then(|| self.profit / self.loss),
+            mean_r: (self.trades > 0).then(|| self.r_sum / self.trades as f64),
+            fees: self.fees,
+            funding: self.funding,
+            longest_loss_streak: self.longest_loss_streak,
+        }
     }
     pub fn finish(&mut self, end: u64, final_equity: f64) -> Evaluation {
         self.observe(end - 1, final_equity);

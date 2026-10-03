@@ -6,6 +6,10 @@ use super::{
     reader,
 };
 const BASE: u64 = 1_704_067_200_000;
+mod architecture_contract;
+mod execution_contract;
+mod protection_contract;
+
 fn bar(i: usize, open: f64, close: f64) -> Bar {
     Bar {
         time: BASE + i as u64 * MINUTE,
@@ -142,15 +146,15 @@ fn breakout_snapshot_uses_only_the_previous_n_candles() {
         let mut indicators = Indicators::default();
         let mut events = vec![];
         for b in &bars[..25] {
-            indicators.close(*b, &c.strategy);
+            let close = indicators.close(*b, &c.strategy).trade.unwrap();
             assert!(signals
-                .close(*b, &indicators, &c, false, &mut events)
+                .close(close, &indicators, &c, false, &mut events)
                 .is_none());
         }
         let b = bars[25];
-        indicators.close(b, &c.strategy);
+        let close = indicators.close(b, &c.strategy).trade.unwrap();
         let candidate = signals
-            .close(b, &indicators, &c, true, &mut events)
+            .close(close, &indicators, &c, true, &mut events)
             .unwrap();
         let expected = EntrySignal {
             time: b.time + MINUTE - 1,
@@ -495,11 +499,13 @@ fn trading_candles_and_atr_ignore_unclosed_or_partial_periods() {
         .close(bar(4, 104.0, 105.0), &c.strategy)
         .trade
         .unwrap();
-    assert_eq!(candle.time, BASE);
-    assert_eq!(candle.open, 100.0);
-    assert_eq!(candle.close, 105.0);
-    assert_eq!(candle.volume, 50.0);
-    assert!((candle.high - 105.05).abs() < 1e-9);
+    assert_eq!(candle.bar.time, BASE);
+    assert_eq!(candle.time, BASE + 5 * MINUTE - 1);
+    assert_eq!(candle.atr, indicators.atr);
+    assert_eq!(candle.bar.open, 100.0);
+    assert_eq!(candle.bar.close, 105.0);
+    assert_eq!(candle.bar.volume, 50.0);
+    assert!((candle.bar.high - 105.05).abs() < 1e-9);
     assert!((indicators.atr - 5.1).abs() < 1e-9);
     let prior = indicators.atr;
     for i in 5..9 {
@@ -517,6 +523,43 @@ fn trading_candles_and_atr_ignore_unclosed_or_partial_periods() {
         partial.close(bar(9, 100.0, 101.0), 5).unwrap().time,
         BASE + 5 * MINUTE
     );
+}
+
+#[test]
+fn wilder_atr_seeds_with_fourteen_true_ranges_and_includes_gaps() {
+    let c = config();
+    let mut indicators = Indicators::default();
+    for i in 0..14 {
+        let b = Bar {
+            high: 101.0,
+            low: 99.0,
+            ..bar(i, 100.0, 100.0)
+        };
+        indicators.close(b, &c.strategy);
+        assert_eq!(indicators.atr, 2.0);
+        assert_eq!(indicators.ready(), i == 13);
+    }
+    // The gap from the previous close (100), not this candle's range (3),
+    // determines TR=12. Wilder ATR is (13*2 + 12)/14 = 19/7.
+    indicators.close(
+        Bar {
+            high: 112.0,
+            low: 109.0,
+            ..bar(14, 110.0, 111.0)
+        },
+        &c.strategy,
+    );
+    assert!((indicators.atr - 19.0 / 7.0).abs() < 1e-12);
+    // A downward gap contributes TR=111-88=23, giving ATR=204/49.
+    indicators.close(
+        Bar {
+            high: 92.0,
+            low: 88.0,
+            ..bar(15, 91.0, 89.0)
+        },
+        &c.strategy,
+    );
+    assert!((indicators.atr - 204.0 / 49.0).abs() < 1e-12);
 }
 
 fn period_history(minutes: usize, short: bool) -> Vec<Bar> {
@@ -706,6 +749,21 @@ fn pure_channel_has_no_ema_gate_and_uses_exact_entry_atr_risk() {
     }
 }
 
+// Test adapter: production observes excursions and commits decisions in Engine.
+fn update_protection(
+    p: &mut super::position::Position,
+    bar: Bar,
+    strategy: &super::config::Strategy,
+    execution: &super::config::Execution,
+) -> Option<&'static str> {
+    let close = MinuteClose(bar);
+    p.observe_minute(close);
+    let update = super::management::protection_decision(p, close, strategy, execution)?;
+    p.stop = update.price;
+    p.stop_reason = update.reason;
+    Some(update.reason)
+}
+
 fn position(side: Side) -> super::position::Position {
     super::position::Position {
         id: 1,
@@ -722,8 +780,8 @@ fn position(side: Side) -> super::position::Position {
         quantity: 1.0,
         initial_stop: 100.0 - side.sign() * 6.0,
         stop: 100.0 - side.sign() * 6.0,
-        distance: 6.0,
-        atr: 2.0,
+        initial_distance: 6.0,
+        signal_atr: 2.0,
         entry_fee: 0.0,
         entry_slippage_and_rounding: 0.0,
         funding: 0.0,
@@ -734,7 +792,6 @@ fn position(side: Side) -> super::position::Position {
 }
 #[test]
 fn breakeven_trigger_uses_frozen_atr_not_initial_r_and_covers_costs() {
-    use super::position::update_protection;
     for side in [Side::Long, Side::Short] {
         let mut c = config();
         c.strategy.break_even_atr = 1.0;
@@ -745,7 +802,7 @@ fn breakeven_trigger_uses_frozen_atr_not_initial_r_and_covers_costs() {
         let mut b = bar(1, 100.0 + side.sign() * 2.5, 100.0 + side.sign() * 2.5);
         b.high = b.open + 0.01;
         b.low = b.open - 0.01;
-        assert!(p.distance > 2.51); // 1 R not reached; 1 ATR reached.
+        assert!(p.initial_distance > 2.51); // 1 R not reached; 1 ATR reached.
         assert_eq!(
             update_protection(&mut p, b, &c.strategy, &c.execution),
             Some("breakeven")
@@ -758,7 +815,6 @@ fn breakeven_trigger_uses_frozen_atr_not_initial_r_and_covers_costs() {
 }
 #[test]
 fn trailing_has_no_extra_activation_threshold_and_never_loosens() {
-    use super::position::update_protection;
     for side in [Side::Long, Side::Short] {
         let mut c = config();
         c.strategy.trailing_atr = 2.0;

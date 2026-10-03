@@ -19,7 +19,7 @@ use model::Funding;
 use replay::Replay;
 use wasm_bindgen::prelude::*;
 
-pub const ENGINE_VERSION: &str = "trend-continuation-9";
+pub const ENGINE_VERSION: &str = "trend-continuation-11";
 
 fn error(value: impl ToString) -> JsValue {
     JsValue::from_str(&value.to_string())
@@ -32,6 +32,10 @@ pub struct TrendBacktest {
 }
 #[wasm_bindgen]
 impl TrendBacktest {
+    /// The running binary, rather than the browser adapter, owns this identity.
+    pub fn engine_version(&self) -> String {
+        ENGINE_VERSION.into()
+    }
     #[wasm_bindgen(constructor)]
     pub fn new(config: &str, funding: &str, window: &str) -> Result<TrendBacktest, JsValue> {
         let config: Config = serde_json::from_str(config).map_err(error)?;

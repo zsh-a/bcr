@@ -15,7 +15,7 @@ import {
 } from "@bcr/quant-core/trend";
 import { createArtifactIO } from "@bcr/runtime-worker";
 import { MemoryStore } from "@bcr/storage-opfs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { binanceHistoryHandler } from "../src/trend/execution/data";
 import { trendChartHandler } from "../src/trend/execution/chart";
 import { trendHandler, type TrendEngine } from "../src/trend/execution/compute";
@@ -136,6 +136,40 @@ describe("Binance worker pipeline", () => {
   it("keeps browser cache identity in sync with the shared engine contract", () => {
     expect(TREND_EXECUTOR_VERSION).toBe(contract.executor);
   });
+  it.each(["trend-continuation-10", "trend-continuation-future", undefined])(
+    "rejects an incompatible binary (%s) before replay or result publication",
+    async (version) => {
+      const s = setup();
+      const refs = await binanceHistoryHandler(s.io, s.download)(s.task, s.ctx);
+      const engine = {
+        ...(version === undefined ? {} : { engine_version: () => version }),
+        load_partition: vi.fn(),
+        advance: vi.fn(),
+        processed_rows: vi.fn(),
+        drain_output: vi.fn(),
+        finish: vi.fn(),
+        free: vi.fn(),
+      };
+      await expect(
+        trendHandler(s.io, async () => engine as unknown as TrendEngine)(
+          {
+            ...s.task,
+            inputs: refs.map((ref) =>
+              ref.type === "market/binance-manifest" ? { ...ref, port: "manifest" } : ref,
+            ),
+            config: { strategy: withTradingPeriod(DEFAULT_TREND_CONFIG, 1) },
+          },
+          s.ctx,
+        ),
+      ).rejects.toThrow("回测引擎版本不一致");
+      expect(engine.load_partition).not.toHaveBeenCalled();
+      expect(engine.advance).not.toHaveBeenCalled();
+      expect(engine.drain_output).not.toHaveBeenCalled();
+      expect(engine.finish).not.toHaveBeenCalled();
+      expect(engine.free).toHaveBeenCalledOnce();
+      expect((await s.store.list()).some((key) => key.includes("trend/result"))).toBe(false);
+    },
+  );
   it("separates cached coverage from the config's replay window and progress", async () => {
     const s = setup();
     const request = { symbol: "BTCUSDT", start: "2024-01-01", end: "2024-01-01" };
@@ -154,6 +188,7 @@ describe("Binance worker pipeline", () => {
     const handler = trendHandler(s.io, async (_config, _funding, value) => {
       window = JSON.parse(value);
       return {
+        engine_version: () => TREND_EXECUTOR_VERSION,
         load_partition: (candles) => {
           processed.push(
             ...candles
@@ -178,6 +213,7 @@ describe("Binance worker pipeline", () => {
       { ...s.ctx, progress: (value) => progress.push(value) },
     );
     const result = await s.io.readJsonArtifact<TrendResult>(output[0]!, s.ctx);
+    expect(result.engine).toBe(TREND_EXECUTOR_VERSION);
     expect(window!).toEqual({ startTime: start, endTime: start + DAY, warmupStart: start - DAY });
     expect(result.window).toEqual(window!);
     expect(processed[0]).toBe(start - DAY);
@@ -593,6 +629,7 @@ describe("Binance worker pipeline", () => {
     let freed = false,
       drains = 0;
     const engine: TrendEngine = {
+      engine_version: () => TREND_EXECUTOR_VERSION,
       load_partition: () => undefined,
       advance: () => false,
       processed_rows: () => 512,

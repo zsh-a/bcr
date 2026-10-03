@@ -29,6 +29,58 @@ pub struct Bar {
     pub close: f64,
     pub volume: f64,
 }
+
+/// A fully observed minute. Protection uses its extrema/close only after the
+/// previously active stop has been checked; changes apply from the next open.
+#[derive(Clone, Copy, Debug)]
+pub struct MinuteClose(pub Bar);
+impl MinuteClose {
+    pub fn time(self) -> u64 {
+        self.0.time + MINUTE - 1
+    }
+}
+
+/// A completed strategy candle and the ATR incorporating that same candle.
+/// It is distinct from a minute close even when the strategy period is one minute.
+#[derive(Clone, Copy, Debug)]
+pub struct TradingClose {
+    pub bar: Bar,
+    pub time: u64,
+    pub atr: f64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExitReason {
+    Channel,
+    DailyClose,
+    DailyLoss,
+}
+impl ExitReason {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Channel => "channel-exit",
+            Self::DailyClose => "daily-close",
+            Self::DailyLoss => "daily-loss",
+        }
+    }
+    pub fn priority(self) -> u8 {
+        match self {
+            Self::Channel => 0,
+            Self::DailyClose => 1,
+            Self::DailyLoss => 2,
+        }
+    }
+}
+
+/// A market exit already decided for one position. Engine alone queues and
+/// consumes it; a conditional stop remains independent of this instruction.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ExitIntent {
+    pub position_id: usize,
+    pub triggered_at: u64,
+    pub execute_at: u64,
+    pub reason: ExitReason,
+}
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Funding {

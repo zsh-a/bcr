@@ -161,7 +161,9 @@ export interface TrendResult {
     | "trend-continuation-6"
     | "trend-continuation-7"
     | "trend-continuation-8"
-    | "trend-continuation-9";
+    | "trend-continuation-9"
+    | "trend-continuation-10"
+    | "trend-continuation-11";
   /** Actual replay bounds, which may use less prehistory than the cached manifest. */
   window?: { startTime: number; endTime: number; warmupStart: number };
   metrics: TrendMetrics;

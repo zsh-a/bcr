@@ -5,6 +5,7 @@ import random
 import statistics
 
 from protocol import DAY, sleeve_capital
+from daily import daily_equity
 
 EVALUATION_VERSION = "trend-account-evaluation-2"
 RUST_CONVENTIONS = {"calendar": "UTC", "annualizationDays": 365, "riskFreeRate": 0,
@@ -159,7 +160,7 @@ def account_series(plan, batches, candidate_id):
         raise ValueError("portfolio must contain each declared sleeve exactly once")
     per_sleeve = sleeve_capital(plan)
     initial = per_sleeve * len(selected)
-    curves = [r["daily"] for _, r in selected]
+    curves = [daily_equity(r) for _, r in selected]
     if any(not c for c in curves):
         raise ValueError("daily equity cannot be empty")
     if any([p["time"] for p in c] != [p["time"] for p in curves[0]] for c in curves):

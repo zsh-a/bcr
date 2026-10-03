@@ -84,6 +84,11 @@ jobs:
           cache: pip
           cache-dependency-path: scripts/requirements-jsg.txt
 
+      - name: Validate trend research contracts and frozen evidence
+        run: |
+          bun run research:trend:test
+          bun run research:trend:audit --frozen
+
       - name: Validate ClickHouse research export boundary
         run: |
           python -m pip install -r scripts/requirements-jsg.txt

@@ -1,0 +1,2766 @@
+[
+  {
+    "case": "pullback-false",
+    "metrics": {
+      "context": { "allowed": 0, "evaluated": 0, "reasons": {}, "rejected": 0 },
+      "evaluation": {
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "averageLoss": null,
+        "averageWin": 78.01972000000023,
+        "bestDayReturn": null,
+        "bestTradeShare": 1.0,
+        "calmar": null,
+        "conventions": {
+          "annualizationDays": 365,
+          "calendar": "UTC",
+          "downsideTarget": 0.0,
+          "drawdownSampling": "minute-mark-and-fills",
+          "minDailyObservations": 30,
+          "riskFreeRate": 0.0,
+          "variance": "sample"
+        },
+        "costs": {
+          "costToGrossProfit": 0.1928571428571437,
+          "fees": 7.2599766,
+          "funding": 7.2392634,
+          "grossBeforeCosts": 96.66160000000039,
+          "netPnl": 78.01972000000023,
+          "slippageAndRounding": 4.142640000000156,
+          "total": 18.641880000000157
+        },
+        "currentDrawdown": 0.0,
+        "currentDrawdownDurationMs": 0,
+        "daily": [
+          {
+            "complete": false,
+            "drawdown": 0.0,
+            "equity": 10078.019719999998,
+            "from": 1704070800000,
+            "maxIntradayDrawdown": 0.0,
+            "returnPct": 0.007801971999999768,
+            "to": 1704071400000
+          }
+        ],
+        "dailyMaxDrawdown": 0.0,
+        "dailySharpe": null,
+        "durationMs": 600000,
+        "exitReasons": { "end-range": 1 },
+        "exposurePct": 0.4,
+        "grossPnl": 92.51896000000023,
+        "longNetPnl": 78.01972000000023,
+        "maxDrawdownDurationMs": 0,
+        "meanHoldHours": 0.06666638888888889,
+        "monthly": [
+          {
+            "complete": false,
+            "equity": 10078.019719999998,
+            "from": 1704070800000,
+            "returnPct": 0.007801971999999768,
+            "to": 1704071400000
+          }
+        ],
+        "netExpectancy": 78.01972000000023,
+        "payoffRatio": null,
+        "positiveDays": 0,
+        "shortNetPnl": 0.0,
+        "sortino": null,
+        "totalDays": 0,
+        "turnover": 1.45199532,
+        "version": 2,
+        "withoutBestTrade": 0.0,
+        "worstDayReturn": null
+      },
+      "fees": 7.2599766,
+      "finalEquity": 10078.019719999998,
+      "funding": 7.2392634,
+      "fundingEvents": 1,
+      "longestLossStreak": 0,
+      "losses": 0,
+      "maxDrawdown": 0.0,
+      "meanR": 1.9152542372881303,
+      "profitFactor": null,
+      "rejectedSignals": 0,
+      "rows": 70,
+      "totalReturn": 0.007801971999999768,
+      "trades": 1,
+      "winRate": 1.0,
+      "wins": 1
+    },
+    "output": {
+      "contexts": [],
+      "equity": [
+        { "cash": 10000.0, "drawdown": 0.0, "equity": 10000.0, "time": 1704070800000 },
+        {
+          "cash": 10078.019719999998,
+          "drawdown": 0.0,
+          "equity": 10078.019719999998,
+          "time": 1704071399999
+        }
+      ],
+      "events": [
+        {
+          "kind": "impulse",
+          "price": 102.25,
+          "reason": "impulse",
+          "side": "long",
+          "time": 1704070859999,
+          "tradeId": null,
+          "value": 5.473684210526508
+        },
+        {
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 104.25,
+            "price": 104.45,
+            "time": 1704071159999
+          },
+          "kind": "signal",
+          "price": 104.45,
+          "reason": "pullback",
+          "side": "long",
+          "time": 1704071159999,
+          "tradeId": null,
+          "value": 103.4
+        },
+        {
+          "kind": "entry",
+          "price": 104.48,
+          "reason": "pullback",
+          "side": "long",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": 69.044
+        },
+        {
+          "kind": "stop",
+          "price": 103.89,
+          "reason": "initial",
+          "side": "long",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "funding",
+          "price": 104.85000000000001,
+          "reason": "funding",
+          "side": "long",
+          "time": 1704071220001,
+          "tradeId": 1,
+          "value": 7.2392634
+        },
+        {
+          "kind": "exit",
+          "price": 105.82000000000001,
+          "reason": "end-range",
+          "side": "long",
+          "time": 1704071399999,
+          "tradeId": 1,
+          "value": 78.01972000000023
+        }
+      ],
+      "indicators": [],
+      "trades": [
+        {
+          "entryPrice": 104.48,
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 104.25,
+            "price": 104.45,
+            "time": 1704071159999
+          },
+          "entryTime": 1704071160000,
+          "exitPrice": 105.82000000000001,
+          "exitTime": 1704071399999,
+          "fees": 7.2599766,
+          "funding": 7.2392634,
+          "grossPnl": 92.51896000000023,
+          "id": 1,
+          "initialStop": 103.89,
+          "maeR": 0.1355932203389794,
+          "mfeR": 2.4067796610169383,
+          "netPnl": 78.01972000000023,
+          "quantity": 69.044,
+          "rMultiple": 1.9152542372881303,
+          "reason": "end-range",
+          "risk": 40.73596000000023,
+          "side": "long",
+          "slippageAndRounding": 4.142640000000156
+        }
+      ]
+    }
+  },
+  {
+    "case": "channel-false",
+    "metrics": {
+      "context": { "allowed": 0, "evaluated": 0, "reasons": {}, "rejected": 0 },
+      "evaluation": {
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "averageLoss": null,
+        "averageWin": 314.0422711250003,
+        "bestDayReturn": null,
+        "bestTradeShare": 1.0,
+        "calmar": null,
+        "conventions": {
+          "annualizationDays": 365,
+          "calendar": "UTC",
+          "downsideTarget": 0.0,
+          "drawdownSampling": "minute-mark-and-fills",
+          "minDailyObservations": 30,
+          "riskFreeRate": 0.0,
+          "variance": "sample"
+        },
+        "costs": {
+          "costToGrossProfit": 0.07366438356164434,
+          "fees": 9.661946025000002,
+          "funding": 9.73857285,
+          "grossBeforeCosts": 339.01565000000056,
+          "netPnl": 314.0422711250003,
+          "slippageAndRounding": 5.572860000000211,
+          "total": 24.973378875000215
+        },
+        "currentDrawdown": 0.0,
+        "currentDrawdownDurationMs": 0,
+        "daily": [
+          {
+            "complete": false,
+            "drawdown": 0.0,
+            "equity": 10314.042271125,
+            "from": 1704070800000,
+            "maxIntradayDrawdown": -0.006844094108484189,
+            "returnPct": 0.031404227112499905,
+            "to": 1704071400000
+          }
+        ],
+        "dailyMaxDrawdown": 0.0,
+        "dailySharpe": null,
+        "durationMs": 600000,
+        "exitReasons": { "end-range": 1 },
+        "exposurePct": 0.9,
+        "grossPnl": 333.44279000000034,
+        "longNetPnl": 314.0422711250003,
+        "maxDrawdownDurationMs": 180000,
+        "meanHoldHours": 0.14999972222222221,
+        "monthly": [
+          {
+            "complete": false,
+            "equity": 10314.042271125,
+            "from": 1704070800000,
+            "returnPct": 0.031404227112499905,
+            "to": 1704071400000
+          }
+        ],
+        "netExpectancy": 314.0422711250003,
+        "payoffRatio": null,
+        "positiveDays": 0,
+        "shortNetPnl": 0.0,
+        "sortino": null,
+        "totalDays": 0,
+        "turnover": 1.9323892050000002,
+        "version": 2,
+        "withoutBestTrade": 0.0,
+        "worstDayReturn": null
+      },
+      "fees": 9.661946025000002,
+      "finalEquity": 10314.042271125,
+      "funding": 9.73857285,
+      "fundingEvents": 1,
+      "longestLossStreak": 0,
+      "losses": 0,
+      "maxDrawdown": -0.006844094108484189,
+      "meanR": 11.65905172413769,
+      "profitFactor": null,
+      "rejectedSignals": 0,
+      "rows": 70,
+      "totalReturn": 0.031404227112499905,
+      "trades": 1,
+      "winRate": 1.0,
+      "wins": 1
+    },
+    "output": {
+      "contexts": [],
+      "equity": [
+        { "cash": 10000.0, "drawdown": 0.0, "equity": 10000.0, "time": 1704070800000 },
+        {
+          "cash": 10314.042271125,
+          "drawdown": 0.0,
+          "equity": 10314.042271125,
+          "time": 1704071399999
+        }
+      ],
+      "events": [
+        {
+          "entrySignal": {
+            "atr": 0.18999999999999448,
+            "boundary": 101.25,
+            "lookbackBars": 20,
+            "price": 102.2,
+            "time": 1704070859999
+          },
+          "kind": "signal",
+          "price": 102.2,
+          "reason": "breakout",
+          "side": "long",
+          "time": 1704070859999,
+          "tradeId": null,
+          "value": null
+        },
+        {
+          "kind": "entry",
+          "price": 102.23,
+          "reason": "breakout",
+          "side": "long",
+          "time": 1704070860000,
+          "tradeId": 1,
+          "value": 92.881
+        },
+        {
+          "kind": "stop",
+          "price": 101.94,
+          "reason": "initial",
+          "side": "long",
+          "time": 1704070860000,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "funding",
+          "price": 104.85000000000001,
+          "reason": "funding",
+          "side": "long",
+          "time": 1704071220001,
+          "tradeId": 1,
+          "value": 9.73857285
+        },
+        {
+          "kind": "exit",
+          "price": 105.82000000000001,
+          "reason": "end-range",
+          "side": "long",
+          "time": 1704071399999,
+          "tradeId": 1,
+          "value": 314.0422711250003
+        }
+      ],
+      "indicators": [],
+      "trades": [
+        {
+          "entryPrice": 102.23,
+          "entrySignal": {
+            "atr": 0.18999999999999448,
+            "boundary": 101.25,
+            "lookbackBars": 20,
+            "price": 102.2,
+            "time": 1704070859999
+          },
+          "entryTime": 1704070860000,
+          "exitPrice": 105.82000000000001,
+          "exitTime": 1704071399999,
+          "fees": 9.661946025000002,
+          "funding": 9.73857285,
+          "grossPnl": 333.44279000000034,
+          "id": 1,
+          "initialStop": 101.94,
+          "maeR": 0.2758620689655054,
+          "mfeR": 12.655172413792837,
+          "netPnl": 314.0422711250003,
+          "quantity": 92.881,
+          "rMultiple": 11.65905172413769,
+          "reason": "end-range",
+          "risk": 26.93549000000058,
+          "side": "long",
+          "slippageAndRounding": 5.572860000000211
+        }
+      ]
+    }
+  },
+  {
+    "case": "trailing-false",
+    "metrics": {
+      "context": { "allowed": 0, "evaluated": 0, "reasons": {}, "rejected": 0 },
+      "evaluation": {
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "averageLoss": null,
+        "averageWin": 78.01972000000023,
+        "bestDayReturn": null,
+        "bestTradeShare": 1.0,
+        "calmar": null,
+        "conventions": {
+          "annualizationDays": 365,
+          "calendar": "UTC",
+          "downsideTarget": 0.0,
+          "drawdownSampling": "minute-mark-and-fills",
+          "minDailyObservations": 30,
+          "riskFreeRate": 0.0,
+          "variance": "sample"
+        },
+        "costs": {
+          "costToGrossProfit": 0.1928571428571437,
+          "fees": 7.2599766,
+          "funding": 7.2392634,
+          "grossBeforeCosts": 96.66160000000039,
+          "netPnl": 78.01972000000023,
+          "slippageAndRounding": 4.142640000000156,
+          "total": 18.641880000000157
+        },
+        "currentDrawdown": 0.0,
+        "currentDrawdownDurationMs": 0,
+        "daily": [
+          {
+            "complete": false,
+            "drawdown": 0.0,
+            "equity": 10078.019719999998,
+            "from": 1704070800000,
+            "maxIntradayDrawdown": 0.0,
+            "returnPct": 0.007801971999999768,
+            "to": 1704071400000
+          }
+        ],
+        "dailyMaxDrawdown": 0.0,
+        "dailySharpe": null,
+        "durationMs": 600000,
+        "exitReasons": { "end-range": 1 },
+        "exposurePct": 0.4,
+        "grossPnl": 92.51896000000023,
+        "longNetPnl": 78.01972000000023,
+        "maxDrawdownDurationMs": 0,
+        "meanHoldHours": 0.06666638888888889,
+        "monthly": [
+          {
+            "complete": false,
+            "equity": 10078.019719999998,
+            "from": 1704070800000,
+            "returnPct": 0.007801971999999768,
+            "to": 1704071400000
+          }
+        ],
+        "netExpectancy": 78.01972000000023,
+        "payoffRatio": null,
+        "positiveDays": 0,
+        "shortNetPnl": 0.0,
+        "sortino": null,
+        "totalDays": 0,
+        "turnover": 1.45199532,
+        "version": 2,
+        "withoutBestTrade": 0.0,
+        "worstDayReturn": null
+      },
+      "fees": 7.2599766,
+      "finalEquity": 10078.019719999998,
+      "funding": 7.2392634,
+      "fundingEvents": 1,
+      "longestLossStreak": 0,
+      "losses": 0,
+      "maxDrawdown": 0.0,
+      "meanR": 1.9152542372881303,
+      "profitFactor": null,
+      "rejectedSignals": 0,
+      "rows": 70,
+      "totalReturn": 0.007801971999999768,
+      "trades": 1,
+      "winRate": 1.0,
+      "wins": 1
+    },
+    "output": {
+      "contexts": [],
+      "equity": [
+        { "cash": 10000.0, "drawdown": 0.0, "equity": 10000.0, "time": 1704070800000 },
+        {
+          "cash": 10078.019719999998,
+          "drawdown": 0.0,
+          "equity": 10078.019719999998,
+          "time": 1704071399999
+        }
+      ],
+      "events": [
+        {
+          "kind": "impulse",
+          "price": 102.25,
+          "reason": "impulse",
+          "side": "long",
+          "time": 1704070859999,
+          "tradeId": null,
+          "value": 5.473684210526508
+        },
+        {
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 104.25,
+            "price": 104.45,
+            "time": 1704071159999
+          },
+          "kind": "signal",
+          "price": 104.45,
+          "reason": "pullback",
+          "side": "long",
+          "time": 1704071159999,
+          "tradeId": null,
+          "value": 103.4
+        },
+        {
+          "kind": "entry",
+          "price": 104.48,
+          "reason": "pullback",
+          "side": "long",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": 69.044
+        },
+        {
+          "kind": "stop",
+          "price": 103.89,
+          "reason": "initial",
+          "side": "long",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "stop",
+          "price": 104.11,
+          "reason": "trailing",
+          "side": "long",
+          "time": 1704071219999,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "funding",
+          "price": 104.85000000000001,
+          "reason": "funding",
+          "side": "long",
+          "time": 1704071220001,
+          "tradeId": 1,
+          "value": 7.2392634
+        },
+        {
+          "kind": "stop",
+          "price": 104.61,
+          "reason": "trailing",
+          "side": "long",
+          "time": 1704071279999,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "stop",
+          "price": 104.91,
+          "reason": "trailing",
+          "side": "long",
+          "time": 1704071339999,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "stop",
+          "price": 105.11,
+          "reason": "trailing",
+          "side": "long",
+          "time": 1704071399999,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "exit",
+          "price": 105.82000000000001,
+          "reason": "end-range",
+          "side": "long",
+          "time": 1704071399999,
+          "tradeId": 1,
+          "value": 78.01972000000023
+        }
+      ],
+      "indicators": [],
+      "trades": [
+        {
+          "entryPrice": 104.48,
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 104.25,
+            "price": 104.45,
+            "time": 1704071159999
+          },
+          "entryTime": 1704071160000,
+          "exitPrice": 105.82000000000001,
+          "exitTime": 1704071399999,
+          "fees": 7.2599766,
+          "funding": 7.2392634,
+          "grossPnl": 92.51896000000023,
+          "id": 1,
+          "initialStop": 103.89,
+          "maeR": 0.1355932203389794,
+          "mfeR": 2.4067796610169383,
+          "netPnl": 78.01972000000023,
+          "quantity": 69.044,
+          "rMultiple": 1.9152542372881303,
+          "reason": "end-range",
+          "risk": 40.73596000000023,
+          "side": "long",
+          "slippageAndRounding": 4.142640000000156
+        }
+      ]
+    }
+  },
+  {
+    "case": "breakeven-false",
+    "metrics": {
+      "context": { "allowed": 0, "evaluated": 0, "reasons": {}, "rejected": 0 },
+      "evaluation": {
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "averageLoss": null,
+        "averageWin": 78.01972000000023,
+        "bestDayReturn": null,
+        "bestTradeShare": 1.0,
+        "calmar": null,
+        "conventions": {
+          "annualizationDays": 365,
+          "calendar": "UTC",
+          "downsideTarget": 0.0,
+          "drawdownSampling": "minute-mark-and-fills",
+          "minDailyObservations": 30,
+          "riskFreeRate": 0.0,
+          "variance": "sample"
+        },
+        "costs": {
+          "costToGrossProfit": 0.1928571428571437,
+          "fees": 7.2599766,
+          "funding": 7.2392634,
+          "grossBeforeCosts": 96.66160000000039,
+          "netPnl": 78.01972000000023,
+          "slippageAndRounding": 4.142640000000156,
+          "total": 18.641880000000157
+        },
+        "currentDrawdown": 0.0,
+        "currentDrawdownDurationMs": 0,
+        "daily": [
+          {
+            "complete": false,
+            "drawdown": 0.0,
+            "equity": 10078.019719999998,
+            "from": 1704070800000,
+            "maxIntradayDrawdown": 0.0,
+            "returnPct": 0.007801971999999768,
+            "to": 1704071400000
+          }
+        ],
+        "dailyMaxDrawdown": 0.0,
+        "dailySharpe": null,
+        "durationMs": 600000,
+        "exitReasons": { "end-range": 1 },
+        "exposurePct": 0.4,
+        "grossPnl": 92.51896000000023,
+        "longNetPnl": 78.01972000000023,
+        "maxDrawdownDurationMs": 0,
+        "meanHoldHours": 0.06666638888888889,
+        "monthly": [
+          {
+            "complete": false,
+            "equity": 10078.019719999998,
+            "from": 1704070800000,
+            "returnPct": 0.007801971999999768,
+            "to": 1704071400000
+          }
+        ],
+        "netExpectancy": 78.01972000000023,
+        "payoffRatio": null,
+        "positiveDays": 0,
+        "shortNetPnl": 0.0,
+        "sortino": null,
+        "totalDays": 0,
+        "turnover": 1.45199532,
+        "version": 2,
+        "withoutBestTrade": 0.0,
+        "worstDayReturn": null
+      },
+      "fees": 7.2599766,
+      "finalEquity": 10078.019719999998,
+      "funding": 7.2392634,
+      "fundingEvents": 1,
+      "longestLossStreak": 0,
+      "losses": 0,
+      "maxDrawdown": 0.0,
+      "meanR": 1.9152542372881303,
+      "profitFactor": null,
+      "rejectedSignals": 0,
+      "rows": 70,
+      "totalReturn": 0.007801971999999768,
+      "trades": 1,
+      "winRate": 1.0,
+      "wins": 1
+    },
+    "output": {
+      "contexts": [],
+      "equity": [
+        { "cash": 10000.0, "drawdown": 0.0, "equity": 10000.0, "time": 1704070800000 },
+        {
+          "cash": 10078.019719999998,
+          "drawdown": 0.0,
+          "equity": 10078.019719999998,
+          "time": 1704071399999
+        }
+      ],
+      "events": [
+        {
+          "kind": "impulse",
+          "price": 102.25,
+          "reason": "impulse",
+          "side": "long",
+          "time": 1704070859999,
+          "tradeId": null,
+          "value": 5.473684210526508
+        },
+        {
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 104.25,
+            "price": 104.45,
+            "time": 1704071159999
+          },
+          "kind": "signal",
+          "price": 104.45,
+          "reason": "pullback",
+          "side": "long",
+          "time": 1704071159999,
+          "tradeId": null,
+          "value": 103.4
+        },
+        {
+          "kind": "entry",
+          "price": 104.48,
+          "reason": "pullback",
+          "side": "long",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": 69.044
+        },
+        {
+          "kind": "stop",
+          "price": 103.89,
+          "reason": "initial",
+          "side": "long",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "stop",
+          "price": 104.63000000000001,
+          "reason": "breakeven",
+          "side": "long",
+          "time": 1704071219999,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "funding",
+          "price": 104.85000000000001,
+          "reason": "funding",
+          "side": "long",
+          "time": 1704071220001,
+          "tradeId": 1,
+          "value": 7.2392634
+        },
+        {
+          "kind": "stop",
+          "price": 104.73,
+          "reason": "breakeven",
+          "side": "long",
+          "time": 1704071279999,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "exit",
+          "price": 105.82000000000001,
+          "reason": "end-range",
+          "side": "long",
+          "time": 1704071399999,
+          "tradeId": 1,
+          "value": 78.01972000000023
+        }
+      ],
+      "indicators": [],
+      "trades": [
+        {
+          "entryPrice": 104.48,
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 104.25,
+            "price": 104.45,
+            "time": 1704071159999
+          },
+          "entryTime": 1704071160000,
+          "exitPrice": 105.82000000000001,
+          "exitTime": 1704071399999,
+          "fees": 7.2599766,
+          "funding": 7.2392634,
+          "grossPnl": 92.51896000000023,
+          "id": 1,
+          "initialStop": 103.89,
+          "maeR": 0.1355932203389794,
+          "mfeR": 2.4067796610169383,
+          "netPnl": 78.01972000000023,
+          "quantity": 69.044,
+          "rMultiple": 1.9152542372881303,
+          "reason": "end-range",
+          "risk": 40.73596000000023,
+          "side": "long",
+          "slippageAndRounding": 4.142640000000156
+        }
+      ]
+    }
+  },
+  {
+    "case": "daily-loss-false",
+    "metrics": {
+      "context": { "allowed": 0, "evaluated": 0, "reasons": {}, "rejected": 0 },
+      "evaluation": {
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "averageLoss": null,
+        "averageWin": 9.010242000000236,
+        "bestDayReturn": null,
+        "bestTradeShare": 1.0,
+        "calmar": null,
+        "conventions": {
+          "annualizationDays": 365,
+          "calendar": "UTC",
+          "downsideTarget": 0.0,
+          "drawdownSampling": "minute-mark-and-fills",
+          "minDailyObservations": 30,
+          "riskFreeRate": 0.0,
+          "variance": "sample"
+        },
+        "costs": {
+          "costToGrossProfit": 0.6737499999999961,
+          "fees": 7.2254546,
+          "funding": 7.2392634,
+          "grossBeforeCosts": 27.61760000000039,
+          "netPnl": 9.010242000000236,
+          "slippageAndRounding": 4.142640000000156,
+          "total": 18.607358000000154
+        },
+        "currentDrawdown": 0.0,
+        "currentDrawdownDurationMs": 0,
+        "daily": [
+          {
+            "complete": false,
+            "drawdown": 0.0,
+            "equity": 10009.010241999998,
+            "from": 1704070800000,
+            "maxIntradayDrawdown": -0.0022939178559999718,
+            "returnPct": 0.0009010241999998225,
+            "to": 1704071400000
+          }
+        ],
+        "dailyMaxDrawdown": 0.0,
+        "dailySharpe": null,
+        "durationMs": 600000,
+        "exitReasons": { "daily-loss": 1 },
+        "exposurePct": 0.2,
+        "grossPnl": 23.474960000000234,
+        "longNetPnl": 9.010242000000236,
+        "maxDrawdownDurationMs": 60001,
+        "meanHoldHours": 0.016666666666666666,
+        "monthly": [
+          {
+            "complete": false,
+            "equity": 10009.010241999998,
+            "from": 1704070800000,
+            "returnPct": 0.0009010241999998225,
+            "to": 1704071400000
+          }
+        ],
+        "netExpectancy": 9.010242000000236,
+        "payoffRatio": null,
+        "positiveDays": 0,
+        "shortNetPnl": 0.0,
+        "sortino": null,
+        "totalDays": 0,
+        "turnover": 1.44509092,
+        "version": 2,
+        "withoutBestTrade": 0.0,
+        "worstDayReturn": null
+      },
+      "fees": 7.2254546,
+      "finalEquity": 10009.010241999998,
+      "funding": 7.2392634,
+      "fundingEvents": 1,
+      "longestLossStreak": 0,
+      "losses": 0,
+      "maxDrawdown": -0.0022939178559999718,
+      "meanR": 0.22118644067797064,
+      "profitFactor": null,
+      "rejectedSignals": 0,
+      "rows": 70,
+      "totalReturn": 0.0009010241999998225,
+      "trades": 1,
+      "winRate": 1.0,
+      "wins": 1
+    },
+    "output": {
+      "contexts": [],
+      "equity": [
+        { "cash": 10000.0, "drawdown": 0.0, "equity": 10000.0, "time": 1704070800000 },
+        {
+          "cash": 10009.010241999998,
+          "drawdown": 0.0,
+          "equity": 10009.010241999998,
+          "time": 1704071220000
+        },
+        {
+          "cash": 10009.010241999998,
+          "drawdown": 0.0,
+          "equity": 10009.010241999998,
+          "time": 1704071399999
+        }
+      ],
+      "events": [
+        {
+          "kind": "impulse",
+          "price": 102.25,
+          "reason": "impulse",
+          "side": "long",
+          "time": 1704070859999,
+          "tradeId": null,
+          "value": 5.473684210526508
+        },
+        {
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 104.25,
+            "price": 104.45,
+            "time": 1704071159999
+          },
+          "kind": "signal",
+          "price": 104.45,
+          "reason": "pullback",
+          "side": "long",
+          "time": 1704071159999,
+          "tradeId": null,
+          "value": 103.4
+        },
+        {
+          "kind": "entry",
+          "price": 104.48,
+          "reason": "pullback",
+          "side": "long",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": 69.044
+        },
+        {
+          "kind": "stop",
+          "price": 103.89,
+          "reason": "initial",
+          "side": "long",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "funding",
+          "price": 104.85000000000001,
+          "reason": "funding",
+          "side": "long",
+          "time": 1704071220001,
+          "tradeId": 1,
+          "value": 7.2392634
+        },
+        {
+          "kind": "exit",
+          "price": 104.82000000000001,
+          "reason": "daily-loss",
+          "side": "long",
+          "time": 1704071220000,
+          "tradeId": 1,
+          "value": 9.010242000000236
+        }
+      ],
+      "indicators": [],
+      "trades": [
+        {
+          "entryPrice": 104.48,
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 104.25,
+            "price": 104.45,
+            "time": 1704071159999
+          },
+          "entryTime": 1704071160000,
+          "exitPrice": 104.82000000000001,
+          "exitTime": 1704071220000,
+          "fees": 7.2254546,
+          "funding": 7.2392634,
+          "grossPnl": 23.474960000000234,
+          "id": 1,
+          "initialStop": 103.89,
+          "maeR": 0.5593220338982989,
+          "mfeR": 0.033898305084738824,
+          "netPnl": 9.010242000000236,
+          "quantity": 69.044,
+          "rMultiple": 0.22118644067797064,
+          "reason": "daily-loss",
+          "risk": 40.73596000000023,
+          "side": "long",
+          "slippageAndRounding": 4.142640000000156
+        }
+      ]
+    }
+  },
+  {
+    "case": "daily-close-false",
+    "metrics": {
+      "context": { "allowed": 0, "evaluated": 0, "reasons": {}, "rejected": 0 },
+      "evaluation": {
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "averageLoss": null,
+        "averageWin": 43.51498100000023,
+        "bestDayReturn": null,
+        "bestTradeShare": 1.0,
+        "calmar": null,
+        "conventions": {
+          "annualizationDays": 365,
+          "calendar": "UTC",
+          "downsideTarget": 0.0,
+          "drawdownSampling": "minute-mark-and-fills",
+          "minDailyObservations": 30,
+          "riskFreeRate": 0.0,
+          "variance": "sample"
+        },
+        "costs": {
+          "costToGrossProfit": 0.29972222222222283,
+          "fees": 7.2427156,
+          "funding": 7.2392634,
+          "grossBeforeCosts": 62.13960000000039,
+          "netPnl": 43.51498100000023,
+          "slippageAndRounding": 4.142640000000156,
+          "total": 18.624619000000155
+        },
+        "currentDrawdown": -0.0005679222680368134,
+        "currentDrawdownDurationMs": 120000,
+        "daily": [
+          {
+            "complete": false,
+            "drawdown": 0.0,
+            "equity": 10043.514980999998,
+            "from": 1704070800000,
+            "maxIntradayDrawdown": -0.0005679222680368134,
+            "returnPct": 0.0043514980999999064,
+            "to": 1704071400000
+          }
+        ],
+        "dailyMaxDrawdown": 0.0,
+        "dailySharpe": null,
+        "durationMs": 600000,
+        "exitReasons": { "daily-close": 1 },
+        "exposurePct": 0.3,
+        "grossPnl": 57.996960000000236,
+        "longNetPnl": 43.51498100000023,
+        "maxDrawdownDurationMs": 120000,
+        "meanHoldHours": 0.03333333333333333,
+        "monthly": [
+          {
+            "complete": false,
+            "equity": 10043.514980999998,
+            "from": 1704070800000,
+            "returnPct": 0.0043514980999999064,
+            "to": 1704071400000
+          }
+        ],
+        "netExpectancy": 43.51498100000023,
+        "payoffRatio": null,
+        "positiveDays": 0,
+        "shortNetPnl": 0.0,
+        "sortino": null,
+        "totalDays": 0,
+        "turnover": 1.4485431199999999,
+        "version": 2,
+        "withoutBestTrade": 0.0,
+        "worstDayReturn": null
+      },
+      "fees": 7.2427156,
+      "finalEquity": 10043.514980999998,
+      "funding": 7.2392634,
+      "fundingEvents": 1,
+      "longestLossStreak": 0,
+      "losses": 0,
+      "maxDrawdown": -0.0005679222680368134,
+      "meanR": 1.0682203389830505,
+      "profitFactor": null,
+      "rejectedSignals": 0,
+      "rows": 70,
+      "totalReturn": 0.0043514980999999064,
+      "trades": 1,
+      "winRate": 1.0,
+      "wins": 1
+    },
+    "output": {
+      "contexts": [],
+      "equity": [
+        { "cash": 10000.0, "drawdown": 0.0, "equity": 10000.0, "time": 1704070800000 },
+        {
+          "cash": 10043.514980999998,
+          "drawdown": -0.0005679222680368134,
+          "equity": 10043.514980999998,
+          "time": 1704071280000
+        },
+        {
+          "cash": 10043.514980999998,
+          "drawdown": -0.0005679222680368134,
+          "equity": 10043.514980999998,
+          "time": 1704071399999
+        }
+      ],
+      "events": [
+        {
+          "kind": "impulse",
+          "price": 102.25,
+          "reason": "impulse",
+          "side": "long",
+          "time": 1704070859999,
+          "tradeId": null,
+          "value": 5.473684210526508
+        },
+        {
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 104.25,
+            "price": 104.45,
+            "time": 1704071159999
+          },
+          "kind": "signal",
+          "price": 104.45,
+          "reason": "pullback",
+          "side": "long",
+          "time": 1704071159999,
+          "tradeId": null,
+          "value": 103.4
+        },
+        {
+          "kind": "entry",
+          "price": 104.48,
+          "reason": "pullback",
+          "side": "long",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": 69.044
+        },
+        {
+          "kind": "stop",
+          "price": 103.89,
+          "reason": "initial",
+          "side": "long",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "funding",
+          "price": 104.85000000000001,
+          "reason": "funding",
+          "side": "long",
+          "time": 1704071220001,
+          "tradeId": 1,
+          "value": 7.2392634
+        },
+        {
+          "kind": "exit",
+          "price": 105.32000000000001,
+          "reason": "daily-close",
+          "side": "long",
+          "time": 1704071280000,
+          "tradeId": 1,
+          "value": 43.51498100000023
+        }
+      ],
+      "indicators": [],
+      "trades": [
+        {
+          "entryPrice": 104.48,
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 104.25,
+            "price": 104.45,
+            "time": 1704071159999
+          },
+          "entryTime": 1704071160000,
+          "exitPrice": 105.32000000000001,
+          "exitTime": 1704071280000,
+          "fees": 7.2427156,
+          "funding": 7.2392634,
+          "grossPnl": 57.996960000000236,
+          "id": 1,
+          "initialStop": 103.89,
+          "maeR": 0.1355932203389794,
+          "mfeR": 1.559322033898299,
+          "netPnl": 43.51498100000023,
+          "quantity": 69.044,
+          "rMultiple": 1.0682203389830505,
+          "reason": "daily-close",
+          "risk": 40.73596000000023,
+          "side": "long",
+          "slippageAndRounding": 4.142640000000156
+        }
+      ]
+    }
+  },
+  {
+    "case": "five-minute-false",
+    "metrics": {
+      "context": { "allowed": 0, "evaluated": 0, "reasons": {}, "rejected": 0 },
+      "evaluation": {
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "averageLoss": null,
+        "averageWin": 85.25898340000023,
+        "bestDayReturn": null,
+        "bestTradeShare": 1.0,
+        "calmar": null,
+        "conventions": {
+          "annualizationDays": 365,
+          "calendar": "UTC",
+          "downsideTarget": 0.0,
+          "drawdownSampling": "minute-mark-and-fills",
+          "minDailyObservations": 30,
+          "riskFreeRate": 0.0,
+          "variance": "sample"
+        },
+        "costs": {
+          "costToGrossProfit": 0.11796428571428685,
+          "fees": 7.2599766,
+          "funding": 0.0,
+          "grossBeforeCosts": 96.66160000000039,
+          "netPnl": 85.25898340000023,
+          "slippageAndRounding": 4.142640000000156,
+          "total": 11.402616600000156
+        },
+        "currentDrawdown": -0.00029367693726667365,
+        "currentDrawdownDurationMs": 60000,
+        "daily": [
+          {
+            "complete": false,
+            "drawdown": 0.0,
+            "equity": 10085.2589834,
+            "from": 1704085200000,
+            "maxIntradayDrawdown": -0.00029367693726667365,
+            "returnPct": 0.008525898339999838,
+            "to": 1704088200000
+          }
+        ],
+        "dailyMaxDrawdown": 0.0,
+        "dailySharpe": null,
+        "durationMs": 3000000,
+        "exitReasons": { "end-range": 1 },
+        "exposurePct": 0.4,
+        "grossPnl": 92.51896000000023,
+        "longNetPnl": 85.25898340000023,
+        "maxDrawdownDurationMs": 120000,
+        "meanHoldHours": 0.33333305555555554,
+        "monthly": [
+          {
+            "complete": false,
+            "equity": 10085.2589834,
+            "from": 1704085200000,
+            "returnPct": 0.008525898339999838,
+            "to": 1704088200000
+          }
+        ],
+        "netExpectancy": 85.25898340000023,
+        "payoffRatio": null,
+        "positiveDays": 0,
+        "shortNetPnl": 0.0,
+        "sortino": null,
+        "totalDays": 0,
+        "turnover": 1.45199532,
+        "version": 2,
+        "withoutBestTrade": 0.0,
+        "worstDayReturn": null
+      },
+      "fees": 7.2599766,
+      "finalEquity": 10085.2589834,
+      "funding": 0.0,
+      "fundingEvents": 0,
+      "longestLossStreak": 0,
+      "losses": 0,
+      "maxDrawdown": -0.00029367693726667365,
+      "meanR": 2.092966101694909,
+      "profitFactor": null,
+      "rejectedSignals": 0,
+      "rows": 350,
+      "totalReturn": 0.008525898339999838,
+      "trades": 1,
+      "winRate": 1.0,
+      "wins": 1
+    },
+    "output": {
+      "contexts": [],
+      "equity": [
+        { "cash": 10000.0, "drawdown": 0.0, "equity": 10000.0, "time": 1704085200000 },
+        {
+          "cash": 10085.2589834,
+          "drawdown": -0.00029367693726667365,
+          "equity": 10085.2589834,
+          "time": 1704088199999
+        }
+      ],
+      "events": [
+        {
+          "kind": "impulse",
+          "price": 102.25,
+          "reason": "impulse",
+          "side": "long",
+          "time": 1704085499999,
+          "tradeId": null,
+          "value": 5.473684210526508
+        },
+        {
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 104.25,
+            "price": 104.45,
+            "time": 1704086999999
+          },
+          "kind": "signal",
+          "price": 104.45,
+          "reason": "pullback",
+          "side": "long",
+          "time": 1704086999999,
+          "tradeId": null,
+          "value": 103.4
+        },
+        {
+          "kind": "entry",
+          "price": 104.48,
+          "reason": "pullback",
+          "side": "long",
+          "time": 1704087000000,
+          "tradeId": 1,
+          "value": 69.044
+        },
+        {
+          "kind": "stop",
+          "price": 103.89,
+          "reason": "initial",
+          "side": "long",
+          "time": 1704087000000,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "exit",
+          "price": 105.82000000000001,
+          "reason": "end-range",
+          "side": "long",
+          "time": 1704088199999,
+          "tradeId": 1,
+          "value": 85.25898340000023
+        }
+      ],
+      "indicators": [],
+      "trades": [
+        {
+          "entryPrice": 104.48,
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 104.25,
+            "price": 104.45,
+            "time": 1704086999999
+          },
+          "entryTime": 1704087000000,
+          "exitPrice": 105.82000000000001,
+          "exitTime": 1704088199999,
+          "fees": 7.2599766,
+          "funding": 0.0,
+          "grossPnl": 92.51896000000023,
+          "id": 1,
+          "initialStop": 103.89,
+          "maeR": 0.1355932203389794,
+          "mfeR": 2.4067796610169383,
+          "netPnl": 85.25898340000023,
+          "quantity": 69.044,
+          "rMultiple": 2.092966101694909,
+          "reason": "end-range",
+          "risk": 40.73596000000023,
+          "side": "long",
+          "slippageAndRounding": 4.142640000000156
+        }
+      ]
+    }
+  },
+  {
+    "case": "pullback-true",
+    "metrics": {
+      "context": { "allowed": 0, "evaluated": 0, "reasons": {}, "rejected": 0 },
+      "evaluation": {
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "averageLoss": null,
+        "averageWin": 96.36093139999997,
+        "bestDayReturn": null,
+        "bestTradeShare": 1.0,
+        "calmar": null,
+        "conventions": {
+          "annualizationDays": 365,
+          "calendar": "UTC",
+          "downsideTarget": 0.0,
+          "drawdownSampling": "minute-mark-and-fills",
+          "minDailyObservations": 30,
+          "riskFreeRate": 0.0,
+          "variance": "sample"
+        },
+        "costs": {
+          "costToGrossProfit": 0.02835714285714721,
+          "fees": 6.718984300000001,
+          "funding": -6.7402357,
+          "grossBeforeCosts": 99.17320000000042,
+          "netPnl": 96.36093139999997,
+          "slippageAndRounding": 2.8335200000004432,
+          "total": 2.8122686000004435
+        },
+        "currentDrawdown": 0.0,
+        "currentDrawdownDurationMs": 0,
+        "daily": [
+          {
+            "complete": false,
+            "drawdown": 0.0,
+            "equity": 10096.360931399999,
+            "from": 1704070800000,
+            "maxIntradayDrawdown": 0.0,
+            "returnPct": 0.009636093139999913,
+            "to": 1704071400000
+          }
+        ],
+        "dailyMaxDrawdown": 0.0,
+        "dailySharpe": null,
+        "durationMs": 600000,
+        "exitReasons": { "end-range": 1 },
+        "exposurePct": 0.4,
+        "grossPnl": 96.33967999999997,
+        "longNetPnl": 0.0,
+        "maxDrawdownDurationMs": 0,
+        "meanHoldHours": 0.06666638888888889,
+        "monthly": [
+          {
+            "complete": false,
+            "equity": 10096.360931399999,
+            "from": 1704070800000,
+            "returnPct": 0.009636093139999913,
+            "to": 1704071400000
+          }
+        ],
+        "netExpectancy": 96.36093139999997,
+        "payoffRatio": null,
+        "positiveDays": 0,
+        "shortNetPnl": 96.36093139999997,
+        "sortino": null,
+        "totalDays": 0,
+        "turnover": 1.34379686,
+        "version": 2,
+        "withoutBestTrade": 0.0,
+        "worstDayReturn": null
+      },
+      "fees": 6.718984300000001,
+      "finalEquity": 10096.360931399999,
+      "funding": -6.7402357,
+      "fundingEvents": 1,
+      "longestLossStreak": 0,
+      "losses": 0,
+      "maxDrawdown": 0.0,
+      "meanR": 2.305593220338969,
+      "profitFactor": null,
+      "rejectedSignals": 0,
+      "rows": 70,
+      "totalReturn": 0.009636093139999913,
+      "trades": 1,
+      "winRate": 1.0,
+      "wins": 1
+    },
+    "output": {
+      "contexts": [],
+      "equity": [
+        { "cash": 10000.0, "drawdown": 0.0, "equity": 10000.0, "time": 1704070800000 },
+        {
+          "cash": 10096.360931399999,
+          "drawdown": 0.0,
+          "equity": 10096.360931399999,
+          "time": 1704071399999
+        }
+      ],
+      "events": [
+        {
+          "kind": "impulse",
+          "price": 97.75,
+          "reason": "impulse",
+          "side": "short",
+          "time": 1704070859999,
+          "tradeId": null,
+          "value": 5.473684210526508
+        },
+        {
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 95.75,
+            "price": 95.55,
+            "time": 1704071159999
+          },
+          "kind": "signal",
+          "price": 95.55,
+          "reason": "pullback",
+          "side": "short",
+          "time": 1704071159999,
+          "tradeId": null,
+          "value": 96.6
+        },
+        {
+          "kind": "entry",
+          "price": 95.53,
+          "reason": "pullback",
+          "side": "short",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": 70.83800000000001
+        },
+        {
+          "kind": "stop",
+          "price": 96.12,
+          "reason": "initial",
+          "side": "short",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "funding",
+          "price": 95.14999999999999,
+          "reason": "funding",
+          "side": "short",
+          "time": 1704071220001,
+          "tradeId": 1,
+          "value": -6.7402357
+        },
+        {
+          "kind": "exit",
+          "price": 94.17,
+          "reason": "end-range",
+          "side": "short",
+          "time": 1704071399999,
+          "tradeId": 1,
+          "value": 96.36093139999997
+        }
+      ],
+      "indicators": [],
+      "trades": [
+        {
+          "entryPrice": 95.53,
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 95.75,
+            "price": 95.55,
+            "time": 1704071159999
+          },
+          "entryTime": 1704071160000,
+          "exitPrice": 94.17,
+          "exitTime": 1704071399999,
+          "fees": 6.718984300000001,
+          "funding": -6.7402357,
+          "grossPnl": 96.33967999999997,
+          "id": 1,
+          "initialStop": 96.12,
+          "maeR": 0.11864406779659792,
+          "mfeR": 2.4237288135593196,
+          "netPnl": 96.36093139999997,
+          "quantity": 70.83800000000001,
+          "rMultiple": 2.305593220338969,
+          "reason": "end-range",
+          "risk": 41.794420000000244,
+          "side": "short",
+          "slippageAndRounding": 2.8335200000004432
+        }
+      ]
+    }
+  },
+  {
+    "case": "channel-true",
+    "metrics": {
+      "context": { "allowed": 0, "evaluated": 0, "reasons": {}, "rejected": 0 },
+      "evaluation": {
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "averageLoss": null,
+        "averageWin": 350.47976589999996,
+        "bestDayReturn": null,
+        "bestTradeShare": 1.0,
+        "calmar": null,
+        "conventions": {
+          "annualizationDays": 365,
+          "calendar": "UTC",
+          "downsideTarget": 0.0,
+          "drawdownSampling": "minute-mark-and-fills",
+          "minDailyObservations": 30,
+          "riskFreeRate": 0.0,
+          "variance": "sample"
+        },
+        "costs": {
+          "costToGrossProfit": 0.011184931506851008,
+          "fees": 9.319940299999999,
+          "funding": -9.2398262,
+          "grossBeforeCosts": 354.4442000000006,
+          "netPnl": 350.47976589999996,
+          "slippageAndRounding": 3.8843200000006073,
+          "total": 3.9644341000006067
+        },
+        "currentDrawdown": 0.0,
+        "currentDrawdownDurationMs": 0,
+        "daily": [
+          {
+            "complete": false,
+            "drawdown": 0.0,
+            "equity": 10350.4797659,
+            "from": 1704070800000,
+            "maxIntradayDrawdown": -0.007149036808012044,
+            "returnPct": 0.03504797659000003,
+            "to": 1704071400000
+          }
+        ],
+        "dailyMaxDrawdown": 0.0,
+        "dailySharpe": null,
+        "durationMs": 600000,
+        "exitReasons": { "end-range": 1 },
+        "exposurePct": 0.9,
+        "grossPnl": 350.55987999999996,
+        "longNetPnl": 0.0,
+        "maxDrawdownDurationMs": 180000,
+        "meanHoldHours": 0.14999972222222221,
+        "monthly": [
+          {
+            "complete": false,
+            "equity": 10350.4797659,
+            "from": 1704070800000,
+            "returnPct": 0.03504797659000003,
+            "to": 1704071400000
+          }
+        ],
+        "netExpectancy": 350.47976589999996,
+        "payoffRatio": null,
+        "positiveDays": 0,
+        "shortNetPnl": 350.47976589999996,
+        "sortino": null,
+        "totalDays": 0,
+        "turnover": 1.86398806,
+        "version": 2,
+        "withoutBestTrade": 0.0,
+        "worstDayReturn": null
+      },
+      "fees": 9.319940299999999,
+      "finalEquity": 10350.4797659,
+      "funding": -9.2398262,
+      "fundingEvents": 1,
+      "longestLossStreak": 0,
+      "losses": 0,
+      "maxDrawdown": -0.007149036808012044,
+      "meanR": 12.445431034482489,
+      "profitFactor": null,
+      "rejectedSignals": 0,
+      "rows": 70,
+      "totalReturn": 0.03504797659000003,
+      "trades": 1,
+      "winRate": 1.0,
+      "wins": 1
+    },
+    "output": {
+      "contexts": [],
+      "equity": [
+        { "cash": 10000.0, "drawdown": 0.0, "equity": 10000.0, "time": 1704070800000 },
+        { "cash": 10350.4797659, "drawdown": 0.0, "equity": 10350.4797659, "time": 1704071399999 }
+      ],
+      "events": [
+        {
+          "entrySignal": {
+            "atr": 0.18999999999999448,
+            "boundary": 98.75,
+            "lookbackBars": 20,
+            "price": 97.8,
+            "time": 1704070859999
+          },
+          "kind": "signal",
+          "price": 97.8,
+          "reason": "breakout",
+          "side": "short",
+          "time": 1704070859999,
+          "tradeId": null,
+          "value": null
+        },
+        {
+          "kind": "entry",
+          "price": 97.78,
+          "reason": "breakout",
+          "side": "short",
+          "time": 1704070860000,
+          "tradeId": 1,
+          "value": 97.108
+        },
+        {
+          "kind": "stop",
+          "price": 98.07000000000001,
+          "reason": "initial",
+          "side": "short",
+          "time": 1704070860000,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "funding",
+          "price": 95.14999999999999,
+          "reason": "funding",
+          "side": "short",
+          "time": 1704071220001,
+          "tradeId": 1,
+          "value": -9.2398262
+        },
+        {
+          "kind": "exit",
+          "price": 94.17,
+          "reason": "end-range",
+          "side": "short",
+          "time": 1704071399999,
+          "tradeId": 1,
+          "value": 350.47976589999996
+        }
+      ],
+      "indicators": [],
+      "trades": [
+        {
+          "entryPrice": 97.78,
+          "entrySignal": {
+            "atr": 0.18999999999999448,
+            "boundary": 98.75,
+            "lookbackBars": 20,
+            "price": 97.8,
+            "time": 1704070859999
+          },
+          "entryTime": 1704070860000,
+          "exitPrice": 94.17,
+          "exitTime": 1704071399999,
+          "fees": 9.319940299999999,
+          "funding": -9.2398262,
+          "grossPnl": 350.55987999999996,
+          "id": 1,
+          "initialStop": 98.07000000000001,
+          "maeR": 0.24137931034479887,
+          "mfeR": 12.689655172413543,
+          "netPnl": 350.47976589999996,
+          "quantity": 97.108,
+          "rMultiple": 12.445431034482489,
+          "reason": "end-range",
+          "risk": 28.161320000000607,
+          "side": "short",
+          "slippageAndRounding": 3.8843200000006073
+        }
+      ]
+    }
+  },
+  {
+    "case": "trailing-true",
+    "metrics": {
+      "context": { "allowed": 0, "evaluated": 0, "reasons": {}, "rejected": 0 },
+      "evaluation": {
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "averageLoss": null,
+        "averageWin": 96.36093139999997,
+        "bestDayReturn": null,
+        "bestTradeShare": 1.0,
+        "calmar": null,
+        "conventions": {
+          "annualizationDays": 365,
+          "calendar": "UTC",
+          "downsideTarget": 0.0,
+          "drawdownSampling": "minute-mark-and-fills",
+          "minDailyObservations": 30,
+          "riskFreeRate": 0.0,
+          "variance": "sample"
+        },
+        "costs": {
+          "costToGrossProfit": 0.02835714285714721,
+          "fees": 6.718984300000001,
+          "funding": -6.7402357,
+          "grossBeforeCosts": 99.17320000000042,
+          "netPnl": 96.36093139999997,
+          "slippageAndRounding": 2.8335200000004432,
+          "total": 2.8122686000004435
+        },
+        "currentDrawdown": 0.0,
+        "currentDrawdownDurationMs": 0,
+        "daily": [
+          {
+            "complete": false,
+            "drawdown": 0.0,
+            "equity": 10096.360931399999,
+            "from": 1704070800000,
+            "maxIntradayDrawdown": 0.0,
+            "returnPct": 0.009636093139999913,
+            "to": 1704071400000
+          }
+        ],
+        "dailyMaxDrawdown": 0.0,
+        "dailySharpe": null,
+        "durationMs": 600000,
+        "exitReasons": { "end-range": 1 },
+        "exposurePct": 0.4,
+        "grossPnl": 96.33967999999997,
+        "longNetPnl": 0.0,
+        "maxDrawdownDurationMs": 0,
+        "meanHoldHours": 0.06666638888888889,
+        "monthly": [
+          {
+            "complete": false,
+            "equity": 10096.360931399999,
+            "from": 1704070800000,
+            "returnPct": 0.009636093139999913,
+            "to": 1704071400000
+          }
+        ],
+        "netExpectancy": 96.36093139999997,
+        "payoffRatio": null,
+        "positiveDays": 0,
+        "shortNetPnl": 96.36093139999997,
+        "sortino": null,
+        "totalDays": 0,
+        "turnover": 1.34379686,
+        "version": 2,
+        "withoutBestTrade": 0.0,
+        "worstDayReturn": null
+      },
+      "fees": 6.718984300000001,
+      "finalEquity": 10096.360931399999,
+      "funding": -6.7402357,
+      "fundingEvents": 1,
+      "longestLossStreak": 0,
+      "losses": 0,
+      "maxDrawdown": 0.0,
+      "meanR": 2.305593220338969,
+      "profitFactor": null,
+      "rejectedSignals": 0,
+      "rows": 70,
+      "totalReturn": 0.009636093139999913,
+      "trades": 1,
+      "winRate": 1.0,
+      "wins": 1
+    },
+    "output": {
+      "contexts": [],
+      "equity": [
+        { "cash": 10000.0, "drawdown": 0.0, "equity": 10000.0, "time": 1704070800000 },
+        {
+          "cash": 10096.360931399999,
+          "drawdown": 0.0,
+          "equity": 10096.360931399999,
+          "time": 1704071399999
+        }
+      ],
+      "events": [
+        {
+          "kind": "impulse",
+          "price": 97.75,
+          "reason": "impulse",
+          "side": "short",
+          "time": 1704070859999,
+          "tradeId": null,
+          "value": 5.473684210526508
+        },
+        {
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 95.75,
+            "price": 95.55,
+            "time": 1704071159999
+          },
+          "kind": "signal",
+          "price": 95.55,
+          "reason": "pullback",
+          "side": "short",
+          "time": 1704071159999,
+          "tradeId": null,
+          "value": 96.6
+        },
+        {
+          "kind": "entry",
+          "price": 95.53,
+          "reason": "pullback",
+          "side": "short",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": 70.83800000000001
+        },
+        {
+          "kind": "stop",
+          "price": 96.12,
+          "reason": "initial",
+          "side": "short",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "stop",
+          "price": 95.89,
+          "reason": "trailing",
+          "side": "short",
+          "time": 1704071219999,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "funding",
+          "price": 95.14999999999999,
+          "reason": "funding",
+          "side": "short",
+          "time": 1704071220001,
+          "tradeId": 1,
+          "value": -6.7402357
+        },
+        {
+          "kind": "stop",
+          "price": 95.39,
+          "reason": "trailing",
+          "side": "short",
+          "time": 1704071279999,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "stop",
+          "price": 95.09,
+          "reason": "trailing",
+          "side": "short",
+          "time": 1704071339999,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "stop",
+          "price": 94.89,
+          "reason": "trailing",
+          "side": "short",
+          "time": 1704071399999,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "exit",
+          "price": 94.17,
+          "reason": "end-range",
+          "side": "short",
+          "time": 1704071399999,
+          "tradeId": 1,
+          "value": 96.36093139999997
+        }
+      ],
+      "indicators": [],
+      "trades": [
+        {
+          "entryPrice": 95.53,
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 95.75,
+            "price": 95.55,
+            "time": 1704071159999
+          },
+          "entryTime": 1704071160000,
+          "exitPrice": 94.17,
+          "exitTime": 1704071399999,
+          "fees": 6.718984300000001,
+          "funding": -6.7402357,
+          "grossPnl": 96.33967999999997,
+          "id": 1,
+          "initialStop": 96.12,
+          "maeR": 0.11864406779659792,
+          "mfeR": 2.4237288135593196,
+          "netPnl": 96.36093139999997,
+          "quantity": 70.83800000000001,
+          "rMultiple": 2.305593220338969,
+          "reason": "end-range",
+          "risk": 41.794420000000244,
+          "side": "short",
+          "slippageAndRounding": 2.8335200000004432
+        }
+      ]
+    }
+  },
+  {
+    "case": "breakeven-true",
+    "metrics": {
+      "context": { "allowed": 0, "evaluated": 0, "reasons": {}, "rejected": 0 },
+      "evaluation": {
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "averageLoss": null,
+        "averageWin": 96.36093139999997,
+        "bestDayReturn": null,
+        "bestTradeShare": 1.0,
+        "calmar": null,
+        "conventions": {
+          "annualizationDays": 365,
+          "calendar": "UTC",
+          "downsideTarget": 0.0,
+          "drawdownSampling": "minute-mark-and-fills",
+          "minDailyObservations": 30,
+          "riskFreeRate": 0.0,
+          "variance": "sample"
+        },
+        "costs": {
+          "costToGrossProfit": 0.02835714285714721,
+          "fees": 6.718984300000001,
+          "funding": -6.7402357,
+          "grossBeforeCosts": 99.17320000000042,
+          "netPnl": 96.36093139999997,
+          "slippageAndRounding": 2.8335200000004432,
+          "total": 2.8122686000004435
+        },
+        "currentDrawdown": 0.0,
+        "currentDrawdownDurationMs": 0,
+        "daily": [
+          {
+            "complete": false,
+            "drawdown": 0.0,
+            "equity": 10096.360931399999,
+            "from": 1704070800000,
+            "maxIntradayDrawdown": 0.0,
+            "returnPct": 0.009636093139999913,
+            "to": 1704071400000
+          }
+        ],
+        "dailyMaxDrawdown": 0.0,
+        "dailySharpe": null,
+        "durationMs": 600000,
+        "exitReasons": { "end-range": 1 },
+        "exposurePct": 0.4,
+        "grossPnl": 96.33967999999997,
+        "longNetPnl": 0.0,
+        "maxDrawdownDurationMs": 0,
+        "meanHoldHours": 0.06666638888888889,
+        "monthly": [
+          {
+            "complete": false,
+            "equity": 10096.360931399999,
+            "from": 1704070800000,
+            "returnPct": 0.009636093139999913,
+            "to": 1704071400000
+          }
+        ],
+        "netExpectancy": 96.36093139999997,
+        "payoffRatio": null,
+        "positiveDays": 0,
+        "shortNetPnl": 96.36093139999997,
+        "sortino": null,
+        "totalDays": 0,
+        "turnover": 1.34379686,
+        "version": 2,
+        "withoutBestTrade": 0.0,
+        "worstDayReturn": null
+      },
+      "fees": 6.718984300000001,
+      "finalEquity": 10096.360931399999,
+      "funding": -6.7402357,
+      "fundingEvents": 1,
+      "longestLossStreak": 0,
+      "losses": 0,
+      "maxDrawdown": 0.0,
+      "meanR": 2.305593220338969,
+      "profitFactor": null,
+      "rejectedSignals": 0,
+      "rows": 70,
+      "totalReturn": 0.009636093139999913,
+      "trades": 1,
+      "winRate": 1.0,
+      "wins": 1
+    },
+    "output": {
+      "contexts": [],
+      "equity": [
+        { "cash": 10000.0, "drawdown": 0.0, "equity": 10000.0, "time": 1704070800000 },
+        {
+          "cash": 10096.360931399999,
+          "drawdown": 0.0,
+          "equity": 10096.360931399999,
+          "time": 1704071399999
+        }
+      ],
+      "events": [
+        {
+          "kind": "impulse",
+          "price": 97.75,
+          "reason": "impulse",
+          "side": "short",
+          "time": 1704070859999,
+          "tradeId": null,
+          "value": 5.473684210526508
+        },
+        {
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 95.75,
+            "price": 95.55,
+            "time": 1704071159999
+          },
+          "kind": "signal",
+          "price": 95.55,
+          "reason": "pullback",
+          "side": "short",
+          "time": 1704071159999,
+          "tradeId": null,
+          "value": 96.6
+        },
+        {
+          "kind": "entry",
+          "price": 95.53,
+          "reason": "pullback",
+          "side": "short",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": 70.83800000000001
+        },
+        {
+          "kind": "stop",
+          "price": 96.12,
+          "reason": "initial",
+          "side": "short",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "stop",
+          "price": 95.39999999999999,
+          "reason": "breakeven",
+          "side": "short",
+          "time": 1704071219999,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "funding",
+          "price": 95.14999999999999,
+          "reason": "funding",
+          "side": "short",
+          "time": 1704071220001,
+          "tradeId": 1,
+          "value": -6.7402357
+        },
+        {
+          "kind": "exit",
+          "price": 94.17,
+          "reason": "end-range",
+          "side": "short",
+          "time": 1704071399999,
+          "tradeId": 1,
+          "value": 96.36093139999997
+        }
+      ],
+      "indicators": [],
+      "trades": [
+        {
+          "entryPrice": 95.53,
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 95.75,
+            "price": 95.55,
+            "time": 1704071159999
+          },
+          "entryTime": 1704071160000,
+          "exitPrice": 94.17,
+          "exitTime": 1704071399999,
+          "fees": 6.718984300000001,
+          "funding": -6.7402357,
+          "grossPnl": 96.33967999999997,
+          "id": 1,
+          "initialStop": 96.12,
+          "maeR": 0.11864406779659792,
+          "mfeR": 2.4237288135593196,
+          "netPnl": 96.36093139999997,
+          "quantity": 70.83800000000001,
+          "rMultiple": 2.305593220338969,
+          "reason": "end-range",
+          "risk": 41.794420000000244,
+          "side": "short",
+          "slippageAndRounding": 2.8335200000004432
+        }
+      ]
+    }
+  },
+  {
+    "case": "daily-loss-true",
+    "metrics": {
+      "context": { "allowed": 0, "evaluated": 0, "reasons": {}, "rejected": 0 },
+      "evaluation": {
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "averageLoss": null,
+        "averageWin": 25.48751239999996,
+        "bestDayReturn": null,
+        "bestTradeShare": 1.0,
+        "calmar": null,
+        "conventions": {
+          "annualizationDays": 365,
+          "calendar": "UTC",
+          "downsideTarget": 0.0,
+          "drawdownSampling": "minute-mark-and-fills",
+          "minDailyObservations": 30,
+          "riskFreeRate": 0.0,
+          "variance": "sample"
+        },
+        "costs": {
+          "costToGrossProfit": 0.10050000000001422,
+          "fees": 6.754403300000001,
+          "funding": -6.7402357,
+          "grossBeforeCosts": 28.335200000000405,
+          "netPnl": 25.48751239999996,
+          "slippageAndRounding": 2.8335200000004432,
+          "total": 2.8476876000004436
+        },
+        "currentDrawdown": 0.0,
+        "currentDrawdownDurationMs": 0,
+        "daily": [
+          {
+            "complete": false,
+            "drawdown": 0.0,
+            "equity": 10025.4875124,
+            "from": 1704070800000,
+            "maxIntradayDrawdown": -0.0022509837069999428,
+            "returnPct": 0.00254875123999998,
+            "to": 1704071400000
+          }
+        ],
+        "dailyMaxDrawdown": 0.0,
+        "dailySharpe": null,
+        "durationMs": 600000,
+        "exitReasons": { "daily-loss": 1 },
+        "exposurePct": 0.2,
+        "grossPnl": 25.50167999999996,
+        "longNetPnl": 0.0,
+        "maxDrawdownDurationMs": 60001,
+        "meanHoldHours": 0.016666666666666666,
+        "monthly": [
+          {
+            "complete": false,
+            "equity": 10025.4875124,
+            "from": 1704070800000,
+            "returnPct": 0.00254875123999998,
+            "to": 1704071400000
+          }
+        ],
+        "netExpectancy": 25.48751239999996,
+        "payoffRatio": null,
+        "positiveDays": 0,
+        "shortNetPnl": 25.48751239999996,
+        "sortino": null,
+        "totalDays": 0,
+        "turnover": 1.35088066,
+        "version": 2,
+        "withoutBestTrade": 0.0,
+        "worstDayReturn": null
+      },
+      "fees": 6.754403300000001,
+      "finalEquity": 10025.4875124,
+      "funding": -6.7402357,
+      "fundingEvents": 1,
+      "longestLossStreak": 0,
+      "losses": 0,
+      "maxDrawdown": -0.0022509837069999428,
+      "meanR": 0.6098305084745718,
+      "profitFactor": null,
+      "rejectedSignals": 0,
+      "rows": 70,
+      "totalReturn": 0.00254875123999998,
+      "trades": 1,
+      "winRate": 1.0,
+      "wins": 1
+    },
+    "output": {
+      "contexts": [],
+      "equity": [
+        { "cash": 10000.0, "drawdown": 0.0, "equity": 10000.0, "time": 1704070800000 },
+        { "cash": 10025.4875124, "drawdown": 0.0, "equity": 10025.4875124, "time": 1704071220000 },
+        { "cash": 10025.4875124, "drawdown": 0.0, "equity": 10025.4875124, "time": 1704071399999 }
+      ],
+      "events": [
+        {
+          "kind": "impulse",
+          "price": 97.75,
+          "reason": "impulse",
+          "side": "short",
+          "time": 1704070859999,
+          "tradeId": null,
+          "value": 5.473684210526508
+        },
+        {
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 95.75,
+            "price": 95.55,
+            "time": 1704071159999
+          },
+          "kind": "signal",
+          "price": 95.55,
+          "reason": "pullback",
+          "side": "short",
+          "time": 1704071159999,
+          "tradeId": null,
+          "value": 96.6
+        },
+        {
+          "kind": "entry",
+          "price": 95.53,
+          "reason": "pullback",
+          "side": "short",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": 70.83800000000001
+        },
+        {
+          "kind": "stop",
+          "price": 96.12,
+          "reason": "initial",
+          "side": "short",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "funding",
+          "price": 95.14999999999999,
+          "reason": "funding",
+          "side": "short",
+          "time": 1704071220001,
+          "tradeId": 1,
+          "value": -6.7402357
+        },
+        {
+          "kind": "exit",
+          "price": 95.17,
+          "reason": "daily-loss",
+          "side": "short",
+          "time": 1704071220000,
+          "tradeId": 1,
+          "value": 25.48751239999996
+        }
+      ],
+      "indicators": [],
+      "trades": [
+        {
+          "entryPrice": 95.53,
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 95.75,
+            "price": 95.55,
+            "time": 1704071159999
+          },
+          "entryTime": 1704071160000,
+          "exitPrice": 95.17,
+          "exitTime": 1704071220000,
+          "fees": 6.754403300000001,
+          "funding": -6.7402357,
+          "grossPnl": 25.50167999999996,
+          "id": 1,
+          "initialStop": 96.12,
+          "maeR": 0.5423728813559175,
+          "mfeR": 0.05084745762712028,
+          "netPnl": 25.48751239999996,
+          "quantity": 70.83800000000001,
+          "rMultiple": 0.6098305084745718,
+          "reason": "daily-loss",
+          "risk": 41.794420000000244,
+          "side": "short",
+          "slippageAndRounding": 2.8335200000004432
+        }
+      ]
+    }
+  },
+  {
+    "case": "daily-close-true",
+    "metrics": {
+      "context": { "allowed": 0, "evaluated": 0, "reasons": {}, "rejected": 0 },
+      "evaluation": {
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "averageLoss": null,
+        "averageWin": 60.924221899999964,
+        "bestDayReturn": null,
+        "bestTradeShare": 1.0,
+        "calmar": null,
+        "conventions": {
+          "annualizationDays": 365,
+          "calendar": "UTC",
+          "downsideTarget": 0.0,
+          "drawdownSampling": "minute-mark-and-fills",
+          "minDailyObservations": 30,
+          "riskFreeRate": 0.0,
+          "variance": "sample"
+        },
+        "costs": {
+          "costToGrossProfit": 0.04438888888889557,
+          "fees": 6.736693800000001,
+          "funding": -6.7402357,
+          "grossBeforeCosts": 63.75420000000041,
+          "netPnl": 60.924221899999964,
+          "slippageAndRounding": 2.8335200000004432,
+          "total": 2.829978100000444
+        },
+        "currentDrawdown": -0.0004738745965516822,
+        "currentDrawdownDurationMs": 120000,
+        "daily": [
+          {
+            "complete": false,
+            "drawdown": 0.0,
+            "equity": 10060.924221899999,
+            "from": 1704070800000,
+            "maxIntradayDrawdown": -0.0004738745965516822,
+            "returnPct": 0.006092422189999835,
+            "to": 1704071400000
+          }
+        ],
+        "dailyMaxDrawdown": 0.0,
+        "dailySharpe": null,
+        "durationMs": 600000,
+        "exitReasons": { "daily-close": 1 },
+        "exposurePct": 0.3,
+        "grossPnl": 60.92067999999997,
+        "longNetPnl": 0.0,
+        "maxDrawdownDurationMs": 120000,
+        "meanHoldHours": 0.03333333333333333,
+        "monthly": [
+          {
+            "complete": false,
+            "equity": 10060.924221899999,
+            "from": 1704070800000,
+            "returnPct": 0.006092422189999835,
+            "to": 1704071400000
+          }
+        ],
+        "netExpectancy": 60.924221899999964,
+        "payoffRatio": null,
+        "positiveDays": 0,
+        "shortNetPnl": 60.924221899999964,
+        "sortino": null,
+        "totalDays": 0,
+        "turnover": 1.3473387600000002,
+        "version": 2,
+        "withoutBestTrade": 0.0,
+        "worstDayReturn": null
+      },
+      "fees": 6.736693800000001,
+      "finalEquity": 10060.924221899999,
+      "funding": -6.7402357,
+      "fundingEvents": 1,
+      "longestLossStreak": 0,
+      "losses": 0,
+      "maxDrawdown": -0.0004738745965516822,
+      "meanR": 1.4577118644067704,
+      "profitFactor": null,
+      "rejectedSignals": 0,
+      "rows": 70,
+      "totalReturn": 0.006092422189999835,
+      "trades": 1,
+      "winRate": 1.0,
+      "wins": 1
+    },
+    "output": {
+      "contexts": [],
+      "equity": [
+        { "cash": 10000.0, "drawdown": 0.0, "equity": 10000.0, "time": 1704070800000 },
+        {
+          "cash": 10060.924221899999,
+          "drawdown": -0.0004738745965516822,
+          "equity": 10060.924221899999,
+          "time": 1704071280000
+        },
+        {
+          "cash": 10060.924221899999,
+          "drawdown": -0.0004738745965516822,
+          "equity": 10060.924221899999,
+          "time": 1704071399999
+        }
+      ],
+      "events": [
+        {
+          "kind": "impulse",
+          "price": 97.75,
+          "reason": "impulse",
+          "side": "short",
+          "time": 1704070859999,
+          "tradeId": null,
+          "value": 5.473684210526508
+        },
+        {
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 95.75,
+            "price": 95.55,
+            "time": 1704071159999
+          },
+          "kind": "signal",
+          "price": 95.55,
+          "reason": "pullback",
+          "side": "short",
+          "time": 1704071159999,
+          "tradeId": null,
+          "value": 96.6
+        },
+        {
+          "kind": "entry",
+          "price": 95.53,
+          "reason": "pullback",
+          "side": "short",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": 70.83800000000001
+        },
+        {
+          "kind": "stop",
+          "price": 96.12,
+          "reason": "initial",
+          "side": "short",
+          "time": 1704071160000,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "funding",
+          "price": 95.14999999999999,
+          "reason": "funding",
+          "side": "short",
+          "time": 1704071220001,
+          "tradeId": 1,
+          "value": -6.7402357
+        },
+        {
+          "kind": "exit",
+          "price": 94.67,
+          "reason": "daily-close",
+          "side": "short",
+          "time": 1704071280000,
+          "tradeId": 1,
+          "value": 60.924221899999964
+        }
+      ],
+      "indicators": [],
+      "trades": [
+        {
+          "entryPrice": 95.53,
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 95.75,
+            "price": 95.55,
+            "time": 1704071159999
+          },
+          "entryTime": 1704071160000,
+          "exitPrice": 94.67,
+          "exitTime": 1704071280000,
+          "fees": 6.736693800000001,
+          "funding": -6.7402357,
+          "grossPnl": 60.92067999999997,
+          "id": 1,
+          "initialStop": 96.12,
+          "maeR": 0.11864406779659792,
+          "mfeR": 1.5762711864406804,
+          "netPnl": 60.924221899999964,
+          "quantity": 70.83800000000001,
+          "rMultiple": 1.4577118644067704,
+          "reason": "daily-close",
+          "risk": 41.794420000000244,
+          "side": "short",
+          "slippageAndRounding": 2.8335200000004432
+        }
+      ]
+    }
+  },
+  {
+    "case": "five-minute-true",
+    "metrics": {
+      "context": { "allowed": 0, "evaluated": 0, "reasons": {}, "rejected": 0 },
+      "evaluation": {
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "averageLoss": null,
+        "averageWin": 89.62069569999997,
+        "bestDayReturn": null,
+        "bestTradeShare": 1.0,
+        "calmar": null,
+        "conventions": {
+          "annualizationDays": 365,
+          "calendar": "UTC",
+          "downsideTarget": 0.0,
+          "drawdownSampling": "minute-mark-and-fills",
+          "minDailyObservations": 30,
+          "riskFreeRate": 0.0,
+          "variance": "sample"
+        },
+        "costs": {
+          "costToGrossProfit": 0.09632142857143262,
+          "fees": 6.718984300000001,
+          "funding": 0.0,
+          "grossBeforeCosts": 99.17320000000042,
+          "netPnl": 89.62069569999997,
+          "slippageAndRounding": 2.8335200000004432,
+          "total": 9.552504300000443
+        },
+        "currentDrawdown": -0.00019012433730880574,
+        "currentDrawdownDurationMs": 60000,
+        "daily": [
+          {
+            "complete": false,
+            "drawdown": 0.0,
+            "equity": 10089.6206957,
+            "from": 1704085200000,
+            "maxIntradayDrawdown": -0.00019012433730880574,
+            "returnPct": 0.008962069569999898,
+            "to": 1704088200000
+          }
+        ],
+        "dailyMaxDrawdown": 0.0,
+        "dailySharpe": null,
+        "durationMs": 3000000,
+        "exitReasons": { "end-range": 1 },
+        "exposurePct": 0.4,
+        "grossPnl": 96.33967999999997,
+        "longNetPnl": 0.0,
+        "maxDrawdownDurationMs": 60000,
+        "meanHoldHours": 0.33333305555555554,
+        "monthly": [
+          {
+            "complete": false,
+            "equity": 10089.6206957,
+            "from": 1704085200000,
+            "returnPct": 0.008962069569999898,
+            "to": 1704088200000
+          }
+        ],
+        "netExpectancy": 89.62069569999997,
+        "payoffRatio": null,
+        "positiveDays": 0,
+        "shortNetPnl": 89.62069569999997,
+        "sortino": null,
+        "totalDays": 0,
+        "turnover": 1.34379686,
+        "version": 2,
+        "withoutBestTrade": 0.0,
+        "worstDayReturn": null
+      },
+      "fees": 6.718984300000001,
+      "finalEquity": 10089.6206957,
+      "funding": 0.0,
+      "fundingEvents": 0,
+      "longestLossStreak": 0,
+      "losses": 0,
+      "maxDrawdown": -0.00019012433730880574,
+      "meanR": 2.144322033898292,
+      "profitFactor": null,
+      "rejectedSignals": 0,
+      "rows": 350,
+      "totalReturn": 0.008962069569999898,
+      "trades": 1,
+      "winRate": 1.0,
+      "wins": 1
+    },
+    "output": {
+      "contexts": [],
+      "equity": [
+        { "cash": 10000.0, "drawdown": 0.0, "equity": 10000.0, "time": 1704085200000 },
+        {
+          "cash": 10089.6206957,
+          "drawdown": -0.00019012433730880574,
+          "equity": 10089.6206957,
+          "time": 1704088199999
+        }
+      ],
+      "events": [
+        {
+          "kind": "impulse",
+          "price": 97.75,
+          "reason": "impulse",
+          "side": "short",
+          "time": 1704085499999,
+          "tradeId": null,
+          "value": 5.473684210526508
+        },
+        {
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 95.75,
+            "price": 95.55,
+            "time": 1704086999999
+          },
+          "kind": "signal",
+          "price": 95.55,
+          "reason": "pullback",
+          "side": "short",
+          "time": 1704086999999,
+          "tradeId": null,
+          "value": 96.6
+        },
+        {
+          "kind": "entry",
+          "price": 95.53,
+          "reason": "pullback",
+          "side": "short",
+          "time": 1704087000000,
+          "tradeId": 1,
+          "value": 70.83800000000001
+        },
+        {
+          "kind": "stop",
+          "price": 96.12,
+          "reason": "initial",
+          "side": "short",
+          "time": 1704087000000,
+          "tradeId": 1,
+          "value": null
+        },
+        {
+          "kind": "exit",
+          "price": 94.17,
+          "reason": "end-range",
+          "side": "short",
+          "time": 1704088199999,
+          "tradeId": 1,
+          "value": 89.62069569999997
+        }
+      ],
+      "indicators": [],
+      "trades": [
+        {
+          "entryPrice": 95.53,
+          "entrySignal": {
+            "atr": 0.39075788733860334,
+            "boundary": 95.75,
+            "price": 95.55,
+            "time": 1704086999999
+          },
+          "entryTime": 1704087000000,
+          "exitPrice": 94.17,
+          "exitTime": 1704088199999,
+          "fees": 6.718984300000001,
+          "funding": 0.0,
+          "grossPnl": 96.33967999999997,
+          "id": 1,
+          "initialStop": 96.12,
+          "maeR": 0.11864406779659792,
+          "mfeR": 2.4237288135593196,
+          "netPnl": 89.62069569999997,
+          "quantity": 70.83800000000001,
+          "rMultiple": 2.144322033898292,
+          "reason": "end-range",
+          "risk": 41.794420000000244,
+          "side": "short",
+          "slippageAndRounding": 2.8335200000004432
+        }
+      ]
+    }
+  }
+]

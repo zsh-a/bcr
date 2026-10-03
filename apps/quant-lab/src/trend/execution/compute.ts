@@ -18,6 +18,7 @@ import { TREND_EXECUTOR_VERSION } from "./versions";
 import { trendReplayWindow } from "./window";
 
 export interface TrendEngine {
+  engine_version(): string;
   load_partition(candles: string, marks: string): void;
   advance(rows: number): boolean;
   processed_rows(): number;
@@ -109,6 +110,12 @@ export function trendHandler(io: ArtifactIO, factory: Factory = create) {
     };
     let published = false;
     try {
+      const engineVersion =
+        typeof engine.engine_version === "function" ? engine.engine_version() : undefined;
+      if (engineVersion !== TREND_EXECUTOR_VERSION)
+        throw new Error(
+          `回测引擎版本不一致（期望 ${TREND_EXECUTOR_VERSION}，实际 ${engineVersion ?? "未知"}）；请更新应用后重试`,
+        );
       for (const p of manifest.partitions) {
         throwIfAborted(ctx);
         if (p.to <= window.warmupStart || p.from >= window.endTime) continue;
@@ -130,7 +137,7 @@ export function trendHandler(io: ArtifactIO, factory: Factory = create) {
       throwIfAborted(ctx);
       const result: TrendResult = {
         version: 1,
-        engine: TREND_EXECUTOR_VERSION,
+        engine: engineVersion,
         window,
         metrics,
         equity,

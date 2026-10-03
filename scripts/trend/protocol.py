@@ -1,13 +1,27 @@
 """Frozen-plan validation and deterministic strategy/capital expansion."""
 import datetime as dt
+from dataclasses import dataclass, replace
 import math
 import re
 from pathlib import Path
+from typing import Literal
 
 from warmup import is_development, warmup_days
 
 DAY = 86400000
 ROOT = Path(__file__).resolve().parents[2]
+REPLAY_VERSION = "trend-native-replay-3"
+
+
+@dataclass(frozen=True)
+class Candidate:
+    id: str
+    strategy: dict
+    cost_scenario: Literal["base", "stress"] = "base"
+
+    @classmethod
+    def from_definition(cls, definition):
+        return cls(definition["id"], {k: v for k, v in definition.items() if k != "id"})
 
 
 def timestamp(date):
@@ -23,15 +37,18 @@ def sleeve_capital(plan):
     return plan["initialCapital"] / len(plan["symbols"]) if mode == "total-account-equal-sleeves" else plan["initialCapital"]
 
 
-def config(plan, symbol, candidate, stress=False):
+def config(plan, symbol, candidate: Candidate):
     version = plan.get("configVersion", 4)
     if version not in [4, 5]:
         raise ValueError("research configVersion must be 4 or 5")
-    if version == 4 and "maxCostAtr" in candidate:
+    if version == 4 and "maxCostAtr" in candidate.strategy:
         raise ValueError("independent maxCostAtr requires configVersion 5")
+    if candidate.cost_scenario not in ["base", "stress"]:
+        raise ValueError("unknown candidate cost scenario")
+    stress = candidate.cost_scenario == "stress"
     return {"version": version, "strategy": {"entry": "breakout", "direction": "both", "breakoutBars": 20,
             **({"maxCostAtr": 0} if version == 5 else {}),
-            **{k: v for k, v in candidate.items() if k != "id"}},
+            **candidate.strategy},
             "execution": {**plan["symbols"][symbol], "initialCapital": sleeve_capital(plan),
                 "feeBps": plan["costs"]["stressFeeBps" if stress else "feeBps"],
                 "slippageBps": plan["costs"]["stressSlippageBps" if stress else "slippageBps"]},
@@ -39,25 +56,39 @@ def config(plan, symbol, candidate, stress=False):
 
 
 def window_candidates(plan, window, selection=None):
-    candidates = list(plan["candidates"])
-    if len({c["id"] for c in candidates}) != len(candidates):
+    candidates = [Candidate.from_definition(c) for c in plan["candidates"]]
+    if len({c.id for c in candidates}) != len(candidates):
         raise ValueError("candidate ids must be unique")
     if is_development(window):
         return candidates
     if selection is None:
         raise ValueError("non-development windows require a frozen selection")
-    selected = next(c for c in candidates if c["id"] == selection["id"])
-    candidates += [{**selected, "id": selected["id"] + "-stress"}]
+    selected = next(c for c in candidates if c.id == selection["id"])
+    candidates += [replace(selected, id=selected.id + "-stress", cost_scenario="stress")]
     baseline = plan.get("baseline")
-    if baseline and baseline != selected["id"]:
-        baseline_config = next(c for c in plan["candidates"] if c["id"] == baseline)
-        candidates += [{**baseline_config, "id": baseline + "-stress"}]
-    candidates += [{**selected, **{k: v for k, v in sensitivity.items() if k != "id"},
-                    "id": selected["id"] + "-" + sensitivity["id"]}
+    if baseline and baseline != selected.id:
+        baseline_config = next(c for c in candidates if c.id == baseline)
+        candidates += [replace(baseline_config, id=baseline + "-stress", cost_scenario="stress")]
+    candidates += [Candidate(selected.id + "-" + sensitivity["id"],
+                            {**selected.strategy, **{k: v for k, v in sensitivity.items() if k != "id"}})
                    for sensitivity in plan.get("sensitivity", [])]
-    if len({c["id"] for c in candidates}) != len(candidates):
+    if len({c.id for c in candidates}) != len(candidates):
         raise ValueError("generated stress/sensitivity ids collide with declared candidates")
     return candidates
+
+
+def recorded_candidates(candidates, replay_version):
+    """Historical evidence retains its recorded pre-v3 name-based cost rule."""
+    if replay_version == REPLAY_VERSION:
+        return candidates
+    if replay_version not in [None, "trend-native-replay-1", "trend-native-replay-2"]:
+        raise ValueError("unsupported recorded replay protocol")
+    return [replace(c, cost_scenario="stress" if c.id.endswith("-stress") else "base")
+            for c in candidates]
+
+
+def native_requests(plan, symbol, candidates):
+    return [{"id": c.id, "config": config(plan, symbol, c)} for c in candidates]
 
 
 def development_window(plan):
@@ -80,8 +111,8 @@ def validate_plan(plan):
     names([window["id"] for window in plan["windows"]], "window ids")
     if len(plan["candidates"]) > 16:
         raise ValueError("native replay supports at most 16 candidates per batch")
-    if any(candidate["id"].endswith("-stress") for candidate in plan["candidates"]):
-        raise ValueError("the -stress suffix is reserved for generated cost scenarios")
+    if plan.get("sensitivity"):
+        names([value["id"] for value in plan["sensitivity"]], "sensitivity ids")
     if plan.get("baseline") is not None and plan["baseline"] not in {c["id"] for c in plan["candidates"]}:
         raise ValueError("baseline must name a declared candidate")
     development_window(plan)
@@ -98,7 +129,7 @@ def validate_plan(plan):
     for candidate in plan["candidates"]:
         warmup_days(candidate)
         for symbol in plan["symbols"]:
-            config(plan, symbol, candidate)
+            config(plan, symbol, Candidate.from_definition(candidate))
         for window in plan["windows"]:
             if len(window_candidates(plan, window, {"id": candidate["id"]})) > 16:
                 raise ValueError("cost/sensitivity expansion exceeds 16 native candidates")

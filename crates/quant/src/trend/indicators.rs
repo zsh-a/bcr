@@ -1,5 +1,5 @@
 use super::config::{Strategy, ATR_PERIOD, FAST_EMA, SLOW_EMA};
-use super::model::{Bar, DAY, MINUTE};
+use super::model::{Bar, TradingClose, DAY, MINUTE};
 use std::collections::VecDeque;
 
 #[derive(Default)]
@@ -32,7 +32,7 @@ impl CandleBuilder {
     }
 }
 pub struct ClosedCandles {
-    pub trade: Option<Bar>,
+    pub trade: Option<TradingClose>,
     pub ema_updated: bool,
 }
 #[derive(Default)]
@@ -66,6 +66,11 @@ impl Indicators {
                 self.atr = (self.atr * (ATR_PERIOD - 1) as f64 + tr) / ATR_PERIOD as f64;
             }
         }
+        let trade = trade.map(|bar| TradingClose {
+            time: bar.time + config.trade_minutes as u64 * MINUTE - 1,
+            bar,
+            atr: self.atr,
+        });
         if config.filter != "ema" {
             return ClosedCandles {
                 trade,
@@ -78,7 +83,7 @@ impl Indicators {
                 ema_updated: false,
             };
         };
-        let value = candle.close;
+        let value = candle.bar.close;
         if self.ema_count == 0 {
             self.fast = value;
             self.slow = value;

@@ -1,5 +1,5 @@
 {
-  "executor": "trend-continuation-9",
+  "executor": "trend-continuation-11",
   "warmupPolicy": "active-windows-v1",
   "defaultConfig": {
     "version": 5,

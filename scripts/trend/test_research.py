@@ -9,6 +9,8 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
+from daily import daily_equity
+
 
 def module(name):
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(name + ".py"))
@@ -24,7 +26,7 @@ artifacts, evaluation, protocol, report = module("artifacts"), module("evaluatio
 class ResearchTests(unittest.TestCase):
     @staticmethod
     def evaluation_fixture():
-        return json.loads((research.ROOT / "crates/quant/fixtures/trend-evaluation-contract.json").read_text())
+        return json.loads((protocol.ROOT / "crates/quant/fixtures/trend-evaluation-contract.json").read_text())
 
     def v2_batches(self, curves):
         plan = {"initialCapital": len(curves) * 10000, "capitalMode": "total-account-equal-sleeves",
@@ -39,6 +41,8 @@ class ResearchTests(unittest.TestCase):
                        "maxDrawdown": -.25, "meanR": pnl / 100, "fees": 3, "funding": -.5}
             metrics["evaluation"] = {**self.evaluation_fixture()["cases"][0]["expected"], "version": 2,
                 "conventions": dict(evaluation.RUST_CONVENTIONS), "maxDrawdownDurationMs": 7 * protocol.DAY,
+                "daily": [{"from": p["time"] + 1 - protocol.DAY, "to": p["time"] + 1,
+                           "equity": p["equity"], "complete": True} for p in curve],
                 "costs": {"fees": 3, "funding": -.5, "slippageAndRounding": .25, "total": 2.75,
                           "grossBeforeCosts": pnl + 2.75, "netPnl": pnl, "costToGrossProfit": None}}
             batches.append({"symbol": symbol, "results": [{"id": "c", "daily": copy.deepcopy(curve),
@@ -141,16 +145,16 @@ class ResearchTests(unittest.TestCase):
             download.validate_funding(events[:1], start, start + 86400000)
 
     def test_calendar_block_bootstrap_is_seeded_and_does_not_invent_edge(self):
-        self.assertEqual(research.confidence([0.01] * 30, 200, 7, 1), [0.01, 0.01])
-        a = research.confidence([-0.01, 0.01] * 30, 200, 7, 2)
-        self.assertEqual(a, research.confidence([-0.01, 0.01] * 30, 200, 7, 2))
+        self.assertEqual(evaluation.confidence([0.01] * 30, 200, 7, 1), [0.01, 0.01])
+        a = evaluation.confidence([-0.01, 0.01] * 30, 200, 7, 2)
+        self.assertEqual(a, evaluation.confidence([-0.01, 0.01] * 30, 200, 7, 2))
         self.assertLess(a[0], 0)
         self.assertGreater(a[1], 0)
 
     def test_fresh_strategy_config_preserves_symbol_costs_and_direction(self):
-        plan = json.loads((research.ROOT / "research/trend/slow-plan.json").read_text())
+        plan = json.loads((protocol.ROOT / "research/trend/slow-plan.json").read_text())
         candidate = next(c for c in plan["candidates"] if c["id"] == "channel-1d-long")
-        c = research.config(plan, "DOGEUSDT", candidate, True)
+        c = protocol.config(plan, "DOGEUSDT", protocol.Candidate(candidate["id"], {k: v for k, v in candidate.items() if k != "id"}, "stress"))
         self.assertEqual(c["strategy"]["direction"], "long")
         self.assertEqual(c["strategy"]["tradeMinutes"], 1440)
         self.assertEqual(c["execution"]["tickSize"], 0.00001)
@@ -160,20 +164,20 @@ class ResearchTests(unittest.TestCase):
         self.assertNotIn("maxCostAtr", c["strategy"])
 
     def test_v5_cost_gate_and_total_account_use_real_sleeve_capital(self):
-        plan = json.loads((research.ROOT / "research/trend/slow-plan.json").read_text())
+        plan = json.loads((protocol.ROOT / "research/trend/slow-plan.json").read_text())
         plan.update(configVersion=5, capitalMode="total-account-equal-sleeves", initialCapital=60000)
         candidate = {**plan["candidates"][0], "maxCostAtr": .5}
-        c = research.config(plan, "BTCUSDT", candidate)
+        c = protocol.config(plan, "BTCUSDT", protocol.Candidate.from_definition(candidate))
         self.assertEqual(c["version"], 5)
         self.assertEqual(c["strategy"]["maxCostAtr"], .5)
         self.assertEqual(c["execution"]["initialCapital"], 10000)
-        self.assertEqual(research.config(plan, "BTCUSDT", plan["candidates"][0])["strategy"]["maxCostAtr"], 0)
+        self.assertEqual(protocol.config(plan, "BTCUSDT", protocol.Candidate.from_definition(plan["candidates"][0]))["strategy"]["maxCostAtr"], 0)
         plan["configVersion"] = 4
         with self.assertRaisesRegex(ValueError, "configVersion 5"):
-            research.config(plan, "BTCUSDT", candidate)
+            protocol.config(plan, "BTCUSDT", protocol.Candidate.from_definition(candidate))
 
     def test_warmup_matches_active_frontend_windows(self):
-        fixture = json.loads((research.ROOT / "crates/quant/fixtures/trend-contract.json").read_text())
+        fixture = json.loads((protocol.ROOT / "crates/quant/fixtures/trend-contract.json").read_text())
         self.assertEqual(warmup.WARMUP_POLICY, fixture["warmupPolicy"])
         self.assertEqual(warmup.BACKGROUND_MINUTES, {p["minutes"]: p["backgroundMinutes"] for p in fixture["periods"]})
         for case in fixture["warmupCases"]:
@@ -208,11 +212,65 @@ class ResearchTests(unittest.TestCase):
         plan = {"candidates": [{"id": "baseline"}, {"id": "slower"}], "baseline": "baseline",
                 "sensitivity": [{"id": "stop-lower", "stopAtr": 1.5}]}
         window = {"id": "fresh-september"}
-        rows = research.window_candidates(plan, window, {"id": "slower"})
-        self.assertEqual([r["id"] for r in rows], ["baseline", "slower", "slower-stress", "baseline-stress", "slower-stop-lower"])
-        rows = research.window_candidates(plan, window, {"id": "baseline"})
-        self.assertEqual(sum(r["id"] == "baseline-stress" for r in rows), 1)
-        self.assertEqual(len(research.window_candidates(plan, {"id": "development"})), 2)
+        rows = protocol.window_candidates(plan, window, {"id": "slower"})
+        self.assertEqual([r.id for r in rows], ["baseline", "slower", "slower-stress", "baseline-stress", "slower-stop-lower"])
+        rows = protocol.window_candidates(plan, window, {"id": "baseline"})
+        self.assertEqual(sum(r.id == "baseline-stress" for r in rows), 1)
+        self.assertEqual(len(protocol.window_candidates(plan, {"id": "development"})), 2)
+
+    def test_candidate_names_never_choose_current_cost_scenarios(self):
+        plan = json.loads((protocol.ROOT / "research/trend/methods-plan.json").read_text())
+        selected = plan["candidates"][0]["id"]
+        plan["sensitivity"] = [{"id": "stop-stress", "stopAtr": 2.5}]
+        protocol.validate_plan(plan)
+        candidates = protocol.window_candidates(plan, plan["windows"][1], {"id": selected})
+        requests = {row["id"]: row["config"] for row in protocol.native_requests(plan, "BTCUSDT", candidates)}
+        changed = requests[selected + "-stop-stress"]
+        stressed = requests[selected + "-stress"]
+        self.assertEqual(changed["strategy"]["stopAtr"], 2.5)
+        self.assertEqual(changed["execution"]["feeBps"], plan["costs"]["feeBps"])
+        self.assertEqual(changed["execution"]["slippageBps"], plan["costs"]["slippageBps"])
+        self.assertEqual(stressed["execution"]["feeBps"], plan["costs"]["stressFeeBps"])
+        self.assertEqual(stressed["execution"]["slippageBps"], plan["costs"]["stressSlippageBps"])
+        self.assertTrue(all(c.cost_scenario == "base" for c in candidates if c.id != selected + "-stress"))
+        self.assertFalse({"id", "strategy", "costScenario", "cost_scenario"} & changed["strategy"].keys())
+        # A declared name may itself end in -stress. Renaming does not change its execution.
+        original = protocol.Candidate.from_definition(plan["candidates"][0])
+        renamed = protocol.Candidate("named-stress", original.strategy)
+        self.assertEqual(protocol.config(plan, "BTCUSDT", original), protocol.config(plan, "BTCUSDT", renamed))
+        plan["candidates"][0]["id"] = "named-stress"
+        plan["baseline"] = "named-stress"
+        protocol.validate_plan(plan)
+
+    def test_v2_daily_copy_mismatch_fails_audit_and_account_evaluation(self):
+        curve = self.evaluation_fixture()["cases"][2]["daily"]
+        plan, batches = self.v2_batches([curve])
+        batch, row = batches[0], batches[0]["results"][0]
+        window = {"id": "check", "start": "2024-01-01", "end": "2024-01-03"}
+        batch.update(planSha256="plan", window="check", engine="test-engine",
+                     startTime=protocol.timestamp(window["start"]), endTime=protocol.timestamp(window["end"]))
+        row["config"] = {"execution": {"initialCapital": 10000}}
+        requests = [{"id": "c", "config": row["config"]}]
+        original = copy.deepcopy(row)
+        self.assertEqual(daily_equity(row), curve)
+        self.assertIsNot(daily_equity(row), row["daily"])
+        artifacts.validate_batch(batch, requests, window, "A", "plan")
+        for target, field, value in [("compatibility", "equity", 900), ("compatibility", "time", 0),
+                                     ("rust", "equity", 900), ("rust", "from", 0),
+                                     ("rust", "to", 0), ("rust", "complete", False)]:
+            with self.subTest(target=target, field=field):
+                changed = copy.deepcopy(batches)
+                altered = changed[0]["results"][0]
+                points = altered["daily"] if target == "compatibility" else altered["metrics"]["evaluation"]["daily"]
+                points[0][field] = value
+                with self.assertRaisesRegex(ValueError, "daily equity"):
+                    artifacts.validate_batch(changed[0], requests, window, "A", "plan")
+                with self.assertRaisesRegex(ValueError, "daily equity"):
+                    evaluation.summarize(plan, changed, "c")
+        self.assertEqual(row, original)  # Validation never migrates or repairs input evidence.
+        del row["metrics"]["evaluation"]["version"]
+        row["metrics"]["evaluation"]["daily"][0]["equity"] = 900
+        self.assertIs(daily_equity(row), row["daily"])  # Legacy representation stays authoritative.
 
     def test_development_objective_is_explicit_and_qualification_remains_separate(self):
         summaries = [
@@ -223,15 +281,15 @@ class ResearchTests(unittest.TestCase):
         for row in summaries:
             row["symbols"] = [{"metrics": {"trades": 2 if row["id"] == "too-few" else 12}}] * 6
         plan = {"selectionMinTrades": 10}
-        self.assertEqual(research.select_development(plan, summaries)[0]["id"], "high-r")
+        self.assertEqual(evaluation.select_development(plan, summaries)[0]["id"], "high-r")
         plan["selectionObjective"] = "dailySharpe"
-        best, objective, qualified = research.select_development(plan, summaries)
+        best, objective, qualified = evaluation.select_development(plan, summaries)
         self.assertEqual(best["id"], "high-sharpe")
         self.assertEqual(objective, "dailySharpe")
         self.assertFalse(qualified)
         plan["selectionObjective"] = "holdoutReturn"
         with self.assertRaisesRegex(ValueError, "selectionObjective"):
-            research.select_development(plan, summaries)
+            evaluation.select_development(plan, summaries)
 
     def test_total_account_cash_reconciles_without_multiplying_returns(self):
         plan = {"initialCapital": 2000, "capitalMode": "total-account-equal-sleeves",
@@ -239,64 +297,64 @@ class ResearchTests(unittest.TestCase):
         batches = []
         for symbol, points, pnl, mean_r in [("A", [1020, 1060], 60, 2), ("B", [990, 960], -40, -1)]:
             batches.append({"symbol": symbol, "results": [{"id": "c", "daily": [
-                {"time": (i + 1) * research.DAY - 1, "equity": p} for i, p in enumerate(points)],
+                {"time": (i + 1) * protocol.DAY - 1, "equity": p} for i, p in enumerate(points)],
                 "trades": [{"netPnl": pnl, "rMultiple": mean_r, "side": "long"}],
                 "metrics": {"totalReturn": pnl / 1000, "maxDrawdown": min(0, pnl / 1000),
                             "meanR": mean_r, "fees": 1, "funding": .5}}]})
-        summary = research.summarize(plan, batches, "c", bootstrap=False)
+        summary = evaluation.summarize(plan, batches, "c", bootstrap=False)
         self.assertEqual(summary["accountInitialCapital"], 2000)
         self.assertEqual(summary["accountFinalEquity"], 2020)
         self.assertEqual(summary["accountNetPnl"], 20)
         self.assertAlmostEqual(summary["equalSleeveReturn"], .01)
         self.assertAlmostEqual(summary["feesToInitialCapital"], .001)
-        legacy = research.summarize({**plan, "initialCapital": 1000, "capitalMode": "independent-equal-sleeves"}, batches, "c", bootstrap=False)
+        legacy = evaluation.summarize({**plan, "initialCapital": 1000, "capitalMode": "independent-equal-sleeves"}, batches, "c", bootstrap=False)
         self.assertEqual(legacy["equalSleeveReturn"], summary["equalSleeveReturn"])
         batches[0]["results"][0]["trades"][0]["netPnl"] += 1
         with self.assertRaisesRegex(ValueError, "reconcile"):
-            research.summarize(plan, batches, "c", bootstrap=False)
+            evaluation.summarize(plan, batches, "c", bootstrap=False)
 
     def test_replay_cache_binds_execution_inputs_but_not_evaluation_or_presentation(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
-            plan = json.loads((research.ROOT / "research/trend/slow-plan.json").read_text())
+            plan = json.loads((protocol.ROOT / "research/trend/slow-plan.json").read_text())
             args = SimpleNamespace(output=folder, manifest=folder / "manifest.json", plan=folder / "plan.json", binary=folder / "trend")
-            research.write(args.manifest, {"version": 1})
-            research.write(args.plan, plan)
+            artifacts.write(args.manifest, {"version": 1})
+            artifacts.write(args.plan, plan)
             window = {"id": "development", "start": "2024-01-01", "end": "2024-01-03"}
             candidate = plan["candidates"][0]
             def replay(command, check):
                 start, end = int(command[4]), int(command[5])
-                research.write(Path(command[6]), {"symbol": "BTCUSDT", "window": window["id"],
-                    "startTime": start, "endTime": end, "engine": "test-engine", "planSha256": research.sha(args.plan),
-                    "results": [{"id": candidate["id"], "config": research.config(plan, "BTCUSDT", candidate),
+                artifacts.write(Path(command[6]), {"symbol": "BTCUSDT", "window": window["id"],
+                    "startTime": start, "endTime": end, "engine": "test-engine", "planSha256": artifacts.sha(args.plan),
+                    "results": [{"id": candidate["id"], "config": protocol.config(plan, "BTCUSDT", protocol.Candidate.from_definition(candidate)),
                     "metrics": {"finalEquity": 10000}, "trades": [],
-                    "warmupStart": start - warmup.warmup_days(candidate) * research.DAY,
-                    "daily": [{"time": t, "equity": 10000} for t in range(start + research.DAY - 1, end, research.DAY)]}]})
+                    "warmupStart": start - warmup.warmup_days(candidate) * protocol.DAY,
+                    "daily": [{"time": t, "equity": 10000} for t in range(start + protocol.DAY - 1, end, protocol.DAY)]}]})
             with patch.object(research.subprocess, "run", side_effect=replay) as call:
-                research.run_symbol(args, plan, window, "BTCUSDT", [candidate], "binary-a")
-                research.run_symbol(args, plan, window, "BTCUSDT", [candidate], "binary-a")
+                research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], "binary-a")
+                research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], "binary-a")
                 self.assertEqual(call.call_count, 1)
                 with patch.object(research, "evaluation_fingerprint", return_value="changed-accounting"):
-                    research.run_symbol(args, plan, window, "BTCUSDT", [candidate], "binary-a")
+                    research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], "binary-a")
                 self.assertEqual(call.call_count, 1)
                 with patch.object(research, "REPLAY_VERSION", "changed-execution-protocol"):
-                    research.run_symbol(args, plan, window, "BTCUSDT", [candidate], "binary-a")
+                    research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], "binary-a")
                 self.assertEqual(call.call_count, 2)
-                research.write(args.manifest, {"version": 2})
-                research.run_symbol(args, plan, window, "BTCUSDT", [candidate], "binary-a")
+                artifacts.write(args.manifest, {"version": 2})
+                research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], "binary-a")
                 self.assertEqual(call.call_count, 3)
-                research.write(args.plan, {**plan, "description": "new frozen protocol"})
-                research.run_symbol(args, plan, window, "BTCUSDT", [candidate], "binary-a")
+                artifacts.write(args.plan, {**plan, "description": "new frozen protocol"})
+                research.run_symbol(args, plan, window, "BTCUSDT", [protocol.Candidate.from_definition(candidate)], "binary-a")
                 self.assertEqual(call.call_count, 4)
 
     def test_frozen_evidence_and_run_destinations_cannot_be_written(self):
         for path in ["tmp/trend-methods", "tmp/trend-slow/development/BTCUSDT.json",
                      "research/trend/results.json", "research/trend/methods/REPORT.md"]:
             with self.subTest(path=path), self.assertRaisesRegex(ValueError, "read-only"):
-                artifacts.ensure_writable(research.ROOT / path)
+                artifacts.ensure_writable(protocol.ROOT / path)
         with self.assertRaisesRegex(ValueError, "read-only"):
-            artifacts.ensure_writable(research.ROOT / "research/trend", directory=True)
-        artifacts.ensure_writable(research.ROOT / "tmp/new-independent-study", directory=True)
+            artifacts.ensure_writable(protocol.ROOT / "research/trend", directory=True)
+        artifacts.ensure_writable(protocol.ROOT / "tmp/new-independent-study", directory=True)
         self.assertEqual(artifacts.verify_frozen(), 11)
 
     def test_content_addressed_artifacts_are_reused_and_tampering_fails(self):
@@ -346,10 +404,10 @@ class ResearchTests(unittest.TestCase):
                     download.archive(cache, "BTCUSDT", "klines", "2024-01")
             self.assertEqual(source.read_bytes(), b"frozen source bytes")
 
-    def make_evidence(self, folder):
-        plan = json.loads((research.ROOT / "research/trend/methods-plan.json").read_text())
+    def make_evidence(self, folder, *, sensitivity=None, replay_version=None):
+        plan = json.loads((protocol.ROOT / "research/trend/methods-plan.json").read_text())
         plan.update(initialCapital=2400, symbols={"AAAUSDT": plan["symbols"]["BTCUSDT"], "BBBUSDT": plan["symbols"]["ETHUSDT"]},
-                    candidates=[plan["candidates"][0]], sensitivity=[],
+                    candidates=[plan["candidates"][0]], sensitivity=sensitivity or [],
                     bootstrap={"samples": 50, "blockDays": 2, "seed": 13},
                     windows=[{"id": "training", "role": "development", "start": "2024-01-01", "end": "2024-01-03"},
                              {"id": "later-custom-window", "role": "diagnostic", "start": "2025-06-01", "end": "2025-06-04"}])
@@ -360,13 +418,15 @@ class ResearchTests(unittest.TestCase):
                                       "symbols": {symbol: {"archives": [], "fundingSha256": "funding-identity"} for symbol in plan["symbols"]}})
         selection = {"id": plan["baseline"], "binarySha256": "historical-binary", "runnerSha256": "historical-source", "developmentQualified": True,
                      "planSha256": plan_hash, "manifestSha256": artifacts.sha(manifest_path)}
+        if replay_version is not None:
+            selection["replayVersion"] = replay_version
         for window in plan["windows"]:
             start, end = protocol.timestamp(window["start"]), protocol.timestamp(window["end"])
             count = (end - start) // protocol.DAY
             batches = []
             for symbol, gain in [("AAAUSDT", 12), ("BBBUSDT", -6)]:
                 candidates = protocol.window_candidates(plan, window, selection)
-                configs = [{"id": c["id"], "config": protocol.config(plan, symbol, c, c["id"].endswith("-stress"))} for c in candidates]
+                configs = protocol.native_requests(plan, symbol, protocol.recorded_candidates(candidates, replay_version))
                 rows = [{"id": c["id"], "config": c["config"], "warmupStart": start - warmup.warmup_days(c["config"]["strategy"]) * protocol.DAY,
                          "daily": [{"time": start + (i + 1) * protocol.DAY - 1, "equity": 1200 + gain * (i + 1) / count} for i in range(count)],
                          "trades": [{"netPnl": gain, "rMultiple": gain / 6, "side": "long"}],
@@ -382,13 +442,33 @@ class ResearchTests(unittest.TestCase):
                 artifacts.write(path.with_suffix(".receipt.json"), {"resultSha256": artifacts.sha(path),
                     "configsSha256": artifacts.sha(config_path), "binarySha256": selection["binarySha256"],
                     "runnerSha256": selection["runnerSha256"], "manifestSha256": selection["manifestSha256"],
-                    "planSha256": plan_hash, "window": window})
+                    "planSha256": plan_hash, "window": window,
+                    **({"replayVersion": replay_version} if replay_version is not None else {})})
                 batches.append(batch)
             if protocol.is_development(window):
                 artifacts.write(run / "training-summary.json", [evaluation.summarize(plan, batches, plan["baseline"])])
                 selection["developmentSha256"] = artifacts.sha(run / "training-summary.json")
         artifacts.write(run / "selection.json", selection)
         return plan_path, manifest_path, run
+
+    def test_recorded_cost_protocol_survives_new_candidate_expansion(self):
+        for version in [None, "trend-native-replay-2", protocol.REPLAY_VERSION]:
+            with self.subTest(version=version), tempfile.TemporaryDirectory() as tmp:
+                paths = self.make_evidence(Path(tmp), sensitivity=[{"id": "stop-stress", "stopAtr": 2.5}], replay_version=version)
+                evidence = artifacts.load_evidence(*paths)
+                window = evidence["plan"]["windows"][1]
+                batches, _ = artifacts.audit_window(evidence, window)
+                selected = evidence["selection"]["id"]
+                candidate_id = selected + "-stop-stress"
+                cost_key = "feeBps" if version == protocol.REPLAY_VERSION else "stressFeeBps"
+                changed = next(row for row in batches[0]["results"] if row["id"] == candidate_id)
+                self.assertEqual(changed["config"]["execution"]["feeBps"], evidence["plan"]["costs"][cost_key])
+                before = artifacts.sha(paths[2] / window["id"] / "AAAUSDT.json")
+                bundle, _ = report.build_bundle(evidence)
+                summary = next(row for row in bundle["summaries"][window["id"]] if row["id"] == candidate_id)
+                self.assertEqual(summary["costScenario"], "base" if version == protocol.REPLAY_VERSION else "stress")
+                self.assertEqual(summary["strategy"]["stopAtr"], 2.5)
+                self.assertEqual(before, artifacts.sha(paths[2] / window["id"] / "AAAUSDT.json"))
 
     def test_historical_audit_survives_source_refactoring_and_checks_warmup(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -426,6 +506,8 @@ class ResearchTests(unittest.TestCase):
         mixed = self.evaluation_fixture()["cases"][0]["daily"]
         opposite = [{**point, "equity": 20000 - point["equity"]} for point in mixed]
         plan, batches = self.v2_batches([mixed, opposite])
+        for batch in batches:
+            batch["results"].append({**copy.deepcopy(batch["results"][0]), "id": "c-stress"})
         with tempfile.TemporaryDirectory() as tmp:
             evidence = artifacts.load_evidence(*self.make_evidence(Path(tmp)))
             evidence["plan"].update(plan)
@@ -445,7 +527,8 @@ class ResearchTests(unittest.TestCase):
             self.assertIn("不从净值重复扣除", rendered)
             old = copy.deepcopy(batches)
             for batch in old:
-                del batch["results"][0]["metrics"]["evaluation"]
+                for row in batch["results"]:
+                    del row["metrics"]["evaluation"]
             evidence["plan"]["windows"].append({"id": "old-window"})
             with patch.object(report, "audit_window", side_effect=[(batches, []), (old, [])]):
                 with self.assertRaisesRegex(ValueError, "mixed.*versions.*windows"):
@@ -480,7 +563,7 @@ class ResearchTests(unittest.TestCase):
                 artifacts.write(Path(command[6]), source)
             with patch.object(research.subprocess, "run", side_effect=replay):
                 with self.assertRaisesRegex(ValueError, "identity mismatch"):
-                    research.run_symbol(args, plan, plan["windows"][0], "AAAUSDT", plan["candidates"], "new-binary")
+                    research.run_symbol(args, plan, plan["windows"][0], "AAAUSDT", protocol.window_candidates(plan, plan["windows"][0]), "new-binary")
             self.assertFalse((args.output / "training" / "AAAUSDT.json").exists())
             self.assertFalse((args.output / "training" / "AAAUSDT.receipt.json").exists())
 

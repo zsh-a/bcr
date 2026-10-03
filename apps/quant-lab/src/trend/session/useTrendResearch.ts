@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { readJson } from "../../data/io";
 import { canReuseTrendDataset } from "../execution/window";
 import { createTrendSessionState, createTrendSessionStore, type TrendSessionStore } from "./store";
+import { useTrendResult } from "./useTrendResult";
 interface Operation {
   abort: AbortController;
   handle?: TaskHandle;
@@ -33,7 +34,6 @@ export function useTrendResearch() {
   const [error, setError] = useState<string | null>(null),
     [status, setStatus] = useState(""),
     [progress, setProgress] = useState(0);
-  const [result, setResult] = useState<TrendResult | null>(null);
   const operation = useRef<Operation | null>(null);
   useEffect(() => {
     let live = true;
@@ -66,22 +66,8 @@ export function useTrendResearch() {
     if (!ready) return;
     void store.save(saved).catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, [ready, saved, store]);
-  const selected = saved.runs.find((run) => run.id === saved.selected) ?? null;
-  useEffect(() => {
-    let live = true;
-    setResult(null);
-    if (selected)
-      void readJson<TrendResult>(services, selected.resultRef)
-        .then((value) => {
-          if (live) setResult(value);
-        })
-        .catch((e) => {
-          if (live) setError(`读取结果失败：${String(e)}`);
-        });
-    return () => {
-      live = false;
-    };
-  }, [services, selected]);
+  const selected = ready ? (saved.runs.find((run) => run.id === saved.selected) ?? null) : null;
+  const result = useTrendResult(services.artifacts, selected);
   const run = async (refresh = false) => {
     if (!ready || operation.current) return;
     try {
@@ -230,7 +216,9 @@ export function useTrendResearch() {
     notice,
     status,
     progress,
-    result,
+    result: result.state.status === "ready" ? result.state.result : null,
+    resultState: result.state,
+    retryResult: result.retry,
     selected,
     run,
     cancel,

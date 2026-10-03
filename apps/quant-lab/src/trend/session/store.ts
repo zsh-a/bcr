@@ -1,7 +1,6 @@
 import type { RuntimeMetadata } from "@bcr/core";
 import {
   defaultBinanceRequest,
-  validateBinanceManifest,
   validateBinanceRequest,
   type BinanceDataset,
   type BinanceRequest,
@@ -9,7 +8,8 @@ import {
 import {
   createTrendConfig,
   restoreTrendDraft,
-  validateRecordedTrendConfig,
+  decodeRecordedTrendDataset,
+  decodeRecordedTrendRun,
   type TrendConfig,
   type TrendRun,
 } from "@bcr/quant-core/trend";
@@ -46,16 +46,17 @@ export function decodeTrendSession(raw: string | undefined): RestoredTrendSessio
   if (data.draftDefaultsVersion !== undefined && data.draftDefaultsVersion !== 1)
     throw new Error("本地趋势草稿默认版本不受支持");
   if (!Array.isArray(data.runs)) throw new Error("本地趋势运行历史无效");
-  for (const run of data.runs) {
-    if (!run || typeof run !== "object" || typeof run.id !== "string")
-      throw new Error("本地趋势运行记录无效");
-    validateRecordedTrendConfig(run.config);
-    validateBinanceManifest(run.dataset?.manifest);
-  }
-  if (data.dataset !== null && data.dataset !== undefined)
-    validateBinanceManifest((data.dataset as BinanceDataset).manifest);
+  const runs = data.runs.map(decodeRecordedTrendRun);
+  if (new Set(runs.map((run) => run.id)).size !== runs.length)
+    throw new Error("本地趋势运行标识重复");
+  const dataset =
+    data.dataset === null || data.dataset === undefined
+      ? null
+      : decodeRecordedTrendDataset(data.dataset);
   if (data.selected !== null && data.selected !== undefined && typeof data.selected !== "string")
     throw new Error("本地趋势历史选择无效");
+  if (typeof data.selected === "string" && !runs.some((run) => run.id === data.selected))
+    throw new Error("本地趋势历史选择不存在");
   let request: BinanceRequest;
   try {
     validateBinanceRequest(data.request as BinanceRequest);
@@ -87,8 +88,8 @@ export function decodeTrendSession(raw: string | undefined): RestoredTrendSessio
       draftDefaultsVersion: 1,
       request,
       config,
-      dataset: (data.dataset as BinanceDataset | undefined) ?? null,
-      runs: data.runs as TrendRun[],
+      dataset,
+      runs,
       selected: (data.selected as string | undefined) ?? null,
     },
     notice,
