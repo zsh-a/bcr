@@ -149,6 +149,7 @@ impl Engine {
             value,
             trade_id: id,
             reason: reason.into(),
+            entry_signal: None,
         });
     }
     fn marked(&self, position: &Option<Position>, price: f64) -> f64 {
@@ -233,6 +234,7 @@ impl Engine {
             side,
             time: bar.time,
             entry,
+            entry_signal: candidate.entry_signal,
             quantity,
             initial_stop: stop,
             stop,
@@ -287,6 +289,7 @@ impl Engine {
             entry_time: p.time,
             exit_time: time,
             entry_price: p.entry,
+            entry_signal: p.entry_signal,
             exit_price: price,
             quantity: p.quantity,
             initial_stop: p.initial_stop,

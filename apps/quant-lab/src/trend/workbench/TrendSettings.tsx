@@ -8,6 +8,7 @@ import {
   trendWarmupDays,
   withTradingPeriod,
   validateTrendConfig,
+  defaultTrendPreset,
   simpleChannelConfig,
   managementLabel,
   type TrendConfig,
@@ -87,13 +88,22 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
       {section === "strategy" && (
         <section aria-label="策略设置">
           <p className="trend-help">
-            收盘确认突破，下一分钟开盘尝试入场。用固定 ATR 14 控制风险，止损只向盈利方向移动。
+            收盘确认突破，下一分钟开盘尝试入场。ATR 14 在信号收盘时冻结；
+            {s.management === "channel"
+              ? "初始硬止损在持仓期间保持固定。"
+              : "保本与跟踪止损只向收紧风险的方向调整。"}
           </p>
-          <Button variant="ghost" size="sm" onClick={() => setDraft(simpleChannelConfig(draft))}>
-            使用简洁通道方案 · 4 小时 / 仅做多
-          </Button>
+          <div className="trend-fields">
+            <Button variant="ghost" size="sm" onClick={() => setDraft(defaultTrendPreset(draft))}>
+              使用默认趋势方案 · 4 小时 / 日线背景
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setDraft(simpleChannelConfig(draft))}>
+              使用无过滤基线 · 4 小时 / 仅做多
+            </Button>
+          </div>
           <p className="trend-help">
-            简洁通道是研究候选，尚未通过全部验证门槛。应用方案保留当前资金、成交成本与风控设置。
+            两个方案均为 20 根突破、仅做多与反向通道退出，只在趋势背景过滤上不同。
+            保留当前资金、成交成本、成本门槛和风控，点击“应用设置”后生效。背景过滤不保证收益改善。
           </p>
           <label className="trend-context-setting">
             入场环境
@@ -107,6 +117,17 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
               <option value="ema">同周期 EMA 20 / 60</option>
             </Select>
           </label>
+          {s.filter === "none" && s.entry === "breakout" && (
+            <div className="trend-context-description">
+              <strong>
+                无过滤基线 · 最近 {s.breakoutBars} 根 × {periodLabel(s.tradeMinutes)}
+              </strong>
+              <p>
+                突破只比较此前这个窗口的最高价或最低价，不会排除更大范围的震荡。
+                离场后，只要再次满足突破和风控条件，就可能重新入场。
+              </p>
+            </div>
+          )}
           {s.filter === "background" && (
             <div className="trend-context-description">
               <strong>
@@ -114,8 +135,9 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
                 入场
               </strong>
               <p>
-                已收盘的背景 K 线确认方向和回调结构，过滤整理、逆势与结构失效信号。
-                每次判断随结果保存，可查看放行和拒绝原因。
+                使用已收盘的{periodLabel(backgroundMinutes(s.tradeMinutes))} K 线，检查方向效率、
+                EMA 方向和已确认的摆动结构，拒绝方向效率不足、逆势或结构失效的入场。
+                过滤只影响新开仓，不能排除所有震荡，也可能错过趋势启动。每次判断随结果保存。
               </p>
               <details>
                 <summary>固定背景规则</summary>
@@ -125,8 +147,7 @@ function SettingsForm({ open, onClose, config, onChange }: SettingsProps) {
                   {TREND_BACKGROUND_RULES.window} 根方向效率 ≥{" "}
                   {TREND_BACKGROUND_RULES.minEfficiency * 100}%； 摆动点在后续{" "}
                   {TREND_BACKGROUND_RULES.pivotRadius} 根收盘后确认。
-                  均线偏离只作诊断，不拦截持续推进。
-                  这些是待验证的研究规则，适合趋势延续，可能错过启动行情。
+                  均线偏离只作诊断，不拦截持续推进。 这些是待验证的趋势延续规则。
                 </p>
               </details>
             </div>

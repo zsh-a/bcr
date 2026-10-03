@@ -10,6 +10,7 @@ import {
 import {
   CandlestickSeries,
   LineSeries,
+  LineType,
   createChart,
   createSeriesMarkers,
   type IChartApi,
@@ -29,7 +30,8 @@ interface CandleChart {
   candles: ISeriesApi<"Candlestick">;
   fast: ISeriesApi<"Line">;
   slow: ISeriesApi<"Line">;
-  stops: ISeriesApi<"Line">;
+  stops: ISeriesApi<"Line">[];
+  channels: Record<"upper" | "lower" | "exitUpper" | "exitLower", ISeriesApi<"Line">>;
   markers: ISeriesMarkersPluginApi<Time>;
   data: TrendChartData | null;
   focusRevision: number | undefined;
@@ -48,6 +50,29 @@ function logicalTime(range: LogicalRange, data: TrendChartData): ChartRange {
     to: data.from + (Number(range.to) + 1) * step,
   };
 }
+/** Separate series prevent the chart library from joining distinct positions across gaps. */
+export function syncTrendStopSeries(
+  chart: Pick<IChartApi, "addSeries" | "removeSeries">,
+  series: ISeriesApi<"Line">[],
+  segments: TrendChartData["stops"],
+  color: string,
+): void {
+  while (series.length > segments.length) chart.removeSeries(series.pop()!);
+  for (const [index, segment] of segments.entries()) {
+    const stop =
+      series[index] ??
+      chart.addSeries(LineSeries, {
+        color,
+        lineWidth: 1,
+        lineStyle: 2,
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+    series[index] = stop;
+    stop.applyOptions({ pointMarkersVisible: segment.points.length === 1, pointMarkersRadius: 2 });
+    stop.setData(segment.points.map((p) => ({ time: time(p.time), value: p.value })));
+  }
+}
 export function TrendChart({
   data,
   equity,
@@ -58,7 +83,12 @@ export function TrendChart({
 }: {
   data?: TrendChartData | null;
   equity?: TrendEquity[];
-  config: { tradeMinutes: number; initialCapital: number; tickSize: number };
+  config: {
+    tradeMinutes: number;
+    initialCapital: number;
+    tickSize: number;
+    tradeDirection?: "long" | "short" | "both";
+  };
   bounds?: ChartRange;
   focus?: ChartFocus;
   onVisible?: (range: ChartRange) => void;
@@ -144,14 +174,21 @@ export function TrendChart({
         candles,
         fast: line(accent),
         slow: line(muted),
-        stops: line(danger),
+        stops: [],
+        channels: {
+          upper: line("#6383ad"),
+          lower: line("#6383ad"),
+          exitUpper: line("#ab803b"),
+          exitLower: line("#ab803b"),
+        },
         markers: createSeriesMarkers(candles, []),
         data: null,
         focusRevision: undefined,
         applying: false,
         changed: () => undefined,
       };
-      model.stops.applyOptions({ lineStyle: 2 });
+      for (const series of Object.values(model.channels))
+        series.applyOptions({ lineType: LineType.WithSteps, crosshairMarkerVisible: false });
       model.changed = (range) => {
         if (!range || !model.data || model.applying) return;
         const available = controls.current.bounds;
@@ -209,15 +246,29 @@ export function TrendChart({
     const css = getComputedStyle(root.current!);
     const accent = css.getPropertyValue("--color-accent").trim() || "#1b8275";
     const muted = css.getPropertyValue("--color-muted").trim() || "#7e8993";
+    const danger = css.getPropertyValue("--color-danger").trim() || "#d86167";
     model.applying = true;
     model.candles.setData(data.bars.map((b) => ({ ...b, time: time(b.time) })));
     for (const key of ["fast", "slow"] as const)
       model[key].setData(data.indicators.map((p) => ({ time: time(p.time), value: p[key] })));
-    model.stops.setData(
-      data.stops.map((p) =>
-        p.value === undefined ? { time: time(p.time) } : { time: time(p.time), value: p.value },
-      ),
-    );
+    syncTrendStopSeries(model.chart, model.stops, data.stops, danger);
+    for (const key of ["upper", "lower", "exitUpper", "exitLower"] as const) {
+      const relevant =
+        config.tradeDirection === "long"
+          ? key === "upper" || key === "exitLower"
+          : config.tradeDirection === "short"
+            ? key === "lower" || key === "exitUpper"
+            : true;
+      model.channels[key].setData(
+        relevant
+          ? (data.channels ?? []).flatMap((point) =>
+              point[key] === undefined ? [] : [{ time: time(point.time), value: point[key]! }],
+            )
+          : [],
+      );
+    }
+    root.current!.dataset.stopSegments = String(data.stops.length);
+    root.current!.dataset.channelPoints = String(data.channels?.length ?? 0);
     model.markers.setMarkers(
       data.markers.map((e) => ({
         time: time(e.time),

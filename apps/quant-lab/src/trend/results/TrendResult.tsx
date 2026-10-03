@@ -3,6 +3,7 @@ import {
   TREND_REASONS,
   trendRunView,
   periodLabel,
+  trendEntryEvidence,
   type TrendResult as Result,
   type TrendRun,
   type TrendTrade,
@@ -14,6 +15,7 @@ import { TrendChart } from "./TrendChart";
 import { exportTrend, readTradePage } from "./read";
 import { useTrendChart } from "./useTrendChart";
 import { TrendContextPanel } from "./TrendContextPanel";
+import { priceDigits } from "./format";
 
 const number = (n: number | null, digits = 2) =>
   n === null
@@ -34,7 +36,13 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
     result,
     config.tradeMinutes,
     view === "candles",
+    config.channelConfig,
   );
+  const [focusedTrade, setFocusedTrade] = useState<TrendTrade | null>(null);
+  const evidence = focusedTrade
+    ? trendEntryEvidence(focusedTrade, config.channelConfig, chart.data)
+    : undefined;
+  const price = (value: number) => number(value, priceDigits(config.tickSize));
   const [page, setPage] = useState(0),
     [trades, setTrades] = useState<TrendTrade[] | null>(null);
   const [error, setError] = useState<string | null>(null),
@@ -227,11 +235,94 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
       )}
       {view === "candles" && (
         <>
+          <div className="trend-chart-legend" aria-label="图表图例">
+            {config.channelConfig && (
+              <span className="trend-legend-entry">
+                此前 {config.channelConfig.entryBars} 根入场通道
+              </span>
+            )}
+            {config.channelConfig?.exitBars && (
+              <span className="trend-legend-exit">
+                此前 {config.channelConfig.exitBars} 根退出通道
+              </span>
+            )}
+            <span className="trend-legend-stop">持仓止损 · 分笔绘制</span>
+          </div>
           <p className="trend-help">
             拖动浏览连续行情，滚轮或双指缩放；大区间自动合并显示 K 线，交易规则仍按{" "}
-            {periodLabel(config.tradeMinutes)} 执行。 箭头为多空入场，圆点为平仓，虚线为 K
-            线开盘时的止损。{config.filter}。
+            {periodLabel(config.tradeMinutes)} 执行。箭头为多空入场，圆点为平仓；止损虚线按显示 K
+            线开盘采样，空仓断开。
+            {config.channelConfig &&
+              "通道使用当根开盘前已完成的交易 K 线；合并显示时取显示 K 线开盘的已知边界。"}
+            {config.filter}。
           </p>
+          {focusedTrade && (
+            <section className="trend-entry-detail" aria-label={`交易 ${focusedTrade.id} 入场依据`}>
+              <div className="trend-entry-detail-heading">
+                <strong>交易 {focusedTrade.id} · 入场依据</strong>
+                <Button variant="ghost" size="sm" onClick={() => setFocusedTrade(null)}>
+                  关闭入场依据
+                </Button>
+              </div>
+              {evidence ? (
+                <>
+                  <p>
+                    {evidence.source === "recorded"
+                      ? "信号时冻结的记录"
+                      : "根据冻结行情计算的历史通道参考"}{" "}
+                    · {timestamp(evidence.time)} UTC
+                  </p>
+                  <dl>
+                    <div>
+                      <dt>信号收盘</dt>
+                      <dd>{price(evidence.price)}</dd>
+                    </div>
+                    <div>
+                      <dt>
+                        {evidence.lookbackBars
+                          ? `此前 ${evidence.lookbackBars} 根${focusedTrade.side === "long" ? "最高" : "最低"}价`
+                          : "推进极值"}
+                      </dt>
+                      <dd>{price(evidence.boundary)}</dd>
+                    </div>
+                    <div>
+                      <dt>突破幅度</dt>
+                      <dd>
+                        {price(
+                          (evidence.price - evidence.boundary) *
+                            (focusedTrade.side === "long" ? 1 : -1),
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>下一分钟成交</dt>
+                      <dd>{price(focusedTrade.entryPrice)}</dd>
+                    </div>
+                    {evidence.atr !== undefined && (
+                      <div>
+                        <dt>信号 ATR 14</dt>
+                        <dd>{price(evidence.atr)}</dd>
+                      </div>
+                    )}
+                  </dl>
+                  <p className="trend-help">
+                    {config.filter} · {config.costFilter}。
+                    {evidence.source === "derived" &&
+                      "该旧记录未保存原始信号 ATR，此处仅核对通道和收盘价。"}
+                  </p>
+                </>
+              ) : (
+                <p className="trend-help">
+                  该旧结果未保存入场快照。
+                  {chart.loading
+                    ? "正在读取交易附近的冻结行情…"
+                    : config.channelConfig
+                      ? "缩小至交易周期可核对通道参考。"
+                      : "可结合信号事件和入场背景核对。"}
+                </p>
+              )}
+            </section>
+          )}
           <details className="trend-event-list">
             <summary>
               已加载区间的信号与风控 · {chart.data?.totalEvents ?? 0}
@@ -296,6 +387,7 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
                         size="sm"
                         aria-label={`查看交易 ${trade.id}`}
                         onClick={() => {
+                          setFocusedTrade(trade);
                           chart.locate(trade.entryTime);
                           setView("candles");
                           requestAnimationFrame(() =>

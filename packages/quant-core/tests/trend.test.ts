@@ -14,17 +14,18 @@ import {
   type ArchivedTrendConfig,
   backgroundMinutes,
   restoreTrendDraft,
+  defaultTrendPreset,
   simpleChannelConfig,
   type RecordedTrendConfigV4,
 } from "../src/trend";
 import { RECORDED_V2, RECORDED_V3, RECORDED_V4 } from "./fixtures/trend-recorded";
 
 describe("trend research configuration", () => {
-  it("defaults to the slow long-only research candidate with an independent disabled cost gate", () => {
+  it("defaults to daily background filtering on the slow long-only candidate with an independent disabled cost gate", () => {
     validateTrendConfig(DEFAULT_TREND_CONFIG);
     expect(DEFAULT_TREND_CONFIG.strategy.entry).toBe("breakout");
     expect(DEFAULT_TREND_CONFIG.strategy).toMatchObject({
-      filter: "none",
+      filter: "background",
       maxCostAtr: 0,
       management: "channel",
       direction: "long",
@@ -35,6 +36,7 @@ describe("trend research configuration", () => {
     });
     expect(DEFAULT_TREND_CONFIG.version).toBe(5);
     expect(DEFAULT_TREND_CONFIG.risk.flattenMinute).toBeNull();
+    expect(trendWarmupDays(DEFAULT_TREND_CONFIG)).toBe(22);
     const copy = createTrendConfig();
     copy.strategy.stopAtr = 3;
     copy.risk.riskPct = 0.01;
@@ -235,7 +237,7 @@ describe("trend research configuration", () => {
       direction: "long",
       tradeMinutes: 240,
       filter: "none",
-      maxCostAtr: 0,
+      maxCostAtr: 0.5,
       breakoutBars: 20,
       stopAtr: 2,
       breakEvenAtr: 0,
@@ -245,6 +247,52 @@ describe("trend research configuration", () => {
     expect(config.strategy.management).toBe("atr");
     simple.strategy.entry = "pullback";
     expect(() => validateTrendConfig(simple)).toThrow();
+  });
+  it.each([0, 0.75])(
+    "preserves capital, costs, risk and the %s ATR cost policy in both comparable presets",
+    (maxCostAtr) => {
+      const config = createTrendConfig();
+      Object.assign(config.strategy, {
+        entry: "pullback",
+        filter: "ema",
+        management: "atr",
+        direction: "both",
+        tradeMinutes: 60,
+        breakoutBars: 40,
+        stopAtr: 3,
+        breakEvenAtr: 1,
+        trailingAtr: 4,
+        maxCostAtr,
+      });
+      Object.assign(config.execution, { initialCapital: 23000, feeBps: 7, slippageBps: 3 });
+      Object.assign(config.risk, { riskPct: 0.003, cooldownMinutes: 240, flattenMinute: 1437 });
+      const before = structuredClone(config);
+      const filtered = defaultTrendPreset(config);
+      const baseline = simpleChannelConfig(config);
+      for (const preset of [filtered, baseline]) {
+        validateTrendConfig(preset);
+        expect(preset.execution).toEqual(before.execution);
+        expect(preset.risk).toEqual(before.risk);
+        expect(preset.strategy.maxCostAtr).toBe(maxCostAtr);
+      }
+      expect(filtered.strategy).toEqual({ ...DEFAULT_TREND_CONFIG.strategy, maxCostAtr });
+      expect(baseline).toEqual({
+        ...filtered,
+        strategy: { ...filtered.strategy, filter: "none" },
+      });
+      expect(config).toEqual(before);
+    },
+  );
+  it("keeps uncommitted preset drafts isolated so discarding them preserves applied settings", () => {
+    const applied = simpleChannelConfig(createTrendConfig());
+    const before = structuredClone(applied);
+    const draft = defaultTrendPreset(applied);
+    draft.strategy.breakoutBars = 40;
+    draft.execution.initialCapital = 23000;
+    draft.risk.riskPct = 0.003;
+    expect(applied).toEqual(before);
+    expect(structuredClone(applied).strategy.filter).toBe("none");
+    expect(defaultTrendPreset(applied).strategy.breakoutBars).toBe(20);
   });
   it("displays archived results without rewriting their original settings", () => {
     const config = {
@@ -268,5 +316,53 @@ describe("trend research configuration", () => {
     expect(view.filter).toContain("5 分钟");
     expect(JSON.stringify(config)).toBe(before);
     expect(() => validateTrendConfig(config)).toThrow();
+  });
+  it("keeps early archived breakout records readable when their channel window is missing or invalid", () => {
+    const recorded = {
+      entry: "breakout",
+      initialCapital: 10000,
+      tickSize: 0.1,
+      quantityStep: 0.001,
+      feeBps: 5,
+      slippageBps: 2,
+      fastEma: 20,
+      slowEma: 60,
+      trendMinutes: 5,
+    };
+    for (const [breakoutBars, expectedWindow] of [
+      [undefined, undefined],
+      [null, undefined],
+      [1, undefined],
+      [2.5, undefined],
+      [251, undefined],
+      [NaN, undefined],
+      [Infinity, undefined],
+      ["20", undefined],
+      [2, 2],
+      [20, 20],
+      [250, 250],
+    ] as const) {
+      const config = {
+        ...recorded,
+        ...(breakoutBars === undefined ? {} : { breakoutBars }),
+      } as ArchivedTrendConfig;
+      const before = structuredClone(config);
+      validateRecordedTrendConfig(config);
+      const view = trendRunView({ config } as TrendRun);
+      expect(view).toMatchObject({
+        archived: true,
+        tradeMinutes: 1,
+        label: "通道突破 · 旧版",
+        initialCapital: 10000,
+        tickSize: 0.1,
+      });
+      expect(view.execution).toEqual(before);
+      expect(view.channelConfig).toEqual(
+        expectedWindow === undefined
+          ? undefined
+          : { tradeMinutes: 1, entryBars: expectedWindow, exitBars: null },
+      );
+      expect(config).toEqual(before);
+    }
   });
 });

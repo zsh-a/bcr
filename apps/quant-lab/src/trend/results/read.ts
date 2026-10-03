@@ -1,5 +1,5 @@
 import type { RuntimeServices } from "@bcr/core";
-import type { BinanceDataset } from "@bcr/market-data/binance/model";
+import { MINUTE, type BinanceDataset } from "@bcr/market-data/binance/model";
 import type {
   TrendChunk,
   TrendChartWindow,
@@ -7,6 +7,7 @@ import type {
   TrendResult,
   TrendTrade,
   TrendContextDecision,
+  TrendChannelConfig,
 } from "@bcr/quant-core/trend";
 import { Effect } from "effect";
 import { readJson } from "../../data/io";
@@ -17,8 +18,15 @@ export async function readChartWindow(
   result: TrendResult,
   window: TrendChartWindow,
   signal: AbortSignal,
+  channel?: TrendChannelConfig,
 ): Promise<TrendChartData> {
   signal.throwIfAborted();
+  const historyFrom = channel
+    ? Math.max(
+        dataset.manifest.warmupStart,
+        window.from - channel.entryBars * channel.tradeMinutes * MINUTE,
+      )
+    : window.from;
   const handle = await Effect.runPromise(
     services.scheduler.submit({
       id: `trend-chart-${crypto.randomUUID()}`,
@@ -29,7 +37,7 @@ export async function readChartWindow(
           [
             { ...dataset.manifestRef, port: "manifest" },
             ...dataset.manifest.partitions
-              .filter((p) => p.to > window.from && p.from < window.to)
+              .filter((p) => p.to > historyFrom && p.from < window.to)
               .map((p) => p.candles),
             ...result.chunks.map((c) => c.ref),
           ].map((ref) => [ref.id, ref]),
@@ -38,7 +46,12 @@ export async function readChartWindow(
       outputs: [{ name: "chart", type: "quant/trend-chart", storage: "opfs", format: "json" }],
       resources: { memoryMB: 256, threads: 1 },
       cache: { enabled: true },
-      config: { ...window, chunks: result.chunks, hasTrades: result.metrics.trades > 0 },
+      config: {
+        ...window,
+        chunks: result.chunks,
+        hasTrades: result.metrics.trades > 0,
+        ...(channel ? { channel } : {}),
+      },
     }),
   );
   const cancel = () => {

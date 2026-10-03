@@ -16,6 +16,7 @@ import {
 
 export const TREND_SESSION_KEY = "trend-research-v1";
 export interface TrendSessionState {
+  draftDefaultsVersion: 1;
   request: BinanceRequest;
   config: TrendConfig;
   dataset: BinanceDataset | null;
@@ -27,6 +28,7 @@ export interface RestoredTrendSession {
   notice: string;
 }
 export const createTrendSessionState = (): TrendSessionState => ({
+  draftDefaultsVersion: 1,
   request: defaultBinanceRequest(),
   config: createTrendConfig(),
   dataset: null,
@@ -41,6 +43,8 @@ export function decodeTrendSession(raw: string | undefined): RestoredTrendSessio
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("本地趋势研究记录无效");
   const data = value as Record<string, unknown>;
+  if (data.draftDefaultsVersion !== undefined && data.draftDefaultsVersion !== 1)
+    throw new Error("本地趋势草稿默认版本不受支持");
   if (!Array.isArray(data.runs)) throw new Error("本地趋势运行历史无效");
   for (const run of data.runs) {
     if (!run || typeof run !== "object" || typeof run.id !== "string")
@@ -69,9 +73,18 @@ export function decodeTrendSession(raw: string | undefined): RestoredTrendSessio
     config = createTrendConfig();
     notice = "已恢复默认参数草稿；历史记录保持原样";
   }
+  if (
+    data.draftDefaultsVersion === undefined &&
+    config.strategy.entry === "breakout" &&
+    config.strategy.filter === "none"
+  ) {
+    config = { ...config, strategy: { ...config.strategy, filter: "background" } };
+    notice = "已为新回测草稿默认启用背景过滤；其余参数及历史运行保持原样";
+  }
   return {
     state: {
       ...data,
+      draftDefaultsVersion: 1,
       request,
       config,
       dataset: (data.dataset as BinanceDataset | undefined) ?? null,

@@ -100,7 +100,7 @@ impl Default for Config {
             version: 5,
             strategy: Strategy {
                 entry: "breakout".into(),
-                filter: "none".into(),
+                filter: "background".into(),
                 management: "channel".into(),
                 direction: "long".into(),
                 trade_minutes: 240,

@@ -12,13 +12,18 @@ import {
 } from "../src/trend";
 const base = Date.UTC(2024, 0, 1);
 const empty = (): TrendChunk => ({ events: [], indicators: [], trades: [], equity: [] });
-const event = (time: number, kind: TrendEvent["kind"], price: number): TrendEvent => ({
+const event = (
+  time: number,
+  kind: TrendEvent["kind"],
+  price: number,
+  tradeId: number | null = 1,
+): TrendEvent => ({
   time,
   kind,
   price,
   side: "long",
   value: null,
-  tradeId: 1,
+  tradeId,
   reason: "test",
 });
 const bars = (count: number, minutes = 1) =>
@@ -73,7 +78,7 @@ describe("continuous trend chart", () => {
     const projection = new TrendChartProjection(
       { from: base, to: base + 15 * MINUTE, minutes: 5 },
       bars(3, 5),
-      90,
+      { tradeId: 1, value: 90 },
       { time: base - 1, fast: 99, slow: 98 },
     );
     projection.append({
@@ -82,9 +87,101 @@ describe("continuous trend chart", () => {
       indicators: [{ time: base + 4 * MINUTE - 1, fast: 101, slow: 100 }],
     });
     const data = projection.finish();
-    expect(data.stops.map((p) => p.value)).toEqual([90, 95, undefined]);
+    expect(data.stops).toEqual([
+      {
+        tradeId: 1,
+        points: [
+          { time: base, value: 90 },
+          { time: base + 5 * MINUTE, value: 95 },
+        ],
+      },
+    ]);
     expect(data.indicators.map((p) => p.fast)).toEqual([101, 101, 101]);
     expect(data.markers[0]?.time).toBe(base + 5 * MINUTE);
+  });
+  it("emits no stop segments while flat and separates positions across flat candles", () => {
+    const window = { from: base, to: base + 6 * MINUTE, minutes: 1 };
+    expect(new TrendChartProjection(window, bars(6)).finish().stops).toEqual([]);
+    const projection = new TrendChartProjection(window, bars(6));
+    projection.append({
+      ...empty(),
+      events: [
+        event(base, "entry", 100, 1),
+        event(base, "stop", 90, 1),
+        event(base + 2 * MINUTE, "exit", 101, 1),
+        event(base + 4 * MINUTE, "entry", 100, 2),
+        event(base + 4 * MINUTE, "stop", 95, 2),
+      ],
+    });
+    expect(projection.finish().stops).toEqual([
+      {
+        tradeId: 1,
+        points: [
+          { time: base, value: 90 },
+          { time: base + MINUTE, value: 90 },
+        ],
+      },
+      {
+        tradeId: 2,
+        points: [
+          { time: base + 4 * MINUTE, value: 95 },
+          { time: base + 5 * MINUTE, value: 95 },
+        ],
+      },
+    ]);
+  });
+  it("retains exit/reentry boundaries inside one display candle across event chunks", () => {
+    const window = { from: base, to: base + 20 * MINUTE, minutes: 5 };
+    const events = [
+      event(base + 6 * MINUTE, "exit", 101, 1),
+      event(base + 7 * MINUTE, "entry", 100, 2),
+      event(base + 7 * MINUTE, "stop", 95, 2),
+    ];
+    const project = (chunks: TrendEvent[][]) => {
+      const projection = new TrendChartProjection(window, bars(4, 5), { tradeId: 1, value: 90 });
+      for (const events of chunks) projection.append({ ...empty(), events });
+      return projection.finish().stops;
+    };
+    const expected = [
+      {
+        tradeId: 1,
+        points: [
+          { time: base, value: 90 },
+          { time: base + 5 * MINUTE, value: 90 },
+        ],
+      },
+      {
+        tradeId: 2,
+        points: [
+          { time: base + 10 * MINUTE, value: 95 },
+          { time: base + 15 * MINUTE, value: 95 },
+        ],
+      },
+    ];
+    expect(project([events])).toEqual(expected);
+    expect(project(events.map((e) => [e]))).toEqual(expected);
+  });
+  it("keeps each sampled segment bounded even when positions open and close between samples", () => {
+    const projection = new TrendChartProjection(
+      { from: base, to: base + 10 * MINUTE, minutes: 5 },
+      bars(2, 5),
+      { tradeId: 1, value: 90 },
+    );
+    projection.append({
+      ...empty(),
+      events: [
+        event(base + MINUTE, "exit", 101, 1),
+        event(base + 2 * MINUTE, "entry", 100, 2),
+        event(base + 2 * MINUTE, "stop", 94, 2),
+        event(base + 3 * MINUTE, "exit", 101, 2),
+        event(base + 4 * MINUTE, "entry", 100, 3),
+        event(base + 4 * MINUTE, "stop", 95, 3),
+      ],
+    });
+    expect(projection.finish().stops).toEqual([
+      { tradeId: 1, points: [{ time: base, value: 90 }] },
+      { tradeId: 3, points: [{ time: base + 5 * MINUTE, value: 95 }] },
+    ]);
   });
   it("groups overview markers without losing counts and bounds the event preview", () => {
     const projection = new TrendChartProjection(

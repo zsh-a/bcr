@@ -29,6 +29,7 @@ export function useTrendResearch() {
   const [restoredStore, setRestoredStore] = useState<TrendSessionStore | null>(null);
   const ready = restoredStore === store;
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null),
     [status, setStatus] = useState(""),
     [progress, setProgress] = useState(0);
@@ -42,11 +43,13 @@ export function useTrendResearch() {
         if (!live) return;
         setSaved(state);
         setError(null);
-        setStatus(notice);
+        setNotice(notice || null);
+        setStatus("");
         setRestoredStore(store);
       })
       .catch((e) => {
         if (!live) return;
+        setNotice(null);
         setError(
           `恢复研究失败：${e instanceof Error ? e.message : String(e)}。原始记录已保留，回测已停用；请重新加载后重试。`,
         );
@@ -223,6 +226,7 @@ export function useTrendResearch() {
     ready,
     busy,
     error,
+    notice,
     status,
     progress,
     result,
@@ -233,5 +237,6 @@ export function useTrendResearch() {
     setConfig: (config: TrendConfig) => setSaved((s) => ({ ...s, config })),
     select: (id: string) => setSaved((s) => ({ ...s, selected: id })),
     dismissError: () => setError(null),
+    dismissNotice: () => setNotice(null),
   };
 }

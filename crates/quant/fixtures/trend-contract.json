@@ -1,11 +1,11 @@
 {
-  "executor": "trend-continuation-7",
+  "executor": "trend-continuation-8",
   "warmupPolicy": "active-windows-v1",
   "defaultConfig": {
     "version": 5,
     "strategy": {
       "entry": "breakout",
-      "filter": "none",
+      "filter": "background",
       "maxCostAtr": 0,
       "management": "channel",
       "direction": "long",

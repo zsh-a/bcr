@@ -1,6 +1,6 @@
 import type { ArtifactRef, RuntimeMetadata } from "@bcr/core";
 import { DAY, type BinanceDataset } from "@bcr/market-data/binance/model";
-import type { TrendRun } from "@bcr/quant-core/trend";
+import type { TrendConfig, TrendRun } from "@bcr/quant-core/trend";
 import { describe, expect, it, vi } from "vitest";
 import {
   createTrendSessionState,
@@ -92,6 +92,16 @@ describe("trend session persistence", () => {
       "{broken",
       JSON.stringify({ ...fixture(), runs: [{ id: "old", config: {} }] }),
       JSON.stringify({ ...fixture(), dataset: { manifest: {} } }),
+      JSON.stringify({ ...fixture(), draftDefaultsVersion: 2 }),
+      JSON.stringify({
+        ...fixture(),
+        draftDefaultsVersion: undefined,
+        config: {
+          ...fixture().config,
+          strategy: { ...fixture().config.strategy, entry: "breakout", filter: "none" },
+        },
+        runs: [{ id: "unreadable-history", config: {} }],
+      }),
     ];
     for (const raw of invalid) {
       let stored = raw;
@@ -140,11 +150,107 @@ describe("trend session persistence", () => {
     expect(JSON.parse(raw).config.version).toBe(999);
   });
 
+  it("migrates an unmarked breakout draft once without changing other parameters or history", () => {
+    const original = fixture();
+    const config: TrendConfig = {
+      ...original.config,
+      strategy: {
+        ...original.config.strategy,
+        entry: "breakout",
+        filter: "none",
+        direction: "both",
+        breakoutBars: 37,
+        stopAtr: 3,
+        maxCostAtr: 0.75,
+      },
+      execution: { ...original.config.execution, feeBps: 7 },
+      risk: { ...original.config.risk, riskPct: 0.007 },
+    };
+    const legacy = {
+      ...original,
+      draftDefaultsVersion: undefined,
+      config,
+      runs: [{ ...original.runs[0]!, config: structuredClone(config) }],
+    };
+    const raw = JSON.stringify(legacy);
+    const restored = decodeTrendSession(raw);
+    expect(restored.state).toEqual({
+      ...legacy,
+      draftDefaultsVersion: 1,
+      config: { ...config, strategy: { ...config.strategy, filter: "background" } },
+    });
+    expect(restored.notice).toContain("默认启用背景过滤");
+    expect(restored.notice).toContain("历史运行保持原样");
+    expect(JSON.parse(raw).config.strategy.filter).toBe("none");
+    expect(JSON.parse(raw).runs[0].config.strategy.filter).toBe("none");
+  });
+
+  it.each([
+    ["breakout", "ema"],
+    ["breakout", "background"],
+    ["pullback", "none"],
+    ["pullback", "ema"],
+    ["pullback", "background"],
+  ] as const)("preserves an unmarked %s/%s draft", (entry, filter) => {
+    const original = fixture();
+    const config: TrendConfig = {
+      ...original.config,
+      strategy: {
+        ...original.config.strategy,
+        entry,
+        filter,
+        management: entry === "pullback" ? "atr" : original.config.strategy.management,
+      },
+    };
+    const restored = decodeTrendSession(
+      JSON.stringify({
+        ...original,
+        draftDefaultsVersion: undefined,
+        config,
+      }),
+    );
+    expect(restored.state.config).toEqual(config);
+    expect(restored.state.draftDefaultsVersion).toBe(1);
+    expect(restored.notice).toBe("");
+  });
+
+  it("persists the migration marker and respects a later explicit choice of no filter", async () => {
+    const original = fixture();
+    let stored = JSON.stringify({
+      ...original,
+      draftDefaultsVersion: undefined,
+      config: { ...original.config, strategy: { ...original.config.strategy, filter: "none" } },
+    });
+    const metadata = {
+      get: async () => stored,
+      set: vi.fn(async (_key: string, text: string) => {
+        stored = text;
+      }),
+    };
+    const store = createTrendSessionStore(metadata);
+    const { state } = await store.restore();
+    expect(state.config.strategy.filter).toBe("background");
+    expect(metadata.set).not.toHaveBeenCalled();
+    await store.save(state);
+    expect(JSON.parse(stored).draftDefaultsVersion).toBe(1);
+    await store.save({
+      ...state,
+      config: { ...state.config, strategy: { ...state.config.strategy, filter: "none" } },
+    });
+    const reloaded = await createTrendSessionStore(metadata).restore();
+    expect(reloaded.state.config.strategy.filter).toBe("none");
+    expect(reloaded.state.runs).toEqual(original.runs);
+    expect(reloaded.state.selected).toBe(original.selected);
+    expect(reloaded.state.dataset).toEqual(original.dataset);
+    expect(reloaded.notice).toBe("");
+  });
+
   it("initializes an empty store and deduplicates acknowledged snapshots", async () => {
     const metadata = { get: vi.fn(async () => undefined), set: vi.fn(async () => undefined) };
     const store = createTrendSessionStore(metadata);
     const restored = await store.restore();
     expect(restored.state.runs).toEqual([]);
+    expect(restored.state.draftDefaultsVersion).toBe(1);
     await store.save(restored.state);
     await store.save(restored.state);
     expect(metadata.set).toHaveBeenCalledExactlyOnceWith(

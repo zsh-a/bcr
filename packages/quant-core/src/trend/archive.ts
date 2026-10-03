@@ -22,10 +22,23 @@ export function trendRunView(run: TrendRun) {
   if ("version" in config)
     return {
       tradeMinutes: config.strategy.tradeMinutes,
+      tradeDirection: config.strategy.direction,
       initialCapital: config.execution.initialCapital,
       tickSize: config.execution.tickSize,
       execution: config.execution,
-      label: strategyLabel(config.strategy.entry),
+      label: strategyLabel(config.strategy.entry, config.strategy.filter),
+      channelConfig:
+        config.strategy.entry === "breakout"
+          ? {
+              tradeMinutes: config.strategy.tradeMinutes,
+              entryBars: config.strategy.breakoutBars,
+              exitBars:
+                (config.version === 4 || config.version === 5) &&
+                config.strategy.management === "channel"
+                  ? Math.max(1, Math.floor(config.strategy.breakoutBars / 2))
+                  : null,
+            }
+          : undefined,
       filter: filterLabel(config.strategy),
       costFilter: costFilterLabel(
         config.version === 5
@@ -50,10 +63,18 @@ export function trendRunView(run: TrendRun) {
     };
   return {
     tradeMinutes: config.tradeMinutes ?? 1,
+    tradeDirection: config.direction ?? "both",
     initialCapital: config.initialCapital,
     tickSize: config.tickSize,
     execution: config,
     label: config.entry === "pullback" ? "强趋势回调突破 · 旧版" : "通道突破 · 旧版",
+    channelConfig:
+      config.entry === "breakout" &&
+      Number.isInteger(config.breakoutBars) &&
+      config.breakoutBars >= 2 &&
+      config.breakoutBars <= 250
+        ? { tradeMinutes: config.tradeMinutes ?? 1, entryBars: config.breakoutBars, exitBars: null }
+        : undefined,
     filter: `EMA ${config.fastEma} / ${config.slowEma} · ${config.trendMinutes} 分钟`,
     costFilter: "原始旧版成本规则",
     direction: directionLabel(config.direction ?? "both"),

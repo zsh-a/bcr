@@ -53,7 +53,7 @@ export const DEFAULT_TREND_CONFIG: TrendConfig = {
   version: 5,
   strategy: {
     entry: "breakout",
-    filter: "none",
+    filter: "background",
     maxCostAtr: 0,
     management: "channel",
     direction: "long",
@@ -83,18 +83,18 @@ export const DEFAULT_TREND_CONFIG: TrendConfig = {
 };
 export const createTrendConfig = (): TrendConfig => structuredClone(DEFAULT_TREND_CONFIG);
 /** A mechanical research preset, never presented as a proven profitable rule. */
+export function defaultTrendPreset(config: TrendConfig): TrendConfig {
+  const copy = structuredClone(config);
+  copy.strategy = {
+    ...DEFAULT_TREND_CONFIG.strategy,
+    maxCostAtr: config.strategy.maxCostAtr,
+  };
+  return copy;
+}
+/** The matching unfiltered baseline preserves the same independent cost policy. */
 export function simpleChannelConfig(config: TrendConfig): TrendConfig {
-  const copy = withTradingPeriod(structuredClone(config), 240);
-  Object.assign(copy.strategy, {
-    entry: "breakout",
-    filter: "none",
-    maxCostAtr: 0,
-    management: "channel",
-    direction: "long",
-    breakoutBars: 20,
-    stopAtr: 2,
-    breakEvenAtr: 0,
-  });
+  const copy = defaultTrendPreset(config);
+  copy.strategy.filter = "none";
   return copy;
 }
 export function managementLabel(
@@ -147,8 +147,15 @@ export function trendWarmupDays({ strategy: s }: TrendConfig): number {
     ),
   );
 }
-export function strategyLabel(entry: TrendConfig["strategy"]["entry"]): string {
-  return entry === "breakout" ? "通道突破基线" : "回调突破 · 固定规则";
+export function strategyLabel(
+  entry: TrendConfig["strategy"]["entry"],
+  filter: TrendConfig["strategy"]["filter"] = "none",
+): string {
+  return entry === "pullback"
+    ? "回调突破 · 固定规则"
+    : filter === "none"
+      ? "通道突破基线"
+      : "通道突破";
 }
 
 export function validateTrendConfig(value: unknown): asserts value is TrendConfig {

@@ -42,12 +42,26 @@ export interface TrendConfig {
   execution: TrendExecution;
   risk: TrendRisk;
 }
+/** Frozen when the completed trading candle triggers an entry, before next-open execution. */
+export interface TrendEntrySignal {
+  /** Signal candle close timestamp in milliseconds. */
+  time: number;
+  /** Signal candle close price, without execution costs. */
+  price: number;
+  /** Previous channel high/low, or the impulse extreme for a pullback. */
+  boundary: number;
+  atr: number;
+  /** Prior channel candles, excluding the signal candle; absent for pullbacks. */
+  lookbackBars?: number;
+}
 export interface TrendTrade {
   id: number;
   side: "long" | "short";
   entryTime: number;
   exitTime: number;
   entryPrice: number;
+  /** Added in executor 8; historical ledgers may omit this snapshot. */
+  entrySignal?: TrendEntrySignal;
   exitPrice: number;
   quantity: number;
   initialStop: number;
@@ -69,6 +83,8 @@ export interface TrendEvent {
   value: number | null;
   tradeId: number | null;
   reason: string;
+  /** Signal events in executor 8 retain the same snapshot as the resulting trade. */
+  entrySignal?: TrendEntrySignal;
 }
 export interface TrendEquity {
   time: number;
@@ -159,7 +175,8 @@ export interface TrendResult {
     | "trend-continuation-4"
     | "trend-continuation-5"
     | "trend-continuation-6"
-    | "trend-continuation-7";
+    | "trend-continuation-7"
+    | "trend-continuation-8";
   /** Actual replay bounds, which may use less prehistory than the cached manifest. */
   window?: { startTime: number; endTime: number; warmupStart: number };
   metrics: TrendMetrics;

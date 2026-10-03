@@ -36,6 +36,19 @@ pub struct Funding {
     pub rate: f64,
     pub interval_hours: f64,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EntrySignal {
+    /// Close timestamp and price of the completed signal candle, before execution.
+    pub time: u64,
+    pub price: f64,
+    /// Prior channel boundary, or the impulse extreme for a pullback entry.
+    pub boundary: f64,
+    pub atr: f64,
+    /// Channel bars preceding the signal candle; absent for structural pullbacks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lookback_bars: Option<usize>,
+}
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Trade {
@@ -44,6 +57,7 @@ pub struct Trade {
     pub entry_time: u64,
     pub exit_time: u64,
     pub entry_price: f64,
+    pub entry_signal: EntrySignal,
     pub exit_price: f64,
     pub quantity: f64,
     pub initial_stop: f64,
@@ -67,6 +81,9 @@ pub struct Event {
     pub value: Option<f64>,
     pub trade_id: Option<usize>,
     pub reason: String,
+    /// Present on signal events; value retains its original anchor semantics.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry_signal: Option<EntrySignal>,
 }
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

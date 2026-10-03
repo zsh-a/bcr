@@ -8,7 +8,11 @@ import initSqlite from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import { GRID_EXECUTOR_VERSION, SINGLE_EXECUTOR_VERSION } from "./execution/versions";
 import { closeResearchService } from "./session/service";
-import { BINANCE_EXECUTOR_VERSION, TREND_EXECUTOR_VERSION } from "./trend/execution/versions";
+import {
+  BINANCE_EXECUTOR_VERSION,
+  TREND_EXECUTOR_VERSION,
+  TREND_CHART_EXECUTOR_VERSION,
+} from "./trend/execution/versions";
 
 type SqliteInit = (options?: {
   locateFile?: (file: string) => string;
@@ -45,8 +49,8 @@ export async function createRuntimeServices(host?: RuntimeHost): Promise<Runtime
           workerExecutor(pool, "wasm", BINANCE_EXECUTOR_VERSION, artifacts, [
             "market.binance.history",
           ]),
-          workerExecutor(pool, "wasm", TREND_EXECUTOR_VERSION, artifacts, [
-            "quant.backtest.trend",
+          workerExecutor(pool, "wasm", TREND_EXECUTOR_VERSION, artifacts, ["quant.backtest.trend"]),
+          workerExecutor(pool, "wasm", TREND_CHART_EXECUTOR_VERSION, artifacts, [
             "quant.chart.trend",
           ]),
         ],

@@ -10,6 +10,7 @@ import {
   withTradingPeriod,
   type TrendChartData,
   type TrendChunk,
+  type TrendEvent,
   type TrendResult,
 } from "@bcr/quant-core/trend";
 import { createArtifactIO } from "@bcr/runtime-worker";
@@ -93,6 +94,45 @@ function monthlySetup(abort = new AbortController()) {
   return { ...s, task, download };
 }
 describe("Binance worker pipeline", () => {
+  it("loads pre-window frozen candles for causal channels and rejects missing history inputs", async () => {
+    const s = setup();
+    const refs = await binanceHistoryHandler(s.io, s.download)(s.task, s.ctx);
+    const inputs = refs.map((ref) =>
+      ref.type === "market/binance-manifest" ? { ...ref, port: "manifest" } : ref,
+    );
+    const task = {
+      ...s.task,
+      inputs,
+      config: {
+        from: start,
+        to: start + DAY,
+        minutes: 5,
+        chunks: [],
+        hasTrades: false,
+        channel: { tradeMinutes: 1, entryBars: 20, exitBars: 10 },
+      },
+    };
+    const output = await trendChartHandler(s.io)(task, s.ctx);
+    const chart = await s.io.readJsonArtifact<TrendChartData>(output[0]!, s.ctx);
+    expect(chart.channels).toHaveLength(288);
+    expect(chart.channels![0]).toEqual({
+      time: start,
+      upper: 101,
+      lower: 99,
+      exitUpper: 101,
+      exitLower: 99,
+    });
+    const manifest = await s.io.readJsonArtifact<BinanceManifest>(
+      inputs.find((r) => r.port === "manifest")!,
+      s.ctx,
+    );
+    await expect(
+      trendChartHandler(s.io)(
+        { ...task, inputs: inputs.filter((ref) => ref.id !== manifest.partitions[0]!.candles.id) },
+        s.ctx,
+      ),
+    ).rejects.toThrow("输入不一致");
+  });
   it("keeps browser cache identity in sync with the shared engine contract", () => {
     expect(TREND_EXECUTOR_VERSION).toBe(contract.executor);
   });
@@ -297,6 +337,91 @@ describe("Binance worker pipeline", () => {
     const chart = await s.io.readJsonArtifact<TrendChartData>(output[0]!, s.ctx);
     expect(chart.bars).toHaveLength(60);
     expect(chart.indicators).toEqual([]);
+  });
+  it("seeds the latest position across historical chunks and stops its segment at exit", async () => {
+    const s = setup();
+    const refs = await binanceHistoryHandler(s.io, s.download)(s.task, s.ctx);
+    const event = (
+      minute: number,
+      kind: TrendEvent["kind"],
+      price: number,
+      tradeId: number,
+    ): TrendEvent => ({
+      time: start + minute * MINUTE,
+      kind,
+      price,
+      tradeId,
+      side: "long",
+      value: null,
+      reason: "test",
+    });
+    const older: TrendChunk = {
+      events: [event(0, "stop", 80, 1), event(10, "exit", 100, 1)],
+      trades: [],
+      equity: [],
+      indicators: [],
+    };
+    const before: TrendChunk = {
+      // Equal timestamps keep their engine order: the third stop belongs to the new position.
+      events: [event(20, "stop", 90, 2), event(20, "exit", 100, 2), event(20, "stop", 95, 3)],
+      trades: [],
+      equity: [],
+      indicators: [],
+    };
+    const inside: TrendChunk = {
+      events: [event(65, "stop", 96, 3), event(70, "exit", 100, 3), event(80, "stop", 97, 4)],
+      trades: [],
+      equity: [],
+      indicators: [],
+    };
+    const chunkRefs = [];
+    for (const [index, chunk] of [older, before, inside].entries())
+      chunkRefs.push(
+        await s.io.writeTypedJsonArtifact(
+          `chart-seed-${index}`,
+          "chunk",
+          "quant/trend-chunk",
+          chunk,
+        ),
+      );
+    const chunks = chunkRefs.map((ref, index) => ({
+      ref,
+      from: start + [0, 15, 60][index]! * MINUTE,
+      to: start + [15, 30, 90][index]! * MINUTE,
+      trades: 0,
+      indicators: 0,
+      positionEvents: index === 0 ? 2 : 3,
+    }));
+    const output = await trendChartHandler(s.io)(
+      {
+        ...s.task,
+        inputs: [
+          ...refs.map((ref) =>
+            ref.type === "market/binance-manifest" ? { ...ref, port: "manifest" } : ref,
+          ),
+          ...chunkRefs,
+        ],
+        config: { from: start + 60 * MINUTE, to: start + 90 * MINUTE, minutes: 5, chunks },
+      },
+      s.ctx,
+    );
+    const chart = await s.io.readJsonArtifact<TrendChartData>(output[0]!, s.ctx);
+    expect(chart.stops).toEqual([
+      {
+        tradeId: 3,
+        points: [
+          { time: start + 60 * MINUTE, value: 95 },
+          { time: start + 65 * MINUTE, value: 96 },
+        ],
+      },
+      {
+        tradeId: 4,
+        points: [
+          { time: start + 80 * MINUTE, value: 97 },
+          { time: start + 85 * MINUTE, value: 97 },
+        ],
+      },
+    ]);
   });
   it("adds only missing warmup archives and rejects insufficient history before creating Rust state", async () => {
     const s = setup();

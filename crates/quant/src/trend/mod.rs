@@ -19,7 +19,7 @@ use model::Funding;
 use replay::Replay;
 use wasm_bindgen::prelude::*;
 
-pub const ENGINE_VERSION: &str = "trend-continuation-7";
+pub const ENGINE_VERSION: &str = "trend-continuation-8";
 
 fn error(value: impl ToString) -> JsValue {
     JsValue::from_str(&value.to_string())

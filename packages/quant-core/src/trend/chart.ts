@@ -1,6 +1,7 @@
 import { MINUTE, type MinuteBar } from "@bcr/market-data/binance/model";
 import { TREND_PERIODS } from "./config";
 import type { TrendChunk, TrendEvent, TrendIndicator } from "./model";
+import type { TrendChannelPoint } from "./channels";
 
 export const MAX_TREND_CHART_BARS = 4096;
 export const MAX_TREND_CHART_EVENTS = 200;
@@ -14,10 +15,19 @@ export interface TrendChartWindow extends ChartRange {
 export interface ChartFocus extends ChartRange {
   revision: number;
 }
+export interface TrendChartStop {
+  tradeId: number | null;
+  value: number;
+}
+export interface TrendStopSegment {
+  tradeId: number | null;
+  points: { time: number; value: number }[];
+}
 export interface TrendChartData extends TrendChartWindow {
   bars: MinuteBar[];
+  channels?: TrendChannelPoint[];
   indicators: TrendIndicator[];
-  stops: { time: number; value?: number | undefined }[];
+  stops: TrendStopSegment[];
   markers: { time: number; kind: "entry" | "exit"; side: "long" | "short"; count: number }[];
   events: TrendEvent[];
   totalEvents: number;
@@ -77,7 +87,8 @@ export function canReuseChartWindow(
 
 /** Stream overlays into a bounded projection. Full events remain in result artifacts. */
 export class TrendChartProjection {
-  private stop: number | undefined;
+  private stop: TrendChartStop | undefined;
+  private stopSegment: TrendStopSegment | undefined;
   private previous: TrendIndicator | undefined;
   private cursor = 0;
   private readonly indicators = new Map<number, TrendIndicator>();
@@ -88,22 +99,37 @@ export class TrendChartProjection {
   constructor(
     private readonly window: TrendChartWindow,
     private readonly bars: MinuteBar[],
-    stop?: number,
+    stop?: TrendChartStop,
     previous?: TrendIndicator,
   ) {
     this.stop = stop;
     this.previous = previous;
+  }
+  private sampleStop(time: number): void {
+    if (!this.stop) return;
+    if (!this.stopSegment) {
+      this.stopSegment = { tradeId: this.stop.tradeId, points: [] };
+      this.stops.push(this.stopSegment);
+    }
+    this.stopSegment.points.push({ time, value: this.stop.value });
   }
   append(chunk: TrendChunk): void {
     const { from, to, minutes } = this.window;
     const step = minutes * MINUTE;
     for (const e of [...chunk.events].sort((a, b) => a.time - b.time)) {
       if (e.time < from || e.time >= to) continue;
-      if (e.kind === "stop" || e.kind === "exit") {
+      if (e.kind === "entry" || e.kind === "stop" || e.kind === "exit") {
         while (this.cursor < this.bars.length && this.bars[this.cursor]!.time < e.time) {
-          this.stops.push({ time: this.bars[this.cursor++]!.time, value: this.stop });
+          this.sampleStop(this.bars[this.cursor++]!.time);
         }
-        this.stop = e.kind === "exit" ? undefined : e.price;
+        if (e.kind === "stop") {
+          if (this.stop?.tradeId !== e.tradeId) this.stopSegment = undefined;
+          this.stop = { tradeId: e.tradeId, value: e.price };
+        } else {
+          // Keep a position boundary even when no display candle falls in the gap.
+          this.stop = undefined;
+          this.stopSegment = undefined;
+        }
       }
       if (e.kind !== "stop") {
         this.totalEvents++;
@@ -123,8 +149,7 @@ export class TrendChartProjection {
     }
   }
   finish(): TrendChartData {
-    while (this.cursor < this.bars.length)
-      this.stops.push({ time: this.bars[this.cursor++]!.time, value: this.stop });
+    while (this.cursor < this.bars.length) this.sampleStop(this.bars[this.cursor++]!.time);
     const indicators: TrendIndicator[] = [];
     for (const bar of this.bars) {
       this.previous = this.indicators.get(bar.time) ?? this.previous;

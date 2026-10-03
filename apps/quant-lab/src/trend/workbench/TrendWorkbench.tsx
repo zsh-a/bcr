@@ -179,6 +179,19 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
           )}
         </div>
       )}
+      {research.notice && (
+        <div className="trend-notice" role="status">
+          <span>{research.notice}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="关闭参数迁移提示"
+            onClick={research.dismissNotice}
+          >
+            <X size={14} />
+          </Button>
+        </div>
+      )}
       {invalid && (
         <p className="trend-error" role="alert">
           {invalid}
@@ -220,7 +233,7 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
               <li>
                 <strong>确认入场</strong>
                 <span>
-                  {strategyLabel(research.config.strategy.entry)} ·{" "}
+                  {strategyLabel(research.config.strategy.entry, research.config.strategy.filter)} ·{" "}
                   {periodLabel(research.config.strategy.tradeMinutes)}
                   {" · "}
                   {directionLabel(research.config.strategy.direction)}
@@ -252,7 +265,9 @@ export function TrendWorkbench({ onBusy }: { onBusy: (busy: boolean) => void }) 
               直接获取官方历史档案，无需 API Key。选择已发布的历史月份，数据校验与回放在 Worker
               中完成；再次调整参数可复用本地行情。
             </p>
-            <p className="trend-help">简洁通道默认方案是待验证的研究候选，尚未通过全部统计门槛。</p>
+            <p className="trend-help">
+              背景过滤可减少缺少趋势支持的入场，也可能错过趋势启动；研究候选尚未通过全部统计门槛。
+            </p>
             <Button variant="ghost" onClick={() => setSettings(true)}>
               查看规则与参数
             </Button>

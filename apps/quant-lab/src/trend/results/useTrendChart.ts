@@ -9,6 +9,7 @@ import {
   type ChartRange,
   type TrendChartData,
   type TrendResult,
+  type TrendChannelConfig,
 } from "@bcr/quant-core/trend";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { readChartWindow } from "./read";
@@ -19,6 +20,7 @@ export function useTrendChart(
   result: TrendResult,
   minutes: number,
   enabled: boolean,
+  channel?: TrendChannelConfig,
 ) {
   const bounds = useMemo(
     () => ({ from: dataset.manifest.startTime, to: dataset.manifest.endTime }),
@@ -64,7 +66,7 @@ export function useTrendChart(
     const abort = new AbortController();
     setLoading(true);
     setError(null);
-    void readChartWindow(services, dataset, result, plan, abort.signal)
+    void readChartWindow(services, dataset, result, plan, abort.signal, channel)
       .then((next) => {
         if (abort.signal.aborted) return;
         loaded.current = next;
@@ -77,7 +79,7 @@ export function useTrendChart(
         if (!abort.signal.aborted) setLoading(false);
       });
     return () => abort.abort();
-  }, [services, dataset, result, bounds, request, minutes, enabled]);
+  }, [services, dataset, result, bounds, request, minutes, enabled, channel]);
   return {
     data,
     focus,

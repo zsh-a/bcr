@@ -8,6 +8,7 @@ pub struct Candidate {
     pub side: Side,
     pub anchor: Option<f64>,
     pub atr: f64,
+    pub entry_signal: EntrySignal,
 }
 struct Setup {
     side: Side,
@@ -101,6 +102,13 @@ impl Signals {
                             side,
                             anchor: None,
                             atr,
+                            entry_signal: EntrySignal {
+                                time: bar.time + config.strategy.trade_minutes as u64 * MINUTE - 1,
+                                price: bar.close,
+                                boundary: extreme,
+                                atr,
+                                lookback_bars: Some(config.strategy.breakout_bars),
+                            },
                         });
                         break;
                     }
@@ -160,6 +168,15 @@ impl Signals {
                                     side,
                                     anchor: Some(setup.retrace),
                                     atr,
+                                    entry_signal: EntrySignal {
+                                        time: bar.time
+                                            + config.strategy.trade_minutes as u64 * MINUTE
+                                            - 1,
+                                        price: bar.close,
+                                        boundary: setup.extreme,
+                                        atr,
+                                        lookback_bars: None,
+                                    },
                                 });
                             } else {
                                 self.setup = Some(setup);
@@ -212,6 +229,7 @@ impl Signals {
                         value: Some(displacement / atr),
                         trade_id: None,
                         reason: "impulse".into(),
+                        entry_signal: None,
                     });
                 }
             }
@@ -225,6 +243,7 @@ impl Signals {
                 value: candidate.anchor,
                 trade_id: None,
                 reason: config.strategy.entry.clone(),
+                entry_signal: Some(candidate.entry_signal),
             });
             self.setup = None;
         }

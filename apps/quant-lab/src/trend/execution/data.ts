@@ -19,7 +19,12 @@ import {
   fundingMonths,
   type ArchiveWindow,
 } from "@bcr/market-data/binance/plan";
-import { MAX_TREND_CHART_BARS } from "@bcr/quant-core/trend";
+import {
+  MAX_TREND_CHART_BARS,
+  TrendChannelProjection,
+  validateTrendChannelConfig,
+  type TrendChannelConfig,
+} from "@bcr/quant-core/trend";
 import { throwIfAborted, type ArtifactIO, type WorkerContext } from "@bcr/runtime-worker";
 
 type CachedArchive = Omit<VerifiedArchive, "csv"> & { ref: ArtifactRef };
@@ -270,22 +275,32 @@ export async function readBinanceChartBars(io: ArtifactIO, task: ComputeTask, ct
     to > manifest.endTime
   )
     throw new Error(`图表区间需对齐显示周期，最多 ${MAX_TREND_CHART_BARS} 根 K 线`);
+  const channelConfig = task.config?.["channel"] as TrendChannelConfig | undefined;
+  if (channelConfig) validateTrendChannelConfig(channelConfig, minutes);
+  const historyFrom = channelConfig
+    ? Math.max(
+        manifest.warmupStart,
+        from - channelConfig.entryBars * channelConfig.tradeMinutes * MINUTE,
+      )
+    : from;
+  const channels = channelConfig
+    ? new TrendChannelProjection(channelConfig, from, to, minutes)
+    : undefined;
   const bars = [];
-  for (const p of manifest.partitions.filter((p) => p.from < to && p.to > from)) {
+  for (const p of manifest.partitions.filter((p) => p.from < to && p.to > historyFrom)) {
     if (!task.inputs.some((input) => input.id === p.candles.id))
       throw new Error("行情分片与输入不一致");
     throwIfAborted(ctx);
-    bars.push(
-      ...aggregateMinuteBars(
-        parseMinuteCsv(await (await io.getBlob(p.candles)).text()).filter(
-          (b) => b.time >= from && b.time < to,
-        ),
-        minutes,
-      ),
+    const source = parseMinuteCsv(await (await io.getBlob(p.candles)).text()).filter(
+      (b) => b.time >= historyFrom && b.time < to,
     );
+    if (channels && channelConfig)
+      channels.append(aggregateMinuteBars(source, channelConfig.tradeMinutes));
+    const visible = source.filter((b) => b.time >= from);
+    if (visible.length) bars.push(...aggregateMinuteBars(visible, minutes));
   }
   throwIfAborted(ctx);
   if (bars.length !== (to - from) / (minutes * MINUTE))
     throw new Error("图表行情未完整覆盖所选周期");
-  return { bars, manifest, from, to, minutes };
+  return { bars, manifest, from, to, minutes, channels: channels?.points };
 }

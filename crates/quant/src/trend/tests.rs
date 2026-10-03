@@ -114,6 +114,108 @@ fn pullback_continuation_is_symmetric_and_enters_after_signal_close() {
     }
 }
 #[test]
+fn breakout_snapshot_uses_only_the_previous_n_candles() {
+    use super::signals::Signals;
+    for short in [false, true] {
+        let mut c = config();
+        c.strategy.entry = "breakout".into();
+        c.strategy.breakout_bars = 3;
+        let mut bars: Vec<Bar> = (0..26).map(|i| bar(i, 100.0, 100.0)).collect();
+        bars[21].high = 150.0; // Outside the previous three-candle window.
+        bars[22].high = 105.0;
+        bars[23].high = 104.0;
+        bars[24].high = 103.0;
+        bars[25].close = 105.02;
+        bars[25].high = 130.0; // The signal candle must not enter its own boundary.
+        if short {
+            for b in &mut bars {
+                *b = Bar {
+                    open: 200.0 - b.open,
+                    close: 200.0 - b.close,
+                    high: 200.0 - b.low,
+                    low: 200.0 - b.high,
+                    ..*b
+                };
+            }
+        }
+        let mut signals = Signals::default();
+        let mut indicators = Indicators::default();
+        let mut events = vec![];
+        for b in &bars[..25] {
+            indicators.close(*b, &c.strategy);
+            assert!(signals
+                .close(*b, &indicators, &c, false, &mut events)
+                .is_none());
+        }
+        let b = bars[25];
+        indicators.close(b, &c.strategy);
+        let candidate = signals
+            .close(b, &indicators, &c, true, &mut events)
+            .unwrap();
+        let expected = EntrySignal {
+            time: b.time + MINUTE - 1,
+            price: b.close,
+            boundary: if short { 95.0 } else { 105.0 },
+            atr: indicators.atr,
+            lookback_bars: Some(3),
+        };
+        assert_eq!(candidate.side, if short { Side::Short } else { Side::Long });
+        assert_eq!(candidate.entry_signal, expected);
+        assert_eq!(candidate.atr, expected.atr);
+        let event = events.last().unwrap();
+        assert_eq!(event.kind, "signal");
+        assert_eq!(event.entry_signal, Some(expected));
+        assert_eq!(event.value, None); // Existing breakout value semantics stay unchanged.
+    }
+}
+#[test]
+fn next_open_gap_preserves_the_pullback_signal_snapshot() {
+    for short in [false, true] {
+        let mut bars = history(short);
+        let side = if short { Side::Short } else { Side::Long };
+        for b in &mut bars[66..] {
+            let gap = side.sign() * 1.5;
+            b.open += gap;
+            b.high += gap;
+            b.low += gap;
+            b.close += gap;
+        }
+        let c = config();
+        let mut indicators = Indicators::default();
+        for b in &bars[..66] {
+            indicators.close(*b, &c.strategy);
+        }
+        let (_, out) = replay(c.clone(), &bars, vec![], false);
+        assert_eq!(out.trades.len(), 1);
+        let trade = &out.trades[0];
+        let event = out.events.iter().find(|e| e.kind == "signal").unwrap();
+        let expected = EntrySignal {
+            time: bars[65].time + MINUTE - 1,
+            price: bars[65].close,
+            boundary: if short { bars[62].low } else { bars[62].high },
+            atr: indicators.atr,
+            lookback_bars: None,
+        };
+        assert_eq!(trade.entry_signal, expected);
+        assert_eq!(event.entry_signal, Some(expected));
+        assert_eq!(trade.entry_time, expected.time + 1);
+        assert_eq!(
+            trade.entry_price,
+            c.execution.fill(bars[66].open, !short).unwrap()
+        );
+        assert!((trade.entry_price - expected.price).abs() > 1.0);
+        assert!(event.value.is_some()); // Pullback value remains its structural anchor.
+        let serialized = serde_json::to_value(trade).unwrap();
+        assert_eq!(serialized["entrySignal"]["boundary"], expected.boundary);
+        assert!(serialized["entrySignal"].get("lookbackBars").is_none());
+        assert!(out
+            .events
+            .iter()
+            .filter(|e| e.kind != "signal")
+            .all(|e| e.entry_signal.is_none()));
+    }
+}
+#[test]
 fn optional_ema_is_unchanged_until_trading_candle_close() {
     let mut c = period_config(5);
     c.strategy.filter = "ema".into();
@@ -435,6 +537,9 @@ fn five_minute_signal_fills_next_minute_and_is_invariant_to_partition_boundaries
         let signal = out.events.iter().find(|e| e.kind == "signal").unwrap();
         assert_eq!(signal.time, BASE + 330 * MINUTE - 1);
         assert_eq!(signal.time + 1, t.entry_time);
+        assert_eq!(signal.entry_signal, Some(t.entry_signal));
+        assert_eq!(t.entry_signal.price, bars[329].close);
+        assert_eq!(t.entry_signal.time, signal.time);
         assert_eq!(t.side, if short { Side::Short } else { Side::Long });
         assert_eq!(
             serde_json::to_string(&a).unwrap(),
@@ -557,6 +662,13 @@ fn position(side: Side) -> super::position::Position {
         side,
         time: BASE,
         entry: 100.0,
+        entry_signal: EntrySignal {
+            time: BASE - 1,
+            price: 100.0,
+            boundary: 100.0 - side.sign(),
+            atr: 2.0,
+            lookback_bars: Some(20),
+        },
         quantity: 1.0,
         initial_stop: 100.0 - side.sign() * 6.0,
         stop: 100.0 - side.sign() * 6.0,
@@ -972,6 +1084,7 @@ fn config_v5_requires_independent_cost_policy_and_v4_retains_legacy_shape() {
     assert_eq!(c.strategy.trade_minutes, 240);
     assert_eq!(c.strategy.management, "channel");
     assert_eq!(c.strategy.direction, "long");
+    assert_eq!(c.strategy.filter, "background");
     assert!(c.validate().is_ok());
     for invalid in [None, Some(-0.1), Some(20.1), Some(f64::NAN)] {
         c.strategy.max_cost_atr = invalid;
@@ -979,6 +1092,7 @@ fn config_v5_requires_independent_cost_policy_and_v4_retains_legacy_shape() {
     }
     c.version = 4;
     c.strategy.max_cost_atr = None;
+    c.strategy.filter = "none".into();
     assert!(c.validate().is_ok());
     let json = serde_json::to_value(&c).unwrap();
     assert!(json["strategy"].get("maxCostAtr").is_none());
@@ -1003,6 +1117,8 @@ fn config_v5_requires_independent_cost_policy_and_v4_retains_legacy_shape() {
 #[test]
 fn warmup_days_cover_channel_ema_and_weekly_background_horizons() {
     let mut c = Config::default();
+    assert_eq!(c.warmup_days(), 22);
+    c.strategy.filter = "none".into();
     assert_eq!(c.warmup_days(), 4);
     c.strategy.filter = "background".into();
     assert_eq!(c.warmup_days(), 22);

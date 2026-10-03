@@ -1,6 +1,7 @@
 import { artifactPath, type ArtifactRef, type ComputeTask } from "@bcr/core";
 import {
   TrendChartProjection,
+  type TrendChartStop,
   type TrendChunk,
   type TrendIndicator,
   type TrendResult,
@@ -10,7 +11,7 @@ import { readBinanceChartBars } from "./data";
 
 export function trendChartHandler(io: ArtifactIO) {
   return async (task: ComputeTask, ctx: WorkerContext): Promise<readonly ArtifactRef[]> => {
-    const { bars, from, to, minutes } = await readBinanceChartBars(io, task, ctx);
+    const { bars, from, to, minutes, channels } = await readBinanceChartBars(io, task, ctx);
     const chunks = task.config?.["chunks"] as TrendResult["chunks"];
     const inputs = new Set(task.inputs.map((ref) => ref.id));
     if (
@@ -20,7 +21,7 @@ export function trendChartHandler(io: ArtifactIO) {
       )
     )
       throw new Error("图表结果分片与冻结输入不一致");
-    let stop: number | undefined, previous: TrendIndicator | undefined;
+    let stop: TrendChartStop | undefined, previous: TrendIndicator | undefined;
     let foundStop = task.config?.["hasTrades"] === false;
     let foundIndicator = chunks.every((c) => c.indicators === 0);
     for (const c of [...chunks].reverse().filter((c) => c.from < from)) {
@@ -33,9 +34,10 @@ export function trendChartHandler(io: ArtifactIO) {
       if (!foundStop) {
         const e = chunk.events
           .filter((e) => e.time < from && (e.kind === "stop" || e.kind === "exit"))
-          .sort((a, b) => b.time - a.time)[0];
+          .sort((a, b) => a.time - b.time)
+          .at(-1);
         if (e) {
-          stop = e.kind === "stop" ? e.price : undefined;
+          stop = e.kind === "stop" ? { tradeId: e.tradeId, value: e.price } : undefined;
           foundStop = true;
         }
       }
@@ -53,7 +55,7 @@ export function trendChartHandler(io: ArtifactIO) {
       `trend/chart-${crypto.randomUUID()}`,
       "chart",
       "quant/trend-chart",
-      projection.finish(),
+      { ...projection.finish(), ...(channels ? { channels } : {}) },
     );
     if (ctx.signal.aborted) {
       await io.store.delete(artifactPath(output));

@@ -7,6 +7,7 @@ pub struct Position {
     pub side: Side,
     pub time: u64,
     pub entry: f64,
+    pub entry_signal: EntrySignal,
     pub quantity: f64,
     pub initial_stop: f64,
     pub stop: f64,
