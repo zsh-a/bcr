@@ -6,7 +6,7 @@ from pathlib import Path
 
 from artifacts import (atomic_bytes, audit_window, ensure_writable, evaluation_fingerprint,
                        load_evidence, sha, source_fingerprint, write)
-from evaluation import EVALUATION_VERSION, account_series, paired_comparison, summarize
+from evaluation import EVALUATION_VERSION, account_series, evaluation_contract, paired_comparison, summarize
 from protocol import DAY, is_development, sleeve_capital, timestamp
 
 
@@ -49,8 +49,13 @@ def build_bundle(evidence):
     plan, selection = evidence["plan"], evidence["selection"]
     chosen, baseline = selection["id"], plan.get("baseline")
     summaries, comparisons, provenance, curves = {}, {}, [], []
+    contract = None
     for window in plan["windows"]:
         batches, receipts = audit_window(evidence, window)
+        current = evaluation_contract(batches)
+        if contract is not None and contract != current:
+            raise ValueError("mixed Rust evaluation versions across study windows")
+        contract = current
         candidates = [row["id"] for row in batches[0]["results"]]
         summaries[window["id"]] = [summarize(plan, batches, candidate) for candidate in candidates]
         provenance.extend(receipts)
@@ -65,7 +70,8 @@ def build_bundle(evidence):
               "planSha256": evidence["planSha256"], "manifestSha256": evidence["manifestSha256"],
               "selection": selection, "baseline": baseline,
               "evaluation": {"version": EVALUATION_VERSION, "sourceSha256": evaluation_fingerprint(),
-                             "selectionRecomputed": False},
+                             "selectionRecomputed": False, "singleSleeveEvaluationVersion": contract,
+                             "accountDrawdownSampling": "daily-close"},
               "reportSourceSha256": source_fingerprint("report.py"),
               "auditSourceSha256": source_fingerprint("artifacts.py", "protocol.py", "warmup.py"),
               "auditScope": "Recorded receipt/configuration identities, UTC daily calendars and cash/trade reconciliation; source CSV files are not rehashed.",
@@ -112,6 +118,41 @@ def render_report(bundle):
         lines.append("| " + " | ".join([text(window["id"]), pct(value["equalSleeveReturn"]), number(value["dailySharpe"]),
                      pct(value["dailyPortfolioDrawdown"]), str(value["trades"]), f"{value['profitableSymbols']}/{count}",
                      f"{value['fees']:.2f}", f"{value['funding']:.2f}"]) + " |")
+    modern = [window for window in windows if "accountEvaluation" in row(window["id"], chosen)]
+    if modern:
+        lines += ["", "合计账户先汇总各子账户的完整 UTC 日终权益，再计算日收益。年化使用 365 日，无风险利率和下行目标均为 0；"
+                  "CAGR、波动率与风险比率至少需要 30 个完整日，这只是展示门槛。未定义或非有限值显示为 —。"
+                  "账户 Calmar 使用日终最大回撤；逐币 Rust Calmar 使用分钟估值与成交回撤，二者不能混比。", "",
+                  "| 区间 | 账户 CAGR | 年化波动 | Sortino | 日终 Calmar | 最差日 | 最长日终回撤天数 | 期末未恢复天数 |",
+                  "|---|---:|---:|---:|---:|---:|---:|---:|"]
+        for window in modern:
+            value = row(window["id"], chosen)["accountEvaluation"]
+            lines.append("| " + " | ".join([text(window["id"]), pct(value["annualizedReturn"]),
+                         pct(value["annualizedVolatility"]), number(value["sortino"]), number(value["calmar"]),
+                         pct(value["worstDayReturn"]), number(value["maxDrawdownDurationMs"] / DAY),
+                         number(value["currentDrawdownDurationMs"] / DAY)]) + " |")
+        lines += ["", "最长回撤从此前峰值计到恢复或区间结束，包含尚未恢复的区段；日终采样可能漏掉日内峰谷。", "",
+                  "| 区间 | 手续费 | 资金费净支出 | 滑点及取整 | 总成本 | 成本前盈亏 | 净盈亏 |",
+                  "|---|---:|---:|---:|---:|---:|---:|"]
+        for window in modern:
+            costs = row(window["id"], chosen)["accountEvaluation"]["costs"]
+            lines.append("| " + " | ".join([text(window["id"]), *[f"{costs[key]:.2f}" for key in
+                         ["fees", "funding", "slippageAndRounding", "total", "grossBeforeCosts", "netPnl"]]]) + " |")
+        lines += ["", "金额单位 USDT。资金费负值为收入；滑点及取整已包含在成交价中，总成本仅作归因，不从净值重复扣除。", "",
+                  "<details>", "<summary>冻结选择的逐币评价 · 直接读取 Rust evaluation v2</summary>", "",
+                  "| 区间 / 品种 | CAGR | 日 Sharpe | Sortino | Calmar | 分钟最大回撤 | 最长回撤天数 | 总成本 USDT |",
+                  "|---|---:|---:|---:|---:|---:|---:|---:|"]
+        for window in modern:
+            for sleeve in row(window["id"], chosen)["symbols"]:
+                metrics = sleeve["metrics"]
+                value = metrics["evaluation"]
+                lines.append("| " + " | ".join([text(f"{window['id']} / {sleeve['symbol']}"),
+                             pct(value["annualizedReturn"]), number(value["dailySharpe"]), number(value["sortino"]),
+                             number(value["calmar"]), pct(metrics["maxDrawdown"]),
+                             number(value["maxDrawdownDurationMs"] / DAY), f"{value['costs']['total']:.2f}"]) + " |")
+        lines += ["", "逐币日/月明细、成本与采样约定保留在 results.json 的原始 metrics.evaluation；未从图表或组合指标反推。", "", "</details>"]
+    else:
+        lines += ["", "本研究为旧版未标记评价，保留原账户统计和原选择；不补造 v2 成本归因、回撤时长或逐币指标。"]
     if baseline:
         lines += ["", "## 同风险预算的基线比较", "",
                   "| 区间 | 基线净收益 | 选择净收益 | 选择压力收益 | 日均收益差 95% 配对区间 bps |",
@@ -122,7 +163,7 @@ def render_report(bundle):
             interval = bundle["pairedComparisons"][key]["meanDailyDifference95CI"]
             lines.append("| " + " | ".join([text(key), pct(row(key, baseline)["equalSleeveReturn"]),
                          pct(row(key, chosen)["equalSleeveReturn"]), pct(stress["equalSleeveReturn"] if stress else None),
-                         f"[{interval[0] * 10000:.3f}, {interval[1] * 10000:.3f}]"]) + " |")
+                         f"[{interval[0] * 10000:.3f}, {interval[1] * 10000:.3f}]" if interval is not None else "—"]) + " |")
         lines += ["", "配对以同一天的合计账户收益为单位，保留共同市场冲击。区间跨零或短样本均不能据此确认相对优势。"]
     lines += ["", "## 证据与复核", "",
               f"计划 SHA-256：`{bundle['planSha256']}`。",

@@ -6,6 +6,8 @@ import type {
 } from "./recorded";
 import type { ArtifactRef } from "@bcr/core";
 import type { BinanceDataset } from "@bcr/market-data/binance/model";
+import type { TrendEvaluation } from "./evaluation";
+export type { TrendEvaluation } from "./evaluation";
 
 export interface TrendStrategy {
   entry: "breakout" | "pullback";
@@ -69,6 +71,8 @@ export interface TrendTrade {
   grossPnl: number;
   fees: number;
   funding: number;
+  /** Executor 9: modeled slippage and adverse rounding already included in fill prices. */
+  slippageAndRounding?: number;
   netPnl: number;
   rMultiple: number;
   mfeR: number;
@@ -146,26 +150,6 @@ export interface TrendMetrics {
   rows: number;
   context?: TrendContextMetrics;
 }
-export interface TrendEvaluation {
-  netExpectancy: number | null;
-  averageWin: number | null;
-  averageLoss: number | null;
-  payoffRatio: number | null;
-  grossPnl: number;
-  meanHoldHours: number | null;
-  exposurePct: number;
-  turnover: number;
-  dailySharpe: number | null;
-  sortino: number | null;
-  calmar: number | null;
-  positiveDays: number;
-  totalDays: number;
-  bestTradeShare: number | null;
-  withoutBestTrade: number;
-  longNetPnl: number;
-  shortNetPnl: number;
-  exitReasons: Record<string, number>;
-}
 export interface TrendResult {
   version: 1;
   engine:
@@ -176,7 +160,8 @@ export interface TrendResult {
     | "trend-continuation-5"
     | "trend-continuation-6"
     | "trend-continuation-7"
-    | "trend-continuation-8";
+    | "trend-continuation-8"
+    | "trend-continuation-9";
   /** Actual replay bounds, which may use less prehistory than the cached manifest. */
   window?: { startTime: number; endTime: number; warmupStart: number };
   metrics: TrendMetrics;
@@ -203,7 +188,8 @@ export interface TrendRun {
     | ArchivedTrendConfig;
   dataset: BinanceDataset;
   resultRef: ArtifactRef;
-  metrics: TrendMetrics;
+  /** Keep the session index small; full evaluation series live in resultRef. */
+  metrics: Omit<TrendMetrics, "evaluation">;
   durationMs: number;
   cached: boolean;
 }

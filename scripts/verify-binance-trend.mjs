@@ -172,7 +172,7 @@ try {
   const result = await exportResult("binance-trend-result.json");
   assert.equal(result.manifest.provider, "binance-public-data");
   assert.equal(result.config.strategy.tradeMinutes, 1);
-  assert.equal(result.engine, "trend-continuation-8");
+  assert.equal(result.engine, "trend-continuation-9");
   assert.equal(result.config.version, 5);
   assert.equal(result.config.strategy.maxCostAtr, 0);
   assert.equal(result.config.strategy.entry, "breakout");
@@ -201,6 +201,60 @@ try {
   assert(Number.isFinite(result.metrics.finalEquity));
   assert.equal(result.metrics.evaluation.totalDays, researchDays);
   assert.equal(result.metrics.evaluation.dailySharpe, null);
+  const evaluation = result.metrics.evaluation;
+  assert.equal(evaluation.version, 2);
+  assert.deepEqual(
+    evaluation.conventions,
+    JSON.parse(
+      readFileSync(
+        new URL("../crates/quant/fixtures/trend-evaluation-contract.json", import.meta.url),
+        "utf8",
+      ),
+    ).conventions,
+  );
+  assert.equal(evaluation.durationMs, researchDays * day);
+  assert.equal(evaluation.annualizedReturn, null, "short runs do not imply long-term growth");
+  assert.equal(evaluation.calmar, null);
+  assert.equal(evaluation.daily.length, researchDays);
+  assert(evaluation.daily.every((point) => point.complete));
+  assert.equal(evaluation.daily.at(-1).equity, result.metrics.finalEquity);
+  assert(result.metrics.maxDrawdown <= evaluation.dailyMaxDrawdown + 1e-12);
+  assert.equal(evaluation.monthly.length, 1);
+  assert.equal(evaluation.monthly[0].complete, false);
+  assert.equal(evaluation.monthly[0].returnPct, result.metrics.totalReturn);
+  assert(Math.abs(evaluation.costs.fees - result.metrics.fees) < 1e-7);
+  assert(Math.abs(evaluation.costs.funding - result.metrics.funding) < 1e-7);
+  assert(
+    Math.abs(
+      evaluation.costs.slippageAndRounding -
+        trades.reduce((sum, t) => sum + t.slippageAndRounding, 0),
+    ) < 1e-7,
+  );
+  assert(
+    Math.abs(evaluation.costs.grossBeforeCosts - evaluation.costs.total - evaluation.costs.netPnl) <
+      1e-7,
+  );
+  assert(
+    Math.abs(
+      evaluation.costs.netPnl -
+        (result.metrics.finalEquity - result.config.execution.initialCapital),
+    ) < 1e-7,
+  );
+  assert.equal(await page.locator(".trend-overview-metrics [data-metric]").count(), 9);
+  assert.equal(
+    await page.locator('.trend-overview-metrics [data-metric="sharpe"] dd').textContent(),
+    "—",
+  );
+  const performance = page.getByRole("img", { name: "组合净值图", exact: true });
+  assert.equal(await performance.getAttribute("data-evaluation-version"), "2");
+  assert.equal(Number(await performance.getAttribute("data-daily-points")), researchDays);
+  assert(
+    await page
+      .getByRole("region", { name: "月度收益", exact: true })
+      .getByText("部分月份", { exact: true })
+      .isVisible(),
+  );
+  await page.screenshot({ path: `${shots}/binance-trend-performance.png`, fullPage: true });
   assert(
     Math.abs(
       (result.metrics.evaluation.netExpectancy ?? 0) * trades.length -
@@ -208,7 +262,13 @@ try {
     ) < 1e-7,
   );
   await page.getByText("收益质量与交易管理", { exact: true }).click();
-  assert(await page.getByText("单笔净期望 · USDT", { exact: true }).isVisible());
+  assert(await page.locator('[data-metric="expectancy"]').isVisible());
+  assert(await page.locator('[data-metric="slippage"]').isVisible());
+  await page.locator(".trend-validation-evidence summary").click();
+  assert(
+    (await page.locator(".trend-validation-evidence").textContent()).includes("尚未绑定独立样本外"),
+  );
+  await page.locator(".trend-validation-evidence summary").click();
   assert(
     Math.abs(
       result.metrics.finalEquity -
@@ -445,7 +505,9 @@ try {
     await runButton().click();
     await page.waitForFunction(
       () =>
-        /^[1-9]\d* 笔交易/u.test(document.querySelector(".trend-accounting")?.textContent ?? ""),
+        Number(
+          document.querySelector('[data-metric="trades"] dd')?.textContent?.replaceAll(",", ""),
+        ) > 0,
       null,
       { timeout: 60000 },
     );
@@ -519,6 +581,13 @@ try {
   }
   await page.reload({ waitUntil: "networkidle" });
   await page.locator(".trend-result").waitFor();
+  assert.equal(
+    await page
+      .getByRole("img", { name: "组合净值图", exact: true })
+      .getAttribute("data-evaluation-version"),
+    "2",
+    "restored results read full evaluation from the result artifact, not the session index",
+  );
   assert((await page.locator(".trend-result-heading").textContent()).includes("通道突破基线"));
   assert.equal(
     await page.getByLabel("回测交易周期", { exact: true }).inputValue(),

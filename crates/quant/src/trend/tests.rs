@@ -343,6 +343,56 @@ fn draining_does_not_change_decisions_or_metrics() {
     );
 }
 #[test]
+fn slippage_attribution_reconciles_without_deducting_fills_twice() {
+    for short in [false, true] {
+        let bars = history(short);
+        let mut c = config();
+        c.execution.fee_bps = 7.0;
+        c.execution.slippage_bps = 3.0;
+        c.execution.tick_size = 0.03;
+        let funding = vec![Funding {
+            time: bars[67].time + 1,
+            rate: 0.001,
+            interval_hours: 8.0,
+        }];
+        let initial = c.execution.initial_capital;
+        let (metrics, out) = replay(c.clone(), &bars, funding.clone(), false);
+        let (drained, _) = replay(c, &bars, funding, true);
+        assert_eq!(
+            serde_json::to_string(&metrics).unwrap(),
+            serde_json::to_string(&drained).unwrap()
+        );
+        assert_eq!(out.trades.len(), 1);
+        let t = &out.trades[0];
+        assert_eq!(t.reason, "end-range");
+        let raw_entry = bars[((t.entry_time - BASE) / MINUTE) as usize].open;
+        let raw_exit = bars.last().unwrap().close;
+        let reference = t.side.sign() * (raw_exit - raw_entry) * t.quantity;
+        let expected_slippage =
+            t.side.sign() * ((t.entry_price - raw_entry) + (raw_exit - t.exit_price)) * t.quantity;
+        assert!(expected_slippage > 0.0);
+        assert!((t.slippage_and_rounding - expected_slippage).abs() < 1e-9);
+        let costs = &metrics.evaluation.costs;
+        assert!((costs.slippage_and_rounding - expected_slippage).abs() < 1e-9);
+        assert!((costs.gross_before_costs - reference).abs() < 1e-9);
+        assert!((costs.cost_to_gross_profit.unwrap() - costs.total / reference).abs() < 1e-9);
+        assert!((costs.fees - metrics.fees).abs() < 1e-9);
+        assert!((costs.funding - metrics.funding).abs() < 1e-9);
+        assert!(if short {
+            costs.funding < 0.0
+        } else {
+            costs.funding > 0.0
+        });
+        assert!((costs.net_pnl - t.net_pnl).abs() < 1e-9);
+        assert!((costs.gross_before_costs - costs.total - costs.net_pnl).abs() < 1e-9);
+        assert!((metrics.final_equity - initial - costs.net_pnl).abs() < 1e-8);
+        assert!((t.gross_pnl - t.fees - t.funding - t.net_pnl).abs() < 1e-9);
+        assert!(
+            (metrics.evaluation.daily.last().unwrap().equity - metrics.final_equity).abs() < 1e-9
+        );
+    }
+}
+#[test]
 fn incomplete_or_out_of_order_input_cannot_be_finished() {
     let mut e = Engine::new(config(), vec![], BASE, BASE + 2 * MINUTE, BASE).unwrap();
     assert!(e
@@ -675,6 +725,7 @@ fn position(side: Side) -> super::position::Position {
         distance: 6.0,
         atr: 2.0,
         entry_fee: 0.0,
+        entry_slippage_and_rounding: 0.0,
         funding: 0.0,
         mfe: 0.0,
         mae: 0.0,

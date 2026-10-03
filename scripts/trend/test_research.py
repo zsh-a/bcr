@@ -1,4 +1,5 @@
 import importlib.util
+import copy
 import json
 from pathlib import Path
 import subprocess
@@ -21,6 +22,115 @@ artifacts, evaluation, protocol, report = module("artifacts"), module("evaluatio
 
 
 class ResearchTests(unittest.TestCase):
+    @staticmethod
+    def evaluation_fixture():
+        return json.loads((research.ROOT / "crates/quant/fixtures/trend-evaluation-contract.json").read_text())
+
+    def v2_batches(self, curves):
+        plan = {"initialCapital": len(curves) * 10000, "capitalMode": "total-account-equal-sleeves",
+                "symbols": {chr(65 + i): {} for i in range(len(curves))},
+                "bootstrap": {"samples": 50, "blockDays": 2, "seed": 13}}
+        batches = []
+        for symbol, curve in zip(plan["symbols"], curves):
+            pnl = curve[-1]["equity"] - 10000
+            # Per-sleeve metrics stand in for the trusted Rust output; the
+            # research layer must not replace them with account statistics.
+            metrics = {"finalEquity": curve[-1]["equity"], "trades": 1, "totalReturn": pnl / 10000,
+                       "maxDrawdown": -.25, "meanR": pnl / 100, "fees": 3, "funding": -.5}
+            metrics["evaluation"] = {**self.evaluation_fixture()["cases"][0]["expected"], "version": 2,
+                "conventions": dict(evaluation.RUST_CONVENTIONS), "maxDrawdownDurationMs": 7 * protocol.DAY,
+                "costs": {"fees": 3, "funding": -.5, "slippageAndRounding": .25, "total": 2.75,
+                          "grossBeforeCosts": pnl + 2.75, "netPnl": pnl, "costToGrossProfit": None}}
+            batches.append({"symbol": symbol, "results": [{"id": "c", "daily": copy.deepcopy(curve),
+                "trades": [{"netPnl": pnl, "rMultiple": pnl / 100, "side": "long"}], "metrics": metrics}]})
+        return plan, batches
+
+    def test_shared_rust_daily_evaluation_contract(self):
+        fixture = self.evaluation_fixture()
+        self.assertEqual(fixture["conventions"], evaluation.RUST_CONVENTIONS)
+        for case in fixture["cases"]:
+            with self.subTest(case=case["name"]):
+                actual = evaluation.account_evaluation(case["daily"], case["initialCapital"])
+                self.assertEqual(actual["durationMs"], case["endTime"] - case["startTime"])
+                self.assertEqual(actual["conventions"]["drawdownSampling"], "daily-close")
+                for name, expected in case["expected"].items():
+                    if expected is None:
+                        self.assertIsNone(actual[name], name)
+                    else:
+                        self.assertAlmostEqual(actual[name], expected, places=10, msg=name)
+
+    def test_v2_account_uses_summed_equity_preserves_sleeves_and_reconciles_costs(self):
+        mixed = self.evaluation_fixture()["cases"][0]["daily"]
+        opposite = [{**point, "equity": 20000 - point["equity"]} for point in mixed]
+        plan, batches = self.v2_batches([mixed, opposite])
+        summary = evaluation.summarize(plan, batches, "c")
+        self.assertEqual(summary["accountFinalEquity"], 20000)
+        self.assertIsNone(summary["dailySharpe"])  # Offsetting sleeves form a flat account.
+        self.assertEqual(summary["accountEvaluation"]["dailyMaxDrawdown"], 0)
+        self.assertIs(summary["symbols"][0]["metrics"], batches[0]["results"][0]["metrics"])
+        self.assertGreater(summary["symbols"][0]["metrics"]["evaluation"]["dailySharpe"], 2)
+        costs = summary["accountEvaluation"]["costs"]
+        self.assertEqual(costs["fees"], 6)
+        self.assertEqual(costs["funding"], -1)
+        self.assertEqual(costs["slippageAndRounding"], .5)
+        self.assertEqual(costs["total"], 5.5)
+        self.assertAlmostEqual(costs["grossBeforeCosts"] - costs["total"], summary["accountNetPnl"])
+        self.assertEqual(costs["netPnl"], 0)  # Costs were not deducted again.
+        batches[1]["results"][0]["metrics"]["evaluation"]["costs"]["total"] += 1
+        with self.assertRaisesRegex(ValueError, "cost attribution"):
+            evaluation.summarize(plan, batches, "c")
+
+    def test_v2_short_window_and_mixed_contracts_do_not_silently_select(self):
+        short = self.evaluation_fixture()["cases"][2]["daily"]
+        plan, batches = self.v2_batches([short, short])
+        self.assertIsNone(evaluation.summarize(plan, batches, "c")["dailySharpe"])
+        old = copy.deepcopy(batches)
+        for batch in old:
+            del batch["results"][0]["metrics"]["evaluation"]
+        self.assertIsNotNone(evaluation.summarize(plan, old, "c")["dailySharpe"])
+        with self.assertRaisesRegex(ValueError, "mixed.*versions"):
+            evaluation.summarize(plan, [batches[0], old[1]], "c")
+        batches[1]["results"][0]["metrics"]["evaluation"]["conventions"]["annualizationDays"] = 252
+        with self.assertRaisesRegex(ValueError, "conventions"):
+            evaluation.summarize(plan, batches, "c")
+
+    def test_daily_drawdown_duration_includes_recovery_and_open_drawdown(self):
+        start = protocol.timestamp("2024-01-01")
+        curve = [{"time": start + (i + 1) * protocol.DAY - 1, "equity": value}
+                 for i, value in enumerate([110, 90, 110, 100, 105, 90])]
+        value = evaluation.account_evaluation(curve, 100)
+        self.assertEqual(value["maxDrawdownDurationMs"], 3 * protocol.DAY)
+        self.assertEqual(value["currentDrawdownDurationMs"], 3 * protocol.DAY)
+        self.assertAlmostEqual(value["currentDrawdown"], 90 / 110 - 1)
+        recovered = evaluation.account_evaluation(curve[:3], 100)
+        self.assertEqual(recovered["maxDrawdownDurationMs"], 2 * protocol.DAY)
+        self.assertEqual(recovered["currentDrawdownDurationMs"], 0)
+        with self.assertRaisesRegex(ValueError, "complete.*UTC"):
+            evaluation.account_evaluation(curve[::2], 100)
+
+    def test_insolvent_account_does_not_skip_invalid_return_days(self):
+        curve = copy.deepcopy(self.evaluation_fixture()["cases"][1]["daily"])
+        curve[2]["equity"] = 0
+        value = evaluation.account_evaluation(curve, 10000)
+        self.assertEqual(value["totalDays"], 30)
+        for key in ["annualizedReturn", "annualizedVolatility", "dailySharpe", "sortino", "calmar", "worstDayReturn"]:
+            self.assertIsNone(value[key], key)
+        plan, batches = self.v2_batches([curve])
+        summary = evaluation.summarize(plan, batches, "c")
+        self.assertIsNone(summary["dailyMean95CI"])
+        self.assertIsNone(evaluation.paired_comparison(plan, batches, "c", "c")["meanDailyDifference95CI"])
+        terminal = copy.deepcopy(self.evaluation_fixture()["cases"][1]["daily"])
+        terminal[-1]["equity"] = 0
+        loss = evaluation.account_evaluation(terminal, 10000)
+        self.assertEqual(loss["annualizedReturn"], -1)
+        self.assertEqual(loss["calmar"], -1)
+        self.assertEqual(loss["worstDayReturn"], -1)
+        terminal[-1]["equity"] = -100
+        deficit = evaluation.account_evaluation(terminal, 10000)
+        for key in ["annualizedReturn", "annualizedVolatility", "dailySharpe", "sortino", "calmar"]:
+            self.assertIsNone(deficit[key], key)
+        self.assertEqual(deficit["worstDayReturn"], -1.01)
+
     def test_missing_funding_cannot_be_treated_as_zero_cost(self):
         start = download.timestamp("2024-01-01")
         events = [{"time": start + h * 3600000, "rate": .0001, "intervalHours": 8} for h in [0, 8, 16]]
@@ -311,6 +421,35 @@ class ResearchTests(unittest.TestCase):
             self.assertFalse(bundle["evaluation"]["selectionRecomputed"])
             self.assertEqual(len(curves), 2)
             self.assertEqual(bundle["pairedComparisons"]["later-custom-window"]["days"], 3)
+
+    def test_v2_report_reads_rust_sleeve_metrics_and_keeps_account_sampling_distinct(self):
+        mixed = self.evaluation_fixture()["cases"][0]["daily"]
+        opposite = [{**point, "equity": 20000 - point["equity"]} for point in mixed]
+        plan, batches = self.v2_batches([mixed, opposite])
+        with tempfile.TemporaryDirectory() as tmp:
+            evidence = artifacts.load_evidence(*self.make_evidence(Path(tmp)))
+            evidence["plan"].update(plan)
+            evidence["plan"].update(candidates=[{"id": "c"}], baseline="c", windows=[
+                {"id": "known-window", "role": "diagnostic", "start": "2024-01-01", "end": "2024-01-31"}])
+            evidence["selection"]["id"] = "c"
+            with patch.object(report, "audit_window", return_value=(batches, [])):
+                bundle, _ = report.build_bundle(evidence)
+            rendered = report.render_report(bundle)
+            self.assertEqual(bundle["selection"], evidence["selection"])
+            self.assertFalse(bundle["evaluation"]["selectionRecomputed"])
+            self.assertEqual(bundle["evaluation"]["singleSleeveEvaluationVersion"], 2)
+            self.assertIn("diagnostic", rendered)
+            self.assertIn("账户 Calmar 使用日终最大回撤", rendered)
+            self.assertIn("| known-window / A | 96.54% | 2.184 | 3.821 | 48.035 | -25.00% | 7.000 | 2.75 |", rendered)
+            self.assertEqual(bundle["summaries"]["known-window"][0]["accountEvaluation"]["annualizedReturn"], 0)
+            self.assertIn("不从净值重复扣除", rendered)
+            old = copy.deepcopy(batches)
+            for batch in old:
+                del batch["results"][0]["metrics"]["evaluation"]
+            evidence["plan"]["windows"].append({"id": "old-window"})
+            with patch.object(report, "audit_window", side_effect=[(batches, []), (old, [])]):
+                with self.assertRaisesRegex(ValueError, "mixed.*versions.*windows"):
+                    report.build_bundle(evidence)
 
     def test_report_destination_binds_study_and_evaluation_but_allows_layout_changes(self):
         with tempfile.TemporaryDirectory() as tmp:

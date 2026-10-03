@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_TREND_CONFIG,
   TREND_PERIODS,
+  TREND_EVALUATION_CONVENTIONS,
   backgroundMinutes,
   trendWarmupDays,
   validateTrendConfig,
@@ -21,6 +22,16 @@ const contract = JSON.parse(
 };
 
 describe("shared Rust / TypeScript / Python trend contract", () => {
+  it("shares the versioned evaluation conventions with native and research consumers", () => {
+    const evaluation = JSON.parse(
+      readFileSync(
+        new URL("../../../crates/quant/fixtures/trend-evaluation-contract.json", import.meta.url),
+        "utf8",
+      ),
+    ) as { version: number; conventions: typeof TREND_EVALUATION_CONVENTIONS };
+    expect(evaluation.version).toBe(2);
+    expect(evaluation.conventions).toEqual(TREND_EVALUATION_CONVENTIONS);
+  });
   it("keeps the new-study default and period mapping explicit", () => {
     expect(DEFAULT_TREND_CONFIG).toEqual(contract.defaultConfig);
     expect(TREND_PERIODS).toEqual(contract.periods.map((p) => p.minutes));

@@ -29,8 +29,6 @@ pub struct Engine {
     funding: Vec<Funding>,
     funding_cursor: usize,
     cash: f64,
-    peak: f64,
-    max_drawdown: f64,
     loss_streak: usize,
     risk: RiskState,
     longest_loss_streak: usize,
@@ -100,12 +98,10 @@ impl Engine {
             pending: None,
             pending_exit: false,
             channel_exit: ChannelExit::default(),
-            evaluation: Evaluator::default(),
+            evaluation: Evaluator::new(capital, start),
             funding,
             funding_cursor: 0,
             cash: capital,
-            peak: capital,
-            max_drawdown: 0.0,
             loss_streak: 0,
             risk: RiskState::default(),
             longest_loss_streak: 0,
@@ -159,9 +155,7 @@ impl Engine {
                 .map_or(0.0, |p| p.side.sign() * (price - p.entry) * p.quantity)
     }
     fn observe_equity(&mut self, time: u64, equity: f64, emit: bool) {
-        self.peak = self.peak.max(equity);
-        let drawdown = equity / self.peak - 1.0;
-        self.max_drawdown = self.max_drawdown.min(drawdown);
+        let drawdown = self.evaluation.observe(time, equity);
         if emit {
             let point = Equity {
                 time,
@@ -241,6 +235,7 @@ impl Engine {
             distance: actual_distance,
             atr: candidate.atr,
             entry_fee: fee,
+            entry_slippage_and_rounding: side.sign() * (entry - bar.open) * quantity,
             funding: 0.0,
             mfe: 0.0,
             mae: 0.0,
@@ -297,6 +292,8 @@ impl Engine {
             gross_pnl: gross,
             fees,
             funding: p.funding,
+            slippage_and_rounding: p.entry_slippage_and_rounding
+                + p.side.sign() * (raw - price) * p.quantity,
             net_pnl: net,
             r_multiple: r,
             mfe_r: p.mfe / p.distance,
@@ -464,7 +461,7 @@ impl Engine {
             }
             let equity = self.marked(&position, mark.close);
             let close_time = bar.time + MINUTE - 1;
-            self.evaluation.minute(close_time, equity, exposed);
+            self.evaluation.minute(exposed);
             self.observe_equity(close_time, equity, (bar.time + MINUTE) % (60 * MINUTE) == 0);
             self.risk
                 .observe(equity, position.is_some(), &self.config.risk);
@@ -597,19 +594,13 @@ impl Engine {
             self.close(p, last.close, self.end - 1, "end-range")?;
         }
         self.observe_equity(self.end - 1, self.cash, true);
-        self.evaluation.point(self.end - 1, self.cash);
+        let evaluation = self.evaluation.finish(self.end, self.cash);
         self.finished = true;
         Ok(Metrics {
-            evaluation: self.evaluation.finish(
-                self.config.execution.initial_capital,
-                self.start,
-                self.end,
-                self.cash,
-                self.max_drawdown,
-            ),
+            evaluation,
             final_equity: self.cash,
             total_return: self.cash / self.config.execution.initial_capital - 1.0,
-            max_drawdown: self.max_drawdown,
+            max_drawdown: self.evaluation.max_drawdown(),
             trades: self.trades,
             wins: self.wins,
             losses: self.losses,

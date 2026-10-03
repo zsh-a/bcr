@@ -74,7 +74,6 @@ fn run(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
         .collect::<Result<Vec<_>, _>>()?;
     let mut trades: Vec<Vec<bcr_quant::trend::model::Trade>> =
         (0..engines.len()).map(|_| vec![]).collect();
-    let mut daily: Vec<BTreeMap<u64, f64>> = (0..engines.len()).map(|_| BTreeMap::new()).collect();
     let hashes: BTreeMap<_, _> = input["archives"]
         .as_array()
         .ok_or("missing archive provenance")?
@@ -131,26 +130,12 @@ fn run(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
                 if i % 1024 == 1023 {
                     let chunk = engine.drain();
                     trades[j].extend(chunk.trades);
-                    daily[j].extend(
-                        chunk
-                            .equity
-                            .into_iter()
-                            .filter(|p| (p.time + 1) % DAY == 0)
-                            .map(|p| (p.time, p.equity)),
-                    );
                 }
             }
         }
         for (j, engine) in engines.iter_mut().enumerate() {
             let chunk = engine.drain();
             trades[j].extend(chunk.trades);
-            daily[j].extend(
-                chunk
-                    .equity
-                    .into_iter()
-                    .filter(|p| (p.time + 1) % DAY == 0)
-                    .map(|p| (p.time, p.equity)),
-            );
         }
     }
     let mut results = vec![];
@@ -158,12 +143,6 @@ fn run(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
         let metrics = engine.finish()?;
         let tail = engine.drain();
         trades[j].extend(tail.trades);
-        daily[j].extend(
-            tail.equity
-                .into_iter()
-                .filter(|p| (p.time + 1) % DAY == 0)
-                .map(|p| (p.time, p.equity)),
-        );
         if (metrics.final_equity
             - candidates[j].config.execution.initial_capital
             - trades[j].iter().map(|t| t.net_pnl).sum::<f64>())
@@ -172,9 +151,18 @@ fn run(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
         {
             return Err("trade ledger does not reconcile with final cash".into());
         }
-        results.push(serde_json::json!({"id": candidates[j].id, "config": candidates[j].config,
+        // Use the same final, cost-adjusted observations as browser evaluation.
+        let daily: Vec<_> = metrics
+            .evaluation
+            .daily
+            .iter()
+            .map(|point| serde_json::json!({"time": point.to - 1, "equity": point.equity}))
+            .collect();
+        results.push(
+            serde_json::json!({"id": candidates[j].id, "config": candidates[j].config,
             "warmupStart": warmups[j],
-            "metrics": metrics, "trades": trades[j], "daily": daily[j].iter().map(|(time, equity)| serde_json::json!({"time": time, "equity": equity})).collect::<Vec<_>>() }));
+            "metrics": metrics, "trades": trades[j], "daily": daily }),
+        );
     }
     serde_json::to_writer(
         BufWriter::new(fs::File::create(&args[5])?),
@@ -291,5 +279,19 @@ mod tests {
         assert_eq!(batch["results"][1]["warmupStart"], start - 3 * DAY);
         assert_eq!(batch["warmupStart"], start - 3 * DAY);
         assert!(batch["results"][0]["metrics"]["trades"].as_u64().unwrap() > 0);
+        for result in batch["results"].as_array().unwrap() {
+            let evaluation = &result["metrics"]["evaluation"];
+            assert_eq!(evaluation["version"], 2);
+            let daily = result["daily"].as_array().unwrap();
+            assert_eq!(daily.len(), ((end - start) / DAY) as usize);
+            assert_eq!(
+                daily.last().unwrap()["equity"],
+                result["metrics"]["finalEquity"]
+            );
+            for (legacy, point) in daily.iter().zip(evaluation["daily"].as_array().unwrap()) {
+                assert_eq!(legacy["time"].as_u64().unwrap() + 1, point["to"]);
+                assert_eq!(legacy["equity"], point["equity"]);
+            }
+        }
     }
 }

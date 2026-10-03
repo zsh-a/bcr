@@ -187,13 +187,14 @@ export function useTrendResearch() {
       if (!resultRef) throw new Error("回测未产生结果");
       const value = await readJson<TrendResult>(services, resultRef);
       token.abort.signal.throwIfAborted();
+      const { evaluation: _evaluation, ...metrics } = value.metrics;
       const history: TrendRun = {
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
         config: structuredClone(saved.config),
         dataset,
         resultRef,
-        metrics: value.metrics,
+        metrics,
         durationMs: performance.now() - began,
         cached,
       };

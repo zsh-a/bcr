@@ -65,6 +65,8 @@ pub struct Trade {
     pub gross_pnl: f64,
     pub fees: f64,
     pub funding: f64,
+    /// Already included in fill-based gross PnL; never deducted from cash again.
+    pub slippage_and_rounding: f64,
     pub net_pnl: f64,
     pub r_multiple: f64,
     pub mfe_r: f64,

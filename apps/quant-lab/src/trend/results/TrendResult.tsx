@@ -16,19 +16,17 @@ import { exportTrend, readTradePage } from "./read";
 import { useTrendChart } from "./useTrendChart";
 import { TrendContextPanel } from "./TrendContextPanel";
 import { priceDigits } from "./format";
+import { number, timestamp } from "./evaluation";
+import { TrendEvaluationPanel, TrendMonthlyReturns } from "./TrendEvaluationPanel";
+import { TrendPerformanceChart } from "./TrendPerformanceChart";
 
-const number = (n: number | null, digits = 2) =>
-  n === null
-    ? "—"
-    : n.toLocaleString("zh-CN", { maximumFractionDigits: digits, minimumFractionDigits: digits });
-const percent = (n: number | null) => (n === null ? "—" : `${number(n * 100)}%`);
-const timestamp = (time: number) => new Date(time).toISOString().slice(0, 16).replace("T", " ");
 export function TrendResult({ run, result }: { run: TrendRun; result: Result }) {
   const services = useRuntime();
   const config = useMemo(() => trendRunView(run), [run]);
   const chartFrame = useRef<HTMLDivElement>(null);
   const m = result.metrics,
     manifest = run.dataset.manifest;
+  const evaluationWindow = result.window ?? manifest;
   const [view, setView] = useState<"equity" | "candles" | "context">("equity");
   const chart = useTrendChart(
     services,
@@ -66,9 +64,11 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
             {manifest.symbol} · {periodLabel(config.tradeMinutes)} · {config.label}
           </h2>
           <p>
-            {utcDate(manifest.startTime)} — {utcDate(manifest.endTime - 1)} · UTC · {config.filter}{" "}
-            · {config.archived ? "原始旧版规则 · " : `规则 v${config.ruleVersion} · `}
-            {config.direction} · {config.management} · {number(run.durationMs / 1000, 1)} 秒{" · "}
+            {utcDate(evaluationWindow.startTime)} — {utcDate(evaluationWindow.endTime - 1)} · UTC ·{" "}
+            {config.filter} ·{" "}
+            {config.archived ? "原始旧版规则 · " : `规则 v${config.ruleVersion} · `}
+            {config.direction} · {config.management} · 运算耗时 {number(run.durationMs / 1000, 1)}{" "}
+            秒{" · "}
             {config.costFilter}
             {run.cached ? " · 缓存结果" : ""}
           </p>
@@ -87,69 +87,7 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
           导出完整结果
         </Button>
       </div>
-      <div className="trend-metrics">
-        {[
-          ["净收益", percent(m.totalReturn)],
-          ["最大回撤", percent(m.maxDrawdown)],
-          ["期末资金 · USDT", number(m.finalEquity)],
-          ["胜率", percent(m.winRate)],
-          [
-            "利润因子",
-            m.profitFactor === null && m.wins > 0 ? "无亏损交易" : number(m.profitFactor),
-          ],
-          ["平均净 R", number(m.meanR)],
-        ].map(([label, value]) => (
-          <div key={label}>
-            <span>{label}</span>
-            <strong>{value}</strong>
-          </div>
-        ))}
-      </div>
-      <div className="trend-accounting">
-        <span>{m.trades} 笔交易</span>
-        <span>手续费 {number(m.fees)} USDT</span>
-        <span>资金费净支出 {number(m.funding)} USDT</span>
-        <span>最长连亏 {m.longestLossStreak}</span>
-        <span>被拒绝信号 {m.rejectedSignals}</span>
-      </div>
-      {m.evaluation && (
-        <details className="trend-evaluation">
-          <summary>收益质量与交易管理</summary>
-          <div className="trend-metrics">
-            {[
-              ["单笔净期望 · USDT", number(m.evaluation.netExpectancy)],
-              ["平均盈亏比", number(m.evaluation.payoffRatio)],
-              ["日收益 Sharpe", number(m.evaluation.dailySharpe)],
-              ["Sortino", number(m.evaluation.sortino)],
-              ["平均持仓 · 小时", number(m.evaluation.meanHoldHours)],
-              ["持仓时间占比", percent(m.evaluation.exposurePct)],
-              ["多头净贡献 · USDT", number(m.evaluation.longNetPnl)],
-              ["空头净贡献 · USDT", number(m.evaluation.shortNetPnl)],
-              ["去掉最大盈利 · USDT", number(m.evaluation.withoutBestTrade)],
-              ["最大盈利占总盈利", percent(m.evaluation.bestTradeShare)],
-              ["累计换手 / 初始资金", `${number(m.evaluation.turnover)}×`],
-              ["完整 UTC 日", String(m.evaluation.totalDays)],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <span>{label}</span>
-                <strong>{value}</strong>
-              </div>
-            ))}
-          </div>
-          <p className="trend-help">
-            净期望按完整交易账本扣除费用与资金费；Sharpe / Sortino 使用完整 UTC 日收益、365
-            日年化，少于 30 日不显示。
-            盈利集中是趋势策略的常见特征，应结合多个标的、样本外表现与成本压力检验；单次回测不能证明长期正期望。
-          </p>
-          <div className="trend-accounting">
-            {Object.entries(m.evaluation.exitReasons).map(([reason, count]) => (
-              <span key={reason}>
-                {TREND_REASONS[reason] ?? reason} {count}
-              </span>
-            ))}
-          </div>
-        </details>
-      )}
+      <TrendEvaluationPanel metrics={m} window={evaluationWindow} />
       {(error || chart.error) && (
         <p role="alert" className="trend-error">
           {error || chart.error}
@@ -202,7 +140,11 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
             </Button>
           </div>
         ) : view === "equity" ? (
-          <span className="trend-help">初始净值 1.000 · 标记价格估值</span>
+          <span className="trend-help">
+            {m.evaluation?.version === 2
+              ? "完整日序列 · 标记价格估值"
+              : "历史抽样净值 · 标记价格估值"}
+          </span>
         ) : null}
       </div>
       {view === "context" && config.backgroundMinutes !== null ? (
@@ -215,7 +157,14 @@ export function TrendResult({ run, result }: { run: TrendRun; result: Result }) 
           }}
         />
       ) : view === "equity" ? (
-        <TrendChart equity={result.equity} config={config} />
+        <>
+          <TrendPerformanceChart
+            result={result}
+            initialCapital={config.initialCapital}
+            window={evaluationWindow}
+          />
+          <TrendMonthlyReturns metrics={m} window={evaluationWindow} />
+        </>
       ) : (
         <div ref={chartFrame} className="trend-chart-frame" aria-busy={chart.loading}>
           <TrendChart

@@ -14,6 +14,7 @@ pub struct Position {
     pub distance: f64,
     pub atr: f64,
     pub entry_fee: f64,
+    pub entry_slippage_and_rounding: f64,
     pub funding: f64,
     pub mfe: f64,
     pub mae: f64,

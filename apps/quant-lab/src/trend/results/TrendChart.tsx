@@ -5,7 +5,6 @@ import {
   type ChartFocus,
   type ChartRange,
   type TrendChartData,
-  type TrendEquity,
 } from "@bcr/quant-core/trend";
 import {
   CandlestickSeries,
@@ -37,11 +36,6 @@ interface CandleChart {
   focusRevision: number | undefined;
   applying: boolean;
   changed: (range: LogicalRange | null) => void;
-}
-interface EquityChart {
-  kind: "equity";
-  chart: IChartApi;
-  line: ISeriesApi<"Line">;
 }
 function logicalTime(range: LogicalRange, data: TrendChartData): ChartRange {
   const step = data.minutes * MINUTE;
@@ -75,14 +69,12 @@ export function syncTrendStopSeries(
 }
 export function TrendChart({
   data,
-  equity,
   config,
   bounds,
   focus,
   onVisible,
 }: {
   data?: TrendChartData | null;
-  equity?: TrendEquity[];
   config: {
     tradeMinutes: number;
     initialCapital: number;
@@ -94,10 +86,9 @@ export function TrendChart({
   onVisible?: (range: ChartRange) => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
-  const instance = useRef<CandleChart | EquityChart | null>(null);
+  const instance = useRef<CandleChart | null>(null);
   const controls = useRef({ bounds, focus, onVisible });
   controls.current = { bounds, focus, onVisible };
-  const isEquity = equity !== undefined;
   const [theme, setTheme] = useState(0);
   useEffect(() => {
     const observer = new MutationObserver(() => setTheme((value) => value + 1));
@@ -138,100 +129,76 @@ export function TrendChart({
           new Date(value * 1000).toISOString().slice(0, 16).replace("T", " "),
       },
     });
-    if (isEquity) {
-      instance.current = {
-        kind: "equity",
-        chart,
-        line: chart.addSeries(LineSeries, {
-          color: accent,
-          lineWidth: 2,
-          priceFormat: { type: "price", precision: 3, minMove: 0.001 },
-        }),
-      };
-    } else {
-      const candles = chart.addSeries(CandlestickSeries, {
-        priceFormat: {
-          type: "price",
-          precision: priceDigits(config.tickSize),
-          minMove: config.tickSize,
-        },
-        upColor: accent,
-        downColor: danger,
-        borderVisible: false,
-        wickUpColor: accent,
-        wickDownColor: danger,
+    const candles = chart.addSeries(CandlestickSeries, {
+      priceFormat: {
+        type: "price",
+        precision: priceDigits(config.tickSize),
+        minMove: config.tickSize,
+      },
+      upColor: accent,
+      downColor: danger,
+      borderVisible: false,
+      wickUpColor: accent,
+      wickDownColor: danger,
+    });
+    const line = (color: string) =>
+      chart.addSeries(LineSeries, {
+        color,
+        lineWidth: 1,
+        lastValueVisible: false,
+        priceLineVisible: false,
       });
-      const line = (color: string) =>
-        chart.addSeries(LineSeries, {
-          color,
-          lineWidth: 1,
-          lastValueVisible: false,
-          priceLineVisible: false,
+    const model: CandleChart = {
+      kind: "candles",
+      chart,
+      candles,
+      fast: line(accent),
+      slow: line(muted),
+      stops: [],
+      channels: {
+        upper: line("#6383ad"),
+        lower: line("#6383ad"),
+        exitUpper: line("#ab803b"),
+        exitLower: line("#ab803b"),
+      },
+      markers: createSeriesMarkers(candles, []),
+      data: null,
+      focusRevision: undefined,
+      applying: false,
+      changed: () => undefined,
+    };
+    for (const series of Object.values(model.channels))
+      series.applyOptions({ lineType: LineType.WithSteps, crosshairMarkerVisible: false });
+    model.changed = (range) => {
+      if (!range || !model.data || model.applying) return;
+      const available = controls.current.bounds;
+      if (!available) return;
+      const raw = logicalTime(range, model.data);
+      const visible = clipChartRange(available, raw, config.tradeMinutes);
+      if (Math.abs(raw.from - visible.from) > 1 || Math.abs(raw.to - visible.to) > 1) {
+        model.applying = true;
+        chart.timeScale().setVisibleLogicalRange({
+          from: (visible.from - model.data.from) / (model.data.minutes * MINUTE),
+          to: (visible.to - model.data.from) / (model.data.minutes * MINUTE) - 1,
         });
-      const model: CandleChart = {
-        kind: "candles",
-        chart,
-        candles,
-        fast: line(accent),
-        slow: line(muted),
-        stops: [],
-        channels: {
-          upper: line("#6383ad"),
-          lower: line("#6383ad"),
-          exitUpper: line("#ab803b"),
-          exitLower: line("#ab803b"),
-        },
-        markers: createSeriesMarkers(candles, []),
-        data: null,
-        focusRevision: undefined,
-        applying: false,
-        changed: () => undefined,
-      };
-      for (const series of Object.values(model.channels))
-        series.applyOptions({ lineType: LineType.WithSteps, crosshairMarkerVisible: false });
-      model.changed = (range) => {
-        if (!range || !model.data || model.applying) return;
-        const available = controls.current.bounds;
-        if (!available) return;
-        const raw = logicalTime(range, model.data);
-        const visible = clipChartRange(available, raw, config.tradeMinutes);
-        if (Math.abs(raw.from - visible.from) > 1 || Math.abs(raw.to - visible.to) > 1) {
-          model.applying = true;
-          chart.timeScale().setVisibleLogicalRange({
-            from: (visible.from - model.data.from) / (model.data.minutes * MINUTE),
-            to: (visible.to - model.data.from) / (model.data.minutes * MINUTE) - 1,
-          });
-          model.applying = false;
-        }
-        el.dataset.visibleFrom = String(Math.round(visible.from));
-        el.dataset.visibleTo = String(Math.round(visible.to));
-        controls.current.onVisible?.(visible);
-      };
-      chart.timeScale().subscribeVisibleLogicalRangeChange(model.changed);
-      instance.current = model;
-    }
+        model.applying = false;
+      }
+      el.dataset.visibleFrom = String(Math.round(visible.from));
+      el.dataset.visibleTo = String(Math.round(visible.to));
+      controls.current.onVisible?.(visible);
+    };
+    chart.timeScale().subscribeVisibleLogicalRangeChange(model.changed);
+    instance.current = model;
     return () => {
       if (instance.current?.kind === "candles")
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(instance.current.changed);
       instance.current = null;
       chart.remove();
     };
-  }, [config, isEquity, theme]);
+  }, [config, theme]);
   useEffect(() => {
     const model = instance.current;
     if (!model) return;
-    if (model.kind === "equity") {
-      const byTime = new Map<number, number>();
-      for (const point of equity ?? [])
-        byTime.set(time(point.time), point.equity / config.initialCapital);
-      model.line.setData(
-        [...byTime]
-          .sort((a, b) => a[0] - b[0])
-          .map(([t, value]) => ({ time: t as UTCTimestamp, value })),
-      );
-      model.chart.timeScale().fitContent();
-      return;
-    }
     if (!data || !data.bars.length) return;
     const pendingFocus = focus && model.focusRevision !== focus.revision;
     const focusAvailable = focus && focus.from >= data.from && focus.to <= data.to;
@@ -289,7 +256,7 @@ export function TrendChart({
     });
     model.applying = false;
     model.changed(model.chart.timeScale().getVisibleLogicalRange());
-  }, [data, equity, config, focus, isEquity, theme]);
+  }, [data, config, focus, theme]);
   return (
     <div
       ref={root}
@@ -298,7 +265,7 @@ export function TrendChart({
       data-loaded-to={data?.to}
       data-display-minutes={data?.minutes}
       data-candle-count={data?.bars.length}
-      aria-label={isEquity ? "组合净值图" : `${periodLabel(config.tradeMinutes)} K 线与交易标记`}
+      aria-label={`${periodLabel(config.tradeMinutes)} K 线与交易标记`}
     />
   );
 }

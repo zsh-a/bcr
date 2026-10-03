@@ -1,0 +1,319 @@
+{
+  "version": 2,
+  "conventions": {
+    "calendar": "UTC",
+    "annualizationDays": 365,
+    "riskFreeRate": 0,
+    "downsideTarget": 0,
+    "minDailyObservations": 30,
+    "variance": "sample",
+    "drawdownSampling": "minute-mark-and-fills"
+  },
+  "cases": [
+    {
+      "name": "mixed-30",
+      "initialCapital": 10000,
+      "startTime": 1704067200000,
+      "endTime": 1706659200000,
+      "daily": [
+        {
+          "time": 1704153599999,
+          "equity": 10100.0
+        },
+        {
+          "time": 1704239999999,
+          "equity": 9898.0
+        },
+        {
+          "time": 1704326399999,
+          "equity": 9898.0
+        },
+        {
+          "time": 1704412799999,
+          "equity": 10194.94
+        },
+        {
+          "time": 1704499199999,
+          "equity": 10092.990600000001
+        },
+        {
+          "time": 1704585599999,
+          "equity": 10193.920506
+        },
+        {
+          "time": 1704671999999,
+          "equity": 9990.04209588
+        },
+        {
+          "time": 1704758399999,
+          "equity": 9990.04209588
+        },
+        {
+          "time": 1704844799999,
+          "equity": 10289.743358756401
+        },
+        {
+          "time": 1704931199999,
+          "equity": 10186.845925168836
+        },
+        {
+          "time": 1705017599999,
+          "equity": 10288.714384420526
+        },
+        {
+          "time": 1705103999999,
+          "equity": 10082.940096732114
+        },
+        {
+          "time": 1705190399999,
+          "equity": 10082.940096732114
+        },
+        {
+          "time": 1705276799999,
+          "equity": 10385.428299634079
+        },
+        {
+          "time": 1705363199999,
+          "equity": 10281.574016637738
+        },
+        {
+          "time": 1705449599999,
+          "equity": 10384.389756804116
+        },
+        {
+          "time": 1705535999999,
+          "equity": 10176.701961668034
+        },
+        {
+          "time": 1705622399999,
+          "equity": 10176.701961668034
+        },
+        {
+          "time": 1705708799999,
+          "equity": 10482.003020518076
+        },
+        {
+          "time": 1705795199999,
+          "equity": 10377.182990312895
+        },
+        {
+          "time": 1705881599999,
+          "equity": 10480.954820216024
+        },
+        {
+          "time": 1705967999999,
+          "equity": 10271.335723811704
+        },
+        {
+          "time": 1706054399999,
+          "equity": 10271.335723811704
+        },
+        {
+          "time": 1706140799999,
+          "equity": 10579.475795526056
+        },
+        {
+          "time": 1706227199999,
+          "equity": 10473.681037570796
+        },
+        {
+          "time": 1706313599999,
+          "equity": 10578.417847946504
+        },
+        {
+          "time": 1706399999999,
+          "equity": 10366.849490987574
+        },
+        {
+          "time": 1706486399999,
+          "equity": 10366.849490987574
+        },
+        {
+          "time": 1706572799999,
+          "equity": 10677.8549757172
+        },
+        {
+          "time": 1706659199999,
+          "equity": 10571.07642596003
+        }
+      ],
+      "expected": {
+        "totalDays": 30,
+        "annualizedReturn": 0.9653975972671516,
+        "annualizedVolatility": 0.3343135014344762,
+        "dailySharpe": 2.183579176035995,
+        "sortino": 3.8209946349085673,
+        "calmar": 48.03451076063035,
+        "dailyMaxDrawdown": -0.02009800000000006,
+        "bestDayReturn": 0.030000000000000027,
+        "worstDayReturn": -0.02000000000000013
+      }
+    },
+    {
+      "name": "flat-30",
+      "initialCapital": 10000,
+      "startTime": 1704067200000,
+      "endTime": 1706659200000,
+      "daily": [
+        {
+          "time": 1704153599999,
+          "equity": 10000
+        },
+        {
+          "time": 1704239999999,
+          "equity": 10000
+        },
+        {
+          "time": 1704326399999,
+          "equity": 10000
+        },
+        {
+          "time": 1704412799999,
+          "equity": 10000
+        },
+        {
+          "time": 1704499199999,
+          "equity": 10000
+        },
+        {
+          "time": 1704585599999,
+          "equity": 10000
+        },
+        {
+          "time": 1704671999999,
+          "equity": 10000
+        },
+        {
+          "time": 1704758399999,
+          "equity": 10000
+        },
+        {
+          "time": 1704844799999,
+          "equity": 10000
+        },
+        {
+          "time": 1704931199999,
+          "equity": 10000
+        },
+        {
+          "time": 1705017599999,
+          "equity": 10000
+        },
+        {
+          "time": 1705103999999,
+          "equity": 10000
+        },
+        {
+          "time": 1705190399999,
+          "equity": 10000
+        },
+        {
+          "time": 1705276799999,
+          "equity": 10000
+        },
+        {
+          "time": 1705363199999,
+          "equity": 10000
+        },
+        {
+          "time": 1705449599999,
+          "equity": 10000
+        },
+        {
+          "time": 1705535999999,
+          "equity": 10000
+        },
+        {
+          "time": 1705622399999,
+          "equity": 10000
+        },
+        {
+          "time": 1705708799999,
+          "equity": 10000
+        },
+        {
+          "time": 1705795199999,
+          "equity": 10000
+        },
+        {
+          "time": 1705881599999,
+          "equity": 10000
+        },
+        {
+          "time": 1705967999999,
+          "equity": 10000
+        },
+        {
+          "time": 1706054399999,
+          "equity": 10000
+        },
+        {
+          "time": 1706140799999,
+          "equity": 10000
+        },
+        {
+          "time": 1706227199999,
+          "equity": 10000
+        },
+        {
+          "time": 1706313599999,
+          "equity": 10000
+        },
+        {
+          "time": 1706399999999,
+          "equity": 10000
+        },
+        {
+          "time": 1706486399999,
+          "equity": 10000
+        },
+        {
+          "time": 1706572799999,
+          "equity": 10000
+        },
+        {
+          "time": 1706659199999,
+          "equity": 10000
+        }
+      ],
+      "expected": {
+        "totalDays": 30,
+        "annualizedReturn": 0.0,
+        "annualizedVolatility": 0.0,
+        "dailySharpe": null,
+        "sortino": null,
+        "calmar": null,
+        "dailyMaxDrawdown": 0,
+        "bestDayReturn": 0.0,
+        "worstDayReturn": 0.0
+      }
+    },
+    {
+      "name": "short-2",
+      "initialCapital": 10000,
+      "startTime": 1704067200000,
+      "endTime": 1704240000000,
+      "daily": [
+        {
+          "time": 1704153599999,
+          "equity": 10100.0
+        },
+        {
+          "time": 1704239999999,
+          "equity": 9898.0
+        }
+      ],
+      "expected": {
+        "totalDays": 2,
+        "annualizedReturn": null,
+        "annualizedVolatility": null,
+        "dailySharpe": null,
+        "sortino": null,
+        "calmar": null,
+        "dailyMaxDrawdown": -0.020000000000000018,
+        "bestDayReturn": 0.010000000000000009,
+        "worstDayReturn": -0.020000000000000018
+      }
+    }
+  ]
+}

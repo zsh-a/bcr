@@ -278,17 +278,39 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 20px;
   padding: 28px 0 20px;
+  margin: 0;
 }
-.trend-metrics span {
+.trend-metrics dt {
   font-size: 12px;
   color: var(--color-muted);
   display: block;
   margin-bottom: 8px;
 }
-.trend-metrics strong {
+.trend-metrics dd {
+  margin: 0;
   font-weight: 500;
   font-size: clamp(17px, 1.8vw, 24px);
   font-family: var(--font-mono);
+}
+.trend-metrics small {
+  display: block;
+  color: var(--color-muted);
+  font-size: 10px;
+  margin-top: 4px;
+}
+.trend-overview-metrics {
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 20px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+.trend-overview-metrics dd {
+  font-size: clamp(16px, 1.5vw, 23px);
+}
+.trend-overview-metrics dt {
+  font-size: 11px;
+}
+.trend-evaluation-legacy {
+  margin-top: 8px;
 }
 .trend-accounting {
   display: flex;
@@ -421,11 +443,83 @@
   font-weight: 500;
 }
 .trend-evaluation .trend-metrics {
-  margin-top: 18px;
-  row-gap: 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 12px 0 20px;
 }
-.trend-evaluation .trend-metrics strong {
+.trend-evaluation .trend-metrics dd {
   font-size: 19px;
+}
+.trend-metric-group h3 {
+  font-size: 12px;
+  font-weight: 500;
+  margin: 24px 0 0;
+  color: var(--color-muted);
+}
+.trend-validation-evidence {
+  margin: 12px 0 20px;
+}
+.trend-validation-evidence summary {
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.trend-validation-evidence summary span {
+  margin-left: 10px;
+  font-weight: 400;
+  color: var(--color-muted);
+}
+.trend-performance-chart {
+  height: clamp(360px, 48vh, 520px);
+  margin-top: 16px;
+}
+.trend-performance-chart.is-sampled {
+  height: clamp(280px, 40vh, 440px);
+}
+.trend-performance-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+.trend-performance-legend span::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  border-top: 2px solid var(--color-accent);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.trend-performance-legend .trend-performance-drawdown::before {
+  border-color: var(--color-danger);
+}
+.trend-performance-legend .trend-performance-intraday::before {
+  border-color: var(--color-muted);
+  border-top-style: dashed;
+}
+.trend-monthly .trend-table-scroll {
+  max-height: 310px;
+  overflow-y: auto;
+}
+.trend-monthly th {
+  position: sticky;
+  top: 0;
+  background: var(--color-bg);
+  z-index: 1;
+}
+.trend-monthly :is(td, th):nth-child(n + 3) {
+  text-align: right;
+}
+.trend-partial {
+  font: 10px var(--font-sans);
+  color: var(--color-muted);
+  margin-left: 8px;
+}
+@media (max-width: 1150px) {
+  .trend-overview-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 .trend-provenance p {
   font-size: 12px;
@@ -440,6 +534,9 @@
 @media (max-width: 760px) {
   .trend-metrics {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .trend-evaluation .trend-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .trend-source {
     gap: 10px;
