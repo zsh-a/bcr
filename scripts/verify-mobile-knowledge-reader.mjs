@@ -183,6 +183,7 @@ try {
   await page.keyboard.press("Escape");
   assert(await books.isVisible());
   await books.getByRole("button", { name: "收起书库", exact: true }).click();
+  await button("退出搜索导航").click();
   await button("目录").click();
   await page.getByRole("tab", { name: /^笔记/u }).click();
   await page.getByText("从移动端记录一段阅读想法。", { exact: true }).waitFor();

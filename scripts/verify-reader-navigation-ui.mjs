@@ -203,7 +203,7 @@ try {
       "0",
     );
     await page.keyboard.press("Escape");
-    assert.equal(await panel.isVisible(), false);
+    await panel.waitFor({ state: "hidden" });
     await page.getByRole("button", { name: "打开书库", exact: true }).click();
     const library = page.locator(".reader-library-sheet");
     await library.getByRole("button", { name: "书库操作", exact: true }).waitFor();

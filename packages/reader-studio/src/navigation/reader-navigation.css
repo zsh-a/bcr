@@ -290,12 +290,6 @@
   .reader-progress-dock-meta strong {
     display: block;
   }
-  .reader-progress-toggle span {
-    display: none;
-  }
-  .reader-progress-toggle output {
-    margin: 0 auto;
-  }
   .reader-comic-footer {
     padding-bottom: max(4px, env(safe-area-inset-bottom));
   }

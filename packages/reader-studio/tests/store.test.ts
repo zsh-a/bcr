@@ -66,7 +66,7 @@ describe("Reader annotation anchors", () => {
     expect(getReaderState().navigationSequence).toBe(before + 1);
   });
 
-  it("treats scrubber jumps as explicit viewport navigation without adding history", () => {
+  it("restores explicit viewport positions without adding history", () => {
     const target = createLocator(book.sections[2]!, 0.45);
     const before = getReaderState().navigationSequence;
     const beforeSeek = getReaderState().seekSequence;
@@ -78,6 +78,20 @@ describe("Reader annotation anchors", () => {
     expect(getReaderState().activeSectionId).toBe(book.sections[2]!.id);
     expect(getReaderState().progressByBook[book.id]?.percentage).toBe(0.62);
     expect(getReaderState().navigationHistory.back).toHaveLength(0);
+  });
+
+  it("can undo a user scrubber jump and replay it without adding another history entry", () => {
+    const start = createLocator(book.sections[0]!, 0.3);
+    const target = createLocator(book.sections[2]!, 0.45);
+    reader.setLocator(start);
+    reader.seekLocator(target, 0.62, true);
+    reader.navigateHistory("back");
+    expect(getReaderState().progressByBook[book.id]?.locator).toEqual(start);
+    reader.seekLocator(start);
+    expect(getReaderState().navigationHistory.back).toHaveLength(0);
+    expect(getReaderState().navigationHistory.forward).toHaveLength(1);
+    reader.navigateHistory("forward");
+    expect(getReaderState().progressByBook[book.id]?.locator).toEqual(target);
   });
 
   it("updates the reading font preferences in the shared settings state", () => {

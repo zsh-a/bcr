@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { ArrowLeft, History, ChevronDown, ChevronUp, X } from "lucide-react";
 import {
   createLocator,
   locatorAtPercentage,
@@ -7,7 +7,7 @@ import {
   type ReaderLocator,
   type ReaderTocItem,
 } from "@bcr/reader-core";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
 import { currentTxtChapter } from "../content/txtChapters";
 import { READER_PDF_DOCUMENT_EVENT, readerPdfDocument } from "../adapters/readerPdfAdapter";
 import { clamp, percent } from "../reading/readerPresentation";
@@ -15,6 +15,9 @@ import { reader } from "../state/store";
 import { useReader } from "../state/useReader";
 import { READER_CAPTURE_PROGRESS_EVENT } from "../workbench/useReaderRuntime";
 import { openReaderTocItem, resolveReaderTocTarget } from "./navigation";
+import { ReaderSheet } from "../workbench/ReaderSheet";
+import { useReaderMobile } from "../workbench/useReaderMobile";
+import { ReaderHistoryList, useReaderHistory } from "./ReaderHistoryList";
 
 function seekLocatorAtPercentage(book: ReaderBook, value: number): ReaderLocator {
   const locator = locatorAtPercentage(book, clamp(value, 0, 1));
@@ -102,7 +105,12 @@ function progressMarkers(book: ReaderBook): readonly ReaderProgressMarker[] {
   );
 }
 
-export function ReaderProgressScrubber(props: { book: ReaderBook }) {
+export function ReaderProgressScrubber(props: { book: ReaderBook; detail?: string }) {
+  const mobile = useReaderMobile();
+  const panelId = useId();
+  const titleId = useId();
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const { back, forward } = useReaderHistory();
   const activeSectionId = useReader((state) => state.activeSectionId);
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
   const [draft, setDraft] = useState(progress);
@@ -113,14 +121,14 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
   const dockRef = useRef<HTMLElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (!expanded) return;
+    if (!expanded || mobile) return;
     const closeOutside = (event: PointerEvent) => {
       if (event.target instanceof Node && !dockRef.current?.contains(event.target))
         setExpanded(false);
     };
     document.addEventListener("pointerdown", closeOutside);
     return () => document.removeEventListener("pointerdown", closeOutside);
-  }, [expanded]);
+  }, [expanded, mobile]);
 
   useEffect(() => {
     draftRef.current = draft;
@@ -140,7 +148,7 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
     if (Math.abs(next - committedRef.current) < 0.0005) return;
     committedRef.current = next;
     window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
-    reader.seekLocator(seekLocatorAtPercentage(props.book, next), next);
+    reader.seekLocator(seekLocatorAtPercentage(props.book, next), next, true);
   };
 
   const chapter = currentTxtChapter(props.book, activeSectionId);
@@ -152,19 +160,132 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
   const previewContext = previewChapter?.label ?? previewSection?.label ?? context;
   const markers = useMemo(() => progressMarkers(props.book), [props.book]);
   const style = { "--read-progress": `${draft * 100}%` } as CSSProperties;
+  const close = () => {
+    setExpanded(false);
+    if (!mobile) toggleRef.current?.focus({ preventScroll: true });
+  };
+
+  const panel = (
+    <div className="reader-progress-panel" id={panelId}>
+      <ReaderProgressPreview
+        book={props.book}
+        section={previewSection}
+        context={previewContext}
+        visible={dragging || (mobile && expanded)}
+      />
+      {!mobile && (
+        <div className="reader-progress-dock-meta">
+          <span className="reader-progress-dock-label">阅读进度</span>
+          <strong title={dragging ? previewContext : context}>
+            {dragging ? previewContext : context}
+          </strong>
+          <output htmlFor="reader-progress-range">{percent(draft)}</output>
+          <button
+            type="button"
+            className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
+            aria-label="收起进度调整"
+            onClick={close}
+          >
+            <X className="reader-icon" />
+          </button>
+        </div>
+      )}
+      {mobile && (
+        <div className="reader-progress-context">
+          <p>{dragging ? previewContext : context}</p>
+          <output htmlFor="reader-progress-range">{percent(draft)}</output>
+        </div>
+      )}
+      <div className="reader-progress-range">
+        <div className="reader-progress-markers" aria-hidden="true">
+          {markers.map((marker) => (
+            <span
+              key={marker.id}
+              className="reader-progress-marker"
+              style={{ left: `${marker.percentage * 100}%` }}
+              title={marker.label}
+            />
+          ))}
+        </div>
+        <input
+          id="reader-progress-range"
+          type="range"
+          min="0"
+          max="100"
+          step="0.1"
+          value={draft * 100}
+          aria-label="调整进度"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(draft * 100)}
+          aria-valuetext={`${percent(draft)}，${dragging ? previewContext : context}`}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+            window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
+            setExpanded(true);
+            setDragging(true);
+          }}
+          onPointerUp={commit}
+          onPointerCancel={() => {
+            draftRef.current = committedRef.current;
+            setDraft(committedRef.current);
+            setDragging(false);
+          }}
+          onChange={(event) => {
+            const next = clamp(Number(event.target.value) / 100, 0, 1);
+            draftRef.current = next;
+            setDraft(next);
+          }}
+          onKeyDown={(event) => {
+            if (
+              ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)
+            ) {
+              setExpanded(true);
+              setDragging(true);
+            }
+          }}
+          onFocus={() => setExpanded(true)}
+          onKeyUp={commit}
+          onBlur={commit}
+        />
+      </div>
+      {!mobile && markers.length > 0 && (
+        <nav className="reader-progress-chapters" aria-label="章节进度跳转">
+          {markers.map((marker, index) => (
+            <button
+              type="button"
+              key={marker.id}
+              aria-label={`从进度条前往 ${marker.label}`}
+              title={`${marker.label} · 全书 ${percent(marker.percentage)}`}
+              onClick={() => {
+                window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
+                openReaderTocItem(props.book, marker.item);
+                setExpanded(false);
+                toggleRef.current?.focus();
+              }}
+            >
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              {marker.label}
+            </button>
+          ))}
+        </nav>
+      )}
+    </div>
+  );
 
   return (
     <section
       ref={dockRef}
       onBlurCapture={(event) => {
         if (
+          !mobile &&
           event.relatedTarget instanceof Node &&
           !event.currentTarget.contains(event.relatedTarget)
         )
           setExpanded(false);
       }}
       onKeyDown={(event) => {
-        if (event.key === "Escape" && expanded) {
+        if (!mobile && event.key === "Escape" && expanded) {
           event.preventDefault();
           event.stopPropagation();
           setExpanded(false);
@@ -180,117 +301,111 @@ export function ReaderProgressScrubber(props: { book: ReaderBook }) {
         className="reader-progress-toggle"
         aria-label="调整阅读进度"
         aria-expanded={expanded}
-        aria-controls="reader-progress-range"
+        aria-controls={panelId}
+        aria-haspopup={mobile ? "dialog" : undefined}
         onClick={() => {
+          setHistoryOpen(false);
           setExpanded((value) => !value);
         }}
       >
-        <span>{dragging ? previewContext : context}</span>
-        <output>{percent(draft)}</output>
+        <span className="reader-progress-position">
+          <span className="reader-progress-title">{dragging ? previewContext : context}</span>
+          {mobile && (
+            <span className="reader-progress-summary">
+              <output>{percent(draft)}</output>
+              {props.detail && <span>{props.detail}</span>}
+            </span>
+          )}
+        </span>
+        {!mobile && <output>{percent(draft)}</output>}
         {expanded ? (
           <ChevronDown className="reader-icon" aria-hidden="true" />
         ) : (
           <ChevronUp className="reader-icon" aria-hidden="true" />
         )}
       </button>
-      <div className="reader-progress-panel">
-        <ReaderProgressPreview
-          book={props.book}
-          section={previewSection}
-          context={previewContext}
-          visible={dragging}
-        />
-        <div className="reader-progress-dock-meta">
-          <span className="reader-progress-dock-label">阅读进度</span>
-          <strong title={dragging ? previewContext : context}>
-            {dragging ? previewContext : context}
-          </strong>
-          <output htmlFor="reader-progress-range">{percent(draft)}</output>
-          <button
-            type="button"
-            className="ui-btn ui-icon-btn ui-btn-ghost"
-            aria-label="收起进度调整"
-            onClick={() => {
-              setExpanded(false);
-              toggleRef.current?.focus();
-            }}
-          >
-            <X className="reader-icon" />
-          </button>
-        </div>
-        <div className="reader-progress-range">
-          <div className="reader-progress-markers" aria-hidden="true">
-            {markers.map((marker) => (
-              <span
-                key={marker.id}
-                className="reader-progress-marker"
-                style={{ left: `${marker.percentage * 100}%` }}
-                title={marker.label}
-              />
-            ))}
-          </div>
-          <input
-            id="reader-progress-range"
-            type="range"
-            min="0"
-            max="100"
-            step="0.1"
-            value={draft * 100}
-            aria-label="调整进度"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(draft * 100)}
-            aria-valuetext={`${percent(draft)}，${dragging ? previewContext : context}`}
-            onPointerDown={(event) => {
-              event.currentTarget.setPointerCapture?.(event.pointerId);
-              window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
-              setExpanded(true);
-              setDragging(true);
-            }}
-            onPointerUp={commit}
-            onPointerCancel={commit}
-            onChange={(event) => {
-              const next = clamp(Number(event.target.value) / 100, 0, 1);
-              draftRef.current = next;
-              setDraft(next);
-            }}
-            onKeyDown={(event) => {
-              if (
-                ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(
-                  event.key,
-                )
-              ) {
-                setExpanded(true);
-                setDragging(true);
-              }
-            }}
-            onFocus={() => setExpanded(true)}
-            onKeyUp={commit}
-            onBlur={commit}
-          />
-        </div>
-        {markers.length > 0 && (
-          <nav className="reader-progress-chapters" aria-label="章节进度跳转">
-            {markers.map((marker, index) => (
+      {mobile ? (
+        <ReaderSheet
+          open={expanded}
+          onClose={close}
+          labelId={titleId}
+          className="reader-mobile-sheet-layer reader-progress-layer"
+        >
+          <section className="reader-mobile-sheet reader-progress-sheet">
+            <header className="reader-progress-heading">
+              {historyOpen && (
+                <button
+                  type="button"
+                  className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
+                  aria-label="返回进度调整"
+                  onClick={() => {
+                    setHistoryOpen(false);
+                    requestAnimationFrame(() =>
+                      dockRef.current
+                        ?.querySelector<HTMLElement>('[aria-label="查看跳转历史"]')
+                        ?.focus(),
+                    );
+                  }}
+                >
+                  <ArrowLeft className="reader-icon" />
+                </button>
+              )}
+              <h2 id={titleId}>{historyOpen ? "跳转历史" : "阅读进度"}</h2>
               <button
                 type="button"
-                key={marker.id}
-                aria-label={`从进度条前往 ${marker.label}`}
-                title={`${marker.label} · 全书 ${percent(marker.percentage)}`}
-                onClick={() => {
-                  window.dispatchEvent(new Event(READER_CAPTURE_PROGRESS_EVENT));
-                  openReaderTocItem(props.book, marker.item);
-                  setExpanded(false);
-                  toggleRef.current?.focus();
-                }}
+                className="ui-btn ui-icon-btn ui-btn-ghost ui-btn-lg"
+                aria-label="收起进度调整"
+                onClick={close}
               >
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                {marker.label}
+                <X className="reader-icon" />
               </button>
-            ))}
-          </nav>
-        )}
-      </div>
+            </header>
+            {historyOpen ? (
+              <div className="reader-progress-history">
+                <ReaderHistoryList showForward onNavigate={close} />
+              </div>
+            ) : (
+              <>
+                {panel}
+                <div className="reader-progress-actions">
+                  {back.length > 0 && (
+                    <button
+                      type="button"
+                      className="reader-progress-action"
+                      aria-label="返回原处"
+                      onClick={() => {
+                        close();
+                        reader.navigateHistory("back");
+                      }}
+                    >
+                      <ArrowLeft className="reader-icon" />
+                      返回跳转前位置
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="reader-progress-action"
+                    aria-label="查看跳转历史"
+                    onClick={() => {
+                      setHistoryOpen(true);
+                      requestAnimationFrame(() =>
+                        dockRef.current
+                          ?.querySelector<HTMLElement>('[aria-label="返回进度调整"]')
+                          ?.focus(),
+                      );
+                    }}
+                  >
+                    <History className="reader-icon" />
+                    跳转历史<span>{back.length + forward.length || "暂无"}</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+        </ReaderSheet>
+      ) : (
+        panel
+      )}
     </section>
   );
 }

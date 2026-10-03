@@ -129,9 +129,10 @@ export function createReaderNavigationActions(port: ReaderStatePort) {
     });
   }
 
-  function seekLocator(locator: ReaderLocator, percentage?: number): void {
+  function seekLocator(locator: ReaderLocator, percentage?: number, remember = false): void {
     const book = activeBook(getSnapshot());
     if (book === undefined) return;
+    if (remember) rememberPosition();
     const progress = progressForLocator(book, locator);
     const nextProgress =
       percentage === undefined

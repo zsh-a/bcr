@@ -48,12 +48,19 @@ try {
     (await scroll.evaluate((element) => element.scrollTop)) > before + 1000,
     "last occurrence landed on first occurrence",
   );
-  await page.getByRole("button", { name: "返回原处", exact: true }).click();
+  await page.getByRole("button", { name: "退出搜索导航", exact: true }).click();
+  await page.getByRole("button", { name: "调整阅读进度", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "阅读进度", exact: true })
+    .getByRole("button", { name: "返回原处", exact: true })
+    .click();
   await page.waitForTimeout(400);
   assert(
     Math.abs((await scroll.evaluate((element) => element.scrollTop)) - before) < 180,
     "jump history lost reading position",
   );
+  await page.getByRole("button", { name: "调整阅读进度", exact: true }).click();
+  await page.getByRole("button", { name: "查看跳转历史", exact: true }).click();
   await page.getByRole("button", { name: "前进到跳转位置", exact: true }).click();
   await page.waitForTimeout(400);
   assert((await scroll.evaluate((element) => element.scrollTop)) > before + 1000);
@@ -161,13 +168,20 @@ try {
     `PDF toolbar must stay reachable below mobile chrome: ${JSON.stringify({ toolbar, chrome })}`,
   );
 
-  await page.getByRole("button", { name: "返回原处", exact: true }).click();
+  await page.getByRole("button", { name: "退出搜索导航", exact: true }).click();
+  await page.getByRole("button", { name: "调整阅读进度", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "阅读进度", exact: true })
+    .getByRole("button", { name: "返回原处", exact: true })
+    .click();
   await page.waitForTimeout(500);
   assert.equal(
     await page.getByRole("spinbutton", { name: "PDF 页码" }).inputValue(),
     "6",
     "PDF history was overridden by the old search match",
   );
+  await page.getByRole("button", { name: "调整阅读进度", exact: true }).click();
+  await page.getByRole("button", { name: "查看跳转历史", exact: true }).click();
   await page.getByRole("button", { name: "前进到跳转位置", exact: true }).click();
   await page.waitForTimeout(500);
   assert.equal(await page.getByRole("spinbutton", { name: "PDF 页码" }).inputValue(), "8");

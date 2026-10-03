@@ -11,7 +11,7 @@
   position: relative;
   display: grid;
   grid-column: 1 / -1;
-  grid-template-columns: 64px minmax(0, 1fr) 48px 48px auto;
+  grid-template-columns: 64px 48px minmax(0, 1fr) 48px auto;
   align-items: center;
   gap: var(--space-2);
   min-height: 52px;
@@ -99,57 +99,4 @@
 }
 .reader-mobile-nav-progress {
   display: none;
-}
-@media (max-width: 860px) {
-  .reader-pin-toc {
-    display: none;
-  }
-  .reader-studio .reader-reading-frame > .reader-mobile-nav {
-    position: absolute;
-    grid-template-columns: 48px minmax(0, 1fr) 44px 44px;
-    padding: var(--space-1) max(var(--space-3), env(safe-area-inset-right))
-      calc(var(--space-1) + env(safe-area-inset-bottom))
-      max(var(--space-3), env(safe-area-inset-left));
-    gap: 0 var(--space-2);
-    min-height: var(--read-overlay-bottom);
-  }
-  .reader-mobile-nav .reader-history-bar {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-content: center;
-    overflow-x: auto;
-  }
-  .reader-studio:has(.reader-mobile-nav .reader-history-bar) {
-    --read-overlay-bottom: calc(
-      var(--h-toolbar) + var(--space-3) + var(--h-control-lg) + env(safe-area-inset-bottom)
-    );
-  }
-}
-
-@media (max-width: 860px) {
-  .reader-studio .reader-reading-frame > .reader-mobile-nav:has(.reader-history-bar.is-empty) {
-    grid-template-columns: 48px minmax(0, 1fr) 44px 44px 44px;
-  }
-  .reader-mobile-nav .reader-history-bar.is-empty {
-    grid-column: 5;
-    grid-row: 1;
-  }
-  .reader-history-bar.is-empty .reader-history-controls > button:not([aria-label="查看跳转历史"]) {
-    display: none;
-  }
-  .reader-studio:has(.reader-mobile-nav .reader-history-bar.is-empty) {
-    --read-overlay-bottom: calc(var(--h-toolbar) + var(--space-3) + env(safe-area-inset-bottom));
-  }
-}
-@media (max-width: 860px) and (orientation: landscape) {
-  .reader-studio .reader-reading-frame > .reader-mobile-nav {
-    grid-template-columns: 48px minmax(0, 1fr) 44px 44px auto;
-  }
-  .reader-mobile-nav .reader-history-bar {
-    grid-column: 5;
-    grid-row: 1;
-  }
-  .reader-studio:has(.reader-mobile-nav .reader-history-bar) {
-    --read-overlay-bottom: calc(var(--h-toolbar) + var(--space-3) + env(safe-area-inset-bottom));
-  }
 }

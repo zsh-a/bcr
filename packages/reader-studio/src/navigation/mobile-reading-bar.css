@@ -1,0 +1,328 @@
+.reader-progress-position {
+  min-width: 0;
+}
+.reader-progress-title {
+  display: block;
+}
+
+@media (max-width: 860px) {
+  /* One reserved height for reading, searching and hidden chrome. */
+  .reader-studio {
+    --read-overlay-bottom: calc(60px + env(safe-area-inset-bottom));
+  }
+
+  .reader-studio :is(.reader-mobile-nav, .reader-progress-layer, .reader-comic-footer) {
+    --color-surface: var(--read-bg);
+    --color-raised: var(--read-raised);
+    --color-border: var(--read-border);
+    --color-border-strong: var(--read-border-strong);
+    --color-text: var(--read-text);
+    --color-muted: var(--read-muted);
+    --color-faint: var(--read-faint);
+    --color-accent: var(--read-accent);
+    --color-focus: var(--read-accent);
+    color: var(--read-text);
+    color-scheme: light;
+  }
+  .reader-studio[data-read-theme="night"]
+    :is(.reader-mobile-nav, .reader-progress-layer, .reader-comic-footer) {
+    --shadow-floating: 0 8px 32px #0005;
+    color-scheme: dark;
+  }
+
+  .reader-studio .reader-reading-frame > .reader-mobile-nav {
+    position: absolute;
+    grid-template-columns: 44px 44px minmax(0, 1fr) 44px;
+    grid-template-rows: 48px;
+    gap: 8px;
+    height: var(--read-overlay-bottom);
+    min-height: var(--read-overlay-bottom);
+    padding: 5px max(12px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+    background: var(--read-raised);
+    border-top: 1px solid var(--read-border);
+  }
+  .reader-studio .reader-reading-frame > .reader-mobile-nav.is-search {
+    grid-template-columns: 44px minmax(0, 1fr) 44px 44px;
+  }
+  .reader-mobile-nav :is(.reader-mobile-nav-toc, .reader-mobile-nav-step) {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 44px;
+    min-height: 48px;
+    padding: 3px 0;
+    line-height: 1.2;
+    font-size: 11px;
+    white-space: nowrap;
+    touch-action: manipulation;
+  }
+  .reader-mobile-nav .reader-mobile-nav-current {
+    position: static;
+    height: 48px;
+    min-height: 48px;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    align-items: stretch;
+  }
+  .reader-mobile-nav .reader-progress-dock {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+  .reader-mobile-nav .reader-progress-toggle {
+    height: 48px;
+    min-height: 48px;
+    gap: 4px;
+    padding: 4px 6px;
+  }
+  .reader-progress-toggle .reader-progress-position {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .reader-progress-toggle .reader-progress-title {
+    display: block;
+    color: var(--read-text);
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .reader-progress-toggle .reader-progress-summary {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--read-muted);
+  }
+  .reader-progress-summary output {
+    flex: none;
+    margin: 0;
+  }
+  .reader-progress-summary > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .reader-search-position {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    min-width: 0;
+    height: 48px;
+    gap: 3px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    text-align: left;
+  }
+  .reader-search-term {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .reader-search-count {
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--read-accent);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .reader-mobile-nav button:not(:disabled):active,
+  .reader-progress-sheet button:not(:disabled):active {
+    background: var(--read-accent-soft);
+  }
+  .reader-mobile-nav button:focus-visible,
+  .reader-progress-sheet :is(button, input):focus-visible {
+    outline: 2px solid var(--read-accent);
+    outline-offset: -2px;
+  }
+
+  .reader-modal-layer.reader-progress-layer {
+    transform: none;
+  }
+  .reader-progress-layer .reader-progress-sheet {
+    display: flex;
+    flex-direction: column;
+    max-height: min(80dvh, 640px, 100%);
+    height: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--read-raised);
+    padding: 8px 20px max(20px, env(safe-area-inset-bottom));
+    text-align: left;
+  }
+  .reader-progress-heading {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+    min-height: 52px;
+  }
+  .reader-progress-heading h2 {
+    flex: 1;
+    margin: 0;
+    color: var(--read-text);
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .reader-progress-sheet .reader-progress-panel {
+    position: relative;
+    display: grid;
+    flex: none;
+    inset: auto;
+    transform: none;
+    width: 100%;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 12px 0;
+    gap: 12px;
+    background: transparent;
+  }
+  .reader-progress-context {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .reader-progress-context p {
+    flex: 1;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--read-muted);
+    overflow-wrap: anywhere;
+  }
+  .reader-progress-context output {
+    color: var(--read-accent);
+    font: 500 18px/1.5 var(--font-mono);
+  }
+  .reader-progress-sheet .reader-progress-range {
+    height: 44px;
+  }
+  .reader-progress-sheet .reader-progress-range input {
+    height: 44px;
+    margin: 0;
+  }
+  .reader-progress-sheet .reader-progress-markers {
+    top: 20px;
+    right: 10px;
+    left: 10px;
+  }
+  .reader-progress-sheet input::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+    margin-top: -9px;
+    box-shadow: 0 1px 4px #0003;
+  }
+  .reader-progress-sheet input::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    box-shadow: 0 1px 4px #0003;
+  }
+  .reader-progress-sheet .reader-progress-preview {
+    display: grid;
+    position: static;
+    width: 100%;
+    height: 112px;
+    transform: none;
+    order: 3;
+    opacity: 1;
+    visibility: visible;
+    box-shadow: none;
+    border: 0;
+    background: var(--read-bg);
+  }
+  .reader-progress-actions {
+    display: grid;
+    flex: none;
+    gap: 4px;
+    border-top: 1px solid var(--read-border);
+    padding-top: 8px;
+  }
+  .reader-progress-action {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 48px;
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    color: var(--read-text);
+    font-size: 14px;
+    text-align: left;
+  }
+  .reader-progress-action > span {
+    margin-left: auto;
+    color: var(--read-muted);
+    font-size: 12px;
+  }
+  .reader-history-description {
+    margin: 8px 0 16px;
+    color: var(--read-muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .reader-progress-history .reader-history-list button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 60px;
+    border: 1px solid var(--read-border);
+    border-radius: var(--radius-md);
+    text-align: left;
+  }
+  .reader-progress-history .reader-history-list button > span {
+    min-width: 0;
+    flex: 1;
+  }
+  .reader-progress-history .reader-history-list strong {
+    display: block;
+    font-size: 14px;
+    color: var(--read-text);
+  }
+  .reader-progress-history .reader-history-list small {
+    font-size: 12px;
+    color: var(--read-muted);
+  }
+  .reader-progress-history .reader-history-list :is(strong, small) {
+    overflow-wrap: anywhere;
+  }
+
+  .reader-jump-back {
+    position: absolute;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(100% + 12px);
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--read-border);
+    border-radius: var(--radius-full);
+    background: var(--read-raised);
+    box-shadow: var(--shadow-floating);
+    overflow: hidden;
+  }
+  .reader-jump-back button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 12px;
+    font-size: 13px;
+    color: var(--read-text);
+    white-space: nowrap;
+  }
+  @media (orientation: landscape) {
+    .reader-progress-layer .reader-progress-sheet {
+      max-height: 100%;
+    }
+    .reader-progress-sheet .reader-progress-preview {
+      display: none;
+    }
+  }
+}

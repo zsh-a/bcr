@@ -4,7 +4,7 @@ import { ReaderSheet } from "../workbench/ReaderSheet";
 import { reader } from "../state/store";
 import { useReader } from "../state/useReader";
 import { openSearchHit } from "../search/readerSearchNavigation";
-import { percentageForLocator } from "@bcr/reader-core";
+import { ReaderHistoryList } from "./ReaderHistoryList";
 
 export function ReaderHistoryBar() {
   const [open, setOpen] = useState(false);
@@ -103,40 +103,7 @@ export function ReaderHistoryBar() {
               <X className="reader-icon" />
             </button>
           </header>
-          <p>保留最近 50 个跳转位置，刷新后仍可返回。连续滚动和正常分页不会留下记录。</p>
-          {back.length === 0 && <p>还没有可返回的位置。</p>}
-          <div className="reader-history-list">
-            {[...back].reverse().map((entry, ordinal) => {
-              const publication = library.find((item) => item.id === entry.bookId);
-              return (
-                <button
-                  type="button"
-                  key={`${entry.bookId}-${ordinal}`}
-                  onClick={() => {
-                    reader.navigateHistory("back", ordinal + 1);
-                    setOpen(false);
-                  }}
-                >
-                  <span>
-                    <strong>{publication?.title}</strong>
-                    <small>
-                      {
-                        publication?.sections.find(
-                          (section) => section.id === entry.locator.sectionId,
-                        )?.label
-                      }{" "}
-                      · 全书{" "}
-                      {Math.round(
-                        (publication ? percentageForLocator(publication, entry.locator) : 0) * 100,
-                      )}
-                      %
-                    </small>
-                  </span>
-                  <ArrowLeft className="reader-icon" />
-                </button>
-              );
-            })}
-          </div>
+          <ReaderHistoryList onNavigate={() => setOpen(false)} />
         </section>
       </ReaderSheet>
     </nav>

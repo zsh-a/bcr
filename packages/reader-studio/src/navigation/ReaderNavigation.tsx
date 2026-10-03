@@ -38,6 +38,8 @@ import { ReaderTocTree } from "./ReaderTocTree";
 import { tocAncestors, tocBranches, tocMatches, visibleTocRows } from "./tocTree";
 import { ReaderProgressScrubber } from "./ReaderProgressScrubber";
 import { useReaderMobile } from "../workbench/useReaderMobile";
+import { ReaderSearchBar } from "./ReaderSearchBar";
+import { ReaderJumpBack } from "./ReaderJumpBack";
 
 type NavigationPanel = "toc" | "bookmarks" | "notes";
 interface NavigationState {
@@ -181,6 +183,8 @@ export function MobileReadingBar(props: {
 }) {
   const activeSectionId = useReader((state) => state.activeSectionId);
   const progress = useReader((state) => state.progressByBook[props.book.id]?.percentage ?? 0);
+  const query = useReader((state) => state.query);
+  const mobile = useReaderMobile();
   const navigation = useReadingNavigation();
   const activeIndex = Math.max(
     0,
@@ -204,59 +208,73 @@ export function MobileReadingBar(props: {
     const target = props.book.sections[activeIndex + delta];
     if (target !== undefined) reader.openBook(props.book.id, target.id, false);
   };
+  const position = props.pagination?.progressOnly
+    ? "全书"
+    : props.pagination
+      ? props.pagination.columns === 2
+        ? `${props.pagination.page * 2 + 1}–${Math.min(props.pagination.physicalPages ?? 1, props.pagination.page * 2 + 2)} / ${props.pagination.physicalPages} 页`
+        : `${props.pagination.page + 1} / ${props.pagination.pages} 页`
+      : `${navigationIndex + 1} / ${navigationCount} ${unit}`;
+  const stepUnit = props.pagination ? "页" : unit;
   return (
     <>
-      <nav className="reader-mobile-nav" aria-label="阅读导航">
-        <button
-          type="button"
-          className="reader-mobile-nav-toc"
-          onClick={() => navigation.openPanel("toc")}
-          aria-expanded={(navigation.open || navigation.docked) && navigation.panel === "toc"}
-          aria-controls={
-            navigation.docked ? "reader-pinned-navigation" : "reader-mobile-navigation-sheet"
-          }
-        >
-          <List className="reader-icon" />
-          <span>目录</span>
-        </button>
-        <div className="reader-mobile-nav-current">
-          <ReaderProgressScrubber book={props.book} />
-          <span className="reader-mobile-nav-current-meta">
-            {props.pagination?.progressOnly
-              ? "全书"
-              : props.pagination
-                ? props.pagination.columns === 2
-                  ? `${props.pagination.page * 2 + 1}–${Math.min(props.pagination.physicalPages ?? 1, props.pagination.page * 2 + 2)} / ${props.pagination.physicalPages} 页`
-                  : `${props.pagination.page + 1} / ${props.pagination.pages} 页`
-                : `${navigationIndex + 1} / ${navigationCount} ${unit}`}
-          </span>
-        </div>
-        <button
-          type="button"
-          className="reader-mobile-nav-step"
-          onClick={() => (props.pagination ? props.pagination.turn(-1) : openAdjacent(-1))}
-          disabled={props.pagination ? !props.pagination.canPrevious : navigationIndex <= 0}
-          aria-label={props.pagination ? "上一页" : "上一章"}
-          title={props.pagination ? "上一页" : "上一章"}
-        >
-          <ChevronLeft className="reader-icon" />
-        </button>
-        <button
-          type="button"
-          className="reader-mobile-nav-step"
-          onClick={() => (props.pagination ? props.pagination.turn(1) : openAdjacent(1))}
-          disabled={
-            props.pagination ? !props.pagination.canNext : navigationIndex >= navigationCount - 1
-          }
-          aria-label={props.pagination ? "下一页" : "下一章"}
-          title={props.pagination ? "下一页" : "下一章"}
-        >
-          <ChevronRight className="reader-icon" />
-        </button>
-        <div className="reader-mobile-nav-progress" aria-hidden="true">
-          <span style={{ width: `${progress * 100}%` }} />
-        </div>
-        <ReaderHistoryBar />
+      <nav
+        className={`reader-mobile-nav ${mobile && query.trim() ? "is-search" : ""}`}
+        aria-label={mobile && query.trim() ? "搜索结果导航" : "阅读导航"}
+      >
+        {mobile && query.trim() ? (
+          <ReaderSearchBar />
+        ) : (
+          <>
+            <button
+              type="button"
+              className="reader-mobile-nav-toc"
+              onClick={() => navigation.openPanel("toc")}
+              aria-expanded={(navigation.open || navigation.docked) && navigation.panel === "toc"}
+              aria-controls={
+                navigation.docked ? "reader-pinned-navigation" : "reader-mobile-navigation-sheet"
+              }
+            >
+              <List className="reader-icon" />
+              <span>目录</span>
+            </button>
+            <button
+              type="button"
+              className="reader-mobile-nav-step"
+              onClick={() => (props.pagination ? props.pagination.turn(-1) : openAdjacent(-1))}
+              disabled={props.pagination ? !props.pagination.canPrevious : navigationIndex <= 0}
+              aria-label={`上一${stepUnit}`}
+              title={`上一${stepUnit}`}
+            >
+              <ChevronLeft className="reader-icon" />
+              {mobile && <span>上{stepUnit}</span>}
+            </button>
+            <div className="reader-mobile-nav-current">
+              <ReaderProgressScrubber book={props.book} {...(mobile ? { detail: position } : {})} />
+              {!mobile && <span className="reader-mobile-nav-current-meta">{position}</span>}
+            </div>
+            <button
+              type="button"
+              className="reader-mobile-nav-step"
+              onClick={() => (props.pagination ? props.pagination.turn(1) : openAdjacent(1))}
+              disabled={
+                props.pagination
+                  ? !props.pagination.canNext
+                  : navigationIndex >= navigationCount - 1
+              }
+              aria-label={`下一${stepUnit}`}
+              title={`下一${stepUnit}`}
+            >
+              <ChevronRight className="reader-icon" />
+              {mobile && <span>下{stepUnit}</span>}
+            </button>
+            <div className="reader-mobile-nav-progress" aria-hidden="true">
+              <span style={{ width: `${progress * 100}%` }} />
+            </div>
+            {!mobile && <ReaderHistoryBar />}
+          </>
+        )}
+        {mobile && <ReaderJumpBack />}
       </nav>
     </>
   );

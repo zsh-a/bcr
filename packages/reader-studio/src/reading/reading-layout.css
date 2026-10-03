@@ -294,15 +294,6 @@
     padding-top: calc(var(--read-overlay-top) + 24px);
     padding-bottom: calc(var(--read-overlay-bottom) + 72px);
   }
-  .reader-workspace:has(.reader-progress-dock.is-expanded) .reader-reading-scroll {
-    scroll-padding-bottom: calc(var(--read-overlay-bottom) + 112px);
-  }
-  .reader-workspace:has(.reader-progress-dock.is-expanded) .reader-reading-column,
-  .reader-workspace:has(.reader-progress-dock.is-expanded)
-    .reader-width-wide
-    .reader-reading-column {
-    padding-bottom: calc(var(--read-overlay-bottom) + 112px);
-  }
   .reader-section {
     display: block;
     margin-bottom: var(--space-7);
@@ -348,7 +339,6 @@
     min-height: 48px;
   }
   .reader-mobile-nav-current-label,
-  .reader-mobile-nav-current strong,
   .reader-mobile-nav-current-chevron {
     display: none;
   }
