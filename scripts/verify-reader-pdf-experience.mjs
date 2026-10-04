@@ -101,14 +101,45 @@ try {
   await page.waitForFunction(() => document.querySelector('[aria-label="PDF 页码"]').value === "4");
   await page.getByRole("button", { name: "返回原处", exact: true }).click();
   await page.waitForFunction(() => document.querySelector('[aria-label="PDF 页码"]').value === "1");
+  await go(16);
   await page.getByRole("button", { name: "目录", exact: true }).click();
+  assert.equal(
+    await page.getByRole("tab", { name: /^目录/ }).count(),
+    0,
+    "PDF without outline duplicates page navigation",
+  );
   await page.getByRole("tab", { name: /页面/ }).click();
   const thumbs = page.locator(".reader-pdf-thumbnail-grid");
+  const waitForCurrentThumbnail = () =>
+    page.waitForFunction(() => {
+      const grid = document.querySelector(".reader-pdf-thumbnail-grid");
+      const active = grid?.querySelector('[aria-current="page"]');
+      if (!active) return false;
+      const item = active.getBoundingClientRect();
+      const bounds = grid.getBoundingClientRect();
+      return item.top >= bounds.top && item.bottom <= bounds.bottom + 1;
+    });
+  await waitForCurrentThumbnail();
   assert.equal(await thumbs.getByRole("button").count(), 18);
   await page.getByRole("button", { name: "下一组 PDF 页面" }).click({ trial: true });
   await page.screenshot({ path: "/tmp/bcr-reader-pdf-pages.png" });
   await page.getByRole("button", { name: "下一组 PDF 页面" }).click();
   assert.equal(await thumbs.getByRole("button").count(), 6);
+  await page.getByRole("button", { name: "定位当前 PDF 页面", exact: true }).click();
+  await waitForCurrentThumbnail();
+  assert.equal(await thumbs.getByRole("button").count(), 18);
+  const visibleCurrent = await thumbs.locator('[aria-current="page"]').boundingBox();
+  const gridBounds = await thumbs.boundingBox();
+  assert(
+    visibleCurrent.y >= gridBounds.y &&
+      visibleCurrent.y + visibleCurrent.height <= gridBounds.y + gridBounds.height + 1,
+    "current thumbnail is not revealed",
+  );
+  const jumpInput = page.getByRole("textbox", { name: "PDF 页面标签或页序" });
+  await jumpInput.fill("missing-page");
+  await jumpInput.press("Enter");
+  assert.equal(await jumpInput.getAttribute("aria-invalid"), "true");
+  await page.getByText("请输入有效页码或页面标签", { exact: true }).waitFor();
   await page.getByRole("textbox", { name: "PDF 页面标签或页序" }).fill("ii");
   await page
     .locator(".reader-pdf-browser")
@@ -210,6 +241,34 @@ try {
   await page.waitForFunction(
     () => document.querySelectorAll(".reader-search-result").length === 80,
   );
+  for (const viewport of [
+    { width: 320, height: 740 },
+    { width: 812, height: 375 },
+    { width: 1280, height: 900 },
+    { width: 375, height: 812 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const scope = page.getByRole("group", { name: "搜索范围", exact: true });
+    await scope.getByRole("button").first().click({ trial: true });
+    for (const option of await scope.getByRole("button").all()) {
+      const box = await option.boundingBox();
+      assert(
+        box.width >= 44 && box.height >= 44 && box.height <= 52,
+        `search scope wraps into a vertical label: ${JSON.stringify({ viewport, box })}`,
+      );
+      assert(box.x >= 0 && box.x + box.width <= viewport.width, "search scope overflows viewport");
+    }
+    const body = await page.locator(".reader-search-body").boundingBox();
+    assert(
+      body.height >= 60 && body.y + body.height <= viewport.height + 1,
+      "search results are obscured by controls",
+    );
+  }
+  const lastResult = await page.locator(".reader-search-result").last().boundingBox();
+  const continuation = await page
+    .getByRole("button", { name: "加载更多搜索结果", exact: true })
+    .boundingBox();
+  assert(continuation.y > lastResult.y, "load more should follow the results");
   await page.getByRole("button", { name: "加载更多搜索结果", exact: true }).click();
   await page.waitForFunction(
     () => document.querySelectorAll(".reader-search-result").length === 125,

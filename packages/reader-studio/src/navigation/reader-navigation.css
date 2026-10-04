@@ -242,11 +242,6 @@
   border: 0;
   padding: 0;
 }
-@media (min-width: 861px) {
-  .reader-main:has(.reader-chapter-rail) .reader-search-panel {
-    right: calc(var(--reader-navigation-width, 304px) + 12px);
-  }
-}
 @media (max-width: 860px) {
   .reader-navigation-sheet .reader-mobile-sheet-heading .ui-icon-btn {
     min-width: 44px;

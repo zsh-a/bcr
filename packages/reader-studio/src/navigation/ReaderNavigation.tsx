@@ -76,7 +76,9 @@ function initialCollapsed(book: ReaderBook): ReadonlySet<string> {
 }
 
 export function ReaderNavigationProvider(props: { book: ReaderBook; children: ReactNode }) {
-  const [panel, setPanel] = useState<NavigationPanel>("toc");
+  const defaultPanel =
+    props.book.source.format === "pdf" && !props.book.toc?.length ? "pages" : "toc";
+  const [panel, setPanel] = useState<NavigationPanel>(defaultPanel);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() =>
@@ -85,11 +87,11 @@ export function ReaderNavigationProvider(props: { book: ReaderBook; children: Re
   const pinned = useReader((state) => state.settings.tocPinned ?? false);
   const mobile = useReaderMobile();
   useEffect(() => {
-    setPanel("toc");
+    setPanel(defaultPanel);
     setOpen(false);
     setQuery("");
     setCollapsed(initialCollapsed(props.book));
-  }, [props.book.id, props.book.toc]);
+  }, [props.book.id, props.book.toc, defaultPanel]);
   useEffect(() => {
     if (pinned && !mobile) setOpen(false);
   }, [pinned, mobile]);
@@ -344,7 +346,9 @@ function NavigationContent(props: { book: ReaderBook; pinned: boolean }) {
     label: string;
     count: number;
   }> = [
-    { id: "toc", label: "目录", count: tocCount },
+    ...(props.book.source.format !== "pdf" || hasToc
+      ? [{ id: "toc" as const, label: "目录", count: tocCount }]
+      : []),
     ...(props.book.source.format === "pdf"
       ? [{ id: "pages" as const, label: "页面", count: props.book.sections.length }]
       : []),
@@ -425,7 +429,7 @@ function NavigationContent(props: { book: ReaderBook; pinned: boolean }) {
             }}
           >
             <span>{tab.label}</span>
-            <small>{tab.count}</small>
+            {tab.count > 0 && <small>{tab.count}</small>}
           </button>
         ))}
       </div>

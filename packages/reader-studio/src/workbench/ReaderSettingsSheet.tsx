@@ -211,7 +211,8 @@ export function ReaderSettingsSheet(props: {
                     <button
                       key={value}
                       type="button"
-                      className="reader-mobile-setting-option"
+                      className="reader-mobile-setting-option reader-pdf-color-option"
+                      data-pdf-color={value}
                       aria-pressed={
                         (pdfColor ?? (props.settings.theme === "night" ? "night" : "original")) ===
                         value
@@ -224,7 +225,14 @@ export function ReaderSettingsSheet(props: {
                         });
                       }}
                     >
-                      {value === "original" ? "原色" : value === "paper" ? "柔和纸色" : "夜间"}
+                      <span className="reader-pdf-color-sample" aria-hidden="true">
+                        Aa
+                      </span>
+                      <span>
+                        {value === "original" ? "原色" : value === "paper" ? "柔和纸色" : "夜间"}
+                      </span>
+                      {(pdfColor ?? (props.settings.theme === "night" ? "night" : "original")) ===
+                        value && <Check className="reader-icon" aria-hidden="true" />}
                     </button>
                   ))}
                 </div>

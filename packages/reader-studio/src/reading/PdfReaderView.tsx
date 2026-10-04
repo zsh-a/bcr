@@ -533,9 +533,7 @@ const PdfPageView = memo(function PdfPageView(props: {
       aria-label={`PDF 第 ${pageNumber} 页`}
     >
       <div className="reader-pdf-page-meta">
-        <span>
-          {props.section.label} · {pageNumber} / {props.book.sections.length}
-        </span>
+        <span>{props.section.label}</span>
         {props.active && (
           <strong>{!hasText && status === "ready" ? "扫描页 · 无法搜索或选字" : "当前页"}</strong>
         )}

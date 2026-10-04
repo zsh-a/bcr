@@ -34,6 +34,12 @@
   display: none;
   pointer-events: none;
 }
+@media (prefers-reduced-motion: reduce) {
+  .reader-modal-layer {
+    transition: none;
+    transform: none;
+  }
+}
 .reader-note-sheet {
   width: min(100%, 560px);
   max-height: 85dvh;

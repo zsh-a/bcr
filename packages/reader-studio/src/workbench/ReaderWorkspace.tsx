@@ -227,18 +227,6 @@ function SearchPanel(props: {
         </button>
       </div>
       <ReaderSearchInput searchRef={props.searchRef} />
-      <div className="reader-search-panel-top">
-        <div>
-          <strong>
-            {searchBusy
-              ? "正在搜索…"
-              : searchError
-                ? "搜索遇到问题"
-                : `${props.hits.length} 个命中${searchTruncated ? " · 还有更多" : ""}`}
-          </strong>
-        </div>
-        <span className="reader-search-query">{query ? `“${query}”` : "输入关键词查找原文"}</span>
-      </div>
       <div className="reader-search-scope" role="group" aria-label="搜索范围">
         <button
           type="button"
@@ -254,7 +242,17 @@ function SearchPanel(props: {
         >
           整个书库 · {library.length}
         </button>
-        {searchTruncated && <small>已显示 {props.hits.length} 个结果，可继续加载更多。</small>}
+      </div>
+      <div className="reader-search-panel-top" role="status" aria-live="polite">
+        <strong>
+          {searchBusy
+            ? "正在搜索…"
+            : searchError
+              ? "搜索遇到问题"
+              : query
+                ? `${props.hits.length} 个命中${searchTruncated ? " · 还有更多" : ""}`
+                : "输入关键词查找原文"}
+        </strong>
       </div>
       {searchError && (
         <div className="reader-search-empty" role="alert">
@@ -270,53 +268,72 @@ function SearchPanel(props: {
           {query ? "没有找到匹配内容，试试更短的关键词。" : "输入关键词，定位后可返回原处。"}
         </div>
       )}
-      {searchTruncated && (
-        <button
-          type="button"
-          className="ui-btn ui-btn-lg ui-btn-default reader-search-more"
-          disabled={searchBusy}
-          onClick={() => reader.loadMoreSearch()}
+      <div className="reader-search-body">
+        <div
+          id="reader-search-results"
+          className="reader-search-results"
+          role="listbox"
+          aria-label="搜索命中"
         >
-          {searchBusy ? "正在加载…" : "加载更多搜索结果"}
-        </button>
-      )}
-      <div id="reader-search-results" className="reader-search-results" role="listbox">
-        {props.hits.map((hit, index) => (
-          <button
-            type="button"
-            ref={index === searchActiveIndex ? activeResultRef : undefined}
-            id={`reader-search-hit-${index}`}
-            role="option"
-            aria-selected={index === searchActiveIndex}
-            className={`reader-search-result ${index === searchActiveIndex ? "is-active" : ""}`}
-            key={`${hit.bookId}-${hit.sectionId}-${index}`}
-            onMouseEnter={() => reader.setSearchActiveIndex(index)}
-            onClick={() => openSearchHit(hit, index)}
-          >
-            <span className="reader-search-result-index">{String(index + 1).padStart(2, "0")}</span>
-            <span className="reader-search-result-copy">
-              <strong>{library.find((book) => book.id === hit.bookId)?.title ?? "未知读物"}</strong>
-              <span>{hit.label}</span>
-              <em>
-                {hit.snippetMatchStart === undefined ? (
-                  hit.snippet
-                ) : (
-                  <>
-                    {hit.snippet.slice(0, hit.snippetMatchStart)}
-                    <mark>
-                      {hit.snippet.slice(
-                        hit.snippetMatchStart,
-                        hit.snippetMatchStart + (hit.snippetMatchLength ?? 0),
-                      )}
-                    </mark>
-                    {hit.snippet.slice(hit.snippetMatchStart + (hit.snippetMatchLength ?? 0))}
-                  </>
-                )}
-              </em>
-            </span>
-            <ChevronRight className="reader-icon" />
-          </button>
-        ))}
+          {props.hits.map((hit, index) => (
+            <button
+              type="button"
+              ref={index === searchActiveIndex ? activeResultRef : undefined}
+              id={`reader-search-hit-${index}`}
+              role="option"
+              aria-selected={index === searchActiveIndex}
+              className={`reader-search-result ${index === searchActiveIndex ? "is-active" : ""}`}
+              key={`${hit.bookId}-${hit.sectionId}-${index}`}
+              onMouseEnter={() => reader.setSearchActiveIndex(index)}
+              onClick={() => openSearchHit(hit, index)}
+            >
+              <span className="reader-search-result-index">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span className="reader-search-result-copy">
+                <strong>
+                  {scope === "book"
+                    ? hit.label
+                    : (library.find((book) => book.id === hit.bookId)?.title ?? "未知读物")}
+                </strong>
+                {scope === "library" &&
+                  hit.label !== library.find((book) => book.id === hit.bookId)?.title && (
+                    <span>{hit.label}</span>
+                  )}
+                <em>
+                  {hit.snippetMatchStart === undefined ? (
+                    hit.snippet
+                  ) : (
+                    <>
+                      {hit.snippet.slice(0, hit.snippetMatchStart)}
+                      <mark>
+                        {hit.snippet.slice(
+                          hit.snippetMatchStart,
+                          hit.snippetMatchStart + (hit.snippetMatchLength ?? 0),
+                        )}
+                      </mark>
+                      {hit.snippet.slice(hit.snippetMatchStart + (hit.snippetMatchLength ?? 0))}
+                    </>
+                  )}
+                </em>
+              </span>
+              <ChevronRight className="reader-icon" />
+            </button>
+          ))}
+        </div>
+        {searchTruncated && (
+          <div className="reader-search-continuation">
+            <span>已显示 {props.hits.length} 个结果，可继续加载更多。</span>
+            <button
+              type="button"
+              className="ui-btn ui-btn-lg ui-btn-default reader-search-more"
+              disabled={searchBusy}
+              onClick={() => reader.loadMoreSearch()}
+            >
+              {searchBusy ? "正在加载…" : "加载更多搜索结果"}
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

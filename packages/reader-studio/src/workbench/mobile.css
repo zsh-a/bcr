@@ -200,12 +200,7 @@
     background: var(--color-bg);
   }
 
-  .reader-search-panel input:focus-visible {
-    outline: none;
-  }
-
   .reader-search-layer .reader-search-panel-top {
-    order: 2;
     align-items: center;
     flex: none;
     min-height: 44px;
@@ -213,17 +208,8 @@
     border: 0;
   }
 
-  .reader-search-layer .reader-search-query {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   .reader-search-layer .reader-search-scope {
-    flex: none;
-    padding: 0 16px 12px;
-    flex-wrap: wrap;
+    padding: 4px;
   }
 
   .reader-search-scope > button {
@@ -231,22 +217,14 @@
     border-radius: 10px;
   }
 
-  .reader-search-layer .reader-search-empty,
   .reader-search-layer .reader-search-results {
-    order: 3;
-  }
-
-  .reader-search-layer .reader-search-results {
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding: 0 12px 20px;
+    padding: 0 12px 12px;
   }
 
   .reader-search-layer .reader-search-result {
     flex: none;
     grid-template-columns: 24px minmax(0, 1fr) 16px;
-    min-height: 92px;
+    min-height: 80px;
   }
 
   .reader-search-layer .reader-search-result-copy em {
