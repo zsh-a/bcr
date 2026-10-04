@@ -57,15 +57,26 @@ export function NoteRename({
       input.style.height = `${input.scrollHeight}px`;
     };
     resize();
+    let frame = 0;
+    let disposed = false;
+    void document.fonts.ready.then(() => {
+      if (!disposed) resize();
+    });
     let width = input.getBoundingClientRect().width;
     const observer = new ResizeObserver(() => {
       const nextWidth = input.getBoundingClientRect().width;
       if (nextWidth === width) return;
       width = nextWidth;
-      resize();
+      // Measuring and writing height inside the observer can cause a resize loop.
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(resize);
     });
     observer.observe(input);
-    return () => observer.disconnect();
+    return () => {
+      disposed = true;
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, [title, multiline]);
 
   const renamer = useMemo(
