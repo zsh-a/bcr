@@ -225,7 +225,12 @@ async function sync(page, conflict = false) {
   await closeSyncPopover(page);
 }
 async function body(page, text) {
-  await page.getByLabel("笔记正文", { exact: true }).fill(text);
+  // CodeMirror owns its selection. Native contenteditable fill selects only the
+  // DOM, which an editor focus/presentation update can reset before insertion.
+  // Use its select-all key binding so both the document and DOM agree.
+  await page.getByLabel("笔记正文", { exact: true }).press("ControlOrMeta+a");
+  await page.keyboard.insertText(text);
+  await matchesBody(page, text);
   await saved(page);
 }
 // 实时预览装饰是纯呈现层：编辑模式会把标题/链接标记 `Decoration.replace` 掉，
