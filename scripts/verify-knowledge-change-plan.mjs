@@ -12,11 +12,11 @@ const title = page.getByLabel("笔记标题", { exact: true });
 const body = page.getByLabel("笔记正文", { exact: true });
 const dialog = page.getByRole("dialog", { name: "确认重命名", exact: true });
 const toast = page.locator(".knowledge-undo-toast");
+const saveStatus = page.locator('[data-testid="knowledge-status"] .knowledge-status-line');
 const saved = () =>
-  page
-    .locator('[data-testid="knowledge-status"] .knowledge-status-line')
-    .filter({ hasText: /^(已保存|已同步)/u })
-    .waitFor({ state: "attached" });
+  saveStatus.filter({ hasText: /^(已保存|已同步)/u }).waitFor({ state: "attached" });
+const renamePending = () =>
+  saveStatus.filter({ hasText: /^重命名待确认$/u }).waitFor({ state: "attached" });
 const bodyText = () =>
   body.evaluate((el) =>
     [...el.querySelectorAll(".cm-line")].map((line) => line.textContent).join("\n"),
@@ -118,7 +118,9 @@ try {
   await tab("Alpha");
   await title.fill("同名资料");
   await body.fill("# 正文\n\n正文独立保存，不必等待重命名。");
-  await saved();
+  // This state appears only after body autosave finishes; the proposed title
+  // still needs review, so the combined status must not claim everything is saved.
+  await renamePending();
   await dialog.waitFor();
   await mentions(
     dialog.locator("section.knowledge-rename-review > p").first(),
@@ -160,6 +162,7 @@ try {
   // 取消重命名 keeps title + links untouched and hands focus back to the title input.
   await dialog.getByRole("button", { name: "取消重命名", exact: true }).click();
   await dialog.waitFor({ state: "hidden" });
+  await saved();
   assert.equal(await title.inputValue(), "Alpha");
   await page.waitForFunction(
     () => document.activeElement?.getAttribute("aria-label") === "笔记标题",
@@ -181,6 +184,7 @@ try {
   assert.equal(await title.inputValue(), "同名资料");
   assert.ok((await bodyText()).includes("正文独立保存，不必等待重命名。"));
   await dialog.waitFor();
+  await renamePending();
 
   // ---- Responsive diff: both mobile orientations + large text, no overflow ----
   for (const viewport of [
@@ -210,6 +214,7 @@ try {
   // ---- 确认全部修改 lands title + rewrites; ambiguous link stays untouched ----
   await dialog.getByRole("button", { name: "确认全部修改", exact: true }).click();
   await dialog.waitFor({ state: "hidden" });
+  await saved();
   assert.equal(await title.inputValue(), "同名资料");
   await page.setViewportSize({ width: 1440, height: 1000 });
   await toast.waitFor();
