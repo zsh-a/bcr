@@ -178,10 +178,13 @@ try {
     reader.setSearch("预备搜索", [], getReaderState().activeBookId);
   }, moduleUrl("store"));
   await settled();
+  const turnForwardWhileSearching = async () => {
+    await page.getByLabel("分页正文", { exact: true }).press("ArrowRight");
+    await settled();
+  };
   // A match split by a page boundary must be highlighted on both source slices.
   for (let i = 0; i < 3 && Number((await snapshot())[0].end.split(":")[1]) < 4; i++) {
-    await page.getByRole("button", { name: "下一页", exact: true }).click();
-    await settled();
+    await turnForwardWhileSearching();
   }
   const query = await page.evaluate(async (url) => {
     const endpoint = document
@@ -204,8 +207,7 @@ try {
       .textContent(),
     query.slice(0, 4),
   );
-  await page.getByRole("button", { name: "下一页", exact: true }).click();
-  await settled();
+  await turnForwardWhileSearching();
   assert.equal(
     await page
       .locator(".reader-txt-page .reader-prose")
