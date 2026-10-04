@@ -1,0 +1,2 @@
+# Dependencies for the trend research tests and frozen evidence audit.
+numpy==2.5.3
