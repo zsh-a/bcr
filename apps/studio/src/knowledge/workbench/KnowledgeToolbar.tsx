@@ -38,7 +38,6 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
     openAssistant,
     navigate,
     state,
-    error,
     busy,
     setQuery,
     setPanel,
@@ -47,8 +46,6 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
     sidebarToggle,
     focusMode,
     setFocusMode,
-    auto,
-    setAuto,
     setAddingCollection,
     setConfirmDelete,
     setTreeEdit,
@@ -62,7 +59,6 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
     note,
     workbench,
     sidebar,
-    pending,
     run,
     go,
     select,
@@ -149,23 +145,7 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
       />
 
       <div ref={setToolbarSlot} className="knowledge-document-toolbar" />
-      <div className="knowledge-status" data-testid="knowledge-status">
-        <SyncStatus
-          facts={{
-            error,
-            conflicts: state.conflicts.length,
-            hasTarget: !!state.sync.target,
-            pending,
-            lastSyncedAt: state.sync.lastSyncedAt,
-            syncing,
-          }}
-          auto={auto}
-          onToggleAuto={setAuto}
-          onSync={() => void sync()}
-          onOpenSettings={() => setPanel("sync")}
-          onViewConflicts={() => setPanel("conflicts")}
-        />
-      </div>
+      {!mobile && <KnowledgeSaveStatus controller={controller} />}
       <IconButton
         className="knowledge-context-action"
         label={
@@ -209,25 +189,30 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
         <Sparkles size={17} />
       </IconButton>
       <NoteActionsMenu
+        grouped={mobile}
         actions={[
           {
             label: "安装与离线",
+            group: "应用设置",
             icon: <Download size={15} />,
             run: () => setInstallationOpen(true),
           },
           {
             label: "新建笔记",
+            group: "笔记库管理",
             icon: <Plus size={15} />,
             disabled: busy,
             run: () => void run(create),
           },
           {
             label: "搜索与切换笔记",
+            group: "笔记库管理",
             icon: <Search size={15} />,
             run: () => setSwitcher({ query: "" }),
           },
           {
             label: "新建目录",
+            group: "笔记库管理",
             icon: <FolderPlus size={15} />,
             run: () => {
               setFocusMode(false);
@@ -238,33 +223,43 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
               setTreeEdit({ kind: "create", parent: "", path: "" });
             },
           },
-          { label: "新建集合", icon: <Plus size={15} />, run: () => setAddingCollection(true) },
+          {
+            group: "笔记库管理",
+            label: "新建集合",
+            icon: <Plus size={15} />,
+            run: () => setAddingCollection(true),
+          },
           {
             label: "导入 Markdown",
+            group: "笔记库管理",
             icon: <Upload size={15} />,
             separator: true,
             run: () => input.current?.click(),
           },
           {
             label: "从资料集合导入",
+            group: "笔记库管理",
             icon: <BookOpenText size={15} />,
             disabled: busy,
             run: () => void run(importResearch),
           },
           {
             label: "导出知识库",
+            group: "笔记库管理",
             icon: <Download size={15} />,
             disabled: busy,
             run: () => void run(exportAll),
           },
           {
             label: "恢复 ZIP 备份",
+            group: "笔记库管理",
             icon: <Upload size={15} />,
             disabled: busy || syncing,
             run: () => setPanel("restore"),
           },
           {
             label: "导出 Markdown 附件包",
+            group: "笔记库管理",
             icon: <Download size={15} />,
             disabled: busy,
             run: () => void run(exportMarkdown),
@@ -277,6 +272,7 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
           },
           {
             label: "AI 助手",
+            hidden: !openAssistant,
             icon: <Sparkles size={15} />,
             disabled: !openAssistant,
             run: () => openAssistant?.(),
@@ -307,12 +303,14 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
           },
           {
             label: "同步设置",
+            group: "应用设置",
             icon: <Settings2 size={15} />,
             separator: true,
             run: () => setPanel("sync"),
           },
           {
             label: "立即同步",
+            group: "应用设置",
             icon: <RefreshCw size={15} />,
             disabled: syncing || busy,
             run: () => void sync(),
@@ -328,5 +326,33 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
         ]}
       />
     </AppToolbar>
+  );
+}
+
+export function KnowledgeSaveStatus({ controller }: { controller: KnowledgeWorkbench }) {
+  const local =
+    controller.draftStatus?.noteId === controller.note?.id
+      ? (controller.draftStatus ?? undefined)
+      : undefined;
+  return (
+    <div className="knowledge-status" data-testid="knowledge-status">
+      <SyncStatus
+        facts={{
+          error: controller.error,
+          conflicts: controller.state.conflicts.length,
+          hasTarget: !!controller.state.sync.target,
+          pending: controller.pending,
+          lastSyncedAt: controller.state.sync.lastSyncedAt,
+          syncing: controller.syncing,
+          ...(local ? { local } : {}),
+        }}
+        auto={controller.auto}
+        onToggleAuto={controller.setAuto}
+        onSync={() => void controller.sync()}
+        onRetrySave={() => void controller.run(controller.flushEditor)}
+        onOpenSettings={() => controller.setPanel("sync")}
+        onViewConflicts={() => controller.setPanel("conflicts")}
+      />
+    </div>
   );
 }

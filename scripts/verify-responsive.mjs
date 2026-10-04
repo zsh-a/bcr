@@ -198,6 +198,7 @@ await group("2. 400% 缩放等效（320px + root 64px 核心功能可达）", as
 
   // 新建统一从工具栏菜单进入，窄屏与放大字号下仍可操作。
   const actions = await openActionMenu(page, "更多操作");
+  await actions.getByRole("menuitem", { name: "笔记库管理", exact: true }).click();
   const create = actions.getByRole("menuitem", { name: "新建笔记", exact: true });
   const createBox = await create.boundingBox();
   assert(createBox !== null && createBox.x >= -1 && createBox.x + createBox.width <= 321);
@@ -539,6 +540,8 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
   // ui-body < 400：表单 label 上置堆叠
   await openKnowledge();
   await page.getByRole("button", { name: "更多操作", exact: true }).click();
+  if (await page.getByRole("menuitem", { name: "笔记库管理", exact: true }).isVisible())
+    await page.getByRole("menuitem", { name: "笔记库管理", exact: true }).click();
   await page.getByRole("menuitem", { name: "恢复 ZIP 备份", exact: true }).click();
   await page.getByRole("dialog", { name: "恢复备份", exact: true }).waitFor();
   const bodyProbe = (width) =>
@@ -573,6 +576,8 @@ await group("4. 容器查询降级（kb-side/kb-rail/kb-main/dock-panel/ui-body�
 await group("5. 矮窗（1440×480）全屏 sheet + 安全区 max() 兜底", async () => {
   await openKnowledge();
   await page.getByRole("button", { name: "更多操作", exact: true }).click();
+  if (await page.getByRole("menuitem", { name: "笔记库管理", exact: true }).isVisible())
+    await page.getByRole("menuitem", { name: "笔记库管理", exact: true }).click();
   await page.getByRole("menuitem", { name: "恢复 ZIP 备份", exact: true }).click();
   await page.getByRole("dialog", { name: "恢复备份", exact: true }).waitFor();
   await page.setViewportSize({ width: 1440, height: 480 });

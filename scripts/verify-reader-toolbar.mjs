@@ -90,17 +90,26 @@ try {
       "ArrowUp opens at the final menu item",
     );
     await page.keyboard.press("Escape");
-    await (
-      await openActionMenu(page, "更多阅读操作")
-    )
-      .getByRole("menuitem", { name: "阅读快捷键帮助", exact: true })
-      .click();
-    await page.getByRole("dialog", { name: "阅读快捷键", exact: true }).waitFor();
-    await page.keyboard.press("Escape");
-    assert(
-      await trigger.evaluate((element) => element === document.activeElement),
-      "help modal restores the overflow trigger",
-    );
+    if (!touch) {
+      await (
+        await openActionMenu(page, "更多阅读操作")
+      )
+        .getByRole("menuitem", { name: "阅读快捷键帮助", exact: true })
+        .click();
+      await page.getByRole("dialog", { name: "阅读快捷键", exact: true }).waitFor();
+      await page.keyboard.press("Escape");
+      assert(
+        await trigger.evaluate((element) => element === document.activeElement),
+        "help modal restores the overflow trigger",
+      );
+    } else {
+      const helpMenu = await openActionMenu(page, "更多阅读操作");
+      assert.equal(
+        await helpMenu.getByRole("menuitem", { name: "阅读快捷键帮助", exact: true }).count(),
+        0,
+      );
+      await page.keyboard.press("Escape");
+    }
     const modeMenu = await openActionMenu(page, "更多阅读操作");
     assert.equal(
       await modeMenu

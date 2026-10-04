@@ -38,6 +38,7 @@ import { createKnowledgeActions } from "../notes/actions";
 import { useKnowledgeSync } from "../sync/useKnowledgeSync";
 import { useAutoSync } from "../sync/useAutoSync";
 import { type EditorHandle } from "../editor/NoteEditor";
+import type { LocalSaveStatus } from "../sync/syncPopover";
 import { searchKnowledge, noteSearchHit } from "../search/retrieval";
 import { EditorSessions } from "../editor/editorSessions";
 import { KnowledgeLinkIndex, resolveNoteLink, splitNoteTarget } from "../notes/markdownAnalysis";
@@ -61,6 +62,7 @@ export function useKnowledgeWorkbench() {
     [error, setError] = useState("");
   const [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<LocalSaveStatus | null>(null);
   useUpdateParticipant({
     blocked: () =>
       !ready || busy || store.syncing ? "知识库正在加载、保存或同步，请完成后再更新。" : null,
@@ -567,6 +569,8 @@ export function useKnowledgeWorkbench() {
   });
 
   return {
+    draftStatus,
+    setDraftStatus,
     services,
     active,
     mobile,

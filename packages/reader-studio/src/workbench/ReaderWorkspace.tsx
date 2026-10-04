@@ -27,6 +27,7 @@ import { ReaderSelectionCapture } from "../reading/ReaderSelectionCapture";
 import { ReaderSearchInput } from "./ReaderChrome";
 import { LibraryPanel } from "../library/ReaderLibrary";
 import { ReaderNavigationProvider } from "../navigation/ReaderNavigation";
+import { ReaderWelcome } from "./ReaderWelcome";
 
 export function ReaderWorkspace(props: {
   workspaceCollections: boolean;
@@ -137,6 +138,7 @@ export function ReaderWorkspace(props: {
             onFocusReading={props.onToggleMobileChrome}
           />
           <ReaderSaveNotice runtime={props.runtime} />
+          <ReaderWelcome onImport={props.onImport} />
           <ReaderSelectionCapture
             onAddAnnotation={openAnnotationComposer}
             book={active}

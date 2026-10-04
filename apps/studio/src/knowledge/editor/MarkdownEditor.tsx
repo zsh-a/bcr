@@ -1,7 +1,11 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { Compartment, EditorState, Transaction } from "@codemirror/state";
 import { EditorView, placeholder as placeholderExtension } from "@codemirror/view";
-import { knowledgeEditorExtensions, typewriterMode } from "./markdownEditor";
+import {
+  externalDocumentChange,
+  knowledgeEditorExtensions,
+  typewriterMode,
+} from "./markdownEditor";
 import { EditorSessions } from "./editorSessions";
 import { noteEditing, type SlashContext } from "./noteEditing";
 import type { KnowledgeNote } from "../session/model";
@@ -285,7 +289,7 @@ export function MarkdownEditor({
       changes: { from: 0, to: current.state.doc.length, insert: value },
       selection: { anchor: value.length },
       scrollIntoView: false,
-      annotations: Transaction.addToHistory.of(false),
+      annotations: [Transaction.addToHistory.of(false), externalDocumentChange.of(true)],
     });
   }, [value]);
 

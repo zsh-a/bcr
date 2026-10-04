@@ -72,9 +72,7 @@ export function BootScreen(props: { error: string | null }) {
         </div>
         <div>
           <strong>READER STUDIO</strong>
-          <span>
-            {props.error === null ? "正在打开本地书库 · OPFS / SQLite / FTS5" : props.error}
-          </span>
+          <span>{props.error === null ? "正在打开你的书库…" : props.error}</span>
         </div>
         {props.error !== null && <CircleAlert className="reader-boot-alert" />}
         {props.error !== null && (
@@ -210,9 +208,11 @@ export function ReaderHeader(props: {
         >
           <Search className="reader-icon" />
           <span>搜索书库</span>
-          <kbd aria-hidden="true">
-            {/Mac|iPhone|iPad/u.test(navigator.platform) ? "⌘F" : "Ctrl+F"}
-          </kbd>
+          {!mobile && (
+            <kbd aria-hidden="true">
+              {/Mac|iPhone|iPad/u.test(navigator.platform) ? "⌘F" : "Ctrl+F"}
+            </kbd>
+          )}
         </button>
         {(!demo || mobile) && (
           <button type="button" role="menuitem" onClick={() => fileInput.current?.click()}>
@@ -237,17 +237,19 @@ export function ReaderHeader(props: {
             <span>漫画模式</span>
           </button>
         )}
-        <button
-          type="button"
-          role="menuitem"
-          aria-label="阅读快捷键帮助"
-          title="快捷键 (?)"
-          onClick={props.onShortcuts}
-        >
-          <Keyboard className="reader-icon" />
-          <span>快捷键帮助</span>
-          <kbd aria-hidden="true">?</kbd>
-        </button>
+        {!mobile && (
+          <button
+            type="button"
+            role="menuitem"
+            aria-label="阅读快捷键帮助"
+            title="快捷键 (?)"
+            onClick={props.onShortcuts}
+          >
+            <Keyboard className="reader-icon" />
+            <span>快捷键帮助</span>
+            <kbd aria-hidden="true">?</kbd>
+          </button>
+        )}
         <button
           type="button"
           role="menuitem"

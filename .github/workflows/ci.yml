@@ -192,6 +192,10 @@ jobs:
         if: matrix.group == 'reader'
         run: bun run test:pwa:android
 
+      - name: Verify independent mobile Reader and Notes interactions
+        if: matrix.group == 'reader'
+        run: BCR_MOBILE_PWA=1 node scripts/verify-mobile-knowledge-reader.mjs
+
       - name: Verify production Notes PWA
         if: matrix.group == 'reader'
         run: bun run test:pwa:knowledge

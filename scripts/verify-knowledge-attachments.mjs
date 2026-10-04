@@ -61,7 +61,7 @@ async function attach(page, name, mimeType, buffer) {
 }
 async function connect(page) {
   await page.locator(".knowledge-status-trigger").click();
-  await page.getByRole("button", { name: "同步设置…", exact: true }).click();
+  await page.getByRole("button", { name: /^(设置同步|同步设置…)$/u }).click();
   await page.getByLabel("GitHub 仓库地址").fill("alice/notes");
   await page.getByLabel("GitHub Token", { exact: true }).fill("test-token");
   await page.getByRole("button", { name: "连接并同步", exact: true }).click();

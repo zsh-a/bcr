@@ -1,6 +1,6 @@
 /* Mobile keeps navigation, document actions and content in distinct rows. */
 @media (width <= 45em) {
-  .knowledge-toolbar {
+  .ui-app-toolbar.knowledge-toolbar {
     height: auto;
     min-height: 56px;
     flex-wrap: wrap;
@@ -9,14 +9,42 @@
       max(8px, env(safe-area-inset-left));
   }
 
+  .knowledge-mobile-actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px max(12px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .knowledge-mobile-actions .knowledge-status {
+    min-width: 0;
+  }
+
+  .knowledge-mobile-actions .knowledge-status-trigger {
+    max-width: 100%;
+    min-height: 48px;
+    font-size: 13px;
+    color: var(--color-muted);
+  }
+
+  .knowledge-mobile-actions > button {
+    min-height: 48px;
+    flex: none;
+  }
+
   .knowledge-toolbar > .ui-icon-btn,
   .knowledge-toolbar .knowledge-status-trigger,
   .knowledge-toolbar > .ui-action-menu > button,
   .knowledge-tools > button {
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
-    min-height: 44px;
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    min-height: 48px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -26,7 +54,7 @@
     display: flex;
     flex: 1;
     min-width: 0;
-    min-height: 44px;
+    min-height: 48px;
     align-items: center;
     gap: 4px;
     padding: 0 8px;
@@ -87,8 +115,8 @@
 
   .knowledge-document-toolbar .knowledge-segmented button {
     flex: 1;
-    min-width: 44px;
-    min-height: 44px;
+    min-width: 48px;
+    min-height: 48px;
     padding-inline: 8px;
     font-size: 13px;
   }
@@ -111,7 +139,7 @@
   }
 
   .knowledge-metadata-summary {
-    min-height: 44px;
+    min-height: 48px;
     flex-wrap: wrap;
     color: var(--color-muted);
   }
@@ -120,8 +148,8 @@
     margin-left: auto;
   }
 
-  .knowledge-library-sheet,
-  .knowledge-context-drawer {
+  .ui-dialog.knowledge-library-sheet,
+  .ui-dialog.knowledge-context-drawer {
     --h-overlay-max: calc(
       var(--modal-viewport-height, 100dvh) - max(16px, env(safe-area-inset-top))
     );
@@ -176,7 +204,7 @@
   }
 
   .knowledge-library-sheet .knowledge-create {
-    min-height: 44px;
+    min-height: 48px;
     padding-inline: 12px;
     background: var(--color-accent-dim);
     color: var(--color-accent);
@@ -185,7 +213,7 @@
   .knowledge-library-sheet :is(input, select),
   .knowledge-context-drawer :is(input, select) {
     font-size: 16px;
-    min-height: 44px;
+    min-height: 48px;
   }
 
   .knowledge-library-sheet .knowledge-file-note,
@@ -204,16 +232,16 @@
   }
 
   .knowledge-library-sheet .knowledge-folder-move {
-    width: 44px;
+    width: 48px;
     height: 52px;
   }
 
   .knowledge-library-sheet .knowledge-file-folder > summary {
-    padding-right: 44px;
+    padding-right: 48px;
   }
 
   .knowledge-tree-menu button {
-    min-height: 44px;
+    min-height: 48px;
   }
 
   .knowledge-context-drawer .knowledge-context {
@@ -225,7 +253,7 @@
   .knowledge-tools-menu button,
   .knowledge-tools-menu summary,
   .knowledge-list-empty button {
-    min-height: 44px;
+    min-height: 48px;
   }
 
   .knowledge-context-drawer .knowledge-property-controls .knowledge-tag-chip {

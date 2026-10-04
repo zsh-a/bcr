@@ -170,6 +170,8 @@ try {
     await create.click();
     await page.getByLabel("笔记标题", { exact: true }).waitFor();
     await page.getByRole("button", { name: "更多操作", exact: true }).click();
+    if (await page.getByRole("menuitem", { name: "应用设置", exact: true }).isVisible())
+      await page.getByRole("menuitem", { name: "应用设置", exact: true }).click();
     await page.getByRole("menuitem", { name: "同步设置", exact: true }).click();
     const sync = page.getByRole("dialog", { name: "同步设置", exact: true });
     await sync.waitFor();
@@ -244,7 +246,7 @@ try {
     await page.locator(".document-process-disclosure > summary").click();
 
     await visit(page, "reader", ".reader-toolbar");
-    await page.getByRole("button", { name: "导入读物", exact: true }).waitFor();
+    await page.getByRole("button", { name: "导入第一本书", exact: true }).waitFor();
     await page.screenshot({ path: `${shots}/modern-reader-${width}.png` });
 
     await visit(page, "docgen", ".docgen-header");

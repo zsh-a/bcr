@@ -32,7 +32,38 @@
   padding-block: 12px;
 }
 .bcr-share-actions button {
-  min-height: 44px;
+  min-height: 48px;
+}
+.bcr-share-remove {
+  min-height: 48px;
+  color: var(--color-danger);
+}
+.bcr-share-undo,
+.bcr-share-undo-inline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: var(--text-sm);
+}
+.bcr-share-undo button,
+.bcr-share-undo-inline button {
+  min-height: 48px;
+}
+.bcr-share-undo {
+  position: fixed;
+  z-index: var(--layer-toast);
+  left: 50%;
+  bottom: max(144px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-overlay);
+  color: var(--color-text);
+  box-shadow: var(--shadow-floating);
 }
 .bcr-share-pending {
   position: fixed;

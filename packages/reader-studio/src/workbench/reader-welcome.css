@@ -1,0 +1,53 @@
+.reader-main:has(> .reader-welcome) > .reader-toolbar {
+  position: relative;
+  flex: none;
+}
+
+.reader-welcome {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding: 20px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.reader-welcome-label {
+  color: var(--color-accent);
+  font-size: 12px;
+}
+.reader-welcome h2 {
+  margin: 4px 0 8px;
+  font-size: 22px;
+  line-height: 1.35;
+}
+.reader-welcome p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.reader-welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.reader-welcome-actions button {
+  min-height: 48px;
+}
+@media (max-height: 500px) and (pointer: coarse) {
+  .reader-welcome {
+    padding: 8px 16px;
+    gap: 4px;
+  }
+  .reader-welcome-label,
+  .reader-welcome p {
+    display: none;
+  }
+  .reader-welcome h2 {
+    font-size: 18px;
+    margin: 0;
+  }
+}

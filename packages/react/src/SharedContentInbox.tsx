@@ -4,6 +4,7 @@ import { useUpdateParticipant } from "./AppUpdate";
 import {
   listSharedContent,
   removeSharedContent,
+  saveSharedContent,
   type ShareApp,
   type SharedContent,
 } from "./shareInbox";
@@ -26,11 +27,19 @@ export function SharedContentInbox({
   const [busy, setBusy] = useState(false);
   const processing = useRef(false);
   const [error, setError] = useState("");
+  const [removed, setRemoved] = useState<SharedContent | null>(null);
+  const [undoError, setUndoError] = useState("");
   const clearQuery = () => {
     const url = new URL(location.href);
     url.searchParams.delete("share");
     url.searchParams.delete("shareError");
     history.replaceState(history.state, "", url);
+  };
+  const defer = () => {
+    if (processing.current) return;
+    clearQuery();
+    setOpen(false);
+    setError("");
   };
   useUpdateParticipant({
     blocked: () => (processing.current ? "分享内容正在保存，请完成后再更新。" : null),
@@ -51,7 +60,8 @@ export function SharedContentInbox({
             ? "这份分享已处理或已过期，请从来源应用重新分享。"
             : "");
         setError(failure);
-        setOpen(entries.length > 0 || !!failure);
+        // A direct share opens its preview. Ordinary launches keep the inbox quiet.
+        setOpen(!!id || !!failure);
       })
       .catch(() => {
         if (!cancelled && (params.has("share") || params.has("shareError"))) {
@@ -70,12 +80,32 @@ export function SharedContentInbox({
     setBusy(true);
     try {
       if (item) await removeSharedContent(app, item.id);
+      if (item) setRemoved(item);
+      setUndoError("");
       clearQuery();
       setError("");
       setItems((current) => current.slice(1));
       setOpen(items.length > 1);
     } catch {
       setError("未能移除分享内容，请重试。");
+    } finally {
+      processing.current = false;
+      setBusy(false);
+    }
+  };
+  const undo = async () => {
+    if (!removed || processing.current) return;
+    processing.current = true;
+    setBusy(true);
+    setUndoError("");
+    try {
+      await saveSharedContent(removed);
+      setItems((current) => [removed, ...current.filter((entry) => entry.id !== removed.id)]);
+      setRemoved(null);
+      setError("");
+      setOpen(true);
+    } catch {
+      setUndoError("未能恢复分享，请重试撤销。");
     } finally {
       processing.current = false;
       setBusy(false);
@@ -105,6 +135,27 @@ export function SharedContentInbox({
   };
   return (
     <>
+      {removed && !open && (
+        <div className="bcr-share-undo">
+          <span role={undoError ? "alert" : "status"}>{undoError || "已移除分享"}</span>
+          <button
+            type="button"
+            className="ui-btn ui-btn-ghost"
+            disabled={busy}
+            onClick={() => void undo()}
+          >
+            撤销移除
+          </button>
+          <button
+            type="button"
+            className="ui-btn ui-btn-ghost"
+            disabled={busy}
+            onClick={() => setRemoved(null)}
+          >
+            关闭提示
+          </button>
+        </div>
+      )}
       {!open && items.length > 0 && (
         <button
           type="button"
@@ -116,9 +167,7 @@ export function SharedContentInbox({
       )}
       <Dialog
         open={open}
-        onClose={() => {
-          if (!busy) setOpen(false);
-        }}
+        onClose={defer}
         closable={!busy}
         title={app === "reader" ? "接收到阅读文件" : "接收到分享内容"}
         placement="sheet"
@@ -149,20 +198,40 @@ export function SharedContentInbox({
           </>
         )}
         {error && <p role="alert">{error}</p>}
+        {removed && open && (
+          <div className="bcr-share-undo-inline">
+            <span role={undoError ? "alert" : "status"}>{undoError || "上一份分享已移除"}</span>
+            <button
+              type="button"
+              className="ui-btn ui-btn-ghost"
+              disabled={busy}
+              onClick={() => void undo()}
+            >
+              撤销移除
+            </button>
+          </div>
+        )}
         <div className="bcr-share-actions">
           {busy && onCancel && (
             <button type="button" className="ui-btn ui-btn-default" onClick={onCancel}>
               取消导入
             </button>
           )}
-          <button
-            type="button"
-            className="ui-btn ui-btn-default"
-            disabled={busy}
-            onClick={() => void discard()}
-          >
-            {item ? "移除这份分享" : "关闭"}
-          </button>
+          {item && (
+            <button type="button" className="ui-btn ui-btn-default" disabled={busy} onClick={defer}>
+              稍后处理
+            </button>
+          )}
+          {!item && (
+            <button
+              type="button"
+              className="ui-btn ui-btn-default"
+              disabled={busy}
+              onClick={() => void discard()}
+            >
+              关闭
+            </button>
+          )}
           {item && (
             <button
               type="button"
@@ -180,6 +249,16 @@ export function SharedContentInbox({
             </button>
           )}
         </div>
+        {item && (
+          <button
+            type="button"
+            className="ui-btn ui-btn-ghost bcr-share-remove"
+            disabled={busy}
+            onClick={() => void discard()}
+          >
+            移除这份分享
+          </button>
+        )}
       </Dialog>
     </>
   );

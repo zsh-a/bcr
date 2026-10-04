@@ -131,6 +131,7 @@ try {
   }
   console.log("Verifying mobile offline workflows");
   await openApp("reader");
+  await page.getByRole("button", { name: "导入第一本书", exact: true }).click({ trial: true });
   await page.getByRole("button", { name: "更多阅读操作", exact: true }).click();
   await page.getByRole("menuitem", { name: "Reader 安装与离线" }).click();
   await page.locator('[data-offline-state="ready"]').waitFor({ timeout: 60_000 });
@@ -151,6 +152,11 @@ try {
   await page.getByRole("button", { name: "导入书库", exact: true }).click();
   await page.getByRole("dialog", { name: "接收到阅读文件" }).waitFor({ state: "hidden" });
   assert((await page.locator(".reader-studio").innerText()).includes("Android离线分享正文"));
+  assert.equal(
+    await page.locator(".reader-welcome").count(),
+    0,
+    "personal books replace the welcome prompt",
+  );
   await page.reload();
   await page.locator(".reader-workspace").waitFor();
   assert.equal(await page.getByRole("dialog", { name: "接收到阅读文件" }).count(), 0);
@@ -171,6 +177,9 @@ try {
   await page.reload();
   await page.getByRole("dialog", { name: "接收到阅读文件" }).getByText("broken.pdf").waitFor();
   await page.getByRole("button", { name: "移除这份分享" }).click();
+  await page.getByRole("button", { name: "撤销移除", exact: true }).click();
+  await page.getByRole("dialog", { name: "接收到阅读文件" }).getByText("broken.pdf").waitFor();
+  await page.getByRole("button", { name: "移除这份分享" }).click();
   for (const file of [await sharedEpub(), sharedPdf()]) {
     await share("reader", {}, [file]);
     await page.getByRole("button", { name: "导入书库", exact: true }).click();
@@ -184,6 +193,20 @@ try {
   await page.locator(".reader-library-panel").first().waitFor();
   await context.setOffline(false);
   await openApp("knowledge");
+  await share("knowledge", { title: "稍后整理", text: "暂存后重新打开仍应保留。" });
+  await page.getByRole("button", { name: "稍后处理", exact: true }).click();
+  assert.equal(new URL(page.url()).searchParams.has("share"), false);
+  await page.reload();
+  await page.getByRole("button", { name: "待接收的分享 · 1", exact: true }).waitFor();
+  assert.equal(await page.getByRole("dialog", { name: "接收到分享内容" }).count(), 0);
+  await page.getByRole("button", { name: "待接收的分享 · 1", exact: true }).click();
+  await page.getByRole("button", { name: "移除这份分享" }).click();
+  await page.getByRole("button", { name: "撤销移除", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "接收到分享内容" })
+    .getByText("稍后整理", { exact: true })
+    .waitFor();
+  await page.getByRole("button", { name: "移除这份分享" }).click();
   await share("knowledge", {
     title: "Android收藏",
     text: "值得再读 https://example.com/reference",

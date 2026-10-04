@@ -41,6 +41,7 @@ try {
   async function openSync() {
     if (page.viewportSize().width <= 720) {
       await page.getByRole("button", { name: "更多操作", exact: true }).click();
+      await page.getByRole("menuitem", { name: "应用设置", exact: true }).click();
       await page
         .locator(".knowledge-overflow-menu")
         .getByRole("menuitem", { name: "同步设置", exact: true })
@@ -49,7 +50,7 @@ try {
       await statusTrigger.click();
       await page
         .locator(".knowledge-sync-popover")
-        .getByRole("button", { name: "同步设置…", exact: true })
+        .getByRole("button", { name: /^(设置同步|同步设置…)$/u })
         .click();
     }
     await dialog.waitFor();
@@ -59,11 +60,9 @@ try {
   await statusTrigger.click();
   const popover = page.locator(".knowledge-sync-popover");
   await popover.waitFor();
-  assert.deepEqual(await popover.locator("dl.knowledge-sync-facts dt").allTextContents(), [
-    "上次同步",
-    "待同步",
-  ]);
-  await popover.getByRole("button", { name: "同步设置…", exact: true }).click();
+  assert.equal(await popover.getByRole("button", { name: "立即同步", exact: true }).count(), 0);
+  assert.match(await popover.innerText(), /笔记保存在这台设备上/u);
+  await popover.getByRole("button", { name: /^(设置同步|同步设置…)$/u }).click();
   await dialog.waitFor();
   await page.getByRole("button", { name: "关闭同步设置", exact: true }).waitFor();
   const panel = dialog.locator(
@@ -151,6 +150,8 @@ try {
 
   // --- 恢复备份：打开/关闭
   await page.getByRole("button", { name: "更多操作", exact: true }).click();
+  if (await page.getByRole("menuitem", { name: "笔记库管理", exact: true }).isVisible())
+    await page.getByRole("menuitem", { name: "笔记库管理", exact: true }).click();
   await page.getByRole("menuitem", { name: "恢复 ZIP 备份", exact: true }).click();
   const restore = page.getByRole("dialog", { name: "恢复备份" });
   await restore.waitFor();
@@ -188,36 +189,35 @@ try {
   const overflow = page.locator('div.knowledge-overflow-menu[role="menu"][aria-label="更多操作"]');
   await overflow.waitFor();
   const menuLabels = await overflow.getByRole("menuitem").allTextContents();
+  assert(menuLabels.length <= 9, "mobile menu keeps its first level short");
   for (const label of [
-    "新建笔记",
-    "搜索与切换笔记",
-    "导出知识库",
-    "恢复 ZIP 备份",
     "移动笔记",
     "导出这篇笔记",
     "收藏当前笔记",
     "版本历史",
-    "同步设置",
-    "立即同步",
     "删除",
-  ]) {
-    assert.ok(menuLabels.includes(label), `unified actions menu includes ${label}`);
-  }
+    "笔记库管理",
+    "应用设置",
+  ])
+    assert(menuLabels.includes(label), `mobile menu includes ${label}`);
   await page.keyboard.press("End");
-  assert.equal(
+  assert(
     await overflow
-      .getByRole("menuitem", { name: "删除", exact: true })
+      .getByRole("menuitem", { name: "应用设置", exact: true })
       .evaluate((el) => el === document.activeElement),
-    true,
   );
-  await page.keyboard.press("Home");
-  await page.keyboard.press("ArrowDown");
-  assert.equal(
+  await overflow.getByRole("menuitem", { name: "笔记库管理", exact: true }).click();
+  for (const label of ["新建笔记", "搜索与切换笔记", "导出知识库", "恢复 ZIP 备份"])
+    await overflow.getByRole("menuitem", { name: label, exact: true }).waitFor();
+  await page.keyboard.press("Escape");
+  assert(
     await overflow
-      .getByRole("menuitem", { name: "搜索与切换笔记", exact: true })
+      .getByRole("menuitem", { name: "笔记库管理", exact: true })
       .evaluate((el) => el === document.activeElement),
-    true,
   );
+  await overflow.getByRole("menuitem", { name: "应用设置", exact: true }).click();
+  await overflow.getByRole("menuitem", { name: "同步设置", exact: true }).waitFor();
+  await overflow.getByRole("menuitem", { name: "返回更多操作", exact: true }).click();
   await page.keyboard.press("Escape");
   await overflow.waitFor({ state: "hidden" });
   await assertFocusReturned(
@@ -235,6 +235,8 @@ try {
   // --- 溢出菜单是瞬时入口（菜单项随浮层隐藏）：关闭后焦点必须回到可见触发器。
   for (const item of ["同步设置", "版本历史"]) {
     await page.getByRole("button", { name: "更多操作", exact: true }).click();
+    if (item === "同步设置")
+      await overflow.getByRole("menuitem", { name: "应用设置", exact: true }).click();
     await overflow.getByRole("menuitem", { name: item, exact: true }).click();
     const opened = page.getByRole("dialog", { name: item, exact: true });
     await opened.waitFor();

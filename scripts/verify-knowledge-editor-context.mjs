@@ -357,7 +357,10 @@ try {
   const mobileErrors = collectPageErrors(mobile);
   await mobile.goto(`${origin}/knowledge`);
   await mobile.getByRole("button", { name: "切换笔记列表", exact: true }).click();
-  await mobile.getByRole("button", { name: "新建笔记", exact: true }).click();
+  await mobile
+    .getByRole("dialog", { name: "笔记库", exact: true })
+    .getByRole("button", { name: "新建笔记", exact: true })
+    .click();
   const mobileBody = mobile.getByLabel("笔记正文", { exact: true });
   await mobileBody.fill("移动端原生选区");
   const prevented = await mobileBody.evaluate((el) => {

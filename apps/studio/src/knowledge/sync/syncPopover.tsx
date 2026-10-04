@@ -8,6 +8,13 @@ import "./syncPopover.css";
  * 浮层用原生 popover（ui.css 承担进出场），键盘 Esc 关闭并归还焦点。
  */
 
+export interface LocalSaveStatus {
+  noteId: string;
+  dirty: boolean;
+  error: string;
+  renamePending: boolean;
+}
+
 export interface SyncStatusFacts {
   error: string;
   conflicts: number;
@@ -15,6 +22,7 @@ export interface SyncStatusFacts {
   pending: number;
   lastSyncedAt: number | null;
   syncing: boolean;
+  local?: LocalSaveStatus;
 }
 
 export interface SyncStatusLine {
@@ -25,6 +33,21 @@ export interface SyncStatusLine {
 
 /** 合成唯一状态行；错误与冲突走 danger，其余按“已保存 → 待同步 → 已同步”递进。 */
 export function composeStatusLine(facts: SyncStatusFacts, now = Date.now()): SyncStatusLine {
+  if (facts.local?.dirty && facts.conflicts > 0)
+    return {
+      text: `${facts.conflicts} 处冲突待处理 · 草稿保留`,
+      tone: "error",
+      dot: "sync-conflict",
+    };
+  if (facts.local?.error)
+    return {
+      text: facts.local.dirty ? "保存失败 · 草稿保留" : "保存需检查",
+      tone: "error",
+      dot: "sync-error",
+    };
+  if (facts.local?.dirty) return { text: "保存中…", tone: "pending", dot: "sync-running" };
+  if (facts.local?.renamePending)
+    return { text: "重命名待确认", tone: "pending", dot: "sync-pending" };
   const line: SyncStatusLine =
     facts.error !== ""
       ? { text: facts.error, tone: "error", dot: "sync-error" }
@@ -51,6 +74,7 @@ export function SyncStatus({
   onSync,
   onOpenSettings,
   onViewConflicts,
+  onRetrySave,
 }: {
   facts: SyncStatusFacts;
   auto: boolean;
@@ -58,6 +82,7 @@ export function SyncStatus({
   onSync: () => void;
   onOpenSettings: () => void;
   onViewConflicts: () => void;
+  onRetrySave?: () => void;
 }) {
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
@@ -118,10 +143,12 @@ export function SyncStatus({
         className="knowledge-status-trigger"
         popoverTarget={id}
         aria-expanded={open}
-        title="同步状态详情"
+        title="保存与同步状态"
       >
         <StatusDot status={line.dot} />
-        <span className={`knowledge-status-line is-${line.tone}`}>{line.text}</span>
+        <span className={`knowledge-status-line is-${line.tone}`} role="status">
+          {line.text}
+        </span>
       </button>
       <div
         ref={pop}
@@ -130,26 +157,54 @@ export function SyncStatus({
         className="ui-popover knowledge-sync-popover"
         style={at ? { top: at.top, left: at.left } : undefined}
       >
-        <dl className="knowledge-sync-facts">
-          <div>
-            <dt>上次同步</dt>
-            <dd>{facts.lastSyncedAt !== null ? relativeTime(facts.lastSyncedAt) : "尚未同步"}</dd>
+        {facts.local?.error && (
+          <div className="knowledge-save-error">
+            <p role="alert">{facts.local.error}</p>
+            {facts.local.dirty && onRetrySave && (
+              <Button variant="primary" onClick={onRetrySave}>
+                重试保存
+              </Button>
+            )}
           </div>
-          <div>
-            <dt>待同步</dt>
-            <dd>{facts.pending > 0 ? `${facts.pending} 条` : "无待同步修改"}</dd>
-          </div>
-        </dl>
-        <Button
-          variant="primary"
-          disabled={facts.syncing}
-          onClick={() => {
-            pop.current?.hidePopover();
-            onSync();
-          }}
-        >
-          {facts.syncing ? "同步中…" : "立即同步"}
-        </Button>
+        )}
+        {facts.hasTarget ? (
+          <>
+            <dl className="knowledge-sync-facts">
+              <div>
+                <dt>上次同步</dt>
+                <dd>
+                  {facts.lastSyncedAt !== null ? relativeTime(facts.lastSyncedAt) : "尚未同步"}
+                </dd>
+              </div>
+              <div>
+                <dt>待同步</dt>
+                <dd>{facts.pending > 0 ? `${facts.pending} 条` : "无待同步修改"}</dd>
+              </div>
+            </dl>
+            <Button
+              variant="primary"
+              disabled={facts.syncing}
+              onClick={() => {
+                pop.current?.hidePopover();
+                onSync();
+              }}
+            >
+              {facts.syncing ? "同步中…" : "立即同步"}
+            </Button>
+            <label className="knowledge-checkbox">
+              <input
+                type="checkbox"
+                checked={auto}
+                onChange={(e) => onToggleAuto(e.target.checked)}
+              />
+              自动同步
+            </label>
+          </>
+        ) : (
+          <p className="knowledge-sync-local-help">
+            笔记保存在这台设备上。设置同步后，可在其他设备继续使用。
+          </p>
+        )}
         {facts.conflicts > 0 && (
           <Button
             variant="ghost"
@@ -161,18 +216,14 @@ export function SyncStatus({
             查看冲突
           </Button>
         )}
-        <label className="knowledge-checkbox">
-          <input type="checkbox" checked={auto} onChange={(e) => onToggleAuto(e.target.checked)} />
-          自动同步
-        </label>
         <Button
-          variant="ghost"
+          variant={facts.hasTarget ? "ghost" : "primary"}
           onClick={() => {
             pop.current?.hidePopover();
             onOpenSettings();
           }}
         >
-          同步设置…
+          {facts.hasTarget ? "同步设置…" : "设置同步"}
         </Button>
       </div>
     </>

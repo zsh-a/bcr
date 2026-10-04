@@ -1,7 +1,7 @@
 import { markdown, markdownLanguage, markdownKeymap } from "@codemirror/lang-markdown";
 import { search, searchKeymap } from "@codemirror/search";
 import { HighlightStyle, syntaxHighlighting, type LanguageSupport } from "@codemirror/language";
-import { EditorState, type Extension } from "@codemirror/state";
+import { Annotation, EditorState, type Extension } from "@codemirror/state";
 import {
   EditorView,
   ViewPlugin,
@@ -225,6 +225,9 @@ function clickToFocus() {
  * History is included so Cmd/Ctrl+Z works inside the note, but the authoritative
  * undo boundary is the note itself: the component remounts per note id.
  */
+// Controlled value updates (sync, restore, agent edits) must not become new local edits.
+export const externalDocumentChange = Annotation.define<boolean>();
+
 export function knowledgeEditorExtensions(
   onChange: (value: string) => void,
   onSelectionChange?: (ranges: ReadonlyArray<{ from: number; to: number }>) => void,
@@ -250,7 +253,11 @@ export function knowledgeEditorExtensions(
       indentWithTab,
     ]),
     EditorView.updateListener.of((update) => {
-      if (update.docChanged) onChange(update.state.doc.toString());
+      if (
+        update.docChanged &&
+        !update.transactions.some((transaction) => transaction.annotation(externalDocumentChange))
+      )
+        onChange(update.state.doc.toString());
       // Selection is reported so an editor action can address the caret or the
       // selected passage; re-solving it here keeps the range authoritative.
       if (update.selectionSet || update.docChanged)

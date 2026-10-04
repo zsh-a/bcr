@@ -1,6 +1,7 @@
 import {
   useDeferredValue,
   useEffect,
+  useLayoutEffect,
   useId,
   useImperativeHandle,
   useMemo,
@@ -52,6 +53,7 @@ import { attachmentId, attachmentReferences } from "../attachments/attachmentMod
 import { AttachmentInline, RemoteImage } from "../attachments/AttachmentView";
 import { useNoteAttachments } from "../attachments/useNoteAttachments";
 import { NoteAttachmentOverlays } from "../attachments/NoteAttachmentOverlays";
+import type { LocalSaveStatus } from "../sync/syncPopover";
 
 export interface EditorHandle {
   flush(): Promise<void>;
@@ -76,6 +78,7 @@ export function NoteEditor({
   contextWidth,
   onContextWidthChange,
   toolbarSlot,
+  onSaveStatusChange,
 }: {
   note: KnowledgeNote;
   store: KnowledgeStore;
@@ -96,6 +99,7 @@ export function NoteEditor({
   onContextWidthChange: (width: number | null) => void;
   /** 编辑/阅读切换与写作设置挂到应用工具栏，正文区不再重复一条工具栏。 */
   toolbarSlot: HTMLElement | null;
+  onSaveStatusChange?: (status: LocalSaveStatus) => void;
 }) {
   const navigation = useNavigation();
   const agentHost = useAgentHost();
@@ -107,6 +111,15 @@ export function NoteEditor({
   >("outline");
   const snapshot = useNoteDraft(note, store, locked);
   const { controller, note: draft, error } = snapshot;
+  const renamePending = snapshot.proposedTitle !== null;
+  useLayoutEffect(() => {
+    onSaveStatusChange?.({
+      noteId: note.id,
+      dirty: snapshot.dirty,
+      error,
+      renamePending,
+    });
+  }, [onSaveStatusChange, note.id, snapshot.dirty, error, renamePending]);
   const { flush, change, initialError } = controller;
   const [view, setView] = useState<EditorView>("edit");
   const [settings, setSettings] = useState<ReadingSettings>(() =>

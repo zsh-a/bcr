@@ -24,7 +24,7 @@ import "./paths.css";
 import "./resource-layout.css";
 import "./mobile.css";
 import { useKnowledgeWorkbench } from "./useKnowledgeWorkbench";
-import { KnowledgeToolbar } from "./KnowledgeToolbar";
+import { KnowledgeToolbar, KnowledgeSaveStatus } from "./KnowledgeToolbar";
 import { KnowledgeSidebar } from "./KnowledgeSidebar";
 export function KnowledgeApp() {
   const controller = useKnowledgeWorkbench();
@@ -436,6 +436,7 @@ export function KnowledgeApp() {
                     workbench.setState((current) => setContextWidth(current, width))
                   }
                   toolbarSlot={toolbarSlot}
+                  onSaveStatusChange={controller.setDraftStatus}
                 />
                 {note.citations.length > 0 && (
                   <section className="knowledge-citations">
@@ -497,6 +498,15 @@ export function KnowledgeApp() {
           </div>
         </main>
       </div>
+      {mobile && (
+        <footer className="knowledge-mobile-actions" aria-label="笔记快捷操作">
+          <KnowledgeSaveStatus controller={controller} />
+          <Button variant="ghost" disabled={busy} onClick={() => void run(create)}>
+            <Plus size={18} />
+            新建笔记
+          </Button>
+        </footer>
+      )}
     </div>
   );
 }

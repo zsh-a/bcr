@@ -12,6 +12,28 @@ const facts = {
 };
 
 describe("sync status line", () => {
+  it("never reports a synchronized note while its local draft is unsaved or failed", () => {
+    const local = {
+      noteId: "note",
+      dirty: true,
+      error: "",
+      renamePending: false,
+    };
+    expect(composeStatusLine({ ...facts, local }).text).toBe("保存中…");
+    expect(composeStatusLine({ ...facts, conflicts: 1, local }).text).toBe(
+      "1 处冲突待处理 · 草稿保留",
+    );
+    expect(composeStatusLine({ ...facts, local: { ...local, error: "disk full" } })).toMatchObject({
+      text: "保存失败 · 草稿保留",
+      tone: "error",
+    });
+    expect(
+      composeStatusLine({ ...facts, local: { ...local, dirty: false, renamePending: true } }).text,
+    ).toBe("重命名待确认");
+    expect(
+      composeStatusLine({ ...facts, hasTarget: false, local: { ...local, dirty: false } }).text,
+    ).toBe("已保存到本机");
+  });
   it("formats relative time as 刚刚 / 分钟前 / 小时前 / 日期", () => {
     const now = 10 * 86_400_000;
     expect(relativeTime(now - 5_000, now)).toBe("刚刚");

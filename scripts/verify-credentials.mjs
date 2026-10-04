@@ -135,7 +135,7 @@ try {
     const popover = target.locator(".knowledge-sync-popover");
     await trigger.click();
     if (!(await popover.evaluate((el) => el.matches(":popover-open")))) await trigger.click();
-    await popover.getByRole("button", { name: "同步设置…", exact: true }).click();
+    await popover.getByRole("button", { name: /^(设置同步|同步设置…)$/u }).click();
     const dialog = target.getByRole("dialog", { name: "同步设置", exact: true });
     await dialog.waitFor();
     return dialog;

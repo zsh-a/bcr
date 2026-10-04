@@ -109,9 +109,25 @@
   justify-content: flex-start;
 }
 
+.knowledge-sync-local-help,
+.knowledge-save-error p {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.knowledge-save-error {
+  display: grid;
+  gap: var(--space-3);
+  color: var(--color-danger);
+}
+.knowledge-menu-chevron {
+  margin-left: auto;
+}
+
 @media (pointer: coarse) {
   .knowledge-sync-popover > :is(button, .knowledge-checkbox) {
-    min-height: 44px;
+    min-height: 48px;
     flex: none;
   }
   .knowledge-sync-popover .knowledge-checkbox input {

@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
+import { startPwaServer } from "./lib/pwa-server.mjs";
 
-const origin = new URL(process.env.BASE_URL ?? "http://localhost:5199").origin;
+const server = process.env.BCR_MOBILE_PWA === "1" ? await startPwaServer() : null;
+const origin = server?.origin ?? new URL(process.env.BASE_URL ?? "http://localhost:5199").origin;
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({
   viewport: { width: 390, height: 844 },
@@ -70,12 +72,17 @@ async function fitsKeyboard(surface, height) {
 
 try {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto(`${origin}/knowledge`);
+  await page.goto(`${origin}${server ? "/notes/knowledge/" : "/knowledge"}`);
   await button("写第一篇笔记").click();
   await page.getByLabel("笔记标题", { exact: true }).fill("移动端阅读与写作体验");
   await page
     .getByLabel("笔记正文", { exact: true })
     .fill("# 灵感\n\n把阅读变成思考，再把思考留在笔记里。\n\n## 行动\n\n明天继续。");
+  await page
+    .locator(".knowledge-mobile-actions")
+    .getByRole("button", { name: "新建笔记", exact: true })
+    .click({ trial: true });
+  await page.locator(".knowledge-status-line").filter({ hasText: "已保存到本机" }).waitFor();
   const modes = page.getByRole("group", { name: "视图模式", exact: true });
   await modes.getByRole("button", { name: "阅读", exact: true }).click();
   await page
@@ -88,7 +95,7 @@ try {
   await page.locator(".knowledge-status-trigger").click();
   const sync = page.locator(".knowledge-sync-popover");
   await sync.waitFor();
-  await sync.getByRole("button", { name: "立即同步", exact: true }).click({ trial: true });
+  await sync.getByRole("button", { name: "设置同步", exact: true }).click({ trial: true });
   for (const control of await sync.locator("button, .knowledge-checkbox").all())
     await touchTarget(control);
   await keyboardViewport(220);
@@ -99,6 +106,19 @@ try {
   await page.keyboard.press("Escape");
   await sync.waitFor({ state: "hidden" });
   await keyboardViewport(page.viewportSize().height);
+
+  await button("更多操作").click();
+  const actions = page.getByRole("menu", { name: "更多操作", exact: true });
+  assert((await actions.getByRole("menuitem").count()) <= 9, "mobile actions stay concise");
+  await actions.getByRole("menuitem", { name: "笔记库管理", exact: true }).click();
+  await actions.getByRole("menuitem", { name: "恢复 ZIP 备份", exact: true }).waitFor();
+  await page.keyboard.press("Escape");
+  await actions.getByRole("menuitem", { name: "应用设置", exact: true }).click();
+  await actions.getByRole("menuitem", { name: "安装与离线", exact: true }).click();
+  const installation = page.getByRole("dialog", { name: "笔记 · 安装与离线", exact: true });
+  await installation.waitFor();
+  await page.keyboard.press("Escape");
+  await installation.waitFor({ state: "hidden" });
 
   await button("切换笔记列表").click();
   const library = page.getByRole("dialog", { name: "笔记库", exact: true });
@@ -133,6 +153,13 @@ try {
     const toolbar = await page.locator(".knowledge-toolbar").boundingBox();
     const editor = await page.locator(".knowledge-editor").boundingBox();
     assert(editor.y >= toolbar.y + toolbar.height - 1, "toolbar overlaps the document");
+    const tools = await page.locator(".knowledge-document-toolbar").boundingBox();
+    const title = await page.getByLabel("笔记标题", { exact: true }).boundingBox();
+    assert(
+      title.y >= tools.y + tools.height,
+      "document tools overlap the title in the independent entry",
+    );
+    await button("展开上下文栏").click({ trial: true });
     for (const name of [
       "切换笔记列表",
       "搜索与切换笔记",
@@ -151,8 +178,19 @@ try {
   );
   assert.match(await page.getByLabel("笔记正文", { exact: true }).innerText(), /明天继续/);
 
-  await page.goto(`${origin}/reader`);
+  await page.goto(`${origin}${server ? "/pwa/reader/" : "/reader"}`);
   await page.locator(".reader-reading-scroll").waitFor();
+  await button("导入第一本书").click({ trial: true });
+  const readerToolbar = await page.locator(".reader-toolbar").boundingBox();
+  const welcome = await page.locator(".reader-welcome").boundingBox();
+  assert(
+    welcome.y >= readerToolbar.y + readerToolbar.height - 1,
+    "Reader toolbar does not cover the welcome prompt",
+  );
+  await button("先读示例").click();
+  await page.reload();
+  await page.locator(".reader-reading-scroll").waitFor();
+  assert.equal(await page.locator(".reader-welcome").count(), 0, "sample choice survives restart");
   await button("打开阅读设置").click();
   const settings = page.getByRole("dialog", { name: "阅读设置", exact: true });
   await modalFocus(settings);
@@ -241,4 +279,5 @@ try {
   throw error;
 } finally {
   await browser.close();
+  await server?.close();
 }

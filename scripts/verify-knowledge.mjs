@@ -172,7 +172,7 @@ async function runAndWait(page, button, idleText, trustStoreIdle = false) {
 }
 async function connect(page) {
   const popover = await openSyncPopover(page);
-  await popover.getByRole("button", { name: "同步设置…", exact: true }).click();
+  await popover.getByRole("button", { name: /^(设置同步|同步设置…)$/u }).click();
   // SecretField 从不把已存密钥渲染进输入框：已配置时只有「替换密钥」入口。
   const token = page.getByLabel("GitHub Token", { exact: true });
   if (!(await token.count()))
@@ -359,7 +359,7 @@ try {
     .waitFor({ state: "hidden" });
   // SecretField 不回显已存密钥：重载之后只能看到空的 Token 输入框。
   const popover = await openSyncPopover(b.page);
-  await popover.getByRole("button", { name: "同步设置…", exact: true }).click();
+  await popover.getByRole("button", { name: /^(设置同步|同步设置…)$/u }).click();
   assert.equal(await b.page.getByLabel("GitHub Token", { exact: true }).inputValue(), "");
   await b.page.getByLabel("GitHub Token", { exact: true }).fill("secret-browser-token");
   await runAndWait(
@@ -452,7 +452,10 @@ try {
     await contextDrawer.waitFor({ state: "hidden" });
   }
   await a.page.getByRole("button", { name: "切换笔记列表", exact: true }).click();
-  await a.page.getByRole("button", { name: "新建笔记", exact: true }).waitFor();
+  await a.page
+    .getByRole("dialog", { name: "笔记库", exact: true })
+    .getByRole("button", { name: "新建笔记", exact: true })
+    .waitFor();
   await a.page.getByRole("button", { name: "收起列表", exact: true }).click();
   await a.page.screenshot({ path: "scripts/shots/knowledge-mobile.png", fullPage: true });
   assert(
