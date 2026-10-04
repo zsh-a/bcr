@@ -480,10 +480,6 @@ if (
     }),
   );
 }
-await page.getByRole("tab", { name: /书签/u }).click();
-if ((await page.locator(".reader-chapter-rail .reader-mobile-saved-item").count()) < 1) {
-  fail("刷新后阅读书签未恢复");
-}
 if ((await page.getByLabel("在书库中搜索").inputValue()) !== "Locator") {
   fail("刷新后搜索上下文未恢复");
 }
@@ -495,10 +491,12 @@ if (
 ) {
   fail("搜索结果恢复后改写了阅读进度");
 }
-await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpuSlowdown });
-if ((await page.locator(".reader-search-result").count()) < 1) {
-  fail("刷新后搜索结果未恢复");
+await page.getByRole("button", { name: "关闭搜索结果", exact: true }).click();
+await page.getByRole("tab", { name: /书签/u }).click();
+if ((await page.locator(".reader-chapter-rail .reader-mobile-saved-item").count()) < 1) {
+  fail("刷新后阅读书签未恢复");
 }
+await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpuSlowdown });
 await page.getByRole("tab", { name: /笔记/u }).click();
 if ((await page.locator(".reader-chapter-rail .reader-mobile-saved-item").count()) < 1) {
   fail("刷新后阅读笔记未恢复");

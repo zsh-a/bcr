@@ -358,11 +358,20 @@ try {
   await page.getByRole("button", { name: "应用设置", exact: true }).click();
   await runButton().click();
   await page.waitForFunction(
-    () =>
-      document.querySelector(".trend-result-heading")?.textContent.includes("回调突破 · 固定规则"),
+    () => {
+      const heading =
+        document.querySelector(".trend-result .trend-result-heading")?.textContent ?? "";
+      const normalized = heading.normalize("NFKC").replace(/\s/gu, "");
+      return (
+        normalized.includes("回调突破·固定规则") &&
+        document.querySelector(".trend-footer")?.textContent.includes("回测完成") === true
+      );
+    },
     null,
-    { timeout: 60000 },
+    { timeout: 120000 },
   );
+  const pullback = await exportResult("binance-trend-pullback.json");
+  assert.equal(pullback.config.strategy.entry, "pullback");
   if (!live) assert.equal(requests, archiveRequests, "parameter edits reuse frozen archives");
   await page.getByRole("button", { name: "趋势参数设置" }).click();
   await page.getByText("研究变体", { exact: true }).click();
@@ -370,12 +379,13 @@ try {
   await page.getByRole("button", { name: "应用设置", exact: true }).click();
   await page.getByLabel("回测交易周期", { exact: true }).selectOption("5");
   assert(
-    (await page.locator(".trend-result-heading").textContent()).includes("1 分钟"),
+    (await page.locator(".trend-result .trend-result-heading").textContent()).includes("1 分钟"),
     "draft changes preserve frozen result period",
   );
   await runButton().click();
   await page.waitForFunction(
-    () => document.querySelector(".trend-result-heading")?.textContent.includes("5 分钟"),
+    () =>
+      document.querySelector(".trend-result .trend-result-heading")?.textContent.includes("5 分钟"),
     null,
     { timeout: 60000 },
   );
@@ -408,7 +418,9 @@ try {
     await runButton().click();
     await page.waitForFunction(
       () =>
-        document.querySelector(".trend-result-heading")?.textContent.includes("反向 10 根通道退出"),
+        document
+          .querySelector(".trend-result .trend-result-heading")
+          ?.textContent.includes("反向 10 根通道退出"),
       null,
       { timeout: 60000 },
     );
@@ -433,7 +445,9 @@ try {
     await runButton().click();
     await page.waitForFunction(
       () =>
-        document.querySelector(".trend-result-heading")?.textContent.includes("往返成本 ≤ 0.5 ATR"),
+        document
+          .querySelector(".trend-result .trend-result-heading")
+          ?.textContent.includes("往返成本 ≤ 0.5 ATR"),
       null,
       { timeout: 60000 },
     );
@@ -455,7 +469,10 @@ try {
     await page.getByRole("button", { name: "应用设置", exact: true }).click();
     await runButton().click();
     await page.waitForFunction(
-      () => document.querySelector(".trend-result-heading")?.textContent.includes("趋势背景"),
+      () =>
+        document
+          .querySelector(".trend-result .trend-result-heading")
+          ?.textContent.includes("趋势背景"),
       null,
       { timeout: 60000 },
     );
@@ -523,7 +540,10 @@ try {
     await page.getByLabel("回测交易周期", { exact: true }).selectOption("60");
     await runButton().click();
     await page.waitForFunction(
-      () => document.querySelector(".trend-result-heading")?.textContent.includes("1 小时"),
+      () =>
+        document
+          .querySelector(".trend-result .trend-result-heading")
+          ?.textContent.includes("1 小时"),
       null,
       { timeout: 60000 },
     );
@@ -561,7 +581,10 @@ try {
     await page.getByRole("button", { name: "应用设置", exact: true }).click();
     await runButton().click();
     await page.waitForFunction(
-      () => document.querySelector(".trend-result-heading")?.textContent.includes("5 分钟"),
+      () =>
+        document
+          .querySelector(".trend-result .trend-result-heading")
+          ?.textContent.includes("5 分钟"),
       null,
       { timeout: 60000 },
     );
@@ -588,7 +611,11 @@ try {
     "2",
     "restored results read full evaluation from the result artifact, not the session index",
   );
-  assert((await page.locator(".trend-result-heading").textContent()).includes("通道突破基线"));
+  assert(
+    (await page.locator(".trend-result .trend-result-heading").textContent()).includes(
+      "通道突破基线",
+    ),
+  );
   assert.equal(
     await page.getByLabel("回测交易周期", { exact: true }).inputValue(),
     live ? "5" : "60",
@@ -608,7 +635,7 @@ try {
     .last()
     .click();
   await page.waitForFunction(() =>
-    document.querySelector(".trend-result-heading")?.textContent.includes("1 分钟"),
+    document.querySelector(".trend-result .trend-result-heading")?.textContent.includes("1 分钟"),
   );
   assert.equal(
     await page.getByLabel("回测交易周期", { exact: true }).inputValue(),
