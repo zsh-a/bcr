@@ -1,84 +1,56 @@
-# 独立 PWA 安装
+# 安装与离线使用
 
-BCR 在同一 origin 上提供多个可分别安装的应用。应用共享 OPFS / localStorage，
-但具有独立的 manifest 身份、启动页面、文档 scope 和离线外壳缓存。
-这不是存储或权限隔离；清除此站点数据仍会影响全部应用。现有共享工作区的
-单写者租约仍然有效：独立安装不解除同一项目的多窗口写入限制，避免损坏本地数据库。
+[文档](README.md) → PWA
+
+BCR 的应用可分别安装到桌面。同源入口共享本地数据，但拥有独立的安装身份、启动路径和应用外壳缓存；安装不会复制书库或笔记。
 
 ## 入口
 
-| 应用       | 安装 / 启动入口     | 稳定 manifest id          | scope             |
-| ---------- | ------------------- | ------------------------- | ----------------- |
-| 工作区     | `/pwa/workspace/`   | `/pwa/workspace/`         | `/pwa/workspace/` |
-| 计算工作台 | `/pwa/studio/`      | `/pwa/studio/`            | `/pwa/studio/`    |
-| Reader     | `/pwa/reader/`      | `/reader`（保留历史身份） | `/pwa/reader/`    |
-| 笔记       | `/notes/knowledge/` | `/notes/`（保留历史身份） | `/notes/`         |
-| 市场       | `/pwa/markets/`     | `/pwa/markets/`           | `/pwa/markets/`   |
-| 媒体       | `/pwa/media/`       | `/pwa/media/`             | `/pwa/media/`     |
-| 量化       | `/pwa/quant/`       | `/pwa/quant/`             | `/pwa/quant/`     |
-| 漫画       | `/pwa/manga/`       | `/pwa/manga/`             | `/pwa/manga/`     |
-| 文档       | `/pwa/documents/`   | `/pwa/documents/`         | `/pwa/documents/` |
-| 数据       | `/pwa/data/`        | `/pwa/data/`              | `/pwa/data/`      |
-| 文档生成   | `/pwa/docgen/`      | `/pwa/docgen/`            | `/pwa/docgen/`    |
+从工作区的安装入口进入对应页面，再使用浏览器提供的安装操作。浏览器不支持安装提示事件时，界面会展示菜单安装说明。
 
-宿主应用在「工作区选项」中提供当前应用的安装入口，先完整导航至独立页面，
-再使用该页面收到的 `beforeinstallprompt`。不支持此事件的浏览器显示菜单安装说明。
-Reader 保留原有安装控件；笔记的独立浏览器页面有安装按钮，独立窗口中隐藏该栏。
-首页不再静态引用 Reader 清单。宿主直接访问 `/knowledge` 或 SPA 切换到知识库时，
-关联的是 `/notes/manifest.webmanifest`，避免把笔记安装操作识别为 Reader。
+| 应用       | 工作区路由   | 安装与启动入口      |
+| ---------- | ------------ | ------------------- |
+| 工作区     | `/`          | `/pwa/workspace/`   |
+| Reader     | `/reader`    | `/pwa/reader/`      |
+| 个人知识库 | `/knowledge` | `/notes/knowledge/` |
+| 绘图       | `/diagram`   | `/pwa/diagram/`     |
+| Media      | `/media`     | `/pwa/media/`       |
+| Documents  | `/documents` | `/pwa/documents/`   |
+| Manga      | `/manga`     | `/pwa/manga/`       |
+| Data       | `/data`      | `/pwa/data/`        |
+| Market     | `/markets`   | `/pwa/markets/`     |
+| Quant      | `/quant`     | `/pwa/quant/`       |
+| DocGen     | `/docgen`    | `/pwa/docgen/`      |
+| 计算工作台 | `/studio`    | `/pwa/studio/`      |
 
-## 组合与导航
+Reader 保留 `id: "/reader"` 与 `/manifest.webmanifest`；Notes 保留 `id: "/notes/"` 与 `/notes/` 作用域。其他应用的 manifest ID 与 `/pwa/<key>/` 作用域一致。发布后不要随意改变安装身份。
 
-`src/pwa/apps.ts` 是安装配置来源；`bun run generate:pwa` 生成 HTML、manifest
-和 PNG 安装图标（Reader / 笔记沿用现有 SVG 图形）。生成物入库，开发服务器与
-静态部署看到相同文件。新增应用还需在 shell registry 中注册功能组件。
+## 数据与运行边界
 
-`src/pwa/main.ts` 按入口选择 Reader 轻量组合根或共享 Studio 运行时。
-TanStack Router 的 input/output rewrite 在应用内部保留 `/markets` 等既有领域
-路径，对外暴露 `/pwa/markets/`，查询参数和 fragment 保持不变。
-专属应用切往另一个领域时完整导航至宿主；工作区 PWA 则允许在自己的 scope 内
-使用全部工作区路由。域组件不需要复制，也不会把别的应用清单替换进当前 PWA。
+应用通过浏览器 origin 共享 OPFS、IndexedDB 和 localStorage；这不是权限隔离。清除整个站点数据会影响所有同源应用，更换域名或端口则进入另一份存储空间。
 
-## Service Worker 与离线
+独立 Market、Quant、Media、Manga、DocGen、Diagram 使用轻量外壳，不打开 Studio 元数据库；Reader 使用专用启动流程。Workspace、Studio、Notes、Data、Documents 仍使用共同的 Studio 工作区。项目写锁与 Reader 书库锁继续生效，独立安装不解除写入限制。
 
-- 各新入口注册 `/pwa/sw.js?app=<key>`，显式 scope 为对应 `/pwa/<key>/`。
-  脚本实现共用，注册和 `bcr-pwa-<key>-shell-<buildId>` 缓存独立。
-- 笔记继续使用 `/notes/sw.js` 与 `bcr-knowledge-shell-*`。
-- 离线图按构建 manifest 预缓存当前应用。Rolldown 会合并使用相同脚本的 HTML
-  入口；`pwa-build.ts` 为这些文档补齐 bootstrap 映射，防止漏缓存共享入口脚本。
-- Worker 的 URL 在 `/assets/`，不属于文档 scope，因此增加 **仅用于资源** 的
-  `/assets/sw.js` 注册。它不处理页面导航或安装身份；为 Worker 的嵌套 JS/WASM
-  请求读取已缓存资源，并缓存运行时获取的不可变依赖。
-  资源 Worker 缓存首次成功下载的模块；首次下载引擎及远程模型需要网络，
-  独立安装不意味着所有未下载功能或实时行情都可离线使用。
-- 应用外壳更新沿用用户确认、保存屏障与失败回滚；上一版本缓存保留给旧标签页。
-  纯资源 Worker 可以立即接管，因为它不替换页面、路由或已有文档版本。
+专属应用跳到其他领域时进入宿主工作区；Workspace PWA 可以在自己的作用域内访问完整工作区。查询参数与 fragment 在导航时保留。
 
-## 旧 Reader 迁移
+## 离线与更新
 
-`/manifest.webmanifest` 保留原地址及 `id: "/reader"`，但将 `start_url` 与 `scope`
-收敛至 `/pwa/reader/`。旧 `/reader` 启动路径仍可用，浏览器更新 manifest 后使用新入口。
-不要通过改 ID 强制“重新安装”，否则会生成另一个 Reader 身份。
+- 首次联网加载后，Service Worker 预缓存当前应用外壳。未下载的模型、实时行情与外部 AI 接口仍需要网络。
+- `/pwa/sw.js?app=<key>` 共用实现，按应用分别注册与缓存；Notes 使用 `/notes/sw.js`。
+- `/assets/sw.js` 只管理资源作用域，为 Worker 的嵌套 JS/WASM 请求提供缓存，不接管页面导航或安装身份。
+- 新版本先后台下载，用户确认后保存当前内容并更新；保存失败保留原页面。详见[更新与恢复](APP-UPDATES.md)。
 
-根 `/sw.js` 继续服务旧客户端和浏览器宿主，但对 `/notes/` 与 `/pwa/` 导航放行，
-由更具体的注册接管；没有 unregister 全站 Worker、清空本地存储或删除笔记。
-已缓存旧版本的用户需先接受一次应用更新，随后浏览器还需要刷新已安装的 manifest；
-无法由网页强制立即修改操作系统中旧安装的元数据。
+根 `/sw.js` 保留宿主与旧 Reader 客户端的服务，对 `/notes/` 和 `/pwa/` 导航放行，由更具体的作用域接管。旧 Reader 安装的元数据由浏览器刷新；无需通过修改 ID 或清空内容来迁移。
 
-## 验证
+## 开发与验证
+
+应用身份来自[应用目录](../apps/studio/src/shell/app-definitions.ts)，[PWA 配置](../apps/studio/src/pwa/apps.ts)派生安装信息。新增应用后运行 `bun run generate:pwa`，生成的 HTML、manifest 和图标入库。
 
 ```sh
-bun run check
-vp test run apps/studio/tests/pwa-routing.test.ts
-vp -C apps/studio build
+bun run build:cloudflare
 bun run test:pwa:apps
 bun run test:pwa
 bun run test:pwa:knowledge
 ```
 
-独立 PWA 检查读取 Chromium 解析后的 manifest，逐个冷启动与断网启动；使用
-Chrome DevTools Protocol 的真实 PWA install / launch / uninstall 验证 Reader
-与笔记两个安装顺序，不以“清单文件不同”代替并存安装测试。安装发生在测试
-浏览器的临时配置中，结束时清理。CI 使用完整 Chromium（`channel: chromium`）。
-同时验证根 Worker 向新作用域交接、同源数据保留及宿主知识库清单归属。
-iOS / Safari 的系统安装菜单仍需设备验收，Chromium 测试不替代它。
+测试使用生产产物和临时浏览器配置，检查清单、独立启动、离线冷启动、Reader/Notes 安装顺序及旧入口交接。iOS 的安装菜单与系统行为仍需真机验收。Notes 的组合根见[独立笔记入口](KNOWLEDGE-PWA.md)。

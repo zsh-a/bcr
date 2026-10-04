@@ -1,6 +1,8 @@
 # 当前 Runtime 架构
 
-本文描述已实现的运行边界。`ARCHITECTURE.md` 保留产品方向和路线图；具体接入以本文及包导出的类型为准。
+[文档](README.md) → [架构概览](ARCHITECTURE.md) → Runtime
+
+本文描述已实现的所有权、运行边界和接入契约。先读架构概览了解分层；具体接入以本文及包导出的类型为准。
 
 ## 所有权
 
@@ -138,6 +140,6 @@ Agent 编辑目标的 `write()` 是异步持久化契约，返回资源 ID 和�
 `bun run check` 包含格式、lint、所有 workspace 的自动发现类型检查和 Runtime 依赖边界检查。测试覆盖提交顺序、晚订阅、提交失败、关闭释放、跨会话预算、重复 operation 路由、项目租约和持久化写入合并；浏览器回归负责验证真实 Worker、OPFS 和页面恢复链路。
 
 `bun run build:wasm` 一次构建 kernels、Quant 和 Agent WASM，生产构建与 CI 使用同一入口。
-`test:browser` 按 workspace / quant / reader 三组并行执行 26 个核心流程，包含研究解释、参数实验、
-滚动验证、附件与恢复和会话隔离；详细布局和格式组合通过 `test:browser:full` 或手动 CI `full` 执行。
-默认 CI 继续检查 Reader 与 Notes 的生产 PWA 离线行为。新增流程应先复用已有核心检查，避免每个细节都新增串行浏览器任务。
+`test:browser` 按 workspace / quant / reader 三组执行核心流程，详细布局和格式组合通过
+`test:browser:full` 或手动 CI `full` 执行。流程归属以[检查清单](../scripts/lib/browser-suites.mjs)为准，
+运行方式见[开发指南](DEVELOPMENT.md#验证)。新增流程优先复用已有检查。
