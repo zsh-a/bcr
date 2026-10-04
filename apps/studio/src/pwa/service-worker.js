@@ -1,4 +1,5 @@
 import quantWasmUrl from "../../../../crates/quant/pkg/bcr_quant_bg.wasm?url";
+import { receiveShare } from "./share-target";
 
 // One script, separate registrations and caches; scope never comes from an untrusted URL.
 const app = globalThis.__BCR_PWA_APPS__.find(
@@ -19,10 +20,12 @@ const APP_SHELL = [
 ];
 
 function isRequiredAppAsset(url) {
-  // App 的 runtime 启动即加载 sqlite 及其 OPFS 代理，属于关键路径，必须随
-  // 外壳预缓存；只有阅读 / 媒体域的重资源（PDF worker、本地模型）
-  // 不在知识库启动图里，留给运行时缓存。
-  return !/pdf\.worker|onnxruntime|transformers|IBMPlexSansSC-|noto-serif-sc-/u.test(url);
+  // Reader includes PDF resources for first-time offline imports. Other apps
+  // defer PDF and local-model resources; Chinese fonts remain cached on demand.
+  return (
+    !/onnxruntime|transformers|IBMPlexSansSC-|noto-serif-sc-/u.test(url) &&
+    (app.key === "reader" || !/pdf\.worker/u.test(url))
+  );
 }
 
 function addAsset(urls, value) {
@@ -80,6 +83,17 @@ async function shellUrls() {
   addManifestEntry(manifest, `pwa/${app.key}/index.html`, urls, visited);
   if (app.key !== "reader") addManifestEntry(manifest, "src/studio-main.tsx", urls, visited);
   addManifestEntry(manifest, app.entry, urls, visited);
+  if (app.key === "reader") {
+    // Import, indexing, metadata and backup are needed for the first offline import,
+    // even when the user only visited the bundled sample book while online.
+    addManifestEntry(manifest, app.entry, urls, new Set(), true);
+    addManifestEntry(manifest, "reader-offline-workers", urls, visited);
+    // A PDF shared while offline may be the first PDF this installation opens.
+    for (const key of Object.keys(manifest)) {
+      if (/\/pdf(?:\.worker)?\.mjs$|sqlite3-opfs-async-proxy/u.test(key))
+        addManifestEntry(manifest, key, urls, visited);
+    }
+  }
   if (app.key === "diagram") {
     // Native editor chunks, Mermaid conversion and layout Worker must work on a cold offline start.
     addManifestEntry(manifest, app.entry, urls, new Set(), true);
@@ -190,6 +204,15 @@ globalThis.addEventListener("activate", (event) => {
 globalThis.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
+  if (
+    app.key === "reader" &&
+    request.method === "POST" &&
+    url.origin === globalThis.location.origin &&
+    url.pathname === `${app.scope}share`
+  ) {
+    event.respondWith(receiveShare(request, "reader", app.startUrl));
+    return;
+  }
   if (request.method !== "GET" || url.origin !== globalThis.location.origin) return;
 
   if (request.mode === "navigate") {

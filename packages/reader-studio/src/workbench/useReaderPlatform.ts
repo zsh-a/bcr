@@ -1,20 +1,6 @@
 import { useCallback, useEffect, useState, type RefObject } from "react";
 
-interface BeforeInstallPromptEvent extends Event {
-  readonly platforms: ReadonlyArray<string>;
-  readonly userChoice: Promise<{
-    readonly outcome: "accepted" | "dismissed";
-    readonly platform: string;
-  }>;
-  prompt: () => Promise<void>;
-}
-
-export interface ReaderPwaInstallState {
-  readonly canInstall: boolean;
-  readonly isInstalled: boolean;
-  readonly isIos: boolean;
-  readonly install: () => Promise<boolean>;
-}
+import { useAppInstallation } from "@bcr/react";
 
 export interface ReaderFullscreenState {
   readonly isFullscreen: boolean;
@@ -22,83 +8,16 @@ export interface ReaderFullscreenState {
   readonly toggle: () => Promise<void>;
 }
 
-function pendingReaderInstallPrompt(): BeforeInstallPromptEvent | null {
-  if (typeof window === "undefined") return null;
-  return (
-    (window as Window & { __bcrReaderInstallPrompt?: BeforeInstallPromptEvent })
-      .__bcrReaderInstallPrompt ?? null
-  );
-}
-
-export function useReaderPwaInstall(): ReaderPwaInstallState {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() =>
-    pendingReaderInstallPrompt(),
-  );
-  const [isInstalled, setIsInstalled] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const safariStandalone =
-      (window.navigator as Navigator & { readonly standalone?: boolean }).standalone === true;
-    return window.matchMedia("(display-mode: standalone)").matches || safariStandalone;
+export function useReaderPwaInstall() {
+  const app = useAppInstallation({
+    manifestUrl: "/manifest.webmanifest",
+    startUrl: "/pwa/reader/",
+    scope: "/pwa/reader/",
   });
-  const isIos =
-    typeof navigator !== "undefined" &&
-    (/iphone|ipad|ipod/iu.test(navigator.userAgent) ||
-      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
-
-  useEffect(() => {
-    const syncInstalled = () => {
-      const safariStandalone =
-        (window.navigator as Navigator & { readonly standalone?: boolean }).standalone === true;
-      setIsInstalled(window.matchMedia("(display-mode: standalone)").matches || safariStandalone);
-    };
-    const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setDeferredPrompt(event as BeforeInstallPromptEvent);
-    };
-    const onReaderInstallPrompt = () => {
-      const prompt = pendingReaderInstallPrompt();
-      if (prompt !== null) setDeferredPrompt(prompt);
-    };
-    const onAppInstalled = () => {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-      delete (window as Window & { __bcrReaderInstallPrompt?: BeforeInstallPromptEvent })
-        .__bcrReaderInstallPrompt;
-    };
-
-    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-    window.addEventListener("bcr-reader-install-prompt", onReaderInstallPrompt);
-    window.addEventListener("appinstalled", onAppInstalled);
-    syncInstalled();
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-      window.removeEventListener("bcr-reader-install-prompt", onReaderInstallPrompt);
-      window.removeEventListener("appinstalled", onAppInstalled);
-    };
-  }, []);
-
-  const install = useCallback(async () => {
-    const prompt = deferredPrompt;
-    if (prompt === null) return false;
-    try {
-      await prompt.prompt();
-      const choice = await prompt.userChoice;
-      if (choice.outcome === "accepted") setIsInstalled(true);
-      return true;
-    } catch {
-      return false;
-    } finally {
-      setDeferredPrompt(null);
-      delete (window as Window & { __bcrReaderInstallPrompt?: BeforeInstallPromptEvent })
-        .__bcrReaderInstallPrompt;
-    }
-  }, [deferredPrompt]);
-
   return {
-    canInstall: !isInstalled && deferredPrompt !== null,
-    isInstalled,
-    isIos,
-    install,
+    canInstall: app.canPrompt,
+    isInstalled: app.standalone || app.installedThisSession,
+    install: app.install,
   };
 }
 

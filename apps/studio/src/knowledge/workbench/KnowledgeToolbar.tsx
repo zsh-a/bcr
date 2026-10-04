@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { PwaInstallDialog } from "../../pwa/InstallControl";
+import { pwaForApp } from "../../pwa/apps";
 import { AppToolbar, IconButton } from "@bcr/react";
 import {
   BookOpenText,
@@ -29,6 +32,7 @@ import { NoteActionsMenu } from "./NoteActionsMenu";
 import type { KnowledgeWorkbench } from "./useKnowledgeWorkbench";
 
 export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbench }) {
+  const [installationOpen, setInstallationOpen] = useState(false);
   const {
     mobile,
     openAssistant,
@@ -75,6 +79,13 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
   } = controller;
   return (
     <AppToolbar className="knowledge-toolbar">
+      {installationOpen && (
+        <PwaInstallDialog
+          app={pwaForApp("knowledge")!}
+          open
+          onClose={() => setInstallationOpen(false)}
+        />
+      )}
       <IconButton
         ref={sidebarToggle}
         label="切换笔记列表"
@@ -199,6 +210,11 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
       </IconButton>
       <NoteActionsMenu
         actions={[
+          {
+            label: "安装与离线",
+            icon: <Download size={15} />,
+            run: () => setInstallationOpen(true),
+          },
           {
             label: "新建笔记",
             icon: <Plus size={15} />,

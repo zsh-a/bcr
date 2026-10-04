@@ -15,6 +15,14 @@ export {
 } from "./AppControls";
 export { usePublishRunningCount, useRunningApps } from "./application-status";
 export { AppUpdateProvider, useUpdateParticipant } from "./AppUpdate";
+export {
+  captureAppInstallPrompt,
+  resetAppInstallPrompt,
+  useAppInstallation,
+} from "./appInstallation";
+export { setAppOfflineState, protectLocalData } from "./offlineState";
+export { AppOfflinePanel } from "./AppOfflinePanel";
+export { SharedContentInbox } from "./SharedContentInbox";
 
 export { AgentProvider, useAgentHost } from "./AgentProvider";
 export { createAgentStorage } from "./agentStorage";

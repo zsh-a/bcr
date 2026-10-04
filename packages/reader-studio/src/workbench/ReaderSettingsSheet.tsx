@@ -353,19 +353,17 @@ export function ReaderSettingsSheet(props: {
                 <Bookmark className="reader-icon" />
                 {props.bookmarked ? "移除当前位置书签" : "标记当前位置"}
               </button>
-              {props.showInstall && (
-                <button
-                  type="button"
-                  className="ui-btn ui-btn-lg ui-btn-default"
-                  onClick={() => {
-                    props.onClose();
-                    props.onInstall();
-                  }}
-                >
-                  <Download className="reader-icon" />
-                  安装到主屏幕
-                </button>
-              )}
+              <button
+                type="button"
+                className="ui-btn ui-btn-lg ui-btn-default"
+                onClick={() => {
+                  props.onClose();
+                  props.onInstall();
+                }}
+              >
+                <Download className="reader-icon" />
+                安装与离线
+              </button>
             </section>
             <section
               className="reader-mobile-setting-group reader-mobile-setting-group-actions"

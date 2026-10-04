@@ -9,6 +9,23 @@
   "orientation": "any",
   "background_color": "#151619",
   "theme_color": "#147a73",
+  "description": "随时记录想法、收藏链接，离线编辑与同步笔记",
+  "share_target": {
+    "action": "/notes/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "shortcuts": [
+    {
+      "name": "新建笔记",
+      "url": "/notes/knowledge/?action=new"
+    }
+  ],
   "icons": [
     {
       "src": "/icons/knowledge-icon-192.png",

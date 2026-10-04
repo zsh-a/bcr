@@ -1,4 +1,4 @@
-import { useNavigation } from "@bcr/react";
+import { useNavigation, SharedContentInbox, protectLocalData } from "@bcr/react";
 import { readerUsesPagedText } from "./state/model";
 import {
   hasDeferredContent,
@@ -123,6 +123,13 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
   useEffect(() => {
     if (status !== "ready" || mobileSidebarInitializedRef.current) return;
     mobileSidebarInitializedRef.current = true;
+    const url = new URL(location.href);
+    if (url.searchParams.get("action") === "library") {
+      if (!getReaderState().sidebarOpen) reader.toggleSidebar();
+      url.searchParams.delete("action");
+      history.replaceState(history.state, "", url);
+      return;
+    }
     if (window.matchMedia("(max-width: 860px)").matches && getReaderState().sidebarOpen) {
       reader.toggleSidebar();
     }
@@ -320,9 +327,8 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
   }, []);
 
   const installReader = useCallback(async () => {
-    const prompted = await pwaInstall.install();
-    if (!prompted) setInstallHelpOpen(true);
-  }, [pwaInstall.install]);
+    setInstallHelpOpen(true);
+  }, []);
 
   useEffect(
     () => () => {
@@ -334,7 +340,7 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
 
   const importFiles = useCallback(
     async (files: ReadonlyArray<File>) => {
-      if (runtime === null || files.length === 0 || importAbortRef.current !== null) return;
+      if (runtime === null || files.length === 0 || importAbortRef.current !== null) return false;
       if (importDismissRef.current !== null) {
         window.clearTimeout(importDismissRef.current);
         importDismissRef.current = null;
@@ -368,7 +374,8 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
             : await importReaderFile(runtime, file, controller.signal, getReaderState().library);
           if (controller.signal.aborted) break;
           const added = reader.addBook(book);
-          await persistReaderSnapshot(runtime, { durableLibrary: true });
+          await persistReaderSnapshot(runtime, { durableLibrary: true, strict: true });
+          void protectLocalData();
           if (added) {
             await indexBook(runtime, book, controller.signal);
             setNotice(
@@ -445,6 +452,7 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
               ? 12_000
               : 2400,
       );
+      return !cancelled && errors === 0;
     },
     [runtime],
   );
@@ -584,10 +592,21 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
         onInstall={() => void installReader()}
         onShortcuts={() => setShortcutHelpOpen(true)}
       />
+      <SharedContentInbox
+        app="reader"
+        onCancel={cancelImport}
+        ready={runtime !== null && !(importJob && !importJob.settled)}
+        onAccept={async (content) => {
+          if (!(await importFiles(content.files)))
+            throw new Error("部分文件未能导入，请检查文件后重试");
+        }}
+      />
       <ReaderShortcutHelp open={shortcutHelpOpen} onClose={() => setShortcutHelpOpen(false)} />
       <ReaderInstallHelp
         open={installHelpOpen}
-        isIos={pwaInstall.isIos}
+        installed={pwaInstall.isInstalled}
+        canInstall={pwaInstall.canInstall}
+        onInstall={() => void pwaInstall.install()}
         onClose={() => setInstallHelpOpen(false)}
       />
       {recovery !== null && recovery.skippedBooks.length > 0 && (

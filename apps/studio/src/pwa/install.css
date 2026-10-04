@@ -37,3 +37,22 @@
     display: none;
   }
 }
+
+.pwa-install-dialog {
+  max-width: 560px;
+}
+.pwa-install-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.pwa-install-identity img {
+  border-radius: var(--radius-lg);
+  flex: none;
+}
+.pwa-install-identity p {
+  margin-block: var(--space-2) 0;
+  color: var(--color-muted);
+  line-height: 1.6;
+}

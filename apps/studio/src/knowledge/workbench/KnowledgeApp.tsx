@@ -1,4 +1,5 @@
-import { Button, Dialog, IconButton } from "@bcr/react";
+import { importSharedNote } from "../notes/actions";
+import { Button, Dialog, IconButton, SharedContentInbox } from "@bcr/react";
 import { Plus, Search, X } from "lucide-react";
 import { type CSSProperties } from "react";
 import { KNOWLEDGE_PATH } from "../../shell/host-manifests";
@@ -118,6 +119,15 @@ export function KnowledgeApp() {
         } as CSSProperties
       }
     >
+      <SharedContentInbox
+        app="knowledge"
+        ready={ready && !busy && !syncing}
+        onAccept={async (shared) => {
+          await flushEditor();
+          await select(await importSharedNote(store, shared), true);
+          setMessage("分享内容已保存为笔记");
+        }}
+      />
       <KnowledgeToolbar controller={controller} />
       <div className="knowledge-layout">
         <NoteSwitcher

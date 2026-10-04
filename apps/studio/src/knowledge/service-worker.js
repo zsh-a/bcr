@@ -1,3 +1,4 @@
+import { receiveShare } from "../pwa/share-target";
 const BUILD_ID = globalThis.__BCR_NOTES_BUILD_ID__;
 const CACHE_PREFIX = "bcr-knowledge-shell-";
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_ID}`;
@@ -165,6 +166,14 @@ globalThis.addEventListener("activate", (event) => {
 globalThis.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
+  if (
+    request.method === "POST" &&
+    url.origin === globalThis.location.origin &&
+    url.pathname === "/notes/share"
+  ) {
+    event.respondWith(receiveShare(request, "knowledge", "/notes/knowledge/"));
+    return;
+  }
   if (request.method !== "GET" || url.origin !== globalThis.location.origin) return;
 
   if (request.mode === "navigate") {

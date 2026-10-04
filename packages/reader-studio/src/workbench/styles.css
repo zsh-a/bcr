@@ -143,6 +143,8 @@
 }
 
 .reader-install-card {
+  max-height: calc(var(--modal-viewport-height, 100dvh) - 48px);
+  overflow-y: auto;
   width: min(440px, 100%);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
@@ -196,6 +198,11 @@
 
 .reader-install-card > .ui-btn {
   width: 100%;
+}
+
+.reader-install-card .bcr-offline-panel p {
+  margin: 0;
+  font-size: var(--text-sm);
 }
 
 .reader-toast {

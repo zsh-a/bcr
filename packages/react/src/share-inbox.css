@@ -1,0 +1,43 @@
+.bcr-share-dialog {
+  max-width: 560px;
+}
+.bcr-share-dialog ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bcr-share-dialog li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--color-border);
+  overflow-wrap: anywhere;
+}
+.bcr-share-dialog small,
+.bcr-share-hint {
+  color: var(--color-muted);
+}
+.bcr-share-preview {
+  max-height: 40dvh;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.bcr-share-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-block: 12px;
+}
+.bcr-share-actions button {
+  min-height: 44px;
+}
+.bcr-share-pending {
+  position: fixed;
+  z-index: 40;
+  bottom: max(80px, env(safe-area-inset-bottom));
+  right: max(16px, env(safe-area-inset-right));
+  min-height: 44px;
+}

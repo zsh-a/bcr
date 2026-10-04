@@ -5,6 +5,7 @@ import {
   useRuntimeActivity,
   useCredential,
   useUpdateParticipant,
+  protectLocalData,
 } from "@bcr/react";
 import { knowledgeCredentialId } from "../sync/credential";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
@@ -121,6 +122,28 @@ export function useKnowledgeWorkbench() {
       ),
     [state.notes],
   );
+  useEffect(() => {
+    if (ready && notes.length > 0) void protectLocalData();
+  }, [ready, notes.length]);
+  const shortcutHandled = useRef(false);
+  useEffect(() => {
+    if (
+      !ready ||
+      shortcutHandled.current ||
+      new URLSearchParams(location.search).get("action") !== "new"
+    )
+      return;
+    shortcutHandled.current = true;
+    void (async () => {
+      await editor.current?.flush();
+      const id = await createKnowledgeActions(
+        store,
+        workspaceServices(services).research,
+        async () => {},
+      ).create(null);
+      await navigate({ to: KNOWLEDGE_PATH, search: { note: id }, replace: true });
+    })().catch((reason) => setError(String(reason)));
+  }, [ready, store, services, navigate]);
   const note =
     selectedId && Object.hasOwn(state.notes, selectedId)
       ? state.notes[selectedId]

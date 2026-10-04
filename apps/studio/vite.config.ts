@@ -10,6 +10,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 // with unchanged application chunks must still produce different sw.js bytes,
 // otherwise an installed PWA has no signal that a new release is available.
 const buildId = String(Date.now());
+const readerWorkerAssets = new Set<string>();
 
 // Explicit opt-in: never turn a static/public deployment into an open LLM proxy.
 const localGateway = process.env.BCR_LOCAL_LLM === "1";
@@ -42,7 +43,7 @@ const gatewayProxy: Record<string, ProxyOptions> = localGateway
   : {};
 
 export default defineConfig({
-  plugins: [tailwindcss(), react(), pwaBuildManifest(), diagramAssets()],
+  plugins: [tailwindcss(), react(), pwaBuildManifest(readerWorkerAssets), diagramAssets()],
   preview: { proxy: gatewayProxy },
   define: {
     "globalThis.__BCR_READER_BUILD_ID__": JSON.stringify(buildId),
@@ -88,6 +89,20 @@ export default defineConfig({
     exclude: ["@sqlite.org/sqlite-wasm", "@huggingface/transformers"],
   },
   worker: {
+    plugins: () => [
+      {
+        name: "bcr-reader-offline-workers",
+        generateBundle(_options, bundle) {
+          const reader = Object.values(bundle).some(
+            (entry) =>
+              entry.type === "chunk" &&
+              entry.isEntry &&
+              /reader-(parse|index|txt)\.worker\.ts$/u.test(entry.facadeModuleId ?? ""),
+          );
+          if (reader) for (const name of Object.keys(bundle)) readerWorkerAssets.add(name);
+        },
+      },
+    ],
     // transformers.js 在 worker 内动态 import 分包，需要 es 格式
     format: "es",
   },

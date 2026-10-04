@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { ActionMenu } from "@bcr/react";
+import { ActionMenu, AppOfflinePanel } from "@bcr/react";
 import { readerAcceptAttribute, type ReaderBook } from "@bcr/reader-core";
 import type { ReaderRestoreDiagnostics } from "../runtime";
 import { openSearchHit } from "../search/readerSearchNavigation";
@@ -248,18 +248,16 @@ export function ReaderHeader(props: {
           <span>快捷键帮助</span>
           <kbd aria-hidden="true">?</kbd>
         </button>
-        {props.showInstall && (
-          <button
-            type="button"
-            role="menuitem"
-            onClick={props.onInstall}
-            aria-label={props.installAvailable ? "安装 Reader 应用" : "查看 Reader 安装方式"}
-            title={props.installAvailable ? "安装 Reader 应用" : "查看 Reader 安装方式"}
-          >
-            <Download className="reader-icon" />
-            <span>{props.installAvailable ? "安装 Reader" : "安装说明"}</span>
-          </button>
-        )}
+        <button
+          type="button"
+          role="menuitem"
+          onClick={props.onInstall}
+          aria-label="Reader 安装与离线"
+          title="安装与离线存储"
+        >
+          <Download className="reader-icon" />
+          <span>安装与离线</span>
+        </button>
         <div role="separator" className="ui-menu-separator" />
         <button type="button" role="menuitem" onClick={props.onExit} aria-label="返回工作区主页">
           <ArrowLeft className="reader-icon" />
@@ -351,10 +349,19 @@ export function ReaderHeader(props: {
   );
 }
 
-export function ReaderInstallHelp(props: { open: boolean; isIos: boolean; onClose: () => void }) {
-  const steps = props.isIos
-    ? ["点击浏览器的分享按钮", "选择“添加到主屏幕”", "确认添加，从主屏幕打开 Reader"]
-    : ["打开浏览器菜单", "选择“安装应用”或“添加到主屏幕”", "确认后从主屏幕启动 Reader"];
+export function ReaderInstallHelp(props: {
+  open: boolean;
+  installed: boolean;
+  canInstall: boolean;
+  onInstall: () => void;
+  onClose: () => void;
+}) {
+  const dedicated = location.pathname.startsWith("/pwa/reader/");
+  const steps = [
+    "使用 Android Chrome 打开 Reader 安装页",
+    "在浏览器菜单选择“添加到主屏幕”或“安装应用”",
+    "确认名称为 BCR Reader，从桌面图标打开",
+  ];
   return (
     <ReaderSheet
       open={props.open}
@@ -370,7 +377,7 @@ export function ReaderInstallHelp(props: { open: boolean; isIos: boolean; onClos
         <div className="reader-install-card-heading">
           <div>
             <span className="ui-section-label">READ ON THE GO</span>
-            <strong id="reader-install-title">把 Reader 放到手机桌面</strong>
+            <strong id="reader-install-title">Reader · 安装与离线</strong>
           </div>
           <button
             type="button"
@@ -382,11 +389,23 @@ export function ReaderInstallHelp(props: { open: boolean; isIos: boolean; onClos
           </button>
         </div>
         <p>安装后可以从桌面直接打开本地书库，阅读界面会进入更专注的独立窗口。</p>
-        <ol>
-          {steps.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
+        {!props.installed && (
+          <ol>
+            {steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+        )}
+        {!props.installed && (!dedicated || props.canInstall) && (
+          <button
+            type="button"
+            className="ui-btn ui-btn-lg ui-btn-primary"
+            onClick={props.onInstall}
+          >
+            {dedicated ? "安装 Reader" : "前往 Reader 安装页"}
+          </button>
+        )}
+        {props.open && <AppOfflinePanel />}
         <button type="button" className="ui-btn ui-btn-lg ui-btn-primary" onClick={props.onClose}>
           知道了
         </button>

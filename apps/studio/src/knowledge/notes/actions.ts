@@ -78,3 +78,28 @@ export function createKnowledgeActions(
     },
   };
 }
+
+/** A stable receipt identity survives a crash between saving and acknowledging a share. */
+export async function importSharedNote(
+  store: KnowledgeStore,
+  shared: { id: string; title: string; text: string; url: string },
+): Promise<string> {
+  const id = `share-${shared.id}`;
+  const body = [shared.text, shared.url && !shared.text.includes(shared.url) ? shared.url : ""]
+    .filter(Boolean)
+    .join("\n\n");
+  const title =
+    shared.title ||
+    shared.text.split("\n")[0]?.slice(0, 80) ||
+    shared.url.slice(0, 500) ||
+    "分享的笔记";
+  await store.update((current) =>
+    current.notes[id]
+      ? current
+      : {
+          ...current,
+          notes: { ...current.notes, [id]: { ...newNote(title), id, body } },
+        },
+  );
+  return id;
+}

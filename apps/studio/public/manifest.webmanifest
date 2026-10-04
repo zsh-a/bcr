@@ -9,6 +9,36 @@
   "orientation": "any",
   "background_color": "#151619",
   "theme_color": "#147a73",
+  "description": "离线阅读 EPUB、PDF 与 TXT，保存阅读进度和书签",
+  "share_target": {
+    "action": "/pwa/reader/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": [
+            "application/epub+zip",
+            "application/pdf",
+            "text/plain",
+            ".epub",
+            ".pdf",
+            ".txt"
+          ]
+        }
+      ]
+    }
+  },
+  "shortcuts": [
+    {
+      "name": "打开书库",
+      "url": "/pwa/reader/?action=library"
+    }
+  ],
   "icons": [
     {
       "src": "/icons/reader-icon-192.png",

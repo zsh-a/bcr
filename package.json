@@ -39,6 +39,7 @@
     "build:cloudflare": "bun run build:wasm && vp -C apps/studio build",
     "deploy:cloudflare": "wrangler deploy --config wrangler.jsonc",
     "bench:search": "node scripts/benchmark-search.mjs",
+    "test:pwa:android": "node scripts/verify-android-pwa.mjs",
     "test:pwa:apps": "bun scripts/verify-pwa-apps.mjs",
     "generate:pwa": "bun scripts/generate-pwa-entries.mjs && node scripts/generate-pwa-icons.mjs",
     "build:wasm:quant": "wasm-pack build crates/quant --target web",

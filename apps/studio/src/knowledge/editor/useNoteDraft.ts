@@ -34,8 +34,13 @@ export function useNoteDraft(note: KnowledgeNote, store: KnowledgeStore, locked:
         event.returnValue = "";
       }
     };
+    const background = () => {
+      if (document.visibilityState === "hidden") void controller.flush().catch(() => undefined);
+    };
+    document.addEventListener("visibilitychange", background);
     window.addEventListener("beforeunload", unload);
     return () => {
+      document.removeEventListener("visibilitychange", background);
       window.removeEventListener("beforeunload", unload);
       void controller
         .flush()
