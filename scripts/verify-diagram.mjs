@@ -121,9 +121,45 @@ await page.route("**/api/diagram-test/v1/chat/completions", async (route) => {
 
 async function menu(name) {
   await page.getByRole("button", { name: "图表操作", exact: true }).click();
-  const popup = page.getByRole("dialog", { name: "图表操作", exact: true });
-  await popup.getByRole("button", { name, exact: true }).click();
+  const popup = page.getByRole("menu", { name: "图表操作", exact: true });
+  await popup.getByRole("menuitem", { name, exact: true }).click();
   await popup.waitFor({ state: "hidden" });
+}
+async function checkActionMenu(mobile = false) {
+  const trigger = page.getByRole("button", { name: "图表操作", exact: true });
+  await trigger.focus();
+  await trigger.press("ArrowDown");
+  const popup = page.getByRole("menu", { name: "图表操作", exact: true });
+  await popup.waitFor();
+  const box = await popup.boundingBox();
+  assert.ok(box.width <= 260, "commands use the shared compact menu width");
+  assert.ok(box.x >= 0 && box.x + box.width <= page.viewportSize().width + 1);
+  assert.ok(box.y >= 0 && box.y + box.height <= page.viewportSize().height + 1);
+  for (const item of await popup.getByRole("menuitem").all()) {
+    const aligned = await item.evaluate((element) => {
+      const icon = element.querySelector("svg").getBoundingClientRect();
+      const text = [...element.childNodes].find(
+        (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim(),
+      );
+      const range = document.createRange();
+      range.selectNode(text);
+      const label = range.getBoundingClientRect();
+      return Math.abs(icon.y + icon.height / 2 - label.y - label.height / 2) < 3;
+    });
+    assert.ok(aligned, `menu icon and label must share a row: ${await item.textContent()}`);
+    assert.ok((await item.boundingBox()).height >= (mobile ? 44 : 32));
+  }
+  await popup.press("End");
+  assert.ok(
+    await popup
+      .getByRole("menuitem", { name: "删除图表", exact: true })
+      .evaluate((element) => element === document.activeElement),
+    "End navigates to the final command",
+  );
+  await page.screenshot({ path: `${shots}/diagram-actions-${page.viewportSize().width}.png` });
+  await page.keyboard.press("Escape");
+  await popup.waitFor({ state: "hidden" });
+  assert.ok(await trigger.evaluate((element) => element === document.activeElement));
 }
 async function exported(name = "下载可编辑文件") {
   const pending = page.waitForEvent("download");
@@ -170,6 +206,7 @@ try {
   await page.getByRole("button", { name: "系统架构", exact: false }).click();
   await page.locator(".excalidraw").waitFor();
   await saved();
+  await checkActionMenu();
   const originalUrl = page.url(),
     original = await drawing();
   assert.equal(original.type, "excalidraw");
@@ -418,6 +455,7 @@ try {
   await page.locator(".excalidraw.theme--dark").waitFor();
   await page.screenshot({ path: `${shots}/diagram-editor-dark.png` });
   for (const [width, height] of [
+    [320, 720],
     [390, 844],
     [812, 375],
   ]) {
@@ -429,7 +467,17 @@ try {
     assert.ok(
       await page.locator(".diagram-canvas").evaluate((element) => element.clientHeight > 100),
     );
-    await page.getByRole("button", { name: "从 Mermaid 插入", exact: true }).click();
+    await checkActionMenu(width <= 720);
+    if (width <= 720) {
+      for (const name of ["我的图表", "AI 绘图", "图表操作"]) {
+        const target = await page.getByRole("button", { name, exact: true }).boundingBox();
+        assert.ok(target.width >= 44 && target.height >= 44, `${name} has a touch target`);
+      }
+      assert.ok((await page.getByLabel("图表名称", { exact: true }).boundingBox()).width >= 70);
+      await menu("从 Mermaid 插入");
+    } else {
+      await page.getByRole("button", { name: "从 Mermaid 插入", exact: true }).click();
+    }
     const box = await page
       .getByRole("dialog", { name: "从 Mermaid 插入", exact: true })
       .boundingBox();

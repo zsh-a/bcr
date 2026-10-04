@@ -194,27 +194,13 @@
     font-size: 14px;
   }
 
-  .knowledge-library-sheet .knowledge-file-entry {
-    display: flex;
-    align-items: center;
-    border-radius: var(--radius-sm);
-  }
-
   .knowledge-library-sheet .knowledge-file-entry:has([aria-current="page"]) {
     background: var(--color-accent-dim);
   }
 
   .knowledge-library-sheet .knowledge-file-note {
-    min-width: 0;
     background: transparent;
     padding-inline: 8px;
-  }
-
-  .knowledge-library-sheet .knowledge-file-actions {
-    display: inline-flex;
-    flex: 0 0 44px;
-    width: 44px;
-    height: 44px;
   }
 
   .knowledge-library-sheet .knowledge-folder-move {

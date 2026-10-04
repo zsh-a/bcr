@@ -22,6 +22,7 @@
 .diagram-title {
   width: clamp(100px, 25vw, 320px);
   min-width: 0;
+  min-height: var(--h-control-lg);
   color: inherit;
   font: 500 var(--text-sm)/1.4 var(--font-sans);
   background: transparent;
@@ -44,9 +45,16 @@
   font-size: var(--text-xs);
   color: var(--color-muted);
   white-space: nowrap;
+  flex: none;
 }
 .diagram-save-state[data-dirty="true"] {
   color: var(--color-amber);
+}
+.diagram-save-state[data-error="true"] {
+  color: var(--color-danger);
+}
+.diagram-actions .ui-menu > .diagram-mobile-action {
+  display: none;
 }
 .diagram-canvas {
   flex: 1;
@@ -56,31 +64,47 @@
 }
 .diagram-canvas .excalidraw {
   --ui-font: var(--font-sans);
+  --color-on-surface: var(--color-text);
   --island-bg-color: var(--color-surface);
   --color-surface-high: var(--color-overlay);
   --color-surface-mid: var(--color-raised);
   --color-surface-low: var(--color-raised);
   --color-surface-lowest: var(--color-bg);
   --default-border-color: var(--color-border);
-  --color-primary: #19786e;
-  --color-primary-darker: #14655d;
-  --color-primary-darkest: #10564f;
-  --color-primary-hover: #e0efec;
-  --color-primary-light: #d8eae6;
-  --color-primary-light-darker: #bfded6;
-  --color-surface-primary-container: #d8eae6;
-  --color-on-primary-container: #17453e;
-  --border-radius-md: 8px;
+  --color-primary: var(--color-accent);
+  --color-primary-darker: color-mix(in srgb, var(--color-accent) 85%, var(--color-text));
+  --color-primary-darkest: color-mix(in srgb, var(--color-accent) 70%, var(--color-text));
+  --color-primary-hover: var(--color-accent-dim);
+  --color-primary-light: var(--color-accent-dim);
+  --color-primary-light-darker: color-mix(in srgb, var(--color-accent) 20%, var(--color-surface));
+  --color-surface-primary-container: var(--color-accent-dim);
+  --color-on-primary-container: var(--color-accent);
+  --color-selection: var(--color-accent);
+  --focus-highlight-color: var(--color-accent);
+  --input-bg-color: var(--color-bg);
+  --input-border-color: var(--color-border);
+  --input-hover-bg-color: var(--color-raised);
+  --input-label-color: var(--color-muted);
+  --popup-text-color: var(--color-text);
+  --popup-secondary-bg-color: var(--color-raised);
+  --keybinding-color: var(--color-faint);
+  --link-color: var(--color-accent);
+  --border-radius-md: var(--radius-sm);
+  --border-radius-lg: var(--radius-md);
+  --shadow-island: var(--shadow-menu);
+  --modal-shadow: var(--shadow-dialog);
+  --sidebar-shadow: var(--shadow-menu);
+  --library-dropdown-shadow: var(--shadow-menu);
 }
-.diagram-canvas .excalidraw.theme--dark {
-  --color-primary: #7ac9be;
-  --color-primary-darker: #9ad9d0;
-  --color-primary-darkest: #b0e3db;
-  --color-primary-hover: #29423e;
-  --color-primary-light: #29423e;
-  --color-primary-light-darker: #33534d;
-  --color-surface-primary-container: #29423e;
-  --color-on-primary-container: #a8ddd4;
+.diagram-canvas .excalidraw .dropdown-menu .dropdown-menu-item {
+  min-height: var(--h-menu-row);
+  font-size: var(--text-sm);
+  gap: var(--space-2);
+}
+@media (pointer: coarse) {
+  .diagram-canvas .excalidraw .dropdown-menu .dropdown-menu-item {
+    min-height: var(--h-hit-target);
+  }
 }
 .diagram-welcome {
   flex: 1;
@@ -224,6 +248,14 @@
   border-radius: var(--radius-md);
   text-align: left;
   cursor: pointer;
+  min-height: var(--h-control-lg);
+}
+.diagram-library nav button > svg {
+  flex: none;
+}
+.diagram-library nav button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
 }
 .diagram-library nav button:hover {
   background: var(--color-raised);
@@ -233,6 +265,7 @@
   background: var(--color-accent-dim);
 }
 .diagram-library nav span {
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -242,7 +275,6 @@
   color: var(--color-text);
   font-size: var(--text-sm);
   font-weight: 500;
-  max-width: 205px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -271,20 +303,6 @@
 .diagram-alert > .ui-icon-btn {
   margin-left: auto;
 }
-.diagram-notice {
-  position: absolute;
-  left: 50%;
-  bottom: var(--space-7);
-  transform: translateX(-50%);
-  z-index: var(--layer-tip);
-  padding: var(--space-2) var(--space-4);
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-menu);
-  font-size: var(--text-xs);
-}
 .diagram-code-dialog {
   width: min(640px, calc(100vw - 32px));
 }
@@ -292,6 +310,8 @@
   width: 100%;
   font: var(--text-sm)/1.7 var(--font-mono);
   resize: vertical;
+  min-height: 160px;
+  max-height: 45dvh;
 }
 .diagram-code-dialog p {
   color: var(--color-muted);
@@ -304,12 +324,21 @@
   gap: var(--space-2);
   margin-top: var(--space-5);
 }
-.diagram-danger {
-  color: var(--color-danger) !important;
+.diagram-app .diagram-dialog-error {
+  margin-top: var(--space-3);
+  color: var(--color-danger);
 }
-@media (max-width: 40em) {
-  .diagram-save-state {
+@media (max-width: 45em) {
+  .diagram-save-label,
+  .diagram-toolbar > .diagram-toolbar-spacer,
+  .diagram-toolbar > .diagram-desktop-action {
     display: none;
+  }
+  .diagram-actions .ui-menu > .diagram-mobile-action {
+    display: flex;
+  }
+  .diagram-actions .ui-menu > button {
+    min-height: var(--h-hit-target);
   }
   .diagram-title {
     flex: 1;
@@ -317,7 +346,36 @@
   }
   .diagram-toolbar {
     gap: var(--space-1);
-    padding-inline: var(--space-2);
+    padding-inline: max(var(--space-2), env(safe-area-inset-left))
+      max(var(--space-2), env(safe-area-inset-right));
+  }
+  .diagram-toolbar > .ui-icon-btn,
+  .diagram-toolbar .diagram-ai-button,
+  .diagram-toolbar > .ui-action-menu > .ui-icon-btn {
+    flex: none;
+    width: var(--h-hit-target);
+    height: var(--h-hit-target);
+    padding: 0;
+  }
+  .diagram-library .ui-input,
+  .diagram-library .ui-btn,
+  .diagram-dialog-actions .ui-btn {
+    min-height: var(--h-hit-target);
+  }
+  .diagram-code-dialog textarea {
+    font-size: var(--text-base);
+  }
+  .diagram-dialog-actions {
+    position: sticky;
+    bottom: calc(-1 * var(--space-5));
+    margin-inline: calc(-1 * var(--space-5));
+    margin-bottom: calc(-1 * var(--space-5));
+    padding: var(--space-3) var(--space-5) max(var(--space-3), env(safe-area-inset-bottom));
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+  }
+  .diagram-dialog-actions .ui-btn {
+    flex: 1;
   }
   .diagram-ai-button span {
     display: none;

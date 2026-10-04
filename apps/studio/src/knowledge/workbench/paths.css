@@ -90,12 +90,21 @@
   color: var(--color-text);
 }
 
+/* 所有列表入口共用行布局，为操作菜单留位，长标题只在行内收缩。 */
+.knowledge-file-entry {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border-radius: var(--radius-sm);
+}
+
 .knowledge-file-note {
   display: flex;
+  flex: 1;
+  min-width: 0;
   gap: var(--space-2);
   align-items: center;
-  width: 100%;
-  min-height: var(--h-control);
+  min-height: var(--h-hit-target);
   text-align: left;
   padding: 0 var(--space-1);
   border: 0;
@@ -105,8 +114,11 @@
   font-size: var(--text-sm);
 }
 
-.knowledge-file-actions {
-  display: none;
+.knowledge-file-entry > .knowledge-file-actions {
+  display: inline-flex;
+  flex: 0 0 var(--h-hit-target);
+  width: var(--h-hit-target);
+  height: var(--h-hit-target);
 }
 
 .knowledge-file-note > span {

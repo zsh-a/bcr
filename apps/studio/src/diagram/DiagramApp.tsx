@@ -12,6 +12,8 @@ import {
   IconButton,
   ResourceSearch,
   Textarea,
+  Toast,
+  useMediaQuery,
   useRuntime,
   useRuntimeActivity,
   useNavigation,
@@ -20,14 +22,19 @@ import {
   useUpdateParticipant,
 } from "@bcr/react";
 import {
+  AlertCircle,
   Check,
   ChevronDown,
+  CircleDot,
   Code2,
   Download,
+  FileCode2,
+  FileImage,
   FolderOpen,
   LayoutTemplate,
   Link,
   Plus,
+  Scan,
   Shapes,
   Sparkles,
   Trash2,
@@ -158,13 +165,14 @@ export function DiagramApp() {
           draft={draft}
           store={store}
           active={active}
+          pending={busy}
           onLibrary={() => setLibrary((value) => !value)}
           onCreate={() => void create()}
           onImport={() => fileInput.current?.click()}
           onDeleted={() => navigation.navigate("/diagram")}
         />
       ) : (
-        <AppToolbar>
+        <AppToolbar className="diagram-toolbar">
           <Shapes size={19} />
           <strong className="diagram-app-label">绘图</strong>
           <span className="diagram-toolbar-spacer" />
@@ -213,12 +221,14 @@ export function DiagramApp() {
           <Plus size={16} />
           新建图表
         </Button>
-        <nav>
+        <nav aria-label="图表列表">
           {items
             .filter((item) => item.title.toLowerCase().includes(query.trim().toLowerCase()))
             .map((item) => (
               <button
                 key={item.id}
+                type="button"
+                title={item.title}
                 aria-current={item.id === id ? "page" : undefined}
                 onClick={() => select(item.id)}
               >
@@ -313,6 +323,7 @@ function DrawingEditor({
   draft,
   store,
   active,
+  pending,
   onLibrary,
   onCreate,
   onImport,
@@ -321,6 +332,7 @@ function DrawingEditor({
   draft: DiagramDraft;
   store: DiagramStore;
   active: boolean;
+  pending: boolean;
   onLibrary: () => void;
   onCreate: () => void;
   onImport: () => void;
@@ -339,6 +351,15 @@ function DrawingEditor({
     [deleting, setDeleting] = useState(false),
     [notice, setNotice] = useState("");
   const openAssistant = useOpenAssistant();
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const processing = busy || pending;
+  const saveLabel = state.error
+    ? "保存失败"
+    : state.saving
+      ? "保存中…"
+      : state.dirty
+        ? "未保存"
+        : "已保存";
   const signature = useRef("");
   useEffect(() => setTitle(state.document.title), [state.document.title]);
   useEffect(() => {
@@ -380,11 +401,6 @@ function DrawingEditor({
     const frame = requestAnimationFrame(() => api.current?.refresh());
     return () => cancelAnimationFrame(frame);
   }, [active, apiReady]);
-  useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(() => setNotice(""), 3500);
-    return () => clearTimeout(timer);
-  }, [notice]);
   const onChange = useCallback(
     (elements: readonly ExcalidrawElement[], appState: AppState, files: BinaryFiles) => {
       const selected = Object.keys(appState.selectedElementIds).filter(
@@ -441,7 +457,14 @@ function DrawingEditor({
       next = await layoutScene(document.scene, selection);
     draft.apply(next, document.revision);
     await draft.flush();
-    api.current?.scrollToContent(undefined, { fitToContent: true, animate: true });
+    fitCanvas();
+  }
+  function fitCanvas() {
+    api.current?.scrollToContent(undefined, { fitToContent: true, animate: !reducedMotion });
+  }
+  function openMermaid() {
+    setError("");
+    setMermaid(mermaidExample);
   }
   return (
     <>
@@ -464,39 +487,46 @@ function DrawingEditor({
             if (event.key === "Enter" && !event.nativeEvent.isComposing) event.currentTarget.blur();
           }}
         />
-        <span className="diagram-save-state" role="status" data-dirty={state.dirty}>
+        <span
+          className="diagram-save-state"
+          role="status"
+          aria-label={saveLabel}
+          title={saveLabel}
+          data-dirty={state.dirty}
+          data-error={!!state.error}
+        >
           {state.error ? (
-            "保存失败"
-          ) : state.saving ? (
-            "保存中…"
-          ) : state.dirty ? (
-            "未保存"
+            <AlertCircle size={14} aria-hidden="true" />
+          ) : state.saving || state.dirty ? (
+            <CircleDot size={14} aria-hidden="true" />
           ) : (
-            <>
-              <Check size={13} />
-              已保存
-            </>
+            <Check size={14} aria-hidden="true" />
           )}
+          <span className="diagram-save-label">{saveLabel}</span>
         </span>
         <span className="diagram-toolbar-spacer" />
         <IconButton
+          className="diagram-desktop-action"
           label="整理布局"
           title={selection.length ? "整理选中节点" : "整理全部节点"}
-          disabled={busy || !apiReady}
+          disabled={processing || !apiReady}
           onClick={() => void run(layout)}
         >
           <LayoutTemplate size={17} />
         </IconButton>
         <IconButton
+          className="diagram-desktop-action"
           label="从 Mermaid 插入"
           title="从 Mermaid 插入"
-          disabled={busy}
-          onClick={() => setMermaid(mermaidExample)}
+          disabled={processing}
+          onClick={openMermaid}
         >
           <Code2 size={18} />
         </IconButton>
         <Button
           className="diagram-ai-button"
+          aria-label="AI 绘图"
+          title="AI 绘图"
           variant="ghost"
           size="sm"
           onClick={openAssistant}
@@ -505,32 +535,88 @@ function DrawingEditor({
           <Sparkles size={16} />
           <span>AI 绘图</span>
         </Button>
-        <ActionMenu label="图表操作">
-          <button onClick={onCreate}>
+        <ActionMenu label="图表操作" variant="menu" className="diagram-actions">
+          <button type="button" role="menuitem" disabled={processing} onClick={onCreate}>
             <Plus size={16} />
             新建图表
           </button>
-          <button onClick={onImport}>
+          <button type="button" role="menuitem" disabled={processing} onClick={onImport}>
             <Upload size={16} />
             导入图表
           </button>
-          <button onClick={() => void run(() => exportFile("excalidraw"))}>
+          <div className="ui-menu-separator" role="separator" />
+          <button
+            type="button"
+            role="menuitem"
+            className="diagram-mobile-action"
+            disabled={processing || !apiReady}
+            onClick={() => void run(layout)}
+          >
+            <LayoutTemplate size={16} />
+            整理布局
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="diagram-mobile-action"
+            disabled={processing}
+            onClick={openMermaid}
+          >
+            <Code2 size={16} />
+            从 Mermaid 插入
+          </button>
+          <button type="button" role="menuitem" disabled={!apiReady} onClick={fitCanvas}>
+            <Scan size={16} />
+            适应画布
+          </button>
+          <div className="ui-menu-separator" role="separator" />
+          <button
+            type="button"
+            role="menuitem"
+            disabled={processing}
+            onClick={() => void run(() => exportFile("excalidraw"))}
+          >
             <Download size={16} />
             下载可编辑文件
           </button>
-          <button onClick={() => void run(() => exportFile("svg"))}>
-            <Download size={16} />
+          <button
+            type="button"
+            role="menuitem"
+            disabled={processing}
+            onClick={() => void run(() => exportFile("svg"))}
+          >
+            <FileCode2 size={16} />
             导出 SVG
           </button>
-          <button onClick={() => void run(() => exportFile("png"))}>
-            <Download size={16} />
+          <button
+            type="button"
+            role="menuitem"
+            disabled={processing}
+            onClick={() => void run(() => exportFile("png"))}
+          >
+            <FileImage size={16} />
             导出 PNG
           </button>
-          <button onClick={() => void run(copyReference)}>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={processing}
+            onClick={() => void run(copyReference)}
+          >
             <Link size={16} />
             复制笔记引用
           </button>
-          <button className="diagram-danger" onClick={() => setDeleting(true)}>
+          <div className="ui-menu-separator" role="separator" />
+          <button
+            type="button"
+            role="menuitem"
+            className="is-danger"
+            disabled={processing}
+            onClick={() => {
+              setError("");
+              setDeleting(true);
+            }}
+          >
             <Trash2 size={16} />
             删除图表
           </button>
@@ -558,11 +644,10 @@ function DrawingEditor({
           )}
         </div>
       )}
-      {notice && (
-        <div role="status" className="diagram-notice">
-          {notice}
-        </div>
-      )}
+      <Toast
+        notice={notice ? { message: notice, tone: "success" } : null}
+        onDismiss={() => setNotice("")}
+      />
       <div className="diagram-canvas" data-testid="diagram-canvas">
         <Excalidraw
           initialData={{
@@ -598,13 +683,6 @@ function DrawingEditor({
           }}
         >
           <MainMenu>
-            <MainMenu.Item onSelect={onCreate} icon={<Plus size={16} />}>
-              新建图表
-            </MainMenu.Item>
-            <MainMenu.Item onSelect={onImport} icon={<Upload size={16} />}>
-              导入图表
-            </MainMenu.Item>
-            <MainMenu.Separator />
             <MainMenu.DefaultItems.ClearCanvas />
             <MainMenu.DefaultItems.ChangeCanvasBackground />
             <MainMenu.DefaultItems.Help />
@@ -621,12 +699,19 @@ function DrawingEditor({
         <p>将流程描述转换为可编辑图形，插入到当前画布。</p>
         <Textarea
           aria-label="Mermaid 代码"
+          aria-invalid={!!error}
+          aria-describedby={error ? "diagram-mermaid-error" : undefined}
+          disabled={busy}
           value={mermaid ?? ""}
           onChange={(event) => setMermaid(event.target.value)}
           spellCheck={false}
           rows={10}
         />
-        {error && <p role="alert">{error}</p>}
+        {error && (
+          <p id="diagram-mermaid-error" className="diagram-dialog-error" role="alert">
+            {error}
+          </p>
+        )}
         <div className="diagram-dialog-actions">
           <Button variant="ghost" onClick={() => setMermaid(null)} disabled={busy}>
             取消
@@ -654,7 +739,10 @@ function DrawingEditor({
                 );
                 await draft.flush();
                 setMermaid(null);
-                api.current?.scrollToContent(next.elements, { fitToContent: true, animate: true });
+                api.current?.scrollToContent(next.elements, {
+                  fitToContent: true,
+                  animate: !reducedMotion,
+                });
               })
             }
           >
@@ -664,6 +752,11 @@ function DrawingEditor({
       </Dialog>
       <Dialog open={deleting} onClose={() => setDeleting(false)} title="删除图表" closable={!busy}>
         <p>删除“{state.document.title}”？此操作会移除本机保存的图表。</p>
+        {error && (
+          <p className="diagram-dialog-error" role="alert">
+            {error}
+          </p>
+        )}
         <div className="diagram-dialog-actions">
           <Button variant="ghost" disabled={busy} onClick={() => setDeleting(false)}>
             取消
