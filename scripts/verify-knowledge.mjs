@@ -409,7 +409,7 @@ try {
     "# 安全预览\n<script>window.knowledgeXss=true</script>\n![private](https://tracking.invalid/pixel)\n[unsafe](javascript:alert(1))",
   );
   await a.page.getByRole("button", { name: "阅读", exact: true }).click();
-  await a.page.locator(".knowledge-prose h1").waitFor();
+  await a.page.getByRole("heading", { name: "安全预览", exact: true }).waitFor();
   assert.equal(await a.page.evaluate(() => window.knowledgeXss), undefined);
   assert.equal(externalImages, 0);
   assert.equal(await a.page.locator('.knowledge-prose a[href^="javascript:"]').count(), 0);
