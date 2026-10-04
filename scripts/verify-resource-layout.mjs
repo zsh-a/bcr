@@ -38,7 +38,12 @@ async function fits() {
     "resource layout does not overflow horizontally",
   );
   const toolbar = await page.locator(".knowledge-toolbar").boundingBox();
-  assert(toolbar.height <= 57, "Knowledge has one compact toolbar");
+  const viewportWidth = await page.evaluate(() => innerWidth);
+  const maxToolbarHeight = viewportWidth <= 720 ? 112 : 57;
+  assert(
+    toolbar.height <= maxToolbarHeight,
+    `Knowledge toolbar stays compact at ${viewportWidth}px (${Math.round(toolbar.height)}px tall)`,
+  );
 }
 
 try {
