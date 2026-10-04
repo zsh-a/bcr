@@ -78,7 +78,10 @@ try {
     "PDF repeats the reading footer's navigation",
   );
   const first = page.locator(".reader-pdf-page").first();
-  await first.locator(".reader-pdf-text-layer").getByText("Readable page 1", { exact: true }).waitFor();
+  await first
+    .locator(".reader-pdf-text-layer")
+    .getByText("Readable page 1", { exact: true })
+    .waitFor();
   assert.match(await first.locator(".reader-pdf-text-layer").innerText(), /Readable page 1/);
   const selected = await first.locator(".reader-pdf-text-layer").evaluate((element) => {
     const selection = window.getSelection();
