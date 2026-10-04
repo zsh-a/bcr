@@ -7,12 +7,13 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type Ref,
 } from "react";
 import Markdown, { defaultUrlTransform } from "react-markdown";
 import { createPortal } from "react-dom";
-import { ChevronRight, Info, Paperclip, SlidersHorizontal, X } from "lucide-react";
+import { ChevronRight, Info, List, Paperclip, SlidersHorizontal, X } from "lucide-react";
 import remarkGfm from "remark-gfm";
 import { type KnowledgeNote, type KnowledgeCollection } from "../session/model";
 import { MarkdownEditor, type MarkdownEditorHandle } from "./MarkdownEditor";
@@ -54,12 +55,14 @@ import { AttachmentInline, RemoteImage } from "../attachments/AttachmentView";
 import { useNoteAttachments } from "../attachments/useNoteAttachments";
 import { NoteAttachmentOverlays } from "../attachments/NoteAttachmentOverlays";
 import type { LocalSaveStatus } from "../sync/syncPopover";
+import { themeStore } from "../../theme/browser";
 
 export interface EditorHandle {
   flush(): Promise<void>;
 }
 
 type EditorView = "edit" | "source" | "read";
+const MOBILE_VIEW_KEY = "bcr.knowledge.mobile-view";
 
 export function NoteEditor({
   note,
@@ -106,6 +109,7 @@ export function NoteEditor({
   const openAssistant = useOpenAssistant();
   const narrow = useMediaQuery("(width < 68.75em)");
   const mobile = useMediaQuery("(width <= 45em)");
+  const appearance = useSyncExternalStore(themeStore.subscribe, themeStore.getSnapshot);
   const [contextView, setContextView] = useState<
     "outline" | "links" | "properties" | "attachments"
   >("outline");
@@ -121,7 +125,24 @@ export function NoteEditor({
     });
   }, [onSaveStatusChange, note.id, snapshot.dirty, error, renamePending]);
   const { flush, change, initialError } = controller;
-  const [view, setView] = useState<EditorView>("edit");
+  const [view, setView] = useState<EditorView>(() => {
+    if (!mobile || !note.body) return "edit";
+    try {
+      return localStorage.getItem(MOBILE_VIEW_KEY) === "read" ? "read" : "edit";
+    } catch {
+      return "edit";
+    }
+  });
+  function selectView(next: EditorView) {
+    setView(next);
+    if (mobile) {
+      try {
+        localStorage.setItem(MOBILE_VIEW_KEY, next === "read" ? "read" : "edit");
+      } catch {
+        /* Keep the current view when storage is unavailable. */
+      }
+    }
+  }
   const [settings, setSettings] = useState<ReadingSettings>(() =>
     decodeReadingSettings(localStorage.getItem(READING_SETTINGS_KEY)),
   );
@@ -375,6 +396,7 @@ export function NoteEditor({
   return (
     <div
       className="knowledge-document"
+      data-view={view}
       ref={host}
       onClickCapture={(event) => {
         if (!(event.target instanceof Element) || event.button !== 0) return;
@@ -394,13 +416,13 @@ export function NoteEditor({
     >
       {toolbarSlot &&
         createPortal(
-          <div className="knowledge-mode-controls">
+          <div className="knowledge-mode-controls" data-view={view}>
             <div className="knowledge-segmented" role="group" aria-label="视图模式">
               <button
                 type="button"
                 aria-pressed={view === "edit"}
                 onClick={() => {
-                  setView("edit");
+                  selectView("edit");
                   requestAnimationFrame(() => source.current?.focus());
                 }}
               >
@@ -408,27 +430,36 @@ export function NoteEditor({
               </button>
               <button
                 type="button"
+                data-mode="source"
                 aria-pressed={view === "source"}
-                onClick={() => setView("source")}
+                onClick={() => selectView("source")}
               >
                 源码
               </button>
-              <button type="button" aria-pressed={view === "read"} onClick={() => setView("read")}>
+              <button
+                type="button"
+                aria-pressed={view === "read"}
+                onClick={() => selectView("read")}
+              >
                 阅读
               </button>
             </div>
             <div className="knowledge-tools">
               {mobile && (
                 <IconButton
-                  label="展开上下文栏"
-                  title="大纲、链接与属性"
+                  label={view === "read" ? "阅读目录" : "展开上下文栏"}
+                  title={view === "read" ? "阅读目录" : "大纲、链接与属性"}
                   aria-expanded={contextOpen && !focusMode}
-                  onClick={() => onContextOpenChange(true)}
+                  onClick={() => {
+                    if (view === "read") setContextView("outline");
+                    onContextOpenChange(true);
+                  }}
                 >
-                  <Info size={18} />
+                  {view === "read" ? <List size={18} /> : <Info size={18} />}
                 </IconButton>
               )}
               <IconButton
+                className="knowledge-editing-tool"
                 label="插入附件"
                 size="sm"
                 disabled={locked || !!initialError}
@@ -443,7 +474,7 @@ export function NoteEditor({
                 ref={toolsTrigger}
                 type="button"
                 className="knowledge-quiet-toggle knowledge-tools-toggle"
-                aria-label="更多写作工具"
+                aria-label={mobile && view === "read" ? "阅读设置" : "更多写作工具"}
                 aria-haspopup="dialog"
                 aria-expanded={menuOpen}
                 popoverTarget={menuId}
@@ -463,7 +494,7 @@ export function NoteEditor({
                   if (event.target === event.currentTarget) setMenuOpen(event.newState === "open");
                 }}
               >
-                <details className="knowledge-tools-section">
+                <details className="knowledge-tools-section knowledge-editing-tool">
                   <summary>插入模板</summary>
                   <div className="knowledge-tools-list">
                     {templates.length ? (
@@ -485,7 +516,7 @@ export function NoteEditor({
                     )}
                   </div>
                 </details>
-                <div className="ui-menu-separator" />
+                <div className="ui-menu-separator knowledge-editing-tool" />
                 {/* 视图分段在文档工具行已有同样的控件；外层可见时（容器 ≥640px）这里收起，避免同屏重复。 */}
                 <div className="knowledge-tools-modes">
                   <div className="knowledge-tools-row">
@@ -495,7 +526,7 @@ export function NoteEditor({
                         type="button"
                         aria-pressed={view === "edit"}
                         onClick={() => {
-                          setView("edit");
+                          selectView("edit");
                           requestAnimationFrame(() => source.current?.focus());
                         }}
                       >
@@ -504,14 +535,14 @@ export function NoteEditor({
                       <button
                         type="button"
                         aria-pressed={view === "source"}
-                        onClick={() => setView("source")}
+                        onClick={() => selectView("source")}
                       >
                         源码
                       </button>
                       <button
                         type="button"
                         aria-pressed={view === "read"}
-                        onClick={() => setView("read")}
+                        onClick={() => selectView("read")}
                       >
                         阅读
                       </button>
@@ -519,13 +550,38 @@ export function NoteEditor({
                   </div>
                 </div>
                 <button
+                  className="knowledge-editing-tool"
                   type="button"
                   aria-pressed={settings.typewriter}
                   onClick={() => updateSettings({ typewriter: !settings.typewriter })}
                 >
                   打字机模式
                 </button>
-                <div className="ui-menu-separator" />
+                <div className="ui-menu-separator knowledge-editing-tool" />
+                <div className="knowledge-tools-row">
+                  <span className="ui-section-label">外观</span>
+                  <div className="knowledge-chip-group" role="group" aria-label="阅读外观">
+                    {(["light", "dark", "system"] as const).map((preference) => (
+                      <button
+                        type="button"
+                        key={preference}
+                        aria-pressed={appearance.preference === preference}
+                        onClick={() => themeStore.set(preference)}
+                      >
+                        {preference === "light"
+                          ? "浅色"
+                          : preference === "dark"
+                            ? "深色"
+                            : "跟随系统"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {appearance.error && (
+                  <p role="status" className="knowledge-hint">
+                    {appearance.error}
+                  </p>
+                )}
                 <div className="knowledge-tools-row">
                   <span className="ui-section-label">阅读字体</span>
                   <div className="knowledge-chip-group" role="group" aria-label="阅读字体">
@@ -575,14 +631,18 @@ export function NoteEditor({
                     ))}
                   </div>
                 </div>
-                <div className="ui-menu-separator" />
-                <details className="knowledge-tools-section">
-                  <summary>快捷键</summary>
-                  <p className="knowledge-hint">
-                    [[ 关联笔记 · / 插入 · Ctrl/⌘+F 查找 · Ctrl/⌘+B 加粗 · Ctrl/⌘+I 斜体 · Shift+F10
-                    正文菜单 · Shift+右键 系统菜单 · Esc 退出专注模式
-                  </p>
-                </details>
+                {!mobile && (
+                  <>
+                    <div className="ui-menu-separator" />
+                    <details className="knowledge-tools-section">
+                      <summary>快捷键</summary>
+                      <p className="knowledge-hint">
+                        [[ 关联笔记 · / 插入 · Ctrl/⌘+F 查找 · Ctrl/⌘+B 加粗 · Ctrl/⌘+I 斜体 ·
+                        Shift+F10 正文菜单 · Shift+右键 系统菜单 · Esc 退出专注模式
+                      </p>
+                    </details>
+                  </>
+                )}
               </div>
             </div>
           </div>,
@@ -602,6 +662,8 @@ export function NoteEditor({
             snapshot={snapshot}
             store={store}
             renameRef={rename}
+            multiline={mobile}
+            readOnly={mobile && view === "read"}
           />
         </div>
         <div className="knowledge-editor-meta">

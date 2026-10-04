@@ -89,6 +89,7 @@ try {
     .locator(".knowledge-prose")
     .getByRole("heading", { name: "灵感", exact: true })
     .waitFor();
+  await modes.getByRole("button", { name: "编辑", exact: true }).click();
   await modes.getByRole("button", { name: "源码", exact: true }).click();
   assert.match(await page.getByLabel("笔记正文", { exact: true }).innerText(), /# 灵感/);
 
@@ -177,6 +178,147 @@ try {
     "移动端阅读与写作体验",
   );
   assert.match(await page.getByLabel("笔记正文", { exact: true }).innerText(), /明天继续/);
+
+  // A real long-form note: complete title, compact reading chrome, and reachable final paragraph.
+  const longTitle = "OpenCode V2 上手体验与工具适配：在手机上整理长篇阅读笔记";
+  await page.getByLabel("笔记标题", { exact: true }).fill(longTitle);
+  await page
+    .getByLabel("笔记正文", { exact: true })
+    .fill(
+      [
+        "# OpenCode V2 上手体验",
+        "## 版本定位",
+        ...Array.from(
+          { length: 5 },
+          () =>
+            "- 这是用于检查手机长文阅读的段落。链接、工具名称与中文内容应自然换行，正文保持清晰可读。",
+        ),
+        "## 变化与亮点",
+        ...Array.from(
+          { length: 12 },
+          () =>
+            "阅读时可以通过目录直接跳转，调整字号和行距，也可以随时返回编辑，继续整理自己的笔记。",
+        ),
+        "长文阅读结束标记。",
+      ].join("\n\n"),
+    );
+  await page.locator(".knowledge-status-line").filter({ hasText: "已保存到本机" }).waitFor();
+  await modes.getByRole("button", { name: "阅读", exact: true }).click();
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await noOverflow();
+    await button("阅读目录").click({ trial: true });
+    const toolbar = await page.locator(".knowledge-toolbar").boundingBox();
+    assert(toolbar.height <= 64, "reading uses one toolbar row on a phone");
+    const title = page.getByLabel("笔记标题", { exact: true });
+    await page.waitForFunction(() => {
+      const title = document.querySelector('[aria-label="笔记标题"]');
+      return title.scrollHeight <= title.clientHeight + 1;
+    });
+    assert(
+      await title.evaluate((element) => element.readOnly),
+      "reading never opens the title keyboard",
+    );
+    assert((await title.boundingBox()).height > 40, "a long title wraps onto multiple lines");
+    for (const theme of ["light", "dark"]) {
+      await page.emulateMedia({ colorScheme: theme });
+      await page.waitForFunction(
+        (value) => document.documentElement.dataset.theme === value,
+        theme,
+      );
+      await page.screenshot({
+        path: new URL(`mobile-knowledge-reading-${width}-${theme}.png`, shots).pathname,
+      });
+    }
+  }
+  await button("阅读设置").click();
+  const readingSettings = page.getByRole("dialog", { name: "写作与阅读设置", exact: true });
+  assert.equal(
+    await readingSettings.getByRole("button", { name: "打字机模式", exact: true }).count(),
+    0,
+  );
+  await readingSettings
+    .getByRole("group", { name: "正文字号", exact: true })
+    .getByRole("button", { name: "大", exact: true })
+    .click();
+  await page.locator('.knowledge-editor[data-reading-size="large"]').waitFor();
+  await page.waitForFunction(
+    () => getComputedStyle(document.querySelector(".knowledge-prose")).fontSize === "20px",
+  );
+  await readingSettings
+    .getByRole("group", { name: "正文字号", exact: true })
+    .getByRole("button", { name: "标准", exact: true })
+    .click();
+  await page.locator('.knowledge-editor[data-reading-size="standard"]').waitFor();
+  await page.waitForFunction(
+    () => getComputedStyle(document.querySelector(".knowledge-prose")).fontSize === "17px",
+  );
+  await readingSettings
+    .getByRole("group", { name: "阅读外观", exact: true })
+    .getByRole("button", { name: "浅色", exact: true })
+    .click();
+  await page.waitForFunction(
+    () =>
+      document.documentElement.dataset.theme === "light" &&
+      !document.documentElement.classList.contains("dark"),
+  );
+  await page.keyboard.press("Escape");
+  await button("阅读目录").click();
+  await info.getByRole("button", { name: "变化与亮点", exact: true }).click();
+  await info.waitFor({ state: "hidden" });
+  const heading = page
+    .locator(".knowledge-prose")
+    .getByRole("heading", { name: "变化与亮点", exact: true });
+  await heading.waitFor();
+  const headingBox = await heading.boundingBox();
+  const contentBox = await page.locator(".knowledge-content").boundingBox();
+  assert(
+    headingBox.y >= contentBox.y && headingBox.y < contentBox.y + 80,
+    "outline jumps to the selected heading",
+  );
+  await page.locator(".knowledge-content").evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  const ending = await page
+    .locator(".knowledge-prose")
+    .getByText("长文阅读结束标记。", { exact: true })
+    .boundingBox();
+  assert(
+    ending.y >= contentBox.y && ending.y + ending.height <= contentBox.y + contentBox.height,
+    "the last paragraph remains above the footer",
+  );
+  await page.reload();
+  await page.locator('.knowledge-document[data-view="read"]').waitFor();
+  assert.equal(
+    await page.locator("html").getAttribute("data-theme"),
+    "light",
+    "explicit reading appearance survives restart over the dark system preference",
+  );
+  assert.equal(await page.getByLabel("笔记标题", { exact: true }).inputValue(), longTitle);
+  await page.setViewportSize({ width: 640, height: 360 });
+  await noOverflow();
+  await page.waitForFunction(() => {
+    const title = document.querySelector('[aria-label="笔记标题"]');
+    return title.scrollHeight <= title.clientHeight + 1;
+  });
+  await button("阅读设置").click();
+  await readingSettings
+    .getByRole("group", { name: "阅读外观", exact: true })
+    .getByRole("button", { name: "跟随系统", exact: true })
+    .click();
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "dark");
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .locator(".knowledge-mobile-actions")
+    .getByRole("button", { name: "新建笔记", exact: true })
+    .click();
+  await page.getByLabel("笔记正文", { exact: true }).waitFor();
+  assert.equal(
+    await page.getByLabel("笔记标题", { exact: true }).inputValue(),
+    "",
+    "new notes still open for writing",
+  );
 
   await page.goto(`${origin}${server ? "/pwa/reader/" : "/reader"}`);
   await page.locator(".reader-reading-scroll").waitFor();

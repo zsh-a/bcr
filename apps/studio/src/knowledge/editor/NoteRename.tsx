@@ -1,4 +1,12 @@
-import { useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type Ref,
+} from "react";
 import { Button } from "@bcr/react";
 import type { NoteDraft, DraftSnapshot } from "./draft";
 import type { KnowledgeStore } from "../session/store";
@@ -24,18 +32,41 @@ export function NoteRename({
   snapshot,
   store,
   renameRef,
+  multiline = false,
+  readOnly = false,
 }: {
   controller: NoteDraft;
   snapshot: DraftSnapshot;
   store: KnowledgeStore;
   /** 暴露 settle/cancel 给编辑器保存屏障；可选，旧调用点不受影响。 */
   renameRef?: Ref<LiveRename>;
+  multiline?: boolean;
+  readOnly?: boolean;
 }) {
   const [phase, setPhase] = useState<RenamePhase>("clear");
   const [notice, setNotice] = useState("");
   const [review, setReview] = useState<NoteChangePlan | null>(null);
   const decide = useRef<((approved: boolean) => void) | null>(null);
-  const titleInput = useRef<HTMLInputElement>(null);
+  const titleInput = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const title = snapshot.proposedTitle ?? snapshot.note.title;
+  useLayoutEffect(() => {
+    const input = titleInput.current;
+    if (!(input instanceof HTMLTextAreaElement)) return;
+    const resize = () => {
+      input.style.height = "auto";
+      input.style.height = `${input.scrollHeight}px`;
+    };
+    resize();
+    let width = input.getBoundingClientRect().width;
+    const observer = new ResizeObserver(() => {
+      const nextWidth = input.getBoundingClientRect().width;
+      if (nextWidth === width) return;
+      width = nextWidth;
+      resize();
+    });
+    observer.observe(input);
+    return () => observer.disconnect();
+  }, [title, multiline]);
 
   const renamer = useMemo(
     () =>
@@ -123,16 +154,41 @@ export function NoteRename({
 
   return (
     <>
-      <input
-        ref={titleInput}
-        className="knowledge-title"
-        aria-label="笔记标题"
-        placeholder="给这个想法一个名字"
-        value={snapshot.proposedTitle ?? snapshot.note.title}
-        maxLength={500}
-        disabled={!controller.editable}
-        onChange={(event) => controller.changeTitle(event.target.value)}
-      />
+      {multiline ? (
+        <textarea
+          ref={(element) => {
+            titleInput.current = element;
+          }}
+          className="knowledge-title knowledge-title-multiline"
+          aria-label="笔记标题"
+          placeholder="给这个想法一个名字"
+          value={title}
+          rows={1}
+          maxLength={500}
+          disabled={!controller.editable}
+          readOnly={readOnly}
+          onChange={(event) => controller.changeTitle(event.target.value.replace(/[\r\n]+/gu, " "))}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              event.currentTarget.blur();
+            }
+          }}
+        />
+      ) : (
+        <input
+          ref={(element) => {
+            titleInput.current = element;
+          }}
+          className="knowledge-title"
+          aria-label="笔记标题"
+          placeholder="给这个想法一个名字"
+          value={title}
+          maxLength={500}
+          disabled={!controller.editable}
+          onChange={(event) => controller.changeTitle(event.target.value)}
+        />
+      )}
       {(phase === "working" || notice) && (
         <p role="status" className={`knowledge-rename-progress${notice ? " has-notice" : ""}`}>
           {notice || "正在更新引用…"}

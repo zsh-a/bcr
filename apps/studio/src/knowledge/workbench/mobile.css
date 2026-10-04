@@ -1,5 +1,11 @@
 /* Mobile keeps navigation, document actions and content in distinct rows. */
 @media (width <= 45em) {
+  .knowledge-app {
+    --prose-title: 24px;
+    --prose-font-size: 17px;
+    --reading-standard: 1.75;
+  }
+
   .ui-app-toolbar.knowledge-toolbar {
     height: auto;
     min-height: 56px;
@@ -130,12 +136,85 @@
     display: none;
   }
 
+  /* Reading has one toolbar row. Editing keeps its complete set of controls. */
+  .knowledge-toolbar:has(.knowledge-mode-controls[data-view="read"]) .knowledge-mobile-title {
+    display: none;
+  }
+
+  .knowledge-toolbar:has(.knowledge-mode-controls[data-view="read"]) .knowledge-document-toolbar {
+    order: 0;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .knowledge-document-toolbar .knowledge-mode-controls[data-view="read"] {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .knowledge-mode-controls[data-view="read"] :is([data-mode="source"], .knowledge-editing-tool) {
+    display: none;
+  }
+
+  .knowledge-content {
+    padding-bottom: 8px;
+    scroll-padding-block: 20px;
+  }
+
   .knowledge-editor {
-    padding: 24px max(20px, env(safe-area-inset-right)) 24px max(20px, env(safe-area-inset-left));
+    padding: 20px max(20px, env(safe-area-inset-right)) 24px max(20px, env(safe-area-inset-left));
+  }
+
+  .knowledge-editor-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .knowledge-editor .knowledge-editor-head .knowledge-title-multiline {
+    flex: 1 1 100%;
+    max-width: 100%;
+    min-height: 1.35em;
+    line-height: 1.35;
+    resize: none;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+
+  .knowledge-title-multiline[readonly] {
+    cursor: text;
+  }
+
+  .knowledge-editor-source:not([hidden]) {
+    min-height: 160px;
   }
 
   .knowledge-editor-meta {
-    margin-bottom: 16px;
+    margin-block: 8px 16px;
+  }
+
+  .knowledge-prose > :first-child {
+    margin-top: 0;
+  }
+
+  .knowledge-prose :is(ul, ol) {
+    padding-left: 1.4em;
+  }
+
+  .knowledge-prose li + li {
+    margin-top: 0.4em;
+  }
+
+  .knowledge-prose :is(p, ul, ol) {
+    margin-block: 0.8em;
+  }
+
+  .knowledge-prose li > p {
+    margin-block: 0.4em;
+  }
+
+  .knowledge-prose blockquote {
+    margin-inline: 0;
+    padding-left: 16px;
   }
 
   .knowledge-metadata-summary {
