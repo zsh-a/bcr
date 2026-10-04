@@ -71,6 +71,8 @@ export interface AppDefinition {
     readonly shortName: string;
     readonly entry: string;
     readonly boot: "workspace" | "independent" | "reader" | "knowledge";
+    /** Include lazy view/runtime dependencies for the first cold offline operation. */
+    readonly precacheDynamicImports?: boolean;
   };
 }
 export interface AppManifest<Operation extends string = string> extends AppDefinition {

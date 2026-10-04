@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./bridge": "./src/bridge/index.ts"
   },
   "dependencies": {
     "@bcr/core": "workspace:*"

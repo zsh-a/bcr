@@ -6,6 +6,9 @@ export const PWA_APPS = INSTALLABLE_APPS.map((definition) => {
   const scope = app.key === "knowledge" ? "/notes/" : `/pwa/${app.key}/`;
   return {
     ...app,
+    precacheDynamicImports:
+      "precacheDynamicImports" in definition.installation &&
+      definition.installation.precacheDynamicImports,
     // Keep both previously published identities, including Reader's lack of trailing slash.
     id: app.key === "reader" ? "/reader" : app.key === "knowledge" ? "/notes/" : scope,
     scope,

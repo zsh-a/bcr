@@ -1,0 +1,43 @@
+services:
+  runner:
+    build: .
+    init: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5210:5210"
+      - "127.0.0.1:5211:5211"
+    volumes:
+      - ${BCR_WORKS_DIR:?Set BCR_WORKS_DIR to your works directory}:/works
+      - runner-data:/data
+    command:
+      - serve
+      - --root
+      - /works
+      - --state
+      - /data/state/runner
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5210"
+      - --preview-port
+      - "5211"
+      - --origin
+      - ${BCR_WEB_ORIGIN:-http://localhost:5199}
+      - --api-url
+      - ${BCR_RUNNER_URL:-http://127.0.0.1:5210}
+      - --preview-url
+      - ${BCR_PREVIEW_URL:-http://127.0.0.1:5211}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const c=await Bun.file('/data/config/bcr/work-runner.json').json(); const r=await fetch('http://127.0.0.1:5210/health',{headers:{Authorization:'Bearer '+c.token}}); process.exit(r.ok?0:1)",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+volumes:
+  runner-data:

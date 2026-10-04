@@ -2,7 +2,7 @@ import type { AgentHostServices } from "./host";
 import type { ToolDecision } from "./loop";
 import type { AgentSurface, SurfaceTarget } from "./surface";
 import type { AgentSessionOptions, AgentSessionSnapshot, PendingApproval } from "./sessionTypes";
-import { requiresApproval } from "./tools";
+import { executeAgentTool } from "./execution";
 import { applySuggestion, suggestionFrom, SURFACE_EDIT_TOOL } from "./surfaceEdit";
 
 function parseOutput(value: string): unknown {
@@ -54,61 +54,68 @@ export function createToolDecision({
     const report = (status: string) => onActivity({ id: call.id, name: call.name, status });
     const suggestion = editing ? suggestionFrom(call, target) : null;
     if (editing && !suggestion) return { reject: "改动数据无效" };
-    let preview: Awaited<ReturnType<NonNullable<typeof tool.preview>>> | undefined;
-    if (tool.preview && requiresApproval(tool.spec)) {
-      try {
-        preview = await tool.preview(JSON.stringify(call.input ?? {}));
-      } catch (error) {
-        return { reject: String(error) };
-      }
-      signal.throwIfAborted();
-    }
-    if (requiresApproval(tool.spec)) {
-      const { promise, resolve } = Promise.withResolvers<boolean>();
-      const abort = () => resolve(false);
-      signal.addEventListener("abort", abort, { once: true });
-      let approved: boolean;
-      try {
-        report("等待确认");
-        onApproval({
-          call,
-          settle: resolve,
-          suggestion,
-          original:
-            target && suggestion
-              ? target.text.slice(suggestion.range.start, suggestion.range.end)
-              : "",
-          targetLabel: preview?.targetLabel ?? (editing ? surface?.label : undefined) ?? call.name,
-          ...(preview ? { preview: { before: preview.before, after: preview.after } } : {}),
-        });
-        if (signal.aborted) resolve(false);
-        approved = await promise;
-      } finally {
-        signal.removeEventListener("abort", abort);
-        onApproval(null);
-      }
-      signal.throwIfAborted();
-      if (!approved) {
-        report("已拒绝");
-        return { reject: "用户未批准这次操作" };
-      }
-    }
-    signal.throwIfAborted();
-    if (!available()) {
-      report("已取消");
-      return { reject: "确认期间能力或目标发生变化，未执行" };
-    }
-    report("执行中");
+    let executing = false;
     try {
-      const output =
-        editing && suggestion
-          ? await applySuggestion(host, suggestion, surface)
-          : parseOutput(
-              await tool.call(JSON.stringify(call.input ?? {}), { signal, callId: call.id }),
-            );
+      const output = await executeAgentTool(
+        tool,
+        JSON.stringify(call.input ?? {}),
+        { signal, callId: call.id },
+        {
+          authorize: () => {
+            if (!available()) {
+              report("已取消");
+              throw new Error("确认期间能力或目标发生变化，未执行");
+            }
+          },
+          approve: async (preview) => {
+            const { promise, resolve } = Promise.withResolvers<boolean>();
+            const abort = () => resolve(false);
+            signal.addEventListener("abort", abort, { once: true });
+            let approved: boolean;
+            try {
+              report("等待确认");
+              onApproval({
+                call,
+                settle: resolve,
+                suggestion,
+                original:
+                  target && suggestion
+                    ? target.text.slice(suggestion.range.start, suggestion.range.end)
+                    : "",
+                targetLabel:
+                  preview?.targetLabel ?? (editing ? surface?.label : undefined) ?? call.name,
+                ...(preview ? { preview: { before: preview.before, after: preview.after } } : {}),
+              });
+              if (signal.aborted) resolve(false);
+              approved = await promise;
+            } finally {
+              signal.removeEventListener("abort", abort);
+              onApproval(null);
+            }
+            signal.throwIfAborted();
+            if (!approved) {
+              report("已拒绝");
+            }
+            return approved;
+          },
+          execute: async () => {
+            executing = true;
+            report("执行中");
+            return editing && suggestion
+              ? await applySuggestion(host, suggestion, surface)
+              : parseOutput(
+                  await tool.call(JSON.stringify(call.input ?? {}), { signal, callId: call.id }),
+                );
+          },
+        },
+      );
       report("已完成");
       return { tool_call_id: call.id, tool_name: call.name, output };
     } catch (error) {
+      if (!executing) {
+        signal.throwIfAborted();
+        return { reject: error instanceof Error ? error.message : String(error) };
+      }
       report("失败");
       return {
         tool_call_id: call.id,

@@ -1,17 +1,18 @@
 import type { AppDefinition } from "@bcr/shell-contract";
 export const KNOWLEDGE_PATH = "/knowledge";
 export const hostDefinitions = {
-  content: {
-    id: "content",
-    title: "内容项目",
-    path: "/content",
-    description: "从资料、模型到图文发布，让每个判断有据可查",
+  works: {
+    id: "works",
+    title: "作品",
+    path: "/works",
+    description: "让 AI 从文件构建交互页面、图表与工具，预览并导出",
     section: "reading",
     installation: {
-      name: "BCR 内容项目",
-      shortName: "内容项目",
-      entry: "src/content/ContentApp.tsx",
+      name: "BCR 作品",
+      shortName: "作品",
+      entry: "src/works/WorksApp.tsx",
       boot: "workspace",
+      precacheDynamicImports: true,
     },
   },
   workspace: {
@@ -65,6 +66,7 @@ export const hostDefinitions = {
       shortName: "绘图",
       entry: "src/diagram/DiagramApp.tsx",
       boot: "independent",
+      precacheDynamicImports: true,
     },
   },
 } as const satisfies Record<string, AppDefinition>;

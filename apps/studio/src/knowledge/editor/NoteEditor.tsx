@@ -56,8 +56,6 @@ import { useNoteAttachments } from "../attachments/useNoteAttachments";
 import { NoteAttachmentOverlays } from "../attachments/NoteAttachmentOverlays";
 import type { LocalSaveStatus } from "../sync/syncPopover";
 import { themeStore } from "../../theme/browser";
-import { parseVisualUrl } from "../../content/links";
-import { ContentVisualImage, ContentNoteStatus } from "../../content/KnowledgeContent";
 
 export interface EditorHandle {
   flush(): Promise<void>;
@@ -658,7 +656,6 @@ export function NoteEditor({
         data-reading-line={settings.lineHeight}
         data-source={view === "source" ? "on" : undefined}
       >
-        <ContentNoteStatus noteId={note.id} body={draft.body} />
         <div className="knowledge-editor-head">
           <NoteRename
             controller={controller}
@@ -760,13 +757,9 @@ export function NoteEditor({
             {body ? (
               <Markdown
                 remarkPlugins={[remarkGfm, remarkKnowledgeLinks]}
-                urlTransform={(url) =>
-                  attachmentId(url) || parseVisualUrl(url) ? url : defaultUrlTransform(url)
-                }
+                urlTransform={(url) => (attachmentId(url) ? url : defaultUrlTransform(url))}
                 components={{
                   img: ({ alt, src, node: imageNode }) => {
-                    if (typeof src === "string" && parseVisualUrl(src))
-                      return <ContentVisualImage url={src} alt={alt} />;
                     const id = attachmentId(typeof src === "string" ? src : "");
                     const ref = refs.find(
                       (item) => item.id === id && item.from === imageNode?.position?.start.offset,

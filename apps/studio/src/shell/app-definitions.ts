@@ -14,7 +14,7 @@ export const APP_DEFINITIONS = [
   reader,
   hostDefinitions.knowledge,
   hostDefinitions.diagram,
-  hostDefinitions.content,
+  hostDefinitions.works,
   media,
   data,
   manga,

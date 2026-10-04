@@ -14,7 +14,7 @@ BCR 的应用可分别安装到桌面。同源入口共享本地数据，但拥�
 | Reader     | `/reader`    | `/pwa/reader/`      |
 | 个人知识库 | `/knowledge` | `/notes/knowledge/` |
 | 绘图       | `/diagram`   | `/pwa/diagram/`     |
-| 内容项目   | `/content`   | `/pwa/content/`     |
+| 作品       | `/works`     | `/pwa/works/`       |
 | Media      | `/media`     | `/pwa/media/`       |
 | Documents  | `/documents` | `/pwa/documents/`   |
 | Manga      | `/manga`     | `/pwa/manga/`       |
@@ -37,7 +37,7 @@ Reader 保留 `id: "/reader"` 与 `/manifest.webmanifest`；Notes 保留 `id: "/
 ## 离线与更新
 
 - 首次联网加载后，Service Worker 预缓存当前应用外壳。未下载的模型、实时行情与外部 AI 接口仍需要网络。
-- 内容项目同时预缓存图表与导出代码、WASM 和中文字体，支持首次离线创建、计算与导出图文。
+- 作品预缓存文件编辑、预览与导出所需模块，支持首次离线创建和运行本地作品。
 - `/pwa/sw.js?app=<key>` 共用实现，按应用分别注册与缓存；Notes 使用 `/notes/sw.js`。
 - `/assets/sw.js` 只管理资源作用域，为 Worker 的嵌套 JS/WASM 请求提供缓存，不接管页面导航或安装身份。
 - 新版本先后台下载，用户确认后保存当前内容并更新；保存失败保留原页面。详见[更新与恢复](APP-UPDATES.md)。

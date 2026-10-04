@@ -35,8 +35,8 @@ void test("core retains critical workflows and full retains every browser varian
     "research-recovery",
     "knowledge-attachments",
     "session-isolation",
-    "content",
-    "content-agent",
+    "agent-bridge",
+    "work-runner",
   ]) {
     assert.ok(scripts(core).includes(`scripts/verify-${critical}.mjs`), critical);
   }

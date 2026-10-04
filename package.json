@@ -9,10 +9,12 @@
   ],
   "type": "module",
   "scripts": {
+    "bridge": "bun apps/agent-bridge/src/cli.ts",
+    "test:browser:bridge": "node scripts/verify-agent-bridge.mjs",
     "build:wasm": "wasm-pack build crates/kernels --target web && bun run build:wasm:quant && bun run build:wasm:agent",
     "build:wasm:agent": "wasm-pack build crates/agent-runtime/crates/agent-wasm --target web --out-dir ../../../agent-wasm/pkg",
-    "check": "vp check && tsc -p tsconfig.json --noEmit",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check": "vp check && bun run typecheck",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/agent-bridge/tsconfig.json --noEmit && tsc -p apps/work-runner/tsconfig.json --noEmit",
     "test": "vp test run",
     "test:ci": "node --test scripts/tests/browser-suites.test.mjs",
     "test:browser": "node scripts/verify-ci.mjs",
@@ -25,7 +27,6 @@
     "test:browser:reader:menu": "node scripts/verify-reader-context-menu.mjs",
     "test:browser:reader:toolbar": "node scripts/verify-reader-toolbar.mjs",
     "test:browser:diagram": "node scripts/verify-diagram.mjs",
-    "test:browser:content": "node scripts/verify-content.mjs",
     "test:browser:navigation": "node scripts/verify-workspace-navigation.mjs",
     "test:pwa": "node scripts/verify-reader-pwa.mjs",
     "test:pwa:knowledge": "node scripts/verify-knowledge-pwa.mjs",
@@ -64,7 +65,11 @@
     "test:browser:jsg:storage": "node scripts/verify-jsg-storage.mjs",
     "test:browser:jsg:fixture": "node scripts/verify-jsg-clickhouse-fixture.mjs",
     "test:browser:jsg:clickhouse": "node scripts/verify-jsg-clickhouse.mjs",
-    "test:browser:content:agent": "node scripts/verify-content-agent.mjs"
+    "runner": "bun apps/work-runner/src/cli.ts",
+    "test:runner": "bun test apps/work-runner/tests",
+    "test:browser:runner": "bun scripts/verify-work-runner.mjs",
+    "build:runner": "bun apps/work-runner/build.ts",
+    "test:runner:release": "bun apps/work-runner/tests/release.mjs"
   },
   "dependencies": {
     "@sqlite.org/sqlite-wasm": "3.53.0-build1"

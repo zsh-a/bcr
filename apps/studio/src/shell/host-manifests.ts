@@ -1,19 +1,19 @@
 import { hostDefinitions, KNOWLEDGE_PATH } from "./host-definitions";
 export { KNOWLEDGE_PATH };
-import { LayoutGrid, NotebookPen, Sparkles, Shapes, Clapperboard } from "lucide-react";
+import { LayoutGrid, NotebookPen, Sparkles, Shapes, Code2 } from "lucide-react";
 import type { AppManifest, PanelManifest } from "@bcr/shell-contract";
 import { knowledgePlugin } from "../knowledge/plugin";
 import { diagramPlugin } from "../diagram/plugin";
-import { contentPlugin } from "../content/plugin";
+import { worksPlugin } from "../works/plugin";
 
-export const CONTENT_MANIFEST = {
-  ...hostDefinitions.content,
-  icon: Clapperboard,
-  plugins: [contentPlugin],
+export const WORKS_MANIFEST = {
+  ...hostDefinitions.works,
+  icon: Code2,
+  plugins: [worksPlugin],
   validateSearch: (search: Record<string, unknown>) => ({
-    project: typeof search.project === "string" ? search.project : undefined,
+    work: typeof search.work === "string" ? search.work : undefined,
   }),
-  load: async () => ({ App: (await import("../content/ContentApp")).ContentApp }),
+  load: async () => ({ App: (await import("../works/WorksApp")).WorksApp }),
 } as const satisfies AppManifest;
 
 export const STUDIO_MANIFEST = {

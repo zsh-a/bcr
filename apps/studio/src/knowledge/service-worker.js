@@ -76,10 +76,6 @@ async function shellUrls() {
   addManifestEntry(manifest, "src/knowledge/storage/backupArchive.ts", urls, visited);
   for (const key of Object.keys(manifest)) {
     if (key.endsWith("/bcr_kernels_bg.wasm")) addManifestEntry(manifest, key, urls, visited);
-    // Bound content charts must render on the first offline read, even if no
-    // project chart was previewed while online. PNG export stays in Content.
-    if (key.endsWith("/visual-renderer/src/index.ts"))
-      addManifestEntry(manifest, key, urls, visited);
   }
   return [...urls];
 }

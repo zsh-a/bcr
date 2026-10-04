@@ -1,0 +1,9 @@
+.scene-kicker {
+  font-size: 28px;
+  letter-spacing: 6px;
+  border-top: 3px solid #18392e;
+  padding-top: 32px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}

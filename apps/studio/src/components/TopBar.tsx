@@ -10,7 +10,7 @@ import {
   useRunningApps,
 } from "@bcr/react";
 import { useNavigate } from "@tanstack/react-router";
-import { Bot, ChevronUp, Command, House, RefreshCw, Search, Settings2 } from "lucide-react";
+import { Bot, Cable, ChevronUp, Command, House, RefreshCw, Search, Settings2 } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { MANIFESTS, type ActiveView } from "../shell/registry";
 import { useStudio } from "../useStudio";
@@ -22,6 +22,8 @@ export function TopBar(props: {
   onOpenPalette: () => void;
   onOpenSearch: () => void;
   onOpenAgent: () => void;
+  onOpenExternalAgent?: (() => void) | undefined;
+  externalAgentConnected?: boolean | undefined;
   onCollapse?: (() => void) | undefined;
 }) {
   const navigate = useNavigate();
@@ -127,6 +129,20 @@ export function TopBar(props: {
         }}
       >
         <div className="studio-options-heading">工作区选项</div>
+        {props.onOpenExternalAgent && (
+          <Button
+            variant="ghost"
+            className="studio-options-command"
+            onClick={() => {
+              options.current?.hidePopover();
+              props.onOpenExternalAgent?.();
+            }}
+          >
+            <Cable className="size-4" />
+            <span>外部 Agent</span>
+            {props.externalAgentConnected && <small>已连接</small>}
+          </Button>
+        )}
         <Button
           variant="ghost"
           className="studio-options-command"

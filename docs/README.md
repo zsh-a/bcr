@@ -12,7 +12,7 @@
 | 写作与知识关联   | [知识工作台](KNOWLEDGE-WORKBENCH.md) · [路径与文件夹](KNOWLEDGE-PATHS.md) · [图片与附件](KNOWLEDGE-ATTACHMENTS.md) |
 | 多设备笔记       | [GitHub 同步与恢复](KNOWLEDGE-SYNC.md) · [知识库存储](KNOWLEDGE-STORAGE.md)                                        |
 | 画布与图表       | [绘图工作区](DRAWING.md)                                                                                           |
-| 内容创作与经营   | [内容项目、经济模型与图文发布](CONTENT-STUDIO.md)                                                                  |
+| 页面与视频创作   | [作品工作区](WORKS.md) · [Runner 安装与运行](../apps/work-runner/README.md)                                        |
 | 摘录与资料迁移   | [引用与集合备份](RESEARCH-CITATIONS.md) · [Reader 资料包](RESEARCH-PACKAGE.md)                                     |
 | 安装、离线与更新 | [独立 PWA](INDEPENDENT-PWAS.md) · [Notes 入口](KNOWLEDGE-PWA.md) · [更新和恢复](APP-UPDATES.md)                    |
 
@@ -24,6 +24,7 @@
 | 生产构建与发布    | [部署](DEPLOYMENT.md)                                                 |
 | 分层与所有权      | [架构概览](ARCHITECTURE.md) · [Runtime 契约](RUNTIME-ARCHITECTURE.md) |
 | AI 会话与领域工具 | [Agent 接入](AGENT-UI.md) · [本地网关](local-agent-gateway.md)        |
+| 外部 AI 助手      | [MCP 入口选择](EXTERNAL-AGENTS.md) · [浏览器 Bridge](AGENT-BRIDGE.md) |
 | 界面与主题        | [工作区交互](WORKSPACE-UI.md) · [外观主题](THEMING.md)                |
 | 性能测量          | [搜索基准](SEARCH-BENCHMARK.md)                                       |
 
@@ -39,6 +40,7 @@
 
 ## 包级文档
 
+- [Works Runner](../apps/work-runner/README.md)
 - [场景渲染器](../packages/scene-renderer/README.md)
 - [Quant Rust 引擎](../crates/quant/README.md)、[基准](../crates/quant/BENCHMARKS.md)与[对账](../crates/quant/RECONCILIATION.md)
 - [Agent Runtime](../crates/agent-runtime/README.md)（独立 Git 子模块）

@@ -20,8 +20,6 @@ const APP_SHELL = [
 ];
 
 function isRequiredAppAsset(url) {
-  // Content exports embed one complete font; it is a dependency, not a UI font shard.
-  if (app.key === "content" && /\/IBMPlexSansSC-Regular-[^/]+\.woff$/u.test(url)) return true;
   // Reader includes PDF resources for first-time offline imports. Other apps
   // defer PDF and local-model resources; Chinese fonts remain cached on demand.
   return (
@@ -85,10 +83,10 @@ async function shellUrls() {
   addManifestEntry(manifest, `pwa/${app.key}/index.html`, urls, visited);
   if (app.key !== "reader") addManifestEntry(manifest, "src/studio-main.tsx", urls, visited);
   addManifestEntry(manifest, app.entry, urls, visited);
+  if (app.precacheDynamicImports) addManifestEntry(manifest, app.entry, urls, new Set(), true);
   if (app.key === "reader") {
     // Import, indexing, metadata and backup are needed for the first offline import,
     // even when the user only visited the bundled sample book while online.
-    addManifestEntry(manifest, app.entry, urls, new Set(), true);
     addManifestEntry(manifest, "reader-offline-workers", urls, visited);
     // A PDF shared while offline may be the first PDF this installation opens.
     for (const key of Object.keys(manifest)) {
@@ -97,15 +95,8 @@ async function shellUrls() {
     }
   }
   if (app.key === "diagram") {
-    // Native editor chunks, Mermaid conversion and layout Worker must work on a cold offline start.
-    addManifestEntry(manifest, app.entry, urls, new Set(), true);
     // Default native text and Mermaid text; other selectable font families cache on demand.
     for (const font of globalThis.__BCR_DIAGRAM_FONT_ASSETS__) urls.add(font);
-  }
-  if (app.key === "content") {
-    // The first offline creation must also render/export charts, including resvg
-    // WASM and the captured Chinese font, even if only the welcome screen was opened.
-    addManifestEntry(manifest, app.entry, urls, new Set(), true);
   }
   // Vite emits workers as assets, so their nested wasm imports are not edges
   // in the page's static module graph. The shared compute kernel is boot-critical.

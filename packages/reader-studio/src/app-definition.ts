@@ -13,5 +13,6 @@ export const definition = {
     shortName: "Reader",
     entry: "src/reader-main.tsx",
     boot: "reader",
+    precacheDynamicImports: true,
   },
 } as const satisfies AppDefinition;

@@ -27,6 +27,7 @@ import { PLUGINS } from "./registry";
 import { workspaceSearchPlugin } from "../assistant/workspace-search-plugin";
 import { PluginHost } from "./PluginHost";
 import { AssistantWindow, type AssistantVisibility } from "../assistant/AssistantWindow";
+import { ExternalAgentBridge } from "../assistant/ExternalAgentBridge";
 import { createAgentHost } from "@bcr/agent";
 import { createAgentStorage, createBrowserCredentials, browserSettingsStorage } from "@bcr/react";
 import { studio } from "../store";
@@ -121,6 +122,8 @@ function ShellContent() {
   });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [externalOpen, setExternalOpen] = useState(false);
+  const [externalConnected, setExternalConnected] = useState(false);
   const [assistantVisibility, setAssistantVisibility] = useState<AssistantVisibility>("closed");
   useLayoutEffect(() => {
     syncInstallMetadata(currentPwa ?? (active === "home" ? undefined : pwaForApp(active)));
@@ -215,6 +218,8 @@ function ShellContent() {
           onOpenPalette={() => setPaletteOpen(true)}
           onOpenSearch={() => setSearchOpen(true)}
           onOpenAgent={() => openPanel("assistant")}
+          onOpenExternalAgent={independent ? undefined : () => setExternalOpen(true)}
+          externalAgentConnected={externalConnected}
         >
           <div className={active === "home" ? "h-full min-h-0" : "hidden"}>
             <Home active={active === "home"} recent={recent} />
@@ -238,6 +243,13 @@ function ShellContent() {
             </div>
           ))}
         </WorkspaceNavigation>
+        {!independent && (
+          <ExternalAgentBridge
+            open={externalOpen}
+            onClose={() => setExternalOpen(false)}
+            onConnected={setExternalConnected}
+          />
+        )}
         <AssistantWindow
           visibility={assistantVisibility}
           onVisibilityChange={setAssistantVisibility}

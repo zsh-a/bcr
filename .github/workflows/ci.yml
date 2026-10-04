@@ -70,6 +70,7 @@ jobs:
       - name: Run TypeScript tests
         run: |
           bun run test
+          bun run test:runner
           bun run test:ci
 
       - name: Run Rust tests
@@ -206,6 +207,24 @@ jobs:
 
       - name: Run browser verification
         run: node scripts/verify-ci.mjs --suite="$BCR_BROWSER_SUITE" --group="${{ matrix.group }}"
+
+      - name: Verify standalone rendering dependencies and portable work archives
+        if: matrix.group == 'workspace' && github.event_name == 'workflow_dispatch' && inputs.full
+        run: bun apps/work-runner/tests/dependencies.mjs
+
+      - name: Verify independently installed Runner and direct MCP
+        if: matrix.group == 'workspace'
+        run: |
+          bun run build:runner
+          bun run test:runner:release
+
+      - name: Verify portable Runner and Docker rendering
+        if: matrix.group == 'workspace' && github.event_name == 'workflow_dispatch' && inputs.full
+        run: |
+          bun run build:runner --portable
+          bun run test:runner:release --portable
+          docker build -t bcr-work-runner:local dist/work-runner/package
+          bun apps/work-runner/tests/docker.mjs
 
       - name: Upload browser diagnostics
         if: failure()

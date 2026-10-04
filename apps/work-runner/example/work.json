@@ -1,0 +1,44 @@
+{
+  "format": "bcr-project-1",
+  "id": "gym-card",
+  "title": "年卡，去多少次才划算？",
+  "targets": [
+    { "id": "page", "runtime": "html", "entry": "index.html" },
+    {
+      "id": "vertical",
+      "runtime": "remotion",
+      "entry": "Scene.tsx",
+      "width": 1080,
+      "height": 1920,
+      "fps": 30,
+      "durationInFrames": 1800,
+      "propsFile": "data.json",
+      "parameters": [
+        {
+          "key": "annualPrice",
+          "label": "年卡价格（元）",
+          "type": "number",
+          "min": 1,
+          "max": 100000,
+          "step": 1
+        },
+        {
+          "key": "visitPrice",
+          "label": "单次价格（元）",
+          "type": "number",
+          "min": 1,
+          "max": 10000,
+          "step": 1
+        },
+        {
+          "key": "visits",
+          "label": "每年到访次数",
+          "type": "number",
+          "min": 1,
+          "max": 365,
+          "step": 1
+        }
+      ]
+    }
+  ]
+}

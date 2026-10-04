@@ -85,6 +85,8 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
+    // Preview is lazy; discover its parsers before a connected Agent first runs a work.
+    include: ["parse5", "es-module-lexer/minimal/js"],
     // emscripten / onnxruntime 类模块不做 esbuild 预打包；wasm 路径由 locateFile 注入
     exclude: ["@sqlite.org/sqlite-wasm", "@huggingface/transformers"],
   },

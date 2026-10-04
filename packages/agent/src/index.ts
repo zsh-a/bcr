@@ -76,6 +76,7 @@ export {
 } from "./loop";
 
 export { requiresApproval, toolSpecOf, type ToolRisk } from "./tools";
+export { executeAgentTool } from "./execution";
 
 export { createCapabilityRegistry, type AgentCapability } from "./capabilities";
 export { createAgentHost, type AgentHost } from "./host";

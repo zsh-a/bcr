@@ -24,14 +24,20 @@ import { defineConfig } from "vite-plus";
  */
 const boundaries: { dir: string; allow: string[]; message: string }[] = [
   {
-    dir: "packages/economics-core",
+    dir: "packages/work-core",
     allow: [],
-    message: "Economic models are pure domain logic, independent of runtime and UI.",
+    message: "Work contracts have no application or renderer dependencies.",
   },
   {
-    dir: "packages/visual-renderer",
-    allow: ["@bcr/economics-core", "@bcr/economics-core/*"],
-    message: "Visual rendering consumes economic results, never application stores.",
+    dir: "apps/work-runner",
+    allow: ["@bcr/work-core"],
+    message: "Local execution depends on shared work contracts, never on browser stores.",
+  },
+  {
+    dir: "apps/agent-bridge",
+    allow: ["@bcr/agent/bridge"],
+    message:
+      "The external bridge transports shared capabilities; domain stores stay in the browser.",
   },
   {
     dir: "packages/market-data",
@@ -212,5 +218,6 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["{packages,apps}/*/tests/**/*.test.ts"],
+    exclude: ["apps/work-runner/**"],
   },
 });

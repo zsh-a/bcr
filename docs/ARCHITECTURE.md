@@ -2,7 +2,7 @@
 
 [文档](README.md) → 架构
 
-BCR 由 Studio 宿主、领域应用和浏览器计算 Runtime 组成。本文说明当前分层；具体类型、提交顺序与关闭契约见 [Runtime 架构](RUNTIME-ARCHITECTURE.md)。
+BCR 由 Studio 宿主、领域应用、浏览器计算 Runtime 与独立作品 Runner 组成。本文说明当前分层；具体类型、提交顺序与关闭契约见 [Runtime 架构](RUNTIME-ARCHITECTURE.md)。
 
 ## 分层
 
@@ -17,7 +17,7 @@ BCR 由 Studio 宿主、领域应用和浏览器计算 Runtime 组成。本文�
 
 TypeScript 定义契约与界面，Effect 管理任务生命周期，Rust/WASM 提供计算内核。GPU 模型由领域执行器接入，并声明资源需求。`runtime` 表示计算后端，不等同于主线程或 Worker。
 
-## 计算流程
+## 浏览器计算流程
 
 输入先保存为本地产物引用，任务通过 `(runtime, operation)` 找到执行器。Scheduler 申请线程、内存或 GPU 预算后执行任务，支持排队、进度、取消、超时和重试。
 
@@ -33,9 +33,13 @@ TypeScript 定义契约与界面，Effect 管理任务生命周期，Rust/WASM �
 - **知识库与资料集合**：由工作区服务持有，领域插件只注册搜索、工具和视图。知识库采用[分记录存储](KNOWLEDGE-STORAGE.md)。
 - **Reader**：使用专用书库、延迟解析和索引流程，解析 Worker 不经过计算 Scheduler；恢复与位置契约见 [Reader](READER-ARCHITECTURE.md)。
 - **绘图**：原生 Excalidraw scene 保存到独立 IndexedDB，文档与索引原子提交，并用 revision 拒绝过期写入。
-- **内容项目**：专用 IndexedDB 持有项目、证据和不可变发布快照，原始素材落入独立的持久化文件前缀；文稿仍归知识库所有。纯计算与图表渲染各自独立成包，见[内容创作架构](CONTENT-STUDIO.md#实现边界)。
+- **通用作品**：浏览器作品由 `WorkspaceFiles` 和 `WorkStore` 保存文件与版本；本地代码工程由 Runner 读取文件目录、保存快照并生成产物。两者共用[作品工作区](WORKS.md)。
 
 计算项目和 Reader 使用命名空间级 Web Locks。不同 PWA 可以拥有独立入口，但同源数据与项目写入锁仍共享；这不构成多窗口协同编辑。各独立入口是否创建 Studio 会话，见 [Runtime 所有权](RUNTIME-ARCHITECTURE.md#所有权)。
+
+## 本地作品执行
+
+`packages/work-core` 定义工程目标、参数、任务、批注的纯契约。`apps/studio/src/works/service.ts` 汇合浏览器与本地 provider；浏览器 WorkStore 持有文件版本，本地目录持有代码工程。本地 `apps/work-runner` 限定授权根目录，保存内容快照与任务，按 HTML/Remotion 目标执行。控制端口与预览端口分离，凭据不传给作品。构建/编码依赖只属于 Runner，Runner 的 service 与 schema 被 HTTP、CLI、直接 STDIO MCP 共用；浏览器 Bridge 保留 workspace.works。独立发布包编译 work-core 并记录构建与依赖身份，子进程只依赖安装包资源；Docker 使用同一发布目录。详细边界与命令见 [Works Runner](../apps/work-runner/README.md)。
 
 ## 应用与 Agent 接入
 
@@ -45,6 +49,8 @@ TypeScript 定义契约与界面，Effect 管理任务生命周期，Rust/WASM �
 
 AgentHost 负责会话、能力、凭据和审批；UI 订阅状态，不拥有执行生命周期。写入工具先生成可审阅变更，再验证版本并等待真实保存回执。恢复会话不自动重放任务或待审批操作。详见 [Agent 接入](AGENT-UI.md)。
 
+外部助手可通过 Runner 的 STDIO MCP 直接操作代码工程；浏览器中的资料和笔记通过可选的本机 `apps/agent-bridge` MCP 服务连接已打开的浏览器工作区。浏览器按用户授权暴露 shared capabilities，内置聊天和外部入口共用 `executeAgentTool` 与领域工具；Bridge 不持有业务数据库。文件走独立的鉴权 HTTP 传输，权限、断线和客户端配置见[外部 Agent](EXTERNAL-AGENTS.md)。
+
 ## 界面与更新
 
 应用复用共享工具栏、命令菜单、对话框、资源搜索和主题令牌。阅读纸张、画布内容与行情数据色保留领域语义，界面控件遵循[交互约定](WORKSPACE-UI.md)。
@@ -53,7 +59,7 @@ Service Worker 按入口缓存外壳与资源；更新前由全局协调器检�
 
 ## 当前边界
 
-- 本地内容按浏览器 origin 隔离，跨设备迁移依赖应用备份或显式同步。
+- 浏览器内容按 origin 隔离，跨设备迁移依赖应用备份或显式同步。
 - 已实现的宿主插件是应用组合与能力注册机制，不是通用第三方插件沙箱或 WIT 插件 ABI。
 - 长任务恢复、数据清理和多窗口写入依赖各领域的明确契约，不能仅由 UI 卸载或缓存命中推断。
 - 模型、实时行情和同步服务有各自的网络及数据来源要求，离线安装不保证所有功能离线运行。

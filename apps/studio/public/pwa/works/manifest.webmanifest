@@ -1,0 +1,26 @@
+{
+  "id": "/pwa/works/",
+  "name": "BCR 作品",
+  "short_name": "作品",
+  "lang": "zh-CN",
+  "start_url": "/pwa/works/",
+  "scope": "/pwa/works/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#151619",
+  "theme_color": "#147a73",
+  "icons": [
+    {
+      "src": "/icons/works-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/works-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
