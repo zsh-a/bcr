@@ -59,6 +59,7 @@ import "./navigation/reader-navigation.css";
 import "./library/reader-library.css";
 import "./workbench/mobile.css";
 import "./navigation/mobile-reading-bar.css";
+import "./reading/pdf-reading.css";
 import { connectReaderBrowserHistory } from "./navigation/browserHistory";
 import { ReaderShortcutHelp } from "./workbench/ReaderShortcutHelp";
 

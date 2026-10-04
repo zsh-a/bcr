@@ -12,6 +12,7 @@ async function txtTask<T>(
   ranges?: readonly TxtRange[],
   bookId = "",
   query = "",
+  limit = 81,
 ): Promise<T> {
   signal?.throwIfAborted();
   if (typeof Worker === "undefined") return fallback();
@@ -42,7 +43,7 @@ async function txtTask<T>(
       if (event.data.error) reject(new Error(event.data.error));
       else resolve(event.data.value);
     };
-    worker.postMessage({ file, ranges, bookId, query });
+    worker.postMessage({ file, ranges, bookId, query, limit });
   });
 }
 
@@ -74,14 +75,15 @@ export function attachTxtSections(
       signal.throwIfAborted();
       return { text, html: `<p>${escapeHtml(text).replace(/\n/gu, "<br />")}</p>` };
     },
-    search: (bookId, query, signal) =>
+    search: (bookId, query, signal, limit = 81) =>
       txtTask(
         file,
-        () => searchTxt(file, ranges, bookId, query, signal),
+        () => searchTxt(file, ranges, bookId, query, signal, limit),
         signal,
         ranges,
         bookId,
         query,
+        limit,
       ),
   });
 }

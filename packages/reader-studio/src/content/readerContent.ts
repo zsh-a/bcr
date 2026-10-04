@@ -24,7 +24,12 @@ export interface ContentSearchHit extends SearchHit {
 }
 export interface ReaderContentProvider {
   read(index: number, signal: AbortSignal, purpose: "display" | "text"): Promise<SectionContent>;
-  search?(bookId: string, query: string, signal?: AbortSignal): Promise<ContentSearchHit[]>;
+  search?(
+    bookId: string,
+    query: string,
+    signal?: AbortSignal,
+    limit?: number,
+  ): Promise<ContentSearchHit[]>;
   dispose?(): void;
   readonly budget?: { readonly bytes: number; readonly entries: number };
 }
@@ -214,18 +219,19 @@ export async function searchReaderContent(
   book: ReaderBook,
   query: string,
   signal?: AbortSignal,
+  limit = 81,
 ): Promise<ContentSearchHit[]> {
   signal?.throwIfAborted();
   if (!normalizeSearchQuery(query)) return [];
   const binding = book.sections[0] && bindings.get(book.sections[0]);
   binding?.session.assertOpen();
   if (binding?.session.provider.search)
-    return binding.session.provider.search(book.id, query, signal);
+    return binding.session.provider.search(book.id, query, signal, limit);
   const hits: ContentSearchHit[] = [];
   for (const section of book.sections) {
     const content = await readSectionContent(section, signal);
     try {
-      const ranges = searchTextRanges(content.text, query, 81 - hits.length);
+      const ranges = searchTextRanges(content.text, query, limit - hits.length);
       const version = ranges.length ? textVersion(content.text) : "";
       for (const range of ranges) {
         const excerptStart = Math.max(0, range.start - 80);
@@ -245,7 +251,7 @@ export async function searchReaderContent(
     } finally {
       content.dispose?.();
     }
-    if (hits.length >= 81) break;
+    if (hits.length >= limit) break;
   }
   signal?.throwIfAborted();
   return hits;

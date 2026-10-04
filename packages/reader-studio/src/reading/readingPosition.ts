@@ -174,7 +174,12 @@ export function readerSelectionLocator(book: ReaderBook): ReaderLocator | undefi
   return createTextLocator(section, match.start, match.start + match.length);
 }
 
-function readerProbeTopOffset(container: HTMLElement): number {
+export function readerProbeTopOffset(container: HTMLElement): number {
+  const tools = container.querySelector<HTMLElement>(".reader-pdf-tools");
+  if (tools)
+    return (
+      Math.max(0, Number.parseFloat(getComputedStyle(tools).top) || 0) + tools.offsetHeight + 50
+    );
   const bounds = container.getBoundingClientRect();
   const chrome = container
     .closest(".reader-studio")
@@ -470,6 +475,31 @@ export function readerLocatorScrollPosition(
     `[data-reader-section="${CSS.escape(section.id)}"]`,
   );
   if (target === null) return undefined;
+  const canvas = target.querySelector<HTMLElement>(".reader-pdf-canvas-shell");
+  if (canvas && locator.pageAnchor) {
+    const rect = canvas.getBoundingClientRect();
+    const bounds = container.getBoundingClientRect();
+    return {
+      top: clamp(
+        container.scrollTop +
+          rect.top -
+          bounds.top +
+          rect.height * locator.pageAnchor.y -
+          readerProbeTopOffset(container),
+        0,
+        Math.max(0, container.scrollHeight - container.clientHeight),
+      ),
+      left: clamp(
+        container.scrollLeft +
+          rect.left -
+          bounds.left +
+          rect.width * locator.pageAnchor.x -
+          bounds.width * 0.5,
+        0,
+        Math.max(0, container.scrollWidth - container.clientWidth),
+      ),
+    };
+  }
   const imageAnchor = locator.imageAnchor;
   const image = imageAnchor === undefined ? undefined : readerImages(target)[imageAnchor.index];
   if (image !== undefined && imageAnchor !== undefined) {
@@ -671,6 +701,19 @@ export function readerLocatorAtScroll(
   const selectedRect = selectedElement?.getBoundingClientRect();
   const section = book.sections[selectedIndex];
   if (section === undefined || selectedRect === undefined) return undefined;
+  const canvas = selectedElement?.querySelector<HTMLElement>(".reader-pdf-canvas-shell");
+  if (section.kind === "pdf-page" && canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const progression = clamp((probeTop - rect.top) / Math.max(1, rect.height), 0, 1);
+    const locator = {
+      ...createLocator(section, progression),
+      pageAnchor: {
+        x: clamp((probeX - rect.left) / Math.max(1, rect.width), 0, 1),
+        y: progression,
+      },
+    };
+    return { locator, percentage: percentageForLocator(book, locator) };
+  }
   const progression = clamp((probeTop - selectedRect.top) / Math.max(1, selectedRect.height), 0, 1);
   return {
     locator: createLocator(section, progression),

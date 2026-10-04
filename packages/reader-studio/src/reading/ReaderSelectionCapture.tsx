@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { BookmarkPlus, X } from "lucide-react";
+import { BookmarkPlus, MessageSquarePlus, X } from "lucide-react";
 import { useResearchCapture, useRuntimeActivity, type ResearchCapture } from "@bcr/react";
-import type { ReaderBook } from "@bcr/reader-core";
+import type { ReaderBook, ReaderLocator } from "@bcr/reader-core";
 import type { ReaderRuntime } from "../runtime";
 import { loadReaderSelection } from "./readingPosition";
 import { captureReaderSelection } from "../navigation/readerCapture";
@@ -14,12 +14,14 @@ const PENDING_CAPTURE_KEY = "bcr-reader-pending-capture";
 
 export function ReaderSelectionCapture(props: {
   workspaceCollections: boolean;
+  onAddAnnotation: (locator: ReaderLocator) => void;
   book: ReaderBook;
   runtime: ReaderRuntime;
   onNotice: (message: string) => void;
 }) {
   const service = useResearchCapture();
   const active = useRuntimeActivity();
+  const [noteLocator, setNoteLocator] = useState<ReaderLocator | null>(null);
   const [selection, setSelection] = useState<ResearchCapture | null>(null);
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [capture, setCapture] = useState<ResearchCapture | null>(null);
@@ -31,17 +33,23 @@ export function ReaderSelectionCapture(props: {
   const [error, setError] = useState<string | null>(null);
   const newId = useRef(crypto.randomUUID());
   useEffect(() => {
-    if (!active || capture || (!service && !props.workspaceCollections)) return;
+    if (!active || capture) return;
     let sequence = 0;
     const update = () => {
       const request = ++sequence;
       setSelection(null);
+      setNoteLocator(null);
       setSelectionError(null);
-      void loadReaderSelection(props.book, (locator) =>
-        captureReaderSelection(props.book, locator),
-      ).then((result) => {
+      void loadReaderSelection(props.book, (locator) => ({
+        capture:
+          service || props.workspaceCollections
+            ? captureReaderSelection(props.book, locator)
+            : null,
+        locator,
+      })).then((result) => {
         if (request !== sequence) return;
-        setSelection(result.value ?? null);
+        setSelection(result.value?.capture ?? null);
+        setNoteLocator(result.value?.locator ?? null);
         setSelectionError(result.error ?? null);
       });
     };
@@ -53,6 +61,7 @@ export function ReaderSelectionCapture(props: {
   }, [service, active, capture, props.book, props.workspaceCollections]);
   useEffect(() => {
     setSelection(null);
+    setNoteLocator(null);
     setCapture(null);
     setSelectionError(null);
   }, [props.book.id, active]);
@@ -98,7 +107,7 @@ export function ReaderSelectionCapture(props: {
       }
     }
   }, [service, active, props.book.id]);
-  if (!active || (!service && !props.workspaceCollections)) return null;
+  if (!active) return null;
   const close = () => {
     if (!saving.current) {
       setCapture(null);
@@ -138,39 +147,61 @@ export function ReaderSelectionCapture(props: {
           {selectionError}
         </span>
       )}
-      {selection && !capture && (
-        <button
-          type="button"
-          className="reader-selection-capture ui-btn ui-btn-lg ui-btn-primary"
-          onPointerDown={(event) => event.preventDefault()}
-          onClick={() => {
-            if (!service) {
-              if (saving.current) return;
-              saving.current = true;
-              void persistReaderSnapshot(props.runtime, { durableLibrary: true, strict: true })
-                .then(() => {
-                  sessionStorage.setItem(PENDING_CAPTURE_KEY, JSON.stringify(selection));
-                  window.location.assign(
-                    selection.document.route ?? `/reader?book=${encodeURIComponent(props.book.id)}`,
-                  );
-                })
-                .catch((reason: unknown) => {
-                  saving.current = false;
-                  props.onNotice(`打开资料集合失败：${String(reason)}`);
-                });
-              return;
-            }
-            setCapture(selection);
-            setCollectionId(service.collections[0]?.id ?? "");
-            setNote("");
-            setName("");
-            setError(null);
-            newId.current = crypto.randomUUID();
-          }}
+      {noteLocator && !capture && (
+        <div
+          className="reader-selection-capture reader-selection-actions"
+          role="group"
+          aria-label="选段操作"
         >
-          <BookmarkPlus className="reader-icon" />
-          加入资料集合
-        </button>
+          <button
+            type="button"
+            className="ui-btn ui-btn-lg ui-btn-default"
+            onPointerDown={(event) => event.preventDefault()}
+            onClick={() => {
+              props.onAddAnnotation(noteLocator);
+              setNoteLocator(null);
+              setSelection(null);
+            }}
+          >
+            <MessageSquarePlus className="reader-icon" />
+            写笔记
+          </button>
+          {selection && (
+            <button
+              type="button"
+              className="ui-btn ui-btn-lg ui-btn-primary"
+              onPointerDown={(event) => event.preventDefault()}
+              onClick={() => {
+                if (!service) {
+                  if (saving.current) return;
+                  saving.current = true;
+                  void persistReaderSnapshot(props.runtime, { durableLibrary: true, strict: true })
+                    .then(() => {
+                      sessionStorage.setItem(PENDING_CAPTURE_KEY, JSON.stringify(selection));
+                      window.location.assign(
+                        selection.document.route ??
+                          `/reader?book=${encodeURIComponent(props.book.id)}`,
+                      );
+                    })
+                    .catch((reason: unknown) => {
+                      saving.current = false;
+                      props.onNotice(`打开资料集合失败：${String(reason)}`);
+                    });
+                  return;
+                }
+                setCapture(selection);
+                setCollectionId(service.collections[0]?.id ?? "");
+                setNote("");
+                setName("");
+                setError(null);
+                newId.current = crypto.randomUUID();
+              }}
+            >
+              <BookmarkPlus className="reader-icon" />
+              加入资料集合
+            </button>
+          )}
+        </div>
       )}
       <ReaderSheet
         open={Boolean(capture && service)}

@@ -1,0 +1,198 @@
+.reader-pdf-color-paper .reader-pdf-canvas {
+  filter: sepia(0.3) brightness(0.96);
+}
+.reader-pdf-color-night .reader-pdf-canvas {
+  filter: invert(0.9) hue-rotate(180deg);
+}
+.reader-pdf-color-night .reader-pdf-canvas-shell {
+  background: #1a1a1a;
+}
+.reader-pdf-links {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.reader-pdf-links a {
+  position: absolute;
+  pointer-events: auto;
+  border-radius: 2px;
+}
+.reader-pdf-links a:is(:hover, :focus-visible) {
+  background: color-mix(in srgb, var(--read-accent) 15%, transparent);
+  outline: 2px solid var(--read-accent);
+  outline-offset: 2px;
+}
+.reader-pdf-link-error {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 8px 12px;
+  background: var(--read-raised);
+  color: var(--read-text);
+  font-size: 14px;
+}
+.reader-pdf-browser {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+.reader-pdf-browser form {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  padding: 16px 20px 8px;
+}
+.reader-pdf-browser label {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--read-muted);
+}
+.reader-pdf-browser input {
+  min-width: 0;
+  width: 100%;
+  height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--read-border);
+  border-radius: 8px;
+  background: var(--read-raised);
+  color: var(--read-text);
+  font: inherit;
+  font-size: 16px;
+}
+.reader-pdf-browser > p {
+  margin: 8px 20px;
+  font-size: 13px;
+  color: var(--color-danger);
+}
+.reader-pdf-browser-range {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px 8px;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--read-muted);
+}
+.reader-pdf-browser-range button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--read-text);
+}
+.reader-pdf-browser-range button:disabled {
+  opacity: 0.35;
+}
+.reader-pdf-thumbnail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 4px 20px 24px;
+  align-content: start;
+}
+.reader-pdf-thumbnail-grid button {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  color: var(--read-text);
+  background: var(--read-raised);
+  border: 1px solid var(--read-border);
+  border-radius: 10px;
+}
+.reader-pdf-thumbnail-grid button[aria-current="page"] {
+  border-color: var(--read-accent);
+  box-shadow: 0 0 0 1px var(--read-accent);
+  background: var(--read-accent-soft);
+}
+.reader-pdf-thumbnail-grid :is(strong, small) {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reader-pdf-thumbnail-grid strong {
+  font-size: 12px;
+}
+.reader-pdf-thumbnail-grid small {
+  font-size: 11px;
+  color: var(--read-muted);
+}
+.reader-pdf-thumbnail-paper {
+  width: 100%;
+  height: 150px;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.reader-pdf-thumbnail-paper canvas {
+  max-width: 100%;
+  object-fit: contain;
+}
+.reader-selection-actions {
+  padding: 4px;
+  border: 1px solid var(--read-border);
+  gap: 4px;
+}
+.reader-selection-actions button {
+  min-height: 44px;
+}
+.reader-pdf-page-meta {
+  height: 38px;
+  min-height: 38px;
+  margin: 0;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+.reader-pdf-page-meta > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reader-pdf-page-meta > strong {
+  flex-shrink: 0;
+}
+@media (max-width: 860px) {
+  .reader-pdf-page-meta > strong {
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.reader-pdf-canvas-shell.has-preview .reader-pdf-canvas {
+  opacity: 1;
+}
+.reader-search-more {
+  margin: 0 16px 8px;
+  flex-shrink: 0;
+}
+.reader-pdf-pages {
+  grid-template-columns: minmax(0, 1fr);
+}
+.reader-pdf-page {
+  min-width: 0;
+}
+.reader-pdf-canvas-shell.has-preview .reader-pdf-canvas {
+  visibility: visible;
+}
+.reader-pdf-canvas-shell > .reader-pdf-links {
+  padding: 0;
+}
+
+.reader-pdf-thumbnail-paper .reader-progress-pdf-thumbnail {
+  max-width: 100%;
+  max-height: 150px;
+}

@@ -38,7 +38,7 @@ function isPdfPageRef(value: unknown): value is PdfPageRef {
  * Outline data is user-provided PDF content, so malformed destinations are
  * treated as unavailable targets instead of failing the whole import.
  */
-async function resolvePdfOutlineDestination(
+export async function resolvePdfOutlineDestination(
   document: PDFDocumentProxy,
   destination: PdfOutlineDestination,
 ): Promise<number | undefined> {
@@ -56,6 +56,12 @@ async function resolvePdfOutlineDestination(
         ? await document.getDestination(destination)
         : (destination ?? null);
     const pageRef = explicit?.[0];
+    if (
+      Number.isInteger(pageRef) &&
+      (pageRef as number) >= 0 &&
+      (pageRef as number) < document.numPages
+    )
+      return pageRef as number;
     if (!isPdfPageRef(pageRef)) return undefined;
     const pageIndex = await document.getPageIndex(pageRef);
     return Number.isInteger(pageIndex) && pageIndex >= 0 && pageIndex < document.numPages
@@ -168,6 +174,7 @@ export async function openPdf(
     }
     const deferred =
       options.retainDocument || document.numPages > 32 || input.file.size >= 256 * 1024;
+    const labels = await document.getPageLabels().catch(() => null);
     const sections: ReaderSection[] = [];
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       if (input.signal?.aborted) throw new DOMException("Aborted", "AbortError");
@@ -181,7 +188,7 @@ export async function openPdf(
       sections.push({
         id: `page-${pageNumber}`,
         order: pageNumber - 1,
-        label: `Page ${String(pageNumber).padStart(3, "0")}`,
+        label: labels?.[pageNumber - 1]?.trim() || `第 ${pageNumber} 页`,
         kind: "pdf-page",
         text: deferred ? "" : text || `PDF page ${pageNumber}`,
         ...(deferred ? { contentInfo: { textLength: 0 } } : {}),

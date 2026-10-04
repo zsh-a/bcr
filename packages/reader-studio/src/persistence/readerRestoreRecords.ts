@@ -92,6 +92,8 @@ function recordSignature(item: ReaderBookmark | ReaderAnnotation): string {
     locator.textAnchor?.suffix,
     locator.textAnchor?.start,
     locator.textAnchor?.end,
+    locator.pageAnchor?.x,
+    locator.pageAnchor?.y,
     locator.imageAnchor?.index,
     locator.imageAnchor?.x,
     locator.imageAnchor?.y,

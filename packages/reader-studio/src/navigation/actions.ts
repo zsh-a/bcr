@@ -99,20 +99,29 @@ export function createReaderNavigationActions(port: ReaderStatePort) {
     const bothTextAnchored = currentAnchorStart !== undefined && nextAnchorStart !== undefined;
     const currentImage = currentProgress?.locator.imageAnchor;
     const nextImage = nextProgress.locator.imageAnchor;
+    const currentPage = currentProgress?.locator.pageAnchor;
+    const nextPage = nextProgress.locator.pageAnchor;
     const sameLocalPosition =
-      currentImage !== undefined || nextImage !== undefined
-        ? currentImage !== undefined &&
-          nextImage !== undefined &&
-          currentImage.index === nextImage.index &&
-          Math.abs(currentImage.x - nextImage.x) < 0.00001 &&
-          Math.abs(currentImage.y - nextImage.y) < 0.00001
-        : bothTextAnchored
-          ? Math.abs(currentAnchorStart - nextAnchorStart) < 16
-          : currentProgress !== undefined &&
-            currentProgress.locator.textAnchor === undefined &&
-            nextProgress.locator.textAnchor === undefined &&
-            Math.abs(currentProgress.locator.progression - nextProgress.locator.progression) <
-              0.001;
+      currentPage || nextPage
+        ? Boolean(
+            currentPage &&
+            nextPage &&
+            Math.abs(currentPage.x - nextPage.x) < 0.00001 &&
+            Math.abs(currentPage.y - nextPage.y) < 0.00001,
+          )
+        : currentImage !== undefined || nextImage !== undefined
+          ? currentImage !== undefined &&
+            nextImage !== undefined &&
+            currentImage.index === nextImage.index &&
+            Math.abs(currentImage.x - nextImage.x) < 0.00001 &&
+            Math.abs(currentImage.y - nextImage.y) < 0.00001
+          : bothTextAnchored
+            ? Math.abs(currentAnchorStart - nextAnchorStart) < 16
+            : currentProgress !== undefined &&
+              currentProgress.locator.textAnchor === undefined &&
+              nextProgress.locator.textAnchor === undefined &&
+              Math.abs(currentProgress.locator.progression - nextProgress.locator.progression) <
+                0.001;
     if (
       currentProgress !== undefined &&
       currentProgress.locator.sectionId === nextProgress.locator.sectionId &&

@@ -95,9 +95,7 @@ try {
       .map((book) => state.searchHits.filter((hit) => hit.bookId === book.id).length);
   });
   assert.deepEqual(counts, [27, 27, 26]);
-  await page
-    .getByText("显示 80 次出现，已按读物分配结果；请缩小范围或细化关键词。", { exact: true })
-    .waitFor();
+  await page.getByText("已显示 80 个结果，可继续加载更多。", { exact: true }).waitFor();
   await page.getByRole("button", { name: "关闭搜索结果", exact: true }).click();
   await page.locator(".reader-book-row").filter({ hasText: "第一册（已改名）" }).click();
   await page.getByRole("button", { name: "调整阅读进度", exact: true }).click();

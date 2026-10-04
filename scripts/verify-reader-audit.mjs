@@ -89,7 +89,7 @@ try {
     () => document.querySelectorAll(".reader-search-result").length === 80,
   );
   assert.equal(
-    await page.getByText("显示 80 次出现，已按读物分配结果；请缩小范围或细化关键词。").count(),
+    await page.getByRole("button", { name: "加载更多搜索结果", exact: true }).count(),
     0,
   );
   assert.equal(await page.locator(".reader-search-result em mark").count(), 80);
@@ -215,7 +215,7 @@ try {
       })),
     );
   assert(
-    sizes.length >= 3 && sizes.every((size) => size.width >= 44 && size.height >= 44),
+    sizes.length === 2 && sizes.every((size) => size.width >= 44 && size.height >= 44),
     JSON.stringify(sizes),
   );
   await mobile.getByRole("button", { name: "打开书库", exact: true }).click();

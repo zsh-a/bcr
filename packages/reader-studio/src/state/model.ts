@@ -39,6 +39,8 @@ export interface ReaderSettings {
       string,
       {
         readonly pdfZoom?: number;
+        readonly pdfZoomMode?: "width" | "page" | "custom";
+        readonly pdfColor?: "original" | "paper" | "night";
         readonly comic?: boolean;
         readonly direction?: "ltr" | "rtl";
         readonly fit?: "page" | "width";
@@ -88,7 +90,13 @@ export function normalizeBookSettings(raw: unknown): NonNullable<ReaderSettings[
             id,
             {
               ...(typeof source.pdfZoom === "number" && Number.isFinite(source.pdfZoom)
-                ? { pdfZoom: Math.max(0.4, Math.min(3, source.pdfZoom)) }
+                ? { pdfZoom: Math.max(0.1, Math.min(4, source.pdfZoom)) }
+                : {}),
+              ...(["width", "page", "custom"].includes(String(source.pdfZoomMode))
+                ? { pdfZoomMode: source.pdfZoomMode as "width" | "page" | "custom" }
+                : {}),
+              ...(["original", "paper", "night"].includes(String(source.pdfColor))
+                ? { pdfColor: source.pdfColor as "original" | "paper" | "night" }
                 : {}),
               ...(typeof source.comic === "boolean" ? { comic: source.comic } : {}),
               ...(source.direction === "ltr" || source.direction === "rtl"
@@ -138,6 +146,7 @@ export interface ReaderState {
   readonly searchError: string | null;
   readonly searchRevision: number;
   readonly searchTruncated: boolean;
+  readonly searchLimit?: number;
   readonly sourceErrorsByBook: Readonly<Record<string, string>>;
   readonly searchReveal: ReaderSearchReveal | null;
   readonly settings: ReaderSettings;

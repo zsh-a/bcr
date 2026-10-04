@@ -186,7 +186,16 @@ export function normalizeLocator(
     resolvedAnchor === undefined || section.text.length === 0
       ? locator.progression
       : resolvedAnchor.start / section.text.length;
-  const normalized = createLocator(section, progression, locator.kind, normalizedAnchor);
+  const page = locator.pageAnchor;
+  const normalized = {
+    ...createLocator(section, progression, locator.kind, normalizedAnchor),
+    ...(directSection?.kind === "pdf-page" &&
+    page &&
+    Number.isFinite(page.x) &&
+    Number.isFinite(page.y)
+      ? { pageAnchor: { x: clampProgression(page.x), y: clampProgression(page.y) } }
+      : {}),
+  };
   const image = locator.imageAnchor;
   return directSection !== undefined &&
     image !== undefined &&
@@ -265,6 +274,11 @@ export function progressForLocator(
 export function sameLocator(left: ReaderLocator, right: ReaderLocator, tolerance = 0.02): boolean {
   return (
     left.sectionId === right.sectionId &&
+    Boolean(left.pageAnchor) === Boolean(right.pageAnchor) &&
+    (!left.pageAnchor ||
+      !right.pageAnchor ||
+      (Math.abs(left.pageAnchor.x - right.pageAnchor.x) <= tolerance &&
+        Math.abs(left.pageAnchor.y - right.pageAnchor.y) <= tolerance)) &&
     left.imageAnchor?.index === right.imageAnchor?.index &&
     (left.imageAnchor === undefined ||
       right.imageAnchor === undefined ||

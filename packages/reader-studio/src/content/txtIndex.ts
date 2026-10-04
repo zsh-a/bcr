@@ -119,10 +119,11 @@ export async function searchTxt(
   bookId: string,
   query: string,
   signal?: AbortSignal,
+  limit = 81,
 ): Promise<TxtSearchHit[]> {
   const hits: TxtSearchHit[] = [];
   // Read batches instead of making one storage request per short paragraph.
-  for (let index = 0; index < ranges.length && hits.length < 81;) {
+  for (let index = 0; index < ranges.length && hits.length < limit;) {
     signal?.throwIfAborted();
     const first = ranges[index]!;
     let endIndex = index + 1;
@@ -130,14 +131,14 @@ export async function searchTxt(
       endIndex++;
     const end = ranges[endIndex - 1]!.end;
     const batch = await file.slice(first.start, end).arrayBuffer();
-    for (; index < endIndex && hits.length < 81; index++) {
+    for (; index < endIndex && hits.length < limit; index++) {
       const range = ranges[index]!;
       const text =
         new TextDecoder()
           .decode(new Uint8Array(batch, range.start - first.start, range.end - range.start))
           .replace(/\r\n?/gu, "\n")
           .trim() || "暂无内容";
-      for (const match of searchTextRanges(text, query, 81 - hits.length)) {
+      for (const match of searchTextRanges(text, query, limit - hits.length)) {
         const excerptStart = Math.max(0, match.start - 80);
         hits.push({
           excerpt: text.slice(excerptStart, match.start + match.length + 80),

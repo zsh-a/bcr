@@ -45,6 +45,7 @@ function initialState(): ReaderState {
     searchError: null,
     searchRevision: 0,
     searchTruncated: false,
+    searchLimit: 80,
     sourceErrorsByBook: {},
     searchReveal: null,
     settings: DEFAULT_READER_SETTINGS,
@@ -119,6 +120,7 @@ class ReaderStore {
       searchError: null,
       searchBusy: false,
       searchTruncated: false,
+      searchLimit: 80,
       sourceErrorsByBook: {},
       settings,
       status: "ready",
@@ -162,6 +164,7 @@ class ReaderStore {
   setSearchBusy = this.search.setSearchBusy;
   setSearchError = this.search.setSearchError;
   retrySearch = this.search.retrySearch;
+  loadMoreSearch = this.search.loadMoreSearch;
   setSearchTruncated = this.search.setSearchTruncated;
   setSourceError = this.search.setSourceError;
   moveSearch = this.search.moveSearch;

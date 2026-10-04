@@ -18,6 +18,8 @@ import { openReaderTocItem, resolveReaderTocTarget } from "./navigation";
 import { ReaderSheet } from "../workbench/ReaderSheet";
 import { useReaderMobile } from "../workbench/useReaderMobile";
 import { ReaderHistoryList, useReaderHistory } from "./ReaderHistoryList";
+import { createRenderQueue } from "../reading/renderQueue";
+const thumbnailQueue = createRenderQueue(2);
 
 function seekLocatorAtPercentage(book: ReaderBook, value: number): ReaderLocator {
   const locator = locatorAtPercentage(book, clamp(value, 0, 1));
@@ -462,7 +464,13 @@ function ReaderProgressPreview(props: {
   );
 }
 
-function PdfProgressThumbnail(props: { book: ReaderBook; pageNumber: number; visible: boolean }) {
+export function PdfProgressThumbnail(props: {
+  book: ReaderBook;
+  pageNumber: number;
+  visible: boolean;
+  width?: number;
+  height?: number;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [documentVersion, setDocumentVersion] = useState(0);
   const [status, setStatus] = useState<"loading" | "ready" | "fallback">("loading");
@@ -482,7 +490,7 @@ function PdfProgressThumbnail(props: { book: ReaderBook; pageNumber: number; vis
       return;
     }
     const deviceScale = Math.min(window.devicePixelRatio || 1, 2);
-    const cacheKey = `${props.pageNumber}:${deviceScale}`;
+    const cacheKey = `${props.pageNumber}:${deviceScale}:${props.width ?? PDF_THUMBNAIL_WIDTH}:${props.height ?? PDF_THUMBNAIL_HEIGHT}`;
     const cached = pdfThumbnailCacheFor(props.book).get(cacheKey);
     if (cached !== undefined) {
       paintPdfThumbnail(canvas, cached);
@@ -500,8 +508,8 @@ function PdfProgressThumbnail(props: { book: ReaderBook; pageNumber: number; vis
         if (cancelled) return;
         const baseViewport = loadedPage.getViewport({ scale: 1 });
         const cssScale = Math.min(
-          PDF_THUMBNAIL_WIDTH / baseViewport.width,
-          PDF_THUMBNAIL_HEIGHT / baseViewport.height,
+          (props.width ?? PDF_THUMBNAIL_WIDTH) / baseViewport.width,
+          (props.height ?? PDF_THUMBNAIL_HEIGHT) / baseViewport.height,
         );
         const viewport = loadedPage.getViewport({ scale: cssScale * deviceScale });
         const context = canvas.getContext("2d");
@@ -525,16 +533,20 @@ function PdfProgressThumbnail(props: { book: ReaderBook; pageNumber: number; vis
         page?.cleanup();
       }
     };
-    const frame = window.requestAnimationFrame(() => void render());
+    const controller = new AbortController();
+    const frame = window.requestAnimationFrame(
+      () => void thumbnailQueue(controller.signal, render).catch(() => {}),
+    );
     return () => {
       cancelled = true;
       window.cancelAnimationFrame(frame);
+      controller.abort();
       renderTask?.cancel();
       page?.cleanup();
       canvas.width = 0;
       canvas.height = 0;
     };
-  }, [documentVersion, props.book, props.pageNumber, props.visible]);
+  }, [documentVersion, props.book, props.pageNumber, props.visible, props.width, props.height]);
 
   return (
     <>

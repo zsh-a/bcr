@@ -100,6 +100,7 @@ export function useReaderSearch(runtime: ReaderRuntime | null): void {
   const library = useReader((state) => state.library);
   const [indexRevision, setIndexRevision] = useState(0);
   const searchRevision = useReader((state) => state.searchRevision);
+  const searchLimit = useReader((state) => state.searchLimit ?? 80);
   useEffect(() => {
     const unsubscribe = runtime?.indexSession?.subscribe(() => {
       setIndexRevision((revision) => revision + 1);
@@ -124,6 +125,7 @@ export function useReaderSearch(runtime: ReaderRuntime | null): void {
           scope === "book" ? library.filter((book) => book.id === activeId) : library,
           query,
           controller.signal,
+          searchLimit,
         );
         if (controller.signal.aborted) return;
         reader.setSearch(query, result.hits, getReaderState().searchBookId);
@@ -140,7 +142,7 @@ export function useReaderSearch(runtime: ReaderRuntime | null): void {
       controller.abort();
       window.clearTimeout(handle);
     };
-  }, [indexRevision, searchRevision, runtime, query, library, scope, activeId]);
+  }, [indexRevision, searchRevision, searchLimit, runtime, query, library, scope, activeId]);
 }
 
 export interface ReaderBootState {

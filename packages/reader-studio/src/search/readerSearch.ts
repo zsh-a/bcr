@@ -48,15 +48,16 @@ export function searchIndexedDetailed(
   runtime: ReaderRuntime,
   books: ReadonlyArray<ReaderBook>,
   query: string,
+  limit = 81,
 ): ReaderSearchResult {
   const normalized = normalizeSearchQuery(query);
   if (!normalized) return { hits: [], indexing: false };
-  const workerResults = runtime.indexSession?.search(books, query);
+  const workerResults = runtime.indexSession?.search(books, query, limit);
   if (workerResults !== undefined) {
     const indexedBookIds = new Set(workerResults.indexedBookIds);
     const pendingBooks = books.filter((book) => !indexedBookIds.has(book.id));
     return {
-      hits: [...workerResults.hits, ...searchLibrary(pendingBooks, query, 81)]
+      hits: [...workerResults.hits, ...searchLibrary(pendingBooks, query, limit)]
         .sort(
           (left, right) =>
             books.findIndex((book) => book.id === left.bookId) -
@@ -69,14 +70,14 @@ export function searchIndexedDetailed(
                 ?.sections.findIndex((section) => section.id === right.sectionId) ?? 0) ||
             left.matchStart - right.matchStart,
         )
-        .slice(0, 81),
+        .slice(0, limit),
       indexing: workerResults.pendingBookIds.length > 0,
     };
   }
   // FTS tokenization differs from our whitespace/NFKC substring contract.
   // Without a worker index, enumerate the original text rather than silently
   // returning only the first occurrence or an incomplete set of FTS candidates.
-  return { hits: searchLibrary(books, query, 81), indexing: false };
+  return { hits: searchLibrary(books, query, limit), indexing: false };
 }
 
 export function searchIndexed(
@@ -93,14 +94,16 @@ export async function searchReaderDetailed(
   books: readonly ReaderBook[],
   query: string,
   signal?: AbortSignal,
+  limit = 80,
 ): Promise<ReaderSearchResult> {
   const results: ReadonlyArray<SearchHit>[] = [];
   let indexing = false;
   for (const book of books) {
     signal?.throwIfAborted();
-    if (hasDeferredContent(book)) results.push(await searchReaderContent(book, query, signal));
+    if (hasDeferredContent(book))
+      results.push(await searchReaderContent(book, query, signal, limit + 1));
     else {
-      const result = searchIndexedDetailed(runtime, [book], query);
+      const result = searchIndexedDetailed(runtime, [book], query, limit + 1);
       results.push(result.hits);
       indexing ||= result.indexing;
     }
@@ -110,9 +113,9 @@ export async function searchReaderDetailed(
   // Books with few matches give their unused slots to the remaining books.
   const counts = results.map(() => 0);
   let allocated = 0;
-  while (allocated < 80) {
+  while (allocated < limit) {
     let added = false;
-    for (let index = 0; index < results.length && allocated < 80; index++) {
+    for (let index = 0; index < results.length && allocated < limit; index++) {
       if (counts[index]! >= results[index]!.length) continue;
       counts[index] = counts[index]! + 1;
       allocated++;

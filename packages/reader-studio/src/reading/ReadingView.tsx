@@ -82,6 +82,15 @@ function ContinuousReadingView(props: {
     props.book.sections.find((section) => section.id === activeSectionId),
   );
   const containerRef = useRef<HTMLDivElement>(null);
+  const pdfTapTimer = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    const cancelTap = () => window.clearTimeout(pdfTapTimer.current);
+    window.addEventListener("bcr-reader-pdf-gesture", cancelTap);
+    return () => {
+      cancelTap();
+      window.removeEventListener("bcr-reader-pdf-gesture", cancelTap);
+    };
+  }, []);
   const frameRef = useRef<number | null>(null);
   const lastScrollUpdateRef = useRef(0);
   const userScrollRef = useRef(false);
@@ -243,7 +252,7 @@ function ContinuousReadingView(props: {
               : (locatorPosition ?? { top: 0, left: maxLeft * progress })
             : {
                 top: locatorPosition?.top ?? maxTop * progress,
-                left: 0,
+                left: props.book.source.format === "pdf" ? (locatorPosition?.left ?? 0) : 0,
               }
           : horizontalPaging
             ? { top: 0, left: internalLinkPosition.left }
@@ -433,7 +442,12 @@ function ContinuousReadingView(props: {
           ) {
             return;
           }
-          props.onToggleMobileChrome();
+          if (props.book.source.format === "pdf") {
+            window.clearTimeout(pdfTapTimer.current);
+            pdfTapTimer.current = window.setTimeout(() => {
+              if (window.getSelection()?.isCollapsed !== false) props.onToggleMobileChrome();
+            }, 300);
+          } else props.onToggleMobileChrome();
         }}
         onWheel={beginUserScroll}
         onTouchMove={beginUserScroll}

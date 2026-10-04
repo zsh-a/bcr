@@ -7,12 +7,14 @@ import { useSectionContent } from "../content/useSectionContent";
 import { Skeleton } from "@bcr/react";
 import { CircleAlert, ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { searchTextRanges, type ReaderBook, type ReaderSection } from "@bcr/reader-core";
 import { clamp, readerErrorMessage } from "./readerPresentation";
 import { getReaderState, reader } from "../state/store";
 import { useReader } from "../state/useReader";
 import { createRenderQueue } from "./renderQueue";
+import { usePdfViewport, usePdfGestures } from "./usePdfViewport";
+import { PdfPageLinks } from "./PdfPageLinks";
 
 export function PdfReaderView(props: {
   book: ReaderBook;
@@ -24,13 +26,25 @@ export function PdfReaderView(props: {
   const hit = useReader((state) => state.searchHits[state.searchActiveIndex]);
   const searchBookId = useReader((state) => state.searchBookId);
   const navigationSequence = useReader((state) => state.navigationSequence);
-  const storedZoom = useReader((state) => state.settings.books?.[props.book.id]?.pdfZoom);
-  const zoom = Number.isFinite(storedZoom) ? clamp(storedZoom ?? 1, 0.4, 3) : 1;
-  const setZoom = (value: number) => {
+  const preferences = useReader((state) => state.settings.books?.[props.book.id]);
+  const theme = useReader((state) => state.settings.theme);
+  const mode = preferences?.pdfZoomMode ?? (preferences?.pdfZoom ? "custom" : "width");
+  const color = preferences?.pdfColor ?? (theme === "night" ? "night" : "original");
+  const setZoom = (value: number | "width" | "page") => {
+    window.dispatchEvent(new Event("bcr-reader-capture-progress"));
+    const locator = getReaderState().progressByBook[props.book.id]?.locator;
     const books = getReaderState().settings.books ?? {};
     reader.setSettings({
-      books: { ...books, [props.book.id]: { ...books[props.book.id], pdfZoom: value } },
+      books: {
+        ...books,
+        [props.book.id]: {
+          ...books[props.book.id],
+          pdfZoomMode: typeof value === "number" ? "custom" : value,
+          ...(typeof value === "number" ? { pdfZoom: clamp(value, 0.1, 4) } : {}),
+        },
+      },
     });
+    if (locator) reader.seekLocator(locator);
   };
   const rootRef = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -59,36 +73,17 @@ export function PdfReaderView(props: {
     const section = props.book.sections[page - 1];
     if (section !== undefined) reader.openBook(props.book.id, section.id);
   };
-  const changeZoom = (next: number) => {
-    const root = rootRef.current;
-    const scroll = root?.closest<HTMLElement>(".reader-reading-scroll");
-    const page = root?.querySelector<HTMLElement>(
-      `[data-reader-section="${CSS.escape(activeSectionId ?? "")}"]`,
-    );
-    const offset =
-      scroll && page
-        ? (scroll.getBoundingClientRect().top - page.getBoundingClientRect().top) /
-          Math.max(1, page.offsetHeight)
-        : 0;
-    setZoom(clamp(next, 0.4, 3));
-    requestAnimationFrame(() => {
-      if (
-        getReaderState().navigationSequence !== navigationSequence ||
-        getReaderState().activeBookId !== props.book.id
-      )
-        return;
-      if (scroll && page)
-        scroll.scrollTo({
-          top:
-            scroll.scrollTop +
-            page.getBoundingClientRect().top -
-            scroll.getBoundingClientRect().top +
-            offset * page.offsetHeight,
-          left: 0,
-          behavior: "instant",
-        });
-    });
-  };
+  const fitted = usePdfViewport(
+    rootRef,
+    props.book.sections[currentPage - 1]?.pageAspectRatio ?? 1 / Math.SQRT2,
+  );
+  const zoom =
+    mode === "width" ? 1 : mode === "page" ? fitted : clamp(preferences?.pdfZoom ?? 1, 0.1, 4);
+  const changeZoom = (next: number) => setZoom(next);
+  usePdfGestures(rootRef, props.book, zoom, changeZoom);
+  useLayoutEffect(() => {
+    rootRef.current?.dispatchEvent(new Event("bcr-reader-content-ready", { bubbles: true }));
+  }, [zoom]);
   const [pdfDocument, setPdfDocument] = useState<PDFDocumentProxy | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +153,7 @@ export function PdfReaderView(props: {
   }, [props.book.id, sourcePending, sourceUrl, loadAttempt]);
 
   return (
-    <div className="reader-pdf-view" ref={rootRef}>
+    <div className={`reader-pdf-view reader-pdf-color-${color}`} ref={rootRef}>
       <div ref={toolsRef} className="reader-pdf-tools" aria-label="PDF 页码与缩放">
         <form
           onSubmit={(event) => {
@@ -224,42 +219,35 @@ export function PdfReaderView(props: {
             type="button"
             className="reader-pdf-zoom-step"
             aria-label="缩小 PDF"
-            disabled={zoom <= 0.4}
+            disabled={zoom <= 0.1}
             onClick={() => changeZoom(zoom - 0.25)}
           >
             <Minus className="reader-icon" />
           </button>
           <select
             aria-label="PDF 缩放"
-            value={String(zoom)}
+            value={mode === "custom" ? String(zoom) : mode}
             onChange={(event) => {
-              if (event.target.value === "page") {
-                const height =
-                  rootRef.current?.closest<HTMLElement>(".reader-reading-scroll")?.clientHeight ??
-                  600;
-                const width = rootRef.current?.clientWidth ?? 600;
-                const ratio =
-                  props.book.sections[currentPage - 1]?.pageAspectRatio ?? 1 / Math.SQRT2;
-                changeZoom(((height - 100) * ratio) / width);
-              } else changeZoom(Number(event.target.value));
+              const value = event.target.value;
+              setZoom(value === "page" || value === "width" ? value : Number(value));
             }}
           >
-            <option value={String(zoom)}>{Math.round(zoom * 100)}%</option>
-            {zoom !== 1 && <option value="1">适合宽度</option>}
+            <option value="width">适合宽度</option>
             <option value="page">适合整页</option>
-            {[0.5, 0.75, 1.25, 1.5, 2, 3]
-              .filter((value) => value !== zoom)
-              .map((value) => (
-                <option key={value} value={String(value)}>
-                  {value * 100}%
-                </option>
-              ))}
+            {mode === "custom" && ![0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4].includes(zoom) && (
+              <option value={String(zoom)}>{Math.round(zoom * 100)}%</option>
+            )}
+            {[0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4].map((value) => (
+              <option key={value} value={String(value)}>
+                {value * 100}%
+              </option>
+            ))}
           </select>
           <button
             type="button"
             className="reader-pdf-zoom-step"
             aria-label="放大 PDF"
-            disabled={zoom >= 3}
+            disabled={zoom >= 4}
             onClick={() => changeZoom(zoom + 0.25)}
           >
             <Plus className="reader-icon" />
@@ -310,6 +298,7 @@ export function PdfReaderView(props: {
             <PdfPageView
               key={section.id}
               document={pdfDocument}
+              book={props.book}
               section={section}
               active={section.id === activeSectionId}
               renderQueue={renderQueue}
@@ -335,6 +324,7 @@ type PdfPageStatus = "idle" | "loading" | "ready" | "error";
 
 const PdfPageView = memo(function PdfPageView(props: {
   document: PDFDocumentProxy;
+  book: ReaderBook;
   section: ReaderSection;
   active: boolean;
   renderQueue: ReturnType<typeof createRenderQueue>;
@@ -350,6 +340,7 @@ const PdfPageView = memo(function PdfPageView(props: {
   const textStrings = useRef<ReadonlyArray<string>>([]);
   const focusedMatch = useRef("");
   const [hasText, setHasText] = useState(true);
+  const [hasBitmap, setHasBitmap] = useState(false);
   const [nearViewport, setNearViewport] = useState(props.active || pageNumber <= 2);
   useSectionContent(props.section, nearViewport || props.active);
   const [contentWidth, setContentWidth] = useState(0);
@@ -398,10 +389,12 @@ const PdfPageView = memo(function PdfPageView(props: {
     if (!nearViewport || contentWidth <= 0) {
       canvas.width = 0;
       canvas.height = 0;
+      setHasBitmap(false);
       setStatus("idle");
       return;
     }
     let cancelled = false;
+    const buffer = document.createElement("canvas");
     const controller = new AbortController();
     let renderTask: { cancel: () => void; promise: Promise<unknown> } | undefined;
     let textLayer: { cancel: () => void } | undefined;
@@ -418,7 +411,7 @@ const PdfPageView = memo(function PdfPageView(props: {
         }
         const baseViewport = loadedPage.getViewport({ scale: 1 });
         const targetWidth = Math.max(1, contentWidth - 2);
-        // Bound backing pixels even at 300% zoom; CSS/text remain full resolution.
+        // Bound backing pixels even at 400% zoom; CSS/text remain full resolution.
         const deviceScale = Math.min(
           clamp(window.devicePixelRatio || 1, 1, 2),
           Math.sqrt(
@@ -427,13 +420,18 @@ const PdfPageView = memo(function PdfPageView(props: {
         );
         const cssScale = targetWidth / baseViewport.width;
         const viewport = loadedPage.getViewport({ scale: cssScale * deviceScale });
-        const context = canvas.getContext("2d");
+        const context = buffer.getContext("2d");
         if (context === null) throw new Error("Canvas 2D 不可用");
-        canvas.width = Math.ceil(viewport.width);
-        canvas.height = Math.ceil(viewport.height);
-        renderTask = loadedPage.render({ canvas, canvasContext: context, viewport });
+        buffer.width = Math.ceil(viewport.width);
+        buffer.height = Math.ceil(viewport.height);
+        renderTask = loadedPage.render({ canvas: buffer, canvasContext: context, viewport });
         await renderTask.promise;
         if (cancelled) return;
+        canvas.width = buffer.width;
+        canvas.height = buffer.height;
+        canvas.getContext("2d")?.drawImage(buffer, 0, 0);
+        buffer.width = buffer.height = 0;
+        setHasBitmap(true);
         const container = textRef.current;
         if (container !== null) {
           const { TextLayer } = await import("pdfjs-dist");
@@ -473,8 +471,8 @@ const PdfPageView = memo(function PdfPageView(props: {
       textLayer?.cancel();
       textRef.current?.replaceChildren();
       page?.cleanup();
-      canvas.width = 0;
-      canvas.height = 0;
+      buffer.width = 0;
+      buffer.height = 0;
     };
   }, [contentWidth, nearViewport, pageNumber, props.document, props.renderQueue, renderAttempt]);
 
@@ -535,17 +533,19 @@ const PdfPageView = memo(function PdfPageView(props: {
       aria-label={`PDF 第 ${pageNumber} 页`}
     >
       <div className="reader-pdf-page-meta">
-        <span>PAGE {String(pageNumber).padStart(3, "0")}</span>
+        <span>
+          {props.section.label} · {pageNumber} / {props.book.sections.length}
+        </span>
         {props.active && (
-          <strong>{!hasText && status === "ready" ? "扫描页 · 无文字层" : "当前页"}</strong>
+          <strong>{!hasText && status === "ready" ? "扫描页 · 无法搜索或选字" : "当前页"}</strong>
         )}
       </div>
       <div
-        className={`reader-pdf-canvas-shell is-${status}`}
+        className={`reader-pdf-canvas-shell is-${status} ${hasBitmap ? "has-preview" : ""}`}
         style={{ aspectRatio: props.section.pageAspectRatio ?? 1 / Math.SQRT2 }}
       >
         {status === "idle" && <span className="reader-pdf-placeholder">滚动到此处加载页面</span>}
-        {status === "loading" && (
+        {status === "loading" && !hasBitmap && (
           <>
             <Skeleton className="reader-pdf-skeleton" />
             <span className="reader-media-loading">渲染中…</span>
@@ -566,6 +566,9 @@ const PdfPageView = memo(function PdfPageView(props: {
         )}
         <canvas ref={canvasRef} className="reader-pdf-canvas" />
         <div ref={textRef} className="reader-pdf-text-layer" />
+        {nearViewport && (status === "ready" || hasBitmap) && (
+          <PdfPageLinks document={props.document} book={props.book} pageNumber={pageNumber} />
+        )}
       </div>
     </section>
   );

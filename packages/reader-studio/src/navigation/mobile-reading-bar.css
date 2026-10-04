@@ -1,3 +1,47 @@
+.reader-studio
+  :is(
+    .reader-mobile-nav,
+    .reader-progress-layer,
+    .reader-comic-footer,
+    .reader-comic,
+    .reader-toolbar,
+    .reader-modal-layer,
+    .reader-chapter-rail,
+    .reader-selection-actions
+  ) {
+  --color-surface: var(--read-bg);
+  --color-raised: var(--read-raised);
+  --color-border: var(--read-border);
+  --color-border-strong: var(--read-border-strong);
+  --color-text: var(--read-text);
+  --color-muted: var(--read-muted);
+  --color-faint: var(--read-faint);
+  --color-accent: var(--read-accent);
+  --color-accent-dim: var(--read-accent-soft);
+  --color-primary: var(--read-accent);
+  --color-on-primary: #ffffff;
+  --color-overlay: var(--read-accent-soft);
+  --color-selection: var(--read-accent-soft);
+  --color-focus: var(--read-accent);
+  color: var(--read-text);
+  color-scheme: light;
+}
+.reader-studio[data-read-theme="night"]
+  :is(
+    .reader-mobile-nav,
+    .reader-progress-layer,
+    .reader-comic-footer,
+    .reader-comic,
+    .reader-toolbar,
+    .reader-modal-layer,
+    .reader-chapter-rail,
+    .reader-selection-actions
+  ) {
+  --shadow-floating: 0 8px 32px #0005;
+  --color-on-primary: #102521;
+  color-scheme: dark;
+}
+
 .reader-progress-position {
   min-width: 0;
 }
@@ -9,38 +53,6 @@
   /* One reserved height for reading, searching and hidden chrome. */
   .reader-studio {
     --read-overlay-bottom: calc(60px + env(safe-area-inset-bottom));
-  }
-
-  .reader-studio
-    :is(
-      .reader-mobile-nav,
-      .reader-progress-layer,
-      .reader-comic-footer,
-      .reader-comic,
-      .reader-toolbar
-    ) {
-    --color-surface: var(--read-bg);
-    --color-raised: var(--read-raised);
-    --color-border: var(--read-border);
-    --color-border-strong: var(--read-border-strong);
-    --color-text: var(--read-text);
-    --color-muted: var(--read-muted);
-    --color-faint: var(--read-faint);
-    --color-accent: var(--read-accent);
-    --color-focus: var(--read-accent);
-    color: var(--read-text);
-    color-scheme: light;
-  }
-  .reader-studio[data-read-theme="night"]
-    :is(
-      .reader-mobile-nav,
-      .reader-progress-layer,
-      .reader-comic-footer,
-      .reader-comic,
-      .reader-toolbar
-    ) {
-    --shadow-floating: 0 8px 32px #0005;
-    color-scheme: dark;
   }
 
   .reader-studio :is(.reader-reading-frame, .reader-comic) > .reader-mobile-nav {

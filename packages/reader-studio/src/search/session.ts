@@ -29,6 +29,7 @@ export interface ReaderIndexSession {
   readonly search: (
     books: ReadonlyArray<ReaderBook>,
     query: string,
+    limit?: number,
   ) => ReaderIndexSearch | undefined;
   readonly close: () => void;
 }
@@ -223,11 +224,11 @@ export function createReaderIndexSession(artifacts: ArtifactStore): ReaderIndexS
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    search(books, query) {
+    search(books, query, limit = 81) {
       const indexedBooks = books.filter((book) => indexed.has(book.id));
       const documents = indexedBooks.flatMap((book) => indexed.get(book.id)?.documents ?? []);
       return {
-        hits: searchIndexedDocuments(documents, indexedBooks, query, 81),
+        hits: searchIndexedDocuments(documents, indexedBooks, query, limit),
         indexedBookIds: indexedBooks.map((book) => book.id),
         pendingBookIds: books.filter((book) => pending.has(book.id)).map((book) => book.id),
       };
@@ -280,7 +281,7 @@ export function createLazyReaderIndexSession(artifacts: ArtifactStore): ReaderIn
         subscriptions.delete(listener);
       };
     },
-    search: (books, query) => session?.search(books, query),
+    search: (books, query, limit) => session?.search(books, query, limit),
     close: () => {
       for (const unsubscribe of subscriptions.values()) unsubscribe();
       subscriptions.clear();

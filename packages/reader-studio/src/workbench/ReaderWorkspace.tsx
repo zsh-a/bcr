@@ -138,6 +138,7 @@ export function ReaderWorkspace(props: {
           />
           <ReaderSaveNotice runtime={props.runtime} />
           <ReaderSelectionCapture
+            onAddAnnotation={openAnnotationComposer}
             book={active}
             runtime={props.runtime}
             onNotice={props.onNotice}
@@ -233,7 +234,7 @@ function SearchPanel(props: {
               ? "正在搜索…"
               : searchError
                 ? "搜索遇到问题"
-                : `${props.hits.length} 个命中${searchTruncated ? " · 已截断" : ""}`}
+                : `${props.hits.length} 个命中${searchTruncated ? " · 还有更多" : ""}`}
           </strong>
         </div>
         <span className="reader-search-query">{query ? `“${query}”` : "输入关键词查找原文"}</span>
@@ -253,13 +254,7 @@ function SearchPanel(props: {
         >
           整个书库 · {library.length}
         </button>
-        {searchTruncated && (
-          <small>
-            {scope === "library"
-              ? "显示 80 次出现，已按读物分配结果；请缩小范围或细化关键词。"
-              : "显示前 80 次出现，请缩小范围或细化关键词。"}
-          </small>
-        )}
+        {searchTruncated && <small>已显示 {props.hits.length} 个结果，可继续加载更多。</small>}
       </div>
       {searchError && (
         <div className="reader-search-empty" role="alert">
@@ -274,6 +269,16 @@ function SearchPanel(props: {
           <Search className="reader-icon" />
           {query ? "没有找到匹配内容，试试更短的关键词。" : "输入关键词，定位后可返回原处。"}
         </div>
+      )}
+      {searchTruncated && (
+        <button
+          type="button"
+          className="ui-btn ui-btn-lg ui-btn-default reader-search-more"
+          disabled={searchBusy}
+          onClick={() => reader.loadMoreSearch()}
+        >
+          {searchBusy ? "正在加载…" : "加载更多搜索结果"}
+        </button>
       )}
       <div id="reader-search-results" className="reader-search-results" role="listbox">
         {props.hits.map((hit, index) => (

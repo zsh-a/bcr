@@ -40,8 +40,9 @@ import { ReaderProgressScrubber } from "./ReaderProgressScrubber";
 import { useReaderMobile } from "../workbench/useReaderMobile";
 import { ReaderSearchBar } from "./ReaderSearchBar";
 import { ReaderJumpBack } from "./ReaderJumpBack";
+import { PdfPageBrowser } from "./PdfPageBrowser";
 
-type NavigationPanel = "toc" | "bookmarks" | "notes";
+type NavigationPanel = "toc" | "pages" | "bookmarks" | "notes";
 interface NavigationState {
   panel: NavigationPanel;
   setPanel: (panel: NavigationPanel) => void;
@@ -102,7 +103,11 @@ export function ReaderNavigationProvider(props: { book: ReaderBook; children: Re
     collapsed,
     setCollapsed,
     openPanel: (next) => {
-      setPanel(next);
+      setPanel(
+        next === "toc" && props.book.source.format === "pdf" && !props.book.toc?.length
+          ? "pages"
+          : next,
+      );
       if (next === "toc") {
         const current = currentReaderTocItem(
           props.book,
@@ -230,7 +235,7 @@ export function MobileReadingBar(props: {
               type="button"
               className="reader-mobile-nav-toc"
               onClick={() => navigation.openPanel("toc")}
-              aria-expanded={(navigation.open || navigation.docked) && navigation.panel === "toc"}
+              aria-expanded={navigation.open || navigation.docked}
               aria-controls={
                 navigation.docked ? "reader-pinned-navigation" : "reader-mobile-navigation-sheet"
               }
@@ -340,6 +345,9 @@ function NavigationContent(props: { book: ReaderBook; pinned: boolean }) {
     count: number;
   }> = [
     { id: "toc", label: "目录", count: tocCount },
+    ...(props.book.source.format === "pdf"
+      ? [{ id: "pages" as const, label: "页面", count: props.book.sections.length }]
+      : []),
     { id: "bookmarks", label: "书签", count: bookmarks.length },
     { id: "notes", label: "笔记", count: annotations.length },
   ];
@@ -421,6 +429,20 @@ function NavigationContent(props: { book: ReaderBook; pinned: boolean }) {
           </button>
         ))}
       </div>
+      {panel === "pages" && (
+        <div
+          id={`${tabPrefix}-panel-pages`}
+          className="reader-mobile-sheet-content"
+          role="tabpanel"
+          aria-labelledby={`${tabPrefix}-tab-pages`}
+        >
+          <PdfPageBrowser
+            book={props.book}
+            activeSectionId={activeSectionId}
+            onNavigate={navigateToSection}
+          />
+        </div>
+      )}
       {panel === "toc" && (
         <div
           id={`${tabPrefix}-panel-toc`}

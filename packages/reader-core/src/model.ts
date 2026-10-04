@@ -119,6 +119,8 @@ export interface ReaderLocator {
   readonly pageNumber?: number | undefined;
   readonly href?: string | undefined;
   readonly textAnchor?: ReaderTextAnchor | undefined;
+  /** Normalized coordinates within a PDF page, restored at the reading probe. */
+  readonly pageAnchor?: { readonly x: number; readonly y: number } | undefined;
   /** Stable document-order image index and normalized coordinates, independent of blob URLs. */
   readonly imageAnchor?:
     | {

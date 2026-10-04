@@ -14,6 +14,7 @@ export function createReaderSearchActions(port: ReaderStatePort) {
       searchBusy: true,
       searchError: null,
       searchTruncated: false,
+      searchLimit: 80,
     });
   }
 
@@ -39,7 +40,7 @@ export function createReaderSearchActions(port: ReaderStatePort) {
       searchBusy: false,
       searchReveal: null,
       searchError: null,
-      ...(getSnapshot().query !== query ? { searchTruncated: false } : {}),
+      ...(getSnapshot().query !== query ? { searchTruncated: false, searchLimit: 80 } : {}),
     });
   }
 
@@ -101,6 +102,8 @@ export function createReaderSearchActions(port: ReaderStatePort) {
   }
 
   return {
+    loadMoreSearch: () =>
+      update({ searchLimit: (getSnapshot().searchLimit ?? 80) + 80, searchBusy: true }),
     setSearchScope,
     setSearch,
     setSearchBusy,

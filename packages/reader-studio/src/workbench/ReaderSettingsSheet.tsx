@@ -23,7 +23,8 @@ import {
   readerFontStack,
 } from "../typography/readerTypography";
 import { clamp, themeIcon, themeLabel } from "../reading/readerPresentation";
-import { reader } from "../state/store";
+import { getReaderState, reader } from "../state/store";
+import { useReader } from "../state/useReader";
 import { ReaderTypographySettings } from "../typography/ReaderTypographySettings";
 import type { ReaderFullscreenState } from "./useReaderPlatform";
 import { ReaderSheet } from "./ReaderSheet";
@@ -46,6 +47,11 @@ export function ReaderSettingsSheet(props: {
   fullscreen: ReaderFullscreenState;
 }) {
   const mobile = useReaderMobile();
+  const bookId = useReader((state) => state.activeBookId);
+  const pdfColor = useReader((state) =>
+    bookId ? state.settings.books?.[bookId]?.pdfColor : undefined,
+  );
+  const fixed = props.fixedLayout || props.comicMode;
   const [tab, setTab] = useState<"reading" | "typography" | "tools">("reading");
   useEffect(() => {
     if (props.open) setTab("reading");
@@ -80,7 +86,7 @@ export function ReaderSettingsSheet(props: {
             label="阅读设置分类"
             views={[
               { id: "reading", label: "阅读" },
-              { id: "typography", label: "排版" },
+              ...(!fixed ? [{ id: "typography" as const, label: "排版" }] : []),
               { id: "tools", label: "工具" },
             ]}
             value={tab}
@@ -109,166 +115,217 @@ export function ReaderSettingsSheet(props: {
                 ))}
               </div>
             </section>
-            <section className="reader-mobile-setting-group" aria-labelledby="reader-layout-label">
-              <span id="reader-layout-label" className="reader-mobile-setting-label">
-                阅读方式
-              </span>
-              <div
-                className="reader-mobile-setting-options reader-mobile-setting-options-two"
-                role="group"
-                aria-label="阅读方式"
-              >
-                {layouts.map((layout) => (
-                  <button
-                    type="button"
-                    key={layout}
-                    disabled={props.fixedLayout && layout === "paged"}
-                    title={
-                      props.fixedLayout && layout === "paged" ? "PDF 使用连续页面阅读" : undefined
-                    }
-                    className={`reader-mobile-setting-option ${props.settings.layout === layout ? "is-active" : ""}`}
-                    onClick={() => reader.setSettings({ layout })}
-                    aria-pressed={props.settings.layout === layout}
-                  >
-                    {layout === "scroll" ? (
-                      <List className="reader-icon" />
-                    ) : (
-                      <Columns2 className="reader-icon" />
-                    )}
-                    <span>{layout === "scroll" ? "连续滚动" : "分页阅读"}</span>
-                    {props.settings.layout === layout && <Check className="reader-icon" />}
-                  </button>
-                ))}
-              </div>
-            </section>
-            <section className="reader-mobile-setting-group" aria-labelledby="reader-font-label">
-              <div className="reader-mobile-setting-label-row">
-                <span id="reader-font-label" className="reader-mobile-setting-label">
-                  正文字号
-                </span>
-                <span className="reader-mobile-setting-value">{props.settings.fontSize}px</span>
-              </div>
-              <div className="reader-mobile-font-stepper">
-                <button
-                  type="button"
-                  onClick={() =>
-                    reader.setSettings({
-                      fontSize: clamp(props.settings.fontSize - 1, 15, 26),
-                    })
-                  }
-                  disabled={props.settings.fontSize <= 15}
-                  aria-label="减小字号"
+            {!fixed && (
+              <>
+                <section
+                  className="reader-mobile-setting-group"
+                  aria-labelledby="reader-layout-label"
                 >
-                  <Minus className="reader-icon" />
-                </button>
-                <span aria-live="polite" style={{ fontFamily: readerFontStack(props.settings) }}>
-                  Aa
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    reader.setSettings({
-                      fontSize: clamp(props.settings.fontSize + 1, 15, 26),
-                    })
-                  }
-                  disabled={props.settings.fontSize >= 26}
-                  aria-label="增大字号"
+                  <span id="reader-layout-label" className="reader-mobile-setting-label">
+                    阅读方式
+                  </span>
+                  <div
+                    className="reader-mobile-setting-options reader-mobile-setting-options-two"
+                    role="group"
+                    aria-label="阅读方式"
+                  >
+                    {layouts.map((layout) => (
+                      <button
+                        type="button"
+                        key={layout}
+                        disabled={props.fixedLayout && layout === "paged"}
+                        title={
+                          props.fixedLayout && layout === "paged"
+                            ? "PDF 使用连续页面阅读"
+                            : undefined
+                        }
+                        className={`reader-mobile-setting-option ${props.settings.layout === layout ? "is-active" : ""}`}
+                        onClick={() => reader.setSettings({ layout })}
+                        aria-pressed={props.settings.layout === layout}
+                      >
+                        {layout === "scroll" ? (
+                          <List className="reader-icon" />
+                        ) : (
+                          <Columns2 className="reader-icon" />
+                        )}
+                        <span>{layout === "scroll" ? "连续滚动" : "分页阅读"}</span>
+                        {props.settings.layout === layout && <Check className="reader-icon" />}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+                <section
+                  className="reader-mobile-setting-group"
+                  aria-labelledby="reader-font-label"
                 >
-                  <Plus className="reader-icon" />
-                </button>
-              </div>
-            </section>
+                  <div className="reader-mobile-setting-label-row">
+                    <span id="reader-font-label" className="reader-mobile-setting-label">
+                      正文字号
+                    </span>
+                    <span className="reader-mobile-setting-value">{props.settings.fontSize}px</span>
+                  </div>
+                  <div className="reader-mobile-font-stepper">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        reader.setSettings({
+                          fontSize: clamp(props.settings.fontSize - 1, 15, 26),
+                        })
+                      }
+                      disabled={props.settings.fontSize <= 15}
+                      aria-label="减小字号"
+                    >
+                      <Minus className="reader-icon" />
+                    </button>
+                    <span
+                      aria-live="polite"
+                      style={{ fontFamily: readerFontStack(props.settings) }}
+                    >
+                      Aa
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        reader.setSettings({
+                          fontSize: clamp(props.settings.fontSize + 1, 15, 26),
+                        })
+                      }
+                      disabled={props.settings.fontSize >= 26}
+                      aria-label="增大字号"
+                    >
+                      <Plus className="reader-icon" />
+                    </button>
+                  </div>
+                </section>
+              </>
+            )}
+            {props.fixedLayout && (
+              <section className="reader-mobile-setting-group" aria-label="PDF 页面颜色">
+                <span className="reader-mobile-setting-label">PDF 页面颜色</span>
+                <div
+                  className="reader-mobile-setting-options"
+                  role="group"
+                  aria-label="PDF 页面颜色"
+                >
+                  {(["original", "paper", "night"] as const).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className="reader-mobile-setting-option"
+                      aria-pressed={
+                        (pdfColor ?? (props.settings.theme === "night" ? "night" : "original")) ===
+                        value
+                      }
+                      onClick={() => {
+                        if (!bookId) return;
+                        const books = getReaderState().settings.books ?? {};
+                        reader.setSettings({
+                          books: { ...books, [bookId]: { ...books[bookId], pdfColor: value } },
+                        });
+                      }}
+                    >
+                      {value === "original" ? "原色" : value === "paper" ? "柔和纸色" : "夜间"}
+                    </button>
+                  ))}
+                </div>
+                <p className="reader-typography-note">
+                  双指缩放查看细节，双击在放大与适合宽度间切换。图片、图表需要准确配色时请选择原色。
+                </p>
+              </section>
+            )}
           </div>
-          <div hidden={mobile && tab !== "typography"}>
-            <ReaderTypographySettings
-              settings={props.settings}
-              txtPaged={props.txt && props.settings.layout === "paged"}
-              fixedLayout={props.fixedLayout || props.comicMode}
-            />
-            <section
-              className="reader-mobile-setting-group"
-              aria-labelledby="reader-cjk-font-family-label"
-            >
-              <span id="reader-cjk-font-family-label" className="reader-mobile-setting-label">
-                中文字体
-              </span>
-              <div
-                className="reader-mobile-setting-options reader-mobile-font-options"
-                role="group"
-                aria-label="中文字体"
+          {!fixed && (
+            <div hidden={mobile && tab !== "typography"}>
+              <ReaderTypographySettings
+                settings={props.settings}
+                txtPaged={props.txt && props.settings.layout === "paged"}
+                fixedLayout={props.fixedLayout || props.comicMode}
+              />
+              <section
+                className="reader-mobile-setting-group"
+                aria-labelledby="reader-cjk-font-family-label"
               >
-                {READER_CJK_FONT_OPTIONS.map((font) => (
-                  <button
-                    type="button"
-                    key={font.id}
-                    className={`reader-mobile-setting-option reader-mobile-font-option ${props.settings.fontFamily === font.id ? "is-active" : ""}`}
-                    onClick={() => reader.setSettings({ fontFamily: font.id })}
-                    aria-pressed={props.settings.fontFamily === font.id}
-                  >
-                    <strong style={{ fontFamily: font.stack }}>阅</strong>
-                    <span>{font.label}</span>
-                    <small>{font.description}</small>
-                    {props.settings.fontFamily === font.id && <Check className="reader-icon" />}
-                  </button>
-                ))}
-              </div>
-            </section>
-            <section
-              className="reader-mobile-setting-group"
-              aria-labelledby="reader-latin-font-family-label"
-            >
-              <span id="reader-latin-font-family-label" className="reader-mobile-setting-label">
-                英文字体
-              </span>
-              <div
-                className="reader-mobile-setting-options reader-mobile-font-options"
-                role="group"
-                aria-label="英文字体"
+                <span id="reader-cjk-font-family-label" className="reader-mobile-setting-label">
+                  中文字体
+                </span>
+                <div
+                  className="reader-mobile-setting-options reader-mobile-font-options"
+                  role="group"
+                  aria-label="中文字体"
+                >
+                  {READER_CJK_FONT_OPTIONS.map((font) => (
+                    <button
+                      type="button"
+                      key={font.id}
+                      className={`reader-mobile-setting-option reader-mobile-font-option ${props.settings.fontFamily === font.id ? "is-active" : ""}`}
+                      onClick={() => reader.setSettings({ fontFamily: font.id })}
+                      aria-pressed={props.settings.fontFamily === font.id}
+                    >
+                      <strong style={{ fontFamily: font.stack }}>阅</strong>
+                      <span>{font.label}</span>
+                      <small>{font.description}</small>
+                      {props.settings.fontFamily === font.id && <Check className="reader-icon" />}
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <section
+                className="reader-mobile-setting-group"
+                aria-labelledby="reader-latin-font-family-label"
               >
-                {READER_LATIN_FONT_OPTIONS.map((font) => (
-                  <button
-                    type="button"
-                    key={font.id}
-                    className={`reader-mobile-setting-option reader-mobile-font-option ${props.settings.latinFontFamily === font.id ? "is-active" : ""}`}
-                    onClick={() => reader.setSettings({ latinFontFamily: font.id })}
-                    aria-pressed={props.settings.latinFontFamily === font.id}
-                  >
-                    <strong style={{ fontFamily: `${font.stack}, sans-serif` }}>Ag</strong>
-                    <span>{font.label}</span>
-                    <small>{font.description}</small>
-                    {props.settings.latinFontFamily === font.id && (
-                      <Check className="reader-icon" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </section>
-            <section className="reader-mobile-setting-group" aria-labelledby="reader-width-label">
-              <span id="reader-width-label" className="reader-mobile-setting-label">
-                正文宽度
-              </span>
-              <div
-                className="reader-mobile-setting-options reader-mobile-setting-options-two"
-                role="group"
-                aria-label="正文宽度"
-              >
-                {(["narrow", "wide"] as const).map((contentWidth) => (
-                  <button
-                    type="button"
-                    key={contentWidth}
-                    className={`reader-mobile-setting-option ${props.settings.contentWidth === contentWidth ? "is-active" : ""}`}
-                    onClick={() => reader.setSettings({ contentWidth })}
-                    aria-pressed={props.settings.contentWidth === contentWidth}
-                  >
-                    <span>{contentWidth === "narrow" ? "舒适" : "宽屏"}</span>
-                    {props.settings.contentWidth === contentWidth && (
-                      <Check className="reader-icon" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </section>
-          </div>
+                <span id="reader-latin-font-family-label" className="reader-mobile-setting-label">
+                  英文字体
+                </span>
+                <div
+                  className="reader-mobile-setting-options reader-mobile-font-options"
+                  role="group"
+                  aria-label="英文字体"
+                >
+                  {READER_LATIN_FONT_OPTIONS.map((font) => (
+                    <button
+                      type="button"
+                      key={font.id}
+                      className={`reader-mobile-setting-option reader-mobile-font-option ${props.settings.latinFontFamily === font.id ? "is-active" : ""}`}
+                      onClick={() => reader.setSettings({ latinFontFamily: font.id })}
+                      aria-pressed={props.settings.latinFontFamily === font.id}
+                    >
+                      <strong style={{ fontFamily: `${font.stack}, sans-serif` }}>Ag</strong>
+                      <span>{font.label}</span>
+                      <small>{font.description}</small>
+                      {props.settings.latinFontFamily === font.id && (
+                        <Check className="reader-icon" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <section className="reader-mobile-setting-group" aria-labelledby="reader-width-label">
+                <span id="reader-width-label" className="reader-mobile-setting-label">
+                  正文宽度
+                </span>
+                <div
+                  className="reader-mobile-setting-options reader-mobile-setting-options-two"
+                  role="group"
+                  aria-label="正文宽度"
+                >
+                  {(["narrow", "wide"] as const).map((contentWidth) => (
+                    <button
+                      type="button"
+                      key={contentWidth}
+                      className={`reader-mobile-setting-option ${props.settings.contentWidth === contentWidth ? "is-active" : ""}`}
+                      onClick={() => reader.setSettings({ contentWidth })}
+                      aria-pressed={props.settings.contentWidth === contentWidth}
+                    >
+                      <span>{contentWidth === "narrow" ? "舒适" : "宽屏"}</span>
+                      {props.settings.contentWidth === contentWidth && (
+                        <Check className="reader-icon" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>
+          )}
           <div hidden={mobile && tab !== "tools"}>
             <section className="reader-mobile-setting-group" aria-label="阅读操作">
               <button

@@ -235,6 +235,7 @@ await page.waitForFunction(
     previous,
   minimumFontSize,
 );
+await page.getByRole("button", { name: "排版", exact: true }).click();
 await page.getByRole("button", { name: /Noto 宋体/ }).click();
 const selectedFontFamily = await page
   .locator(".reader-prose")
@@ -253,6 +254,7 @@ if (!selectedLatinFontFamily.startsWith("Georgia")) {
 }
 await page.getByRole("button", { name: /Noto 黑体/ }).click();
 await page.getByRole("button", { name: "Plex Sans" }).click();
+await page.getByRole("button", { name: "阅读", exact: true }).click();
 await page.getByRole("button", { name: "增大字号" }).click();
 await page.getByRole("button", { name: "增大字号" }).click();
 await page.getByRole("button", { name: "关闭阅读设置" }).click();
@@ -647,7 +649,7 @@ await page.locator(".reader-reading-scroll").evaluate((element) => {
   element.dispatchEvent(new Event("scroll"));
 });
 await page.waitForTimeout(900);
-if (!(await lastPdfPage.locator(".reader-pdf-page-meta").innerText()).includes("PAGE 003")) {
+if (!(await lastPdfPage.locator(".reader-pdf-page-meta").innerText()).includes("第 3 页")) {
   fail("PDF 页面语义标识没有保留");
 }
 await page.waitForTimeout(1_200);
@@ -656,7 +658,7 @@ await page.reload({ waitUntil: "domcontentloaded" });
 await page.locator(".reader-studio").waitFor({ timeout: 20_000 });
 await page.locator(".reader-pdf-page").last().waitFor({ timeout: 20_000 });
 await page.waitForTimeout(1_200);
-if ((await page.locator(".reader-pdf-page.is-active").innerText()).includes("PAGE 003") === false) {
+if ((await page.locator(".reader-pdf-page.is-active").innerText()).includes("第 3 页") === false) {
   fail("PDF 刷新后没有恢复最后阅读页面");
 }
 
