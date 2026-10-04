@@ -25,6 +25,7 @@
     "test:browser:reader:menu": "node scripts/verify-reader-context-menu.mjs",
     "test:browser:reader:toolbar": "node scripts/verify-reader-toolbar.mjs",
     "test:browser:diagram": "node scripts/verify-diagram.mjs",
+    "test:browser:content": "node scripts/verify-content.mjs",
     "test:browser:navigation": "node scripts/verify-workspace-navigation.mjs",
     "test:pwa": "node scripts/verify-reader-pwa.mjs",
     "test:pwa:knowledge": "node scripts/verify-knowledge-pwa.mjs",
@@ -62,7 +63,8 @@
     "test:browser:jsg:layout": "node scripts/verify-jsg-layout.mjs",
     "test:browser:jsg:storage": "node scripts/verify-jsg-storage.mjs",
     "test:browser:jsg:fixture": "node scripts/verify-jsg-clickhouse-fixture.mjs",
-    "test:browser:jsg:clickhouse": "node scripts/verify-jsg-clickhouse.mjs"
+    "test:browser:jsg:clickhouse": "node scripts/verify-jsg-clickhouse.mjs",
+    "test:browser:content:agent": "node scripts/verify-content-agent.mjs"
   },
   "dependencies": {
     "@sqlite.org/sqlite-wasm": "3.53.0-build1"

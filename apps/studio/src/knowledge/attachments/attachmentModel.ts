@@ -156,6 +156,13 @@ function textOf(node: Root | RootContent): string {
       : "";
 }
 export function rewriteAttachmentUrls(body: string, resolve: (id: string) => string) {
+  return rewriteMarkdownUrls(body, (url) => {
+    const id = attachmentId(url);
+    return id ? resolve(id) : null;
+  });
+}
+/** Rewrite used Markdown destinations while preserving prose, code and labels verbatim. */
+export function rewriteMarkdownUrls(body: string, resolve: (url: string) => string | null) {
   const edits: { from: number; to: number; text: string }[] = [];
   const root = parser.parse(body);
   const used = new Set<string>();
@@ -172,13 +179,13 @@ export function rewriteAttachmentUrls(body: string, resolve: (id: string) => str
         definitions.add(node.identifier);
         if (!used.has(node.identifier)) return;
       }
-      const id = attachmentId(node.url);
-      if (id) {
+      const replacement = resolve(node.url);
+      if (replacement !== null && replacement !== node.url) {
         const from = node.position!.start.offset!,
           to = node.position!.end.offset!;
         const fragment = body.slice(from, to);
         if (fragment.startsWith("<")) {
-          edits.push({ from, to, text: `[${node.url}](${resolve(id)})` });
+          edits.push({ from, to, text: `[${node.url}](${replacement})` });
           return;
         }
         // A destination follows the closing label, before any optional title.
@@ -197,8 +204,8 @@ export function rewriteAttachmentUrls(body: string, resolve: (id: string) => str
         }
         const start = end + 2;
         const at = fragment.indexOf(node.url, start);
-        if (at < start) throw new Error("附件链接无法导出");
-        edits.push({ from: from + at, to: from + at + node.url.length, text: resolve(id) });
+        if (at < start) throw new Error("Markdown 链接无法导出");
+        edits.push({ from: from + at, to: from + at + node.url.length, text: replacement });
       }
     }
     if ("children" in node) for (const child of node.children) walk(child);

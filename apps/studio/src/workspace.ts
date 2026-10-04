@@ -4,6 +4,8 @@ import { KnowledgeStore } from "./knowledge/session/store";
 import { ResearchStore } from "./research";
 import { DiagramStore } from "./diagram/store";
 import { createDiagramStorage } from "./diagram/browserStorage";
+import { ContentStore } from "./content/store";
+import { createContentStorage } from "./content/storage";
 
 /** The session owns lazy domain services; views and plugins borrow the same instances. */
 export function createWorkspaceServices(
@@ -15,11 +17,19 @@ export function createWorkspaceServices(
   let research: ResearchStore | undefined;
   let diagrams: DiagramStore | undefined;
   let diagramStorage: ReturnType<typeof createDiagramStorage> | undefined;
+  let content: ContentStore | undefined;
+  let contentStorage: ReturnType<typeof createContentStorage> | undefined;
   let closing: Promise<void> | undefined;
   const assertOpen = () => {
     if (closing) throw new Error("工作区服务已关闭");
   };
   return {
+    get content() {
+      if (content) return content;
+      assertOpen();
+      contentStorage = typeof indexedDB === "undefined" ? undefined : createContentStorage();
+      return (content = new ContentStore(contentStorage ?? metadata, binary));
+    },
     get knowledge() {
       if (knowledge) return knowledge;
       assertOpen();
@@ -44,6 +54,7 @@ export function createWorkspaceServices(
         knowledge?.close(),
         research?.close(),
         diagrams?.close(),
+        content?.close(),
       ])
         .then((results) => {
           const failures = results.flatMap((result) =>
@@ -51,7 +62,7 @@ export function createWorkspaceServices(
           );
           if (failures.length) throw new AggregateError(failures, "工作区服务关闭失败");
         })
-        .finally(() => diagramStorage?.close())
+        .finally(() => Promise.all([diagramStorage?.close(), contentStorage?.close()]))
         .then(() => undefined));
     },
   };

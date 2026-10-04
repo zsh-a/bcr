@@ -1,0 +1,19 @@
+{
+  "name": "@bcr/visual-renderer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./model": "./src/model.ts",
+    "./analysis": "./src/analysis.ts",
+    "./png": "./src/png.ts"
+  },
+  "dependencies": {
+    "@bcr/economics-core": "workspace:*",
+    "@resvg/resvg-wasm": "^2.6.2",
+    "echarts": "^6.0.0",
+    "fflate": "^0.8.3",
+    "fonteditor-core": "^2.6.3"
+  }
+}

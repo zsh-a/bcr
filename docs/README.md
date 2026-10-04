@@ -12,6 +12,7 @@
 | 写作与知识关联   | [知识工作台](KNOWLEDGE-WORKBENCH.md) · [路径与文件夹](KNOWLEDGE-PATHS.md) · [图片与附件](KNOWLEDGE-ATTACHMENTS.md) |
 | 多设备笔记       | [GitHub 同步与恢复](KNOWLEDGE-SYNC.md) · [知识库存储](KNOWLEDGE-STORAGE.md)                                        |
 | 画布与图表       | [绘图工作区](DRAWING.md)                                                                                           |
+| 内容创作与经营   | [内容项目、经济模型与图文发布](CONTENT-STUDIO.md)                                                                  |
 | 摘录与资料迁移   | [引用与集合备份](RESEARCH-CITATIONS.md) · [Reader 资料包](RESEARCH-PACKAGE.md)                                     |
 | 安装、离线与更新 | [独立 PWA](INDEPENDENT-PWAS.md) · [Notes 入口](KNOWLEDGE-PWA.md) · [更新和恢复](APP-UPDATES.md)                    |
 

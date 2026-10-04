@@ -20,6 +20,8 @@ const APP_SHELL = [
 ];
 
 function isRequiredAppAsset(url) {
+  // Content exports embed one complete font; it is a dependency, not a UI font shard.
+  if (app.key === "content" && /\/IBMPlexSansSC-Regular-[^/]+\.woff$/u.test(url)) return true;
   // Reader includes PDF resources for first-time offline imports. Other apps
   // defer PDF and local-model resources; Chinese fonts remain cached on demand.
   return (
@@ -99,6 +101,11 @@ async function shellUrls() {
     addManifestEntry(manifest, app.entry, urls, new Set(), true);
     // Default native text and Mermaid text; other selectable font families cache on demand.
     for (const font of globalThis.__BCR_DIAGRAM_FONT_ASSETS__) urls.add(font);
+  }
+  if (app.key === "content") {
+    // The first offline creation must also render/export charts, including resvg
+    // WASM and the captured Chinese font, even if only the welcome screen was opened.
+    addManifestEntry(manifest, app.entry, urls, new Set(), true);
   }
   // Vite emits workers as assets, so their nested wasm imports are not edges
   // in the page's static module graph. The shared compute kernel is boot-critical.

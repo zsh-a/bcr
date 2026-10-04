@@ -75,6 +75,7 @@ const FILTERS: ReadonlyArray<SearchFilter> = [
 ];
 
 function iconFor(kind: SearchDocumentKind) {
+  if (kind === "content-project") return <FileText className="size-4" />;
   if (kind === "diagram") return <Shapes className="size-4" />;
   if (kind === "knowledge-note") return <BookOpen className="size-4" />;
   if (kind === "research-note" || kind === "research-excerpt")
@@ -93,6 +94,7 @@ function iconFor(kind: SearchDocumentKind) {
 }
 
 function kindLabel(kind: SearchDocumentKind): string {
+  if (kind === "content-project") return "内容项目";
   if (kind === "diagram") return "绘图";
   if (kind === "knowledge-note") return "个人笔记";
   if (kind === "research-note") return "笔记";

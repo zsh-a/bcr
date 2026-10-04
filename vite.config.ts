@@ -24,6 +24,16 @@ import { defineConfig } from "vite-plus";
  */
 const boundaries: { dir: string; allow: string[]; message: string }[] = [
   {
+    dir: "packages/economics-core",
+    allow: [],
+    message: "Economic models are pure domain logic, independent of runtime and UI.",
+  },
+  {
+    dir: "packages/visual-renderer",
+    allow: ["@bcr/economics-core", "@bcr/economics-core/*"],
+    message: "Visual rendering consumes economic results, never application stores.",
+  },
+  {
     dir: "packages/market-data",
     allow: ["@bcr/core", "@bcr/storage-opfs"],
     message: "Market data owns datasets and sources, independently of strategies and UI.",

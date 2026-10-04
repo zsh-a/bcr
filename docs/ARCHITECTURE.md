@@ -33,6 +33,7 @@ TypeScript 定义契约与界面，Effect 管理任务生命周期，Rust/WASM �
 - **知识库与资料集合**：由工作区服务持有，领域插件只注册搜索、工具和视图。知识库采用[分记录存储](KNOWLEDGE-STORAGE.md)。
 - **Reader**：使用专用书库、延迟解析和索引流程，解析 Worker 不经过计算 Scheduler；恢复与位置契约见 [Reader](READER-ARCHITECTURE.md)。
 - **绘图**：原生 Excalidraw scene 保存到独立 IndexedDB，文档与索引原子提交，并用 revision 拒绝过期写入。
+- **内容项目**：专用 IndexedDB 持有项目、证据和不可变发布快照，原始素材落入独立的持久化文件前缀；文稿仍归知识库所有。纯计算与图表渲染各自独立成包，见[内容创作架构](CONTENT-STUDIO.md#实现边界)。
 
 计算项目和 Reader 使用命名空间级 Web Locks。不同 PWA 可以拥有独立入口，但同源数据与项目写入锁仍共享；这不构成多窗口协同编辑。各独立入口是否创建 Studio 会话，见 [Runtime 所有权](RUNTIME-ARCHITECTURE.md#所有权)。
 

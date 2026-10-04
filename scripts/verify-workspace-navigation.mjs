@@ -124,6 +124,7 @@ try {
     ["/markets", ".ma-header"],
     ["/knowledge", ".knowledge-app"],
     ["/diagram", ".diagram-app"],
+    ["/content", ".content-app"],
     ["/studio", ".studio-dock"],
   ]) {
     await page.goto(`${origin}${route}`, { waitUntil: "domcontentloaded" });

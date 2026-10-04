@@ -17,13 +17,13 @@ void test("core retains critical workflows and full retains every browser varian
   assert.deepEqual(
     core.map(({ name, checks }) => [name, checks.length]),
     [
-      ["workspace", 10],
+      ["workspace", 12],
       ["quant", 12],
       ["reader", 8],
     ],
   );
-  assert.equal(scripts(full).length, 85);
-  assert.equal(new Set(scripts(full)).size, 85);
+  assert.equal(scripts(full).length, 87);
+  assert.equal(new Set(scripts(full)).size, 87);
   for (const script of scripts(core)) assert.ok(scripts(full).includes(script), script);
   for (const script of scripts(full)) assert.ok(existsSync(new URL(script, root)), script);
   for (const critical of [
@@ -35,6 +35,8 @@ void test("core retains critical workflows and full retains every browser varian
     "research-recovery",
     "knowledge-attachments",
     "session-isolation",
+    "content",
+    "content-agent",
   ]) {
     assert.ok(scripts(core).includes(`scripts/verify-${critical}.mjs`), critical);
   }
@@ -49,7 +51,7 @@ void test("independent matrix groups partition both suites without dropping chec
   }
   const live = scripts(selectBrowserGroups({ liveMarkets: true }));
   assert.equal(live.filter((script) => script === "scripts/verify-market-atlas.mjs").length, 1);
-  assert.equal(live.length, 31);
+  assert.equal(live.length, 33);
   assert.ok(
     !scripts(selectBrowserGroups({ group: "reader", liveMarkets: true })).includes(
       "scripts/verify-market-atlas.mjs",

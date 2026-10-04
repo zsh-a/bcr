@@ -23,6 +23,7 @@ export type SearchDocumentKind =
   | "reader-section"
   | "document"
   | "diagram"
+  | "content-project"
   | "manga-page"
   | "manga-region"
   | "media"
@@ -172,6 +173,7 @@ function isSearchKind(value: unknown): value is SearchDocumentKind {
     value === "reader-section" ||
     value === "document" ||
     value === "diagram" ||
+    value === "content-project" ||
     value === "manga-page" ||
     value === "manga-region" ||
     value === "media" ||

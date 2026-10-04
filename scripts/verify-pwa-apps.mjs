@@ -68,6 +68,7 @@ const selectors = {
   data: ".data-studio",
   docgen: ".docgen-studio",
   diagram: ".diagram-app",
+  content: ".content-app",
 };
 const ids = new Set();
 try {
@@ -144,6 +145,43 @@ try {
       await code.waitFor({ state: "hidden" });
       await page.locator(".diagram-save-state").filter({ hasText: "已保存" }).waitFor();
       assert.equal(await page.getByRole("alert").count(), 0);
+    }
+    if (app.key === "content") {
+      await page.getByRole("button", { name: "创建健身卡示例", exact: true }).click();
+      await page.getByRole("heading", { name: "这期内容，想回答什么？" }).waitFor();
+      assert.match(page.url(), /\/pwa\/content\/\?project=/u);
+      const workflow = page.getByRole("navigation", { name: "内容创作流程" });
+      await workflow.getByRole("button", { name: /图表/u }).click();
+      await page.locator(".content-visual-preview img").nth(1).waitFor();
+      await workflow.getByRole("button", { name: /发布与归档/u }).click();
+      await page.getByRole("button", { name: "生成发布快照", exact: true }).click();
+      await page.getByRole("heading", { name: "版本 1", exact: true }).waitFor();
+      const pending = page.waitForEvent("download");
+      await page.getByRole("button", { name: "下载发布包", exact: true }).click();
+      assert.equal(await (await pending).failure(), null);
+      assert.equal(await page.getByRole("alert").count(), 0);
+      await page.getByLabel("新项目预设", { exact: true }).selectOption("cooking");
+      await page.getByRole("button", { name: "新建选题", exact: true }).click();
+      await workflow.getByRole("button", { name: /页面/u }).click();
+      await page.getByLabel("损耗率", { exact: true }).fill("0.4");
+      await page.getByRole("button", { name: "保存页面与参数", exact: true }).click();
+      await page.getByText("已保存 · 可通过助手继续编辑", { exact: true }).waitFor();
+      assert.match(await page.locator(".page-table").innerText(), /20\.00/u);
+      await workflow.getByRole("button", { name: /发布与归档/u }).click();
+      await page.getByRole("button", { name: "生成发布快照", exact: true }).click();
+      await page.getByRole("heading", { name: "版本 1", exact: true }).waitFor();
+      const generated = page.waitForEvent("download");
+      await page.getByRole("button", { name: "下载发布包", exact: true }).click();
+      assert.equal(await (await generated).failure(), null);
+      assert.equal(await page.getByRole("alert").count(), 0);
+    }
+    if (app.key === "knowledge") {
+      await page.getByRole("button", { name: "新建笔记", exact: true }).click();
+      await page.getByLabel("笔记正文", { exact: true }).fill("首次离线打开笔记仍可编辑。");
+      await page
+        .locator('[data-testid="knowledge-status"] .knowledge-status-line')
+        .filter({ hasText: /^已保存/u })
+        .waitFor({ state: "attached" });
     }
     assert.deepEqual(errors, [], `${app.key}: runtime errors`);
     await context.close();
