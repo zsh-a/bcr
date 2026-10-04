@@ -80,6 +80,7 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
           app={pwaForApp("knowledge")!}
           open
           onClose={() => setInstallationOpen(false)}
+          onBackup={exportAll}
         />
       )}
       <IconButton

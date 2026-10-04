@@ -603,6 +603,7 @@ export function App(props: { workspaceCollections?: boolean } = {}) {
       />
       <ReaderShortcutHelp open={shortcutHelpOpen} onClose={() => setShortcutHelpOpen(false)} />
       <ReaderInstallHelp
+        runtime={runtime}
         open={installHelpOpen}
         installed={pwaInstall.isInstalled}
         canInstall={pwaInstall.canInstall}

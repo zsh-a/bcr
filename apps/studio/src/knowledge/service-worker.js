@@ -72,6 +72,8 @@ async function shellUrls() {
   const visited = new Set();
   // 只预缓存 Notes 独立入口的模块图；宿主 Studio 的其余应用保持按需加载。
   addManifestEntry(manifest, "notes/knowledge/index.html", urls, visited);
+  // Export and restore must work even when their first use is offline.
+  addManifestEntry(manifest, "src/knowledge/storage/backupArchive.ts", urls, visited);
   for (const key of Object.keys(manifest)) {
     if (key.endsWith("/bcr_kernels_bg.wasm")) addManifestEntry(manifest, key, urls, visited);
   }

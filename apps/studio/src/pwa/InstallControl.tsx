@@ -8,10 +8,12 @@ export function PwaInstallDialog({
   app,
   open,
   onClose,
+  onBackup,
 }: {
   app: PwaApp;
   open: boolean;
   onClose: () => void;
+  onBackup?: () => Promise<void>;
 }) {
   const installation = useAppInstallation(app);
   const dedicated = pwaAtPath(location.pathname)?.key === app.key;
@@ -41,20 +43,27 @@ export function PwaInstallDialog({
               <Download size={16} />
               {dedicated ? `安装${app.shortName}` : `前往${app.shortName}安装页`}
             </Button>
-          ) : (
-            <p className="pwa-install-help">
-              在 Android Chrome 菜单中选择“添加到主屏幕”或“安装应用”，确认名称为“{app.name}
-              ”。安装完成后，从桌面图标打开。
-            </p>
-          )}
+          ) : null}
           {dedicated && (
-            <p className="pwa-install-help">
-              未出现安装选项时，请使用 Chrome 打开此页面；如果已经安装，可从桌面打开。
-            </p>
+            <details className="bcr-install-help" open={!installation.canPrompt}>
+              <summary>通过 Chrome 菜单安装</summary>
+              <p>在 Android Chrome 菜单选择“添加到主屏幕”或“安装应用”，确认名称为“{app.name}”。</p>
+              <p>未看到安装选项？请用 Chrome 打开此页；已安装时可从桌面图标打开。</p>
+            </details>
           )}
         </>
       )}
-      <AppOfflinePanel />
+      <AppOfflinePanel
+        backup={
+          onBackup
+            ? {
+                label: "导出笔记备份",
+                run: onBackup,
+                successMessage: "已发起备份下载，请在下载列表中确认并保管 ZIP 文件。",
+              }
+            : undefined
+        }
+      />
     </Dialog>
   );
 }

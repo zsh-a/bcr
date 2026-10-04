@@ -1,7 +1,27 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { chromium } from "playwright";
 import { sharedEpub, sharedPdf } from "./lib/pwa-reader-fixtures.mjs";
 import { startPwaServer } from "./lib/pwa-server.mjs";
+
+const { ZipReader, Uint8ArrayReader, TextWriter } = createRequire(
+  new URL("../packages/reader-studio/package.json", import.meta.url),
+)("@zip.js/zip.js");
+async function backupContains(download, expected) {
+  const zip = new ZipReader(new Uint8ArrayReader(await readFile(await download.path())));
+  try {
+    const entries = await zip.getEntries();
+    for (const entry of entries) {
+      if (!entry.directory && /\.(?:json|txt|md)$/u.test(entry.filename)) {
+        if ((await entry.getData(new TextWriter())).includes(expected)) return;
+      }
+    }
+    assert.fail(`downloaded backup must contain ${expected}`);
+  } finally {
+    await zip.close();
+  }
+}
 
 const server = await startPwaServer();
 const browser = await chromium.launch({ channel: "chromium" });
@@ -132,10 +152,47 @@ try {
   console.log("Verifying mobile offline workflows");
   await openApp("reader");
   await page.getByRole("button", { name: "导入第一本书", exact: true }).click({ trial: true });
+  await page.evaluate(() => {
+    Object.defineProperties(navigator.storage, {
+      estimate: {
+        configurable: true,
+        value: async () => ({ usage: 1.5 * 1024 ** 3, quota: 64 * 1024 ** 3 }),
+      },
+      persisted: { configurable: true, value: async () => false },
+      persist: { configurable: true, value: async () => false },
+    });
+  });
   await page.getByRole("button", { name: "更多阅读操作", exact: true }).click();
   await page.getByRole("menuitem", { name: "Reader 安装与离线" }).click();
   await page.locator('[data-offline-state="ready"]').waitFor({ timeout: 60_000 });
   const panel = page.getByRole("dialog", { name: "Reader · 安装与离线" });
+  await panel.getByRole("meter", { name: "本站存储占用" }).waitFor();
+  assert.match(await panel.locator(".bcr-offline-usage").innerText(), /1.5 GB/u);
+  assert.match(await panel.locator(".bcr-offline-usage").innerText(), /64.0 GB/u);
+  const protection = panel.getByRole("button", { name: "申请存储保护", exact: true });
+  await protection.click({ trial: true });
+  assert((await protection.boundingBox()).height >= 48);
+  await protection.click();
+  await panel.getByText(/浏览器暂未授予保护/u).waitFor();
+  await page.evaluate(() => {
+    Object.defineProperties(navigator.storage, {
+      persisted: { configurable: true, value: async () => true },
+      persist: { configurable: true, value: async () => true },
+    });
+  });
+  await protection.click();
+  await panel.getByText("已获保护", { exact: true }).waitFor();
+  await protection.waitFor({ state: "hidden" });
+  const instructions = panel.locator(".bcr-install-help");
+  if (await instructions.evaluate((element) => element.open))
+    await instructions.locator("summary").click();
+  await instructions.locator("summary").focus();
+  await page.keyboard.press("Enter");
+  assert(
+    await instructions.evaluate((element) => element.open),
+    "install help expands with keyboard",
+  );
+  await instructions.locator("summary").click();
   const box = await panel.locator(".reader-install-card").boundingBox();
   assert(box.y >= 0 && box.y + box.height <= 844, "installation panel fits a mobile viewport");
   await page.screenshot({ path: "/tmp/bcr-android-install.png", animations: "disabled" });
@@ -160,6 +217,24 @@ try {
   await page.reload();
   await page.locator(".reader-workspace").waitFor();
   assert.equal(await page.getByRole("dialog", { name: "接收到阅读文件" }).count(), 0);
+  // The direct backup action must work offline and return focus to its opener.
+  await page.getByRole("button", { name: "更多阅读操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Reader 安装与离线" }).click();
+  // Also exercise live network changes; Chromium resets navigator.onLine after a share redirect.
+  await context.setOffline(false);
+  await panel.getByText("已联网", { exact: true }).waitFor();
+  await context.setOffline(true);
+  await panel.getByText("当前离线", { exact: true }).waitFor();
+  await panel.getByRole("button", { name: "备份书库", exact: true }).click();
+  const readerBackup = page.getByRole("dialog", { name: "备份与恢复", exact: true });
+  await readerBackup.getByRole("button", { name: "生成完整备份", exact: true }).click();
+  const readerDownload = page.waitForEvent("download");
+  await readerBackup.getByRole("link", { name: /^下载 reader-backup-/u }).click();
+  await backupContains(await readerDownload, "Android离线分享正文");
+  await readerBackup.getByRole("button", { name: "关闭备份与恢复", exact: true }).click();
+  assert.equal(await page.evaluate(() => document.activeElement?.textContent), "备份书库");
+  await page.keyboard.press("Escape");
+  await panel.waitFor({ state: "hidden" });
   await page.goto(sharedUrl);
   await page.getByRole("alert").filter({ hasText: "已处理或已过期" }).waitFor();
   await page
@@ -278,12 +353,37 @@ try {
   await page.reload();
   await page.getByLabel("笔记正文", { exact: true }).waitFor();
   assert.equal(new URL(page.url()).searchParams.get("note"), created);
+  const draft = "从离线面板导出的最新草稿";
+  await page.getByLabel("笔记正文", { exact: true }).fill(draft);
+  await page.evaluate(() => {
+    Object.defineProperty(navigator.storage, "estimate", {
+      value: async () => {
+        throw new Error("Storage estimate unavailable");
+      },
+    });
+  });
+  await page.getByRole("button", { name: "更多操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "应用设置", exact: true }).click();
+  await page.getByRole("menuitem", { name: "安装与离线", exact: true }).click();
+  const knowledgePanel = page.getByRole("dialog", { name: /安装与离线/u });
+  await knowledgePanel.getByText(/暂时无法读取空间占用/u).waitFor();
+  await context.setOffline(false);
+  await context.setOffline(true);
+  await knowledgePanel.getByText("当前离线", { exact: true }).waitFor();
+  const knowledgeDownload = page.waitForEvent("download");
+  await knowledgePanel.getByRole("button", { name: "导出笔记备份", exact: true }).click();
+  const backup = await knowledgeDownload;
+  assert.equal(backup.suggestedFilename(), "bcr-knowledge.zip");
+  await backupContains(backup, draft);
+  await knowledgePanel.getByText(/已发起备份下载/u).waitFor();
+  await page.keyboard.press("Escape");
+  await knowledgePanel.waitFor({ state: "hidden" });
   await share("knowledge", { url: "javascript:alert(1)" });
   await page.getByRole("alert").filter({ hasText: "仅支持 http" }).waitFor();
   assert.equal(server.postedFiles(), 0, "share content never reaches the HTTP server");
   assert.deepEqual(errors, []);
   console.log(
-    "Android PWA PASSED: independent installation, mobile offline status, durable offline shares, app isolation and invalid-content recovery",
+    "Android PWA PASSED: independent installation, storage protection, offline backup downloads, durable offline shares, app isolation and invalid-content recovery",
   );
 } catch (error) {
   console.error(error);

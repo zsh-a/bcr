@@ -45,7 +45,7 @@ export async function writeKnowledgeBackup(
     if (bytes > FILE_LIMIT || total > TRANSFER_LIMIT)
       throw new Error("知识库超过备份容量限制，未生成不完整备份");
   }
-  const { ZipWriter, BlobWriter, BlobReader, TextReader } = await import("@zip.js/zip.js");
+  const { ZipWriter, BlobWriter, BlobReader, TextReader } = await import("./backupArchive");
   const zip = new ZipWriter(new BlobWriter("application/zip"));
   try {
     for (const [path, text] of Object.entries(files)) await zip.add(path, new TextReader(text));
@@ -75,7 +75,7 @@ export async function readKnowledgeBackup(
   attachments?: KnowledgeAttachments,
 ): Promise<KnowledgeContent> {
   if (file.size > ATTACHMENT_TRANSFER_LIMIT) throw new Error("备份文件超过 512 MiB 限制");
-  const { ZipReader, BlobReader } = await import("@zip.js/zip.js");
+  const { ZipReader, BlobReader } = await import("./backupArchive");
   const zip = new ZipReader(new BlobReader(file));
   const files: Record<string, string> = Object.create(null);
   const seen = new Set<string>();
@@ -257,7 +257,7 @@ export async function writeMarkdownArchive(
 ) {
   const valid = decodeContent(content);
   checkAttachmentReferences(valid);
-  const { ZipWriter, BlobWriter, BlobReader, TextReader } = await import("@zip.js/zip.js");
+  const { ZipWriter, BlobWriter, BlobReader, TextReader } = await import("./backupArchive");
   const zip = new ZipWriter(new BlobWriter("application/zip"));
   const roots = new Set(
     Object.values(valid.notes).map((note) =>

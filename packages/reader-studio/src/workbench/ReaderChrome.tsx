@@ -9,16 +9,22 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useEffect, useRef, type RefObject } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { ActionMenu, AppOfflinePanel } from "@bcr/react";
 import { readerAcceptAttribute, type ReaderBook } from "@bcr/reader-core";
-import type { ReaderRestoreDiagnostics } from "../runtime";
+import type { ReaderRestoreDiagnostics, ReaderRuntime } from "../runtime";
 import { openSearchHit } from "../search/readerSearchNavigation";
 import { getReaderState, reader } from "../state/store";
 import { useReader } from "../state/useReader";
 import { ReaderSheet } from "./ReaderSheet";
 import { useReaderMobile } from "./useReaderMobile";
+
+const ReaderBackupPanel = lazy(() =>
+  import("../persistence/ReaderBackupPanel").then((module) => ({
+    default: module.ReaderBackupPanel,
+  })),
+);
 
 export function ReaderRecoveryBanner(props: { recovery: ReaderRestoreDiagnostics }) {
   const { recovery } = props;
@@ -352,18 +358,15 @@ export function ReaderHeader(props: {
 }
 
 export function ReaderInstallHelp(props: {
+  runtime: ReaderRuntime;
   open: boolean;
   installed: boolean;
   canInstall: boolean;
   onInstall: () => void;
   onClose: () => void;
 }) {
+  const [backupOpen, setBackupOpen] = useState(false);
   const dedicated = location.pathname.startsWith("/pwa/reader/");
-  const steps = [
-    "使用 Android Chrome 打开 Reader 安装页",
-    "在浏览器菜单选择“添加到主屏幕”或“安装应用”",
-    "确认名称为 BCR Reader，从桌面图标打开",
-  ];
   return (
     <ReaderSheet
       open={props.open}
@@ -390,14 +393,11 @@ export function ReaderInstallHelp(props: {
             <X className="reader-icon" />
           </button>
         </div>
-        <p>安装后可以从桌面直接打开本地书库，阅读界面会进入更专注的独立窗口。</p>
-        {!props.installed && (
-          <ol>
-            {steps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ol>
-        )}
+        <p>
+          {props.installed
+            ? "已安装，可从桌面图标打开书库。"
+            : "把书库放到手机桌面，随时继续阅读。"}
+        </p>
         {!props.installed && (!dedicated || props.canInstall) && (
           <button
             type="button"
@@ -407,10 +407,21 @@ export function ReaderInstallHelp(props: {
             {dedicated ? "安装 Reader" : "前往 Reader 安装页"}
           </button>
         )}
-        {props.open && <AppOfflinePanel />}
-        <button type="button" className="ui-btn ui-btn-lg ui-btn-primary" onClick={props.onClose}>
-          知道了
-        </button>
+        {!props.installed && dedicated && (
+          <details className="bcr-install-help" open={!props.canInstall}>
+            <summary>通过 Chrome 菜单安装</summary>
+            <p>在 Android Chrome 菜单选择“添加到主屏幕”或“安装应用”，确认名称为“BCR Reader”。</p>
+            <p>未看到安装选项？请用 Chrome 打开此页；已安装时可从桌面图标打开。</p>
+          </details>
+        )}
+        {props.open && (
+          <AppOfflinePanel backup={{ label: "备份书库", run: () => setBackupOpen(true) }} />
+        )}
+        {backupOpen && (
+          <Suspense fallback={<p role="status">正在打开备份工具…</p>}>
+            <ReaderBackupPanel open runtime={props.runtime} onClose={() => setBackupOpen(false)} />
+          </Suspense>
+        )}
       </section>
     </ReaderSheet>
   );
