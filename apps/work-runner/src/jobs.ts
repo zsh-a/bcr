@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { decode, Id, RenderSchema, type Job } from "@bcr/work-core";
+import { decode, Id, RenderSchema, renderSettings, type Job } from "@bcr/work-core";
 import { atomic, hash, json, Projects } from "./projects";
 import { workerEntry } from "./installation";
 
@@ -66,6 +66,20 @@ export class Jobs {
     if (target.runtime === "html" && ["capture", "video"].includes(request.kind))
       throw new Error("HTML 目标不支持视频或关键帧导出");
     if (
+      (target.runtime !== "remotion" || ["preview", "archive"].includes(request.kind)) &&
+      [request.profile, request.crf, request.gl].some((value) => value !== undefined)
+    )
+      throw new Error("渲染质量选项仅用于动画验证、关键帧或视频导出");
+    if (request.crf !== undefined && request.kind !== "video")
+      throw new Error("crf 仅用于视频编码");
+    const settings = renderSettings(request);
+    if (
+      target.runtime === "remotion" &&
+      request.kind === "video" &&
+      [target.width, target.height].some((size) => Math.round(size * settings.scale) % 2 !== 0)
+    )
+      throw new Error("MP4 输出宽高必须为偶数，请调整 scale 或目标尺寸");
+    if (
       target.runtime === "remotion" &&
       ((request.to ?? 0) >= target.durationInFrames ||
         (request.from ?? 0) > (request.to ?? target.durationInFrames - 1) ||
@@ -76,7 +90,7 @@ export class Jobs {
     const job: Job = {
       id: randomUUID(),
       request,
-      renderKey: hash(JSON.stringify({ identity, engine: this.engine })),
+      renderKey: hash(JSON.stringify({ identity, settings, engine: this.engine })),
       status: "queued",
       progress: 0,
       stage: "等待渲染",

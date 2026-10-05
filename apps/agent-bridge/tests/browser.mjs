@@ -95,7 +95,7 @@ try {
     401,
   );
   await page.goto(`${origin}/works`);
-  await page.getByRole("button", { name: "新建作品", exact: true }).waitFor();
+  await page.getByRole("button", { name: "新建页面", exact: true }).waitFor();
   await openPanel(page);
   await connect();
   for (const mode of ["legacy", "auto"]) {
@@ -150,7 +150,7 @@ try {
   );
   console.log("PASS: work creation and retry across independent MCP clients");
   await page.getByRole("button", { name: "关闭外部 Agent 面板" }).click();
-  await page.goto(`${origin}/works?work=${created.id}`);
+  await page.goto(`${origin}/works?work=${created.id}&mode=build`);
   // Navigation reload revokes the browser session; reconnect explicitly to the same stored workspace.
   await openPanel(page);
   await connect(true);

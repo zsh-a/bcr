@@ -23,6 +23,8 @@ export const WorkSchema = Schema.Struct({
   links: Links,
   createdAt: Schema.Number,
   updatedAt: Schema.Number,
+  message: Schema.optional(Schema.String.pipe(Schema.maxLength(160))),
+  restoredFrom: Schema.optional(Id),
 });
 export type Work = typeof WorkSchema.Type;
 export const CommitSchema = Schema.Struct({
@@ -44,6 +46,7 @@ export const CommitSchema = Schema.Struct({
   ),
   remove: Schema.optional(Schema.Array(Path).pipe(Schema.maxItems(200))),
   restoreRevision: Schema.optional(Id),
+  message: Schema.optional(Schema.String.pipe(Schema.minLength(1), Schema.maxLength(160))),
 });
 export type WorkCommit = typeof CommitSchema.Type;
 export function parseCommit(raw: unknown): WorkCommit {
@@ -101,6 +104,8 @@ export const workContract = () => ({
     "普通 HTML/CSS/JS 与原生 ES modules，相对静态 import / 字符串字面量 dynamic import；禁止外部 URL、远程依赖、eval、CSS @import。React/TSX/npm 依赖请在独立作品目录预先打包，然后上传浏览器产物，不修改 BCR 源码。使用 await bcr.readText('data.json') 读取作品内文件、bcr.asset('image.png') 获取 data URL。不提供任何宿主存储或工具调用。",
   workflow:
     "work_commit → work_preview(start) → work_preview(inspect/input/click) → 根据错误修订 → work_export。保存不会自动执行脚本。预览限制 10 MiB，版本完整归档上限 256 MiB。导出 HTML 与预览使用同一编译器；archive 包含版本清单和原始文件，可通过 work_import 在新环境恢复。",
+  review:
+    "work_review_read → work_review_edit(submit/comment/decide/deliver)。审阅 revision 独立于源码 revision；submit 固定源码、产物和修改说明，addresses 关联反馈，只标为待复核。必须收到用户明确指令才可 accept 或 deliver。work_delivery_export 下载固定交付包。",
 });
 export function mimeFor(path: string) {
   const ext = path.split(".").at(-1)?.toLowerCase();

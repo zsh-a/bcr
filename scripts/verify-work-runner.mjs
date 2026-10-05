@@ -1,7 +1,12 @@
 import { spawnSync } from "node:child_process";
-const result = spawnSync("bun", ["apps/work-runner/tests/browser.mjs"], {
-  stdio: "inherit",
-  timeout: 240000,
-});
-if (result.error) console.error(result.error);
-process.exitCode = result.status ?? 1;
+for (const suite of ["browser", "review-browser", "page-review-browser"]) {
+  const result = spawnSync("bun", [`apps/work-runner/tests/${suite}.mjs`], {
+    stdio: "inherit",
+    timeout: 240000,
+  });
+  if (result.error) console.error(result.error);
+  if (result.status !== 0) {
+    process.exitCode = result.status ?? 1;
+    break;
+  }
+}

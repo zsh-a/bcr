@@ -28,13 +28,20 @@ export class RunnerClient {
   }
   async call<T = unknown>(op: string, input: unknown = {}): Promise<T> {
     return (
-      await this.request("/rpc", { method: "POST", body: JSON.stringify({ op, input }) })
+      await this.request("/rpc", {
+        method: "POST",
+        body: JSON.stringify({ op, input }),
+        signal: AbortSignal.timeout(op === "page_capture" ? 45000 : 20000),
+      })
     ).json() as Promise<T>;
   }
   async catalog() {
     const catalog = await this.call<RunnerCatalog>("catalog");
     if (catalog.format !== RUNNER_PROTOCOL) throw new Error("Runner 协议不兼容");
     return catalog;
+  }
+  pageImage(id: string) {
+    return this.request(`/captures/${encodeURIComponent(id)}`);
   }
   output(id: string, name: string) {
     return this.request(`/outputs/${encodeURIComponent(id)}/${encodeURIComponent(name)}`);

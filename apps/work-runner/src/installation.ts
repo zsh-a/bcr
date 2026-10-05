@@ -51,7 +51,10 @@ export function release(): Release {
           .filter((f) => f.endsWith(".ts"))
           .sort()
           .map((f) => hash(readFileSync(join(import.meta.dir, f)))),
-        core: hash(readFileSync(require.resolve("@bcr/work-core"))),
+        core: readdirSync(dirname(require.resolve("@bcr/work-core")))
+          .filter((f) => f.endsWith(".ts"))
+          .sort()
+          .map((f) => hash(readFileSync(join(dirname(require.resolve("@bcr/work-core")), f)))),
         dependencies,
       }),
     ),

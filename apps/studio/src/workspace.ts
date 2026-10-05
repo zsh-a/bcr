@@ -46,7 +46,7 @@ export function createWorkspaceServices(
     },
     get workService(): WorkService {
       assertOpen();
-      return (workService ??= new WorkService(this.works));
+      return (workService ??= new WorkService(this.works, this.preview));
     },
     get preview() {
       assertOpen();

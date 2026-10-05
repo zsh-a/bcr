@@ -110,18 +110,43 @@ try {
   assert.equal(catalog.format, "bcr-runner-1");
   assert.equal(catalog.version, "0.2.0");
   assert.equal(catalog.instanceId, start.instanceId);
+  const pageCapture = await call("page_capture", {
+    requestId: "release-page",
+    source: { kind: "document", key: "release-test", html: "<h1>Portable page capture</h1>" },
+    page: { path: "index.html", viewport: { width: 390, height: 844 } },
+  });
+  assert.equal(pageCapture.image.mime, "image/png");
+  assert(pageCapture.elements.some((e) => e.text === "Portable page capture"));
+  const pageImage = await client.callTool({
+    name: "runner_page_image",
+    arguments: { id: pageCapture.id },
+  });
+  assert(!pageImage.isError && pageImage.content.some((c) => c.type === "image"));
+  await cli("page-image", pageCapture.id, "--output", join(temp, "page.png"));
+  assert.equal(readFileSync(join(temp, "page.png")).readUInt32BE(16), 390);
+  console.log("PASS: portable page worker, isolated Chromium screenshot and MCP image feedback");
   const work = await call("read", { id: "gym-card" });
   assert.equal(work.directory, join(temp, "project"));
-  const request = { id: "gym-card", revision: work.revision, target: "vertical", scale: 0.25 };
+  const request = { id: "gym-card", revision: work.revision, target: "vertical" };
   const capture = await call("render", {
     ...request,
     kind: "capture",
+    scale: 0.25,
+    profile: "draft",
     frames: [0, 360],
     requestId: "capture",
   });
   assert.equal(
-    (await call("render", { ...request, kind: "capture", frames: [0, 360], requestId: "capture" }))
-      .id,
+    (
+      await call("render", {
+        ...request,
+        kind: "capture",
+        scale: 0.25,
+        profile: "draft",
+        frames: [0, 360],
+        requestId: "capture",
+      })
+    ).id,
     capture.id,
   );
   // Ending the MCP session must not stop the task or the service.
@@ -160,6 +185,23 @@ try {
     arguments: { id: capture.id, name: "frame-360.png", image: true },
   });
   assert(!image.isError && image.content.some((c) => c.type === "image"));
+  const validation = await call("render", {
+    ...request,
+    kind: "validate",
+    profile: "draft",
+    requestId: "diagnostics",
+  });
+  await wait(validation.id);
+  const report = await call("output", { id: validation.id, name: "diagnostics.json", text: true });
+  const diagnostics = JSON.parse(report.text);
+  assert.equal(diagnostics.sourceRevision, work.revision);
+  assert.equal(diagnostics.fonts.length, 2);
+  assert.deepEqual(diagnostics.errors, []);
+  const invalidText = await client.callTool({
+    name: "runner_output",
+    arguments: { id: capture.id, name: "frame-360.png", text: true },
+  });
+  assert.equal(invalidText.isError, true);
   const reviews = await call("reviews", { id: "gym-card" });
   await call("review", {
     id: "gym-card",
@@ -199,6 +241,9 @@ try {
   const video = await call("render", {
     ...request,
     kind: "video",
+    scale: 0.25,
+    profile: "draft",
+    crf: 24,
     from: 0,
     to: 29,
     requestId: "video",

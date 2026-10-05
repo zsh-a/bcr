@@ -10,6 +10,7 @@ export type RunnerCatalog = {
   operations: readonly string[];
   origin: string;
   provider: "local";
+  sourceId: string;
   instanceId: string;
   pid: number;
 };
@@ -49,6 +50,8 @@ export const TargetSchema = Schema.Union(
     fps: positive(120),
     durationInFrames: positive(216000),
     propsFile: Schema.optional(Path),
+    // Required project-relative assets. Creative structure stays in the work's own code.
+    assets: Schema.optional(Schema.Array(Path).pipe(Schema.maxItems(200))),
     parameters: Schema.optional(Schema.Array(ParameterSchema).pipe(Schema.maxItems(40))),
   }),
 );
@@ -88,7 +91,8 @@ export function definition(value: unknown): Definition {
   }
   return work;
 }
-export type WorkRef = { provider: string; id: string };
+/** sourceId identifies a storage authority, independently of the transport or process lifetime. */
+export type WorkRef = { sourceId: string; provider: "browser" | "local"; id: string };
 export type WorkSummary = {
   ref: WorkRef;
   title: string;
@@ -117,8 +121,25 @@ export const RenderSchema = Schema.Struct({
   from: Schema.optional(Schema.Number.pipe(Schema.int(), Schema.between(0, 216000))),
   to: Schema.optional(Schema.Number.pipe(Schema.int(), Schema.between(0, 216000))),
   scale: Schema.optional(Schema.Number.pipe(Schema.between(0.1, 1))),
+  profile: Schema.optional(Schema.Literal("draft", "final")),
+  crf: Schema.optional(Schema.Number.pipe(Schema.int(), Schema.between(0, 51))),
+  gl: Schema.optional(Schema.Literal("angle", "swangle")),
 });
 export type RenderRequest = typeof RenderSchema.Type;
+export const RENDER_PROFILES = {
+  draft: { scale: 0.5, crf: 26 },
+  final: { scale: 1, crf: 18 },
+} as const;
+export type RenderProfile = keyof typeof RENDER_PROFILES;
+export function renderSettings(request: RenderRequest) {
+  const profile = request.profile ?? "final";
+  return {
+    profile,
+    scale: request.scale ?? RENDER_PROFILES[profile].scale,
+    crf: request.crf ?? RENDER_PROFILES[profile].crf,
+    gl: request.gl ?? null,
+  };
+}
 export type Job = {
   id: string;
   request: RenderRequest;
@@ -167,6 +188,8 @@ export function capabilities(targets: readonly Target[]): string[] {
   return [
     "read",
     "snapshot",
+    "versions",
+    "review",
     "preview",
     "reviews",
     "archive",
@@ -203,3 +226,8 @@ export function parameterValues(
   }
   return next;
 }
+
+export * from "./review";
+export * from "./versions";
+export * from "./page";
+export * from "./page-runtime";

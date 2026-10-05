@@ -1,133 +1,140 @@
+import { useEffect, useState } from "react";
 import {
   AbsoluteFill,
+  Audio,
   Img,
-  interpolate,
+  Sequence,
+  cancelRender,
+  continueRender,
+  delayRender,
   staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-import { costs } from "./model.js";
+import { TransitionSeries, linearTiming } from "@remotion/transitions";
+import { wipe } from "@remotion/transitions/wipe";
+import { fade } from "@remotion/transitions/fade";
+import { theme, fontsReady } from "./src/theme";
+import { timeline } from "./src/motion";
+import { Price } from "./src/scenes/Price";
+import { Attendance } from "./src/scenes/Attendance";
+import { Average } from "./src/scenes/Average";
+import { Comparison } from "./src/scenes/Comparison";
+import { Scenarios } from "./src/scenes/Scenarios";
+import { Decision } from "./src/scenes/Decision";
+import type { Inputs } from "./src/scenes/types";
 import "./Scene.css";
 
-const mark = staticFile("mark.svg");
+const components = {
+  price: Price,
+  attendance: Attendance,
+  average: Average,
+  comparison: Comparison,
+  scenarios: Scenarios,
+  decision: Decision,
+};
 
-export default function GymCard(props: {
-  annualPrice: number;
-  visitPrice: number;
-  visits: number;
-}) {
+export default function GymCard(props: Inputs & { sound?: boolean }) {
   const frame = useCurrentFrame(),
-    { fps } = useVideoConfig();
-  const t = frame / fps;
-  const visits = Math.max(
-    1,
-    Math.round(
-      interpolate(t, [8, 40], [1, props.visits], {
-        extrapolateLeft: "clamp",
-        extrapolateRight: "clamp",
-      }),
-    ),
-  );
-  const result = costs({ ...props, visits });
-  const reveal = interpolate(t, [2, 4], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const max = Math.max(props.annualPrice, props.visitPrice * props.visits);
+    { fps, durationInFrames, width, height } = useVideoConfig();
+  const [ready, setReady] = useState(false);
+  const [handle] = useState(() => delayRender("加载作品字体"));
+  useEffect(() => {
+    void fontsReady.then(() => setReady(true)).catch(cancelRender);
+  }, []);
+  useEffect(() => {
+    if (ready) continueRender(handle);
+  }, [ready, handle]);
+  const scenes = timeline(durationInFrames, fps);
+  const current = scenes.findLast((scene) => frame >= scene.from) ?? scenes[0];
+  const dark = current.id === "decision";
+  const scale = Math.min(width / 1080, height / 1920);
+  if (!ready) return null;
   return (
-    <AbsoluteFill
-      style={{
-        background: "#f2eee5",
-        color: "#18392e",
-        padding: "150px 84px",
-        fontFamily: "sans-serif",
-      }}
-    >
-      <div className="scene-kicker">
-        <Img src={mark} alt="作品标记" style={{ width: 32, height: 32 }} />
-        生活里的经济学 / 001
-      </div>
-      <h1
-        style={{
-          fontSize: 100,
-          lineHeight: 1.22,
-          fontWeight: 600,
-          margin: "120px 0 60px",
-          letterSpacing: -5,
-        }}
-      >
-        年卡，去多少次
-        <br />
-        才划算？
-      </h1>
-      <div style={{ fontSize: 34, color: "#637469", opacity: reveal }}>
-        价格是起点。实际到访次数，才是变量。
-      </div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 24, margin: "90px 0 50px" }}>
-        <strong style={{ fontSize: 190, lineHeight: 1 }}>{visits}</strong>
-        <span style={{ fontSize: 38 }}>次 / 年</span>
-      </div>
-      {[
-        { label: "年卡总支出", value: result.annualTotal, color: "#235942" },
-        { label: "按次总支出", value: result.payPerVisitTotal, color: "#c46c3e" },
-      ].map((item) => (
-        <div key={item.label} style={{ marginBottom: 50 }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: 34,
-              marginBottom: 18,
-            }}
-          >
-            <span>{item.label}</span>
-            <span>¥ {item.value.toLocaleString("en-US")}</span>
-          </div>
-          <div style={{ background: "#dedfd3", height: 42 }}>
-            <div
-              style={{
-                background: item.color,
-                height: "100%",
-                width: `${Math.max(2, (item.value / max) * 100)}%`,
-              }}
-            />
-          </div>
-        </div>
-      ))}
+    <AbsoluteFill style={{ background: theme.ink, fontFamily: theme.sans }}>
       <div
+        data-video-canvas
         style={{
-          marginTop: 34,
-          padding: "32px 0",
-          borderTop: "2px solid #a3b0a0",
-          fontSize: 44,
-          lineHeight: 1.6,
-        }}
-      >
-        {t < 40
-          ? `平均每次 ¥ ${result.average.toFixed(2)}`
-          : `第 ${result.firstCheaperVisit} 次起，年卡更省钱。`}
-        <div style={{ fontSize: 30, color: "#637469" }}>
-          {result.comparison === "equal"
-            ? "两种方案现金支出相同。"
-            : result.comparison === "annual-cheaper"
-              ? "在当前使用次数下，年卡现金支出较低。"
-              : "在当前使用次数下，按次付费现金支出较低。"}
-        </div>
-      </div>
-      <div
-        style={{
+          width: 1080,
+          height: 1920,
           position: "absolute",
-          bottom: 130,
-          left: 84,
-          right: 84,
-          fontSize: 25,
-          color: "#637469",
-          lineHeight: 1.7,
+          left: (width - 1080 * scale) / 2,
+          top: (height - 1920 * scale) / 2,
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+          overflow: "hidden",
+          fontVariantNumeric: "tabular-nums",
         }}
       >
-        示例假设：年卡 ¥{props.annualPrice}，单次 ¥{props.visitPrice}。<br />
-        仅比较现金支出，不含通勤时间、退款条件和机会成本。
+        <TransitionSeries>
+          {scenes.flatMap((scene, i) => {
+            const Component = components[scene.id];
+            return [
+              <TransitionSeries.Sequence key={scene.id} durationInFrames={scene.duration}>
+                <Component {...props} />
+              </TransitionSeries.Sequence>,
+              ...(scene.overlap
+                ? [
+                    i % 2 === 0 ? (
+                      <TransitionSeries.Transition
+                        key={`${scene.id}-cut`}
+                        timing={linearTiming({ durationInFrames: scene.overlap })}
+                        presentation={wipe({ direction: "from-right" })}
+                      />
+                    ) : (
+                      <TransitionSeries.Transition
+                        key={`${scene.id}-cut`}
+                        timing={linearTiming({ durationInFrames: scene.overlap })}
+                        presentation={fade()}
+                      />
+                    ),
+                  ]
+                : []),
+            ];
+          })}
+        </TransitionSeries>
+        <div className="scene-kicker" style={{ color: dark ? theme.paper : theme.ink }}>
+          <Img
+            src={staticFile("mark.svg")}
+            alt="作品标记"
+            style={{ width: 32, height: 32, filter: dark ? "brightness(0) invert(1)" : "none" }}
+          />
+          <span>生活里的经济学</span>
+          <span className="scene-edition">FIELD NOTES / 001</span>
+        </div>
+        <div className="scene-footer" style={{ color: dark ? "#bdcbbb" : theme.muted }}>
+          <div className="scene-chapters">
+            {scenes.map((scene) => (
+              <span
+                key={scene.id}
+                style={{
+                  flex: 1,
+                  borderTop: `3px solid ${scene.id === current.id ? theme.accent : dark ? "#476354" : theme.line}`,
+                  paddingTop: 16,
+                  color: scene.id === current.id ? theme.accent : "inherit",
+                }}
+              >
+                {scene.label}
+              </span>
+            ))}
+          </div>
+          <p>
+            示例假设：年卡 ¥{props.annualPrice}，单次 ¥{props.visitPrice}。<br />
+            仅比较现金支出；不含通勤时间、退款条件和机会成本。
+          </p>
+        </div>
       </div>
+      {props.sound !== false &&
+        scenes.map((scene, i) => (
+          <Sequence
+            key={scene.id}
+            from={scene.from + (i === 0 ? 12 : 0)}
+            durationInFrames={Math.min(Math.ceil(fps * 0.6), durationInFrames - scene.from)}
+            layout="none"
+          >
+            <Audio src={staticFile(i % 2 ? "audio/sweep.wav" : "audio/accent.wav")} volume={0.22} />
+          </Sequence>
+        ))}
     </AbsoluteFill>
   );
 }

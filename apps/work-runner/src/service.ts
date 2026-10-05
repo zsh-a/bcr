@@ -1,5 +1,8 @@
 import { RUNNER_PROTOCOL, type RunnerCatalog } from "@bcr/work-core";
 import { randomUUID } from "node:crypto";
+import { PageCaptures } from "./page-captures";
+import { ReviewRepository } from "./review";
+import { VersionRepository } from "./versions";
 import { Jobs } from "./jobs";
 import { Projects } from "./projects";
 import { engineIdentity, release } from "./installation";
@@ -9,6 +12,9 @@ import { operationCatalog, operationInput } from "./operations";
 export class RunnerService {
   readonly projects: Projects;
   readonly jobs: Jobs;
+  readonly review: ReviewRepository;
+  readonly versions: VersionRepository;
+  readonly captures: PageCaptures;
   readonly engine = engineIdentity();
   readonly instanceId = randomUUID();
   constructor(
@@ -18,6 +24,10 @@ export class RunnerService {
   ) {
     this.projects = new Projects(root, state);
     this.jobs = new Jobs(this.projects, this.engine);
+    this.review = new ReviewRepository(this.projects, this.jobs);
+    this.versions = new VersionRepository(this.projects);
+    this.captures = new PageCaptures(this.projects, this.jobs, this.review, this.engine);
+    this.review.validateView = (id, view) => this.captures.validate(id, view);
   }
   catalog(): RunnerCatalog {
     return {
@@ -29,6 +39,7 @@ export class RunnerService {
       operations: operationCatalog.map((o) => o.name),
       origin: this.origin,
       provider: "local",
+      sourceId: this.projects.sourceId,
       instanceId: this.instanceId,
       pid: process.pid,
     };
@@ -37,10 +48,22 @@ export class RunnerService {
     const input = operationInput(name, raw),
       id = input.id as string;
     switch (name) {
+      case "page_capture":
+        return this.captures.capture(input);
+      case "page_capture_read":
+        return this.captures.read(id);
+      case "versions":
+        return this.versions.list(input);
+      case "checkpoint":
+        return this.versions.checkpoint(input);
+      case "diff":
+        return this.versions.diff(input);
+      case "restore":
+        return this.versions.restore(input);
       case "catalog":
         return this.catalog();
       case "list":
-        return this.projects.list();
+        return this.versions.discovery();
       case "read":
         return input.revision
           ? this.projects.snapshot(id, input.revision as string)
@@ -64,12 +87,17 @@ export class RunnerService {
         };
       }
       case "parameters":
-        return this.projects.parameters(input);
+        return this.versions.parameters(input);
+      case "review_read":
+        return this.review.read(id);
+      case "review_edit":
+        return this.review.edit(input);
       case "reviews":
         return this.projects.reviews(id);
       case "review":
         return this.projects.review(input);
       case "render":
+        this.versions.assertReady(id);
         return this.jobs.start(input);
       case "jobs":
         return this.jobs.list(id);
@@ -84,6 +112,6 @@ export class RunnerService {
     }
   }
   close() {
-    return this.jobs.close();
+    return Promise.all([this.jobs.close(), this.captures.close()]);
   }
 }

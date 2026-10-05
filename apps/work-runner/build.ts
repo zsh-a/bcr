@@ -60,7 +60,11 @@ try {
   };
   writeFileSync(join(temporary, "package.json"), JSON.stringify(manifest, null, 2));
   const result = await Bun.build({
-    entrypoints: [join(app, "src/cli.ts"), join(app, "src/worker.ts")],
+    entrypoints: [
+      join(app, "src/cli.ts"),
+      join(app, "src/worker.ts"),
+      join(app, "src/page-worker.ts"),
+    ],
     outdir: join(temporary, "dist"),
     target: "bun",
     format: "esm",
@@ -72,7 +76,13 @@ try {
     cpSync(join(app, path), join(temporary, path), { recursive: true });
   await run([process.execPath, "install", "--lockfile-only", "--ignore-scripts"]);
   const digest = createHash("sha256");
-  for (const path of ["dist/cli.js", "dist/worker.js", "package.json", "bun.lock"])
+  for (const path of [
+    "dist/cli.js",
+    "dist/worker.js",
+    "dist/page-worker.js",
+    "package.json",
+    "bun.lock",
+  ])
     digest.update(path).update(readFileSync(join(temporary, path)));
   writeFileSync(
     join(temporary, "release.json"),

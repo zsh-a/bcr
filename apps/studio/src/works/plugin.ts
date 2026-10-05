@@ -1,5 +1,6 @@
 import type { WorkspacePlugin } from "@bcr/shell-contract";
 import { workspaceServices } from "../workspace";
+import { workKey, workRoute } from "./service";
 import { workCapability } from "./agent";
 
 export const worksPlugin: WorkspacePlugin = {
@@ -12,19 +13,22 @@ export const worksPlugin: WorkspacePlugin = {
       if (!disposed)
         runtime.search?.replaceSource(
           "works",
-          works.getSnapshot().map((w) => ({
-            id: `work:${w.id}`,
+          workService.getSnapshot().map((w) => ({
+            id: `work:${workKey(w.ref)}`,
             source: "works",
             kind: "document",
             title: w.title,
-            body: w.files.map((f) => f.path).join("\n"),
-            subtitle: "作品",
-            route: `/works?work=${w.id}`,
-            updatedAt: w.updatedAt,
+            body: w.targets.map((t) => t.entry).join("\n"),
+            subtitle: w.ref.provider === "local" ? "本地作品" : "浏览器作品",
+            route: workRoute(w.ref),
+            updatedAt:
+              w.ref.provider === "browser"
+                ? (works.getSnapshot().find((item) => item.id === w.ref.id)?.updatedAt ?? 0)
+                : 0,
           })),
         );
     };
-    const unsubscribe = works.subscribe(publish);
+    const unsubscribe = workService.subscribe(publish);
     void Promise.all([works.ready, runtime.search?.ready]).then(publish, (error) => {
       if (!disposed) reportError(error);
     });

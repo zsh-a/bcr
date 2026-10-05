@@ -1,3 +1,11 @@
+import {
+  decode,
+  ReviewEditSchema,
+  emptyReviewBook,
+  editReviewBook,
+  type ReviewBook,
+  type Submission,
+} from "@bcr/work-core";
 import { cacheKey, type RuntimeMetadata } from "@bcr/core";
 import { Schema } from "effect";
 import type { WorkspaceFiles } from "../workspace/files";
@@ -96,9 +104,23 @@ export class WorkStore {
   }
   async history(id: string, revision?: string) {
     let work: Work | null = await this.read(id, revision);
-    const items: { revision: string; title: string; updatedAt: number }[] = [];
+    const items: {
+      revision: string;
+      title: string;
+      updatedAt: number;
+      parent: string | null;
+      message?: string;
+      restoredFrom?: string;
+    }[] = [];
     while (work && items.length < 30) {
-      items.push({ revision: work.revision, title: work.title, updatedAt: work.updatedAt });
+      items.push({
+        revision: work.revision,
+        title: work.title,
+        updatedAt: work.updatedAt,
+        parent: work.parent,
+        ...(work.message ? { message: work.message } : {}),
+        ...(work.restoredFrom ? { restoredFrom: work.restoredFrom } : {}),
+      });
       work = work.parent ? await this.version(id, work.parent) : null;
     }
     return { items, nextRevision: work?.revision ?? null };
@@ -153,6 +175,8 @@ export class WorkStore {
         files: [...files.values()].sort((a, b) => a.path.localeCompare(b.path)),
         createdAt: previous?.createdAt ?? now,
         updatedAt: now,
+        ...(input.message ? { message: input.message } : {}),
+        ...(input.restoreRevision ? { restoredFrom: input.restoreRevision } : {}),
       });
       if (!previous && Object.keys(index).length >= 1000) throw new Error("作品数量超过 1000");
       this.assertWritable(id, owner);
@@ -164,6 +188,109 @@ export class WorkStore {
       ]);
       await this.load();
       return work;
+    });
+  }
+  private async reviewRecord(
+    id: string,
+  ): Promise<{ book: ReviewBook; receipts: Record<string, string> }> {
+    const raw = await this.metadata!.get(`works/review/${id}`);
+    return raw ? JSON.parse(raw) : { book: emptyReviewBook(), receipts: {} };
+  }
+  async reviewRead(id: string) {
+    await this.read(id);
+    return (await this.reviewRecord(id)).book;
+  }
+  reviewEdit(raw: unknown, signal?: AbortSignal) {
+    const input = decode(ReviewEditSchema, raw);
+    return this.queue(async () => {
+      await this.read(input.id);
+      const record = await this.reviewRecord(input.id);
+      const digest = JSON.stringify(input);
+      if (Object.hasOwn(record.receipts, input.requestId)) {
+        if (record.receipts[input.requestId] !== digest)
+          throw new Error("requestId 已用于其他审阅操作");
+        return record.book;
+      }
+      if (record.book.revision !== input.revision) throw new Error("审阅记录冲突，请刷新后重试");
+      let prepared: Submission | undefined;
+      const action = input.action;
+      if (action.kind === "submit") {
+        this.assertWritable(input.id);
+        const work = await this.read(input.id, action.sourceRevision);
+        if (!work.entry || action.target !== "page" || action.jobIds?.length)
+          throw new Error("浏览器作品需要页面入口，不接受 Runner 任务");
+        const compiler = await import("./document");
+        const pages = action.pages ?? [{ path: work.entry, title: work.title }];
+        if (new Set(pages.map((p) => p.path)).size !== pages.length) throw new Error("页面重复");
+        const pageOutputs: import("@bcr/work-core").ReviewOutput[] = [];
+        for (const [index, page] of pages.entries()) {
+          if (!work.files.some((f) => f.path === page.path && /\.html?$/iu.test(f.path)))
+            throw new Error("页面不属于作品");
+          const html = await compiler.workDocument({ ...work, entry: page.path }, this.files);
+          const artifact = await this.files.import(
+            new Blob([html], { type: "text/html" }),
+            index === 0 ? "index.html" : `page-${index + 1}.html`,
+            signal,
+          );
+          pageOutputs.push({
+            ...artifact,
+            hashAlgorithm: "blake3" as const,
+            key: index === 0 ? "page" : `page:${page.path}`,
+            path: page.path,
+          });
+        }
+        const outputs = [
+          ...pageOutputs,
+          ...work.files
+            .filter(
+              (f) =>
+                /^(image|video)\//u.test(f.artifact.mime) && f.artifact.mime !== "image/svg+xml",
+            )
+            .map((f) => ({
+              ...f.artifact,
+              hashAlgorithm: "blake3" as const,
+              key: `file/${f.path}`,
+              path: f.path,
+            })),
+        ];
+        prepared = {
+          id: action.submissionId,
+          title: action.title,
+          summary: action.summary,
+          sourceRevision: work.revision,
+          build: compiler.PAGE_COMPILER,
+          pages: pages.map((p, i) => ({ ...p, output: pageOutputs[i]!.key })),
+          target: { id: "page", runtime: "html", entry: work.entry },
+          outputs,
+          addresses: action.addresses,
+          createdAt: Date.now(),
+        };
+      }
+      if (action.kind === "view") {
+        if (action.view.image.hashAlgorithm !== "blake3" || action.view.image.captureId)
+          throw new Error("浏览器视图需要本地截图文件");
+        const bytes = new Uint8Array(
+          await (await this.files.read(action.view.image)).arrayBuffer(),
+        );
+        if (bytes.length < 24 || [137, 80, 78, 71, 13, 10, 26, 10].some((n, i) => bytes[i] !== n))
+          throw new Error("视图截图必须为 PNG");
+        const data = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        if (
+          data.getUint32(16) !== action.view.page.viewport.width ||
+          data.getUint32(20) !== action.view.page.viewport.height
+        )
+          throw new Error("截图尺寸与视口不一致");
+      }
+      const book = editReviewBook(record.book, action, crypto.randomUUID(), Date.now(), prepared);
+      if (Object.keys(record.receipts).length >= 10000) throw new Error("审阅操作回执超过上限");
+      signal?.throwIfAborted();
+      await this.metadata!.batch!([
+        [
+          `works/review/${input.id}`,
+          JSON.stringify({ book, receipts: { ...record.receipts, [input.requestId]: digest } }),
+        ],
+      ]);
+      return book;
     });
   }
   async flush() {

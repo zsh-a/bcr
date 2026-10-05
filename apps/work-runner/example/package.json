@@ -1,0 +1,24 @@
+{
+  "name": "bcr-work-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "audio": "bun tools/generate-audio.mjs"
+  },
+  "dependencies": {
+    "@remotion/fonts": "4.0.532",
+    "@remotion/gsap": "4.0.532",
+    "@remotion/player": "4.0.532",
+    "@remotion/transitions": "4.0.532",
+    "gsap": "3.14.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "remotion": "4.0.532"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "typescript": "5.9.3"
+  }
+}

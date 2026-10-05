@@ -1,9 +1,38 @@
+* {
+  box-sizing: border-box;
+}
 .scene-kicker {
-  font-size: 28px;
-  letter-spacing: 6px;
-  border-top: 3px solid #18392e;
-  padding-top: 32px;
+  position: absolute;
+  top: 110px;
+  left: 84px;
+  right: 84px;
+  border-top: 2px solid currentColor;
+  padding-top: 30px;
   display: flex;
   align-items: center;
   gap: 20px;
+  font-size: 26px;
+  letter-spacing: 2px;
+}
+.scene-edition {
+  margin-left: auto;
+  font-family: "Work Mono";
+  font-size: 20px;
+  letter-spacing: 1px;
+}
+.scene-footer {
+  position: absolute;
+  bottom: 100px;
+  left: 84px;
+  right: 84px;
+  font-size: 23px;
+  line-height: 1.8;
+}
+.scene-footer p {
+  margin: 30px 0 0;
+}
+.scene-chapters {
+  display: flex;
+  gap: 18px;
+  font-size: 22px;
 }

@@ -26,7 +26,7 @@ bcr-runner token
 
 `start` 后台运行并等待服务就绪；相同配置再次启动会复用服务。`serve` 在前台运行，适合系统服务和容器。`stop` 通过鉴权接口关闭所连接服务，不根据过期 PID 杀进程。`status` 返回连接状态、版本与进程身份；`doctor` 检查安装、worker、运行平台和连接；`doctor --install-browser` 显式准备浏览器。`init <新目录>` 复制内置样例，不覆盖已有目录。
 
-首次图片/视频渲染由 Remotion 下载匹配的 Chrome Headless Shell。它存于 `$XDG_CACHE_HOME/bcr/remotion-4.0.532/`（默认 `~/.cache/bcr/`），跨任务复用。可通过 `BCR_RUNNER_BROWSER=/absolute/path/to/chrome` 指定兼容浏览器。Linux 仍需要 Chrome 系统库；下面的 Docker 镜像提供这些依赖。正式作品应将字体文件放进 `public/` 并等待加载后渲染。
+首次图片/视频渲染由 Remotion 下载匹配的 Chrome Headless Shell。它存于 `$XDG_CACHE_HOME/bcr/remotion-4.0.532/`（默认 `~/.cache/bcr/`），跨任务复用。可通过 `BCR_RUNNER_BROWSER=/absolute/path/to/chrome` 指定兼容浏览器。Linux 仍需要 Chrome 系统库；下面的 Docker 镜像提供这些依赖。内置样例已经包含完整中文字体、数字字体和转场音效；正式作品同样应将资源放进 `public/` 并等待加载后渲染。
 
 `--root` 可以是单个工程或多个工程的父目录，只发现直属子目录。服务启动时固定授权目录。所有命令支持 `--config /path/to/connection.json`，默认 `$XDG_CONFIG_HOME/bcr/work-runner.json`（`~/.config/bcr/`），权限 0600；每个配置和状态目录只能运行一个服务。日志保存于状态目录 `runner.log`。使用不同配置和端口可以启动多个独立实例。
 
@@ -80,7 +80,7 @@ Compose 默认仅将控制端口 5210、预览端口 5211 映射到宿主 loopba
 
 Remotion 入口导出普通 React 组件（默认导出，或通过 `exportName` 指定命名导出），接收 `propsFile` 中的 JSON 对象。Runner 根据同一份目标元数据生成 Player 和 Composition，因此工程无需维护第二份画幅、帧率与时长配置。已有 Remotion 工程可以将其中一个组件作为目标；不直接发现已有 `registerRoot` 中的 compositions，也不支持 `calculateMetadata` 改写目标配置。
 
-没有 `package.json` 时使用 Runner 的固定 React 依赖与 Remotion **4.0.532**，具体版本通过 `bcr-runner version` 查看。需要其他库时添加独立 `package.json` 和 `bun.lock`，其中 `remotion`、`@remotion/player` 都固定为 `4.0.532`，同时声明 React/React DOM。Runner 在任务目录执行 `bun install --frozen-lockfile --ignore-scripts`；不复用工作目录的可变 `node_modules`，不运行安装脚本。不支持 workspace/file/link 路径依赖。标准 Remotion 用法见[动画文档](https://www.remotion.dev/docs/animating-properties)、[Player](https://www.remotion.dev/docs/player)、[渲染接口](https://www.remotion.dev/docs/renderer)与[许可条款](https://www.remotion.dev/docs/license/pricing)。
+没有 `package.json` 时使用 Runner 的固定 React 依赖与 Remotion **4.0.532**，具体版本通过 `bcr-runner version` 查看。需要其他库时添加独立 `package.json` 和 `bun.lock`，其中 `remotion`、`@remotion/player` 以及所有声明的 `@remotion/*` 都固定为 `4.0.532`，同时声明 React/React DOM。Runner 在任务目录执行 `bun install --frozen-lockfile --ignore-scripts`；不复用工作目录的可变 `node_modules`，不运行安装脚本。不支持 workspace/file/link 路径依赖。标准 Remotion 用法见[动画文档](https://www.remotion.dev/docs/animating-properties)、[Player](https://www.remotion.dev/docs/player)、[渲染接口](https://www.remotion.dev/docs/renderer)与[许可条款](https://www.remotion.dev/docs/license/pricing)。
 
 普通 HTML 目标直接提供已生成的 HTML/CSS/JS，支持相对 ESM 与同源数据 fetch；没有隐式 npm build 命令。任意框架可先在工程中生成这些文件。两种目标都不限制组件风格或业务模型；`example/` 只是独立样例。
 
@@ -91,8 +91,9 @@ bcr-runner list --json
 bcr-runner inspect gym-card --json
 bcr-runner preview gym-card --target vertical --json
 bcr-runner capture gym-card --target vertical --frames 0,360,1500 --json
-bcr-runner render gym-card --target vertical --from 300 --to 389 --scale 0.5 --json
-bcr-runner render gym-card --target vertical --json
+bcr-runner validate gym-card --target vertical --json
+bcr-runner render gym-card --target vertical --profile draft --from 0 --to 449 --json
+bcr-runner render gym-card --target vertical --profile final --json
 bcr-runner jobs gym-card --json
 bcr-runner job JOB_ID --json
 bcr-runner download JOB_ID video.mp4 --output ./video.mp4
@@ -101,9 +102,37 @@ bcr-runner reviews gym-card --json
 bcr-runner archive gym-card --target vertical --json
 ```
 
-长任务立即返回 `job.id`，通过 `job` 轮询。`from` / `to` 是包含两端的绝对帧号，短预览仍保持原动画时间轴。`validate` 会构建并实际渲染第 0 帧，以检查代码、依赖及资源；它不是完整 TypeScript 类型检查，工程仍可配置自己的 `tsc`。
+长任务立即返回 `job.id`，通过 `job` 轮询。`from` / `to` 是包含两端的绝对帧号，短预览仍保持原动画时间轴。`validate` 检查目标 `assets` 中声明的工程相对路径，再构建并实际渲染第 0 帧，输出 `frame-0.png` 和 `diagnostics.json`。诊断包含快照版本、素材哈希、字体清单、质量配置与警告；缺失/空素材会明确报错，未携带本地字体会警告。它不检查所有镜头、缺字和外部动态引用，也不是完整 TypeScript 类型检查，工程仍可配置自己的 `tsc`。
 
-`bcr-runner rpc OPERATION --input request.json` 可调用同一 HTTP 契约中的 `parameters`、`reviews`、`review`、`snapshot` 等操作。CLI 默认使用最近一次启动的 Runner 配置（`~/.config/bcr/work-runner.json`，权限 0600）；也可通过 `--url`、`--token` 显式连接。
+`bcr-runner rpc OPERATION --input request.json` 可调用同一 HTTP 契约中的 `parameters`、`review_read`、`review_edit`、`snapshot` 等操作。旧 `reviews` / `review` 保留批注兼容接口，制作面板仅只读查看。CLI 默认使用最近一次启动的 Runner 配置（`~/.config/bcr/work-runner.json`，权限 0600）；也可通过 `--url`、`--token` 显式连接。
+
+## 版本审阅与固定交付
+
+Works 默认打开审阅界面，「制作」进入运行与调参。成功任务不会自动产生审阅稿：使用 `review_edit` 的 `submit` 显式选择同一源码 revision、同一 target 的任务，写明修改说明。审阅记录使用独立 revision，保存于状态目录 `reviews/<work-id>.json`，不进入作品源码快照。
+
+`runner_review_read` / `runner_review_edit` 是对应的 STDIO MCP 工具；Agent 可读取定位到帧、范围或页面位置的反馈，提交新稿并用 `addresses` 关联已处理意见。提交只改变为待复核，用户确认解决后才可固定交付。交付清单保存产物身份、SHA-256 和源码版本，之后修改源码或重新打开反馈不改变它。CLI 使用 `rpc review_read --input read.json` / `rpc review_edit --input edit.json`；按交付清单中的 jobId/name 使用 `download` 获取文件。前端另提供带清单的 ZIP 下载。
+
+源码归档不包含审阅记录或任务产物；迁移完整工作台请备份状态目录。已有 `reviews.json` 继续供制作面板使用，不会自动转成新审阅稿。协议、操作示例和第一版限制见[作品审阅说明](../../docs/WORKS.md#审阅修改与交付)。
+
+## 视频质量与动效工程
+
+Works 的「产物」区支持查看 PNG、播放 MP4、阅读 diagnostics.json 和下载，版本信息固定到对应任务。统一「导出」对话框提供视频、关键帧、素材检查和源码归档，以及导出质量和片段范围；CLI、HTTP 和 MCP 使用同一个 RenderSchema。
+
+| 选项                     | 行为                                                    |
+| ------------------------ | ------------------------------------------------------- |
+| `profile: final`（默认） | 原始尺寸，H.264 CRF 18，PNG 中间帧                      |
+| `profile: draft`         | 一半宽高，H.264 CRF 26，JPEG 中间帧                     |
+| `scale`                  | 覆盖所选档位的尺寸比例；不改变帧率和时间轴              |
+| `crf`                    | 0–51，仅视频编码，数字越小质量越高、文件通常越大        |
+| `gl: angle / swangle`    | 可选 Chromium 图形后端；后者为软件渲染，适合无 GPU 环境 |
+
+MP4 使用 yuv420p，缩放后的宽高必须是偶数；错误尺寸在入队前报错。`profile`、`gl` 用于验证、关键帧与视频，交互 Player 使用浏览器自身能力。所有生效配置进入 renderKey，任务保存原请求。GL 参数提供后端选择，不保证任意 WebGPU/实验特效兼容。
+
+目标可添加 `"assets": ["public/fonts/MyFont.woff2", "public/audio/voice.wav"]`，用于显式检查所需文件。素材字节由已有源码快照管理，无须新增素材数据库；加载逻辑与字体等待仍由作品代码负责。
+
+`init` 复制的示例现在是完整的独立工程，包含 package.json、bun.lock、AGENTS.md / CLAUDE.md、本地字体和音效。六段分镜分别展示卡片透视/反光、GSAP 错峰、数字与圆环、SVG 路径、情景比较和结论；共用纯计算模型。主题、动效原语和场景在作品自己的 src/ 中，Agent 可以任意改写，不受固定模板约束。详见[示例创作说明](example/brief.md)。已有作品不会被 init 覆盖。
+
+使用 `@remotion/gsap` 的帧同步时间轴，避免独立 ticker；基础运动用 Remotion，转场用 `@remotion/transitions`。新增库只加入作品自身锁文件，不强制装进 Runner。所有资源通过本地 public 路径加载；预览在导入组件之前设置该任务的绝对素材基址，后续动态 staticFile 引用沿用同一路径。
 
 ## 直接 MCP
 
@@ -119,12 +148,14 @@ bcr-runner mcp --config /path/to/connection.json
 
 独立工具使用 `runner_*` 前缀，避免与浏览器 `work_*` 混淆：
 
-- `runner_catalog` 返回协议、程序版本、engine、授权根目录、操作和运行时。
+- `runner_catalog` 返回协议、程序版本、engine、授权根目录、稳定 sourceId、操作和运行时。
 - `runner_list` / `runner_read` / `runner_file` / `runner_snapshot` 检查工程和源码快照。
-- `runner_parameters` / `runner_reviews` / `runner_review` 处理参数和批注。
+- `runner_parameters` 保存参数并捕获前后版本。
+- `runner_versions` / `runner_checkpoint` / `runner_diff` / `runner_restore` 读取历史、命名检查点、对比文件和恢复源码；恢复必须先查看差异并遵循用户明确意图。
+- `runner_reviews` / `runner_review` 保留旧批注兼容接口；新审阅流程使用 `runner_review_read` / `runner_review_edit`。
 - `runner_render` / `runner_jobs` / `runner_job` / `runner_cancel` 操作持久化任务。
 - `runner_preview` 返回已完成预览任务的独立 URL；直接 MCP 不控制 Works 页面中的播放状态。
-- `runner_output` 返回产物元数据和需 Bearer 的下载地址；`image: true` 直接返回不超过 4 MiB 的 PNG 图像，供 Agent 检查。
+- `runner_output` 返回产物元数据和需 Bearer 的下载地址；`image: true` 直接返回不超过 4 MiB 的 PNG 图像，供 Agent 检查；`text: true` 直接读取不超过 64 KiB 的文本/JSON 产物，包括 `diagnostics.json`。
 
 任务与修改使用 revision 和 requestId，重试应保留原值。MCP、CLI、Works HTTP 操作由相同 service/schema 校验。直接 MCP 不受浏览器草稿保护影响，参数保存仍会检查源码 revision；浏览器中的旧草稿保存时会报冲突。它仅访问授权文件目录，不直接访问浏览器知识库。
 
@@ -134,9 +165,15 @@ Runner CLI/HTTP/直接 MCP 均不依赖浏览器；已接受的任务不会因�
 
 ## 快照、批注与任务
 
-源码快照以路径、文件字节哈希和大小生成 revision。渲染前固定源码；后续编辑不会改变已接受任务。`renderKey` 同时包含源码 revision、目标、帧范围、输出比例和 Runner/依赖/平台身份；该身份用于追溯，每个新的 requestId 都实际执行，不做隐式跨任务缓存命中。
+Runner 在状态目录 `source.json` 保存稳定 sourceId 与授权根目录绑定；服务重启保留此 ID，Works 可区分不同 Runner 上同名作品。更换根目录应使用独立状态目录。新版本首次启动会给既有状态目录补齐身份，不改变旧源码 revision。
 
-批注保存在工程根目录的 `reviews.json`，包含 `id`、`sourceRevision`、`target`、可选 `frame` / `sceneId`、`comment` 和 `status`。批注文件不进入渲染 revision；更新批注需要它自己的 revision。使用旧数据的批注和预览会在 UI 中标记。参数更新对源码 revision 做乐观检查，同窗口未保存参数草稿会阻止 Agent 参数写入；外部编辑器仍可独立修改文件。
+列表发现用文件元数据索引复用未变更清单，避免每次刷新重复读取字体/音视频。索引不是版本校验依据，read、参数保存与新快照仍读取源码实际字节。
+
+源码快照以路径、文件字节哈希和大小生成 revision。渲染前固定源码；后续编辑不会改变已接受任务。`renderKey` 同时包含源码 revision、目标、帧范围、输出比例、质量档位、CRF、图形后端和 Runner/依赖/平台身份；该身份用于追溯，每个新的 requestId 都实际执行，不做隐式跨任务缓存命中。
+
+批注保存在工程根目录的 `reviews.json`，包含 `id`、`sourceRevision`、`target`、可选 `frame` / `sceneId`、`comment` 和 `status`。批注文件不进入渲染 revision；更新批注需要它自己的 revision。制作页只读展示旧批注；新意见请在审阅工作台添加。参数更新对源码 revision 做乐观检查，同窗口未保存参数草稿会阻止 Agent 参数写入；外部编辑器仍可独立修改文件。
+
+命名检查点与可重试恢复日志保存在状态目录的 `versions/<work-id>.json`，引用已有源码快照。外部每次文件保存不会自动建版本；建议 Agent 修改前后调用 checkpoint。恢复前保存当前源码，按文件检测外部冲突，记录中断请求供精确重试；恢复期间禁止新任务和参数保存。Git 和私有文件不参与恢复，文件/目录类型替换需在工程中自行处理。详细交互与契约见 [制作与源码版本](../../docs/WORKS.md#制作与源码版本)。
 
 任务记录、源码快照和产物保存在 `~/.local/share/bcr/work-runner/<root-hash>/`，也可用 `--state` 指定工程目录之外的位置。一个状态目录只能有一个 CLI Runner。队列串行执行，最多 20 个待执行任务；每个任务是可取消的子进程，30 分钟超时。Runner 重启把未完成任务标为 `interrupted`，不会悄悄恢复或把部分 MP4 当作成功。相同 requestId 与参数重试返回原任务。
 
@@ -144,9 +181,34 @@ Runner CLI/HTTP/直接 MCP 均不依赖浏览器；已接受的任务不会因�
 
 `archive` 输出 `source.tar.gz`，包含源码及 `bcr-snapshot.json` 清单，可解压到新的工程目录后连接 Runner。归档不包含 node_modules、任务历史或 reviews.json；批注文件独立保存在原工程，应随 Git 或其他备份一起保存。恢复后可按相同锁定依赖重新生成；系统字体、未固定的外部资源和平台编码器差异仍会影响字节级一致性。
 
+## 页面截图与审阅
+
+HTML 预览会保存构建文件清单。提交审阅可指定 `pages: [{path, title}]`；省略时仅包含目标入口。页面审阅、固定视口、批注与新旧稿比较见 [页面审阅](../../docs/WORKS.md#页面审阅)。
+
+新增 `page_capture` / `page_capture_read` RPC 与对应 MCP。`runner_page_image` 返回 PNG 图片，方便 Agent 看见结果。截图通过独立的 Playwright Chromium worker 执行，最多同时两项，35 秒超时；不占用视频队列。worker 只读取明确提交的 HTML 或已经固定的预览文件，禁止外部网络与 WebSocket。浏览器部署不需要 Node 或 BCR 源码；截图通过明确配对的 Runner 执行。
+
+```json
+{
+  "requestId": "page-view-1",
+  "source": { "kind": "submission", "id": "gym-card", "submissionId": "first-draft" },
+  "page": {
+    "path": "index.html",
+    "viewport": { "width": 1280, "height": 800 },
+    "scroll": { "x": 0, "y": 300 }
+  }
+}
+```
+
+```sh
+bcr-runner rpc page_capture --input ./request.json --json
+bcr-runner page-image page-view-1 --output ./page.png
+```
+
+截图返回固定 PNG、状态、元素与警告。它是重放所得结果，不能恢复任意运行时内存；查看截图后再用 `review_edit` 的 `view` 保存，并用 `comment.anchor.viewId` 定位。复杂组件可以提供 `window.bcrReview.exportState/importState`。截图保存于状态目录 `captures/`，完成后可凭 requestId 查询与重试，Runner 重启后仍可读取；截图请求中断后用相同请求重试。备份审阅工作区需包含 `reviews/`、`captures/`、`jobs/` 与 `snapshots/`，单独源码归档不包含它们。
+
 ## 边界与验证
 
-控制 API 只接受配对 Bearer 密钥和明确配置的浏览器 Origin/Host，不能通过 API 改变授权根目录。预览使用独立端口和来源，不携带控制密钥；iframe 与主 UI、控制 API 均不同源。预览 CSP 仅允许本地与内嵌资源，阻止外部连接、嵌套 frame 和任意宿主命令。私有 MessagePort 只接受播放、定位、检查操作，反馈仍是作品自身输出。
+控制 API 只接受配对 Bearer 密钥和明确配置的浏览器 Origin/Host，不能通过 API 改变授权根目录。预览使用独立端口和来源，不携带控制密钥；iframe 与主 UI、控制 API 均不同源。预览 CSP 仅允许本地与内嵌资源，阻止外部连接、嵌套 frame 和任意宿主命令。私有 MessagePort 只接受播放、定位、检查、参数试调和页面状态捕获 / 恢复操作，反馈仍是作品自身输出。
 
 本地工程是用户选择的可信代码，Runner 不是操作系统沙箱；不应作为任意不可信代码托管平台。
 

@@ -1,3 +1,4 @@
+import { decode, PageStateSchema, type PageState } from "@bcr/work-core";
 import type { WorkspaceFiles } from "../workspace/files";
 import type { Work } from "./model";
 
@@ -65,10 +66,21 @@ export class WorkPreview {
   async start(work: Work, files: WorkspaceFiles, signal?: AbortSignal) {
     this.stop();
     const generation = this.sequence;
+    const { workDocument } = await import("./document");
+    const source = await workDocument(work, files);
+    signal?.throwIfAborted();
+    if (generation !== this.sequence) throw new Error("预览已被替换");
+    return this.startDocument(work, source, signal);
+  }
+  async startDocument(
+    work: Pick<Work, "id" | "revision" | "title">,
+    source: string,
+    signal?: AbortSignal,
+  ) {
+    this.stop();
+    const generation = this.sequence;
     this.update({ status: "loading", id: work.id, revision: work.revision, reports: [] });
     try {
-      const { workDocument } = await import("./document");
-      const source = await workDocument(work, files);
       signal?.throwIfAborted();
       if (generation !== this.sequence) throw new Error("预览已被替换");
       const frame = document.createElement("iframe");
@@ -130,6 +142,7 @@ export class WorkPreview {
               else
                 pending.resolve({
                   text: data.text.slice(0, 12000),
+                  pageResult: data.pageResult,
                   value: typeof data.value === "string" ? data.value.slice(0, 2000) : undefined,
                 });
             }
@@ -153,7 +166,14 @@ export class WorkPreview {
       throw error;
     }
   }
+  async page(action: "page-state" | "page-restore", state?: PageState) {
+    const result = (await this.request({ action, page: state })) as { pageResult: unknown };
+    return action === "page-state" ? decode(PageStateSchema, result.pageResult) : result.pageResult;
+  }
   async inspect(action: "inspect" | "click" | "input", selector?: string, value?: string) {
+    return this.request({ action, selector, value });
+  }
+  private request(message: object) {
     if (this.state.status !== "ready" || !this.port) throw new Error("请先启动预览");
     if (this.pending.size >= 8) throw new Error("预览操作过多");
     const id = crypto.randomUUID();
@@ -163,7 +183,7 @@ export class WorkPreview {
         reject(new Error("预览无响应，请停止后重试"));
       }, 3000);
       this.pending.set(id, { resolve, reject, timer });
-      this.port!.postMessage({ id, action, selector, value });
+      this.port!.postMessage({ id, ...message });
     });
   }
 }

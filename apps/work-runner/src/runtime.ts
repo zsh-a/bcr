@@ -3,10 +3,17 @@ import { basename, dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { bundle } from "@remotion/bundler";
 import { makeCancelSignal, renderMedia, renderStill, selectComposition } from "@remotion/renderer";
-import type { Project, RenderRequest, Target } from "@bcr/work-core";
+import {
+  pageReviewScript,
+  renderSettings,
+  type Project,
+  type RenderRequest,
+  type Target,
+} from "@bcr/work-core";
 import { hash, json } from "./projects";
 import { dependencyDirectory, release } from "./installation";
 import { prepareBrowser } from "./browser";
+import { diagnose } from "./diagnostics";
 
 export const REMOTION_VERSION = "4.0.532";
 type Context = {
@@ -61,7 +68,12 @@ async function dependencies(root: string, signal: AbortSignal) {
     signal.removeEventListener("abort", abort);
   }
   const requireProject = createRequire(join(root, "package.json"));
-  for (const name of ["remotion", "@remotion/player"]) {
+  const declared = { ...manifest.dependencies, ...manifest.devDependencies };
+  for (const name of new Set([
+    "remotion",
+    "@remotion/player",
+    ...Object.keys(declared).filter((name) => name.startsWith("@remotion/")),
+  ])) {
     if (requireProject(`${name}/package.json`).version !== REMOTION_VERSION)
       throw new Error(`${name} 必须固定为 ${REMOTION_VERSION}`);
   }
@@ -76,20 +88,31 @@ function props(root: string, target: Target): Record<string, unknown> {
 }
 
 const control = `
-function connect(player) {
+function connect(player, updateProps) {
   let port;
   const send = (v) => port?.postMessage(v);
-  const status = () => ({ frame: player?.current?.getCurrentFrame() ?? null, text: document.body.innerText.slice(0, 8000) });
+  const status = () => ({ frame: player?.current?.getCurrentFrame() ?? null, text: document.body.innerText.slice(0, 8000), path: location.pathname.split("/").slice(2).map(decodeURIComponent).join("/") });
   addEventListener('error', e => send({type:'report',message:String(e.message).slice(0,2000)}));
   addEventListener('unhandledrejection', e => send({type:'report',message:String(e.reason).slice(0,2000)}));
   addEventListener('message', e => {
     if(e.source !== parent || e.data !== 'bcr-work-connect' || !e.ports[0] || port) return;
     port = e.ports[0];
-    port.onmessage = ({data:d}) => {
+    port.onmessage = async ({data:d}) => {
       try {
+        if(d.action === 'page-state' || d.action === 'page-restore') {
+          const api = window.__bcrPageReview;
+          if(!api) throw new Error('此预览不支持页面状态，请生成新预览');
+          const pageResult = await (d.action === 'page-state' ? api.capture() : api.restore(d.page));
+          if(d.action === 'page-state') pageResult.path = location.pathname.split('/').slice(2).map(decodeURIComponent).join('/');
+          send({type:'result',id:d.id,result:{pageResult}}); return;
+        }
         if(d.action === 'seek') player?.current?.seekTo(d.frame);
         if(d.action === 'play') player?.current?.play();
         if(d.action === 'pause') player?.current?.pause();
+        if(d.action === 'parameters') {
+          if(!updateProps) throw new Error('此预览不支持参数试调，请重新生成预览');
+          updateProps(d.values);
+        }
         send({type:'result',id:d.id,result:status()});
       } catch(e) { send({type:'result',id:d.id,error:String(e)}); }
     };
@@ -114,7 +137,7 @@ function connect(player) {
           current.removeEventListener('seeked', publishFrame);
         }, {once:true});
       }
-      send({type:'ready',...status()});
+      send({type:'ready',parameters:!!updateProps,...status()});
     };
     ready();
   });
@@ -155,17 +178,35 @@ export async function execute(context: Context): Promise<void> {
     if (!/\.html?$/iu.test(target.entry)) throw new Error("HTML 目标入口必须是 HTML 文件");
     if (request.kind === "preview") {
       cpSync(root, site, { recursive: true });
-      const file = join(site, target.entry);
-      writeFileSync(join(site, "bcr-preview.js"), `${control}\nconnect(null);`);
-      const script = `${"../".repeat(target.entry.split("/").length - 1)}bcr-preview.js`;
+      if (project.files.some((f) => f.path === "bcr-preview.js"))
+        throw new Error("bcr-preview.js 是 Runner 保留文件名");
       writeFileSync(
-        file,
-        `${readFileSync(file, "utf8")}\n<script src=${JSON.stringify(script)}></script>`,
+        join(site, "bcr-preview.js"),
+        `${pageReviewScript}\n${control}\nconnect(null);`,
       );
+      for (const item of project.files.filter((f) => /\.html?$/iu.test(f.path))) {
+        const file = join(site, item.path);
+        const script = `${"../".repeat(item.path.split("/").length - 1)}bcr-preview.js`;
+        writeFileSync(
+          file,
+          `${readFileSync(file, "utf8")}\n<script src=${JSON.stringify(script)}></script>`,
+        );
+      }
+      const manifest = Object.fromEntries(
+        [...project.files.map((f) => f.path), "bcr-preview.js"].map((path) => [
+          path,
+          hash(readFileSync(join(site, path))),
+        ]),
+      );
+      writeFileSync(join(outputs, "page-manifest.json"), JSON.stringify(manifest));
     }
     report(1, "HTML 就绪");
     return;
   }
+  const diagnostics = diagnose(project, target, request);
+  if (diagnostics.errors.length) throw new Error(diagnostics.errors.join("\n"));
+  for (const warning of diagnostics.warnings) console.warn(warning);
+  const settings = renderSettings(request);
   report(0.05, "准备锁定依赖");
   await dependencies(root, signal);
   signal.throwIfAborted();
@@ -178,10 +219,21 @@ export async function execute(context: Context): Promise<void> {
     const entry = join(root, ".bcr-player.tsx");
     writeFileSync(
       entry,
-      `import React from 'react'; import {createRoot} from 'react-dom/client'; import {Player} from '@remotion/player'; ${component}
+      `import React from 'react'; import {createRoot} from 'react-dom/client'; import {flushSync} from 'react-dom'; import {Player} from '@remotion/player'; ${component}
       ${control}
-      window.remotion_staticBase = './public'; const playerRef = React.createRef(); connect(playerRef);
-      function Preview(){return <Player ref={playerRef} component={Component} inputProps={${JSON.stringify(inputProps)}} durationInFrames={${target.durationInFrames}} compositionWidth={${target.width}} compositionHeight={${target.height}} fps={${target.fps}} controls initialVolume={1} style={{width:'100%',height:'100%'}}/>}
+      const initialProps = ${JSON.stringify(inputProps)}, parameters = ${JSON.stringify(target.parameters ?? [])};
+      let setInputProps;
+      const playerRef = React.createRef(); connect(playerRef, values => {
+        if(values !== null && (!values || typeof values !== 'object' || Array.isArray(values))) throw new Error('参数格式无效');
+        const next = {...initialProps};
+        for(const [key,value] of Object.entries(values ?? {})) {
+          const spec = parameters.find(p=>p.key===key);
+          if(!spec || typeof value !== spec.type || (typeof value==='number' && (!Number.isFinite(value) || (spec.min!==undefined && value<spec.min) || (spec.max!==undefined && value>spec.max))) || (typeof value==='string' && value.length>4000)) throw new Error('参数无效：'+key);
+          Object.defineProperty(next,key,{value,enumerable:true});
+        }
+        flushSync(()=>setInputProps(next));
+      });
+      function Preview(){const [inputProps,setProps]=React.useState(initialProps);setInputProps=setProps;return <Player ref={playerRef} component={Component} inputProps={inputProps} durationInFrames={${target.durationInFrames}} compositionWidth={${target.width}} compositionHeight={${target.height}} fps={${target.fps}} controls initialVolume={1} style={{width:'100%',height:'100%'}}/>}
       createRoot(document.getElementById('root')).render(<Preview/>);`,
     );
     report(0.2, "构建播放器");
@@ -221,7 +273,10 @@ export async function execute(context: Context): Promise<void> {
     onProgress: (n) => report(0.1 + (n / 100) * 0.25, "构建渲染工程"),
   });
   signal.throwIfAborted();
-  const browser = { browserExecutable: await prepareBrowser() };
+  const browser = {
+    browserExecutable: await prepareBrowser(),
+    chromiumOptions: { gl: settings.gl },
+  };
   const composition = await selectComposition({
     serveUrl,
     id: compositionId,
@@ -243,12 +298,25 @@ export async function execute(context: Context): Promise<void> {
           frame,
           output: join(outputs, `frame-${frame}.png`),
           imageFormat: "png",
-          scale: request.scale ?? 1,
+          scale: settings.scale,
           cancelSignal,
           ...browser,
         });
         report(0.4 + 0.6 * ((i + 1) / frames.length), `关键帧 ${frame}`);
       }
+      if (request.kind === "validate")
+        writeFileSync(
+          join(outputs, "diagnostics.json"),
+          JSON.stringify(
+            {
+              ...diagnostics,
+              checkedFrames: frames,
+              note: "素材清单检查与指定帧实际渲染；不替代完整播放、字体字形和全部场景检查。",
+            },
+            null,
+            2,
+          ),
+        );
     } else if (request.kind === "video") {
       const from = request.from ?? 0,
         to = request.to ?? composition.durationInFrames - 1;
@@ -260,7 +328,10 @@ export async function execute(context: Context): Promise<void> {
         codec: "h264",
         outputLocation: join(outputs, "video.mp4"),
         frameRange: [from, to],
-        scale: request.scale ?? 1,
+        scale: settings.scale,
+        crf: settings.crf,
+        pixelFormat: "yuv420p",
+        imageFormat: settings.profile === "final" ? "png" : "jpeg",
         concurrency: 2,
         cancelSignal,
         ...browser,

@@ -162,7 +162,7 @@ export async function verifyWorks({
     "PASS: three unrelated works, native modules, JSON assets, interaction feedback, offline exports, archive restore and preview isolation",
   );
 
-  await page.goto(`${origin}/works?work=${first.id}`);
+  await page.goto(`${origin}/works?work=${first.id}&mode=build`);
   await page.getByLabel("作品文件内容").waitFor();
   await openPanel(page);
   await connect(true);
@@ -178,7 +178,7 @@ export async function verifyWorks({
   await page.getByRole("button", { name: "保存", exact: true }).click();
   await page.getByRole("button", { name: "运行", exact: true }).waitFor();
   await page.waitForFunction(() =>
-    document.querySelector(".works-editor footer")?.textContent.includes("已保存到本机"),
+    document.querySelector(".build-statusbar")?.textContent.includes("已保存"),
   );
   assert.match((await call("commit", patch, true)).message, /版本冲突/u);
   const head = (await call("read", { id: first.id })).work;

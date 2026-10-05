@@ -7,8 +7,10 @@ import {
 } from "parse5";
 import type { WorkspaceFiles } from "../workspace/files";
 import type { Work } from "./model";
+import { pageReviewScript } from "@bcr/work-core";
 import bootstrap from "./runtime.js?raw";
 
+export const PAGE_COMPILER = "bcr-page-2";
 export const PREVIEW_LIMIT = 10 * 1024 * 1024;
 const CSP =
   "default-src 'none'; script-src 'unsafe-inline' data:; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; connect-src 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
@@ -171,7 +173,7 @@ export async function workDocument(work: Work, files: WorkspaceFiles): Promise<s
   const head = [...elements(doc)].find((node) => node.tagName === "head");
   if (!head) throw new Error("HTML 缺少可用的 head");
   const trusted = parseFragment(
-    `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="${CSP}"><title></title><script type="importmap">${json({ imports })}</script><script>${bootstrap}\n;window.installWorkRuntime(${json(assets)});delete window.installWorkRuntime;</script>`,
+    `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="${CSP}"><title></title><script type="importmap">${json({ imports })}</script><script>${pageReviewScript}\n${bootstrap}\n;window.installWorkRuntime(${json(assets)});delete window.installWorkRuntime;</script>`,
   );
   const title = [...elements(trusted)].find((node) => node.tagName === "title")!;
   setText(title, work.title);

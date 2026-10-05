@@ -1,5 +1,15 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+  renameSync,
+  statSync,
+  utimesSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { Projects } from "../src/projects";
@@ -260,3 +270,36 @@ test("remote listeners require explicit separate origins and advertise proxy URL
   ).json();
   expect(new URL(preview.url).origin).toBe("https://preview.example.com");
 }, 35000);
+
+test("source identity survives restart and binds state to its authorized root", () => {
+  const { root, state, directory, projects } = fixture();
+  expect(new Projects(root, state).sourceId).toBe(projects.sourceId);
+  expect(new Projects(root, join(directory, "other-state")).sourceId).not.toBe(projects.sourceId);
+  const otherRoot = join(directory, "other-root");
+  mkdirSync(otherRoot);
+  expect(() => new Projects(otherRoot, state)).toThrow("已绑定");
+});
+
+test("discovery reuses unchanged manifests, invalidates file changes and never weakens snapshot checks", () => {
+  const { root, projects } = fixture();
+  const first = projects.list().items[0]!;
+  expect(projects.list().items[0]).toBe(first);
+  const file = join(root, "data.json"),
+    before = statSync(file);
+  writeFileSync(file, '{"price":20}');
+  utimesSync(file, before.atime, before.mtime); // Same size and restored mtime still invalidate via ctime.
+  const changed = projects.list().items[0]!;
+  expect(changed.revision).not.toBe(first.revision);
+  expect(() => projects.snapshot(first.ref.id, first.revision)).toThrow("冲突");
+  expect(projects.read(first.ref.id).revision).toBe(changed.revision);
+  writeFileSync(join(root, "added.txt"), "new");
+  const added = projects.list().items[0]!;
+  expect(added.files.some((f) => f.path === "added.txt")).toBe(true);
+  renameSync(join(root, "added.txt"), join(root, "renamed.txt"));
+  expect(projects.list().items[0]!.files.some((f) => f.path === "renamed.txt")).toBe(true);
+  rmSync(join(root, "renamed.txt"));
+  expect(projects.list().items[0]!.revision).toBe(changed.revision);
+  symlinkSync(file, join(root, "link.txt"));
+  expect(projects.list().items).toHaveLength(0);
+  expect(projects.list().errors[0]!.message).toContain("符号链接");
+});

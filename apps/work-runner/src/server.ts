@@ -94,7 +94,7 @@ export function startRunner(config: RunnerConfig) {
     api = Bun.serve({
       hostname: host,
       port: config.port ?? 5210,
-      maxRequestBodySize: 1024 * 1024,
+      maxRequestBodySize: 16 * 1024 * 1024,
       async fetch(request) {
         const headers = {
           "Access-Control-Allow-Origin": origin,
@@ -122,6 +122,12 @@ export function startRunner(config: RunnerConfig) {
           }
           if (request.method === "GET" && url.pathname === "/health")
             return respond(service.catalog());
+          if (request.method === "GET" && url.pathname.startsWith("/captures/")) {
+            const id = decode(Id, url.pathname.slice("/captures/".length));
+            return new Response(service.captures.image(id), {
+              headers: { ...headers, "Content-Type": "image/png" },
+            });
+          }
           if (request.method === "GET" && url.pathname.startsWith("/outputs/")) {
             const [, , id, name] = url.pathname.split("/");
             const job = jobs.get(decode(Id, id)),
@@ -143,14 +149,14 @@ export function startRunner(config: RunnerConfig) {
           if (!input || typeof input !== "object" || Array.isArray(input))
             throw new Error("input 必须是对象");
           if (typeof body.op !== "string") throw new Error("op 必须是字符串");
-          return respond(service.call(body.op, input, urlFor));
+          return respond(await service.call(body.op, input, urlFor));
         } catch (error) {
           return respond({ error: error instanceof Error ? error.message : String(error) }, 400);
         }
       },
     });
   } catch (error) {
-    void jobs.close();
+    void service.close();
     void preview.stop(true);
     throw error;
   }
@@ -164,7 +170,7 @@ export function startRunner(config: RunnerConfig) {
     engine,
     async close() {
       // Keep health reachable until all children stop, so stop/start cannot race the state lease.
-      await jobs.close();
+      await service.close();
       await Promise.all([api.stop(true), preview.stop(true)]);
     },
   };

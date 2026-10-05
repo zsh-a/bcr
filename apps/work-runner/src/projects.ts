@@ -24,6 +24,7 @@ import {
   ReviewSchema,
   type Project,
   type Reviews,
+  changedFiles,
 } from "@bcr/work-core";
 
 export const hash = (value: string | Uint8Array) =>
@@ -48,6 +49,8 @@ type Scan = { project: Project; bytes: Map<string, Buffer> };
 export class Projects {
   readonly root: string;
   readonly state: string;
+  readonly sourceId: string;
+  private index = new Map<string, { stamp: string; project: Project }>();
   constructor(root: string, state: string) {
     this.root = realpathSync(root);
     mkdirSync(resolve(state), { recursive: true, mode: 0o700 });
@@ -55,6 +58,14 @@ export class Projects {
     const outside = relative(this.root, this.state);
     if (outside !== ".." && !outside.startsWith(`..${sep}`))
       throw new Error("Runner 状态目录必须放在授权工程目录之外");
+    const identity = join(this.state, "source.json");
+    if (!existsSync(identity))
+      atomic(identity, JSON.stringify({ id: `runner-${randomUUID()}`, root: this.root }));
+    const source = json(identity) as { id: string; root: string };
+    decode(Id, source.id);
+    if (source.root !== this.root)
+      throw new Error("Runner 状态目录已绑定其他工程目录，请使用独立的状态目录");
+    this.sourceId = source.id;
   }
   private directories() {
     if (existsSync(join(this.root, "work.json"))) return [this.root];
@@ -68,8 +79,9 @@ export class Projects {
       )
       .map((e) => join(this.root, e.name));
   }
-  private scan(dir: string): Scan {
-    const bytes = new Map<string, Buffer>();
+  /** Metadata only: listing never rereads unchanged fonts, audio or source bodies. */
+  private entries(dir: string) {
+    const entries: { path: string; stamp: string; size: number }[] = [];
     let total = 0;
     const visit = (folder: string) => {
       for (const name of readdirSync(folder).sort()) {
@@ -80,24 +92,35 @@ export class Projects {
         if ([".bcr-player.tsx", ".bcr-render.tsx", "bcr-preview.js"].includes(path))
           throw new Error(`文件名由 Runner 保留：${path}`);
         decode(Path, path);
-        const stat = lstatSync(absolute);
+        const stat = lstatSync(absolute, { bigint: true });
         if (stat.isSymbolicLink()) throw new Error(`工程不能包含符号链接：${path}`);
         if (stat.isDirectory()) visit(absolute);
         else if (stat.isFile()) {
-          if (
-            stat.size > 64 * 1024 * 1024 ||
-            total + stat.size > 256 * 1024 * 1024 ||
-            bytes.size >= 2000
-          )
+          const size = Number(stat.size);
+          total += size;
+          if (size > 64 * 1024 * 1024 || total > 256 * 1024 * 1024 || entries.length >= 2000)
             throw new Error("工程超出快照上限（2000 文件、单文件 64 MiB、总量 256 MiB）");
-          const value = readFileSync(absolute);
-          total += value.byteLength;
-          if (total > 256 * 1024 * 1024) throw new Error("工程在读取时超过快照上限");
-          bytes.set(path, value);
+          entries.push({
+            path,
+            size,
+            stamp: `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`,
+          });
         } else throw new Error(`不支持的文件类型：${path}`);
       }
     };
     visit(dir);
+    return entries;
+  }
+  private scan(dir: string): Scan {
+    const bytes = new Map<string, Buffer>();
+    let total = 0;
+    for (const { path } of this.entries(dir)) {
+      const value = readFileSync(join(dir, path));
+      total += value.byteLength;
+      if (value.byteLength > 64 * 1024 * 1024 || total > 256 * 1024 * 1024)
+        throw new Error("工程在读取时超过快照上限");
+      bytes.set(path, value);
+    }
     const work = definition(JSON.parse(bytes.get("work.json")?.toString() ?? "null"));
     for (const target of work.targets) {
       if (!bytes.has(target.entry)) throw new Error(`缺少入口：${target.entry}`);
@@ -111,7 +134,7 @@ export class Projects {
       bytes,
       project: {
         directory: dir,
-        ref: { provider: "local", id: work.id },
+        ref: { sourceId: this.sourceId, provider: "local", id: work.id },
         title: work.title,
         revision: hash(JSON.stringify(files)),
         definition: work,
@@ -124,13 +147,21 @@ export class Projects {
   list() {
     const items: Project[] = [],
       errors: { directory: string; message: string }[] = [];
-    for (const dir of this.directories()) {
+    const directories = this.directories();
+    for (const cached of this.index.keys())
+      if (!directories.includes(cached)) this.index.delete(cached);
+    for (const dir of directories) {
       try {
-        const item = this.scan(dir).project;
+        const stamp = JSON.stringify(this.entries(dir));
+        const cached = this.index.get(dir);
+        const item = cached?.stamp === stamp ? cached.project : this.scan(dir).project;
+        if (cached?.stamp !== stamp && JSON.stringify(this.entries(dir)) === stamp)
+          this.index.set(dir, { stamp, project: item });
         if (items.some((p) => p.ref.id === item.ref.id))
           throw new Error(`作品 ID 重复：${item.ref.id}`);
         items.push(item);
       } catch (error) {
+        this.index.delete(dir);
         errors.push({ directory: relative(this.root, dir) || ".", message: String(error) });
       }
     }
@@ -159,7 +190,7 @@ export class Projects {
     if (existsSync(cached)) {
       const project = json(cached) as Project;
       if (project.ref.id !== id) throw new Error("快照不属于此作品");
-      return project;
+      return { ...project, ref: { ...project.ref, sourceId: this.sourceId } };
     }
     const dir = this.locate(id),
       scan = this.scan(dir);
@@ -177,6 +208,71 @@ export class Projects {
   }
   source(revision: string) {
     return join(this.state, "snapshots", decode(Revision, revision), "source");
+  }
+  /** Resumable restore: every managed file must still match the before/after snapshot.
+   * The caller persists its intent before entry and keeps both immutable snapshots.
+   * Uncoordinated external writes are rejected; ignored/private files are never touched.
+   */
+  applySnapshot(before: Project, after: Project, checkOnly = false) {
+    if (before.ref.id !== after.ref.id) throw new Error("恢复快照不属于此作品");
+    const dir = before.directory;
+    if (realpathSync(dir) !== dir || (dir !== this.root && dirname(dir) !== this.root))
+      throw new Error("恢复目录已变化");
+    const files = changedFiles(before.files, after.files);
+    const safePath = (path: string) => {
+      decode(Path, path);
+      if (
+        path.split("/").some((s) => ignored.has(s) || privateFile(s) || s.endsWith(".tmp")) ||
+        [
+          "reviews.json",
+          "bcr-snapshot.json",
+          ".bcr-player.tsx",
+          ".bcr-render.tsx",
+          "bcr-preview.js",
+        ].includes(path)
+      )
+        throw new Error(`恢复路径受到保护：${path}`);
+      const parts = path.split("/");
+      for (let i = 1; i <= parts.length; i++) {
+        const at = join(dir, ...parts.slice(0, i));
+        const stat = lstatSync(at, { throwIfNoEntry: false });
+        if (
+          stat &&
+          (stat.isSymbolicLink() || (i < parts.length ? !stat.isDirectory() : !stat.isFile()))
+        )
+          throw new Error(`恢复路径类型冲突，请先在编辑器中处理：${path}`);
+      }
+      return join(dir, path);
+    };
+    const old = new Map(before.files.map((f) => [f.path, f.hash])),
+      next = new Map(after.files.map((f) => [f.path, f.hash]));
+    const current = new Map(
+      this.entries(dir).map((f) => [f.path, hash(readFileSync(join(dir, f.path)))]),
+    );
+    for (const path of new Set([...old.keys(), ...next.keys(), ...current.keys()])) {
+      if (current.get(path) !== old.get(path) && current.get(path) !== next.get(path))
+        throw new Error(`恢复检测到外部修改，已保留恢复前快照：${path}`);
+    }
+    const bytes = new Map<string, Buffer>();
+    for (const file of files) {
+      safePath(file.path);
+      if (file.after) bytes.set(file.path, this.file(after.ref.id, after.revision, file.path));
+    }
+    if (checkOnly) return before;
+    for (const file of files) {
+      const path = safePath(file.path),
+        stat = lstatSync(path, { throwIfNoEntry: false });
+      const actual = stat ? hash(readFileSync(path)) : undefined;
+      if (actual === file.after?.hash) continue;
+      if (actual !== file.before?.hash) throw new Error(`恢复期间文件发生变化：${file.path}`);
+      if (file.after) atomic(path, bytes.get(file.path)!);
+      else rmSync(path); // Never recursively delete directories, Git data or private files.
+    }
+    const restored = this.scan(dir).project;
+    if (restored.revision !== after.revision)
+      throw new Error("恢复期间检测到新的外部修改，请检查后重试");
+    this.index.delete(dir);
+    return restored;
   }
   file(id: string, revision: string, path: string) {
     const project = this.snapshot(id, revision);

@@ -60,6 +60,14 @@ window.installWorkRuntime = (assets) => {
     port = event.ports[0];
     port.onmessage = async ({ data }) => {
       try {
+        if (data.action === "page-state" || data.action === "page-restore") {
+          const api = window.__bcrPageReview;
+          if (!api) throw new Error("此历史页面没有状态接口");
+          const result =
+            data.action === "page-state" ? await api.capture() : await api.restore(data.page);
+          port.postMessage({ kind: "result", id: data.id, text: "", pageResult: result });
+          return;
+        }
         const node = data.selector ? document.querySelector(data.selector) : document.body;
         if (!node) throw new Error("未找到目标元素");
         if (data.action === "click") node.click();
