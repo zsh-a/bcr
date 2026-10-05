@@ -11,8 +11,7 @@ import type {
   PageElement,
 } from "@bcr/work-core";
 import { PageReviewStage } from "./PageReviewStage";
-import { WorkPreview } from "./preview";
-import { LocalPreview } from "./runner-preview";
+import { RunnerPreview } from "./runner-preview";
 import type { WorkService } from "./service";
 import { downloadBlob } from "./review-session";
 
@@ -79,18 +78,15 @@ function MediaReviewStage({
   const [outputKey, setOutputKey] = useState(
     () =>
       initialOutput ??
-      (workRef.provider === "browser"
-        ? "preview"
-        : (submission.outputs.find((o) => o.mime.startsWith("video/"))?.key ??
-          submission.outputs.find((o) => o.mime.startsWith("image/"))?.key ??
-          "preview")),
+      (submission.outputs.find((o) => o.mime.startsWith("video/"))?.key ??
+        submission.outputs.find((o) => o.mime.startsWith("image/"))?.key ??
+        "preview"),
   );
   const [blob, setBlob] = useState<Blob>(),
     [url, setUrl] = useState(""),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true);
-  const browser = useMemo(() => new WorkPreview(), []),
-    local = useMemo(() => new LocalPreview(), []);
+  const preview = useMemo(() => new RunnerPreview(), []);
   const video = useRef<HTMLVideoElement>(null),
     surface = useRef<HTMLDivElement>(null),
     outer = useRef<HTMLDivElement>(null);
@@ -117,7 +113,7 @@ function MediaReviewStage({
   }, [focus]);
   const seek = async (frame: number) => {
     if (submission.target.runtime !== "remotion") return;
-    if (interactive) await local.inspect("seek", frame);
+    if (interactive) await preview.inspect("seek", frame);
     else if (video.current) {
       if (video.current.readyState < 1) return; // The metadata event applies the pending anchor.
       const seconds = (frame - (media?.fromFrame ?? 0)) / submission.target.fps;
@@ -144,17 +140,10 @@ function MediaReviewStage({
         );
       }
       if (interactive) {
-        if (workRef.provider === "local") {
-          if (submission.target.runtime === "remotion") await local.inspect("pause");
-          const result = (await local.inspect("inspect")) as { frame: number | null; text: string };
-          if (result.frame !== null) {
-            frame = result.frame;
-          }
-          if (result.text) context = result.text.slice(0, 8000);
-        } else {
-          const result = (await browser.inspect("inspect")) as { text?: string };
-          if (result.text) context = result.text.slice(0, 8000);
-        }
+        if (submission.target.runtime === "remotion") await preview.inspect("pause");
+        const result = (await preview.inspect("inspect")) as { frame: number | null; text: string };
+        if (result.frame !== null) frame = result.frame;
+        if (result.text) context = result.text.slice(0, 8000);
       }
       return {
         ...(frame !== undefined ? { frame } : {}),
@@ -175,29 +164,14 @@ function MediaReviewStage({
     void (async () => {
       try {
         if (interactive) {
-          if (workRef.provider === "browser")
-            await browser.startDocument(
-              { id: workRef.id, revision: submission.sourceRevision, title: submission.title },
-              (
-                await service.reviewDocument(
-                  workRef,
-                  submission,
-                  submission.target.entry,
-                  abort.signal,
-                )
-              ).html,
-              abort.signal,
-            );
-          else {
-            service.assertSource(workRef.sourceId);
-            if (!submission.previewJobId) throw new Error("此版本没有交互预览，请选择图片或视频");
-            await local.start(
-              await service.local.previewResource(submission.previewJobId, abort.signal),
-              abort.signal,
-            );
-          }
-          if (focusRef.current?.frame !== undefined && workRef.provider === "local")
-            await local.inspect("seek", focusRef.current.frame);
+          service.assertSource(workRef.sourceId);
+          if (!submission.previewJobId) throw new Error("此版本没有交互预览，请选择图片或视频");
+          await preview.start(
+            await service.runner.previewResource(submission.previewJobId, abort.signal),
+            abort.signal,
+          );
+          if (focusRef.current?.frame !== undefined)
+            await preview.inspect("seek", focusRef.current.frame);
         } else if (media) {
           const loaded = await service.reviewOutput(workRef, media, abort.signal);
           if (abort.signal.aborted) return;
@@ -213,20 +187,17 @@ function MediaReviewStage({
     })();
     return () => {
       abort.abort();
-      browser.stop();
-      local.stop();
+      preview.stop();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [
     service,
     workRef.sourceId,
     workRef.id,
-    workRef.provider,
     submission.id,
     media?.key,
     interactive,
-    browser,
-    local,
+    preview,
   ]);
   useEffect(() => {
     if (!loading && focus?.frame !== undefined)
@@ -251,7 +222,7 @@ function MediaReviewStage({
         >
           {onOutput && <option value="page-view">返回页面</option>}
           {submission.target.runtime !== "html" &&
-            (submission.previewJobId || workRef.provider === "browser") && (
+            submission.previewJobId && (
               <option value="preview">交互预览</option>
             )}
           {submission.outputs
@@ -279,7 +250,7 @@ function MediaReviewStage({
           {interactive ? (
             <div
               className="review-frame"
-              ref={workRef.provider === "browser" ? browser.mount : local.mount}
+              ref={preview.mount}
             />
           ) : media?.mime.startsWith("image/") && url ? (
             <img

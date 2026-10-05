@@ -1,18 +1,18 @@
 import { useState, useSyncExternalStore } from "react";
 import { Button } from "@bcr/react";
-import type { LocalRunner } from "./local";
+import type { RunnerClient } from "./runner";
 
-export function RunnerConnection({ runner, close }: { runner: LocalRunner; close: () => void }) {
+export function RunnerConnection({ runner, close }: { runner: RunnerClient; close: () => void }) {
   const connection = useSyncExternalStore(runner.subscribe, runner.getSnapshot);
   const [url, setUrl] = useState("http://127.0.0.1:5210"),
     [token, setToken] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   return (
-    <section className="works-connect" aria-label="连接本地工程">
+    <section className="works-connect" aria-label="连接 Runner">
       <div>
-        <strong>本地工程</strong>
-        <p>在工程所在的电脑启动 Runner，用配对密钥连接。密钥只保留在当前会话。</p>
+        <strong>连接 Runner</strong>
+        <p>在作品工程所在的环境启动 Runner，用配对密钥连接。密钥只保留在当前会话。</p>
         <code>bcr-runner start --root ./projects --origin {location.origin}</code>
       </div>
       {connection.status === "connected" ? (

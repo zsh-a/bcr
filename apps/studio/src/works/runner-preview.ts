@@ -18,7 +18,7 @@ type PreviewState = {
   parameters?: boolean;
   draft?: boolean;
 };
-export class LocalPreview {
+export class RunnerPreview {
   private state: PreviewState = { status: "idle", frame: null, reports: [] };
   private listeners = new Set<() => void>();
   private frame: HTMLIFrameElement | undefined;
@@ -55,7 +55,7 @@ export class LocalPreview {
     signal?.throwIfAborted();
     const frame = document.createElement("iframe");
     this.frame = frame;
-    frame.title = "本地作品预览";
+    frame.title = "Runner 作品预览";
     frame.sandbox.add("allow-scripts", "allow-same-origin");
     frame.referrerPolicy = "no-referrer";
     this.emit({

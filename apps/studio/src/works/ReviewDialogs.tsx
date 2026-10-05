@@ -86,7 +86,7 @@ export function SubmitReviewDialog({
                 ...(pageTarget
                   ? { pages: selectedPages.map((path) => ({ path, title: path })) }
                   : {}),
-                ...(work.ref.provider === "local" ? { jobIds: selectedJobs } : {}),
+                jobIds: selectedJobs,
               });
               submitted(id);
             } catch (e) {
@@ -165,66 +165,64 @@ export function SubmitReviewDialog({
             <small>最多 12 个页面，每个页面会保留独立的审阅产物。</small>
           </fieldset>
         )}
-        {work.ref.provider === "local" && (
-          <fieldset>
-            <legend>本次画面与文件</legend>
-            {!eligible.length && (
-              <div className="review-inline-empty">
-                <Film size={22} />
-                <p>
-                  {preparing ? "预览正在生成，完成后即可提交。" : "当前源码还没有可审阅的画面。"}
-                </p>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={busy || preparing}
-                  onClick={() =>
-                    void session.run(async () => {
-                      await session.service.call(work.ref.sourceId, "render", {
-                        id: work.ref.id,
-                        revision: work.revision,
-                        target,
-                        kind: "preview",
-                        requestId: crypto.randomUUID(),
-                      });
-                      await session.refresh();
-                    })
-                  }
-                >
-                  <Play size={14} />
-                  生成审阅预览
-                </Button>
-              </div>
-            )}
-            <div className="review-choice-list">
-              {eligible.map((j) => (
-                <label key={j.id} className="review-choice">
-                  <input
-                    type="checkbox"
-                    checked={selectedJobs.includes(j.id)}
-                    onChange={(e) =>
-                      setChecked(
-                        e.target.checked
-                          ? [...selectedJobs, j.id]
-                          : selectedJobs.filter((id) => id !== j.id),
-                      )
-                    }
-                  />
-                  <span>
-                    <strong>
-                      {j.request.kind === "preview"
-                        ? "交互预览"
-                        : j.outputs.map((o) => o.name).join("、")}
-                    </strong>
-                    <small>
-                      {new Date(j.createdAt).toLocaleString()} · {j.request.revision.slice(0, 8)}
-                    </small>
-                  </span>
-                </label>
-              ))}
+        <fieldset>
+          <legend>本次画面与文件</legend>
+          {!eligible.length && (
+            <div className="review-inline-empty">
+              <Film size={22} />
+              <p>
+                {preparing ? "预览正在生成，完成后即可提交。" : "当前源码还没有可审阅的画面。"}
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={busy || preparing}
+                onClick={() =>
+                  void session.run(async () => {
+                    await session.service.call(work.ref.sourceId, "render", {
+                      id: work.ref.id,
+                      revision: work.revision,
+                      target,
+                      kind: "preview",
+                      requestId: crypto.randomUUID(),
+                    });
+                    await session.refresh();
+                  })
+                }
+              >
+                <Play size={14} />
+                生成审阅预览
+              </Button>
             </div>
-          </fieldset>
-        )}
+          )}
+          <div className="review-choice-list">
+            {eligible.map((j) => (
+              <label key={j.id} className="review-choice">
+                <input
+                  type="checkbox"
+                  checked={selectedJobs.includes(j.id)}
+                  onChange={(e) =>
+                    setChecked(
+                      e.target.checked
+                        ? [...selectedJobs, j.id]
+                        : selectedJobs.filter((id) => id !== j.id),
+                    )
+                  }
+                />
+                <span>
+                  <strong>
+                    {j.request.kind === "preview"
+                      ? "交互预览"
+                      : j.outputs.map((o) => o.name).join("、")}
+                  </strong>
+                  <small>
+                    {new Date(j.createdAt).toLocaleString()} · {j.request.revision.slice(0, 8)}
+                  </small>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         {pending.length > 0 && (
           <fieldset>
             <legend>这次处理了哪些反馈？</legend>
@@ -266,7 +264,7 @@ export function SubmitReviewDialog({
               !summary.trim() ||
               !target ||
               (!!pageTarget && !selectedPages.length) ||
-              (work.ref.provider === "local" && !selectedJobs.length)
+              !selectedJobs.length
             }
           >
             <Check size={15} />

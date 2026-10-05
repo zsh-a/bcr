@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-for (const suite of ["browser", "review-browser", "page-review-browser"]) {
+for (const suite of ["browser", "review-browser"]) {
   const result = spawnSync("bun", [`apps/work-runner/tests/${suite}.mjs`], {
     stdio: "inherit",
     timeout: 240000,

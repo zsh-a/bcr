@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { Button, Dialog, useAgentHost, useRuntime, useUpdateParticipant } from "@bcr/react";
+import { Button, Dialog, useAgentHost, useUpdateParticipant } from "@bcr/react";
 import { BrowserBridge } from "@bcr/agent/bridge";
-import { Schema } from "effect";
 import { Cable, Check, Circle } from "lucide-react";
-import { workspaceServices } from "../workspace";
-import { ArtifactSchema } from "../workspace/files";
 import "./external-agent.css";
 
 function workspaceIdentity() {
@@ -31,8 +28,7 @@ export function ExternalAgentBridge({
   onClose: () => void;
   onConnected: (connected: boolean) => void;
 }) {
-  const host = useAgentHost(),
-    runtime = useRuntime();
+  const host = useAgentHost();
   const bridge = useMemo(
     () =>
       new BrowserBridge({
@@ -40,17 +36,8 @@ export function ExternalAgentBridge({
         label: `BCR · ${location.origin}`,
         capabilities: host.agentCapabilities,
         subscribe: host.subscribeAgentCapabilities,
-        files: {
-          capability: "workspace.works",
-          read: (artifact) =>
-            workspaceServices(runtime).files.read(
-              Schema.decodeUnknownSync(ArtifactSchema)(artifact),
-            ),
-          import: (blob, name, signal) =>
-            workspaceServices(runtime).files.import(blob, name, signal),
-        },
       }),
-    [host, runtime],
+    [host],
   );
   const state = useSyncExternalStore(bridge.subscribe, bridge.getSnapshot);
   const capabilities = useSyncExternalStore(
@@ -59,7 +46,7 @@ export function ExternalAgentBridge({
   ).filter((c) => c.scope === "shared" && (c.available?.() ?? true));
   const [address, setAddress] = useState("http://127.0.0.1:5209"),
     [token, setToken] = useState("");
-  const [selected, setSelected] = useState(["knowledge.library", "workspace.works"]),
+  const [selected, setSelected] = useState(["knowledge.library"]),
     [write, setWrite] = useState(false),
     [error, setError] = useState("");
   const connected = state.status === "connected",
@@ -95,7 +82,7 @@ export function ExternalAgentBridge({
         <div>
           <p className="external-agent-kicker">BCR × MCP</p>
           <h3>让助手进入你的工作区</h3>
-          <p>连接 Codex、Claude Code，共用资料与作品，生成自己的交互页面。</p>
+          <p>连接外部 Agent，共用 BCR 中的资料与知识能力；代码作品直接由 Runner MCP 管理。</p>
         </div>
       </div>
       <div className="external-agent-status" data-connected={connected} role="status">
@@ -196,7 +183,7 @@ export function ExternalAgentBridge({
             在 BCR 项目目录运行 <code>bun run bridge</code>。
           </li>
           <li>
-            运行 <code>bun run bridge token browser</code>，将密钥填入上方。
+            运行 <code>bun run bridge token browser</code>，将浏览器配对密钥填入上方。
           </li>
           <li>
             在外部助手中添加 MCP 地址 <code>{address.replace(/\/$/u, "")}/mcp</code>，使用{" "}
@@ -208,7 +195,7 @@ export function ExternalAgentBridge({
           <code>--origin {location.origin}</code>。
         </p>
         <p>
-          连接密钥仅保留在此页面内存中。文件导入、下载和客户端配置见仓库文档{" "}
+          连接密钥仅保留在此页面内存中。浏览器资料能力与客户端配置见仓库文档{" "}
           <code>docs/EXTERNAL-AGENTS.md</code>。
         </p>
       </details>

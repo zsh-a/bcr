@@ -68,56 +68,6 @@ test("changing the authorized root defaults to a separate state directory", () =
   expect(serviceOptions({ root: nextRoot }, saved).state).not.toBe(state);
   expect(serviceOptions({ root: nextRoot, state }, saved).state).toBe(state);
 });
-test("snapshots pin bytes; reviews have independent revisions; stale parameters cannot overwrite", () => {
-  const { projects, root } = fixture();
-  const work = projects.read("test");
-  projects.snapshot("test", work.revision);
-  const before = projects.reviews("test");
-  const review = {
-    id: "note",
-    revision: before.revision,
-    requestId: "review",
-    review: {
-      id: "r1",
-      sourceRevision: work.revision,
-      target: "movie",
-      frame: 12,
-      comment: "delay",
-      status: "open",
-    },
-  };
-  expect(() => projects.review(review)).toThrow();
-  const result = projects.review({ ...review, id: "test" });
-  expect(projects.review({ ...review, id: "test" })).toEqual(result);
-  expect(projects.read("test").revision).toBe(work.revision);
-  const change = {
-    id: "test",
-    revision: work.revision,
-    target: "movie",
-    requestId: "change",
-    values: { price: 20 },
-  };
-  const next = projects.parameters(change);
-  expect(next.revision).not.toBe(work.revision);
-  expect(projects.parameters(change)).toEqual(next);
-  expect(() =>
-    projects.parameters({ ...change, requestId: "stale", values: { price: 30 } }),
-  ).toThrow("冲突");
-  expect(projects.file("test", work.revision, "data.json").toString()).toBe('{"price":10}');
-  expect(JSON.parse(readFileSync(join(root, "data.json"), "utf8")).price).toBe(20);
-  expect(() => projects.review({ ...review, id: "test", requestId: "stale-review" })).toThrow(
-    "冲突",
-  );
-  expect(() =>
-    projects.review({
-      ...review,
-      id: "test",
-      requestId: "invalid-frame",
-      revision: result.revision,
-      review: { ...review.review, frame: 60 },
-    }),
-  ).toThrow("帧号");
-});
 test("paths, symlinks, private files and parameter declarations are enforced", () => {
   const { root, directory, projects } = fixture();
   writeFileSync(join(root, ".env"), "SECRET=not-snapshotted");

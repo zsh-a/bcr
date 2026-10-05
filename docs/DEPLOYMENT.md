@@ -53,7 +53,7 @@ node scripts/verify-deploy.mjs https://your-domain.example
 
 安装入口与缓存策略见[独立 PWA](INDEPENDENT-PWAS.md)，更新的保存屏障见[应用更新](APP-UPDATES.md)。
 
-## 本地作品执行服务
+## 作品执行服务
 
 Works Runner 与 Studio 静态站点分别部署。Runner 可以安装在用户电脑上，也可以使用独立发布目录构建 Docker 镜像；工程与任务数据放在安装目录之外。Web、控制 API 和作品预览使用不同 origin。安装包、端口、数据卷和反向代理设置见 [Runner 部署说明](../apps/work-runner/README.md#docker-与远程部署)。
 

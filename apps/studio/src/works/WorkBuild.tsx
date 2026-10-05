@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { Button, Dialog, Select, useUpdateParticipant } from "@bcr/react";
+import { Button, Select, useUpdateParticipant } from "@bcr/react";
 import {
   ChevronDown,
   Clapperboard,
@@ -10,14 +10,14 @@ import {
   Save,
   Square,
 } from "lucide-react";
-import type { Project, Job, Reviews } from "@bcr/work-core";
+import type { Project, Job } from "@bcr/work-core";
 import type { WorkService } from "./service";
 import { WorkSession } from "./session";
 import { BuildShell } from "./BuildShell";
 import { ExportDialog, JobDrawer } from "./BuildTools";
 import { ArtifactViewer } from "./ArtifactViewer";
 
-export function LocalWork({
+export function WorkBuild({
   service,
   work,
   onBlocked,
@@ -37,11 +37,10 @@ export function LocalWork({
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const { jobs, params, dirty, busy, error, loadingParams, paramError, liveError } = state,
     target = session.target,
-    runner = service.local;
+    runner = service.runner;
   const preview = useSyncExternalStore(runner.preview.subscribe, runner.preview.getSnapshot);
   const [inspector, setInspector] = useState(true),
-    [dialog, setDialog] = useState<"export" | "jobs" | "legacy" | null>(null),
-    [legacy, setLegacy] = useState<Reviews>();
+    [dialog, setDialog] = useState<"export" | "jobs" | null>(null);
   const [artifact, setArtifact] = useState<{ job: Job; name: string }>();
   const run = (action: () => Promise<unknown>) => session.run(action);
   const activePreview = session.activePreview,
@@ -164,19 +163,6 @@ export function LocalWork({
             : "HTML / CSS / JavaScript"}
         </p>
       </div>
-      <button
-        className="build-text-button"
-        onClick={() => {
-          setDialog("legacy");
-          void run(async () =>
-            setLegacy(
-              await service.call<Reviews>(work.ref.sourceId, "reviews", { id: work.ref.id }),
-            ),
-          );
-        }}
-      >
-        查看历史批注
-      </button>
     </>
   );
   return (
@@ -223,7 +209,7 @@ export function LocalWork({
             <Button
               variant="ghost"
               disabled={busy || dirty}
-              aria-label="刷新本地作品"
+              aria-label="刷新作品"
               onClick={() => void run(() => runner.refresh())}
             >
               <RefreshCw size={14} />
@@ -237,7 +223,7 @@ export function LocalWork({
             </Button>
             <Button
               variant="ghost"
-              aria-label="停止本地预览"
+              aria-label="停止预览"
               disabled={preview.status === "idle"}
               onClick={() => session.stopPreview()}
             >
@@ -268,7 +254,7 @@ export function LocalWork({
             源码已被外部编辑器更新，你的参数草稿仍保留。请先撤销或核对差异，再保存。
           </div>
         )}
-        <section className="build-preview" aria-label="本地作品工作台">
+        <section className="build-preview" aria-label="作品制作工作台">
           <div className="build-frame" ref={runner.preview.mount} />
           {preview.status === "idle" && (
             <div className="build-empty-canvas">
@@ -342,21 +328,6 @@ export function LocalWork({
           close={() => setDialog(null)}
           onArtifact={(job, name) => setArtifact({ job, name })}
         />
-      )}
-      {dialog === "legacy" && (
-        <Dialog open title="历史批注" onClose={() => setDialog(null)} className="build-legacy">
-          <p className="build-dialog-intro">旧批注保留只读。新的修改意见请在审阅稿中记录。</p>
-          {legacy?.items.map((r) => (
-            <article key={r.id}>
-              <small>
-                {r.sourceRevision.slice(0, 8)} · {r.target}
-                {r.frame !== undefined ? ` · 第 ${r.frame} 帧` : ""}
-              </small>
-              <p>{r.comment}</p>
-            </article>
-          ))}
-          {legacy && !legacy.items.length && <p>没有历史批注。</p>}
-        </Dialog>
       )}
       {artifact && (
         <ArtifactViewer

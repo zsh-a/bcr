@@ -147,14 +147,7 @@ try {
       assert.equal(await page.getByRole("alert").count(), 0);
     }
     if (app.key === "works") {
-      await page.getByRole("button", { name: "新建页面", exact: true }).click();
-      await page.getByLabel("作品文件内容").waitFor();
-      assert.match(page.url(), /\/pwa\/works\/\?work=/u);
-      await page.getByRole("button", { name: "运行", exact: true }).click();
-      await page
-        .frameLocator('iframe[title^="作品预览"]')
-        .getByRole("heading", { name: "从一个想法开始" })
-        .waitFor();
+      await page.getByRole("heading", { name: "连接 Runner 开始创作" }).waitFor();
       assert.equal(await page.getByRole("alert").count(), 0);
     }
     if (app.key === "knowledge") {

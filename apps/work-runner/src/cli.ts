@@ -60,7 +60,7 @@ try {
     print({ directory: destination });
   } else if (command === "help" || values.help) {
     process.stdout.write(
-      `BCR Works Runner\n\n  bcr-runner init ./gym-card\n  bcr-runner start --root ./projects --origin https://bcr.example.com\n  bcr-runner status|stop|doctor|version\n  bcr-runner doctor --install-browser\n  bcr-runner mcp [--config /path/to/connection.json]\n  bcr-runner serve --root ./projects --origin http://localhost:5199\n  bcr-runner token\n  bcr-runner list --json\n  bcr-runner inspect <work-id> --json\n  bcr-runner preview|validate|capture|render|archive <work-id> --target <target-id> [--frames 0,30] [--from 0 --to 89] [--profile draft|final] [--scale 0.5] [--crf 18] [--gl angle|swangle]\n  bcr-runner jobs [work-id]\n  bcr-runner job|cancel|preview-url <job-id>\n  bcr-runner reviews <work-id>\n  bcr-runner rpc <operation> --input ./request.json\n  bcr-runner page-image <capture-id> --output ./page.png\n  bcr-runner download <job-id> <file-name> --output ./video.mp4\n\nLong operations return a durable job ID. Use job to poll; cancel explicitly.\nConnections default to the last local Runner. Override with --url and --token.\n`,
+  `BCR Works Runner\n\n  bcr-runner init ./gym-card\n  bcr-runner start --root ./projects --origin https://bcr.example.com\n  bcr-runner status|stop|doctor|version\n  bcr-runner doctor --install-browser\n  bcr-runner mcp [--config /path/to/connection.json]\n  bcr-runner serve --root ./projects --origin http://localhost:5199\n  bcr-runner token\n  bcr-runner list --json\n  bcr-runner inspect <work-id> --json\n  bcr-runner preview|validate|capture|render|archive <work-id> --target <target-id> [--frames 0,30] [--from 0 --to 89] [--profile draft|final] [--scale 0.5] [--crf 18] [--gl angle|swangle]\n  bcr-runner jobs [work-id]\n  bcr-runner job|cancel|preview-url <job-id>\n  bcr-runner rpc <operation> --input ./request.json\n  bcr-runner page-image <capture-id> --output ./page.png\n  bcr-runner download <job-id> <file-name> --output ./video.mp4\n\nLong operations return a durable job ID. Use job to poll; cancel explicitly.\nConnections default to the last local Runner. Override with --url and --token.\n`,
     );
   } else if (command === "serve" || command === "start") {
     const options = serviceOptions(values, readConnection(configPath));
@@ -177,7 +177,6 @@ try {
           jobs: "jobs",
           job: "job",
           cancel: "cancel",
-          reviews: "reviews",
           "preview-url": "preview",
         }[command];
         if (!operation) throw new Error(`未知命令：${command}`);

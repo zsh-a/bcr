@@ -46,7 +46,7 @@ Studio 地址为 **http://localhost:5199**。`bun run dev`与`bun run studio` �
 | `bun run test`                                             | TypeScript 单元测试               |
 | `bun run build:cloudflare`                                 | WASM 与 Studio 生产构建           |
 
-本地作品服务使用 `bun run runner serve --root <工程目录> --origin http://localhost:5199` 调试；构建独立安装包使用 `bun run build:runner`，便携包追加 `--portable`。浏览器 Bridge 使用 `bun run bridge`。安装与部署契约见 [Runner](../apps/work-runner/README.md) 和 [Bridge](AGENT-BRIDGE.md)。
+Runner 服务使用 `bun run runner serve --root <工程目录> --origin http://localhost:5199` 调试；构建独立安装包使用 `bun run build:runner`，便携包追加 `--portable`。浏览器 Bridge 使用 `bun run bridge`。安装与部署契约见 [Runner](../apps/work-runner/README.md) 和 [Bridge](AGENT-BRIDGE.md)。
 
 完整命令以 [package.json](../package.json) 为准，开发端口由各应用的 `vite.config.ts` 指定。
 

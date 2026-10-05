@@ -1,10 +1,9 @@
-import { LocalPreview } from "./runner-preview";
+import { RunnerPreview } from "./runner-preview";
 import {
   RUNNER_PROTOCOL,
   type RunnerCatalog,
   type Job,
   type Project,
-  type Reviews,
   type Target,
 } from "@bcr/work-core";
 
@@ -17,14 +16,14 @@ type Connection = {
   sourceId?: string;
   operations?: readonly string[];
 };
-export class LocalRunner {
+export class RunnerClient {
   private url = "";
   private token = "";
   private state: Connection = { status: "disconnected", items: [], errors: [] };
   private listeners = new Set<() => void>();
   private abort = new AbortController();
   private drafts = new Map<string, Map<symbol, () => boolean>>();
-  readonly preview = new LocalPreview();
+  readonly preview = new RunnerPreview();
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => {
@@ -71,7 +70,7 @@ export class LocalRunner {
     }
   }
   async call<T>(op: string, input: unknown = {}, signal?: AbortSignal): Promise<T> {
-    if (!this.url || !this.token) throw new Error("请先连接本地 Runner");
+    if (!this.url || !this.token) throw new Error("请先连接 Runner");
     if (this.state.operations && !this.state.operations.includes(op))
       throw new Error(`当前 Runner 不支持 ${op}，请更新已安装的 Runner 后重新连接`);
     const connection = this.abort;
@@ -161,4 +160,4 @@ export class LocalRunner {
   }
 }
 
-export type { Job, Project, Reviews };
+export type { Job, Project };

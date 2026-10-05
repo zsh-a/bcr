@@ -4,10 +4,6 @@ import { KnowledgeStore } from "./knowledge/session/store";
 import { ResearchStore } from "./research";
 import { DiagramStore } from "./diagram/store";
 import { createDiagramStorage } from "./diagram/browserStorage";
-import { WorkspaceFiles } from "./workspace/files";
-import { createWorkspaceStorage } from "./workspace/storage";
-import { WorkStore } from "./works/store";
-import { WorkPreview } from "./works/preview";
 import { WorkService } from "./works/service";
 
 /** The session owns lazy domain services; views and plugins borrow the same instances. */
@@ -21,36 +17,14 @@ export function createWorkspaceServices(
   let diagrams: DiagramStore | undefined;
   let diagramStorage: ReturnType<typeof createDiagramStorage> | undefined;
   let closing: Promise<void> | undefined;
-  let files: WorkspaceFiles | undefined;
-  let works: WorkStore | undefined;
-  let workStorage: ReturnType<typeof createWorkspaceStorage> | undefined;
-  let preview: WorkPreview | undefined;
   let workService: WorkService | undefined;
   const assertOpen = () => {
     if (closing) throw new Error("工作区服务已关闭");
   };
   return {
-    get files() {
-      assertOpen();
-      return (files ??= new WorkspaceFiles(binary));
-    },
-    get works() {
-      if (works) return works;
-      assertOpen();
-      workStorage =
-        typeof indexedDB === "undefined" ? undefined : createWorkspaceStorage("bcr-works");
-      return (works = new WorkStore(
-        workStorage ?? metadata,
-        (files ??= new WorkspaceFiles(binary)),
-      ));
-    },
     get workService(): WorkService {
       assertOpen();
-      return (workService ??= new WorkService(this.works, this.preview));
-    },
-    get preview() {
-      assertOpen();
-      return (preview ??= new WorkPreview());
+      return (workService ??= new WorkService());
     },
     get knowledge() {
       if (knowledge) return knowledge;
@@ -72,13 +46,11 @@ export function createWorkspaceServices(
       return diagrams;
     },
     close() {
-      preview?.stop();
       workService?.close();
       return (closing ??= Promise.allSettled([
         knowledge?.close(),
         research?.close(),
         diagrams?.close(),
-        works?.close(),
       ])
         .then((results) => {
           const failures = results.flatMap((result) =>
@@ -86,7 +58,7 @@ export function createWorkspaceServices(
           );
           if (failures.length) throw new AggregateError(failures, "工作区服务关闭失败");
         })
-        .finally(() => Promise.all([diagramStorage?.close(), workStorage?.close()]))
+        .finally(() => Promise.all([diagramStorage?.close()]))
         .then(() => undefined));
     },
   };

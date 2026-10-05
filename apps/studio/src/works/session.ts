@@ -47,7 +47,7 @@ export class WorkSession {
     };
   }
   get preview() {
-    return this.service.local.preview;
+    return this.service.runner.preview;
   }
   get target() {
     return (
@@ -87,7 +87,7 @@ export class WorkSession {
   start() {
     this.abort = new AbortController();
     const signal = this.abort.signal;
-    this.draft = this.service.local.registerDraft(this.state.work.ref.id, () => this.state.dirty);
+    this.draft = this.service.runner.registerDraft(this.state.work.ref.id, () => this.state.dirty);
     this.loadParams();
     const poll = async () => {
       try {

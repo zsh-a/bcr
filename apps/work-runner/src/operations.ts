@@ -8,7 +8,6 @@ import {
   Revision,
   ParamsSchema,
   RenderSchema,
-  ReviewWriteSchema,
   CheckpointSchema,
   RestoreSchema,
   DiffSchema,
@@ -104,17 +103,6 @@ const operations = {
     readOnly: false,
     description:
       "Review workflow with revision CAS and requestId replay: submit pins successful jobs from one source revision/target and marks addressed feedback as awaiting review; comment anchors feedback; decide accepts/reopens only on explicit user direction; deliver freezes selected outputs. Rendering or submitting never automatically accepts feedback. Read runner_review_read first.",
-  },
-  reviews: {
-    schema: id,
-    readOnly: true,
-    description: "Read timestamped work reviews and their independent revision.",
-  },
-  review: {
-    schema: ReviewWriteSchema,
-    readOnly: false,
-    description:
-      "Create or resolve a review using the reviews revision, a sourceRevision and an idempotent requestId.",
   },
   render: {
     schema: RenderSchema,

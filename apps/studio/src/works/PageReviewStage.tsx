@@ -9,8 +9,7 @@ import {
 import { Button, Select } from "@bcr/react";
 import { Camera, LoaderCircle, MousePointer2 } from "lucide-react";
 import type { PageState, ReviewAnchor, ReviewView } from "@bcr/work-core";
-import { WorkPreview } from "./preview";
-import { LocalPreview } from "./runner-preview";
+import { RunnerPreview } from "./runner-preview";
 import type { StageProps } from "./ReviewStage";
 
 export function PageReviewStage({
@@ -42,13 +41,9 @@ export function PageReviewStage({
   const [error, setError] = useState(""),
     [warnings, setWarnings] = useState<string[]>([]);
   const [image, setImage] = useState("");
-  const browser = useMemo(() => new WorkPreview(), []),
-    local = useMemo(() => new LocalPreview(), []);
-  const localState = useSyncExternalStore(local.subscribe, local.getSnapshot);
-  const showingPath =
-    !view && workRef.provider === "local" && localState.status === "ready"
-      ? (localState.path ?? path)
-      : path;
+  const preview = useMemo(() => new RunnerPreview(), []);
+  const previewState = useSyncExternalStore(preview.subscribe, preview.getSnapshot);
+  const showingPath = !view && previewState.status === "ready" ? (previewState.path ?? path) : path;
   const outer = useRef<HTMLDivElement>(null),
     restoring = useRef<PageState | undefined>(undefined);
   const currentView = useRef(view);
@@ -110,31 +105,16 @@ export function PageReviewStage({
           setWarnings([...view.warnings]);
           return;
         }
-        if (workRef.provider === "browser") {
-          const { html } = await service.reviewDocument(workRef, submission, path, abort.signal);
-          await browser.startDocument(
-            { id: workRef.id, revision: submission.sourceRevision, title: submission.title },
-            html,
-            abort.signal,
-          );
-        } else {
-          service.assertSource(workRef.sourceId);
-          if (!submission.previewJobId) throw new Error("此稿没有固定页面预览");
-          const resource = await service.local.previewResource(
-            submission.previewJobId,
-            abort.signal,
-          );
-          const url = new URL(resource.url);
-          url.pathname = `/${resource.jobId}/${path.split("/").map(encodeURIComponent).join("/")}`;
-          await local.start({ ...resource, url: url.href }, abort.signal);
-        }
+        service.assertSource(workRef.sourceId);
+        if (!submission.previewJobId) throw new Error("此稿没有固定页面预览");
+        const resource = await service.runner.previewResource(submission.previewJobId, abort.signal);
+        const url = new URL(resource.url);
+        url.pathname = `/${resource.jobId}/${path.split("/").map(encodeURIComponent).join("/")}`;
+        await preview.start({ ...resource, url: url.href }, abort.signal);
         const state = restoring.current;
         restoring.current = undefined;
         if (state) {
-          const result = await (workRef.provider === "browser" ? browser : local).page(
-            "page-restore",
-            state,
-          );
+          const result = await preview.page("page-restore", state);
           if (Array.isArray(result)) setWarnings(result.map(String).slice(0, 20));
         }
       } catch (e) {
@@ -145,8 +125,7 @@ export function PageReviewStage({
     })();
     return () => {
       abort.abort();
-      browser.stop();
-      local.stop();
+      preview.stop();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [
@@ -159,17 +138,14 @@ export function PageReviewStage({
     requested.width,
     requested.height,
     reload,
-    browser,
-    local,
+    preview,
   ]);
   const position = async (): Promise<ReviewAnchor> => {
     const saved = currentView.current;
     if (saved) return { viewId: saved.id, page: saved.page, viewport: saved.page.viewport };
     if (loading) throw new Error("页面尚未就绪");
-    const page = (await (workRef.provider === "browser" ? browser : local).page(
-      "page-state",
-    )) as PageState;
-    const actualPath = workRef.provider === "local" ? page.path : path;
+    const page = (await preview.page("page-state")) as PageState;
+    const actualPath = page.path;
     if (!pages.some((p) => p.path === actualPath))
       throw new Error("当前页面未包含在审阅清单，请从页面选择器打开已提交页面");
     return { page: { ...page, path: actualPath, viewport: requested }, viewport: requested };
@@ -227,10 +203,7 @@ export function PageReviewStage({
         size.width === state.viewport.width &&
         size.height === state.viewport.height
       ) {
-        const result = await (workRef.provider === "browser" ? browser : local).page(
-          "page-restore",
-          state,
-        );
+        const result = await preview.page("page-restore", state);
         restoring.current = undefined;
         if (Array.isArray(result)) setWarnings(result.map(String).slice(0, 20));
       }
@@ -337,7 +310,7 @@ export function PageReviewStage({
             <div
               className="review-frame"
               style={{ display: view ? "none" : "block" }}
-              ref={workRef.provider === "browser" ? browser.mount : local.mount}
+              ref={preview.mount}
             />
             {view && image && (
               <img className="review-page-image" src={image} alt={`${view.title} 固定截图`} />

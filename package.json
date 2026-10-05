@@ -10,7 +10,6 @@
   "type": "module",
   "scripts": {
     "bridge": "bun apps/agent-bridge/src/cli.ts",
-    "test:browser:bridge": "node scripts/verify-agent-bridge.mjs",
     "build:wasm": "wasm-pack build crates/kernels --target web && bun run build:wasm:quant && bun run build:wasm:agent",
     "build:wasm:agent": "wasm-pack build crates/agent-runtime/crates/agent-wasm --target web --out-dir ../../../agent-wasm/pkg",
     "check": "vp check && bun run typecheck",

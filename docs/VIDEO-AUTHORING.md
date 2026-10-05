@@ -12,7 +12,7 @@ bcr-runner start --root ~/bcr-projects --origin http://localhost:5199
 bcr-runner inspect gym-card --json
 ```
 
-打开 Works，配对并选择本地作品的 vertical 目标。init 不会改写已有目录；旧工程可以按需复制样例中的组件，而不必迁移成固定的页面或镜头协议。
+打开 Works，配对并选择 Runner 作品的 vertical 目标。init 不会改写已有目录；工程可以按需复制样例中的组件，而不必迁移成固定的页面或镜头协议。
 
 独立项目中的 `bun install --frozen-lockfile --ignore-scripts`、`bun run typecheck` 可用于代码检查。渲染时 Runner 会在不可变任务目录独立安装相同锁文件，不复用工程 node_modules。
 

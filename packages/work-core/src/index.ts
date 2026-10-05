@@ -9,7 +9,6 @@ export type RunnerCatalog = {
   runtimes: readonly string[];
   operations: readonly string[];
   origin: string;
-  provider: "local";
   sourceId: string;
   instanceId: string;
   pid: number;
@@ -91,8 +90,10 @@ export function definition(value: unknown): Definition {
   }
   return work;
 }
-/** sourceId identifies a storage authority, independently of the transport or process lifetime. */
-export type WorkRef = { sourceId: string; provider: "browser" | "local"; id: string };
+/** sourceId identifies the Runner authority that owns a Work. */
+// The browser is a control-plane client. sourceId pins every read, render and
+// review operation to the Runner that owns the project.
+export type WorkRef = { sourceId: string; id: string };
 export type WorkSummary = {
   ref: WorkRef;
   title: string;
@@ -153,21 +154,6 @@ export type Job = {
   outputs: { name: string; size: number; hash: string }[];
   error?: string;
 };
-export const ReviewSchema = Schema.Struct({
-  id: Id,
-  sourceRevision: Revision,
-  target: Id,
-  frame: Schema.optional(Schema.Number.pipe(Schema.int(), Schema.nonNegative())),
-  sceneId: Schema.optional(Id),
-  comment: text(4000).pipe(Schema.minLength(1)),
-  status: Schema.Literal("open", "resolved"),
-});
-export type Review = typeof ReviewSchema.Type;
-export const ReviewsSchema = Schema.Struct({
-  revision: Revision,
-  items: Schema.Array(ReviewSchema).pipe(Schema.maxItems(1000)),
-});
-export type Reviews = typeof ReviewsSchema.Type;
 export const ParamsSchema = Schema.Struct({
   id: Id,
   revision: Revision,
@@ -178,12 +164,6 @@ export const ParamsSchema = Schema.Struct({
     value: Schema.Union(Schema.Number, Schema.String, Schema.Boolean),
   }),
 });
-export const ReviewWriteSchema = Schema.Struct({
-  id: Id,
-  revision: Revision,
-  requestId: Id,
-  review: ReviewSchema,
-});
 export function capabilities(targets: readonly Target[]): string[] {
   return [
     "read",
@@ -191,7 +171,6 @@ export function capabilities(targets: readonly Target[]): string[] {
     "versions",
     "review",
     "preview",
-    "reviews",
     "archive",
     ...(targets.some((t) => t.runtime === "remotion")
       ? ["parameters", "capture", "video", "seek"]

@@ -88,11 +88,11 @@ try {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(`${origin}/works`, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "连接本地工程", exact: true }).first().click();
+  await page.getByRole("button", { name: "连接 Runner", exact: true }).first().click();
   await page.getByLabel("Runner 地址").fill(url);
   await page.getByLabel("配对密钥").fill(token);
   await page.getByRole("button", { name: "连接", exact: true }).click();
-  await page.getByRole("button", { name: "本地已连接", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Runner 已连接", exact: true }).waitFor();
   await page.getByLabel("选择作品").selectOption(`${first.ref.sourceId}:review-film`);
   await page.getByRole("button", { name: "提交第一个版本", exact: true }).click();
   await page.getByLabel("审阅版本名称").fill("初稿");
@@ -223,73 +223,8 @@ try {
     "PASS: real MCP submission, comparison, explicit acceptance, MP4/PNG ZIP, immutable delivery and mobile layout",
   );
 
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.getByRole("button", { name: "新建页面", exact: true }).click();
-  const html = (heading) =>
-    `<!doctype html><html><style>body{margin:0;padding:60px;background:#eae8df;color:#243e34;font:18px/1.8 sans-serif}h1{font-size:44px;font-weight:500}small{letter-spacing:4px}</style><body><small>NOTES ON EVERYDAY LIFE</small><h1>${heading}</h1><p>让选择更清晰。</p><button>查看计算</button></body></html>`;
-  const makePage = async (text) => {
-    await page.getByLabel("作品文件内容").fill(html(text));
-    await page.getByRole("button", { name: "保存", exact: true }).click();
-    await page.getByRole("button", { name: "← 返回审阅", exact: true }).click();
-  };
-  await makePage("一次选择，一种生活");
-  await page.getByRole("button", { name: "提交第一个版本", exact: true }).click();
-  await page.getByLabel("审阅版本名称").fill("页面初稿");
-  await page.getByLabel("修改说明").fill("检查标题和信息层级。");
-  await page.getByRole("dialog").getByRole("button", { name: "提交审阅", exact: true }).click();
-  await page.locator(".review-stage iframe").waitFor();
-  await page
-    .frameLocator(".review-stage iframe")
-    .getByRole("heading", { name: "一次选择，一种生活" })
-    .waitFor();
-  await page.getByLabel("审阅反馈").fill("标题要更贴近具体的生活选择。");
-  await page.getByRole("button", { name: "定位当前画面", exact: true }).click();
-  await page
-    .getByRole("button", { name: "在画面上定位反馈" })
-    .click({ position: { x: 160, y: 170 } });
-  await page.getByRole("button", { name: "保存反馈", exact: true }).click();
-  await page.getByText("待修改", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "制作与参数", exact: true }).click();
-  await makePage("做饭，还是点外卖？");
-  await page.getByRole("button", { name: "提交审阅", exact: true }).click();
-  await page.getByLabel("审阅版本名称").fill("页面修订");
-  await page.getByLabel("修改说明").fill("将抽象标题替换为具体问题。");
-  await page
-    .getByRole("dialog")
-    .getByRole("checkbox", { name: "标题要更贴近具体的生活选择。" })
-    .check();
-  await page.getByRole("dialog").getByRole("button", { name: "提交审阅", exact: true }).click();
-  await page.getByRole("button", { name: "比较版本", exact: true }).click();
-  await page
-    .getByLabel("页面初稿 画面")
-    .frameLocator("iframe")
-    .getByRole("heading", { name: "一次选择，一种生活" })
-    .waitFor();
-  await page
-    .getByLabel("页面修订 画面")
-    .frameLocator("iframe")
-    .getByRole("heading", { name: "做饭，还是点外卖？" })
-    .waitFor();
-  await page.screenshot({ path: "/tmp/bcr-review-pages.png", fullPage: true });
-  await page.getByRole("button", { name: "确认解决", exact: true }).click();
-  await page.getByText("已确认", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "定稿交付", exact: true }).click();
-  await page.getByRole("button", { name: "固定交付清单", exact: true }).click();
-  const pageDownload = page.waitForEvent("download");
-  await page.getByRole("button", { name: "下载交付包", exact: true }).click();
-  const pageZip = await unzip(await pageDownload);
-  assert(
-    (
-      await pageZip.entries.find((e) => e.filename.endsWith("index.html")).getData(new TextWriter())
-    ).includes("做饭，还是点外卖？"),
-  );
-  await pageZip.reader.close();
-  await page.reload({ waitUntil: "networkidle" });
-  await page.getByText("已确认", { exact: true }).waitFor();
   assert.equal(errors.length, 0, errors.join("\n"));
-  console.log(
-    "PASS: browser page snapshots, two sandbox previews, feedback, portable HTML delivery and reload persistence",
-  );
+  console.log("PASS: Runner review, comparison, delivery and reload persistence");
 } catch (e) {
   const page = browser?.contexts()[0]?.pages()[0];
   await page?.screenshot({ path: "/tmp/bcr-review-failure.png", fullPage: true });

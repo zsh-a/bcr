@@ -8,84 +8,60 @@ import {
   useOpenAssistant,
   useRuntime,
 } from "@bcr/react";
-import { Code2, FilePlus2, Sparkles } from "lucide-react";
+import { Code2, Link2, Sparkles } from "lucide-react";
+import type { Project } from "@bcr/work-core";
 import { workspaceServices } from "../workspace";
 import { ReviewDesk } from "./ReviewDesk";
-import { LocalWork } from "./LocalWork";
-import { BrowserWork } from "./BrowserWork";
+import { WorkBuild } from "./WorkBuild";
 import { RunnerConnection } from "./RunnerConnection";
-import { BROWSER_SOURCE, workKey, workRoute } from "./service";
+import { workKey, workRoute } from "./service";
 import "./works.css";
 
-const INITIAL =
-  '<!doctype html>\n<html lang="zh-CN">\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<title>我的作品</title>\n<style>body{max-width:720px;margin:64px auto;padding:24px;font-family:system-ui;line-height:1.7}</style>\n<h1>从一个想法开始</h1>\n<p>请 AI 助手将这里变成你的交互作品。</p>\n</html>\n';
-
-/** Navigation and source selection only; editing and execution have separate sessions. */
+/** Works is a thin Runner client. Creation happens in the connected source project. */
 export function WorksApp() {
   const runtime = useRuntime();
-  const workspace = useMemo(() => workspaceServices(runtime), [runtime]);
-  const service = workspace.workService,
-    runner = service.local;
+  const service = useMemo(() => workspaceServices(runtime).workService, [runtime]);
+  const runner = service.runner;
   const items = useSyncExternalStore(service.subscribe, service.getSnapshot);
   const connection = useSyncExternalStore(runner.subscribe, runner.getSnapshot);
-  const works = useSyncExternalStore(service.browser.subscribe, service.browser.getSnapshot);
-  const navigation = useNavigation(),
-    search = useLocationSearch(),
-    openAssistant = useOpenAssistant();
+  const navigation = useNavigation();
+  const search = useLocationSearch();
+  const openAssistant = useOpenAssistant();
   const route = new URLSearchParams(search);
-  const sourceId =
-    route.get("source") ??
-    (route.get("provider") === "local" ? connection.sourceId : BROWSER_SOURCE);
-  const isLocal = sourceId !== BROWSER_SOURCE;
+  const sourceId = route.get("source") ?? connection.sourceId;
   const id = route.get("work");
-  const localWork =
-    isLocal && sourceId === connection.sourceId
-      ? connection.items.find((w) => w.ref.id === id)
-      : undefined;
-  const work = !isLocal ? (id ? works.find((w) => w.id === id) : works[0]) : undefined;
-  const [connecting, setConnecting] = useState(false),
-    [blocked, setBlocked] = useState(false);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [ready, setReady] = useState(false);
+  const selected = items.find(
+    (item) => item.ref.sourceId === sourceId && (!id || item.ref.id === id),
+  );
+  const project = connection.items.find(
+    (item) => selected && workKey(item.ref) === workKey(selected.ref),
+  ) as Project | undefined;
+  const [connecting, setConnecting] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [error, setError] = useState("");
+
   useEffect(() => {
     let disposed = false;
-    void service.browser.ready.then(
-      () => {
-        if (!disposed) setReady(true);
-      },
-      (e) => {
-        if (!disposed) setError(String(e));
-      },
-    );
-    return () => {
-      disposed = true;
-    };
-  }, [service]);
-  // Bind old provider-based links once. Reconnecting a different Runner cannot retarget this URL.
-  useEffect(() => {
-    if (!route.get("source") && localWork) navigation.navigate(workRoute(localWork.ref));
-  }, [search, localWork, navigation]);
-  useEffect(() => {
-    let disposed = false;
-    let timer: ReturnType<typeof setTimeout>;
     const refresh = async () => {
       try {
         await service.list();
-      } catch (e) {
-        if (!disposed) setError(String(e));
+      } catch (reason) {
+        if (!disposed) setError(String(reason));
       }
-      if (!disposed) timer = setTimeout(() => void refresh(), 5000);
     };
     void refresh();
     return () => {
       disposed = true;
-      clearTimeout(timer);
     };
-  }, [service]);
-  const selected =
-    localWork?.ref ??
-    (work ? { sourceId: BROWSER_SOURCE, provider: "browser" as const, id: work.id } : undefined);
+  }, [service, connection.status]);
+
+  useEffect(() => {
+    if (!selected && items.length && connection.sourceId) {
+      const first = items[0]!;
+      navigation.navigate(workRoute(first.ref));
+    }
+  }, [connection.sourceId, items, navigation, selected]);
+
   return (
     <div className="works-app">
       <AppToolbar>
@@ -93,74 +69,25 @@ export function WorksApp() {
         <strong>作品</strong>
         <Select
           aria-label="选择作品"
-          value={selected ? workKey(selected) : ""}
-          disabled={blocked || busy}
+          value={selected ? workKey(selected.ref) : ""}
+          disabled={blocked || connection.status !== "connected"}
           onChange={(event) => {
-            const next = items.find((w) => workKey(w.ref) === event.target.value);
+            const next = items.find((item) => workKey(item.ref) === event.target.value);
             if (!next) return;
-            service.preview.stop();
             runner.preview.stop();
             navigation.navigate(workRoute(next.ref));
           }}
         >
           {!selected && <option value="">选择作品</option>}
-          <optgroup label="浏览器作品">
-            {items
-              .filter((w) => w.ref.provider === "browser")
-              .map((w) => (
-                <option key={workKey(w.ref)} value={workKey(w.ref)}>
-                  {w.title}
-                </option>
-              ))}
-          </optgroup>
-          {connection.status === "connected" && (
-            <optgroup label="本地工程">
-              {items
-                .filter((w) => w.ref.provider === "local")
-                .map((w) => (
-                  <option key={workKey(w.ref)} value={workKey(w.ref)}>
-                    {w.title}
-                  </option>
-                ))}
-            </optgroup>
-          )}
+          {items.map((item) => (
+            <option key={workKey(item.ref)} value={workKey(item.ref)}>
+              {item.title}
+            </option>
+          ))}
         </Select>
-        <Button
-          variant="ghost"
-          disabled={!ready || blocked || busy}
-          onClick={() => {
-            setBusy(true);
-            setError("");
-            void service
-              .commit({
-                requestId: crypto.randomUUID(),
-                revision: null,
-                title: "新作品",
-                entry: "index.html",
-                put: [{ path: "index.html", text: INITIAL }],
-              })
-              .then(
-                (next) => {
-                  service.preview.stop();
-                  runner.preview.stop();
-                  navigation.navigate(
-                    `${workRoute({ sourceId: BROWSER_SOURCE, provider: "browser", id: next.id })}&mode=build`,
-                  );
-                },
-                (e) => setError(String(e)),
-              )
-              .finally(() => setBusy(false));
-          }}
-        >
-          <FilePlus2 size={16} />
-          新建页面
-        </Button>
-        <Button
-          variant="ghost"
-          disabled={blocked || busy}
-          onClick={() => setConnecting(!connecting)}
-        >
-          {connection.status === "connected" ? "本地已连接" : "连接本地工程"}
+        <Button variant="ghost" disabled={blocked} onClick={() => setConnecting((value) => !value)}>
+          <Link2 size={15} />
+          {connection.status === "connected" ? "Runner 已连接" : "连接 Runner"}
         </Button>
         <span className="works-spacer" />
         <Button variant="ghost" onClick={() => openAssistant?.()}>
@@ -169,9 +96,9 @@ export function WorksApp() {
         </Button>
       </AppToolbar>
       {connecting && <RunnerConnection runner={runner} close={() => setConnecting(false)} />}
-      {connection.errors.map((e) => (
-        <p className="works-error" role="alert" key={e.directory}>
-          {e.directory}: {e.message}
+      {connection.errors.map((item) => (
+        <p className="works-error" role="alert" key={item.directory}>
+          {item.directory}: {item.message}
         </p>
       ))}
       {error && (
@@ -181,47 +108,34 @@ export function WorksApp() {
       )}
       {selected && route.get("mode") !== "build" ? (
         <ReviewDesk
-          key={workKey(selected)}
+          key={workKey(selected.ref)}
           service={service}
-          work={items.find((item) => workKey(item.ref) === workKey(selected))!}
+          work={selected}
           initialSubmit={route.get("intent") === "submit"}
           onBlocked={setBlocked}
-          onBuild={() => navigation.navigate(`${workRoute(selected)}&mode=build`)}
+          onBuild={() => navigation.navigate(`${workRoute(selected.ref)}&mode=build`)}
         />
-      ) : selected ? (
-        <>
-          {localWork ? (
-            <LocalWork
-              key={workKey(localWork.ref)}
-              service={service}
-              work={localWork}
-              onBlocked={setBlocked}
-              onReview={() => navigation.navigate(workRoute(selected))}
-              onSubmit={() => navigation.navigate(`${workRoute(selected)}&intent=submit`)}
-            />
-          ) : work ? (
-            <BrowserWork
-              key={work.id}
-              service={service}
-              work={work}
-              onBlocked={setBlocked}
-              onReview={() => navigation.navigate(workRoute(selected))}
-              onSubmit={() => navigation.navigate(`${workRoute(selected)}&intent=submit`)}
-            />
-          ) : null}
-        </>
+      ) : selected && project ? (
+        <WorkBuild
+          key={workKey(selected.ref)}
+          service={service}
+          work={project}
+          onBlocked={setBlocked}
+          onReview={() => navigation.navigate(workRoute(selected.ref))}
+          onSubmit={() => navigation.navigate(`${workRoute(selected.ref)}&intent=submit`)}
+        />
       ) : (
         <section className="works-empty">
-          <span className="works-kicker">WORKSPACE</span>
-          <h1>
-            {isLocal ? "连接作品所属的 Runner" : id ? "未找到此作品" : "从页面或本地工程开始"}
-          </h1>
+          <span className="works-kicker">RUNNER WORKSPACE</span>
+          <h1>{connection.status === "connected" ? "选择一个 Work" : "连接 Runner 开始创作"}</h1>
           <p>
-            {isLocal
-              ? "作品链接已绑定来源。连接原来的 Runner，或从列表选择当前来源中的作品。"
-              : "创建交互页面，或连接由 Agent 编写的本地工程，继续预览、批注与导出。"}
+            {connection.status === "connected"
+              ? "源码、数据和素材由 Work 工程管理，Works 负责预览、审阅和交付。"
+              : "Codex 或其他 Agent 在工程目录中创作，Runner 提供可复现的构建和渲染。"}
           </p>
-          {isLocal && <Button onClick={() => setConnecting(true)}>连接本地工程</Button>}
+          {connection.status !== "connected" && (
+            <Button onClick={() => setConnecting(true)}>连接 Runner</Button>
+          )}
         </section>
       )}
     </div>

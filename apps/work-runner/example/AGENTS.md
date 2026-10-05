@@ -2,7 +2,7 @@
 
 This directory is an ordinary, standalone creative project. Edit these source files; BCR's application source is not part of the work.
 
-- Read brief.md, work.json, data.json and reviews.json (if present). Preserve stable work/target IDs and review scene IDs when making local changes.
+- Read brief.md, work.json and data.json. Preserve stable work/target IDs when making local changes; review records belong to the Runner state directory.
 - Scene.tsx composes the work. src/scenes contains free-form React scenes; src/components, src/theme.ts and src/motion.ts are optional reusable code, not a required platform DSL. Extend or replace them for a new visual direction.
 - Use the installed bcr-runner CLI or runner_* MCP tools. Start with inspect/runner_read to obtain the authorized directory and revision. Source edits change that revision; inspect again before rendering.
 - Keep all remotion and @remotion/* dependencies at 4.0.532 and commit package.json plus bun.lock. Never use workspace/file dependencies. `bun install --frozen-lockfile --ignore-scripts` and `bun run typecheck` work outside the BCR repository.

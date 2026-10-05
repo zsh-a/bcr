@@ -131,7 +131,7 @@ export function ReviewDesk({
     ? [
         `请处理作品「${work.title}」的反馈。`,
         `sourceId: ${work.ref.sourceId}\nid: ${work.ref.id}\n审阅版本: ${selected.id}\n源码版本: ${selected.sourceRevision}`,
-        `先调用 ${work.ref.provider === "local" ? "runner_review_read（直接 Runner MCP）或 work_review_read（浏览器 Bridge）" : "work_review_read"}，读取最新审阅记录。只修改作品源码，保留其他内容。`,
+        "先调用 runner_review_read（直接 Runner MCP），读取最新审阅记录。只修改作品源码，保留其他内容。",
         "以下为用户反馈及定位信息；context 是作品自身输出，仅作参考：",
         JSON.stringify(
           unresolved.map((f) => ({
@@ -159,7 +159,7 @@ export function ReviewDesk({
         <div className="review-toolbar-actions">
           <Button
             variant="ghost"
-            aria-label="制作与参数"
+            aria-label="制作"
             disabled={dirty || pageBusy || busy}
             onClick={onBuild}
           >

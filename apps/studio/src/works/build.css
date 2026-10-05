@@ -256,14 +256,6 @@
 .build-inspector-footnote code {
   overflow-wrap: anywhere;
 }
-.build-text-button {
-  font: 11px var(--font-sans);
-  color: var(--color-muted);
-  background: none;
-  border: 0;
-  padding: 8px 0;
-  cursor: pointer;
-}
 .build-statusbar {
   display: flex;
   gap: 12px;
@@ -293,9 +285,6 @@
   font-size: 10px;
 }
 .build-statusbar > button,
-.build-page-preview-state {
-  margin-left: auto;
-}
 .build-statusbar > button {
   display: flex;
   align-items: center;
@@ -350,109 +339,6 @@
 }
 .build-notice p {
   margin: 6px 0;
-}
-.build-view-switch {
-  display: flex;
-  padding: 3px;
-  border: 1px solid var(--build-line);
-  border-radius: 7px;
-  gap: 3px;
-}
-.build-view-switch button {
-  background: none;
-  border: 0;
-  font: 12px var(--font-sans);
-  padding: 5px 13px;
-  border-radius: 4px;
-  color: var(--color-muted);
-  cursor: pointer;
-}
-.build-view-switch button[aria-pressed="true"] {
-  background: var(--color-surface);
-  color: var(--color-text);
-  box-shadow: 0 1px 4px #18291e0c;
-}
-.build-editor-preview {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-  flex: 1;
-  min-height: 300px;
-}
-.build-editor-preview.is-split {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-}
-.build-code {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  background: var(--color-surface);
-  border: 1px solid var(--build-line);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.build-code header {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 13px 16px;
-  border-bottom: 1px solid var(--build-line);
-  font-size: 11px;
-}
-.build-code header small {
-  margin-left: auto;
-  color: var(--color-muted);
-}
-.build-code textarea {
-  resize: none;
-  flex: 1;
-  min-height: 250px;
-  width: 100%;
-  border: 0;
-  outline: 0;
-  color: var(--color-text);
-  background: transparent;
-  padding: 18px;
-  font: 12px/1.85 var(--font-mono);
-  tab-size: 2;
-  white-space: pre;
-}
-.build-code[hidden],
-.build-preview[hidden] {
-  display: none;
-}
-.build-file-list {
-  display: grid;
-  gap: 4px;
-  margin: 20px 0 10px;
-}
-.build-file-list button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 0;
-  background: transparent;
-  padding: 10px 8px;
-  border-radius: 5px;
-  text-align: left;
-  cursor: pointer;
-  min-width: 0;
-  color: var(--color-text);
-}
-.build-file-list span {
-  flex: 1;
-  overflow-wrap: anywhere;
-  font: 11px var(--font-mono);
-}
-.build-file-list small {
-  font-size: 9px;
-  color: var(--color-muted);
-  white-space: nowrap;
-}
-.build-file-list button.is-active {
-  color: var(--color-accent);
-  background: var(--build-soft);
 }
 .build-dialog-intro {
   font-size: 12px;
@@ -523,11 +409,6 @@
 }
 .build-checkbox input {
   accent-color: var(--color-accent);
-}
-.build-export-choices {
-  display: grid;
-  gap: 12px;
-  margin: 24px 0 8px;
 }
 .build-jobs {
   width: min(500px, 100vw) !important;
@@ -632,15 +513,6 @@
 .build-job pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-.build-legacy article {
-  border-bottom: 1px solid var(--color-border);
-  padding: 16px 0;
-  font-size: 12px;
-}
-.build-legacy small {
-  font: 10px var(--font-mono);
-  color: var(--color-muted);
 }
 .build-history {
   width: min(1100px, 100vw) !important;
@@ -952,13 +824,6 @@
   }
   .build-statusbar > code {
     display: none;
-  }
-  .build-editor-preview.is-split {
-    grid-template-columns: minmax(0, 1fr);
-    min-height: 650px;
-  }
-  .build-code {
-    min-height: 280px;
   }
   .build-empty-canvas h2 {
     font-size: 21px;

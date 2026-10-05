@@ -59,9 +59,7 @@ export class ReviewSession {
     const generation = this.generation;
     const [book, jobs] = await Promise.all([
       this.service.reviewRead(this.ref, signal),
-      this.ref.provider === "local"
-        ? this.service.call<Job[]>(this.ref.sourceId, "jobs", { id: this.ref.id }, signal)
-        : Promise.resolve([]),
+      this.service.call<Job[]>(this.ref.sourceId, "jobs", { id: this.ref.id }, signal),
     ]);
     if (!signal.aborted)
       this.patch({ ...(generation === this.generation ? { book } : {}), jobs, loading: false });

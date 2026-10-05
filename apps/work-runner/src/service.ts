@@ -38,7 +38,6 @@ export class RunnerService {
       runtimes: ["html", "remotion"],
       operations: operationCatalog.map((o) => o.name),
       origin: this.origin,
-      provider: "local",
       sourceId: this.projects.sourceId,
       instanceId: this.instanceId,
       pid: process.pid,
@@ -92,10 +91,6 @@ export class RunnerService {
         return this.review.read(id);
       case "review_edit":
         return this.review.edit(input);
-      case "reviews":
-        return this.projects.reviews(id);
-      case "review":
-        return this.projects.review(input);
       case "render":
         this.versions.assertReady(id);
         return this.jobs.start(input);

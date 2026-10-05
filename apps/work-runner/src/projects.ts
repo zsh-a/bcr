@@ -20,10 +20,7 @@ import {
   ParamsSchema,
   Path,
   Revision,
-  ReviewWriteSchema,
-  ReviewSchema,
   type Project,
-  type Reviews,
   changedFiles,
 } from "@bcr/work-core";
 
@@ -88,7 +85,7 @@ export class Projects {
         if (ignored.has(name) || privateFile(name) || name.endsWith(".tmp")) continue;
         const absolute = join(folder, name),
           path = relative(dir, absolute);
-        if (path === "reviews.json" || path === "bcr-snapshot.json") continue;
+        if (path === "bcr-snapshot.json") continue;
         if ([".bcr-player.tsx", ".bcr-render.tsx", "bcr-preview.js"].includes(path))
           throw new Error(`文件名由 Runner 保留：${path}`);
         decode(Path, path);
@@ -134,7 +131,7 @@ export class Projects {
       bytes,
       project: {
         directory: dir,
-        ref: { sourceId: this.sourceId, provider: "local", id: work.id },
+        ref: { sourceId: this.sourceId, id: work.id },
         title: work.title,
         revision: hash(JSON.stringify(files)),
         definition: work,
@@ -224,7 +221,6 @@ export class Projects {
       if (
         path.split("/").some((s) => ignored.has(s) || privateFile(s) || s.endsWith(".tmp")) ||
         [
-          "reviews.json",
           "bcr-snapshot.json",
           ".bcr-player.tsx",
           ".bcr-render.tsx",
@@ -312,34 +308,6 @@ export class Projects {
         `${JSON.stringify(parameterValues(target, props, input.values), null, 2)}\n`,
       );
       return this.read(input.id);
-    });
-  }
-  reviews(id: string): Reviews {
-    const path = join(this.locate(id), "reviews.json");
-    if (existsSync(path) && lstatSync(path).isSymbolicLink())
-      throw new Error("reviews.json 不能是符号链接");
-    const items = existsSync(path) ? json(path) : [];
-    if (!Array.isArray(items) || items.length > 1000) throw new Error("批注文件无效");
-    const reviews = items.map((r) => decode(ReviewSchema, r));
-    return { revision: hash(JSON.stringify(reviews)), items: reviews };
-  }
-  review(raw: unknown): Reviews {
-    const input = decode(ReviewWriteSchema, raw);
-    return this.replay(input.id, input.requestId, input, () => {
-      const current = this.reviews(input.id);
-      if (current.revision !== input.revision) throw new Error("批注版本冲突，请重新读取");
-      const source = this.snapshot(input.id, input.review.sourceRevision);
-      const target = source.targets.find((t) => t.id === input.review.target);
-      if (
-        !target ||
-        (input.review.frame !== undefined &&
-          (target.runtime !== "remotion" || input.review.frame >= target.durationInFrames))
-      )
-        throw new Error("批注目标或帧号无效");
-      const items = [...current.items.filter((r) => r.id !== input.review.id), input.review];
-      if (items.length > 1000) throw new Error("批注数量超过上限");
-      atomic(join(this.locate(input.id), "reviews.json"), `${JSON.stringify(items, null, 2)}\n`);
-      return this.reviews(input.id);
     });
   }
 }
