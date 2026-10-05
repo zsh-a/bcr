@@ -9,13 +9,13 @@ import { Jobs } from "../src/jobs.ts";
 
 const temp = mkdtempSync(join(tmpdir(), "bcr-runner-dependencies-"));
 const root = join(temp, "project");
-cpSync(resolve("apps/work-runner/example"), root, { recursive: true });
+cpSync(resolve("apps/work-runner/starter"), root, { recursive: true });
 assert(!existsSync(join(root, "node_modules")));
 process.env.BCR_RUNNER_BROWSER = chromium.executablePath();
 const projects = new Projects(root, join(temp, "state")),
   jobs = new Jobs(projects, "dependency-test");
 try {
-  const work = projects.read("gym-card");
+  const work = projects.read("starter");
   const wait = async (job) => {
     const deadline = Date.now() + 600000;
     while (["queued", "running"].includes(job.status) && Date.now() < deadline)
@@ -23,7 +23,7 @@ try {
     assert.equal(job.status, "succeeded", JSON.stringify(job));
     return join(jobs.directory(job.id), "outputs");
   };
-  const input = { id: "gym-card", revision: work.revision, target: "vertical" };
+  const input = { id: "starter", revision: work.revision, target: "vertical" };
   const video = jobs.start({
     ...input,
     kind: "video",
@@ -32,12 +32,12 @@ try {
     requestId: "full-video",
   });
   const directory = await wait(video);
-  cpSync(join(directory, "video.mp4"), "/tmp/bcr-runner-full-60s.mp4");
+  cpSync(join(directory, "video.mp4"), "/tmp/bcr-runner-full-30s.mp4");
   assert(
     !existsSync(join(root, "node_modules")),
     "installation must happen in job snapshots, not the mutable project",
   );
-  console.log("PASS: standalone frozen bun.lock installation and full 60-second H.264 export");
+  console.log("PASS: standalone frozen bun.lock installation and full 30-second H.264 export");
   const server = Bun.serve({
     hostname: "127.0.0.1",
     port: 0,
@@ -75,10 +75,10 @@ try {
       return result;
     }, `http://127.0.0.1:${server.port}/video.mp4`);
     // AAC packet padding can extend container duration by less than one video frame.
-    assert(Math.abs(playback.duration - 60) < 1 / 30);
+    assert(Math.abs(playback.duration - 30) < 1 / 30);
     assert.equal(playback.width, 270);
     assert.equal(playback.height, 480);
-    console.log("PASS: all 60 seconds played to completion in Chromium");
+    console.log("PASS: all 30 seconds played to completion in Chromium");
   } finally {
     await browser.close();
     await server.stop(true);
@@ -87,7 +87,7 @@ try {
   const restored = join(temp, "restored");
   await new Bun.Archive(readFileSync(join(archive, "source.tar.gz"))).extract(restored);
   const restoredProjects = new Projects(restored, join(temp, "restored-state"));
-  assert.equal(restoredProjects.read("gym-card").revision, work.revision);
+  assert.equal(restoredProjects.read("starter").revision, work.revision);
   console.log("PASS: archive restored into a new directory with the identical source revision");
 } finally {
   await jobs.close();

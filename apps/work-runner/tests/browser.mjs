@@ -10,7 +10,7 @@ const origin = new URL(
 ).origin;
 const temp = mkdtempSync(join(tmpdir(), "bcr-runner-browser-"));
 const root = join(temp, "project");
-cpSync(resolve("apps/work-runner/example"), root, { recursive: true });
+cpSync(resolve("apps/work-runner/starter"), root, { recursive: true });
 process.env.BCR_RUNNER_BROWSER = chromium.executablePath();
 const runner = startRunner({
   root,
@@ -22,7 +22,7 @@ const runner = startRunner({
 const url = `http://127.0.0.1:${runner.api.port}`;
 let browser;
 try {
-  const project = runner.projects.read("gym-card");
+  const project = runner.projects.read("starter");
   const start = (kind, options = {}) =>
     runner.jobs.start({
       id: project.ref.id,
@@ -47,10 +47,9 @@ try {
   const diagnostics = JSON.parse(
     readFileSync(join(runner.jobs.directory(validation.id), "outputs", "diagnostics.json"), "utf8"),
   );
-  assert.equal(diagnostics.fonts.length, 2);
+  assert.equal(diagnostics.fonts.length, 0);
   assert.equal(diagnostics.errors.length, 0);
-  assert.equal(diagnostics.warnings.length, 0);
-  const capture = await wait(start("capture", { frames: [90, 660, 1020, 1680], scale: 0.25 }).id);
+  const capture = await wait(start("capture", { frames: [0, 30, 120, 600], scale: 0.25 }).id);
   assert.equal(capture.outputs.length, 4);
   for (const output of capture.outputs)
     assert.equal(
@@ -59,7 +58,7 @@ try {
         .toString(),
       "PNG",
     );
-  console.log("PNG: four scene keyframes and font diagnostics rendered");
+  console.log("PNG: four starter keyframes and diagnostics rendered");
   const video = await wait(
     start("video", { from: 160, to: 219, profile: "draft", scale: 0.25 }).id,
   );
@@ -103,7 +102,7 @@ try {
   await page.getByLabel("配对密钥").fill("test-only-".repeat(8));
   await page.getByRole("button", { name: "连接", exact: true }).click();
   await page.getByRole("button", { name: "Runner 已连接", exact: true }).waitFor();
-  await page.getByLabel("选择作品").selectOption(`${project.ref.sourceId}:gym-card`);
+  await page.getByLabel("选择作品").selectOption(`${project.ref.sourceId}:starter`);
   await page.getByRole("button", { name: "制作", exact: true }).click();
   assert.equal(new URL(page.url()).searchParams.get("source"), project.ref.sourceId);
   assert.equal(await page.getByLabel("输出目标").inputValue(), "vertical");
@@ -118,7 +117,7 @@ try {
     .getByText(/"fonts"/)
     .waitFor();
   await page.getByRole("button", { name: "关闭产物", exact: true }).click();
-  await page.getByRole("button", { name: "frame-90.png", exact: true }).click();
+  await page.getByRole("button", { name: "frame-30.png", exact: true }).click();
   await page
     .getByRole("dialog")
     .locator("img")
@@ -150,20 +149,13 @@ try {
     { timeout: 90000 },
   );
   const player = page.frameLocator('iframe[title="Runner 作品预览"]');
-  assert(
-    await player
-      .getByAltText("作品标记")
-      .evaluate((img) => img.complete && img.naturalWidth === 32),
-  );
-  assert.equal(
-    await player.locator(".scene-kicker").evaluate((el) => getComputedStyle(el).display),
-    "flex",
-  );
+  await player.getByText("NEW WORK", { exact: true }).waitFor();
+  assert.equal(await player.locator("canvas").count(), 1, "starter preview mounts a Three.js canvas");
   await slider.fill("360");
   await page.waitForTimeout(150);
   const canvas = player.locator("[data-video-canvas]");
   const beforeSeek = await canvas.screenshot();
-  await slider.fill("1050");
+  await slider.fill("600");
   await slider.fill("360");
   await page.waitForTimeout(150);
   assert(
@@ -175,12 +167,12 @@ try {
   await page.getByRole("button", { name: "保存检查点", exact: true }).click();
   await page.getByRole("navigation", { name: "源码版本" }).getByText("开场定稿").waitFor();
   await page.getByRole("button", { name: "关闭版本历史" }).click();
-  await slider.fill("1050");
-  await page.getByLabel("年卡价格（元）", { exact: true }).fill("1800");
-  await player.getByText("去 36 次，两种方案现金支出相同。").waitFor();
+  await slider.fill("600");
+  await page.getByLabel("示例数值", { exact: true }).fill("1800");
+  await player.getByText("结果 3600").waitFor();
   assert.equal(
-    JSON.parse(readFileSync(join(root, "data.json"), "utf8")).annualPrice,
-    1680,
+    JSON.parse(readFileSync(join(root, "data.json"), "utf8")).value,
+    42,
     "live preview never writes source",
   );
   assert(await page.getByRole("button", { name: "导出", exact: true }).isDisabled());
@@ -190,22 +182,21 @@ try {
   await page.screenshot({ path: "/tmp/bcr-build-live.png", fullPage: true });
   await page.getByRole("button", { name: "放弃修改", exact: true }).click();
   await page.waitForFunction(
-    () => document.querySelector('input[aria-label="年卡价格（元）"]')?.value === "1680",
+    () => document.querySelector('input[aria-label="示例数值"]')?.value === "42",
   );
-  await player.getByText("临界点约为 33.60 次。").waitFor();
-  await page.getByLabel("年卡价格（元）", { exact: true }).fill("1800");
-  await player.getByText("去 36 次，两种方案现金支出相同。").waitFor();
+  await player.getByText("结果 84").waitFor();
+  await page.getByLabel("示例数值", { exact: true }).fill("1800");
+  await player.getByText("结果 3600").waitFor();
   await page.getByRole("button", { name: "保存参数", exact: true }).click();
   await page.waitForFunction(
     () =>
-      document.querySelector('input[aria-label="年卡价格（元）"]')?.value === "1800" &&
+      document.querySelector('input[aria-label="示例数值"]')?.value === "1800" &&
       !document.querySelector(".build-statusbar")?.textContent.includes("尚未保存"),
   );
-  assert.equal(JSON.parse(readFileSync(join(root, "data.json"), "utf8")).annualPrice, 1800);
+  assert.equal(JSON.parse(readFileSync(join(root, "data.json"), "utf8")).value, 1800);
   assert.equal(
-    JSON.parse(runner.projects.file("gym-card", project.revision, "data.json").toString())
-      .annualPrice,
-    1680,
+    JSON.parse(runner.projects.file("starter", project.revision, "data.json").toString()).value,
+    42,
   );
   await page.waitForFunction(
     () => document.querySelector(".build-preview-state")?.textContent === "当前版本",
@@ -214,10 +205,10 @@ try {
   );
   await page.waitForFunction(() => !document.querySelector('input[aria-label="预览帧"]')?.disabled);
   await page.screenshot({ path: "/tmp/bcr-runner-workspace.png", fullPage: true });
-  await slider.fill("1050"); // Comparison scene holds the true cash-cost intersection.
-  await player.getByText("去 36 次，两种方案现金支出相同。").waitFor();
-  await slider.fill("1680");
-  await player.getByText("第 37 次起，年卡更省钱。").waitFor();
+  await slider.fill("600");
+  await player.getByText("结果 3600").waitFor();
+  await slider.fill("720");
+  await player.getByText("结果 3600").waitFor();
   await slider.fill("360");
   await player.getByRole("button", { name: /play/i }).first().click();
   await page.waitForFunction(
@@ -236,7 +227,7 @@ try {
   let playbackCapture;
   while (Date.now() < captureDeadline && !playbackCapture) {
     playbackCapture = runner.jobs
-      .list("gym-card")
+      .list("starter")
       .find((job) => job.request.kind === "capture" && job.id !== capture.id);
     if (!playbackCapture) await Bun.sleep(100);
   }
@@ -250,17 +241,17 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByRole("button", { name: "版本历史", exact: true }).click();
   await page.getByRole("navigation", { name: "源码版本" }).getByText("开场定稿").click();
-  await page.getByLabel("源码差异").getByText('"annualPrice": 1800,', { exact: false }).waitFor();
+  await page.getByLabel("源码差异").getByText('"value": 1800', { exact: false }).waitFor();
   await page.screenshot({ path: "/tmp/bcr-build-history.png", fullPage: true });
   await page.getByRole("button", { name: "恢复为当前版本", exact: true }).click();
   await page.getByRole("button", { name: "保留当前并恢复", exact: true }).click();
   await page.getByRole("dialog", { name: "版本历史" }).waitFor({ state: "hidden" });
-  assert.equal(JSON.parse(readFileSync(join(root, "data.json"), "utf8")).annualPrice, 1680);
+  assert.equal(JSON.parse(readFileSync(join(root, "data.json"), "utf8")).value, 42);
   await page.getByLabel("输出目标").selectOption("page");
   await page.getByRole("button", { name: "预览", exact: true }).click();
   await page
     .frameLocator('iframe[title="Runner 作品预览"]')
-    .getByRole("heading", { name: "年卡，去多少次才划算？" })
+    .getByRole("heading", { name: "从一个问题开始。" })
     .waitFor({ timeout: 60000 });
   await page.setViewportSize({ width: 1440, height: 1000 });
   assert.equal(errors.length, 0, errors.join("\n"));

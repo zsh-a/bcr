@@ -8,7 +8,7 @@ const name = `bcr-runner-test-${crypto.randomUUID()}`;
 const image = process.env.BCR_RUNNER_IMAGE ?? "bcr-work-runner:local";
 const project = join(temp, "project"),
   data = join(temp, "data");
-cpSync(resolve("dist/work-runner/package/example"), project, { recursive: true });
+cpSync(resolve("dist/work-runner/package/starter"), project, { recursive: true });
 mkdirSync(data);
 async function docker(...args) {
   const child = Bun.spawn(["docker", ...args], { stdout: "pipe", stderr: "pipe" });
@@ -83,8 +83,8 @@ try {
   };
   assert.equal((await fetch(`${api}/health`)).status, 401);
   assert.equal((await rpc("catalog")).version, "0.2.0");
-  const work = await rpc("read", { id: "gym-card" });
-  const base = { id: "gym-card", revision: work.revision, target: "vertical", scale: 0.25 };
+  const work = await rpc("read", { id: "starter" });
+  const base = { id: "starter", revision: work.revision, target: "vertical", scale: 0.25 };
   const wait = async (id) => {
     const deadline = Date.now() + 300000;
     while (Date.now() < deadline) {

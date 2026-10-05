@@ -9,11 +9,14 @@ Runner 不依赖 BCR 仓库源码，也不提供浏览器内代码编辑器。�
 仓库开发时：
 
 ```sh
-bun run runner init ~/bcr-projects/gym-card
+bun run runner create ~/bcr-projects/my-work --id my-work --title "我的作品"
 bun run runner start --root ~/bcr-projects --origin http://localhost:5199
 bun run runner status
 bun run runner token
 ```
+
+`create` 从 `starter` 模板生成一个可以直接修改的独立 Work。`--id` 和 `--title`
+只修改作品身份，目录中的源码、数据和素材仍由作者控制。
 
 发布包可以安装到任意独立目录，运行时不读取 BCR 的 workspace 或锁文件：
 
@@ -34,8 +37,8 @@ bcr-runner start --root ~/bcr-projects --origin https://bcr.example.com
 ```json
 {
   "format": "bcr-project-1",
-  "id": "gym-card",
-  "title": "健身房年卡，去多少次才划算？",
+  "id": "my-work",
+  "title": "我的作品",
   "defaultTarget": "vertical",
   "targets": [
     {
@@ -68,26 +71,40 @@ src/components/          可复用视觉组件
 public/                  字体、图片、音频和许可证
 ```
 
-HTML 目标使用已经生成的 HTML/CSS/JS；Remotion 目标使用普通 React 组件。Runner 不要求固定的页面模板或场景 DSL。工程可以声明多个目标，共享模型和素材。
+HTML 目标使用已经生成的 HTML/CSS/JS；Remotion 目标使用普通 React 组件。Runner 不要求固定的页面模板或场景 DSL。工程可以声明多个目标，共享模型和素材。通用 starter 已固定 `@remotion/three`、React Three Fiber 和 Three.js，可直接编写按帧驱动的 3D 场景；3D 画布必须放在有明确非零尺寸的容器中。
 
 Remotion 依赖应在工程自己的 `package.json` 与 `bun.lock` 中固定版本。Runner 在隔离任务目录中按锁文件安装依赖，不复用可变的工作区 `node_modules`，也不执行安装脚本。首次渲染需要兼容的 Chromium；可用 `BCR_RUNNER_BROWSER` 指定路径。
 
+3D 导出沿用同一个 `render` 契约。没有 GPU 的服务器或 CI 推荐显式使用 `--gl swangle`；有可用 GPU 的部署环境可以使用 `--gl angle`。预览、关键帧和视频都由同一个 Remotion 组件生成，因此不需要维护另一套 3D 播放实现。
+
 ## CLI 与 MCP
+
+创建 Work 的最短路径：
+
+```sh
+bcr-runner create ./my-work --id my-work --title "My work"
+cd ./my-work
+bun install --frozen-lockfile --ignore-scripts
+bun run typecheck
+```
+
+`create` 使用通用 starter。目录是独立源码，Runner 不会把它复制进 BCR 应用，也不会
+替 Agent 编辑代码。
 
 常用 CLI：
 
 ```sh
 bcr-runner list --json
-bcr-runner inspect gym-card --json
-bcr-runner validate gym-card --target vertical --json
-bcr-runner preview gym-card --target vertical --json
-bcr-runner capture gym-card --target vertical --frames 90,660,1050 --json
-bcr-runner render gym-card --target vertical --profile draft --from 0 --to 449 --json
-bcr-runner render gym-card --target vertical --profile final --json
-bcr-runner jobs gym-card --json
+bcr-runner inspect <work-id> --json
+bcr-runner validate <work-id> --target vertical --json
+bcr-runner preview <work-id> --target vertical --json
+bcr-runner capture <work-id> --target vertical --frames 0,30,120 --json
+bcr-runner render <work-id> --target vertical --profile draft --from 0 --to 449 --json
+bcr-runner render <work-id> --target vertical --profile final --json
+bcr-runner jobs <work-id> --json
 bcr-runner job JOB_ID --json
 bcr-runner download JOB_ID video.mp4 --output ./video.mp4
-bcr-runner archive gym-card --target vertical --json
+bcr-runner archive <work-id> --target vertical --json
 ```
 
 `validate` 会构建并渲染第 0 帧，输出 `diagnostics.json`。`capture` 适合代表帧，`render` 适合短预览或成片。长任务立即返回持久化 job ID，使用 `job` 轮询，失败必须按错误修复后重新提交。

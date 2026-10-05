@@ -44,8 +44,8 @@ Works 的浏览器页面可以关闭，Runner 任务仍然继续。Works 不执�
 ```json
 {
   "format": "bcr-project-1",
-  "id": "gym-card",
-  "title": "健身房年卡，去多少次才划算？",
+  "id": "my-work",
+  "title": "我的作品",
   "defaultTarget": "vertical",
   "targets": [
     {
@@ -75,6 +75,15 @@ src/scenes/     场景
 src/components/ 共用视觉组件
 public/         字体、音频和图片
 ```
+
+新工程可以直接使用 Runner 的通用 starter：
+
+```bash
+bcr-runner create ~/bcr-projects/my-work --id my-work --title "我的作品"
+```
+
+它生成一个同时包含 `page` 和 `vertical` 目标的普通代码工程，可以脱离 BCR 仓库
+独立使用。
 
 工程可以包含 HTML 和 Remotion 多个目标。它们都是目标适配器，不要求 BCR 内置页面模板。
 
@@ -124,11 +133,11 @@ runner_review_edit
 典型流程：
 
 ```bash
-bcr-runner inspect gym-card --json
-bcr-runner validate gym-card --target vertical --json
-bcr-runner capture gym-card --target vertical --frames 90,660,1050,1680 --json
-bcr-runner render gym-card --target vertical --profile draft --from 0 --to 449 --json
-bcr-runner render gym-card --target vertical --profile final --json
+bcr-runner inspect <work-id> --json
+bcr-runner validate <work-id> --target vertical --json
+bcr-runner capture <work-id> --target vertical --frames 0,30,120 --json
+bcr-runner render <work-id> --target vertical --profile draft --from 0 --to 449 --json
+bcr-runner render <work-id> --target vertical --profile final --json
 ```
 
 长任务立即返回任务 ID。Agent 轮询 `runner_job`，用 `runner_output` 读取 diagnostics 或图片；Works 只展示这些不可变产物。

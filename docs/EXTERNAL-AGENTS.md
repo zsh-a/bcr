@@ -13,6 +13,7 @@
 先启动 Runner：
 
 ```sh
+bcr-runner create ~/bcr-projects/my-work --id my-work --title "我的作品"
 bcr-runner start --root ~/bcr-projects --origin http://localhost:5199
 bcr-runner mcp --config ~/.config/bcr/work-runner.json
 ```

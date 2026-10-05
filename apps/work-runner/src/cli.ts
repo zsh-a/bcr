@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { existsSync, createWriteStream, cpSync } from "node:fs";
+import { existsSync, createWriteStream } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { Readable } from "node:stream";
@@ -9,6 +9,7 @@ import { json } from "./projects";
 import { RunnerClient } from "./client";
 import { defaultConfig, readConnection, serve, start, serviceOptions } from "./lifecycle";
 import { dependencyDirectory, installation, release, workerEntry } from "./installation";
+import { scaffold } from "./scaffold";
 
 const { positionals, values } = parseArgs({
   args: process.argv.slice(2),
@@ -23,6 +24,9 @@ const { positionals, values } = parseArgs({
     version: { type: "boolean" },
     root: { type: "string" },
     state: { type: "string" },
+    id: { type: "string" },
+    title: { type: "string" },
+    template: { type: "string" },
     origin: { type: "string" },
     port: { type: "string" },
     url: { type: "string" },
@@ -48,19 +52,20 @@ const print = (value: unknown) =>
 try {
   const [command = "help", id] = positionals;
   if (command === "version" || values.version) print(release());
-  else if (command === "init") {
-    if (!id) throw new Error("指定新工程目录，例如 bcr-runner init ./gym-card");
-    const destination = resolve(id);
-    if (existsSync(destination)) throw new Error("工程目录已存在");
-    cpSync(join(installation, "example"), destination, {
-      recursive: true,
-      errorOnExist: true,
-      force: false,
-    });
-    print({ directory: destination });
+  else if (command === "create") {
+    if (!id) throw new Error("指定新工程目录，例如 bcr-runner create ./my-work");
+    const template = String(values.template ?? "starter");
+    print(
+      scaffold({
+        directory: id,
+        template,
+        ...(values.id ? { id: String(values.id) } : {}),
+        ...(values.title ? { title: String(values.title) } : {}),
+      }),
+    );
   } else if (command === "help" || values.help) {
     process.stdout.write(
-  `BCR Works Runner\n\n  bcr-runner init ./gym-card\n  bcr-runner start --root ./projects --origin https://bcr.example.com\n  bcr-runner status|stop|doctor|version\n  bcr-runner doctor --install-browser\n  bcr-runner mcp [--config /path/to/connection.json]\n  bcr-runner serve --root ./projects --origin http://localhost:5199\n  bcr-runner token\n  bcr-runner list --json\n  bcr-runner inspect <work-id> --json\n  bcr-runner preview|validate|capture|render|archive <work-id> --target <target-id> [--frames 0,30] [--from 0 --to 89] [--profile draft|final] [--scale 0.5] [--crf 18] [--gl angle|swangle]\n  bcr-runner jobs [work-id]\n  bcr-runner job|cancel|preview-url <job-id>\n  bcr-runner rpc <operation> --input ./request.json\n  bcr-runner page-image <capture-id> --output ./page.png\n  bcr-runner download <job-id> <file-name> --output ./video.mp4\n\nLong operations return a durable job ID. Use job to poll; cancel explicitly.\nConnections default to the last local Runner. Override with --url and --token.\n`,
+  `BCR Works Runner\n\n  bcr-runner create ./my-work --id my-work --title "My work"\n  bcr-runner start --root ./projects --origin https://bcr.example.com\n  bcr-runner status|stop|doctor|version\n  bcr-runner doctor --install-browser\n  bcr-runner mcp [--config /path/to/connection.json]\n  bcr-runner serve --root ./projects --origin http://localhost:5199\n  bcr-runner token\n  bcr-runner list --json\n  bcr-runner inspect <work-id> --json\n  bcr-runner preview|validate|capture|render|archive <work-id> --target <target-id> [--frames 0,30] [--from 0 --to 89] [--profile draft|final] [--scale 0.5] [--crf 18] [--gl angle|swangle]\n  bcr-runner jobs [work-id]\n  bcr-runner job|cancel|preview-url <job-id>\n  bcr-runner rpc <operation> --input ./request.json\n  bcr-runner page-image <capture-id> --output ./page.png\n  bcr-runner download <job-id> <file-name> --output ./video.mp4\n\ncreate 生成通用 starter。长任务返回持久化 job ID，使用 job 轮询；连接默认读取上次本地 Runner。\n`,
     );
   } else if (command === "serve" || command === "start") {
     const options = serviceOptions(values, readConnection(configPath));

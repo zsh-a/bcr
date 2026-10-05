@@ -11,7 +11,7 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production --ignore-scripts
 COPY dist ./dist
 COPY release.json ./
-COPY example ./example
+COPY starter ./starter
 RUN mkdir -p /data/state /data/config /data/cache /works && chown -R bun:bun /data /works
 ENV XDG_CONFIG_HOME=/data/config XDG_DATA_HOME=/data/state XDG_CACHE_HOME=/data/cache BUN_INSTALL_CACHE_DIR=/data/cache/bun
 USER bun

@@ -1,0 +1,33 @@
+{
+  "format": "bcr-project-1",
+  "id": "starter",
+  "title": "Untitled Work",
+  "defaultTarget": "vertical",
+  "targets": [
+    {
+      "id": "page",
+      "runtime": "html",
+      "entry": "index.html"
+    },
+    {
+      "id": "vertical",
+      "runtime": "remotion",
+      "entry": "Scene.tsx",
+      "width": 1080,
+      "height": 1920,
+      "fps": 30,
+      "durationInFrames": 900,
+      "propsFile": "data.json",
+      "parameters": [
+        {
+          "key": "value",
+          "label": "示例数值",
+          "type": "number",
+          "min": 0,
+          "max": 100000,
+          "step": 1
+        }
+      ]
+    }
+  ]
+}

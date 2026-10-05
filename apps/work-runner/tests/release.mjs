@@ -71,7 +71,24 @@ try {
   const cli = async (...args) =>
     JSON.parse(await run(executable, [...prefix, ...args, "--config", config, "--json"]));
   assert.equal((await cli("version")).version, "0.2.0");
-  await cli("init", join(temp, "project"));
+  await cli(
+    "create",
+    join(temp, "project"),
+    "--id",
+    "starter-work",
+    "--title",
+    "Starter Work",
+  );
+  const starter = await cli(
+    "create",
+    join(temp, "starter"),
+    "--id",
+    "starter-alt",
+    "--title",
+    "Starter Work",
+  );
+  assert.equal(starter.work.id, "starter-alt");
+  assert.equal(starter.work.targets.length, 2);
   assert(!existsSync(join(packageDir, "src")));
   const start = await cli(
     "start",
@@ -125,9 +142,9 @@ try {
   await cli("page-image", pageCapture.id, "--output", join(temp, "page.png"));
   assert.equal(readFileSync(join(temp, "page.png")).readUInt32BE(16), 390);
   console.log("PASS: portable page worker, isolated Chromium screenshot and MCP image feedback");
-  const work = await call("read", { id: "gym-card" });
+  const work = await call("read", { id: "starter-work" });
   assert.equal(work.directory, join(temp, "project"));
-  const request = { id: "gym-card", revision: work.revision, target: "vertical" };
+  const request = { id: "starter-work", revision: work.revision, target: "vertical" };
   const capture = await call("render", {
     ...request,
     kind: "capture",
@@ -195,43 +212,58 @@ try {
   const report = await call("output", { id: validation.id, name: "diagnostics.json", text: true });
   const diagnostics = JSON.parse(report.text);
   assert.equal(diagnostics.sourceRevision, work.revision);
-  assert.equal(diagnostics.fonts.length, 2);
+  assert.equal(diagnostics.fonts.length, 0);
   assert.deepEqual(diagnostics.errors, []);
   const invalidText = await client.callTool({
     name: "runner_output",
     arguments: { id: capture.id, name: "frame-360.png", text: true },
   });
   assert.equal(invalidText.isError, true);
-  const reviews = await call("reviews", { id: "gym-card" });
-  await call("review", {
-    id: "gym-card",
+  const reviews = await call("review_read", { id: "starter-work" });
+  const submitted = await call("review_edit", {
+    id: "starter-work",
     revision: reviews.revision,
-    requestId: "review",
-    review: {
-      id: "r1",
+    requestId: "review-submit",
+    action: {
+      kind: "submit",
+      submissionId: "r1",
       sourceRevision: work.revision,
       target: "vertical",
-      frame: 360,
-      comment: "延迟结论",
-      status: "open",
+      title: "首稿",
+      summary: "首个可审阅版本。",
+      jobIds: [capture.id],
+      addresses: [],
     },
   });
+  const commented = await call("review_edit", {
+    id: "starter-work",
+    revision: submitted.revision,
+    requestId: "review-comment",
+    action: {
+      kind: "comment",
+      feedbackId: "f1",
+      submissionId: "r1",
+      comment: "延迟结论。",
+      anchor: { kind: "timeline", frame: 360 },
+    },
+  });
+  assert.equal(commented.feedback[0].id, "f1");
   const changed = await call("parameters", {
-    id: "gym-card",
+    id: "starter-work",
     revision: work.revision,
     target: "vertical",
     requestId: "params",
-    values: { annualPrice: 1800 },
+    values: { value: 1800 },
   });
   assert.notEqual(changed.revision, work.revision);
   const stale = await client.callTool({
     name: "runner_parameters",
     arguments: {
-      id: "gym-card",
+      id: "starter-work",
       revision: work.revision,
       target: "vertical",
       requestId: "stale",
-      values: { annualPrice: 2000 },
+      values: { value: 2000 },
     },
   });
   assert.equal(stale.isError, true);
@@ -266,14 +298,28 @@ try {
   console.log("PASS: relocated worker, isolated Remotion player, PNG, MP4 and source archive");
   await client.close();
   client = undefined;
-  const interrupted = await cli("render", "gym-card", "--target", "vertical", "--scale", "0.25");
+  const interrupted = await cli("render", "starter-work", "--target", "vertical", "--scale", "0.25");
   await cli("stop");
   assert.equal((await cli("status")).running, false);
   const restarted = await cli("start");
   assert.notEqual(restarted.instanceId, start.instanceId);
   assert.equal((await cli("job", video.id)).status, "succeeded");
   assert.equal((await cli("job", interrupted.id)).status, "interrupted");
-  assert.equal((await cli("reviews", "gym-card")).items.length, 1);
+  client = new Client(
+    { name: "runner-release-test", version: "1.0.0" },
+    { versionNegotiation: { mode: "auto" } },
+  );
+  await client.connect(
+    new StdioClientTransport({
+      command: executable,
+      args: [...prefix, "mcp", "--config", config],
+      cwd: temp,
+      env,
+    }),
+  );
+  assert.equal((await call("review_read", { id: "starter-work" })).submissions.length, 1);
+  await client.close();
+  client = undefined;
   await cli("stop");
   cpSync(mp4, `/tmp/bcr-runner-${portable ? "portable" : "package"}-acceptance.mp4`);
   console.log("PASS: stop/restart retains jobs, outputs and reviews");

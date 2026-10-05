@@ -7,12 +7,22 @@
 安装或更新 Runner 后创建新目录，并连接 Works：
 
 ```sh
-bcr-runner init ~/bcr-projects/gym-card
+# 新作品从通用 starter 开始
+bcr-runner create ~/bcr-projects/my-work --id my-work --title "我的作品"
 bcr-runner start --root ~/bcr-projects --origin http://localhost:5199
-bcr-runner inspect gym-card --json
+bcr-runner inspect my-work --json
 ```
 
-打开 Works，配对并选择 Runner 作品的 vertical 目标。init 不会改写已有目录；工程可以按需复制样例中的组件，而不必迁移成固定的页面或镜头协议。
+`create` 生成的工程已经包含页面目标、Remotion 目标、参数面板、纯计算模型和
+`AGENTS.md`，可以直接交给 Codex 或 Claude Code 继续创作。
+
+starter 的 Remotion 目标还预装了 `@remotion/three`、React Three Fiber 和 Three.js，
+可以在同一份 TSX 场景中组合二维排版与按帧驱动的 3D 物件。把 `ThreeCanvas` 放入有明确
+宽高的容器，并让旋转、相机和材质参数由 `useCurrentFrame()` 派生，预览和服务端导出就能
+保持一致。
+
+打开 Works，配对并选择 Runner 作品的 vertical 目标。工程可以按需增加组件，而不必
+迁移成固定的页面或镜头协议。
 
 独立项目中的 `bun install --frozen-lockfile --ignore-scripts`、`bun run typecheck` 可用于代码检查。渲染时 Runner 会在不可变任务目录独立安装相同锁文件，不复用工程 node_modules。
 
@@ -36,13 +46,13 @@ bcr-runner inspect gym-card --json
 
 ```sh
 # 检查依赖、声明素材与第 0 帧；产物含 diagnostics.json。
-bcr-runner validate gym-card --target vertical --json
+bcr-runner validate <work-id> --target vertical --json
 # 代表帧：价格、均价、临界点、结论。
-bcr-runner capture gym-card --target vertical --frames 90,660,1050,1680 --json
+bcr-runner capture <work-id> --target vertical --frames 0,30,120 --json
 # 15 秒草稿：30 fps 下，起止帧均包含在内。
-bcr-runner render gym-card --target vertical --profile draft --from 0 --to 449 --json
+bcr-runner render <work-id> --target vertical --profile draft --from 0 --to 449 --json
 # 原尺寸成片。
-bcr-runner render gym-card --target vertical --profile final --json
+bcr-runner render <work-id> --target vertical --profile final --json
 ```
 
 每个命令返回任务 ID。用 `bcr-runner job JOB_ID --json` 等待成功，然后 `bcr-runner download JOB_ID video.mp4 --output ./video.mp4`。MCP 对应 runner_render / runner_job / runner_output；图片可通过 image:true 直接交给 Agent 检查；诊断 JSON 可通过 text:true 直接读取。浏览器助手的 work_output 也支持 text:true。
@@ -61,4 +71,8 @@ bcr-runner render gym-card --target vertical --profile final --json
 
 先在作品自己的 package.json 中加入依赖并更新 bun.lock，再同时验证 Bun Player 与 Webpack 导出。二者使用同一组件，但不是同一构建器，特殊加载器或 WASM 仍可能需要 Runner 适配。
 
-可通过 `--gl angle` 或 `--gl swangle` 选择服务端图形后端。已有三维组件不因此自动获得全部 GPU 特性；需要在实际部署环境验证。HTML-in-canvas 等实验能力应进行浏览器能力检测，且保留普通二维/视频预览路径。参考 [GSAP 适配](https://www.remotion.dev/docs/gsap)、[Three.js 集成](https://www.remotion.dev/docs/three)与[HTML-in-canvas](https://www.remotion.dev/docs/html-in-canvas)。
+可通过 `--gl angle` 或 `--gl swangle` 选择服务端图形后端。没有 GPU 的服务器或 CI 推荐使用
+`--gl swangle`；有可用 GPU 的部署环境再选择 `--gl angle`。已有三维组件不因此自动获得全部
+GPU 特性，仍需要在实际部署环境验证。HTML-in-canvas 等实验能力应进行浏览器能力检测，且
+保留普通二维/视频预览路径。参考 [GSAP 适配](https://www.remotion.dev/docs/gsap)、
+[Three.js 集成](https://www.remotion.dev/docs/three)与[HTML-in-canvas](https://www.remotion.dev/docs/html-in-canvas)。

@@ -49,7 +49,7 @@ try {
     packageManager: "bun@1.3.14",
     files: [
       "dist",
-      "example",
+      "starter",
       "release.json",
       "bun.lock",
       "README.md",
@@ -72,7 +72,7 @@ try {
   });
   if (!result.success) throw new Error(result.logs.map(String).join("\n"));
   chmodSync(join(temporary, "dist/cli.js"), 0o755);
-  for (const path of ["example", "README.md", "Dockerfile", "compose.yaml"])
+  for (const path of ["starter", "README.md", "Dockerfile", "compose.yaml"])
     cpSync(join(app, path), join(temporary, path), { recursive: true });
   await run([process.execPath, "install", "--lockfile-only", "--ignore-scripts"]);
   const digest = createHash("sha256");
