@@ -128,6 +128,7 @@ export const RenderSchema = Schema.Struct({
   profile: Schema.optional(Schema.Literal("draft", "final")),
   crf: Schema.optional(Schema.Number.pipe(Schema.int(), Schema.between(0, 51))),
   gl: Schema.optional(Schema.Literal("angle", "swangle")),
+  hardwareAcceleration: Schema.optional(Schema.Literal("disable", "if-possible", "required")),
 });
 export type RenderRequest = typeof RenderSchema.Type;
 export const RENDER_PROFILES = {
@@ -137,11 +138,15 @@ export const RENDER_PROFILES = {
 export type RenderProfile = keyof typeof RENDER_PROFILES;
 export function renderSettings(request: RenderRequest) {
   const profile = request.profile ?? "final";
+  const hardwareAcceleration = request.hardwareAcceleration ?? "disable";
   return {
     profile,
     scale: request.scale ?? RENDER_PROFILES[profile].scale,
     crf: request.crf ?? RENDER_PROFILES[profile].crf,
+    // Video hardware acceleration and Chromium WebGL are independent. Keep
+    // the existing WebGL default unless the caller explicitly selects a GL backend.
     gl: request.gl ?? null,
+    hardwareAcceleration,
   };
 }
 export type Job = {

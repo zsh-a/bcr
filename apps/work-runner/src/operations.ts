@@ -108,7 +108,7 @@ const operations = {
     schema: RenderSchema,
     readOnly: false,
     description:
-      "Submit validate, preview, capture, video or archive against a fixed source revision. Rendered outputs accept profile (draft: half size / final: full size), scale override, optional gl (angle or swangle), and video-only crf. validate renders frame 0 and outputs diagnostics.json with local font/asset inventory. Returns a durable job ID; poll runner_job. Reuse requestId on retries.",
+      "Submit validate, preview, capture, video or archive against a fixed source revision. Rendered outputs accept profile (draft: half size / final: full size), scale override, optional gl (angle or swangle), hardwareAcceleration (disable, if-possible, required), and video-only crf. Video hardware acceleration and Chromium WebGL are independent: hardware encoding uses bitrate instead of CRF, while --gl angle must be selected explicitly for GPU WebGL. validate renders frame 0 and outputs diagnostics.json with local font/asset inventory. Returns a durable job ID; poll runner_job. Reuse requestId on retries.",
   },
   jobs: {
     schema: Schema.Struct({ id: Schema.optional(Id) }),

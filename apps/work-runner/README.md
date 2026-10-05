@@ -75,7 +75,7 @@ HTML 目标使用已经生成的 HTML/CSS/JS；Remotion 目标使用普通 React
 
 Remotion 依赖应在工程自己的 `package.json` 与 `bun.lock` 中固定版本。Runner 在隔离任务目录中按锁文件安装依赖，不复用可变的工作区 `node_modules`，也不执行安装脚本。首次渲染需要兼容的 Chromium；可用 `BCR_RUNNER_BROWSER` 指定路径。
 
-3D 导出沿用同一个 `render` 契约。没有 GPU 的服务器或 CI 推荐显式使用 `--gl swangle`；有可用 GPU 的部署环境可以使用 `--gl angle`。预览、关键帧和视频都由同一个 Remotion 组件生成，因此不需要维护另一套 3D 播放实现。
+3D 导出沿用同一个 `render` 契约。视频硬件编码与 Chromium WebGL 是两条独立链路：有 NVIDIA/VideoToolbox 编码器时使用 `--gpu`（等价于 `--hardware-acceleration required`），需要 GPU WebGL 时再显式使用 `--gl angle`；没有可用 GPU 的服务器或 CI 使用 `--gl swangle`。若允许编码器不可用时回退，可使用 `--hardware-acceleration if-possible`。硬件编码不使用 CRF，而是按目标分辨率选择 bitrate；软件编码仍可使用 `--crf`。预览、关键帧和视频都由同一个 Remotion 组件生成，因此不需要维护另一套 3D 播放实现。
 
 ## CLI 与 MCP
 
@@ -101,6 +101,7 @@ bcr-runner preview <work-id> --target vertical --json
 bcr-runner capture <work-id> --target vertical --frames 0,30,120 --json
 bcr-runner render <work-id> --target vertical --profile draft --from 0 --to 449 --json
 bcr-runner render <work-id> --target vertical --profile final --json
+bcr-runner render <work-id> --target vertical --profile final --gpu --json
 bcr-runner jobs <work-id> --json
 bcr-runner job JOB_ID --json
 bcr-runner download JOB_ID video.mp4 --output ./video.mp4

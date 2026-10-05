@@ -87,6 +87,13 @@ function props(root: string, target: Target): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+function hardwareVideoBitrate(width: number, height: number, scale: number) {
+  const pixels = width * scale * height * scale;
+  if (pixels >= 1920 * 1080) return "20M";
+  if (pixels >= 1280 * 720) return "12M";
+  return "8M";
+}
+
 const control = `
 function connect(player, updateProps) {
   let port;
@@ -321,6 +328,19 @@ export async function execute(context: Context): Promise<void> {
       const from = request.from ?? 0,
         to = request.to ?? composition.durationInFrames - 1;
       if (to < from || to >= composition.durationInFrames) throw new Error("视频帧范围无效");
+      const videoEncoding =
+        settings.hardwareAcceleration === "disable"
+          ? {
+              hardwareAcceleration: "disable" as const,
+              crf: settings.crf,
+              videoBitrate: null,
+            }
+          : {
+              hardwareAcceleration: settings.hardwareAcceleration,
+              // NVENC/Videotoolbox does not support CRF; use a resolution-based bitrate.
+              crf: null,
+              videoBitrate: hardwareVideoBitrate(target.width, target.height, settings.scale),
+            };
       await renderMedia({
         composition,
         serveUrl,
@@ -329,7 +349,7 @@ export async function execute(context: Context): Promise<void> {
         outputLocation: join(outputs, "video.mp4"),
         frameRange: [from, to],
         scale: settings.scale,
-        crf: settings.crf,
+        ...videoEncoding,
         pixelFormat: "yuv420p",
         imageFormat: settings.profile === "final" ? "png" : "jpeg",
         concurrency: 2,

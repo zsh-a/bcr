@@ -56,32 +56,60 @@ function fixture() {
 
 test("one contract supplies CLI/HTTP/MCP render defaults and rejects unsupported values", () => {
   const { request } = fixture();
-  expect(renderSettings(request)).toEqual({ profile: "final", scale: 1, crf: 18, gl: null });
+  expect(renderSettings(request)).toEqual({
+    profile: "final",
+    scale: 1,
+    crf: 18,
+    gl: null,
+    hardwareAcceleration: "disable",
+  });
   expect(renderSettings({ ...request, profile: "draft" })).toEqual({
     profile: "draft",
     scale: 0.5,
     crf: 26,
     gl: null,
+    hardwareAcceleration: "disable",
   });
   expect(
     renderSettings({ ...request, profile: "draft", scale: 0.25, crf: 0, gl: "swangle" }),
-  ).toEqual({ profile: "draft", scale: 0.25, crf: 0, gl: "swangle" });
+  ).toEqual({
+    profile: "draft",
+    scale: 0.25,
+    crf: 0,
+    gl: "swangle",
+    hardwareAcceleration: "disable",
+  });
+  expect(renderSettings({ ...request, hardwareAcceleration: "required" })).toEqual({
+    profile: "final",
+    scale: 1,
+    crf: 18,
+    gl: null,
+    hardwareAcceleration: "required",
+  });
   for (const invalid of [
     { profile: "ultra" },
     { crf: 52 },
     { crf: -1 },
     { crf: 18.5 },
     { gl: "shell-command" },
+    { hardwareAcceleration: "cuda" },
     { scale: 0 },
   ])
     expect(() => decode(RenderSchema, { ...request, ...invalid })).toThrow();
   const schema = JSON.stringify(operationCatalog.find((op) => op.name === "render")!.schema);
-  for (const key of ["profile", "crf", "gl"]) expect(schema).toContain(key);
+  for (const key of ["profile", "crf", "gl", "hardwareAcceleration"]) expect(schema).toContain(key);
 });
 
 test("render identity includes quality and backend; invalid options fail before entering the queue", () => {
   const { request, jobs } = fixture();
-  const keys = [{}, { profile: "draft" }, { crf: 21 }, { gl: "swangle" }, { scale: 0.25 }].map(
+  const keys = [
+    {},
+    { profile: "draft" },
+    { crf: 21 },
+    { gl: "swangle" },
+    { hardwareAcceleration: "required" },
+    { scale: 0.25 },
+  ].map(
     (options, i) => {
       const job = jobs.start({ ...request, ...options, requestId: `job-${i}` });
       jobs.cancel(job.id);
@@ -103,6 +131,9 @@ test("render identity includes quality and backend; invalid options fail before 
   expect(() =>
     jobs.start({ ...request, requestId: "html", kind: "validate", target: "page", gl: "angle" }),
   ).toThrow("质量选项");
+  expect(() =>
+    jobs.start({ ...request, requestId: "gpu-crf", hardwareAcceleration: "required", crf: 18 }),
+  ).toThrow("硬件编码");
 });
 
 test("asset diagnostics use snapshot hashes and report missing/empty files without assuming font readiness", () => {

@@ -67,11 +67,19 @@ export class Jobs {
       throw new Error("HTML 目标不支持视频或关键帧导出");
     if (
       (target.runtime !== "remotion" || ["preview", "archive"].includes(request.kind)) &&
-      [request.profile, request.crf, request.gl].some((value) => value !== undefined)
+      [request.profile, request.crf, request.gl, request.hardwareAcceleration].some(
+        (value) => value !== undefined,
+      )
     )
       throw new Error("渲染质量选项仅用于动画验证、关键帧或视频导出");
     if (request.crf !== undefined && request.kind !== "video")
       throw new Error("crf 仅用于视频编码");
+    if (
+      request.hardwareAcceleration !== undefined &&
+      request.hardwareAcceleration !== "disable" &&
+      request.crf !== undefined
+    )
+      throw new Error("硬件编码不支持 CRF，请移除 crf，让 Runner 按目标分辨率使用 bitrate");
     const settings = renderSettings(request);
     if (
       target.runtime === "remotion" &&
